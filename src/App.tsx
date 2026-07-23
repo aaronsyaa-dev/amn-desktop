@@ -7,6 +7,7 @@ import { LoginScreen } from './screens/LoginScreen';
 import { HomeScreen } from './screens/HomeScreen';
 import { SitesDashboardScreen } from './screens/SitesDashboardScreen';
 import { SiteDetailScreen } from './screens/SiteDetailScreen';
+import { SettingsScreen } from './screens/SettingsScreen';
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
             <Route path="/" element={<HomeScreen />} />
             <Route path="/sites" element={<SitesDashboardScreen />} />
             <Route path="/sites/:siteId" element={<SiteDetailScreen />} />
+            <Route path="/settings" element={<SettingsScreen />} />
           </Route>
         </Routes>
       </HashRouter>

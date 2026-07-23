@@ -8,4 +8,5 @@ export interface Site {
   uptimePercentage: number;
   lastCheckedAt: string;
   openVulnerabilities: number;
+  trend: number[];
 }

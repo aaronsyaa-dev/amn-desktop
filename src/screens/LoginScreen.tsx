@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../auth/AuthContext';
-import './LoginScreen.css';
 
 interface LocationState {
   from?: { pathname: string };
@@ -48,12 +48,23 @@ export function LoginScreen() {
   };
 
   return (
-    <div className="login-screen">
-      <form className="login-card" onSubmit={handleSubmit} noValidate>
-        <h1 className="login-title">AMN Desktop</h1>
-        <p className="login-subtitle">Connectez-vous pour continuer</p>
+    <div className="flex min-h-screen items-center justify-center bg-bg">
+      <motion.form
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        onSubmit={handleSubmit}
+        noValidate
+        className="flex w-80 flex-col gap-4 rounded-2xl border border-border bg-surface p-8 shadow-[0_20px_40px_rgba(0,0,0,0.4)]"
+      >
+        <div className="mb-1 text-center">
+          <h1 className="text-xl font-bold text-text-primary">AMN Desktop</h1>
+          <p className="mt-1 text-sm text-text-secondary">
+            Connectez-vous pour continuer
+          </p>
+        </div>
 
-        <label className="login-field">
+        <label className="flex flex-col gap-1.5 text-sm text-text-secondary">
           <span>Email</span>
           <input
             type="email"
@@ -63,10 +74,11 @@ export function LoginScreen() {
             onChange={(e) => setEmail(e.target.value)}
             disabled={isSubmitting}
             required
+            className="rounded-lg border border-border bg-bg px-3 py-2.5 text-sm text-text-primary outline-none transition-colors duration-200 focus:border-accent"
           />
         </label>
 
-        <label className="login-field">
+        <label className="flex flex-col gap-1.5 text-sm text-text-secondary">
           <span>Mot de passe</span>
           <input
             type="password"
@@ -76,19 +88,27 @@ export function LoginScreen() {
             onChange={(e) => setPassword(e.target.value)}
             disabled={isSubmitting}
             required
+            className="rounded-lg border border-border bg-bg px-3 py-2.5 text-sm text-text-primary outline-none transition-colors duration-200 focus:border-accent"
           />
         </label>
 
         {error && (
-          <p className="login-error" role="alert">
+          <p
+            role="alert"
+            className="rounded-lg bg-danger-muted px-3 py-2 text-sm text-danger"
+          >
             {error}
           </p>
         )}
 
-        <button type="submit" className="login-submit" disabled={isSubmitting}>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="mt-1 rounded-lg bg-accent px-3 py-2.5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+        >
           {isSubmitting ? 'Connexion en cours…' : 'Se connecter'}
         </button>
-      </form>
+      </motion.form>
     </div>
   );
 }

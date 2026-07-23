@@ -9,6 +9,7 @@ export const mockSites: Site[] = [
     uptimePercentage: 99.98,
     lastCheckedAt: '2026-07-23T06:00:00Z',
     openVulnerabilities: 0,
+    trend: [98.2, 98.9, 99.1, 99.4, 99.6, 99.9, 99.98],
   },
   {
     id: 'site-2',
@@ -18,6 +19,7 @@ export const mockSites: Site[] = [
     uptimePercentage: 97.2,
     lastCheckedAt: '2026-07-23T05:45:00Z',
     openVulnerabilities: 2,
+    trend: [99.5, 99.1, 98.4, 97.9, 98.2, 97.6, 97.2],
   },
   {
     id: 'site-3',
@@ -27,6 +29,7 @@ export const mockSites: Site[] = [
     uptimePercentage: 91.4,
     lastCheckedAt: '2026-07-23T05:30:00Z',
     openVulnerabilities: 1,
+    trend: [99.0, 97.8, 96.1, 94.5, 93.0, 92.1, 91.4],
   },
 ];
 

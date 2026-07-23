@@ -1,3 +1,37 @@
+@import 'tailwindcss';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+
+@theme {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Surfaces */
+  --color-bg: #0a0a0f;
+  --color-surface: #14141a;
+  --color-surface-hover: #1a1a22;
+  --color-border: #24242e;
+
+  /* Text */
+  --color-text-primary: #f4f4f6;
+  --color-text-secondary: #8b8b98;
+  --color-text-muted: #5c5c6a;
+
+  /* Accent - electric violet */
+  --color-accent: #7c5cff;
+  --color-accent-hover: #8f72ff;
+  --color-accent-muted: #7c5cff26;
+
+  /* Status */
+  --color-success: #34d399;
+  --color-success-muted: #34d39926;
+  --color-warning: #fbbf24;
+  --color-warning-muted: #fbbf2426;
+  --color-danger: #f87171;
+  --color-danger-muted: #f8717126;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -11,7 +45,7 @@ body,
 }
 
 body {
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
-    sans-serif;
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-text-primary);
 }
