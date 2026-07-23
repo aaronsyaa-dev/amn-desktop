@@ -96,7 +96,11 @@ export function Sidebar() {
                 key={item.key}
                 to={item.to}
                 onClick={(event) => handleNavClick(item, event)}
-                className={`group relative flex items-center gap-3 overflow-hidden rounded-lg px-3 py-2.5 text-sm transition-colors duration-200 ${
+                title={!isExpanded ? item.label : undefined}
+                aria-label={item.label}
+                className={`group relative flex items-center gap-3 overflow-hidden rounded-lg py-2.5 text-sm transition-colors duration-200 ${
+                  isExpanded ? 'px-3' : 'justify-center px-0'
+                } ${
                   active
                     ? 'bg-accent-muted text-text-primary'
                     : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
@@ -110,16 +114,14 @@ export function Sidebar() {
                   />
                 )}
                 <Icon size={20} strokeWidth={1.75} />
-                <span
-                  className={`whitespace-nowrap transition-opacity duration-200 ${
-                    isExpanded ? 'opacity-100' : 'opacity-0'
-                  }`}
-                >
-                  {item.label}
-                </span>
+                {isExpanded && (
+                  <span className="select-none whitespace-nowrap">
+                    {item.label}
+                  </span>
+                )}
                 {item.key === 'sites' && isExpanded && (
                   <span
-                    className={`ml-auto text-xs text-text-muted transition-transform duration-200 ${
+                    className={`ml-auto select-none text-xs text-text-muted transition-transform duration-200 ${
                       isSitesFlyoutOpen ? 'rotate-90' : ''
                     }`}
                   >
@@ -135,22 +137,24 @@ export function Sidebar() {
           <button
             type="button"
             onClick={logout}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary"
+            title={!isExpanded ? 'Déconnexion' : undefined}
+            aria-label="Déconnexion"
+            className={`flex items-center gap-3 rounded-lg py-2.5 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary ${
+              isExpanded ? 'px-3' : 'justify-center px-0'
+            }`}
           >
             <LogOut size={20} strokeWidth={1.75} />
-            <span
-              className={`whitespace-nowrap transition-opacity duration-200 ${
-                isExpanded ? 'opacity-100' : 'opacity-0'
-              }`}
-            >
-              Déconnexion
-            </span>
+            {isExpanded && (
+              <span className="select-none whitespace-nowrap">Déconnexion</span>
+            )}
           </button>
 
           <button
             type="button"
             onClick={() => setIsExpanded((v) => !v)}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary"
+            className={`flex items-center gap-3 rounded-lg py-2.5 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary ${
+              isExpanded ? 'px-3' : 'justify-center px-0'
+            }`}
             aria-label={isExpanded ? 'Réduire le menu' : 'Étendre le menu'}
           >
             {isExpanded ? (
