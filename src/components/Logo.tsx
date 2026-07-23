@@ -3,6 +3,8 @@ import React, { useId } from 'react';
 interface LogoProps {
   /** Show the "DEVSEC" tagline under the wordmark. */
   showTagline?: boolean;
+  /** Append " Desktop" (the app name) after the wordmark, smaller and muted. */
+  showAppName?: boolean;
   /** Rendered height in px; width scales with the aspect ratio. */
   height?: number;
   className?: string;
@@ -23,38 +25,55 @@ const GRADIENT_STOPS = (
  * right, echoing the supplied brand mark; "DEVSEC" sits below in
  * wide-tracked grey.
  */
-export function Logo({ showTagline = true, height = 40, className }: LogoProps) {
+export function Logo({
+  showTagline = true,
+  showAppName = false,
+  height = 40,
+  className,
+}: LogoProps) {
   const id = useId();
   const gradientId = `amn-gradient-${id}`;
   const viewBoxHeight = showTagline ? 64 : 44;
-  const width = (height * 148) / viewBoxHeight;
+  // Widen the canvas when the app name is appended so "Desktop" never clips.
+  const viewBoxWidth = showAppName ? 232 : 148;
+  const width = (height * viewBoxWidth) / viewBoxHeight;
 
   return (
     <svg
       width={width}
       height={height}
-      viewBox={`0 0 148 ${viewBoxHeight}`}
+      viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
       role="img"
-      aria-label="AMN DevSec"
+      aria-label={showAppName ? 'AMN Desktop' : 'AMN DevSec'}
     >
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="148" y2="0" gradientUnits="userSpaceOnUse">
           {GRADIENT_STOPS}
         </linearGradient>
       </defs>
-      <text
-        x="0"
-        y="40"
-        fontFamily="Inter, sans-serif"
-        fontSize="46"
-        fontWeight={700}
-        letterSpacing="-2"
-        fill={`url(#${gradientId})`}
-      >
-        AMN
+      <text x="0" y="40" fontFamily="Inter, sans-serif">
+        <tspan
+          fontSize="46"
+          fontWeight={700}
+          letterSpacing="-2"
+          fill={`url(#${gradientId})`}
+        >
+          AMN
+        </tspan>
+        {showAppName && (
+          <tspan
+            dx="12"
+            fontSize="25"
+            fontWeight={600}
+            letterSpacing="-0.5"
+            fill="#b0b0bc"
+          >
+            Desktop
+          </tspan>
+        )}
       </text>
       {showTagline && (
         <text

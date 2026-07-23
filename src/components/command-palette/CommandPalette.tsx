@@ -14,9 +14,11 @@ import {
   LayoutDashboard,
   Search,
   Settings,
+  Sparkles,
 } from 'lucide-react';
 import { mockSites } from '../../data/mockSites';
 import { useSitePanel } from '../site-panel/SitePanelContext';
+import { useAssistant } from '../../assistant/AssistantContext';
 import { StatusBadge } from '../StatusBadge';
 
 interface CommandPaletteContextValue {
@@ -28,14 +30,11 @@ const CommandPaletteContext = createContext<
   CommandPaletteContextValue | undefined
 >(undefined);
 
+type IconType = React.ComponentType<{ size?: number; strokeWidth?: number }>;
+
 type Command =
-  | {
-      kind: 'nav';
-      id: string;
-      label: string;
-      icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
-      to: string;
-    }
+  | { kind: 'nav'; id: string; label: string; icon: IconType; to: string }
+  | { kind: 'action'; id: string; label: string; icon: IconType; run: () => void }
   | { kind: 'site'; id: string; label: string; url: string; siteId: string };
 
 const NAV_COMMANDS: Extract<Command, { kind: 'nav' }>[] = [
@@ -94,11 +93,23 @@ function CommandPaletteModal({
 }) {
   const navigate = useNavigate();
   const { openSite } = useSitePanel();
+  const { open: openAssistant } = useAssistant();
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
 
   const results = useMemo<Command[]>(() => {
     const q = query.trim().toLowerCase();
+    const actionCommands: Command[] = (
+      [
+        {
+          kind: 'action',
+          id: 'act-assistant',
+          label: 'Ouvrir l’assistant IA',
+          icon: Sparkles,
+          run: openAssistant,
+        },
+      ] as Command[]
+    ).filter((c) => !q || c.label.toLowerCase().includes(q));
     const siteCommands: Command[] = mockSites
       .filter(
         (s) =>
@@ -116,8 +127,8 @@ function CommandPaletteModal({
     const navCommands = NAV_COMMANDS.filter(
       (c) => !q || c.label.toLowerCase().includes(q),
     );
-    return [...navCommands, ...siteCommands];
-  }, [query]);
+    return [...navCommands, ...actionCommands, ...siteCommands];
+  }, [query, openAssistant]);
 
   // Reset transient state whenever the palette opens.
   useEffect(() => {
@@ -136,6 +147,8 @@ function CommandPaletteModal({
       if (!command) return;
       if (command.kind === 'nav') {
         navigate(command.to);
+      } else if (command.kind === 'action') {
+        command.run();
       } else {
         navigate('/sites');
         openSite(command.siteId);
@@ -249,7 +262,7 @@ function CommandRow({
           active ? 'bg-accent/20 text-accent' : 'bg-white/5 text-text-secondary'
         }`}
       >
-        {command.kind === 'nav' ? (
+        {command.kind === 'nav' || command.kind === 'action' ? (
           <command.icon size={15} strokeWidth={1.75} />
         ) : (
           <Globe size={15} strokeWidth={1.75} />

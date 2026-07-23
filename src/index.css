@@ -123,3 +123,36 @@ a:focus-visible,
 .overflow-y-auto::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* --- Print-to-PDF: show only the light-themed report region --- */
+.print-root {
+  display: none;
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+  body * {
+    visibility: hidden !important;
+  }
+  .print-root,
+  .print-root * {
+    visibility: visible !important;
+  }
+  .print-root {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 32px 40px;
+    background: #fff;
+    color: #111;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  @page {
+    margin: 14mm;
+  }
+}

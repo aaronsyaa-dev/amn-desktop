@@ -69,7 +69,7 @@ export function Sidebar() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
               >
-                <Logo height={36} showTagline />
+                <Logo height={36} showTagline showAppName />
               </motion.div>
             ) : (
               <motion.div
