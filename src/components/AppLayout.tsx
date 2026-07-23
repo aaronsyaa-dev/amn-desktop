@@ -8,6 +8,7 @@ import { SiteDetailPanel } from './site-panel/SiteDetailPanel';
 import { CommandPaletteProvider } from './command-palette/CommandPalette';
 import { AssistantProvider } from '../assistant/AssistantContext';
 import { AssistantPanel } from '../assistant/AssistantPanel';
+import { variantsForPath } from '../lib/transitions';
 
 export function AppLayout() {
   const location = useLocation();
@@ -24,10 +25,10 @@ export function AppLayout() {
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={location.pathname}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                    variants={variantsForPath(location.pathname)}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
                   >
                     <Outlet />
                   </motion.div>
