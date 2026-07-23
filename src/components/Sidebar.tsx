@@ -8,6 +8,7 @@ import {
   Globe,
   LayoutDashboard,
   LogOut,
+  Radar,
   Settings,
   Users,
 } from 'lucide-react';
@@ -33,6 +34,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'sites', label: 'Sites', to: '/sites', icon: Globe },
   { key: 'team', label: 'Équipe', to: '/team', icon: Users },
   { key: 'clients', label: 'Clients', to: '/clients', icon: Contact },
+  { key: 'tracker', label: 'Tracker', to: '/tracker', icon: Radar },
   { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings },
 ];
 

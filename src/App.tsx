@@ -8,6 +8,7 @@ import { HomeScreen } from './screens/HomeScreen';
 import { SitesDashboardScreen } from './screens/SitesDashboardScreen';
 import { TeamScreen } from './screens/TeamScreen';
 import { ClientsScreen } from './screens/ClientsScreen';
+import { TrackerScreen } from './screens/TrackerScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { GrainOverlay } from './components/GrainOverlay';
 
@@ -29,6 +30,7 @@ export default function App() {
             <Route path="/sites" element={<SitesDashboardScreen />} />
             <Route path="/team" element={<TeamScreen />} />
             <Route path="/clients" element={<ClientsScreen />} />
+            <Route path="/tracker" element={<TrackerScreen />} />
             <Route path="/settings" element={<SettingsScreen />} />
           </Route>
         </Routes>

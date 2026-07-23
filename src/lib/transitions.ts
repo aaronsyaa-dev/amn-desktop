@@ -31,6 +31,11 @@ export const pageVariants: Record<string, Variants> = {
     animate: { opacity: 1, x: 0, transition: { duration: 0.3, ease: EASE } },
     exit: { opacity: 0, x: 12, transition: { duration: 0.15 } },
   },
+  '/tracker': {
+    initial: { opacity: 0, y: -14 },
+    animate: { opacity: 1, y: 0, transition: { duration: 0.3, ease: EASE } },
+    exit: { opacity: 0, y: 10, transition: { duration: 0.15 } },
+  },
   '/settings': {
     initial: { opacity: 0, y: 10 },
     animate: { opacity: 1, y: 0, transition: { duration: 0.25, ease: EASE } },
@@ -42,6 +47,7 @@ export function variantsForPath(pathname: string): Variants {
   if (pathname.startsWith('/sites')) return pageVariants['/sites'];
   if (pathname.startsWith('/team')) return pageVariants['/team'];
   if (pathname.startsWith('/clients')) return pageVariants['/clients'];
+  if (pathname.startsWith('/tracker')) return pageVariants['/tracker'];
   if (pathname.startsWith('/settings')) return pageVariants['/settings'];
   return pageVariants['/'];
 }
