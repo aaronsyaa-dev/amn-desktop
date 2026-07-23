@@ -92,3 +92,11 @@ export interface Suggestion {
   severity: 'critical' | 'warning' | 'info';
   siteId?: string;
 }
+
+export interface Insight {
+  id: string;
+  title: string;
+  body: string;
+  tone: 'positive' | 'neutral' | 'warning';
+  siteId?: string;
+}

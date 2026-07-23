@@ -1,5 +1,100 @@
 import { mockSites } from '../data/mockSites';
-import type { DailySummary, Suggestion, WatchItem } from './types';
+import type {
+  DailySummary,
+  Insight,
+  Suggestion,
+  WatchItem,
+} from './types';
+
+function trendDelta(trend: number[]): number {
+  return trend.length >= 2 ? trend[trend.length - 1] - trend[0] : 0;
+}
+
+/**
+ * Free-text "daily brief" for the home QG: what happened since last visit and
+ * what to focus on today. Grounded in the current mock state. Written to read
+ * like a short human/AI briefing (used with a typewriter reveal in the UI).
+ */
+export function getDailyBrief(): string {
+  const offline = mockSites.filter((s) => s.status === 'offline');
+  const criticalCount = mockSites.reduce(
+    (n, s) => n + s.alerts.filter((a) => a.severity === 'critical').length,
+    0,
+  );
+  const flawless = mockSites.filter((s) => s.uptimePercentage >= 99.9);
+  const rising = [...mockSites].sort(
+    (a, b) => b.analytics.revenueTrendPct - a.analytics.revenueTrendPct,
+  )[0];
+  const criticalCve = mockSites.find((s) =>
+    s.alerts.some((a) => a.type === 'malware' && a.severity === 'critical'),
+  );
+
+  const parts: string[] = [];
+  parts.push(
+    `Depuis votre dernière visite, ${criticalCount} incident(s) critique(s) ont été détectés sur votre parc.`,
+  );
+  if (offline.length > 0) {
+    parts.push(`${offline.map((s) => s.name).join(', ')} nécessite une intervention immédiate.`);
+  }
+  parts.push(
+    `Côté positif, le trafic de ${rising.name} progresse (${rising.analytics.revenueTrendPct >= 0 ? '+' : ''}${rising.analytics.revenueTrendPct} %) et ${flawless.length} site(s) affichent une disponibilité irréprochable.`,
+  );
+  const focus = [
+    ...offline.map((s) => `rétablir ${s.name}`),
+    ...(criticalCve ? [`appliquer le correctif critique sur ${criticalCve.name}`] : []),
+  ];
+  parts.push(
+    focus.length > 0
+      ? `Aujourd’hui, concentrez-vous sur : ${focus.join(' et ')}.`
+      : `Aucune urgence aujourd’hui — bonne occasion pour traiter la dette de sécurité de fond.`,
+  );
+  return parts.join(' ');
+}
+
+/**
+ * Automatic insights — surfaced even when nothing is wrong, so there is always
+ * something worthwhile to read. Mixes positive signals with gentle nudges.
+ */
+export function getInsights(): Insight[] {
+  const insights: Insight[] = [];
+
+  const rising = [...mockSites].sort(
+    (a, b) => trendDelta(b.trend) - trendDelta(a.trend),
+  )[0];
+  if (rising && trendDelta(rising.trend) > 0) {
+    insights.push({
+      id: 'insight-traffic',
+      tone: 'positive',
+      title: `Tendance en hausse sur ${rising.name}`,
+      body: `La disponibilité de ${rising.name} s’améliore régulièrement (${rising.analytics.revenueTrendPct >= 0 ? '+' : ''}${rising.analytics.revenueTrendPct} % de CA). Bon momentum à capitaliser.`,
+      siteId: rising.id,
+    });
+  }
+
+  const flawless = mockSites.filter((s) => s.uptimePercentage >= 99.9);
+  if (flawless.length > 0) {
+    insights.push({
+      id: 'insight-uptime',
+      tone: 'positive',
+      title: `${flawless.length} site(s) sans le moindre incident de disponibilité`,
+      body: `${flawless.map((s) => s.name).join(', ')} maintiennent une disponibilité ≥ 99,9 %. Votre supervision porte ses fruits.`,
+    });
+  }
+
+  const blocked = mockSites.reduce(
+    (n, s) => n + s.alerts.filter((a) => a.severity !== 'info').length,
+    0,
+  );
+  insights.push({
+    id: 'insight-security',
+    tone: 'neutral',
+    title: `${blocked} menaces interceptées cette semaine`,
+    body: `Vos défenses ont bloqué ${blocked} événements de sécurité (force brute, injections, uploads suspects) sur l’ensemble du parc.`,
+  });
+
+  return insights.slice(0, 3);
+}
+
 
 /** Today at ~07:15 local — simulates a summary that "arrived this morning". */
 function thisMorningISO(): string {

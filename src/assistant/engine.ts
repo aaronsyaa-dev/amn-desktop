@@ -31,7 +31,13 @@ import type {
 } from './types';
 import { buildGlobalReport, buildSiteReport } from './reportContent';
 
-export { getDailySummary, getSuggestions, getWatchItems } from './mockData';
+export {
+  getDailyBrief,
+  getDailySummary,
+  getInsights,
+  getSuggestions,
+  getWatchItems,
+} from './mockData';
 
 /** Simulated model latency so the UI exercises its loading states. */
 function delay(ms: number): Promise<void> {
