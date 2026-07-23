@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   ChevronsLeft,
   ChevronsRight,
+  Contact,
   Globe,
   LayoutDashboard,
   LogOut,
@@ -31,6 +32,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'home', label: 'Accueil', to: '/', icon: LayoutDashboard },
   { key: 'sites', label: 'Sites', to: '/sites', icon: Globe },
   { key: 'team', label: 'Équipe', to: '/team', icon: Users },
+  { key: 'clients', label: 'Clients', to: '/clients', icon: Contact },
   { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings },
 ];
 

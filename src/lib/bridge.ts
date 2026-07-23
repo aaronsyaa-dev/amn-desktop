@@ -1,8 +1,12 @@
 import type {
+  AddClientEventInput,
   AmnBridge,
   AuthResult,
+  Client,
+  CreateClientInput,
   Message,
   SendMessageInput,
+  UpdateClientInput,
 } from '../shared/api';
 
 declare global {
@@ -29,6 +33,7 @@ const FALLBACK_ACCOUNTS: Record<string, { name: string; hash: string }> = {
 };
 
 const MESSAGES_KEY = 'amn.fallback.messages';
+const CLIENTS_KEY = 'amn.fallback.clients';
 
 function readFallbackMessages(): Message[] {
   try {
@@ -41,6 +46,71 @@ function readFallbackMessages(): Message[] {
 
 function writeFallbackMessages(messages: Message[]): void {
   window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
+}
+
+function daysAgo(n: number): string {
+  return new Date(Date.now() - n * 86400000).toISOString();
+}
+
+/** Seed mirrors the SQLite seed so the browser fallback shows the same data. */
+function seedClients(): Client[] {
+  return [
+    {
+      id: 1,
+      name: 'Mohamed Bensalah',
+      company: 'G20 Corvetto',
+      status: 'active',
+      email: 'contact@g20corvetto.it',
+      phone: '+39 02 1234 5678',
+      notes:
+        'Client historique. Sensible aux temps de réponse en soirée (pic e-commerce). Préfère un point hebdo le lundi.',
+      imageDataUrl: '',
+      createdAt: daysAgo(120),
+      updatedAt: daysAgo(2),
+      events: [
+        { id: 4, clientId: 1, title: 'Incident paiement', detail: 'Latence PSP traitée en 40 min.', date: daysAgo(2) },
+        { id: 3, clientId: 1, title: 'Renouvellement contrat', detail: 'Contrat annuel reconduit.', date: daysAgo(30) },
+        { id: 2, clientId: 1, title: 'Audit sécurité initial', detail: 'Correction de 4 vulnérabilités, durcissement WAF.', date: daysAgo(96) },
+        { id: 1, clientId: 1, title: 'Onboarding', detail: 'Mise en place de la supervision des 2 domaines.', date: daysAgo(120) },
+      ],
+    },
+    {
+      id: 2,
+      name: 'Sarah Lemaire',
+      company: 'Atlas Retail',
+      status: 'prospect',
+      email: 's.lemaire@atlas-retail.fr',
+      phone: '+33 6 12 34 56 78',
+      notes: 'Prospect entrant via recommandation. Devis supervision + audit envoyé.',
+      imageDataUrl: '',
+      createdAt: daysAgo(14),
+      updatedAt: daysAgo(5),
+      events: [
+        { id: 6, clientId: 2, title: 'Devis envoyé', detail: 'Offre supervision + audit initial.', date: daysAgo(5) },
+        { id: 5, clientId: 2, title: 'Premier contact', detail: 'Appel de découverte, 3 sites à superviser.', date: daysAgo(14) },
+      ],
+    },
+  ];
+}
+
+function readFallbackClients(): Client[] {
+  try {
+    const raw = window.localStorage.getItem(CLIENTS_KEY);
+    if (raw) return JSON.parse(raw) as Client[];
+  } catch {
+    /* fall through to seed */
+  }
+  const seeded = seedClients();
+  window.localStorage.setItem(CLIENTS_KEY, JSON.stringify(seeded));
+  return seeded;
+}
+
+function writeFallbackClients(clients: Client[]): void {
+  window.localStorage.setItem(CLIENTS_KEY, JSON.stringify(clients));
+}
+
+function nextId(items: { id: number }[]): number {
+  return items.reduce((max, i) => Math.max(max, i.id), 0) + 1;
 }
 
 function createBrowserBridge(): AmnBridge {
@@ -74,6 +144,65 @@ function createBrowserBridge(): AmnBridge {
         };
         writeFallbackMessages([...messages, message]);
         return message;
+      },
+    },
+    clients: {
+      async list(): Promise<Client[]> {
+        return readFallbackClients().sort((a, b) =>
+          a.name.localeCompare(b.name, 'fr'),
+        );
+      },
+      async create(input: CreateClientInput): Promise<Client> {
+        const clients = readFallbackClients();
+        const now = new Date().toISOString();
+        const client: Client = {
+          id: nextId(clients),
+          name: input.name,
+          company: input.company ?? '',
+          status: input.status ?? 'prospect',
+          email: input.email ?? '',
+          phone: input.phone ?? '',
+          notes: '',
+          imageDataUrl: '',
+          createdAt: now,
+          updatedAt: now,
+          events: [],
+        };
+        writeFallbackClients([...clients, client]);
+        return client;
+      },
+      async update(id: number, patch: UpdateClientInput): Promise<Client> {
+        const clients = readFallbackClients();
+        const idx = clients.findIndex((c) => c.id === id);
+        if (idx < 0) throw new Error(`Client ${id} introuvable`);
+        const updated: Client = {
+          ...clients[idx],
+          ...patch,
+          updatedAt: new Date().toISOString(),
+        };
+        clients[idx] = updated;
+        writeFallbackClients(clients);
+        return updated;
+      },
+      async addEvent(input: AddClientEventInput): Promise<Client> {
+        const clients = readFallbackClients();
+        const idx = clients.findIndex((c) => c.id === input.clientId);
+        if (idx < 0) throw new Error(`Client ${input.clientId} introuvable`);
+        const allEvents = clients.flatMap((c) => c.events);
+        const event = {
+          id: nextId(allEvents),
+          clientId: input.clientId,
+          title: input.title,
+          detail: input.detail ?? '',
+          date: new Date().toISOString(),
+        };
+        clients[idx] = {
+          ...clients[idx],
+          events: [event, ...clients[idx].events],
+          updatedAt: event.date,
+        };
+        writeFallbackClients(clients);
+        return clients[idx];
       },
     },
     env: { isElectron: false },

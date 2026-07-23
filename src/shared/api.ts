@@ -38,6 +38,56 @@ export interface SendMessageInput {
   body: string;
 }
 
+export type ClientStatus = 'active' | 'paused' | 'prospect';
+
+export interface ClientEvent {
+  id: number;
+  clientId: number;
+  title: string;
+  detail: string;
+  /** ISO timestamp */
+  date: string;
+}
+
+export interface Client {
+  id: number;
+  name: string;
+  company: string;
+  status: ClientStatus;
+  email: string;
+  phone: string;
+  notes: string;
+  /** Data-URL of an uploaded avatar, or empty. */
+  imageDataUrl: string;
+  createdAt: string;
+  updatedAt: string;
+  events: ClientEvent[];
+}
+
+export interface CreateClientInput {
+  name: string;
+  company?: string;
+  status?: ClientStatus;
+  email?: string;
+  phone?: string;
+}
+
+export interface UpdateClientInput {
+  name?: string;
+  company?: string;
+  status?: ClientStatus;
+  email?: string;
+  phone?: string;
+  notes?: string;
+  imageDataUrl?: string;
+}
+
+export interface AddClientEventInput {
+  clientId: number;
+  title: string;
+  detail?: string;
+}
+
 export interface AmnBridge {
   auth: {
     login(email: string, password: string): Promise<AuthResult>;
@@ -45,6 +95,12 @@ export interface AmnBridge {
   messages: {
     list(): Promise<Message[]>;
     send(input: SendMessageInput): Promise<Message>;
+  };
+  clients: {
+    list(): Promise<Client[]>;
+    create(input: CreateClientInput): Promise<Client>;
+    update(id: number, patch: UpdateClientInput): Promise<Client>;
+    addEvent(input: AddClientEventInput): Promise<Client>;
   };
   env: {
     /** true when backed by the Electron main process (SQLite), false in browser fallback. */
@@ -57,4 +113,8 @@ export const IPC = {
   authLogin: 'auth:login',
   messagesList: 'messages:list',
   messagesSend: 'messages:send',
+  clientsList: 'clients:list',
+  clientsCreate: 'clients:create',
+  clientsUpdate: 'clients:update',
+  clientsAddEvent: 'clients:addEvent',
 } as const;
