@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../auth/AuthContext';
+import { Logo } from '../components/Logo';
 
 interface LocationState {
   from?: { pathname: string };
@@ -48,19 +49,29 @@ export function LoginScreen() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-bg">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        className="mb-8 flex justify-center"
+      >
+        <Logo height={56} showTagline />
+      </motion.div>
       <motion.form
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
+        transition={{ duration: 0.3, delay: 0.08, ease: 'easeOut' }}
         onSubmit={handleSubmit}
         noValidate
         className="flex w-80 flex-col gap-4 rounded-2xl border border-border bg-surface p-8 shadow-[0_20px_40px_rgba(0,0,0,0.4)]"
       >
         <div className="mb-1 text-center">
-          <h1 className="text-xl font-bold text-text-primary">AMN Desktop</h1>
+          <h1 className="text-lg font-semibold text-text-primary">
+            Connexion
+          </h1>
           <p className="mt-1 text-sm text-text-secondary">
-            Connectez-vous pour continuer
+            Accédez à votre console de supervision
           </p>
         </div>
 

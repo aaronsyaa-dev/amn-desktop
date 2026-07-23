@@ -12,6 +12,7 @@ import {
 import { useAuth } from '../auth/AuthContext';
 import { mockSites } from '../data/mockSites';
 import { StatusBadge } from './StatusBadge';
+import { Logo, LogoMark } from './Logo';
 
 const COLLAPSED_WIDTH = 72;
 const EXPANDED_WIDTH = 224;
@@ -56,6 +57,32 @@ export function Sidebar() {
         transition={TRANSITION}
         className="relative z-30 flex h-full flex-shrink-0 flex-col border-r border-border bg-[#0c0c11] py-4"
       >
+        <div className="mb-5 flex h-9 items-center px-4">
+          <AnimatePresence mode="wait" initial={false}>
+            {isExpanded ? (
+              <motion.div
+                key="wordmark"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <Logo height={36} showTagline />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="mark"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <LogoMark size={34} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
         <div className="flex flex-col gap-1 px-3">
           {NAV_ITEMS.map((item) => {
             const active = isActive(item.to);
