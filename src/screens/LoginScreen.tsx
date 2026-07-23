@@ -49,14 +49,14 @@ export function LoginScreen() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
-        className="mb-8 flex justify-center"
+        className="mb-7 flex justify-center"
       >
-        <Logo height={56} showTagline />
+        <Logo height={54} showTagline />
       </motion.div>
       <motion.form
         initial={{ opacity: 0, y: 8 }}
@@ -64,62 +64,69 @@ export function LoginScreen() {
         transition={{ duration: 0.3, delay: 0.08, ease: 'easeOut' }}
         onSubmit={handleSubmit}
         noValidate
-        className="flex w-80 flex-col gap-4 rounded-2xl border border-border bg-surface p-8 shadow-[0_20px_40px_rgba(0,0,0,0.4)]"
+        className="w-[340px] border border-border bg-surface"
       >
-        <div className="mb-1 text-center">
-          <h1 className="text-lg font-semibold text-text-primary">
-            Connexion
-          </h1>
-          <p className="mt-1 text-sm text-text-secondary">
-            Accédez à votre console de supervision
-          </p>
+        <div className="flex items-center justify-between border-b border-border px-5 py-2.5">
+          <span className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">
+            Console d’accès
+          </span>
+          <span className="h-1.5 w-1.5 rounded-full bg-success" />
         </div>
 
-        <label className="flex flex-col gap-1.5 text-sm text-text-secondary">
-          <span>Email</span>
-          <input
-            type="email"
-            name="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={isSubmitting}
-            required
-            className="rounded-lg border border-border bg-bg px-3 py-2.5 text-sm text-text-primary outline-none transition-colors duration-200 focus:border-accent"
-          />
-        </label>
+        <div className="flex flex-col gap-4 p-6">
+          <label className="flex flex-col gap-1.5">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+              Identifiant
+            </span>
+            <input
+              type="email"
+              name="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={isSubmitting}
+              required
+              className="input-focus border border-border bg-bg px-3 py-2.5 font-mono text-sm text-text-primary outline-none"
+            />
+          </label>
 
-        <label className="flex flex-col gap-1.5 text-sm text-text-secondary">
-          <span>Mot de passe</span>
-          <input
-            type="password"
-            name="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={isSubmitting}
-            required
-            className="rounded-lg border border-border bg-bg px-3 py-2.5 text-sm text-text-primary outline-none transition-colors duration-200 focus:border-accent"
-          />
-        </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+              Mot de passe
+            </span>
+            <input
+              type="password"
+              name="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isSubmitting}
+              required
+              className="input-focus border border-border bg-bg px-3 py-2.5 font-mono text-sm text-text-primary outline-none"
+            />
+          </label>
 
-        {error && (
-          <p
-            role="alert"
-            className="rounded-lg bg-danger-muted px-3 py-2 text-sm text-danger"
+          {error && (
+            <p
+              role="alert"
+              className="border border-danger/40 bg-danger-muted px-3 py-2 font-mono text-xs text-danger"
+            >
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="mt-1 bg-accent px-3 py-2.5 text-sm font-semibold text-bg transition-colors duration-200 hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {error}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="mt-1 rounded-lg bg-accent px-3 py-2.5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isSubmitting ? 'Connexion en cours…' : 'Se connecter'}
-        </button>
+            {isSubmitting ? 'Connexion…' : 'Se connecter'}
+          </button>
+        </div>
       </motion.form>
+      <p className="mt-6 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+        AMN DevSec · Centre de supervision
+      </p>
     </div>
   );
 }

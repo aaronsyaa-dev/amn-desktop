@@ -172,15 +172,15 @@ function MessageBubble({ message, own }: { message: Message; own: boolean }) {
         </span>
       )}
       <div
-        className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm ${
+        className={`max-w-[75%] px-4 py-2.5 text-sm ${
           own
-            ? 'rounded-br-md bg-accent text-white'
-            : 'rounded-bl-md border border-border bg-surface-hover text-text-primary'
+            ? 'rounded-l-lg rounded-tr-lg bg-accent text-bg'
+            : 'rounded-r-lg rounded-tl-lg border border-border bg-surface-hover text-text-primary'
         }`}
       >
         <MessageBody body={message.body} light={own} />
       </div>
-      <span className="mt-1 px-1 text-[11px] text-text-muted">
+      <span className="mt-1 px-1 font-mono text-[10px] text-text-muted">
         {relativeTime(message.createdAt)}
       </span>
     </div>
@@ -205,10 +205,10 @@ function MessageBody({ body, light }: { body: string; light: boolean }) {
               e.stopPropagation();
               openSite(segment.site.id);
             }}
-            className={`mx-0.5 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 align-baseline text-[13px] font-medium transition-colors ${
+            className={`mx-0.5 inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 align-baseline font-mono text-[12px] font-medium transition-colors ${
               light
-                ? 'bg-white/20 text-white hover:bg-white/30'
-                : 'bg-accent-muted text-accent hover:bg-accent/20'
+                ? 'bg-black/15 text-bg hover:bg-black/25'
+                : 'bg-white/[0.06] text-text-primary hover:bg-white/10'
             }`}
           >
             <Globe size={12} strokeWidth={2} />
@@ -295,7 +295,7 @@ function Composer({ onSend }: { onSend: (body: string) => void }) {
           onClick={submit}
           disabled={!text.trim()}
           aria-label="Envoyer"
-          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent text-white transition-colors duration-200 hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-accent text-bg transition-colors duration-200 hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
         >
           <ArrowUp size={16} strokeWidth={2.25} />
         </button>

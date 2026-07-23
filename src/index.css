@@ -1,35 +1,40 @@
 @import 'tailwindcss';
-@import '@fontsource/inter/400.css';
-@import '@fontsource/inter/500.css';
-@import '@fontsource/inter/600.css';
-@import '@fontsource/inter/700.css';
+@import '@fontsource/space-grotesk/400.css';
+@import '@fontsource/space-grotesk/500.css';
+@import '@fontsource/space-grotesk/600.css';
+@import '@fontsource/space-grotesk/700.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/jetbrains-mono/700.css';
 
 @theme {
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 
-  /* Surfaces */
-  --color-bg: #0a0a0f;
-  --color-surface: #14141a;
-  --color-surface-hover: #1a1a22;
-  --color-border: #24242e;
+  /* Surfaces — neutral black & grey, no blue cast */
+  --color-bg: #0a0a0a;
+  --color-surface: #131313;
+  --color-surface-hover: #1c1c1c;
+  --color-border: #262626;
+  --color-border-strong: #3a3a3a;
 
   /* Text */
-  --color-text-primary: #f4f4f6;
-  --color-text-secondary: #8b8b98;
-  --color-text-muted: #5c5c6a;
+  --color-text-primary: #f2f2f0;
+  --color-text-secondary: #9a9a97;
+  --color-text-muted: #616160;
 
-  /* Accent - electric violet */
-  --color-accent: #7c5cff;
-  --color-accent-hover: #8f72ff;
-  --color-accent-muted: #7c5cff26;
+  /* "Accent" is now a near-white highlight — monochrome, not a colour */
+  --color-accent: #ededed;
+  --color-accent-hover: #ffffff;
+  --color-accent-muted: rgba(255, 255, 255, 0.08);
 
-  /* Status */
-  --color-success: #34d399;
-  --color-success-muted: #34d39926;
-  --color-warning: #fbbf24;
-  --color-warning-muted: #fbbf2426;
-  --color-danger: #f87171;
-  --color-danger-muted: #f8717126;
+  /* Status: monochrome, EXCEPT the single reserved signal red for critical */
+  --color-success: #d8d8d5;
+  --color-success-muted: rgba(255, 255, 255, 0.07);
+  --color-warning: #8f8f8c;
+  --color-warning-muted: rgba(255, 255, 255, 0.05);
+  --color-danger: #ff4230;
+  --color-danger-muted: rgba(255, 66, 48, 0.14);
 }
 
 * {
@@ -47,49 +52,48 @@ body,
 body {
   font-family: var(--font-sans);
   color: var(--color-text-primary);
-  /* Render native controls (select options, scrollbars) in dark mode */
+  background: var(--color-bg);
   color-scheme: dark;
-  /* Very discreet radial accents give the near-black canvas depth without
-     reading as "coloured". They are fixed so they don't scroll with content. */
-  background:
-    radial-gradient(90% 55% at 12% -5%, rgba(124, 92, 255, 0.07), transparent 55%),
-    radial-gradient(70% 50% at 105% 105%, rgba(124, 92, 255, 0.05), transparent 50%),
-    var(--color-bg);
-  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* --- Interactive card: subtle top highlight, violet-tinted crown, and a
-   gentle lift + border glow on hover. Aims for depth over "plastic". --- */
+/* Tabular, monospaced figures for data/timestamps/ids */
+.tnum {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* --- Interactive card: flat, high-contrast, minimal lift. No soft glow. --- */
 .card-interactive {
   position: relative;
-  background:
-    radial-gradient(130% 130% at 50% 0%, rgba(124, 92, 255, 0.045), transparent 58%),
-    var(--color-surface);
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    background-color 0.16s ease;
   cursor: pointer;
 }
 
 .card-interactive:hover {
-  transform: translateY(-2px);
-  border-color: rgba(255, 255, 255, 0.14);
-  box-shadow:
-    0 14px 30px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transform: translateY(-1px);
+  border-color: var(--color-border-strong);
+  background: #171717;
 }
 
 .card-interactive:active {
-  transform: translateY(-1px);
-  transition-duration: 0.1s;
+  transform: translateY(0);
+  transition-duration: 0.08s;
 }
 
-/* --- Consistent violet focus ring for inputs & selects --- */
+/* Corner-cut frame — a hard notch for a "control panel" character. */
+.corner-cut {
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+}
+
+/* --- Neutral (white) focus ring for inputs & selects --- */
 .input-focus {
   transition:
     border-color 0.15s ease,
@@ -99,28 +103,30 @@ body {
 .input-focus:focus,
 .input-focus:focus-visible {
   outline: none;
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-accent-muted);
+  border-color: var(--color-border-strong);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
 }
 
-/* Keyboard focus affordance for buttons and links (mouse clicks stay clean) */
 button:focus-visible,
 a:focus-visible,
 [role='button']:focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid rgba(255, 255, 255, 0.55);
   outline-offset: 2px;
-  border-radius: 8px;
 }
 
-/* Slim, dark scrollbars in scroll regions */
-.overflow-y-auto::-webkit-scrollbar {
+/* Slim scrollbars */
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
-.overflow-y-auto::-webkit-scrollbar-thumb {
-  background: #2a2a36;
-  border-radius: 8px;
+.overflow-y-auto::-webkit-scrollbar-thumb,
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #303030;
+  border-radius: 0;
 }
-.overflow-y-auto::-webkit-scrollbar-track {
+.overflow-y-auto::-webkit-scrollbar-track,
+.overflow-x-auto::-webkit-scrollbar-track {
   background: transparent;
 }
 

@@ -59,7 +59,7 @@ export function Sidebar() {
       <motion.aside
         animate={{ width: isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
         transition={TRANSITION}
-        className="relative z-30 flex h-full flex-shrink-0 flex-col border-r border-border bg-[#0c0c11] py-4"
+        className="relative z-30 flex h-full flex-shrink-0 flex-col border-r border-border bg-[#0d0d0d] py-4"
       >
         <div className="mb-5 flex h-9 items-center px-4">
           <AnimatePresence mode="wait" initial={false}>

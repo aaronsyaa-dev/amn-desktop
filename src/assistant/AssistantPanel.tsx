@@ -190,7 +190,7 @@ function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
             onClick={submit}
             disabled={!input.trim()}
             aria-label="Envoyer"
-            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent text-white transition-colors duration-200 hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent text-bg transition-colors duration-200 hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ArrowUp size={16} strokeWidth={2.25} />
           </button>
@@ -287,7 +287,7 @@ function MessageBubble({
   if (message.role === 'user') {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-accent px-4 py-2.5 text-sm text-white">
+        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-accent px-4 py-2.5 text-sm text-bg">
           {message.text}
         </div>
       </div>
