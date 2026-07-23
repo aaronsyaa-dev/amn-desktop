@@ -6,12 +6,13 @@ import { AppLayout } from './components/AppLayout';
 import { LoginScreen } from './screens/LoginScreen';
 import { HomeScreen } from './screens/HomeScreen';
 import { SitesDashboardScreen } from './screens/SitesDashboardScreen';
-import { SiteDetailScreen } from './screens/SiteDetailScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
+import { GrainOverlay } from './components/GrainOverlay';
 
 export default function App() {
   return (
     <AuthProvider>
+      <GrainOverlay />
       <HashRouter>
         <Routes>
           <Route path="/login" element={<LoginScreen />} />
@@ -24,7 +25,6 @@ export default function App() {
           >
             <Route path="/" element={<HomeScreen />} />
             <Route path="/sites" element={<SitesDashboardScreen />} />
-            <Route path="/sites/:siteId" element={<SiteDetailScreen />} />
             <Route path="/settings" element={<SettingsScreen />} />
           </Route>
         </Routes>

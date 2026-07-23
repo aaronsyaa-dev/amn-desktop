@@ -13,6 +13,7 @@ import { useAuth } from '../auth/AuthContext';
 import { mockSites } from '../data/mockSites';
 import { StatusBadge } from './StatusBadge';
 import { Logo, LogoMark } from './Logo';
+import { useSitePanel } from './site-panel/SitePanelContext';
 
 const COLLAPSED_WIDTH = 72;
 const EXPANDED_WIDTH = 224;
@@ -37,6 +38,7 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const { openSite } = useSitePanel();
 
   const isActive = (to: string) =>
     to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
@@ -189,7 +191,8 @@ export function Sidebar() {
                     type="button"
                     onClick={() => {
                       setIsSitesFlyoutOpen(false);
-                      navigate(`/sites/${site.id}`);
+                      if (location.pathname !== '/sites') navigate('/sites');
+                      openSite(site.id);
                     }}
                     className="flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary"
                   >

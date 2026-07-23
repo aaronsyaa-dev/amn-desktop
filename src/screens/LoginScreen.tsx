@@ -49,7 +49,7 @@ export function LoginScreen() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-bg">
+    <div className="flex min-h-screen flex-col items-center justify-center">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
