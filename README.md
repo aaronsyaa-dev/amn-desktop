@@ -10,20 +10,30 @@ animations Framer Motion.
 
 ## Fonctionnalités
 
-- **Connexion** (`/login`) — formulaire email/mot de passe (authentification
-  mock, à brancher sur une vraie API), logo AMN.
-- **Accueil** (`/`) — KPIs de supervision, sites à surveiller et flux
-  d'activité récente cross-sites.
+- **Connexion** (`/login`) — authentification réelle (SQLite + bcrypt dans le
+  process main Electron, fallback navigateur), logo AMN. Deux comptes seedés
+  (voir `docs/ARCHITECTURE.md`).
+- **Accueil / QG** (`/`) — brief du jour (typewriter), KPIs animés, fil
+  d'activité continu (alertes, messages, veille, insights), insights
+  automatiques et mini-résumé de la semaine.
 - **Sites surveillés** (`/sites`) — cards par site avec statut, disponibilité,
   vulnérabilités, sparkline de tendance, recherche, filtres de statut et tri.
+- **Équipe** (`/team`) — messagerie persistée, présence, mentions `@site`
+  cliquables ouvrant le panel du site.
 - **Panel de détail (slide-over)** — glisse depuis la droite au clic sur un
   site : analytics (visiteurs, CA + tendance), timeline de sécurité des
   alertes, et actions mock (bloquer paiements / connexion). Fermeture via
   Échap, overlay ou bouton.
-- **Command palette** (`⌘/Ctrl + K`) — recherche rapide de sites et de pages,
-  navigation clavier.
-- **Centre de notifications** — cloche dans le header avec les alertes
-  critiques cross-sites.
+- **Assistant IA** — rapports (interne/client), résumé du jour, veille,
+  suggestions proactives. Mock isolé, prêt à brancher l'API Claude.
+- **Command palette** (`⌘/Ctrl + K`) et **centre de notifications**.
+
+## Architecture
+
+L'authentification et le stockage local (SQLite + bcrypt, via un « bridge »
+main/renderer avec fallback navigateur) sont documentés dans
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — à lire avant de brancher l'API
+centrale.
 
 ## Démarrage
 
@@ -42,4 +52,4 @@ npm start
 ## Stack
 
 Electron Forge · Vite · React · TypeScript · React Router · Tailwind CSS v4 ·
-Framer Motion · lucide-react · Inter (fontsource).
+Framer Motion · lucide-react · Inter (fontsource) · better-sqlite3 · bcryptjs.
