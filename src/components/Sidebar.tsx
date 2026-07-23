@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
+  Users,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { mockSites } from '../data/mockSites';
@@ -29,6 +30,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { key: 'home', label: 'Accueil', to: '/', icon: LayoutDashboard },
   { key: 'sites', label: 'Sites', to: '/sites', icon: Globe },
+  { key: 'team', label: 'Équipe', to: '/team', icon: Users },
   { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings },
 ];
 

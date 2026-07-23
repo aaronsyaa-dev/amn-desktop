@@ -6,6 +6,7 @@ import { AppLayout } from './components/AppLayout';
 import { LoginScreen } from './screens/LoginScreen';
 import { HomeScreen } from './screens/HomeScreen';
 import { SitesDashboardScreen } from './screens/SitesDashboardScreen';
+import { TeamScreen } from './screens/TeamScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { GrainOverlay } from './components/GrainOverlay';
 
@@ -25,6 +26,7 @@ export default function App() {
           >
             <Route path="/" element={<HomeScreen />} />
             <Route path="/sites" element={<SitesDashboardScreen />} />
+            <Route path="/team" element={<TeamScreen />} />
             <Route path="/settings" element={<SettingsScreen />} />
           </Route>
         </Routes>
