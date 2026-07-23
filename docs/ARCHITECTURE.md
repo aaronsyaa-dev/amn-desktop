@@ -77,19 +77,72 @@ persist immediately, and events append to `client_events`. The browser
 fallback seeds the same two clients as the SQLite seed so both environments
 present identical data.
 
+## Écosystème AMN — vue d'ensemble (mis à jour)
+
+Le système compte désormais trois projets séparés, chacun avec son propre
+dépôt Git :
+
+```
+security-monitor  --(HTTPS, X-API-Key)-->  amn-api  --(WebSocket, OPERATOR_TOKEN)-->  amn-desktop
+   (sur le site           (ingestion, stockage,          (consomme en temps réel —
+    du client)             diffusion temps réel)          câblage prévu, pas encore fait)
+```
+
+- **`security-monitor`** (nouveau dépôt) — le tracker installé sur le site
+  supervisé. Détection inchangée (force brute, rate limiting, injection),
+  mais la destination des logs est désormais l'API centrale plutôt qu'un
+  fichier local ; file d'attente locale durable en cas de panne réseau. Voir
+  `security-monitor/README.md` pour l'installation et
+  `security-monitor/src/transport/localQueue.js` pour le mécanisme de
+  résilience (rotation atomique, récupération après crash).
+- **`amn-api`** (nouveau dépôt) — API centrale Express + WebSocket. Stockage
+  Postgres (Supabase) en production avec fallback SQLite en local — même
+  pattern bridge que ci-dessus, appliqué cette fois à un service réseau plutôt
+  qu'à un process Electron. Voir `amn-api/README.md` pour le raisonnement
+  détaillé (choix de Supabase, structure de la clé API par site, jeton
+  opérateur partagé).
+- **`amn-desktop`** (ce projet) — reste pour l'instant sur ses données mock
+  pour les sites (`src/data/mockSites.ts`). Le câblage réel (remplacer le mock
+  par une consommation de `amn-api` via HTTP + WebSocket, avec le même
+  raisonnement bridge que l'auth/DB ci-dessus) est prévu pour une étape
+  ultérieure, une fois `amn-api` réellement déployé (Render/Railway) — voir
+  `amn-api/render.yaml`, préparé mais pas encore utilisé.
+
+### Nouveauté : le catalogue Tracker
+
+Le nouvel onglet « Tracker » (`src/screens/TrackerScreen.tsx`,
+`src/data/trackerCatalog.ts`) est un catalogue statique (pas de DB) présentant
+une offre en 3 paliers : **AMN Sentinel** (disponible — correspond
+exactement à `security-monitor`), **AMN Sentinel+** (à venir — détection par
+anomalie, réputation IP, anti-bot, webhooks), **AMN Suite** (verrouillé —
+analytics business, fraude paiement, disponibilité active, scan de
+dépendances, rapports générés par l'assistant IA). Seul le premier palier est
+déverrouillé car c'est le seul réellement implémenté ; le raisonnement complet
+de la progression est documenté en commentaire en tête de
+`trackerCatalog.ts`.
+
 ## Migration path to the central API
 
-When the central API + tracker arrive:
+Avec `amn-api` maintenant codé (mais pas déployé), le chemin de migration
+initialement prévu se précise :
 
-1. **Main process** becomes the offline cache/sync layer. `src/main/services.ts`
-   gains a sync client; the SQLite schema already mirrors a server shape.
-2. **Auth** moves to the server (issue a token on login); `verifyCredentials`
-   calls the API and caches the session. The `AuthResult` contract is unchanged.
-3. **Presence** (currently mocked for the "other" user in `TeamScreen`) is fed by
-   the real presence service — swap the hard-coded `online` flag for live data.
-4. **Messages** gain real-time delivery (websocket/poll) and cross-machine sync;
-   `messages.list/send` keep their signatures, with a new `onNew` subscription
-   added to `AmnBridge`.
+1. **Main process** devient la couche de cache/sync hors-ligne.
+   `src/main/services.ts` gagnerait un client de sync vers `amn-api` ; le
+   schéma SQLite miroir déjà une forme serveur.
+2. **Auth** : à ce stade, l'auth AMN Desktop (comptes Aaron/Mohamed) et l'auth
+   `amn-api` (jeton opérateur partagé + clés API par site) restent deux
+   systèmes distincts et volontairement simples — fusionner les deux (SSO
+   interne) n'est pas nécessaire tant que l'équipe reste à 2 personnes.
+3. **Sites** : `mockSites.ts` serait remplacé par un client qui appelle
+   `GET /v1/sites`, `GET /v1/sites/:id/state` et `GET /v1/sites/:id/events`
+   sur `amn-api`, et ouvre une connexion `WebSocket /v1/stream` pour les mises
+   à jour temps réel (alertes, heartbeats) — remplaçant le polling par un flux
+   poussé, exactement ce que le WebSocket de `amn-api` a été conçu pour
+   fournir.
+4. **Présence** (actuellement simulée pour l'« autre » utilisateur dans
+   `TeamScreen`) pourrait à terme s'appuyer sur les heartbeats `amn-api` par
+   opérateur, une fois qu'un tel concept existe côté API (pas encore le cas —
+   les heartbeats actuels sont par *site*, pas par opérateur).
 
 Nothing in the UI layer needs to change for any of the above — that is the point
 of the bridge.
