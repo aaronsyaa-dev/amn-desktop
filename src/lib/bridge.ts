@@ -5,6 +5,11 @@ import type {
   Client,
   CreateClientInput,
   Message,
+  RegisterSiteResult,
+  RemoteConnectionStatus,
+  RemoteEvent,
+  RemoteEventPush,
+  RemoteSite,
   SendMessageInput,
   UpdateClientInput,
 } from '../shared/api';
@@ -113,6 +118,115 @@ function nextId(items: { id: number }[]): number {
   return items.reduce((max, i) => Math.max(max, i.id), 0) + 1;
 }
 
+const RECONNECT_DELAYS_MS = [1000, 2000, 5000, 10000, 20000, 30000];
+
+/**
+ * Browser-fallback amn-api client: talks to amn-api directly via fetch/
+ * WebSocket, using VITE_-prefixed env vars (see src/vite-env.d.ts for why
+ * this is dev/test-only, unlike the Electron path which proxies through the
+ * main process and never exposes the token to the renderer).
+ */
+function createBrowserRemote(): AmnBridge['remote'] {
+  const apiUrl = (import.meta.env.VITE_AMN_API_URL || '').replace(/\/$/, '');
+  const token = import.meta.env.VITE_AMN_API_OPERATOR_TOKEN || '';
+  const configured = Boolean(apiUrl && token);
+
+  const eventListeners = new Set<(push: RemoteEventPush) => void>();
+  const statusListeners = new Set<(status: RemoteConnectionStatus) => void>();
+  let status: RemoteConnectionStatus = configured ? 'connecting' : 'unconfigured';
+  let reconnectAttempt = 0;
+  let started = false;
+
+  function setStatus(next: RemoteConnectionStatus) {
+    if (status === next) return;
+    status = next;
+    for (const listener of statusListeners) listener(next);
+  }
+
+  function connect() {
+    const wsUrl = `${apiUrl.replace(/^http/, 'ws')}/v1/stream?token=${encodeURIComponent(token)}`;
+    const socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+      reconnectAttempt = 0;
+      setStatus('online');
+    };
+    socket.onmessage = (event) => {
+      try {
+        const parsed = JSON.parse(event.data);
+        if (parsed?.type === 'event') {
+          for (const listener of eventListeners) listener(parsed as RemoteEventPush);
+        }
+      } catch {
+        // Ignore malformed frames.
+      }
+    };
+    socket.onclose = () => {
+      setStatus('offline');
+      const delay = RECONNECT_DELAYS_MS[Math.min(reconnectAttempt, RECONNECT_DELAYS_MS.length - 1)];
+      reconnectAttempt += 1;
+      setTimeout(connect, delay);
+    };
+    socket.onerror = () => socket.close();
+  }
+
+  async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const res = await fetch(`${apiUrl}${path}`, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        ...init.headers,
+      },
+    });
+    if (!res.ok) throw new Error(`amn-api ${res.status} ${res.statusText}`);
+    return res.json() as Promise<T>;
+  }
+
+  return {
+    async listSites(): Promise<RemoteSite[]> {
+      const { sites } = await apiFetch<{ sites: RemoteSite[] }>('/v1/sites');
+      return sites;
+    },
+    async getSiteEvents(siteId, opts = {}): Promise<RemoteEvent[]> {
+      const params = new URLSearchParams();
+      if (opts.since) params.set('since', opts.since);
+      if (opts.limit) params.set('limit', String(opts.limit));
+      const qs = params.toString();
+      const { events } = await apiFetch<{ events: RemoteEvent[] }>(
+        `/v1/sites/${siteId}/events${qs ? `?${qs}` : ''}`,
+      );
+      return events;
+    },
+    async registerSite(name: string): Promise<RegisterSiteResult> {
+      return apiFetch<RegisterSiteResult>('/v1/sites', {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      });
+    },
+    async getConnectionStatus(): Promise<RemoteConnectionStatus> {
+      return status;
+    },
+    onEvent(callback) {
+      eventListeners.add(callback);
+      ensureStarted();
+      return () => eventListeners.delete(callback);
+    },
+    onConnectionStatusChange(callback) {
+      statusListeners.add(callback);
+      ensureStarted();
+      return () => statusListeners.delete(callback);
+    },
+  };
+
+  function ensureStarted() {
+    if (configured && !started) {
+      started = true;
+      connect();
+    }
+  }
+}
+
 function createBrowserBridge(): AmnBridge {
   return {
     auth: {
@@ -205,6 +319,7 @@ function createBrowserBridge(): AmnBridge {
         return clients[idx];
       },
     },
+    remote: createBrowserRemote(),
     env: { isElectron: false },
   };
 }

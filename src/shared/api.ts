@@ -88,6 +88,63 @@ export interface AddClientEventInput {
   detail?: string;
 }
 
+/* ------------------------- amn-api (real sites) ------------------------- */
+
+/**
+ * Shapes mirror exactly what amn-api actually returns — see
+ * amn-api/src/db/schema.sql. Deliberately thinner than the old mock Site
+ * model (no revenue, no visitor trends, no fixed vulnerability count): those
+ * never had a real data source. Business analytics is an explicit future
+ * tracker tier ("AMN Suite") rather than something faked here.
+ */
+export type RemoteEventType = 'connection' | 'request' | 'security_alert' | 'payment' | 'heartbeat';
+export type RemoteSeverity = 'critical' | 'warning' | 'info';
+
+export interface RemoteSiteState {
+  siteId: string;
+  /** Raw status as stored by amn-api ('online' on any event, 'unknown' before the first one). */
+  status: string;
+  activeVisitors: number;
+  lastSeenAt: string | null;
+  lastAlertAt: string | null;
+  updatedAt: string;
+}
+
+export interface RemoteSite {
+  id: string;
+  name: string;
+  createdAt: string;
+  state: RemoteSiteState | null;
+}
+
+export interface RemoteEvent {
+  id: number;
+  siteId: string;
+  type: RemoteEventType;
+  severity: RemoteSeverity | null;
+  message: string | null;
+  payload: Record<string, unknown>;
+  occurredAt: string;
+}
+
+/** Message pushed from amn-api's WebSocket stream, relayed verbatim by main. */
+export interface RemoteEventPush {
+  type: 'event';
+  siteId: string;
+  siteName: string;
+  event: RemoteEvent;
+}
+
+export interface RegisterSiteResult {
+  id: string;
+  name: string;
+  createdAt: string;
+  /** Plaintext API key — shown once, never retrievable again. */
+  apiKey: string;
+}
+
+export type RemoteConnectionStatus = 'connecting' | 'online' | 'offline' | 'unconfigured';
+
 export interface AmnBridge {
   auth: {
     login(email: string, password: string): Promise<AuthResult>;
@@ -101,6 +158,21 @@ export interface AmnBridge {
     create(input: CreateClientInput): Promise<Client>;
     update(id: number, patch: UpdateClientInput): Promise<Client>;
     addEvent(input: AddClientEventInput): Promise<Client>;
+  };
+  /**
+   * Talks to the central amn-api. In Electron, the operator token never
+   * leaves the main process — the renderer only sees the results, over IPC.
+   */
+  remote: {
+    listSites(): Promise<RemoteSite[]>;
+    getSiteEvents(siteId: string, opts?: { since?: string; limit?: number }): Promise<RemoteEvent[]>;
+    registerSite(name: string): Promise<RegisterSiteResult>;
+    /** Current live-connection status (WebSocket to amn-api). */
+    getConnectionStatus(): Promise<RemoteConnectionStatus>;
+    /** Subscribes to live event pushes. Returns an unsubscribe function. */
+    onEvent(callback: (push: RemoteEventPush) => void): () => void;
+    /** Subscribes to connection status changes. Returns an unsubscribe function. */
+    onConnectionStatusChange(callback: (status: RemoteConnectionStatus) => void): () => void;
   };
   env: {
     /** true when backed by the Electron main process (SQLite), false in browser fallback. */
@@ -117,4 +189,11 @@ export const IPC = {
   clientsCreate: 'clients:create',
   clientsUpdate: 'clients:update',
   clientsAddEvent: 'clients:addEvent',
+  remoteListSites: 'remote:listSites',
+  remoteSiteEvents: 'remote:siteEvents',
+  remoteRegisterSite: 'remote:registerSite',
+  remoteConnectionStatus: 'remote:connectionStatus',
+  /** Push channels (main -> renderer via webContents.send, not invoke/handle). */
+  remoteEventPush: 'remote:eventPush',
+  remoteConnectionStatusPush: 'remote:connectionStatusPush',
 } as const;

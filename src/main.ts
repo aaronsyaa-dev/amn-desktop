@@ -3,6 +3,7 @@ import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { initDatabase } from './main/db';
 import { registerIpcHandlers } from './main/ipc';
+import { RemoteApiClient } from './main/remoteApi';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -41,7 +42,9 @@ const createWindow = () => {
 app.on('ready', () => {
   // Local persistence + IPC must be ready before the renderer can log in.
   initDatabase();
-  registerIpcHandlers();
+  const remote = new RemoteApiClient();
+  registerIpcHandlers(remote);
+  remote.start();
   createWindow();
 });
 
