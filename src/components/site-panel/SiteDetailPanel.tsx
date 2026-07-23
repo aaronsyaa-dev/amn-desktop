@@ -150,11 +150,7 @@ function AnalyticsSection({ site }: { site: Site }) {
             <Users size={14} strokeWidth={1.75} />
             Visiteurs · 7 jours
           </div>
-          <div
-            className={`flex items-center gap-1 text-xs font-medium ${
-              revenueUp ? 'text-success' : 'text-danger'
-            }`}
-          >
+          <div className="flex items-center gap-1 font-mono text-xs font-medium text-text-secondary">
             <TrendIcon size={13} strokeWidth={2} />
             {revenueUp ? '+' : ''}
             {analytics.revenueTrendPct}%
@@ -167,7 +163,7 @@ function AnalyticsSection({ site }: { site: Site }) {
         />
         <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
           <span className="text-text-secondary">CA du mois</span>
-          <span className="font-semibold text-text-primary">
+          <span className="tnum font-semibold text-text-primary">
             {euro(analytics.revenueMonth)}
           </span>
         </div>
@@ -186,10 +182,10 @@ function StatTile({
   accent?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-surface p-3">
+    <div className="border border-border bg-surface p-3">
       <div className="flex items-center gap-1.5">
         {accent}
-        <p className="text-lg font-semibold text-text-primary">{value}</p>
+        <p className="tnum text-lg font-semibold text-text-primary">{value}</p>
       </div>
       <p className="mt-0.5 text-xs text-text-secondary">{label}</p>
     </div>

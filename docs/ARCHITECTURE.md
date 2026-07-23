@@ -53,18 +53,29 @@ changes.
 ```sql
 users(id, email UNIQUE, name, password_hash, created_at)
 messages(id, author_email, author_name, body, created_at)
+clients(id, name, company, status, email, phone, notes, image_data_url,
+        created_at, updated_at)
+client_events(id, client_id, title, detail, date)
 ```
 
 `author_name` is denormalised onto `messages` so the feed renders without a
 join. Timestamps are ISO strings. Ids are stable integers — close to what a
-server would expose.
+server would expose. Client avatars are stored inline as data-URLs
+(`image_data_url`) for now; a real deployment would move these to object
+storage and keep only a reference.
 
-## Team messaging
+## Team messaging & clients
 
-Messages go through `bridge().messages` (SQLite in Electron, `localStorage`
-fallback in browser). `@site` mentions are parsed at render time
+Messages and clients both go through the bridge (SQLite in Electron,
+`localStorage` fallback in browser). `@site` mentions are parsed at render time
 (`src/lib/mentions.ts`) into clickable chips that open the site panel; the
 composer offers an autocomplete when typing `@`.
+
+Clients use `bridge().clients` (`list` / `create` / `update` / `addEvent`).
+Notes autosave (debounced `update`), the status selector and inline fields
+persist immediately, and events append to `client_events`. The browser
+fallback seeds the same two clients as the SQLite seed so both environments
+present identical data.
 
 ## Migration path to the central API
 
