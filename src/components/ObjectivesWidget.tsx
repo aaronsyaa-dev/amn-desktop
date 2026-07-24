@@ -1,35 +1,50 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Target } from 'lucide-react';
-import { bridge } from '../lib/bridge';
-import type { Objective } from '../shared/api';
+import { useSync, useCollection, stripMeta } from '../state/SyncContext';
+
+interface ObjectiveData {
+  label: string;
+  unit: string;
+  targetValue: number;
+  currentValue: number;
+  periodLabel: string;
+}
+type SyncObjective = ObjectiveData & { id: string; updatedAt: string };
 
 function formatValue(value: number, unit: string): string {
   if (unit === '€') return `${value.toLocaleString('fr-FR')} €`;
   return `${value.toLocaleString('fr-FR')} ${unit}`;
 }
 
-/** Monthly objectives with a manually-editable current value. Home widget. */
+function defaultObjectives(): { id: string; data: ObjectiveData }[] {
+  const period = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  return [
+    { id: 'obj-revenue', data: { label: 'Chiffre d’affaires visé', unit: '€', targetValue: 6000, currentValue: 2400, periodLabel: period } },
+    { id: 'obj-clients', data: { label: 'Nouveaux clients visés', unit: 'clients', targetValue: 3, currentValue: 1, periodLabel: period } },
+  ];
+}
+
+/** Monthly objectives with a manually-editable current value. Synced + home widget. */
 export function ObjectivesWidget() {
-  const [objectives, setObjectives] = useState<Objective[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { upsert, ready } = useSync();
+  const objectivesRaw = useCollection<ObjectiveData>('objectives');
+  const objectives = useMemo(
+    () => [...objectivesRaw].sort((a, b) => a.id.localeCompare(b.id)),
+    [objectivesRaw],
+  );
 
+  // Seed the two default objectives once the store is ready and empty. Fixed
+  // ids make the upsert idempotent, so both operators converge to the same two
+  // rows even if they seed concurrently.
   useEffect(() => {
-    let active = true;
-    bridge()
-      .objectives.list()
-      .then((list) => active && setObjectives(list))
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-  }, []);
+    if (ready && objectivesRaw.length === 0) {
+      for (const { id, data } of defaultObjectives()) upsert('objectives', id, { ...data });
+    }
+  }, [ready, objectivesRaw.length, upsert]);
 
-  const setCurrent = async (objective: Objective, value: number) => {
-    setObjectives((prev) => prev.map((o) => (o.id === objective.id ? { ...o, currentValue: value } : o)));
-    const updated = await bridge().objectives.update(objective.id, { currentValue: value });
-    setObjectives((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
-  };
+  const setCurrent = (objective: SyncObjective, value: number) =>
+    upsert('objectives', objective.id, { ...stripMeta(objective), currentValue: value });
 
   return (
     <div className="border border-border bg-surface">
@@ -39,10 +54,10 @@ export function ObjectivesWidget() {
           Objectifs {objectives[0]?.periodLabel ? `· ${objectives[0].periodLabel}` : ''}
         </h2>
       </div>
-      {loading ? (
+      {!ready ? (
         <p className="p-4 text-sm text-text-secondary">Chargement…</p>
       ) : objectives.length === 0 ? (
-        <p className="p-4 text-sm text-text-secondary">Aucun objectif défini.</p>
+        <p className="p-4 text-sm text-text-secondary">Préparation des objectifs…</p>
       ) : (
         <div className="divide-y divide-border/60">
           {objectives.map((objective) => (
@@ -58,12 +73,15 @@ function ObjectiveRow({
   objective,
   onChange,
 }: {
-  objective: Objective;
-  onChange: (objective: Objective, value: number) => void;
+  objective: SyncObjective;
+  onChange: (objective: SyncObjective, value: number) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(objective.currentValue));
-  const pct = objective.targetValue > 0 ? Math.min(100, Math.round((objective.currentValue / objective.targetValue) * 100)) : 0;
+  const pct =
+    objective.targetValue > 0
+      ? Math.min(100, Math.round((objective.currentValue / objective.targetValue) * 100))
+      : 0;
   const reached = objective.currentValue >= objective.targetValue;
 
   useEffect(() => setDraft(String(objective.currentValue)), [objective.currentValue]);

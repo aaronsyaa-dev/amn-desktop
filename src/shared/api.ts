@@ -393,6 +393,38 @@ export interface RegisterSiteResult {
 
 export type RemoteConnectionStatus = 'connecting' | 'online' | 'offline' | 'unconfigured';
 
+/* --------------------- Shared collections (real sync) --------------------- */
+
+/**
+ * A generic synced record. `data` is the full domain object (a task, a
+ * decision, a message, a profile…) as stored/merged; `id` is a stable string
+ * id chosen by the client. `deleted` is a soft-delete tombstone so removals
+ * propagate to the other operator too.
+ */
+export interface RemoteRecord {
+  id: string;
+  collection: string;
+  data: Record<string, unknown>;
+  updatedAt: string;
+  deleted: boolean;
+}
+
+/** Collections synced through amn-api. */
+export type SyncedCollection =
+  | 'tasks'
+  | 'decisions'
+  | 'knowledge'
+  | 'objectives'
+  | 'messages'
+  | 'profiles'
+  | 'clients'
+  | 'quotes';
+
+export interface PresenceEntry {
+  email: string;
+  online: boolean;
+}
+
 export interface AmnBridge {
   auth: {
     login(email: string, password: string): Promise<AuthResult>;
@@ -472,6 +504,23 @@ export interface AmnBridge {
     onEvent(callback: (push: RemoteEventPush) => void): () => void;
     /** Subscribes to connection status changes. Returns an unsubscribe function. */
     onConnectionStatusChange(callback: (status: RemoteConnectionStatus) => void): () => void;
+
+    /* --- Shared collections (tasks/decisions/… synced between operators) --- */
+    listRecords(collection: SyncedCollection): Promise<RemoteRecord[]>;
+    upsertRecord(
+      collection: SyncedCollection,
+      id: string,
+      data: Record<string, unknown>,
+    ): Promise<RemoteRecord>;
+    deleteRecord(collection: SyncedCollection, id: string): Promise<RemoteRecord>;
+    /** Live record changes pushed from amn-api. Returns an unsubscribe function. */
+    onRecord(callback: (record: RemoteRecord) => void): () => void;
+
+    /* --- Presence --- */
+    /** Tells the main process which operator is signed in (for presence + attribution). */
+    setIdentity(email: string | null): void;
+    getPresence(): Promise<PresenceEntry[]>;
+    onPresence(callback: (users: PresenceEntry[]) => void): () => void;
   };
   env: {
     /** true when backed by the Electron main process (SQLite), false in browser fallback. */
@@ -523,7 +572,14 @@ export const IPC = {
   remoteSiteEvents: 'remote:siteEvents',
   remoteRegisterSite: 'remote:registerSite',
   remoteConnectionStatus: 'remote:connectionStatus',
+  remoteListRecords: 'remote:listRecords',
+  remoteUpsertRecord: 'remote:upsertRecord',
+  remoteDeleteRecord: 'remote:deleteRecord',
+  remoteSetIdentity: 'remote:setIdentity',
+  remoteGetPresence: 'remote:getPresence',
   /** Push channels (main -> renderer via webContents.send, not invoke/handle). */
   remoteEventPush: 'remote:eventPush',
   remoteConnectionStatusPush: 'remote:connectionStatusPush',
+  remoteRecordPush: 'remote:recordPush',
+  remotePresencePush: 'remote:presencePush',
 } as const;

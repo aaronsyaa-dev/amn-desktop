@@ -3,11 +3,13 @@ import { motion } from 'framer-motion';
 import { Contact, Globe, Plus, Trash2, X } from 'lucide-react';
 import { bridge } from '../lib/bridge';
 import { useRemoteSites } from '../state/RemoteSitesContext';
+import { useSync, useCollection, uid, stripMeta } from '../state/SyncContext';
+import { UserAvatar } from '../components/UserAvatar';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { relativeTime } from '../lib/time';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
-import type { Client, CreateSharedTaskInput, SharedTask, SharedTaskStatus } from '../shared/api';
+import type { Client, SharedTaskStatus } from '../shared/api';
 
 const TEAM = [
   { email: 'aaron@amn-devsec.com', name: 'Aaron' },
@@ -20,48 +22,45 @@ const COLUMNS: { status: SharedTaskStatus; label: string }[] = [
   { status: 'done', label: 'Fait' },
 ];
 
-function nameFor(email: string): string {
-  return TEAM.find((m) => m.email === email)?.name ?? email;
+interface TaskData {
+  title: string;
+  detail: string;
+  assigneeEmail: string;
+  status: SharedTaskStatus;
+  siteId: string | null;
+  clientId: number | null;
+  createdAt: string;
 }
+export type SyncTask = TaskData & { id: string; updatedAt: string };
 
 export function TasksScreen() {
   const { sites } = useRemoteSites();
-  const [tasks, setTasks] = useState<SharedTask[]>([]);
+  const { upsert, remove, ready } = useSync();
+  const tasksRaw = useCollection<TaskData>('tasks');
+  const tasks = useMemo(
+    () => [...tasksRaw].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')),
+    [tasksRaw],
+  );
   const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     let active = true;
-    Promise.all([bridge().tasks.list(), bridge().clients.list()]).then(([t, c]) => {
-      if (!active) return;
-      setTasks(t);
-      setClients(c);
-      setLoading(false);
-    });
+    bridge()
+      .clients.list()
+      .then((c) => active && setClients(c));
     return () => {
       active = false;
     };
   }, []);
 
-  const replaceTask = (updated: SharedTask) =>
-    setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+  const moveTask = (task: SyncTask, status: SharedTaskStatus) =>
+    upsert('tasks', task.id, { ...stripMeta(task), status });
 
-  const moveTask = async (task: SharedTask, status: SharedTaskStatus) => {
-    // Optimistic update — the board should feel instant, not wait on IPC.
-    replaceTask({ ...task, status });
-    const updated = await bridge().tasks.update(task.id, { status });
-    replaceTask(updated);
-  };
+  const removeTask = (id: string) => remove('tasks', id);
 
-  const removeTask = async (id: number) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-    await bridge().tasks.remove(id);
-  };
-
-  const createTask = async (input: CreateSharedTaskInput) => {
-    const created = await bridge().tasks.create(input);
-    setTasks((prev) => [created, ...prev]);
+  const createTask = (input: Omit<TaskData, 'createdAt' | 'status'>) => {
+    upsert('tasks', uid('task'), { ...input, status: 'todo', createdAt: new Date().toISOString() });
     setCreating(false);
   };
 
@@ -78,7 +77,7 @@ export function TasksScreen() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-text-primary">Tâches</h1>
             <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
-              Qui fait quoi · {tasks.length} tâche{tasks.length > 1 ? 's' : ''}
+              Qui fait quoi · {tasks.length} tâche{tasks.length > 1 ? 's' : ''} · partagé en équipe
             </p>
           </div>
           <button
@@ -93,7 +92,7 @@ export function TasksScreen() {
       </StaggerItem>
 
       <StaggerItem className="min-h-0 flex-1">
-        {loading ? (
+        {!ready ? (
           <div className="flex h-full items-center justify-center font-mono text-xs uppercase tracking-widest text-text-muted">
             Chargement…
           </div>
@@ -141,11 +140,11 @@ function TaskColumn({
   label: string;
   status: SharedTaskStatus;
   count: number;
-  tasks: SharedTask[];
+  tasks: SyncTask[];
   sites: ReturnType<typeof useRemoteSites>['sites'];
   clients: Client[];
-  onMove: (task: SharedTask, status: SharedTaskStatus) => void;
-  onRemove: (id: number) => void;
+  onMove: (task: SyncTask, status: SharedTaskStatus) => void;
+  onRemove: (id: string) => void;
 }) {
   return (
     <div className="flex min-h-0 flex-col border border-border bg-surface">
@@ -187,12 +186,12 @@ function TaskCard({
   onMove,
   onRemove,
 }: {
-  task: SharedTask;
+  task: SyncTask;
   status: SharedTaskStatus;
   sites: ReturnType<typeof useRemoteSites>['sites'];
   clients: Client[];
-  onMove: (task: SharedTask, status: SharedTaskStatus) => void;
-  onRemove: (id: number) => void;
+  onMove: (task: SyncTask, status: SharedTaskStatus) => void;
+  onRemove: (id: string) => void;
 }) {
   const { openSite } = useSitePanel();
   const site = task.siteId ? sites.find((s) => s.id === task.siteId) : undefined;
@@ -236,12 +235,7 @@ function TaskCard({
       )}
 
       <div className="mt-3 flex items-center justify-between">
-        <span
-          className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-muted text-[10px] font-semibold text-accent"
-          title={nameFor(task.assigneeEmail)}
-        >
-          {nameFor(task.assigneeEmail).slice(0, 2).toUpperCase()}
-        </span>
+        <UserAvatar email={task.assigneeEmail} size={24} />
         <span className="font-mono text-[10px] text-text-muted">{relativeTime(task.updatedAt)}</span>
       </div>
 
@@ -270,7 +264,7 @@ function NewTaskModal({
   sites: ReturnType<typeof useRemoteSites>['sites'];
   clients: Client[];
   onClose: () => void;
-  onCreate: (input: CreateSharedTaskInput) => Promise<void>;
+  onCreate: (input: { title: string; detail: string; assigneeEmail: string; siteId: string | null; clientId: number | null }) => void;
 }) {
   const [title, setTitle] = useState('');
   const [detail, setDetail] = useState('');
@@ -284,8 +278,8 @@ function NewTaskModal({
       title: title.trim(),
       detail: detail.trim(),
       assigneeEmail,
-      siteId: siteId || undefined,
-      clientId: clientId ? Number(clientId) : undefined,
+      siteId: siteId || null,
+      clientId: clientId ? Number(clientId) : null,
     });
   };
 

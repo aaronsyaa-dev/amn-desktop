@@ -12,8 +12,11 @@ import {
   type CreateLearningGoalInput,
   type CreateQuoteInput,
   type CreateSharedTaskInput,
+  type PresenceEntry,
   type RemoteConnectionStatus,
   type RemoteEventPush,
+  type RemoteRecord,
+  type SyncedCollection,
   type SendMessageInput,
   type UpdateClientInput,
   type UpdateKnowledgeDocInput,
@@ -116,6 +119,24 @@ const bridge: AmnBridge = {
         callback(status);
       ipcRenderer.on(IPC.remoteConnectionStatusPush, listener);
       return () => ipcRenderer.removeListener(IPC.remoteConnectionStatusPush, listener);
+    },
+    listRecords: (collection: SyncedCollection) =>
+      ipcRenderer.invoke(IPC.remoteListRecords, collection),
+    upsertRecord: (collection: SyncedCollection, id: string, data: Record<string, unknown>) =>
+      ipcRenderer.invoke(IPC.remoteUpsertRecord, { collection, id, data }),
+    deleteRecord: (collection: SyncedCollection, id: string) =>
+      ipcRenderer.invoke(IPC.remoteDeleteRecord, { collection, id }),
+    onRecord: (callback: (record: RemoteRecord) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, record: RemoteRecord) => callback(record);
+      ipcRenderer.on(IPC.remoteRecordPush, listener);
+      return () => ipcRenderer.removeListener(IPC.remoteRecordPush, listener);
+    },
+    setIdentity: (email: string | null) => ipcRenderer.send(IPC.remoteSetIdentity, email),
+    getPresence: () => ipcRenderer.invoke(IPC.remoteGetPresence),
+    onPresence: (callback: (users: PresenceEntry[]) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, users: PresenceEntry[]) => callback(users);
+      ipcRenderer.on(IPC.remotePresencePush, listener);
+      return () => ipcRenderer.removeListener(IPC.remotePresencePush, listener);
     },
   },
   env: { isElectron: true },

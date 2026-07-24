@@ -5,6 +5,8 @@ import type {
   AuthResult,
   ChangePasswordResult,
   NotificationPrefs,
+  PresenceEntry,
+  RemoteRecord,
   UserProfile,
   ChecklistStateEntry,
   Client,
@@ -365,9 +367,13 @@ function createBrowserRemote(): AmnBridge['remote'] {
 
   const eventListeners = new Set<(push: RemoteEventPush) => void>();
   const statusListeners = new Set<(status: RemoteConnectionStatus) => void>();
+  const recordListeners = new Set<(record: RemoteRecord) => void>();
+  const presenceListeners = new Set<(users: PresenceEntry[]) => void>();
   let status: RemoteConnectionStatus = configured ? 'connecting' : 'unconfigured';
   let reconnectAttempt = 0;
   let started = false;
+  let identity: string | null = null;
+  let socket: WebSocket | null = null;
 
   function setStatus(next: RemoteConnectionStatus) {
     if (status === next) return;
@@ -376,8 +382,9 @@ function createBrowserRemote(): AmnBridge['remote'] {
   }
 
   function connect() {
-    const wsUrl = `${apiUrl.replace(/^http/, 'ws')}/v1/stream?token=${encodeURIComponent(token)}`;
-    const socket = new WebSocket(wsUrl);
+    const base = `${apiUrl.replace(/^http/, 'ws')}/v1/stream?token=${encodeURIComponent(token)}`;
+    const wsUrl = identity ? `${base}&user=${encodeURIComponent(identity)}` : base;
+    socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
       reconnectAttempt = 0;
@@ -388,6 +395,10 @@ function createBrowserRemote(): AmnBridge['remote'] {
         const parsed = JSON.parse(event.data);
         if (parsed?.type === 'event') {
           for (const listener of eventListeners) listener(parsed as RemoteEventPush);
+        } else if (parsed?.type === 'record' && parsed.record) {
+          for (const listener of recordListeners) listener(parsed.record as RemoteRecord);
+        } else if (parsed?.type === 'presence' && Array.isArray(parsed.users)) {
+          for (const listener of presenceListeners) listener(parsed.users as PresenceEntry[]);
         }
       } catch {
         // Ignore malformed frames.
@@ -399,7 +410,7 @@ function createBrowserRemote(): AmnBridge['remote'] {
       reconnectAttempt += 1;
       setTimeout(connect, delay);
     };
-    socket.onerror = () => socket.close();
+    socket.onerror = () => socket?.close();
   }
 
   async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -448,6 +459,45 @@ function createBrowserRemote(): AmnBridge['remote'] {
       statusListeners.add(callback);
       ensureStarted();
       return () => statusListeners.delete(callback);
+    },
+    async listRecords(collection) {
+      const { records } = await apiFetch<{ records: RemoteRecord[] }>(`/v1/collections/${collection}`);
+      return records;
+    },
+    async upsertRecord(collection, id, data) {
+      const { record } = await apiFetch<{ record: RemoteRecord }>(
+        `/v1/collections/${collection}/${encodeURIComponent(id)}`,
+        { method: 'PUT', body: JSON.stringify({ data }) },
+      );
+      return record;
+    },
+    async deleteRecord(collection, id) {
+      const { record } = await apiFetch<{ record: RemoteRecord }>(
+        `/v1/collections/${collection}/${encodeURIComponent(id)}`,
+        { method: 'DELETE' },
+      );
+      return record;
+    },
+    onRecord(callback) {
+      recordListeners.add(callback);
+      ensureStarted();
+      return () => recordListeners.delete(callback);
+    },
+    setIdentity(email) {
+      const next = email ? email.trim().toLowerCase() : null;
+      if (next === identity) return;
+      identity = next;
+      if (configured && started) socket?.close(); // reconnect with new ?user=
+    },
+    async getPresence() {
+      if (!configured) return [];
+      const { users } = await apiFetch<{ users: PresenceEntry[] }>('/v1/collections/_presence');
+      return users;
+    },
+    onPresence(callback) {
+      presenceListeners.add(callback);
+      ensureStarted();
+      return () => presenceListeners.delete(callback);
     },
   };
 

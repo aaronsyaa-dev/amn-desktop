@@ -1,11 +1,14 @@
 import WebSocket from 'ws';
 import { remoteConfig, isRemoteConfigured } from './remoteConfig';
 import type {
+  PresenceEntry,
   RegisterSiteResult,
   RemoteConnectionStatus,
   RemoteEvent,
   RemoteEventPush,
+  RemoteRecord,
   RemoteSite,
+  SyncedCollection,
 } from '../shared/api';
 
 const RECONNECT_DELAYS_MS = [1000, 2000, 5000, 10000, 20000, 30000];
@@ -39,6 +42,9 @@ export class RemoteApiClient {
   private status: RemoteConnectionStatus = isRemoteConfigured() ? 'connecting' : 'unconfigured';
   private eventListeners = new Set<(push: RemoteEventPush) => void>();
   private statusListeners = new Set<(status: RemoteConnectionStatus) => void>();
+  private recordListeners = new Set<(record: RemoteRecord) => void>();
+  private presenceListeners = new Set<(users: PresenceEntry[]) => void>();
+  private identity: string | null = null;
   private stopped = false;
 
   async listSites(): Promise<RemoteSite[]> {
@@ -71,6 +77,50 @@ export class RemoteApiClient {
     return this.status;
   }
 
+  /* ------------------------ Shared collections ------------------------ */
+
+  async listRecords(collection: SyncedCollection): Promise<RemoteRecord[]> {
+    const { records } = await apiFetch<{ records: RemoteRecord[] }>(`/v1/collections/${collection}`);
+    return records;
+  }
+
+  async upsertRecord(
+    collection: SyncedCollection,
+    id: string,
+    data: Record<string, unknown>,
+  ): Promise<RemoteRecord> {
+    const { record } = await apiFetch<{ record: RemoteRecord }>(
+      `/v1/collections/${collection}/${encodeURIComponent(id)}`,
+      { method: 'PUT', body: JSON.stringify({ data }) },
+    );
+    return record;
+  }
+
+  async deleteRecord(collection: SyncedCollection, id: string): Promise<RemoteRecord> {
+    const { record } = await apiFetch<{ record: RemoteRecord }>(
+      `/v1/collections/${collection}/${encodeURIComponent(id)}`,
+      { method: 'DELETE' },
+    );
+    return record;
+  }
+
+  async getPresence(): Promise<PresenceEntry[]> {
+    if (!isRemoteConfigured()) return [];
+    const { users } = await apiFetch<{ users: PresenceEntry[] }>('/v1/collections/_presence');
+    return users;
+  }
+
+  /** Sets the signed-in operator's identity, reconnecting the WS so presence updates. */
+  setIdentity(email: string | null): void {
+    const next = email ? email.trim().toLowerCase() : null;
+    if (next === this.identity) return;
+    this.identity = next;
+    if (isRemoteConfigured() && !this.stopped) {
+      // Reconnect so the handshake carries the new ?user= identity.
+      this.ws?.close();
+    }
+  }
+
   onEvent(listener: (push: RemoteEventPush) => void): () => void {
     this.eventListeners.add(listener);
     return () => this.eventListeners.delete(listener);
@@ -79,6 +129,16 @@ export class RemoteApiClient {
   onStatusChange(listener: (status: RemoteConnectionStatus) => void): () => void {
     this.statusListeners.add(listener);
     return () => this.statusListeners.delete(listener);
+  }
+
+  onRecord(listener: (record: RemoteRecord) => void): () => void {
+    this.recordListeners.add(listener);
+    return () => this.recordListeners.delete(listener);
+  }
+
+  onPresence(listener: (users: PresenceEntry[]) => void): () => void {
+    this.presenceListeners.add(listener);
+    return () => this.presenceListeners.delete(listener);
   }
 
   /** Starts the live WebSocket connection (no-op if amn-api isn't configured). */
@@ -108,7 +168,8 @@ export class RemoteApiClient {
     if (this.stopped) return;
     this.setStatus('connecting');
 
-    const wsUrl = `${remoteConfig.apiUrl.replace(/^http/, 'ws')}/v1/stream?token=${encodeURIComponent(remoteConfig.operatorToken)}`;
+    const base = `${remoteConfig.apiUrl.replace(/^http/, 'ws')}/v1/stream?token=${encodeURIComponent(remoteConfig.operatorToken)}`;
+    const wsUrl = this.identity ? `${base}&user=${encodeURIComponent(this.identity)}` : base;
     const socket = new WebSocket(wsUrl);
     this.ws = socket;
 
@@ -122,6 +183,10 @@ export class RemoteApiClient {
         const parsed = JSON.parse(raw.toString());
         if (parsed?.type === 'event') {
           for (const listener of this.eventListeners) listener(parsed as RemoteEventPush);
+        } else if (parsed?.type === 'record' && parsed.record) {
+          for (const listener of this.recordListeners) listener(parsed.record as RemoteRecord);
+        } else if (parsed?.type === 'presence' && Array.isArray(parsed.users)) {
+          for (const listener of this.presenceListeners) listener(parsed.users as PresenceEntry[]);
         }
       } catch {
         // Ignore malformed frames rather than crashing the main process.

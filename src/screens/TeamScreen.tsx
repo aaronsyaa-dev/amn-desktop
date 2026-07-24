@@ -13,82 +13,40 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import { bridge } from '../lib/bridge';
 import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
+import { useSync } from '../state/SyncContext';
+import { useProfiles } from '../state/ProfilesContext';
+import { useMessages, type SyncMessage } from '../state/useMessages';
+import { UserAvatar } from '../components/UserAvatar';
 import { parseMentions, urlDisplayHost } from '../lib/mentions';
 import { resizeImageToDataUrl } from '../lib/imageResize';
 import { relativeTime } from '../lib/time';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
-import type { Message, MessageAttachment } from '../shared/api';
+import type { MessageAttachment } from '../shared/api';
 import { REACTION_EMOJIS } from '../shared/api';
 
-interface TeamMember {
-  email: string;
-  name: string;
-}
-
-const TEAM: TeamMember[] = [
-  { email: 'aaron@amn-devsec.com', name: 'Aaron' },
-  { email: 'mohamed@amn-devsec.com', name: 'Mohamed' },
+const TEAM = [
+  { email: 'aaron@amn-devsec.com' },
+  { email: 'mohamed@amn-devsec.com' },
 ];
-
-function initials(name: string): string {
-  return name.slice(0, 2).toUpperCase();
-}
 
 export function TeamScreen() {
   const { user } = useAuth();
   const { sites } = useRemoteSites();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const { messages, send, react, togglePin } = useMessages();
+  const [replyTo, setReplyTo] = useState<SyncMessage | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [highlightId, setHighlightId] = useState<number | null>(null);
-  const rowRefs = useRef(new Map<number, HTMLDivElement>());
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const rowRefs = useRef(new Map<string, HTMLDivElement>());
 
-  useEffect(() => {
-    let active = true;
-    bridge()
-      .messages.list()
-      .then((list) => {
-        if (active) setMessages(list);
-      })
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const replaceMessage = (updated: Message) =>
-    setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
-
-  const handleSend = async (body: string, attachments: MessageAttachment[]) => {
-    if (!user) return;
-    const message = await bridge().messages.send({
-      authorEmail: user.email,
-      body,
-      attachments,
-      replyToId: replyTo?.id ?? null,
-    });
-    setMessages((prev) => [...prev, message]);
+  const handleSend = (body: string, attachments: MessageAttachment[]) => {
+    send(body, attachments, replyTo?.id ?? null);
     setReplyTo(null);
   };
 
-  const handleReact = async (id: number, emoji: string) => {
-    if (!user) return;
-    const updated = await bridge().messages.react(id, emoji, user.email);
-    replaceMessage(updated);
-  };
-
-  const handleTogglePin = async (message: Message) => {
-    const updated = await bridge().messages.setPinned(message.id, !message.pinned);
-    replaceMessage(updated);
-  };
-
-  const jumpToMessage = (id: number) => {
+  const jumpToMessage = (id: string) => {
     setSearchOpen(false);
-    const el = rowRefs.current.get(id);
-    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    rowRefs.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setHighlightId(id);
     window.setTimeout(() => setHighlightId((current) => (current === id ? null : current)), 1600);
   };
@@ -129,19 +87,18 @@ export function TeamScreen() {
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-surface">
         {pinned.length > 0 && (
-          <PinnedBar pinned={pinned} onJump={jumpToMessage} onUnpin={handleTogglePin} />
+          <PinnedBar pinned={pinned} onJump={jumpToMessage} onUnpin={togglePin} />
         )}
         <MessageList
           messages={messages}
-          loading={loading}
           currentEmail={user?.email}
           sites={sites}
           byId={byId}
           highlightId={highlightId}
           rowRefs={rowRefs}
           onReply={setReplyTo}
-          onReact={handleReact}
-          onTogglePin={handleTogglePin}
+          onReact={react}
+          onTogglePin={togglePin}
           onJump={jumpToMessage}
         />
         <Composer onSend={handleSend} sites={sites} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} />
@@ -151,20 +108,27 @@ export function TeamScreen() {
 }
 
 function PresenceBar({ currentEmail }: { currentEmail?: string }) {
+  const { onlineEmails, configured } = useSync();
+  const { profileFor } = useProfiles();
+
   return (
     <div className="flex flex-wrap gap-3">
       {TEAM.map((member) => {
         const isSelf = member.email === currentEmail;
-        // Real presence for the signed-in user; the other member is mocked
-        // online until the central presence service is wired up.
-        const online = true;
+        const profile = profileFor(member.email);
+        // Real presence (via the amn-api WebSocket) when configured; you are
+        // always shown online since you're the one looking at the screen.
+        const online = isSelf || onlineEmails.has(member.email);
+        const statusLine = online
+          ? profile.presenceText || 'En ligne'
+          : 'Hors ligne';
         return (
           <div
             key={member.email}
             className="flex items-center gap-2.5 rounded-xl border border-border bg-surface px-3 py-2"
           >
-            <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-accent-muted text-xs font-semibold text-accent">
-              {initials(member.name)}
+            <span className="relative">
+              <UserAvatar email={member.email} size={32} />
               <span
                 className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface ${
                   online ? 'bg-success' : 'bg-text-muted'
@@ -173,12 +137,12 @@ function PresenceBar({ currentEmail }: { currentEmail?: string }) {
             </span>
             <div className="leading-tight">
               <p className="text-sm font-medium text-text-primary">
-                {member.name}
+                {profile.name}
                 {isSelf && <span className="text-text-muted"> (vous)</span>}
               </p>
               <p className="text-xs text-text-secondary">
-                {online ? 'En ligne' : 'Hors ligne'}
-                {!isSelf && <span className="text-text-muted"> · simulé</span>}
+                {statusLine}
+                {!isSelf && !configured && <span className="text-text-muted"> · hors-ligne</span>}
               </p>
             </div>
           </div>
@@ -195,10 +159,11 @@ function MessageSearch({
   onJump,
   onClose,
 }: {
-  messages: Message[];
-  onJump: (id: number) => void;
+  messages: SyncMessage[];
+  onJump: (id: string) => void;
   onClose: () => void;
 }) {
+  const { profileFor } = useProfiles();
   const [query, setQuery] = useState('');
 
   const results = useMemo(() => {
@@ -241,7 +206,7 @@ function MessageSearch({
                 className="flex w-full flex-col gap-0.5 border-b border-border/60 px-4 py-2.5 text-left last:border-b-0 hover:bg-surface-hover"
               >
                 <span className="flex items-center gap-2 text-xs text-text-muted">
-                  <span className="font-medium text-text-secondary">{m.authorName}</span>
+                  <span className="font-medium text-text-secondary">{profileFor(m.authorEmail).name}</span>
                   {relativeTime(m.createdAt)}
                 </span>
                 <span className="truncate text-sm text-text-primary">{m.body}</span>
@@ -261,10 +226,11 @@ function PinnedBar({
   onJump,
   onUnpin,
 }: {
-  pinned: Message[];
-  onJump: (id: number) => void;
-  onUnpin: (message: Message) => void;
+  pinned: SyncMessage[];
+  onJump: (id: string) => void;
+  onUnpin: (message: SyncMessage) => void;
 }) {
+  const { profileFor } = useProfiles();
   return (
     <div className="flex items-center gap-2 overflow-x-auto border-b border-border bg-bg/60 px-3 py-2">
       <Pin size={13} strokeWidth={2} className="flex-shrink-0 text-text-muted" />
@@ -274,7 +240,7 @@ function PinnedBar({
           className="group flex flex-shrink-0 items-center gap-1.5 rounded-md border border-border bg-surface py-1 pl-2.5 pr-1 text-xs"
         >
           <button type="button" onClick={() => onJump(m.id)} className="max-w-[220px] truncate text-text-secondary hover:text-text-primary">
-            <span className="font-medium text-text-primary">{m.authorName}</span> · {m.body || '(image)'}
+            <span className="font-medium text-text-primary">{profileFor(m.authorEmail).name}</span> · {m.body || '(image)'}
           </button>
           <button
             type="button"
@@ -294,7 +260,6 @@ function PinnedBar({
 
 function MessageList({
   messages,
-  loading,
   currentEmail,
   sites,
   byId,
@@ -305,17 +270,16 @@ function MessageList({
   onTogglePin,
   onJump,
 }: {
-  messages: Message[];
-  loading: boolean;
+  messages: SyncMessage[];
   currentEmail?: string;
   sites: DerivedSite[];
-  byId: Map<number, Message>;
-  highlightId: number | null;
-  rowRefs: React.MutableRefObject<Map<number, HTMLDivElement>>;
-  onReply: (message: Message) => void;
-  onReact: (id: number, emoji: string) => void;
-  onTogglePin: (message: Message) => void;
-  onJump: (id: number) => void;
+  byId: Map<string, SyncMessage>;
+  highlightId: string | null;
+  rowRefs: React.MutableRefObject<Map<string, HTMLDivElement>>;
+  onReply: (message: SyncMessage) => void;
+  onReact: (message: SyncMessage, emoji: string) => void;
+  onTogglePin: (message: SyncMessage) => void;
+  onJump: (id: string) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const wasAtBottom = useRef(true);
@@ -325,14 +289,6 @@ function MessageList({
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     }
   }, [messages.length]);
-
-  if (loading) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-sm text-text-secondary">
-        Chargement des messages…
-      </div>
-    );
-  }
 
   if (messages.length === 0) {
     return (
@@ -367,7 +323,7 @@ function MessageList({
             else rowRefs.current.delete(message.id);
           }}
           onReply={() => onReply(message)}
-          onReact={(emoji) => onReact(message.id, emoji)}
+          onReact={(emoji) => onReact(message, emoji)}
           onTogglePin={() => onTogglePin(message)}
           onJumpToReply={() => message.replyToId && onJump(message.replyToId)}
         />
@@ -388,10 +344,10 @@ function MessageBubble({
   onTogglePin,
   onJumpToReply,
 }: {
-  message: Message;
+  message: SyncMessage;
   own: boolean;
   sites: DerivedSite[];
-  repliedTo: Message | null;
+  repliedTo: SyncMessage | null;
   highlighted: boolean;
   registerRef: (el: HTMLDivElement | null) => void;
   onReply: () => void;
@@ -399,6 +355,7 @@ function MessageBubble({
   onTogglePin: () => void;
   onJumpToReply: () => void;
 }) {
+  const { profileFor } = useProfiles();
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const groupedReactions = useMemo(() => {
@@ -421,75 +378,80 @@ function MessageBubble({
         backgroundColor: highlighted ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0)',
       }}
       transition={{ duration: 0.25 }}
-      className={`group/msg flex flex-col rounded-lg px-1.5 py-1 ${own ? 'items-end' : 'items-start'}`}
+      className={`group/msg flex gap-2.5 rounded-lg px-1.5 py-1 ${own ? 'flex-row-reverse' : 'flex-row'}`}
     >
-      {!own && (
-        <span className="mb-1 px-1 text-xs font-medium text-text-secondary">{message.authorName}</span>
-      )}
-
-      {repliedTo && (
-        <button
-          type="button"
-          onClick={onJumpToReply}
-          className={`mb-1 flex max-w-[75%] items-center gap-1.5 rounded-md border border-border bg-bg/60 px-2.5 py-1 text-xs text-text-muted hover:text-text-secondary ${
-            own ? 'self-end' : 'self-start'
-          }`}
-        >
-          <CornerUpLeft size={11} strokeWidth={2} className="flex-shrink-0" />
-          <span className="truncate">
-            <span className="font-medium">{repliedTo.authorName}</span> · {repliedTo.body || '(image)'}
-          </span>
-        </button>
-      )}
-
-      <div className="relative flex items-end gap-1.5">
-        {own && (
-          <BubbleActions onReply={onReply} onTogglePin={onTogglePin} pinned={message.pinned} pickerOpen={pickerOpen} setPickerOpen={setPickerOpen} onReact={onReact} side="left" />
-        )}
-        <div
-          className={`max-w-[75%] px-4 py-2.5 text-sm ${
-            own
-              ? 'rounded-l-lg rounded-tr-lg bg-accent text-bg'
-              : 'rounded-r-lg rounded-tl-lg border border-border bg-surface-hover text-text-primary'
-          }`}
-        >
-          {message.attachments.length > 0 && (
-            <div className="mb-2 flex flex-wrap gap-1.5">
-              {message.attachments.map((att, i) => (
-                <img
-                  key={i}
-                  src={att.dataUrl}
-                  alt={att.name || 'Pièce jointe'}
-                  className="max-h-48 max-w-[220px] rounded-md border border-black/10 object-cover"
-                />
-              ))}
-            </div>
-          )}
-          {message.body && <MessageBody body={message.body} light={own} sites={sites} />}
-        </div>
+      <UserAvatar email={message.authorEmail} size={30} className="mt-5" />
+      <div className={`flex min-w-0 flex-col ${own ? 'items-end' : 'items-start'}`}>
         {!own && (
-          <BubbleActions onReply={onReply} onTogglePin={onTogglePin} pinned={message.pinned} pickerOpen={pickerOpen} setPickerOpen={setPickerOpen} onReact={onReact} side="right" />
+          <span className="mb-1 px-1 text-xs font-medium text-text-secondary">
+            {profileFor(message.authorEmail).name}
+          </span>
         )}
-      </div>
 
-      {groupedReactions.length > 0 && (
-        <div className={`mt-1 flex flex-wrap gap-1 px-1 ${own ? 'justify-end' : 'justify-start'}`}>
-          {groupedReactions.map(([emoji, authors]) => (
-            <button
-              key={emoji}
-              type="button"
-              onClick={() => onReact(emoji)}
-              className="flex items-center gap-1 rounded-full border border-border bg-surface px-1.5 py-0.5 text-xs text-text-secondary hover:border-border-strong"
-              title={authors.join(', ')}
-            >
-              <span>{emoji}</span>
-              <span className="tnum text-[10px] text-text-muted">{authors.length}</span>
-            </button>
-          ))}
+        {repliedTo && (
+          <button
+            type="button"
+            onClick={onJumpToReply}
+            className={`mb-1 flex max-w-[75%] items-center gap-1.5 rounded-md border border-border bg-bg/60 px-2.5 py-1 text-xs text-text-muted hover:text-text-secondary ${
+              own ? 'self-end' : 'self-start'
+            }`}
+          >
+            <CornerUpLeft size={11} strokeWidth={2} className="flex-shrink-0" />
+            <span className="truncate">
+              <span className="font-medium">{profileFor(repliedTo.authorEmail).name}</span> · {repliedTo.body || '(image)'}
+            </span>
+          </button>
+        )}
+
+        <div className="relative flex items-end gap-1.5">
+          {own && (
+            <BubbleActions onReply={onReply} onTogglePin={onTogglePin} pinned={message.pinned} pickerOpen={pickerOpen} setPickerOpen={setPickerOpen} onReact={onReact} side="left" />
+          )}
+          <div
+            className={`max-w-[75%] px-4 py-2.5 text-sm ${
+              own
+                ? 'rounded-l-lg rounded-tr-lg bg-accent text-bg'
+                : 'rounded-r-lg rounded-tl-lg border border-border bg-surface-hover text-text-primary'
+            }`}
+          >
+            {message.attachments.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {message.attachments.map((att, i) => (
+                  <img
+                    key={i}
+                    src={att.dataUrl}
+                    alt={att.name || 'Pièce jointe'}
+                    className="max-h-48 max-w-[220px] rounded-md border border-black/10 object-cover"
+                  />
+                ))}
+              </div>
+            )}
+            {message.body && <MessageBody body={message.body} light={own} sites={sites} />}
+          </div>
+          {!own && (
+            <BubbleActions onReply={onReply} onTogglePin={onTogglePin} pinned={message.pinned} pickerOpen={pickerOpen} setPickerOpen={setPickerOpen} onReact={onReact} side="right" />
+          )}
         </div>
-      )}
 
-      <span className="mt-1 px-1 font-mono text-[10px] text-text-muted">{relativeTime(message.createdAt)}</span>
+        {groupedReactions.length > 0 && (
+          <div className={`mt-1 flex flex-wrap gap-1 px-1 ${own ? 'justify-end' : 'justify-start'}`}>
+            {groupedReactions.map(([emoji, authors]) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => onReact(emoji)}
+                className="flex items-center gap-1 rounded-full border border-border bg-surface px-1.5 py-0.5 text-xs text-text-secondary hover:border-border-strong"
+                title={authors.map((a) => profileFor(a).name).join(', ')}
+              >
+                <span>{emoji}</span>
+                <span className="tnum text-[10px] text-text-muted">{authors.length}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        <span className="mt-1 px-1 font-mono text-[10px] text-text-muted">{relativeTime(message.createdAt)}</span>
+      </div>
     </motion.div>
   );
 }
@@ -648,9 +610,10 @@ function Composer({
 }: {
   onSend: (body: string, attachments: MessageAttachment[]) => void;
   sites: DerivedSite[];
-  replyTo: Message | null;
+  replyTo: SyncMessage | null;
   onCancelReply: () => void;
 }) {
+  const { profileFor } = useProfiles();
   const [text, setText] = useState('');
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
   const [dragOver, setDragOver] = useState(false);
@@ -719,7 +682,7 @@ function Composer({
         <div className="mb-2 flex items-center gap-2 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs text-text-secondary">
           <CornerUpLeft size={12} strokeWidth={2} className="flex-shrink-0 text-text-muted" />
           <span className="min-w-0 flex-1 truncate">
-            Réponse à <span className="font-medium text-text-primary">{replyTo.authorName}</span> · {replyTo.body || '(image)'}
+            Réponse à <span className="font-medium text-text-primary">{profileFor(replyTo.authorEmail).name}</span> · {replyTo.body || '(image)'}
           </span>
           <button type="button" onClick={onCancelReply} aria-label="Annuler la réponse" className="text-text-muted hover:text-text-primary">
             <X size={13} strokeWidth={2} />

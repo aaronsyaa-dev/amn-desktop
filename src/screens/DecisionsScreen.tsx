@@ -1,46 +1,43 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import { bridge } from '../lib/bridge';
+import { useProfiles } from '../state/ProfilesContext';
+import { useSync, useCollection, uid } from '../state/SyncContext';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { ConfirmDelete } from '../components/ConfirmDelete';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { relativeTime } from '../lib/time';
-import type { Decision } from '../shared/api';
+
+interface DecisionData {
+  title: string;
+  detail: string;
+  authorEmail: string;
+  createdAt: string;
+}
 
 export function DecisionsScreen() {
   const { user } = useAuth();
-  const [decisions, setDecisions] = useState<Decision[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { profileFor } = useProfiles();
+  const { upsert, remove, ready } = useSync();
+  const decisionsRaw = useCollection<DecisionData>('decisions');
+  const decisions = useMemo(
+    () => [...decisionsRaw].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')),
+    [decisionsRaw],
+  );
+
   const [title, setTitle] = useState('');
   const [detail, setDetail] = useState('');
   const [expanded, setExpanded] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    bridge()
-      .decisions.list()
-      .then((list) => active && setDecisions(list))
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const remove = async (id: number) => {
-    setDecisions((prev) => prev.filter((d) => d.id !== id));
-    await bridge().decisions.remove(id);
-  };
-
-  const submit = async () => {
+  const submit = () => {
     if (!title.trim() || !user) return;
-    const created = await bridge().decisions.create({
+    upsert('decisions', uid('dec'), {
       title: title.trim(),
       detail: detail.trim(),
       authorEmail: user.email,
+      createdAt: new Date().toISOString(),
     });
-    setDecisions((prev) => [created, ...prev]);
     setTitle('');
     setDetail('');
     setExpanded(false);
@@ -52,7 +49,7 @@ export function DecisionsScreen() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-text-primary">Journal de décisions</h1>
           <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
-            Choix techniques et business, horodatés · {decisions.length} entrée{decisions.length > 1 ? 's' : ''}
+            Choix techniques et business, horodatés · {decisions.length} entrée{decisions.length > 1 ? 's' : ''} · partagé
           </p>
         </div>
       </StaggerItem>
@@ -108,7 +105,7 @@ export function DecisionsScreen() {
       </StaggerItem>
 
       <StaggerItem>
-        {loading ? (
+        {!ready ? (
           <p className="font-mono text-xs uppercase tracking-widest text-text-muted">Chargement…</p>
         ) : decisions.length === 0 ? (
           <p className="border border-border bg-surface p-6 text-center text-sm text-text-secondary">
@@ -130,7 +127,7 @@ export function DecisionsScreen() {
                         {relativeTime(decision.createdAt)}
                       </time>
                       <span className="opacity-0 transition-opacity group-hover/dec:opacity-100">
-                        <ConfirmDelete onConfirm={() => remove(decision.id)} label="Supprimer la décision" />
+                        <ConfirmDelete onConfirm={() => remove('decisions', decision.id)} label="Supprimer la décision" />
                       </span>
                     </div>
                   </div>
@@ -138,7 +135,7 @@ export function DecisionsScreen() {
                     <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">{decision.detail}</p>
                   )}
                   <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                    Décidé par {decision.authorName}
+                    Décidé par {profileFor(decision.authorEmail).name}
                   </p>
                 </div>
               </motion.li>

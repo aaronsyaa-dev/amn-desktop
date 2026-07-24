@@ -1,45 +1,40 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Plus, Trash2 } from 'lucide-react';
-import { bridge } from '../lib/bridge';
+import { useSync, useCollection, uid, stripMeta } from '../state/SyncContext';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { relativeTime } from '../lib/time';
-import type { KnowledgeDoc } from '../shared/api';
+
+interface KnowledgeData {
+  title: string;
+  body: string;
+  createdAt: string;
+}
+type SyncDoc = KnowledgeData & { id: string; updatedAt: string };
 
 export function KnowledgeScreen() {
-  const [docs, setDocs] = useState<KnowledgeDoc[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { upsert, remove, ready } = useSync();
+  const docsRaw = useCollection<KnowledgeData>('knowledge');
+  const docs = useMemo(
+    () => [...docsRaw].sort((a, b) => (a.title || '').localeCompare(b.title || '', 'fr')),
+    [docsRaw],
+  );
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
-    let active = true;
-    bridge()
-      .knowledge.list()
-      .then((list) => {
-        if (!active) return;
-        setDocs(list);
-        setSelectedId((prev) => prev ?? list[0]?.id ?? null);
-      })
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-  }, []);
+    if (selectedId === null && docs.length > 0) setSelectedId(docs[0].id);
+  }, [docs, selectedId]);
 
   const selected = useMemo(() => docs.find((d) => d.id === selectedId) ?? null, [docs, selectedId]);
 
-  const replaceDoc = (updated: KnowledgeDoc) =>
-    setDocs((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
-
-  const createDoc = async () => {
-    const created = await bridge().knowledge.create({ title: 'Nouveau document', body: '' });
-    setDocs((prev) => [...prev, created].sort((a, b) => a.title.localeCompare(b.title, 'fr')));
-    setSelectedId(created.id);
+  const createDoc = () => {
+    const id = uid('kb');
+    upsert('knowledge', id, { title: 'Nouveau document', body: '', createdAt: new Date().toISOString() });
+    setSelectedId(id);
   };
 
-  const removeDoc = async (id: number) => {
-    await bridge().knowledge.remove(id);
-    setDocs((prev) => prev.filter((d) => d.id !== id));
+  const removeDoc = (id: string) => {
+    remove('knowledge', id);
     if (selectedId === id) setSelectedId(null);
   };
 
@@ -49,7 +44,7 @@ export function KnowledgeScreen() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-text-primary">Base de connaissances</h1>
           <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
-            Procédures et modèles réutilisables · {docs.length} document{docs.length > 1 ? 's' : ''}
+            Procédures et modèles réutilisables · {docs.length} document{docs.length > 1 ? 's' : ''} · partagé
           </p>
         </div>
         <button
@@ -68,7 +63,7 @@ export function KnowledgeScreen() {
             Documents
           </div>
           <motion.div variants={staggerContainer} initial="initial" animate="animate" className="flex-1 divide-y divide-border/60 overflow-y-auto">
-            {loading ? (
+            {!ready ? (
               <p className="px-4 py-6 font-mono text-xs text-text-muted">Chargement…</p>
             ) : docs.length === 0 ? (
               <p className="px-4 py-6 font-mono text-xs text-text-muted">Aucun document.</p>
@@ -96,10 +91,15 @@ export function KnowledgeScreen() {
         </div>
 
         {selected ? (
-          <DocEditor key={selected.id} doc={selected} onSave={replaceDoc} onRemove={removeDoc} />
+          <DocEditor
+            key={selected.id}
+            doc={selected}
+            onSave={(id, patch) => upsert('knowledge', id, { ...stripMeta(selected), ...patch })}
+            onRemove={removeDoc}
+          />
         ) : (
           <div className="flex items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted">
-            {loading ? 'Chargement…' : 'Sélectionnez ou créez un document'}
+            {!ready ? 'Chargement…' : 'Sélectionnez ou créez un document'}
           </div>
         )}
       </div>
@@ -112,9 +112,9 @@ function DocEditor({
   onSave,
   onRemove,
 }: {
-  doc: KnowledgeDoc;
-  onSave: (doc: KnowledgeDoc) => void;
-  onRemove: (id: number) => void;
+  doc: SyncDoc;
+  onSave: (id: string, patch: { title?: string; body?: string }) => void;
+  onRemove: (id: string) => void;
 }) {
   const [title, setTitle] = useState(doc.title);
   const [body, setBody] = useState(doc.body);
@@ -124,9 +124,8 @@ function DocEditor({
   const scheduleSave = (nextTitle: string, nextBody: string) => {
     setSaved(false);
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(async () => {
-      const updated = await bridge().knowledge.update(doc.id, { title: nextTitle, body: nextBody });
-      onSave(updated);
+    timer.current = setTimeout(() => {
+      onSave(doc.id, { title: nextTitle, body: nextBody });
       setSaved(true);
     }, 600);
   };

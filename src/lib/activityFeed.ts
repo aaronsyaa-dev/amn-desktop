@@ -1,7 +1,15 @@
 import type { Insight, WatchItem } from '../assistant/types';
-import type { Message, RemoteEvent, RemoteSeverity } from '../shared/api';
+import type { RemoteEvent, RemoteSeverity } from '../shared/api';
 import type { DerivedSite } from '../state/RemoteSitesContext';
 import { remoteEventDetail, remoteEventLabel } from './remoteEventDisplay';
+
+/** Minimal, storage-agnostic message shape the feed needs. */
+export interface FeedMessage {
+  id: string;
+  createdAt: string;
+  author: string;
+  body: string;
+}
 
 export type FeedItem =
   | {
@@ -60,7 +68,7 @@ export function buildActivityFeed(
     eventsBySite: Record<string, RemoteEvent[]>;
     insights: Insight[];
     watchItems: WatchItem[];
-    messages: Message[];
+    messages: FeedMessage[];
   },
   limit = 14,
 ): FeedItem[] {
@@ -114,7 +122,7 @@ export function buildActivityFeed(
       kind: 'message' as const,
       id: `feed-msg-${m.id}`,
       timestamp: m.createdAt,
-      author: m.authorName,
+      author: m.author,
       body: m.body,
     }));
 

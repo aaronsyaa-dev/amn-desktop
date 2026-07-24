@@ -5,6 +5,7 @@ import {
   type ChangePasswordInput,
   type NotificationPrefs,
   type UpdateProfileInput,
+  type SyncedCollection,
   type CreateClientInput,
   type CreateDecisionInput,
   type CreateKnowledgeDocInput,
@@ -180,16 +181,32 @@ export function registerIpcHandlers(remote: RemoteApiClient): void {
   ipcMain.handle(IPC.remoteRegisterSite, (_event, name: string) => remote.registerSite(name));
   ipcMain.handle(IPC.remoteConnectionStatus, () => remote.getConnectionStatus());
 
+  ipcMain.handle(IPC.remoteListRecords, (_event, collection: SyncedCollection) =>
+    remote.listRecords(collection),
+  );
+  ipcMain.handle(
+    IPC.remoteUpsertRecord,
+    (_event, payload: { collection: SyncedCollection; id: string; data: Record<string, unknown> }) =>
+      remote.upsertRecord(payload.collection, payload.id, payload.data),
+  );
+  ipcMain.handle(
+    IPC.remoteDeleteRecord,
+    (_event, payload: { collection: SyncedCollection; id: string }) =>
+      remote.deleteRecord(payload.collection, payload.id),
+  );
+  ipcMain.handle(IPC.remoteGetPresence, () => remote.getPresence());
+  // setIdentity is fire-and-forget from the renderer (no reply needed).
+  ipcMain.on(IPC.remoteSetIdentity, (_event, email: string | null) => remote.setIdentity(email));
+
   // Push channels: broadcast to every open window rather than replying to a
   // specific invoke() call, since these are server-initiated updates.
-  remote.onEvent((push) => {
+  const broadcastToAll = (channel: string, payload: unknown) => {
     for (const win of BrowserWindow.getAllWindows()) {
-      win.webContents.send(IPC.remoteEventPush, push);
+      win.webContents.send(channel, payload);
     }
-  });
-  remote.onStatusChange((status) => {
-    for (const win of BrowserWindow.getAllWindows()) {
-      win.webContents.send(IPC.remoteConnectionStatusPush, status);
-    }
-  });
+  };
+  remote.onEvent((push) => broadcastToAll(IPC.remoteEventPush, push));
+  remote.onStatusChange((status) => broadcastToAll(IPC.remoteConnectionStatusPush, status));
+  remote.onRecord((record) => broadcastToAll(IPC.remoteRecordPush, record));
+  remote.onPresence((users) => broadcastToAll(IPC.remotePresencePush, users));
 }

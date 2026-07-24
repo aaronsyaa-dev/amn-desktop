@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lightbulb, Newspaper } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import { bridge } from '../lib/bridge';
 import { useRemoteSites } from '../state/RemoteSitesContext';
+import { useProfiles } from '../state/ProfilesContext';
+import { useMessages } from '../state/useMessages';
 import { getDailyBrief, getInsights, getWatchItems } from '../assistant/engine';
 import { buildActivityFeed, type FeedItem } from '../lib/activityFeed';
 import { countRecentAlerts } from '../lib/eventStats';
@@ -14,36 +15,36 @@ import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { ChecklistWidget } from '../components/ChecklistWidget';
 import { ObjectivesWidget } from '../components/ObjectivesWidget';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
-import type { Message } from '../shared/api';
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function HomeScreen() {
   const { user } = useAuth();
   const { sites, eventsBySite, ensureEventsLoaded } = useRemoteSites();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { profileFor } = useProfiles();
+  const { messages } = useMessages();
 
   useEffect(() => {
     for (const site of sites) ensureEventsLoaded(site.id);
   }, [sites, ensureEventsLoaded]);
 
-  useEffect(() => {
-    let active = true;
-    bridge()
-      .messages.list()
-      .then((list) => active && setMessages(list))
-      .catch((err) => void err);
-    return () => {
-      active = false;
-    };
-  }, []);
+  const feedMessages = useMemo(
+    () =>
+      messages.map((m) => ({
+        id: m.id,
+        createdAt: m.createdAt,
+        author: profileFor(m.authorEmail).name,
+        body: m.body,
+      })),
+    [messages, profileFor],
+  );
 
   const brief = useMemo(() => getDailyBrief(sites, eventsBySite), [sites, eventsBySite]);
   const insights = useMemo(() => getInsights(sites, eventsBySite), [sites, eventsBySite]);
   const watchItems = useMemo(() => getWatchItems(), []);
   const feed = useMemo(
-    () => buildActivityFeed({ sites, eventsBySite, insights, watchItems, messages }),
-    [sites, eventsBySite, insights, watchItems, messages],
+    () => buildActivityFeed({ sites, eventsBySite, insights, watchItems, messages: feedMessages }),
+    [sites, eventsBySite, insights, watchItems, feedMessages],
   );
 
   const online = sites.filter((s) => s.status === 'online').length;
