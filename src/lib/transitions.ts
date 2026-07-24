@@ -36,6 +36,26 @@ export const pageVariants: Record<string, Variants> = {
     animate: { opacity: 1, y: 0, transition: { duration: 0.3, ease: EASE } },
     exit: { opacity: 0, y: 10, transition: { duration: 0.15 } },
   },
+  '/tasks': {
+    initial: { opacity: 0, y: 16, scale: 0.99 },
+    animate: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: EASE } },
+    exit: { opacity: 0, y: -10, transition: { duration: 0.15 } },
+  },
+  '/decisions': {
+    initial: { opacity: 0, x: 20, scale: 0.99 },
+    animate: { opacity: 1, x: 0, scale: 1, transition: { duration: 0.32, ease: EASE } },
+    exit: { opacity: 0, x: -14, transition: { duration: 0.15 } },
+  },
+  '/knowledge': {
+    initial: { opacity: 0, x: -20 },
+    animate: { opacity: 1, x: 0, transition: { duration: 0.3, ease: EASE } },
+    exit: { opacity: 0, x: 14, transition: { duration: 0.15 } },
+  },
+  '/learning': {
+    initial: { opacity: 0, y: 18 },
+    animate: { opacity: 1, y: 0, transition: { duration: 0.32, ease: EASE } },
+    exit: { opacity: 0, y: -12, transition: { duration: 0.15 } },
+  },
   '/settings': {
     initial: { opacity: 0, y: 10 },
     animate: { opacity: 1, y: 0, transition: { duration: 0.25, ease: EASE } },
@@ -46,8 +66,12 @@ export const pageVariants: Record<string, Variants> = {
 export function variantsForPath(pathname: string): Variants {
   if (pathname.startsWith('/sites')) return pageVariants['/sites'];
   if (pathname.startsWith('/team')) return pageVariants['/team'];
+  if (pathname.startsWith('/tasks')) return pageVariants['/tasks'];
   if (pathname.startsWith('/clients')) return pageVariants['/clients'];
   if (pathname.startsWith('/tracker')) return pageVariants['/tracker'];
+  if (pathname.startsWith('/decisions')) return pageVariants['/decisions'];
+  if (pathname.startsWith('/knowledge')) return pageVariants['/knowledge'];
+  if (pathname.startsWith('/learning')) return pageVariants['/learning'];
   if (pathname.startsWith('/settings')) return pageVariants['/settings'];
   return pageVariants['/'];
 }

@@ -9,11 +9,15 @@ import React, {
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  BookOpen,
+  CheckSquare,
   Contact,
   CornerDownLeft,
+  GraduationCap,
   Globe,
   LayoutDashboard,
   Radar,
+  Scale,
   Search,
   Settings,
   Sparkles,
@@ -44,8 +48,12 @@ const NAV_COMMANDS: Extract<Command, { kind: 'nav' }>[] = [
   { kind: 'nav', id: 'nav-home', label: 'Accueil', icon: LayoutDashboard, to: '/' },
   { kind: 'nav', id: 'nav-sites', label: 'Sites', icon: Globe, to: '/sites' },
   { kind: 'nav', id: 'nav-team', label: 'Équipe', icon: Users, to: '/team' },
+  { kind: 'nav', id: 'nav-tasks', label: 'Tâches', icon: CheckSquare, to: '/tasks' },
   { kind: 'nav', id: 'nav-clients', label: 'Clients', icon: Contact, to: '/clients' },
   { kind: 'nav', id: 'nav-tracker', label: 'Tracker', icon: Radar, to: '/tracker' },
+  { kind: 'nav', id: 'nav-decisions', label: 'Décisions', icon: Scale, to: '/decisions' },
+  { kind: 'nav', id: 'nav-knowledge', label: 'Connaissances', icon: BookOpen, to: '/knowledge' },
+  { kind: 'nav', id: 'nav-learning', label: 'Progression', icon: GraduationCap, to: '/learning' },
   { kind: 'nav', id: 'nav-settings', label: 'Paramètres', icon: Settings, to: '/settings' },
 ];
 

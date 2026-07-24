@@ -2,13 +2,17 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  BookOpen,
   ChevronsLeft,
   ChevronsRight,
+  CheckSquare,
   Contact,
+  GraduationCap,
   Globe,
   LayoutDashboard,
   LogOut,
   Radar,
+  Scale,
   Settings,
   Users,
 } from 'lucide-react';
@@ -33,8 +37,12 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'home', label: 'Accueil', to: '/', icon: LayoutDashboard },
   { key: 'sites', label: 'Sites', to: '/sites', icon: Globe },
   { key: 'team', label: 'Équipe', to: '/team', icon: Users },
+  { key: 'tasks', label: 'Tâches', to: '/tasks', icon: CheckSquare },
   { key: 'clients', label: 'Clients', to: '/clients', icon: Contact },
   { key: 'tracker', label: 'Tracker', to: '/tracker', icon: Radar },
+  { key: 'decisions', label: 'Décisions', to: '/decisions', icon: Scale },
+  { key: 'knowledge', label: 'Connaissances', to: '/knowledge', icon: BookOpen },
+  { key: 'learning', label: 'Progression', to: '/learning', icon: GraduationCap },
   { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings },
 ];
 
@@ -92,7 +100,7 @@ export function Sidebar() {
           </AnimatePresence>
         </div>
 
-        <div className="flex flex-col gap-1 px-3">
+        <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3">
           {NAV_ITEMS.map((item) => {
             const active = isActive(item.to);
             const Icon = item.icon;
