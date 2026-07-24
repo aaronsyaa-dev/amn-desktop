@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Sparkles } from 'lucide-react';
 import { useCommandPalette } from './command-palette/CommandPalette';
 import { NotificationCenter } from './NotificationCenter';
+import { UserAvatar } from './UserAvatar';
 import { useAssistant } from '../assistant/AssistantContext';
+import { useAuth } from '../auth/AuthContext';
+import { useProfiles } from '../state/ProfilesContext';
 
 /** Detects the platform once so we can show ⌘ on macOS and Ctrl elsewhere. */
 function useModifierKey(): string {
@@ -17,6 +21,9 @@ function useModifierKey(): string {
 export function TopBar() {
   const { open } = useCommandPalette();
   const { open: openAssistant } = useAssistant();
+  const { user } = useAuth();
+  const { profileFor } = useProfiles();
+  const navigate = useNavigate();
   const modKey = useModifierKey();
 
   return (
@@ -43,6 +50,17 @@ export function TopBar() {
           <span className="hidden sm:inline">Assistant</span>
         </button>
         <NotificationCenter />
+        {user && (
+          <button
+            type="button"
+            onClick={() => navigate('/settings')}
+            title={`${profileFor(user.email).name} — ouvrir les paramètres`}
+            aria-label="Mon profil"
+            className="ml-1 rounded-full transition-opacity hover:opacity-80"
+          >
+            <UserAvatar email={user.email} size={32} ring />
+          </button>
+        )}
       </div>
     </header>
   );

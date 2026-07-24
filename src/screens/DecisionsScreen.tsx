@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { useSync, useCollection, uid } from '../state/SyncContext';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
+import { UserAvatar } from '../components/UserAvatar';
 import { ConfirmDelete } from '../components/ConfirmDelete';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { relativeTime } from '../lib/time';
@@ -134,9 +135,12 @@ export function DecisionsScreen() {
                   {decision.detail && (
                     <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">{decision.detail}</p>
                   )}
-                  <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                    Décidé par {profileFor(decision.authorEmail).name}
-                  </p>
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <UserAvatar email={decision.authorEmail} size={20} />
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                      Décidé par {profileFor(decision.authorEmail).name}
+                    </span>
+                  </div>
                 </div>
               </motion.li>
             ))}
