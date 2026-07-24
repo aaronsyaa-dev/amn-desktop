@@ -869,6 +869,23 @@ function createBrowserBridge(): AmnBridge {
       },
     },
     remote: createBrowserRemote(),
+    system: {
+      notify(input: { title: string; body: string }): void {
+        // Best-effort Web Notifications in the browser fallback (dev/test).
+        try {
+          if (typeof Notification === 'undefined') return;
+          if (Notification.permission === 'granted') {
+            new Notification(input.title, { body: input.body });
+          } else if (Notification.permission !== 'denied') {
+            Notification.requestPermission().then((perm) => {
+              if (perm === 'granted') new Notification(input.title, { body: input.body });
+            });
+          }
+        } catch {
+          /* no-op */
+        }
+      },
+    },
     env: { isElectron: false },
   };
 }

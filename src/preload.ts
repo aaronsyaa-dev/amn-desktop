@@ -139,6 +139,9 @@ const bridge: AmnBridge = {
       return () => ipcRenderer.removeListener(IPC.remotePresencePush, listener);
     },
   },
+  system: {
+    notify: (input: { title: string; body: string }) => ipcRenderer.send(IPC.systemNotify, input),
+  },
   env: { isElectron: true },
 };
 

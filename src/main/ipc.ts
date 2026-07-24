@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain } from 'electron';
+import { BrowserWindow, Notification, ipcMain } from 'electron';
 import {
   IPC,
   type AddClientEventInput,
@@ -209,4 +209,20 @@ export function registerIpcHandlers(remote: RemoteApiClient): void {
   remote.onStatusChange((status) => broadcastToAll(IPC.remoteConnectionStatusPush, status));
   remote.onRecord((record) => broadcastToAll(IPC.remoteRecordPush, record));
   remote.onPresence((users) => broadcastToAll(IPC.remotePresencePush, users));
+
+  // Native OS notifications. The renderer decides *when* (it holds prefs +
+  // identity + the live streams); the main process just shows them so they
+  // surface even when the app is in the background.
+  ipcMain.on(IPC.systemNotify, (_event, input: { title: string; body: string }) => {
+    if (!Notification.isSupported()) return;
+    const notification = new Notification({ title: input.title, body: input.body, silent: false });
+    notification.on('click', () => {
+      const win = BrowserWindow.getAllWindows()[0];
+      if (win) {
+        if (win.isMinimized()) win.restore();
+        win.focus();
+      }
+    });
+    notification.show();
+  });
 }

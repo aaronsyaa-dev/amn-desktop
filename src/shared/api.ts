@@ -522,6 +522,10 @@ export interface AmnBridge {
     getPresence(): Promise<PresenceEntry[]>;
     onPresence(callback: (users: PresenceEntry[]) => void): () => void;
   };
+  /** Native OS notifications (Electron main process). Fire-and-forget. */
+  system: {
+    notify(input: { title: string; body: string }): void;
+  };
   env: {
     /** true when backed by the Electron main process (SQLite), false in browser fallback. */
     isElectron: boolean;
@@ -582,4 +586,5 @@ export const IPC = {
   remoteConnectionStatusPush: 'remote:connectionStatusPush',
   remoteRecordPush: 'remote:recordPush',
   remotePresencePush: 'remote:presencePush',
+  systemNotify: 'system:notify',
 } as const;

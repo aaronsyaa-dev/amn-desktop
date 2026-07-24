@@ -11,6 +11,7 @@ import { AssistantPanel } from '../assistant/AssistantPanel';
 import { RemoteSitesProvider } from '../state/RemoteSitesContext';
 import { ProfilesProvider } from '../state/ProfilesContext';
 import { SyncProvider } from '../state/SyncContext';
+import { NotificationsManager } from './NotificationsManager';
 import { variantsForPath } from '../lib/transitions';
 
 export function AppLayout() {
@@ -44,6 +45,7 @@ export function AppLayout() {
             </div>
               <SiteDetailPanel />
               <AssistantPanel />
+              <NotificationsManager />
             </CommandPaletteProvider>
           </AssistantProvider>
         </SitePanelProvider>

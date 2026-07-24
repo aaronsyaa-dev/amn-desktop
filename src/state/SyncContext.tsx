@@ -101,6 +101,8 @@ interface SyncContextValue {
   useRecords: (collection: SyncedCollection) => RemoteRecord[];
   upsert: (collection: SyncedCollection, id: string, data: Record<string, unknown>) => Promise<void>;
   remove: (collection: SyncedCollection, id: string) => Promise<void>;
+  /** True if this record id was written by *this* client (to suppress self-notifications). */
+  isLocalWrite: (collection: SyncedCollection, id: string) => boolean;
 }
 
 const SyncContext = createContext<SyncContextValue | undefined>(undefined);
@@ -119,6 +121,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const [configured, setConfigured] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<RemoteConnectionStatus>('connecting');
   const [onlineEmails, setOnlineEmails] = useState<Set<string>>(new Set());
+  const localWrites = useRef<Set<string>>(new Set());
 
   // Apply a batch of records to a collection: merge, persist mirror, set state.
   const applyRecords = useCallback((collection: string, incoming: RemoteRecord[]) => {
@@ -184,6 +187,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
   const upsert = useCallback(
     async (collection: SyncedCollection, id: string, data: Record<string, unknown>) => {
+      localWrites.current.add(`${collection}:${id}`);
       const optimistic: RemoteRecord = {
         id,
         collection,
@@ -231,9 +235,14 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     [store],
   );
 
+  const isLocalWrite = useCallback(
+    (collection: SyncedCollection, id: string) => localWrites.current.has(`${collection}:${id}`),
+    [],
+  );
+
   const value = useMemo(
-    () => ({ ready, configured, connectionStatus, onlineEmails, useRecords, upsert, remove }),
-    [ready, configured, connectionStatus, onlineEmails, useRecords, upsert, remove],
+    () => ({ ready, configured, connectionStatus, onlineEmails, useRecords, upsert, remove, isLocalWrite }),
+    [ready, configured, connectionStatus, onlineEmails, useRecords, upsert, remove, isLocalWrite],
   );
 
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;
