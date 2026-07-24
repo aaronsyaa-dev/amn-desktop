@@ -1,7 +1,11 @@
+import { DEFAULT_NOTIFICATION_PREFS } from '../shared/api';
 import type {
   AddClientEventInput,
   AmnBridge,
   AuthResult,
+  ChangePasswordResult,
+  NotificationPrefs,
+  UserProfile,
   ChecklistStateEntry,
   Client,
   CreateClientInput,
@@ -57,6 +61,9 @@ const FALLBACK_ACCOUNTS: Record<string, { name: string; hash: string }> = {
 
 const MESSAGES_KEY = 'amn.fallback.messages';
 const CLIENTS_KEY = 'amn.fallback.clients';
+const PROFILES_KEY = 'amn.fallback.profiles';
+const PREFS_KEY = 'amn.fallback.prefs';
+const PWD_OVERRIDE_KEY = 'amn.fallback.pwdOverrides';
 const QUOTES_KEY = 'amn.fallback.quotes';
 const TASKS_KEY = 'amn.fallback.tasks';
 const DECISIONS_KEY = 'amn.fallback.decisions';
@@ -92,6 +99,48 @@ function readFallbackMessages(): Message[] {
 
 function writeFallbackMessages(messages: Message[]): void {
   writeList(MESSAGES_KEY, messages);
+}
+
+function readPwdOverrides(): Record<string, string> {
+  try {
+    return JSON.parse(window.localStorage.getItem(PWD_OVERRIDE_KEY) || '{}') as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+function readProfiles(): UserProfile[] {
+  return readList<UserProfile>(PROFILES_KEY, () => {
+    const now = new Date().toISOString();
+    return Object.entries(FALLBACK_ACCOUNTS).map(([email, { name }]) => ({
+      email,
+      name,
+      photoDataUrl: '',
+      presenceText: '',
+      updatedAt: now,
+    }));
+  });
+}
+
+function getFallbackProfile(email: string): UserProfile {
+  const key = email.trim().toLowerCase();
+  const found = readProfiles().find((p) => p.email === key);
+  if (found) return found;
+  return {
+    email: key,
+    name: FALLBACK_ACCOUNTS[key]?.name ?? key,
+    photoDataUrl: '',
+    presenceText: '',
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function readPrefs(): Record<string, NotificationPrefs> {
+  try {
+    return JSON.parse(window.localStorage.getItem(PREFS_KEY) || '{}') as Record<string, NotificationPrefs>;
+  } catch {
+    return {};
+  }
 }
 
 /** Seed mirrors the SQLite seed so the browser fallback shows the same data. */
@@ -414,15 +463,64 @@ function createBrowserBridge(): AmnBridge {
   return {
     auth: {
       async login(email: string, password: string): Promise<AuthResult> {
-        const account = FALLBACK_ACCOUNTS[email.trim().toLowerCase()];
+        const key = email.trim().toLowerCase();
+        const account = FALLBACK_ACCOUNTS[key];
+        if (!account) return { ok: false, error: 'Email ou mot de passe incorrect.' };
         const bcrypt = (await import('bcryptjs')).default;
-        if (!account || !bcrypt.compareSync(password, account.hash)) {
+        const overrides = readPwdOverrides();
+        const hash = overrides[key] ?? account.hash;
+        if (!bcrypt.compareSync(password, hash)) {
           return { ok: false, error: 'Email ou mot de passe incorrect.' };
         }
-        return {
-          ok: true,
-          user: { id: 0, email: email.trim().toLowerCase(), name: account.name },
-        };
+        return { ok: true, user: { id: 0, email: key, name: account.name } };
+      },
+      async changePassword(input): Promise<ChangePasswordResult> {
+        const key = input.email.trim().toLowerCase();
+        const account = FALLBACK_ACCOUNTS[key];
+        if (!account) return { ok: false, error: 'Compte introuvable.' };
+        const bcrypt = (await import('bcryptjs')).default;
+        const overrides = readPwdOverrides();
+        const hash = overrides[key] ?? account.hash;
+        if (!bcrypt.compareSync(input.currentPassword, hash)) {
+          return { ok: false, error: 'Mot de passe actuel incorrect.' };
+        }
+        if (input.newPassword.length < 8) {
+          return { ok: false, error: 'Le nouveau mot de passe doit faire au moins 8 caractères.' };
+        }
+        overrides[key] = bcrypt.hashSync(input.newPassword, 10);
+        window.localStorage.setItem(PWD_OVERRIDE_KEY, JSON.stringify(overrides));
+        return { ok: true };
+      },
+    },
+    profiles: {
+      async list(): Promise<UserProfile[]> {
+        return readProfiles();
+      },
+      async get(email: string): Promise<UserProfile> {
+        return getFallbackProfile(email);
+      },
+      async updateSelf(email: string, patch): Promise<UserProfile> {
+        const profiles = readProfiles();
+        const key = email.trim().toLowerCase();
+        const idx = profiles.findIndex((p) => p.email === key);
+        const base = idx >= 0 ? profiles[idx] : getFallbackProfile(key);
+        const updated: UserProfile = { ...base, ...patch, email: key, updatedAt: new Date().toISOString() };
+        const next = idx >= 0 ? profiles.map((p) => (p.email === key ? updated : p)) : [...profiles, updated];
+        writeList(PROFILES_KEY, next);
+        return updated;
+      },
+    },
+    prefs: {
+      async get(email: string): Promise<NotificationPrefs> {
+        return readPrefs()[email.trim().toLowerCase()] ?? { ...DEFAULT_NOTIFICATION_PREFS };
+      },
+      async update(email: string, patch): Promise<NotificationPrefs> {
+        const all = readPrefs();
+        const key = email.trim().toLowerCase();
+        const merged = { ...(all[key] ?? DEFAULT_NOTIFICATION_PREFS), ...patch };
+        all[key] = merged;
+        window.localStorage.setItem(PREFS_KEY, JSON.stringify(all));
+        return merged;
       },
     },
     messages: {
@@ -561,6 +659,10 @@ function createBrowserBridge(): AmnBridge {
         writeList(QUOTES_KEY, quotes);
         return quotes[idx];
       },
+      async remove(id: number): Promise<void> {
+        const quotes = readList<Quote>(QUOTES_KEY, seedQuotes);
+        writeList(QUOTES_KEY, quotes.filter((q) => q.id !== id));
+      },
     },
     tasks: {
       async list(): Promise<SharedTask[]> {
@@ -617,6 +719,10 @@ function createBrowserBridge(): AmnBridge {
         };
         writeList(DECISIONS_KEY, [...decisions, decision]);
         return decision;
+      },
+      async remove(id: number): Promise<void> {
+        const decisions = readList<Decision>(DECISIONS_KEY, seedDecisions);
+        writeList(DECISIONS_KEY, decisions.filter((d) => d.id !== id));
       },
     },
     knowledge: {

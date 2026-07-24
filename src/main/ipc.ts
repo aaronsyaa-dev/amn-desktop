@@ -2,6 +2,9 @@ import { BrowserWindow, ipcMain } from 'electron';
 import {
   IPC,
   type AddClientEventInput,
+  type ChangePasswordInput,
+  type NotificationPrefs,
+  type UpdateProfileInput,
   type CreateClientInput,
   type CreateDecisionInput,
   type CreateKnowledgeDocInput,
@@ -18,9 +21,17 @@ import {
 } from '../shared/api';
 import {
   addClientEvent,
+  changePassword,
+  listProfiles,
+  getProfile,
+  updateProfile,
+  getPrefs,
+  updatePrefs,
   checkChecklistItem,
   createClient,
   createDecision,
+  removeDecision,
+  removeQuote,
   createKnowledgeDoc,
   createLearningGoal,
   createQuote,
@@ -56,6 +67,24 @@ export function registerIpcHandlers(remote: RemoteApiClient): void {
     IPC.authLogin,
     (_event, payload: { email: string; password: string }) =>
       verifyCredentials(payload.email, payload.password),
+  );
+  ipcMain.handle(IPC.authChangePassword, (_event, input: ChangePasswordInput) =>
+    changePassword(input),
+  );
+
+  ipcMain.handle(IPC.profilesList, () => listProfiles());
+  ipcMain.handle(IPC.profilesGet, (_event, email: string) => getProfile(email));
+  ipcMain.handle(
+    IPC.profilesUpdateSelf,
+    (_event, payload: { email: string; patch: UpdateProfileInput }) =>
+      updateProfile(payload.email, payload.patch),
+  );
+
+  ipcMain.handle(IPC.prefsGet, (_event, email: string) => getPrefs(email));
+  ipcMain.handle(
+    IPC.prefsUpdate,
+    (_event, payload: { email: string; patch: Partial<NotificationPrefs> }) =>
+      updatePrefs(payload.email, payload.patch),
   );
 
   ipcMain.handle(IPC.messagesList, () => listMessages());
@@ -93,6 +122,7 @@ export function registerIpcHandlers(remote: RemoteApiClient): void {
     (_event, payload: { id: number; patch: UpdateQuoteInput }) =>
       updateQuote(payload.id, payload.patch),
   );
+  ipcMain.handle(IPC.quotesRemove, (_event, id: number) => removeQuote(id));
 
   ipcMain.handle(IPC.tasksList, () => listTasks());
   ipcMain.handle(IPC.tasksCreate, (_event, input: CreateSharedTaskInput) => createTask(input));
@@ -107,6 +137,7 @@ export function registerIpcHandlers(remote: RemoteApiClient): void {
   ipcMain.handle(IPC.decisionsCreate, (_event, input: CreateDecisionInput) =>
     createDecision(input),
   );
+  ipcMain.handle(IPC.decisionsRemove, (_event, id: number) => removeDecision(id));
 
   ipcMain.handle(IPC.knowledgeList, () => listKnowledgeDocs());
   ipcMain.handle(IPC.knowledgeCreate, (_event, input: CreateKnowledgeDocInput) =>

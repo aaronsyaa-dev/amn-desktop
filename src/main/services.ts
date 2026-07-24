@@ -2,6 +2,11 @@ import bcrypt from 'bcryptjs';
 import type {
   AddClientEventInput,
   AuthResult,
+  ChangePasswordInput,
+  ChangePasswordResult,
+  NotificationPrefs,
+  UpdateProfileInput,
+  UserProfile,
   ChecklistStateEntry,
   Client,
   ClientEvent,
@@ -29,6 +34,7 @@ import type {
   UpdateSharedTaskInput,
   User,
 } from '../shared/api';
+import { DEFAULT_NOTIFICATION_PREFS } from '../shared/api';
 import { getDb } from './db';
 
 interface UserRow {
@@ -102,6 +108,145 @@ export function verifyCredentials(email: string, password: string): AuthResult {
 
   const user: User = { id: row.id, email: row.email, name: row.name };
   return { ok: true, user };
+}
+
+export function changePassword(input: ChangePasswordInput): ChangePasswordResult {
+  const email = input.email.trim().toLowerCase();
+  const row = getDb()
+    .prepare('SELECT password_hash FROM users WHERE email = ?')
+    .get(email) as { password_hash: string } | undefined;
+  if (!row || !bcrypt.compareSync(input.currentPassword, row.password_hash)) {
+    return { ok: false, error: 'Mot de passe actuel incorrect.' };
+  }
+  if (input.newPassword.length < 8) {
+    return { ok: false, error: 'Le nouveau mot de passe doit faire au moins 8 caractères.' };
+  }
+  const hash = bcrypt.hashSync(input.newPassword, 10);
+  getDb().prepare('UPDATE users SET password_hash = ? WHERE email = ?').run(hash, email);
+  return { ok: true };
+}
+
+/* ------------------------------ Profiles ------------------------------ */
+
+interface ProfileRow {
+  email: string;
+  name: string;
+  photo_data_url: string;
+  presence_text: string;
+  updated_at: string;
+}
+
+function toProfile(row: ProfileRow): UserProfile {
+  return {
+    email: row.email,
+    name: row.name,
+    photoDataUrl: row.photo_data_url,
+    presenceText: row.presence_text,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function listProfiles(): UserProfile[] {
+  const rows = getDb().prepare('SELECT * FROM user_profiles').all() as ProfileRow[];
+  return rows.map(toProfile);
+}
+
+export function getProfile(email: string): UserProfile {
+  const key = email.trim().toLowerCase();
+  const row = getDb().prepare('SELECT * FROM user_profiles WHERE email = ?').get(key) as
+    | ProfileRow
+    | undefined;
+  if (row) return toProfile(row);
+  // Fall back to the user's name if no profile row exists yet.
+  const user = getDb().prepare('SELECT name FROM users WHERE email = ?').get(key) as
+    | { name: string }
+    | undefined;
+  const now = new Date().toISOString();
+  getDb()
+    .prepare(
+      `INSERT OR IGNORE INTO user_profiles (email, name, photo_data_url, presence_text, updated_at)
+       VALUES (?, ?, '', '', ?)`,
+    )
+    .run(key, user?.name ?? key, now);
+  return { email: key, name: user?.name ?? key, photoDataUrl: '', presenceText: '', updatedAt: now };
+}
+
+export function updateProfile(email: string, patch: UpdateProfileInput): UserProfile {
+  getProfile(email); // ensure a row exists
+  const key = email.trim().toLowerCase();
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  const map: Record<string, unknown> = {
+    name: patch.name,
+    photo_data_url: patch.photoDataUrl,
+    presence_text: patch.presenceText,
+  };
+  for (const [column, value] of Object.entries(map)) {
+    if (value !== undefined) {
+      fields.push(`${column} = ?`);
+      values.push(value);
+    }
+  }
+  fields.push('updated_at = ?');
+  values.push(new Date().toISOString());
+  values.push(key);
+  getDb().prepare(`UPDATE user_profiles SET ${fields.join(', ')} WHERE email = ?`).run(...values);
+  return getProfile(key);
+}
+
+/* --------------------------- Notification prefs --------------------------- */
+
+interface PrefsRow {
+  email: string;
+  site_offline: number;
+  critical_alert: number;
+  mention: number;
+  task_assigned: number;
+}
+
+function toPrefs(row: PrefsRow): NotificationPrefs {
+  return {
+    siteOffline: Boolean(row.site_offline),
+    criticalAlert: Boolean(row.critical_alert),
+    mention: Boolean(row.mention),
+    taskAssigned: Boolean(row.task_assigned),
+  };
+}
+
+export function getPrefs(email: string): NotificationPrefs {
+  const key = email.trim().toLowerCase();
+  const row = getDb().prepare('SELECT * FROM notification_prefs WHERE email = ?').get(key) as
+    | PrefsRow
+    | undefined;
+  if (row) return toPrefs(row);
+  getDb()
+    .prepare('INSERT OR IGNORE INTO notification_prefs (email) VALUES (?)')
+    .run(key);
+  return { ...DEFAULT_NOTIFICATION_PREFS };
+}
+
+export function updatePrefs(email: string, patch: Partial<NotificationPrefs>): NotificationPrefs {
+  getPrefs(email);
+  const key = email.trim().toLowerCase();
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  const map: Record<string, boolean | undefined> = {
+    site_offline: patch.siteOffline,
+    critical_alert: patch.criticalAlert,
+    mention: patch.mention,
+    task_assigned: patch.taskAssigned,
+  };
+  for (const [column, value] of Object.entries(map)) {
+    if (value !== undefined) {
+      fields.push(`${column} = ?`);
+      values.push(value ? 1 : 0);
+    }
+  }
+  if (fields.length > 0) {
+    values.push(key);
+    getDb().prepare(`UPDATE notification_prefs SET ${fields.join(', ')} WHERE email = ?`).run(...values);
+  }
+  return getPrefs(key);
 }
 
 export function listMessages(): Message[] {
@@ -362,6 +507,10 @@ export function createQuote(input: CreateQuoteInput): Quote {
   return toQuote(row);
 }
 
+export function removeQuote(id: number): void {
+  getDb().prepare('DELETE FROM quotes WHERE id = ?').run(id);
+}
+
 export function updateQuote(id: number, patch: UpdateQuoteInput): Quote {
   const fields: string[] = [];
   const values: unknown[] = [];
@@ -488,6 +637,10 @@ function toDecision(row: DecisionRow): Decision {
 export function listDecisions(): Decision[] {
   const rows = getDb().prepare('SELECT * FROM decisions ORDER BY created_at DESC').all() as DecisionRow[];
   return rows.map(toDecision);
+}
+
+export function removeDecision(id: number): void {
+  getDb().prepare('DELETE FROM decisions WHERE id = ?').run(id);
 }
 
 export function createDecision(input: CreateDecisionInput): Decision {

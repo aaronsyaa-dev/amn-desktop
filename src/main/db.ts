@@ -58,6 +58,22 @@ export function initDatabase(): Database.Database {
       UNIQUE(message_id, emoji, author_email)
     );
 
+    CREATE TABLE IF NOT EXISTS user_profiles (
+      email          TEXT PRIMARY KEY,
+      name           TEXT NOT NULL DEFAULT '',
+      photo_data_url TEXT NOT NULL DEFAULT '',
+      presence_text  TEXT NOT NULL DEFAULT '',
+      updated_at     TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS notification_prefs (
+      email         TEXT PRIMARY KEY,
+      site_offline  INTEGER NOT NULL DEFAULT 1,
+      critical_alert INTEGER NOT NULL DEFAULT 1,
+      mention       INTEGER NOT NULL DEFAULT 1,
+      task_assigned INTEGER NOT NULL DEFAULT 1
+    );
+
     CREATE TABLE IF NOT EXISTS clients (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
       name          TEXT NOT NULL,
@@ -149,7 +165,10 @@ export function initDatabase(): Database.Database {
     );
   `);
 
+  runMigrations(db);
+
   seedAccounts(db);
+  seedProfiles(db);
   seedClients(db);
   seedQuotes(db);
   seedTasks(db);
@@ -158,6 +177,42 @@ export function initDatabase(): Database.Database {
   seedLearningGoals(db);
   seedObjectives(db);
   return db;
+}
+
+function seedProfiles(database: Database.Database): void {
+  const now = new Date().toISOString();
+  const insert = database.prepare(
+    `INSERT OR IGNORE INTO user_profiles (email, name, photo_data_url, presence_text, updated_at)
+     VALUES (?, ?, '', '', ?)`,
+  );
+  for (const account of SEED_ACCOUNTS) {
+    insert.run(account.email, account.name, now);
+  }
+}
+
+/**
+ * `CREATE TABLE IF NOT EXISTS` never alters an *existing* table, so columns
+ * added to a table after its first release are missing on any DB created by an
+ * earlier version. This adds them idempotently. Without it, upgrading users hit
+ * "no such column: attachments" the moment they send a chat message, which is
+ * exactly the messaging breakage reported from the field.
+ */
+function runMigrations(database: Database.Database): void {
+  const ensureColumn = (table: string, column: string, definition: string) => {
+    const cols = database.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+    if (!cols.some((c) => c.name === column)) {
+      database.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    }
+  };
+
+  // messages: attachments / reply_to_id / pinned were added after the first
+  // release of the messages table.
+  ensureColumn('messages', 'attachments', "TEXT NOT NULL DEFAULT '[]'");
+  ensureColumn('messages', 'reply_to_id', 'INTEGER');
+  ensureColumn('messages', 'pinned', 'INTEGER NOT NULL DEFAULT 0');
+
+  // clients: linked_site_ids added for the health score.
+  ensureColumn('clients', 'linked_site_ids', "TEXT NOT NULL DEFAULT '[]'");
 }
 
 function seedQuotes(database: Database.Database): void {

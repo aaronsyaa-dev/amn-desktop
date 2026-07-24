@@ -35,8 +35,30 @@ export function computeClientHealth(
   return 'good';
 }
 
-export const CLIENT_HEALTH_META: Record<ClientHealth, { label: string; dot: string; text: string }> = {
-  good: { label: 'Bon', dot: 'bg-success', text: 'text-text-primary' },
-  medium: { label: 'Moyen', dot: 'bg-warning', text: 'text-text-secondary' },
-  attention: { label: 'À surveiller', dot: 'bg-danger', text: 'text-danger' },
+export const CLIENT_HEALTH_META: Record<
+  ClientHealth,
+  { label: string; dot: string; text: string; hint: string }
+> = {
+  good: {
+    label: 'Bon',
+    dot: 'bg-success',
+    text: 'text-text-primary',
+    hint: 'Contact récent et sites liés opérationnels.',
+  },
+  medium: {
+    label: 'Moyen',
+    dot: 'bg-warning',
+    text: 'text-text-secondary',
+    hint: 'Contact qui date un peu, ou un site lié dégradé — à relancer bientôt.',
+  },
+  attention: {
+    label: 'À surveiller',
+    dot: 'bg-danger',
+    text: 'text-danger',
+    hint: 'Contact ancien (60 j+) ou un site lié hors ligne — action recommandée.',
+  },
 };
+
+/** One-line, plain-language explanation of what the score combines. */
+export const CLIENT_HEALTH_EXPLAINER =
+  'Santé = ancienneté du dernier échange + état des sites supervisés de ce client.';

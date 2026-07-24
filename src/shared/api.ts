@@ -24,6 +24,55 @@ export interface AuthResult {
   error?: string;
 }
 
+/* ------------------------------ Profiles ------------------------------ */
+
+/**
+ * Per-user profile. Shared across both operators (see amn-api profiles
+ * collection) so each sees the other's photo and presence text everywhere.
+ */
+export interface UserProfile {
+  email: string;
+  name: string;
+  /** Data-URL of an uploaded avatar, or '' for initials fallback. */
+  photoDataUrl: string;
+  /** Short custom presence text, e.g. "en mission chez client". */
+  presenceText: string;
+  updatedAt: string;
+}
+
+export interface UpdateProfileInput {
+  name?: string;
+  photoDataUrl?: string;
+  presenceText?: string;
+}
+
+export interface ChangePasswordInput {
+  email: string;
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface ChangePasswordResult {
+  ok: boolean;
+  error?: string;
+}
+
+/* --------------------------- Notification prefs --------------------------- */
+
+export interface NotificationPrefs {
+  siteOffline: boolean;
+  criticalAlert: boolean;
+  mention: boolean;
+  taskAssigned: boolean;
+}
+
+export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
+  siteOffline: true,
+  criticalAlert: true,
+  mention: true,
+  taskAssigned: true,
+};
+
 export interface MessageAttachment {
   /** Data-URL of an inline image. Kept small (client-side resized before send). */
   dataUrl: string;
@@ -347,6 +396,17 @@ export type RemoteConnectionStatus = 'connecting' | 'online' | 'offline' | 'unco
 export interface AmnBridge {
   auth: {
     login(email: string, password: string): Promise<AuthResult>;
+    changePassword(input: ChangePasswordInput): Promise<ChangePasswordResult>;
+  };
+  profiles: {
+    /** All operator profiles, so avatars/presence text render everywhere. */
+    list(): Promise<UserProfile[]>;
+    get(email: string): Promise<UserProfile>;
+    updateSelf(email: string, patch: UpdateProfileInput): Promise<UserProfile>;
+  };
+  prefs: {
+    get(email: string): Promise<NotificationPrefs>;
+    update(email: string, patch: Partial<NotificationPrefs>): Promise<NotificationPrefs>;
   };
   messages: {
     list(): Promise<Message[]>;
@@ -365,6 +425,7 @@ export interface AmnBridge {
     list(): Promise<Quote[]>;
     create(input: CreateQuoteInput): Promise<Quote>;
     update(id: number, patch: UpdateQuoteInput): Promise<Quote>;
+    remove(id: number): Promise<void>;
   };
   tasks: {
     list(): Promise<SharedTask[]>;
@@ -375,6 +436,7 @@ export interface AmnBridge {
   decisions: {
     list(): Promise<Decision[]>;
     create(input: CreateDecisionInput): Promise<Decision>;
+    remove(id: number): Promise<void>;
   };
   knowledge: {
     list(): Promise<KnowledgeDoc[]>;
@@ -420,6 +482,12 @@ export interface AmnBridge {
 /** IPC channel names, kept in one place to avoid string drift. */
 export const IPC = {
   authLogin: 'auth:login',
+  authChangePassword: 'auth:changePassword',
+  profilesList: 'profiles:list',
+  profilesGet: 'profiles:get',
+  profilesUpdateSelf: 'profiles:updateSelf',
+  prefsGet: 'prefs:get',
+  prefsUpdate: 'prefs:update',
   messagesList: 'messages:list',
   messagesSend: 'messages:send',
   messagesReact: 'messages:react',
@@ -431,12 +499,14 @@ export const IPC = {
   quotesList: 'quotes:list',
   quotesCreate: 'quotes:create',
   quotesUpdate: 'quotes:update',
+  quotesRemove: 'quotes:remove',
   tasksList: 'tasks:list',
   tasksCreate: 'tasks:create',
   tasksUpdate: 'tasks:update',
   tasksRemove: 'tasks:remove',
   decisionsList: 'decisions:list',
   decisionsCreate: 'decisions:create',
+  decisionsRemove: 'decisions:remove',
   knowledgeList: 'knowledge:list',
   knowledgeCreate: 'knowledge:create',
   knowledgeUpdate: 'knowledge:update',

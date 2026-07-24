@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Logo } from '../components/Logo';
+import { triggerPrint } from '../lib/print';
 import type { AssistantReport } from './types';
 import { ReportBlocks } from './ReportBlocks';
 
@@ -17,16 +18,7 @@ export function PrintPortal({
   report: AssistantReport;
   onDone: () => void;
 }) {
-  useEffect(() => {
-    const handleAfterPrint = () => onDone();
-    window.addEventListener('afterprint', handleAfterPrint);
-    // Let the portal paint before invoking the (blocking) print dialog.
-    const raf = requestAnimationFrame(() => window.print());
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('afterprint', handleAfterPrint);
-    };
-  }, [onDone]);
+  useEffect(() => triggerPrint(onDone), [onDone]);
 
   const generated = new Date(report.generatedAt).toLocaleString('fr-FR');
 

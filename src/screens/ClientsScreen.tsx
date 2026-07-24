@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Globe, ImagePlus, Mail, Phone, Plus, Printer, X } from 'lucide-react';
+import { FileText, Globe, ImagePlus, Info, Mail, Phone, Plus, Printer, X } from 'lucide-react';
 import { bridge } from '../lib/bridge';
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
 import { StatusBadge } from '../components/StatusBadge';
-import { computeClientHealth, CLIENT_HEALTH_META } from '../lib/clientHealth';
+import { computeClientHealth, CLIENT_HEALTH_META, CLIENT_HEALTH_EXPLAINER } from '../lib/clientHealth';
+import { ConfirmDelete } from '../components/ConfirmDelete';
 import { trackerCatalog } from '../data/trackerCatalog';
 import { QuotePrintPortal } from '../assistant/QuotePrintPortal';
 import type {
@@ -123,6 +124,11 @@ export function ClientsScreen() {
     replaceQuote(updated);
   };
 
+  const removeQuote = async (id: number) => {
+    setQuotes((prev) => prev.filter((q) => q.id !== id));
+    await bridge().quotes.remove(id);
+  };
+
   return (
     <section className="flex h-[calc(100vh-8rem)] flex-col gap-4">
       <div className="flex items-end justify-between gap-4">
@@ -162,6 +168,7 @@ export function ClientsScreen() {
             onAddEvent={addEvent}
             onCreateQuote={createQuote}
             onPatchQuote={patchQuote}
+            onRemoveQuote={removeQuote}
           />
         ) : (
           <div className="flex items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted">
@@ -230,7 +237,10 @@ function ClientList({
                     {client.company || '—'}
                   </p>
                 </div>
-                <span className="flex flex-col items-center gap-1.5" title={`Santé : ${health.label}`}>
+                <span
+                  className="flex flex-col items-center gap-1.5"
+                  title={`Statut : ${meta.label}\nSanté relation : ${health.label} — ${health.hint}`}
+                >
                   <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
                   <span className={`h-1.5 w-1.5 rounded-full ${health.dot}`} />
                 </span>
@@ -272,6 +282,7 @@ function ClientDetail({
   onAddEvent,
   onCreateQuote,
   onPatchQuote,
+  onRemoveQuote,
 }: {
   client: Client;
   sites: DerivedSite[];
@@ -280,6 +291,7 @@ function ClientDetail({
   onAddEvent: (id: number, title: string, detail: string) => Promise<void>;
   onCreateQuote: (input: CreateQuoteInput) => Promise<Quote>;
   onPatchQuote: (id: number, p: { status?: QuoteStatus; paymentStatus?: PaymentStatus }) => Promise<void>;
+  onRemoveQuote: (id: number) => Promise<void>;
 }) {
   return (
     <div className="min-h-0 overflow-y-auto border border-border bg-surface">
@@ -291,7 +303,7 @@ function ClientDetail({
           <NotesBlock client={client} onPatch={onPatch} />
         </div>
         <div className="flex flex-col gap-6">
-          <QuotesBlock client={client} quotes={quotes} onCreate={onCreateQuote} onPatch={onPatchQuote} />
+          <QuotesBlock client={client} quotes={quotes} onCreate={onCreateQuote} onPatch={onPatchQuote} onRemove={onRemoveQuote} />
           <TimelineBlock client={client} onAddEvent={onAddEvent} />
         </div>
       </div>
@@ -363,12 +375,18 @@ function ClientHeader({
           className="font-mono text-sm text-text-secondary"
           placeholder="Société"
         />
-        <div className="mt-1.5 flex items-center gap-1.5" title="Ancienneté du dernier contact + statut des sites liés">
-          <span className={`h-1.5 w-1.5 rounded-full ${health.dot}`} />
-          <span className={`font-mono text-[10px] uppercase tracking-wider ${health.text}`}>
-            Santé : {health.label}
+        <div
+          className="group/health mt-2 inline-flex items-center gap-1.5 border border-border px-2 py-1"
+          title={`${CLIENT_HEALTH_EXPLAINER} ${health.hint}`}
+        >
+          <span className={`h-2 w-2 rounded-full ${health.dot}`} />
+          <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+            Santé relation
           </span>
+          <span className={`text-xs font-semibold ${health.text}`}>{health.label}</span>
+          <Info size={11} strokeWidth={2} className="text-text-muted" />
         </div>
+        <p className="mt-1 max-w-md text-[11px] leading-snug text-text-muted">{health.hint}</p>
       </div>
 
       <StatusSelector
@@ -625,11 +643,13 @@ function QuotesBlock({
   quotes,
   onCreate,
   onPatch,
+  onRemove,
 }: {
   client: Client;
   quotes: Quote[];
   onCreate: (input: CreateQuoteInput) => Promise<Quote>;
   onPatch: (id: number, p: { status?: QuoteStatus; paymentStatus?: PaymentStatus }) => Promise<void>;
+  onRemove: (id: number) => Promise<void>;
 }) {
   const [creating, setCreating] = useState(false);
   const [printing, setPrinting] = useState<Quote | null>(null);
@@ -655,7 +675,13 @@ function QuotesBlock({
       ) : (
         <div className="flex flex-col gap-2">
           {quotes.map((quote) => (
-            <QuoteRow key={quote.id} quote={quote} onPatch={onPatch} onPrint={() => setPrinting(quote)} />
+            <QuoteRow
+              key={quote.id}
+              quote={quote}
+              onPatch={onPatch}
+              onPrint={() => setPrinting(quote)}
+              onRemove={() => onRemove(quote.id)}
+            />
           ))}
         </div>
       )}
@@ -674,10 +700,12 @@ function QuoteRow({
   quote,
   onPatch,
   onPrint,
+  onRemove,
 }: {
   quote: Quote;
   onPatch: (id: number, p: { status?: QuoteStatus; paymentStatus?: PaymentStatus }) => Promise<void>;
   onPrint: () => void;
+  onRemove: () => void;
 }) {
   const offer = trackerCatalog.find((o) => o.id === quote.trackerTier);
   const statusMeta = QUOTE_STATUS_META[quote.status];
@@ -692,14 +720,17 @@ function QuoteRow({
             {offer?.name ?? quote.trackerTier} · {quote.priceEuro.toLocaleString('fr-FR')} €
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onPrint}
-          aria-label="Imprimer / exporter en PDF"
-          className="flex-shrink-0 text-text-muted hover:text-text-primary"
-        >
-          <Printer size={14} strokeWidth={1.75} />
-        </button>
+        <div className="flex flex-shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={onPrint}
+            aria-label="Imprimer / exporter en PDF"
+            className="flex h-6 w-6 items-center justify-center rounded text-text-muted hover:bg-surface-hover hover:text-text-primary"
+          >
+            <Printer size={14} strokeWidth={1.75} />
+          </button>
+          <ConfirmDelete onConfirm={onRemove} label="Supprimer le devis" />
+        </div>
       </div>
 
       <div className="mt-2.5 flex flex-wrap items-center gap-3">

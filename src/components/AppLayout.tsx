@@ -9,16 +9,18 @@ import { CommandPaletteProvider } from './command-palette/CommandPalette';
 import { AssistantProvider } from '../assistant/AssistantContext';
 import { AssistantPanel } from '../assistant/AssistantPanel';
 import { RemoteSitesProvider } from '../state/RemoteSitesContext';
+import { ProfilesProvider } from '../state/ProfilesContext';
 import { variantsForPath } from '../lib/transitions';
 
 export function AppLayout() {
   const location = useLocation();
 
   return (
-    <RemoteSitesProvider>
-      <SitePanelProvider>
-        <AssistantProvider>
-          <CommandPaletteProvider>
+    <ProfilesProvider>
+      <RemoteSitesProvider>
+        <SitePanelProvider>
+          <AssistantProvider>
+            <CommandPaletteProvider>
             <div className="flex h-screen overflow-hidden text-text-primary">
               <Sidebar />
               <main className="relative flex-1 overflow-y-auto">
@@ -38,11 +40,12 @@ export function AppLayout() {
                 </div>
               </main>
             </div>
-            <SiteDetailPanel />
-            <AssistantPanel />
-          </CommandPaletteProvider>
-        </AssistantProvider>
-      </SitePanelProvider>
-    </RemoteSitesProvider>
+              <SiteDetailPanel />
+              <AssistantPanel />
+            </CommandPaletteProvider>
+          </AssistantProvider>
+        </SitePanelProvider>
+      </RemoteSitesProvider>
+    </ProfilesProvider>
   );
 }

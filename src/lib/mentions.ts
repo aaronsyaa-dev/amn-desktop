@@ -5,17 +5,17 @@ export type MessageSegment =
   | { type: 'mention'; site: DerivedSite }
   | { type: 'link'; url: string };
 
-const URL_RE = /(https?:\/\/[^\s]+)/g;
-
-/** Splits a plain-text run into text/link segments by detecting bare URLs. */
+// NOTE: a capturing split pattern keeps the URLs in the resulting array. It is
+// created fresh per call — a shared /g regex is stateful across .test()/.exec()
+// and would misclassify segments on repeated renders.
 function splitLinks(text: string): MessageSegment[] {
-  const parts = text.split(URL_RE);
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
   return parts
     .filter((part) => part.length > 0)
     .map((part) =>
-      URL_RE.test(part) && part.match(/^https?:\/\//)
-        ? { type: 'link' as const, url: part }
-        : { type: 'text' as const, value: part },
+      /^https?:\/\/\S+$/.test(part)
+        ? ({ type: 'link', url: part } as const)
+        : ({ type: 'text', value: part } as const),
     );
 }
 

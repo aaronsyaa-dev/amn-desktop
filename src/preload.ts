@@ -27,6 +27,17 @@ const bridge: AmnBridge = {
   auth: {
     login: (email, password) =>
       ipcRenderer.invoke(IPC.authLogin, { email, password }),
+    changePassword: (input) => ipcRenderer.invoke(IPC.authChangePassword, input),
+  },
+  profiles: {
+    list: () => ipcRenderer.invoke(IPC.profilesList),
+    get: (email: string) => ipcRenderer.invoke(IPC.profilesGet, email),
+    updateSelf: (email: string, patch) =>
+      ipcRenderer.invoke(IPC.profilesUpdateSelf, { email, patch }),
+  },
+  prefs: {
+    get: (email: string) => ipcRenderer.invoke(IPC.prefsGet, email),
+    update: (email: string, patch) => ipcRenderer.invoke(IPC.prefsUpdate, { email, patch }),
   },
   messages: {
     list: () => ipcRenderer.invoke(IPC.messagesList),
@@ -51,6 +62,7 @@ const bridge: AmnBridge = {
     create: (input: CreateQuoteInput) => ipcRenderer.invoke(IPC.quotesCreate, input),
     update: (id: number, patch: UpdateQuoteInput) =>
       ipcRenderer.invoke(IPC.quotesUpdate, { id, patch }),
+    remove: (id: number) => ipcRenderer.invoke(IPC.quotesRemove, id),
   },
   tasks: {
     list: () => ipcRenderer.invoke(IPC.tasksList),
@@ -62,6 +74,7 @@ const bridge: AmnBridge = {
   decisions: {
     list: () => ipcRenderer.invoke(IPC.decisionsList),
     create: (input: CreateDecisionInput) => ipcRenderer.invoke(IPC.decisionsCreate, input),
+    remove: (id: number) => ipcRenderer.invoke(IPC.decisionsRemove, id),
   },
   knowledge: {
     list: () => ipcRenderer.invoke(IPC.knowledgeList),
