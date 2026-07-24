@@ -1,33 +1,39 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import {
-  Ban,
-  ShieldOff,
-  TrendingDown,
-  TrendingUp,
-  Users,
-  X,
-} from 'lucide-react';
-import { getSiteById } from '../../data/mockSites';
-import type { Alert, Site } from '../../types/site';
+import { Ban, ShieldOff, Users, X } from 'lucide-react';
+import { useRemoteSite, useRemoteSites, type DerivedSite } from '../../state/RemoteSitesContext';
 import { StatusBadge } from '../StatusBadge';
 import { AreaChart } from '../AreaChart';
-import { ALERT_SEVERITY_CONFIG, ALERT_TYPE_CONFIG } from '../../lib/alerts';
-import { compactEuro, euro, relativeTime } from '../../lib/time';
+import { ALERT_SEVERITY_CONFIG } from '../../lib/alerts';
+import {
+  remoteEventDetail,
+  remoteEventIcon,
+  remoteEventLabel,
+} from '../../lib/remoteEventDisplay';
+import { buildActivitySeries } from '../../lib/eventStats';
+import { relativeTime } from '../../lib/time';
 import { useSitePanel } from './SitePanelContext';
 import { ActionButton } from './ActionButton';
+import type { DerivedStatus } from '../../lib/siteStatus';
+import type { RemoteEvent } from '../../shared/api';
 
-const STATUS_ACCENT: Record<Site['status'], string> = {
+const STATUS_ACCENT: Record<DerivedStatus, string> = {
   online: 'var(--color-success)',
   degraded: 'var(--color-warning)',
   offline: 'var(--color-danger)',
+  unknown: 'var(--color-text-muted)',
 };
 
 const PANEL_SPRING = { type: 'spring' as const, stiffness: 360, damping: 34 };
 
 export function SiteDetailPanel() {
   const { activeSiteId, close } = useSitePanel();
-  const site = activeSiteId ? getSiteById(activeSiteId) : undefined;
+  const site = useRemoteSite(activeSiteId ?? undefined);
+  const { eventsBySite, ensureEventsLoaded } = useRemoteSites();
+
+  useEffect(() => {
+    if (activeSiteId) ensureEventsLoaded(activeSiteId);
+  }, [activeSiteId, ensureEventsLoaded]);
 
   useEffect(() => {
     if (!site) return;
@@ -37,6 +43,8 @@ export function SiteDetailPanel() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [site, close]);
+
+  const events = (activeSiteId && eventsBySite[activeSiteId]) || [];
 
   return (
     <AnimatePresence>
@@ -61,8 +69,8 @@ export function SiteDetailPanel() {
           >
             <PanelHeader site={site} onClose={close} />
             <div className="flex-1 overflow-y-auto px-6 py-6">
-              <AnalyticsSection site={site} />
-              <SecuritySection alerts={site.alerts} />
+              <ActivitySection site={site} events={events} />
+              <SecuritySection events={events} />
               <ActionsSection />
             </div>
           </motion.aside>
@@ -72,7 +80,7 @@ export function SiteDetailPanel() {
   );
 }
 
-function PanelHeader({ site, onClose }: { site: Site; onClose: () => void }) {
+function PanelHeader({ site, onClose }: { site: DerivedSite; onClose: () => void }) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
       <div className="min-w-0">
@@ -82,12 +90,9 @@ function PanelHeader({ site, onClose }: { site: Site; onClose: () => void }) {
           </h2>
           <StatusBadge status={site.status} />
         </div>
-        <a
-          className="mt-1 block truncate text-sm text-text-secondary transition-colors hover:text-accent"
-          href={site.url}
-        >
-          {site.url}
-        </a>
+        <p className="mt-1 truncate font-mono text-xs text-text-muted">
+          #{site.id}
+        </p>
       </div>
       <button
         type="button"
@@ -118,55 +123,46 @@ function SectionTitle({
   );
 }
 
-function AnalyticsSection({ site }: { site: Site }) {
-  const { analytics } = site;
-  const revenueUp = analytics.revenueTrendPct >= 0;
-  const TrendIcon = revenueUp ? TrendingUp : TrendingDown;
+function ActivitySection({ site, events }: { site: DerivedSite; events: RemoteEvent[] }) {
+  const activity = useMemo(() => buildActivitySeries(events), [events]);
+  const activeVisitors = site.state?.activeVisitors ?? 0;
+  const lastSeen = site.state?.lastSeenAt;
 
   return (
     <section className="mb-8">
-      <SectionTitle>Analytics</SectionTitle>
+      <SectionTitle>Activité</SectionTitle>
 
       <div className="grid grid-cols-3 gap-3">
         <StatTile
           label="Visiteurs actifs"
-          value={analytics.activeVisitors.toLocaleString('fr-FR')}
+          value={activeVisitors.toLocaleString('fr-FR')}
           accent={
-            site.status !== 'offline' && analytics.activeVisitors > 0 ? (
-              <LivePulse />
-            ) : undefined
+            site.status !== 'offline' && activeVisitors > 0 ? <LivePulse /> : undefined
           }
         />
         <StatTile
-          label="CA aujourd'hui"
-          value={compactEuro(analytics.revenueToday)}
+          label="Dernier heartbeat"
+          value={lastSeen ? relativeTime(lastSeen) : 'Jamais'}
+          mono={false}
         />
-        <StatTile label="Disponibilité" value={`${site.uptimePercentage}%`} />
+        <StatTile label="Statut" value={site.status} mono={false} />
       </div>
 
-      <div className="mt-4 rounded-xl border border-border bg-surface p-4">
+      <div className="mt-4 border border-border bg-surface p-4">
         <div className="mb-2 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-text-secondary">
             <Users size={14} strokeWidth={1.75} />
-            Visiteurs · 7 jours
+            Volume d’événements · 24h
           </div>
-          <div className="flex items-center gap-1 font-mono text-xs font-medium text-text-secondary">
-            <TrendIcon size={13} strokeWidth={2} />
-            {revenueUp ? '+' : ''}
-            {analytics.revenueTrendPct}%
-          </div>
-        </div>
-        <AreaChart
-          data={analytics.visitors7d}
-          color={STATUS_ACCENT[site.status]}
-          height={64}
-        />
-        <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
-          <span className="text-text-secondary">CA du mois</span>
-          <span className="tnum font-semibold text-text-primary">
-            {euro(analytics.revenueMonth)}
+          <span className="tnum text-xs text-text-secondary">
+            {events.length} au total
           </span>
         </div>
+        <AreaChart data={activity} color={STATUS_ACCENT[site.status]} height={64} />
+        <p className="mt-3 border-t border-border pt-3 text-xs text-text-muted">
+          Analytics business (CA, conversion) — disponible avec le palier{' '}
+          <span className="text-text-secondary">AMN Suite</span> (voir l’onglet Tracker).
+        </p>
       </div>
     </section>
   );
@@ -176,16 +172,22 @@ function StatTile({
   label,
   value,
   accent,
+  mono = true,
 }: {
   label: string;
   value: string;
   accent?: React.ReactNode;
+  mono?: boolean;
 }) {
   return (
     <div className="border border-border bg-surface p-3">
       <div className="flex items-center gap-1.5">
         {accent}
-        <p className="tnum text-lg font-semibold text-text-primary">{value}</p>
+        <p
+          className={`truncate text-lg font-semibold uppercase text-text-primary ${mono ? 'tnum' : ''}`}
+        >
+          {value}
+        </p>
       </div>
       <p className="mt-0.5 text-xs text-text-secondary">{label}</p>
     </div>
@@ -201,33 +203,35 @@ function LivePulse() {
   );
 }
 
-function SecuritySection({ alerts }: { alerts: Alert[] }) {
+function SecuritySection({ events }: { events: RemoteEvent[] }) {
+  const alerts = events.filter((e) => e.type === 'security_alert');
+
   return (
     <section className="mb-8">
       <SectionTitle
-        aside={
-          <span className="text-xs text-text-muted">{alerts.length} événements</span>
-        }
+        aside={<span className="text-xs text-text-muted">{alerts.length} événements</span>}
       >
         Sécurité
       </SectionTitle>
-      <ol className="relative">
-        {alerts.map((alert, index) => (
-          <TimelineItem
-            key={alert.id}
-            alert={alert}
-            isLast={index === alerts.length - 1}
-          />
-        ))}
-      </ol>
+      {alerts.length === 0 ? (
+        <p className="text-sm text-text-secondary">
+          Aucune alerte de sécurité pour l’instant.
+        </p>
+      ) : (
+        <ol className="relative">
+          {alerts.map((alert, index) => (
+            <TimelineItem key={alert.id} event={alert} isLast={index === alerts.length - 1} />
+          ))}
+        </ol>
+      )}
     </section>
   );
 }
 
-function TimelineItem({ alert, isLast }: { alert: Alert; isLast: boolean }) {
-  const typeConfig = ALERT_TYPE_CONFIG[alert.type];
-  const severity = ALERT_SEVERITY_CONFIG[alert.severity];
-  const Icon = typeConfig.icon;
+function TimelineItem({ event, isLast }: { event: RemoteEvent; isLast: boolean }) {
+  const severity = ALERT_SEVERITY_CONFIG[event.severity ?? 'info'];
+  const Icon = remoteEventIcon(event);
+  const detail = remoteEventDetail(event);
 
   return (
     <li className="relative flex gap-3.5 pb-5 last:pb-0">
@@ -242,13 +246,13 @@ function TimelineItem({ alert, isLast }: { alert: Alert; isLast: boolean }) {
       <div className="min-w-0 flex-1 pt-0.5">
         <div className="flex items-center justify-between gap-2">
           <p className="truncate text-sm font-medium text-text-primary">
-            {alert.title}
+            {remoteEventLabel(event)}
           </p>
           <time className="flex-shrink-0 text-xs text-text-muted">
-            {relativeTime(alert.timestamp)}
+            {relativeTime(event.occurredAt)}
           </time>
         </div>
-        <p className="mt-0.5 text-sm text-text-secondary">{alert.detail}</p>
+        {detail && <p className="mt-0.5 text-sm text-text-secondary">{detail}</p>}
       </div>
     </li>
   );

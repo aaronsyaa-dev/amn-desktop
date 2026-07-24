@@ -3,8 +3,10 @@
  *
  * This module is the ONLY integration boundary for the assistant. Every piece
  * of generated content flows through the functions below. Today they synthesise
- * responses from local mock data (see `reportContent.ts` / `mockData.ts`) with a
- * small simulated latency so the UX matches a real network call.
+ * responses from real amn-api data (sites + event history, passed in by the
+ * caller — see AssistantContext.tsx, which sources them from
+ * RemoteSitesContext) with a small simulated latency so the UX matches a real
+ * network call.
  *
  * To go live with Claude, replace the bodies of `generateReport` and
  * `runAssistant` with a call to the Anthropic Messages API:
@@ -21,8 +23,8 @@
  * present at this stage by design.
  */
 
-import { getSiteById, mockSites } from '../data/mockSites';
-import type { Site } from '../types/site';
+import type { RemoteEvent } from '../shared/api';
+import type { DerivedSite } from '../state/RemoteSitesContext';
 import type {
   AssistantReport,
   AssistantTurn,
@@ -39,6 +41,8 @@ export {
   getWatchItems,
 } from './mockData';
 
+type EventsMap = Record<string, RemoteEvent[]>;
+
 /** Simulated model latency so the UI exercises its loading states. */
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -53,28 +57,38 @@ function uid(prefix: string): string {
  * make the future integration obvious and to keep the mock grounded in the same
  * inputs the live version will use.
  */
-export function buildContext(request: ReportRequest) {
+export function buildContext(
+  request: ReportRequest,
+  sites: DerivedSite[],
+  eventsBySite: EventsMap,
+) {
   if (request.scope === 'site' && request.siteId) {
-    const site = getSiteById(request.siteId);
-    return { scope: 'site' as const, site };
+    const site = sites.find((s) => s.id === request.siteId);
+    return { scope: 'site' as const, site, events: eventsBySite[request.siteId] ?? [] };
   }
-  return { scope: 'global' as const, sites: mockSites };
+  return { scope: 'global' as const, sites, eventsBySite };
 }
 
 /**
- * Generates a structured report. MOCK: builds from local data.
- * LIVE: send `buildContext(request)` + a system prompt to the Messages API and
- * parse the returned blocks.
+ * Generates a structured report. MOCK: builds from real site/event data.
+ * LIVE: send `buildContext(request, sites, eventsBySite)` + a system prompt to
+ * the Messages API and parse the returned blocks.
+ *
+ * Callers must ensure the relevant event history is already loaded (via
+ * RemoteSitesContext's `loadEvents`) before calling this — it does not fetch.
  */
 export async function generateReport(
   request: ReportRequest,
+  sites: DerivedSite[],
+  eventsBySite: EventsMap,
 ): Promise<AssistantReport> {
   await delay(750);
 
+  const site = request.siteId ? sites.find((s) => s.id === request.siteId) : undefined;
   const draft =
-    request.scope === 'site' && request.siteId
-      ? buildSiteReport(getSiteById(request.siteId) as Site, request.mode)
-      : buildGlobalReport(request.mode);
+    request.scope === 'site' && site
+      ? buildSiteReport(site, eventsBySite[site.id] ?? [], request.mode)
+      : buildGlobalReport(sites, eventsBySite, request.mode);
 
   return {
     id: uid('report'),
@@ -94,13 +108,13 @@ interface Intent {
 }
 
 /** Lightweight intent detection. LIVE: this becomes the model's job. */
-export function parseIntent(prompt: string): Intent {
+export function parseIntent(prompt: string, sites: DerivedSite[]): Intent {
   const lower = prompt.toLowerCase();
   const wantsReport = /\brapport\b|\bbilan\b|g[eé]n[eè]re|generate|report/.test(
     lower,
   );
 
-  const matchedSite = mockSites.find((site) => {
+  const matchedSite = sites.find((site) => {
     const name = site.name.toLowerCase();
     if (lower.includes(name)) return true;
     return name
@@ -119,28 +133,46 @@ export function parseIntent(prompt: string): Intent {
  * Runs one assistant turn from a free-text prompt.
  * MOCK: routes to a report or a data-grounded answer.
  * LIVE: forward `prompt` (+ context) to the Messages API.
+ *
+ * Like generateReport, this assumes the necessary event history is already
+ * loaded in `eventsBySite` — the caller is responsible for that (a report
+ * about a specific site needs that site's events; a global report/question
+ * benefits from all sites' events being loaded).
  */
-export async function runAssistant(prompt: string): Promise<AssistantTurn> {
-  const intent = parseIntent(prompt);
+export async function runAssistant(
+  prompt: string,
+  sites: DerivedSite[],
+  eventsBySite: EventsMap,
+): Promise<AssistantTurn> {
+  const intent = parseIntent(prompt, sites);
 
   if (intent.kind === 'report') {
     const request: ReportRequest = intent.siteId
       ? { scope: 'site', siteId: intent.siteId, mode: 'internal' }
       : { scope: 'global', mode: 'internal' };
-    const report = await generateReport(request);
+    const report = await generateReport(request, sites, eventsBySite);
     return { kind: 'report', request, report };
   }
 
   await delay(600);
-  return { kind: 'answer', blocks: buildAnswer(prompt) };
+  return { kind: 'answer', blocks: buildAnswer(prompt, sites, eventsBySite) };
 }
 
 /** Data-grounded free-text answers for common questions (mock). */
-function buildAnswer(prompt: string): ReportBlock[] {
+function buildAnswer(prompt: string, sites: DerivedSite[], eventsBySite: EventsMap): ReportBlock[] {
   const lower = prompt.toLowerCase();
 
+  if (sites.length === 0) {
+    return [
+      {
+        type: 'paragraph',
+        text: 'Aucun site n’est encore enregistré. Rendez-vous dans l’onglet Sites pour en enregistrer un, puis installez le tracker (onglet Tracker) pour que je puisse commencer à analyser des données réelles.',
+      },
+    ];
+  }
+
   if (/hors ligne|offline|down|indisponible/.test(lower)) {
-    const offline = mockSites.filter((s) => s.status !== 'online');
+    const offline = sites.filter((s) => s.status !== 'online');
     return [
       {
         type: 'paragraph',
@@ -152,38 +184,42 @@ function buildAnswer(prompt: string): ReportBlock[] {
         ? ([
             {
               type: 'list',
-              items: offline.map(
-                (s) =>
-                  `${s.name} — ${s.status === 'offline' ? 'hors ligne' : 'dégradé'} (${s.uptimePercentage} % de dispo)`,
-              ),
+              items: offline.map((s) => `${s.name} — ${s.status}`),
             },
           ] as ReportBlock[])
         : []),
     ];
   }
 
-  if (/vuln[eé]rabilit|cve|faille/.test(lower)) {
-    const withVulns = mockSites.filter((s) => s.openVulnerabilities > 0);
-    const total = withVulns.reduce((n, s) => n + s.openVulnerabilities, 0);
+  if (/vuln[eé]rabilit|cve|faille|alerte/.test(lower)) {
+    const withAlerts = sites
+      .map((s) => ({
+        site: s,
+        count: (eventsBySite[s.id] ?? []).filter((e) => e.type === 'security_alert').length,
+      }))
+      .filter((x) => x.count > 0);
+    const total = withAlerts.reduce((n, x) => n + x.count, 0);
     return [
       {
         type: 'paragraph',
-        text: `${total} vulnérabilité(s) ouverte(s) sur ${withVulns.length} site(s). Détail :`,
+        text:
+          total > 0
+            ? `${total} alerte(s) de sécurité dans l’historique chargé, sur ${withAlerts.length} site(s). Détail :`
+            : 'Aucune alerte de sécurité dans l’historique actuellement chargé.',
       },
-      {
-        type: 'list',
-        items: withVulns.map(
-          (s) => `${s.name} — ${s.openVulnerabilities} vulnérabilité(s)`,
-        ),
-      },
+      ...(withAlerts.length > 0
+        ? ([
+            {
+              type: 'list',
+              items: withAlerts.map((x) => `${x.site.name} — ${x.count} alerte(s)`),
+            },
+          ] as ReportBlock[])
+        : []),
     ];
   }
 
   if (/visiteur|trafic|audience/.test(lower)) {
-    const totalActive = mockSites.reduce(
-      (n, s) => n + s.analytics.activeVisitors,
-      0,
-    );
+    const totalActive = sites.reduce((n, s) => n + (s.state?.activeVisitors ?? 0), 0);
     return [
       {
         type: 'paragraph',
@@ -193,11 +229,11 @@ function buildAnswer(prompt: string): ReportBlock[] {
   }
 
   // Generic, contextual fallback.
-  const online = mockSites.filter((s) => s.status === 'online').length;
+  const online = sites.filter((s) => s.status === 'online').length;
   return [
     {
       type: 'paragraph',
-      text: `Je supervise vos ${mockSites.length} sites (${online} en ligne). Je peux générer un rapport (« génère un rapport sur Ledger Pay API », ou un rapport global), répondre à vos questions sur l’état du parc, ou vous préparer un résumé. Que souhaitez-vous ?`,
+      text: `Je supervise vos ${sites.length} sites (${online} en ligne). Je peux générer un rapport (« génère un rapport sur ${sites[0]?.name ?? 'un site'} », ou un rapport global), répondre à vos questions sur l’état du parc, ou vous préparer un résumé. Que souhaitez-vous ?`,
     },
   ];
 }

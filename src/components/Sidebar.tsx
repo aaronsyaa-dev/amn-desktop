@@ -13,7 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import { mockSites } from '../data/mockSites';
+import { useRemoteSites } from '../state/RemoteSitesContext';
 import { StatusBadge } from './StatusBadge';
 import { Logo, LogoMark } from './Logo';
 import { useSitePanel } from './site-panel/SitePanelContext';
@@ -45,6 +45,7 @@ export function Sidebar() {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const { openSite } = useSitePanel();
+  const { sites } = useRemoteSites();
 
   const isActive = (to: string) =>
     to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
@@ -195,21 +196,27 @@ export function Sidebar() {
                 Sites surveillés
               </p>
               <div className="flex flex-col gap-0.5 px-2">
-                {mockSites.map((site) => (
-                  <button
-                    key={site.id}
-                    type="button"
-                    onClick={() => {
-                      setIsSitesFlyoutOpen(false);
-                      if (location.pathname !== '/sites') navigate('/sites');
-                      openSite(site.id);
-                    }}
-                    className="flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary"
-                  >
-                    <span className="truncate">{site.name}</span>
-                    <StatusBadge status={site.status} />
-                  </button>
-                ))}
+                {sites.length === 0 ? (
+                  <p className="px-3 py-4 text-sm text-text-muted">
+                    Aucun site enregistré. Ajoutez-en un depuis l’onglet Sites.
+                  </p>
+                ) : (
+                  sites.map((site) => (
+                    <button
+                      key={site.id}
+                      type="button"
+                      onClick={() => {
+                        setIsSitesFlyoutOpen(false);
+                        if (location.pathname !== '/sites') navigate('/sites');
+                        openSite(site.id);
+                      }}
+                      className="flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary"
+                    >
+                      <span className="truncate">{site.name}</span>
+                      <StatusBadge status={site.status} />
+                    </button>
+                  ))
+                )}
               </div>
             </motion.div>
           </React.Fragment>

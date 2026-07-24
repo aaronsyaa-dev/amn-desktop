@@ -1,6 +1,7 @@
-import { getGlobalAlerts } from '../data/mockSites';
-import { getInsights, getWatchItems } from '../assistant/engine';
-import type { AlertSeverity } from '../types/site';
+import type { Insight, WatchItem } from '../assistant/types';
+import type { Message, RemoteEvent, RemoteSeverity } from '../shared/api';
+import type { DerivedSite } from '../state/RemoteSitesContext';
+import { remoteEventDetail, remoteEventLabel } from './remoteEventDisplay';
 
 export type FeedItem =
   | {
@@ -11,7 +12,7 @@ export type FeedItem =
       siteName: string;
       title: string;
       detail: string;
-      severity: AlertSeverity;
+      severity: RemoteSeverity;
     }
   | {
       kind: 'news';
@@ -38,60 +39,66 @@ export type FeedItem =
     };
 
 const MINUTE = 60 * 1000;
-const HOUR = 60 * MINUTE;
-
-/** A few mock team messages so the feed feels alive even without real chat. */
-function mockTeamMessages(now: number): FeedItem[] {
-  return [
-    {
-      kind: 'message',
-      id: 'feed-msg-1',
-      timestamp: new Date(now - 25 * MINUTE).toISOString(),
-      author: 'Mohamed',
-      body: 'Je regarde la latence PSP sur Ledger Pay API, je te tiens au courant.',
-    },
-    {
-      kind: 'message',
-      id: 'feed-msg-2',
-      timestamp: new Date(now - 2 * HOUR).toISOString(),
-      author: 'Aaron',
-      body: 'RAS sur Nova Store ce matin, le pic de trafic est bien absorbé.',
-    },
-  ];
-}
 
 /**
- * Builds a unified, reverse-chronological activity stream mixing site alerts,
- * team messages, watch news and generated insights — the "always something to
- * see" feed of the home QG.
+ * Builds a unified, reverse-chronological activity stream mixing real site
+ * alerts, real team messages, watch news (still mock content — there is no
+ * real news feed to source) and generated insights — the "always something
+ * to see" feed of the home QG. Pure function: all data comes from the
+ * caller (sites/events from RemoteSitesContext, messages from the bridge),
+ * so this file has no data-source opinions of its own.
  */
-export function buildActivityFeed(limit = 14): FeedItem[] {
+export function buildActivityFeed(
+  {
+    sites,
+    eventsBySite,
+    insights,
+    watchItems,
+    messages,
+  }: {
+    sites: DerivedSite[];
+    eventsBySite: Record<string, RemoteEvent[]>;
+    insights: Insight[];
+    watchItems: WatchItem[];
+    messages: Message[];
+  },
+  limit = 14,
+): FeedItem[] {
   const now = Date.now();
+  const siteById = new Map(sites.map((s) => [s.id, s]));
 
-  const alerts: FeedItem[] = getGlobalAlerts()
-    .slice(0, 8)
-    .map((a) => ({
-      kind: 'alert',
-      id: `feed-${a.site.id}-${a.id}`,
-      timestamp: a.timestamp,
-      siteId: a.site.id,
-      siteName: a.site.name,
-      title: a.title,
-      detail: a.detail,
-      severity: a.severity,
-    }));
+  const alerts: FeedItem[] = Object.entries(eventsBySite)
+    .flatMap(([siteId, events]) =>
+      events
+        .filter((e): e is RemoteEvent & { severity: RemoteSeverity } =>
+          e.type === 'security_alert' && e.severity !== null,
+        )
+        .map((event) => {
+          const site = siteById.get(siteId);
+          return {
+            kind: 'alert' as const,
+            id: `feed-alert-${siteId}-${event.id}`,
+            timestamp: event.occurredAt,
+            siteId,
+            siteName: site?.name ?? siteId,
+            title: remoteEventLabel(event),
+            detail: remoteEventDetail(event),
+            severity: event.severity,
+          };
+        }),
+    )
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 8);
 
-  const news: FeedItem[] = getWatchItems()
-    .slice(0, 3)
-    .map((n) => ({
-      kind: 'news',
-      id: `feed-${n.id}`,
-      timestamp: new Date(n.date).toISOString(),
-      category: n.category,
-      title: n.title,
-    }));
+  const news: FeedItem[] = watchItems.slice(0, 3).map((n) => ({
+    kind: 'news',
+    id: `feed-${n.id}`,
+    timestamp: new Date(n.date).toISOString(),
+    category: n.category,
+    title: n.title,
+  }));
 
-  const insights: FeedItem[] = getInsights().map((ins, i) => ({
+  const insightItems: FeedItem[] = insights.map((ins, i) => ({
     kind: 'insight',
     id: `feed-${ins.id}`,
     timestamp: new Date(now - (i + 1) * 40 * MINUTE).toISOString(),
@@ -101,10 +108,17 @@ export function buildActivityFeed(limit = 14): FeedItem[] {
     siteId: ins.siteId,
   }));
 
-  return [...alerts, ...news, ...insights, ...mockTeamMessages(now)]
-    .sort(
-      (a, b) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-    )
+  const messageItems: FeedItem[] = messages
+    .slice(-6)
+    .map((m) => ({
+      kind: 'message' as const,
+      id: `feed-msg-${m.id}`,
+      timestamp: m.createdAt,
+      author: m.authorName,
+      body: m.body,
+    }));
+
+  return [...alerts, ...news, ...insightItems, ...messageItems]
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, limit);
 }

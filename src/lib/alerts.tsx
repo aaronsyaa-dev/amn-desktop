@@ -1,28 +1,7 @@
-import React from 'react';
-import {
-  AlertTriangle,
-  Bug,
-  CreditCard,
-  KeyRound,
-  ShieldAlert,
-  TrendingUp,
-} from 'lucide-react';
-import type { AlertSeverity, AlertType } from '../types/site';
-
-export const ALERT_TYPE_CONFIG: Record<
-  AlertType,
-  { label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }
-> = {
-  'brute-force': { label: 'Force brute', icon: KeyRound },
-  injection: { label: 'Injection', icon: Bug },
-  'payment-failed': { label: 'Paiement', icon: CreditCard },
-  'traffic-spike': { label: 'Trafic', icon: TrendingUp },
-  malware: { label: 'Malware', icon: ShieldAlert },
-  certificate: { label: 'Certificat', icon: AlertTriangle },
-};
+import type { RemoteSeverity } from '../shared/api';
 
 export const ALERT_SEVERITY_CONFIG: Record<
-  AlertSeverity,
+  RemoteSeverity,
   { label: string; text: string; bg: string; dot: string; ring: string }
 > = {
   critical: {

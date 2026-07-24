@@ -2,12 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUp, Globe } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { bridge } from '../lib/bridge';
-import { mockSites } from '../data/mockSites';
+import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
 import { parseMentions } from '../lib/mentions';
 import { relativeTime } from '../lib/time';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
 import type { Message } from '../shared/api';
-import type { Site } from '../types/site';
 
 interface TeamMember {
   email: string;
@@ -25,6 +24,7 @@ function initials(name: string): string {
 
 export function TeamScreen() {
   const { user } = useAuth();
+  const { sites } = useRemoteSites();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -66,8 +66,9 @@ export function TeamScreen() {
           messages={messages}
           loading={loading}
           currentEmail={user?.email}
+          sites={sites}
         />
-        <Composer onSend={handleSend} />
+        <Composer onSend={handleSend} sites={sites} />
       </div>
     </section>
   );
@@ -115,10 +116,12 @@ function MessageList({
   messages,
   loading,
   currentEmail,
+  sites,
 }: {
   messages: Message[];
   loading: boolean;
   currentEmail?: string;
+  sites: DerivedSite[];
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -157,13 +160,22 @@ function MessageList({
           key={message.id}
           message={message}
           own={message.authorEmail === currentEmail}
+          sites={sites}
         />
       ))}
     </div>
   );
 }
 
-function MessageBubble({ message, own }: { message: Message; own: boolean }) {
+function MessageBubble({
+  message,
+  own,
+  sites,
+}: {
+  message: Message;
+  own: boolean;
+  sites: DerivedSite[];
+}) {
   return (
     <div className={`flex flex-col ${own ? 'items-end' : 'items-start'}`}>
       {!own && (
@@ -178,7 +190,7 @@ function MessageBubble({ message, own }: { message: Message; own: boolean }) {
             : 'rounded-r-lg rounded-tl-lg border border-border bg-surface-hover text-text-primary'
         }`}
       >
-        <MessageBody body={message.body} light={own} />
+        <MessageBody body={message.body} light={own} sites={sites} />
       </div>
       <span className="mt-1 px-1 font-mono text-[10px] text-text-muted">
         {relativeTime(message.createdAt)}
@@ -187,9 +199,17 @@ function MessageBubble({ message, own }: { message: Message; own: boolean }) {
   );
 }
 
-function MessageBody({ body, light }: { body: string; light: boolean }) {
+function MessageBody({
+  body,
+  light,
+  sites,
+}: {
+  body: string;
+  light: boolean;
+  sites: DerivedSite[];
+}) {
   const { openSite } = useSitePanel();
-  const segments = useMemo(() => parseMentions(body), [body]);
+  const segments = useMemo(() => parseMentions(body, sites), [body, sites]);
 
   return (
     <span className="whitespace-pre-wrap break-words">
@@ -220,7 +240,13 @@ function MessageBody({ body, light }: { body: string; light: boolean }) {
   );
 }
 
-function Composer({ onSend }: { onSend: (body: string) => void }) {
+function Composer({
+  onSend,
+  sites,
+}: {
+  onSend: (body: string) => void;
+  sites: DerivedSite[];
+}) {
   const [text, setText] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -234,14 +260,14 @@ function Composer({ onSend }: { onSend: (body: string) => void }) {
     return { atIdx, query: query.toLowerCase() };
   }, [text]);
 
-  const suggestions = useMemo<Site[]>(() => {
+  const suggestions = useMemo<DerivedSite[]>(() => {
     if (!mentionQuery) return [];
-    return mockSites
+    return sites
       .filter((s) => s.name.toLowerCase().includes(mentionQuery.query))
       .slice(0, 5);
-  }, [mentionQuery]);
+  }, [mentionQuery, sites]);
 
-  const applyMention = (site: Site) => {
+  const applyMention = (site: DerivedSite) => {
     if (!mentionQuery) return;
     setText(text.slice(0, mentionQuery.atIdx) + `@${site.name} `);
     inputRef.current?.focus();

@@ -1,27 +1,44 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bell } from 'lucide-react';
-import { getGlobalAlerts } from '../data/mockSites';
-import { ALERT_SEVERITY_CONFIG, ALERT_TYPE_CONFIG } from '../lib/alerts';
+import { useRemoteSites } from '../state/RemoteSitesContext';
+import { ALERT_SEVERITY_CONFIG } from '../lib/alerts';
+import { remoteEventDetail, remoteEventIcon, remoteEventLabel } from '../lib/remoteEventDisplay';
 import { relativeTime } from '../lib/time';
 import { useSitePanel } from './site-panel/SitePanelContext';
+import type { RemoteEvent } from '../shared/api';
 
 export function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const { openSite } = useSitePanel();
+  const { sites, eventsBySite, ensureEventsLoaded } = useRemoteSites();
 
-  // Cross-site feed limited to the alerts that actually warrant attention.
-  const alerts = useMemo(
-    () =>
-      getGlobalAlerts()
-        .filter((a) => a.severity !== 'info')
-        .slice(0, 12),
-    [],
-  );
+  // Cross-site feed needs each site's event history loaded.
+  useEffect(() => {
+    for (const site of sites) ensureEventsLoaded(site.id);
+  }, [sites, ensureEventsLoaded]);
+
+  const alerts = useMemo(() => {
+    const withSite: Array<{ site: (typeof sites)[number]; event: RemoteEvent }> = [];
+    for (const site of sites) {
+      const events = eventsBySite[site.id] ?? [];
+      for (const event of events) {
+        if (event.type === 'security_alert' && event.severity && event.severity !== 'info') {
+          withSite.push({ site, event });
+        }
+      }
+    }
+    return withSite
+      .sort(
+        (a, b) => new Date(b.event.occurredAt).getTime() - new Date(a.event.occurredAt).getTime(),
+      )
+      .slice(0, 12);
+  }, [sites, eventsBySite]);
+
   const criticalCount = useMemo(
-    () => alerts.filter((a) => a.severity === 'critical').length,
+    () => alerts.filter((a) => a.event.severity === 'critical').length,
     [alerts],
   );
 
@@ -72,38 +89,45 @@ export function NotificationCenter() {
                 </span>
               </div>
               <div className="max-h-[22rem] overflow-y-auto">
-                {alerts.map((alert) => {
-                  const typeConfig = ALERT_TYPE_CONFIG[alert.type];
-                  const severity = ALERT_SEVERITY_CONFIG[alert.severity];
-                  const Icon = typeConfig.icon;
-                  return (
-                    <button
-                      key={`${alert.site.id}-${alert.id}`}
-                      type="button"
-                      onClick={() => handleSelect(alert.site.id)}
-                      className="flex w-full items-start gap-3 border-b border-border/60 px-4 py-3 text-left transition-colors duration-150 last:border-b-0 hover:bg-surface-hover"
-                    >
-                      <span
-                        className={`mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg ${severity.bg} ${severity.text}`}
+                {alerts.length === 0 ? (
+                  <p className="px-4 py-8 text-center text-sm text-text-secondary">
+                    Aucune alerte pour l’instant.
+                  </p>
+                ) : (
+                  alerts.map(({ site, event }) => {
+                    const severity = ALERT_SEVERITY_CONFIG[event.severity ?? 'info'];
+                    const Icon = remoteEventIcon(event);
+                    const detail = remoteEventDetail(event);
+                    return (
+                      <button
+                        key={`${site.id}-${event.id}`}
+                        type="button"
+                        onClick={() => handleSelect(site.id)}
+                        className="flex w-full items-start gap-3 border-b border-border/60 px-4 py-3 text-left transition-colors duration-150 last:border-b-0 hover:bg-surface-hover"
                       >
-                        <Icon size={14} strokeWidth={1.75} />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="truncate text-sm font-medium text-text-primary">
-                            {alert.title}
+                        <span
+                          className={`mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg ${severity.bg} ${severity.text}`}
+                        >
+                          <Icon size={14} strokeWidth={1.75} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="truncate text-sm font-medium text-text-primary">
+                              {remoteEventLabel(event)}
+                            </p>
+                            <time className="flex-shrink-0 text-xs text-text-muted">
+                              {relativeTime(event.occurredAt)}
+                            </time>
+                          </div>
+                          <p className="truncate text-xs text-text-secondary">
+                            {site.name}
+                            {detail ? ` · ${detail}` : ''}
                           </p>
-                          <time className="flex-shrink-0 text-xs text-text-muted">
-                            {relativeTime(alert.timestamp)}
-                          </time>
                         </div>
-                        <p className="truncate text-xs text-text-secondary">
-                          {alert.site.name} · {alert.detail}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
+                      </button>
+                    );
+                  })
+                )}
               </div>
             </motion.div>
           </>

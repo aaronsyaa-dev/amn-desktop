@@ -9,14 +9,17 @@ import React, {
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  Contact,
   CornerDownLeft,
   Globe,
   LayoutDashboard,
+  Radar,
   Search,
   Settings,
   Sparkles,
+  Users,
 } from 'lucide-react';
-import { mockSites } from '../../data/mockSites';
+import { useRemoteSites } from '../../state/RemoteSitesContext';
 import { useSitePanel } from '../site-panel/SitePanelContext';
 import { useAssistant } from '../../assistant/AssistantContext';
 import { StatusBadge } from '../StatusBadge';
@@ -35,11 +38,14 @@ type IconType = React.ComponentType<{ size?: number; strokeWidth?: number }>;
 type Command =
   | { kind: 'nav'; id: string; label: string; icon: IconType; to: string }
   | { kind: 'action'; id: string; label: string; icon: IconType; run: () => void }
-  | { kind: 'site'; id: string; label: string; url: string; siteId: string };
+  | { kind: 'site'; id: string; label: string; siteId: string };
 
 const NAV_COMMANDS: Extract<Command, { kind: 'nav' }>[] = [
   { kind: 'nav', id: 'nav-home', label: 'Accueil', icon: LayoutDashboard, to: '/' },
-  { kind: 'nav', id: 'nav-sites', label: 'Sites surveillés', icon: Globe, to: '/sites' },
+  { kind: 'nav', id: 'nav-sites', label: 'Sites', icon: Globe, to: '/sites' },
+  { kind: 'nav', id: 'nav-team', label: 'Équipe', icon: Users, to: '/team' },
+  { kind: 'nav', id: 'nav-clients', label: 'Clients', icon: Contact, to: '/clients' },
+  { kind: 'nav', id: 'nav-tracker', label: 'Tracker', icon: Radar, to: '/tracker' },
   { kind: 'nav', id: 'nav-settings', label: 'Paramètres', icon: Settings, to: '/settings' },
 ];
 
@@ -94,6 +100,7 @@ function CommandPaletteModal({
   const navigate = useNavigate();
   const { openSite } = useSitePanel();
   const { open: openAssistant } = useAssistant();
+  const { sites } = useRemoteSites();
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -110,25 +117,19 @@ function CommandPaletteModal({
         },
       ] as Command[]
     ).filter((c) => !q || c.label.toLowerCase().includes(q));
-    const siteCommands: Command[] = mockSites
-      .filter(
-        (s) =>
-          !q ||
-          s.name.toLowerCase().includes(q) ||
-          s.url.toLowerCase().includes(q),
-      )
+    const siteCommands: Command[] = sites
+      .filter((s) => !q || s.name.toLowerCase().includes(q))
       .map((s) => ({
         kind: 'site',
         id: `site-${s.id}`,
         label: s.name,
-        url: s.url,
         siteId: s.id,
       }));
     const navCommands = NAV_COMMANDS.filter(
       (c) => !q || c.label.toLowerCase().includes(q),
     );
     return [...navCommands, ...actionCommands, ...siteCommands];
-  }, [query, openAssistant]);
+  }, [query, openAssistant, sites]);
 
   // Reset transient state whenever the palette opens.
   useEffect(() => {
@@ -243,10 +244,9 @@ function CommandRow({
   onMouseEnter: () => void;
   onClick: () => void;
 }) {
+  const { sites } = useRemoteSites();
   const site =
-    command.kind === 'site'
-      ? mockSites.find((s) => s.id === command.siteId)
-      : undefined;
+    command.kind === 'site' ? sites.find((s) => s.id === command.siteId) : undefined;
 
   return (
     <button
@@ -270,9 +270,6 @@ function CommandRow({
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate">{command.label}</p>
-        {command.kind === 'site' && (
-          <p className="truncate text-xs text-text-muted">{command.url}</p>
-        )}
       </div>
       {site && <StatusBadge status={site.status} />}
       {active && (

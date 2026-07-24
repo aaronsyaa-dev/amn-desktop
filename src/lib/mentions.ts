@@ -1,20 +1,18 @@
-import { mockSites } from '../data/mockSites';
-import type { Site } from '../types/site';
+import type { DerivedSite } from '../state/RemoteSitesContext';
 
 export type MessageSegment =
   | { type: 'text'; value: string }
-  | { type: 'mention'; site: Site };
+  | { type: 'mention'; site: DerivedSite };
 
 /**
  * Splits a message body into text and site-mention segments. A mention is an
  * "@" immediately followed by a known site name (case-insensitive), e.g.
  * "@Ledger Pay API". Longest site names are matched first so overlapping
- * prefixes resolve correctly.
+ * prefixes resolve correctly. `sites` comes from the caller (RemoteSitesContext)
+ * rather than a static import, since the real site list can change at runtime.
  */
-export function parseMentions(body: string): MessageSegment[] {
-  const sitesByLength = [...mockSites].sort(
-    (a, b) => b.name.length - a.name.length,
-  );
+export function parseMentions(body: string, sites: DerivedSite[]): MessageSegment[] {
+  const sitesByLength = [...sites].sort((a, b) => b.name.length - a.name.length);
 
   const segments: MessageSegment[] = [];
   let buffer = '';

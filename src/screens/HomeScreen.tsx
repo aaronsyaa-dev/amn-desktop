@@ -1,26 +1,56 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lightbulb, Newspaper } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import { mockSites } from '../data/mockSites';
-import { getDailyBrief, getInsights } from '../assistant/engine';
+import { bridge } from '../lib/bridge';
+import { useRemoteSites } from '../state/RemoteSitesContext';
+import { getDailyBrief, getInsights, getWatchItems } from '../assistant/engine';
 import { buildActivityFeed, type FeedItem } from '../lib/activityFeed';
+import { countRecentAlerts } from '../lib/eventStats';
 import { relativeTime } from '../lib/time';
 import { Typewriter } from '../components/Typewriter';
 import { AnimatedCounter } from '../components/AnimatedCounter';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
+import type { Message } from '../shared/api';
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function HomeScreen() {
   const { user } = useAuth();
-  const brief = useMemo(() => getDailyBrief(), []);
-  const insights = useMemo(() => getInsights(), []);
-  const feed = useMemo(() => buildActivityFeed(), []);
+  const { sites, eventsBySite, ensureEventsLoaded } = useRemoteSites();
+  const [messages, setMessages] = useState<Message[]>([]);
 
-  const online = mockSites.filter((s) => s.status === 'online').length;
-  const degraded = mockSites.filter((s) => s.status === 'degraded').length;
-  const offline = mockSites.filter((s) => s.status === 'offline').length;
-  const vulns = mockSites.reduce((n, s) => n + s.openVulnerabilities, 0);
+  useEffect(() => {
+    for (const site of sites) ensureEventsLoaded(site.id);
+  }, [sites, ensureEventsLoaded]);
+
+  useEffect(() => {
+    let active = true;
+    bridge()
+      .messages.list()
+      .then((list) => active && setMessages(list))
+      .catch((err) => void err);
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const brief = useMemo(() => getDailyBrief(sites, eventsBySite), [sites, eventsBySite]);
+  const insights = useMemo(() => getInsights(sites, eventsBySite), [sites, eventsBySite]);
+  const watchItems = useMemo(() => getWatchItems(), []);
+  const feed = useMemo(
+    () => buildActivityFeed({ sites, eventsBySite, insights, watchItems, messages }),
+    [sites, eventsBySite, insights, watchItems, messages],
+  );
+
+  const online = sites.filter((s) => s.status === 'online').length;
+  const degraded = sites.filter((s) => s.status === 'degraded').length;
+  const offline = sites.filter((s) => s.status === 'offline').length;
+  const totalAlerts = sites.reduce(
+    (n, s) => n + (eventsBySite[s.id]?.filter((e) => e.type === 'security_alert').length ?? 0),
+    0,
+  );
 
   const displayName = user?.name ?? 'opérateur';
   const now = new Date();
@@ -70,10 +100,10 @@ export function HomeScreen() {
           <BriefHero brief={brief} date={dateLabel} className="lg:col-span-2" />
           <SystemState
             online={online}
-            total={mockSites.length}
+            total={sites.length}
             degraded={degraded}
             offline={offline}
-            vulns={vulns}
+            alerts={totalAlerts}
           />
         </div>
       </StaggerItem>
@@ -86,7 +116,7 @@ export function HomeScreen() {
           </div>
           <div className="flex flex-col gap-4">
             <InsightsPanel insights={insights} />
-            <WeeklySummary />
+            <WeeklySummary sites={sites} eventsBySite={eventsBySite} />
           </div>
         </div>
       </StaggerItem>
@@ -123,18 +153,18 @@ function SystemState({
   total,
   degraded,
   offline,
-  vulns,
+  alerts,
 }: {
   online: number;
   total: number;
   degraded: number;
   offline: number;
-  vulns: number;
+  alerts: number;
 }) {
   const rows = [
     { label: 'Dégradés', value: degraded, danger: false },
     { label: 'Hors ligne', value: offline, danger: offline > 0 },
-    { label: 'Vulnérabilités', value: vulns, danger: false },
+    { label: 'Alertes', value: alerts, danger: false },
   ];
 
   return (
@@ -200,16 +230,25 @@ function ActivityLog({ feed }: { feed: FeedItem[] }) {
           Live
         </span>
       </div>
-      <div className="max-h-[560px] flex-1 divide-y divide-border/60 overflow-y-auto">
-        {feed.map((item) => (
-          <LogRow
-            key={item.id}
-            item={item}
-            onOpenSite={openSite}
-            onOpenTeam={() => navigate('/team')}
-          />
-        ))}
-      </div>
+      {feed.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center px-5 py-16 text-center">
+          <p className="max-w-xs font-mono text-xs uppercase tracking-widest text-text-muted">
+            Aucune activité pour l’instant. Enregistrez un site et installez le
+            tracker pour commencer.
+          </p>
+        </div>
+      ) : (
+        <div className="max-h-[560px] flex-1 divide-y divide-border/60 overflow-y-auto">
+          {feed.map((item) => (
+            <LogRow
+              key={item.id}
+              item={item}
+              onOpenSite={openSite}
+              onOpenTeam={() => navigate('/team')}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -297,50 +336,58 @@ function InsightsPanel({
           Insights
         </h2>
       </div>
-      <div className="divide-y divide-border/60">
-        {insights.map((insight) => {
-          const clickable = Boolean(insight.siteId);
-          return (
-            <button
-              key={insight.id}
-              type="button"
-              disabled={!clickable}
-              onClick={
-                clickable ? () => openSite(insight.siteId as string) : undefined
-              }
-              className={`block w-full p-4 text-left ${
-                clickable ? 'transition-colors hover:bg-surface-hover' : 'cursor-default'
-              }`}
-            >
-              <p className="text-sm font-medium text-text-primary">
-                {insight.title}
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-text-secondary">
-                {insight.body}
-              </p>
-            </button>
-          );
-        })}
-      </div>
+      {insights.length === 0 ? (
+        <p className="p-4 text-sm text-text-secondary">
+          Pas encore assez de données pour générer des insights.
+        </p>
+      ) : (
+        <div className="divide-y divide-border/60">
+          {insights.map((insight) => {
+            const clickable = Boolean(insight.siteId);
+            return (
+              <button
+                key={insight.id}
+                type="button"
+                disabled={!clickable}
+                onClick={
+                  clickable ? () => openSite(insight.siteId as string) : undefined
+                }
+                className={`block w-full p-4 text-left ${
+                  clickable ? 'transition-colors hover:bg-surface-hover' : 'cursor-default'
+                }`}
+              >
+                <p className="text-sm font-medium text-text-primary">
+                  {insight.title}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-text-secondary">
+                  {insight.body}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
-function WeeklySummary() {
-  const blocked = mockSites.reduce(
-    (n, s) => n + s.alerts.filter((a) => a.severity !== 'info').length,
+function WeeklySummary({
+  sites,
+  eventsBySite,
+}: {
+  sites: ReturnType<typeof useRemoteSites>['sites'];
+  eventsBySite: ReturnType<typeof useRemoteSites>['eventsBySite'];
+}) {
+  const alerts7d = sites.reduce(
+    (n, s) => n + countRecentAlerts(eventsBySite[s.id] ?? [], WEEK_MS),
     0,
   );
-  const avgUptime =
-    mockSites.reduce((n, s) => n + s.uptimePercentage, 0) / mockSites.length;
-  const activeVisitors = mockSites.reduce(
-    (n, s) => n + s.analytics.activeVisitors,
-    0,
-  );
+  const activeVisitors = sites.reduce((n, s) => n + (s.state?.activeVisitors ?? 0), 0);
+  const activeSites = sites.filter((s) => s.status !== 'unknown').length;
 
   const figures = [
-    { label: 'Incidents', value: String(blocked).padStart(2, '0') },
-    { label: 'Dispo. moy.', value: `${avgUptime.toFixed(1)}%` },
+    { label: 'Alertes 7j', value: String(alerts7d).padStart(2, '0') },
+    { label: 'Sites actifs', value: `${activeSites}/${sites.length}` },
     { label: 'Visiteurs', value: activeVisitors.toLocaleString('fr-FR') },
   ];
 

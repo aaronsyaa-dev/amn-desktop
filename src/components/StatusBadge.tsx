@@ -1,27 +1,29 @@
 import React from 'react';
-import type { SiteStatus } from '../types/site';
+import type { DerivedStatus } from '../lib/siteStatus';
 
 const STATUS_CONFIG: Record<
-  SiteStatus,
-  { label: string; text: string; dot: string; hollow: boolean }
+  DerivedStatus,
+  { label: string; text: string; dot: string }
 > = {
   online: {
     label: 'EN LIGNE',
     text: 'text-success',
     dot: 'bg-success',
-    hollow: false,
   },
   degraded: {
     label: 'DÉGRADÉ',
     text: 'text-warning',
     dot: 'border border-warning bg-transparent',
-    hollow: true,
   },
   offline: {
     label: 'HORS LIGNE',
     text: 'text-danger',
     dot: 'bg-danger',
-    hollow: false,
+  },
+  unknown: {
+    label: 'INCONNU',
+    text: 'text-text-muted',
+    dot: 'border border-text-muted bg-transparent',
   },
 };
 
@@ -30,7 +32,7 @@ const STATUS_CONFIG: Record<
  * hollow ring, and only genuinely-down sites get the single reserved red.
  * Squared (not pill) with a mono uppercase label — control-room register.
  */
-export function StatusBadge({ status }: { status: SiteStatus }) {
+export function StatusBadge({ status }: { status: DerivedStatus }) {
   const config = STATUS_CONFIG[status];
   const critical = status === 'offline';
 

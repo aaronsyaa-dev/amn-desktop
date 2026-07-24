@@ -8,7 +8,7 @@ import {
   Sunrise,
   X,
 } from 'lucide-react';
-import { mockSites } from '../data/mockSites';
+import { useRemoteSites } from '../state/RemoteSitesContext';
 import { ALERT_SEVERITY_CONFIG } from '../lib/alerts';
 import { useAssistant } from './AssistantContext';
 import { getDailySummary, getSuggestions, getWatchItems } from './engine';
@@ -28,6 +28,7 @@ const TABS: Array<{ key: Tab; label: string; icon: typeof Sparkles }> = [
 
 export function AssistantPanel() {
   const { isOpen, close } = useAssistant();
+  const { sites, ensureEventsLoaded } = useRemoteSites();
   const [tab, setTab] = useState<Tab>('chat');
   const [exportTarget, setExportTarget] = useState<AssistantReport | null>(null);
 
@@ -39,6 +40,13 @@ export function AssistantPanel() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, close]);
+
+  // Warm the event cache as soon as the panel opens so suggestions/summary
+  // have real data by the time the user looks at them.
+  useEffect(() => {
+    if (!isOpen) return;
+    for (const site of sites) ensureEventsLoaded(site.id);
+  }, [isOpen, sites, ensureEventsLoaded]);
 
   return (
     <>
@@ -201,17 +209,24 @@ function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
 }
 
 function WelcomeState({ onPrompt }: { onPrompt: (text: string) => void }) {
-  const suggestions = useMemo(() => getSuggestions(), []);
+  const { sites, eventsBySite } = useRemoteSites();
+  const suggestions = useMemo(
+    () => getSuggestions(sites, eventsBySite),
+    [sites, eventsBySite],
+  );
   const criticalSite = useMemo(
-    () => mockSites.find((s) => s.status !== 'online') ?? mockSites[0],
-    [],
+    () => sites.find((s) => s.status !== 'online') ?? sites[0],
+    [sites],
   );
 
-  const chips = [
-    'Génère un rapport global',
-    `Rapport sur ${criticalSite.name}`,
-    'Quels sites sont hors ligne ?',
-  ];
+  const chips =
+    sites.length === 0
+      ? []
+      : [
+          'Génère un rapport global',
+          `Rapport sur ${criticalSite?.name}`,
+          'Quels sites sont hors ligne ?',
+        ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -223,8 +238,9 @@ function WelcomeState({ onPrompt }: { onPrompt: (text: string) => void }) {
           Comment puis-je vous aider ?
         </h3>
         <p className="mt-1 text-sm text-text-secondary">
-          Je génère des rapports (interne ou client), réponds à vos questions et
-          surveille votre parc en continu.
+          {sites.length === 0
+            ? 'Enregistrez un site (onglet Sites) pour que je puisse commencer à analyser vos données.'
+            : 'Je génère des rapports (interne ou client), réponds à vos questions et surveille votre parc en continu.'}
         </p>
       </div>
 
@@ -243,7 +259,7 @@ function WelcomeState({ onPrompt }: { onPrompt: (text: string) => void }) {
                   onClick={() =>
                     onPrompt(
                       s.siteId
-                        ? `Génère un rapport sur ${mockSites.find((m) => m.id === s.siteId)?.name}`
+                        ? `Génère un rapport sur ${sites.find((m) => m.id === s.siteId)?.name}`
                         : s.title,
                     )
                   }
@@ -261,18 +277,20 @@ function WelcomeState({ onPrompt }: { onPrompt: (text: string) => void }) {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        {chips.map((chip) => (
-          <button
-            key={chip}
-            type="button"
-            onClick={() => onPrompt(chip)}
-            className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-text-secondary transition-colors duration-200 hover:border-white/15 hover:text-text-primary"
-          >
-            {chip}
-          </button>
-        ))}
-      </div>
+      {chips.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {chips.map((chip) => (
+            <button
+              key={chip}
+              type="button"
+              onClick={() => onPrompt(chip)}
+              className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-text-secondary transition-colors duration-200 hover:border-white/15 hover:text-text-primary"
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -404,7 +422,11 @@ function ThinkingIndicator() {
 /* --------------------------- Summary tab --------------------------- */
 
 function SummaryTab() {
-  const summary = useMemo(() => getDailySummary(), []);
+  const { sites, eventsBySite } = useRemoteSites();
+  const summary = useMemo(
+    () => getDailySummary(sites, eventsBySite),
+    [sites, eventsBySite],
+  );
   const time = new Date(summary.generatedAt).toLocaleTimeString('fr-FR', {
     hour: '2-digit',
     minute: '2-digit',

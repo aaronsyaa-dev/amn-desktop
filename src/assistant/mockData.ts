@@ -1,48 +1,56 @@
-import { mockSites } from '../data/mockSites';
-import type {
-  DailySummary,
-  Insight,
-  Suggestion,
-  WatchItem,
-} from './types';
+import type { RemoteEvent } from '../shared/api';
+import type { DerivedSite } from '../state/RemoteSitesContext';
+import { countRecentAlerts } from '../lib/eventStats';
+import { remoteEventDetail, remoteEventLabel } from '../lib/remoteEventDisplay';
+import type { DailySummary, Insight, Suggestion, WatchItem } from './types';
 
-function trendDelta(trend: number[]): number {
-  return trend.length >= 2 ? trend[trend.length - 1] - trend[0] : 0;
+type EventsMap = Record<string, RemoteEvent[]>;
+
+function alertsFor(eventsBySite: EventsMap, siteId: string): RemoteEvent[] {
+  return (eventsBySite[siteId] ?? []).filter((e) => e.type === 'security_alert');
 }
 
 /**
  * Free-text "daily brief" for the home QG: what happened since last visit and
- * what to focus on today. Grounded in the current mock state. Written to read
- * like a short human/AI briefing (used with a typewriter reveal in the UI).
+ * what to focus on today. Grounded in real site state + event history (loaded
+ * via RemoteSitesContext). Written to read like a short human/AI briefing
+ * (used with a typewriter reveal in the UI).
  */
-export function getDailyBrief(): string {
-  const offline = mockSites.filter((s) => s.status === 'offline');
-  const criticalCount = mockSites.reduce(
-    (n, s) => n + s.alerts.filter((a) => a.severity === 'critical').length,
+export function getDailyBrief(sites: DerivedSite[], eventsBySite: EventsMap): string {
+  if (sites.length === 0) {
+    return 'Aucun site enregistré pour l’instant. Enregistrez votre premier site depuis l’onglet Sites, puis installez le tracker pour commencer à recevoir des données en temps réel.';
+  }
+
+  const offline = sites.filter((s) => s.status === 'offline');
+  const criticalCount = sites.reduce(
+    (n, s) => n + alertsFor(eventsBySite, s.id).filter((e) => e.severity === 'critical').length,
     0,
   );
-  const flawless = mockSites.filter((s) => s.uptimePercentage >= 99.9);
-  const rising = [...mockSites].sort(
-    (a, b) => b.analytics.revenueTrendPct - a.analytics.revenueTrendPct,
-  )[0];
-  const criticalCve = mockSites.find((s) =>
-    s.alerts.some((a) => a.type === 'malware' && a.severity === 'critical'),
-  );
+  const neverSeen = sites.filter((s) => s.status === 'unknown');
+  const withRecentAlerts = sites
+    .map((s) => ({ site: s, count: countRecentAlerts(eventsBySite[s.id] ?? []) }))
+    .filter((x) => x.count === 0 && x.site.status === 'online');
 
   const parts: string[] = [];
   parts.push(
-    `Depuis votre dernière visite, ${criticalCount} incident(s) critique(s) ont été détectés sur votre parc.`,
+    criticalCount > 0
+      ? `Depuis votre dernière visite, ${criticalCount} incident(s) critique(s) ont été détectés sur votre parc.`
+      : `Aucun incident critique n’a été détecté sur votre parc depuis votre dernière visite.`,
   );
   if (offline.length > 0) {
     parts.push(`${offline.map((s) => s.name).join(', ')} nécessite une intervention immédiate.`);
   }
-  parts.push(
-    `Côté positif, le trafic de ${rising.name} progresse (${rising.analytics.revenueTrendPct >= 0 ? '+' : ''}${rising.analytics.revenueTrendPct} %) et ${flawless.length} site(s) affichent une disponibilité irréprochable.`,
-  );
-  const focus = [
-    ...offline.map((s) => `rétablir ${s.name}`),
-    ...(criticalCve ? [`appliquer le correctif critique sur ${criticalCve.name}`] : []),
-  ];
+  if (neverSeen.length > 0) {
+    parts.push(
+      `${neverSeen.map((s) => s.name).join(', ')} n’a encore reçu aucun signal — vérifiez l’installation du tracker.`,
+    );
+  }
+  if (withRecentAlerts.length > 0) {
+    parts.push(
+      `Côté positif, ${withRecentAlerts.map((x) => x.site.name).join(', ')} tourne sans la moindre alerte récente.`,
+    );
+  }
+  const focus = offline.map((s) => `rétablir ${s.name}`);
   parts.push(
     focus.length > 0
       ? `Aujourd’hui, concentrez-vous sur : ${focus.join(' et ')}.`
@@ -55,46 +63,51 @@ export function getDailyBrief(): string {
  * Automatic insights — surfaced even when nothing is wrong, so there is always
  * something worthwhile to read. Mixes positive signals with gentle nudges.
  */
-export function getInsights(): Insight[] {
+export function getInsights(sites: DerivedSite[], eventsBySite: EventsMap): Insight[] {
+  if (sites.length === 0) return [];
+
   const insights: Insight[] = [];
 
-  const rising = [...mockSites].sort(
-    (a, b) => trendDelta(b.trend) - trendDelta(a.trend),
+  const clean = sites.filter(
+    (s) => s.status === 'online' && countRecentAlerts(eventsBySite[s.id] ?? []) === 0,
+  );
+  if (clean.length > 0) {
+    insights.push({
+      id: 'insight-clean',
+      tone: 'positive',
+      title: `${clean.length} site(s) sans la moindre alerte sur 24h`,
+      body: `${clean.map((s) => s.name).join(', ')} tournent sans incident de sécurité récent. Votre supervision porte ses fruits.`,
+    });
+  }
+
+  const busiest = [...sites].sort(
+    (a, b) => (b.state?.activeVisitors ?? 0) - (a.state?.activeVisitors ?? 0),
   )[0];
-  if (rising && trendDelta(rising.trend) > 0) {
+  if (busiest && (busiest.state?.activeVisitors ?? 0) > 0) {
     insights.push({
       id: 'insight-traffic',
-      tone: 'positive',
-      title: `Tendance en hausse sur ${rising.name}`,
-      body: `La disponibilité de ${rising.name} s’améliore régulièrement (${rising.analytics.revenueTrendPct >= 0 ? '+' : ''}${rising.analytics.revenueTrendPct} % de CA). Bon momentum à capitaliser.`,
-      siteId: rising.id,
+      tone: 'neutral',
+      title: `${busiest.name} concentre le plus de visiteurs actifs`,
+      body: `${busiest.state?.activeVisitors} visiteur(s) actif(s) en ce moment — le plus fréquenté de votre parc.`,
+      siteId: busiest.id,
     });
   }
 
-  const flawless = mockSites.filter((s) => s.uptimePercentage >= 99.9);
-  if (flawless.length > 0) {
-    insights.push({
-      id: 'insight-uptime',
-      tone: 'positive',
-      title: `${flawless.length} site(s) sans le moindre incident de disponibilité`,
-      body: `${flawless.map((s) => s.name).join(', ')} maintiennent une disponibilité ≥ 99,9 %. Votre supervision porte ses fruits.`,
-    });
-  }
-
-  const blocked = mockSites.reduce(
-    (n, s) => n + s.alerts.filter((a) => a.severity !== 'info').length,
+  const totalAlerts = sites.reduce(
+    (n, s) => n + (eventsBySite[s.id]?.filter((e) => e.type === 'security_alert').length ?? 0),
     0,
   );
-  insights.push({
-    id: 'insight-security',
-    tone: 'neutral',
-    title: `${blocked} menaces interceptées cette semaine`,
-    body: `Vos défenses ont bloqué ${blocked} événements de sécurité (force brute, injections, uploads suspects) sur l’ensemble du parc.`,
-  });
+  if (totalAlerts > 0) {
+    insights.push({
+      id: 'insight-security',
+      tone: 'neutral',
+      title: `${totalAlerts} événement(s) de sécurité dans l’historique chargé`,
+      body: 'Force brute, injections et autres tentatives interceptées par vos trackers, tous sites confondus.',
+    });
+  }
 
   return insights.slice(0, 3);
 }
-
 
 /** Today at ~07:15 local — simulates a summary that "arrived this morning". */
 function thisMorningISO(): string {
@@ -103,44 +116,43 @@ function thisMorningISO(): string {
   return d.toISOString();
 }
 
-export function getDailySummary(): DailySummary {
-  const online = mockSites.filter((s) => s.status === 'online').length;
-  const offline = mockSites.filter((s) => s.status === 'offline');
-  const degraded = mockSites.filter((s) => s.status === 'degraded');
-  const totalVulns = mockSites.reduce((n, s) => n + s.openVulnerabilities, 0);
-  const overnightCritical = mockSites.flatMap((s) =>
-    s.alerts.filter((a) => a.severity === 'critical').map((a) => ({ s, a })),
+export function getDailySummary(sites: DerivedSite[], eventsBySite: EventsMap): DailySummary {
+  const online = sites.filter((s) => s.status === 'online').length;
+  const offline = sites.filter((s) => s.status === 'offline');
+  const degraded = sites.filter((s) => s.status === 'degraded');
+
+  const overnightCritical = sites.flatMap((s) =>
+    alertsFor(eventsBySite, s.id)
+      .filter((e) => e.severity === 'critical')
+      .map((event) => ({ site: s, event })),
   );
 
-  const attention = [...offline, ...degraded]
-    .map((s) => s.name)
-    .join(', ');
+  const attention = [...offline, ...degraded].map((s) => s.name).join(', ');
 
   return {
     generatedAt: thisMorningISO(),
-    headline: `${online}/${mockSites.length} sites opérationnels · ${overnightCritical.length} incident(s) critique(s) durant la nuit`,
+    headline:
+      sites.length === 0
+        ? 'Aucun site enregistré'
+        : `${online}/${sites.length} sites opérationnels · ${overnightCritical.length} incident(s) critique(s)`,
     blocks: [
       {
         type: 'paragraph',
-        text: `Bonjour. Voici votre point de situation du matin. Sur vos ${mockSites.length} sites, ${online} sont pleinement opérationnels. ${
-          attention
-            ? `Points de vigilance : ${attention}.`
-            : 'Aucun point de vigilance majeur.'
-        }`,
+        text:
+          sites.length === 0
+            ? 'Aucun site enregistré pour l’instant. Enregistrez-en un depuis l’onglet Sites pour commencer.'
+            : `Bonjour. Voici votre point de situation. Sur vos ${sites.length} sites, ${online} sont pleinement opérationnels. ${
+                attention ? `Points de vigilance : ${attention}.` : 'Aucun point de vigilance majeur.'
+              }`,
       },
       {
         type: 'kpis',
         items: [
-          { label: 'Opérationnels', value: `${online}/${mockSites.length}`, tone: 'success' },
+          { label: 'Opérationnels', value: `${online}/${sites.length}`, tone: 'success' },
           {
-            label: 'Incidents nuit',
+            label: 'Incidents critiques',
             value: String(overnightCritical.length),
             tone: overnightCritical.length > 0 ? 'danger' : 'success',
-          },
-          {
-            label: 'Vulnérabilités',
-            value: String(totalVulns),
-            tone: totalVulns > 0 ? 'warning' : 'success',
           },
         ],
       },
@@ -151,30 +163,21 @@ export function getDailySummary(): DailySummary {
           overnightCritical.length > 0
             ? overnightCritical
                 .slice(0, 4)
-                .map(({ s, a }) => `${s.name} — ${a.title} : ${a.detail}`)
-            : ['Rien d’urgent ce matin. Bonne journée !'],
+                .map(
+                  ({ site, event }) =>
+                    `${site.name} — ${remoteEventLabel(event)} : ${remoteEventDetail(event) || 'détail non précisé'}`,
+                )
+            : ['Rien d’urgent pour l’instant.'],
       },
     ],
   };
 }
 
-/** Derives proactive suggestions from the current mock state of the parc. */
-export function getSuggestions(): Suggestion[] {
+/** Derives proactive suggestions from the current real state of the parc. */
+export function getSuggestions(sites: DerivedSite[], eventsBySite: EventsMap): Suggestion[] {
   const suggestions: Suggestion[] = [];
 
-  mockSites.forEach((site) => {
-    const criticalCve = site.alerts.find(
-      (a) => a.type === 'malware' && a.severity === 'critical',
-    );
-    if (criticalCve) {
-      suggestions.push({
-        id: `sugg-cve-${site.id}`,
-        title: `Patcher une vulnérabilité critique sur ${site.name}`,
-        detail: criticalCve.detail,
-        severity: 'critical',
-        siteId: site.id,
-      });
-    }
+  sites.forEach((site) => {
     if (site.status === 'offline') {
       suggestions.push({
         id: `sugg-offline-${site.id}`,
@@ -184,7 +187,19 @@ export function getSuggestions(): Suggestion[] {
         siteId: site.id,
       });
     }
-    if (site.alerts.some((a) => a.type === 'brute-force')) {
+    if (site.status === 'unknown') {
+      suggestions.push({
+        id: `sugg-unknown-${site.id}`,
+        title: `Vérifier l’installation du tracker sur ${site.name}`,
+        detail: 'Aucun heartbeat reçu — le tracker n’est peut-être pas installé ou configuré.',
+        severity: 'warning',
+        siteId: site.id,
+      });
+    }
+    const bruteForce = alertsFor(eventsBySite, site.id).find((e) =>
+      e.message?.includes('Force brute'),
+    );
+    if (bruteForce) {
       suggestions.push({
         id: `sugg-bf-${site.id}`,
         title: `Renforcer l’authentification de ${site.name}`,
@@ -195,14 +210,11 @@ export function getSuggestions(): Suggestion[] {
     }
   });
 
-  // Most severe first, keep it focused.
   const order = { critical: 0, warning: 1, info: 2 };
-  return suggestions
-    .sort((a, b) => order[a.severity] - order[b.severity])
-    .slice(0, 5);
+  return suggestions.sort((a, b) => order[a.severity] - order[b.severity]).slice(0, 5);
 }
 
-/** Mock cyber/AI/Anthropic watch feed. Plausible, fictional content. */
+/** Mock cyber/AI/Anthropic watch feed. Plausible, fictional content — no real news source. */
 export function getWatchItems(): WatchItem[] {
   return [
     {

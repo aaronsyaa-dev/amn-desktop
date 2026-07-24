@@ -27,6 +27,8 @@ interface RemoteSitesContextValue {
   /** Recent events for a site, once loaded via ensureEventsLoaded(). */
   eventsBySite: Record<string, RemoteEvent[]>;
   ensureEventsLoaded: (siteId: string) => void;
+  /** Awaited variant — returns the events (from cache or freshly fetched). */
+  loadEvents: (siteId: string) => Promise<RemoteEvent[]>;
   registerSite: (name: string) => Promise<RegisterSiteResult>;
   refresh: () => Promise<void>;
 }
@@ -44,8 +46,22 @@ export function RemoteSitesProvider({ children }: { children: React.ReactNode })
     'connecting',
   );
   const [now, setNow] = useState(() => Date.now());
-  const [eventsBySite, setEventsBySite] = useState<Record<string, RemoteEvent[]>>({});
+  const [eventsBySite, setEventsBySiteState] = useState<Record<string, RemoteEvent[]>>({});
   const loadedEventSites = useRef(new Set<string>());
+  const eventsBySiteRef = useRef(eventsBySite);
+
+  // setEventsBySite keeps the ref in sync so loadEvents() can read the
+  // latest cache synchronously (React state updates are otherwise async).
+  const setEventsBySite = useCallback(
+    (updater: (prev: Record<string, RemoteEvent[]>) => Record<string, RemoteEvent[]>) => {
+      setEventsBySiteState((prev) => {
+        const next = updater(prev);
+        eventsBySiteRef.current = next;
+        return next;
+      });
+    },
+    [],
+  );
 
   const refresh = useCallback(async () => {
     const sites = await bridge().remote.listSites();
@@ -129,18 +145,31 @@ export function RemoteSitesProvider({ children }: { children: React.ReactNode })
     return () => clearInterval(interval);
   }, []);
 
-  const ensureEventsLoaded = useCallback((siteId: string) => {
-    if (loadedEventSites.current.has(siteId)) return;
+  /** Awaited variant: returns the events (from cache or freshly fetched). */
+  const loadEvents = useCallback(async (siteId: string) => {
+    if (loadedEventSites.current.has(siteId)) {
+      return eventsBySiteRef.current[siteId] ?? [];
+    }
     loadedEventSites.current.add(siteId);
-    bridge()
-      .remote.getSiteEvents(siteId, { limit: EVENTS_PER_SITE_CAP })
-      .then((events) => {
-        setEventsBySite((prev) => ({ ...prev, [siteId]: events }));
-      })
-      .catch(() => {
-        loadedEventSites.current.delete(siteId); // allow retry
+    try {
+      const events = await bridge().remote.getSiteEvents(siteId, {
+        limit: EVENTS_PER_SITE_CAP,
       });
+      setEventsBySite((prev) => ({ ...prev, [siteId]: events }));
+      return events;
+    } catch (err) {
+      loadedEventSites.current.delete(siteId); // allow retry
+      throw err;
+    }
   }, []);
+
+  /** Fire-and-forget variant for UI mount-time prefetch. */
+  const ensureEventsLoaded = useCallback(
+    (siteId: string) => {
+      loadEvents(siteId).catch((err) => void err);
+    },
+    [loadEvents],
+  );
 
   const registerSite = useCallback(async (name: string) => {
     const result = await bridge().remote.registerSite(name);
@@ -163,10 +192,20 @@ export function RemoteSitesProvider({ children }: { children: React.ReactNode })
       connectionStatus,
       eventsBySite,
       ensureEventsLoaded,
+      loadEvents,
       registerSite,
       refresh,
     }),
-    [sites, loading, connectionStatus, eventsBySite, ensureEventsLoaded, registerSite, refresh],
+    [
+      sites,
+      loading,
+      connectionStatus,
+      eventsBySite,
+      ensureEventsLoaded,
+      loadEvents,
+      registerSite,
+      refresh,
+    ],
   );
 
   return (
