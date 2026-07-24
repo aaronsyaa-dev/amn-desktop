@@ -232,3 +232,78 @@ renderer ──> bridge().remote ──┬── window.amn.remote  (Electron: p
 Rien dans la couche UI n'a eu besoin de changer de forme pour ce câblage —
 c'est tout l'intérêt du bridge : les écrans consomment `useRemoteSites()`
 exactement comme ils consommaient le mock avant.
+
+## Live shared workspace — real sync between operators (P2/P3)
+
+The collaborative data (tasks, decisions, knowledge base, objectives, team
+messages, and operator profiles) is no longer local-only: it syncs live
+between Aaron and Mohamed through `amn-api`, so a change one makes appears for
+the other without reloading.
+
+### Server side (`amn-api`)
+
+- **`shared_records`** — one generic table (Postgres/Supabase in prod, SQLite
+  fallback in dev/test) keyed by `(collection, record_id)`. Each row holds the
+  full domain object as JSON, an `updated_at`, and a `deleted` soft-delete
+  **tombstone** (so removals propagate, not just creations).
+- **`/v1/collections/:collection`** — operator-token-gated REST: `GET` lists a
+  collection, `PUT /:id` upserts, `DELETE /:id` soft-deletes. Allowed
+  collections are whitelisted.
+- **WebSocket hub** — every write broadcasts a `record` message to all
+  connected operator clients. The hub also tracks **real presence**: the WS
+  handshake carries `?user=<email>` (alongside the operator `?token=`), and the
+  hub maintains a per-operator connection count, broadcasting a `presence`
+  snapshot on connect/disconnect. Because the operator token is shared, `user`
+  is self-asserted — acceptable for a two-person internal tool, documented as
+  such.
+- The JSON body limit is raised to 12 MB so records carrying inline data-URL
+  images (chat attachments, profile photos) sync.
+
+### Client side (`amn-desktop`)
+
+- **`RemoteApiClient`** (main process) / the browser-fallback remote client
+  gain collection CRUD, `onRecord`, `getPresence`/`onPresence`, and
+  `setIdentity(email)` — which reconnects the WebSocket with the signed-in
+  operator's `?user=` so presence is real. In Electron the operator token still
+  never leaves the main process.
+- **`SyncContext`** (`src/state/SyncContext.tsx`) is the source of truth for the
+  UI. It keeps a per-collection **localStorage mirror** for instant, offline
+  reads; on connect it reconciles each collection against `amn-api`
+  (last-writer-wins by `updatedAt`); it applies live `record` pushes; and it
+  writes optimistically to the mirror then to the server. When `amn-api` is
+  unconfigured it runs standalone off the mirror, so the app still works
+  offline / in dev. Records use string ids and a `data` payload; screens consume
+  them via `useCollection<T>()` / `useMessages()`.
+- **Profiles** (`ProfilesContext`) are a synced collection too, so a photo one
+  operator uploads (Settings) is visible to the other everywhere via
+  `UserAvatar` (messages, task assignees, decision authors, presence, the
+  account button). Each client only ever seeds *its own* profile row, never
+  overwriting the other's.
+- **Presence** in `TeamScreen` is now driven by real WebSocket connections
+  (`SyncContext.onlineEmails`) plus the profile's custom presence text — not a
+  client-side mock.
+
+Deliberately still local (per-machine): notification preferences, the password
+(local auth), and `clients`/`quotes` (their integer ids are per-machine; the
+same generic `shared_records` mechanism can extend to them later, keyed by a
+stable string id).
+
+### Deploying the sync layer
+
+`amn-api` must be redeployed with this change, and the new `shared_records`
+table created in Supabase — run `amn-api/src/db/schema.sql` in the Supabase SQL
+editor (the SQLite dev fallback creates it automatically). `amn-desktop`
+consumes it once `AMN_API_URL` + `AMN_API_OPERATOR_TOKEN` are set in the main
+process (production) — see `.env.example`.
+
+## Native notifications, welcome screen (P4/P5)
+
+- **`system.notify`** — a fire-and-forget bridge call backed by the Electron
+  main-process `Notification` (best-effort Web Notifications in the browser
+  fallback). The renderer's `NotificationsManager` decides *when* to fire — on a
+  critical alert, a site going offline, an incoming message, or a task assigned
+  to you — honouring the per-event toggles in Settings, baselining against
+  startup history so there's no spam, and suppressing self-originated events.
+- **Welcome screen** — `WelcomeOverlay` shows once per calendar day on launch
+  (localStorage high-water mark), speaks the greeting via the free
+  `SpeechSynthesis` Web API, and is skippable by click/keypress.
