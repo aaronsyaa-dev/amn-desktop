@@ -1,13 +1,23 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ImagePlus, Mail, Phone, Plus, X } from 'lucide-react';
+import { FileText, Globe, ImagePlus, Mail, Phone, Plus, Printer, X } from 'lucide-react';
 import { bridge } from '../lib/bridge';
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
+import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
+import { useSitePanel } from '../components/site-panel/SitePanelContext';
+import { StatusBadge } from '../components/StatusBadge';
+import { computeClientHealth, CLIENT_HEALTH_META } from '../lib/clientHealth';
+import { trackerCatalog } from '../data/trackerCatalog';
+import { QuotePrintPortal } from '../assistant/QuotePrintPortal';
 import type {
   Client,
   ClientStatus,
   CreateClientInput,
+  CreateQuoteInput,
+  PaymentStatus,
+  Quote,
+  QuoteStatus,
   UpdateClientInput,
 } from '../shared/api';
 
@@ -26,6 +36,22 @@ const STATUS_META: Record<
 
 const STATUS_ORDER: ClientStatus[] = ['active', 'paused', 'prospect'];
 
+const QUOTE_STATUS_META: Record<QuoteStatus, { label: string; dot: string }> = {
+  draft: { label: 'BROUILLON', dot: 'bg-text-muted' },
+  sent: { label: 'ENVOYÉ', dot: 'border border-text-secondary bg-transparent' },
+  accepted: { label: 'ACCEPTÉ', dot: 'bg-success' },
+  refused: { label: 'REFUSÉ', dot: 'bg-danger' },
+};
+const QUOTE_STATUS_ORDER: QuoteStatus[] = ['draft', 'sent', 'accepted', 'refused'];
+
+const PAYMENT_META: Record<PaymentStatus, { label: string; dot: string; text: string }> = {
+  unpaid: { label: 'Non facturé', dot: 'bg-text-muted', text: 'text-text-secondary' },
+  pending: { label: 'En attente', dot: 'bg-warning', text: 'text-text-secondary' },
+  paid: { label: 'Payé', dot: 'bg-success', text: 'text-text-primary' },
+  late: { label: 'En retard', dot: 'bg-danger', text: 'text-danger' },
+};
+const PAYMENT_ORDER: PaymentStatus[] = ['unpaid', 'pending', 'paid', 'late'];
+
 function initials(name: string): string {
   return name
     .split(/\s+/)
@@ -35,21 +61,22 @@ function initials(name: string): string {
 }
 
 export function ClientsScreen() {
+  const { sites } = useRemoteSites();
   const [clients, setClients] = useState<Client[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     let active = true;
-    bridge()
-      .clients.list()
-      .then((list) => {
-        if (!active) return;
-        setClients(list);
-        setSelectedId((prev) => prev ?? list[0]?.id ?? null);
-      })
-      .finally(() => active && setLoading(false));
+    Promise.all([bridge().clients.list(), bridge().quotes.list()]).then(([clientList, quoteList]) => {
+      if (!active) return;
+      setClients(clientList);
+      setQuotes(quoteList);
+      setSelectedId((prev) => prev ?? clientList[0]?.id ?? null);
+      setLoading(false);
+    });
     return () => {
       active = false;
     };
@@ -62,6 +89,9 @@ export function ClientsScreen() {
 
   const replaceClient = (updated: Client) =>
     setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+
+  const replaceQuote = (updated: Quote) =>
+    setQuotes((prev) => prev.map((q) => (q.id === updated.id ? updated : q)));
 
   const patch = async (id: number, p: UpdateClientInput) => {
     const updated = await bridge().clients.update(id, p);
@@ -80,6 +110,17 @@ export function ClientsScreen() {
     );
     setSelectedId(created.id);
     setAdding(false);
+  };
+
+  const createQuote = async (input: CreateQuoteInput) => {
+    const created = await bridge().quotes.create(input);
+    setQuotes((prev) => [created, ...prev]);
+    return created;
+  };
+
+  const patchQuote = async (id: number, p: { status?: QuoteStatus; paymentStatus?: PaymentStatus }) => {
+    const updated = await bridge().quotes.update(id, p);
+    replaceQuote(updated);
   };
 
   return (
@@ -106,6 +147,7 @@ export function ClientsScreen() {
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[300px_1fr]">
         <ClientList
           clients={clients}
+          sites={sites}
           loading={loading}
           selectedId={selectedId}
           onSelect={setSelectedId}
@@ -114,8 +156,12 @@ export function ClientsScreen() {
           <ClientDetail
             key={selected.id}
             client={selected}
+            sites={sites}
+            quotes={quotes.filter((q) => q.clientId === selected.id)}
             onPatch={patch}
             onAddEvent={addEvent}
+            onCreateQuote={createQuote}
+            onPatchQuote={patchQuote}
           />
         ) : (
           <div className="flex items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted">
@@ -133,11 +179,13 @@ export function ClientsScreen() {
 
 function ClientList({
   clients,
+  sites,
   loading,
   selectedId,
   onSelect,
 }: {
   clients: Client[];
+  sites: DerivedSite[];
   loading: boolean;
   selectedId: number | null;
   onSelect: (id: number) => void;
@@ -158,6 +206,7 @@ function ClientList({
         ) : (
           clients.map((client) => {
             const meta = STATUS_META[client.status];
+            const health = CLIENT_HEALTH_META[computeClientHealth(client, sites)];
             const active = client.id === selectedId;
             return (
               <motion.button
@@ -181,7 +230,10 @@ function ClientList({
                     {client.company || '—'}
                   </p>
                 </div>
-                <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+                <span className="flex flex-col items-center gap-1.5" title={`Santé : ${health.label}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+                  <span className={`h-1.5 w-1.5 rounded-full ${health.dot}`} />
+                </span>
               </motion.button>
             );
           })
@@ -214,22 +266,34 @@ function Avatar({ client, size }: { client: Client; size: number }) {
 
 function ClientDetail({
   client,
+  sites,
+  quotes,
   onPatch,
   onAddEvent,
+  onCreateQuote,
+  onPatchQuote,
 }: {
   client: Client;
+  sites: DerivedSite[];
+  quotes: Quote[];
   onPatch: (id: number, p: UpdateClientInput) => Promise<void>;
   onAddEvent: (id: number, title: string, detail: string) => Promise<void>;
+  onCreateQuote: (input: CreateQuoteInput) => Promise<Quote>;
+  onPatchQuote: (id: number, p: { status?: QuoteStatus; paymentStatus?: PaymentStatus }) => Promise<void>;
 }) {
   return (
     <div className="min-h-0 overflow-y-auto border border-border bg-surface">
-      <ClientHeader client={client} onPatch={onPatch} />
+      <ClientHeader client={client} sites={sites} onPatch={onPatch} />
       <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-2">
         <div className="flex flex-col gap-6">
           <ContactBlock client={client} onPatch={onPatch} />
+          <LinkedSitesBlock client={client} sites={sites} onPatch={onPatch} />
           <NotesBlock client={client} onPatch={onPatch} />
         </div>
-        <TimelineBlock client={client} onAddEvent={onAddEvent} />
+        <div className="flex flex-col gap-6">
+          <QuotesBlock client={client} quotes={quotes} onCreate={onCreateQuote} onPatch={onPatchQuote} />
+          <TimelineBlock client={client} onAddEvent={onAddEvent} />
+        </div>
       </div>
     </div>
   );
@@ -237,12 +301,15 @@ function ClientDetail({
 
 function ClientHeader({
   client,
+  sites,
   onPatch,
 }: {
   client: Client;
+  sites: DerivedSite[];
   onPatch: (id: number, p: UpdateClientInput) => Promise<void>;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const health = CLIENT_HEALTH_META[computeClientHealth(client, sites)];
 
   const onFile = (file: File | undefined) => {
     if (!file) return;
@@ -296,12 +363,80 @@ function ClientHeader({
           className="font-mono text-sm text-text-secondary"
           placeholder="Société"
         />
+        <div className="mt-1.5 flex items-center gap-1.5" title="Ancienneté du dernier contact + statut des sites liés">
+          <span className={`h-1.5 w-1.5 rounded-full ${health.dot}`} />
+          <span className={`font-mono text-[10px] uppercase tracking-wider ${health.text}`}>
+            Santé : {health.label}
+          </span>
+        </div>
       </div>
 
       <StatusSelector
         value={client.status}
         onChange={(status) => onPatch(client.id, { status })}
       />
+    </div>
+  );
+}
+
+function LinkedSitesBlock({
+  client,
+  sites,
+  onPatch,
+}: {
+  client: Client;
+  sites: DerivedSite[];
+  onPatch: (id: number, p: UpdateClientInput) => Promise<void>;
+}) {
+  const { openSite } = useSitePanel();
+
+  const toggle = (siteId: string) => {
+    const next = client.linkedSiteIds.includes(siteId)
+      ? client.linkedSiteIds.filter((id) => id !== siteId)
+      : [...client.linkedSiteIds, siteId];
+    onPatch(client.id, { linkedSiteIds: next });
+  };
+
+  return (
+    <div>
+      <BlockTitle>Sites liés</BlockTitle>
+      {sites.length === 0 ? (
+        <p className="text-xs text-text-muted">
+          Aucun site enregistré. La santé du client se base uniquement sur la date du dernier contact.
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {sites.map((site) => {
+            const linked = client.linkedSiteIds.includes(site.id);
+            return (
+              <span
+                key={site.id}
+                className={`flex items-center gap-1.5 border px-2 py-1 text-xs ${
+                  linked ? 'border-border-strong bg-accent-muted text-text-primary' : 'border-border text-text-muted'
+                }`}
+              >
+                <button type="button" onClick={() => toggle(site.id)} className="flex items-center gap-1.5">
+                  <Globe size={11} strokeWidth={1.75} />
+                  {site.name}
+                </button>
+                {linked && (
+                  <>
+                    <StatusBadge status={site.status} />
+                    <button
+                      type="button"
+                      onClick={() => openSite(site.id)}
+                      className="text-text-muted hover:text-text-primary"
+                      title="Voir la fiche du site"
+                    >
+                      ↗
+                    </button>
+                  </>
+                )}
+              </span>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -481,6 +616,295 @@ function TimelineBlock({
           </li>
         ))}
       </ol>
+    </div>
+  );
+}
+
+function QuotesBlock({
+  client,
+  quotes,
+  onCreate,
+  onPatch,
+}: {
+  client: Client;
+  quotes: Quote[];
+  onCreate: (input: CreateQuoteInput) => Promise<Quote>;
+  onPatch: (id: number, p: { status?: QuoteStatus; paymentStatus?: PaymentStatus }) => Promise<void>;
+}) {
+  const [creating, setCreating] = useState(false);
+  const [printing, setPrinting] = useState<Quote | null>(null);
+
+  return (
+    <div>
+      <BlockTitle
+        aside={
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-text-secondary hover:text-text-primary"
+          >
+            <Plus size={12} strokeWidth={2.25} />
+            Nouveau devis
+          </button>
+        }
+      >
+        Devis
+      </BlockTitle>
+      {quotes.length === 0 ? (
+        <p className="text-xs text-text-muted">Aucun devis pour ce client.</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {quotes.map((quote) => (
+            <QuoteRow key={quote.id} quote={quote} onPatch={onPatch} onPrint={() => setPrinting(quote)} />
+          ))}
+        </div>
+      )}
+
+      {creating && (
+        <NewQuoteModal client={client} onClose={() => setCreating(false)} onCreate={onCreate} />
+      )}
+      {printing && (
+        <QuotePrintPortal quote={printing} client={client} onDone={() => setPrinting(null)} />
+      )}
+    </div>
+  );
+}
+
+function QuoteRow({
+  quote,
+  onPatch,
+  onPrint,
+}: {
+  quote: Quote;
+  onPatch: (id: number, p: { status?: QuoteStatus; paymentStatus?: PaymentStatus }) => Promise<void>;
+  onPrint: () => void;
+}) {
+  const offer = trackerCatalog.find((o) => o.id === quote.trackerTier);
+  const statusMeta = QUOTE_STATUS_META[quote.status];
+  const paymentMeta = PAYMENT_META[quote.paymentStatus];
+
+  return (
+    <div className="border border-border bg-bg p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-text-primary">{quote.title}</p>
+          <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+            {offer?.name ?? quote.trackerTier} · {quote.priceEuro.toLocaleString('fr-FR')} €
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onPrint}
+          aria-label="Imprimer / exporter en PDF"
+          className="flex-shrink-0 text-text-muted hover:text-text-primary"
+        >
+          <Printer size={14} strokeWidth={1.75} />
+        </button>
+      </div>
+
+      <div className="mt-2.5 flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-1.5">
+          <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">Statut</span>
+          <select
+            value={quote.status}
+            onChange={(e) => onPatch(quote.id, { status: e.target.value as QuoteStatus })}
+            className="input-focus border border-border bg-surface px-1.5 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary outline-none"
+          >
+            {QUOTE_STATUS_ORDER.map((s) => (
+              <option key={s} value={s}>
+                {QUOTE_STATUS_META[s].label}
+              </option>
+            ))}
+          </select>
+          <span className={`h-1.5 w-1.5 rounded-full ${statusMeta.dot}`} />
+        </label>
+
+        <label className="flex items-center gap-1.5">
+          <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">Paiement</span>
+          <select
+            value={quote.paymentStatus}
+            onChange={(e) => onPatch(quote.id, { paymentStatus: e.target.value as PaymentStatus })}
+            className="input-focus border border-border bg-surface px-1.5 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary outline-none"
+          >
+            {PAYMENT_ORDER.map((s) => (
+              <option key={s} value={s}>
+                {PAYMENT_META[s].label}
+              </option>
+            ))}
+          </select>
+          <span className={`h-1.5 w-1.5 rounded-full ${paymentMeta.dot}`} />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function NewQuoteModal({
+  client,
+  onClose,
+  onCreate,
+}: {
+  client: Client;
+  onClose: () => void;
+  onCreate: (input: CreateQuoteInput) => Promise<Quote>;
+}) {
+  const [step, setStep] = useState(0);
+  const [trackerTier, setTrackerTier] = useState(trackerCatalog[0].id);
+  const [priceEuro, setPriceEuro] = useState('');
+  const [title, setTitle] = useState('');
+  const [detail, setDetail] = useState('');
+
+  const steps = ['Offre', 'Tarif', 'Mission'];
+
+  const submit = async () => {
+    if (!title.trim() || !priceEuro) return;
+    await onCreate({
+      clientId: client.id,
+      title: title.trim(),
+      detail: detail.trim(),
+      trackerTier,
+      priceEuro: Number(priceEuro),
+    });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.98, y: -6 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+        className="relative w-full max-w-lg border border-border-strong bg-surface"
+      >
+        <div className="flex items-center justify-between border-b border-border px-5 py-3">
+          <h2 className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">
+            <FileText size={14} strokeWidth={1.75} />
+            Nouveau devis · {client.name}
+          </h2>
+          <button type="button" onClick={onClose} aria-label="Fermer" className="text-text-secondary hover:text-text-primary">
+            <X size={18} strokeWidth={2} />
+          </button>
+        </div>
+
+        <div className="flex border-b border-border">
+          {steps.map((s, i) => (
+            <div
+              key={s}
+              className={`flex-1 px-3 py-2 text-center font-mono text-[10px] uppercase tracking-widest ${
+                i === step ? 'bg-accent-muted text-text-primary' : 'text-text-muted'
+              }`}
+            >
+              {i + 1}. {s}
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-col gap-3 p-5">
+          {step === 0 && (
+            <div className="flex flex-col gap-2">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                Quelle offre proposer ?
+              </p>
+              {trackerCatalog.map((offer) => (
+                <button
+                  key={offer.id}
+                  type="button"
+                  onClick={() => setTrackerTier(offer.id)}
+                  className={`flex flex-col items-start gap-0.5 border px-3 py-2.5 text-left transition-colors ${
+                    trackerTier === offer.id
+                      ? 'border-border-strong bg-accent-muted'
+                      : 'border-border hover:border-border-strong'
+                  }`}
+                >
+                  <span className="text-sm font-medium text-text-primary">{offer.name}</span>
+                  <span className="text-xs text-text-secondary">{offer.tagline}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {step === 1 && (
+            <label className="flex flex-col gap-1.5">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                Tarif de la mission (€) *
+              </span>
+              <input
+                autoFocus
+                type="number"
+                min={0}
+                value={priceEuro}
+                onChange={(e) => setPriceEuro(e.target.value)}
+                placeholder="ex. 1800"
+                className="input-focus border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
+              />
+            </label>
+          )}
+
+          {step === 2 && (
+            <>
+              <label className="flex flex-col gap-1.5">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                  Titre de la mission *
+                </span>
+                <input
+                  autoFocus
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="ex. Supervision annuelle + audit initial"
+                  className="input-focus border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                  Description (optionnel)
+                </span>
+                <textarea
+                  value={detail}
+                  onChange={(e) => setDetail(e.target.value)}
+                  rows={3}
+                  className="input-focus resize-none border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
+                />
+              </label>
+            </>
+          )}
+
+          <div className="mt-1 flex justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setStep((s) => Math.max(0, s - 1))}
+              disabled={step === 0}
+              className="px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-text-muted hover:text-text-secondary disabled:opacity-0"
+            >
+              Précédent
+            </button>
+            {step < steps.length - 1 ? (
+              <button
+                type="button"
+                onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
+                disabled={step === 1 && !priceEuro}
+                className="bg-accent px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover disabled:opacity-40"
+              >
+                Suivant
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={submit}
+                disabled={!title.trim() || !priceEuro}
+                className="bg-accent px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover disabled:opacity-40"
+              >
+                Créer le devis
+              </button>
+            )}
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }
