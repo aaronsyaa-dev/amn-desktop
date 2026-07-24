@@ -77,6 +77,43 @@ persist immediately, and events append to `client_events`. The browser
 fallback seeds the same two clients as the SQLite seed so both environments
 present identical data.
 
+## Second workspace layer — tasks, decisions, knowledge, quotes, etc.
+
+A second, larger batch of features follows the exact same bridge pattern
+(new SQLite tables in `main/db.ts`, services in `main/services.ts`, IPC
+channels in `shared/api.ts` + `main/ipc.ts` + `preload.ts`, and a matching
+`localStorage`-backed implementation in `lib/bridge.ts` for the browser
+fallback). Nothing here introduces a new architectural pattern — it's the
+same one, repeated for eight more domains:
+
+- **Messages** gained attachments (resized client-side to a data-URL before
+  persisting — see `lib/imageResize.ts`), threaded replies, a fixed 5-emoji
+  reaction set (`message_reactions` table), and pinning.
+- **Tasks** (`shared_tasks`), **decisions** (`decisions`), and **knowledge
+  docs** (`knowledge_docs`) are straightforward CRUD domains, each with its
+  own screen (`TasksScreen`, `DecisionsScreen`, `KnowledgeScreen`).
+- **Recurring checklists**: the check *content* is intentionally hardcoded
+  (`src/data/checklistCatalog.ts`, no real scanning logic yet — matches what
+  was asked). Only the `last_checked_at` timestamp per item is persisted
+  (`checklist_state`); "due again" is computed client-side by comparing that
+  timestamp against the item's frequency window.
+- **Learning goals** (`learning_goals`) and **objectives** (`objectives`) are
+  manually-edited progress trackers — no external integration, as scoped.
+- **Client health score** (`lib/clientHealth.ts`) is *computed*, not stored:
+  it combines the client's most recent `client_events` timestamp with the
+  derived status of the sites linked to that client (`clients.linked_site_ids`,
+  a JSON array of amn-api site ids — the one new column on the existing
+  `clients` table). No new external data source, by design.
+- **Quotes** (`quotes`) carry both a sales status (draft/sent/accepted/
+  refused) and an independent payment status (unpaid/pending/paid/late), and
+  are exported to a print-ready view (`assistant/QuotePrintPortal.tsx`) that
+  reuses the same portal + `window.print()` pattern as the assistant's report
+  export — "PDF" is "Save as PDF" in that dialog, no PDF library needed.
+
+Every new screen (Tâches, Décisions, Connaissances, Progression) has its own
+entry in `lib/transitions.ts` so it keeps a distinct "room" feel on
+navigation, consistent with the rest of the app.
+
 ## Écosystème AMN — vue d'ensemble (mis à jour)
 
 Le système compte désormais trois projets séparés, chacun avec son propre
