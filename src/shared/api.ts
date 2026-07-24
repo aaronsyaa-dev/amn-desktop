@@ -24,6 +24,17 @@ export interface AuthResult {
   error?: string;
 }
 
+export interface MessageAttachment {
+  /** Data-URL of an inline image. Kept small (client-side resized before send). */
+  dataUrl: string;
+  name: string;
+}
+
+export interface MessageReaction {
+  emoji: string;
+  authorEmail: string;
+}
+
 export interface Message {
   id: number;
   authorEmail: string;
@@ -31,12 +42,23 @@ export interface Message {
   body: string;
   /** ISO timestamp */
   createdAt: string;
+  attachments: MessageAttachment[];
+  /** Id of the message this one replies to, if any. */
+  replyToId: number | null;
+  reactions: MessageReaction[];
+  pinned: boolean;
 }
 
 export interface SendMessageInput {
   authorEmail: string;
   body: string;
+  attachments?: MessageAttachment[];
+  replyToId?: number | null;
 }
+
+/** Reaction emoji set — deliberately small and fixed, no full picker. */
+export const REACTION_EMOJIS = ['👍', '👀', '✅', '🔥', '❗'] as const;
+export type ReactionEmoji = (typeof REACTION_EMOJIS)[number];
 
 export type ClientStatus = 'active' | 'paused' | 'prospect';
 
@@ -59,6 +81,8 @@ export interface Client {
   notes: string;
   /** Data-URL of an uploaded avatar, or empty. */
   imageDataUrl: string;
+  /** amn-api site ids supervised for this client — feeds the health score. */
+  linkedSiteIds: string[];
   createdAt: string;
   updatedAt: string;
   events: ClientEvent[];
@@ -80,12 +104,187 @@ export interface UpdateClientInput {
   phone?: string;
   notes?: string;
   imageDataUrl?: string;
+  linkedSiteIds?: string[];
 }
 
 export interface AddClientEventInput {
   clientId: number;
   title: string;
   detail?: string;
+}
+
+/* ------------------------------- Quotes ------------------------------- */
+
+export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'refused';
+export type PaymentStatus = 'unpaid' | 'pending' | 'paid' | 'late';
+
+export interface Quote {
+  id: number;
+  clientId: number;
+  /** Short mission title, e.g. "Supervision annuelle + audit initial". */
+  title: string;
+  /** Longer mission description. */
+  detail: string;
+  /** Tracker catalog offer id (see src/data/trackerCatalog.ts), free text. */
+  trackerTier: string;
+  priceEuro: number;
+  status: QuoteStatus;
+  paymentStatus: PaymentStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateQuoteInput {
+  clientId: number;
+  title: string;
+  detail?: string;
+  trackerTier: string;
+  priceEuro: number;
+}
+
+export interface UpdateQuoteInput {
+  title?: string;
+  detail?: string;
+  trackerTier?: string;
+  priceEuro?: number;
+  status?: QuoteStatus;
+  paymentStatus?: PaymentStatus;
+}
+
+/* -------------------------------- Tasks -------------------------------- */
+
+export type SharedTaskStatus = 'todo' | 'doing' | 'done';
+
+export interface SharedTask {
+  id: number;
+  title: string;
+  detail: string;
+  assigneeEmail: string;
+  status: SharedTaskStatus;
+  siteId: string | null;
+  clientId: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSharedTaskInput {
+  title: string;
+  detail?: string;
+  assigneeEmail: string;
+  siteId?: string | null;
+  clientId?: number | null;
+}
+
+export interface UpdateSharedTaskInput {
+  title?: string;
+  detail?: string;
+  assigneeEmail?: string;
+  status?: SharedTaskStatus;
+  siteId?: string | null;
+  clientId?: number | null;
+}
+
+/* ------------------------------ Decisions ------------------------------ */
+
+export interface Decision {
+  id: number;
+  title: string;
+  detail: string;
+  authorEmail: string;
+  authorName: string;
+  createdAt: string;
+}
+
+export interface CreateDecisionInput {
+  title: string;
+  detail?: string;
+  authorEmail: string;
+}
+
+/* --------------------------- Knowledge base ---------------------------- */
+
+export interface KnowledgeDoc {
+  id: number;
+  title: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateKnowledgeDocInput {
+  title: string;
+  body?: string;
+}
+
+export interface UpdateKnowledgeDocInput {
+  title?: string;
+  body?: string;
+}
+
+/* ---------------------- Recurring checklists (mock) --------------------- */
+
+export type ChecklistFrequency = 'weekly' | 'monthly';
+
+/** Static catalog of recurring checks — content is hardcoded, not stored. */
+export interface ChecklistItemDef {
+  id: string;
+  label: string;
+  detail: string;
+  frequency: ChecklistFrequency;
+}
+
+/** The only thing actually persisted per item: when it was last checked. */
+export interface ChecklistStateEntry {
+  itemId: string;
+  lastCheckedAt: string | null;
+}
+
+/* ---------------------------- Learning goals ---------------------------- */
+
+export interface LearningGoal {
+  id: number;
+  ownerEmail: string;
+  title: string;
+  platform: string;
+  progressPct: number;
+  targetDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateLearningGoalInput {
+  ownerEmail: string;
+  title: string;
+  platform?: string;
+  progressPct?: number;
+  targetDate?: string | null;
+}
+
+export interface UpdateLearningGoalInput {
+  title?: string;
+  platform?: string;
+  progressPct?: number;
+  targetDate?: string | null;
+}
+
+/* ------------------------- Objectives (home) ------------------------- */
+
+export interface Objective {
+  id: number;
+  label: string;
+  unit: string;
+  targetValue: number;
+  currentValue: number;
+  periodLabel: string;
+  updatedAt: string;
+}
+
+export interface UpdateObjectiveInput {
+  label?: string;
+  unit?: string;
+  targetValue?: number;
+  currentValue?: number;
+  periodLabel?: string;
 }
 
 /* ------------------------- amn-api (real sites) ------------------------- */
@@ -152,12 +351,50 @@ export interface AmnBridge {
   messages: {
     list(): Promise<Message[]>;
     send(input: SendMessageInput): Promise<Message>;
+    /** Toggles the given emoji reaction from this author on/off. */
+    react(id: number, emoji: string, authorEmail: string): Promise<Message>;
+    setPinned(id: number, pinned: boolean): Promise<Message>;
   };
   clients: {
     list(): Promise<Client[]>;
     create(input: CreateClientInput): Promise<Client>;
     update(id: number, patch: UpdateClientInput): Promise<Client>;
     addEvent(input: AddClientEventInput): Promise<Client>;
+  };
+  quotes: {
+    list(): Promise<Quote[]>;
+    create(input: CreateQuoteInput): Promise<Quote>;
+    update(id: number, patch: UpdateQuoteInput): Promise<Quote>;
+  };
+  tasks: {
+    list(): Promise<SharedTask[]>;
+    create(input: CreateSharedTaskInput): Promise<SharedTask>;
+    update(id: number, patch: UpdateSharedTaskInput): Promise<SharedTask>;
+    remove(id: number): Promise<void>;
+  };
+  decisions: {
+    list(): Promise<Decision[]>;
+    create(input: CreateDecisionInput): Promise<Decision>;
+  };
+  knowledge: {
+    list(): Promise<KnowledgeDoc[]>;
+    create(input: CreateKnowledgeDocInput): Promise<KnowledgeDoc>;
+    update(id: number, patch: UpdateKnowledgeDocInput): Promise<KnowledgeDoc>;
+    remove(id: number): Promise<void>;
+  };
+  checklist: {
+    getState(): Promise<ChecklistStateEntry[]>;
+    check(itemId: string): Promise<ChecklistStateEntry>;
+  };
+  learning: {
+    list(): Promise<LearningGoal[]>;
+    create(input: CreateLearningGoalInput): Promise<LearningGoal>;
+    update(id: number, patch: UpdateLearningGoalInput): Promise<LearningGoal>;
+    remove(id: number): Promise<void>;
+  };
+  objectives: {
+    list(): Promise<Objective[]>;
+    update(id: number, patch: UpdateObjectiveInput): Promise<Objective>;
   };
   /**
    * Talks to the central amn-api. In Electron, the operator token never
@@ -185,10 +422,33 @@ export const IPC = {
   authLogin: 'auth:login',
   messagesList: 'messages:list',
   messagesSend: 'messages:send',
+  messagesReact: 'messages:react',
+  messagesSetPinned: 'messages:setPinned',
   clientsList: 'clients:list',
   clientsCreate: 'clients:create',
   clientsUpdate: 'clients:update',
   clientsAddEvent: 'clients:addEvent',
+  quotesList: 'quotes:list',
+  quotesCreate: 'quotes:create',
+  quotesUpdate: 'quotes:update',
+  tasksList: 'tasks:list',
+  tasksCreate: 'tasks:create',
+  tasksUpdate: 'tasks:update',
+  tasksRemove: 'tasks:remove',
+  decisionsList: 'decisions:list',
+  decisionsCreate: 'decisions:create',
+  knowledgeList: 'knowledge:list',
+  knowledgeCreate: 'knowledge:create',
+  knowledgeUpdate: 'knowledge:update',
+  knowledgeRemove: 'knowledge:remove',
+  checklistGetState: 'checklist:getState',
+  checklistCheck: 'checklist:check',
+  learningList: 'learning:list',
+  learningCreate: 'learning:create',
+  learningUpdate: 'learning:update',
+  learningRemove: 'learning:remove',
+  objectivesList: 'objectives:list',
+  objectivesUpdate: 'objectives:update',
   remoteListSites: 'remote:listSites',
   remoteSiteEvents: 'remote:siteEvents',
   remoteRegisterSite: 'remote:registerSite',
