@@ -12,10 +12,12 @@ import { RemoteSitesProvider } from '../state/RemoteSitesContext';
 import { ProfilesProvider } from '../state/ProfilesContext';
 import { SyncProvider } from '../state/SyncContext';
 import { NotificationsManager } from './NotificationsManager';
+import { WelcomeOverlay, shouldShowWelcome } from './WelcomeOverlay';
 import { variantsForPath } from '../lib/transitions';
 
 export function AppLayout() {
   const location = useLocation();
+  const [showWelcome, setShowWelcome] = React.useState(shouldShowWelcome);
 
   return (
     <SyncProvider>
@@ -46,6 +48,7 @@ export function AppLayout() {
               <SiteDetailPanel />
               <AssistantPanel />
               <NotificationsManager />
+              {showWelcome && <WelcomeOverlay onDone={() => setShowWelcome(false)} />}
             </CommandPaletteProvider>
           </AssistantProvider>
         </SitePanelProvider>
