@@ -11,6 +11,8 @@ import { relativeTime } from '../lib/time';
 import { Typewriter } from '../components/Typewriter';
 import { AnimatedCounter } from '../components/AnimatedCounter';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
+import { ChecklistWidget } from '../components/ChecklistWidget';
+import { ObjectivesWidget } from '../components/ObjectivesWidget';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
 import type { Message } from '../shared/api';
 
@@ -118,6 +120,16 @@ export function HomeScreen() {
             <InsightsPanel insights={insights} />
             <WeeklySummary sites={sites} eventsBySite={eventsBySite} />
           </div>
+        </div>
+      </StaggerItem>
+
+      {/* Bottom band: recurring checks (wide) + monthly objectives (narrow) */}
+      <StaggerItem>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <ChecklistWidget />
+          </div>
+          <ObjectivesWidget />
         </div>
       </StaggerItem>
     </StaggerGroup>
