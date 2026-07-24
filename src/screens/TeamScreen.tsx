@@ -6,6 +6,7 @@ import {
   Globe,
   Image as ImageIcon,
   Link2,
+  MessageSquarePlus,
   Pin,
   PinOff,
   Search,
@@ -28,6 +29,15 @@ import { REACTION_EMOJIS } from '../shared/api';
 const TEAM = [
   { email: 'aaron@amn-devsec.com' },
   { email: 'mohamed@amn-devsec.com' },
+];
+
+/** Reusable quick replies, inserted into the composer on click. */
+const QUICK_TEMPLATES = [
+  'Je m’en occupe 👍',
+  'C’est réglé de mon côté ✅',
+  'Peux-tu jeter un œil quand tu as un moment ?',
+  'Point rapide en fin de journée ?',
+  'RAS, tout est nominal.',
 ];
 
 export function TeamScreen() {
@@ -617,6 +627,7 @@ function Composer({
   const [text, setText] = useState('');
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -747,6 +758,42 @@ function Composer({
         >
           <ImageIcon size={16} strokeWidth={1.75} />
         </button>
+        <div className="relative flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => setTemplatesOpen((v) => !v)}
+            aria-label="Messages rapides"
+            className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-surface-hover hover:text-text-primary ${
+              templatesOpen ? 'text-text-primary' : 'text-text-muted'
+            }`}
+          >
+            <MessageSquarePlus size={16} strokeWidth={1.75} />
+          </button>
+          {templatesOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setTemplatesOpen(false)} />
+              <div className="absolute bottom-full left-0 z-20 mb-2 w-72 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
+                <p className="px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                  Messages rapides
+                </p>
+                {QUICK_TEMPLATES.map((tpl) => (
+                  <button
+                    key={tpl}
+                    type="button"
+                    onClick={() => {
+                      setText((prev) => (prev ? `${prev} ${tpl}` : tpl));
+                      setTemplatesOpen(false);
+                      inputRef.current?.focus();
+                    }}
+                    className="block w-full px-3 py-2 text-left text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+                  >
+                    {tpl}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
         <textarea
           ref={inputRef}
           value={text}

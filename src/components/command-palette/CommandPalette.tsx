@@ -24,6 +24,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useRemoteSites } from '../../state/RemoteSitesContext';
+import { useCollection } from '../../state/SyncContext';
 import { useSitePanel } from '../site-panel/SitePanelContext';
 import { useAssistant } from '../../assistant/AssistantContext';
 import { StatusBadge } from '../StatusBadge';
@@ -42,7 +43,8 @@ type IconType = React.ComponentType<{ size?: number; strokeWidth?: number }>;
 type Command =
   | { kind: 'nav'; id: string; label: string; icon: IconType; to: string }
   | { kind: 'action'; id: string; label: string; icon: IconType; run: () => void }
-  | { kind: 'site'; id: string; label: string; siteId: string };
+  | { kind: 'site'; id: string; label: string; siteId: string }
+  | { kind: 'record'; id: string; label: string; icon: IconType; to: string; hint: string };
 
 const NAV_COMMANDS: Extract<Command, { kind: 'nav' }>[] = [
   { kind: 'nav', id: 'nav-home', label: 'Accueil', icon: LayoutDashboard, to: '/' },
@@ -109,6 +111,9 @@ function CommandPaletteModal({
   const { openSite } = useSitePanel();
   const { open: openAssistant } = useAssistant();
   const { sites } = useRemoteSites();
+  const tasks = useCollection<{ title: string }>('tasks');
+  const decisions = useCollection<{ title: string }>('decisions');
+  const knowledge = useCollection<{ title: string }>('knowledge');
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -136,8 +141,22 @@ function CommandPaletteModal({
     const navCommands = NAV_COMMANDS.filter(
       (c) => !q || c.label.toLowerCase().includes(q),
     );
-    return [...navCommands, ...actionCommands, ...siteCommands];
-  }, [query, openAssistant, sites]);
+
+    // Content search across synced collections — only when the user is typing,
+    // so the default palette stays a clean navigation list.
+    const recordCommands: Command[] = q
+      ? [
+          ...tasks.map((t) => ({ label: t.title, to: '/tasks', hint: 'Tâche', icon: CheckSquare, key: `task-${t.id}` })),
+          ...decisions.map((d) => ({ label: d.title, to: '/decisions', hint: 'Décision', icon: Scale, key: `dec-${d.id}` })),
+          ...knowledge.map((k) => ({ label: k.title, to: '/knowledge', hint: 'Document', icon: BookOpen, key: `kb-${k.id}` })),
+        ]
+          .filter((r) => r.label && r.label.toLowerCase().includes(q))
+          .slice(0, 8)
+          .map((r) => ({ kind: 'record' as const, id: r.key, label: r.label, to: r.to, hint: r.hint, icon: r.icon }))
+      : [];
+
+    return [...navCommands, ...actionCommands, ...siteCommands, ...recordCommands];
+  }, [query, openAssistant, sites, tasks, decisions, knowledge]);
 
   // Reset transient state whenever the palette opens.
   useEffect(() => {
@@ -154,7 +173,7 @@ function CommandPaletteModal({
   const runCommand = useCallback(
     (command: Command | undefined) => {
       if (!command) return;
-      if (command.kind === 'nav') {
+      if (command.kind === 'nav' || command.kind === 'record') {
         navigate(command.to);
       } else if (command.kind === 'action') {
         command.run();
@@ -209,7 +228,7 @@ function CommandPaletteModal({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={onKeyDown}
-                placeholder="Rechercher un site ou une page…"
+                placeholder="Rechercher : page, site, tâche, décision, document…"
                 className="w-full bg-transparent py-4 text-sm text-text-primary outline-none placeholder:text-text-muted"
               />
               <kbd className="rounded border border-border px-1.5 py-0.5 text-[10px] text-text-muted">
@@ -270,7 +289,7 @@ function CommandRow({
           active ? 'bg-accent/20 text-accent' : 'bg-white/5 text-text-secondary'
         }`}
       >
-        {command.kind === 'nav' || command.kind === 'action' ? (
+        {command.kind === 'nav' || command.kind === 'action' || command.kind === 'record' ? (
           <command.icon size={15} strokeWidth={1.75} />
         ) : (
           <Globe size={15} strokeWidth={1.75} />
@@ -279,6 +298,11 @@ function CommandRow({
       <div className="min-w-0 flex-1">
         <p className="truncate">{command.label}</p>
       </div>
+      {command.kind === 'record' && (
+        <span className="flex-shrink-0 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+          {command.hint}
+        </span>
+      )}
       {site && <StatusBadge status={site.status} />}
       {active && (
         <CornerDownLeft
