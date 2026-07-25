@@ -1,4 +1,4 @@
-import { BrowserWindow, Notification, ipcMain } from 'electron';
+import { app, BrowserWindow, Notification, ipcMain } from 'electron';
 import {
   IPC,
   type AddClientEventInput,
@@ -63,7 +63,12 @@ import {
 import type { RemoteApiClient } from './remoteApi';
 
 /** Registers the IPC handlers backing `window.amn` in the renderer. */
-export function registerIpcHandlers(remote: RemoteApiClient): void {
+interface IpcOptions {
+  /** Called when the renderer raises an important OS notification. */
+  onImportantNotification?: () => void;
+}
+
+export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions = {}): void {
   ipcMain.handle(
     IPC.authLogin,
     (_event, payload: { email: string; password: string }) =>
@@ -214,15 +219,45 @@ export function registerIpcHandlers(remote: RemoteApiClient): void {
   // identity + the live streams); the main process just shows them so they
   // surface even when the app is in the background.
   ipcMain.on(IPC.systemNotify, (_event, input: { title: string; body: string }) => {
+    options.onImportantNotification?.();
     if (!Notification.isSupported()) return;
     const notification = new Notification({ title: input.title, body: input.body, silent: false });
     notification.on('click', () => {
       const win = BrowserWindow.getAllWindows()[0];
       if (win) {
         if (win.isMinimized()) win.restore();
+        win.show();
         win.focus();
       }
     });
     notification.show();
   });
+
+  // Launch-at-login toggle (Settings → "Démarrer avec Windows").
+  ipcMain.handle(IPC.systemGetAutoLaunch, () => {
+    try {
+      return app.getLoginItemSettings().openAtLogin;
+    } catch {
+      return false;
+    }
+  });
+  ipcMain.handle(IPC.systemSetAutoLaunch, (_event, enabled: boolean) => {
+    try {
+      app.setLoginItemSettings({
+        openAtLogin: enabled,
+        openAsHidden: enabled, // macOS: start hidden
+        args: enabled ? ['--hidden'] : [], // Windows/Linux: our hidden-start flag
+      });
+      return app.getLoginItemSettings().openAtLogin;
+    } catch {
+      return false;
+    }
+  });
+
+  ipcMain.handle(IPC.systemGetAppInfo, () => ({
+    name: 'AMN Desktop',
+    version: app.getVersion(),
+    platform: process.platform,
+    isElectron: true,
+  }));
 }

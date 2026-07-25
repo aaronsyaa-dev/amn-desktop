@@ -73,6 +73,13 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   taskAssigned: true,
 };
 
+export interface AppInfo {
+  name: string;
+  version: string;
+  platform: string;
+  isElectron: boolean;
+}
+
 export interface MessageAttachment {
   /** Data-URL of an inline image. Kept small (client-side resized before send). */
   dataUrl: string;
@@ -522,9 +529,16 @@ export interface AmnBridge {
     getPresence(): Promise<PresenceEntry[]>;
     onPresence(callback: (users: PresenceEntry[]) => void): () => void;
   };
-  /** Native OS notifications (Electron main process). Fire-and-forget. */
+  /** Native OS / desktop integration (Electron main process). */
   system: {
+    /** Native OS notification. Fire-and-forget. */
     notify(input: { title: string; body: string }): void;
+    /** Whether the app is set to launch at OS login (Electron only). */
+    getAutoLaunch(): Promise<boolean>;
+    /** Enables/disables launch at OS login; resolves to the new value. */
+    setAutoLaunch(enabled: boolean): Promise<boolean>;
+    /** App name / version / platform for the About screen. */
+    getAppInfo(): Promise<AppInfo>;
   };
   env: {
     /** true when backed by the Electron main process (SQLite), false in browser fallback. */
@@ -587,4 +601,7 @@ export const IPC = {
   remoteRecordPush: 'remote:recordPush',
   remotePresencePush: 'remote:presencePush',
   systemNotify: 'system:notify',
+  systemGetAutoLaunch: 'system:getAutoLaunch',
+  systemSetAutoLaunch: 'system:setAutoLaunch',
+  systemGetAppInfo: 'system:getAppInfo',
 } as const;

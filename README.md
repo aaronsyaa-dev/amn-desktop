@@ -53,3 +53,50 @@ npm start
 
 Electron Forge · Vite · React · TypeScript · React Router · Tailwind CSS v4 ·
 Framer Motion · lucide-react · Inter (fontsource) · better-sqlite3 · bcryptjs.
+
+## Branding / icônes
+
+L'icône de l'app et de la fenêtre est `images/icon.png` (placeholder AMN). Pour
+utiliser le vrai logo, remplacez / ajoutez dans `images/` :
+
+- `icon.png` — icône de fenêtre + barre des tâches (min. 512×512).
+- `icon.ico` — icône de l'exécutable/installeur **Windows** (multi-résolutions).
+- `icon.icns` — icône de l'app **macOS**.
+
+`forge.config.ts` pointe déjà sur `./images/icon` (sans extension) : Forge
+choisit automatiquement la bonne extension par plateforme. Aucune autre
+modification nécessaire.
+
+## Publier une nouvelle version (mise à jour automatique)
+
+L'app se met à jour toute seule via le service gratuit `update.electronjs.org`
+(lu par `update-electron-app`, câblé dans `src/main/updater.ts`). Pour qu'une
+mise à jour se déclenche chez les utilisateurs :
+
+1. **Bumper la version** dans `package.json` (ex. `0.1.0` → `0.1.1`).
+2. **Ajouter une entrée de changelog** dans `src/data/changelog.ts` (elle
+   s'affiche en « Nouvelle mise à jour ! » au premier lancement après update,
+   et dans Paramètres → À propos).
+3. **Publier** : `GITHUB_TOKEN=<token> npm run publish`. Cela construit les
+   artefacts Squirrel et les téléverse dans les *GitHub Releases* du dépôt
+   `aaronsyaa-dev/amn-desktop` (fichier `RELEASES` inclus).
+
+Conditions pour que l'auto-update fonctionne réellement :
+
+- le dépôt GitHub est **public** (ou autorisé sur update.electronjs.org) ;
+- le build Windows est **signé** (un build non signé peut se mettre à jour
+  mais Windows affichera un avertissement à l'installation) ;
+- les utilisateurs ont installé une version **packagée** (l'auto-update est
+  inactif en `npm start`/dev).
+
+## Intégration bureau (Windows/macOS)
+
+- **Démarrer avec Windows** : case à cocher dans Paramètres → Démarrage
+  (`app.setLoginItemSettings`). Au démarrage de session, l'app se lance
+  discrètement en arrière-plan (argument `--hidden`) et n'affiche qu'une
+  notification « AMN Desktop est prêt » ; le Welcome complet (voix + animation)
+  ne joue qu'à l'ouverture manuelle de la fenêtre.
+- **Barre système (tray)** : fermer la fenêtre la réduit dans la barre système
+  au lieu de quitter. Clic sur l'icône = ouvrir ; clic droit = « Quitter ».
+  L'icône signale une notification importante en attente (tooltip + flash de la
+  barre des tâches + badge du dock macOS).

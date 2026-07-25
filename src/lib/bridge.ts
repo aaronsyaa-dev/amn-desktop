@@ -885,6 +885,16 @@ function createBrowserBridge(): AmnBridge {
           /* no-op */
         }
       },
+      // OS integration is Electron-only; harmless no-ops in the browser.
+      async getAutoLaunch(): Promise<boolean> {
+        return false;
+      },
+      async setAutoLaunch(): Promise<boolean> {
+        return false;
+      },
+      async getAppInfo() {
+        return { name: 'AMN Desktop', version: '0.0.0-dev', platform: 'web', isElectron: false };
+      },
     },
     env: { isElectron: false },
   };

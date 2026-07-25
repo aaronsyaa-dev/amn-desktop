@@ -3,6 +3,7 @@ import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerZIP } from '@electron-forge/maker-zip';
 import { MakerDeb } from '@electron-forge/maker-deb';
 import { MakerRpm } from '@electron-forge/maker-rpm';
+import { PublisherGithub } from '@electron-forge/publisher-github';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
@@ -22,6 +23,16 @@ const config: ForgeConfig = {
     new MakerZIP({}, ['darwin']),
     new MakerRpm({}),
     new MakerDeb({}),
+  ],
+  // `npm run publish` uploads the built artifacts (incl. the Squirrel RELEASES
+  // file) to GitHub Releases, which is what update.electronjs.org / the
+  // in-app auto-updater reads. Needs GITHUB_TOKEN in the environment.
+  publishers: [
+    new PublisherGithub({
+      repository: { owner: 'aaronsyaa-dev', name: 'amn-desktop' },
+      draft: false,
+      prerelease: false,
+    }),
   ],
   plugins: [
     new VitePlugin({

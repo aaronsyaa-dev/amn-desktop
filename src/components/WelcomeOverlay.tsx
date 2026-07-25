@@ -27,16 +27,53 @@ function markWelcomeShown(): void {
   }
 }
 
-/** Speaks the welcome via the free native Web Speech API (robotic is fine). */
+/**
+ * Picks the most natural French voice the machine offers. Modern Windows
+ * (10/11) and macOS ship higher-quality "Natural"/"Neural"/"Enhanced" voices
+ * alongside the basic default — we score for those and for known-good French
+ * voice names, falling back to any French voice, then the system default.
+ */
+function pickBestFrenchVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+  const french = voices.filter((v) => v.lang?.toLowerCase().startsWith('fr'));
+  if (french.length === 0) return null;
+
+  const NATURAL = /natural|neural|enhanced|premium|online/i;
+  const GOOD_NAMES = /(google|denise|henri|julie|paul|amélie|amelie|thomas|audrey|aurélie|aurelie|charlotte|léa|lea)/i;
+
+  const score = (v: SpeechSynthesisVoice) => {
+    let s = 0;
+    if (NATURAL.test(v.name)) s += 5;
+    if (GOOD_NAMES.test(v.name)) s += 3;
+    if (v.lang?.toLowerCase() === 'fr-fr') s += 1;
+    return s;
+  };
+
+  return [...french].sort((a, b) => score(b) - score(a))[0];
+}
+
+/** Speaks the welcome via the free native Web Speech API, best voice available. */
 function speakWelcome(name: string): void {
   try {
     const synth = window.speechSynthesis;
     if (!synth) return;
-    synth.cancel();
-    const utter = new SpeechSynthesisUtterance(`Welcome to AMN Desktop. Bonjour ${name}.`);
-    utter.rate = 0.98;
-    utter.pitch = 1;
-    synth.speak(utter);
+
+    const doSpeak = () => {
+      const voice = pickBestFrenchVoice(synth.getVoices());
+      const utter = new SpeechSynthesisUtterance(`Bienvenue sur AMN Desktop. Bonjour ${name}.`);
+      if (voice) utter.voice = voice;
+      utter.lang = voice?.lang || 'fr-FR';
+      utter.rate = 0.93; // slightly slower — calmer, more posed
+      utter.pitch = 1.02;
+      synth.cancel();
+      synth.speak(utter);
+    };
+
+    // Voices load asynchronously the first time — wait for them if needed.
+    if (synth.getVoices().length > 0) {
+      doSpeak();
+    } else {
+      synth.addEventListener('voiceschanged', doSpeak, { once: true });
+    }
   } catch {
     /* speech unavailable — the visual welcome still plays */
   }

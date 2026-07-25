@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, Camera, Check, KeyRound, Loader2, UserCircle } from 'lucide-react';
+import { Bell, Camera, Check, KeyRound, Loader2, Power, UserCircle } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { bridge } from '../lib/bridge';
@@ -34,7 +34,57 @@ export function SettingsScreen() {
       <StaggerItem>
         <NotificationsSection email={user.email} />
       </StaggerItem>
+      {bridge().env.isElectron && (
+        <StaggerItem>
+          <StartupSection />
+        </StaggerItem>
+      )}
     </StaggerGroup>
+  );
+}
+
+function StartupSection() {
+  const [autoLaunch, setAutoLaunch] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    bridge()
+      .system.getAutoLaunch()
+      .then((v) => active && setAutoLaunch(v))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const toggle = async () => {
+    const next = !autoLaunch;
+    setAutoLaunch(next); // optimistic
+    const confirmed = await bridge().system.setAutoLaunch(next);
+    setAutoLaunch(confirmed);
+  };
+
+  return (
+    <Panel
+      icon={Power}
+      title="Démarrage"
+      subtitle="Lancer AMN Desktop automatiquement, discrètement en arrière-plan."
+    >
+      {loading ? (
+        <p className="text-sm text-text-secondary">Chargement…</p>
+      ) : (
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-text-primary">Démarrer avec Windows</p>
+            <p className="text-xs text-text-muted">
+              L’app démarre en arrière-plan à l’ouverture de session et reste dans la barre système.
+            </p>
+          </div>
+          <Toggle on={autoLaunch} onClick={toggle} />
+        </div>
+      )}
+    </Panel>
   );
 }
 
