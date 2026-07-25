@@ -58,14 +58,11 @@ export function Sidebar() {
   const isActive = (to: string) =>
     to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
 
-  const handleNavClick = (item: NavItem, event: React.MouseEvent) => {
-    if (item.key === 'sites') {
-      event.preventDefault();
-      setIsSitesFlyoutOpen((open) => !open);
-    } else {
-      setIsSitesFlyoutOpen(false);
-    }
-  };
+  // Every nav item — Sites included — navigates to its screen. The Sites
+  // "registre" lives at /sites (with the "Nouveau site" button), so clicking
+  // Sites must land there; the quick site-list flyout is opened separately via
+  // the chevron, never by hijacking the main click.
+  const handleNavClick = () => setIsSitesFlyoutOpen(false);
 
   return (
     <>
@@ -108,7 +105,7 @@ export function Sidebar() {
               <Link
                 key={item.key}
                 to={item.to}
-                onClick={(event) => handleNavClick(item, event)}
+                onClick={handleNavClick}
                 title={!isExpanded ? item.label : undefined}
                 aria-label={item.label}
                 className={`group relative flex items-center gap-3 overflow-hidden rounded-lg py-2.5 text-sm transition-colors duration-200 ${
@@ -134,7 +131,23 @@ export function Sidebar() {
                 )}
                 {item.key === 'sites' && isExpanded && (
                   <span
-                    className={`ml-auto select-none text-xs text-text-muted transition-transform duration-200 ${
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Voir la liste rapide des sites"
+                    onClick={(event) => {
+                      // Toggle the quick-list flyout without navigating away.
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setIsSitesFlyoutOpen((open) => !open);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setIsSitesFlyoutOpen((open) => !open);
+                      }
+                    }}
+                    className={`ml-auto -my-1 flex select-none items-center rounded px-1 py-1 text-xs text-text-muted transition-transform duration-200 hover:text-text-primary ${
                       isSitesFlyoutOpen ? 'rotate-90' : ''
                     }`}
                   >
@@ -205,9 +218,19 @@ export function Sidebar() {
               </p>
               <div className="flex flex-col gap-0.5 px-2">
                 {sites.length === 0 ? (
-                  <p className="px-3 py-4 text-sm text-text-muted">
-                    Aucun site enregistré. Ajoutez-en un depuis l’onglet Sites.
-                  </p>
+                  <div className="px-3 py-4">
+                    <p className="text-sm text-text-muted">Aucun site enregistré pour l’instant.</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSitesFlyoutOpen(false);
+                        navigate('/sites');
+                      }}
+                      className="mt-3 w-full bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
+                    >
+                      Ouvrir le registre des sites
+                    </button>
+                  </div>
                 ) : (
                   sites.map((site) => (
                     <button
