@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, Camera, Check, KeyRound, Loader2, Power, UserCircle } from 'lucide-react';
+import { Bell, Camera, Check, Info, KeyRound, Loader2, Power, UserCircle } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { bridge } from '../lib/bridge';
 import { resizeImageToDataUrl } from '../lib/imageResize';
 import { UserAvatar } from '../components/UserAvatar';
+import { Logo } from '../components/Logo';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
+import { CHANGELOG, CURRENT_VERSION } from '../data/changelog';
 import { DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs } from '../shared/api';
 
 export function SettingsScreen() {
@@ -39,7 +41,73 @@ export function SettingsScreen() {
           <StartupSection />
         </StaggerItem>
       )}
+      <StaggerItem>
+        <AboutSection />
+      </StaggerItem>
     </StaggerGroup>
+  );
+}
+
+function AboutSection() {
+  const [version, setVersion] = useState(CURRENT_VERSION);
+
+  useEffect(() => {
+    let active = true;
+    bridge()
+      .system.getAppInfo()
+      .then((info) => {
+        if (active && info?.version && info.version !== '0.0.0-dev') setVersion(info.version);
+      })
+      .catch(() => {
+        /* keep the changelog version */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return (
+    <Panel icon={Info} title="À propos" subtitle="Version, historique des mises à jour et identité de l’application.">
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5">
+          <div className="flex flex-col gap-2">
+            <Logo height={30} showAppName />
+            <p className="text-xs text-text-muted">
+              Poste de commandement AMN DEVSEC — supervision, équipe et clients.
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Version</p>
+            <p className="font-mono text-lg font-semibold text-text-primary">{version}</p>
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+            Historique des versions
+          </p>
+          <div className="space-y-4">
+            {CHANGELOG.map((entry) => (
+              <div key={entry.version} className="border-l border-border pl-4">
+                <div className="flex items-baseline gap-2">
+                  <span className="font-mono text-sm font-semibold text-text-primary">{entry.version}</span>
+                  <span className="font-mono text-[11px] text-text-muted">{entry.date}</span>
+                  {entry.title && <span className="text-xs text-text-secondary">— {entry.title}</span>}
+                </div>
+                <ul className="mt-1.5 space-y-1">
+                  {entry.changes.map((change, i) => (
+                    <li key={i} className="flex gap-2 text-xs text-text-secondary">
+                      <span aria-hidden className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-text-muted" />
+                      <span>{change}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Panel>
   );
 }
 

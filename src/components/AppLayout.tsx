@@ -13,6 +13,7 @@ import { ProfilesProvider } from '../state/ProfilesContext';
 import { SyncProvider } from '../state/SyncContext';
 import { NotificationsManager } from './NotificationsManager';
 import { WelcomeOverlay, shouldShowWelcome } from './WelcomeOverlay';
+import { UpdateNotice } from './UpdateNotice';
 import { variantsForPath } from '../lib/transitions';
 
 export function AppLayout() {
@@ -54,6 +55,7 @@ export function AppLayout() {
               <AssistantPanel />
               <NotificationsManager />
               {showWelcome && <WelcomeOverlay onDone={() => setShowWelcome(false)} />}
+              {!showWelcome && <UpdateNotice />}
             </CommandPaletteProvider>
           </AssistantProvider>
         </SitePanelProvider>
