@@ -18,6 +18,9 @@ const createWindow = () => {
     minWidth: 960,
     minHeight: 640,
     backgroundColor: '#0a0a0a',
+    // Window / taskbar icon. Resolves from the app root in both dev and the
+    // packaged asar. (On macOS the dock icon comes from the packaged .icns.)
+    icon: path.join(app.getAppPath(), 'images', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },

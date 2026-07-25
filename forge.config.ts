@@ -10,6 +10,11 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    // App/executable icon. electron-packager resolves the platform-specific
+    // extension automatically: images/icon.ico (Windows), images/icon.icns
+    // (macOS), images/icon.png (Linux). Drop the real AMN logo in as those
+    // files to replace the placeholder — see README ("Branding / icônes").
+    icon: './images/icon',
   },
   rebuildConfig: {},
   makers: [

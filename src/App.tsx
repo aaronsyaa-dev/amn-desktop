@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { HashRouter, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -16,10 +16,14 @@ import { LearningScreen } from './screens/LearningScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { GrainOverlay } from './components/GrainOverlay';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { SplashScreen, hasSplashPlayed } from './components/SplashScreen';
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(() => !hasSplashPlayed());
+
   return (
     <ErrorBoundary>
+      {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
       <AuthProvider>
         <GrainOverlay />
         <HashRouter>
