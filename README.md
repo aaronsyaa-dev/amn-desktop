@@ -18,8 +18,9 @@ animations Framer Motion.
   automatiques et mini-résumé de la semaine.
 - **Sites surveillés** (`/sites`) — cards par site avec statut, disponibilité,
   vulnérabilités, sparkline de tendance, recherche, filtres de statut et tri.
-- **Équipe** (`/team`) — messagerie persistée, présence, mentions `@site`
-  cliquables ouvrant le panel du site.
+- **Équipe** (`/team`) — messagerie persistée, présence, mentions `@site` et
+  `@client` cliquables (ouvrent la fiche correspondante) avec aperçu au survol,
+  et messages rapides personnalisables par utilisateur.
 - **Panel de détail (slide-over)** — glisse depuis la droite au clic sur un
   site : analytics (visiteurs, CA + tendance), timeline de sécurité des
   alertes, et actions mock (bloquer paiements / connexion). Fermeture via
@@ -27,6 +28,19 @@ animations Framer Motion.
 - **Assistant IA** — rapports (interne/client), résumé du jour, veille,
   suggestions proactives. Mock isolé, prêt à brancher l'API Claude.
 - **Command palette** (`⌘/Ctrl + K`) et **centre de notifications**.
+- **Aide rapide** — bouton `?` dans la barre du haut (ou touche `?`) : rappel
+  des raccourcis, des mentions et des messages rapides.
+- **Robustesse & confort** — indicateur de synchronisation (Synchronisé / Hors
+  ligne), indicateur d'enregistrement sur les zones de texte libre, écrans
+  squelettes au chargement, error boundary (jamais d'écran blanc), suppression
+  annulable (« Annuler » pendant quelques secondes avant suppression
+  définitive), et mémoire de session (dernier onglet + taille de la fenêtre).
+- **À propos & mises à jour** — écran « À propos » (Paramètres) avec la version
+  et l'historique des changements ; notification « Nouvelle mise à jour ! » au
+  premier lancement après une mise à jour. Le changelog est maintenu dans
+  [`src/data/changelog.ts`](src/data/changelog.ts).
+- **Sauvegarde** — export d'un instantané JSON complet de l'espace de travail
+  depuis les Paramètres.
 
 ## Architecture
 
