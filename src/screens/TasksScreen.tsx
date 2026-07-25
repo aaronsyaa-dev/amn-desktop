@@ -4,6 +4,7 @@ import { Contact, Globe, Plus, Trash2, X } from 'lucide-react';
 import { bridge } from '../lib/bridge';
 import { useRemoteSites } from '../state/RemoteSitesContext';
 import { useSync, useCollection, uid, stripMeta } from '../state/SyncContext';
+import { useUndo } from '../state/UndoContext';
 import { UserAvatar } from '../components/UserAvatar';
 import { SkeletonBoard } from '../components/Skeleton';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
@@ -37,10 +38,14 @@ export type SyncTask = TaskData & { id: string; updatedAt: string };
 export function TasksScreen() {
   const { sites } = useRemoteSites();
   const { upsert, remove, ready } = useSync();
+  const { isPending, scheduleDelete } = useUndo();
   const tasksRaw = useCollection<TaskData>('tasks');
   const tasks = useMemo(
-    () => [...tasksRaw].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')),
-    [tasksRaw],
+    () =>
+      [...tasksRaw]
+        .filter((t) => !isPending(`tasks:${t.id}`))
+        .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')),
+    [tasksRaw, isPending],
   );
   const [clients, setClients] = useState<Client[]>([]);
   const [creating, setCreating] = useState(false);
@@ -58,7 +63,14 @@ export function TasksScreen() {
   const moveTask = (task: SyncTask, status: SharedTaskStatus) =>
     upsert('tasks', task.id, { ...stripMeta(task), status });
 
-  const removeTask = (id: string) => remove('tasks', id);
+  const removeTask = (id: string) => {
+    const task = tasks.find((t) => t.id === id);
+    scheduleDelete({
+      key: `tasks:${id}`,
+      label: task?.title ? `Tâche « ${task.title} »` : 'Tâche',
+      commit: () => remove('tasks', id),
+    });
+  };
 
   const createTask = (input: Omit<TaskData, 'createdAt' | 'status'>) => {
     upsert('tasks', uid('task'), { ...input, status: 'todo', createdAt: new Date().toISOString() });

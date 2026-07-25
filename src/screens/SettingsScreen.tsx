@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, Camera, Check, Info, KeyRound, Loader2, Power, UserCircle } from 'lucide-react';
+import { Bell, Camera, Check, Download, Info, KeyRound, Loader2, Power, UserCircle } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { bridge } from '../lib/bridge';
+import { downloadBackup } from '../lib/backup';
 import { resizeImageToDataUrl } from '../lib/imageResize';
 import { UserAvatar } from '../components/UserAvatar';
 import { Logo } from '../components/Logo';
@@ -42,9 +43,52 @@ export function SettingsScreen() {
         </StaggerItem>
       )}
       <StaggerItem>
+        <BackupSection />
+      </StaggerItem>
+      <StaggerItem>
         <AboutSection />
       </StaggerItem>
     </StaggerGroup>
+  );
+}
+
+function BackupSection() {
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const run = async () => {
+    setBusy(true);
+    setDone(false);
+    try {
+      await downloadBackup();
+      setDone(true);
+      window.setTimeout(() => setDone(false), 2500);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Panel
+      icon={Download}
+      title="Sauvegarde"
+      subtitle="Exportez une copie complète de vos données (clients, devis, tâches, messages…) dans un fichier."
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-text-muted">
+          Le fichier JSON contient un instantané de l’espace de travail, à conserver en lieu sûr.
+        </p>
+        <button
+          type="button"
+          onClick={run}
+          disabled={busy}
+          className="flex items-center gap-2 border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover disabled:opacity-40"
+        >
+          {busy ? <Loader2 size={14} className="animate-spin" /> : done ? <Check size={14} /> : <Download size={14} />}
+          {busy ? 'Export…' : done ? 'Exporté' : 'Exporter une sauvegarde'}
+        </button>
+      </div>
+    </Panel>
   );
 }
 

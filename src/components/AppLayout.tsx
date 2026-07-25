@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
@@ -11,14 +11,40 @@ import { AssistantPanel } from '../assistant/AssistantPanel';
 import { RemoteSitesProvider } from '../state/RemoteSitesContext';
 import { ProfilesProvider } from '../state/ProfilesContext';
 import { SyncProvider } from '../state/SyncContext';
+import { UndoProvider } from '../state/UndoContext';
 import { NotificationsManager } from './NotificationsManager';
 import { WelcomeOverlay, shouldShowWelcome } from './WelcomeOverlay';
 import { UpdateNotice } from './UpdateNotice';
 import { variantsForPath } from '../lib/transitions';
 
+const LAST_TAB_KEY = 'amn.lastTab';
+
 export function AppLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [showWelcome, setShowWelcome] = React.useState(shouldShowWelcome);
+
+  // Session memory: restore the last visited tab once, on entry at the root,
+  // then keep the last tab in sync on every navigation.
+  const restored = React.useRef(false);
+  React.useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    try {
+      const last = window.localStorage.getItem(LAST_TAB_KEY);
+      if (last && last !== '/' && location.pathname === '/') navigate(last, { replace: true });
+    } catch {
+      /* ignore */
+    }
+  }, [location.pathname, navigate]);
+
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem(LAST_TAB_KEY, location.pathname);
+    } catch {
+      /* ignore */
+    }
+  }, [location.pathname]);
 
   return (
     <SyncProvider>
@@ -27,6 +53,7 @@ export function AppLayout() {
           <SitePanelProvider>
             <AssistantProvider>
               <CommandPaletteProvider>
+              <UndoProvider>
             <div className="flex h-screen overflow-hidden text-text-primary">
               <Sidebar />
               <main className="relative flex-1 overflow-y-auto">
@@ -56,6 +83,7 @@ export function AppLayout() {
               <NotificationsManager />
               {showWelcome && <WelcomeOverlay onDone={() => setShowWelcome(false)} />}
               {!showWelcome && <UpdateNotice />}
+              </UndoProvider>
             </CommandPaletteProvider>
           </AssistantProvider>
         </SitePanelProvider>

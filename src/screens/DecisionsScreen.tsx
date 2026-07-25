@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { useSync, useCollection, uid } from '../state/SyncContext';
+import { useUndo } from '../state/UndoContext';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { UserAvatar } from '../components/UserAvatar';
 import { SkeletonList } from '../components/Skeleton';
@@ -22,11 +23,22 @@ export function DecisionsScreen() {
   const { user } = useAuth();
   const { profileFor } = useProfiles();
   const { upsert, remove, ready } = useSync();
+  const { isPending, scheduleDelete } = useUndo();
   const decisionsRaw = useCollection<DecisionData>('decisions');
   const decisions = useMemo(
-    () => [...decisionsRaw].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')),
-    [decisionsRaw],
+    () =>
+      [...decisionsRaw]
+        .filter((d) => !isPending(`decisions:${d.id}`))
+        .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')),
+    [decisionsRaw, isPending],
   );
+
+  const removeDecision = (id: string, title: string) =>
+    scheduleDelete({
+      key: `decisions:${id}`,
+      label: title ? `Décision « ${title} »` : 'Décision',
+      commit: () => remove('decisions', id),
+    });
 
   const [title, setTitle] = useState('');
   const [detail, setDetail] = useState('');
@@ -129,7 +141,7 @@ export function DecisionsScreen() {
                         {relativeTime(decision.createdAt)}
                       </time>
                       <span className="opacity-0 transition-opacity group-hover/dec:opacity-100">
-                        <ConfirmDelete onConfirm={() => remove('decisions', decision.id)} label="Supprimer la décision" />
+                        <ConfirmDelete onConfirm={() => removeDecision(decision.id, decision.title)} label="Supprimer la décision" />
                       </span>
                     </div>
                   </div>

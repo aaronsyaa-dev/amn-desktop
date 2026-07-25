@@ -1,5 +1,6 @@
 import { app, BrowserWindow, Menu, Notification, Tray, nativeImage, shell } from 'electron';
 import path from 'node:path';
+import fs from 'node:fs';
 import started from 'electron-squirrel-startup';
 import { initDatabase } from './main/db';
 import { registerIpcHandlers } from './main/ipc';
@@ -26,6 +27,36 @@ let isQuitting = false;
 
 const iconPath = () => path.join(app.getAppPath(), 'images', 'icon.png');
 
+// --- Window bounds memory (session memory: remember size & position) ---------
+interface SavedBounds {
+  width: number;
+  height: number;
+  x?: number;
+  y?: number;
+}
+const boundsFile = () => path.join(app.getPath('userData'), 'window-state.json');
+
+function loadBounds(): SavedBounds | null {
+  try {
+    const raw = fs.readFileSync(boundsFile(), 'utf-8');
+    const b = JSON.parse(raw) as SavedBounds;
+    if (typeof b.width === 'number' && typeof b.height === 'number') return b;
+  } catch {
+    /* first run or unreadable — use defaults */
+  }
+  return null;
+}
+
+function saveBounds(win: BrowserWindow): void {
+  if (win.isDestroyed() || win.isMinimized()) return;
+  try {
+    const { width, height, x, y } = win.getBounds();
+    fs.writeFileSync(boundsFile(), JSON.stringify({ width, height, x, y }));
+  } catch {
+    /* non-fatal */
+  }
+}
+
 /** True when launched in the background at OS login (so we stay in the tray). */
 function wasLaunchedHidden(): boolean {
   if (process.argv.includes('--hidden')) return true;
@@ -42,9 +73,12 @@ function createWindow(): void {
     return;
   }
 
+  const saved = loadBounds();
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 832,
+    width: saved?.width ?? 1280,
+    height: saved?.height ?? 832,
+    x: saved?.x,
+    y: saved?.y,
     minWidth: 960,
     minHeight: 640,
     backgroundColor: '#0a0a0a',
@@ -56,6 +90,11 @@ function createWindow(): void {
   });
 
   mainWindow.once('ready-to-show', () => mainWindow?.show());
+
+  // Persist size/position so the next launch restores the same window.
+  const persist = () => mainWindow && saveBounds(mainWindow);
+  mainWindow.on('resized', persist);
+  mainWindow.on('moved', persist);
 
   // External links open in the OS browser rather than a blank in-app window.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -79,6 +118,7 @@ function createWindow(): void {
   // Closing the window hides it to the tray instead of quitting; the real
   // "Quitter" lives in the tray context menu (sets isQuitting first).
   mainWindow.on('close', (event) => {
+    if (mainWindow) saveBounds(mainWindow);
     if (!isQuitting) {
       event.preventDefault();
       mainWindow?.hide();

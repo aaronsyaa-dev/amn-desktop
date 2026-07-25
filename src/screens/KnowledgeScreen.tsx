@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Plus, Trash2 } from 'lucide-react';
 import { useSync, useCollection, uid, stripMeta } from '../state/SyncContext';
+import { useUndo } from '../state/UndoContext';
 import { Skeleton } from '../components/Skeleton';
 import { SaveIndicator } from '../components/SaveIndicator';
 import { staggerContainer, staggerItem } from '../lib/transitions';
@@ -16,10 +17,14 @@ type SyncDoc = KnowledgeData & { id: string; updatedAt: string };
 
 export function KnowledgeScreen() {
   const { upsert, remove, ready } = useSync();
+  const { isPending, scheduleDelete } = useUndo();
   const docsRaw = useCollection<KnowledgeData>('knowledge');
   const docs = useMemo(
-    () => [...docsRaw].sort((a, b) => (a.title || '').localeCompare(b.title || '', 'fr')),
-    [docsRaw],
+    () =>
+      [...docsRaw]
+        .filter((d) => !isPending(`knowledge:${d.id}`))
+        .sort((a, b) => (a.title || '').localeCompare(b.title || '', 'fr')),
+    [docsRaw, isPending],
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -36,7 +41,12 @@ export function KnowledgeScreen() {
   };
 
   const removeDoc = (id: string) => {
-    remove('knowledge', id);
+    const doc = docs.find((d) => d.id === id);
+    scheduleDelete({
+      key: `knowledge:${id}`,
+      label: doc?.title ? `Document « ${doc.title} »` : 'Document',
+      commit: () => remove('knowledge', id),
+    });
     if (selectedId === id) setSelectedId(null);
   };
 
