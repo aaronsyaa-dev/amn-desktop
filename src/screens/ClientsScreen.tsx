@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FileText, Globe, ImagePlus, Info, Mail, Phone, Plus, Printer, X } from 'lucide-react';
 import { bridge } from '../lib/bridge';
@@ -65,6 +66,10 @@ function initials(name: string): string {
 
 export function ClientsScreen() {
   const { sites } = useRemoteSites();
+  const location = useLocation();
+  // A @client mention (or any navigation) can request a specific client be
+  // opened via router state: navigate('/clients', { state: { focusClientId } }).
+  const focusClientId = (location.state as { focusClientId?: number } | null)?.focusClientId ?? null;
   const [clients, setClients] = useState<Client[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -84,6 +89,14 @@ export function ClientsScreen() {
       active = false;
     };
   }, []);
+
+  // Honour a requested client focus once the list is loaded (and again if the
+  // navigation target changes while the screen stays mounted).
+  useEffect(() => {
+    if (focusClientId != null && clients.some((c) => c.id === focusClientId)) {
+      setSelectedId(focusClientId);
+    }
+  }, [focusClientId, clients]);
 
   const selected = useMemo(
     () => clients.find((c) => c.id === selectedId) ?? null,

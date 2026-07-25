@@ -1,8 +1,16 @@
 import type { DerivedSite } from '../state/RemoteSitesContext';
 
+/** Minimal client shape a mention needs — kept small to avoid a heavy import. */
+export interface ClientRef {
+  id: number;
+  name: string;
+  company: string;
+}
+
 export type MessageSegment =
   | { type: 'text'; value: string }
   | { type: 'mention'; site: DerivedSite }
+  | { type: 'clientMention'; client: ClientRef }
   | { type: 'link'; url: string };
 
 // NOTE: a capturing split pattern keeps the URLs in the resulting array. It is
@@ -19,20 +27,35 @@ function splitLinks(text: string): MessageSegment[] {
     );
 }
 
+type Candidate =
+  | { kind: 'site'; name: string; site: DerivedSite }
+  | { kind: 'client'; name: string; client: ClientRef };
+
 /**
- * Splits a message body into text, site-mention, and link segments.
+ * Splits a message body into text, site-mention, client-mention, and link
+ * segments.
  *
- * A mention is an "@" immediately followed by a known site name
- * (case-insensitive), e.g. "@Ledger Pay API". Longest site names are matched
- * first so overlapping prefixes resolve correctly. `sites` comes from the
- * caller (RemoteSitesContext) rather than a static import, since the real
- * site list can change at runtime.
+ * A mention is an "@" immediately followed by a known site OR client name
+ * (case-insensitive), e.g. "@Ledger Pay API" or "@ACME Corp". The longest
+ * candidate name is matched first so overlapping prefixes resolve correctly;
+ * when a site and a client share a name the site wins (historical behaviour).
+ * `sites`/`clients` come from the caller rather than a static import, since the
+ * real lists change at runtime.
  *
  * Bare URLs (http/https) anywhere in the remaining text are turned into
  * `link` segments so they render as clickable, styled links.
  */
-export function parseMentions(body: string, sites: DerivedSite[]): MessageSegment[] {
-  const sitesByLength = [...sites].sort((a, b) => b.name.length - a.name.length);
+export function parseMentions(
+  body: string,
+  sites: DerivedSite[],
+  clients: ClientRef[] = [],
+): MessageSegment[] {
+  const candidates: Candidate[] = [
+    ...sites.map((site) => ({ kind: 'site' as const, name: site.name, site })),
+    ...clients.map((client) => ({ kind: 'client' as const, name: client.name, client })),
+  ]
+    // Sites before clients on a tie, then longest name first.
+    .sort((a, b) => b.name.length - a.name.length || (a.kind === b.kind ? 0 : a.kind === 'site' ? -1 : 1));
 
   const raw: MessageSegment[] = [];
   let buffer = '';
@@ -41,16 +64,18 @@ export function parseMentions(body: string, sites: DerivedSite[]): MessageSegmen
   while (i < body.length) {
     if (body[i] === '@') {
       const rest = body.slice(i + 1);
-      const site = sitesByLength.find((s) =>
-        rest.toLowerCase().startsWith(s.name.toLowerCase()),
-      );
-      if (site) {
+      const hit = candidates.find((c) => c.name && rest.toLowerCase().startsWith(c.name.toLowerCase()));
+      if (hit) {
         if (buffer) {
           raw.push({ type: 'text', value: buffer });
           buffer = '';
         }
-        raw.push({ type: 'mention', site });
-        i += 1 + site.name.length;
+        raw.push(
+          hit.kind === 'site'
+            ? { type: 'mention', site: hit.site }
+            : { type: 'clientMention', client: hit.client },
+        );
+        i += 1 + hit.name.length;
         continue;
       }
     }

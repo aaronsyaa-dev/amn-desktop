@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Sparkles } from 'lucide-react';
 import { useCommandPalette } from './command-palette/CommandPalette';
 import { NotificationCenter } from './NotificationCenter';
+import { HelpButton } from './HelpOverlay';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
 import { UserAvatar } from './UserAvatar';
 import { useAssistant } from '../assistant/AssistantContext';
@@ -51,6 +52,7 @@ export function TopBar() {
           <Sparkles size={16} strokeWidth={1.75} />
           <span className="hidden sm:inline">Assistant</span>
         </button>
+        <HelpButton />
         <NotificationCenter />
         {user && (
           <button

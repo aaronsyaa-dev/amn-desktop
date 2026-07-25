@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUp,
+  Building2,
   CornerUpLeft,
   Globe,
   Image as ImageIcon,
@@ -9,6 +11,7 @@ import {
   MessageSquarePlus,
   Pin,
   PinOff,
+  Plus,
   Search,
   SmilePlus,
   X,
@@ -19,25 +22,30 @@ import { useSync } from '../state/SyncContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { useMessages, type SyncMessage } from '../state/useMessages';
 import { UserAvatar } from '../components/UserAvatar';
-import { parseMentions, urlDisplayHost } from '../lib/mentions';
+import { parseMentions, urlDisplayHost, type ClientRef } from '../lib/mentions';
 import { resizeImageToDataUrl } from '../lib/imageResize';
 import { relativeTime } from '../lib/time';
+import { bridge } from '../lib/bridge';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
+import { useMessageTemplates } from '../state/useMessageTemplates';
 import type { MessageAttachment } from '../shared/api';
 import { REACTION_EMOJIS } from '../shared/api';
+
+/**
+ * Clients available for @-mentions, provided by TeamScreen so the deeply-nested
+ * message/composer components can read them without prop-drilling through every
+ * layer. Empty until the client list loads (or in the browser fallback).
+ */
+const MentionClientsContext = React.createContext<ClientRef[]>([]);
+const useMentionClients = () => React.useContext(MentionClientsContext);
+
+type MentionSuggestion =
+  | { kind: 'site'; name: string }
+  | { kind: 'client'; name: string; company: string };
 
 const TEAM = [
   { email: 'aaron@amn-devsec.com' },
   { email: 'mohamed@amn-devsec.com' },
-];
-
-/** Reusable quick replies, inserted into the composer on click. */
-const QUICK_TEMPLATES = [
-  'Je m’en occupe 👍',
-  'C’est réglé de mon côté ✅',
-  'Peux-tu jeter un œil quand tu as un moment ?',
-  'Point rapide en fin de journée ?',
-  'RAS, tout est nominal.',
 ];
 
 export function TeamScreen() {
@@ -47,7 +55,24 @@ export function TeamScreen() {
   const [replyTo, setReplyTo] = useState<SyncMessage | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [clients, setClients] = useState<ClientRef[]>([]);
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
+
+  // Load the client roster once so "@" can mention clients as well as sites.
+  useEffect(() => {
+    let active = true;
+    bridge()
+      .clients.list()
+      .then((list) => {
+        if (active) setClients(list.map((c) => ({ id: c.id, name: c.name, company: c.company })));
+      })
+      .catch(() => {
+        /* offline / no clients yet — @site mentions still work */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleSend = (body: string, attachments: MessageAttachment[]) => {
     send(body, attachments, replyTo?.id ?? null);
@@ -65,6 +90,7 @@ export function TeamScreen() {
   const byId = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages]);
 
   return (
+    <MentionClientsContext.Provider value={clients}>
     <section className="flex h-[calc(100vh-8rem)] flex-col gap-4">
       <div className="flex items-end justify-between gap-4">
         <div>
@@ -114,6 +140,7 @@ export function TeamScreen() {
         <Composer onSend={handleSend} sites={sites} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} />
       </div>
     </section>
+    </MentionClientsContext.Provider>
   );
 }
 
@@ -311,7 +338,7 @@ function MessageList({
       <div className="flex flex-1 flex-col items-center justify-center gap-1 px-6 text-center">
         <p className="text-sm font-medium text-text-primary">Aucun message pour l’instant</p>
         <p className="text-sm text-text-secondary">
-          Démarrez la conversation. Astuce : tapez « @ » pour mentionner un site.
+          Démarrez la conversation. Astuce : tapez « @ » pour mentionner un site ou un client.
         </p>
       </div>
     );
@@ -542,6 +569,13 @@ function BubbleActions({
   );
 }
 
+const STATUS_LABEL: Record<DerivedSite['status'], string> = {
+  online: 'En ligne',
+  degraded: 'Dégradé',
+  offline: 'Hors ligne',
+  unknown: 'État inconnu',
+};
+
 function MessageBody({
   body,
   light,
@@ -551,8 +585,8 @@ function MessageBody({
   light: boolean;
   sites: DerivedSite[];
 }) {
-  const { openSite } = useSitePanel();
-  const segments = useMemo(() => parseMentions(body, sites), [body, sites]);
+  const clients = useMentionClients();
+  const segments = useMemo(() => parseMentions(body, sites, clients), [body, sites, clients]);
 
   return (
     <span className="whitespace-pre-wrap break-words">
@@ -563,25 +597,85 @@ function MessageBody({
         if (segment.type === 'link') {
           return <LinkChip key={i} url={segment.url} light={light} />;
         }
-        return (
-          <button
-            key={i}
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              openSite(segment.site.id);
-            }}
-            className={`mx-0.5 inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 align-baseline font-mono text-[12px] font-medium transition-colors ${
-              light
-                ? 'bg-black/15 text-bg hover:bg-black/25'
-                : 'bg-white/[0.06] text-text-primary hover:bg-white/10'
-            }`}
-          >
-            <Globe size={12} strokeWidth={2} />
-            {segment.site.name}
-          </button>
-        );
+        if (segment.type === 'clientMention') {
+          return <ClientMentionChip key={i} client={segment.client} light={light} />;
+        }
+        return <SiteMentionChip key={i} site={segment.site} light={light} />;
       })}
+    </span>
+  );
+}
+
+const chipClass = (light: boolean) =>
+  `mx-0.5 inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 align-baseline font-mono text-[12px] font-medium transition-colors ${
+    light ? 'bg-black/15 text-bg hover:bg-black/25' : 'bg-white/[0.06] text-text-primary hover:bg-white/10'
+  }`;
+
+/** Small hover card anchored above a mention chip (CSS-only reveal). */
+function HoverCard({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      role="tooltip"
+      className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 hidden w-56 -translate-x-1/2 rounded-lg border border-border bg-surface p-3 text-left shadow-2xl group-hover:block"
+    >
+      {children}
+    </span>
+  );
+}
+
+function SiteMentionChip({ site, light }: { site: DerivedSite; light: boolean }) {
+  const { openSite } = useSitePanel();
+  const visitors = site.state?.activeVisitors ?? 0;
+  return (
+    <span className="group relative inline-block">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          openSite(site.id);
+        }}
+        className={chipClass(light)}
+      >
+        <Globe size={12} strokeWidth={2} />
+        {site.name}
+      </button>
+      <HoverCard>
+        <span className="mb-1 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+          <Globe size={11} strokeWidth={2} /> Site supervisé
+        </span>
+        <span className="block text-sm font-semibold text-text-primary">{site.name}</span>
+        <span className="mt-1.5 flex items-center justify-between text-xs text-text-secondary">
+          <span>{STATUS_LABEL[site.status]}</span>
+          {site.status !== 'unknown' && <span>{visitors} visiteur{visitors > 1 ? 's' : ''}</span>}
+        </span>
+      </HoverCard>
+    </span>
+  );
+}
+
+function ClientMentionChip({ client, light }: { client: ClientRef; light: boolean }) {
+  const navigate = useNavigate();
+  return (
+    <span className="group relative inline-block">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          navigate('/clients', { state: { focusClientId: client.id } });
+        }}
+        className={chipClass(light)}
+      >
+        <Building2 size={12} strokeWidth={2} />
+        {client.name}
+      </button>
+      <HoverCard>
+        <span className="mb-1 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+          <Building2 size={11} strokeWidth={2} /> Client
+        </span>
+        <span className="block text-sm font-semibold text-text-primary">{client.name}</span>
+        {client.company && <span className="mt-0.5 block text-xs text-text-secondary">{client.company}</span>}
+        <span className="mt-1.5 block text-xs text-text-muted">Ouvrir la fiche client →</span>
+      </HoverCard>
     </span>
   );
 }
@@ -630,7 +724,10 @@ function Composer({
   onCancelReply: () => void;
 }) {
   const { profileFor } = useProfiles();
+  const clients = useMentionClients();
+  const { templates, addTemplate, removeTemplate } = useMessageTemplates();
   const [text, setText] = useState('');
+  const [newTemplate, setNewTemplate] = useState('');
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
@@ -646,14 +743,21 @@ function Composer({
     return { atIdx, query: query.toLowerCase() };
   }, [text]);
 
-  const suggestions = useMemo<DerivedSite[]>(() => {
+  const suggestions = useMemo<MentionSuggestion[]>(() => {
     if (!mentionQuery) return [];
-    return sites.filter((s) => s.name.toLowerCase().includes(mentionQuery.query)).slice(0, 5);
-  }, [mentionQuery, sites]);
+    const q = mentionQuery.query;
+    const siteHits: MentionSuggestion[] = sites
+      .filter((s) => s.name.toLowerCase().includes(q))
+      .map((s) => ({ kind: 'site', name: s.name }));
+    const clientHits: MentionSuggestion[] = clients
+      .filter((c) => c.name.toLowerCase().includes(q))
+      .map((c) => ({ kind: 'client', name: c.name, company: c.company }));
+    return [...siteHits, ...clientHits].slice(0, 6);
+  }, [mentionQuery, sites, clients]);
 
-  const applyMention = (site: DerivedSite) => {
+  const applyMention = (name: string) => {
     if (!mentionQuery) return;
-    setText(text.slice(0, mentionQuery.atIdx) + `@${site.name} `);
+    setText(text.slice(0, mentionQuery.atIdx) + `@${name} `);
     inputRef.current?.focus();
   };
 
@@ -728,17 +832,24 @@ function Composer({
       {suggestions.length > 0 && (
         <div className="absolute bottom-full left-4 mb-2 w-72 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
           <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
-            Mentionner un site
+            Mentionner un site ou un client
           </p>
-          {suggestions.map((site) => (
+          {suggestions.map((item) => (
             <button
-              key={site.id}
+              key={`${item.kind}:${item.name}`}
               type="button"
-              onClick={() => applyMention(site)}
+              onClick={() => applyMention(item.name)}
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
             >
-              <Globe size={14} strokeWidth={1.75} className="text-text-muted" />
-              {site.name}
+              {item.kind === 'site' ? (
+                <Globe size={14} strokeWidth={1.75} className="text-text-muted" />
+              ) : (
+                <Building2 size={14} strokeWidth={1.75} className="text-text-muted" />
+              )}
+              <span className="min-w-0 flex-1 truncate">{item.name}</span>
+              <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">
+                {item.kind === 'site' ? 'Site' : 'Client'}
+              </span>
             </button>
           ))}
         </div>
@@ -778,24 +889,66 @@ function Composer({
           {templatesOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setTemplatesOpen(false)} />
-              <div className="absolute bottom-full left-0 z-20 mb-2 w-72 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
+              <div className="absolute bottom-full left-0 z-20 mb-2 w-80 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
                 <p className="px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">
                   Messages rapides
                 </p>
-                {QUICK_TEMPLATES.map((tpl) => (
+                <div className="max-h-56 overflow-y-auto">
+                  {templates.length === 0 && (
+                    <p className="px-3 py-2 text-xs text-text-muted">
+                      Aucun modèle. Ajoutez-en un ci-dessous.
+                    </p>
+                  )}
+                  {templates.map((tpl) => (
+                    <div
+                      key={tpl}
+                      className="group flex items-center gap-1 pr-2 transition-colors hover:bg-surface-hover"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setText((prev) => (prev ? `${prev} ${tpl}` : tpl));
+                          setTemplatesOpen(false);
+                          inputRef.current?.focus();
+                        }}
+                        className="block flex-1 px-3 py-2 text-left text-sm text-text-secondary transition-colors group-hover:text-text-primary"
+                      >
+                        {tpl}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeTemplate(tpl)}
+                        aria-label="Retirer ce modèle"
+                        className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-text-muted opacity-0 transition-opacity hover:text-danger group-hover:opacity-100"
+                      >
+                        <X size={13} strokeWidth={2} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    addTemplate(newTemplate);
+                    setNewTemplate('');
+                  }}
+                  className="flex items-center gap-1.5 border-t border-border p-2"
+                >
+                  <input
+                    value={newTemplate}
+                    onChange={(e) => setNewTemplate(e.target.value)}
+                    placeholder="Nouveau modèle…"
+                    className="input-focus min-w-0 flex-1 rounded-md border border-border bg-bg px-2.5 py-1.5 text-sm text-text-primary outline-none placeholder:text-text-muted"
+                  />
                   <button
-                    key={tpl}
-                    type="button"
-                    onClick={() => {
-                      setText((prev) => (prev ? `${prev} ${tpl}` : tpl));
-                      setTemplatesOpen(false);
-                      inputRef.current?.focus();
-                    }}
-                    className="block w-full px-3 py-2 text-left text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+                    type="submit"
+                    disabled={!newTemplate.trim()}
+                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-accent text-bg transition-colors hover:bg-accent-hover disabled:opacity-40"
+                    aria-label="Ajouter le modèle"
                   >
-                    {tpl}
+                    <Plus size={15} strokeWidth={2.25} />
                   </button>
-                ))}
+                </form>
               </div>
             </>
           )}
@@ -815,7 +968,7 @@ function Composer({
             }
           }}
           rows={1}
-          placeholder="Écrire un message… (@ pour mentionner un site)"
+          placeholder="Écrire un message… (@ pour mentionner un site ou un client)"
           className="max-h-32 flex-1 resize-none bg-transparent py-1.5 text-sm text-text-primary outline-none placeholder:text-text-muted"
         />
         <button
