@@ -15,34 +15,37 @@ import { KnowledgeScreen } from './screens/KnowledgeScreen';
 import { LearningScreen } from './screens/LearningScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { GrainOverlay } from './components/GrainOverlay';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <GrainOverlay />
-      <HashRouter>
-        <Routes>
-          <Route path="/login" element={<LoginScreen />} />
-          <Route
-            element={
-              <ProtectedRoute>
-                <AppLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route path="/" element={<HomeScreen />} />
-            <Route path="/sites" element={<SitesDashboardScreen />} />
-            <Route path="/team" element={<TeamScreen />} />
-            <Route path="/tasks" element={<TasksScreen />} />
-            <Route path="/clients" element={<ClientsScreen />} />
-            <Route path="/tracker" element={<TrackerScreen />} />
-            <Route path="/decisions" element={<DecisionsScreen />} />
-            <Route path="/knowledge" element={<KnowledgeScreen />} />
-            <Route path="/learning" element={<LearningScreen />} />
-            <Route path="/settings" element={<SettingsScreen />} />
-          </Route>
-        </Routes>
-      </HashRouter>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <GrainOverlay />
+        <HashRouter>
+          <Routes>
+            <Route path="/login" element={<LoginScreen />} />
+            <Route
+              element={
+                <ProtectedRoute>
+                  <AppLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/" element={<HomeScreen />} />
+              <Route path="/sites" element={<SitesDashboardScreen />} />
+              <Route path="/team" element={<TeamScreen />} />
+              <Route path="/tasks" element={<TasksScreen />} />
+              <Route path="/clients" element={<ClientsScreen />} />
+              <Route path="/tracker" element={<TrackerScreen />} />
+              <Route path="/decisions" element={<DecisionsScreen />} />
+              <Route path="/knowledge" element={<KnowledgeScreen />} />
+              <Route path="/learning" element={<LearningScreen />} />
+              <Route path="/settings" element={<SettingsScreen />} />
+            </Route>
+          </Routes>
+        </HashRouter>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

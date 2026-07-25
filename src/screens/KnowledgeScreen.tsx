@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Plus, Trash2 } from 'lucide-react';
 import { useSync, useCollection, uid, stripMeta } from '../state/SyncContext';
+import { Skeleton } from '../components/Skeleton';
+import { SaveIndicator } from '../components/SaveIndicator';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { relativeTime } from '../lib/time';
 
@@ -64,7 +66,17 @@ export function KnowledgeScreen() {
           </div>
           <motion.div variants={staggerContainer} initial="initial" animate="animate" className="flex-1 divide-y divide-border/60 overflow-y-auto">
             {!ready ? (
-              <p className="px-4 py-6 font-mono text-xs text-text-muted">Chargement…</p>
+              <div className="space-y-3 p-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex items-start gap-2.5">
+                    <Skeleton className="mt-0.5 h-4 w-4 flex-shrink-0 rounded-sm" />
+                    <div className="flex-1 space-y-1.5">
+                      <Skeleton className="h-3 w-2/3 rounded-sm" />
+                      <Skeleton className="h-2.5 w-1/3 rounded-sm" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : docs.length === 0 ? (
               <p className="px-4 py-6 font-mono text-xs text-text-muted">Aucun document.</p>
             ) : (
@@ -142,9 +154,7 @@ function DocEditor({
           placeholder="Titre du document"
           className="flex-1 bg-transparent text-lg font-semibold text-text-primary outline-none placeholder:text-text-muted"
         />
-        <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-          {saved ? 'Enregistré' : '…'}
-        </span>
+        <SaveIndicator saved={saved} />
         <button
           type="button"
           onClick={() => onRemove(doc.id)}

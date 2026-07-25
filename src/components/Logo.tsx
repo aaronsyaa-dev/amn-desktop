@@ -10,10 +10,12 @@ interface LogoProps {
   className?: string;
 }
 
+// Neutral graphite → white sweep (no blue/purple cast) to match the strict
+// monochrome identity.
 const GRADIENT_STOPS = (
   <>
-    <stop offset="0" stopColor="#5c5c6a" />
-    <stop offset="0.5" stopColor="#b8b8c4" />
+    <stop offset="0" stopColor="#616160" />
+    <stop offset="0.5" stopColor="#b6b6b3" />
     <stop offset="1" stopColor="#ffffff" />
   </>
 );
@@ -69,7 +71,7 @@ export function Logo({
             fontSize="25"
             fontWeight={600}
             letterSpacing="-0.5"
-            fill="#b0b0bc"
+            fill="#9a9a97"
           >
             Desktop
           </tspan>
@@ -83,7 +85,7 @@ export function Logo({
           fontSize="11"
           fontWeight={600}
           letterSpacing="7"
-          fill="#6b6b78"
+          fill="#616160"
         >
           DEVSEC
         </text>
@@ -127,9 +129,9 @@ export function LogoMark({
         y="0.75"
         width="38.5"
         height="38.5"
-        rx="11"
-        fill="#101016"
-        stroke="#2a2a36"
+        rx="9"
+        fill="#131313"
+        stroke="#2a2a2a"
         strokeWidth="1.5"
       />
       <text

@@ -143,36 +143,47 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let active = true;
     const remote = bridge().remote;
+    let lastStatus: RemoteConnectionStatus = 'connecting';
+
+    // Full catch-up pull: reconciles every collection + presence. Runs on
+    // startup and again whenever the connection is (re)established, so any
+    // changes the other operator made while we were offline are picked up.
+    const pullAll = async () => {
+      await Promise.all(
+        SYNCED_COLLECTIONS.map(async (collection) => {
+          try {
+            const records = await remote.listRecords(collection);
+            if (active) applyRecords(collection, records);
+          } catch {
+            /* keep mirror data on failure */
+          }
+        }),
+      );
+      const presence = await remote.getPresence().catch(() => [] as PresenceEntry[]);
+      if (active) setOnlineEmails(new Set(presence.filter((p) => p.online).map((p) => p.email)));
+    };
 
     (async () => {
       const status = await remote.getConnectionStatus().catch(() => 'unconfigured' as const);
       if (!active) return;
+      lastStatus = status;
       const isConfigured = status !== 'unconfigured';
       setConfigured(isConfigured);
       setConnectionStatus(status);
-
-      if (isConfigured) {
-        // Pull each collection from the server and reconcile into the mirror.
-        await Promise.all(
-          SYNCED_COLLECTIONS.map(async (collection) => {
-            try {
-              const records = await remote.listRecords(collection);
-              if (active) applyRecords(collection, records);
-            } catch {
-              /* keep mirror data on failure */
-            }
-          }),
-        );
-        const presence = await remote.getPresence().catch(() => [] as PresenceEntry[]);
-        if (active) setOnlineEmails(new Set(presence.filter((p) => p.online).map((p) => p.email)));
-      }
+      if (isConfigured) await pullAll();
       if (active) setReady(true);
     })();
 
     const offRecord = remote.onRecord((record) => {
       if (active) applyRecords(record.collection, [record]);
     });
-    const offStatus = remote.onConnectionStatusChange((s) => active && setConnectionStatus(s));
+    const offStatus = remote.onConnectionStatusChange((s) => {
+      if (!active) return;
+      const reconnected = s === 'online' && lastStatus !== 'online';
+      lastStatus = s;
+      setConnectionStatus(s);
+      if (reconnected) pullAll(); // resync cleanly on reconnection
+    });
     const offPresence = remote.onPresence((users) => {
       if (active) setOnlineEmails(new Set(users.filter((p) => p.online).map((p) => p.email)));
     });

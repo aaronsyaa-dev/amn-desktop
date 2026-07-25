@@ -4,6 +4,7 @@ import { GraduationCap, Plus, Trash2, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { bridge } from '../lib/bridge';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
+import { SkeletonList } from '../components/Skeleton';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import type { CreateLearningGoalInput, LearningGoal } from '../shared/api';
 
@@ -81,7 +82,7 @@ export function LearningScreen() {
       </StaggerItem>
 
       {loading ? (
-        <p className="font-mono text-xs uppercase tracking-widest text-text-muted">Chargement…</p>
+        <SkeletonList rows={2} />
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {grouped.map(({ member, goals: memberGoals }) => (

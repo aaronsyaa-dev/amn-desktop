@@ -129,9 +129,15 @@ function PresenceBar({ currentEmail }: { currentEmail?: string }) {
         // Real presence (via the amn-api WebSocket) when configured; you are
         // always shown online since you're the one looking at the screen.
         const online = isSelf || onlineEmails.has(member.email);
-        const statusLine = online
+        // When amn-api isn't configured we can't know the other operator's
+        // real presence, so we say so rather than claiming "hors ligne".
+        const statusLine = isSelf
           ? profile.presenceText || 'En ligne'
-          : 'Hors ligne';
+          : !configured
+            ? 'Présence indisponible'
+            : online
+              ? profile.presenceText || 'En ligne'
+              : 'Hors ligne';
         return (
           <div
             key={member.email}

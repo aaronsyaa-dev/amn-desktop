@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { Logo } from '../components/Logo';
 
 interface LocationState {
   from?: { pathname: string };
 }
+
+type Phase = 'idle' | 'submitting' | 'success';
 
 export function LoginScreen() {
   const { login, isAuthenticated } = useAuth();
@@ -15,14 +18,16 @@ export function LoginScreen() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [phase, setPhase] = useState<Phase>('idle');
   const [error, setError] = useState<string | null>(null);
 
-  if (isAuthenticated) {
+  if (isAuthenticated && phase !== 'success') {
     const state = location.state as LocationState | null;
     const redirectTo = state?.from?.pathname ?? '/';
     return <Navigate to={redirectTo} replace />;
   }
+
+  const isSubmitting = phase === 'submitting';
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -33,30 +38,37 @@ export function LoginScreen() {
       return;
     }
 
-    setIsSubmitting(true);
+    setPhase('submitting');
     try {
       await login(email, password);
-      navigate('/', { replace: true });
+      // Clean sequence: validated → brief fade → home (+ Welcome overlay).
+      setPhase('success');
+      window.setTimeout(() => navigate('/', { replace: true }), 480);
     } catch (err) {
+      setPhase('idle');
       setError(
         err instanceof Error
           ? err.message
           : 'Une erreur est survenue lors de la connexion.',
       );
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
+  const leaving = phase === 'success';
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4">
+    <motion.div
+      animate={{ opacity: leaving ? 0 : 1, scale: leaving ? 0.98 : 1 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="flex min-h-screen flex-col items-center justify-center px-4"
+    >
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
         className="mb-7 flex justify-center"
       >
-        <Logo height={54} showTagline />
+        <Logo height={52} showTagline showAppName />
       </motion.div>
       <motion.form
         initial={{ opacity: 0, y: 8 }}
@@ -117,16 +129,17 @@ export function LoginScreen() {
 
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="mt-1 bg-accent px-3 py-2.5 text-sm font-semibold text-bg transition-colors duration-200 hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isSubmitting || leaving}
+            className="mt-1 flex items-center justify-center gap-2 bg-accent px-3 py-2.5 text-sm font-semibold text-bg transition-colors duration-200 hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSubmitting ? 'Connexion…' : 'Se connecter'}
+            {(isSubmitting || leaving) && <Loader2 size={15} className="animate-spin" />}
+            {leaving ? 'Bienvenue…' : isSubmitting ? 'Vérification…' : 'Se connecter'}
           </button>
         </div>
       </motion.form>
       <p className="mt-6 font-mono text-[10px] uppercase tracking-widest text-text-muted">
         AMN DevSec · Centre de supervision
       </p>
-    </div>
+    </motion.div>
   );
 }

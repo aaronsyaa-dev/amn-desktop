@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Sparkles } from 'lucide-react';
 import { useCommandPalette } from './command-palette/CommandPalette';
 import { NotificationCenter } from './NotificationCenter';
+import { SyncStatusIndicator } from './SyncStatusIndicator';
 import { UserAvatar } from './UserAvatar';
 import { useAssistant } from '../assistant/AssistantContext';
 import { useAuth } from '../auth/AuthContext';
@@ -41,6 +42,7 @@ export function TopBar() {
       </button>
 
       <div className="ml-auto flex items-center gap-2">
+        <SyncStatusIndicator />
         <button
           type="button"
           onClick={openAssistant}

@@ -5,6 +5,7 @@ import { bridge } from '../lib/bridge';
 import { useRemoteSites } from '../state/RemoteSitesContext';
 import { useSync, useCollection, uid, stripMeta } from '../state/SyncContext';
 import { UserAvatar } from '../components/UserAvatar';
+import { SkeletonBoard } from '../components/Skeleton';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { relativeTime } from '../lib/time';
@@ -93,9 +94,7 @@ export function TasksScreen() {
 
       <StaggerItem className="min-h-0 flex-1">
         {!ready ? (
-          <div className="flex h-full items-center justify-center font-mono text-xs uppercase tracking-widest text-text-muted">
-            Chargement…
-          </div>
+          <SkeletonBoard />
         ) : (
           <div className="grid h-full grid-cols-1 gap-4 md:grid-cols-3">
             {COLUMNS.map((col) => (

@@ -6,6 +6,7 @@ import { useProfiles } from '../state/ProfilesContext';
 import { useSync, useCollection, uid } from '../state/SyncContext';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { UserAvatar } from '../components/UserAvatar';
+import { SkeletonList } from '../components/Skeleton';
 import { ConfirmDelete } from '../components/ConfirmDelete';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { relativeTime } from '../lib/time';
@@ -107,7 +108,7 @@ export function DecisionsScreen() {
 
       <StaggerItem>
         {!ready ? (
-          <p className="font-mono text-xs uppercase tracking-widest text-text-muted">Chargement…</p>
+          <SkeletonList rows={3} />
         ) : decisions.length === 0 ? (
           <p className="border border-border bg-surface p-6 text-center text-sm text-text-secondary">
             Aucune décision consignée pour l’instant.

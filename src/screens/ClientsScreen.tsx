@@ -8,6 +8,8 @@ import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
 import { StatusBadge } from '../components/StatusBadge';
 import { computeClientHealth, CLIENT_HEALTH_META, CLIENT_HEALTH_EXPLAINER } from '../lib/clientHealth';
+import { Skeleton } from '../components/Skeleton';
+import { SaveIndicator } from '../components/SaveIndicator';
 import { ConfirmDelete } from '../components/ConfirmDelete';
 import { trackerCatalog } from '../data/trackerCatalog';
 import { QuotePrintPortal } from '../assistant/QuotePrintPortal';
@@ -209,7 +211,17 @@ function ClientList({
         className="flex-1 divide-y divide-border/60 overflow-y-auto"
       >
         {loading ? (
-          <p className="px-4 py-6 font-mono text-xs text-text-muted">Chargement…</p>
+          <div className="space-y-2 p-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 px-1 py-1.5">
+                <Skeleton className="h-9 w-9 flex-shrink-0 rounded-sm" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-3 w-2/3 rounded-sm" />
+                  <Skeleton className="h-2.5 w-1/3 rounded-sm" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           clients.map((client) => {
             const meta = STATUS_META[client.status];
@@ -552,13 +564,7 @@ function NotesBlock({
 
   return (
     <div className="flex flex-1 flex-col">
-      <BlockTitle
-        aside={
-          <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-            {saved ? 'Enregistré' : '…'}
-          </span>
-        }
-      >
+      <BlockTitle aside={<SaveIndicator saved={saved} />}>
         Notes
       </BlockTitle>
       <textarea

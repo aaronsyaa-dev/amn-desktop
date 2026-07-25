@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { SitePanelProvider } from './site-panel/SitePanelContext';
@@ -31,17 +31,22 @@ export function AppLayout() {
               <main className="relative flex-1 overflow-y-auto">
                 <TopBar />
                 <div className="mx-auto max-w-6xl px-8 py-8">
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={location.pathname}
-                      variants={variantsForPath(location.pathname)}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                    >
-                      <Outlet />
-                    </motion.div>
-                  </AnimatePresence>
+                  {/*
+                    Entrance-only, keyed per route. Remounting on navigation
+                    replays the per-tab entrance. We deliberately do NOT use
+                    AnimatePresence mode="wait" + exit here: an interrupted
+                    exit could strand the incoming screen in its exit variant
+                    (opacity 0), which made screens render blank until a second
+                    navigation. Keyed entrance can never strand content.
+                  */}
+                  <motion.div
+                    key={location.pathname}
+                    variants={variantsForPath(location.pathname)}
+                    initial="initial"
+                    animate="animate"
+                  >
+                    <Outlet />
+                  </motion.div>
                 </div>
               </main>
             </div>
