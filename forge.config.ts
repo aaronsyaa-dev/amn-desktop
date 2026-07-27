@@ -5,8 +5,25 @@ import { MakerDeb } from '@electron-forge/maker-deb';
 import { MakerRpm } from '@electron-forge/maker-rpm';
 import { PublisherGithub } from '@electron-forge/publisher-github';
 import { VitePlugin } from '@electron-forge/plugin-vite';
+import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+
+// Full closure of the packaged app's runtime (main + preload) dependencies.
+// Only these node_modules ship in the app; everything else (the whole build
+// toolchain) is left out. See the `ignore` note in packagerConfig below.
+const RUNTIME_MODULES = new Set<string>([
+  'better-sqlite3',
+  'node-addon-api',
+  'bcryptjs',
+  'ws',
+  'dotenv',
+  'electron-squirrel-startup',
+  'update-electron-app',
+  'github-url-to-object',
+  'is-url',
+  'ms',
+]);
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -16,8 +33,44 @@ const config: ForgeConfig = {
     // (macOS), images/icon.png (Linux). Drop the real AMN logo in as those
     // files to replace the placeholder — see README ("Branding / icônes").
     icon: './images/icon',
+    // The Vite plugin, left to itself, sets `ignore` to strip EVERYTHING except
+    // `/.vite` — which drops node_modules entirely and makes the packaged app
+    // throw "Cannot find module 'better-sqlite3'". We provide our own `ignore`
+    // (the plugin then respects it) that keeps the Vite output, the manifest,
+    // and ONLY the production runtime module tree — an explicit allowlist rather
+    // than relying on @electron/packager's prune (which is a no-op with a custom
+    // ignore function). AutoUnpackNativesPlugin then extracts better-sqlite3's
+    // .node prebuild from the asar so it loads at runtime.
+    //
+    // RUNTIME_MODULES is the full closure of the main/preload process deps:
+    //   better-sqlite3 (+ node-addon-api)  — SQLite persistence
+    //   bcryptjs                           — password hashing
+    //   ws                                 — amn-api realtime transport
+    //   dotenv                             — remote config
+    //   electron-squirrel-startup          — Windows install/first-run
+    //   update-electron-app (+ github-url-to-object, is-url, ms) — auto-update
+    // If a runtime dependency (or one of its transitive deps) is ever added,
+    // extend this set — a missing entry surfaces immediately as a load error.
+    ignore: (file: string) => {
+      if (!file) return false; // keep the root
+      if (file === '/package.json') return false;
+      if (file.startsWith('/.vite')) return false;
+      if (file === '/node_modules') return false;
+      if (file.startsWith('/node_modules/')) {
+        const name = file.startsWith('/node_modules/@')
+          ? file.split('/').slice(2, 4).join('/') // scoped: @scope/pkg
+          : file.split('/')[2];
+        return !RUNTIME_MODULES.has(name);
+      }
+      return true; // ignore src, out, configs, .git, everything else
+    },
   },
-  rebuildConfig: {},
+  // better-sqlite3 v13 ships portable N-API prebuilds (prebuilds/<platform>-<arch>.node)
+  // that load unchanged under Electron — Node-API is ABI-stable across Node and
+  // Electron. So we skip the native rebuild entirely (onlyModules: []): no
+  // compiler, no node-gyp, no Electron headers download needed on any build
+  // machine. AutoUnpackNativesPlugin still extracts the .node from the asar.
+  rebuildConfig: { onlyModules: [] },
   makers: [
     new MakerSquirrel({}),
     new MakerZIP({}, ['darwin']),
@@ -35,6 +88,11 @@ const config: ForgeConfig = {
     }),
   ],
   plugins: [
+    // Native modules (better-sqlite3) ship a compiled .node binary that cannot
+    // be require()'d from inside the asar archive. This plugin extracts them to
+    // app.asar.unpacked so they load correctly in the packaged app — without
+    // it, an installed build throws "Cannot find module 'better-sqlite3'".
+    new AutoUnpackNativesPlugin({}),
     new VitePlugin({
       // `build` can specify multiple entry builds, which can be Main process, Preload scripts, Worker process, etc.
       // If you are familiar with Vite configuration, it will look really familiar.

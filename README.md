@@ -114,3 +114,48 @@ Conditions pour que l'auto-update fonctionne réellement :
   au lieu de quitter. Clic sur l'icône = ouvrir ; clic droit = « Quitter ».
   L'icône signale une notification importante en attente (tooltip + flash de la
   barre des tâches + badge du dock macOS).
+
+## Modules natifs & empaquetage (`better-sqlite3`)
+
+L'app utilise `better-sqlite3`, un module natif. Sa distribution est configurée
+dans `forge.config.ts` :
+
+- **`plugin-auto-unpack-natives`** extrait le binaire `.node` de l'archive
+  `asar` (`app.asar.unpacked/`), car un binaire natif ne peut pas être
+  `require()` depuis l'intérieur de l'`asar`.
+- **`packagerConfig.ignore`** : le plugin Vite, laissé seul, exclut **tout**
+  `node_modules` de l'app (il suppose que Vite bundle tout). On fournit donc
+  notre propre `ignore` qui embarque uniquement la fermeture des dépendances
+  runtime (`RUNTIME_MODULES` en tête de `forge.config.ts`). Sans ça, l'app
+  installée plantait avec `Cannot find module 'better-sqlite3'`.
+- **`rebuildConfig: { onlyModules: [] }`** : `better-sqlite3` v13 fournit des
+  *prebuilds* N-API (`prebuilds/<plateforme>-<arch>.node`). N-API étant stable
+  entre Node et Electron, ce binaire fonctionne tel quel sous Electron — aucune
+  recompilation, aucun compilateur ni header Electron requis sur la machine de
+  build.
+
+### Vérifier un build packagé
+
+```bash
+npm run package          # empaquette l'app dans out/<AppName>-<os>-<arch>/
+```
+
+Puis contrôler que le module natif est bien présent et dépacké :
+
+```bash
+# le binaire natif doit exister HORS de l'asar :
+ls out/*/resources/app.asar.unpacked/node_modules/better-sqlite3/prebuilds/
+# et node_modules dans l'asar ne doit contenir QUE les deps runtime :
+npx @electron/asar list out/*/resources/app.asar | grep '^/node_modules/'
+```
+
+Pour un test de chargement réel du module (le prebuild N-API se charge à
+l'identique sous Node et Electron) :
+
+```bash
+node -e "const D=require('better-sqlite3'); const d=new D(':memory:'); d.exec('create table t(x)'); console.log('OK');"
+```
+
+`npm run make` produit ensuite l'installeur de la plateforme courante
+(Squirrel `.exe` sur Windows, `.zip` sur macOS, `.deb`/`.rpm` sur Linux — ces
+deux derniers exigent `dpkg`/`rpmbuild` installés).
