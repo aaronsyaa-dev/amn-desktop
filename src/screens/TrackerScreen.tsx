@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Activity, BarChart3, ChevronDown, Download, Globe, Layers, Radar, Settings2 } from 'lucide-react';
+import { Activity, BarChart3, Check, ChevronDown, Copy, Download, Globe, Layers, Radar, Settings2, Terminal } from 'lucide-react';
 import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
 import { useTrackers } from '../state/useTrackers';
-import { TRACKER_MODULES, moduleByKey, modulesByKeys } from '../data/trackerModules';
+import { TRACKER_MODULES, moduleByKey, modulesByKeys, type TrackerModule } from '../data/trackerModules';
 import { MaturityBadge } from '../components/tracker/MaturityBadge';
 import { InstallWizard } from '../components/tracker/InstallWizard';
 import { ConfirmDelete } from '../components/ConfirmDelete';
@@ -69,26 +69,7 @@ export function TrackerScreen() {
       <StaggerItem>
         <div className="grid gap-3 md:grid-cols-3">
           {TRACKER_MODULES.map((mod) => (
-            <div key={mod.key} className="flex flex-col border border-border bg-surface p-4">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Palier {mod.tier}</span>
-                <MaturityBadge maturity={mod.maturity} />
-              </div>
-              <h2 className="mt-1.5 text-lg font-bold text-text-primary">{mod.name}</h2>
-              <p className="text-xs font-medium text-text-secondary">{mod.tagline}</p>
-              <p className="mt-3 flex-1 text-xs leading-relaxed text-text-secondary">{mod.description}</p>
-              <ul className="mt-3 flex flex-col gap-1">
-                {mod.capabilities.map((c) => (
-                  <li key={c} className="flex items-start gap-2 text-[11px] text-text-muted">
-                    <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-current" />
-                    {c}
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-3 border-t border-border pt-2 font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                {installCounts[mod.key] ? `Installé sur ${installCounts[mod.key]} site${installCounts[mod.key] > 1 ? 's' : ''}` : 'Non installé'}
-              </p>
-            </div>
+            <ModuleCatalogCard key={mod.key} mod={mod} installCount={installCounts[mod.key] ?? 0} />
           ))}
         </div>
       </StaggerItem>
@@ -130,6 +111,91 @@ export function TrackerScreen() {
         {wizard.open && <InstallWizard initialSiteId={wizard.siteId} onClose={() => setWizard({ open: false })} />}
       </AnimatePresence>
     </StaggerGroup>
+  );
+}
+
+/** A self-contained install snippet for one module — copy-paste, no site required. */
+function moduleSnippet(mod: TrackerModule): string {
+  const mods = [...mod.requires, mod.key].join(',');
+  return `# ${mod.name} — installation
+npm install @amn-devsec/security-monitor
+
+# .env du site
+AMN_API_URL=https://votre-amn-api
+AMN_API_KEY=<clé fournie à l'enregistrement du site>
+AMN_MODULES=${mods}
+
+# Dans votre app (Express / Node)
+import { createTracker } from '@amn-devsec/security-monitor';
+const tracker = createTracker();
+app.use(tracker.middleware());
+tracker.start();`;
+}
+
+function ModuleCatalogCard({ mod, installCount }: { mod: TrackerModule; installCount: number }) {
+  const [showCode, setShowCode] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const snippet = moduleSnippet(mod);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(snippet);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+
+  return (
+    <div className="flex flex-col border border-border bg-surface p-4">
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Palier {mod.tier}</span>
+        <MaturityBadge maturity={mod.maturity} />
+      </div>
+      <h2 className="mt-1.5 text-lg font-bold text-text-primary">{mod.name}</h2>
+      <p className="text-xs font-medium text-text-secondary">{mod.tagline}</p>
+      <p className="mt-3 text-xs leading-relaxed text-text-secondary">{mod.description}</p>
+      <ul className="mt-3 flex flex-1 flex-col gap-1">
+        {mod.capabilities.map((c) => (
+          <li key={c} className="flex items-start gap-2 text-[11px] text-text-muted">
+            <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-current" />
+            {c}
+          </li>
+        ))}
+      </ul>
+
+      <button
+        type="button"
+        onClick={() => setShowCode((v) => !v)}
+        className="mt-3 flex items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-text-secondary transition-colors hover:bg-white/5 hover:text-text-primary"
+      >
+        <Terminal size={12} strokeWidth={1.75} />
+        {showCode ? 'Masquer le code' : 'Voir le code d’installation'}
+      </button>
+
+      {showCode && (
+        <div className="mt-2">
+          <div className="mb-1 flex justify-end">
+            <button
+              type="button"
+              onClick={copy}
+              className="flex items-center gap-1.5 rounded-md border border-border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-text-secondary transition-colors hover:bg-white/5 hover:text-text-primary"
+            >
+              {copied ? <Check size={11} strokeWidth={2.5} /> : <Copy size={11} />}
+              {copied ? 'Copié' : 'Copier'}
+            </button>
+          </div>
+          <pre className="max-h-52 overflow-auto rounded-lg border border-border bg-bg p-2.5 font-mono text-[10px] leading-relaxed text-text-secondary">
+            {snippet}
+          </pre>
+        </div>
+      )}
+
+      <p className="mt-3 border-t border-border pt-2 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+        {installCount ? `Installé sur ${installCount} site${installCount > 1 ? 's' : ''}` : 'Non installé'}
+      </p>
+    </div>
   );
 }
 

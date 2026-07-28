@@ -55,6 +55,11 @@ const config: ForgeConfig = {
       if (!file) return false; // keep the root
       if (file === '/package.json') return false;
       if (file.startsWith('/.vite')) return false;
+      // Ship the icon assets: the BrowserWindow + tray load images/icon.png at
+      // runtime (the .exe/.ico is embedded at build time, but the window/tray
+      // icons are read from disk). Without this they fall back to the default
+      // Electron icon.
+      if (file === '/images' || file.startsWith('/images/')) return false;
       if (file === '/node_modules') return false;
       if (file.startsWith('/node_modules/')) {
         const name = file.startsWith('/node_modules/@')
