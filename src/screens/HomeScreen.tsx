@@ -1,11 +1,13 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lightbulb, Newspaper } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useRemoteSites } from '../state/RemoteSitesContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { useMessages } from '../state/useMessages';
-import { getDailyBrief, getInsights, getWatchItems } from '../assistant/engine';
+import { bridge } from '../lib/bridge';
+import { getDailyBrief, getInsights } from '../assistant/engine';
+import type { WatchItem } from '../shared/api';
 import { buildActivityFeed, type FeedItem } from '../lib/activityFeed';
 import { countRecentAlerts } from '../lib/eventStats';
 import { relativeTime } from '../lib/time';
@@ -41,7 +43,21 @@ export function HomeScreen() {
 
   const brief = useMemo(() => getDailyBrief(sites, eventsBySite), [sites, eventsBySite]);
   const insights = useMemo(() => getInsights(sites, eventsBySite), [sites, eventsBySite]);
-  const watchItems = useMemo(() => getWatchItems(), []);
+  // Real cyber watch (RSS via the main process); empty until it loads or in the
+  // browser fallback — the activity feed simply omits watch entries then.
+  const [watchItems, setWatchItems] = useState<WatchItem[]>([]);
+  useEffect(() => {
+    let active = true;
+    bridge()
+      .watch.list()
+      .then((r) => active && setWatchItems(r.items.slice(0, 6)))
+      .catch(() => {
+        /* feed still renders without watch entries */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   const feed = useMemo(
     () => buildActivityFeed({ sites, eventsBySite, insights, watchItems, messages: feedMessages }),
     [sites, eventsBySite, insights, watchItems, feedMessages],

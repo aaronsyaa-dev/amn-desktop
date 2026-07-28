@@ -145,6 +145,9 @@ const bridge: AmnBridge = {
     setAutoLaunch: (enabled: boolean) => ipcRenderer.invoke(IPC.systemSetAutoLaunch, enabled),
     getAppInfo: () => ipcRenderer.invoke(IPC.systemGetAppInfo),
   },
+  watch: {
+    list: () => ipcRenderer.invoke(IPC.watchList),
+  },
   env: { isElectron: true },
 };
 

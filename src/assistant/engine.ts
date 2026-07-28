@@ -38,7 +38,6 @@ export {
   getDailySummary,
   getInsights,
   getSuggestions,
-  getWatchItems,
 } from './mockData';
 
 type EventsMap = Record<string, RemoteEvent[]>;

@@ -3,18 +3,22 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUp,
   Download,
+  Loader2,
   Newspaper,
   Sparkles,
   Sunrise,
+  WifiOff,
   X,
 } from 'lucide-react';
 import { useRemoteSites } from '../state/RemoteSitesContext';
 import { ALERT_SEVERITY_CONFIG } from '../lib/alerts';
+import { bridge } from '../lib/bridge';
 import { useAssistant } from './AssistantContext';
-import { getDailySummary, getSuggestions, getWatchItems } from './engine';
+import { getDailySummary, getSuggestions } from './engine';
 import { ReportBlocks } from './ReportBlocks';
 import { PrintPortal } from './PrintPortal';
 import type { AssistantReport, ChatMessage } from './types';
+import type { WatchFeedResult } from '../shared/api';
 
 const PANEL_SPRING = { type: 'spring' as const, stiffness: 340, damping: 34 };
 
@@ -460,40 +464,112 @@ const WATCH_CATEGORY_STYLE: Record<string, string> = {
 };
 
 function WatchTab() {
-  const items = useMemo(() => getWatchItems(), []);
+  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [feed, setFeed] = useState<WatchFeedResult | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setState('loading');
+    bridge()
+      .watch.list()
+      .then((result) => {
+        if (!active) return;
+        setFeed(result);
+        setState('ready');
+      })
+      .catch(() => active && setState('error'));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const items = feed?.items ?? [];
+  const isElectron = bridge().env.isElectron;
 
   return (
     <div className="h-full overflow-y-auto px-6 py-5">
-      <p className="mb-4 text-sm text-text-secondary">
-        Actualités cybersécurité, IA et Anthropic sélectionnées pour vous.
-      </p>
-      <div className="flex flex-col gap-3">
-        {items.map((item) => (
-          <article
-            key={item.id}
-            className="card-interactive rounded-2xl p-4"
-          >
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <span
-                className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                  WATCH_CATEGORY_STYLE[item.category] ?? 'bg-white/5 text-text-secondary'
-                }`}
-              >
-                {item.category}
-              </span>
-              <time className="text-xs text-text-muted">
-                {new Date(item.date).toLocaleDateString('fr-FR', {
-                  day: 'numeric',
-                  month: 'short',
-                })}
-              </time>
-            </div>
-            <h3 className="text-sm font-semibold text-text-primary">{item.title}</h3>
-            <p className="mt-1 text-sm text-text-secondary">{item.summary}</p>
-            <p className="mt-2 text-xs text-text-muted">{item.source}</p>
-          </article>
-        ))}
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <p className="text-sm text-text-secondary">
+          Veille cybersécurité — flux publics CERT-FR (ANSSI) et The Hacker News.
+        </p>
+        {feed?.fetchedAt && (
+          <time className="flex-shrink-0 whitespace-nowrap text-[11px] text-text-muted" title="Dernière mise à jour">
+            {new Date(feed.fetchedAt).toLocaleString('fr-FR', {
+              day: 'numeric',
+              month: 'short',
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </time>
+        )}
       </div>
+
+      {feed?.degraded && items.length > 0 && (
+        <div className="mb-3 flex items-center gap-2 rounded-lg border border-border bg-white/[0.03] px-3 py-2 text-xs text-text-muted">
+          <WifiOff size={13} strokeWidth={1.75} />
+          Certaines sources sont momentanément injoignables — contenu partiel.
+        </div>
+      )}
+
+      {state === 'loading' && (
+        <div className="flex flex-col items-center justify-center gap-2 py-16 text-text-muted">
+          <Loader2 size={20} className="animate-spin" />
+          <p className="text-sm">Récupération des dernières actualités…</p>
+        </div>
+      )}
+
+      {state !== 'loading' && items.length === 0 && (
+        <div className="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center">
+          <WifiOff size={22} strokeWidth={1.5} className="text-text-muted" />
+          <p className="text-sm font-medium text-text-primary">Veille indisponible pour l’instant</p>
+          <p className="max-w-xs text-sm text-text-secondary">
+            {isElectron
+              ? 'Impossible de joindre les sources pour le moment. Réessayez une fois la connexion rétablie.'
+              : 'La veille en direct est disponible dans l’application de bureau AMN Desktop.'}
+          </p>
+        </div>
+      )}
+
+      {items.length > 0 && (
+        <div className="flex flex-col gap-3">
+          {items.map((item) => {
+            const card = (
+              <>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                      WATCH_CATEGORY_STYLE[item.category] ?? 'bg-white/5 text-text-secondary'
+                    }`}
+                  >
+                    {item.category}
+                  </span>
+                  <time className="text-xs text-text-muted">
+                    {new Date(item.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                  </time>
+                </div>
+                <h3 className="text-sm font-semibold text-text-primary">{item.title}</h3>
+                {item.summary && <p className="mt-1 text-sm text-text-secondary">{item.summary}</p>}
+                <p className="mt-2 text-xs text-text-muted">{item.source}</p>
+              </>
+            );
+            return item.link ? (
+              <a
+                key={item.id}
+                href={item.link}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="card-interactive block rounded-2xl p-4"
+              >
+                {card}
+              </a>
+            ) : (
+              <article key={item.id} className="card-interactive rounded-2xl p-4">
+                {card}
+              </article>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

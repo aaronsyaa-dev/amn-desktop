@@ -80,6 +80,29 @@ export interface AppInfo {
   isElectron: boolean;
 }
 
+/** A single cyber/tech watch entry, parsed from a public RSS/Atom source. */
+export interface WatchItem {
+  id: string;
+  /** Free-text category (feed-derived), e.g. "Vulnérabilité", "Cybersécurité". */
+  category: string;
+  title: string;
+  summary: string;
+  source: string;
+  /** ISO date. */
+  date: string;
+  /** Canonical article URL, when available. */
+  link?: string;
+}
+
+/** Result of a watch-feed fetch, with graceful-degradation metadata. */
+export interface WatchFeedResult {
+  items: WatchItem[];
+  /** ISO timestamp of the last successful fetch, or null if never fetched. */
+  fetchedAt: string | null;
+  /** True when at least one source was unreachable on the last refresh. */
+  degraded: boolean;
+}
+
 export interface MessageAttachment {
   /** Data-URL of an inline image. Kept small (client-side resized before send). */
   dataUrl: string;
@@ -540,6 +563,11 @@ export interface AmnBridge {
     /** App name / version / platform for the About screen. */
     getAppInfo(): Promise<AppInfo>;
   };
+  /** Cyber/tech watch feed, fetched from public RSS sources (Electron main). */
+  watch: {
+    /** Cached watch items (refreshed on a TTL in the main process). */
+    list(): Promise<WatchFeedResult>;
+  };
   env: {
     /** true when backed by the Electron main process (SQLite), false in browser fallback. */
     isElectron: boolean;
@@ -604,4 +632,5 @@ export const IPC = {
   systemGetAutoLaunch: 'system:getAutoLaunch',
   systemSetAutoLaunch: 'system:setAutoLaunch',
   systemGetAppInfo: 'system:getAppInfo',
+  watchList: 'watch:list',
 } as const;

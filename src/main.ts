@@ -6,6 +6,7 @@ import { initDatabase } from './main/db';
 import { registerIpcHandlers } from './main/ipc';
 import { RemoteApiClient } from './main/remoteApi';
 import { setupAutoUpdate } from './main/updater';
+import { warmWatch } from './main/watch';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -191,6 +192,7 @@ app.on('ready', () => {
 
   createTray();
   setupAutoUpdate();
+  warmWatch(); // prime the RSS watch cache in the background
 
   if (wasLaunchedHidden()) {
     // Silent background start: stay in the tray, no window, no Welcome. Just a

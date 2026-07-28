@@ -61,6 +61,7 @@ import {
   verifyCredentials,
 } from './services';
 import type { RemoteApiClient } from './remoteApi';
+import { getWatch } from './watch';
 
 /** Registers the IPC handlers backing `window.amn` in the renderer. */
 interface IpcOptions {
@@ -260,4 +261,6 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
     platform: process.platform,
     isElectron: true,
   }));
+
+  ipcMain.handle(IPC.watchList, () => getWatch());
 }

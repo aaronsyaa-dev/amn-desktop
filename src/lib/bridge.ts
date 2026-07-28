@@ -896,6 +896,13 @@ function createBrowserBridge(): AmnBridge {
         return { name: 'AMN Desktop', version: '0.0.0-dev', platform: 'web', isElectron: false };
       },
     },
+    watch: {
+      // RSS fetching needs the Electron main process (cross-origin). The browser
+      // fallback has no feed; the panel shows a clear "desktop-only" state.
+      async list() {
+        return { items: [], fetchedAt: null, degraded: true };
+      },
+    },
     env: { isElectron: false },
   };
 }

@@ -75,15 +75,9 @@ export type WatchCategory =
   | 'IA'
   | 'Anthropic';
 
-export interface WatchItem {
-  id: string;
-  category: WatchCategory;
-  title: string;
-  summary: string;
-  source: string;
-  /** ISO date */
-  date: string;
-}
+// WatchItem is now sourced from real RSS feeds (see src/main/watch.ts). The
+// canonical shape lives in shared/api so the bridge and the UI agree on it.
+export type { WatchItem } from '../shared/api';
 
 export interface Suggestion {
   id: string;

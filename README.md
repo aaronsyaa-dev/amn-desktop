@@ -159,3 +159,22 @@ node -e "const D=require('better-sqlite3'); const d=new D(':memory:'); d.exec('c
 `npm run make` produit ensuite l'installeur de la plateforme courante
 (Squirrel `.exe` sur Windows, `.zip` sur macOS, `.deb`/`.rpm` sur Linux — ces
 deux derniers exigent `dpkg`/`rpmbuild` installés).
+
+## Veille cybersécurité (flux RSS réels)
+
+L'onglet **Veille** de l'assistant n'affiche plus de contenu factice : il agrège
+de vrais flux RSS publics, récupérés et analysés **dans le process main**
+(`src/main/watch.ts`) — le renderer ne peut pas lire un flux RSS cross-origin.
+
+- **Sources** : CERT-FR (le CERT national français, opéré par l'ANSSI —
+  alertes, avis, actualité) et The Hacker News. *Anthropic ne publie pas de flux
+  RSS officiel : la source est volontairement omise plutôt que simulée.*
+- **Cache + rafraîchissement** : résultats mis en cache sur disque
+  (`userData/watch-cache.json`), TTL de 3 h, réchauffés en arrière-plan au
+  démarrage. Les sources ne sont jamais interrogées à chaque ouverture du
+  panneau.
+- **Dégradation gracieuse** : une source injoignable est simplement ignorée
+  (le dernier cache valide, même périmé, reste servi) ; l'écran ne casse jamais
+  et signale discrètement un contenu partiel.
+- En **fallback navigateur** (dev/preview web), la veille en direct est
+  indisponible (pas de main process) — l'onglet l'indique clairement.

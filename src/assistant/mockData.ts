@@ -2,7 +2,7 @@ import type { RemoteEvent } from '../shared/api';
 import type { DerivedSite } from '../state/RemoteSitesContext';
 import { countRecentAlerts } from '../lib/eventStats';
 import { remoteEventDetail, remoteEventLabel } from '../lib/remoteEventDisplay';
-import type { DailySummary, Insight, Suggestion, WatchItem } from './types';
+import type { DailySummary, Insight, Suggestion } from './types';
 
 type EventsMap = Record<string, RemoteEvent[]>;
 
@@ -214,53 +214,3 @@ export function getSuggestions(sites: DerivedSite[], eventsBySite: EventsMap): S
   return suggestions.sort((a, b) => order[a.severity] - order[b.severity]).slice(0, 5);
 }
 
-/** Mock cyber/AI/Anthropic watch feed. Plausible, fictional content — no real news source. */
-export function getWatchItems(): WatchItem[] {
-  return [
-    {
-      id: 'watch-1',
-      category: 'Vulnérabilité',
-      title: 'CVE-2026-0442 : exécution de code à distance dans une passerelle de paiement répandue',
-      summary:
-        'Une faille critique (CVSS 9.8) affecte plusieurs SDK de paiement. Un correctif est disponible ; l’application immédiate est recommandée pour tout service transactionnel.',
-      source: 'Bulletin CERT-FR',
-      date: '2026-07-22',
-    },
-    {
-      id: 'watch-2',
-      category: 'Cybersécurité',
-      title: 'Hausse de 40 % des campagnes de credential stuffing sur les portails B2B',
-      summary:
-        'Les botnets ciblent en priorité les endpoints d’authentification OAuth. Le MFA et la limitation de débit restent les contre-mesures les plus efficaces.',
-      source: 'Rapport trimestriel — ANSSI',
-      date: '2026-07-21',
-    },
-    {
-      id: 'watch-3',
-      category: 'Anthropic',
-      title: 'Anthropic publie de nouveaux garde-fous pour les agents autonomes',
-      summary:
-        'Les dernières recommandations couvrent l’isolation des outils, la journalisation des actions et la validation humaine des opérations sensibles — pertinent pour l’automatisation de la supervision.',
-      source: 'Blog Anthropic',
-      date: '2026-07-20',
-    },
-    {
-      id: 'watch-4',
-      category: 'IA',
-      title: 'L’IA générative accélère la rédaction de rapports d’incident',
-      summary:
-        'De plus en plus d’équipes SOC s’appuient sur des modèles pour produire des post-mortems et des synthèses client, réduisant le temps de reporting de plusieurs heures à quelques minutes.',
-      source: 'The Hacker News',
-      date: '2026-07-19',
-    },
-    {
-      id: 'watch-5',
-      category: 'Cybersécurité',
-      title: 'Fin de vie de TLS 1.1 : derniers rappels pour la mise en conformité',
-      summary:
-        'Les navigateurs durcissent leurs exigences. Vérifier la configuration des certificats et l’activation de HSTS sur l’ensemble des domaines exposés.',
-      source: 'Mozilla Security',
-      date: '2026-07-18',
-    },
-  ];
-}
