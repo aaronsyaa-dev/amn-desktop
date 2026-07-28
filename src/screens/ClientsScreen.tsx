@@ -1,14 +1,19 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FileText, Globe, ImagePlus, Info, Mail, Phone, Plus, Printer, X } from 'lucide-react';
+import { ArrowRight, FileText, Globe, ImagePlus, Info, Mail, Phone, Plus, Printer, X } from 'lucide-react';
 import { bridge } from '../lib/bridge';
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
 import { StatusBadge } from '../components/StatusBadge';
-import { computeClientHealth, CLIENT_HEALTH_META, CLIENT_HEALTH_EXPLAINER } from '../lib/clientHealth';
+import {
+  computeClientHealth,
+  computeClientHealthBreakdown,
+  CLIENT_HEALTH_META,
+  CLIENT_HEALTH_EXPLAINER,
+} from '../lib/clientHealth';
 import { Skeleton } from '../components/Skeleton';
 import { SaveIndicator } from '../components/SaveIndicator';
 import { ConfirmDelete } from '../components/ConfirmDelete';
@@ -346,7 +351,9 @@ function ClientHeader({
   onPatch: (id: number, p: UpdateClientInput) => Promise<void>;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const health = CLIENT_HEALTH_META[computeClientHealth(client, sites)];
+  const breakdown = computeClientHealthBreakdown(client, sites);
+  const health = CLIENT_HEALTH_META[breakdown.health];
+  const [healthOpen, setHealthOpen] = useState(false);
 
   const onFile = (file: File | undefined) => {
     if (!file) return;
@@ -400,18 +407,58 @@ function ClientHeader({
           className="font-mono text-sm text-text-secondary"
           placeholder="Société"
         />
-        <div
-          className="group/health mt-2 inline-flex items-center gap-1.5 border border-border px-2 py-1"
-          title={`${CLIENT_HEALTH_EXPLAINER} ${health.hint}`}
+        <button
+          type="button"
+          onClick={() => setHealthOpen((v) => !v)}
+          className="group/health mt-2 inline-flex items-center gap-1.5 border border-border px-2 py-1 transition-colors hover:border-border-strong"
+          title={CLIENT_HEALTH_EXPLAINER}
         >
           <span className={`h-2 w-2 rounded-full ${health.dot}`} />
-          <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-            Santé relation
-          </span>
+          <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Santé relation</span>
           <span className={`text-xs font-semibold ${health.text}`}>{health.label}</span>
           <Info size={11} strokeWidth={2} className="text-text-muted" />
-        </div>
-        <p className="mt-1 max-w-md text-[11px] leading-snug text-text-muted">{health.hint}</p>
+        </button>
+
+        {healthOpen && (
+          <div className="mt-2 max-w-md border border-border bg-bg p-3">
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">{CLIENT_HEALTH_EXPLAINER}</p>
+            <div className="flex flex-col gap-1.5">
+              {breakdown.factors.map((f) => (
+                <div key={f.label} className="flex items-center justify-between gap-3 text-xs">
+                  <span className="text-text-secondary">{f.label}</span>
+                  <span
+                    className={`flex items-center gap-1.5 font-medium ${
+                      f.tone === 'bad' ? 'text-danger' : f.tone === 'medium' ? 'text-warning' : 'text-text-primary'
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        f.tone === 'bad' ? 'bg-danger' : f.tone === 'medium' ? 'bg-warning' : 'bg-success'
+                      }`}
+                    />
+                    {f.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {breakdown.toImprove.length > 0 && (
+              <div className="mt-2.5 border-t border-border/60 pt-2">
+                <p className="mb-1 font-mono text-[10px] uppercase tracking-widest text-text-muted">Pour l’améliorer</p>
+                <ul className="flex flex-col gap-1">
+                  {breakdown.toImprove.map((t, i) => (
+                    <li key={i} className="flex gap-1.5 text-[11px] leading-snug text-text-secondary">
+                      <ArrowRight size={11} strokeWidth={2} className="mt-0.5 flex-shrink-0 text-text-muted" />
+                      {t}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {breakdown.toImprove.length === 0 && (
+              <p className="mt-2 text-[11px] text-success">Relation au vert — rien à faire pour l’instant.</p>
+            )}
+          </div>
+        )}
       </div>
 
       <StatusSelector

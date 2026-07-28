@@ -62,3 +62,68 @@ export const CLIENT_HEALTH_META: Record<
 /** One-line, plain-language explanation of what the score combines. */
 export const CLIENT_HEALTH_EXPLAINER =
   'Santé = ancienneté du dernier échange + état des sites supervisés de ce client.';
+
+export interface HealthFactor {
+  label: string;
+  value: string;
+  tone: 'good' | 'medium' | 'bad';
+}
+
+export interface HealthBreakdown {
+  health: ClientHealth;
+  factors: HealthFactor[];
+  /** Concrete things that would move the score up, if any. */
+  toImprove: string[];
+}
+
+/**
+ * Transparent breakdown of WHY a client's health is where it is, and what would
+ * move it — so the score never feels arbitrary. Same two signals as
+ * computeClientHealth, spelled out.
+ */
+export function computeClientHealthBreakdown(
+  client: Client,
+  sites: DerivedSite[],
+  now: number = Date.now(),
+): HealthBreakdown {
+  const lastContact = client.events[0]?.date ?? client.updatedAt;
+  const days = Math.floor((now - new Date(lastContact).getTime()) / 86_400_000);
+
+  const contactTone: HealthFactor['tone'] =
+    days >= CONTACT_ATTENTION_DAYS ? 'bad' : days >= CONTACT_MEDIUM_DAYS ? 'medium' : 'good';
+  const contactValue =
+    days <= 0 ? "Aujourd'hui" : days === 1 ? 'Hier' : `Il y a ${days} jours`;
+
+  const linked = sites.filter((s) => client.linkedSiteIds.includes(s.id));
+  const offlineSites = linked.filter((s) => s.status === 'offline');
+  const degradedSites = linked.filter((s) => s.status === 'degraded' || s.status === 'unknown');
+  let sitesTone: HealthFactor['tone'] = 'good';
+  let sitesValue: string;
+  if (linked.length === 0) {
+    sitesTone = 'medium';
+    sitesValue = 'Aucun site lié';
+  } else if (offlineSites.length > 0) {
+    sitesTone = 'bad';
+    sitesValue = `${offlineSites.length}/${linked.length} hors ligne`;
+  } else if (degradedSites.length > 0) {
+    sitesTone = 'medium';
+    sitesValue = `${degradedSites.length}/${linked.length} à surveiller`;
+  } else {
+    sitesValue = `${linked.length} opérationnel${linked.length > 1 ? 's' : ''}`;
+  }
+
+  const toImprove: string[] = [];
+  if (contactTone !== 'good') toImprove.push('Ajoutez un échange sur la fiche pour rafraîchir le suivi.');
+  if (linked.length === 0) toImprove.push('Liez au moins un site supervisé à ce client.');
+  if (offlineSites.length > 0) toImprove.push(`Traitez le(s) site(s) hors ligne : ${offlineSites.map((s) => s.name).join(', ')}.`);
+  else if (degradedSites.length > 0) toImprove.push(`Vérifiez le(s) site(s) dégradé(s) : ${degradedSites.map((s) => s.name).join(', ')}.`);
+
+  return {
+    health: computeClientHealth(client, sites, now),
+    factors: [
+      { label: 'Dernier échange', value: contactValue, tone: contactTone },
+      { label: 'Sites supervisés', value: sitesValue, tone: sitesTone },
+    ],
+    toImprove,
+  };
+}
