@@ -87,13 +87,19 @@ L'app se met à jour toute seule via le service gratuit `update.electronjs.org`
 (lu par `update-electron-app`, câblé dans `src/main/updater.ts`). Pour qu'une
 mise à jour se déclenche chez les utilisateurs :
 
-1. **Bumper la version** dans `package.json` (ex. `0.1.0` → `0.1.1`).
+1. **Bumper la version** dans `package.json` (ex. `1.0.0` → `1.0.1`).
 2. **Ajouter une entrée de changelog** dans `src/data/changelog.ts` (elle
    s'affiche en « Nouvelle mise à jour ! » au premier lancement après update,
    et dans Paramètres → À propos).
-3. **Publier** : `GITHUB_TOKEN=<token> npm run publish`. Cela construit les
-   artefacts Squirrel et les téléverse dans les *GitHub Releases* du dépôt
-   `aaronsyaa-dev/amn-desktop` (fichier `RELEASES` inclus).
+3. **Publier**, deux options :
+   - **Automatique (recommandé)** — pousser un tag Git correspondant à la
+     version : `git tag v1.0.1 && git push origin v1.0.1`. Le workflow
+     `.github/workflows/release.yml` construit et publie tout seul (build
+     Windows sur GitHub Actions, aucune machine locale requise).
+   - **Manuel** — `GITHUB_TOKEN=<token> npm run publish` depuis une machine
+     Windows. Construit les artefacts Squirrel et les téléverse dans les
+     *GitHub Releases* du dépôt `aaronsyaa-dev/amn-desktop` (fichier
+     `RELEASES` inclus).
 
 Conditions pour que l'auto-update fonctionne réellement :
 

@@ -14,6 +14,14 @@ import type {
 const RECONNECT_DELAYS_MS = [1000, 2000, 5000, 10000, 20000, 30000];
 
 async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  if (!isRemoteConfigured()) {
+    // Without AMN_API_URL/AMN_API_OPERATOR_TOKEN set (.env), remoteConfig.apiUrl
+    // is empty and `fetch('' + path, …)` throws an opaque "Failed to parse URL"
+    // TypeError. Surface a clear, actionable message instead.
+    throw new Error(
+      "L'API centrale (amn-api) n'est pas configurée sur ce poste — AMN_API_URL / AMN_API_OPERATOR_TOKEN manquants dans .env. Voir docs/ARCHITECTURE.md.",
+    );
+  }
   const res = await fetch(`${remoteConfig.apiUrl}${path}`, {
     ...init,
     headers: {

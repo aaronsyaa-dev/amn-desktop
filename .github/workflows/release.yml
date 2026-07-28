@@ -1,0 +1,41 @@
+name: Release
+
+# Builds the Windows installer and publishes it to GitHub Releases, which is
+# what update.electronjs.org (and therefore the in-app auto-updater) reads.
+#
+# Trigger: push a version tag matching the package.json version, e.g.:
+#   git tag v1.0.1 && git push origin v1.0.1
+#
+# No local Windows machine or manual `npm run publish` needed — this runs the
+# whole "bump version → tag → push" flow to a public Release automatically.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Publish (build + upload to GitHub Releases)
+        run: npm run publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
