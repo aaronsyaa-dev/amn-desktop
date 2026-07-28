@@ -1,189 +1,315 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Check, Copy, Lock, Sparkles } from 'lucide-react';
-import { trackerCatalog, type TrackerOffer } from '../data/trackerCatalog';
-import { StarRating } from '../components/StarRating';
-import { staggerContainer, staggerItem } from '../lib/transitions';
+import React, { useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Activity, ChevronDown, Download, Globe, Layers, Radar, Settings2 } from 'lucide-react';
+import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
+import { useTrackers } from '../state/useTrackers';
+import { TRACKER_MODULES, moduleByKey, modulesByKeys } from '../data/trackerModules';
+import { MaturityBadge } from '../components/tracker/MaturityBadge';
+import { InstallWizard } from '../components/tracker/InstallWizard';
+import { ConfirmDelete } from '../components/ConfirmDelete';
+import { StaggerGroup, StaggerItem } from '../components/Stagger';
+import { relativeTime } from '../lib/time';
 
-const AVAILABILITY_LABEL: Record<TrackerOffer['availability'], string> = {
-  available: 'DISPONIBLE',
-  'coming-soon': 'À VENIR',
-  locked: 'VERROUILLÉ',
+/** Freshness of a site's tracker data flow, derived from its last heartbeat. */
+type Flow = { tone: 'live' | 'stale' | 'never'; label: string };
+
+const STALE_AFTER_MS = 3 * 60 * 1000; // ~6x the default 30s heartbeat
+
+function dataFlow(site: DerivedSite): Flow {
+  const lastSeenAt = site.state?.lastSeenAt ?? null;
+  const last = lastSeenAt ? new Date(lastSeenAt).getTime() : null;
+  if (!last) return { tone: 'never', label: 'En attente de première remontée' };
+  if (Date.now() - last > STALE_AFTER_MS) return { tone: 'stale', label: `Ne remonte plus (${relativeTime(lastSeenAt as string)})` };
+  return { tone: 'live', label: 'Remonte des données en temps réel' };
+}
+
+const FLOW_DOT: Record<Flow['tone'], string> = {
+  live: 'bg-success',
+  stale: 'bg-danger animate-pulse',
+  never: 'border border-text-muted bg-transparent',
 };
 
 export function TrackerScreen() {
-  const [openSnippetId, setOpenSnippetId] = useState<string | null>(null);
+  const { sites } = useRemoteSites();
+  const { modulesForSite, totalInstalled } = useTrackers();
+  const [wizard, setWizard] = useState<{ open: boolean; siteId?: string }>({ open: false });
+
+  const installCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const site of sites) for (const key of modulesForSite(site.id)) counts[key] = (counts[key] ?? 0) + 1;
+    return counts;
+  }, [sites, modulesForSite]);
+
+  const equippedSites = sites.filter((s) => modulesForSite(s.id).length > 0);
 
   return (
-    <section className="flex flex-col gap-5">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-text-primary">
-          Trackers
-        </h1>
-        <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
-          Catalogue des offres de supervision installables sur un site cible
-        </p>
-      </div>
+    <StaggerGroup className="flex flex-col gap-6">
+      <StaggerItem>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-text-primary">Trackers</h1>
+            <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
+              Modules de supervision installables · {totalInstalled} module{totalInstalled > 1 ? 's' : ''} déployé
+              {totalInstalled > 1 ? 's' : ''} sur {equippedSites.length} site{equippedSites.length > 1 ? 's' : ''}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setWizard({ open: true })}
+            className="flex items-center gap-2 bg-accent px-4 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
+          >
+            <Download size={16} strokeWidth={2} />
+            Installer un tracker
+          </button>
+        </div>
+      </StaggerItem>
 
-      <motion.div
-        variants={staggerContainer}
-        initial="initial"
-        animate="animate"
-        className="flex gap-4 overflow-x-auto pb-4"
-      >
-        {trackerCatalog.map((offer) => (
-          <motion.div key={offer.id} variants={staggerItem} className="flex-shrink-0">
-            <TrackerCard
-              offer={offer}
-              snippetOpen={openSnippetId === offer.id}
-              onToggleSnippet={() =>
-                setOpenSnippetId((id) => (id === offer.id ? null : offer.id))
-              }
-            />
-          </motion.div>
-        ))}
-      </motion.div>
-    </section>
+      {/* Modular catalog */}
+      <StaggerItem>
+        <div className="grid gap-3 md:grid-cols-3">
+          {TRACKER_MODULES.map((mod) => (
+            <div key={mod.key} className="flex flex-col border border-border bg-surface p-4">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Palier {mod.tier}</span>
+                <MaturityBadge maturity={mod.maturity} />
+              </div>
+              <h2 className="mt-1.5 text-lg font-bold text-text-primary">{mod.name}</h2>
+              <p className="text-xs font-medium text-text-secondary">{mod.tagline}</p>
+              <p className="mt-3 flex-1 text-xs leading-relaxed text-text-secondary">{mod.description}</p>
+              <ul className="mt-3 flex flex-col gap-1">
+                {mod.capabilities.map((c) => (
+                  <li key={c} className="flex items-start gap-2 text-[11px] text-text-muted">
+                    <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-current" />
+                    {c}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 border-t border-border pt-2 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                {installCounts[mod.key] ? `Installé sur ${installCounts[mod.key]} site${installCounts[mod.key] > 1 ? 's' : ''}` : 'Non installé'}
+              </p>
+            </div>
+          ))}
+        </div>
+      </StaggerItem>
+
+      {/* Control desk */}
+      <StaggerItem>
+        <div className="flex items-center gap-2">
+          <Radar size={16} strokeWidth={1.75} className="text-text-secondary" />
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-text-secondary">Bureau de contrôle</h2>
+        </div>
+      </StaggerItem>
+
+      <StaggerItem>
+        {sites.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-surface py-12 text-center">
+            <Globe size={22} strokeWidth={1.5} className="text-text-muted" />
+            <p className="text-sm font-medium text-text-primary">Aucun site enregistré</p>
+            <p className="max-w-sm text-sm text-text-secondary">
+              Enregistrez un site dans l’onglet Sites, puis installez un tracker pour le superviser ici.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {sites.map((site) => (
+              <SiteControlRow key={site.id} site={site} onManage={() => setWizard({ open: true, siteId: site.id })} />
+            ))}
+          </div>
+        )}
+      </StaggerItem>
+
+      <AnimatePresence>
+        {wizard.open && <InstallWizard initialSiteId={wizard.siteId} onClose={() => setWizard({ open: false })} />}
+      </AnimatePresence>
+    </StaggerGroup>
   );
 }
 
-function TrackerCard({
-  offer,
-  snippetOpen,
-  onToggleSnippet,
-}: {
-  offer: TrackerOffer;
-  snippetOpen: boolean;
-  onToggleSnippet: () => void;
-}) {
-  const available = offer.availability === 'available';
-  const locked = offer.availability === 'locked';
+function SiteControlRow({ site, onManage }: { site: DerivedSite; onManage: () => void }) {
+  const { modulesForSite, removeModule } = useTrackers();
+  const [expanded, setExpanded] = useState(false);
+  const installed = modulesForSite(site.id);
+  const flow = dataFlow(site);
+  const hasModules = installed.length > 0;
 
   return (
-    <div
-      className={`flex h-full w-80 flex-col border ${
-        available ? 'border-border-strong' : 'border-border'
-      } bg-surface`}
-    >
-      <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-        <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-          Palier {offer.tier}
-        </span>
-        <span
-          className={`flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider ${
-            available ? 'text-text-primary' : 'text-text-muted'
-          }`}
-        >
-          {locked && <Lock size={11} strokeWidth={2} />}
-          {AVAILABILITY_LABEL[offer.availability]}
-        </span>
-      </div>
-
-      <div className="flex flex-1 flex-col p-5">
-        <h2 className="text-2xl font-bold text-text-primary">{offer.name}</h2>
-        <p className="mt-1 font-mono text-xs uppercase tracking-wide text-text-secondary">
-          {offer.tagline}
-        </p>
-
-        <div className="mt-3">
-          <StarRating value={offer.rating} />
+    <div className="overflow-hidden rounded-xl border border-border bg-surface">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.02]"
+      >
+        <span className={`h-2 w-2 flex-shrink-0 rounded-full ${hasModules ? FLOW_DOT[flow.tone] : 'bg-text-muted/40'}`} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <Globe size={14} strokeWidth={1.75} className="text-text-muted" />
+            <span className="truncate text-sm font-semibold text-text-primary">{site.name}</span>
+          </div>
+          <p className="mt-0.5 text-xs text-text-muted">
+            {hasModules ? flow.label : 'Aucun module installé'}
+          </p>
         </div>
-
-        <p className="mt-4 text-sm leading-relaxed text-text-secondary">
-          {offer.description}
-        </p>
-
-        <ul className="mt-4 flex flex-1 flex-col gap-1.5">
-          {offer.features.map((feature) => (
-            <li
-              key={feature}
-              className={`flex items-start gap-2 text-xs ${
-                available ? 'text-text-secondary' : 'text-text-muted'
-              }`}
-            >
-              <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-current" />
-              {feature}
-            </li>
-          ))}
-        </ul>
-
-        <div className="mt-5">
-          {available ? (
-            <button
-              type="button"
-              onClick={onToggleSnippet}
-              className="flex w-full items-center justify-center gap-2 bg-accent px-3 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
-            >
-              <Sparkles size={15} strokeWidth={2} />
-              {snippetOpen ? 'Masquer le code' : "Voir le code d'installation"}
-            </button>
+        {/* Installed module chips */}
+        <div className="hidden flex-shrink-0 items-center gap-1.5 sm:flex">
+          {hasModules ? (
+            modulesByKeys(installed).map((m) => (
+              <span
+                key={m.key}
+                className="rounded-full border border-border-strong bg-bg px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-text-secondary"
+              >
+                {m.name.replace('AMN ', '')}
+              </span>
+            ))
           ) : (
-            <button
-              type="button"
-              disabled
-              className="flex w-full cursor-not-allowed items-center justify-center gap-2 border border-border px-3 py-2.5 text-sm font-medium text-text-muted"
-            >
-              <Lock size={14} strokeWidth={2} />
-              Bientôt disponible
-            </button>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">—</span>
           )}
         </div>
-      </div>
+        <ChevronDown
+          size={16}
+          strokeWidth={2}
+          className={`flex-shrink-0 text-text-muted transition-transform ${expanded ? 'rotate-180' : ''}`}
+        />
+      </button>
 
-      {available && snippetOpen && offer.installSnippet && (
-        <SnippetPanel snippet={offer.installSnippet} packageHint={offer.packageHint} />
-      )}
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden border-t border-border"
+          >
+            <div className="flex flex-col gap-3 p-4">
+              {!hasModules ? (
+                <p className="text-sm text-text-secondary">
+                  Aucun module sur ce site.{' '}
+                  <button type="button" onClick={onManage} className="text-text-primary underline underline-offset-2">
+                    Installer un tracker
+                  </button>
+                  .
+                </p>
+              ) : (
+                <>
+                  {modulesByKeys(installed).map((m) => (
+                    <ModuleStatusCard
+                      key={m.key}
+                      moduleKey={m.key}
+                      site={site}
+                      flow={flow}
+                      onRemove={() => removeModule(site.id, m.key)}
+                    />
+                  ))}
+                  <button
+                    type="button"
+                    onClick={onManage}
+                    className="flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-white/5 hover:text-text-primary"
+                  >
+                    <Settings2 size={14} />
+                    Gérer les modules
+                  </button>
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function SnippetPanel({
-  snippet,
-  packageHint,
+function ModuleStatusCard({
+  moduleKey,
+  site,
+  flow,
+  onRemove,
 }: {
-  snippet: string;
-  packageHint?: string;
+  moduleKey: string;
+  site: DerivedSite;
+  flow: Flow;
+  onRemove: () => void;
 }) {
-  const [copied, setCopied] = useState(false);
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(snippet);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    } catch {
-      // Clipboard API unavailable — the user can still select the text manually.
-    }
-  };
+  const mod = moduleByKey(moduleKey);
+  if (!mod) return null;
 
   return (
-    <div className="border-t border-border-strong">
-      {packageHint && (
-        <div className="flex items-center justify-between border-b border-border px-4 py-2">
-          <span className="font-mono text-[10px] text-text-muted">npm install {packageHint}</span>
+    <div className="rounded-lg border border-border bg-bg p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-text-primary">{mod.name}</span>
+            <MaturityBadge maturity={mod.maturity} />
+          </div>
+          <div className="mt-1 flex items-center gap-1.5 text-xs text-text-secondary">
+            <span className={`h-1.5 w-1.5 rounded-full ${FLOW_DOT[flow.tone]}`} />
+            {flow.label}
+          </div>
         </div>
-      )}
-      <div className="relative">
-        <pre className="max-h-52 overflow-y-auto whitespace-pre-wrap break-words bg-bg p-4 pr-16 font-mono text-[12px] leading-relaxed text-text-primary">
-          {snippet}
-        </pre>
-        <button
-          type="button"
-          onClick={copy}
-          className="absolute right-3 top-3 flex items-center gap-1.5 border border-border-strong bg-surface px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary transition-colors hover:bg-surface-hover"
-        >
-          {copied ? (
-            <>
-              <Check size={11} strokeWidth={2.5} />
-              Copié
-            </>
-          ) : (
-            <>
-              <Copy size={11} strokeWidth={2} />
-              Copier
-            </>
-          )}
-        </button>
+        <ConfirmDelete onConfirm={onRemove} label="Retirer" />
+      </div>
+
+      {/* Module-specific data section */}
+      <div className="mt-3 border-t border-border/60 pt-2.5">
+        <ModuleData moduleKey={moduleKey} site={site} flow={flow} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Per-module data view. Sentinel surfaces the real alert signal already flowing
+ * from the tracker (last alert timestamp + active visitors). Sentinel+/Suite
+ * expose module-specific streams that require the corresponding tracker module
+ * to be deployed and reporting — until then they are honestly labelled as
+ * awaiting data rather than showing fabricated results.
+ */
+function ModuleData({ moduleKey, site, flow }: { moduleKey: string; site: DerivedSite; flow: Flow }) {
+  if (moduleKey === 'sentinel') {
+    const visitors = site.state?.activeVisitors ?? 0;
+    const lastAlert = site.state?.lastAlertAt;
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        <Metric icon={Activity} label="Visiteurs actifs" value={flow.tone === 'never' ? '—' : String(visitors)} />
+        <Metric
+          icon={Layers}
+          label="Dernière alerte"
+          value={lastAlert ? relativeTime(lastAlert) : 'Aucune'}
+        />
+      </div>
+    );
+  }
+
+  // Advanced modules: data stream pending the tracker module deployment.
+  const hint =
+    moduleKey === 'sentinel-plus'
+      ? 'Anomalies de trafic & réputation IP'
+      : 'Disponibilité active & scan de dépendances';
+  return (
+    <div className="flex items-center gap-2 text-xs text-text-muted">
+      <span className="h-1.5 w-1.5 rounded-full border border-text-muted" />
+      <span>
+        {hint} — <span className="text-text-secondary">en attente de remontée du module</span> (déployez le script sur le
+        site pour activer ce flux).
+      </span>
+    </div>
+  );
+}
+
+function Metric({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <Icon size={14} strokeWidth={1.75} className="text-text-muted" />
+      <div>
+        <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted">{label}</p>
+        <p className="text-sm font-semibold text-text-primary">{value}</p>
       </div>
     </div>
   );
