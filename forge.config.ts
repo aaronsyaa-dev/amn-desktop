@@ -77,7 +77,12 @@ const config: ForgeConfig = {
   // machine. AutoUnpackNativesPlugin still extracts the .node from the asar.
   rebuildConfig: { onlyModules: [] },
   makers: [
-    new MakerSquirrel({}),
+    new MakerSquirrel({
+      // Icon embedded in the installer (Setup.exe) and used for the Start-menu /
+      // desktop shortcuts it creates. The app/window icon comes from
+      // packagerConfig.icon; this covers the installer + shortcuts on Windows.
+      setupIcon: './images/icon.ico',
+    }),
     new MakerZIP({}, ['darwin']),
     new MakerRpm({}),
     new MakerDeb({}),
