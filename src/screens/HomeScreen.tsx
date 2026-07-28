@@ -96,7 +96,12 @@ export function HomeScreen() {
   );
 
   const displayName = user?.name ?? 'opérateur';
-  const now = new Date();
+  // Live clock: ticks every 30s so the header time (and greeting) stay current.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(t);
+  }, []);
   const dateLabel = now.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long' });
   const timeLabel = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
