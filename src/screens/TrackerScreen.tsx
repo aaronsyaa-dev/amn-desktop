@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Activity, ChevronDown, Download, Globe, Layers, Radar, Settings2 } from 'lucide-react';
+import { Activity, BarChart3, ChevronDown, Download, Globe, Layers, Radar, Settings2 } from 'lucide-react';
 import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
 import { useTrackers } from '../state/useTrackers';
 import { TRACKER_MODULES, moduleByKey, modulesByKeys } from '../data/trackerModules';
@@ -9,6 +9,7 @@ import { InstallWizard } from '../components/tracker/InstallWizard';
 import { ConfirmDelete } from '../components/ConfirmDelete';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { relativeTime } from '../lib/time';
+import { postureScore, type PostureScore } from '../lib/trackerScore';
 
 /** Freshness of a site's tracker data flow, derived from its last heartbeat. */
 type Flow = { tone: 'live' | 'stale' | 'never'; label: string };
@@ -92,6 +93,13 @@ export function TrackerScreen() {
         </div>
       </StaggerItem>
 
+      {/* Site comparator */}
+      {sites.length > 1 && (
+        <StaggerItem>
+          <SiteComparator />
+        </StaggerItem>
+      )}
+
       {/* Control desk */}
       <StaggerItem>
         <div className="flex items-center gap-2">
@@ -122,6 +130,62 @@ export function TrackerScreen() {
         {wizard.open && <InstallWizard initialSiteId={wizard.siteId} onClose={() => setWizard({ open: false })} />}
       </AnimatePresence>
     </StaggerGroup>
+  );
+}
+
+const SCORE_TONE: Record<PostureScore['tone'], { bar: string; text: string }> = {
+  good: { bar: 'bg-success', text: 'text-success' },
+  watch: { bar: 'bg-warning', text: 'text-warning' },
+  risk: { bar: 'bg-danger', text: 'text-danger' },
+};
+
+/**
+ * Ranks all supervised sites by security posture (coverage + health − recent
+ * incidents), worst first, so the site needing attention surfaces at a glance.
+ * The score is transparent: each site lists the reasons behind its number.
+ */
+function SiteComparator() {
+  const { sites } = useRemoteSites();
+  const { modulesForSite } = useTrackers();
+
+  const ranked = useMemo(
+    () =>
+      sites
+        .map((site) => ({ site, posture: postureScore(site, modulesForSite(site.id)) }))
+        .sort((a, b) => a.posture.score - b.posture.score),
+    [sites, modulesForSite],
+  );
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <BarChart3 size={16} strokeWidth={1.75} className="text-text-secondary" />
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-text-secondary">Comparateur de sites</h2>
+        <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">à surveiller en premier</span>
+      </div>
+      <div className="flex flex-col divide-y divide-border/60 rounded-xl border border-border bg-surface">
+        {ranked.map(({ site, posture }, i) => (
+          <div key={site.id} className="flex items-center gap-4 px-4 py-3">
+            <span className="w-5 flex-shrink-0 font-mono text-xs text-text-muted">{i + 1}</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <Globe size={13} strokeWidth={1.75} className="text-text-muted" />
+                <span className="truncate text-sm font-medium text-text-primary">{site.name}</span>
+              </div>
+              <p className="mt-1 truncate text-xs text-text-muted">{posture.reasons.join(' · ')}</p>
+            </div>
+            <div className="hidden w-32 flex-shrink-0 sm:block">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
+                <div className={`h-full ${SCORE_TONE[posture.tone].bar}`} style={{ width: `${posture.score}%` }} />
+              </div>
+            </div>
+            <span className={`w-10 flex-shrink-0 text-right font-mono text-sm font-semibold ${SCORE_TONE[posture.tone].text}`}>
+              {posture.score}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
