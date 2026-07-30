@@ -3,18 +3,24 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUp,
   Download,
+  History,
   Loader2,
+  MessageSquarePlus,
   Newspaper,
+  Search,
   Sparkles,
   Sunrise,
+  Trash2,
   WifiOff,
   X,
 } from 'lucide-react';
 import { useRemoteSites } from '../state/RemoteSitesContext';
 import { ALERT_SEVERITY_CONFIG } from '../lib/alerts';
 import { bridge } from '../lib/bridge';
+import { relativeTime } from '../lib/time';
 import { useAssistant } from './AssistantContext';
 import { getDailySummary, getSuggestions } from './engine';
+import { searchableText } from './conversations';
 import { ReportBlocks } from './ReportBlocks';
 import { PrintPortal } from './PrintPortal';
 import type { AssistantReport, ChatMessage } from './types';
@@ -31,9 +37,10 @@ const TABS: Array<{ key: Tab; label: string; icon: typeof Sparkles }> = [
 ];
 
 export function AssistantPanel() {
-  const { isOpen, close } = useAssistant();
+  const { isOpen, close, newConversation, openConversation } = useAssistant();
   const { sites, ensureEventsLoaded } = useRemoteSites();
   const [tab, setTab] = useState<Tab>('chat');
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [exportTarget, setExportTarget] = useState<AssistantReport | null>(null);
 
   useEffect(() => {
@@ -74,13 +81,35 @@ export function AssistantPanel() {
               transition={PANEL_SPRING}
               className="absolute right-0 top-0 flex h-full w-full max-w-[660px] flex-col border-l border-border bg-bg shadow-[-24px_0_60px_rgba(0,0,0,0.5)]"
             >
-              <Header onClose={close} />
+              <Header
+                onClose={close}
+                onNew={() => {
+                  newConversation();
+                  setHistoryOpen(false);
+                  setTab('chat');
+                }}
+                onHistory={() => setHistoryOpen((v) => !v)}
+                historyOpen={historyOpen}
+              />
               <TabBar tab={tab} onChange={setTab} />
               <div className="flex-1 overflow-hidden">
                 {tab === 'chat' && <ChatTab onExport={setExportTarget} />}
                 {tab === 'summary' && <SummaryTab />}
                 {tab === 'watch' && <WatchTab />}
               </div>
+
+              <AnimatePresence>
+                {historyOpen && (
+                  <HistoryDrawer
+                    onClose={() => setHistoryOpen(false)}
+                    onOpen={(id) => {
+                      openConversation(id);
+                      setHistoryOpen(false);
+                      setTab('chat');
+                    }}
+                  />
+                )}
+              </AnimatePresence>
             </motion.aside>
           </div>
         )}
@@ -96,7 +125,17 @@ export function AssistantPanel() {
   );
 }
 
-function Header({ onClose }: { onClose: () => void }) {
+function Header({
+  onClose,
+  onNew,
+  onHistory,
+  historyOpen,
+}: {
+  onClose: () => void;
+  onNew: () => void;
+  onHistory: () => void;
+  historyOpen: boolean;
+}) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
       <div className="flex items-center gap-3">
@@ -110,15 +149,129 @@ function Header({ onClose }: { onClose: () => void }) {
           </p>
         </div>
       </div>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Fermer l'assistant"
-        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary"
-      >
-        <X size={18} strokeWidth={2} />
-      </button>
+      <div className="flex flex-shrink-0 items-center gap-1">
+        <button
+          type="button"
+          onClick={onNew}
+          aria-label="Nouvelle conversation"
+          title="Nouvelle conversation"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary"
+        >
+          <MessageSquarePlus size={17} strokeWidth={1.75} />
+        </button>
+        <button
+          type="button"
+          onClick={onHistory}
+          aria-label="Historique des conversations"
+          title="Historique"
+          className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary ${
+            historyOpen ? 'text-text-primary' : 'text-text-secondary'
+          }`}
+        >
+          <History size={17} strokeWidth={1.75} />
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fermer l'assistant"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary"
+        >
+          <X size={18} strokeWidth={2} />
+        </button>
+      </div>
     </div>
+  );
+}
+
+/* --------------------------- History drawer (A5) --------------------------- */
+
+function HistoryDrawer({ onClose, onOpen }: { onClose: () => void; onOpen: (id: string) => void }) {
+  const { conversations, activeId, deleteConversation } = useAssistant();
+  const [query, setQuery] = useState('');
+
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return conversations;
+    return conversations.filter((c) => searchableText(c).includes(q));
+  }, [conversations, query]);
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        onClick={onClose}
+        className="absolute inset-0 z-10 bg-black/40"
+      />
+      <motion.div
+        initial={{ x: '-100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: '-100%' }}
+        transition={{ type: 'spring', stiffness: 380, damping: 36 }}
+        className="absolute left-0 top-0 z-20 flex h-full w-80 max-w-[80%] flex-col border-r border-border bg-surface"
+      >
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <h3 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">Conversations</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fermer l'historique"
+            className="text-text-muted hover:text-text-primary"
+          >
+            <X size={16} strokeWidth={2} />
+          </button>
+        </div>
+        <div className="border-b border-border p-3">
+          <div className="input-focus flex items-center gap-2 rounded-lg border border-border bg-bg px-2.5 py-1.5">
+            <Search size={14} strokeWidth={1.75} className="text-text-muted" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Rechercher…"
+              className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
+            />
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {results.length === 0 ? (
+            <p className="p-4 text-sm text-text-muted">
+              {conversations.length === 0
+                ? 'Aucune conversation enregistrée pour l’instant.'
+                : 'Aucun résultat.'}
+            </p>
+          ) : (
+            <div className="divide-y divide-border/60">
+              {results.map((c) => (
+                <div
+                  key={c.id}
+                  className={`group flex items-start gap-2 px-3 py-2.5 transition-colors hover:bg-surface-hover ${
+                    activeId === c.id ? 'bg-accent-muted' : ''
+                  }`}
+                >
+                  <button type="button" onClick={() => onOpen(c.id)} className="min-w-0 flex-1 text-left">
+                    <p className="truncate text-sm font-medium text-text-primary">{c.title}</p>
+                    <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                      {relativeTime(c.updatedAt)} · {c.messages.filter((m) => m.role === 'user').length} question
+                      {c.messages.filter((m) => m.role === 'user').length > 1 ? 's' : ''}
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteConversation(c.id)}
+                    aria-label="Supprimer la conversation"
+                    className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-text-muted opacity-0 transition-opacity hover:text-danger group-hover:opacity-100"
+                  >
+                    <Trash2 size={13} strokeWidth={1.75} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </>
   );
 }
 

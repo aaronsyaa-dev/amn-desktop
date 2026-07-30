@@ -2,13 +2,22 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { generateReport, runAssistant } from './engine';
 import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
+import { useAuth } from '../auth/AuthContext';
 import type { RemoteEvent } from '../shared/api';
 import type { ChatMessage, ReportMode, ReportRequest } from './types';
+import {
+  loadConversations,
+  saveConversations,
+  titleFor,
+  type Conversation,
+} from './conversations';
 
 interface AssistantContextValue {
   isOpen: boolean;
@@ -19,6 +28,12 @@ interface AssistantContextValue {
   sendMessage: (text: string) => void;
   /** Re-generate a report message in a different mode (internal ↔ client). */
   switchReportMode: (messageId: string, mode: ReportMode) => void;
+  /* --- History (A5) --- */
+  conversations: Conversation[];
+  activeId: string | null;
+  newConversation: () => void;
+  openConversation: (id: string) => void;
+  deleteConversation: (id: string) => void;
 }
 
 const AssistantContext = createContext<AssistantContextValue | undefined>(
@@ -51,19 +66,103 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const { sites, eventsBySite, loadEvents } = useRemoteSites();
+  const { user } = useAuth();
+  const email = user?.email ?? 'anon';
+
+  // Persistent history (A5). `activeId` null means a fresh, unsaved conversation.
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeId, setActiveIdState] = useState<string | null>(null);
+  // Mirror of activeId that updates synchronously — the user message and the
+  // assistant reply persist back-to-back, before React re-renders, so reading
+  // state alone would create a duplicate conversation on the second write.
+  const activeIdRef = useRef<string | null>(null);
+  const setActiveId = useCallback((id: string | null) => {
+    activeIdRef.current = id;
+    setActiveIdState(id);
+  }, []);
+
+  // Keep a ref in sync so async callbacks always append to the latest messages.
+  const messagesRef = useRef<ChatMessage[]>([]);
+  const setMessagesSynced = useCallback((next: ChatMessage[]) => {
+    messagesRef.current = next;
+    setMessages(next);
+  }, []);
+
+  // Load this user's history when the account changes; start on a blank convo.
+  useEffect(() => {
+    setConversations(loadConversations(email));
+    setActiveId(null);
+    setMessagesSynced([]);
+  }, [email, setMessagesSynced]);
 
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
+
+  const emailRef = useRef(email);
+  emailRef.current = email;
+
+  /** Persists the given messages under the active (or a new) conversation. */
+  const persist = useCallback((msgs: ChatMessage[]) => {
+    if (msgs.length === 0) return;
+    const nowIso = new Date().toISOString();
+    setConversations((prev) => {
+      let id = activeIdRef.current;
+      let next: Conversation[];
+      if (id && prev.some((c) => c.id === id)) {
+        next = prev.map((c) =>
+          c.id === id ? { ...c, messages: msgs, title: titleFor(msgs), updatedAt: nowIso } : c,
+        );
+      } else {
+        id = uid('conv');
+        setActiveId(id);
+        next = [{ id, title: titleFor(msgs), messages: msgs, createdAt: nowIso, updatedAt: nowIso }, ...prev];
+      }
+      saveConversations(emailRef.current, next);
+      return next;
+    });
+  }, [setActiveId]);
+
+  const newConversation = useCallback(() => {
+    setActiveId(null);
+    setMessagesSynced([]);
+  }, [setMessagesSynced]);
+
+  const openConversation = useCallback(
+    (id: string) => {
+      const convo = conversations.find((c) => c.id === id);
+      if (!convo) return;
+      setActiveId(id);
+      setMessagesSynced(convo.messages);
+    },
+    [conversations, setMessagesSynced],
+  );
+
+  const deleteConversation = useCallback(
+    (id: string) => {
+      setConversations((prev) => {
+        const next = prev.filter((c) => c.id !== id);
+        saveConversations(emailRef.current, next);
+        return next;
+      });
+      if (activeId === id) {
+        setActiveId(null);
+        setMessagesSynced([]);
+      }
+    },
+    [activeId, setMessagesSynced],
+  );
 
   const sendMessage = useCallback(
     (text: string) => {
       const trimmed = text.trim();
       if (!trimmed) return;
 
-      setMessages((prev) => [
-        ...prev,
+      const withUser: ChatMessage[] = [
+        ...messagesRef.current,
         { id: uid('u'), role: 'user', text: trimmed, createdAt: new Date().toISOString() },
-      ]);
+      ];
+      setMessagesSynced(withUser);
+      persist(withUser);
       setIsThinking(true);
 
       // Warm the event cache for every site before asking the engine to
@@ -72,14 +171,16 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       loadFreshEvents(sites, loadEvents, eventsBySite)
         .then((freshEvents) => runAssistant(trimmed, sites, freshEvents))
         .then((turn) => {
-          setMessages((prev) => [
-            ...prev,
+          const withAnswer: ChatMessage[] = [
+            ...messagesRef.current,
             { id: uid('a'), role: 'assistant', turn, createdAt: new Date().toISOString() },
-          ]);
+          ];
+          setMessagesSynced(withAnswer);
+          persist(withAnswer);
         })
         .finally(() => setIsThinking(false));
     },
-    [sites, eventsBySite, loadEvents],
+    [sites, eventsBySite, loadEvents, setMessagesSynced, persist],
   );
 
   const switchReportMode = useCallback(
@@ -97,21 +198,45 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           generateReport(request, sites, { ...eventsBySite, ...freshEvents }),
         )
         .then((report) => {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === messageId
-                ? { ...m, turn: { kind: 'report', request, report } }
-                : m,
-            ),
+          const next = messagesRef.current.map((m) =>
+            m.id === messageId ? { ...m, turn: { kind: 'report' as const, request, report } } : m,
           );
+          setMessagesSynced(next);
+          persist(next);
         });
     },
-    [messages, sites, eventsBySite, loadEvents],
+    [messages, sites, eventsBySite, loadEvents, setMessagesSynced, persist],
   );
 
   const value = useMemo(
-    () => ({ isOpen, open, close, messages, isThinking, sendMessage, switchReportMode }),
-    [isOpen, open, close, messages, isThinking, sendMessage, switchReportMode],
+    () => ({
+      isOpen,
+      open,
+      close,
+      messages,
+      isThinking,
+      sendMessage,
+      switchReportMode,
+      conversations,
+      activeId,
+      newConversation,
+      openConversation,
+      deleteConversation,
+    }),
+    [
+      isOpen,
+      open,
+      close,
+      messages,
+      isThinking,
+      sendMessage,
+      switchReportMode,
+      conversations,
+      activeId,
+      newConversation,
+      openConversation,
+      deleteConversation,
+    ],
   );
 
   return (
