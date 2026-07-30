@@ -529,6 +529,10 @@ export interface AmnBridge {
     listSites(): Promise<RemoteSite[]>;
     getSiteEvents(siteId: string, opts?: { since?: string; limit?: number }): Promise<RemoteEvent[]>;
     registerSite(name: string): Promise<RegisterSiteResult>;
+    /** Renames a registered site. */
+    updateSite(id: string, name: string): Promise<RemoteSite>;
+    /** Deletes a registered site (cascades its state + events). */
+    deleteSite(id: string): Promise<void>;
     /** Current live-connection status (WebSocket to amn-api). */
     getConnectionStatus(): Promise<RemoteConnectionStatus>;
     /** Subscribes to live event pushes. Returns an unsubscribe function. */
@@ -618,6 +622,8 @@ export const IPC = {
   remoteListSites: 'remote:listSites',
   remoteSiteEvents: 'remote:siteEvents',
   remoteRegisterSite: 'remote:registerSite',
+  remoteUpdateSite: 'remote:updateSite',
+  remoteDeleteSite: 'remote:deleteSite',
   remoteConnectionStatus: 'remote:connectionStatus',
   remoteListRecords: 'remote:listRecords',
   remoteUpsertRecord: 'remote:upsertRecord',

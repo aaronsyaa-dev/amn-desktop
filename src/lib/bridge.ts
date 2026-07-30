@@ -447,6 +447,16 @@ function createBrowserRemote(): AmnBridge['remote'] {
         body: JSON.stringify({ name }),
       });
     },
+    async updateSite(id: string, name: string): Promise<RemoteSite> {
+      const { site } = await apiFetch<{ site: RemoteSite }>(`/v1/sites/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name }),
+      });
+      return site;
+    },
+    async deleteSite(id: string): Promise<void> {
+      await apiFetch<{ ok: boolean }>(`/v1/sites/${id}`, { method: 'DELETE' });
+    },
     async getConnectionStatus(): Promise<RemoteConnectionStatus> {
       return status;
     },

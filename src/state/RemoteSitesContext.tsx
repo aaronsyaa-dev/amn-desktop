@@ -30,6 +30,8 @@ interface RemoteSitesContextValue {
   /** Awaited variant — returns the events (from cache or freshly fetched). */
   loadEvents: (siteId: string) => Promise<RemoteEvent[]>;
   registerSite: (name: string) => Promise<RegisterSiteResult>;
+  updateSite: (id: string, name: string) => Promise<void>;
+  deleteSite: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
 }
 
@@ -177,6 +179,27 @@ export function RemoteSitesProvider({ children }: { children: React.ReactNode })
     return result;
   }, [refresh]);
 
+  const updateSite = useCallback(async (id: string, name: string) => {
+    // Optimistic: reflect the rename immediately, then confirm with the server.
+    setRawSites((prev) => prev.map((s) => (s.id === id ? { ...s, name } : s)));
+    try {
+      await bridge().remote.updateSite(id, name);
+    } catch (err) {
+      await refresh(); // revert to server truth on failure
+      throw err;
+    }
+  }, [refresh]);
+
+  const deleteSite = useCallback(async (id: string) => {
+    setRawSites((prev) => prev.filter((s) => s.id !== id)); // optimistic removal
+    try {
+      await bridge().remote.deleteSite(id);
+    } catch (err) {
+      await refresh();
+      throw err;
+    }
+  }, [refresh]);
+
   const sites = useMemo<DerivedSite[]>(
     () =>
       rawSites
@@ -194,6 +217,8 @@ export function RemoteSitesProvider({ children }: { children: React.ReactNode })
       ensureEventsLoaded,
       loadEvents,
       registerSite,
+      updateSite,
+      deleteSite,
       refresh,
     }),
     [
@@ -204,6 +229,8 @@ export function RemoteSitesProvider({ children }: { children: React.ReactNode })
       ensureEventsLoaded,
       loadEvents,
       registerSite,
+      updateSite,
+      deleteSite,
       refresh,
     ],
   );

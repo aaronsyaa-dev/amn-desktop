@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Copy, Check, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronDown, Copy, Check, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
+import { useUndo } from '../state/UndoContext';
+import { useTrackers } from '../state/useTrackers';
 import type { DerivedStatus } from '../lib/siteStatus';
 import { StatusBadge } from '../components/StatusBadge';
 import { Sparkline } from '../components/Sparkline';
@@ -60,9 +62,11 @@ export function SitesDashboardScreen() {
     return counts;
   }, [sites, eventsBySite]);
 
+  const { isPending } = useUndo();
   const filteredSites = useMemo(() => {
     const q = query.trim().toLowerCase();
     const filtered = sites.filter((site) => {
+      if (isPending(`site:${site.id}`)) return false; // hidden during undo window
       const matchesQuery = !q || site.name.toLowerCase().includes(q);
       const matchesStatus = statusFilter === 'all' || site.status === statusFilter;
       return matchesQuery && matchesStatus;
@@ -80,7 +84,7 @@ export function SitesDashboardScreen() {
       case 'alpha':
         return copy.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
     }
-  }, [sites, query, statusFilter, sort, alertCounts]);
+  }, [sites, query, statusFilter, sort, alertCounts, isPending]);
 
   const offlineCount = sites.filter((s) => s.status === 'offline').length;
 
@@ -186,7 +190,7 @@ export function SitesDashboardScreen() {
         <EmptyRegistry onRegister={() => setRegistering(true)} />
       ) : (
         <div className="border border-border bg-surface">
-          <div className="hidden grid-cols-[1.6fr_auto_6rem_5rem_5rem_6rem] items-center gap-4 border-b border-border px-5 py-2.5 font-mono text-[10px] uppercase tracking-widest text-text-muted md:grid">
+          <div className="hidden grid-cols-[1.6fr_auto_6rem_5rem_5rem_6rem_auto] items-center gap-4 border-b border-border px-5 py-2.5 font-mono text-[10px] uppercase tracking-widest text-text-muted md:grid">
             <span>Site</span>
             <span>Statut</span>
             <span className="text-right">Visiteurs</span>
@@ -285,24 +289,62 @@ function SiteRow({
   alertCount: number;
 }) {
   const { openSite } = useSitePanel();
+  const { updateSite, deleteSite } = useRemoteSites();
+  const { scheduleDelete } = useUndo();
+  const { setModules } = useTrackers();
   const activity = useMemo(() => buildActivitySeries(events), [events]);
 
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(site.name);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const startEdit = () => {
+    setDraft(site.name);
+    setEditing(true);
+    setTimeout(() => inputRef.current?.select(), 0);
+  };
+  const commitEdit = () => {
+    const name = draft.trim();
+    setEditing(false);
+    if (name && name !== site.name) updateSite(site.id, name).catch(() => {/* error surfaced via revert */});
+  };
+
+  const remove = () => {
+    scheduleDelete({
+      key: `site:${site.id}`,
+      label: `Site « ${site.name} »`,
+      commit: () => {
+        deleteSite(site.id).catch(() => {/* error surfaced via revert */});
+        setModules(site.id, []); // cascade: drop this site's tracker config
+      },
+    });
+  };
+
   return (
-    <button
-      type="button"
-      onClick={() => openSite(site.id)}
-      className="group relative grid w-full grid-cols-[1fr_auto] items-center gap-4 px-5 py-3.5 text-left transition-colors duration-150 hover:bg-surface-hover md:grid-cols-[1.6fr_auto_6rem_5rem_5rem_6rem]"
-    >
+    <div className="group relative grid w-full grid-cols-[1fr_auto] items-center gap-4 px-5 py-3.5 transition-colors duration-150 hover:bg-surface-hover md:grid-cols-[1.6fr_auto_6rem_5rem_5rem_6rem_auto]">
       {/* hover accent bar */}
       <span className="absolute left-0 top-0 h-full w-0.5 scale-y-0 bg-accent transition-transform duration-150 group-hover:scale-y-100" />
 
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium text-text-primary">
-          {site.name}
-        </p>
-        <p className="truncate font-mono text-[11px] text-text-muted">
-          #{site.id.slice(0, 8)}
-        </p>
+        {editing ? (
+          <input
+            ref={inputRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitEdit();
+              if (e.key === 'Escape') setEditing(false);
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="input-focus w-full max-w-xs border border-border bg-bg px-2 py-1 text-sm text-text-primary outline-none"
+          />
+        ) : (
+          <button type="button" onClick={() => openSite(site.id)} className="block max-w-full text-left">
+            <p className="truncate text-sm font-medium text-text-primary">{site.name}</p>
+            <p className="truncate font-mono text-[11px] text-text-muted">#{site.id.slice(0, 8)}</p>
+          </button>
+        )}
       </div>
 
       <div className="md:justify-self-start">
@@ -310,17 +352,11 @@ function SiteRow({
       </div>
 
       <p className="hidden text-right md:block">
-        <span className="tnum text-sm text-text-primary">
-          {site.state?.activeVisitors ?? 0}
-        </span>
+        <span className="tnum text-sm text-text-primary">{site.state?.activeVisitors ?? 0}</span>
       </p>
 
       <p className="hidden text-right md:block">
-        <span
-          className={`tnum text-sm ${
-            alertCount > 0 ? 'text-danger' : 'text-text-muted'
-          }`}
-        >
+        <span className={`tnum text-sm ${alertCount > 0 ? 'text-danger' : 'text-text-muted'}`}>
           {String(alertCount).padStart(2, '0')}
         </span>
       </p>
@@ -332,7 +368,29 @@ function SiteRow({
       <p className="hidden text-right font-mono text-[10px] uppercase tracking-wide text-text-muted md:block">
         {site.state?.lastSeenAt ? relativeTime(site.state.lastSeenAt).replace('il y a ', '') : '—'}
       </p>
-    </button>
+
+      {/* Row actions — revealed on hover */}
+      <div className="flex items-center gap-1 justify-self-end opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+        <button
+          type="button"
+          onClick={startEdit}
+          aria-label="Renommer le site"
+          title="Renommer"
+          className="flex h-7 w-7 items-center justify-center rounded text-text-muted transition-colors hover:bg-white/5 hover:text-text-primary"
+        >
+          <Pencil size={14} strokeWidth={1.75} />
+        </button>
+        <button
+          type="button"
+          onClick={remove}
+          aria-label="Supprimer le site"
+          title="Supprimer"
+          className="flex h-7 w-7 items-center justify-center rounded text-text-muted transition-colors hover:bg-danger-muted hover:text-danger"
+        >
+          <Trash2 size={14} strokeWidth={1.75} />
+        </button>
+      </div>
+    </div>
   );
 }
 

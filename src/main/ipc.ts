@@ -185,6 +185,10 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
       remote.getSiteEvents(payload.siteId, payload.opts),
   );
   ipcMain.handle(IPC.remoteRegisterSite, (_event, name: string) => remote.registerSite(name));
+  ipcMain.handle(IPC.remoteUpdateSite, (_event, { id, name }: { id: string; name: string }) =>
+    remote.updateSite(id, name),
+  );
+  ipcMain.handle(IPC.remoteDeleteSite, (_event, id: string) => remote.deleteSite(id));
   ipcMain.handle(IPC.remoteConnectionStatus, () => remote.getConnectionStatus());
 
   ipcMain.handle(IPC.remoteListRecords, (_event, collection: SyncedCollection) =>

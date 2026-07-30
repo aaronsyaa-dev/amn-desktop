@@ -107,6 +107,8 @@ const bridge: AmnBridge = {
     getSiteEvents: (siteId, opts) =>
       ipcRenderer.invoke(IPC.remoteSiteEvents, { siteId, opts }),
     registerSite: (name: string) => ipcRenderer.invoke(IPC.remoteRegisterSite, name),
+    updateSite: (id: string, name: string) => ipcRenderer.invoke(IPC.remoteUpdateSite, { id, name }),
+    deleteSite: (id: string) => ipcRenderer.invoke(IPC.remoteDeleteSite, id),
     getConnectionStatus: () => ipcRenderer.invoke(IPC.remoteConnectionStatus),
     onEvent: (callback: (push: RemoteEventPush) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, push: RemoteEventPush) =>
