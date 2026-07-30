@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Copy, Check, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
+import { ChevronDown, Copy, Check, Pencil, Plus, Search, SlidersHorizontal, Star, Trash2, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
 import { useUndo } from '../state/UndoContext';
+import { useSitePins } from '../lib/useSitePins';
 import { useTrackers } from '../state/useTrackers';
 import type { DerivedStatus } from '../lib/siteStatus';
 import { StatusBadge } from '../components/StatusBadge';
@@ -63,6 +64,7 @@ export function SitesDashboardScreen() {
   }, [sites, eventsBySite]);
 
   const { isPending } = useUndo();
+  const { isPinned, togglePin } = useSitePins();
   const filteredSites = useMemo(() => {
     const q = query.trim().toLowerCase();
     const filtered = sites.filter((site) => {
@@ -72,19 +74,25 @@ export function SitesDashboardScreen() {
       return matchesQuery && matchesStatus;
     });
     const copy = [...filtered];
-    switch (sort) {
-      case 'urgent':
-        return copy.sort(
-          (a, b) =>
+    const byKey = (() => {
+      switch (sort) {
+        case 'urgent':
+          return (a: DerivedSite, b: DerivedSite) =>
             STATUS_ORDER[a.status] - STATUS_ORDER[b.status] ||
-            (alertCounts[b.id] ?? 0) - (alertCounts[a.id] ?? 0),
-        );
-      case 'alerts':
-        return copy.sort((a, b) => (alertCounts[b.id] ?? 0) - (alertCounts[a.id] ?? 0));
-      case 'alpha':
-        return copy.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-    }
-  }, [sites, query, statusFilter, sort, alertCounts, isPending]);
+            (alertCounts[b.id] ?? 0) - (alertCounts[a.id] ?? 0);
+        case 'alerts':
+          return (a: DerivedSite, b: DerivedSite) =>
+            (alertCounts[b.id] ?? 0) - (alertCounts[a.id] ?? 0);
+        case 'alpha':
+          return (a: DerivedSite, b: DerivedSite) => a.name.localeCompare(b.name, 'fr');
+      }
+    })();
+    // Pinned sites always rise to the top, then the chosen sort applies within
+    // each group — a personal fast lane for the client sites you're watching.
+    return copy.sort(
+      (a, b) => Number(isPinned(b.id)) - Number(isPinned(a.id)) || byKey(a, b),
+    );
+  }, [sites, query, statusFilter, sort, alertCounts, isPending, isPinned]);
 
   const offlineCount = sites.filter((s) => s.status === 'offline').length;
 
@@ -212,6 +220,8 @@ export function SitesDashboardScreen() {
                     site={site}
                     events={eventsBySite[site.id] ?? []}
                     alertCount={alertCounts[site.id] ?? 0}
+                    pinned={isPinned(site.id)}
+                    onTogglePin={() => togglePin(site.id)}
                   />
                 </motion.div>
               ))}
@@ -283,10 +293,14 @@ function SiteRow({
   site,
   events,
   alertCount,
+  pinned,
+  onTogglePin,
 }: {
   site: DerivedSite;
   events: ReturnType<typeof useRemoteSites>['eventsBySite'][string];
   alertCount: number;
+  pinned: boolean;
+  onTogglePin: () => void;
 }) {
   const { openSite } = useSitePanel();
   const { updateSite, deleteSite } = useRemoteSites();
@@ -341,7 +355,12 @@ function SiteRow({
           />
         ) : (
           <button type="button" onClick={() => openSite(site.id)} className="block max-w-full text-left">
-            <p className="truncate text-sm font-medium text-text-primary">{site.name}</p>
+            <p className="flex items-center gap-1.5 truncate text-sm font-medium text-text-primary">
+              {pinned && (
+                <Star size={12} strokeWidth={2} className="flex-shrink-0 fill-accent text-accent" />
+              )}
+              <span className="truncate">{site.name}</span>
+            </p>
             <p className="truncate font-mono text-[11px] text-text-muted">#{site.id.slice(0, 8)}</p>
           </button>
         )}
@@ -369,8 +388,24 @@ function SiteRow({
         {site.state?.lastSeenAt ? relativeTime(site.state.lastSeenAt).replace('il y a ', '') : '—'}
       </p>
 
-      {/* Row actions — revealed on hover */}
-      <div className="flex items-center gap-1 justify-self-end opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+      {/* Row actions — revealed on hover (pin stays visible when set) */}
+      <div
+        className={`flex items-center gap-1 justify-self-end transition-opacity focus-within:opacity-100 group-hover:opacity-100 ${
+          pinned ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
+        <button
+          type="button"
+          onClick={onTogglePin}
+          aria-label={pinned ? 'Retirer des favoris' : 'Épingler en favori'}
+          aria-pressed={pinned}
+          title={pinned ? 'Retirer des favoris' : 'Épingler'}
+          className={`flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-white/5 ${
+            pinned ? 'text-accent' : 'text-text-muted hover:text-text-primary'
+          }`}
+        >
+          <Star size={14} strokeWidth={1.75} className={pinned ? 'fill-accent' : ''} />
+        </button>
         <button
           type="button"
           onClick={startEdit}

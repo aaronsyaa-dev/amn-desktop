@@ -16,6 +16,9 @@ import {
 import { useAuth } from '../auth/AuthContext';
 import { useRemoteSites } from '../state/RemoteSitesContext';
 import { useAssistant } from '../assistant/AssistantContext';
+import { useSitePins } from '../lib/useSitePins';
+import { useSitePanel } from '../components/site-panel/SitePanelContext';
+import { StatusBadge } from '../components/StatusBadge';
 import { homeWelcome, homeNudge } from '../lib/homeGreetings';
 
 /**
@@ -27,7 +30,12 @@ export function HomeScreen() {
   const { user } = useAuth();
   const { sites } = useRemoteSites();
   const { open: openAssistant } = useAssistant();
+  const { isPinned } = useSitePins();
+  const { openSite } = useSitePanel();
   const navigate = useNavigate();
+
+  // Personal fast lane: the sites this operator chose to follow (favoris).
+  const pinnedSites = useMemo(() => sites.filter((s) => isPinned(s.id)), [sites, isPinned]);
 
   const displayName = user?.name?.split(' ')[0] ?? 'opérateur';
   // Chosen once per launch (varies by time of day + a per-launch pick).
@@ -88,6 +96,33 @@ export function HomeScreen() {
           )}
         </motion.p>
       </motion.div>
+
+      {/* Sites suivis — personal shortcut, only when the operator pinned some */}
+      {pinnedSites.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="mt-10"
+        >
+          <p className="mb-2 text-center font-mono text-[10px] uppercase tracking-[0.25em] text-text-muted">
+            Sites suivis
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {pinnedSites.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => openSite(s.id)}
+                className="flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-text-primary transition-colors hover:border-border-strong"
+              >
+                <StatusBadge status={s.status} compact />
+                <span className="max-w-[10rem] truncate">{s.name}</span>
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* Primary destinations */}
       <motion.div

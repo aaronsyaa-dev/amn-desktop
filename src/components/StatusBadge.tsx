@@ -32,9 +32,29 @@ const STATUS_CONFIG: Record<
  * hollow ring, and only genuinely-down sites get the single reserved red.
  * Squared (not pill) with a mono uppercase label — control-room register.
  */
-export function StatusBadge({ status }: { status: DerivedStatus }) {
+export function StatusBadge({
+  status,
+  compact = false,
+}: {
+  status: DerivedStatus;
+  /** Dot-only rendering for tight spaces (chips, inline lists). */
+  compact?: boolean;
+}) {
   const config = STATUS_CONFIG[status];
   const critical = status === 'offline';
+
+  if (compact) {
+    return (
+      <span
+        role="img"
+        aria-label={config.label}
+        title={config.label}
+        className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${config.dot} ${
+          status === 'offline' ? 'animate-pulse' : ''
+        }`}
+      />
+    );
+  }
 
   return (
     <span
