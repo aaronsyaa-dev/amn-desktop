@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { Logo } from '../components/Logo';
 
@@ -11,6 +11,11 @@ interface LocationState {
 
 type Phase = 'idle' | 'submitting' | 'success';
 
+/** Detects an active Caps Lock from a keyboard event, when the browser exposes it. */
+function capsFromEvent(e: React.KeyboardEvent): boolean {
+  return typeof e.getModifierState === 'function' && e.getModifierState('CapsLock');
+}
+
 export function LoginScreen() {
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -18,6 +23,8 @@ export function LoginScreen() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
   const [phase, setPhase] = useState<Phase>('idle');
   const [error, setError] = useState<string | null>(null);
 
@@ -106,16 +113,38 @@ export function LoginScreen() {
             <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
               Mot de passe
             </span>
-            <input
-              type="password"
-              name="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isSubmitting}
-              required
-              className="input-focus border border-border bg-bg px-3 py-2.5 font-mono text-sm text-text-primary outline-none"
-            />
+            <div className="input-focus relative flex items-center border border-border bg-bg focus-within:border-border-strong focus-within:shadow-[0_0_0_3px_rgba(255,255,255,0.1)]">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => setCapsLock(capsFromEvent(e))}
+                onKeyUp={(e) => setCapsLock(capsFromEvent(e))}
+                disabled={isSubmitting}
+                required
+                className="flex-1 bg-transparent px-3 py-2.5 font-mono text-sm text-text-primary outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                tabIndex={-1}
+                aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                className="flex h-full items-center px-3 text-text-muted transition-colors hover:text-text-secondary"
+              >
+                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+            {capsLock && (
+              <motion.span
+                initial={{ opacity: 0, y: -2 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="font-mono text-[10px] uppercase tracking-widest text-warning"
+              >
+                Verr. Maj activé
+              </motion.span>
+            )}
           </label>
 
           {error && (
