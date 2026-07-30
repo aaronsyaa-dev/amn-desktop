@@ -913,6 +913,16 @@ function createBrowserBridge(): AmnBridge {
         return { items: [], fetchedAt: null, degraded: true };
       },
     },
+    ollama: {
+      // Local Ollama needs the Electron main process; the browser fallback
+      // reports unavailable so the assistant uses its built-in engine.
+      async status() {
+        return { available: false, models: [] };
+      },
+      async chat() {
+        throw new Error('Ollama indisponible dans le navigateur.');
+      },
+    },
     env: { isElectron: false },
   };
 }

@@ -7,9 +7,10 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { generateReport, runAssistant } from './engine';
+import { generateReport, runAssistant, type Generate } from './engine';
 import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
 import { useAuth } from '../auth/AuthContext';
+import { bridge } from '../lib/bridge';
 import type { RemoteEvent } from '../shared/api';
 import type { ChatMessage, ReportMode, ReportRequest } from './types';
 import {
@@ -34,6 +35,12 @@ interface AssistantContextValue {
   newConversation: () => void;
   openConversation: (id: string) => void;
   deleteConversation: (id: string) => void;
+  /* --- Local AI / Ollama (A6) --- */
+  ollamaAvailable: boolean;
+  ollamaModels: string[];
+  ollamaModel: string | null;
+  setOllamaModel: (m: string) => void;
+  refreshOllama: () => void;
 }
 
 const AssistantContext = createContext<AssistantContextValue | undefined>(
@@ -100,6 +107,54 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
 
   const emailRef = useRef(email);
   emailRef.current = email;
+
+  // --- Local AI (Ollama), A6 -------------------------------------------------
+  const [ollama, setOllama] = useState<{ available: boolean; models: string[] }>({
+    available: false,
+    models: [],
+  });
+  const [ollamaModel, setOllamaModelState] = useState<string | null>(() => {
+    try {
+      return window.localStorage.getItem('amn.ollama.model');
+    } catch {
+      return null;
+    }
+  });
+  // Kept in a ref so sendMessage stays stable while still seeing live status.
+  const ollamaRef = useRef<{ available: boolean; model: string | null }>({ available: false, model: null });
+  ollamaRef.current = { available: ollama.available, model: ollamaModel };
+
+  const setOllamaModel = useCallback((m: string) => {
+    setOllamaModelState(m);
+    try {
+      window.localStorage.setItem('amn.ollama.model', m);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const refreshOllama = useCallback(() => {
+    bridge()
+      .ollama.status()
+      .then((s) => {
+        setOllama(s);
+        // Keep the saved model if still installed, else default to the first.
+        setOllamaModelState((cur) => {
+          const next = cur && s.models.includes(cur) ? cur : s.models[0] ?? null;
+          try {
+            if (next) window.localStorage.setItem('amn.ollama.model', next);
+          } catch {
+            /* ignore */
+          }
+          return next;
+        });
+      })
+      .catch(() => setOllama({ available: false, models: [] }));
+  }, []);
+
+  useEffect(() => {
+    refreshOllama();
+  }, [refreshOllama]);
 
   /** Persists the given messages under the active (or a new) conversation. */
   const persist = useCallback((msgs: ChatMessage[]) => {
@@ -168,8 +223,15 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       // Warm the event cache for every site before asking the engine to
       // reason about the parc — small site count for this tool makes this
       // cheap, and loadEvents() is a no-op once a site is already cached.
+      const { available, model } = ollamaRef.current;
+      const generate: Generate | undefined =
+        available && model
+          ? (system, userPrompt) =>
+              bridge().ollama.chat({ model, system, prompt: userPrompt }).then((r) => r.text)
+          : undefined;
+
       loadFreshEvents(sites, loadEvents, eventsBySite)
-        .then((freshEvents) => runAssistant(trimmed, sites, freshEvents))
+        .then((freshEvents) => runAssistant(trimmed, sites, freshEvents, { generate }))
         .then((turn) => {
           const withAnswer: ChatMessage[] = [
             ...messagesRef.current,
@@ -222,6 +284,11 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       newConversation,
       openConversation,
       deleteConversation,
+      ollamaAvailable: ollama.available,
+      ollamaModels: ollama.models,
+      ollamaModel,
+      setOllamaModel,
+      refreshOllama,
     }),
     [
       isOpen,
@@ -236,6 +303,11 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       newConversation,
       openConversation,
       deleteConversation,
+      ollama.available,
+      ollama.models,
+      ollamaModel,
+      setOllamaModel,
+      refreshOllama,
     ],
   );
 

@@ -184,3 +184,40 @@ de vrais flux RSS publics, récupérés et analysés **dans le process main**
   et signale discrètement un contenu partiel.
 - En **fallback navigateur** (dev/preview web), la veille en direct est
   indisponible (pas de main process) — l'onglet l'indique clairement.
+
+## Assistant IA local via Ollama (gratuit, privé)
+
+L'assistant peut utiliser un vrai modèle d'IA tournant **localement** sur la
+machine via [Ollama](https://ollama.com) — gratuit, privé (aucune donnée ne
+sort du poste), et indépendant par machine (pas de serveur central partagé).
+S'il n'est pas présent, l'assistant retombe proprement sur son moteur intégré.
+
+### Installation
+
+1. Télécharger et installer Ollama depuis **https://ollama.com**.
+2. Dans un terminal, récupérer un modèle léger mais correct (recommandé) :
+   ```bash
+   ollama pull llama3.2
+   ```
+   `llama3.2` (3B) est un bon compromis taille/qualité pour du français et des
+   réponses courtes. Alternatives plus légères : `qwen2.5:3b`, `phi3.5`.
+3. Ollama tourne alors sur `http://localhost:11434`. AMN Desktop le **détecte
+   automatiquement** — voir **Paramètres → Assistant IA local (Ollama)** pour
+   le statut de connexion et pour choisir le modèle parmi ceux installés.
+
+### Comment ça marche
+
+- La détection et les appels passent par le **process main** d'Electron
+  (`src/main/ollama.ts`) — pas de souci de CORS/origine, et chaque poste utilise
+  son propre modèle.
+- Les **questions libres** de l'onglet Chat sont générées par le modèle local,
+  avec un *system prompt* ancré sur les **données réelles du parc** (sites,
+  statuts, alertes) pour des réponses concrètes, pas génériques
+  (`assistantSystemPrompt` dans `src/assistant/engine.ts`).
+- Les **rapports structurés** (interne/client) restent déterministes et
+  formatés — c'est volontaire pour des documents fiables et reproductibles côté
+  client ; ils s'appuient sur les mêmes données réelles.
+- Si Ollama est absent, indisponible, ou renvoie une erreur, l'assistant utilise
+  son moteur intégré sans interruption pour l'utilisateur.
+- Variable optionnelle : `AMN_OLLAMA_URL` pour pointer vers une instance Ollama
+  non standard (défaut `http://localhost:11434`).

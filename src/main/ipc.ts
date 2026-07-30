@@ -62,6 +62,7 @@ import {
 } from './services';
 import type { RemoteApiClient } from './remoteApi';
 import { getWatch } from './watch';
+import { ollamaStatus, ollamaChat } from './ollama';
 
 /** Registers the IPC handlers backing `window.amn` in the renderer. */
 interface IpcOptions {
@@ -267,4 +268,10 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   }));
 
   ipcMain.handle(IPC.watchList, () => getWatch());
+
+  ipcMain.handle(IPC.ollamaStatus, () => ollamaStatus());
+  ipcMain.handle(
+    IPC.ollamaChat,
+    (_event, input: { model: string; system: string; prompt: string }) => ollamaChat(input),
+  );
 }

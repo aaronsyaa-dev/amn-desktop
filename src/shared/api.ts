@@ -80,6 +80,12 @@ export interface AppInfo {
   isElectron: boolean;
 }
 
+/** Local Ollama availability + installed models. */
+export interface OllamaStatus {
+  available: boolean;
+  models: string[];
+}
+
 /** A single cyber/tech watch entry, parsed from a public RSS/Atom source. */
 export interface WatchItem {
   id: string;
@@ -573,6 +579,13 @@ export interface AmnBridge {
     /** Cached watch items (refreshed on a TTL in the main process). */
     list(): Promise<WatchFeedResult>;
   };
+  /** Local Ollama AI (per-machine, optional). Degrades to the mock if absent. */
+  ollama: {
+    /** Whether Ollama is running locally + the installed model names. */
+    status(): Promise<OllamaStatus>;
+    /** One non-streaming completion. Rejects on failure (caller falls back). */
+    chat(input: { model: string; system: string; prompt: string }): Promise<{ text: string }>;
+  };
   env: {
     /** true when backed by the Electron main process (SQLite), false in browser fallback. */
     isElectron: boolean;
@@ -640,4 +653,6 @@ export const IPC = {
   systemSetAutoLaunch: 'system:setAutoLaunch',
   systemGetAppInfo: 'system:getAppInfo',
   watchList: 'watch:list',
+  ollamaStatus: 'ollama:status',
+  ollamaChat: 'ollama:chat',
 } as const;

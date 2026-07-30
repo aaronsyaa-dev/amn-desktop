@@ -150,6 +150,11 @@ const bridge: AmnBridge = {
   watch: {
     list: () => ipcRenderer.invoke(IPC.watchList),
   },
+  ollama: {
+    status: () => ipcRenderer.invoke(IPC.ollamaStatus),
+    chat: (input: { model: string; system: string; prompt: string }) =>
+      ipcRenderer.invoke(IPC.ollamaChat, input),
+  },
   env: { isElectron: true },
 };
 

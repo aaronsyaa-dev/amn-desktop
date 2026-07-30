@@ -138,10 +138,14 @@ export function parseIntent(prompt: string, sites: DerivedSite[]): Intent {
  * about a specific site needs that site's events; a global report/question
  * benefits from all sites' events being loaded).
  */
+/** A local-LLM text generator (Ollama), injected by the caller when available. */
+export type Generate = (system: string, prompt: string) => Promise<string>;
+
 export async function runAssistant(
   prompt: string,
   sites: DerivedSite[],
   eventsBySite: EventsMap,
+  opts: { generate?: Generate } = {},
 ): Promise<AssistantTurn> {
   const intent = parseIntent(prompt, sites);
 
@@ -153,8 +157,53 @@ export async function runAssistant(
     return { kind: 'report', request, report };
   }
 
+  // Free-text question: use the local model when present, grounded in real
+  // parc data; otherwise the built-in data-grounded mock answer.
+  if (opts.generate) {
+    try {
+      const text = await opts.generate(assistantSystemPrompt(sites, eventsBySite), prompt);
+      if (text.trim()) return { kind: 'answer', blocks: textToBlocks(text) };
+    } catch {
+      /* Ollama failed mid-call — fall through to the mock. */
+    }
+  }
+
   await delay(600);
   return { kind: 'answer', blocks: buildAnswer(prompt, sites, eventsBySite) };
+}
+
+/** Splits a model's plain-text reply into paragraph/heading blocks. */
+function textToBlocks(text: string): ReportBlock[] {
+  return text
+    .split(/\n{2,}/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((para) =>
+      /^#{1,3}\s/.test(para)
+        ? ({ type: 'heading', text: para.replace(/^#{1,3}\s/, '') } as ReportBlock)
+        : ({ type: 'paragraph', text: para.replace(/\n/g, ' ') } as ReportBlock),
+    );
+}
+
+/** System prompt grounding the local model in the operator's real parc. */
+export function assistantSystemPrompt(sites: DerivedSite[], eventsBySite: EventsMap): string {
+  const lines = sites.slice(0, 40).map((s) => {
+    const alerts = (eventsBySite[s.id] ?? []).filter((e) => e.type === 'security_alert').length;
+    const visitors = s.state?.activeVisitors ?? 0;
+    return `- ${s.name} : ${s.status}, ${visitors} visiteur(s) actif(s), ${alerts} alerte(s) enregistrée(s)`;
+  });
+  const parc = sites.length
+    ? `Parc supervisé (${sites.length} site(s)) :\n${lines.join('\n')}`
+    : "Aucun site n'est encore enregistré dans le parc.";
+
+  return [
+    "Tu es l'assistant IA d'AMN DevSec, une équipe de cybersécurité qui supervise les sites de ses clients.",
+    'Réponds en français, de façon concise, professionnelle et actionnable.',
+    "Appuie-toi UNIQUEMENT sur les données du parc ci-dessous : n'invente jamais de site, de chiffre ou d'incident.",
+    "Si l'information n'est pas dans le contexte, dis-le clairement.",
+    '',
+    parc,
+  ].join('\n');
 }
 
 /** Data-grounded free-text answers for common questions (mock). */
