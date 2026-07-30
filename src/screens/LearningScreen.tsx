@@ -4,6 +4,8 @@ import { GraduationCap, Plus, Trash2, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { bridge } from '../lib/bridge';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
+import { ChecklistWidget } from '../components/ChecklistWidget';
+import { ObjectivesWidget } from '../components/ObjectivesWidget';
 import { SkeletonList } from '../components/Skeleton';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import type { CreateLearningGoalInput, LearningGoal } from '../shared/api';
@@ -150,6 +152,17 @@ export function LearningScreen() {
           ))}
         </div>
       )}
+
+      {/* Recurring operational checks + monthly objectives — relocated here from
+          the (now calm) home so they stay accessible without cluttering it. */}
+      <StaggerItem>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <ChecklistWidget />
+          </div>
+          <ObjectivesWidget />
+        </div>
+      </StaggerItem>
 
       {adding && (
         <NewGoalModal defaultOwner={user?.email ?? TEAM[0].email} onClose={() => setAdding(false)} onCreate={createGoal} />
