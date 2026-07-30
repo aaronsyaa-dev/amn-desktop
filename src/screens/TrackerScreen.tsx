@@ -117,8 +117,9 @@ export function TrackerScreen() {
 /** A self-contained install snippet for one module — copy-paste, no site required. */
 function moduleSnippet(mod: TrackerModule): string {
   const mods = [...mod.requires, mod.key].join(',');
-  return `# ${mod.name} — installation
-npm install @amn-devsec/security-monitor
+  return `# ${mod.name} — installation (Mode 1 : Express / Node)
+# Le paquet n'est pas sur npm public : installation depuis GitHub.
+npm install github:aaronsyaa-dev/security-monitor
 
 # .env du site
 AMN_API_URL=https://votre-amn-api
@@ -129,7 +130,14 @@ AMN_MODULES=${mods}
 import { createTracker } from '@amn-devsec/security-monitor';
 const tracker = createTracker();
 app.use(tracker.middleware());
-tracker.start();`;
+tracker.start();
+
+# Site serverless (Vercel/Netlify/Lambda) ? Mode 2 :
+#   import { createServerlessMonitor } from '@amn-devsec/security-monitor/serverless';
+#   export default createServerlessMonitor().withMonitor(handler);
+# Site 100 % statique ? Mode 3 : inclure browser/amn-monitor.js via <script>.
+# Le tracker ne transmet que des métadonnées (IP, endpoint, fréquence) —
+# jamais le contenu des formulaires ni d'emails.`;
 }
 
 function ModuleCatalogCard({ mod, installCount }: { mod: TrackerModule; installCount: number }) {
