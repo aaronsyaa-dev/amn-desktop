@@ -124,7 +124,7 @@ function CommandPaletteModal({
         {
           kind: 'action',
           id: 'act-assistant',
-          label: 'Ouvrir l’assistant IA',
+          label: 'Ouvrir Ajmani (assistant IA)',
           icon: Sparkles,
           run: openAssistant,
         },

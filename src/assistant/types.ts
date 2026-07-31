@@ -19,6 +19,7 @@ export type ReportBlock =
   | { type: 'heading'; text: string }
   | { type: 'paragraph'; text: string }
   | { type: 'list'; items: string[] }
+  | { type: 'code'; text: string; lang?: string }
   | {
       type: 'kpis';
       items: Array<{ label: string; value: string; tone?: BlockTone }>;

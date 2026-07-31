@@ -85,8 +85,8 @@ function HelpOverlay({ open, onClose }: { open: boolean; onClose: () => void }) 
     },
     {
       icon: Sparkles,
-      title: 'Assistant',
-      body: 'L’assistant analyse vos sites et vos clients en temps réel et répond à vos questions depuis n’importe quel écran.',
+      title: 'Ajmani',
+      body: 'Ajmani, l’assistant IA, analyse vos sites et vos clients en temps réel, répond à vos questions (y compris générales) et génère des rapports depuis n’importe quel écran.',
     },
     {
       icon: Keyboard,

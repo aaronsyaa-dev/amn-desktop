@@ -50,7 +50,7 @@ export function TopBar() {
           className="flex h-9 items-center gap-2 border border-border-strong bg-surface px-3 text-sm font-medium text-text-primary transition-colors duration-200 hover:bg-surface-hover"
         >
           <Sparkles size={16} strokeWidth={1.75} />
-          <span className="hidden sm:inline">Assistant</span>
+          <span className="hidden sm:inline">Ajmani</span>
         </button>
         <HelpButton />
         <NotificationCenter />

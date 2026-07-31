@@ -157,35 +157,63 @@ export async function runAssistant(
     return { kind: 'report', request, report };
   }
 
-  // Free-text question: use the local model when present, grounded in real
-  // parc data; otherwise the built-in data-grounded mock answer.
+  // Free-text question → Ajmani, a general assistant backed by the local model,
+  // with the real parc data available as OPTIONAL context (not a straitjacket).
   if (opts.generate) {
-    try {
-      const text = await opts.generate(assistantSystemPrompt(sites, eventsBySite), prompt);
-      if (text.trim()) return { kind: 'answer', blocks: textToBlocks(text) };
-    } catch {
-      /* Ollama failed mid-call — fall through to the mock. */
-    }
+    const text = await opts.generate(assistantSystemPrompt(sites, eventsBySite), prompt);
+    if (text.trim()) return { kind: 'answer', blocks: textToBlocks(text) };
+    // Empty model reply → fall through to the data-grounded fallback below.
   }
 
-  await delay(600);
+  await delay(300);
   return { kind: 'answer', blocks: buildAnswer(prompt, sites, eventsBySite) };
 }
 
-/** Splits a model's plain-text reply into paragraph/heading blocks. */
-function textToBlocks(text: string): ReportBlock[] {
-  return text
-    .split(/\n{2,}/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .map((para) =>
-      /^#{1,3}\s/.test(para)
-        ? ({ type: 'heading', text: para.replace(/^#{1,3}\s/, '') } as ReportBlock)
-        : ({ type: 'paragraph', text: para.replace(/\n/g, ' ') } as ReportBlock),
-    );
+/**
+ * Splits a model's markdown-ish reply into blocks. Handles fenced code
+ * (```lang … ```), ATX headings (# …) and paragraphs. Bullet runs (-, *, •)
+ * become a single list block so they render as bullets, not glued text.
+ */
+export function textToBlocks(text: string): ReportBlock[] {
+  const blocks: ReportBlock[] = [];
+  // Split on fenced code first so code interiors are never reflowed.
+  const segments = text.split(/(```[\s\S]*?```)/g);
+
+  for (const segment of segments) {
+    if (!segment.trim()) continue;
+
+    const fence = segment.match(/^```([\w+-]*)\n?([\s\S]*?)```$/);
+    if (fence) {
+      blocks.push({ type: 'code', lang: fence[1] || undefined, text: fence[2].replace(/\n$/, '') });
+      continue;
+    }
+
+    for (const para of segment.split(/\n{2,}/)) {
+      const trimmed = para.trim();
+      if (!trimmed) continue;
+
+      const lines = trimmed.split('\n').map((l) => l.trim());
+      const isBulleted = lines.length > 0 && lines.every((l) => /^([-*•]|\d+[.)])\s+/.test(l));
+      if (isBulleted) {
+        blocks.push({ type: 'list', items: lines.map((l) => l.replace(/^([-*•]|\d+[.)])\s+/, '')) });
+      } else if (/^#{1,3}\s/.test(trimmed)) {
+        blocks.push({ type: 'heading', text: trimmed.replace(/^#{1,3}\s/, '') });
+      } else {
+        blocks.push({ type: 'paragraph', text: trimmed.replace(/\n/g, ' ') });
+      }
+    }
+  }
+
+  return blocks.length ? blocks : [{ type: 'paragraph', text: text.trim() }];
 }
 
-/** System prompt grounding the local model in the operator's real parc. */
+/**
+ * System prompt for Ajmani. It is a GENERAL assistant first — it may answer any
+ * question (culture, pratique, code, etc.) — and it happens to also supervise a
+ * security parc, whose live data is provided below as context to use only when
+ * the question calls for it. It must not force-fit the parc onto unrelated
+ * questions, and must not invent parc facts.
+ */
 export function assistantSystemPrompt(sites: DerivedSite[], eventsBySite: EventsMap): string {
   const lines = sites.slice(0, 40).map((s) => {
     const alerts = (eventsBySite[s.id] ?? []).filter((e) => e.type === 'security_alert').length;
@@ -193,16 +221,18 @@ export function assistantSystemPrompt(sites: DerivedSite[], eventsBySite: Events
     return `- ${s.name} : ${s.status}, ${visitors} visiteur(s) actif(s), ${alerts} alerte(s) enregistrée(s)`;
   });
   const parc = sites.length
-    ? `Parc supervisé (${sites.length} site(s)) :\n${lines.join('\n')}`
+    ? `${sites.length} site(s) supervisé(s) :\n${lines.join('\n')}`
     : "Aucun site n'est encore enregistré dans le parc.";
 
   return [
-    "Tu es l'assistant IA d'AMN DevSec, une équipe de cybersécurité qui supervise les sites de ses clients.",
-    'Réponds en français, de façon concise, professionnelle et actionnable.',
-    "Appuie-toi UNIQUEMENT sur les données du parc ci-dessous : n'invente jamais de site, de chiffre ou d'incident.",
-    "Si l'information n'est pas dans le contexte, dis-le clairement.",
+    "Tu es Ajmani, l'assistant IA intégré à AMN Desktop, un logiciel utilisé par une petite équipe de cybersécurité (AMN DevSec).",
+    'Tu es un assistant GÉNÉRALISTE : réponds à TOUTE question, professionnelle ou de la vie courante (culture générale, questions pratiques, code, rédaction, etc.), de façon claire, juste et utile.',
+    'Réponds en français par défaut (ou dans la langue de la question), de manière concise et directe.',
+    'Quand tu écris du code, utilise des blocs de code Markdown avec des triples backticks et le langage.',
     '',
-    parc,
+    "En plus, tu as accès aux données réelles du parc de supervision ci-dessous. Utilise-les UNIQUEMENT lorsque la question porte sur la supervision, les sites, la sécurité ou l'activité du parc — et dans ce cas n'invente jamais de site, de chiffre ou d'incident absent du contexte. Pour toute question sans rapport, ignore ce contexte.",
+    '',
+    `Contexte parc (à utiliser seulement si pertinent) :\n${parc}`,
   ].join('\n');
 }
 

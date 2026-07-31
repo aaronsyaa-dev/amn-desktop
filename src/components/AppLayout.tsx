@@ -12,7 +12,9 @@ import { RemoteSitesProvider } from '../state/RemoteSitesContext';
 import { ProfilesProvider } from '../state/ProfilesContext';
 import { SyncProvider } from '../state/SyncContext';
 import { UndoProvider } from '../state/UndoContext';
+import { ToastProvider } from '../state/ToastContext';
 import { NotificationsManager } from './NotificationsManager';
+import { IdleScreensaver } from './IdleScreensaver';
 import { WelcomeOverlay, shouldShowWelcome } from './WelcomeOverlay';
 import { UpdateNotice } from './UpdateNotice';
 import { variantsForPath } from '../lib/transitions';
@@ -50,6 +52,7 @@ export function AppLayout() {
     <SyncProvider>
       <ProfilesProvider>
         <RemoteSitesProvider>
+          <ToastProvider>
           <SitePanelProvider>
             <AssistantProvider>
               <CommandPaletteProvider>
@@ -81,12 +84,14 @@ export function AppLayout() {
               <SiteDetailPanel />
               <AssistantPanel />
               <NotificationsManager />
+              <IdleScreensaver />
               {showWelcome && <WelcomeOverlay onDone={() => setShowWelcome(false)} />}
               {!showWelcome && <UpdateNotice />}
               </UndoProvider>
             </CommandPaletteProvider>
           </AssistantProvider>
         </SitePanelProvider>
+          </ToastProvider>
         </RemoteSitesProvider>
       </ProfilesProvider>
     </SyncProvider>

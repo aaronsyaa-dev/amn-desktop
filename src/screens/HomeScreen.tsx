@@ -56,7 +56,7 @@ export function HomeScreen() {
     { key: 'tasks', label: 'Tâches', hint: 'Qui fait quoi', icon: CheckSquare, to: () => navigate('/tasks') },
     { key: 'clients', label: 'Clients', hint: 'Fiches & relation', icon: Contact, to: () => navigate('/clients') },
     { key: 'team', label: 'Équipe', hint: 'Messagerie', icon: Users, to: () => navigate('/team') },
-    { key: 'assistant', label: 'Assistant', hint: 'Rapports & veille', icon: Sparkles, to: () => openAssistant() },
+    { key: 'assistant', label: 'Ajmani', hint: 'Assistant IA', icon: Sparkles, to: () => openAssistant() },
     { key: 'tracker', label: 'Trackers', hint: 'Supervision', icon: Radar, to: () => navigate('/tracker') },
   ];
 

@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { RotateCcw, Trash2 } from 'lucide-react';
+import { Check, RotateCcw, Trash2 } from 'lucide-react';
 
 /**
  * Undoable deletion. Rather than delete immediately, a screen calls
@@ -22,6 +22,8 @@ interface Pending {
 interface UndoValue {
   isPending: (key: string) => boolean;
   scheduleDelete: (opts: { key: string; label: string; commit: () => void }) => void;
+  /** Commit the pending deletion immediately, without waiting out the delay. */
+  confirmNow: () => void;
 }
 
 const UndoContext = createContext<UndoValue | undefined>(undefined);
@@ -78,7 +80,10 @@ export function UndoProvider({ children }: { children: React.ReactNode }) {
   // Commit any pending delete if the provider unmounts, so nothing is lost.
   useEffect(() => () => flush(), [flush]);
 
-  const value = useMemo(() => ({ isPending, scheduleDelete }), [isPending, scheduleDelete]);
+  const value = useMemo(
+    () => ({ isPending, scheduleDelete, confirmNow: flush }),
+    [isPending, scheduleDelete, flush],
+  );
 
   return (
     <UndoContext.Provider value={value}>
@@ -103,6 +108,15 @@ export function UndoProvider({ children }: { children: React.ReactNode }) {
             >
               <RotateCcw size={13} strokeWidth={2} />
               Annuler
+            </button>
+            <button
+              type="button"
+              onClick={flush}
+              title="Supprimer définitivement maintenant"
+              className="flex items-center gap-1.5 rounded-lg border border-danger/40 bg-danger-muted px-3 py-1.5 text-sm font-medium text-danger transition-colors hover:bg-danger/20"
+            >
+              <Check size={13} strokeWidth={2.25} />
+              Supprimer
             </button>
             {/* Draining bar mirrors the time left before permanent deletion. */}
             <motion.span

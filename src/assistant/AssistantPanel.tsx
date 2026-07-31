@@ -31,7 +31,7 @@ const PANEL_SPRING = { type: 'spring' as const, stiffness: 340, damping: 34 };
 type Tab = 'chat' | 'summary' | 'watch';
 
 const TABS: Array<{ key: Tab; label: string; icon: typeof Sparkles }> = [
-  { key: 'chat', label: 'Assistant', icon: Sparkles },
+  { key: 'chat', label: 'Ajmani', icon: Sparkles },
   { key: 'summary', label: 'Résumé du jour', icon: Sunrise },
   { key: 'watch', label: 'Veille', icon: Newspaper },
 ];
@@ -143,9 +143,9 @@ function Header({
           <Sparkles size={18} strokeWidth={1.75} />
         </span>
         <div>
-          <h2 className="text-lg font-semibold text-text-primary">Assistant IA</h2>
+          <h2 className="text-lg font-semibold text-text-primary">Ajmani</h2>
           <p className="text-xs text-text-secondary">
-            Rapports, résumés et veille — propulsé par vos données
+            Assistant IA — questions, rapports, résumés et veille
           </p>
         </div>
       </div>
@@ -305,8 +305,31 @@ function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
 
 /* ----------------------------- Chat tab ----------------------------- */
 
+function ModelPicker() {
+  const { ollamaAvailable, ollamaModels, ollamaModel, setOllamaModel } = useAssistant();
+  if (!ollamaAvailable || ollamaModels.length === 0) return null;
+
+  return (
+    <label className="flex items-center gap-1.5" title="Modèle Ollama utilisé par Ajmani">
+      <span className="h-1.5 w-1.5 rounded-full bg-success" />
+      <select
+        value={ollamaModel ?? ollamaModels[0]}
+        onChange={(e) => setOllamaModel(e.target.value)}
+        aria-label="Modèle Ollama"
+        className="input-focus cursor-pointer rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[10px] text-text-secondary outline-none"
+      >
+        {ollamaModels.map((m) => (
+          <option key={m} value={m}>
+            {m}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
-  const { messages, isThinking, sendMessage } = useAssistant();
+  const { messages, isThinking, sendMessage, ollamaAvailable } = useAssistant();
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -336,6 +359,12 @@ function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
       </div>
 
       <div className="border-t border-border p-4">
+        <div className="mb-2 flex items-center justify-between gap-2 px-1">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+            {ollamaAvailable ? 'IA locale active' : 'Moteur intégré'}
+          </span>
+          <ModelPicker />
+        </div>
         <div className="input-focus flex items-end gap-2 rounded-xl border border-border bg-surface px-3 py-2">
           <textarea
             value={input}
@@ -347,7 +376,7 @@ function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
               }
             }}
             rows={1}
-            placeholder="Posez une question ou « génère un rapport sur… »"
+            placeholder="Posez n’importe quelle question, ou « génère un rapport sur… »"
             className="max-h-32 flex-1 resize-none bg-transparent py-1.5 text-sm text-text-primary outline-none placeholder:text-text-muted"
           />
           <button
@@ -378,11 +407,12 @@ function WelcomeState({ onPrompt }: { onPrompt: (text: string) => void }) {
 
   const chips =
     sites.length === 0
-      ? []
+      ? ['Explique-moi ce qu’est une injection SQL', 'C’est quand le Ramadan cette année ?']
       : [
           'Génère un rapport global',
           `Rapport sur ${criticalSite?.name}`,
           'Quels sites sont hors ligne ?',
+          'Comment faire un nœud de cravate ?',
         ];
 
   return (
@@ -395,9 +425,9 @@ function WelcomeState({ onPrompt }: { onPrompt: (text: string) => void }) {
           Comment puis-je vous aider ?
         </h3>
         <p className="mt-1 text-sm text-text-secondary">
-          {sites.length === 0
-            ? 'Enregistrez un site (onglet Sites) pour que je puisse commencer à analyser vos données.'
-            : 'Je génère des rapports (interne ou client), réponds à vos questions et surveille votre parc en continu.'}
+          Je suis Ajmani. Je réponds à vos questions — sur votre parc comme sur
+          tout autre sujet — et je génère des rapports interne / client à partir
+          de vos vraies données.
         </p>
       </div>
 

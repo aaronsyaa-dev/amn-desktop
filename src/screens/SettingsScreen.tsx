@@ -219,8 +219,8 @@ function OllamaSection() {
   return (
     <Panel
       icon={Bot}
-      title="Assistant IA local (Ollama)"
-      subtitle="Utilise un modèle qui tourne sur votre machine, gratuitement et en privé. Sinon, l’assistant intégré prend le relais."
+      title="Ajmani — modèle local (Ollama)"
+      subtitle="Ajmani utilise un modèle qui tourne sur votre machine, gratuitement et en privé. Sinon, le moteur intégré prend le relais."
     >
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">

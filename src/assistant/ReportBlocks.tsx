@@ -1,5 +1,49 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Check, Copy } from 'lucide-react';
 import type { BlockTone, ReportBlock } from './types';
+
+/** A code block with a mono/terminal look and a working copy button (2.4). */
+function CodeBlock({ code, lang, isPrint }: { code: string; lang?: string; isPrint: boolean }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+
+  if (isPrint) {
+    return (
+      <pre className="overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-50 p-3 font-mono text-xs leading-relaxed text-neutral-800">
+        <code>{code}</code>
+      </pre>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-border-strong bg-bg">
+      <div className="flex items-center justify-between border-b border-border bg-surface px-3 py-1.5">
+        <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+          {lang || 'code'}
+        </span>
+        <button
+          type="button"
+          onClick={copy}
+          className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-text-secondary transition-colors hover:text-text-primary"
+        >
+          {copied ? <Check size={11} strokeWidth={2.5} /> : <Copy size={11} strokeWidth={2} />}
+          {copied ? 'Copié' : 'Copier'}
+        </button>
+      </div>
+      <pre className="overflow-x-auto p-3 font-mono text-xs leading-relaxed text-text-primary">
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+}
 
 type Variant = 'dark' | 'print';
 
@@ -67,6 +111,8 @@ export function ReportBlocks({
                 ))}
               </ul>
             );
+          case 'code':
+            return <CodeBlock key={i} code={block.text} lang={block.lang} isPrint={isPrint} />;
           case 'kpis':
             return (
               <div key={i} className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
