@@ -35,6 +35,7 @@ export function IdleScreensaver() {
   const [active, setActive] = useState(false);
   const activeRef = useRef(false);
   activeRef.current = active;
+  const wake = useCallback(() => setActive(false), []);
 
   // --- Idle detection (cheap: passive listeners + one debounced timer) ------
   useEffect(() => {
@@ -61,9 +62,7 @@ export function IdleScreensaver() {
     };
   }, []);
 
-  return (
-    <AnimatePresence>{active && <Veil onWake={useCallback(() => setActive(false), [])} />}</AnimatePresence>
-  );
+  return <AnimatePresence>{active && <Veil onWake={wake} />}</AnimatePresence>;
 }
 
 function Veil({ onWake }: { onWake: () => void }) {
