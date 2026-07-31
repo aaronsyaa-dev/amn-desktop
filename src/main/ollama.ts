@@ -47,6 +47,14 @@ export interface OllamaChatInput {
 /**
  * Non-streaming chat completion. Throws on failure so the renderer can fall
  * back to the mock; the caller is expected to catch.
+ *
+ * Timeout is generous (5 min) because the FIRST call to a given model forces
+ * Ollama to load it into memory before it generates a single token — this can
+ * take 10s to well over a minute depending on model size and hardware, on top
+ * of the generation time itself. A short timeout here previously aborted that
+ * load every time, surfacing as a confusing AbortError even with Ollama
+ * healthy and the model correctly selected. Subsequent calls are fast because
+ * the model stays warm in memory (Ollama's default `keep_alive`).
  */
 export async function ollamaChat({ model, system, prompt }: OllamaChatInput): Promise<{ text: string }> {
   return withTimeout(async (signal) => {
@@ -67,5 +75,5 @@ export async function ollamaChat({ model, system, prompt }: OllamaChatInput): Pr
     if (!res.ok) throw new Error(`Ollama ${res.status}`);
     const json = (await res.json()) as { message?: { content?: string } };
     return { text: (json.message?.content ?? '').trim() };
-  }, 60_000);
+  }, 300_000);
 }

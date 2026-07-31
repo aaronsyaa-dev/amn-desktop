@@ -641,17 +641,39 @@ function ModeButton({
   );
 }
 
+/**
+ * Long waits happen mostly on the FIRST call to a given Ollama model in a
+ * session: Ollama has to load it into memory (can take well over a minute)
+ * before it generates anything. The label evolves so a long wait reads as
+ * "expected", not "stuck" — see main/ollama.ts for the matching timeout.
+ */
 function ThinkingIndicator() {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const label =
+    elapsed < 5
+      ? 'Ajmani réfléchit…'
+      : elapsed < 20
+        ? 'Ajmani réfléchit… (premier appel : le modèle se charge en mémoire)'
+        : 'Toujours en cours — le chargement du modèle peut prendre une minute ou plus au premier appel.';
+
   return (
-    <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-border bg-surface px-4 py-3.5">
-      {[0, 1, 2].map((i) => (
-        <motion.span
-          key={i}
-          className="h-1.5 w-1.5 rounded-full bg-text-muted"
-          animate={{ opacity: [0.3, 1, 0.3] }}
-          transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }}
-        />
-      ))}
+    <div className="flex items-center gap-2.5 rounded-2xl rounded-bl-md border border-border bg-surface px-4 py-3.5">
+      <div className="flex items-center gap-1.5">
+        {[0, 1, 2].map((i) => (
+          <motion.span
+            key={i}
+            className="h-1.5 w-1.5 rounded-full bg-text-muted"
+            animate={{ opacity: [0.3, 1, 0.3] }}
+            transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }}
+          />
+        ))}
+      </div>
+      <span className="text-xs text-text-muted">{label}</span>
     </div>
   );
 }

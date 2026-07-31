@@ -228,5 +228,12 @@ S'il n'est pas présent, l'assistant retombe proprement sur son moteur intégré
   client ; ils s'appuient sur les mêmes données réelles.
 - Si Ollama est absent, indisponible, ou renvoie une erreur, l'assistant utilise
   son moteur intégré sans interruption pour l'utilisateur.
+- **Premier appel plus long** : Ollama doit charger le modèle en mémoire avant
+  de générer quoi que ce soit — cela peut prendre de 10 s à plus d'une minute
+  selon la taille du modèle et la machine, avant même le début de la
+  génération. Le délai d'attente côté app est donc généreux (5 min) et
+  l'interface l'indique clairement (« Ajmani réfléchit… » puis un message plus
+  explicite après ~20 s). Les appels suivants au même modèle sont rapides tant
+  qu'il reste chargé en mémoire (`keep_alive` par défaut d'Ollama).
 - Variable optionnelle : `AMN_OLLAMA_URL` pour pointer vers une instance Ollama
   non standard (défaut `http://localhost:11434`).
