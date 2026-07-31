@@ -87,6 +87,7 @@ function HelpOverlay({ open, onClose }: { open: boolean; onClose: () => void }) 
       icon: Sparkles,
       title: 'Ajmani',
       body: 'Ajmani, l’assistant IA, analyse vos sites et vos clients en temps réel, répond à vos questions (y compris générales) et génère des rapports depuis n’importe quel écran.',
+      keys: [modKey, 'J'],
     },
     {
       icon: Keyboard,

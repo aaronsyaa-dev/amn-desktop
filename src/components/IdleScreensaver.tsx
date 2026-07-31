@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Logo } from './Logo';
+import { useRemoteSites } from '../state/RemoteSitesContext';
 
 /**
  * Cozy idle screensaver (Partie 4). After a few minutes without mouse/keyboard
@@ -66,6 +67,11 @@ export function IdleScreensaver() {
 }
 
 function Veil({ onWake }: { onWake: () => void }) {
+  // Glanceable, calm-by-default: surface a real problem (a site down) so an
+  // always-on secondary screen still tells you when something needs attention.
+  const { sites } = useRemoteSites();
+  const offline = sites.filter((s) => s.status === 'offline').length;
+
   const [now, setNow] = useState(() => new Date());
   const [phrase, setPhrase] = useState(pickPhrase);
 
@@ -136,6 +142,15 @@ function Veil({ onWake }: { onWake: () => void }) {
             {phrase}
           </motion.p>
         </AnimatePresence>
+
+        {offline > 0 && (
+          <div className="mt-8 flex items-center gap-2 rounded-full border border-danger/40 bg-danger-muted px-3 py-1.5">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" />
+            <span className="font-mono text-[11px] uppercase tracking-widest text-danger">
+              {offline} site{offline > 1 ? 's' : ''} hors ligne
+            </span>
+          </div>
+        )}
 
         <p className="mt-16 font-mono text-[10px] uppercase tracking-[0.25em] text-text-muted/60">
           Bougez la souris pour reprendre

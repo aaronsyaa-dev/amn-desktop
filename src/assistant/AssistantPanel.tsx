@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUp,
+  Check,
+  Copy,
   Download,
   History,
   Loader2,
@@ -504,11 +506,7 @@ function MessageBubble({
   if (!turn) return null;
 
   if (turn.kind === 'answer') {
-    return (
-      <div className="max-w-[92%] rounded-2xl rounded-bl-md border border-border bg-surface px-4 py-3.5">
-        <ReportBlocks blocks={turn.blocks} />
-      </div>
-    );
+    return <AnswerBubble blocks={turn.blocks} />;
   }
 
   return (
@@ -517,6 +515,57 @@ function MessageBubble({
       report={turn.report}
       onExport={onExport}
     />
+  );
+}
+
+/** Flattens answer blocks to plain text for the copy button. */
+function blocksToText(blocks: import('./types').ReportBlock[]): string {
+  return blocks
+    .map((b) => {
+      switch (b.type) {
+        case 'heading':
+          return `## ${b.text}`;
+        case 'paragraph':
+          return b.text;
+        case 'list':
+          return b.items.map((i) => `- ${i}`).join('\n');
+        case 'code':
+          return `\`\`\`${b.lang ?? ''}\n${b.text}\n\`\`\``;
+        case 'kpis':
+          return b.items.map((k) => `${k.label}: ${k.value}`).join('\n');
+        default:
+          return '';
+      }
+    })
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+function AnswerBubble({ blocks }: { blocks: import('./types').ReportBlock[] }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(blocksToText(blocks));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+
+  return (
+    <div className="group relative max-w-[92%] rounded-2xl rounded-bl-md border border-border bg-surface px-4 py-3.5">
+      <ReportBlocks blocks={blocks} />
+      <button
+        type="button"
+        onClick={copy}
+        aria-label="Copier la réponse"
+        title="Copier la réponse"
+        className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md border border-border bg-bg text-text-muted opacity-0 transition-opacity hover:text-text-primary group-hover:opacity-100"
+      >
+        {copied ? <Check size={12} strokeWidth={2.5} /> : <Copy size={12} strokeWidth={1.75} />}
+      </button>
+    </div>
   );
 }
 
