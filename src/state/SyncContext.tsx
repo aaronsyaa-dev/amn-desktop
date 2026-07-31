@@ -103,6 +103,19 @@ interface SyncContextValue {
   remove: (collection: SyncedCollection, id: string) => Promise<void>;
   /** True if this record id was written by *this* client (to suppress self-notifications). */
   isLocalWrite: (collection: SyncedCollection, id: string) => boolean;
+  /**
+   * Subscribe to live changes pushed over the WebSocket by the OTHER operator
+   * (self-writes are filtered out). Returns an unsubscribe fn. Used to confirm,
+   * discreetly, that sync is working (Partie 3).
+   */
+  onRemoteChange: (cb: (change: RemoteChange) => void) => () => void;
+}
+
+export interface RemoteChange {
+  collection: SyncedCollection;
+  id: string;
+  deleted: boolean;
+  data: Record<string, unknown>;
 }
 
 const SyncContext = createContext<SyncContextValue | undefined>(undefined);
@@ -122,6 +135,11 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const [connectionStatus, setConnectionStatus] = useState<RemoteConnectionStatus>('connecting');
   const [onlineEmails, setOnlineEmails] = useState<Set<string>>(new Set());
   const localWrites = useRef<Set<string>>(new Set());
+  const remoteChangeSubs = useRef<Set<(c: RemoteChange) => void>>(new Set());
+  const onRemoteChange = useCallback((cb: (c: RemoteChange) => void) => {
+    remoteChangeSubs.current.add(cb);
+    return () => remoteChangeSubs.current.delete(cb);
+  }, []);
 
   // Apply a batch of records to a collection: merge, persist mirror, set state.
   const applyRecords = useCallback((collection: string, incoming: RemoteRecord[]) => {
@@ -175,7 +193,20 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     })();
 
     const offRecord = remote.onRecord((record) => {
-      if (active) applyRecords(record.collection, [record]);
+      if (!active) return;
+      applyRecords(record.collection, [record]);
+      // Notify subscribers only for changes made by the OTHER operator — a
+      // live WS push whose id we didn't write ourselves this session.
+      if (!localWrites.current.has(`${record.collection}:${record.id}`)) {
+        for (const cb of remoteChangeSubs.current) {
+          cb({
+            collection: record.collection as SyncedCollection,
+            id: record.id,
+            deleted: record.deleted,
+            data: record.data,
+          });
+        }
+      }
     });
     const offStatus = remote.onConnectionStatusChange((s) => {
       if (!active) return;
@@ -252,8 +283,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ ready, configured, connectionStatus, onlineEmails, useRecords, upsert, remove, isLocalWrite }),
-    [ready, configured, connectionStatus, onlineEmails, useRecords, upsert, remove, isLocalWrite],
+    () => ({ ready, configured, connectionStatus, onlineEmails, useRecords, upsert, remove, isLocalWrite, onRemoteChange }),
+    [ready, configured, connectionStatus, onlineEmails, useRecords, upsert, remove, isLocalWrite, onRemoteChange],
   );
 
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;

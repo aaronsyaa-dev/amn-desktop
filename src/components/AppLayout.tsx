@@ -14,6 +14,7 @@ import { SyncProvider } from '../state/SyncContext';
 import { UndoProvider } from '../state/UndoContext';
 import { ToastProvider } from '../state/ToastContext';
 import { NotificationsManager } from './NotificationsManager';
+import { SyncActivityNotifier } from './SyncActivityNotifier';
 import { IdleScreensaver } from './IdleScreensaver';
 import { WelcomeOverlay, shouldShowWelcome } from './WelcomeOverlay';
 import { UpdateNotice } from './UpdateNotice';
@@ -84,6 +85,7 @@ export function AppLayout() {
               <SiteDetailPanel />
               <AssistantPanel />
               <NotificationsManager />
+              <SyncActivityNotifier />
               <IdleScreensaver />
               {showWelcome && <WelcomeOverlay onDone={() => setShowWelcome(false)} />}
               {!showWelcome && <UpdateNotice />}
