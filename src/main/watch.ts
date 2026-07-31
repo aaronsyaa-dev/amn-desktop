@@ -211,8 +211,19 @@ function isStale(result: WatchFeedResult | null): boolean {
  * is still served immediately while a refresh runs in the background. Only the
  * very first run (no cache at all) awaits the network.
  */
-export async function getWatch(): Promise<WatchFeedResult> {
+export async function getWatch(force = false): Promise<WatchFeedResult> {
   const cached = readCache();
+
+  if (force) {
+    // User-initiated refresh: fetch now, bypassing the TTL (but still coalesce
+    // with any in-flight refresh so we never hammer the sources).
+    if (!inFlight) {
+      inFlight = refresh().finally(() => {
+        inFlight = null;
+      });
+    }
+    return inFlight;
+  }
 
   if (cached && !isStale(cached)) return cached;
 

@@ -578,6 +578,8 @@ export interface AmnBridge {
   watch: {
     /** Cached watch items (refreshed on a TTL in the main process). */
     list(): Promise<WatchFeedResult>;
+    /** Force an immediate refresh from the sources, bypassing the TTL cache. */
+    refresh(): Promise<WatchFeedResult>;
   };
   /** Local Ollama AI (per-machine, optional). Degrades to the mock if absent. */
   ollama: {
@@ -653,6 +655,7 @@ export const IPC = {
   systemSetAutoLaunch: 'system:setAutoLaunch',
   systemGetAppInfo: 'system:getAppInfo',
   watchList: 'watch:list',
+  watchRefresh: 'watch:refresh',
   ollamaStatus: 'ollama:status',
   ollamaChat: 'ollama:chat',
 } as const;

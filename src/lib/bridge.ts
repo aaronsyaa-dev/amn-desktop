@@ -912,6 +912,9 @@ function createBrowserBridge(): AmnBridge {
       async list() {
         return { items: [], fetchedAt: null, degraded: true };
       },
+      async refresh() {
+        return { items: [], fetchedAt: null, degraded: true };
+      },
     },
     ollama: {
       // Local Ollama needs the Electron main process; the browser fallback

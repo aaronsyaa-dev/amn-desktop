@@ -7,6 +7,7 @@ import {
   Loader2,
   MessageSquarePlus,
   Newspaper,
+  RefreshCw,
   Search,
   Sparkles,
   Sunrise,
@@ -649,22 +650,56 @@ const WATCH_CATEGORY_STYLE: Record<string, string> = {
 function WatchTab() {
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [feed, setFeed] = useState<WatchFeedResult | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const activeRef = useRef(true);
 
   useEffect(() => {
-    let active = true;
+    activeRef.current = true;
     setState('loading');
     bridge()
       .watch.list()
       .then((result) => {
-        if (!active) return;
+        if (!activeRef.current) return;
         setFeed(result);
         setState('ready');
       })
-      .catch(() => active && setState('error'));
+      .catch(() => activeRef.current && setState('error'));
+
+    // Stale-while-revalidate: the main process may serve a stale cache instantly
+    // and refresh in the background. Pick that fresher result up shortly after,
+    // so an open panel doesn't stay "figée" on old entries.
+    const t = setTimeout(() => {
+      bridge()
+        .watch.list()
+        .then((result) => {
+          const fresher = result.fetchedAt;
+          if (!activeRef.current || !fresher) return;
+          setFeed((prev) => (!prev?.fetchedAt || fresher > prev.fetchedAt ? result : prev));
+        })
+        .catch(() => {
+          /* keep whatever we already showed */
+        });
+    }, 4000);
+
     return () => {
-      active = false;
+      activeRef.current = false;
+      clearTimeout(t);
     };
   }, []);
+
+  const forceRefresh = () => {
+    setRefreshing(true);
+    bridge()
+      .watch.refresh()
+      .then((result) => {
+        if (activeRef.current) {
+          setFeed(result);
+          setState('ready');
+        }
+      })
+      .catch(() => activeRef.current && setState('error'))
+      .finally(() => activeRef.current && setRefreshing(false));
+  };
 
   const items = feed?.items ?? [];
   const isElectron = bridge().env.isElectron;
@@ -675,16 +710,30 @@ function WatchTab() {
         <p className="text-sm text-text-secondary">
           Veille cybersécurité — flux publics CERT-FR (ANSSI) et The Hacker News.
         </p>
-        {feed?.fetchedAt && (
-          <time className="flex-shrink-0 whitespace-nowrap text-[11px] text-text-muted" title="Dernière mise à jour">
-            {new Date(feed.fetchedAt).toLocaleString('fr-FR', {
-              day: 'numeric',
-              month: 'short',
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </time>
-        )}
+        <div className="flex flex-shrink-0 items-center gap-2">
+          {feed?.fetchedAt && (
+            <time className="whitespace-nowrap text-[11px] text-text-muted" title="Dernière mise à jour">
+              {new Date(feed.fetchedAt).toLocaleString('fr-FR', {
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </time>
+          )}
+          {isElectron && (
+            <button
+              type="button"
+              onClick={forceRefresh}
+              disabled={refreshing}
+              aria-label="Rafraîchir la veille"
+              title="Rafraîchir maintenant"
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:text-text-primary disabled:opacity-50"
+            >
+              <RefreshCw size={13} strokeWidth={1.75} className={refreshing ? 'animate-spin' : ''} />
+            </button>
+          )}
+        </div>
       </div>
 
       {feed?.degraded && items.length > 0 && (

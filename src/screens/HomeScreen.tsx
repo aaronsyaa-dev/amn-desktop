@@ -38,8 +38,6 @@ export function HomeScreen() {
   const pinnedSites = useMemo(() => sites.filter((s) => isPinned(s.id)), [sites, isPinned]);
 
   const displayName = user?.name?.split(' ')[0] ?? 'opérateur';
-  // Chosen once per launch (varies by time of day + a per-launch pick).
-  const welcome = useMemo(() => homeWelcome(displayName), [displayName]);
   const nudge = useMemo(() => homeNudge(), []);
 
   const [now, setNow] = useState(() => new Date());
@@ -47,6 +45,11 @@ export function HomeScreen() {
     const t = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(t);
   }, []);
+
+  // Varies by time of day + a per-launch pick. Recomputed from the ticking
+  // clock so it stays coherent with the real hour even if the app is left open
+  // across a slot boundary (e.g. midnight); the pick is stable within a slot.
+  const welcome = homeWelcome(displayName, now);
   const dateLabel = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const offline = sites.filter((s) => s.status === 'offline').length;

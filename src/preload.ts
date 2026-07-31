@@ -149,6 +149,7 @@ const bridge: AmnBridge = {
   },
   watch: {
     list: () => ipcRenderer.invoke(IPC.watchList),
+    refresh: () => ipcRenderer.invoke(IPC.watchRefresh),
   },
   ollama: {
     status: () => ipcRenderer.invoke(IPC.ollamaStatus),

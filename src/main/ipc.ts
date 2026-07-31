@@ -268,6 +268,7 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   }));
 
   ipcMain.handle(IPC.watchList, () => getWatch());
+  ipcMain.handle(IPC.watchRefresh, () => getWatch(true));
 
   ipcMain.handle(IPC.ollamaStatus, () => ollamaStatus());
   ipcMain.handle(
