@@ -30,6 +30,20 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.1.0',
+    date: '2026-07-31',
+    title: 'Ajmani, veille en direct & confort',
+    changes: [
+      'L’assistant devient « Ajmani » : une vraie IA généraliste (via Ollama en local) qui répond à toutes vos questions, en plus de vos rapports et analyses ancrés sur vos données réelles.',
+      'Ajmani : sélecteur de modèle directement dans le chat, blocs de code copiables, et notification quand la réponse est prête si vous avez quitté le panneau.',
+      'Écran de veille cosy après quelques minutes d’inactivité — parfait pour laisser l’app tournée sur un second écran.',
+      'Notification discrète quand votre binôme modifie une donnée partagée (la synchro se voit en direct).',
+      'Veille cyber : bouton de rafraîchissement manuel et mise à jour automatique de l’affichage.',
+      'Suppression de site : bouton pour confirmer immédiatement, sans attendre le délai d’annulation.',
+      'Assistant d’installation du tracker : choix entre 3 modes (serveur, serverless, site statique) avec le bon script pour chacun.',
+    ],
+  },
+  {
     version: '1.0.0',
     date: '2026-07-25',
     title: 'Première version stable',
@@ -47,16 +61,26 @@ export const CHANGELOG: ChangelogEntry[] = [
 /** Version courante de l'app d'après le changelog (première entrée). */
 export const CURRENT_VERSION = CHANGELOG[0]?.version ?? '1.0.0';
 
+/** Compares two dotted versions numerically. Returns >0 if a>b, <0 if a<b. */
+export function compareVersions(a: string, b: string): number {
+  const pa = a.split('.').map((n) => parseInt(n, 10) || 0);
+  const pb = b.split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i += 1) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (d !== 0) return d;
+  }
+  return 0;
+}
+
 /**
  * Toutes les entrées de changelog strictement plus récentes que `since`.
  * Utilisé par la notification de mise à jour pour n'afficher que les
- * nouveautés depuis la dernière version vue. Si `since` est nul/inconnu,
- * renvoie un tableau vide (première installation → pas de « nouveautés »).
+ * nouveautés depuis la dernière version vue. Comparaison sémantique (numérique)
+ * pour rester robuste même si la version exacte n'est pas dans l'historique
+ * (ex. l'utilisateur a sauté plusieurs versions). Si `since` est nul, renvoie un
+ * tableau vide (première installation → pas de « nouveautés »).
  */
 export function changesSince(since: string | null | undefined): ChangelogEntry[] {
   if (!since) return [];
-  const idx = CHANGELOG.findIndex((e) => e.version === since);
-  // Version inconnue (ex. downgrade) : on ne spamme pas, rien à montrer.
-  if (idx === -1) return [];
-  return CHANGELOG.slice(0, idx);
+  return CHANGELOG.filter((e) => compareVersions(e.version, since) > 0);
 }

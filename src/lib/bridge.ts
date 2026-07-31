@@ -926,6 +926,17 @@ function createBrowserBridge(): AmnBridge {
         throw new Error('Ollama indisponible dans le navigateur.');
       },
     },
+    updates: {
+      // No Squirrel auto-update in the browser fallback.
+      onDownloaded() {
+        return () => {
+          /* nothing to unsubscribe */
+        };
+      },
+      install() {
+        /* no-op */
+      },
+    },
     env: { isElectron: false },
   };
 }

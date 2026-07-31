@@ -18,6 +18,7 @@ import { SyncActivityNotifier } from './SyncActivityNotifier';
 import { IdleScreensaver } from './IdleScreensaver';
 import { WelcomeOverlay, shouldShowWelcome } from './WelcomeOverlay';
 import { UpdateNotice } from './UpdateNotice';
+import { UpdateReady } from './UpdateReady';
 import { variantsForPath } from '../lib/transitions';
 
 const LAST_TAB_KEY = 'amn.lastTab';
@@ -89,6 +90,7 @@ export function AppLayout() {
               <IdleScreensaver />
               {showWelcome && <WelcomeOverlay onDone={() => setShowWelcome(false)} />}
               {!showWelcome && <UpdateNotice />}
+              <UpdateReady />
               </UndoProvider>
             </CommandPaletteProvider>
           </AssistantProvider>

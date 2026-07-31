@@ -588,6 +588,13 @@ export interface AmnBridge {
     /** One non-streaming completion. Rejects on failure (caller falls back). */
     chat(input: { model: string; system: string; prompt: string }): Promise<{ text: string }>;
   };
+  /** Auto-update (Electron main; Squirrel/autoUpdater). No-ops in the browser. */
+  updates: {
+    /** Fires when an update has been downloaded and is ready to install. */
+    onDownloaded(cb: (info: { version: string; notes?: string }) => void): () => void;
+    /** Quit and install the staged update (relaunches the app). */
+    install(): void;
+  };
   env: {
     /** true when backed by the Electron main process (SQLite), false in browser fallback. */
     isElectron: boolean;
@@ -658,4 +665,6 @@ export const IPC = {
   watchRefresh: 'watch:refresh',
   ollamaStatus: 'ollama:status',
   ollamaChat: 'ollama:chat',
+  updateDownloaded: 'update:downloaded',
+  updateInstall: 'update:install',
 } as const;

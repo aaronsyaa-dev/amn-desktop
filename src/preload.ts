@@ -156,6 +156,14 @@ const bridge: AmnBridge = {
     chat: (input: { model: string; system: string; prompt: string }) =>
       ipcRenderer.invoke(IPC.ollamaChat, input),
   },
+  updates: {
+    onDownloaded: (cb: (info: { version: string; notes?: string }) => void) => {
+      const listener = (_e: unknown, info: { version: string; notes?: string }) => cb(info);
+      ipcRenderer.on(IPC.updateDownloaded, listener);
+      return () => ipcRenderer.removeListener(IPC.updateDownloaded, listener);
+    },
+    install: () => ipcRenderer.invoke(IPC.updateInstall),
+  },
   env: { isElectron: true },
 };
 

@@ -84,8 +84,17 @@ modification nécessaire.
 ## Publier une nouvelle version (mise à jour automatique)
 
 L'app se met à jour toute seule via le service gratuit `update.electronjs.org`
-(lu par `update-electron-app`, câblé dans `src/main/updater.ts`). Pour qu'une
-mise à jour se déclenche chez les utilisateurs :
+(lu par `update-electron-app`, câblé dans `src/main/updater.ts`).
+
+**Côté utilisateur, zéro terminal** : l'app vérifie les nouvelles versions en
+arrière-plan (toutes les heures), télécharge et prépare la mise à jour
+automatiquement, puis affiche un panneau in-app « Mise à jour prête » avec un
+seul bouton « Redémarrer et installer » (`src/components/UpdateReady.tsx`). Après
+le redémarrage, l'écran « Nouveau dans cette version » liste les changements
+(`src/components/UpdateNotice.tsx`, lus depuis `src/data/changelog.ts`). Aucune
+commande à taper — exactement comme Discord/Spotify.
+
+**Côté développeur, une seule action** pour publier une version :
 
 1. **Bumper la version** dans `package.json` (ex. `1.0.0` → `1.0.1`).
 2. **Ajouter une entrée de changelog** dans `src/data/changelog.ts` (elle
