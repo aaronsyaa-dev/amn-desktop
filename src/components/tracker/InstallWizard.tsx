@@ -1,14 +1,23 @@
 import React, { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Check, Copy, Globe, KeyRound, Layers, Terminal, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Copy, Globe, KeyRound, Layers, Server, FileCode, Terminal, X } from 'lucide-react';
 import { useRemoteSites, type DerivedSite } from '../../state/RemoteSitesContext';
 import { useTrackers } from '../../state/useTrackers';
 import { TRACKER_MODULES, MATURITY_META, moduleByKey } from '../../data/trackerModules';
 import { MaturityBadge } from './MaturityBadge';
 
 type Step = 0 | 1 | 2;
+type InstallMode = 'express' | 'serverless' | 'static';
 
 const STEPS = ['Site cible', 'Modules', 'Installation'];
+
+const GITHUB_INSTALL = 'github:aaronsyaa-dev/security-monitor';
+
+const MODE_META: Record<InstallMode, { label: string; hint: string; icon: typeof Server }> = {
+  express: { label: 'Serveur Node / Express', hint: 'Le site tourne sur un serveur', icon: Server },
+  serverless: { label: 'Serverless', hint: 'Vercel, Netlify, Lambda', icon: Globe },
+  static: { label: 'Site statique', hint: '100 % HTML/JS, aucun back-end', icon: FileCode },
+};
 
 /**
  * Guided, premium install flow: choose a registered site → choose the modules
@@ -27,6 +36,7 @@ export function InstallWizard({ initialSiteId, onClose }: { initialSiteId?: stri
   );
   const [apiUrl, setApiUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [mode, setMode] = useState<InstallMode>('express');
   const [copied, setCopied] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -57,8 +67,8 @@ export function InstallWizard({ initialSiteId, onClose }: { initialSiteId?: stri
   );
 
   const script = useMemo(
-    () => buildScript({ modules: selectedKeys, apiUrl, apiKey }),
-    [selectedKeys, apiUrl, apiKey],
+    () => buildScript({ mode, modules: selectedKeys, apiUrl, apiKey }),
+    [mode, selectedKeys, apiUrl, apiKey],
   );
 
   const canNext = step === 0 ? Boolean(siteId) : step === 1 ? selectedKeys.length > 0 : true;
@@ -148,6 +158,8 @@ export function InstallWizard({ initialSiteId, onClose }: { initialSiteId?: stri
                 <StepInstall
                   site={site}
                   selectedKeys={selectedKeys}
+                  mode={mode}
+                  onMode={setMode}
                   apiUrl={apiUrl}
                   apiKey={apiKey}
                   onApiUrl={setApiUrl}
@@ -311,6 +323,8 @@ function StepModules({ selected, onToggle }: { selected: Set<string>; onToggle: 
 function StepInstall({
   site,
   selectedKeys,
+  mode,
+  onMode,
   apiUrl,
   apiKey,
   onApiUrl,
@@ -321,6 +335,8 @@ function StepInstall({
 }: {
   site: DerivedSite | null;
   selectedKeys: string[];
+  mode: InstallMode;
+  onMode: (m: InstallMode) => void;
   apiUrl: string;
   apiKey: string;
   onApiUrl: (v: string) => void;
@@ -336,6 +352,42 @@ function StepInstall({
           <span className="text-text-primary">{site?.name ?? 'Site'}</span> ·{' '}
           {selectedKeys.map((k) => moduleByKey(k)?.name ?? k).join(', ')}
         </p>
+      </div>
+
+      {/* Mode selector (1.3 / Partie 6): the generated script adapts to the
+          target's hosting model. */}
+      <div>
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+          Type de site cible
+        </p>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {(Object.keys(MODE_META) as InstallMode[]).map((m) => {
+            const meta = MODE_META[m];
+            const Icon = meta.icon;
+            const on = mode === m;
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => onMode(m)}
+                className={`flex flex-col gap-1 rounded-xl border p-3 text-left transition-colors ${
+                  on ? 'border-accent bg-accent-muted' : 'border-border hover:bg-white/[0.03]'
+                }`}
+              >
+                <Icon size={15} strokeWidth={1.75} className={on ? 'text-accent' : 'text-text-muted'} />
+                <span className="text-xs font-semibold text-text-primary">{meta.label}</span>
+                <span className="text-[10px] text-text-muted">{meta.hint}</span>
+              </button>
+            );
+          })}
+        </div>
+        {mode !== 'express' && (
+          <p className="mt-2 text-[11px] text-text-muted">
+            {mode === 'serverless'
+              ? 'En serverless, la détection à état (rate limit, force brute) est gérée centralement par amn-api ; la sélection de modules ci-dessus s’applique surtout au Mode serveur.'
+              : 'Un site statique ne fait tourner qu’un léger script navigateur (heartbeat + signaux d’abus de formulaire). Métadonnées uniquement, et clé publique par nature — voir le README.'}
+          </p>
+        )}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -394,18 +446,72 @@ function StepInstall({
   );
 }
 
-function buildScript({ modules, apiUrl, apiKey }: { modules: string[]; apiUrl: string; apiKey: string }): string {
+function buildScript({
+  mode,
+  modules,
+  apiUrl,
+  apiKey,
+}: {
+  mode: InstallMode;
+  modules: string[];
+  apiUrl: string;
+  apiKey: string;
+}): string {
   const url = apiUrl.trim() || 'https://votre-amn-api';
   const key = apiKey.trim() || '<VOTRE_CLÉ_API_AMN>';
-  return `# 1 — Installer le tracker AMN
-npm install @amn-devsec/security-monitor
 
-# 2 — Configurer l'environnement (.env)
+  if (mode === 'serverless') {
+    return `# Mode 2 — Fonction serverless (Vercel / Netlify / Lambda)
+# Le paquet n'est pas sur npm public : installation depuis GitHub.
+npm install ${GITHUB_INSTALL}
+
+# 1 — Variables d'environnement (tableau de bord de la plateforme)
+AMN_API_URL=${url}
+AMN_API_KEY=${key}
+
+# 2 — Envelopper le handler (1 à 2 lignes)
+import { createServerlessMonitor } from '@amn-devsec/security-monitor/serverless';
+
+const monitor = createServerlessMonitor(); // lit AMN_API_URL / AMN_API_KEY
+export default monitor.withMonitor(async (req, res) => {
+  res.status(200).json({ ok: true });      // votre logique inchangée
+});
+
+# Dans une fonction d'authentification :
+#   await monitor.recordLoginAttempt({ identifier: email, success, ip });
+#
+# La détection à état (rate limit, force brute) est gérée centralement par
+# amn-api — pas besoin de mémoire locale. Passez { enforce: true } pour bloquer
+# (par défaut : observation seule). Métadonnées uniquement, jamais de données métier.`;
+  }
+
+  if (mode === 'static') {
+    return `# Mode 3 — Site 100 % statique (aucun back-end)
+# 1 — Copiez le fichier browser/amn-monitor.js du dépôt à côté de vos pages :
+#     ${GITHUB_INSTALL.replace('github:', 'https://github.com/')}/blob/main/browser/amn-monitor.js
+#
+# 2 — Incluez-le en fin de <body> :
+<script src="/amn-monitor.js"
+        data-amn-api="${url}"
+        data-amn-key="${key}"></script>
+
+# Ce que ça fait : heartbeat (présence) + signaux d'abus de formulaire
+# (soumission trop rapide / répétée). Métadonnées uniquement — jamais le contenu
+# des formulaires. Limites assumées : la clé est PUBLIQUE (visible dans le code
+# source) et le script est contournable. Préférez le Mode 1 ou 2 dès qu'il y a
+# du code côté serveur. Voir le README (section « Mode 3 »).`;
+  }
+
+  return `# Mode 1 — Serveur Node / Express
+# Le paquet n'est pas sur npm public : installation depuis GitHub.
+npm install ${GITHUB_INSTALL}
+
+# 1 — Configurer l'environnement (.env)
 AMN_API_URL=${url}
 AMN_API_KEY=${key}
 AMN_MODULES=${modules.join(',')}
 
-# 3 — Brancher dans votre application (Express / Node)
+# 2 — Brancher dans votre application (Express / Node)
 import { createTracker } from '@amn-devsec/security-monitor';
 
 const tracker = createTracker();  // lit AMN_MODULES depuis .env
