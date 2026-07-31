@@ -149,6 +149,43 @@ dans `forge.config.ts` :
   recompilation, aucun compilateur ni header Electron requis sur la machine de
   build.
 
+### `npm ci`/`npm install` ne doit JAMAIS compiler `better-sqlite3`
+
+Les *prebuilds* ci-dessus rendent toute compilation inutile — mais
+`better-sqlite3` ne déclare **aucun script `install`/`postinstall` explicite**
+alors qu'il contient un `binding.gyp`. Or npm a un comportement historique
+implicite : *« si un paquet a un `binding.gyp` et aucun script
+`install`/`postinstall`/`preinstall`, lance automatiquement
+`node-gyp rebuild` »*. Ce comportement se déclenche **pendant `npm install`/
+`npm ci` lui-même**, avant même que Forge n'intervienne, et échoue sans
+compilateur C++ installé — c'est exactement ce qui cassait le workflow de
+release sur les runners Windows GitHub Actions (`Could not find any Visual
+Studio installation`), alors que rien n'était compilé en local (Linux/macOS
+ont `gcc`/`clang` par défaut, donc la compilation implicite y réussissait
+silencieusement, masquant le problème).
+
+**Fix** : [`.npmrc`](.npmrc) porte `ignore-scripts=true`, qui désactive tous
+les scripts de cycle de vie (le nôtre compris) pendant `npm install`/`ci` — la
+seule façon fiable d'empêcher ce déclenchement implicite, sur n'importe quelle
+plateforme. Les deux dépendances qui ont vraiment besoin de leur script
+d'installation (`esbuild`, pour Vite ; `electron-winstaller`, pour le maker
+Squirrel Windows) sont réactivées explicitement et de façon déterministe via
+`npm run bootstrap` (`npm rebuild esbuild electron-winstaller fsevents`),
+chaîné en tête de `start`/`package`/`make`/`publish` dans `package.json` — donc
+toujours exécuté, sans dépendre de l'ordre des scripts npm. **Aucun changement
+n'est nécessaire dans `.github/workflows/release.yml`** : `.npmrc` est lu
+automatiquement par `npm ci`, et `npm run publish` chaîne déjà `bootstrap`.
+
+Vérifié en local par une reproduction fidèle des conditions CI
+(`rm -rf node_modules && npm ci`, équivalent à un runner propre sans cache) :
+aucune invocation de `node-gyp` (confirmée par l'absence du dossier
+`node_modules/better-sqlite3/build/`, qui n'apparaît que si une compilation a
+eu lieu), le module se charge et fonctionne, et `npm run package` aboutit
+normalement (Vite/esbuild et l'empaquetage natif intacts). Non vérifiable
+depuis cet environnement : l'échec réel sur un runner Windows sans Visual
+Studio — seul le prochain push de tag (`git tag vX.Y.Z && git push origin
+vX.Y.Z`) le confirmera en conditions réelles.
+
 ### Vérifier un build packagé
 
 ```bash
