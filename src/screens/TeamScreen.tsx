@@ -5,15 +5,18 @@ import {
   ArrowUp,
   Building2,
   CornerUpLeft,
+  Film,
   Globe,
   Image as ImageIcon,
   Link2,
   MessageSquarePlus,
+  Mic,
   Pin,
   PinOff,
   Plus,
   Search,
   SmilePlus,
+  Sparkles,
   X,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
@@ -28,8 +31,34 @@ import { relativeTime } from '../lib/time';
 import { bridge } from '../lib/bridge';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
 import { useMessageTemplates } from '../state/useMessageTemplates';
+import { LightboxProvider, type LightboxImage } from '../components/team/MediaLightbox';
+import { MessageMedia } from '../components/team/MessageMedia';
+import { VoiceRecorder } from '../components/team/VoiceRecorder';
+import {
+  AJMANI_EMAIL,
+  AJMANI_NAME,
+  generateAjmaniReply,
+  mentionsAjmani,
+  stripAjmaniMention,
+} from '../lib/ajmaniChat';
 import type { MessageAttachment } from '../shared/api';
 import { REACTION_EMOJIS } from '../shared/api';
+
+/** Max raw size for a chat video, before the ~33% base64 inflation, kept under
+ * amn-api's 12 MB JSON body limit. Short clips only — see Bloc 3 for a heavier
+ * media-storage strategy. */
+const MAX_VIDEO_BYTES = 6 * 1024 * 1024;
+const VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
+
+/** Reads a file into a data-URL as-is (no resize) — used for short videos. */
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => resolve(String(reader.result));
+    reader.readAsDataURL(file);
+  });
+}
 
 /**
  * Clients available for @-mentions, provided by TeamScreen so the deeply-nested
@@ -41,7 +70,8 @@ const useMentionClients = () => React.useContext(MentionClientsContext);
 
 type MentionSuggestion =
   | { kind: 'site'; name: string }
-  | { kind: 'client'; name: string; company: string };
+  | { kind: 'client'; name: string; company: string }
+  | { kind: 'ajmani'; name: string };
 
 const TEAM = [
   { email: 'aaron@amn-devsec.com' },
@@ -50,13 +80,32 @@ const TEAM = [
 
 export function TeamScreen() {
   const { user } = useAuth();
-  const { sites } = useRemoteSites();
-  const { messages, send, react, togglePin } = useMessages();
+  const { sites, eventsBySite, ensureEventsLoaded } = useRemoteSites();
+  const { messages, send, sendAjmani, react, togglePin } = useMessages();
   const [replyTo, setReplyTo] = useState<SyncMessage | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [clients, setClients] = useState<ClientRef[]>([]);
+  const [ajmaniThinking, setAjmaniThinking] = useState(false);
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
+
+  // Warm the parc event cache so an @Ajmani question is grounded in real data.
+  useEffect(() => {
+    for (const site of sites) ensureEventsLoaded(site.id);
+  }, [sites, ensureEventsLoaded]);
+
+  // Ordered gallery of every image in the thread — powers the lightbox's ←/→.
+  const gallery = useMemo<LightboxImage[]>(() => {
+    const items: LightboxImage[] = [];
+    for (const m of messages) {
+      m.attachments.forEach((att, i) => {
+        if ((att.kind ?? 'image') === 'image') {
+          items.push({ key: `${m.id}:${i}`, src: att.dataUrl, name: att.name });
+        }
+      });
+    }
+    return items;
+  }, [messages]);
 
   // Load the client roster once so "@" can mention clients as well as sites.
   useEffect(() => {
@@ -75,8 +124,23 @@ export function TeamScreen() {
   }, []);
 
   const handleSend = (body: string, attachments: MessageAttachment[]) => {
-    send(body, attachments, replyTo?.id ?? null);
+    const replyId = replyTo?.id ?? null;
+    send(body, attachments, replyId);
     setReplyTo(null);
+
+    // @Ajmani: only THIS client (the sender) generates + posts the reply, so
+    // two connected operators never double-answer. The reply is a normal synced
+    // message, so both of them see it live.
+    if (body && mentionsAjmani(body)) {
+      const question = stripAjmaniMention(body);
+      if (question) {
+        setAjmaniThinking(true);
+        generateAjmaniReply(question, sites, eventsBySite)
+          .then((reply) => sendAjmani(reply, replyId))
+          .catch(() => sendAjmani("Je n'ai pas pu répondre à cette demande.", replyId))
+          .finally(() => setAjmaniThinking(false));
+      }
+    }
   };
 
   const jumpToMessage = (id: string) => {
@@ -91,6 +155,7 @@ export function TeamScreen() {
 
   return (
     <MentionClientsContext.Provider value={clients}>
+    <LightboxProvider gallery={gallery}>
     <section className="flex h-[calc(100vh-8rem)] flex-col gap-4">
       <div className="flex items-end justify-between gap-4">
         <div>
@@ -132,6 +197,7 @@ export function TeamScreen() {
           byId={byId}
           highlightId={highlightId}
           rowRefs={rowRefs}
+          ajmaniThinking={ajmaniThinking}
           onReply={setReplyTo}
           onReact={react}
           onTogglePin={togglePin}
@@ -140,6 +206,7 @@ export function TeamScreen() {
         <Composer onSend={handleSend} sites={sites} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} />
       </div>
     </section>
+    </LightboxProvider>
     </MentionClientsContext.Provider>
   );
 }
@@ -283,7 +350,7 @@ function PinnedBar({
           className="group flex flex-shrink-0 items-center gap-1.5 rounded-md border border-border bg-surface py-1 pl-2.5 pr-1 text-xs"
         >
           <button type="button" onClick={() => onJump(m.id)} className="max-w-[220px] truncate text-text-secondary hover:text-text-primary">
-            <span className="font-medium text-text-primary">{profileFor(m.authorEmail).name}</span> · {m.body || '(image)'}
+            <span className="font-medium text-text-primary">{profileFor(m.authorEmail).name}</span> · {m.body || '(pièce jointe)'}
           </button>
           <button
             type="button"
@@ -308,6 +375,7 @@ function MessageList({
   byId,
   highlightId,
   rowRefs,
+  ajmaniThinking,
   onReply,
   onReact,
   onTogglePin,
@@ -319,6 +387,7 @@ function MessageList({
   byId: Map<string, SyncMessage>;
   highlightId: string | null;
   rowRefs: React.MutableRefObject<Map<string, HTMLDivElement>>;
+  ajmaniThinking: boolean;
   onReply: (message: SyncMessage) => void;
   onReact: (message: SyncMessage, emoji: string) => void;
   onTogglePin: (message: SyncMessage) => void;
@@ -358,6 +427,7 @@ function MessageList({
           key={message.id}
           message={message}
           own={message.authorEmail === currentEmail}
+          isAjmani={message.authorEmail === AJMANI_EMAIL}
           sites={sites}
           repliedTo={message.replyToId ? byId.get(message.replyToId) ?? null : null}
           highlighted={highlightId === message.id}
@@ -371,13 +441,47 @@ function MessageList({
           onJumpToReply={() => message.replyToId && onJump(message.replyToId)}
         />
       ))}
+      {ajmaniThinking && <AjmaniThinkingBubble />}
     </div>
+  );
+}
+
+function AjmaniThinkingBubble() {
+  return (
+    <div className="flex gap-2.5">
+      <AjmaniAvatar />
+      <div className="flex flex-col items-start">
+        <span className="mb-1 flex items-center gap-1 px-1 text-xs font-medium text-accent">
+          {AJMANI_NAME}
+        </span>
+        <div className="flex items-center gap-1.5 rounded-r-lg rounded-tl-lg border border-accent/30 bg-accent-muted px-4 py-3">
+          {[0, 1, 2].map((i) => (
+            <motion.span
+              key={i}
+              className="h-1.5 w-1.5 rounded-full bg-accent"
+              animate={{ opacity: [0.3, 1, 0.3] }}
+              transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Distinct avatar for Ajmani's messages (accent Sparkles, not a user photo). */
+function AjmaniAvatar() {
+  return (
+    <span className="mt-5 flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-full bg-accent-muted text-accent ring-1 ring-accent/40">
+      <Sparkles size={15} strokeWidth={1.75} />
+    </span>
   );
 }
 
 function MessageBubble({
   message,
   own,
+  isAjmani,
   sites,
   repliedTo,
   highlighted,
@@ -389,6 +493,7 @@ function MessageBubble({
 }: {
   message: SyncMessage;
   own: boolean;
+  isAjmani: boolean;
   sites: DerivedSite[];
   repliedTo: SyncMessage | null;
   highlighted: boolean;
@@ -423,11 +528,11 @@ function MessageBubble({
       transition={{ duration: 0.25 }}
       className={`group/msg flex gap-2.5 rounded-lg px-1.5 py-1 ${own ? 'flex-row-reverse' : 'flex-row'}`}
     >
-      <UserAvatar email={message.authorEmail} size={30} className="mt-5" />
+      {isAjmani ? <AjmaniAvatar /> : <UserAvatar email={message.authorEmail} size={30} className="mt-5" />}
       <div className={`flex min-w-0 flex-col ${own ? 'items-end' : 'items-start'}`}>
         {!own && (
-          <span className="mb-1 px-1 text-xs font-medium text-text-secondary">
-            {profileFor(message.authorEmail).name}
+          <span className={`mb-1 flex items-center gap-1 px-1 text-xs font-medium ${isAjmani ? 'text-accent' : 'text-text-secondary'}`}>
+            {isAjmani ? AJMANI_NAME : profileFor(message.authorEmail).name}
           </span>
         )}
 
@@ -441,7 +546,7 @@ function MessageBubble({
           >
             <CornerUpLeft size={11} strokeWidth={2} className="flex-shrink-0" />
             <span className="truncate">
-              <span className="font-medium">{profileFor(repliedTo.authorEmail).name}</span> · {repliedTo.body || '(image)'}
+              <span className="font-medium">{profileFor(repliedTo.authorEmail).name}</span> · {repliedTo.body || '(pièce jointe)'}
             </span>
           </button>
         )}
@@ -454,18 +559,15 @@ function MessageBubble({
             className={`max-w-[75%] px-4 py-2.5 text-sm ${
               own
                 ? 'rounded-l-lg rounded-tr-lg bg-accent text-bg'
-                : 'rounded-r-lg rounded-tl-lg border border-border bg-surface-hover text-text-primary'
+                : isAjmani
+                  ? 'rounded-r-lg rounded-tl-lg border border-accent/30 bg-accent-muted text-text-primary'
+                  : 'rounded-r-lg rounded-tl-lg border border-border bg-surface-hover text-text-primary'
             }`}
           >
             {message.attachments.length > 0 && (
               <div className="mb-2 flex flex-wrap gap-1.5">
                 {message.attachments.map((att, i) => (
-                  <img
-                    key={i}
-                    src={att.dataUrl}
-                    alt={att.name || 'Pièce jointe'}
-                    className="max-h-48 max-w-[220px] rounded-md border border-black/10 object-cover"
-                  />
+                  <MessageMedia key={i} att={att} galleryKey={`${message.id}:${i}`} />
                 ))}
               </div>
             )}
@@ -731,6 +833,7 @@ function Composer({
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -746,13 +849,15 @@ function Composer({
   const suggestions = useMemo<MentionSuggestion[]>(() => {
     if (!mentionQuery) return [];
     const q = mentionQuery.query;
+    const ajmaniHit: MentionSuggestion[] =
+      AJMANI_NAME.toLowerCase().startsWith(q) || q === '' ? [{ kind: 'ajmani', name: AJMANI_NAME }] : [];
     const siteHits: MentionSuggestion[] = sites
       .filter((s) => s.name.toLowerCase().includes(q))
       .map((s) => ({ kind: 'site', name: s.name }));
     const clientHits: MentionSuggestion[] = clients
       .filter((c) => c.name.toLowerCase().includes(q))
       .map((c) => ({ kind: 'client', name: c.name, company: c.company }));
-    return [...siteHits, ...clientHits].slice(0, 6);
+    return [...ajmaniHit, ...siteHits, ...clientHits].slice(0, 6);
   }, [mentionQuery, sites, clients]);
 
   const applyMention = (name: string) => {
@@ -762,11 +867,31 @@ function Composer({
   };
 
   const addFiles = async (files: FileList | File[]) => {
-    const images = Array.from(files).filter((f) => f.type.startsWith('image/'));
-    const resized = await Promise.all(
-      images.map(async (f) => ({ dataUrl: await resizeImageToDataUrl(f), name: f.name })),
-    );
-    setPendingAttachments((prev) => [...prev, ...resized]);
+    const list = Array.from(files);
+    const results: MessageAttachment[] = [];
+    let rejected: string | null = null;
+
+    for (const f of list) {
+      const isVideo = VIDEO_TYPES.includes(f.type) || /\.(mp4|mov|webm)$/i.test(f.name);
+      if (f.type.startsWith('image/')) {
+        results.push({ dataUrl: await resizeImageToDataUrl(f), name: f.name, kind: 'image' });
+      } else if (isVideo) {
+        if (f.size > MAX_VIDEO_BYTES) {
+          rejected = `La vidéo « ${f.name} » dépasse 6 Mo. Utilise un clip plus court.`;
+          continue;
+        }
+        results.push({
+          dataUrl: await fileToDataUrl(f),
+          name: f.name,
+          kind: 'video',
+          mime: f.type || 'video/mp4',
+        });
+      }
+      // Other file types are ignored (only images/videos in chat).
+    }
+
+    setUploadError(rejected);
+    if (results.length) setPendingAttachments((prev) => [...prev, ...results]);
   };
 
   const submit = () => {
@@ -775,6 +900,7 @@ function Composer({
     onSend(trimmed, pendingAttachments);
     setText('');
     setPendingAttachments([]);
+    setUploadError(null);
   };
 
   return (
@@ -794,7 +920,7 @@ function Composer({
       {dragOver && (
         <div className="pointer-events-none absolute inset-2 z-10 flex items-center justify-center rounded-xl border-2 border-dashed border-border-strong bg-bg/90">
           <p className="font-mono text-xs uppercase tracking-widest text-text-secondary">
-            Déposer l’image ici
+            Déposer image ou vidéo ici
           </p>
         </div>
       )}
@@ -803,7 +929,7 @@ function Composer({
         <div className="mb-2 flex items-center gap-2 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs text-text-secondary">
           <CornerUpLeft size={12} strokeWidth={2} className="flex-shrink-0 text-text-muted" />
           <span className="min-w-0 flex-1 truncate">
-            Réponse à <span className="font-medium text-text-primary">{profileFor(replyTo.authorEmail).name}</span> · {replyTo.body || '(image)'}
+            Réponse à <span className="font-medium text-text-primary">{profileFor(replyTo.authorEmail).name}</span> · {replyTo.body || '(pièce jointe)'}
           </span>
           <button type="button" onClick={onCancelReply} aria-label="Annuler la réponse" className="text-text-muted hover:text-text-primary">
             <X size={13} strokeWidth={2} />
@@ -811,28 +937,44 @@ function Composer({
         </div>
       )}
 
+      {uploadError && (
+        <p className="mb-2 rounded-lg border border-danger/40 bg-danger-muted px-3 py-1.5 text-xs text-danger">
+          {uploadError}
+        </p>
+      )}
+
       {pendingAttachments.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-2">
-          {pendingAttachments.map((att, i) => (
-            <div key={i} className="relative">
-              <img src={att.dataUrl} alt={att.name} className="h-16 w-16 rounded-md border border-border object-cover" />
-              <button
-                type="button"
-                onClick={() => setPendingAttachments((prev) => prev.filter((_, idx) => idx !== i))}
-                aria-label="Retirer l’image"
-                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-text-secondary hover:text-text-primary"
-              >
-                <X size={11} strokeWidth={2.25} />
-              </button>
-            </div>
-          ))}
+          {pendingAttachments.map((att, i) => {
+            const kind = att.kind ?? 'image';
+            return (
+              <div key={i} className="relative">
+                {kind === 'image' ? (
+                  <img src={att.dataUrl} alt={att.name} className="h-16 w-16 rounded-md border border-border object-cover" />
+                ) : (
+                  <div className="flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-md border border-border bg-bg text-text-muted">
+                    {kind === 'video' ? <Film size={18} strokeWidth={1.75} /> : <Mic size={18} strokeWidth={1.75} />}
+                    <span className="px-1 text-[9px] uppercase tracking-wider">{kind === 'video' ? 'Vidéo' : 'Vocal'}</span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setPendingAttachments((prev) => prev.filter((_, idx) => idx !== i))}
+                  aria-label="Retirer la pièce jointe"
+                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-text-secondary hover:text-text-primary"
+                >
+                  <X size={11} strokeWidth={2.25} />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
       {suggestions.length > 0 && (
         <div className="absolute bottom-full left-4 mb-2 w-72 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
           <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
-            Mentionner un site ou un client
+            Mentionner Ajmani, un site ou un client
           </p>
           {suggestions.map((item) => (
             <button
@@ -843,12 +985,14 @@ function Composer({
             >
               {item.kind === 'site' ? (
                 <Globe size={14} strokeWidth={1.75} className="text-text-muted" />
-              ) : (
+              ) : item.kind === 'client' ? (
                 <Building2 size={14} strokeWidth={1.75} className="text-text-muted" />
+              ) : (
+                <Sparkles size={14} strokeWidth={1.75} className="text-accent" />
               )}
               <span className="min-w-0 flex-1 truncate">{item.name}</span>
               <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">
-                {item.kind === 'site' ? 'Site' : 'Client'}
+                {item.kind === 'site' ? 'Site' : item.kind === 'client' ? 'Client' : 'IA'}
               </span>
             </button>
           ))}
@@ -859,7 +1003,7 @@ function Composer({
         <input
           ref={fileRef}
           type="file"
-          accept="image/*"
+          accept="image/*,video/mp4,video/quicktime,video/webm"
           multiple
           className="hidden"
           onChange={(e) => {
@@ -870,11 +1014,13 @@ function Composer({
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          aria-label="Joindre une image"
+          aria-label="Joindre une image ou une vidéo"
+          title="Image ou vidéo"
           className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
         >
           <ImageIcon size={16} strokeWidth={1.75} />
         </button>
+        <VoiceRecorder onRecorded={(att) => setPendingAttachments((prev) => [...prev, att])} />
         <div className="relative flex-shrink-0">
           <button
             type="button"
@@ -968,7 +1114,7 @@ function Composer({
             }
           }}
           rows={1}
-          placeholder="Écrire un message… (@ pour mentionner un site ou un client)"
+          placeholder="Écrire un message… (@Ajmani pour l’IA, @ pour un site ou client)"
           className="max-h-32 flex-1 resize-none bg-transparent py-1.5 text-sm text-text-primary outline-none placeholder:text-text-muted"
         />
         <button

@@ -15,7 +15,9 @@ import {
   CornerDownLeft,
   GraduationCap,
   Globe,
+  Images,
   LayoutDashboard,
+  NotebookPen,
   Radar,
   Scale,
   Search,
@@ -25,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useRemoteSites } from '../../state/RemoteSitesContext';
 import { useCollection } from '../../state/SyncContext';
+import { useNotes } from '../../state/useNotes';
 import { useSitePanel } from '../site-panel/SitePanelContext';
 import { useAssistant } from '../../assistant/AssistantContext';
 import { StatusBadge } from '../StatusBadge';
@@ -55,6 +58,8 @@ const NAV_COMMANDS: Extract<Command, { kind: 'nav' }>[] = [
   { kind: 'nav', id: 'nav-tracker', label: 'Tracker', icon: Radar, to: '/tracker' },
   { kind: 'nav', id: 'nav-decisions', label: 'Décisions', icon: Scale, to: '/decisions' },
   { kind: 'nav', id: 'nav-knowledge', label: 'Connaissances', icon: BookOpen, to: '/knowledge' },
+  { kind: 'nav', id: 'nav-notes', label: 'Notes', icon: NotebookPen, to: '/notes' },
+  { kind: 'nav', id: 'nav-media', label: 'Médias', icon: Images, to: '/media' },
   { kind: 'nav', id: 'nav-learning', label: 'Progression', icon: GraduationCap, to: '/learning' },
   { kind: 'nav', id: 'nav-settings', label: 'Paramètres', icon: Settings, to: '/settings' },
 ];
@@ -114,6 +119,7 @@ function CommandPaletteModal({
   const tasks = useCollection<{ title: string }>('tasks');
   const decisions = useCollection<{ title: string }>('decisions');
   const knowledge = useCollection<{ title: string }>('knowledge');
+  const { notes } = useNotes();
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -146,17 +152,26 @@ function CommandPaletteModal({
     // so the default palette stays a clean navigation list.
     const recordCommands: Command[] = q
       ? [
-          ...tasks.map((t) => ({ label: t.title, to: '/tasks', hint: 'Tâche', icon: CheckSquare, key: `task-${t.id}` })),
-          ...decisions.map((d) => ({ label: d.title, to: '/decisions', hint: 'Décision', icon: Scale, key: `dec-${d.id}` })),
-          ...knowledge.map((k) => ({ label: k.title, to: '/knowledge', hint: 'Document', icon: BookOpen, key: `kb-${k.id}` })),
+          ...tasks.map((t) => ({ label: t.title || '', to: '/tasks', hint: 'Tâche', icon: CheckSquare, key: `task-${t.id}`, searchText: (t.title || '').toLowerCase() })),
+          ...decisions.map((d) => ({ label: d.title || '', to: '/decisions', hint: 'Décision', icon: Scale, key: `dec-${d.id}`, searchText: (d.title || '').toLowerCase() })),
+          ...knowledge.map((k) => ({ label: k.title || '', to: '/knowledge', hint: 'Document', icon: BookOpen, key: `kb-${k.id}`, searchText: (k.title || '').toLowerCase() })),
+          // Notes match on their body too, not just the title.
+          ...notes.map((n) => ({
+            label: n.title || n.body.slice(0, 40) || 'Note sans titre',
+            to: '/notes',
+            hint: n.scope === 'personal' ? 'Note perso' : 'Note équipe',
+            icon: NotebookPen,
+            key: `note-${n.id}`,
+            searchText: `${n.title} ${n.body}`.toLowerCase(),
+          })),
         ]
-          .filter((r) => r.label && r.label.toLowerCase().includes(q))
-          .slice(0, 8)
+          .filter((r) => r.searchText.includes(q))
+          .slice(0, 10)
           .map((r) => ({ kind: 'record' as const, id: r.key, label: r.label, to: r.to, hint: r.hint, icon: r.icon }))
       : [];
 
     return [...navCommands, ...actionCommands, ...siteCommands, ...recordCommands];
-  }, [query, openAssistant, sites, tasks, decisions, knowledge]);
+  }, [query, openAssistant, sites, tasks, decisions, knowledge, notes]);
 
   // Reset transient state whenever the palette opens.
   useEffect(() => {

@@ -27,7 +27,7 @@ import { searchableText } from './conversations';
 import { ReportBlocks } from './ReportBlocks';
 import { PrintPortal } from './PrintPortal';
 import type { AssistantReport, ChatMessage } from './types';
-import type { WatchFeedResult } from '../shared/api';
+import type { WatchFeedResult, WatchItem } from '../shared/api';
 
 const PANEL_SPRING = { type: 'spring' as const, stiffness: 340, damping: 34 };
 
@@ -682,9 +682,25 @@ function ThinkingIndicator() {
 
 function SummaryTab() {
   const { sites, eventsBySite } = useRemoteSites();
+  // Pull the watch feed so the daily summary can cover BOTH veille categories
+  // (Bloc 4). Uses the cached list (no forced refresh) — cheap and offline-safe.
+  const [watchItems, setWatchItems] = useState<WatchItem[]>([]);
+  useEffect(() => {
+    let active = true;
+    bridge()
+      .watch.list()
+      .then((r) => active && setWatchItems(r.items))
+      .catch(() => {
+        /* no veille available (browser fallback) — summary just omits it */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const summary = useMemo(
-    () => getDailySummary(sites, eventsBySite),
-    [sites, eventsBySite],
+    () => getDailySummary(sites, eventsBySite, watchItems),
+    [sites, eventsBySite, watchItems],
   );
   const time = new Date(summary.generatedAt).toLocaleTimeString('fr-FR', {
     hour: '2-digit',
@@ -714,14 +730,24 @@ function SummaryTab() {
 const WATCH_CATEGORY_STYLE: Record<string, string> = {
   Cybersécurité: 'bg-accent-muted text-accent',
   Vulnérabilité: 'bg-danger-muted text-danger',
+  'Actu tech': 'bg-success-muted text-success',
   IA: 'bg-success-muted text-success',
   Anthropic: 'bg-warning-muted text-warning',
 };
+
+type WatchGroup = 'all' | 'security' | 'tech';
+
+const WATCH_GROUP_TABS: Array<{ key: WatchGroup; label: string }> = [
+  { key: 'all', label: 'Tout' },
+  { key: 'security', label: 'Cybersécurité' },
+  { key: 'tech', label: 'Actu monde tech' },
+];
 
 function WatchTab() {
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [feed, setFeed] = useState<WatchFeedResult | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [group, setGroup] = useState<WatchGroup>('all');
   const activeRef = useRef(true);
 
   useEffect(() => {
@@ -772,14 +798,15 @@ function WatchTab() {
       .finally(() => activeRef.current && setRefreshing(false));
   };
 
-  const items = feed?.items ?? [];
+  const allItems = feed?.items ?? [];
+  const items = allItems.filter((it) => group === 'all' || (it.group ?? 'security') === group);
   const isElectron = bridge().env.isElectron;
 
   return (
     <div className="h-full overflow-y-auto px-6 py-5">
       <div className="mb-4 flex items-start justify-between gap-3">
         <p className="text-sm text-text-secondary">
-          Veille cybersécurité — flux publics CERT-FR (ANSSI) et The Hacker News.
+          Veille — cybersécurité (CERT-FR/ANSSI, The Hacker News) &amp; actu tech (Hacker News, TechCrunch, Ars Technica).
         </p>
         <div className="flex flex-shrink-0 items-center gap-2">
           {feed?.fetchedAt && (
@@ -805,6 +832,27 @@ function WatchTab() {
             </button>
           )}
         </div>
+      </div>
+
+      {/* Category filter (Bloc 4): Cybersécurité vs Actu monde tech. */}
+      <div className="mb-4 flex items-center gap-1 border-b border-border">
+        {WATCH_GROUP_TABS.map((t) => {
+          const count = t.key === 'all' ? allItems.length : allItems.filter((it) => (it.group ?? 'security') === t.key).length;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setGroup(t.key)}
+              className={`relative -mb-px px-3 py-2 text-xs font-medium transition-colors ${
+                group === t.key ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              {t.label}
+              {count > 0 && <span className="ml-1.5 text-text-muted">{count}</span>}
+              {group === t.key && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-accent" />}
+            </button>
+          );
+        })}
       </div>
 
       {feed?.degraded && items.length > 0 && (

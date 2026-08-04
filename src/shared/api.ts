@@ -91,6 +91,8 @@ export interface WatchItem {
   id: string;
   /** Free-text category (feed-derived), e.g. "Vulnérabilité", "Cybersécurité". */
   category: string;
+  /** Top-level grouping used by the UI filter. Absent (old cache) means 'security'. */
+  group?: 'security' | 'tech';
   title: string;
   summary: string;
   source: string;
@@ -110,9 +112,18 @@ export interface WatchFeedResult {
 }
 
 export interface MessageAttachment {
-  /** Data-URL of an inline image. Kept small (client-side resized before send). */
+  /**
+   * Data-URL of an inline media file. Images are client-side resized before
+   * send; short videos and voice notes are embedded as-is (size-capped in the
+   * composer). Kept inline so the existing `messages` sync path carries them
+   * unchanged — see the composer's size guard.
+   */
   dataUrl: string;
   name: string;
+  /** Media kind. Absent means 'image' (backwards-compatible with old records). */
+  kind?: 'image' | 'video' | 'audio';
+  /** Original MIME type, used to pick the right <video>/<audio> source type. */
+  mime?: string;
 }
 
 export interface MessageReaction {
@@ -455,7 +466,8 @@ export type SyncedCollection =
   | 'profiles'
   | 'clients'
   | 'quotes'
-  | 'trackers';
+  | 'trackers'
+  | 'notes';
 
 export interface PresenceEntry {
   email: string;
