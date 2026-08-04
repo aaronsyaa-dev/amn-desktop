@@ -1,0 +1,1164 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ArrowRight, FileText, Globe, ImagePlus, Info, Mail, Phone, Plus, Printer, X } from 'lucide-react';
+import { bridge } from '../lib/bridge';
+import { relativeTime } from '../lib/time';
+import { staggerContainer, staggerItem } from '../lib/transitions';
+import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
+import { useSitePanel } from '../components/site-panel/SitePanelContext';
+import { StatusBadge } from '../components/StatusBadge';
+import {
+  computeClientHealth,
+  computeClientHealthBreakdown,
+  CLIENT_HEALTH_META,
+  CLIENT_HEALTH_EXPLAINER,
+} from '../lib/clientHealth';
+import { Skeleton } from '../components/Skeleton';
+import { SaveIndicator } from '../components/SaveIndicator';
+import { ConfirmDelete } from '../components/ConfirmDelete';
+import { trackerCatalog } from '../data/trackerCatalog';
+import { QuotePrintPortal } from '../assistant/QuotePrintPortal';
+import type {
+  Client,
+  ClientStatus,
+  CreateClientInput,
+  CreateQuoteInput,
+  PaymentStatus,
+  Quote,
+  QuoteStatus,
+  UpdateClientInput,
+} from '../shared/api';
+
+const STATUS_META: Record<
+  ClientStatus,
+  { label: string; dot: string; text: string }
+> = {
+  active: { label: 'ACTIF', dot: 'bg-success', text: 'text-text-primary' },
+  paused: {
+    label: 'EN PAUSE',
+    dot: 'border border-text-muted bg-transparent',
+    text: 'text-text-secondary',
+  },
+  prospect: { label: 'PROSPECT', dot: 'bg-text-muted', text: 'text-text-secondary' },
+};
+
+const STATUS_ORDER: ClientStatus[] = ['active', 'paused', 'prospect'];
+
+const QUOTE_STATUS_META: Record<QuoteStatus, { label: string; dot: string }> = {
+  draft: { label: 'BROUILLON', dot: 'bg-text-muted' },
+  sent: { label: 'ENVOYÉ', dot: 'border border-text-secondary bg-transparent' },
+  accepted: { label: 'ACCEPTÉ', dot: 'bg-success' },
+  refused: { label: 'REFUSÉ', dot: 'bg-danger' },
+};
+const QUOTE_STATUS_ORDER: QuoteStatus[] = ['draft', 'sent', 'accepted', 'refused'];
+
+const PAYMENT_META: Record<PaymentStatus, { label: string; dot: string; text: string }> = {
+  unpaid: { label: 'Non facturé', dot: 'bg-text-muted', text: 'text-text-secondary' },
+  pending: { label: 'En attente', dot: 'bg-warning', text: 'text-text-secondary' },
+  paid: { label: 'Payé', dot: 'bg-success', text: 'text-text-primary' },
+  late: { label: 'En retard', dot: 'bg-danger', text: 'text-danger' },
+};
+const PAYMENT_ORDER: PaymentStatus[] = ['unpaid', 'pending', 'paid', 'late'];
+
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('');
+}
+
+export function ClientsScreen() {
+  const { sites } = useRemoteSites();
+  const location = useLocation();
+  // A @client mention (or any navigation) can request a specific client be
+  // opened via router state: navigate('/clients', { state: { focusClientId } }).
+  const focusClientId = (location.state as { focusClientId?: number } | null)?.focusClientId ?? null;
+  const [clients, setClients] = useState<Client[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([bridge().clients.list(), bridge().quotes.list()]).then(([clientList, quoteList]) => {
+      if (!active) return;
+      setClients(clientList);
+      setQuotes(quoteList);
+      setSelectedId((prev) => prev ?? clientList[0]?.id ?? null);
+      setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Honour a requested client focus once the list is loaded (and again if the
+  // navigation target changes while the screen stays mounted).
+  useEffect(() => {
+    if (focusClientId != null && clients.some((c) => c.id === focusClientId)) {
+      setSelectedId(focusClientId);
+    }
+  }, [focusClientId, clients]);
+
+  const selected = useMemo(
+    () => clients.find((c) => c.id === selectedId) ?? null,
+    [clients, selectedId],
+  );
+
+  const replaceClient = (updated: Client) =>
+    setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+
+  const replaceQuote = (updated: Quote) =>
+    setQuotes((prev) => prev.map((q) => (q.id === updated.id ? updated : q)));
+
+  const patch = async (id: number, p: UpdateClientInput) => {
+    const updated = await bridge().clients.update(id, p);
+    replaceClient(updated);
+  };
+
+  const addEvent = async (id: number, title: string, detail: string) => {
+    const updated = await bridge().clients.addEvent({ clientId: id, title, detail });
+    replaceClient(updated);
+  };
+
+  const createClient = async (input: CreateClientInput) => {
+    const created = await bridge().clients.create(input);
+    setClients((prev) =>
+      [...prev, created].sort((a, b) => a.name.localeCompare(b.name, 'fr')),
+    );
+    setSelectedId(created.id);
+    setAdding(false);
+  };
+
+  const createQuote = async (input: CreateQuoteInput) => {
+    const created = await bridge().quotes.create(input);
+    setQuotes((prev) => [created, ...prev]);
+    return created;
+  };
+
+  const patchQuote = async (id: number, p: { status?: QuoteStatus; paymentStatus?: PaymentStatus }) => {
+    const updated = await bridge().quotes.update(id, p);
+    replaceQuote(updated);
+  };
+
+  const removeQuote = async (id: number) => {
+    setQuotes((prev) => prev.filter((q) => q.id !== id));
+    await bridge().quotes.remove(id);
+  };
+
+  return (
+    <section className="flex h-[calc(100vh-8rem)] flex-col gap-4">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-text-primary">
+            Clients
+          </h1>
+          <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
+            {clients.length} fiches · relation & missions
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="flex items-center gap-2 bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
+        >
+          <Plus size={16} strokeWidth={2.25} />
+          Nouveau client
+        </button>
+      </div>
+
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[300px_1fr]">
+        <ClientList
+          clients={clients}
+          sites={sites}
+          loading={loading}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+        />
+        {selected ? (
+          <ClientDetail
+            key={selected.id}
+            client={selected}
+            sites={sites}
+            quotes={quotes.filter((q) => q.clientId === selected.id)}
+            onPatch={patch}
+            onAddEvent={addEvent}
+            onCreateQuote={createQuote}
+            onPatchQuote={patchQuote}
+            onRemoveQuote={removeQuote}
+          />
+        ) : (
+          <div className="flex items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted">
+            {loading ? 'Chargement…' : 'Aucun client'}
+          </div>
+        )}
+      </div>
+
+      {adding && (
+        <NewClientModal onClose={() => setAdding(false)} onCreate={createClient} />
+      )}
+    </section>
+  );
+}
+
+function ClientList({
+  clients,
+  sites,
+  loading,
+  selectedId,
+  onSelect,
+}: {
+  clients: Client[];
+  sites: DerivedSite[];
+  loading: boolean;
+  selectedId: number | null;
+  onSelect: (id: number) => void;
+}) {
+  return (
+    <div className="flex min-h-0 flex-col border border-border bg-surface">
+      <div className="border-b border-border px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary">
+        Répertoire
+      </div>
+      <motion.div
+        variants={staggerContainer}
+        initial="initial"
+        animate="animate"
+        className="flex-1 divide-y divide-border/60 overflow-y-auto"
+      >
+        {loading ? (
+          <div className="space-y-2 p-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 px-1 py-1.5">
+                <Skeleton className="h-9 w-9 flex-shrink-0 rounded-sm" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-3 w-2/3 rounded-sm" />
+                  <Skeleton className="h-2.5 w-1/3 rounded-sm" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          clients.map((client) => {
+            const meta = STATUS_META[client.status];
+            const health = CLIENT_HEALTH_META[computeClientHealth(client, sites)];
+            const active = client.id === selectedId;
+            return (
+              <motion.button
+                key={client.id}
+                variants={staggerItem}
+                type="button"
+                onClick={() => onSelect(client.id)}
+                className={`relative flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-150 ${
+                  active ? 'bg-surface-hover' : 'hover:bg-surface-hover'
+                }`}
+              >
+                {active && (
+                  <span className="absolute left-0 top-0 h-full w-0.5 bg-accent" />
+                )}
+                <Avatar client={client} size={38} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-text-primary">
+                    {client.name}
+                  </p>
+                  <p className="truncate font-mono text-[11px] text-text-muted">
+                    {client.company || '—'}
+                  </p>
+                </div>
+                <span
+                  className="flex flex-col items-center gap-1.5"
+                  title={`Statut : ${meta.label}\nSanté relation : ${health.label} — ${health.hint}`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+                  <span className={`h-1.5 w-1.5 rounded-full ${health.dot}`} />
+                </span>
+              </motion.button>
+            );
+          })
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
+function Avatar({ client, size }: { client: Client; size: number }) {
+  if (client.imageDataUrl) {
+    return (
+      <img
+        src={client.imageDataUrl}
+        alt={client.name}
+        style={{ width: size, height: size }}
+        className="flex-shrink-0 rounded-sm object-cover"
+      />
+    );
+  }
+  return (
+    <span
+      style={{ width: size, height: size }}
+      className="flex flex-shrink-0 items-center justify-center rounded-sm border border-border bg-bg font-mono text-xs font-semibold text-text-secondary"
+    >
+      {initials(client.name)}
+    </span>
+  );
+}
+
+function ClientDetail({
+  client,
+  sites,
+  quotes,
+  onPatch,
+  onAddEvent,
+  onCreateQuote,
+  onPatchQuote,
+  onRemoveQuote,
+}: {
+  client: Client;
+  sites: DerivedSite[];
+  quotes: Quote[];
+  onPatch: (id: number, p: UpdateClientInput) => Promise<void>;
+  onAddEvent: (id: number, title: string, detail: string) => Promise<void>;
+  onCreateQuote: (input: CreateQuoteInput) => Promise<Quote>;
+  onPatchQuote: (id: number, p: { status?: QuoteStatus; paymentStatus?: PaymentStatus }) => Promise<void>;
+  onRemoveQuote: (id: number) => Promise<void>;
+}) {
+  return (
+    <div className="min-h-0 overflow-y-auto border border-border bg-surface">
+      <ClientHeader client={client} sites={sites} onPatch={onPatch} />
+      <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-2">
+        <div className="flex flex-col gap-6">
+          <ContactBlock client={client} onPatch={onPatch} />
+          <LinkedSitesBlock client={client} sites={sites} onPatch={onPatch} />
+          <NotesBlock client={client} onPatch={onPatch} />
+        </div>
+        <div className="flex flex-col gap-6">
+          <QuotesBlock client={client} quotes={quotes} onCreate={onCreateQuote} onPatch={onPatchQuote} onRemove={onRemoveQuote} />
+          <TimelineBlock client={client} onAddEvent={onAddEvent} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ClientHeader({
+  client,
+  sites,
+  onPatch,
+}: {
+  client: Client;
+  sites: DerivedSite[];
+  onPatch: (id: number, p: UpdateClientInput) => Promise<void>;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const breakdown = computeClientHealthBreakdown(client, sites);
+  const health = CLIENT_HEALTH_META[breakdown.health];
+  const [healthOpen, setHealthOpen] = useState(false);
+
+  const onFile = (file: File | undefined) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () =>
+      onPatch(client.id, { imageDataUrl: String(reader.result) });
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div className="flex flex-col gap-4 border-b border-border p-6 sm:flex-row sm:items-center">
+      <button
+        type="button"
+        onClick={() => fileRef.current?.click()}
+        className="group relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-sm border border-border-strong bg-bg"
+        title="Changer l’image"
+      >
+        {client.imageDataUrl ? (
+          <img
+            src={client.imageDataUrl}
+            alt={client.name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center font-mono text-xl font-semibold text-text-secondary">
+            {initials(client.name)}
+          </span>
+        )}
+        <span className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+          <ImagePlus size={18} strokeWidth={1.75} className="text-white" />
+        </span>
+      </button>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => onFile(e.target.files?.[0])}
+      />
+
+      <div className="min-w-0 flex-1">
+        <InlineField
+          value={client.name}
+          onSave={(v) => onPatch(client.id, { name: v })}
+          className="text-xl font-bold text-text-primary"
+          placeholder="Nom du client"
+        />
+        <InlineField
+          value={client.company}
+          onSave={(v) => onPatch(client.id, { company: v })}
+          className="font-mono text-sm text-text-secondary"
+          placeholder="Société"
+        />
+        <button
+          type="button"
+          onClick={() => setHealthOpen((v) => !v)}
+          className="group/health mt-2 inline-flex items-center gap-1.5 border border-border px-2 py-1 transition-colors hover:border-border-strong"
+          title={CLIENT_HEALTH_EXPLAINER}
+        >
+          <span className={`h-2 w-2 rounded-full ${health.dot}`} />
+          <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Santé relation</span>
+          <span className={`text-xs font-semibold ${health.text}`}>{health.label}</span>
+          <Info size={11} strokeWidth={2} className="text-text-muted" />
+        </button>
+
+        {healthOpen && (
+          <div className="mt-2 max-w-md border border-border bg-bg p-3">
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">{CLIENT_HEALTH_EXPLAINER}</p>
+            <div className="flex flex-col gap-1.5">
+              {breakdown.factors.map((f) => (
+                <div key={f.label} className="flex items-center justify-between gap-3 text-xs">
+                  <span className="text-text-secondary">{f.label}</span>
+                  <span
+                    className={`flex items-center gap-1.5 font-medium ${
+                      f.tone === 'bad' ? 'text-danger' : f.tone === 'medium' ? 'text-warning' : 'text-text-primary'
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        f.tone === 'bad' ? 'bg-danger' : f.tone === 'medium' ? 'bg-warning' : 'bg-success'
+                      }`}
+                    />
+                    {f.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {breakdown.toImprove.length > 0 && (
+              <div className="mt-2.5 border-t border-border/60 pt-2">
+                <p className="mb-1 font-mono text-[10px] uppercase tracking-widest text-text-muted">Pour l’améliorer</p>
+                <ul className="flex flex-col gap-1">
+                  {breakdown.toImprove.map((t, i) => (
+                    <li key={i} className="flex gap-1.5 text-[11px] leading-snug text-text-secondary">
+                      <ArrowRight size={11} strokeWidth={2} className="mt-0.5 flex-shrink-0 text-text-muted" />
+                      {t}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {breakdown.toImprove.length === 0 && (
+              <p className="mt-2 text-[11px] text-success">Relation au vert — rien à faire pour l’instant.</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      <StatusSelector
+        value={client.status}
+        onChange={(status) => onPatch(client.id, { status })}
+      />
+    </div>
+  );
+}
+
+function LinkedSitesBlock({
+  client,
+  sites,
+  onPatch,
+}: {
+  client: Client;
+  sites: DerivedSite[];
+  onPatch: (id: number, p: UpdateClientInput) => Promise<void>;
+}) {
+  const { openSite } = useSitePanel();
+
+  const toggle = (siteId: string) => {
+    const next = client.linkedSiteIds.includes(siteId)
+      ? client.linkedSiteIds.filter((id) => id !== siteId)
+      : [...client.linkedSiteIds, siteId];
+    onPatch(client.id, { linkedSiteIds: next });
+  };
+
+  return (
+    <div>
+      <BlockTitle>Sites liés</BlockTitle>
+      {sites.length === 0 ? (
+        <p className="text-xs text-text-muted">
+          Aucun site enregistré. La santé du client se base uniquement sur la date du dernier contact.
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {sites.map((site) => {
+            const linked = client.linkedSiteIds.includes(site.id);
+            return (
+              <span
+                key={site.id}
+                className={`flex items-center gap-1.5 border px-2 py-1 text-xs ${
+                  linked ? 'border-border-strong bg-accent-muted text-text-primary' : 'border-border text-text-muted'
+                }`}
+              >
+                <button type="button" onClick={() => toggle(site.id)} className="flex items-center gap-1.5">
+                  <Globe size={11} strokeWidth={1.75} />
+                  {site.name}
+                </button>
+                {linked && (
+                  <>
+                    <StatusBadge status={site.status} />
+                    <button
+                      type="button"
+                      onClick={() => openSite(site.id)}
+                      className="text-text-muted hover:text-text-primary"
+                      title="Voir la fiche du site"
+                    >
+                      ↗
+                    </button>
+                  </>
+                )}
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatusSelector({
+  value,
+  onChange,
+}: {
+  value: ClientStatus;
+  onChange: (s: ClientStatus) => void;
+}) {
+  return (
+    <div className="flex flex-shrink-0 border border-border">
+      {STATUS_ORDER.map((status) => {
+        const meta = STATUS_META[status];
+        const active = status === value;
+        return (
+          <button
+            key={status}
+            type="button"
+            onClick={() => onChange(status)}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider transition-colors ${
+              active
+                ? 'bg-accent-muted text-text-primary'
+                : 'text-text-muted hover:text-text-secondary'
+            }`}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+            {meta.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ContactBlock({
+  client,
+  onPatch,
+}: {
+  client: Client;
+  onPatch: (id: number, p: UpdateClientInput) => Promise<void>;
+}) {
+  return (
+    <div>
+      <BlockTitle>Contact</BlockTitle>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2.5 border border-border bg-bg px-3 py-2">
+          <Mail size={14} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
+          <InlineField
+            value={client.email}
+            onSave={(v) => onPatch(client.id, { email: v })}
+            className="w-full font-mono text-sm text-text-primary"
+            placeholder="email@exemple.com"
+          />
+        </div>
+        <div className="flex items-center gap-2.5 border border-border bg-bg px-3 py-2">
+          <Phone size={14} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
+          <InlineField
+            value={client.phone}
+            onSave={(v) => onPatch(client.id, { phone: v })}
+            className="w-full font-mono text-sm text-text-primary"
+            placeholder="+33 …"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NotesBlock({
+  client,
+  onPatch,
+}: {
+  client: Client;
+  onPatch: (id: number, p: UpdateClientInput) => Promise<void>;
+}) {
+  const [notes, setNotes] = useState(client.notes);
+  const [saved, setSaved] = useState(true);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setNotes(client.notes);
+    setSaved(true);
+  }, [client.id, client.notes]);
+
+  const onChange = (value: string) => {
+    setNotes(value);
+    setSaved(false);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      onPatch(client.id, { notes: value }).then(() => setSaved(true));
+    }, 600);
+  };
+
+  return (
+    <div className="flex flex-1 flex-col">
+      <BlockTitle aside={<SaveIndicator saved={saved} />}>
+        Notes
+      </BlockTitle>
+      <textarea
+        value={notes}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Notes libres sur le client…"
+        className="input-focus min-h-[120px] flex-1 resize-none border border-border bg-bg p-3 text-sm leading-relaxed text-text-primary outline-none placeholder:text-text-muted"
+      />
+    </div>
+  );
+}
+
+function TimelineBlock({
+  client,
+  onAddEvent,
+}: {
+  client: Client;
+  onAddEvent: (id: number, title: string, detail: string) => Promise<void>;
+}) {
+  const [title, setTitle] = useState('');
+
+  const submit = () => {
+    const t = title.trim();
+    if (!t) return;
+    onAddEvent(client.id, t, '');
+    setTitle('');
+  };
+
+  return (
+    <div className="flex flex-col">
+      <BlockTitle>Historique</BlockTitle>
+      <div className="mb-3 flex gap-2">
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && submit()}
+          placeholder="Ajouter un échange / une mission…"
+          className="input-focus flex-1 border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-muted"
+        />
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!title.trim()}
+          className="flex items-center justify-center border border-border-strong bg-surface px-3 text-text-primary transition-colors hover:bg-surface-hover disabled:opacity-40"
+        >
+          <Plus size={16} strokeWidth={2} />
+        </button>
+      </div>
+
+      <ol className="relative">
+        {client.events.length === 0 && (
+          <li className="font-mono text-xs text-text-muted">Aucun échange.</li>
+        )}
+        {client.events.map((event, i) => (
+          <li key={event.id} className="relative flex gap-3 pb-4 last:pb-0">
+            {i !== client.events.length - 1 && (
+              <span className="absolute left-[3px] top-3 bottom-0 w-px bg-border" />
+            )}
+            <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-text-secondary" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="truncate text-sm font-medium text-text-primary">
+                  {event.title}
+                </p>
+                <time className="flex-shrink-0 font-mono text-[10px] uppercase tracking-wide text-text-muted">
+                  {relativeTime(event.date).replace('il y a ', '')}
+                </time>
+              </div>
+              {event.detail && (
+                <p className="text-xs text-text-secondary">{event.detail}</p>
+              )}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function QuotesBlock({
+  client,
+  quotes,
+  onCreate,
+  onPatch,
+  onRemove,
+}: {
+  client: Client;
+  quotes: Quote[];
+  onCreate: (input: CreateQuoteInput) => Promise<Quote>;
+  onPatch: (id: number, p: { status?: QuoteStatus; paymentStatus?: PaymentStatus }) => Promise<void>;
+  onRemove: (id: number) => Promise<void>;
+}) {
+  const [creating, setCreating] = useState(false);
+  const [printing, setPrinting] = useState<Quote | null>(null);
+
+  return (
+    <div>
+      <BlockTitle
+        aside={
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-text-secondary hover:text-text-primary"
+          >
+            <Plus size={12} strokeWidth={2.25} />
+            Nouveau devis
+          </button>
+        }
+      >
+        Devis
+      </BlockTitle>
+      {quotes.length === 0 ? (
+        <p className="text-xs text-text-muted">Aucun devis pour ce client.</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {quotes.map((quote) => (
+            <QuoteRow
+              key={quote.id}
+              quote={quote}
+              onPatch={onPatch}
+              onPrint={() => setPrinting(quote)}
+              onRemove={() => onRemove(quote.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      {creating && (
+        <NewQuoteModal client={client} onClose={() => setCreating(false)} onCreate={onCreate} />
+      )}
+      {printing && (
+        <QuotePrintPortal quote={printing} client={client} onDone={() => setPrinting(null)} />
+      )}
+    </div>
+  );
+}
+
+function QuoteRow({
+  quote,
+  onPatch,
+  onPrint,
+  onRemove,
+}: {
+  quote: Quote;
+  onPatch: (id: number, p: { status?: QuoteStatus; paymentStatus?: PaymentStatus }) => Promise<void>;
+  onPrint: () => void;
+  onRemove: () => void;
+}) {
+  const offer = trackerCatalog.find((o) => o.id === quote.trackerTier);
+  const statusMeta = QUOTE_STATUS_META[quote.status];
+  const paymentMeta = PAYMENT_META[quote.paymentStatus];
+
+  return (
+    <div className="border border-border bg-bg p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-text-primary">{quote.title}</p>
+          <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+            {offer?.name ?? quote.trackerTier} · {quote.priceEuro.toLocaleString('fr-FR')} €
+          </p>
+        </div>
+        <div className="flex flex-shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={onPrint}
+            aria-label="Imprimer / exporter en PDF"
+            className="flex h-6 w-6 items-center justify-center rounded text-text-muted hover:bg-surface-hover hover:text-text-primary"
+          >
+            <Printer size={14} strokeWidth={1.75} />
+          </button>
+          <ConfirmDelete onConfirm={onRemove} label="Supprimer le devis" />
+        </div>
+      </div>
+
+      <div className="mt-2.5 flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-1.5">
+          <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">Statut</span>
+          <select
+            value={quote.status}
+            onChange={(e) => onPatch(quote.id, { status: e.target.value as QuoteStatus })}
+            className="input-focus border border-border bg-surface px-1.5 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary outline-none"
+          >
+            {QUOTE_STATUS_ORDER.map((s) => (
+              <option key={s} value={s}>
+                {QUOTE_STATUS_META[s].label}
+              </option>
+            ))}
+          </select>
+          <span className={`h-1.5 w-1.5 rounded-full ${statusMeta.dot}`} />
+        </label>
+
+        <label className="flex items-center gap-1.5">
+          <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">Paiement</span>
+          <select
+            value={quote.paymentStatus}
+            onChange={(e) => onPatch(quote.id, { paymentStatus: e.target.value as PaymentStatus })}
+            className="input-focus border border-border bg-surface px-1.5 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary outline-none"
+          >
+            {PAYMENT_ORDER.map((s) => (
+              <option key={s} value={s}>
+                {PAYMENT_META[s].label}
+              </option>
+            ))}
+          </select>
+          <span className={`h-1.5 w-1.5 rounded-full ${paymentMeta.dot}`} />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function NewQuoteModal({
+  client,
+  onClose,
+  onCreate,
+}: {
+  client: Client;
+  onClose: () => void;
+  onCreate: (input: CreateQuoteInput) => Promise<Quote>;
+}) {
+  const [step, setStep] = useState(0);
+  const [trackerTier, setTrackerTier] = useState(trackerCatalog[0].id);
+  const [priceEuro, setPriceEuro] = useState('');
+  const [title, setTitle] = useState('');
+  const [detail, setDetail] = useState('');
+
+  const steps = ['Offre', 'Tarif', 'Mission'];
+
+  const submit = async () => {
+    if (!title.trim() || !priceEuro) return;
+    await onCreate({
+      clientId: client.id,
+      title: title.trim(),
+      detail: detail.trim(),
+      trackerTier,
+      priceEuro: Number(priceEuro),
+    });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.98, y: -6 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+        className="relative w-full max-w-lg border border-border-strong bg-surface"
+      >
+        <div className="flex items-center justify-between border-b border-border px-5 py-3">
+          <h2 className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">
+            <FileText size={14} strokeWidth={1.75} />
+            Nouveau devis · {client.name}
+          </h2>
+          <button type="button" onClick={onClose} aria-label="Fermer" className="text-text-secondary hover:text-text-primary">
+            <X size={18} strokeWidth={2} />
+          </button>
+        </div>
+
+        <div className="flex border-b border-border">
+          {steps.map((s, i) => (
+            <div
+              key={s}
+              className={`flex-1 px-3 py-2 text-center font-mono text-[10px] uppercase tracking-widest ${
+                i === step ? 'bg-accent-muted text-text-primary' : 'text-text-muted'
+              }`}
+            >
+              {i + 1}. {s}
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-col gap-3 p-5">
+          {step === 0 && (
+            <div className="flex flex-col gap-2">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                Quelle offre proposer ?
+              </p>
+              {trackerCatalog.map((offer) => (
+                <button
+                  key={offer.id}
+                  type="button"
+                  onClick={() => setTrackerTier(offer.id)}
+                  className={`flex flex-col items-start gap-0.5 border px-3 py-2.5 text-left transition-colors ${
+                    trackerTier === offer.id
+                      ? 'border-border-strong bg-accent-muted'
+                      : 'border-border hover:border-border-strong'
+                  }`}
+                >
+                  <span className="text-sm font-medium text-text-primary">{offer.name}</span>
+                  <span className="text-xs text-text-secondary">{offer.tagline}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {step === 1 && (
+            <label className="flex flex-col gap-1.5">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                Tarif de la mission (€) *
+              </span>
+              <input
+                autoFocus
+                type="number"
+                min={0}
+                value={priceEuro}
+                onChange={(e) => setPriceEuro(e.target.value)}
+                placeholder="ex. 1800"
+                className="input-focus border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
+              />
+            </label>
+          )}
+
+          {step === 2 && (
+            <>
+              <label className="flex flex-col gap-1.5">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                  Titre de la mission *
+                </span>
+                <input
+                  autoFocus
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="ex. Supervision annuelle + audit initial"
+                  className="input-focus border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                  Description (optionnel)
+                </span>
+                <textarea
+                  value={detail}
+                  onChange={(e) => setDetail(e.target.value)}
+                  rows={3}
+                  className="input-focus resize-none border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
+                />
+              </label>
+            </>
+          )}
+
+          <div className="mt-1 flex justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setStep((s) => Math.max(0, s - 1))}
+              disabled={step === 0}
+              className="px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-text-muted hover:text-text-secondary disabled:opacity-0"
+            >
+              Précédent
+            </button>
+            {step < steps.length - 1 ? (
+              <button
+                type="button"
+                onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
+                disabled={step === 1 && !priceEuro}
+                className="bg-accent px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover disabled:opacity-40"
+              >
+                Suivant
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={submit}
+                disabled={!title.trim() || !priceEuro}
+                className="bg-accent px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover disabled:opacity-40"
+              >
+                Créer le devis
+              </button>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function BlockTitle({
+  children,
+  aside,
+}: {
+  children: React.ReactNode;
+  aside?: React.ReactNode;
+}) {
+  return (
+    <div className="mb-2.5 flex items-center justify-between">
+      <h3 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">
+        {children}
+      </h3>
+      {aside}
+    </div>
+  );
+}
+
+/** Text that turns into an input on click and saves on blur/Enter. */
+function InlineField({
+  value,
+  onSave,
+  className,
+  placeholder,
+}: {
+  value: string;
+  onSave: (value: string) => void;
+  className?: string;
+  placeholder?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => setDraft(value), [value]);
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          setEditing(false);
+          if (draft !== value) onSave(draft);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+          if (e.key === 'Escape') {
+            setDraft(value);
+            setEditing(false);
+          }
+        }}
+        placeholder={placeholder}
+        className={`w-full border-b border-border-strong bg-transparent outline-none ${className ?? ''}`}
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className={`block w-full truncate border-b border-transparent text-left hover:border-border ${className ?? ''} ${
+        value ? '' : 'text-text-muted'
+      }`}
+    >
+      {value || placeholder}
+    </button>
+  );
+}
+
+function NewClientModal({
+  onClose,
+  onCreate,
+}: {
+  onClose: () => void;
+  onCreate: (input: CreateClientInput) => Promise<void>;
+}) {
+  const [name, setName] = useState('');
+  const [company, setCompany] = useState('');
+  const [status, setStatus] = useState<ClientStatus>('prospect');
+
+  const submit = () => {
+    if (!name.trim()) return;
+    onCreate({ name: name.trim(), company: company.trim(), status });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.98, y: -6 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+        className="relative w-full max-w-md border border-border-strong bg-surface"
+      >
+        <div className="flex items-center justify-between border-b border-border px-5 py-3">
+          <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">
+            Nouveau client
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fermer"
+            className="text-text-secondary hover:text-text-primary"
+          >
+            <X size={18} strokeWidth={2} />
+          </button>
+        </div>
+        <div className="flex flex-col gap-3 p-5">
+          <label className="flex flex-col gap-1.5">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+              Nom *
+            </span>
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submit()}
+              className="input-focus border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+              Société
+            </span>
+            <input
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submit()}
+              className="input-focus border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
+            />
+          </label>
+          <div className="flex flex-col gap-1.5">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+              Statut
+            </span>
+            <StatusSelector value={status} onChange={setStatus} />
+          </div>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={!name.trim()}
+            className="mt-1 bg-accent px-3 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover disabled:opacity-40"
+          >
+            Créer la fiche
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}

@@ -1,0 +1,192 @@
+@import 'tailwindcss';
+@import '@fontsource/space-grotesk/400.css';
+@import '@fontsource/space-grotesk/500.css';
+@import '@fontsource/space-grotesk/600.css';
+@import '@fontsource/space-grotesk/700.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/jetbrains-mono/700.css';
+
+@theme {
+  --font-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* Surfaces — neutral black & grey, no blue cast */
+  --color-bg: #0a0a0a;
+  --color-surface: #131313;
+  --color-surface-hover: #1c1c1c;
+  --color-border: #262626;
+  --color-border-strong: #3a3a3a;
+
+  /* Text */
+  --color-text-primary: #f2f2f0;
+  --color-text-secondary: #9a9a97;
+  --color-text-muted: #616160;
+
+  /* "Accent" is now a near-white highlight — monochrome, not a colour */
+  --color-accent: #ededed;
+  --color-accent-hover: #ffffff;
+  --color-accent-muted: rgba(255, 255, 255, 0.08);
+
+  /* Status: monochrome, EXCEPT the single reserved signal red for critical */
+  --color-success: #d8d8d5;
+  --color-success-muted: rgba(255, 255, 255, 0.07);
+  --color-warning: #8f8f8c;
+  --color-warning-muted: rgba(255, 255, 255, 0.05);
+  --color-danger: #ff4230;
+  --color-danger-muted: rgba(255, 66, 48, 0.14);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Tabular, monospaced figures for data/timestamps/ids */
+.tnum {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* --- Skeleton loader: monochrome shimmer while data loads --- */
+@keyframes amn-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  background-color: #151515;
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: amn-shimmer 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+/* --- Interactive card: flat, high-contrast, minimal lift. No soft glow. --- */
+.card-interactive {
+  position: relative;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    background-color 0.16s ease;
+  cursor: pointer;
+}
+
+.card-interactive:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-border-strong);
+  background: #171717;
+}
+
+.card-interactive:active {
+  transform: translateY(0);
+  transition-duration: 0.08s;
+}
+
+/* Corner-cut frame — a hard notch for a "control panel" character. */
+.corner-cut {
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+}
+
+/* --- Neutral (white) focus ring for inputs & selects --- */
+.input-focus {
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.input-focus:focus,
+.input-focus:focus-visible {
+  outline: none;
+  border-color: var(--color-border-strong);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+}
+
+button:focus-visible,
+a:focus-visible,
+[role='button']:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.55);
+  outline-offset: 2px;
+}
+
+/* Slim scrollbars */
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.overflow-y-auto::-webkit-scrollbar-thumb,
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #303030;
+  border-radius: 0;
+}
+.overflow-y-auto::-webkit-scrollbar-track,
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* --- Print-to-PDF: show only the light-themed report region --- */
+.print-root {
+  display: none;
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+  body * {
+    visibility: hidden !important;
+  }
+  .print-root,
+  .print-root * {
+    visibility: visible !important;
+  }
+  .print-root {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 32px 40px;
+    background: #fff;
+    color: #111;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  @page {
+    margin: 14mm;
+  }
+}
