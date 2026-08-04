@@ -10,10 +10,15 @@ import type { WatchItem, WatchFeedResult } from '../shared/api';
  * the sources. A source that is unreachable is simply skipped for that refresh;
  * it never breaks the feed (the last good cache, even stale, is served).
  *
- * Sources are reputable and free:
- *  - CERT-FR (the French national CERT, operated by ANSSI): actualité, alertes,
- *    avis. This is the authoritative French-language cyber source.
- *  - The Hacker News: widely-followed general cyber news.
+ * Sources are reputable and free, split into two groups the UI can filter on:
+ *  - group 'security' (Cybersécurité):
+ *      · CERT-FR (the French national CERT, operated by ANSSI) — actualité,
+ *        alertes, avis; the authoritative French-language cyber source.
+ *      · The Hacker News — widely-followed general cyber news.
+ *  - group 'tech' (Actu monde tech, added in Bloc 4):
+ *      · Hacker News (news.ycombinator.com) — tech/startup front page.
+ *      · TechCrunch — tech industry news.
+ *      · Ars Technica — tech, science, policy.
  *
  * NOTE on Anthropic: there is no official public RSS feed for the Anthropic
  * blog/news at time of writing, so it is intentionally omitted rather than
@@ -24,13 +29,19 @@ interface FeedSource {
   name: string;
   url: string;
   category: string;
+  group: 'security' | 'tech';
 }
 
 const FEEDS: FeedSource[] = [
-  { name: 'CERT-FR — Alertes', url: 'https://www.cert.ssi.gouv.fr/alerte/feed/', category: 'Vulnérabilité' },
-  { name: 'CERT-FR — Avis', url: 'https://www.cert.ssi.gouv.fr/avis/feed/', category: 'Vulnérabilité' },
-  { name: 'CERT-FR — Actualité', url: 'https://www.cert.ssi.gouv.fr/feed/', category: 'Cybersécurité' },
-  { name: 'The Hacker News', url: 'https://feeds.feedburner.com/TheHackersNews', category: 'Cybersécurité' },
+  // Cybersécurité
+  { name: 'CERT-FR — Alertes', url: 'https://www.cert.ssi.gouv.fr/alerte/feed/', category: 'Vulnérabilité', group: 'security' },
+  { name: 'CERT-FR — Avis', url: 'https://www.cert.ssi.gouv.fr/avis/feed/', category: 'Vulnérabilité', group: 'security' },
+  { name: 'CERT-FR — Actualité', url: 'https://www.cert.ssi.gouv.fr/feed/', category: 'Cybersécurité', group: 'security' },
+  { name: 'The Hacker News', url: 'https://feeds.feedburner.com/TheHackersNews', category: 'Cybersécurité', group: 'security' },
+  // Actu monde tech (Bloc 4)
+  { name: 'Hacker News', url: 'https://news.ycombinator.com/rss', category: 'Actu tech', group: 'tech' },
+  { name: 'TechCrunch', url: 'https://techcrunch.com/feed/', category: 'Actu tech', group: 'tech' },
+  { name: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/index', category: 'Actu tech', group: 'tech' },
 ];
 
 const TTL_MS = 3 * 60 * 60 * 1000; // 3 hours
@@ -107,6 +118,7 @@ function parseFeed(xml: string, source: FeedSource): WatchItem[] {
     items.push({
       id: `${source.name}:${link || title}`,
       category: source.category,
+      group: source.group,
       title,
       summary,
       source: source.name,

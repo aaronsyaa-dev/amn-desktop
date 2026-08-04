@@ -91,6 +91,8 @@ export interface WatchItem {
   id: string;
   /** Free-text category (feed-derived), e.g. "Vulnérabilité", "Cybersécurité". */
   category: string;
+  /** Top-level grouping used by the UI filter. Absent (old cache) means 'security'. */
+  group?: 'security' | 'tech';
   title: string;
   summary: string;
   source: string;

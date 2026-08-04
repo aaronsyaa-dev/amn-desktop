@@ -1,8 +1,8 @@
-import type { RemoteEvent } from '../shared/api';
+import type { RemoteEvent, WatchItem } from '../shared/api';
 import type { DerivedSite } from '../state/RemoteSitesContext';
 import { countRecentAlerts } from '../lib/eventStats';
 import { remoteEventDetail, remoteEventLabel } from '../lib/remoteEventDisplay';
-import type { DailySummary, Insight, Suggestion } from './types';
+import type { DailySummary, Insight, ReportBlock, Suggestion } from './types';
 
 type EventsMap = Record<string, RemoteEvent[]>;
 
@@ -116,7 +116,35 @@ function thisMorningISO(): string {
   return d.toISOString();
 }
 
-export function getDailySummary(sites: DerivedSite[], eventsBySite: EventsMap): DailySummary {
+/**
+ * Builds the "Veille du jour" section of the daily summary, covering BOTH
+ * categories (Bloc 4): the top cyber headline(s) and the top tech headline(s).
+ * Returns [] when no watch items are available (e.g. browser fallback).
+ */
+function veilleBlocks(watchItems: WatchItem[]): ReportBlock[] {
+  if (watchItems.length === 0) return [];
+  const byDate = [...watchItems].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const cyber = byDate.filter((i) => (i.group ?? 'security') === 'security').slice(0, 2);
+  const tech = byDate.filter((i) => (i.group ?? 'security') === 'tech').slice(0, 2);
+  if (cyber.length === 0 && tech.length === 0) return [];
+
+  const blocks: ReportBlock[] = [{ type: 'heading', text: 'Veille du jour' }];
+  if (cyber.length) {
+    blocks.push({ type: 'paragraph', text: 'Cybersécurité :' });
+    blocks.push({ type: 'list', items: cyber.map((i) => `${i.title} — ${i.source}`) });
+  }
+  if (tech.length) {
+    blocks.push({ type: 'paragraph', text: 'Actu monde tech :' });
+    blocks.push({ type: 'list', items: tech.map((i) => `${i.title} — ${i.source}`) });
+  }
+  return blocks;
+}
+
+export function getDailySummary(
+  sites: DerivedSite[],
+  eventsBySite: EventsMap,
+  watchItems: WatchItem[] = [],
+): DailySummary {
   const online = sites.filter((s) => s.status === 'online').length;
   const offline = sites.filter((s) => s.status === 'offline');
   const degraded = sites.filter((s) => s.status === 'degraded');
@@ -169,6 +197,7 @@ export function getDailySummary(sites: DerivedSite[], eventsBySite: EventsMap): 
                 )
             : ['Rien d’urgent pour l’instant.'],
       },
+      ...veilleBlocks(watchItems),
     ],
   };
 }
