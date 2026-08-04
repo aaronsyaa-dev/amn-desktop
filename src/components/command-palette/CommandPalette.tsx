@@ -15,6 +15,7 @@ import {
   CornerDownLeft,
   GraduationCap,
   Globe,
+  Images,
   LayoutDashboard,
   NotebookPen,
   Radar,
@@ -58,6 +59,7 @@ const NAV_COMMANDS: Extract<Command, { kind: 'nav' }>[] = [
   { kind: 'nav', id: 'nav-decisions', label: 'Décisions', icon: Scale, to: '/decisions' },
   { kind: 'nav', id: 'nav-knowledge', label: 'Connaissances', icon: BookOpen, to: '/knowledge' },
   { kind: 'nav', id: 'nav-notes', label: 'Notes', icon: NotebookPen, to: '/notes' },
+  { kind: 'nav', id: 'nav-media', label: 'Médias', icon: Images, to: '/media' },
   { kind: 'nav', id: 'nav-learning', label: 'Progression', icon: GraduationCap, to: '/learning' },
   { kind: 'nav', id: 'nav-settings', label: 'Paramètres', icon: Settings, to: '/settings' },
 ];

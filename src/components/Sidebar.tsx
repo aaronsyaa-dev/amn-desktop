@@ -9,6 +9,7 @@ import {
   Contact,
   GraduationCap,
   Globe,
+  Images,
   LayoutDashboard,
   LogOut,
   NotebookPen,
@@ -44,6 +45,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'decisions', label: 'Décisions', to: '/decisions', icon: Scale },
   { key: 'knowledge', label: 'Connaissances', to: '/knowledge', icon: BookOpen },
   { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen },
+  { key: 'media', label: 'Médias', to: '/media', icon: Images },
   { key: 'learning', label: 'Progression', to: '/learning', icon: GraduationCap },
   { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings },
 ];
