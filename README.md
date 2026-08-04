@@ -118,6 +118,26 @@ Conditions pour que l'auto-update fonctionne réellement :
 - les utilisateurs ont installé une version **packagée** (l'auto-update est
   inactif en `npm start`/dev).
 
+### ⚠️ Secrets requis pour la synchronisation temps réel
+
+Pour que l'app packagée se connecte à amn-api (sync, présence, WebSocket) au
+lieu de rester en mode **« Local »**, l'URL et le token doivent être **injectés
+dans le build** (`vite.main.config.ts` les *inline* au moment du build ; un
+`.env` n'existe pas dans une app packagée, donc une lecture à l'exécution
+échouerait). Réglez **deux secrets de dépôt** GitHub (Settings → Secrets and
+variables → Actions) :
+
+| Secret | Valeur |
+|---|---|
+| `AMN_API_URL` | `https://amn-api.onrender.com` (l'URL publique du serveur amn-api) |
+| `AMN_API_OPERATOR_TOKEN` | **la même valeur** que la variable `OPERATOR_TOKEN` configurée sur le serveur amn-api (Render) |
+
+Le workflow `release.yml` passe ces secrets au build. **Si `AMN_API_OPERATOR_TOKEN`
+diffère de l'`OPERATOR_TOKEN` du serveur, la WebSocket est fermée avec le code
+`4401` (token refusé)** — visible dans les logs de l'app (lancez l'exe depuis un
+terminal pour voir les lignes `[amn-api] WS …`). En développement (`npm start`),
+les mêmes variables sont lues depuis un fichier `.env` local (non commité).
+
 ## Intégration bureau (Windows/macOS)
 
 - **Démarrer avec Windows** : case à cocher dans Paramètres → Démarrage

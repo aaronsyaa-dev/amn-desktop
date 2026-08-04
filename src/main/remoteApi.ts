@@ -13,6 +13,13 @@ import type {
 
 const RECONNECT_DELAYS_MS = [1000, 2000, 5000, 10000, 20000, 30000];
 
+/* eslint-disable no-console */
+/** Diagnostic logger for the amn-api connection (token never logged). */
+function log(...args: unknown[]): void {
+  console.log('[amn-api]', ...args);
+}
+/* eslint-enable no-console */
+
 async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!isRemoteConfigured()) {
     // Without AMN_API_URL/AMN_API_OPERATOR_TOKEN set (.env), remoteConfig.apiUrl
@@ -164,9 +171,14 @@ export class RemoteApiClient {
   /** Starts the live WebSocket connection (no-op if amn-api isn't configured). */
   start(): void {
     if (!isRemoteConfigured()) {
+      log(
+        'NOT configured — running in LOCAL mode. AMN_API_URL/AMN_API_OPERATOR_TOKEN were not baked into this build.',
+        `(apiUrl=${remoteConfig.apiUrl ? 'set' : 'empty'}, token=${remoteConfig.operatorToken ? 'set' : 'empty'})`,
+      );
       this.setStatus('unconfigured');
       return;
     }
+    log(`configured — apiUrl=${remoteConfig.apiUrl} (token present). Starting sync WebSocket.`);
     this.stopped = false;
     this.connect();
   }
@@ -188,12 +200,16 @@ export class RemoteApiClient {
     if (this.stopped) return;
     this.setStatus('connecting');
 
-    const base = `${remoteConfig.apiUrl.replace(/^http/, 'ws')}/v1/stream?token=${encodeURIComponent(remoteConfig.operatorToken)}`;
+    const wsBase = remoteConfig.apiUrl.replace(/^http/, 'ws');
+    const base = `${wsBase}/v1/stream?token=${encodeURIComponent(remoteConfig.operatorToken)}`;
     const wsUrl = this.identity ? `${base}&user=${encodeURIComponent(this.identity)}` : base;
+    // Redacted URL for logs — never print the token.
+    log(`WS connecting to ${wsBase}/v1/stream (user=${this.identity ?? 'none'})`);
     const socket = new WebSocket(wsUrl);
     this.ws = socket;
 
     socket.on('open', () => {
+      log('WS connected (online).');
       this.reconnectAttempt = 0;
       this.setStatus('online');
     });
@@ -213,16 +229,28 @@ export class RemoteApiClient {
       }
     });
 
-    const scheduleReconnect = () => {
-      if (this.stopped) return;
+    const scheduleReconnect = (): number => {
+      if (this.stopped) return 0;
       this.setStatus('offline');
       const delay = RECONNECT_DELAYS_MS[Math.min(this.reconnectAttempt, RECONNECT_DELAYS_MS.length - 1)];
       this.reconnectAttempt += 1;
       this.reconnectTimer = setTimeout(() => this.connect(), delay);
+      return delay;
     };
 
-    socket.on('close', scheduleReconnect);
-    socket.on('error', () => {
+    socket.on('close', (code: number, reasonBuf: Buffer) => {
+      const reason = reasonBuf?.toString() || '';
+      // 4401 = amn-api rejected the token (client token ≠ server OPERATOR_TOKEN).
+      // 1006 = abnormal close (server unreachable / TLS / dropped).
+      const hint =
+        code === 4401
+          ? ' — token refusé par amn-api (AMN_API_OPERATOR_TOKEN du build ≠ OPERATOR_TOKEN sur Render ?)'
+          : '';
+      const delay = scheduleReconnect();
+      log(`WS closed (code=${code}${reason ? `, reason="${reason}"` : ''})${hint}. Reconnecting in ${delay}ms.`);
+    });
+    socket.on('error', (err: Error) => {
+      log(`WS error: ${err?.message ?? err}`);
       socket.close();
     });
   }

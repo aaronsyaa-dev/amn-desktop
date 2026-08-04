@@ -39,3 +39,10 @@ jobs:
         run: npm run publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Baked into the app at build time (see vite.main.config.ts) so the
+          # packaged binary talks to amn-api and the sync WebSocket connects.
+          # Set these two repository secrets in GitHub → Settings → Secrets and
+          # variables → Actions. AMN_API_OPERATOR_TOKEN MUST equal the
+          # OPERATOR_TOKEN env var configured on the amn-api server (Render).
+          AMN_API_URL: ${{ secrets.AMN_API_URL }}
+          AMN_API_OPERATOR_TOKEN: ${{ secrets.AMN_API_OPERATOR_TOKEN }}

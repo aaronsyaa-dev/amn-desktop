@@ -30,6 +30,16 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.1.7',
+    date: '2026-08-04',
+    title: 'Correctif synchronisation temps réel',
+    changes: [
+      'Correction du mode « Local » persistant : l’URL et le token d’amn-api sont désormais intégrés au build, donc l’app packagée se connecte réellement au serveur (synchronisation, présence en ligne, WebSocket temps réel entre Aaron et Mohamed).',
+      'Journaux de connexion clairs (statut, ouverture/fermeture WebSocket, token refusé) pour diagnostiquer rapidement.',
+      'Nouveautés récentes également incluses : Ajmani dans le chat, messages vocaux et vidéos, onglet Notes, bibliothèque Médias, veille tech élargie.',
+    ],
+  },
+  {
     version: '1.1.0',
     date: '2026-07-31',
     title: 'Ajmani, veille en direct & confort',
