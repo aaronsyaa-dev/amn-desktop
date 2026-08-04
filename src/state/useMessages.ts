@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useSync, useCollection, uid, stripMeta } from './SyncContext';
+import { AJMANI_EMAIL } from '../lib/ajmaniChat';
 import type { MessageAttachment, MessageReaction } from '../shared/api';
 
 export interface MessageData {
@@ -52,6 +53,23 @@ export function useMessages() {
     } satisfies MessageData);
   };
 
+  /**
+   * Posts a reply authored by Ajmani (the reserved AI identity) into the shared
+   * thread. Called ONLY by the sender's client after it generates the answer, so
+   * two connected operators never double-post — see TeamScreen.handleSend.
+   */
+  const sendAjmani = (body: string, replyToId: string | null) => {
+    upsert('messages', uid('msg'), {
+      authorEmail: AJMANI_EMAIL,
+      body,
+      createdAt: new Date().toISOString(),
+      attachments: [],
+      replyToId,
+      reactions: [],
+      pinned: false,
+    } satisfies MessageData);
+  };
+
   const react = (message: SyncMessage, emoji: string) => {
     if (!user) return;
     const exists = message.reactions.some((r) => r.emoji === emoji && r.authorEmail === user.email);
@@ -65,5 +83,5 @@ export function useMessages() {
     upsert('messages', message.id, { ...stripMeta(message), pinned: !message.pinned });
   };
 
-  return { messages, send, react, togglePin };
+  return { messages, send, sendAjmani, react, togglePin };
 }

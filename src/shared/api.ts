@@ -110,9 +110,18 @@ export interface WatchFeedResult {
 }
 
 export interface MessageAttachment {
-  /** Data-URL of an inline image. Kept small (client-side resized before send). */
+  /**
+   * Data-URL of an inline media file. Images are client-side resized before
+   * send; short videos and voice notes are embedded as-is (size-capped in the
+   * composer). Kept inline so the existing `messages` sync path carries them
+   * unchanged — see the composer's size guard.
+   */
   dataUrl: string;
   name: string;
+  /** Media kind. Absent means 'image' (backwards-compatible with old records). */
+  kind?: 'image' | 'video' | 'audio';
+  /** Original MIME type, used to pick the right <video>/<audio> source type. */
+  mime?: string;
 }
 
 export interface MessageReaction {
