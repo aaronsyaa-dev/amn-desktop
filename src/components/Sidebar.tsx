@@ -11,6 +11,7 @@ import {
   Globe,
   LayoutDashboard,
   LogOut,
+  NotebookPen,
   Radar,
   Scale,
   Settings,
@@ -42,6 +43,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'tracker', label: 'Tracker', to: '/tracker', icon: Radar },
   { key: 'decisions', label: 'Décisions', to: '/decisions', icon: Scale },
   { key: 'knowledge', label: 'Connaissances', to: '/knowledge', icon: BookOpen },
+  { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen },
   { key: 'learning', label: 'Progression', to: '/learning', icon: GraduationCap },
   { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings },
 ];

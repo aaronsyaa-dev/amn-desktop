@@ -12,6 +12,7 @@ import { ClientsScreen } from './screens/ClientsScreen';
 import { TrackerScreen } from './screens/TrackerScreen';
 import { DecisionsScreen } from './screens/DecisionsScreen';
 import { KnowledgeScreen } from './screens/KnowledgeScreen';
+import { NotesScreen } from './screens/NotesScreen';
 import { LearningScreen } from './screens/LearningScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { GrainOverlay } from './components/GrainOverlay';
@@ -44,6 +45,7 @@ export default function App() {
               <Route path="/tracker" element={<TrackerScreen />} />
               <Route path="/decisions" element={<DecisionsScreen />} />
               <Route path="/knowledge" element={<KnowledgeScreen />} />
+              <Route path="/notes" element={<NotesScreen />} />
               <Route path="/learning" element={<LearningScreen />} />
               <Route path="/settings" element={<SettingsScreen />} />
             </Route>

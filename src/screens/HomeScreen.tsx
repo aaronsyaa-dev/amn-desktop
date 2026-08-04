@@ -8,6 +8,7 @@ import {
   Contact,
   GraduationCap,
   Globe,
+  NotebookPen,
   Radar,
   Scale,
   Sparkles,
@@ -64,6 +65,7 @@ export function HomeScreen() {
   ];
 
   const secondary = [
+    { label: 'Notes', icon: NotebookPen, to: '/notes' },
     { label: 'Décisions', icon: Scale, to: '/decisions' },
     { label: 'Connaissances', icon: BookOpen, to: '/knowledge' },
     { label: 'Progression', icon: GraduationCap, to: '/learning' },

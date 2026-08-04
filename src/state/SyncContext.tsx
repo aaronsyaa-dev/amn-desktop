@@ -41,6 +41,7 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'objectives',
   'messages',
   'profiles',
+  'notes',
 ];
 
 const MIRROR_PREFIX = 'amn.sync.';
