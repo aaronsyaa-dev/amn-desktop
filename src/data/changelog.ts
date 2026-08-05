@@ -38,6 +38,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Bouton « Démarrer avec Windows » à nouveau fonctionnel : l’app se lance bien à l’ouverture de session, et le réglage survit aux mises à jour automatiques.',
       'Le raccourci sur le Bureau est recréé à chaque mise à jour (il pouvait disparaître après une mise à jour auto).',
       'Suppression d’un site : en cas d’échec, un message d’erreur clair s’affiche au lieu d’un retour silencieux.',
+      'Onglet « Progression » retiré de l’interface (barre latérale et recherche Ctrl/Cmd + K) pour épurer la navigation.',
     ],
   },
   {

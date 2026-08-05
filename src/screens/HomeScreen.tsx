@@ -6,7 +6,6 @@ import {
   BookOpen,
   CheckSquare,
   Contact,
-  GraduationCap,
   Globe,
   NotebookPen,
   Radar,
@@ -68,7 +67,6 @@ export function HomeScreen() {
     { label: 'Notes', icon: NotebookPen, to: '/notes' },
     { label: 'Décisions', icon: Scale, to: '/decisions' },
     { label: 'Connaissances', icon: BookOpen, to: '/knowledge' },
-    { label: 'Progression', icon: GraduationCap, to: '/learning' },
   ];
 
   return (

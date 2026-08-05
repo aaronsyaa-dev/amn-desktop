@@ -7,7 +7,6 @@ import {
   ChevronsRight,
   CheckSquare,
   Contact,
-  GraduationCap,
   Globe,
   Images,
   LayoutDashboard,
@@ -46,7 +45,6 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'knowledge', label: 'Connaissances', to: '/knowledge', icon: BookOpen },
   { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen },
   { key: 'media', label: 'Médias', to: '/media', icon: Images },
-  { key: 'learning', label: 'Progression', to: '/learning', icon: GraduationCap },
   { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings },
 ];
 
