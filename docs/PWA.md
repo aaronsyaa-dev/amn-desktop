@@ -112,50 +112,86 @@ Le routage est en `HashRouter` : aucun rewrite serveur n'est nécessaire.
 - Publish directory : `dist`
 - Mêmes variables d'environnement.
 
-## Dépannage : page qui s'affiche en texte brut, sans style
+## Dépannage : page qui s'affiche en texte brut, sans style (ou blanche)
 
-**Symptôme observé** : la page se charge, l'authentification et la synchro avec
-amn-api fonctionnent (le JS tourne bien), mais aucune mise en forme visuelle
-n'est appliquée (pas de police, pas de couleurs, icônes mal positionnées) —
-comme si le CSS n'était jamais chargé. La console montre une erreur CORS sur
-`manifest.webmanifest` mentionnant une redirection, et des échecs `ERR_FAILED`.
+Ce bug a eu deux couches — la protection Vercel expliquait les erreurs de
+console, mais pas la cause réelle du défaut d'affichage, qui persistait une
+fois cette protection désactivée.
 
-**Cause : la protection de déploiement Vercel (mot de passe / Vercel
-Authentication) est activée sur le projet.** Elle intercepte les requêtes vers
-la page ET vers les sous-ressources (CSS, manifest, potentiellement des chunks
-JS) avec une redirection vers l'interstitiel d'authentification Vercel. Cette
-redirection ne porte pas d'en-tête `Access-Control-Allow-Origin` ; or les
-balises `<link rel="stylesheet" crossorigin>` / `<script type="module"
-crossorigin>` que Vite génère (comportement standard, non spécifique à ce
-projet) chargent leurs ressources en mode CORS — le navigateur bloque donc la
-feuille de style renvoyée après une redirection sans en-tête CORS, alors que
-la page HTML de premier niveau, elle, a pu passer l'interstitiel (d'où le
-rendu « ça marche mais c'est moche »).
+### Couche 1 (résolue) : protection de déploiement Vercel
 
-**Ce qui a été vérifié pour écarter une régression côté build/code :**
-- `npm run build:web` en local, servi via `npx serve dist` : rendu et fichiers
-  identiques (diff nul) à ce qui part en déploiement ; le CSS est bien présent
-  (`dist/assets/index-*.css`) et lié dans `dist/index.html`, servi avec le bon
-  `Content-Type: text/css`.
-- **Le chemin `base` de Vite n'est PAS en cause** — et ne doit **surtout pas**
-  être modifié dans `vite.renderer.config.mts` pour « corriger » ça :
-  `@electron-forge/plugin-vite` force en interne `base: './'` pour le build
-  Electron packagé (nécessaire pour charger l'app via `file://`), et fusionne
-  ce même `vite.renderer.config.mts` par-dessus — donc si on y ajoutait un
-  `base: '/'` explicite (même « pour la clarté »), ça écraserait le `'./'`
-  d'Electron et casserait l'app installée d'Aaron/Mohamed. `npm run build:web`,
-  lui, invoque Vite directement (hors du wrapper electron-forge) et récupère
-  donc naturellement le défaut `/` de Vite, adapté à un déploiement à la racine
-  d'un domaine. Les deux builds ont donc déjà, sans rien coder, le bon `base`
-  chacun de leur côté — ce n'est ni un bug, ni quelque chose à « fixer ».
+Si **Settings → Deployment Protection** est activé, Vercel intercepte les
+requêtes vers la page ET vers les sous-ressources (CSS, manifest, chunks JS)
+avec une redirection vers son interstitiel d'authentification, sans en-tête
+`Access-Control-Allow-Origin`. Les balises `<link rel="stylesheet"
+crossorigin>` / `<script type="module" crossorigin>` que Vite génère
+(comportement standard, non spécifique à ce projet) chargent en mode CORS, donc
+le navigateur bloque la ressource redirigée — d'où des erreurs CORS en console
+au tout premier chargement. **Correctif : laisser Deployment Protection sur
+Disabled.** Les vraies barrières d'accès restent l'URL non devinable, l'écran
+de connexion de l'app, et le token web révocable (documentés plus haut) —
+inutile d'ajouter une couche Vercel qui bloque au passage les propres
+ressources de la page.
 
-**Correctif : désactiver la protection de déploiement Vercel.**
-Vercel → projet → **Settings → Deployment Protection** → mettre sur **Disabled**
-(ou, sur les plans qui le permettent, la restreindre aux previews et la laisser
-désactivée sur la prod). Les vraies barrières d'accès restent, comme documenté
-plus haut : URL non devinable + écran de connexion de l'app + token web
-révocable côté amn-api — inutile et contre-productif d'ajouter une couche de
-protection Vercel qui bloque au passage les propres ressources de la page.
+### Couche 2 (root cause réelle, résolue) : bug du service worker
+
+Une fois la protection désactivée, le symptôme a persisté (texte brut sans
+style, console propre) puis évolué en **page complètement blanche** après
+avoir vidé le cache et désinscrit le service worker. C'est la vraie cause,
+**reproduite et prouvée** (pas une hypothèse) :
+
+`public/sw.js` (v1) faisait, pour toute requête GET same-origin échouant au
+niveau réseau :
+```js
+.catch(() => caches.match('./index.html'))
+```
+**sans distinguer une navigation de page d'une sous-ressource.** Un CSS ou un
+JS dont le fetch réseau échoue (coupure transitoire, blocage CORS — exactement
+ce que produisait la couche 1 ci-dessus) recevait donc, à la place, le contenu
+HTML de `index.html` mis en cache — avec un statut `200`, sous l'URL du
+fichier CSS/JS. Le navigateur refuse silencieusement d'appliquer du HTML comme
+feuille de style (page non stylée, **aucune erreur console** — exactement le
+symptôme observé) et refuse d'exécuter du HTML comme script de module (React
+ne monte jamais → **page blanche** — le symptôme observé après avoir vidé le
+cache, qui a fait retomber le problème sur la requête du script JS plutôt que
+du CSS). **Un seul bug, deux symptômes différents selon quelle ressource
+échouait au moment du test.**
+
+Preuve (le fetch handler de `sw.js` a été exécuté directement, hors navigateur,
+dans un mock minimal du contexte Service Worker, pour éliminer toute ambiguïté
+réseau) :
+
+| Scénario | `sw.js` v1 (avant) | `sw.js` v2 (après) |
+| --- | --- | --- |
+| Asset (CSS/JS), échec réseau | **résout avec le HTML mis en cache** (bug confirmé) | rejette pour de vrai (comportement correct) |
+| Navigation de page, échec réseau | résout avec le HTML mis en cache (voulu, hors-ligne) | inchangé |
+
+**Correctif appliqué** (`public/sw.js`, `CACHE` passé à `'amn-pwa-v2'` pour
+purger les caches déjà corrompus chez les utilisateurs ayant l'ancien SW) :
+seule une navigation de page (`request.mode === 'navigate'`) retombe sur le
+HTML en cache ; l'échec d'une sous-ressource échoue pour de vrai, au lieu
+d'être remplacé silencieusement par le mauvais contenu.
+
+En complément, `ErrorBoundary` a été déplacé pour envelopper directement
+`<App />` dans `src/renderer.tsx` (au lieu d'être imbriqué à l'intérieur du
+rendu d'`App`) : un crash React futur affiche désormais un message d'erreur
+lisible plutôt qu'une page blanche muette, ce qui facilitera un diagnostic
+rapide si un problème similaire réapparaît.
+
+**Vérification finale** : rendu confirmé visuellement (capture d'écran) via un
+vrai Chromium headless chargeant le build `npm run build:web` corrigé, servi
+par un serveur statique renvoyant de vraies erreurs 404 (pas de `npx serve`
+« magique ») — écran de connexion entièrement stylé, zéro erreur console, zéro
+requête échouée, 129 règles CSS appliquées.
+
+**Non reproduit malgré plusieurs configurations testées** (aucune donnée
+n'expliquant ce point précis n'a pu être obtenue sans accès à l'URL Vercel
+réelle) : le chargement dans un contexte totalement neuf (sans aucun service
+worker, comme en navigation privée) avec le vrai `VITE_AMN_API_URL` et un
+token volontairement invalide — pour tester l'hypothèse d'un crash au boot lié
+à l'appel amn-api — s'est chargé et affiché correctement à chaque tentative.
+Si la page blanche revient après ce correctif, l'ErrorBoundary racine
+affichera désormais un message exploitable au lieu d'un écran muet.
 
 ## Installer sur iPhone
 

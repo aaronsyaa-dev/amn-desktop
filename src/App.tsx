@@ -17,14 +17,13 @@ import { MediaLibraryScreen } from './screens/MediaLibraryScreen';
 import { ReportsScreen } from './screens/ReportsScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { GrainOverlay } from './components/GrainOverlay';
-import { ErrorBoundary } from './components/ErrorBoundary';
 import { SplashScreen, hasSplashPlayed } from './components/SplashScreen';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(() => !hasSplashPlayed());
 
   return (
-    <ErrorBoundary>
+    <>
       {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
       <AuthProvider>
         <GrainOverlay />
@@ -54,6 +53,6 @@ export default function App() {
           </Routes>
         </HashRouter>
       </AuthProvider>
-    </ErrorBoundary>
+    </>
   );
 }
