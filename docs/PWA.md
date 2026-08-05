@@ -72,8 +72,11 @@ de fonctionner. Rebuild + redéploie ensuite le web avec la nouvelle valeur.
 > nature : l'objectif ici est de **limiter les dégâts** d'une fuite (le token web
 > ne peut pas créer de sites ni de clés API tracker, et se révoque seul), pas de
 > rendre le token invisible — cela demanderait un vrai backend d'auth par
-> utilisateur. Déploie tout de même derrière une URL non devinable et/ou une
-> protection d'accès, et ne mets pas l'URL publiquement en avant.
+> utilisateur. Les vraies barrières restent : une URL non devinable, l'écran de
+> connexion de l'app elle-même (compte Aaron/Mohamed), et le token révocable
+> ci-dessus. **Ne mets PAS de protection au niveau de la plateforme d'hébergeur
+> (mot de passe Vercel/Netlify)** — voir « Dépannage » plus bas, ça casse le
+> rendu de la page.
 
 ## Construire le build web
 
@@ -97,17 +100,62 @@ Le site statique est généré dans `dist/` (index.html + assets + manifest + ic
 Le routage est en `HashRouter` : aucun rewrite serveur n'est nécessaire.
 
 **Vercel**
-- Build command : `npm run build:web`
-- Output directory : `dist`
-- Variables d'environnement : `VITE_AMN_API_URL`, `VITE_AMN_API_WEB_TOKEN`.
+- Le dépôt contient un `vercel.json` (build command, output directory) — Vercel
+  le lit automatiquement, rien à configurer manuellement pour ça.
+- Variables d'environnement à ajouter dans le projet : `VITE_AMN_API_URL`,
+  `VITE_AMN_API_WEB_TOKEN`.
+- **Settings → Deployment Protection : laisser désactivé** (voir « Dépannage »
+  ci-dessous — l'activer casse l'affichage de la page).
 
 **Netlify**
 - Build command : `npm run build:web`
 - Publish directory : `dist`
 - Mêmes variables d'environnement.
 
-(Le dépôt ne contient volontairement pas de fichier de config d'hébergeur : à
-créer côté plateforme, avec les variables ci-dessus.)
+## Dépannage : page qui s'affiche en texte brut, sans style
+
+**Symptôme observé** : la page se charge, l'authentification et la synchro avec
+amn-api fonctionnent (le JS tourne bien), mais aucune mise en forme visuelle
+n'est appliquée (pas de police, pas de couleurs, icônes mal positionnées) —
+comme si le CSS n'était jamais chargé. La console montre une erreur CORS sur
+`manifest.webmanifest` mentionnant une redirection, et des échecs `ERR_FAILED`.
+
+**Cause : la protection de déploiement Vercel (mot de passe / Vercel
+Authentication) est activée sur le projet.** Elle intercepte les requêtes vers
+la page ET vers les sous-ressources (CSS, manifest, potentiellement des chunks
+JS) avec une redirection vers l'interstitiel d'authentification Vercel. Cette
+redirection ne porte pas d'en-tête `Access-Control-Allow-Origin` ; or les
+balises `<link rel="stylesheet" crossorigin>` / `<script type="module"
+crossorigin>` que Vite génère (comportement standard, non spécifique à ce
+projet) chargent leurs ressources en mode CORS — le navigateur bloque donc la
+feuille de style renvoyée après une redirection sans en-tête CORS, alors que
+la page HTML de premier niveau, elle, a pu passer l'interstitiel (d'où le
+rendu « ça marche mais c'est moche »).
+
+**Ce qui a été vérifié pour écarter une régression côté build/code :**
+- `npm run build:web` en local, servi via `npx serve dist` : rendu et fichiers
+  identiques (diff nul) à ce qui part en déploiement ; le CSS est bien présent
+  (`dist/assets/index-*.css`) et lié dans `dist/index.html`, servi avec le bon
+  `Content-Type: text/css`.
+- **Le chemin `base` de Vite n'est PAS en cause** — et ne doit **surtout pas**
+  être modifié dans `vite.renderer.config.mts` pour « corriger » ça :
+  `@electron-forge/plugin-vite` force en interne `base: './'` pour le build
+  Electron packagé (nécessaire pour charger l'app via `file://`), et fusionne
+  ce même `vite.renderer.config.mts` par-dessus — donc si on y ajoutait un
+  `base: '/'` explicite (même « pour la clarté »), ça écraserait le `'./'`
+  d'Electron et casserait l'app installée d'Aaron/Mohamed. `npm run build:web`,
+  lui, invoque Vite directement (hors du wrapper electron-forge) et récupère
+  donc naturellement le défaut `/` de Vite, adapté à un déploiement à la racine
+  d'un domaine. Les deux builds ont donc déjà, sans rien coder, le bon `base`
+  chacun de leur côté — ce n'est ni un bug, ni quelque chose à « fixer ».
+
+**Correctif : désactiver la protection de déploiement Vercel.**
+Vercel → projet → **Settings → Deployment Protection** → mettre sur **Disabled**
+(ou, sur les plans qui le permettent, la restreindre aux previews et la laisser
+désactivée sur la prod). Les vraies barrières d'accès restent, comme documenté
+plus haut : URL non devinable + écran de connexion de l'app + token web
+révocable côté amn-api — inutile et contre-productif d'ajouter une couche de
+protection Vercel qui bloque au passage les propres ressources de la page.
 
 ## Installer sur iPhone
 
