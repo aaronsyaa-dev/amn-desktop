@@ -16,10 +16,13 @@ import {
 import { useAuth } from '../auth/AuthContext';
 import { useRemoteSites } from '../state/RemoteSitesContext';
 import { useAssistant } from '../assistant/AssistantContext';
+import { useActivity } from '../state/ActivityContext';
+import { useProfiles } from '../state/ProfilesContext';
 import { useSitePins } from '../lib/useSitePins';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
 import { StatusBadge } from '../components/StatusBadge';
 import { homeWelcome, homeNudge } from '../lib/homeGreetings';
+import { relativeTime } from '../lib/time';
 
 /**
  * Calm home. Intentionally sparse: a short, warm welcome and a clear "where to
@@ -32,7 +35,13 @@ export function HomeScreen() {
   const { open: openAssistant } = useAssistant();
   const { isPinned } = useSitePins();
   const { openSite } = useSitePanel();
+  const { events } = useActivity();
+  const { profileFor } = useProfiles();
   const navigate = useNavigate();
+
+  // A3.2 — chronological feed of what the other operator recently added or
+  // changed across the shared collections. Capped to keep Accueil calm.
+  const recentActivity = useMemo(() => events.slice(0, 6), [events]);
 
   // Personal fast lane: the sites this operator chose to follow (favoris).
   const pinnedSites = useMemo(() => sites.filter((s) => isPinned(s.id)), [sites, isPinned]);
@@ -158,6 +167,43 @@ export function HomeScreen() {
           </motion.button>
         ))}
       </motion.div>
+
+      {/* Activité récente — what the other operator changed (A3.2) */}
+      {recentActivity.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="mt-12"
+        >
+          <p className="mb-3 text-center font-mono text-[10px] uppercase tracking-[0.25em] text-text-muted">
+            Activité récente
+          </p>
+          <div className="mx-auto flex max-w-xl flex-col divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
+            {recentActivity.map((ev) => (
+              <button
+                key={ev.key}
+                type="button"
+                onClick={() => navigate(ev.routeKey)}
+                className="flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-hover"
+              >
+                <span className="flex-shrink-0 rounded-md border border-border bg-bg px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-text-muted">
+                  {ev.noun}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="truncate text-sm text-text-primary">{ev.text}</span>
+                  <span className="mt-0.5 block text-xs text-text-muted">
+                    {profileFor(ev.actorEmail).name}
+                  </span>
+                </span>
+                <span className="flex-shrink-0 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                  {relativeTime(ev.at)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* Secondary links — quiet row */}
       <motion.div

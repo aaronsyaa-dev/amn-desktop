@@ -11,6 +11,7 @@ import { AssistantPanel } from '../assistant/AssistantPanel';
 import { RemoteSitesProvider } from '../state/RemoteSitesContext';
 import { ProfilesProvider } from '../state/ProfilesContext';
 import { SyncProvider } from '../state/SyncContext';
+import { ActivityProvider, useActivity } from '../state/ActivityContext';
 import { UndoProvider } from '../state/UndoContext';
 import { ToastProvider } from '../state/ToastContext';
 import { NotificationsManager } from './NotificationsManager';
@@ -53,6 +54,7 @@ export function AppLayout() {
   return (
     <SyncProvider>
       <ProfilesProvider>
+        <ActivityProvider>
         <RemoteSitesProvider>
           <ToastProvider>
           <SitePanelProvider>
@@ -87,6 +89,7 @@ export function AppLayout() {
               <AssistantPanel />
               <NotificationsManager />
               <SyncActivityNotifier />
+              <RouteSeenTracker />
               <IdleScreensaver />
               {showWelcome && <WelcomeOverlay onDone={() => setShowWelcome(false)} />}
               {!showWelcome && <UpdateNotice />}
@@ -97,7 +100,21 @@ export function AppLayout() {
         </SitePanelProvider>
           </ToastProvider>
         </RemoteSitesProvider>
+        </ActivityProvider>
       </ProfilesProvider>
     </SyncProvider>
   );
+}
+
+/**
+ * Clears a tab's unseen badge when the operator lands on it. Lives inside the
+ * ActivityProvider so it can call markSeen on every navigation (and on mount).
+ */
+function RouteSeenTracker() {
+  const location = useLocation();
+  const { markSeen } = useActivity();
+  React.useEffect(() => {
+    markSeen(location.pathname);
+  }, [location.pathname, markSeen]);
+  return null;
 }

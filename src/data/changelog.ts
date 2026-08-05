@@ -39,6 +39,9 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Le raccourci sur le Bureau est recréé à chaque mise à jour (il pouvait disparaître après une mise à jour auto).',
       'Suppression d’un site : en cas d’échec, un message d’erreur clair s’affiche au lieu d’un retour silencieux.',
       'Onglet « Progression » retiré de l’interface (barre latérale et recherche Ctrl/Cmd + K) pour épurer la navigation.',
+      'Accusés de lecture dans l’Équipe : un ✓ indique un message envoyé, un ✓✓ qu’il a été lu par votre binôme.',
+      'Fil « Activité récente » sur l’Accueil : ce que l’autre opérateur a ajouté ou modifié dernièrement, cliquable.',
+      'Pastilles de notification sur la barre latérale : nombre d’ajouts non vus par onglet, remis à zéro à la visite.',
     ],
   },
   {

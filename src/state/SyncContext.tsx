@@ -53,6 +53,22 @@ export function uid(prefix = 'r'): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * Reserved key stamped into every record's `data` at write time with the email
+ * of the operator who made the write. It travels inside the opaque `data` blob
+ * (no amn-api change needed) and lets features attribute a record to its author
+ * durably — across restarts and offline catch-up — where the domain shape has
+ * no author field of its own (read receipts, activity feed, unseen badges).
+ * Typed consumers via `useCollection<T>` never see it (it's outside T).
+ */
+export const WRITER_KEY = '_by';
+
+/** Reads the durable writer email stamped on a record, if any. */
+export function recordWriter(data: Record<string, unknown>): string | null {
+  const v = data[WRITER_KEY];
+  return typeof v === 'string' && v ? v : null;
+}
+
 /** Strips the synthetic id/updatedAt back off a decoded record for writing. */
 export function stripMeta<T extends { id: string; updatedAt: string }>(
   record: T,
@@ -136,6 +152,10 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const [connectionStatus, setConnectionStatus] = useState<RemoteConnectionStatus>('connecting');
   const [onlineEmails, setOnlineEmails] = useState<Set<string>>(new Set());
   const localWrites = useRef<Set<string>>(new Set());
+  // Current operator email, kept in a ref so `upsert` (which stamps authorship)
+  // stays referentially stable across sign-in changes.
+  const emailRef = useRef(user?.email);
+  emailRef.current = user?.email;
   const remoteChangeSubs = useRef<Set<(c: RemoteChange) => void>>(new Set());
   const onRemoteChange = useCallback((cb: (c: RemoteChange) => void) => {
     remoteChangeSubs.current.add(cb);
@@ -231,17 +251,21 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const upsert = useCallback(
     async (collection: SyncedCollection, id: string, data: Record<string, unknown>) => {
       localWrites.current.add(`${collection}:${id}`);
+      // Stamp the writer so every collection carries durable authorship.
+      const stamped = emailRef.current
+        ? { ...data, [WRITER_KEY]: emailRef.current }
+        : data;
       const optimistic: RemoteRecord = {
         id,
         collection,
-        data,
+        data: stamped,
         updatedAt: new Date().toISOString(),
         deleted: false,
       };
       applyRecords(collection, [optimistic]); // instant local update
       if (configured) {
         try {
-          const saved = await bridge().remote.upsertRecord(collection, id, data);
+          const saved = await bridge().remote.upsertRecord(collection, id, stamped);
           applyRecords(collection, [saved]); // adopt server timestamp
         } catch {
           /* offline: mirror keeps the optimistic record; will re-sync later */

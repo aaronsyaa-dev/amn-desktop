@@ -4,6 +4,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUp,
   Building2,
+  Check,
+  CheckCheck,
   CornerUpLeft,
   Film,
   Globe,
@@ -395,6 +397,29 @@ function MessageList({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const wasAtBottom = useRef(true);
+  const { profiles, markTeamSeen, teamSeenAt } = useProfiles();
+
+  // A3.1 — opening/viewing the team chat marks it read for this operator, so
+  // the other one sees a "seen" receipt. Fire on mount and on each new message.
+  // markTeamSeen is read from a ref so writing the receipt (which mutates the
+  // synced profiles) can't feed back into this effect and loop.
+  const markSeenRef = useRef(markTeamSeen);
+  markSeenRef.current = markTeamSeen;
+  useEffect(() => {
+    if (currentEmail) markSeenRef.current(currentEmail);
+  }, [currentEmail, messages.length]);
+
+  // Latest moment any OTHER operator opened the chat — a message is "seen" when
+  // it predates that. (Two-operator team, but written to generalise.)
+  const otherSeenAt = useMemo(() => {
+    let latest: string | null = null;
+    for (const p of profiles) {
+      if (p.email === currentEmail || p.email === AJMANI_EMAIL) continue;
+      const t = teamSeenAt(p.email);
+      if (t && (!latest || t > latest)) latest = t;
+    }
+    return latest;
+  }, [profiles, currentEmail, teamSeenAt]);
 
   useEffect(() => {
     if (wasAtBottom.current) {
@@ -428,6 +453,7 @@ function MessageList({
           message={message}
           own={message.authorEmail === currentEmail}
           isAjmani={message.authorEmail === AJMANI_EMAIL}
+          seen={Boolean(otherSeenAt && otherSeenAt >= message.createdAt)}
           sites={sites}
           repliedTo={message.replyToId ? byId.get(message.replyToId) ?? null : null}
           highlighted={highlightId === message.id}
@@ -482,6 +508,7 @@ function MessageBubble({
   message,
   own,
   isAjmani,
+  seen,
   sites,
   repliedTo,
   highlighted,
@@ -494,6 +521,7 @@ function MessageBubble({
   message: SyncMessage;
   own: boolean;
   isAjmani: boolean;
+  seen: boolean;
   sites: DerivedSite[];
   repliedTo: SyncMessage | null;
   highlighted: boolean;
@@ -595,7 +623,17 @@ function MessageBubble({
           </div>
         )}
 
-        <span className="mt-1 px-1 font-mono text-[10px] text-text-muted">{relativeTime(message.createdAt)}</span>
+        <span className="mt-1 flex items-center gap-1 px-1 font-mono text-[10px] text-text-muted">
+          {relativeTime(message.createdAt)}
+          {/* Read receipt (A3.1): single check = envoyé, double = lu. Own,
+              non-Ajmani messages only. */}
+          {own && !isAjmani &&
+            (seen ? (
+              <CheckCheck size={12} strokeWidth={2} className="text-accent" aria-label="Lu" />
+            ) : (
+              <Check size={12} strokeWidth={2} className="text-text-muted" aria-label="Envoyé" />
+            ))}
+        </span>
       </div>
     </motion.div>
   );
