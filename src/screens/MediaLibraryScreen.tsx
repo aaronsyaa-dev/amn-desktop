@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Film, ImageOff, Play, X } from 'lucide-react';
 import { useMessages } from '../state/useMessages';
@@ -167,17 +168,19 @@ export function MediaLibraryScreen() {
         )}
       </section>
 
-      {/* Video modal */}
-      <AnimatePresence>
-        {video && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="fixed inset-0 z-[210] flex items-center justify-center bg-black/90 p-6"
-            onClick={() => setVideo(null)}
-          >
+      {/* Video modal — portalled to <body> so the routed screen's transform
+          can't trap this fixed overlay (same reason as the image lightbox). */}
+      {createPortal(
+        <AnimatePresence>
+          {video && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-[210] flex items-center justify-center bg-black/90 p-6"
+              onClick={() => setVideo(null)}
+            >
             <button
               type="button"
               onClick={() => setVideo(null)}
@@ -197,7 +200,9 @@ export function MediaLibraryScreen() {
             </video>
           </motion.div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body,
+      )}
     </LightboxProvider>
   );
 }

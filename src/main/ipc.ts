@@ -63,6 +63,7 @@ import {
 import type { RemoteApiClient } from './remoteApi';
 import { getWatch } from './watch';
 import { ollamaStatus, ollamaChat } from './ollama';
+import { getAutoLaunch, setAutoLaunch } from './windowsIntegration';
 
 /** Registers the IPC handlers backing `window.amn` in the renderer. */
 interface IpcOptions {
@@ -239,26 +240,11 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
     notification.show();
   });
 
-  // Launch-at-login toggle (Settings → "Démarrer avec Windows").
-  ipcMain.handle(IPC.systemGetAutoLaunch, () => {
-    try {
-      return app.getLoginItemSettings().openAtLogin;
-    } catch {
-      return false;
-    }
-  });
-  ipcMain.handle(IPC.systemSetAutoLaunch, (_event, enabled: boolean) => {
-    try {
-      app.setLoginItemSettings({
-        openAtLogin: enabled,
-        openAsHidden: enabled, // macOS: start hidden
-        args: enabled ? ['--hidden'] : [], // Windows/Linux: our hidden-start flag
-      });
-      return app.getLoginItemSettings().openAtLogin;
-    } catch {
-      return false;
-    }
-  });
+  // Launch-at-login toggle (Settings → "Démarrer avec Windows"). Delegated to
+  // windowsIntegration so the login item registers against Squirrel's stable
+  // Update.exe launcher (surviving auto-updates) rather than the versioned exe.
+  ipcMain.handle(IPC.systemGetAutoLaunch, () => getAutoLaunch());
+  ipcMain.handle(IPC.systemSetAutoLaunch, (_event, enabled: boolean) => setAutoLaunch(enabled));
 
   ipcMain.handle(IPC.systemGetAppInfo, () => ({
     name: 'AMN Desktop',

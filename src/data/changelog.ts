@@ -30,6 +30,27 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.2.0',
+    date: '2026-08-05',
+    title: 'Corrections & fondations',
+    changes: [
+      'Zoom plein écran des images du chat réparé : la visionneuse s’ouvre correctement sur toutes les images (plus d’affichage partiel), navigation ← / → et vidéos inchangées.',
+      'Bouton « Démarrer avec Windows » à nouveau fonctionnel : l’app se lance bien à l’ouverture de session, et le réglage survit aux mises à jour automatiques.',
+      'Le raccourci sur le Bureau est recréé à chaque mise à jour (il pouvait disparaître après une mise à jour auto).',
+      'Suppression d’un site : en cas d’échec, un message d’erreur clair s’affiche au lieu d’un retour silencieux.',
+      'Onglet « Progression » retiré de l’interface (barre latérale et recherche Ctrl/Cmd + K) pour épurer la navigation.',
+      'Accusés de lecture dans l’Équipe : un ✓ indique un message envoyé, un ✓✓ qu’il a été lu par votre binôme.',
+      'Fil « Activité récente » sur l’Accueil : ce que l’autre opérateur a ajouté ou modifié dernièrement, cliquable.',
+      'Pastilles de notification sur la barre latérale : nombre d’ajouts non vus par onglet, remis à zéro à la visite.',
+      'Repères contextuels sur les tâches : « Ajouter un repère » vous laisse pointer un endroit précis de l’app ; le repère devient une étiquette cliquable qui y ramène et le met en évidence.',
+      'Tâches : ouverture d’une fiche détaillée avec fil de discussion (commentaires), édition (titre, détail, assigné, priorité) et priorité visible sur les cartes.',
+      'Chat : tapez « # » pour mentionner une tâche ; le lien cliquable ouvre directement sa fiche.',
+      'Nouvel onglet « Rapports » : centralise les comptes rendus (client ou mémoire d’équipe), en markdown, avec éléments liés cliquables, filtres par type et date.',
+      'Bouton « Faire un rapport » sur une tâche terminée, une fiche client et une décision : pré-remplit un brouillon avec le contexte (et les commentaires de la tâche).',
+      'Version mobile (PWA) : l’app peut être « ajoutée à l’écran d’accueil » sur iPhone et réutilise la même synchro temps réel (voir docs/PWA.md pour le déploiement).',
+    ],
+  },
+  {
     version: '1.1.7',
     date: '2026-08-04',
     title: 'Correctif synchronisation temps réel',

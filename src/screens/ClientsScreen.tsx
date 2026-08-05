@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, FileText, Globe, ImagePlus, Info, Mail, Phone, Plus, Printer, X } from 'lucide-react';
 import { bridge } from '../lib/bridge';
@@ -18,6 +18,7 @@ import { Skeleton } from '../components/Skeleton';
 import { SaveIndicator } from '../components/SaveIndicator';
 import { ConfirmDelete } from '../components/ConfirmDelete';
 import { trackerCatalog } from '../data/trackerCatalog';
+import type { ReportDraft } from '../state/useReports';
 import { QuotePrintPortal } from '../assistant/QuotePrintPortal';
 import type {
   Client,
@@ -341,6 +342,21 @@ function ClientDetail({
   );
 }
 
+/** Pre-fills a report draft from a client's fiche (B1). */
+function clientReportDraft(client: Client): ReportDraft {
+  const lines: string[] = [];
+  if (client.company) lines.push(`**Société :** ${client.company}`);
+  if (client.email) lines.push(`**Email :** ${client.email}`);
+  if (client.phone) lines.push(`**Téléphone :** ${client.phone}`);
+  lines.push('', client.notes?.trim() ? client.notes.trim() : '_Pas de notes._');
+  return {
+    type: 'client',
+    title: `Rapport — ${client.name}`,
+    body: lines.join('\n'),
+    links: [{ kind: 'client', id: String(client.id), label: client.name }],
+  };
+}
+
 function ClientHeader({
   client,
   sites,
@@ -350,6 +366,7 @@ function ClientHeader({
   sites: DerivedSite[];
   onPatch: (id: number, p: UpdateClientInput) => Promise<void>;
 }) {
+  const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
   const breakdown = computeClientHealthBreakdown(client, sites);
   const health = CLIENT_HEALTH_META[breakdown.health];
@@ -461,10 +478,20 @@ function ClientHeader({
         )}
       </div>
 
-      <StatusSelector
-        value={client.status}
-        onChange={(status) => onPatch(client.id, { status })}
-      />
+      <div className="flex flex-shrink-0 flex-col items-end gap-2">
+        <StatusSelector
+          value={client.status}
+          onChange={(status) => onPatch(client.id, { status })}
+        />
+        <button
+          type="button"
+          onClick={() => navigate('/reports', { state: { reportDraft: clientReportDraft(client) } })}
+          className="flex items-center gap-1.5 border border-accent/40 bg-accent/10 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider text-accent transition-colors hover:bg-accent/20"
+        >
+          <FileText size={11} strokeWidth={2} />
+          Faire un rapport
+        </button>
+      </div>
     </div>
   );
 }

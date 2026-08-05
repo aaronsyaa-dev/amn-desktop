@@ -7,7 +7,7 @@ import {
   ChevronsRight,
   CheckSquare,
   Contact,
-  GraduationCap,
+  FileText,
   Globe,
   Images,
   LayoutDashboard,
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useRemoteSites } from '../state/RemoteSitesContext';
+import { useActivity } from '../state/ActivityContext';
 import { StatusBadge } from './StatusBadge';
 import { Logo, LogoMark } from './Logo';
 import { useSitePanel } from './site-panel/SitePanelContext';
@@ -46,7 +47,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'knowledge', label: 'Connaissances', to: '/knowledge', icon: BookOpen },
   { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen },
   { key: 'media', label: 'Médias', to: '/media', icon: Images },
-  { key: 'learning', label: 'Progression', to: '/learning', icon: GraduationCap },
+  { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText },
   { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings },
 ];
 
@@ -58,6 +59,7 @@ export function Sidebar() {
   const { logout } = useAuth();
   const { openSite } = useSitePanel();
   const { sites } = useRemoteSites();
+  const { unseen } = useActivity();
 
   const isActive = (to: string) =>
     to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
@@ -105,6 +107,8 @@ export function Sidebar() {
           {NAV_ITEMS.map((item) => {
             const active = isActive(item.to);
             const Icon = item.icon;
+            const count = unseen[item.to] ?? 0;
+            const badge = count > 99 ? '99+' : String(count);
             return (
               <Link
                 key={item.key}
@@ -133,6 +137,18 @@ export function Sidebar() {
                     {item.label}
                   </span>
                 )}
+                {/* Unseen-activity badge (A3.3): additions/changes by the other
+                    operator since this tab was last opened. */}
+                {count > 0 &&
+                  (isExpanded ? (
+                    <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-semibold leading-none text-bg">
+                      {badge}
+                    </span>
+                  ) : (
+                    <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[9px] font-semibold leading-none text-bg">
+                      {badge}
+                    </span>
+                  ))}
                 {item.key === 'sites' && isExpanded && (
                   <span
                     role="button"

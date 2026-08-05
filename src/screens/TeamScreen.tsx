@@ -4,6 +4,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUp,
   Building2,
+  Check,
+  CheckCheck,
+  CheckSquare,
   CornerUpLeft,
   Film,
   Globe,
@@ -21,11 +24,11 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
-import { useSync } from '../state/SyncContext';
+import { useSync, useCollection } from '../state/SyncContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { useMessages, type SyncMessage } from '../state/useMessages';
 import { UserAvatar } from '../components/UserAvatar';
-import { parseMentions, urlDisplayHost, type ClientRef } from '../lib/mentions';
+import { parseMentions, urlDisplayHost, type ClientRef, type TaskRef } from '../lib/mentions';
 import { resizeImageToDataUrl } from '../lib/imageResize';
 import { relativeTime } from '../lib/time';
 import { bridge } from '../lib/bridge';
@@ -71,7 +74,17 @@ const useMentionClients = () => React.useContext(MentionClientsContext);
 type MentionSuggestion =
   | { kind: 'site'; name: string }
   | { kind: 'client'; name: string; company: string }
-  | { kind: 'ajmani'; name: string };
+  | { kind: 'ajmani'; name: string }
+  | { kind: 'task'; name: string };
+
+/** Live task titles for #mentions in the chat (A5.3). */
+function useMentionTasks(): TaskRef[] {
+  const rows = useCollection<{ title?: string }>('tasks');
+  return React.useMemo(
+    () => rows.map((r) => ({ id: r.id, title: r.title ?? '' })).filter((t) => t.title),
+    [rows],
+  );
+}
 
 const TEAM = [
   { email: 'aaron@amn-devsec.com' },
@@ -395,6 +408,29 @@ function MessageList({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const wasAtBottom = useRef(true);
+  const { profiles, markTeamSeen, teamSeenAt } = useProfiles();
+
+  // A3.1 — opening/viewing the team chat marks it read for this operator, so
+  // the other one sees a "seen" receipt. Fire on mount and on each new message.
+  // markTeamSeen is read from a ref so writing the receipt (which mutates the
+  // synced profiles) can't feed back into this effect and loop.
+  const markSeenRef = useRef(markTeamSeen);
+  markSeenRef.current = markTeamSeen;
+  useEffect(() => {
+    if (currentEmail) markSeenRef.current(currentEmail);
+  }, [currentEmail, messages.length]);
+
+  // Latest moment any OTHER operator opened the chat — a message is "seen" when
+  // it predates that. (Two-operator team, but written to generalise.)
+  const otherSeenAt = useMemo(() => {
+    let latest: string | null = null;
+    for (const p of profiles) {
+      if (p.email === currentEmail || p.email === AJMANI_EMAIL) continue;
+      const t = teamSeenAt(p.email);
+      if (t && (!latest || t > latest)) latest = t;
+    }
+    return latest;
+  }, [profiles, currentEmail, teamSeenAt]);
 
   useEffect(() => {
     if (wasAtBottom.current) {
@@ -428,6 +464,7 @@ function MessageList({
           message={message}
           own={message.authorEmail === currentEmail}
           isAjmani={message.authorEmail === AJMANI_EMAIL}
+          seen={Boolean(otherSeenAt && otherSeenAt >= message.createdAt)}
           sites={sites}
           repliedTo={message.replyToId ? byId.get(message.replyToId) ?? null : null}
           highlighted={highlightId === message.id}
@@ -482,6 +519,7 @@ function MessageBubble({
   message,
   own,
   isAjmani,
+  seen,
   sites,
   repliedTo,
   highlighted,
@@ -494,6 +532,7 @@ function MessageBubble({
   message: SyncMessage;
   own: boolean;
   isAjmani: boolean;
+  seen: boolean;
   sites: DerivedSite[];
   repliedTo: SyncMessage | null;
   highlighted: boolean;
@@ -595,7 +634,17 @@ function MessageBubble({
           </div>
         )}
 
-        <span className="mt-1 px-1 font-mono text-[10px] text-text-muted">{relativeTime(message.createdAt)}</span>
+        <span className="mt-1 flex items-center gap-1 px-1 font-mono text-[10px] text-text-muted">
+          {relativeTime(message.createdAt)}
+          {/* Read receipt (A3.1): single check = envoyé, double = lu. Own,
+              non-Ajmani messages only. */}
+          {own && !isAjmani &&
+            (seen ? (
+              <CheckCheck size={12} strokeWidth={2} className="text-accent" aria-label="Lu" />
+            ) : (
+              <Check size={12} strokeWidth={2} className="text-text-muted" aria-label="Envoyé" />
+            ))}
+        </span>
       </div>
     </motion.div>
   );
@@ -688,7 +737,8 @@ function MessageBody({
   sites: DerivedSite[];
 }) {
   const clients = useMentionClients();
-  const segments = useMemo(() => parseMentions(body, sites, clients), [body, sites, clients]);
+  const tasks = useMentionTasks();
+  const segments = useMemo(() => parseMentions(body, sites, clients, tasks), [body, sites, clients, tasks]);
 
   return (
     <span className="whitespace-pre-wrap break-words">
@@ -702,9 +752,30 @@ function MessageBody({
         if (segment.type === 'clientMention') {
           return <ClientMentionChip key={i} client={segment.client} light={light} />;
         }
+        if (segment.type === 'taskMention') {
+          return <TaskMentionChip key={i} taskId={segment.taskId} title={segment.title} light={light} />;
+        }
         return <SiteMentionChip key={i} site={segment.site} light={light} />;
       })}
     </span>
+  );
+}
+
+/** Clickable #task chip in chat → opens the task on the Tâches board (A5.3). */
+function TaskMentionChip({ taskId, title, light }: { taskId: string; title: string; light: boolean }) {
+  const navigate = useNavigate();
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        navigate('/tasks', { state: { openTaskId: taskId } });
+      }}
+      className={chipClass(light)}
+    >
+      <CheckSquare size={12} strokeWidth={2} />
+      {title}
+    </button>
   );
 }
 
@@ -827,6 +898,7 @@ function Composer({
 }) {
   const { profileFor } = useProfiles();
   const clients = useMentionClients();
+  const tasks = useMentionTasks();
   const { templates, addTemplate, removeTemplate } = useMessageTemplates();
   const [text, setText] = useState('');
   const [newTemplate, setNewTemplate] = useState('');
@@ -837,18 +909,29 @@ function Composer({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Active trigger: the last '@' (Ajmani/site/client) or '#' (task) still being
+  // typed. Whichever is nearer the caret-end wins.
   const mentionQuery = useMemo(() => {
     const atIdx = text.lastIndexOf('@');
-    if (atIdx < 0) return null;
-    const query = text.slice(atIdx + 1);
-    if (/\s{2,}$/.test(query) || query.includes('@')) return null;
+    const hashIdx = text.lastIndexOf('#');
+    const idx = Math.max(atIdx, hashIdx);
+    if (idx < 0) return null;
+    const char = idx === hashIdx ? '#' : '@';
+    const query = text.slice(idx + 1);
+    if (/\s{2,}$/.test(query) || query.includes('@') || query.includes('#')) return null;
     if (/\s$/.test(query)) return null;
-    return { atIdx, query: query.toLowerCase() };
+    return { idx, char, query: query.toLowerCase() };
   }, [text]);
 
   const suggestions = useMemo<MentionSuggestion[]>(() => {
     if (!mentionQuery) return [];
     const q = mentionQuery.query;
+    if (mentionQuery.char === '#') {
+      return tasks
+        .filter((t) => t.title.toLowerCase().includes(q))
+        .slice(0, 6)
+        .map((t) => ({ kind: 'task', name: t.title }));
+    }
     const ajmaniHit: MentionSuggestion[] =
       AJMANI_NAME.toLowerCase().startsWith(q) || q === '' ? [{ kind: 'ajmani', name: AJMANI_NAME }] : [];
     const siteHits: MentionSuggestion[] = sites
@@ -858,11 +941,11 @@ function Composer({
       .filter((c) => c.name.toLowerCase().includes(q))
       .map((c) => ({ kind: 'client', name: c.name, company: c.company }));
     return [...ajmaniHit, ...siteHits, ...clientHits].slice(0, 6);
-  }, [mentionQuery, sites, clients]);
+  }, [mentionQuery, sites, clients, tasks]);
 
   const applyMention = (name: string) => {
     if (!mentionQuery) return;
-    setText(text.slice(0, mentionQuery.atIdx) + `@${name} `);
+    setText(text.slice(0, mentionQuery.idx) + `${mentionQuery.char}${name} `);
     inputRef.current?.focus();
   };
 
@@ -974,7 +1057,7 @@ function Composer({
       {suggestions.length > 0 && (
         <div className="absolute bottom-full left-4 mb-2 w-72 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
           <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
-            Mentionner Ajmani, un site ou un client
+            Mentionner Ajmani, un site, un client ou une tâche
           </p>
           {suggestions.map((item) => (
             <button
@@ -987,12 +1070,20 @@ function Composer({
                 <Globe size={14} strokeWidth={1.75} className="text-text-muted" />
               ) : item.kind === 'client' ? (
                 <Building2 size={14} strokeWidth={1.75} className="text-text-muted" />
+              ) : item.kind === 'task' ? (
+                <CheckSquare size={14} strokeWidth={1.75} className="text-text-muted" />
               ) : (
                 <Sparkles size={14} strokeWidth={1.75} className="text-accent" />
               )}
               <span className="min-w-0 flex-1 truncate">{item.name}</span>
               <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">
-                {item.kind === 'site' ? 'Site' : item.kind === 'client' ? 'Client' : 'IA'}
+                {item.kind === 'site'
+                  ? 'Site'
+                  : item.kind === 'client'
+                    ? 'Client'
+                    : item.kind === 'task'
+                      ? 'Tâche'
+                      : 'IA'}
               </span>
             </button>
           ))}
@@ -1114,7 +1205,7 @@ function Composer({
             }
           }}
           rows={1}
-          placeholder="Écrire un message… (@Ajmani pour l’IA, @ pour un site ou client)"
+          placeholder="Écrire un message… (@Ajmani, @ site/client, # tâche)"
           className="max-h-32 flex-1 resize-none bg-transparent py-1.5 text-sm text-text-primary outline-none placeholder:text-text-muted"
         />
         <button

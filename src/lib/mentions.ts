@@ -7,10 +7,17 @@ export interface ClientRef {
   company: string;
 }
 
+/** Minimal task shape a #mention needs. */
+export interface TaskRef {
+  id: string;
+  title: string;
+}
+
 export type MessageSegment =
   | { type: 'text'; value: string }
   | { type: 'mention'; site: DerivedSite }
   | { type: 'clientMention'; client: ClientRef }
+  | { type: 'taskMention'; taskId: string; title: string }
   | { type: 'link'; url: string };
 
 // NOTE: a capturing split pattern keeps the URLs in the resulting array. It is
@@ -49,6 +56,7 @@ export function parseMentions(
   body: string,
   sites: DerivedSite[],
   clients: ClientRef[] = [],
+  tasks: TaskRef[] = [],
 ): MessageSegment[] {
   const candidates: Candidate[] = [
     ...sites.map((site) => ({ kind: 'site' as const, name: site.name, site })),
@@ -57,25 +65,43 @@ export function parseMentions(
     // Sites before clients on a tie, then longest name first.
     .sort((a, b) => b.name.length - a.name.length || (a.kind === b.kind ? 0 : a.kind === 'site' ? -1 : 1));
 
+  // Longest task title first so overlapping prefixes resolve to the fuller match.
+  const taskCandidates = [...tasks]
+    .filter((t) => t.title)
+    .sort((a, b) => b.title.length - a.title.length);
+
   const raw: MessageSegment[] = [];
   let buffer = '';
   let i = 0;
+  const flush = () => {
+    if (buffer) {
+      raw.push({ type: 'text', value: buffer });
+      buffer = '';
+    }
+  };
 
   while (i < body.length) {
     if (body[i] === '@') {
       const rest = body.slice(i + 1);
       const hit = candidates.find((c) => c.name && rest.toLowerCase().startsWith(c.name.toLowerCase()));
       if (hit) {
-        if (buffer) {
-          raw.push({ type: 'text', value: buffer });
-          buffer = '';
-        }
+        flush();
         raw.push(
           hit.kind === 'site'
             ? { type: 'mention', site: hit.site }
             : { type: 'clientMention', client: hit.client },
         );
         i += 1 + hit.name.length;
+        continue;
+      }
+    }
+    if (body[i] === '#') {
+      const rest = body.slice(i + 1);
+      const hit = taskCandidates.find((t) => rest.toLowerCase().startsWith(t.title.toLowerCase()));
+      if (hit) {
+        flush();
+        raw.push({ type: 'taskMention', taskId: hit.id, title: hit.title });
+        i += 1 + hit.title.length;
         continue;
       }
     }

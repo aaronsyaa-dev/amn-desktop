@@ -11,8 +11,10 @@ import { AssistantPanel } from '../assistant/AssistantPanel';
 import { RemoteSitesProvider } from '../state/RemoteSitesContext';
 import { ProfilesProvider } from '../state/ProfilesContext';
 import { SyncProvider } from '../state/SyncContext';
+import { ActivityProvider, useActivity } from '../state/ActivityContext';
 import { UndoProvider } from '../state/UndoContext';
 import { ToastProvider } from '../state/ToastContext';
+import { TagProvider } from './tags/TagProvider';
 import { NotificationsManager } from './NotificationsManager';
 import { SyncActivityNotifier } from './SyncActivityNotifier';
 import { IdleScreensaver } from './IdleScreensaver';
@@ -53,17 +55,26 @@ export function AppLayout() {
   return (
     <SyncProvider>
       <ProfilesProvider>
+        <ActivityProvider>
         <RemoteSitesProvider>
           <ToastProvider>
           <SitePanelProvider>
             <AssistantProvider>
               <CommandPaletteProvider>
               <UndoProvider>
-            <div className="flex h-screen overflow-hidden text-text-primary">
+              <TagProvider>
+            <div
+              className="flex h-screen overflow-hidden text-text-primary"
+              // Respect the iPhone notch / home indicator when installed as a PWA.
+              style={{
+                paddingTop: 'env(safe-area-inset-top)',
+                paddingBottom: 'env(safe-area-inset-bottom)',
+              }}
+            >
               <Sidebar />
               <main className="relative flex-1 overflow-y-auto">
                 <TopBar />
-                <div className="mx-auto max-w-6xl px-8 py-8">
+                <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8">
                   {/*
                     Entrance-only, keyed per route. Remounting on navigation
                     replays the per-tab entrance. We deliberately do NOT use
@@ -87,17 +98,33 @@ export function AppLayout() {
               <AssistantPanel />
               <NotificationsManager />
               <SyncActivityNotifier />
+              <RouteSeenTracker />
               <IdleScreensaver />
               {showWelcome && <WelcomeOverlay onDone={() => setShowWelcome(false)} />}
               {!showWelcome && <UpdateNotice />}
               <UpdateReady />
+              </TagProvider>
               </UndoProvider>
             </CommandPaletteProvider>
           </AssistantProvider>
         </SitePanelProvider>
           </ToastProvider>
         </RemoteSitesProvider>
+        </ActivityProvider>
       </ProfilesProvider>
     </SyncProvider>
   );
+}
+
+/**
+ * Clears a tab's unseen badge when the operator lands on it. Lives inside the
+ * ActivityProvider so it can call markSeen on every navigation (and on mount).
+ */
+function RouteSeenTracker() {
+  const location = useLocation();
+  const { markSeen } = useActivity();
+  React.useEffect(() => {
+    markSeen(location.pathname);
+  }, [location.pathname, markSeen]);
+  return null;
 }

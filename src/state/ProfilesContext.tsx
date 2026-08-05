@@ -13,12 +13,22 @@ interface ProfileData {
   name: string;
   photoDataUrl: string;
   presenceText: string;
+  /**
+   * ISO timestamp of the last time this operator opened the Équipe tab.
+   * Shared (it lives on the synced profile) so the OTHER operator can tell
+   * whether their messages have been read — the read-receipt signal (A3.1).
+   */
+  teamSeenAt?: string;
 }
 
 interface ProfilesContextValue {
   profiles: UserProfile[];
   profileFor: (email: string) => UserProfile;
   updateSelf: (email: string, patch: UpdateProfileInput) => Promise<void>;
+  /** Marks the Équipe tab as read now for this operator (read receipts). */
+  markTeamSeen: (email: string) => void;
+  /** When the given operator last opened the Équipe tab, or null if never. */
+  teamSeenAt: (email: string) => string | null;
 }
 
 const ProfilesContext = createContext<ProfilesContextValue | undefined>(undefined);
@@ -70,21 +80,50 @@ export function ProfilesProvider({ children }: { children: React.ReactNode }) {
     [profiles],
   );
 
+  // Full existing profile data (preserving fields not in ProfileData's core
+  // three, e.g. teamSeenAt) so no patch silently drops the read-receipt marker.
+  const baseData = useCallback(
+    (key: string): ProfileData => {
+      const existing = records.find((r) => r.id === key);
+      return existing
+        ? {
+            name: existing.name,
+            photoDataUrl: existing.photoDataUrl,
+            presenceText: existing.presenceText,
+            teamSeenAt: existing.teamSeenAt,
+          }
+        : { name: fallbackProfile(key).name, photoDataUrl: '', presenceText: '' };
+    },
+    [records],
+  );
+
   const updateSelf = useCallback(
     async (email: string, patch: UpdateProfileInput) => {
       const key = email.trim().toLowerCase();
-      const existing = records.find((r) => r.id === key);
-      const base: ProfileData = existing
-        ? { name: existing.name, photoDataUrl: existing.photoDataUrl, presenceText: existing.presenceText }
-        : { name: fallbackProfile(key).name, photoDataUrl: '', presenceText: '' };
-      await upsert('profiles', key, { ...base, ...patch });
+      await upsert('profiles', key, { ...baseData(key), ...patch });
     },
-    [records, upsert],
+    [baseData, upsert],
+  );
+
+  const markTeamSeen = useCallback(
+    (email: string) => {
+      const key = email.trim().toLowerCase();
+      void upsert('profiles', key, { ...baseData(key), teamSeenAt: new Date().toISOString() });
+    },
+    [baseData, upsert],
+  );
+
+  const teamSeenAt = useCallback(
+    (email: string): string | null => {
+      const key = email.trim().toLowerCase();
+      return records.find((r) => r.id === key)?.teamSeenAt ?? null;
+    },
+    [records],
   );
 
   const value = useMemo(
-    () => ({ profiles, profileFor, updateSelf }),
-    [profiles, profileFor, updateSelf],
+    () => ({ profiles, profileFor, updateSelf, markTeamSeen, teamSeenAt }),
+    [profiles, profileFor, updateSelf, markTeamSeen, teamSeenAt],
   );
 
   return <ProfilesContext.Provider value={value}>{children}</ProfilesContext.Provider>;

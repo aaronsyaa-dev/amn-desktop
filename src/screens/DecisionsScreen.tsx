@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus } from 'lucide-react';
+import { FileText, Plus } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { useSync, useCollection, uid } from '../state/SyncContext';
 import { useUndo } from '../state/UndoContext';
+import type { ReportDraft } from '../state/useReports';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { UserAvatar } from '../components/UserAvatar';
 import { SkeletonList } from '../components/Skeleton';
@@ -19,8 +21,27 @@ interface DecisionData {
   createdAt: string;
 }
 
+type SyncDecision = DecisionData & { id: string; updatedAt: string };
+
+/** Pre-fills a report draft from a decision (B1). */
+function decisionReportDraft(decision: SyncDecision, authorName: string): ReportDraft {
+  const date = decision.createdAt
+    ? new Date(decision.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+  const lines: string[] = [`**Décidé par :** ${authorName}`];
+  if (date) lines.push(`**Le :** ${date}`);
+  lines.push('', decision.detail?.trim() ? decision.detail.trim() : '_Pas de détail._');
+  return {
+    type: 'decision',
+    title: decision.title ? `Rapport — ${decision.title}` : 'Rapport de décision',
+    body: lines.join('\n'),
+    links: [{ kind: 'decision', id: decision.id, label: decision.title || 'Décision' }],
+  };
+}
+
 export function DecisionsScreen() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { profileFor } = useProfiles();
   const { upsert, remove, ready } = useSync();
   const { isPending, scheduleDelete } = useUndo();
@@ -153,6 +174,18 @@ export function DecisionsScreen() {
                     <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
                       Décidé par {profileFor(decision.authorEmail).name}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate('/reports', {
+                          state: { reportDraft: decisionReportDraft(decision, profileFor(decision.authorEmail).name) },
+                        })
+                      }
+                      className="ml-auto flex items-center gap-1.5 border border-accent/40 bg-accent/10 px-2 py-1 font-mono text-[9px] uppercase tracking-wider text-accent opacity-0 transition-opacity hover:bg-accent/20 group-hover/dec:opacity-100"
+                    >
+                      <FileText size={10} strokeWidth={2} />
+                      Faire un rapport
+                    </button>
                   </div>
                 </div>
               </motion.li>

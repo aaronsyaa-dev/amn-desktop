@@ -467,7 +467,8 @@ export type SyncedCollection =
   | 'clients'
   | 'quotes'
   | 'trackers'
-  | 'notes';
+  | 'notes'
+  | 'reports';
 
 export interface PresenceEntry {
   email: string;
