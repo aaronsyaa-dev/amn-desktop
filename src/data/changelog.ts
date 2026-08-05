@@ -43,6 +43,8 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Fil « Activité récente » sur l’Accueil : ce que l’autre opérateur a ajouté ou modifié dernièrement, cliquable.',
       'Pastilles de notification sur la barre latérale : nombre d’ajouts non vus par onglet, remis à zéro à la visite.',
       'Repères contextuels sur les tâches : « Ajouter un repère » vous laisse pointer un endroit précis de l’app ; le repère devient une étiquette cliquable qui y ramène et le met en évidence.',
+      'Tâches : ouverture d’une fiche détaillée avec fil de discussion (commentaires), édition (titre, détail, assigné, priorité) et priorité visible sur les cartes.',
+      'Chat : tapez « # » pour mentionner une tâche ; le lien cliquable ouvre directement sa fiche.',
     ],
   },
   {
