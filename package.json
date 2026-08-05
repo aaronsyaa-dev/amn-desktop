@@ -3,6 +3,7 @@
   "productName": "AMN Desktop",
   "version": "1.2.0",
   "description": "AMN Desktop - Electron + React application for monitoring sites",
+
   "main": ".vite/build/main.js",
   "private": true,
   "scripts": {
