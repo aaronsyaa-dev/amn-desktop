@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Contact, Globe, Plus, Trash2, X } from 'lucide-react';
+import { Contact, Globe, MapPin, Plus, Trash2, X } from 'lucide-react';
 import { bridge } from '../lib/bridge';
 import { useRemoteSites } from '../state/RemoteSitesContext';
 import { useSync, useCollection, uid, stripMeta } from '../state/SyncContext';
@@ -11,6 +11,8 @@ import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { relativeTime } from '../lib/time';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
+import { useTags } from '../components/tags/TagProvider';
+import type { TaskMarker } from '../lib/taskMarkers';
 import type { Client, SharedTaskStatus } from '../shared/api';
 
 const TEAM = [
@@ -32,6 +34,8 @@ interface TaskData {
   siteId: string | null;
   clientId: number | null;
   createdAt: string;
+  /** Contextual "repères" pinning spots in the app to this task (A4). */
+  markers?: TaskMarker[];
 }
 export type SyncTask = TaskData & { id: string; updatedAt: string };
 
@@ -62,6 +66,15 @@ export function TasksScreen() {
 
   const moveTask = (task: SyncTask, status: SharedTaskStatus) =>
     upsert('tasks', task.id, { ...stripMeta(task), status });
+
+  const addMarker = (task: SyncTask, marker: TaskMarker) =>
+    upsert('tasks', task.id, { ...stripMeta(task), markers: [...(task.markers ?? []), marker] });
+
+  const removeMarker = (task: SyncTask, markerId: string) =>
+    upsert('tasks', task.id, {
+      ...stripMeta(task),
+      markers: (task.markers ?? []).filter((m) => m.id !== markerId),
+    });
 
   const removeTask = (id: string) => {
     const task = tasks.find((t) => t.id === id);
@@ -120,6 +133,8 @@ export function TasksScreen() {
                 clients={clients}
                 onMove={moveTask}
                 onRemove={removeTask}
+                onAddMarker={addMarker}
+                onRemoveMarker={removeMarker}
               />
             ))}
           </div>
@@ -147,6 +162,8 @@ function TaskColumn({
   clients,
   onMove,
   onRemove,
+  onAddMarker,
+  onRemoveMarker,
 }: {
   label: string;
   status: SharedTaskStatus;
@@ -156,6 +173,8 @@ function TaskColumn({
   clients: Client[];
   onMove: (task: SyncTask, status: SharedTaskStatus) => void;
   onRemove: (id: string) => void;
+  onAddMarker: (task: SyncTask, marker: TaskMarker) => void;
+  onRemoveMarker: (task: SyncTask, markerId: string) => void;
 }) {
   return (
     <div className="flex min-h-0 flex-col border border-border bg-surface">
@@ -181,6 +200,8 @@ function TaskColumn({
               clients={clients}
               onMove={onMove}
               onRemove={onRemove}
+              onAddMarker={onAddMarker}
+              onRemoveMarker={onRemoveMarker}
             />
           ))
         )}
@@ -196,6 +217,8 @@ function TaskCard({
   clients,
   onMove,
   onRemove,
+  onAddMarker,
+  onRemoveMarker,
 }: {
   task: SyncTask;
   status: SharedTaskStatus;
@@ -203,11 +226,15 @@ function TaskCard({
   clients: Client[];
   onMove: (task: SyncTask, status: SharedTaskStatus) => void;
   onRemove: (id: string) => void;
+  onAddMarker: (task: SyncTask, marker: TaskMarker) => void;
+  onRemoveMarker: (task: SyncTask, markerId: string) => void;
 }) {
   const { openSite } = useSitePanel();
+  const { capturing, beginCapture, showMarker } = useTags();
   const site = task.siteId ? sites.find((s) => s.id === task.siteId) : undefined;
   const client = task.clientId ? clients.find((c) => c.id === task.clientId) : undefined;
   const otherStatuses = COLUMNS.filter((c) => c.status !== status);
+  const markers = task.markers ?? [];
 
   return (
     <motion.div variants={staggerItem} className="group/card border border-border bg-bg p-3">
@@ -244,6 +271,44 @@ function TaskCard({
           )}
         </div>
       )}
+
+      {/* Contextual markers (A4): clickable repères + add button */}
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {markers.map((m) => (
+          <span
+            key={m.id}
+            className="group/mark flex items-center gap-1 rounded-sm bg-accent/10 px-1.5 py-0.5 font-mono text-[10px] text-accent"
+          >
+            <button
+              type="button"
+              onClick={() => showMarker(m)}
+              className="flex items-center gap-1 hover:underline"
+              title={`Voir le repère · ${m.label}`}
+            >
+              <MapPin size={10} strokeWidth={2} />
+              {m.label}
+            </button>
+            <button
+              type="button"
+              onClick={() => onRemoveMarker(task, m.id)}
+              aria-label="Retirer le repère"
+              className="opacity-0 transition-opacity hover:text-danger group-hover/mark:opacity-100"
+            >
+              <X size={9} strokeWidth={2.5} />
+            </button>
+          </span>
+        ))}
+        <button
+          type="button"
+          onClick={() => beginCapture((marker) => onAddMarker(task, marker))}
+          disabled={capturing}
+          className="flex items-center gap-1 rounded-sm border border-dashed border-border px-1.5 py-0.5 font-mono text-[10px] text-text-muted transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-40"
+          title="Pointer un endroit de l’app à associer à cette tâche"
+        >
+          <MapPin size={10} strokeWidth={2} />
+          Ajouter un repère
+        </button>
+      </div>
 
       <div className="mt-3 flex items-center justify-between">
         <UserAvatar email={task.assigneeEmail} size={24} />

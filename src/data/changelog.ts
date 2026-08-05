@@ -42,6 +42,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Accusés de lecture dans l’Équipe : un ✓ indique un message envoyé, un ✓✓ qu’il a été lu par votre binôme.',
       'Fil « Activité récente » sur l’Accueil : ce que l’autre opérateur a ajouté ou modifié dernièrement, cliquable.',
       'Pastilles de notification sur la barre latérale : nombre d’ajouts non vus par onglet, remis à zéro à la visite.',
+      'Repères contextuels sur les tâches : « Ajouter un repère » vous laisse pointer un endroit précis de l’app ; le repère devient une étiquette cliquable qui y ramène et le met en évidence.',
     ],
   },
   {

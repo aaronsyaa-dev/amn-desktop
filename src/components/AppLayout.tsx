@@ -14,6 +14,7 @@ import { SyncProvider } from '../state/SyncContext';
 import { ActivityProvider, useActivity } from '../state/ActivityContext';
 import { UndoProvider } from '../state/UndoContext';
 import { ToastProvider } from '../state/ToastContext';
+import { TagProvider } from './tags/TagProvider';
 import { NotificationsManager } from './NotificationsManager';
 import { SyncActivityNotifier } from './SyncActivityNotifier';
 import { IdleScreensaver } from './IdleScreensaver';
@@ -61,6 +62,7 @@ export function AppLayout() {
             <AssistantProvider>
               <CommandPaletteProvider>
               <UndoProvider>
+              <TagProvider>
             <div className="flex h-screen overflow-hidden text-text-primary">
               <Sidebar />
               <main className="relative flex-1 overflow-y-auto">
@@ -94,6 +96,7 @@ export function AppLayout() {
               {showWelcome && <WelcomeOverlay onDone={() => setShowWelcome(false)} />}
               {!showWelcome && <UpdateNotice />}
               <UpdateReady />
+              </TagProvider>
               </UndoProvider>
             </CommandPaletteProvider>
           </AssistantProvider>
