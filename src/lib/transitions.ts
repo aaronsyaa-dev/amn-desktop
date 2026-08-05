@@ -51,6 +51,11 @@ export const pageVariants: Record<string, Variants> = {
     animate: { opacity: 1, x: 0, transition: { duration: 0.3, ease: EASE } },
     exit: { opacity: 0, x: 14, transition: { duration: 0.15 } },
   },
+  '/reports': {
+    initial: { opacity: 0, x: -20 },
+    animate: { opacity: 1, x: 0, transition: { duration: 0.3, ease: EASE } },
+    exit: { opacity: 0, x: 14, transition: { duration: 0.15 } },
+  },
   '/settings': {
     initial: { opacity: 0, y: 10 },
     animate: { opacity: 1, y: 0, transition: { duration: 0.25, ease: EASE } },

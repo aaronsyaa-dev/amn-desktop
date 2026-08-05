@@ -7,6 +7,7 @@ import {
   ChevronsRight,
   CheckSquare,
   Contact,
+  FileText,
   Globe,
   Images,
   LayoutDashboard,
@@ -46,6 +47,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'knowledge', label: 'Connaissances', to: '/knowledge', icon: BookOpen },
   { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen },
   { key: 'media', label: 'Médias', to: '/media', icon: Images },
+  { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText },
   { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings },
 ];
 

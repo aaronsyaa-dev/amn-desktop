@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Contact, Globe, MapPin, MessageSquare, Pencil, Plus, Send, Trash2, X } from 'lucide-react';
+import { Contact, FileText, Globe, MapPin, MessageSquare, Pencil, Plus, Send, Trash2, X } from 'lucide-react';
 import { bridge } from '../lib/bridge';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
@@ -16,6 +16,7 @@ import { relativeTime } from '../lib/time';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
 import { useTags } from '../components/tags/TagProvider';
 import type { TaskMarker } from '../lib/taskMarkers';
+import type { ReportDraft } from '../state/useReports';
 import type { Client, SharedTaskStatus } from '../shared/api';
 
 const TEAM = [
@@ -39,6 +40,27 @@ const PRIORITIES: { value: TaskPriority; label: string; dot: string; text: strin
 
 function priorityMeta(p: TaskPriority | undefined) {
   return PRIORITIES.find((x) => x.value === (p ?? 'normal')) ?? PRIORITIES[1];
+}
+
+/** Pre-fills a report draft from a finished task's context (B1). */
+function taskReportDraft(task: SyncTask, nameOf: (email: string) => string): ReportDraft {
+  const date = task.createdAt
+    ? new Date(task.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+  const lines: string[] = [`**Assigné à :** ${nameOf(task.assigneeEmail)}`];
+  if (date) lines.push(`**Créée le :** ${date}`);
+  lines.push('', task.detail || '_Pas de description._');
+  const comments = task.comments ?? [];
+  if (comments.length > 0) {
+    lines.push('', '## Échanges');
+    for (const c of comments) lines.push(`- **${nameOf(c.authorEmail)}** — ${c.body}`);
+  }
+  return {
+    type: 'task',
+    title: task.title ? `Rapport — ${task.title}` : 'Rapport de tâche',
+    body: lines.join('\n'),
+    links: [{ kind: 'task', id: task.id, label: task.title || 'Tâche' }],
+  };
 }
 
 export interface TaskComment {
@@ -305,6 +327,8 @@ function TaskCard({
 }) {
   const { openSite } = useSitePanel();
   const { capturing, beginCapture, showMarker } = useTags();
+  const { profileFor } = useProfiles();
+  const navigate = useNavigate();
   const site = task.siteId ? sites.find((s) => s.id === task.siteId) : undefined;
   const client = task.clientId ? clients.find((c) => c.id === task.clientId) : undefined;
   const otherStatuses = COLUMNS.filter((c) => c.status !== status);
@@ -427,6 +451,20 @@ function TaskCard({
           </button>
         ))}
       </div>
+
+      {/* Finished task → offer a pre-filled report (B1). */}
+      {status === 'done' && (
+        <button
+          type="button"
+          onClick={() =>
+            navigate('/reports', { state: { reportDraft: taskReportDraft(task, (e) => profileFor(e).name) } })
+          }
+          className="mt-2 flex w-full items-center justify-center gap-1.5 border border-accent/40 bg-accent/10 py-1.5 font-mono text-[10px] uppercase tracking-wider text-accent transition-colors hover:bg-accent/20"
+        >
+          <FileText size={11} strokeWidth={2} />
+          Faire un rapport
+        </button>
+      )}
     </motion.div>
   );
 }

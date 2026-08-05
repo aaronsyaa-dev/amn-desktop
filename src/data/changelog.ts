@@ -45,6 +45,8 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Repères contextuels sur les tâches : « Ajouter un repère » vous laisse pointer un endroit précis de l’app ; le repère devient une étiquette cliquable qui y ramène et le met en évidence.',
       'Tâches : ouverture d’une fiche détaillée avec fil de discussion (commentaires), édition (titre, détail, assigné, priorité) et priorité visible sur les cartes.',
       'Chat : tapez « # » pour mentionner une tâche ; le lien cliquable ouvre directement sa fiche.',
+      'Nouvel onglet « Rapports » : centralise les comptes rendus (client ou mémoire d’équipe), en markdown, avec éléments liés cliquables, filtres par type et date.',
+      'Bouton « Faire un rapport » sur une tâche terminée, une fiche client et une décision : pré-remplit un brouillon avec le contexte (et les commentaires de la tâche).',
     ],
   },
   {

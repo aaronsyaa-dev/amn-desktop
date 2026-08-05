@@ -13,6 +13,7 @@ import {
   CheckSquare,
   Contact,
   CornerDownLeft,
+  FileText,
   Globe,
   Images,
   LayoutDashboard,
@@ -59,6 +60,7 @@ const NAV_COMMANDS: Extract<Command, { kind: 'nav' }>[] = [
   { kind: 'nav', id: 'nav-knowledge', label: 'Connaissances', icon: BookOpen, to: '/knowledge' },
   { kind: 'nav', id: 'nav-notes', label: 'Notes', icon: NotebookPen, to: '/notes' },
   { kind: 'nav', id: 'nav-media', label: 'Médias', icon: Images, to: '/media' },
+  { kind: 'nav', id: 'nav-reports', label: 'Rapports', icon: FileText, to: '/reports' },
   { kind: 'nav', id: 'nav-settings', label: 'Paramètres', icon: Settings, to: '/settings' },
 ];
 
