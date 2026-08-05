@@ -63,11 +63,18 @@ export function AppLayout() {
               <CommandPaletteProvider>
               <UndoProvider>
               <TagProvider>
-            <div className="flex h-screen overflow-hidden text-text-primary">
+            <div
+              className="flex h-screen overflow-hidden text-text-primary"
+              // Respect the iPhone notch / home indicator when installed as a PWA.
+              style={{
+                paddingTop: 'env(safe-area-inset-top)',
+                paddingBottom: 'env(safe-area-inset-bottom)',
+              }}
+            >
               <Sidebar />
               <main className="relative flex-1 overflow-y-auto">
                 <TopBar />
-                <div className="mx-auto max-w-6xl px-8 py-8">
+                <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8">
                   {/*
                     Entrance-only, keyed per route. Remounting on navigation
                     replays the per-tab entrance. We deliberately do NOT use

@@ -12,7 +12,8 @@
     "make": "npm run bootstrap && electron-forge make",
     "publish": "npm run bootstrap && electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:web": "vite build --config vite.renderer.config.mts"
   },
   "keywords": [],
   "author": {
