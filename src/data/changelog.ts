@@ -48,6 +48,8 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Nouvel onglet « Rapports » : centralise les comptes rendus (client ou mémoire d’équipe), en markdown, avec éléments liés cliquables, filtres par type et date.',
       'Bouton « Faire un rapport » sur une tâche terminée, une fiche client et une décision : pré-remplit un brouillon avec le contexte (et les commentaires de la tâche).',
       'Version mobile (PWA) : l’app peut être « ajoutée à l’écran d’accueil » sur iPhone et réutilise la même synchro temps réel (voir docs/PWA.md pour le déploiement).',
+      'Sécurité web : la version PWA utilise désormais un token distinct et restreint (pas d’admin des sites), révocable indépendamment du poste desktop.',
+      'Accueil : bandeau de veille défilant sous le message d’accueil ; un clic ouvre Ajmani sur l’onglet Veille (masqué s’il n’y a pas encore de données).',
     ],
   },
   {

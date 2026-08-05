@@ -362,7 +362,11 @@ const RECONNECT_DELAYS_MS = [1000, 2000, 5000, 10000, 20000, 30000];
  */
 function createBrowserRemote(): AmnBridge['remote'] {
   const apiUrl = (import.meta.env.VITE_AMN_API_URL || '').replace(/\/$/, '');
-  const token = import.meta.env.VITE_AMN_API_OPERATOR_TOKEN || '';
+  // Prefer the scoped web token (VITE_AMN_API_WEB_TOKEN) so the public web/PWA
+  // build never has to embed the full desktop operator token. The operator
+  // token is only a dev/local fallback; production web deploys set the web one.
+  const token =
+    import.meta.env.VITE_AMN_API_WEB_TOKEN || import.meta.env.VITE_AMN_API_OPERATOR_TOKEN || '';
   const configured = Boolean(apiUrl && token);
 
   const eventListeners = new Set<(push: RemoteEventPush) => void>();
