@@ -21,10 +21,17 @@ import {
   type Conversation,
 } from './conversations';
 
+/** Tabs of the Ajmani panel (kept here so callers can request one on open). */
+export type AssistantTab = 'chat' | 'summary' | 'watch';
+
 interface AssistantContextValue {
   isOpen: boolean;
-  open: () => void;
+  /** Open the panel, optionally jumping straight to a given tab. */
+  open: (tab?: AssistantTab) => void;
   close: () => void;
+  /** A tab the opener requested; the panel consumes and clears it. */
+  pendingTab: AssistantTab | null;
+  clearPendingTab: () => void;
   messages: ChatMessage[];
   isThinking: boolean;
   sendMessage: (text: string) => void;
@@ -134,8 +141,13 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
     setMessagesSynced([]);
   }, [email, setMessagesSynced]);
 
-  const open = useCallback(() => setIsOpen(true), []);
+  const [pendingTab, setPendingTab] = useState<AssistantTab | null>(null);
+  const open = useCallback((tab?: AssistantTab) => {
+    if (tab) setPendingTab(tab);
+    setIsOpen(true);
+  }, []);
   const close = useCallback(() => setIsOpen(false), []);
+  const clearPendingTab = useCallback(() => setPendingTab(null), []);
 
   // Quick access: Ctrl/⌘ + J toggles Ajmani from anywhere.
   useEffect(() => {
@@ -360,6 +372,8 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       isOpen,
       open,
       close,
+      pendingTab,
+      clearPendingTab,
       messages,
       isThinking,
       sendMessage,
@@ -379,6 +393,8 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       isOpen,
       open,
       close,
+      pendingTab,
+      clearPendingTab,
       messages,
       isThinking,
       sendMessage,

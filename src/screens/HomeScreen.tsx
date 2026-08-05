@@ -21,6 +21,7 @@ import { useProfiles } from '../state/ProfilesContext';
 import { useSitePins } from '../lib/useSitePins';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
 import { StatusBadge } from '../components/StatusBadge';
+import { VeilleTicker } from '../components/VeilleTicker';
 import { homeWelcome, homeNudge } from '../lib/homeGreetings';
 import { relativeTime } from '../lib/time';
 
@@ -108,6 +109,9 @@ export function HomeScreen() {
           )}
         </motion.p>
       </motion.div>
+
+      {/* Veille ticker (Bloc 2) — renders nothing (no margin) when there's no data */}
+      <VeilleTicker />
 
       {/* Sites suivis — personal shortcut, only when the operator pinned some */}
       {pinnedSites.length > 0 && (

@@ -21,7 +21,7 @@ import { useRemoteSites } from '../state/RemoteSitesContext';
 import { ALERT_SEVERITY_CONFIG } from '../lib/alerts';
 import { bridge } from '../lib/bridge';
 import { relativeTime } from '../lib/time';
-import { useAssistant } from './AssistantContext';
+import { useAssistant, type AssistantTab as Tab } from './AssistantContext';
 import { getDailySummary, getSuggestions } from './engine';
 import { searchableText } from './conversations';
 import { ReportBlocks } from './ReportBlocks';
@@ -31,8 +31,6 @@ import type { WatchFeedResult, WatchItem } from '../shared/api';
 
 const PANEL_SPRING = { type: 'spring' as const, stiffness: 340, damping: 34 };
 
-type Tab = 'chat' | 'summary' | 'watch';
-
 const TABS: Array<{ key: Tab; label: string; icon: typeof Sparkles }> = [
   { key: 'chat', label: 'Ajmani', icon: Sparkles },
   { key: 'summary', label: 'Résumé du jour', icon: Sunrise },
@@ -40,9 +38,18 @@ const TABS: Array<{ key: Tab; label: string; icon: typeof Sparkles }> = [
 ];
 
 export function AssistantPanel() {
-  const { isOpen, close, newConversation, openConversation } = useAssistant();
+  const { isOpen, close, newConversation, openConversation, pendingTab, clearPendingTab } = useAssistant();
   const { sites, ensureEventsLoaded } = useRemoteSites();
   const [tab, setTab] = useState<Tab>('chat');
+
+  // Honour a tab requested by the opener (e.g. the Accueil veille ticker jumps
+  // straight to "Veille"), then clear it so it fires only once.
+  useEffect(() => {
+    if (isOpen && pendingTab) {
+      setTab(pendingTab);
+      clearPendingTab();
+    }
+  }, [isOpen, pendingTab, clearPendingTab]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [exportTarget, setExportTarget] = useState<AssistantReport | null>(null);
 
