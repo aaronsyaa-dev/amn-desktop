@@ -30,6 +30,17 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.2.0',
+    date: '2026-08-05',
+    title: 'Corrections & fondations',
+    changes: [
+      'Zoom plein écran des images du chat réparé : la visionneuse s’ouvre correctement sur toutes les images (plus d’affichage partiel), navigation ← / → et vidéos inchangées.',
+      'Bouton « Démarrer avec Windows » à nouveau fonctionnel : l’app se lance bien à l’ouverture de session, et le réglage survit aux mises à jour automatiques.',
+      'Le raccourci sur le Bureau est recréé à chaque mise à jour (il pouvait disparaître après une mise à jour auto).',
+      'Suppression d’un site : en cas d’échec, un message d’erreur clair s’affiche au lieu d’un retour silencieux.',
+    ],
+  },
+  {
     version: '1.1.7',
     date: '2026-08-04',
     title: 'Correctif synchronisation temps réel',

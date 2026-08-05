@@ -1,11 +1,7 @@
 {
   "name": "amn-desktop",
   "productName": "AMN Desktop",
- claude/first-pr-github-setup-ltpqqo
-  "version": "1.1.7",
-
-  "version": "1.1.6",
- main
+  "version": "1.2.0",
   "description": "AMN Desktop - Electron + React application for monitoring sites",
   "main": ".vite/build/main.js",
   "private": true,

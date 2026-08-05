@@ -1,15 +1,18 @@
 import { app, BrowserWindow, Menu, Notification, Tray, nativeImage, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
-import started from 'electron-squirrel-startup';
 import { initDatabase } from './main/db';
 import { registerIpcHandlers } from './main/ipc';
 import { RemoteApiClient } from './main/remoteApi';
 import { setupAutoUpdate } from './main/updater';
 import { warmWatch } from './main/watch';
+import { handleSquirrelStartup } from './main/windowsIntegration';
 
-// Handle creating/removing shortcuts on Windows when installing/uninstalling.
-if (started) {
+// Handle Squirrel.Windows install/update/uninstall events. On --squirrel-updated
+// this explicitly recreates the Desktop + Start-menu shortcuts (they can vanish
+// after an auto-update otherwise). Quits early when an event was handled.
+const squirrelHandled = handleSquirrelStartup();
+if (squirrelHandled) {
   app.quit();
 }
 

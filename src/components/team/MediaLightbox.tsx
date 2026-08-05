@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Download, X } from 'lucide-react';
 
@@ -58,15 +59,19 @@ export function LightboxProvider({
   return (
     <LightboxContext.Provider value={value}>
       {children}
-      <AnimatePresence>
-        {current && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="fixed inset-0 z-[210] flex items-center justify-center bg-black/90 p-6"
-            onClick={close}
+      {/* Portalled to <body> so an ancestor screen's transform (the route
+          entrance animation) can't trap this position:fixed overlay in the
+          content area — that was making the lightbox appear partial/offset. */}
+      {createPortal(
+        <AnimatePresence>
+          {current && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-[210] flex items-center justify-center bg-black/90 p-6"
+              onClick={close}
           >
             {/* Top bar */}
             <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-3 px-5 py-4">
@@ -139,7 +144,9 @@ export function LightboxProvider({
             )}
           </motion.div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body,
+      )}
     </LightboxContext.Provider>
   );
 }

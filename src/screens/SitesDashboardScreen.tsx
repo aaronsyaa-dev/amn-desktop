@@ -3,6 +3,7 @@ import { ChevronDown, Copy, Check, Pencil, Plus, Search, SlidersHorizontal, Star
 import { motion } from 'framer-motion';
 import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
 import { useUndo } from '../state/UndoContext';
+import { useToast } from '../state/ToastContext';
 import { useSitePins } from '../lib/useSitePins';
 import { useTrackers } from '../state/useTrackers';
 import type { DerivedStatus } from '../lib/siteStatus';
@@ -13,6 +14,12 @@ import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
 import type { RegisterSiteResult } from '../shared/api';
+
+/** Readable message from a thrown error, for a toast. */
+function describeError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.slice(0, 160) || 'Erreur inconnue.';
+}
 
 type SortKey = 'urgent' | 'alerts' | 'alpha';
 
@@ -305,6 +312,7 @@ function SiteRow({
   const { openSite } = useSitePanel();
   const { updateSite, deleteSite } = useRemoteSites();
   const { scheduleDelete } = useUndo();
+  const { notify } = useToast();
   const { setModules } = useTrackers();
   const activity = useMemo(() => buildActivitySeries(events), [events]);
 
@@ -320,7 +328,11 @@ function SiteRow({
   const commitEdit = () => {
     const name = draft.trim();
     setEditing(false);
-    if (name && name !== site.name) updateSite(site.id, name).catch(() => {/* error surfaced via revert */});
+    if (name && name !== site.name) {
+      updateSite(site.id, name).catch((err) =>
+        notify({ title: 'Renommage impossible', body: describeError(err), durationMs: 8000 }),
+      );
+    }
   };
 
   const remove = () => {
@@ -328,7 +340,11 @@ function SiteRow({
       key: `site:${site.id}`,
       label: `Site « ${site.name} »`,
       commit: () => {
-        deleteSite(site.id).catch(() => {/* error surfaced via revert */});
+        // Surface a failure instead of silently reverting (the site would just
+        // reappear with no feedback — reads as "the button does nothing").
+        deleteSite(site.id).catch((err) =>
+          notify({ title: 'Suppression impossible', body: describeError(err), durationMs: 8000 }),
+        );
         setModules(site.id, []); // cascade: drop this site's tracker config
       },
     });
