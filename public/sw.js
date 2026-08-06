@@ -19,7 +19,7 @@
  * on which asset's fetch happened to fail. Fix: the index.html fallback now
  * only applies to actual page navigations; a failed asset fetch fails for
  * real instead of being silently swapped for the wrong content.
- */
+ *
  * v3 fixes the bug that made every earlier deploy invisible: v1/v2 were
  * cache-first for EVERY same-origin GET, including page navigations. Since
  * index.html is precached, the browser kept being served the very first
