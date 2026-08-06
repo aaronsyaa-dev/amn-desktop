@@ -20,7 +20,18 @@
  * only applies to actual page navigations; a failed asset fetch fails for
  * real instead of being silently swapped for the wrong content.
  */
-const CACHE = 'amn-pwa-v2';
+ * v3 fixes the bug that made every earlier deploy invisible: v1/v2 were
+ * cache-first for EVERY same-origin GET, including page navigations. Since
+ * index.html is precached, the browser kept being served the very first
+ * index.html it ever cached — which points at that build's hashed asset names,
+ * themselves cached — so the app was permanently frozen on the first deployed
+ * version. Redeploys (new env vars, bug fixes) never took effect, which is why
+ * the sync badge stayed on "Local" even after VITE_AMN_API_URL was configured.
+ * Fix: navigations are network-first (cache is only an offline fallback), while
+ * hashed build assets stay cache-first — safe, because their filename changes
+ * whenever their content does.
+ */
+const CACHE = 'amn-pwa-v3';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.png'];
 
 self.addEventListener('install', (event) => {
@@ -45,25 +56,39 @@ self.addEventListener('fetch', (event) => {
   // the network so realtime data is always fresh.
   if (url.origin !== self.location.origin) return;
 
-  // Cache-first for same-origin requests; fall back to the network and cache
-  // successful responses for next time. On a genuine network failure, only
-  // page navigations fall back to the cached shell (the classic "offline still
-  // opens the app" behaviour) — a failed asset request (CSS/JS/image) must
-  // fail for real, never be silently replaced by index.html's HTML content.
+  const cachePut = (req, res) => {
+    if (res.ok && res.type === 'basic') {
+      const copy = res.clone();
+      caches.open(CACHE).then((c) => c.put(req, copy));
+    }
+    return res;
+  };
+
+  // Page navigations: NETWORK-FIRST. The freshly deployed index.html must win,
+  // otherwise the app is pinned forever to the first cached build. The cached
+  // copy is kept strictly as an offline fallback.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((res) => cachePut('./index.html', res))
+        .catch(() => caches.match('./index.html')),
+    );
+    return;
+  }
+
+  // Everything else (hashed build assets, icons): cache-first is safe because
+  // a content change produces a new filename, so a stale entry is never served
+  // for new content. On a genuine network failure the request fails for real —
+  // it must never be silently answered with index.html's HTML, which the
+  // browser would refuse to apply as CSS (unstyled page) or run as a module
+  // script (blank page). See the "Dépannage" section of docs/PWA.md.
   event.respondWith(
     caches.match(request).then(
       (hit) =>
         hit ||
         fetch(request)
-          .then((res) => {
-            if (res.ok && res.type === 'basic') {
-              const copy = res.clone();
-              caches.open(CACHE).then((c) => c.put(request, copy));
-            }
-            return res;
-          })
+          .then((res) => cachePut(request, res))
           .catch(() => {
-            if (request.mode === 'navigate') return caches.match('./index.html');
             throw new Error(`amn-pwa sw: network fetch failed for ${request.url}`);
           }),
     ),
