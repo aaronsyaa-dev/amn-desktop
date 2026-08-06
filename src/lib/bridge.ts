@@ -367,7 +367,17 @@ function createBrowserRemote(): AmnBridge['remote'] {
   // token is only a dev/local fallback; production web deploys set the web one.
   const token =
     import.meta.env.VITE_AMN_API_WEB_TOKEN || import.meta.env.VITE_AMN_API_OPERATOR_TOKEN || '';
-  const configured = Boolean(apiUrl && token);
+  // "Configured" means a backend URL was set — i.e. this deployment intends to
+  // sync, as opposed to a genuine standalone/dev build with no amn-api at all.
+  // Requiring the token too was a bug: on the web/PWA build, if VITE_AMN_API_URL
+  // is set but VITE_AMN_API_WEB_TOKEN is missing/misnamed at build time, the
+  // badge got stuck on "Local" forever (the initial-only 'unconfigured' state —
+  // setStatus() never re-emits it) even though the app clearly intends to sync
+  // and Sites/Tasks/etc. could still show stale/cached data, making the badge
+  // actively misleading. With only `apiUrl` required, the WS/HTTP calls are
+  // attempted regardless; a genuinely bad or missing token now surfaces as an
+  // honest, actionable "Hors ligne" (WS closes 4401) instead of a silent "Local".
+  const configured = Boolean(apiUrl);
 
   const eventListeners = new Set<(push: RemoteEventPush) => void>();
   const statusListeners = new Set<(status: RemoteConnectionStatus) => void>();
