@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -51,8 +51,16 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings },
 ];
 
-export function Sidebar() {
-  const [isExpanded, setIsExpanded] = useState(false);
+export function Sidebar({
+  mobileOpen = false,
+  onClose,
+}: {
+  /** Whether the mobile overlay drawer is open (< md only). */
+  mobileOpen?: boolean;
+  /** Close the mobile drawer (nav click, backdrop tap, swipe-left). */
+  onClose?: () => void;
+}) {
+  const [isExpandedDesktop, setIsExpanded] = useState(false);
   const [isSitesFlyoutOpen, setIsSitesFlyoutOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -61,6 +69,11 @@ export function Sidebar() {
   const { sites } = useRemoteSites();
   const { unseen } = useActivity();
 
+  // On mobile the drawer always shows the full (labelled) sidebar; on desktop
+  // the collapse toggle controls it. Deriving it here keeps every render site
+  // below working unchanged for both platforms.
+  const isExpanded = isExpandedDesktop || mobileOpen;
+
   const isActive = (to: string) =>
     to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
 
@@ -68,14 +81,50 @@ export function Sidebar() {
   // "registre" lives at /sites (with the "Nouveau site" button), so clicking
   // Sites must land there; the quick site-list flyout is opened separately via
   // the chevron, never by hijacking the main click.
-  const handleNavClick = () => setIsSitesFlyoutOpen(false);
+  const handleNavClick = () => {
+    setIsSitesFlyoutOpen(false);
+    onClose?.(); // close the mobile drawer after navigating
+  };
+
+  // Swipe-left on the open drawer closes it (mobile only).
+  const touchStartX = useRef<number | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0]?.clientX ?? null;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStartX.current;
+    touchStartX.current = null;
+    if (start === null || !mobileOpen) return;
+    const dx = (e.changedTouches[0]?.clientX ?? start) - start;
+    if (dx < -45) onClose?.();
+  };
 
   return (
     <>
+      {/* Mobile backdrop behind the drawer (< md only). */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            key="nav-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px] md:hidden"
+          />
+        )}
+      </AnimatePresence>
+
       <motion.aside
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
         animate={{ width: isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
         transition={TRANSITION}
-        className="relative z-30 flex h-full flex-shrink-0 flex-col border-r border-border bg-[#0d0d0d] py-4"
+        className={`fixed inset-y-0 left-0 z-50 flex h-full flex-shrink-0 flex-col border-r border-border bg-[#0d0d0d] py-4 transition-transform duration-300 md:relative md:z-30 md:translate-x-0 ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        } md:translate-x-0`}
+        style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
       >
         <div className="mb-5 flex h-9 items-center px-4">
           <AnimatePresence mode="wait" initial={false}>
@@ -198,7 +247,7 @@ export function Sidebar() {
           <button
             type="button"
             onClick={() => setIsExpanded((v) => !v)}
-            className={`flex items-center gap-3 rounded-lg py-2.5 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary ${
+            className={`hidden items-center gap-3 rounded-lg py-2.5 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary md:flex ${
               isExpanded ? 'px-3' : 'justify-center px-0'
             }`}
             aria-label={isExpanded ? 'Réduire le menu' : 'Étendre le menu'}

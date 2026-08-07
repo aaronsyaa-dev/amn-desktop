@@ -80,7 +80,7 @@ export function HomeScreen() {
   ];
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-3xl flex-col justify-center py-10">
+    <div className="mx-auto flex min-h-[calc(100dvh-10rem)] max-w-3xl flex-col justify-center py-10">
       {/* Welcome */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}

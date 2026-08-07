@@ -168,7 +168,7 @@ export function TasksScreen() {
   }, [tasks]);
 
   return (
-    <StaggerGroup className="flex h-[calc(100vh-8rem)] flex-col gap-4">
+    <StaggerGroup className="flex flex-col gap-4 md:h-[calc(100dvh-8rem)]">
       <StaggerItem>
         <div className="flex items-end justify-between gap-4">
           <div>
@@ -188,11 +188,11 @@ export function TasksScreen() {
         </div>
       </StaggerItem>
 
-      <StaggerItem className="min-h-0 flex-1">
+      <StaggerItem className="min-h-0 md:flex-1">
         {!ready ? (
           <SkeletonBoard />
         ) : (
-          <div className="grid h-full grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:h-full md:grid-cols-3">
             {COLUMNS.map((col) => (
               <TaskColumn
                 key={col.status}

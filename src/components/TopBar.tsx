@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Sparkles } from 'lucide-react';
+import { Menu, Search, Sparkles } from 'lucide-react';
 import { useCommandPalette } from './command-palette/CommandPalette';
 import { NotificationCenter } from './NotificationCenter';
 import { HelpButton } from './HelpOverlay';
@@ -20,7 +20,7 @@ function useModifierKey(): string {
   return key;
 }
 
-export function TopBar() {
+export function TopBar({ onMenu }: { onMenu?: () => void }) {
   const { open } = useCommandPalette();
   const { open: openAssistant } = useAssistant();
   const { user } = useAuth();
@@ -29,11 +29,22 @@ export function TopBar() {
   const modKey = useModifierKey();
 
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-bg/80 px-8 py-3 backdrop-blur-md">
+    <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-border bg-bg/80 px-4 py-3 backdrop-blur-md sm:gap-3 md:px-8">
+      {/* Mobile: hamburger opens the nav drawer (< md only). */}
+      <button
+        type="button"
+        onClick={onMenu}
+        aria-label="Ouvrir le menu"
+        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary transition-colors hover:text-text-primary md:hidden"
+      >
+        <Menu size={18} strokeWidth={1.75} />
+      </button>
+
+      {/* Desktop: full search field with Ctrl/⌘ K hint. */}
       <button
         type="button"
         onClick={open}
-        className="input-focus group flex flex-1 items-center gap-2.5 border border-border bg-surface px-3 py-2 text-sm text-text-muted transition-colors duration-200 hover:border-border-strong md:max-w-xs"
+        className="input-focus group hidden flex-1 items-center gap-2.5 border border-border bg-surface px-3 py-2 text-sm text-text-muted transition-colors duration-200 hover:border-border-strong md:flex md:max-w-xs"
       >
         <Search size={15} strokeWidth={1.75} />
         <span className="flex-1 text-left">Rechercher…</span>
@@ -42,7 +53,17 @@ export function TopBar() {
         </kbd>
       </button>
 
-      <div className="ml-auto flex items-center gap-2">
+      {/* Mobile: search collapses to a loupe icon that opens the full-screen palette. */}
+      <button
+        type="button"
+        onClick={open}
+        aria-label="Rechercher"
+        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary transition-colors hover:text-text-primary md:hidden"
+      >
+        <Search size={17} strokeWidth={1.75} />
+      </button>
+
+      <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
         <SyncStatusIndicator />
         <button
           type="button"
@@ -52,7 +73,9 @@ export function TopBar() {
           <Sparkles size={16} strokeWidth={1.75} />
           <span className="hidden sm:inline">Ajmani</span>
         </button>
-        <HelpButton />
+        <span className="hidden sm:flex">
+          <HelpButton />
+        </span>
         <NotificationCenter />
         {user && (
           <button
