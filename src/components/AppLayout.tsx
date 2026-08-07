@@ -30,6 +30,28 @@ export function AppLayout() {
   const navigate = useNavigate();
   const [showWelcome, setShowWelcome] = React.useState(shouldShowWelcome);
 
+  // Mobile navigation drawer (< md). Closed on every route change.
+  const [navOpen, setNavOpen] = React.useState(false);
+  React.useEffect(() => setNavOpen(false), [location.pathname]);
+
+  // Edge-swipe to open the drawer: a touch starting within 24px of the left
+  // edge and dragged right opens it (mobile gesture; desktop is unaffected).
+  const swipeStart = React.useRef<{ x: number; y: number } | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    swipeStart.current = t ? { x: t.clientX, y: t.clientY } : null;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const s = swipeStart.current;
+    swipeStart.current = null;
+    if (!s || navOpen) return;
+    const t = e.changedTouches[0];
+    if (!t) return;
+    const dx = t.clientX - s.x;
+    const dy = Math.abs(t.clientY - s.y);
+    if (s.x <= 24 && dx > 45 && dy < 60) setNavOpen(true);
+  };
+
   // Session memory: restore the last visited tab once, on entry at the root,
   // then keep the last tab in sync on every navigation.
   const restored = React.useRef(false);
@@ -64,16 +86,22 @@ export function AppLayout() {
               <UndoProvider>
               <TagProvider>
             <div
-              className="flex h-screen overflow-hidden text-text-primary"
+              onTouchStart={onTouchStart}
+              onTouchEnd={onTouchEnd}
+              // 100dvh (not 100vh) so mobile browser chrome + the virtual
+              // keyboard (via viewport interactive-widget=resizes-content) shrink
+              // the layout, keeping bottom-anchored inputs (chat composer) above
+              // the keyboard. Identical to 100vh on desktop.
+              className="flex h-[100dvh] overflow-hidden text-text-primary"
               // Respect the iPhone notch / home indicator when installed as a PWA.
               style={{
                 paddingTop: 'env(safe-area-inset-top)',
                 paddingBottom: 'env(safe-area-inset-bottom)',
               }}
             >
-              <Sidebar />
+              <Sidebar mobileOpen={navOpen} onClose={() => setNavOpen(false)} />
               <main className="relative flex-1 overflow-y-auto">
-                <TopBar />
+                <TopBar onMenu={() => setNavOpen(true)} />
                 <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8">
                   {/*
                     Entrance-only, keyed per route. Remounting on navigation

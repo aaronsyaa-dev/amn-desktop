@@ -66,7 +66,7 @@ export function NotesScreen() {
   };
 
   return (
-    <section className="flex h-[calc(100vh-8rem)] flex-col gap-4">
+    <section className="flex h-[calc(100dvh-8rem)] flex-col gap-4">
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-text-primary">Notes</h1>

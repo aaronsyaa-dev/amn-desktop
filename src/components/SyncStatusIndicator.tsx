@@ -19,10 +19,12 @@ export function SyncStatusIndicator() {
   return (
     <span
       title={meta.title}
-      className="hidden items-center gap-1.5 border border-border bg-surface px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider text-text-secondary md:inline-flex"
+      className="inline-flex items-center gap-1.5 border border-border bg-surface px-2 py-1.5 font-mono text-[10px] uppercase tracking-wider text-text-secondary sm:px-2.5"
     >
       <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${meta.dot} ${meta.pulse ? 'animate-pulse' : ''}`} />
-      {meta.label}
+      {/* Label hidden on the narrowest screens — the coloured dot alone carries
+          the status there (full text returns at sm+). */}
+      <span className="hidden sm:inline">{meta.label}</span>
     </span>
   );
 }

@@ -407,7 +407,7 @@ function SiteRow({
       {/* Row actions — revealed on hover (pin stays visible when set) */}
       <div
         className={`flex items-center gap-1 justify-self-end transition-opacity focus-within:opacity-100 group-hover:opacity-100 ${
-          pinned ? 'opacity-100' : 'opacity-0'
+          pinned ? 'opacity-100' : 'opacity-100 md:opacity-0'
         }`}
       >
         <button
