@@ -16,6 +16,18 @@ if (squirrelHandled) {
   app.quit();
 }
 
+// Windows only shows toast notifications from a packaged app when the running
+// process declares an explicit AppUserModelID that matches an installed
+// shortcut's AUMID — otherwise `new Notification().show()` is silently dropped
+// (this was never set, so native notifications never worked on installed
+// Windows, only in dev via electron.exe's own AUMID). Squirrel.Windows creates
+// the Start-menu/desktop shortcut with the AUMID `com.squirrel.<pkgId>.<exe>`,
+// where the maker uses pkgId = package.json name with '-' → '_' (amn_desktop)
+// and exe = the productName ("AMN Desktop"). We must set the exact same string.
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.squirrel.amn_desktop.AMN Desktop');
+}
+
 // Single-instance: a second launch (e.g. via the start-with-Windows shortcut,
 // or clicking the app while it's in the tray) focuses the existing window
 // instead of spawning a duplicate.
