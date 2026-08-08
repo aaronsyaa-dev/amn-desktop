@@ -13,6 +13,7 @@ import {
   type CreateQuoteInput,
   type CreateSharedTaskInput,
   type PresenceEntry,
+  type ComplyProgress,
   type ScanProgress,
   type ScanTier,
   type RemoteConnectionStatus,
@@ -151,6 +152,14 @@ const bridge: AmnBridge = {
       const listener = (_event: Electron.IpcRendererEvent, progress: ScanProgress) => callback(progress);
       ipcRenderer.on(IPC.remoteScanProgressPush, listener);
       return () => ipcRenderer.removeListener(IPC.remoteScanProgressPush, listener);
+    },
+    startComply: (url: string) => ipcRenderer.invoke(IPC.remoteStartComply, url),
+    listComplyChecks: () => ipcRenderer.invoke(IPC.remoteListComplyChecks),
+    getComplyCheck: (id: string) => ipcRenderer.invoke(IPC.remoteGetComplyCheck, id),
+    onComplyProgress: (callback: (progress: ComplyProgress) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, progress: ComplyProgress) => callback(progress);
+      ipcRenderer.on(IPC.remoteComplyProgressPush, listener);
+      return () => ipcRenderer.removeListener(IPC.remoteComplyProgressPush, listener);
     },
   },
   system: {

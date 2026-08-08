@@ -34,6 +34,12 @@ import type {
  * the app still works offline / in dev.
  */
 
+/**
+ * Every collection pulled on startup and mirrored locally. A collection absent
+ * from this list still *writes* through `upsert` (and reaches amn-api), but it
+ * is never read back — so its data silently disappears on the next reload.
+ * Anything added to `SyncedCollection` must be listed here too.
+ */
 const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'tasks',
   'decisions',
@@ -43,6 +49,8 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'profiles',
   'notes',
   'reports',
+  'siteMeta',
+  'siteNotes',
 ];
 
 const MIRROR_PREFIX = 'amn.sync.';

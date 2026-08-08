@@ -13,6 +13,8 @@ import {
   Link2,
   List,
   Pencil,
+  ArrowLeft,
+  BadgeCheck,
   Plus,
   ScanLine,
   Scale,
@@ -27,8 +29,9 @@ import { bridge } from '../lib/bridge';
 import { Markdown } from '../lib/markdown';
 import { relativeTime } from '../lib/time';
 import { ScanDetail } from '../components/scanner/ScanDetail';
+import { ComplyDetail } from '../components/comply/ComplyDetail';
 import { scoreColor } from '../lib/scanSeverity';
-import type { Client, Scan } from '../shared/api';
+import type { Client, ComplyCheck, Scan } from '../shared/api';
 
 const TYPES: { value: ReportType; label: string }[] = [
   { value: 'task', label: 'Tâche' },
@@ -41,13 +44,20 @@ function typeLabel(t: ReportType): string {
   return TYPES.find((x) => x.value === t)?.label ?? 'Manuel';
 }
 
-/** The report type filter, plus the pseudo-type covering finished Elite scans. */
-type ListFilter = ReportType | 'all' | 'scanner';
+/**
+ * The report type filter, plus the pseudo-types covering the product outputs
+ * that also belong in this list: finished Elite scans and RGPD checks.
+ */
+type ListFilter = ReportType | 'all' | 'scanner' | 'rgpd';
 
 type DateFilter = 'all' | '7' | '30' | '90';
 
-/** Selects either a real report or a scan out of the shared left-hand list. */
-type Selection = { kind: 'report'; id: string } | { kind: 'scan'; id: string } | null;
+/** Selects a report, a scan or an RGPD check out of the shared left-hand list. */
+type Selection =
+  | { kind: 'report'; id: string }
+  | { kind: 'scan'; id: string }
+  | { kind: 'comply'; id: string }
+  | null;
 
 const emptyDraft = (): ReportDraft => ({ type: 'manual', title: '', body: '', links: [] });
 
@@ -92,6 +102,28 @@ export function ReportsScreen() {
     };
   }, []);
 
+  // Finished RGPD checks, same live-refresh contract as the scans above.
+  const [complyChecks, setComplyChecks] = useState<ComplyCheck[]>([]);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => {
+      bridge()
+        .remote.listComplyChecks()
+        .then((all) => {
+          if (active) setComplyChecks(all.filter((c) => c.status === 'done'));
+        })
+        .catch(() => undefined);
+    };
+    refresh();
+    const off = bridge().remote.onComplyProgress((p) => {
+      if (p.status === 'done') refresh();
+    });
+    return () => {
+      active = false;
+      off();
+    };
+  }, []);
+
   // A "Faire un rapport" trigger from Tasks/Clients/Décisions arrives as a
   // prefilled draft in the navigation state — open the editor on it.
   useEffect(() => {
@@ -106,7 +138,13 @@ export function ReportsScreen() {
     const cutoff = dateFilter === 'all' ? 0 : Date.now() - Number(dateFilter) * 86400000;
     return reports
       .filter((r) => !isPending(`reports:${r.id}`))
-      .filter((r) => (typeFilter === 'all' ? true : typeFilter === 'scanner' ? false : r.type === typeFilter))
+      .filter((r) =>
+        typeFilter === 'all'
+          ? true
+          : typeFilter === 'scanner' || typeFilter === 'rgpd'
+            ? false
+            : r.type === typeFilter,
+      )
       .filter((r) => (cutoff ? new Date(r.createdAt).getTime() >= cutoff : true));
   }, [reports, typeFilter, dateFilter, isPending]);
 
@@ -116,15 +154,22 @@ export function ReportsScreen() {
     return scans.filter((s) => (cutoff ? new Date(s.createdAt).getTime() >= cutoff : true));
   }, [scans, typeFilter, dateFilter]);
 
-  // One chronological list mixing both kinds, newest first — "Tous" reads as
-  // a genuine unified history rather than reports-then-scans.
+  const visibleComply = useMemo(() => {
+    if (typeFilter !== 'all' && typeFilter !== 'rgpd') return [];
+    const cutoff = dateFilter === 'all' ? 0 : Date.now() - Number(dateFilter) * 86400000;
+    return complyChecks.filter((c) => (cutoff ? new Date(c.createdAt).getTime() >= cutoff : true));
+  }, [complyChecks, typeFilter, dateFilter]);
+
+  // One chronological list mixing all three kinds, newest first — "Tous" reads
+  // as a genuine unified history rather than reports-then-scans-then-checks.
   const items = useMemo(
     () =>
       [
         ...visibleReports.map((r) => ({ kind: 'report' as const, id: r.id, at: r.createdAt, report: r })),
         ...visibleScans.map((s) => ({ kind: 'scan' as const, id: s.id, at: s.createdAt, scan: s })),
+        ...visibleComply.map((c) => ({ kind: 'comply' as const, id: c.id, at: c.createdAt, check: c })),
       ].sort((a, b) => (b.at || '').localeCompare(a.at || '')),
-    [visibleReports, visibleScans],
+    [visibleReports, visibleScans, visibleComply],
   );
 
   const selectedReport = useMemo(
@@ -135,6 +180,20 @@ export function ReportsScreen() {
     () => (selection?.kind === 'scan' ? scans.find((s) => s.id === selection.id) ?? null : null),
     [scans, selection],
   );
+  const selectedComply = useMemo(
+    () =>
+      selection?.kind === 'comply' ? complyChecks.find((c) => c.id === selection.id) ?? null : null,
+    [complyChecks, selection],
+  );
+
+  // Below lg the two panes don't fit side by side, so the screen behaves like a
+  // master/detail: the list fills the width until something is picked, then the
+  // detail takes over full-screen with a back control. lg+ keeps both columns.
+  const hasDetail = Boolean(editing || selectedReport || selectedScan || selectedComply);
+  const closeDetail = () => {
+    setSelection(null);
+    setEditing(null);
+  };
 
   const save = (state: EditState) => {
     if (state.id) {
@@ -186,6 +245,7 @@ export function ReportsScreen() {
             { value: 'all', label: 'Tous' },
             ...TYPES.map((t) => ({ value: t.value, label: t.label })),
             { value: 'scanner', label: 'Scanner' },
+            { value: 'rgpd', label: 'RGPD' },
           ]}
         />
         <Segmented
@@ -201,20 +261,49 @@ export function ReportsScreen() {
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,20rem)_1fr]">
-        {/* List */}
-        <div className="flex min-h-0 flex-col overflow-y-auto rounded-lg border border-border bg-surface">
+        {/* List — full width on mobile until a detail is opened. */}
+        <div
+          className={`min-h-0 flex-col overflow-y-auto rounded-lg border border-border bg-surface ${
+            hasDetail ? 'hidden lg:flex' : 'flex'
+          }`}
+        >
           {items.length === 0 ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
               <FileText size={22} strokeWidth={1.5} className="text-text-muted" />
               <p className="text-sm text-text-secondary">
-                {reports.length === 0 && scans.length === 0
+                {reports.length === 0 && scans.length === 0 && complyChecks.length === 0
                   ? 'Aucun rapport pour l’instant.'
                   : 'Aucun rapport pour ces filtres.'}
               </p>
             </div>
           ) : (
             items.map((item) =>
-              item.kind === 'report' ? (
+              item.kind === 'comply' ? (
+                <button
+                  key={`comply:${item.id}`}
+                  type="button"
+                  onClick={() => {
+                    setSelection({ kind: 'comply', id: item.id });
+                    setEditing(null);
+                  }}
+                  className={`flex flex-col gap-1 border-b border-border px-4 py-3 text-left transition-colors hover:bg-surface-hover ${
+                    selection?.kind === 'comply' && selection.id === item.id && !editing ? 'bg-surface-hover' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <ComplyChip />
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-text-primary">
+                      {item.check.results.target?.host ?? item.check.url}
+                    </span>
+                    <span className={`flex-shrink-0 font-mono text-xs font-semibold ${scoreColor(item.check.score)}`}>
+                      {item.check.score}
+                    </span>
+                  </div>
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                    {relativeTime(item.check.createdAt)}
+                  </span>
+                </button>
+              ) : item.kind === 'report' ? (
                 <button
                   key={`report:${item.id}`}
                   type="button"
@@ -266,8 +355,22 @@ export function ReportsScreen() {
           )}
         </div>
 
-        {/* Detail / editor */}
-        <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-surface">
+        {/* Detail / editor — full-screen on mobile, right-hand column on lg+. */}
+        <div
+          className={`min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-surface ${
+            hasDetail ? 'flex' : 'hidden lg:flex'
+          }`}
+        >
+          {hasDetail && (
+            <button
+              type="button"
+              onClick={closeDetail}
+              className="flex items-center gap-1.5 border-b border-border px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-widest text-text-muted transition-colors hover:text-text-primary lg:hidden"
+            >
+              <ArrowLeft size={13} strokeWidth={2} />
+              Retour à la liste
+            </button>
+          )}
           {editing ? (
             <ReportEditor
               state={editing}
@@ -294,6 +397,10 @@ export function ReportsScreen() {
           ) : selectedScan ? (
             <div className="min-h-0 flex-1 overflow-y-auto">
               <ScanDetail scan={selectedScan} />
+            </div>
+          ) : selectedComply ? (
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <ComplyDetail check={selectedComply} />
             </div>
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
@@ -646,6 +753,16 @@ function TypeChip({ type }: { type: ReportType }) {
   );
 }
 
+/** Same visual as ScanChip — RGPD checks aren't a ReportType either. */
+function ComplyChip() {
+  return (
+    <span className="flex flex-shrink-0 items-center gap-1 rounded-sm border border-border bg-bg px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-text-muted">
+      <BadgeCheck size={9} strokeWidth={2} />
+      RGPD
+    </span>
+  );
+}
+
 /** Same visual as TypeChip, with an icon — scans aren't a ReportType. */
 function ScanChip() {
   return (
@@ -666,13 +783,16 @@ function Segmented({
   options: Array<{ value: string; label: string }>;
 }) {
   return (
-    <div className="flex items-center border border-border bg-surface">
+    // Scrolls horizontally rather than clipping: with seven filters the row no
+    // longer fits a 390px screen, and a clipped row silently hides the last
+    // options (RGPD was unreachable on mobile).
+    <div className="flex max-w-full items-center overflow-x-auto border border-border bg-surface">
       {options.map((opt) => (
         <button
           key={opt.value}
           type="button"
           onClick={() => onChange(opt.value)}
-          className={`px-3 py-2 font-mono text-[11px] uppercase tracking-wider transition-colors duration-150 ${
+          className={`flex-shrink-0 whitespace-nowrap px-3 py-2 font-mono text-[11px] uppercase tracking-wider transition-colors duration-150 ${
             value === opt.value ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:text-text-primary'
           }`}
         >

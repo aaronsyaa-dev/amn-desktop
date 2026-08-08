@@ -75,6 +75,7 @@ export function variantsForPath(pathname: string): Variants {
   if (pathname.startsWith('/clients')) return pageVariants['/clients'];
   if (pathname.startsWith('/tracker')) return pageVariants['/tracker'];
   if (pathname.startsWith('/scanner')) return pageVariants['/scanner'];
+  if (pathname.startsWith('/comply')) return pageVariants['/scanner'];
   if (pathname.startsWith('/decisions')) return pageVariants['/decisions'];
   if (pathname.startsWith('/knowledge')) return pageVariants['/knowledge'];
   if (pathname.startsWith('/settings')) return pageVariants['/settings'];
