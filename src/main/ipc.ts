@@ -7,6 +7,7 @@ import {
   type UpdateProfileInput,
   type ScanTier,
   type SyncedCollection,
+  type VaultEntry,
   type CreateClientInput,
   type CreateDecisionInput,
   type CreateKnowledgeDocInput,
@@ -66,6 +67,7 @@ import type { RemoteApiClient } from './remoteApi';
 import { getWatch } from './watch';
 import { ollamaStatus, ollamaChat } from './ollama';
 import { getAutoLaunch, setAutoLaunch } from './windowsIntegration';
+import { isVaultEncryptionAvailable, loadVault, saveVault } from './vault';
 
 /** Registers the IPC handlers backing `window.amn` in the renderer. */
 interface IpcOptions {
@@ -275,4 +277,10 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
     IPC.ollamaChat,
     (_event, input: { model: string; system: string; prompt: string }) => ollamaChat(input),
   );
+
+  // Password vault — local-only, encrypted at rest. Never touches remote/
+  // the WebSocket hub above: see main/vault.ts.
+  ipcMain.handle(IPC.vaultIsEncrypted, () => isVaultEncryptionAvailable());
+  ipcMain.handle(IPC.vaultList, () => loadVault());
+  ipcMain.handle(IPC.vaultSave, (_event, entries: VaultEntry[]) => saveVault(entries));
 }

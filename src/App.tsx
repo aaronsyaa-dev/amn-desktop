@@ -18,6 +18,7 @@ import { NotesScreen } from './screens/NotesScreen';
 import { MediaLibraryScreen } from './screens/MediaLibraryScreen';
 import { ReportsScreen } from './screens/ReportsScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
+import { VaultScreen } from './screens/VaultScreen';
 import { GrainOverlay } from './components/GrainOverlay';
 import { SplashScreen, hasSplashPlayed } from './components/SplashScreen';
 
@@ -53,6 +54,7 @@ export default function App() {
               <Route path="/media" element={<MediaLibraryScreen />} />
               <Route path="/reports" element={<ReportsScreen />} />
               <Route path="/settings" element={<SettingsScreen />} />
+              <Route path="/vault" element={<VaultScreen />} />
             </Route>
           </Routes>
         </HashRouter>

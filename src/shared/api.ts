@@ -611,6 +611,30 @@ export interface ComplyProgress {
   check?: ComplyCheck;
 }
 
+/* --------------------------------- Vault --------------------------------- */
+
+/**
+ * Local-only password vault. Deliberately NOT part of {@link SyncedCollection}:
+ * these entries must never reach amn-api or Supabase, so they never go through
+ * `useSync`/`upsert` — the bridge's own `vault` namespace talks straight to
+ * on-disk storage (encrypted in Electron, plain localStorage in the browser).
+ */
+export type VaultCategory = 'api' | 'accounts' | 'servers' | 'other';
+
+export interface VaultEntry {
+  id: string;
+  label: string;
+  username: string;
+  password: string;
+  /** Optional; '' when unset. */
+  url: string;
+  /** Optional; '' when unset. */
+  notes: string;
+  category: VaultCategory;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AmnBridge {
   auth: {
     login(email: string, password: string): Promise<AuthResult>;
@@ -771,6 +795,17 @@ export interface AmnBridge {
     /** Quit and install the staged update (relaunches the app). */
     install(): void;
   };
+  /**
+   * Local password vault. Never synced — see VaultEntry. Encrypted at rest in
+   * Electron (OS keychain via safeStorage); plain localStorage in the browser
+   * fallback, which `isEncrypted()` reports so the UI can warn honestly.
+   */
+  vault: {
+    isEncrypted(): Promise<boolean>;
+    list(): Promise<VaultEntry[]>;
+    /** Replaces the whole entry list — single local writer, no merge needed. */
+    save(entries: VaultEntry[]): Promise<void>;
+  };
   env: {
     /** true when backed by the Electron main process (SQLite), false in browser fallback. */
     isElectron: boolean;
@@ -853,4 +888,7 @@ export const IPC = {
   ollamaChat: 'ollama:chat',
   updateDownloaded: 'update:downloaded',
   updateInstall: 'update:install',
+  vaultIsEncrypted: 'vault:isEncrypted',
+  vaultList: 'vault:list',
+  vaultSave: 'vault:save',
 } as const;
