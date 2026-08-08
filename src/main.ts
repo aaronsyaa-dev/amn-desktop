@@ -3,6 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { initDatabase } from './main/db';
+import { backfillSyncIds, restoreFromRemote } from './main/clientsSync';
 import { registerIpcHandlers } from './main/ipc';
 import { RemoteApiClient } from './main/remoteApi';
 import { setupAutoUpdate } from './main/updater';
@@ -215,8 +216,13 @@ function createTray(): void {
 app.on('second-instance', () => showWindow());
 
 app.on('ready', () => {
-  initDatabase();
+  const db = initDatabase();
+  backfillSyncIds(db);
   remote = new RemoteApiClient();
+  // Durability backstop for clients/quotes (see clientsSync.ts): recovers any
+  // client/quote this machine is missing but amn-api has (e.g. after a wiped
+  // or fresh local DB). Additive-only, best-effort, never blocks startup.
+  void restoreFromRemote(remote, db);
   // The renderer decides which events are important; when one fires and the
   // window is hidden, badge the tray so the user notices.
   registerIpcHandlers(remote, {

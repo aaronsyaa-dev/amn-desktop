@@ -121,6 +121,16 @@ function mergeRecord(map: CollectionMap, record: RemoteRecord): CollectionMap {
 interface SyncContextValue {
   ready: boolean;
   configured: boolean;
+  /**
+   * False if the most recent full pull hit a network/amn-api error on ANY
+   * collection. `ready` alone isn't enough to tell — it also flips true after
+   * a failed pull (so the mirror is still usable offline) — but a caller that
+   * treats "no records" as "this doesn't exist yet, create it" (e.g. the
+   * profile auto-seed in ProfilesContext) must NOT do that after a failed
+   * pull: an empty in-memory store from a transient fetch error would then be
+   * mistaken for "no profile" and overwrite the real one on amn-api.
+   */
+  pullFailed: boolean;
   connectionStatus: RemoteConnectionStatus;
   onlineEmails: Set<string>;
   /** Live, non-deleted records of a collection. */
@@ -157,6 +167,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   storeRef.current = store;
 
   const [ready, setReady] = useState(false);
+  const [pullFailed, setPullFailed] = useState(false);
   const [configured, setConfigured] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<RemoteConnectionStatus>('connecting');
   const [onlineEmails, setOnlineEmails] = useState<Set<string>>(new Set());
@@ -197,6 +208,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     // startup and again whenever the connection is (re)established, so any
     // changes the other operator made while we were offline are picked up.
     const pullAll = async () => {
+      let anyFailed = false;
       await Promise.all(
         SYNCED_COLLECTIONS.map(async (collection) => {
           try {
@@ -204,9 +216,11 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
             if (active) applyRecords(collection, records);
           } catch {
             /* keep mirror data on failure */
+            anyFailed = true;
           }
         }),
       );
+      if (active) setPullFailed(anyFailed);
       const presence = await remote.getPresence().catch(() => [] as PresenceEntry[]);
       if (active) setOnlineEmails(new Set(presence.filter((p) => p.online).map((p) => p.email)));
     };
@@ -317,8 +331,19 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ ready, configured, connectionStatus, onlineEmails, useRecords, upsert, remove, isLocalWrite, onRemoteChange }),
-    [ready, configured, connectionStatus, onlineEmails, useRecords, upsert, remove, isLocalWrite, onRemoteChange],
+    () => ({
+      ready,
+      configured,
+      pullFailed,
+      connectionStatus,
+      onlineEmails,
+      useRecords,
+      upsert,
+      remove,
+      isLocalWrite,
+      onRemoteChange,
+    }),
+    [ready, configured, pullFailed, connectionStatus, onlineEmails, useRecords, upsert, remove, isLocalWrite, onRemoteChange],
   );
 
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;
