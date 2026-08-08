@@ -700,6 +700,11 @@ function createBrowserBridge(): AmnBridge {
         writeFallbackClients(clients);
         return clients[idx];
       },
+      async remove(id: number): Promise<void> {
+        writeFallbackClients(readFallbackClients().filter((c) => c.id !== id));
+        const quotes = readList<Quote>(QUOTES_KEY, seedQuotes);
+        writeList(QUOTES_KEY, quotes.filter((q) => q.clientId !== id));
+      },
     },
     quotes: {
       async list(): Promise<Quote[]> {

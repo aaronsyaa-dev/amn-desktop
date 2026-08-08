@@ -22,6 +22,7 @@ import {
 } from '../shared/api';
 import {
   addClientEvent,
+  removeClient,
   changePassword,
   listProfiles,
   getProfile,
@@ -123,6 +124,7 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   ipcMain.handle(IPC.clientsAddEvent, (_event, input: AddClientEventInput) =>
     addClientEvent(input),
   );
+  ipcMain.handle(IPC.clientsRemove, (_event, id: number) => removeClient(id));
 
   ipcMain.handle(IPC.quotesList, () => listQuotes());
   ipcMain.handle(IPC.quotesCreate, (_event, input: CreateQuoteInput) => createQuote(input));
