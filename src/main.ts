@@ -1,12 +1,14 @@
 import { app, BrowserWindow, Menu, Notification, Tray, nativeImage, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { initDatabase } from './main/db';
 import { registerIpcHandlers } from './main/ipc';
 import { RemoteApiClient } from './main/remoteApi';
 import { setupAutoUpdate } from './main/updater';
 import { warmWatch } from './main/watch';
 import { handleSquirrelStartup } from './main/windowsIntegration';
+import { SCAN_REPORTS_DIR } from './main/scanReports';
 
 // Handle Squirrel.Windows install/update/uninstall events. On --squirrel-updated
 // this explicitly recreates the Desktop + Start-menu shortcuts (they can vanish
@@ -74,6 +76,17 @@ function saveBounds(win: BrowserWindow): void {
 }
 
 /** True when launched in the background at OS login (so we stay in the tray). */
+/** True when a file:// URL resolves to a path inside SCAN_REPORTS_DIR. */
+function isUnderScanReportsDir(fileUrl: string): boolean {
+  try {
+    const resolved = path.resolve(fileURLToPath(fileUrl));
+    const dir = path.resolve(SCAN_REPORTS_DIR) + path.sep;
+    return resolved.startsWith(dir);
+  } catch {
+    return false;
+  }
+}
+
 function wasLaunchedHidden(): boolean {
   if (process.argv.includes('--hidden')) return true;
   try {
@@ -113,8 +126,16 @@ function createWindow(): void {
   mainWindow.on('moved', persist);
 
   // External links open in the OS browser rather than a blank in-app window.
+  // Scan reports (window.open() from ScannerScreen — see scanReportUrl in
+  // main/remoteApi.ts) are the one file:// exception: they're written by us
+  // into SCAN_REPORTS_DIR, so opening exactly that directory's contents in the
+  // OS browser is safe without turning into a general file:// open hole.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('http://') || url.startsWith('https://')) shell.openExternal(url);
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url);
+    } else if (url.startsWith('file://') && isUnderScanReportsDir(url)) {
+      shell.openExternal(url);
+    }
     return { action: 'deny' };
   });
   mainWindow.webContents.on('will-navigate', (event, url) => {

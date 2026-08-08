@@ -14,6 +14,7 @@ import {
   List,
   Pencil,
   Plus,
+  ScanLine,
   Scale,
   Trash2,
   X,
@@ -25,7 +26,9 @@ import { useUndo } from '../state/UndoContext';
 import { bridge } from '../lib/bridge';
 import { Markdown } from '../lib/markdown';
 import { relativeTime } from '../lib/time';
-import type { Client } from '../shared/api';
+import { ScanDetail } from '../components/scanner/ScanDetail';
+import { scoreColor } from '../lib/scanSeverity';
+import type { Client, Scan } from '../shared/api';
 
 const TYPES: { value: ReportType; label: string }[] = [
   { value: 'task', label: 'Tâche' },
@@ -38,7 +41,13 @@ function typeLabel(t: ReportType): string {
   return TYPES.find((x) => x.value === t)?.label ?? 'Manuel';
 }
 
+/** The report type filter, plus the pseudo-type covering finished Elite scans. */
+type ListFilter = ReportType | 'all' | 'scanner';
+
 type DateFilter = 'all' | '7' | '30' | '90';
+
+/** Selects either a real report or a scan out of the shared left-hand list. */
+type Selection = { kind: 'report'; id: string } | { kind: 'scan'; id: string } | null;
 
 const emptyDraft = (): ReportDraft => ({ type: 'manual', title: '', body: '', links: [] });
 
@@ -53,10 +62,35 @@ export function ReportsScreen() {
   const { isPending, scheduleDelete } = useUndo();
   const location = useLocation();
 
-  const [typeFilter, setTypeFilter] = useState<ReportType | 'all'>('all');
+  const [typeFilter, setTypeFilter] = useState<ListFilter>('all');
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<Selection>(null);
   const [editing, setEditing] = useState<EditState | null>(null);
+
+  // Finished Elite scans, read from amn-api so both operators see the same
+  // history. Refreshed on mount and whenever a scan completes anywhere in the
+  // app (Scanner tab or the other operator), so a fresh Elite result shows up
+  // here live instead of requiring a reload.
+  const [scans, setScans] = useState<Scan[]>([]);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => {
+      bridge()
+        .remote.listScans()
+        .then((all) => {
+          if (active) setScans(all.filter((s) => s.tier === 'elite' && s.status === 'done'));
+        })
+        .catch(() => undefined);
+    };
+    refresh();
+    const off = bridge().remote.onScanProgress((p) => {
+      if (p.status === 'done') refresh();
+    });
+    return () => {
+      active = false;
+      off();
+    };
+  }, []);
 
   // A "Faire un rapport" trigger from Tasks/Clients/Décisions arrives as a
   // prefilled draft in the navigation state — open the editor on it.
@@ -64,33 +98,57 @@ export function ReportsScreen() {
     const draft = (location.state as { reportDraft?: ReportDraft } | null)?.reportDraft;
     if (draft) {
       setEditing({ draft });
-      setSelectedId(null);
+      setSelection(null);
     }
   }, [location.state]);
 
-  const visible = useMemo(() => {
+  const visibleReports = useMemo(() => {
     const cutoff = dateFilter === 'all' ? 0 : Date.now() - Number(dateFilter) * 86400000;
     return reports
       .filter((r) => !isPending(`reports:${r.id}`))
-      .filter((r) => (typeFilter === 'all' ? true : r.type === typeFilter))
+      .filter((r) => (typeFilter === 'all' ? true : typeFilter === 'scanner' ? false : r.type === typeFilter))
       .filter((r) => (cutoff ? new Date(r.createdAt).getTime() >= cutoff : true));
   }, [reports, typeFilter, dateFilter, isPending]);
 
-  const selected = useMemo(() => reports.find((r) => r.id === selectedId) ?? null, [reports, selectedId]);
+  const visibleScans = useMemo(() => {
+    if (typeFilter !== 'all' && typeFilter !== 'scanner') return [];
+    const cutoff = dateFilter === 'all' ? 0 : Date.now() - Number(dateFilter) * 86400000;
+    return scans.filter((s) => (cutoff ? new Date(s.createdAt).getTime() >= cutoff : true));
+  }, [scans, typeFilter, dateFilter]);
+
+  // One chronological list mixing both kinds, newest first — "Tous" reads as
+  // a genuine unified history rather than reports-then-scans.
+  const items = useMemo(
+    () =>
+      [
+        ...visibleReports.map((r) => ({ kind: 'report' as const, id: r.id, at: r.createdAt, report: r })),
+        ...visibleScans.map((s) => ({ kind: 'scan' as const, id: s.id, at: s.createdAt, scan: s })),
+      ].sort((a, b) => (b.at || '').localeCompare(a.at || '')),
+    [visibleReports, visibleScans],
+  );
+
+  const selectedReport = useMemo(
+    () => (selection?.kind === 'report' ? reports.find((r) => r.id === selection.id) ?? null : null),
+    [reports, selection],
+  );
+  const selectedScan = useMemo(
+    () => (selection?.kind === 'scan' ? scans.find((s) => s.id === selection.id) ?? null : null),
+    [scans, selection],
+  );
 
   const save = (state: EditState) => {
     if (state.id) {
       updateReport(state.id, state.draft);
-      setSelectedId(state.id);
+      setSelection({ kind: 'report', id: state.id });
     } else {
       const id = createReport(state.draft);
-      setSelectedId(id);
+      setSelection({ kind: 'report', id });
     }
     setEditing(null);
   };
 
   const remove = (report: Report) => {
-    setSelectedId(null);
+    setSelection(null);
     scheduleDelete({
       key: `reports:${report.id}`,
       label: report.title ? `Rapport « ${report.title} »` : 'Rapport',
@@ -111,7 +169,7 @@ export function ReportsScreen() {
           type="button"
           onClick={() => {
             setEditing({ draft: emptyDraft() });
-            setSelectedId(null);
+            setSelection(null);
           }}
           className="flex items-center gap-2 bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
         >
@@ -123,8 +181,12 @@ export function ReportsScreen() {
       <div className="flex flex-wrap items-center gap-2.5">
         <Segmented
           value={typeFilter}
-          onChange={(v) => setTypeFilter(v as ReportType | 'all')}
-          options={[{ value: 'all', label: 'Tous' }, ...TYPES.map((t) => ({ value: t.value, label: t.label }))]}
+          onChange={(v) => setTypeFilter(v as ListFilter)}
+          options={[
+            { value: 'all', label: 'Tous' },
+            ...TYPES.map((t) => ({ value: t.value, label: t.label })),
+            { value: 'scanner', label: 'Scanner' },
+          ]}
         />
         <Segmented
           value={dateFilter}
@@ -141,37 +203,66 @@ export function ReportsScreen() {
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,20rem)_1fr]">
         {/* List */}
         <div className="flex min-h-0 flex-col overflow-y-auto rounded-lg border border-border bg-surface">
-          {visible.length === 0 ? (
+          {items.length === 0 ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
               <FileText size={22} strokeWidth={1.5} className="text-text-muted" />
               <p className="text-sm text-text-secondary">
-                {reports.length === 0 ? 'Aucun rapport pour l’instant.' : 'Aucun rapport pour ces filtres.'}
+                {reports.length === 0 && scans.length === 0
+                  ? 'Aucun rapport pour l’instant.'
+                  : 'Aucun rapport pour ces filtres.'}
               </p>
             </div>
           ) : (
-            visible.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => {
-                  setSelectedId(r.id);
-                  setEditing(null);
-                }}
-                className={`flex flex-col gap-1 border-b border-border px-4 py-3 text-left transition-colors hover:bg-surface-hover ${
-                  selectedId === r.id && !editing ? 'bg-surface-hover' : ''
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <TypeChip type={r.type} />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-text-primary">
-                    {r.title || 'Sans titre'}
+            items.map((item) =>
+              item.kind === 'report' ? (
+                <button
+                  key={`report:${item.id}`}
+                  type="button"
+                  onClick={() => {
+                    setSelection({ kind: 'report', id: item.id });
+                    setEditing(null);
+                  }}
+                  className={`flex flex-col gap-1 border-b border-border px-4 py-3 text-left transition-colors hover:bg-surface-hover ${
+                    selection?.kind === 'report' && selection.id === item.id && !editing ? 'bg-surface-hover' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <TypeChip type={item.report.type} />
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-text-primary">
+                      {item.report.title || 'Sans titre'}
+                    </span>
+                  </div>
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                    {relativeTime(item.report.createdAt)}
                   </span>
-                </div>
-                <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                  {relativeTime(r.createdAt)}
-                </span>
-              </button>
-            ))
+                </button>
+              ) : (
+                <button
+                  key={`scan:${item.id}`}
+                  type="button"
+                  onClick={() => {
+                    setSelection({ kind: 'scan', id: item.id });
+                    setEditing(null);
+                  }}
+                  className={`flex flex-col gap-1 border-b border-border px-4 py-3 text-left transition-colors hover:bg-surface-hover ${
+                    selection?.kind === 'scan' && selection.id === item.id && !editing ? 'bg-surface-hover' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <ScanChip />
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-text-primary">
+                      {item.scan.results.target?.host ?? item.scan.url}
+                    </span>
+                    <span className={`flex-shrink-0 font-mono text-xs font-semibold ${scoreColor(item.scan.score)}`}>
+                      {item.scan.score}
+                    </span>
+                  </div>
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                    {relativeTime(item.scan.createdAt)}
+                  </span>
+                </button>
+              ),
+            )
           )}
         </div>
 
@@ -184,23 +275,32 @@ export function ReportsScreen() {
               onSave={() => save(editing)}
               onCancel={() => setEditing(null)}
             />
-          ) : selected ? (
+          ) : selectedReport ? (
             <ReportReader
-              report={selected}
+              report={selectedReport}
               onEdit={() =>
                 setEditing({
-                  id: selected.id,
-                  draft: { type: selected.type, title: selected.title, body: selected.body, links: selected.links },
+                  id: selectedReport.id,
+                  draft: {
+                    type: selectedReport.type,
+                    title: selectedReport.title,
+                    body: selectedReport.body,
+                    links: selectedReport.links,
+                  },
                 })
               }
-              onRemove={() => remove(selected)}
+              onRemove={() => remove(selectedReport)}
             />
+          ) : selectedScan ? (
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <ScanDetail scan={selectedScan} />
+            </div>
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
               <FileText size={26} strokeWidth={1.5} className="text-text-muted" />
               <p className="text-sm font-medium text-text-primary">Sélectionnez un rapport</p>
               <p className="max-w-sm text-sm text-text-secondary">
-                Ou générez-en un depuis une tâche terminée, un client ou une décision.
+                Ou générez-en un depuis une tâche terminée, un client, une décision, ou un scan Elite.
               </p>
             </div>
           )}
@@ -542,6 +642,16 @@ function TypeChip({ type }: { type: ReportType }) {
   return (
     <span className="flex-shrink-0 rounded-sm border border-border bg-bg px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-text-muted">
       {typeLabel(type)}
+    </span>
+  );
+}
+
+/** Same visual as TypeChip, with an icon — scans aren't a ReportType. */
+function ScanChip() {
+  return (
+    <span className="flex flex-shrink-0 items-center gap-1 rounded-sm border border-border bg-bg px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-text-muted">
+      <ScanLine size={9} strokeWidth={2} />
+      Scanner
     </span>
   );
 }

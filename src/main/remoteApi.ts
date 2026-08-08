@@ -1,5 +1,6 @@
 import WebSocket from 'ws';
 import { remoteConfig, isRemoteConfigured } from './remoteConfig';
+import { writeScanReportFile } from './scanReports';
 import type {
   PresenceEntry,
   RegisterSiteResult,
@@ -169,7 +170,7 @@ export class RemoteApiClient {
       throw new Error(`amn-api ${res.status} ${res.statusText}: ${body.slice(0, 200)}`);
     }
     const html = await res.text();
-    return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+    return writeScanReportFile(html);
   }
 
   onScanProgress(listener: (progress: ScanProgress) => void): () => void {
