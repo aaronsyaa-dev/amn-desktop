@@ -9,6 +9,8 @@ import type {
   RemoteEventPush,
   RemoteRecord,
   RemoteSite,
+  ComplyCheck,
+  ComplyProgress,
   Scan,
   ScanProgress,
   ScanTier,
@@ -64,6 +66,7 @@ export class RemoteApiClient {
   private recordListeners = new Set<(record: RemoteRecord) => void>();
   private presenceListeners = new Set<(users: PresenceEntry[]) => void>();
   private scanListeners = new Set<(progress: ScanProgress) => void>();
+  private complyListeners = new Set<(progress: ComplyProgress) => void>();
   private identity: string | null = null;
   private stopped = false;
 
@@ -178,6 +181,33 @@ export class RemoteApiClient {
     return () => this.scanListeners.delete(listener);
   }
 
+  /* ------------------------------- Comply -------------------------------- */
+
+  async startComply(url: string): Promise<ComplyCheck> {
+    const { check } = await apiFetch<{ check: ComplyCheck }>('/v1/comply', {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+    });
+    return check;
+  }
+
+  async listComplyChecks(): Promise<ComplyCheck[]> {
+    const { checks } = await apiFetch<{ checks: ComplyCheck[] }>('/v1/comply-checks');
+    return checks;
+  }
+
+  async getComplyCheck(id: string): Promise<ComplyCheck> {
+    const { check } = await apiFetch<{ check: ComplyCheck }>(
+      `/v1/comply-checks/${encodeURIComponent(id)}`,
+    );
+    return check;
+  }
+
+  onComplyProgress(listener: (progress: ComplyProgress) => void): () => void {
+    this.complyListeners.add(listener);
+    return () => this.complyListeners.delete(listener);
+  }
+
   async getPresence(): Promise<PresenceEntry[]> {
     if (!isRemoteConfigured()) return [];
     const { users } = await apiFetch<{ users: PresenceEntry[] }>('/v1/collections/_presence');
@@ -272,6 +302,8 @@ export class RemoteApiClient {
           for (const listener of this.presenceListeners) listener(parsed.users as PresenceEntry[]);
         } else if (parsed?.type === 'scan:progress' && parsed.progress) {
           for (const listener of this.scanListeners) listener(parsed.progress as ScanProgress);
+        } else if (parsed?.type === 'comply:progress' && parsed.progress) {
+          for (const listener of this.complyListeners) listener(parsed.progress as ComplyProgress);
         }
       } catch {
         // Ignore malformed frames rather than crashing the main process.

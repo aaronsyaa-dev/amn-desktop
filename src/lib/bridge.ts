@@ -7,6 +7,8 @@ import type {
   NotificationPrefs,
   PresenceEntry,
   RemoteRecord,
+  ComplyCheck,
+  ComplyProgress,
   Scan,
   ScanProgress,
   ScanTier,
@@ -387,6 +389,7 @@ function createBrowserRemote(): AmnBridge['remote'] {
   const recordListeners = new Set<(record: RemoteRecord) => void>();
   const presenceListeners = new Set<(users: PresenceEntry[]) => void>();
   const scanListeners = new Set<(progress: ScanProgress) => void>();
+  const complyListeners = new Set<(progress: ComplyProgress) => void>();
   let status: RemoteConnectionStatus = configured ? 'connecting' : 'unconfigured';
   let reconnectAttempt = 0;
   let started = false;
@@ -419,6 +422,8 @@ function createBrowserRemote(): AmnBridge['remote'] {
           for (const listener of presenceListeners) listener(parsed.users as PresenceEntry[]);
         } else if (parsed?.type === 'scan:progress' && parsed.progress) {
           for (const listener of scanListeners) listener(parsed.progress as ScanProgress);
+        } else if (parsed?.type === 'comply:progress' && parsed.progress) {
+          for (const listener of complyListeners) listener(parsed.progress as ComplyProgress);
         }
       } catch {
         // Ignore malformed frames.
@@ -566,6 +571,28 @@ function createBrowserRemote(): AmnBridge['remote'] {
       scanListeners.add(callback);
       ensureStarted();
       return () => scanListeners.delete(callback);
+    },
+    async startComply(url: string): Promise<ComplyCheck> {
+      const { check } = await apiFetch<{ check: ComplyCheck }>('/v1/comply', {
+        method: 'POST',
+        body: JSON.stringify({ url }),
+      });
+      return check;
+    },
+    async listComplyChecks(): Promise<ComplyCheck[]> {
+      const { checks } = await apiFetch<{ checks: ComplyCheck[] }>('/v1/comply-checks');
+      return checks;
+    },
+    async getComplyCheck(id: string): Promise<ComplyCheck> {
+      const { check } = await apiFetch<{ check: ComplyCheck }>(
+        `/v1/comply-checks/${encodeURIComponent(id)}`,
+      );
+      return check;
+    },
+    onComplyProgress(callback) {
+      complyListeners.add(callback);
+      ensureStarted();
+      return () => complyListeners.delete(callback);
     },
   };
 

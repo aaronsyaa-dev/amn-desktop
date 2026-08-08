@@ -216,6 +216,9 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   ipcMain.handle(IPC.remoteListScans, () => remote.listScans());
   ipcMain.handle(IPC.remoteGetScan, (_event, id: string) => remote.getScan(id));
   ipcMain.handle(IPC.remoteScanReportUrl, (_event, id: string) => remote.scanReportUrl(id));
+  ipcMain.handle(IPC.remoteStartComply, (_event, url: string) => remote.startComply(url));
+  ipcMain.handle(IPC.remoteListComplyChecks, () => remote.listComplyChecks());
+  ipcMain.handle(IPC.remoteGetComplyCheck, (_event, id: string) => remote.getComplyCheck(id));
   // setIdentity is fire-and-forget from the renderer (no reply needed).
   ipcMain.on(IPC.remoteSetIdentity, (_event, email: string | null) => remote.setIdentity(email));
 
@@ -231,6 +234,7 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   remote.onRecord((record) => broadcastToAll(IPC.remoteRecordPush, record));
   remote.onPresence((users) => broadcastToAll(IPC.remotePresencePush, users));
   remote.onScanProgress((progress) => broadcastToAll(IPC.remoteScanProgressPush, progress));
+  remote.onComplyProgress((progress) => broadcastToAll(IPC.remoteComplyProgressPush, progress));
 
   // Native OS notifications. The renderer decides *when* (it holds prefs +
   // identity + the live streams); the main process just shows them so they

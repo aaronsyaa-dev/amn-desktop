@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  BadgeCheck,
   BookOpen,
   ChevronsLeft,
   ChevronsRight,
@@ -59,6 +60,7 @@ const WORKSPACE_ITEMS: NavItem[] = [
 const PRODUCT_ITEMS: NavItem[] = [
   { key: 'tracker', label: 'Trackers', to: '/tracker', icon: Radar },
   { key: 'scanner', label: 'Scanner', to: '/scanner', icon: ScanLine },
+  { key: 'comply', label: 'Comply', to: '/comply', icon: BadgeCheck },
 ];
 
 export function Sidebar({

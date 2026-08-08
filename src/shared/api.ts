@@ -468,7 +468,11 @@ export type SyncedCollection =
   | 'quotes'
   | 'trackers'
   | 'notes'
-  | 'reports';
+  | 'reports'
+  /** Public URL of a site, keyed by site id (Sites registry). */
+  | 'siteMeta'
+  /** Internal discussion thread attached to a site. */
+  | 'siteNotes';
 
 export interface PresenceEntry {
   email: string;
@@ -548,6 +552,63 @@ export interface ScanProgress {
   error?: string;
   /** Present on the terminal `done` frame: the finished scan row. */
   scan?: Scan;
+}
+
+/* ------------------------- Comply (conformité RGPD) ------------------------ */
+
+/** One RGPD point that is missing or at risk, with its concrete fix. */
+export interface ComplyFinding {
+  id: string;
+  title: string;
+  severity: ScanSeverity;
+  /** consent | transparency | security | trackers */
+  category: string;
+  detail: string;
+  recommendation: string;
+  evidence: string | null;
+  /** Legal reference, e.g. "RGPD art. 7" — the Comply analogue of `owasp`. */
+  article: string | null;
+}
+
+/** A pass/fail line per checked point, so the UI can show what *did* pass too. */
+export interface ComplyCheckItem {
+  key: string;
+  label: string;
+  passed: boolean;
+}
+
+export interface ComplyResults {
+  target: { url: string; host: string; ip: string | null };
+  httpStatus: number;
+  checks: ComplyCheckItem[];
+  findings: ComplyFinding[];
+  /** Names of the third-party trackers detected in the page. */
+  trackers: string[];
+  summary: ScanSeveritySummary;
+  checkedAt: string;
+}
+
+export interface ComplyCheck {
+  id: string;
+  url: string;
+  status: ScanStatus;
+  score: number | null;
+  results: ComplyResults | Record<string, never>;
+  error: string | null;
+  createdAt: string;
+  finishedAt: string | null;
+}
+
+/** Live progress frame pushed over the WebSocket while a check runs. */
+export interface ComplyProgress {
+  checkId: string;
+  status: ScanStatus;
+  step: string;
+  pct: number;
+  score?: number;
+  error?: string;
+  /** Present on the terminal `done` frame: the finished check row. */
+  check?: ComplyCheck;
 }
 
 export interface AmnBridge {
@@ -666,6 +727,17 @@ export interface AmnBridge {
     scanReportUrl(id: string): Promise<string>;
     /** Live scan progress pushed from amn-api. Returns an unsubscribe function. */
     onScanProgress(callback: (progress: ScanProgress) => void): () => void;
+
+    /* --- Comply (RGPD) --- */
+    /**
+     * Queues an RGPD conformity check of `url`. Same shape as {@link startScan}:
+     * resolves once amn-api accepted it, then follow it through
+     * {@link onComplyProgress} and re-read it with {@link getComplyCheck}.
+     */
+    startComply(url: string): Promise<ComplyCheck>;
+    listComplyChecks(): Promise<ComplyCheck[]>;
+    getComplyCheck(id: string): Promise<ComplyCheck>;
+    onComplyProgress(callback: (progress: ComplyProgress) => void): () => void;
   };
   /** Native OS / desktop integration (Electron main process). */
   system: {
@@ -763,6 +835,10 @@ export const IPC = {
   remoteGetScan: 'remote:getScan',
   remoteScanReportUrl: 'remote:scanReportUrl',
   remoteScanProgressPush: 'remote:scanProgressPush',
+  remoteStartComply: 'remote:startComply',
+  remoteListComplyChecks: 'remote:listComplyChecks',
+  remoteGetComplyCheck: 'remote:getComplyCheck',
+  remoteComplyProgressPush: 'remote:complyProgressPush',
   remoteEventPush: 'remote:eventPush',
   remoteConnectionStatusPush: 'remote:connectionStatusPush',
   remoteRecordPush: 'remote:recordPush',
