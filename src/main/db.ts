@@ -76,6 +76,7 @@ export function initDatabase(): Database.Database {
 
     CREATE TABLE IF NOT EXISTS clients (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      sync_id       TEXT NOT NULL DEFAULT '',
       name          TEXT NOT NULL,
       company       TEXT NOT NULL DEFAULT '',
       status        TEXT NOT NULL DEFAULT 'prospect',
@@ -98,6 +99,7 @@ export function initDatabase(): Database.Database {
 
     CREATE TABLE IF NOT EXISTS quotes (
       id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      sync_id        TEXT NOT NULL DEFAULT '',
       client_id      INTEGER NOT NULL,
       title          TEXT NOT NULL,
       detail         TEXT NOT NULL DEFAULT '',
@@ -213,6 +215,12 @@ function runMigrations(database: Database.Database): void {
 
   // clients: linked_site_ids added for the health score.
   ensureColumn('clients', 'linked_site_ids', "TEXT NOT NULL DEFAULT '[]'");
+
+  // clients/quotes: sync_id added so this per-machine data can be mirrored to
+  // amn-api for durability (see clientsSync.ts) without disturbing the
+  // existing local autoincrement ids that client_events/quotes depend on.
+  ensureColumn('clients', 'sync_id', "TEXT NOT NULL DEFAULT ''");
+  ensureColumn('quotes', 'sync_id', "TEXT NOT NULL DEFAULT ''");
 }
 
 function seedQuotes(database: Database.Database): void {

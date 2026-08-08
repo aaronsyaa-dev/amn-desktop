@@ -49,7 +49,7 @@ function fallbackProfile(email: string): UserProfile {
 
 export function ProfilesProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const { upsert, ready } = useSync();
+  const { upsert, ready, configured, pullFailed } = useSync();
   const records = useCollection<ProfileData>('profiles');
 
   const profiles = useMemo<UserProfile[]>(
@@ -66,11 +66,18 @@ export function ProfilesProvider({ children }: { children: React.ReactNode }) {
 
   // Seed only *your own* profile if it doesn't exist yet — never overwrite the
   // other operator's row, so their photo is never clobbered by a default.
+  //
+  // Guarded on `!pullFailed`: a transient amn-api hiccup during the initial
+  // pull can leave `records` empty in memory even though the profile — with a
+  // real photo — exists on the server. Seeding in that window used to upsert
+  // a blank profile straight over the real one, permanently wiping the photo
+  // (last-writer-wins). Only seed once the pull is confirmed to have
+  // succeeded, or when sync isn't configured at all (nothing to pull).
   useEffect(() => {
-    if (ready && user && !records.some((r) => r.id === user.email)) {
+    if (ready && (!configured || !pullFailed) && user && !records.some((r) => r.id === user.email)) {
       upsert('profiles', user.email, { name: user.name, photoDataUrl: '', presenceText: '' });
     }
-  }, [ready, user, records, upsert]);
+  }, [ready, configured, pullFailed, user, records, upsert]);
 
   const profileFor = useCallback(
     (email: string) => {

@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'node:crypto';
 import type {
   AddClientEventInput,
   AuthResult,
@@ -403,12 +404,16 @@ export function listClients(): Client[] {
 
 export function createClient(input: CreateClientInput): Client {
   const now = new Date().toISOString();
+  // sync_id assigned at creation (not just backfilled for pre-existing rows)
+  // so clientsSync.pushClient can mirror this client to amn-api immediately —
+  // see clientsSync.ts.
   const result = getDb()
     .prepare(
-      `INSERT INTO clients (name, company, status, email, phone, notes, image_data_url, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, '', '', ?, ?)`,
+      `INSERT INTO clients (sync_id, name, company, status, email, phone, notes, image_data_url, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, '', '', ?, ?)`,
     )
     .run(
+      `client-${randomUUID()}`,
       input.name,
       input.company ?? '',
       input.status ?? 'prospect',
@@ -502,12 +507,23 @@ export function listQuotes(): Quote[] {
 
 export function createQuote(input: CreateQuoteInput): Quote {
   const now = new Date().toISOString();
+  // sync_id assigned at creation so clientsSync.pushQuote can mirror this
+  // quote to amn-api immediately — see clientsSync.ts.
   const result = getDb()
     .prepare(
-      `INSERT INTO quotes (client_id, title, detail, tracker_tier, price_euro, status, payment_status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'draft', 'unpaid', ?, ?)`,
+      `INSERT INTO quotes (sync_id, client_id, title, detail, tracker_tier, price_euro, status, payment_status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'draft', 'unpaid', ?, ?)`,
     )
-    .run(input.clientId, input.title, input.detail ?? '', input.trackerTier, input.priceEuro, now, now);
+    .run(
+      `quote-${randomUUID()}`,
+      input.clientId,
+      input.title,
+      input.detail ?? '',
+      input.trackerTier,
+      input.priceEuro,
+      now,
+      now,
+    );
   const row = getDb()
     .prepare('SELECT * FROM quotes WHERE id = ?')
     .get(Number(result.lastInsertRowid)) as QuoteRow;

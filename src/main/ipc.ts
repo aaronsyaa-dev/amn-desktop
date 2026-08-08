@@ -68,6 +68,8 @@ import { getWatch } from './watch';
 import { ollamaStatus, ollamaChat } from './ollama';
 import { getAutoLaunch, setAutoLaunch } from './windowsIntegration';
 import { isVaultEncryptionAvailable, loadVault, saveVault } from './vault';
+import { getDb } from './db';
+import { pushClient, pushQuote } from './clientsSync';
 
 /** Registers the IPC handlers backing `window.amn` in the renderer. */
 interface IpcOptions {
@@ -115,26 +117,45 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
       setMessagePinned(payload.id, payload.pinned),
   );
 
+  // Every client/quote write also mirrors best-effort to amn-api (see
+  // clientsSync.ts) so this per-machine data survives a wiped or fresh local
+  // DB — the fix for "Clients vides après mise à jour". Push failures never
+  // surface to the renderer: the local write already succeeded and is what
+  // the IPC call returns.
   ipcMain.handle(IPC.clientsList, () => listClients());
-  ipcMain.handle(IPC.clientsCreate, (_event, input: CreateClientInput) =>
-    createClient(input),
-  );
+  ipcMain.handle(IPC.clientsCreate, (_event, input: CreateClientInput) => {
+    const client = createClient(input);
+    void pushClient(remote, getDb(), client.id);
+    return client;
+  });
   ipcMain.handle(
     IPC.clientsUpdate,
-    (_event, payload: { id: number; patch: UpdateClientInput }) =>
-      updateClient(payload.id, payload.patch),
+    (_event, payload: { id: number; patch: UpdateClientInput }) => {
+      const client = updateClient(payload.id, payload.patch);
+      void pushClient(remote, getDb(), client.id);
+      return client;
+    },
   );
-  ipcMain.handle(IPC.clientsAddEvent, (_event, input: AddClientEventInput) =>
-    addClientEvent(input),
-  );
+  ipcMain.handle(IPC.clientsAddEvent, (_event, input: AddClientEventInput) => {
+    const client = addClientEvent(input);
+    void pushClient(remote, getDb(), client.id);
+    return client;
+  });
   ipcMain.handle(IPC.clientsRemove, (_event, id: number) => removeClient(id));
 
   ipcMain.handle(IPC.quotesList, () => listQuotes());
-  ipcMain.handle(IPC.quotesCreate, (_event, input: CreateQuoteInput) => createQuote(input));
+  ipcMain.handle(IPC.quotesCreate, (_event, input: CreateQuoteInput) => {
+    const quote = createQuote(input);
+    void pushQuote(remote, getDb(), quote.id);
+    return quote;
+  });
   ipcMain.handle(
     IPC.quotesUpdate,
-    (_event, payload: { id: number; patch: UpdateQuoteInput }) =>
-      updateQuote(payload.id, payload.patch),
+    (_event, payload: { id: number; patch: UpdateQuoteInput }) => {
+      const quote = updateQuote(payload.id, payload.patch);
+      void pushQuote(remote, getDb(), quote.id);
+      return quote;
+    },
   );
   ipcMain.handle(IPC.quotesRemove, (_event, id: number) => removeQuote(id));
 
