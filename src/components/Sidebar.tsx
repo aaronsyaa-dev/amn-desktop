@@ -15,6 +15,7 @@ import {
   NotebookPen,
   Radar,
   Scale,
+  ScanLine,
   Settings,
   Users,
 } from 'lucide-react';
@@ -36,19 +37,28 @@ interface NavItem {
   icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
 }
 
-const NAV_ITEMS: NavItem[] = [
+/** The day-to-day workspace tabs. */
+const WORKSPACE_ITEMS: NavItem[] = [
   { key: 'home', label: 'Accueil', to: '/', icon: LayoutDashboard },
   { key: 'sites', label: 'Sites', to: '/sites', icon: Globe },
   { key: 'team', label: 'Équipe', to: '/team', icon: Users },
   { key: 'tasks', label: 'Tâches', to: '/tasks', icon: CheckSquare },
   { key: 'clients', label: 'Clients', to: '/clients', icon: Contact },
-  { key: 'tracker', label: 'Tracker', to: '/tracker', icon: Radar },
   { key: 'decisions', label: 'Décisions', to: '/decisions', icon: Scale },
   { key: 'knowledge', label: 'Connaissances', to: '/knowledge', icon: BookOpen },
   { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen },
   { key: 'media', label: 'Médias', to: '/media', icon: Images },
   { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText },
   { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings },
+];
+
+/**
+ * The AMN DevSec products sold to clients, kept visually apart from the
+ * internal workspace tabs above so the offer reads as its own thing.
+ */
+const PRODUCT_ITEMS: NavItem[] = [
+  { key: 'tracker', label: 'Trackers', to: '/tracker', icon: Radar },
+  { key: 'scanner', label: 'Scanner', to: '/scanner', icon: ScanLine },
 ];
 
 export function Sidebar({
@@ -97,6 +107,82 @@ export function Sidebar({
     if (start === null || !mobileOpen) return;
     const dx = (e.changedTouches[0]?.clientX ?? start) - start;
     if (dx < -45) onClose?.();
+  };
+
+  // One nav row. Shared by both sections (workspace + produits) so the badge,
+  // active indicator and collapsed/expanded behaviour stay identical.
+  const renderNavItem = (item: NavItem) => {
+    const active = isActive(item.to);
+    const Icon = item.icon;
+    const count = unseen[item.to] ?? 0;
+    const badge = count > 99 ? '99+' : String(count);
+    return (
+      <Link
+        key={item.key}
+        to={item.to}
+        onClick={handleNavClick}
+        title={!isExpanded ? item.label : undefined}
+        aria-label={item.label}
+        className={`group relative flex items-center gap-3 overflow-hidden rounded-lg py-2.5 text-sm transition-colors duration-200 ${
+          isExpanded ? 'px-3' : 'justify-center px-0'
+        } ${
+          active
+            ? 'bg-accent-muted text-text-primary'
+            : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
+        }`}
+      >
+        {active && (
+          <motion.span
+            layoutId="sidebar-active-indicator"
+            className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-accent"
+            transition={TRANSITION}
+          />
+        )}
+        <Icon size={20} strokeWidth={1.75} />
+        {isExpanded && (
+          <span className="select-none whitespace-nowrap">
+            {item.label}
+          </span>
+        )}
+        {/* Unseen-activity badge (A3.3): additions/changes by the other
+            operator since this tab was last opened. */}
+        {count > 0 &&
+          (isExpanded ? (
+            <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-semibold leading-none text-bg">
+              {badge}
+            </span>
+          ) : (
+            <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[9px] font-semibold leading-none text-bg">
+              {badge}
+            </span>
+          ))}
+        {item.key === 'sites' && isExpanded && (
+          <span
+            role="button"
+            tabIndex={0}
+            aria-label="Voir la liste rapide des sites"
+            onClick={(event) => {
+              // Toggle the quick-list flyout without navigating away.
+              event.preventDefault();
+              event.stopPropagation();
+              setIsSitesFlyoutOpen((open) => !open);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                event.stopPropagation();
+                setIsSitesFlyoutOpen((open) => !open);
+              }
+            }}
+            className={`ml-auto -my-1 flex select-none items-center rounded px-1 py-1 text-xs text-text-muted transition-transform duration-200 hover:text-text-primary ${
+              isSitesFlyoutOpen ? 'rotate-90' : ''
+            }`}
+          >
+            ›
+          </span>
+        )}
+      </Link>
+    );
   };
 
   return (
@@ -153,79 +239,19 @@ export function Sidebar({
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3">
-          {NAV_ITEMS.map((item) => {
-            const active = isActive(item.to);
-            const Icon = item.icon;
-            const count = unseen[item.to] ?? 0;
-            const badge = count > 99 ? '99+' : String(count);
-            return (
-              <Link
-                key={item.key}
-                to={item.to}
-                onClick={handleNavClick}
-                title={!isExpanded ? item.label : undefined}
-                aria-label={item.label}
-                className={`group relative flex items-center gap-3 overflow-hidden rounded-lg py-2.5 text-sm transition-colors duration-200 ${
-                  isExpanded ? 'px-3' : 'justify-center px-0'
-                } ${
-                  active
-                    ? 'bg-accent-muted text-text-primary'
-                    : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
-                }`}
-              >
-                {active && (
-                  <motion.span
-                    layoutId="sidebar-active-indicator"
-                    className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-accent"
-                    transition={TRANSITION}
-                  />
-                )}
-                <Icon size={20} strokeWidth={1.75} />
-                {isExpanded && (
-                  <span className="select-none whitespace-nowrap">
-                    {item.label}
-                  </span>
-                )}
-                {/* Unseen-activity badge (A3.3): additions/changes by the other
-                    operator since this tab was last opened. */}
-                {count > 0 &&
-                  (isExpanded ? (
-                    <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-semibold leading-none text-bg">
-                      {badge}
-                    </span>
-                  ) : (
-                    <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[9px] font-semibold leading-none text-bg">
-                      {badge}
-                    </span>
-                  ))}
-                {item.key === 'sites' && isExpanded && (
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    aria-label="Voir la liste rapide des sites"
-                    onClick={(event) => {
-                      // Toggle the quick-list flyout without navigating away.
-                      event.preventDefault();
-                      event.stopPropagation();
-                      setIsSitesFlyoutOpen((open) => !open);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        setIsSitesFlyoutOpen((open) => !open);
-                      }
-                    }}
-                    className={`ml-auto -my-1 flex select-none items-center rounded px-1 py-1 text-xs text-text-muted transition-transform duration-200 hover:text-text-primary ${
-                      isSitesFlyoutOpen ? 'rotate-90' : ''
-                    }`}
-                  >
-                    ›
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+          {WORKSPACE_ITEMS.map(renderNavItem)}
+
+          {/* Products sold to clients, set apart from the workspace tabs. When
+              the sidebar is collapsed the label would be unreadable, so it
+              degrades to a plain rule. */}
+          <div className="mt-4 mb-1 px-1">
+            {isExpanded ? (
+              <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-text-muted">Produits</p>
+            ) : (
+              <span className="block h-px bg-border" aria-hidden />
+            )}
+          </div>
+          {PRODUCT_ITEMS.map(renderNavItem)}
         </div>
 
         <div className="mt-auto flex flex-col gap-1 px-3">

@@ -9,6 +9,7 @@ import { SitesDashboardScreen } from './screens/SitesDashboardScreen';
 import { TeamScreen } from './screens/TeamScreen';
 import { TasksScreen } from './screens/TasksScreen';
 import { ClientsScreen } from './screens/ClientsScreen';
+import { ScannerScreen } from './screens/ScannerScreen';
 import { TrackerScreen } from './screens/TrackerScreen';
 import { DecisionsScreen } from './screens/DecisionsScreen';
 import { KnowledgeScreen } from './screens/KnowledgeScreen';
@@ -43,6 +44,7 @@ export default function App() {
               <Route path="/tasks" element={<TasksScreen />} />
               <Route path="/clients" element={<ClientsScreen />} />
               <Route path="/tracker" element={<TrackerScreen />} />
+              <Route path="/scanner" element={<ScannerScreen />} />
               <Route path="/decisions" element={<DecisionsScreen />} />
               <Route path="/knowledge" element={<KnowledgeScreen />} />
               <Route path="/notes" element={<NotesScreen />} />

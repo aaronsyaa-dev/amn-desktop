@@ -7,6 +7,9 @@ import type {
   NotificationPrefs,
   PresenceEntry,
   RemoteRecord,
+  Scan,
+  ScanProgress,
+  ScanTier,
   UserProfile,
   ChecklistStateEntry,
   Client,
@@ -383,6 +386,7 @@ function createBrowserRemote(): AmnBridge['remote'] {
   const statusListeners = new Set<(status: RemoteConnectionStatus) => void>();
   const recordListeners = new Set<(record: RemoteRecord) => void>();
   const presenceListeners = new Set<(users: PresenceEntry[]) => void>();
+  const scanListeners = new Set<(progress: ScanProgress) => void>();
   let status: RemoteConnectionStatus = configured ? 'connecting' : 'unconfigured';
   let reconnectAttempt = 0;
   let started = false;
@@ -413,6 +417,8 @@ function createBrowserRemote(): AmnBridge['remote'] {
           for (const listener of recordListeners) listener(parsed.record as RemoteRecord);
         } else if (parsed?.type === 'presence' && Array.isArray(parsed.users)) {
           for (const listener of presenceListeners) listener(parsed.users as PresenceEntry[]);
+        } else if (parsed?.type === 'scan:progress' && parsed.progress) {
+          for (const listener of scanListeners) listener(parsed.progress as ScanProgress);
         }
       } catch {
         // Ignore malformed frames.
@@ -436,7 +442,16 @@ function createBrowserRemote(): AmnBridge['remote'] {
         ...init.headers,
       },
     });
-    if (!res.ok) throw new Error(`amn-api ${res.status} ${res.statusText}`);
+    if (!res.ok) {
+      // Surface amn-api's own message when it sends one. Without this the UI
+      // could only show "amn-api 400 Bad Request", hiding actionable errors
+      // like a refused private scan target or an unknown tier.
+      const detail = await res
+        .json()
+        .then((body: { error?: string }) => body?.error)
+        .catch(() => undefined);
+      throw new Error(detail || `amn-api ${res.status} ${res.statusText}`);
+    }
     return res.json() as Promise<T>;
   }
 
@@ -522,6 +537,35 @@ function createBrowserRemote(): AmnBridge['remote'] {
       presenceListeners.add(callback);
       ensureStarted();
       return () => presenceListeners.delete(callback);
+    },
+    async startScan(url: string, tier: ScanTier): Promise<Scan> {
+      const { scan } = await apiFetch<{ scan: Scan }>('/v1/scan', {
+        method: 'POST',
+        body: JSON.stringify({ url, tier }),
+      });
+      return scan;
+    },
+    async listScans(): Promise<Scan[]> {
+      const { scans } = await apiFetch<{ scans: Scan[] }>('/v1/scans');
+      return scans;
+    },
+    async getScan(id: string): Promise<Scan> {
+      const { scan } = await apiFetch<{ scan: Scan }>(`/v1/scans/${encodeURIComponent(id)}`);
+      return scan;
+    },
+    async scanReportUrl(id: string): Promise<string> {
+      // The report is behind the operator token, which a plain window.open()
+      // can't send. Fetch it here (with the header) and hand back a blob: URL.
+      const res = await fetch(`${apiUrl}/v1/scans/${encodeURIComponent(id)}/pdf`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`amn-api ${res.status} ${res.statusText}`);
+      return URL.createObjectURL(new Blob([await res.text()], { type: 'text/html' }));
+    },
+    onScanProgress(callback) {
+      scanListeners.add(callback);
+      ensureStarted();
+      return () => scanListeners.delete(callback);
     },
   };
 
