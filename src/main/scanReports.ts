@@ -19,10 +19,18 @@ import { pathToFileURL } from 'node:url';
  */
 export const SCAN_REPORTS_DIR = path.join(app.getPath('temp'), 'amn-scan-reports');
 
-/** Writes one report's HTML to a fresh file and returns its file:// URL. */
+/**
+ * Writes one report's HTML to a fresh file and returns its file:// URL.
+ *
+ * The filename is already a fresh UUID on every call, so this can never reuse
+ * a previous file's path — but a `?v=<timestamp>` suffix is added on top
+ * anyway, belt-and-suspenders, so Chromium never has a reason to treat two
+ * opens of the "same" report as the same navigation and reuse anything it
+ * cached for a prior version of the HTML.
+ */
 export async function writeScanReportFile(html: string): Promise<string> {
   await fs.mkdir(SCAN_REPORTS_DIR, { recursive: true });
   const file = path.join(SCAN_REPORTS_DIR, `${crypto.randomUUID()}.html`);
   await fs.writeFile(file, html, 'utf8');
-  return pathToFileURL(file).href;
+  return `${pathToFileURL(file).href}?v=${Date.now()}`;
 }
