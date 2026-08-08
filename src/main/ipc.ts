@@ -5,6 +5,7 @@ import {
   type ChangePasswordInput,
   type NotificationPrefs,
   type UpdateProfileInput,
+  type ScanTier,
   type SyncedCollection,
   type CreateClientInput,
   type CreateDecisionInput,
@@ -209,6 +210,12 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
       remote.deleteRecord(payload.collection, payload.id),
   );
   ipcMain.handle(IPC.remoteGetPresence, () => remote.getPresence());
+  ipcMain.handle(IPC.remoteStartScan, (_event, payload: { url: string; tier: ScanTier }) =>
+    remote.startScan(payload.url, payload.tier),
+  );
+  ipcMain.handle(IPC.remoteListScans, () => remote.listScans());
+  ipcMain.handle(IPC.remoteGetScan, (_event, id: string) => remote.getScan(id));
+  ipcMain.handle(IPC.remoteScanReportUrl, (_event, id: string) => remote.scanReportUrl(id));
   // setIdentity is fire-and-forget from the renderer (no reply needed).
   ipcMain.on(IPC.remoteSetIdentity, (_event, email: string | null) => remote.setIdentity(email));
 
@@ -223,6 +230,7 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   remote.onStatusChange((status) => broadcastToAll(IPC.remoteConnectionStatusPush, status));
   remote.onRecord((record) => broadcastToAll(IPC.remoteRecordPush, record));
   remote.onPresence((users) => broadcastToAll(IPC.remotePresencePush, users));
+  remote.onScanProgress((progress) => broadcastToAll(IPC.remoteScanProgressPush, progress));
 
   // Native OS notifications. The renderer decides *when* (it holds prefs +
   // identity + the live streams); the main process just shows them so they

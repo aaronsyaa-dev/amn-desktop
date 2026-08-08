@@ -13,6 +13,8 @@ import {
   type CreateQuoteInput,
   type CreateSharedTaskInput,
   type PresenceEntry,
+  type ScanProgress,
+  type ScanTier,
   type RemoteConnectionStatus,
   type RemoteEventPush,
   type RemoteRecord,
@@ -140,6 +142,15 @@ const bridge: AmnBridge = {
       const listener = (_event: Electron.IpcRendererEvent, users: PresenceEntry[]) => callback(users);
       ipcRenderer.on(IPC.remotePresencePush, listener);
       return () => ipcRenderer.removeListener(IPC.remotePresencePush, listener);
+    },
+    startScan: (url: string, tier: ScanTier) => ipcRenderer.invoke(IPC.remoteStartScan, { url, tier }),
+    listScans: () => ipcRenderer.invoke(IPC.remoteListScans),
+    getScan: (id: string) => ipcRenderer.invoke(IPC.remoteGetScan, id),
+    scanReportUrl: (id: string) => ipcRenderer.invoke(IPC.remoteScanReportUrl, id),
+    onScanProgress: (callback: (progress: ScanProgress) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, progress: ScanProgress) => callback(progress);
+      ipcRenderer.on(IPC.remoteScanProgressPush, listener);
+      return () => ipcRenderer.removeListener(IPC.remoteScanProgressPush, listener);
     },
   },
   system: {

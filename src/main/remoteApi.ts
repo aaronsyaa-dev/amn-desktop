@@ -8,6 +8,9 @@ import type {
   RemoteEventPush,
   RemoteRecord,
   RemoteSite,
+  Scan,
+  ScanProgress,
+  ScanTier,
   SyncedCollection,
 } from '../shared/api';
 
@@ -59,6 +62,7 @@ export class RemoteApiClient {
   private statusListeners = new Set<(status: RemoteConnectionStatus) => void>();
   private recordListeners = new Set<(record: RemoteRecord) => void>();
   private presenceListeners = new Set<(users: PresenceEntry[]) => void>();
+  private scanListeners = new Set<(progress: ScanProgress) => void>();
   private identity: string | null = null;
   private stopped = false;
 
@@ -129,6 +133,48 @@ export class RemoteApiClient {
       { method: 'DELETE' },
     );
     return record;
+  }
+
+  /* ------------------------------- Scanner ------------------------------- */
+
+  async startScan(url: string, tier: ScanTier): Promise<Scan> {
+    const { scan } = await apiFetch<{ scan: Scan }>('/v1/scan', {
+      method: 'POST',
+      body: JSON.stringify({ url, tier }),
+    });
+    return scan;
+  }
+
+  async listScans(): Promise<Scan[]> {
+    const { scans } = await apiFetch<{ scans: Scan[] }>('/v1/scans');
+    return scans;
+  }
+
+  async getScan(id: string): Promise<Scan> {
+    const { scan } = await apiFetch<{ scan: Scan }>(`/v1/scans/${encodeURIComponent(id)}`);
+    return scan;
+  }
+
+  /**
+   * Fetches the printable Elite report and returns it as a data: URL. The
+   * renderer opens that in a window and prints it — the operator token stays in
+   * the main process and never reaches a URL the renderer could leak.
+   */
+  async scanReportUrl(id: string): Promise<string> {
+    const res = await fetch(`${remoteConfig.apiUrl}/v1/scans/${encodeURIComponent(id)}/pdf`, {
+      headers: { Authorization: `Bearer ${remoteConfig.operatorToken}` },
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`amn-api ${res.status} ${res.statusText}: ${body.slice(0, 200)}`);
+    }
+    const html = await res.text();
+    return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+  }
+
+  onScanProgress(listener: (progress: ScanProgress) => void): () => void {
+    this.scanListeners.add(listener);
+    return () => this.scanListeners.delete(listener);
   }
 
   async getPresence(): Promise<PresenceEntry[]> {
@@ -223,6 +269,8 @@ export class RemoteApiClient {
           for (const listener of this.recordListeners) listener(parsed.record as RemoteRecord);
         } else if (parsed?.type === 'presence' && Array.isArray(parsed.users)) {
           for (const listener of this.presenceListeners) listener(parsed.users as PresenceEntry[]);
+        } else if (parsed?.type === 'scan:progress' && parsed.progress) {
+          for (const listener of this.scanListeners) listener(parsed.progress as ScanProgress);
         }
       } catch {
         // Ignore malformed frames rather than crashing the main process.

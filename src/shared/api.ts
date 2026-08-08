@@ -475,6 +475,81 @@ export interface PresenceEntry {
   online: boolean;
 }
 
+/* ------------------------------ Scanner (Produits) ------------------------------ */
+
+/** Scan depth. Each tier is a superset of the previous one. */
+export type ScanTier = 'lite' | 'pro' | 'elite';
+
+export type ScanStatus = 'pending' | 'running' | 'done' | 'error';
+
+/** Ordered least → most serious; drives colour and sort everywhere. */
+export type ScanSeverity = 'info' | 'low' | 'medium' | 'high' | 'critical';
+
+/** One detected weakness, with the concrete fix for it. */
+export interface ScanFinding {
+  id: string;
+  title: string;
+  severity: ScanSeverity;
+  /** transport | headers | cookies | disclosure | cms | cve | injection | xss | ports */
+  category: string;
+  detail: string;
+  recommendation: string;
+  /** What was observed (header value, tested parameter…), when relevant. */
+  evidence: string | null;
+  /** OWASP Top 10 bucket, e.g. "A05:2021 – Security Misconfiguration". */
+  owasp: string | null;
+  cve: string | null;
+}
+
+export type ScanSeveritySummary = Record<ScanSeverity, number>;
+
+/** Elite-only before/after delta against the previous scan of the same URL. */
+export interface ScanComparison {
+  previousScanId: string;
+  previousScannedAt: string;
+  previousScore: number | null;
+  resolved: ScanFinding[];
+  introduced: ScanFinding[];
+  unchangedCount: number;
+  summaryBefore: ScanSeveritySummary;
+  summaryAfter: ScanSeveritySummary;
+}
+
+export interface ScanResults {
+  target: { url: string; host: string; ip: string | null };
+  cms: { name: string; version: string | null; ecosystem: string } | null;
+  httpStatus: number;
+  findings: ScanFinding[];
+  summary: ScanSeveritySummary;
+  scannedAt: string;
+  comparison?: ScanComparison | null;
+}
+
+export interface Scan {
+  id: string;
+  url: string;
+  tier: ScanTier;
+  status: ScanStatus;
+  score: number | null;
+  results: ScanResults | Record<string, never>;
+  error: string | null;
+  createdAt: string;
+  finishedAt: string | null;
+}
+
+/** Live progress frame pushed over the WebSocket while a scan runs. */
+export interface ScanProgress {
+  scanId: string;
+  status: ScanStatus;
+  /** Human-readable step, e.g. "Analyse des en-têtes de sécurité…". */
+  step: string;
+  pct: number;
+  score?: number;
+  error?: string;
+  /** Present on the terminal `done` frame: the finished scan row. */
+  scan?: Scan;
+}
+
 export interface AmnBridge {
   auth: {
     login(email: string, password: string): Promise<AuthResult>;
@@ -576,6 +651,21 @@ export interface AmnBridge {
     setIdentity(email: string | null): void;
     getPresence(): Promise<PresenceEntry[]>;
     onPresence(callback: (users: PresenceEntry[]) => void): () => void;
+
+    /* --- Scanner --- */
+    /**
+     * Queues a passive security scan of `url` at `tier`. Resolves as soon as
+     * amn-api has accepted it (status `pending`); follow the run through
+     * {@link onScanProgress} and re-read the finished scan with {@link getScan}.
+     * The scan itself runs on amn-api, never from this machine.
+     */
+    startScan(url: string, tier: ScanTier): Promise<Scan>;
+    listScans(): Promise<Scan[]>;
+    getScan(id: string): Promise<Scan>;
+    /** URL of the printable Elite report (opened, then printed to PDF). */
+    scanReportUrl(id: string): Promise<string>;
+    /** Live scan progress pushed from amn-api. Returns an unsubscribe function. */
+    onScanProgress(callback: (progress: ScanProgress) => void): () => void;
   };
   /** Native OS / desktop integration (Electron main process). */
   system: {
@@ -668,6 +758,11 @@ export const IPC = {
   remoteSetIdentity: 'remote:setIdentity',
   remoteGetPresence: 'remote:getPresence',
   /** Push channels (main -> renderer via webContents.send, not invoke/handle). */
+  remoteStartScan: 'remote:startScan',
+  remoteListScans: 'remote:listScans',
+  remoteGetScan: 'remote:getScan',
+  remoteScanReportUrl: 'remote:scanReportUrl',
+  remoteScanProgressPush: 'remote:scanProgressPush',
   remoteEventPush: 'remote:eventPush',
   remoteConnectionStatusPush: 'remote:connectionStatusPush',
   remoteRecordPush: 'remote:recordPush',
