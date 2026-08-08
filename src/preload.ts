@@ -16,6 +16,7 @@ import {
   type ComplyProgress,
   type ScanProgress,
   type ScanTier,
+  type VaultEntry,
   type RemoteConnectionStatus,
   type RemoteEventPush,
   type RemoteRecord,
@@ -184,6 +185,11 @@ const bridge: AmnBridge = {
       return () => ipcRenderer.removeListener(IPC.updateDownloaded, listener);
     },
     install: () => ipcRenderer.invoke(IPC.updateInstall),
+  },
+  vault: {
+    isEncrypted: () => ipcRenderer.invoke(IPC.vaultIsEncrypted),
+    list: () => ipcRenderer.invoke(IPC.vaultList),
+    save: (entries: VaultEntry[]) => ipcRenderer.invoke(IPC.vaultSave, entries),
   },
   env: { isElectron: true },
 };

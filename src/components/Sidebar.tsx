@@ -12,6 +12,7 @@ import {
   Globe,
   Images,
   LayoutDashboard,
+  Lock,
   LogOut,
   NotebookPen,
   Radar,
@@ -62,6 +63,12 @@ const PRODUCT_ITEMS: NavItem[] = [
   { key: 'scanner', label: 'Scanner', to: '/scanner', icon: ScanLine },
   { key: 'comply', label: 'Comply', to: '/comply', icon: BadgeCheck },
 ];
+
+/**
+ * Internal tool, not a client-facing product — kept out of PRODUCT_ITEMS and
+ * rendered on its own in the bottom account-actions zone, just above logout.
+ */
+const VAULT_ITEM: NavItem = { key: 'vault', label: 'Coffre-fort', to: '/vault', icon: Lock };
 
 export function Sidebar({
   mobileOpen = false,
@@ -257,6 +264,8 @@ export function Sidebar({
         </div>
 
         <div className="mt-auto flex flex-col gap-1 px-3">
+          {renderNavItem(VAULT_ITEM)}
+
           <button
             type="button"
             onClick={logout}

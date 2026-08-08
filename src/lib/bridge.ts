@@ -41,6 +41,7 @@ import type {
   UpdateObjectiveInput,
   UpdateQuoteInput,
   UpdateSharedTaskInput,
+  VaultEntry,
 } from '../shared/api';
 
 declare global {
@@ -78,6 +79,10 @@ const KNOWLEDGE_KEY = 'amn.fallback.knowledge';
 const CHECKLIST_KEY = 'amn.fallback.checklist';
 const LEARNING_KEY = 'amn.fallback.learning';
 const OBJECTIVES_KEY = 'amn.fallback.objectives';
+// A distinct `amn.vault.` namespace (not `amn.fallback.`) marks this key as
+// what it is: plain localStorage, never synced to amn-api, never touched by
+// the sync machinery the `fallback` keys above stand in for.
+const VAULT_KEY = 'amn.vault.entries';
 
 function daysAgo(n: number): string {
   return new Date(Date.now() - n * 86400000).toISOString();
@@ -1025,6 +1030,19 @@ function createBrowserBridge(): AmnBridge {
       },
       install() {
         /* no-op */
+      },
+    },
+    vault: {
+      async isEncrypted() {
+        // Plain localStorage in the browser — never encrypted. The UI shows
+        // this as an explicit warning rather than a silent lock icon.
+        return false;
+      },
+      async list() {
+        return readList<VaultEntry>(VAULT_KEY, () => []);
+      },
+      async save(entries: VaultEntry[]) {
+        writeList(VAULT_KEY, entries);
       },
     },
     env: { isElectron: false },

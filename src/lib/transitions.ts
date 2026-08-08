@@ -66,6 +66,11 @@ export const pageVariants: Record<string, Variants> = {
     animate: { opacity: 1, y: 0, transition: { duration: 0.25, ease: EASE } },
     exit: { opacity: 0, y: -8, transition: { duration: 0.15 } },
   },
+  '/vault': {
+    initial: { opacity: 0, y: 10 },
+    animate: { opacity: 1, y: 0, transition: { duration: 0.25, ease: EASE } },
+    exit: { opacity: 0, y: -8, transition: { duration: 0.15 } },
+  },
 };
 
 export function variantsForPath(pathname: string): Variants {
@@ -79,6 +84,7 @@ export function variantsForPath(pathname: string): Variants {
   if (pathname.startsWith('/decisions')) return pageVariants['/decisions'];
   if (pathname.startsWith('/knowledge')) return pageVariants['/knowledge'];
   if (pathname.startsWith('/settings')) return pageVariants['/settings'];
+  if (pathname.startsWith('/vault')) return pageVariants['/vault'];
   return pageVariants['/'];
 }
 
