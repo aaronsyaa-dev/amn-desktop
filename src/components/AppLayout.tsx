@@ -100,7 +100,7 @@ export function AppLayout() {
               }}
             >
               <Sidebar mobileOpen={navOpen} onClose={() => setNavOpen(false)} />
-              <main className="relative flex-1 overflow-y-auto">
+              <main className="relative flex-1 overflow-y-auto overflow-x-hidden overscroll-none">
                 <TopBar onMenu={() => setNavOpen(true)} />
                 <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8">
                   {/*

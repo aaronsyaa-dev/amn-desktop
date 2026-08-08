@@ -502,6 +502,7 @@ export interface AmnBridge {
     create(input: CreateClientInput): Promise<Client>;
     update(id: number, patch: UpdateClientInput): Promise<Client>;
     addEvent(input: AddClientEventInput): Promise<Client>;
+    remove(id: number): Promise<void>;
   };
   quotes: {
     list(): Promise<Quote[]>;
@@ -631,6 +632,7 @@ export const IPC = {
   clientsCreate: 'clients:create',
   clientsUpdate: 'clients:update',
   clientsAddEvent: 'clients:addEvent',
+  clientsRemove: 'clients:remove',
   quotesList: 'quotes:list',
   quotesCreate: 'quotes:create',
   quotesUpdate: 'quotes:update',

@@ -150,6 +150,13 @@ export function ClientsScreen() {
     await bridge().quotes.remove(id);
   };
 
+  const removeClient = async (id: number) => {
+    setClients((prev) => prev.filter((c) => c.id !== id));
+    setQuotes((prev) => prev.filter((q) => q.clientId !== id));
+    setSelectedId((prev) => (prev === id ? null : prev));
+    await bridge().clients.remove(id);
+  };
+
   return (
     <section className="flex h-[calc(100dvh-8rem)] flex-col gap-4">
       <div className="flex items-end justify-between gap-4">
@@ -190,6 +197,7 @@ export function ClientsScreen() {
             onCreateQuote={createQuote}
             onPatchQuote={patchQuote}
             onRemoveQuote={removeQuote}
+            onRemoveClient={removeClient}
           />
         ) : (
           <div className="flex items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted">
@@ -314,6 +322,7 @@ function ClientDetail({
   onCreateQuote,
   onPatchQuote,
   onRemoveQuote,
+  onRemoveClient,
 }: {
   client: Client;
   sites: DerivedSite[];
@@ -323,10 +332,11 @@ function ClientDetail({
   onCreateQuote: (input: CreateQuoteInput) => Promise<Quote>;
   onPatchQuote: (id: number, p: { status?: QuoteStatus; paymentStatus?: PaymentStatus }) => Promise<void>;
   onRemoveQuote: (id: number) => Promise<void>;
+  onRemoveClient: (id: number) => Promise<void>;
 }) {
   return (
     <div className="min-h-0 overflow-y-auto border border-border bg-surface">
-      <ClientHeader client={client} sites={sites} onPatch={onPatch} />
+      <ClientHeader client={client} sites={sites} onPatch={onPatch} onRemove={onRemoveClient} />
       <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-2">
         <div className="flex flex-col gap-6">
           <ContactBlock client={client} onPatch={onPatch} />
@@ -361,10 +371,12 @@ function ClientHeader({
   client,
   sites,
   onPatch,
+  onRemove,
 }: {
   client: Client;
   sites: DerivedSite[];
   onPatch: (id: number, p: UpdateClientInput) => Promise<void>;
+  onRemove: (id: number) => Promise<void>;
 }) {
   const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -491,6 +503,11 @@ function ClientHeader({
           <FileText size={11} strokeWidth={2} />
           Faire un rapport
         </button>
+        <ConfirmDelete
+          onConfirm={() => onRemove(client.id)}
+          label="Supprimer le client"
+          className="border border-border px-1"
+        />
       </div>
     </div>
   );

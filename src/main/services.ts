@@ -458,6 +458,13 @@ export function addClientEvent(input: AddClientEventInput): Client {
   return getClient(input.clientId);
 }
 
+export function removeClient(id: number): void {
+  const db = getDb();
+  db.prepare('DELETE FROM client_events WHERE client_id = ?').run(id);
+  db.prepare('DELETE FROM quotes WHERE client_id = ?').run(id);
+  db.prepare('DELETE FROM clients WHERE id = ?').run(id);
+}
+
 /* -------------------------------- Quotes -------------------------------- */
 
 interface QuoteRow {

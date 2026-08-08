@@ -59,6 +59,7 @@ const bridge: AmnBridge = {
       ipcRenderer.invoke(IPC.clientsUpdate, { id, patch }),
     addEvent: (input: AddClientEventInput) =>
       ipcRenderer.invoke(IPC.clientsAddEvent, input),
+    remove: (id: number) => ipcRenderer.invoke(IPC.clientsRemove, id),
   },
   quotes: {
     list: () => ipcRenderer.invoke(IPC.quotesList),

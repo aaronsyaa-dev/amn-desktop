@@ -456,7 +456,7 @@ function MessageList({
         const el = e.currentTarget;
         wasAtBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
       }}
-      className="flex-1 space-y-3 overflow-y-auto p-5"
+      className="flex-1 touch-pan-y space-y-3 overflow-y-auto overscroll-contain p-5"
     >
       {messages.map((message) => (
         <MessageBubble
@@ -988,7 +988,7 @@ function Composer({
 
   return (
     <div
-      className="relative border-t border-border p-4"
+      className="relative flex-shrink-0 border-t border-border bg-surface p-4"
       onDragOver={(e) => {
         e.preventDefault();
         setDragOver(true);
