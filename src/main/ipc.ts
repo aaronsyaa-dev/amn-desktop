@@ -6,6 +6,7 @@ import {
   type NotificationPrefs,
   type UpdateProfileInput,
   type ScanTier,
+  type TrackerTier,
   type SyncedCollection,
   type VaultEntry,
   type CreateClientInput,
@@ -217,6 +218,16 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
     remote.updateSite(id, name),
   );
   ipcMain.handle(IPC.remoteDeleteSite, (_event, id: string) => remote.deleteSite(id));
+  ipcMain.handle(
+    IPC.remoteConfigureSite,
+    (_event, payload: { id: string; patch: { tier?: TrackerTier; url?: string | null } }) =>
+      remote.configureSite(payload.id, payload.patch),
+  );
+  ipcMain.handle(
+    IPC.remoteSiteSummary,
+    (_event, payload: { id: string; hours?: number }) => remote.getSiteSummary(payload.id, payload.hours),
+  );
+  ipcMain.handle(IPC.remoteSiteDigest, (_event, id: string) => remote.getSiteDigest(id));
   ipcMain.handle(IPC.remoteConnectionStatus, () => remote.getConnectionStatus());
 
   ipcMain.handle(IPC.remoteListRecords, (_event, collection: SyncedCollection) =>

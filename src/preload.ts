@@ -16,6 +16,7 @@ import {
   type ComplyProgress,
   type ScanProgress,
   type ScanTier,
+  type TrackerTier,
   type VaultEntry,
   type RemoteConnectionStatus,
   type RemoteEventPush,
@@ -114,6 +115,11 @@ const bridge: AmnBridge = {
     registerSite: (name: string) => ipcRenderer.invoke(IPC.remoteRegisterSite, name),
     updateSite: (id: string, name: string) => ipcRenderer.invoke(IPC.remoteUpdateSite, { id, name }),
     deleteSite: (id: string) => ipcRenderer.invoke(IPC.remoteDeleteSite, id),
+    configureSite: (id: string, patch: { tier?: TrackerTier; url?: string | null }) =>
+      ipcRenderer.invoke(IPC.remoteConfigureSite, { id, patch }),
+    getSiteSummary: (id: string, hours?: number) =>
+      ipcRenderer.invoke(IPC.remoteSiteSummary, { id, hours }),
+    getSiteDigest: (id: string) => ipcRenderer.invoke(IPC.remoteSiteDigest, id),
     getConnectionStatus: () => ipcRenderer.invoke(IPC.remoteConnectionStatus),
     onEvent: (callback: (push: RemoteEventPush) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, push: RemoteEventPush) =>

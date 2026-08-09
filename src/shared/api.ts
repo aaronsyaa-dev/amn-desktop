@@ -392,8 +392,40 @@ export interface UpdateObjectiveInput {
  * never had a real data source. Business analytics is an explicit future
  * tracker tier ("AMN Suite") rather than something faked here.
  */
-export type RemoteEventType = 'connection' | 'request' | 'security_alert' | 'payment' | 'heartbeat';
+export type RemoteEventType =
+  | 'connection'
+  | 'request'
+  | 'security_alert'
+  | 'payment'
+  | 'heartbeat'
+  /** Dependency map reported by the tracker, scanned against OSV.dev (Suite). */
+  | 'dependencies'
+  /** Result of amn-api's own availability probe (Suite). */
+  | 'availability'
+  /** Result of an OSV.dev dependency scan (Suite). */
+  | 'dependency_scan'
+  /** Scheduled weekly digest produced by amn-api (Suite). */
+  | 'weekly_report';
 export type RemoteSeverity = 'critical' | 'warning' | 'info';
+
+/** Tracker tier a site is supervised at — gates which detections amn-api runs. */
+export type TrackerTier = 'sentinel' | 'sentinel-plus' | 'suite';
+
+/**
+ * What kind of threat an alert describes. Set by amn-api's detection engine in
+ * `payload.kind` (see amn-api/src/tracker/engine.js); alerts forwarded straight
+ * from a site's own tracker may carry none.
+ */
+export type AlertKind =
+  | 'brute_force'
+  | 'rate_limit'
+  | 'injection'
+  | 'ip_reputation'
+  | 'bot'
+  | 'traffic_anomaly'
+  | 'site_unreachable'
+  | 'availability_down'
+  | 'vulnerable_dependency';
 
 export interface RemoteSiteState {
   siteId: string;
@@ -410,6 +442,63 @@ export interface RemoteSite {
   name: string;
   createdAt: string;
   state: RemoteSiteState | null;
+  /** Supervision tier. Absent on responses from an amn-api older than the tiers. */
+  tier?: TrackerTier;
+  /** Public URL, used by the Suite tier's independent availability probe. */
+  url?: string | null;
+  blockOnRateLimit?: boolean;
+}
+
+/** One hour of the traffic curve shown in a site's control desk. */
+export interface TrafficPoint {
+  /** 'YYYY-MM-DDTHH' bucket key (UTC). */
+  hour: string;
+  /** Start of the bucket as a full ISO timestamp, for formatting. */
+  at: string;
+  count: number;
+}
+
+/** Security score for a site, computed by amn-api from the alerts it received. */
+export interface SiteScore {
+  score: number;
+  tone: 'good' | 'watch' | 'risk';
+  reasons: string[];
+  counts: Record<string, number>;
+  byKind: Record<string, number>;
+  alertCount: number;
+}
+
+/**
+ * Everything a site's control desk needs, in one call: the traffic curve, the
+ * alert history and the score. The score is computed server-side so the figure
+ * shown here, in a generated report and in the weekly digest can never drift.
+ */
+export interface SiteSummary {
+  site: { id: string; name: string; tier: TrackerTier; url: string | null; createdAt: string };
+  state: RemoteSiteState | null;
+  windowHours: number;
+  traffic: TrafficPoint[];
+  totalRequests: number;
+  alerts: RemoteEvent[];
+  score: SiteScore;
+}
+
+/** Structured weekly summary behind the Suite tier's recurring report. */
+export interface SiteDigest {
+  siteId: string;
+  siteName: string;
+  tier: TrackerTier;
+  periodStart: string;
+  periodEnd: string;
+  score: number;
+  scoreTone: string;
+  scoreReasons: string[];
+  totalEvents: number;
+  totalAlerts: number;
+  criticalAlerts: number;
+  alertsByKind: Record<string, number>;
+  availability: { probes: number; ok: number; ratio: number } | null;
+  recommendations: string[];
 }
 
 export interface RemoteEvent {
@@ -422,9 +511,13 @@ export interface RemoteEvent {
   occurredAt: string;
 }
 
-/** Message pushed from amn-api's WebSocket stream, relayed verbatim by main. */
+/**
+ * Message pushed from amn-api's WebSocket stream, relayed verbatim by main.
+ * amn-api emits each ingest under both `tracker:event` (canonical) and `event`
+ * (kept so already-deployed desktop builds keep working); main forwards one.
+ */
 export interface RemoteEventPush {
-  type: 'event';
+  type: 'event' | 'tracker:event';
   siteId: string;
   siteName: string;
   event: RemoteEvent;
@@ -711,6 +804,12 @@ export interface AmnBridge {
     registerSite(name: string): Promise<RegisterSiteResult>;
     /** Renames a registered site. */
     updateSite(id: string, name: string): Promise<RemoteSite>;
+    /** Changes a site's supervision tier / probe URL without touching its name. */
+    configureSite(id: string, patch: { tier?: TrackerTier; url?: string | null }): Promise<RemoteSite>;
+    /** Traffic curve + alert history + security score for a site's control desk. */
+    getSiteSummary(id: string, hours?: number): Promise<SiteSummary>;
+    /** Structured weekly digest, on demand (used to generate a report). */
+    getSiteDigest(id: string): Promise<SiteDigest>;
     /** Deletes a registered site (cascades its state + events). */
     deleteSite(id: string): Promise<void>;
     /** Current live-connection status (WebSocket to amn-api). */
@@ -857,6 +956,9 @@ export const IPC = {
   remoteSiteEvents: 'remote:siteEvents',
   remoteRegisterSite: 'remote:registerSite',
   remoteUpdateSite: 'remote:updateSite',
+  remoteConfigureSite: 'remote:configureSite',
+  remoteSiteSummary: 'remote:siteSummary',
+  remoteSiteDigest: 'remote:siteDigest',
   remoteDeleteSite: 'remote:deleteSite',
   remoteConnectionStatus: 'remote:connectionStatus',
   remoteListRecords: 'remote:listRecords',

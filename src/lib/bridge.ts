@@ -33,6 +33,9 @@ import type {
   RemoteEvent,
   RemoteEventPush,
   RemoteSite,
+  SiteDigest,
+  SiteSummary,
+  TrackerTier,
   SendMessageInput,
   SharedTask,
   UpdateClientInput,
@@ -495,6 +498,21 @@ function createBrowserRemote(): AmnBridge['remote'] {
     },
     async deleteSite(id: string): Promise<void> {
       await apiFetch<{ ok: boolean }>(`/v1/sites/${id}`, { method: 'DELETE' });
+    },
+    async configureSite(id: string, patch: { tier?: TrackerTier; url?: string | null }): Promise<RemoteSite> {
+      // amn-api applies a partial patch, so omitting `name` leaves it untouched.
+      const { site } = await apiFetch<{ site: RemoteSite }>(`/v1/sites/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(patch),
+      });
+      return site;
+    },
+    async getSiteSummary(id: string, hours = 24): Promise<SiteSummary> {
+      return apiFetch<SiteSummary>(`/v1/sites/${id}/summary?hours=${hours}`);
+    },
+    async getSiteDigest(id: string): Promise<SiteDigest> {
+      const { digest } = await apiFetch<{ digest: SiteDigest }>(`/v1/sites/${id}/digest`);
+      return digest;
     },
     async getConnectionStatus(): Promise<RemoteConnectionStatus> {
       return status;
