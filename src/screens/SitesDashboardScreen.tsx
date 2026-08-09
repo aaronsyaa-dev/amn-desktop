@@ -492,7 +492,7 @@ function SiteUrlField({
   siteId: string;
   url: string;
   href: string | null;
-  onSave: (siteId: string, url: string) => void;
+  onSave: (siteId: string, url: string) => void | Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(url);
@@ -505,7 +505,7 @@ function SiteUrlField({
   };
   const commit = () => {
     setEditing(false);
-    if (draft.trim() !== url) onSave(siteId, draft);
+    if (draft.trim() !== url) void onSave(siteId, draft);
   };
 
   if (editing) {
@@ -650,7 +650,9 @@ function RegisterSiteModal({ onClose }: { onClose: () => void }) {
     setError(null);
     try {
       const created = await registerSite(name.trim());
-      if (url.trim()) setSiteUrl(created.id, url);
+      // Awaited: the URL is what SSL Monitor and the availability probe key
+      // off, so a site must not be announced as created before it lands.
+      if (url.trim()) await setSiteUrl(created.id, url);
       setResult(created);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Échec de l’enregistrement.');
