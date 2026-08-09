@@ -1061,8 +1061,14 @@ export interface AmnBridge {
   };
   /** Native OS / desktop integration (Electron main process). */
   system: {
-    /** Native OS notification. Fire-and-forget. */
-    notify(input: { title: string; body: string }): void;
+    /**
+     * Native OS notification. Fire-and-forget.
+     *
+     * `kind: 'call'` marks a notification that must not disappear on its own:
+     * an incoming call is only worth announcing while it is still ringing, and
+     * a toast that auto-dismisses after 5 s is exactly how a call gets missed.
+     */
+    notify(input: { title: string; body: string; kind?: 'default' | 'call' }): void;
     /** Whether the app is set to launch at OS login (Electron only). */
     getAutoLaunch(): Promise<boolean>;
     /** Enables/disables launch at OS login; resolves to the new value. */

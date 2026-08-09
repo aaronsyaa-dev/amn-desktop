@@ -289,20 +289,33 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   // Native OS notifications. The renderer decides *when* (it holds prefs +
   // identity + the live streams); the main process just shows them so they
   // surface even when the app is in the background.
-  ipcMain.on(IPC.systemNotify, (_event, input: { title: string; body: string }) => {
-    options.onImportantNotification?.();
-    if (!Notification.isSupported()) return;
-    const notification = new Notification({ title: input.title, body: input.body, silent: false });
-    notification.on('click', () => {
-      const win = BrowserWindow.getAllWindows()[0];
-      if (win) {
-        if (win.isMinimized()) win.restore();
-        win.show();
-        win.focus();
-      }
-    });
-    notification.show();
-  });
+  ipcMain.on(
+    IPC.systemNotify,
+    (_event, input: { title: string; body: string; kind?: 'default' | 'call' }) => {
+      options.onImportantNotification?.();
+      if (!Notification.isSupported()) return;
+      const isCall = input.kind === 'call';
+      const notification = new Notification({
+        title: input.title,
+        body: input.body,
+        silent: false,
+        // A call is only announced while it rings, so the notification must
+        // stay on screen for as long as it does — a 5 s toast that vanishes on
+        // its own is precisely how the previous version let calls go unseen.
+        timeoutType: isCall ? 'never' : 'default',
+        urgency: isCall ? 'critical' : 'normal',
+      });
+      notification.on('click', () => {
+        const win = BrowserWindow.getAllWindows()[0];
+        if (win) {
+          if (win.isMinimized()) win.restore();
+          win.show();
+          win.focus();
+        }
+      });
+      notification.show();
+    },
+  );
 
   // Launch-at-login toggle (Settings → "Démarrer avec Windows"). Delegated to
   // windowsIntegration so the login item registers against Squirrel's stable

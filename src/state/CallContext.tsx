@@ -56,6 +56,12 @@ export interface CallState {
   muted: boolean;
   /** Seconds of connected audio; 0 until the call is active. */
   durationSec: number;
+  /**
+   * True while ringing someone the hub had no open socket for. The call is NOT
+   * abandoned: a push was sent, and the offer keeps being re-emitted so a phone
+   * that wakes up can still catch it. It only changes what the caller reads.
+   */
+  peerOffline: boolean;
 }
 
 export interface MissedCall {
@@ -84,7 +90,17 @@ const IDLE: CallState = {
   endedReason: '',
   muted: false,
   durationSec: 0,
+  peerOffline: false,
 };
+
+/**
+ * How often the offer is re-sent while ringing an operator who was not
+ * connected (A.3). A closed PWA is woken by push, then needs a few seconds to
+ * start, register and open its socket — by which time the single original
+ * offer is long gone. Re-emitting it is what makes the push actually able to
+ * connect a call rather than merely display a notification.
+ */
+const REOFFER_INTERVAL_MS = 3_000;
 
 function newCallId(): string {
   return `call-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -109,6 +125,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const ringTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const durationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** Re-sends the offer while ringing, so a push-woken device can still answer. */
+  const reofferTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const endedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Offer held between "incoming" and the moment the operator accepts. */
   const pendingOfferRef = useRef<RTCSessionDescriptionInit | null>(null);
@@ -143,9 +161,11 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         t.current = null;
       }
     }
-    if (durationTimerRef.current) {
-      clearInterval(durationTimerRef.current);
-      durationTimerRef.current = null;
+    for (const i of [durationTimerRef, reofferTimerRef]) {
+      if (i.current) {
+        clearInterval(i.current);
+        i.current = null;
+      }
     }
 
     localStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -279,9 +299,24 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Keep re-emitting the offer for as long as it rings. Harmless when the
+      // callee is already connected (they are in `incoming` and answer `busy`
+      // to nothing — duplicate offers for the SAME callId are ignored below),
+      // and essential when they are not: it is the only way a device woken by
+      // the push notification can join a call that started before it existed.
+      reofferTimerRef.current = setInterval(() => {
+        const local = pcRef.current?.localDescription;
+        if (!local || callIdRef.current !== callId) return;
+        void send(to, 'offer', callId, local.toJSON());
+      }, REOFFER_INTERVAL_MS);
+
       ringTimerRef.current = setTimeout(() => {
         void send(to, 'hangup', callId);
-        teardown('Pas de réponse.');
+        teardown(
+          stateRef.current.peerOffline
+            ? 'Correspondant hors ligne — notification envoyée.'
+            : 'Pas de réponse.',
+        );
       }, RING_TIMEOUT_MS);
     },
     [myEmail, preparePeer, send, state.phase, teardown],
@@ -372,6 +407,10 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       const from = (signal.from || '').trim().toLowerCase();
 
       if (signal.kind === 'offer') {
+        // A re-emitted offer for the call we are ALREADY handling is not a new
+        // call: the caller repeats it so a device woken by push can catch it.
+        // Answering `busy` here would hang up the very call we are ringing for.
+        if (signal.callId === callIdRef.current) return;
         // Already busy: refuse straight away so the caller hears "occupé"
         // instead of ringing at a machine that will never pick up.
         if (phase !== 'idle' && phase !== 'ended') {
@@ -405,7 +444,12 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           clearTimeout(ringTimerRef.current);
           ringTimerRef.current = null;
         }
-        setState((prev) => ({ ...prev, phase: 'connecting' }));
+        // They picked up — stop repeating the offer.
+        if (reofferTimerRef.current) {
+          clearInterval(reofferTimerRef.current);
+          reofferTimerRef.current = null;
+        }
+        setState((prev) => ({ ...prev, phase: 'connecting', peerOffline: false }));
         void pc
           .setRemoteDescription(new RTCSessionDescription(signal.payload as RTCSessionDescriptionInit))
           .then(async () => {
@@ -442,9 +486,18 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           teardown('Appel terminé.');
         }
       } else if (signal.kind === 'undelivered') {
-        // The hub had no socket for the callee. Only meaningful while we're
-        // the one ringing — an undelivered hangup is not worth a message.
-        if (phase === 'outgoing') teardown('Correspondant hors ligne.');
+        // The hub had no socket for the callee. This used to end the call on
+        // the spot — which made the Web Push pointless: the phone rang, the
+        // operator tapped, and by then the caller had already given up.
+        //
+        // Now it only changes what the caller reads. The call keeps ringing
+        // (and the offer keeps being re-sent) for the full ring window, so a
+        // device woken by the push has time to start and answer. If nobody
+        // does, RING_TIMEOUT_MS ends it with the honest "hors ligne" message.
+        const undeliveredKind = (signal.payload as { kind?: string } | null)?.kind;
+        if (phase === 'outgoing' && (!undeliveredKind || undeliveredKind === 'offer')) {
+          setState((prev) => (prev.peerOffline ? prev : { ...prev, peerOffline: true }));
+        }
       }
     };
 

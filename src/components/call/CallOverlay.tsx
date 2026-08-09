@@ -107,9 +107,54 @@ function MissedCallNotifier() {
   return null;
 }
 
+/**
+ * Announces an INCOMING call to the OS (A.3).
+ *
+ * Until now an incoming call only rang: if the window was in the tray or
+ * behind another app, nothing on screen said so, and the ringtone alone is
+ * easy to miss or to have muted. Messages already had a real notification;
+ * a call — the one thing that expires if unanswered — did not.
+ *
+ * `kind: 'call'` asks for a notification that does not auto-dismiss, so it
+ * stays up exactly as long as the phone is ringing.
+ */
+function IncomingCallNotifier({ phase, name }: { phase: string; name: string }) {
+  const announcedRef = useRef(false);
+
+  useEffect(() => {
+    if (phase !== 'incoming') {
+      announcedRef.current = false;
+      return;
+    }
+    if (announcedRef.current) return;
+    announcedRef.current = true;
+    try {
+      bridge().system.notify({
+        title: 'Appel entrant',
+        body: `${name} vous appelle.`,
+        kind: 'call',
+      });
+    } catch {
+      /* no notifications on this platform — the ringtone and sheet stand alone */
+    }
+  }, [phase, name]);
+
+  return null;
+}
+
 export function CallOverlay() {
-  const { phase, peerEmail, endedReason, muted, durationSec, accept, reject, hangup, toggleMute } =
-    useCall();
+  const {
+    phase,
+    peerEmail,
+    endedReason,
+    muted,
+    durationSec,
+    peerOffline,
+    accept,
+    reject,
+    hangup,
+    toggleMute,
+  } = useCall();
   const { profileFor } = useProfiles();
   const peer = profileFor(peerEmail);
 
@@ -118,6 +163,7 @@ export function CallOverlay() {
   return (
     <>
       <MissedCallNotifier />
+      <IncomingCallNotifier phase={phase} name={peer.name} />
 
       {/* Incoming call — a modal sheet, because it needs an answer now. */}
       <AnimatePresence>
@@ -200,7 +246,7 @@ export function CallOverlay() {
             <div className="min-w-0 flex-1 leading-tight">
               <p className="truncate text-sm font-semibold text-text-primary">{peer.name}</p>
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
-                {phase === 'outgoing' && 'Sonnerie…'}
+                {phase === 'outgoing' && (peerOffline ? 'Hors ligne — notifié…' : 'Sonnerie…')}
                 {phase === 'connecting' && 'Connexion…'}
                 {phase === 'active' && formatDuration(durationSec)}
                 {phase === 'ended' && endedReason}

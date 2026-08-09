@@ -55,6 +55,30 @@ sortante nouvelle. Sans modèle local, le repli est extractif : il liste les
 enregistrements correspondants avec leur source. Il peut être incomplet, il ne
 peut pas être faux.
 
+**Un appel non délivré ne raccroche plus tout de suite.** Le concentrateur
+prévient l'appelant quand personne n'écoute (`signal:undelivered`) ; jusqu'ici
+l'appel s'arrêtait aussitôt avec « correspondant hors ligne ». Cela rendait la
+notification push inutile : le téléphone sonnait, l'opérateur touchait la
+notification, et l'appelant avait déjà abandonné. Désormais l'appel continue de
+sonner pendant toute la fenêtre (35 s), l'offre est ré-émise toutes les 3 s pour
+qu'un appareil réveillé par la push puisse encore la rattraper, et l'appelant
+lit « Hors ligne — notifié… » au lieu d'un abandon immédiat. Le destinataire
+ignore une offre portant l'identifiant d'appel qu'il traite déjà, sans quoi la
+ré-émission se répondrait à elle-même « occupé ».
+
+**Les notifications web passent par le service worker, jamais par
+`new Notification()`.** Dans une PWA Android, ce constructeur lève une
+exception : c'est la raison pour laquelle les notifications fonctionnaient sur
+un navigateur de bureau et ne faisaient strictement rien sur le téléphone.
+`ServiceWorkerRegistration.showNotification` est le seul chemin accepté, et
+c'est aussi le seul disponible quand l'application est fermée.
+
+**Les push nécessitent une paire de clés VAPID côté serveur.** Sans
+`VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`, amn-api démarre normalement et le
+reste fonctionne — seuls les téléphones fermés ne sonnent plus, et l'écran
+Paramètres le dit explicitement plutôt que d'échouer en silence. Générer la
+paire une fois avec `node -e "console.log(require('web-push').generateVAPIDKeys())"`.
+
 ## Réglages d'exploitation
 
 | Variable | Défaut | Effet |
@@ -62,6 +86,8 @@ peut pas être faux.
 | `SCHEDULE_SWEEP_MS` | 15 min | Fréquence du balayage des analyses récurrentes. |
 | `SSL_SWEEP_MS` | 6 h | Fréquence du balayage des certificats. |
 | `PUBLIC_BASE_URL` | déduit des en-têtes | Base des URL du badge (à fixer derrière un proxy). |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | absentes | Sans elles, pas de notification d'appel sur une PWA fermée. |
+| `VAPID_SUBJECT` | `mailto:contact@amn-devsec.com` | Contact exigé par les services de push. |
 
 Un hôte déjà vérifié il y a moins de 6 h est sauté par le balayage SSL, quelle
 que soit la cadence : abaisser `SSL_SWEEP_MS` ne se transforme donc pas en

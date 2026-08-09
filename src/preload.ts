@@ -194,7 +194,8 @@ const bridge: AmnBridge = {
     },
   },
   system: {
-    notify: (input: { title: string; body: string }) => ipcRenderer.send(IPC.systemNotify, input),
+    notify: (input: { title: string; body: string; kind?: 'default' | 'call' }) =>
+      ipcRenderer.send(IPC.systemNotify, input),
     getAutoLaunch: () => ipcRenderer.invoke(IPC.systemGetAutoLaunch),
     setAutoLaunch: (enabled: boolean) => ipcRenderer.invoke(IPC.systemSetAutoLaunch, enabled),
     getAppInfo: () => ipcRenderer.invoke(IPC.systemGetAppInfo),

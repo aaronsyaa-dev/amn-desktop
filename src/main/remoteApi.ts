@@ -460,7 +460,10 @@ export class RemoteApiClient {
               kind: 'undelivered',
               callId: String(parsed.callId),
               from: String(parsed.to ?? ''),
-              payload: null,
+              // Which signal went undelivered matters: an undelivered OFFER
+              // means the callee was not connected (and a push was attempted),
+              // whereas an undelivered ICE candidate mid-call is routine noise.
+              payload: { kind: String(parsed.kind ?? '') },
             });
           }
         }

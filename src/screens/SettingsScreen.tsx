@@ -7,6 +7,7 @@ import { useAssistant } from '../assistant/AssistantContext';
 import { bridge } from '../lib/bridge';
 import { downloadBackup } from '../lib/backup';
 import { resizeImageToDataUrl } from '../lib/imageResize';
+import { ensurePushSubscription, sendPushTest } from '../lib/webPush';
 import { UserAvatar } from '../components/UserAvatar';
 import { Logo } from '../components/Logo';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
@@ -38,6 +39,11 @@ export function SettingsScreen() {
       <StaggerItem>
         <NotificationsSection email={user.email} />
       </StaggerItem>
+      {!bridge().env.isElectron && (
+        <StaggerItem>
+          <PushSection email={user.email} />
+        </StaggerItem>
+      )}
       {bridge().env.isElectron && (
         <StaggerItem>
           <OllamaSection />
@@ -549,6 +555,99 @@ function NotificationsSection({ email }: { email: string }) {
             </div>
           ))}
         </div>
+      )}
+    </Panel>
+  );
+}
+
+/**
+ * Push notifications on mobile / PWA (A.3).
+ *
+ * Only shown on the web build: Electron has real OS notifications and needs
+ * none of this. The button is deliberate rather than automatic because both
+ * iOS and Android require the permission prompt to come from a user gesture —
+ * asking on page load is silently refused, which is one of the reasons an
+ * incoming call produced nothing at all on a phone.
+ */
+function PushSection({ email }: { email: string }) {
+  const [state, setState] = useState<'idle' | 'working' | 'on' | 'error'>('idle');
+  const [message, setMessage] = useState('');
+
+  // Already granted on a previous visit: re-register silently. A push
+  // subscription can be rotated by the browser, so this must not be one-shot.
+  useEffect(() => {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    void ensurePushSubscription(email).then((r) => {
+      if (r.ok) setState('on');
+    });
+  }, [email]);
+
+  const enable = async () => {
+    setState('working');
+    setMessage('');
+    const result = await ensurePushSubscription(email, { force: true });
+    if (result.ok) {
+      setState('on');
+      setMessage('Cet appareil recevra les appels et alertes, même application fermée.');
+      return;
+    }
+    setState('error');
+    setMessage(
+      {
+        denied: 'Notifications refusées pour ce site — réautorisez-les dans les réglages du navigateur.',
+        unsupported: 'Ce navigateur ne gère pas les notifications push.',
+        'no-key': 'Le serveur AMN n’a pas de clé VAPID configurée : les push sont désactivées côté serveur.',
+        'not-configured': 'Session incomplète — reconnectez-vous.',
+        electron: '',
+        error: result.detail || 'Échec de l’enregistrement.',
+      }[result.reason ?? 'error'] || 'Échec de l’enregistrement.',
+    );
+  };
+
+  const test = async () => {
+    try {
+      const { sent, disabled } = await sendPushTest(email);
+      setMessage(
+        disabled
+          ? 'Push désactivées côté serveur (clé VAPID absente).'
+          : sent > 0
+            ? `Notification de test envoyée à ${sent} appareil${sent > 1 ? 's' : ''}.`
+            : 'Aucun appareil enregistré pour ce compte.',
+      );
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Échec du test.');
+    }
+  };
+
+  return (
+    <Panel
+      icon={Bell}
+      title="Notifications sur cet appareil"
+      subtitle="Nécessaire pour être prévenu d’un appel entrant quand l’application est fermée."
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => void enable()}
+          disabled={state === 'working'}
+          className="rounded-lg border border-border-strong px-3 py-2 text-xs font-medium uppercase tracking-wider text-text-primary transition-colors hover:bg-accent-muted disabled:opacity-50"
+        >
+          {state === 'on' ? 'Réenregistrer cet appareil' : 'Activer les notifications'}
+        </button>
+        {state === 'on' && (
+          <button
+            type="button"
+            onClick={() => void test()}
+            className="rounded-lg border border-border px-3 py-2 text-xs uppercase tracking-wider text-text-secondary transition-colors hover:text-text-primary"
+          >
+            Envoyer un test
+          </button>
+        )}
+      </div>
+      {message && (
+        <p className={`mt-3 text-xs ${state === 'error' ? 'text-danger' : 'text-text-muted'}`}>
+          {message}
+        </p>
       )}
     </Panel>
   );

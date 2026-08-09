@@ -1,4 +1,5 @@
 import { DEFAULT_NOTIFICATION_PREFS } from '../shared/api';
+import { showLocalNotification } from './webPush';
 import type {
   AddClientEventInput,
   AmnBridge,
@@ -478,7 +479,7 @@ function createBrowserRemote(): AmnBridge['remote'] {
               kind: 'undelivered',
               callId: String(parsed.callId),
               from: String(parsed.to ?? ''),
-              payload: null,
+              payload: { kind: String(parsed.kind ?? '') },
             });
           }
         }
@@ -1110,20 +1111,16 @@ function createBrowserBridge(): AmnBridge {
     },
     remote: createBrowserRemote(),
     system: {
-      notify(input: { title: string; body: string }): void {
-        // Best-effort Web Notifications in the browser fallback (dev/test).
-        try {
-          if (typeof Notification === 'undefined') return;
-          if (Notification.permission === 'granted') {
-            new Notification(input.title, { body: input.body });
-          } else if (Notification.permission !== 'denied') {
-            Notification.requestPermission().then((perm) => {
-              if (perm === 'granted') new Notification(input.title, { body: input.body });
-            });
-          }
-        } catch {
-          /* no-op */
-        }
+      notify(input: { title: string; body: string; kind?: 'default' | 'call' }): void {
+        // Routed through showLocalNotification rather than `new Notification()`:
+        // on Android that constructor THROWS inside an installed PWA, which is
+        // why notifications worked on a desktop browser and did nothing at all
+        // on the phone. showLocalNotification goes through the service worker
+        // registration, the only path Android accepts.
+        void showLocalNotification(input.title, input.body, {
+          kind: input.kind === 'call' ? 'call' : 'default',
+          vibrate: input.kind === 'call' ? [400, 150, 400, 150, 400] : undefined,
+        });
       },
       // OS integration is Electron-only; harmless no-ops in the browser.
       async getAutoLaunch(): Promise<boolean> {
