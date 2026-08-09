@@ -403,6 +403,9 @@ function createBrowserRemote(): AmnBridge['remote'] {
   let started = false;
   let identity: string | null = null;
   let socket: WebSocket | null = null;
+  // See the Electron client: a close we asked for ourselves must not be
+  // reported as "Serveur injoignable".
+  let reconnectingOnPurpose = false;
 
   function setStatus(next: RemoteConnectionStatus) {
     if (status === next) return;
@@ -438,6 +441,14 @@ function createBrowserRemote(): AmnBridge['remote'] {
       }
     };
     socket.onclose = () => {
+      // A deliberate re-handshake (identity change) stays "connecting" and
+      // reconnects immediately — it is not a server failure.
+      if (reconnectingOnPurpose) {
+        reconnectingOnPurpose = false;
+        setStatus('connecting');
+        setTimeout(connect, 0);
+        return;
+      }
       setStatus('offline');
       const delay = RECONNECT_DELAYS_MS[Math.min(reconnectAttempt, RECONNECT_DELAYS_MS.length - 1)];
       reconnectAttempt += 1;
@@ -554,7 +565,10 @@ function createBrowserRemote(): AmnBridge['remote'] {
       const next = email ? email.trim().toLowerCase() : null;
       if (next === identity) return;
       identity = next;
-      if (configured && started) socket?.close(); // reconnect with new ?user=
+      if (configured && started && socket) {
+        reconnectingOnPurpose = true;
+        socket.close(); // reconnect with new ?user=
+      }
     },
     async getPresence() {
       if (!configured) return [];

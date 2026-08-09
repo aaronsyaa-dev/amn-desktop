@@ -72,6 +72,13 @@ export class RemoteApiClient {
   private complyListeners = new Set<(progress: ComplyProgress) => void>();
   private identity: string | null = null;
   private stopped = false;
+  /**
+   * True while a close() we asked for ourselves is in flight (identity change).
+   * Without it the close handler cannot tell "the operator just signed in" from
+   * "the server vanished", and reports a deliberate, sub-second re-handshake as
+   * "Serveur injoignable" — a badge that lies at every single login.
+   */
+  private reconnectingOnPurpose = false;
 
   async listSites(): Promise<RemoteSite[]> {
     const { sites } = await apiFetch<{ sites: RemoteSite[] }>('/v1/sites');
@@ -245,9 +252,11 @@ export class RemoteApiClient {
     const next = email ? email.trim().toLowerCase() : null;
     if (next === this.identity) return;
     this.identity = next;
-    if (isRemoteConfigured() && !this.stopped) {
-      // Reconnect so the handshake carries the new ?user= identity.
-      this.ws?.close();
+    if (isRemoteConfigured() && !this.stopped && this.ws) {
+      // Reconnect so the handshake carries the new ?user= identity. Flagged as
+      // deliberate so the close below reads as "reconnecting", not "offline".
+      this.reconnectingOnPurpose = true;
+      this.ws.close();
     }
   }
 
@@ -368,6 +377,18 @@ export class RemoteApiClient {
 
     socket.on('close', (code: number, reasonBuf: Buffer) => {
       const reason = reasonBuf?.toString() || '';
+
+      // A close we asked for (identity change) is not a connection loss: stay
+      // on "connecting", keep the backoff counter untouched, and re-handshake
+      // immediately rather than waiting out a delay meant for a broken server.
+      if (this.reconnectingOnPurpose) {
+        this.reconnectingOnPurpose = false;
+        log(`WS closed for identity change (code=${code}). Reconnecting now.`);
+        this.setStatus('connecting');
+        if (!this.stopped) this.reconnectTimer = setTimeout(() => this.connect(), 0);
+        return;
+      }
+
       // 4401 = amn-api rejected the token (client token ≠ server OPERATOR_TOKEN).
       // 1006 = abnormal close (server unreachable / TLS / dropped).
       const hint =
