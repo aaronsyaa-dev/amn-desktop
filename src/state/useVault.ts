@@ -65,6 +65,70 @@ export function useVault() {
     [persist],
   );
 
+  /**
+   * Records an installed tracker in the vault (BLOC D).
+   *
+   * An API key is shown ONCE, when the site is registered. Losing it meant
+   * regenerating one by reflex — which invalidates the key already deployed on
+   * the client's site and silently stops its supervision. Writing the key here
+   * at the moment it exists turns "je regénère" into a deliberate act rather
+   * than the only way out.
+   *
+   * Keyed on the site id, so re-running the wizard for a site updates its entry
+   * instead of leaving a trail of near-duplicates. An existing key is never
+   * overwritten by an empty one: passing through the wizard without retyping
+   * the key must not erase what was recorded at registration.
+   */
+  const recordTracker = useCallback(
+    (input: {
+      siteId: string;
+      siteName: string;
+      tier: string;
+      apiUrl: string;
+      apiKey: string;
+      modules?: string[];
+      installedAt?: string;
+    }): void => {
+      const now = new Date().toISOString();
+      const installedAt = input.installedAt ?? now;
+      const existing = entriesRef.current.find((e) => e.username === input.siteId && e.category === 'trackers');
+      const notes = [
+        `Site : ${input.siteName}`,
+        `Palier : ${input.tier || '—'}`,
+        input.modules?.length ? `Modules : ${input.modules.join(', ')}` : null,
+        `Installé le : ${new Date(installedAt).toLocaleDateString('fr-FR')}`,
+        `Identifiant du site : ${input.siteId}`,
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      const draft: VaultDraft = {
+        label: `Tracker — ${input.siteName}`,
+        // The site id lives in `username` so the entry can be found again
+        // unambiguously even after the site is renamed.
+        username: input.siteId,
+        password: input.apiKey.trim() || existing?.password || '',
+        url: input.apiUrl.trim() || existing?.url || '',
+        notes,
+        category: 'trackers',
+      };
+
+      if (existing) {
+        persist(
+          entriesRef.current.map((e) =>
+            e.id === existing.id ? { ...e, ...draft, updatedAt: now } : e,
+          ),
+        );
+        return;
+      }
+      persist([
+        ...entriesRef.current,
+        { id: vaultId(), ...draft, createdAt: installedAt, updatedAt: now },
+      ]);
+    },
+    [persist],
+  );
+
   const deleteEntry = useCallback(
     (id: string): void => {
       persist(entriesRef.current.filter((e) => e.id !== id));
@@ -72,5 +136,5 @@ export function useVault() {
     [persist],
   );
 
-  return { entries, encrypted, loading, saveEntry, deleteEntry };
+  return { entries, encrypted, loading, saveEntry, deleteEntry, recordTracker };
 }

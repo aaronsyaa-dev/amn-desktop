@@ -18,12 +18,14 @@ import {
 import { useVault, type VaultDraft } from '../state/useVault';
 import { useUndo } from '../state/UndoContext';
 import { copyWithAutoClear } from '../lib/clipboard';
+import { bridge } from '../lib/bridge';
 import type { VaultCategory, VaultEntry } from '../shared/api';
 
 const CATEGORIES: { value: VaultCategory; label: string }[] = [
   { value: 'api', label: 'API Keys' },
   { value: 'accounts', label: 'Comptes' },
   { value: 'servers', label: 'Serveurs' },
+  { value: 'trackers', label: 'Trackers installés' },
   { value: 'other', label: 'Autres' },
 ];
 
@@ -131,8 +133,9 @@ export function VaultScreen() {
         ) : (
           <div className="flex items-start gap-2 border border-warning/40 bg-warning-muted px-4 py-2.5 font-mono text-xs text-text-secondary">
             <AlertTriangle size={14} className="mt-px flex-shrink-0 text-warning" strokeWidth={2} />
-            Stockage local non chiffré (navigateur) — ne stockez pas de secrets critiques ici. Toujours local, jamais
-            synchronisé, mais lisible par qui a accès à ce navigateur.
+            {bridge().env.isElectron
+              ? 'Stockage local non chiffré — le trousseau du système n’est pas disponible sur ce poste. Toujours local, jamais synchronisé, mais lisible par qui a accès à cette session.'
+              : 'Stockage local non chiffré (navigateur) — ne stockez pas de secrets critiques ici. Toujours local, jamais synchronisé, mais lisible par qui a accès à ce navigateur.'}
           </div>
         ))}
 

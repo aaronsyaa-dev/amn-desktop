@@ -20,6 +20,7 @@ import { useUndo } from '../state/UndoContext';
 import { useToast } from '../state/ToastContext';
 import { useSitePins } from '../lib/useSitePins';
 import { useTrackers } from '../state/useTrackers';
+import { useVault } from '../state/useVault';
 import { useSiteRegistry, safeSiteHref, type SiteNote } from '../state/useSiteRegistry';
 import { useProfiles } from '../state/ProfilesContext';
 import { bridge } from '../lib/bridge';
@@ -746,6 +747,23 @@ function RegisteredSiteResult({
   onClose: () => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const { recordTracker } = useVault();
+
+  // The key is displayed once and then unrecoverable. Writing it to the vault
+  // the moment it exists (BLOC D) is what stops "je regénère la clé" from being
+  // the only way out later — a regeneration invalidates the key already live on
+  // the client's site and stops its supervision without saying so.
+  useEffect(() => {
+    recordTracker({
+      siteId: result.id,
+      siteName: result.name,
+      tier: '',
+      apiUrl: '',
+      apiKey: result.apiKey,
+      installedAt: result.createdAt,
+    });
+    // Runs once per registration: `result` is a fresh object per site.
+  }, [result, recordTracker]);
 
   const copy = async () => {
     try {
@@ -763,6 +781,9 @@ function RegisteredSiteResult({
         <strong className="text-text-primary">{result.name}</strong> est
         enregistré. Copiez la clé API ci-dessous — elle ne sera plus jamais
         affichée.
+      </p>
+      <p className="font-mono text-[11px] uppercase tracking-wider text-text-muted">
+        Enregistrée dans le coffre · Trackers installés
       </p>
       <div className="relative border border-border-strong bg-bg p-3">
         <p className="break-all pr-16 font-mono text-xs text-text-primary">{result.apiKey}</p>

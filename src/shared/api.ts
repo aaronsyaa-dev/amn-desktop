@@ -875,7 +875,7 @@ export interface ComplyProgress {
  * `useSync`/`upsert` — the bridge's own `vault` namespace talks straight to
  * on-disk storage (encrypted in Electron, plain localStorage in the browser).
  */
-export type VaultCategory = 'api' | 'accounts' | 'servers' | 'other';
+export type VaultCategory = 'api' | 'accounts' | 'servers' | 'trackers' | 'other';
 
 export interface VaultEntry {
   id: string;
