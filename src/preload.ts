@@ -13,6 +13,8 @@ import {
   type CreateQuoteInput,
   type CreateSharedTaskInput,
   type CallSignal,
+  type CreateScheduleInput,
+  type ProductRegression,
   type OutgoingCallSignal,
   type PresenceEntry,
   type ComplyProgress,
@@ -148,6 +150,15 @@ const bridge: AmnBridge = {
     },
     setIdentity: (email: string | null) => ipcRenderer.send(IPC.remoteSetIdentity, email),
     getPresence: () => ipcRenderer.invoke(IPC.remoteGetPresence),
+    listSchedules: () => ipcRenderer.invoke(IPC.remoteListSchedules),
+    createSchedule: (input: CreateScheduleInput) =>
+      ipcRenderer.invoke(IPC.remoteCreateSchedule, input),
+    deleteSchedule: (id: string) => ipcRenderer.invoke(IPC.remoteDeleteSchedule, id),
+    onProductRegression: (callback: (r: ProductRegression) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, r: ProductRegression) => callback(r);
+      ipcRenderer.on(IPC.remoteProductRegressionPush, listener);
+      return () => ipcRenderer.removeListener(IPC.remoteProductRegressionPush, listener);
+    },
     getOrgOverview: (days: number) => ipcRenderer.invoke(IPC.remoteGetOrgOverview, days),
     getSiteBadge: (siteId: string) => ipcRenderer.invoke(IPC.remoteGetSiteBadge, siteId),
     sendCallSignal: (signal: OutgoingCallSignal) =>

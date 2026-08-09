@@ -19,6 +19,7 @@ import { ToastProvider } from '../state/ToastContext';
 import { TagProvider } from './tags/TagProvider';
 import { NotificationsManager } from './NotificationsManager';
 import { SyncActivityNotifier } from './SyncActivityNotifier';
+import { RegressionNotifier } from './RegressionNotifier';
 import { IdleScreensaver } from './IdleScreensaver';
 import { WelcomeOverlay, shouldShowWelcome } from './WelcomeOverlay';
 import { UpdateNotice } from './UpdateNotice';
@@ -130,6 +131,7 @@ export function AppLayout() {
               <AssistantPanel />
               <NotificationsManager />
               <SyncActivityNotifier />
+              <RegressionNotifier />
               <RouteSeenTracker />
               <IdleScreensaver />
               {showWelcome && <WelcomeOverlay onDone={() => setShowWelcome(false)} />}

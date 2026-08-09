@@ -3,6 +3,9 @@ import { remoteConfig, isRemoteConfigured } from './remoteConfig';
 import { writeScanReportFile } from './scanReports';
 import type {
   CallSignal,
+  CreateScheduleInput,
+  ProductRegression,
+  ProductSchedule,
   OrgOverview,
   SiteBadge,
   OutgoingCallSignal,
@@ -75,6 +78,7 @@ export class RemoteApiClient {
   private scanListeners = new Set<(progress: ScanProgress) => void>();
   private complyListeners = new Set<(progress: ComplyProgress) => void>();
   private signalListeners = new Set<(signal: CallSignal) => void>();
+  private regressionListeners = new Set<(r: ProductRegression) => void>();
   private identity: string | null = null;
   private stopped = false;
   /**
@@ -102,6 +106,31 @@ export class RemoteApiClient {
       `/v1/sites/${siteId}/events${qs ? `?${qs}` : ''}`,
     );
     return events;
+  }
+
+  /* ------------------ Recurring runs (BLOC 5) ------------------ */
+
+  async listSchedules(): Promise<ProductSchedule[]> {
+    const { schedules } = await apiFetch<{ schedules: ProductSchedule[] }>('/v1/schedules');
+    return schedules;
+  }
+
+  async createSchedule(input: CreateScheduleInput): Promise<ProductSchedule> {
+    const { schedule } = await apiFetch<{ schedule: ProductSchedule }>('/v1/schedules', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return schedule;
+  }
+
+  async deleteSchedule(id: string): Promise<void> {
+    await apiFetch<{ ok: boolean }>(`/v1/schedules/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
+
+  /** Regression notices pushed after a scheduled run came back worse. */
+  onProductRegression(listener: (r: ProductRegression) => void): () => void {
+    this.regressionListeners.add(listener);
+    return () => this.regressionListeners.delete(listener);
   }
 
   /** Cross-site SOC aggregation, computed by amn-api for this org. */
@@ -400,6 +429,10 @@ export class RemoteApiClient {
           for (const listener of this.scanListeners) listener(parsed.progress as ScanProgress);
         } else if (parsed?.type === 'comply:progress' && parsed.progress) {
           for (const listener of this.complyListeners) listener(parsed.progress as ComplyProgress);
+        } else if (parsed?.type === 'product:regression' && parsed.url) {
+          for (const listener of this.regressionListeners) {
+            listener(parsed as ProductRegression);
+          }
         } else if (parsed?.type === 'signal' && parsed.kind && parsed.callId) {
           for (const listener of this.signalListeners) listener(parsed as CallSignal);
         } else if (parsed?.type === 'signal:undelivered' && parsed.callId) {

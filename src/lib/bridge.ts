@@ -6,7 +6,10 @@ import type {
   ChangePasswordResult,
   NotificationPrefs,
   CallSignal,
+  CreateScheduleInput,
   OrgOverview,
+  ProductRegression,
+  ProductSchedule,
   PresenceEntry,
   SiteBadge,
   RemoteRecord,
@@ -402,6 +405,7 @@ function createBrowserRemote(): AmnBridge['remote'] {
   const scanListeners = new Set<(progress: ScanProgress) => void>();
   const complyListeners = new Set<(progress: ComplyProgress) => void>();
   const signalListeners = new Set<(signal: CallSignal) => void>();
+  const regressionListeners = new Set<(r: ProductRegression) => void>();
   let status: RemoteConnectionStatus = configured ? 'connecting' : 'unconfigured';
   let reconnectAttempt = 0;
   let started = false;
@@ -439,6 +443,8 @@ function createBrowserRemote(): AmnBridge['remote'] {
           for (const listener of scanListeners) listener(parsed.progress as ScanProgress);
         } else if (parsed?.type === 'comply:progress' && parsed.progress) {
           for (const listener of complyListeners) listener(parsed.progress as ComplyProgress);
+        } else if (parsed?.type === 'product:regression' && parsed.url) {
+          for (const listener of regressionListeners) listener(parsed as ProductRegression);
         } else if (parsed?.type === 'signal' && parsed.kind && parsed.callId) {
           for (const listener of signalListeners) listener(parsed as CallSignal);
         } else if (parsed?.type === 'signal:undelivered' && parsed.callId) {
@@ -597,6 +603,27 @@ function createBrowserRemote(): AmnBridge['remote'] {
       presenceListeners.add(callback);
       ensureStarted();
       return () => presenceListeners.delete(callback);
+    },
+    async listSchedules() {
+      const { schedules } = await apiFetch<{ schedules: ProductSchedule[] }>('/v1/schedules');
+      return schedules;
+    },
+    async createSchedule(input: CreateScheduleInput) {
+      const { schedule } = await apiFetch<{ schedule: ProductSchedule }>('/v1/schedules', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      return schedule;
+    },
+    async deleteSchedule(id: string) {
+      await apiFetch<{ ok: boolean }>(`/v1/schedules/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+    },
+    onProductRegression(callback) {
+      regressionListeners.add(callback);
+      ensureStarted();
+      return () => regressionListeners.delete(callback);
     },
     async getOrgOverview(days: number) {
       return apiFetch<OrgOverview>(`/v1/sites/overview?days=${encodeURIComponent(String(days))}`);

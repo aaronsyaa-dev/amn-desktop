@@ -483,6 +483,59 @@ export interface SiteSummary {
   score: SiteScore;
 }
 
+/* ------------------------ Analyses récurrentes (BLOC 5) ------------------------ */
+
+/** Which product a recurring run belongs to. */
+export type ProductScheduleKind = 'scan' | 'comply';
+
+export interface ProductSchedule {
+  id: string;
+  kind: ProductScheduleKind;
+  url: string;
+  /** Scanner tier; null for Comply. */
+  tier: ScanTier | null;
+  intervalDays: number;
+  lastRunAt: string | null;
+  nextRunAt: string;
+  /** Score of the last automatic run — what the next one is compared against. */
+  lastScore: number | null;
+  /** Compliance points that passed last time (Comply only). */
+  lastPassed: string[];
+  createdAt: string;
+}
+
+export interface CreateScheduleInput {
+  kind: ProductScheduleKind;
+  url: string;
+  tier?: ScanTier;
+  intervalDays?: number;
+}
+
+/** A compliance point that used to pass and no longer does. */
+export interface ComplyRegression {
+  key: string;
+  label: string;
+  /** `échoue` = still reported but failing; `disparu` = gone from the report. */
+  reason: 'échoue' | 'disparu';
+}
+
+/**
+ * Pushed by amn-api when a scheduled run comes back worse than the previous
+ * one — a dropped security score, or a compliance point that was good and no
+ * longer is.
+ */
+export interface ProductRegression {
+  kind: ProductScheduleKind;
+  url: string;
+  scoreBefore: number | null;
+  scoreAfter: number | null;
+  /** Id of the scan / comply check that produced this verdict. */
+  runId: string;
+  message: string;
+  at: string;
+  lost?: ComplyRegression[];
+}
+
 /* ------------------------------ Bureau SOC (BLOC 4) ------------------------------ */
 
 /** One incident in the cross-site feed: an alert plus the site it fired on. */
@@ -607,6 +660,12 @@ export type SyncedCollection =
   | 'trackers'
   | 'notes'
   | 'reports'
+  /**
+   * Per-finding remediation state ("corrigé"), keyed `<host>::<findingId>`.
+   * Synced so a vulnerability one operator marks fixed is fixed for both, and
+   * so the history survives the scan it came from (BLOC 5).
+   */
+  | 'remediation'
   /** Public URL of a site, keyed by site id (Sites registry). */
   | 'siteMeta'
   /** Internal discussion thread attached to a site. */
@@ -939,6 +998,14 @@ export interface AmnBridge {
     getScan(id: string): Promise<Scan>;
     /** URL of the printable Elite report (opened, then printed to PDF). */
     scanReportUrl(id: string): Promise<string>;
+    /* --- Analyses récurrentes (BLOC 5) --- */
+    listSchedules(): Promise<ProductSchedule[]>;
+    /** Arms (or re-arms) a recurring Scanner/Comply run. */
+    createSchedule(input: CreateScheduleInput): Promise<ProductSchedule>;
+    deleteSchedule(id: string): Promise<void>;
+    /** Regression notices pushed by amn-api. Returns an unsubscribe function. */
+    onProductRegression(callback: (regression: ProductRegression) => void): () => void;
+
     /* --- Bureau de contrôle SOC (BLOC 4) --- */
     /**
      * Cross-site aggregation over the last `days` days, computed by amn-api.
@@ -1081,6 +1148,10 @@ export const IPC = {
   remoteConnectionStatusPush: 'remote:connectionStatusPush',
   remoteRecordPush: 'remote:recordPush',
   remotePresencePush: 'remote:presencePush',
+  remoteListSchedules: 'remote:listSchedules',
+  remoteCreateSchedule: 'remote:createSchedule',
+  remoteDeleteSchedule: 'remote:deleteSchedule',
+  remoteProductRegressionPush: 'remote:productRegressionPush',
   remoteGetOrgOverview: 'remote:getOrgOverview',
   remoteGetSiteBadge: 'remote:getSiteBadge',
   remoteSendCallSignal: 'remote:sendCallSignal',

@@ -4,6 +4,7 @@ import { AlertTriangle, BadgeCheck, Clock, Loader2 } from 'lucide-react';
 import { bridge } from '../lib/bridge';
 import { useSync } from '../state/SyncContext';
 import { ComplyDetail } from '../components/comply/ComplyDetail';
+import { ScheduleControl } from '../components/ScheduleControl';
 import { scoreColor } from '../lib/scanSeverity';
 import { relativeTime } from '../lib/time';
 import type { ComplyCheck, ComplyProgress } from '../shared/api';
@@ -173,7 +174,15 @@ export function ComplyScreen() {
         </section>
       )}
 
-      {selected && <ComplyDetail check={selected} />}
+      {selected && (
+        <>
+          {/* BLOC 5 — same recurring logic as the Scanner. The alert here fires
+              when a point that USED to pass no longer does, which is the
+              compliance equivalent of a score drop. */}
+          <ScheduleControl kind="comply" url={selected.url} />
+          <ComplyDetail check={selected} />
+        </>
+      )}
 
       <section>
         <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">

@@ -49,6 +49,7 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'profiles',
   'notes',
   'reports',
+  'remediation',
   'siteMeta',
   'siteNotes',
 ];
