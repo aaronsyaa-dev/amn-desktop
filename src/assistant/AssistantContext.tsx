@@ -279,8 +279,33 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       .catch(() => setOllama({ available: false, models: [] }));
   }, []);
 
+  // Probing once at mount was the second half of "Ajmani says Ollama isn't
+  // running": an operator who starts the app before Ollama (or whose Ollama was
+  // still warming up at boot) stayed locked on "unavailable" for the whole
+  // session, with no way back except a restart. So: probe now, then keep
+  // probing while it is still missing, and re-probe whenever the window regains
+  // focus — the moment right after someone alt-tabs away to start Ollama.
+  const ollamaAvailableRef = useRef(false);
+  ollamaAvailableRef.current = ollama.available;
+
   useEffect(() => {
     refreshOllama();
+
+    const timer = window.setInterval(() => {
+      // Once it answers, stop polling: re-listing models every 30 s forever
+      // would be noise, and the manual button in Paramètres covers the rest.
+      if (!ollamaAvailableRef.current) refreshOllama();
+    }, 30_000);
+
+    const onFocus = () => {
+      if (!ollamaAvailableRef.current) refreshOllama();
+    };
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+    };
   }, [refreshOllama]);
 
   /** Persists the given messages under the active (or a new) conversation. */
@@ -398,17 +423,22 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         .catch((err) => {
           // Ollama was configured but the call failed — be honest rather than
           // silently returning a canned message that looks like a bug.
+          // The main process now says WHY it failed, so the message stops
+          // telling an operator whose Ollama is running to go start Ollama.
           const detail = err instanceof Error ? err.message : 'erreur inconnue';
+          const blamesServer = /injoignable|inconnue|network|fetch/i.test(detail);
           appendAnswer({
             kind: 'answer',
             blocks: [
               {
                 type: 'paragraph',
-                text: `Je n'ai pas pu générer de réponse via Ollama (${detail}). Vérifiez qu'Ollama tourne et qu'un modèle est bien sélectionné (Paramètres → Ajmani — modèle local).`,
+                text: blamesServer
+                  ? `${detail} Vérifiez qu'Ollama tourne (Paramètres → Ajmani — modèle local).`
+                  : detail,
               },
             ],
           });
-          notifyReady('La réponse a échoué — Ollama est-il lancé ?');
+          notifyReady('La réponse a échoué.');
         })
         .finally(() => setIsThinking(false));
     },

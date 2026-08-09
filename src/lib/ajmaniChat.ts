@@ -70,7 +70,10 @@ export async function generateAjmaniReply(
     const trimmed = text.trim();
     return trimmed || "Je n'ai pas de réponse à formuler pour cette demande.";
   } catch (err) {
+    // The error already says whether it's the server or the model — repeating
+    // "is Ollama running?" on a model-not-installed error sends the operator
+    // looking in the wrong place.
     const detail = err instanceof Error ? err.message : 'erreur inconnue';
-    return `Je n'ai pas pu générer de réponse (${detail}). Ollama est-il bien lancé ?`;
+    return `Je n'ai pas pu générer de réponse. ${detail}`;
   }
 }
