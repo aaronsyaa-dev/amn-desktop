@@ -789,7 +789,7 @@ function HoverCard({ children }: { children: React.ReactNode }) {
   return (
     <span
       role="tooltip"
-      className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 hidden w-56 -translate-x-1/2 rounded-lg border border-border bg-surface p-3 text-left shadow-2xl group-hover:block"
+      className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 hidden w-56 -translate-x-1/2 rounded-lg border border-border bg-surface p-3 text-left elev-2 group-hover:block"
     >
       {children}
     </span>
@@ -1055,7 +1055,7 @@ function Composer({
       )}
 
       {suggestions.length > 0 && (
-        <div className="absolute bottom-full left-4 mb-2 w-72 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
+        <div className="absolute bottom-full left-4 mb-2 w-72 overflow-hidden rounded-xl border border-border bg-surface elev-2">
           <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
             Mentionner Ajmani, un site, un client ou une tâche
           </p>
@@ -1126,7 +1126,7 @@ function Composer({
           {templatesOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setTemplatesOpen(false)} />
-              <div className="absolute bottom-full left-0 z-20 mb-2 w-80 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
+              <div className="absolute bottom-full left-0 z-20 mb-2 w-80 overflow-hidden rounded-xl border border-border bg-surface elev-2">
                 <p className="px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">
                   Messages rapides
                 </p>

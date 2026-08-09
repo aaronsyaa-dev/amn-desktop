@@ -104,7 +104,7 @@ export function InstallWizard({ initialSiteId, onClose }: { initialSiteId?: stri
         exit={{ opacity: 0, y: 8, scale: 0.98 }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="relative flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl"
+        className="relative flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-surface elev-3"
       >
         {/* Header + stepper */}
         <div className="border-b border-border px-6 py-4">

@@ -238,7 +238,7 @@ function CommandPaletteModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: -8 }}
             transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-            className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_24px_60px_rgba(0,0,0,0.6)]"
+            className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-surface elev-3"
           >
             <div className="flex items-center gap-3 border-b border-border px-4">
               <Search size={18} strokeWidth={1.75} className="text-text-muted" />

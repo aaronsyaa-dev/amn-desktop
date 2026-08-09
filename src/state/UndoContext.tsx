@@ -95,7 +95,7 @@ export function UndoProvider({ children }: { children: React.ReactNode }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 16 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed bottom-6 left-1/2 z-[180] flex -translate-x-1/2 items-center gap-3 rounded-xl border border-border bg-surface px-4 py-2.5 shadow-2xl"
+            className="fixed bottom-6 left-1/2 z-[180] flex -translate-x-1/2 items-center gap-3 rounded-xl border border-border bg-surface px-4 py-2.5 elev-2"
           >
             <Trash2 size={15} strokeWidth={1.75} className="text-text-muted" />
             <span className="text-sm text-text-secondary">
