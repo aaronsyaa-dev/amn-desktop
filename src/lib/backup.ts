@@ -19,8 +19,11 @@ export async function collectBackup(): Promise<Record<string, unknown>> {
 
   const [clients, quotes, tasks, decisions, knowledge, learning, objectives, messages, profiles] =
     await Promise.all([
-      safe('clients', () => api.clients.list()),
-      safe('quotes', () => api.quotes.list()),
+      // Read through the synced collections so an export from the web build and
+      // one from Electron contain the same clients — they used to read two
+      // different databases.
+      safe('clients', () => api.remote.listRecords('clients')),
+      safe('quotes', () => api.remote.listRecords('quotes')),
       safe('tasks', () => api.tasks.list()),
       safe('decisions', () => api.decisions.list()),
       safe('knowledge', () => api.knowledge.list()),

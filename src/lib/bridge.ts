@@ -1,4 +1,5 @@
 import { DEFAULT_NOTIFICATION_PREFS } from '../shared/api';
+import { showLocalNotification } from './webPush';
 import type {
   AddClientEventInput,
   AmnBridge,
@@ -76,6 +77,27 @@ const FALLBACK_ACCOUNTS: Record<string, { name: string; hash: string }> = {
     hash: '$2b$10$LUTrx6TGqtz0vG3QrY2noeeNaPQeypeuA2fZpmZxCZY03a.9IoToC',
   },
 };
+
+/**
+ * Per-platform stores that predate the synced collections.
+ *
+ * They are kept READ-ONLY, as the migration source for installs that still
+ * hold data in them (see src/state/useClients.ts). Nothing may start writing a
+ * synced collection through one of these again: that is precisely what made
+ * the web build and Electron read two different databases for Clients, and
+ * scripts/check-sync-parity.mjs fails on any collection that is both synced
+ * and absent from this list.
+ */
+export const LEGACY_MIGRATION_ONLY_STORES = [
+  'tasks',
+  'decisions',
+  'knowledge',
+  'objectives',
+  'messages',
+  'profiles',
+  'clients',
+  'quotes',
+] as const;
 
 const MESSAGES_KEY = 'amn.fallback.messages';
 const CLIENTS_KEY = 'amn.fallback.clients';
@@ -457,7 +479,7 @@ function createBrowserRemote(): AmnBridge['remote'] {
               kind: 'undelivered',
               callId: String(parsed.callId),
               from: String(parsed.to ?? ''),
-              payload: null,
+              payload: { kind: String(parsed.kind ?? '') },
             });
           }
         }
@@ -1089,20 +1111,16 @@ function createBrowserBridge(): AmnBridge {
     },
     remote: createBrowserRemote(),
     system: {
-      notify(input: { title: string; body: string }): void {
-        // Best-effort Web Notifications in the browser fallback (dev/test).
-        try {
-          if (typeof Notification === 'undefined') return;
-          if (Notification.permission === 'granted') {
-            new Notification(input.title, { body: input.body });
-          } else if (Notification.permission !== 'denied') {
-            Notification.requestPermission().then((perm) => {
-              if (perm === 'granted') new Notification(input.title, { body: input.body });
-            });
-          }
-        } catch {
-          /* no-op */
-        }
+      notify(input: { title: string; body: string; kind?: 'default' | 'call' }): void {
+        // Routed through showLocalNotification rather than `new Notification()`:
+        // on Android that constructor THROWS inside an installed PWA, which is
+        // why notifications worked on a desktop browser and did nothing at all
+        // on the phone. showLocalNotification goes through the service worker
+        // registration, the only path Android accepts.
+        void showLocalNotification(input.title, input.body, {
+          kind: input.kind === 'call' ? 'call' : 'default',
+          vibrate: input.kind === 'call' ? [400, 150, 400, 150, 400] : undefined,
+        });
       },
       // OS integration is Electron-only; harmless no-ops in the browser.
       async getAutoLaunch(): Promise<boolean> {
@@ -1113,6 +1131,15 @@ function createBrowserBridge(): AmnBridge {
       },
       async getAppInfo() {
         return { name: 'AMN Desktop', version: '0.0.0-dev', platform: 'web', isElectron: false };
+      },
+      // A browser tab cannot be driven: it has no way to move the real cursor.
+      // Saying so plainly is what lets the other side refuse the request with a
+      // reason instead of granting a control that does nothing.
+      async canBeRemoteControlled() {
+        return false;
+      },
+      async injectRemoteInput() {
+        return false;
       },
     },
     watch: {

@@ -55,6 +55,47 @@ sortante nouvelle. Sans modèle local, le repli est extractif : il liste les
 enregistrements correspondants avec leur source. Il peut être incomplet, il ne
 peut pas être faux.
 
+**Un appel non délivré ne raccroche plus tout de suite.** Le concentrateur
+prévient l'appelant quand personne n'écoute (`signal:undelivered`) ; jusqu'ici
+l'appel s'arrêtait aussitôt avec « correspondant hors ligne ». Cela rendait la
+notification push inutile : le téléphone sonnait, l'opérateur touchait la
+notification, et l'appelant avait déjà abandonné. Désormais l'appel continue de
+sonner pendant toute la fenêtre (35 s), l'offre est ré-émise toutes les 3 s pour
+qu'un appareil réveillé par la push puisse encore la rattraper, et l'appelant
+lit « Hors ligne — notifié… » au lieu d'un abandon immédiat. Le destinataire
+ignore une offre portant l'identifiant d'appel qu'il traite déjà, sans quoi la
+ré-émission se répondrait à elle-même « occupé ».
+
+**Les notifications web passent par le service worker, jamais par
+`new Notification()`.** Dans une PWA Android, ce constructeur lève une
+exception : c'est la raison pour laquelle les notifications fonctionnaient sur
+un navigateur de bureau et ne faisaient strictement rien sur le téléphone.
+`ServiceWorkerRegistration.showNotification` est le seul chemin accepté, et
+c'est aussi le seul disponible quand l'application est fermée.
+
+**Les push nécessitent une paire de clés VAPID côté serveur.** Sans
+`VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`, amn-api démarre normalement et le
+reste fonctionne — seuls les téléphones fermés ne sonnent plus, et l'écran
+Paramètres le dit explicitement plutôt que d'échouer en silence. Générer la
+paire une fois avec `node -e "console.log(require('web-push').generateVAPIDKeys())"`.
+
+**Contrôle à distance : l'injection passe par `SendInput` (user32) via koffi.**
+`webContents.sendInputEvent()` d'Electron n'injecte que dans la fenêtre
+Electron — inutile pour aider quelqu'un sur SA machine. `robotjs` n'est plus
+maintenu et se recompile à chaque version d'Electron ; `nut.js` récent est
+passé derrière une licence payante ; PowerShell/SendKeys coûte un processus par
+événement. `koffi` appelle directement `SendInput` sans compilation, avec des
+binaires préfabriqués. Conséquence à connaître : `isRemoteInputAvailable()`
+renvoie faux hors Windows, et une demande de contrôle y est alors REFUSÉE avec
+la raison affichée — plutôt que d'accorder un contrôle qui ne ferait rien.
+
+**Le consentement n'est jamais déduit du trafic.** Le processus principal est
+un exécutant : il n'a aucune notion d'autorisation. C'est le renderer qui tient
+l'état, et une trame `input` n'est exécutée que si CE poste a explicitement
+accordé le contrôle. Un pair qui enverrait des événements sans demander — ou
+après révocation — est ignoré, pas cru. Le canal se ferme avec l'appel, ce qui
+révoque le contrôle sans qu'aucun message n'ait besoin d'arriver.
+
 ## Réglages d'exploitation
 
 | Variable | Défaut | Effet |
@@ -62,10 +103,37 @@ peut pas être faux.
 | `SCHEDULE_SWEEP_MS` | 15 min | Fréquence du balayage des analyses récurrentes. |
 | `SSL_SWEEP_MS` | 6 h | Fréquence du balayage des certificats. |
 | `PUBLIC_BASE_URL` | déduit des en-têtes | Base des URL du badge (à fixer derrière un proxy). |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | absentes | Sans elles, pas de notification d'appel sur une PWA fermée. |
+| `VAPID_SUBJECT` | `mailto:contact@amn-devsec.com` | Contact exigé par les services de push. |
 
 Un hôte déjà vérifié il y a moins de 6 h est sauté par le balayage SSL, quelle
 que soit la cadence : abaisser `SSL_SWEEP_MS` ne se transforme donc pas en
 pluie de poignées de main chez les clients.
+
+## Action en attente — suppression des magasins hérités
+
+**Statut : en attente de la validation d'Aaron. Ne pas exécuter avant.**
+
+Les magasins par plateforme qui précédaient les collections synchronisées
+(SQLite derrière l'IPC côté Electron, `amn.fallback.*` côté navigateur) sont
+conservés en LECTURE SEULE, comme source de la migration unique décrite dans
+`src/state/useClients.ts`. Ils sont déclarés explicitement dans
+`LEGACY_MIGRATION_ONLY_STORES` (`src/lib/bridge.ts`), et c'est cette déclaration
+qui les fait tolérer par `npm run check:sync`.
+
+Condition de suppression : Aaron confirme avoir utilisé cette version en
+conditions réelles pendant plusieurs jours, sur sa machine ET sur celle de
+Mohamed, sans perte de données. Tant que cette confirmation n'est pas donnée,
+les magasins restent en place — ils sont le seul filet si la migration s'est
+mal passée sur un poste.
+
+Une fois la confirmation donnée, la suppression couvre : les APIs de domaine
+`clients`/`quotes`/`tasks`/`decisions`/`knowledge`/`objectives`/`messages`/
+`profiles` du pont navigateur, leurs gestionnaires IPC et leurs entrées de
+preload, les tables SQLite correspondantes, et l'entrée
+`LEGACY_MIGRATION_ONLY_STORES` elle-même. C'est une suppression de code de
+données : elle se fait délibérément, avec une sauvegarde préalable, jamais en
+fin de chantier.
 
 ## Ce qui n'a pas pu être vérifié dans le bac à sable
 

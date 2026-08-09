@@ -30,8 +30,12 @@
  * Fix: navigations are network-first (cache is only an offline fallback), while
  * hashed build assets stay cache-first — safe, because their filename changes
  * whenever their content does.
+ *
+ * v4 adds Web Push handling. A closed PWA has no page and no WebSocket, so the
+ * service worker is the ONLY thing that can be woken to announce an incoming
+ * call — which is why a call to a phone previously produced nothing at all.
  */
-const CACHE = 'amn-pwa-v3';
+const CACHE = 'amn-pwa-v4';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.png'];
 
 self.addEventListener('install', (event) => {
@@ -92,5 +96,64 @@ self.addEventListener('fetch', (event) => {
             throw new Error(`amn-pwa sw: network fetch failed for ${request.url}`);
           }),
     ),
+  );
+});
+
+
+/* ------------------------------ Web Push (A.3) ----------------------------- */
+
+/**
+ * A push arrives here even when the app is closed — this is the whole point.
+ *
+ * Calls get treated differently from everything else: they stay on screen until
+ * acted on (`requireInteraction`), they vibrate on a ring-like pattern rather
+ * than a single buzz, and they share a tag so a second signal for the same call
+ * replaces the first instead of stacking. A missed call is time-sensitive in a
+ * way a synced note is not.
+ */
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = { title: 'AMN Desktop', body: event.data ? event.data.text() : '' };
+  }
+
+  const isCall = payload.kind === 'call';
+  const title = payload.title || 'AMN Desktop';
+  const options = {
+    body: payload.body || '',
+    icon: './icon.png',
+    badge: './icon.png',
+    tag: isCall ? `call-${payload.callId || 'incoming'}` : payload.kind || 'amn',
+    renotify: true,
+    requireInteraction: isCall,
+    // Long-short-long reads as a ring; a single buzz reads as a message.
+    vibrate: isCall ? [400, 150, 400, 150, 400] : [180],
+    data: { kind: payload.kind || 'info', from: payload.from || '', callId: payload.callId || '' },
+    actions: isCall ? [{ action: 'answer', title: 'Répondre' }] : [],
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+/**
+ * Tapping the notification focuses an already-open window when there is one,
+ * and only opens a new one otherwise — so answering a call never ends up in a
+ * second instance fighting the first for the microphone.
+ */
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = event.notification.data?.kind === 'call' ? './#/team' : './';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if ('focus' in client) {
+          client.postMessage({ type: 'amn:notification-click', data: event.notification.data });
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(target);
+    }),
   );
 });

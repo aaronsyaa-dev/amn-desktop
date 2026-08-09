@@ -27,13 +27,13 @@ import { useAuth } from '../auth/AuthContext';
 import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
 import { useSync, useCollection } from '../state/SyncContext';
 import { useProfiles } from '../state/ProfilesContext';
+import { useClients } from '../state/useClients';
 import { useCall } from '../state/CallContext';
 import { useMessages, type SyncMessage } from '../state/useMessages';
 import { UserAvatar } from '../components/UserAvatar';
 import { parseMentions, urlDisplayHost, type ClientRef, type TaskRef } from '../lib/mentions';
 import { resizeImageToDataUrl } from '../lib/imageResize';
 import { relativeTime } from '../lib/time';
-import { bridge } from '../lib/bridge';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
 import { useMessageTemplates } from '../state/useMessageTemplates';
 import { LightboxProvider, type LightboxImage } from '../components/team/MediaLightbox';
@@ -100,7 +100,6 @@ export function TeamScreen() {
   const [replyTo, setReplyTo] = useState<SyncMessage | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
-  const [clients, setClients] = useState<ClientRef[]>([]);
   const [ajmaniThinking, setAjmaniThinking] = useState(false);
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
 
@@ -122,21 +121,13 @@ export function TeamScreen() {
     return items;
   }, [messages]);
 
-  // Load the client roster once so "@" can mention clients as well as sites.
-  useEffect(() => {
-    let active = true;
-    bridge()
-      .clients.list()
-      .then((list) => {
-        if (active) setClients(list.map((c) => ({ id: c.id, name: c.name, company: c.company })));
-      })
-      .catch(() => {
-        /* offline / no clients yet — @site mentions still work */
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  // Client roster for "@" mentions, read from the synced collection like every
+  // other shared list — so a client created on any platform is mentionable here.
+  const { clients: clientRoster } = useClients();
+  const clients = useMemo<ClientRef[]>(
+    () => clientRoster.map((c) => ({ id: c.id, name: c.name, company: c.company })),
+    [clientRoster],
+  );
 
   const handleSend = (body: string, attachments: MessageAttachment[]) => {
     const replyId = replyTo?.id ?? null;

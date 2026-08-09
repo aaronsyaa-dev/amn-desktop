@@ -92,6 +92,30 @@ export function moduleByKey(key: string): TrackerModule | undefined {
   return TRACKER_MODULES.find((m) => m.key === key);
 }
 
+/**
+ * The modules a site's SERVER-SIDE tier implies, dependencies included.
+ *
+ * amn-api stores one tier per site, and that is the authoritative record of
+ * what is actually deployed — the local `trackers` collection only mirrors it.
+ * When the mirror is missing (site registered from the other machine, rows lost
+ * before the collection was synced, app reinstalled), the tier is what tells
+ * the truth, so the catalogue reads it rather than claiming "0 module déployé"
+ * about a site that is visibly sending events.
+ */
+export function modulesForTier(tier: string | null | undefined): string[] {
+  const target = moduleByKey((tier ?? '').trim());
+  if (!target) return [];
+  const out: string[] = [];
+  const add = (key: string) => {
+    const mod = moduleByKey(key);
+    if (!mod || out.includes(key)) return;
+    for (const dep of mod.requires) add(dep);
+    out.push(key);
+  };
+  add(target.key);
+  return out;
+}
+
 /** Resolves a list of module keys to modules, dropping any unknown keys. */
 export function modulesByKeys(keys: string[]): TrackerModule[] {
   return keys.flatMap((k) => {

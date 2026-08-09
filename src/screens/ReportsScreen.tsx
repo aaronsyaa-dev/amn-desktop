@@ -22,6 +22,7 @@ import {
   X,
 } from 'lucide-react';
 import { useCollection } from '../state/SyncContext';
+import { useClients } from '../state/useClients';
 import { useReports, type Report, type ReportDraft, type ReportLink, type ReportType } from '../state/useReports';
 import { useProfiles } from '../state/ProfilesContext';
 import { useUndo } from '../state/UndoContext';
@@ -31,7 +32,7 @@ import { relativeTime } from '../lib/time';
 import { ScanDetail } from '../components/scanner/ScanDetail';
 import { ComplyDetail } from '../components/comply/ComplyDetail';
 import { scoreColor } from '../lib/scanSeverity';
-import type { Client, ComplyCheck, Scan } from '../shared/api';
+import type { ComplyCheck, Scan } from '../shared/api';
 
 const TYPES: { value: ReportType; label: string }[] = [
   { value: 'task', label: 'Tâche' },
@@ -658,18 +659,8 @@ function LinkManager({ links, onChange }: { links: ReportLink[]; onChange: (link
   const [open, setOpen] = useState(false);
   const tasks = useCollection<{ title?: string }>('tasks');
   const decisions = useCollection<{ title?: string }>('decisions');
-  const [clients, setClients] = useState<Client[]>([]);
-
-  useEffect(() => {
-    let active = true;
-    bridge()
-      .clients.list()
-      .then((c) => active && setClients(c))
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, []);
+  // Synced collection: the same clients are linkable from every platform.
+  const { clients } = useClients();
 
   const has = (kind: ReportLink['kind'], id: string) => links.some((l) => l.kind === kind && l.id === id);
   const add = (link: ReportLink) => {

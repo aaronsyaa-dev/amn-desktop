@@ -24,6 +24,7 @@ import {
   type UpdateObjectiveInput,
   type UpdateQuoteInput,
   type UpdateSharedTaskInput,
+  type RemoteInputEvent,
 } from '../shared/api';
 import {
   addClientEvent,
@@ -72,6 +73,7 @@ import { ollamaStatus, ollamaChat } from './ollama';
 import { getAutoLaunch, setAutoLaunch } from './windowsIntegration';
 import { isVaultEncryptionAvailable, loadVault, saveVault } from './vault';
 import { getDb } from './db';
+import { injectRemoteInput, isRemoteInputAvailable } from './remoteInput';
 import { pushClient, pushQuote } from './clientsSync';
 
 /** Registers the IPC handlers backing `window.amn` in the renderer. */
@@ -289,20 +291,41 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   // Native OS notifications. The renderer decides *when* (it holds prefs +
   // identity + the live streams); the main process just shows them so they
   // surface even when the app is in the background.
-  ipcMain.on(IPC.systemNotify, (_event, input: { title: string; body: string }) => {
-    options.onImportantNotification?.();
-    if (!Notification.isSupported()) return;
-    const notification = new Notification({ title: input.title, body: input.body, silent: false });
-    notification.on('click', () => {
-      const win = BrowserWindow.getAllWindows()[0];
-      if (win) {
-        if (win.isMinimized()) win.restore();
-        win.show();
-        win.focus();
-      }
-    });
-    notification.show();
-  });
+  ipcMain.on(
+    IPC.systemNotify,
+    (_event, input: { title: string; body: string; kind?: 'default' | 'call' }) => {
+      options.onImportantNotification?.();
+      if (!Notification.isSupported()) return;
+      const isCall = input.kind === 'call';
+      const notification = new Notification({
+        title: input.title,
+        body: input.body,
+        silent: false,
+        // A call is only announced while it rings, so the notification must
+        // stay on screen for as long as it does — a 5 s toast that vanishes on
+        // its own is precisely how the previous version let calls go unseen.
+        timeoutType: isCall ? 'never' : 'default',
+        urgency: isCall ? 'critical' : 'normal',
+      });
+      notification.on('click', () => {
+        const win = BrowserWindow.getAllWindows()[0];
+        if (win) {
+          if (win.isMinimized()) win.restore();
+          win.show();
+          win.focus();
+        }
+      });
+      notification.show();
+    },
+  );
+
+  // Remote control (B.2). The main process is a dumb executor: it never
+  // decides whether control is allowed — the renderer holds the consent state,
+  // and only sends events while the operator has granted control.
+  ipcMain.handle(IPC.systemCanRemoteControl, () => isRemoteInputAvailable());
+  ipcMain.handle(IPC.systemInjectRemoteInput, (_event, input: RemoteInputEvent) =>
+    injectRemoteInput(input),
+  );
 
   // Launch-at-login toggle (Settings → "Démarrer avec Windows"). Delegated to
   // windowsIntegration so the login item registers against Squirrel's stable

@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import { bridge } from '../lib/bridge';
 import { useAuth } from '../auth/AuthContext';
-import type { CallSignal, CallSignalKind } from '../shared/api';
+import type { CallSignal, CallSignalKind, RemoteInputEvent } from '../shared/api';
 
 /**
  * Operator-to-operator audio calls (BLOC 2).
@@ -56,6 +56,27 @@ export interface CallState {
   muted: boolean;
   /** Seconds of connected audio; 0 until the call is active. */
   durationSec: number;
+  /**
+   * True while ringing someone the hub had no open socket for. The call is NOT
+   * abandoned: a push was sent, and the offer keeps being re-emitted so a phone
+   * that wakes up can still catch it. It only changes what the caller reads.
+   */
+  peerOffline: boolean;
+  /** True while WE are sharing our screen with the peer (BLOC B). */
+  sharingScreen: boolean;
+  /** True while the PEER is sharing theirs and we have a live video track. */
+  viewingScreen: boolean;
+  /**
+   * Remote control (B.2). Two distinct roles, never both at once:
+   *  - `controlledBy`: someone is driving THIS machine, with our consent.
+   *  - `controlling`: we are driving THEIRS.
+   * `controlRequested` is a pending request waiting for our explicit answer.
+   */
+  controlledBy: string;
+  controlling: boolean;
+  controlRequested: string;
+  /** Why a control request was refused, shown once to the asker. */
+  controlDenied: string;
 }
 
 export interface MissedCall {
@@ -74,6 +95,15 @@ interface CallContextValue extends CallState {
   toggleMute: () => void;
   missed: MissedCall[];
   clearMissed: () => void;
+  /** Starts sharing this screen; resolves to an error message, or null. */
+  startScreenShare: () => Promise<string | null>;
+  stopScreenShare: () => Promise<void>;
+  /** The peer's screen while they share it — null otherwise. */
+  remoteScreen: MediaStream | null;
+  requestControl: () => boolean;
+  answerControl: (accept: boolean) => Promise<void>;
+  stopControl: () => void;
+  sendInput: (event: RemoteInputEvent) => void;
 }
 
 const CallCtx = createContext<CallContextValue | undefined>(undefined);
@@ -84,7 +114,23 @@ const IDLE: CallState = {
   endedReason: '',
   muted: false,
   durationSec: 0,
+  peerOffline: false,
+  sharingScreen: false,
+  viewingScreen: false,
+  controlledBy: '',
+  controlling: false,
+  controlRequested: '',
+  controlDenied: '',
 };
+
+/**
+ * How often the offer is re-sent while ringing an operator who was not
+ * connected (A.3). A closed PWA is woken by push, then needs a few seconds to
+ * start, register and open its socket — by which time the single original
+ * offer is long gone. Re-emitting it is what makes the push actually able to
+ * connect a call rather than merely display a notification.
+ */
+const REOFFER_INTERVAL_MS = 3_000;
 
 function newCallId(): string {
   return `call-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -109,6 +155,21 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const ringTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const durationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** Re-sends the offer while ringing, so a push-woken device can still answer. */
+  const reofferTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** The screen capture we are sending, and the sender it is attached to. */
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  const screenSenderRef = useRef<RTCRtpSender | null>(null);
+  /** The peer's screen, handed to the viewer component. */
+  const [remoteScreen, setRemoteScreen] = useState<MediaStream | null>(null);
+  /**
+   * Input channel for remote control. Separate from the media path on purpose:
+   * a data channel carries the events without touching the video encoder, and
+   * closing it stops control instantly and unconditionally.
+   */
+  const controlChannelRef = useRef<RTCDataChannel | null>(null);
+  /** Consent, held where the decision is made — never inferred from a message. */
+  const grantedRef = useRef(false);
   const endedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Offer held between "incoming" and the moment the operator accepts. */
   const pendingOfferRef = useRef<RTCSessionDescriptionInit | null>(null);
@@ -143,13 +204,33 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         t.current = null;
       }
     }
-    if (durationTimerRef.current) {
-      clearInterval(durationTimerRef.current);
-      durationTimerRef.current = null;
+    for (const i of [durationTimerRef, reofferTimerRef]) {
+      if (i.current) {
+        clearInterval(i.current);
+        i.current = null;
+      }
     }
 
     localStreamRef.current?.getTracks().forEach((track) => track.stop());
     localStreamRef.current = null;
+
+    // A screen capture left running keeps the OS "partage en cours" indicator
+    // on and the frames flowing — the video equivalent of a hot microphone,
+    // and the worst thing this feature can leak.
+    screenStreamRef.current?.getTracks().forEach((track) => track.stop());
+    screenStreamRef.current = null;
+    screenSenderRef.current = null;
+    setRemoteScreen(null);
+
+    // Control dies with the call, unconditionally and without needing a
+    // message to arrive: a dropped line must never leave a machine driveable.
+    grantedRef.current = false;
+    try {
+      controlChannelRef.current?.close();
+    } catch {
+      /* already closed */
+    }
+    controlChannelRef.current = null;
 
     if (pcRef.current) {
       pcRef.current.onicecandidate = null;
@@ -184,6 +265,59 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  /**
+   * Wires the control channel (B.2).
+   *
+   * Every message is checked against the state this side actually holds:
+   * an `input` frame is executed ONLY while `grantedRef` is true, so a peer
+   * that sends input without asking — or after control was revoked — is
+   * ignored rather than trusted. Consent is never inferred from the traffic.
+   */
+  const attachControlChannel = useCallback((channel: RTCDataChannel) => {
+    controlChannelRef.current = channel;
+
+    channel.onmessage = (event) => {
+      let msg: { t?: string; reason?: string; ev?: unknown };
+      try {
+        msg = JSON.parse(String(event.data));
+      } catch {
+        return;
+      }
+
+      if (msg.t === 'control:request') {
+        // Never automatic, never silent: this only raises the question.
+        setState((prev) => ({ ...prev, controlRequested: peerRef.current }));
+      } else if (msg.t === 'control:grant') {
+        setState((prev) => ({ ...prev, controlling: true, controlDenied: '' }));
+      } else if (msg.t === 'control:deny') {
+        setState((prev) => ({
+          ...prev,
+          controlling: false,
+          controlDenied: msg.reason || 'Contrôle refusé.',
+        }));
+      } else if (msg.t === 'control:stop') {
+        grantedRef.current = false;
+        setState((prev) => ({ ...prev, controlling: false, controlledBy: '', controlRequested: '' }));
+      } else if (msg.t === 'input') {
+        if (!grantedRef.current) return;
+        void bridge().system.injectRemoteInput(msg.ev as RemoteInputEvent).catch(() => false);
+      }
+    };
+
+    // A dropped connection must not leave a machine under someone else's
+    // control: closing the channel revokes it, with no message required.
+    const revoke = () => {
+      grantedRef.current = false;
+      setState((prev) =>
+        prev.controlledBy || prev.controlling || prev.controlRequested
+          ? { ...prev, controlledBy: '', controlling: false, controlRequested: '' }
+          : prev,
+      );
+    };
+    channel.onclose = revoke;
+    channel.onerror = revoke;
+  }, []);
+
   /** Builds the peer connection and attaches the microphone. */
   const preparePeer = useCallback(
     async (peerEmail: string, callId: string): Promise<RTCPeerConnection> => {
@@ -194,6 +328,13 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       pcRef.current = pc;
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
+      // The control channel is created by BOTH sides at call setup (negotiated
+      // with a fixed id) rather than by whoever shares later: creating it during
+      // a renegotiation would need yet another round trip, and an input path
+      // that appears mid-session is harder to reason about than one that is
+      // simply always there and always idle until control is granted.
+      attachControlChannel(pc.createDataChannel('amn-control', { negotiated: true, id: 7 }));
+
       pc.onicecandidate = (event) => {
         if (event.candidate) {
           void send(peerEmail, 'ice', callId, event.candidate.toJSON());
@@ -201,6 +342,25 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       };
 
       pc.ontrack = (event) => {
+        // Video means the peer started sharing their screen. It is handed to
+        // React rather than to a hidden element: this one has a UI.
+        if (event.track.kind === 'video') {
+          const stream = event.streams[0] ?? new MediaStream([event.track]);
+          setRemoteScreen(stream);
+          setState((prev) => ({ ...prev, viewingScreen: true }));
+          event.track.onended = () => {
+            setRemoteScreen(null);
+            setState((prev) => ({ ...prev, viewingScreen: false }));
+          };
+          // `mute` fires when the sender removes the track without ending the
+          // call — stopping the share must clear the viewer either way.
+          event.track.onmute = () => {
+            setRemoteScreen(null);
+            setState((prev) => ({ ...prev, viewingScreen: false }));
+          };
+          return;
+        }
+
         // The element is attached to <body> rather than kept detached: a
         // detached media element is not guaranteed to keep playing in Chromium,
         // and this is the one part of the call the operator actually hears. It
@@ -244,7 +404,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
       return pc;
     },
-    [send, teardown],
+    [send, teardown, attachControlChannel],
   );
 
   const call = useCallback(
@@ -279,9 +439,24 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Keep re-emitting the offer for as long as it rings. Harmless when the
+      // callee is already connected (they are in `incoming` and answer `busy`
+      // to nothing — duplicate offers for the SAME callId are ignored below),
+      // and essential when they are not: it is the only way a device woken by
+      // the push notification can join a call that started before it existed.
+      reofferTimerRef.current = setInterval(() => {
+        const local = pcRef.current?.localDescription;
+        if (!local || callIdRef.current !== callId) return;
+        void send(to, 'offer', callId, local.toJSON());
+      }, REOFFER_INTERVAL_MS);
+
       ringTimerRef.current = setTimeout(() => {
         void send(to, 'hangup', callId);
-        teardown('Pas de réponse.');
+        teardown(
+          stateRef.current.peerOffline
+            ? 'Correspondant hors ligne — notification envoyée.'
+            : 'Pas de réponse.',
+        );
       }, RING_TIMEOUT_MS);
     },
     [myEmail, preparePeer, send, state.phase, teardown],
@@ -357,6 +532,166 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
   const clearMissed = useCallback(() => setMissed([]), []);
 
+  // --- Partage d'écran (BLOC B) --------------------------------------------
+  //
+  // The screen rides the SAME peer connection as the audio: one connection, one
+  // ICE negotiation, one thing to tear down. Adding the track means the call
+  // must be renegotiated, which is why `renegotiate` exists as its own signal
+  // kind — a second plain `offer` would be read as a new incoming call.
+
+  const startScreenShare = useCallback(async (): Promise<string | null> => {
+    const pc = pcRef.current;
+    const to = peerRef.current;
+    const callId = callIdRef.current;
+    if (!pc || !to || !callId) return "Aucun appel en cours.";
+    if (screenSenderRef.current) return null; // already sharing
+
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia({
+        // Latency over compression: a support session needs the cursor to move
+        // now, not to look pretty in three frames' time.
+        video: { frameRate: { ideal: 15, max: 30 } },
+        audio: false,
+      });
+    } catch (err) {
+      const name = err instanceof Error ? err.name : "";
+      return name === "NotAllowedError"
+        ? "Partage refusé — autorisez la capture d'écran."
+        : "Capture d'écran indisponible sur ce poste.";
+    }
+
+    const track = stream.getVideoTracks()[0];
+    if (!track) {
+      stream.getTracks().forEach((t) => t.stop());
+      return "Aucun écran à partager.";
+    }
+
+    screenStreamRef.current = stream;
+    screenSenderRef.current = pc.addTrack(track, stream);
+    setState((prev) => ({ ...prev, sharingScreen: true }));
+
+    // Stopping from the OS's own "arrêter le partage" bar must land in the same
+    // place as stopping from ours, or the UI would keep claiming to share.
+    track.onended = () => {
+      void stopScreenShareRef.current?.();
+    };
+
+    // Encoding tuned once the sender exists: motion over detail, and a ceiling
+    // so a 4K screen doesn't saturate the uplink and add seconds of latency.
+    try {
+      const params = screenSenderRef.current.getParameters();
+      params.degradationPreference = "maintain-framerate";
+      params.encodings = [{ maxBitrate: 2_500_000, maxFramerate: 30 }];
+      await screenSenderRef.current.setParameters(params);
+    } catch {
+      /* older stacks ignore this; the share still works, just less tuned */
+    }
+
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      await send(to, "renegotiate", callId, offer);
+    } catch {
+      return "La renégociation de l'appel a échoué.";
+    }
+    return null;
+  }, [send]);
+
+  const stopScreenShare = useCallback(async (): Promise<void> => {
+    const pc = pcRef.current;
+    const sender = screenSenderRef.current;
+    screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+    screenStreamRef.current = null;
+    screenSenderRef.current = null;
+    setState((prev) => ({ ...prev, sharingScreen: false }));
+    if (!pc || !sender) return;
+
+    try {
+      pc.removeTrack(sender);
+      const to = peerRef.current;
+      const callId = callIdRef.current;
+      if (to && callId) {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await send(to, "renegotiate", callId, offer);
+      }
+    } catch {
+      /* the tracks are already stopped — nothing is still being captured */
+    }
+  }, [send]);
+
+  // The OS "stop sharing" handler is installed before stopScreenShare exists,
+  // so it goes through a ref rather than capturing a stale closure.
+  const stopScreenShareRef = useRef<(() => Promise<void>) | null>(null);
+  stopScreenShareRef.current = stopScreenShare;
+
+  // --- Contrôle à distance (B.2) -------------------------------------------
+
+  const sendControl = useCallback((payload: Record<string, unknown>): boolean => {
+    const channel = controlChannelRef.current;
+    if (!channel || channel.readyState !== 'open') return false;
+    try {
+      channel.send(JSON.stringify(payload));
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  /** Asks the peer for control of their machine. They must accept explicitly. */
+  const requestControl = useCallback((): boolean => {
+    setState((prev) => ({ ...prev, controlDenied: '' }));
+    return sendControl({ t: 'control:request' });
+  }, [sendControl]);
+
+  /**
+   * Answers a pending request. Granting is the ONLY thing that opens the input
+   * path, and it refuses itself when this machine cannot be driven at all —
+   * saying so is better than granting a control that would silently do nothing.
+   */
+  const answerControl = useCallback(
+    async (accept: boolean): Promise<void> => {
+      if (!accept) {
+        grantedRef.current = false;
+        setState((prev) => ({ ...prev, controlRequested: '', controlledBy: '' }));
+        sendControl({ t: 'control:deny', reason: 'Contrôle refusé.' });
+        return;
+      }
+
+      const capable = await bridge().system.canBeRemoteControlled().catch(() => false);
+      if (!capable) {
+        setState((prev) => ({ ...prev, controlRequested: '', controlledBy: '' }));
+        sendControl({
+          t: 'control:deny',
+          reason: "Ce poste ne peut pas être piloté à distance (fonction indisponible).",
+        });
+        return;
+      }
+
+      grantedRef.current = true;
+      setState((prev) => ({ ...prev, controlledBy: peerRef.current, controlRequested: '' }));
+      sendControl({ t: 'control:grant' });
+    },
+    [sendControl],
+  );
+
+  /** Ends control, from either side. Always available, always immediate. */
+  const stopControl = useCallback(() => {
+    grantedRef.current = false;
+    setState((prev) => ({ ...prev, controlledBy: '', controlling: false, controlRequested: '' }));
+    sendControl({ t: 'control:stop' });
+  }, [sendControl]);
+
+  /** Sends one input event while controlling. No-op otherwise. */
+  const sendInput = useCallback(
+    (event: RemoteInputEvent) => {
+      if (!stateRef.current.controlling) return;
+      sendControl({ t: 'input', ev: event });
+    },
+    [sendControl],
+  );
+
   // --- Inbound signalling -------------------------------------------------
   //
   // Kept in a ref-driven effect with a stable subscription: re-subscribing on
@@ -372,6 +707,10 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       const from = (signal.from || '').trim().toLowerCase();
 
       if (signal.kind === 'offer') {
+        // A re-emitted offer for the call we are ALREADY handling is not a new
+        // call: the caller repeats it so a device woken by push can catch it.
+        // Answering `busy` here would hang up the very call we are ringing for.
+        if (signal.callId === callIdRef.current) return;
         // Already busy: refuse straight away so the caller hears "occupé"
         // instead of ringing at a machine that will never pick up.
         if (phase !== 'idle' && phase !== 'ended') {
@@ -405,7 +744,12 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           clearTimeout(ringTimerRef.current);
           ringTimerRef.current = null;
         }
-        setState((prev) => ({ ...prev, phase: 'connecting' }));
+        // They picked up — stop repeating the offer.
+        if (reofferTimerRef.current) {
+          clearInterval(reofferTimerRef.current);
+          reofferTimerRef.current = null;
+        }
+        setState((prev) => ({ ...prev, phase: 'connecting', peerOffline: false }));
         void pc
           .setRemoteDescription(new RTCSessionDescription(signal.payload as RTCSessionDescriptionInit))
           .then(async () => {
@@ -441,10 +785,45 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         } else {
           teardown('Appel terminé.');
         }
+      } else if (signal.kind === 'renegotiate') {
+        // The peer added or removed their screen track on the live call.
+        // Answering is unconditional: it changes what we RECEIVE, and refusing
+        // would leave the connection in a half-negotiated state.
+        const pc = pcRef.current;
+        if (!pc) return;
+        void (async () => {
+          try {
+            await pc.setRemoteDescription(
+              new RTCSessionDescription(signal.payload as RTCSessionDescriptionInit),
+            );
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            await send(from, 'renegotiate-answer', signal.callId, answer);
+          } catch {
+            /* a failed renegotiation must never drop the audio call itself */
+          }
+        })();
+      } else if (signal.kind === 'renegotiate-answer') {
+        const pc = pcRef.current;
+        if (!pc) return;
+        void pc
+          .setRemoteDescription(
+            new RTCSessionDescription(signal.payload as RTCSessionDescriptionInit),
+          )
+          .catch(() => undefined);
       } else if (signal.kind === 'undelivered') {
-        // The hub had no socket for the callee. Only meaningful while we're
-        // the one ringing — an undelivered hangup is not worth a message.
-        if (phase === 'outgoing') teardown('Correspondant hors ligne.');
+        // The hub had no socket for the callee. This used to end the call on
+        // the spot — which made the Web Push pointless: the phone rang, the
+        // operator tapped, and by then the caller had already given up.
+        //
+        // Now it only changes what the caller reads. The call keeps ringing
+        // (and the offer keeps being re-sent) for the full ring window, so a
+        // device woken by the push has time to start and answer. If nobody
+        // does, RING_TIMEOUT_MS ends it with the honest "hors ligne" message.
+        const undeliveredKind = (signal.payload as { kind?: string } | null)?.kind;
+        if (phase === 'outgoing' && (!undeliveredKind || undeliveredKind === 'offer')) {
+          setState((prev) => (prev.peerOffline ? prev : { ...prev, peerOffline: true }));
+        }
       }
     };
 
@@ -482,8 +861,32 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       toggleMute,
       missed,
       clearMissed,
+      startScreenShare,
+      stopScreenShare,
+      remoteScreen,
+      requestControl,
+      answerControl,
+      stopControl,
+      sendInput,
     }),
-    [state, callsAvailable, call, accept, reject, hangup, toggleMute, missed, clearMissed],
+    [
+      state,
+      callsAvailable,
+      call,
+      accept,
+      reject,
+      hangup,
+      toggleMute,
+      missed,
+      clearMissed,
+      startScreenShare,
+      stopScreenShare,
+      remoteScreen,
+      requestControl,
+      answerControl,
+      stopControl,
+      sendInput,
+    ],
   );
 
   return <CallCtx.Provider value={value}>{children}</CallCtx.Provider>;

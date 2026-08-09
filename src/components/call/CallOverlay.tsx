@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Mic, MicOff, Phone, PhoneIncoming, PhoneOff } from 'lucide-react';
+import { Maximize2, Mic, MicOff, Monitor, MonitorOff, MousePointer2, Phone, PhoneIncoming, PhoneOff, ShieldAlert, X } from 'lucide-react';
 import { useCall, formatDuration } from '../../state/CallContext';
 import { useProfiles } from '../../state/ProfilesContext';
 import { useToast } from '../../state/ToastContext';
@@ -107,17 +107,328 @@ function MissedCallNotifier() {
   return null;
 }
 
+/**
+ * Announces an INCOMING call to the OS (A.3).
+ *
+ * Until now an incoming call only rang: if the window was in the tray or
+ * behind another app, nothing on screen said so, and the ringtone alone is
+ * easy to miss or to have muted. Messages already had a real notification;
+ * a call — the one thing that expires if unanswered — did not.
+ *
+ * `kind: 'call'` asks for a notification that does not auto-dismiss, so it
+ * stays up exactly as long as the phone is ringing.
+ */
+function IncomingCallNotifier({ phase, name }: { phase: string; name: string }) {
+  const announcedRef = useRef(false);
+
+  useEffect(() => {
+    if (phase !== 'incoming') {
+      announcedRef.current = false;
+      return;
+    }
+    if (announcedRef.current) return;
+    announcedRef.current = true;
+    try {
+      bridge().system.notify({
+        title: 'Appel entrant',
+        body: `${name} vous appelle.`,
+        kind: 'call',
+      });
+    } catch {
+      /* no notifications on this platform — the ringtone and sheet stand alone */
+    }
+  }, [phase, name]);
+
+  return null;
+}
+
+/**
+ * The peer's screen while they share it (BLOC B).
+ *
+ * A floating panel rather than a full-screen takeover: the point of remote
+ * assistance is to keep working while looking at the other machine. Fullscreen
+ * is one click away for when the detail matters.
+ */
+function ScreenViewer({ stream, peerName }: { stream: MediaStream; peerName: string }) {
+  const { controlling, controlDenied, requestControl, stopControl, sendInput } = useCall();
+  const [requestError, setRequestError] = useState('');
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [hidden, setHidden] = useState(false);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    el.srcObject = stream;
+    void el.play().catch(() => undefined);
+  }, [stream]);
+
+  if (hidden) {
+    return (
+      <button
+        type="button"
+        onClick={() => setHidden(false)}
+        className="elev-2 fixed bottom-24 right-6 z-[236] flex items-center gap-2 rounded-xl border border-border-strong bg-surface px-3 py-2 text-xs text-text-secondary transition-colors hover:text-text-primary"
+      >
+        <Monitor size={14} strokeWidth={1.75} />
+        Revoir l’écran de {peerName}
+      </button>
+    );
+  }
+
+  return (
+    <motion.div
+      ref={frameRef}
+      initial={{ opacity: 0, y: 14, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 10 }}
+      transition={TRANSITION}
+      className="elev-3 fixed bottom-24 right-6 z-[236] w-[min(38rem,calc(100vw-3rem))] overflow-hidden rounded-2xl border border-border-strong bg-black"
+    >
+      <div className="flex items-center gap-2 border-b border-border bg-surface px-3 py-2">
+        <Monitor size={13} strokeWidth={2} className="text-accent" />
+        <p className="flex-1 truncate font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
+          Écran de {peerName}
+        </p>
+        <button
+          type="button"
+          onClick={() => void frameRef.current?.requestFullscreen?.().catch(() => undefined)}
+          aria-label="Plein écran"
+          title="Plein écran"
+          className="rounded-md p-1 text-text-muted transition-colors hover:text-text-primary"
+        >
+          <Maximize2 size={14} strokeWidth={1.75} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setHidden(true)}
+          aria-label="Masquer l’écran partagé"
+          title="Masquer"
+          className="rounded-md p-1 text-text-muted transition-colors hover:text-text-primary"
+        >
+          <X size={14} strokeWidth={1.75} />
+        </button>
+      </div>
+      {/* Control strip. Requesting is one click; taking control is never
+          automatic — the other machine has to say yes. */}
+      <div className="flex items-center gap-2 border-b border-border bg-bg px-3 py-1.5">
+        {controlling ? (
+          <>
+            <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-accent">
+              <MousePointer2 size={11} strokeWidth={2} />
+              Vous pilotez ce poste
+            </span>
+            <button
+              type="button"
+              onClick={stopControl}
+              className="ml-auto rounded-md border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary transition-colors hover:text-text-primary"
+            >
+              Rendre la main
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-text-muted">
+              {requestError || controlDenied || 'Lecture seule'}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                // A request that never left is worth saying out loud: silence
+                // here would read as "il ne répond pas" when in fact nothing
+                // was ever sent.
+                const sent = requestControl();
+                setRequestError(sent ? '' : 'Canal de contrôle indisponible');
+              }}
+              className="ml-auto rounded-md border border-border-strong px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary transition-colors hover:text-text-primary"
+            >
+              Demander le contrôle
+            </button>
+          </>
+        )}
+      </div>
+
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        tabIndex={controlling ? 0 : -1}
+        // Coordinates are normalised against the displayed frame, so the two
+        // machines never need to agree on resolution or DPI.
+        onMouseMove={(e) => {
+          if (!controlling) return;
+          const r = e.currentTarget.getBoundingClientRect();
+          sendInput({ kind: 'move', x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
+        }}
+        onMouseDown={(e) => {
+          if (!controlling) return;
+          e.preventDefault();
+          e.currentTarget.focus();
+          const r = e.currentTarget.getBoundingClientRect();
+          sendInput({ kind: 'down', button: e.button, x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
+        }}
+        onMouseUp={(e) => {
+          if (!controlling) return;
+          e.preventDefault();
+          const r = e.currentTarget.getBoundingClientRect();
+          sendInput({ kind: 'up', button: e.button, x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
+        }}
+        onContextMenu={(e) => controlling && e.preventDefault()}
+        onWheel={(e) => controlling && sendInput({ kind: 'wheel', delta: -e.deltaY })}
+        onKeyDown={(e) => {
+          if (!controlling) return;
+          e.preventDefault();
+          sendInput({ kind: 'key', vk: e.keyCode, pressed: true });
+        }}
+        onKeyUp={(e) => {
+          if (!controlling) return;
+          e.preventDefault();
+          sendInput({ kind: 'key', vk: e.keyCode, pressed: false });
+        }}
+        className={`block max-h-[60vh] w-full bg-black object-contain ${
+          controlling ? 'cursor-crosshair outline-none ring-1 ring-accent' : ''
+        }`}
+      />
+    </motion.div>
+  );
+}
+
+/**
+ * Consent + the permanent reminder, on the machine being controlled (B.2).
+ *
+ * Two rules the rest of the feature depends on: control is NEVER granted
+ * without this dialog being answered yes, and while it lasts the banner cannot
+ * be dismissed — "reprendre le contrôle" is always one click away, from any
+ * screen, because the whole point is that the owner of the machine stays in
+ * charge of it.
+ */
+function ControlConsent() {
+  const { controlRequested, controlledBy, answerControl, stopControl } = useCall();
+  const { profileFor } = useProfiles();
+
+  return (
+    <>
+      <AnimatePresence>
+        {controlRequested && (
+          <motion.div
+            key="control-request"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[245] flex items-center justify-center bg-black/70 p-4 backdrop-blur-[2px]"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Demande de contrôle à distance"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 12, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={TRANSITION}
+              className="elev-3 w-full max-w-sm rounded-2xl border border-border-strong bg-surface p-6"
+            >
+              <ShieldAlert size={22} strokeWidth={1.75} className="text-warning" />
+              <p className="mt-4 text-base font-semibold text-text-primary">
+                {profileFor(controlRequested).name} demande le contrôle de votre poste
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-text-secondary">
+                Si vous acceptez, cette personne pourra déplacer votre souris et taper au
+                clavier sur cette machine. Vous pourrez reprendre la main à tout moment.
+              </p>
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => void answerControl(false)}
+                  className="flex-1 rounded-lg border border-border-strong px-3 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
+                >
+                  Refuser
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void answerControl(true)}
+                  className="flex-1 rounded-lg bg-accent px-3 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
+                >
+                  Autoriser
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {controlledBy && (
+          <motion.div
+            key="control-banner"
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={TRANSITION}
+            className="fixed inset-x-0 top-0 z-[244] flex items-center justify-center gap-3 border-b border-warning/50 bg-warning-muted px-4 py-2"
+            role="alert"
+          >
+            <ShieldAlert size={14} strokeWidth={2} className="flex-shrink-0 text-warning" />
+            <p className="truncate text-xs font-medium text-text-primary">
+              Contrôle à distance actif par {profileFor(controlledBy).name}
+            </p>
+            <button
+              type="button"
+              onClick={stopControl}
+              className="flex-shrink-0 rounded-md border border-border-strong bg-surface px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-text-primary transition-colors hover:bg-surface-hover"
+            >
+              Reprendre le contrôle
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
 export function CallOverlay() {
-  const { phase, peerEmail, endedReason, muted, durationSec, accept, reject, hangup, toggleMute } =
-    useCall();
+  const {
+    phase,
+    peerEmail,
+    endedReason,
+    muted,
+    durationSec,
+    peerOffline,
+    sharingScreen,
+    remoteScreen,
+    startScreenShare,
+    stopScreenShare,
+    accept,
+    reject,
+    hangup,
+    toggleMute,
+  } = useCall();
   const { profileFor } = useProfiles();
   const peer = profileFor(peerEmail);
 
+  const { notify } = useToast();
   useRingtone(phase === 'incoming');
+
+  const toggleShare = async () => {
+    if (sharingScreen) {
+      await stopScreenShare();
+      return;
+    }
+    const error = await startScreenShare();
+    if (error) notify({ title: 'Partage d’écran', body: error, durationMs: 6000 });
+  };
 
   return (
     <>
       <MissedCallNotifier />
+      <IncomingCallNotifier phase={phase} name={peer.name} />
+      <ControlConsent />
+
+      <AnimatePresence>
+        {remoteScreen && phase !== 'idle' && (
+          <ScreenViewer key="screen-viewer" stream={remoteScreen} peerName={peer.name} />
+        )}
+      </AnimatePresence>
 
       {/* Incoming call — a modal sheet, because it needs an answer now. */}
       <AnimatePresence>
@@ -200,7 +511,7 @@ export function CallOverlay() {
             <div className="min-w-0 flex-1 leading-tight">
               <p className="truncate text-sm font-semibold text-text-primary">{peer.name}</p>
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
-                {phase === 'outgoing' && 'Sonnerie…'}
+                {phase === 'outgoing' && (peerOffline ? 'Hors ligne — notifié…' : 'Sonnerie…')}
                 {phase === 'connecting' && 'Connexion…'}
                 {phase === 'active' && formatDuration(durationSec)}
                 {phase === 'ended' && endedReason}
@@ -220,6 +531,26 @@ export function CallOverlay() {
                 }`}
               >
                 {muted ? <MicOff size={16} strokeWidth={1.75} /> : <Mic size={16} strokeWidth={1.75} />}
+              </button>
+            )}
+
+            {(phase === 'active' || phase === 'connecting') && (
+              <button
+                type="button"
+                onClick={() => void toggleShare()}
+                aria-label={sharingScreen ? 'Arrêter le partage d’écran' : 'Partager mon écran'}
+                title={sharingScreen ? 'Arrêter le partage d’écran' : 'Partager mon écran'}
+                className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${
+                  sharingScreen
+                    ? 'border-accent bg-accent text-bg'
+                    : 'border-border text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                {sharingScreen ? (
+                  <MonitorOff size={16} strokeWidth={1.75} />
+                ) : (
+                  <Monitor size={16} strokeWidth={1.75} />
+                )}
               </button>
             )}
 

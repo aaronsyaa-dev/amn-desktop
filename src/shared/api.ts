@@ -716,7 +716,16 @@ export type CallSignalKind =
   | 'hangup'
   | 'reject'
   | 'busy'
-  | 'undelivered';
+  | 'undelivered'
+  /**
+   * Renegotiation of an ALREADY established call — adding or removing the
+   * screen-share video track (BLOC B). Distinct kinds rather than reusing
+   * offer/answer: a second `offer` on a live call would otherwise be read as a
+   * new incoming call, and the callee would answer "occupé" to the very call
+   * it is already in.
+   */
+  | 'renegotiate'
+  | 'renegotiate-answer';
 
 export interface CallSignal {
   type: 'signal';
@@ -875,7 +884,7 @@ export interface ComplyProgress {
  * `useSync`/`upsert` — the bridge's own `vault` namespace talks straight to
  * on-disk storage (encrypted in Electron, plain localStorage in the browser).
  */
-export type VaultCategory = 'api' | 'accounts' | 'servers' | 'other';
+export type VaultCategory = 'api' | 'accounts' | 'servers' | 'trackers' | 'other';
 
 export interface VaultEntry {
   id: string;
@@ -889,6 +898,20 @@ export interface VaultEntry {
   category: VaultCategory;
   createdAt: string;
   updatedAt: string;
+}
+
+/** One remote-control input event, sent over the call's data channel (B.2). */
+export interface RemoteInputEvent {
+  kind: 'move' | 'down' | 'up' | 'wheel' | 'key';
+  /** Normalised 0..1 position on the shared screen. */
+  x?: number;
+  y?: number;
+  /** 0 left, 1 middle, 2 right. */
+  button?: number;
+  delta?: number;
+  /** Windows virtual-key code. */
+  vk?: number;
+  pressed?: boolean;
 }
 
 export interface AmnBridge {
@@ -1061,14 +1084,33 @@ export interface AmnBridge {
   };
   /** Native OS / desktop integration (Electron main process). */
   system: {
-    /** Native OS notification. Fire-and-forget. */
-    notify(input: { title: string; body: string }): void;
+    /**
+     * Native OS notification. Fire-and-forget.
+     *
+     * `kind: 'call'` marks a notification that must not disappear on its own:
+     * an incoming call is only worth announcing while it is still ringing, and
+     * a toast that auto-dismisses after 5 s is exactly how a call gets missed.
+     */
+    notify(input: { title: string; body: string; kind?: 'default' | 'call' }): void;
     /** Whether the app is set to launch at OS login (Electron only). */
     getAutoLaunch(): Promise<boolean>;
     /** Enables/disables launch at OS login; resolves to the new value. */
     setAutoLaunch(enabled: boolean): Promise<boolean>;
     /** App name / version / platform for the About screen. */
     getAppInfo(): Promise<AppInfo>;
+    /**
+     * Whether this machine can be driven remotely at all (B.2). False in the
+     * browser and on any platform without native input injection, so the UI
+     * can refuse the request honestly instead of granting a control that would
+     * do nothing.
+     */
+    canBeRemoteControlled(): Promise<boolean>;
+    /**
+     * Applies one remote input event to THIS machine. Only ever called while
+     * the operator has explicitly granted control — the consent lives in the
+     * renderer's call state, and the main process is a dumb executor.
+     */
+    injectRemoteInput(event: RemoteInputEvent): Promise<boolean>;
   };
   /** Cyber/tech watch feed, fetched from public RSS sources (Electron main). */
   watch: {
@@ -1188,6 +1230,8 @@ export const IPC = {
   remoteSendCallSignal: 'remote:sendCallSignal',
   remoteCallSignalPush: 'remote:callSignalPush',
   systemNotify: 'system:notify',
+  systemCanRemoteControl: 'system:canRemoteControl',
+  systemInjectRemoteInput: 'system:injectRemoteInput',
   systemGetAutoLaunch: 'system:getAutoLaunch',
   systemSetAutoLaunch: 'system:setAutoLaunch',
   systemGetAppInfo: 'system:getAppInfo',

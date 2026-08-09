@@ -2,25 +2,10 @@ import React, { useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  BadgeCheck,
-  BookOpen,
   ChevronsLeft,
   ChevronsRight,
-  CheckSquare,
-  Contact,
-  FileText,
-  Globe,
-  Images,
-  LayoutDashboard,
-  Lock,
-  LockKeyhole,
+  LayoutGrid,
   LogOut,
-  NotebookPen,
-  Radar,
-  Scale,
-  ScanLine,
-  Settings,
-  Users,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useRemoteSites } from '../state/RemoteSitesContext';
@@ -28,69 +13,20 @@ import { useActivity } from '../state/ActivityContext';
 import { StatusBadge } from './StatusBadge';
 import { Logo, LogoMark } from './Logo';
 import { useSitePanel } from './site-panel/SitePanelContext';
+import { AppLauncher } from './AppLauncher';
+import { NAV_ITEMS, type NavItem } from '../data/navigation';
+import { useNavFavorites } from '../state/useNavFavorites';
 
 const COLLAPSED_WIDTH = 72;
 const EXPANDED_WIDTH = 224;
 const TRANSITION = { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const };
 
-interface NavItem {
-  key: string;
-  label: string;
-  to: string;
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
-}
-
 /**
- * The sidebar is grouped rather than listed. With eleven workspace tabs and a
- * growing product line, one flat column reads as a wall of icons and gets
- * visibly cramped every time a product ships — so the nav is split into three
- * named sections that each answer a different question: what am I working on,
- * what do we sell, what runs the app.
+ * The sidebar no longer lists every screen (BLOC C). It shows a short pinned
+ * strip plus a launcher: that is what stops it from growing a row taller with
+ * every product shipped — its height no longer depends on how many modules
+ * exist. The full grid lives in AppLauncher.
  */
-interface NavSection {
-  key: string;
-  /** Shown as a quiet caption when expanded; a hairline rule when collapsed. */
-  label: string;
-  items: NavItem[];
-}
-
-const NAV_SECTIONS: NavSection[] = [
-  {
-    key: 'travail',
-    label: 'Travail',
-    items: [
-      { key: 'home', label: 'Accueil', to: '/', icon: LayoutDashboard },
-      { key: 'sites', label: 'Sites', to: '/sites', icon: Globe },
-      { key: 'team', label: 'Équipe', to: '/team', icon: Users },
-      { key: 'tasks', label: 'Tâches', to: '/tasks', icon: CheckSquare },
-      { key: 'clients', label: 'Clients', to: '/clients', icon: Contact },
-      { key: 'decisions', label: 'Décisions', to: '/decisions', icon: Scale },
-      { key: 'knowledge', label: 'Connaissances', to: '/knowledge', icon: BookOpen },
-      { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen },
-      { key: 'media', label: 'Médias', to: '/media', icon: Images },
-      { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText },
-    ],
-  },
-  {
-    key: 'produits',
-    label: 'Produits',
-    items: [
-      { key: 'tracker', label: 'Trackers', to: '/tracker', icon: Radar },
-      { key: 'scanner', label: 'Scanner', to: '/scanner', icon: ScanLine },
-      { key: 'comply', label: 'Comply', to: '/comply', icon: BadgeCheck },
-      { key: 'ssl', label: 'SSL Monitor', to: '/ssl', icon: LockKeyhole },
-    ],
-  },
-  {
-    key: 'systeme',
-    label: 'Système',
-    items: [
-      { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings },
-      { key: 'vault', label: 'Coffre-fort', to: '/vault', icon: Lock },
-    ],
-  },
-];
-
 export function Sidebar({
   mobileOpen = false,
   onClose,
@@ -102,6 +38,8 @@ export function Sidebar({
 }) {
   const [isExpandedDesktop, setIsExpanded] = useState(false);
   const [isSitesFlyoutOpen, setIsSitesFlyoutOpen] = useState(false);
+  const [isLauncherOpen, setLauncherOpen] = useState(false);
+  const { favorites } = useNavFavorites();
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();
@@ -123,6 +61,7 @@ export function Sidebar({
   // the chevron, never by hijacking the main click.
   const handleNavClick = () => {
     setIsSitesFlyoutOpen(false);
+    setLauncherOpen(false);
     onClose?.(); // close the mobile drawer after navigating
   };
 
@@ -138,6 +77,11 @@ export function Sidebar({
     const dx = (e.changedTouches[0]?.clientX ?? start) - start;
     if (dx < -45) onClose?.();
   };
+
+  // The pinned modules, in the catalogue's own order so the strip never
+  // reshuffles itself under the cursor. An unknown key (a module removed since
+  // the choice was made) is dropped rather than rendered as a dead row.
+  const pinnedItems: NavItem[] = NAV_ITEMS.filter((item) => favorites.includes(item.key));
 
   // One nav row. Shared by both sections (workspace + produits) so the badge,
   // active indicator and collapsed/expanded behaviour stay identical.
@@ -292,24 +236,29 @@ export function Sidebar({
             native scrollbar is hidden and replaced by a mask that fades the
             first/last rows out, so a short window looks deliberate instead of
             showing a grey gutter down the middle of the chrome. */}
-        <nav className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3">
-          {NAV_SECTIONS.map((section) => (
-            <div key={section.key} className="flex flex-col gap-1">
-              {/* The caption is what separates the groups. Collapsed, it would
-                  be unreadable at 72px, so it degrades to a hairline rule that
-                  keeps the same rhythm. */}
-              <div className="mb-0.5 px-1">
-                {isExpanded ? (
-                  <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-text-muted">
-                    {section.label}
-                  </p>
-                ) : (
-                  <span className="mx-auto block h-px w-6 bg-border" aria-hidden />
-                )}
-              </div>
-              {section.items.map(renderNavItem)}
-            </div>
-          ))}
+        {/* Pinned strip. Fixed by choice, not by catalogue size: adding a
+            module adds a tile to the launcher, never a row here. */}
+        <nav className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3">
+          {pinnedItems.map(renderNavItem)}
+
+          <button
+            type="button"
+            onClick={() => setLauncherOpen(true)}
+            title={!isExpanded ? 'Tous les modules' : undefined}
+            aria-label="Tous les modules"
+            aria-haspopup="dialog"
+            aria-expanded={isLauncherOpen}
+            className={`group mt-1 flex items-center gap-3 rounded-lg py-1.5 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary ${
+              isExpanded ? 'px-3' : 'justify-center px-0'
+            }`}
+          >
+            <span className="relative transition-transform duration-200 group-hover:scale-105">
+              <LayoutGrid size={20} strokeWidth={1.75} />
+            </span>
+            {isExpanded && (
+              <span className="select-none whitespace-nowrap">Tous les modules</span>
+            )}
+          </button>
         </nav>
 
         <div className="mt-auto flex flex-col gap-1 border-t border-border px-3 pt-2">
@@ -344,6 +293,8 @@ export function Sidebar({
           </button>
         </div>
       </motion.aside>
+
+      <AppLauncher open={isLauncherOpen} onClose={() => setLauncherOpen(false)} />
 
       <AnimatePresence>
         {isSitesFlyoutOpen && (

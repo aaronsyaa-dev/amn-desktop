@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, Notification, Tray, nativeImage, shell } from 'electron';
+import { app, BrowserWindow, Menu, Notification, Tray, desktopCapturer, nativeImage, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -139,6 +139,36 @@ function createWindow(): void {
   );
   mainWindow.webContents.session.setPermissionCheckHandler((_webContents, permission) =>
     ALLOWED_PERMISSIONS.has(permission),
+  );
+
+  // Screen sharing (BLOC B). Without a handler, `getDisplayMedia()` in the
+  // renderer is refused outright in Electron — there is no built-in picker.
+  //
+  // The whole primary screen is granted rather than a window chooser: this is
+  // remote assistance between two operators, where "montre-moi ton écran" means
+  // the screen, and a chooser would add a step to something started from the
+  // call bar. Nothing is captured until the renderer asks, and the renderer
+  // only asks when the operator presses « Partager mon écran ».
+  mainWindow.webContents.session.setDisplayMediaRequestHandler(
+    (_request, callback) => {
+      desktopCapturer
+        .getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } })
+        .then((sources) => {
+          const screen = sources[0];
+          if (!screen) {
+            // Refusing with an empty selection surfaces as a NotAllowedError in
+            // the renderer, which says so instead of hanging on a black frame.
+            callback({});
+            return;
+          }
+          // Audio is deliberately not included: the call already carries the
+          // microphone, and loopback audio would echo it back.
+          callback({ video: screen });
+        })
+        .catch(() => callback({}));
+    },
+    // The handler must keep working for the whole session, not just once.
+    { useSystemPicker: false },
   );
 
   // Persist size/position so the next launch restores the same window.
