@@ -198,6 +198,14 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     bridge().remote.setIdentity(user?.email ?? null);
   }, [user?.email]);
 
+  // Signing out unmounts this whole provider (the app falls back to the login
+  // screen), so the effect above never gets to run with `null`. Without this
+  // cleanup the operator stayed advertised as online to the other one long
+  // after logging out — harmless-looking until BLOC 2, where it offers a call
+  // button that rings a machine nobody is signed in to. Unmount-only (empty
+  // deps) so a normal account switch still takes the single-reconnect path.
+  useEffect(() => () => bridge().remote.setIdentity(null), []);
+
   // Initial load + live subscriptions.
   useEffect(() => {
     let active = true;

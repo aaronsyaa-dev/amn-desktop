@@ -4,6 +4,7 @@ import {
   type AddClientEventInput,
   type ChangePasswordInput,
   type NotificationPrefs,
+  type OutgoingCallSignal,
   type UpdateProfileInput,
   type ScanTier,
   type TrackerTier,
@@ -255,6 +256,9 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   ipcMain.handle(IPC.remoteGetComplyCheck, (_event, id: string) => remote.getComplyCheck(id));
   // setIdentity is fire-and-forget from the renderer (no reply needed).
   ipcMain.on(IPC.remoteSetIdentity, (_event, email: string | null) => remote.setIdentity(email));
+  ipcMain.handle(IPC.remoteSendCallSignal, (_event, signal: OutgoingCallSignal) =>
+    remote.sendSignal(signal),
+  );
 
   // Push channels: broadcast to every open window rather than replying to a
   // specific invoke() call, since these are server-initiated updates.
@@ -267,6 +271,7 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   remote.onStatusChange((status) => broadcastToAll(IPC.remoteConnectionStatusPush, status));
   remote.onRecord((record) => broadcastToAll(IPC.remoteRecordPush, record));
   remote.onPresence((users) => broadcastToAll(IPC.remotePresencePush, users));
+  remote.onSignal((signal) => broadcastToAll(IPC.remoteCallSignalPush, signal));
   remote.onScanProgress((progress) => broadcastToAll(IPC.remoteScanProgressPush, progress));
   remote.onComplyProgress((progress) => broadcastToAll(IPC.remoteComplyProgressPush, progress));
 

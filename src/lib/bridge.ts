@@ -5,6 +5,7 @@ import type {
   AuthResult,
   ChangePasswordResult,
   NotificationPrefs,
+  CallSignal,
   PresenceEntry,
   RemoteRecord,
   ComplyCheck,
@@ -398,6 +399,7 @@ function createBrowserRemote(): AmnBridge['remote'] {
   const presenceListeners = new Set<(users: PresenceEntry[]) => void>();
   const scanListeners = new Set<(progress: ScanProgress) => void>();
   const complyListeners = new Set<(progress: ComplyProgress) => void>();
+  const signalListeners = new Set<(signal: CallSignal) => void>();
   let status: RemoteConnectionStatus = configured ? 'connecting' : 'unconfigured';
   let reconnectAttempt = 0;
   let started = false;
@@ -435,6 +437,20 @@ function createBrowserRemote(): AmnBridge['remote'] {
           for (const listener of scanListeners) listener(parsed.progress as ScanProgress);
         } else if (parsed?.type === 'comply:progress' && parsed.progress) {
           for (const listener of complyListeners) listener(parsed.progress as ComplyProgress);
+        } else if (parsed?.type === 'signal' && parsed.kind && parsed.callId) {
+          for (const listener of signalListeners) listener(parsed as CallSignal);
+        } else if (parsed?.type === 'signal:undelivered' && parsed.callId) {
+          // Mirrors the Electron client: "nobody was listening" becomes its own
+          // signal kind so the caller can say "hors ligne" straight away.
+          for (const listener of signalListeners) {
+            listener({
+              type: 'signal',
+              kind: 'undelivered',
+              callId: String(parsed.callId),
+              from: String(parsed.to ?? ''),
+              payload: null,
+            });
+          }
         }
       } catch {
         // Ignore malformed frames.
@@ -579,6 +595,25 @@ function createBrowserRemote(): AmnBridge['remote'] {
       presenceListeners.add(callback);
       ensureStarted();
       return () => presenceListeners.delete(callback);
+    },
+    async sendCallSignal(signal) {
+      ensureStarted();
+      if (!socket || socket.readyState !== WebSocket.OPEN) return false;
+      socket.send(
+        JSON.stringify({
+          type: 'signal',
+          to: signal.to,
+          kind: signal.kind,
+          callId: signal.callId,
+          payload: signal.payload ?? null,
+        }),
+      );
+      return true;
+    },
+    onCallSignal(callback) {
+      signalListeners.add(callback);
+      ensureStarted();
+      return () => signalListeners.delete(callback);
     },
     async startScan(url: string, tier: ScanTier): Promise<Scan> {
       const { scan } = await apiFetch<{ scan: Scan }>('/v1/scan', {

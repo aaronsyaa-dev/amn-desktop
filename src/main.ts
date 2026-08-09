@@ -121,6 +121,23 @@ function createWindow(): void {
 
   mainWindow.once('ready-to-show', () => mainWindow?.show());
 
+  // Microphone access for operator-to-operator calls (BLOC 2). Electron denies
+  // every permission request by default, so without this `getUserMedia` fails
+  // with NotAllowedError and a call can never start.
+  //
+  // Only the microphone is granted, and only to our own app page: the renderer
+  // loads a local bundle we ship, so there is no third-party origin that could
+  // ask. Camera, geolocation, notifications-via-web and everything else stay
+  // denied — the app has native paths for the ones it actually needs.
+  mainWindow.webContents.session.setPermissionRequestHandler(
+    (_webContents, permission, callback) => {
+      callback(permission === 'media');
+    },
+  );
+  mainWindow.webContents.session.setPermissionCheckHandler(
+    (_webContents, permission) => permission === 'media',
+  );
+
   // Persist size/position so the next launch restores the same window.
   const persist = () => mainWindow && saveBounds(mainWindow);
   mainWindow.on('resized', persist);

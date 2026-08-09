@@ -2,6 +2,8 @@ import WebSocket from 'ws';
 import { remoteConfig, isRemoteConfigured } from './remoteConfig';
 import { writeScanReportFile } from './scanReports';
 import type {
+  CallSignal,
+  OutgoingCallSignal,
   PresenceEntry,
   RegisterSiteResult,
   RemoteConnectionStatus,
@@ -70,6 +72,7 @@ export class RemoteApiClient {
   private presenceListeners = new Set<(users: PresenceEntry[]) => void>();
   private scanListeners = new Set<(progress: ScanProgress) => void>();
   private complyListeners = new Set<(progress: ComplyProgress) => void>();
+  private signalListeners = new Set<(signal: CallSignal) => void>();
   private identity: string | null = null;
   private stopped = false;
   /**
@@ -280,6 +283,31 @@ export class RemoteApiClient {
     return () => this.presenceListeners.delete(listener);
   }
 
+  /**
+   * Relays one WebRTC signalling message to the other operator through the
+   * amn-api hub. Returns false when the socket isn't open, so the caller can
+   * fail the call immediately instead of ringing into a void.
+   */
+  sendSignal(signal: OutgoingCallSignal): boolean {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return false;
+    this.ws.send(
+      JSON.stringify({
+        type: 'signal',
+        to: signal.to,
+        kind: signal.kind,
+        callId: signal.callId,
+        payload: signal.payload ?? null,
+      }),
+    );
+    return true;
+  }
+
+  /** Incoming call signals (and undelivered notices). Returns an unsubscribe. */
+  onSignal(listener: (signal: CallSignal) => void): () => void {
+    this.signalListeners.add(listener);
+    return () => this.signalListeners.delete(listener);
+  }
+
   /** Starts the live WebSocket connection (no-op if amn-api isn't configured). */
   start(): void {
     if (!isRemoteConfigured()) {
@@ -360,6 +388,20 @@ export class RemoteApiClient {
           for (const listener of this.scanListeners) listener(parsed.progress as ScanProgress);
         } else if (parsed?.type === 'comply:progress' && parsed.progress) {
           for (const listener of this.complyListeners) listener(parsed.progress as ComplyProgress);
+        } else if (parsed?.type === 'signal' && parsed.kind && parsed.callId) {
+          for (const listener of this.signalListeners) listener(parsed as CallSignal);
+        } else if (parsed?.type === 'signal:undelivered' && parsed.callId) {
+          // The hub found nobody to hand this to — surfaced as its own kind so
+          // the renderer can end the call with "hors ligne" rather than time out.
+          for (const listener of this.signalListeners) {
+            listener({
+              type: 'signal',
+              kind: 'undelivered',
+              callId: String(parsed.callId),
+              from: String(parsed.to ?? ''),
+              payload: null,
+            });
+          }
         }
       } catch {
         // Ignore malformed frames rather than crashing the main process.

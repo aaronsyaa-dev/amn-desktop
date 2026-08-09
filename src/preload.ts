@@ -12,6 +12,8 @@ import {
   type CreateLearningGoalInput,
   type CreateQuoteInput,
   type CreateSharedTaskInput,
+  type CallSignal,
+  type OutgoingCallSignal,
   type PresenceEntry,
   type ComplyProgress,
   type ScanProgress,
@@ -146,6 +148,13 @@ const bridge: AmnBridge = {
     },
     setIdentity: (email: string | null) => ipcRenderer.send(IPC.remoteSetIdentity, email),
     getPresence: () => ipcRenderer.invoke(IPC.remoteGetPresence),
+    sendCallSignal: (signal: OutgoingCallSignal) =>
+      ipcRenderer.invoke(IPC.remoteSendCallSignal, signal),
+    onCallSignal: (callback: (signal: CallSignal) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, signal: CallSignal) => callback(signal);
+      ipcRenderer.on(IPC.remoteCallSignalPush, listener);
+      return () => ipcRenderer.removeListener(IPC.remoteCallSignalPush, listener);
+    },
     onPresence: (callback: (users: PresenceEntry[]) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, users: PresenceEntry[]) => callback(users);
       ipcRenderer.on(IPC.remotePresencePush, listener);

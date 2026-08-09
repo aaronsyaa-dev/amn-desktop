@@ -14,6 +14,7 @@ import {
   Link2,
   MessageSquarePlus,
   Mic,
+  Phone,
   Pin,
   PinOff,
   Plus,
@@ -26,6 +27,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
 import { useSync, useCollection } from '../state/SyncContext';
 import { useProfiles } from '../state/ProfilesContext';
+import { useCall } from '../state/CallContext';
 import { useMessages, type SyncMessage } from '../state/useMessages';
 import { UserAvatar } from '../components/UserAvatar';
 import { parseMentions, urlDisplayHost, type ClientRef, type TaskRef } from '../lib/mentions';
@@ -227,6 +229,7 @@ export function TeamScreen() {
 function PresenceBar({ currentEmail }: { currentEmail?: string }) {
   const { onlineEmails, configured } = useSync();
   const { profileFor } = useProfiles();
+  const { call, callsAvailable, phase } = useCall();
 
   return (
     <div className="flex flex-wrap gap-3">
@@ -268,6 +271,27 @@ function PresenceBar({ currentEmail }: { currentEmail?: string }) {
                 {!isSelf && !configured && <span className="text-text-muted"> · hors-ligne</span>}
               </p>
             </div>
+            {/* Audio call (BLOC 2). Only offered for the *other* operator, and
+                only while they're actually online — a call button that can
+                only fail is worse than no button. */}
+            {!isSelf && online && configured && (
+              <button
+                type="button"
+                onClick={() => void call(member.email)}
+                disabled={!callsAvailable || phase !== 'idle'}
+                title={
+                  !callsAvailable
+                    ? 'Appels indisponibles — connexion au serveur AMN perdue'
+                    : phase !== 'idle'
+                      ? 'Un appel est déjà en cours'
+                      : `Appeler ${profile.name}`
+                }
+                aria-label={`Appeler ${profile.name}`}
+                className="ml-1 flex h-9 w-9 items-center justify-center rounded-full border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Phone size={16} strokeWidth={1.75} />
+              </button>
+            )}
           </div>
         );
       })}

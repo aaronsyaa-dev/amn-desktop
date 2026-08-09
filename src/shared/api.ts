@@ -572,6 +572,42 @@ export interface PresenceEntry {
   online: boolean;
 }
 
+/* ------------------------------ Appels audio (WebRTC) ------------------------------ */
+
+/**
+ * One WebRTC signalling message, relayed operator-to-operator by the amn-api
+ * hub. The hub never inspects `payload` — the audio itself is peer-to-peer and
+ * never transits amn-api.
+ *
+ * `undelivered` is synthesised locally when the hub reports that the callee had
+ * no open socket: it is what turns a dead ring into an immediate "hors ligne".
+ */
+export type CallSignalKind =
+  | 'offer'
+  | 'answer'
+  | 'ice'
+  | 'hangup'
+  | 'reject'
+  | 'busy'
+  | 'undelivered';
+
+export interface CallSignal {
+  type: 'signal';
+  kind: CallSignalKind;
+  /** Identifies one call attempt end-to-end; stale signals are ignored. */
+  callId: string;
+  /** The other operator's email, stamped by the hub — never client-supplied. */
+  from: string;
+  payload: unknown;
+}
+
+export interface OutgoingCallSignal {
+  to: string;
+  kind: CallSignalKind;
+  callId: string;
+  payload?: unknown;
+}
+
 /* ------------------------------ Scanner (Produits) ------------------------------ */
 
 /** Scan depth. Each tier is a superset of the previous one. */
@@ -836,6 +872,16 @@ export interface AmnBridge {
     getPresence(): Promise<PresenceEntry[]>;
     onPresence(callback: (users: PresenceEntry[]) => void): () => void;
 
+    /* --- Appels audio (WebRTC) --- */
+    /**
+     * Relays one signalling message to the other operator through amn-api.
+     * Resolves false when the live socket is down — the caller must then fail
+     * the call rather than ring into nothing.
+     */
+    sendCallSignal(signal: OutgoingCallSignal): Promise<boolean>;
+    /** Signalling messages addressed to this operator. Returns an unsubscribe. */
+    onCallSignal(callback: (signal: CallSignal) => void): () => void;
+
     /* --- Scanner --- */
     /**
      * Queues a passive security scan of `url` at `tier`. Resolves as soon as
@@ -980,6 +1026,8 @@ export const IPC = {
   remoteConnectionStatusPush: 'remote:connectionStatusPush',
   remoteRecordPush: 'remote:recordPush',
   remotePresencePush: 'remote:presencePush',
+  remoteSendCallSignal: 'remote:sendCallSignal',
+  remoteCallSignalPush: 'remote:callSignalPush',
   systemNotify: 'system:notify',
   systemGetAutoLaunch: 'system:getAutoLaunch',
   systemSetAutoLaunch: 'system:setAutoLaunch',

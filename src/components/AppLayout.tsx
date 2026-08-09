@@ -12,6 +12,8 @@ import { RemoteSitesProvider } from '../state/RemoteSitesContext';
 import { ProfilesProvider } from '../state/ProfilesContext';
 import { SyncProvider } from '../state/SyncContext';
 import { ActivityProvider, useActivity } from '../state/ActivityContext';
+import { CallProvider } from '../state/CallContext';
+import { CallOverlay } from './call/CallOverlay';
 import { UndoProvider } from '../state/UndoContext';
 import { ToastProvider } from '../state/ToastContext';
 import { TagProvider } from './tags/TagProvider';
@@ -80,6 +82,7 @@ export function AppLayout() {
         <ActivityProvider>
         <RemoteSitesProvider>
           <ToastProvider>
+          <CallProvider>
           <SitePanelProvider>
             <AssistantProvider>
               <CommandPaletteProvider>
@@ -122,6 +125,7 @@ export function AppLayout() {
                 </div>
               </main>
             </div>
+              <CallOverlay />
               <SiteDetailPanel />
               <AssistantPanel />
               <NotificationsManager />
@@ -136,6 +140,7 @@ export function AppLayout() {
             </CommandPaletteProvider>
           </AssistantProvider>
         </SitePanelProvider>
+          </CallProvider>
           </ToastProvider>
         </RemoteSitesProvider>
         </ActivityProvider>
