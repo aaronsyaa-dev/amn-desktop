@@ -13,6 +13,7 @@ import {
   Images,
   LayoutDashboard,
   Lock,
+  LockKeyhole,
   LogOut,
   NotebookPen,
   Radar,
@@ -77,6 +78,7 @@ const NAV_SECTIONS: NavSection[] = [
       { key: 'tracker', label: 'Trackers', to: '/tracker', icon: Radar },
       { key: 'scanner', label: 'Scanner', to: '/scanner', icon: ScanLine },
       { key: 'comply', label: 'Comply', to: '/comply', icon: BadgeCheck },
+      { key: 'ssl', label: 'SSL Monitor', to: '/ssl', icon: LockKeyhole },
     ],
   },
   {

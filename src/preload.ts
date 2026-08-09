@@ -150,6 +150,8 @@ const bridge: AmnBridge = {
     },
     setIdentity: (email: string | null) => ipcRenderer.send(IPC.remoteSetIdentity, email),
     getPresence: () => ipcRenderer.invoke(IPC.remoteGetPresence),
+    listSslStatus: () => ipcRenderer.invoke(IPC.remoteListSslStatus),
+    checkSsl: (host: string) => ipcRenderer.invoke(IPC.remoteCheckSsl, host),
     listSchedules: () => ipcRenderer.invoke(IPC.remoteListSchedules),
     createSchedule: (input: CreateScheduleInput) =>
       ipcRenderer.invoke(IPC.remoteCreateSchedule, input),

@@ -3,6 +3,7 @@ import { remoteConfig, isRemoteConfigured } from './remoteConfig';
 import { writeScanReportFile } from './scanReports';
 import type {
   CallSignal,
+  SslStatus,
   CreateScheduleInput,
   ProductRegression,
   ProductSchedule,
@@ -106,6 +107,21 @@ export class RemoteApiClient {
       `/v1/sites/${siteId}/events${qs ? `?${qs}` : ''}`,
     );
     return events;
+  }
+
+  /* ------------------ SSL Monitor (BLOC 6) ------------------ */
+
+  async listSslStatus(): Promise<SslStatus[]> {
+    const { statuses } = await apiFetch<{ statuses: SslStatus[] }>('/v1/ssl');
+    return statuses;
+  }
+
+  async checkSsl(host: string): Promise<SslStatus> {
+    const { status } = await apiFetch<{ status: SslStatus }>('/v1/ssl/check', {
+      method: 'POST',
+      body: JSON.stringify({ host }),
+    });
+    return status;
   }
 
   /* ------------------ Recurring runs (BLOC 5) ------------------ */

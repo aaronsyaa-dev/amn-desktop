@@ -9,6 +9,7 @@ import React, {
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  LockKeyhole,
   BookOpen,
   CheckSquare,
   Contact,
@@ -60,6 +61,7 @@ const NAV_COMMANDS: Extract<Command, { kind: 'nav' }>[] = [
   { kind: 'nav', id: 'nav-tracker', label: 'Trackers', icon: Radar, to: '/tracker' },
   { kind: 'nav', id: 'nav-scanner', label: 'Scanner', icon: ScanLine, to: '/scanner' },
   { kind: 'nav', id: 'nav-comply', label: 'Comply', icon: BadgeCheck, to: '/comply' },
+  { kind: 'nav', id: 'nav-ssl', label: 'SSL Monitor', icon: LockKeyhole, to: '/ssl' },
   { kind: 'nav', id: 'nav-decisions', label: 'Décisions', icon: Scale, to: '/decisions' },
   { kind: 'nav', id: 'nav-knowledge', label: 'Connaissances', icon: BookOpen, to: '/knowledge' },
   { kind: 'nav', id: 'nav-notes', label: 'Notes', icon: NotebookPen, to: '/notes' },

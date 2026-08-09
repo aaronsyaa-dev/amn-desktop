@@ -10,6 +10,7 @@ import type {
   OrgOverview,
   ProductRegression,
   ProductSchedule,
+  SslStatus,
   PresenceEntry,
   SiteBadge,
   RemoteRecord,
@@ -603,6 +604,17 @@ function createBrowserRemote(): AmnBridge['remote'] {
       presenceListeners.add(callback);
       ensureStarted();
       return () => presenceListeners.delete(callback);
+    },
+    async listSslStatus() {
+      const { statuses } = await apiFetch<{ statuses: SslStatus[] }>('/v1/ssl');
+      return statuses;
+    },
+    async checkSsl(host: string) {
+      const { status } = await apiFetch<{ status: SslStatus }>('/v1/ssl/check', {
+        method: 'POST',
+        body: JSON.stringify({ host }),
+      });
+      return status;
     },
     async listSchedules() {
       const { schedules } = await apiFetch<{ schedules: ProductSchedule[] }>('/v1/schedules');

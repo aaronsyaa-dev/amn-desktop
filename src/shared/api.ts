@@ -483,6 +483,29 @@ export interface SiteSummary {
   score: SiteScore;
 }
 
+/* --------------------------- AMN SSL Monitor (BLOC 6) --------------------------- */
+
+/**
+ * TLS certificate state of one supervised host. The handshake runs on amn-api,
+ * never on this machine, so both operators read the same figure and the
+ * monitoring keeps working with every desktop closed.
+ */
+export interface SslStatus {
+  host: string;
+  /** Certificate authority, e.g. "Let's Encrypt". */
+  issuer: string | null;
+  subject: string | null;
+  validFrom: string | null;
+  validTo: string | null;
+  /** Days until expiry; ≤ 0 means already expired. Null = never checked. */
+  daysLeft: number | null;
+  lastCheckedAt: string | null;
+  /** Why the last check failed, when it did. */
+  error: string | null;
+  /** The supervised site this host belongs to, when there is one. */
+  site: { id: string; name: string } | null;
+}
+
 /* ------------------------ Analyses récurrentes (BLOC 5) ------------------------ */
 
 /** Which product a recurring run belongs to. */
@@ -998,6 +1021,12 @@ export interface AmnBridge {
     getScan(id: string): Promise<Scan>;
     /** URL of the printable Elite report (opened, then printed to PDF). */
     scanReportUrl(id: string): Promise<string>;
+    /* --- AMN SSL Monitor (BLOC 6) --- */
+    /** Certificate state of every supervised host, checked by amn-api. */
+    listSslStatus(): Promise<SslStatus[]>;
+    /** Re-checks one host immediately instead of waiting for the sweep. */
+    checkSsl(host: string): Promise<SslStatus>;
+
     /* --- Analyses récurrentes (BLOC 5) --- */
     listSchedules(): Promise<ProductSchedule[]>;
     /** Arms (or re-arms) a recurring Scanner/Comply run. */
@@ -1148,6 +1177,8 @@ export const IPC = {
   remoteConnectionStatusPush: 'remote:connectionStatusPush',
   remoteRecordPush: 'remote:recordPush',
   remotePresencePush: 'remote:presencePush',
+  remoteListSslStatus: 'remote:listSslStatus',
+  remoteCheckSsl: 'remote:checkSsl',
   remoteListSchedules: 'remote:listSchedules',
   remoteCreateSchedule: 'remote:createSchedule',
   remoteDeleteSchedule: 'remote:deleteSchedule',

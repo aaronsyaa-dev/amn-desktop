@@ -13,6 +13,7 @@ import { ComplyScreen } from './screens/ComplyScreen';
 import { ScannerScreen } from './screens/ScannerScreen';
 import { TrackerScreen } from './screens/TrackerScreen';
 import { SiteControlScreen } from './screens/SiteControlScreen';
+import { SslScreen } from './screens/SslScreen';
 import { DecisionsScreen } from './screens/DecisionsScreen';
 import { KnowledgeScreen } from './screens/KnowledgeScreen';
 import { NotesScreen } from './screens/NotesScreen';
@@ -50,6 +51,7 @@ export default function App() {
               <Route path="/tracker/site/:siteId" element={<SiteControlScreen />} />
               <Route path="/scanner" element={<ScannerScreen />} />
               <Route path="/comply" element={<ComplyScreen />} />
+              <Route path="/ssl" element={<SslScreen />} />
               <Route path="/decisions" element={<DecisionsScreen />} />
               <Route path="/knowledge" element={<KnowledgeScreen />} />
               <Route path="/notes" element={<NotesScreen />} />

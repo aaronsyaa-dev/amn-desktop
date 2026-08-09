@@ -257,6 +257,8 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   ipcMain.handle(IPC.remoteGetComplyCheck, (_event, id: string) => remote.getComplyCheck(id));
   // setIdentity is fire-and-forget from the renderer (no reply needed).
   ipcMain.on(IPC.remoteSetIdentity, (_event, email: string | null) => remote.setIdentity(email));
+  ipcMain.handle(IPC.remoteListSslStatus, () => remote.listSslStatus());
+  ipcMain.handle(IPC.remoteCheckSsl, (_event, host: string) => remote.checkSsl(host));
   ipcMain.handle(IPC.remoteListSchedules, () => remote.listSchedules());
   ipcMain.handle(IPC.remoteCreateSchedule, (_event, input: CreateScheduleInput) =>
     remote.createSchedule(input),

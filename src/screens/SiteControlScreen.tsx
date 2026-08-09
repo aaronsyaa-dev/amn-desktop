@@ -8,6 +8,7 @@ import {
   FileText,
   Globe,
   Layers,
+  Lock,
   RefreshCw,
   Sparkles,
   ShieldAlert,
@@ -28,7 +29,8 @@ import {
   alertKindLabel,
   severityOf,
 } from '../lib/trackerAlerts';
-import type { RemoteEvent, SiteDigest, SiteSummary, TrackerTier } from '../shared/api';
+import type { RemoteEvent, SiteDigest, SiteSummary, SslStatus, TrackerTier } from '../shared/api';
+import { sslSummary, toneFor } from './SslScreen';
 
 /**
  * Per-site control desk: the traffic curve, the alert history and the security
@@ -122,6 +124,16 @@ export function SiteControlScreen() {
       setGenerating(false);
     }
   };
+
+  // Host whose certificate belongs to this site, if its URL is known.
+  const sslHost = useMemo(() => {
+    const url = summary?.site.url ?? '';
+    try {
+      return url ? new URL(url).host.toLowerCase() : '';
+    } catch {
+      return '';
+    }
+  }, [summary?.site.url]);
 
   const siteName = summary?.site.name ?? knownSite?.name ?? 'Site';
   const tier = (summary?.site.tier ?? knownSite?.tier ?? 'sentinel') as TrackerTier;
@@ -225,7 +237,7 @@ export function SiteControlScreen() {
       ) : summary ? (
         <>
           <StaggerItem>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-[1.5fr_1fr_1fr_1fr_1fr]">
               <ScoreCard summary={summary} />
               <StatCard
                 icon={Users}
@@ -246,6 +258,10 @@ export function SiteControlScreen() {
                 hint={`${summary.alerts.filter((a) => a.severity === 'critical').length} critique(s)`}
                 tone={summary.alerts.some((a) => a.severity === 'critical') ? 'danger' : 'default'}
               />
+              {/* BLOC 6 — the certificate sits with the other live indicators
+                  rather than in its own tab only: an expiry is a supervision
+                  fact about this site, not a separate product to go look up. */}
+              <SslCard host={sslHost} />
             </div>
           </StaggerItem>
 
@@ -547,4 +563,68 @@ function buildReportBody(summary: SiteSummary, digest: SiteDigest | null): strin
   }
 
   return lines.join('\n');
+}
+
+/**
+ * Certificate indicator for this site's host (BLOC 6). Reads the state amn-api
+ * already holds rather than opening its own connection — the desk shows what
+ * the monitor knows, and never becomes a second, disagreeing source of truth.
+ */
+function SslCard({ host }: { host: string }) {
+  const [status, setStatus] = useState<SslStatus | null>(null);
+  const [loading, setLoading] = useState(Boolean(host));
+
+  useEffect(() => {
+    if (!host) {
+      setStatus(null);
+      setLoading(false);
+      return;
+    }
+    let active = true;
+    setLoading(true);
+    bridge()
+      .remote.listSslStatus()
+      .then((all) => {
+        if (active) setStatus(all.find((s) => s.host === host) ?? null);
+      })
+      .catch(() => {
+        if (active) setStatus(null);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [host]);
+
+  if (!host) {
+    return (
+      <StatCard
+        icon={Lock}
+        label="Certificat TLS"
+        value="—"
+        hint="URL du site non renseignée"
+      />
+    );
+  }
+
+  const tone = status ? toneFor(status) : 'unknown';
+  return (
+    <StatCard
+      icon={Lock}
+      label="Certificat TLS"
+      value={
+        loading
+          ? '…'
+          : status?.daysLeft === null || status?.daysLeft === undefined
+            ? '—'
+            : status.daysLeft <= 0
+              ? 'Expiré'
+              : `${status.daysLeft} j`
+      }
+      hint={status ? sslSummary(status) : 'Pas encore vérifié'}
+      tone={tone === 'expired' || tone === 'urgent' ? 'danger' : 'default'}
+    />
+  );
 }
