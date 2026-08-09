@@ -9,6 +9,7 @@ import {
   Globe,
   Layers,
   RefreshCw,
+  Sparkles,
   ShieldAlert,
   Users,
 } from 'lucide-react';
@@ -16,6 +17,7 @@ import { bridge } from '../lib/bridge';
 import { useRemoteSites } from '../state/RemoteSitesContext';
 import { useReports } from '../state/useReports';
 import { useToast } from '../state/ToastContext';
+import { useAssistant } from '../assistant/AssistantContext';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import {
   SCORE_TONE_STYLES,
@@ -59,6 +61,7 @@ export function SiteControlScreen() {
   const { sites } = useRemoteSites();
   const { createReport } = useReports();
   const { notify } = useToast();
+  const { open: openAssistant, sendMessage } = useAssistant();
 
   const [summary, setSummary] = useState<SiteSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -123,6 +126,27 @@ export function SiteControlScreen() {
   const siteName = summary?.site.name ?? knownSite?.name ?? 'Site';
   const tier = (summary?.site.tier ?? knownSite?.tier ?? 'sentinel') as TrackerTier;
 
+  /**
+   * Opens Ajmani on a question about *this* site, pre-loaded with the figures
+   * already on screen. Naming the site and quoting its numbers in the question
+   * is what makes the answer grounded: the assistant matches the site by name
+   * and can only comment on values the operator can see too.
+   */
+  const askAjmani = () => {
+    const alerts = summary?.alerts?.length ?? 0;
+    const score = summary?.score?.score;
+    const parts = [
+      `À propos du site « ${siteName} »`,
+      score != null ? `score de sécurité ${score}/100` : null,
+      `${alerts} alerte(s) sur les dernières 24 h`,
+      summary?.site.url ? `URL : ${summary.site.url}` : null,
+    ].filter(Boolean);
+    openAssistant('chat');
+    sendMessage(
+      `${parts.join(', ')}. Que dois-je surveiller en priorité sur ce site, et quelles actions concrètes recommandes-tu ? Appuie-toi uniquement sur les données réelles dont tu disposes.`,
+    );
+  };
+
   return (
     <StaggerGroup className="flex flex-col gap-5">
       <StaggerItem>
@@ -158,6 +182,19 @@ export function SiteControlScreen() {
             >
               <RefreshCw size={14} strokeWidth={1.75} />
               <span className="hidden sm:inline">Rafraîchir</span>
+            </button>
+            {/* BLOC 3 — hands Ajmani a question already loaded with this site's
+                real figures, so the operator asks about *this* desk instead of
+                retyping the site name and hoping the assistant matched it. */}
+            <button
+              type="button"
+              onClick={askAjmani}
+              aria-label="Demander à Ajmani"
+              title="Poser une question à Ajmani sur ce site"
+              className="flex items-center gap-2 border border-border px-3 py-2.5 text-sm text-text-secondary transition-colors hover:text-text-primary"
+            >
+              <Sparkles size={14} strokeWidth={1.75} />
+              <span className="hidden sm:inline">Demander à Ajmani</span>
             </button>
             <button
               type="button"
