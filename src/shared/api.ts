@@ -900,6 +900,20 @@ export interface VaultEntry {
   updatedAt: string;
 }
 
+/** One remote-control input event, sent over the call's data channel (B.2). */
+export interface RemoteInputEvent {
+  kind: 'move' | 'down' | 'up' | 'wheel' | 'key';
+  /** Normalised 0..1 position on the shared screen. */
+  x?: number;
+  y?: number;
+  /** 0 left, 1 middle, 2 right. */
+  button?: number;
+  delta?: number;
+  /** Windows virtual-key code. */
+  vk?: number;
+  pressed?: boolean;
+}
+
 export interface AmnBridge {
   auth: {
     login(email: string, password: string): Promise<AuthResult>;
@@ -1084,6 +1098,19 @@ export interface AmnBridge {
     setAutoLaunch(enabled: boolean): Promise<boolean>;
     /** App name / version / platform for the About screen. */
     getAppInfo(): Promise<AppInfo>;
+    /**
+     * Whether this machine can be driven remotely at all (B.2). False in the
+     * browser and on any platform without native input injection, so the UI
+     * can refuse the request honestly instead of granting a control that would
+     * do nothing.
+     */
+    canBeRemoteControlled(): Promise<boolean>;
+    /**
+     * Applies one remote input event to THIS machine. Only ever called while
+     * the operator has explicitly granted control — the consent lives in the
+     * renderer's call state, and the main process is a dumb executor.
+     */
+    injectRemoteInput(event: RemoteInputEvent): Promise<boolean>;
   };
   /** Cyber/tech watch feed, fetched from public RSS sources (Electron main). */
   watch: {
@@ -1203,6 +1230,8 @@ export const IPC = {
   remoteSendCallSignal: 'remote:sendCallSignal',
   remoteCallSignalPush: 'remote:callSignalPush',
   systemNotify: 'system:notify',
+  systemCanRemoteControl: 'system:canRemoteControl',
+  systemInjectRemoteInput: 'system:injectRemoteInput',
   systemGetAutoLaunch: 'system:getAutoLaunch',
   systemSetAutoLaunch: 'system:setAutoLaunch',
   systemGetAppInfo: 'system:getAppInfo',

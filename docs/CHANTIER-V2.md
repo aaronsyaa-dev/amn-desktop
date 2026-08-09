@@ -79,6 +79,23 @@ reste fonctionne — seuls les téléphones fermés ne sonnent plus, et l'écran
 Paramètres le dit explicitement plutôt que d'échouer en silence. Générer la
 paire une fois avec `node -e "console.log(require('web-push').generateVAPIDKeys())"`.
 
+**Contrôle à distance : l'injection passe par `SendInput` (user32) via koffi.**
+`webContents.sendInputEvent()` d'Electron n'injecte que dans la fenêtre
+Electron — inutile pour aider quelqu'un sur SA machine. `robotjs` n'est plus
+maintenu et se recompile à chaque version d'Electron ; `nut.js` récent est
+passé derrière une licence payante ; PowerShell/SendKeys coûte un processus par
+événement. `koffi` appelle directement `SendInput` sans compilation, avec des
+binaires préfabriqués. Conséquence à connaître : `isRemoteInputAvailable()`
+renvoie faux hors Windows, et une demande de contrôle y est alors REFUSÉE avec
+la raison affichée — plutôt que d'accorder un contrôle qui ne ferait rien.
+
+**Le consentement n'est jamais déduit du trafic.** Le processus principal est
+un exécutant : il n'a aucune notion d'autorisation. C'est le renderer qui tient
+l'état, et une trame `input` n'est exécutée que si CE poste a explicitement
+accordé le contrôle. Un pair qui enverrait des événements sans demander — ou
+après révocation — est ignoré, pas cru. Le canal se ferme avec l'appel, ce qui
+révoque le contrôle sans qu'aucun message n'ait besoin d'arriver.
+
 ## Réglages d'exploitation
 
 | Variable | Défaut | Effet |

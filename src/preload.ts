@@ -199,6 +199,8 @@ const bridge: AmnBridge = {
     getAutoLaunch: () => ipcRenderer.invoke(IPC.systemGetAutoLaunch),
     setAutoLaunch: (enabled: boolean) => ipcRenderer.invoke(IPC.systemSetAutoLaunch, enabled),
     getAppInfo: () => ipcRenderer.invoke(IPC.systemGetAppInfo),
+    canBeRemoteControlled: () => ipcRenderer.invoke(IPC.systemCanRemoteControl),
+    injectRemoteInput: (event: unknown) => ipcRenderer.invoke(IPC.systemInjectRemoteInput, event),
   },
   watch: {
     list: () => ipcRenderer.invoke(IPC.watchList),

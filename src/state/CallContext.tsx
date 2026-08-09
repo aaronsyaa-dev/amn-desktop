@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import { bridge } from '../lib/bridge';
 import { useAuth } from '../auth/AuthContext';
-import type { CallSignal, CallSignalKind } from '../shared/api';
+import type { CallSignal, CallSignalKind, RemoteInputEvent } from '../shared/api';
 
 /**
  * Operator-to-operator audio calls (BLOC 2).
@@ -66,6 +66,17 @@ export interface CallState {
   sharingScreen: boolean;
   /** True while the PEER is sharing theirs and we have a live video track. */
   viewingScreen: boolean;
+  /**
+   * Remote control (B.2). Two distinct roles, never both at once:
+   *  - `controlledBy`: someone is driving THIS machine, with our consent.
+   *  - `controlling`: we are driving THEIRS.
+   * `controlRequested` is a pending request waiting for our explicit answer.
+   */
+  controlledBy: string;
+  controlling: boolean;
+  controlRequested: string;
+  /** Why a control request was refused, shown once to the asker. */
+  controlDenied: string;
 }
 
 export interface MissedCall {
@@ -89,6 +100,10 @@ interface CallContextValue extends CallState {
   stopScreenShare: () => Promise<void>;
   /** The peer's screen while they share it — null otherwise. */
   remoteScreen: MediaStream | null;
+  requestControl: () => boolean;
+  answerControl: (accept: boolean) => Promise<void>;
+  stopControl: () => void;
+  sendInput: (event: RemoteInputEvent) => void;
 }
 
 const CallCtx = createContext<CallContextValue | undefined>(undefined);
@@ -102,6 +117,10 @@ const IDLE: CallState = {
   peerOffline: false,
   sharingScreen: false,
   viewingScreen: false,
+  controlledBy: '',
+  controlling: false,
+  controlRequested: '',
+  controlDenied: '',
 };
 
 /**
@@ -143,6 +162,14 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const screenSenderRef = useRef<RTCRtpSender | null>(null);
   /** The peer's screen, handed to the viewer component. */
   const [remoteScreen, setRemoteScreen] = useState<MediaStream | null>(null);
+  /**
+   * Input channel for remote control. Separate from the media path on purpose:
+   * a data channel carries the events without touching the video encoder, and
+   * closing it stops control instantly and unconditionally.
+   */
+  const controlChannelRef = useRef<RTCDataChannel | null>(null);
+  /** Consent, held where the decision is made — never inferred from a message. */
+  const grantedRef = useRef(false);
   const endedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Offer held between "incoming" and the moment the operator accepts. */
   const pendingOfferRef = useRef<RTCSessionDescriptionInit | null>(null);
@@ -195,6 +222,16 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     screenSenderRef.current = null;
     setRemoteScreen(null);
 
+    // Control dies with the call, unconditionally and without needing a
+    // message to arrive: a dropped line must never leave a machine driveable.
+    grantedRef.current = false;
+    try {
+      controlChannelRef.current?.close();
+    } catch {
+      /* already closed */
+    }
+    controlChannelRef.current = null;
+
     if (pcRef.current) {
       pcRef.current.onicecandidate = null;
       pcRef.current.ontrack = null;
@@ -228,6 +265,59 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  /**
+   * Wires the control channel (B.2).
+   *
+   * Every message is checked against the state this side actually holds:
+   * an `input` frame is executed ONLY while `grantedRef` is true, so a peer
+   * that sends input without asking — or after control was revoked — is
+   * ignored rather than trusted. Consent is never inferred from the traffic.
+   */
+  const attachControlChannel = useCallback((channel: RTCDataChannel) => {
+    controlChannelRef.current = channel;
+
+    channel.onmessage = (event) => {
+      let msg: { t?: string; reason?: string; ev?: unknown };
+      try {
+        msg = JSON.parse(String(event.data));
+      } catch {
+        return;
+      }
+
+      if (msg.t === 'control:request') {
+        // Never automatic, never silent: this only raises the question.
+        setState((prev) => ({ ...prev, controlRequested: peerRef.current }));
+      } else if (msg.t === 'control:grant') {
+        setState((prev) => ({ ...prev, controlling: true, controlDenied: '' }));
+      } else if (msg.t === 'control:deny') {
+        setState((prev) => ({
+          ...prev,
+          controlling: false,
+          controlDenied: msg.reason || 'Contrôle refusé.',
+        }));
+      } else if (msg.t === 'control:stop') {
+        grantedRef.current = false;
+        setState((prev) => ({ ...prev, controlling: false, controlledBy: '', controlRequested: '' }));
+      } else if (msg.t === 'input') {
+        if (!grantedRef.current) return;
+        void bridge().system.injectRemoteInput(msg.ev as RemoteInputEvent).catch(() => false);
+      }
+    };
+
+    // A dropped connection must not leave a machine under someone else's
+    // control: closing the channel revokes it, with no message required.
+    const revoke = () => {
+      grantedRef.current = false;
+      setState((prev) =>
+        prev.controlledBy || prev.controlling || prev.controlRequested
+          ? { ...prev, controlledBy: '', controlling: false, controlRequested: '' }
+          : prev,
+      );
+    };
+    channel.onclose = revoke;
+    channel.onerror = revoke;
+  }, []);
+
   /** Builds the peer connection and attaches the microphone. */
   const preparePeer = useCallback(
     async (peerEmail: string, callId: string): Promise<RTCPeerConnection> => {
@@ -237,6 +327,13 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       const pc = new RTCPeerConnection({ iceServers: STUN_SERVERS });
       pcRef.current = pc;
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
+      // The control channel is created by BOTH sides at call setup (negotiated
+      // with a fixed id) rather than by whoever shares later: creating it during
+      // a renegotiation would need yet another round trip, and an input path
+      // that appears mid-session is harder to reason about than one that is
+      // simply always there and always idle until control is granted.
+      attachControlChannel(pc.createDataChannel('amn-control', { negotiated: true, id: 7 }));
 
       pc.onicecandidate = (event) => {
         if (event.candidate) {
@@ -307,7 +404,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
       return pc;
     },
-    [send, teardown],
+    [send, teardown, attachControlChannel],
   );
 
   const call = useCallback(
@@ -529,6 +626,72 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const stopScreenShareRef = useRef<(() => Promise<void>) | null>(null);
   stopScreenShareRef.current = stopScreenShare;
 
+  // --- Contrôle à distance (B.2) -------------------------------------------
+
+  const sendControl = useCallback((payload: Record<string, unknown>): boolean => {
+    const channel = controlChannelRef.current;
+    if (!channel || channel.readyState !== 'open') return false;
+    try {
+      channel.send(JSON.stringify(payload));
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  /** Asks the peer for control of their machine. They must accept explicitly. */
+  const requestControl = useCallback((): boolean => {
+    setState((prev) => ({ ...prev, controlDenied: '' }));
+    return sendControl({ t: 'control:request' });
+  }, [sendControl]);
+
+  /**
+   * Answers a pending request. Granting is the ONLY thing that opens the input
+   * path, and it refuses itself when this machine cannot be driven at all —
+   * saying so is better than granting a control that would silently do nothing.
+   */
+  const answerControl = useCallback(
+    async (accept: boolean): Promise<void> => {
+      if (!accept) {
+        grantedRef.current = false;
+        setState((prev) => ({ ...prev, controlRequested: '', controlledBy: '' }));
+        sendControl({ t: 'control:deny', reason: 'Contrôle refusé.' });
+        return;
+      }
+
+      const capable = await bridge().system.canBeRemoteControlled().catch(() => false);
+      if (!capable) {
+        setState((prev) => ({ ...prev, controlRequested: '', controlledBy: '' }));
+        sendControl({
+          t: 'control:deny',
+          reason: "Ce poste ne peut pas être piloté à distance (fonction indisponible).",
+        });
+        return;
+      }
+
+      grantedRef.current = true;
+      setState((prev) => ({ ...prev, controlledBy: peerRef.current, controlRequested: '' }));
+      sendControl({ t: 'control:grant' });
+    },
+    [sendControl],
+  );
+
+  /** Ends control, from either side. Always available, always immediate. */
+  const stopControl = useCallback(() => {
+    grantedRef.current = false;
+    setState((prev) => ({ ...prev, controlledBy: '', controlling: false, controlRequested: '' }));
+    sendControl({ t: 'control:stop' });
+  }, [sendControl]);
+
+  /** Sends one input event while controlling. No-op otherwise. */
+  const sendInput = useCallback(
+    (event: RemoteInputEvent) => {
+      if (!stateRef.current.controlling) return;
+      sendControl({ t: 'input', ev: event });
+    },
+    [sendControl],
+  );
+
   // --- Inbound signalling -------------------------------------------------
   //
   // Kept in a ref-driven effect with a stable subscription: re-subscribing on
@@ -701,6 +864,10 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       startScreenShare,
       stopScreenShare,
       remoteScreen,
+      requestControl,
+      answerControl,
+      stopControl,
+      sendInput,
     }),
     [
       state,
@@ -715,6 +882,10 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       startScreenShare,
       stopScreenShare,
       remoteScreen,
+      requestControl,
+      answerControl,
+      stopControl,
+      sendInput,
     ],
   );
 

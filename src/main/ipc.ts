@@ -24,6 +24,7 @@ import {
   type UpdateObjectiveInput,
   type UpdateQuoteInput,
   type UpdateSharedTaskInput,
+  type RemoteInputEvent,
 } from '../shared/api';
 import {
   addClientEvent,
@@ -72,6 +73,7 @@ import { ollamaStatus, ollamaChat } from './ollama';
 import { getAutoLaunch, setAutoLaunch } from './windowsIntegration';
 import { isVaultEncryptionAvailable, loadVault, saveVault } from './vault';
 import { getDb } from './db';
+import { injectRemoteInput, isRemoteInputAvailable } from './remoteInput';
 import { pushClient, pushQuote } from './clientsSync';
 
 /** Registers the IPC handlers backing `window.amn` in the renderer. */
@@ -315,6 +317,14 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
       });
       notification.show();
     },
+  );
+
+  // Remote control (B.2). The main process is a dumb executor: it never
+  // decides whether control is allowed — the renderer holds the consent state,
+  // and only sends events while the operator has granted control.
+  ipcMain.handle(IPC.systemCanRemoteControl, () => isRemoteInputAvailable());
+  ipcMain.handle(IPC.systemInjectRemoteInput, (_event, input: RemoteInputEvent) =>
+    injectRemoteInput(input),
   );
 
   // Launch-at-login toggle (Settings → "Démarrer avec Windows"). Delegated to

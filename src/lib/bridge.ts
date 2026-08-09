@@ -1132,6 +1132,15 @@ function createBrowserBridge(): AmnBridge {
       async getAppInfo() {
         return { name: 'AMN Desktop', version: '0.0.0-dev', platform: 'web', isElectron: false };
       },
+      // A browser tab cannot be driven: it has no way to move the real cursor.
+      // Saying so plainly is what lets the other side refuse the request with a
+      // reason instead of granting a control that does nothing.
+      async canBeRemoteControlled() {
+        return false;
+      },
+      async injectRemoteInput() {
+        return false;
+      },
     },
     watch: {
       // RSS fetching needs the Electron main process (cross-origin). The browser
