@@ -62,6 +62,10 @@ export interface CallState {
    * that wakes up can still catch it. It only changes what the caller reads.
    */
   peerOffline: boolean;
+  /** True while WE are sharing our screen with the peer (BLOC B). */
+  sharingScreen: boolean;
+  /** True while the PEER is sharing theirs and we have a live video track. */
+  viewingScreen: boolean;
 }
 
 export interface MissedCall {
@@ -80,6 +84,11 @@ interface CallContextValue extends CallState {
   toggleMute: () => void;
   missed: MissedCall[];
   clearMissed: () => void;
+  /** Starts sharing this screen; resolves to an error message, or null. */
+  startScreenShare: () => Promise<string | null>;
+  stopScreenShare: () => Promise<void>;
+  /** The peer's screen while they share it — null otherwise. */
+  remoteScreen: MediaStream | null;
 }
 
 const CallCtx = createContext<CallContextValue | undefined>(undefined);
@@ -91,6 +100,8 @@ const IDLE: CallState = {
   muted: false,
   durationSec: 0,
   peerOffline: false,
+  sharingScreen: false,
+  viewingScreen: false,
 };
 
 /**
@@ -127,6 +138,11 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const durationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   /** Re-sends the offer while ringing, so a push-woken device can still answer. */
   const reofferTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** The screen capture we are sending, and the sender it is attached to. */
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  const screenSenderRef = useRef<RTCRtpSender | null>(null);
+  /** The peer's screen, handed to the viewer component. */
+  const [remoteScreen, setRemoteScreen] = useState<MediaStream | null>(null);
   const endedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Offer held between "incoming" and the moment the operator accepts. */
   const pendingOfferRef = useRef<RTCSessionDescriptionInit | null>(null);
@@ -170,6 +186,14 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
     localStreamRef.current?.getTracks().forEach((track) => track.stop());
     localStreamRef.current = null;
+
+    // A screen capture left running keeps the OS "partage en cours" indicator
+    // on and the frames flowing — the video equivalent of a hot microphone,
+    // and the worst thing this feature can leak.
+    screenStreamRef.current?.getTracks().forEach((track) => track.stop());
+    screenStreamRef.current = null;
+    screenSenderRef.current = null;
+    setRemoteScreen(null);
 
     if (pcRef.current) {
       pcRef.current.onicecandidate = null;
@@ -221,6 +245,25 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       };
 
       pc.ontrack = (event) => {
+        // Video means the peer started sharing their screen. It is handed to
+        // React rather than to a hidden element: this one has a UI.
+        if (event.track.kind === 'video') {
+          const stream = event.streams[0] ?? new MediaStream([event.track]);
+          setRemoteScreen(stream);
+          setState((prev) => ({ ...prev, viewingScreen: true }));
+          event.track.onended = () => {
+            setRemoteScreen(null);
+            setState((prev) => ({ ...prev, viewingScreen: false }));
+          };
+          // `mute` fires when the sender removes the track without ending the
+          // call — stopping the share must clear the viewer either way.
+          event.track.onmute = () => {
+            setRemoteScreen(null);
+            setState((prev) => ({ ...prev, viewingScreen: false }));
+          };
+          return;
+        }
+
         // The element is attached to <body> rather than kept detached: a
         // detached media element is not guaranteed to keep playing in Chromium,
         // and this is the one part of the call the operator actually hears. It
@@ -392,6 +435,100 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
   const clearMissed = useCallback(() => setMissed([]), []);
 
+  // --- Partage d'écran (BLOC B) --------------------------------------------
+  //
+  // The screen rides the SAME peer connection as the audio: one connection, one
+  // ICE negotiation, one thing to tear down. Adding the track means the call
+  // must be renegotiated, which is why `renegotiate` exists as its own signal
+  // kind — a second plain `offer` would be read as a new incoming call.
+
+  const startScreenShare = useCallback(async (): Promise<string | null> => {
+    const pc = pcRef.current;
+    const to = peerRef.current;
+    const callId = callIdRef.current;
+    if (!pc || !to || !callId) return "Aucun appel en cours.";
+    if (screenSenderRef.current) return null; // already sharing
+
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia({
+        // Latency over compression: a support session needs the cursor to move
+        // now, not to look pretty in three frames' time.
+        video: { frameRate: { ideal: 15, max: 30 } },
+        audio: false,
+      });
+    } catch (err) {
+      const name = err instanceof Error ? err.name : "";
+      return name === "NotAllowedError"
+        ? "Partage refusé — autorisez la capture d'écran."
+        : "Capture d'écran indisponible sur ce poste.";
+    }
+
+    const track = stream.getVideoTracks()[0];
+    if (!track) {
+      stream.getTracks().forEach((t) => t.stop());
+      return "Aucun écran à partager.";
+    }
+
+    screenStreamRef.current = stream;
+    screenSenderRef.current = pc.addTrack(track, stream);
+    setState((prev) => ({ ...prev, sharingScreen: true }));
+
+    // Stopping from the OS's own "arrêter le partage" bar must land in the same
+    // place as stopping from ours, or the UI would keep claiming to share.
+    track.onended = () => {
+      void stopScreenShareRef.current?.();
+    };
+
+    // Encoding tuned once the sender exists: motion over detail, and a ceiling
+    // so a 4K screen doesn't saturate the uplink and add seconds of latency.
+    try {
+      const params = screenSenderRef.current.getParameters();
+      params.degradationPreference = "maintain-framerate";
+      params.encodings = [{ maxBitrate: 2_500_000, maxFramerate: 30 }];
+      await screenSenderRef.current.setParameters(params);
+    } catch {
+      /* older stacks ignore this; the share still works, just less tuned */
+    }
+
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      await send(to, "renegotiate", callId, offer);
+    } catch {
+      return "La renégociation de l'appel a échoué.";
+    }
+    return null;
+  }, [send]);
+
+  const stopScreenShare = useCallback(async (): Promise<void> => {
+    const pc = pcRef.current;
+    const sender = screenSenderRef.current;
+    screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+    screenStreamRef.current = null;
+    screenSenderRef.current = null;
+    setState((prev) => ({ ...prev, sharingScreen: false }));
+    if (!pc || !sender) return;
+
+    try {
+      pc.removeTrack(sender);
+      const to = peerRef.current;
+      const callId = callIdRef.current;
+      if (to && callId) {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await send(to, "renegotiate", callId, offer);
+      }
+    } catch {
+      /* the tracks are already stopped — nothing is still being captured */
+    }
+  }, [send]);
+
+  // The OS "stop sharing" handler is installed before stopScreenShare exists,
+  // so it goes through a ref rather than capturing a stale closure.
+  const stopScreenShareRef = useRef<(() => Promise<void>) | null>(null);
+  stopScreenShareRef.current = stopScreenShare;
+
   // --- Inbound signalling -------------------------------------------------
   //
   // Kept in a ref-driven effect with a stable subscription: re-subscribing on
@@ -485,6 +622,32 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         } else {
           teardown('Appel terminé.');
         }
+      } else if (signal.kind === 'renegotiate') {
+        // The peer added or removed their screen track on the live call.
+        // Answering is unconditional: it changes what we RECEIVE, and refusing
+        // would leave the connection in a half-negotiated state.
+        const pc = pcRef.current;
+        if (!pc) return;
+        void (async () => {
+          try {
+            await pc.setRemoteDescription(
+              new RTCSessionDescription(signal.payload as RTCSessionDescriptionInit),
+            );
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            await send(from, 'renegotiate-answer', signal.callId, answer);
+          } catch {
+            /* a failed renegotiation must never drop the audio call itself */
+          }
+        })();
+      } else if (signal.kind === 'renegotiate-answer') {
+        const pc = pcRef.current;
+        if (!pc) return;
+        void pc
+          .setRemoteDescription(
+            new RTCSessionDescription(signal.payload as RTCSessionDescriptionInit),
+          )
+          .catch(() => undefined);
       } else if (signal.kind === 'undelivered') {
         // The hub had no socket for the callee. This used to end the call on
         // the spot — which made the Web Push pointless: the phone rang, the
@@ -535,8 +698,24 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       toggleMute,
       missed,
       clearMissed,
+      startScreenShare,
+      stopScreenShare,
+      remoteScreen,
     }),
-    [state, callsAvailable, call, accept, reject, hangup, toggleMute, missed, clearMissed],
+    [
+      state,
+      callsAvailable,
+      call,
+      accept,
+      reject,
+      hangup,
+      toggleMute,
+      missed,
+      clearMissed,
+      startScreenShare,
+      stopScreenShare,
+      remoteScreen,
+    ],
   );
 
   return <CallCtx.Provider value={value}>{children}</CallCtx.Provider>;

@@ -716,7 +716,16 @@ export type CallSignalKind =
   | 'hangup'
   | 'reject'
   | 'busy'
-  | 'undelivered';
+  | 'undelivered'
+  /**
+   * Renegotiation of an ALREADY established call — adding or removing the
+   * screen-share video track (BLOC B). Distinct kinds rather than reusing
+   * offer/answer: a second `offer` on a live call would otherwise be read as a
+   * new incoming call, and the callee would answer "occupé" to the very call
+   * it is already in.
+   */
+  | 'renegotiate'
+  | 'renegotiate-answer';
 
 export interface CallSignal {
   type: 'signal';

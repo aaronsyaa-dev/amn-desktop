@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Mic, MicOff, Phone, PhoneIncoming, PhoneOff } from 'lucide-react';
+import { Maximize2, Mic, MicOff, Monitor, MonitorOff, Phone, PhoneIncoming, PhoneOff, X } from 'lucide-react';
 import { useCall, formatDuration } from '../../state/CallContext';
 import { useProfiles } from '../../state/ProfilesContext';
 import { useToast } from '../../state/ToastContext';
@@ -142,6 +142,82 @@ function IncomingCallNotifier({ phase, name }: { phase: string; name: string }) 
   return null;
 }
 
+/**
+ * The peer's screen while they share it (BLOC B).
+ *
+ * A floating panel rather than a full-screen takeover: the point of remote
+ * assistance is to keep working while looking at the other machine. Fullscreen
+ * is one click away for when the detail matters.
+ */
+function ScreenViewer({ stream, peerName }: { stream: MediaStream; peerName: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [hidden, setHidden] = useState(false);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    el.srcObject = stream;
+    void el.play().catch(() => undefined);
+  }, [stream]);
+
+  if (hidden) {
+    return (
+      <button
+        type="button"
+        onClick={() => setHidden(false)}
+        className="elev-2 fixed bottom-24 right-6 z-[236] flex items-center gap-2 rounded-xl border border-border-strong bg-surface px-3 py-2 text-xs text-text-secondary transition-colors hover:text-text-primary"
+      >
+        <Monitor size={14} strokeWidth={1.75} />
+        Revoir l’écran de {peerName}
+      </button>
+    );
+  }
+
+  return (
+    <motion.div
+      ref={frameRef}
+      initial={{ opacity: 0, y: 14, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 10 }}
+      transition={TRANSITION}
+      className="elev-3 fixed bottom-24 right-6 z-[236] w-[min(38rem,calc(100vw-3rem))] overflow-hidden rounded-2xl border border-border-strong bg-black"
+    >
+      <div className="flex items-center gap-2 border-b border-border bg-surface px-3 py-2">
+        <Monitor size={13} strokeWidth={2} className="text-accent" />
+        <p className="flex-1 truncate font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
+          Écran de {peerName}
+        </p>
+        <button
+          type="button"
+          onClick={() => void frameRef.current?.requestFullscreen?.().catch(() => undefined)}
+          aria-label="Plein écran"
+          title="Plein écran"
+          className="rounded-md p-1 text-text-muted transition-colors hover:text-text-primary"
+        >
+          <Maximize2 size={14} strokeWidth={1.75} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setHidden(true)}
+          aria-label="Masquer l’écran partagé"
+          title="Masquer"
+          className="rounded-md p-1 text-text-muted transition-colors hover:text-text-primary"
+        >
+          <X size={14} strokeWidth={1.75} />
+        </button>
+      </div>
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="block max-h-[60vh] w-full bg-black object-contain"
+      />
+    </motion.div>
+  );
+}
+
 export function CallOverlay() {
   const {
     phase,
@@ -150,6 +226,10 @@ export function CallOverlay() {
     muted,
     durationSec,
     peerOffline,
+    sharingScreen,
+    remoteScreen,
+    startScreenShare,
+    stopScreenShare,
     accept,
     reject,
     hangup,
@@ -158,12 +238,28 @@ export function CallOverlay() {
   const { profileFor } = useProfiles();
   const peer = profileFor(peerEmail);
 
+  const { notify } = useToast();
   useRingtone(phase === 'incoming');
+
+  const toggleShare = async () => {
+    if (sharingScreen) {
+      await stopScreenShare();
+      return;
+    }
+    const error = await startScreenShare();
+    if (error) notify({ title: 'Partage d’écran', body: error, durationMs: 6000 });
+  };
 
   return (
     <>
       <MissedCallNotifier />
       <IncomingCallNotifier phase={phase} name={peer.name} />
+
+      <AnimatePresence>
+        {remoteScreen && phase !== 'idle' && (
+          <ScreenViewer key="screen-viewer" stream={remoteScreen} peerName={peer.name} />
+        )}
+      </AnimatePresence>
 
       {/* Incoming call — a modal sheet, because it needs an answer now. */}
       <AnimatePresence>
@@ -266,6 +362,26 @@ export function CallOverlay() {
                 }`}
               >
                 {muted ? <MicOff size={16} strokeWidth={1.75} /> : <Mic size={16} strokeWidth={1.75} />}
+              </button>
+            )}
+
+            {(phase === 'active' || phase === 'connecting') && (
+              <button
+                type="button"
+                onClick={() => void toggleShare()}
+                aria-label={sharingScreen ? 'Arrêter le partage d’écran' : 'Partager mon écran'}
+                title={sharingScreen ? 'Arrêter le partage d’écran' : 'Partager mon écran'}
+                className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${
+                  sharingScreen
+                    ? 'border-accent bg-accent text-bg'
+                    : 'border-border text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                {sharingScreen ? (
+                  <MonitorOff size={16} strokeWidth={1.75} />
+                ) : (
+                  <Monitor size={16} strokeWidth={1.75} />
+                )}
               </button>
             )}
 
