@@ -1,31 +1,19 @@
 import WebSocket from 'ws';
-import { remoteConfig, isRemoteConfigured } from './remoteConfig';
-import { writeScanReportFile } from './scanReports';
+import { remoteConfig, isRemoteConfigured, apiCredential } from './remoteConfig';
 import type {
   CallSignal,
-  SslStatus,
-  CreateScheduleInput,
   ProductRegression,
-  ProductSchedule,
-  OrgOverview,
-  SiteBadge,
+  OrgIdentity,
+  RemoteSession,
+  RemoteSessionUser,
   OutgoingCallSignal,
   PresenceEntry,
-  RegisterSiteResult,
   RemoteConnectionStatus,
-  RemoteEvent,
   RemoteEventPush,
   RemoteRecord,
-  RemoteSite,
-  ComplyCheck,
   ComplyProgress,
-  Scan,
   ScanProgress,
-  ScanTier,
-  SiteDigest,
-  SiteSummary,
   SyncedCollection,
-  TrackerTier,
 } from '../shared/api';
 
 const RECONNECT_DELAYS_MS = [1000, 2000, 5000, 10000, 20000, 30000];
@@ -37,7 +25,7 @@ function log(...args: unknown[]): void {
 }
 /* eslint-enable no-console */
 
-async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!isRemoteConfigured()) {
     // Without AMN_API_URL/AMN_API_OPERATOR_TOKEN set (.env), remoteConfig.apiUrl
     // is empty and `fetch('' + path, …)` throws an opaque "Failed to parse URL"
@@ -50,7 +38,7 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${remoteConfig.operatorToken}`,
+      Authorization: `Bearer ${apiCredential()}`,
       ...init.headers,
     },
   });
@@ -90,115 +78,14 @@ export class RemoteApiClient {
    */
   private reconnectingOnPurpose = false;
 
-  async listSites(): Promise<RemoteSite[]> {
-    const { sites } = await apiFetch<{ sites: RemoteSite[] }>('/v1/sites');
-    return sites;
-  }
-
-  async getSiteEvents(
-    siteId: string,
-    opts: { since?: string; limit?: number } = {},
-  ): Promise<RemoteEvent[]> {
-    const params = new URLSearchParams();
-    if (opts.since) params.set('since', opts.since);
-    if (opts.limit) params.set('limit', String(opts.limit));
-    const qs = params.toString();
-    const { events } = await apiFetch<{ events: RemoteEvent[] }>(
-      `/v1/sites/${siteId}/events${qs ? `?${qs}` : ''}`,
-    );
-    return events;
-  }
-
   /* ------------------ SSL Monitor (BLOC 6) ------------------ */
 
-  async listSslStatus(): Promise<SslStatus[]> {
-    const { statuses } = await apiFetch<{ statuses: SslStatus[] }>('/v1/ssl');
-    return statuses;
-  }
-
-  async checkSsl(host: string): Promise<SslStatus> {
-    const { status } = await apiFetch<{ status: SslStatus }>('/v1/ssl/check', {
-      method: 'POST',
-      body: JSON.stringify({ host }),
-    });
-    return status;
-  }
-
   /* ------------------ Recurring runs (BLOC 5) ------------------ */
-
-  async listSchedules(): Promise<ProductSchedule[]> {
-    const { schedules } = await apiFetch<{ schedules: ProductSchedule[] }>('/v1/schedules');
-    return schedules;
-  }
-
-  async createSchedule(input: CreateScheduleInput): Promise<ProductSchedule> {
-    const { schedule } = await apiFetch<{ schedule: ProductSchedule }>('/v1/schedules', {
-      method: 'POST',
-      body: JSON.stringify(input),
-    });
-    return schedule;
-  }
-
-  async deleteSchedule(id: string): Promise<void> {
-    await apiFetch<{ ok: boolean }>(`/v1/schedules/${encodeURIComponent(id)}`, { method: 'DELETE' });
-  }
 
   /** Regression notices pushed after a scheduled run came back worse. */
   onProductRegression(listener: (r: ProductRegression) => void): () => void {
     this.regressionListeners.add(listener);
     return () => this.regressionListeners.delete(listener);
-  }
-
-  /** Cross-site SOC aggregation, computed by amn-api for this org. */
-  async getOrgOverview(days: number): Promise<OrgOverview> {
-    return apiFetch<OrgOverview>(`/v1/sites/overview?days=${encodeURIComponent(String(days))}`);
-  }
-
-  /** Issues (once) and returns the site's public embeddable security badge. */
-  async getSiteBadge(siteId: string): Promise<SiteBadge> {
-    return apiFetch<SiteBadge>(`/v1/sites/${siteId}/badge`);
-  }
-
-  async registerSite(name: string): Promise<RegisterSiteResult> {
-    return apiFetch<RegisterSiteResult>('/v1/sites', {
-      method: 'POST',
-      body: JSON.stringify({ name }),
-    });
-  }
-
-  async updateSite(id: string, name: string): Promise<RemoteSite> {
-    const { site } = await apiFetch<{ site: RemoteSite }>(`/v1/sites/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify({ name }),
-    });
-    return site;
-  }
-
-  /**
-   * Changes supervision settings only. amn-api applies a partial patch, so
-   * omitting `name` here leaves it untouched rather than blanking it.
-   */
-  async configureSite(id: string, patch: { tier?: TrackerTier; url?: string | null }): Promise<RemoteSite> {
-    const { site } = await apiFetch<{ site: RemoteSite }>(`/v1/sites/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(patch),
-    });
-    return site;
-  }
-
-  /** Traffic curve, alert history and security score for a site's control desk. */
-  async getSiteSummary(id: string, hours = 24): Promise<SiteSummary> {
-    return apiFetch<SiteSummary>(`/v1/sites/${id}/summary?hours=${hours}`);
-  }
-
-  /** Structured weekly digest, computed on demand by amn-api. */
-  async getSiteDigest(id: string): Promise<SiteDigest> {
-    const { digest } = await apiFetch<{ digest: SiteDigest }>(`/v1/sites/${id}/digest`);
-    return digest;
-  }
-
-  async deleteSite(id: string): Promise<void> {
-    await apiFetch<{ ok: boolean }>(`/v1/sites/${id}`, { method: 'DELETE' });
   }
 
   getConnectionStatus(): RemoteConnectionStatus {
@@ -234,67 +121,12 @@ export class RemoteApiClient {
 
   /* ------------------------------- Scanner ------------------------------- */
 
-  async startScan(url: string, tier: ScanTier): Promise<Scan> {
-    const { scan } = await apiFetch<{ scan: Scan }>('/v1/scan', {
-      method: 'POST',
-      body: JSON.stringify({ url, tier }),
-    });
-    return scan;
-  }
-
-  async listScans(): Promise<Scan[]> {
-    const { scans } = await apiFetch<{ scans: Scan[] }>('/v1/scans');
-    return scans;
-  }
-
-  async getScan(id: string): Promise<Scan> {
-    const { scan } = await apiFetch<{ scan: Scan }>(`/v1/scans/${encodeURIComponent(id)}`);
-    return scan;
-  }
-
-  /**
-   * Fetches the printable Elite report and returns it as a data: URL. The
-   * renderer opens that in a window and prints it — the operator token stays in
-   * the main process and never reaches a URL the renderer could leak.
-   */
-  async scanReportUrl(id: string): Promise<string> {
-    const res = await fetch(`${remoteConfig.apiUrl}/v1/scans/${encodeURIComponent(id)}/pdf`, {
-      headers: { Authorization: `Bearer ${remoteConfig.operatorToken}` },
-    });
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      throw new Error(`amn-api ${res.status} ${res.statusText}: ${body.slice(0, 200)}`);
-    }
-    const html = await res.text();
-    return writeScanReportFile(html);
-  }
-
   onScanProgress(listener: (progress: ScanProgress) => void): () => void {
     this.scanListeners.add(listener);
     return () => this.scanListeners.delete(listener);
   }
 
   /* ------------------------------- Comply -------------------------------- */
-
-  async startComply(url: string): Promise<ComplyCheck> {
-    const { check } = await apiFetch<{ check: ComplyCheck }>('/v1/comply', {
-      method: 'POST',
-      body: JSON.stringify({ url }),
-    });
-    return check;
-  }
-
-  async listComplyChecks(): Promise<ComplyCheck[]> {
-    const { checks } = await apiFetch<{ checks: ComplyCheck[] }>('/v1/comply-checks');
-    return checks;
-  }
-
-  async getComplyCheck(id: string): Promise<ComplyCheck> {
-    const { check } = await apiFetch<{ check: ComplyCheck }>(
-      `/v1/comply-checks/${encodeURIComponent(id)}`,
-    );
-    return check;
-  }
 
   onComplyProgress(listener: (progress: ComplyProgress) => void): () => void {
     this.complyListeners.add(listener);
@@ -305,6 +137,102 @@ export class RemoteApiClient {
     if (!isRemoteConfigured()) return [];
     const { users } = await apiFetch<{ users: PresenceEntry[] }>('/v1/collections/_presence');
     return users;
+  }
+
+  /* ----------------------------- Session amn-api ---------------------------- */
+
+  /**
+   * Ouvre une session nominative et bascule tout le client dessus.
+   *
+   * Volontairement hors de `apiFetch` : cette route est publique, et une
+   * installation cliente n'a AUCUN justificatif avant d'avoir réussi ce
+   * premier appel — `apiFetch` la refuserait au motif que rien n'est configuré.
+   */
+  async login(email: string, password: string): Promise<RemoteSession> {
+    const session = await this.publicPost<RemoteSession>('/v1/auth/login', { email, password });
+    this.applySession(session.token);
+    return session;
+  }
+
+  /**
+   * Revalide un jeton stocké. Renvoie `null` s'il n'est plus bon (expiré,
+   * compte ou organisation suspendus) — l'app redemande alors une connexion
+   * plutôt que de rester sur une session morte qui échouerait appel par appel.
+   */
+  async restoreSession(token: string): Promise<RemoteSession | null> {
+    if (!remoteConfig.apiUrl || !token) return null;
+    const previous = remoteConfig.sessionToken;
+    remoteConfig.sessionToken = token;
+    try {
+      const me = await apiFetch<{
+        org: OrgIdentity | null;
+        user: RemoteSessionUser | null;
+      }>('/v1/auth/me');
+      if (!me.user || !me.org) throw new Error('session sans utilisateur');
+      this.applySession(token);
+      return { token, expiresAt: '', user: me.user, org: me.org };
+    } catch {
+      remoteConfig.sessionToken = previous;
+      return null;
+    }
+  }
+
+  /** Ferme la session côté serveur puis repasse au jeton opérateur, s'il y en a un. */
+  async clearSession(): Promise<void> {
+    if (remoteConfig.sessionToken) {
+      await this.publicPost('/v1/auth/logout', {}, remoteConfig.sessionToken).catch(() => {
+        /* le jeton est abandonné côté client de toute façon */
+      });
+    }
+    this.applySession(null);
+  }
+
+  private async publicPost<T>(path: string, body: unknown, bearer?: string): Promise<T> {
+    if (!remoteConfig.apiUrl) {
+      throw new Error(
+        "L'API centrale (amn-api) n'est pas configurée sur ce poste — AMN_API_URL manquant. Voir docs/ARCHITECTURE.md.",
+      );
+    }
+    const res = await fetch(`${remoteConfig.apiUrl}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      // amn-api écrit ses refus pour l'utilisateur final (« Votre accès a été
+      // suspendu… ») : les remonter tels quels vaut mieux qu'un code HTTP nu.
+      const detail = await res
+        .json()
+        .then((b: { error?: string }) => b?.error)
+        .catch(() => undefined);
+      throw new Error(detail || `amn-api ${res.status} ${res.statusText}`);
+    }
+    return res.json() as Promise<T>;
+  }
+
+  /**
+   * Applique un changement de justificatif : la WebSocket doit se refaire, sans
+   * quoi le flux temps réel resterait celui de l'organisation précédente — le
+   * cas exact qui ferait fuiter des enregistrements d'un tenant à l'autre.
+   */
+  private applySession(token: string | null): void {
+    remoteConfig.sessionToken = token ?? '';
+    if (!isRemoteConfigured()) {
+      // Plus aucun justificatif (déconnexion sur un poste client) : on coupe.
+      this.stop();
+      this.setStatus('unconfigured');
+      return;
+    }
+    this.stopped = false;
+    if (this.ws) {
+      this.reconnectingOnPurpose = true;
+      this.ws.close();
+    } else {
+      this.connect();
+    }
   }
 
   /** Sets the signed-in operator's identity, reconnecting the WS so presence updates. */
@@ -413,7 +341,7 @@ export class RemoteApiClient {
     this.setStatus('connecting');
 
     const wsBase = remoteConfig.apiUrl.replace(/^http/, 'ws');
-    const base = `${wsBase}/v1/stream?token=${encodeURIComponent(remoteConfig.operatorToken)}`;
+    const base = `${wsBase}/v1/stream?token=${encodeURIComponent(apiCredential())}`;
     const wsUrl = this.identity ? `${base}&user=${encodeURIComponent(this.identity)}` : base;
     // Redacted URL for logs — never print the token.
     log(`WS connecting to ${wsBase}/v1/stream (user=${this.identity ?? 'none'})`);

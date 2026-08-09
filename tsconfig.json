@@ -13,6 +13,20 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "jsx": "react-jsx",
-    "strict": true
+    "strict": true,
+    // Points d'entrée résolus à la compilation selon l'édition construite.
+    // Ici : l'édition interne (le défaut). `tsconfig.business.json` refait la
+    // même vérification contre les variantes Business, ce qui garantit que les
+    // deux faces de la couture exposent bien le même contrat.
+    "paths": {
+      "@edition/modules": ["src/edition/modules.internal.ts"],
+      "@edition/changelog": ["src/edition/changelog.internal.ts"],
+      "@edition/seeds": ["src/edition/seeds.internal.ts"],
+      "@edition/browserExclusive": ["src/edition/browserExclusive.internal.ts"],
+      "@edition/exclusive": ["src/edition/exclusive.internal.tsx"],
+      "@edition/appRoot": ["src/edition/appRoot.internal.tsx"],
+      "@edition/mainExclusive": ["src/main/exclusive.internal.ts"],
+      "@edition/preloadExclusive": ["src/preload.exclusive.internal.ts"]
+    }
   }
 }

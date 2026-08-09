@@ -17,6 +17,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useNotes, type Note } from '../state/useNotes';
+import { TEAM_ENABLED } from '@edition/exclusive';
 import { useUndo } from '../state/UndoContext';
 import { SaveIndicator } from '../components/SaveIndicator';
 import { Markdown } from '../lib/markdown';
@@ -71,19 +72,20 @@ export function NotesScreen() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-text-primary">Notes</h1>
           <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
-            Bloc-notes · {notes.length} note{notes.length > 1 ? 's' : ''} · perso &amp; équipe
+            Bloc-notes · {notes.length} note{notes.length > 1 ? 's' : ''}
+            {TEAM_ENABLED ? ' · perso & équipe' : ''}
           </p>
         </div>
         <div className="relative">
           <button
             type="button"
-            onClick={() => setNewMenuOpen((v) => !v)}
+            onClick={() => (TEAM_ENABLED ? setNewMenuOpen((v) => !v) : startNew('team'))}
             className="flex items-center gap-2 bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
           >
             <Plus size={16} strokeWidth={2.25} />
             Nouvelle note
           </button>
-          {newMenuOpen && (
+          {TEAM_ENABLED && newMenuOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setNewMenuOpen(false)} />
               <div className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-xl border border-border bg-surface elev-2">
@@ -124,6 +126,7 @@ export function NotesScreen() {
                 className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
               />
             </div>
+            {TEAM_ENABLED && (
             <div className="flex items-center gap-1">
               {(['all', 'personal', 'team'] as ScopeFilter[]).map((s) => (
                 <button
@@ -138,6 +141,7 @@ export function NotesScreen() {
                 </button>
               ))}
             </div>
+            )}
           </div>
           <motion.div
             variants={staggerContainer}
@@ -161,7 +165,7 @@ export function NotesScreen() {
                   }`}
                 >
                   {note.id === selectedId && <span className="absolute left-0 top-0 h-full w-0.5 bg-accent" />}
-                  {note.scope === 'personal' ? (
+                  {!TEAM_ENABLED ? null : note.scope === 'personal' ? (
                     <Lock size={13} strokeWidth={1.75} className="mt-0.5 flex-shrink-0 text-text-muted" />
                   ) : (
                     <Users size={13} strokeWidth={1.75} className="mt-0.5 flex-shrink-0 text-text-muted" />
@@ -278,13 +282,15 @@ function NoteEditor({
   return (
     <div className="flex min-h-0 flex-col border border-border bg-surface">
       <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-        <span
-          className="flex items-center gap-1 rounded-md border border-border bg-bg px-2 py-1 font-mono text-[9px] uppercase tracking-widest text-text-muted"
-          title={note.scope === 'personal' ? 'Visible par vous seul' : 'Partagée avec l’équipe'}
-        >
-          {note.scope === 'personal' ? <Lock size={10} /> : <Users size={10} />}
-          {note.scope === 'personal' ? 'Perso' : 'Équipe'}
-        </span>
+        {TEAM_ENABLED && (
+          <span
+            className="flex items-center gap-1 rounded-md border border-border bg-bg px-2 py-1 font-mono text-[9px] uppercase tracking-widest text-text-muted"
+            title={note.scope === 'personal' ? 'Visible par vous seul' : 'Partagée avec l’équipe'}
+          >
+            {note.scope === 'personal' ? <Lock size={10} /> : <Users size={10} />}
+            {note.scope === 'personal' ? 'Perso' : 'Équipe'}
+          </span>
+        )}
         <input
           value={title}
           onChange={(e) => {

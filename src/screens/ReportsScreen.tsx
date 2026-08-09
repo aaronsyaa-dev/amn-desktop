@@ -14,9 +14,7 @@ import {
   List,
   Pencil,
   ArrowLeft,
-  BadgeCheck,
   Plus,
-  ScanLine,
   Scale,
   Trash2,
   X,
@@ -29,8 +27,14 @@ import { useUndo } from '../state/UndoContext';
 import { bridge } from '../lib/bridge';
 import { Markdown } from '../lib/markdown';
 import { relativeTime } from '../lib/time';
-import { ScanDetail } from '../components/scanner/ScanDetail';
-import { ComplyDetail } from '../components/comply/ComplyDetail';
+import {
+  ComplyChip,
+  ComplyDetail,
+  DECISIONS_ROUTE,
+  PRODUCTS_ENABLED,
+  ScanChip,
+  ScanDetail,
+} from '@edition/exclusive';
 import { scoreColor } from '../lib/scanSeverity';
 import type { ComplyCheck, Scan } from '../shared/api';
 
@@ -84,6 +88,9 @@ export function ReportsScreen() {
   // here live instead of requiring a reload.
   const [scans, setScans] = useState<Scan[]>([]);
   useEffect(() => {
+    // Édition Business : ni Scanner ni Comply, donc rien à aller chercher —
+    // et surtout aucun canal IPC pour le faire (voir @edition/mainExclusive).
+    if (!PRODUCTS_ENABLED) return undefined;
     let active = true;
     const refresh = () => {
       bridge()
@@ -106,6 +113,7 @@ export function ReportsScreen() {
   // Finished RGPD checks, same live-refresh contract as the scans above.
   const [complyChecks, setComplyChecks] = useState<ComplyCheck[]>([]);
   useEffect(() => {
+    if (!PRODUCTS_ENABLED) return undefined;
     let active = true;
     const refresh = () => {
       bridge()
@@ -250,8 +258,12 @@ export function ReportsScreen() {
           options={[
             { value: 'all', label: 'Tous' },
             ...TYPES.map((t) => ({ value: t.value, label: t.label })),
-            { value: 'scanner', label: 'Scanner' },
-            { value: 'rgpd', label: 'RGPD' },
+            ...(PRODUCTS_ENABLED
+              ? [
+                  { value: 'scanner', label: 'Scanner' },
+                  { value: 'rgpd', label: 'RGPD' },
+                ]
+              : []),
           ]}
         />
         <Segmented
@@ -413,7 +425,9 @@ export function ReportsScreen() {
               <FileText size={26} strokeWidth={1.5} className="text-text-muted" />
               <p className="text-sm font-medium text-text-primary">Sélectionnez un rapport</p>
               <p className="max-w-sm text-sm text-text-secondary">
-                Ou générez-en un depuis une tâche terminée, un client, une décision, ou un scan Elite.
+                {PRODUCTS_ENABLED
+                  ? 'Ou générez-en un depuis une tâche terminée, un client, une décision, ou un scan Elite.'
+                  : 'Ou générez-en un depuis une tâche terminée ou une fiche client.'}
               </p>
             </div>
           )}
@@ -493,7 +507,10 @@ function LinkChip({ link }: { link: ReportLink }) {
   const go = () => {
     if (link.kind === 'task') navigate('/tasks', { state: { openTaskId: link.id } });
     else if (link.kind === 'client') navigate('/clients', { state: { focusClientId: Number(link.id) } });
-    else navigate('/decisions', { state: { focusDecisionId: link.id } });
+    // Le troisième type de lien est une décision — un module d'équipe, donc
+    // absent de l'édition Business. Sans écran cible, la puce ne navigue pas
+    // plutôt que d'envoyer sur une route qui n'existe pas.
+    else if (DECISIONS_ROUTE) navigate(DECISIONS_ROUTE, { state: { focusDecisionId: link.id } });
   };
   const Icon = link.kind === 'task' ? CheckSquare : link.kind === 'client' ? Contact : Scale;
   return (
@@ -749,25 +766,6 @@ function TypeChip({ type }: { type: ReportType }) {
   );
 }
 
-/** Same visual as ScanChip — RGPD checks aren't a ReportType either. */
-function ComplyChip() {
-  return (
-    <span className="flex flex-shrink-0 items-center gap-1 rounded-sm border border-border bg-bg px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-text-muted">
-      <BadgeCheck size={9} strokeWidth={2} />
-      RGPD
-    </span>
-  );
-}
-
-/** Same visual as TypeChip, with an icon — scans aren't a ReportType. */
-function ScanChip() {
-  return (
-    <span className="flex flex-shrink-0 items-center gap-1 rounded-sm border border-border bg-bg px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-text-muted">
-      <ScanLine size={9} strokeWidth={2} />
-      Scanner
-    </span>
-  );
-}
 
 function Segmented({
   value,

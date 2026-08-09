@@ -1,5 +1,16 @@
 import { DEFAULT_NOTIFICATION_PREFS } from '../shared/api';
 import { showLocalNotification } from './webPush';
+import {
+  FALLBACK_ACCOUNTS,
+  seedClients,
+  seedDecisions,
+  seedKnowledge,
+  seedLearningGoals,
+  seedObjectives,
+  seedQuotes,
+  seedTasks,
+} from '@edition/seeds';
+import { createBrowserExclusive } from '@edition/browserExclusive';
 import type {
   AddClientEventInput,
   AmnBridge,
@@ -7,19 +18,14 @@ import type {
   ChangePasswordResult,
   NotificationPrefs,
   CallSignal,
-  CreateScheduleInput,
-  OrgOverview,
+  OrgIdentity,
+  RemoteSession,
+  RemoteSessionUser,
   ProductRegression,
-  ProductSchedule,
-  SslStatus,
   PresenceEntry,
-  SiteBadge,
   RemoteRecord,
-  ComplyCheck,
   ComplyProgress,
-  Scan,
   ScanProgress,
-  ScanTier,
   UserProfile,
   ChecklistStateEntry,
   Client,
@@ -36,14 +42,8 @@ import type {
   MessageReaction,
   Objective,
   Quote,
-  RegisterSiteResult,
   RemoteConnectionStatus,
-  RemoteEvent,
   RemoteEventPush,
-  RemoteSite,
-  SiteDigest,
-  SiteSummary,
-  TrackerTier,
   SendMessageInput,
   SharedTask,
   UpdateClientInput,
@@ -60,23 +60,6 @@ declare global {
     amn?: AmnBridge;
   }
 }
-
-/**
- * Browser fallback accounts. Used only when the app runs outside Electron
- * (headless verification, vanilla `vite` dev). These are bcrypt hashes of the
- * same seeded dev password — verification is real, not "anything passes".
- * The authoritative store in production is the SQLite `users` table (main).
- */
-const FALLBACK_ACCOUNTS: Record<string, { name: string; hash: string }> = {
-  'aaron@amn-devsec.com': {
-    name: 'Aaron',
-    hash: '$2b$10$RDGsFc6Vk/22xXFuVpbwQuaI0N//XtYpLyfDA4aOsTEejh1dIxqTe',
-  },
-  'mohamed@amn-devsec.com': {
-    name: 'Mohamed',
-    hash: '$2b$10$LUTrx6TGqtz0vG3QrY2noeeNaPQeypeuA2fZpmZxCZY03a.9IoToC',
-  },
-};
 
 /**
  * Per-platform stores that predate the synced collections.
@@ -115,10 +98,6 @@ const OBJECTIVES_KEY = 'amn.fallback.objectives';
 // what it is: plain localStorage, never synced to amn-api, never touched by
 // the sync machinery the `fallback` keys above stand in for.
 const VAULT_KEY = 'amn.vault.entries';
-
-function daysAgo(n: number): string {
-  return new Date(Date.now() - n * 86400000).toISOString();
-}
 
 /** Generic localStorage-backed list, seeded once on first read. */
 function readList<T>(key: string, seed: () => T[]): T[] {
@@ -187,193 +166,6 @@ function readPrefs(): Record<string, NotificationPrefs> {
   }
 }
 
-/** Seed mirrors the SQLite seed so the browser fallback shows the same data. */
-function seedClients(): Client[] {
-  return [
-    {
-      id: 1,
-      name: 'Mohamed Bensalah',
-      company: 'G20 Corvetto',
-      status: 'active',
-      email: 'contact@g20corvetto.it',
-      phone: '+39 02 1234 5678',
-      notes:
-        'Client historique. Sensible aux temps de réponse en soirée (pic e-commerce). Préfère un point hebdo le lundi.',
-      imageDataUrl: '',
-      linkedSiteIds: [],
-      createdAt: daysAgo(120),
-      updatedAt: daysAgo(2),
-      events: [
-        { id: 4, clientId: 1, title: 'Incident paiement', detail: 'Latence PSP traitée en 40 min.', date: daysAgo(2) },
-        { id: 3, clientId: 1, title: 'Renouvellement contrat', detail: 'Contrat annuel reconduit.', date: daysAgo(30) },
-        { id: 2, clientId: 1, title: 'Audit sécurité initial', detail: 'Correction de 4 vulnérabilités, durcissement WAF.', date: daysAgo(96) },
-        { id: 1, clientId: 1, title: 'Onboarding', detail: 'Mise en place de la supervision des 2 domaines.', date: daysAgo(120) },
-      ],
-    },
-    {
-      id: 2,
-      name: 'Sarah Lemaire',
-      company: 'Atlas Retail',
-      status: 'prospect',
-      email: 's.lemaire@atlas-retail.fr',
-      phone: '+33 6 12 34 56 78',
-      notes: 'Prospect entrant via recommandation. Devis supervision + audit envoyé.',
-      imageDataUrl: '',
-      linkedSiteIds: [],
-      createdAt: daysAgo(14),
-      updatedAt: daysAgo(5),
-      events: [
-        { id: 6, clientId: 2, title: 'Devis envoyé', detail: 'Offre supervision + audit initial.', date: daysAgo(5) },
-        { id: 5, clientId: 2, title: 'Premier contact', detail: 'Appel de découverte, 3 sites à superviser.', date: daysAgo(14) },
-      ],
-    },
-  ];
-}
-
-function seedQuotes(): Quote[] {
-  return [
-    {
-      id: 1,
-      clientId: 1,
-      title: 'Supervision annuelle + audit initial',
-      detail: 'Mise en place du tracker Sentinel sur 2 domaines, audit sécurité initial, suivi mensuel.',
-      trackerTier: 'sentinel',
-      priceEuro: 2400,
-      status: 'accepted',
-      paymentStatus: 'paid',
-      createdAt: daysAgo(96),
-      updatedAt: daysAgo(90),
-    },
-    {
-      id: 2,
-      clientId: 2,
-      title: 'Supervision + audit initial',
-      detail: 'Déploiement Sentinel sur 3 sites, audit initial, rapport de synthèse.',
-      trackerTier: 'sentinel',
-      priceEuro: 1800,
-      status: 'sent',
-      paymentStatus: 'unpaid',
-      createdAt: daysAgo(5),
-      updatedAt: daysAgo(5),
-    },
-  ];
-}
-
-function seedTasks(): SharedTask[] {
-  return [
-    {
-      id: 1,
-      title: 'Relancer Atlas Retail sur le devis envoyé',
-      detail: '',
-      assigneeEmail: 'aaron@amn-devsec.com',
-      status: 'todo',
-      siteId: null,
-      clientId: 2,
-      createdAt: daysAgo(10),
-      updatedAt: daysAgo(10),
-    },
-    {
-      id: 2,
-      title: 'Vérifier le certificat SSL du site principal',
-      detail: 'Expire dans 3 semaines.',
-      assigneeEmail: 'mohamed@amn-devsec.com',
-      status: 'doing',
-      siteId: null,
-      clientId: null,
-      createdAt: daysAgo(9),
-      updatedAt: daysAgo(9),
-    },
-    {
-      id: 3,
-      title: 'Rédiger le rapport mensuel G20 Corvetto',
-      detail: '',
-      assigneeEmail: 'aaron@amn-devsec.com',
-      status: 'done',
-      siteId: null,
-      clientId: 1,
-      createdAt: daysAgo(8),
-      updatedAt: daysAgo(8),
-    },
-  ];
-}
-
-function seedDecisions(): Decision[] {
-  return [
-    {
-      id: 1,
-      title: 'Adoption de Supabase (plan gratuit) pour amn-api',
-      detail:
-        'Évite un coût récurrent tant que le volume reste faible ; migration vers un plan payant possible sans changement de code (client pg standard).',
-      authorEmail: 'aaron@amn-devsec.com',
-      authorName: 'Aaron',
-      createdAt: daysAgo(20),
-    },
-    {
-      id: 2,
-      title: 'Tarif de base Sentinel fixé à 1800–2400 €/an selon nombre de sites',
-      detail: 'Aligné sur le temps de mise en place + suivi mensuel estimé.',
-      authorEmail: 'mohamed@amn-devsec.com',
-      authorName: 'Mohamed',
-      createdAt: daysAgo(7),
-    },
-  ];
-}
-
-function seedKnowledge(): KnowledgeDoc[] {
-  const now = new Date().toISOString();
-  return [
-    {
-      id: 1,
-      title: 'Installation du tracker (procédure)',
-      body: '1. npm install @amn-devsec/security-monitor\n2. Enregistrer le site depuis AMN Desktop (onglet Sites) pour obtenir la clé API\n3. Ajouter AMN_API_URL et AMN_API_KEY dans le .env du site client\n4. const tracker = createTracker(); app.use(tracker.middleware()); tracker.start();\n5. Vérifier dans AMN Desktop que le site passe "en ligne" après le premier heartbeat.',
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: 2,
-      title: 'Modèle — email de relance devis',
-      body: 'Objet : Suite à notre devis du [date]\n\nBonjour [prénom],\n\nJe reviens vers vous concernant le devis envoyé le [date] pour [mission]. Restez-vous disponible cette semaine pour un point rapide ?\n\nBien à vous,\n[signature]',
-      createdAt: now,
-      updatedAt: now,
-    },
-  ];
-}
-
-function seedLearningGoals(): LearningGoal[] {
-  const now = new Date().toISOString();
-  return [
-    {
-      id: 1,
-      ownerEmail: 'aaron@amn-devsec.com',
-      title: 'Certification OSCP',
-      platform: 'TryHackMe',
-      progressPct: 35,
-      targetDate: null,
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: 2,
-      ownerEmail: 'mohamed@amn-devsec.com',
-      title: 'AWS Certified Security',
-      platform: 'A Cloud Guru',
-      progressPct: 60,
-      targetDate: null,
-      createdAt: now,
-      updatedAt: now,
-    },
-  ];
-}
-
-function seedObjectives(): Objective[] {
-  const now = new Date().toISOString();
-  const period = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-  return [
-    { id: 1, label: 'Chiffre d’affaires visé', unit: '€', targetValue: 6000, currentValue: 2400, periodLabel: period, updatedAt: now },
-    { id: 2, label: 'Nouveaux clients visés', unit: 'clients', targetValue: 3, currentValue: 1, periodLabel: period, updatedAt: now },
-  ];
-}
-
 function readFallbackClients(): Client[] {
   try {
     const raw = window.localStorage.getItem(CLIENTS_KEY);
@@ -421,6 +213,14 @@ function createBrowserRemote(): AmnBridge['remote'] {
   // honest, actionable "Hors ligne" (WS closes 4401) instead of a silent "Local".
   const configured = Boolean(apiUrl);
 
+  /**
+   * Jeton de session de l'utilisateur connecté. Il prend le pas sur le jeton
+   * partagé du build : c'est lui qui porte l'organisation, donc les données
+   * visibles. Vide tant que personne ne s'est connecté.
+   */
+  let sessionToken = '';
+  const credential = () => sessionToken || token;
+
   const eventListeners = new Set<(push: RemoteEventPush) => void>();
   const statusListeners = new Set<(status: RemoteConnectionStatus) => void>();
   const recordListeners = new Set<(record: RemoteRecord) => void>();
@@ -445,7 +245,7 @@ function createBrowserRemote(): AmnBridge['remote'] {
   }
 
   function connect() {
-    const base = `${apiUrl.replace(/^http/, 'ws')}/v1/stream?token=${encodeURIComponent(token)}`;
+    const base = `${apiUrl.replace(/^http/, 'ws')}/v1/stream?token=${encodeURIComponent(credential())}`;
     const wsUrl = identity ? `${base}&user=${encodeURIComponent(identity)}` : base;
     socket = new WebSocket(wsUrl);
 
@@ -509,7 +309,7 @@ function createBrowserRemote(): AmnBridge['remote'] {
       ...init,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${credential()}`,
         ...init.headers,
       },
     });
@@ -526,59 +326,94 @@ function createBrowserRemote(): AmnBridge['remote'] {
     return res.json() as Promise<T>;
   }
 
+  /** Requête publique (connexion) : aucune session n'existe encore. */
+  async function publicPost<T>(path: string, body: unknown, bearer?: string): Promise<T> {
+    if (!apiUrl) throw new Error("L'API centrale (amn-api) n'est pas configurée pour cette build.");
+    const res = await fetch(`${apiUrl}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const detail = await res
+        .json()
+        .then((b: { error?: string }) => b?.error)
+        .catch(() => undefined);
+      throw new Error(detail || `amn-api ${res.status} ${res.statusText}`);
+    }
+    return res.json() as Promise<T>;
+  }
+
+  /**
+   * Rebranche la WebSocket sur le nouveau justificatif. Sans cette reprise, le
+   * flux temps réel resterait celui de l'organisation précédente — exactement
+   * la fuite d'un tenant vers l'autre que l'isolation doit empêcher.
+   */
+  function applySession(next: string | null) {
+    sessionToken = next ?? '';
+    if (!apiUrl) return;
+    if (socket) {
+      reconnectingOnPurpose = true;
+      socket.close();
+    } else if (started) {
+      connect();
+    }
+  }
+
+  // Contexte remis à la part exclusive du pont : elle a besoin du transport,
+  // pas de la mécanique de reconnexion. Dans l'édition Business, la fabrique
+  // ne lit rien de tout ça — elle renvoie un objet vide.
+  const exclusiveContext = {
+    apiFetch,
+    apiUrl,
+    token,
+    ensureStarted,
+    socket: () => socket,
+    eventListeners,
+    scanListeners,
+    complyListeners,
+    signalListeners,
+    regressionListeners,
+  };
+
   return {
-    async listSites(): Promise<RemoteSite[]> {
-      const { sites } = await apiFetch<{ sites: RemoteSite[] }>('/v1/sites');
-      return sites;
-    },
-    async getSiteEvents(siteId, opts = {}): Promise<RemoteEvent[]> {
-      const params = new URLSearchParams();
-      if (opts.since) params.set('since', opts.since);
-      if (opts.limit) params.set('limit', String(opts.limit));
-      const qs = params.toString();
-      const { events } = await apiFetch<{ events: RemoteEvent[] }>(
-        `/v1/sites/${siteId}/events${qs ? `?${qs}` : ''}`,
-      );
-      return events;
-    },
-    async registerSite(name: string): Promise<RegisterSiteResult> {
-      return apiFetch<RegisterSiteResult>('/v1/sites', {
-        method: 'POST',
-        body: JSON.stringify({ name }),
-      });
-    },
-    async updateSite(id: string, name: string): Promise<RemoteSite> {
-      const { site } = await apiFetch<{ site: RemoteSite }>(`/v1/sites/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ name }),
-      });
-      return site;
-    },
-    async deleteSite(id: string): Promise<void> {
-      await apiFetch<{ ok: boolean }>(`/v1/sites/${id}`, { method: 'DELETE' });
-    },
-    async configureSite(id: string, patch: { tier?: TrackerTier; url?: string | null }): Promise<RemoteSite> {
-      // amn-api applies a partial patch, so omitting `name` leaves it untouched.
-      const { site } = await apiFetch<{ site: RemoteSite }>(`/v1/sites/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(patch),
-      });
-      return site;
-    },
-    async getSiteSummary(id: string, hours = 24): Promise<SiteSummary> {
-      return apiFetch<SiteSummary>(`/v1/sites/${id}/summary?hours=${hours}`);
-    },
-    async getSiteDigest(id: string): Promise<SiteDigest> {
-      const { digest } = await apiFetch<{ digest: SiteDigest }>(`/v1/sites/${id}/digest`);
-      return digest;
+    ...createBrowserExclusive(exclusiveContext),
+    session: {
+      async login(email: string, password: string) {
+        const session = await publicPost<RemoteSession>('/v1/auth/login', { email, password });
+        applySession(session.token);
+        return session;
+      },
+      async restore(tokenToCheck: string) {
+        if (!apiUrl || !tokenToCheck) return null;
+        const previous = sessionToken;
+        sessionToken = tokenToCheck;
+        try {
+          const me = await apiFetch<{ org: OrgIdentity | null; user: RemoteSessionUser | null }>(
+            '/v1/auth/me',
+          );
+          if (!me.user || !me.org) throw new Error('session sans utilisateur');
+          applySession(tokenToCheck);
+          return { token: tokenToCheck, expiresAt: '', user: me.user, org: me.org };
+        } catch {
+          sessionToken = previous;
+          return null;
+        }
+      },
+      async clear() {
+        if (sessionToken) {
+          await publicPost('/v1/auth/logout', {}, sessionToken).catch(() => {
+            /* le jeton est abandonné côté client de toute façon */
+          });
+        }
+        applySession(null);
+      },
     },
     async getConnectionStatus(): Promise<RemoteConnectionStatus> {
       return status;
-    },
-    onEvent(callback) {
-      eventListeners.add(callback);
-      ensureStarted();
-      return () => eventListeners.delete(callback);
     },
     onConnectionStatusChange(callback) {
       statusListeners.add(callback);
@@ -626,114 +461,6 @@ function createBrowserRemote(): AmnBridge['remote'] {
       presenceListeners.add(callback);
       ensureStarted();
       return () => presenceListeners.delete(callback);
-    },
-    async listSslStatus() {
-      const { statuses } = await apiFetch<{ statuses: SslStatus[] }>('/v1/ssl');
-      return statuses;
-    },
-    async checkSsl(host: string) {
-      const { status } = await apiFetch<{ status: SslStatus }>('/v1/ssl/check', {
-        method: 'POST',
-        body: JSON.stringify({ host }),
-      });
-      return status;
-    },
-    async listSchedules() {
-      const { schedules } = await apiFetch<{ schedules: ProductSchedule[] }>('/v1/schedules');
-      return schedules;
-    },
-    async createSchedule(input: CreateScheduleInput) {
-      const { schedule } = await apiFetch<{ schedule: ProductSchedule }>('/v1/schedules', {
-        method: 'POST',
-        body: JSON.stringify(input),
-      });
-      return schedule;
-    },
-    async deleteSchedule(id: string) {
-      await apiFetch<{ ok: boolean }>(`/v1/schedules/${encodeURIComponent(id)}`, {
-        method: 'DELETE',
-      });
-    },
-    onProductRegression(callback) {
-      regressionListeners.add(callback);
-      ensureStarted();
-      return () => regressionListeners.delete(callback);
-    },
-    async getOrgOverview(days: number) {
-      return apiFetch<OrgOverview>(`/v1/sites/overview?days=${encodeURIComponent(String(days))}`);
-    },
-    async getSiteBadge(siteId: string) {
-      return apiFetch<SiteBadge>(`/v1/sites/${siteId}/badge`);
-    },
-    async sendCallSignal(signal) {
-      ensureStarted();
-      if (!socket || socket.readyState !== WebSocket.OPEN) return false;
-      socket.send(
-        JSON.stringify({
-          type: 'signal',
-          to: signal.to,
-          kind: signal.kind,
-          callId: signal.callId,
-          payload: signal.payload ?? null,
-        }),
-      );
-      return true;
-    },
-    onCallSignal(callback) {
-      signalListeners.add(callback);
-      ensureStarted();
-      return () => signalListeners.delete(callback);
-    },
-    async startScan(url: string, tier: ScanTier): Promise<Scan> {
-      const { scan } = await apiFetch<{ scan: Scan }>('/v1/scan', {
-        method: 'POST',
-        body: JSON.stringify({ url, tier }),
-      });
-      return scan;
-    },
-    async listScans(): Promise<Scan[]> {
-      const { scans } = await apiFetch<{ scans: Scan[] }>('/v1/scans');
-      return scans;
-    },
-    async getScan(id: string): Promise<Scan> {
-      const { scan } = await apiFetch<{ scan: Scan }>(`/v1/scans/${encodeURIComponent(id)}`);
-      return scan;
-    },
-    async scanReportUrl(id: string): Promise<string> {
-      // The report is behind the operator token, which a plain window.open()
-      // can't send. Fetch it here (with the header) and hand back a blob: URL.
-      const res = await fetch(`${apiUrl}/v1/scans/${encodeURIComponent(id)}/pdf`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(`amn-api ${res.status} ${res.statusText}`);
-      return URL.createObjectURL(new Blob([await res.text()], { type: 'text/html' }));
-    },
-    onScanProgress(callback) {
-      scanListeners.add(callback);
-      ensureStarted();
-      return () => scanListeners.delete(callback);
-    },
-    async startComply(url: string): Promise<ComplyCheck> {
-      const { check } = await apiFetch<{ check: ComplyCheck }>('/v1/comply', {
-        method: 'POST',
-        body: JSON.stringify({ url }),
-      });
-      return check;
-    },
-    async listComplyChecks(): Promise<ComplyCheck[]> {
-      const { checks } = await apiFetch<{ checks: ComplyCheck[] }>('/v1/comply-checks');
-      return checks;
-    },
-    async getComplyCheck(id: string): Promise<ComplyCheck> {
-      const { check } = await apiFetch<{ check: ComplyCheck }>(
-        `/v1/comply-checks/${encodeURIComponent(id)}`,
-      );
-      return check;
-    },
-    onComplyProgress(callback) {
-      complyListeners.add(callback);
-      ensureStarted();
-      return () => complyListeners.delete(callback);
     },
   };
 

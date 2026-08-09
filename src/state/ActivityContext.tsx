@@ -8,8 +8,8 @@ import React, {
 } from 'react';
 import { useSync, recordWriter } from './SyncContext';
 import { useAuth } from '../auth/AuthContext';
-import { AJMANI_EMAIL } from '../lib/ajmaniChat';
-import type { SyncedCollection } from '../shared/api';
+import { ACTIVITY_TABS, AJMANI_EMAIL } from '@edition/modules';
+import type { RemoteRecord, SyncedCollection } from '../shared/api';
 
 /**
  * Cross-collection activity awareness (A3.2 + A3.3).
@@ -35,14 +35,12 @@ export interface ActivityTab {
   noun: string;
 }
 
-/** Tabs whose collection is shared and where "the other added something" reads well. */
-export const ACTIVITY_TABS: ActivityTab[] = [
-  { routeKey: '/team', collection: 'messages', noun: 'Message' },
-  { routeKey: '/tasks', collection: 'tasks', noun: 'Tâche' },
-  { routeKey: '/decisions', collection: 'decisions', noun: 'Décision' },
-  { routeKey: '/knowledge', collection: 'knowledge', noun: 'Connaissance' },
-  { routeKey: '/notes', collection: 'notes', noun: 'Note' },
-];
+/**
+ * Onglets suivis. La liste dépend des modules qui existent dans l'édition
+ * construite — suivre `/decisions` dans l'édition Business marquerait comme
+ * « non vu » une collection sans écran pour l'afficher.
+ */
+export { ACTIVITY_TABS } from '@edition/modules';
 
 export interface ActivityEvent {
   key: string;
@@ -136,18 +134,26 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
   // unconditionally and in a fixed order, so one call per collection (the tab
   // list is a compile-time constant). useRecords returns a fresh filtered array
   // when the store changes, so the memo below recomputes on live sync.
-  const messagesR = useRecords('messages');
-  const tasksR = useRecords('tasks');
-  const decisionsR = useRecords('decisions');
-  const knowledgeR = useRecords('knowledge');
-  const notesR = useRecords('notes');
-  const recordsByRoute: Record<string, typeof messagesR> = {
-    '/team': messagesR,
-    '/tasks': tasksR,
-    '/decisions': decisionsR,
-    '/knowledge': knowledgeR,
-    '/notes': notesR,
-  };
+  // Un appel par onglet suivi, dans l'ordre de la liste — qui est une
+  // constante de compilation, donc le nombre de hooks ne varie jamais d'un
+  // rendu à l'autre. Écrire la carte à la main la faisait diverger de
+  // ACTIVITY_TABS à chaque édition, et remettait « /team » ou « /decisions »
+  // dans le bundle Business.
+  const recordsByRoute: Record<string, RemoteRecord[]> = {};
+  for (const tab of ACTIVITY_TABS) {
+    recordsByRoute[tab.routeKey] = useRecords(tab.collection);
+  }
+  // Signature du contenu suivi : nombre d'enregistrements et horodatage le plus
+  // récent, par onglet. Une création, une modification ou une suppression
+  // (qui retire l'enregistrement de la vue) change forcément l'un des deux —
+  // le mémo se rejoue donc quand il faut, sans que la liste des collections
+  // soit écrite à la main une deuxième fois.
+  const recordsKey = ACTIVITY_TABS.map((tab) => {
+    const records = recordsByRoute[tab.routeKey];
+    let latest = '';
+    for (const record of records) if (record.updatedAt > latest) latest = record.updatedAt;
+    return `${records.length}:${latest}`;
+  }).join('|');
 
   const { unseen, events } = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -178,7 +184,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
 
     feed.sort((a, b) => (b.at || '').localeCompare(a.at || ''));
     return { unseen: counts, events: feed.slice(0, MAX_EVENTS) };
-  }, [messagesR, tasksR, decisionsR, knowledgeR, notesR, seen, myEmail]);
+  }, [recordsKey, seen, myEmail]);
 
   const totalUnseen = useMemo(
     () => Object.values(unseen).reduce((a, b) => a + b, 0),

@@ -24,6 +24,45 @@ export interface AuthResult {
   error?: string;
 }
 
+/* --------------------------- Organisation (amn-api) --------------------------- */
+
+/**
+ * Plan de l'organisation, tel que le renvoie amn-api.
+ *
+ * `internal` est AMN DevSec — la seule organisation qui a accès aux produits
+ * de cybersécurité (Trackers, Scanner, Comply, SSL Monitor). Tous les autres
+ * plans sont des organisations clientes : elles reçoivent l'édition Business.
+ */
+export type OrgPlan = 'internal' | 'business_standard' | 'business_premium';
+
+export interface OrgIdentity {
+  id: string;
+  name: string;
+  plan: OrgPlan;
+}
+
+export interface RemoteSessionUser {
+  id: string;
+  orgId: string;
+  email: string;
+  role: 'owner' | 'admin' | 'member';
+}
+
+/**
+ * Session amn-api d'un utilisateur nommé.
+ *
+ * C'est ce qui remplace le jeton opérateur partagé dès qu'une vraie personne
+ * se connecte : toutes les requêtes et la WebSocket portent alors CE jeton, et
+ * amn-api en déduit l'organisation. Une organisation cliente ne peut donc pas
+ * voir les données d'une autre, même si le poste a été configuré à la main.
+ */
+export interface RemoteSession {
+  token: string;
+  expiresAt: string;
+  user: RemoteSessionUser;
+  org: OrgIdentity;
+}
+
 /* ------------------------------ Profiles ------------------------------ */
 
 /**
@@ -683,6 +722,14 @@ export type SyncedCollection =
   | 'trackers'
   | 'notes'
   | 'reports'
+  /** Rendez-vous du module Calendrier (édition Business). */
+  | 'appointments'
+  /**
+   * Médiathèque autonome. L'édition interne dérive ses médias des pièces
+   * jointes du chat d'équipe ; une organisation qui travaille seule n'a pas de
+   * chat, donc rien à dériver — d'où un stockage propre.
+   */
+  | 'media'
   /**
    * Per-finding remediation state ("corrigé"), keyed `<host>::<findingId>`.
    * Synced so a vulnerability one operator marks fixed is fixed for both, and
@@ -985,6 +1032,23 @@ export interface AmnBridge {
    * leaves the main process — the renderer only sees the results, over IPC.
    */
   remote: {
+    /**
+     * Session amn-api de l'utilisateur connecté.
+     *
+     * Tant qu'aucune session n'est ouverte, les appels partent avec le jeton
+     * opérateur partagé (AMN DevSec) s'il est configuré — c'est le mode
+     * historique des postes d'Aaron et Mohamed. Dès qu'une session existe,
+     * elle prend le pas : c'est elle qui détermine l'organisation, donc les
+     * données visibles.
+     */
+    session: {
+      /** Échange email/mot de passe contre une session. Lève l'erreur d'amn-api telle quelle. */
+      login(email: string, password: string): Promise<RemoteSession>;
+      /** Revalide un jeton stocké au démarrage. `null` si amn-api l'a refusé. */
+      restore(token: string): Promise<RemoteSession | null>;
+      /** Termine la session côté serveur et repasse au jeton opérateur (ou à rien). */
+      clear(): Promise<void>;
+    };
     listSites(): Promise<RemoteSite[]>;
     getSiteEvents(siteId: string, opts?: { since?: string; limit?: number }): Promise<RemoteEvent[]>;
     registerSite(name: string): Promise<RegisterSiteResult>;
@@ -1204,6 +1268,9 @@ export const IPC = {
   remoteUpsertRecord: 'remote:upsertRecord',
   remoteDeleteRecord: 'remote:deleteRecord',
   remoteSetIdentity: 'remote:setIdentity',
+  remoteSessionLogin: 'remote:sessionLogin',
+  remoteSessionRestore: 'remote:sessionRestore',
+  remoteSessionClear: 'remote:sessionClear',
   remoteGetPresence: 'remote:getPresence',
   /** Push channels (main -> renderer via webContents.send, not invoke/handle). */
   remoteStartScan: 'remote:startScan',

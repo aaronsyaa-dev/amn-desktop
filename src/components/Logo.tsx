@@ -1,4 +1,11 @@
 import React, { useId } from 'react';
+import { EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/edition';
+
+/** Raison sociale affichée sous le logo. Une cliente n'a pas à voir la nôtre. */
+const BRAND_NAME = IS_BUSINESS ? EDITION_PRODUCT_NAME : 'AMN DevSec';
+
+/** Mot apposé au sigle : « Desktop » en interne, « Business » chez une cliente. */
+const APP_WORD = IS_BUSINESS ? 'Business' : 'Desktop';
 
 interface LogoProps {
   /** Show the "DEVSEC" tagline under the wordmark. */
@@ -35,7 +42,7 @@ export function Logo({
 }: LogoProps) {
   const id = useId();
   const gradientId = `amn-gradient-${id}`;
-  const viewBoxHeight = showTagline ? 64 : 44;
+  const viewBoxHeight = showTagline && !IS_BUSINESS ? 64 : 44;
   // Widen the canvas when the app name is appended so "Desktop" never clips.
   const viewBoxWidth = showAppName ? 232 : 148;
   const width = (height * viewBoxWidth) / viewBoxHeight;
@@ -49,7 +56,7 @@ export function Logo({
       xmlns="http://www.w3.org/2000/svg"
       className={className}
       role="img"
-      aria-label={showAppName ? 'AMN Desktop' : 'AMN DevSec'}
+      aria-label={showAppName ? EDITION_PRODUCT_NAME : BRAND_NAME}
     >
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="148" y2="0" gradientUnits="userSpaceOnUse">
@@ -73,11 +80,16 @@ export function Logo({
             letterSpacing="-0.5"
             fill="#9a9a97"
           >
-            Desktop
+            {APP_WORD}
           </tspan>
         )}
       </text>
-      {showTagline && (
+      {/*
+        « DEVSEC » est notre raison sociale : elle n'a rien à faire sous le
+        logo d'une organisation cliente, et encore moins sur un devis qu'elle
+        imprime.
+      */}
+      {showTagline && !IS_BUSINESS && (
         <text
           x="2"
           y="59"

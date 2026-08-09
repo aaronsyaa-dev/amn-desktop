@@ -25,8 +25,23 @@ const RUNTIME_MODULES = new Set<string>([
   'ms',
 ]);
 
+/**
+ * Édition construite — même variable que les configs Vite (voir vite.edition.ts).
+ *
+ * Elle ne change pas seulement ce qui est compilé : elle change l'identité de
+ * l'application packagée. Le nom distinct donne un dossier `userData` distinct,
+ * donc deux installations qui ne partagent ni base locale, ni session, ni
+ * préférences — indispensable pour qu'Aaron puisse faire tourner les deux
+ * éditions sur sa machine et tester réellement ce que voit sa cliente.
+ */
+const IS_BUSINESS = process.env.AMN_EDITION === 'business';
+const APP_NAME = IS_BUSINESS ? 'AMN Business' : 'AMN Desktop';
+
 const config: ForgeConfig = {
   packagerConfig: {
+    name: APP_NAME,
+    // Nom du binaire sous Linux (Windows/macOS le dérivent de `name`).
+    executableName: IS_BUSINESS ? 'amn-business' : 'amn-desktop',
     asar: true,
     // App/executable icon. electron-packager resolves the platform-specific
     // extension automatically: images/icon.ico (Windows), images/icon.icns
@@ -90,13 +105,20 @@ const config: ForgeConfig = {
   // `npm run publish` uploads the built artifacts (incl. the Squirrel RELEASES
   // file) to GitHub Releases, which is what update.electronjs.org / the
   // in-app auto-updater reads. Needs GITHUB_TOKEN in the environment.
-  publishers: [
-    new PublisherGithub({
-      repository: { owner: 'aaronsyaa-dev', name: 'amn-desktop' },
-      draft: false,
-      prerelease: false,
-    }),
-  ],
+  //
+  // L'édition Business ne publie pas : les Releases de ce dépôt portent les
+  // artefacts de l'édition interne, et laisser un publisher branché dessus
+  // reviendrait à proposer AMN Desktop en mise à jour d'AMN Business. La
+  // livraison de la première cliente est manuelle (voir docs/BUSINESS.md).
+  publishers: IS_BUSINESS
+    ? []
+    : [
+        new PublisherGithub({
+          repository: { owner: 'aaronsyaa-dev', name: 'amn-desktop' },
+          draft: false,
+          prerelease: false,
+        }),
+      ],
   plugins: [
     // Native modules (better-sqlite3) ship a compiled .node binary that cannot
     // be require()'d from inside the asar archive. This plugin extracts them to
