@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Activity, BarChart3, Check, ChevronDown, Copy, Download, Globe, Layers, Radar, Settings2, Terminal } from 'lucide-react';
 import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
@@ -264,6 +265,7 @@ function SiteComparator() {
 }
 
 function SiteControlRow({ site, onManage }: { site: DerivedSite; onManage: () => void }) {
+  const navigate = useNavigate();
   const { modulesForSite, removeModule } = useTrackers();
   const [expanded, setExpanded] = useState(false);
   const installed = modulesForSite(site.id);
@@ -272,42 +274,55 @@ function SiteControlRow({ site, onManage }: { site: DerivedSite; onManage: () =>
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface">
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.02]"
-      >
-        <span className={`h-2 w-2 flex-shrink-0 rounded-full ${hasModules ? FLOW_DOT[flow.tone] : 'bg-text-muted/40'}`} />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <Globe size={14} strokeWidth={1.75} className="text-text-muted" />
-            <span className="truncate text-sm font-semibold text-text-primary">{site.name}</span>
+      <div className="flex w-full items-center transition-colors hover:bg-white/[0.02]">
+        {/* Clicking the site opens its dedicated control view (traffic, alert
+            history, score). Module management stays behind the chevron so the
+            two actions never fight over the same click target. */}
+        <button
+          type="button"
+          onClick={() => navigate(`/tracker/site/${site.id}`)}
+          className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left"
+        >
+          <span className={`h-2 w-2 flex-shrink-0 rounded-full ${hasModules ? FLOW_DOT[flow.tone] : 'bg-text-muted/40'}`} />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <Globe size={14} strokeWidth={1.75} className="text-text-muted" />
+              <span className="truncate text-sm font-semibold text-text-primary">{site.name}</span>
+            </div>
+            <p className="mt-0.5 text-xs text-text-muted">
+              {hasModules ? flow.label : 'Aucun module installé'}
+            </p>
           </div>
-          <p className="mt-0.5 text-xs text-text-muted">
-            {hasModules ? flow.label : 'Aucun module installé'}
-          </p>
-        </div>
-        {/* Installed module chips */}
-        <div className="hidden flex-shrink-0 items-center gap-1.5 sm:flex">
-          {hasModules ? (
-            modulesByKeys(installed).map((m) => (
-              <span
-                key={m.key}
-                className="rounded-full border border-border-strong bg-bg px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-text-secondary"
-              >
-                {m.name.replace('AMN ', '')}
-              </span>
-            ))
-          ) : (
-            <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">—</span>
-          )}
-        </div>
-        <ChevronDown
-          size={16}
-          strokeWidth={2}
-          className={`flex-shrink-0 text-text-muted transition-transform ${expanded ? 'rotate-180' : ''}`}
-        />
-      </button>
+          {/* Installed module chips */}
+          <div className="hidden flex-shrink-0 items-center gap-1.5 sm:flex">
+            {hasModules ? (
+              modulesByKeys(installed).map((m) => (
+                <span
+                  key={m.key}
+                  className="rounded-full border border-border-strong bg-bg px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-text-secondary"
+                >
+                  {m.name.replace('AMN ', '')}
+                </span>
+              ))
+            ) : (
+              <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">—</span>
+            )}
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-label={expanded ? 'Masquer les modules' : 'Afficher les modules'}
+          aria-expanded={expanded}
+          className="flex flex-shrink-0 items-center self-stretch px-4 text-text-muted transition-colors hover:text-text-primary"
+        >
+          <ChevronDown
+            size={16}
+            strokeWidth={2}
+            className={`transition-transform ${expanded ? 'rotate-180' : ''}`}
+          />
+        </button>
+      </div>
 
       <AnimatePresence initial={false}>
         {expanded && (

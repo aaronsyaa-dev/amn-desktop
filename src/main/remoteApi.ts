@@ -14,7 +14,10 @@ import type {
   Scan,
   ScanProgress,
   ScanTier,
+  SiteDigest,
+  SiteSummary,
   SyncedCollection,
+  TrackerTier,
 } from '../shared/api';
 
 const RECONNECT_DELAYS_MS = [1000, 2000, 5000, 10000, 20000, 30000];
@@ -102,6 +105,29 @@ export class RemoteApiClient {
       body: JSON.stringify({ name }),
     });
     return site;
+  }
+
+  /**
+   * Changes supervision settings only. amn-api applies a partial patch, so
+   * omitting `name` here leaves it untouched rather than blanking it.
+   */
+  async configureSite(id: string, patch: { tier?: TrackerTier; url?: string | null }): Promise<RemoteSite> {
+    const { site } = await apiFetch<{ site: RemoteSite }>(`/v1/sites/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(patch),
+    });
+    return site;
+  }
+
+  /** Traffic curve, alert history and security score for a site's control desk. */
+  async getSiteSummary(id: string, hours = 24): Promise<SiteSummary> {
+    return apiFetch<SiteSummary>(`/v1/sites/${id}/summary?hours=${hours}`);
+  }
+
+  /** Structured weekly digest, computed on demand by amn-api. */
+  async getSiteDigest(id: string): Promise<SiteDigest> {
+    const { digest } = await apiFetch<{ digest: SiteDigest }>(`/v1/sites/${id}/digest`);
+    return digest;
   }
 
   async deleteSite(id: string): Promise<void> {
@@ -267,6 +293,21 @@ export class RemoteApiClient {
     this.ws = null;
   }
 
+  /**
+   * True if this event id has already been dispatched — see the dual-name
+   * broadcast in the message handler. Keeps a bounded window of recent ids;
+   * only consecutive duplicates matter, so a small window is plenty.
+   */
+  private recentEventIds: number[] = [];
+
+  private seenEvent(id: unknown): boolean {
+    if (typeof id !== 'number') return false; // can't de-duplicate — let it through
+    if (this.recentEventIds.includes(id)) return true;
+    this.recentEventIds.push(id);
+    if (this.recentEventIds.length > 200) this.recentEventIds.shift();
+    return false;
+  }
+
   private setStatus(status: RemoteConnectionStatus) {
     if (this.status === status) return;
     this.status = status;
@@ -294,8 +335,14 @@ export class RemoteApiClient {
     socket.on('message', (raw) => {
       try {
         const parsed = JSON.parse(raw.toString());
-        if (parsed?.type === 'event') {
-          for (const listener of this.eventListeners) listener(parsed as RemoteEventPush);
+        if (parsed?.type === 'tracker:event' || parsed?.type === 'event') {
+          // amn-api emits every ingest under BOTH names — `tracker:event` (the
+          // canonical one) and `event` (kept so desktops predating the rename
+          // keep working). This build understands both, so it must drop the
+          // second copy or every alert would notify twice.
+          if (!this.seenEvent(parsed?.event?.id)) {
+            for (const listener of this.eventListeners) listener(parsed as RemoteEventPush);
+          }
         } else if (parsed?.type === 'record' && parsed.record) {
           for (const listener of this.recordListeners) listener(parsed.record as RemoteRecord);
         } else if (parsed?.type === 'presence' && Array.isArray(parsed.users)) {

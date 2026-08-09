@@ -125,12 +125,17 @@ export function ReportsScreen() {
   }, []);
 
   // A "Faire un rapport" trigger from Tasks/Clients/Décisions arrives as a
-  // prefilled draft in the navigation state — open the editor on it.
+  // prefilled draft in the navigation state — open the editor on it. A site
+  // control desk instead creates the report itself (it has all the data) and
+  // sends its id, so we just open it read-only.
   useEffect(() => {
-    const draft = (location.state as { reportDraft?: ReportDraft } | null)?.reportDraft;
-    if (draft) {
-      setEditing({ draft });
+    const state = location.state as { reportDraft?: ReportDraft; openReportId?: string } | null;
+    if (state?.reportDraft) {
+      setEditing({ draft: state.reportDraft });
       setSelection(null);
+    } else if (state?.openReportId) {
+      setSelection({ kind: 'report', id: state.openReportId });
+      setEditing(null);
     }
   }, [location.state]);
 
