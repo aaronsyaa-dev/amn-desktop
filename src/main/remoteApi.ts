@@ -38,8 +38,15 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     },
   });
   if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`amn-api ${res.status} ${res.statusText}: ${body.slice(0, 200)}`);
+    // amn-api écrit ses refus pour l'utilisateur final (« Mot de passe actuel
+    // incorrect. », « Votre accès a été suspendu. »). Les remonter tels quels
+    // vaut mieux que « amn-api 403 Forbidden » suivi d'un fragment de JSON,
+    // que le renderer affichait jusqu'ici à l'écran.
+    const detail = await res
+      .json()
+      .then((body: { error?: string }) => body?.error)
+      .catch(() => undefined);
+    throw new Error(detail || `amn-api ${res.status} ${res.statusText}`);
   }
   return res.json() as Promise<T>;
 }
@@ -161,6 +168,14 @@ export class RemoteApiClient {
       remoteConfig.sessionToken = previous;
       return null;
     }
+  }
+
+  /** Change le mot de passe du compte connecté. Lève le message d'amn-api tel quel. */
+  async changeSessionPassword(currentPassword: string, newPassword: string): Promise<void> {
+    await apiFetch<{ ok: boolean }>('/v1/auth/password', {
+      method: 'PUT',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
   }
 
   /** Ferme la session côté serveur puis repasse au jeton opérateur, s'il y en a un. */

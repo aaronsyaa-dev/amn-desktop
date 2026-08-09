@@ -134,6 +134,8 @@ const bridge: AmnBridge = {
         ipcRenderer.invoke(IPC.remoteSessionLogin, { email, password }),
       restore: (token: string) => ipcRenderer.invoke(IPC.remoteSessionRestore, token),
       clear: () => ipcRenderer.invoke(IPC.remoteSessionClear),
+      changePassword: (currentPassword: string, newPassword: string) =>
+        ipcRenderer.invoke(IPC.remoteSessionChangePassword, { currentPassword, newPassword }),
     },
     getPresence: () => ipcRenderer.invoke(IPC.remoteGetPresence),
     onPresence: (callback: (users: PresenceEntry[]) => void) => {

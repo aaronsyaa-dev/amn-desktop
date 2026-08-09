@@ -4,6 +4,7 @@ import { Bell, Camera, Check, Download, Info, KeyRound, Loader2, Power, UserCirc
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { bridge } from '../lib/bridge';
+import { cleanErrorMessage } from '../lib/errorMessage';
 import { downloadBackup } from '../lib/backup';
 import { resizeImageToDataUrl } from '../lib/imageResize';
 import { ensurePushSubscription, sendPushTest } from '../lib/webPush';
@@ -22,7 +23,7 @@ import { CHANGELOG, CURRENT_VERSION } from '../data/changelog';
 import { DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs } from '../shared/api';
 
 export function SettingsScreen() {
-  const { user } = useAuth();
+  const { user, org } = useAuth();
 
   if (!user) return null;
 
@@ -41,7 +42,7 @@ export function SettingsScreen() {
         <ProfileSection email={user.email} />
       </StaggerItem>
       <StaggerItem>
-        <PasswordSection email={user.email} />
+        <PasswordSection email={user.email} remote={org !== null} />
       </StaggerItem>
       <StaggerItem>
         <NotificationsSection email={user.email} />
@@ -337,7 +338,13 @@ function ProfileSection({ email }: { email: string }) {
   );
 }
 
-function PasswordSection({ email }: { email: string }) {
+/**
+ * `remote` distingue les deux annuaires : un compte amn-api (organisation)
+ * change son mot de passe sur le serveur, un compte local (poste interne, mode
+ * hors-ligne) dans la base SQLite du poste. Envoyer l'un à l'autre échouerait
+ * silencieusement — le mot de passe changerait là où personne ne le vérifie.
+ */
+function PasswordSection({ email, remote }: { email: string; remote: boolean }) {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -352,15 +359,22 @@ function PasswordSection({ email }: { email: string }) {
     }
     setBusy(true);
     try {
-      const res = await bridge().auth.changePassword({ email, currentPassword: current, newPassword: next });
-      if (res.ok) {
-        setMsg({ ok: true, text: 'Mot de passe mis à jour.' });
-        setCurrent('');
-        setNext('');
-        setConfirm('');
+      if (remote) {
+        await bridge().remote.session.changePassword(current, next);
       } else {
-        setMsg({ ok: false, text: res.error ?? 'Échec de la mise à jour.' });
+        const res = await bridge().auth.changePassword({
+          email,
+          currentPassword: current,
+          newPassword: next,
+        });
+        if (!res.ok) throw new Error(res.error ?? 'Échec de la mise à jour.');
       }
+      setMsg({ ok: true, text: 'Mot de passe mis à jour.' });
+      setCurrent('');
+      setNext('');
+      setConfirm('');
+    } catch (err) {
+      setMsg({ ok: false, text: cleanErrorMessage(err, 'Échec de la mise à jour.') });
     } finally {
       setBusy(false);
     }

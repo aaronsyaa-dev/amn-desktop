@@ -7,6 +7,7 @@ import React, {
   useState,
 } from 'react';
 import { bridge } from '../lib/bridge';
+import { cleanErrorMessage } from '../lib/errorMessage';
 import { IS_BUSINESS } from '../edition/edition';
 import type { OrgIdentity, RemoteSession, User } from '../shared/api';
 
@@ -133,7 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setOrg(session.org);
       return;
     } catch (err) {
-      remoteError = err instanceof Error ? err : new Error('Échec de la connexion.');
+      remoteError = new Error(cleanErrorMessage(err, 'Échec de la connexion.'));
       // Le refus d'édition ci-dessus n'est pas un « essayez autre chose » : il
       // ne doit pas retomber sur un compte local du même poste.
       if (remoteError.message.startsWith('Ce compte appartient')) throw remoteError;

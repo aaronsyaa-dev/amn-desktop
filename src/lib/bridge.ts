@@ -391,6 +391,12 @@ function createBrowserRemote(): AmnBridge['remote'] {
           return null;
         }
       },
+      async changePassword(currentPassword: string, newPassword: string) {
+        await apiFetch<{ ok: boolean }>('/v1/auth/password', {
+          method: 'PUT',
+          body: JSON.stringify({ currentPassword, newPassword }),
+        });
+      },
       async clear() {
         if (sessionToken) {
           await publicPost('/v1/auth/logout', {}, sessionToken).catch(() => {

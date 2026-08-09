@@ -37,9 +37,11 @@ changes.
   to avoid a second native build in the toolchain. Cost factor 10. Passwords are
   **never stored in clear**; only the hash is persisted.
 - **Accounts**: no open sign-up yet. Two accounts are auto-seeded on first DB
-  init (`src/main/seed.ts`): `aaron@amn-devsec.com` and
+  init (`src/main/seed.ts`, via `@edition/dbSeed`): `aaron@amn-devsec.com` and
   `mohamed@amn-devsec.com`. Seed plaintext exists only as input and is hashed
-  immediately.
+  immediately. **Édition Business : aucune graine** — pas de compte local du
+  tout, la seule authentification est le compte amn-api de la cliente (voir
+  « Deux éditions » en fin de document).
 - **Session**: on success the renderer stores the returned `User` in
   `localStorage` (`AuthContext`) to keep the user signed in across reloads. This
   is a convenience cache, not the source of truth.
@@ -307,3 +309,34 @@ process (production) — see `.env.example`.
 - **Welcome screen** — `WelcomeOverlay` shows once per calendar day on launch
   (localStorage high-water mark), speaks the greeting via the free
   `SpeechSynthesis` Web API, and is skippable by click/keypress.
+
+## Deux éditions, un seul dépôt (AMN Business)
+
+L'application se construit désormais en deux éditions : `internal` (AMN
+Desktop, ce que font tourner Aaron et Mohamed) et `business` (AMN Business,
+livré aux organisations clientes). Le mécanisme complet, les coutures
+`@edition/*` et la marche à suivre pour livrer une cliente sont documentés dans
+`docs/BUSINESS.md`. Deux points touchent l'architecture décrite plus haut et
+méritent d'être ici :
+
+**L'authentification n'est plus locale.** Le pont `auth.login` (SQLite +
+bcrypt) reste, mais il n'est plus le chemin principal : la connexion passe
+d'abord par `POST /v1/auth/login` d'amn-api, qui rend une session nominative
+portant l'organisation. Cette session devient le justificatif de TOUTES les
+requêtes et de la WebSocket — c'est elle, et non un jeton partagé embarqué dans
+le build, qui détermine les données visibles. Le compte local ne subsiste que
+comme repli hors-ligne dans l'édition interne ; l'édition Business n'en a
+aucun.
+
+Conséquence sur `remoteConfig.ts` : `isRemoteConfigured()` n'exige plus le
+jeton opérateur, mais « une URL ET un justificatif ». Une installation cliente
+est donc « non configurée » jusqu'à la connexion, puis configurée. C'est voulu
+— la synchronisation ne doit pas démarrer avant de savoir POUR QUELLE
+organisation elle démarre.
+
+**Le client amn-api est devenu un transport.** `RemoteApiClient` ne connaît
+plus le nom des trames produit : il expose `onFrame(type, listener)` et
+`sendFrame(frame)`, et ce sont les modules d'édition qui déclarent
+`scan:progress`, `comply:progress`, `signal`… Outre la propreté, c'est ce qui
+fait que ces noms n'apparaissent pas dans le bundle d'une édition qui n'a pas
+ces produits.

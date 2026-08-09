@@ -1048,6 +1048,15 @@ export interface AmnBridge {
       restore(token: string): Promise<RemoteSession | null>;
       /** Termine la session côté serveur et repasse au jeton opérateur (ou à rien). */
       clear(): Promise<void>;
+      /**
+       * Change le mot de passe du compte connecté.
+       *
+       * Distinct de `auth.changePassword`, qui vise le compte LOCAL (SQLite).
+       * Un compte amn-api créé avec un mot de passe temporaire doit pouvoir
+       * s'en défaire, sinon ce mot de passe transmis de vive voix reste
+       * définitif.
+       */
+      changePassword(currentPassword: string, newPassword: string): Promise<void>;
     };
     listSites(): Promise<RemoteSite[]>;
     getSiteEvents(siteId: string, opts?: { since?: string; limit?: number }): Promise<RemoteEvent[]>;
@@ -1271,6 +1280,7 @@ export const IPC = {
   remoteSessionLogin: 'remote:sessionLogin',
   remoteSessionRestore: 'remote:sessionRestore',
   remoteSessionClear: 'remote:sessionClear',
+  remoteSessionChangePassword: 'remote:sessionChangePassword',
   remoteGetPresence: 'remote:getPresence',
   /** Push channels (main -> renderer via webContents.send, not invoke/handle). */
   remoteStartScan: 'remote:startScan',
