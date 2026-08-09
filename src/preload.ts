@@ -148,6 +148,8 @@ const bridge: AmnBridge = {
     },
     setIdentity: (email: string | null) => ipcRenderer.send(IPC.remoteSetIdentity, email),
     getPresence: () => ipcRenderer.invoke(IPC.remoteGetPresence),
+    getOrgOverview: (days: number) => ipcRenderer.invoke(IPC.remoteGetOrgOverview, days),
+    getSiteBadge: (siteId: string) => ipcRenderer.invoke(IPC.remoteGetSiteBadge, siteId),
     sendCallSignal: (signal: OutgoingCallSignal) =>
       ipcRenderer.invoke(IPC.remoteSendCallSignal, signal),
     onCallSignal: (callback: (signal: CallSignal) => void) => {

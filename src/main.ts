@@ -121,21 +121,24 @@ function createWindow(): void {
 
   mainWindow.once('ready-to-show', () => mainWindow?.show());
 
-  // Microphone access for operator-to-operator calls (BLOC 2). Electron denies
-  // every permission request by default, so without this `getUserMedia` fails
-  // with NotAllowedError and a call can never start.
+  // Microphone access for operator-to-operator calls (BLOC 2), plus clipboard
+  // WRITE for the app's many "copier le code" buttons (tracker snippet, badge
+  // embed, API key). Electron routes every permission request through this
+  // handler, and an allow-list of one silently broke copy everywhere — hence
+  // both entries here, and nothing else.
   //
-  // Only the microphone is granted, and only to our own app page: the renderer
-  // loads a local bundle we ship, so there is no third-party origin that could
-  // ask. Camera, geolocation, notifications-via-web and everything else stay
-  // denied — the app has native paths for the ones it actually needs.
+  // Deliberately excluded: clipboard READ (the app never needs to look at what
+  // the operator copied elsewhere), camera, geolocation, and everything else.
+  // The renderer loads a local bundle we ship, so no third-party origin can
+  // even ask.
+  const ALLOWED_PERMISSIONS = new Set(['media', 'clipboard-sanitized-write']);
   mainWindow.webContents.session.setPermissionRequestHandler(
     (_webContents, permission, callback) => {
-      callback(permission === 'media');
+      callback(ALLOWED_PERMISSIONS.has(permission));
     },
   );
-  mainWindow.webContents.session.setPermissionCheckHandler(
-    (_webContents, permission) => permission === 'media',
+  mainWindow.webContents.session.setPermissionCheckHandler((_webContents, permission) =>
+    ALLOWED_PERMISSIONS.has(permission),
   );
 
   // Persist size/position so the next launch restores the same window.

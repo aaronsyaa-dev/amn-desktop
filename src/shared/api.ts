@@ -483,6 +483,51 @@ export interface SiteSummary {
   score: SiteScore;
 }
 
+/* ------------------------------ Bureau SOC (BLOC 4) ------------------------------ */
+
+/** One incident in the cross-site feed: an alert plus the site it fired on. */
+export interface OrgIncident extends RemoteEvent {
+  siteName: string;
+}
+
+/** Hourly event count for one site — the raw material of the heatmap. */
+export interface OrgHourlyBucket {
+  siteId: string;
+  /** `YYYY-MM-DDTHH`, UTC. */
+  hour: string;
+  count: number;
+}
+
+/**
+ * Visitor volume per country. Country granularity ONLY — amn-api stores no
+ * city, no coordinates and performs no IP-to-location lookup.
+ */
+export interface OrgCountryBucket {
+  /** ISO-3166-1 alpha-2. */
+  country: string;
+  count: number;
+}
+
+/** Everything the SOC control desk needs, aggregated server-side per org. */
+export interface OrgOverview {
+  days: number;
+  since: string;
+  sites: Array<{ id: string; name: string; tier: TrackerTier; url: string | null }>;
+  incidents: OrgIncident[];
+  hourly: OrgHourlyBucket[];
+  countries: OrgCountryBucket[];
+}
+
+/** The client-embeddable security badge for one site. */
+export interface SiteBadge {
+  /** Public, unguessable id. Not a credential — it only unlocks name + score. */
+  token: string;
+  svgUrl: string;
+  linkUrl: string;
+  /** Ready-to-paste HTML for the client's own site. */
+  snippet: string;
+}
+
 /** Structured weekly summary behind the Suite tier's recurring report. */
 export interface SiteDigest {
   siteId: string;
@@ -894,6 +939,16 @@ export interface AmnBridge {
     getScan(id: string): Promise<Scan>;
     /** URL of the printable Elite report (opened, then printed to PDF). */
     scanReportUrl(id: string): Promise<string>;
+    /* --- Bureau de contrôle SOC (BLOC 4) --- */
+    /**
+     * Cross-site aggregation over the last `days` days, computed by amn-api.
+     * Scoped to the operator's organization — an aggregate can never mix
+     * two tenants.
+     */
+    getOrgOverview(days: number): Promise<OrgOverview>;
+    /** Issues (once) and returns the site's public embeddable security badge. */
+    getSiteBadge(siteId: string): Promise<SiteBadge>;
+
     /** Live scan progress pushed from amn-api. Returns an unsubscribe function. */
     onScanProgress(callback: (progress: ScanProgress) => void): () => void;
 
@@ -1026,6 +1081,8 @@ export const IPC = {
   remoteConnectionStatusPush: 'remote:connectionStatusPush',
   remoteRecordPush: 'remote:recordPush',
   remotePresencePush: 'remote:presencePush',
+  remoteGetOrgOverview: 'remote:getOrgOverview',
+  remoteGetSiteBadge: 'remote:getSiteBadge',
   remoteSendCallSignal: 'remote:sendCallSignal',
   remoteCallSignalPush: 'remote:callSignalPush',
   systemNotify: 'system:notify',

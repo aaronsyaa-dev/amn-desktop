@@ -3,6 +3,8 @@ import { remoteConfig, isRemoteConfigured } from './remoteConfig';
 import { writeScanReportFile } from './scanReports';
 import type {
   CallSignal,
+  OrgOverview,
+  SiteBadge,
   OutgoingCallSignal,
   PresenceEntry,
   RegisterSiteResult,
@@ -100,6 +102,16 @@ export class RemoteApiClient {
       `/v1/sites/${siteId}/events${qs ? `?${qs}` : ''}`,
     );
     return events;
+  }
+
+  /** Cross-site SOC aggregation, computed by amn-api for this org. */
+  async getOrgOverview(days: number): Promise<OrgOverview> {
+    return apiFetch<OrgOverview>(`/v1/sites/overview?days=${encodeURIComponent(String(days))}`);
+  }
+
+  /** Issues (once) and returns the site's public embeddable security badge. */
+  async getSiteBadge(siteId: string): Promise<SiteBadge> {
+    return apiFetch<SiteBadge>(`/v1/sites/${siteId}/badge`);
   }
 
   async registerSite(name: string): Promise<RegisterSiteResult> {

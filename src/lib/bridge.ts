@@ -6,7 +6,9 @@ import type {
   ChangePasswordResult,
   NotificationPrefs,
   CallSignal,
+  OrgOverview,
   PresenceEntry,
+  SiteBadge,
   RemoteRecord,
   ComplyCheck,
   ComplyProgress,
@@ -595,6 +597,12 @@ function createBrowserRemote(): AmnBridge['remote'] {
       presenceListeners.add(callback);
       ensureStarted();
       return () => presenceListeners.delete(callback);
+    },
+    async getOrgOverview(days: number) {
+      return apiFetch<OrgOverview>(`/v1/sites/overview?days=${encodeURIComponent(String(days))}`);
+    },
+    async getSiteBadge(siteId: string) {
+      return apiFetch<SiteBadge>(`/v1/sites/${siteId}/badge`);
     },
     async sendCallSignal(signal) {
       ensureStarted();

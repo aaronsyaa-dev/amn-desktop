@@ -7,6 +7,7 @@ import { useTrackers } from '../state/useTrackers';
 import { TRACKER_MODULES, moduleByKey, modulesByKeys, type TrackerModule } from '../data/trackerModules';
 import { MaturityBadge } from '../components/tracker/MaturityBadge';
 import { InstallWizard } from '../components/tracker/InstallWizard';
+import { SocDesk } from '../components/tracker/SocDesk';
 import { ConfirmDelete } from '../components/ConfirmDelete';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { relativeTime } from '../lib/time';
@@ -64,6 +65,11 @@ export function TrackerScreen() {
             Installer un tracker
           </button>
         </div>
+      </StaggerItem>
+
+      {/* Cross-site SOC desk (BLOC 4) */}
+      <StaggerItem>
+        <SocDesk />
       </StaggerItem>
 
       {/* Modular catalog */}
