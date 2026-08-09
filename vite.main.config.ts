@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import { builtinModules } from 'node:module';
+import { editionAliases, editionDefine, resolveEdition } from './vite.edition';
 
 // https://vitejs.dev/config
 // The main process must not bundle native modules (better-sqlite3) or Electron;
@@ -26,7 +27,8 @@ export default defineConfig(({ mode }) => {
   // internal tool — the token is already shared between both operators (see
   // amn-api/src/ws/hub.js). Tighten to per-user tokens before any wider use.
   const env = loadEnv(mode, process.cwd(), '');
-  const define: Record<string, string> = {};
+  const edition = resolveEdition(env);
+  const define: Record<string, string> = { ...editionDefine(edition) };
   if (env.AMN_API_URL) define['process.env.AMN_API_URL'] = JSON.stringify(env.AMN_API_URL);
   if (env.AMN_API_OPERATOR_TOKEN) {
     define['process.env.AMN_API_OPERATOR_TOKEN'] = JSON.stringify(env.AMN_API_OPERATOR_TOKEN);
@@ -34,6 +36,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     define,
+    // Le process main a lui aussi sa couture d'édition : `@edition/mainExclusive`
+    // porte les appels amn-api et les canaux IPC des produits exclusifs, et
+    // n'est tout simplement pas construit dans l'édition Business.
+    resolve: { alias: editionAliases(edition) },
     build: {
       rollupOptions: {
         external: [

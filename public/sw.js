@@ -116,11 +116,11 @@ self.addEventListener('push', (event) => {
   try {
     payload = event.data ? event.data.json() : {};
   } catch {
-    payload = { title: 'AMN Desktop', body: event.data ? event.data.text() : '' };
+    payload = { title: '%AMN_PRODUCT_NAME%', body: event.data ? event.data.text() : '' };
   }
 
   const isCall = payload.kind === 'call';
-  const title = payload.title || 'AMN Desktop';
+  const title = payload.title || '%AMN_PRODUCT_NAME%';
   const options = {
     body: payload.body || '',
     icon: './icon.png',

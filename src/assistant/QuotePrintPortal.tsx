@@ -2,7 +2,9 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Logo } from '../components/Logo';
 import { triggerPrint } from '../lib/print';
-import { trackerCatalog } from '../data/trackerCatalog';
+import { QUOTE_ISSUER_TAGLINE, QUOTE_OFFERS } from '@edition/exclusive';
+import { useAuth } from '../auth/AuthContext';
+import { EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/edition';
 import type { Client, Quote } from '../shared/api';
 
 const STATUS_LABEL: Record<Quote['status'], string> = {
@@ -29,7 +31,8 @@ export function QuotePrintPortal({
 }) {
   useEffect(() => triggerPrint(onDone), [onDone]);
 
-  const offer = trackerCatalog.find((o) => o.id === quote.trackerTier);
+  const { org } = useAuth();
+  const offer = QUOTE_OFFERS.find((o) => o.id === quote.trackerTier);
   const issued = new Date(quote.createdAt);
   const issuedLabel = issued.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
   const validUntil = new Date(issued.getTime() + 30 * 86400000).toLocaleDateString('fr-FR', {
@@ -37,14 +40,28 @@ export function QuotePrintPortal({
     month: 'long',
     year: 'numeric',
   });
-  const ref = `AMN-${String(quote.id).padStart(4, '0')}`;
+  // Préfixe de référence tiré de l'organisation : « AMN-0001 » sur le devis
+  // d'une cliente laisserait croire que le document vient de chez nous.
+  const refPrefix = (org?.name ?? 'AMN')
+    .replace(/[^A-Za-zÀ-ÿ0-9]/g, '')
+    .slice(0, 3)
+    .toUpperCase() || 'DEV';
+  const ref = `${refPrefix}-${String(quote.id).padStart(4, '0')}`;
   const price = quote.priceEuro.toLocaleString('fr-FR');
 
   return createPortal(
     <div className="print-root">
       {/* Header */}
       <div className="mb-8 flex items-start justify-between border-b border-neutral-200 pb-5">
-        <Logo height={30} showTagline showAppName />
+        {/*
+          Sur un devis, l'en-tête doit porter le nom de celle qui l'envoie.
+          Notre logo n'apparaît que sur nos propres devis.
+        */}
+        {IS_BUSINESS ? (
+          <p className="text-lg font-semibold text-neutral-900">{org?.name ?? ''}</p>
+        ) : (
+          <Logo height={30} showTagline showAppName />
+        )}
         <div className="text-right text-xs text-neutral-500">
           <p className="text-base font-semibold text-neutral-800">Devis</p>
           <p className="mt-1 font-mono">Réf. {ref}</p>
@@ -57,8 +74,14 @@ export function QuotePrintPortal({
       <div className="mb-8 flex justify-between gap-8 text-sm">
         <div>
           <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">Émetteur</p>
-          <p className="font-medium text-neutral-900">AMN DevSec</p>
-          <p className="text-neutral-600">Supervision & sécurité applicative</p>
+          {/*
+            L'émetteur du devis est l'organisation connectée, pas une raison
+            sociale codée en dur : sur le devis d'une cliente, « AMN DevSec »
+            au lieu de son propre nom n'est pas un détail cosmétique, c'est un
+            document faux.
+          */}
+          <p className="font-medium text-neutral-900">{org?.name ?? ''}</p>
+          {QUOTE_ISSUER_TAGLINE && <p className="text-neutral-600">{QUOTE_ISSUER_TAGLINE}</p>}
         </div>
         <div className="text-right">
           <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">Client</p>
@@ -88,7 +111,7 @@ export function QuotePrintPortal({
           <tr className="border-b border-neutral-200">
             <td className="py-3 text-neutral-800">
               <p className="font-medium">{offer?.name ?? quote.trackerTier}</p>
-              <p className="text-xs text-neutral-500">{offer?.tagline ?? 'Prestation de supervision'}</p>
+              <p className="text-xs text-neutral-500">{offer?.tagline ?? ''}</p>
             </td>
             <td className="py-3 text-center text-neutral-700">1</td>
             <td className="py-3 text-right text-neutral-700">{price} €</td>
@@ -106,7 +129,7 @@ export function QuotePrintPortal({
 
       <div className="mt-8 border-t border-neutral-200 pt-4 text-xs text-neutral-500">
         <p>Statut : {STATUS_LABEL[quote.status]}. Devis valable 30 jours à compter de sa date d’émission.</p>
-        <p className="mt-1">Prix indicatifs hors taxes. Ce document est confidentiel et généré par AMN Desktop.</p>
+        <p className="mt-1">Prix indicatifs hors taxes. Ce document est confidentiel et généré par {EDITION_PRODUCT_NAME}.</p>
       </div>
     </div>,
     document.body,

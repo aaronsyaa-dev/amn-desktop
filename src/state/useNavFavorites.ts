@@ -1,4 +1,5 @@
 import { useCallback, useSyncExternalStore } from 'react';
+import { DEFAULT_FAVORITES } from '@edition/modules';
 
 /**
  * Which modules stay pinned in the sidebar (BLOC C).
@@ -22,8 +23,9 @@ import { useCallback, useSyncExternalStore } from 'react';
 
 const KEY = 'amn.nav.favorites';
 
-/** What a fresh install pins — the five screens actually opened every day. */
-export const DEFAULT_FAVORITES = ['home', 'sites', 'team', 'tasks', 'tracker'] as const;
+// Les défauts dépendent des modules qui existent : épingler « Sites » dans
+// l'édition Business pointerait vers une route absente.
+export { DEFAULT_FAVORITES };
 
 function read(): string[] {
   try {

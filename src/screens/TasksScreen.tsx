@@ -4,7 +4,13 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Contact, FileText, Globe, MapPin, MessageSquare, Pencil, Plus, Send, Trash2, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
-import { useRemoteSites } from '../state/RemoteSitesContext';
+import {
+  SITES_ENABLED,
+  TEAM_ENABLED,
+  TEAM_MEMBERS,
+  useLinkedSites,
+  useSitePanelLink,
+} from '@edition/exclusive';
 import { useSync, useCollection, uid, stripMeta } from '../state/SyncContext';
 import { useUndo } from '../state/UndoContext';
 import { UserAvatar } from '../components/UserAvatar';
@@ -12,17 +18,11 @@ import { SkeletonBoard } from '../components/Skeleton';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { relativeTime } from '../lib/time';
-import { useSitePanel } from '../components/site-panel/SitePanelContext';
 import { useClients } from '../state/useClients';
 import { useTags } from '../components/tags/TagProvider';
 import type { TaskMarker } from '../lib/taskMarkers';
 import type { ReportDraft } from '../state/useReports';
 import type { Client, SharedTaskStatus } from '../shared/api';
-
-const TEAM = [
-  { email: 'aaron@amn-devsec.com', name: 'Aaron' },
-  { email: 'mohamed@amn-devsec.com', name: 'Mohamed' },
-];
 
 const COLUMNS: { status: SharedTaskStatus; label: string }[] = [
   { status: 'todo', label: 'À faire' },
@@ -47,7 +47,7 @@ function taskReportDraft(task: SyncTask, nameOf: (email: string) => string): Rep
   const date = task.createdAt
     ? new Date(task.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
     : '';
-  const lines: string[] = [`**Assigné à :** ${nameOf(task.assigneeEmail)}`];
+  const lines: string[] = TEAM_ENABLED ? [`**Assigné à :** ${nameOf(task.assigneeEmail)}`] : [];
   if (date) lines.push(`**Créée le :** ${date}`);
   lines.push('', task.detail || '_Pas de description._');
   const comments = task.comments ?? [];
@@ -88,7 +88,7 @@ export type SyncTask = TaskData & { id: string; updatedAt: string };
 
 export function TasksScreen() {
   const { user } = useAuth();
-  const { sites } = useRemoteSites();
+  const { sites } = useLinkedSites();
   const { upsert, remove, ready } = useSync();
   const { isPending, scheduleDelete } = useUndo();
   const tasksRaw = useCollection<TaskData>('tasks');
@@ -253,7 +253,7 @@ function TaskColumn({
   status: SharedTaskStatus;
   count: number;
   tasks: SyncTask[];
-  sites: ReturnType<typeof useRemoteSites>['sites'];
+  sites: ReturnType<typeof useLinkedSites>['sites'];
   clients: Client[];
   onMove: (task: SyncTask, status: SharedTaskStatus) => void;
   onRemove: (id: string) => void;
@@ -309,7 +309,7 @@ function TaskCard({
 }: {
   task: SyncTask;
   status: SharedTaskStatus;
-  sites: ReturnType<typeof useRemoteSites>['sites'];
+  sites: ReturnType<typeof useLinkedSites>['sites'];
   clients: Client[];
   onMove: (task: SyncTask, status: SharedTaskStatus) => void;
   onRemove: (id: string) => void;
@@ -317,7 +317,7 @@ function TaskCard({
   onRemoveMarker: (task: SyncTask, markerId: string) => void;
   onOpen: (id: string) => void;
 }) {
-  const { openSite } = useSitePanel();
+  const { openSite } = useSitePanelLink();
   const { capturing, beginCapture, showMarker } = useTags();
   const { profileFor } = useProfiles();
   const navigate = useNavigate();
@@ -414,7 +414,7 @@ function TaskCard({
       </div>
 
       <div className="mt-3 flex items-center justify-between">
-        <UserAvatar email={task.assigneeEmail} size={24} />
+        {TEAM_ENABLED ? <UserAvatar email={task.assigneeEmail} size={24} /> : <span />}
         <div className="flex items-center gap-2 font-mono text-[10px] text-text-muted">
           {commentCount > 0 && (
             <button
@@ -467,7 +467,7 @@ function NewTaskModal({
   onClose,
   onCreate,
 }: {
-  sites: ReturnType<typeof useRemoteSites>['sites'];
+  sites: ReturnType<typeof useLinkedSites>['sites'];
   clients: Client[];
   onClose: () => void;
   onCreate: (input: {
@@ -479,9 +479,13 @@ function NewTaskModal({
     priority: TaskPriority;
   }) => void;
 }) {
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [detail, setDetail] = useState('');
-  const [assigneeEmail, setAssigneeEmail] = useState(TEAM[0].email);
+  // Sans équipe, une tâche appartient forcément à celle qui la crée.
+  const [assigneeEmail, setAssigneeEmail] = useState(
+    TEAM_MEMBERS[0]?.email ?? user?.email ?? '',
+  );
   const [siteId, setSiteId] = useState<string>('');
   const [clientId, setClientId] = useState<string>('');
   const [priority, setPriority] = useState<TaskPriority>('normal');
@@ -538,10 +542,11 @@ function NewTaskModal({
               className="input-focus resize-none border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
             />
           </label>
+          {TEAM_ENABLED && (
           <label className="flex flex-col gap-1.5">
             <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Assigné à</span>
             <div className="flex border border-border">
-              {TEAM.map((m) => (
+              {TEAM_MEMBERS.map((m) => (
                 <button
                   key={m.email}
                   type="button"
@@ -555,6 +560,7 @@ function NewTaskModal({
               ))}
             </div>
           </label>
+          )}
           <label className="flex flex-col gap-1.5">
             <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Priorité</span>
             <div className="flex border border-border">
@@ -573,6 +579,7 @@ function NewTaskModal({
               ))}
             </div>
           </label>
+          {SITES_ENABLED && (
           <label className="flex flex-col gap-1.5">
             <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Lier à un site (optionnel)</span>
             <select
@@ -588,6 +595,7 @@ function NewTaskModal({
               ))}
             </select>
           </label>
+          )}
           <label className="flex flex-col gap-1.5">
             <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Lier à un client (optionnel)</span>
             <select
@@ -634,7 +642,7 @@ function TaskDetailModal({
   onRemoveMarker,
 }: {
   task: SyncTask;
-  sites: ReturnType<typeof useRemoteSites>['sites'];
+  sites: ReturnType<typeof useLinkedSites>['sites'];
   clients: Client[];
   onClose: () => void;
   onPatch: (task: SyncTask, patch: Partial<TaskData>) => void;
@@ -728,10 +736,11 @@ function TaskDetailModal({
                   className="input-focus resize-none border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
                 />
               </label>
+              {TEAM_ENABLED && (
               <label className="flex flex-col gap-1.5">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Assigné à</span>
                 <div className="flex border border-border">
-                  {TEAM.map((m) => (
+                  {TEAM_MEMBERS.map((m) => (
                     <button
                       key={m.email}
                       type="button"
@@ -745,6 +754,7 @@ function TaskDetailModal({
                   ))}
                 </div>
               </label>
+              )}
               <label className="flex flex-col gap-1.5">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Priorité</span>
                 <div className="flex border border-border">
@@ -796,10 +806,12 @@ function TaskDetailModal({
               {task.detail && <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-text-secondary">{task.detail}</p>}
 
               <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-text-muted">
-                <span className="flex items-center gap-1.5">
-                  <UserAvatar email={task.assigneeEmail} size={20} />
-                  {profileFor(task.assigneeEmail).name}
-                </span>
+                {TEAM_ENABLED && (
+                  <span className="flex items-center gap-1.5">
+                    <UserAvatar email={task.assigneeEmail} size={20} />
+                    {profileFor(task.assigneeEmail).name}
+                  </span>
+                )}
                 <span className={`flex items-center gap-1.5 ${prio.text}`}>
                   <span className={`h-2 w-2 rounded-full ${prio.dot}`} /> Priorité {prio.label.toLowerCase()}
                 </span>

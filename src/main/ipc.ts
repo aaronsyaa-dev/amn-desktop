@@ -3,12 +3,8 @@ import {
   IPC,
   type AddClientEventInput,
   type ChangePasswordInput,
-  type CreateScheduleInput,
   type NotificationPrefs,
-  type OutgoingCallSignal,
   type UpdateProfileInput,
-  type ScanTier,
-  type TrackerTier,
   type SyncedCollection,
   type VaultEntry,
   type CreateClientInput,
@@ -68,12 +64,11 @@ import {
   verifyCredentials,
 } from './services';
 import type { RemoteApiClient } from './remoteApi';
-import { getWatch } from './watch';
-import { ollamaStatus, ollamaChat } from './ollama';
 import { getAutoLaunch, setAutoLaunch } from './windowsIntegration';
 import { isVaultEncryptionAvailable, loadVault, saveVault } from './vault';
 import { getDb } from './db';
 import { injectRemoteInput, isRemoteInputAvailable } from './remoteInput';
+import { registerExclusiveIpc } from '@edition/mainExclusive';
 import { pushClient, pushQuote } from './clientsSync';
 
 /** Registers the IPC handlers backing `window.amn` in the renderer. */
@@ -211,27 +206,6 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
       updateObjective(payload.id, payload.patch),
   );
 
-  ipcMain.handle(IPC.remoteListSites, () => remote.listSites());
-  ipcMain.handle(
-    IPC.remoteSiteEvents,
-    (_event, payload: { siteId: string; opts?: { since?: string; limit?: number } }) =>
-      remote.getSiteEvents(payload.siteId, payload.opts),
-  );
-  ipcMain.handle(IPC.remoteRegisterSite, (_event, name: string) => remote.registerSite(name));
-  ipcMain.handle(IPC.remoteUpdateSite, (_event, { id, name }: { id: string; name: string }) =>
-    remote.updateSite(id, name),
-  );
-  ipcMain.handle(IPC.remoteDeleteSite, (_event, id: string) => remote.deleteSite(id));
-  ipcMain.handle(
-    IPC.remoteConfigureSite,
-    (_event, payload: { id: string; patch: { tier?: TrackerTier; url?: string | null } }) =>
-      remote.configureSite(payload.id, payload.patch),
-  );
-  ipcMain.handle(
-    IPC.remoteSiteSummary,
-    (_event, payload: { id: string; hours?: number }) => remote.getSiteSummary(payload.id, payload.hours),
-  );
-  ipcMain.handle(IPC.remoteSiteDigest, (_event, id: string) => remote.getSiteDigest(id));
   ipcMain.handle(IPC.remoteConnectionStatus, () => remote.getConnectionStatus());
 
   ipcMain.handle(IPC.remoteListRecords, (_event, collection: SyncedCollection) =>
@@ -248,28 +222,22 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
       remote.deleteRecord(payload.collection, payload.id),
   );
   ipcMain.handle(IPC.remoteGetPresence, () => remote.getPresence());
-  ipcMain.handle(IPC.remoteStartScan, (_event, payload: { url: string; tier: ScanTier }) =>
-    remote.startScan(payload.url, payload.tier),
-  );
-  ipcMain.handle(IPC.remoteListScans, () => remote.listScans());
-  ipcMain.handle(IPC.remoteGetScan, (_event, id: string) => remote.getScan(id));
-  ipcMain.handle(IPC.remoteScanReportUrl, (_event, id: string) => remote.scanReportUrl(id));
-  ipcMain.handle(IPC.remoteStartComply, (_event, url: string) => remote.startComply(url));
-  ipcMain.handle(IPC.remoteListComplyChecks, () => remote.listComplyChecks());
-  ipcMain.handle(IPC.remoteGetComplyCheck, (_event, id: string) => remote.getComplyCheck(id));
   // setIdentity is fire-and-forget from the renderer (no reply needed).
   ipcMain.on(IPC.remoteSetIdentity, (_event, email: string | null) => remote.setIdentity(email));
-  ipcMain.handle(IPC.remoteListSslStatus, () => remote.listSslStatus());
-  ipcMain.handle(IPC.remoteCheckSsl, (_event, host: string) => remote.checkSsl(host));
-  ipcMain.handle(IPC.remoteListSchedules, () => remote.listSchedules());
-  ipcMain.handle(IPC.remoteCreateSchedule, (_event, input: CreateScheduleInput) =>
-    remote.createSchedule(input),
+  // Session amn-api. Le renderer conserve le jeton (c'est le justificatif de
+  // SON utilisateur, pas un secret de build comme le jeton opérateur) et le
+  // redonne au démarrage ; le process main est celui qui s'en sert.
+  ipcMain.handle(
+    IPC.remoteSessionLogin,
+    (_event, payload: { email: string; password: string }) =>
+      remote.login(payload.email, payload.password),
   );
-  ipcMain.handle(IPC.remoteDeleteSchedule, (_event, id: string) => remote.deleteSchedule(id));
-  ipcMain.handle(IPC.remoteGetOrgOverview, (_event, days: number) => remote.getOrgOverview(days));
-  ipcMain.handle(IPC.remoteGetSiteBadge, (_event, siteId: string) => remote.getSiteBadge(siteId));
-  ipcMain.handle(IPC.remoteSendCallSignal, (_event, signal: OutgoingCallSignal) =>
-    remote.sendSignal(signal),
+  ipcMain.handle(IPC.remoteSessionRestore, (_event, token: string) => remote.restoreSession(token));
+  ipcMain.handle(IPC.remoteSessionClear, () => remote.clearSession());
+  ipcMain.handle(
+    IPC.remoteSessionChangePassword,
+    (_event, payload: { currentPassword: string; newPassword: string }) =>
+      remote.changeSessionPassword(payload.currentPassword, payload.newPassword),
   );
 
   // Push channels: broadcast to every open window rather than replying to a
@@ -279,14 +247,14 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
       win.webContents.send(channel, payload);
     }
   };
-  remote.onEvent((push) => broadcastToAll(IPC.remoteEventPush, push));
   remote.onStatusChange((status) => broadcastToAll(IPC.remoteConnectionStatusPush, status));
   remote.onRecord((record) => broadcastToAll(IPC.remoteRecordPush, record));
   remote.onPresence((users) => broadcastToAll(IPC.remotePresencePush, users));
-  remote.onSignal((signal) => broadcastToAll(IPC.remoteCallSignalPush, signal));
-  remote.onProductRegression((r) => broadcastToAll(IPC.remoteProductRegressionPush, r));
-  remote.onScanProgress((progress) => broadcastToAll(IPC.remoteScanProgressPush, progress));
-  remote.onComplyProgress((progress) => broadcastToAll(IPC.remoteComplyProgressPush, progress));
+
+  // Produits exclusifs d'AMN DevSec (parc de sites, Scanner, Comply, SSL
+  // Monitor, analyses récurrentes, bureau SOC, appels audio). Dans l'édition
+  // Business, cet appel ne fait rien — et les canaux n'existent donc pas.
+  registerExclusiveIpc(ipcMain, remote, broadcastToAll);
 
   // Native OS notifications. The renderer decides *when* (it holds prefs +
   // identity + the live streams); the main process just shows them so they
@@ -339,15 +307,6 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
     platform: process.platform,
     isElectron: true,
   }));
-
-  ipcMain.handle(IPC.watchList, () => getWatch());
-  ipcMain.handle(IPC.watchRefresh, () => getWatch(true));
-
-  ipcMain.handle(IPC.ollamaStatus, () => ollamaStatus());
-  ipcMain.handle(
-    IPC.ollamaChat,
-    (_event, input: { model: string; system: string; prompt: string }) => ollamaChat(input),
-  );
 
   // Password vault — local-only, encrypted at rest. Never touches remote/
   // the WebSocket hub above: see main/vault.ts.

@@ -13,21 +13,18 @@ import { Crosshair, X } from 'lucide-react';
 import { captureAt, resolveMarkerPoint, type TaskMarker } from '../../lib/taskMarkers';
 import { uid } from '../../state/SyncContext';
 import { TagHighlight } from './TagHighlight';
+import { NAV_ITEMS } from '../../data/navigation';
 
-/** Friendly route names, used as the default marker label. */
-const ROUTE_LABELS: Record<string, string> = {
-  '/': 'Accueil',
-  '/sites': 'Sites',
-  '/team': 'Équipe',
-  '/tasks': 'Tâches',
-  '/clients': 'Clients',
-  '/tracker': 'Tracker',
-  '/decisions': 'Décisions',
-  '/knowledge': 'Connaissances',
-  '/notes': 'Notes',
-  '/media': 'Médias',
-  '/settings': 'Paramètres',
-};
+/**
+ * Libellés lisibles des routes, servant d'intitulé par défaut à un repère.
+ *
+ * Dérivés des modules de l'édition construite plutôt que réécrits à la main :
+ * une liste en dur redonnait « Tracker », « Décisions » et « Connaissances »
+ * au bundle Business, pour des écrans qui n'y existent pas.
+ */
+const ROUTE_LABELS: Record<string, string> = Object.fromEntries(
+  NAV_ITEMS.map((item) => [item.to, item.label]),
+);
 
 export function routeLabel(routeKey: string): string {
   return ROUTE_LABELS[routeKey] ?? routeKey;

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { Logo } from '../components/Logo';
+import { EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/edition';
 
 interface LocationState {
   from?: { pathname: string };
@@ -167,7 +168,7 @@ export function LoginScreen() {
         </div>
       </motion.form>
       <p className="mt-6 font-mono text-[10px] uppercase tracking-widest text-text-muted">
-        AMN DevSec · Centre de supervision
+        {IS_BUSINESS ? `${EDITION_PRODUCT_NAME} · Espace de travail` : 'AMN DevSec · Centre de supervision'}
       </p>
     </motion.div>
   );

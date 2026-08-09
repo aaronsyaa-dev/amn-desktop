@@ -1,5 +1,6 @@
 import { app, autoUpdater, BrowserWindow, ipcMain } from 'electron';
 import { IPC } from '../shared/api';
+import { IS_BUSINESS } from '../edition/edition';
 
 /**
  * Auto-update for the Forge/Squirrel build via the free update.electronjs.org
@@ -32,6 +33,13 @@ export function setupAutoUpdate(): void {
   });
 
   if (!app.isPackaged) return;
+
+  // L'édition Business ne s'auto-met pas à jour. Le service de mise à jour lit
+  // les Releases de aaronsyaa-dev/amn-desktop, qui portent les artefacts de
+  // l'édition INTERNE : brancher la cliente dessus lui installerait notre
+  // application, produits de cybersécurité compris. Ses mises à jour sont
+  // remises à la main tant que l'édition n'a pas son propre canal.
+  if (IS_BUSINESS) return;
 
   try {
     // Lazy require so dev/test (and the Linux CI) never load native update code.

@@ -1,21 +1,29 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, Bot, Camera, Check, Download, ExternalLink, Info, KeyRound, Loader2, Power, RefreshCw, UserCircle } from 'lucide-react';
+import { Bell, Camera, Check, Download, Info, KeyRound, Loader2, Power, UserCircle } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
-import { useAssistant } from '../assistant/AssistantContext';
 import { bridge } from '../lib/bridge';
+import { cleanErrorMessage } from '../lib/errorMessage';
 import { downloadBackup } from '../lib/backup';
 import { resizeImageToDataUrl } from '../lib/imageResize';
 import { ensurePushSubscription, sendPushTest } from '../lib/webPush';
 import { UserAvatar } from '../components/UserAvatar';
 import { Logo } from '../components/Logo';
+import { SettingsPanel as Panel } from '../components/SettingsPanel';
+import { IS_BUSINESS } from '../edition/edition';
+import { OllamaSection } from '@edition/exclusive';
+
+/** Une phrase d'identité par édition — celle de l'interne nomme AMN DevSec. */
+const ABOUT_TAGLINE = IS_BUSINESS
+  ? 'Votre espace de gestion d’activité — agenda, clients, tâches et documents.'
+  : 'Poste de commandement AMN DEVSEC — supervision, équipe et clients.';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { CHANGELOG, CURRENT_VERSION } from '../data/changelog';
 import { DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs } from '../shared/api';
 
 export function SettingsScreen() {
-  const { user } = useAuth();
+  const { user, org } = useAuth();
 
   if (!user) return null;
 
@@ -34,7 +42,7 @@ export function SettingsScreen() {
         <ProfileSection email={user.email} />
       </StaggerItem>
       <StaggerItem>
-        <PasswordSection email={user.email} />
+        <PasswordSection email={user.email} remote={org !== null} />
       </StaggerItem>
       <StaggerItem>
         <NotificationsSection email={user.email} />
@@ -129,7 +137,7 @@ function AboutSection() {
           <div className="flex flex-col gap-2">
             <Logo height={30} showAppName />
             <p className="text-xs text-text-muted">
-              Poste de commandement AMN DEVSEC — supervision, équipe et clients.
+              {ABOUT_TAGLINE}
             </p>
           </div>
           <div className="text-right">
@@ -209,119 +217,6 @@ function StartupSection() {
         </div>
       )}
     </Panel>
-  );
-}
-
-function OllamaSection() {
-  const { ollamaAvailable, ollamaModels, ollamaModel, setOllamaModel, refreshOllama } = useAssistant();
-  const [checking, setChecking] = useState(false);
-
-  const recheck = () => {
-    setChecking(true);
-    refreshOllama();
-    window.setTimeout(() => setChecking(false), 900);
-  };
-
-  return (
-    <Panel
-      icon={Bot}
-      title="Ajmani — modèle local (Ollama)"
-      subtitle="Ajmani utilise un modèle qui tourne sur votre machine, gratuitement et en privé. Sinon, le moteur intégré prend le relais."
-    >
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span
-              className={`h-2 w-2 rounded-full ${ollamaAvailable ? 'bg-success' : 'border border-text-muted bg-transparent'}`}
-            />
-            <span className="text-sm text-text-primary">
-              {ollamaAvailable ? 'Ollama détecté' : 'Ollama non détecté'}
-            </span>
-            {ollamaAvailable && (
-              <span className="font-mono text-[11px] text-text-muted">
-                · {ollamaModels.length} modèle{ollamaModels.length > 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={recheck}
-            className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:bg-white/5 hover:text-text-primary"
-          >
-            <RefreshCw size={12} className={checking ? 'animate-spin' : ''} />
-            Vérifier
-          </button>
-        </div>
-
-        {ollamaAvailable && ollamaModels.length > 0 ? (
-          <label className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Modèle utilisé</span>
-            <select
-              value={ollamaModel ?? ''}
-              onChange={(e) => setOllamaModel(e.target.value)}
-              className="input-focus cursor-pointer border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
-            >
-              {ollamaModels.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-            <span className="text-xs text-text-muted">
-              L’assistant répond désormais via ce modèle, ancré sur vos données de parc réelles.
-            </span>
-          </label>
-        ) : ollamaAvailable ? (
-          <p className="text-sm text-text-secondary">
-            Ollama tourne mais aucun modèle n’est installé. Dans un terminal :{' '}
-            <code className="rounded bg-bg px-1.5 py-0.5 font-mono text-xs text-text-primary">ollama pull llama3.2</code>
-          </p>
-        ) : (
-          <div className="rounded-lg border border-border bg-bg p-3 text-sm text-text-secondary">
-            <p>
-              Installez Ollama, puis téléchargez un modèle léger, par ex.{' '}
-              <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-xs text-text-primary">
-                ollama pull llama3.2
-              </code>
-              . L’app le détectera automatiquement.
-            </p>
-            <a
-              href="https://ollama.com"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-text-primary underline decoration-border underline-offset-2 hover:decoration-text-primary"
-            >
-              <ExternalLink size={12} /> ollama.com
-            </a>
-          </div>
-        )}
-      </div>
-    </Panel>
-  );
-}
-
-function Panel({
-  icon: Icon,
-  title,
-  subtitle,
-  children,
-}: {
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
-  title: string;
-  subtitle: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="border border-border bg-surface">
-      <div className="flex items-center gap-2.5 border-b border-border px-5 py-3.5">
-        <Icon size={16} strokeWidth={1.75} className="text-text-secondary" />
-        <div>
-          <h2 className="text-sm font-semibold text-text-primary">{title}</h2>
-          <p className="text-xs text-text-muted">{subtitle}</p>
-        </div>
-      </div>
-      <div className="p-5">{children}</div>
-    </div>
   );
 }
 
@@ -443,7 +338,13 @@ function ProfileSection({ email }: { email: string }) {
   );
 }
 
-function PasswordSection({ email }: { email: string }) {
+/**
+ * `remote` distingue les deux annuaires : un compte amn-api (organisation)
+ * change son mot de passe sur le serveur, un compte local (poste interne, mode
+ * hors-ligne) dans la base SQLite du poste. Envoyer l'un à l'autre échouerait
+ * silencieusement — le mot de passe changerait là où personne ne le vérifie.
+ */
+function PasswordSection({ email, remote }: { email: string; remote: boolean }) {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -458,15 +359,22 @@ function PasswordSection({ email }: { email: string }) {
     }
     setBusy(true);
     try {
-      const res = await bridge().auth.changePassword({ email, currentPassword: current, newPassword: next });
-      if (res.ok) {
-        setMsg({ ok: true, text: 'Mot de passe mis à jour.' });
-        setCurrent('');
-        setNext('');
-        setConfirm('');
+      if (remote) {
+        await bridge().remote.session.changePassword(current, next);
       } else {
-        setMsg({ ok: false, text: res.error ?? 'Échec de la mise à jour.' });
+        const res = await bridge().auth.changePassword({
+          email,
+          currentPassword: current,
+          newPassword: next,
+        });
+        if (!res.ok) throw new Error(res.error ?? 'Échec de la mise à jour.');
       }
+      setMsg({ ok: true, text: 'Mot de passe mis à jour.' });
+      setCurrent('');
+      setNext('');
+      setConfirm('');
+    } catch (err) {
+      setMsg({ ok: false, text: cleanErrorMessage(err, 'Échec de la mise à jour.') });
     } finally {
       setBusy(false);
     }

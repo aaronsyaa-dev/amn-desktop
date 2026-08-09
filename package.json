@@ -14,7 +14,12 @@
     "lint": "eslint --ext .ts,.tsx .",
     "typecheck": "tsc --noEmit",
     "build:web": "vite build --config vite.renderer.config.mts",
-    "check:sync": "node scripts/check-sync-parity.mjs"
+    "check:sync": "node scripts/check-sync-parity.mjs",
+    "typecheck:business": "tsc --noEmit -p tsconfig.business.json",
+    "start:business": "cross-env AMN_EDITION=business npm run start",
+    "package:business": "cross-env AMN_EDITION=business npm run package",
+    "make:business": "cross-env AMN_EDITION=business npm run make",
+    "build:web:business": "cross-env AMN_EDITION=business vite build --config vite.renderer.config.mts"
   },
   "keywords": [],
   "author": {
@@ -45,6 +50,7 @@
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "@vitejs/plugin-react": "^4.7.0",
+    "cross-env": "^7.0.3",
     "electron": "43.2.0",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.32.0",

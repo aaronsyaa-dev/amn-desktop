@@ -1,7 +1,7 @@
 {
-  "name": "AMN DevSec",
+  "name": "%AMN_PRODUCT_NAME%",
   "short_name": "AMN",
-  "description": "Poste de commandement AMN — chat, tâches, clients, décisions, notes, rapports.",
+  "description": "%AMN_PRODUCT_DESCRIPTION%",
   "id": "/",
   "start_url": "./",
   "scope": "./",

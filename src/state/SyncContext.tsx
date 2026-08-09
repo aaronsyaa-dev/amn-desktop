@@ -49,6 +49,12 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'profiles',
   'notes',
   'reports',
+  // Rendez-vous et médiathèque de l'édition Business. Listés ici même dans le
+  // build interne : la liste est le contrat de synchronisation, pas la liste
+  // des écrans compilés — et `npm run check:sync` vérifie qu'elle correspond
+  // exactement au type SyncedCollection et à la liste ALLOWED d'amn-api.
+  'appointments',
+  'media',
   'remediation',
   // Clients and quotes moved here from the per-platform stores (SQLite on
   // Electron, localStorage on the web) that made them invisible across

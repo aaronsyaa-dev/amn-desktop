@@ -5,8 +5,8 @@ import { ArrowRight, FileText, Globe, ImagePlus, Info, Mail, Phone, Plus, Printe
 import { useClients } from '../state/useClients';
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
-import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
-import { useSitePanel } from '../components/site-panel/SitePanelContext';
+import type { DerivedSite } from '../state/RemoteSitesContext';
+import { QUOTE_OFFERS, SITES_ENABLED, useLinkedSites, useSitePanelLink } from '@edition/exclusive';
 import { StatusBadge } from '../components/StatusBadge';
 import {
   computeClientHealth,
@@ -17,7 +17,6 @@ import {
 import { Skeleton } from '../components/Skeleton';
 import { SaveIndicator } from '../components/SaveIndicator';
 import { ConfirmDelete } from '../components/ConfirmDelete';
-import { trackerCatalog } from '../data/trackerCatalog';
 import type { ReportDraft } from '../state/useReports';
 import { QuotePrintPortal } from '../assistant/QuotePrintPortal';
 import type {
@@ -71,7 +70,7 @@ function initials(name: string): string {
 }
 
 export function ClientsScreen() {
-  const { sites } = useRemoteSites();
+  const { sites } = useLinkedSites();
   const location = useLocation();
   // A @client mention (or any navigation) can request a specific client be
   // opened via router state: navigate('/clients', { state: { focusClientId } }).
@@ -327,7 +326,7 @@ function ClientDetail({
       <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-2">
         <div className="flex flex-col gap-6">
           <ContactBlock client={client} onPatch={onPatch} />
-          <LinkedSitesBlock client={client} sites={sites} onPatch={onPatch} />
+          {SITES_ENABLED && <LinkedSitesBlock client={client} sites={sites} onPatch={onPatch} />}
           <NotesBlock client={client} onPatch={onPatch} />
         </div>
         <div className="flex flex-col gap-6">
@@ -509,7 +508,7 @@ function LinkedSitesBlock({
   sites: DerivedSite[];
   onPatch: (id: number, p: UpdateClientInput) => Promise<void>;
 }) {
-  const { openSite } = useSitePanel();
+  const { openSite } = useSitePanelLink();
 
   const toggle = (siteId: string) => {
     const next = client.linkedSiteIds.includes(siteId)
@@ -804,7 +803,7 @@ function QuoteRow({
   onPrint: () => void;
   onRemove: () => void;
 }) {
-  const offer = trackerCatalog.find((o) => o.id === quote.trackerTier);
+  const offer = QUOTE_OFFERS.find((o) => o.id === quote.trackerTier);
   const statusMeta = QUOTE_STATUS_META[quote.status];
   const paymentMeta = PAYMENT_META[quote.paymentStatus];
 
@@ -877,7 +876,7 @@ function NewQuoteModal({
   onCreate: (input: CreateQuoteInput) => Promise<Quote>;
 }) {
   const [step, setStep] = useState(0);
-  const [trackerTier, setTrackerTier] = useState(trackerCatalog[0].id);
+  const [trackerTier, setTrackerTier] = useState(QUOTE_OFFERS[0]?.id ?? '');
   const [priceEuro, setPriceEuro] = useState('');
   const [title, setTitle] = useState('');
   const [detail, setDetail] = useState('');
@@ -937,23 +936,39 @@ function NewQuoteModal({
           {step === 0 && (
             <div className="flex flex-col gap-2">
               <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                Quelle offre proposer ?
+                {QUOTE_OFFERS.length > 0 ? 'Quelle offre proposer ?' : 'Quel type de prestation ?'}
               </p>
-              {trackerCatalog.map((offer) => (
-                <button
-                  key={offer.id}
-                  type="button"
-                  onClick={() => setTrackerTier(offer.id)}
-                  className={`flex flex-col items-start gap-0.5 border px-3 py-2.5 text-left transition-colors ${
-                    trackerTier === offer.id
-                      ? 'border-border-strong bg-accent-muted'
-                      : 'border-border hover:border-border-strong'
-                  }`}
-                >
-                  <span className="text-sm font-medium text-text-primary">{offer.name}</span>
-                  <span className="text-xs text-text-secondary">{offer.tagline}</span>
-                </button>
-              ))}
+              {/*
+                Sans catalogue d'offres — le cas d'une organisation cliente qui
+                facture ses propres prestations — l'étape devient un intitulé
+                libre. Proposer une liste vide, ou pire une liste de paliers de
+                supervision, n'aurait aucun sens sur son devis.
+              */}
+              {QUOTE_OFFERS.length > 0 ? (
+                QUOTE_OFFERS.map((offer) => (
+                  <button
+                    key={offer.id}
+                    type="button"
+                    onClick={() => setTrackerTier(offer.id)}
+                    className={`flex flex-col items-start gap-0.5 border px-3 py-2.5 text-left transition-colors ${
+                      trackerTier === offer.id
+                        ? 'border-border-strong bg-accent-muted'
+                        : 'border-border hover:border-border-strong'
+                    }`}
+                  >
+                    <span className="text-sm font-medium text-text-primary">{offer.name}</span>
+                    <span className="text-xs text-text-secondary">{offer.tagline}</span>
+                  </button>
+                ))
+              ) : (
+                <input
+                  autoFocus
+                  value={trackerTier}
+                  onChange={(e) => setTrackerTier(e.target.value)}
+                  placeholder="ex. Prestation à la journée, forfait…"
+                  className="input-focus border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
+                />
+              )}
             </div>
           )}
 
