@@ -717,7 +717,7 @@ function LinkManager({ links, onChange }: { links: ReportLink[]; onChange: (link
             <motion.div
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              className="absolute bottom-full left-0 z-20 mb-1 max-h-64 w-64 overflow-y-auto rounded-lg border border-border bg-surface shadow-2xl"
+              className="absolute bottom-full left-0 z-20 mb-1 max-h-64 w-64 overflow-y-auto rounded-lg border border-border bg-surface elev-2"
             >
               {candidates.length === 0 ? (
                 <p className="px-3 py-2 text-xs text-text-muted">Rien à lier.</p>

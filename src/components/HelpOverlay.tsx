@@ -117,7 +117,7 @@ function HelpOverlay({ open, onClose }: { open: boolean; onClose: () => void }) 
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl"
+            className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-surface elev-3"
           >
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
               <div className="flex items-center gap-2.5">

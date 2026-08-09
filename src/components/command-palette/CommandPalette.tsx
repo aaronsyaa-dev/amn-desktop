@@ -9,6 +9,7 @@ import React, {
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  LockKeyhole,
   BookOpen,
   CheckSquare,
   Contact,
@@ -60,6 +61,7 @@ const NAV_COMMANDS: Extract<Command, { kind: 'nav' }>[] = [
   { kind: 'nav', id: 'nav-tracker', label: 'Trackers', icon: Radar, to: '/tracker' },
   { kind: 'nav', id: 'nav-scanner', label: 'Scanner', icon: ScanLine, to: '/scanner' },
   { kind: 'nav', id: 'nav-comply', label: 'Comply', icon: BadgeCheck, to: '/comply' },
+  { kind: 'nav', id: 'nav-ssl', label: 'SSL Monitor', icon: LockKeyhole, to: '/ssl' },
   { kind: 'nav', id: 'nav-decisions', label: 'Décisions', icon: Scale, to: '/decisions' },
   { kind: 'nav', id: 'nav-knowledge', label: 'Connaissances', icon: BookOpen, to: '/knowledge' },
   { kind: 'nav', id: 'nav-notes', label: 'Notes', icon: NotebookPen, to: '/notes' },
@@ -238,7 +240,7 @@ function CommandPaletteModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: -8 }}
             transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-            className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_24px_60px_rgba(0,0,0,0.6)]"
+            className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-surface elev-3"
           >
             <div className="flex items-center gap-3 border-b border-border px-4">
               <Search size={18} strokeWidth={1.75} className="text-text-muted" />

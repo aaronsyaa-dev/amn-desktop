@@ -37,7 +37,7 @@ export function UpdateReady() {
         animate={{ opacity: 1, y: 0, x: 0 }}
         exit={{ opacity: 0, y: 20 }}
         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-        className="fixed bottom-6 right-6 z-[195] w-80 max-w-[calc(100vw-3rem)] overflow-hidden rounded-2xl border border-border-strong bg-surface shadow-2xl"
+        className="fixed bottom-6 right-6 z-[195] w-80 max-w-[calc(100vw-3rem)] overflow-hidden rounded-2xl border border-border-strong bg-surface elev-3"
       >
         <div className="flex items-start gap-3 border-b border-border px-4 py-3">
           <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent-muted text-accent">

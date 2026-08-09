@@ -32,6 +32,13 @@ import type {
   ReportRequest,
 } from './types';
 import { buildGlobalReport, buildSiteReport } from './reportContent';
+import {
+  EMPTY_WORKSPACE,
+  looksLikeWorkspaceQuestion,
+  renderSupervisionContext,
+  renderWorkspaceContext,
+  type WorkspaceData,
+} from './workspaceContext';
 
 export {
   getDailyBrief,
@@ -145,8 +152,16 @@ export async function runAssistant(
   prompt: string,
   sites: DerivedSite[],
   eventsBySite: EventsMap,
-  opts: { generate?: Generate } = {},
+  opts: {
+    generate?: Generate;
+    /** The operator's own synced data (BLOC 3). Never leaves the machine. */
+    workspace?: WorkspaceData;
+    /** Public URL per site id, used to match scanner/comply runs to a site. */
+    siteUrlById?: Record<string, string>;
+  } = {},
 ): Promise<AssistantTurn> {
+  const workspace = opts.workspace ?? EMPTY_WORKSPACE;
+  const siteUrlById = opts.siteUrlById ?? {};
   const intent = parseIntent(prompt, sites);
 
   if (intent.kind === 'report') {
@@ -160,13 +175,16 @@ export async function runAssistant(
   // Free-text question → Ajmani, a general assistant backed by the local model,
   // with the real parc data available as OPTIONAL context (not a straitjacket).
   if (opts.generate) {
-    const text = await opts.generate(assistantSystemPrompt(sites, eventsBySite), prompt);
+    const text = await opts.generate(
+      assistantSystemPrompt(sites, eventsBySite, workspace, siteUrlById),
+      prompt,
+    );
     if (text.trim()) return { kind: 'answer', blocks: textToBlocks(text) };
     // Empty model reply → fall through to the data-grounded fallback below.
   }
 
   await delay(300);
-  return { kind: 'answer', blocks: buildAnswer(prompt, sites, eventsBySite) };
+  return { kind: 'answer', blocks: buildAnswer(prompt, sites, eventsBySite, workspace) };
 }
 
 /**
@@ -214,15 +232,14 @@ export function textToBlocks(text: string): ReportBlock[] {
  * the question calls for it. It must not force-fit the parc onto unrelated
  * questions, and must not invent parc facts.
  */
-export function assistantSystemPrompt(sites: DerivedSite[], eventsBySite: EventsMap): string {
-  const lines = sites.slice(0, 40).map((s) => {
-    const alerts = (eventsBySite[s.id] ?? []).filter((e) => e.type === 'security_alert').length;
-    const visitors = s.state?.activeVisitors ?? 0;
-    return `- ${s.name} : ${s.status}, ${visitors} visiteur(s) actif(s), ${alerts} alerte(s) enregistrée(s)`;
-  });
-  const parc = sites.length
-    ? `${sites.length} site(s) supervisé(s) :\n${lines.join('\n')}`
-    : "Aucun site n'est encore enregistré dans le parc.";
+export function assistantSystemPrompt(
+  sites: DerivedSite[],
+  eventsBySite: EventsMap,
+  workspace: WorkspaceData = EMPTY_WORKSPACE,
+  siteUrlById: Record<string, string> = {},
+): string {
+  const supervision = renderSupervisionContext(sites, eventsBySite, workspace, siteUrlById);
+  const workspaceText = renderWorkspaceContext(workspace);
 
   return [
     "Tu es Ajmani, l'assistant IA intégré à AMN Desktop, un logiciel utilisé par une petite équipe de cybersécurité (AMN DevSec).",
@@ -230,15 +247,175 @@ export function assistantSystemPrompt(sites: DerivedSite[], eventsBySite: Events
     'Réponds en français par défaut (ou dans la langue de la question), de manière concise et directe.',
     'Quand tu écris du code, utilise des blocs de code Markdown avec des triples backticks et le langage.',
     '',
-    "En plus, tu as accès aux données réelles du parc de supervision ci-dessous. Utilise-les UNIQUEMENT lorsque la question porte sur la supervision, les sites, la sécurité ou l'activité du parc — et dans ce cas n'invente jamais de site, de chiffre ou d'incident absent du contexte. Pour toute question sans rapport, ignore ce contexte.",
+    "Tu as aussi accès, ci-dessous, aux DONNÉES RÉELLES de cette équipe : son espace de travail (tâches, clients, notes, décisions, connaissances) et son parc supervisé (statuts, alertes, scores sécurité et RGPD).",
+    'Trois règles absolues sur ces données :',
+    "1. N'invente JAMAIS. Si la réponse n'est pas dans le contexte ci-dessous, dis explicitement que tu ne l'as pas dans les données — ne devine pas, ne complète pas, n'extrapole pas un nom, un chiffre ou une date.",
+    "2. CITE TA SOURCE. Chaque ligne du contexte porte un identifiant entre crochets, par exemple [tasks/task-1] ou [site/site-g20]. Quand tu t'appuies sur une donnée, rappelle cet identifiant entre crochets dans ta réponse.",
+    "3. Le contexte est PARTIEL : il ne contient que les entrées les plus récentes de chaque collection. Si une question porte manifestement sur autre chose, dis-le plutôt que de conclure à tort qu'il n'y a rien.",
+    "Pour une question sans aucun rapport avec l'équipe ou le parc, ignore complètement ce contexte et réponds normalement.",
     '',
-    `Contexte parc (à utiliser seulement si pertinent) :\n${parc}`,
+    '=== ESPACE DE TRAVAIL ===',
+    workspaceText,
+    '',
+    '=== SUPERVISION ===',
+    supervision,
   ].join('\n');
 }
 
+/**
+ * Answers a question about the operator's own data WITHOUT a language model.
+ *
+ * This is the path taken when Ollama isn't running, and it is deliberately
+ * extractive rather than generative: it selects the matching records and lists
+ * them with their identifiers. It can be incomplete, but it can never be wrong
+ * — which is the right trade for a fallback, since a plausible-sounding
+ * invented answer is exactly what BLOC 3 forbids.
+ *
+ * Returns null when the question isn't about the workspace, so the caller can
+ * fall through to the parc answers below.
+ */
+function answerFromWorkspace(lower: string, w: WorkspaceData): ReportBlock[] | null {
+  if (!looksLikeWorkspaceQuestion(lower)) return null;
+
+  const source = (collection: string, id: string) => `[${collection}/${id}]`;
+
+  if (/\bt[âa]ches?\b/.test(lower)) {
+    const wantsOpen = /ouverte|en cours|à faire|a faire|reste|todo/.test(lower);
+    const rows = w.tasks.filter((t) => (wantsOpen ? t.status !== 'done' : true));
+    if (w.tasks.length === 0) {
+      return [{ type: 'paragraph', text: 'Aucune tâche dans les données synchronisées.' }];
+    }
+    return [
+      {
+        type: 'paragraph',
+        text: `${rows.length} tâche(s)${wantsOpen ? ' non terminées' : ''} sur ${w.tasks.length} au total :`,
+      },
+      {
+        type: 'list',
+        items: rows
+          .slice(0, 15)
+          .map(
+            (t) =>
+              `${String(t.title ?? 'sans titre')} — ${String(t.status ?? '?')} — ${
+                String(t.assigneeEmail ?? '') || 'non attribuée'
+              } ${source('tasks', t.id)}`,
+          ),
+      },
+    ];
+  }
+
+  if (/\bclients?\b/.test(lower)) {
+    if (w.clients.length === 0) {
+      return [{ type: 'paragraph', text: 'Aucun client dans les données synchronisées.' }];
+    }
+    return [
+      { type: 'paragraph', text: `${w.clients.length} client(s) enregistré(s) :` },
+      {
+        type: 'list',
+        items: w.clients
+          .slice(0, 15)
+          .map(
+            (c) =>
+              `${String(c.name ?? 'sans nom')}${c.company ? ` — ${String(c.company)}` : ''} ${source(
+                'clients',
+                c.id,
+              )}`,
+          ),
+      },
+    ];
+  }
+
+  if (/\bnotes?\b/.test(lower)) {
+    if (w.notes.length === 0) {
+      return [{ type: 'paragraph', text: 'Aucune note dans les données synchronisées.' }];
+    }
+    return [
+      { type: 'paragraph', text: `${w.notes.length} note(s), les plus récentes :` },
+      {
+        type: 'list',
+        items: w.notes
+          .slice(0, 10)
+          .map((n) => `${String(n.title ?? '(sans titre)')} ${source('notes', n.id)}`),
+      },
+    ];
+  }
+
+  if (/\bd[ée]cisions?\b/.test(lower)) {
+    if (w.decisions.length === 0) {
+      return [{ type: 'paragraph', text: 'Aucune décision consignée.' }];
+    }
+    return [
+      { type: 'paragraph', text: `${w.decisions.length} décision(s) au journal :` },
+      {
+        type: 'list',
+        items: w.decisions
+          .slice(0, 10)
+          .map(
+            (d) =>
+              `${String(d.title ?? 'sans titre')} — ${String(d.authorName ?? d.authorEmail ?? '?')} ${source(
+                'decisions',
+                d.id,
+              )}`,
+          ),
+      },
+    ];
+  }
+
+  if (/connaissance|documentation|proc[ée]dure/.test(lower)) {
+    if (w.knowledge.length === 0) {
+      return [{ type: 'paragraph', text: 'La base de connaissances est vide.' }];
+    }
+    return [
+      { type: 'paragraph', text: `${w.knowledge.length} fiche(s) de connaissance :` },
+      {
+        type: 'list',
+        items: w.knowledge
+          .slice(0, 10)
+          .map((k) => `${String(k.title ?? 'sans titre')} ${source('knowledge', k.id)}`),
+      },
+    ];
+  }
+
+  if (/\bscores?\b|\brgpd\b|comply|scan/.test(lower)) {
+    const scans = w.scans.filter((s) => s.status === 'done');
+    const checks = w.complyChecks.filter((c) => c.status === 'done');
+    if (scans.length === 0 && checks.length === 0) {
+      return [
+        {
+          type: 'paragraph',
+          text: 'Aucun scan de sécurité ni contrôle RGPD terminé dans les données.',
+        },
+      ];
+    }
+    return [
+      { type: 'paragraph', text: 'Derniers résultats enregistrés :' },
+      {
+        type: 'list',
+        items: [
+          ...scans.slice(0, 8).map((s) => `Sécurité — ${s.url} : ${s.score ?? '—'}/100 [scan/${s.id}]`),
+          ...checks.slice(0, 8).map((c) => `RGPD — ${c.url} : ${c.score ?? '—'}/100 [comply/${c.id}]`),
+        ],
+      },
+    ];
+  }
+
+  return null;
+}
+
 /** Data-grounded free-text answers for common questions (mock). */
-function buildAnswer(prompt: string, sites: DerivedSite[], eventsBySite: EventsMap): ReportBlock[] {
+function buildAnswer(
+  prompt: string,
+  sites: DerivedSite[],
+  eventsBySite: EventsMap,
+  workspace: WorkspaceData,
+): ReportBlock[] {
   const lower = prompt.toLowerCase();
+
+  // Without a local model there is no summarising, so the honest fallback for a
+  // question about the operator's own data is to hand back the matching records
+  // verbatim rather than a canned sentence that reads like an answer.
+  const workspaceAnswer = answerFromWorkspace(lower, workspace);
+  if (workspaceAnswer) return workspaceAnswer;
 
   if (sites.length === 0) {
     return [

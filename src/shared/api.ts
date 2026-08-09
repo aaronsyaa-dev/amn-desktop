@@ -483,6 +483,127 @@ export interface SiteSummary {
   score: SiteScore;
 }
 
+/* --------------------------- AMN SSL Monitor (BLOC 6) --------------------------- */
+
+/**
+ * TLS certificate state of one supervised host. The handshake runs on amn-api,
+ * never on this machine, so both operators read the same figure and the
+ * monitoring keeps working with every desktop closed.
+ */
+export interface SslStatus {
+  host: string;
+  /** Certificate authority, e.g. "Let's Encrypt". */
+  issuer: string | null;
+  subject: string | null;
+  validFrom: string | null;
+  validTo: string | null;
+  /** Days until expiry; ≤ 0 means already expired. Null = never checked. */
+  daysLeft: number | null;
+  lastCheckedAt: string | null;
+  /** Why the last check failed, when it did. */
+  error: string | null;
+  /** The supervised site this host belongs to, when there is one. */
+  site: { id: string; name: string } | null;
+}
+
+/* ------------------------ Analyses récurrentes (BLOC 5) ------------------------ */
+
+/** Which product a recurring run belongs to. */
+export type ProductScheduleKind = 'scan' | 'comply';
+
+export interface ProductSchedule {
+  id: string;
+  kind: ProductScheduleKind;
+  url: string;
+  /** Scanner tier; null for Comply. */
+  tier: ScanTier | null;
+  intervalDays: number;
+  lastRunAt: string | null;
+  nextRunAt: string;
+  /** Score of the last automatic run — what the next one is compared against. */
+  lastScore: number | null;
+  /** Compliance points that passed last time (Comply only). */
+  lastPassed: string[];
+  createdAt: string;
+}
+
+export interface CreateScheduleInput {
+  kind: ProductScheduleKind;
+  url: string;
+  tier?: ScanTier;
+  intervalDays?: number;
+}
+
+/** A compliance point that used to pass and no longer does. */
+export interface ComplyRegression {
+  key: string;
+  label: string;
+  /** `échoue` = still reported but failing; `disparu` = gone from the report. */
+  reason: 'échoue' | 'disparu';
+}
+
+/**
+ * Pushed by amn-api when a scheduled run comes back worse than the previous
+ * one — a dropped security score, or a compliance point that was good and no
+ * longer is.
+ */
+export interface ProductRegression {
+  kind: ProductScheduleKind;
+  url: string;
+  scoreBefore: number | null;
+  scoreAfter: number | null;
+  /** Id of the scan / comply check that produced this verdict. */
+  runId: string;
+  message: string;
+  at: string;
+  lost?: ComplyRegression[];
+}
+
+/* ------------------------------ Bureau SOC (BLOC 4) ------------------------------ */
+
+/** One incident in the cross-site feed: an alert plus the site it fired on. */
+export interface OrgIncident extends RemoteEvent {
+  siteName: string;
+}
+
+/** Hourly event count for one site — the raw material of the heatmap. */
+export interface OrgHourlyBucket {
+  siteId: string;
+  /** `YYYY-MM-DDTHH`, UTC. */
+  hour: string;
+  count: number;
+}
+
+/**
+ * Visitor volume per country. Country granularity ONLY — amn-api stores no
+ * city, no coordinates and performs no IP-to-location lookup.
+ */
+export interface OrgCountryBucket {
+  /** ISO-3166-1 alpha-2. */
+  country: string;
+  count: number;
+}
+
+/** Everything the SOC control desk needs, aggregated server-side per org. */
+export interface OrgOverview {
+  days: number;
+  since: string;
+  sites: Array<{ id: string; name: string; tier: TrackerTier; url: string | null }>;
+  incidents: OrgIncident[];
+  hourly: OrgHourlyBucket[];
+  countries: OrgCountryBucket[];
+}
+
+/** The client-embeddable security badge for one site. */
+export interface SiteBadge {
+  /** Public, unguessable id. Not a credential — it only unlocks name + score. */
+  token: string;
+  svgUrl: string;
+  linkUrl: string;
+  /** Ready-to-paste HTML for the client's own site. */
+  snippet: string;
+}
+
 /** Structured weekly summary behind the Suite tier's recurring report. */
 export interface SiteDigest {
   siteId: string;
@@ -562,6 +683,12 @@ export type SyncedCollection =
   | 'trackers'
   | 'notes'
   | 'reports'
+  /**
+   * Per-finding remediation state ("corrigé"), keyed `<host>::<findingId>`.
+   * Synced so a vulnerability one operator marks fixed is fixed for both, and
+   * so the history survives the scan it came from (BLOC 5).
+   */
+  | 'remediation'
   /** Public URL of a site, keyed by site id (Sites registry). */
   | 'siteMeta'
   /** Internal discussion thread attached to a site. */
@@ -570,6 +697,42 @@ export type SyncedCollection =
 export interface PresenceEntry {
   email: string;
   online: boolean;
+}
+
+/* ------------------------------ Appels audio (WebRTC) ------------------------------ */
+
+/**
+ * One WebRTC signalling message, relayed operator-to-operator by the amn-api
+ * hub. The hub never inspects `payload` — the audio itself is peer-to-peer and
+ * never transits amn-api.
+ *
+ * `undelivered` is synthesised locally when the hub reports that the callee had
+ * no open socket: it is what turns a dead ring into an immediate "hors ligne".
+ */
+export type CallSignalKind =
+  | 'offer'
+  | 'answer'
+  | 'ice'
+  | 'hangup'
+  | 'reject'
+  | 'busy'
+  | 'undelivered';
+
+export interface CallSignal {
+  type: 'signal';
+  kind: CallSignalKind;
+  /** Identifies one call attempt end-to-end; stale signals are ignored. */
+  callId: string;
+  /** The other operator's email, stamped by the hub — never client-supplied. */
+  from: string;
+  payload: unknown;
+}
+
+export interface OutgoingCallSignal {
+  to: string;
+  kind: CallSignalKind;
+  callId: string;
+  payload?: unknown;
 }
 
 /* ------------------------------ Scanner (Produits) ------------------------------ */
@@ -836,6 +999,16 @@ export interface AmnBridge {
     getPresence(): Promise<PresenceEntry[]>;
     onPresence(callback: (users: PresenceEntry[]) => void): () => void;
 
+    /* --- Appels audio (WebRTC) --- */
+    /**
+     * Relays one signalling message to the other operator through amn-api.
+     * Resolves false when the live socket is down — the caller must then fail
+     * the call rather than ring into nothing.
+     */
+    sendCallSignal(signal: OutgoingCallSignal): Promise<boolean>;
+    /** Signalling messages addressed to this operator. Returns an unsubscribe. */
+    onCallSignal(callback: (signal: CallSignal) => void): () => void;
+
     /* --- Scanner --- */
     /**
      * Queues a passive security scan of `url` at `tier`. Resolves as soon as
@@ -848,6 +1021,30 @@ export interface AmnBridge {
     getScan(id: string): Promise<Scan>;
     /** URL of the printable Elite report (opened, then printed to PDF). */
     scanReportUrl(id: string): Promise<string>;
+    /* --- AMN SSL Monitor (BLOC 6) --- */
+    /** Certificate state of every supervised host, checked by amn-api. */
+    listSslStatus(): Promise<SslStatus[]>;
+    /** Re-checks one host immediately instead of waiting for the sweep. */
+    checkSsl(host: string): Promise<SslStatus>;
+
+    /* --- Analyses récurrentes (BLOC 5) --- */
+    listSchedules(): Promise<ProductSchedule[]>;
+    /** Arms (or re-arms) a recurring Scanner/Comply run. */
+    createSchedule(input: CreateScheduleInput): Promise<ProductSchedule>;
+    deleteSchedule(id: string): Promise<void>;
+    /** Regression notices pushed by amn-api. Returns an unsubscribe function. */
+    onProductRegression(callback: (regression: ProductRegression) => void): () => void;
+
+    /* --- Bureau de contrôle SOC (BLOC 4) --- */
+    /**
+     * Cross-site aggregation over the last `days` days, computed by amn-api.
+     * Scoped to the operator's organization — an aggregate can never mix
+     * two tenants.
+     */
+    getOrgOverview(days: number): Promise<OrgOverview>;
+    /** Issues (once) and returns the site's public embeddable security badge. */
+    getSiteBadge(siteId: string): Promise<SiteBadge>;
+
     /** Live scan progress pushed from amn-api. Returns an unsubscribe function. */
     onScanProgress(callback: (progress: ScanProgress) => void): () => void;
 
@@ -980,6 +1177,16 @@ export const IPC = {
   remoteConnectionStatusPush: 'remote:connectionStatusPush',
   remoteRecordPush: 'remote:recordPush',
   remotePresencePush: 'remote:presencePush',
+  remoteListSslStatus: 'remote:listSslStatus',
+  remoteCheckSsl: 'remote:checkSsl',
+  remoteListSchedules: 'remote:listSchedules',
+  remoteCreateSchedule: 'remote:createSchedule',
+  remoteDeleteSchedule: 'remote:deleteSchedule',
+  remoteProductRegressionPush: 'remote:productRegressionPush',
+  remoteGetOrgOverview: 'remote:getOrgOverview',
+  remoteGetSiteBadge: 'remote:getSiteBadge',
+  remoteSendCallSignal: 'remote:sendCallSignal',
+  remoteCallSignalPush: 'remote:callSignalPush',
   systemNotify: 'system:notify',
   systemGetAutoLaunch: 'system:getAutoLaunch',
   systemSetAutoLaunch: 'system:setAutoLaunch',

@@ -9,6 +9,8 @@ import React, {
 } from 'react';
 import { generateReport, runAssistant, type Generate } from './engine';
 import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
+import { useCollection } from '../state/SyncContext';
+import { EMPTY_WORKSPACE, type WorkspaceData, type WorkspaceRecord } from './workspaceContext';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../state/ToastContext';
 import { bridge } from '../lib/bridge';
@@ -95,6 +97,71 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { notify: toast } = useToast();
   const email = user?.email ?? 'anon';
+
+  // BLOC 3 — the operator's own synced data, read live so an answer reflects
+  // what is on screen right now. It is assembled here and handed straight to
+  // the LOCAL model (Ollama) through the existing IPC path: none of this ever
+  // reaches a third party.
+  const notes = useCollection<WorkspaceRecord>('notes');
+  const tasks = useCollection<WorkspaceRecord>('tasks');
+  const decisions = useCollection<WorkspaceRecord>('decisions');
+  const knowledge = useCollection<WorkspaceRecord>('knowledge');
+  const siteMeta = useCollection<WorkspaceRecord>('siteMeta');
+
+  // Clients, scans and Comply checks do NOT come from the synced collections:
+  // clients live in the local SQLite store (mirrored one-way to amn-api), and
+  // the two products' runs live behind amn-api endpoints. Reading them through
+  // `useCollection` returned an empty list — Ajmani would then have answered
+  // "aucun client" with two clients on screen, which is precisely the kind of
+  // confident-and-wrong answer BLOC 3 exists to prevent. They are fetched from
+  // the same sources the Clients/Scanner/Comply screens use, and refreshed
+  // whenever the panel opens so a scan finished five minutes ago is answerable.
+  const [external, setExternal] = useState<{
+    clients: WorkspaceRecord[];
+    scans: WorkspaceData['scans'];
+    complyChecks: WorkspaceData['complyChecks'];
+  }>({ clients: [], scans: [], complyChecks: [] });
+  useEffect(() => {
+    let active = true;
+    void Promise.all([
+      bridge().clients.list().catch(() => []),
+      bridge().remote.listScans().catch(() => []),
+      bridge().remote.listComplyChecks().catch(() => []),
+    ]).then(([clientRows, scans, complyChecks]) => {
+      if (!active) return;
+      setExternal({
+        clients: clientRows.map((c) => ({
+          ...c,
+          id: String(c.id),
+          updatedAt: c.updatedAt ?? c.createdAt ?? '',
+        })),
+        scans,
+        complyChecks,
+      });
+    });
+    return () => {
+      active = false;
+    };
+  }, [isOpen]);
+
+  const workspace = useMemo<WorkspaceData>(
+    () => ({ ...EMPTY_WORKSPACE, notes, tasks, decisions, knowledge, ...external }),
+    [notes, tasks, decisions, knowledge, external],
+  );
+  const workspaceRef = useRef<WorkspaceData>(workspace);
+  workspaceRef.current = workspace;
+
+  /** Public URL per site id — what ties a scanner/comply run back to a site. */
+  const siteUrlById = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const row of siteMeta) {
+      const url = typeof row.url === 'string' ? row.url : '';
+      if (url) map[row.id] = url;
+    }
+    return map;
+  }, [siteMeta]);
+  const siteUrlRef = useRef(siteUrlById);
+  siteUrlRef.current = siteUrlById;
 
   // Track whether the panel is open + the window focused, so we only nudge the
   // user when a reply lands while they've looked away (2.5).
@@ -317,7 +384,13 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       };
 
       loadFreshEvents(sites, loadEvents, eventsBySite)
-        .then((freshEvents) => runAssistant(trimmed, sites, freshEvents, { generate }))
+        .then((freshEvents) =>
+          runAssistant(trimmed, sites, freshEvents, {
+            generate,
+            workspace: workspaceRef.current,
+            siteUrlById: siteUrlRef.current,
+          }),
+        )
         .then((turn) => {
           appendAnswer(turn);
           notifyReady(previewOfTurn(turn));

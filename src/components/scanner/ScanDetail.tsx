@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronDown, FileDown, Loader2, ShieldCheck } from 'lucide-react';
+import { Check, ChevronDown, FileDown, Loader2, ShieldCheck } from 'lucide-react';
 import { bridge } from '../../lib/bridge';
 import {
   SEVERITY_CHIP,
@@ -10,6 +10,7 @@ import {
   scoreColor,
 } from '../../lib/scanSeverity';
 import { relativeTime } from '../../lib/time';
+import { useRemediation } from '../../state/useRemediation';
 import type { Scan, ScanFinding, ScanResults, ScanSeverity } from '../../shared/api';
 
 /**
@@ -133,7 +134,7 @@ export function ScanDetail({ scan }: { scan: Scan }) {
       ) : (
         <ul className="divide-y divide-border">
           {findings.map((f) => (
-            <FindingRow key={f.id} finding={f} />
+            <FindingRow key={f.id} finding={f} url={scan.url} />
           ))}
         </ul>
       )}
@@ -142,9 +143,14 @@ export function ScanDetail({ scan }: { scan: Scan }) {
 }
 
 /** One finding: severity chip + title, expandable to detail + fix. */
-function FindingRow({ finding }: { finding: ScanFinding }) {
+function FindingRow({ finding, url }: { finding: ScanFinding; url: string }) {
   const [open, setOpen] = useState(false);
   const severity = finding.severity as ScanSeverity;
+  // BLOC 5 — each finding is an actionable checklist item. The state is keyed
+  // by host + finding id, not by scan, so it survives the next weekly run.
+  const { isFixed, entryFor, setFixed } = useRemediation();
+  const fixed = isFixed(url, finding.id);
+  const entry = entryFor(url, finding.id);
 
   return (
     <li>
@@ -159,7 +165,13 @@ function FindingRow({ finding }: { finding: ScanFinding }) {
           {SEVERITY_LABEL[severity]}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm text-text-primary">{finding.title}</span>
+          <span
+            className={`block text-sm ${
+              fixed ? 'text-text-muted line-through' : 'text-text-primary'
+            }`}
+          >
+            {finding.title}
+          </span>
           {finding.owasp && (
             <span className="mt-0.5 block font-mono text-[10px] uppercase tracking-wider text-text-muted">
               {finding.owasp}
@@ -172,6 +184,32 @@ function FindingRow({ finding }: { finding: ScanFinding }) {
           className={`mt-1 flex-shrink-0 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`}
         />
       </button>
+
+      {/* The "corrigé" toggle sits outside the expander button: nesting a
+          button inside a button is invalid HTML and the click would bubble
+          into "expand" instead of marking the finding fixed. */}
+      <div className="flex items-center gap-2 px-4 pb-2.5 sm:px-5">
+        <button
+          type="button"
+          onClick={() => setFixed(url, finding.id, finding.title, !fixed)}
+          aria-pressed={fixed}
+          aria-label={fixed ? `Rouvrir : ${finding.title}` : `Marquer corrigé : ${finding.title}`}
+          className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 font-mono text-[9px] uppercase tracking-widest transition-colors ${
+            fixed
+              ? 'border-border-strong bg-accent-muted text-text-primary'
+              : 'border-border text-text-muted hover:text-text-primary'
+          }`}
+        >
+          <Check size={11} strokeWidth={2.5} />
+          {fixed ? 'Corrigé' : 'Marquer corrigé'}
+        </button>
+        {fixed && entry?.at && (
+          <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">
+            {new Date(entry.at).toLocaleDateString('fr-FR')}
+            {entry.by ? ` · ${entry.by.split('@')[0]}` : ''}
+          </span>
+        )}
+      </div>
 
       {open && (
         <div className="space-y-2.5 border-t border-border bg-bg/40 px-4 py-3 sm:px-5">

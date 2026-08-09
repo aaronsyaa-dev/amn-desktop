@@ -98,7 +98,7 @@ export function UpdateNotice() {
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl"
+            className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-surface elev-3"
           >
             <button
               type="button"

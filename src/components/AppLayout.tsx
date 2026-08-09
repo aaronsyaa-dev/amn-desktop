@@ -12,11 +12,14 @@ import { RemoteSitesProvider } from '../state/RemoteSitesContext';
 import { ProfilesProvider } from '../state/ProfilesContext';
 import { SyncProvider } from '../state/SyncContext';
 import { ActivityProvider, useActivity } from '../state/ActivityContext';
+import { CallProvider } from '../state/CallContext';
+import { CallOverlay } from './call/CallOverlay';
 import { UndoProvider } from '../state/UndoContext';
 import { ToastProvider } from '../state/ToastContext';
 import { TagProvider } from './tags/TagProvider';
 import { NotificationsManager } from './NotificationsManager';
 import { SyncActivityNotifier } from './SyncActivityNotifier';
+import { RegressionNotifier } from './RegressionNotifier';
 import { IdleScreensaver } from './IdleScreensaver';
 import { WelcomeOverlay, shouldShowWelcome } from './WelcomeOverlay';
 import { UpdateNotice } from './UpdateNotice';
@@ -80,6 +83,7 @@ export function AppLayout() {
         <ActivityProvider>
         <RemoteSitesProvider>
           <ToastProvider>
+          <CallProvider>
           <SitePanelProvider>
             <AssistantProvider>
               <CommandPaletteProvider>
@@ -122,10 +126,12 @@ export function AppLayout() {
                 </div>
               </main>
             </div>
+              <CallOverlay />
               <SiteDetailPanel />
               <AssistantPanel />
               <NotificationsManager />
               <SyncActivityNotifier />
+              <RegressionNotifier />
               <RouteSeenTracker />
               <IdleScreensaver />
               {showWelcome && <WelcomeOverlay onDone={() => setShowWelcome(false)} />}
@@ -136,6 +142,7 @@ export function AppLayout() {
             </CommandPaletteProvider>
           </AssistantProvider>
         </SitePanelProvider>
+          </CallProvider>
           </ToastProvider>
         </RemoteSitesProvider>
         </ActivityProvider>

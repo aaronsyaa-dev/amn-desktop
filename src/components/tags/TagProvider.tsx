@@ -173,7 +173,7 @@ export function TagProvider({ children }: { children: React.ReactNode }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed left-1/2 top-4 z-[230] flex -translate-x-1/2 items-center gap-3 rounded-full border border-accent/40 bg-surface/95 px-4 py-2 shadow-2xl backdrop-blur"
+            className="fixed left-1/2 top-4 z-[230] flex -translate-x-1/2 items-center gap-3 rounded-full border border-accent/40 bg-surface/95 px-4 py-2 elev-2 backdrop-blur"
           >
             <Crosshair size={16} strokeWidth={2} className="text-accent" />
             <span className="text-sm text-text-primary">

@@ -13,6 +13,7 @@ import {
   Images,
   LayoutDashboard,
   Lock,
+  LockKeyhole,
   LogOut,
   NotebookPen,
   Radar,
@@ -39,36 +40,56 @@ interface NavItem {
   icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
 }
 
-/** The day-to-day workspace tabs. */
-const WORKSPACE_ITEMS: NavItem[] = [
-  { key: 'home', label: 'Accueil', to: '/', icon: LayoutDashboard },
-  { key: 'sites', label: 'Sites', to: '/sites', icon: Globe },
-  { key: 'team', label: 'Équipe', to: '/team', icon: Users },
-  { key: 'tasks', label: 'Tâches', to: '/tasks', icon: CheckSquare },
-  { key: 'clients', label: 'Clients', to: '/clients', icon: Contact },
-  { key: 'decisions', label: 'Décisions', to: '/decisions', icon: Scale },
-  { key: 'knowledge', label: 'Connaissances', to: '/knowledge', icon: BookOpen },
-  { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen },
-  { key: 'media', label: 'Médias', to: '/media', icon: Images },
-  { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText },
-  { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings },
-];
-
 /**
- * The AMN DevSec products sold to clients, kept visually apart from the
- * internal workspace tabs above so the offer reads as its own thing.
+ * The sidebar is grouped rather than listed. With eleven workspace tabs and a
+ * growing product line, one flat column reads as a wall of icons and gets
+ * visibly cramped every time a product ships — so the nav is split into three
+ * named sections that each answer a different question: what am I working on,
+ * what do we sell, what runs the app.
  */
-const PRODUCT_ITEMS: NavItem[] = [
-  { key: 'tracker', label: 'Trackers', to: '/tracker', icon: Radar },
-  { key: 'scanner', label: 'Scanner', to: '/scanner', icon: ScanLine },
-  { key: 'comply', label: 'Comply', to: '/comply', icon: BadgeCheck },
-];
+interface NavSection {
+  key: string;
+  /** Shown as a quiet caption when expanded; a hairline rule when collapsed. */
+  label: string;
+  items: NavItem[];
+}
 
-/**
- * Internal tool, not a client-facing product — kept out of PRODUCT_ITEMS and
- * rendered on its own in the bottom account-actions zone, just above logout.
- */
-const VAULT_ITEM: NavItem = { key: 'vault', label: 'Coffre-fort', to: '/vault', icon: Lock };
+const NAV_SECTIONS: NavSection[] = [
+  {
+    key: 'travail',
+    label: 'Travail',
+    items: [
+      { key: 'home', label: 'Accueil', to: '/', icon: LayoutDashboard },
+      { key: 'sites', label: 'Sites', to: '/sites', icon: Globe },
+      { key: 'team', label: 'Équipe', to: '/team', icon: Users },
+      { key: 'tasks', label: 'Tâches', to: '/tasks', icon: CheckSquare },
+      { key: 'clients', label: 'Clients', to: '/clients', icon: Contact },
+      { key: 'decisions', label: 'Décisions', to: '/decisions', icon: Scale },
+      { key: 'knowledge', label: 'Connaissances', to: '/knowledge', icon: BookOpen },
+      { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen },
+      { key: 'media', label: 'Médias', to: '/media', icon: Images },
+      { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText },
+    ],
+  },
+  {
+    key: 'produits',
+    label: 'Produits',
+    items: [
+      { key: 'tracker', label: 'Trackers', to: '/tracker', icon: Radar },
+      { key: 'scanner', label: 'Scanner', to: '/scanner', icon: ScanLine },
+      { key: 'comply', label: 'Comply', to: '/comply', icon: BadgeCheck },
+      { key: 'ssl', label: 'SSL Monitor', to: '/ssl', icon: LockKeyhole },
+    ],
+  },
+  {
+    key: 'systeme',
+    label: 'Système',
+    items: [
+      { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings },
+      { key: 'vault', label: 'Coffre-fort', to: '/vault', icon: Lock },
+    ],
+  },
+];
 
 export function Sidebar({
   mobileOpen = false,
@@ -132,24 +153,44 @@ export function Sidebar({
         onClick={handleNavClick}
         title={!isExpanded ? item.label : undefined}
         aria-label={item.label}
-        className={`group relative flex items-center gap-3 overflow-hidden rounded-lg py-2.5 text-sm transition-colors duration-200 ${
+        className={`group relative flex items-center gap-3 overflow-hidden rounded-lg py-1.5 text-sm transition-colors duration-200 ${
           isExpanded ? 'px-3' : 'justify-center px-0'
         } ${
           active
-            ? 'bg-accent-muted text-text-primary'
+            ? 'text-text-primary'
             : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
         }`}
       >
+        {/* The active state is a single surface that *slides* from the previous
+            item rather than a flat background that blinks on. Two shared-layout
+            elements — the tint and the left bar — travel together, which is the
+            whole micro-interaction: the eye follows the selection instead of
+            re-finding it. */}
         {active && (
-          <motion.span
-            layoutId="sidebar-active-indicator"
-            className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-accent"
-            transition={TRANSITION}
-          />
+          <>
+            <motion.span
+              layoutId="sidebar-active-surface"
+              className="absolute inset-0 rounded-lg bg-accent-muted"
+              transition={TRANSITION}
+              aria-hidden
+            />
+            <motion.span
+              layoutId="sidebar-active-indicator"
+              className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-accent"
+              transition={TRANSITION}
+              aria-hidden
+            />
+          </>
         )}
-        <Icon size={20} strokeWidth={1.75} />
+        <span
+          className={`relative transition-transform duration-200 ${
+            active ? 'scale-105' : 'group-hover:scale-105'
+          }`}
+        >
+          <Icon size={20} strokeWidth={1.75} />
+        </span>
         {isExpanded && (
-          <span className="select-none whitespace-nowrap">
+          <span className="relative select-none whitespace-nowrap">
             {item.label}
           </span>
         )}
@@ -221,7 +262,7 @@ export function Sidebar({
         } md:translate-x-0`}
         style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
       >
-        <div className="mb-5 flex h-9 items-center px-4">
+        <div className="mb-2 flex h-9 items-center px-4">
           <AnimatePresence mode="wait" initial={false}>
             {isExpanded ? (
               <motion.div
@@ -247,31 +288,37 @@ export function Sidebar({
           </AnimatePresence>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3">
-          {WORKSPACE_ITEMS.map(renderNavItem)}
+        {/* The nav scrolls only when the window is genuinely too short. The
+            native scrollbar is hidden and replaced by a mask that fades the
+            first/last rows out, so a short window looks deliberate instead of
+            showing a grey gutter down the middle of the chrome. */}
+        <nav className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3">
+          {NAV_SECTIONS.map((section) => (
+            <div key={section.key} className="flex flex-col gap-1">
+              {/* The caption is what separates the groups. Collapsed, it would
+                  be unreadable at 72px, so it degrades to a hairline rule that
+                  keeps the same rhythm. */}
+              <div className="mb-0.5 px-1">
+                {isExpanded ? (
+                  <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-text-muted">
+                    {section.label}
+                  </p>
+                ) : (
+                  <span className="mx-auto block h-px w-6 bg-border" aria-hidden />
+                )}
+              </div>
+              {section.items.map(renderNavItem)}
+            </div>
+          ))}
+        </nav>
 
-          {/* Products sold to clients, set apart from the workspace tabs. When
-              the sidebar is collapsed the label would be unreadable, so it
-              degrades to a plain rule. */}
-          <div className="mt-4 mb-1 px-1">
-            {isExpanded ? (
-              <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-text-muted">Produits</p>
-            ) : (
-              <span className="block h-px bg-border" aria-hidden />
-            )}
-          </div>
-          {PRODUCT_ITEMS.map(renderNavItem)}
-        </div>
-
-        <div className="mt-auto flex flex-col gap-1 px-3">
-          {renderNavItem(VAULT_ITEM)}
-
+        <div className="mt-auto flex flex-col gap-1 border-t border-border px-3 pt-2">
           <button
             type="button"
             onClick={logout}
             title={!isExpanded ? 'Déconnexion' : undefined}
             aria-label="Déconnexion"
-            className={`flex items-center gap-3 rounded-lg py-2.5 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary ${
+            className={`flex items-center gap-3 rounded-lg py-2 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary ${
               isExpanded ? 'px-3' : 'justify-center px-0'
             }`}
           >
@@ -284,7 +331,7 @@ export function Sidebar({
           <button
             type="button"
             onClick={() => setIsExpanded((v) => !v)}
-            className={`hidden items-center gap-3 rounded-lg py-2.5 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary md:flex ${
+            className={`hidden items-center gap-3 rounded-lg py-2 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary md:flex ${
               isExpanded ? 'px-3' : 'justify-center px-0'
             }`}
             aria-label={isExpanded ? 'Réduire le menu' : 'Étendre le menu'}
@@ -316,7 +363,7 @@ export function Sidebar({
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -16, opacity: 0 }}
               transition={TRANSITION}
-              className="fixed top-0 z-30 h-full w-64 border-r border-border bg-surface py-4 shadow-2xl"
+              className="fixed top-0 z-30 h-full w-64 border-r border-border bg-surface py-4 elev-2"
               style={{ left: isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
             >
               <p className="px-4 pb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">

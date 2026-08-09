@@ -2,6 +2,14 @@ import WebSocket from 'ws';
 import { remoteConfig, isRemoteConfigured } from './remoteConfig';
 import { writeScanReportFile } from './scanReports';
 import type {
+  CallSignal,
+  SslStatus,
+  CreateScheduleInput,
+  ProductRegression,
+  ProductSchedule,
+  OrgOverview,
+  SiteBadge,
+  OutgoingCallSignal,
   PresenceEntry,
   RegisterSiteResult,
   RemoteConnectionStatus,
@@ -70,8 +78,17 @@ export class RemoteApiClient {
   private presenceListeners = new Set<(users: PresenceEntry[]) => void>();
   private scanListeners = new Set<(progress: ScanProgress) => void>();
   private complyListeners = new Set<(progress: ComplyProgress) => void>();
+  private signalListeners = new Set<(signal: CallSignal) => void>();
+  private regressionListeners = new Set<(r: ProductRegression) => void>();
   private identity: string | null = null;
   private stopped = false;
+  /**
+   * True while a close() we asked for ourselves is in flight (identity change).
+   * Without it the close handler cannot tell "the operator just signed in" from
+   * "the server vanished", and reports a deliberate, sub-second re-handshake as
+   * "Serveur injoignable" — a badge that lies at every single login.
+   */
+  private reconnectingOnPurpose = false;
 
   async listSites(): Promise<RemoteSite[]> {
     const { sites } = await apiFetch<{ sites: RemoteSite[] }>('/v1/sites');
@@ -90,6 +107,56 @@ export class RemoteApiClient {
       `/v1/sites/${siteId}/events${qs ? `?${qs}` : ''}`,
     );
     return events;
+  }
+
+  /* ------------------ SSL Monitor (BLOC 6) ------------------ */
+
+  async listSslStatus(): Promise<SslStatus[]> {
+    const { statuses } = await apiFetch<{ statuses: SslStatus[] }>('/v1/ssl');
+    return statuses;
+  }
+
+  async checkSsl(host: string): Promise<SslStatus> {
+    const { status } = await apiFetch<{ status: SslStatus }>('/v1/ssl/check', {
+      method: 'POST',
+      body: JSON.stringify({ host }),
+    });
+    return status;
+  }
+
+  /* ------------------ Recurring runs (BLOC 5) ------------------ */
+
+  async listSchedules(): Promise<ProductSchedule[]> {
+    const { schedules } = await apiFetch<{ schedules: ProductSchedule[] }>('/v1/schedules');
+    return schedules;
+  }
+
+  async createSchedule(input: CreateScheduleInput): Promise<ProductSchedule> {
+    const { schedule } = await apiFetch<{ schedule: ProductSchedule }>('/v1/schedules', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return schedule;
+  }
+
+  async deleteSchedule(id: string): Promise<void> {
+    await apiFetch<{ ok: boolean }>(`/v1/schedules/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
+
+  /** Regression notices pushed after a scheduled run came back worse. */
+  onProductRegression(listener: (r: ProductRegression) => void): () => void {
+    this.regressionListeners.add(listener);
+    return () => this.regressionListeners.delete(listener);
+  }
+
+  /** Cross-site SOC aggregation, computed by amn-api for this org. */
+  async getOrgOverview(days: number): Promise<OrgOverview> {
+    return apiFetch<OrgOverview>(`/v1/sites/overview?days=${encodeURIComponent(String(days))}`);
+  }
+
+  /** Issues (once) and returns the site's public embeddable security badge. */
+  async getSiteBadge(siteId: string): Promise<SiteBadge> {
+    return apiFetch<SiteBadge>(`/v1/sites/${siteId}/badge`);
   }
 
   async registerSite(name: string): Promise<RegisterSiteResult> {
@@ -245,9 +312,11 @@ export class RemoteApiClient {
     const next = email ? email.trim().toLowerCase() : null;
     if (next === this.identity) return;
     this.identity = next;
-    if (isRemoteConfigured() && !this.stopped) {
-      // Reconnect so the handshake carries the new ?user= identity.
-      this.ws?.close();
+    if (isRemoteConfigured() && !this.stopped && this.ws) {
+      // Reconnect so the handshake carries the new ?user= identity. Flagged as
+      // deliberate so the close below reads as "reconnecting", not "offline".
+      this.reconnectingOnPurpose = true;
+      this.ws.close();
     }
   }
 
@@ -269,6 +338,31 @@ export class RemoteApiClient {
   onPresence(listener: (users: PresenceEntry[]) => void): () => void {
     this.presenceListeners.add(listener);
     return () => this.presenceListeners.delete(listener);
+  }
+
+  /**
+   * Relays one WebRTC signalling message to the other operator through the
+   * amn-api hub. Returns false when the socket isn't open, so the caller can
+   * fail the call immediately instead of ringing into a void.
+   */
+  sendSignal(signal: OutgoingCallSignal): boolean {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return false;
+    this.ws.send(
+      JSON.stringify({
+        type: 'signal',
+        to: signal.to,
+        kind: signal.kind,
+        callId: signal.callId,
+        payload: signal.payload ?? null,
+      }),
+    );
+    return true;
+  }
+
+  /** Incoming call signals (and undelivered notices). Returns an unsubscribe. */
+  onSignal(listener: (signal: CallSignal) => void): () => void {
+    this.signalListeners.add(listener);
+    return () => this.signalListeners.delete(listener);
   }
 
   /** Starts the live WebSocket connection (no-op if amn-api isn't configured). */
@@ -351,6 +445,24 @@ export class RemoteApiClient {
           for (const listener of this.scanListeners) listener(parsed.progress as ScanProgress);
         } else if (parsed?.type === 'comply:progress' && parsed.progress) {
           for (const listener of this.complyListeners) listener(parsed.progress as ComplyProgress);
+        } else if (parsed?.type === 'product:regression' && parsed.url) {
+          for (const listener of this.regressionListeners) {
+            listener(parsed as ProductRegression);
+          }
+        } else if (parsed?.type === 'signal' && parsed.kind && parsed.callId) {
+          for (const listener of this.signalListeners) listener(parsed as CallSignal);
+        } else if (parsed?.type === 'signal:undelivered' && parsed.callId) {
+          // The hub found nobody to hand this to — surfaced as its own kind so
+          // the renderer can end the call with "hors ligne" rather than time out.
+          for (const listener of this.signalListeners) {
+            listener({
+              type: 'signal',
+              kind: 'undelivered',
+              callId: String(parsed.callId),
+              from: String(parsed.to ?? ''),
+              payload: null,
+            });
+          }
         }
       } catch {
         // Ignore malformed frames rather than crashing the main process.
@@ -368,6 +480,18 @@ export class RemoteApiClient {
 
     socket.on('close', (code: number, reasonBuf: Buffer) => {
       const reason = reasonBuf?.toString() || '';
+
+      // A close we asked for (identity change) is not a connection loss: stay
+      // on "connecting", keep the backoff counter untouched, and re-handshake
+      // immediately rather than waiting out a delay meant for a broken server.
+      if (this.reconnectingOnPurpose) {
+        this.reconnectingOnPurpose = false;
+        log(`WS closed for identity change (code=${code}). Reconnecting now.`);
+        this.setStatus('connecting');
+        if (!this.stopped) this.reconnectTimer = setTimeout(() => this.connect(), 0);
+        return;
+      }
+
       // 4401 = amn-api rejected the token (client token ≠ server OPERATOR_TOKEN).
       // 1006 = abnormal close (server unreachable / TLS / dropped).
       const hint =

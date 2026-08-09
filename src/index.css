@@ -143,6 +143,25 @@ a:focus-visible,
   outline-offset: 2px;
 }
 
+/*
+ * Press feedback. Every actionable element gives a physical acknowledgement on
+ * mousedown, so a click that takes a moment to produce a result still feels
+ * received. Deliberately tiny (1.5%) — at this size it reads as a press, not
+ * as an animation. `.card-interactive` keeps its own richer press state, and
+ * anything disabled stays inert.
+ */
+button:not(:disabled):not(.card-interactive):active,
+[role='button']:not([aria-disabled='true']):active {
+  transform: scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:active,
+  [role='button']:active {
+    transform: none;
+  }
+}
+
 /* Slim scrollbars */
 .overflow-y-auto::-webkit-scrollbar,
 .overflow-x-auto::-webkit-scrollbar {
@@ -157,6 +176,81 @@ a:focus-visible,
 .overflow-y-auto::-webkit-scrollbar-track,
 .overflow-x-auto::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/*
+ * Elevation scale.
+ *
+ * On a near-black surface a shadow alone is invisible, so each level pairs a
+ * cast shadow with a one-pixel top highlight — the same trick a physical panel
+ * gets from ambient light. Three levels only: resting card, floating panel,
+ * modal. Anything that needs a fourth level is really asking for a different
+ * layout.
+ */
+.elev-1 {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.elev-2 {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 24px -8px rgba(0, 0, 0, 0.7),
+    0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.elev-3 {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 24px 60px -12px rgba(0, 0, 0, 0.85),
+    0 8px 20px rgba(0, 0, 0, 0.5);
+}
+/* Cards that lift on hover. Paired with elev-1 as the resting state. */
+.elev-hover {
+  transition: box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.elev-hover:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 28px -10px rgba(0, 0, 0, 0.75),
+    0 3px 8px rgba(0, 0, 0, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .elev-hover {
+    transition: none;
+  }
+}
+
+/*
+ * Sidebar nav: scrolls only when the window is too short to hold every
+ * section. A visible scrollbar inside 72px of chrome looks broken, so it is
+ * hidden and replaced by a soft fade at whichever end still has content —
+ * the affordance stays, the grey gutter doesn't.
+ */
+.sidebar-scroll {
+  scrollbar-width: none;
+  /* Matches the mask's fade length, so the fade always lands on padding when
+     nothing is scrolled — the first and last rows are never dimmed at rest. */
+  padding-top: 14px;
+  padding-bottom: 14px;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 14px,
+    #000 calc(100% - 14px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 14px,
+    #000 calc(100% - 14px),
+    transparent 100%
+  );
+}
+.sidebar-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 /* --- Print-to-PDF: show only the light-themed report region --- */

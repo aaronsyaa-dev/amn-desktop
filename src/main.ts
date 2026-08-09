@@ -121,6 +121,26 @@ function createWindow(): void {
 
   mainWindow.once('ready-to-show', () => mainWindow?.show());
 
+  // Microphone access for operator-to-operator calls (BLOC 2), plus clipboard
+  // WRITE for the app's many "copier le code" buttons (tracker snippet, badge
+  // embed, API key). Electron routes every permission request through this
+  // handler, and an allow-list of one silently broke copy everywhere — hence
+  // both entries here, and nothing else.
+  //
+  // Deliberately excluded: clipboard READ (the app never needs to look at what
+  // the operator copied elsewhere), camera, geolocation, and everything else.
+  // The renderer loads a local bundle we ship, so no third-party origin can
+  // even ask.
+  const ALLOWED_PERMISSIONS = new Set(['media', 'clipboard-sanitized-write']);
+  mainWindow.webContents.session.setPermissionRequestHandler(
+    (_webContents, permission, callback) => {
+      callback(ALLOWED_PERMISSIONS.has(permission));
+    },
+  );
+  mainWindow.webContents.session.setPermissionCheckHandler((_webContents, permission) =>
+    ALLOWED_PERMISSIONS.has(permission),
+  );
+
   // Persist size/position so the next launch restores the same window.
   const persist = () => mainWindow && saveBounds(mainWindow);
   mainWindow.on('resized', persist);

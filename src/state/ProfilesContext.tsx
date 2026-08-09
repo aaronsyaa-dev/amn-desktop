@@ -37,10 +37,25 @@ function titleCase(s: string): string {
   return s ? s[0].toUpperCase() + s.slice(1) : s;
 }
 
+/**
+ * Normalises any value that is *supposed* to be an operator email.
+ *
+ * Deliberately total: `profileFor(task.assigneeEmail)` is called from a dozen
+ * screens, and a single record with a missing author — a task synced before
+ * the field existed, an import, a half-written row — used to throw on
+ * `.trim()` and take the whole screen down through the error boundary. One
+ * incomplete row must never cost the operator an entire tab.
+ */
+function normaliseEmail(email: unknown): string {
+  return typeof email === 'string' ? email.trim().toLowerCase() : '';
+}
+
 function fallbackProfile(email: string): UserProfile {
   return {
     email,
-    name: titleCase(email.split('@')[0] || email),
+    // An empty key means the record never named anyone — say so rather than
+    // rendering a blank avatar with no name.
+    name: email ? titleCase(email.split('@')[0] || email) : 'Non attribué',
     photoDataUrl: '',
     presenceText: '',
     updatedAt: '',
@@ -81,7 +96,7 @@ export function ProfilesProvider({ children }: { children: React.ReactNode }) {
 
   const profileFor = useCallback(
     (email: string) => {
-      const key = email.trim().toLowerCase();
+      const key = normaliseEmail(email);
       return profiles.find((p) => p.email === key) ?? fallbackProfile(key);
     },
     [profiles],
@@ -106,7 +121,8 @@ export function ProfilesProvider({ children }: { children: React.ReactNode }) {
 
   const updateSelf = useCallback(
     async (email: string, patch: UpdateProfileInput) => {
-      const key = email.trim().toLowerCase();
+      const key = normaliseEmail(email);
+      if (!key) return; // nothing to update without an identity
       await upsert('profiles', key, { ...baseData(key), ...patch });
     },
     [baseData, upsert],
@@ -114,7 +130,8 @@ export function ProfilesProvider({ children }: { children: React.ReactNode }) {
 
   const markTeamSeen = useCallback(
     (email: string) => {
-      const key = email.trim().toLowerCase();
+      const key = normaliseEmail(email);
+      if (!key) return;
       void upsert('profiles', key, { ...baseData(key), teamSeenAt: new Date().toISOString() });
     },
     [baseData, upsert],
@@ -122,7 +139,8 @@ export function ProfilesProvider({ children }: { children: React.ReactNode }) {
 
   const teamSeenAt = useCallback(
     (email: string): string | null => {
-      const key = email.trim().toLowerCase();
+      const key = normaliseEmail(email);
+      if (!key) return null;
       return records.find((r) => r.id === key)?.teamSeenAt ?? null;
     },
     [records],

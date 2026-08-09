@@ -4,6 +4,7 @@ import { AlertTriangle, ChevronDown, Clock, Loader2, ScanLine } from 'lucide-rea
 import { bridge } from '../lib/bridge';
 import { useSync } from '../state/SyncContext';
 import { ScanDetail } from '../components/scanner/ScanDetail';
+import { ScheduleControl } from '../components/ScheduleControl';
 import { TIER_BLURB, TIER_LABEL, scoreColor } from '../lib/scanSeverity';
 import { relativeTime } from '../lib/time';
 import type { Scan, ScanProgress, ScanTier } from '../shared/api';
@@ -202,7 +203,15 @@ export function ScannerScreen() {
       )}
 
       {/* ------------------------------ Results ------------------------------ */}
-      {selected && <ScanDetail scan={selected} />}
+      {selected && (
+        <>
+          {/* BLOC 5 — re-run this exact URL on a cadence, and be told if the
+              score drops. Placed above the findings because arming it is a
+              decision about the site, not about one finding. */}
+          <ScheduleControl kind="scan" url={selected.url} tier={selected.tier} />
+          <ScanDetail scan={selected} />
+        </>
+      )}
 
       {/* ------------------------------ History ------------------------------ */}
       <section>

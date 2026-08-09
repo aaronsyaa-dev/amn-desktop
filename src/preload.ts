@@ -12,6 +12,10 @@ import {
   type CreateLearningGoalInput,
   type CreateQuoteInput,
   type CreateSharedTaskInput,
+  type CallSignal,
+  type CreateScheduleInput,
+  type ProductRegression,
+  type OutgoingCallSignal,
   type PresenceEntry,
   type ComplyProgress,
   type ScanProgress,
@@ -146,6 +150,26 @@ const bridge: AmnBridge = {
     },
     setIdentity: (email: string | null) => ipcRenderer.send(IPC.remoteSetIdentity, email),
     getPresence: () => ipcRenderer.invoke(IPC.remoteGetPresence),
+    listSslStatus: () => ipcRenderer.invoke(IPC.remoteListSslStatus),
+    checkSsl: (host: string) => ipcRenderer.invoke(IPC.remoteCheckSsl, host),
+    listSchedules: () => ipcRenderer.invoke(IPC.remoteListSchedules),
+    createSchedule: (input: CreateScheduleInput) =>
+      ipcRenderer.invoke(IPC.remoteCreateSchedule, input),
+    deleteSchedule: (id: string) => ipcRenderer.invoke(IPC.remoteDeleteSchedule, id),
+    onProductRegression: (callback: (r: ProductRegression) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, r: ProductRegression) => callback(r);
+      ipcRenderer.on(IPC.remoteProductRegressionPush, listener);
+      return () => ipcRenderer.removeListener(IPC.remoteProductRegressionPush, listener);
+    },
+    getOrgOverview: (days: number) => ipcRenderer.invoke(IPC.remoteGetOrgOverview, days),
+    getSiteBadge: (siteId: string) => ipcRenderer.invoke(IPC.remoteGetSiteBadge, siteId),
+    sendCallSignal: (signal: OutgoingCallSignal) =>
+      ipcRenderer.invoke(IPC.remoteSendCallSignal, signal),
+    onCallSignal: (callback: (signal: CallSignal) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, signal: CallSignal) => callback(signal);
+      ipcRenderer.on(IPC.remoteCallSignalPush, listener);
+      return () => ipcRenderer.removeListener(IPC.remoteCallSignalPush, listener);
+    },
     onPresence: (callback: (users: PresenceEntry[]) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, users: PresenceEntry[]) => callback(users);
       ipcRenderer.on(IPC.remotePresencePush, listener);

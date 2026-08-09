@@ -85,7 +85,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                   t.onClick?.();
                   dismiss(t.id);
                 }}
-                className={`pointer-events-auto flex w-80 max-w-[calc(100vw-3rem)] items-start gap-3 rounded-xl border border-border bg-surface px-4 py-3 shadow-2xl ${
+                className={`pointer-events-auto flex w-80 max-w-[calc(100vw-3rem)] items-start gap-3 rounded-xl border border-border bg-surface px-4 py-3 elev-2 ${
                   t.onClick ? 'cursor-pointer hover:border-border-strong' : ''
                 }`}
               >

@@ -3,7 +3,9 @@ import {
   IPC,
   type AddClientEventInput,
   type ChangePasswordInput,
+  type CreateScheduleInput,
   type NotificationPrefs,
+  type OutgoingCallSignal,
   type UpdateProfileInput,
   type ScanTier,
   type TrackerTier,
@@ -255,6 +257,18 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   ipcMain.handle(IPC.remoteGetComplyCheck, (_event, id: string) => remote.getComplyCheck(id));
   // setIdentity is fire-and-forget from the renderer (no reply needed).
   ipcMain.on(IPC.remoteSetIdentity, (_event, email: string | null) => remote.setIdentity(email));
+  ipcMain.handle(IPC.remoteListSslStatus, () => remote.listSslStatus());
+  ipcMain.handle(IPC.remoteCheckSsl, (_event, host: string) => remote.checkSsl(host));
+  ipcMain.handle(IPC.remoteListSchedules, () => remote.listSchedules());
+  ipcMain.handle(IPC.remoteCreateSchedule, (_event, input: CreateScheduleInput) =>
+    remote.createSchedule(input),
+  );
+  ipcMain.handle(IPC.remoteDeleteSchedule, (_event, id: string) => remote.deleteSchedule(id));
+  ipcMain.handle(IPC.remoteGetOrgOverview, (_event, days: number) => remote.getOrgOverview(days));
+  ipcMain.handle(IPC.remoteGetSiteBadge, (_event, siteId: string) => remote.getSiteBadge(siteId));
+  ipcMain.handle(IPC.remoteSendCallSignal, (_event, signal: OutgoingCallSignal) =>
+    remote.sendSignal(signal),
+  );
 
   // Push channels: broadcast to every open window rather than replying to a
   // specific invoke() call, since these are server-initiated updates.
@@ -267,6 +281,8 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   remote.onStatusChange((status) => broadcastToAll(IPC.remoteConnectionStatusPush, status));
   remote.onRecord((record) => broadcastToAll(IPC.remoteRecordPush, record));
   remote.onPresence((users) => broadcastToAll(IPC.remotePresencePush, users));
+  remote.onSignal((signal) => broadcastToAll(IPC.remoteCallSignalPush, signal));
+  remote.onProductRegression((r) => broadcastToAll(IPC.remoteProductRegressionPush, r));
   remote.onScanProgress((progress) => broadcastToAll(IPC.remoteScanProgressPush, progress));
   remote.onComplyProgress((progress) => broadcastToAll(IPC.remoteComplyProgressPush, progress));
 

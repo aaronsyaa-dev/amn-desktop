@@ -5,7 +5,14 @@ import type {
   AuthResult,
   ChangePasswordResult,
   NotificationPrefs,
+  CallSignal,
+  CreateScheduleInput,
+  OrgOverview,
+  ProductRegression,
+  ProductSchedule,
+  SslStatus,
   PresenceEntry,
+  SiteBadge,
   RemoteRecord,
   ComplyCheck,
   ComplyProgress,
@@ -398,11 +405,16 @@ function createBrowserRemote(): AmnBridge['remote'] {
   const presenceListeners = new Set<(users: PresenceEntry[]) => void>();
   const scanListeners = new Set<(progress: ScanProgress) => void>();
   const complyListeners = new Set<(progress: ComplyProgress) => void>();
+  const signalListeners = new Set<(signal: CallSignal) => void>();
+  const regressionListeners = new Set<(r: ProductRegression) => void>();
   let status: RemoteConnectionStatus = configured ? 'connecting' : 'unconfigured';
   let reconnectAttempt = 0;
   let started = false;
   let identity: string | null = null;
   let socket: WebSocket | null = null;
+  // See the Electron client: a close we asked for ourselves must not be
+  // reported as "Serveur injoignable".
+  let reconnectingOnPurpose = false;
 
   function setStatus(next: RemoteConnectionStatus) {
     if (status === next) return;
@@ -432,12 +444,36 @@ function createBrowserRemote(): AmnBridge['remote'] {
           for (const listener of scanListeners) listener(parsed.progress as ScanProgress);
         } else if (parsed?.type === 'comply:progress' && parsed.progress) {
           for (const listener of complyListeners) listener(parsed.progress as ComplyProgress);
+        } else if (parsed?.type === 'product:regression' && parsed.url) {
+          for (const listener of regressionListeners) listener(parsed as ProductRegression);
+        } else if (parsed?.type === 'signal' && parsed.kind && parsed.callId) {
+          for (const listener of signalListeners) listener(parsed as CallSignal);
+        } else if (parsed?.type === 'signal:undelivered' && parsed.callId) {
+          // Mirrors the Electron client: "nobody was listening" becomes its own
+          // signal kind so the caller can say "hors ligne" straight away.
+          for (const listener of signalListeners) {
+            listener({
+              type: 'signal',
+              kind: 'undelivered',
+              callId: String(parsed.callId),
+              from: String(parsed.to ?? ''),
+              payload: null,
+            });
+          }
         }
       } catch {
         // Ignore malformed frames.
       }
     };
     socket.onclose = () => {
+      // A deliberate re-handshake (identity change) stays "connecting" and
+      // reconnects immediately — it is not a server failure.
+      if (reconnectingOnPurpose) {
+        reconnectingOnPurpose = false;
+        setStatus('connecting');
+        setTimeout(connect, 0);
+        return;
+      }
       setStatus('offline');
       const delay = RECONNECT_DELAYS_MS[Math.min(reconnectAttempt, RECONNECT_DELAYS_MS.length - 1)];
       reconnectAttempt += 1;
@@ -554,7 +590,10 @@ function createBrowserRemote(): AmnBridge['remote'] {
       const next = email ? email.trim().toLowerCase() : null;
       if (next === identity) return;
       identity = next;
-      if (configured && started) socket?.close(); // reconnect with new ?user=
+      if (configured && started && socket) {
+        reconnectingOnPurpose = true;
+        socket.close(); // reconnect with new ?user=
+      }
     },
     async getPresence() {
       if (!configured) return [];
@@ -565,6 +604,63 @@ function createBrowserRemote(): AmnBridge['remote'] {
       presenceListeners.add(callback);
       ensureStarted();
       return () => presenceListeners.delete(callback);
+    },
+    async listSslStatus() {
+      const { statuses } = await apiFetch<{ statuses: SslStatus[] }>('/v1/ssl');
+      return statuses;
+    },
+    async checkSsl(host: string) {
+      const { status } = await apiFetch<{ status: SslStatus }>('/v1/ssl/check', {
+        method: 'POST',
+        body: JSON.stringify({ host }),
+      });
+      return status;
+    },
+    async listSchedules() {
+      const { schedules } = await apiFetch<{ schedules: ProductSchedule[] }>('/v1/schedules');
+      return schedules;
+    },
+    async createSchedule(input: CreateScheduleInput) {
+      const { schedule } = await apiFetch<{ schedule: ProductSchedule }>('/v1/schedules', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      return schedule;
+    },
+    async deleteSchedule(id: string) {
+      await apiFetch<{ ok: boolean }>(`/v1/schedules/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+    },
+    onProductRegression(callback) {
+      regressionListeners.add(callback);
+      ensureStarted();
+      return () => regressionListeners.delete(callback);
+    },
+    async getOrgOverview(days: number) {
+      return apiFetch<OrgOverview>(`/v1/sites/overview?days=${encodeURIComponent(String(days))}`);
+    },
+    async getSiteBadge(siteId: string) {
+      return apiFetch<SiteBadge>(`/v1/sites/${siteId}/badge`);
+    },
+    async sendCallSignal(signal) {
+      ensureStarted();
+      if (!socket || socket.readyState !== WebSocket.OPEN) return false;
+      socket.send(
+        JSON.stringify({
+          type: 'signal',
+          to: signal.to,
+          kind: signal.kind,
+          callId: signal.callId,
+          payload: signal.payload ?? null,
+        }),
+      );
+      return true;
+    },
+    onCallSignal(callback) {
+      signalListeners.add(callback);
+      ensureStarted();
+      return () => signalListeners.delete(callback);
     },
     async startScan(url: string, tier: ScanTier): Promise<Scan> {
       const { scan } = await apiFetch<{ scan: Scan }>('/v1/scan', {

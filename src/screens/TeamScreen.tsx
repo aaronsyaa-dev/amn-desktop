@@ -14,6 +14,7 @@ import {
   Link2,
   MessageSquarePlus,
   Mic,
+  Phone,
   Pin,
   PinOff,
   Plus,
@@ -26,6 +27,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
 import { useSync, useCollection } from '../state/SyncContext';
 import { useProfiles } from '../state/ProfilesContext';
+import { useCall } from '../state/CallContext';
 import { useMessages, type SyncMessage } from '../state/useMessages';
 import { UserAvatar } from '../components/UserAvatar';
 import { parseMentions, urlDisplayHost, type ClientRef, type TaskRef } from '../lib/mentions';
@@ -227,6 +229,7 @@ export function TeamScreen() {
 function PresenceBar({ currentEmail }: { currentEmail?: string }) {
   const { onlineEmails, configured } = useSync();
   const { profileFor } = useProfiles();
+  const { call, callsAvailable, phase } = useCall();
 
   return (
     <div className="flex flex-wrap gap-3">
@@ -268,6 +271,27 @@ function PresenceBar({ currentEmail }: { currentEmail?: string }) {
                 {!isSelf && !configured && <span className="text-text-muted"> · hors-ligne</span>}
               </p>
             </div>
+            {/* Audio call (BLOC 2). Only offered for the *other* operator, and
+                only while they're actually online — a call button that can
+                only fail is worse than no button. */}
+            {!isSelf && online && configured && (
+              <button
+                type="button"
+                onClick={() => void call(member.email)}
+                disabled={!callsAvailable || phase !== 'idle'}
+                title={
+                  !callsAvailable
+                    ? 'Appels indisponibles — connexion au serveur AMN perdue'
+                    : phase !== 'idle'
+                      ? 'Un appel est déjà en cours'
+                      : `Appeler ${profile.name}`
+                }
+                aria-label={`Appeler ${profile.name}`}
+                className="ml-1 flex h-9 w-9 items-center justify-center rounded-full border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Phone size={16} strokeWidth={1.75} />
+              </button>
+            )}
           </div>
         );
       })}
@@ -789,7 +813,7 @@ function HoverCard({ children }: { children: React.ReactNode }) {
   return (
     <span
       role="tooltip"
-      className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 hidden w-56 -translate-x-1/2 rounded-lg border border-border bg-surface p-3 text-left shadow-2xl group-hover:block"
+      className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 hidden w-56 -translate-x-1/2 rounded-lg border border-border bg-surface p-3 text-left elev-2 group-hover:block"
     >
       {children}
     </span>
@@ -1055,7 +1079,7 @@ function Composer({
       )}
 
       {suggestions.length > 0 && (
-        <div className="absolute bottom-full left-4 mb-2 w-72 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
+        <div className="absolute bottom-full left-4 mb-2 w-72 overflow-hidden rounded-xl border border-border bg-surface elev-2">
           <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
             Mentionner Ajmani, un site, un client ou une tâche
           </p>
@@ -1126,7 +1150,7 @@ function Composer({
           {templatesOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setTemplatesOpen(false)} />
-              <div className="absolute bottom-full left-0 z-20 mb-2 w-80 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
+              <div className="absolute bottom-full left-0 z-20 mb-2 w-80 overflow-hidden rounded-xl border border-border bg-surface elev-2">
                 <p className="px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">
                   Messages rapides
                 </p>
