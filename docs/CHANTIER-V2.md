@@ -67,6 +67,31 @@ Un hôte déjà vérifié il y a moins de 6 h est sauté par le balayage SSL, qu
 que soit la cadence : abaisser `SSL_SWEEP_MS` ne se transforme donc pas en
 pluie de poignées de main chez les clients.
 
+## Action en attente — suppression des magasins hérités
+
+**Statut : en attente de la validation d'Aaron. Ne pas exécuter avant.**
+
+Les magasins par plateforme qui précédaient les collections synchronisées
+(SQLite derrière l'IPC côté Electron, `amn.fallback.*` côté navigateur) sont
+conservés en LECTURE SEULE, comme source de la migration unique décrite dans
+`src/state/useClients.ts`. Ils sont déclarés explicitement dans
+`LEGACY_MIGRATION_ONLY_STORES` (`src/lib/bridge.ts`), et c'est cette déclaration
+qui les fait tolérer par `npm run check:sync`.
+
+Condition de suppression : Aaron confirme avoir utilisé cette version en
+conditions réelles pendant plusieurs jours, sur sa machine ET sur celle de
+Mohamed, sans perte de données. Tant que cette confirmation n'est pas donnée,
+les magasins restent en place — ils sont le seul filet si la migration s'est
+mal passée sur un poste.
+
+Une fois la confirmation donnée, la suppression couvre : les APIs de domaine
+`clients`/`quotes`/`tasks`/`decisions`/`knowledge`/`objectives`/`messages`/
+`profiles` du pont navigateur, leurs gestionnaires IPC et leurs entrées de
+preload, les tables SQLite correspondantes, et l'entrée
+`LEGACY_MIGRATION_ONLY_STORES` elle-même. C'est une suppression de code de
+données : elle se fait délibérément, avec une sauvegarde préalable, jamais en
+fin de chantier.
+
 ## Ce qui n'a pas pu être vérifié dans le bac à sable
 
 L'environnement de développement n'a pas d'accès sortant libre. Les analyses
