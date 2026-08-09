@@ -64,8 +64,6 @@ import {
   verifyCredentials,
 } from './services';
 import type { RemoteApiClient } from './remoteApi';
-import { getWatch } from './watch';
-import { ollamaStatus, ollamaChat } from './ollama';
 import { getAutoLaunch, setAutoLaunch } from './windowsIntegration';
 import { isVaultEncryptionAvailable, loadVault, saveVault } from './vault';
 import { getDb } from './db';
@@ -304,15 +302,6 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
     platform: process.platform,
     isElectron: true,
   }));
-
-  ipcMain.handle(IPC.watchList, () => getWatch());
-  ipcMain.handle(IPC.watchRefresh, () => getWatch(true));
-
-  ipcMain.handle(IPC.ollamaStatus, () => ollamaStatus());
-  ipcMain.handle(
-    IPC.ollamaChat,
-    (_event, input: { model: string; system: string; prompt: string }) => ollamaChat(input),
-  );
 
   // Password vault — local-only, encrypted at rest. Never touches remote/
   // the WebSocket hub above: see main/vault.ts.

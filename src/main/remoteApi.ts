@@ -1,18 +1,13 @@
 import WebSocket from 'ws';
 import { remoteConfig, isRemoteConfigured, apiCredential } from './remoteConfig';
 import type {
-  CallSignal,
-  ProductRegression,
   OrgIdentity,
   RemoteSession,
   RemoteSessionUser,
-  OutgoingCallSignal,
   PresenceEntry,
   RemoteConnectionStatus,
   RemoteEventPush,
   RemoteRecord,
-  ComplyProgress,
-  ScanProgress,
   SyncedCollection,
 } from '../shared/api';
 
@@ -64,10 +59,17 @@ export class RemoteApiClient {
   private statusListeners = new Set<(status: RemoteConnectionStatus) => void>();
   private recordListeners = new Set<(record: RemoteRecord) => void>();
   private presenceListeners = new Set<(users: PresenceEntry[]) => void>();
-  private scanListeners = new Set<(progress: ScanProgress) => void>();
-  private complyListeners = new Set<(progress: ComplyProgress) => void>();
-  private signalListeners = new Set<(signal: CallSignal) => void>();
-  private regressionListeners = new Set<(r: ProductRegression) => void>();
+  /**
+   * Abonnés par type de trame WebSocket.
+   *
+   * Une carte plutôt que quatre ensembles nommés `scanListeners`,
+   * `complyListeners`… : ce client est le transport, il n'a pas à connaître le
+   * nom des produits qui passent dedans. Accessoirement, c'est ce qui fait que
+   * les noms de produits n'apparaissent plus dans le bundle livré à
+   * une organisation cliente — les noms de trames sont déclarés par le module
+   * exclusif, qui n'y est pas compilé.
+   */
+  private frameListeners = new Map<string, Set<(frame: Record<string, unknown>) => void>>();
   private identity: string | null = null;
   private stopped = false;
   /**
@@ -81,12 +83,6 @@ export class RemoteApiClient {
   /* ------------------ SSL Monitor (BLOC 6) ------------------ */
 
   /* ------------------ Recurring runs (BLOC 5) ------------------ */
-
-  /** Regression notices pushed after a scheduled run came back worse. */
-  onProductRegression(listener: (r: ProductRegression) => void): () => void {
-    this.regressionListeners.add(listener);
-    return () => this.regressionListeners.delete(listener);
-  }
 
   getConnectionStatus(): RemoteConnectionStatus {
     return this.status;
@@ -121,17 +117,7 @@ export class RemoteApiClient {
 
   /* ------------------------------- Scanner ------------------------------- */
 
-  onScanProgress(listener: (progress: ScanProgress) => void): () => void {
-    this.scanListeners.add(listener);
-    return () => this.scanListeners.delete(listener);
-  }
-
   /* ------------------------------- Comply -------------------------------- */
-
-  onComplyProgress(listener: (progress: ComplyProgress) => void): () => void {
-    this.complyListeners.add(listener);
-    return () => this.complyListeners.delete(listener);
-  }
 
   async getPresence(): Promise<PresenceEntry[]> {
     if (!isRemoteConfigured()) return [];
@@ -269,36 +255,45 @@ export class RemoteApiClient {
   }
 
   /**
-   * Relays one WebRTC signalling message to the other operator through the
-   * amn-api hub. Returns false when the socket isn't open, so the caller can
-   * fail the call immediately instead of ringing into a void.
+   * Pousse une trame sur la WebSocket ouverte. Renvoie false si le lien est
+   * coupé, pour que l'appelant échoue tout de suite au lieu d'émettre dans le
+   * vide. Le contenu ne regarde pas ce client : il ne fait que transporter.
    */
-  sendSignal(signal: OutgoingCallSignal): boolean {
+  sendFrame(frame: Record<string, unknown>): boolean {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return false;
-    this.ws.send(
-      JSON.stringify({
-        type: 'signal',
-        to: signal.to,
-        kind: signal.kind,
-        callId: signal.callId,
-        payload: signal.payload ?? null,
-      }),
-    );
+    this.ws.send(JSON.stringify(frame));
     return true;
   }
 
-  /** Incoming call signals (and undelivered notices). Returns an unsubscribe. */
-  onSignal(listener: (signal: CallSignal) => void): () => void {
-    this.signalListeners.add(listener);
-    return () => this.signalListeners.delete(listener);
+  /**
+   * Abonnement à un type de trame WebSocket. Renvoie une fonction de
+   * désabonnement.
+   */
+  onFrame(type: string, listener: (frame: Record<string, unknown>) => void): () => void {
+    let set = this.frameListeners.get(type);
+    if (!set) {
+      set = new Set();
+      this.frameListeners.set(type, set);
+    }
+    set.add(listener);
+    return () => {
+      set?.delete(listener);
+    };
   }
 
   /** Starts the live WebSocket connection (no-op if amn-api isn't configured). */
   start(): void {
     if (!isRemoteConfigured()) {
+      // Deux situations très différentes derrière le même état :
+      //   - aucune URL d'API : l'app tourne réellement seule (dev, build sans
+      //     backend) ;
+      //   - une URL mais aucun justificatif : c'est le cas NORMAL d'une
+      //     installation cliente avant la connexion. La synchro démarrera à la
+      //     seconde où une session existera.
       log(
-        'NOT configured — running in LOCAL mode. AMN_API_URL/AMN_API_OPERATOR_TOKEN were not baked into this build.',
-        `(apiUrl=${remoteConfig.apiUrl ? 'set' : 'empty'}, token=${remoteConfig.operatorToken ? 'set' : 'empty'})`,
+        remoteConfig.apiUrl
+          ? `configured (${remoteConfig.apiUrl}) but no credential yet — waiting for sign-in.`
+          : 'NOT configured — running in LOCAL mode. AMN_API_URL was not baked into this build.',
       );
       this.setStatus('unconfigured');
       return;
@@ -369,30 +364,13 @@ export class RemoteApiClient {
           for (const listener of this.recordListeners) listener(parsed.record as RemoteRecord);
         } else if (parsed?.type === 'presence' && Array.isArray(parsed.users)) {
           for (const listener of this.presenceListeners) listener(parsed.users as PresenceEntry[]);
-        } else if (parsed?.type === 'scan:progress' && parsed.progress) {
-          for (const listener of this.scanListeners) listener(parsed.progress as ScanProgress);
-        } else if (parsed?.type === 'comply:progress' && parsed.progress) {
-          for (const listener of this.complyListeners) listener(parsed.progress as ComplyProgress);
-        } else if (parsed?.type === 'product:regression' && parsed.url) {
-          for (const listener of this.regressionListeners) {
-            listener(parsed as ProductRegression);
-          }
-        } else if (parsed?.type === 'signal' && parsed.kind && parsed.callId) {
-          for (const listener of this.signalListeners) listener(parsed as CallSignal);
-        } else if (parsed?.type === 'signal:undelivered' && parsed.callId) {
-          // The hub found nobody to hand this to — surfaced as its own kind so
-          // the renderer can end the call with "hors ligne" rather than time out.
-          for (const listener of this.signalListeners) {
-            listener({
-              type: 'signal',
-              kind: 'undelivered',
-              callId: String(parsed.callId),
-              from: String(parsed.to ?? ''),
-              // Which signal went undelivered matters: an undelivered OFFER
-              // means the callee was not connected (and a push was attempted),
-              // whereas an undelivered ICE candidate mid-call is routine noise.
-              payload: { kind: String(parsed.kind ?? '') },
-            });
+        } else {
+          // Toute autre trame est relayée telle quelle aux abonnés de son type
+          // (voir onFrame). C'est par là que passent les poussées des produits
+          // exclusifs et la signalisation d'appel.
+          const listeners = this.frameListeners.get(String(parsed?.type ?? ''));
+          if (listeners) {
+            for (const listener of listeners) listener(parsed as Record<string, unknown>);
           }
         }
       } catch {

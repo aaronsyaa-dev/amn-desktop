@@ -20,13 +20,13 @@ export interface BrowserExclusiveContext {
   ensureStarted: () => void;
   socket: () => WebSocket | null;
   eventListeners: Set<unknown>;
-  scanListeners: Set<unknown>;
-  complyListeners: Set<unknown>;
-  signalListeners: Set<unknown>;
-  regressionListeners: Set<unknown>;
+  onFrame: (type: string, listener: (frame: Record<string, unknown>) => void) => () => void;
 }
 
 export function createBrowserExclusive(_ctx: BrowserExclusiveContext): AmnBridge['remote'] {
   return {} as unknown as AmnBridge['remote'];
 }
+
+/** Ni veille RSS ni modèle local dans cette édition. */
+export const browserExclusiveBridge = {} as unknown as Pick<AmnBridge, 'watch' | 'ollama'>;
 /* eslint-enable @typescript-eslint/no-unused-vars */

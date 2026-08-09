@@ -16,3 +16,6 @@ import type { AmnBridge } from './shared/api';
  * vers amn-api, ce qui est le bon échec.
  */
 export const exclusivePreload = {} as unknown as AmnBridge['remote'];
+
+/** Ni veille RSS ni modèle local dans cette édition — voir l'en-tête. */
+export const exclusiveBridge = {} as unknown as Pick<AmnBridge, 'watch' | 'ollama'>;

@@ -726,8 +726,8 @@ export type SyncedCollection =
   | 'appointments'
   /**
    * Médiathèque autonome. L'édition interne dérive ses médias des pièces
-   * jointes du chat d'équipe ; une organisation qui travaille seule n'a pas de
-   * chat, donc rien à dériver — d'où un stockage propre.
+   * jointes du chat d'équipe, mais une organisation qui travaille seule n'a
+   * pas de chat, donc rien à dériver — d'où un stockage propre.
    */
   | 'media'
   /**

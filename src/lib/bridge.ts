@@ -10,22 +10,18 @@ import {
   seedQuotes,
   seedTasks,
 } from '@edition/seeds';
-import { createBrowserExclusive } from '@edition/browserExclusive';
+import { browserExclusiveBridge, createBrowserExclusive } from '@edition/browserExclusive';
 import type {
   AddClientEventInput,
   AmnBridge,
   AuthResult,
   ChangePasswordResult,
   NotificationPrefs,
-  CallSignal,
   OrgIdentity,
   RemoteSession,
   RemoteSessionUser,
-  ProductRegression,
   PresenceEntry,
   RemoteRecord,
-  ComplyProgress,
-  ScanProgress,
   UserProfile,
   ChecklistStateEntry,
   Client,
@@ -225,10 +221,8 @@ function createBrowserRemote(): AmnBridge['remote'] {
   const statusListeners = new Set<(status: RemoteConnectionStatus) => void>();
   const recordListeners = new Set<(record: RemoteRecord) => void>();
   const presenceListeners = new Set<(users: PresenceEntry[]) => void>();
-  const scanListeners = new Set<(progress: ScanProgress) => void>();
-  const complyListeners = new Set<(progress: ComplyProgress) => void>();
-  const signalListeners = new Set<(signal: CallSignal) => void>();
-  const regressionListeners = new Set<(r: ProductRegression) => void>();
+  /** Abonnés par type de trame WebSocket — voir le dispatch plus bas. */
+  const frameListeners = new Map<string, Set<(frame: Record<string, unknown>) => void>>();
   let status: RemoteConnectionStatus = configured ? 'connecting' : 'unconfigured';
   let reconnectAttempt = 0;
   let started = false;
@@ -262,26 +256,13 @@ function createBrowserRemote(): AmnBridge['remote'] {
           for (const listener of recordListeners) listener(parsed.record as RemoteRecord);
         } else if (parsed?.type === 'presence' && Array.isArray(parsed.users)) {
           for (const listener of presenceListeners) listener(parsed.users as PresenceEntry[]);
-        } else if (parsed?.type === 'scan:progress' && parsed.progress) {
-          for (const listener of scanListeners) listener(parsed.progress as ScanProgress);
-        } else if (parsed?.type === 'comply:progress' && parsed.progress) {
-          for (const listener of complyListeners) listener(parsed.progress as ComplyProgress);
-        } else if (parsed?.type === 'product:regression' && parsed.url) {
-          for (const listener of regressionListeners) listener(parsed as ProductRegression);
-        } else if (parsed?.type === 'signal' && parsed.kind && parsed.callId) {
-          for (const listener of signalListeners) listener(parsed as CallSignal);
-        } else if (parsed?.type === 'signal:undelivered' && parsed.callId) {
-          // Mirrors the Electron client: "nobody was listening" becomes its own
-          // signal kind so the caller can say "hors ligne" straight away.
-          for (const listener of signalListeners) {
-            listener({
-              type: 'signal',
-              kind: 'undelivered',
-              callId: String(parsed.callId),
-              from: String(parsed.to ?? ''),
-              payload: { kind: String(parsed.kind ?? '') },
-            });
-          }
+        } else {
+          // Toute autre trame part vers les abonnés de son type. Comme dans le
+          // process main, ce pont est un transport : il ne connaît pas le nom
+          // des produits qui passent dedans, et ces noms ne se retrouvent donc
+          // pas dans le bundle d'une édition qui ne les a pas.
+          const listeners = frameListeners.get(String(parsed?.type ?? ''));
+          if (listeners) for (const listener of listeners) listener(parsed as Record<string, unknown>);
         }
       } catch {
         // Ignore malformed frames.
@@ -373,10 +354,17 @@ function createBrowserRemote(): AmnBridge['remote'] {
     ensureStarted,
     socket: () => socket,
     eventListeners,
-    scanListeners,
-    complyListeners,
-    signalListeners,
-    regressionListeners,
+    onFrame(type: string, listener: (frame: Record<string, unknown>) => void) {
+      let set = frameListeners.get(type);
+      if (!set) {
+        set = new Set();
+        frameListeners.set(type, set);
+      }
+      set.add(listener);
+      return () => {
+        set?.delete(listener);
+      };
+    },
   };
 
   return {
@@ -474,6 +462,9 @@ function createBrowserRemote(): AmnBridge['remote'] {
 
 function createBrowserBridge(): AmnBridge {
   return {
+    // Veille RSS et modèle local : hors périmètre du navigateur, et hors
+    // périmètre tout court dans l'édition Business (voir @edition/browserExclusive).
+    ...browserExclusiveBridge,
     auth: {
       async login(email: string, password: string): Promise<AuthResult> {
         const key = email.trim().toLowerCase();
@@ -867,26 +858,6 @@ function createBrowserBridge(): AmnBridge {
       },
       async injectRemoteInput() {
         return false;
-      },
-    },
-    watch: {
-      // RSS fetching needs the Electron main process (cross-origin). The browser
-      // fallback has no feed; the panel shows a clear "desktop-only" state.
-      async list() {
-        return { items: [], fetchedAt: null, degraded: true };
-      },
-      async refresh() {
-        return { items: [], fetchedAt: null, degraded: true };
-      },
-    },
-    ollama: {
-      // Local Ollama needs the Electron main process; the browser fallback
-      // reports unavailable so the assistant uses its built-in engine.
-      async status() {
-        return { available: false, models: [] };
-      },
-      async chat() {
-        throw new Error('Ollama indisponible dans le navigateur.');
       },
     },
     updates: {

@@ -54,6 +54,19 @@ type ExclusiveRemote = Pick<
   | 'onComplyProgress'
 >;
 
+/** Part exclusive du pont hors `remote` : veille RSS et modèle local. */
+export const exclusiveBridge: Pick<AmnBridge, 'watch' | 'ollama'> = {
+  watch: {
+    list: () => ipcRenderer.invoke(IPC.watchList),
+    refresh: () => ipcRenderer.invoke(IPC.watchRefresh),
+  },
+  ollama: {
+    status: () => ipcRenderer.invoke(IPC.ollamaStatus),
+    chat: (input: { model: string; system: string; prompt: string }) =>
+      ipcRenderer.invoke(IPC.ollamaChat, input),
+  },
+};
+
 export const exclusivePreload: ExclusiveRemote = {
   listSites: () => ipcRenderer.invoke(IPC.remoteListSites),
   getSiteEvents: (siteId, opts) =>

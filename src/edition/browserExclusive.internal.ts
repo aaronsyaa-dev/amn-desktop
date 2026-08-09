@@ -40,10 +40,8 @@ export interface BrowserExclusiveContext {
   ensureStarted: () => void;
   socket: () => WebSocket | null;
   eventListeners: Set<(push: RemoteEventPush) => void>;
-  scanListeners: Set<(progress: ScanProgress) => void>;
-  complyListeners: Set<(progress: ComplyProgress) => void>;
-  signalListeners: Set<(signal: CallSignal) => void>;
-  regressionListeners: Set<(r: ProductRegression) => void>;
+  /** Abonnement à un type de trame WebSocket. Renvoie une fonction de désabonnement. */
+  onFrame: (type: string, listener: (frame: Record<string, unknown>) => void) => () => void;
 }
 
 type ExclusiveRemote = Pick<
@@ -158,9 +156,8 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
     });
   },
   onProductRegression(callback) {
-    ctx.regressionListeners.add(callback);
     ctx.ensureStarted();
-    return () => ctx.regressionListeners.delete(callback);
+    return ctx.onFrame('product:regression', (frame) => callback(frame as unknown as ProductRegression));
   },
   async getOrgOverview(days: number) {
     return ctx.apiFetch<OrgOverview>(`/v1/sites/overview?days=${encodeURIComponent(String(days))}`);
@@ -184,9 +181,23 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
     return true;
   },
   onCallSignal(callback) {
-    ctx.signalListeners.add(callback);
     ctx.ensureStarted();
-    return () => ctx.signalListeners.delete(callback);
+    const offSignal = ctx.onFrame('signal', (frame) => callback(frame as unknown as CallSignal));
+    // « Personne n'écoutait » devient sa propre nature de signal, comme côté
+    // Electron : l'appelant peut conclure « hors ligne » au lieu d'attendre.
+    const offUndelivered = ctx.onFrame('signal:undelivered', (frame) =>
+      callback({
+        type: 'signal',
+        kind: 'undelivered',
+        callId: String(frame.callId ?? ''),
+        from: String(frame.to ?? ''),
+        payload: { kind: String(frame.kind ?? '') },
+      }),
+    );
+    return () => {
+      offSignal();
+      offUndelivered();
+    };
   },
   async startScan(url: string, tier: ScanTier): Promise<Scan> {
     const { scan } = await ctx.apiFetch<{ scan: Scan }>('/v1/scan', {
@@ -213,9 +224,8 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
     return URL.createObjectURL(new Blob([await res.text()], { type: 'text/html' }));
   },
   onScanProgress(callback) {
-    ctx.scanListeners.add(callback);
     ctx.ensureStarted();
-    return () => ctx.scanListeners.delete(callback);
+    return ctx.onFrame('scan:progress', (frame) => callback(frame.progress as ScanProgress));
   },
   async startComply(url: string): Promise<ComplyCheck> {
     const { check } = await ctx.apiFetch<{ check: ComplyCheck }>('/v1/comply', {
@@ -235,9 +245,34 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
     return check;
   },
   onComplyProgress(callback) {
-    ctx.complyListeners.add(callback);
     ctx.ensureStarted();
-    return () => ctx.complyListeners.delete(callback);
+    return ctx.onFrame('comply:progress', (frame) => callback(frame.progress as ComplyProgress));
   },
   };
 }
+
+/**
+ * Part exclusive du pont navigateur hors `remote` : veille RSS et modèle local.
+ *
+ * Les deux ont besoin du process main (requête cross-origin pour les flux,
+ * serveur local pour Ollama). Le repli navigateur répond honnêtement « pas
+ * disponible ici » plutôt que d'échouer en silence.
+ */
+export const browserExclusiveBridge: Pick<AmnBridge, 'watch' | 'ollama'> = {
+  watch: {
+    async list() {
+      return { items: [], fetchedAt: null, degraded: true };
+    },
+    async refresh() {
+      return { items: [], fetchedAt: null, degraded: true };
+    },
+  },
+  ollama: {
+    async status() {
+      return { available: false, models: [] };
+    },
+    async chat() {
+      throw new Error('Modèle local indisponible dans le navigateur.');
+    },
+  },
+};

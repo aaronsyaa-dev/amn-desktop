@@ -27,6 +27,7 @@ export function editionAliases(edition: Edition): Record<string, string> {
   const at = (rel: string) => path.resolve(root, rel);
   return {
     '@edition/modules': at(`src/edition/modules.${suffix}.ts`),
+    '@edition/dbSeed': at(`src/edition/dbSeed.${suffix}.ts`),
     '@edition/changelog': at(`src/edition/changelog.${suffix}.ts`),
     '@edition/seeds': at(`src/edition/seeds.${suffix}.ts`),
     '@edition/browserExclusive': at(`src/edition/browserExclusive.${suffix}.ts`),

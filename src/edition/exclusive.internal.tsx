@@ -42,6 +42,11 @@ export const TEAM_MEMBERS: { email: string; name: string }[] = [
   { email: 'mohamed@amn-devsec.com', name: 'Mohamed' },
 ];
 
+/** Rubriques du coffre-fort propres à nos produits (clés des trackers déployés). */
+export const VAULT_PRODUCT_CATEGORIES: { value: 'trackers'; label: string }[] = [
+  { value: 'trackers', label: 'Trackers installés' },
+];
+
 /** Route de l'écran Décisions, ou `null` si le module n'existe pas. */
 export const DECISIONS_ROUTE: string | null = '/decisions';
 

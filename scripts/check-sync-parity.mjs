@@ -26,6 +26,19 @@
  * Usage:
  *   node scripts/check-sync-parity.mjs
  *   AMN_API_URL=http://localhost:8810 AMN_API_OPERATOR_TOKEN=… node scripts/check-sync-parity.mjs
+ *   AMN_API_URL=… AMN_API_EMAIL=… AMN_API_PASSWORD=… node scripts/check-sync-parity.mjs
+ *
+ * La sonde runtime accepte deux justificatifs, et les exerce tous les deux
+ * quand ils sont fournis :
+ *   - le jeton opérateur, qui résout vers AMN DevSec ;
+ *   - un compte nominatif (email/mot de passe), qui résout vers SON
+ *     organisation.
+ *
+ * Les deux comptent. Une collection peut très bien passer pour AMN DevSec et
+ * échouer pour une organisation cliente — c'est le cas si amn-api a été
+ * déployée avec la bonne liste ALLOWED mais que le compte est suspendu, ou si
+ * une règle d'isolation refuse une écriture. Vérifier une seule organisation,
+ * c'est vérifier la moitié de ce qui est livré.
  */
 
 import fs from 'node:fs';
@@ -154,20 +167,28 @@ if (legacyAllowed.length > 0) {
 
 const apiUrl = (process.env.AMN_API_URL || '').replace(/\/$/, '');
 const token = process.env.AMN_API_OPERATOR_TOKEN || '';
+const email = process.env.AMN_API_EMAIL || '';
+const password = process.env.AMN_API_PASSWORD || '';
 
-async function probeRuntime() {
-  if (!apiUrl || !token) {
-    notes.push(
-      'AMN_API_URL / AMN_API_OPERATOR_TOKEN non définis — sonde runtime sautée. ' +
-        "C'est la seule vérification qui attrape une amn-api déployée sans la bonne liste.",
-    );
-    return;
-  }
-  console.log(`\nSonde runtime sur ${apiUrl} :`);
+/** Échange email/mot de passe contre un jeton de session nominatif. */
+async function signIn() {
+  const res = await fetch(`${apiUrl}/v1/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body?.error || `${res.status} ${res.statusText}`);
+  return body;
+}
+
+/** Exerce chaque collection avec UN justificatif : écriture, lecture, effacement. */
+async function probeWith(label, credential) {
+  console.log(`\nSonde runtime sur ${apiUrl} — ${label} :`);
   const id = `__parity-${Date.now()}`;
   for (const c of pulled) {
     const base = `${apiUrl}/v1/collections/${c}`;
-    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${credential}` };
     try {
       const put = await fetch(`${base}/${id}`, {
         method: 'PUT',
@@ -178,16 +199,55 @@ async function probeRuntime() {
       await fetch(`${base}/${id}`, { method: 'DELETE', headers }).catch(() => {});
       if (!put.ok || !get.ok) {
         failures.push(
-          `« ${c} » refusée par l'API en conditions réelles (PUT ${put.status}, GET ${get.status}).`,
+          `« ${c} » refusée par l'API en conditions réelles pour ${label} ` +
+            `(PUT ${put.status}, GET ${get.status}).`,
         );
         console.log(`  KO  ${c} — PUT ${put.status}, GET ${get.status}`);
       } else {
         console.log(`  OK  ${c}`);
       }
     } catch (err) {
-      failures.push(`« ${c} » : sonde impossible (${err?.message ?? err}).`);
+      failures.push(`« ${c} » : sonde impossible pour ${label} (${err?.message ?? err}).`);
       console.log(`  KO  ${c} — ${err?.message ?? err}`);
     }
+  }
+}
+
+async function probeRuntime() {
+  if (!apiUrl) {
+    notes.push(
+      'AMN_API_URL non définie — sonde runtime sautée. ' +
+        "C'est la seule vérification qui attrape une amn-api déployée sans la bonne liste.",
+    );
+    return;
+  }
+
+  let probed = false;
+  if (token) {
+    await probeWith('jeton opérateur (AMN DevSec)', token);
+    probed = true;
+  }
+  if (email && password) {
+    try {
+      const session = await signIn();
+      const orgName = session?.org?.name ?? 'organisation inconnue';
+      await probeWith(`session ${email} (${orgName})`, session.token);
+      probed = true;
+      await fetch(`${apiUrl}/v1/auth/logout`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.token}` },
+      }).catch(() => {});
+    } catch (err) {
+      failures.push(`Connexion impossible pour ${email} : ${err?.message ?? err}.`);
+      console.log(`  KO  connexion ${email} — ${err?.message ?? err}`);
+    }
+  }
+
+  if (!probed) {
+    notes.push(
+      'Aucun justificatif fourni (AMN_API_OPERATOR_TOKEN, ou AMN_API_EMAIL + ' +
+        'AMN_API_PASSWORD) — sonde runtime sautée.',
+    );
   }
 }
 

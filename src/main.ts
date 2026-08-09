@@ -7,9 +7,16 @@ import { backfillSyncIds, restoreFromRemote } from './main/clientsSync';
 import { registerIpcHandlers } from './main/ipc';
 import { RemoteApiClient } from './main/remoteApi';
 import { setupAutoUpdate } from './main/updater';
-import { warmWatch } from './main/watch';
 import { handleSquirrelStartup } from './main/windowsIntegration';
 import { SCAN_REPORTS_DIR } from './main/scanReports';
+import { EDITION_PRODUCT_NAME, IS_BUSINESS } from './edition/edition';
+
+// Nom de l'application, AVANT toute lecture de app.getPath('userData') :
+// Electron en dérive le dossier de données. Sans cette ligne, les deux
+// éditions installées sur la même machine partageraient base locale, session
+// et préférences — ce qui rendrait impossible de tester ce que voit vraiment
+// une cliente, et mélangerait deux organisations dans un même fichier.
+app.setName(EDITION_PRODUCT_NAME);
 
 // Handle Squirrel.Windows install/update/uninstall events. On --squirrel-updated
 // this explicitly recreates the Desktop + Start-menu shortcuts (they can vanish
@@ -28,7 +35,14 @@ if (squirrelHandled) {
 // where the maker uses pkgId = package.json name with '-' → '_' (amn_desktop)
 // and exe = the productName ("AMN Desktop"). We must set the exact same string.
 if (process.platform === 'win32') {
-  app.setAppUserModelId('com.squirrel.amn_desktop.AMN Desktop');
+  // Le maker Squirrel construit l'AUMID à partir du nom du paquet et du
+  // productName : il diffère donc d'une édition à l'autre, et les toasts ne
+  // partent que si la chaîne correspond exactement au raccourci installé.
+  app.setAppUserModelId(
+    IS_BUSINESS
+      ? 'com.squirrel.amn_business.AMN Business'
+      : 'com.squirrel.amn_desktop.AMN Desktop',
+  );
 }
 
 // Single-instance: a second launch (e.g. via the start-with-Windows shortcut,
@@ -284,7 +298,6 @@ app.on('ready', () => {
 
   createTray();
   setupAutoUpdate();
-  warmWatch(); // prime the RSS watch cache in the background
 
   if (wasLaunchedHidden()) {
     // Silent background start: stay in the tray, no window, no Welcome. Just a

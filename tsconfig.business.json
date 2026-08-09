@@ -7,6 +7,7 @@
     // directement compile toujours en interne — et casse ici.
     "paths": {
       "@edition/modules": ["src/edition/modules.business.ts"],
+      "@edition/dbSeed": ["src/edition/dbSeed.business.ts"],
       "@edition/changelog": ["src/edition/changelog.business.ts"],
       "@edition/seeds": ["src/edition/seeds.business.ts"],
       "@edition/browserExclusive": ["src/edition/browserExclusive.business.ts"],

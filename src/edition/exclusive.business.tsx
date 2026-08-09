@@ -21,6 +21,9 @@ import type { DerivedSite } from '../state/RemoteSitesContext';
 export const TEAM_ENABLED = false;
 export const TEAM_MEMBERS: { email: string; name: string }[] = [];
 
+/** Aucune rubrique produit dans le coffre-fort d'une organisation cliente. */
+export const VAULT_PRODUCT_CATEGORIES: { value: 'trackers'; label: string }[] = [];
+
 /** Pas d'écran Décisions dans cette édition. */
 export const DECISIONS_ROUTE: string | null = null;
 

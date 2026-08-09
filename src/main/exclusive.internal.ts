@@ -1,5 +1,6 @@
 import {
   IPC,
+  type CallSignal,
   type ComplyCheck,
   type ComplyProgress,
   type CreateScheduleInput,
@@ -22,6 +23,8 @@ import {
 import { apiCredential, remoteConfig } from './remoteConfig';
 import { apiFetch, type RemoteApiClient } from './remoteApi';
 import { writeScanReportFile } from './scanReports';
+import { getWatch, warmWatch } from './watch';
+import { ollamaChat, ollamaStatus } from './ollama';
 
 /**
  * Tout ce qu'amn-api expose et qui n'appartient qu'à AMN DevSec : le parc de
@@ -233,18 +236,55 @@ export function registerExclusiveIpc(
   // Appels audio : la signalisation ne vaut qu'à plusieurs dans une même
   // organisation, donc elle part avec le reste dans l'édition Business.
   ipcMain.handle(IPC.remoteSendCallSignal, (_event, signal: OutgoingCallSignal) =>
-    remote.sendSignal(signal),
+    remote.sendFrame({
+      type: 'signal',
+      to: signal.to,
+      kind: signal.kind,
+      callId: signal.callId,
+      payload: signal.payload ?? null,
+    }),
   );
 
+  // Veille RSS et modèle local Ollama : les deux n'alimentent que l'assistant
+  // Ajmani et le bandeau de veille, qui n'existent pas dans l'édition Business.
+  // Préchauffe le cache de veille en arrière-plan. Appelé ici plutôt que dans
+  // main.ts : c'est le seul endroit qui sait que la veille existe dans cette
+  // édition, et main.ts n'a donc plus de raison d'importer le module.
+  warmWatch();
+  ipcMain.handle(IPC.watchList, () => getWatch());
+  ipcMain.handle(IPC.watchRefresh, () => getWatch(true));
+  ipcMain.handle(IPC.ollamaStatus, () => ollamaStatus());
+  ipcMain.handle(
+    IPC.ollamaChat,
+    (_event, input: { model: string; system: string; prompt: string }) => ollamaChat(input),
+  );
+
+  // Trames temps réel des produits exclusifs. Leurs NOMS sont déclarés ici, et
+  // pas dans le client de transport : c'est ce qui les fait disparaître du
+  // bundle Business en même temps que le reste.
   remote.onEvent((push) => broadcastToAll(IPC.remoteEventPush, push));
-  remote.onSignal((signal: unknown) => broadcastToAll(IPC.remoteCallSignalPush, signal));
-  remote.onProductRegression((r: ProductRegression) =>
-    broadcastToAll(IPC.remoteProductRegressionPush, r),
+  remote.onFrame('scan:progress', (frame) =>
+    broadcastToAll(IPC.remoteScanProgressPush, frame.progress as ScanProgress),
   );
-  remote.onScanProgress((progress: ScanProgress) =>
-    broadcastToAll(IPC.remoteScanProgressPush, progress),
+  remote.onFrame('comply:progress', (frame) =>
+    broadcastToAll(IPC.remoteComplyProgressPush, frame.progress as ComplyProgress),
   );
-  remote.onComplyProgress((progress: ComplyProgress) =>
-    broadcastToAll(IPC.remoteComplyProgressPush, progress),
+  remote.onFrame('product:regression', (frame) =>
+    broadcastToAll(IPC.remoteProductRegressionPush, frame as unknown as ProductRegression),
+  );
+  remote.onFrame('signal', (frame) =>
+    broadcastToAll(IPC.remoteCallSignalPush, frame as unknown as CallSignal),
+  );
+  // « Personne n'écoutait » est sa propre nature de signal côté renderer : il
+  // permet de terminer l'appel sur « hors ligne » plutôt que d'attendre le
+  // délai de garde.
+  remote.onFrame('signal:undelivered', (frame) =>
+    broadcastToAll(IPC.remoteCallSignalPush, {
+      type: 'signal',
+      kind: 'undelivered',
+      callId: String(frame.callId ?? ''),
+      from: String(frame.to ?? ''),
+      payload: { kind: String(frame.kind ?? '') },
+    } satisfies CallSignal),
   );
 }

@@ -25,9 +25,11 @@ import {
   type UpdateQuoteInput,
   type UpdateSharedTaskInput,
 } from './shared/api';
-import { exclusivePreload } from '@edition/preloadExclusive';
+import { exclusiveBridge, exclusivePreload } from '@edition/preloadExclusive';
 
 const bridge: AmnBridge = {
+  // Vide dans l'édition Business : voir @edition/preloadExclusive.
+  ...exclusiveBridge,
   auth: {
     login: (email, password) =>
       ipcRenderer.invoke(IPC.authLogin, { email, password }),
@@ -148,15 +150,6 @@ const bridge: AmnBridge = {
     getAppInfo: () => ipcRenderer.invoke(IPC.systemGetAppInfo),
     canBeRemoteControlled: () => ipcRenderer.invoke(IPC.systemCanRemoteControl),
     injectRemoteInput: (event: unknown) => ipcRenderer.invoke(IPC.systemInjectRemoteInput, event),
-  },
-  watch: {
-    list: () => ipcRenderer.invoke(IPC.watchList),
-    refresh: () => ipcRenderer.invoke(IPC.watchRefresh),
-  },
-  ollama: {
-    status: () => ipcRenderer.invoke(IPC.ollamaStatus),
-    chat: (input: { model: string; system: string; prompt: string }) =>
-      ipcRenderer.invoke(IPC.ollamaChat, input),
   },
   updates: {
     onDownloaded: (cb: (info: { version: string; notes?: string }) => void) => {
