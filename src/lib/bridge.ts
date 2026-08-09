@@ -77,6 +77,27 @@ const FALLBACK_ACCOUNTS: Record<string, { name: string; hash: string }> = {
   },
 };
 
+/**
+ * Per-platform stores that predate the synced collections.
+ *
+ * They are kept READ-ONLY, as the migration source for installs that still
+ * hold data in them (see src/state/useClients.ts). Nothing may start writing a
+ * synced collection through one of these again: that is precisely what made
+ * the web build and Electron read two different databases for Clients, and
+ * scripts/check-sync-parity.mjs fails on any collection that is both synced
+ * and absent from this list.
+ */
+export const LEGACY_MIGRATION_ONLY_STORES = [
+  'tasks',
+  'decisions',
+  'knowledge',
+  'objectives',
+  'messages',
+  'profiles',
+  'clients',
+  'quotes',
+] as const;
+
 const MESSAGES_KEY = 'amn.fallback.messages';
 const CLIENTS_KEY = 'amn.fallback.clients';
 const PROFILES_KEY = 'amn.fallback.profiles';

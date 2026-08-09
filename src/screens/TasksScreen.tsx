@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Contact, FileText, Globe, MapPin, MessageSquare, Pencil, Plus, Send, Trash2, X } from 'lucide-react';
-import { bridge } from '../lib/bridge';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { useRemoteSites } from '../state/RemoteSitesContext';
@@ -14,6 +13,7 @@ import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { relativeTime } from '../lib/time';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
+import { useClients } from '../state/useClients';
 import { useTags } from '../components/tags/TagProvider';
 import type { TaskMarker } from '../lib/taskMarkers';
 import type { ReportDraft } from '../state/useReports';
@@ -99,7 +99,6 @@ export function TasksScreen() {
         .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')),
     [tasksRaw, isPending],
   );
-  const [clients, setClients] = useState<Client[]>([]);
   const [creating, setCreating] = useState(false);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const openTask = useMemo(() => tasks.find((t) => t.id === openTaskId) ?? null, [tasks, openTaskId]);
@@ -111,15 +110,8 @@ export function TasksScreen() {
     if (wanted) setOpenTaskId(wanted);
   }, [location.state]);
 
-  useEffect(() => {
-    let active = true;
-    bridge()
-      .clients.list()
-      .then((c) => active && setClients(c));
-    return () => {
-      active = false;
-    };
-  }, []);
+  // Synced collection, so the client list is the same on every platform.
+  const { clients } = useClients();
 
   const moveTask = (task: SyncTask, status: SharedTaskStatus) =>
     upsert('tasks', task.id, { ...stripMeta(task), status });

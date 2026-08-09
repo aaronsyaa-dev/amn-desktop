@@ -3,7 +3,6 @@
   "productName": "AMN Desktop",
   "version": "1.2.6",
   "description": "AMN Desktop - Electron + React application for monitoring sites",
-
   "main": ".vite/build/main.js",
   "private": true,
   "scripts": {
@@ -14,7 +13,8 @@
     "publish": "npm run bootstrap && electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
     "typecheck": "tsc --noEmit",
-    "build:web": "vite build --config vite.renderer.config.mts"
+    "build:web": "vite build --config vite.renderer.config.mts",
+    "check:sync": "node scripts/check-sync-parity.mjs"
   },
   "keywords": [],
   "author": {

@@ -50,6 +50,15 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'notes',
   'reports',
   'remediation',
+  // Clients and quotes moved here from the per-platform stores (SQLite on
+  // Electron, localStorage on the web) that made them invisible across
+  // platforms. See src/state/useClients.ts.
+  'clients',
+  'quotes',
+  // Found by scripts/check-sync-parity.mjs: declared as a synced collection but
+  // never pulled back, so installed-tracker state was written and then lost on
+  // the next reload, on every platform.
+  'trackers',
   'siteMeta',
   'siteNotes',
 ];

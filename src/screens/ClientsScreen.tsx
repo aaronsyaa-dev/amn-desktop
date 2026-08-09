@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, FileText, Globe, ImagePlus, Info, Mail, Phone, Plus, Printer, X } from 'lucide-react';
-import { bridge } from '../lib/bridge';
+import { useClients } from '../state/useClients';
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
@@ -76,25 +76,31 @@ export function ClientsScreen() {
   // A @client mention (or any navigation) can request a specific client be
   // opened via router state: navigate('/clients', { state: { focusClientId } }).
   const focusClientId = (location.state as { focusClientId?: number } | null)?.focusClientId ?? null;
-  const [clients, setClients] = useState<Client[]>([]);
-  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
 
+  // One implementation for both platforms — see src/state/useClients.ts. The
+  // previous version read `bridge().clients`, which was SQLite on Electron and
+  // localStorage on the web: two different databases, never the same data.
+  const {
+    clients,
+    quotes,
+    ready,
+    createClient: createClientRecord,
+    updateClient,
+    addClientEvent,
+    removeClient: removeClientRecord,
+    createQuote: createQuoteRecord,
+    updateQuote,
+    removeQuote: removeQuoteRecord,
+  } = useClients();
+  const loading = !ready;
+
+  // Select the first client once the list arrives, without fighting a choice
+  // the operator has already made.
   useEffect(() => {
-    let active = true;
-    Promise.all([bridge().clients.list(), bridge().quotes.list()]).then(([clientList, quoteList]) => {
-      if (!active) return;
-      setClients(clientList);
-      setQuotes(quoteList);
-      setSelectedId((prev) => prev ?? clientList[0]?.id ?? null);
-      setLoading(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
+    setSelectedId((prev) => prev ?? clients[0]?.id ?? null);
+  }, [clients]);
 
   // Honour a requested client focus once the list is loaded (and again if the
   // navigation target changes while the screen stays mounted).
@@ -109,52 +115,33 @@ export function ClientsScreen() {
     [clients, selectedId],
   );
 
-  const replaceClient = (updated: Client) =>
-    setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
-
-  const replaceQuote = (updated: Quote) =>
-    setQuotes((prev) => prev.map((q) => (q.id === updated.id ? updated : q)));
-
   const patch = async (id: number, p: UpdateClientInput) => {
-    const updated = await bridge().clients.update(id, p);
-    replaceClient(updated);
+    await updateClient(id, p);
   };
 
   const addEvent = async (id: number, title: string, detail: string) => {
-    const updated = await bridge().clients.addEvent({ clientId: id, title, detail });
-    replaceClient(updated);
+    await addClientEvent({ clientId: id, title, detail });
   };
 
   const createClient = async (input: CreateClientInput) => {
-    const created = await bridge().clients.create(input);
-    setClients((prev) =>
-      [...prev, created].sort((a, b) => a.name.localeCompare(b.name, 'fr')),
-    );
+    const created = await createClientRecord(input);
     setSelectedId(created.id);
     setAdding(false);
   };
 
-  const createQuote = async (input: CreateQuoteInput) => {
-    const created = await bridge().quotes.create(input);
-    setQuotes((prev) => [created, ...prev]);
-    return created;
-  };
+  const createQuote = async (input: CreateQuoteInput) => createQuoteRecord(input);
 
   const patchQuote = async (id: number, p: { status?: QuoteStatus; paymentStatus?: PaymentStatus }) => {
-    const updated = await bridge().quotes.update(id, p);
-    replaceQuote(updated);
+    await updateQuote(id, p);
   };
 
   const removeQuote = async (id: number) => {
-    setQuotes((prev) => prev.filter((q) => q.id !== id));
-    await bridge().quotes.remove(id);
+    await removeQuoteRecord(id);
   };
 
   const removeClient = async (id: number) => {
-    setClients((prev) => prev.filter((c) => c.id !== id));
-    setQuotes((prev) => prev.filter((q) => q.clientId !== id));
     setSelectedId((prev) => (prev === id ? null : prev));
-    await bridge().clients.remove(id);
+    await removeClientRecord(id);
   };
 
   return (
