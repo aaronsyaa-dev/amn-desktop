@@ -126,8 +126,8 @@ export const exclusivePreload: ExclusiveRemote = {
     setOrganizationStatus: (id, status) =>
       ipcRenderer.invoke(IPC.remoteAdminSetOrgStatus, { id, status }),
     listUsers: (orgId) => ipcRenderer.invoke(IPC.remoteAdminListUsers, orgId),
-    reissueInvitation: (orgId, email, role) =>
-      ipcRenderer.invoke(IPC.remoteAdminReissueInvitation, { orgId, email, role }),
+    reissueInvitation: (orgId, email) =>
+      ipcRenderer.invoke(IPC.remoteAdminReissueInvitation, { orgId, email }),
     resetPassword: (orgId, userId) =>
       ipcRenderer.invoke(IPC.remoteAdminResetPassword, { orgId, userId }),
     accessLog: (opts) => ipcRenderer.invoke(IPC.remoteAdminAccessLog, opts ?? {}),

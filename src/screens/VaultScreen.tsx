@@ -20,27 +20,7 @@ import { useUndo } from '../state/UndoContext';
 import { copyWithAutoClear } from '../lib/clipboard';
 import { bridge } from '../lib/bridge';
 import type { VaultCategory, VaultEntry } from '../shared/api';
-import { VAULT_PRODUCT_CATEGORIES } from '@edition/exclusive';
-
-/**
- * Rubriques du coffre-fort.
- *
- * « Trackers installés » ne concerne que nous : c'est là que sont rangées les
- * clés d'API des trackers déployés chez nos clients. Une organisation cliente
- * n'a pas de trackers — la rubrique disparaît avec le reste du produit, et son
- * libellé avec elle.
- */
-const CATEGORIES: { value: VaultCategory; label: string }[] = [
-  { value: 'api', label: 'API Keys' },
-  { value: 'accounts', label: 'Comptes' },
-  { value: 'servers', label: 'Serveurs' },
-  ...VAULT_PRODUCT_CATEGORIES,
-  { value: 'other', label: 'Autres' },
-];
-
-function categoryLabel(c: VaultCategory): string {
-  return CATEGORIES.find((x) => x.value === c)?.label ?? 'Autres';
-}
+import { VAULT_CATEGORIES as CATEGORIES, vaultCategoryLabel as categoryLabel } from '../lib/vaultCategories';
 
 const emptyDraft = (): VaultDraft => ({
   label: '',

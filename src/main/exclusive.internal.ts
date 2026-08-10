@@ -252,10 +252,10 @@ const adminApi = {
     return users;
   },
 
-  async reissueInvitation(orgId: string, email: string, role = 'owner'): Promise<OrgInvitationResult> {
+  async reissueInvitation(orgId: string, email: string): Promise<OrgInvitationResult> {
     return apiFetch<OrgInvitationResult>(
       `/v1/admin/organizations/${encodeURIComponent(orgId)}/invitations`,
-      { owner: true, method: 'POST', body: JSON.stringify({ email, role }) },
+      { owner: true, method: 'POST', body: JSON.stringify({ email }) },
     );
   },
 
@@ -428,8 +428,8 @@ export function registerExclusiveIpc(
   ipcMain.handle(IPC.remoteAdminListUsers, (_event, orgId: string) => adminApi.listUsers(orgId));
   ipcMain.handle(
     IPC.remoteAdminReissueInvitation,
-    (_event, payload: { orgId: string; email: string; role?: string }) =>
-      adminApi.reissueInvitation(payload.orgId, payload.email, payload.role),
+    (_event, payload: { orgId: string; email: string }) =>
+      adminApi.reissueInvitation(payload.orgId, payload.email),
   );
   ipcMain.handle(
     IPC.remoteAdminResetPassword,

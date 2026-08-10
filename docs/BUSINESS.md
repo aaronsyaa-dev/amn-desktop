@@ -108,16 +108,75 @@ AMN_API_OPERATOR_TOKEN=<jeton opérateur> \
 node scripts/create-business-org.mjs --name "Sa raison sociale" --email elle@exemple.fr
 ```
 
-### 2. Construire l'application
+### 2. Lui donner l'application
+
+Deux formes, même code, même compte. Aucun `AMN_API_OPERATOR_TOKEN` dans l'une
+ni dans l'autre : le mettre reviendrait à donner à la cliente une clé qui ouvre
+AMN DevSec.
+
+**Accès web (le plus rapide, et celui qui a débloqué la première cliente)** —
+la même coquille React que l'Electron, servie en HTTPS statique, installable
+depuis le navigateur (« Ajouter à l'écran d'accueil », voir `docs/PWA.md`).
+Rien à installer, rien à signer, disponible tout de suite sur n'importe quelle
+machine :
+
+```sh
+AMN_API_URL=https://amn-api.onrender.com  # côté Vercel : variable de projet
+npm run build:web:business
+npm run check:business -- --dir dist       # contrôle d'hygiène, voir ci-dessous
+```
+
+Sur Vercel, **un projet distinct** du web AMN DevSec, sur le même dépôt :
+
+| Réglage | Valeur |
+| --- | --- |
+| Build Command | `npm run build:web:business` |
+| Output Directory | `dist` |
+| Variables | `VITE_AMN_API_URL` = URL d'amn-api. **Rien d'autre.** |
+
+`vercel.business.json` porte ces réglages pour un déploiement en ligne de
+commande : `vercel --local-config vercel.business.json --prod`. Les deux
+fichiers `vercel*.json` épinglent `AMN_EDITION` dans `build.env`, pour qu'une
+variable de projet mal placée ne puisse pas envoyer l'édition interne chez une
+cliente.
+
+`VITE_AMN_API_WEB_TOKEN` n'a aucun effet sur ce build et **ne doit pas y être** :
+`createBrowserRemote` ignore les jetons partagés quand `IS_BUSINESS`, et comme
+c'est une constante remplacée à la compilation, les deux `import.meta.env` sont
+supprimés par Rollup. Le jeton ne peut donc pas être inliné dans un bundle
+public, même par erreur d'environnement.
+
+**Application Windows** :
 
 ```sh
 AMN_API_URL=https://amn-api.onrender.com npm run make:business
 ```
 
-Aucun `AMN_API_OPERATOR_TOKEN` ici : le mettre reviendrait à donner à la
-cliente une clé qui ouvre AMN DevSec.
+### 2 bis. Vérifier que le build ne contient rien de nous
 
-### 3. Vérifier avant de remettre l'accès
+```sh
+npm run check:business -- --dir dist
+```
+
+Le script relit la sortie en texte brut et échoue sur la moindre trace : nos
+adresses, notre raison sociale, les empreintes bcrypt des comptes de départ, les
+noms de produits (Sentinel, Scanner, Comply, SSL Monitor, Ajmani), les routes
+`/v1/admin/*`, nos clients de démonstration, les noms de variables de jeton. Il
+échoue aussi si les marqueurs attendus (`AMN Business`, `Agenda`, `Coffre-fort`)
+manquent — sinon un dossier vide passerait au vert.
+
+Le web est le plus exposé des deux : un bundle servi en HTTPS se lit avec le
+clic droit du navigateur, là où il faut au moins ouvrir un `asar` côté Electron.
+Le contrôle a d'ailleurs trouvé une fuite que la relecture manuelle du build
+Electron avait laissée passer — l'écran Rapports, partagé, gardait les chaînes
+`"comply"`, `"scanner"`, `"rgpd"` et les appels `listScans()` /
+`listComplyChecks()` dans le bundle de la cliente. Ils étaient sautés à
+l'exécution par `PRODUCTS_ENABLED`, mais Rollup ne peut pas supprimer une
+branche dont la condition n'est connue qu'au runtime. Le morceau est passé
+derrière `@edition/exclusive` (`useProductReports`) : l'écran partagé ne
+manipule plus que des entrées opaques, et la face Business n'importe rien.
+
+### 3. Vérifier la synchronisation avant de remettre l'accès
 
 ```sh
 AMN_API_URL=https://amn-api.onrender.com \
@@ -162,6 +221,73 @@ garde-fous est dans `amn-api/README.md` ; ce qu'il faut retenir ici :
   quelle organisation, quand), lisible aussi depuis le panneau Administration
   de l'organisation concernée.
 
+### « Connectez-vous avec votre compte AMN DevSec » alors qu'on l'est déjà
+
+Le refus vient d'amn-api, et il est juste de son point de vue : il n'ouvre un
+contexte client qu'à un **compte nominatif**, parce qu'un jeton partagé
+(`OPERATOR_TOKEN`) n'appartient à personne et ne donne aucun nom à inscrire au
+journal d'accès. Le message dit donc exactement ce que le serveur voit.
+
+Ce que le serveur ne pouvait pas savoir, c'est *pourquoi* le poste lui envoyait
+le jeton partagé alors que l'opérateur venait de se connecter : l'écran de
+connexion **retombait silencieusement sur le compte local du poste** dès
+qu'amn-api refusait. Or les deux comptes portent la même adresse
+(`aaron@amn-devsec.com`) et n'ont pas le même mot de passe. Taper celui du poste
+ouvrait une session d'apparence parfaitement normale — accueil, rail rempli
+(la liste des organisations part avec le jeton partagé, qui a le droit de la
+lire), création d'organisation possible — mais sans aucun jeton nominatif
+derrière. Le seul geste qui en exige un, ouvrir un contexte client, échouait
+alors sur cette phrase incompréhensible. C'est ce qui est arrivé à Syraagensy :
+l'organisation a été créée, son entrée au journal porte « jeton partagé », et
+son contexte refusait de s'ouvrir.
+
+Trois changements, tous dans le desktop :
+
+1. **Le repli local ne rattrape plus un refus.** Il ne sert plus qu'à ce pour
+   quoi il existe : travailler quand amn-api est *injoignable*. Un refus
+   d'amn-api est une réponse, et c'est sa phrase qui s'affiche
+   (« Email ou mot de passe incorrect. »). Les deux cas se distinguent par un
+   marqueur porté dans le message — seul ce qui survit au passage IPC
+   (`API_UNREACHABLE_PREFIX`, `isApiUnreachable`).
+2. **L'état a un nom** : `sessionKind` vaut `'api'` ou `'local'`. Une session
+   locale allume une pastille permanente au bas du rail, qui explique le geste
+   qui répare.
+3. **Le refus arrive avant le réseau.** Ouvrir un contexte client ou créer une
+   organisation depuis une session locale est refusé sur place, avec la vraie
+   raison, plutôt qu'après un aller-retour dont le message serait à contresens.
+
+Si le message revient malgré une session amn-api valide, c'est alors vraiment
+côté serveur : vérifier que le compte existe bien dans AMN DevSec
+(`POST /v1/admin/bootstrap-owner` pour le tout premier, ou une invitation
+ensuite), qu'il est `active` et que son organisation est `internal`.
+
+## Le coffre-fort : « Organisations clientes » et le transfert générique
+
+Le mot de passe temporaire d'une organisation et son jeton d'activation ne
+s'affichent **qu'une fois** — amn-api n'en garde que l'empreinte. L'écran qui
+les montre est donc la seule occasion de les conserver, et jusqu'ici la seule
+issue était de copier, ouvrir le Coffre-fort, créer une entrée, choisir une
+rubrique, coller, nommer. Six gestes pendant qu'on a une cliente au téléphone :
+en pratique, le secret finissait dans un presse-papiers, donc nulle part, et il
+fallait en réémettre un — ce qui invalide celui déjà remis.
+
+Un bouton **« Transférer dans le coffre-fort »** est posé partout où un secret
+s'affiche ponctuellement (remise d'accès à la création d'une organisation,
+réémission et mot de passe temporaire depuis le panneau Administration). Un clic
+range l'information, étiquetée, dans la bonne rubrique — le retour du bouton
+nomme la rubrique d'arrivée, sinon on ne saurait pas où chercher.
+
+La rubrique **« Organisations clientes »** regroupe ces accès : raison sociale,
+adresse du compte propriétaire, et le secret au moment de sa génération, avec sa
+nature (mot de passe temporaire / jeton d'activation) et sa date d'expiration
+s'il en a une. La clé est l'adresse du compte propriétaire : réémettre un accès
+met l'entrée à jour au lieu d'empiler des quasi-doublons.
+
+Comme « Trackers installés » — où la clé d'API d'un tracker est écrite
+automatiquement au moment de l'enregistrement du site —, cette rubrique vient de
+`@edition/exclusive` : elle n'existe pas dans le coffre-fort d'une cliente, qui
+n'a pas d'organisations clientes à elle.
+
 ## Suspendre ou réactiver une cliente
 
 Depuis l'app : Tour de contrôle → Organisations (bouton « Suspendre »), ou le
@@ -191,13 +317,16 @@ issue.
 
 ## Ce qui reste à faire
 
+- **Réinitialisation de mot de passe en autonomie.** Un mot de passe oublié
+  demande toujours une remise par AMN DevSec. amn-api n'a pas de transport mail ;
+  en inventer un est un chantier à part. C'est aussi la seule capacité qui reste
+  à AMN DevSec sur le compte d'une cliente (voir `amn-api/README.md`, « Aucune
+  propriété durable chez une cliente ») — bruyante, tracée, et sans identité
+  durable chez elle, mais réelle.
 - **Canal de mise à jour propre à l'édition Business.** Aujourd'hui les mises à
   jour sont remises à la main. Un dépôt de Releases distinct (ou un préfixe de
   tag) permettrait de rétablir l'auto-mise à jour sans risque de croisement.
 - **Signature du binaire Windows.** Sans elle, SmartScreen avertit à
   l'installation — sur un poste qui n'est pas le nôtre, c'est un vrai frein.
-- **Réinitialisation de mot de passe en autonomie.** Un mot de passe oublié
-  demande aujourd'hui une nouvelle invitation émise par AMN DevSec. amn-api n'a
-  pas de transport mail ; en inventer un est un chantier à part.
 - **Moteur de configuration dynamique** (choix des modules depuis un site) —
   explicitement hors périmètre de cette livraison.

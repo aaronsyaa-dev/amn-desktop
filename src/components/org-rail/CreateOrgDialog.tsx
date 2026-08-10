@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Building2, Check, Copy, ImagePlus, Info, KeyRound, Link2, X } from 'lucide-react';
-import { useOrgContext } from '../../state/OrgContextContext';
+import { LOCAL_SESSION_REFUSAL, useOrgContext } from '../../state/OrgContextContext';
+import { useAuth } from '../../auth/AuthContext';
 import { bridge } from '../../lib/bridge';
 import { cleanErrorMessage } from '../../lib/errorMessage';
 import { resizeImageToDataUrl } from '../../lib/imageResize';
 import { OrgAvatar } from './OrgAvatar';
+import { VaultTransferButton } from '../vault/VaultTransferButton';
+import { organizationTransfer } from '../../lib/orgAccessVault';
 import type { OrgPlan } from '../../shared/api';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -36,6 +39,7 @@ type Handover = 'password' | 'invitation';
  */
 export function CreateOrgDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { refreshOrganizations, enterOrganization } = useOrgContext();
+  const { sessionKind } = useAuth();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -98,6 +102,14 @@ export function CreateOrgDialog({ open, onClose }: { open: boolean; onClose: () 
     event.preventDefault();
     if (busy) return;
     setError(null);
+
+    // Sur une session locale, la création PASSERAIT — le jeton partagé du poste
+    // a le droit de créer une organisation. C'est exactement ce qui est arrivé
+    // à Syraagensy : l'organisation existe, le journal d'accès porte
+    // « jeton partagé » au lieu du nom d'Aaron, et son contexte refuse de
+    // s'ouvrir. Mieux vaut ne pas créer que créer une cliente qu'on ne peut pas
+    // ouvrir et dont l'origine n'est attribuée à personne.
+    if (sessionKind !== 'api') return setError(LOCAL_SESSION_REFUSAL);
 
     const trimmedName = name.trim();
     const trimmedEmail = email.trim().toLowerCase();
@@ -440,6 +452,9 @@ function HandoverPanel({
           </button>
         </div>
         {copyError && <p className="mt-2 text-[11px] text-danger">{copyError}</p>}
+        <div className="mt-3 flex">
+          <VaultTransferButton transfer={organizationTransfer(result)} />
+        </div>
       </div>
 
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-xs">

@@ -16,6 +16,8 @@ import { OrgAvatar } from '../components/org-rail/OrgAvatar';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { ACCESS_VERB } from '../screens/ControlTowerScreen';
 import { bridge } from '../lib/bridge';
+import { VaultTransferButton } from '../components/vault/VaultTransferButton';
+import { organizationTransfer } from '../lib/orgAccessVault';
 import { cleanErrorMessage } from '../lib/errorMessage';
 import { relativeTime } from '../lib/time';
 import type { AdminOrgUser, OrgAccessEntry } from '../shared/api';
@@ -41,9 +43,12 @@ export function ClientAdminScreen() {
   const [log, setLog] = useState<OrgAccessEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [secret, setSecret] = useState<{ kind: 'password' | 'invitation'; value: string; email: string } | null>(
-    null,
-  );
+  const [secret, setSecret] = useState<{
+    kind: 'password' | 'invitation';
+    value: string;
+    email: string;
+    expiresAt?: string;
+  } | null>(null);
 
   const orgId = support?.orgId;
 
@@ -100,8 +105,13 @@ export function ClientAdminScreen() {
 
   const reissue = (user: AdminOrgUser) =>
     run(`invite-${user.id}`, async () => {
-      const result = await bridge().remote.admin.reissueInvitation(support.orgId, user.email, user.role);
-      setSecret({ kind: 'invitation', value: result.invitation.token, email: user.email });
+      const result = await bridge().remote.admin.reissueInvitation(support.orgId, user.email);
+      setSecret({
+        kind: 'invitation',
+        value: result.invitation.token,
+        email: user.email,
+        expiresAt: result.invitation.expiresAt,
+      });
       await load();
     });
 
@@ -153,7 +163,11 @@ export function ClientAdminScreen() {
             exit={{ opacity: 0 }}
             className="rounded-xl border border-warning/50 bg-warning-muted p-4"
           >
-            <SecretRow secret={secret} onDismiss={() => setSecret(null)} />
+            <SecretRow
+              secret={secret}
+              orgName={support.orgName}
+              onDismiss={() => setSecret(null)}
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -277,9 +291,11 @@ export function ClientAdminScreen() {
 /** Le secret émis, affiché une seule fois — comme le dit l'encart. */
 function SecretRow({
   secret,
+  orgName,
   onDismiss,
 }: {
-  secret: { kind: 'password' | 'invitation'; value: string; email: string };
+  secret: { kind: 'password' | 'invitation'; value: string; email: string; expiresAt?: string };
+  orgName: string;
   onDismiss: () => void;
 }) {
   const [copied, setCopied] = useState(false);
@@ -311,10 +327,19 @@ function SecretRow({
           {copied ? 'Copié' : 'Copier'}
         </button>
       </div>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] leading-relaxed text-text-secondary">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="min-w-0 flex-1 text-[11px] leading-relaxed text-text-secondary">
           Affiché une seule fois. À transmettre de vive voix, pas par email.
         </p>
+        <VaultTransferButton
+          transfer={organizationTransfer({
+            orgName,
+            email: secret.email,
+            secret: secret.value,
+            kind: secret.kind,
+            expiresAt: secret.expiresAt,
+          })}
+        />
         <button
           type="button"
           onClick={onDismiss}

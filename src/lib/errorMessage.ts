@@ -1,3 +1,5 @@
+import { API_UNREACHABLE_PREFIX } from '../shared/api';
+
 /**
  * Message d'erreur lisible, débarrassé de l'emballage IPC d'Electron.
  *
@@ -15,6 +17,20 @@ const IPC_WRAPPER = /^Error invoking remote method '[^']*':\s*(?:[A-Za-z]*Error:
 
 export function cleanErrorMessage(error: unknown, fallback = 'Une erreur est survenue.'): string {
   const raw = error instanceof Error ? error.message : String(error ?? '');
-  const cleaned = raw.replace(IPC_WRAPPER, '').trim();
+  const cleaned = raw.replace(IPC_WRAPPER, '').replace(API_UNREACHABLE_PREFIX, '').trim();
   return cleaned || fallback;
+}
+
+/**
+ * Vrai quand amn-api n'a pas répondu du tout — par opposition à un refus, qui
+ * est une réponse.
+ *
+ * Sert au seul endroit où la différence change la conduite à tenir : le repli
+ * sur un compte local à la connexion (voir AuthContext). Un refus d'amn-api
+ * doit s'afficher tel quel ; retomber dessus sur un compte local ouvrirait une
+ * session qui a l'air normale mais n'ouvre aucun dossier client.
+ */
+export function isApiUnreachable(error: unknown): boolean {
+  const raw = error instanceof Error ? error.message : String(error ?? '');
+  return raw.includes(API_UNREACHABLE_PREFIX);
 }

@@ -1,4 +1,5 @@
-import type { ComplyCheck, Scan } from '../shared/api';
+import type React from 'react';
+import type { VaultCategory } from '../shared/api';
 import type { DerivedSite } from '../state/RemoteSitesContext';
 
 /**
@@ -53,7 +54,47 @@ export function useExclusive(): ExclusiveView {
 }
 
 /** Aucune rubrique produit dans le coffre-fort d'une organisation cliente. */
-export const VAULT_PRODUCT_CATEGORIES: { value: 'trackers'; label: string }[] = [];
+export const VAULT_PRODUCT_CATEGORIES: { value: VaultCategory; label: string }[] = [];
+
+/* ------------------ Sorties produit dans l'écran Rapports ----------------- */
+
+/**
+ * L'écran Rapports mêle, chez nous, les rapports écrits aux scans Elite et aux
+ * contrôles RGPD terminés. Ici, il n'y a que des rapports — et surtout, ce
+ * fichier n'importe ni `Scan`, ni `ComplyCheck`, ni `scanSeverity`, ni les
+ * canaux `listScans` / `listComplyChecks`. Rien de tout cela n'entre dans le
+ * bundle d'une cliente : ce ne sont pas des sorties masquées, elles n'existent
+ * pas.
+ *
+ * `enabled: false` plutôt qu'une simple liste vide : l'écran s'en sert pour
+ * choisir sa phrase d'invite (« générez-en un depuis une tâche ou un client »
+ * sans parler d'un scan Elite qu'elle ne peut pas lancer).
+ */
+export interface ProductReportEntry {
+  id: string;
+  at: string;
+  row: React.ReactNode;
+  detail: React.ReactNode;
+}
+
+export interface ProductReports {
+  filters: { value: string; label: string }[];
+  entries: ProductReportEntry[];
+  enabled: boolean;
+}
+
+const NO_PRODUCT_REPORTS: ProductReports = { filters: [], entries: [], enabled: false };
+
+/**
+ * Signature identique à la face interne — c'est `npm run typecheck:business`
+ * qui le tient : un écran partagé qui appellerait le hook autrement compilerait
+ * en interne et casserait ici.
+ */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+export function useProductReports(_typeFilter: string, _cutoffMs: number): ProductReports {
+  return NO_PRODUCT_REPORTS;
+}
+/* eslint-enable @typescript-eslint/no-unused-vars */
 
 const NO_SITES: DerivedSite[] = [];
 
@@ -65,28 +106,6 @@ export function useSitePanelLink(): { openSite: (siteId: string) => void } {
   return { openSite: () => undefined };
 }
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
-export function ScanDetail(_props: { scan: Scan }): null {
-  return null;
-}
-
-export function ComplyDetail(_props: { check: ComplyCheck }): null {
-  return null;
-}
-/* eslint-enable @typescript-eslint/no-unused-vars */
-
 export function OllamaSection(): null {
-  return null;
-}
-
-/**
- * Étiquettes des livrables Scanner / Comply dans la liste Rapports. Sans
- * produits, rien à étiqueter — et les mots eux-mêmes disparaissent du bundle.
- */
-export function ScanChip(): null {
-  return null;
-}
-
-export function ComplyChip(): null {
   return null;
 }

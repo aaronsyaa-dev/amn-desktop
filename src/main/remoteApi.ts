@@ -1,5 +1,6 @@
 import WebSocket from 'ws';
 import { remoteConfig, isRemoteConfigured, apiCredential, ownerCredential } from './remoteConfig';
+import { API_UNREACHABLE_PREFIX } from '../shared/api';
 import type {
   OrgIdentity,
   RemoteSession,
@@ -227,17 +228,27 @@ export class RemoteApiClient {
   private async publicPost<T>(path: string, body: unknown, bearer?: string): Promise<T> {
     if (!remoteConfig.apiUrl) {
       throw new Error(
-        "L'API centrale (amn-api) n'est pas configurée sur ce poste — AMN_API_URL manquant. Voir docs/ARCHITECTURE.md.",
+        `${API_UNREACHABLE_PREFIX}L'API centrale (amn-api) n'est pas configurée sur ce poste — AMN_API_URL manquant. Voir docs/ARCHITECTURE.md.`,
       );
     }
-    const res = await fetch(`${remoteConfig.apiUrl}${path}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
-      },
-      body: JSON.stringify(body),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${remoteConfig.apiUrl}${path}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      // `fetch` ne lève que si la requête n'est jamais arrivée : DNS, TLS,
+      // réseau coupé. Un refus d'amn-api, lui, est une réponse — il passe par
+      // la branche `!res.ok` ci-dessous et ne porte donc PAS ce marqueur.
+      throw new Error(
+        `${API_UNREACHABLE_PREFIX}amn-api est injoignable depuis ce poste (réseau ou URL). Réessayez une fois la connexion revenue.`,
+      );
+    }
     if (!res.ok) {
       // amn-api écrit ses refus pour l'utilisateur final (« Votre accès a été
       // suspendu… ») : les remonter tels quels vaut mieux qu'un code HTTP nu.

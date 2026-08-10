@@ -35,6 +35,20 @@ import type { AdminOrganization, SupportContext } from '../shared/api';
 
 const SUPPORT_TOKEN_KEY = 'amn.support.token';
 
+/**
+ * Le refus quand la session n'est pas une session amn-api.
+ *
+ * Écrit ici plutôt que laissé à amn-api : le serveur, lui, ne voit qu'un jeton
+ * partagé et répond « Connectez-vous avec votre compte AMN DevSec » — une
+ * phrase juste pour lui, mais qui se lit comme une erreur à qui vient
+ * précisément de se connecter avec son compte nominatif. C'est l'application
+ * qui sait POURQUOI elle n'a pas de jeton nominatif, donc c'est elle qui doit
+ * le dire, et dire le geste qui répare.
+ */
+export const LOCAL_SESSION_REFUSAL =
+  'Votre session est locale à ce poste, pas une session amn-api : elle n’ouvre aucun dossier client. ' +
+  'Déconnectez-vous, puis reconnectez-vous avec votre compte AMN DevSec (mot de passe amn-api, pas celui du poste).';
+
 interface OrgContextValue {
   /** Toutes les organisations gérées, AMN DevSec exclue. Triées par nom. */
   organizations: AdminOrganization[];
@@ -70,6 +84,14 @@ interface OrgContextValue {
    */
   actionError: string | null;
   dismissActionError: () => void;
+  /**
+   * Affiche le refus « session locale » sans passer par une bascule.
+   *
+   * Pour les endroits qui doivent l'annoncer AVANT qu'on clique sur une
+   * organisation — la pastille du rail, le formulaire de création. Un seul
+   * chemin d'affichage (le bandeau de ContextError) pour un seul message.
+   */
+  signalLocalSession: () => void;
 
   enterOrganization: (orgId: string) => Promise<void>;
   leaveOrganization: () => Promise<void>;
@@ -127,7 +149,7 @@ function writeStoredToken(token: string | null): void {
 
 export function OrgContextProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  const { overrideOrg } = useAuth();
+  const { overrideOrg, sessionKind } = useAuth();
 
   const [organizations, setOrganizations] = useState<AdminOrganization[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(true);
@@ -140,6 +162,7 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
   const [transition, setTransition] = useState<ContextTransition | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const dismissActionError = useCallback(() => setActionError(null), []);
+  const signalLocalSession = useCallback(() => setActionError(LOCAL_SESSION_REFUSAL), []);
 
   // L'organisation « courante » au sens de l'app suit le contexte. Un effet
   // plutôt qu'un appel dispersé dans enter/leave/restore : il ne peut alors pas
@@ -215,6 +238,15 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
         navigate('/');
         return;
       }
+      // Refus AVANT le réseau. amn-api n'ouvre un contexte client qu'à un
+      // compte nominatif — il n'a personne à inscrire au journal derrière un
+      // jeton partagé. Le savoir ici évite un aller-retour dont le message
+      // reviendrait incompréhensible (voir LOCAL_SESSION_REFUSAL), et évite
+      // surtout de lever le voile de transition sur un échec prévisible.
+      if (sessionKind !== 'api') {
+        setActionError(LOCAL_SESSION_REFUSAL);
+        return;
+      }
       const target = organizations.find((o) => o.id === orgId);
       setEntering(orgId);
       setTransition({
@@ -257,7 +289,7 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
         setTransition(null);
       }
     },
-    [support, navigate, closeCurrent, organizations, refreshOrganizations],
+    [support, navigate, closeCurrent, organizations, refreshOrganizations, sessionKind],
   );
 
   const leaveOrganization = useCallback(async () => {
@@ -297,6 +329,7 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
       transition,
       actionError,
       dismissActionError,
+      signalLocalSession,
       enterOrganization,
       leaveOrganization,
     }),
@@ -311,6 +344,7 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
       transition,
       actionError,
       dismissActionError,
+      signalLocalSession,
       enterOrganization,
       leaveOrganization,
     ],

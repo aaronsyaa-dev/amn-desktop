@@ -1,4 +1,5 @@
-import { DEFAULT_NOTIFICATION_PREFS } from '../shared/api';
+import { API_UNREACHABLE_PREFIX, DEFAULT_NOTIFICATION_PREFS } from '../shared/api';
+import { IS_BUSINESS } from '../edition/edition';
 import { showLocalNotification } from './webPush';
 import {
   FALLBACK_ACCOUNTS,
@@ -195,8 +196,17 @@ function createBrowserRemote(): AmnBridge['remote'] {
   // Prefer the scoped web token (VITE_AMN_API_WEB_TOKEN) so the public web/PWA
   // build never has to embed the full desktop operator token. The operator
   // token is only a dev/local fallback; production web deploys set the web one.
-  const token =
-    import.meta.env.VITE_AMN_API_WEB_TOKEN || import.meta.env.VITE_AMN_API_OPERATOR_TOKEN || '';
+  //
+  // L'édition Business n'en prend AUCUN, et pas par convention : `IS_BUSINESS`
+  // est une constante remplacée à la compilation, donc Rollup supprime la
+  // branche entière et les deux `import.meta.env.*` avec elle. Une variable
+  // `VITE_AMN_API_WEB_TOKEN` présente par erreur dans l'environnement de build
+  // d'une cliente ne peut donc pas se retrouver inlinée dans SON bundle — qui
+  // est un fichier public servi par HTTPS, lisible par quiconque a l'URL. Son
+  // seul justificatif est la session obtenue à la connexion.
+  const token = IS_BUSINESS
+    ? ''
+    : import.meta.env.VITE_AMN_API_WEB_TOKEN || import.meta.env.VITE_AMN_API_OPERATOR_TOKEN || '';
   // "Configured" means a backend URL was set — i.e. this deployment intends to
   // sync, as opposed to a genuine standalone/dev build with no amn-api at all.
   // Requiring the token too was a bug: on the web/PWA build, if VITE_AMN_API_URL
@@ -321,15 +331,28 @@ function createBrowserRemote(): AmnBridge['remote'] {
 
   /** Requête publique (connexion) : aucune session n'existe encore. */
   async function publicPost<T>(path: string, body: unknown, bearer?: string): Promise<T> {
-    if (!apiUrl) throw new Error("L'API centrale (amn-api) n'est pas configurée pour cette build.");
-    const res = await fetch(`${apiUrl}${path}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
-      },
-      body: JSON.stringify(body),
-    });
+    if (!apiUrl) {
+      throw new Error(
+        `${API_UNREACHABLE_PREFIX}L'API centrale (amn-api) n'est pas configurée pour cette build.`,
+      );
+    }
+    let res: Response;
+    try {
+      res = await fetch(`${apiUrl}${path}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      // Voir le client du process main : seule une requête qui n'arrive jamais
+      // porte ce marqueur. Un refus d'amn-api est une réponse, pas une panne.
+      throw new Error(
+        `${API_UNREACHABLE_PREFIX}amn-api est injoignable depuis ce navigateur (réseau ou URL). Réessayez une fois la connexion revenue.`,
+      );
+    }
     if (!res.ok) {
       const detail = await res
         .json()

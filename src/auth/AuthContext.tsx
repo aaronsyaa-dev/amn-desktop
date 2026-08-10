@@ -7,7 +7,7 @@ import React, {
   useState,
 } from 'react';
 import { bridge } from '../lib/bridge';
-import { cleanErrorMessage } from '../lib/errorMessage';
+import { cleanErrorMessage, isApiUnreachable } from '../lib/errorMessage';
 import { IS_BUSINESS } from '../edition/edition';
 import type { OrgIdentity, RemoteSession, User } from '../shared/api';
 
@@ -40,6 +40,9 @@ interface StoredSession {
   org: OrgIdentity;
 }
 
+/** Voir `AuthContextValue.sessionKind`. */
+export type SessionKind = 'api' | 'local' | null;
+
 interface AuthContextValue {
   user: User | null;
   /**
@@ -56,6 +59,22 @@ interface AuthContextValue {
    * `null` sur une connexion locale interne (repli hors ligne).
    */
   org: OrgIdentity | null;
+  /**
+   * D'où vient la session : `'api'` (amn-api, nominative) ou `'local'` (repli
+   * hors ligne sur un compte SQLite du poste). `null` quand personne n'est
+   * connecté.
+   *
+   * Cette distinction n'était nulle part, et c'est ce qui a coûté le plus cher :
+   * une connexion locale a exactement l'allure d'une vraie — même nom, même
+   * accueil, même rail — mais le process main n'a alors AUCUN jeton nominatif.
+   * Ses appels `/v1/admin/*` repartent donc avec le jeton opérateur partagé,
+   * qui n'appartient à personne ; amn-api l'accepte pour lister ou créer une
+   * organisation, mais refuse d'ouvrir un contexte client (« Connectez-vous
+   * avec votre compte AMN DevSec… ») parce qu'il n'a personne à inscrire au
+   * journal d'accès. D'où le message contradictoire : l'opérateur EST connecté,
+   * mais pas à amn-api. Cet état a maintenant un nom, et l'interface le dit.
+   */
+  sessionKind: SessionKind;
   /**
    * Substitue l'organisation courante (contexte client), ou la rend (`null`).
    * Appelé par `OrgContextProvider` ; personne d'autre n'a de raison de le faire.
@@ -132,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [stored]);
 
   const login = useCallback(async (email: string, password: string) => {
-    let remoteError: Error | null = null;
+    let unreachable: Error | null = null;
     try {
       const session = await bridge().remote.session.login(email, password);
 
@@ -156,18 +175,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setOrg(session.org);
       return;
     } catch (err) {
-      remoteError = new Error(cleanErrorMessage(err, 'Échec de la connexion.'));
+      const message = cleanErrorMessage(err, 'Échec de la connexion.');
       // Le refus d'édition ci-dessus n'est pas un « essayez autre chose » : il
       // ne doit pas retomber sur un compte local du même poste.
-      if (remoteError.message.startsWith('Ce compte appartient')) throw remoteError;
+      if (message.startsWith('Ce compte appartient')) throw new Error(message);
+      // amn-api A RÉPONDU, et il refuse. Sa phrase est la réponse — « Email ou
+      // mot de passe incorrect. », « Votre accès a été suspendu. ». Retomber
+      // ici sur le compte local du même poste (mêmes adresses, autre mot de
+      // passe) ouvrait une session d'apparence normale mais SANS jeton
+      // nominatif : le rail se remplissait, une organisation cliente pouvait
+      // même être créée avec le jeton partagé, et l'ouvrir échouait ensuite sur
+      // « Connectez-vous avec votre compte AMN DevSec » — sans que rien nulle
+      // part n'ait dit que la connexion à amn-api n'avait pas eu lieu.
+      //
+      // Le repli local reste, pour ce à quoi il sert vraiment : travailler quand
+      // amn-api est injoignable. Pas pour rattraper un refus.
+      if (!isApiUnreachable(err)) throw new Error(message);
+      unreachable = new Error(message);
     }
 
     // Repli local, édition interne seulement.
-    if (IS_BUSINESS) throw remoteError;
+    if (IS_BUSINESS) throw unreachable;
 
     const result = await bridge().auth.login(email, password);
     if (!result.ok || !result.user) {
-      throw new Error(result.error ?? remoteError?.message ?? 'Échec de la connexion.');
+      throw new Error(result.error ?? unreachable?.message ?? 'Échec de la connexion.');
     }
     window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(result.user));
     setUser(result.user);
@@ -191,17 +223,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const overrideOrg = useCallback((next: OrgIdentity | null) => setContextOrg(next), []);
 
+  // Une session amn-api porte toujours son organisation (`/v1/auth/login` la
+  // rend, `/v1/auth/me` la revalide) ; le repli local n'en a jamais. La nature
+  // de la session se lit donc dans `sessionOrg` — celle de la SESSION, pas
+  // celle qu'un contexte client substitue par-dessus.
+  const sessionKind: SessionKind = user ? (sessionOrg ? 'api' : 'local') : null;
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       org,
       overrideOrg,
+      sessionKind,
       isAuthenticated: user !== null,
       bootstrapping,
       login,
       logout,
     }),
-    [user, org, overrideOrg, bootstrapping, login, logout],
+    [user, org, overrideOrg, sessionKind, bootstrapping, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
