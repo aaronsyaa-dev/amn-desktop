@@ -221,10 +221,18 @@ export function CreateOrgDialog({ open, onClose }: { open: boolean; onClose: () 
                   />
                   {/* Le point qui coûtait le plus cher à découvrir après coup :
                       ce nom part sur les devis de la cliente. */}
+                  {/* Icône + bloc de texte : deux enfants de flex, et un seul.
+                      Laisser le <strong> devenir un troisième enfant le mettait
+                      en colonne à côté du reste de la phrase. */}
                   <span className="flex items-start gap-1.5 text-[11px] leading-relaxed text-text-muted">
                     <Info size={12} strokeWidth={1.75} className="mt-0.5 flex-shrink-0" />
-                    Ce nom apparaît dans son application <strong className="font-medium text-text-secondary">et en
-                    émetteur sur les devis qu’elle imprime</strong>. Mettez sa vraie raison sociale, pas un surnom.
+                    <span>
+                      Ce nom apparaît dans son application{' '}
+                      <strong className="font-medium text-text-secondary">
+                        et en émetteur sur les devis qu’elle imprime
+                      </strong>
+                      . Mettez sa vraie raison sociale, pas un surnom.
+                    </span>
                   </span>
                 </label>
 
