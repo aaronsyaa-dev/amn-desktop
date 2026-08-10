@@ -28,60 +28,7 @@ const args = process.argv.slice(2);
 const dirArg = args.indexOf('--dir');
 const OUT_DIR = path.resolve(dirArg >= 0 ? args[dirArg + 1] : 'dist');
 
-/**
- * Ce qui ne doit apparaître nulle part.
- *
- * Chaque entrée porte sa raison : sans elle, le prochain à voir passer le
- * script devant une fausse alerte ne saura pas s'il peut retirer la ligne.
- * `pattern` est cherché tel quel, sans respect de la casse.
- */
-const FORBIDDEN = [
-  // --- Identité et comptes d'AMN DevSec ---
-  { pattern: 'amn-devsec.com', why: 'nos adresses email' },
-  { pattern: 'AMN DevSec', why: 'notre raison sociale' },
-  { pattern: 'aaron@', why: 'compte opérateur' },
-  { pattern: 'mohamed@', why: 'compte opérateur' },
-  { pattern: 'AmnQG-2026', why: 'mot de passe de départ des comptes locaux' },
-  { pattern: '$2b$10$', why: 'empreinte bcrypt d’un compte de démonstration' },
-
-  // --- Produits de cybersécurité ---
-  // Sensible à la casse : `react.memo_cache_sentinel`, dans React, n'est pas
-  // notre produit. Le contrôle porte sur le nom propre, pas sur le mot.
-  { pattern: 'Sentinel', why: 'catalogue Tracker', caseSensitive: true },
-  { pattern: 'trackerCatalog', why: 'catalogue Tracker' },
-  { pattern: 'security-monitor', why: 'le tracker installé chez nos clients' },
-  { pattern: 'AMN Suite', why: 'palier du catalogue Tracker' },
-  { pattern: 'SSL Monitor', why: 'produit exclusif' },
-  { pattern: 'Comply', why: 'produit exclusif (RGPD)' },
-  { pattern: 'Ajmani', why: 'assistant local, exclusif' },
-
-  // --- Routes et canaux qui n'existent pas chez une cliente ---
-  { pattern: '/v1/admin/', why: 'console inter-organisations' },
-  { pattern: 'support-session', why: 'contexte client — n’existe que chez nous' },
-  { pattern: '/v1/comply', why: 'route produit' },
-  { pattern: '/v1/scans', why: 'route produit' },
-
-  // --- Données de démonstration qui sont les nôtres ---
-  { pattern: 'G20 Corvetto', why: 'client de démonstration' },
-  { pattern: 'Atlas Retail', why: 'client de démonstration' },
-
-  // --- Jetons ---
-  { pattern: 'VITE_AMN_API_WEB_TOKEN', why: 'un build cliente n’embarque aucun jeton' },
-  { pattern: 'VITE_AMN_API_OPERATOR_TOKEN', why: 'un build cliente n’embarque aucun jeton' },
-];
-
-/**
- * Ce qui DOIT s'y trouver.
- *
- * Le contrôle d'absence, seul, est trop facile à satisfaire : un build raté,
- * ou le mauvais dossier passé en argument, passerait au vert. Ces deux marqueurs
- * confirment qu'on a bien relu une édition Business construite.
- */
-const REQUIRED = [
-  { pattern: 'AMN Business', why: 'le nom produit de l’édition livrée' },
-  { pattern: 'Agenda', why: 'le calendrier, module quotidien de l’édition Business' },
-  { pattern: 'Coffre-fort', why: 'un module de l’édition Business' },
-];
+import { FORBIDDEN, REQUIRED } from './business-bundle-rules.mjs';
 
 /** Fichiers texte du dossier de sortie, en profondeur. */
 function walk(dir) {

@@ -101,7 +101,11 @@ Le routage est en `HashRouter` : aucun rewrite serveur n'est nécessaire.
 
 **Vercel**
 - Le dépôt contient un `vercel.json` (build command, output directory) — Vercel
-  le lit automatiquement, rien à configurer manuellement pour ça.
+  le lit automatiquement, rien à configurer manuellement pour ça. Attention :
+  ce fichier est PARTAGÉ par tous les projets Vercel importés depuis ce dépôt,
+  et sa `buildCommand` écrase celle du tableau de bord. Il ne doit donc porter
+  aucun réglage propre à un seul projet — l'édition se choisit par la variable
+  `AMN_EDITION` du projet (voir `docs/BUSINESS.md`).
 - Variables d'environnement à ajouter dans le projet : `VITE_AMN_API_URL`,
   `VITE_AMN_API_WEB_TOKEN`.
 - **Settings → Deployment Protection : laisser désactivé** (voir « Dépannage »

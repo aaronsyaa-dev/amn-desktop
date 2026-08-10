@@ -126,19 +126,34 @@ npm run build:web:business
 npm run check:business -- --dir dist       # contrôle d'hygiène, voir ci-dessous
 ```
 
-Sur Vercel, **un projet distinct** du web AMN DevSec, sur le même dépôt :
+Sur Vercel, **un projet distinct** du web AMN DevSec, sur le même dépôt.
 
-| Réglage | Valeur |
+L'édition ne se choisit PAS par la commande de build : `vercel.json` est lu par
+les deux projets et sa `buildCommand` écrase toujours celle du tableau de bord.
+C'est une variable d'environnement **de projet** qui décide, parce qu'elle est
+le seul réglage que Vercel ne partage pas entre deux projets du même dépôt.
+
+| Réglage du projet Business | Valeur |
 | --- | --- |
-| Build Command | `npm run build:web:business` |
-| Output Directory | `dist` |
-| Variables | `VITE_AMN_API_URL` = URL d'amn-api. **Rien d'autre.** |
+| Environment Variables | `AMN_EDITION` = `business` (Production **et** Preview) |
+| Environment Variables | `VITE_AMN_API_URL` = URL d'amn-api |
+| Build Command | laissé au fichier `vercel.json` (override désactivé) |
+| Output Directory | laissé au fichier `vercel.json` (override désactivé) |
 
-`vercel.business.json` porte ces réglages pour un déploiement en ligne de
-commande : `vercel --local-config vercel.business.json --prod`. Les deux
-fichiers `vercel*.json` épinglent `AMN_EDITION` dans `build.env`, pour qu'une
-variable de projet mal placée ne puisse pas envoyer l'édition interne chez une
-cliente.
+Le projet interne ne définit **rien** : sans `AMN_EDITION`, `resolveEdition()`
+construit l'édition interne (voir `vite.edition.ts`).
+
+Un déploiement Business est relu automatiquement : `scripts/build-web.mjs`
+lance `check:business` sur la sortie dès que l'édition construite est Business,
+et fait échouer le build — chez Vercel comme en local. Après mise en ligne,
+`npm run check:deployed -- --url https://…` relit ce qui est RÉELLEMENT servi.
+
+Ce qui a précédé, et pourquoi c'est écrit ainsi : un `vercel.business.json`
+existait, censé configurer ce projet. Vercel ne lit que `vercel.json` à la
+racine pour un déploiement Git — ce fichier n'a donc jamais servi à rien, et le
+projet Business a construit l'édition INTERNE, livrée telle quelle à une
+cliente. Le fichier a été supprimé plutôt que corrigé : une configuration que
+personne ne lit est pire que pas de configuration du tout.
 
 `VITE_AMN_API_WEB_TOKEN` n'a aucun effet sur ce build et **ne doit pas y être** :
 `createBrowserRemote` ignore les jetons partagés quand `IS_BUSINESS`, et comme
@@ -154,9 +169,26 @@ AMN_API_URL=https://amn-api.onrender.com npm run make:business
 
 ### 2 bis. Vérifier que le build ne contient rien de nous
 
+Trois filets, du plus automatique au plus manuel — le premier suffit dans le
+cas normal, les deux autres existent parce que le premier a déjà été contourné
+par une configuration de déploiement.
+
 ```sh
+# 1. Automatique : tout build Business relit sa propre sortie et échoue si elle
+#    est sale. Rien à lancer, c'est déjà dans `npm run build:web:business`.
+
+# 2. À la main, sur un dossier déjà construit :
 npm run check:business -- --dir dist
+
+# 3. Sur ce qu'une URL SERT vraiment — le seul contrôle qui voit ce que la
+#    cliente reçoit, y compris quand le build s'est fait ailleurs :
+npm run check:deployed -- --url https://mon-projet.vercel.app
 ```
+
+Le troisième est celui qui manquait. La fuite livrée à Syraagensy venait d'une
+configuration Vercel, pas du code : aucun contrôle tournant sur nos machines
+n'aurait pu la voir, parce que le mauvais bundle n'y a jamais existé. À lancer
+après chaque déploiement Business, avant de donner l'adresse à qui que ce soit.
 
 Le script relit la sortie en texte brut et échoue sur la moindre trace : nos
 adresses, notre raison sociale, les empreintes bcrypt des comptes de départ, les

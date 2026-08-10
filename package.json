@@ -13,14 +13,15 @@
     "publish": "npm run bootstrap && electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
     "typecheck": "tsc --noEmit",
-    "build:web": "vite build --config vite.renderer.config.mts",
+    "build:web": "node scripts/build-web.mjs",
     "check:sync": "node scripts/check-sync-parity.mjs",
     "typecheck:business": "tsc --noEmit -p tsconfig.business.json",
     "start:business": "cross-env AMN_EDITION=business npm run start",
     "package:business": "cross-env AMN_EDITION=business npm run package",
     "make:business": "cross-env AMN_EDITION=business npm run make",
-    "build:web:business": "cross-env AMN_EDITION=business vite build --config vite.renderer.config.mts",
-    "check:business": "node scripts/check-business-bundle.mjs"
+    "build:web:business": "cross-env AMN_EDITION=business node scripts/build-web.mjs",
+    "check:business": "node scripts/check-business-bundle.mjs",
+    "check:deployed": "node scripts/check-deployed-bundle.mjs"
   },
   "keywords": [],
   "author": {
