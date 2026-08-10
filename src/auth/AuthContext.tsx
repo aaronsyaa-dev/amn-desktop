@@ -89,6 +89,19 @@ interface AuthContextValue {
   bootstrapping: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  /**
+   * Réinjecte le jeton nominatif stocké dans le process principal, et dit si
+   * amn-api le reconnaît encore.
+   *
+   * Existe pour une désynchronisation précise : le renderer croit avoir une
+   * session amn-api (elle est en localStorage, le profil s'affiche) pendant que
+   * le process principal, lui, n'a plus de jeton nominatif en mémoire — ses
+   * appels repartent alors avec le jeton opérateur PARTAGÉ, et amn-api refuse
+   * d'ouvrir un dossier client faute de savoir qui inscrire au journal. Le
+   * refus est juste côté serveur et incompréhensible côté opérateur, qui vient
+   * précisément de se connecter avec son compte.
+   */
+  reauthenticate: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -221,6 +234,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setContextOrg(null);
   }, []);
 
+  const reauthenticate = useCallback(async (): Promise<boolean> => {
+    const current = read<StoredSession>(SESSION_STORAGE_KEY);
+    if (!current?.token) return false;
+    const session = await bridge().remote.session.restore(current.token).catch(() => null);
+    if (!session) return false;
+    setUser(userFromSession(session));
+    setOrg(session.org);
+    return true;
+  }, []);
+
   const overrideOrg = useCallback((next: OrgIdentity | null) => setContextOrg(next), []);
 
   // Une session amn-api porte toujours son organisation (`/v1/auth/login` la
@@ -238,9 +261,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: user !== null,
       bootstrapping,
       login,
+      reauthenticate,
       logout,
     }),
-    [user, org, overrideOrg, sessionKind, bootstrapping, login, logout],
+    [user, org, overrideOrg, sessionKind, bootstrapping, login, logout, reauthenticate],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

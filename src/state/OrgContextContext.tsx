@@ -45,6 +45,19 @@ const SUPPORT_TOKEN_KEY = 'amn.support.token';
  * qui sait POURQUOI elle n'a pas de jeton nominatif, donc c'est elle qui doit
  * le dire, et dire le geste qui répare.
  */
+/**
+ * Le refus d'amn-api quand l'appel n'est pas nominatif.
+ *
+ * Reconnu sur sa phrase parce que c'est ce que le pont remonte : le message du
+ * serveur, pas son code. Une correspondance approximative suffit et vaut mieux
+ * qu'une égalité stricte, qu'une reformulation côté serveur casserait en
+ * silence.
+ */
+function isSharedCredentialRefusal(err: unknown): boolean {
+  const raw = err instanceof Error ? err.message : String(err ?? '');
+  return raw.includes('compte AMN DevSec');
+}
+
 export const LOCAL_SESSION_REFUSAL =
   'Votre session est locale à ce poste, pas une session amn-api : elle n’ouvre aucun dossier client. ' +
   'Déconnectez-vous, puis reconnectez-vous avec votre compte AMN DevSec (mot de passe amn-api, pas celui du poste).';
@@ -149,7 +162,7 @@ function writeStoredToken(token: string | null): void {
 
 export function OrgContextProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  const { overrideOrg, sessionKind } = useAuth();
+  const { overrideOrg, sessionKind, reauthenticate } = useAuth();
 
   const [organizations, setOrganizations] = useState<AdminOrganization[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(true);
@@ -264,7 +277,25 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
         // de support vivants en même temps, ce sont deux entrées « enter » au
         // journal pour un seul opérateur, et un jeton orphelin valable une heure.
         if (support) await closeCurrent(support, storedToken.current || readStoredToken());
-        const session = await bridge().remote.support.enter(orgId);
+        let session;
+        try {
+          session = await bridge().remote.support.enter(orgId);
+        } catch (err) {
+          // amn-api refuse quand la requête n'est pas nominative. Vu d'ici,
+          // c'est presque toujours une DÉSYNCHRONISATION et non un problème de
+          // compte : le renderer a bien une session amn-api en mémoire (le
+          // profil s'affiche, le rail se remplit), mais le process principal
+          // n'a plus le jeton nominatif — ses appels repartent alors avec le
+          // jeton opérateur partagé, qui n'appartient à personne.
+          //
+          // On réinjecte le jeton stocké et on retente UNE fois. C'est la
+          // réparation exacte, faite à la place de l'opérateur, plutôt que de
+          // lui relayer un « connectez-vous » alors qu'il est connecté.
+          if (!isSharedCredentialRefusal(err)) throw err;
+          const healed = await reauthenticate();
+          if (!healed) throw err;
+          session = await bridge().remote.support.enter(orgId);
+        }
         writeStoredToken(session.token);
         storedToken.current = session.token;
         setSupport(session.context);
@@ -289,7 +320,7 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
         setTransition(null);
       }
     },
-    [support, navigate, closeCurrent, organizations, refreshOrganizations, sessionKind],
+    [support, navigate, closeCurrent, organizations, refreshOrganizations, sessionKind, reauthenticate],
   );
 
   const leaveOrganization = useCallback(async () => {
