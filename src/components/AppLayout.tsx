@@ -24,6 +24,9 @@ import { RegressionNotifier } from './RegressionNotifier';
 import { IdleScreensaver } from './IdleScreensaver';
 import { WelcomeOverlay, shouldShowWelcome } from './WelcomeOverlay';
 import { LocalSessionBanner } from '../auth/LocalSessionBanner';
+import { MobileBottomNav } from './MobileBottomNav';
+import { spaceForPath } from '../data/spaces';
+import { AppLauncher } from './AppLauncher';
 import { UpdateNotice } from './UpdateNotice';
 import { UpdateReady } from './UpdateReady';
 import { variantsForPath } from '../lib/transitions';
@@ -37,6 +40,7 @@ export function AppLayout() {
 
   // Mobile navigation drawer (< md). Closed on every route change.
   const [navOpen, setNavOpen] = React.useState(false);
+  const [mobileLauncherOpen, setMobileLauncherOpen] = React.useState(false);
   React.useEffect(() => setNavOpen(false), [location.pathname]);
 
   // Edge-swipe to open the drawer: a touch starting within 24px of the left
@@ -139,6 +143,14 @@ export function AppLayout() {
                 </div>
               </main>
               </div>
+              {/* Sous le contenu, jamais par-dessus : une barre superposée
+                  masquerait la dernière ligne de chaque écran. */}
+              <MobileBottomNav onOpenLauncher={() => setMobileLauncherOpen(true)} />
+              <AppLauncher
+                open={mobileLauncherOpen}
+                onClose={() => setMobileLauncherOpen(false)}
+                space={spaceForPath(location.pathname)}
+              />
             </div>
               <CallOverlay />
               <SiteDetailPanel />

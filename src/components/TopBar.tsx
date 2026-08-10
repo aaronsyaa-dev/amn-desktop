@@ -35,10 +35,21 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
         type="button"
         onClick={onMenu}
         aria-label="Ouvrir le menu"
-        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary transition-colors hover:text-text-primary md:hidden"
+        // 44 px sous `md` : c'est le minimum atteignable au pouce sans viser.
+        // Repasse à 36 px dès le bureau, où le pointeur est précis — la taille
+        // mobile y paraîtrait grossière.
+        className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary transition-colors hover:text-text-primary md:hidden"
       >
         <Menu size={18} strokeWidth={1.75} />
       </button>
+
+      {/* Mobile : l'organisation active, en permanence et sans rien ouvrir.
+          Sur bureau c'est le rail qui le dit ; sous `md` le rail est masqué, et
+          jusqu'ici il fallait ouvrir le tiroir pour savoir chez qui on
+          travaille — inacceptable quand on peut être dans le dossier d'une
+          cliente. Le bandeau de contexte client reste au-dessus, non masquable :
+          celui-ci ne le remplace pas, il couvre le cas « je suis chez moi ». */}
+      <MobileActiveOrg />
 
       {/* Desktop: full search field with Ctrl/⌘ K hint. */}
       <button
@@ -58,7 +69,7 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
         type="button"
         onClick={open}
         aria-label="Rechercher"
-        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary transition-colors hover:text-text-primary md:hidden"
+        className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary transition-colors hover:text-text-primary md:hidden"
       >
         <Search size={17} strokeWidth={1.75} />
       </button>
@@ -68,7 +79,7 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
         <button
           type="button"
           onClick={() => openAssistant()}
-          className="flex h-9 items-center gap-2 border border-border-strong bg-surface px-3 text-sm font-medium text-text-primary transition-colors duration-200 hover:bg-surface-hover"
+          className="flex h-11 items-center gap-2 border border-border-strong bg-surface px-3 text-sm font-medium text-text-primary transition-colors duration-200 hover:bg-surface-hover md:h-9"
         >
           <Sparkles size={16} strokeWidth={1.75} />
           <span className="hidden sm:inline">Ajmani</span>
@@ -83,12 +94,35 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
             onClick={() => navigate('/settings')}
             title={`${profileFor(user.email).name} — ouvrir les paramètres`}
             aria-label="Mon profil"
-            className="ml-1 rounded-full transition-opacity hover:opacity-80"
+            // L'avatar reste à 32 px (c'est une image, pas une icône), mais sa
+            // zone cliquable est portée à 44 px sur mobile par le padding.
+            className="ml-1 flex h-11 w-11 items-center justify-center rounded-full transition-opacity hover:opacity-80 md:h-8 md:w-8"
           >
             <UserAvatar email={user.email} size={32} ring />
           </button>
         )}
       </div>
     </header>
+  );
+}
+
+/**
+ * Le nom de l'organisation courante, sur téléphone uniquement.
+ *
+ * Lit `useAuth().org`, qui vaut déjà l'organisation SUBSTITUÉE quand un
+ * contexte client est ouvert (voir AuthContext) : une seule source, donc
+ * impossible d'afficher « AMN DevSec » pendant qu'on travaille chez une
+ * cliente.
+ */
+function MobileActiveOrg() {
+  const { org } = useAuth();
+  const name = org?.name ?? 'AMN DevSec';
+  return (
+    <span
+      className="min-w-0 flex-1 truncate font-mono text-[11px] uppercase tracking-[0.15em] text-text-secondary md:hidden"
+      title={name}
+    >
+      {name}
+    </span>
   );
 }

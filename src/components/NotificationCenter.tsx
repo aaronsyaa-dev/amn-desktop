@@ -54,7 +54,9 @@ export function NotificationCenter() {
         type="button"
         onClick={() => setIsOpen((v) => !v)}
         aria-label="Notifications"
-        className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary transition-colors duration-200 hover:text-text-primary"
+        // 44 px au pouce sous `md`, 36 px au pointeur ensuite — même règle que
+        // les autres boutons de cette barre.
+        className="relative flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary transition-colors duration-200 hover:text-text-primary md:h-9 md:w-9"
       >
         <Bell size={17} strokeWidth={1.75} />
         {criticalCount > 0 && (
