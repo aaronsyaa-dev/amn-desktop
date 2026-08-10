@@ -334,6 +334,65 @@ est donc « non configurée » jusqu'à la connexion, puis configurée. C'est vo
 — la synchronisation ne doit pas démarrer avant de savoir POUR QUELLE
 organisation elle démarre.
 
+## Multi-organisations : le rail, les deux espaces, le contexte client
+
+L'édition interne ne montre plus une seule organisation. Trois pièces, et une
+règle qui les tient ensemble.
+
+**Le contexte actif** (`src/state/OrgContextContext.tsx`) est la seule chose qui
+sache basculer les deux éléments qui doivent bouger *ensemble* : le
+justificatif du pont (requêtes ET WebSocket) et la portée du miroir local. Il y
+a donc désormais trois niveaux de justificatif, du plus spécifique au plus
+général (`src/main/remoteConfig.ts`) :
+
+```
+supportToken   → le dossier d'une organisation cliente (1 h, journalisé)
+sessionToken   → la session nominative de l'opérateur
+operatorToken  → le jeton partagé hérité, mode historique des postes internes
+```
+
+`apiCredential()` rend le premier disponible ; `ownerCredential()` saute le
+jeton de support et rend celui de l'opérateur. Les routes `/v1/admin/*` partent
+toujours avec le second (`apiFetch(..., { owner: true })`) : administrer une
+organisation cliente reste un geste d'AMN DevSec, et amn-api refuse d'ailleurs
+un jeton de support sur cette console. Sans cette distinction, ouvrir un
+contexte client couperait l'accès au rail depuis l'intérieur de ce contexte.
+
+**Le miroir local est indexé par contexte** (`SyncContext`,
+`amn.sync.ctx-<orgId>.<collection>`). Le contexte par défaut garde les clés
+historiques, pour qu'une mise à jour ne reparte pas d'un miroir vide sur les
+postes existants. Le miroir d'un contexte client est effacé en sortant.
+
+**Aucune arborescence n'est montée pendant une bascule.** C'est la règle la
+moins évidente et la plus importante : un `SyncProvider` encore vivant pendant
+que le justificatif change voit sa WebSocket se rebrancher sur l'AUTRE
+organisation et écrit les enregistrements reçus dans son propre miroir. Le
+routeur de contexte (`appRoot.internal.tsx`) ne monte donc NI l'une NI l'autre
+tant qu'une transition est en cours, et `OrgContextContext` attend un commit de
+React (`nextCommit`) avant de toucher au jeton. Le voile de transition
+(`ContextVeil`) occupe exactement cet intervalle.
+
+**Deux tables de routes, pas un préfixe d'URL.** Le contexte client monte la
+table de l'édition Business aux mêmes chemins (`/clients`, `/agenda`…). Un
+préfixe `/org/<id>/…` aurait obligé à réécrire chaque lien de chaque écran
+partagé — et un seul oubli aurait éjecté l'opérateur du contexte au milieu
+d'une session de support. Le contexte ne vit pas dans l'URL : il vit dans le
+jeton côté serveur, et il est annoncé par un bandeau qu'on ne peut pas masquer.
+
+**La couture `@edition/exclusive` a désormais deux faces dans un même build.**
+Elle était tranchée à la compilation ; le contexte client casse cette
+hypothèse, puisqu'il fait cohabiter les deux dans l'édition interne. D'où
+`useExclusive()` + `ClientViewContext` : les valeurs deviennent un instantané
+rendu, qui bascule sur la face Business dans un contexte client. Ce n'est pas
+cosmétique — sans ça, la fiche client de la cliente proposerait de la lier à
+NOS sites, sa liste de tâches d'assigner à `aaron@amn-devsec.com`, et ses devis
+imprimés porteraient notre sous-titre commercial.
+
+**Les espaces se déduisent du chemin** (`src/data/spaces.ts`), ils ne sont pas
+un état à part. C'est ce qui fait qu'un lien profond, la palette de commandes
+ou une notification arrivent toujours dans le bon espace sans que l'appelant
+ait à le régler.
+
 **Le client amn-api est devenu un transport.** `RemoteApiClient` ne connaît
 plus le nom des trames produit : il expose `onFrame(type, listener)` et
 `sendFrame(frame)`, et ce sont les modules d'édition qui déclarent

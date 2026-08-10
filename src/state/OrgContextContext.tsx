@@ -8,6 +8,7 @@ import React, {
   useState,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 import { bridge } from '../lib/bridge';
 import { cleanErrorMessage } from '../lib/errorMessage';
 import { purgeContextMirror } from './SyncContext';
@@ -59,6 +60,16 @@ interface OrgContextValue {
    * les données d'une organisation sous le nom d'une autre.
    */
   transition: ContextTransition | null;
+  /**
+   * Pourquoi la dernière bascule a échoué, tel que le dit amn-api.
+   *
+   * Le cas courant est une organisation suspendue : le rail ne l'interdit pas
+   * au clic (elle y figure, grisée), donc le refus doit s'expliquer quelque
+   * part. Sans ça, cliquer sur son icône ne produirait rigoureusement rien —
+   * le pire des retours.
+   */
+  actionError: string | null;
+  dismissActionError: () => void;
 
   enterOrganization: (orgId: string) => Promise<void>;
   leaveOrganization: () => Promise<void>;
@@ -116,6 +127,7 @@ function writeStoredToken(token: string | null): void {
 
 export function OrgContextProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
+  const { overrideOrg } = useAuth();
 
   const [organizations, setOrganizations] = useState<AdminOrganization[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(true);
@@ -126,6 +138,18 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
   const [restoring, setRestoring] = useState(() => Boolean(storedToken.current));
   const [entering, setEntering] = useState<string | null>(null);
   const [transition, setTransition] = useState<ContextTransition | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const dismissActionError = useCallback(() => setActionError(null), []);
+
+  // L'organisation « courante » au sens de l'app suit le contexte. Un effet
+  // plutôt qu'un appel dispersé dans enter/leave/restore : il ne peut alors pas
+  // exister de chemin qui change le contexte sans changer ce que l'app affiche
+  // comme émetteur — y compris sur un devis imprimé.
+  useEffect(() => {
+    overrideOrg(
+      support ? { id: support.orgId, name: support.orgName, plan: support.plan, logoDataUrl: support.logoDataUrl } : null,
+    );
+  }, [support, overrideOrg]);
 
   const refreshOrganizations = useCallback(async () => {
     try {
@@ -199,6 +223,7 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
         logoDataUrl: target?.logoDataUrl ?? null,
       });
       const started = Date.now();
+      setActionError(null);
       try {
         // Le voile est levé et les deux arborescences sont démontées AVANT tout
         // changement de justificatif — voir `nextCommit`.
@@ -215,6 +240,14 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
         // regardait : les deux arborescences n'ont pas les mêmes routes, et
         // « rester où on était » n'a aucun sens d'un contexte à l'autre.
         navigate('/');
+      } catch (err) {
+        // Le refus le plus fréquent est « organisation suspendue », et amn-api
+        // l'écrit pour être lu tel quel. On le remonte sans le traduire.
+        setActionError(cleanErrorMessage(err, 'Impossible d’ouvrir cette organisation.'));
+        // La liste a peut-être bougé depuis le dernier chargement (une autre
+        // machine a suspendu l'organisation) : on la resynchronise pour que le
+        // rail cesse tout de suite de la présenter comme ouvrable.
+        void refreshOrganizations();
       } finally {
         setEntering(null);
         // Le voile ne se lève qu'une fois la bascule réellement faite, jamais
@@ -224,7 +257,7 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
         setTransition(null);
       }
     },
-    [support, navigate, closeCurrent, organizations],
+    [support, navigate, closeCurrent, organizations, refreshOrganizations],
   );
 
   const leaveOrganization = useCallback(async () => {
@@ -262,6 +295,8 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
       restoring,
       entering,
       transition,
+      actionError,
+      dismissActionError,
       enterOrganization,
       leaveOrganization,
     }),
@@ -274,6 +309,8 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
       restoring,
       entering,
       transition,
+      actionError,
+      dismissActionError,
       enterOrganization,
       leaveOrganization,
     ],

@@ -5,6 +5,58 @@ et ce qu'il faut savoir pour reprendre le travail dessus. Il ne répète pas ce
 que disent les messages de commit ni les commentaires du code : il n'y a ici
 que les arbitrages qui ne se lisent pas dans le diff.
 
+## Refonte multi-organisations — arbitrages
+
+**Le contexte client n'est pas dans l'URL.** Deux tables de routes montées
+selon le contexte, aux mêmes chemins, plutôt qu'un préfixe `/org/<id>/…`. Les
+écrans partagés naviguent en chemins absolus (`/clients`, `/agenda`) : un
+préfixe aurait demandé de réécrire chaque lien de chaque écran, et un seul
+oubli aurait éjecté l'opérateur du contexte au milieu d'une session de support.
+Conséquence assumée : on ne peut pas coller un lien vers le dossier d'une
+cliente. C'est cohérent avec le reste — l'accès est un jeton d'une heure
+journalisé, pas une adresse qu'on s'échange.
+
+**Les chemins des modules n'ont pas bougé.** Ranger les produits sous
+`/tour/tracker` aurait cassé les liens profonds, la mémoire d'onglet, les
+pastilles d'activité et les entrées de la palette de commandes, pour un gain
+purement cosmétique. L'espace est une propriété du module, déduite du chemin,
+pas un préfixe.
+
+**Décisions et Connaissances restent au Poste de travail.** Le cahier des
+charges ne les listait pas ; les retirer aurait supprimé deux modules qui
+fonctionnent et que rien ne demandait de retirer. Ils sont regroupés dans une
+section « Mémoire », qui dit mieux ce qu'ils sont.
+
+**Le bureau SOC a été déplacé, pas dupliqué.** Il vivait dans l'écran Trackers,
+entre le catalogue de modules et la liste des sites. L'écran Trackers redevient
+le catalogue et l'état d'installation ; il porte un lien vers la Tour de
+contrôle plutôt qu'une seconde copie du mur.
+
+**Une session de support plutôt qu'une lecture inter-tenant côté serveur.**
+`amn-api` refusait, par conception, de laisser une organisation en lire une
+autre. Plutôt que d'ouvrir les routes de lecture, on émet une session ordinaire
+dont la PORTÉE est déplacée : expiration, révocation et contrôle de suspension
+empruntent alors le code existant. Une deuxième mécanique d'authentification
+aurait été une deuxième chose à oublier de vérifier. Détail des garde-fous dans
+`amn-api/README.md`.
+
+**Le journal est écrit par le serveur, et son échec fait échouer l'action.** Un
+journal que l'application cliente pourrait omettre d'écrire ne prouve rien —
+et c'est exactement ce qu'on veut pouvoir montrer à une cliente qui demande qui
+a vu ses données.
+
+**Ce que la session de support autorise vraiment.** Rôle `admin` dans
+l'organisation cliente : lecture ET écriture de son espace de travail. C'est ce
+que « la supporter en conditions réelles » demande — un support qui s'arrête au
+diagnostic ne sert à rien. Elle est en revanche refusée sur la console admin et
+sur toute route touchant à des comptes : ces gestes-là passent par la console,
+qui les journalise. À relire si le périmètre change.
+
+**Le logo d'organisation voyage dans la liste.** `GET /v1/admin/organizations`
+rend les logos avec le reste, plafonnés à 48 Ko. Simple et suffisant jusqu'à
+quelques centaines d'organisations ; au-delà, il faudra une route dédiée et
+paresseuse plutôt que de charger tout le parc à l'ouverture.
+
 ## Décisions structurantes
 
 **La « carte » des visiteurs est un classement à barres, pas une carte du

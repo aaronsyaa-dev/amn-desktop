@@ -31,6 +31,7 @@ import { ClientAdminScreen } from '../client-context/ClientAdminScreen';
 import { ContextBoot } from '../client-context/ContextBoot';
 import { OrgContextProvider, useOrgContext } from '../state/OrgContextContext';
 import { ContextVeil } from '../components/org-rail/ContextVeil';
+import { ContextError } from '../components/org-rail/ContextError';
 
 /**
  * La racine de l'édition interne — AMN Desktop, tel qu'Aaron et Mohamed
@@ -68,6 +69,7 @@ export function AppRoot() {
                   l'une et au montage de l'autre — c'est précisément l'instant
                   qu'il sert à couvrir. */}
               <ContextVeil />
+              <ContextError />
             </OrgContextProvider>
           </ProtectedRoute>
         }

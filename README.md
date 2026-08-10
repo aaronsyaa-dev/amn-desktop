@@ -10,6 +10,19 @@ animations Framer Motion.
 
 ## Fonctionnalités
 
+- **Rail des organisations** — colonne d'icônes à gauche, toujours visible :
+  AMN DevSec en haut, puis les organisations clientes (logo ou initiales).
+  `⇧ ⌘/Ctrl O` ouvre un sélecteur cherchable, le « + » crée une organisation
+  cliente sans passer par un terminal.
+- **Deux espaces** dans le contexte AMN DevSec — *Poste de travail* (le
+  quotidien : accueil, tâches, notes, clients, sites, équipe, rapports, médias,
+  calendrier) et *Tour de contrôle* (le transverse : mur d'incidents, origine
+  des visiteurs, activité horaire, Trackers, Scanner, Comply, SSL Monitor,
+  organisations clientes, journal d'accès).
+- **Contexte client** — ouvrir une organisation depuis le rail affiche son
+  application telle qu'elle la voit, sous un bandeau permanent, avec un panneau
+  Administration séparé (suspendre, réémettre un accès). Chaque accès est
+  journalisé côté serveur. Voir [`docs/BUSINESS.md`](docs/BUSINESS.md).
 - **Connexion** (`/login`) — authentification réelle (SQLite + bcrypt dans le
   process main Electron, fallback navigateur), logo AMN. Deux comptes seedés
   (voir `docs/ARCHITECTURE.md`).
