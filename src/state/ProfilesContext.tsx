@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useSync, useCollection } from './SyncContext';
+import { useClientView } from './ClientViewContext';
 import type { UpdateProfileInput, UserProfile } from '../shared/api';
 
 /**
@@ -88,11 +89,17 @@ export function ProfilesProvider({ children }: { children: React.ReactNode }) {
   // a blank profile straight over the real one, permanently wiping the photo
   // (last-writer-wins). Only seed once the pull is confirmed to have
   // succeeded, or when sync isn't configured at all (nothing to pull).
+  // Jamais dans le dossier d'une cliente : l'opérateur n'a rien à faire dans sa
+  // collection de profils. Sans ce garde-fou, ouvrir son espace y déposait une
+  // fiche « Aaron / aaron@amn-devsec.com » — une trace de nous dans ses données,
+  // créée par le seul fait de la dépanner.
+  const clientView = useClientView();
   useEffect(() => {
+    if (clientView) return;
     if (ready && (!configured || !pullFailed) && user && !records.some((r) => r.id === user.email)) {
       upsert('profiles', user.email, { name: user.name, photoDataUrl: '', presenceText: '' });
     }
-  }, [ready, configured, pullFailed, user, records, upsert]);
+  }, [clientView, ready, configured, pullFailed, user, records, upsert]);
 
   const profileFor = useCallback(
     (email: string) => {
