@@ -76,6 +76,16 @@ npm start
 - `npm run typecheck` — vérifie les types TypeScript.
 - `npm run package` / `npm run make` — packagent l'application.
 
+Édition Business (livrée aux organisations clientes — voir `docs/BUSINESS.md`) :
+
+- `npm run start:business` / `package:business` / `make:business` — l'app.
+- `npm run build:web:business` — le build web/PWA, déployé sur son propre projet
+  Vercel (`vercel.business.json`).
+- `npm run typecheck:business` — rejoue les types contre l'autre face des
+  coutures `@edition/*`.
+- `npm run check:business -- --dir dist` — relit la sortie du build et échoue sur
+  la moindre trace d'AMN DevSec, de nos produits, de nos comptes ou d'un jeton.
+
 ## Stack
 
 Electron Forge · Vite · React · TypeScript · React Router · Tailwind CSS v4 ·

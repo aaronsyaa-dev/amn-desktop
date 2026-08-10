@@ -143,6 +143,26 @@ export interface SupportSession {
   context: SupportContext;
 }
 
+/**
+ * Marqueur porté par une erreur « amn-api n'a pas répondu ».
+ *
+ * Il distingue les deux échecs de connexion que l'application confondait, et
+ * qui n'appellent pas la même conduite :
+ *
+ *   - **amn-api a répondu et refuse** (mot de passe faux, compte inconnu,
+ *     organisation suspendue). Sa phrase est la réponse ; il n'y a rien à
+ *     tenter d'autre ;
+ *   - **amn-api est injoignable** (pas de réseau, `AMN_API_URL` absente). Là,
+ *     et là seulement, un poste interne a le droit de retomber sur son compte
+ *     local pour continuer à travailler hors ligne.
+ *
+ * Le marqueur voyage dans le MESSAGE parce que c'est tout ce qui survit au
+ * passage IPC d'Electron : une erreur levée dans `ipcMain.handle` arrive dans
+ * le renderer réduite à sa chaîne. `cleanErrorMessage` le retire avant
+ * affichage, `isApiUnreachable` le lit — voir src/lib/errorMessage.ts.
+ */
+export const API_UNREACHABLE_PREFIX = '[amn-api-injoignable] ';
+
 export interface RemoteSessionUser {
   id: string;
   orgId: string;
@@ -1033,7 +1053,7 @@ export interface ComplyProgress {
  * `useSync`/`upsert` — the bridge's own `vault` namespace talks straight to
  * on-disk storage (encrypted in Electron, plain localStorage in the browser).
  */
-export type VaultCategory = 'api' | 'accounts' | 'servers' | 'trackers' | 'other';
+export type VaultCategory = 'api' | 'accounts' | 'servers' | 'trackers' | 'orgs' | 'other';
 
 export interface VaultEntry {
   id: string;
@@ -1264,7 +1284,12 @@ export interface AmnBridge {
       setOrganizationStatus(id: string, status: OrgStatus): Promise<AdminOrganization>;
       listUsers(orgId: string): Promise<AdminOrgUser[]>;
       /** Réémet un lien d'activation (7 jours, usage unique). */
-      reissueInvitation(orgId: string, email: string, role?: string): Promise<OrgInvitationResult>;
+      /**
+       * Réémet un accès à un compte QUI EXISTE dans cette organisation. Pas de
+       * rôle en paramètre : amn-api ne crée plus de compte par cette route, donc
+       * il n'y a plus de rôle à choisir (voir routes/admin.js).
+       */
+      reissueInvitation(orgId: string, email: string): Promise<OrgInvitationResult>;
       /** Remet un mot de passe temporaire, affiché une seule fois. */
       resetPassword(orgId: string, userId: string): Promise<TempPasswordResult>;
       /** Journal des accès au dossier des clientes (Tour de contrôle). */

@@ -24,18 +24,9 @@ import { useClients } from '../state/useClients';
 import { useReports, type Report, type ReportDraft, type ReportLink, type ReportType } from '../state/useReports';
 import { useProfiles } from '../state/ProfilesContext';
 import { useUndo } from '../state/UndoContext';
-import { bridge } from '../lib/bridge';
 import { Markdown } from '../lib/markdown';
 import { relativeTime } from '../lib/time';
-import {
-  ComplyChip,
-  ComplyDetail,
-  ScanChip,
-  ScanDetail,
-  useExclusive,
-} from '@edition/exclusive';
-import { scoreColor } from '../lib/scanSeverity';
-import type { ComplyCheck, Scan } from '../shared/api';
+import { useExclusive, useProductReports } from '@edition/exclusive';
 
 const TYPES: { value: ReportType; label: string }[] = [
   { value: 'task', label: 'Tâche' },
@@ -49,19 +40,20 @@ function typeLabel(t: ReportType): string {
 }
 
 /**
- * The report type filter, plus the pseudo-types covering the product outputs
- * that also belong in this list: finished Elite scans and RGPD checks.
+ * Le filtre de type. Les valeurs qui ne sont pas des types de rapport viennent
+ * de l'édition (`useProductReports().filters`) : cet écran est partagé, et
+ * nommer ici des sorties qui n'existent que chez nous les ferait entrer dans le
+ * bundle d'une cliente — voir `@edition/exclusive`.
  */
-type ListFilter = ReportType | 'all' | 'scanner' | 'rgpd';
+type ListFilter = ReportType | 'all' | string;
 
 type DateFilter = 'all' | '7' | '30' | '90';
 
-/** Selects a report, a scan or an RGPD check out of the shared left-hand list. */
-type Selection =
-  | { kind: 'report'; id: string }
-  | { kind: 'scan'; id: string }
-  | { kind: 'comply'; id: string }
-  | null;
+/**
+ * Ce qui est sélectionné dans la liste de gauche : un rapport, ou une sortie
+ * produit désignée par son identifiant opaque.
+ */
+type Selection = { kind: 'report'; id: string } | { kind: 'product'; id: string } | null;
 
 const emptyDraft = (): ReportDraft => ({ type: 'manual', title: '', body: '', links: [] });
 
@@ -72,7 +64,6 @@ interface EditState {
 }
 
 export function ReportsScreen() {
-  const { PRODUCTS_ENABLED } = useExclusive();
   const { reports, createReport, updateReport, deleteReport } = useReports();
   const { isPending, scheduleDelete } = useUndo();
   const location = useLocation();
@@ -82,56 +73,15 @@ export function ReportsScreen() {
   const [selection, setSelection] = useState<Selection>(null);
   const [editing, setEditing] = useState<EditState | null>(null);
 
-  // Finished Elite scans, read from amn-api so both operators see the same
-  // history. Refreshed on mount and whenever a scan completes anywhere in the
-  // app (Scanner tab or the other operator), so a fresh Elite result shows up
-  // here live instead of requiring a reload.
-  const [scans, setScans] = useState<Scan[]>([]);
-  useEffect(() => {
-    // Édition Business : ni Scanner ni Comply, donc rien à aller chercher —
-    // et surtout aucun canal IPC pour le faire (voir @edition/mainExclusive).
-    if (!PRODUCTS_ENABLED) return undefined;
-    let active = true;
-    const refresh = () => {
-      bridge()
-        .remote.listScans()
-        .then((all) => {
-          if (active) setScans(all.filter((s) => s.tier === 'elite' && s.status === 'done'));
-        })
-        .catch(() => undefined);
-    };
-    refresh();
-    const off = bridge().remote.onScanProgress((p) => {
-      if (p.status === 'done') refresh();
-    });
-    return () => {
-      active = false;
-      off();
-    };
-  }, []);
-
-  // Finished RGPD checks, same live-refresh contract as the scans above.
-  const [complyChecks, setComplyChecks] = useState<ComplyCheck[]>([]);
-  useEffect(() => {
-    if (!PRODUCTS_ENABLED) return undefined;
-    let active = true;
-    const refresh = () => {
-      bridge()
-        .remote.listComplyChecks()
-        .then((all) => {
-          if (active) setComplyChecks(all.filter((c) => c.status === 'done'));
-        })
-        .catch(() => undefined);
-    };
-    refresh();
-    const off = bridge().remote.onComplyProgress((p) => {
-      if (p.status === 'done') refresh();
-    });
-    return () => {
-      active = false;
-      off();
-    };
-  }, []);
+  // Les sorties produit (scans Elite, contrôles RGPD) mêlées à la liste. Cet
+  // écran ne sait pas ce qu'elles sont : il reçoit des entrées datées, une
+  // ligne à afficher et un panneau à ouvrir. Dans l'édition Business, la liste
+  // est vide et rien de tout cela n'est compilé.
+  const cutoffMs = useMemo(
+    () => (dateFilter === 'all' ? 0 : Date.now() - Number(dateFilter) * 86400000),
+    [dateFilter],
+  );
+  const products = useProductReports(typeFilter, cutoffMs);
 
   // A "Faire un rapport" trigger from Tasks/Clients/Décisions arrives as a
   // prefilled draft in the navigation state — open the editor on it. A site
@@ -149,61 +99,47 @@ export function ReportsScreen() {
   }, [location.state]);
 
   const visibleReports = useMemo(() => {
-    const cutoff = dateFilter === 'all' ? 0 : Date.now() - Number(dateFilter) * 86400000;
+    // Un filtre produit (« Scanner », « RGPD ») ne laisse passer aucun rapport
+    // écrit : c'est un filtre SUR la liste commune, pas sur les rapports.
+    const isProductFilter = products.filters.some((f) => f.value === typeFilter);
     return reports
       .filter((r) => !isPending(`reports:${r.id}`))
-      .filter((r) =>
-        typeFilter === 'all'
-          ? true
-          : typeFilter === 'scanner' || typeFilter === 'rgpd'
-            ? false
-            : r.type === typeFilter,
-      )
-      .filter((r) => (cutoff ? new Date(r.createdAt).getTime() >= cutoff : true));
-  }, [reports, typeFilter, dateFilter, isPending]);
+      .filter((r) => (typeFilter === 'all' ? true : isProductFilter ? false : r.type === typeFilter))
+      .filter((r) => (cutoffMs ? new Date(r.createdAt).getTime() >= cutoffMs : true));
+  }, [reports, typeFilter, cutoffMs, isPending, products.filters]);
 
-  const visibleScans = useMemo(() => {
-    if (typeFilter !== 'all' && typeFilter !== 'scanner') return [];
-    const cutoff = dateFilter === 'all' ? 0 : Date.now() - Number(dateFilter) * 86400000;
-    return scans.filter((s) => (cutoff ? new Date(s.createdAt).getTime() >= cutoff : true));
-  }, [scans, typeFilter, dateFilter]);
-
-  const visibleComply = useMemo(() => {
-    if (typeFilter !== 'all' && typeFilter !== 'rgpd') return [];
-    const cutoff = dateFilter === 'all' ? 0 : Date.now() - Number(dateFilter) * 86400000;
-    return complyChecks.filter((c) => (cutoff ? new Date(c.createdAt).getTime() >= cutoff : true));
-  }, [complyChecks, typeFilter, dateFilter]);
-
-  // One chronological list mixing all three kinds, newest first — "Tous" reads
-  // as a genuine unified history rather than reports-then-scans-then-checks.
+  // Une seule liste chronologique, rapports et sorties produit mêlés, du plus
+  // récent au plus ancien — « Tous » se lit comme un historique unifié.
   const items = useMemo(
     () =>
       [
-        ...visibleReports.map((r) => ({ kind: 'report' as const, id: r.id, at: r.createdAt, report: r })),
-        ...visibleScans.map((s) => ({ kind: 'scan' as const, id: s.id, at: s.createdAt, scan: s })),
-        ...visibleComply.map((c) => ({ kind: 'comply' as const, id: c.id, at: c.createdAt, check: c })),
+        ...visibleReports.map((r) => ({
+          kind: 'report' as const,
+          id: r.id,
+          at: r.createdAt,
+          report: r,
+        })),
+        ...products.entries.map((e) => ({ kind: 'product' as const, id: e.id, at: e.at, entry: e })),
       ].sort((a, b) => (b.at || '').localeCompare(a.at || '')),
-    [visibleReports, visibleScans, visibleComply],
+    [visibleReports, products.entries],
   );
 
   const selectedReport = useMemo(
     () => (selection?.kind === 'report' ? reports.find((r) => r.id === selection.id) ?? null : null),
     [reports, selection],
   );
-  const selectedScan = useMemo(
-    () => (selection?.kind === 'scan' ? scans.find((s) => s.id === selection.id) ?? null : null),
-    [scans, selection],
-  );
-  const selectedComply = useMemo(
+  const selectedProduct = useMemo(
     () =>
-      selection?.kind === 'comply' ? complyChecks.find((c) => c.id === selection.id) ?? null : null,
-    [complyChecks, selection],
+      selection?.kind === 'product'
+        ? products.entries.find((e) => e.id === selection.id) ?? null
+        : null,
+    [products.entries, selection],
   );
 
   // Below lg the two panes don't fit side by side, so the screen behaves like a
   // master/detail: the list fills the width until something is picked, then the
   // detail takes over full-screen with a back control. lg+ keeps both columns.
-  const hasDetail = Boolean(editing || selectedReport || selectedScan || selectedComply);
+  const hasDetail = Boolean(editing || selectedReport || selectedProduct);
   const closeDetail = () => {
     setSelection(null);
     setEditing(null);
@@ -258,12 +194,7 @@ export function ReportsScreen() {
           options={[
             { value: 'all', label: 'Tous' },
             ...TYPES.map((t) => ({ value: t.value, label: t.label })),
-            ...(PRODUCTS_ENABLED
-              ? [
-                  { value: 'scanner', label: 'Scanner' },
-                  { value: 'rgpd', label: 'RGPD' },
-                ]
-              : []),
+            ...products.filters,
           ]}
         />
         <Segmented
@@ -289,87 +220,44 @@ export function ReportsScreen() {
             <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
               <FileText size={22} strokeWidth={1.5} className="text-text-muted" />
               <p className="text-sm text-text-secondary">
-                {reports.length === 0 && scans.length === 0 && complyChecks.length === 0
+                {reports.length === 0 && products.entries.length === 0
                   ? 'Aucun rapport pour l’instant.'
                   : 'Aucun rapport pour ces filtres.'}
               </p>
             </div>
           ) : (
-            items.map((item) =>
-              item.kind === 'comply' ? (
+            items.map((item) => {
+              const selected = selection?.kind === item.kind && selection.id === item.id && !editing;
+              return (
                 <button
-                  key={`comply:${item.id}`}
+                  key={`${item.kind}:${item.id}`}
                   type="button"
                   onClick={() => {
-                    setSelection({ kind: 'comply', id: item.id });
+                    setSelection({ kind: item.kind, id: item.id });
                     setEditing(null);
                   }}
                   className={`flex flex-col gap-1 border-b border-border px-4 py-3 text-left transition-colors hover:bg-surface-hover ${
-                    selection?.kind === 'comply' && selection.id === item.id && !editing ? 'bg-surface-hover' : ''
+                    selected ? 'bg-surface-hover' : ''
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <ComplyChip />
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-text-primary">
-                      {item.check.results.target?.host ?? item.check.url}
-                    </span>
-                    <span className={`flex-shrink-0 font-mono text-xs font-semibold ${scoreColor(item.check.score)}`}>
-                      {item.check.score}
-                    </span>
-                  </div>
-                  <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                    {relativeTime(item.check.createdAt)}
-                  </span>
+                  {item.kind === 'report' ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <TypeChip type={item.report.type} />
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-text-primary">
+                          {item.report.title || 'Sans titre'}
+                        </span>
+                      </div>
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                        {relativeTime(item.report.createdAt)}
+                      </span>
+                    </>
+                  ) : (
+                    item.entry.row
+                  )}
                 </button>
-              ) : item.kind === 'report' ? (
-                <button
-                  key={`report:${item.id}`}
-                  type="button"
-                  onClick={() => {
-                    setSelection({ kind: 'report', id: item.id });
-                    setEditing(null);
-                  }}
-                  className={`flex flex-col gap-1 border-b border-border px-4 py-3 text-left transition-colors hover:bg-surface-hover ${
-                    selection?.kind === 'report' && selection.id === item.id && !editing ? 'bg-surface-hover' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <TypeChip type={item.report.type} />
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-text-primary">
-                      {item.report.title || 'Sans titre'}
-                    </span>
-                  </div>
-                  <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                    {relativeTime(item.report.createdAt)}
-                  </span>
-                </button>
-              ) : (
-                <button
-                  key={`scan:${item.id}`}
-                  type="button"
-                  onClick={() => {
-                    setSelection({ kind: 'scan', id: item.id });
-                    setEditing(null);
-                  }}
-                  className={`flex flex-col gap-1 border-b border-border px-4 py-3 text-left transition-colors hover:bg-surface-hover ${
-                    selection?.kind === 'scan' && selection.id === item.id && !editing ? 'bg-surface-hover' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <ScanChip />
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-text-primary">
-                      {item.scan.results.target?.host ?? item.scan.url}
-                    </span>
-                    <span className={`flex-shrink-0 font-mono text-xs font-semibold ${scoreColor(item.scan.score)}`}>
-                      {item.scan.score}
-                    </span>
-                  </div>
-                  <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                    {relativeTime(item.scan.createdAt)}
-                  </span>
-                </button>
-              ),
-            )
+              );
+            })
           )}
         </div>
 
@@ -412,20 +300,14 @@ export function ReportsScreen() {
               }
               onRemove={() => remove(selectedReport)}
             />
-          ) : selectedScan ? (
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <ScanDetail scan={selectedScan} />
-            </div>
-          ) : selectedComply ? (
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <ComplyDetail check={selectedComply} />
-            </div>
+          ) : selectedProduct ? (
+            <div className="min-h-0 flex-1 overflow-y-auto">{selectedProduct.detail}</div>
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
               <FileText size={26} strokeWidth={1.5} className="text-text-muted" />
               <p className="text-sm font-medium text-text-primary">Sélectionnez un rapport</p>
               <p className="max-w-sm text-sm text-text-secondary">
-                {PRODUCTS_ENABLED
+                {products.enabled
                   ? 'Ou générez-en un depuis une tâche terminée, un client, une décision, ou un scan Elite.'
                   : 'Ou générez-en un depuis une tâche terminée ou une fiche client.'}
               </p>

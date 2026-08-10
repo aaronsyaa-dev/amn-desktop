@@ -19,7 +19,8 @@
     "start:business": "cross-env AMN_EDITION=business npm run start",
     "package:business": "cross-env AMN_EDITION=business npm run package",
     "make:business": "cross-env AMN_EDITION=business npm run make",
-    "build:web:business": "cross-env AMN_EDITION=business vite build --config vite.renderer.config.mts"
+    "build:web:business": "cross-env AMN_EDITION=business vite build --config vite.renderer.config.mts",
+    "check:business": "node scripts/check-business-bundle.mjs"
   },
   "keywords": [],
   "author": {

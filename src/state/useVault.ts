@@ -19,6 +19,27 @@ export interface VaultDraft {
   category: VaultCategory;
 }
 
+/**
+ * Un secret affiché une seule fois, prêt à être rangé.
+ *
+ * Le vocabulaire volontairement générique (`secret`, `subject`) plutôt que
+ * `password`/`username` : ce qui transite ici est aussi bien un mot de passe
+ * temporaire d'organisation qu'un jeton d'activation ou une clé d'API. Les
+ * appelants n'ont pas à connaître la forme d'une entrée de coffre-fort — ils
+ * décrivent ce qu'ils ont sous les yeux, au moment où ils l'ont.
+ */
+export interface VaultTransfer {
+  category: VaultCategory;
+  /** Libellé lisible dans la liste. Ex. « Organisation — Syraagensy ». */
+  label: string;
+  /** Ce qui identifie l'entrée de façon stable : email, identifiant de site… */
+  subject: string;
+  /** Le secret lui-même. */
+  secret: string;
+  url?: string;
+  notes?: string;
+}
+
 /** Vault-local id generator — independent of the sync module's `uid()`. */
 function vaultId(): string {
   return `vault-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -129,6 +150,46 @@ export function useVault() {
     [persist],
   );
 
+  /**
+   * Range un secret affiché une seule fois — le geste générique du bouton
+   * « Transférer dans le coffre-fort ».
+   *
+   * Le même raisonnement que `recordTracker`, généralisé : un mot de passe
+   * temporaire d'organisation, un jeton d'activation, une clé d'API n'existent
+   * qu'à l'instant où on les lit. Les recopier à la main dans le coffre-fort
+   * marchait tant qu'on y pensait ; le reste du temps, ils finissaient dans un
+   * presse-papiers puis nulle part, et la seule issue était d'en réémettre un —
+   * ce qui invalide celui déjà remis à la cliente.
+   *
+   * Le couple (rubrique, sujet) sert de clé : réémettre un accès pour la même
+   * adresse met l'entrée à jour au lieu d'en empiler une quasi-identique. Un
+   * secret vide n'écrase jamais un secret déjà rangé.
+   */
+  const transferSecret = useCallback(
+    (input: VaultTransfer): void => {
+      const now = new Date().toISOString();
+      const existing = entriesRef.current.find(
+        (e) => e.category === input.category && e.username === input.subject,
+      );
+      const draft: VaultDraft = {
+        label: input.label,
+        username: input.subject,
+        password: input.secret.trim() || existing?.password || '',
+        url: input.url?.trim() || existing?.url || '',
+        notes: input.notes ?? existing?.notes ?? '',
+        category: input.category,
+      };
+      if (existing) {
+        persist(
+          entriesRef.current.map((e) => (e.id === existing.id ? { ...e, ...draft, updatedAt: now } : e)),
+        );
+        return;
+      }
+      persist([...entriesRef.current, { id: vaultId(), ...draft, createdAt: now, updatedAt: now }]);
+    },
+    [persist],
+  );
+
   const deleteEntry = useCallback(
     (id: string): void => {
       persist(entriesRef.current.filter((e) => e.id !== id));
@@ -136,5 +197,5 @@ export function useVault() {
     [persist],
   );
 
-  return { entries, encrypted, loading, saveEntry, deleteEntry, recordTracker };
+  return { entries, encrypted, loading, saveEntry, deleteEntry, recordTracker, transferSecret };
 }

@@ -289,10 +289,10 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
       );
       return users;
     },
-    async reissueInvitation(orgId: string, email: string, role = 'owner'): Promise<OrgInvitationResult> {
+    async reissueInvitation(orgId: string, email: string): Promise<OrgInvitationResult> {
       return ctx.apiFetch<OrgInvitationResult>(
         `/v1/admin/organizations/${encodeURIComponent(orgId)}/invitations`,
-        { owner: true, method: 'POST', body: JSON.stringify({ email, role }) },
+        { owner: true, method: 'POST', body: JSON.stringify({ email }) },
       );
     },
     async resetPassword(orgId: string, userId: string): Promise<TempPasswordResult> {

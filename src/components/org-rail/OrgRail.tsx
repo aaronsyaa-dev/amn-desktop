@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search } from 'lucide-react';
+import { Plus, PlugZap, Search } from 'lucide-react';
 import { useOrgContext } from '../../state/OrgContextContext';
+import { useAuth } from '../../auth/AuthContext';
 import { LogoMark } from '../Logo';
 import { OrgAvatar } from './OrgAvatar';
 import { OrgSwitcher } from './OrgSwitcher';
@@ -24,9 +25,16 @@ const TRANSITION = { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const };
  * on parcourt la colonne ; à trois cents, on cherche — les deux gestes sont là.
  */
 export function OrgRail() {
-  const { organizations, support, entering, leaveOrganization, enterOrganization } = useOrgContext();
+  const { organizations, support, entering, leaveOrganization, enterOrganization, signalLocalSession } =
+    useOrgContext();
+  const { sessionKind } = useAuth();
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  // Le rail continue de se remplir sur une session locale : la liste des
+  // organisations part avec le jeton partagé du poste, qui a le droit de la
+  // lire. C'est bien pour ça que l'état passait inaperçu — tout avait l'air
+  // normal jusqu'au clic. Le pastille ci-dessous le dit en permanence.
+  const localSession = sessionKind === 'local';
 
   // ⌘/Ctrl + Maj + O : le raccourci du changement d'organisation. Distinct de
   // ⌘K (qui cherche DANS le contexte courant) parce que ce n'est pas le même
@@ -83,6 +91,17 @@ export function OrgRail() {
         </div>
 
         <div className="flex flex-shrink-0 flex-col items-center gap-2 pt-1">
+          {localSession && (
+            <RailButton
+              label="Session locale — aucun dossier client ouvrable"
+              sublabel="Reconnectez-vous à amn-api"
+              onClick={signalLocalSession}
+              small
+              warning
+            >
+              <PlugZap size={17} strokeWidth={1.75} />
+            </RailButton>
+          )}
           <RailButton label="Chercher une organisation" hint="⇧ ⌘ O" onClick={() => setSwitcherOpen(true)} small>
             <Search size={17} strokeWidth={1.75} />
           </RailButton>
@@ -117,6 +136,7 @@ function RailButton({
   dimmed = false,
   small = false,
   dashed = false,
+  warning = false,
   onClick,
 }: {
   children: React.ReactNode;
@@ -128,6 +148,7 @@ function RailButton({
   dimmed?: boolean;
   small?: boolean;
   dashed?: boolean;
+  warning?: boolean;
   onClick: () => void;
 }) {
   const size = small ? 36 : 44;
@@ -155,7 +176,7 @@ function RailButton({
             : 'hover:bg-surface-hover hover:-translate-y-[1px] active:translate-y-0'
         } ${dimmed && !active ? 'opacity-45 grayscale' : ''} ${busy ? 'animate-pulse' : ''} ${
           small ? 'text-text-secondary' : ''
-        }`}
+        } ${warning ? 'border border-warning/60 bg-warning-muted text-warning' : ''}`}
       >
         {children}
       </button>
