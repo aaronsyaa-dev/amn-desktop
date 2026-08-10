@@ -14,21 +14,46 @@ import type { DerivedSite } from '../state/RemoteSitesContext';
  * côtés, pas pour être affichées.
  */
 
+export interface ExclusiveView {
+  TEAM_ENABLED: boolean;
+  TEAM_MEMBERS: { email: string; name: string }[];
+  SITES_ENABLED: boolean;
+  PRODUCTS_ENABLED: boolean;
+  DECISIONS_ROUTE: string | null;
+  QUOTE_OFFERS: { id: string; name: string; tagline: string }[];
+  QUOTE_ISSUER_TAGLINE: string;
+}
+
 /**
- * Une seule personne : pas d'assignation, et surtout aucune adresse d'AMN
- * DevSec dans le bundle livré.
+ * Une seule face ici, et c'est tout le propos : dans un build Business il n'y a
+ * pas de « contexte client » à distinguer — l'application EST celle de la
+ * cliente. Une seule personne, donc pas d'assignation, et surtout aucune
+ * adresse d'AMN DevSec dans le bundle livré.
  */
-export const TEAM_ENABLED = false;
-export const TEAM_MEMBERS: { email: string; name: string }[] = [];
+const VIEW: ExclusiveView = {
+  TEAM_ENABLED: false,
+  TEAM_MEMBERS: [],
+  SITES_ENABLED: false,
+  PRODUCTS_ENABLED: false,
+  DECISIONS_ROUTE: null,
+  /**
+   * Aucune offre au catalogue : une auto-entrepreneuse facture ses propres
+   * prestations, pas des paliers de supervision. Le devis demande donc un
+   * intitulé libre (voir `NewQuoteModal` dans ClientsScreen).
+   *
+   * Et aucun sous-titre : nous ne connaissons pas son activité, et en inventer
+   * un mettrait une phrase fausse sur un document qu'elle envoie.
+   */
+  QUOTE_OFFERS: [],
+  QUOTE_ISSUER_TAGLINE: '',
+};
+
+export function useExclusive(): ExclusiveView {
+  return VIEW;
+}
 
 /** Aucune rubrique produit dans le coffre-fort d'une organisation cliente. */
 export const VAULT_PRODUCT_CATEGORIES: { value: 'trackers'; label: string }[] = [];
-
-/** Pas d'écran Décisions dans cette édition. */
-export const DECISIONS_ROUTE: string | null = null;
-
-export const SITES_ENABLED = false;
-export const PRODUCTS_ENABLED = false;
 
 const NO_SITES: DerivedSite[] = [];
 
@@ -39,19 +64,6 @@ export function useLinkedSites(): { sites: DerivedSite[] } {
 export function useSitePanelLink(): { openSite: (siteId: string) => void } {
   return { openSite: () => undefined };
 }
-
-/**
- * Aucune offre au catalogue : une auto-entrepreneuse facture ses propres
- * prestations, pas des paliers de supervision. Le devis demande donc un
- * intitulé libre (voir `NewQuoteModal` dans ClientsScreen).
- */
-/**
- * Aucun sous-titre : nous ne connaissons pas l'activité de la cliente, et en
- * inventer un mettrait une phrase fausse sur un document qu'elle envoie.
- */
-export const QUOTE_ISSUER_TAGLINE = '';
-
-export const QUOTE_OFFERS: { id: string; name: string; tagline: string }[] = [];
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 export function ScanDetail(_props: { scan: Scan }): null {

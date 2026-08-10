@@ -20,16 +20,46 @@ export const remoteConfig = {
    * isolée : son build ne contient AUCUN jeton, la connexion en fabrique un.
    */
   sessionToken: '',
+  /**
+   * Jeton de session de SUPPORT — actif uniquement pendant qu'AMN Desktop est
+   * dans le contexte d'une organisation cliente (voir docs/BUSINESS.md).
+   *
+   * Il ne remplace pas `sessionToken`, il le recouvre : la session de
+   * l'opérateur reste en place pour les routes d'administration, tandis que
+   * tout le reste — collections, WebSocket — part avec celui-ci et lit donc le
+   * dossier de la cliente. Vidé en quittant le contexte et à la déconnexion.
+   */
+  supportToken: '',
 };
 
 /**
  * Le justificatif présenté à amn-api pour chaque appel.
+ *
+ * Trois niveaux, du plus spécifique au plus général :
+ *   1. le jeton de support, quand l'app travaille dans le dossier d'une
+ *      cliente. C'est ce qui rend le contexte client réel plutôt que cosmétique ;
+ *   2. la session nominative de l'opérateur ;
+ *   3. le jeton opérateur partagé, mode historique des postes internes.
  *
  * La session gagne sur le jeton opérateur : sur le poste d'Aaron, où les deux
  * existent, se connecter avec un compte nominatif doit vraiment changer
  * d'organisation — pas se superposer silencieusement à AMN DevSec.
  */
 export function apiCredential(): string {
+  return remoteConfig.supportToken || remoteConfig.sessionToken || remoteConfig.operatorToken;
+}
+
+/**
+ * Le justificatif de l'opérateur LUI-MÊME, sans le contexte client.
+ *
+ * Les routes `/v1/admin/*` doivent partir avec celui-ci : administrer une
+ * organisation cliente (la suspendre, lui réémettre un accès, en créer une
+ * autre) reste un geste d'AMN DevSec, et amn-api refuse d'ailleurs un jeton de
+ * support sur cette console. Sans cette distinction, ouvrir un contexte client
+ * couperait l'accès au rail et au panneau d'administration depuis l'intérieur
+ * même de ce contexte.
+ */
+export function ownerCredential(): string {
   return remoteConfig.sessionToken || remoteConfig.operatorToken;
 }
 

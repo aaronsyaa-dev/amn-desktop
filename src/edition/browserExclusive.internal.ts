@@ -1,4 +1,15 @@
 import type {
+  AdminOrganization,
+  AdminOrgUser,
+  CreateOrganizationInput,
+  CreateOrganizationResult,
+  OrgAccessEntry,
+  OrgIdentity,
+  OrgInvitationResult,
+  OrgStatus,
+  SupportContext,
+  SupportSession,
+  TempPasswordResult,
   AmnBridge,
   CallSignal,
   ComplyProgress,
@@ -34,7 +45,7 @@ import type {
  * organisation cliente, alors même qu'aucun écran ne pouvait les appeler.
  */
 export interface BrowserExclusiveContext {
-  apiFetch: <T>(path: string, init?: RequestInit) => Promise<T>;
+  apiFetch: <T>(path: string, init?: RequestInit & { owner?: boolean }) => Promise<T>;
   apiUrl: string;
   token: string;
   ensureStarted: () => void;
@@ -42,6 +53,14 @@ export interface BrowserExclusiveContext {
   eventListeners: Set<(push: RemoteEventPush) => void>;
   /** Abonnement à un type de trame WebSocket. Renvoie une fonction de désabonnement. */
   onFrame: (type: string, listener: (frame: Record<string, unknown>) => void) => () => void;
+  /**
+   * Bascule le justificatif du pont sur une organisation cliente (ou le rend).
+   * Reconnecte la WebSocket, comme côté Electron : le flux temps réel doit
+   * suivre la même organisation que les requêtes.
+   */
+  applySupportToken: (token: string | null) => void;
+  /** Lit le jeton de support courant, pour le restaurer en cas d'échec. */
+  supportToken: () => string;
 }
 
 type ExclusiveRemote = Pick<
@@ -74,6 +93,8 @@ type ExclusiveRemote = Pick<
   | 'listComplyChecks'
   | 'getComplyCheck'
   | 'onComplyProgress'
+  | 'admin'
+  | 'support'
 >;
 
 export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveRemote {
@@ -227,6 +248,133 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
     ctx.ensureStarted();
     return ctx.onFrame('scan:progress', (frame) => callback(frame.progress as ScanProgress));
   },
+  admin: {
+    async listOrganizations(): Promise<AdminOrganization[]> {
+      const { organizations } = await ctx.apiFetch<{ organizations: AdminOrganization[] }>(
+        '/v1/admin/organizations',
+        { owner: true },
+      );
+      return organizations;
+    },
+    async createOrganization(input: CreateOrganizationInput): Promise<CreateOrganizationResult> {
+      return ctx.apiFetch<CreateOrganizationResult>('/v1/admin/organizations', {
+        owner: true,
+        method: 'POST',
+        body: JSON.stringify({
+          name: input.name,
+          plan: input.plan,
+          ownerEmail: input.ownerEmail,
+          logoDataUrl: input.logoDataUrl || undefined,
+        }),
+      });
+    },
+    async updateOrganization(id: string, patch: { name?: string; logoDataUrl?: string | null }) {
+      const { organization } = await ctx.apiFetch<{ organization: AdminOrganization }>(
+        `/v1/admin/organizations/${encodeURIComponent(id)}`,
+        { owner: true, method: 'PUT', body: JSON.stringify(patch) },
+      );
+      return organization;
+    },
+    async setOrganizationStatus(id: string, status: OrgStatus) {
+      const { organization } = await ctx.apiFetch<{ organization: AdminOrganization }>(
+        `/v1/admin/organizations/${encodeURIComponent(id)}/status`,
+        { owner: true, method: 'PUT', body: JSON.stringify({ status }) },
+      );
+      return organization;
+    },
+    async listUsers(orgId: string): Promise<AdminOrgUser[]> {
+      const { users } = await ctx.apiFetch<{ users: AdminOrgUser[] }>(
+        `/v1/admin/organizations/${encodeURIComponent(orgId)}/users`,
+        { owner: true },
+      );
+      return users;
+    },
+    async reissueInvitation(orgId: string, email: string, role = 'owner'): Promise<OrgInvitationResult> {
+      return ctx.apiFetch<OrgInvitationResult>(
+        `/v1/admin/organizations/${encodeURIComponent(orgId)}/invitations`,
+        { owner: true, method: 'POST', body: JSON.stringify({ email, role }) },
+      );
+    },
+    async resetPassword(orgId: string, userId: string): Promise<TempPasswordResult> {
+      return ctx.apiFetch<TempPasswordResult>(
+        `/v1/admin/organizations/${encodeURIComponent(orgId)}/users/${encodeURIComponent(userId)}/temp-password`,
+        { owner: true, method: 'POST' },
+      );
+    },
+    async accessLog(opts: { orgId?: string; limit?: number } = {}): Promise<OrgAccessEntry[]> {
+      const params = new URLSearchParams();
+      if (opts.orgId) params.set('org', opts.orgId);
+      if (opts.limit) params.set('limit', String(opts.limit));
+      const qs = params.toString();
+      const { entries } = await ctx.apiFetch<{ entries: OrgAccessEntry[] }>(
+        `/v1/admin/access-log${qs ? `?${qs}` : ''}`,
+        { owner: true },
+      );
+      return entries;
+    },
+  },
+
+  support: {
+    async enter(orgId: string): Promise<SupportSession> {
+      const created = await ctx.apiFetch<{
+        token: string;
+        expiresAt: string;
+        organization: AdminOrganization;
+      }>(`/v1/admin/organizations/${encodeURIComponent(orgId)}/support-session`, {
+        owner: true,
+        method: 'POST',
+      });
+      ctx.applySupportToken(created.token);
+      const me = await ctx.apiFetch<{ support: { actorEmail: string } | null }>('/v1/auth/me');
+      return {
+        token: created.token,
+        context: {
+          orgId: created.organization.id,
+          orgName: created.organization.name,
+          plan: created.organization.plan,
+          status: created.organization.status,
+          logoDataUrl: created.organization.logoDataUrl ?? null,
+          actorEmail: me.support?.actorEmail ?? '',
+          expiresAt: created.expiresAt,
+        },
+      };
+    },
+    async restore(token: string): Promise<SupportContext | null> {
+      if (!token) return null;
+      const previous = ctx.supportToken();
+      ctx.applySupportToken(token);
+      try {
+        const me = await ctx.apiFetch<{
+          org: (OrgIdentity & { status?: OrgStatus }) | null;
+          support: { orgId: string; orgName: string; actorEmail: string } | null;
+        }>('/v1/auth/me');
+        if (!me.support || !me.org) throw new Error('jeton hors contexte client');
+        return {
+          orgId: me.org.id,
+          orgName: me.org.name,
+          plan: me.org.plan,
+          status: me.org.status ?? 'active',
+          logoDataUrl: me.org.logoDataUrl ?? null,
+          actorEmail: me.support.actorEmail,
+          expiresAt: '',
+        };
+      } catch {
+        ctx.applySupportToken(previous || null);
+        return null;
+      }
+    },
+    async leave(token: string): Promise<void> {
+      await ctx
+        .apiFetch<{ ok: boolean }>('/v1/admin/support-session', {
+          owner: true,
+          method: 'DELETE',
+          body: JSON.stringify({ token }),
+        })
+        .catch(() => undefined);
+      ctx.applySupportToken(null);
+    },
+  },
+
   async startComply(url: string): Promise<ComplyCheck> {
     const { check } = await ctx.apiFetch<{ check: ComplyCheck }>('/v1/comply', {
       method: 'POST',

@@ -1,0 +1,300 @@
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useNavigate } from 'react-router-dom';
+import { bridge } from '../lib/bridge';
+import { cleanErrorMessage } from '../lib/errorMessage';
+import { purgeContextMirror } from './SyncContext';
+import type { AdminOrganization, SupportContext } from '../shared/api';
+
+/**
+ * Le contexte actif d'AMN Desktop — AMN DevSec, ou le dossier d'une cliente.
+ *
+ * C'est la pièce que le rail pilote, et la seule qui sache basculer les deux
+ * choses qui doivent bouger ensemble :
+ *
+ *   1. le justificatif du pont (requêtes ET WebSocket), pour que les écrans
+ *      lisent réellement les données de l'organisation affichée ;
+ *   2. la portée du miroir local, pour que rien de l'une ne survive en cache
+ *      pendant qu'on regarde l'autre.
+ *
+ * Le jeton de support est conservé en `localStorage` pour une raison précise :
+ * le bandeau « vous consultez X » doit revenir tel quel après un redémarrage.
+ * Un contexte perdu au relancement afficherait les écrans d'une cliente sans
+ * rien qui l'explique — exactement ce qu'un bandeau non masquable existe pour
+ * empêcher. Au démarrage, le jeton est revalidé auprès d'amn-api : s'il a
+ * expiré ou été révoqué, l'app revient franchement à AMN DevSec.
+ */
+
+const SUPPORT_TOKEN_KEY = 'amn.support.token';
+
+interface OrgContextValue {
+  /** Toutes les organisations gérées, AMN DevSec exclue. Triées par nom. */
+  organizations: AdminOrganization[];
+  /** Vrai pendant le premier chargement de la liste. */
+  loadingOrgs: boolean;
+  /** Message d'amn-api si la liste n'a pas pu être lue (console indisponible). */
+  orgsError: string | null;
+  refreshOrganizations: () => Promise<void>;
+
+  /** Le contexte client actif, ou `null` quand on est chez AMN DevSec. */
+  support: SupportContext | null;
+  /** Vrai tant que le jeton conservé n'a pas été revalidé au démarrage. */
+  restoring: boolean;
+  /** Organisation en cours d'ouverture (id), pour l'état visuel du rail. */
+  entering: string | null;
+  /**
+   * La bascule en cours, telle que l'affiche le voile de transition.
+   *
+   * Changer de contexte, c'est changer tout ce que l'app montre : le faire
+   * apparaître d'un coup, écran par écran, donnerait l'impression d'un
+   * rechargement raté. Le voile occupe cette seconde-là et annonce où l'on
+   * arrive — c'est aussi ce qui rend impossible d'apercevoir, même un instant,
+   * les données d'une organisation sous le nom d'une autre.
+   */
+  transition: ContextTransition | null;
+
+  enterOrganization: (orgId: string) => Promise<void>;
+  leaveOrganization: () => Promise<void>;
+}
+
+export interface ContextTransition {
+  kind: 'enter' | 'leave';
+  name: string;
+  logoDataUrl: string | null;
+}
+
+/** Durée plancher d'une bascule : en dessous, l'animation lit comme un raté. */
+const MIN_TRANSITION_MS = 420;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+/**
+ * Rend la main à React le temps qu'il commite le rendu en cours.
+ *
+ * Indispensable avant de toucher au justificatif du pont, et pas seulement
+ * pour l'esthétique : tant que l'arbre de l'organisation précédente est monté,
+ * sa synchronisation écoute encore. Basculer le jeton sous ses pieds
+ * reconnecte la WebSocket sur l'AUTRE organisation, et ce fournisseur-là —
+ * toujours vivant — écrirait les enregistrements reçus dans SON miroir. C'est
+ * exactement comme ça que des fiches d'une cliente se retrouvaient en cache
+ * chez nous après une simple visite. Deux trames suffisent à garantir que le
+ * démontage est commité.
+ */
+function nextCommit(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
+
+const OrgContext = createContext<OrgContextValue | undefined>(undefined);
+
+function readStoredToken(): string {
+  try {
+    return window.localStorage.getItem(SUPPORT_TOKEN_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function writeStoredToken(token: string | null): void {
+  try {
+    if (token) window.localStorage.setItem(SUPPORT_TOKEN_KEY, token);
+    else window.localStorage.removeItem(SUPPORT_TOKEN_KEY);
+  } catch {
+    /* mode privé — le contexte vivra le temps de la session, sans plus */
+  }
+}
+
+export function OrgContextProvider({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate();
+
+  const [organizations, setOrganizations] = useState<AdminOrganization[]>([]);
+  const [loadingOrgs, setLoadingOrgs] = useState(true);
+  const [orgsError, setOrgsError] = useState<string | null>(null);
+
+  const storedToken = useRef(readStoredToken());
+  const [support, setSupport] = useState<SupportContext | null>(null);
+  const [restoring, setRestoring] = useState(() => Boolean(storedToken.current));
+  const [entering, setEntering] = useState<string | null>(null);
+  const [transition, setTransition] = useState<ContextTransition | null>(null);
+
+  const refreshOrganizations = useCallback(async () => {
+    try {
+      const all = await bridge().remote.admin.listOrganizations();
+      // AMN DevSec est le contexte par défaut du rail, pas une entrée de la
+      // liste des clientes : elle a sa propre place, tout en haut.
+      setOrganizations(
+        all
+          .filter((org) => org.plan !== 'internal')
+          .sort((a, b) => a.name.localeCompare(b.name, 'fr')),
+      );
+      setOrgsError(null);
+    } catch (err) {
+      setOrgsError(cleanErrorMessage(err, 'Console des organisations indisponible.'));
+    } finally {
+      setLoadingOrgs(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshOrganizations();
+  }, [refreshOrganizations]);
+
+  // Reprise du contexte au démarrage. Tant qu'elle n'a pas abouti, le pont
+  // parle encore au nom d'AMN DevSec : c'est pour ça que le layout client
+  // attend `restoring === false` avant d'afficher le moindre écran.
+  useEffect(() => {
+    const token = storedToken.current;
+    if (!token) return;
+    let active = true;
+    (async () => {
+      const context = await bridge().remote.support.restore(token).catch(() => null);
+      if (!active) return;
+      if (context) {
+        setSupport(context);
+      } else {
+        writeStoredToken(null);
+        storedToken.current = '';
+      }
+      setRestoring(false);
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  /**
+   * Referme un contexte côté serveur et efface son miroir local.
+   *
+   * Le jeton est passé en argument, pas relu depuis le stockage : l'appelant
+   * l'a déjà oublié quand il arrive ici (c'est ce qui fait sortir l'interface
+   * tout de suite). Le relire donnerait une chaîne vide — et donc aucun appel
+   * de fermeture, donc aucune ligne « quitté » au journal.
+   */
+  const closeCurrent = useCallback(async (context: SupportContext, token: string) => {
+    if (token) await bridge().remote.support.leave(token).catch(() => undefined);
+    purgeContextMirror(context.orgId);
+  }, []);
+
+  const enterOrganization = useCallback(
+    async (orgId: string) => {
+      if (support?.orgId === orgId) {
+        navigate('/');
+        return;
+      }
+      const target = organizations.find((o) => o.id === orgId);
+      setEntering(orgId);
+      setTransition({
+        kind: 'enter',
+        name: target?.name ?? 'Organisation cliente',
+        logoDataUrl: target?.logoDataUrl ?? null,
+      });
+      const started = Date.now();
+      try {
+        // Le voile est levé et les deux arborescences sont démontées AVANT tout
+        // changement de justificatif — voir `nextCommit`.
+        await nextCommit();
+        // Si un contexte était déjà ouvert, on le referme d'abord : deux jetons
+        // de support vivants en même temps, ce sont deux entrées « enter » au
+        // journal pour un seul opérateur, et un jeton orphelin valable une heure.
+        if (support) await closeCurrent(support, storedToken.current || readStoredToken());
+        const session = await bridge().remote.support.enter(orgId);
+        writeStoredToken(session.token);
+        storedToken.current = session.token;
+        setSupport(session.context);
+        // On atterrit sur l'accueil de la cliente, jamais sur l'écran qu'on
+        // regardait : les deux arborescences n'ont pas les mêmes routes, et
+        // « rester où on était » n'a aucun sens d'un contexte à l'autre.
+        navigate('/');
+      } finally {
+        setEntering(null);
+        // Le voile ne se lève qu'une fois la bascule réellement faite, jamais
+        // avant : c'est lui qui garantit qu'on ne voit pas un écran à moitié
+        // rempli des données de l'organisation précédente.
+        await sleep(Math.max(0, MIN_TRANSITION_MS - (Date.now() - started)));
+        setTransition(null);
+      }
+    },
+    [support, navigate, closeCurrent, organizations],
+  );
+
+  const leaveOrganization = useCallback(async () => {
+    if (!support) {
+      navigate('/');
+      return;
+    }
+    // On quitte l'écran AVANT de rendre la main au réseau : l'opérateur doit
+    // sortir d'un contexte client instantanément, même si amn-api met deux
+    // secondes à confirmer. La fermeture côté serveur suit.
+    const leaving = support;
+    const leavingToken = storedToken.current || readStoredToken();
+    setTransition({ kind: 'leave', name: 'AMN DevSec', logoDataUrl: null });
+    const started = Date.now();
+    // Même raison qu'à l'entrée : l'arborescence de la cliente doit être
+    // démontée avant que le jeton ne redevienne le nôtre, sinon sa
+    // synchronisation reçoit — et met en cache — nos enregistrements.
+    await nextCommit();
+    setSupport(null);
+    writeStoredToken(null);
+    storedToken.current = '';
+    navigate('/');
+    await closeCurrent(leaving, leavingToken);
+    await sleep(Math.max(0, MIN_TRANSITION_MS - (Date.now() - started)));
+    setTransition(null);
+  }, [support, navigate, closeCurrent]);
+
+  const value = useMemo<OrgContextValue>(
+    () => ({
+      organizations,
+      loadingOrgs,
+      orgsError,
+      refreshOrganizations,
+      support,
+      restoring,
+      entering,
+      transition,
+      enterOrganization,
+      leaveOrganization,
+    }),
+    [
+      organizations,
+      loadingOrgs,
+      orgsError,
+      refreshOrganizations,
+      support,
+      restoring,
+      entering,
+      transition,
+      enterOrganization,
+      leaveOrganization,
+    ],
+  );
+
+  return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>;
+}
+
+export function useOrgContext(): OrgContextValue {
+  const ctx = useContext(OrgContext);
+  if (!ctx) throw new Error('useOrgContext must be used within an OrgContextProvider');
+  return ctx;
+}
+
+/**
+ * Initiales d'une organisation — le repli quand aucun logo n'est défini.
+ * Deux lettres au maximum : au-delà, le cercle du rail devient illisible.
+ */
+export function orgInitials(name: string): string {
+  const words = name.trim().split(/[\s-]+/).filter(Boolean);
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}

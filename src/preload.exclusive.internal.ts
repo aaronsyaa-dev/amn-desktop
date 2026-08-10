@@ -52,6 +52,11 @@ type ExclusiveRemote = Pick<
   | 'listComplyChecks'
   | 'getComplyCheck'
   | 'onComplyProgress'
+  // Console des organisations clientes et contexte client : hors de l'édition
+  // Business par construction — une cliente n'a pas d'organisations à gérer, et
+  // ne doit surtout pas disposer du canal qui en ouvrirait une.
+  | 'admin'
+  | 'support'
 >;
 
 /** Part exclusive du pont hors `remote` : veille RSS et modèle local. */
@@ -113,6 +118,24 @@ export const exclusivePreload: ExclusiveRemote = {
     const listener = (_event: Electron.IpcRendererEvent, progress: ScanProgress) => callback(progress);
     ipcRenderer.on(IPC.remoteScanProgressPush, listener);
     return () => ipcRenderer.removeListener(IPC.remoteScanProgressPush, listener);
+  },
+  admin: {
+    listOrganizations: () => ipcRenderer.invoke(IPC.remoteAdminListOrgs),
+    createOrganization: (input) => ipcRenderer.invoke(IPC.remoteAdminCreateOrg, input),
+    updateOrganization: (id, patch) => ipcRenderer.invoke(IPC.remoteAdminUpdateOrg, { id, patch }),
+    setOrganizationStatus: (id, status) =>
+      ipcRenderer.invoke(IPC.remoteAdminSetOrgStatus, { id, status }),
+    listUsers: (orgId) => ipcRenderer.invoke(IPC.remoteAdminListUsers, orgId),
+    reissueInvitation: (orgId, email, role) =>
+      ipcRenderer.invoke(IPC.remoteAdminReissueInvitation, { orgId, email, role }),
+    resetPassword: (orgId, userId) =>
+      ipcRenderer.invoke(IPC.remoteAdminResetPassword, { orgId, userId }),
+    accessLog: (opts) => ipcRenderer.invoke(IPC.remoteAdminAccessLog, opts ?? {}),
+  },
+  support: {
+    enter: (orgId) => ipcRenderer.invoke(IPC.remoteSupportEnter, orgId),
+    restore: (token) => ipcRenderer.invoke(IPC.remoteSupportRestore, token),
+    leave: (token) => ipcRenderer.invoke(IPC.remoteSupportLeave, token),
   },
   startComply: (url: string) => ipcRenderer.invoke(IPC.remoteStartComply, url),
   listComplyChecks: () => ipcRenderer.invoke(IPC.remoteListComplyChecks),

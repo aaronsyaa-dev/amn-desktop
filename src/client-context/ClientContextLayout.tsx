@@ -1,0 +1,111 @@
+import React from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Menu } from 'lucide-react';
+import { ClientSidebar } from './ClientSidebar';
+import { ClientBanner, CLIENT_BANNER_HEIGHT } from './ClientBanner';
+import { OrgRail } from '../components/org-rail/OrgRail';
+import { useOrgContext } from '../state/OrgContextContext';
+import { ClientViewProvider } from '../state/ClientViewContext';
+import { ProfilesProvider } from '../state/ProfilesContext';
+import { SyncProvider } from '../state/SyncContext';
+import { ToastProvider } from '../state/ToastContext';
+import { UndoProvider } from '../state/UndoContext';
+import { TagProvider } from '../components/tags/TagProvider';
+import { SyncStatusIndicator } from '../components/SyncStatusIndicator';
+import { variantsForPath } from '../lib/transitions';
+
+/**
+ * La coquille d'un contexte client.
+ *
+ * Elle reprend la structure de `BusinessLayout` — la même que la cliente a sous
+ * les yeux — avec trois différences, toutes voulues :
+ *
+ *   1. le rail reste à gauche : c'est par lui qu'on est entré, c'est par lui
+ *      qu'on ressort, et il rappelle en permanence qu'on est un visiteur ;
+ *   2. le bandeau permanent occupe le haut de l'écran, et la mise en page lui
+ *      réserve sa hauteur au lieu de passer dessous ;
+ *   3. la synchronisation est montée avec la PORTÉE de l'organisation cliente
+ *      (`scope`), donc son miroir local est distinct du nôtre. Sans ça, ses
+ *      données et les nôtres se mélangeraient dans le même cache — la fuite
+ *      exacte que ce contexte doit rendre impossible.
+ *
+ * Ce qui n'y est pas n'y est pas non plus dans l'application de la cliente :
+ * ni assistant, ni appels, ni parc de sites, ni centre de notifications de
+ * supervision. L'intérêt de cet écran est de montrer SON application ; y
+ * ajouter nos outils en ferait un troisième produit, que personne n'utilise.
+ */
+export function ClientContextLayout() {
+  const location = useLocation();
+  const { support } = useOrgContext();
+  const [navOpen, setNavOpen] = React.useState(false);
+  React.useEffect(() => setNavOpen(false), [location.pathname]);
+
+  // La clé de portée remonte tout l'arbre de synchronisation quand on change
+  // d'organisation : c'est ce qui garantit qu'aucun état React d'une cliente ne
+  // survit à la bascule vers une autre.
+  const scope = support?.orgId ?? 'unknown';
+
+  return (
+    /*
+      `ClientViewProvider` bascule les écrans partagés sur leur face Business
+      (voir src/state/ClientViewContext.tsx) : sans lui, la fiche client
+      afficherait un bloc « sites liés » qui n'existe pas chez elle, et sa liste
+      de tâches proposerait de les assigner à nos adresses @amn-devsec.com.
+    */
+    <ClientViewProvider>
+      <SyncProvider key={scope} scope={scope}>
+        <ProfilesProvider>
+        <ToastProvider>
+          <UndoProvider>
+            <TagProvider>
+              <ClientBanner />
+              <div
+                className="flex overflow-hidden text-text-primary"
+                style={{
+                  height: `calc(100dvh - ${CLIENT_BANNER_HEIGHT}px)`,
+                  marginTop: CLIENT_BANNER_HEIGHT,
+                  paddingBottom: 'env(safe-area-inset-bottom)',
+                }}
+              >
+                <div className="hidden md:flex">
+                  <OrgRail />
+                </div>
+                <ClientSidebar mobileOpen={navOpen} onClose={() => setNavOpen(false)} />
+                <main className="relative flex-1 overflow-y-auto overflow-x-hidden overscroll-none">
+                  <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-bg/85 px-4 backdrop-blur sm:px-8">
+                    <button
+                      type="button"
+                      onClick={() => setNavOpen(true)}
+                      aria-label="Ouvrir le menu"
+                      className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary md:hidden"
+                    >
+                      <Menu size={18} strokeWidth={1.75} />
+                    </button>
+                    <span className="truncate font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
+                      {support?.orgName ?? ''}
+                    </span>
+                    <div className="ml-auto flex items-center gap-2">
+                      <SyncStatusIndicator />
+                    </div>
+                  </header>
+                  <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8">
+                    <motion.div
+                      key={location.pathname}
+                      variants={variantsForPath(location.pathname)}
+                      initial="initial"
+                      animate="animate"
+                    >
+                      <Outlet />
+                    </motion.div>
+                  </div>
+                </main>
+              </div>
+            </TagProvider>
+          </UndoProvider>
+        </ToastProvider>
+        </ProfilesProvider>
+      </SyncProvider>
+    </ClientViewProvider>
+  );
+}

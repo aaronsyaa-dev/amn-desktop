@@ -250,6 +250,18 @@ export function useRemoteSites(): RemoteSitesContextValue {
   return context;
 }
 
+/**
+ * Variante qui ne lève pas quand le fournisseur est absent.
+ *
+ * Le contexte client monte les écrans partagés SANS parc de sites — une cliente
+ * n'en a pas. La couture `@edition/exclusive` a quand même besoin d'appeler ce
+ * hook inconditionnellement (règle des hooks) avant de décider qu'elle n'en
+ * fera rien : d'où cette version qui répond `null` au lieu d'exploser.
+ */
+export function useRemoteSitesOptional(): RemoteSitesContextValue | null {
+  return useContext(RemoteSitesContext) ?? null;
+}
+
 /** Convenience: a single site by id (undefined while loading/not found). */
 export function useRemoteSite(siteId: string | undefined): DerivedSite | undefined {
   const { sites } = useRemoteSites();

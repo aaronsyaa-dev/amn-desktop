@@ -71,6 +71,41 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
 
 const MIRROR_PREFIX = 'amn.sync.';
 
+/**
+ * Le miroir local est indexé par CONTEXTE, pas seulement par poste.
+ *
+ * Tant qu'AMN Desktop ne voyait qu'une organisation, `amn.sync.<collection>`
+ * suffisait. Depuis le contexte client, le même poste lit tour à tour le
+ * dossier d'AMN DevSec et celui d'une cliente : sans préfixe, les deux se
+ * mélangeraient dans le même miroir — les tâches de la cliente réapparaîtraient
+ * chez nous à la sortie, et les nôtres chez elle à l'entrée, le temps que la
+ * première synchro les remplace. C'est exactement la fuite que le contexte
+ * client doit rendre impossible.
+ *
+ * Le contexte par défaut garde les clés historiques : une mise à jour ne doit
+ * pas repartir d'un miroir vide sur les postes existants (visible tout de suite
+ * si amn-api est injoignable au premier lancement).
+ */
+function mirrorKey(scope: string | undefined, collection: string): string {
+  return scope ? `${MIRROR_PREFIX}ctx-${scope}.${collection}` : MIRROR_PREFIX + collection;
+}
+
+/**
+ * Efface le miroir d'un contexte client. Appelé en quittant : les données d'une
+ * cliente n'ont pas à rester sur le disque de l'opérateur une fois la porte
+ * refermée.
+ */
+export function purgeContextMirror(scope: string): void {
+  try {
+    const prefix = `${MIRROR_PREFIX}ctx-${scope}.`;
+    for (const key of Object.keys(window.localStorage)) {
+      if (key.startsWith(prefix)) window.localStorage.removeItem(key);
+    }
+  } catch {
+    /* quota / mode privé — rien à faire de plus */
+  }
+}
+
 type CollectionMap = Record<string, RemoteRecord>; // id -> record (incl. tombstones)
 type Store = Record<string, CollectionMap>; // collection -> map
 
@@ -104,18 +139,18 @@ export function stripMeta<T extends { id: string; updatedAt: string }>(
   return rest;
 }
 
-function readMirror(collection: string): RemoteRecord[] {
+function readMirror(scope: string | undefined, collection: string): RemoteRecord[] {
   try {
-    const raw = window.localStorage.getItem(MIRROR_PREFIX + collection);
+    const raw = window.localStorage.getItem(mirrorKey(scope, collection));
     return raw ? (JSON.parse(raw) as RemoteRecord[]) : [];
   } catch {
     return [];
   }
 }
 
-function writeMirror(collection: string, records: RemoteRecord[]): void {
+function writeMirror(scope: string | undefined, collection: string, records: RemoteRecord[]): void {
   try {
-    window.localStorage.setItem(MIRROR_PREFIX + collection, JSON.stringify(records));
+    window.localStorage.setItem(mirrorKey(scope, collection), JSON.stringify(records));
   } catch {
     /* quota — ignore, memory state stays authoritative for this session */
   }
@@ -172,11 +207,23 @@ export interface RemoteChange {
 
 const SyncContext = createContext<SyncContextValue | undefined>(undefined);
 
-export function SyncProvider({ children }: { children: React.ReactNode }) {
+export function SyncProvider({
+  children,
+  scope,
+}: {
+  children: React.ReactNode;
+  /**
+   * Identifiant du contexte dont ce fournisseur tient le miroir. Absent pour
+   * l'organisation de l'opérateur ; l'identifiant de l'organisation cliente
+   * dans un contexte client. Le fournisseur est remonté (via une `key`) quand
+   * il change, donc il n'a pas à gérer de transition.
+   */
+  scope?: string;
+}) {
   const { user } = useAuth();
   const [store, setStore] = useState<Store>(() => {
     const initial: Store = {};
-    for (const c of SYNCED_COLLECTIONS) initial[c] = toMap(readMirror(c));
+    for (const c of SYNCED_COLLECTIONS) initial[c] = toMap(readMirror(scope, c));
     return initial;
   });
   const storeRef = useRef(store);
@@ -199,15 +246,18 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Apply a batch of records to a collection: merge, persist mirror, set state.
-  const applyRecords = useCallback((collection: string, incoming: RemoteRecord[]) => {
-    setStore((prev) => {
-      let map = prev[collection] ?? {};
-      for (const r of incoming) map = mergeRecord(map, r);
-      const next = { ...prev, [collection]: map };
-      writeMirror(collection, Object.values(map));
-      return next;
-    });
-  }, []);
+  const applyRecords = useCallback(
+    (collection: string, incoming: RemoteRecord[]) => {
+      setStore((prev) => {
+        let map = prev[collection] ?? {};
+        for (const r of incoming) map = mergeRecord(map, r);
+        const next = { ...prev, [collection]: map };
+        writeMirror(scope, collection, Object.values(map));
+        return next;
+      });
+    },
+    [scope],
+  );
 
   // Tell the main process / remote client who is signed in (presence + attribution).
   useEffect(() => {

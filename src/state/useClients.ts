@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { bridge } from '../lib/bridge';
 import { useSync, useCollection } from './SyncContext';
+import { useClientView } from './ClientViewContext';
 import type {
   AddClientEventInput,
   Client,
@@ -115,8 +116,14 @@ export function useClients() {
   const importedRef = useRef(false);
   const rowsRef = useRef({ clients: clientRows, quotes: quoteRows });
   rowsRef.current = { clients: clientRows, quotes: quoteRows };
+  // Le magasin hérité est celui de CE poste — nos fiches, dans notre base
+  // SQLite locale ou notre localStorage. L'importer depuis le dossier d'une
+  // cliente y déverserait nos clients à nous : une migration devenue une fuite.
+  // Elle n'a de sens que dans notre propre organisation.
+  const clientView = useClientView();
   useEffect(() => {
     if (importedRef.current) return;
+    if (clientView) return;
     if (!ready) return;
     if (configured && pullFailed) return;
     importedRef.current = true;
@@ -152,7 +159,7 @@ export function useClients() {
     // Deliberately keyed on readiness only: this must run once per session, not
     // every time the collection updates — which it does, since it writes to it.
     // `clientRows`/`quoteRows` are read through refs above for the same reason.
-  }, [ready, configured, pullFailed, upsert]);
+  }, [ready, configured, pullFailed, upsert, clientView]);
 
   const createClient = useCallback(
     async (input: CreateClientInput): Promise<Client> => {

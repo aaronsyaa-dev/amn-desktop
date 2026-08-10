@@ -1,13 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Activity, BarChart3, Check, ChevronDown, Copy, Download, Globe, Layers, Radar, Settings2, Terminal } from 'lucide-react';
+import { Activity, ArrowRight, BarChart3, Check, ChevronDown, Copy, Download, Globe, Layers, MonitorDot, Radar, Settings2, Terminal } from 'lucide-react';
 import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
 import { useTrackers } from '../state/useTrackers';
 import { TRACKER_MODULES, moduleByKey, modulesByKeys, type TrackerModule } from '../data/trackerModules';
 import { MaturityBadge } from '../components/tracker/MaturityBadge';
 import { InstallWizard } from '../components/tracker/InstallWizard';
-import { SocDesk } from '../components/tracker/SocDesk';
 import { ConfirmDelete } from '../components/ConfirmDelete';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { relativeTime } from '../lib/time';
@@ -67,9 +66,30 @@ export function TrackerScreen() {
         </div>
       </StaggerItem>
 
-      {/* Cross-site SOC desk (BLOC 4) */}
+      {/*
+        Le bureau SOC (mur d'incidents, origine des visiteurs, heatmap) vivait
+        ici, coincé entre le catalogue de modules et la liste des sites —
+        c'est-à-dire à l'endroit où personne n'allait le regarder. Il est
+        désormais en tête de la Tour de contrôle, dont il est le sujet. Cet
+        écran redevient ce qu'il est : le catalogue et l'état d'installation
+        des trackers, site par site.
+      */}
       <StaggerItem>
-        <SocDesk />
+        <Link
+          to="/tour"
+          className="elev-hover flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 transition-colors hover:border-border-strong"
+        >
+          <MonitorDot size={17} strokeWidth={1.75} className="flex-shrink-0 text-text-secondary" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium text-text-primary">
+              Mur d’incidents, visiteurs et activité horaire
+            </span>
+            <span className="block text-[11px] text-text-muted">
+              Ouvrir la Tour de contrôle
+            </span>
+          </span>
+          <ArrowRight size={15} strokeWidth={2} className="flex-shrink-0 text-text-muted" />
+        </Link>
       </StaggerItem>
 
       {/* Modular catalog */}

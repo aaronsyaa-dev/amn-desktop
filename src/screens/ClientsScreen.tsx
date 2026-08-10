@@ -6,7 +6,7 @@ import { useClients } from '../state/useClients';
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import type { DerivedSite } from '../state/RemoteSitesContext';
-import { QUOTE_OFFERS, SITES_ENABLED, useLinkedSites, useSitePanelLink } from '@edition/exclusive';
+import { useExclusive, useLinkedSites, useSitePanelLink } from '@edition/exclusive';
 import { StatusBadge } from '../components/StatusBadge';
 import {
   computeClientHealth,
@@ -320,6 +320,7 @@ function ClientDetail({
   onRemoveQuote: (id: number) => Promise<void>;
   onRemoveClient: (id: number) => Promise<void>;
 }) {
+  const { SITES_ENABLED } = useExclusive();
   return (
     <div className="min-h-0 overflow-y-auto border border-border bg-surface">
       <ClientHeader client={client} sites={sites} onPatch={onPatch} onRemove={onRemoveClient} />
@@ -803,6 +804,7 @@ function QuoteRow({
   onPrint: () => void;
   onRemove: () => void;
 }) {
+  const { QUOTE_OFFERS } = useExclusive();
   const offer = QUOTE_OFFERS.find((o) => o.id === quote.trackerTier);
   const statusMeta = QUOTE_STATUS_META[quote.status];
   const paymentMeta = PAYMENT_META[quote.paymentStatus];
@@ -875,6 +877,7 @@ function NewQuoteModal({
   onClose: () => void;
   onCreate: (input: CreateQuoteInput) => Promise<Quote>;
 }) {
+  const { QUOTE_OFFERS } = useExclusive();
   const [step, setStep] = useState(0);
   const [trackerTier, setTrackerTier] = useState(QUOTE_OFFERS[0]?.id ?? '');
   const [priceEuro, setPriceEuro] = useState('');

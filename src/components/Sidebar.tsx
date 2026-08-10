@@ -2,8 +2,10 @@ import React, { useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  Check,
   ChevronsLeft,
   ChevronsRight,
+  ChevronDown,
   LayoutGrid,
   LogOut,
 } from 'lucide-react';
@@ -11,10 +13,11 @@ import { useAuth } from '../auth/AuthContext';
 import { useRemoteSites } from '../state/RemoteSitesContext';
 import { useActivity } from '../state/ActivityContext';
 import { StatusBadge } from './StatusBadge';
-import { Logo, LogoMark } from './Logo';
 import { useSitePanel } from './site-panel/SitePanelContext';
 import { AppLauncher } from './AppLauncher';
+import { OrgSwitchButton } from './org-rail/OrgSwitchButton';
 import { NAV_ITEMS, type NavItem } from '../data/navigation';
+import { SPACES, itemsForSpace, spaceByKey, spaceForPath } from '../data/spaces';
 import { useNavFavorites } from '../state/useNavFavorites';
 
 const COLLAPSED_WIDTH = 72;
@@ -22,10 +25,19 @@ const EXPANDED_WIDTH = 224;
 const TRANSITION = { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const };
 
 /**
- * The sidebar no longer lists every screen (BLOC C). It shows a short pinned
- * strip plus a launcher: that is what stops it from growing a row taller with
- * every product shipped — its height no longer depends on how many modules
- * exist. The full grid lives in AppLauncher.
+ * La navigation de l'espace courant.
+ *
+ * Elle ne liste plus tous les écrans (BLOC C) et, depuis la refonte, elle ne
+ * liste plus non plus tous les ESPACES : le sélecteur en tête décide lequel des
+ * deux — Poste de travail ou Tour de contrôle — occupe la colonne. C'est le
+ * point de la refonte : le travail quotidien et la supervision transverse ne se
+ * mélangent plus dans une même liste plate.
+ *
+ * Les deux espaces n'ont pas la même forme de navigation, et c'est délibéré :
+ *   - le Poste de travail garde la bande épinglée + le lanceur, parce que sa
+ *     liste est longue et personnelle ;
+ *   - la Tour de contrôle affiche ses modules en entier, parce qu'ils sont peu
+ *     nombreux, fixes, et qu'on veut les voir tous d'un coup d'œil.
  */
 export function Sidebar({
   mobileOpen = false,
@@ -78,10 +90,21 @@ export function Sidebar({
     if (dx < -45) onClose?.();
   };
 
+  // L'espace courant se lit dans l'URL : arriver sur `/scanner` par la palette
+  // de commandes ou par une notification doit basculer la colonne, sans que
+  // l'appelant ait à y penser.
+  const space = spaceForPath(location.pathname);
+  const spaceItems = itemsForSpace(space);
+
   // The pinned modules, in the catalogue's own order so the strip never
   // reshuffles itself under the cursor. An unknown key (a module removed since
   // the choice was made) is dropped rather than rendered as a dead row.
-  const pinnedItems: NavItem[] = NAV_ITEMS.filter((item) => favorites.includes(item.key));
+  // Restreint à l'espace courant : une épingle posée dans un espace n'a pas à
+  // apparaître dans l'autre.
+  const pinnedItems: NavItem[] =
+    space === 'control'
+      ? spaceItems
+      : NAV_ITEMS.filter((item) => favorites.includes(item.key) && spaceItems.includes(item));
 
   // One nav row. Shared by both sections (workspace + produits) so the badge,
   // active indicator and collapsed/expanded behaviour stay identical.
@@ -206,31 +229,20 @@ export function Sidebar({
         } md:translate-x-0`}
         style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
       >
-        <div className="mb-2 flex h-9 items-center px-4">
-          <AnimatePresence mode="wait" initial={false}>
-            {isExpanded ? (
-              <motion.div
-                key="wordmark"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-              >
-                <Logo height={36} showTagline showAppName />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="mark"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-              >
-                <LogoMark size={34} />
-              </motion.div>
-            )}
-          </AnimatePresence>
+        {/* Mobile uniquement : le rail est masqué sous `md`, cette ligne le
+            remplace pour que changer d'organisation reste possible. */}
+        <div className="px-3 md:hidden">
+          <OrgSwitchButton onNavigate={onClose} />
         </div>
+
+        <SpaceSwitcher
+          expanded={isExpanded}
+          onNavigate={() => {
+            setIsSitesFlyoutOpen(false);
+            setLauncherOpen(false);
+            onClose?.();
+          }}
+        />
 
         {/* The nav scrolls only when the window is genuinely too short. The
             native scrollbar is hidden and replaced by a mask that fades the
@@ -241,24 +253,29 @@ export function Sidebar({
         <nav className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3">
           {pinnedItems.map(renderNavItem)}
 
-          <button
-            type="button"
-            onClick={() => setLauncherOpen(true)}
-            title={!isExpanded ? 'Tous les modules' : undefined}
-            aria-label="Tous les modules"
-            aria-haspopup="dialog"
-            aria-expanded={isLauncherOpen}
-            className={`group mt-1 flex items-center gap-3 rounded-lg py-1.5 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary ${
-              isExpanded ? 'px-3' : 'justify-center px-0'
-            }`}
-          >
-            <span className="relative transition-transform duration-200 group-hover:scale-105">
-              <LayoutGrid size={20} strokeWidth={1.75} />
-            </span>
-            {isExpanded && (
-              <span className="select-none whitespace-nowrap">Tous les modules</span>
-            )}
-          </button>
+          {/* La Tour de contrôle affiche déjà tous ses modules : un bouton
+              « tous les modules » y ouvrirait la même liste que celle qu'on
+              regarde. */}
+          {space === 'workspace' && (
+            <button
+              type="button"
+              onClick={() => setLauncherOpen(true)}
+              title={!isExpanded ? 'Tous les modules' : undefined}
+              aria-label="Tous les modules"
+              aria-haspopup="dialog"
+              aria-expanded={isLauncherOpen}
+              className={`group mt-1 flex items-center gap-3 rounded-lg py-1.5 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary ${
+                isExpanded ? 'px-3' : 'justify-center px-0'
+              }`}
+            >
+              <span className="relative transition-transform duration-200 group-hover:scale-105">
+                <LayoutGrid size={20} strokeWidth={1.75} />
+              </span>
+              {isExpanded && (
+                <span className="select-none whitespace-nowrap">Tous les modules</span>
+              )}
+            </button>
+          )}
         </nav>
 
         <div className="mt-auto flex flex-col gap-1 border-t border-border px-3 pt-2">
@@ -294,7 +311,7 @@ export function Sidebar({
         </div>
       </motion.aside>
 
-      <AppLauncher open={isLauncherOpen} onClose={() => setLauncherOpen(false)} />
+      <AppLauncher open={isLauncherOpen} onClose={() => setLauncherOpen(false)} space={space} />
 
       <AnimatePresence>
         {isSitesFlyoutOpen && (
@@ -358,5 +375,138 @@ export function Sidebar({
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+/**
+ * Le sélecteur d'espace, en tête de la colonne.
+ *
+ * Il occupe la place qu'occupait le logo AMN — lequel n'y avait plus sa place :
+ * le rail, à gauche, dit déjà chez qui on est. Cette ligne-ci répond à l'autre
+ * question, celle qui change tout le contenu de la colonne : dans quel espace
+ * de travail suis-je ?
+ *
+ * Replié (barre étroite), il ne montre que l'icône de l'espace et bascule
+ * directement sur l'autre au clic : à deux espaces, un menu déroulant pour
+ * choisir entre deux entrées est une cérémonie inutile.
+ */
+function SpaceSwitcher({
+  expanded,
+  onNavigate,
+}: {
+  expanded: boolean;
+  onNavigate: () => void;
+}) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const current = spaceByKey(spaceForPath(location.pathname));
+  const CurrentIcon = current.icon;
+
+  const go = (home: string) => {
+    setOpen(false);
+    onNavigate();
+    navigate(home);
+  };
+
+  return (
+    <div className="relative mb-2 px-3">
+      <button
+        type="button"
+        onClick={() => {
+          if (expanded) {
+            setOpen((v) => !v);
+            return;
+          }
+          const other = SPACES.find((s) => s.key !== current.key);
+          if (other) go(other.home);
+        }}
+        aria-haspopup={expanded ? 'menu' : undefined}
+        aria-expanded={expanded ? open : undefined}
+        title={expanded ? undefined : `${current.label} — cliquer pour changer d’espace`}
+        className={`group flex h-11 w-full items-center gap-2.5 rounded-xl border border-border bg-surface transition-colors duration-200 hover:border-border-strong ${
+          expanded ? 'px-3' : 'justify-center px-0'
+        }`}
+      >
+        <span className="flex-shrink-0 text-text-primary transition-transform duration-200 group-hover:scale-105">
+          <CurrentIcon size={18} strokeWidth={1.75} />
+        </span>
+        {expanded && (
+          <>
+            <span className="min-w-0 flex-1 text-left">
+              <span className="block truncate text-[13px] font-semibold leading-tight text-text-primary">
+                {current.label}
+              </span>
+              <span className="block font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
+                AMN DevSec
+              </span>
+            </span>
+            <ChevronDown
+              size={14}
+              strokeWidth={2}
+              className={`flex-shrink-0 text-text-muted transition-transform duration-200 ${
+                open ? 'rotate-180' : ''
+              }`}
+            />
+          </>
+        )}
+      </button>
+
+      <AnimatePresence>
+        {open && expanded && (
+          <React.Fragment key="space-menu">
+            <motion.div
+              key="space-menu-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={() => setOpen(false)}
+              className="fixed inset-0 z-40"
+            />
+            <motion.div
+              key="space-menu-panel"
+              role="menu"
+              initial={{ opacity: 0, y: -6, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -4, scale: 0.99 }}
+              transition={TRANSITION}
+              className="elev-2 absolute left-3 right-3 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-border bg-surface"
+            >
+              {SPACES.map((space) => {
+                const Icon = space.icon;
+                const active = space.key === current.key;
+                return (
+                  <button
+                    key={space.key}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => go(space.home)}
+                    className={`flex w-full items-start gap-2.5 px-3 py-2.5 text-left transition-colors ${
+                      active ? 'bg-accent-muted' : 'hover:bg-surface-hover'
+                    }`}
+                  >
+                    <span className="mt-0.5 flex-shrink-0 text-text-primary">
+                      <Icon size={16} strokeWidth={1.75} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13px] font-medium text-text-primary">
+                        {space.label}
+                      </span>
+                      <span className="block text-[11px] leading-snug text-text-muted">
+                        {space.hint}
+                      </span>
+                    </span>
+                    {active && (
+                      <Check size={14} strokeWidth={2} className="mt-0.5 flex-shrink-0 text-text-secondary" />
+                    )}
+                  </button>
+                );
+              })}
+            </motion.div>
+          </React.Fragment>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

@@ -17,7 +17,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useNotes, type Note } from '../state/useNotes';
-import { TEAM_ENABLED } from '@edition/exclusive';
+import { useExclusive } from '@edition/exclusive';
 import { useUndo } from '../state/UndoContext';
 import { SaveIndicator } from '../components/SaveIndicator';
 import { Markdown } from '../lib/markdown';
@@ -27,6 +27,7 @@ import { relativeTime } from '../lib/time';
 type ScopeFilter = 'all' | 'team' | 'personal';
 
 export function NotesScreen() {
+  const { TEAM_ENABLED } = useExclusive();
   const { notes, createNote, updateNote, togglePin, deleteNote } = useNotes();
   const { isPending, scheduleDelete } = useUndo();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -259,6 +260,7 @@ function NoteEditor({
     });
   };
 
+  const { TEAM_ENABLED } = useExclusive();
   const codeBlock = () => {
     const el = bodyRef.current;
     if (!el) return;
