@@ -23,6 +23,7 @@ import { SyncActivityNotifier } from './SyncActivityNotifier';
 import { RegressionNotifier } from './RegressionNotifier';
 import { IdleScreensaver } from './IdleScreensaver';
 import { WelcomeOverlay, shouldShowWelcome } from './WelcomeOverlay';
+import { LocalSessionBanner } from '../auth/LocalSessionBanner';
 import { UpdateNotice } from './UpdateNotice';
 import { UpdateReady } from './UpdateReady';
 import { variantsForPath } from '../lib/transitions';
@@ -97,13 +98,17 @@ export function AppLayout() {
               // keyboard (via viewport interactive-widget=resizes-content) shrink
               // the layout, keeping bottom-anchored inputs (chat composer) above
               // the keyboard. Identical to 100vh on desktop.
-              className="flex h-[100dvh] overflow-hidden text-text-primary"
+              className="flex h-[100dvh] flex-col overflow-hidden text-text-primary"
               // Respect the iPhone notch / home indicator when installed as a PWA.
               style={{
                 paddingTop: 'env(safe-area-inset-top)',
                 paddingBottom: 'env(safe-area-inset-bottom)',
               }}
             >
+              {/* Réservé dans le flux, jamais superposé : recouvrir la barre du
+                  haut rendrait le bouton du menu inatteignable sur téléphone. */}
+              <LocalSessionBanner />
+              <div className="flex min-h-0 flex-1">
               {/* Le rail des organisations, toujours à gauche de tout le reste.
                   Masqué sous `md` : sur un téléphone, la colonne d'icônes et le
                   tiroir de navigation ne tiennent pas côte à côte — le
@@ -133,6 +138,7 @@ export function AppLayout() {
                   </motion.div>
                 </div>
               </main>
+              </div>
             </div>
               <CallOverlay />
               <SiteDetailPanel />
