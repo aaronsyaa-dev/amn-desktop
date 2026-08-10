@@ -56,7 +56,19 @@ function countryFlag(code: string): string {
   return String.fromCodePoint(...[...code].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
 }
 
-export function SocDesk() {
+export function SocDesk({
+  /**
+   * Afficher le badge de sécurité à intégrer sous le mur.
+   *
+   * La Tour de contrôle le rend elle-même, tout en bas : c'est un outil qu'on
+   * ouvre une fois par site, et il n'a rien à faire entre le mur d'incidents et
+   * la vue d'ensemble des clientes — les deux choses qu'on vient réellement
+   * regarder.
+   */
+  withBadgeExport = true,
+}: {
+  withBadgeExport?: boolean;
+} = {}) {
   const [days, setDays] = useState<(typeof WINDOWS)[number]>(7);
   const [overview, setOverview] = useState<OrgOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -399,9 +411,27 @@ export function SocDesk() {
         </div>
       </section>
 
-      <BadgeExport sites={sites} />
+      {withBadgeExport && <BadgeExport sites={sites} />}
     </div>
   );
+}
+
+/** Le badge, rendu séparément par la Tour de contrôle (voir `withBadgeExport`). */
+export function SiteBadgeExport() {
+  const [sites, setSites] = useState<OrgOverview['sites']>([]);
+  useEffect(() => {
+    let active = true;
+    bridge()
+      .remote.getOrgOverview(7)
+      .then((data) => {
+        if (active) setSites(data.sites);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
+  return <BadgeExport sites={sites} />;
 }
 
 /**

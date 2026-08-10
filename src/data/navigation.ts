@@ -24,9 +24,18 @@ export interface NavItem {
   hint: string;
 }
 
+/**
+ * Les deux espaces de l'édition interne. L'édition Business n'en a qu'un et ne
+ * renseigne donc jamais ce champ — voir `src/data/spaces.ts`, qui traite
+ * l'absence comme « Poste de travail ».
+ */
+export type SpaceKey = 'workspace' | 'control';
+
 export interface NavSection {
   key: string;
   label: string;
+  /** Espace auquel appartient la section. Absent = Poste de travail. */
+  space?: SpaceKey;
   items: NavItem[];
 }
 

@@ -39,6 +39,108 @@ export interface OrgIdentity {
   id: string;
   name: string;
   plan: OrgPlan;
+  /** Logo en data-URL, ou absent/`null` — le rail retombe alors sur les initiales. */
+  logoDataUrl?: string | null;
+}
+
+export type OrgStatus = 'active' | 'suspended';
+
+/**
+ * Une organisation vue depuis la console AMN DevSec (`GET /v1/admin/organizations`).
+ *
+ * C'est ce qui alimente le rail et le panneau « Organisations clientes » de la
+ * Tour de contrôle : le nom et le logo pour la reconnaître, le statut pour
+ * savoir si elle tourne, le compte d'utilisateurs et la dernière activité pour
+ * savoir si elle vit. Rien de son travail — la console ne le lit pas.
+ */
+export interface AdminOrganization {
+  id: string;
+  name: string;
+  plan: OrgPlan;
+  status: OrgStatus;
+  logoDataUrl: string | null;
+  userCount: number;
+  /** ISO, ou null si l'organisation n'a encore rien produit. */
+  lastActivityAt: string | null;
+  createdAt: string;
+}
+
+/** Un compte d'une organisation cliente, tel que le rend la console. */
+export interface AdminOrgUser {
+  id: string;
+  email: string;
+  role: 'owner' | 'admin' | 'member';
+  status: 'invited' | 'active' | 'suspended';
+  invitedAt: string | null;
+  joinedAt: string | null;
+}
+
+export interface CreateOrganizationInput {
+  /** Raison sociale — apparaît dans l'app de la cliente ET sur ses devis. */
+  name: string;
+  ownerEmail: string;
+  plan: OrgPlan;
+  /** Logo déjà redimensionné, en data-URL. Vide = initiales. */
+  logoDataUrl?: string;
+}
+
+/**
+ * Ce que rend la création d'une organisation. Le jeton d'invitation n'est
+ * affiché qu'UNE fois — amn-api n'en garde que l'empreinte.
+ */
+export interface CreateOrganizationResult {
+  organization: AdminOrganization;
+  owner: { id: string; email: string; role: string; status: string } | null;
+  invitation: { token: string; expiresAt: string } | null;
+}
+
+export interface OrgInvitationResult {
+  user: AdminOrgUser;
+  invitation: { token: string; expiresAt: string };
+}
+
+export interface TempPasswordResult {
+  user: { id: string; email: string; role: string; status: string };
+  /** En clair, une seule fois : seule l'empreinte est stockée côté serveur. */
+  password: string;
+}
+
+/** Ce qu'AMN DevSec a fait sur le dossier d'une cliente, et quand. */
+export type OrgAccessAction = 'enter' | 'leave' | 'suspend' | 'reactivate' | 'invite' | 'password';
+
+export interface OrgAccessEntry {
+  id: number;
+  orgId: string;
+  orgName: string;
+  actorEmail: string;
+  action: OrgAccessAction;
+  detail: string | null;
+  createdAt: string;
+}
+
+/**
+ * Le contexte client actif — ce que l'app affiche dans son bandeau permanent.
+ *
+ * Rendu par `support.enter()` ET par `support.restore()`, cette seconde voie
+ * étant celle qui compte : le bandeau doit revenir tel quel après un
+ * redémarrage de l'app, sinon « non masquable » ne veut rien dire.
+ */
+export interface SupportContext {
+  orgId: string;
+  orgName: string;
+  plan: OrgPlan;
+  status: OrgStatus;
+  logoDataUrl: string | null;
+  /** L'opérateur AMN DevSec au nom de qui l'accès est ouvert. */
+  actorEmail: string;
+  /** ISO — au-delà, amn-api refuse le jeton et l'app quitte le contexte. */
+  expiresAt: string;
+}
+
+/** Une session de support fraîchement ouverte : le contexte + son jeton. */
+export interface SupportSession {
+  token: string;
+  context: SupportContext;
 }
 
 export interface RemoteSessionUser {
@@ -1144,6 +1246,54 @@ export interface AmnBridge {
     /** Live scan progress pushed from amn-api. Returns an unsubscribe function. */
     onScanProgress(callback: (progress: ScanProgress) => void): () => void;
 
+    /* --- Console AMN DevSec (organisations clientes) --- */
+    /**
+     * La console inter-organisations d'amn-api. Ces appels partent TOUJOURS
+     * avec le justificatif propre de l'opérateur, même quand l'app est dans
+     * un contexte client : administrer une organisation et travailler dans son
+     * dossier sont deux gestes différents, et amn-api refuse d'ailleurs le
+     * second jeton sur ces routes.
+     */
+    admin: {
+      listOrganizations(): Promise<AdminOrganization[]>;
+      createOrganization(input: CreateOrganizationInput): Promise<CreateOrganizationResult>;
+      updateOrganization(
+        id: string,
+        patch: { name?: string; logoDataUrl?: string | null },
+      ): Promise<AdminOrganization>;
+      setOrganizationStatus(id: string, status: OrgStatus): Promise<AdminOrganization>;
+      listUsers(orgId: string): Promise<AdminOrgUser[]>;
+      /** Réémet un lien d'activation (7 jours, usage unique). */
+      reissueInvitation(orgId: string, email: string, role?: string): Promise<OrgInvitationResult>;
+      /** Remet un mot de passe temporaire, affiché une seule fois. */
+      resetPassword(orgId: string, userId: string): Promise<TempPasswordResult>;
+      /** Journal des accès au dossier des clientes (Tour de contrôle). */
+      accessLog(opts?: { orgId?: string; limit?: number }): Promise<OrgAccessEntry[]>;
+    };
+
+    /* --- Contexte client (session de support) --- */
+    /**
+     * Bascule le justificatif de TOUTE l'app (requêtes et WebSocket) sur une
+     * organisation cliente, ou l'en fait revenir.
+     *
+     * C'est volontairement le pont qui porte cette bascule, et pas seulement le
+     * renderer : le jeton de support doit gouverner le flux temps réel autant
+     * que les requêtes, sinon l'app afficherait le dossier de la cliente tout
+     * en recevant en direct les enregistrements d'AMN DevSec.
+     */
+    support: {
+      /** Ouvre l'accès (journalisé côté serveur) et l'applique aussitôt. */
+      enter(orgId: string): Promise<SupportSession>;
+      /**
+       * Réapplique un jeton conservé au redémarrage, en le revalidant auprès
+       * d'amn-api. `null` si le jeton a expiré ou été révoqué — l'app revient
+       * alors à AMN DevSec plutôt que d'afficher un bandeau qui ment.
+       */
+      restore(token: string): Promise<SupportContext | null>;
+      /** Referme l'accès côté serveur et revient à AMN DevSec. */
+      leave(token: string): Promise<void>;
+    };
+
     /* --- Comply (RGPD) --- */
     /**
      * Queues an RGPD conformity check of `url`. Same shape as {@link startScan}:
@@ -1302,6 +1452,17 @@ export const IPC = {
   remoteCreateSchedule: 'remote:createSchedule',
   remoteDeleteSchedule: 'remote:deleteSchedule',
   remoteProductRegressionPush: 'remote:productRegressionPush',
+  remoteAdminListOrgs: 'remote:adminListOrgs',
+  remoteAdminCreateOrg: 'remote:adminCreateOrg',
+  remoteAdminUpdateOrg: 'remote:adminUpdateOrg',
+  remoteAdminSetOrgStatus: 'remote:adminSetOrgStatus',
+  remoteAdminListUsers: 'remote:adminListUsers',
+  remoteAdminReissueInvitation: 'remote:adminReissueInvitation',
+  remoteAdminResetPassword: 'remote:adminResetPassword',
+  remoteAdminAccessLog: 'remote:adminAccessLog',
+  remoteSupportEnter: 'remote:supportEnter',
+  remoteSupportRestore: 'remote:supportRestore',
+  remoteSupportLeave: 'remote:supportLeave',
   remoteGetOrgOverview: 'remote:getOrgOverview',
   remoteGetSiteBadge: 'remote:getSiteBadge',
   remoteSendCallSignal: 'remote:sendCallSignal',

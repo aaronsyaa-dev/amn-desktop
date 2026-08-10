@@ -42,8 +42,25 @@ interface StoredSession {
 
 interface AuthContextValue {
   user: User | null;
-  /** Organisation amn-api de la session. `null` sur une connexion locale interne. */
+  /**
+   * L'organisation POUR LAQUELLE l'app travaille en ce moment.
+   *
+   * Normalement celle de la session. Dans un contexte client, c'est celle de la
+   * cliente : `OrgContextProvider` la substitue ici en entrant, et la retire en
+   * sortant. La substitution vit à cet endroit précis parce que c'est ce que
+   * `org` a toujours voulu dire pour ses lecteurs — le nom affiché en tête de
+   * l'accueil, l'émetteur d'un devis imprimé, l'organisation des Paramètres.
+   * Sans elle, un devis imprimé depuis le dossier d'une cliente porterait
+   * « AMN DevSec » en émetteur, sur un document qu'elle envoie à SES clients.
+   *
+   * `null` sur une connexion locale interne (repli hors ligne).
+   */
   org: OrgIdentity | null;
+  /**
+   * Substitue l'organisation courante (contexte client), ou la rend (`null`).
+   * Appelé par `OrgContextProvider` ; personne d'autre n'a de raison de le faire.
+   */
+  overrideOrg: (org: OrgIdentity | null) => void;
   isAuthenticated: boolean;
   /**
    * Vrai tant que la session stockée n'a pas été revalidée auprès d'amn-api.
@@ -82,7 +99,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(
     () => stored?.user ?? read<User>(AUTH_STORAGE_KEY),
   );
-  const [org, setOrg] = useState<OrgIdentity | null>(() => stored?.org ?? null);
+  const [sessionOrg, setOrg] = useState<OrgIdentity | null>(() => stored?.org ?? null);
+  // Organisation substituée par un contexte client. Volontairement PAS
+  // persistée : elle est reconstruite au démarrage par la revalidation du jeton
+  // de support, qui est la seule source qui fasse autorité.
+  const [contextOrg, setContextOrg] = useState<OrgIdentity | null>(null);
+  const org = contextOrg ?? sessionOrg;
   const [bootstrapping, setBootstrapping] = useState(() => Boolean(stored?.token));
 
   // Revalidation au démarrage. Une session expirée, un compte suspendu ou une
@@ -164,18 +186,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void bridge().remote.session.clear().catch(() => undefined);
     setUser(null);
     setOrg(null);
+    setContextOrg(null);
   }, []);
+
+  const overrideOrg = useCallback((next: OrgIdentity | null) => setContextOrg(next), []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       org,
+      overrideOrg,
       isAuthenticated: user !== null,
       bootstrapping,
       login,
       logout,
     }),
-    [user, org, bootstrapping, login, logout],
+    [user, org, overrideOrg, bootstrapping, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

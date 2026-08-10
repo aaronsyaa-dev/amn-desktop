@@ -215,7 +215,15 @@ function createBrowserRemote(): AmnBridge['remote'] {
    * visibles. Vide tant que personne ne s'est connecté.
    */
   let sessionToken = '';
-  const credential = () => sessionToken || token;
+  /**
+   * Jeton de session de SUPPORT — présent uniquement pendant qu'AMN Desktop
+   * travaille dans le dossier d'une organisation cliente. Il recouvre la
+   * session de l'opérateur sans l'effacer : la console d'administration
+   * continue de partir avec celle-ci (`ownerCredential`), comme côté Electron.
+   */
+  let supportToken = '';
+  const credential = () => supportToken || sessionToken || token;
+  const ownerCredential = () => sessionToken || token;
 
   const eventListeners = new Set<(push: RemoteEventPush) => void>();
   const statusListeners = new Set<(status: RemoteConnectionStatus) => void>();
@@ -285,12 +293,16 @@ function createBrowserRemote(): AmnBridge['remote'] {
     socket.onerror = () => socket?.close();
   }
 
-  async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  async function apiFetch<T>(
+    path: string,
+    init: RequestInit & { owner?: boolean } = {},
+  ): Promise<T> {
+    const { owner, ...request } = init;
     const res = await fetch(`${apiUrl}${path}`, {
-      ...init,
+      ...request,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${credential()}`,
+        Authorization: `Bearer ${owner ? ownerCredential() : credential()}`,
         ...init.headers,
       },
     });
@@ -333,8 +345,7 @@ function createBrowserRemote(): AmnBridge['remote'] {
    * flux temps réel resterait celui de l'organisation précédente — exactement
    * la fuite d'un tenant vers l'autre que l'isolation doit empêcher.
    */
-  function applySession(next: string | null) {
-    sessionToken = next ?? '';
+  function reconnectWithNewCredential() {
     if (!apiUrl) return;
     if (socket) {
       reconnectingOnPurpose = true;
@@ -342,6 +353,21 @@ function createBrowserRemote(): AmnBridge['remote'] {
     } else if (started) {
       connect();
     }
+  }
+
+  function applySession(next: string | null) {
+    sessionToken = next ?? '';
+    // Changer de session, c'est changer d'opérateur : un contexte client ouvert
+    // par le précédent n'a plus de titulaire et ne doit pas lui survivre.
+    supportToken = '';
+    reconnectWithNewCredential();
+  }
+
+  /** Entre dans le dossier d'une organisation cliente, ou en sort (`null`). */
+  function applySupportToken(next: string | null) {
+    if (supportToken === (next ?? '')) return;
+    supportToken = next ?? '';
+    reconnectWithNewCredential();
   }
 
   // Contexte remis à la part exclusive du pont : elle a besoin du transport,
@@ -365,6 +391,8 @@ function createBrowserRemote(): AmnBridge['remote'] {
         set?.delete(listener);
       };
     },
+    applySupportToken,
+    supportToken: () => supportToken,
   };
 
   return {

@@ -2,7 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 import { Pin, PinOff, X } from 'lucide-react';
-import { NAV_SECTIONS } from '../data/navigation';
+import type { SpaceKey } from '../data/navigation';
+import { sectionsForSpace } from '../data/spaces';
 import { useNavFavorites } from '../state/useNavFavorites';
 
 /**
@@ -29,7 +30,20 @@ const TILE = {
   shown: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.28, ease: EASE } },
 };
 
-export function AppLauncher({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function AppLauncher({
+  open,
+  onClose,
+  space = 'workspace',
+}: {
+  open: boolean;
+  onClose: () => void;
+  /**
+   * L'espace dont on ouvre la grille. Le lanceur ne montre jamais les deux à
+   * la fois : ce serait remettre dans une même surface exactement ce que la
+   * séparation en espaces vient de démêler.
+   */
+  space?: SpaceKey;
+}) {
   const location = useLocation();
   const { isFavorite, toggleFavorite } = useNavFavorites();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -111,7 +125,7 @@ export function AppLauncher({ open, onClose }: { open: boolean; onClose: () => v
             </div>
 
             <motion.div variants={GRID} initial="hidden" animate="shown" className="flex flex-col gap-6">
-              {NAV_SECTIONS.map((section) => (
+              {sectionsForSpace(space).map((section) => (
                 <div key={section.key}>
                   <p className="mb-2.5 font-mono text-[9px] uppercase tracking-[0.25em] text-text-muted">
                     {section.label}

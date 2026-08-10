@@ -30,10 +30,9 @@ import { relativeTime } from '../lib/time';
 import {
   ComplyChip,
   ComplyDetail,
-  DECISIONS_ROUTE,
-  PRODUCTS_ENABLED,
   ScanChip,
   ScanDetail,
+  useExclusive,
 } from '@edition/exclusive';
 import { scoreColor } from '../lib/scanSeverity';
 import type { ComplyCheck, Scan } from '../shared/api';
@@ -73,6 +72,7 @@ interface EditState {
 }
 
 export function ReportsScreen() {
+  const { PRODUCTS_ENABLED } = useExclusive();
   const { reports, createReport, updateReport, deleteReport } = useReports();
   const { isPending, scheduleDelete } = useUndo();
   const location = useLocation();
@@ -503,6 +503,7 @@ function ReportReader({
 
 /** A clickable reference chip navigating back to the origin entity. */
 function LinkChip({ link }: { link: ReportLink }) {
+  const { DECISIONS_ROUTE } = useExclusive();
   const navigate = useNavigate();
   const go = () => {
     if (link.kind === 'task') navigate('/tasks', { state: { openTaskId: link.id } });

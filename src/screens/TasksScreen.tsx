@@ -4,13 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Contact, FileText, Globe, MapPin, MessageSquare, Pencil, Plus, Send, Trash2, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
-import {
-  SITES_ENABLED,
-  TEAM_ENABLED,
-  TEAM_MEMBERS,
-  useLinkedSites,
-  useSitePanelLink,
-} from '@edition/exclusive';
+import { useExclusive, useLinkedSites, useSitePanelLink } from '@edition/exclusive';
 import { useSync, useCollection, uid, stripMeta } from '../state/SyncContext';
 import { useUndo } from '../state/UndoContext';
 import { UserAvatar } from '../components/UserAvatar';
@@ -43,11 +37,15 @@ function priorityMeta(p: TaskPriority | undefined) {
 }
 
 /** Pre-fills a report draft from a finished task's context (B1). */
-function taskReportDraft(task: SyncTask, nameOf: (email: string) => string): ReportDraft {
+function taskReportDraft(
+  task: SyncTask,
+  nameOf: (email: string) => string,
+  teamEnabled: boolean,
+): ReportDraft {
   const date = task.createdAt
     ? new Date(task.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
     : '';
-  const lines: string[] = TEAM_ENABLED ? [`**Assigné à :** ${nameOf(task.assigneeEmail)}`] : [];
+  const lines: string[] = teamEnabled ? [`**Assigné à :** ${nameOf(task.assigneeEmail)}`] : [];
   if (date) lines.push(`**Créée le :** ${date}`);
   lines.push('', task.detail || '_Pas de description._');
   const comments = task.comments ?? [];
@@ -317,6 +315,7 @@ function TaskCard({
   onRemoveMarker: (task: SyncTask, markerId: string) => void;
   onOpen: (id: string) => void;
 }) {
+  const { TEAM_ENABLED } = useExclusive();
   const { openSite } = useSitePanelLink();
   const { capturing, beginCapture, showMarker } = useTags();
   const { profileFor } = useProfiles();
@@ -449,7 +448,9 @@ function TaskCard({
         <button
           type="button"
           onClick={() =>
-            navigate('/reports', { state: { reportDraft: taskReportDraft(task, (e) => profileFor(e).name) } })
+            navigate('/reports', {
+              state: { reportDraft: taskReportDraft(task, (e) => profileFor(e).name, TEAM_ENABLED) },
+            })
           }
           className="mt-2 flex w-full items-center justify-center gap-1.5 border border-accent/40 bg-accent/10 py-1.5 font-mono text-[10px] uppercase tracking-wider text-accent transition-colors hover:bg-accent/20"
         >
@@ -480,6 +481,7 @@ function NewTaskModal({
   }) => void;
 }) {
   const { user } = useAuth();
+  const { TEAM_ENABLED, TEAM_MEMBERS, SITES_ENABLED } = useExclusive();
   const [title, setTitle] = useState('');
   const [detail, setDetail] = useState('');
   // Sans équipe, une tâche appartient forcément à celle qui la crée.
@@ -652,6 +654,7 @@ function TaskDetailModal({
   onRemoveMarker: (task: SyncTask, markerId: string) => void;
 }) {
   const { user } = useAuth();
+  const { TEAM_ENABLED, TEAM_MEMBERS } = useExclusive();
   const { profileFor } = useProfiles();
   const { beginCapture, showMarker } = useTags();
 

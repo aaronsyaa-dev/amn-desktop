@@ -1,5 +1,5 @@
 import WebSocket from 'ws';
-import { remoteConfig, isRemoteConfigured, apiCredential } from './remoteConfig';
+import { remoteConfig, isRemoteConfigured, apiCredential, ownerCredential } from './remoteConfig';
 import type {
   OrgIdentity,
   RemoteSession,
@@ -20,7 +20,18 @@ function log(...args: unknown[]): void {
 }
 /* eslint-enable no-console */
 
-export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+/**
+ * Un appel à amn-api.
+ *
+ * `owner: true` force le justificatif de l'opérateur au lieu du contexte
+ * courant : c'est ce qu'il faut pour la console `/v1/admin/*`, qui doit
+ * continuer de répondre alors même que l'app travaille dans le dossier d'une
+ * cliente (voir `ownerCredential`).
+ */
+export async function apiFetch<T>(
+  path: string,
+  init: RequestInit & { owner?: boolean } = {},
+): Promise<T> {
   if (!isRemoteConfigured()) {
     // Without AMN_API_URL/AMN_API_OPERATOR_TOKEN set (.env), remoteConfig.apiUrl
     // is empty and `fetch('' + path, …)` throws an opaque "Failed to parse URL"
@@ -29,11 +40,12 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
       "L'API centrale (amn-api) n'est pas configurée sur ce poste — AMN_API_URL / AMN_API_OPERATOR_TOKEN manquants dans .env. Voir docs/ARCHITECTURE.md.",
     );
   }
+  const { owner, ...request } = init;
   const res = await fetch(`${remoteConfig.apiUrl}${path}`, {
-    ...init,
+    ...request,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiCredential()}`,
+      Authorization: `Bearer ${owner ? ownerCredential() : apiCredential()}`,
       ...init.headers,
     },
   });
@@ -178,8 +190,32 @@ export class RemoteApiClient {
     });
   }
 
+  /**
+   * Entre dans le dossier d'une organisation cliente, ou en sort (`null`).
+   *
+   * La WebSocket doit se refaire dans les deux sens : elle porte le
+   * justificatif dans son URL de poignée de main, donc la laisser en place
+   * signifierait afficher le dossier de la cliente en recevant en direct les
+   * enregistrements d'AMN DevSec — ou l'inverse en sortant.
+   */
+  applySupportToken(token: string | null): void {
+    if (remoteConfig.supportToken === (token ?? '')) return;
+    remoteConfig.supportToken = token ?? '';
+    this.stopped = false;
+    if (this.ws) {
+      this.reconnectingOnPurpose = true;
+      this.ws.close();
+    } else {
+      this.connect();
+    }
+  }
+
   /** Ferme la session côté serveur puis repasse au jeton opérateur, s'il y en a un. */
   async clearSession(): Promise<void> {
+    // Se déconnecter depuis un contexte client doit refermer les deux portes.
+    // Laisser le jeton de support en place ferait rouvrir l'app, au prochain
+    // lancement, sur le dossier d'une cliente sans que personne soit connecté.
+    remoteConfig.supportToken = '';
     if (remoteConfig.sessionToken) {
       await this.publicPost('/v1/auth/logout', {}, remoteConfig.sessionToken).catch(() => {
         /* le jeton est abandonné côté client de toute façon */
@@ -221,6 +257,9 @@ export class RemoteApiClient {
    */
   private applySession(token: string | null): void {
     remoteConfig.sessionToken = token ?? '';
+    // Changer de session, c'est changer d'opérateur : un contexte client
+    // ouvert par le précédent n'a plus de titulaire et ne doit pas survivre.
+    remoteConfig.supportToken = '';
     if (!isRemoteConfigured()) {
       // Plus aucun justificatif (déconnexion sur un poste client) : on coupe.
       this.stop();

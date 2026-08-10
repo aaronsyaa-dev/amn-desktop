@@ -1,5 +1,16 @@
 import {
   IPC,
+  type AdminOrganization,
+  type AdminOrgUser,
+  type CreateOrganizationInput,
+  type CreateOrganizationResult,
+  type OrgAccessEntry,
+  type OrgIdentity,
+  type OrgInvitationResult,
+  type OrgStatus,
+  type SupportContext,
+  type SupportSession,
+  type TempPasswordResult,
   type CallSignal,
   type ComplyCheck,
   type ComplyProgress,
@@ -184,6 +195,172 @@ const exclusiveApi = {
 };
 
 /**
+ * La console inter-organisations et le contexte client.
+ *
+ * Chaque appel porte `owner: true` : ces routes sont celles d'AMN DevSec, et
+ * elles doivent répondre même quand l'app travaille dans le dossier d'une
+ * cliente — c'est depuis ce dossier qu'on suspend, qu'on réémet un accès ou
+ * qu'on ressort. amn-api refuse d'ailleurs un jeton de support sur la console,
+ * donc oublier ce drapeau se verrait tout de suite : pas de dérive silencieuse.
+ */
+const adminApi = {
+  async listOrganizations(): Promise<AdminOrganization[]> {
+    const { organizations } = await apiFetch<{ organizations: AdminOrganization[] }>(
+      '/v1/admin/organizations',
+      { owner: true },
+    );
+    return organizations;
+  },
+
+  async createOrganization(input: CreateOrganizationInput): Promise<CreateOrganizationResult> {
+    return apiFetch<CreateOrganizationResult>('/v1/admin/organizations', {
+      owner: true,
+      method: 'POST',
+      body: JSON.stringify({
+        name: input.name,
+        plan: input.plan,
+        ownerEmail: input.ownerEmail,
+        logoDataUrl: input.logoDataUrl || undefined,
+      }),
+    });
+  },
+
+  async updateOrganization(
+    id: string,
+    patch: { name?: string; logoDataUrl?: string | null },
+  ): Promise<AdminOrganization> {
+    const { organization } = await apiFetch<{ organization: AdminOrganization }>(
+      `/v1/admin/organizations/${encodeURIComponent(id)}`,
+      { owner: true, method: 'PUT', body: JSON.stringify(patch) },
+    );
+    return organization;
+  },
+
+  async setOrganizationStatus(id: string, status: OrgStatus): Promise<AdminOrganization> {
+    const { organization } = await apiFetch<{ organization: AdminOrganization }>(
+      `/v1/admin/organizations/${encodeURIComponent(id)}/status`,
+      { owner: true, method: 'PUT', body: JSON.stringify({ status }) },
+    );
+    return organization;
+  },
+
+  async listUsers(orgId: string): Promise<AdminOrgUser[]> {
+    const { users } = await apiFetch<{ users: AdminOrgUser[] }>(
+      `/v1/admin/organizations/${encodeURIComponent(orgId)}/users`,
+      { owner: true },
+    );
+    return users;
+  },
+
+  async reissueInvitation(orgId: string, email: string, role = 'owner'): Promise<OrgInvitationResult> {
+    return apiFetch<OrgInvitationResult>(
+      `/v1/admin/organizations/${encodeURIComponent(orgId)}/invitations`,
+      { owner: true, method: 'POST', body: JSON.stringify({ email, role }) },
+    );
+  },
+
+  async resetPassword(orgId: string, userId: string): Promise<TempPasswordResult> {
+    return apiFetch<TempPasswordResult>(
+      `/v1/admin/organizations/${encodeURIComponent(orgId)}/users/${encodeURIComponent(userId)}/temp-password`,
+      { owner: true, method: 'POST' },
+    );
+  },
+
+  async accessLog(opts: { orgId?: string; limit?: number } = {}): Promise<OrgAccessEntry[]> {
+    const params = new URLSearchParams();
+    if (opts.orgId) params.set('org', opts.orgId);
+    if (opts.limit) params.set('limit', String(opts.limit));
+    const qs = params.toString();
+    const { entries } = await apiFetch<{ entries: OrgAccessEntry[] }>(
+      `/v1/admin/access-log${qs ? `?${qs}` : ''}`,
+      { owner: true },
+    );
+    return entries;
+  },
+};
+
+/** Le contexte décrit par amn-api lui-même, pas par l'app. */
+function contextFrom(
+  organization: AdminOrganization | (OrgIdentity & { status?: OrgStatus }),
+  actorEmail: string,
+  expiresAt: string,
+): SupportContext {
+  return {
+    orgId: organization.id,
+    orgName: organization.name,
+    plan: organization.plan,
+    status: (organization as AdminOrganization).status ?? 'active',
+    logoDataUrl: organization.logoDataUrl ?? null,
+    actorEmail,
+    expiresAt,
+  };
+}
+
+function supportApi(remote: RemoteApiClient) {
+  return {
+    async enter(orgId: string): Promise<SupportSession> {
+      const created = await apiFetch<{
+        token: string;
+        expiresAt: string;
+        organization: AdminOrganization;
+      }>(`/v1/admin/organizations/${encodeURIComponent(orgId)}/support-session`, {
+        owner: true,
+        method: 'POST',
+      });
+      remote.applySupportToken(created.token);
+      // L'identité du porteur vient d'amn-api, pas de ce qu'on croit savoir :
+      // c'est la même source que celle qui alimentera le bandeau au prochain
+      // démarrage, donc les deux chemins ne peuvent pas diverger.
+      const me = await apiFetch<{ support: { actorEmail: string } | null }>('/v1/auth/me');
+      return {
+        token: created.token,
+        context: contextFrom(created.organization, me.support?.actorEmail ?? '', created.expiresAt),
+      };
+    },
+
+    /**
+     * Revalide un jeton conservé au démarrage. C'est LE chemin qui fait tenir la
+     * promesse du bandeau : après un redémarrage, l'app doit soit rouvrir le
+     * contexte client tel quel, soit revenir franchement à AMN DevSec — jamais
+     * afficher des écrans clients sans le bandeau qui les explique.
+     */
+    async restore(token: string): Promise<SupportContext | null> {
+      if (!token) return null;
+      const previous = remoteConfig.supportToken;
+      remoteConfig.supportToken = token;
+      try {
+        const me = await apiFetch<{
+          org: (OrgIdentity & { status?: OrgStatus }) | null;
+          support: { orgId: string; orgName: string; actorEmail: string } | null;
+        }>('/v1/auth/me');
+        if (!me.support || !me.org) throw new Error('jeton hors contexte client');
+        remote.applySupportToken(token);
+        // `expiresAt` n'est pas rendu par /v1/auth/me : amn-api tranche de
+        // toute façon à chaque appel, et une date approximative affichée dans
+        // le bandeau vaudrait moins que pas de date du tout.
+        return contextFrom(me.org, me.support.actorEmail, '');
+      } catch {
+        remoteConfig.supportToken = previous;
+        return null;
+      }
+    },
+
+    async leave(token: string): Promise<void> {
+      // On referme côté serveur AVANT de revenir : si l'appel échoue, le jeton
+      // expirera de lui-même dans l'heure, mais l'app, elle, doit sortir dans
+      // tous les cas — rester coincée dans le dossier d'une cliente parce que
+      // le réseau a hoqueté serait le pire des deux mondes.
+      await apiFetch<{ ok: boolean }>('/v1/admin/support-session', {
+        owner: true,
+        method: 'DELETE',
+        body: JSON.stringify({ token }),
+      }).catch(() => undefined);
+      remote.applySupportToken(null);
+    },
+  };
+}
+
+/**
  * Enregistre les canaux IPC des produits exclusifs et relaie leurs poussées
  * temps réel. Appelé par `registerIpcHandlers` — et remplacé par une fonction
  * vide dans l'édition Business.
@@ -230,6 +407,42 @@ export function registerExclusiveIpc(
   ipcMain.handle(IPC.remoteListScans, () => exclusiveApi.listScans());
   ipcMain.handle(IPC.remoteGetScan, (_event, id: string) => exclusiveApi.getScan(id));
   ipcMain.handle(IPC.remoteScanReportUrl, (_event, id: string) => exclusiveApi.scanReportUrl(id));
+  // Console AMN DevSec + contexte client. Absents de l'édition Business : une
+  // cliente n'a pas de console d'organisations, et surtout pas de moyen d'en
+  // ouvrir une — ces canaux n'existent tout simplement pas chez elle.
+  const support = supportApi(remote);
+  ipcMain.handle(IPC.remoteAdminListOrgs, () => adminApi.listOrganizations());
+  ipcMain.handle(IPC.remoteAdminCreateOrg, (_event, input: CreateOrganizationInput) =>
+    adminApi.createOrganization(input),
+  );
+  ipcMain.handle(
+    IPC.remoteAdminUpdateOrg,
+    (_event, payload: { id: string; patch: { name?: string; logoDataUrl?: string | null } }) =>
+      adminApi.updateOrganization(payload.id, payload.patch),
+  );
+  ipcMain.handle(
+    IPC.remoteAdminSetOrgStatus,
+    (_event, payload: { id: string; status: OrgStatus }) =>
+      adminApi.setOrganizationStatus(payload.id, payload.status),
+  );
+  ipcMain.handle(IPC.remoteAdminListUsers, (_event, orgId: string) => adminApi.listUsers(orgId));
+  ipcMain.handle(
+    IPC.remoteAdminReissueInvitation,
+    (_event, payload: { orgId: string; email: string; role?: string }) =>
+      adminApi.reissueInvitation(payload.orgId, payload.email, payload.role),
+  );
+  ipcMain.handle(
+    IPC.remoteAdminResetPassword,
+    (_event, payload: { orgId: string; userId: string }) =>
+      adminApi.resetPassword(payload.orgId, payload.userId),
+  );
+  ipcMain.handle(IPC.remoteAdminAccessLog, (_event, opts: { orgId?: string; limit?: number }) =>
+    adminApi.accessLog(opts ?? {}),
+  );
+  ipcMain.handle(IPC.remoteSupportEnter, (_event, orgId: string) => support.enter(orgId));
+  ipcMain.handle(IPC.remoteSupportRestore, (_event, token: string) => support.restore(token));
+  ipcMain.handle(IPC.remoteSupportLeave, (_event, token: string) => support.leave(token));
+
   ipcMain.handle(IPC.remoteStartComply, (_event, url: string) => exclusiveApi.startComply(url));
   ipcMain.handle(IPC.remoteListComplyChecks, () => exclusiveApi.listComplyChecks());
   ipcMain.handle(IPC.remoteGetComplyCheck, (_event, id: string) => exclusiveApi.getComplyCheck(id));

@@ -14,13 +14,15 @@ import type { AmnBridge } from '../shared/api';
  */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 export interface BrowserExclusiveContext {
-  apiFetch: <T>(path: string, init?: RequestInit) => Promise<T>;
+  apiFetch: <T>(path: string, init?: RequestInit & { owner?: boolean }) => Promise<T>;
   apiUrl: string;
   token: string;
   ensureStarted: () => void;
   socket: () => WebSocket | null;
   eventListeners: Set<unknown>;
   onFrame: (type: string, listener: (frame: Record<string, unknown>) => void) => () => void;
+  applySupportToken: (token: string | null) => void;
+  supportToken: () => string;
 }
 
 export function createBrowserExclusive(_ctx: BrowserExclusiveContext): AmnBridge['remote'] {

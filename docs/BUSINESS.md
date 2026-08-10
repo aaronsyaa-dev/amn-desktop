@@ -88,19 +88,25 @@ de l'organisation connectée en émetteur.
 
 ### 1. Créer l'organisation et son compte propriétaire
 
+**Depuis AMN Desktop** : le « + » en bas du rail, ou le bouton « Nouvelle
+organisation » de la Tour de contrôle → Organisations. Le formulaire demande la
+raison sociale, l'adresse du compte propriétaire, un logo optionnel et
+l'édition, puis affiche l'accès à remettre — mot de passe temporaire (se dicte
+au téléphone, ne périme pas) ou lien d'activation (elle choisit son mot de
+passe, 7 jours, usage unique), avec un bouton pour le copier.
+
+Le nom saisi est celui qui apparaît **dans son app et en émetteur sur ses devis
+imprimés**. Le formulaire le dit sous le champ : mettez sa vraie raison sociale,
+pas un surnom.
+
+Le script terminal reste disponible pour un usage sans interface (poste sans
+l'app installée, script de reprise) :
+
 ```sh
 AMN_API_URL=https://amn-api.onrender.com \
 AMN_API_OPERATOR_TOKEN=<jeton opérateur> \
 node scripts/create-business-org.mjs --name "Sa raison sociale" --email elle@exemple.fr
 ```
-
-Le script crée l'organisation, son propriétaire, consomme le jeton
-d'invitation et affiche un mot de passe temporaire. `--invitation-only` fait
-l'inverse : il affiche le lien d'activation et laisse la cliente choisir son
-mot de passe (valable 7 jours, à usage unique).
-
-Le nom donné en `--name` est celui qui apparaît **dans l'app et en émetteur sur
-ses devis imprimés** : mettez sa vraie raison sociale, pas un surnom.
 
 ### 2. Construire l'application
 
@@ -129,7 +135,37 @@ De vive voix, pas par email. Faites-lui changer le mot de passe dès la premièr
 connexion (Paramètres → mot de passe) : le changement passe par amn-api et
 prend effet immédiatement.
 
+## Le contexte client — voir ce que voit la cliente
+
+Cliquer sur son icône dans le rail ouvre son espace de travail : ses écrans, ses
+données, sa navigation. C'est ce qui permet de la dépanner en conditions
+réelles, au lieu de lui demander de décrire ce qu'elle voit.
+
+**Comment ça marche, en une phrase** : AMN Desktop demande à amn-api une
+*session de support* — un jeton d'une heure, limité à cette organisation,
+réservé aux membres d'AMN DevSec et journalisé côté serveur — puis bascule
+dessus le justificatif de TOUTES ses requêtes et de sa WebSocket. Le détail des
+garde-fous est dans `amn-api/README.md` ; ce qu'il faut retenir ici :
+
+- **Un bandeau permanent** occupe le haut de l'écran : « Vous consultez X en
+  tant qu'administrateur AMN DevSec ». Il n'a pas de bouton de fermeture — son
+  seul bouton met fin au contexte. Il survit à un redémarrage de l'app : le
+  jeton est conservé et revalidé au lancement, et s'il a expiré l'app revient
+  franchement à AMN DevSec plutôt que d'afficher ses écrans sans explication.
+- **Le miroir local est indexé par contexte** (`amn.sync.ctx-<org>.*`) et effacé
+  en sortant. Les données d'une cliente ne restent pas sur le poste.
+- **Aucune de nos données n'entre chez elle** : les écrans partagés basculent
+  sur leur face Business (pas de sites liés, pas d'assignation à
+  `@amn-devsec.com`, pas de catalogue Tracker dans ses devis, pas d'import du
+  magasin hérité de notre poste).
+- **Tout accès laisse une trace** : Tour de contrôle → Journal d'accès (qui,
+  quelle organisation, quand), lisible aussi depuis le panneau Administration
+  de l'organisation concernée.
+
 ## Suspendre ou réactiver une cliente
+
+Depuis l'app : Tour de contrôle → Organisations (bouton « Suspendre »), ou le
+panneau Administration à l'intérieur de son contexte. En ligne de commande :
 
 ```sh
 curl -X PUT "$AMN_API_URL/v1/admin/organizations/<id>/status" \
@@ -138,7 +174,20 @@ curl -X PUT "$AMN_API_URL/v1/admin/organizations/<id>/status" \
 ```
 
 La suspension mord à la requête suivante et coupe aussi la WebSocket. L'app
-affiche le message d'amn-api tel quel plutôt qu'une erreur opaque.
+affiche le message d'amn-api tel quel plutôt qu'une erreur opaque. Elle coupe
+aussi les sessions de support en cours : « suspendre une cliente » n'a pas
+d'exception silencieuse pour nous.
+
+## Mot de passe perdu chez une cliente
+
+Panneau Administration de son contexte → « Mot de passe temporaire » (le compte
+est activé au passage et ses sessions en cours sont révoquées) ou « Réémettre
+l'invitation » (elle choisit son mot de passe, 7 jours, usage unique). Les deux
+n'affichent leur secret **qu'une fois** : amn-api n'en garde que l'empreinte.
+
+C'était le point noir de la livraison précédente — l'invitation d'origine étant
+à usage unique et expirant en 7 jours, un mot de passe perdu n'avait aucune
+issue.
 
 ## Ce qui reste à faire
 

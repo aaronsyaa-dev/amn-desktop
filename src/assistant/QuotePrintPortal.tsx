@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Logo } from '../components/Logo';
 import { triggerPrint } from '../lib/print';
-import { QUOTE_ISSUER_TAGLINE, QUOTE_OFFERS } from '@edition/exclusive';
+import { useExclusive } from '@edition/exclusive';
 import { useAuth } from '../auth/AuthContext';
 import { EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/edition';
 import type { Client, Quote } from '../shared/api';
@@ -32,6 +32,7 @@ export function QuotePrintPortal({
   useEffect(() => triggerPrint(onDone), [onDone]);
 
   const { org } = useAuth();
+  const { QUOTE_OFFERS, QUOTE_ISSUER_TAGLINE } = useExclusive();
   const offer = QUOTE_OFFERS.find((o) => o.id === quote.trackerTier);
   const issued = new Date(quote.createdAt);
   const issuedLabel = issued.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });

@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
+import { OrgRail } from './org-rail/OrgRail';
 import { TopBar } from './TopBar';
 import { SitePanelProvider } from './site-panel/SitePanelContext';
 import { SiteDetailPanel } from './site-panel/SiteDetailPanel';
@@ -103,6 +104,13 @@ export function AppLayout() {
                 paddingBottom: 'env(safe-area-inset-bottom)',
               }}
             >
+              {/* Le rail des organisations, toujours à gauche de tout le reste.
+                  Masqué sous `md` : sur un téléphone, la colonne d'icônes et le
+                  tiroir de navigation ne tiennent pas côte à côte — le
+                  sélecteur d'organisation reste atteignable par le tiroir. */}
+              <div className="hidden md:flex">
+                <OrgRail />
+              </div>
               <Sidebar mobileOpen={navOpen} onClose={() => setNavOpen(false)} />
               <main className="relative flex-1 overflow-y-auto overflow-x-hidden overscroll-none">
                 <TopBar onMenu={() => setNavOpen(true)} />

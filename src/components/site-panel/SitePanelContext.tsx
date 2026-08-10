@@ -41,3 +41,8 @@ export function useSitePanel(): SitePanelContextValue {
   }
   return context;
 }
+
+/** Variante non levante — voir `useRemoteSitesOptional` pour le pourquoi. */
+export function useSitePanelOptional(): SitePanelContextValue | null {
+  return useContext(SitePanelContext) ?? null;
+}
