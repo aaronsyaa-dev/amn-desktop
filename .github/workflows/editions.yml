@@ -1,0 +1,56 @@
+name: Éditions
+
+# Garde-fou permanent sur la séparation interne / business.
+#
+# Ce contrôle existe parce qu'il a manqué une fois : un build Business est parti
+# chez une cliente avec le rail interne complet dedans. `check:business`
+# existait déjà, mais il n'a jamais tourné — le build se faisait chez Vercel,
+# où personne ne lance de commande à la main.
+#
+# Deux niveaux, complémentaires :
+#   - ici, sur chaque PR et chaque push sur main, pour attraper une régression
+#     de CODE (un import qui fait rentrer un module interne dans le bundle
+#     Business) avant qu'elle n'atteigne un déploiement ;
+#   - dans `scripts/build-web.mjs`, exécuté par TOUT build Business où qu'il
+#     tourne — y compris chez Vercel — pour attraper une régression de CONFIG.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  internal:
+    name: Build interne
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Build web (interne)
+        run: npm run build:web
+      - name: Parité des collections synchronisées
+        run: npm run check:sync
+      - name: La sortie doit exister
+        run: test -f dist/index.html
+
+  business:
+    name: Build business + contrôle de fuite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # Le build échoue de lui-même si le bundle contient une trace interne :
+      # le contrôle fait partie du build, ce n'est plus une étape à penser.
+      - name: Build web (business)
+        run: npm run build:web:business
+      # Relancé explicitement : si un jour quelqu'un retire le contrôle du
+      # script de build, cette étape le rattrape au lieu de passer en silence.
+      - name: Contrôle du bundle livré
+        run: npm run check:business
