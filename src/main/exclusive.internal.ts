@@ -298,6 +298,12 @@ function contextFrom(
     plan: organization.plan,
     status: (organization as AdminOrganization).status ?? 'active',
     logoDataUrl: organization.logoDataUrl ?? null,
+    // Modules et accent de l'organisation : oubliés à l'origine, ce qui
+    // faisait retomber tout contexte de support sur « tous les modules » et
+    // sur la couleur par défaut, quel que soit le réglage réel de la
+    // cliente — voir le correctif du bug d'accent qui n'apparaissait pas.
+    modules: organization.modules ?? null,
+    accent: organization.accent ?? null,
     actorEmail,
     expiresAt,
   };

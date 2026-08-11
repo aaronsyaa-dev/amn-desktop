@@ -149,6 +149,18 @@ export interface SupportContext {
   plan: OrgPlan;
   status: OrgStatus;
   logoDataUrl: string | null;
+  /**
+   * Modules ouverts à cette organisation (BLOC E) ; `null`/absent = tous.
+   * Sans ce champ, un contexte de support retombait silencieusement sur
+   * « tous les modules » quel que soit le réglage réel de la cliente.
+   */
+  modules?: string[] | null;
+  /**
+   * Couleur d'accent de cette organisation (BLOC C) ; `null`/absent = défaut.
+   * Même remarque : oublié ici, un accent choisi pour une cliente ne
+   * s'appliquait jamais dans le contexte de support ouvert sur elle.
+   */
+  accent?: string | null;
   /** L'opérateur AMN DevSec au nom de qui l'accès est ouvert. */
   actorEmail: string;
   /** ISO — au-delà, amn-api refuse le jeton et l'app quitte le contexte. */

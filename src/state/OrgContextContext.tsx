@@ -183,7 +183,21 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
   // comme émetteur — y compris sur un devis imprimé.
   useEffect(() => {
     overrideOrg(
-      support ? { id: support.orgId, name: support.orgName, plan: support.plan, logoDataUrl: support.logoDataUrl } : null,
+      support
+        ? {
+            id: support.orgId,
+            name: support.orgName,
+            plan: support.plan,
+            logoDataUrl: support.logoDataUrl,
+            // Modules et accent de la cliente : sans eux, `AuthContext` ne
+            // pouvait jamais appliquer son réglage réel pendant un contexte
+            // de support — c'était la cause du bug d'accent qui ne
+            // s'appliquait jamais malgré un enregistrement réussi côté
+            // serveur.
+            modules: support.modules,
+            accent: support.accent,
+          }
+        : null,
     );
   }, [support, overrideOrg]);
 

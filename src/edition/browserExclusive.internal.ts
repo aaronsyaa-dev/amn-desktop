@@ -344,6 +344,11 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
           plan: created.organization.plan,
           status: created.organization.status,
           logoDataUrl: created.organization.logoDataUrl ?? null,
+          // Voir la note du pilote Electron : sans ces deux champs, un
+          // contexte de support ne reflète jamais les réglages réels de
+          // l'organisation cliente.
+          modules: created.organization.modules ?? null,
+          accent: created.organization.accent ?? null,
           actorEmail: me.support?.actorEmail ?? '',
           expiresAt: created.expiresAt,
         },
@@ -365,6 +370,8 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
           plan: me.org.plan,
           status: me.org.status ?? 'active',
           logoDataUrl: me.org.logoDataUrl ?? null,
+          modules: me.org.modules ?? null,
+          accent: me.org.accent ?? null,
           actorEmail: me.support.actorEmail,
           expiresAt: '',
         };
