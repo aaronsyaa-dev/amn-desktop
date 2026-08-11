@@ -35,6 +35,7 @@ import {
   lineAmounts,
 } from '../lib/money';
 import { InvoicePrintPortal } from '../assistant/InvoicePrintPortal';
+import { ProjectPicker, ProjectTag } from '../components/projects/ProjectPicker';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import type { BillingIdentity, Client, Invoice, InvoiceLine, InvoiceStatus } from '../shared/api';
 
@@ -666,6 +667,25 @@ function InvoiceDetail({
           intitulé suivi d'un tiret n'apprend rien et fait juste descendre le
           reste de l'écran.
         */}
+        {/*
+          Rattachement au projet (A.3). Modifiable tant que la facture est un
+          brouillon ; une facture émise est figée, celui-ci compris.
+        */}
+        {draft ? (
+          <div className="mt-3">
+            <ProjectPicker
+              value={invoice.projectId}
+              onChange={(projectId) => onUpdate({ projectId: projectId || undefined })}
+            />
+          </div>
+        ) : (
+          invoice.projectId && (
+            <Field label="Projet">
+              <ProjectTag projectId={invoice.projectId} />
+            </Field>
+          )
+        )}
+
         {draft ? (
           <Field label="Notes portées sur la facture">
             <textarea

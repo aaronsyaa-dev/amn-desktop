@@ -37,6 +37,11 @@ jobs:
       # aucun écran et traverse tout le circuit jusqu'à la comptabilité.
       - name: Arithmétique de facturation
         run: npm run check:money
+      # Une couleur d'accent ajoutée sans contrôle finit sur l'écran d'une
+      # cliente, et un bouton dont le libellé ne se lit plus ne se remarque pas
+      # depuis l'éditeur de code.
+      - name: Lisibilité de la palette d'accent
+        run: npm run check:accent
       - name: La sortie doit exister
         run: test -f dist/index.html
 

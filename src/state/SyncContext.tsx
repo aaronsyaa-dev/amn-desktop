@@ -78,6 +78,10 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   // Dossier client : nos notes internes SUR une cliente. Portées par le tenant
   // d'AMN DevSec, jamais par le sien — voir le type SyncedCollection.
   'orgDossier',
+  // Projets et le réglage du moteur. Le rattachement se fait par un simple
+  // `projectId` porté par les collections existantes : rien n'est recopié.
+  'projects',
+  'projectConfig',
 ];
 
 const MIRROR_PREFIX = 'amn.sync.';

@@ -233,6 +233,7 @@ const adminApi = {
       modules?: string[] | null;
       guestDailyMinutes?: number | null;
       timezone?: string | null;
+      accent?: string | null;
     },
   ): Promise<AdminOrganization> {
     const { organization } = await apiFetch<{ organization: AdminOrganization }>(

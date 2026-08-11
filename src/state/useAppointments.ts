@@ -38,6 +38,14 @@ export interface Appointment {
   clientName: string;
   location: string;
   notes: string;
+  /**
+   * Projet auquel cet enregistrement se rattache (A.3), ou absent.
+   *
+   * Un simple identifiant : le projet ne tient aucune liste et ne recopie
+   * rien — il retrouve ce qui le concerne en filtrant cette collection. Cet
+   * enregistrement garde donc un seul endroit où il vit.
+   */
+  projectId?: string;
   /** Minutes de préavis pour le rappel. 0 = pas de rappel. */
   reminderMin: number;
   status: AppointmentStatus;
@@ -48,6 +56,8 @@ export interface Appointment {
 type AppointmentData = Omit<Appointment, 'id' | 'updatedAt'>;
 
 export interface AppointmentDraft {
+  /** Projet lié (A.3) — voir la note sur `Appointment.projectId`. */
+  projectId?: string;
   title: string;
   startAt: string;
   durationMin: number;
@@ -80,6 +90,7 @@ export function useAppointments() {
         location: row.location ?? '',
         notes: row.notes ?? '',
         reminderMin: Number(row.reminderMin ?? 0),
+        projectId: row.projectId,
         status: (row.status ?? 'scheduled') as AppointmentStatus,
         createdAt: row.createdAt ?? row.updatedAt,
         updatedAt: row.updatedAt,

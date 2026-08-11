@@ -22,6 +22,14 @@ export interface Note {
   body: string;
   authorEmail: string;
   pinned: boolean;
+  /**
+   * Projet auquel cet enregistrement se rattache (A.3), ou absent.
+   *
+   * Un simple identifiant : le projet ne tient aucune liste et ne recopie
+   * rien — il retrouve ce qui le concerne en filtrant cette collection. Cet
+   * enregistrement garde donc un seul endroit où il vit.
+   */
+  projectId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -31,6 +39,8 @@ interface TeamNoteData {
   body: string;
   authorEmail: string;
   pinned: boolean;
+  /** Projet lié (A.3). Optionnel : la grande majorité des notes n'en a pas. */
+  projectId?: string;
   createdAt: string;
 }
 
@@ -76,6 +86,7 @@ export function useNotes() {
       body: n.body ?? '',
       authorEmail: n.authorEmail ?? '',
       pinned: Boolean(n.pinned),
+      projectId: n.projectId,
       createdAt: n.createdAt ?? n.updatedAt,
       updatedAt: n.updatedAt,
     }));
