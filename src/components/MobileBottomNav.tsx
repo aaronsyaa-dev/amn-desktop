@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutGrid } from 'lucide-react';
 import { itemsForSpace, spaceForPath } from '../data/spaces';
+import type { NavItem } from '../data/navigation';
 import { useNavFavorites } from '../state/useNavFavorites';
 
 /**
@@ -27,12 +28,29 @@ import { useNavFavorites } from '../state/useNavFavorites';
 /** Combien d'entrées tiennent sans devenir illisibles sur un écran de 360 px. */
 const MAX_ITEMS = 4;
 
-export function MobileBottomNav({ onOpenLauncher }: { onOpenLauncher: () => void }) {
+export function MobileBottomNav({
+  onOpenLauncher,
+  /**
+   * Catalogue à afficher, quand ce n'est pas celui de l'édition compilée.
+   *
+   * Le seul cas est le contexte client : la barre y doit lister les modules de
+   * la CLIENTE, pas les nôtres. Sans ce paramètre, `itemsForSpace` renverrait
+   * la liste interne — Sites, Équipe, Trackers — au milieu du dossier d'une
+   * organisation où ces écrans n'existent pas.
+   */
+  items: override,
+  /** Ce que fait le dernier bouton. « Modules » ouvre le lanceur, sinon le tiroir. */
+  moreLabel = 'Modules',
+}: {
+  onOpenLauncher: () => void;
+  items?: NavItem[];
+  moreLabel?: string;
+}) {
   const location = useLocation();
   const { favorites } = useNavFavorites();
 
   const space = spaceForPath(location.pathname);
-  const available = itemsForSpace(space);
+  const available = override ?? itemsForSpace(space);
   // L'ordre du catalogue, pas celui des épinglages : la barre ne doit jamais se
   // réorganiser sous le pouce d'une visite à l'autre.
   const pinned = available.filter((item) => favorites.includes(item.key)).slice(0, MAX_ITEMS);
@@ -82,13 +100,13 @@ export function MobileBottomNav({ onOpenLauncher }: { onOpenLauncher: () => void
       <button
         type="button"
         onClick={onOpenLauncher}
-        aria-label="Tous les modules"
+        aria-label={moreLabel === 'Modules' ? 'Tous les modules' : moreLabel}
         aria-haspopup="dialog"
         className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2.5 text-text-muted transition-colors"
         style={{ minHeight: 56 }}
       >
         <LayoutGrid size={20} strokeWidth={1.75} />
-        <span className="w-full truncate px-1 text-center text-[10px] leading-none">Modules</span>
+        <span className="w-full truncate px-1 text-center text-[10px] leading-none">{moreLabel}</span>
       </button>
     </nav>
   );

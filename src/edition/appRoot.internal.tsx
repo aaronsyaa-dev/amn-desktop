@@ -8,6 +8,7 @@ import { SitesDashboardScreen } from '../screens/SitesDashboardScreen';
 import { TeamScreen } from '../screens/TeamScreen';
 import { TasksScreen } from '../screens/TasksScreen';
 import { ClientsScreen } from '../screens/ClientsScreen';
+import { InvoicesScreen } from '../screens/InvoicesScreen';
 import { ComplyScreen } from '../screens/ComplyScreen';
 import { ScannerScreen } from '../screens/ScannerScreen';
 import { TrackerScreen } from '../screens/TrackerScreen';
@@ -107,6 +108,7 @@ function AmnRoutes() {
         <Route path="/tasks" element={<TasksScreen />} />
         <Route path="/notes" element={<NotesScreen />} />
         <Route path="/clients" element={<ClientsScreen />} />
+        <Route path="/facturation" element={<InvoicesScreen />} />
         <Route path="/sites" element={<SitesDashboardScreen />} />
         <Route path="/team" element={<TeamScreen />} />
         <Route path="/reports" element={<ReportsScreen />} />
@@ -149,6 +151,7 @@ function ClientContextRoutes() {
         <Route path="/" element={<HomeSoloScreen />} />
         <Route path="/agenda" element={<AgendaScreen />} />
         <Route path="/clients" element={<ClientsScreen />} />
+        <Route path="/facturation" element={<InvoicesScreen />} />
         <Route path="/tasks" element={<TasksScreen />} />
         <Route path="/notes" element={<NotesScreen />} />
         <Route path="/media" element={<MediaSoloScreen />} />

@@ -33,6 +33,10 @@ jobs:
         run: npm run build:web
       - name: Parité des collections synchronisées
         run: npm run check:sync
+      # L'arithmétique de facturation : une erreur d'un centime ne se voit sur
+      # aucun écran et traverse tout le circuit jusqu'à la comptabilité.
+      - name: Arithmétique de facturation
+        run: npm run check:money
       - name: La sortie doit exister
         run: test -f dist/index.html
 

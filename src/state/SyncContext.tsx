@@ -67,6 +67,13 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'trackers',
   'siteMeta',
   'siteNotes',
+  // Facturation. Une facture émise doit être lisible depuis le téléphone comme
+  // depuis le poste — c'est souvent sur le téléphone qu'on constate un
+  // encaissement — et l'identité légale de l'émetteur doit suivre, sans quoi
+  // le même document sortirait sans mentions obligatoires d'un appareil à
+  // l'autre.
+  'invoices',
+  'billing',
 ];
 
 const MIRROR_PREFIX = 'amn.sync.';

@@ -10,9 +10,11 @@ import {
   LayoutDashboard,
   LogOut,
   NotebookPen,
+  ReceiptEuro,
   Settings,
   ShieldCheck,
 } from 'lucide-react';
+import type { NavItem } from '../data/navigation';
 import { useOrgContext } from '../state/OrgContextContext';
 import { OrgAvatar } from '../components/org-rail/OrgAvatar';
 import { OrgSwitchButton } from '../components/org-rail/OrgSwitchButton';
@@ -32,16 +34,24 @@ const TRANSITION = { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const };
  * détachée en bas : ce sont les gestes d'AMN DevSec SUR son organisation, et
  * ils n'ont rien à faire au milieu de ses écrans à elle.
  */
-const CLIENT_MODULES = [
-  { key: 'home', label: 'Accueil', to: '/', icon: LayoutDashboard },
-  { key: 'agenda', label: 'Calendrier', to: '/agenda', icon: CalendarDays },
-  { key: 'clients', label: 'Clients', to: '/clients', icon: Contact },
-  { key: 'tasks', label: 'Tâches', to: '/tasks', icon: CheckSquare },
-  { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen },
-  { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText },
-  { key: 'media', label: 'Médias', to: '/media', icon: Images },
-  { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings },
-] as const;
+const CLIENT_MODULES: NavItem[] = [
+  { key: 'home', label: 'Accueil', to: '/', icon: LayoutDashboard, hint: 'Sa journée' },
+  { key: 'agenda', label: 'Calendrier', to: '/agenda', icon: CalendarDays, hint: 'Rendez-vous' },
+  { key: 'clients', label: 'Clients', to: '/clients', icon: Contact, hint: 'Fiches et devis' },
+  { key: 'invoices', label: 'Facturation', to: '/facturation', icon: ReceiptEuro, hint: 'Factures et encaissements' },
+  { key: 'tasks', label: 'Tâches', to: '/tasks', icon: CheckSquare, hint: 'Ce qu’il reste à faire' },
+  { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen, hint: 'Bloc-notes' },
+  { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Comptes-rendus' },
+  { key: 'media', label: 'Médias', to: '/media', icon: Images, hint: 'Photos et fichiers' },
+  { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings, hint: 'Profil' },
+];
+
+/**
+ * Le même catalogue, pour la barre du pouce (voir MobileBottomNav). Exporté
+ * plutôt que recopié : deux listes de modules clientes finiraient par diverger,
+ * et la barre basse annoncerait des écrans que le tiroir ne montre pas.
+ */
+export const CLIENT_NAV_ITEMS = CLIENT_MODULES;
 
 export function ClientSidebar({
   mobileOpen = false,
@@ -121,7 +131,7 @@ export function ClientSidebar({
                 key={item.key}
                 to={item.to}
                 onClick={onClose}
-                className={`group relative flex items-center gap-3 overflow-hidden rounded-lg px-3 py-1.5 text-sm transition-colors duration-200 ${
+                className={`group relative flex min-h-11 items-center gap-3 overflow-hidden rounded-lg px-3 py-1.5 text-sm transition-colors duration-200 md:min-h-0 ${
                   active
                     ? 'text-text-primary'
                     : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
@@ -148,7 +158,7 @@ export function ClientSidebar({
           <Link
             to="/administration"
             onClick={onClose}
-            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-200 ${
+            className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-200 md:min-h-0 ${
               isActive('/administration')
                 ? 'bg-accent-muted text-text-primary'
                 : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
@@ -160,7 +170,7 @@ export function ClientSidebar({
           <button
             type="button"
             onClick={() => void leaveOrganization()}
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary"
+            className="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary md:min-h-0"
           >
             <LogOut size={19} strokeWidth={1.75} />
             <span className="select-none whitespace-nowrap">Quitter le contexte</span>

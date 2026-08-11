@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Lock,
   NotebookPen,
+  ReceiptEuro,
   Settings,
 } from 'lucide-react';
 import type { NavSection } from '../data/navigation';
@@ -34,7 +35,7 @@ import type { ActivityTab } from '../state/ActivityContext';
  * Ce qu'une installation toute neuve épingle. L'agenda d'abord : c'est le
  * module de tous les jours, et il doit être à un clic dès la première ouverture.
  */
-export const DEFAULT_FAVORITES = ['home', 'agenda', 'clients', 'tasks', 'notes'] as const;
+export const DEFAULT_FAVORITES = ['home', 'agenda', 'clients', 'invoices', 'tasks'] as const;
 
 export const NAV_SECTIONS: NavSection[] = [
   {
@@ -44,6 +45,10 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'home', label: 'Accueil', to: '/', icon: LayoutDashboard, hint: 'Votre journée' },
       { key: 'agenda', label: 'Agenda', to: '/agenda', icon: CalendarDays, hint: 'Rendez-vous et disponibilités' },
       { key: 'clients', label: 'Clients', to: '/clients', icon: Contact, hint: 'Fiches et devis' },
+      // Juste après Clients, parce que c'est la suite du même geste : on
+      // propose un devis, puis on facture. Épinglé par défaut — savoir qui
+      // doit de l'argent est quotidien, pas occasionnel.
+      { key: 'invoices', label: 'Facturation', to: '/facturation', icon: ReceiptEuro, hint: 'Factures et encaissements' },
       { key: 'tasks', label: 'Tâches', to: '/tasks', icon: CheckSquare, hint: 'Ce qu’il reste à faire' },
       { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen, hint: 'Bloc-notes' },
       { key: 'media', label: 'Médias', to: '/media', icon: Images, hint: 'Photos et fichiers' },
@@ -88,6 +93,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/agenda', 'registre'],
   ['/tasks', 'tableau'],
   ['/clients', 'fiches'],
+  ['/facturation', 'fiches'],
   ['/notes', 'journal'],
   ['/media', 'base'],
   ['/reports', 'livrables'],

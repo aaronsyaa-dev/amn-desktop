@@ -29,5 +29,11 @@
       "@edition/mainExclusive": ["src/main/exclusive.internal.ts"],
       "@edition/preloadExclusive": ["src/preload.exclusive.internal.ts"]
     }
-  }
+  },
+  // Les scripts de contrôle sont des outils Node lancés par npm, pas du code
+  // d'application : ils s'exécutent sous le retrait de types de Node 22, qui
+  // veut des chemins d'import en `.ts`, là où le bundler de l'application les
+  // refuse. Les exclure évite d'assouplir `allowImportingTsExtensions` pour
+  // tout `src/`, où cette permissivité n'a rien à faire.
+  "exclude": ["node_modules", "dist", "out", "scripts"]
 }

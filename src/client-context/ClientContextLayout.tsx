@@ -2,9 +2,10 @@ import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Menu } from 'lucide-react';
-import { ClientSidebar } from './ClientSidebar';
+import { ClientSidebar, CLIENT_NAV_ITEMS } from './ClientSidebar';
 import { ClientBanner, CLIENT_BANNER_HEIGHT } from './ClientBanner';
 import { OrgRail } from '../components/org-rail/OrgRail';
+import { MobileBottomNav } from '../components/MobileBottomNav';
 import { useOrgContext } from '../state/OrgContextContext';
 import { ClientViewProvider } from '../state/ClientViewContext';
 import { ProfilesProvider } from '../state/ProfilesContext';
@@ -61,13 +62,14 @@ export function ClientContextLayout() {
             <TagProvider>
               <ClientBanner />
               <div
-                className="flex overflow-hidden text-text-primary"
+                className="flex flex-col overflow-hidden text-text-primary"
                 style={{
                   height: `calc(100dvh - ${CLIENT_BANNER_HEIGHT}px)`,
                   marginTop: CLIENT_BANNER_HEIGHT,
                   paddingBottom: 'env(safe-area-inset-bottom)',
                 }}
               >
+                <div className="flex min-h-0 flex-1">
                 <div className="hidden md:flex">
                   <OrgRail />
                 </div>
@@ -100,6 +102,20 @@ export function ClientContextLayout() {
                     </motion.div>
                   </div>
                 </main>
+                </div>
+                {/*
+                  La même barre du pouce que dans les deux autres coquilles,
+                  mais nourrie du catalogue de la CLIENTE : afficher ici nos
+                  modules internes ferait de ce contexte un espace hybride qui
+                  n'existe chez personne, et rendrait le support faux.
+                  Le dernier bouton ouvre le tiroir, qui porte la liste
+                  complète — il n'y a pas de lanceur dans ce contexte.
+                */}
+                <MobileBottomNav
+                  items={CLIENT_NAV_ITEMS}
+                  moreLabel="Menu"
+                  onOpenLauncher={() => setNavOpen(true)}
+                />
               </div>
             </TagProvider>
           </UndoProvider>

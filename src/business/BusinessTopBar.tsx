@@ -23,7 +23,9 @@ export function BusinessTopBar({ onMenu }: { onMenu: () => void }) {
         type="button"
         onClick={onMenu}
         aria-label="Ouvrir le menu"
-        className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary md:hidden"
+        // 44 px de côté sur téléphone : la même correction que la barre du
+        // haut interne, qui n'avait jamais été portée sur celle-ci.
+        className="flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary md:hidden"
       >
         <Menu size={18} strokeWidth={1.75} />
       </button>
@@ -38,7 +40,7 @@ export function BusinessTopBar({ onMenu }: { onMenu: () => void }) {
           type="button"
           onClick={() => navigate('/settings')}
           aria-label="Paramètres du compte"
-          className="rounded-full transition-opacity hover:opacity-80"
+          className="flex h-11 w-11 items-center justify-center rounded-full transition-opacity hover:opacity-80 md:h-9 md:w-9"
         >
           <UserAvatar email={user?.email ?? ''} size={28} />
         </button>

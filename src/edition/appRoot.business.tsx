@@ -7,6 +7,7 @@ import { HomeSoloScreen } from '../business/HomeSoloScreen';
 import { AgendaScreen } from '../business/AgendaScreen';
 import { MediaSoloScreen } from '../business/MediaSoloScreen';
 import { ClientsScreen } from '../screens/ClientsScreen';
+import { InvoicesScreen } from '../screens/InvoicesScreen';
 import { TasksScreen } from '../screens/TasksScreen';
 import { NotesScreen } from '../screens/NotesScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
@@ -42,6 +43,7 @@ export function AppRoot() {
         <Route path="/" element={<HomeSoloScreen />} />
         <Route path="/agenda" element={<AgendaScreen />} />
         <Route path="/clients" element={<ClientsScreen />} />
+        <Route path="/facturation" element={<InvoicesScreen />} />
         <Route path="/tasks" element={<TasksScreen />} />
         <Route path="/notes" element={<NotesScreen />} />
         <Route path="/media" element={<MediaSoloScreen />} />

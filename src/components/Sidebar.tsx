@@ -267,7 +267,9 @@ export function Sidebar({
               aria-label="Tous les modules"
               aria-haspopup="dialog"
               aria-expanded={isLauncherOpen}
-              className={`group mt-1 flex items-center gap-3 rounded-lg py-1.5 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary ${
+              // 44 px sur téléphone, comme les lignes du tiroir juste au-dessus :
+              // ce bouton avait été oublié lors de la passe précédente.
+              className={`group mt-1 flex min-h-11 items-center gap-3 rounded-lg py-1.5 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary md:min-h-0 ${
                 isExpanded ? 'px-3' : 'justify-center px-0'
               }`}
             >

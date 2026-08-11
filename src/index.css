@@ -253,6 +253,30 @@ button:not(:disabled):not(.card-interactive):active,
   height: 0;
 }
 
+/*
+ * La hauteur d'un écran « plein cadre » — ceux qui portent une liste et un
+ * panneau de détail plutôt qu'un contenu qui coule.
+ *
+ * C'était `h-[calc(100dvh-8rem)]` recopié dans huit écrans, et ces 8rem
+ * comptaient la barre du haut plus les marges de la zone de contenu. L'arrivée
+ * de la barre du pouce a rendu le chiffre faux sur téléphone : mesuré à
+ * 390×844, chaque écran dépassait la barre de 9 px et faisait défiler la page
+ * de 33 px en pure perte, sur les huit à la fois.
+ *
+ * Une seule déclaration plutôt que huit constantes à retrouver : le jour où la
+ * hauteur d'une barre change, il n'y a qu'un endroit à corriger.
+ */
+.screen-h {
+  height: calc(100dvh - 8rem);
+}
+
+@media (max-width: 767px) {
+  /* + 3.5rem : la barre du pouce, absente au-delà de `md`. */
+  .screen-h {
+    height: calc(100dvh - 11.5rem);
+  }
+}
+
 /* --- Print-to-PDF: show only the light-themed report region --- */
 .print-root {
   display: none;

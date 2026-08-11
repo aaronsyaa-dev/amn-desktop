@@ -408,6 +408,116 @@ export interface UpdateQuoteInput {
   paymentStatus?: PaymentStatus;
 }
 
+/* ------------------------------ Facturation ------------------------------ */
+
+/**
+ * Le cycle de vie d'une facture — délibérément à sens unique.
+ *
+ * Une facture émise est un document comptable : la loi interdit de la modifier
+ * ou de la supprimer, et impose une numérotation continue sans trou. D'où
+ * l'absence de retour de `issued` vers `draft`, et d'où `cancelled`, qui
+ * ANNULE sans effacer : le numéro reste dans la séquence, la facture reste
+ * dans la liste, et la raison de l'annulation est conservée.
+ */
+export type InvoiceStatus = 'draft' | 'issued' | 'paid' | 'cancelled';
+
+export interface InvoiceLine {
+  id: string;
+  /** Désignation de la prestation — mention obligatoire. */
+  label: string;
+  /** Décimale acceptée : 2,5 jours, 1,5 h. */
+  quantity: number;
+  /** Prix unitaire HORS TAXES, en centimes entiers (voir src/lib/money.ts). */
+  unitPriceCents: number;
+  /** Taux de TVA en pourcentage : 20, 10, 5.5, 2.1, 0. */
+  vatRate: number;
+}
+
+/**
+ * Les coordonnées du client TELLES QU'ELLES ÉTAIENT à l'émission.
+ *
+ * Une facture émise ne doit plus jamais changer. Si elle lisait la fiche
+ * client en direct, renommer une société ou corriger une adresse réécrirait
+ * rétroactivement des documents déjà envoyés et déjà comptabilisés — donc on
+ * fige une copie au moment de l'émission.
+ */
+export interface InvoiceParty {
+  name: string;
+  company: string;
+  email: string;
+  address: string;
+  /** N° de TVA intracommunautaire du client, si fourni (autoliquidation, UE). */
+  vatNumber: string;
+}
+
+export interface Invoice {
+  id: string;
+  /**
+   * Numéro légal, séquentiel et définitif. Vide tant que la facture est un
+   * brouillon : un brouillon n'a pas de numéro, sinon abandonner un brouillon
+   * ferait un trou dans la séquence.
+   */
+  number: string;
+  /** Fiche client d'origine (`Client.id`), pour les liens et les regroupements. */
+  clientId: number;
+  billTo: InvoiceParty;
+  /** Date d'émission (ISO, jour). Vide tant que brouillon. */
+  issuedAt: string;
+  /** Date d'échéance de règlement (ISO, jour) — mention obligatoire. */
+  dueAt: string;
+  lines: InvoiceLine[];
+  status: InvoiceStatus;
+  /** Date d'encaissement (ISO, jour) ; vide tant qu'impayée. */
+  paidAt: string;
+  /** Moyen de règlement constaté, texte libre court. */
+  paymentMethod: string;
+  /** Raison d'annulation — obligatoire pour annuler, conservée telle quelle. */
+  cancelReason: string;
+  /** Conditions particulières, remerciements, référence de commande. */
+  notes: string;
+  /** Devis converti à l'origine de cette facture, s'il y en a un. */
+  quoteId: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * L'identité légale de l'émetteur — un enregistrement unique par organisation.
+ *
+ * Elle vit dans sa propre collection plutôt que dans les Paramètres du profil
+ * parce qu'elle appartient à l'ENTREPRISE, pas à la personne connectée : deux
+ * comptes de la même organisation doivent facturer sous la même raison
+ * sociale, et ces champs ont valeur légale sur le document émis.
+ */
+export interface BillingIdentity {
+  /** Raison sociale ou nom d'exercice. */
+  legalName: string;
+  address: string;
+  /** Forme juridique : SAS, SARL, EI, auto-entrepreneur… */
+  legalForm: string;
+  /** SIREN ou SIRET. */
+  siret: string;
+  /** N° de TVA intracommunautaire ; vide si franchise en base. */
+  vatNumber: string;
+  /** Ville du greffe d'immatriculation (RCS). */
+  rcsCity: string;
+  /** Capital social, texte libre (« 1 000 € ») — sans objet pour une EI. */
+  capital: string;
+  email: string;
+  phone: string;
+  iban: string;
+  bic: string;
+  /**
+   * Franchise en base de TVA (art. 293 B du CGI). Quand elle est active, le
+   * document ne porte aucune TVA et affiche la mention obligatoire à la place.
+   */
+  vatExempt: boolean;
+  /** Délai de règlement par défaut, en jours (30 est l'usage). */
+  paymentTermDays: number;
+  /** Taux annuel des pénalités de retard, en pourcentage — mention obligatoire. */
+  latePenaltyRate: number;
+}
+
 /* -------------------------------- Tasks -------------------------------- */
 
 export type SharedTaskStatus = 'todo' | 'doing' | 'done';
@@ -861,7 +971,21 @@ export type SyncedCollection =
   /** Public URL of a site, keyed by site id (Sites registry). */
   | 'siteMeta'
   /** Internal discussion thread attached to a site. */
-  | 'siteNotes';
+  | 'siteNotes'
+  /**
+   * Factures émises. Séparées de `quotes` et non pas un statut de plus :
+   * un devis est une proposition modifiable, une facture est un document
+   * comptable figé, numéroté et daté. Les confondre, c'est perdre la
+   * numérotation continue qu'exige la loi.
+   */
+  | 'invoices'
+  /**
+   * Identité légale de l'émetteur — un unique enregistrement d'id `identity`.
+   * Une collection plutôt qu'un réglage local : elle doit suivre
+   * l'organisation d'un appareil à l'autre, comme les factures qu'elle
+   * alimente.
+   */
+  | 'billing';
 
 export interface PresenceEntry {
   email: string;

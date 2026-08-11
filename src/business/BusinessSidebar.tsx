@@ -108,7 +108,7 @@ export function BusinessSidebar({
             type="button"
             onClick={() => setLauncherOpen(true)}
             title="Tous les modules"
-            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
+            className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors md:min-h-0 ${
               isLauncherOpen
                 ? 'bg-accent-muted text-text-primary'
                 : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
@@ -127,7 +127,7 @@ export function BusinessSidebar({
                 to={item.to}
                 onClick={handleNavClick}
                 title={item.label}
-                className={`relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                className={`relative flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors md:min-h-0 ${
                   active
                     ? 'bg-accent-muted text-text-primary'
                     : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
@@ -160,7 +160,7 @@ export function BusinessSidebar({
           <button
             type="button"
             onClick={handleSignOut}
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-text-muted transition-colors hover:bg-surface-hover hover:text-danger"
+            className="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm text-text-muted transition-colors hover:bg-surface-hover hover:text-danger md:min-h-0"
           >
             <LogOut size={18} strokeWidth={1.75} />
             {isExpanded && <span>Se déconnecter</span>}

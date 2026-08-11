@@ -162,7 +162,7 @@ export function TeamScreen() {
   return (
     <MentionClientsContext.Provider value={clients}>
     <LightboxProvider gallery={gallery}>
-    <section className="flex h-[calc(100dvh-8rem)] flex-col gap-4">
+    <section className="screen-h flex flex-col gap-4">
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Équipe</h1>

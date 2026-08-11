@@ -15,6 +15,7 @@ import {
   MonitorDot,
   NotebookPen,
   Radar,
+  ReceiptEuro,
   Scale,
   ScanLine,
   Settings,
@@ -56,6 +57,10 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'tasks', label: 'Tâches', to: '/tasks', icon: CheckSquare, hint: 'Travail partagé' },
       { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen, hint: 'Bloc-notes' },
       { key: 'clients', label: 'Clients', to: '/clients', icon: Contact, hint: 'Fiches et devis' },
+      // Même module que chez les clientes : nous facturons aussi nos
+      // prestations, et un devis accepté doit pouvoir devenir une facture ici
+      // sans ressaisie. Rien dans cet écran n'est spécifique à une édition.
+      { key: 'invoices', label: 'Facturation', to: '/facturation', icon: ReceiptEuro, hint: 'Factures et encaissements' },
       { key: 'sites', label: 'Sites', to: '/sites', icon: Globe, hint: 'Registre des sites clients' },
       { key: 'team', label: 'Équipe', to: '/team', icon: Users, hint: 'Messagerie et présence' },
       { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Livrables clients' },
@@ -139,6 +144,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/team', 'fil'],
   ['/tasks', 'tableau'],
   ['/clients', 'fiches'],
+  ['/facturation', 'fiches'],
   ['/tracker', 'supervision'],
   ['/scanner', 'analyse'],
   ['/comply', 'analyse'],

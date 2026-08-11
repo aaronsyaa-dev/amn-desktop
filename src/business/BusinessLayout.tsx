@@ -11,6 +11,8 @@ import { UndoProvider } from '../state/UndoContext';
 import { ToastProvider } from '../state/ToastContext';
 import { TagProvider } from '../components/tags/TagProvider';
 import { SyncActivityNotifier } from '../components/SyncActivityNotifier';
+import { MobileBottomNav } from '../components/MobileBottomNav';
+import { AppLauncher } from '../components/AppLauncher';
 import { UpdateNotice } from '../components/UpdateNotice';
 import { UpdateReady } from '../components/UpdateReady';
 import { variantsForPath } from '../lib/transitions';
@@ -39,7 +41,11 @@ const LAST_TAB_KEY = 'amn.lastTab';
 export function BusinessLayout() {
   const location = useLocation();
   const [navOpen, setNavOpen] = React.useState(false);
+  // Le lanceur « Tous les modules » de la barre du pouce. L'édition Business
+  // n'a qu'un espace, d'où le `space="workspace"` figé plus bas.
+  const [launcherOpen, setLauncherOpen] = React.useState(false);
   React.useEffect(() => setNavOpen(false), [location.pathname]);
+  React.useEffect(() => setLauncherOpen(false), [location.pathname]);
 
   // Ouverture du tiroir par balayage depuis le bord gauche (mobile).
   const swipeStart = React.useRef<{ x: number; y: number } | null>(null);
@@ -91,26 +97,44 @@ export function BusinessLayout() {
                 <div
                   onTouchStart={onTouchStart}
                   onTouchEnd={onTouchEnd}
-                  className="flex h-[100dvh] overflow-hidden text-text-primary"
+                  className="flex h-[100dvh] flex-col overflow-hidden text-text-primary"
                   style={{
                     paddingTop: 'env(safe-area-inset-top)',
                     paddingBottom: 'env(safe-area-inset-bottom)',
                   }}
                 >
-                  <BusinessSidebar mobileOpen={navOpen} onClose={() => setNavOpen(false)} />
-                  <main className="relative flex-1 overflow-y-auto overflow-x-hidden overscroll-none">
-                    <BusinessTopBar onMenu={() => setNavOpen(true)} />
-                    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8">
-                      <motion.div
-                        key={location.pathname}
-                        variants={variantsForPath(location.pathname)}
-                        initial="initial"
-                        animate="animate"
-                      >
-                        <Outlet />
-                      </motion.div>
-                    </div>
-                  </main>
+                  <div className="flex min-h-0 flex-1">
+                    <BusinessSidebar mobileOpen={navOpen} onClose={() => setNavOpen(false)} />
+                    <main className="relative flex-1 overflow-y-auto overflow-x-hidden overscroll-none">
+                      <BusinessTopBar onMenu={() => setNavOpen(true)} />
+                      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8">
+                        <motion.div
+                          key={location.pathname}
+                          variants={variantsForPath(location.pathname)}
+                          initial="initial"
+                          animate="animate"
+                        >
+                          <Outlet />
+                        </motion.div>
+                      </div>
+                    </main>
+                  </div>
+                  {/*
+                    La barre du pouce manquait ICI, et c'est la seconde cause du
+                    bug signalé depuis un vrai iPhone : le composant existait
+                    bien, mais n'était monté que dans `AppLayout`, la coquille
+                    interne. L'édition Business — celle des clientes — n'en a
+                    donc jamais eu, quelle que soit la version déployée.
+                    Sous le contenu et non par-dessus, comme dans AppLayout :
+                    une barre superposée masquerait la dernière ligne de chaque
+                    écran.
+                  */}
+                  <MobileBottomNav onOpenLauncher={() => setLauncherOpen(true)} />
+                  <AppLauncher
+                    open={launcherOpen}
+                    onClose={() => setLauncherOpen(false)}
+                    space="workspace"
+                  />
                 </div>
                 <AppointmentReminders />
                 <SyncActivityNotifier />

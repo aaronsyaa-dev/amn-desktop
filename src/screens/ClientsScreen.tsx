@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, FileText, Globe, ImagePlus, Info, Mail, Phone, Plus, Printer, X } from 'lucide-react';
+import { ArrowRight, FileText, Globe, ImagePlus, Info, Mail, Phone, Plus, Printer, ReceiptEuro, X } from 'lucide-react';
 import { useClients } from '../state/useClients';
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
@@ -19,11 +19,13 @@ import { SaveIndicator } from '../components/SaveIndicator';
 import { ConfirmDelete } from '../components/ConfirmDelete';
 import type { ReportDraft } from '../state/useReports';
 import { QuotePrintPortal } from '../assistant/QuotePrintPortal';
+import { useInvoices } from '../state/useInvoices';
 import type {
   Client,
   ClientStatus,
   CreateClientInput,
   CreateQuoteInput,
+  Invoice,
   PaymentStatus,
   Quote,
   QuoteStatus,
@@ -144,7 +146,7 @@ export function ClientsScreen() {
   };
 
   return (
-    <section className="flex h-[calc(100dvh-8rem)] flex-col gap-4">
+    <section className="screen-h flex flex-col gap-4">
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-text-primary">
@@ -750,6 +752,17 @@ function QuotesBlock({
 }) {
   const [creating, setCreating] = useState(false);
   const [printing, setPrinting] = useState<Quote | null>(null);
+  const navigate = useNavigate();
+  const { invoices, createFromQuote } = useInvoices();
+
+  /*
+    La facture née d'un devis, s'il y en a une. C'est elle qui décide de ce que
+    montre la ligne de devis : tant qu'elle n'existe pas, le devis propose de
+    facturer ; dès qu'elle existe, c'est ELLE qui dit où en est l'argent, et le
+    suivi de paiement du devis n'a plus voix au chapitre — deux réponses
+    différentes à « est-ce payé ? » sur le même écran, c'est une de trop.
+  */
+  const invoiceOf = (quote: Quote) => invoices.find((inv) => inv.quoteId === quote.id);
 
   return (
     <div>
@@ -775,9 +788,15 @@ function QuotesBlock({
             <QuoteRow
               key={quote.id}
               quote={quote}
+              invoice={invoiceOf(quote)}
               onPatch={onPatch}
               onPrint={() => setPrinting(quote)}
               onRemove={() => onRemove(quote.id)}
+              onInvoice={() => {
+                const existing = invoiceOf(quote);
+                const id = existing ? existing.id : createFromQuote(quote, client);
+                navigate('/facturation', { state: { openInvoiceId: id } });
+              }}
             />
           ))}
         </div>
@@ -795,14 +814,18 @@ function QuotesBlock({
 
 function QuoteRow({
   quote,
+  invoice,
   onPatch,
   onPrint,
   onRemove,
+  onInvoice,
 }: {
   quote: Quote;
+  invoice: Invoice | undefined;
   onPatch: (id: number, p: { status?: QuoteStatus; paymentStatus?: PaymentStatus }) => Promise<void>;
   onPrint: () => void;
   onRemove: () => void;
+  onInvoice: () => void;
 }) {
   const { QUOTE_OFFERS } = useExclusive();
   const offer = QUOTE_OFFERS.find((o) => o.id === quote.trackerTier);
@@ -848,21 +871,54 @@ function QuoteRow({
           <span className={`h-1.5 w-1.5 rounded-full ${statusMeta.dot}`} />
         </label>
 
-        <label className="flex items-center gap-1.5">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">Paiement</span>
-          <select
-            value={quote.paymentStatus}
-            onChange={(e) => onPatch(quote.id, { paymentStatus: e.target.value as PaymentStatus })}
-            className="input-focus border border-border bg-surface px-1.5 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary outline-none"
+        {/*
+          Le suivi de paiement du devis disparaît dès qu'une facture existe :
+          c'est la facture qui fait foi, et laisser les deux côte à côte
+          reviendrait à proposer de contredire un document comptable depuis un
+          menu déroulant.
+        */}
+        {invoice ? (
+          <button
+            type="button"
+            onClick={onInvoice}
+            className="flex items-center gap-1.5 border border-border px-1.5 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
           >
-            {PAYMENT_ORDER.map((s) => (
-              <option key={s} value={s}>
-                {PAYMENT_META[s].label}
-              </option>
-            ))}
-          </select>
-          <span className={`h-1.5 w-1.5 rounded-full ${paymentMeta.dot}`} />
-        </label>
+            <ReceiptEuro size={11} strokeWidth={2} />
+            {invoice.number ? `Facture ${invoice.number}` : 'Facture (brouillon)'}
+          </button>
+        ) : (
+          <label className="flex items-center gap-1.5">
+            <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">Paiement</span>
+            <select
+              value={quote.paymentStatus}
+              onChange={(e) => onPatch(quote.id, { paymentStatus: e.target.value as PaymentStatus })}
+              className="input-focus border border-border bg-surface px-1.5 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary outline-none"
+            >
+              {PAYMENT_ORDER.map((s) => (
+                <option key={s} value={s}>
+                  {PAYMENT_META[s].label}
+                </option>
+              ))}
+            </select>
+            <span className={`h-1.5 w-1.5 rounded-full ${paymentMeta.dot}`} />
+          </label>
+        )}
+
+        {/*
+          Facturer n'est proposé qu'une fois le devis ACCEPTÉ : émettre une
+          facture sur une proposition encore en discussion est une erreur qu'on
+          ne peut pas défaire, puisqu'une facture émise ne s'efface pas.
+        */}
+        {!invoice && quote.status === 'accepted' && (
+          <button
+            type="button"
+            onClick={onInvoice}
+            className="ml-auto flex items-center gap-1.5 border border-border-strong px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text-primary transition-colors hover:bg-accent-muted"
+          >
+            <ReceiptEuro size={11} strokeWidth={2} />
+            Facturer
+          </button>
+        )}
       </div>
     </div>
   );
