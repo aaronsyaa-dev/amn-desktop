@@ -163,11 +163,38 @@ export interface SupportSession {
  */
 export const API_UNREACHABLE_PREFIX = '[amn-api-injoignable] ';
 
+/**
+ * Marqueur du refus « quota invité épuisé » (BLOC D).
+ *
+ * Même procédé que `API_UNREACHABLE_PREFIX`, et pour la même raison : une
+ * erreur qui traverse le pont IPC d'Electron ne conserve que son `message`.
+ * Le champ `code` de la réponse amn-api serait donc perdu entre le processus
+ * principal et l'interface, et il ne resterait qu'à reconnaître la panne à sa
+ * phrase — ce qui casse au premier mot changé.
+ */
+export const GUEST_QUOTA_PREFIX = '[quota-invite-epuise] ';
+
+/**
+ * Ce qu'il faut afficher quand le temps du jour est épuisé. Les minutes
+ * viennent du serveur : le poste ne décide de rien, il rend compte.
+ */
+export interface GuestQuotaState {
+  minutesPerDay: number;
+  minutesUsed: number;
+  /** ISO — minuit dans le fuseau de l'organisation. */
+  resetsAt: string;
+}
+
 export interface RemoteSessionUser {
   id: string;
   orgId: string;
   email: string;
-  role: 'owner' | 'admin' | 'member';
+  /**
+   * `guest` = accès occasionnel externe, borné par un quota quotidien décompté
+   * côté serveur. Ce n'est pas un siège de travail : un employé permanent est
+   * un `member`.
+   */
+  role: 'owner' | 'admin' | 'member' | 'guest';
 }
 
 /**

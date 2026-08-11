@@ -8,6 +8,7 @@ import React, {
   useState,
 } from 'react';
 import { bridge } from '../lib/bridge';
+import { reportGuestQuotaError } from './guestQuotaStore';
 import { useAuth } from '../auth/AuthContext';
 import type {
   PresenceEntry,
@@ -295,7 +296,12 @@ export function SyncProvider({
           try {
             const records = await remote.listRecords(collection);
             if (active) applyRecords(collection, records);
-          } catch {
+          } catch (err) {
+            // Un quota d'invité épuisé n'est pas une panne de réseau : c'est
+            // une décision du serveur, et elle doit remonter jusqu'à l'écran
+            // de blocage au lieu de se confondre avec « synchronisation
+            // indisponible », qui laisserait l'application ouverte.
+            reportGuestQuotaError(err);
             /* keep mirror data on failure */
             anyFailed = true;
           }

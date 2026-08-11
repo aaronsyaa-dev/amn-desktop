@@ -7,6 +7,7 @@ import React, {
   useState,
 } from 'react';
 import { bridge } from '../lib/bridge';
+import { clearGuestQuotaBlock } from '../state/guestQuotaStore';
 import { cleanErrorMessage, isApiUnreachable } from '../lib/errorMessage';
 import { IS_BUSINESS } from '../edition/edition';
 import type { OrgIdentity, RemoteSession, User } from '../shared/api';
@@ -220,6 +221,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    // Le mur « quota épuisé » appartient au compte qui part : le laisser en
+    // place accueillerait le compte suivant avec le blocage du précédent.
+    clearGuestQuotaBlock();
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
     window.localStorage.removeItem(SESSION_STORAGE_KEY);
     // Les miroirs de collections sont indexés par poste, pas par organisation :

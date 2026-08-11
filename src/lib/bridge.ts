@@ -1,4 +1,4 @@
-import { API_UNREACHABLE_PREFIX, DEFAULT_NOTIFICATION_PREFS } from '../shared/api';
+import { API_UNREACHABLE_PREFIX, DEFAULT_NOTIFICATION_PREFS, GUEST_QUOTA_PREFIX } from '../shared/api';
 import { IS_BUSINESS } from '../edition/edition';
 import { showLocalNotification } from './webPush';
 import {
@@ -320,10 +320,24 @@ function createBrowserRemote(): AmnBridge['remote'] {
       // Surface amn-api's own message when it sends one. Without this the UI
       // could only show "amn-api 400 Bad Request", hiding actionable errors
       // like a refused private scan target or an unknown tier.
-      const detail = await res
+      const body = await res
         .json()
-        .then((body: { error?: string }) => body?.error)
+        .then((parsed: { error?: string; code?: string; quota?: unknown }) => parsed)
         .catch(() => undefined);
+      const detail = body?.error;
+      /*
+        Quota d'invité épuisé — le MÊME traitement que dans le client du
+        process main (src/main/remoteApi.ts).
+
+        Ce doublon n'en est pas un par négligence : `AmnBridge` a deux
+        implémentations, Electron et navigateur, et c'est la version navigateur
+        que sert la PWA. Ne traiter le cas que d'un côté donnait exactement ce
+        qu'on a mesuré : le serveur refusait bien (38 réponses 403), et
+        l'application restait ouverte en échouant en silence à chaque geste.
+      */
+      if (body?.code === 'guest_quota_exhausted') {
+        throw new Error(`${GUEST_QUOTA_PREFIX}${JSON.stringify(body.quota ?? {})}|${detail ?? ''}`);
+      }
       throw new Error(detail || `amn-api ${res.status} ${res.statusText}`);
     }
     return res.json() as Promise<T>;
