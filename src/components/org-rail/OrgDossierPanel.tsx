@@ -32,6 +32,8 @@ const TOGGLEABLE: { key: string; label: string }[] = [
   { key: 'invoices', label: 'Facturation' },
   { key: 'projects', label: 'Projets' },
   { key: 'tasks', label: 'Tâches' },
+  { key: 'expenses', label: 'Dépenses' },
+  { key: 'time', label: 'Temps' },
   { key: 'notes', label: 'Notes' },
   { key: 'media', label: 'Médias' },
   { key: 'reports', label: 'Rapports' },

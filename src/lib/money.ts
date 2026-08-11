@@ -35,6 +35,18 @@ export function eurosToCents(input: string | number): number {
   return Number.isFinite(value) ? roundHalfAwayFromZero(value * 100) : 0;
 }
 
+/**
+ * Comme {@link eurosToCents}, mais un montant négatif vaut zéro.
+ *
+ * Pour tout ce qui ne PEUT pas être négatif : une dépense, un budget, un tarif
+ * horaire. Un `-40` tapé par erreur y deviendrait sinon une recette, et le
+ * total du mois baisserait sans que rien ne le signale. Les factures, elles,
+ * continuent d'utiliser `eurosToCents` : un avoir est légitimement négatif.
+ */
+export function parsePositiveAmount(input: string | number): number {
+  return Math.max(0, eurosToCents(input));
+}
+
 /** Centimes → chaîne éditable dans un champ (`1234.56`), sans séparateur de milliers. */
 export function centsToInput(cents: number): string {
   if (!Number.isFinite(cents) || cents === 0) return '';

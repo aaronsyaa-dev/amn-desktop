@@ -10,6 +10,8 @@ import { MediaSoloScreen } from '../business/MediaSoloScreen';
 import { ClientsScreen } from '../screens/ClientsScreen';
 import { InvoicesScreen } from '../screens/InvoicesScreen';
 import { ProjectsScreen } from '../screens/ProjectsScreen';
+import { ExpensesScreen } from '../screens/ExpensesScreen';
+import { TimeScreen } from '../screens/TimeScreen';
 import { TasksScreen } from '../screens/TasksScreen';
 import { NotesScreen } from '../screens/NotesScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
@@ -80,6 +82,22 @@ export function AppRoot() {
           element={
             <ModuleRoute module="tasks">
               <TasksScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/depenses"
+          element={
+            <ModuleRoute module="expenses">
+              <ExpensesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/temps"
+          element={
+            <ModuleRoute module="time">
+              <TimeScreen />
             </ModuleRoute>
           }
         />

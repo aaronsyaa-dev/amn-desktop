@@ -20,7 +20,9 @@ import {
   Scale,
   ScanLine,
   Settings,
+  Timer,
   Users,
+  Wallet,
 } from 'lucide-react';
 import type { NavSection } from '../data/navigation';
 import type { ActivityTab } from '../state/ActivityContext';
@@ -65,6 +67,11 @@ export const NAV_SECTIONS: NavSection[] = [
       // Les projets juste après la facturation : c'est le point de
       // rattachement de tout le reste, pas un module de plus.
       { key: 'projects', label: 'Projets', to: '/projets', icon: FolderKanban, hint: 'Ce qui avance, et ce qui bloque' },
+      // Mêmes modules que chez les clientes, et pour la même raison que
+      // Facturation : nous avons aussi des frais et du temps à suivre, et un
+      // module qu'on n'utilise pas soi-même est un module qu'on livre mal.
+      { key: 'expenses', label: 'Dépenses', to: '/depenses', icon: Wallet, hint: 'Frais et justificatifs' },
+      { key: 'time', label: 'Temps', to: '/temps', icon: Timer, hint: 'Chronomètre et temps passé' },
       { key: 'sites', label: 'Sites', to: '/sites', icon: Globe, hint: 'Registre des sites clients' },
       { key: 'team', label: 'Équipe', to: '/team', icon: Users, hint: 'Messagerie et présence' },
       { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Livrables clients' },
@@ -150,6 +157,8 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/clients', 'fiches'],
   ['/facturation', 'fiches'],
   ['/projets', 'tableau'],
+  ['/depenses', 'fiches'],
+  ['/temps', 'registre'],
   ['/tracker', 'supervision'],
   ['/scanner', 'analyse'],
   ['/comply', 'analyse'],

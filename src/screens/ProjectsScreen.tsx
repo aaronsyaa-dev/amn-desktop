@@ -11,10 +11,15 @@ import {
   Plus,
   ReceiptEuro,
   Settings2,
+  Timer,
   Trash2,
+  Wallet,
 } from 'lucide-react';
 import { useProjects } from '../state/useProjects';
+import { useExpenses } from '../state/useExpenses';
 import { useClients } from '../state/useClients';
+import { isModuleEnabled } from '../data/spaces';
+import { formatCents } from '../lib/money';
 import {
   fieldEnabled,
   fieldLabel,
@@ -309,6 +314,8 @@ interface Attachments {
   appointments: { id: string; title?: string; startsAt?: string }[];
   notes: { id: string; title?: string }[];
   invoices: { id: string; number?: string }[];
+  expenses: { id: string }[];
+  timeEntries: { id: string }[];
 }
 
 function ProjectDetail({
@@ -329,8 +336,10 @@ function ProjectDetail({
   onDelete: () => void;
 }) {
   const { config } = useProjects();
+  const { projectBudget } = useExpenses();
   const navigate = useNavigate();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const spent = projectBudget(project.id);
 
   const late = Boolean(project.deadline) && project.deadline < today && !isDone(config, project);
 
@@ -548,7 +557,54 @@ function ProjectDetail({
               count={attachments.invoices.length}
               onOpen={() => navigate('/facturation')}
             />
+            {isModuleEnabled('expenses') && (
+              <AttachmentGroup
+                icon={Wallet}
+                label="Dépenses"
+                count={attachments.expenses.length}
+                onOpen={() => navigate('/depenses')}
+              />
+            )}
+            {isModuleEnabled('time') && (
+              <AttachmentGroup
+                icon={Timer}
+                label="Temps passé"
+                count={attachments.timeEntries.length}
+                onOpen={() => navigate('/temps')}
+              />
+            )}
           </div>
+
+          {/* L'enveloppe du projet, quand il en a une. Réglée dans Dépenses →
+              Catégories et budgets : ce qui la consomme est ici, mais elle se
+              décide là-bas, avec les autres budgets. */}
+          {isModuleEnabled('expenses') && spent.state !== 'none' && (
+            <div className="mt-4 border border-border p-3">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                  Enveloppe du projet
+                </span>
+                <span className="font-mono text-xs tabular-nums text-text-secondary">
+                  {formatCents(spent.spentCents)} / {formatCents(spent.budgetCents)}
+                </span>
+              </div>
+              <div className="mt-2 h-2 w-full bg-bg">
+                <div
+                  className={`h-full ${spent.state === 'over' ? 'bg-danger' : 'bg-accent'}`}
+                  style={{ width: `${Math.round(spent.ratio * 100)}%` }}
+                />
+              </div>
+              <p
+                className={`mt-1.5 font-mono text-[10px] uppercase tracking-widest ${
+                  spent.state === 'over' ? 'text-danger' : 'text-text-muted'
+                }`}
+              >
+                {spent.state === 'over'
+                  ? `Dépassé de ${formatCents(spent.deltaCents)}`
+                  : `Il reste ${formatCents(spent.deltaCents)}`}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
