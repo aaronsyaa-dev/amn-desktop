@@ -15,6 +15,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import type { NavItem } from '../data/navigation';
+import { isModuleEnabled } from '../data/spaces';
 import { useOrgContext } from '../state/OrgContextContext';
 import { OrgAvatar } from '../components/org-rail/OrgAvatar';
 import { OrgSwitchButton } from '../components/org-rail/OrgSwitchButton';
@@ -52,6 +53,18 @@ const CLIENT_MODULES: NavItem[] = [
  * et la barre basse annoncerait des écrans que le tiroir ne montre pas.
  */
 export const CLIENT_NAV_ITEMS = CLIENT_MODULES;
+
+/**
+ * Les modules réellement ouverts à cette cliente (BLOC E).
+ *
+ * Calculé à l'affichage plutôt que figé : le support doit voir SON application
+ * telle qu'elle est chez elle. Montrer un module qu'on lui a fermé donnerait
+ * un contexte hybride qui n'existe nulle part, et rendrait le support faux —
+ * la même raison qui interdit d'ajouter ici nos écrans internes.
+ */
+function clientModules(): NavItem[] {
+  return CLIENT_MODULES.filter((item) => isModuleEnabled(item.key));
+}
 
 export function ClientSidebar({
   mobileOpen = false,
@@ -123,7 +136,7 @@ export function ClientSidebar({
         </div>
 
         <nav className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3">
-          {CLIENT_MODULES.map((item) => {
+          {clientModules().map((item) => {
             const active = isActive(item.to);
             const Icon = item.icon;
             return (

@@ -268,7 +268,16 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
         }),
       });
     },
-    async updateOrganization(id: string, patch: { name?: string; logoDataUrl?: string | null }) {
+    async updateOrganization(
+      id: string,
+      patch: {
+        name?: string;
+        logoDataUrl?: string | null;
+        modules?: string[] | null;
+        guestDailyMinutes?: number | null;
+        timezone?: string | null;
+      },
+    ) {
       const { organization } = await ctx.apiFetch<{ organization: AdminOrganization }>(
         `/v1/admin/organizations/${encodeURIComponent(id)}`,
         { owner: true, method: 'PUT', body: JSON.stringify(patch) },

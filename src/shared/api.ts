@@ -41,6 +41,14 @@ export interface OrgIdentity {
   plan: OrgPlan;
   /** Logo en data-URL, ou absent/`null` — le rail retombe alors sur les initiales. */
   logoDataUrl?: string | null;
+  /**
+   * Modules ouverts à cette organisation, décidés par le serveur (BLOC E).
+   * `null`/absent = tous. Le poste les APPREND, il ne les choisit pas.
+   *
+   * Retire des écrans et de la navigation ; ce n'est PAS une frontière de
+   * sécurité — l'isolation des données reste celle d'amn-api, par `org_id`.
+   */
+  modules?: string[] | null;
 }
 
 export type OrgStatus = 'active' | 'suspended';
@@ -59,6 +67,8 @@ export interface AdminOrganization {
   plan: OrgPlan;
   status: OrgStatus;
   logoDataUrl: string | null;
+  /** Modules ouverts ; `null` = tous. Réglable depuis la console. */
+  modules?: string[] | null;
   userCount: number;
   /** ISO, ou null si l'organisation n'a encore rien produit. */
   lastActivityAt: string | null;
@@ -1012,7 +1022,18 @@ export type SyncedCollection =
    * l'organisation d'un appareil à l'autre, comme les factures qu'elle
    * alimente.
    */
-  | 'billing';
+  | 'billing'
+  /**
+   * Le dossier client — notes INTERNES d'AMN DevSec sur une organisation
+   * cliente (contact, historique, particularités).
+   *
+   * Point capital : ces enregistrements vivent dans le tenant d'AMN DevSec et
+   * portent l'id de la cliente comme identifiant d'enregistrement. Ils ne sont
+   * donc jamais dans SES données, et l'isolation par `org_id` d'amn-api suffit
+   * à garantir qu'elle ne peut pas les lire — il n'y a aucune règle
+   * supplémentaire à ne pas oublier, ce qui est précisément le but.
+   */
+  | 'orgDossier';
 
 export interface PresenceEntry {
   email: string;
@@ -1430,7 +1451,16 @@ export interface AmnBridge {
       createOrganization(input: CreateOrganizationInput): Promise<CreateOrganizationResult>;
       updateOrganization(
         id: string,
-        patch: { name?: string; logoDataUrl?: string | null },
+        patch: {
+          name?: string;
+          logoDataUrl?: string | null;
+          /** Modules ouverts ; `null` remet « tous », `[]` = aucun optionnel. */
+          modules?: string[] | null;
+          /** Quota invité en minutes/jour ; `null` remet le défaut serveur. */
+          guestDailyMinutes?: number | null;
+          /** Fuseau de l'organisation (remise à zéro du quota) ; `null` = défaut. */
+          timezone?: string | null;
+        },
       ): Promise<AdminOrganization>;
       setOrganizationStatus(id: string, status: OrgStatus): Promise<AdminOrganization>;
       listUsers(orgId: string): Promise<AdminOrgUser[]>;

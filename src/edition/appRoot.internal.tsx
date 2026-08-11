@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from '../components/ProtectedRoute';
+import { ModuleRoute } from '../components/ModuleRoute';
 import { AppLayout } from '../components/AppLayout';
 import { LoginScreen } from '../screens/LoginScreen';
 import { HomeScreen } from '../screens/HomeScreen';
@@ -149,13 +150,62 @@ function ClientContextRoutes() {
     <Routes>
       <Route element={<ClientContextLayout />}>
         <Route path="/" element={<HomeSoloScreen />} />
-        <Route path="/agenda" element={<AgendaScreen />} />
-        <Route path="/clients" element={<ClientsScreen />} />
-        <Route path="/facturation" element={<InvoicesScreen />} />
-        <Route path="/tasks" element={<TasksScreen />} />
-        <Route path="/notes" element={<NotesScreen />} />
-        <Route path="/media" element={<MediaSoloScreen />} />
-        <Route path="/reports" element={<ReportsScreen />} />
+        <Route
+          path="/agenda"
+          element={
+            <ModuleRoute module="agenda">
+              <AgendaScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/clients"
+          element={
+            <ModuleRoute module="clients">
+              <ClientsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/facturation"
+          element={
+            <ModuleRoute module="invoices">
+              <InvoicesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/tasks"
+          element={
+            <ModuleRoute module="tasks">
+              <TasksScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/notes"
+          element={
+            <ModuleRoute module="notes">
+              <NotesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/media"
+          element={
+            <ModuleRoute module="media">
+              <MediaSoloScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/reports"
+          element={
+            <ModuleRoute module="reports">
+              <ReportsScreen />
+            </ModuleRoute>
+          }
+        />
         <Route path="/settings" element={<SettingsScreen />} />
         <Route path="/administration" element={<ClientAdminScreen />} />
         {/* Un écran qui n'existe pas chez elle (un `/tracker` mémorisé, par

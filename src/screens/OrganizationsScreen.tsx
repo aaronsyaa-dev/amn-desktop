@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight, Building2, Plus, Search, ShieldOff, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Building2, FolderLock, Plus, Search, ShieldOff, ShieldCheck } from 'lucide-react';
 import { useOrgContext } from '../state/OrgContextContext';
 import { OrgAvatar } from '../components/org-rail/OrgAvatar';
 import { CreateOrgDialog } from '../components/org-rail/CreateOrgDialog';
+import { OrgDossierPanel } from '../components/org-rail/OrgDossierPanel';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { bridge } from '../lib/bridge';
 import { cleanErrorMessage } from '../lib/errorMessage';
@@ -31,6 +32,7 @@ export function OrganizationsScreen() {
   const [createOpen, setCreateOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dossierOrg, setDossierOrg] = useState<AdminOrganization | null>(null);
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -188,6 +190,16 @@ export function OrganizationsScreen() {
 
                   <button
                     type="button"
+                    onClick={() => setDossierOrg(org)}
+                    title="Dossier interne : modules ouverts et notes"
+                    className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-2 text-xs text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
+                  >
+                    <FolderLock size={14} strokeWidth={1.75} />
+                    Dossier
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => void enterOrganization(org.id)}
                     disabled={entering === org.id || org.status === 'suspended'}
                     title={
@@ -208,6 +220,20 @@ export function OrganizationsScreen() {
       </StaggerItem>
 
       <CreateOrgDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+
+      <AnimatePresence>
+        {dossierOrg && (
+          <OrgDossierPanel
+            key={dossierOrg.id}
+            /* Relu dans la liste plutôt que figé à l'ouverture : les bascules de
+               modules doivent se voir immédiatement dans le panneau qui vient
+               de les provoquer. */
+            org={organizations.find((o) => o.id === dossierOrg.id) ?? dossierOrg}
+            onClose={() => setDossierOrg(null)}
+            onSaved={() => void refreshOrganizations()}
+          />
+        )}
+      </AnimatePresence>
     </StaggerGroup>
   );
 }

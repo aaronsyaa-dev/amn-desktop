@@ -75,6 +75,9 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   // l'autre.
   'invoices',
   'billing',
+  // Dossier client : nos notes internes SUR une cliente. Portées par le tenant
+  // d'AMN DevSec, jamais par le sien — voir le type SyncedCollection.
+  'orgDossier',
 ];
 
 const MIRROR_PREFIX = 'amn.sync.';

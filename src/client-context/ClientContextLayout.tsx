@@ -6,6 +6,7 @@ import { ClientSidebar, CLIENT_NAV_ITEMS } from './ClientSidebar';
 import { ClientBanner, CLIENT_BANNER_HEIGHT } from './ClientBanner';
 import { OrgRail } from '../components/org-rail/OrgRail';
 import { MobileBottomNav } from '../components/MobileBottomNav';
+import { isModuleEnabled } from '../data/spaces';
 import { useOrgContext } from '../state/OrgContextContext';
 import { ClientViewProvider } from '../state/ClientViewContext';
 import { ProfilesProvider } from '../state/ProfilesContext';
@@ -112,7 +113,7 @@ export function ClientContextLayout() {
                   complète — il n'y a pas de lanceur dans ce contexte.
                 */}
                 <MobileBottomNav
-                  items={CLIENT_NAV_ITEMS}
+                  items={CLIENT_NAV_ITEMS.filter((item) => isModuleEnabled(item.key))}
                   moreLabel="Menu"
                   onOpenLauncher={() => setNavOpen(true)}
                 />
