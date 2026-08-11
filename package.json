@@ -21,6 +21,7 @@
     "make:business": "cross-env AMN_EDITION=business npm run make",
     "build:web:business": "cross-env AMN_EDITION=business node scripts/build-web.mjs",
     "check:business": "node scripts/check-business-bundle.mjs",
+    "check:accent": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-accent.ts",
     "check:money": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-money.ts",
     "check:deployed": "node scripts/check-deployed-bundle.mjs"
   },

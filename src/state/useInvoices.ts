@@ -126,6 +126,7 @@ function toInvoice(row: InvoiceData & { id: string; updatedAt: string }): Invoic
     cancelReason: row.cancelReason ?? '',
     notes: row.notes ?? '',
     quoteId: row.quoteId === null || row.quoteId === undefined ? null : Number(row.quoteId),
+    projectId: row.projectId,
     createdAt: row.createdAt ?? row.updatedAt,
     updatedAt: row.updatedAt,
   };
@@ -244,6 +245,7 @@ export function useInvoices() {
       notes?: string;
       quoteId?: number | null;
       dueAt?: string;
+      projectId?: string;
     }): string => {
       const id = uid('inv');
       const now = new Date();
@@ -263,6 +265,7 @@ export function useInvoices() {
         cancelReason: '',
         notes: input.notes ?? '',
         quoteId: input.quoteId ?? null,
+        projectId: input.projectId,
         createdAt: now.toISOString(),
       } satisfies Omit<InvoiceData, 'updatedAt'>);
       return id;

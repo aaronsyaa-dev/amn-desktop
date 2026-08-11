@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import { bridge } from '../lib/bridge';
 import { setEnabledModules } from '../data/spaces';
+import { applyAccent } from '../lib/accent';
 import { clearGuestQuotaBlock } from '../state/guestQuotaStore';
 import { cleanErrorMessage, isApiUnreachable } from '../lib/errorMessage';
 import { IS_BUSINESS } from '../edition/edition';
@@ -263,6 +264,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   */
   useLayoutEffect(() => {
     setEnabledModules(org?.modules ?? null);
+    // La couleur d'accent suit la même organisation, et par le même chemin :
+    // décidée par le serveur, appliquée par le poste. Avant peinture, pour
+    // qu'aucun rendu n'affiche la couleur de l'organisation précédente.
+    applyAccent(org?.accent ?? null);
   }, [org]);
 
   // Une session amn-api porte toujours son organisation (`/v1/auth/login` la

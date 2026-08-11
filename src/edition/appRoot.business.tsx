@@ -9,6 +9,7 @@ import { AgendaScreen } from '../business/AgendaScreen';
 import { MediaSoloScreen } from '../business/MediaSoloScreen';
 import { ClientsScreen } from '../screens/ClientsScreen';
 import { InvoicesScreen } from '../screens/InvoicesScreen';
+import { ProjectsScreen } from '../screens/ProjectsScreen';
 import { TasksScreen } from '../screens/TasksScreen';
 import { NotesScreen } from '../screens/NotesScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
@@ -63,6 +64,14 @@ export function AppRoot() {
           element={
             <ModuleRoute module="invoices">
               <InvoicesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/projets"
+          element={
+            <ModuleRoute module="projects">
+              <ProjectsScreen />
             </ModuleRoute>
           }
         />

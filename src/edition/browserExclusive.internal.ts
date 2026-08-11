@@ -276,6 +276,7 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
         modules?: string[] | null;
         guestDailyMinutes?: number | null;
         timezone?: string | null;
+        accent?: string | null;
       },
     ) {
       const { organization } = await ctx.apiFetch<{ organization: AdminOrganization }>(

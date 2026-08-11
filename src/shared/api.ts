@@ -49,6 +49,12 @@ export interface OrgIdentity {
    * sécurité — l'isolation des données reste celle d'amn-api, par `org_id`.
    */
   modules?: string[] | null;
+  /**
+   * Identifiant de couleur d'accent (BLOC C), ou `null` = le défaut.
+   * Un identifiant de palette, jamais un code couleur : le contraste est
+   * validé une fois pour toutes dans `src/lib/accent.ts`.
+   */
+  accent?: string | null;
 }
 
 export type OrgStatus = 'active' | 'suspended';
@@ -69,6 +75,8 @@ export interface AdminOrganization {
   logoDataUrl: string | null;
   /** Modules ouverts ; `null` = tous. Réglable depuis la console. */
   modules?: string[] | null;
+  /** Couleur d'accent (identifiant de palette) ; `null` = défaut. */
+  accent?: string | null;
   userCount: number;
   /** ISO, ou null si l'organisation n'a encore rien produit. */
   lastActivityAt: string | null;
@@ -514,6 +522,15 @@ export interface Invoice {
   notes: string;
   /** Devis converti à l'origine de cette facture, s'il y en a un. */
   quoteId: number | null;
+  /**
+   * Projet auquel cet enregistrement se rattache (A.3), ou absent.
+   *
+   * Un simple identifiant : le projet ne tient aucune liste et ne recopie
+   * rien — il retrouve ce qui le concerne en filtrant cette collection. Cet
+   * enregistrement garde donc un seul endroit où il vit.
+   */
+  projectId?: string;
+
   createdAt: string;
   updatedAt: string;
 }
@@ -1033,7 +1050,19 @@ export type SyncedCollection =
    * à garantir qu'elle ne peut pas les lire — il n'y a aucune règle
    * supplémentaire à ne pas oublier, ce qui est précisément le but.
    */
-  | 'orgDossier';
+  | 'orgDossier'
+  /**
+   * Projets (moteur A). Un projet est un POINT DE RATTACHEMENT : les tâches,
+   * rendez-vous, notes et factures qui le concernent restent dans leurs
+   * collections d'origine et portent simplement son identifiant. Un projet
+   * n'est donc jamais une seconde base parallèle — c'est une vue.
+   */
+  | 'projects'
+  /**
+   * Le réglage du moteur pour cette organisation : statuts, structures,
+   * champs affichés. Un unique enregistrement d'id `config`.
+   */
+  | 'projectConfig';
 
 export interface PresenceEntry {
   email: string;
@@ -1460,6 +1489,8 @@ export interface AmnBridge {
           guestDailyMinutes?: number | null;
           /** Fuseau de l'organisation (remise à zéro du quota) ; `null` = défaut. */
           timezone?: string | null;
+          /** Identifiant de couleur d'accent ; `null` = défaut. */
+          accent?: string | null;
         },
       ): Promise<AdminOrganization>;
       setOrganizationStatus(id: string, status: OrgStatus): Promise<AdminOrganization>;

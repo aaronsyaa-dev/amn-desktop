@@ -15,6 +15,7 @@ import {
   MonitorDot,
   NotebookPen,
   Radar,
+  FolderKanban,
   ReceiptEuro,
   Scale,
   ScanLine,
@@ -61,6 +62,9 @@ export const NAV_SECTIONS: NavSection[] = [
       // prestations, et un devis accepté doit pouvoir devenir une facture ici
       // sans ressaisie. Rien dans cet écran n'est spécifique à une édition.
       { key: 'invoices', label: 'Facturation', to: '/facturation', icon: ReceiptEuro, hint: 'Factures et encaissements' },
+      // Les projets juste après la facturation : c'est le point de
+      // rattachement de tout le reste, pas un module de plus.
+      { key: 'projects', label: 'Projets', to: '/projets', icon: FolderKanban, hint: 'Ce qui avance, et ce qui bloque' },
       { key: 'sites', label: 'Sites', to: '/sites', icon: Globe, hint: 'Registre des sites clients' },
       { key: 'team', label: 'Équipe', to: '/team', icon: Users, hint: 'Messagerie et présence' },
       { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Livrables clients' },
@@ -145,6 +149,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/tasks', 'tableau'],
   ['/clients', 'fiches'],
   ['/facturation', 'fiches'],
+  ['/projets', 'tableau'],
   ['/tracker', 'supervision'],
   ['/scanner', 'analyse'],
   ['/comply', 'analyse'],

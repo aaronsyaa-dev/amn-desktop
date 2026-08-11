@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Lock,
   NotebookPen,
+  FolderKanban,
   ReceiptEuro,
   Settings,
 } from 'lucide-react';
@@ -49,6 +50,9 @@ export const NAV_SECTIONS: NavSection[] = [
       // propose un devis, puis on facture. Épinglé par défaut — savoir qui
       // doit de l'argent est quotidien, pas occasionnel.
       { key: 'invoices', label: 'Facturation', to: '/facturation', icon: ReceiptEuro, hint: 'Factures et encaissements' },
+      // Les projets juste après la facturation : c'est le point de
+      // rattachement de tout le reste, pas un module de plus.
+      { key: 'projects', label: 'Projets', to: '/projets', icon: FolderKanban, hint: 'Ce qui avance, et ce qui bloque' },
       { key: 'tasks', label: 'Tâches', to: '/tasks', icon: CheckSquare, hint: 'Ce qu’il reste à faire' },
       { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen, hint: 'Bloc-notes' },
       { key: 'media', label: 'Médias', to: '/media', icon: Images, hint: 'Photos et fichiers' },
@@ -94,6 +98,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/tasks', 'tableau'],
   ['/clients', 'fiches'],
   ['/facturation', 'fiches'],
+  ['/projets', 'tableau'],
   ['/notes', 'journal'],
   ['/media', 'base'],
   ['/reports', 'livrables'],

@@ -5,6 +5,7 @@ import { useSync, useCollection } from '../../state/SyncContext';
 import { bridge } from '../../lib/bridge';
 import { cleanErrorMessage } from '../../lib/errorMessage';
 import { SaveIndicator } from '../SaveIndicator';
+import { ACCENTS, DEFAULT_ACCENT_ID } from '../../lib/accent';
 import type { AdminOrganization } from '../../shared/api';
 
 /**
@@ -29,6 +30,7 @@ const TOGGLEABLE: { key: string; label: string }[] = [
   { key: 'agenda', label: 'Agenda' },
   { key: 'clients', label: 'Clients' },
   { key: 'invoices', label: 'Facturation' },
+  { key: 'projects', label: 'Projets' },
   { key: 'tasks', label: 'Tâches' },
   { key: 'notes', label: 'Notes' },
   { key: 'media', label: 'Médias' },
@@ -82,6 +84,16 @@ export function OrgDossierPanel({
   useEffect(() => {
     setNotes(latestBody.current);
   }, [org.id]);
+
+  const applyOrgAccent = async (accent: string) => {
+    setError(null);
+    try {
+      await bridge().remote.admin.updateOrganization(org.id, { accent });
+      onSaved();
+    } catch (err) {
+      setError(cleanErrorMessage(err, 'amn-api a refusé la couleur.'));
+    }
+  };
 
   const toggle = async (key: string) => {
     setError(null);
@@ -198,6 +210,44 @@ export function OrgDossierPanel({
               Revenir à « tous les modules »
             </button>
           )}
+
+          {/* -------------------------------------------------- accent ----- */}
+          <div className="mt-6 border-t border-border pt-4">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+              Couleur d’accent
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-text-secondary">
+              Un seul paramètre change — la structure noir et blanc reste.{' '}
+              <span className="text-text-muted">
+                Palette restreinte : chaque couleur est vérifiée lisible sur fond sombre.
+              </span>
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {ACCENTS.map((option) => {
+                const on = (org.accent ?? DEFAULT_ACCENT_ID) === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => void applyOrgAccent(option.id)}
+                    title={option.label}
+                    aria-label={option.label}
+                    className={`flex min-h-11 items-center gap-2 border px-2.5 transition-colors ${
+                      on ? 'border-border-strong' : 'border-border hover:border-border-strong'
+                    }`}
+                  >
+                    <span
+                      className="h-4 w-4 flex-shrink-0 rounded-full"
+                      style={{ backgroundColor: option.value }}
+                      aria-hidden
+                    />
+                    <span className="text-xs text-text-primary">{option.label}</span>
+                    {on && <Check size={12} strokeWidth={3} className="text-text-primary" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* ------------------------------------------------- dossier ----- */}
           <div className="mt-6 border-t border-border pt-4">
