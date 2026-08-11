@@ -367,6 +367,12 @@ function ProjectDetail({
           type="button"
           onClick={() => (confirmDelete ? onDelete() : setConfirmDelete(true))}
           onBlur={() => setConfirmDelete(false)}
+          /* Bouton sans texte tant qu'il n'est pas armé : sans nom
+             accessible, il était invisible pour un lecteur d'écran comme
+             pour un balayage automatique — un bouton destructeur ne peut
+             pas être anonyme. */
+          aria-label="Supprimer le projet"
+          title="Supprimer le projet"
           className={`flex h-11 flex-shrink-0 items-center gap-1.5 border px-2.5 font-mono text-[10px] uppercase tracking-wider transition-colors md:h-9 ${
             confirmDelete
               ? 'border-danger bg-danger-muted text-danger'

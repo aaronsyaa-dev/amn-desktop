@@ -435,6 +435,13 @@ export type PaymentStatus = 'unpaid' | 'pending' | 'paid' | 'late';
 export interface Quote {
   id: number;
   clientId: number;
+  /**
+   * Clé d'enregistrement du client, telle que l'écrit le miroir SQLite
+   * (`src/main/clientsSync.ts`). Présente uniquement sur les devis remontés par
+   * ce chemin ; `clientId` est alors absent, et c'est ce champ qui rattache le
+   * devis à sa fiche.
+   */
+  clientSyncId?: string;
   /** Short mission title, e.g. "Supervision annuelle + audit initial". */
   title: string;
   /** Longer mission description. */
@@ -1407,6 +1414,18 @@ export interface AmnBridge {
       /** Termine la session côté serveur et repasse au jeton opérateur (ou à rien). */
       clear(): Promise<void>;
       /**
+       * Accepte une invitation : fixe le mot de passe et ACTIVE le compte.
+       *
+       * Le serveur renvoie une session complète, donc l'invitée est connectée
+       * dans la foulée — lui redemander de saisir le mot de passe qu'elle vient
+       * de choisir serait une étape de plus sans rien vérifier de plus.
+       *
+       * Le jeton est à usage unique et daté : une deuxième tentative avec le
+       * même lien échoue, ce qui est le comportement voulu et ce que l'écran
+       * doit savoir dire.
+       */
+      acceptInvitation(token: string, password: string): Promise<RemoteSession>;
+      /**
        * Change le mot de passe du compte connecté.
        *
        * Distinct de `auth.changePassword`, qui vise le compte LOCAL (SQLite).
@@ -1703,6 +1722,7 @@ export const IPC = {
   remoteSessionRestore: 'remote:sessionRestore',
   remoteSessionClear: 'remote:sessionClear',
   remoteSessionChangePassword: 'remote:sessionChangePassword',
+  remoteSessionAcceptInvitation: 'remote:sessionAcceptInvitation',
   remoteGetPresence: 'remote:getPresence',
   /** Push channels (main -> renderer via webContents.send, not invoke/handle). */
   remoteStartScan: 'remote:startScan',

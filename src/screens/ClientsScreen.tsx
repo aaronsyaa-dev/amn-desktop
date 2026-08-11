@@ -20,6 +20,7 @@ import { ConfirmDelete } from '../components/ConfirmDelete';
 import type { ReportDraft } from '../state/useReports';
 import { QuotePrintPortal } from '../assistant/QuotePrintPortal';
 import { useInvoices } from '../state/useInvoices';
+import { metaOf } from '../lib/records';
 import type {
   Client,
   ClientStatus,
@@ -239,7 +240,11 @@ function ClientList({
           </div>
         ) : (
           clients.map((client) => {
-            const meta = STATUS_META[client.status];
+            // Seconde ligne de défense : le décodage garantit déjà un statut du
+            // domaine (voir useClients), mais un écran ne doit jamais mourir sur
+            // une table absente — c'est ce `undefined.label` qui faisait tomber
+            // TOUT l'écran Clients sur une seule fiche abîmée.
+            const meta = metaOf(STATUS_META, client.status, STATUS_META.prospect);
             const health = CLIENT_HEALTH_META[computeClientHealth(client, sites)];
             const active = client.id === selectedId;
             return (
@@ -829,8 +834,8 @@ function QuoteRow({
 }) {
   const { QUOTE_OFFERS } = useExclusive();
   const offer = QUOTE_OFFERS.find((o) => o.id === quote.trackerTier);
-  const statusMeta = QUOTE_STATUS_META[quote.status];
-  const paymentMeta = PAYMENT_META[quote.paymentStatus];
+  const statusMeta = metaOf(QUOTE_STATUS_META, quote.status, QUOTE_STATUS_META.draft);
+  const paymentMeta = metaOf(PAYMENT_META, quote.paymentStatus, PAYMENT_META.unpaid);
 
   return (
     <div className="border border-border bg-bg p-3">

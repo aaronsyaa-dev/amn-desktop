@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useSync, useCollection, uid, stripMeta } from './SyncContext';
+import { oneOf } from '../lib/records';
 import {
   defaultConfig,
   isDone,
@@ -7,6 +8,7 @@ import {
   type Project,
   type ProjectConfig,
   type ProjectData,
+  type ProjectPriority,
 } from './projectEngine';
 
 /**
@@ -23,6 +25,9 @@ import {
  */
 
 const CONFIG_ID = 'config';
+
+/** Le domaine des priorités, à l'exécution (voir src/lib/records.ts). */
+const PROJECT_PRIORITIES: ProjectPriority[] = ['low', 'normal', 'high'];
 
 /** Ce qu'une collection rattachable expose au moteur. */
 interface Attachable {
@@ -64,7 +69,7 @@ export function useProjects() {
           status: row.status ?? config.statuses[0]?.key ?? '',
           structure: row.structure ?? '',
           clientId: Number(row.clientId ?? 0),
-          priority: row.priority ?? 'normal',
+          priority: oneOf(row.priority, PROJECT_PRIORITIES, 'normal'),
           nextAction: row.nextAction ?? '',
           deadline: row.deadline ?? '',
           link: row.link ?? '',

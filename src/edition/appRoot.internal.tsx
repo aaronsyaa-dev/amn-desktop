@@ -4,6 +4,7 @@ import { ProtectedRoute } from '../components/ProtectedRoute';
 import { ModuleRoute } from '../components/ModuleRoute';
 import { AppLayout } from '../components/AppLayout';
 import { LoginScreen } from '../screens/LoginScreen';
+import { InvitationScreen } from '../screens/InvitationScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { SitesDashboardScreen } from '../screens/SitesDashboardScreen';
 import { TeamScreen } from '../screens/TeamScreen';
@@ -64,6 +65,10 @@ export function AppRoot() {
   return (
     <Routes>
       <Route path="/login" element={<LoginScreen />} />
+      {/* Publique, et volontairement AVANT le garde d'authentification :
+          l'invitée n'a par définition pas encore de compte, donc l'écran
+          d'activation ne peut pas vivre derrière une exigence de session. */}
+      <Route path="/invitation" element={<InvitationScreen />} />
       <Route
         path="/*"
         element={

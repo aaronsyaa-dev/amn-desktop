@@ -12,6 +12,7 @@ import { SkeletonBoard } from '../components/Skeleton';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { relativeTime } from '../lib/time';
+import { oneOf } from '../lib/records';
 import { useClients } from '../state/useClients';
 import { useTags } from '../components/tags/TagProvider';
 import type { TaskMarker } from '../lib/taskMarkers';
@@ -84,15 +85,30 @@ interface TaskData {
 }
 export type SyncTask = TaskData & { id: string; updatedAt: string };
 
+/** Le domaine des statuts, à l'exécution (voir src/lib/records.ts). */
+const TASK_STATUSES: SharedTaskStatus[] = ['todo', 'doing', 'done'];
+
 export function TasksScreen() {
   const { user } = useAuth();
   const { sites } = useLinkedSites();
   const { upsert, remove, ready } = useSync();
   const { isPending, scheduleDelete } = useUndo();
   const tasksRaw = useCollection<TaskData>('tasks');
+  /*
+    Le statut est ramené dans son domaine AVANT tout affichage.
+
+    Le tableau est fait de trois colonnes filtrées par `status`, et le compteur
+    de chaque colonne est un `map[t.status] += 1`. Une tâche portant un statut
+    inconnu — une valeur d'une version antérieure, une écriture interrompue —
+    n'appartenait donc à AUCUNE colonne : elle existait, comptait `NaN`, et
+    n'apparaissait nulle part. Invisible, elle était par construction
+    impossible à rouvrir comme à supprimer. C'est exactement la forme du bug
+    « Elie Sy », sur un autre écran.
+  */
   const tasks = useMemo(
     () =>
-      [...tasksRaw]
+      tasksRaw
+        .map((t) => ({ ...t, status: oneOf(t.status, TASK_STATUSES, 'todo') }))
         .filter((t) => !isPending(`tasks:${t.id}`))
         .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')),
     [tasksRaw, isPending],

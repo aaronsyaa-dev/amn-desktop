@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useSync, useCollection, uid, stripMeta } from './SyncContext';
+import { oneOf } from '../lib/records';
 
 /**
  * Rendez-vous — le cœur de l'édition Business.
@@ -24,6 +25,9 @@ import { useSync, useCollection, uid, stripMeta } from './SyncContext';
  */
 
 export type AppointmentStatus = 'scheduled' | 'done' | 'cancelled';
+
+/** Le même domaine, disponible À L'EXÉCUTION — un type seul ne vérifie rien. */
+const APPOINTMENT_STATUSES: AppointmentStatus[] = ['scheduled', 'done', 'cancelled'];
 
 export interface Appointment {
   id: string;
@@ -91,7 +95,13 @@ export function useAppointments() {
         notes: row.notes ?? '',
         reminderMin: Number(row.reminderMin ?? 0),
         projectId: row.projectId,
-        status: (row.status ?? 'scheduled') as AppointmentStatus,
+        /*
+          `as AppointmentStatus` affirmait au compilateur ce que la donnée ne
+          garantissait pas : n'importe quelle chaîne stockée passait, puis
+          arrivait dans les cinq `STATUS_META[appointment.status].label` de
+          l'agenda, où elle faisait tomber l'écran sur un `undefined`.
+        */
+        status: oneOf(row.status, APPOINTMENT_STATUSES, 'scheduled'),
         createdAt: row.createdAt ?? row.updatedAt,
         updatedAt: row.updatedAt,
       }))

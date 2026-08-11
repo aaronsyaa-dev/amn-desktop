@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useSync, useCollection, uid, stripMeta } from './SyncContext';
 import { documentTotals, eurosToCents } from '../lib/money';
+import { oneOf } from '../lib/records';
 import type {
   BillingIdentity,
   Client,
@@ -44,6 +45,10 @@ import type {
 
 /** Ce qui est stocké : `id` est la clé de l'enregistrement, pas un champ. */
 type InvoiceData = Omit<Invoice, 'id'>;
+
+/** Le domaine des statuts, à l'exécution : un statut hérité ou mal écrit
+ *  redevient un brouillon plutôt que de traverser jusqu'aux tables d'affichage. */
+const INVOICE_STATUSES: InvoiceStatus[] = ['draft', 'issued', 'paid', 'cancelled'];
 
 /** L'id réservé de l'unique enregistrement d'identité légale. */
 const IDENTITY_ID = 'identity';
@@ -120,7 +125,7 @@ function toInvoice(row: InvoiceData & { id: string; updatedAt: string }): Invoic
           vatRate: Number(line?.vatRate ?? 0),
         }))
       : [],
-    status: row.status ?? 'draft',
+    status: oneOf(row.status, INVOICE_STATUSES, 'draft'),
     paidAt: row.paidAt ?? '',
     paymentMethod: row.paymentMethod ?? '',
     cancelReason: row.cancelReason ?? '',

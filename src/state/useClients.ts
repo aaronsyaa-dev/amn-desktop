@@ -2,13 +2,17 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { bridge } from '../lib/bridge';
 import { useSync, useCollection } from './SyncContext';
 import { useClientView } from './ClientViewContext';
+import { assignUniqueIds, oneOf } from '../lib/records';
 import type {
   AddClientEventInput,
   Client,
   ClientEvent,
+  ClientStatus,
   CreateClientInput,
   CreateQuoteInput,
+  PaymentStatus,
   Quote,
+  QuoteStatus,
   UpdateClientInput,
   UpdateQuoteInput,
 } from '../shared/api';
@@ -45,6 +49,21 @@ import type {
 type ClientData = Omit<Client, 'id'>;
 type QuoteData = Omit<Quote, 'id'>;
 
+/**
+ * Ce que ce hook rend : la fiche, PLUS la clé réelle de son enregistrement.
+ *
+ * Le champ ne remonte volontairement pas dans le type partagé `Client` : le
+ * pont SQLite d'Electron manipule des fiches qui n'ont pas d'enregistrement
+ * synchronisé, et leur inventer une clé serait affirmer quelque chose de faux.
+ * Ici, en revanche, il y en a toujours une — et c'est la seule voie d'écriture.
+ */
+export interface SyncedClient extends Client {
+  recordId: string;
+}
+export interface SyncedQuote extends Quote {
+  recordId: string;
+}
+
 type StoredClient = ClientData & { id: string; updatedAt: string };
 type StoredQuote = QuoteData & { id: string; updatedAt: string };
 
@@ -53,16 +72,38 @@ function mintId(): number {
   return Date.now() * 1000 + Math.floor(Math.random() * 1000);
 }
 
-function toClient(row: StoredClient): Client {
+/**
+ * Les domaines fermés, déclarés une fois.
+ *
+ * Ils existaient déjà dans `shared/api.ts` — mais en TYPE seulement, c'est-à-
+ * dire nulle part à l'exécution. Une valeur venue de la base ne rencontrait
+ * donc aucune vérification, et un statut hérité comme `"client"` arrivait tel
+ * quel dans `STATUS_META[...]` côté écran.
+ */
+const CLIENT_STATUSES: ClientStatus[] = ['active', 'paused', 'prospect'];
+const QUOTE_STATUSES: QuoteStatus[] = ['draft', 'sent', 'accepted', 'refused'];
+const PAYMENT_STATUSES: PaymentStatus[] = ['unpaid', 'pending', 'paid', 'late'];
+
+/**
+ * `id` est le nombre porté par les références croisées ; `recordId` est la
+ * VRAIE clé de l'enregistrement, et la seule par laquelle on écrit.
+ *
+ * Les deux ne coïncident pas toujours : le miroir SQLite des postes Electron
+ * écrit des clés `client-<uuid>`. Reconstruire la clé depuis le nombre — ce
+ * que faisait `String(id)` — produisait alors `"NaN"`, et l'écriture partait
+ * dans le vide. Voir la note de `src/lib/records.ts`.
+ */
+function toClient(row: StoredClient, id: number): SyncedClient {
   return {
-    id: Number(row.id),
-    name: row.name ?? '',
-    company: row.company ?? '',
-    status: row.status ?? 'prospect',
-    email: row.email ?? '',
-    phone: row.phone ?? '',
-    notes: row.notes ?? '',
-    imageDataUrl: row.imageDataUrl ?? '',
+    id,
+    recordId: row.id,
+    name: typeof row.name === 'string' ? row.name : '',
+    company: typeof row.company === 'string' ? row.company : '',
+    status: oneOf(row.status, CLIENT_STATUSES, 'prospect'),
+    email: typeof row.email === 'string' ? row.email : '',
+    phone: typeof row.phone === 'string' ? row.phone : '',
+    notes: typeof row.notes === 'string' ? row.notes : '',
+    imageDataUrl: typeof row.imageDataUrl === 'string' ? row.imageDataUrl : '',
     linkedSiteIds: Array.isArray(row.linkedSiteIds) ? row.linkedSiteIds : [],
     createdAt: row.createdAt ?? row.updatedAt,
     updatedAt: row.updatedAt,
@@ -70,16 +111,26 @@ function toClient(row: StoredClient): Client {
   };
 }
 
-function toQuote(row: StoredQuote): Quote {
+function toQuote(row: StoredQuote, id: number, clientIdBySyncId: Map<string, number>): SyncedQuote {
+  /*
+    Le devis remonté par le miroir SQLite ne porte PAS `clientId` mais
+    `clientSyncId` — la clé d'enregistrement de son client. Sans cette
+    traduction, `Number(undefined ?? 0)` donnait 0 : le devis existait, mais
+    rattaché à un client numéro zéro qui n'a jamais existé, donc invisible
+    depuis toutes les fiches.
+  */
+  const bySyncId =
+    typeof row.clientSyncId === 'string' ? clientIdBySyncId.get(row.clientSyncId) : undefined;
   return {
-    id: Number(row.id),
-    clientId: Number(row.clientId ?? 0),
-    title: row.title ?? '',
-    detail: row.detail ?? '',
-    trackerTier: row.trackerTier ?? '',
-    priceEuro: Number(row.priceEuro ?? 0),
-    status: row.status ?? 'draft',
-    paymentStatus: row.paymentStatus ?? 'unpaid',
+    id,
+    recordId: row.id,
+    clientId: bySyncId ?? Number(row.clientId ?? 0),
+    title: typeof row.title === 'string' ? row.title : '',
+    detail: typeof row.detail === 'string' ? row.detail : '',
+    trackerTier: typeof row.trackerTier === 'string' ? row.trackerTier : '',
+    priceEuro: Number.isFinite(Number(row.priceEuro)) ? Number(row.priceEuro) : 0,
+    status: oneOf(row.status, QUOTE_STATUSES, 'draft'),
+    paymentStatus: oneOf(row.paymentStatus, PAYMENT_STATUSES, 'unpaid'),
     createdAt: row.createdAt ?? row.updatedAt,
     updatedAt: row.updatedAt,
   };
@@ -89,6 +140,10 @@ function stripId<T extends { id: unknown; updatedAt?: unknown }>(row: T): Record
   const rest = { ...row } as Record<string, unknown>;
   delete rest.id;
   delete rest.updatedAt;
+  // `recordId` EST la clé de l'enregistrement : la recopier à l'intérieur des
+  // données en ferait une seconde vérité, qui finirait par diverger de la
+  // première — exactement le mécanisme du bug qu'on corrige.
+  delete rest.recordId;
   return rest;
 }
 
@@ -97,14 +152,22 @@ export function useClients() {
   const clientRows = useCollection<StoredClient>('clients');
   const quoteRows = useCollection<StoredQuote>('quotes');
 
-  const clients = useMemo(
-    () => clientRows.map(toClient).sort((a, b) => a.name.localeCompare(b.name, 'fr')),
-    [clientRows],
-  );
-  const quotes = useMemo(
-    () => quoteRows.map(toQuote).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')),
-    [quoteRows],
-  );
+  const clients = useMemo(() => {
+    const ids = assignUniqueIds(clientRows, (row) => row.id);
+    return clientRows
+      .map((row) => toClient(row, ids.get(row.id) ?? 0))
+      .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  }, [clientRows]);
+
+  const quotes = useMemo(() => {
+    const ids = assignUniqueIds(quoteRows, (row) => row.id);
+    // La correspondance clé d'enregistrement → identifiant numérique du client,
+    // pour rattacher les devis remontés par le miroir SQLite (voir `toQuote`).
+    const clientIdBySyncId = new Map(clients.map((c) => [c.recordId, c.id]));
+    return quoteRows
+      .map((row) => toQuote(row, ids.get(row.id) ?? 0, clientIdBySyncId))
+      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  }, [quoteRows, clients]);
 
   /**
    * One-time import of whatever the legacy per-platform store still holds —
@@ -162,7 +225,7 @@ export function useClients() {
   }, [ready, configured, pullFailed, upsert, clientView]);
 
   const createClient = useCallback(
-    async (input: CreateClientInput): Promise<Client> => {
+    async (input: CreateClientInput): Promise<SyncedClient> => {
       const now = new Date().toISOString();
       const id = mintId();
       const data: ClientData = {
@@ -178,25 +241,36 @@ export function useClients() {
         updatedAt: now,
         events: [],
       };
-      await upsert('clients', String(id), data as unknown as Record<string, unknown>);
-      return { ...data, id };
+      // À la création, la clé est CHOISIE ici : `String(id)` la définit, il ne
+      // la reconstruit pas. On la conserve telle quelle dans `recordId`, qui
+      // sera désormais la seule voie d'écriture pour cette fiche.
+      const recordId = String(id);
+      await upsert('clients', recordId, data as unknown as Record<string, unknown>);
+      return { ...data, id, recordId };
     },
     [upsert],
   );
 
+  /*
+    Toutes les écritures ci-dessous passent par `current.recordId`, jamais par
+    `String(id)`. C'est LA correction du bug « Elie Sy » : reconstruire la clé
+    à partir du nombre échouait silencieusement sur tout enregistrement dont la
+    clé n'est pas un nombre — l'écriture partait sur `"NaN"`, l'API répondait
+    par un succès, et rien ne changeait.
+  */
   const updateClient = useCallback(
-    async (id: number, patch: UpdateClientInput): Promise<Client> => {
+    async (id: number, patch: UpdateClientInput): Promise<SyncedClient> => {
       const current = clients.find((c) => c.id === id);
       if (!current) throw new Error(`Client ${id} introuvable`);
-      const next: Client = { ...current, ...patch, updatedAt: new Date().toISOString() };
-      await upsert('clients', String(id), stripId(next));
+      const next: SyncedClient = { ...current, ...patch, updatedAt: new Date().toISOString() };
+      await upsert('clients', current.recordId, stripId(next));
       return next;
     },
     [clients, upsert],
   );
 
   const addClientEvent = useCallback(
-    async (input: AddClientEventInput): Promise<Client> => {
+    async (input: AddClientEventInput): Promise<SyncedClient> => {
       const current = clients.find((c) => c.id === input.clientId);
       if (!current) throw new Error(`Client ${input.clientId} introuvable`);
       const event: ClientEvent = {
@@ -206,12 +280,12 @@ export function useClients() {
         detail: input.detail ?? '',
         date: new Date().toISOString(),
       };
-      const next: Client = {
+      const next: SyncedClient = {
         ...current,
         events: [event, ...current.events],
         updatedAt: new Date().toISOString(),
       };
-      await upsert('clients', String(input.clientId), stripId(next));
+      await upsert('clients', current.recordId, stripId(next));
       return next;
     },
     [clients, upsert],
@@ -219,18 +293,22 @@ export function useClients() {
 
   const removeClient = useCallback(
     async (id: number) => {
+      const current = clients.find((c) => c.id === id);
+      // Un client introuvable dans la liste ne doit pas faire échouer le geste
+      // en silence : on le dit, plutôt que de laisser croire à une suppression.
+      if (!current) throw new Error(`Client ${id} introuvable`);
       // Quotes belong to their client: leaving them behind would show orphan
       // amounts in the totals with no fiche to open.
       for (const q of quotes.filter((q) => q.clientId === id)) {
-        await remove('quotes', String(q.id));
+        await remove('quotes', q.recordId);
       }
-      await remove('clients', String(id));
+      await remove('clients', current.recordId);
     },
-    [quotes, remove],
+    [clients, quotes, remove],
   );
 
   const createQuote = useCallback(
-    async (input: CreateQuoteInput): Promise<Quote> => {
+    async (input: CreateQuoteInput): Promise<SyncedQuote> => {
       const now = new Date().toISOString();
       const id = mintId();
       const data: QuoteData = {
@@ -244,24 +322,32 @@ export function useClients() {
         createdAt: now,
         updatedAt: now,
       };
-      await upsert('quotes', String(id), data as unknown as Record<string, unknown>);
-      return { ...data, id };
+      const recordId = String(id);
+      await upsert('quotes', recordId, data as unknown as Record<string, unknown>);
+      return { ...data, id, recordId };
     },
     [upsert],
   );
 
   const updateQuote = useCallback(
-    async (id: number, patch: UpdateQuoteInput): Promise<Quote> => {
+    async (id: number, patch: UpdateQuoteInput): Promise<SyncedQuote> => {
       const current = quotes.find((q) => q.id === id);
       if (!current) throw new Error(`Devis ${id} introuvable`);
-      const next: Quote = { ...current, ...patch, updatedAt: new Date().toISOString() };
-      await upsert('quotes', String(id), stripId(next));
+      const next: SyncedQuote = { ...current, ...patch, updatedAt: new Date().toISOString() };
+      await upsert('quotes', current.recordId, stripId(next));
       return next;
     },
     [quotes, upsert],
   );
 
-  const removeQuote = useCallback((id: number) => remove('quotes', String(id)), [remove]);
+  const removeQuote = useCallback(
+    async (id: number) => {
+      const current = quotes.find((q) => q.id === id);
+      if (!current) throw new Error(`Devis ${id} introuvable`);
+      await remove('quotes', current.recordId);
+    },
+    [quotes, remove],
+  );
 
   return {
     clients,

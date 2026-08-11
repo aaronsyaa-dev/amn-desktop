@@ -239,6 +239,11 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
     (_event, payload: { currentPassword: string; newPassword: string }) =>
       remote.changeSessionPassword(payload.currentPassword, payload.newPassword),
   );
+  ipcMain.handle(
+    IPC.remoteSessionAcceptInvitation,
+    (_event, payload: { token: string; password: string }) =>
+      remote.acceptInvitation(payload.token, payload.password),
+  );
 
   // Push channels: broadcast to every open window rather than replying to a
   // specific invoke() call, since these are server-initiated updates.

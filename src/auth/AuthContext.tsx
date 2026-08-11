@@ -92,6 +92,15 @@ interface AuthContextValue {
    */
   bootstrapping: boolean;
   login: (email: string, password: string) => Promise<void>;
+  /**
+   * Accepte une invitation et ouvre la session.
+   *
+   * Distinct de `login` sur un point qui compte : il n'y a AUCUN repli local.
+   * Une invitée n'a pas de compte sur ce poste — c'est la définition d'une
+   * invitation — donc si amn-api est injoignable, la seule réponse honnête est
+   * de le dire, pas d'ouvrir une session locale qui ne serait rattachée à rien.
+   */
+  acceptInvitation: (token: string, password: string) => Promise<void>;
   logout: () => void;
   /**
    * Réinjecte le jeton nominatif stocké dans le process principal, et dit si
@@ -223,6 +232,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setOrg(null);
   }, []);
 
+  const acceptInvitation = useCallback(async (token: string, password: string) => {
+    const session = await bridge().remote.session.acceptInvitation(token, password);
+
+    // Même garde-fou d'édition qu'à la connexion : un build interne embarque
+    // les produits exclusifs, une organisation cliente n'a rien à y faire même
+    // avec une invitation parfaitement valide.
+    if (!IS_BUSINESS && session.org.plan !== 'internal') {
+      await bridge().remote.session.clear().catch(() => undefined);
+      throw new Error(
+        'Cette invitation concerne une organisation cliente. Utilisez l’application AMN Business.',
+      );
+    }
+
+    const nextUser = userFromSession(session);
+    const toStore: StoredSession = { token: session.token, user: nextUser, org: session.org };
+    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(toStore));
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    setUser(nextUser);
+    setOrg(session.org);
+  }, []);
+
   const logout = useCallback(() => {
     // Le mur « quota épuisé » appartient au compte qui part : le laisser en
     // place accueillerait le compte suivant avec le blocage du précédent.
@@ -285,10 +315,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: user !== null,
       bootstrapping,
       login,
+      acceptInvitation,
       reauthenticate,
       logout,
     }),
-    [user, org, overrideOrg, sessionKind, bootstrapping, login, logout, reauthenticate],
+    [user, org, overrideOrg, sessionKind, bootstrapping, login, acceptInvitation, logout, reauthenticate],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

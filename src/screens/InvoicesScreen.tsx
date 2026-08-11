@@ -38,6 +38,7 @@ import { InvoicePrintPortal } from '../assistant/InvoicePrintPortal';
 import { ProjectPicker, ProjectTag } from '../components/projects/ProjectPicker';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import type { BillingIdentity, Client, Invoice, InvoiceLine, InvoiceStatus } from '../shared/api';
+import { metaOf } from '../lib/records';
 
 /**
  * Facturation.
@@ -429,7 +430,7 @@ function InvoiceRow({
 }
 
 function StatusPill({ invoice, late }: { invoice: Invoice; late: boolean }) {
-  const label = late ? 'En retard' : STATUS_LABEL[invoice.status];
+  const label = late ? 'En retard' : metaOf(STATUS_LABEL, invoice.status, 'Brouillon');
   const tone = late
     ? 'border-danger/60 text-danger'
     : invoice.status === 'paid'
@@ -737,6 +738,8 @@ function InvoiceDetail({
               type="button"
               onClick={() => (confirmDelete ? onDelete() : setConfirmDelete(true))}
               onBlur={() => setConfirmDelete(false)}
+              aria-label="Supprimer le brouillon"
+              title="Supprimer le brouillon"
               className={`flex min-h-11 items-center justify-center gap-2 border px-3 text-xs uppercase tracking-wider transition-colors ${
                 confirmDelete
                   ? 'border-danger bg-danger-muted text-danger'

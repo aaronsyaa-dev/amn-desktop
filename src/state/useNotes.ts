@@ -120,9 +120,25 @@ export function useNotes() {
     [email, upsert, persistPersonal, personal],
   );
 
+  /*
+    La portée d'une note se LIT, elle ne se devine pas.
+
+    Ces deux fonctions déduisaient la portée du préfixe de l'identifiant
+    (`tnote-` / `pnote-`). Cela ne vaut que pour les notes créées par cette
+    version du code : une note d'équipe restaurée d'une sauvegarde, importée,
+    ou écrite par une version antérieure porte un autre identifiant, tombait
+    dans la branche « personnelle », et sa suppression allait chercher dans le
+    stockage local une note qui n'y est pas. Résultat : elle ne pouvait être ni
+    modifiée ni supprimée, en silence — le bug « Elie Sy », sur un autre écran.
+
+    On interroge donc la collection d'équipe elle-même, qui est la seule à
+    savoir ce qu'elle contient.
+  */
+  const isTeamNote = useCallback((id: string) => teamRaw.some((n) => n.id === id), [teamRaw]);
+
   const updateNote = useCallback(
     (id: string, patch: { title?: string; body?: string; pinned?: boolean }) => {
-      if (id.startsWith('tnote')) {
+      if (isTeamNote(id)) {
         const current = teamRaw.find((n) => n.id === id);
         if (!current) return;
         upsert('notes', id, {
@@ -139,7 +155,7 @@ export function useNotes() {
         );
       }
     },
-    [teamRaw, upsert, personal, persistPersonal],
+    [isTeamNote, teamRaw, upsert, personal, persistPersonal],
   );
 
   const togglePin = useCallback(
@@ -149,10 +165,10 @@ export function useNotes() {
 
   const deleteNote = useCallback(
     (id: string) => {
-      if (id.startsWith('tnote')) remove('notes', id);
+      if (isTeamNote(id)) remove('notes', id);
       else persistPersonal(personal.filter((n) => n.id !== id));
     },
-    [remove, personal, persistPersonal],
+    [isTeamNote, remove, personal, persistPersonal],
   );
 
   return { notes, createNote, updateNote, togglePin, deleteNote };

@@ -456,6 +456,14 @@ function createBrowserRemote(): AmnBridge['remote'] {
           return null;
         }
       },
+      async acceptInvitation(token: string, password: string) {
+        const session = await publicPost<RemoteSession>('/v1/auth/invitations/accept', {
+          token,
+          password,
+        });
+        applySession(session.token);
+        return session;
+      },
       async changePassword(currentPassword: string, newPassword: string) {
         await apiFetch<{ ok: boolean }>('/v1/auth/password', {
           method: 'PUT',

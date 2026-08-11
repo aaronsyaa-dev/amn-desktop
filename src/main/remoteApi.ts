@@ -168,6 +168,21 @@ export class RemoteApiClient {
   }
 
   /**
+   * Accepte une invitation et ouvre la session dans la foulée.
+   *
+   * Volontairement `publicPost` : l'invitée n'a, par définition, aucune session
+   * ni aucun jeton — c'est tout l'objet de l'invitation.
+   */
+  async acceptInvitation(token: string, password: string): Promise<RemoteSession> {
+    const session = await this.publicPost<RemoteSession>('/v1/auth/invitations/accept', {
+      token,
+      password,
+    });
+    this.applySession(session.token);
+    return session;
+  }
+
+  /**
    * Revalide un jeton stocké. Renvoie `null` s'il n'est plus bon (expiré,
    * compte ou organisation suspendus) — l'app redemande alors une connexion
    * plutôt que de rester sur une session morte qui échouerait appel par appel.

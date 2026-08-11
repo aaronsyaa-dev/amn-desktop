@@ -38,6 +38,7 @@ import {
   weekDays,
 } from '../lib/calendar';
 import { ConfirmDelete } from '../components/ConfirmDelete';
+import { metaOf } from '../lib/records';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 
 /**
@@ -329,7 +330,7 @@ function MonthView({
                       onPick(appointment.id);
                     }
                   }}
-                  className={`truncate rounded bg-bg px-1 py-0.5 text-[10px] ${STATUS_META[appointment.status].text}`}
+                  className={`truncate rounded bg-bg px-1 py-0.5 text-[10px] ${metaOf(STATUS_META, appointment.status, STATUS_META.scheduled).text}`}
                 >
                   {timeLabel(appointment.startAt)} {appointment.title || 'Rendez-vous'}
                 </span>
@@ -449,10 +450,10 @@ function DayColumn({
               className="flex flex-col items-start gap-0.5 px-2.5 py-2 text-left transition-colors hover:bg-surface-hover"
             >
               <span className="flex items-center gap-1.5 font-mono text-[10px] text-text-muted">
-                <span className={`h-1.5 w-1.5 rounded-full ${STATUS_META[appointment.status].dot}`} />
+                <span className={`h-1.5 w-1.5 rounded-full ${metaOf(STATUS_META, appointment.status, STATUS_META.scheduled).dot}`} />
                 {timeLabel(appointment.startAt)} – {timeLabel(appointmentEnd(appointment).toISOString())}
               </span>
-              <span className={`text-sm font-medium ${STATUS_META[appointment.status].text}`}>
+              <span className={`text-sm font-medium ${metaOf(STATUS_META, appointment.status, STATUS_META.scheduled).text}`}>
                 {appointment.title || 'Rendez-vous'}
               </span>
               {appointment.clientName && (
@@ -520,8 +521,8 @@ function AppointmentDetail({
       <div className="flex flex-col gap-3 p-5">
         <div className="flex flex-wrap items-center gap-2">
           <span className="flex items-center gap-1.5 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary">
-            <span className={`h-1.5 w-1.5 rounded-full ${STATUS_META[appointment.status].dot}`} />
-            {STATUS_META[appointment.status].label}
+            <span className={`h-1.5 w-1.5 rounded-full ${metaOf(STATUS_META, appointment.status, STATUS_META.scheduled).dot}`} />
+            {metaOf(STATUS_META, appointment.status, STATUS_META.scheduled).label}
           </span>
           <span className="flex items-center gap-1.5 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary">
             {appointment.reminderMin > 0 ? <Bell size={11} /> : <BellOff size={11} />}
