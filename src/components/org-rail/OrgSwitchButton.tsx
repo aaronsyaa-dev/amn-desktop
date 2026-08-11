@@ -40,11 +40,18 @@ export function OrgSwitchButton({ onNavigate }: { onNavigate?: () => void }) {
           <LogoMark size={26} />
         )}
         <span className="min-w-0 flex-1">
+          {/* L'étiquette d'abord, le nom en vedette ensuite : c'est la même
+              hiérarchie que partout ailleurs dans l'app (petite capitale mono
+              au-dessus, valeur en dessous), et surtout c'est ce qui empêche le
+              repli sur deux lignes.
+              « Changer d'organisation » tenait sur deux lignes dans cette
+              colonne de 113 px : une instruction verbeuse là où un mot suffit,
+              le chevron disant déjà que c'est cliquable. */}
+          <span className="block truncate font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
+            Organisation
+          </span>
           <span className="block truncate text-[13px] font-semibold leading-tight text-text-primary">
             {support ? support.orgName : 'AMN DevSec'}
-          </span>
-          <span className="block font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
-            Changer d’organisation
           </span>
         </span>
         <ChevronsUpDown size={14} strokeWidth={2} className="flex-shrink-0 text-text-muted" />

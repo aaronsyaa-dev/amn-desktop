@@ -120,7 +120,10 @@ export function Sidebar({
         onClick={handleNavClick}
         title={!isExpanded ? item.label : undefined}
         aria-label={item.label}
-        className={`group relative flex items-center gap-3 overflow-hidden rounded-lg py-1.5 text-sm transition-colors duration-200 ${
+        // 44 px sous `md` : le tiroir est la navigation principale du
+        // téléphone, ses lignes ne peuvent pas être plus petites que les
+        // cibles de la barre basse. Au pointeur, la densité d'origine reste.
+        className={`group relative flex min-h-11 items-center gap-3 overflow-hidden rounded-lg py-1.5 text-sm transition-colors duration-200 md:min-h-0 ${
           isExpanded ? 'px-3' : 'justify-center px-0'
         } ${
           active
@@ -284,7 +287,7 @@ export function Sidebar({
             onClick={logout}
             title={!isExpanded ? 'Déconnexion' : undefined}
             aria-label="Déconnexion"
-            className={`flex items-center gap-3 rounded-lg py-2 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary ${
+            className={`flex min-h-11 items-center gap-3 rounded-lg py-2 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary md:min-h-0 ${
               isExpanded ? 'px-3' : 'justify-center px-0'
             }`}
           >
@@ -402,6 +405,8 @@ function SpaceSwitcher({
   const [open, setOpen] = useState(false);
   const current = spaceByKey(spaceForPath(location.pathname));
   const CurrentIcon = current.icon;
+  const { org } = useAuth();
+  const orgName = org?.name ?? 'AMN DevSec';
 
   const go = (home: string) => {
     setOpen(false);
@@ -437,8 +442,17 @@ function SpaceSwitcher({
               <span className="block truncate text-[13px] font-semibold leading-tight text-text-primary">
                 {current.label}
               </span>
-              <span className="block font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
-                AMN DevSec
+              {/* L'organisation RÉELLE, pas une chaîne en dur.
+                  Elle l'était : en contexte client, ce sous-titre affichait
+                  « AMN DevSec » pendant qu'on travaillait dans le dossier
+                  d'une cliente — exactement l'erreur que toute la mécanique de
+                  contexte existe pour empêcher.
+                  Masqué sous `md` : le sélecteur d'organisation, juste
+                  au-dessus dans le tiroir mobile, dit déjà la même chose, et
+                  le voir deux fois à 60 px d'intervalle donne l'impression
+                  d'un montage bricolé. */}
+              <span className="hidden truncate font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted md:block">
+                {orgName}
               </span>
             </span>
             <ChevronDown
