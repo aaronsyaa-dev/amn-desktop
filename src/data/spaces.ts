@@ -44,11 +44,47 @@ export const SPACES: Space[] = [
   },
 ];
 
+/**
+ * Les modules ouverts à l'organisation connectée (BLOC E), ou `null` = tous.
+ *
+ * Un registre au niveau du module, réglé par `AuthContext` à partir de ce que
+ * le serveur affirme. Le poste ne choisit rien : il applique.
+ *
+ * Pourquoi ici, et pas un filtre à chaque endroit qui affiche la navigation :
+ * il y en a cinq — barre latérale, lanceur, barre du pouce, palette de
+ * commandes, étiquettes — et l'histoire de ce dépôt est pleine de listes qu'on
+ * a oublié de filtrer à un endroit sur cinq. Le catalogue est déjà résolu
+ * globalement à la compilation selon l'édition ; les modules d'une organisation
+ * sont la même idée, un cran plus bas.
+ *
+ * ATTENTION : ceci retire des ÉCRANS, ce n'est pas une frontière de sécurité.
+ * L'isolation des données reste celle d'amn-api, par `org_id`.
+ */
+let enabledModules: string[] | null = null;
+
+export function setEnabledModules(modules: string[] | null | undefined): void {
+  enabledModules = Array.isArray(modules) ? modules : null;
+}
+
+/**
+ * Un module est-il ouvert ? `home` et `settings` le sont toujours : une
+ * organisation sans accueil ni paramètres n'est pas dégradée, elle est cassée.
+ */
+export function isModuleEnabled(key: string): boolean {
+  if (!enabledModules) return true;
+  if (key === 'home' || key === 'settings') return true;
+  return enabledModules.includes(key);
+}
+
 /** Sections d'un espace, dans l'ordre du catalogue. */
 export function sectionsForSpace(space: SpaceKey): NavSection[] {
   // Une section sans espace appartient au Poste de travail : c'est le cas de
   // l'édition Business, qui n'en a qu'un et n'a donc rien à déclarer.
-  return NAV_SECTIONS.filter((section) => (section.space ?? 'workspace') === space);
+  return NAV_SECTIONS.filter((section) => (section.space ?? 'workspace') === space)
+    .map((section) => ({ ...section, items: section.items.filter((item) => isModuleEnabled(item.key)) }))
+    // Une section vidée de tous ses modules disparaît : un intitulé seul dans
+    // le lanceur dirait « il y a autre chose, mais pas pour vous ».
+    .filter((section) => section.items.length > 0);
 }
 
 export function itemsForSpace(space: SpaceKey): NavItem[] {

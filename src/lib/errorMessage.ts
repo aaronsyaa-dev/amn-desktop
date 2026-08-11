@@ -1,4 +1,5 @@
-import { API_UNREACHABLE_PREFIX } from '../shared/api';
+import { API_UNREACHABLE_PREFIX, GUEST_QUOTA_PREFIX } from '../shared/api';
+import type { GuestQuotaState } from '../shared/api';
 
 /**
  * Message d'erreur lisible, débarrassé de l'emballage IPC d'Electron.
@@ -33,4 +34,32 @@ export function cleanErrorMessage(error: unknown, fallback = 'Une erreur est sur
 export function isApiUnreachable(error: unknown): boolean {
   const raw = error instanceof Error ? error.message : String(error ?? '');
   return raw.includes(API_UNREACHABLE_PREFIX);
+}
+
+/**
+ * Lit le refus « quota invité épuisé » porté par une erreur, ou `null`.
+ *
+ * Même mécanique qu'`isApiUnreachable` : le marqueur voyage dans le message
+ * parce que c'est tout ce qui survit au pont IPC. La différence est qu'ici on
+ * récupère aussi les chiffres — combien de temps par jour, combien consommé,
+ * quand l'accès rouvre — parce qu'un blocage qui ne dit pas jusqu'à quand
+ * n'est pas un blocage, c'est une panne.
+ */
+export function readGuestQuotaRefusal(error: unknown): GuestQuotaState | null {
+  const raw = error instanceof Error ? error.message : String(error ?? '');
+  const at = raw.indexOf(GUEST_QUOTA_PREFIX);
+  if (at === -1) return null;
+  const payload = raw.slice(at + GUEST_QUOTA_PREFIX.length).split('|')[0];
+  try {
+    const parsed = JSON.parse(payload) as Partial<GuestQuotaState>;
+    return {
+      minutesPerDay: Number(parsed.minutesPerDay ?? 0),
+      minutesUsed: Number(parsed.minutesUsed ?? 0),
+      resetsAt: String(parsed.resetsAt ?? ''),
+    };
+  } catch {
+    // Le marqueur est là mais la charge utile est illisible : on bloque quand
+    // même, avec des chiffres vides. Laisser passer serait le pire des deux.
+    return { minutesPerDay: 0, minutesUsed: 0, resetsAt: '' };
+  }
 }

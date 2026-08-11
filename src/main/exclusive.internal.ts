@@ -227,7 +227,13 @@ const adminApi = {
 
   async updateOrganization(
     id: string,
-    patch: { name?: string; logoDataUrl?: string | null },
+    patch: {
+      name?: string;
+      logoDataUrl?: string | null;
+      modules?: string[] | null;
+      guestDailyMinutes?: number | null;
+      timezone?: string | null;
+    },
   ): Promise<AdminOrganization> {
     const { organization } = await apiFetch<{ organization: AdminOrganization }>(
       `/v1/admin/organizations/${encodeURIComponent(id)}`,

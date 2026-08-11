@@ -8,6 +8,7 @@ import React, {
   useState,
 } from 'react';
 import { bridge } from '../lib/bridge';
+import { reportGuestQuotaError } from './guestQuotaStore';
 import { useAuth } from '../auth/AuthContext';
 import type {
   PresenceEntry,
@@ -74,6 +75,9 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   // l'autre.
   'invoices',
   'billing',
+  // Dossier client : nos notes internes SUR une cliente. Portées par le tenant
+  // d'AMN DevSec, jamais par le sien — voir le type SyncedCollection.
+  'orgDossier',
 ];
 
 const MIRROR_PREFIX = 'amn.sync.';
@@ -295,7 +299,12 @@ export function SyncProvider({
           try {
             const records = await remote.listRecords(collection);
             if (active) applyRecords(collection, records);
-          } catch {
+          } catch (err) {
+            // Un quota d'invité épuisé n'est pas une panne de réseau : c'est
+            // une décision du serveur, et elle doit remonter jusqu'à l'écran
+            // de blocage au lieu de se confondre avec « synchronisation
+            // indisponible », qui laisserait l'application ouverte.
+            reportGuestQuotaError(err);
             /* keep mirror data on failure */
             anyFailed = true;
           }
@@ -344,11 +353,44 @@ export function SyncProvider({
       if (active) setOnlineEmails(new Set(users.filter((p) => p.online).map((p) => p.email)));
     });
 
+    /*
+      Reprise après veille, verrouillage du téléphone, ou onglet laissé de côté
+      (BLOC G).
+
+      La resynchronisation ci-dessus ne se déclenche que si la WebSocket
+      SIGNALE une reconnexion. Or une machine qui s'endort ne ferme pas
+      proprement sa socket : au réveil, elle est morte sans que personne l'ait
+      constaté, et l'application continue d'afficher les données d'hier sans
+      rien indiquer d'anormal — le pire des états, parce qu'il a l'air normal.
+
+      Revenir sur l'application est donc traité comme un événement en soi. Un
+      intervalle minimal évite qu'un simple aller-retour entre deux fenêtres ne
+      relance un rattrapage complet à chaque fois.
+    */
+    const MIN_REFRESH_GAP_MS = 30_000;
+    let lastRefreshAt = Date.now();
+    const refreshIfStale = () => {
+      if (!active) return;
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      if (Date.now() - lastRefreshAt < MIN_REFRESH_GAP_MS) return;
+      lastRefreshAt = Date.now();
+      void pullAll();
+    };
+
+    window.addEventListener('visibilitychange', refreshIfStale);
+    window.addEventListener('focus', refreshIfStale);
+    // Le réseau qui revient : même raisonnement, sans attendre que la socket
+    // s'en aperçoive.
+    window.addEventListener('online', refreshIfStale);
+
     return () => {
       active = false;
       offRecord();
       offStatus();
       offPresence();
+      window.removeEventListener('visibilitychange', refreshIfStale);
+      window.removeEventListener('focus', refreshIfStale);
+      window.removeEventListener('online', refreshIfStale);
     };
   }, [applyRecords]);
 

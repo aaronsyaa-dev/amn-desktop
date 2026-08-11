@@ -3,10 +3,13 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
 } from 'react';
 import { bridge } from '../lib/bridge';
+import { setEnabledModules } from '../data/spaces';
+import { clearGuestQuotaBlock } from '../state/guestQuotaStore';
 import { cleanErrorMessage, isApiUnreachable } from '../lib/errorMessage';
 import { IS_BUSINESS } from '../edition/edition';
 import type { OrgIdentity, RemoteSession, User } from '../shared/api';
@@ -220,6 +223,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    // Le mur « quota épuisé » appartient au compte qui part : le laisser en
+    // place accueillerait le compte suivant avec le blocage du précédent.
+    clearGuestQuotaBlock();
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
     window.localStorage.removeItem(SESSION_STORAGE_KEY);
     // Les miroirs de collections sont indexés par poste, pas par organisation :
@@ -245,6 +251,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const overrideOrg = useCallback((next: OrgIdentity | null) => setContextOrg(next), []);
+
+  /*
+    Les modules ouverts suivent l'organisation ACTIVE — celle du contexte client
+    quand il y en a un, la sienne sinon. C'est ce qui fait que le support voit
+    l'application de la cliente telle qu'elle est chez elle, modules retirés
+    compris, au lieu d'une version complète qui n'existe nulle part.
+
+    Réglé dans un effet, avant peinture, pour qu'aucun rendu n'affiche la
+    navigation de l'organisation précédente le temps d'une image.
+  */
+  useLayoutEffect(() => {
+    setEnabledModules(org?.modules ?? null);
+  }, [org]);
 
   // Une session amn-api porte toujours son organisation (`/v1/auth/login` la
   // rend, `/v1/auth/me` la revalide) ; le repli local n'en a jamais. La nature

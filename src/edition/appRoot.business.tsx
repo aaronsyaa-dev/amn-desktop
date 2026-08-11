@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from '../components/ProtectedRoute';
+import { ModuleRoute } from '../components/ModuleRoute';
 import { BusinessLayout } from '../business/BusinessLayout';
 import { LoginScreen } from '../screens/LoginScreen';
 import { HomeSoloScreen } from '../business/HomeSoloScreen';
@@ -41,15 +42,71 @@ export function AppRoot() {
         }
       >
         <Route path="/" element={<HomeSoloScreen />} />
-        <Route path="/agenda" element={<AgendaScreen />} />
-        <Route path="/clients" element={<ClientsScreen />} />
-        <Route path="/facturation" element={<InvoicesScreen />} />
-        <Route path="/tasks" element={<TasksScreen />} />
-        <Route path="/notes" element={<NotesScreen />} />
-        <Route path="/media" element={<MediaSoloScreen />} />
-        <Route path="/reports" element={<ReportsScreen />} />
+        <Route
+          path="/agenda"
+          element={
+            <ModuleRoute module="agenda">
+              <AgendaScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/clients"
+          element={
+            <ModuleRoute module="clients">
+              <ClientsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/facturation"
+          element={
+            <ModuleRoute module="invoices">
+              <InvoicesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/tasks"
+          element={
+            <ModuleRoute module="tasks">
+              <TasksScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/notes"
+          element={
+            <ModuleRoute module="notes">
+              <NotesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/media"
+          element={
+            <ModuleRoute module="media">
+              <MediaSoloScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/reports"
+          element={
+            <ModuleRoute module="reports">
+              <ReportsScreen />
+            </ModuleRoute>
+          }
+        />
         <Route path="/settings" element={<SettingsScreen />} />
-        <Route path="/vault" element={<VaultScreen />} />
+        <Route
+          path="/vault"
+          element={
+            <ModuleRoute module="vault">
+              <VaultScreen />
+            </ModuleRoute>
+          }
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

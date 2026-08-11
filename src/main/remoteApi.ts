@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 import { remoteConfig, isRemoteConfigured, apiCredential, ownerCredential } from './remoteConfig';
-import { API_UNREACHABLE_PREFIX } from '../shared/api';
+import { API_UNREACHABLE_PREFIX, GUEST_QUOTA_PREFIX } from '../shared/api';
 import type {
   OrgIdentity,
   RemoteSession,
@@ -55,10 +55,17 @@ export async function apiFetch<T>(
     // incorrect. », « Votre accès a été suspendu. »). Les remonter tels quels
     // vaut mieux que « amn-api 403 Forbidden » suivi d'un fragment de JSON,
     // que le renderer affichait jusqu'ici à l'écran.
-    const detail = await res
+    const body = await res
       .json()
-      .then((body: { error?: string }) => body?.error)
+      .then((parsed: { error?: string; code?: string; quota?: unknown }) => parsed)
       .catch(() => undefined);
+    const detail = body?.error;
+    // Le quota invité est le seul refus auquel l'interface doit RÉAGIR plutôt
+    // que de l'afficher : il ferme l'application pour la journée. Son code est
+    // donc préservé à travers le pont IPC, qui ne transporte que le message.
+    if (body?.code === 'guest_quota_exhausted') {
+      throw new Error(`${GUEST_QUOTA_PREFIX}${JSON.stringify(body.quota ?? {})}|${detail ?? ''}`);
+    }
     throw new Error(detail || `amn-api ${res.status} ${res.statusText}`);
   }
   return res.json() as Promise<T>;
