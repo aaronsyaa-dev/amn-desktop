@@ -47,6 +47,8 @@ export function useProjects() {
   const appointments = useCollection<Attachable>('appointments');
   const notes = useCollection<Attachable>('notes');
   const invoices = useCollection<Attachable>('invoices');
+  const expenses = useCollection<Attachable>('expenses');
+  const timeEntries = useCollection<Attachable>('timeEntries');
 
   const config = useMemo<ProjectConfig>(() => {
     const row = rawConfig.find((r) => r.id === CONFIG_ID);
@@ -136,8 +138,10 @@ export function useProjects() {
       appointments: appointments.filter((a) => a.projectId === projectId),
       notes: notes.filter((n) => n.projectId === projectId),
       invoices: invoices.filter((i) => i.projectId === projectId),
+      expenses: expenses.filter((e) => e.projectId === projectId),
+      timeEntries: timeEntries.filter((t) => t.projectId === projectId),
     }),
-    [tasks, appointments, notes, invoices],
+    [tasks, appointments, notes, invoices, expenses, timeEntries],
   );
 
   /** Combien d'éléments sont rattachés, sans construire les listes. */
@@ -146,8 +150,10 @@ export function useProjects() {
       tasks.filter((t) => t.projectId === projectId).length +
       appointments.filter((a) => a.projectId === projectId).length +
       notes.filter((n) => n.projectId === projectId).length +
-      invoices.filter((i) => i.projectId === projectId).length,
-    [tasks, appointments, notes, invoices],
+      invoices.filter((i) => i.projectId === projectId).length +
+      expenses.filter((e) => e.projectId === projectId).length +
+      timeEntries.filter((t) => t.projectId === projectId).length,
+    [tasks, appointments, notes, invoices, expenses, timeEntries],
   );
 
   const active = useMemo(() => projects.filter((p) => !isDone(config, p)), [projects, config]);

@@ -82,6 +82,13 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   // `projectId` porté par les collections existantes : rien n'est recopié.
   'projects',
   'projectConfig',
+  // Dépenses et temps passé. Le chronomètre en cours est un enregistrement de
+  // `timeEntries` comme les autres : lancé sur le téléphone, il doit se voir —
+  // et s'arrêter — depuis le poste, ce qu'un état local ne permettrait pas.
+  'expenses',
+  'expenseConfig',
+  'timeEntries',
+  'timeConfig',
 ];
 
 const MIRROR_PREFIX = 'amn.sync.';

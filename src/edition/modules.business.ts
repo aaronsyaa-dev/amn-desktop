@@ -10,6 +10,8 @@ import {
   FolderKanban,
   ReceiptEuro,
   Settings,
+  Timer,
+  Wallet,
 } from 'lucide-react';
 import type { NavSection } from '../data/navigation';
 import type { ActivityTab } from '../state/ActivityContext';
@@ -54,6 +56,12 @@ export const NAV_SECTIONS: NavSection[] = [
       // rattachement de tout le reste, pas un module de plus.
       { key: 'projects', label: 'Projets', to: '/projets', icon: FolderKanban, hint: 'Ce qui avance, et ce qui bloque' },
       { key: 'tasks', label: 'Tâches', to: '/tasks', icon: CheckSquare, hint: 'Ce qu’il reste à faire' },
+      // Dépenses et Temps encadrent les tâches : ce sont les deux faces de ce
+      // qu'une prestation coûte réellement — ce qu'on sort, et ce qu'on y
+      // passe. Les séparer dans deux coins de la navigation reviendrait à
+      // dire qu'ils n'ont rien à voir l'un avec l'autre.
+      { key: 'expenses', label: 'Dépenses', to: '/depenses', icon: Wallet, hint: 'Ce que vous sortez, avec les reçus' },
+      { key: 'time', label: 'Temps', to: '/temps', icon: Timer, hint: 'Chronomètre et temps passé' },
       { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen, hint: 'Bloc-notes' },
       { key: 'media', label: 'Médias', to: '/media', icon: Images, hint: 'Photos et fichiers' },
       { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Comptes-rendus' },
@@ -89,6 +97,11 @@ export const ACTIVITY_TABS: ActivityTab[] = [
   { routeKey: '/clients', collection: 'clients', noun: 'Client' },
   { routeKey: '/notes', collection: 'notes', noun: 'Note' },
   { routeKey: '/media', collection: 'media', noun: 'Média' },
+  // Une dépense saisie sur le téléphone doit se signaler sur le poste — c'est
+  // le cas d'usage même du module : on photographie le reçu dehors, on
+  // retrouve la dépense en rentrant. Le temps n'y figure pas : un chronomètre
+  // en cours ferait clignoter une pastille en permanence.
+  { routeKey: '/depenses', collection: 'expenses', noun: 'Dépense' },
 ];
 
 
@@ -99,6 +112,8 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/clients', 'fiches'],
   ['/facturation', 'fiches'],
   ['/projets', 'tableau'],
+  ['/depenses', 'fiches'],
+  ['/temps', 'registre'],
   ['/notes', 'journal'],
   ['/media', 'base'],
   ['/reports', 'livrables'],

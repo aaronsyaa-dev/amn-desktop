@@ -55,10 +55,20 @@ function read(rel) {
 
 /* ---------------------------------------------------------------- sources -- */
 
-/** Collections declared in the shared type union. */
+/**
+ * Collections declared in the shared type union.
+ *
+ * Le point-virgule cherché est celui qui TERMINE UNE LIGNE, et pas n'importe
+ * lequel : les commentaires de ce type sont rédigés en français, où le
+ * point-virgule est une ponctuation courante. Un `;` au milieu d'une phrase
+ * arrêtait la lecture au beau milieu de l'union, et les collections déclarées
+ * APRÈS ce commentaire étaient signalées comme « absentes du type » alors
+ * qu'elles y étaient — une fausse alerte qui envoie chercher au mauvais
+ * endroit, ce qui est pire qu'un contrôle absent.
+ */
 function declaredCollections() {
   const src = read('src/shared/api.ts');
-  const block = /export type SyncedCollection =([\s\S]*?);/.exec(src);
+  const block = /export type SyncedCollection =([\s\S]*?);[\r\n]/.exec(src);
   if (!block) throw new Error('SyncedCollection introuvable dans src/shared/api.ts');
   return [...block[1].matchAll(/'([a-zA-Z]+)'/g)].map((m) => m[1]);
 }

@@ -1074,7 +1074,30 @@ export type SyncedCollection =
    * Le réglage du moteur pour cette organisation : statuts, structures,
    * champs affichés. Un unique enregistrement d'id `config`.
    */
-  | 'projectConfig';
+  | 'projectConfig'
+  /**
+   * Dépenses. Une dépense est un montant PAYÉ, avec sa catégorie, son jour,
+   * une note courte et — c'est ce qui la distingue d'une ligne de tableur —
+   * la photo du justificatif.
+   */
+  | 'expenses'
+  /**
+   * Le réglage du module Dépenses : la liste courte des catégories, et les
+   * budgets. Un unique enregistrement d'id `config`, comme `projectConfig`.
+   */
+  | 'expenseConfig'
+  /**
+   * Temps passé, un enregistrement par période travaillée. Celui dont
+   * `endedAt` est vide est le chronomètre EN COURS. Le chronomètre vit donc
+   * dans la collection synchronisée et non dans un état local, ce qui permet
+   * de le lancer depuis le téléphone et de l'arrêter depuis le poste.
+   */
+  | 'timeEntries'
+  /**
+   * Le réglage du module Temps : le tarif horaire proposé quand un temps
+   * devient une ligne de facture. Un unique enregistrement d'id `config`.
+   */
+  | 'timeConfig';
 
 export interface PresenceEntry {
   email: string;
