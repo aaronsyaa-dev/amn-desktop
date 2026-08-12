@@ -5,6 +5,7 @@ import { ModuleRoute } from '../components/ModuleRoute';
 import { AppLayout } from '../components/AppLayout';
 import { LoginScreen } from '../screens/LoginScreen';
 import { InvitationScreen } from '../screens/InvitationScreen';
+import { GuestCallScreen } from '../screens/GuestCallScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { SitesDashboardScreen } from '../screens/SitesDashboardScreen';
 import { TeamScreen } from '../screens/TeamScreen';
@@ -69,6 +70,11 @@ export function AppRoot() {
           l'invitée n'a par définition pas encore de compte, donc l'écran
           d'activation ne peut pas vivre derrière une exigence de session. */}
       <Route path="/invitation" element={<InvitationScreen />} />
+      {/* Page d'appel d'un visiteur SANS COMPTE (BLOC B.2). Publique pour la
+          même raison que l'activation, et plus encore : le visiteur n'aura
+          jamais de compte. Elle n'affiche aucune marque et ne connaît aucune
+          route de données — voir GuestCallScreen. */}
+      <Route path="/appel" element={<GuestCallScreen />} />
       <Route
         path="/*"
         element={

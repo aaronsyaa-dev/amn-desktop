@@ -1,0 +1,247 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { Check, Copy, Link2, Loader2, Trash2, X } from 'lucide-react';
+import { bridge } from '../../lib/bridge';
+import { cleanErrorMessage } from '../../lib/errorMessage';
+import type { CallLink } from '../../shared/api';
+
+/**
+ * Émettre un lien d'appel pour quelqu'un qui n'a pas de compte (BLOC B.2).
+ *
+ * ## Le jeton ne s'affiche qu'une fois, et l'écran le dit
+ *
+ * amn-api n'en garde que l'empreinte. Un lien perdu ne se retrouve donc pas, il
+ * se réémet — et c'est volontaire : un secret relisible à volonté n'est plus un
+ * secret à usage unique. L'écran affiche l'adresse complète tout de suite, avec
+ * un bouton de copie, et l'annonce clairement.
+ *
+ * ## La durée est un choix, pas un réglage caché
+ *
+ * Trois durées, en clair. Un lien d'appel s'envoie et s'utilise dans la foulée ;
+ * proposer « 30 jours » inviterait à laisser traîner une porte ouverte.
+ */
+
+const DURATIONS = [
+  { minutes: 15, label: '15 min' },
+  { minutes: 30, label: '30 min' },
+  { minutes: 120, label: '2 h' },
+];
+
+/** L'adresse à envoyer au prospect. */
+function linkUrl(token: string): string {
+  const { origin, pathname } = window.location;
+  return `${origin}${pathname}#/appel?token=${encodeURIComponent(token)}`;
+}
+
+function remaining(expiresAt: string): string {
+  const ms = Date.parse(expiresAt) - Date.now();
+  if (!Number.isFinite(ms) || ms <= 0) return 'expiré';
+  const minutes = Math.round(ms / 60000);
+  if (minutes < 60) return `expire dans ${minutes} min`;
+  return `expire dans ${Math.round(minutes / 60)} h`;
+}
+
+export function CallLinkPanel({ onClose }: { onClose: () => void }) {
+  const [links, setLinks] = useState<CallLink[]>([]);
+  const [minutes, setMinutes] = useState(30);
+  const [label, setLabel] = useState('');
+  const [fresh, setFresh] = useState<{ url: string; expiresAt: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      setLinks(await bridge().remote.callLinks.list());
+    } catch (err) {
+      setError(cleanErrorMessage(err, 'Impossible de lire vos liens.'));
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const create = async () => {
+    setBusy(true);
+    setError(null);
+    setCopied(false);
+    try {
+      const created = await bridge().remote.callLinks.create({ label: label.trim(), minutes });
+      setFresh({ url: linkUrl(created.token), expiresAt: created.expiresAt });
+      setLabel('');
+      await refresh();
+    } catch (err) {
+      setError(cleanErrorMessage(err, 'amn-api a refusé la création du lien.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copy = async () => {
+    if (!fresh) return;
+    try {
+      await navigator.clipboard.writeText(fresh.url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError('La copie automatique a échoué — sélectionnez l’adresse à la main.');
+    }
+  };
+
+  const revoke = async (id: string) => {
+    try {
+      await bridge().remote.callLinks.revoke(id);
+      await refresh();
+    } catch (err) {
+      setError(cleanErrorMessage(err, 'Impossible de révoquer ce lien.'));
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+      />
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 24 }}
+        transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+        className="relative flex max-h-[92vh] w-full max-w-lg flex-col border border-border-strong bg-surface"
+      >
+        <div className="flex flex-shrink-0 items-center justify-between border-b border-border px-4 py-3">
+          <h2 className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">
+            <Link2 size={13} strokeWidth={2} />
+            Lien d’appel
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fermer"
+            className="flex h-9 w-9 items-center justify-center text-text-secondary hover:text-text-primary"
+          >
+            <X size={18} strokeWidth={2} />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          <p className="text-xs leading-relaxed text-text-secondary">
+            Envoyez cette adresse à quelqu’un qui n’a pas de compte. Elle ouvre une page d’appel
+            dans son navigateur, ne sert qu’<strong className="font-semibold">une seule fois</strong>,
+            et ne lui apprend rien sur vous tant que vous n’avez pas décroché.
+          </p>
+
+          <label className="mt-4 block">
+            <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-text-muted">
+              Pour qui ? (mémo privé, jamais montré au visiteur)
+            </span>
+            <input
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Prospect rencontré au salon"
+              className="input-focus min-h-11 w-full border border-border bg-bg px-3 text-sm text-text-primary outline-none"
+            />
+          </label>
+
+          <p className="mb-1 mt-4 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+            Valable
+          </p>
+          <div className="flex gap-2">
+            {DURATIONS.map((d) => (
+              <button
+                key={d.minutes}
+                type="button"
+                onClick={() => setMinutes(d.minutes)}
+                aria-pressed={minutes === d.minutes}
+                className={`flex min-h-11 flex-1 items-center justify-center border text-sm transition-colors ${
+                  minutes === d.minutes
+                    ? 'border-accent bg-accent-muted text-text-primary'
+                    : 'border-border text-text-secondary hover:border-border-strong'
+                }`}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void create()}
+            disabled={busy}
+            className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 bg-accent text-sm font-semibold text-bg transition-colors hover:bg-accent-hover disabled:opacity-60"
+          >
+            {busy && <Loader2 size={16} className="animate-spin" />}
+            Générer le lien
+          </button>
+
+          {fresh && (
+            <div className="mt-4 border border-accent/50 bg-accent-muted p-3">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                À envoyer maintenant · {remaining(fresh.expiresAt)}
+              </p>
+              <p className="mt-1.5 break-all font-mono text-[11px] text-text-primary">{fresh.url}</p>
+              <button
+                type="button"
+                onClick={() => void copy()}
+                className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 border border-border-strong text-sm text-text-primary transition-colors hover:bg-surface-hover"
+              >
+                {copied ? <Check size={15} strokeWidth={2.25} /> : <Copy size={15} strokeWidth={1.75} />}
+                {copied ? 'Copié' : 'Copier l’adresse'}
+              </button>
+              <p className="mt-2 text-xs leading-relaxed text-text-secondary">
+                Cette adresse ne sera plus affichée. Elle n’est pas conservée en clair — si vous la
+                perdez, générez-en une autre.
+              </p>
+            </div>
+          )}
+
+          {error && (
+            <p role="alert" className="mt-3 border border-danger/40 bg-danger-muted px-3 py-2 font-mono text-xs text-danger">
+              {error}
+            </p>
+          )}
+
+          {links.length > 0 && (
+            <>
+              <p className="mt-6 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                Vos liens récents
+              </p>
+              <div className="mt-2 flex flex-col divide-y divide-border/60 border border-border">
+                {links.map((l) => (
+                  <div key={l.id} className="flex min-h-12 items-center gap-3 px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm text-text-primary">{l.label || 'Sans mémo'}</p>
+                      <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted">
+                        {l.state === 'ready'
+                          ? remaining(l.expiresAt)
+                          : l.state === 'used'
+                            ? 'utilisé'
+                            : 'expiré'}
+                      </p>
+                    </div>
+                    {l.state === 'ready' && (
+                      <button
+                        type="button"
+                        onClick={() => void revoke(l.id)}
+                        aria-label={`Révoquer le lien ${l.label || 'sans mémo'}`}
+                        title="Révoquer ce lien"
+                        className="flex h-9 w-9 flex-shrink-0 items-center justify-center text-text-muted transition-colors hover:text-danger"
+                      >
+                        <Trash2 size={14} strokeWidth={1.75} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+}

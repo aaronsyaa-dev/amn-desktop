@@ -1156,6 +1156,32 @@ export interface OutgoingCallSignal {
   payload?: unknown;
 }
 
+
+/* ---------------------- Lien d'appel anonyme (BLOC B.2) --------------------- */
+
+/**
+ * Un lien qu'on envoie à quelqu'un SANS COMPTE pour qu'il puisse appeler.
+ *
+ * Le jeton en clair n'est rendu qu'à la création, une seule fois : amn-api n'en
+ * garde que l'empreinte. Il n'est donc pas relisible ensuite, y compris par
+ * nous — un lien perdu se réémet, il ne se retrouve pas.
+ */
+export interface CallLink {
+  id: string;
+  /** Mémo privé de l'hôte. N'est JAMAIS exposé au visiteur. */
+  label: string;
+  expiresAt: string;
+  state: 'ready' | 'expired' | 'used';
+}
+
+/** Ce que rend la création — la seule occasion de lire le jeton. */
+export interface CreatedCallLink {
+  id: string;
+  token: string;
+  expiresAt: string;
+  label: string;
+}
+
 /* ------------------------------ Scanner (Produits) ------------------------------ */
 
 /** Scan depth. Each tier is a superset of the previous one. */
@@ -1482,6 +1508,16 @@ export interface AmnBridge {
     /** Signalling messages addressed to this operator. Returns an unsubscribe. */
     onCallSignal(callback: (signal: CallSignal) => void): () => void;
 
+    /* --- Liens d'appel anonymes (BLOC B.2) --- */
+    callLinks: {
+      /** Émet un lien. Le jeton en clair n'est lisible QUE dans cette réponse. */
+      create(input: { label?: string; minutes?: number }): Promise<CreatedCallLink>;
+      /** Les liens émis par CE compte, avec leur état calculé. */
+      list(): Promise<CallLink[]>;
+      /** Révoque un lien avant son échéance. */
+      revoke(id: string): Promise<void>;
+    };
+
     /* --- Scanner --- */
     /**
      * Queues a passive security scan of `url` at `tier`. Resolves as soon as
@@ -1723,6 +1759,9 @@ export const IPC = {
   remoteSessionClear: 'remote:sessionClear',
   remoteSessionChangePassword: 'remote:sessionChangePassword',
   remoteSessionAcceptInvitation: 'remote:sessionAcceptInvitation',
+  remoteCallLinkCreate: 'remote:callLinkCreate',
+  remoteCallLinkList: 'remote:callLinkList',
+  remoteCallLinkRevoke: 'remote:callLinkRevoke',
   remoteGetPresence: 'remote:getPresence',
   /** Push channels (main -> renderer via webContents.send, not invoke/handle). */
   remoteStartScan: 'remote:startScan',

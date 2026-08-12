@@ -29,6 +29,7 @@ import { useSync, useCollection } from '../state/SyncContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { useClients } from '../state/useClients';
 import { useCall } from '../state/CallContext';
+import { CallLinkPanel } from '../components/call/CallLinkPanel';
 import { useMessages, type SyncMessage } from '../state/useMessages';
 import { UserAvatar } from '../components/UserAvatar';
 import { parseMentions, urlDisplayHost, type ClientRef, type TaskRef } from '../lib/mentions';
@@ -221,9 +222,28 @@ function PresenceBar({ currentEmail }: { currentEmail?: string }) {
   const { onlineEmails, configured } = useSync();
   const { profileFor } = useProfiles();
   const { call, callsAvailable, phase } = useCall();
+  const [linkPanel, setLinkPanel] = useState(false);
 
   return (
-    <div className="flex flex-wrap gap-3">
+    <div className="flex flex-wrap items-center gap-3">
+      {/*
+        Appeler quelqu'un qui n'est PAS dans cette liste : un prospect, qui n'a
+        pas de compte et n'en aura peut-être jamais. Placé ici parce que c'est
+        l'endroit où l'on se demande « qui j'appelle » — et que la réponse
+        n'est pas toujours un collègue.
+      */}
+      <button
+        type="button"
+        onClick={() => setLinkPanel(true)}
+        title="Créer un lien d’appel pour quelqu’un sans compte"
+        className="flex min-h-11 items-center gap-2 border border-dashed border-border px-3 text-sm text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
+      >
+        <Link2 size={15} strokeWidth={1.75} />
+        Lien d’appel
+      </button>
+      <AnimatePresence>
+        {linkPanel && <CallLinkPanel onClose={() => setLinkPanel(false)} />}
+      </AnimatePresence>
       {TEAM.map((member) => {
         const isSelf = member.email === currentEmail;
         const profile = profileFor(member.email);

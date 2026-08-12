@@ -139,6 +139,11 @@ const bridge: AmnBridge = {
       acceptInvitation: (token: string, password: string) =>
         ipcRenderer.invoke(IPC.remoteSessionAcceptInvitation, { token, password }),
     },
+    callLinks: {
+      create: (input) => ipcRenderer.invoke(IPC.remoteCallLinkCreate, input),
+      list: () => ipcRenderer.invoke(IPC.remoteCallLinkList),
+      revoke: (id: string) => ipcRenderer.invoke(IPC.remoteCallLinkRevoke, id),
+    },
     getPresence: () => ipcRenderer.invoke(IPC.remoteGetPresence),
     onPresence: (callback: (users: PresenceEntry[]) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, users: PresenceEntry[]) => callback(users);

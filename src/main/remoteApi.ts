@@ -2,6 +2,8 @@ import WebSocket from 'ws';
 import { remoteConfig, isRemoteConfigured, apiCredential, ownerCredential } from './remoteConfig';
 import { API_UNREACHABLE_PREFIX, GUEST_QUOTA_PREFIX } from '../shared/api';
 import type {
+  CallLink,
+  CreatedCallLink,
   OrgIdentity,
   RemoteSession,
   RemoteSessionUser,
@@ -173,6 +175,24 @@ export class RemoteApiClient {
    * Volontairement `publicPost` : l'invitée n'a, par définition, aucune session
    * ni aucun jeton — c'est tout l'objet de l'invitation.
    */
+  /* ------------------- Liens d'appel anonymes (BLOC B.2) ------------------- */
+
+  async createCallLink(input: { label?: string; minutes?: number }): Promise<CreatedCallLink> {
+    return apiFetch<CreatedCallLink>('/v1/call-links', {
+      method: 'POST',
+      body: JSON.stringify({ label: input.label ?? '', minutes: input.minutes }),
+    });
+  }
+
+  async listCallLinks(): Promise<CallLink[]> {
+    const res = await apiFetch<{ links: CallLink[] }>('/v1/call-links');
+    return res.links ?? [];
+  }
+
+  async revokeCallLink(id: string): Promise<void> {
+    await apiFetch(`/v1/call-links/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
+
   async acceptInvitation(token: string, password: string): Promise<RemoteSession> {
     const session = await this.publicPost<RemoteSession>('/v1/auth/invitations/accept', {
       token,

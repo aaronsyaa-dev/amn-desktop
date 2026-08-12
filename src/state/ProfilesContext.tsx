@@ -51,7 +51,21 @@ function normaliseEmail(email: unknown): string {
   return typeof email === 'string' ? email.trim().toLowerCase() : '';
 }
 
+/**
+ * Le préfixe d'un visiteur anonyme dans la signalisation d'appel (BLOC B.2).
+ * Il ne peut collisionner avec aucune adresse : le deux-points est interdit
+ * dans la partie locale non citée d'une adresse email.
+ */
+const GUEST_PREFIX = 'visiteur:';
+
 function fallbackProfile(email: string): UserProfile {
+  // Un visiteur anonyme n'a pas d'adresse, et son identifiant de liaison n'est
+  // pas un nom : l'afficher tel quel donnerait « Visiteur:3f2a-… » à l'écran.
+  // Traité ici plutôt que dans l'écran d'appel, pour que l'avatar, la liste des
+  // appels manqués et la notification disent tous la même chose.
+  if (email.startsWith(GUEST_PREFIX)) {
+    return { email, name: 'Visiteur', photoDataUrl: '', presenceText: 'Appel par lien', updatedAt: '' };
+  }
   return {
     email,
     // An empty key means the record never named anyone — say so rather than

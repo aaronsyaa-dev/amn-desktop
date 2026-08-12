@@ -13,6 +13,8 @@ import {
 } from '@edition/seeds';
 import { browserExclusiveBridge, createBrowserExclusive } from '@edition/browserExclusive';
 import type {
+  CallLink,
+  CreatedCallLink,
   AddClientEventInput,
   AmnBridge,
   AuthResult,
@@ -518,6 +520,21 @@ function createBrowserRemote(): AmnBridge['remote'] {
         reconnectingOnPurpose = true;
         socket.close(); // reconnect with new ?user=
       }
+    },
+    callLinks: {
+      async create(input: { label?: string; minutes?: number }): Promise<CreatedCallLink> {
+        return apiFetch<CreatedCallLink>('/v1/call-links', {
+          method: 'POST',
+          body: JSON.stringify({ label: input.label ?? '', minutes: input.minutes }),
+        });
+      },
+      async list(): Promise<CallLink[]> {
+        const res = await apiFetch<{ links: CallLink[] }>('/v1/call-links');
+        return res.links ?? [];
+      },
+      async revoke(id: string): Promise<void> {
+        await apiFetch(`/v1/call-links/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      },
     },
     async getPresence() {
       if (!configured) return [];
