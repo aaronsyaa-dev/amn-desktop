@@ -8,6 +8,7 @@ import { useCollection } from '../state/SyncContext';
 import { appointmentEnd, useAppointments, type Appointment } from '../state/useAppointments';
 import { dayKey, longDayLabel, relativeToNow, timeLabel } from '../lib/calendar';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
+import { AttentionPanel } from '../components/AttentionPanel';
 import type { SharedTaskStatus } from '../shared/api';
 
 /**
@@ -73,6 +74,10 @@ export function HomeSoloScreen() {
       </header>
 
       {!hasAnything && <FirstRunCard />}
+
+      {/* Factures impayées, tâches enlisées, clients sans nouvelles. Rien ne
+          s'affiche tant qu'il n'y a rien à signaler. */}
+      <AttentionPanel />
 
       <StaggerGroup className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <StaggerItem className="lg:col-span-2">

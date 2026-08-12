@@ -33,7 +33,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
  * d'un script de contrôle — ce qui reviendrait à modifier le code livré pour
  * pouvoir le tester —, on lui applique le même résolveur qu'à la compilation.
  */
-async function loadFromSrc(entry: string): Promise<Record<string, any>> {
+async function loadFromSrc<T>(entry: string): Promise<T> {
   const built = await esbuild.build({
     entryPoints: [path.join(here, '..', entry)],
     bundle: true,
@@ -44,10 +44,42 @@ async function loadFromSrc(entry: string): Promise<Record<string, any>> {
     charset: 'utf8',
   });
   const code = built.outputFiles[0].text;
-  return import(`data:text/javascript;charset=utf-8;base64,${Buffer.from(code, 'utf8').toString('base64')}`);
+  return (await import(
+    `data:text/javascript;charset=utf-8;base64,${Buffer.from(code, 'utf8').toString('base64')}`
+  )) as T;
 }
 
-const fec = await loadFromSrc('src/lib/fec.ts');
+/**
+ * Le contrat public du module, écrit ici plutôt que déduit.
+ *
+ * `scripts/` est hors du `tsconfig` de l'application (voir son commentaire),
+ * donc rien ne relierait ce contrôle aux types de `src/` : les décrire ici
+ * fait de ce fichier une seconde lecture de la signature, et un renommage
+ * d'export s'y voit au lieu de passer en `undefined is not a function`.
+ */
+type FecLine = Record<string, string>;
+interface FecResult {
+  lines: FecLine[];
+  warnings: string[];
+  totalDebitCents: number;
+  totalCreditCents: number;
+  invoiceCount: number;
+}
+interface FecModule {
+  ACCOUNTS: Record<'clients' | 'sales' | 'vat', { num: string; lib: string }>;
+  FEC_COLUMNS: readonly string[];
+  asciiPunctuation(value: string): string;
+  buildFec(invoices: unknown[], options?: { year?: number; validDate?: string }): FecResult;
+  closingDay(year: number): string;
+  fecAmount(cents: number): string;
+  fecDate(isoDay: string): string;
+  fecFileName(siret: string, closingDay: string): string;
+  fecText(value: string, max?: number): string;
+  isValidDay(isoDay: string): boolean;
+  toFecFile(lines: FecLine[]): string;
+}
+
+const fec = await loadFromSrc<FecModule>('src/lib/fec.ts');
 const {
   ACCOUNTS,
   FEC_COLUMNS,
@@ -92,7 +124,7 @@ interface InvoiceOverrides {
   lines?: ReturnType<typeof line>[];
 }
 
-function invoice(overrides: InvoiceOverrides = {}): any {
+function invoice(overrides: InvoiceOverrides = {}) {
   return {
     id: `inv-${overrides.number ?? Math.random().toString(36).slice(2)}`,
     number: overrides.number ?? 'F2026-0001',
@@ -119,8 +151,8 @@ function invoice(overrides: InvoiceOverrides = {}): any {
 }
 
 /** Les lignes d'une écriture donnée, dans l'ordre où elles ont été écrites. */
-function entryOf(result: any, number: string) {
-  return result.lines.filter((l: any) => l.EcritureNum === number);
+function entryOf(result: FecResult, number: string): FecLine[] {
+  return result.lines.filter((l) => l.EcritureNum === number);
 }
 
 function centsOf(text: string): number {
@@ -178,7 +210,7 @@ check('fecText neutralise ce qui décalerait les colonnes', () => {
   assert.equal(fecText('  Durand   Conseil  '), 'Durand Conseil');
   assert.equal(fecText('x'.repeat(200)).length, 100, 'tronqué à la longueur demandée');
   assert.equal(fecText('x'.repeat(200), 20).length, 20);
-  assert.equal(fecText(undefined as any), '');
+  assert.equal(fecText(undefined as unknown as string), '');
 });
 
 /* ------------------------------ La forme du fichier ------------------------ */
@@ -266,8 +298,8 @@ check('plusieurs taux : une ventilation par taux, triée, sans ligne de TVA à z
     }),
   ]);
   const entry = entryOf(result, 'F2026-0002');
-  const sales = entry.filter((l: any) => l.CompteNum === ACCOUNTS.sales.num);
-  const vat = entry.filter((l: any) => l.CompteNum === ACCOUNTS.vat.num);
+  const sales = entry.filter((l) => l.CompteNum === ACCOUNTS.sales.num);
+  const vat = entry.filter((l) => l.CompteNum === ACCOUNTS.vat.num);
 
   assert.equal(sales.length, 3, 'trois taux utilisés → trois lignes de produits');
   assert.equal(vat.length, 2, 'le taux à 0 % ne produit pas de ligne de taxe');
@@ -350,10 +382,10 @@ check('le compte auxiliaire ne figure QUE sur le compte collectif', () => {
 
 check('une facture sans fiche client est signalée, pas maquillée', () => {
   const result = buildFec([invoice({ number: 'F2026-0001', clientId: 0 })]);
-  const client = result.lines.find((l: any) => l.CompteNum === ACCOUNTS.clients.num);
-  assert.equal(client.CompAuxNum, 'C000000');
+  const client = result.lines.find((l) => l.CompteNum === ACCOUNTS.clients.num);
+  assert.equal(client?.CompAuxNum, 'C000000');
   assert.ok(
-    result.warnings.some((w: string) => w.includes('C000000')),
+    result.warnings.some((w) => w.includes('C000000')),
     'l’export le dit',
   );
 });
@@ -368,9 +400,9 @@ check('brouillons et annulées sont écartés, et comptés dans les avertissemen
     invoice({ number: 'F2026-0003', status: 'cancelled' }),
   ]);
   assert.equal(result.invoiceCount, 1);
-  assert.equal(new Set(result.lines.map((l: any) => l.EcritureNum)).size, 1);
-  assert.ok(result.warnings.some((w: string) => w.startsWith('2 brouillons')));
-  assert.ok(result.warnings.some((w: string) => w.startsWith('1 facture annulée')));
+  assert.equal(new Set(result.lines.map((l) => l.EcritureNum)).size, 1);
+  assert.ok(result.warnings.some((w) => w.startsWith('2 brouillons')));
+  assert.ok(result.warnings.some((w) => w.startsWith('1 facture annulée')));
 });
 
 check('une émise sans numéro ou à date invalide est écartée et signalée', () => {
@@ -381,15 +413,15 @@ check('une émise sans numéro ou à date invalide est écartée et signalée', 
     invoice({ number: 'F2026-0008', issuedAt: '' }),
   ]);
   assert.equal(result.invoiceCount, 1);
-  assert.ok(result.warnings.some((w: string) => w.includes('sans numéro')));
-  assert.ok(result.warnings.some((w: string) => w.includes('inexploitable')));
+  assert.ok(result.warnings.some((w) => w.includes('sans numéro')));
+  assert.ok(result.warnings.some((w) => w.includes('inexploitable')));
 });
 
 check('une facture sans aucune ligne est écartée plutôt qu’écrite à zéro', () => {
   const result = buildFec([invoice({ number: 'F2026-0001', lines: [] })]);
   assert.equal(result.invoiceCount, 0);
   assert.equal(result.lines.length, 0, 'pas d’écriture orpheline à une seule ligne');
-  assert.ok(result.warnings.some((w: string) => w.includes('sans aucune ligne')));
+  assert.ok(result.warnings.some((w) => w.includes('sans aucune ligne')));
 });
 
 check('un numéro en double est nommé dans les avertissements', () => {
@@ -398,16 +430,16 @@ check('un numéro en double est nommé dans les avertissements', () => {
     invoice({ number: 'F2026-0001', issuedAt: '2026-02-05' }),
   ]);
   assert.ok(
-    result.warnings.some((w: string) => w.includes('double') && w.includes('F2026-0001')),
+    result.warnings.some((w) => w.includes('double') && w.includes('F2026-0001')),
     'le numéro fautif est cité',
   );
 });
 
 check('le manque du journal de banque est toujours annoncé', () => {
   for (const input of [[], [invoice()]]) {
-    const result = buildFec(input as any);
+    const result = buildFec(input);
     assert.ok(
-      result.warnings.some((w: string) => w.includes('encaissements')),
+      result.warnings.some((w) => w.includes('encaissements')),
       'même sur un export vide',
     );
   }
@@ -433,7 +465,7 @@ check('le filtre d’exercice retient l’année d’émission, et rien d’autr
   const result = buildFec(list, { year: 2026 });
   assert.equal(result.invoiceCount, 2);
   assert.deepEqual(
-    [...new Set(result.lines.map((l: any) => l.EcritureNum))],
+    [...new Set(result.lines.map((l) => l.EcritureNum))],
     ['F2026-0001', 'F2026-0002'],
   );
   // `startsWith('2026')` seul laisserait passer un `20260-…` improbable mais
@@ -450,7 +482,7 @@ check('les écritures sortent triées par date puis par numéro', () => {
     invoice({ number: 'F2026-0002a', issuedAt: '2026-03-01' }),
   ]);
   assert.deepEqual(
-    [...new Set(result.lines.map((l: any) => l.EcritureNum))],
+    [...new Set(result.lines.map((l) => l.EcritureNum))],
     ['F2026-0001', 'F2026-0002a', 'F2026-0002b', 'F2026-0003'],
   );
 });
