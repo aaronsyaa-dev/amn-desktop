@@ -17,6 +17,7 @@ import type {
   RemoteEventPush,
   ScanProgress,
   ComplyCheck,
+  ComplyReferentialCatalog,
   CreateScheduleInput,
   OrgOverview,
   ProductSchedule,
@@ -91,6 +92,7 @@ type ExclusiveRemote = Pick<
   | 'onScanProgress'
   | 'startComply'
   | 'listComplyChecks'
+  | 'listComplyReferentials'
   | 'getComplyCheck'
   | 'onComplyProgress'
   | 'admin'
@@ -392,12 +394,15 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
     },
   },
 
-  async startComply(url: string): Promise<ComplyCheck> {
+  async startComply(url: string, referential?: string): Promise<ComplyCheck> {
     const { check } = await ctx.apiFetch<{ check: ComplyCheck }>('/v1/comply', {
       method: 'POST',
-      body: JSON.stringify({ url }),
+      body: JSON.stringify(referential ? { url, referential } : { url }),
     });
     return check;
+  },
+  async listComplyReferentials(): Promise<ComplyReferentialCatalog> {
+    return ctx.apiFetch<ComplyReferentialCatalog>('/v1/comply-referentials');
   },
   async listComplyChecks(): Promise<ComplyCheck[]> {
     const { checks } = await ctx.apiFetch<{ checks: ComplyCheck[] }>('/v1/comply-checks');

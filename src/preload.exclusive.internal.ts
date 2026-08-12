@@ -50,6 +50,7 @@ type ExclusiveRemote = Pick<
   | 'onScanProgress'
   | 'startComply'
   | 'listComplyChecks'
+  | 'listComplyReferentials'
   | 'getComplyCheck'
   | 'onComplyProgress'
   // Console des organisations clientes et contexte client : hors de l'édition
@@ -137,7 +138,9 @@ export const exclusivePreload: ExclusiveRemote = {
     restore: (token) => ipcRenderer.invoke(IPC.remoteSupportRestore, token),
     leave: (token) => ipcRenderer.invoke(IPC.remoteSupportLeave, token),
   },
-  startComply: (url: string) => ipcRenderer.invoke(IPC.remoteStartComply, url),
+  startComply: (url: string, referential?: string) =>
+    ipcRenderer.invoke(IPC.remoteStartComply, url, referential),
+  listComplyReferentials: () => ipcRenderer.invoke(IPC.remoteListComplyReferentials),
   listComplyChecks: () => ipcRenderer.invoke(IPC.remoteListComplyChecks),
   getComplyCheck: (id: string) => ipcRenderer.invoke(IPC.remoteGetComplyCheck, id),
   onComplyProgress: (callback: (progress: ComplyProgress) => void) => {

@@ -13,6 +13,7 @@ import {
   type TempPasswordResult,
   type CallSignal,
   type ComplyCheck,
+  type ComplyReferentialCatalog,
   type ComplyProgress,
   type CreateScheduleInput,
   type OrgOverview,
@@ -173,12 +174,16 @@ const exclusiveApi = {
     return writeScanReportFile(html);
   },
 
-  async startComply(url: string): Promise<ComplyCheck> {
+  async startComply(url: string, referential?: string): Promise<ComplyCheck> {
     const { check } = await apiFetch<{ check: ComplyCheck }>('/v1/comply', {
       method: 'POST',
-      body: JSON.stringify({ url }),
+      body: JSON.stringify(referential ? { url, referential } : { url }),
     });
     return check;
+  },
+
+  async listComplyReferentials(): Promise<ComplyReferentialCatalog> {
+    return apiFetch<ComplyReferentialCatalog>('/v1/comply-referentials');
   },
 
   async listComplyChecks(): Promise<ComplyCheck[]> {
@@ -456,7 +461,10 @@ export function registerExclusiveIpc(
   ipcMain.handle(IPC.remoteSupportRestore, (_event, token: string) => support.restore(token));
   ipcMain.handle(IPC.remoteSupportLeave, (_event, token: string) => support.leave(token));
 
-  ipcMain.handle(IPC.remoteStartComply, (_event, url: string) => exclusiveApi.startComply(url));
+  ipcMain.handle(IPC.remoteStartComply, (_event, url: string, referential?: string) =>
+    exclusiveApi.startComply(url, referential),
+  );
+  ipcMain.handle(IPC.remoteListComplyReferentials, () => exclusiveApi.listComplyReferentials());
   ipcMain.handle(IPC.remoteListComplyChecks, () => exclusiveApi.listComplyChecks());
   ipcMain.handle(IPC.remoteGetComplyCheck, (_event, id: string) => exclusiveApi.getComplyCheck(id));
   // Appels audio : la signalisation ne vaut qu'à plusieurs dans une même

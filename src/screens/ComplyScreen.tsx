@@ -7,7 +7,7 @@ import { ComplyDetail } from '../components/comply/ComplyDetail';
 import { ScheduleControl } from '../components/ScheduleControl';
 import { scoreColor } from '../lib/scanSeverity';
 import { relativeTime } from '../lib/time';
-import type { ComplyCheck, ComplyProgress } from '../shared/api';
+import type { ComplyCheck, ComplyProgress, ComplyReferential } from '../shared/api';
 
 /**
  * Comply — basic RGPD conformity check of a public URL (produit AMN DevSec).
@@ -19,6 +19,8 @@ import type { ComplyCheck, ComplyProgress } from '../shared/api';
 export function ComplyScreen() {
   const { configured } = useSync();
   const [url, setUrl] = useState('');
+  const [referentials, setReferentials] = useState<ComplyReferential[]>([]);
+  const [referential, setReferential] = useState<string>('');
   const [history, setHistory] = useState<ComplyCheck[]>([]);
   const [selected, setSelected] = useState<ComplyCheck | null>(null);
   const [progress, setProgress] = useState<ComplyProgress | null>(null);
@@ -40,6 +42,32 @@ export function ComplyScreen() {
   useEffect(() => {
     if (configured) void refreshHistory();
   }, [configured, refreshHistory]);
+
+  /*
+    Le catalogue vient du SERVEUR, jamais d'une liste écrite ici. C'est lui qui
+    sait quelles règles ont été validées juridiquement ; une liste en dur dans
+    l'interface se désynchroniserait au premier référentiel ajouté, et
+    proposerait une analyse que le serveur refuserait.
+  */
+  useEffect(() => {
+    if (!configured) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const catalog = await bridge().remote.listComplyReferentials();
+        if (cancelled) return;
+        setReferentials(catalog.referentials ?? []);
+        setReferential((current) => current || catalog.default || '');
+      } catch {
+        // Catalogue indisponible : l'écran continue de fonctionner sur le
+        // référentiel par défaut du serveur, qui est appliqué quand on ne
+        // demande rien.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [configured]);
 
   useEffect(() => {
     return bridge().remote.onComplyProgress((frame) => {
@@ -67,7 +95,7 @@ export function ComplyScreen() {
     setBusy(true);
     setProgress({ checkId: '', status: 'pending', step: 'Envoi de la demande…', pct: 0 });
     try {
-      const check = await bridge().remote.startComply(target);
+      const check = await bridge().remote.startComply(target, referential || undefined);
       runningId.current = check.id;
       setProgress({ checkId: check.id, status: 'pending', step: 'Analyse en file d’attente…', pct: 0 });
       void refreshHistory();
@@ -141,6 +169,58 @@ export function ComplyScreen() {
             {busy ? 'Analyse en cours…' : 'Analyser'}
           </button>
         </div>
+
+        {referentials.length > 0 && (
+          <div className="mt-3.5 border-t border-border pt-3">
+            <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-widest text-text-muted">
+              Référentiel
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {referentials.map((entry) => {
+                const planned = entry.status !== 'available';
+                const active = entry.id === referential;
+                return (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    onClick={() => !planned && setReferential(entry.id)}
+                    disabled={planned || busy}
+                    aria-pressed={active}
+                    title={
+                      planned
+                        ? `${entry.label} — ${entry.jurisdiction}. Annoncé : ses règles doivent être validées par un juriste avant toute analyse.`
+                        : `${entry.label} — ${entry.jurisdiction}`
+                    }
+                    className={`flex min-h-11 flex-col items-start justify-center border px-3 py-1.5 text-left transition-colors disabled:cursor-not-allowed md:min-h-0 ${
+                      active
+                        ? 'border-border-strong bg-accent-muted text-text-primary'
+                        : planned
+                          ? 'border-border/60 text-text-muted opacity-50'
+                          : 'border-border text-text-muted hover:text-text-secondary'
+                    }`}
+                  >
+                    <span className="text-xs font-medium leading-tight">{entry.label}</span>
+                    <span className="font-mono text-[9px] uppercase tracking-widest">
+                      {planned ? 'bientôt' : entry.jurisdiction}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {/*
+              Dire POURQUOI un référentiel est grisé. « Bientôt » sans raison se
+              lit comme une limite arbitraire du produit ; la vraie raison — des
+              règles qu'aucun juriste n'a encore validées — est à la fois plus
+              honnête et plus rassurante sur celles qui sont actives.
+            */}
+            {referentials.some((entry) => entry.status !== 'available') && (
+              <p className="mt-2 text-xs leading-relaxed text-text-muted">
+                Les référentiels grisés sont annoncés, pas disponibles : leurs règles doivent être
+                validées par un juriste avant qu’une analyse puisse prétendre les vérifier.
+              </p>
+            )}
+          </div>
+        )}
 
         <p className="mt-2.5 text-xs text-text-muted">
           Bannière de consentement, politique de confidentialité, mentions légales, formulaires

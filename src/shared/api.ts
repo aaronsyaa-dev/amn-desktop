@@ -1331,6 +1331,29 @@ export interface ComplyCheck {
 }
 
 /** Live progress frame pushed over the WebSocket while a check runs. */
+/**
+ * Un référentiel de conformité proposé par le serveur.
+ *
+ * `planned` est aussi important que `available` : masquer ce qui viendra
+ * donnerait l'impression que Comply ne saura jamais rien faire d'autre que le
+ * RGPD. Mais un `planned` ne s'analyse PAS — c'est le serveur qui refuse, pas
+ * l'interface qui grise, pour que le refus tienne même si la requête est
+ * fabriquée à la main.
+ */
+export interface ComplyReferential {
+  id: string;
+  label: string;
+  /** Le territoire où il s'applique : « Union européenne », « Californie »… */
+  jurisdiction: string;
+  status: 'available' | 'planned';
+}
+
+export interface ComplyReferentialCatalog {
+  referentials: ComplyReferential[];
+  /** Celui qui s'applique quand aucun n'est demandé. */
+  default: string;
+}
+
 export interface ComplyProgress {
   checkId: string;
   status: ScanStatus;
@@ -1662,11 +1685,21 @@ export interface AmnBridge {
 
     /* --- Comply (RGPD) --- */
     /**
-     * Queues an RGPD conformity check of `url`. Same shape as {@link startScan}:
-     * resolves once amn-api accepted it, then follow it through
-     * {@link onComplyProgress} and re-read it with {@link getComplyCheck}.
+     * Queues a conformity check of `url` against one referential. Same shape as
+     * {@link startScan}: resolves once amn-api accepted it, then follow it
+     * through {@link onComplyProgress} and re-read it with
+     * {@link getComplyCheck}.
+     *
+     * `referential` omitted = celui par défaut du serveur. C'est LE SERVEUR qui
+     * arbitre ce qui est analysable : demander un référentiel dont les règles ne
+     * sont pas validées juridiquement se solde par un refus, jamais par un
+     * rapport vide — un score de 100 sur un référentiel sans règle se lirait
+     * « conforme », et c'est le genre de mensonge qu'une cliente transmet à son
+     * avocat.
      */
-    startComply(url: string): Promise<ComplyCheck>;
+    startComply(url: string, referential?: string): Promise<ComplyCheck>;
+    /** Le catalogue des référentiels, disponibles ET annoncés. */
+    listComplyReferentials(): Promise<ComplyReferentialCatalog>;
     listComplyChecks(): Promise<ComplyCheck[]>;
     getComplyCheck(id: string): Promise<ComplyCheck>;
     onComplyProgress(callback: (progress: ComplyProgress) => void): () => void;
@@ -1813,6 +1846,7 @@ export const IPC = {
   remoteScanProgressPush: 'remote:scanProgressPush',
   remoteStartComply: 'remote:startComply',
   remoteListComplyChecks: 'remote:listComplyChecks',
+  remoteListComplyReferentials: 'remote:listComplyReferentials',
   remoteGetComplyCheck: 'remote:getComplyCheck',
   remoteComplyProgressPush: 'remote:complyProgressPush',
   remoteEventPush: 'remote:eventPush',
