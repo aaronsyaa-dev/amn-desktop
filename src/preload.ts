@@ -139,6 +139,9 @@ const bridge: AmnBridge = {
       acceptInvitation: (token: string, password: string) =>
         ipcRenderer.invoke(IPC.remoteSessionAcceptInvitation, { token, password }),
     },
+    listSessions: () => ipcRenderer.invoke(IPC.remoteListSessions),
+    revokeSession: (id: string) => ipcRenderer.invoke(IPC.remoteRevokeSession, id),
+    accessLog: () => ipcRenderer.invoke(IPC.remoteAccessLog),
     callLinks: {
       create: (input) => ipcRenderer.invoke(IPC.remoteCallLinkCreate, input),
       list: () => ipcRenderer.invoke(IPC.remoteCallLinkList),

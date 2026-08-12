@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sparkles, X } from 'lucide-react';
 import { bridge } from '../lib/bridge';
-import { CHANGELOG, CURRENT_VERSION, changesSince, type ChangelogEntry } from '../data/changelog';
+import { CHANGELOG, changesSince, type ChangelogEntry } from '../data/changelog';
+import { APP_VERSION } from '../edition/edition';
 
 const LAST_SEEN_KEY = 'amn.lastSeenVersion';
 
@@ -34,7 +35,7 @@ async function resolveVersion(): Promise<string> {
   } catch {
     /* fall through to changelog */
   }
-  return CURRENT_VERSION;
+  return APP_VERSION;
 }
 
 /**
@@ -45,7 +46,7 @@ async function resolveVersion(): Promise<string> {
  */
 export function UpdateNotice() {
   const [entries, setEntries] = useState<ChangelogEntry[] | null>(null);
-  const [version, setVersion] = useState<string>(CURRENT_VERSION);
+  const [version, setVersion] = useState<string>(APP_VERSION);
 
   useEffect(() => {
     let cancelled = false;

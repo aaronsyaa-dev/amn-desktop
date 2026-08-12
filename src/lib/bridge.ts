@@ -13,8 +13,10 @@ import {
 } from '@edition/seeds';
 import { browserExclusiveBridge, createBrowserExclusive } from '@edition/browserExclusive';
 import type {
+  ActiveSession,
   CallLink,
   CreatedCallLink,
+  OrgAccessRecord,
   AddClientEventInput,
   AmnBridge,
   AuthResult,
@@ -520,6 +522,17 @@ function createBrowserRemote(): AmnBridge['remote'] {
         reconnectingOnPurpose = true;
         socket.close(); // reconnect with new ?user=
       }
+    },
+    async listSessions(): Promise<ActiveSession[]> {
+      const res = await apiFetch<{ sessions: ActiveSession[] }>('/v1/auth/sessions');
+      return res.sessions ?? [];
+    },
+    async revokeSession(id: string): Promise<void> {
+      await apiFetch(`/v1/auth/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    },
+    async accessLog(): Promise<OrgAccessRecord[]> {
+      const res = await apiFetch<{ entries: OrgAccessRecord[] }>('/v1/auth/access-log');
+      return res.entries ?? [];
     },
     callLinks: {
       async create(input: { label?: string; minutes?: number }): Promise<CreatedCallLink> {

@@ -11,15 +11,16 @@ import { ensurePushSubscription, sendPushTest } from '../lib/webPush';
 import { UserAvatar } from '../components/UserAvatar';
 import { Logo } from '../components/Logo';
 import { SettingsPanel as Panel } from '../components/SettingsPanel';
-import { IS_BUSINESS } from '../edition/edition';
+import { APP_VERSION, IS_BUSINESS } from '../edition/edition';
 import { OllamaSection } from '@edition/exclusive';
+import { AccountSecuritySection } from '../components/settings/AccountSecuritySection';
 
 /** Une phrase d'identité par édition — celle de l'interne nomme AMN DevSec. */
 const ABOUT_TAGLINE = IS_BUSINESS
   ? 'Votre espace de gestion d’activité — agenda, clients, tâches et documents.'
   : 'Poste de commandement AMN DEVSEC — supervision, équipe et clients.';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
-import { CHANGELOG, CURRENT_VERSION } from '../data/changelog';
+import { CHANGELOG } from '../data/changelog';
 import { DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs } from '../shared/api';
 
 export function SettingsScreen() {
@@ -46,6 +47,16 @@ export function SettingsScreen() {
       </StaggerItem>
       <StaggerItem>
         <NotificationsSection email={user.email} />
+      </StaggerItem>
+      {/*
+        Sécurité du compte : appareils connectés et journal d'accès.
+
+        Sur TOUTES les plateformes, sans condition — un téléphone perdu se
+        révoque justement depuis un autre appareil, donc réserver cette section
+        à Electron aurait retiré le cas d'usage principal.
+      */}
+      <StaggerItem>
+        <AccountSecuritySection />
       </StaggerItem>
       {!bridge().env.isElectron && (
         <StaggerItem>
@@ -113,7 +124,7 @@ function BackupSection() {
 }
 
 function AboutSection() {
-  const [version, setVersion] = useState(CURRENT_VERSION);
+  const [version, setVersion] = useState(APP_VERSION);
 
   useEffect(() => {
     let active = true;
@@ -123,7 +134,7 @@ function AboutSection() {
         if (active && info?.version && info.version !== '0.0.0-dev') setVersion(info.version);
       })
       .catch(() => {
-        /* keep the changelog version */
+        /* on garde la version injectée à la construction */
       });
     return () => {
       active = false;

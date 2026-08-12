@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 
 /**
@@ -38,7 +39,34 @@ export function editionAliases(edition: Edition): Record<string, string> {
   };
 }
 
-/** Constante littérale `__AMN_EDITION__`, lisible depuis src/edition/edition.ts. */
+/**
+ * Constantes littérales injectées dans les trois bundles, lues depuis
+ * `src/edition/edition.ts`.
+ *
+ * `__AMN_VERSION__` vient de `package.json`, et c'est le point : la version
+ * affichée était jusqu'ici la première entrée du CHANGELOG, un tableau tenu à
+ * la main. Sur Electron, personne ne s'en apercevait — l'app y lit
+ * `app.getVersion()`, donc la vraie. Sur le web et la PWA, où cet appel
+ * n'existe pas, l'écran des réglages annonçait la version du dernier changelog
+ * rédigé : 1.2.0 en interne, 1.2.11 en Business, pour un produit en 1.2.20.
+ *
+ * Le changelog redevient ce qu'il est — une histoire des changements notables,
+ * qu'on écrit quand il y a quelque chose à dire — et la version vient de la
+ * seule source qui ne peut pas dériver, puisque c'est elle qu'on incrémente
+ * pour publier.
+ */
 export function editionDefine(edition: Edition): Record<string, string> {
-  return { __AMN_EDITION__: JSON.stringify(edition) };
+  return {
+    __AMN_EDITION__: JSON.stringify(edition),
+    __AMN_VERSION__: JSON.stringify(readPackageVersion()),
+  };
+}
+
+function readPackageVersion(): string {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), 'package.json'), 'utf-8'));
+    return typeof pkg.version === 'string' ? pkg.version : '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
 }

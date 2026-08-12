@@ -1,16 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowRight,
   BadgeCheck,
   Building2,
   History,
+  Link2,
   LockKeyhole,
   Radar,
   ScanLine,
 } from 'lucide-react';
 import { SiteBadgeExport, SocDesk } from '../components/tracker/SocDesk';
+import { CallLinkPanel } from '../components/call/CallLinkPanel';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { useRemoteSites } from '../state/RemoteSitesContext';
 import { useOrgContext } from '../state/OrgContextContext';
@@ -45,6 +47,7 @@ export function ControlTowerScreen() {
   }, [sites]);
 
   const suspended = organizations.filter((o) => o.status === 'suspended').length;
+  const [linkPanel, setLinkPanel] = useState(false);
 
   return (
     <StaggerGroup className="flex flex-col gap-6">
@@ -60,6 +63,25 @@ export function ControlTowerScreen() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {/*
+              Le lien d'appel vivait dans Équipe, c'est-à-dire dans la messagerie
+              interne entre Aaron et Mohamed. Or il ne sert jamais à joindre un
+              collègue : il sert à parler à un PROSPECT, quelqu'un qui n'a pas
+              encore de compte et n'est pas encore une organisation.
+
+              Sa place est ici, dans l'espace « transverse » — celui des
+              incidents, des produits et des organisations, c'est-à-dire tout ce
+              qui regarde vers l'extérieur. Équipe regarde vers l'intérieur.
+            */}
+            <button
+              type="button"
+              onClick={() => setLinkPanel(true)}
+              title="Créer un lien d’appel pour un prospect sans compte"
+              className="flex min-h-11 items-center gap-2 border border-dashed border-border px-3 text-sm text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
+            >
+              <Link2 size={15} strokeWidth={1.75} />
+              Lien d’appel
+            </button>
             <Vital label="En ligne" value={parc.online} />
             <Vital label="Dégradés" value={parc.degraded} tone={parc.degraded > 0 ? 'warn' : 'calm'} />
             <Vital label="Hors ligne" value={parc.offline} tone={parc.offline > 0 ? 'alert' : 'calm'} />
@@ -71,6 +93,10 @@ export function ControlTowerScreen() {
       <StaggerItem>
         <SocDesk withBadgeExport={false} />
       </StaggerItem>
+
+      <AnimatePresence>
+        {linkPanel && <CallLinkPanel onClose={() => setLinkPanel(false)} />}
+      </AnimatePresence>
 
       <StaggerItem>
         <ClientOrgsPanel loading={loadingOrgs} error={orgsError} />

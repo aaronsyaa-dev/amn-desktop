@@ -2,8 +2,10 @@ import WebSocket from 'ws';
 import { remoteConfig, isRemoteConfigured, apiCredential, ownerCredential } from './remoteConfig';
 import { API_UNREACHABLE_PREFIX, GUEST_QUOTA_PREFIX } from '../shared/api';
 import type {
+  ActiveSession,
   CallLink,
   CreatedCallLink,
+  OrgAccessRecord,
   OrgIdentity,
   RemoteSession,
   RemoteSessionUser,
@@ -175,6 +177,22 @@ export class RemoteApiClient {
    * Volontairement `publicPost` : l'invitée n'a, par définition, aucune session
    * ni aucun jeton — c'est tout l'objet de l'invitation.
    */
+  /* --------------------------- Hygiène du compte --------------------------- */
+
+  async listSessions(): Promise<ActiveSession[]> {
+    const res = await apiFetch<{ sessions: ActiveSession[] }>('/v1/auth/sessions');
+    return res.sessions ?? [];
+  }
+
+  async revokeSession(id: string): Promise<void> {
+    await apiFetch(`/v1/auth/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
+
+  async accessLog(): Promise<OrgAccessRecord[]> {
+    const res = await apiFetch<{ entries: OrgAccessRecord[] }>('/v1/auth/access-log');
+    return res.entries ?? [];
+  }
+
   /* ------------------- Liens d'appel anonymes (BLOC B.2) ------------------- */
 
   async createCallLink(input: { label?: string; minutes?: number }): Promise<CreatedCallLink> {

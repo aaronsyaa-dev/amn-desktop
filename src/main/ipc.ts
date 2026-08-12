@@ -249,6 +249,9 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   );
   ipcMain.handle(IPC.remoteCallLinkList, () => remote.listCallLinks());
   ipcMain.handle(IPC.remoteCallLinkRevoke, (_event, id: string) => remote.revokeCallLink(id));
+  ipcMain.handle(IPC.remoteListSessions, () => remote.listSessions());
+  ipcMain.handle(IPC.remoteRevokeSession, (_event, id: string) => remote.revokeSession(id));
+  ipcMain.handle(IPC.remoteAccessLog, () => remote.accessLog());
 
   // Push channels: broadcast to every open window rather than replying to a
   // specific invoke() call, since these are server-initiated updates.

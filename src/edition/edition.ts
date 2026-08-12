@@ -33,3 +33,12 @@ export const IS_BUSINESS = EDITION === 'business';
  * est ce que lit l'utilisatrice dans l'app.
  */
 export const EDITION_PRODUCT_NAME = IS_BUSINESS ? 'AMN Business' : 'AMN Desktop';
+
+/**
+ * La version de ce build.
+ *
+ * À préférer TOUJOURS à `CURRENT_VERSION` du changelog, qui n'est que le titre
+ * de la dernière note de version rédigée — deux choses différentes, dont l'une
+ * dérive dès qu'on publie sans écrire de note.
+ */
+export const APP_VERSION: string = __AMN_VERSION__;

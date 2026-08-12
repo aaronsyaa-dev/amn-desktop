@@ -1182,6 +1182,34 @@ export interface CreatedCallLink {
   label: string;
 }
 
+
+/* -------------------- Sessions ouvertes et journal d'accès ------------------ */
+
+/**
+ * Un appareil connecté à ce compte.
+ *
+ * `id` est un identifiant COURT dérivé de l'empreinte du jeton, jamais
+ * l'empreinte elle-même : il suffit à désigner la session à fermer, et ne
+ * permet pas de la rejouer s'il fuyait.
+ */
+export interface ActiveSession {
+  id: string;
+  createdAt: string;
+  expiresAt: string;
+  /** Vrai pour l'appareil depuis lequel on regarde — à ne pas fermer par mégarde. */
+  current: boolean;
+  /** Renseigné quand la session est une session de support ouverte sur une cliente. */
+  supportOrgId: string | null;
+}
+
+/** Une ouverture de l'espace d'une organisation, telle que la cliente la voit. */
+export interface OrgAccessRecord {
+  actorEmail: string;
+  action: string;
+  detail: string;
+  createdAt: string;
+}
+
 /* ------------------------------ Scanner (Produits) ------------------------------ */
 
 /** Scan depth. Each tier is a superset of the previous one. */
@@ -1518,6 +1546,17 @@ export interface AmnBridge {
       revoke(id: string): Promise<void>;
     };
 
+    /* --- Hygiène du compte --- */
+    /** Les appareils connectés à ce compte. */
+    listSessions(): Promise<ActiveSession[]>;
+    /** Ferme une session à distance. */
+    revokeSession(id: string): Promise<void>;
+    /**
+     * Le journal des ouvertures de SON espace, lisible par l'organisation
+     * elle-même — la promesse de transparence du site, rendue vérifiable.
+     */
+    accessLog(): Promise<OrgAccessRecord[]>;
+
     /* --- Scanner --- */
     /**
      * Queues a passive security scan of `url` at `tier`. Resolves as soon as
@@ -1762,6 +1801,9 @@ export const IPC = {
   remoteCallLinkCreate: 'remote:callLinkCreate',
   remoteCallLinkList: 'remote:callLinkList',
   remoteCallLinkRevoke: 'remote:callLinkRevoke',
+  remoteListSessions: 'remote:listSessions',
+  remoteRevokeSession: 'remote:revokeSession',
+  remoteAccessLog: 'remote:accessLog',
   remoteGetPresence: 'remote:getPresence',
   /** Push channels (main -> renderer via webContents.send, not invoke/handle). */
   remoteStartScan: 'remote:startScan',
