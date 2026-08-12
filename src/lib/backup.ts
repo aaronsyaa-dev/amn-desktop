@@ -1,4 +1,5 @@
 import { bridge } from './bridge';
+import { downloadBlob } from './download';
 
 /**
  * Gathers a full snapshot of the workspace data reachable through the bridge
@@ -46,14 +47,6 @@ export async function collectBackup(): Promise<Record<string, unknown>> {
 export async function downloadBackup(): Promise<void> {
   const snapshot = await collectBackup();
   const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
   const stamp = new Date().toISOString().slice(0, 10);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `amn-backup-${stamp}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  // Give the download a tick to start before revoking the object URL.
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  downloadBlob(blob, `amn-backup-${stamp}.json`);
 }

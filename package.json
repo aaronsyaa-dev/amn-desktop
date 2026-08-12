@@ -23,6 +23,7 @@
     "check:business": "node scripts/check-business-bundle.mjs",
     "check:accent": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-accent.ts",
     "check:money": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-money.ts",
+    "check:fec": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-fec.ts",
     "check:tracking": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-tracking.ts",
     "check:deployed": "node scripts/check-deployed-bundle.mjs"
   },

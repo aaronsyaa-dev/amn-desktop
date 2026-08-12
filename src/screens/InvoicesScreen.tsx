@@ -7,6 +7,7 @@ import {
   Ban,
   Building2,
   Check,
+  FileSpreadsheet,
   Plus,
   Printer,
   Send,
@@ -35,6 +36,7 @@ import {
   lineAmounts,
 } from '../lib/money';
 import { InvoicePrintPortal } from '../assistant/InvoicePrintPortal';
+import { FecExportModal } from '../components/invoices/FecExportModal';
 import { ProjectPicker, ProjectTag } from '../components/projects/ProjectPicker';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import type { BillingIdentity, Client, Invoice, InvoiceLine, InvoiceStatus } from '../shared/api';
@@ -96,6 +98,7 @@ export function InvoicesScreen() {
   const [filter, setFilter] = useState<Filter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingIdentity, setEditingIdentity] = useState(false);
+  const [exportingFec, setExportingFec] = useState(false);
   const [printing, setPrinting] = useState<Invoice | null>(null);
 
   /*
@@ -153,6 +156,21 @@ export function InvoicesScreen() {
           </p>
         </div>
         <div className="flex flex-shrink-0 items-center gap-2">
+          {/*
+            L'export comptable vit à côté des coordonnées de facturation plutôt
+            que dans les Paramètres : c'est ici qu'on est quand le comptable
+            réclame l'exercice, et un export enterré dans un autre écran ne se
+            retrouve pas le jour où il devient urgent.
+          */}
+          <button
+            type="button"
+            onClick={() => setExportingFec(true)}
+            title="Export comptable (FEC)"
+            aria-label="Export comptable (FEC)"
+            className="flex h-11 w-11 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:h-9 md:w-9"
+          >
+            <FileSpreadsheet size={16} strokeWidth={1.75} />
+          </button>
           <button
             type="button"
             onClick={() => setEditingIdentity(true)}
@@ -311,6 +329,13 @@ export function InvoicesScreen() {
             identity={identity}
             onSave={saveIdentity}
             onClose={() => setEditingIdentity(false)}
+          />
+        )}
+        {exportingFec && (
+          <FecExportModal
+            invoices={invoices}
+            identity={identity}
+            onClose={() => setExportingFec(false)}
           />
         )}
       </AnimatePresence>
