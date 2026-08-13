@@ -322,11 +322,29 @@ export function SocDesk({
           </header>
           <div className="flex flex-col gap-2.5 px-4 py-4">
             {countries.rows.length === 0 ? (
-              <p className="py-6 text-center text-sm text-text-muted">
-                {loading
-                  ? 'Chargement…'
-                  : 'Aucune origine relevée — le tracker du site ne transmet pas encore le pays.'}
-              </p>
+              /*
+                Le message disait « le tracker ne transmet pas encore le pays ».
+                C'était vrai — le tracker ne le relevait pas — mais ça se lisait
+                comme une limite du produit, alors que c'était un manque à
+                combler ; il l'est désormais (security-monitor, src/geo.js).
+
+                Restent deux raisons LÉGITIMES de ne rien voir, et le message
+                doit les distinguer, parce qu'elles n'appellent pas la même
+                action : un tracker trop ancien se met à jour, un hébergeur sans
+                en-tête de géolocalisation ne se corrige pas.
+              */
+              <div className="py-6 text-center">
+                <p className="text-sm text-text-muted">
+                  {loading ? 'Chargement…' : 'Aucune origine relevée.'}
+                </p>
+                {!loading && (
+                  <p className="mx-auto mt-1.5 max-w-sm text-xs leading-relaxed text-text-muted">
+                    Le relevé demande un tracker à jour <em>et</em> un hébergeur qui fournit le pays
+                    (Cloudflare, Vercel, CloudFront…). Un site servi sans CDN n’a aucun moyen de le
+                    connaître : dans ce cas il n’y a rien à corriger.
+                  </p>
+                )}
+              </div>
             ) : (
               countries.rows.map((row) => {
                 const share = countries.total > 0 ? (row.count / countries.total) * 100 : 0;

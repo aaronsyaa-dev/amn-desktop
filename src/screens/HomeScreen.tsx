@@ -188,7 +188,7 @@ export function HomeScreen() {
 
       {/* Ce que l'application a remarqué toute seule. Ne s'affiche que s'il y a
           quelque chose à dire — voir AttentionPanel. */}
-      <AttentionPanel />
+      <AttentionPanel className="mt-10" />
 
       {/* Sites suivis — personal shortcut, only when the operator pinned some */}
       {pinnedSites.length > 0 && (

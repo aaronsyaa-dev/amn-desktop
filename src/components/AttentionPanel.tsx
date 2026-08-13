@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertTriangle, ChevronDown, CircleAlert, Info } from 'lucide-react';
+import { AlertTriangle, Check, ChevronDown, CircleAlert, Info } from 'lucide-react';
 import { useAttention } from '../state/useAttention';
 import { formatCentsCompact } from '../lib/money';
 import type { AttentionItem, AttentionSeverity } from '../lib/attention';
@@ -9,12 +9,22 @@ import type { AttentionItem, AttentionSeverity } from '../lib/attention';
 /**
  * Points d'attention, sur l'accueil.
  *
- * ## Pourquoi ce bloc n'apparaît pas toujours
+ * ## Trois états, pas deux
  *
- * L'accueil est délibérément calme. Un encadré « 0 point d'attention »
- * occuperait tous les jours la place de quelque chose d'utile et
- * apprendrait à ne plus regarder cet endroit de l'écran. Quand il n'y a rien,
- * il n'y a rien : c'est le silence qui porte l'information.
+ * La première version n'en avait que deux : des alertes, ou rien du tout. Elle
+ * était fausse à l'usage — Aaron a cherché le bloc, ne l'a pas vu, et n'avait
+ * aucun moyen de savoir s'il n'y avait rien à signaler ou si le bloc était
+ * cassé. Un silence qui ne se distingue pas d'une panne n'informe de rien.
+ *
+ *   1. Pas encore évalué  → rien. On n'affirme pas « tout va bien » avant
+ *                           d'avoir regardé.
+ *   2. Évalué, rien à dire → UNE ligne discrète, avec l'heure du contrôle.
+ *                           C'est la preuve que le mécanisme a tourné.
+ *   3. Des points          → la liste.
+ *
+ * L'état 2 reste volontairement une ligne et non un encadré : un grand cadre
+ * « 0 point d'attention » occuperait tous les jours la place de quelque chose
+ * d'utile, et apprendrait à ne plus regarder cet endroit de l'écran.
  *
  * ## Pourquoi seulement trois éléments
  *
@@ -45,12 +55,18 @@ const SEVERITY: Record<
 
 const VISIBLE = 3;
 
-export function AttentionPanel() {
-  const { items } = useAttention();
+export function AttentionPanel({ className = '' }: { className?: string } = {}) {
+  const { items, checkedAt } = useAttention();
   const [expanded, setExpanded] = useState(false);
   const navigate = useNavigate();
 
-  if (items.length === 0) return null;
+  // État 1 : rien n'a encore été évalué. On se tait plutôt que d'annoncer un
+  // calme qu'on n'a pas vérifié.
+  if (!checkedAt) return null;
+
+  // État 2 : évalué, rien à signaler. Une ligne, et l'heure — c'est ce qui
+  // manquait et ce qui a fait chercher le bloc en vain.
+  if (items.length === 0) return <NothingToReport checkedAt={checkedAt} className={className} />;
 
   const shown = expanded ? items : items.slice(0, VISIBLE);
   const hidden = items.length - shown.length;
@@ -61,7 +77,7 @@ export function AttentionPanel() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.35, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
       aria-label="Points d’attention"
-      className="mt-10"
+      className={className}
     >
       <p className="mb-2 text-center font-mono text-[10px] uppercase tracking-[0.25em] text-text-muted">
         {items.length === 1 ? 'Un point d’attention' : `${items.length} points d’attention`}
@@ -99,6 +115,31 @@ export function AttentionPanel() {
         </button>
       )}
     </motion.section>
+  );
+}
+
+/**
+ * « J'ai regardé, il n'y a rien. »
+ *
+ * L'heure n'est pas décorative : c'est elle qui distingue un contrôle qui a
+ * tourné d'un bloc qui ne s'affiche pas.
+ */
+function NothingToReport({ checkedAt, className = '' }: { checkedAt: string; className?: string }) {
+  const time = new Date(checkedAt).toLocaleTimeString('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  return (
+    <motion.p
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.35, duration: 0.7 }}
+      aria-label="Points d’attention"
+      className={`flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted ${className}`}
+    >
+      <Check size={12} strokeWidth={2.5} className="flex-shrink-0 text-success" />
+      Points d’attention · rien à signaler · vérifié à {time}
+    </motion.p>
   );
 }
 

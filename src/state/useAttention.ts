@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useCollection } from './SyncContext';
 import { useClients } from './useClients';
 import { useInvoices } from './useInvoices';
@@ -30,12 +30,28 @@ interface TaskRow {
   createdAt?: string;
 }
 
-export function useAttention(): { items: AttentionItem[]; ready: boolean } {
+export interface AttentionState {
+  items: AttentionItem[];
+  /**
+   * L'instant de la dernière évaluation COMPLÈTE, ou `null` si aucune n'a
+   * encore eu lieu.
+   *
+   * C'est la distinction qui compte, et elle a été trouvée en usage réel :
+   * une liste vide peut vouloir dire « rien à signaler » ou « je n'ai pas
+   * encore regardé », et un écran qui affiche la même chose dans les deux cas
+   * laisse croire qu'il est cassé. `checkedAt` n'est posé que lorsque TOUTES
+   * les sources ont répondu — la synchronisation des collections ET la lecture
+   * des certificats.
+   */
+  checkedAt: string | null;
+}
+
+export function useAttention(): AttentionState {
   const { clients, ready: clientsReady } = useClients();
   const { invoices } = useInvoices();
   const { appointments } = useAppointments();
   const tasks = useCollection<TaskRow>('tasks');
-  const certificates = useCertificates();
+  const { certificates, settled: certificatesSettled } = useCertificates();
 
   const items = useMemo(() => {
     /*
@@ -92,7 +108,18 @@ export function useAttention(): { items: AttentionItem[]; ready: boolean } {
     });
   }, [invoices, tasks, clients, appointments, certificates]);
 
-  return { items, ready: clientsReady };
+  /*
+    Horodater l'évaluation, et seulement quand elle vaut quelque chose.
+
+    `useRef` plutôt qu'un état : le rendu n'a pas besoin de se relancer parce
+    que l'heure a changé, et un `setState` à chaque recalcul d'`items`
+    rejouerait le rendu une fois de plus pour rien.
+  */
+  const complete = clientsReady && certificatesSettled;
+  const checkedAt = useRef<string | null>(null);
+  if (complete) checkedAt.current = new Date().toISOString();
+
+  return { items, checkedAt: complete ? checkedAt.current : null };
 }
 
 /**
@@ -106,10 +133,16 @@ export function useAttention(): { items: AttentionItem[]; ready: boolean } {
  * l'écran : les alertes de facturation et de tâches n'ont aucune raison de
  * disparaître parce que le serveur SSL ne répond pas.
  */
-function useCertificates(): AttentionCertificate[] {
+function useCertificates(): { certificates: AttentionCertificate[]; settled: boolean } {
   const [certificates, setCertificates] = useState<AttentionCertificate[]>([]);
+  // `settled` vaut « la question a été posée et tranchée », pas « il y a des
+  // certificats ». Un échec de lecture est une réponse : il ne doit pas laisser
+  // l'écran croire indéfiniment qu'il n'a pas fini de regarder.
+  const [settled, setSettled] = useState(IS_BUSINESS);
 
   useEffect(() => {
+    // Édition Business : aucune organisation cliente n'a de parc de sites,
+    // donc pas de `/v1/ssl` à interroger. Déjà « tranché » à l'initialisation.
     if (IS_BUSINESS) return;
     let cancelled = false;
     (async () => {
@@ -125,7 +158,11 @@ function useCertificates(): AttentionCertificate[] {
           })),
         );
       } catch {
+        // Les alertes de facturation et de tâches n'ont aucune raison de
+        // disparaître parce que le serveur SSL ne répond pas.
         if (!cancelled) setCertificates([]);
+      } finally {
+        if (!cancelled) setSettled(true);
       }
     })();
     return () => {
@@ -133,5 +170,5 @@ function useCertificates(): AttentionCertificate[] {
     };
   }, []);
 
-  return certificates;
+  return { certificates, settled };
 }

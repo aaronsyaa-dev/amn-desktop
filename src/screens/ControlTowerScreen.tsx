@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { SiteBadgeExport, SocDesk } from '../components/tracker/SocDesk';
 import { CallLinkPanel } from '../components/call/CallLinkPanel';
+import { AttentionPanel } from '../components/AttentionPanel';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { useRemoteSites } from '../state/RemoteSitesContext';
 import { useOrgContext } from '../state/OrgContextContext';
@@ -87,6 +88,23 @@ export function ControlTowerScreen() {
             <Vital label="Hors ligne" value={parc.offline} tone={parc.offline > 0 ? 'alert' : 'calm'} />
           </div>
         </div>
+      </StaggerItem>
+
+      {/*
+        Points d'attention, AVANT le mur d'incidents.
+
+        Aaron les a cherchés ici et ne les a pas trouvés : ils n'existaient que
+        sur l'Accueil. Sa recherche avait raison — la Tour de contrôle est
+        l'écran de supervision transverse, et « une facture impayée depuis 45
+        jours » est exactement le genre de chose qu'on vient y chercher.
+
+        Ils restent aussi sur l'Accueil : c'est là qu'on atterrit. Le même
+        signal à deux endroits légitimes n'est pas une duplication, c'est la
+        différence entre « ce que je vois en arrivant » et « ce que je viens
+        consulter ».
+      */}
+      <StaggerItem>
+        <AttentionPanel />
       </StaggerItem>
 
       {/* Le mur : incidents inter-sites, origine des visiteurs, activité horaire. */}

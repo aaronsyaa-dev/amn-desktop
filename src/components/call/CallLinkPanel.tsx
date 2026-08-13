@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Copy, Link2, Loader2, Trash2, X } from 'lucide-react';
+import { Check, Copy, Link2, Loader2, MessageSquare, Trash2, X } from 'lucide-react';
 import { bridge } from '../../lib/bridge';
 import { cleanErrorMessage } from '../../lib/errorMessage';
+import { callInvitationMessage } from '../../lib/callInvite';
 import type { CallLink } from '../../shared/api';
 
 /**
@@ -47,7 +48,7 @@ export function CallLinkPanel({ onClose }: { onClose: () => void }) {
   const [label, setLabel] = useState('');
   const [fresh, setFresh] = useState<{ url: string; expiresAt: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<'message' | 'url' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -65,7 +66,7 @@ export function CallLinkPanel({ onClose }: { onClose: () => void }) {
   const create = async () => {
     setBusy(true);
     setError(null);
-    setCopied(false);
+    setCopied(null);
     try {
       const created = await bridge().remote.callLinks.create({ label: label.trim(), minutes });
       setFresh({ url: linkUrl(created.token), expiresAt: created.expiresAt });
@@ -78,14 +79,16 @@ export function CallLinkPanel({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const copy = async () => {
+  const copy = async (what: 'message' | 'url') => {
     if (!fresh) return;
+    const text =
+      what === 'message' ? callInvitationMessage(fresh.url, fresh.expiresAt) : fresh.url;
     try {
-      await navigator.clipboard.writeText(fresh.url);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(text);
+      setCopied(what);
+      window.setTimeout(() => setCopied(null), 2000);
     } catch {
-      setError('La copie automatique a échoué — sélectionnez l’adresse à la main.');
+      setError('La copie automatique a échoué — sélectionnez le texte à la main.');
     }
   };
 
@@ -185,15 +188,42 @@ export function CallLinkPanel({ onClose }: { onClose: () => void }) {
                 À envoyer maintenant · {remaining(fresh.expiresAt)}
               </p>
               <p className="mt-1.5 break-all font-mono text-[11px] text-text-primary">{fresh.url}</p>
+
+              {/*
+                Le bouton principal copie un MESSAGE, pas l'adresse nue.
+
+                La personne qui reçoit le lien ne verra jamais cet écran : un
+                avertissement affiché ici ne la protège pas. La consigne doit
+                donc partir avec le lien — c'est le seul endroit où elle atteint
+                celui qui va coller l'adresse dans un moteur de recherche.
+              */}
               <button
                 type="button"
-                onClick={() => void copy()}
-                className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 border border-border-strong text-sm text-text-primary transition-colors hover:bg-surface-hover"
+                onClick={() => void copy('message')}
+                className="mt-2.5 flex min-h-12 w-full items-center justify-center gap-2 bg-accent text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
               >
-                {copied ? <Check size={15} strokeWidth={2.25} /> : <Copy size={15} strokeWidth={1.75} />}
-                {copied ? 'Copié' : 'Copier l’adresse'}
+                {copied === 'message' ? (
+                  <Check size={15} strokeWidth={2.5} />
+                ) : (
+                  <MessageSquare size={15} strokeWidth={1.75} />
+                )}
+                {copied === 'message' ? 'Message copié' : 'Copier le message à envoyer'}
               </button>
-              <p className="mt-2 text-xs leading-relaxed text-text-secondary">
+              <p className="mt-1.5 text-xs leading-relaxed text-text-secondary">
+                Le message contient l’adresse <em>et</em> la consigne « à ouvrir directement, pas à
+                rechercher ». C’est ce qui évite qu’elle finisse dans une barre de recherche.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => void copy('url')}
+                className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 border border-border text-xs text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
+              >
+                {copied === 'url' ? <Check size={14} strokeWidth={2.25} /> : <Copy size={14} strokeWidth={1.75} />}
+                {copied === 'url' ? 'Adresse copiée' : 'Copier l’adresse seule'}
+              </button>
+
+              <p className="mt-2.5 text-xs leading-relaxed text-text-secondary">
                 Cette adresse ne sera plus affichée. Elle n’est pas conservée en clair — si vous la
                 perdez, générez-en une autre.
               </p>
