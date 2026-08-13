@@ -13,7 +13,9 @@ import { applyAccent } from '../lib/accent';
 import { clearGuestQuotaBlock } from '../state/guestQuotaStore';
 import { cleanErrorMessage, isApiUnreachable } from '../lib/errorMessage';
 import { IS_BUSINESS } from '../edition/edition';
-import type { OrgIdentity, RemoteSession, User } from '../shared/api';
+import type { OrgIdentity, RemoteSession, User,
+  LoginOutcome,
+} from '../shared/api';
 
 const AUTH_STORAGE_KEY = 'amn-desktop.auth.user';
 const SESSION_STORAGE_KEY = 'amn-desktop.auth.session';
@@ -91,7 +93,17 @@ interface AuthContextValue {
    * elle tourne, c'est afficher un espace de travail vide puis le remplacer.
    */
   bootstrapping: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  /**
+   * Première étape. Rend `{ kind: 'mfa' }` quand un second facteur est dû —
+   * l'écran de connexion doit alors demander le code et appeler `completeMfa`.
+   */
+  login: (email: string, password: string) => Promise<LoginOutcome>;
+  /** Seconde étape : code du téléphone ou code de secours. */
+  completeMfa: (input: {
+    challenge: string;
+    code?: string;
+    backupCode?: string;
+  }) => Promise<RemoteSession>;
   /**
    * Accepte une invitation et ouvre la session.
    *
@@ -100,7 +112,7 @@ interface AuthContextValue {
    * invitation — donc si amn-api est injoignable, la seule réponse honnête est
    * de le dire, pas d'ouvrir une session locale qui ne serait rattachée à rien.
    */
-  acceptInvitation: (token: string, password: string) => Promise<void>;
+  acceptInvitation: (token: string, password: string) => Promise<LoginOutcome>;
   logout: () => void;
   /**
    * Réinjecte le jeton nominatif stocké dans le process principal, et dit si
@@ -176,30 +188,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [stored]);
 
-  const login = useCallback(async (email: string, password: string) => {
+  /**
+   * Adopte une session amn-api : garde-fou d'édition, stockage, état.
+   *
+   * Extrait parce que trois chemins y arrivent désormais — connexion directe,
+   * seconde étape MFA, acceptation d'invitation — et qu'un garde-fou d'édition
+   * qui existerait sur deux d'entre eux seulement serait pire qu'aucun.
+   */
+  const adoptSession = useCallback(async (session: RemoteSession, refusal: string) => {
+    if (!IS_BUSINESS && session.org.plan !== 'internal') {
+      await bridge().remote.session.clear().catch(() => undefined);
+      throw new Error(refusal);
+    }
+    const nextUser = userFromSession(session);
+    const toStore: StoredSession = { token: session.token, user: nextUser, org: session.org };
+    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(toStore));
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    setUser(nextUser);
+    setOrg(session.org);
+  }, []);
+
+  /**
+   * Seconde étape : le code du téléphone, ou un code de secours.
+   *
+   * Séparée de `login` et non fondue dedans : le défi ne doit jamais pouvoir
+   * être confondu avec une session, et deux fonctions distinctes rendent la
+   * confusion impossible à écrire par distraction.
+   */
+  const completeMfa = useCallback(
+    async (input: { challenge: string; code?: string; backupCode?: string }) => {
+      const session = await bridge().remote.session.loginMfa(input);
+      await adoptSession(
+        session,
+        'Ce compte appartient à une organisation cliente. Utilisez l’application AMN Business.',
+      );
+      return session;
+    },
+    [adoptSession],
+  );
+
+  const login = useCallback(async (email: string, password: string): Promise<LoginOutcome> => {
     let unreachable: Error | null = null;
     try {
-      const session = await bridge().remote.session.login(email, password);
+      const outcome = await bridge().remote.session.login(email, password);
+
+      // MFA active : rien n'est adopté ici. L'écran de connexion demande le
+      // second facteur, et c'est `completeMfa` qui ouvrira la session.
+      if (outcome.kind === 'mfa') return outcome;
+      const session = outcome.session;
 
       // Garde-fou d'édition. Un build interne embarque les produits exclusifs
       // d'AMN DevSec : une organisation cliente n'a rien à y faire, même avec
       // des identifiants valides. L'inverse est permis — Aaron peut ouvrir
       // AMN Business avec son propre compte pour vérifier ce que voit sa
       // cliente.
-      if (!IS_BUSINESS && session.org.plan !== 'internal') {
-        await bridge().remote.session.clear().catch(() => undefined);
-        throw new Error(
-          'Ce compte appartient à une organisation cliente. Utilisez l’application AMN Business.',
-        );
-      }
-
-      const nextUser = userFromSession(session);
-      const toStore: StoredSession = { token: session.token, user: nextUser, org: session.org };
-      window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(toStore));
-      window.localStorage.removeItem(AUTH_STORAGE_KEY);
-      setUser(nextUser);
-      setOrg(session.org);
-      return;
+      await adoptSession(
+        session,
+        'Ce compte appartient à une organisation cliente. Utilisez l’application AMN Business.',
+      );
+      return { kind: 'session', session };
     } catch (err) {
       const message = cleanErrorMessage(err, 'Échec de la connexion.');
       // Le refus d'édition ci-dessus n'est pas un « essayez autre chose » : il
@@ -230,28 +277,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(result.user));
     setUser(result.user);
     setOrg(null);
-  }, []);
+    // Le repli local n'a pas de MFA : il ne parle pas à amn-api.
+    return { kind: 'session', session: null as unknown as RemoteSession };
+  }, [adoptSession]);
 
-  const acceptInvitation = useCallback(async (token: string, password: string) => {
-    const session = await bridge().remote.session.acceptInvitation(token, password);
+  const acceptInvitation = useCallback(
+    async (token: string, password: string): Promise<LoginOutcome> => {
+      const outcome = await bridge().remote.session.acceptInvitation(token, password);
+      // Réémission d'accès sur un compte à MFA active : le second facteur reste
+      // dû, exactement comme à la connexion.
+      if (outcome.kind === 'mfa') return outcome;
 
-    // Même garde-fou d'édition qu'à la connexion : un build interne embarque
-    // les produits exclusifs, une organisation cliente n'a rien à y faire même
-    // avec une invitation parfaitement valide.
-    if (!IS_BUSINESS && session.org.plan !== 'internal') {
-      await bridge().remote.session.clear().catch(() => undefined);
-      throw new Error(
+      // Même garde-fou d'édition qu'à la connexion : un build interne embarque
+      // les produits exclusifs, une organisation cliente n'a rien à y faire même
+      // avec une invitation parfaitement valide.
+      await adoptSession(
+        outcome.session,
         'Cette invitation concerne une organisation cliente. Utilisez l’application AMN Business.',
       );
-    }
-
-    const nextUser = userFromSession(session);
-    const toStore: StoredSession = { token: session.token, user: nextUser, org: session.org };
-    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(toStore));
-    window.localStorage.removeItem(AUTH_STORAGE_KEY);
-    setUser(nextUser);
-    setOrg(session.org);
-  }, []);
+      return outcome;
+    },
+    [adoptSession],
+  );
 
   const logout = useCallback(() => {
     // Le mur « quota épuisé » appartient au compte qui part : le laisser en
@@ -315,6 +362,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: user !== null,
       bootstrapping,
       login,
+      completeMfa,
       acceptInvitation,
       reauthenticate,
       logout,

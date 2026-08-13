@@ -14,6 +14,7 @@ import { SettingsPanel as Panel } from '../components/SettingsPanel';
 import { APP_VERSION, IS_BUSINESS } from '../edition/edition';
 import { OllamaSection } from '@edition/exclusive';
 import { AccountSecuritySection } from '../components/settings/AccountSecuritySection';
+import { MfaSection } from '../components/settings/MfaSection';
 
 /** Une phrase d'identité par édition — celle de l'interne nomme AMN DevSec. */
 const ABOUT_TAGLINE = IS_BUSINESS
@@ -56,6 +57,7 @@ export function SettingsScreen() {
         à Electron aurait retiré le cas d'usage principal.
       */}
       <StaggerItem>
+        <MfaSection />
         <AccountSecuritySection />
       </StaggerItem>
       {!bridge().env.isElectron && (

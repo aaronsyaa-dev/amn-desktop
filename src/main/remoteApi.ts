@@ -7,6 +7,9 @@ import type {
   CreatedCallLink,
   OrgAccessRecord,
   OrgIdentity,
+  LoginOutcome,
+  MfaEnrolment,
+  MfaStatus,
   RemoteSession,
   RemoteSessionUser,
   PresenceEntry,
@@ -165,10 +168,62 @@ export class RemoteApiClient {
    * installation cliente n'a AUCUN justificatif avant d'avoir réussi ce
    * premier appel — `apiFetch` la refuserait au motif que rien n'est configuré.
    */
-  async login(email: string, password: string): Promise<RemoteSession> {
-    const session = await this.publicPost<RemoteSession>('/v1/auth/login', { email, password });
+  /**
+   * Première étape de connexion.
+   *
+   * Le serveur rend soit une session, soit un DÉFI quand la MFA est active.
+   * On distingue les deux ICI, une fois, plutôt que de laisser chaque appelant
+   * deviner d'après la présence d'un champ : un défi traité comme une session
+   * serait précisément le bug que toute la construction serveur sert à rendre
+   * impossible.
+   */
+  async login(email: string, password: string): Promise<LoginOutcome> {
+    const res = await this.publicPost<RemoteSession & { mfaRequired?: boolean; challenge?: string; email?: string; expiresAt: string }>(
+      '/v1/auth/login',
+      { email, password },
+    );
+    if (res.mfaRequired && res.challenge) {
+      // Surtout PAS d'`applySession` : le défi n'est pas un justificatif.
+      return { kind: 'mfa', challenge: res.challenge, expiresAt: res.expiresAt, email: res.email ?? email };
+    }
+    this.applySession(res.token);
+    return { kind: 'session', session: res };
+  }
+
+  async loginMfa(input: { challenge: string; code?: string; backupCode?: string }): Promise<RemoteSession> {
+    const session = await this.publicPost<RemoteSession>('/v1/auth/login/mfa', input);
     this.applySession(session.token);
     return session;
+  }
+
+  /* ------------------------------ MFA ------------------------------------ */
+
+  async mfaStatus(): Promise<MfaStatus> {
+    const res = await apiFetch<{ mfa: MfaStatus }>('/v1/auth/mfa');
+    return res.mfa;
+  }
+
+  async mfaSetup(): Promise<MfaEnrolment> {
+    return apiFetch<MfaEnrolment>('/v1/auth/mfa/setup', { method: 'POST' });
+  }
+
+  async mfaActivate(code: string): Promise<{ backupCodes: string[]; mfa: MfaStatus }> {
+    return apiFetch('/v1/auth/mfa/activate', { method: 'POST', body: JSON.stringify({ code }) });
+  }
+
+  async mfaRegenerateBackupCodes(input: { password: string; code: string }) {
+    return apiFetch<{ backupCodes: string[]; mfa: MfaStatus }>('/v1/auth/mfa/backup-codes', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async mfaDisable(input: { password: string; code: string }): Promise<MfaStatus> {
+    const res = await apiFetch<{ mfa: MfaStatus }>('/v1/auth/mfa', {
+      method: 'DELETE',
+      body: JSON.stringify(input),
+    });
+    return res.mfa;
   }
 
   /**
@@ -211,13 +266,18 @@ export class RemoteApiClient {
     await apiFetch(`/v1/call-links/${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
 
-  async acceptInvitation(token: string, password: string): Promise<RemoteSession> {
-    const session = await this.publicPost<RemoteSession>('/v1/auth/invitations/accept', {
-      token,
-      password,
-    });
-    this.applySession(session.token);
-    return session;
+  async acceptInvitation(token: string, password: string): Promise<LoginOutcome> {
+    const res = await this.publicPost<RemoteSession & { mfaRequired?: boolean; challenge?: string; email?: string; expiresAt: string }>(
+      '/v1/auth/invitations/accept',
+      { token, password },
+    );
+    // Réémission d'accès sur un compte dont la MFA est active : le serveur rend
+    // un défi, pas une session. Le second facteur reste dû.
+    if (res.mfaRequired && res.challenge) {
+      return { kind: 'mfa', challenge: res.challenge, expiresAt: res.expiresAt, email: res.email ?? '' };
+    }
+    this.applySession(res.token);
+    return { kind: 'session', session: res };
   }
 
   /**

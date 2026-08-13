@@ -240,7 +240,53 @@ export interface RemoteSession {
   expiresAt: string;
   user: RemoteSessionUser;
   org: OrgIdentity;
+  /** État MFA du compte, tel que le serveur l'affirme à la connexion. */
+  mfa?: MfaStatus;
+  /** Vrai quand la session a été ouverte avec un code de secours. */
+  usedBackupCode?: boolean;
 }
+
+/* ------------------------------ MFA / TOTP ----------------------------- */
+
+/**
+ * Ce que le serveur dit de la double authentification d'un compte.
+ *
+ * `available` est distinct de `enabled` : un serveur sans `MFA_SECRET_KEY` ne
+ * SAIT PAS faire de MFA, ce qui n'est pas la même chose qu'un compte qui n'en
+ * a pas. L'interface doit pouvoir expliquer laquelle des deux situations elle
+ * affiche, sinon « activer » resterait grisé sans raison visible.
+ */
+export interface MfaStatus {
+  available: boolean;
+  enabled: boolean;
+  /** Obligatoire pour ce rôle (owner/admin : ils ouvrent des sessions de support). */
+  required: boolean;
+  activatedAt: string | null;
+  /** Un enrôlement est commencé mais pas confirmé. */
+  pending: boolean;
+  backupCodesRemaining: number;
+  backupCodesTotal: number;
+}
+
+/** Ce que rend `/mfa/setup` : de quoi scanner OU recopier à la main. */
+export interface MfaEnrolment {
+  secret: string;
+  /** Le même secret groupé par quatre, pour la saisie manuelle. */
+  readableSecret: string;
+  otpauthUri: string;
+}
+
+/**
+ * Le résultat d'une première étape de connexion.
+ *
+ * Deux formes possibles, et l'appelant DOIT les distinguer : soit la session
+ * est là, soit il reste un facteur à fournir. Les mélanger dans un seul type
+ * optionnel produirait exactement le bug qu'on veut éviter — traiter un défi
+ * comme une session.
+ */
+export type LoginOutcome =
+  | { kind: 'session'; session: RemoteSession }
+  | { kind: 'mfa'; challenge: string; expiresAt: string; email: string };
 
 /* ------------------------------ Profiles ------------------------------ */
 
@@ -1485,7 +1531,16 @@ export interface AmnBridge {
      */
     session: {
       /** Échange email/mot de passe contre une session. Lève l'erreur d'amn-api telle quelle. */
-      login(email: string, password: string): Promise<RemoteSession>;
+      /**
+       * Première étape : email + mot de passe.
+       *
+       * Rend soit une session, soit un DÉFI quand la MFA est active. Le défi
+       * n'est pas un jeton de session et n'ouvre rien — il s'échange contre
+       * une session via {@link loginMfa}.
+       */
+      login(email: string, password: string): Promise<LoginOutcome>;
+      /** Seconde étape : le code du téléphone, ou un code de secours. */
+      loginMfa(input: { challenge: string; code?: string; backupCode?: string }): Promise<RemoteSession>;
       /** Revalide un jeton stocké au démarrage. `null` si amn-api l'a refusé. */
       restore(token: string): Promise<RemoteSession | null>;
       /** Termine la session côté serveur et repasse au jeton opérateur (ou à rien). */
@@ -1501,7 +1556,7 @@ export interface AmnBridge {
        * même lien échoue, ce qui est le comportement voulu et ce que l'écran
        * doit savoir dire.
        */
-      acceptInvitation(token: string, password: string): Promise<RemoteSession>;
+      acceptInvitation(token: string, password: string): Promise<LoginOutcome>;
       /**
        * Change le mot de passe du compte connecté.
        *
@@ -1683,6 +1738,22 @@ export interface AmnBridge {
       leave(token: string): Promise<void>;
     };
 
+    /* --- Double authentification (MFA/TOTP) --- */
+    mfa: {
+      status(): Promise<MfaStatus>;
+      /** Prépare un enrôlement. N'ACTIVE rien : il faut confirmer par un code. */
+      setup(): Promise<MfaEnrolment>;
+      /** Confirme l'enrôlement. Rend les codes de secours — UNE seule fois. */
+      activate(code: string): Promise<{ backupCodes: string[]; mfa: MfaStatus }>;
+      /** Régénère les codes ; invalide tous les anciens. Mot de passe ET code. */
+      regenerateBackupCodes(input: {
+        password: string;
+        code: string;
+      }): Promise<{ backupCodes: string[]; mfa: MfaStatus }>;
+      /** Désactive. Refusé pour les rôles où la MFA est obligatoire. */
+      disable(input: { password: string; code: string }): Promise<MfaStatus>;
+    };
+
     /* --- Comply (RGPD) --- */
     /**
      * Queues a conformity check of `url` against one referential. Same shape as
@@ -1844,6 +1915,12 @@ export const IPC = {
   remoteGetScan: 'remote:getScan',
   remoteScanReportUrl: 'remote:scanReportUrl',
   remoteScanProgressPush: 'remote:scanProgressPush',
+  remoteMfaStatus: 'remote:mfaStatus',
+  remoteMfaSetup: 'remote:mfaSetup',
+  remoteMfaActivate: 'remote:mfaActivate',
+  remoteMfaBackupCodes: 'remote:mfaBackupCodes',
+  remoteMfaDisable: 'remote:mfaDisable',
+  remoteLoginMfa: 'remote:loginMfa',
   remoteStartComply: 'remote:startComply',
   remoteListComplyChecks: 'remote:listComplyChecks',
   remoteListComplyReferentials: 'remote:listComplyReferentials',

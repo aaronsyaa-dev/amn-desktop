@@ -54,6 +54,9 @@ import type {
   UpdateQuoteInput,
   UpdateSharedTaskInput,
   VaultEntry,
+  LoginOutcome,
+  MfaEnrolment,
+  MfaStatus,
 } from '../shared/api';
 
 declare global {
@@ -439,8 +442,19 @@ function createBrowserRemote(): AmnBridge['remote'] {
   return {
     ...createBrowserExclusive(exclusiveContext),
     session: {
-      async login(email: string, password: string) {
-        const session = await publicPost<RemoteSession>('/v1/auth/login', { email, password });
+      async login(email: string, password: string): Promise<LoginOutcome> {
+        const res = await publicPost<
+          RemoteSession & { mfaRequired?: boolean; challenge?: string; email?: string }
+        >('/v1/auth/login', { email, password });
+        // Un défi n'est PAS un justificatif : pas d'`applySession` dessus.
+        if (res.mfaRequired && res.challenge) {
+          return { kind: 'mfa', challenge: res.challenge, expiresAt: res.expiresAt, email: res.email ?? email };
+        }
+        applySession(res.token);
+        return { kind: 'session', session: res };
+      },
+      async loginMfa(input: { challenge: string; code?: string; backupCode?: string }) {
+        const session = await publicPost<RemoteSession>('/v1/auth/login/mfa', input);
         applySession(session.token);
         return session;
       },
@@ -460,13 +474,15 @@ function createBrowserRemote(): AmnBridge['remote'] {
           return null;
         }
       },
-      async acceptInvitation(token: string, password: string) {
-        const session = await publicPost<RemoteSession>('/v1/auth/invitations/accept', {
-          token,
-          password,
-        });
-        applySession(session.token);
-        return session;
+      async acceptInvitation(token: string, password: string): Promise<LoginOutcome> {
+        const res = await publicPost<
+          RemoteSession & { mfaRequired?: boolean; challenge?: string; email?: string }
+        >('/v1/auth/invitations/accept', { token, password });
+        if (res.mfaRequired && res.challenge) {
+          return { kind: 'mfa', challenge: res.challenge, expiresAt: res.expiresAt, email: res.email ?? '' };
+        }
+        applySession(res.token);
+        return { kind: 'session', session: res };
       },
       async changePassword(currentPassword: string, newPassword: string) {
         await apiFetch<{ ok: boolean }>('/v1/auth/password', {
@@ -533,6 +549,30 @@ function createBrowserRemote(): AmnBridge['remote'] {
     async accessLog(): Promise<OrgAccessRecord[]> {
       const res = await apiFetch<{ entries: OrgAccessRecord[] }>('/v1/auth/access-log');
       return res.entries ?? [];
+    },
+    mfa: {
+      async status() {
+        const res = await apiFetch<{ mfa: MfaStatus }>('/v1/auth/mfa');
+        return res.mfa;
+      },
+      setup: () => apiFetch<MfaEnrolment>('/v1/auth/mfa/setup', { method: 'POST' }),
+      activate: (code: string) =>
+        apiFetch<{ backupCodes: string[]; mfa: MfaStatus }>('/v1/auth/mfa/activate', {
+          method: 'POST',
+          body: JSON.stringify({ code }),
+        }),
+      regenerateBackupCodes: (input: { password: string; code: string }) =>
+        apiFetch<{ backupCodes: string[]; mfa: MfaStatus }>('/v1/auth/mfa/backup-codes', {
+          method: 'POST',
+          body: JSON.stringify(input),
+        }),
+      async disable(input: { password: string; code: string }) {
+        const res = await apiFetch<{ mfa: MfaStatus }>('/v1/auth/mfa', {
+          method: 'DELETE',
+          body: JSON.stringify(input),
+        });
+        return res.mfa;
+      },
     },
     callLinks: {
       async create(input: { label?: string; minutes?: number }): Promise<CreatedCallLink> {

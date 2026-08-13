@@ -240,6 +240,19 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
       remote.changeSessionPassword(payload.currentPassword, payload.newPassword),
   );
   ipcMain.handle(
+    IPC.remoteLoginMfa,
+    (_event, input: { challenge: string; code?: string; backupCode?: string }) => remote.loginMfa(input),
+  );
+  ipcMain.handle(IPC.remoteMfaStatus, () => remote.mfaStatus());
+  ipcMain.handle(IPC.remoteMfaSetup, () => remote.mfaSetup());
+  ipcMain.handle(IPC.remoteMfaActivate, (_event, code: string) => remote.mfaActivate(code));
+  ipcMain.handle(IPC.remoteMfaBackupCodes, (_event, input: { password: string; code: string }) =>
+    remote.mfaRegenerateBackupCodes(input),
+  );
+  ipcMain.handle(IPC.remoteMfaDisable, (_event, input: { password: string; code: string }) =>
+    remote.mfaDisable(input),
+  );
+  ipcMain.handle(
     IPC.remoteSessionAcceptInvitation,
     (_event, payload: { token: string; password: string }) =>
       remote.acceptInvitation(payload.token, payload.password),
