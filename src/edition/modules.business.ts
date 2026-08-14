@@ -1,4 +1,5 @@
 import {
+  Calculator,
   CalendarDays,
   CheckSquare,
   Contact,
@@ -62,6 +63,11 @@ export const NAV_SECTIONS: NavSection[] = [
       // dire qu'ils n'ont rien à voir l'un avec l'autre.
       { key: 'expenses', label: 'Dépenses', to: '/depenses', icon: Wallet, hint: 'Ce que vous sortez, avec les reçus' },
       { key: 'time', label: 'Temps', to: '/temps', icon: Timer, hint: 'Chronomètre et temps passé' },
+      // Les calculateurs métier. Le moteur ne connaît aucun métier : ce sont
+      // les profils déclarés (prix e-commerce, rentabilité d'un événement,
+      // répartition entre associés) qui en font un outil différent selon
+      // l'organisation, sans qu'une ligne de code change d'une cliente à l'autre.
+      { key: 'calculators', label: 'Calculateurs', to: '/calculateurs', icon: Calculator, hint: 'Prix, marges, répartition' },
       { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen, hint: 'Bloc-notes' },
       { key: 'media', label: 'Médias', to: '/media', icon: Images, hint: 'Photos et fichiers' },
       { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Comptes-rendus' },
@@ -114,6 +120,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/projets', 'tableau'],
   ['/depenses', 'fiches'],
   ['/temps', 'registre'],
+  ['/calculateurs', 'analyse'],
   ['/notes', 'journal'],
   ['/media', 'base'],
   ['/reports', 'livrables'],

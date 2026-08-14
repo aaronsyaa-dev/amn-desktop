@@ -75,6 +75,10 @@ npm start
 - `npm run lint` — vérifie le code avec ESLint.
 - `npm run typecheck` — vérifie les types TypeScript.
 - `npm run package` / `npm run make` — packagent l'application.
+- `npm run check:modules` — vérifie que les catalogues de modules s'accordent
+  (amn-api, édition Business, contexte de support, tables de routes).
+- `npm run check:calc` — le moteur de calcul et tous les profils déclarés
+  (voir `docs/CALCULATEURS.md`).
 
 Édition Business (livrée aux organisations clientes — voir `docs/BUSINESS.md`) :
 

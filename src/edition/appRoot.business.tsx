@@ -14,6 +14,7 @@ import { InvoicesScreen } from '../screens/InvoicesScreen';
 import { ProjectsScreen } from '../screens/ProjectsScreen';
 import { ExpensesScreen } from '../screens/ExpensesScreen';
 import { TimeScreen } from '../screens/TimeScreen';
+import { CalculatorsScreen } from '../screens/CalculatorsScreen';
 import { TasksScreen } from '../screens/TasksScreen';
 import { NotesScreen } from '../screens/NotesScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
@@ -109,6 +110,14 @@ export function AppRoot() {
           element={
             <ModuleRoute module="time">
               <TimeScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/calculateurs"
+          element={
+            <ModuleRoute module="calculators">
+              <CalculatorsScreen />
             </ModuleRoute>
           }
         />

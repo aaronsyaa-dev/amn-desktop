@@ -2,6 +2,7 @@ import {
   BadgeCheck,
   BookOpen,
   Building2,
+  Calculator,
   CalendarDays,
   CheckSquare,
   Contact,
@@ -72,6 +73,10 @@ export const NAV_SECTIONS: NavSection[] = [
       // module qu'on n'utilise pas soi-même est un module qu'on livre mal.
       { key: 'expenses', label: 'Dépenses', to: '/depenses', icon: Wallet, hint: 'Frais et justificatifs' },
       { key: 'time', label: 'Temps', to: '/temps', icon: Timer, hint: 'Chronomètre et temps passé' },
+      // Les calculateurs métier : un moteur, des profils déclarés en données.
+      // Placés après Dépenses et Temps parce qu'ils s'appuient dessus — la
+      // synthèse du mois agrège la facturation, les frais et le temps.
+      { key: 'calculators', label: 'Calculateurs', to: '/calculateurs', icon: Calculator, hint: 'Prix, marges, répartition' },
       { key: 'sites', label: 'Sites', to: '/sites', icon: Globe, hint: 'Registre des sites clients' },
       { key: 'team', label: 'Équipe', to: '/team', icon: Users, hint: 'Messagerie et présence' },
       { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Livrables clients' },
@@ -159,6 +164,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/projets', 'tableau'],
   ['/depenses', 'fiches'],
   ['/temps', 'registre'],
+  ['/calculateurs', 'analyse'],
   ['/tracker', 'supervision'],
   ['/scanner', 'analyse'],
   ['/comply', 'analyse'],

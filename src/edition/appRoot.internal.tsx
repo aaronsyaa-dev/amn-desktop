@@ -15,6 +15,7 @@ import { InvoicesScreen } from '../screens/InvoicesScreen';
 import { ProjectsScreen } from '../screens/ProjectsScreen';
 import { ExpensesScreen } from '../screens/ExpensesScreen';
 import { TimeScreen } from '../screens/TimeScreen';
+import { CalculatorsScreen } from '../screens/CalculatorsScreen';
 import { ComplyScreen } from '../screens/ComplyScreen';
 import { ScannerScreen } from '../screens/ScannerScreen';
 import { TrackerScreen } from '../screens/TrackerScreen';
@@ -127,6 +128,7 @@ function AmnRoutes() {
         <Route path="/projets" element={<ProjectsScreen />} />
         <Route path="/depenses" element={<ExpensesScreen />} />
         <Route path="/temps" element={<TimeScreen />} />
+        <Route path="/calculateurs" element={<CalculatorsScreen />} />
         <Route path="/sites" element={<SitesDashboardScreen />} />
         <Route path="/team" element={<TeamScreen />} />
         <Route path="/reports" element={<ReportsScreen />} />
@@ -220,6 +222,14 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="time">
               <TimeScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/calculateurs"
+          element={
+            <ModuleRoute module="calculators">
+              <CalculatorsScreen />
             </ModuleRoute>
           }
         />

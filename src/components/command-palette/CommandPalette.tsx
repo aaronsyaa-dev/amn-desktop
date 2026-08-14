@@ -9,24 +9,14 @@ import React, {
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  LockKeyhole,
   BookOpen,
   CheckSquare,
-  Contact,
   CornerDownLeft,
-  FileText,
   Globe,
-  Images,
-  LayoutDashboard,
   NotebookPen,
-  BadgeCheck,
-  Radar,
-  ScanLine,
   Scale,
   Search,
-  Settings,
   Sparkles,
-  Users,
 } from 'lucide-react';
 import { useRemoteSites } from '../../state/RemoteSitesContext';
 import { useCollection } from '../../state/SyncContext';
@@ -34,6 +24,7 @@ import { useNotes } from '../../state/useNotes';
 import { useSitePanel } from '../site-panel/SitePanelContext';
 import { useAssistant } from '../../assistant/AssistantContext';
 import { StatusBadge } from '../StatusBadge';
+import { SPACES, itemsForSpace } from '../../data/spaces';
 
 interface CommandPaletteContextValue {
   open: () => void;
@@ -52,23 +43,37 @@ type Command =
   | { kind: 'site'; id: string; label: string; siteId: string }
   | { kind: 'record'; id: string; label: string; icon: IconType; to: string; hint: string };
 
-const NAV_COMMANDS: Extract<Command, { kind: 'nav' }>[] = [
-  { kind: 'nav', id: 'nav-home', label: 'Accueil', icon: LayoutDashboard, to: '/' },
-  { kind: 'nav', id: 'nav-sites', label: 'Sites', icon: Globe, to: '/sites' },
-  { kind: 'nav', id: 'nav-team', label: 'Équipe', icon: Users, to: '/team' },
-  { kind: 'nav', id: 'nav-tasks', label: 'Tâches', icon: CheckSquare, to: '/tasks' },
-  { kind: 'nav', id: 'nav-clients', label: 'Clients', icon: Contact, to: '/clients' },
-  { kind: 'nav', id: 'nav-tracker', label: 'Trackers', icon: Radar, to: '/tracker' },
-  { kind: 'nav', id: 'nav-scanner', label: 'Scanner', icon: ScanLine, to: '/scanner' },
-  { kind: 'nav', id: 'nav-comply', label: 'Comply', icon: BadgeCheck, to: '/comply' },
-  { kind: 'nav', id: 'nav-ssl', label: 'SSL Monitor', icon: LockKeyhole, to: '/ssl' },
-  { kind: 'nav', id: 'nav-decisions', label: 'Décisions', icon: Scale, to: '/decisions' },
-  { kind: 'nav', id: 'nav-knowledge', label: 'Connaissances', icon: BookOpen, to: '/knowledge' },
-  { kind: 'nav', id: 'nav-notes', label: 'Notes', icon: NotebookPen, to: '/notes' },
-  { kind: 'nav', id: 'nav-media', label: 'Médias', icon: Images, to: '/media' },
-  { kind: 'nav', id: 'nav-reports', label: 'Rapports', icon: FileText, to: '/reports' },
-  { kind: 'nav', id: 'nav-settings', label: 'Paramètres', icon: Settings, to: '/settings' },
-];
+/**
+ * Les commandes de navigation, DÉRIVÉES du catalogue de modules.
+ *
+ * Elles étaient écrites à la main, et cette liste était déjà fausse : ni
+ * Facturation, ni Projets, ni Dépenses, ni Temps, ni Calendrier, ni Coffre-fort,
+ * ni les trois écrans de la Tour de contrôle n'y figuraient. Chercher
+ * « facture » dans la palette ne trouvait rien, alors que l'écran existe depuis
+ * des semaines — et rien n'avait échoué pour le signaler.
+ *
+ * `spaces.ts` prévenait pourtant : cinq listes disent la même chose (barre
+ * latérale, lanceur, barre du pouce, palette, étiquettes), et l'histoire de ce
+ * dépôt est pleine de listes oubliées à un endroit sur cinq. La corriger en
+ * ajoutant les entrées manquantes aurait reproduit le défaut au module suivant.
+ * Elle est donc SUPPRIMÉE au profit du catalogue.
+ *
+ * Trois effets, tous acquis d'un coup : un module ajouté au catalogue devient
+ * cherchable sans qu'on y pense ; un module FERMÉ pour une organisation
+ * disparaît de la palette (`sectionsForSpace` applique `isModuleEnabled`) au
+ * lieu d'y rester comme un raccourci vers une redirection ; et l'édition
+ * Business n'expose que ses propres écrans, puisque le catalogue est déjà
+ * résolu à la compilation.
+ */
+function navCommandsFromCatalog(): Extract<Command, { kind: 'nav' }>[] {
+  return SPACES.flatMap((space) => itemsForSpace(space.key)).map((item) => ({
+    kind: 'nav' as const,
+    id: `nav-${item.key}`,
+    label: item.label,
+    icon: item.icon,
+    to: item.to,
+  }));
+}
 
 export function CommandPaletteProvider({
   children,
@@ -150,7 +155,7 @@ function CommandPaletteModal({
         label: s.name,
         siteId: s.id,
       }));
-    const navCommands = NAV_COMMANDS.filter(
+    const navCommands = navCommandsFromCatalog().filter(
       (c) => !q || c.label.toLowerCase().includes(q),
     );
 

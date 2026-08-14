@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  Calculator,
   CalendarDays,
   CheckSquare,
   Contact,
@@ -14,6 +15,8 @@ import {
   ReceiptEuro,
   Settings,
   ShieldCheck,
+  Timer,
+  Wallet,
 } from 'lucide-react';
 import type { NavItem } from '../data/navigation';
 import { isModuleEnabled } from '../data/spaces';
@@ -43,6 +46,9 @@ const CLIENT_MODULES: NavItem[] = [
   { key: 'invoices', label: 'Facturation', to: '/facturation', icon: ReceiptEuro, hint: 'Factures et encaissements' },
   { key: 'projects', label: 'Projets', to: '/projets', icon: FolderKanban, hint: 'Ce qui avance, et ce qui bloque' },
   { key: 'tasks', label: 'Tâches', to: '/tasks', icon: CheckSquare, hint: 'Ce qu’il reste à faire' },
+  { key: 'expenses', label: 'Dépenses', to: '/depenses', icon: Wallet, hint: 'Frais et justificatifs' },
+  { key: 'time', label: 'Temps', to: '/temps', icon: Timer, hint: 'Chronomètre et temps passé' },
+  { key: 'calculators', label: 'Calculateurs', to: '/calculateurs', icon: Calculator, hint: 'Prix, marges, répartition' },
   { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen, hint: 'Bloc-notes' },
   { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Comptes-rendus' },
   { key: 'media', label: 'Médias', to: '/media', icon: Images, hint: 'Photos et fichiers' },

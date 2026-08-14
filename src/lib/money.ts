@@ -15,7 +15,7 @@
  */
 
 /** Arrondi commercial (0,5 s'éloigne de zéro), celui qu'attend un comptable. */
-function roundHalfAwayFromZero(value: number): number {
+export function roundHalfAwayFromZero(value: number): number {
   return value < 0 ? -Math.round(-value) : Math.round(value);
 }
 
