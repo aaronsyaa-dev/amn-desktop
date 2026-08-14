@@ -347,6 +347,97 @@ C'était le point noir de la livraison précédente — l'invitation d'origine �
 à usage unique et expirant en 7 jours, un mot de passe perdu n'avait aucune
 issue.
 
+## Envoyer l'installeur : ce qui existe, ce qui manque, et ce qu'il faut fournir
+
+Audit fait le 14 août 2026, pas une conception en l'air : voici l'état réel de
+la chaîne « nouvelle cliente acceptée → lien d'installation entre ses mains ».
+
+### La bonne nouvelle : il n'y a PAS d'exécutable par cliente
+
+L'idée d'un `.exe` généré à la création de chaque organisation part d'une
+supposition fausse. L'application Business est **exactement la même pour
+toutes** : elle apprend son organisation à la connexion, par la session
+qu'amn-api lui rend. Rien de la cliente n'est compilé dedans — ni son nom, ni
+son identifiant, ni ses modules.
+
+Il y a donc **un installeur par version**, pas un par cliente. Ce qui change
+d'une cliente à l'autre, c'est son compte, et il est déjà créé par le
+formulaire de l'écran Organisations.
+
+C'est une simplification majeure : pas de file de compilation à faire tourner,
+rien à déclencher à la création d'une organisation.
+
+### Ce qui existe aujourd'hui
+
+| Étape | État |
+| --- | --- |
+| Créer l'organisation + le compte propriétaire | **Fait**, un formulaire (écran Organisations) |
+| Lien d'activation à durée limitée (7 jours, usage unique) | **Fait**, rendu par la création |
+| Construire l'installeur Business | `npm run make:business` — **manuel**, sur une machine Windows |
+| Le mettre à disposition | **Rien.** Remise à la main, au cas par cas |
+| Lien de téléchargement à durée limitée | **N'existe pas** |
+| Auto-mise à jour de l'édition Business | Volontairement débranchée (`publishers: []`) |
+
+Le web/PWA est aujourd'hui le vrai chemin de livraison, et il n'a aucun de ces
+problèmes : une URL, rien à installer, rien à signer. L'installeur Windows est
+un confort, pas la voie principale.
+
+### Ce qu'il manque, et pourquoi ça ne peut pas se faire côté serveur
+
+L'installeur Windows est produit par Squirrel, qui **exige une machine
+Windows**. amn-api tourne sous Linux : elle ne peut pas fabriquer le `.exe`,
+quel que soit le code qu'on y mettrait. La production restera donc un geste
+d'atelier — sur la machine d'Aaron, ou dans une CI Windows.
+
+Ce qu'amn-api PEUT faire, en revanche, et qui est la vraie demande :
+
+1. `business_releases` — une ligne par version publiée : version, nom de
+   fichier, empreinte SHA-256, emplacement des octets.
+2. `download_tokens` — un jeton dans **sa propre table**, jamais dans
+   `sessions`. C'est le motif déjà utilisé pour les liens d'appel : un jeton
+   rangé ailleurs que dans les sessions ne peut, par construction, satisfaire
+   aucune route authentifiée. Colonnes : empreinte du jeton, release visée,
+   expiration, `used_at`.
+3. `GET /v1/downloads/:token` — vérifie l'expiration, sert (ou redirige vers)
+   les octets, consigne l'usage.
+4. La création d'une organisation renvoie alors **deux** liens au lieu d'un :
+   activation du compte, et téléchargement de l'installeur. Un seul geste pour
+   Aaron, ce qui est le point 3 de la demande.
+
+Rien là-dedans n'est difficile ; le mécanisme des liens d'appel en est le
+modèle direct. **Ce n'est pas livré dans ce chantier**, faute d'une décision qui
+n'appartient pas au code — voir ci-dessous.
+
+### L'infrastructure qu'Aaron doit fournir lui-même
+
+Le jeton et l'expiration sont du code. **Les octets du `.exe` doivent vivre
+quelque part**, et c'est un choix d'hébergement, pas de programmation. Trois
+options, avec leur vrai coût :
+
+| Option | Ce que ça donne | Ce que ça coûte |
+| --- | --- | --- |
+| **Disque persistant Render** | Le plus simple : amn-api sert le fichier elle-même, le lien est déjà à durée limitée | Un disque Render est **payant** (le plan gratuit n'en a pas) ; ~100 Mo suffisent |
+| **Stockage objet** (Cloudflare R2, Backblaze B2, S3) | Le plus propre : amn-api ne sert que des redirections signées, la bande passante ne passe pas par elle | Un compte à ouvrir, des clés à ranger dans le coffre-fort ; R2 : gratuit jusqu'à 10 Go |
+| **Release GitHub sur un dépôt privé** | Zéro nouvelle infrastructure | Le lien est celui de GitHub : **on ne maîtrise ni sa durée ni sa révocation**, ce qui contredit le principe du lien à durée limitée |
+
+Recommandation : **Cloudflare R2**. Gratuit à cette échelle, l'URL signée porte
+nativement l'expiration, et la bande passante de téléchargement ne passe pas par
+amn-api — qui tourne sur un plan où elle compte.
+
+Tant que ce choix n'est pas fait, écrire les tables et la route reviendrait à
+livrer une plomberie qui ne mène nulle part.
+
+### À faire aussi, le jour où l'installeur devient la voie principale
+
+- **Signer le binaire.** Sans signature, SmartScreen affiche un avertissement
+  rouge à l'installation. Sur le poste d'une cliente, c'est ce qui décide si
+  elle installe ou si elle appelle. Un certificat de signature de code coûte
+  quelques centaines d'euros par an — c'est une dépense, pas une ligne de code.
+- **Un canal de mise à jour distinct** (dépôt de Releases séparé), pour que la
+  cliente reçoive les correctifs de sécurité sans jamais recevoir une version
+  interne d'AMN Desktop.
+
+
 ## Ce qui reste à faire
 
 - **Réinitialisation de mot de passe en autonomie.** Un mot de passe oublié
