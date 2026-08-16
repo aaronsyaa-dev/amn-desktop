@@ -17,6 +17,7 @@ import type {
   RemoteEventPush,
   RemoteRecord,
   SyncedCollection,
+  MyOrganizations,
 } from '../shared/api';
 
 const RECONNECT_DELAYS_MS = [1000, 2000, 5000, 10000, 20000, 30000];
@@ -278,6 +279,26 @@ export class RemoteApiClient {
     }
     this.applySession(res.token);
     return { kind: 'session', session: res };
+  }
+
+  async listMyOrganizations(): Promise<MyOrganizations> {
+    return apiFetch<MyOrganizations>('/v1/auth/organizations');
+  }
+
+  /**
+   * Bascule sur une autre organisation du compte.
+   *
+   * `applySession` avec le NOUVEAU jeton : le serveur a tué l'ancien en le
+   * réémettant, donc continuer à s'en servir donnerait des 401 en cascade —
+   * sur la première requête qui suit, pas au prochain démarrage.
+   */
+  async switchOrganization(orgId: string): Promise<RemoteSession & { role: string }> {
+    const res = await apiFetch<RemoteSession & { role: string }>('/v1/auth/organizations/switch', {
+      method: 'POST',
+      body: JSON.stringify({ orgId }),
+    });
+    this.applySession(res.token);
+    return res;
   }
 
   /**

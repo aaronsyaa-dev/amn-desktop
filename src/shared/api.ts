@@ -284,6 +284,31 @@ export interface MfaEnrolment {
  * optionnel produirait exactement le bug qu'on veut éviter — traiter un défi
  * comme une session.
  */
+/**
+ * Une organisation dont le compte est membre.
+ *
+ * `home` distingue l'organisation D'ORIGINE (celle qui a créé le compte) de
+ * celles qu'on a rejointes sur invitation. La nuance compte à l'écran : on ne
+ * quitte pas la sienne comme on quitte celle d'un associé.
+ */
+export interface MyOrganization {
+  id: string;
+  name: string;
+  plan: string;
+  /** Le rôle DANS cette organisation-là — `owner` chez soi, souvent `member` ailleurs. */
+  role: string;
+  logoDataUrl: string | null;
+  accent: string | null;
+  joinedAt: string | null;
+  home: boolean;
+}
+
+export interface MyOrganizations {
+  organizations: MyOrganization[];
+  /** Celle qui porte la session en cours. */
+  activeOrgId: string;
+}
+
 export type LoginOutcome =
   | { kind: 'session'; session: RemoteSession }
   | { kind: 'mfa'; challenge: string; expiresAt: string; email: string };
@@ -1566,6 +1591,24 @@ export interface AmnBridge {
        * définitif.
        */
       changePassword(currentPassword: string, newPassword: string): Promise<void>;
+      /**
+       * Les organisations dont le compte connecté est MEMBRE.
+       *
+       * À ne pas confondre avec `listOrganizations()` de la console admin, qui
+       * rend les organisations qu'AMN DevSec supervise. Les deux listes
+       * coexistent et répondent à deux questions différentes : « les miennes »
+       * et « celles dont je m'occupe ».
+       */
+      listMyOrganizations(): Promise<MyOrganizations>;
+      /**
+       * Bascule sur une autre de MES organisations.
+       *
+       * Le serveur RÉÉMET la session : le jeton rendu remplace l'ancien, qui
+       * est mort à cet instant. C'est pourquoi cette méthode rend une session
+       * complète et non un simple accusé — l'appelant doit adopter le nouveau
+       * justificatif, exactement comme après une connexion.
+       */
+      switchOrganization(orgId: string): Promise<RemoteSession & { role: string }>;
     };
     listSites(): Promise<RemoteSite[]>;
     getSiteEvents(siteId: string, opts?: { since?: string; limit?: number }): Promise<RemoteEvent[]>;
@@ -1902,6 +1945,8 @@ export const IPC = {
   remoteSessionClear: 'remote:sessionClear',
   remoteSessionChangePassword: 'remote:sessionChangePassword',
   remoteSessionAcceptInvitation: 'remote:sessionAcceptInvitation',
+  remoteSessionMyOrganizations: 'remote:sessionMyOrganizations',
+  remoteSessionSwitchOrg: 'remote:sessionSwitchOrg',
   remoteCallLinkCreate: 'remote:callLinkCreate',
   remoteCallLinkList: 'remote:callLinkList',
   remoteCallLinkRevoke: 'remote:callLinkRevoke',

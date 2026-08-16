@@ -257,6 +257,10 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
     (_event, payload: { token: string; password: string }) =>
       remote.acceptInvitation(payload.token, payload.password),
   );
+  ipcMain.handle(IPC.remoteSessionMyOrganizations, () => remote.listMyOrganizations());
+  ipcMain.handle(IPC.remoteSessionSwitchOrg, (_event, payload: { orgId: string }) =>
+    remote.switchOrganization(payload.orgId),
+  );
   ipcMain.handle(IPC.remoteCallLinkCreate, (_event, input: { label?: string; minutes?: number }) =>
     remote.createCallLink(input ?? {}),
   );

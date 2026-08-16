@@ -453,6 +453,20 @@ function createBrowserRemote(): AmnBridge['remote'] {
         applySession(res.token);
         return { kind: 'session', session: res };
       },
+
+      async listMyOrganizations() {
+        return apiFetch<import('../shared/api').MyOrganizations>('/v1/auth/organizations');
+      },
+      async switchOrganization(orgId: string) {
+        const res = await apiFetch<RemoteSession & { role: string }>(
+          '/v1/auth/organizations/switch',
+          { method: 'POST', body: JSON.stringify({ orgId }) },
+        );
+        // Le serveur a tué l'ancien jeton en réémettant : adopter le nouveau
+        // immédiatement, sinon la requête suivante part avec un mort.
+        applySession(res.token);
+        return res;
+      },
       async loginMfa(input: { challenge: string; code?: string; backupCode?: string }) {
         const session = await publicPost<RemoteSession>('/v1/auth/login/mfa', input);
         applySession(session.token);

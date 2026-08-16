@@ -138,6 +138,9 @@ const bridge: AmnBridge = {
         ipcRenderer.invoke(IPC.remoteSessionChangePassword, { currentPassword, newPassword }),
       acceptInvitation: (token: string, password: string) =>
         ipcRenderer.invoke(IPC.remoteSessionAcceptInvitation, { token, password }),
+      listMyOrganizations: () => ipcRenderer.invoke(IPC.remoteSessionMyOrganizations),
+      switchOrganization: (orgId: string) =>
+        ipcRenderer.invoke(IPC.remoteSessionSwitchOrg, { orgId }),
       loginMfa: (input: { challenge: string; code?: string; backupCode?: string }) =>
         ipcRenderer.invoke(IPC.remoteLoginMfa, input),
     },
