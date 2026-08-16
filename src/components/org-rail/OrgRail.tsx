@@ -158,7 +158,11 @@ export function OrgRail() {
             <RailButton
               key={org.id}
               label={org.name}
-              sublabel={org.status === 'suspended' ? 'Suspendue' : undefined}
+              /* Le pendant symétrique du « Membre · rôle » ci-dessus : ici on
+                 n'appartient pas, on ouvre une session de support. Le dire des
+                 DEUX côtés est ce qui fait de la distinction une information,
+                 plutôt qu'une absence de mention qu'il faudrait deviner. */
+              sublabel={org.status === 'suspended' ? 'Suspendue' : 'Session de support · 1 h, tracée'}
               active={support?.orgId === org.id}
               busy={entering === org.id}
               dimmed={org.status === 'suspended'}
