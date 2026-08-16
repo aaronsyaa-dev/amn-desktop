@@ -39,6 +39,10 @@ export function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { org } = useAuth();
+  // L'espace se DÉDUIT du chemin : un lien profond, une notification ou un
+  // onglet mémorisé arrivent donc toujours dans la bonne pièce, sans que
+  // personne ait à penser à la régler.
+  const isControl = spaceForPath(location.pathname) === 'control';
   const [showWelcome, setShowWelcome] = React.useState(shouldShowWelcome);
 
   // Mobile navigation drawer (< md). Closed on every route change.
@@ -124,9 +128,35 @@ export function AppLayout() {
                 <OrgRail />
               </div>
               <Sidebar mobileOpen={navOpen} onClose={() => setNavOpen(false)} />
-              <main className="relative flex-1 overflow-y-auto overflow-x-hidden overscroll-none">
+              {/*
+                DEUX ESPACES, DEUX PIÈCES (BLOC B).
+
+                La Tour de contrôle ne reçoit pas un thème « en plus » : elle
+                reçoit un autre plan de travail, une autre largeur de lecture et
+                une autre densité. Le Poste de travail lit des textes, donc il se
+                brise à une colonne confortable ; la Tour de contrôle lit des
+                tableaux, et la brider à la même largeur laissait un tiers
+                d'écran vide à côté d'une grille qui manquait de place.
+
+                Décidé ICI plutôt que dans chaque écran de supervision : la
+                densité et la texture sont des propriétés du LIEU. Écran par
+                écran, il aurait suffi d'en oublier un pour qu'il ait l'air
+                d'appartenir à l'autre espace — c'est exactement le défaut qu'on
+                répare.
+              */}
+              <main
+                className={`relative flex-1 overflow-y-auto overflow-x-hidden overscroll-none ${
+                  isControl ? 'control-ground control-edge control-dense' : ''
+                }`}
+              >
                 <TopBar onMenu={() => setNavOpen(true)} />
-                <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8">
+                <div
+                  className={
+                    isControl
+                      ? 'w-full px-4 py-5 sm:px-6 sm:py-6'
+                      : 'mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8'
+                  }
+                >
                   {/*
                     Entrance-only, keyed per route. Remounting on navigation
                     replays the per-tab entrance. We deliberately do NOT use

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
   BadgeCheck,
@@ -17,10 +17,11 @@ import { AttentionPanel } from '../components/AttentionPanel';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { useRemoteSites } from '../state/RemoteSitesContext';
 import { useOrgContext } from '../state/OrgContextContext';
-import { OrgAvatar } from '../components/org-rail/OrgAvatar';
 import { bridge } from '../lib/bridge';
 import { relativeTime } from '../lib/time';
-import type { OrgAccessEntry } from '../shared/api';
+import { ScreenHeader } from '../components/ScreenHeader';
+import { OrgBanner } from '../components/org-rail/OrgBanner';
+import type { OrgAccessEntry, SupervisionState } from '../shared/api';
 
 /**
  * La Tour de contrôle — la seconde page d'accueil d'AMN DevSec.
@@ -53,27 +54,40 @@ export function ControlTowerScreen() {
   return (
     <StaggerGroup className="flex flex-col gap-6">
       <StaggerItem>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-text-primary">Tour de contrôle</h1>
-            <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
-              {parc.total} site{parc.total > 1 ? 's' : ''} supervisé{parc.total > 1 ? 's' : ''} ·{' '}
-              {organizations.length} organisation{organizations.length > 1 ? 's' : ''} cliente
-              {organizations.length > 1 ? 's' : ''}
-              {suspended > 0 ? ` · ${suspended} suspendue${suspended > 1 ? 's' : ''}` : ''}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {/*
-              Le lien d'appel vivait dans Équipe, c'est-à-dire dans la messagerie
-              interne entre Aaron et Mohamed. Or il ne sert jamais à joindre un
-              collègue : il sert à parler à un PROSPECT, quelqu'un qui n'a pas
-              encore de compte et n'est pas encore une organisation.
+        {/*
+          L'EN-TÊTE DE CONSOLE (BLOC B).
 
-              Sa place est ici, dans l'espace « transverse » — celui des
-              incidents, des produits et des organisations, c'est-à-dire tout ce
-              qui regarde vers l'extérieur. Équipe regarde vers l'intérieur.
-            */}
+          Ce n'est pas le même en-tête que les écrans du Poste de travail, et
+          c'est voulu : ici le titre n'est pas ce qui compte, l'ÉTAT l'est. Les
+          vitales du parc sont donc portées par l'en-tête lui-même, en relevés,
+          avant tout le reste — on ouvre cet écran pour savoir si quelque chose
+          brûle, pas pour lire un titre.
+        */}
+        <ScreenHeader
+          eyebrow="Tour de contrôle"
+          title="Vue d’ensemble"
+          description="Le parc, les clientes et les rondes de fond, en un seul écran."
+          stats={[
+            { label: 'Sites', value: parc.total },
+            { label: 'En ligne', value: parc.online },
+            {
+              label: 'Dégradés',
+              value: parc.degraded,
+              emphasis: parc.degraded > 0,
+            },
+            {
+              label: 'Hors ligne',
+              value: parc.offline,
+              emphasis: parc.offline > 0,
+            },
+            { label: 'Clientes', value: organizations.length },
+            {
+              label: 'Suspendues',
+              value: suspended,
+              emphasis: suspended > 0,
+            },
+          ]}
+          actions={
             <button
               type="button"
               onClick={() => setLinkPanel(true)}
@@ -83,11 +97,13 @@ export function ControlTowerScreen() {
               <Link2 size={15} strokeWidth={1.75} />
               Lien d’appel
             </button>
-            <Vital label="En ligne" value={parc.online} />
-            <Vital label="Dégradés" value={parc.degraded} tone={parc.degraded > 0 ? 'warn' : 'calm'} />
-            <Vital label="Hors ligne" value={parc.offline} tone={parc.offline > 0 ? 'alert' : 'calm'} />
-          </div>
-        </div>
+          }
+        />
+      </StaggerItem>
+
+      {/* Ce que la supervision de fond a réellement fait, et quand (BLOC F). */}
+      <StaggerItem>
+        <SupervisionPanel />
       </StaggerItem>
 
       {/*
@@ -137,29 +153,6 @@ export function ControlTowerScreen() {
         <SiteBadgeExport />
       </StaggerItem>
     </StaggerGroup>
-  );
-}
-
-function Vital({
-  label,
-  value,
-  tone = 'calm',
-}: {
-  label: string;
-  value: number;
-  tone?: 'calm' | 'warn' | 'alert';
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-surface px-3 py-2 text-center">
-      <p
-        className={`tnum text-lg font-semibold leading-none ${
-          tone === 'alert' ? 'text-danger' : 'text-text-primary'
-        }`}
-      >
-        {value}
-      </p>
-      <p className="mt-1 font-mono text-[9px] uppercase tracking-widest text-text-muted">{label}</p>
-    </div>
   );
 }
 
@@ -227,47 +220,22 @@ function ClientOrgsPanel({ loading, error }: { loading: boolean; error: string |
         </div>
       )}
 
-      <ul className="divide-y divide-border">
+      {/*
+        Des BANDEROLES, comme au registre (BLOC E). Le composant est le même
+        des deux côtés : deux présentations de la même chose finiraient par
+        diverger, et l'une des deux serait alors la mauvaise.
+      */}
+      <div className="flex flex-col gap-2 p-3">
         {organizations.slice(0, 6).map((org) => (
-          <li key={org.id}>
-            <button
-              type="button"
-              onClick={() => void enterOrganization(org.id)}
-              disabled={entering === org.id}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-hover disabled:opacity-60"
-            >
-              <OrgAvatar name={org.name} logoDataUrl={org.logoDataUrl} size={34} rounded="rounded-xl" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm text-text-primary">{org.name}</span>
-                <span className="block font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                  {org.userCount} compte{org.userCount > 1 ? 's' : ''}
-                  {org.lastActivityAt
-                    ? ` · activité ${relativeTime(org.lastActivityAt)}`
-                    : ' · aucune activité'}
-                </span>
-              </span>
-              {org.status === 'suspended' ? (
-                <span className="flex-shrink-0 rounded-md border border-danger/40 bg-danger/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-danger">
-                  Suspendue
-                </span>
-              ) : (
-                <motion.span
-                  className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-success"
-                  animate={{ opacity: [1, 0.35, 1] }}
-                  transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-                  aria-hidden
-                />
-              )}
-              <ArrowRight
-                size={14}
-                strokeWidth={2}
-                className="flex-shrink-0 text-text-muted"
-                aria-hidden
-              />
-            </button>
-          </li>
+          <OrgBanner
+            key={org.id}
+            org={org}
+            openLabel="Ouvrir"
+            busy={entering === org.id}
+            onOpen={() => void enterOrganization(org.id)}
+          />
         ))}
-      </ul>
+      </div>
     </section>
   );
 }
@@ -333,3 +301,110 @@ export const ACCESS_VERB: Record<string, string> = {
   invite: 'a réémis une invitation pour',
   password: 'a réinitialisé un mot de passe chez',
 };
+
+
+/**
+ * LES RONDES DE FOND — ce que la supervision a réellement fait (BLOC F).
+ *
+ * Aaron demandait : « les scanners etc, ça doit vraiment pouvoir tourner en
+ * fond. » Elles tournaient déjà côté serveur — mais rien, nulle part, ne
+ * permettait de le CONSTATER, et une supervision qu'on doit croire sur parole
+ * n'est pas une supervision. Ce panneau est la réponse observable.
+ *
+ * Chaque ligne dit la périodicité voulue, la dernière exécution réelle et si la
+ * ronde est en retard. Le verdict de retard vient du SERVEUR : c'est lui qui
+ * connaît sa propre horloge, et deux horloges qui divergent donneraient deux
+ * verdicts pour la même ronde.
+ *
+ * Le point ne bat que sur une ronde à l'heure. Une ronde en retard reste fixe —
+ * un point qui continuerait de battre dirait « ça tourne » au moment précis où
+ * ça ne tourne plus, ce qui est exactement le mensonge qu'une animation ne doit
+ * jamais commettre.
+ */
+function SupervisionPanel() {
+  const [state, setState] = useState<SupervisionState | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      bridge()
+        .remote.admin.supervision()
+        .then((s) => {
+          if (alive) setState(s);
+        })
+        .catch(() => {
+          if (alive) setFailed(true);
+        });
+    void load();
+    // Une relecture par minute : les périodicités vont de la minute à la
+    // journée, donc rafraîchir plus vite ne montrerait rien de plus.
+    const id = window.setInterval(() => void load(), 60_000);
+    return () => {
+      alive = false;
+      window.clearInterval(id);
+    };
+  }, []);
+
+  if (failed || !state) return null;
+
+  const late = state.sweeps.filter((s) => s.overdue).length;
+
+  return (
+    <section className="panel panel-ticks">
+      <header className="panel-head flex flex-wrap items-center gap-2 px-4 py-2.5">
+        <Radar size={14} strokeWidth={1.75} className="text-text-secondary" />
+        <h2 className="mr-auto text-[13px] font-semibold text-text-primary">Rondes de fond</h2>
+        <span className="eyebrow">
+          {late === 0
+            ? `${state.sweeps.length} à l’heure`
+            : `${late} en retard sur ${state.sweeps.length}`}
+        </span>
+      </header>
+
+      <ul className="divide-y divide-border">
+        {state.sweeps.map((sweep) => (
+          <li key={sweep.name} className="flex items-center gap-3 px-4 py-2">
+            <span
+              className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${
+                sweep.overdue ? 'bg-warning' : 'bg-success live-dot'
+              }`}
+              aria-hidden
+            />
+            <span className="w-32 flex-shrink-0 font-mono text-[11px] text-text-primary">
+              {SWEEP_LABELS[sweep.name] ?? sweep.name}
+            </span>
+            <span className="eyebrow w-24 flex-shrink-0">{everyLabel(sweep.everyMs)}</span>
+            <span className="min-w-0 flex-1 truncate text-[11px] text-text-secondary">
+              {sweep.lastRunAt ? `passée ${relativeTime(sweep.lastRunAt)}` : 'jamais exécutée'}
+            </span>
+            {sweep.overdue && (
+              <span className="flex-shrink-0 font-mono text-[9px] uppercase tracking-wider text-warning">
+                Due
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** Les noms internes des rondes ne sont pas des phrases. */
+const SWEEP_LABELS: Record<string, string> = {
+  heartbeat: 'Battements',
+  availability: 'Disponibilité',
+  schedules: 'Scanner / Comply',
+  digest: 'Rapports',
+  ssl: 'Certificats',
+  dependencies: 'Dépendances',
+};
+
+/** Une périodicité en millisecondes, dite comme on la dirait à voix haute. */
+function everyLabel(ms: number): string {
+  const minutes = Math.round(ms / 60000);
+  if (minutes < 60) return `toutes les ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `toutes les ${hours} h`;
+  return `toutes les ${Math.round(hours / 24)} j`;
+}

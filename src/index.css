@@ -526,3 +526,94 @@ button:not(:disabled):not(.card-interactive):active,
     animation: none;
   }
 }
+
+/* ============================================================================
+   LA TOUR DE CONTRÔLE — un autre lieu, pas un autre produit (BLOC B)
+   ============================================================================
+
+   « Rien ne le distingue d'un autre rayon. » C'était vrai : la supervision
+   héritait de la grille du Poste de travail, de sa largeur de lecture, de sa
+   respiration. Deux espaces qui répondent à deux questions opposées — « qu'est-ce
+   que je fais aujourd'hui » et « qu'est-ce qui se passe sur le parc » — avaient
+   la même peau.
+
+   Ce qui change ici, et POURQUOI :
+
+   · LE PLAN CHANGE DE TEXTURE. La trame carrée du poste de travail devient un
+     rayage horizontal serré. Un carroyage évoque une feuille ; un rayage évoque
+     un balayage. Ce n'est pas une métaphore gratuite : c'est exactement ce que
+     cet espace fait, il balaie.
+
+   · LE PLAN S'ASSOMBRIT ENCORE. Un cran sous le fond général. On entre dans une
+     pièce plus sombre, et le contraste des panneaux monte d'autant — la densité
+     d'information devient supportable parce que chaque bloc se détache plus.
+
+   · L'ARÊTE HAUTE S'ALLUME. Une ligne claire referme le haut de la zone de
+     contenu. C'est le seul élément « allumé » de toute l'application, et il ne
+     l'est qu'ici : il signale qu'on regarde un écran actif, pas un document.
+
+   · LA LARGEUR DE LECTURE DISPARAÎT. Le poste de travail lit des textes, donc
+     il se limite à une colonne confortable. La Tour de contrôle lit des
+     tableaux : la brider à la même largeur laissait un tiers d'écran vide à
+     côté d'une grille qui manquait de place (voir AppLayout).
+
+   Ce qui NE change pas, et c'est le point : la palette, les fontes, la matière
+   des panneaux, le vocabulaire des mouvements. On change de pièce, pas de
+   bâtiment.
+   ========================================================================== */
+
+.control-ground {
+  /* Un cran sous --color-bg : on entre dans une pièce plus sombre. */
+  background-color: #030404;
+  background-image:
+    radial-gradient(120% 45% at 50% 0%, rgba(255, 255, 255, 0.05) 0%, transparent 65%),
+    repeating-linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.021) 0px,
+      rgba(255, 255, 255, 0.021) 1px,
+      transparent 1px,
+      transparent 8px
+    );
+}
+
+/*
+ * L'arête allumée qui referme le haut de la zone de supervision.
+ *
+ * Un pixel clair et une retombée courte — ce que donne une réglette au-dessus
+ * d'un panneau. Posée en `::before` sur le conteneur plutôt qu'en bordure, pour
+ * qu'elle reste collée en haut pendant que le contenu défile dessous.
+ */
+.control-edge::before {
+  content: '';
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: block;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.5) 22%,
+    rgba(255, 255, 255, 0.5) 78%,
+    transparent 100%
+  );
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.14);
+  pointer-events: none;
+}
+
+/*
+ * La densité de la Tour de contrôle.
+ *
+ * Un demi-point de moins sur le corps de texte et des interlignes resserrés.
+ * Ça paraît minuscule ; sur une grille de vingt lignes, c'est deux lignes de
+ * plus visibles sans défiler — et « voir d'un coup » est toute la raison d'être
+ * de cet écran. Appliqué au conteneur, jamais écran par écran : la densité est
+ * une propriété du LIEU, pas de chaque panneau qu'on y pose.
+ */
+.control-dense {
+  font-size: 13px;
+  line-height: 1.45;
+}
+.control-dense h1 {
+  letter-spacing: -0.02em;
+}

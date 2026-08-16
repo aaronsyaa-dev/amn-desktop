@@ -83,6 +83,53 @@ export interface AdminOrganization {
   createdAt: string;
 }
 
+/**
+ * Le pouls d'une organisation cliente (BLOC E) — des chiffres, jamais son
+ * travail.
+ *
+ * Tout ce qui suit est un COMPTE calculé par amn-api sur ses vraies tables au
+ * moment de l'appel : si la cliente saisit une facture, `records.last7Days`
+ * monte de un. C'est la condition posée pour la banderole de la Tour de
+ * contrôle — « réel » y était le mot clé, et un chiffre figé aurait été pire
+ * qu'aucun chiffre, parce qu'on finit par lui faire confiance.
+ */
+export interface OrgPulse {
+  orgId: string;
+  records: {
+    total: number;
+    last7Days: number;
+    last30Days: number;
+    /** ISO de la dernière écriture, ou null si l'organisation n'a rien produit. */
+    lastAt: string | null;
+  };
+  /** Les cinq collections les plus fournies. Des noms et des comptes, aucun contenu. */
+  byCollection: Array<{ collection: string; count: number }>;
+  /**
+   * Jours DISTINCTS où quelque chose a bougé sur les trente derniers.
+   * Un total brut ne distingue pas une organisation qui travaille tous les
+   * jours d'une qui a tout saisi en une soirée ; celui-ci si.
+   */
+  activeDaysLast30: number;
+  sites: { total: number; online: number };
+  events: { last7Days: number; critical7Days: number };
+  users: { total: number; active: number };
+}
+
+/** L'état d'une ronde de supervision de fond (BLOC F). */
+export interface SupervisionSweep {
+  name: string;
+  everyMs: number;
+  lastRunAt: string | null;
+  dueAt: string | null;
+  /** Calculé par le serveur : deux horloges donneraient deux verdicts. */
+  overdue: boolean;
+}
+
+export interface SupervisionState {
+  uptimeSeconds: number;
+  sweeps: SupervisionSweep[];
+}
+
 /** Un compte d'une organisation cliente, tel que le rend la console. */
 export interface AdminOrgUser {
   id: string;
@@ -1826,6 +1873,10 @@ export interface AmnBridge {
       resetPassword(orgId: string, userId: string): Promise<TempPasswordResult>;
       /** Journal des accès au dossier des clientes (Tour de contrôle). */
       accessLog(opts?: { orgId?: string; limit?: number }): Promise<OrgAccessEntry[]>;
+      /** Le pouls d'une cliente : des comptes calculés, jamais son contenu. */
+      organizationPulse(orgId: string): Promise<OrgPulse>;
+      /** L'état réel des rondes de supervision de fond (BLOC F). */
+      supervision(): Promise<SupervisionState>;
     };
 
     /* --- Contexte client (session de support) --- */
@@ -2069,6 +2120,8 @@ export const IPC = {
   remoteAdminReissueInvitation: 'remote:adminReissueInvitation',
   remoteAdminResetPassword: 'remote:adminResetPassword',
   remoteAdminAccessLog: 'remote:adminAccessLog',
+  remoteAdminOrgPulse: 'remote:adminOrgPulse',
+  remoteAdminSupervision: 'remote:adminSupervision',
   remoteSupportEnter: 'remote:supportEnter',
   remoteSupportRestore: 'remote:supportRestore',
   remoteSupportLeave: 'remote:supportLeave',

@@ -31,6 +31,8 @@ import type {
   SiteSummary,
   SslStatus,
   TrackerTier,
+  OrgPulse,
+  SupervisionState,
 } from '../shared/api';
 
 /**
@@ -323,6 +325,16 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
         { owner: true },
       );
       return entries;
+    },
+    async organizationPulse(orgId: string): Promise<OrgPulse> {
+      const { pulse } = await ctx.apiFetch<{ pulse: OrgPulse }>(
+        `/v1/admin/organizations/${encodeURIComponent(orgId)}/pulse`,
+        { owner: true },
+      );
+      return pulse;
+    },
+    async supervision(): Promise<SupervisionState> {
+      return ctx.apiFetch<SupervisionState>('/v1/admin/supervision', { owner: true });
     },
   },
 

@@ -5,6 +5,8 @@ import {
   type CreateOrganizationInput,
   type CreateOrganizationResult,
   type OrgAccessEntry,
+  type OrgPulse,
+  type SupervisionState,
   type OrgIdentity,
   type OrgInvitationResult,
   type OrgStatus,
@@ -289,6 +291,27 @@ const adminApi = {
     );
     return entries;
   },
+
+  /**
+   * Le pouls d'une cliente — voir OrgPulse dans shared/api.ts.
+   *
+   * Un appel par organisation affichée : la banderole ne le demande qu'au
+   * DÉPLIEMENT, pas au montage de la liste. Précharger le pouls de vingt
+   * organisations pour n'en ouvrir qu'une ferait vingt requêtes pour une
+   * réponse lue.
+   */
+  async organizationPulse(orgId: string): Promise<OrgPulse> {
+    const { pulse } = await apiFetch<{ pulse: OrgPulse }>(
+      `/v1/admin/organizations/${encodeURIComponent(orgId)}/pulse`,
+      { owner: true },
+    );
+    return pulse;
+  },
+
+  /** L'état réel des rondes de supervision de fond (BLOC F). */
+  async supervision(): Promise<SupervisionState> {
+    return apiFetch<SupervisionState>('/v1/admin/supervision', { owner: true });
+  },
 };
 
 /** Le contexte décrit par amn-api lui-même, pas par l'app. */
@@ -457,6 +480,10 @@ export function registerExclusiveIpc(
   ipcMain.handle(IPC.remoteAdminAccessLog, (_event, opts: { orgId?: string; limit?: number }) =>
     adminApi.accessLog(opts ?? {}),
   );
+  ipcMain.handle(IPC.remoteAdminOrgPulse, (_event, orgId: string) =>
+    adminApi.organizationPulse(orgId),
+  );
+  ipcMain.handle(IPC.remoteAdminSupervision, () => adminApi.supervision());
   ipcMain.handle(IPC.remoteSupportEnter, (_event, orgId: string) => support.enter(orgId));
   ipcMain.handle(IPC.remoteSupportRestore, (_event, token: string) => support.restore(token));
   ipcMain.handle(IPC.remoteSupportLeave, (_event, token: string) => support.leave(token));
