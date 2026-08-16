@@ -16,6 +16,7 @@ import { UndoProvider } from '../state/UndoContext';
 import { TagProvider } from '../components/tags/TagProvider';
 import { SyncStatusIndicator } from '../components/SyncStatusIndicator';
 import { variantsForPath } from '../lib/transitions';
+import { StatusRail } from '../components/StatusRail';
 
 /**
  * La coquille d'un contexte client.
@@ -63,7 +64,7 @@ export function ClientContextLayout() {
             <TagProvider>
               <ClientBanner />
               <div
-                className="flex flex-col overflow-hidden text-text-primary"
+                className="app-ground flex flex-col overflow-hidden text-text-primary"
                 style={{
                   height: `calc(100dvh - ${CLIENT_BANNER_HEIGHT}px)`,
                   marginTop: CLIENT_BANNER_HEIGHT,
@@ -112,6 +113,10 @@ export function ClientContextLayout() {
                   Le dernier bouton ouvre le tiroir, qui porte la liste
                   complète — il n'y a pas de lanceur dans ce contexte.
                 */}
+                {/* Le bandeau nomme le contexte, et il n'y a rien de plus
+                    honnête à écrire ici : on regarde SON organisation, en
+                    session de support. */}
+                <StatusRail orgName={support?.orgName ?? ''} context="Session de support" />
                 <MobileBottomNav
                   items={CLIENT_NAV_ITEMS.filter((item) => isModuleEnabled(item.key))}
                   moreLabel="Menu"

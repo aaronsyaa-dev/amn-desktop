@@ -30,12 +30,15 @@ import { AppLauncher } from './AppLauncher';
 import { UpdateNotice } from './UpdateNotice';
 import { UpdateReady } from './UpdateReady';
 import { variantsForPath } from '../lib/transitions';
+import { StatusRail } from './StatusRail';
+import { useAuth } from '../auth/AuthContext';
 
 const LAST_TAB_KEY = 'amn.lastTab';
 
 export function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { org } = useAuth();
   const [showWelcome, setShowWelcome] = React.useState(shouldShowWelcome);
 
   // Mobile navigation drawer (< md). Closed on every route change.
@@ -102,7 +105,7 @@ export function AppLayout() {
               // keyboard (via viewport interactive-widget=resizes-content) shrink
               // the layout, keeping bottom-anchored inputs (chat composer) above
               // the keyboard. Identical to 100vh on desktop.
-              className="flex h-[100dvh] flex-col overflow-hidden text-text-primary"
+              className="app-ground flex h-[100dvh] flex-col overflow-hidden text-text-primary"
               // Respect the iPhone notch / home indicator when installed as a PWA.
               style={{
                 paddingTop: 'env(safe-area-inset-top)',
@@ -143,6 +146,14 @@ export function AppLayout() {
                 </div>
               </main>
               </div>
+              {/* Le bandeau d'état : la ligne permanente qui dit où l'on est,
+                  si le lien tient et quelle heure il est. Même composant que
+                  dans la coquille Business — la parité est structurelle, pas
+                  relue. */}
+              <StatusRail
+                orgName={org?.name ?? 'AMN DevSec'}
+                context={spaceForPath(location.pathname) === 'control' ? 'Tour de contrôle' : 'Poste de travail'}
+              />
               {/* Sous le contenu, jamais par-dessus : une barre superposée
                   masquerait la dernière ligne de chaque écran. */}
               <MobileBottomNav onOpenLauncher={() => setMobileLauncherOpen(true)} />

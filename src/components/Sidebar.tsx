@@ -17,7 +17,7 @@ import { useSitePanel } from './site-panel/SitePanelContext';
 import { AppLauncher } from './AppLauncher';
 import { OrgSwitchButton } from './org-rail/OrgSwitchButton';
 import { NAV_ITEMS, type NavItem } from '../data/navigation';
-import { SPACES, itemsForSpace, spaceByKey, spaceForPath } from '../data/spaces';
+import { SPACES, itemsForSpace, spaceByKey, spaceForPath, sectionsForSpace } from '../data/spaces';
 import { useNavFavorites } from '../state/useNavFavorites';
 
 const COLLAPSED_WIDTH = 72;
@@ -254,7 +254,31 @@ export function Sidebar({
         {/* Pinned strip. Fixed by choice, not by catalogue size: adding a
             module adds a tile to the launcher, never a row here. */}
         <nav className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3">
-          {pinnedItems.map(renderNavItem)}
+          {/*
+            LA TOUR DE CONTRÔLE EST GROUPÉE, LE POSTE DE TRAVAIL EST ÉPINGLÉ.
+
+            Deux espaces, deux réponses, parce que les deux questions ne sont
+            pas les mêmes. Au poste de travail on revient chaque jour sur cinq
+            écrans : la barre montre ces cinq-là, le reste vit dans le lanceur.
+            À la Tour de contrôle, on ne « revient » pas — on balaie : tout doit
+            être visible d'un coup, et huit entrées d'affilée sans intitulé se
+            relisent depuis le haut à chaque fois. Les sections (Supervision,
+            Parc, Produits) donnent à l'œil trois blocs au lieu de huit lignes.
+          */}
+          {space === 'control'
+            ? sectionsForSpace('control').map((section) => (
+                <div key={section.key} className="flex flex-col gap-1">
+                  {isExpanded ? (
+                    <p className="eyebrow px-3 pb-1 pt-2">{section.label}</p>
+                  ) : (
+                    // Barre repliée : l'intitulé ne tiendrait pas dans 72 px, le
+                    // filet garde la coupure sans prétendre la nommer.
+                    <span className="mx-auto my-1.5 h-px w-6 bg-border" aria-hidden />
+                  )}
+                  {section.items.map(renderNavItem)}
+                </div>
+              ))
+            : pinnedItems.map(renderNavItem)}
 
           {/* La Tour de contrôle affiche déjà tous ses modules : un bouton
               « tous les modules » y ouvrirait la même liste que celle qu'on

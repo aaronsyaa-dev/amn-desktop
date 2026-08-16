@@ -12,10 +12,12 @@ import { ToastProvider } from '../state/ToastContext';
 import { TagProvider } from '../components/tags/TagProvider';
 import { SyncActivityNotifier } from '../components/SyncActivityNotifier';
 import { MobileBottomNav } from '../components/MobileBottomNav';
+import { StatusRail } from '../components/StatusRail';
 import { AppLauncher } from '../components/AppLauncher';
 import { UpdateNotice } from '../components/UpdateNotice';
 import { UpdateReady } from '../components/UpdateReady';
 import { variantsForPath } from '../lib/transitions';
+import { useAuth } from '../auth/AuthContext';
 
 const LAST_TAB_KEY = 'amn.lastTab';
 
@@ -40,6 +42,7 @@ const LAST_TAB_KEY = 'amn.lastTab';
  */
 export function BusinessLayout() {
   const location = useLocation();
+  const { org } = useAuth();
   const [navOpen, setNavOpen] = React.useState(false);
   // Le lanceur « Tous les modules » de la barre du pouce. L'édition Business
   // n'a qu'un espace, d'où le `space="workspace"` figé plus bas.
@@ -97,7 +100,7 @@ export function BusinessLayout() {
                 <div
                   onTouchStart={onTouchStart}
                   onTouchEnd={onTouchEnd}
-                  className="flex h-[100dvh] flex-col overflow-hidden text-text-primary"
+                  className="app-ground flex h-[100dvh] flex-col overflow-hidden text-text-primary"
                   style={{
                     paddingTop: 'env(safe-area-inset-top)',
                     paddingBottom: 'env(safe-area-inset-bottom)',
@@ -129,6 +132,11 @@ export function BusinessLayout() {
                     une barre superposée masquerait la dernière ligne de chaque
                     écran.
                   */}
+                  {/* Le bandeau d'état, sous le contenu et au-dessus de la
+                      barre du pouce : c'est la ligne qui donne à l'application
+                      son caractère d'instrument, et une cliente y a droit
+                      exactement comme nous. */}
+                  <StatusRail orgName={org?.name ?? ''} context="Espace de travail" />
                   <MobileBottomNav onOpenLauncher={() => setLauncherOpen(true)} />
                   <AppLauncher
                     open={launcherOpen}

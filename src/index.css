@@ -11,17 +11,26 @@
   --font-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 
-  /* Surfaces — neutral black & grey, no blue cast */
-  --color-bg: #0a0a0a;
-  --color-surface: #131313;
-  --color-surface-hover: #1c1c1c;
-  --color-border: #262626;
-  --color-border-strong: #3a3a3a;
+  /*
+    Surfaces — l'échelle de profondeur d'un instrument, pas d'une page web.
+    (REFONTE) Le fond descend d'un cran et les surfaces remontent : l'écart
+    entre le vide et ce qui est posé dessus était de 9 points de luminance, on
+    passe à 14. C'est ce qui fait qu'un panneau se lit comme un objet posé sur
+    un plan, et non comme une zone légèrement plus claire du même plan.
+    Toujours strictement neutre : aucune dominante bleue, aucune couleur.
+  */
+  --color-bg: #060707;
+  --color-surface: #121314;
+  --color-surface-hover: #1a1c1d;
+  /* Un cran au-dessus de `surface` — barres d'outils, en-têtes de panneau. */
+  --color-raised: #191b1c;
+  --color-border: #232628;
+  --color-border-strong: #3c4145;
 
   /* Text */
-  --color-text-primary: #f2f2f0;
-  --color-text-secondary: #9a9a97;
-  --color-text-muted: #616160;
+  --color-text-primary: #f4f4f2;
+  --color-text-secondary: #9c9e9d;
+  --color-text-muted: #636665;
 
   /* "Accent" is now a near-white highlight — monochrome, not a colour */
   --color-accent: #ededed;
@@ -307,5 +316,213 @@ button:not(:disabled):not(.card-interactive):active,
   }
   @page {
     margin: 14mm;
+  }
+}
+
+/* ============================================================================
+   LA REFONTE — un environnement, pas une page
+   ============================================================================
+
+   Ce qui suit n'ajoute pas des décorations : ça donne à l'application la
+   matière d'un poste de commandement. Trois principes, et rien qui les
+   contredise n'a le droit d'entrer ici.
+
+   1. LA PROFONDEUR SE LIT. Un panneau est un objet posé sur un plan : il a un
+      bord net, une arête haute éclairée, et une ombre portée. Pas de dégradé
+      décoratif, pas de lueur colorée.
+
+   2. LE FOND EST UN PLAN TECHNIQUE. Une trame régulière, à la limite du
+      perceptible, donne l'échelle et la rigueur d'un instrument. Elle ne doit
+      JAMAIS se remarquer consciemment : si on la voit, elle est trop forte.
+
+   3. UNE ANIMATION QUI N'EXPLIQUE RIEN N'EXISTE PAS. Chaque mouvement déclaré
+      ici répond à une question précise — « qu'est-ce qui vient de changer ? »,
+      « est-ce que ça vit ? », « où suis-je arrivé ? ». Aucune n'est là pour
+      faire joli, et chacune porte en commentaire ce qu'elle communique.
+   ========================================================================== */
+
+/*
+ * Le plan de travail.
+ *
+ * Une trame de 44 px à 2,2 % de blanc, plus une atténuation radiale qui creuse
+ * les bords. La trame donne l'échelle ; l'atténuation empêche l'écran de se
+ * lire comme un rectangle plat et ramène l'œil vers le centre, là où le
+ * contenu vit. Les deux ensemble coûtent zéro image et zéro requête.
+ */
+.app-ground {
+  background-color: var(--color-bg);
+  background-image:
+    radial-gradient(120% 80% at 50% 0%, rgba(255, 255, 255, 0.028) 0%, transparent 60%),
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    44px 44px,
+    44px 44px;
+  background-attachment: fixed, fixed, fixed;
+}
+
+/*
+ * Le panneau — l'unité de base de toute la refonte.
+ *
+ * Bord d'un pixel, arête haute éclairée, ombre portée courte. C'est exactement
+ * ce qu'un panneau physique reçoit d'une lumière ambiante venue du haut, et
+ * c'est ce qui le distingue d'un simple aplat plus clair.
+ */
+.panel {
+  position: relative;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/*
+ * L'en-tête d'un panneau : un cran plus clair que son corps, et refermé par un
+ * filet. La hiérarchie ne tient donc pas qu'à la taille du texte — elle tient à
+ * la matière, ce qui reste lisible même quand on ne lit pas.
+ */
+.panel-head {
+  background: var(--color-raised);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/*
+ * Les repères d'angle — deux traits courts en haut à gauche d'un panneau.
+ *
+ * C'est le seul ornement de toute la refonte, et il gagne sa place : sur un mur
+ * de panneaux sombres et rectangulaires, il donne un point d'accroche à l'œil et
+ * marque le début de chaque bloc. Réservé aux panneaux de premier plan — en
+ * mettre partout le rendrait invisible, donc inutile.
+ */
+.panel-ticks::before,
+.panel-ticks::after {
+  content: '';
+  position: absolute;
+  background: var(--color-border-strong);
+  pointer-events: none;
+}
+.panel-ticks::before {
+  top: -1px;
+  left: -1px;
+  width: 14px;
+  height: 2px;
+}
+.panel-ticks::after {
+  top: -1px;
+  left: -1px;
+  width: 2px;
+  height: 14px;
+}
+
+/*
+ * L'étiquette technique — capitales, mono, très espacée.
+ *
+ * Elle sert à nommer une zone SANS jamais rivaliser avec son contenu : à cette
+ * taille et cet espacement, elle se lit comme une gravure sur un boîtier, pas
+ * comme un titre. Généralisée pour que « intitulé de section » ait, partout
+ * dans l'application, exactement la même voix.
+ */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/*
+ * Le filet de séparation, avec extinction aux deux bouts.
+ *
+ * Un trait plein d'un bord à l'autre coupe la page en deux. Celui-ci s'éteint
+ * là où il n'a plus rien à séparer, ce qui sépare sans cloisonner.
+ */
+.rule-fade {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-border) 12%,
+    var(--color-border) 88%,
+    transparent 100%
+  );
+}
+
+/* ------------------------------- Mouvement -------------------------------- */
+
+/*
+ * LE BATTEMENT — « ce flux est vivant ».
+ *
+ * Réservé à un point d'état relié à une source réellement en cours (une
+ * connexion temps réel ouverte, une ronde de supervision à l'heure). Il répond
+ * à une question qu'on se pose vraiment devant un tableau de supervision :
+ * est-ce que ce que je lis est à jour, ou est-ce que c'est figé depuis une
+ * heure ? Un point qui bat dit « à jour » ; un point fixe dit « figé ». C'est
+ * pour ça qu'il ne doit JAMAIS être appliqué à un élément décoratif : il
+ * mentirait.
+ */
+@keyframes amn-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+.live-dot {
+  animation: amn-pulse 2.4s ease-in-out infinite;
+}
+
+/*
+ * LA MARQUE DE CHANGEMENT — « cette ligne-ci vient de changer ».
+ *
+ * Un balayage clair traverse la ligne une fois, puis plus rien. Sur une liste
+ * qui se met à jour toute seule (synchronisation, arrivée d'une commande), la
+ * question est toujours la même : qu'est-ce qui a bougé pendant que je
+ * regardais ailleurs ? Sans ce signal, la seule réponse est de tout relire.
+ * Il ne se répète pas : une marque permanente ne marque plus rien.
+ */
+@keyframes amn-changed {
+  0% {
+    background-color: rgba(255, 255, 255, 0.075);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+.just-changed {
+  animation: amn-changed 1.4s ease-out 1;
+}
+
+/*
+ * LE BALAYAGE DE SUPERVISION — « une ronde passe ».
+ *
+ * Une ligne claire qui descend lentement, une seule fois par passage réel.
+ * Réservée à la Tour de contrôle, et déclenchée par un événement de
+ * supervision, jamais en boucle décorative : elle dit qu'un balayage a EU LIEU.
+ */
+@keyframes amn-sweep {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot,
+  .just-changed {
+    animation: none;
   }
 }

@@ -43,38 +43,64 @@ import type { ActivityTab } from '../state/ActivityContext';
 export const DEFAULT_FAVORITES = ['home', 'agenda', 'clients', 'invoices', 'tasks'] as const;
 
 export const NAV_SECTIONS: NavSection[] = [
+  /*
+    LES MÊMES GROUPES QUE L'ÉDITION INTERNE, ET C'EST VOULU (REFONTE)
+    ─────────────────────────────────────────────────────────────────
+    « Activité » comptait douze entrées : la même liste plate que côté interne,
+    avec le même défaut — à douze lignes, l'œil ne reconnaît plus de forme.
+
+    Le découpage reprend celui de l'édition interne (Pilotage, Clients &
+    revenus, Production, Documents, Système), non par facilité mais parce que
+    la parité EST l'exigence : une cliente ne doit pas recevoir une version
+    dégradée de ce qu'Aaron a sous les yeux. Ce qui diffère ici, ce sont les
+    modules disponibles — pas le soin apporté à leur rangement.
+
+    Les groupes qui n'ont pas d'objet pour quelqu'un qui travaille seul ne sont
+    pas montrés vides : « Collectif » n'existe pas dans cette édition, il ne
+    s'affiche donc nulle part. Une section vide dirait « il y a autre chose,
+    mais pas pour vous ».
+  */
   {
-    key: 'travail',
-    label: 'Activité',
+    key: 'pilotage',
+    label: 'Pilotage',
     items: [
       { key: 'home', label: 'Accueil', to: '/', icon: LayoutDashboard, hint: 'Votre journée' },
       { key: 'agenda', label: 'Agenda', to: '/agenda', icon: CalendarDays, hint: 'Rendez-vous et disponibilités' },
-      { key: 'clients', label: 'Clients', to: '/clients', icon: Contact, hint: 'Fiches et devis' },
-      // Juste après Clients, parce que c'est la suite du même geste : on
-      // propose un devis, puis on facture. Épinglé par défaut — savoir qui
-      // doit de l'argent est quotidien, pas occasionnel.
-      { key: 'invoices', label: 'Facturation', to: '/facturation', icon: ReceiptEuro, hint: 'Factures et encaissements' },
-      // Les projets juste après la facturation : c'est le point de
-      // rattachement de tout le reste, pas un module de plus.
       { key: 'projects', label: 'Projets', to: '/projets', icon: FolderKanban, hint: 'Ce qui avance, et ce qui bloque' },
       { key: 'tasks', label: 'Tâches', to: '/tasks', icon: CheckSquare, hint: 'Ce qu’il reste à faire' },
-      // Dépenses et Temps encadrent les tâches : ce sont les deux faces de ce
-      // qu'une prestation coûte réellement — ce qu'on sort, et ce qu'on y
-      // passe. Les séparer dans deux coins de la navigation reviendrait à
-      // dire qu'ils n'ont rien à voir l'un avec l'autre.
-      { key: 'expenses', label: 'Dépenses', to: '/depenses', icon: Wallet, hint: 'Ce que vous sortez, avec les reçus' },
-      { key: 'time', label: 'Temps', to: '/temps', icon: Timer, hint: 'Chronomètre et temps passé' },
-      // Les calculateurs métier. Le moteur ne connaît aucun métier : ce sont
-      // les profils déclarés (prix e-commerce, rentabilité d'un événement,
-      // répartition entre associés) qui en font un outil différent selon
-      // l'organisation, sans qu'une ligne de code change d'une cliente à l'autre.
-      { key: 'calculators', label: 'Calculateurs', to: '/calculateurs', icon: Calculator, hint: 'Prix, marges, répartition' },
-      // Commandes du site public. Pour une boutique en ligne, c'est l'écran
-      // qu'on ouvre en premier le matin.
+    ],
+  },
+  {
+    key: 'commerce',
+    label: 'Clients & revenus',
+    // La chaîne complète d'un euro dans son ordre réel : une fiche, un devis
+    // qui devient une facture, et les commandes qui arrivent du site sans que
+    // personne les ait saisies. Pour une boutique, c'est l'écran du matin.
+    items: [
+      { key: 'clients', label: 'Clients', to: '/clients', icon: Contact, hint: 'Fiches et devis' },
+      { key: 'invoices', label: 'Facturation', to: '/facturation', icon: ReceiptEuro, hint: 'Factures et encaissements' },
       { key: 'orders', label: 'Commandes', to: '/commandes', icon: ShoppingBag, hint: 'Reçues du site' },
+    ],
+  },
+  {
+    key: 'production',
+    label: 'Production',
+    // Les deux faces de ce qu'une prestation coûte — ce qu'on sort, ce qu'on y
+    // passe — et l'outil qui en tire un prix. Les calculateurs agrègent
+    // précisément les deux autres.
+    items: [
+      { key: 'time', label: 'Temps', to: '/temps', icon: Timer, hint: 'Chronomètre et temps passé' },
+      { key: 'expenses', label: 'Dépenses', to: '/depenses', icon: Wallet, hint: 'Ce que vous sortez, avec les reçus' },
+      { key: 'calculators', label: 'Calculateurs', to: '/calculateurs', icon: Calculator, hint: 'Prix, marges, répartition' },
+    ],
+  },
+  {
+    key: 'documents',
+    label: 'Documents',
+    items: [
       { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen, hint: 'Bloc-notes' },
-      { key: 'media', label: 'Médias', to: '/media', icon: Images, hint: 'Photos et fichiers' },
       { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Comptes-rendus' },
+      { key: 'media', label: 'Médias', to: '/media', icon: Images, hint: 'Photos et fichiers' },
     ],
   },
   {

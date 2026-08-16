@@ -53,50 +53,85 @@ import type { ActivityTab } from '../state/ActivityContext';
 export const DEFAULT_FAVORITES = ['home', 'agenda', 'team', 'tasks', 'clients'] as const;
 
 export const NAV_SECTIONS: NavSection[] = [
+  /*
+    LES GROUPES, ET POURQUOI CEUX-LÀ (REFONTE)
+    ──────────────────────────────────────────
+    « Travail » comptait seize entrées. Ce n'est plus une section, c'est une
+    liste plate avec un intitulé posé dessus : à seize lignes, l'œil ne
+    reconnaît plus de forme et relit tout depuis le haut à chaque fois.
+
+    Le découpage suit les questions qu'on se pose, pas les objets qu'on
+    manipule. « Où j'en suis » (Pilotage), « qui me doit quoi » (Clients &
+    revenus), « ce que ça coûte » (Production), « ce qu'on s'est dit »
+    (Collectif), « ce qu'on rend » (Livrables). Un module se range là où on va
+    le chercher, pas là où sa table de données se trouve — c'est pour ça que
+    Facturation est avec Clients et non avec Calculateurs, alors que les deux
+    manipulent des montants.
+
+    Aucun chemin n'a bougé : regrouper est un geste de navigation, pas une
+    réorganisation d'URL. Les liens profonds, la mémoire d'onglet, les
+    pastilles d'activité et la palette continuent de fonctionner à l'identique.
+  */
   {
-    key: 'travail',
-    label: 'Travail',
+    key: 'pilotage',
+    label: 'Pilotage',
     space: 'workspace',
     items: [
       { key: 'home', label: 'Accueil', to: '/', icon: LayoutDashboard, hint: 'Le QG du jour' },
-      { key: 'tasks', label: 'Tâches', to: '/tasks', icon: CheckSquare, hint: 'Travail partagé' },
-      { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen, hint: 'Bloc-notes' },
-      { key: 'clients', label: 'Clients', to: '/clients', icon: Contact, hint: 'Fiches et devis' },
-      // Même module que chez les clientes : nous facturons aussi nos
-      // prestations, et un devis accepté doit pouvoir devenir une facture ici
-      // sans ressaisie. Rien dans cet écran n'est spécifique à une édition.
-      { key: 'invoices', label: 'Facturation', to: '/facturation', icon: ReceiptEuro, hint: 'Factures et encaissements' },
-      // Les projets juste après la facturation : c'est le point de
-      // rattachement de tout le reste, pas un module de plus.
-      { key: 'projects', label: 'Projets', to: '/projets', icon: FolderKanban, hint: 'Ce qui avance, et ce qui bloque' },
-      // Mêmes modules que chez les clientes, et pour la même raison que
-      // Facturation : nous avons aussi des frais et du temps à suivre, et un
-      // module qu'on n'utilise pas soi-même est un module qu'on livre mal.
-      { key: 'expenses', label: 'Dépenses', to: '/depenses', icon: Wallet, hint: 'Frais et justificatifs' },
-      { key: 'time', label: 'Temps', to: '/temps', icon: Timer, hint: 'Chronomètre et temps passé' },
-      // Les calculateurs métier : un moteur, des profils déclarés en données.
-      // Placés après Dépenses et Temps parce qu'ils s'appuient dessus — la
-      // synthèse du mois agrège la facturation, les frais et le temps.
-      { key: 'calculators', label: 'Calculateurs', to: '/calculateurs', icon: Calculator, hint: 'Prix, marges, répartition' },
-      // Commandes reçues du site public. Placées après Facturation dans
-      // l'esprit sinon dans l'ordre : une commande confirmée en devient une.
-      { key: 'orders', label: 'Commandes', to: '/commandes', icon: ShoppingBag, hint: 'Reçues du site' },
-      { key: 'sites', label: 'Sites', to: '/sites', icon: Globe, hint: 'Registre des sites clients' },
-      { key: 'team', label: 'Équipe', to: '/team', icon: Users, hint: 'Messagerie et présence' },
-      { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Livrables clients' },
-      { key: 'media', label: 'Médias', to: '/media', icon: Images, hint: 'Bibliothèque' },
-      // Le calendrier a été construit pour les clientes ; il manquait ici, où
-      // les rendez-vous se prennent aussi. Même écran, même collection.
       { key: 'agenda', label: 'Calendrier', to: '/agenda', icon: CalendarDays, hint: 'Rendez-vous et disponibilités' },
+      { key: 'projects', label: 'Projets', to: '/projets', icon: FolderKanban, hint: 'Ce qui avance, et ce qui bloque' },
+      { key: 'tasks', label: 'Tâches', to: '/tasks', icon: CheckSquare, hint: 'Travail partagé' },
     ],
   },
   {
-    key: 'memoire',
-    label: 'Mémoire',
+    key: 'commerce',
+    label: 'Clients & revenus',
     space: 'workspace',
+    // La chaîne complète d'un euro, dans son ordre réel : une fiche, un devis
+    // qui devient une facture, et les commandes qui arrivent du site public
+    // sans que personne les ait saisies. Les séparer obligerait à traverser la
+    // navigation pour suivre une seule affaire.
     items: [
+      { key: 'clients', label: 'Clients', to: '/clients', icon: Contact, hint: 'Fiches et devis' },
+      { key: 'invoices', label: 'Facturation', to: '/facturation', icon: ReceiptEuro, hint: 'Factures et encaissements' },
+      { key: 'orders', label: 'Commandes', to: '/commandes', icon: ShoppingBag, hint: 'Reçues du site' },
+    ],
+  },
+  {
+    key: 'production',
+    label: 'Production',
+    space: 'workspace',
+    // Les deux faces de ce qu'une prestation coûte — ce qu'on sort et ce qu'on
+    // y passe — et l'outil qui en tire un prix. La synthèse des calculateurs
+    // agrège précisément les deux autres : les ranger ailleurs séparerait un
+    // résultat de ses opérandes.
+    items: [
+      { key: 'time', label: 'Temps', to: '/temps', icon: Timer, hint: 'Chronomètre et temps passé' },
+      { key: 'expenses', label: 'Dépenses', to: '/depenses', icon: Wallet, hint: 'Frais et justificatifs' },
+      { key: 'calculators', label: 'Calculateurs', to: '/calculateurs', icon: Calculator, hint: 'Prix, marges, répartition' },
+    ],
+  },
+  {
+    key: 'collectif',
+    label: 'Collectif',
+    space: 'workspace',
+    // Ce qui se dit à deux, et ce qui doit s'en souvenir. L'ancienne section
+    // « Mémoire » disait la même chose de Décisions et Connaissances, mais les
+    // séparait de la messagerie qui les alimente.
+    items: [
+      { key: 'team', label: 'Équipe', to: '/team', icon: Users, hint: 'Messagerie et présence' },
+      { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen, hint: 'Bloc-notes' },
       { key: 'decisions', label: 'Décisions', to: '/decisions', icon: Scale, hint: 'Journal des arbitrages' },
       { key: 'knowledge', label: 'Connaissances', to: '/knowledge', icon: BookOpen, hint: 'Base interne' },
+    ],
+  },
+  {
+    key: 'livrables',
+    label: 'Livrables',
+    space: 'workspace',
+    items: [
+      { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Livrables clients' },
+      { key: 'media', label: 'Médias', to: '/media', icon: Images, hint: 'Bibliothèque' },
     ],
   },
   {
@@ -110,7 +145,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'tour',
-    label: 'Tour de contrôle',
+    label: 'Supervision',
     space: 'control',
     items: [
       { key: 'tour', label: 'Vue d’ensemble', to: '/tour', icon: MonitorDot, hint: 'Le mur du SOC' },
@@ -119,11 +154,22 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    key: 'parc',
+    label: 'Parc',
+    space: 'control',
+    // Sites quitte le Poste de travail pour venir ici, à côté des trackers qui
+    // le surveillent. Le registre des sites n'a jamais servi au travail
+    // quotidien : on l'ouvre quand on supervise, jamais quand on facture.
+    items: [
+      { key: 'sites', label: 'Sites', to: '/sites', icon: Globe, hint: 'Registre des sites clients' },
+      { key: 'tracker', label: 'Trackers', to: '/tracker', icon: Radar, hint: 'Supervision temps réel' },
+    ],
+  },
+  {
     key: 'produits',
     label: 'Produits',
     space: 'control',
     items: [
-      { key: 'tracker', label: 'Trackers', to: '/tracker', icon: Radar, hint: 'Supervision temps réel' },
       { key: 'scanner', label: 'Scanner', to: '/scanner', icon: ScanLine, hint: 'Analyse de vulnérabilités' },
       { key: 'comply', label: 'Comply', to: '/comply', icon: BadgeCheck, hint: 'Conformité RGPD' },
       { key: 'ssl', label: 'SSL Monitor', to: '/ssl', icon: LockKeyhole, hint: 'Certificats TLS' },
