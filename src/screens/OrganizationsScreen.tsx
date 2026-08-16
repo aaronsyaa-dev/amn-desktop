@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Building2, FolderLock, Plus, Search, ShieldOff, ShieldCheck } from 'lucide-react';
 import { useOrgContext } from '../state/OrgContextContext';
-import { CreateOrgDialog } from '../components/org-rail/CreateOrgDialog';
 import { OrgDossierPanel } from '../components/org-rail/OrgDossierPanel';
 import { OrgBanner } from '../components/org-rail/OrgBanner';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -25,11 +25,11 @@ type Filter = 'all' | 'active' | 'suspended';
  * l'organisation qu'on est en train de consulter.
  */
 export function OrganizationsScreen() {
+  const navigate = useNavigate();
   const { organizations, loadingOrgs, orgsError, refreshOrganizations, enterOrganization, entering } =
     useOrgContext();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
-  const [createOpen, setCreateOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dossierOrg, setDossierOrg] = useState<AdminOrganization | null>(null);
@@ -79,13 +79,23 @@ export function OrganizationsScreen() {
             },
           ]}
           actions={
+            /*
+              Vers l'ATELIER, plus vers la boîte de dialogue (BLOC C).
+
+              C'est le chemin délibéré : on vient ici pour créer une cliente en
+              connaissance de cause, donc on part vers l'écran qui laisse
+              vraiment configurer. La boîte de dialogue du rail reste comme
+              chemin RAPIDE — elle fonctionne partout, y compris depuis un
+              contexte client d'où l'on ne peut pas naviguer vers nos écrans —
+              et elle le dit désormais elle-même.
+            */
             <button
               type="button"
-              onClick={() => setCreateOpen(true)}
+              onClick={() => navigate('/tour/generateur')}
               className="flex items-center gap-2 bg-accent px-4 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
             >
               <Plus size={16} strokeWidth={2} />
-              Nouvelle organisation
+              Ouvrir l’atelier
             </button>
           }
         />
@@ -213,7 +223,6 @@ export function OrganizationsScreen() {
         )}
       </StaggerItem>
 
-      <CreateOrgDialog open={createOpen} onClose={() => setCreateOpen(false)} />
 
       <AnimatePresence>
         {dossierOrg && (

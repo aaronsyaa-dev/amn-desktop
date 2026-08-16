@@ -10,6 +10,7 @@ import {
   LockKeyhole,
   Radar,
   ScanLine,
+  Sparkles,
 } from 'lucide-react';
 import { SiteBadgeExport, SocDesk } from '../components/tracker/SocDesk';
 import { CallLinkPanel } from '../components/call/CallLinkPanel';
@@ -88,6 +89,16 @@ export function ControlTowerScreen() {
             },
           ]}
           actions={
+            <>
+              {/* L'atelier, à portée depuis la vue d'ensemble : créer une
+                  cliente est un geste qu'on fait EN supervisant le parc. */}
+              <Link
+                to="/tour/generateur"
+                className="flex min-h-11 items-center gap-2 bg-accent px-3 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
+              >
+                <Sparkles size={15} strokeWidth={2} />
+                Atelier
+              </Link>
             <button
               type="button"
               onClick={() => setLinkPanel(true)}
@@ -97,6 +108,7 @@ export function ControlTowerScreen() {
               <Link2 size={15} strokeWidth={1.75} />
               Lien d’appel
             </button>
+            </>
           }
         />
       </StaggerItem>

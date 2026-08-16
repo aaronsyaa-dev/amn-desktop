@@ -22,6 +22,7 @@ import {
   Scale,
   ScanLine,
   Settings,
+  Sparkles,
   Timer,
   Users,
   Wallet,
@@ -151,6 +152,10 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'tour', label: 'Vue d’ensemble', to: '/tour', icon: MonitorDot, hint: 'Le mur du SOC' },
       { key: 'orgs', label: 'Organisations', to: '/tour/organisations', icon: Building2, hint: 'Toutes les clientes gérées' },
       { key: 'access', label: 'Journal d’accès', to: '/tour/journal', icon: History, hint: 'Qui est entré chez qui' },
+      // L'atelier de création d'un espace client (BLOC C). Dans la Tour de
+      // contrôle et non au Poste de travail : créer une cliente est un geste
+      // qu'on fait EN supervisant le parc, pas au milieu de sa journée.
+      { key: 'generator', label: 'Atelier', to: '/tour/generateur', icon: Sparkles, hint: 'Créer un espace de travail sur mesure' },
     ],
   },
   {
@@ -208,6 +213,11 @@ export const ACTIVITY_TABS: ActivityTab[] = [
 export const PAGE_ROOMS: [string, string][] = [
   // Les trois écrans de la Tour de contrôle partagent l'entrée « supervision » :
   // on y arrive par le haut, comme sur un mur d'écrans qui s'allume.
+  // AVANT `/tour` : la correspondance est au PREMIER préfixe qui colle (voir
+  // variantsForPath), donc un chemin plus long placé après ne serait jamais
+  // atteint. L'atelier n'entre pas comme un mur d'écrans qui s'allume : c'est
+  // un lieu où l'on fabrique, donc une entrée posée et frontale.
+  ['/tour/generateur', 'analyse'],
   ['/tour', 'supervision'],
   ['/agenda', 'registre'],
   ['/sites', 'registre'],

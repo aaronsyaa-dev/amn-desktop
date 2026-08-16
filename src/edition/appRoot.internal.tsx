@@ -32,6 +32,7 @@ import { VaultScreen } from '../screens/VaultScreen';
 import { ControlTowerScreen } from '../screens/ControlTowerScreen';
 import { OrganizationsScreen } from '../screens/OrganizationsScreen';
 import { AccessLogScreen } from '../screens/AccessLogScreen';
+import { GeneratorScreen } from '../screens/GeneratorScreen';
 import { AgendaScreen } from '../business/AgendaScreen';
 import { HomeSoloScreen } from '../business/HomeSoloScreen';
 import { MediaSoloScreen } from '../business/MediaSoloScreen';
@@ -147,6 +148,9 @@ function AmnRoutes() {
         <Route path="/tour" element={<ControlTowerScreen />} />
         <Route path="/tour/organisations" element={<OrganizationsScreen />} />
         <Route path="/tour/journal" element={<AccessLogScreen />} />
+        {/* L'atelier (BLOC C). Un ÉCRAN, plus une boîte de dialogue : on ne
+            referme pas un acte de création, on en sort avec quelque chose. */}
+        <Route path="/tour/generateur" element={<GeneratorScreen />} />
         <Route path="/tracker" element={<TrackerScreen />} />
         <Route path="/tracker/site/:siteId" element={<SiteControlScreen />} />
         <Route path="/scanner" element={<ScannerScreen />} />

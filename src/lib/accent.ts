@@ -37,7 +37,7 @@ export interface AccentOption {
 }
 
 /** Le fond de l'application, contre lequel tout accent doit se détacher. */
-export const APP_BACKGROUND = '#0a0a0a';
+export const APP_BACKGROUND = '#060707';
 
 /**
  * La palette. « Blanc » reste le défaut : c'est l'identité actuelle, et une

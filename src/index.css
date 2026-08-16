@@ -617,3 +617,100 @@ button:not(:disabled):not(.card-interactive):active,
 .control-dense h1 {
   letter-spacing: -0.02em;
 }
+
+/* ============================================================================
+   LE GÉNÉRATEUR — l'atelier (BLOC C)
+   ============================================================================
+
+   « La création de desktop est très simpliste, je veux la sentir, vraiment
+   configurer. » Un formulaire en boîte de dialogue ne peut pas produire cette
+   sensation, quel que soit le nombre de champs qu'on y met : une boîte de
+   dialogue dit « remplis et referme », or on ne referme pas un acte de
+   création, on en sort avec quelque chose.
+
+   L'atelier est donc un LIEU, avec sa propre lumière : un plan encore plus
+   sombre que la Tour de contrôle, une source lumineuse basse à gauche — du
+   côté des réglages — et le côté droit laissé au produit qu'on fabrique. La
+   lumière vient d'où l'on agit ; ce qu'on regarde est éclairé par elle.
+   ========================================================================== */
+
+.forge-ground {
+  background-color: #030303;
+  background-image:
+    radial-gradient(70% 90% at 8% 100%, rgba(255, 255, 255, 0.055) 0%, transparent 62%),
+    radial-gradient(90% 60% at 100% 0%, rgba(255, 255, 255, 0.022) 0%, transparent 60%);
+}
+
+/*
+ * LE CURSEUR — la pièce qui manquait, et pourquoi il est dessiné à la main.
+ *
+ * Un `<input type="range">` natif est un jouet gris sur toutes les plateformes,
+ * et il n'existait nulle part dans cette application. Le curseur est pourtant
+ * le seul contrôle qui rende une valeur PARCOURABLE : on ne choisit pas cinq
+ * sièges dans une liste, on monte jusqu'à cinq et on voit l'aperçu changer en
+ * chemin. C'est exactement la différence entre cocher et configurer.
+ *
+ * La piste est remplie jusqu'au pouce par un dégradé arrêté à `--amn-fill`, que
+ * le composant règle en pourcentage : la valeur se lit donc sans avoir à lire
+ * le nombre.
+ */
+.amn-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  background: transparent;
+  cursor: grab;
+}
+.amn-range:active {
+  cursor: grabbing;
+}
+
+.amn-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 0;
+  background: linear-gradient(
+    90deg,
+    var(--color-text-primary) 0%,
+    var(--color-text-primary) var(--amn-fill, 0%),
+    var(--color-border) var(--amn-fill, 0%),
+    var(--color-border) 100%
+  );
+}
+.amn-range::-moz-range-track {
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--color-text-primary) 0%,
+    var(--color-text-primary) var(--amn-fill, 0%),
+    var(--color-border) var(--amn-fill, 0%),
+    var(--color-border) 100%
+  );
+}
+
+/* Le pouce : un rectangle net, pas une pastille. Un instrument, pas un jouet. */
+.amn-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 18px;
+  margin-top: -7px;
+  background: var(--color-text-primary);
+  border: 1px solid var(--color-bg);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+  transition: transform 0.12s ease;
+}
+.amn-range::-moz-range-thumb {
+  width: 10px;
+  height: 18px;
+  border-radius: 0;
+  background: var(--color-text-primary);
+  border: 1px solid var(--color-bg);
+}
+.amn-range:active::-webkit-slider-thumb {
+  /* Le pouce grandit sous la pression : l'accusé de réception du geste. */
+  transform: scaleY(1.15);
+}
+.amn-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.28);
+}

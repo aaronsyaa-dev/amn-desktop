@@ -36,6 +36,19 @@ type Handover = 'password' | 'invitation';
  *   - un mot de passe temporaire se dicte au téléphone et ne périme pas ;
  *   - un lien d'activation laisse la cliente choisir son mot de passe, mais
  *     vaut 7 jours et ne s'utilise qu'une fois.
+ *
+ * CE CHEMIN EST LE CHEMIN RAPIDE, pas le chemin complet (BLOC C).
+ *
+ * Depuis l'atelier (`/tour/generateur`), la création part d'un PROFIL MÉTIER et
+ * laisse régler les modules, les sièges, le quota invité et la couleur proposée
+ * avec un aperçu vivant. C'est le chemin délibéré, et c'est là que mène le
+ * bouton du registre des organisations.
+ *
+ * Cette boîte reste, et ce n'est pas un doublon oublié : elle fonctionne PARTOUT,
+ * y compris depuis un contexte client, d'où l'on ne peut pas naviguer vers nos
+ * écrans à nous sans quitter le contexte. Le rail la garde donc pour le cas
+ * « je crée maintenant, je configurerai après » — et l'écran le dit en toutes
+ * lettres plutôt que de laisser croire que c'est tout ce qu'on sait faire.
  */
 export function CreateOrgDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { refreshOrganizations, enterOrganization } = useOrgContext();
