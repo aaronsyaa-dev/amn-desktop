@@ -291,6 +291,58 @@ export interface MfaEnrolment {
  * celles qu'on a rejointes sur invitation. La nuance compte à l'écran : on ne
  * quitte pas la sienne comme on quitte celle d'un associé.
  */
+/** Une ligne de commande, telle que le site l'a envoyée. */
+export interface OrderLine {
+  label: string;
+  sku: string;
+  /** Décimale acceptée — 2,5 h de prestation. */
+  quantity: number;
+  /** Prix unitaire HORS TAXES, en centimes entiers. */
+  unitPriceCents: number;
+  vatRate: number;
+}
+
+export type OrderStatus =
+  | 'new'
+  | 'confirmed'
+  | 'preparing'
+  | 'shipped'
+  | 'delivered'
+  | 'cancelled';
+
+/**
+ * Une commande passée sur le site public.
+ *
+ * Écrite par amn-api à la réception, puis pilotée depuis le desktop. Le
+ * `reference` est celui du SITE : c'est ce que le client final a sous les yeux,
+ * et en inventer un second rendrait tout échange avec lui incompréhensible.
+ */
+export interface OrderData {
+  reference: string;
+  placedAt: string;
+  status: OrderStatus;
+  source: 'site' | 'manual';
+  customer: { name: string; email: string; phone: string; address: string };
+  lines: OrderLine[];
+  note: string;
+  /** Ce qui a déjà été réglé en ligne, en centimes. */
+  paidCents: number;
+  /** Total TTC au centime, calculé par le serveur à la réception. */
+  totalCents: number;
+  /**
+   * La facture tirée de cette commande, s'il y en a une.
+   *
+   * Renseigné, il empêche d'en tirer une seconde — le garde-fou est ce champ,
+   * pas la mémoire de la personne qui clique.
+   */
+  invoiceId: string | null;
+  updatedAt: string;
+}
+
+export interface Order extends OrderData {
+  id: string;
+}
+
 export interface MyOrganization {
   id: string;
   name: string;
@@ -1189,7 +1241,11 @@ export type SyncedCollection =
    * Le réglage du module Temps : le tarif horaire proposé quand un temps
    * devient une ligne de facture. Un unique enregistrement d'id `config`.
    */
-  | 'timeConfig';
+  | 'timeConfig'
+  // Commandes reçues du site public. Déposées par amn-api (voir
+  // docs/COMMANDES.md côté serveur), lues et pilotées ici comme n'importe quel
+  // enregistrement partagé.
+  | 'orders';
 
 export interface PresenceEntry {
   email: string;

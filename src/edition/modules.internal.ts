@@ -4,6 +4,7 @@ import {
   Building2,
   Calculator,
   CalendarDays,
+  ShoppingBag,
   CheckSquare,
   Contact,
   FileText,
@@ -77,6 +78,9 @@ export const NAV_SECTIONS: NavSection[] = [
       // Placés après Dépenses et Temps parce qu'ils s'appuient dessus — la
       // synthèse du mois agrège la facturation, les frais et le temps.
       { key: 'calculators', label: 'Calculateurs', to: '/calculateurs', icon: Calculator, hint: 'Prix, marges, répartition' },
+      // Commandes reçues du site public. Placées après Facturation dans
+      // l'esprit sinon dans l'ordre : une commande confirmée en devient une.
+      { key: 'orders', label: 'Commandes', to: '/commandes', icon: ShoppingBag, hint: 'Reçues du site' },
       { key: 'sites', label: 'Sites', to: '/sites', icon: Globe, hint: 'Registre des sites clients' },
       { key: 'team', label: 'Équipe', to: '/team', icon: Users, hint: 'Messagerie et présence' },
       { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Livrables clients' },
@@ -143,6 +147,10 @@ export const ACTIVITY_TABS: ActivityTab[] = [
   // Le calendrier entre dans le Poste de travail : un rendez-vous ajouté par
   // l'un doit se signaler à l'autre, exactement comme une tâche.
   { routeKey: '/agenda', collection: 'appointments', noun: 'Rendez-vous' },
+  // Une commande qui arrive du site est le cas le plus fort de cette liste :
+  // personne ne l'a écrite depuis un poste, donc personne ne l'attend. La
+  // pastille est le seul signal qu'elle existe.
+  { routeKey: '/commandes', collection: 'orders', noun: 'Commande' },
 ];
 
 
@@ -165,6 +173,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/depenses', 'fiches'],
   ['/temps', 'registre'],
   ['/calculateurs', 'analyse'],
+  ['/commandes', 'fiches'],
   ['/tracker', 'supervision'],
   ['/scanner', 'analyse'],
   ['/comply', 'analyse'],

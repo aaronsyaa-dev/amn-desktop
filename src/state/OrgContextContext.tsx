@@ -180,7 +180,7 @@ function writeStoredToken(token: string | null): void {
 
 export function OrgContextProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  const { overrideOrg, sessionKind, reauthenticate } = useAuth();
+  const { org: activeOrg, overrideOrg, sessionKind, reauthenticate } = useAuth();
 
   const [organizations, setOrganizations] = useState<AdminOrganization[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(true);
@@ -282,6 +282,25 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
   );
 
   const refreshOrganizations = useCallback(async () => {
+    /*
+      La console d'administration n'existe QUE pour AMN DevSec.
+
+      Depuis l'appartenance multiple, un compte d'AMN DevSec basculé sur une
+      organisation cliente n'y a plus droit — et c'est voulu (on n'emporte pas
+      ses pouvoirs d'une organisation à l'autre). Le rail continuait pourtant
+      d'appeler cette route à chaque montage, et récoltait un 404 visible dans
+      la console du navigateur : une requête qu'on sait perdue d'avance, faite
+      quand même. Trouvé en observant le trafic réel d'un poste basculé.
+
+      Le plan de l'organisation ACTIVE est le bon signal : c'est exactement ce
+      sur quoi le serveur décide, donc les deux ne peuvent pas diverger.
+    */
+    if (activeOrg && activeOrg.plan !== 'internal') {
+      setOrganizations([]);
+      setOrgsError(null);
+      setLoadingOrgs(false);
+      return;
+    }
     try {
       const all = await bridge().remote.admin.listOrganizations();
       // AMN DevSec est le contexte par défaut du rail, pas une entrée de la
@@ -297,7 +316,7 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
     } finally {
       setLoadingOrgs(false);
     }
-  }, []);
+  }, [activeOrg]);
 
   useEffect(() => {
     void refreshOrganizations();

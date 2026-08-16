@@ -33,6 +33,7 @@ export function OrgRail() {
     enterOrganization,
     signalLocalSession,
     myOrganizations,
+    loadingMine,
     activeOrgId,
     switchToOrganization,
   } = useOrgContext();
@@ -66,7 +67,23 @@ export function OrgRail() {
     sélecteur (⇧⌘O) pour les organisations qu'on ne fait que gérer.
   */
   const joinedIds = new Set(myOrganizations.map((org) => org.id));
-  const supervisedOnly = organizations.filter((org) => !joinedIds.has(org.id));
+
+  /*
+    Tant qu'on ne SAIT PAS de quelles organisations on est membre, on n'en
+    propose aucune en supervision.
+
+    Sans cette attente, les deux listes arrivent dans un ordre imprévisible et
+    le rail affichait AllStore dans le groupe des clientes supervisées le temps
+    que l'appartenance se charge. Cliquer dessus à cet instant n'ouvrait pas
+    l'organisation en tant que MEMBRE : ça ouvrait une SESSION DE SUPPORT —
+    une heure, rôle imposé, et une ligne au journal d'accès disant qu'AMN
+    DevSec est entrée chez une cliente. Le mauvais geste, la mauvaise trace,
+    sans que rien ne le signale.
+
+    Observé une fois sur trois en conditions réelles, ce qui est le pire des
+    cas : assez rare pour passer les essais, assez fréquent pour arriver.
+  */
+  const supervisedOnly = loadingMine ? [] : organizations.filter((org) => !joinedIds.has(org.id));
 
   // ⌘/Ctrl + Maj + O : le raccourci du changement d'organisation. Distinct de
   // ⌘K (qui cherche DANS le contexte courant) parce que ce n'est pas le même

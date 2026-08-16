@@ -15,6 +15,7 @@ import {
   ReceiptEuro,
   Settings,
   ShieldCheck,
+  ShoppingBag,
   Timer,
   Wallet,
 } from 'lucide-react';
@@ -49,6 +50,7 @@ const CLIENT_MODULES: NavItem[] = [
   { key: 'expenses', label: 'Dépenses', to: '/depenses', icon: Wallet, hint: 'Frais et justificatifs' },
   { key: 'time', label: 'Temps', to: '/temps', icon: Timer, hint: 'Chronomètre et temps passé' },
   { key: 'calculators', label: 'Calculateurs', to: '/calculateurs', icon: Calculator, hint: 'Prix, marges, répartition' },
+  { key: 'orders', label: 'Commandes', to: '/commandes', icon: ShoppingBag, hint: 'Reçues du site' },
   { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen, hint: 'Bloc-notes' },
   { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Comptes-rendus' },
   { key: 'media', label: 'Médias', to: '/media', icon: Images, hint: 'Photos et fichiers' },

@@ -89,6 +89,7 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'expenseConfig',
   'timeEntries',
   'timeConfig',
+  'orders',
 ];
 
 const MIRROR_PREFIX = 'amn.sync.';

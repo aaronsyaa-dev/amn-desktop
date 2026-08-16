@@ -1,6 +1,7 @@
 import {
   Calculator,
   CalendarDays,
+  ShoppingBag,
   CheckSquare,
   Contact,
   FileText,
@@ -68,6 +69,9 @@ export const NAV_SECTIONS: NavSection[] = [
       // répartition entre associés) qui en font un outil différent selon
       // l'organisation, sans qu'une ligne de code change d'une cliente à l'autre.
       { key: 'calculators', label: 'Calculateurs', to: '/calculateurs', icon: Calculator, hint: 'Prix, marges, répartition' },
+      // Commandes du site public. Pour une boutique en ligne, c'est l'écran
+      // qu'on ouvre en premier le matin.
+      { key: 'orders', label: 'Commandes', to: '/commandes', icon: ShoppingBag, hint: 'Reçues du site' },
       { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen, hint: 'Bloc-notes' },
       { key: 'media', label: 'Médias', to: '/media', icon: Images, hint: 'Photos et fichiers' },
       { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Comptes-rendus' },
@@ -108,6 +112,9 @@ export const ACTIVITY_TABS: ActivityTab[] = [
   // retrouve la dépense en rentrant. Le temps n'y figure pas : un chronomètre
   // en cours ferait clignoter une pastille en permanence.
   { routeKey: '/depenses', collection: 'expenses', noun: 'Dépense' },
+  // Le cas le plus fort de cette liste : une commande arrive du site, personne
+  // ne l'a écrite, donc personne ne l'attend. La pastille est le seul signal.
+  { routeKey: '/commandes', collection: 'orders', noun: 'Commande' },
 ];
 
 
@@ -121,6 +128,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/depenses', 'fiches'],
   ['/temps', 'registre'],
   ['/calculateurs', 'analyse'],
+  ['/commandes', 'fiches'],
   ['/notes', 'journal'],
   ['/media', 'base'],
   ['/reports', 'livrables'],
