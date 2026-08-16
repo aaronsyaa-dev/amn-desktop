@@ -1033,6 +1033,15 @@ function createBrowserBridge(): AmnBridge {
       install() {
         /* no-op */
       },
+      async check() {
+        // Le web/PWA se met à jour en rechargeant la page : il n'y a pas de
+        // canal à interroger. Le dire franchement vaut mieux qu'un « à jour »
+        // qui laisserait croire à une vérification qui n'a pas eu lieu.
+        return {
+          status: 'unconfigured' as const,
+          reason: 'La version web se met à jour toute seule au rechargement de la page.',
+        };
+      },
     },
     vault: {
       async isEncrypted() {

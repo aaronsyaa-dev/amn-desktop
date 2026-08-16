@@ -309,6 +309,20 @@ export interface MyOrganizations {
   activeOrgId: string;
 }
 
+/**
+ * Le verdict d'une vérification de mise à jour, à la demande.
+ *
+ * `unconfigured` est le cas de l'édition Business aujourd'hui : elle n'est
+ * branchée sur aucun canal (voir `setupAutoUpdate`), donc répondre « à jour »
+ * serait faux — on ne sait pas, faute d'avoir où regarder. L'écran le dit.
+ */
+export type UpdateCheck =
+  | { status: 'uptodate'; version: string }
+  | { status: 'available'; version: string }
+  | { status: 'downloading' }
+  | { status: 'unconfigured'; reason: string }
+  | { status: 'error'; message: string };
+
 export type LoginOutcome =
   | { kind: 'session'; session: RemoteSession }
   | { kind: 'mfa'; challenge: string; expiresAt: string; email: string };
@@ -1868,6 +1882,16 @@ export interface AmnBridge {
     onDownloaded(cb: (info: { version: string; notes?: string }) => void): () => void;
     /** Quit and install the staged update (relaunches the app). */
     install(): void;
+    /**
+     * Vérifie MAINTENANT, sans attendre le cycle de fond.
+     *
+     * Le verdict est un état nommé, jamais un booléen : « pas de mise à jour »
+     * et « je n'ai pas pu regarder » ne se ressemblent que pour qui écrit le
+     * code — pour la personne devant l'écran, l'un rassure et l'autre demande
+     * une action. Les confondre, c'est afficher « à jour » à quelqu'un qui ne
+     * l'est pas.
+     */
+    check(): Promise<UpdateCheck>;
   };
   /**
    * Local password vault. Never synced — see VaultEntry. Encrypted at rest in
@@ -2008,6 +2032,7 @@ export const IPC = {
   ollamaChat: 'ollama:chat',
   updateDownloaded: 'update:downloaded',
   updateInstall: 'update:install',
+  updateCheck: 'update:check',
   vaultIsEncrypted: 'vault:isEncrypted',
   vaultList: 'vault:list',
   vaultSave: 'vault:save',

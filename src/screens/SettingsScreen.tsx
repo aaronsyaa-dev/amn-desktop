@@ -15,6 +15,7 @@ import { APP_VERSION, IS_BUSINESS } from '../edition/edition';
 import { OllamaSection } from '@edition/exclusive';
 import { AccountSecuritySection } from '../components/settings/AccountSecuritySection';
 import { MfaSection } from '../components/settings/MfaSection';
+import { UpdateSection } from '../components/settings/UpdateSection';
 
 /** Une phrase d'identité par édition — celle de l'interne nomme AMN DevSec. */
 const ABOUT_TAGLINE = IS_BUSINESS
@@ -59,6 +60,16 @@ export function SettingsScreen() {
       <StaggerItem>
         <MfaSection />
         <AccountSecuritySection />
+      </StaggerItem>
+      {/*
+        Les mises à jour, dans les DEUX éditions.
+
+        Chez la cliente c'est même le cas le plus utile : son application ne
+        s'auto-met pas à jour aujourd'hui, et ce bouton est le seul endroit où
+        elle peut le constater plutôt que le supposer.
+      */}
+      <StaggerItem>
+        <UpdateSection />
       </StaggerItem>
       {!bridge().env.isElectron && (
         <StaggerItem>

@@ -184,6 +184,7 @@ const bridge: AmnBridge = {
       return () => ipcRenderer.removeListener(IPC.updateDownloaded, listener);
     },
     install: () => ipcRenderer.invoke(IPC.updateInstall),
+    check: () => ipcRenderer.invoke(IPC.updateCheck),
   },
   vault: {
     isEncrypted: () => ipcRenderer.invoke(IPC.vaultIsEncrypted),
