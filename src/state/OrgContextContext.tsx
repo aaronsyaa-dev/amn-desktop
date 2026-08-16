@@ -12,7 +12,7 @@ import { useAuth } from '../auth/AuthContext';
 import { bridge } from '../lib/bridge';
 import { cleanErrorMessage } from '../lib/errorMessage';
 import { purgeContextMirror } from './SyncContext';
-import type { AdminOrganization, SupportContext } from '../shared/api';
+import type { AdminOrganization, MyOrganization, SupportContext } from '../shared/api';
 
 /**
  * Le contexte actif d'AMN Desktop — AMN DevSec, ou le dossier d'une cliente.
@@ -108,6 +108,24 @@ interface OrgContextValue {
 
   enterOrganization: (orgId: string) => Promise<void>;
   leaveOrganization: () => Promise<void>;
+
+  /* ------------------------- Appartenance (BLOC C) ------------------------- */
+
+  /**
+   * MES organisations — celles dont le compte est réellement membre.
+   *
+   * Rien à voir avec `organizations` ci-dessus, qui liste les clientes
+   * SUPERVISÉES. Les deux coexistent dans le rail, séparées, parce qu'elles ne
+   * veulent pas dire la même chose : « où je travaille » et « ce dont je
+   * m'occupe ». Les mélanger ferait passer une session de support d'une heure
+   * pour une appartenance, ce qui est exactement l'inverse du but.
+   */
+  myOrganizations: MyOrganization[];
+  loadingMine: boolean;
+  /** L'organisation qui porte la session en cours. */
+  activeOrgId: string | null;
+  /** Bascule sur une organisation dont on est membre. Recharge l'application. */
+  switchToOrganization: (orgId: string) => Promise<void>;
 }
 
 export interface ContextTransition {
@@ -200,6 +218,68 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
         : null,
     );
   }, [support, overrideOrg]);
+
+  /* ------------------------- Appartenance (BLOC C) ------------------------- */
+
+  const [myOrganizations, setMyOrganizations] = useState<MyOrganization[]>([]);
+  const [loadingMine, setLoadingMine] = useState(true);
+  const [activeOrgId, setActiveOrgId] = useState<string | null>(null);
+
+  const refreshMine = useCallback(async () => {
+    try {
+      const mine = await bridge().remote.session.listMyOrganizations();
+      setMyOrganizations(mine.organizations ?? []);
+      setActiveOrgId(mine.activeOrgId ?? null);
+    } catch {
+      // Une session locale ou un jeton partagé n'appartient à personne : ce
+      // n'est pas une panne, c'est une absence d'appartenance. Le rail
+      // n'affiche alors simplement pas cette section.
+      setMyOrganizations([]);
+      setActiveOrgId(null);
+    } finally {
+      setLoadingMine(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshMine();
+  }, [refreshMine]);
+
+  /**
+   * Bascule sur une organisation dont on est membre.
+   *
+   * L'application est RECHARGÉE après la bascule, et c'est un choix, pas une
+   * facilité. Changer d'organisation change tout ce que l'app tient en
+   * mémoire : le miroir de synchronisation, la WebSocket ouverte, les
+   * fournisseurs de données montés. Les remettre à jour un par un demanderait
+   * de n'en oublier aucun — et celui qu'on oublierait afficherait les
+   * enregistrements de l'organisation précédente sous le nom de la nouvelle.
+   *
+   * Un rechargement complet garantit qu'il ne reste rien de l'ancienne portée.
+   * C'est une seconde d'attente contre une classe entière de fuites.
+   */
+  const switchToOrganization = useCallback(
+    async (orgId: string) => {
+      if (orgId === activeOrgId) return;
+      try {
+        const session = await bridge().remote.session.switchOrganization(orgId);
+        // Écrit dans la forme qu'attend AuthContext au démarrage : après le
+        // rechargement, l'app reprend cette session comme si on venait de s'y
+        // connecter.
+        window.localStorage.setItem(
+          'amn-desktop.auth.session',
+          JSON.stringify({ token: session.token, user: session.user, org: session.org }),
+        );
+        // Le contexte de support éventuel n'a plus lieu d'être : on quitte
+        // l'organisation, pas seulement l'écran.
+        window.localStorage.removeItem(SUPPORT_TOKEN_KEY);
+        window.location.reload();
+      } catch (err) {
+        setActionError(cleanErrorMessage(err, 'Impossible de changer d’organisation.'));
+      }
+    },
+    [activeOrgId],
+  );
 
   const refreshOrganizations = useCallback(async () => {
     try {
@@ -377,6 +457,10 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
       signalLocalSession,
       enterOrganization,
       leaveOrganization,
+      myOrganizations,
+      loadingMine,
+      activeOrgId,
+      switchToOrganization,
     }),
     [
       organizations,

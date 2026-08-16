@@ -25,8 +25,17 @@ const TRANSITION = { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const };
  * on parcourt la colonne ; à trois cents, on cherche — les deux gestes sont là.
  */
 export function OrgRail() {
-  const { organizations, support, entering, leaveOrganization, enterOrganization, signalLocalSession } =
-    useOrgContext();
+  const {
+    organizations,
+    support,
+    entering,
+    leaveOrganization,
+    enterOrganization,
+    signalLocalSession,
+    myOrganizations,
+    activeOrgId,
+    switchToOrganization,
+  } = useOrgContext();
   const { sessionKind } = useAuth();
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -35,6 +44,29 @@ export function OrgRail() {
   // lire. C'est bien pour ça que l'état passait inaperçu — tout avait l'air
   // normal jusqu'au clic. Le pastille ci-dessous le dit en permanence.
   const localSession = sessionKind === 'local';
+
+  // Mon organisation d'origine, et celles que j'ai REJOINTES. La première a sa
+  // place en haut du rail ; les secondes forment leur propre groupe.
+  const homeOrg = myOrganizations.find((org) => org.home) ?? null;
+  const joinedOrgs = myOrganizations.filter((org) => !org.home);
+
+  /*
+    Une organisation dont je suis MEMBRE sort de la liste des supervisées.
+
+    Sans ce retrait, AllStore apparaissait DEUX FOIS dans le rail : une fois
+    comme appartenance, une fois comme cliente — parce qu'AMN DevSec l'a
+    effectivement créée depuis la console. Deux icônes identiques, au même
+    nom, et deux gestes différents derrière : l'une bascule la session (durable,
+    mon rôle est celui qu'on m'a donné), l'autre ouvre une session de support
+    (une heure, tracée au journal). C'est précisément l'ambiguïté que ce rail
+    doit lever, et elle était là, visible, au premier essai réel.
+
+    L'appartenance gagne : c'est la relation la plus forte des deux, et celle
+    qu'on utilise tous les jours. La supervision reste atteignable par le
+    sélecteur (⇧⌘O) pour les organisations qu'on ne fait que gérer.
+  */
+  const joinedIds = new Set(myOrganizations.map((org) => org.id));
+  const supervisedOnly = organizations.filter((org) => !joinedIds.has(org.id));
 
   // ⌘/Ctrl + Maj + O : le raccourci du changement d'organisation. Distinct de
   // ⌘K (qui cherche DANS le contexte courant) parce que ce n'est pas le même
@@ -58,24 +90,54 @@ export function OrgRail() {
         aria-label="Organisations"
       >
         <RailButton
-          label="AMN DevSec"
+          label={homeOrg?.name ?? 'AMN DevSec'}
           sublabel="Votre organisation"
-          active={!support}
+          active={!support && (!activeOrgId || activeOrgId === homeOrg?.id)}
           onClick={() => {
             // Depuis un contexte client, cliquer AMN DevSec est un geste de
             // sortie, pas une navigation : le jeton de support doit être rendu.
             if (support) void leaveOrganization();
+            else if (homeOrg && activeOrgId !== homeOrg.id) void switchToOrganization(homeOrg.id);
           }}
         >
           <LogoMark size={30} />
         </RailButton>
+
+        {/*
+          MES autres organisations — celles où je suis membre, pas cliente.
+
+          Séparées des organisations supervisées plus bas, et volontairement :
+          entrer ici est une APPARTENANCE (durable, mon rôle y est celui qu'on
+          m'a donné), entrer plus bas est une session de SUPPORT (une heure,
+          tracée). Deux gestes qui se ressemblent à l'écran et qui n'ont rien à
+          voir — les mélanger dans une même colonne indifférenciée, c'est
+          exactement l'ambiguïté que ce rail doit lever.
+        */}
+        {joinedOrgs.length > 0 && (
+          <>
+            <span className="my-1 h-px w-7 flex-shrink-0 bg-border" aria-hidden />
+            <div className="flex flex-shrink-0 flex-col items-center gap-2">
+              {joinedOrgs.map((org) => (
+                <RailButton
+                  key={org.id}
+                  label={org.name}
+                  sublabel={`Membre · ${org.role}`}
+                  active={!support && activeOrgId === org.id}
+                  onClick={() => void switchToOrganization(org.id)}
+                >
+                  <OrgAvatar name={org.name} logoDataUrl={org.logoDataUrl} size={40} />
+                </RailButton>
+              ))}
+            </div>
+          </>
+        )}
 
         <span className="my-1 h-px w-7 flex-shrink-0 bg-border" aria-hidden />
 
         {/* La liste défile ; la barre native est masquée et remplacée par un
             dégradé haut/bas, pour qu'une colonne pleine se lise comme telle. */}
         <div className="sidebar-scroll flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto px-3">
-          {organizations.map((org) => (
+          {supervisedOnly.map((org) => (
             <RailButton
               key={org.id}
               label={org.name}
