@@ -367,6 +367,7 @@ function SupervisionPanel() {
       <header className="panel-head flex flex-wrap items-center gap-2 px-4 py-2.5">
         <Radar size={14} strokeWidth={1.75} className="text-text-secondary" />
         <h2 className="mr-auto text-[13px] font-semibold text-text-primary">Rondes de fond</h2>
+        <span className="eyebrow">Rythme · dernier passage</span>
         <span className="eyebrow">
           {late === 0
             ? `${state.sweeps.length} à l’heure`
@@ -383,10 +384,16 @@ function SupervisionPanel() {
               }`}
               aria-hidden
             />
-            <span className="w-32 flex-shrink-0 font-mono text-[11px] text-text-primary">
+            <span className="w-36 flex-shrink-0 truncate font-mono text-[11px] text-text-primary">
               {SWEEP_LABELS[sweep.name] ?? sweep.name}
             </span>
-            <span className="eyebrow w-24 flex-shrink-0">{everyLabel(sweep.everyMs)}</span>
+            {/* `whitespace-nowrap` : à cette graisse et cet interlettrage,
+                « toutes les 15 min » repassait à la ligne dans sa colonne et
+                chevauchait la ligne suivante. Vu sur une capture réelle, pas
+                dans le code. La périodicité est donc dite courte. */}
+            <span className="eyebrow w-20 flex-shrink-0 whitespace-nowrap">
+              {everyLabel(sweep.everyMs)}
+            </span>
             <span className="min-w-0 flex-1 truncate text-[11px] text-text-secondary">
               {sweep.lastRunAt ? `passée ${relativeTime(sweep.lastRunAt)}` : 'jamais exécutée'}
             </span>
@@ -415,8 +422,8 @@ const SWEEP_LABELS: Record<string, string> = {
 /** Une périodicité en millisecondes, dite comme on la dirait à voix haute. */
 function everyLabel(ms: number): string {
   const minutes = Math.round(ms / 60000);
-  if (minutes < 60) return `toutes les ${minutes} min`;
+  if (minutes < 60) return `${minutes} min`;
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `toutes les ${hours} h`;
-  return `toutes les ${Math.round(hours / 24)} j`;
+  if (hours < 24) return `${hours} h`;
+  return `${Math.round(hours / 24)} j`;
 }

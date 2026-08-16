@@ -48,6 +48,20 @@ import { relativeTime } from '../../lib/time';
 /** Ce qu'on écrit quand une organisation n'a encore rien produit. */
 const NOTHING_YET = 'Aucune activité enregistrée';
 
+/**
+ * Les identifiants de plan ne sont pas des mots.
+ *
+ * `business_premium` affiché tel quel se lisait « BUSINESS_PREMIUM » une fois
+ * passé en capitales par la feuille de style — un identifiant de base de
+ * données montré à un humain. Repéré en relisant la banderole dans un vrai
+ * navigateur, pas à la lecture du code.
+ */
+const PLAN_LABELS: Record<string, string> = {
+  business_standard: 'Business standard',
+  business_premium: 'Business premium',
+  internal: 'Interne',
+};
+
 export function OrgBanner({
   org,
   onOpen,
@@ -132,7 +146,8 @@ export function OrgBanner({
             )}
           </div>
           <p className="eyebrow mt-1.5 truncate">
-            {org.plan} · {org.userCount} compte{org.userCount > 1 ? 's' : ''} ·{' '}
+            {PLAN_LABELS[org.plan] ?? org.plan} · {org.userCount} compte
+            {org.userCount > 1 ? 's' : ''} ·{' '}
             {lastActivity ? `actif ${relativeTime(lastActivity)}` : NOTHING_YET}
           </p>
         </div>
