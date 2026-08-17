@@ -67,26 +67,36 @@ export function ControlTowerScreen() {
         <ScreenHeader
           eyebrow="Tour de contrôle"
           title="Vue d’ensemble"
-          description="Le parc, les clientes et les rondes de fond, en un seul écran."
+          description={
+            /*
+              CE QUI FAISAIT « FAUX » (BLOC B), premier point.
+
+              « On dirait une fausse où tout est faux dessus, même si c'est
+              vrai. » Un parc vide affichait quatre relevés à zéro alignés :
+              SITES 0 · EN LIGNE 0 · DÉGRADÉS 0 · HORS LIGNE 0. Or un zéro dans
+              une case de mesure ne se lit pas comme « il n'y en a pas », il se
+              lit comme un capteur débranché — c'est ce que tout le monde a
+              appris à croire devant un tableau de bord. Quatre à la suite, et
+              l'écran entier passe pour une maquette.
+
+              Quand il n'y a rien à mesurer, on l'écrit en toutes lettres et on
+              retire les cases. Une phrase est un fait ; un zéro est un doute.
+            */
+            parc.total === 0
+              ? 'Aucun site n’est supervisé pour l’instant — les relevés du parc apparaîtront dès le premier tracker installé.'
+              : 'Le parc, les clientes et les rondes de fond, en un seul écran.'
+          }
           stats={[
-            { label: 'Sites', value: parc.total },
-            { label: 'En ligne', value: parc.online },
-            {
-              label: 'Dégradés',
-              value: parc.degraded,
-              emphasis: parc.degraded > 0,
-            },
-            {
-              label: 'Hors ligne',
-              value: parc.offline,
-              emphasis: parc.offline > 0,
-            },
+            ...(parc.total === 0
+              ? []
+              : [
+                  { label: 'Sites', value: parc.total },
+                  { label: 'En ligne', value: parc.online },
+                  { label: 'Dégradés', value: parc.degraded, emphasis: parc.degraded > 0 },
+                  { label: 'Hors ligne', value: parc.offline, emphasis: parc.offline > 0 },
+                ]),
             { label: 'Clientes', value: organizations.length },
-            {
-              label: 'Suspendues',
-              value: suspended,
-              emphasis: suspended > 0,
-            },
+            ...(suspended > 0 ? [{ label: 'Suspendues', value: suspended, emphasis: true }] : []),
           ]}
           actions={
             <>
@@ -336,6 +346,9 @@ export const ACCESS_VERB: Record<string, string> = {
 function SupervisionPanel() {
   const [state, setState] = useState<SupervisionState | null>(null);
   const [failed, setFailed] = useState(false);
+  // L'heure de la LECTURE, pas celle du rendu : c'est ce qu'on attesterait
+  // devant quelqu'un qui demande « c'est à jour ? ».
+  const [readAt, setReadAt] = useState(() => new Date());
 
   useEffect(() => {
     let alive = true;
@@ -343,7 +356,9 @@ function SupervisionPanel() {
       bridge()
         .remote.admin.supervision()
         .then((s) => {
-          if (alive) setState(s);
+          if (!alive) return;
+          setState(s);
+          setReadAt(new Date());
         })
         .catch(() => {
           if (alive) setFailed(true);
@@ -362,18 +377,43 @@ function SupervisionPanel() {
 
   const late = state.sweeps.filter((s) => s.overdue).length;
 
+  /*
+    CE QUI FAISAIT « FAUX » (BLOC B), second point : L'ABSENCE DE PROVENANCE.
+
+    Un vrai relevé dit toujours d'où il vient et quand il a été pris. Sans ça,
+    un chiffre juste et un chiffre inventé se ressemblent — et c'est exactement
+    la sensation décrite : « tout est faux dessus, même si c'est vrai ».
+
+    Ce panneau lisait déjà des données réelles, mais il ne les ATTESTAIT pas. Il
+    dit maintenant depuis combien de temps le serveur tourne et quand cette
+    lecture a été faite. Ce n'est pas une décoration de plus : c'est ce qui
+    transforme un affichage en relevé.
+  */
+  const uptime = state.uptimeSeconds;
+  const uptimeLabel =
+    uptime < 3600
+      ? `${Math.max(1, Math.round(uptime / 60))} min`
+      : uptime < 86400
+        ? `${Math.round(uptime / 3600)} h`
+        : `${Math.round(uptime / 86400)} j`;
+
   return (
     <section className="panel panel-ticks">
       <header className="panel-head flex flex-wrap items-center gap-2 px-4 py-2.5">
         <Radar size={14} strokeWidth={1.75} className="text-text-secondary" />
         <h2 className="mr-auto text-[13px] font-semibold text-text-primary">Rondes de fond</h2>
-        <span className="eyebrow">Rythme · dernier passage</span>
         <span className="eyebrow">
           {late === 0
             ? `${state.sweeps.length} à l’heure`
             : `${late} en retard sur ${state.sweeps.length}`}
         </span>
       </header>
+
+      {/* La provenance, sous l'en-tête et avant les chiffres : qui répond, depuis
+          quand, et à quelle heure cette lecture a été faite. */}
+      <p className="eyebrow border-b border-border px-4 py-1.5">
+        amn-api · en service depuis {uptimeLabel} · lu à {readAt.toLocaleTimeString('fr-FR')}
+      </p>
 
       <ul className="divide-y divide-border">
         {state.sweeps.map((sweep) => (
@@ -391,7 +431,7 @@ function SupervisionPanel() {
                 « toutes les 15 min » repassait à la ligne dans sa colonne et
                 chevauchait la ligne suivante. Vu sur une capture réelle, pas
                 dans le code. La périodicité est donc dite courte. */}
-            <span className="eyebrow w-20 flex-shrink-0 whitespace-nowrap">
+            <span className="eyebrow w-20 flex-shrink-0 whitespace-nowrap" title="Périodicité voulue">
               {everyLabel(sweep.everyMs)}
             </span>
             <span className="min-w-0 flex-1 truncate text-[11px] text-text-secondary">
