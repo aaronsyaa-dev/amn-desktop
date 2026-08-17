@@ -184,12 +184,18 @@ export interface CreateOrganizationInput {
 export interface CreateOrganizationResult {
   organization: AdminOrganization;
   owner: { id: string; email: string; role: string; status: string } | null;
-  invitation: { token: string; expiresAt: string } | null;
+  /**
+   * `url` est l'adresse complète d'activation, composée PAR LE SERVEUR.
+   * `null` quand aucune adresse publique n'est configurée (APP_PUBLIC_URL) —
+   * le poste ne la fabrique jamais, il ne connaît que `file://` une fois
+   * installé. Le jeton reste rendu à côté, pour qui saurait le coller ailleurs.
+   */
+  invitation: { token: string; url: string | null; expiresAt: string } | null;
 }
 
 export interface OrgInvitationResult {
   user: AdminOrgUser;
-  invitation: { token: string; expiresAt: string };
+  invitation: { token: string; url: string | null; expiresAt: string };
 }
 
 export interface TempPasswordResult {
@@ -1394,6 +1400,15 @@ export interface CallLink {
 export interface CreatedCallLink {
   id: string;
   token: string;
+  /**
+   * L'adresse complète à envoyer, composée PAR LE SERVEUR.
+   *
+   * `null` quand aucune adresse publique n'est configurée côté serveur
+   * (`APP_PUBLIC_URL`). Le poste ne la fabrique jamais lui-même : installé, il
+   * ne connaît que `file://`, et une adresse composée là-bas donne un chemin
+   * sur la machine de qui l'émet — le défaut exact observé en v1.2.27.
+   */
+  url: string | null;
   expiresAt: string;
   label: string;
 }

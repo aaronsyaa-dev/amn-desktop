@@ -232,7 +232,10 @@ export function GeneratorScreen() {
           orgId: created.organization.id,
           orgName: created.organization.name,
           email: trimmedEmail,
-          secret: created.invitation.token,
+          // Le LIEN quand le serveur en connaît un, le jeton sinon. Un jeton nu
+          // ne se colle nulle part : la cliente ne sait pas de quelle page il
+          // s'agit, et c'est le même défaut que le lien d'appel en `file://`.
+          secret: created.invitation.url ?? created.invitation.token,
           kind: 'invitation',
           expiresAt: created.invitation.expiresAt,
           partial,

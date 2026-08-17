@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Copy, Link2, Loader2, MessageSquare, Trash2, X } from 'lucide-react';
 import { bridge } from '../../lib/bridge';
-import { PUBLIC_URL_MISSING, canBuildPublicLink, publicOrigin } from '../../lib/publicUrl';
+import { PUBLIC_URL_MISSING, publicOrigin } from '../../lib/publicUrl';
 import { cleanErrorMessage } from '../../lib/errorMessage';
 import { callInvitationMessage } from '../../lib/callInvite';
 import type { CallLink } from '../../shared/api';
@@ -44,6 +44,22 @@ function linkUrl(token: string): string | null {
   return `${origin}/#/appel?token=${encodeURIComponent(token)}`;
 }
 
+/**
+ * L'adresse à envoyer, dans l'ordre où on peut lui faire confiance.
+ *
+ *   1. CELLE DU SERVEUR. Il est configuré une fois (`APP_PUBLIC_URL`) et
+ *      répond à tous les postes ; c'est la seule source qui ne dépende pas de
+ *      la façon dont l'installeur a été construit.
+ *   2. À défaut, celle du poste — mais UNIQUEMENT si c'est une vraie adresse
+ *      web, ce qui est le cas du build web et jamais celui de l'application
+ *      installée.
+ *   3. Sinon rien, et on explique. Une adresse fausse s'envoie et personne ne
+ *      comprend pourquoi elle ne marche pas.
+ */
+function sendableUrl(created: { token: string; url: string | null }): string | null {
+  return created.url ?? linkUrl(created.token);
+}
+
 function remaining(expiresAt: string): string {
   const ms = Date.parse(expiresAt) - Date.now();
   if (!Number.isFinite(ms) || ms <= 0) return 'expiré';
@@ -74,19 +90,18 @@ export function CallLinkPanel({ onClose }: { onClose: () => void }) {
   }, [refresh]);
 
   const create = async () => {
-    // Refusé AVANT d'appeler le serveur : émettre un jeton qu'on ne saurait pas
-    // transformer en adresse envoyable laisserait un lien inutile dans la liste,
-    // et ferait croire que le geste a réussi.
-    if (!canBuildPublicLink()) {
-      setError(PUBLIC_URL_MISSING);
-      return;
-    }
     setBusy(true);
     setError(null);
     setCopied(null);
     try {
       const created = await bridge().remote.callLinks.create({ label: label.trim(), minutes });
-      const url = linkUrl(created.token);
+      /*
+        On ne peut plus refuser AVANT d'appeler : c'est la réponse du serveur qui
+        porte l'adresse. Le jeton est donc bien créé, et s'il n'y a aucune adresse
+        connue on le dit — le lien reste révocable dans la liste juste en dessous,
+        donc rien n'est laissé en suspens.
+      */
+      const url = sendableUrl(created);
       if (!url) throw new Error(PUBLIC_URL_MISSING);
       setFresh({ url, expiresAt: created.expiresAt });
       setLabel('');

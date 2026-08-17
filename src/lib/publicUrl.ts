@@ -22,6 +22,22 @@
  * entre l'endroit où c'était testé (le navigateur) et l'endroit où c'est utilisé
  * (l'application installée).
  *
+ * ## CE QUI A CHANGÉ DEPUIS LA PREMIÈRE TENTATIVE
+ *
+ * Le premier correctif s'arrêtait ici : refuser quand l'adresse est inconnue,
+ * et la lire dans une variable de compilation (`VITE_AMN_WEB_URL`) sinon.
+ * C'était insuffisant pour deux raisons, et le bug est resté :
+ *
+ *   1. **il n'a jamais été fusionné** — la version livrée contenait encore
+ *      l'ancienne formule ;
+ *   2. **même fusionné, il n'aurait produit aucun lien** : rien dans la chaîne
+ *      de construction ne renseigne cette variable, donc l'application aurait
+ *      poliment refusé au lieu de fonctionner. Refuser n'est pas réparer.
+ *
+ * La source primaire est donc désormais LE SERVEUR, qui rend l'adresse complète
+ * avec le jeton (voir `CreatedCallLink.url`). Ce module ne sert plus que de
+ * repli pour le build web, où `window.location` EST une vraie adresse publique.
+ *
  * ## Pourquoi l'application ne peut pas le deviner
  *
  * L'adresse publique du build web n'est écrite nulle part dans le code : c'est
@@ -66,7 +82,6 @@ export function canBuildPublicLink(): boolean {
  * caché dans un journal : c'est Aaron qui construit ses builds.
  */
 export const PUBLIC_URL_MISSING =
-  'Cette application installée ne connaît pas l’adresse publique du site. Un lien fabriqué ici ' +
-  'pointerait vers un fichier local, que personne d’autre ne peut ouvrir. Reconstruisez le poste ' +
-  'avec VITE_AMN_WEB_URL=https://… (l’adresse de la version web), ou émettez le lien depuis la ' +
-  'version web.';
+  'Le lien a été créé, mais aucune adresse publique n’est configurée : impossible d’en faire une ' +
+  'adresse envoyable. Réglez APP_PUBLIC_URL sur amn-api (l’adresse de la version web, par exemple ' +
+  'https://app.amn-devsec.com) — une seule fois, et tous les postes en profitent.';
