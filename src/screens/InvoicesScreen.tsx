@@ -140,7 +140,7 @@ export function InvoicesScreen() {
   };
 
   return (
-    <section className="screen-h flex flex-col gap-4">
+    <section className={`flex flex-col gap-4 ${invoices.length === 0 ? '' : 'screen-h'}`}>
       <div className="flex items-end justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
@@ -246,7 +246,12 @@ export function InvoicesScreen() {
         ))}
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[320px_1fr]">
+      {/* Même correction que Projets : pas de colonne de détail sans sujet. */}
+      <div
+        className={`grid min-h-0 flex-1 gap-4 ${
+          invoices.length === 0 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-[320px_1fr]'
+        }`}
+      >
         {/*
           Sur téléphone la liste occupe tout l'écran et le détail vient
           par-dessus : une grille à une colonne empilerait un formulaire de
@@ -331,7 +336,7 @@ export function InvoicesScreen() {
             onPrint={() => setPrinting(selected)}
             onEditIdentity={() => setEditingIdentity(true)}
           />
-        ) : (
+        ) : invoices.length === 0 ? null : (
           <div className="hidden items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted md:flex">
             Sélectionnez une facture
           </div>

@@ -148,7 +148,7 @@ export function ClientsScreen() {
   };
 
   return (
-    <section className="screen-h flex flex-col gap-4">
+    <section className={`flex flex-col gap-4 ${clients.length === 0 ? '' : 'screen-h'}`}>
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-text-primary">

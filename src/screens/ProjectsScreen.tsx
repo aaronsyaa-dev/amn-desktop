@@ -89,7 +89,13 @@ export function ProjectsScreen() {
   };
 
   return (
-    <section className="screen-h flex flex-col gap-4">
+    /*
+      La hauteur pleine ne se justifie que s'il y a une liste à faire défiler
+      (BLOC A). `screen-h` force la section à occuper tout l'écran ; avec une
+      liste vide, ça produit un panneau bordé de 700 px contenant une phrase.
+      Sans liste, la section se dimensionne sur son contenu.
+    */
+    <section className={`flex flex-col gap-4 ${projects.length === 0 ? '' : 'screen-h'}`}>
       <div className="flex items-end justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">Projets</h1>
@@ -135,7 +141,25 @@ export function ProjectsScreen() {
         ))}
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[340px_1fr]">
+      {/*
+        LA COLONNE DE DÉTAIL DISPARAÎT QUAND IL N'Y A RIEN À DÉTAILLER (BLOC A).
+
+        C'est le vide le plus grand de toute l'application, et il ne venait
+        d'aucun « état vide » : il venait de la MISE EN PAGE. Une grille
+        maître/détail réserve les deux tiers de l'écran au détail, même quand la
+        liste est vide — et on se retrouve devant 900 × 700 px de rien portant
+        « SÉLECTIONNEZ UN PROJET », c'est-à-dire une consigne impossible à
+        suivre puisqu'il n'y a rien à sélectionner.
+
+        Liste vide → une seule colonne, la largeur d'une colonne de lecture. Le
+        détail revient à la seconde où un premier projet existe. Rien n'est
+        ajouté ; une colonne est retirée quand elle n'a pas de sujet.
+      */}
+      <div
+        className={`grid min-h-0 flex-1 gap-4 ${
+          projects.length === 0 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-[340px_1fr]'
+        }`}
+      >
         <div
           className={`min-h-0 flex-col border border-border bg-surface ${
             selected ? 'hidden md:flex' : 'flex'
@@ -199,7 +223,7 @@ export function ProjectsScreen() {
               setSelectedId(null);
             }}
           />
-        ) : (
+        ) : projects.length === 0 ? null : (
           <div className="hidden items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted md:flex">
             Sélectionnez un projet
           </div>

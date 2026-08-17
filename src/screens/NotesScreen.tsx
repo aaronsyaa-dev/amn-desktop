@@ -69,7 +69,7 @@ export function NotesScreen() {
   };
 
   return (
-    <section className="screen-h flex flex-col gap-4">
+    <section className={`flex flex-col gap-4 ${notes.length === 0 ? '' : 'screen-h'}`}>
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-text-primary">Notes</h1>
@@ -115,7 +115,13 @@ export function NotesScreen() {
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[300px_1fr]">
+      {/* Même règle que Projets et Facturation : pas de colonne de détail
+          sans sujet (BLOC A). */}
+      <div
+        className={`grid min-h-0 flex-1 gap-4 ${
+          notes.length === 0 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-[300px_1fr]'
+        }`}
+      >
         {/* List */}
         <div className="flex min-h-0 flex-col border border-border bg-surface">
           <div className="border-b border-border p-3">
@@ -213,9 +219,9 @@ export function NotesScreen() {
             onTogglePin={() => togglePin(selected)}
             onRemove={() => removeNote(selected)}
           />
-        ) : (
+        ) : notes.length === 0 ? null : (
           <div className="flex items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted">
-            Sélectionnez ou créez une note
+            Sélectionnez une note
           </div>
         )}
       </div>
