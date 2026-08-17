@@ -130,6 +130,34 @@ export interface SupervisionState {
   sweeps: SupervisionSweep[];
 }
 
+/**
+ * Un lien de téléchargement de l'installeur Business (BLOC C).
+ *
+ * Émis pour une organisation, mais il ne vaut PAS comme justificatif : le jeton
+ * vit dans sa propre table côté serveur, jamais dans `sessions`, donc il
+ * n'ouvre aucune route authentifiée. C'est la même forme que les liens d'appel
+ * et les clés de commande.
+ */
+export interface DownloadLink {
+  token: string;
+  /** L'URL complète, fabriquée par le serveur : collable telle quelle. */
+  url: string;
+  expiresAt: string;
+  release: { version: string; filename: string; byteSize: number; sha256: string };
+}
+
+/** Une version publiée de l'édition Business. */
+export interface BusinessRelease {
+  id: string;
+  version: string;
+  platform: string;
+  filename: string;
+  byteSize: number;
+  sha256: string;
+  createdAt: string;
+  retiredAt: string | null;
+}
+
 /** Un compte d'une organisation cliente, tel que le rend la console. */
 export interface AdminOrgUser {
   id: string;
@@ -1877,6 +1905,16 @@ export interface AmnBridge {
       organizationPulse(orgId: string): Promise<OrgPulse>;
       /** L'état réel des rondes de supervision de fond (BLOC F). */
       supervision(): Promise<SupervisionState>;
+      /**
+       * Émet un lien de téléchargement de l'installeur Business.
+       *
+       * Rejette avec `code: 'no_release'` quand aucune version n'est publiée —
+       * volontairement, plutôt que de rendre un lien qui ne mènerait nulle part
+       * et qu'on enverrait à une cliente sans le savoir.
+       */
+      downloadLink(orgId?: string): Promise<DownloadLink>;
+      /** Les versions publiées, et laquelle est courante. */
+      releases(): Promise<{ releases: BusinessRelease[]; current: BusinessRelease | null }>;
     };
 
     /* --- Contexte client (session de support) --- */
@@ -2122,6 +2160,8 @@ export const IPC = {
   remoteAdminAccessLog: 'remote:adminAccessLog',
   remoteAdminOrgPulse: 'remote:adminOrgPulse',
   remoteAdminSupervision: 'remote:adminSupervision',
+  remoteAdminDownloadLink: 'remote:adminDownloadLink',
+  remoteAdminReleases: 'remote:adminReleases',
   remoteSupportEnter: 'remote:supportEnter',
   remoteSupportRestore: 'remote:supportRestore',
   remoteSupportLeave: 'remote:supportLeave',

@@ -32,6 +32,8 @@ import type {
   SslStatus,
   TrackerTier,
   OrgPulse,
+  DownloadLink,
+  BusinessRelease,
   SupervisionState,
 } from '../shared/api';
 
@@ -335,6 +337,19 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
     },
     async supervision(): Promise<SupervisionState> {
       return ctx.apiFetch<SupervisionState>('/v1/admin/supervision', { owner: true });
+    },
+    async downloadLink(orgId?: string): Promise<DownloadLink> {
+      return ctx.apiFetch<DownloadLink>('/v1/admin/download-links', {
+        owner: true,
+        method: 'POST',
+        body: JSON.stringify(orgId ? { orgId } : {}),
+      });
+    },
+    async releases(): Promise<{ releases: BusinessRelease[]; current: BusinessRelease | null }> {
+      return ctx.apiFetch<{ releases: BusinessRelease[]; current: BusinessRelease | null }>(
+        '/v1/admin/releases',
+        { owner: true },
+      );
     },
   },
 
