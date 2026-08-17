@@ -51,7 +51,7 @@ export function KnowledgeScreen() {
   };
 
   return (
-    <section className="screen-h flex flex-col gap-4">
+    <section className={`flex flex-col gap-4 ${docs.length === 0 ? '' : 'screen-h'}`}>
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-text-primary">Base de connaissances</h1>
@@ -69,7 +69,12 @@ export function KnowledgeScreen() {
         </button>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[280px_1fr]">
+      {/* Même règle : pas de colonne de détail sans sujet (BLOC A). */}
+      <div
+        className={`grid min-h-0 flex-1 gap-4 ${
+          docs.length === 0 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-[280px_1fr]'
+        }`}
+      >
         <div className="flex min-h-0 flex-col border border-border bg-surface">
           <div className="border-b border-border px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary">
             Documents
@@ -119,9 +124,9 @@ export function KnowledgeScreen() {
             onSave={(id, patch) => upsert('knowledge', id, { ...stripMeta(selected), ...patch })}
             onRemove={removeDoc}
           />
-        ) : (
+        ) : docs.length === 0 && ready ? null : (
           <div className="flex items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted">
-            {!ready ? 'Chargement…' : 'Sélectionnez ou créez un document'}
+            {!ready ? 'Chargement…' : 'Sélectionnez un document'}
           </div>
         )}
       </div>

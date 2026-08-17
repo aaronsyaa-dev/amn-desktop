@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { ChevronsUpDown } from 'lucide-react';
 import { useOrgContext } from '../../state/OrgContextContext';
+import { useOpenAtelier } from './useOpenAtelier';
 import { OrgAvatar } from './OrgAvatar';
 import { OrgSwitcher } from './OrgSwitcher';
-import { CreateOrgDialog } from './CreateOrgDialog';
 import { LogoMark } from '../Logo';
 
 /**
@@ -17,17 +17,31 @@ import { LogoMark } from '../Logo';
  * Elle ouvre le même sélecteur que la loupe du rail : un seul comportement à
  * connaître, quelle que soit la taille de l'écran.
  */
-export function OrgSwitchButton({ onNavigate }: { onNavigate?: () => void }) {
+export function OrgSwitchButton({
+  onNavigate,
+  /**
+   * Classes de la coquille hôte. Le tiroir mobile veut un bloc pleine largeur
+   * avec une marge basse ; la barre du haut veut un élément d'inline sans
+   * marge. Un seul composant, parce que deux sélecteurs d'organisation
+   * finiraient par diverger — et l'un des deux serait alors le mauvais.
+   */
+  className = 'mb-2 w-full',
+}: {
+  onNavigate?: () => void;
+  className?: string;
+}) {
   const { support } = useOrgContext();
+  const openAtelier = useOpenAtelier();
   const [switcherOpen, setSwitcherOpen] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
 
   return (
     <>
       <button
         type="button"
         onClick={() => setSwitcherOpen(true)}
-        className="mb-2 flex w-full items-center gap-2.5 rounded-xl border border-border bg-surface px-3 py-2 text-left transition-colors hover:border-border-strong"
+        aria-haspopup="dialog"
+        title="Changer d’organisation"
+        className={`flex max-w-[13rem] items-center gap-2.5 rounded-xl border border-border bg-surface px-3 py-2 text-left transition-colors hover:border-border-strong ${className}`}
       >
         {support ? (
           <OrgAvatar
@@ -63,9 +77,8 @@ export function OrgSwitchButton({ onNavigate }: { onNavigate?: () => void }) {
           setSwitcherOpen(false);
           onNavigate?.();
         }}
-        onCreate={() => setCreateOpen(true)}
+        onCreate={openAtelier}
       />
-      <CreateOrgDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </>
   );
 }

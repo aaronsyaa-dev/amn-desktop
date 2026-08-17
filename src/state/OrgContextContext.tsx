@@ -508,6 +508,22 @@ export function useOrgContext(): OrgContextValue {
 }
 
 /**
+ * Le contexte de support, ou `null` — sans exiger le fournisseur.
+ *
+ * Pour les écrans PARTAGÉS entre les deux éditions. `useOrgContext` lève quand
+ * le fournisseur manque, ce qui est juste pour les écrans internes (l'absence y
+ * serait un bug) mais faux ici : l'édition Business n'a pas de rail, pas de
+ * contexte client, et donc pas de fournisseur — sans que rien ne soit cassé.
+ *
+ * Un hook plutôt qu'un `try/catch` autour de `useOrgContext` : on ne peut pas
+ * appeler un hook conditionnellement, et attraper l'exception d'un hook laisse
+ * React dans un état qu'il n'a pas prévu.
+ */
+export function useSupportContext(): SupportContext | null {
+  return useContext(OrgContext)?.support ?? null;
+}
+
+/**
  * Initiales d'une organisation — le repli quand aucun logo n'est défini.
  * Deux lettres au maximum : au-delà, le cercle du rail devient illisible.
  */

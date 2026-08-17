@@ -23,6 +23,7 @@ import { SaveIndicator } from '../components/SaveIndicator';
 import { Markdown } from '../lib/markdown';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { relativeTime } from '../lib/time';
+import { EmptyState } from '../components/EmptyState';
 
 type ScopeFilter = 'all' | 'team' | 'personal';
 
@@ -68,7 +69,7 @@ export function NotesScreen() {
   };
 
   return (
-    <section className="screen-h flex flex-col gap-4">
+    <section className={`flex flex-col gap-4 ${notes.length === 0 ? '' : 'screen-h'}`}>
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-text-primary">Notes</h1>
@@ -114,7 +115,13 @@ export function NotesScreen() {
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[300px_1fr]">
+      {/* Même règle que Projets et Facturation : pas de colonne de détail
+          sans sujet (BLOC A). */}
+      <div
+        className={`grid min-h-0 flex-1 gap-4 ${
+          notes.length === 0 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-[300px_1fr]'
+        }`}
+      >
         {/* List */}
         <div className="flex min-h-0 flex-col border border-border bg-surface">
           <div className="border-b border-border p-3">
@@ -151,9 +158,28 @@ export function NotesScreen() {
             className="flex-1 divide-y divide-border/60 overflow-y-auto"
           >
             {visible.length === 0 ? (
-              <p className="px-4 py-6 font-mono text-xs text-text-muted">
-                {query || scope !== 'all' ? 'Aucune note ne correspond.' : 'Aucune note. Créez-en une.'}
-              </p>
+              /*
+                NOTES (BLOC A) — « Aucune note. Créez-en une. » disait le geste
+                sans l'offrir : le bouton de création est ailleurs, en haut. La
+                phrase porte maintenant l'action elle-même.
+              */
+              <div className="px-4">
+                {query || scope !== 'all' ? (
+                  <EmptyState quiet>Aucune note ne correspond.</EmptyState>
+                ) : (
+                  <EmptyState
+                    action={{
+                      // `startNew` et non `createNote` : la création seule
+                      // écrirait une note que l'écran n'ouvrirait pas, et on
+                      // resterait devant la même page vide.
+                      label: 'Nouvelle note personnelle',
+                      onClick: () => startNew('personal'),
+                    }}
+                  >
+                    Aucune note pour l’instant.
+                  </EmptyState>
+                )}
+              </div>
             ) : (
               visible.map((note) => (
                 <motion.button
@@ -193,9 +219,9 @@ export function NotesScreen() {
             onTogglePin={() => togglePin(selected)}
             onRemove={() => removeNote(selected)}
           />
-        ) : (
+        ) : notes.length === 0 ? null : (
           <div className="flex items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted">
-            Sélectionnez ou créez une note
+            Sélectionnez une note
           </div>
         )}
       </div>

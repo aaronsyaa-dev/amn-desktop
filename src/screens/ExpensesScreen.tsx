@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Plus, Receipt, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, SlidersHorizontal, X } from 'lucide-react';
 import { useExpenses } from '../state/useExpenses';
 import { useProjectPicker } from '../state/useProjects';
 import {
@@ -18,6 +18,7 @@ import { ExpenseForm } from '../components/expenses/ExpenseForm';
 import { BudgetPanel } from '../components/expenses/BudgetPanel';
 import { ProjectTag } from '../components/projects/ProjectPicker';
 import { staggerContainer, staggerItem } from '../lib/transitions';
+import { EmptyState, FirstRun } from '../components/EmptyState';
 
 /**
  * Dépenses — le module qui ne doit surtout pas ressembler à un tableur.
@@ -48,6 +49,10 @@ export function ExpensesScreen() {
   const {
     config,
     saveConfig,
+    // La liste COMPLÈTE, et pas seulement celle du mois : elle distingue
+    // « module jamais utilisé » de « rien ce mois-ci », qui n'appellent pas le
+    // même écran vide.
+    expenses,
     ofMonth,
     monthsWithData,
     createExpense,
@@ -186,17 +191,30 @@ export function ExpensesScreen() {
       )}
 
       {visible.length === 0 ? (
-        <div className="border border-border bg-surface p-8 text-center">
-          <Receipt size={22} strokeWidth={1.5} className="mx-auto text-text-muted" />
-          <p className="mt-2 text-sm text-text-secondary">
+        /*
+          DÉPENSES (BLOC A) — une boîte centrée de 8 rem, une icône et deux
+          phrases pour dire qu'il n'y a rien. Le vide occupait la surface d'un
+          contenu. Deux cas distincts, deux traitements :
+          « jamais utilisé » explique le module ; « rien ce mois-ci » ne dit
+          qu'une ligne, parce qu'il n'y a rien à expliquer.
+        */
+        expenses.length === 0 ? (
+          <FirstRun
+            title="Suivre ce que vous sortez"
+            action={{ label: 'Saisir une dépense', onClick: () => setFormOpen(true) }}
+          >
+            Montant, catégorie, photo du reçu — trois gestes. Les dépenses saisies ici alimentent
+            la synthèse du mois et les calculateurs de marge.
+          </FirstRun>
+        ) : (
+          <EmptyState
+            action={{ label: 'Saisir une dépense', onClick: () => setFormOpen(true) }}
+          >
             {monthExpenses.length === 0
               ? 'Rien de dépensé sur ce mois.'
               : 'Aucune dépense dans cette catégorie.'}
-          </p>
-          <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-text-muted">
-            Montant, catégorie, photo du reçu — trois gestes
-          </p>
-        </div>
+          </EmptyState>
+        )
       ) : (
         <motion.div
           variants={staggerContainer}

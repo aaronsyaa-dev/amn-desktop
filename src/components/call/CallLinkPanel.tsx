@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Copy, Link2, Loader2, MessageSquare, Trash2, X } from 'lucide-react';
 import { bridge } from '../../lib/bridge';
+import { PUBLIC_URL_MISSING, publicOrigin } from '../../lib/publicUrl';
 import { cleanErrorMessage } from '../../lib/errorMessage';
 import { callInvitationMessage } from '../../lib/callInvite';
 import type { CallLink } from '../../shared/api';
@@ -28,10 +29,35 @@ const DURATIONS = [
   { minutes: 120, label: '2 h' },
 ];
 
-/** L'adresse à envoyer au prospect. */
-function linkUrl(token: string): string {
-  const { origin, pathname } = window.location;
-  return `${origin}${pathname}#/appel?token=${encodeURIComponent(token)}`;
+/**
+ * L'adresse à envoyer au prospect, ou `null` si le poste n'en connaît aucune.
+ *
+ * Elle se fabriquait avec `window.location.origin`, ce qui vaut `file://` dans
+ * l'application INSTALLÉE — donc un chemin sur la machine d'Aaron, inutilisable
+ * par qui que ce soit d'autre. Voir src/lib/publicUrl.ts pour le diagnostic
+ * complet. On rend `null` plutôt qu'un lien faux : un lien faux s'envoie, et
+ * personne ne comprend pourquoi il ne marche pas.
+ */
+function linkUrl(token: string): string | null {
+  const origin = publicOrigin();
+  if (!origin) return null;
+  return `${origin}/#/appel?token=${encodeURIComponent(token)}`;
+}
+
+/**
+ * L'adresse à envoyer, dans l'ordre où on peut lui faire confiance.
+ *
+ *   1. CELLE DU SERVEUR. Il est configuré une fois (`APP_PUBLIC_URL`) et
+ *      répond à tous les postes ; c'est la seule source qui ne dépende pas de
+ *      la façon dont l'installeur a été construit.
+ *   2. À défaut, celle du poste — mais UNIQUEMENT si c'est une vraie adresse
+ *      web, ce qui est le cas du build web et jamais celui de l'application
+ *      installée.
+ *   3. Sinon rien, et on explique. Une adresse fausse s'envoie et personne ne
+ *      comprend pourquoi elle ne marche pas.
+ */
+function sendableUrl(created: { token: string; url: string | null }): string | null {
+  return created.url ?? linkUrl(created.token);
 }
 
 function remaining(expiresAt: string): string {
@@ -69,7 +95,15 @@ export function CallLinkPanel({ onClose }: { onClose: () => void }) {
     setCopied(null);
     try {
       const created = await bridge().remote.callLinks.create({ label: label.trim(), minutes });
-      setFresh({ url: linkUrl(created.token), expiresAt: created.expiresAt });
+      /*
+        On ne peut plus refuser AVANT d'appeler : c'est la réponse du serveur qui
+        porte l'adresse. Le jeton est donc bien créé, et s'il n'y a aucune adresse
+        connue on le dit — le lien reste révocable dans la liste juste en dessous,
+        donc rien n'est laissé en suspens.
+      */
+      const url = sendableUrl(created);
+      if (!url) throw new Error(PUBLIC_URL_MISSING);
+      setFresh({ url, expiresAt: created.expiresAt });
       setLabel('');
       await refresh();
     } catch (err) {

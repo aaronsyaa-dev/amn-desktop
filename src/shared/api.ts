@@ -130,6 +130,34 @@ export interface SupervisionState {
   sweeps: SupervisionSweep[];
 }
 
+/**
+ * Un lien de téléchargement de l'installeur Business (BLOC C).
+ *
+ * Émis pour une organisation, mais il ne vaut PAS comme justificatif : le jeton
+ * vit dans sa propre table côté serveur, jamais dans `sessions`, donc il
+ * n'ouvre aucune route authentifiée. C'est la même forme que les liens d'appel
+ * et les clés de commande.
+ */
+export interface DownloadLink {
+  token: string;
+  /** L'URL complète, fabriquée par le serveur : collable telle quelle. */
+  url: string;
+  expiresAt: string;
+  release: { version: string; filename: string; byteSize: number; sha256: string };
+}
+
+/** Une version publiée de l'édition Business. */
+export interface BusinessRelease {
+  id: string;
+  version: string;
+  platform: string;
+  filename: string;
+  byteSize: number;
+  sha256: string;
+  createdAt: string;
+  retiredAt: string | null;
+}
+
 /** Un compte d'une organisation cliente, tel que le rend la console. */
 export interface AdminOrgUser {
   id: string;
@@ -156,12 +184,18 @@ export interface CreateOrganizationInput {
 export interface CreateOrganizationResult {
   organization: AdminOrganization;
   owner: { id: string; email: string; role: string; status: string } | null;
-  invitation: { token: string; expiresAt: string } | null;
+  /**
+   * `url` est l'adresse complète d'activation, composée PAR LE SERVEUR.
+   * `null` quand aucune adresse publique n'est configurée (APP_PUBLIC_URL) —
+   * le poste ne la fabrique jamais, il ne connaît que `file://` une fois
+   * installé. Le jeton reste rendu à côté, pour qui saurait le coller ailleurs.
+   */
+  invitation: { token: string; url: string | null; expiresAt: string } | null;
 }
 
 export interface OrgInvitationResult {
   user: AdminOrgUser;
-  invitation: { token: string; expiresAt: string };
+  invitation: { token: string; url: string | null; expiresAt: string };
 }
 
 export interface TempPasswordResult {
@@ -1366,6 +1400,15 @@ export interface CallLink {
 export interface CreatedCallLink {
   id: string;
   token: string;
+  /**
+   * L'adresse complète à envoyer, composée PAR LE SERVEUR.
+   *
+   * `null` quand aucune adresse publique n'est configurée côté serveur
+   * (`APP_PUBLIC_URL`). Le poste ne la fabrique jamais lui-même : installé, il
+   * ne connaît que `file://`, et une adresse composée là-bas donne un chemin
+   * sur la machine de qui l'émet — le défaut exact observé en v1.2.27.
+   */
+  url: string | null;
   expiresAt: string;
   label: string;
 }
@@ -1794,6 +1837,15 @@ export interface AmnBridge {
      * elle-même — la promesse de transparence du site, rendue vérifiable.
      */
     accessLog(): Promise<OrgAccessRecord[]>;
+    /**
+     * Règle l'apparence de MON organisation (BLOC C).
+     *
+     * Distincte de `admin.updateOrganization`, et c'est tout l'intérêt : celle-ci
+     * est appelée par la cliente sur sa PROPRE organisation, celle-là par AMN
+     * DevSec sur celle d'autrui. La couleur appartient à la cliente ; le
+     * générateur ne fait que proposer un point de départ.
+     */
+    setOrganizationAccent(accent: string | null): Promise<OrgIdentity>;
 
     /* --- Scanner --- */
     /**
@@ -1877,6 +1929,16 @@ export interface AmnBridge {
       organizationPulse(orgId: string): Promise<OrgPulse>;
       /** L'état réel des rondes de supervision de fond (BLOC F). */
       supervision(): Promise<SupervisionState>;
+      /**
+       * Émet un lien de téléchargement de l'installeur Business.
+       *
+       * Rejette avec `code: 'no_release'` quand aucune version n'est publiée —
+       * volontairement, plutôt que de rendre un lien qui ne mènerait nulle part
+       * et qu'on enverrait à une cliente sans le savoir.
+       */
+      downloadLink(orgId?: string): Promise<DownloadLink>;
+      /** Les versions publiées, et laquelle est courante. */
+      releases(): Promise<{ releases: BusinessRelease[]; current: BusinessRelease | null }>;
     };
 
     /* --- Contexte client (session de support) --- */
@@ -2084,6 +2146,7 @@ export const IPC = {
   remoteListSessions: 'remote:listSessions',
   remoteRevokeSession: 'remote:revokeSession',
   remoteAccessLog: 'remote:accessLog',
+  remoteSetOrgAccent: 'remote:setOrgAccent',
   remoteGetPresence: 'remote:getPresence',
   /** Push channels (main -> renderer via webContents.send, not invoke/handle). */
   remoteStartScan: 'remote:startScan',
@@ -2122,6 +2185,8 @@ export const IPC = {
   remoteAdminAccessLog: 'remote:adminAccessLog',
   remoteAdminOrgPulse: 'remote:adminOrgPulse',
   remoteAdminSupervision: 'remote:adminSupervision',
+  remoteAdminDownloadLink: 'remote:adminDownloadLink',
+  remoteAdminReleases: 'remote:adminReleases',
   remoteSupportEnter: 'remote:supportEnter',
   remoteSupportRestore: 'remote:supportRestore',
   remoteSupportLeave: 'remote:supportLeave',

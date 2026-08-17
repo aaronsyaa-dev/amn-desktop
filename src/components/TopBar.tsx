@@ -5,6 +5,7 @@ import { useCommandPalette } from './command-palette/CommandPalette';
 import { NotificationCenter } from './NotificationCenter';
 import { HelpButton } from './HelpOverlay';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
+import { OrgSwitchButton } from './org-rail/OrgSwitchButton';
 import { UserAvatar } from './UserAvatar';
 import { useAssistant } from '../assistant/AssistantContext';
 import { useAuth } from '../auth/AuthContext';
@@ -50,6 +51,23 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
           cliente. Le bandeau de contexte client reste au-dessus, non masquable :
           celui-ci ne le remplace pas, il couvre le cas « je suis chez moi ». */}
       <MobileActiveOrg />
+
+      {/*
+        LE SÉLECTEUR D'ORGANISATION, NOMMÉ (BLOC D).
+
+        Il n'existait sur bureau QUE dans le rail : une colonne de 72 px
+        d'avatars ronds, sans un mot, dont le libellé n'apparaît qu'au survol.
+        Aaron ne l'a pas trouvé en usage réel, et c'est un échec de
+        découvrabilité, pas d'attention : une icône sans texte n'est trouvable
+        que par quelqu'un qui sait déjà qu'elle existe.
+
+        Il est donc AUSSI ici, en toutes lettres, à l'endroit où l'on regarde
+        pour savoir « où suis-je » — en tête de la barre du haut. Le rail reste
+        le chemin rapide pour qui le connaît ; celui-ci est le chemin
+        découvrable. Ce n'est pas une décoration ajoutée : c'est le même geste,
+        rendu nommable.
+      */}
+      <OrgSwitchButton className="hidden md:flex" />
 
       {/* Desktop: full search field with Ctrl/⌘ K hint. */}
       <button

@@ -134,6 +134,8 @@ export const exclusivePreload: ExclusiveRemote = {
     accessLog: (opts) => ipcRenderer.invoke(IPC.remoteAdminAccessLog, opts ?? {}),
     organizationPulse: (orgId) => ipcRenderer.invoke(IPC.remoteAdminOrgPulse, orgId),
     supervision: () => ipcRenderer.invoke(IPC.remoteAdminSupervision),
+    downloadLink: (orgId) => ipcRenderer.invoke(IPC.remoteAdminDownloadLink, orgId),
+    releases: () => ipcRenderer.invoke(IPC.remoteAdminReleases),
   },
   support: {
     enter: (orgId) => ipcRenderer.invoke(IPC.remoteSupportEnter, orgId),

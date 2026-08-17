@@ -12,8 +12,9 @@ import { CONFIGURABLE_MODULES, TRADE_PROFILES, tradeProfileById } from '../data/
 import { calcProfileById } from '../state/calcProfiles';
 import { RangeControl } from '../components/generator/RangeControl';
 import { LivePreview } from '../components/generator/LivePreview';
+import { handoverMessage } from '../lib/handoverMessage';
 import { OrgAvatar } from '../components/org-rail/OrgAvatar';
-import type { OrgPlan } from '../shared/api';
+import type { DownloadLink, OrgPlan } from '../shared/api';
 
 /**
  * L'ATELIER — la création d'un espace de travail sur mesure (BLOC C)
@@ -88,6 +89,7 @@ export function GeneratorScreen() {
   const [handover, setHandover] = React.useState<Handover>('password');
 
   const [busy, setBusy] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [result, setResult] = React.useState<{
     orgId: string;
@@ -97,6 +99,9 @@ export function GeneratorScreen() {
     kind: Handover;
     expiresAt?: string;
     partial: string | null;
+    /** Le lien d'installeur, ou la raison pour laquelle il n'y en a pas. */
+    download: DownloadLink | null;
+    downloadProblem: string | null;
   } | null>(null);
 
   const profile = profileId ? tradeProfileById(profileId) : undefined;
@@ -182,6 +187,30 @@ export function GeneratorScreen() {
         );
       }
 
+      /*
+        LE LIEN D'INSTALLEUR, DANS LE MÊME GESTE (BLOC C).
+
+        C'est le point qui manquait : Aaron validait, l'organisation existait, et
+        il n'avait toujours rien à envoyer pour installer l'application. Le lien
+        est émis ICI, pas sur un écran séparé, parce que « créer une cliente » et
+        « lui donner de quoi démarrer » sont un seul geste dans sa tête.
+
+        Un échec n'annule RIEN : l'organisation et l'accès existent déjà et
+        valent d'être remis. Le cas le plus courant — aucune version publiée —
+        n'est même pas une panne, c'est un état normal tant qu'aucun `.exe` n'a
+        été construit. On le dit, on ne le cache pas derrière un lien mort.
+      */
+      let download: DownloadLink | null = null;
+      let downloadProblem: string | null = null;
+      try {
+        download = await bridge().remote.admin.downloadLink(created.organization.id);
+      } catch (err) {
+        downloadProblem = cleanErrorMessage(
+          err,
+          'Le lien de téléchargement n’a pas pu être émis.',
+        );
+      }
+
       if (handover === 'password') {
         const reset = await bridge().remote.admin.resetPassword(
           created.organization.id,
@@ -194,6 +223,8 @@ export function GeneratorScreen() {
           secret: reset.password,
           kind: 'password',
           partial,
+          download,
+          downloadProblem,
         });
       } else {
         if (!created.invitation) throw new Error('Aucun lien d’activation n’a été émis.');
@@ -201,10 +232,15 @@ export function GeneratorScreen() {
           orgId: created.organization.id,
           orgName: created.organization.name,
           email: trimmedEmail,
-          secret: created.invitation.token,
+          // Le LIEN quand le serveur en connaît un, le jeton sinon. Un jeton nu
+          // ne se colle nulle part : la cliente ne sait pas de quelle page il
+          // s'agit, et c'est le même défaut que le lien d'appel en `file://`.
+          secret: created.invitation.url ?? created.invitation.token,
           kind: 'invitation',
           expiresAt: created.invitation.expiresAt,
           partial,
+          download,
+          downloadProblem,
         });
       }
       setStep('remise');
@@ -575,6 +611,118 @@ export function GeneratorScreen() {
                   amn-api n’en garde que l’empreinte : quitter cet écran le perd définitivement.
                   Si c’est perdu, il faudra en réémettre un depuis le dossier de l’organisation.
                 </p>
+              </section>
+
+              {/*
+                LE GESTE SUIVANT, ÉCRIT (BLOC F).
+
+                Deux liens à l'écran ne disent pas quoi en faire. Le retour était
+                sans ambiguïté : « je ne comprends toujours pas concrètement
+                comment envoyer un desktop à un client ». Cet écran commence donc
+                par nommer l'action attendue, et donne le message tout fait —
+                exactement ce qui avait résolu le même problème pour le lien
+                d'appel.
+              */}
+              <section className="panel panel-ticks p-5">
+                <p className="eyebrow mb-2">Ce qu’il reste à faire</p>
+                <p className="mb-4 max-w-xl text-[13px] leading-relaxed text-text-secondary">
+                  Copiez le message ci-dessous et envoyez-le à votre cliente, par courriel ou par
+                  message. Il contient l’installateur, son identifiant et son accès, dans l’ordre
+                  où elle doit s’en servir. Vous n’avez rien d’autre à préparer.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard
+                      ?.writeText(
+                        handoverMessage({
+                          orgName: result.orgName,
+                          email: result.email,
+                          secret: result.secret,
+                          kind: result.kind,
+                          expiresAt: result.expiresAt,
+                          download: result.download
+                            ? {
+                                url: result.download.url,
+                                version: result.download.release.version,
+                                byteSize: result.download.release.byteSize,
+                              }
+                            : null,
+                        }),
+                      )
+                      .then(() => {
+                        setCopied(true);
+                        window.setTimeout(() => setCopied(false), 2400);
+                      });
+                  }}
+                  className="flex items-center gap-2 bg-accent px-4 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
+                >
+                  {copied ? <Check size={15} strokeWidth={2.5} /> : <Copy size={15} strokeWidth={2} />}
+                  {copied ? 'Message copié' : 'Copier le message pour la cliente'}
+                </button>
+                {!result.download && (
+                  <p className="mt-3 max-w-xl text-[11px] leading-relaxed text-text-muted">
+                    Aucune version n’étant publiée, le message ne contiendra que l’accès au compte —
+                    la cliente pourra travailler depuis la version web en attendant.
+                  </p>
+                )}
+              </section>
+
+              {/* ─────────── Le détail des deux liens, pour qui veut les relire ─────────── */}
+              <section className="panel p-5">
+                <p className="eyebrow mb-3">Installeur Windows</p>
+                {result.download ? (
+                  <>
+                    <p className="mb-4 text-[13px] text-text-secondary">
+                      Version{' '}
+                      <span className="text-text-primary">{result.download.release.version}</span> ·{' '}
+                      {(result.download.release.byteSize / 1024 / 1024).toFixed(1)} Mo · lien valable
+                      jusqu’au{' '}
+                      {new Date(result.download.expiresAt).toLocaleDateString('fr-FR')}.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <code className="min-w-0 flex-1 overflow-x-auto border border-border bg-bg px-3 py-2.5 font-mono text-[12px] text-text-primary">
+                        {result.download.url}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => void navigator.clipboard?.writeText(result.download?.url ?? '')}
+                        className="flex flex-shrink-0 items-center gap-1.5 border border-border-strong px-3 py-2.5 font-mono text-[10px] uppercase tracking-wider text-text-primary transition-colors hover:bg-surface-hover"
+                      >
+                        <Copy size={12} strokeWidth={2} />
+                        Copier
+                      </button>
+                    </div>
+                    {/* L'empreinte n'est pas un ornement : elle permet à la
+                        cliente de vérifier que l'octet reçu est bien le nôtre,
+                        sans avoir à nous redemander quoi que ce soit. */}
+                    <p className="mt-3 break-all font-mono text-[10px] leading-relaxed text-text-muted">
+                      SHA-256 · {result.download.release.sha256}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="mb-3 text-[13px] leading-relaxed text-text-secondary">
+                      {result.downloadProblem ?? 'Aucun lien n’a pu être émis.'}
+                    </p>
+                    {/*
+                      L'application Business est la MÊME pour toutes les
+                      clientes : elle apprend son organisation, ses modules et sa
+                      couleur à la connexion. Il n'y a donc pas d'installeur à
+                      produire par cliente — un seul par version, et autant de
+                      liens qu'on a de clientes. Le dire ici évite de chercher
+                      un bouton « générer » qui n'a pas lieu d'exister.
+                    */}
+                    <p className="text-[11px] leading-relaxed text-text-muted">
+                      L’application Business est la même pour toutes vos clientes : elle apprend son
+                      organisation à la connexion. Il n’y a donc rien à générer par cliente — une
+                      version publiée suffit, et chaque cliente en reçoit un lien.
+                      <br />
+                      Sur une machine Windows : <span className="text-text-secondary">npm run make:business</span>,
+                      puis <span className="text-text-secondary">npm run publish:release</span>.
+                    </p>
+                  </>
+                )}
               </section>
 
               <div className="flex flex-wrap gap-2">

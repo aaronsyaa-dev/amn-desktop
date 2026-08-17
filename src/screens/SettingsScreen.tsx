@@ -24,9 +24,14 @@ const ABOUT_TAGLINE = IS_BUSINESS
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { CHANGELOG } from '../data/changelog';
 import { DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs } from '../shared/api';
+import { AccentSection } from '../components/settings/AccentSection';
+import { useSupportContext } from '../state/OrgContextContext';
 
 export function SettingsScreen() {
   const { user, org } = useAuth();
+  // `support` vaut null hors contexte client. Lu ici plutôt que dans la section
+  // elle-même : c'est l'écran qui sait dans quel contexte il est monté.
+  const support = useSupportContext();
 
   if (!user) return null;
 
@@ -50,6 +55,27 @@ export function SettingsScreen() {
       <StaggerItem>
         <NotificationsSection email={user.email} />
       </StaggerItem>
+      {/*
+        LA COULEUR APPARTIENT À L'ORGANISATION QUI L'UTILISE (BLOC C).
+
+        Masquée pendant une session de support : un opérateur d'AMN DevSec ne
+        choisit pas l'identité visuelle d'une cliente à sa place. S'il faut
+        l'aider, il le fait depuis le dossier interne, où le geste est tracé —
+        et le serveur refuse de toute façon cette route à une session de support.
+
+        Réservée aussi à qui peut engager l'organisation : c'est un réglage
+        d'organisation, pas de profil. Le serveur tranche (403 pour un simple
+        membre) ; l'écran évite seulement de proposer un geste voué au refus.
+      */}
+      {/* Le rôle n'est pas porté par le profil local : c'est le SERVEUR qui
+          tranche (403 pour un simple membre). L'écran propose donc le réglage,
+          et relaie le refus si l'organisation ne l'y autorise pas — plutôt que
+          de deviner un rôle qu'il n'a pas. */}
+      {!support && (
+        <StaggerItem>
+          <AccentSection />
+        </StaggerItem>
+      )}
       {/*
         Sécurité du compte : appareils connectés et journal d'accès.
 

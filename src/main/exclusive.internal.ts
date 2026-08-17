@@ -6,6 +6,8 @@ import {
   type CreateOrganizationResult,
   type OrgAccessEntry,
   type OrgPulse,
+  type DownloadLink,
+  type BusinessRelease,
   type SupervisionState,
   type OrgIdentity,
   type OrgInvitationResult,
@@ -312,6 +314,21 @@ const adminApi = {
   async supervision(): Promise<SupervisionState> {
     return apiFetch<SupervisionState>('/v1/admin/supervision', { owner: true });
   },
+
+  async downloadLink(orgId?: string): Promise<DownloadLink> {
+    return apiFetch<DownloadLink>('/v1/admin/download-links', {
+      owner: true,
+      method: 'POST',
+      body: JSON.stringify(orgId ? { orgId } : {}),
+    });
+  },
+
+  async releases(): Promise<{ releases: BusinessRelease[]; current: BusinessRelease | null }> {
+    return apiFetch<{ releases: BusinessRelease[]; current: BusinessRelease | null }>(
+      '/v1/admin/releases',
+      { owner: true },
+    );
+  },
 };
 
 /** Le contexte décrit par amn-api lui-même, pas par l'app. */
@@ -484,6 +501,10 @@ export function registerExclusiveIpc(
     adminApi.organizationPulse(orgId),
   );
   ipcMain.handle(IPC.remoteAdminSupervision, () => adminApi.supervision());
+  ipcMain.handle(IPC.remoteAdminDownloadLink, (_event, orgId?: string) =>
+    adminApi.downloadLink(orgId),
+  );
+  ipcMain.handle(IPC.remoteAdminReleases, () => adminApi.releases());
   ipcMain.handle(IPC.remoteSupportEnter, (_event, orgId: string) => support.enter(orgId));
   ipcMain.handle(IPC.remoteSupportRestore, (_event, token: string) => support.restore(token));
   ipcMain.handle(IPC.remoteSupportLeave, (_event, token: string) => support.leave(token));

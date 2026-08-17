@@ -87,7 +87,7 @@ export function VaultScreen() {
   };
 
   return (
-    <section className="screen-h flex flex-col gap-4">
+    <section className={`flex flex-col gap-4 ${entries.length === 0 ? '' : 'screen-h'}`}>
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
@@ -163,7 +163,14 @@ export function VaultScreen() {
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,20rem)_1fr]">
+      {/* Même règle : pas de colonne de détail sans sujet (BLOC A). */}
+      <div
+        className={`grid min-h-0 flex-1 gap-4 ${
+          entries.length === 0
+            ? 'grid-cols-1'
+            : 'grid-cols-1 lg:grid-cols-[minmax(0,20rem)_1fr]'
+        }`}
+      >
         {/* List — full width on mobile until a detail is opened. */}
         <div
           className={`min-h-0 flex-col overflow-y-auto rounded-lg border border-border bg-surface ${

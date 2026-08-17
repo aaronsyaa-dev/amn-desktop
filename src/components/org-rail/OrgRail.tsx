@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, PlugZap, Search } from 'lucide-react';
 import { useOrgContext } from '../../state/OrgContextContext';
+import { useOpenAtelier } from './useOpenAtelier';
 import { useAuth } from '../../auth/AuthContext';
 import { LogoMark } from '../Logo';
 import { OrgAvatar } from './OrgAvatar';
 import { OrgSwitcher } from './OrgSwitcher';
-import { CreateOrgDialog } from './CreateOrgDialog';
 
 const RAIL_WIDTH = 64;
 const TRANSITION = { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const };
@@ -25,6 +25,7 @@ const TRANSITION = { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const };
  * on parcourt la colonne ; à trois cents, on cherche — les deux gestes sont là.
  */
 export function OrgRail() {
+  const openAtelier = useOpenAtelier();
   const {
     organizations,
     support,
@@ -39,7 +40,6 @@ export function OrgRail() {
   } = useOrgContext();
   const { sessionKind } = useAuth();
   const [switcherOpen, setSwitcherOpen] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
   // Le rail continue de se remplir sur une session locale : la liste des
   // organisations part avec le jeton partagé du poste, qui a le droit de la
   // lire. C'est bien pour ça que l'état passait inaperçu — tout avait l'air
@@ -188,7 +188,7 @@ export function OrgRail() {
           <RailButton label="Chercher une organisation" hint="⇧ ⌘ O" onClick={() => setSwitcherOpen(true)} small>
             <Search size={17} strokeWidth={1.75} />
           </RailButton>
-          <RailButton label="Créer une organisation cliente" onClick={() => setCreateOpen(true)} small dashed>
+          <RailButton label="Créer une organisation cliente" onClick={openAtelier} small dashed>
             <Plus size={18} strokeWidth={2} />
           </RailButton>
         </div>
@@ -197,9 +197,8 @@ export function OrgRail() {
       <OrgSwitcher
         open={switcherOpen}
         onClose={() => setSwitcherOpen(false)}
-        onCreate={() => setCreateOpen(true)}
+        onCreate={openAtelier}
       />
-      <CreateOrgDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </>
   );
 }

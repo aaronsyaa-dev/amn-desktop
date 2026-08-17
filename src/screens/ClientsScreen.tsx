@@ -32,6 +32,7 @@ import type {
   QuoteStatus,
   UpdateClientInput,
 } from '../shared/api';
+import { FirstRun } from '../components/EmptyState';
 
 const STATUS_META: Record<
   ClientStatus,
@@ -147,7 +148,7 @@ export function ClientsScreen() {
   };
 
   return (
-    <section className="screen-h flex flex-col gap-4">
+    <section className={`flex flex-col gap-4 ${clients.length === 0 ? '' : 'screen-h'}`}>
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-text-primary">
@@ -189,8 +190,24 @@ export function ClientsScreen() {
             onRemoveClient={removeClient}
           />
         ) : (
-          <div className="flex items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted">
-            {loading ? 'Chargement…' : 'Aucun client'}
+          /*
+            CLIENTS (BLOC A) — « AUCUN CLIENT » en capitales monospace, centré
+            dans un panneau qui occupait toute la colonne de détail. Le vide
+            avait la taille et le poids d'une fiche client remplie. Il devient
+            une ligne, et il dit ce que l'écran sert à faire.
+          */
+          <div className="p-4">
+            {loading ? (
+              <p className="eyebrow">Chargement…</p>
+            ) : (
+              <FirstRun
+                title="Aucune fiche client"
+                action={{ label: 'Créer une fiche', onClick: () => setAdding(true) }}
+              >
+                Une fiche rassemble les coordonnées, les échanges, les devis et l’état des
+                paiements. C’est le point de rattachement de la facturation.
+              </FirstRun>
+            )}
           </div>
         )}
       </div>
