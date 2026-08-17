@@ -23,6 +23,7 @@ import { SaveIndicator } from '../components/SaveIndicator';
 import { Markdown } from '../lib/markdown';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { relativeTime } from '../lib/time';
+import { EmptyState } from '../components/EmptyState';
 
 type ScopeFilter = 'all' | 'team' | 'personal';
 
@@ -151,9 +152,28 @@ export function NotesScreen() {
             className="flex-1 divide-y divide-border/60 overflow-y-auto"
           >
             {visible.length === 0 ? (
-              <p className="px-4 py-6 font-mono text-xs text-text-muted">
-                {query || scope !== 'all' ? 'Aucune note ne correspond.' : 'Aucune note. Créez-en une.'}
-              </p>
+              /*
+                NOTES (BLOC A) — « Aucune note. Créez-en une. » disait le geste
+                sans l'offrir : le bouton de création est ailleurs, en haut. La
+                phrase porte maintenant l'action elle-même.
+              */
+              <div className="px-4">
+                {query || scope !== 'all' ? (
+                  <EmptyState quiet>Aucune note ne correspond.</EmptyState>
+                ) : (
+                  <EmptyState
+                    action={{
+                      // `startNew` et non `createNote` : la création seule
+                      // écrirait une note que l'écran n'ouvrirait pas, et on
+                      // resterait devant la même page vide.
+                      label: 'Nouvelle note personnelle',
+                      onClick: () => startNew('personal'),
+                    }}
+                  >
+                    Aucune note pour l’instant.
+                  </EmptyState>
+                )}
+              </div>
             ) : (
               visible.map((note) => (
                 <motion.button

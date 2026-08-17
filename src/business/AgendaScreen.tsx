@@ -359,17 +359,41 @@ function WeekView({
   onPick: (id: string) => void;
   onCreate: (date: Date) => void;
 }) {
+  const days = weekDays(anchor);
+  const lists = days.map((day) => byDay.get(dayKey(day)) ?? []);
+  const total = lists.reduce((sum, list) => sum + list.length, 0);
+  const freeDays = lists.filter((list) => list.length === 0).length;
+
+  /*
+    UNE LIGNE POUR LA SEMAINE, À LA PLACE DE SEPT ABSENCES.
+
+    « Rien de prévu » répété sept fois n'apprend rien et pèse beaucoup. Une
+    phrase à l'échelle de la SEMAINE apprend quelque chose : combien de
+    rendez-vous, et combien de jours restent libres. C'est la même information
+    que sept absences, dite une fois et de façon utilisable.
+
+    Elle est calculée sur les rendez-vous affichés, à chaque rendu — comme tous
+    les relevés de cette refonte.
+  */
+  const résumé =
+    total === 0
+      ? 'Semaine libre — sept jours ouverts.'
+      : `${total} rendez-vous cette semaine${freeDays > 0 ? ` · ${freeDays} jour${freeDays > 1 ? 's' : ''} libre${freeDays > 1 ? 's' : ''}` : ' · aucun jour libre'}`;
+
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-7">
-      {weekDays(anchor).map((day) => (
-        <DayColumn
-          key={dayKey(day)}
-          day={day}
-          appointments={byDay.get(dayKey(day)) ?? []}
-          onPick={onPick}
-          onCreate={onCreate}
-        />
-      ))}
+    <div className="flex flex-col gap-3">
+      <p className="eyebrow">{résumé}</p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-7">
+        {days.map((day, index) => (
+          <DayColumn
+            key={dayKey(day)}
+            day={day}
+            appointments={lists[index]}
+            onPick={onPick}
+            onCreate={onCreate}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -398,6 +422,36 @@ function DayView({
   );
 }
 
+/**
+ * UNE COLONNE DE JOUR, ET LE VIDE (BLOC A)
+ *
+ * Le défaut signalé, mot pour mot : « une semaine avec sept colonnes "Rien de
+ * prévu" côte à côte donne une impression de vide anxiogène, pas de calme ».
+ * Il était exact, et il venait de trois choix qui, chacun isolément, semblaient
+ * raisonnables :
+ *
+ *   1. chaque jour était une CARTE — bordure, fond, hauteur minimale — qu'il
+ *      contienne quelque chose ou non. Sept boîtes vides pèsent plus lourd à
+ *      l'œil que sept absences ;
+ *   2. le vide était NOMMÉ, sept fois de suite. « Rien de prévu » écrit une
+ *      fois informe ; écrit sept fois, il matraque ;
+ *   3. chaque jour portait un bouton « Ajouter » permanent, donc une semaine
+ *      calme affichait sept invitations identiques et aucune information.
+ *
+ * Ce qui change ici, et rien d'autre — pas de décoration ajoutée :
+ *
+ *   · un jour VIDE n'est plus un objet. Pas de bordure, pas de fond : il
+ *     redevient du sol. Une semaine à deux rendez-vous se lit alors comme deux
+ *     choses posées sur un calendrier, et non comme sept boîtes dont deux sont
+ *     remplies ;
+ *   · le vide n'est plus nommé. L'absence se voit ; l'écrire n'ajoute rien ;
+ *   · le geste d'ajout reste, mais discret sur un jour vide (il apparaît au
+ *     survol et au focus). Il reste atteignable au clavier — une invitation qui
+ *     n'existe qu'à la souris exclut.
+ *
+ * La vue JOUR garde sa carte : il n'y a qu'une colonne, donc aucune répétition,
+ * et le cadre y aide à situer la journée.
+ */
 function DayColumn({
   day,
   appointments,
@@ -411,13 +465,24 @@ function DayColumn({
   onCreate: (date: Date) => void;
   expanded?: boolean;
 }) {
+  const empty = appointments.length === 0;
+  // Un jour vide de la vue SEMAINE redevient du sol. Ailleurs (vue jour, ou
+  // jour rempli), la carte garde son rôle : délimiter un contenu.
+  const asGround = empty && !expanded;
+
   return (
     <div
-      className={`flex flex-col border border-border bg-surface ${
-        isToday(day) ? 'border-border-strong' : ''
+      className={`group/day flex flex-col ${
+        asGround
+          ? 'border border-transparent'
+          : `border bg-surface ${isToday(day) ? 'border-border-strong' : 'border-border'}`
       }`}
     >
-      <div className="flex items-center justify-between border-b border-border px-2.5 py-2">
+      <div
+        className={`flex items-center justify-between px-2.5 py-2 ${
+          asGround ? '' : 'border-b border-border'
+        }`}
+      >
         <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
           {WEEKDAY_LABELS[(day.getDay() + 6) % 7]}
         </span>
@@ -432,16 +497,14 @@ function DayColumn({
         </span>
       </div>
 
-      <motion.div
-        variants={staggerContainer}
-        initial="initial"
-        animate="animate"
-        className={`flex flex-col divide-y divide-border/60 ${expanded ? '' : 'min-h-[6rem]'}`}
-      >
-        {appointments.length === 0 ? (
-          <p className="px-2.5 py-4 font-mono text-[10px] text-text-muted">Rien de prévu</p>
-        ) : (
-          appointments.map((appointment) => (
+      {!empty && (
+        <motion.div
+          variants={staggerContainer}
+          initial="initial"
+          animate="animate"
+          className="flex flex-col divide-y divide-border/60"
+        >
+          {appointments.map((appointment) => (
             <motion.button
               key={appointment.id}
               variants={staggerItem}
@@ -462,14 +525,21 @@ function DayColumn({
                 </span>
               )}
             </motion.button>
-          ))
-        )}
-      </motion.div>
+          ))}
+        </motion.div>
+      )}
 
       <button
         type="button"
         onClick={() => onCreate(day)}
-        className="flex items-center justify-center gap-1 border-t border-border px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-widest text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
+        aria-label={`Ajouter un rendez-vous le ${day.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}`}
+        className={`flex items-center justify-center gap-1 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors hover:bg-surface-hover hover:text-text-primary ${
+          asGround
+            ? // Discret sur un jour vide : présent, atteignable au clavier, mais
+              // il ne réclame pas l'attention sept fois de suite.
+              'text-transparent group-hover/day:text-text-muted focus-visible:text-text-primary'
+            : 'border-t border-border text-text-muted'
+        }`}
       >
         <Plus size={11} strokeWidth={2} />
         Ajouter

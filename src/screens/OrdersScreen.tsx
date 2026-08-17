@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronRight, Inbox, Package, ReceiptEuro } from 'lucide-react';
+import { ChevronRight, Package, ReceiptEuro } from 'lucide-react';
 import { useOrders, ORDER_STATUS_LABELS, NEXT_STATUSES, STATUS_ORDER, orderTotals } from '../state/useOrders';
 import { useInvoices } from '../state/useInvoices';
 import { useToast } from '../state/ToastContext';
 import { formatCents } from '../lib/money';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import type { Order, OrderStatus } from '../shared/api';
+import { EmptyState, FirstRun } from '../components/EmptyState';
 
 /**
  * Commandes reçues du site public.
@@ -115,20 +116,25 @@ export function OrdersScreen() {
       </motion.div>
 
       {shown.length === 0 ? (
-        <motion.div
-          variants={staggerItem}
-          className="flex flex-col items-center gap-2 border border-dashed border-border px-6 py-12 text-center"
-        >
-          <Inbox size={22} strokeWidth={1.5} className="text-text-muted" aria-hidden />
-          <p className="text-sm text-text-secondary">
-            {orders.length === 0 ? 'Aucune commande reçue.' : 'Aucune commande dans ce statut.'}
-          </p>
-          {orders.length === 0 && (
-            <p className="max-w-md text-xs leading-relaxed text-text-muted">
-              Les commandes passées sur le site arrivent ici automatiquement, en
-              temps réel. Le site a besoin d’une clé de réception — elle
-              s’obtient dans les Paramètres.
-            </p>
+        /*
+          COMMANDES (BLOC A) — un cadre en pointillés de 12 rem, une icône et
+          deux paragraphes. C'est le module le plus souvent vide de tous (une
+          organisation sans boutique n'en recevra jamais), donc celui où le vide
+          coûtait le plus cher.
+
+          La distinction ici est utile et vaut d'être gardée : « jamais reçu de
+          commande » n'est pas une absence, c'est une chaîne pas encore branchée
+          — et la clé de réception se demande aux Paramètres. « Aucune dans ce
+          statut » n'a rien à expliquer.
+        */
+        <motion.div variants={staggerItem}>
+          {orders.length === 0 ? (
+            <FirstRun title="Aucune commande reçue">
+              Les commandes passées sur votre site arrivent ici toutes seules, en temps réel. Le
+              site a besoin d’une clé de réception — elle s’obtient dans les Paramètres.
+            </FirstRun>
+          ) : (
+            <EmptyState quiet>Aucune commande dans ce statut.</EmptyState>
           )}
         </motion.div>
       ) : (

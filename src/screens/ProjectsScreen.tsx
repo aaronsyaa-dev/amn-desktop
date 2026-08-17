@@ -32,6 +32,7 @@ import {
 import { ProjectConfigPanel } from '../components/projects/ProjectConfigPanel';
 import { formatDay, isoDay } from '../state/useInvoices';
 import { staggerContainer, staggerItem } from '../lib/transitions';
+import { EmptyState, FirstRun } from '../components/EmptyState';
 
 /**
  * Projets — la première application concrète du moteur (BLOC A).
@@ -150,9 +151,21 @@ export function ProjectsScreen() {
             className="min-h-0 flex-1 divide-y divide-border/60 overflow-y-auto"
           >
             {visible.length === 0 ? (
-              <p className="p-4 font-mono text-[11px] uppercase tracking-widest text-text-muted">
-                {projects.length === 0 ? 'Aucun projet' : 'Rien dans ce filtre'}
-              </p>
+              /*
+                PROJETS (BLOC A) — une étiquette en capitales là où il fallait
+                une phrase. « AUCUN PROJET » ne dit ni ce qu'est un projet ici,
+                ni comment en ouvrir un.
+              */
+              <div className="px-4">
+                {projects.length === 0 ? (
+                  <FirstRun title="Aucun projet ouvert">
+                    Un projet rassemble ce qui avance et ce qui bloque : ses tâches, son temps, ses
+                    dépenses et ses factures s’y rattachent.
+                  </FirstRun>
+                ) : (
+                  <EmptyState quiet>Rien dans ce filtre.</EmptyState>
+                )}
+              </div>
             ) : (
               visible.map((project) => (
                 <ProjectRow

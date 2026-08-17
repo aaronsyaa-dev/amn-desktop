@@ -41,6 +41,7 @@ import { ProjectPicker, ProjectTag } from '../components/projects/ProjectPicker'
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import type { BillingIdentity, Client, Invoice, InvoiceLine, InvoiceStatus } from '../shared/api';
 import { metaOf } from '../lib/records';
+import { EmptyState, FirstRun } from '../components/EmptyState';
 
 /**
  * Facturation.
@@ -274,13 +275,27 @@ export function InvoicesScreen() {
             className="min-h-0 flex-1 divide-y divide-border/60 overflow-y-auto"
           >
             {visible.length === 0 ? (
-              <p className="p-4 font-mono text-[11px] uppercase tracking-widest text-text-muted">
-                {clients.length === 0
-                  ? 'Créez d’abord une fiche client'
-                  : filter === 'all'
-                    ? 'Aucune facture'
-                    : 'Rien dans ce filtre'}
-              </p>
+              /*
+                FACTURATION (BLOC A) — trois cas différents disaient tous la
+                même chose : une étiquette en capitales. Le premier est une
+                DÉPENDANCE (pas de client, donc rien à facturer) et mérite d'être
+                expliqué ; le dernier est un filtre, et n'a rien à expliquer.
+              */
+              <div className="px-4">
+                {clients.length === 0 ? (
+                  <FirstRun title="Créez d’abord une fiche client">
+                    Une facture est toujours adressée à quelqu’un : elle reprend ses coordonnées et
+                    ses mentions légales. Sans fiche, il n’y a personne à facturer.
+                  </FirstRun>
+                ) : filter === 'all' ? (
+                  <EmptyState>
+                    Aucune facture émise. Un devis accepté se transforme en facture depuis la fiche
+                    du client.
+                  </EmptyState>
+                ) : (
+                  <EmptyState quiet>Rien dans ce filtre.</EmptyState>
+                )}
+              </div>
             ) : (
               visible.map((invoice) => (
                 <InvoiceRow

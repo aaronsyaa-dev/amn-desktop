@@ -27,6 +27,7 @@ import { useUndo } from '../state/UndoContext';
 import { Markdown } from '../lib/markdown';
 import { relativeTime } from '../lib/time';
 import { useExclusive, useProductReports } from '@edition/exclusive';
+import { EmptyState } from '../components/EmptyState';
 
 const TYPES: { value: ReportType; label: string }[] = [
   { value: 'task', label: 'Tâche' },
@@ -217,13 +218,17 @@ export function ReportsScreen() {
           }`}
         >
           {items.length === 0 ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
-              <FileText size={22} strokeWidth={1.5} className="text-text-muted" />
-              <p className="text-sm text-text-secondary">
+            /*
+              RAPPORTS (BLOC A) — la boîte occupait toute la colonne (`flex-1`
+              + centrage vertical), donc le vide était l'élément le plus grand
+              de l'écran. Une ligne en haut de liste suffit.
+            */
+            <div className="px-4">
+              <EmptyState quiet={reports.length > 0 || products.entries.length > 0}>
                 {reports.length === 0 && products.entries.length === 0
-                  ? 'Aucun rapport pour l’instant.'
+                  ? 'Aucun rapport pour l’instant. Ils se rédigent ici ou s’exportent depuis un produit.'
                   : 'Aucun rapport pour ces filtres.'}
-              </p>
+              </EmptyState>
             </div>
           ) : (
             items.map((item) => {

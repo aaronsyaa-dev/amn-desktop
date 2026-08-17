@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Pencil, Play, Plus, ReceiptEuro, Square, Timer, Trash2 } from 'lucide-react';
+import { Pencil, Play, Plus, ReceiptEuro, Square, Trash2 } from 'lucide-react';
 import { useTimeTracking } from '../state/useTimeTracking';
 import { useProjects } from '../state/useProjects';
 import { useClients } from '../state/useClients';
@@ -24,6 +24,7 @@ import { ManualEntryDialog } from '../components/time/ManualEntryDialog';
 import { TimeInvoiceDialog } from '../components/time/TimeInvoiceDialog';
 import { uid } from '../state/SyncContext';
 import { staggerContainer, staggerItem } from '../lib/transitions';
+import { FirstRun } from '../components/EmptyState';
 
 /**
  * Temps — le chronomètre d'abord, la feuille d'heures jamais.
@@ -255,13 +256,15 @@ export function TimeScreen() {
 
       {/* --------------------------------------------------- l'historique --- */}
       {byDay.length === 0 ? (
-        <div className="border border-border bg-surface p-8 text-center">
-          <Timer size={22} strokeWidth={1.5} className="mx-auto text-text-muted" />
-          <p className="mt-2 text-sm text-text-secondary">Aucun temps enregistré pour l’instant.</p>
-          <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-text-muted">
-            Un bouton, deux fois : au début et à la fin
-          </p>
-        </div>
+        /*
+          TEMPS (BLOC A) — même boîte centrée que Dépenses, même correction.
+          Le chronomètre est déjà en haut de l'écran : l'état vide n'a donc
+          aucune action à proposer, il a seulement à ne pas encombrer.
+        */
+        <FirstRun title="Rien de chronométré pour l’instant">
+          Un bouton, deux fois : au début et à la fin. Le temps enregistré ici se retrouve dans la
+          synthèse du mois et se refacture depuis une fiche client.
+        </FirstRun>
       ) : (
         <motion.div variants={staggerContainer} initial="initial" animate="animate" className="flex flex-col gap-3">
           {byDay.map((group) => (
