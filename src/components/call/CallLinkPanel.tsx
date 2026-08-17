@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Copy, Link2, Loader2, MessageSquare, Trash2, X } from 'lucide-react';
 import { bridge } from '../../lib/bridge';
+import { PUBLIC_URL_MISSING, canBuildPublicLink, publicOrigin } from '../../lib/publicUrl';
 import { cleanErrorMessage } from '../../lib/errorMessage';
 import { callInvitationMessage } from '../../lib/callInvite';
 import type { CallLink } from '../../shared/api';
@@ -28,10 +29,19 @@ const DURATIONS = [
   { minutes: 120, label: '2 h' },
 ];
 
-/** L'adresse à envoyer au prospect. */
-function linkUrl(token: string): string {
-  const { origin, pathname } = window.location;
-  return `${origin}${pathname}#/appel?token=${encodeURIComponent(token)}`;
+/**
+ * L'adresse à envoyer au prospect, ou `null` si le poste n'en connaît aucune.
+ *
+ * Elle se fabriquait avec `window.location.origin`, ce qui vaut `file://` dans
+ * l'application INSTALLÉE — donc un chemin sur la machine d'Aaron, inutilisable
+ * par qui que ce soit d'autre. Voir src/lib/publicUrl.ts pour le diagnostic
+ * complet. On rend `null` plutôt qu'un lien faux : un lien faux s'envoie, et
+ * personne ne comprend pourquoi il ne marche pas.
+ */
+function linkUrl(token: string): string | null {
+  const origin = publicOrigin();
+  if (!origin) return null;
+  return `${origin}/#/appel?token=${encodeURIComponent(token)}`;
 }
 
 function remaining(expiresAt: string): string {
@@ -64,12 +74,21 @@ export function CallLinkPanel({ onClose }: { onClose: () => void }) {
   }, [refresh]);
 
   const create = async () => {
+    // Refusé AVANT d'appeler le serveur : émettre un jeton qu'on ne saurait pas
+    // transformer en adresse envoyable laisserait un lien inutile dans la liste,
+    // et ferait croire que le geste a réussi.
+    if (!canBuildPublicLink()) {
+      setError(PUBLIC_URL_MISSING);
+      return;
+    }
     setBusy(true);
     setError(null);
     setCopied(null);
     try {
       const created = await bridge().remote.callLinks.create({ label: label.trim(), minutes });
-      setFresh({ url: linkUrl(created.token), expiresAt: created.expiresAt });
+      const url = linkUrl(created.token);
+      if (!url) throw new Error(PUBLIC_URL_MISSING);
+      setFresh({ url, expiresAt: created.expiresAt });
       setLabel('');
       await refresh();
     } catch (err) {

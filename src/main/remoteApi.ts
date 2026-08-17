@@ -244,6 +244,21 @@ export class RemoteApiClient {
     await apiFetch(`/v1/auth/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
 
+  /**
+   * L'apparence de l'organisation de la SESSION courante (BLOC C).
+   *
+   * Passe par `/v1/auth/organization` et non par la console `/v1/admin/…` :
+   * c'est la cliente qui règle sa propre couleur, avec son propre jeton. La
+   * console reste réservée à AMN DevSec agissant sur autrui.
+   */
+  async setOrganizationAccent(accent: string | null): Promise<OrgIdentity> {
+    const { org } = await apiFetch<{ org: OrgIdentity }>('/v1/auth/organization', {
+      method: 'PATCH',
+      body: JSON.stringify({ accent }),
+    });
+    return org;
+  }
+
   async accessLog(): Promise<OrgAccessRecord[]> {
     const res = await apiFetch<{ entries: OrgAccessRecord[] }>('/v1/auth/access-log');
     return res.entries ?? [];

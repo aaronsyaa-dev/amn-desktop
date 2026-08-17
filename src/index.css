@@ -12,25 +12,31 @@
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 
   /*
-    Surfaces — l'échelle de profondeur d'un instrument, pas d'une page web.
-    (REFONTE) Le fond descend d'un cran et les surfaces remontent : l'écart
-    entre le vide et ce qui est posé dessus était de 9 points de luminance, on
-    passe à 14. C'est ce qui fait qu'un panneau se lit comme un objet posé sur
-    un plan, et non comme une zone légèrement plus claire du même plan.
-    Toujours strictement neutre : aucune dominante bleue, aucune couleur.
+    Surfaces — retour à l'échelle d'origine (BLOC A).
+
+    La refonte avait creusé l'écart : fond descendu à #060707, surfaces
+    remontées, pour qu'un panneau se lise « comme un objet posé sur un plan ».
+    C'était cohérent avec la texture qui l'accompagnait ; les deux tombent
+    ensemble. Sans trame de fond, un contraste poussé ne donne plus de la
+    profondeur, il donne de la dureté.
+
+    On revient donc aux valeurs d'origine, à une exception près : `--color-raised`
+    reste, parce que des pièces construites depuis s'y appuient (le bandeau
+    d'état, les en-têtes de panneau) et qu'il n'a rien à voir avec la texture —
+    c'est un cran de gris, pas une matière.
   */
-  --color-bg: #060707;
-  --color-surface: #121314;
-  --color-surface-hover: #1a1c1d;
+  --color-bg: #0a0a0a;
+  --color-surface: #131313;
+  --color-surface-hover: #1c1c1c;
   /* Un cran au-dessus de `surface` — barres d'outils, en-têtes de panneau. */
-  --color-raised: #191b1c;
-  --color-border: #232628;
-  --color-border-strong: #3c4145;
+  --color-raised: #171717;
+  --color-border: #262626;
+  --color-border-strong: #3a3a3a;
 
   /* Text */
-  --color-text-primary: #f4f4f2;
-  --color-text-secondary: #9c9e9d;
-  --color-text-muted: #636665;
+  --color-text-primary: #f2f2f0;
+  --color-text-secondary: #9a9a97;
+  --color-text-muted: #616160;
 
   /* "Accent" is now a near-white highlight — monochrome, not a colour */
   --color-accent: #ededed;
@@ -342,33 +348,27 @@ button:not(:disabled):not(.card-interactive):active,
    ========================================================================== */
 
 /*
- * Le plan de travail.
+ * LE PLAN DE TRAVAIL — noir uni (RETOUR EN ARRIÈRE ASSUMÉ)
  *
- * Une trame de 44 px à 2,2 % de blanc, plus une atténuation radiale qui creuse
- * les bords. La trame donne l'échelle ; l'atténuation empêche l'écran de se
- * lire comme un rectangle plat et ramène l'œil vers le centre, là où le
- * contenu vit. Les deux ensemble coûtent zéro image et zéro requête.
+ * La refonte avait posé ici une trame de 44 px et une atténuation radiale, pour
+ * donner « l'échelle et la rigueur d'un instrument ». Essayé en conditions
+ * réelles, le verdict est tombé : Aaron veut le noir uni d'avant.
+ *
+ * Le raisonnement d'origine n'était pas absurde, mais il reposait sur une
+ * hypothèse fausse — qu'une texture à la limite du perceptible n'ajoute que du
+ * caractère. Sur des écrans variés, une trame « invisible » ne l'est pas : elle
+ * fatigue, elle moire selon la densité de pixels, et elle rend la page moins
+ * calme, pas plus sérieuse. Un fond uni ne se remarque jamais, ce qui est
+ * exactement ce qu'on demande à un fond.
+ *
+ * La classe reste — elle est posée par les trois coquilles — mais elle ne fait
+ * plus qu'une chose : appliquer le fond. La garder évite de retoucher les trois
+ * coquilles, et laisse un seul endroit à changer si la question revient.
  */
 .app-ground {
   background-color: var(--color-bg);
-  background-image:
-    radial-gradient(120% 80% at 50% 0%, rgba(255, 255, 255, 0.028) 0%, transparent 60%),
-    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
-  background-size:
-    100% 100%,
-    44px 44px,
-    44px 44px;
-  background-attachment: fixed, fixed, fixed;
 }
 
-/*
- * Le panneau — l'unité de base de toute la refonte.
- *
- * Bord d'un pixel, arête haute éclairée, ombre portée courte. C'est exactement
- * ce qu'un panneau physique reçoit d'une lumière ambiante venue du haut, et
- * c'est ce qui le distingue d'un simple aplat plus clair.
- */
 .panel {
   position: relative;
   background: var(--color-surface);
@@ -563,26 +563,38 @@ button:not(:disabled):not(.card-interactive):active,
    ========================================================================== */
 
 .control-ground {
-  /* Un cran sous --color-bg : on entre dans une pièce plus sombre. */
-  background-color: #030404;
-  background-image:
-    radial-gradient(120% 45% at 50% 0%, rgba(255, 255, 255, 0.05) 0%, transparent 65%),
-    repeating-linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.021) 0px,
-      rgba(255, 255, 255, 0.021) 1px,
-      transparent 1px,
-      transparent 8px
-    );
+  /*
+    MÊME FOND QUE PARTOUT (RETOUR EN ARRIÈRE, BLOC A).
+
+    La Tour de contrôle avait son propre plan : rayage horizontal, fond d'un cran
+    plus sombre. Les deux disparaissent avec la texture générale — un espace ne
+    se distingue plus par sa matière.
+
+    ELLE RESTE POURTANT RECONNAISSABLE AU PREMIER COUP D'ŒIL, par quatre moyens
+    qui ne doivent rien au fond, et qui sont même plus lisibles sans lui :
+
+      1. L'ARÊTE ALLUMÉE en haut de la zone de contenu (`.control-edge`). C'est
+         le seul élément « allumé » de toute l'application, et il ne l'est
+         qu'ici. Sur un fond uni, il se détache MIEUX qu'avant : il n'y a plus
+         de trame pour lui disputer l'attention.
+      2. LA PLEINE LARGEUR. Le Poste de travail lit des textes et se brise à une
+         colonne confortable ; la Tour de contrôle lit des tableaux et prend
+         tout l'écran. C'est la différence la plus immédiate, avant même la
+         couleur : la ligne de contenu ne commence pas au même endroit.
+      3. LA DENSITÉ (`.control-dense`). Corps de texte à 13 px, interlignes
+         resserrés : deux lignes de plus visibles sans défiler sur une grille de
+         vingt. On ne la nomme pas, on la sent.
+      4. LA BARRE LATÉRALE EN SECTIONS NOMMÉES (Supervision, Parc, Produits) là
+         où le Poste de travail montre cinq épingles. La colonne de gauche
+         change de forme, et c'est ce qu'on voit sans regarder.
+
+    Autrement dit : la distinction passe de la MATIÈRE à la STRUCTURE. C'est un
+    meilleur endroit pour elle — une structure se lit sur n'importe quel écran,
+    une texture dépend de la dalle.
+  */
+  background-color: var(--color-bg);
 }
 
-/*
- * L'arête allumée qui referme le haut de la zone de supervision.
- *
- * Un pixel clair et une retombée courte — ce que donne une réglette au-dessus
- * d'un panneau. Posée en `::before` sur le conteneur plutôt qu'en bordure, pour
- * qu'elle reste collée en haut pendant que le contenu défile dessous.
- */
 .control-edge::before {
   content: '';
   position: sticky;
@@ -597,8 +609,22 @@ button:not(:disabled):not(.card-interactive):active,
     rgba(255, 255, 255, 0.5) 78%,
     transparent 100%
   );
-  box-shadow: 0 0 14px rgba(255, 255, 255, 0.14);
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.2);
   pointer-events: none;
+}
+
+/*
+ * Le second repère structurel de la Tour de contrôle : un liseré sombre le long
+ * du bord gauche de la zone de contenu.
+ *
+ * Il compense ce que le fond ne dit plus. À la différence d'une texture, il ne
+ * couvre aucune surface de lecture — c'est une arête, pas une matière — et il
+ * marque le seul endroit où la zone de contenu commence plus à gauche
+ * qu'ailleurs (voir la pleine largeur dans AppLayout). Autrement dit, il rend
+ * VISIBLE une différence de mise en page qui existait déjà.
+ */
+.control-edge {
+  border-left: 1px solid var(--color-border);
 }
 
 /*
@@ -612,7 +638,19 @@ button:not(:disabled):not(.card-interactive):active,
  */
 .control-dense {
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.4;
+}
+
+/*
+ * Les intitulés de section de la Tour de contrôle sont plus espacés qu'ailleurs.
+ *
+ * Micro-différence assumée : c'est le genre de signal qu'on ne nomme pas mais
+ * qu'on reconnaît, et il ne coûte aucune surface. Avec la pleine largeur, la
+ * densité et l'arête, ça fait quatre repères structurels — assez pour que
+ * l'espace reste identifiable sans que son fond diffère.
+ */
+.control-dense .eyebrow {
+  letter-spacing: 0.26em;
 }
 .control-dense h1 {
   letter-spacing: -0.02em;
@@ -635,10 +673,15 @@ button:not(:disabled):not(.card-interactive):active,
    ========================================================================== */
 
 .forge-ground {
-  background-color: #030303;
-  background-image:
-    radial-gradient(70% 90% at 8% 100%, rgba(255, 255, 255, 0.055) 0%, transparent 62%),
-    radial-gradient(90% 60% at 100% 0%, rgba(255, 255, 255, 0.022) 0%, transparent 60%);
+  /*
+    Même fond que le reste (BLOC A). L'atelier gardait une lumière basse à
+    gauche, « du côté où l'on agit » ; elle tombe avec la texture générale.
+
+    Il reste distinct par ce qui compte vraiment : sa mise en page en deux
+    colonnes — les réglages à gauche, le produit qu'on fabrique à droite — et
+    son parcours en trois temps. Aucun autre écran ne ressemble à ça.
+  */
+  background-color: var(--color-bg);
 }
 
 /*

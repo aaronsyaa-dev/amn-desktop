@@ -12,6 +12,7 @@ import { CONFIGURABLE_MODULES, TRADE_PROFILES, tradeProfileById } from '../data/
 import { calcProfileById } from '../state/calcProfiles';
 import { RangeControl } from '../components/generator/RangeControl';
 import { LivePreview } from '../components/generator/LivePreview';
+import { handoverMessage } from '../lib/handoverMessage';
 import { OrgAvatar } from '../components/org-rail/OrgAvatar';
 import type { DownloadLink, OrgPlan } from '../shared/api';
 
@@ -88,6 +89,7 @@ export function GeneratorScreen() {
   const [handover, setHandover] = React.useState<Handover>('password');
 
   const [busy, setBusy] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [result, setResult] = React.useState<{
     orgId: string;
@@ -608,7 +610,62 @@ export function GeneratorScreen() {
                 </p>
               </section>
 
-              {/* ─────────── L'installeur, second des deux liens ─────────── */}
+              {/*
+                LE GESTE SUIVANT, ÉCRIT (BLOC F).
+
+                Deux liens à l'écran ne disent pas quoi en faire. Le retour était
+                sans ambiguïté : « je ne comprends toujours pas concrètement
+                comment envoyer un desktop à un client ». Cet écran commence donc
+                par nommer l'action attendue, et donne le message tout fait —
+                exactement ce qui avait résolu le même problème pour le lien
+                d'appel.
+              */}
+              <section className="panel panel-ticks p-5">
+                <p className="eyebrow mb-2">Ce qu’il reste à faire</p>
+                <p className="mb-4 max-w-xl text-[13px] leading-relaxed text-text-secondary">
+                  Copiez le message ci-dessous et envoyez-le à votre cliente, par courriel ou par
+                  message. Il contient l’installateur, son identifiant et son accès, dans l’ordre
+                  où elle doit s’en servir. Vous n’avez rien d’autre à préparer.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard
+                      ?.writeText(
+                        handoverMessage({
+                          orgName: result.orgName,
+                          email: result.email,
+                          secret: result.secret,
+                          kind: result.kind,
+                          expiresAt: result.expiresAt,
+                          download: result.download
+                            ? {
+                                url: result.download.url,
+                                version: result.download.release.version,
+                                byteSize: result.download.release.byteSize,
+                              }
+                            : null,
+                        }),
+                      )
+                      .then(() => {
+                        setCopied(true);
+                        window.setTimeout(() => setCopied(false), 2400);
+                      });
+                  }}
+                  className="flex items-center gap-2 bg-accent px-4 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
+                >
+                  {copied ? <Check size={15} strokeWidth={2.5} /> : <Copy size={15} strokeWidth={2} />}
+                  {copied ? 'Message copié' : 'Copier le message pour la cliente'}
+                </button>
+                {!result.download && (
+                  <p className="mt-3 max-w-xl text-[11px] leading-relaxed text-text-muted">
+                    Aucune version n’étant publiée, le message ne contiendra que l’accès au compte —
+                    la cliente pourra travailler depuis la version web en attendant.
+                  </p>
+                )}
+              </section>
+
+              {/* ─────────── Le détail des deux liens, pour qui veut les relire ─────────── */}
               <section className="panel p-5">
                 <p className="eyebrow mb-3">Installeur Windows</p>
                 {result.download ? (

@@ -14,6 +14,12 @@ interface ImportMetaEnv {
    * a local dev fallback.
    */
   readonly VITE_AMN_API_URL?: string;
+  /**
+   * L'adresse publique du build web (BLOC E). Sans elle, un poste INSTALLÉ ne
+   * peut pas fabriquer un lien envoyable : il ne connaît que `file://`.
+   * Voir src/lib/publicUrl.ts.
+   */
+  readonly VITE_AMN_WEB_URL?: string;
   readonly VITE_AMN_API_OPERATOR_TOKEN?: string;
   readonly VITE_AMN_API_WEB_TOKEN?: string;
 }

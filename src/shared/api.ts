@@ -1822,6 +1822,15 @@ export interface AmnBridge {
      * elle-même — la promesse de transparence du site, rendue vérifiable.
      */
     accessLog(): Promise<OrgAccessRecord[]>;
+    /**
+     * Règle l'apparence de MON organisation (BLOC C).
+     *
+     * Distincte de `admin.updateOrganization`, et c'est tout l'intérêt : celle-ci
+     * est appelée par la cliente sur sa PROPRE organisation, celle-là par AMN
+     * DevSec sur celle d'autrui. La couleur appartient à la cliente ; le
+     * générateur ne fait que proposer un point de départ.
+     */
+    setOrganizationAccent(accent: string | null): Promise<OrgIdentity>;
 
     /* --- Scanner --- */
     /**
@@ -2122,6 +2131,7 @@ export const IPC = {
   remoteListSessions: 'remote:listSessions',
   remoteRevokeSession: 'remote:revokeSession',
   remoteAccessLog: 'remote:accessLog',
+  remoteSetOrgAccent: 'remote:setOrgAccent',
   remoteGetPresence: 'remote:getPresence',
   /** Push channels (main -> renderer via webContents.send, not invoke/handle). */
   remoteStartScan: 'remote:startScan',

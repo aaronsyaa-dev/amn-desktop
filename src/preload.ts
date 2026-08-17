@@ -156,6 +156,7 @@ const bridge: AmnBridge = {
     listSessions: () => ipcRenderer.invoke(IPC.remoteListSessions),
     revokeSession: (id: string) => ipcRenderer.invoke(IPC.remoteRevokeSession, id),
     accessLog: () => ipcRenderer.invoke(IPC.remoteAccessLog),
+    setOrganizationAccent: (accent) => ipcRenderer.invoke(IPC.remoteSetOrgAccent, accent),
     callLinks: {
       create: (input) => ipcRenderer.invoke(IPC.remoteCallLinkCreate, input),
       list: () => ipcRenderer.invoke(IPC.remoteCallLinkList),

@@ -86,6 +86,16 @@ interface AuthContextValue {
    * Appelé par `OrgContextProvider` ; personne d'autre n'a de raison de le faire.
    */
   overrideOrg: (org: OrgIdentity | null) => void;
+  /**
+   * Met à jour l'organisation DE LA SESSION après que la cliente a changé un
+   * réglage qui lui appartient (sa couleur d'accent — BLOC C).
+   *
+   * Distinct d'`overrideOrg`, qui SUBSTITUE une organisation le temps d'un
+   * contexte client sans toucher à la session. Ici on modifie bien la sienne,
+   * donc l'état et le stockage doivent suivre : sans ça, un redémarrage
+   * réafficherait l'ancienne couleur jusqu'au prochain `/v1/auth/me`.
+   */
+  patchSessionOrg: (org: OrgIdentity) => void;
   isAuthenticated: boolean;
   /**
    * Vrai tant que la session stockée n'a pas été revalidée auprès d'amn-api.
@@ -351,6 +361,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // rend, `/v1/auth/me` la revalide) ; le repli local n'en a jamais. La nature
   // de la session se lit donc dans `sessionOrg` — celle de la SESSION, pas
   // celle qu'un contexte client substitue par-dessus.
+  const patchSessionOrg = useCallback((next: OrgIdentity) => {
+    setOrg(next);
+    try {
+      const current = read<StoredSession>(SESSION_STORAGE_KEY);
+      if (current) {
+        window.localStorage.setItem(
+          SESSION_STORAGE_KEY,
+          JSON.stringify({ ...current, org: next }),
+        );
+      }
+    } catch {
+      /* Le stockage peut être refusé (mode privé) : l'état en mémoire suffit
+         pour cette session, et `/v1/auth/me` rétablira la vérité au prochain
+         démarrage. */
+    }
+  }, []);
+
   const sessionKind: SessionKind = user ? (sessionOrg ? 'api' : 'local') : null;
 
   const value = useMemo<AuthContextValue>(
@@ -358,6 +385,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       org,
       overrideOrg,
+      patchSessionOrg,
       sessionKind,
       isAuthenticated: user !== null,
       bootstrapping,
@@ -367,7 +395,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       reauthenticate,
       logout,
     }),
-    [user, org, overrideOrg, sessionKind, bootstrapping, login, acceptInvitation, logout, reauthenticate],
+    [user, org, overrideOrg, patchSessionOrg, sessionKind, bootstrapping, login, acceptInvitation, logout, reauthenticate],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

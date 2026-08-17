@@ -564,6 +564,13 @@ function createBrowserRemote(): AmnBridge['remote'] {
       const res = await apiFetch<{ entries: OrgAccessRecord[] }>('/v1/auth/access-log');
       return res.entries ?? [];
     },
+    async setOrganizationAccent(accent: string | null): Promise<OrgIdentity> {
+      const { org } = await apiFetch<{ org: OrgIdentity }>('/v1/auth/organization', {
+        method: 'PATCH',
+        body: JSON.stringify({ accent }),
+      });
+      return org;
+    },
     mfa: {
       async status() {
         const res = await apiFetch<{ mfa: MfaStatus }>('/v1/auth/mfa');
