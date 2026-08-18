@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, Camera, Check, Download, Info, KeyRound, Loader2, Power, UserCircle } from 'lucide-react';
+import {
+  AlertTriangle, Bell, Camera, Check, Download, Info, KeyRound, Loader2, Power, UserCircle } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { bridge } from '../lib/bridge';
@@ -412,6 +413,7 @@ function ProfileSection({ email }: { email: string }) {
  * silencieusement — le mot de passe changerait là où personne ne le vérifie.
  */
 function PasswordSection({ email, remote }: { email: string; remote: boolean }) {
+  const { passwordFromSupport, clearPasswordFromSupport } = useAuth();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -437,6 +439,9 @@ function PasswordSection({ email, remote }: { email: string; remote: boolean }) 
         if (!res.ok) throw new Error(res.error ?? 'Échec de la mise à jour.');
       }
       setMsg({ ok: true, text: 'Mot de passe mis à jour.' });
+      // Le serveur a déjà baissé le drapeau ; on l'éteint ici pour que le
+      // bandeau disparaisse dans le même geste que la validation.
+      clearPasswordFromSupport();
       setCurrent('');
       setNext('');
       setConfirm('');
@@ -461,6 +466,32 @@ function PasswordSection({ email, remote }: { email: string; remote: boolean }) 
 
   return (
     <Panel icon={KeyRound} title="Mot de passe" subtitle="Changez votre mot de passe (minimum 8 caractères).">
+      {/*
+        LE RAPPEL QUE LE MESSAGE FAISAIT SEUL.
+
+        Le courriel de remise dit « changez-le dès votre première connexion ».
+        L'application ne le rappelait nulle part — la consigne ne tenait donc
+        qu'à la mémoire de quelqu'un qui lit un message une seule fois, à
+        propos d'un mot de passe qui a voyagé par courriel et que deux
+        personnes connaissent.
+
+        Il n'y a PAS de bouton pour le fermer, et c'est voulu : ce qui le fait
+        disparaître est le geste lui-même. Un avertissement qu'on peut chasser
+        d'un clic finit par se chasser d'un clic.
+      */}
+      {passwordFromSupport && (
+        <div
+          role="alert"
+          className="mb-4 flex items-start gap-2.5 border border-warning/50 bg-warning-muted px-3 py-2.5"
+        >
+          <AlertTriangle size={15} strokeWidth={2} className="mt-px flex-shrink-0 text-warning" />
+          <p className="min-w-0 flex-1 text-xs leading-relaxed text-text-primary">
+            <span className="font-semibold">Ce mot de passe n’est pas le vôtre.</span> Il vous a été
+            envoyé par message, donc il est écrit quelque part et une autre personne le connaît.
+            Choisissez-en un vous-même ci-dessous — ce sera le seul à ne pas avoir circulé.
+          </p>
+        </div>
+      )}
       <div className="grid gap-3 sm:grid-cols-3">
         {field('Actuel', current, setCurrent)}
         {field('Nouveau', next, setNext)}

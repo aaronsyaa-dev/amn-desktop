@@ -96,6 +96,27 @@ interface AuthContextValue {
    * réafficherait l'ancienne couleur jusqu'au prochain `/v1/auth/me`.
    */
   patchSessionOrg: (org: OrgIdentity) => void;
+  /**
+   * Le mot de passe courant a-t-il été émis par le support ?
+   *
+   * Le message de remise dit « changez-le dès votre première connexion ».
+   * L'application ne le rappelait nulle part : la consigne ne tenait qu'à la
+   * mémoire de quelqu'un qui lit un message une seule fois, à propos d'un mot
+   * de passe qui a voyagé par courriel et que deux personnes connaissent.
+   *
+   * Le fait vient d'amn-api, pas d'un état local : un drapeau côté poste
+   * disparaîtrait au changement d'appareil, et elle cesserait d'être prévenue
+   * en se connectant depuis son téléphone.
+   */
+  passwordFromSupport: boolean;
+  /**
+   * À appeler après un changement de mot de passe réussi.
+   *
+   * Le serveur a déjà baissé le drapeau (voir routes/auth.js) ; ceci évite un
+   * aller-retour pour que le bandeau disparaisse dans le même geste que la
+   * validation, au lieu du prochain démarrage.
+   */
+  clearPasswordFromSupport: () => void;
   isAuthenticated: boolean;
   /**
    * Vrai tant que la session stockée n'a pas été revalidée auprès d'amn-api.
@@ -186,6 +207,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [contextOrg, setContextOrg] = useState<OrgIdentity | null>(null);
   const org = contextOrg ?? sessionOrg;
   const [bootstrapping, setBootstrapping] = useState(() => Boolean(stored?.token));
+  // Pas persisté : la valeur est celle que le serveur vient de dire. La relire
+  // d'un stockage local ferait survivre un avertissement à sa résolution, ou
+  // l'inverse — et l'inverse est pire.
+  const [passwordFromSupport, setPasswordFromSupport] = useState(false);
 
   // Revalidation au démarrage. Une session expirée, un compte suspendu ou une
   // organisation suspendue ramènent à l'écran de connexion tout de suite,
@@ -199,6 +224,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session) {
         setUser(userFromSession(session));
         setOrg(session.org);
+        setPasswordFromSupport(Boolean(session.user.passwordFromSupport));
       } else {
         window.localStorage.removeItem(SESSION_STORAGE_KEY);
         setUser(null);
@@ -229,6 +255,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
     setUser(nextUser);
     setOrg(session.org);
+    setPasswordFromSupport(Boolean(session.user.passwordFromSupport));
   }, []);
 
   /**
@@ -374,6 +401,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // rend, `/v1/auth/me` la revalide) ; le repli local n'en a jamais. La nature
   // de la session se lit donc dans `sessionOrg` — celle de la SESSION, pas
   // celle qu'un contexte client substitue par-dessus.
+  const clearPasswordFromSupport = useCallback(() => setPasswordFromSupport(false), []);
+
   const patchSessionOrg = useCallback((next: OrgIdentity) => {
     setOrg(next);
     try {
@@ -399,6 +428,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       org,
       overrideOrg,
       patchSessionOrg,
+      passwordFromSupport,
+      clearPasswordFromSupport,
       sessionKind,
       isAuthenticated: user !== null,
       bootstrapping,
@@ -408,7 +439,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       reauthenticate,
       logout,
     }),
-    [user, org, overrideOrg, patchSessionOrg, sessionKind, bootstrapping, login, acceptInvitation, logout, reauthenticate],
+    [
+      user,
+      org,
+      overrideOrg,
+      patchSessionOrg,
+      passwordFromSupport,
+      clearPasswordFromSupport,
+      sessionKind,
+      bootstrapping,
+      login,
+      acceptInvitation,
+      logout,
+      reauthenticate,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

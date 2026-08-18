@@ -318,6 +318,20 @@ export interface RemoteSessionUser {
    * un `member`.
    */
   role: 'owner' | 'admin' | 'member' | 'guest';
+  /**
+   * Ce mot de passe a-t-il été émis par le support plutôt que choisi par elle ?
+   *
+   * Rendu par amn-api à la connexion et à chaque `/me`. Le message de remise
+   * demande de le changer ; sans ce drapeau, l'application ne pouvait rien
+   * rappeler et la consigne ne tenait qu'à la mémoire de quelqu'un qui lit un
+   * message une fois. Il retombe quand un nouveau mot de passe est CHOISI —
+   * pas quand un bandeau est fermé.
+   *
+   * Optionnel : un serveur antérieur à ce champ ne le renvoie pas, et
+   * « absent » doit valoir « rien à signaler », jamais un avertissement
+   * affiché à tort.
+   */
+  passwordFromSupport?: boolean;
 }
 
 /**
