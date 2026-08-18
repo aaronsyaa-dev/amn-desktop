@@ -1,18 +1,47 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useSync, useCollection, uid, stripMeta } from './SyncContext';
+import { IS_BUSINESS } from '../edition/edition';
 
 /**
- * Notes (Bloc 2). Two scopes:
- *  - TEAM notes are shared and live-synced, via the `notes` collection (same
- *    path as tasks/decisions/knowledge) — both operators see edits in real time.
- *  - PERSONAL notes are private and MUST NOT touch the shared API, so they live
- *    in localStorage keyed by the operator's email. (Routing them through the
- *    synced collection would broadcast them to the other operator, breaking
- *    "non partagées".) The trade-off: personal notes stay on this machine.
+ * Notes (Bloc 2). Deux portées — mais une seule dans l'édition Business.
  *
- * Scope is encoded in the id prefix (`tnote-` / `pnote-`) so every operation can
- * route without a separate lookup.
+ *  - ÉQUIPE : partagée et synchronisée, via la collection `notes`. Le serveur
+ *    la détient, donc elle survit à une réinstallation, se lit depuis le
+ *    téléphone, et figure dans l'export de portabilité.
+ *  - PERSONNELLE : privée, donc elle ne PEUT PAS passer par la collection
+ *    partagée — l'y router la diffuserait à l'autre opérateur, ce qui est
+ *    exactement ce que « non partagée » interdit. Elle vit donc dans le
+ *    localStorage, et le prix de cette confidentialité est qu'elle reste sur
+ *    cette machine.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * POURQUOI ELLE N'EXISTE PAS DANS L'ÉDITION BUSINESS (BLOC B)
+ *
+ * Ce compromis se défend entre deux opérateurs qui partagent une organisation :
+ * on choisit sciemment la confidentialité contre la durabilité. Il ne se
+ * défend PAS chez une cliente, pour deux raisons cumulées :
+ *
+ *   1. elle est seule dans son organisation. « Non partagée » ne la protège de
+ *      personne — il n'y a personne. Le compromis n'achète donc rien, et coûte
+ *      tout : note invisible depuis son téléphone, effacée par une
+ *      réinstallation, absente de l'export de ses données ;
+ *   2. l'écran ne LUI DIT PAS. Le badge de portée est masqué en Business
+ *      (`!TEAM_ENABLED ? null`), donc deux notes côte à côte, visuellement
+ *      identiques, dont l'une seulement survivrait à un changement de machine.
+ *
+ * C'est le défaut exact de la photo de profil — la même donnée à deux endroits,
+ * dont un que le serveur ignore. Il est ici fermé À LA SOURCE plutôt qu'au
+ * bouton : `createNote` ignore la portée demandée quand il n'y a pas d'équipe.
+ * Un futur appelant ne peut donc pas rouvrir la brèche par inadvertance.
+ *
+ * Les notes personnelles déjà écrites ne sont pas abandonnées pour autant :
+ * l'effet de reprise ci-dessous les remonte une fois vers le serveur, puis vide
+ * le stockage local. Supprimer sans remonter aurait été la perte de données
+ * qu'on cherche justement à empêcher.
+ *
+ * La portée se LIT depuis la collection d'équipe, jamais depuis le préfixe de
+ * l'identifiant (voir `isTeamNote`).
  */
 
 export interface Note {
@@ -96,8 +125,48 @@ export function useNotes() {
     );
   }, [teamRaw, personal]);
 
+  /*
+    LA REPRISE DES NOTES PERSONNELLES DÉJÀ ÉCRITES (BLOC B).
+
+    Fermer la porte ne suffit pas : quelqu'un peut déjà être derrière. Une
+    cliente qui a écrit des notes personnelles avec une version antérieure les
+    verrait disparaître de l'écran à la mise à jour — précisément le scénario
+    qu'on veut rendre impossible.
+
+    Elles sont donc remontées vers le serveur, puis retirées du stockage local.
+    L'ordre compte : on n'efface qu'après avoir écrit. `upsert` est optimiste et
+    la file de synchronisation garde ce qu'elle n'a pas encore pu envoyer, donc
+    même hors ligne la note existe côté état partagé avant que la copie locale
+    parte. Le drapeau `migrated` évite de rejouer la reprise à chaque rendu.
+  */
+  const migrated = useRef(false);
+  useEffect(() => {
+    if (!IS_BUSINESS || migrated.current || personal.length === 0) return;
+    migrated.current = true;
+    for (const note of personal) {
+      upsert('notes', note.id, {
+        title: note.title ?? '',
+        body: note.body ?? '',
+        authorEmail: note.authorEmail || email,
+        pinned: Boolean(note.pinned),
+        projectId: note.projectId,
+        createdAt: note.createdAt ?? note.updatedAt,
+      } satisfies TeamNoteData);
+    }
+    persistPersonal([]);
+  }, [personal, upsert, email, persistPersonal]);
+
   const createNote = useCallback(
-    (scope: 'team' | 'personal'): string => {
+    (scopeDemande: 'team' | 'personal'): string => {
+      /*
+        La portée demandée est IGNORÉE quand il n'y a pas d'équipe.
+
+        Le garde est ici, et pas dans l'écran, parce que l'écran n'est pas le
+        seul appelant possible — et parce qu'un bouton corrigé se re-casse à la
+        prochaine refonte, alors qu'une donnée qui ne peut pas être écrite au
+        mauvais endroit ne se re-casse pas.
+      */
+      const scope = IS_BUSINESS ? 'team' : scopeDemande;
       const now = new Date().toISOString();
       if (scope === 'team') {
         const id = uid('tnote');

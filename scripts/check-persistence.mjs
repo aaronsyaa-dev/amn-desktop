@@ -106,6 +106,55 @@ const MODULE_DATA = {
 };
 
 /**
+ * OÙ CHAQUE MODULE EST ÉCRIT — pour aller regarder DANS le code, pas seulement
+ * dans la liste des collections.
+ *
+ * La première règle de ce script vérifie qu'un module a bien une collection
+ * côté serveur. Elle ne dit rien du cas le plus fourbe : un module qui a sa
+ * collection ET, en plus, écrit une partie de sa donnée dans le stockage du
+ * navigateur. C'est littéralement ce qui est arrivé à la photo de profil, et
+ * ce qui a été retrouvé ici dans les notes — la note « personnelle » partait
+ * en `localStorage`, donc invisible depuis le téléphone et effacée par une
+ * réinstallation, sans que rien à l'écran ne la distingue des autres.
+ *
+ * D'où cette seconde règle : les fichiers qui portent un module ne peuvent pas
+ * écrire dans le stockage local sans être déclarés ci-dessous.
+ */
+const MODULE_FILES = {
+  agenda: ['src/business/AgendaScreen.tsx', 'src/state/useAppointments.ts'],
+  clients: ['src/screens/ClientsScreen.tsx', 'src/state/useClients.ts'],
+  invoices: ['src/screens/InvoicesScreen.tsx', 'src/state/useInvoices.ts'],
+  projects: ['src/screens/ProjectsScreen.tsx', 'src/state/useProjects.ts'],
+  tasks: ['src/screens/TasksScreen.tsx'],
+  expenses: ['src/screens/ExpensesScreen.tsx', 'src/state/useExpenses.ts'],
+  time: ['src/screens/TimeScreen.tsx', 'src/state/useTimeTracking.ts'],
+  calculators: ['src/screens/CalculatorsScreen.tsx'],
+  orders: ['src/screens/OrdersScreen.tsx', 'src/state/useOrders.ts'],
+  notes: ['src/screens/NotesScreen.tsx', 'src/state/useNotes.ts'],
+  media: ['src/business/MediaSoloScreen.tsx', 'src/screens/MediaLibraryScreen.tsx'],
+  reports: ['src/screens/ReportsScreen.tsx', 'src/state/useReports.ts'],
+  vault: ['src/screens/VaultScreen.tsx', 'src/state/useVault.ts'],
+};
+
+/**
+ * Les écritures locales admises DANS un fichier de module, et leur raison.
+ *
+ * Une entrée ici n'est pas un laissez-passer : c'est une dette qu'on relit. Le
+ * nombre d'écritures est compté, donc en ajouter une nouvelle dans un fichier
+ * déjà déclaré fait échouer le contrôle tant qu'on n'a pas dit pourquoi.
+ */
+const ECRITURES_LOCALES_ADMISES = {
+  'src/state/useNotes.ts': {
+    nombre: 1,
+    raison:
+      'la note PERSONNELLE de l’édition interne, qui ne peut pas passer par la ' +
+      'collection partagée sans être diffusée à l’autre opérateur. Fermée dans ' +
+      'l’édition Business (IS_BUSINESS force la portée « équipe »), où la ' +
+      'cliente est seule et où le compromis n’achèterait donc rien.',
+  },
+};
+
+/**
  * LES EXCEPTIONS, ET POURQUOI ELLES EN SONT.
  *
  * Tout ce qui figure ici est un module dont la donnée NE VIT PAS sur le
@@ -168,6 +217,54 @@ for (const mod of modules) {
   }
 }
 
+/*
+  RÈGLE 2 — aucun module n'écrit sa donnée dans le stockage du navigateur.
+
+  Le stockage local n'est pas interdit partout : un onglet mémorisé, un rappel
+  déjà émis, le miroir hors-ligne de SyncContext y ont leur place. Il est
+  interdit DANS les fichiers qui portent un module métier, parce que là il
+  devient une seconde source de vérité que le serveur ignore.
+*/
+const ECRITURE_LOCALE = /(localStorage|sessionStorage)\s*\.\s*setItem/g;
+
+for (const mod of modules) {
+  const fichiers = MODULE_FILES[mod];
+  if (!fichiers) {
+    failures.push(
+      `Module « ${mod} » n’a pas de fichiers déclarés dans MODULE_FILES : ` +
+        'impossible de vérifier qu’il n’écrit pas sa donnée en local.',
+    );
+    continue;
+  }
+  for (const rel of fichiers) {
+    const abs = path.join(ROOT, rel);
+    if (!fs.existsSync(abs)) {
+      // Un fichier renommé ferait passer le contrôle sans rien vérifier :
+      // c'est le silence qu'on refuse, pas le renommage.
+      failures.push(`Module « ${mod} » : ${rel} est déclaré mais introuvable (renommé ?).`);
+      continue;
+    }
+    const src = fs.readFileSync(abs, 'utf-8');
+    const ecritures = [...src.matchAll(ECRITURE_LOCALE)].length;
+    if (ecritures === 0) continue;
+
+    const admis = ECRITURES_LOCALES_ADMISES[rel];
+    if (!admis) {
+      failures.push(
+        `Module « ${mod} » : ${rel} écrit dans le stockage local (${ecritures} fois). ` +
+          'Cette donnée-là ne partirait jamais sur le serveur — invisible depuis le ' +
+          'téléphone, perdue à la réinstallation, absente de l’export. Déplacez-la ' +
+          'vers une collection synchronisée, ou déclarez-la dans ECRITURES_LOCALES_ADMISES.',
+      );
+    } else if (ecritures !== admis.nombre) {
+      failures.push(
+        `Module « ${mod} » : ${rel} écrit dans le stockage local ${ecritures} fois, ` +
+          `${admis.nombre} étai(en)t déclarée(s). Une écriture a été ajoutée — dites laquelle et pourquoi.`,
+      );
+    }
+  }
+}
+
 /* Une exception doit rester justifiée ET prévenir la cliente à l'écran. */
 for (const [mod, info] of Object.entries(LOCAL_ONLY)) {
   if (!modules.includes(mod)) {
@@ -215,4 +312,8 @@ if (failures.length > 0) {
 console.log(
   `OK — les ${modules.length} modules ouvrables à une cliente ont leur donnée sur le serveur, ` +
     `sauf ${Object.keys(LOCAL_ONLY).length} exception(s) déclarée(s) et annoncée(s) à l’écran.`,
+);
+console.log(
+  `OK — aucun de leurs fichiers n’écrit de donnée métier dans le stockage du navigateur, ` +
+    `sauf ${Object.keys(ECRITURES_LOCALES_ADMISES).length} écriture(s) justifiée(s).`,
 );

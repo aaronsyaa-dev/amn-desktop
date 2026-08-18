@@ -172,8 +172,16 @@ export function NotesScreen() {
                       // `startNew` et non `createNote` : la création seule
                       // écrirait une note que l'écran n'ouvrirait pas, et on
                       // resterait devant la même page vide.
-                      label: 'Nouvelle note personnelle',
-                      onClick: () => startNew('personal'),
+                      //
+                      // La portée suit l'édition (BLOC B). Ce geste-ci est le
+                      // PREMIER que fait une cliente sur un compte neuf : c'est
+                      // l'unique action de la page vide. Il proposait « note
+                      // personnelle » — donc du localStorage, invisible depuis
+                      // son téléphone et effacé par une réinstallation — alors
+                      // qu'elle est seule dans son organisation et que rien à
+                      // l'écran ne distingue ensuite cette note des autres.
+                      label: TEAM_ENABLED ? 'Nouvelle note personnelle' : 'Nouvelle note',
+                      onClick: () => startNew(TEAM_ENABLED ? 'personal' : 'team'),
                     }}
                   >
                     Aucune note pour l’instant.
