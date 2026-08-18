@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Check,
   Copy,
+  Download,
   Eye,
   EyeOff,
   KeyRound,
@@ -18,6 +19,7 @@ import {
 import { useVault, type VaultDraft } from '../state/useVault';
 import { useUndo } from '../state/UndoContext';
 import { copyWithAutoClear } from '../lib/clipboard';
+import { downloadBlob } from '../lib/download';
 import { bridge } from '../lib/bridge';
 import type { VaultCategory, VaultEntry } from '../shared/api';
 import { VAULT_CATEGORIES as CATEGORIES, vaultCategoryLabel as categoryLabel } from '../lib/vaultCategories';
@@ -98,33 +100,92 @@ export function VaultScreen() {
             {loading ? 'Chargement…' : `${entries.length} entrée${entries.length > 1 ? 's' : ''}`}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setEditing({ draft: emptyDraft() });
-            setSelectedId(null);
-          }}
-          className="flex flex-shrink-0 items-center gap-2 bg-accent px-3 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
-        >
-          <Plus size={16} strokeWidth={2.25} />
-          <span className="hidden sm:inline">Nouvelle entrée</span>
-        </button>
+        <div className="flex flex-shrink-0 items-center gap-2">
+          {/*
+            LA SORTIE DE SECOURS.
+
+            Ce coffre ne peut pas être sauvegardé par le serveur (sa clé de
+            chiffrement n'existe que sur cette machine). Sans un moyen d'en
+            sortir le contenu, la limite devient un piège : on y met ses accès
+            pendant des mois, et une réinstallation les efface.
+
+            Le fichier produit est EN CLAIR, et le bouton le dit : un export
+            chiffré qu'on ne saurait pas relire n'est pas une sauvegarde. À
+            ranger dans un endroit sûr — c'est un choix conscient, pas un
+            détail qu'on découvre après.
+          */}
+          {entries.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                const contenu = JSON.stringify(
+                  {
+                    exporteLe: new Date().toISOString(),
+                    avertissement:
+                      'Ce fichier contient vos mots de passe EN CLAIR. Rangez-le dans un endroit sûr, ou supprimez-le après usage.',
+                    entrees: entries,
+                  },
+                  null,
+                  2,
+                );
+                downloadBlob(
+                  new Blob([contenu], { type: 'application/json' }),
+                  `coffre-fort-${new Date().toISOString().slice(0, 10)}.json`,
+                );
+              }}
+              title="Enregistrer une copie de secours — le fichier contient vos mots de passe en clair"
+              className="flex items-center gap-2 border border-border px-3 py-2.5 text-sm text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
+            >
+              <Download size={15} strokeWidth={1.75} />
+              <span className="hidden sm:inline">Copie de secours</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setEditing({ draft: emptyDraft() });
+              setSelectedId(null);
+            }}
+            className="flex items-center gap-2 bg-accent px-3 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
+          >
+            <Plus size={16} strokeWidth={2.25} />
+            <span className="hidden sm:inline">Nouvelle entrée</span>
+          </button>
+        </div>
       </div>
 
-      {/* Storage/security banner — always visible, never a one-time toast, since
-          it changes what the operator should and shouldn't store here. */}
+      {/*
+        CE BANDEAU DISAIT UNE PROPRIÉTÉ, PAS SA CONSÉQUENCE.
+
+        « Jamais synchronisé, jamais transmis sur le réseau » se lit comme une
+        bonne nouvelle — et c'en est une, pour la confidentialité. Mais quelqu'un
+        qui n'est pas technicien en tire l'inverse de ce qu'il faudrait en tirer :
+        il comprend « c'est bien protégé », pas « si je perds cet ordinateur, tout
+        est perdu », ni « mon téléphone montrera un coffre vide », ni « ceci
+        n'est pas dans l'export de mes données ».
+
+        Le bandeau énonce donc maintenant les trois conséquences, et l'écran
+        offre une copie de secours juste à côté. Une limite qu'on ne peut pas
+        lever dans l'immédiat doit au moins être dite dans les termes de qui la
+        subit.
+      */}
       {!loading &&
         (encrypted ? (
-          <div className="flex items-center gap-2 border border-border bg-surface px-4 py-2.5 font-mono text-xs text-text-secondary">
-            <ShieldCheck size={14} className="flex-shrink-0 text-success" strokeWidth={2} />
-            Chiffré localement (AES-256, trousseau du système) — jamais synchronisé, jamais transmis sur le réseau.
+          <div className="flex items-start gap-2 border border-border bg-surface px-4 py-2.5 text-xs text-text-secondary">
+            <ShieldCheck size={14} className="mt-0.5 flex-shrink-0 text-success" strokeWidth={2} />
+            <span>
+              <span className="text-text-primary">Ce coffre reste sur cet appareil.</span> Il est
+              chiffré par le trousseau du système et ne part jamais sur le réseau — donc personne
+              d’autre ne peut le lire, mais il n’est ni synchronisé avec vos autres appareils, ni
+              sauvegardé, ni inclus dans l’export de vos données. Faites-en une copie.
+            </span>
           </div>
         ) : (
           <div className="flex items-start gap-2 border border-warning/40 bg-warning-muted px-4 py-2.5 font-mono text-xs text-text-secondary">
             <AlertTriangle size={14} className="mt-px flex-shrink-0 text-warning" strokeWidth={2} />
             {bridge().env.isElectron
-              ? 'Stockage local non chiffré — le trousseau du système n’est pas disponible sur ce poste. Toujours local, jamais synchronisé, mais lisible par qui a accès à cette session.'
-              : 'Stockage local non chiffré (navigateur) — ne stockez pas de secrets critiques ici. Toujours local, jamais synchronisé, mais lisible par qui a accès à ce navigateur.'}
+              ? 'Ce coffre reste sur cet appareil, et le trousseau du système n’est pas disponible ici : il n’est donc pas chiffré. Lisible par qui a accès à cette session, ni synchronisé, ni sauvegardé, ni inclus dans l’export de vos données.'
+              : 'Ce coffre reste dans CE navigateur, sans chiffrement — n’y mettez pas de secret important. Il n’est ni synchronisé avec vos autres appareils, ni sauvegardé, ni inclus dans l’export de vos données.'}
           </div>
         ))}
 
