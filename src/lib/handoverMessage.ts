@@ -33,6 +33,15 @@ export interface HandoverParts {
   expiresAt?: string;
   /** L'installeur, quand une version est publiée. */
   download?: { url: string; version: string; byteSize: number } | null;
+  /**
+   * L'adresse de l'application web, telle que le SERVEUR la connaît.
+   *
+   * Jamais composée ici : une application installée charge ses pages en
+   * `file://` et ne peut rien deviner de son adresse publique. Elle arrive
+   * d'amn-api (`appUrl`, voir routes/admin.js), et vaut `null` tant que
+   * APP_PUBLIC_URL n'est pas configurée.
+   */
+  webUrl?: string | null;
 }
 
 function megabytes(bytes: number): string {
@@ -41,6 +50,20 @@ function megabytes(bytes: number): string {
 
 export function handoverMessage(parts: HandoverParts): string {
   const lines: string[] = [];
+
+  /*
+    LA NUMÉROTATION SUIT CE QUI EXISTE, ET RIEN D'AUTRE.
+
+    Trois sections possibles — installer, se connecter, le téléphone — mais
+    l'installeur n'existe que si une version est publiée, et l'adresse web que
+    si le serveur en connaît une. Un compteur plutôt que des numéros écrits en
+    dur : un message qui saute de « 1) » à « 3) » se lit comme un message dont
+    on a perdu un morceau, et c'est exactement l'impression à ne pas donner à
+    quelqu'un qui ouvre le produit pour la première fois.
+  */
+  const sections = (parts.download ? 1 : 0) + 1 + (parts.webUrl ? 1 : 0);
+  let n = 0;
+  const titre = (texte: string) => (sections > 1 ? `${++n}) ${texte}` : texte);
 
   lines.push(`Bonjour,`);
   lines.push('');
@@ -52,7 +75,7 @@ export function handoverMessage(parts: HandoverParts): string {
   // 1. L'installation d'abord : c'est le geste le plus long, et il peut se faire
   //    pendant qu'on lit la suite.
   if (parts.download) {
-    lines.push(`1) INSTALLER L'APPLICATION (${megabytes(parts.download.byteSize)})`);
+    lines.push(titre(`INSTALLER L'APPLICATION (${megabytes(parts.download.byteSize)})`));
     lines.push('');
     lines.push(parts.download.url);
     lines.push('');
@@ -60,11 +83,45 @@ export function handoverMessage(parts: HandoverParts): string {
       "Cliquez sur ce lien pour télécharger l'installateur Windows, puis ouvrez le fichier téléchargé.",
     );
     lines.push('');
-    lines.push('2) VOUS CONNECTER');
-  } else {
-    lines.push('POUR VOUS CONNECTER');
   }
 
+  /*
+    L'ADRESSE WEB — la moitié du produit qui manquait à ce message.
+
+    Il ne portait que l'installeur Windows. Une cliente qui le reçoit sur son
+    téléphone, loin de son ordinateur, n'avait donc rien à ouvrir — alors que
+    l'application web existe et fonctionne, et que la console affirmait même
+    « la cliente pourra travailler depuis la version web » sans jamais donner
+    l'adresse. Une promesse sans son moyen.
+
+    Sa PLACE dépend de ce qu'il y a d'autre. Avec un installeur, elle vient
+    après la connexion : c'est un complément, on ne détourne pas quelqu'un de
+    l'application complète. Sans installeur, c'est le seul chemin qui existe,
+    donc elle passe en premier — proposer un mot de passe avant de dire où
+    l'utiliser est un ordre qu'on ne suit pas.
+  */
+  const blocWeb = () => {
+    lines.push(
+      titre(parts.download ? 'SUR VOTRE TÉLÉPHONE' : "OUVRIR L'APPLICATION"),
+    );
+    lines.push('');
+    lines.push(parts.webUrl as string);
+    lines.push('');
+    lines.push(
+      parts.download
+        ? "Ouvrez cette adresse depuis votre téléphone, avec les mêmes identifiants. Choisissez ensuite « Ajouter à l'écran d'accueil » dans le menu de votre navigateur : vous aurez une icône, comme une vraie application."
+        : "Ouvrez cette adresse dans votre navigateur, sur ordinateur comme sur téléphone. Sur téléphone, choisissez « Ajouter à l'écran d'accueil » dans le menu du navigateur : vous aurez une icône, comme une vraie application.",
+    );
+    lines.push('');
+    lines.push(
+      "C'est le même espace de travail des deux côtés — ce que vous écrivez ici apparaît là-bas.",
+    );
+    lines.push('');
+  };
+
+  if (parts.webUrl && !parts.download) blocWeb();
+
+  lines.push(titre('VOUS CONNECTER'));
   lines.push('');
   lines.push(`Identifiant : ${parts.email}`);
 
@@ -85,8 +142,10 @@ export function handoverMessage(parts: HandoverParts): string {
       : ' Il est valable quelques jours';
     lines.push(`${when.trim()} et ne fonctionne qu'une seule fois.`);
   }
-
   lines.push('');
+
+  if (parts.webUrl && parts.download) blocWeb();
+
   lines.push(
     "Une fois connecté, tout est en place : vos modules sont déjà activés, il n'y a rien à configurer.",
   );

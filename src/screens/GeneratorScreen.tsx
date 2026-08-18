@@ -102,6 +102,15 @@ export function GeneratorScreen() {
     /** Le lien d'installeur, ou la raison pour laquelle il n'y en a pas. */
     download: DownloadLink | null;
     downloadProblem: string | null;
+    /**
+     * L'adresse de l'application web, dite par le serveur (`appUrl`).
+     *
+     * `null` quand APP_PUBLIC_URL n'est pas configurée sur amn-api. Ce cas est
+     * AFFICHÉ, pas absorbé : sans cette adresse, le message de remise n'a rien
+     * à donner à une cliente qui le lit sur son téléphone, et Aaron doit le
+     * savoir avant d'appuyer sur « envoyer », pas après.
+     */
+    webUrl: string | null;
   } | null>(null);
 
   const profile = profileId ? tradeProfileById(profileId) : undefined;
@@ -225,6 +234,7 @@ export function GeneratorScreen() {
           partial,
           download,
           downloadProblem,
+          webUrl: reset.appUrl ?? created.appUrl ?? null,
         });
       } else {
         if (!created.invitation) throw new Error('Aucun lien d’activation n’a été émis.');
@@ -241,6 +251,7 @@ export function GeneratorScreen() {
           partial,
           download,
           downloadProblem,
+          webUrl: created.appUrl ?? null,
         });
       }
       setStep('remise');
@@ -648,6 +659,7 @@ export function GeneratorScreen() {
                                 byteSize: result.download.release.byteSize,
                               }
                             : null,
+                          webUrl: result.webUrl,
                         }),
                       )
                       .then(() => {
@@ -662,11 +674,56 @@ export function GeneratorScreen() {
                 </button>
                 {!result.download && (
                   <p className="mt-3 max-w-xl text-[11px] leading-relaxed text-text-muted">
-                    Aucune version n’étant publiée, le message ne contiendra que l’accès au compte —
-                    la cliente pourra travailler depuis la version web en attendant.
+                    Aucune version n’étant publiée, le message contiendra l’adresse web et l’accès
+                    au compte — la cliente peut travailler depuis son navigateur en attendant.
+                  </p>
+                )}
+                {/*
+                  L'ABSENCE D'ADRESSE WEB SE DIT, ELLE NE SE DEVINE PAS.
+
+                  Sans APP_PUBLIC_URL côté amn-api, le message part sans aucune
+                  adresse : la cliente qui le lit sur son téléphone n'a
+                  strictement rien à ouvrir. C'est le genre de manque qu'on ne
+                  découvre que par son message à elle — « je n'arrive pas à
+                  l'ouvrir » —, donc il se dit ICI, avant l'envoi, à l'endroit
+                  exact où on appuie sur le bouton.
+                */}
+                {!result.webUrl && (
+                  <p className="mt-3 max-w-xl border border-warning/40 bg-warning-muted px-3 py-2 text-[11px] leading-relaxed text-text-secondary">
+                    <span className="text-text-primary">
+                      Le message ne contiendra pas d’adresse web.
+                    </span>{' '}
+                    amn-api ne connaît pas l’adresse publique de l’application (variable
+                    APP_PUBLIC_URL). Tant qu’elle n’est pas réglée, votre cliente ne pourra ouvrir
+                    l’application ni depuis son téléphone, ni depuis un navigateur.
                   </p>
                 )}
               </section>
+
+              {/* ─────────── L'adresse web, pour qui veut la relire ─────────── */}
+              {result.webUrl && (
+                <section className="panel p-5">
+                  <p className="eyebrow mb-3">Application web et téléphone</p>
+                  <p className="mb-4 text-[13px] leading-relaxed text-text-secondary">
+                    La même adresse pour tout le monde : l’application y apprend son organisation à
+                    la connexion. Sur téléphone, « Ajouter à l’écran d’accueil » lui donne une
+                    icône — c’est ce qui en fait une application plutôt qu’un onglet.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="min-w-0 flex-1 overflow-x-auto border border-border bg-bg px-3 py-2.5 font-mono text-[12px] text-text-primary">
+                      {result.webUrl}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => void navigator.clipboard?.writeText(result.webUrl ?? '')}
+                      className="flex flex-shrink-0 items-center gap-1.5 border border-border-strong px-3 py-2.5 font-mono text-[10px] uppercase tracking-wider text-text-primary transition-colors hover:bg-surface-hover"
+                    >
+                      <Copy size={12} strokeWidth={2} />
+                      Copier
+                    </button>
+                  </div>
+                </section>
+              )}
 
               {/* ─────────── Le détail des deux liens, pour qui veut les relire ─────────── */}
               <section className="panel p-5">

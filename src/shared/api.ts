@@ -191,6 +191,16 @@ export interface CreateOrganizationResult {
    * installé. Le jeton reste rendu à côté, pour qui saurait le coller ailleurs.
    */
   invitation: { token: string; url: string | null; expiresAt: string } | null;
+  /**
+   * L'adresse de l'application web, telle que le SERVEUR la connaît.
+   *
+   * Même règle que `invitation.url` : composée côté amn-api à partir
+   * d'APP_PUBLIC_URL, `null` si elle n'est pas configurée. Le message de remise
+   * en a besoin pour dire à la cliente où ouvrir l'application depuis son
+   * téléphone — sans elle, elle n'a que l'installeur Windows, donc rien tant
+   * qu'elle n'est pas devant son ordinateur.
+   */
+  appUrl: string | null;
 }
 
 export interface OrgInvitationResult {
@@ -202,6 +212,8 @@ export interface TempPasswordResult {
   user: { id: string; email: string; role: string; status: string };
   /** En clair, une seule fois : seule l'empreinte est stockée côté serveur. */
   password: string;
+  /** L'adresse de l'application web — ce mot de passe repart dans un message. */
+  appUrl: string | null;
 }
 
 /** Ce qu'AMN DevSec a fait sur le dossier d'une cliente, et quand. */
