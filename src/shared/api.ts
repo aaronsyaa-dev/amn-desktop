@@ -102,8 +102,24 @@ export interface OrgPulse {
     /** ISO de la dernière écriture, ou null si l'organisation n'a rien produit. */
     lastAt: string | null;
   };
-  /** Les cinq collections les plus fournies. Des noms et des comptes, aucun contenu. */
-  byCollection: Array<{ collection: string; count: number }>;
+  /**
+   * Chaque module de l'organisation : combien d'enregistrements, quand le
+   * dernier a bougé, combien ont bougé cette semaine.
+   *
+   * Des noms, des comptes et des dates. AUCUN CONTENU — c'est la limite qui
+   * sépare diagnostiquer de lire, et un test d'amn-api la vérifie
+   * (test/pulse.test.js). Elle permet de répondre à « ma facture a disparu »
+   * sans ouvrir une session de support sur le dossier de la cliente, geste
+   * lourd qui s'inscrit à SON journal d'accès.
+   */
+  byCollection: Array<{
+    collection: string;
+    count: number;
+    /** ISO de la dernière écriture dans ce module, ou null. */
+    lastAt?: string | null;
+    /** Écritures des sept derniers jours dans ce module. */
+    last7Days?: number;
+  }>;
   /**
    * Jours DISTINCTS où quelque chose a bougé sur les trente derniers.
    * Un total brut ne distingue pas une organisation qui travaille tous les

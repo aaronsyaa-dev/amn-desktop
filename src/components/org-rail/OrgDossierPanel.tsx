@@ -6,7 +6,8 @@ import { bridge } from '../../lib/bridge';
 import { cleanErrorMessage } from '../../lib/errorMessage';
 import { SaveIndicator } from '../SaveIndicator';
 import { ACCENTS, DEFAULT_ACCENT_ID } from '../../lib/accent';
-import type { AdminOrganization } from '../../shared/api';
+import type { AdminOrganization, OrgPulse } from '../../shared/api';
+import { relativeTime } from '../../lib/time';
 
 /**
  * Le dossier d'une organisation cliente, vu d'AMN DevSec (BLOC E).
@@ -24,6 +25,37 @@ import type { AdminOrganization } from '../../shared/api';
  *      qu'elle ne puisse pas les lire, sans règle supplémentaire à ne pas
  *      oublier.
  */
+
+/**
+ * Le nom d'un module tel qu'on le dit à voix haute.
+ *
+ * Le pouls rend des noms de COLLECTION (`invoices`, `timeEntries`) — le
+ * vocabulaire de la base. Les afficher tels quels obligerait à traduire de tête
+ * au moment exact où on cherche à comprendre un problème.
+ */
+const NOM_COLLECTION: Record<string, string> = {
+  appointments: 'Agenda',
+  clients: 'Clients',
+  quotes: 'Devis',
+  invoices: 'Facturation',
+  billing: 'Identité de facturation',
+  projects: 'Projets',
+  projectConfig: 'Réglages des projets',
+  tasks: 'Tâches',
+  expenses: 'Dépenses',
+  expenseConfig: 'Catégories de dépenses',
+  timeEntries: 'Temps',
+  timeConfig: 'Réglages du temps',
+  orders: 'Commandes',
+  notes: 'Notes',
+  media: 'Médias',
+  reports: 'Comptes-rendus',
+  profiles: 'Profil',
+};
+
+function moduleLabel(collection: string): string {
+  return NOM_COLLECTION[collection] ?? collection;
+}
 
 /** Les modules réglables. Doit rester aligné sur `ORG_MODULES` d'amn-api. */
 const TOGGLEABLE: { key: string; label: string }[] = [
@@ -54,6 +86,16 @@ export function OrgDossierPanel({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  /*
+    Le pouls de l'organisation — chargé à l'ouverture du dossier, pas avant.
+
+    Une seule requête, et elle ne rend que des comptes et des dates. Un échec
+    n'est pas traité comme une panne du dossier : le reste du panneau (modules,
+    notes) marche sans lui, et un dossier qui refuserait de s'ouvrir parce
+    qu'un chiffre manque serait un mauvais échange.
+  */
+  const [pulse, setPulse] = useState<OrgPulse | null>(null);
+
   const { upsert } = useSync();
   const dossiers = useCollection<DossierData>('orgDossier');
   const existing = dossiers.find((d) => d.id === org.id);
@@ -119,6 +161,19 @@ export function OrgDossierPanel({
     window.setTimeout(() => setSavingNotes(false), 400);
   };
 
+  useEffect(() => {
+    let vivant = true;
+    void bridge()
+      .remote.admin.organizationPulse(org.id)
+      .then((p) => vivant && setPulse(p))
+      .catch(() => {
+        /* le dossier vaut d'être ouvert même sans ses chiffres */
+      });
+    return () => {
+      vivant = false;
+    };
+  }, [org.id]);
+
   return (
     <div className="fixed inset-0 z-[70] flex items-end justify-center p-0 sm:items-center sm:p-4">
       <motion.div
@@ -157,6 +212,70 @@ export function OrgDossierPanel({
             <p className="mb-3 border border-danger/50 bg-danger-muted px-3 py-2 text-xs text-text-primary">
               {error}
             </p>
+          )}
+
+          {/* ------------------------------------------- ce qui a bougé ---- */}
+          {/*
+            EN PREMIER, ET C'EST VOULU.
+
+            Quand on ouvre ce dossier, c'est presque toujours parce qu'elle
+            vient de signaler quelque chose. La première chose à voir est donc
+            l'état de son espace, pas la liste de ses modules — celle-ci se
+            règle une fois à la création et ne se relit qu'ensuite.
+          */}
+          {pulse && (
+            <>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                Ce qui a bougé chez elle
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-text-secondary">
+                Des comptes et des dates, jamais le contenu.{' '}
+                <span className="text-text-muted">
+                  De quoi situer un problème sans ouvrir de session de support — qui, elle,
+                  s’inscrit à son journal d’accès.
+                </span>
+              </p>
+
+              <div className="mt-3 border border-border">
+                <div className="flex items-baseline justify-between gap-3 border-b border-border px-3 py-2">
+                  <span className="text-xs text-text-secondary">Dernière écriture</span>
+                  <span className="font-mono text-[11px] text-text-primary">
+                    {pulse.records.lastAt ? relativeTime(pulse.records.lastAt) : 'jamais'}
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3 border-b border-border px-3 py-2">
+                  <span className="text-xs text-text-secondary">Jours actifs sur 30</span>
+                  <span className="font-mono text-[11px] text-text-primary">
+                    {pulse.activeDaysLast30}
+                  </span>
+                </div>
+
+                {pulse.byCollection.length === 0 ? (
+                  <p className="px-3 py-3 text-xs text-text-muted">
+                    Rien de saisi pour l’instant — son espace est encore vide.
+                  </p>
+                ) : (
+                  pulse.byCollection.map((entry) => (
+                    <div
+                      key={entry.collection}
+                      className="flex items-baseline justify-between gap-3 border-b border-border/60 px-3 py-2 last:border-b-0"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-xs text-text-primary">
+                        {moduleLabel(entry.collection)}
+                      </span>
+                      <span className="flex-shrink-0 font-mono text-[11px] text-text-secondary">
+                        {entry.count}
+                        {entry.last7Days ? ` · +${entry.last7Days} cette semaine` : ''}
+                      </span>
+                      <span className="flex-shrink-0 font-mono text-[10px] text-text-muted">
+                        {entry.lastAt ? relativeTime(entry.lastAt) : '—'}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="my-5 border-t border-border" />
+            </>
           )}
 
           {/* ------------------------------------------------- modules ----- */}
