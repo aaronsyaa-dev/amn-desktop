@@ -601,14 +601,42 @@ function PushSection({ email }: { email: string }) {
     const result = await ensurePushSubscription(email, { force: true });
     if (result.ok) {
       setState('on');
-      setMessage('Cet appareil recevra les appels et alertes, même application fermée.');
+      setMessage(
+        IS_BUSINESS
+          ? 'Cet appareil vous préviendra avant vos rendez-vous, même application fermée.'
+          : 'Cet appareil recevra les appels et alertes, même application fermée.',
+      );
       return;
     }
+
+    /*
+      « PAS DE CLÉ » N'EST PAS UN ÉCHEC POUR ELLE.
+
+      `ensurePushSubscription` demande l'autorisation AVANT d'interroger le
+      serveur (voir lib/webPush.ts). Quand le serveur n'a pas de clé VAPID,
+      l'autorisation est donc déjà accordée — et c'est tout ce dont ses rappels
+      de rendez-vous ont besoin, puisqu'ils sont émis par l'application
+      elle-même. Seule tombe la notification application FERMÉE.
+
+      Le message d'origine annonçait « clé VAPID absente », en rouge : un nom de
+      variable de serveur, présenté comme une panne, à quelqu'un qui venait
+      d'obtenir exactement ce qu'il lui fallait. Elle en aurait conclu que ses
+      rappels ne marchent pas, et serait repartie.
+    */
+    if (result.reason === 'no-key' && IS_BUSINESS) {
+      setState('on');
+      setMessage(
+        'Cet appareil vous préviendra avant vos rendez-vous tant que l’application est ouverte. ' +
+          'Les rappels application fermée ne sont pas encore activés de notre côté.',
+      );
+      return;
+    }
+
     setState('error');
     setMessage(
       {
         denied: 'Notifications refusées pour ce site — réautorisez-les dans les réglages du navigateur.',
-        unsupported: 'Ce navigateur ne gère pas les notifications push.',
+        unsupported: 'Ce navigateur ne gère pas les notifications.',
         'no-key': 'Le serveur AMN n’a pas de clé VAPID configurée : les push sont désactivées côté serveur.',
         'not-configured': 'Session incomplète — reconnectez-vous.',
         electron: '',
@@ -636,7 +664,21 @@ function PushSection({ email }: { email: string }) {
     <Panel
       icon={Bell}
       title="Notifications sur cet appareil"
-      subtitle="Nécessaire pour être prévenu d’un appel entrant quand l’application est fermée."
+      /*
+        Le sous-titre parlait d'« un appel entrant » — une fonctionnalité d'AMN
+        DevSec, que la cliente n'a pas. Ce bouton est pourtant le SEUL endroit
+        où elle peut autoriser les notifications, et cette autorisation est ce
+        dont ses rappels de rendez-vous ont besoin : décrite par une
+        fonctionnalité qu'elle n'a pas, elle passait son chemin, et ne recevait
+        plus jamais de rappel. L'autorisation ne se redemande pas depuis un
+        minuteur (iOS l'exige au geste), donc l'occasion manquée l'était pour de
+        bon.
+      */
+      subtitle={
+        IS_BUSINESS
+          ? 'À autoriser une fois, pour recevoir vos rappels de rendez-vous sur cet appareil.'
+          : 'Nécessaire pour être prévenu d’un appel entrant quand l’application est fermée.'
+      }
     >
       <div className="flex flex-wrap items-center gap-3">
         <button
@@ -645,7 +687,7 @@ function PushSection({ email }: { email: string }) {
           disabled={state === 'working'}
           className="rounded-lg border border-border-strong px-3 py-2 text-xs font-medium uppercase tracking-wider text-text-primary transition-colors hover:bg-accent-muted disabled:opacity-50"
         >
-          {state === 'on' ? 'Réenregistrer cet appareil' : 'Activer les notifications'}
+          {state === 'on' ? 'Réenregistrer cet appareil' : 'Autoriser les notifications'}
         </button>
         {state === 'on' && (
           <button
