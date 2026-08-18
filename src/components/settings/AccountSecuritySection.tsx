@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Eye, History, Loader2, LogOut, Monitor, ShieldCheck } from 'lucide-react';
 import { bridge } from '../../lib/bridge';
 import { cleanErrorMessage } from '../../lib/errorMessage';
-import { relativeTime } from '../../lib/time';
+import { relativeTime, futureTime } from '../../lib/time';
 import { IS_BUSINESS } from '../../edition/edition';
 import type { ActiveSession, OrgAccessRecord } from '../../shared/api';
 
@@ -108,7 +108,7 @@ export function AccountSecuritySection() {
                   )}
                 </p>
                 <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted">
-                  ouvert {relativeTime(s.createdAt)} · expire {relativeTime(s.expiresAt)}
+                  ouvert {relativeTime(s.createdAt)} · expire {futureTime(s.expiresAt)}
                 </p>
               </div>
               {s.current ? (

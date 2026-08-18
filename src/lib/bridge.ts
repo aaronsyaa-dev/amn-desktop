@@ -560,6 +560,9 @@ function createBrowserRemote(): AmnBridge['remote'] {
     async revokeSession(id: string): Promise<void> {
       await apiFetch(`/v1/auth/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' });
     },
+    async exportOrganization(): Promise<Record<string, unknown>> {
+      return apiFetch<Record<string, unknown>>('/v1/auth/organization/export');
+    },
     async accessLog(): Promise<OrgAccessRecord[]> {
       const res = await apiFetch<{ entries: OrgAccessRecord[] }>('/v1/auth/access-log');
       return res.entries ?? [];

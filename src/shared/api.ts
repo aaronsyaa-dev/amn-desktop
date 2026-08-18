@@ -1870,6 +1870,16 @@ export interface AmnBridge {
      */
     accessLog(): Promise<OrgAccessRecord[]>;
     /**
+     * L'export de portabilité — TOUTES les données de l'organisation.
+     *
+     * Rendu par amn-api, qui est le seul à savoir ce qu'il détient. Le
+     * remplacer par une liste tenue côté poste est exactement ce qui avait
+     * rendu la « sauvegarde complète » incomplète : elle énumérait neuf
+     * collections à la main et en ignorait treize — factures, rendez-vous,
+     * dépenses, temps, commandes, notes, médias, comptes-rendus…
+     */
+    exportOrganization(): Promise<Record<string, unknown>>;
+    /**
      * Règle l'apparence de MON organisation (BLOC C).
      *
      * Distincte de `admin.updateOrganization`, et c'est tout l'intérêt : celle-ci
@@ -2178,6 +2188,7 @@ export const IPC = {
   remoteListSessions: 'remote:listSessions',
   remoteRevokeSession: 'remote:revokeSession',
   remoteAccessLog: 'remote:accessLog',
+  remoteExportOrganization: 'remote:exportOrganization',
   remoteSetOrgAccent: 'remote:setOrgAccent',
   remoteGetPresence: 'remote:getPresence',
   /** Push channels (main -> renderer via webContents.send, not invoke/handle). */

@@ -258,9 +258,17 @@ function Card({
           {title}
         </h2>
         {action && (
+          /*
+            Le lien de tête de carte faisait 15 px de haut sur téléphone — du
+            texte, pas une cible. C'est pourtant le chemin le plus court depuis
+            l'accueil vers chaque module, donc celui qu'on suit le plus souvent
+            au pouce. Le rembourrage vertical lui donne sa hauteur sans rien
+            changer à ce qu'on lit, et les marges négatives l'empêchent
+            d'écarter la barre de la carte.
+          */
           <Link
             to={action.to}
-            className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-text-muted transition-colors hover:text-text-primary"
+            className="-my-2 flex items-center gap-1 py-2 font-mono text-[10px] uppercase tracking-wider text-text-muted transition-colors hover:text-text-primary"
           >
             {action.label}
             <ArrowRight size={11} strokeWidth={2} />

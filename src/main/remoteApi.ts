@@ -259,6 +259,10 @@ export class RemoteApiClient {
     return org;
   }
 
+  async exportOrganization(): Promise<Record<string, unknown>> {
+    return apiFetch<Record<string, unknown>>('/v1/auth/organization/export');
+  }
+
   async accessLog(): Promise<OrgAccessRecord[]> {
     const res = await apiFetch<{ entries: OrgAccessRecord[] }>('/v1/auth/access-log');
     return res.entries ?? [];

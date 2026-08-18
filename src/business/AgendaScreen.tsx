@@ -142,19 +142,29 @@ export function AgendaScreen() {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border border-border bg-surface px-3 py-2">
+          {/*
+            LES CIBLES DE CETTE BARRE SONT DIMENSIONNÉES POUR UN POUCE.
+
+            Mesurées sur un écran de 390 px, les deux flèches faisaient 28×28 et
+            les boutons de vue 23 px de haut — sous le minimum tenable pour un
+            doigt, et cette barre est justement celle qu'on utilise le plus sur
+            téléphone : c'est elle qui change de jour. Le rembourrage est donc
+            généreux jusqu'à `sm`, et redevient compact à la souris, où viser
+            n'a jamais été le problème.
+          */}
           <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={() => step(-1)}
               aria-label="Période précédente"
-              className="rounded p-1.5 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
+              className="rounded p-3 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary sm:p-1.5"
             >
               <ChevronLeft size={16} strokeWidth={2} />
             </button>
             <button
               type="button"
               onClick={() => setAnchor(startOfDay(new Date()))}
-              className="rounded px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+              className="rounded px-2.5 py-3 font-mono text-[10px] uppercase tracking-widest text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary sm:py-1"
             >
               Aujourd’hui
             </button>
@@ -162,7 +172,7 @@ export function AgendaScreen() {
               type="button"
               onClick={() => step(1)}
               aria-label="Période suivante"
-              className="rounded p-1.5 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
+              className="rounded p-3 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary sm:p-1.5"
             >
               <ChevronRight size={16} strokeWidth={2} />
             </button>
@@ -177,7 +187,7 @@ export function AgendaScreen() {
                 key={mode}
                 type="button"
                 onClick={() => setView(mode)}
-                className={`rounded-md px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors ${
+                className={`rounded-md px-2.5 py-3 font-mono text-[10px] uppercase tracking-wider transition-colors sm:py-1 ${
                   view === mode
                     ? 'bg-accent-muted text-text-primary'
                     : 'text-text-secondary hover:text-text-primary'

@@ -269,6 +269,7 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   ipcMain.handle(IPC.remoteListSessions, () => remote.listSessions());
   ipcMain.handle(IPC.remoteRevokeSession, (_event, id: string) => remote.revokeSession(id));
   ipcMain.handle(IPC.remoteAccessLog, () => remote.accessLog());
+  ipcMain.handle(IPC.remoteExportOrganization, () => remote.exportOrganization());
   ipcMain.handle(IPC.remoteSetOrgAccent, (_event, accent: string | null) =>
     remote.setOrganizationAccent(accent),
   );
