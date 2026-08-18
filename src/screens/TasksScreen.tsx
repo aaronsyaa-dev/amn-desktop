@@ -89,6 +89,7 @@ export type SyncTask = TaskData & { id: string; updatedAt: string };
 const TASK_STATUSES: SharedTaskStatus[] = ['todo', 'doing', 'done'];
 
 export function TasksScreen() {
+  const { TEAM_ENABLED } = useExclusive();
   const { user } = useAuth();
   const { sites } = useLinkedSites();
   const { upsert, remove, ready } = useSync();
@@ -179,8 +180,17 @@ export function TasksScreen() {
         <div className="flex items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-text-primary">Tâches</h1>
+            {/*
+              « Qui fait quoi · partagé en équipe » décrivait AMN DevSec, pas
+              une cliente qui travaille seule : il n'y a personne d'autre à
+              qui la liste serait partagée, et « qui fait quoi » n'a pas de
+              réponse à une personne. Le sous-titre suit donc l'édition, comme
+              tout le reste de cet écran (`TEAM_ENABLED`).
+            */}
             <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
-              Qui fait quoi · {tasks.length} tâche{tasks.length > 1 ? 's' : ''} · partagé en équipe
+              {TEAM_ENABLED ? 'Qui fait quoi · ' : ''}
+              {tasks.length} tâche{tasks.length > 1 ? 's' : ''}
+              {TEAM_ENABLED ? ' · partagé en équipe' : ' · ce qu’il reste à faire'}
             </p>
           </div>
           <button

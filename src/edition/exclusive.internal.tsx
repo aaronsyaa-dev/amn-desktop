@@ -12,7 +12,7 @@ import { OllamaSection as OllamaSettingsSection } from '../components/settings/O
 import { bridge } from '../lib/bridge';
 import { scoreColor } from '../lib/scanSeverity';
 import { relativeTime } from '../lib/time';
-import type { ComplyCheck, Scan, VaultCategory } from '../shared/api';
+import type { ComplyCheck, NotificationPrefs, Scan, VaultCategory } from '../shared/api';
 
 /**
  * La couture entre les écrans partagés et les produits exclusifs d'AMN DevSec.
@@ -47,6 +47,12 @@ export interface ExclusiveView {
    * cliente qui travaille seule n'a personne à qui assigner, et un sélecteur
    * « Assigné à » à une seule entrée est du bruit, pas une fonctionnalité.
    */
+  /** Les notifications proposables ici (voir exclusive.business.tsx). */
+  NOTIFICATION_PREFS: {
+    key: keyof NotificationPrefs;
+    label: string;
+    detail: string;
+  }[];
   TEAM_ENABLED: boolean;
   /** Membres assignables. Codés en dur tant qu'AMN DevSec reste à deux. */
   TEAM_MEMBERS: { email: string; name: string }[];
@@ -63,6 +69,12 @@ export interface ExclusiveView {
 }
 
 const AMN_VIEW: ExclusiveView = {
+  NOTIFICATION_PREFS: [
+    { key: 'siteOffline', label: 'Site hors ligne', detail: 'Un site supervisé ne répond plus.' },
+    { key: 'criticalAlert', label: 'Alerte critique', detail: 'Attaque ou incident critique détecté.' },
+    { key: 'mention', label: 'Mention', detail: 'Quelqu’un vous mentionne dans un message.' },
+    { key: 'taskAssigned', label: 'Tâche assignée', detail: 'Une tâche vous est attribuée.' },
+  ],
   TEAM_ENABLED: true,
   TEAM_MEMBERS: [
     { email: 'aaron@amn-devsec.com', name: 'Aaron' },
@@ -86,6 +98,13 @@ const AMN_VIEW: ExclusiveView = {
  * parc de sites, ni produits, ni équipe.
  */
 const CLIENT_VIEW: ExclusiveView = {
+  NOTIFICATION_PREFS: [
+    {
+      key: 'appointmentReminder',
+      label: 'Rappel de rendez-vous',
+      detail: 'Avant chaque rendez-vous, selon le préavis choisi à l’agenda.',
+    },
+  ],
   TEAM_ENABLED: false,
   TEAM_MEMBERS: [],
   SITES_ENABLED: false,

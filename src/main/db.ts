@@ -70,7 +70,8 @@ export function initDatabase(): Database.Database {
       site_offline  INTEGER NOT NULL DEFAULT 1,
       critical_alert INTEGER NOT NULL DEFAULT 1,
       mention       INTEGER NOT NULL DEFAULT 1,
-      task_assigned INTEGER NOT NULL DEFAULT 1
+      task_assigned INTEGER NOT NULL DEFAULT 1,
+      appointment_reminder INTEGER NOT NULL DEFAULT 1
     );
 
     CREATE TABLE IF NOT EXISTS clients (
@@ -205,5 +206,9 @@ function runMigrations(database: Database.Database): void {
   // existing local autoincrement ids that client_events/quotes depend on.
   ensureColumn('clients', 'sync_id', "TEXT NOT NULL DEFAULT ''");
   ensureColumn('quotes', 'sync_id', "TEXT NOT NULL DEFAULT ''");
+  // Le rappel de rendez-vous devient réglable (BLOC A). DEFAULT 1 : un poste
+  // déjà installé garde le comportement qu'il avait, sans que personne ait à
+  // rouvrir ses réglages.
+  ensureColumn('notification_prefs', 'appointment_reminder', 'INTEGER NOT NULL DEFAULT 1');
 }
 

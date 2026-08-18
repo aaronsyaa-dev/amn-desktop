@@ -507,11 +507,30 @@ export interface ChangePasswordResult {
 
 /* --------------------------- Notification prefs --------------------------- */
 
+/**
+ * Ce qui peut déclencher une notification.
+ *
+ * Toutes les clés vivent ici, mais TOUTES NE CONCERNENT PAS TOUT LE MONDE :
+ * un parc de sites supervisés, une alerte d'attaque et une mention dans un fil
+ * d'équipe n'existent que chez AMN DevSec. C'est
+ * `NOTIFICATION_PREFS` (@edition/exclusive) qui décide de ce qui est PROPOSÉ à
+ * l'écran, édition par édition — une cliente ne doit pas régler des
+ * événements qui ne lui arriveront jamais.
+ */
 export interface NotificationPrefs {
   siteOffline: boolean;
   criticalAlert: boolean;
   mention: boolean;
   taskAssigned: boolean;
+  /**
+   * Le rappel avant un rendez-vous.
+   *
+   * La seule notification qu'une cliente reçoive réellement — et la seule qui
+   * n'avait pas de réglage : `AppointmentReminders` notifiait sans rien
+   * consulter, donc l'écran des notifications proposait quatre interrupteurs
+   * sans effet et taisait le seul événement vrai.
+   */
+  appointmentReminder: boolean;
 }
 
 export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
@@ -519,6 +538,7 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   criticalAlert: true,
   mention: true,
   taskAssigned: true,
+  appointmentReminder: true,
 };
 
 export interface AppInfo {

@@ -1,6 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { bridge } from '../lib/bridge';
+import { DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs } from '../shared/api';
 import { useAppointments } from '../state/useAppointments';
+import { useAuth } from '../auth/AuthContext';
 import { relativeToNow, timeLabel } from '../lib/calendar';
 
 /** Fréquence de balayage. Une minute suffit : les préavis sont en minutes. */
@@ -33,6 +35,37 @@ export function AppointmentReminders() {
   const appointmentsRef = useRef(appointments);
   appointmentsRef.current = appointments;
 
+  /*
+    LE RÉGLAGE EST LU, ET C'EST NEUF.
+
+    Ce composant notifiait sans jamais consulter les préférences. Conséquence
+    côté cliente : l'écran des notifications proposait quatre interrupteurs qui
+    ne changeaient rien, et le seul rappel qu'elle recevait vraiment — celui-ci
+    — n'en avait aucun. Elle ne pouvait donc ni l'éteindre, ni comprendre à
+    quoi servaient ceux qu'on lui montrait.
+
+    Lu par email plutôt que passé en propriété : c'est la même clé que l'écran
+    des Paramètres écrit, donc le réglage vaut sans qu'on ait à relier les deux.
+  */
+  const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_NOTIFICATION_PREFS);
+  const prefsRef = useRef(prefs);
+  prefsRef.current = prefs;
+  const { user } = useAuth();
+  const email = user?.email ?? '';
+  useEffect(() => {
+    if (!email) return;
+    let vivant = true;
+    void bridge()
+      .prefs.get(email)
+      .then((p) => vivant && setPrefs(p))
+      .catch(() => {
+        /* réglages illisibles : on garde les valeurs par défaut, donc le rappel */
+      });
+    return () => {
+      vivant = false;
+    };
+  }, [email]);
+
   useEffect(() => {
     const readFired = (): Set<string> => {
       try {
@@ -47,6 +80,8 @@ export function AppointmentReminders() {
       const fired = readFired();
       const now = Date.now();
       let changed = false;
+
+      if (!prefsRef.current.appointmentReminder) return;
 
       for (const appointment of appointmentsRef.current) {
         if (appointment.status !== 'scheduled') continue;

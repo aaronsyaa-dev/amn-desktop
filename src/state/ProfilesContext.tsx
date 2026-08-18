@@ -34,8 +34,20 @@ interface ProfilesContextValue {
 
 const ProfilesContext = createContext<ProfilesContextValue | undefined>(undefined);
 
+/**
+ * Majuscule à CHAQUE mot, pas seulement au premier.
+ *
+ * `marie.dupont` → « Marie Dupont », et non « Marie dupont ». Ces noms sont
+ * dérivés d'une adresse tant que la personne n'a pas rempli son profil : ils
+ * s'affichent donc partout, y compris sur son premier écran. Écorcher un nom
+ * de famille est une petite faute qui se voit beaucoup.
+ */
 function titleCase(s: string): string {
-  return s ? s[0].toUpperCase() + s.slice(1) : s;
+  return s
+    .replace(/[._-]+/g, ' ')
+    .split(' ')
+    .map((mot) => (mot ? mot[0].toUpperCase() + mot.slice(1) : mot))
+    .join(' ');
 }
 
 /**

@@ -150,11 +150,24 @@ function read<T>(key: string): T | null {
   }
 }
 
-/** Nom affichable par défaut, tiré de l'adresse — remplaçable dans Paramètres. */
+/**
+ * Nom affichable par défaut, tiré de l'adresse — remplaçable dans Paramètres.
+ *
+ * CHAQUE mot prend sa majuscule, pas seulement le premier. `marie.dupont`
+ * donnait « Marie dupont », et cette chaîne-là s'affiche en grand sur le tout
+ * premier écran qu'une cliente voit, avant même qu'elle ait eu l'occasion de
+ * renseigner son nom. Une faute d'orthographe sur son propre nom, en
+ * accueil : c'est le genre de détail qui décide de la confiance qu'on accorde
+ * au reste.
+ */
 function nameFromEmail(email: string): string {
   const local = email.split('@')[0] ?? email;
   const cleaned = local.replace(/[._-]+/g, ' ').trim();
-  return cleaned ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1) : email;
+  if (!cleaned) return email;
+  return cleaned
+    .split(' ')
+    .map((mot) => (mot ? mot.charAt(0).toUpperCase() + mot.slice(1) : mot))
+    .join(' ');
 }
 
 function userFromSession(session: RemoteSession): User {

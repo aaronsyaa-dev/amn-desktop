@@ -36,6 +36,22 @@ const TYPES: { value: ReportType; label: string }[] = [
   { value: 'manual', label: 'Manuel' },
 ];
 
+/**
+ * Les types PROPOSABLES ici.
+ *
+ * « Décision » renvoie au Journal de décisions, un module d'AMN DevSec qui
+ * n'est pas compilé dans l'édition Business. Le proposer à une cliente lui
+ * offre un filtre qui ne trouvera jamais rien et une catégorie qui ne désigne
+ * rien — deux façons de la faire douter d'avoir compris.
+ *
+ * `typeLabel` continue de lire TYPES en entier : un enregistrement ancien
+ * marqué « decision » doit garder un intitulé lisible, même là où on ne peut
+ * plus en créer.
+ */
+function proposableTypes(teamEnabled: boolean) {
+  return teamEnabled ? TYPES : TYPES.filter((t) => t.value !== 'decision');
+}
+
 function typeLabel(t: ReportType): string {
   return TYPES.find((x) => x.value === t)?.label ?? 'Manuel';
 }
@@ -65,6 +81,7 @@ interface EditState {
 }
 
 export function ReportsScreen() {
+  const { TEAM_ENABLED } = useExclusive();
   const { reports, createReport, updateReport, deleteReport } = useReports();
   const { isPending, scheduleDelete } = useUndo();
   const location = useLocation();
@@ -171,8 +188,11 @@ export function ReportsScreen() {
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-text-primary">Rapports</h1>
+          {/* « Mémoire de l'équipe » suppose une équipe. Chez une cliente, ce
+              sont ses comptes-rendus à elle — le mot juste est le sien. */}
           <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
-            Mémoire de l’équipe · {reports.length} rapport{reports.length > 1 ? 's' : ''}
+            {TEAM_ENABLED ? 'Mémoire de l’équipe' : 'Vos comptes-rendus'} · {reports.length} rapport
+            {reports.length > 1 ? 's' : ''}
           </p>
         </div>
         <button
@@ -194,7 +214,7 @@ export function ReportsScreen() {
           onChange={(v) => setTypeFilter(v as ListFilter)}
           options={[
             { value: 'all', label: 'Tous' },
-            ...TYPES.map((t) => ({ value: t.value, label: t.label })),
+            ...proposableTypes(TEAM_ENABLED).map((t) => ({ value: t.value, label: t.label })),
             ...products.filters,
           ]}
         />
@@ -225,8 +245,14 @@ export function ReportsScreen() {
             */
             <div className="px-4">
               <EmptyState quiet={reports.length > 0 || products.entries.length > 0}>
+                {/* « depuis un produit » est du vocabulaire d'AMN DevSec
+                    (Scanner, Comply, SSL Monitor). Une cliente n'a pas de
+                    produits : la phrase la renvoyait à quelque chose
+                    d'introuvable chez elle. */}
                 {reports.length === 0 && products.entries.length === 0
-                  ? 'Aucun rapport pour l’instant. Ils se rédigent ici ou s’exportent depuis un produit.'
+                  ? TEAM_ENABLED
+                    ? 'Aucun rapport pour l’instant. Ils se rédigent ici ou s’exportent depuis un produit.'
+                    : 'Aucun compte-rendu pour l’instant. Rédigez-en un ici, ou depuis une tâche terminée ou une fiche client.'
                   : 'Aucun rapport pour ces filtres.'}
               </EmptyState>
             </div>
@@ -426,6 +452,7 @@ function ReportEditor({
   onSave: () => void;
   onCancel: () => void;
 }) {
+  const { TEAM_ENABLED } = useExclusive();
   const { draft } = state;
   const setDraft = (patch: Partial<ReportDraft>) => onChange({ ...state, draft: { ...draft, ...patch } });
   const [preview, setPreview] = useState(false);
@@ -485,7 +512,7 @@ function ReportEditor({
           aria-label="Type de rapport"
           className="input-focus cursor-pointer border border-border bg-bg px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary"
         >
-          {TYPES.map((t) => (
+          {proposableTypes(TEAM_ENABLED).map((t) => (
             <option key={t.value} value={t.value}>
               {t.label}
             </option>

@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { VaultCategory } from '../shared/api';
+import type { NotificationPrefs, VaultCategory } from '../shared/api';
 import type { DerivedSite } from '../state/RemoteSitesContext';
 
 /**
@@ -16,6 +16,19 @@ import type { DerivedSite } from '../state/RemoteSitesContext';
  */
 
 export interface ExclusiveView {
+  /**
+   * Les notifications PROPOSABLES ici, dans l'ordre d'affichage.
+   *
+   * Une édition ne montre que des événements qui peuvent lui arriver. Chez une
+   * cliente, le rappel de rendez-vous est le seul — les trois autres (site
+   * hors ligne, alerte d'attaque, mention dans un fil d'équipe) supposent un
+   * parc supervisé et une équipe, dont elle n'a ni l'un ni l'autre.
+   */
+  NOTIFICATION_PREFS: {
+    key: keyof NotificationPrefs;
+    label: string;
+    detail: string;
+  }[];
   TEAM_ENABLED: boolean;
   TEAM_MEMBERS: { email: string; name: string }[];
   SITES_ENABLED: boolean;
@@ -32,6 +45,24 @@ export interface ExclusiveView {
  * adresse d'AMN DevSec dans le bundle livré.
  */
 const VIEW: ExclusiveView = {
+  /*
+    Un seul événement, et c'est le bon.
+
+    L'écran en proposait quatre — site hors ligne, alerte critique, mention,
+    tâche assignée — dont AUCUN ne peut se produire dans l'application d'une
+    cliente : elle n'a pas de sites supervisés, pas de fil d'équipe, et
+    personne pour lui assigner quoi que ce soit. Quatre interrupteurs sans
+    effet, et pas de réglage pour le rappel de rendez-vous, seule notification
+    qu'elle reçoive vraiment. Un écran de réglages qui décrit un autre produit
+    apprend surtout à ne plus lire les réglages.
+  */
+  NOTIFICATION_PREFS: [
+    {
+      key: 'appointmentReminder',
+      label: 'Rappel de rendez-vous',
+      detail: 'Avant chaque rendez-vous, selon le préavis choisi à l’agenda.',
+    },
+  ],
   TEAM_ENABLED: false,
   TEAM_MEMBERS: [],
   SITES_ENABLED: false,

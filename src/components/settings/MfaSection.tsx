@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Check, Copy, KeyRound, Loader2, ShieldCheck, ShieldOff } from 'lucide-react';
 import { bridge } from '../../lib/bridge';
+import { IS_BUSINESS } from '../../edition/edition';
 import { cleanErrorMessage } from '../../lib/errorMessage';
 import { downloadText } from '../../lib/download';
 import type { MfaEnrolment, MfaStatus } from '../../shared/api';
@@ -106,16 +107,35 @@ export function MfaSection() {
 
   if (!status) return null;
 
-  /* Le serveur ne sait pas faire de MFA : on le dit, plutôt que de griser un
-     bouton sans raison visible. */
+  /*
+    Le serveur ne sait pas faire de MFA : on le dit, plutôt que de griser un
+    bouton sans raison visible.
+
+    MAIS PAS DANS LES MÊMES TERMES SELON QUI LIT. Le texte nommait la variable
+    d'environnement à régler — utile pour qui administre le serveur, illisible
+    pour une cliente, et surtout inactionnable : elle n'a pas accès au serveur.
+    Lui montrer un nom de variable, c'est lui demander de résoudre un problème
+    qui n'est pas le sien, et lui laisser croire qu'elle a mal fait quelque
+    chose. On lui dit donc à qui s'adresser ; à nous, on dit quoi régler.
+  */
   if (!status.available) {
     return (
       <Frame>
         <p className="text-xs leading-relaxed text-text-secondary">
-          La double authentification n’est pas configurée sur ce serveur. Elle demande une clé de
-          chiffrement (<code className="font-mono text-[11px]">MFA_SECRET_KEY</code>) : sans elle,
-          le secret ne pourrait être stocké qu’en clair, ce qui vaudrait moins que pas de MFA du
-          tout.
+          {IS_BUSINESS ? (
+            <>
+              La double authentification n’est pas encore disponible sur votre espace. Votre mot de
+              passe protège seul votre compte pour l’instant — choisissez-en un que vous n’utilisez
+              nulle part ailleurs. Demandez-nous si vous souhaitez l’activer.
+            </>
+          ) : (
+            <>
+              La double authentification n’est pas configurée sur ce serveur. Elle demande une clé de
+              chiffrement (<code className="font-mono text-[11px]">MFA_SECRET_KEY</code>) : sans
+              elle, le secret ne pourrait être stocké qu’en clair, ce qui vaudrait moins que pas de
+              MFA du tout.
+            </>
+          )}
         </p>
       </Frame>
     );

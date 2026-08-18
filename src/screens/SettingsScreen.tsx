@@ -12,7 +12,7 @@ import { UserAvatar } from '../components/UserAvatar';
 import { Logo } from '../components/Logo';
 import { SettingsPanel as Panel } from '../components/SettingsPanel';
 import { APP_VERSION, IS_BUSINESS } from '../edition/edition';
-import { OllamaSection } from '@edition/exclusive';
+import { OllamaSection, useExclusive } from '@edition/exclusive';
 import { AccountSecuritySection } from '../components/settings/AccountSecuritySection';
 import { MfaSection } from '../components/settings/MfaSection';
 import { UpdateSection } from '../components/settings/UpdateSection';
@@ -271,6 +271,7 @@ function StartupSection() {
 }
 
 function ProfileSection({ email }: { email: string }) {
+  const { TEAM_ENABLED } = useExclusive();
   const { profileFor, updateSelf } = useProfiles();
   const profile = profileFor(email);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -309,7 +310,15 @@ function ProfileSection({ email }: { email: string }) {
   };
 
   return (
-    <Panel icon={UserCircle} title="Profil" subtitle="Votre photo et votre nom, visibles par l’équipe partout dans l’app.">
+    <Panel
+      icon={UserCircle}
+      title="Profil"
+      subtitle={
+        TEAM_ENABLED
+          ? 'Votre photo et votre nom, visibles par l’équipe partout dans l’app.'
+          : 'Votre photo et votre nom, tels qu’ils apparaissent dans l’application.'
+      }
+    >
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
         <div className="flex flex-col items-center gap-2">
           <button
@@ -465,14 +474,21 @@ function PasswordSection({ email, remote }: { email: string; remote: boolean }) 
   );
 }
 
-const PREF_LABELS: { key: keyof NotificationPrefs; label: string; detail: string }[] = [
-  { key: 'siteOffline', label: 'Site hors ligne', detail: 'Un site supervisé ne répond plus.' },
-  { key: 'criticalAlert', label: 'Alerte critique', detail: 'Attaque ou incident critique détecté.' },
-  { key: 'mention', label: 'Mention', detail: 'Quelqu’un vous mentionne dans un message.' },
-  { key: 'taskAssigned', label: 'Tâche assignée', detail: 'Une tâche vous est attribuée.' },
-];
+/*
+  LA LISTE VIENT DE L'ÉDITION, ELLE N'EST PLUS ÉCRITE ICI.
 
+  Elle l'était, et elle décrivait un autre produit que celui qu'une cliente a
+  sous les yeux : site supervisé hors ligne, attaque détectée, mention dans un
+  fil d'équipe, tâche assignée par quelqu'un. Quatre événements dont AUCUN ne
+  peut lui arriver — elle n'a ni parc de sites, ni équipe. Quatre
+  interrupteurs sans effet, donc, et pas de réglage pour le rappel de
+  rendez-vous, qui est la seule notification qu'elle reçoive vraiment.
+
+  Un écran de réglages qui ne correspond pas à ce qu'on vit apprend surtout à
+  ne plus lire les réglages. Voir NOTIFICATION_PREFS dans @edition/exclusive.
+*/
 function NotificationsSection({ email }: { email: string }) {
+  const { NOTIFICATION_PREFS } = useExclusive();
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_NOTIFICATION_PREFS);
   const [loading, setLoading] = useState(true);
 
@@ -503,7 +519,7 @@ function NotificationsSection({ email }: { email: string }) {
         <p className="text-sm text-text-secondary">Chargement…</p>
       ) : (
         <div className="divide-y divide-border/60">
-          {PREF_LABELS.map(({ key, label, detail }) => (
+          {NOTIFICATION_PREFS.map(({ key, label, detail }) => (
             <div key={key} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
               <div>
                 <p className="text-sm font-medium text-text-primary">{label}</p>
