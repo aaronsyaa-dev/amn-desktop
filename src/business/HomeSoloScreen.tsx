@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, CalendarDays, CheckSquare, Contact, FileText, Plus } from 'lucide-react';
@@ -9,6 +9,9 @@ import { appointmentEnd, useAppointments, type Appointment } from '../state/useA
 import { dayKey, longDayLabel, relativeToNow, timeLabel } from '../lib/calendar';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { AttentionPanel } from '../components/AttentionPanel';
+import { SoloPulse } from './SoloPulse';
+import { DayBand } from './DayBand';
+import { homeWelcome } from '../lib/homeGreetings';
 import type { SharedTaskStatus } from '../shared/api';
 
 /**
@@ -35,7 +38,20 @@ export function HomeSoloScreen() {
   const { clients } = useClients();
   const tasks = useCollection<TaskData>('tasks');
 
-  const now = new Date();
+  /*
+    L'horloge de l'accueil (BLOC B).
+
+    L'accueil interne bat à la minute : la salutation suit l'heure réelle, et
+    « dans 20 minutes » ne reste pas affiché une heure plus tard. Celui-ci
+    lisait `new Date()` une fois au montage — une application laissée ouverte
+    toute la matinée disait encore bonjour à midi, et annonçait un rendez-vous
+    « dans 20 minutes » alors qu'il était passé.
+  */
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
   const todayKey = dayKey(now);
 
   const today = useMemo(
@@ -67,13 +83,26 @@ export function HomeSoloScreen() {
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
           {org?.name ?? 'Votre activité'}
         </p>
+        {/* La salutation varie avec l'heure et le lancement, comme côté interne :
+            ce sont les mêmes variantes, choisies dans le même fichier. Une
+            application qui dit exactement la même phrase tous les matins finit
+            par ne plus rien dire du tout. */}
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-text-primary">
-          Bonjour {user?.name ?? ''}
+          {homeWelcome(user?.name?.split(' ')[0] ?? '', now)}
         </h1>
         <p className="mt-0.5 text-sm capitalize text-text-secondary">{longDayLabel(now)}</p>
       </header>
 
       {!hasAnything && <FirstRunCard />}
+
+      {/* Sa journée en une ligne, qui tourne (BLOC L) : le prochain rendez-vous,
+          ce qui vient d'arriver dans son espace, la liaison quand elle est
+          rompue, la dernière ouverture par AMN DevSec. Rien d'inventé, rien de
+          vide — la bande disparaît quand elle n'a rien de vrai à dire. */}
+      <DayBand />
+
+      {/* Trois nombres qui se résolvent (BLOC B). */}
+      {hasAnything && <SoloPulse />}
 
       {/* Factures impayées, tâches enlisées, clients sans nouvelles. Rien ne
           s'affiche tant qu'il n'y a rien à signaler. */}
