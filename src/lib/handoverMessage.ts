@@ -39,7 +39,11 @@ export interface HandoverParts {
    * Jamais composée ici : une application installée charge ses pages en
    * `file://` et ne peut rien deviner de son adresse publique. Elle arrive
    * d'amn-api (`appUrl`, voir routes/admin.js), et vaut `null` tant que
-   * APP_PUBLIC_URL n'est pas configurée.
+   * APP_BUSINESS_PUBLIC_URL n'est pas configurée.
+   *
+   * C'est bien l'adresse de l'application BUSINESS, pas celle de la nôtre :
+   * les deux étaient une seule variable, et le message envoyé à une cliente
+   * portait donc l'adresse de l'application interne.
    */
   webUrl?: string | null;
 }

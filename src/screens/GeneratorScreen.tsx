@@ -105,7 +105,7 @@ export function GeneratorScreen() {
     /**
      * L'adresse de l'application web, dite par le serveur (`appUrl`).
      *
-     * `null` quand APP_PUBLIC_URL n'est pas configurée sur amn-api. Ce cas est
+     * `null` quand APP_BUSINESS_PUBLIC_URL n'est pas configurée sur amn-api. Ce cas est
      * AFFICHÉ, pas absorbé : sans cette adresse, le message de remise n'a rien
      * à donner à une cliente qui le lit sur son téléphone, et Aaron doit le
      * savoir avant d'appuyer sur « envoyer », pas après.
@@ -681,21 +681,28 @@ export function GeneratorScreen() {
                 {/*
                   L'ABSENCE D'ADRESSE WEB SE DIT, ELLE NE SE DEVINE PAS.
 
-                  Sans APP_PUBLIC_URL côté amn-api, le message part sans aucune
-                  adresse : la cliente qui le lit sur son téléphone n'a
-                  strictement rien à ouvrir. C'est le genre de manque qu'on ne
-                  découvre que par son message à elle — « je n'arrive pas à
+                  Sans APP_BUSINESS_PUBLIC_URL côté amn-api, le message part
+                  sans aucune adresse : la cliente qui le lit sur son téléphone
+                  n'a strictement rien à ouvrir. C'est le genre de manque qu'on
+                  ne découvre que par son message à elle — « je n'arrive pas à
                   l'ouvrir » —, donc il se dit ICI, avant l'envoi, à l'endroit
                   exact où on appuie sur le bouton.
+
+                  La variable est bien celle du BUSINESS, pas APP_PUBLIC_URL qui
+                  est l'adresse de notre application à nous : les deux étaient
+                  confondues, et une cliente recevait donc l'adresse interne.
+                  Nommer la mauvaise ici enverrait Aaron régler la mauvaise.
                 */}
                 {!result.webUrl && (
                   <p className="mt-3 max-w-xl border border-warning/40 bg-warning-muted px-3 py-2 text-[11px] leading-relaxed text-text-secondary">
                     <span className="text-text-primary">
                       Le message ne contiendra pas d’adresse web.
                     </span>{' '}
-                    amn-api ne connaît pas l’adresse publique de l’application (variable
-                    APP_PUBLIC_URL). Tant qu’elle n’est pas réglée, votre cliente ne pourra ouvrir
-                    l’application ni depuis son téléphone, ni depuis un navigateur.
+                    amn-api ne connaît pas l’adresse publique de l’application Business
+                    (variable <span className="font-mono">APP_BUSINESS_PUBLIC_URL</span>, à ne pas
+                    confondre avec <span className="font-mono">APP_PUBLIC_URL</span> qui est
+                    l’adresse de la nôtre). Tant qu’elle n’est pas réglée, votre cliente ne pourra
+                    ouvrir l’application ni depuis son téléphone, ni depuis un navigateur.
                   </p>
                 )}
               </section>

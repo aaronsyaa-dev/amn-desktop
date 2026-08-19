@@ -211,7 +211,8 @@ export interface CreateOrganizationResult {
    * L'adresse de l'application web, telle que le SERVEUR la connaît.
    *
    * Même règle que `invitation.url` : composée côté amn-api à partir
-   * d'APP_PUBLIC_URL, `null` si elle n'est pas configurée. Le message de remise
+   * d'APP_BUSINESS_PUBLIC_URL — l'adresse de l'application des CLIENTES, et non
+   * la nôtre —, `null` si elle n'est pas configurée. Le message de remise
    * en a besoin pour dire à la cliente où ouvrir l'application depuis son
    * téléphone — sans elle, elle n'a que l'installeur Windows, donc rien tant
    * qu'elle n'est pas devant son ordinateur.
