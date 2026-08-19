@@ -436,6 +436,89 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
     [support, navigate, closeCurrent, organizations, refreshOrganizations, sessionKind, reauthenticate],
   );
 
+  /*
+    L'EXPIRATION EST APPLIQUÉE, PAS SEULEMENT AFFICHÉE (BLOC D)
+    ═══════════════════════════════════════════════════════════
+
+    Défaut observé : une session de support expirée laissait l'opérateur dans
+    le contexte de la cliente. Le bandeau tombait bien sur « expirée » — il
+    recalcule son compte à rebours toutes les trente secondes — mais rien ne
+    fermait le contexte : le jeton restait en place, les écrans de la cliente
+    restaient montés, et le miroir local continuait de servir SES données.
+
+    Le serveur, lui, refusait déjà tout (`resolveSession` supprime une session
+    échue). Le résultat était donc le pire des deux : un opérateur convaincu
+    d'être encore chez elle, devant des données qu'il ne pouvait plus
+    rafraîchir, avec un bandeau qui se contredisait lui-même.
+
+    Ici, l'expiration DÉCLENCHE la sortie. Trois voies, parce qu'une seule ne
+    couvre pas les trois façons d'atteindre l'échéance :
+
+      1. le minuteur, pour l'app restée ouverte ;
+      2. le contrôle au montage, pour un jeton déjà échu retrouvé au démarrage
+         (la revalidation serveur le refuse aussi, mais ceci ferme le cas où
+         elle n'aboutit pas — hors ligne, par exemple) ;
+      3. le retour au premier plan, parce qu'une machine en veille peut
+         traverser l'échéance sans qu'aucun minuteur ne s'exécute à l'heure.
+
+    La sortie est SILENCIEUSE côté réseau : le jeton étant échu, appeler
+    `support.leave` ne ferait qu'un 401 et n'inscrirait rien au journal. On
+    purge, on sort, et on dit pourquoi — parce que se retrouver ailleurs sans
+    explication est la seule chose pire que de rester.
+  */
+  const expireContext = useCallback(
+    (contexte: SupportContext) => {
+      purgeContextMirror(contexte.orgId);
+      setSupport(null);
+      writeStoredToken(null);
+      storedToken.current = '';
+      setActionError(
+        `La session de support sur ${contexte.orgName} a expiré. Son espace est refermé — ` +
+          'rouvrez-en une depuis la Tour de contrôle si vous en avez encore besoin.',
+      );
+      navigate('/');
+    },
+    [navigate],
+  );
+
+  useEffect(() => {
+    if (!support) return undefined;
+
+    const echeance = Date.parse(support.expiresAt);
+    // Une date illisible ne doit pas faire vivre un contexte éternellement :
+    // on préfère fermer que garder ouvert sur une valeur qu'on ne comprend pas.
+    if (!Number.isFinite(echeance)) {
+      expireContext(support);
+      return undefined;
+    }
+
+    const restant = echeance - Date.now();
+    if (restant <= 0) {
+      expireContext(support);
+      return undefined;
+    }
+
+    // `setTimeout` est borné à ~24,8 jours ; une session de support vaut une
+    // heure, donc la valeur tient toujours. Le garde-fou coûte une ligne et
+    // évite un débordement qui déclencherait la sortie immédiatement.
+    const delai = Math.min(restant, 2_147_483_000);
+    const minuteur = window.setTimeout(() => expireContext(support), delai);
+
+    const auRetour = () => {
+      if (document.visibilityState === 'visible' && Date.parse(support.expiresAt) <= Date.now()) {
+        expireContext(support);
+      }
+    };
+    document.addEventListener('visibilitychange', auRetour);
+    window.addEventListener('focus', auRetour);
+
+    return () => {
+      window.clearTimeout(minuteur);
+      document.removeEventListener('visibilitychange', auRetour);
+      window.removeEventListener('focus', auRetour);
+    };
+  }, [support, expireContext]);
+
   const leaveOrganization = useCallback(async () => {
     if (!support) {
       navigate('/');
