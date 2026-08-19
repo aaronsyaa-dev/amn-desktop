@@ -30,9 +30,47 @@ export default defineConfig(({ mode }) => {
   const edition = resolveEdition(env);
   const define: Record<string, string> = { ...editionDefine(edition) };
   if (env.AMN_API_URL) define['process.env.AMN_API_URL'] = JSON.stringify(env.AMN_API_URL);
-  if (env.AMN_API_OPERATOR_TOKEN) {
+  /*
+    LE JETON OPÉRATEUR N'ENTRE JAMAIS DANS UN BUILD BUSINESS (BLOC O)
+    ─────────────────────────────────────────────────────────────────
+    Le renderer était déjà protégé : `bridge.ts` écrit `IS_BUSINESS ? '' : …`,
+    une constante remplacée à la compilation, donc Rollup supprime la branche et
+    les lectures d'environnement avec elle. Le processus PRINCIPAL, lui, ne
+    l'était pas — et c'est lui qui parle à amn-api dans l'application installée.
+
+    Conséquence observée en conditions de test : une édition Business
+    construite sur une machine dont le `.env` porte AMN_API_OPERATOR_TOKEN
+    embarquait ce jeton, et l'application se synchronisait sur l'espace d'AMN
+    DevSec AVANT même que la cliente se connecte — nos fiches clients
+    s'affichaient chez elle. Ce n'est pas une fuite théorique : elle a eu lieu
+    sur une base d'essai.
+
+    La machine d'Aaron a forcément ce jeton dans son `.env` : c'est la même
+    machine qui fait tourner l'édition interne. Le build Business ne peut donc
+    pas se reposer sur « ne pas le mettre » — il doit refuser de le prendre.
+
+    `scripts/publish-release.mjs` vérifie l'autre bout : il exige que la LECTURE
+    `process.env.AMN_API_OPERATOR_TOKEN` soit encore présente dans l'artefact.
+    Sa disparition signifierait qu'une valeur a été figée à sa place.
+  */
+  const bakeToken = Boolean(env.AMN_API_OPERATOR_TOKEN) && edition !== 'business';
+  if (bakeToken) {
     define['process.env.AMN_API_OPERATOR_TOKEN'] = JSON.stringify(env.AMN_API_OPERATOR_TOKEN);
   }
+  /*
+    Le fait EST inscrit dans le bundle, pas seulement respecté.
+
+    Première tentative, abandonnée : vérifier dans l'artefact que la lecture
+    `process.env.AMN_API_OPERATOR_TOKEN` était toujours là. Elle l'est de toute
+    façon — un message d'erreur du processus principal cite ce nom en toutes
+    lettres. Le contrôle passait au vert sur un build qui embarquait bel et
+    bien le jeton ; mesuré, pas supposé.
+
+    Une constante littérale, elle, ne peut pas être satisfaite par accident :
+    `remoteConfig.ts` la replie en UNE chaîne unique, et c'est cette chaîne que
+    `scripts/publish-release.mjs` cherche dans l'asar.
+  */
+  define['__AMN_TOKEN_BAKED__'] = JSON.stringify(bakeToken);
 
   return {
     define,

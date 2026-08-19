@@ -12,7 +12,7 @@ import { ensurePushSubscription, sendPushTest } from '../lib/webPush';
 import { UserAvatar } from '../components/UserAvatar';
 import { Logo } from '../components/Logo';
 import { SettingsPanel as Panel } from '../components/SettingsPanel';
-import { APP_VERSION, IS_BUSINESS } from '../edition/edition';
+import { APP_VERSION, EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/edition';
 import { OllamaSection, useExclusive } from '@edition/exclusive';
 import { AccountSecuritySection } from '../components/settings/AccountSecuritySection';
 import { MfaSection } from '../components/settings/MfaSection';
@@ -260,7 +260,7 @@ function StartupSection() {
     <Panel
       icon={Power}
       title="Démarrage"
-      subtitle="Lancer AMN Desktop automatiquement, discrètement en arrière-plan."
+      subtitle={`Lancer ${EDITION_PRODUCT_NAME} automatiquement, discrètement en arrière-plan.`}
     >
       {loading ? (
         <p className="text-sm text-text-secondary">Chargement…</p>

@@ -30,7 +30,8 @@
     "check:fec": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-fec.ts",
     "check:tracking": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-tracking.ts",
     "check:deployed": "node scripts/check-deployed-bundle.mjs",
-    "publish:release": "node scripts/publish-release.mjs"
+    "publish:release": "node scripts/publish-release.mjs",
+    "check:updates": "node scripts/check-update-channel.mjs"
   },
   "keywords": [],
   "author": {

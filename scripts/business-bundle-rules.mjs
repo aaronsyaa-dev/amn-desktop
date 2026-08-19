@@ -63,3 +63,91 @@ export const REQUIRED = [
   { pattern: 'Agenda', why: 'le calendrier, module quotidien de l’édition Business' },
   { pattern: 'Coffre-fort', why: 'un module de l’édition Business' },
 ];
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * L'ARTEFACT EMPAQUETÉ — un jeu de règles À PART, et pourquoi (BLOC O)
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * `FORBIDDEN` ci-dessus vaut pour le bundle du RENDERER : les écrans. On y
+ * interdit « AMN DevSec » parce qu'aucun écran de cliente n'a de raison
+ * d'afficher notre raison sociale au milieu de ses fiches.
+ *
+ * L'application EMPAQUETÉE, elle, contient aussi le processus principal — et
+ * celui-ci nomme AMN DevSec depuis toujours, à un seul endroit et pour une
+ * bonne raison : quand une mise à jour ne peut pas aboutir, la phrase utile
+ * est « contactez AMN DevSec », pas « contactez votre prestataire ». Appliquer
+ * la liste du renderer à l'asar ferait donc échouer un artefact parfaitement
+ * sain, et la première réaction serait de désactiver le contrôle.
+ *
+ * Ces règles-ci répondent à une autre question, plus étroite et plus utile
+ * avant de publier chez une cliente : **est-ce bien l'édition Business ?**
+ *
+ * Elles portent sur les PRODUITS et les ROUTES qui n'existent que chez nous.
+ * Un nom de fichier ou un nom d'application ne suffirait pas : « AMN Desktop »
+ * apparaît dans les deux artefacts (le `package.json` embarqué porte ce nom
+ * quelle que soit l'édition construite), et se fier au nom du `.exe` revient à
+ * faire confiance à celui qui l'a nommé.
+ *
+ * Le contrôle lit l'asar comme un tas d'octets. C'est suffisant : asar
+ * concatène ses fichiers sans les compresser, donc une chaîne présente dans un
+ * fichier est présente dans l'archive.
+ */
+export const ARTIFACT_FORBIDDEN = [
+  { pattern: 'trackerCatalog', why: 'catalogue Tracker — édition interne' },
+  { pattern: 'security-monitor', why: 'le tracker installé chez nos clients' },
+  { pattern: 'SSL Monitor', why: 'produit exclusif' },
+  { pattern: 'Comply', why: 'produit exclusif (RGPD)' },
+  { pattern: 'Ajmani', why: 'assistant local, exclusif' },
+  { pattern: 'Sentinel', why: 'palier du catalogue Tracker', caseSensitive: true },
+  { pattern: 'Tour de contrôle', why: 'l’espace de supervision, interne' },
+  { pattern: '/v1/admin/', why: 'console inter-organisations' },
+  { pattern: 'support-session', why: 'contexte client — n’existe que chez nous' },
+  { pattern: '/v1/comply', why: 'route produit' },
+  { pattern: '/v1/scans', why: 'route produit' },
+  { pattern: 'G20 Corvetto', why: 'client de démonstration interne' },
+  { pattern: 'Atlas Retail', why: 'client de démonstration interne' },
+  {
+    pattern: 'amn-jeton-operateur-embarque',
+    why: 'un jeton opérateur partagé a été compilé dans ce build — voir ARTIFACT_REQUIRED',
+  },
+];
+
+/**
+ * Ce que l'artefact DOIT contenir.
+ *
+ * Sans ça, un dossier vide, un mauvais chemin ou un build interrompu
+ * passeraient au vert — un contrôle d'absence seul est toujours trop facile à
+ * satisfaire.
+ */
+export const ARTIFACT_REQUIRED = [
+  { pattern: 'AMN Business', why: 'le nom produit de l’édition livrée' },
+  { pattern: 'Coffre-fort', why: 'un module de l’édition Business' },
+  { pattern: '/v1/updates/business', why: 'le canal de mise à jour des clientes' },
+  /*
+    LE MARQUEUR DE PROVENANCE DU JETON, ET LA PREMIÈRE VERSION QUI NE MARCHAIT PAS
+
+    Le vrai risque n'est pas qu'un produit interne se glisse dans l'artefact —
+    la liste ci-dessus s'en charge. C'est qu'un jeton opérateur PARTAGÉ y soit
+    compilé : la machine d'Aaron a forcément ce jeton dans son `.env`, puisque
+    c'est la même qui construit l'édition interne. Une application cliente qui
+    l'embarque se synchronise sur l'espace d'AMN DevSec avant même que sa
+    propriétaire se connecte. Constaté sur base d'essai, pas redouté en l'air.
+
+    Premier essai, abandonné : exiger que la lecture
+    `process.env.AMN_API_OPERATOR_TOKEN` soit encore présente, en pariant sur
+    le fait qu'un `define` la remplace par la valeur et la fait disparaître. Le
+    contrôle est resté vert sur un build qui embarquait le jeton — parce qu'un
+    message d'erreur du processus principal cite ce nom en toutes lettres. Une
+    règle qu'on croit tenir et qui ne tient rien est pire que pas de règle.
+
+    Le build INSCRIT donc le fait lui-même : `remoteConfig.ts` replie une
+    constante littérale (voir vite.main.config.ts) en l'une de ces deux
+    chaînes, qui n'existent nulle part ailleurs et ne peuvent pas apparaître
+    par accident.
+  */
+  {
+    pattern: 'amn-aucun-jeton-operateur',
+    why: 'le build doit déclarer qu’aucun jeton opérateur n’y a été figé',
+  },
+];

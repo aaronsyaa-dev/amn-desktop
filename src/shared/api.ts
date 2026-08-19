@@ -506,10 +506,24 @@ export interface MyOrganizations {
  * branchée sur aucun canal (voir `setupAutoUpdate`), donc répondre « à jour »
  * serait faux — on ne sait pas, faute d'avoir où regarder. L'écran le dit.
  */
+/**
+ * L'état d'une vérification de mise à jour, NOMMÉ plutôt que booléen.
+ *
+ * « Rien à faire », « je n'ai pas pu regarder » et « il n'y a rien à quoi me
+ * comparer » se ressemblent dans le code et n'ont rien à voir à l'écran : le
+ * premier rassure, les deux autres demandent quelque chose. Les confondre,
+ * c'est afficher « à jour » à quelqu'un qui ne l'est pas.
+ *
+ * `ready` a été ajouté avec le canal Business (BLOC O) : une version
+ * TÉLÉCHARGÉE ET VÉRIFIÉE qui n'attend qu'un geste n'est pas dans le même état
+ * qu'une version qui existe quelque part (`available`). L'une demande un clic,
+ * l'autre demande de patienter.
+ */
 export type UpdateCheck =
   | { status: 'uptodate'; version: string }
   | { status: 'available'; version: string }
-  | { status: 'downloading' }
+  | { status: 'downloading'; version?: string }
+  | { status: 'ready'; version: string }
   | { status: 'unconfigured'; reason: string }
   | { status: 'error'; message: string };
 

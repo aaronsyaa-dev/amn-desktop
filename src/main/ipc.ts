@@ -1,4 +1,5 @@
 import { app, BrowserWindow, Notification, ipcMain } from 'electron';
+import { EDITION_PRODUCT_NAME } from '../edition/edition';
 import {
   IPC,
   type AddClientEventInput,
@@ -336,7 +337,7 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   ipcMain.handle(IPC.systemSetAutoLaunch, (_event, enabled: boolean) => setAutoLaunch(enabled));
 
   ipcMain.handle(IPC.systemGetAppInfo, () => ({
-    name: 'AMN Desktop',
+    name: EDITION_PRODUCT_NAME,
     version: app.getVersion(),
     platform: process.platform,
     isElectron: true,

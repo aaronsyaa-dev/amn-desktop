@@ -247,7 +247,9 @@ function showWindow(): void {
 /** Reflects a waiting important notification on the tray/taskbar/dock. */
 function setTrayPending(pending: boolean): void {
   if (tray && !tray.isDestroyed()) {
-    tray.setToolTip(pending ? 'AMN Desktop — notification en attente' : 'AMN Desktop');
+    tray.setToolTip(
+      pending ? `${EDITION_PRODUCT_NAME} — notification en attente` : EDITION_PRODUCT_NAME,
+    );
   }
   if (process.platform === 'darwin') app.setBadgeCount(pending ? 1 : 0);
   if (pending && mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
@@ -259,10 +261,10 @@ function createTray(): void {
   const image = nativeImage.createFromPath(iconPath());
   const trayImage = image.isEmpty() ? image : image.resize({ width: 18, height: 18 });
   tray = new Tray(trayImage);
-  tray.setToolTip('AMN Desktop');
+  tray.setToolTip(EDITION_PRODUCT_NAME);
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: 'Ouvrir AMN Desktop', click: () => showWindow() },
+      { label: `Ouvrir ${EDITION_PRODUCT_NAME}`, click: () => showWindow() },
       { type: 'separator' },
       {
         label: 'Quitter',
@@ -305,7 +307,7 @@ app.on('ready', () => {
     // plays when the user opens the window from the tray.
     if (Notification.isSupported()) {
       const n = new Notification({
-        title: 'AMN Desktop est prêt',
+        title: `${EDITION_PRODUCT_NAME} est prêt`,
         body: 'L’application tourne en arrière-plan. Cliquez sur l’icône pour l’ouvrir.',
         icon: iconPath(),
       });

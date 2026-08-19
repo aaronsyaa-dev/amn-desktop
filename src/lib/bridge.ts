@@ -1,5 +1,5 @@
 import { API_UNREACHABLE_PREFIX, DEFAULT_NOTIFICATION_PREFS, GUEST_QUOTA_PREFIX } from '../shared/api';
-import { IS_BUSINESS } from '../edition/edition';
+import { APP_VERSION, EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/edition';
 import { showLocalNotification } from './webPush';
 import {
   FALLBACK_ACCOUNTS,
@@ -1021,7 +1021,12 @@ function createBrowserBridge(): AmnBridge {
         return false;
       },
       async getAppInfo() {
-        return { name: 'AMN Desktop', version: '0.0.0-dev', platform: 'web', isElectron: false };
+        return {
+          name: EDITION_PRODUCT_NAME,
+          version: APP_VERSION,
+          platform: 'web',
+          isElectron: false,
+        };
       },
       // A browser tab cannot be driven: it has no way to move the real cursor.
       // Saying so plainly is what lets the other side refuse the request with a

@@ -12,7 +12,7 @@ import type { UpdateCheck } from '../../shared/api';
  * seule action possible est de relancer l'application en espérant que le cycle
  * tombe au bon moment.
  *
- * ## Quatre états, jamais un booléen
+ * ## Six états, jamais un booléen
  *
  * C'est le point de tout ce composant. « Pas de mise à jour » et « je n'ai pas
  * pu regarder » se ressemblent dans le code et n'ont rien à voir à l'écran :
@@ -20,10 +20,11 @@ import type { UpdateCheck } from '../../shared/api';
  * « à jour » à quelqu'un qui ne l'est pas — c'est-à-dire à mentir précisément
  * là où la personne fait confiance.
  *
- * L'édition Business tombe aujourd'hui sur « aucun canal configuré », et c'est
- * la vérité : elle n'est branchée sur aucun flux de publication (voir
- * `setupAutoUpdate` et docs/BUSINESS.md). Le jour où ce canal existera, la
- * variable de build suffira — cet écran n'aura pas à changer.
+ * L'édition Business a désormais son propre canal (BLOC O) : elle interroge
+ * amn-api, télécharge en fond, vérifie l'empreinte, et n'annonce « prête »
+ * qu'une fois les octets contrôlés. Cet écran n'a pas eu à changer pour ça —
+ * seulement à apprendre un état de plus, `ready`, qui est ce qu'une version
+ * déjà téléchargée mérite qu'on lui dise.
  */
 export function UpdateSection() {
   const [state, setState] = useState<UpdateCheck | null>(null);
@@ -97,11 +98,20 @@ function Verdict({ state }: { state: UpdateCheck }) {
       </Line>
     );
   }
+  if (state.status === 'ready') {
+    return (
+      <Line tone="accent" icon={Download}>
+        Version {state.version} téléchargée et vérifiée. Le bandeau en bas à
+        droite l’installe en un clic — l’application redémarrera.
+      </Line>
+    );
+  }
   if (state.status === 'downloading') {
     return (
       <Line tone="muted" icon={RefreshCw}>
-        Vérification lancée. Si une version existe, elle se télécharge en fond et
-        un bandeau vous proposera de l’installer — inutile de rester ici.
+        {state.version
+          ? `Version ${state.version} en cours de téléchargement en arrière-plan. Un bandeau vous proposera de l’installer dès qu’elle sera prête — inutile de rester ici.`
+          : 'Vérification lancée. Si une version existe, elle se télécharge en fond et un bandeau vous proposera de l’installer — inutile de rester ici.'}
       </Line>
     );
   }

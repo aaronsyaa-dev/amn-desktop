@@ -374,40 +374,85 @@ rien à déclencher à la création d'une organisation.
 | Créer l'organisation + le compte propriétaire | **Fait**, un formulaire (écran Organisations) |
 | Lien d'activation à durée limitée (7 jours, usage unique) | **Fait**, rendu par la création |
 | Construire l'installeur Business | `npm run make:business` — **manuel**, sur une machine Windows |
-| Le mettre à disposition | **Rien.** Remise à la main, au cas par cas |
-| Lien de téléchargement à durée limitée | **N'existe pas** |
-| Auto-mise à jour de l'édition Business | Volontairement débranchée (`publishers: []`) |
+| Enregistrer la version publiée | **Fait**, `npm run publish:release` (relit l'artefact avant d'enregistrer) |
+| Lien de téléchargement à durée limitée (30 jours) | **Fait**, rendu par l'Atelier en même temps que l'accès |
+| Mise à jour automatique des installations en place | **Fait** (BLOC O) — canal distinct servi par amn-api |
 
-Le web/PWA est aujourd'hui le vrai chemin de livraison, et il n'a aucun de ces
-problèmes : une URL, rien à installer, rien à signer. L'installeur Windows est
-un confort, pas la voie principale.
+Le web/PWA reste le chemin de livraison le plus simple : une URL, rien à
+installer, rien à signer. L'installeur Windows est le chemin de celles qui
+veulent une vraie application sur leur poste — et depuis le BLOC O, il ne les
+condamne plus à rester sur la version du jour de leur installation.
 
-### Ce qu'il manque, et pourquoi ça ne peut pas se faire côté serveur
+### Publier un correctif Business — la procédure, dans l'ordre
 
-L'installeur Windows est produit par Squirrel, qui **exige une machine
-Windows**. amn-api tourne sous Linux : elle ne peut pas fabriquer le `.exe`,
-quel que soit le code qu'on y mettrait. La production restera donc un geste
-d'atelier — sur la machine d'Aaron, ou dans une CI Windows.
+C'est le seul geste manuel de la chaîne, et il le reste **exprès** : c'est
+Aaron qui décide quand un correctif part chez ses clientes, version par version.
+La CI, elle, ne publie que l'édition interne (`.github/workflows/release.yml`,
+sur un tag `v*`) et n'a aucun moyen d'atteindre le canal Business.
 
-Ce qu'amn-api PEUT faire, en revanche, et qui est la vraie demande :
+Sur une machine **Windows**, à la racine du dépôt :
 
-1. `business_releases` — une ligne par version publiée : version, nom de
-   fichier, empreinte SHA-256, emplacement des octets.
-2. `download_tokens` — un jeton dans **sa propre table**, jamais dans
-   `sessions`. C'est le motif déjà utilisé pour les liens d'appel : un jeton
-   rangé ailleurs que dans les sessions ne peut, par construction, satisfaire
-   aucune route authentifiée. Colonnes : empreinte du jeton, release visée,
-   expiration, `used_at`.
-3. `GET /v1/downloads/:token` — vérifie l'expiration, sert (ou redirige vers)
-   les octets, consigne l'usage.
-4. La création d'une organisation renvoie alors **deux** liens au lieu d'un :
-   activation du compte, et téléchargement de l'installeur. Un seul geste pour
-   Aaron, ce qui est le point 3 de la demande.
+```sh
+# 1. Le correctif est sur main, et la version a été incrémentée dans package.json.
+git pull
 
-Rien là-dedans n'est difficile ; le mécanisme des liens d'appel en est le
-modèle direct. **Ce n'est pas livré dans ce chantier**, faute d'une décision qui
-n'appartient pas au code — voir ci-dessous.
+# 2. Construire l'édition Business — et SEULEMENT elle.
+#    `npm run make` (sans le suffixe) construit l'édition interne : le
+#    publisher ci-dessous refusera l'artefact, mais autant ne pas se tromper.
+npm run make:business
 
+# 3. Enregistrer la version sur le canal des clientes.
+#    Le script relit l'application empaquetée AVANT d'enregistrer quoi que ce
+#    soit : produits internes, jeton opérateur figé, marqueurs Business
+#    manquants — au moindre problème il refuse et rien n'est publié.
+AMN_API_URL=https://amn-api.onrender.com OPERATOR_TOKEN=<le jeton opérateur> \
+  npm run publish:release -- --notes "Ce que ce correctif change, en une phrase."
+```
+
+Et c'est tout. Les installations déjà en place voient la version à leur
+prochaine ronde — au plus tard six heures — ou tout de suite si la cliente
+clique « Vérifier les mises à jour maintenant » dans ses Paramètres.
+
+Trois précisions qui évitent trois surprises :
+
+- **`--notes` est lu par la cliente**, mot pour mot, dans le bandeau
+  « Mise à jour prête ». Une phrase en français, pas un numéro de ticket.
+- **Sans `--location`, l'emplacement enregistré est le chemin du fichier sur
+  la machine de build.** amn-api ne pourra le servir que si elle tourne sur
+  cette machine — ce qui n'est pas le cas en production. Téléversez le `.exe`
+  sur un stockage objet et passez son URL : `--location https://…`.
+- **Rien n'oblige à publier.** Un correctif interne qui ne concerne pas les
+  clientes se merge et se tague comme d'habitude ; tant que `publish:release`
+  n'a pas tourné, leur canal ne bouge pas.
+
+### Comment une installation se met à jour, exactement
+
+```
+   l'app (toutes les 6 h, et sur demande)
+     └─ GET  /v1/updates/business?platform=win32&version=1.2.31
+          ├─ « none »      rien n'est publié → l'app le dit, elle ne dit pas « à jour »
+          ├─ « uptodate »  rien de plus récent
+          └─ « available » version, notes, poids, EMPREINTE, adresse
+               └─ téléchargement en fond dans %APPDATA%/AMN Business/mises-a-jour
+                    └─ SHA-256 comparé à celui annoncé
+                         ├─ différent → fichier jeté, rien n'est proposé
+                         └─ identique → bandeau « Mise à jour prête »
+                              └─ un clic : l'installeur est lancé, l'app se ferme
+```
+
+Ce que ce mécanisme **ne fait pas**, et qu'il ne faut pas promettre :
+
+- **Il ne s'installe pas tout seul.** Une version se télécharge et se vérifie
+  sans rien demander, mais l'installation exige un clic et un redémarrage de
+  l'application. Ce n'est pas un choix de confort : sous Windows, un
+  exécutable en cours d'exécution ne peut pas se remplacer lui-même.
+- **Il ne fait jamais reculer.** Une version antérieure réenregistrée par
+  erreur n'est pas proposée : la comparaison est numérique et stricte, des deux
+  côtés (serveur et poste).
+- **Il ne remplace pas la signature du binaire.** Sans certificat, SmartScreen
+  avertit à l'installation — voir plus bas.
+
+### L'infrastructure qu'Aaron doit fournir lui-même
 ### L'infrastructure qu'Aaron doit fournir lui-même
 
 Le jeton et l'expiration sont du code. **Les octets du `.exe` doivent vivre
@@ -433,9 +478,12 @@ livrer une plomberie qui ne mène nulle part.
   rouge à l'installation. Sur le poste d'une cliente, c'est ce qui décide si
   elle installe ou si elle appelle. Un certificat de signature de code coûte
   quelques centaines d'euros par an — c'est une dépense, pas une ligne de code.
-- **Un canal de mise à jour distinct** (dépôt de Releases séparé), pour que la
-  cliente reçoive les correctifs de sécurité sans jamais recevoir une version
-  interne d'AMN Desktop.
+- ~~Un canal de mise à jour distinct~~ — **fait** (BLOC O). Il n'est pas passé
+  par un dépôt de Releases séparé mais par amn-api, qui tenait déjà le registre
+  des versions : un dépôt de plus aurait été une chose de plus à tenir, et le
+  service de mise à jour d'Electron ne sait pas filtrer les Releases d'un dépôt
+  par édition. `npm run check:updates` vérifie en six règles que les deux
+  chaînes ne peuvent pas se toucher.
 
 
 ## Ce qui reste à faire
@@ -446,9 +494,11 @@ livrer une plomberie qui ne mène nulle part.
   à AMN DevSec sur le compte d'une cliente (voir `amn-api/README.md`, « Aucune
   propriété durable chez une cliente ») — bruyante, tracée, et sans identité
   durable chez elle, mais réelle.
-- **Canal de mise à jour propre à l'édition Business.** Aujourd'hui les mises à
-  jour sont remises à la main. Un dépôt de Releases distinct (ou un préfixe de
-  tag) permettrait de rétablir l'auto-mise à jour sans risque de croisement.
+- ~~Canal de mise à jour propre à l'édition Business~~ — **fait** (BLOC O).
+  Voir « Publier un correctif Business » plus haut. Reste ouvert dans ce
+  domaine : la **signature du binaire**, qui est une dépense et non une ligne
+  de code, et le **choix d'hébergement des octets** (`--location`), sans lequel
+  le canal ne sert que depuis la machine de build.
 - **Signature du binaire Windows.** Sans elle, SmartScreen avertit à
   l'installation — sur un poste qui n'est pas le nôtre, c'est un vrai frein.
 - **Moteur de configuration dynamique** (choix des modules depuis un site) —

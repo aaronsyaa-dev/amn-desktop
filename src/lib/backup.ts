@@ -1,5 +1,6 @@
 import { bridge } from './bridge';
 import { downloadBlob } from './download';
+import { EDITION_PRODUCT_NAME } from '../edition/edition';
 
 /**
  * Gathers a full snapshot of the workspace data reachable through the bridge
@@ -35,7 +36,7 @@ export async function collectBackup(): Promise<Record<string, unknown>> {
     ]);
 
   return {
-    app: 'AMN Desktop',
+    app: EDITION_PRODUCT_NAME,
     kind: 'amn-backup',
     version: 1,
     exportedAt: new Date().toISOString(),

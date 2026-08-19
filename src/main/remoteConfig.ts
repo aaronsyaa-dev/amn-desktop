@@ -33,6 +33,22 @@ export const remoteConfig = {
 };
 
 /**
+ * D'où vient le justificatif partagé de CE build — et la trace que
+ * `scripts/publish-release.mjs` relit dans l'artefact avant de le publier sur
+ * le canal des clientes.
+ *
+ * `__AMN_TOKEN_BAKED__` est une constante littérale posée par Vite : le
+ * ternaire se replie donc à la compilation en UNE seule de ces deux chaînes.
+ * Un build Business qui embarquerait le jeton opérateur porterait la mauvaise,
+ * et la publication serait refusée — voir vite.main.config.ts, qui explique
+ * pourquoi ce contrôle ne pouvait pas se faire en cherchant le nom de la
+ * variable d'environnement.
+ */
+export const TOKEN_PROVENANCE: string = __AMN_TOKEN_BAKED__
+  ? 'amn-jeton-operateur-embarque'
+  : 'amn-aucun-jeton-operateur';
+
+/**
  * Le justificatif présenté à amn-api pour chaque appel.
  *
  * Trois niveaux, du plus spécifique au plus général :

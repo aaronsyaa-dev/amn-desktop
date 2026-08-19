@@ -1,5 +1,11 @@
 import WebSocket from 'ws';
-import { remoteConfig, isRemoteConfigured, apiCredential, ownerCredential } from './remoteConfig';
+import {
+  remoteConfig,
+  isRemoteConfigured,
+  apiCredential,
+  ownerCredential,
+  TOKEN_PROVENANCE,
+} from './remoteConfig';
 import { API_UNREACHABLE_PREFIX, GUEST_QUOTA_PREFIX } from '../shared/api';
 import type {
   ActiveSession,
@@ -523,7 +529,10 @@ export class RemoteApiClient {
       this.setStatus('unconfigured');
       return;
     }
-    log(`configured — apiUrl=${remoteConfig.apiUrl} (token present). Starting sync WebSocket.`);
+    log(
+      `configured — apiUrl=${remoteConfig.apiUrl} (token present, ${TOKEN_PROVENANCE}). ` +
+        'Starting sync WebSocket.',
+    );
     this.stopped = false;
     this.connect();
   }
