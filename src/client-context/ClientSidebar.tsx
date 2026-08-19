@@ -42,7 +42,7 @@ const TRANSITION = { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const };
  */
 const CLIENT_MODULES: NavItem[] = [
   { key: 'home', label: 'Accueil', to: '/', icon: LayoutDashboard, hint: 'Sa journée' },
-  { key: 'agenda', label: 'Calendrier', to: '/agenda', icon: CalendarDays, hint: 'Rendez-vous' },
+  { key: 'agenda', label: 'Agenda', to: '/agenda', icon: CalendarDays, hint: 'Rendez-vous' },
   { key: 'clients', label: 'Clients', to: '/clients', icon: Contact, hint: 'Fiches et devis' },
   { key: 'invoices', label: 'Facturation', to: '/facturation', icon: ReceiptEuro, hint: 'Factures et encaissements' },
   { key: 'projects', label: 'Projets', to: '/projets', icon: FolderKanban, hint: 'Ce qui avance, et ce qui bloque' },
@@ -109,9 +109,17 @@ function clientModules(): NavItem[] {
 function clientSections(): Array<{ label: string; items: NavItem[] }> {
   const open = clientModules();
   const claimed = new Set(CLIENT_SECTIONS.flatMap((s) => s.keys));
+  // L'ordre du GROUPE, pas celui du catalogue. `CLIENT_MODULES` liste les
+  // modules dans un ordre hérité (Dépenses avant Temps) ; l'édition Business,
+  // elle, les présente dans l'ordre de ses sections. Filtrer le catalogue
+  // rendait donc « Dépenses, Temps » ici et « Temps, Dépenses » chez elle —
+  // deux fois la même liste, jamais dans le même ordre, ce qui est exactement
+  // ce que ce contexte existe pour éviter.
   const sections = CLIENT_SECTIONS.map((section) => ({
     label: section.label,
-    items: open.filter((item) => section.keys.includes(item.key)),
+    items: section.keys
+      .map((key) => open.find((item) => item.key === key))
+      .filter((item): item is NavItem => Boolean(item)),
   }));
   const orphans = open.filter((item) => !claimed.has(item.key));
   if (orphans.length > 0) {

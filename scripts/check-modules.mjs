@@ -22,6 +22,13 @@
  *   4. `CLIENT_MODULES` de `ClientSidebar.tsx` et la table
  *      `ClientContextRoutes` — ce que voit l'opérateur en support.
  *
+ * Et une cinquième chose, qui n'est pas une liste : LE RANGEMENT. Les quatre
+ * contrôles ci-dessus comparent des clés, et ils étaient tous verts pendant que
+ * l'édition Business montrait ses quinze modules en liste plate — le catalogue
+ * déclarait ses sections, le lanceur les affichait, la barre latérale les
+ * ignorait. Aucun module ne manquait ; c'est leur mise en ordre qui manquait à
+ * un endroit sur trois. Voir le contrôle 5.
+ *
  * Ce que ce contrôle N'EST PAS : une frontière de sécurité. Un module fermé
  * retire un écran ; l'isolation des données reste celle d'amn-api, par
  * `org_id`. Ce script vérifie la cohérence de l'affichage, rien d'autre.
@@ -241,6 +248,145 @@ for (const key of clientKeys) {
   }
 }
 
+/*
+  5. LE RANGEMENT, PAS SEULEMENT LA LISTE.
+
+  Les contrôles 1 à 4 comparent des CLÉS. Ils étaient tous verts pendant que
+  l'édition Business montrait ses quinze modules en liste plate : le catalogue
+  déclarait bien ses sections, le lanceur les affichait, et la barre latérale —
+  la seule surface qu'une cliente a en permanence sous les yeux — les ignorait
+  et n'affichait qu'une bande d'épinglés. Un module ne manquait nulle part ;
+  c'est le rangement qui manquait à un endroit sur trois, et aucune clé ne
+  pouvait le dire.
+
+  D'où deux règles de plus :
+    a. les surfaces qui listent les modules d'une cliente doivent lire les
+       SECTIONS, pas la liste aplatie ;
+    b. le découpage de son application et celui du contexte de support doivent
+       s'accorder — mêmes intitulés, mêmes modules, dans le même ordre. Sinon
+       l'opérateur range mentalement ses écrans autrement qu'elle.
+*/
+
+/** `{ key: 'x', label: 'Y', items: [ … ] }` → groupes, dans l'ordre du fichier. */
+function navGroups(source) {
+  const groups = [];
+  // Une SECTION porte `key` puis `label` sur la ligne suivante ; un MODULE
+  // porte `key` … `to` sur une seule ligne. La borne `[^\n}]` est ce qui
+  // distingue les deux — voir `navEntries`.
+  const re = /key:\s*'([^']+)',\s*\n\s*label:\s*'([^']+)'|\{\s*key:\s*'([^']+)'[^\n}]*?to:\s*'([^']+)'/g;
+  let match;
+  while ((match = re.exec(source)) !== null) {
+    if (match[2] !== undefined) groups.push({ label: match[2], keys: [] });
+    else if (groups.length > 0) groups[groups.length - 1].keys.push(match[3]);
+  }
+  return groups;
+}
+
+/** `{ label: 'Pilotage', keys: ['home', …] }` → la même forme. */
+function keyGroups(source) {
+  const groups = [];
+  const re = /label:\s*'([^']+)',\s*keys:\s*\[([^\]]*)\]/g;
+  let match;
+  while ((match = re.exec(source)) !== null) {
+    groups.push({ label: match[1], keys: [...match[2].matchAll(/'([^']+)'/g)].map((m) => m[1]) });
+  }
+  return groups;
+}
+
+/*
+  5a. Les surfaces lisent bien un découpage, et pas une liste aplatie.
+
+  Deux moitiés, parce qu'une seule ne suffit pas : ce qu'il FAUT lire (les
+  sections) et ce qu'il ne faut PAS lire. `NAV_ITEMS` et `itemsForSpace()` sont
+  précisément les deux façons d'obtenir le catalogue à plat — c'est par
+  `NAV_ITEMS` que la barre Business affichait sa bande d'épinglés sans jamais
+  voir les sections que le catalogue déclarait pourtant.
+
+  `\bNAV_ITEMS\b` et non la sous-chaîne : `CLIENT_NAV_ITEMS`, l'export que
+  `ClientSidebar` destine à la barre du pouce, la contient sans être elle.
+*/
+for (const [fichier, requis, interdits] of [
+  ['src/business/BusinessSidebar.tsx', ['sectionsForSpace(', 'section.label'], [/\bNAV_ITEMS\b/, /itemsForSpace\(/]],
+  ['src/components/AppLauncher.tsx', ['sectionsForSpace(', 'section.label'], [/\bNAV_ITEMS\b/, /itemsForSpace\(/]],
+  ['src/client-context/ClientSidebar.tsx', ['clientSections(', 'section.label'], [/\bNAV_ITEMS\b/, /itemsForSpace\(/]],
+]) {
+  const source = withoutComments(read(fichier));
+  for (const marqueur of requis) {
+    if (!source.includes(marqueur)) {
+      failures.push(
+        `${fichier} ne contient plus « ${marqueur} » : cette surface liste les modules d'une ` +
+          `cliente et doit les RANGER en sections. Une liste plate y est déjà passée une fois ` +
+          `sans que rien ne le signale.`,
+      );
+    }
+  }
+  for (const interdit of interdits) {
+    if (interdit.test(source)) {
+      failures.push(
+        `${fichier} lit le catalogue à plat (${interdit.source}) : cette surface doit passer ` +
+          `par les sections, sinon la cliente retrouve la liste plate que ce contrôle existe ` +
+          `pour empêcher.`,
+      );
+    }
+  }
+}
+
+// 5b. Son découpage et celui du support disent la même chose.
+const businessGroups = navGroups(
+  slice(businessSrc, 'export const NAV_SECTIONS', 'export const ACTIVITY_TABS'),
+);
+const clientGroups = keyGroups(slice(sidebarSrc, 'const CLIENT_SECTIONS', 'function clientModules'));
+
+if (businessGroups.length === 0) failures.push('Aucune section lue dans modules.business.ts — le lecteur est cassé.');
+if (clientGroups.length === 0) failures.push('Aucune section lue dans ClientSidebar.tsx — le lecteur est cassé.');
+
+if (businessGroups.length > 0 && clientGroups.length > 0) {
+  const attendus = businessGroups
+    .map((g) => ({ label: g.label, keys: g.keys.filter((k) => !NOT_IN_SUPPORT.has(k)) }))
+    .filter((g) => g.keys.length > 0);
+  const decrire = (groups) => groups.map((g) => `${g.label} [${g.keys.join(', ')}]`).join(' · ');
+  if (decrire(attendus) !== decrire(clientGroups)) {
+    failures.push(
+      `Le rangement du contexte de support ne reflète plus celui de l'édition Business.\n` +
+        `      chez elle  : ${decrire(attendus)}\n` +
+        `      en support : ${decrire(clientGroups)}`,
+    );
+  }
+}
+
+/*
+  5c. Le même module porte le même NOM des deux côtés.
+
+  L'agenda s'appelait « Agenda » chez elle et « Calendrier » en support : le
+  même écran, deux mots. Au téléphone, quand elle décrit ce qu'elle voit,
+  c'est le genre d'écart qui fait chercher un écran qui est sous les yeux.
+
+  Les INTITULÉS seulement, pas les descriptions d'une ligne : celles-ci sont
+  volontairement reformulées à la troisième personne en support (« Sa journée »
+  contre « Votre journée »), et c'est juste.
+*/
+function navLabels(source) {
+  const out = new Map();
+  const re = /\{\s*key:\s*'([^']+)',\s*label:\s*'([^']+)'[^\n}]*?to:\s*'/g;
+  let match;
+  while ((match = re.exec(source)) !== null) out.set(match[1], match[2]);
+  return out;
+}
+
+const businessLabels = navLabels(
+  slice(businessSrc, 'export const NAV_SECTIONS', 'export const ACTIVITY_TABS'),
+);
+const clientLabels = navLabels(slice(sidebarSrc, 'const CLIENT_MODULES', 'export const CLIENT_NAV_ITEMS'));
+for (const [key, label] of clientLabels) {
+  const chezElle = businessLabels.get(key);
+  if (chezElle && chezElle !== label) {
+    failures.push(
+      `« ${key} » s'appelle « ${chezElle} » dans son application et « ${label} » en support : ` +
+        `le même écran porte deux noms selon qui le regarde.`,
+    );
+  }
+}
+
 /* ---------------------------------------------------------------- verdict -- */
 
 for (const note of notes) console.log(`  note  ${note}`);
@@ -252,7 +398,7 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `\nModules : les catalogues s'accordent ` +
+  `\nModules : les catalogues et leur rangement s’accordent ` +
     `(${businessKeys.length} en Business, ${internalNav.length} en interne, ` +
     `${clientKeys.length} en support).`,
 );
