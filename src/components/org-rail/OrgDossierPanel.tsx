@@ -96,6 +96,24 @@ export function OrgDossierPanel({
   */
   const [pulse, setPulse] = useState<OrgPulse | null>(null);
 
+  /*
+    LA SUPPRESSION — dans le dossier, pas sur la carte.
+
+    Elle aurait pu vivre à côté de « Suspendre », dans le registre. Elle n'y est
+    pas, et c'est délibéré : à cet endroit, détruire l'espace d'une cliente
+    serait à un clic de le suspendre, entre deux lignes qui se ressemblent.
+    Ici, il faut avoir OUVERT son dossier — donc avoir vu ce qu'il contient,
+    combien de comptes, combien d'enregistrements, quand elle a travaillé pour
+    la dernière fois — avant que le geste soit seulement proposé.
+
+    Le nom recopié n'est pas une politesse d'interface : le serveur le
+    revérifie. L'écran empêche le clic distrait ; le serveur empêche le reste
+    — un appel scripté, un identifiant recopié depuis la mauvaise ligne.
+  */
+  const [confirmation, setConfirmation] = useState('');
+  const [suppression, setSuppression] = useState(false);
+  const nomExact = confirmation.trim() === org.name.trim();
+
   const { upsert } = useSync();
   const dossiers = useCollection<DossierData>('orgDossier');
   const existing = dossiers.find((d) => d.id === org.id);
@@ -399,6 +417,85 @@ export function OrgDossierPanel({
               className="input-focus mt-2 w-full resize-none border border-border bg-bg px-3 py-2 text-sm leading-relaxed text-text-primary outline-none"
             />
           </div>
+
+          <div className="my-5 border-t border-border" />
+
+          {/* --------------------------------------------- suppression ----- */}
+          <p className="font-mono text-[10px] uppercase tracking-widest text-danger">
+            Supprimer cette organisation
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-text-secondary">
+            Définitif, et sans corbeille.{' '}
+            <span className="text-text-muted">
+              Pour lui couper l’accès sans rien détruire — le cas le plus fréquent —
+              suspendez-la depuis le registre.
+            </span>
+          </p>
+
+          {/*
+            CE QU'ON S'APPRÊTE À DÉTRUIRE, CHIFFRÉ.
+
+            Le pouls est déjà chargé pour la section du haut : le réutiliser ici
+            transforme un avertissement générique (« tout sera perdu ») en un
+            poids réel (« 1 compte, 47 enregistrements »). C'est la différence
+            entre une formule qu'on survole et une phrase qui arrête la main.
+          */}
+          {pulse && (
+            <p className="mt-2 border border-danger/30 bg-danger-muted px-3 py-2 text-xs leading-relaxed text-text-primary">
+              Disparaîtront : <span className="font-mono">{pulse.users.total}</span> compte
+              {pulse.users.total > 1 ? 's' : ''},{' '}
+              <span className="font-mono">{pulse.records.total}</span> enregistrement
+              {pulse.records.total > 1 ? 's' : ''}
+              {pulse.sites.total > 0 && (
+                <>
+                  , <span className="font-mono">{pulse.sites.total}</span> site
+                  {pulse.sites.total > 1 ? 's' : ''}
+                </>
+              )}
+              , son journal d’accès et ses invitations en attente. Ses sessions ouvertes cessent
+              immédiatement de fonctionner.
+            </p>
+          )}
+
+          <label className="mt-3 flex flex-col gap-1.5">
+            <span className="text-xs text-text-secondary">
+              Recopiez <span className="font-mono text-text-primary">{org.name}</span> pour confirmer
+            </span>
+            <input
+              value={confirmation}
+              onChange={(e) => setConfirmation(e.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder={org.name}
+              className="input-focus w-full border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-muted"
+            />
+          </label>
+
+          <button
+            type="button"
+            disabled={!nomExact || suppression}
+            onClick={() => {
+              if (!nomExact || suppression) return;
+              setSuppression(true);
+              setError(null);
+              void bridge()
+                .remote.admin.deleteOrganization(org.id, confirmation.trim())
+                .then(() => {
+                  // On ferme AVANT de rafraîchir : le panneau décrit une
+                  // organisation qui n'existe plus, le laisser ouvert le temps
+                  // d'un aller-retour réseau afficherait un dossier fantôme.
+                  onClose();
+                  onSaved();
+                })
+                .catch((err) => {
+                  setError(cleanErrorMessage(err, 'La suppression a échoué.'));
+                  setSuppression(false);
+                });
+            }}
+            className="mt-2 min-h-11 w-full border border-danger/60 bg-danger-muted px-3 text-sm font-semibold text-text-primary transition-colors hover:border-danger disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {suppression ? 'Suppression…' : 'Supprimer définitivement'}
+          </button>
         </div>
 
         <div className="flex flex-shrink-0 gap-2 border-t border-border p-3">

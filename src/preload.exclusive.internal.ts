@@ -126,6 +126,7 @@ export const exclusivePreload: ExclusiveRemote = {
     updateOrganization: (id, patch) => ipcRenderer.invoke(IPC.remoteAdminUpdateOrg, { id, patch }),
     setOrganizationStatus: (id, status) =>
       ipcRenderer.invoke(IPC.remoteAdminSetOrgStatus, { id, status }),
+    deleteOrganization: (id, confirm) => ipcRenderer.invoke(IPC.remoteAdminDeleteOrg, { id, confirm }),
     listUsers: (orgId) => ipcRenderer.invoke(IPC.remoteAdminListUsers, orgId),
     reissueInvitation: (orgId, email) =>
       ipcRenderer.invoke(IPC.remoteAdminReissueInvitation, { orgId, email }),

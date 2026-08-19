@@ -1986,6 +1986,21 @@ export interface AmnBridge {
         },
       ): Promise<AdminOrganization>;
       setOrganizationStatus(id: string, status: OrgStatus): Promise<AdminOrganization>;
+      /**
+       * SUPPRIME une organisation cliente, définitivement.
+       *
+       * `confirm` doit être le nom EXACT de l'organisation. Ce n'est pas une
+       * politesse d'interface : le serveur le vérifie, parce qu'une boîte de
+       * dialogue ne protège que du clic distrait, jamais d'un appel scripté ni
+       * d'un identifiant recopié depuis la mauvaise ligne.
+       *
+       * Rend le compte de ce qui a été détruit — après coup, plus personne ne
+       * peut le reconstituer.
+       */
+      deleteOrganization(
+        id: string,
+        confirm: string,
+      ): Promise<{ organization: AdminOrganization; removed: { users: number; records: number; sites: number } }>;
       listUsers(orgId: string): Promise<AdminOrgUser[]>;
       /** Réémet un lien d'activation (7 jours, usage unique). */
       /**
@@ -2253,6 +2268,7 @@ export const IPC = {
   remoteAdminCreateOrg: 'remote:adminCreateOrg',
   remoteAdminUpdateOrg: 'remote:adminUpdateOrg',
   remoteAdminSetOrgStatus: 'remote:adminSetOrgStatus',
+  remoteAdminDeleteOrg: 'remote:adminDeleteOrg',
   remoteAdminListUsers: 'remote:adminListUsers',
   remoteAdminReissueInvitation: 'remote:adminReissueInvitation',
   remoteAdminResetPassword: 'remote:adminResetPassword',

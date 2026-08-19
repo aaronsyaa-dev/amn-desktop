@@ -252,6 +252,17 @@ const adminApi = {
     return organization;
   },
 
+  async deleteOrganization(id: string, confirm: string) {
+    return apiFetch<{
+      organization: AdminOrganization;
+      removed: { users: number; records: number; sites: number };
+    }>(`/v1/admin/organizations/${encodeURIComponent(id)}`, {
+      owner: true,
+      method: 'DELETE',
+      body: JSON.stringify({ confirm }),
+    });
+  },
+
   async setOrganizationStatus(id: string, status: OrgStatus): Promise<AdminOrganization> {
     const { organization } = await apiFetch<{ organization: AdminOrganization }>(
       `/v1/admin/organizations/${encodeURIComponent(id)}/status`,
@@ -482,6 +493,11 @@ export function registerExclusiveIpc(
     IPC.remoteAdminSetOrgStatus,
     (_event, payload: { id: string; status: OrgStatus }) =>
       adminApi.setOrganizationStatus(payload.id, payload.status),
+  );
+  ipcMain.handle(
+    IPC.remoteAdminDeleteOrg,
+    (_event, payload: { id: string; confirm: string }) =>
+      adminApi.deleteOrganization(payload.id, payload.confirm),
   );
   ipcMain.handle(IPC.remoteAdminListUsers, (_event, orgId: string) => adminApi.listUsers(orgId));
   ipcMain.handle(
