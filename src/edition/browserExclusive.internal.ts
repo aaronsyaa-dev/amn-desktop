@@ -35,6 +35,7 @@ import type {
   DownloadLink,
   BusinessRelease,
   SupervisionState,
+  OrgPlan,
 } from '../shared/api';
 
 /**
@@ -317,6 +318,13 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
         method: 'POST',
         body: JSON.stringify(input),
       });
+    },
+    async setOrganizationPlan(id: string, plan: OrgPlan) {
+      const { organization } = await ctx.apiFetch<{ organization: AdminOrganization }>(
+        `/v1/admin/organizations/${encodeURIComponent(id)}/plan`,
+        { owner: true, method: 'PUT', body: JSON.stringify({ plan }) },
+      );
+      return organization;
     },
     async setOrganizationStatus(id: string, status: OrgStatus) {
       const { organization } = await ctx.apiFetch<{ organization: AdminOrganization }>(

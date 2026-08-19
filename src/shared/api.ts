@@ -2001,6 +2001,19 @@ export interface AmnBridge {
       ): Promise<AdminOrganization>;
       setOrganizationStatus(id: string, status: OrgStatus): Promise<AdminOrganization>;
       /**
+       * Change la formule d'une organisation cliente.
+       *
+       * ATTENTION à ce que ça veut dire — et surtout à ce que ça ne veut PAS
+       * dire aujourd'hui. Seule la valeur `internal` a un effet technique :
+       * c'est elle qui autorise l'édition interne, et le serveur refuse donc de
+       * l'attribuer ou de la retirer par cette route. Entre `business_standard`
+       * et `business_premium`, RIEN ne change dans le produit : aucune limite,
+       * aucun module, aucun quota n'en dépend. C'est une étiquette
+       * commerciale, et l'écran le dit pour qu'on ne la prenne pas pour une
+       * barrière.
+       */
+      setOrganizationPlan(id: string, plan: OrgPlan): Promise<AdminOrganization>;
+      /**
        * SUPPRIME une organisation cliente, définitivement.
        *
        * `confirm` doit être le nom EXACT de l'organisation. Ce n'est pas une
@@ -2309,6 +2322,7 @@ export const IPC = {
   remoteAdminCreateOrg: 'remote:adminCreateOrg',
   remoteAdminUpdateOrg: 'remote:adminUpdateOrg',
   remoteAdminSetOrgStatus: 'remote:adminSetOrgStatus',
+  remoteAdminSetOrgPlan: 'remote:adminSetOrgPlan',
   remoteAdminDeleteOrg: 'remote:adminDeleteOrg',
   remoteAdminListUsers: 'remote:adminListUsers',
   remoteAdminDeleteUser: 'remote:adminDeleteUser',

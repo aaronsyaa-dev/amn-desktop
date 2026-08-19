@@ -121,6 +121,19 @@ export function OrgDossierPanel({
   */
   const [comptes, setComptes] = useState<AdminOrgUser[] | null>(null);
   const [compteEnCours, setCompteEnCours] = useState<string | null>(null);
+  /*
+    IDENTITÉ ET FORFAIT — les deux réglages qu'on ne pouvait pas changer.
+
+    Le Dossier savait ouvrir des modules, poser une couleur et prendre des
+    notes. Il ne savait ni renommer une organisation (une raison sociale change,
+    et c'est ce nom qui part sur ses devis) ni changer sa formule. La
+    supervision permettait donc de consulter et de suspendre, pas de gérer.
+  */
+  const [nom, setNom] = useState(org.name);
+  const [forfait, setForfait] = useState(org.plan);
+  const [identiteEnCours, setIdentiteEnCours] = useState(false);
+  const identiteModifiee = nom.trim() !== org.name || forfait !== org.plan;
+
   const [nouvelEmail, setNouvelEmail] = useState('');
   const [ouverture, setOuverture] = useState(false);
   /**
@@ -449,6 +462,81 @@ export function OrgDossierPanel({
               className="input-focus mt-2 w-full resize-none border border-border bg-bg px-3 py-2 text-sm leading-relaxed text-text-primary outline-none"
             />
           </div>
+
+          <div className="my-5 border-t border-border" />
+
+          {/* --------------------------------------- identité et forfait --- */}
+          <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+            Identité et forfait
+          </p>
+
+          <label className="mt-3 flex flex-col gap-1.5">
+            <span className="text-xs text-text-secondary">
+              Raison sociale{' '}
+              <span className="text-text-muted">— c’est ce nom qui figure sur ses devis.</span>
+            </span>
+            <input
+              value={nom}
+              onChange={(e) => setNom(e.target.value)}
+              className="input-focus w-full border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
+            />
+          </label>
+
+          <label className="mt-3 flex flex-col gap-1.5">
+            <span className="text-xs text-text-secondary">Formule</span>
+            <select
+              value={forfait}
+              onChange={(e) => setForfait(e.target.value as typeof forfait)}
+              className="input-focus w-full cursor-pointer border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
+            >
+              <option value="business_standard">Business standard</option>
+              <option value="business_premium">Business premium</option>
+            </select>
+          </label>
+
+          {/*
+            CE QUE LA FORMULE CHANGE — c'est-à-dire rien, et il faut le dire.
+
+            Aaron demandait ce que veut dire l'étiquette « Business standard »
+            qu'il voit sur chaque cliente. Réponse vérifiée dans le code des
+            deux dépôts : la valeur `plan` n'a qu'un seul effet technique,
+            distinguer `internal` du reste — c'est elle qui autorise l'édition
+            interne. Entre `standard` et `premium`, AUCUNE limite, AUCUN module
+            et AUCUN quota ne diffèrent.
+
+            L'écrire ici plutôt que de laisser croire à une barrière : une
+            étiquette qu'on prend pour un verrou finit par produire une promesse
+            commerciale que le produit ne tient pas.
+          */}
+          <p className="mt-2 text-[11px] leading-relaxed text-text-muted">
+            La formule est une <span className="text-text-secondary">étiquette commerciale</span>.
+            Elle n’ouvre et ne ferme rien aujourd’hui : les modules se règlent ci-dessous, le quota
+            invité dans les réglages de l’organisation. Aucun écran de la cliente n’en dépend.
+          </p>
+
+          <button
+            type="button"
+            disabled={!identiteModifiee || identiteEnCours || !nom.trim()}
+            onClick={() => {
+              if (!identiteModifiee || identiteEnCours) return;
+              setIdentiteEnCours(true);
+              setError(null);
+              const gestes: Promise<unknown>[] = [];
+              if (nom.trim() !== org.name) {
+                gestes.push(bridge().remote.admin.updateOrganization(org.id, { name: nom.trim() }));
+              }
+              if (forfait !== org.plan) {
+                gestes.push(bridge().remote.admin.setOrganizationPlan(org.id, forfait));
+              }
+              void Promise.all(gestes)
+                .then(() => onSaved())
+                .catch((err) => setError(cleanErrorMessage(err, 'Modification refusée.')))
+                .finally(() => setIdentiteEnCours(false));
+            }}
+            className="mt-3 min-h-11 w-full border border-border-strong px-3 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {identiteEnCours ? 'Enregistrement…' : 'Enregistrer l’identité'}
+          </button>
 
           <div className="my-5 border-t border-border" />
 

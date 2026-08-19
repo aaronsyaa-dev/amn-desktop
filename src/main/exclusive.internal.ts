@@ -12,6 +12,7 @@ import {
   type OrgIdentity,
   type OrgInvitationResult,
   type OrgStatus,
+  type OrgPlan,
   type SupportContext,
   type SupportSession,
   type TempPasswordResult,
@@ -282,6 +283,14 @@ const adminApi = {
     });
   },
 
+  async setOrganizationPlan(id: string, plan: OrgPlan): Promise<AdminOrganization> {
+    const { organization } = await apiFetch<{ organization: AdminOrganization }>(
+      `/v1/admin/organizations/${encodeURIComponent(id)}/plan`,
+      { owner: true, method: 'PUT', body: JSON.stringify({ plan }) },
+    );
+    return organization;
+  },
+
   async setOrganizationStatus(id: string, status: OrgStatus): Promise<AdminOrganization> {
     const { organization } = await apiFetch<{ organization: AdminOrganization }>(
       `/v1/admin/organizations/${encodeURIComponent(id)}/status`,
@@ -507,6 +516,11 @@ export function registerExclusiveIpc(
     IPC.remoteAdminUpdateOrg,
     (_event, payload: { id: string; patch: { name?: string; logoDataUrl?: string | null } }) =>
       adminApi.updateOrganization(payload.id, payload.patch),
+  );
+  ipcMain.handle(
+    IPC.remoteAdminSetOrgPlan,
+    (_event, payload: { id: string; plan: OrgPlan }) =>
+      adminApi.setOrganizationPlan(payload.id, payload.plan),
   );
   ipcMain.handle(
     IPC.remoteAdminSetOrgStatus,
