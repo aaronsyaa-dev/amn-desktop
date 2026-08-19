@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="AMN">
+  <!--
+    L'icône de l'application : la marque, centrée, sur le noir du produit.
+    Une seule pour les deux éditions — c'est la même maison.
+
+    Le dégradé est déclaré DANS le repère du groupe transformé : posé en
+    coordonnées de la toile (y 340→648), il se serait déplacé avec le groupe et
+    les lettres seraient sorties blanches de haut en bas. Constaté au premier
+    rendu, pas deviné.
+
+    Régénérer les PNG et le .ico après toute retouche : npm run icons
+  -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0d0d0d" />
+      <stop offset="1" stop-color="#060606" />
+    </linearGradient>
+    <linearGradient id="mark" x1="0" y1="8" x2="0" y2="94" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="0.5" stop-color="#c4c4c2" />
+      <stop offset="1" stop-color="#6b6b69" />
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)" />
+  <g transform="translate(107 340) scale(2.956)"
+     stroke="url(#mark)" stroke-width="3.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="12" fill="none">
+    <path d="M0 90 L42 10 L84 90" />
+    <path d="M11.6 68 L72.4 68" />
+    <path d="M98 90 L98 10 L140 90 L182 10 L182 90" />
+    <path d="M190 90 L190 10 L274 90 L274 10" />
+  </g>
+</svg>

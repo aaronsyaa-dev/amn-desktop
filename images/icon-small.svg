@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="AMN">
+  <!--
+    LA VARIANTE PETITE, ET POURQUOI ELLE EXISTE
+    ═══════════════════════════════════════════
+    Rendue à 32 px — la taille d'une barre des tâches Windows — la marque
+    complète devient une tache grise : trois lettres au trait d'un pixel dans
+    un carré de 32, le trait tombe à un tiers de pixel et le fond noir avale
+    le reste. Vérifié en agrandissant le rendu réel, pas supposé.
+
+    Cette variante ne montre donc que le « A », plus épais et plus clair, et
+    remplit davantage son carré. C'est la même décision que `LogoMark` prend
+    dans la barre repliée de l'application, et c'est ce que fait n'importe
+    quelle identité au trait : une composition par ordre de grandeur.
+
+    `scripts/build-icons.mjs` s'en sert jusqu'à 64 px ; au-delà, la marque
+    complète tient et c'est elle qui est rendue.
+  -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0d0d0d" />
+      <stop offset="1" stop-color="#060606" />
+    </linearGradient>
+    <linearGradient id="mark" x1="0" y1="10" x2="0" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="1" stop-color="#cfcfcd" />
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)" />
+  <g transform="translate(233.75 183.75) scale(6.625)"
+     stroke="url(#mark)" stroke-width="6" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="12" fill="none">
+    <path d="M0 90 L42 10 L84 90" />
+    <path d="M11.6 68 L72.4 68" />
+  </g>
+</svg>
