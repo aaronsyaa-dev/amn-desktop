@@ -1,0 +1,1362 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quiz du Murshid — Ibn Ashir</title>
+<meta name="description" content="Quiz islamique en trois voies : croyance ash'arite, fiqh malikite et voie de l'imam Junayd, d'après le Murshid al-Mu'in d'Ibn Ashir.">
+<meta name="theme-color" content="#070C1A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="color-scheme" content="dark">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Quiz du Murshid — Ibn Ashir">
+<meta property="og:description" content="Croyance ash'arite · Fiqh malikite · Voie de Junayd. Entre ton prénom et rejoins le classement.">
+<!-- Pour une vignette dans l'aperçu WhatsApp, héberge une image et décommente :
+     <meta property="og:image" content="https://ton-domaine/mosquee.jpg"> -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cormorant+Garamond:wght@500;600;700&display=swap">
+<style>
+/* ─────────────────────────────────────────────────────────────
+   Quiz du Murshid — feuille de style unique, mobile d'abord.
+   Palette : bleu nuit + doré/ambre, sur la façade de la mosquée.
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --nuit-900:#050914; --nuit-800:#0A1223; --nuit-700:#101C36; --nuit-600:#1A2B4C;
+  --or:#E3B778; --or-clair:#F7E3BE; --or-fonce:#B78945; --or-sourd:#8C6B3C;
+  --juste:#5FBE8C; --faux:#E0737F;
+  --texte:#F2EBDD; --texte-doux:#C6BCA8; --texte-faible:#8F8776;
+  --verre:rgba(12,20,38,.62); --verre-haut:rgba(23,36,64,.72); --bord:rgba(227,183,120,.22);
+  --rayon:18px; --ombre:0 18px 44px rgba(0,0,0,.55);
+  --serif:'Cormorant Garamond',"Iowan Old Style",Georgia,'Times New Roman',serif;
+  --calli:'Amiri',"Iowan Old Style",Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  min-height:100vh; min-height:100dvh;
+  font-family:var(--sans); color:var(--texte);
+  background:var(--nuit-900);
+  overflow-x:hidden; overscroll-behavior-y:none;
+  -webkit-font-smoothing:antialiased;
+}
+/* ── Décor : façade fixe + voile bleu nuit/doré ─────────────── */
+#decor{position:fixed; inset:0; z-index:0; overflow:hidden; background:var(--nuit-900)}
+#decor svg,#decor img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block}
+#voile{
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  background:
+    radial-gradient(120% 75% at 50% 2%, rgba(227,183,120,.16), transparent 64%),
+    radial-gradient(90% 55% at 22% 34%, rgba(255,183,94,.11), transparent 60%),
+    linear-gradient(180deg, rgba(5,9,20,.50) 0%, rgba(5,9,20,.66) 40%, rgba(5,9,20,.90) 100%);
+}
+#grain{
+  position:fixed; inset:0; z-index:1; pointer-events:none; opacity:.35; mix-blend-mode:overlay;
+  background-image:radial-gradient(rgba(255,255,255,.05) .5px, transparent .5px);
+  background-size:3px 3px;
+}
+/* ── Charpente ─────────────────────────────────────────────── */
+#app{
+  position:relative; z-index:2;
+  max-width:560px; margin:0 auto;
+  padding:calc(env(safe-area-inset-top) + 18px) 18px calc(env(safe-area-inset-bottom) + 26px);
+  min-height:100vh; min-height:100dvh;
+  display:flex; flex-direction:column;
+}
+.ecran{display:none; flex:1; flex-direction:column; animation:entree .42s cubic-bezier(.22,.9,.3,1) both}
+.ecran.actif{display:flex}
+@keyframes entree{from{opacity:0; transform:translateY(14px)} to{opacity:1; transform:none}}
+@keyframes montee{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none}}
+@keyframes lueur{0%,100%{opacity:.55} 50%{opacity:1}}
+.differe{animation:montee .5s cubic-bezier(.22,.9,.3,1) both}
+/* ── Typographie ───────────────────────────────────────────── */
+.titre{
+  font-family:var(--calli); font-weight:700; line-height:1.06;
+  font-size:clamp(2.1rem,10.5vw,3rem); margin:0;
+  background:linear-gradient(168deg,var(--or-clair) 8%,var(--or) 46%,var(--or-fonce) 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  text-shadow:0 2px 26px rgba(227,183,120,.18);
+}
+.arabe{font-family:var(--calli); direction:rtl; color:var(--or); letter-spacing:0}
+.sur-titre{
+  font-family:var(--serif); font-size:.82rem; letter-spacing:.34em; text-transform:uppercase;
+  color:var(--or-sourd); margin:0 0 12px; font-weight:600;
+}
+.chapo{font-family:var(--serif); font-size:1.14rem; line-height:1.55; color:var(--texte-doux); margin:14px 0 0}
+.filet{
+  height:1px; margin:20px auto; width:82%;
+  background:linear-gradient(90deg,transparent,var(--bord),rgba(227,183,120,.5),var(--bord),transparent);
+}
+/* ── Surfaces ──────────────────────────────────────────────── */
+.carte{
+  background:var(--verre); border:1px solid var(--bord); border-radius:var(--rayon);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  box-shadow:var(--ombre); padding:18px;
+}
+/* ── Champs et boutons ─────────────────────────────────────── */
+.champ{
+  width:100%; min-height:56px; padding:15px 17px; font-size:1.06rem; font-family:var(--sans);
+  color:var(--texte); background:rgba(6,11,24,.72); border:1px solid var(--bord);
+  border-radius:14px; outline:none; transition:border-color .2s,box-shadow .2s;
+}
+.champ::placeholder{color:var(--texte-faible)}
+.champ:focus{border-color:var(--or); box-shadow:0 0 0 3px rgba(227,183,120,.16)}
+.btn{
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  width:100%; min-height:56px; padding:16px 20px; margin-top:12px;
+  font-family:var(--serif); font-size:1.16rem; font-weight:600; letter-spacing:.02em;
+  color:var(--nuit-900); background:linear-gradient(160deg,var(--or-clair),var(--or) 52%,var(--or-fonce));
+  border:none; border-radius:14px; cursor:pointer; -webkit-tap-highlight-color:transparent;
+  box-shadow:0 10px 26px rgba(183,137,69,.3); transition:transform .16s,box-shadow .16s,opacity .16s;
+}
+.btn:active{transform:scale(.975); box-shadow:0 6px 16px rgba(183,137,69,.26)}
+.btn:disabled{opacity:.42; cursor:default; box-shadow:none}
+.btn.fantome{
+  background:transparent; color:var(--or); border:1px solid var(--bord);
+  box-shadow:none; font-size:1.04rem; min-height:52px;
+}
+.btn.fantome:active{background:rgba(227,183,120,.09)}
+.btn.vert{background:linear-gradient(160deg,#8FE3B6,#4FAE7E 55%,#33805C); color:#04180E; box-shadow:0 10px 26px rgba(79,174,126,.26)}
+.lien{
+  display:inline-block; background:none; border:none; padding:10px 6px; margin:0 auto;
+  color:var(--texte-faible); font-family:var(--sans); font-size:.88rem;
+  text-decoration:underline; text-underline-offset:4px; cursor:pointer;
+}
+.lien:active{color:var(--or)}
+.rangee{display:flex; gap:10px}
+.rangee>.btn{flex:1; margin-top:12px}
+/* ── Écran d'accueil ───────────────────────────────────────── */
+#accueil{justify-content:center; text-align:center}
+.lanterne{
+  width:74px; height:74px; margin:0 auto 18px; display:block;
+  filter:drop-shadow(0 0 22px rgba(227,183,120,.5)); animation:lueur 4.2s ease-in-out infinite;
+}
+#accueil .carte{margin-top:26px; text-align:left}
+.etiquette{
+  display:block; font-family:var(--serif); font-size:.94rem; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--or-sourd); margin-bottom:9px;
+}
+/* ── Choix des voies ───────────────────────────────────────── */
+.entete-ecran{display:flex; align-items:center; gap:12px; margin-bottom:16px}
+.retour{
+  flex:0 0 auto; width:42px; height:42px; border-radius:12px; cursor:pointer;
+  background:var(--verre); border:1px solid var(--bord); color:var(--or);
+  font-size:1.3rem; line-height:1; -webkit-tap-highlight-color:transparent;
+}
+.retour:active{background:rgba(227,183,120,.12)}
+.entete-ecran h2{font-family:var(--calli); font-size:clamp(1.16rem,5.4vw,1.5rem); overflow-wrap:anywhere; margin:0; color:var(--or-clair); font-weight:700}
+.entete-ecran .sous{display:block; font-family:var(--sans); font-size:.78rem; color:var(--texte-faible); letter-spacing:.04em; margin-top:2px}
+.voie{
+  display:flex; align-items:center; gap:14px; width:100%; text-align:left;
+  padding:16px; margin-bottom:12px; cursor:pointer; -webkit-tap-highlight-color:transparent;
+  background:var(--verre); border:1px solid var(--bord); border-radius:var(--rayon);
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  box-shadow:var(--ombre); color:inherit; transition:transform .16s,border-color .2s,background .2s;
+}
+.voie:active{transform:scale(.985); border-color:var(--or); background:var(--verre-haut)}
+.voie .blason{flex:0 0 auto; width:52px; height:52px; opacity:.95}
+.voie .corps{flex:1; min-width:0}
+.voie .nom{font-family:var(--serif); font-size:1.24rem; font-weight:700; color:var(--or-clair); line-height:1.2}
+.voie .desc{font-size:.83rem; color:var(--texte-doux); margin-top:3px; line-height:1.4}
+.voie .pied{display:flex; align-items:center; gap:8px; margin-top:7px; font-size:.74rem; color:var(--texte-faible)}
+.puce{
+  display:inline-block; padding:3px 9px; border-radius:999px; font-size:.72rem; font-weight:600;
+  background:rgba(227,183,120,.13); border:1px solid var(--bord); color:var(--or);
+}
+.voie.maitresse{border-color:rgba(227,183,120,.5); background:linear-gradient(150deg,rgba(45,33,16,.6),rgba(12,20,38,.66))}
+/* ── Quiz ──────────────────────────────────────────────────── */
+#quiz{padding-bottom:6px}
+.jauge{height:5px; border-radius:99px; background:rgba(255,255,255,.09); overflow:hidden; margin:4px 0 18px}
+.jauge span{display:block; height:100%; width:0; border-radius:99px; background:linear-gradient(90deg,var(--or-fonce),var(--or-clair)); transition:width .45s cubic-bezier(.22,.9,.3,1)}
+.compteurs{display:flex; justify-content:space-between; align-items:baseline; font-size:.78rem; color:var(--texte-faible); letter-spacing:.06em}
+.compteurs b{color:var(--or); font-weight:600}
+.question{
+  font-family:var(--serif); font-size:1.42rem; line-height:1.42; font-weight:600;
+  color:var(--texte); margin:0 0 18px;
+}
+.reponse{
+  display:flex; align-items:center; gap:12px; width:100%; text-align:left;
+  min-height:58px; padding:14px 16px; margin-bottom:10px;
+  font-family:var(--sans); font-size:1.01rem; line-height:1.4; color:var(--texte);
+  background:var(--verre); border:1px solid var(--bord); border-radius:14px;
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+  transition:transform .14s,border-color .2s,background .25s,opacity .25s;
+}
+.reponse:active{transform:scale(.985)}
+.reponse .marque{
+  flex:0 0 auto; width:28px; height:28px; border-radius:50%; display:grid; place-items:center;
+  border:1px solid var(--bord); font-family:var(--serif); font-size:.92rem; color:var(--or);
+  transition:background .25s,border-color .25s,color .25s;
+}
+.reponse.juste{border-color:var(--juste); background:rgba(95,190,140,.16)}
+.reponse.juste .marque{background:var(--juste); border-color:var(--juste); color:#04180E}
+.reponse.faux{border-color:var(--faux); background:rgba(224,115,127,.15)}
+.reponse.faux .marque{background:var(--faux); border-color:var(--faux); color:#2A0A0E}
+.reponse.eteinte{opacity:.4}
+.verrouille .reponse{cursor:default}
+.explication{
+  margin-top:14px; padding:15px 16px; border-radius:14px;
+  background:rgba(6,11,24,.76); border:1px solid var(--bord); border-left:3px solid var(--or);
+  animation:montee .34s cubic-bezier(.22,.9,.3,1) both;
+}
+.explication .verdict{font-family:var(--serif); font-size:1.06rem; font-weight:700; margin:0 0 6px}
+.explication .verdict.ok{color:var(--juste)}
+.explication .verdict.ko{color:var(--faux)}
+.explication p{margin:0; font-size:.93rem; line-height:1.62; color:var(--texte-doux)}
+.explication .arabe{display:block; margin-top:9px; font-size:1.12rem; line-height:1.9; color:var(--or)}
+/* ── Résultat ──────────────────────────────────────────────── */
+#resultat{justify-content:center; text-align:center}
+.cadran{position:relative; width:186px; height:186px; margin:6px auto 18px}
+.cadran svg{width:100%; height:100%; transform:rotate(-90deg)}
+.cadran .note{
+  position:absolute; inset:0; display:grid; place-content:center; gap:1px;
+  font-family:var(--calli); line-height:1;
+}
+.cadran .note b{font-size:3.1rem; font-weight:700; color:var(--or-clair); display:block}
+.cadran .note span{font-size:.95rem; color:var(--texte-faible); font-family:var(--sans); letter-spacing:.1em}
+.mention{font-family:var(--serif); font-size:1.6rem; font-weight:700; color:var(--or); margin:0 0 8px; line-height:1.25}
+.bilan{font-size:.96rem; line-height:1.6; color:var(--texte-doux); margin:0}
+.stats{display:flex; gap:10px; margin:20px 0 4px}
+.stats div{flex:1; padding:12px 8px; border-radius:13px; background:var(--verre); border:1px solid var(--bord)}
+.stats b{display:block; font-family:var(--serif); font-size:1.34rem; color:var(--or-clair)}
+.stats span{font-size:.71rem; color:var(--texte-faible); letter-spacing:.08em; text-transform:uppercase}
+/* ── Classement ────────────────────────────────────────────── */
+.onglets{display:flex; gap:8px; overflow-x:auto; padding:2px 2px 12px; margin:0 -2px; scrollbar-width:none}
+.onglets::-webkit-scrollbar{display:none}
+.onglet{
+  flex:0 0 auto; padding:9px 15px; border-radius:999px; cursor:pointer; white-space:nowrap;
+  font-family:var(--sans); font-size:.85rem; color:var(--texte-doux);
+  background:var(--verre); border:1px solid var(--bord); -webkit-tap-highlight-color:transparent;
+  transition:background .2s,color .2s,border-color .2s;
+}
+.onglet.actif{background:linear-gradient(160deg,var(--or-clair),var(--or)); color:var(--nuit-900); font-weight:600; border-color:transparent}
+.ligne{
+  display:flex; align-items:center; gap:12px; padding:13px 14px; margin-bottom:9px;
+  background:var(--verre); border:1px solid var(--bord); border-radius:14px;
+  animation:montee .4s cubic-bezier(.22,.9,.3,1) both;
+}
+.ligne.moi{border-color:var(--or); background:linear-gradient(120deg,rgba(45,33,16,.72),rgba(12,20,38,.66))}
+.ligne .rang{
+  flex:0 0 auto; width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+  font-family:var(--serif); font-weight:700; font-size:.98rem;
+  background:rgba(255,255,255,.06); border:1px solid var(--bord); color:var(--texte-doux);
+}
+.ligne.or .rang{background:linear-gradient(160deg,#F7E3BE,#C9993F); color:#2A1B06; border-color:transparent}
+.ligne.argent .rang{background:linear-gradient(160deg,#E8ECF2,#9AA6B6); color:#171B22; border-color:transparent}
+.ligne.bronze .rang{background:linear-gradient(160deg,#E5B48A,#A9713F); color:#2A1608; border-color:transparent}
+.ligne .qui{flex:1; min-width:0}
+.ligne .qui b{display:block; font-family:var(--serif); font-size:1.08rem; color:var(--texte); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.ligne .qui span{font-size:.74rem; color:var(--texte-faible)}
+.ligne .pts{flex:0 0 auto; font-family:var(--calli); font-size:1.24rem; font-weight:700; color:var(--or-clair)}
+.ligne .pts i{font-style:normal; font-size:.72rem; color:var(--texte-faible); font-family:var(--sans)}
+.vide{text-align:center; padding:34px 18px; color:var(--texte-faible); font-family:var(--serif); font-size:1.06rem; line-height:1.6}
+.etat-sync{
+  display:flex; align-items:center; justify-content:center; gap:7px; flex-wrap:wrap;
+  font-size:.76rem; color:var(--texte-faible); margin:16px 0 4px; letter-spacing:.03em;
+  text-align:center; line-height:1.5;
+}
+.etat-sync .pastille{width:7px; height:7px; border-radius:50%; background:var(--texte-faible); flex:0 0 auto}
+.etat-sync.direct .pastille{background:var(--juste); box-shadow:0 0 9px var(--juste); animation:lueur 2.4s ease-in-out infinite}
+.etat-sync.local .pastille{background:var(--or-sourd)}
+/* ── Réglages du classement partagé ────────────────────────── */
+#reglages .carte{margin-bottom:12px}
+#reglages p{font-size:.9rem; line-height:1.62; color:var(--texte-doux); margin:0 0 12px}
+#reglages ol{margin:0 0 14px; padding-left:20px; font-size:.88rem; line-height:1.7; color:var(--texte-doux)}
+#reglages code{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.82rem;
+  background:rgba(227,183,120,.1); border:1px solid var(--bord); border-radius:6px; padding:1px 5px; color:var(--or-clair);
+  overflow-wrap:anywhere;
+}
+.avis{font-size:.8rem; line-height:1.6; color:var(--texte-faible); margin-top:14px; text-align:center}
+/* ── Grands écrans : on garde la colonne, on aère ──────────── */
+.devise{font-size:1.28rem; margin:14px 0 0; line-height:1.85}
+/* ── Grands écrans : on garde la colonne, on aère ──────────── */
+@media (min-height:760px){ #app{padding-top:calc(env(safe-area-inset-top) + 34px)} }
+/* ── Petits écrans : l’accueil doit tenir sans faire défiler ─ */
+@media (max-height:680px){
+  .lanterne{width:52px; height:52px; margin-bottom:10px}
+  .sur-titre{font-size:.72rem; margin-bottom:7px}
+  .titre{font-size:clamp(1.7rem,8.6vw,2.2rem)}
+  .devise{font-size:1.02rem; margin-top:10px; line-height:1.7}
+  .chapo{font-size:1rem; margin-top:10px}
+  .filet{margin:13px auto}
+  #accueil .carte{margin-top:15px; padding:15px}
+  .btn{min-height:52px; padding:14px 18px; margin-top:10px}
+  .cadran{width:150px; height:150px}
+  .cadran .note b{font-size:2.5rem}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important}
+}
+</style>
+</head>
+<body>
+<!-- ═══════════════════════════════════════════════════════════
+     Décor. Par défaut : une façade dessinée d'après la photo de
+     la mosquée (nuit, lampe ambrée, arcs brisés). Pour mettre la
+     vraie photo : renseigne PHOTO plus bas dans le script.
+     ═══════════════════════════════════════════════════════════ -->
+<div id="decor" aria-hidden="true">
+<svg viewBox="0 -300 1080 1500" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ciel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#050A18"/><stop offset="38%" stop-color="#101E3C"/>
+      <stop offset="72%" stop-color="#1D3055"/><stop offset="100%" stop-color="#2B4066"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFD79B" stop-opacity=".85"/>
+      <stop offset="42%" stop-color="#F0A94E" stop-opacity=".3"/>
+      <stop offset="100%" stop-color="#F0A94E" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="murG" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#5A4636"/><stop offset="58%" stop-color="#7C6047"/><stop offset="100%" stop-color="#8E6B48"/>
+    </linearGradient>
+    <linearGradient id="murC" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8A9099"/><stop offset="100%" stop-color="#6B717B"/>
+    </linearGradient>
+    <linearGradient id="murD" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7A6350"/><stop offset="100%" stop-color="#4E4335"/>
+    </linearGradient>
+    <filter id="flou" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="26"/></filter>
+    <filter id="flou-doux" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="9"/></filter>
+    <!-- Arc brisé : la forme des baies de la façade -->
+    <symbol id="arc" viewBox="0 0 40 100">
+      <path d="M0,100 L0,26 A25,25 0 0 1 20,0 A25,25 0 0 1 40,26 L40,100 Z"/>
+    </symbol>
+    <pattern id="grille" x="0" y="0" width="52" height="60" patternUnits="userSpaceOnUse">
+      <path d="M0,0 L52,60 M52,0 L0,60 M26,0 L26,60" stroke="#070C17" stroke-width="4" fill="none" opacity=".92"/>
+    </pattern>
+  </defs>
+
+  <!-- Ciel et nuages -->
+  <rect x="0" y="-300" width="1080" height="1500" fill="url(#ciel)"/>
+  <g filter="url(#flou)" opacity=".55">
+    <ellipse cx="250" cy="120" rx="290" ry="86" fill="#33456B"/>
+    <ellipse cx="320" cy="-210" rx="340" ry="110" fill="#2C3D62"/>
+    <ellipse cx="820" cy="-320" rx="300" ry="96" fill="#26365A"/>
+    <ellipse cx="640" cy="70"  rx="330" ry="72" fill="#3C5077"/>
+    <ellipse cx="930" cy="180" rx="260" ry="96" fill="#2A3B5E"/>
+    <ellipse cx="480" cy="235" rx="360" ry="60" fill="#22304F"/>
+  </g>
+
+  <!-- Corps du bâtiment -->
+  <rect x="60"  y="300" width="486" height="400" fill="url(#murG)"/>
+  <rect x="546" y="322" width="228" height="378" fill="url(#murC)"/>
+  <rect x="774" y="388" width="292" height="312" fill="url(#murD)"/>
+  <!-- Acrotères -->
+  <rect x="60"  y="292" width="486" height="14" fill="#3E3025"/>
+  <rect x="546" y="314" width="228" height="12" fill="#565C64"/>
+  <rect x="774" y="380" width="292" height="12" fill="#3A3125"/>
+  <!-- Garde-corps de toit -->
+  <g stroke="#141A26" stroke-width="4" opacity=".85">
+    <path d="M120,292 L520,268 M120,270 L520,246"/>
+    <path d="M140,292 L140,269 M200,289 L200,266 M260,285 L260,262 M320,282 L320,259 M380,278 L380,255 M440,275 L440,252 M500,271 L500,248"/>
+  </g>
+  <!-- Avant-corps clair et arc du portail -->
+  <path d="M552,700 L552,540 A114,114 0 0 1 768,540 L768,700 Z" fill="#5E646E"/>
+  <path d="M566,700 L566,545 A100,100 0 0 1 754,545 L754,700 Z" fill="#241A12"/>
+  <path d="M660,700 L660,548" stroke="#3A2A1C" stroke-width="5"/>
+  <rect x="694" y="586" width="52" height="114" fill="#F2CE96" opacity=".5"/>
+
+  <!-- Lampe murale et sa lumière -->
+  <ellipse cx="412" cy="330" rx="230" ry="215" fill="url(#halo)"/>
+  <path d="M392,330 L432,330 L422,378 L402,378 Z" fill="#C99A5C" opacity=".8"/>
+  <circle cx="412" cy="330" r="19" fill="#FFE9C2"/>
+  <circle cx="412" cy="330" r="34" fill="#FFD79B" opacity=".45" filter="url(#flou-doux)"/>
+  <ellipse cx="858" cy="392" rx="120" ry="112" fill="url(#halo)" opacity=".72"/>
+  <circle cx="858" cy="392" r="12" fill="#FFE9C2"/>
+
+  <!-- Baies : bloc gauche -->
+  <g fill="#0F1726">
+    <use href="#arc" x="186" y="376" width="36" height="92"/>
+    <use href="#arc" x="232" y="376" width="36" height="92"/>
+    <use href="#arc" x="372" y="402" width="34" height="86"/>
+    <use href="#arc" x="412" y="402" width="34" height="86"/>
+    <use href="#arc" x="360" y="562" width="36" height="94"/>
+    <use href="#arc" x="404" y="562" width="36" height="94"/>
+  </g>
+  <g fill="#E7C48E" opacity=".72">
+    <use href="#arc" x="376" y="408" width="26" height="74"/>
+    <use href="#arc" x="416" y="408" width="26" height="74"/>
+    <use href="#arc" x="364" y="568" width="28" height="82"/>
+    <use href="#arc" x="408" y="568" width="28" height="82"/>
+  </g>
+  <rect x="352" y="470" width="102" height="12" fill="#8E6B48"/>
+  <!-- Oculus et cadran -->
+  <circle cx="204" cy="374" r="21" fill="#0F1726"/>
+  <circle cx="398" cy="392" r="17" fill="#0F1726"/>
+  <circle cx="398" cy="546" r="20" fill="#EDE4D2"/>
+  <circle cx="398" cy="546" r="20" fill="none" stroke="#3E3025" stroke-width="3"/>
+  <path d="M398,546 L398,535 M398,546 L406,551" stroke="#2A2118" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Baies : bloc central -->
+  <g fill="#0F1726">
+    <use href="#arc" x="556" y="424" width="32" height="82"/>
+    <use href="#arc" x="596" y="424" width="32" height="82"/>
+    <use href="#arc" x="702" y="430" width="32" height="82"/>
+    <use href="#arc" x="742" y="430" width="30" height="82"/>
+  </g>
+  <!-- Baies : bloc droit -->
+  <g fill="#0F1726">
+    <use href="#arc" x="828" y="452" width="30" height="76"/>
+    <use href="#arc" x="866" y="452" width="30" height="76"/>
+    <use href="#arc" x="940" y="460" width="30" height="76"/>
+    <use href="#arc" x="978" y="460" width="30" height="76"/>
+    <use href="#arc" x="838" y="576" width="30" height="80"/>
+    <use href="#arc" x="876" y="576" width="30" height="80"/>
+  </g>
+  <g fill="#E7C48E" opacity=".55">
+    <use href="#arc" x="842" y="582" width="22" height="68"/>
+    <use href="#arc" x="880" y="582" width="22" height="68"/>
+  </g>
+  <circle cx="856" cy="558" r="15" fill="#EDE4D2"/>
+  <rect x="796" y="586" width="34" height="26" fill="#9FB6CE" opacity=".7"/>
+  <!-- Croissant sur l'angle droit -->
+  <g fill="#1A2233"><circle cx="1032" cy="372" r="9"/><circle cx="1032" cy="394" r="12"/><circle cx="1032" cy="414" r="7"/></g>
+
+  <!-- Sol, marches, grille -->
+  <rect x="0" y="694" width="1080" height="516" fill="#0A101C"/>
+  <path d="M600,700 L740,700 L752,714 L588,714 Z M580,714 L760,714 L772,730 L568,730 Z" fill="#232B3A"/>
+  <rect x="0" y="640" width="1080" height="86" fill="url(#grille)" opacity=".9"/>
+  <rect x="0" y="636" width="1080" height="6" fill="#070C17"/>
+  <rect x="0" y="720" width="1080" height="6" fill="#070C17"/>
+</svg>
+</div>
+<div id="voile" aria-hidden="true"></div>
+<div id="grain" aria-hidden="true"></div>
+
+<main id="app">
+
+<!-- ══ Écran 1 · Accueil ═══════════════════════════════════ -->
+<section id="accueil" class="ecran actif">
+  <svg class="lanterne" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+    <path d="M32 3v6M22 12h20l-4 5H26z" stroke="#E3B778" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M26 17h12l6 22c0 7-5 12-12 12s-12-5-12-12z" stroke="#E3B778" stroke-width="2.4" stroke-linejoin="round"/>
+    <path d="M32 24c4 4 6 7 6 11a6 6 0 1 1-12 0c0-4 2-7 6-11z" fill="#F7E3BE" opacity=".85"/>
+    <path d="M25 55h14M28 60h8" stroke="#B78945" stroke-width="2.4" stroke-linecap="round"/>
+  </svg>
+  <p class="sur-titre">Al-Murshid al-Muʿīn</p>
+  <h1 class="titre">Quiz du Murshid</h1>
+  <p class="arabe devise">في عقد الأشعري وفقه مالك · وفي طريقة الجنيد السالك</p>
+  <p class="chapo">Trois voies, un seul guide : la croyance d’al-Ashʿarī, le fiqh de Mālik et le chemin de l’imam al-Junayd.</p>
+  <div class="filet"></div>
+  <div class="carte differe" style="animation-delay:.12s">
+    <label class="etiquette" for="prenom">Ton prénom</label>
+    <input id="prenom" class="champ" type="text" inputmode="text" autocomplete="given-name"
+           autocapitalize="words" maxlength="22" placeholder="Ex. Yahya" enterkeyhint="go">
+    <button id="btn-commencer" class="btn" disabled>Bismillāh, commencer</button>
+    <button id="btn-classement-accueil" class="btn fantome">Voir le classement</button>
+  </div>
+  <button id="btn-reglages" class="lien" style="margin-top:14px">Organisateur · classement partagé</button>
+</section>
+
+<!-- ══ Écran 2 · Choix de la voie ══════════════════════════ -->
+<section id="voies" class="ecran">
+  <div class="entete-ecran">
+    <button class="retour" data-vers="accueil" aria-label="Retour">‹</button>
+    <div><h2 id="salutation">As-salāmu ʿalaykum</h2><span class="sous" id="sous-voies">Choisis ta voie</span></div>
+  </div>
+
+  <button class="voie maitresse" data-mode="complet">
+    <svg class="blason" viewBox="0 0 56 56" fill="none" aria-hidden="true">
+      <path d="M28 5l5.6 11.6L46 18.4l-9 8.9 2.2 12.6L28 34l-11.2 5.9L19 27.3l-9-8.9 12.4-1.8z" stroke="#E3B778" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M28 44v7M20 51h16" stroke="#B78945" stroke-width="2.2" stroke-linecap="round"/>
+    </svg>
+    <div class="corps">
+      <div class="nom">Parcours complet</div>
+      <div class="desc">20 questions tirées des trois voies, mêlées.</div>
+      <div class="pied"><span class="puce">20 questions</span><span class="meilleur" data-mode="complet"></span></div>
+    </div>
+  </button>
+
+  <button class="voie" data-mode="aqida">
+    <svg class="blason" viewBox="0 0 56 56" fill="none" aria-hidden="true">
+      <circle cx="28" cy="28" r="21" stroke="#E3B778" stroke-width="2.2"/>
+      <path d="M28 11c-6 5-9 10-9 17s3 12 9 17c6-5 9-10 9-17s-3-12-9-17z" stroke="#B78945" stroke-width="1.8"/>
+      <path d="M7 28h42" stroke="#B78945" stroke-width="1.8"/>
+    </svg>
+    <div class="corps">
+      <div class="nom">Croyance ashʿarite</div>
+      <div class="desc">Les vingt attributs, le kasb, les prophètes.</div>
+      <div class="pied"><span class="puce" data-nb="aqida"></span><span class="meilleur" data-mode="aqida"></span></div>
+    </div>
+  </button>
+
+  <button class="voie" data-mode="fiqh">
+    <svg class="blason" viewBox="0 0 56 56" fill="none" aria-hidden="true">
+      <path d="M12 46V12a4 4 0 0 1 4-4h24a4 4 0 0 1 4 4v34" stroke="#E3B778" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M12 46h32M19 18h18M19 26h18M19 34h11" stroke="#B78945" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <div class="corps">
+      <div class="nom">Fiqh malikite</div>
+      <div class="desc">Purification, prière, piliers — matière du Matn.</div>
+      <div class="pied"><span class="puce" data-nb="fiqh"></span><span class="meilleur" data-mode="fiqh"></span></div>
+    </div>
+  </button>
+
+  <button class="voie" data-mode="tasawwuf">
+    <svg class="blason" viewBox="0 0 56 56" fill="none" aria-hidden="true">
+      <path d="M28 6c-4 8-12 11-12 20a12 12 0 0 0 24 0c0-9-8-12-12-20z" stroke="#E3B778" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M28 38v12M20 50h16" stroke="#B78945" stroke-width="2.2" stroke-linecap="round"/>
+      <circle cx="28" cy="27" r="4" fill="#F7E3BE" opacity=".8"/>
+    </svg>
+    <div class="corps">
+      <div class="nom">Voie de l’imam Junayd</div>
+      <div class="desc">Sobriété, tawḥīd, fanāʾ et bagage du sālik.</div>
+      <div class="pied"><span class="puce" data-nb="tasawwuf"></span><span class="meilleur" data-mode="tasawwuf"></span></div>
+    </div>
+  </button>
+
+  <button id="btn-classement-voies" class="btn fantome" style="margin-top:6px">Classement</button>
+</section>
+
+<!-- ══ Écran 3 · Le quiz ═══════════════════════════════════ -->
+<section id="quiz" class="ecran">
+  <div class="entete-ecran">
+    <button class="retour" data-vers="voies" aria-label="Quitter">‹</button>
+    <div><h2 id="quiz-voie">—</h2><span class="sous" id="quiz-sous">—</span></div>
+  </div>
+  <div class="compteurs">
+    <span>Question <b id="q-index">1</b> / <span id="q-total">20</span></span>
+    <span>Justes&nbsp;: <b id="q-bonnes">0</b></span>
+  </div>
+  <div class="jauge"><span id="q-jauge"></span></div>
+  <p class="question" id="q-texte">—</p>
+  <div id="q-reponses"></div>
+  <div id="q-explication"></div>
+  <button id="btn-suivant" class="btn" hidden>Suivant</button>
+</section>
+
+<!-- ══ Écran 4 · Résultat ══════════════════════════════════ -->
+<section id="resultat" class="ecran">
+  <p class="sur-titre" id="res-voie">—</p>
+  <div class="cadran">
+    <svg viewBox="0 0 120 120" aria-hidden="true">
+      <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="9"/>
+      <circle id="res-arc" cx="60" cy="60" r="52" fill="none" stroke="url(#degrade-or)" stroke-width="9"
+              stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7"
+              style="transition:stroke-dashoffset 1.1s cubic-bezier(.22,.9,.3,1)"/>
+      <defs><linearGradient id="degrade-or" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#F7E3BE"/><stop offset="100%" stop-color="#B78945"/>
+      </linearGradient></defs>
+    </svg>
+    <div class="note"><b id="res-note">0</b><span>/ 20</span></div>
+  </div>
+  <h2 class="mention" id="res-mention">—</h2>
+  <p class="bilan" id="res-bilan">—</p>
+  <div class="stats">
+    <div><b id="res-bonnes">0</b><span>Justes</span></div>
+    <div><b id="res-taux">0 %</b><span>Réussite</span></div>
+    <div><b id="res-duree">0:00</b><span>Durée</span></div>
+  </div>
+  <button id="btn-rejouer" class="btn">Rejouer</button>
+  <div class="rangee">
+    <button id="btn-voir-classement" class="btn fantome">Classement</button>
+    <button id="btn-partager" class="btn fantome">Partager</button>
+  </div>
+  <button id="btn-autre-voie" class="lien">Choisir une autre voie</button>
+</section>
+
+<!-- ══ Écran 5 · Classement ════════════════════════════════ -->
+<section id="classement" class="ecran">
+  <div class="entete-ecran">
+    <button class="retour" data-vers="voies" aria-label="Retour">‹</button>
+    <div><h2>Classement</h2><span class="sous">Meilleur score de chacun</span></div>
+  </div>
+  <div class="onglets" id="onglets-classement"></div>
+  <div id="liste-classement"></div>
+  <div class="etat-sync" id="etat-sync"><span class="pastille"></span><span id="etat-sync-texte">—</span></div>
+  <button id="btn-partager-lien" class="btn">Partager le lien du quiz</button>
+  <button id="btn-classement-jouer" class="btn fantome">Jouer</button>
+</section>
+
+<!-- ══ Écran 6 · Réglages du classement partagé ════════════ -->
+<section id="reglages" class="ecran">
+  <div class="entete-ecran">
+    <button class="retour" data-vers="accueil" aria-label="Retour">‹</button>
+    <div><h2>Classement partagé</h2><span class="sous">À faire une seule fois, par l’organisateur</span></div>
+  </div>
+  <div class="carte">
+    <p>Sans réglage, chaque participant garde son classement <b>sur son téléphone</b>, et le lien de partage transmet les scores déjà connus.</p>
+    <p>Pour un classement <b>commun et en direct</b>, colle ci-dessous l’adresse d’une base Firebase Realtime Database (gratuite, sans carte bancaire) :</p>
+    <ol>
+      <li>console.firebase.google.com → nouveau projet</li>
+      <li>Realtime Database → Créer → mode test</li>
+      <li>Copie l’adresse <code>https://…firebasedatabase.app</code></li>
+    </ol>
+    <label class="etiquette" for="base-url">Adresse de la base</label>
+    <input id="base-url" class="champ" type="url" inputmode="url" autocapitalize="off" autocorrect="off"
+           spellcheck="false" placeholder="https://mon-quiz-default-rtdb.firebaseio.com">
+    <label class="etiquette" for="salle" style="margin-top:14px">Nom du salon (facultatif)</label>
+    <input id="salle" class="champ" type="text" maxlength="24" autocapitalize="off" placeholder="mosquee">
+    <button id="btn-enregistrer-base" class="btn">Enregistrer et tester</button>
+    <button id="btn-oublier-base" class="btn fantome">Revenir au classement local</button>
+    <p class="avis" id="avis-base"></p>
+  </div>
+  <p class="avis">Le lien que tu partages ensuite contient déjà le réglage : les participants n’ont rien à faire.</p>
+</section>
+
+</main>
+<script>
+"use strict";
+/* ══════════════════════════════════════════════════════════════
+   1 · RÉGLAGES
+   ══════════════════════════════════════════════════════════════
+   PHOTO — deux façons de mettre la vraie photo de la mosquée :
+     · pose le fichier « mosquee.jpg » à côté de cette page : rien à changer ;
+     · ou, pour garder UN SEUL fichier, colle l’image encodée ici :
+       "data:image/jpeg;base64,/9j/4AA…"  (base64 -w0 mosquee.jpg)
+   Si la photo est absente, la façade dessinée plus haut prend le relais — le
+   navigateur signale alors « mosquee.jpg introuvable » dans sa console, sans
+   aucune conséquence pour le participant. */
+const PHOTO = "mosquee.jpg";
+
+/* Salon par défaut du classement partagé (voir l’écran Organisateur). */
+const SALLE_PAR_DEFAUT = "mosquee";
+
+/* ══════════════════════════════════════════════════════════════
+   2 · LA BANQUE DE QUESTIONS
+   r = index de la bonne réponse · e = explication · ar = appui en arabe
+   Les questions vont du plus simple au plus exigeant.
+   ══════════════════════════════════════════════════════════════ */
+const BANQUE = {
+  aqida: {
+    nom: "Croyance ashʿarite",
+    court: "ʿAqīda",
+    sous: "Les fondements de la foi",
+    questions: [
+      { q: "Quel imam a donné son nom à l’école de croyance suivie par Ibn ʿĀshir ?",
+        o: ["Abū l-Ḥasan al-Ashʿarī", "Abū Manṣūr al-Māturīdī", "Aḥmad ibn Ḥanbal", "Al-Junayd al-Baghdādī"], r: 0,
+        e: "Abū l-Ḥasan al-Ashʿarī (m. 324 H / 936), de Bassora puis Bagdad. Ibn ʿĀshir ouvre son poème en annonçant la croyance d’al-Ashʿarī, le fiqh de Mālik et la voie de Junayd.",
+        ar: "في عقد الأشعري وفقه مالك" },
+      { q: "Combien d’attributs nécessaires (ṣifāt wājiba) à Allah la ʿaqīda ashʿarite énumère-t-elle classiquement ?",
+        o: ["Vingt", "Treize", "Sept", "Quarante et un"], r: 0,
+        e: "Vingt attributs nécessaires, auxquels répondent vingt attributs impossibles (leurs contraires), et un seul attribut possible." },
+      { q: "Selon Ibn ʿĀshir, quelle est la première obligation de celui qui devient légalement responsable (mukallaf) ?",
+        o: ["Connaître Allah", "Accomplir la prière", "Apprendre l’arabe", "Se purifier"], r: 0,
+        e: "Le poème s’ouvre là-dessus : la première obligation est la connaissance d’Allah, appuyée sur une preuve et non sur la simple imitation.",
+        ar: "أول واجب على من كلفا معرفة" },
+      { q: "Un seul attribut est dit « nafsī », c’est-à-dire attribut de l’Essence elle-même. Lequel ?",
+        o: ["Al-Wujūd — l’existence", "Al-ʿIlm — la science", "Al-Qidam — l’antériorité", "Al-Waḥdāniyya — l’unicité"], r: 0,
+        e: "L’existence est l’unique ṣifa nafsiyya. Viennent ensuite 5 attributs négatifs, 7 attributs de sens (maʿānī) et 7 attributs qui en découlent (maʿnawiyya) : 1 + 5 + 7 + 7 = 20." },
+      { q: "Combien d’attributs « salbiyya » (négatifs) compte-t-on, et à quoi servent-ils ?",
+        o: ["Cinq — ils écartent d’Allah ce qui ne Lui convient pas", "Sept — ils décrivent Ses actes", "Un — il affirme Son existence", "Douze — ils énumèrent Ses noms"], r: 0,
+        e: "Al-Qidam, al-Baqāʾ, la dissemblance d’avec les créatures, la subsistance par Soi et l’unicité. Ils nient d’Allah toute imperfection." },
+      { q: "Que signifie l’attribut « al-Qidam » ?",
+        o: ["Qu’Allah est sans commencement", "Qu’Allah est sans fin", "Qu’Allah est très ancien", "Qu’Allah précède Ses noms"], r: 0,
+        e: "Al-Qidam : nulle origine, nul commencement. Son pendant est al-Baqāʾ : nulle fin, nul anéantissement." },
+      { q: "« Mukhālafatuhu li-l-ḥawādith » signifie qu’Allah…",
+        o: ["ne ressemble en rien à Ses créatures", "n’a pas créé le monde d’un coup", "change Ses décrets", "se manifeste dans Sa création"], r: 0,
+        e: "Ni corps, ni forme, ni direction, ni organe, ni limite : « Rien n’est à Son image, et Il est l’Audient, le Clairvoyant » (Coran 42:11).",
+        ar: "لَيْسَ كَمِثْلِهِ شَيْءٌ وَهُوَ السَّمِيعُ الْبَصِيرُ" },
+      { q: "« Qiyāmuhu bi-nafsihi » veut dire qu’Allah…",
+        o: ["n’a besoin ni de lieu ni de rien qui Le spécifie", "se tient debout", "subsiste par Ses anges", "occupe le Trône comme un roi"], r: 0,
+        e: "Il se passe de tout lieu, de tout support et de toute cause : c’est la création qui a besoin de Lui, jamais l’inverse." },
+      { q: "Quels sont les sept attributs dits « maʿānī » ?",
+        o: ["Puissance, volonté, science, vie, ouïe, vue, parole", "Justice, sagesse, miséricorde, force, patience, générosité, majesté", "Existence, antériorité, permanence, dissemblance, unicité, subsistance, sainteté", "Création, subsistance, mort, résurrection, jugement, récompense, châtiment"], r: 0,
+        e: "Qudra, Irāda, ʿIlm, Ḥayāt, Samʿ, Baṣar, Kalām. Les sept maʿnawiyya en découlent : Il est Puissant, Voulant, Savant, Vivant, Audient, Voyant, Parlant." },
+      { q: "Quel est l’unique « jāʾiz » (le possible) au sujet d’Allah ?",
+        o: ["Faire ou délaisser toute chose possible", "Se montrer aux prophètes", "Revenir sur Son décret", "Créer un semblable à Lui"], r: 0,
+        e: "Rien ne Lui est obligatoire et rien ne Lui est imposé : récompenser est pure grâce, châtier est pure justice." },
+      { q: "Chez les Ashʿarites, la Parole d’Allah (al-Kalām) est…",
+        o: ["un attribut éternel, sans lettre ni son (kalām nafsī)", "une suite de sons créés dans le temps", "identique à l’encre et au papier du muṣḥaf", "une inspiration donnée aux seuls prophètes"], r: 0,
+        e: "L’attribut éternel de parole n’est ni lettre ni son ; le Coran récité en langue arabe en est l’expression, et il est incréé en tant que Parole d’Allah." },
+      { q: "Comment l’école ashʿarite explique-t-elle les actes de l’homme ?",
+        o: ["Allah les crée, l’homme les acquiert (kasb)", "L’homme crée ses propres actes", "L’homme est contraint et n’a aucune part", "Les actes existent par eux-mêmes"], r: 0,
+        e: "La doctrine du kasb tient les deux bouts : la toute-puissance divine d’un côté, la responsabilité réelle du serviteur de l’autre — ni fatalisme, ni autonomie." },
+      { q: "Devant les versets ambigus (mutashābihāt) comme « al-istiwāʾ », quelle est la voie ashʿarite ?",
+        o: ["Écarter toute ressemblance, puis confier le sens à Allah (tafwīḍ) ou l’interpréter selon la langue (taʾwīl)", "Comprendre littéralement, sans se poser de question", "Rejeter ces versets", "Attribuer à Allah un corps sans se le représenter"], r: 0,
+        e: "Les deux voies — celle des anciens (tafwīḍ) et celle des postérieurs (taʾwīl) — se rejoignent sur l’essentiel : aucune anthropomorphisation (tashbīh)." },
+      { q: "Quels quatre attributs sont nécessaires aux prophètes ?",
+        o: ["Véracité, loyauté, transmission, perspicacité", "Science, richesse, force, beauté", "Ascèse, silence, jeûne, veille", "Royauté, victoire, longévité, éloquence"], r: 0,
+        e: "Ṣidq, amāna, tablīgh, faṭāna. Leur sont impossibles le mensonge, la trahison, la dissimulation du message et la sottise. Leur est possible ce qui, dans la condition humaine, ne diminue pas leur rang." },
+      { q: "La vision d’Allah par les croyants dans l’au-delà est, pour les Ashʿarites…",
+        o: ["rationnellement possible, et établie par la Révélation", "rationnellement impossible", "réservée aux seuls prophètes", "une image, à comprendre au figuré"], r: 0,
+        e: "Possible en raison — car voir n’implique ni direction ni corps — et affirmée par le texte : « Ce jour-là, il y aura des visages resplendissants, qui regarderont vers leur Seigneur » (Coran 75:22-23).",
+        ar: "وُجُوهٌ يَوْمَئِذٍ نَاضِرَةٌ · إِلَى رَبِّهَا نَاظِرَةٌ" }
+    ]
+  },
+  fiqh: {
+    nom: "Fiqh malikite",
+    court: "Fiqh",
+    sous: "Purification, prière, piliers",
+    questions: [
+      { q: "Quel imam est à l’origine du rite juridique exposé dans le Murshid ?",
+        o: ["Mālik ibn Anas", "Abū Ḥanīfa", "Al-Shāfiʿī", "Al-Awzāʿī"], r: 0,
+        e: "Mālik ibn Anas (m. 179 H), imam de Médine et auteur du Muwaṭṭaʾ. Le rite malikite est celui de tout l’Occident musulman, dont le Maroc d’Ibn ʿĀshir." },
+      { q: "Qu’est-ce que « Al-Murshid al-Muʿīn » d’Ibn ʿĀshir ?",
+        o: ["Un poème didactique à apprendre par cœur", "Un recueil de hadiths", "Un commentaire du Coran", "Une chronique des califes"], r: 0,
+        e: "Une manẓūma — un poème en mètre rajaz — qui rassemble le nécessaire de la religion : croyance, fiqh malikite et purification du cœur. ʿAbd al-Wāḥid ibn ʿĀshir (m. 1040 H / 1631) l’a composé à Fès." },
+      { q: "Combien d’obligations (farāʾiḍ) compte l’ablution (wuḍūʾ) chez les malikites ?",
+        o: ["Sept", "Quatre", "Six", "Dix"], r: 0,
+        e: "Intention ; laver le visage ; laver les bras jusqu’aux coudes ; essuyer la tête ; laver les pieds jusqu’aux chevilles ; le frottement (dalk) ; l’enchaînement sans interruption (fawr)." },
+      { q: "Quelles deux obligations du wuḍūʾ sont propres au rite malikite ?",
+        o: ["Le frottement (dalk) et l’enchaînement (fawr)", "L’intention et le rinçage de la bouche", "L’ordre et l’usage du siwāk", "La basmala et l’essuyage des oreilles"], r: 0,
+        e: "Ailleurs, faire couler l’eau suffit et l’on peut espacer les membres : chez Mālik, il faut passer la main sur le membre et ne pas rompre la continuité." },
+      { q: "Dans le wuḍūʾ malikite, l’essuyage de la tête (masḥ) porte sur…",
+        o: ["toute la tête", "un quart de la tête", "trois cheveux", "le sommet seulement"], r: 0,
+        e: "Obligation d’essuyer toute la tête, des naissances des cheveux à la nuque, aller et retour. Les oreilles s’essuient ensuite, avec une eau renouvelée : c’est une sunna." },
+      { q: "Quand une eau devient-elle impropre à la purification, chez les malikites ?",
+        o: ["Seulement si l’impureté change sa couleur, son goût ou son odeur", "Dès qu’une impureté la touche", "Si elle est inférieure à deux qullas", "Si elle a servi une première fois"], r: 0,
+        e: "La quantité n’entre pas en compte : tant que les trois qualités de l’eau sont intactes, elle purifie. C’est l’un des grands allègements du rite." },
+      { q: "Toucher une femme annule-t-il l’ablution selon le rite malikite ?",
+        o: ["Seulement s’il y a plaisir ou recherche du plaisir", "Toujours, même par mégarde", "Jamais, en aucun cas", "Seulement s’il s’agit d’une étrangère"], r: 0,
+        e: "Le contact (lams, mubāshara) n’annule qu’avec la ladhdha — plaisir éprouvé ou intentionnellement recherché ; un simple frôlement involontaire n’annule rien." },
+      { q: "Le vomissement annule-t-il l’ablution chez les malikites ?",
+        o: ["Non", "Oui, s’il est abondant", "Oui, dans tous les cas", "Oui, s’il est volontaire"], r: 0,
+        e: "Les annulatifs sont les impuretés issues des deux voies naturelles (urine, selles, vents, madhy, wady) et quatre causes : perte de la raison, contact avec plaisir, toucher son sexe avec l’intérieur de la main, apostasie. Ni vomissement ni saignement de nez." },
+      { q: "Combien d’obligations compte le bain rituel (ghusl) chez les malikites ?",
+        o: ["Cinq", "Trois", "Sept", "Deux"], r: 0,
+        e: "Intention ; enchaînement (fawr) ; frottement (dalk) ; faire pénétrer l’eau entre les cheveux (takhlīl) ; couvrir tout le corps." },
+      { q: "Dans le tayammum, l’essuyage obligatoire des mains va jusqu’où ?",
+        o: ["Jusqu’aux poignets", "Jusqu’aux coudes", "Jusqu’aux épaules", "Jusqu’au bout des doigts seulement"], r: 0,
+        e: "Une frappe sur une terre pure, le visage, puis les mains jusqu’aux poignets : c’est l’obligation. Aller jusqu’aux coudes, avec une seconde frappe, est une sunna." },
+      { q: "Quelle position des mains est la plus répandue (mashhūr) dans le rite malikite, pendant la prière obligatoire ?",
+        o: ["Les bras le long du corps (sadl)", "Les mains croisées sur la poitrine", "Les mains sur le nombril", "Les mains derrière le dos"], r: 0,
+        e: "Le sadl est l’avis connu de l’école pour la prière obligatoire ; le qabḍ (mains croisées) reste permis, en particulier dans les prières surérogatoires et les longues veillées." },
+      { q: "Que fait-on de la basmala au début de la Fātiḥa, dans la prière obligatoire malikite ?",
+        o: ["On ne la récite pas", "On la récite à voix haute", "Elle est un pilier de la prière", "On la récite trois fois"], r: 0,
+        e: "L’avis connu de l’école est de la délaisser dans la prière obligatoire ; la Fātiḥa y commence directement par « al-ḥamdu li-Llāhi rabbi l-ʿālamīn »." },
+      { q: "Le qunūt de la prière de l’aube (Ṣubḥ) est, chez les malikites…",
+        o: ["recommandé, à voix basse, avant l’inclinaison", "obligatoire, sous peine de reprendre la prière", "interdit", "réservé aux temps de calamité"], r: 0,
+        e: "Il est mandūb dans la deuxième rakʿa du Ṣubḥ, avant le rukūʿ selon l’avis le plus connu ; après le rukūʿ reste admis. L’oublier n’entraîne aucune prosternation de distraction." },
+      { q: "Quand la prosternation de distraction (sujūd al-sahw) se fait-elle avant le salut final, et quand se fait-elle après ?",
+        o: ["Avant pour un manque, après pour un ajout", "Après pour un manque, avant pour un ajout", "Toujours avant", "Toujours après"], r: 0,
+        e: "Manque (naqṣ) → deux prosternations avant le salām ; ajout (ziyāda) → après le salām. Si l’on a à la fois manqué et ajouté, on la fait avant." },
+      { q: "Comment se déroule la prière funéraire (ṣalāt al-janāza) chez les malikites ?",
+        o: ["Quatre takbīrs, debout, sans inclinaison ni prosternation", "Deux rakʿas complètes", "Quatre takbīrs suivis d’une prosternation", "Trois takbīrs et une invocation à voix haute"], r: 0,
+        e: "Quatre takbīrs, des invocations pour le défunt entre elles, puis un seul salut, à voix basse. Elle est une obligation collective (farḍ kifāya)." },
+      { q: "Comment le witr se présente-t-il dans le rite malikite ?",
+        o: ["Une seule rakʿa, précédée du shafʿ (deux rakʿas)", "Trois rakʿas d’affilée sans salut", "Cinq rakʿas obligatoires", "Deux rakʿas après le Fajr"], r: 0,
+        e: "Le shafʿ (deux rakʿas), un salut, puis le witr d’une rakʿa : sunna fortement recommandée, accomplie après la prière du ʿIshāʾ et jusqu’à l’aube." },
+      { q: "Pour le jeûne de Ramadan, l’intention (niyya)…",
+        o: ["formulée une seule fois au début du mois suffit pour tout le mois", "doit être renouvelée chaque nuit sans exception", "peut être formulée en pleine journée", "n’est pas requise pour un jeûne obligatoire"], r: 0,
+        e: "Particularité malikite : le mois est un tout, une intention au début l’englobe — à condition de ne pas l’interrompre (voyage, maladie, menstrues), auquel cas on la renouvelle." }
+    ]
+  },
+  tasawwuf: {
+    nom: "Voie de l’imam Junayd",
+    court: "Tasawwuf",
+    sous: "Le chemin du sālik",
+    questions: [
+      { q: "Quel surnom la tradition donne-t-elle à Abū l-Qāsim al-Junayd al-Baghdādī ?",
+        o: ["Sayyid al-Ṭāʾifa — le maître du groupe", "Ḥujjat al-Islām", "Shaykh al-Islām", "Imām al-Ḥaramayn"], r: 0,
+        e: "« Le seigneur de la communauté des soufis » (m. 297 H / 910 à Bagdad). C’est à lui qu’Ibn ʿĀshir rattache le troisième volet de son poème." },
+      { q: "Quels trois piliers Ibn ʿĀshir réunit-il dans le vers d’ouverture du Murshid ?",
+        o: ["La croyance d’al-Ashʿarī, le fiqh de Mālik, la voie de Junayd", "Le Coran, la Sunna, le consensus", "La prière, le jeûne, l’aumône", "La science, l’action, la sincérité"], r: 0,
+        e: "Un seul vers résume tout le programme : une croyance saine, une pratique correcte, un cœur purifié.",
+        ar: "في عقد الأشعري وفقه مالك · وفي طريقة الجنيد السالك" },
+      { q: "Qui fut le maître de Junayd — et son oncle maternel ?",
+        o: ["Sarī al-Saqaṭī", "Al-Ḥasan al-Baṣrī", "Bishr al-Ḥāfī", "Abū Yazīd al-Bisṭāmī"], r: 0,
+        e: "Sarī al-Saqaṭī, dont il fut le neveu et le disciple. Il fréquenta aussi al-Ḥārith al-Muḥāsibī, maître de l’examen de conscience." },
+      { q: "Quelle règle célèbre de Junayd fixe la limite de toute expérience spirituelle ?",
+        o: ["« Notre science est solidement liée au Livre et à la Sunna »", "« Celui qui goûte connaît, et n’a plus besoin de preuve »", "« La Loi est pour le commun, la Réalité pour l’élite »", "« Qui parvient au but est déchargé des obligations »"], r: 0,
+        e: "Junayd disait aussi que celui qui n’a ni mémorisé le Coran ni écrit le hadith n’est pas à suivre dans cette affaire : le dévoilement qui contredit la Loi est rejeté, pas la Loi.",
+        ar: "علمنا هذا مقيد بالكتاب والسنة" },
+      { q: "On dit de la voie de Junayd qu’elle est celle de la « sobriété » (ṣaḥw). À quoi l’oppose-t-on ?",
+        o: ["À l’ivresse spirituelle (sukr)", "À l’ascèse extrême (zuhd)", "À la science des lettres", "Au retrait du monde (ʿuzla)"], r: 0,
+        e: "Après le dévoilement, le sobre revient à la lucidité, au discernement et au service de la Loi : c’est un état plus élevé que celui où l’on est submergé et où l’on tient des propos extatiques." },
+      { q: "Quelle définition du tasawwuf est attribuée à Junayd ?",
+        o: ["« Que le Vrai te fasse mourir à toi-même et te fasse vivre par Lui »", "« Le port de la laine et la faim continue »", "« Le silence complet jusqu’à la mort »", "« La science des songes et des dévoilements »"], r: 0,
+        e: "L’extinction de la prétention du moi, puis une vie reçue de Lui : la définition dit le cœur de la voie, non un vêtement ni une performance.",
+        ar: "أن يميتك الحق عنك ويحييك به" },
+      { q: "Comment Junayd définit-il le tawḥīd ?",
+        o: ["« Séparer l’Éternel du contingent »", "« Prononcer l’attestation de foi »", "« Voir Allah en toute chose »", "« Nier l’existence du monde »"], r: 0,
+        e: "Ifrād al-qidam ʿan al-ḥadath : ne jamais confondre ce qui est sans commencement avec ce qui a été amené à l’existence. Une formule de croyance autant que d’expérience.",
+        ar: "إفراد القدم عن الحدث" },
+      { q: "Chez Junayd, à quoi le fanāʾ (l’extinction) doit-il conduire ?",
+        o: ["Au baqāʾ : subsister par Allah, le serviteur restant serviteur", "À la fusion de l’homme et de Dieu", "À la disparition définitive de la conscience", "À la dispense des actes d’adoration"], r: 0,
+        e: "Junayd écarte l’incarnation (ḥulūl) et l’union substantielle (ittiḥād) : le contingent ne devient jamais l’Éternel. Après l’extinction, on revient au monde, et à la servitude, transformé." },
+      { q: "Quelle parole prophétique fonde, dans le hadith de Jibrīl, ce que le tasawwuf entend cultiver ?",
+        o: ["« Adorer Allah comme si tu Le voyais »", "« Les actes ne valent que par les intentions »", "« La religion, c’est le bon conseil »", "« Cherchez la science jusqu’en Chine »"], r: 0,
+        e: "L’iḥsān, troisième degré après l’islām et l’īmān : « … car si tu ne Le vois pas, Lui te voit. » Ibn ʿĀshir bâtit là-dessus tout son troisième volet.",
+        ar: "أن تعبد الله كأنك تراه" },
+      { q: "Quel est l’objet de la troisième partie du Murshid, consacrée au tasawwuf ?",
+        o: ["Purifier le cœur de ses maladies et l’orner des vertus", "Enseigner les règles d’héritage", "Exposer les récits des saints", "Fixer les horaires de retraite spirituelle"], r: 0,
+        e: "Tazkiyat al-nafs : se défaire de l’ostentation, de la suffisance, de l’orgueil, de l’envie et de la colère, pour acquérir sincérité, patience, gratitude, confiance et amour." },
+      { q: "Par quelle station (maqām) le cheminement commence-t-il ?",
+        o: ["La repentance (tawba)", "La confiance en Allah (tawakkul)", "L’agrément (riḍā)", "L’amour (maḥabba)"], r: 0,
+        e: "Rien ne se bâtit avant elle : remords, abandon de la faute, résolution de ne pas y revenir, et restitution des droits d’autrui." },
+      { q: "Quelle est la différence entre un « maqām » (station) et un « ḥāl » (état) ?",
+        o: ["La station s’acquiert par l’effort et demeure ; l’état est un don passager", "L’état s’acquiert par l’effort ; la station est un don", "Les deux sont des dons", "Les deux s’acquièrent par la seule pratique"], r: 0,
+        e: "Les maqāmāt se gagnent et se conservent — on ne quitte pas la repentance ; les aḥwāl descendent et se retirent — contraction, dilatation, crainte, espoir." },
+      { q: "Quel est le disciple le plus célèbre de Junayd ?",
+        o: ["Abū Bakr al-Shiblī", "Al-Ghazālī", "Ibn ʿAṭāʾ Allāh al-Iskandarī", "ʿAbd al-Qādir al-Jīlānī"], r: 0,
+        e: "Al-Shiblī (m. 334 H), ancien haut fonctionnaire devenu l’une des grandes figures de Bagdad. Al-Ghazālī, Ibn ʿAṭāʾ Allāh et al-Jīlānī sont bien plus tardifs." },
+      { q: "Quelle formule de Junayd résume le rapport de la voie à la Sunna ?",
+        o: ["« Toutes les voies sont fermées aux créatures, sauf à qui suit les traces du Messager ﷺ »", "« Qui n’a pas de maître a Satan pour maître »", "« Le soufi est fils de son instant »", "« Le cœur est entre deux doigts du Miséricordieux »"], r: 0,
+        e: "La voie n’est pas un ajout à la religion, mais son intériorité : hors du sillage prophétique, il n’y a pas de chemin.",
+        ar: "الطرق كلها مسدودة على الخلق إلا من اقتفى أثر الرسول" },
+      { q: "Que sait-on de la formation juridique de Junayd ?",
+        o: ["Il était juriste de l’école d’Abū Thawr et donnait des avis dès sa jeunesse", "Il refusait toute étude du fiqh", "Il fonda sa propre école juridique", "Il fut juge principal de Bagdad"], r: 0,
+        e: "Il rendait des fatwas dans le cercle d’Abū Thawr très jeune — signe que, chez lui, la voie spirituelle se greffe sur une science établie, jamais à sa place." }
+    ]
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   3 · OUTILS ET STOCKAGE LOCAL
+   ══════════════════════════════════════════════════════════════ */
+const $  = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
+
+const CLE = { moi: "murshid.moi", ids: "murshid.ids", scores: "murshid.scores", base: "murshid.base", salle: "murshid.salle" };
+
+function lire(cle, defaut) {
+  try { const v = localStorage.getItem(cle); return v === null ? defaut : JSON.parse(v); }
+  catch (e) { return defaut; }
+}
+function ecrire(cle, valeur) {
+  try { localStorage.setItem(cle, JSON.stringify(valeur)); } catch (e) { /* navigation privée : on continue en mémoire */ }
+}
+function jeton() {
+  const a = new Uint8Array(8);
+  (self.crypto || {}).getRandomValues ? crypto.getRandomValues(a) : a.forEach((_, i) => a[i] = Math.floor(Math.random() * 256));
+  return Array.prototype.map.call(a, b => ("0" + b.toString(16)).slice(-2)).join("");
+}
+const normaliser = n => n.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+function melanger(t) {
+  const c = t.slice();
+  for (let i = c.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const x = c[i]; c[i] = c[j]; c[j] = x; }
+  return c;
+}
+const chiffre = n => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 1 });
+function duree(ms) {
+  const s = Math.max(0, Math.round(ms / 1000));
+  return Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2);
+}
+/* base64 compatible URL, sûr en UTF-8 */
+function enc64(txt) {
+  const o = new TextEncoder().encode(txt); let b = "";
+  for (let i = 0; i < o.length; i++) b += String.fromCharCode(o[i]);
+  return btoa(b).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function dec64(txt) {
+  const b = atob(txt.replace(/-/g, "+").replace(/_/g, "/"));
+  const o = new Uint8Array(b.length);
+  for (let i = 0; i < b.length; i++) o[i] = b.charCodeAt(i);
+  return new TextDecoder().decode(o);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   4 · LE CLASSEMENT — local, partagé par lien, ou en direct
+   ══════════════════════════════════════════════════════════════
+   Une entrée : { id, nom, mode, note, bonnes, total, ms, ts }
+   On ne garde que le meilleur score de chaque joueur par mode. */
+const MODES = ["complet", "aqida", "fiqh", "tasawwuf"];
+const NOM_MODE = { complet: "Parcours complet", aqida: "Croyance ashʿarite", fiqh: "Fiqh malikite", tasawwuf: "Voie de Junayd" };
+
+const Classement = {
+  entrees: [],
+  base: "",
+  salle: SALLE_PAR_DEFAUT,
+  direct: false,
+  flux: null,
+  minuterie: 0,
+
+  cle(e) { return e.id + "_" + e.mode; },
+  envoyes: {},
+
+  fusionner(liste) {
+    let change = false;
+    (liste || []).forEach(n => {
+      if (!n || !n.id || !n.nom || MODES.indexOf(n.mode) < 0) return;
+      const k = this.cle(n);
+      const a = this.entrees.find(x => this.cle(x) === k);
+      if (!a) { this.entrees.push(n); change = true; }
+      else if (n.note > a.note || (n.note === a.note && n.ms < a.ms)) { Object.assign(a, n); change = true; }
+      else if (n.nom !== a.nom && n.ts > a.ts) { a.nom = n.nom; change = true; }
+    });
+    if (change) { ecrire(CLE.scores, this.entrees); rendreClassement(); }
+    return change;
+  },
+
+  ajouter(e) {
+    this.fusionner([e]);
+    if (this.base) this.envoyer(e);
+  },
+
+  /* — Base partagée (Firebase Realtime Database, par simple REST) — */
+  url(suite) { return this.base + "/murshid/" + encodeURIComponent(this.salle) + suite; },
+
+  envoyer(e) {
+    const k = this.cle(e);
+    return fetch(this.url("/" + k + ".json"), {
+      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(e)
+    })
+      .then(r => { if (r.ok) this.envoyes[k] = e.note; })
+      .catch(() => { /* hors ligne : le score reste local et repartira tout seul */ });
+  },
+
+  /* Scores restés sur l’appareil — parce qu’on était hors ligne, ou parce que la
+     base partagée n’a été activée qu’ensuite. On les pousse dès qu’on peut. */
+  rattraper() {
+    if (!this.base || !moi) return;
+    this.entrees.filter(e => e.id === moi.id && this.envoyes[this.cle(e)] !== e.note)
+      .forEach(e => this.envoyer(e));
+  },
+
+  charger() {
+    if (!this.base) return Promise.resolve(false);
+    return fetch(this.url(".json"), { cache: "no-store" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d && typeof d === "object") this.fusionner(Object.keys(d).map(k => d[k]));
+        this.rattraper();
+        return true;
+      })
+      .catch(() => false);
+  },
+
+  brancher() {
+    this.debrancher();
+    if (!this.base) { majEtatSync(); return; }
+    this.charger();
+    /* Firebase sait diffuser ses changements en flux : on s’y branche, et on
+       retombe sur une relecture régulière si le navigateur ne suit pas. */
+    try {
+      const flux = new EventSource(this.url(".json"));
+      let sain = false;
+      flux.addEventListener("put", () => { sain = true; this.direct = true; majEtatSync(); this.charger(); });
+      flux.addEventListener("patch", () => { this.charger(); });
+      flux.addEventListener("keep-alive", () => { sain = true; this.direct = true; majEtatSync(); });
+      flux.onerror = () => { if (!sain) { this.direct = false; majEtatSync(); } };
+      this.flux = flux;
+    } catch (e) { this.direct = false; }
+    this.minuterie = setInterval(() => { if ($("#classement").classList.contains("actif")) this.charger(); }, 8000);
+    majEtatSync();
+  },
+
+  debrancher() {
+    if (this.flux) { try { this.flux.close(); } catch (e) {} this.flux = null; }
+    if (this.minuterie) { clearInterval(this.minuterie); this.minuterie = 0; }
+    this.direct = false;
+  },
+
+  /* — Classement d’un mode, meilleur score par joueur — */
+  pour(mode) {
+    let l;
+    if (mode === "general") {
+      const par = {};
+      this.entrees.forEach(e => { const a = par[e.id]; if (!a || e.note > a.note || (e.note === a.note && e.ms < a.ms)) par[e.id] = e; });
+      l = Object.keys(par).map(k => par[k]);
+    } else {
+      l = this.entrees.filter(e => e.mode === mode);
+    }
+    return l.sort((a, b) => b.note - a.note || a.ms - b.ms || a.ts - b.ts);
+  },
+
+  /* — Les meilleurs scores, compactés pour voyager dans un lien — */
+  pourLien() {
+    return this.pour("general").slice(0, 12).map(e => [e.id, e.nom, e.mode, e.note, e.bonnes, e.total, e.ms, e.ts]);
+  },
+  depuisLien(t) {
+    return (t || []).map(v => ({ id: v[0], nom: v[1], mode: v[2], note: v[3], bonnes: v[4], total: v[5], ms: v[6], ts: v[7] }));
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   5 · LE JOUEUR
+   Un prénom = un identifiant, gardé sur l’appareil. Deux personnes
+   qui jouent sur le même téléphone ont donc deux identifiants.
+   ══════════════════════════════════════════════════════════════ */
+let moi = lire(CLE.moi, null);
+
+function identifier(prenom) {
+  const nom = prenom.trim().replace(/\s+/g, " ").slice(0, 22);
+  const ids = lire(CLE.ids, {});
+  const k = normaliser(nom);
+  if (!ids[k]) { ids[k] = jeton(); ecrire(CLE.ids, ids); }
+  moi = { id: ids[k], nom: nom };
+  ecrire(CLE.moi, moi);
+  return moi;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   6 · NAVIGATION
+   ══════════════════════════════════════════════════════════════ */
+let ecranPrecedent = "accueil";
+function montrer(id) {
+  const actuel = ($(".ecran.actif") || {}).id;
+  if (id === "classement" && actuel && actuel !== "classement") ecranPrecedent = actuel === "resultat" ? "voies" : actuel;
+  $$(".ecran").forEach(s => s.classList.toggle("actif", s.id === id));
+  window.scrollTo({ top: 0, behavior: "instant" in document.documentElement.style ? "instant" : "auto" });
+  if (id === "classement") { rendreClassement(); Classement.charger(); }
+  if (id === "voies") majMeilleurs();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   7 · LE QUIZ
+   ══════════════════════════════════════════════════════════════ */
+const partie = { mode: "complet", liste: [], i: 0, bonnes: 0, debut: 0, verrou: false };
+
+function tirer(mode) {
+  let choix;
+  if (mode === "complet") {
+    const part = { aqida: 7, fiqh: 7, tasawwuf: 6 };
+    choix = [];
+    Object.keys(part).forEach(cat => {
+      const indexes = melanger(BANQUE[cat].questions.map((_, i) => i)).slice(0, part[cat]);
+      indexes.forEach(i => choix.push({ cat: cat, i: i, rang: i / BANQUE[cat].questions.length }));
+    });
+    /* On rétablit la progression : les plus simples d’abord. */
+    choix.sort((a, b) => a.rang - b.rang);
+  } else {
+    choix = BANQUE[mode].questions.map((_, i) => ({ cat: mode, i: i, rang: i }));
+  }
+  return choix.map(c => {
+    const src = BANQUE[c.cat].questions[c.i];
+    return {
+      cat: c.cat,
+      texte: src.q,
+      expl: src.e,
+      ar: src.ar || "",
+      options: melanger(src.o.map((t, i) => ({ t: t, juste: i === src.r })))
+    };
+  });
+}
+
+function demarrer(mode) {
+  partie.mode = mode;
+  partie.liste = tirer(mode);
+  partie.i = 0; partie.bonnes = 0; partie.debut = Date.now(); partie.verrou = false;
+  $("#quiz-voie").textContent = NOM_MODE[mode];
+  $("#quiz-sous").textContent = mode === "complet" ? "Les trois voies mêlées" : BANQUE[mode].sous;
+  $("#q-total").textContent = partie.liste.length;
+  montrer("quiz");
+  poser();
+}
+
+const LETTRES = ["A", "B", "C", "D", "E"];
+
+function poser() {
+  const q = partie.liste[partie.i];
+  partie.verrou = false;
+  $("#q-index").textContent = partie.i + 1;
+  $("#q-bonnes").textContent = partie.bonnes;
+  $("#q-jauge").style.width = (partie.i / partie.liste.length * 100) + "%";
+  $("#q-texte").textContent = q.texte;
+  $("#q-explication").innerHTML = "";
+  $("#btn-suivant").hidden = true;
+
+  const zone = $("#q-reponses");
+  zone.className = "";
+  zone.innerHTML = "";
+  q.options.forEach((opt, i) => {
+    const b = document.createElement("button");
+    b.className = "reponse differe";
+    b.style.animationDelay = (0.05 + i * 0.05) + "s";
+    b.innerHTML = "<span class=\"marque\">" + LETTRES[i] + "</span><span></span>";
+    b.lastChild.textContent = opt.t;
+    b.addEventListener("click", () => repondre(b, opt));
+    zone.appendChild(b);
+  });
+}
+
+function repondre(bouton, opt) {
+  if (partie.verrou) return;
+  partie.verrou = true;
+  const q = partie.liste[partie.i];
+  const zone = $("#q-reponses");
+  zone.classList.add("verrouille");
+
+  $$(".reponse", zone).forEach((b, i) => {
+    const o = q.options[i];
+    if (o.juste) { b.classList.add("juste"); $(".marque", b).textContent = "✓"; }
+    else if (b === bouton) { b.classList.add("faux"); $(".marque", b).textContent = "✕"; }
+    else b.classList.add("eteinte");
+  });
+
+  if (opt.juste) { partie.bonnes++; $("#q-bonnes").textContent = partie.bonnes; }
+  $("#q-jauge").style.width = ((partie.i + 1) / partie.liste.length * 100) + "%";
+  if (navigator.vibrate) { try { navigator.vibrate(opt.juste ? 18 : [22, 60, 22]); } catch (e) {} }
+
+  const bloc = document.createElement("div");
+  bloc.className = "explication";
+  const titre = document.createElement("p");
+  titre.className = "verdict " + (opt.juste ? "ok" : "ko");
+  titre.textContent = opt.juste ? "Bonne réponse" : "Réponse : " + q.options.filter(o => o.juste)[0].t;
+  const corps = document.createElement("p");
+  corps.textContent = q.expl;
+  bloc.appendChild(titre); bloc.appendChild(corps);
+  if (q.ar) { const a = document.createElement("span"); a.className = "arabe"; a.textContent = q.ar; bloc.appendChild(a); }
+  $("#q-explication").appendChild(bloc);
+
+  const dernier = partie.i === partie.liste.length - 1;
+  const suivant = $("#btn-suivant");
+  suivant.textContent = dernier ? "Voir mon résultat" : "Suivant";
+  suivant.hidden = false;
+  suivant.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+$("#btn-suivant").addEventListener("click", () => {
+  if (partie.i === partie.liste.length - 1) terminer();
+  else { partie.i++; poser(); }
+});
+
+/* ══════════════════════════════════════════════════════════════
+   8 · LE RÉSULTAT
+   La note est toujours ramenée sur 20 — le parcours complet compte
+   justement 20 questions, une bonne réponse y vaut un point.
+   ══════════════════════════════════════════════════════════════ */
+const MENTIONS = [
+  { min: 19, titre: "Mā shāʾ Allāh", texte: "Le Murshid t’est familier — la croyance, le fiqh et la voie. Il ne reste qu’à transmettre." },
+  { min: 16, titre: "Excellent", texte: "Les fondements sont en place et bien tenus. Encore une révision, et c’est la maîtrise." },
+  { min: 13, titre: "Très bon", texte: "Une base solide. Reprends les points manqués : les explications ci-dessus valent une leçon." },
+  { min: 10, titre: "Bon début", texte: "La moitié du chemin est faite. Le Murshid tient en trois cents vers : relis-en un peu chaque jour." },
+  { min: 6,  titre: "À reprendre", texte: "Ne t’arrête pas là. Commence par une seule voie — la croyance — et refais le quiz demain." },
+  { min: 0,  titre: "Le premier pas", texte: "Chacun commence ici. « La première obligation est de connaître Allah » : tout part de là." }
+];
+
+let derniereNote = null;
+
+function terminer() {
+  const total = partie.liste.length;
+  const ms = Date.now() - partie.debut;
+  const note = Math.round(partie.bonnes / total * 20 * 10) / 10;
+  const entree = {
+    id: moi.id, nom: moi.nom, mode: partie.mode,
+    note: note, bonnes: partie.bonnes, total: total, ms: ms, ts: Date.now()
+  };
+  derniereNote = entree;
+  Classement.ajouter(entree);
+
+  const m = MENTIONS.filter(x => note >= x.min)[0];
+  $("#res-voie").textContent = NOM_MODE[partie.mode];
+  $("#res-mention").textContent = m.titre;
+  $("#res-bilan").textContent = m.texte;
+  $("#res-note").textContent = chiffre(note);
+  $("#res-bonnes").textContent = partie.bonnes + " / " + total;
+  $("#res-taux").textContent = Math.round(partie.bonnes / total * 100) + " %";
+  $("#res-duree").textContent = duree(ms);
+  const arc = $("#res-arc");
+  arc.style.strokeDashoffset = 326.7;
+  montrer("resultat");
+  setTimeout(() => { arc.style.strokeDashoffset = 326.7 * (1 - note / 20); }, 90);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   9 · LE CLASSEMENT À L’ÉCRAN
+   ══════════════════════════════════════════════════════════════ */
+let ongletActif = "general";
+const ONGLETS = [{ k: "general", t: "Général" }, { k: "complet", t: "Parcours" }, { k: "aqida", t: "ʿAqīda" }, { k: "fiqh", t: "Fiqh" }, { k: "tasawwuf", t: "Tasawwuf" }];
+
+function construireOnglets() {
+  const zone = $("#onglets-classement");
+  zone.innerHTML = "";
+  ONGLETS.forEach(o => {
+    const b = document.createElement("button");
+    b.className = "onglet" + (o.k === ongletActif ? " actif" : "");
+    b.textContent = o.t;
+    b.addEventListener("click", () => { ongletActif = o.k; construireOnglets(); rendreClassement(); });
+    zone.appendChild(b);
+  });
+}
+
+function rendreClassement() {
+  if (!$("#classement")) return;
+  const liste = Classement.pour(ongletActif);
+  const zone = $("#liste-classement");
+  zone.innerHTML = "";
+  if (!liste.length) {
+    zone.innerHTML = "<div class=\"vide\">Personne n’a encore joué ici.<br>Sois le premier à inscrire ton nom.</div>";
+    majEtatSync();
+    return;
+  }
+  const medailles = ["or", "argent", "bronze"];
+  liste.slice(0, 60).forEach((e, i) => {
+    const l = document.createElement("div");
+    l.className = "ligne " + (medailles[i] || "") + (moi && e.id === moi.id ? " moi" : "");
+    l.style.animationDelay = Math.min(i * 0.04, 0.5) + "s";
+    const rang = document.createElement("div"); rang.className = "rang"; rang.textContent = i + 1;
+    const qui = document.createElement("div"); qui.className = "qui";
+    const nom = document.createElement("b"); nom.textContent = e.nom;
+    const det = document.createElement("span");
+    det.textContent = (ongletActif === "general" ? NOM_MODE[e.mode] + " · " : "") + e.bonnes + "/" + e.total + " · " + duree(e.ms);
+    qui.appendChild(nom); qui.appendChild(det);
+    const pts = document.createElement("div"); pts.className = "pts";
+    pts.textContent = chiffre(e.note);
+    const sur = document.createElement("i"); sur.textContent = " /20"; pts.appendChild(sur);
+    l.appendChild(rang); l.appendChild(qui); l.appendChild(pts);
+    zone.appendChild(l);
+  });
+  majEtatSync();
+}
+
+function majEtatSync() {
+  const e = $("#etat-sync"); if (!e) return;
+  const n = Classement.entrees.length;
+  e.className = "etat-sync " + (Classement.base ? (Classement.direct ? "direct" : "") : "local");
+  $("#etat-sync-texte").textContent = Classement.base
+    ? (Classement.direct ? "Classement partagé « " + Classement.salle + " » · en direct" : "Classement partagé « " + Classement.salle + " » · synchronisé")
+    : n + " score" + (n > 1 ? "s" : "") + " sur cet appareil · le lien de partage les emporte";
+}
+
+function majMeilleurs() {
+  $$("[data-nb]").forEach(s => { s.textContent = BANQUE[s.dataset.nb].questions.length + " questions"; });
+  $$(".meilleur").forEach(s => {
+    if (!moi) { s.textContent = ""; return; }
+    const e = Classement.entrees.filter(x => x.id === moi.id && x.mode === s.dataset.mode)
+      .sort((a, b) => b.note - a.note)[0];
+    s.textContent = e ? "ton record : " + chiffre(e.note) + "/20" : "";
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   10 · PARTAGE
+   Un seul lien circule. S’il existe une base partagée, le lien la
+   transporte ; sinon il transporte les meilleurs scores connus, que
+   le téléphone d’en face fusionnera avec les siens.
+   ══════════════════════════════════════════════════════════════ */
+function lienPartage() {
+  let u;
+  try { u = new URL(location.href); } catch (e) { return location.href; }
+  u.hash = "";
+  u.searchParams.delete("db"); u.searchParams.delete("salle"); u.searchParams.delete("s");
+  if (Classement.base) {
+    u.searchParams.set("db", Classement.base);
+    if (Classement.salle !== SALLE_PAR_DEFAUT) u.searchParams.set("salle", Classement.salle);
+    return u.toString();
+  }
+  const t = Classement.pourLien();
+  return u.toString() + (t.length ? "#s=" + enc64(JSON.stringify(t)) : "");
+}
+
+function partager(texte) {
+  const lien = lienPartage();
+  const message = texte + "\n" + lien;
+  if (navigator.share) {
+    navigator.share({ title: "Quiz du Murshid", text: texte, url: lien }).catch(() => ouvrirWhatsApp(message));
+  } else ouvrirWhatsApp(message);
+}
+function ouvrirWhatsApp(message) {
+  const w = window.open("https://wa.me/?text=" + encodeURIComponent(message), "_blank", "noopener");
+  if (!w && navigator.clipboard) navigator.clipboard.writeText(message).then(() => alert("Lien copié — colle-le dans WhatsApp."), () => {});
+}
+
+$("#btn-partager").addEventListener("click", () => {
+  const e = derniereNote;
+  partager(e
+    ? "🕌 Quiz du Murshid — " + e.nom + " : " + chiffre(e.note) + "/20 en « " + NOM_MODE[e.mode] + " ». À toi de jouer 👇"
+    : "🕌 Quiz du Murshid — croyance ashʿarite, fiqh malikite et voie de Junayd. À toi de jouer 👇");
+});
+$("#btn-partager-lien").addEventListener("click", () => {
+  partager("🕌 Quiz du Murshid — croyance ashʿarite, fiqh malikite et voie de l’imam Junayd. Entre ton prénom et rejoins le classement 👇");
+});
+
+/* ══════════════════════════════════════════════════════════════
+   11 · RÉGLAGES DU CLASSEMENT PARTAGÉ
+   ══════════════════════════════════════════════════════════════ */
+function nettoyerBase(v) {
+  v = (v || "").trim().replace(/\/+$/, "");
+  if (!v) return "";
+  if (!/^https?:\/\//i.test(v)) v = "https://" + v;
+  return v;
+}
+
+$("#btn-enregistrer-base").addEventListener("click", function () {
+  const bouton = this;
+  const base = nettoyerBase($("#base-url").value);
+  const salle = ($("#salle").value || "").trim().replace(/[^\w-]+/g, "-").toLowerCase() || SALLE_PAR_DEFAUT;
+  const avis = $("#avis-base");
+  if (!base) { avis.textContent = "Colle d’abord l’adresse de la base."; return; }
+  bouton.disabled = true; avis.textContent = "Test en cours…";
+  fetch(base + "/murshid/_test.json", {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ts: Date.now() })
+  })
+    .then(r => {
+      bouton.disabled = false;
+      if (!r.ok) { avis.textContent = "La base répond « " + r.status + " ». Vérifie l’adresse et les règles d’écriture."; return; }
+      Classement.base = base; Classement.salle = salle;
+      ecrire(CLE.base, base); ecrire(CLE.salle, salle);
+      avis.textContent = "C’est en place. Le lien que tu partages emmène désormais tout le monde sur le même classement.";
+      Classement.brancher();
+    })
+    .catch(() => { bouton.disabled = false; avis.textContent = "Impossible de joindre cette adresse. Vérifie qu’elle est complète et accessible."; });
+});
+
+$("#btn-oublier-base").addEventListener("click", () => {
+  Classement.debrancher();
+  Classement.base = ""; Classement.salle = SALLE_PAR_DEFAUT;
+  try { localStorage.removeItem(CLE.base); localStorage.removeItem(CLE.salle); } catch (e) {}
+  $("#base-url").value = "";
+  $("#avis-base").textContent = "Retour au classement local.";
+  majEtatSync();
+});
+
+/* ══════════════════════════════════════════════════════════════
+   12 · MISE EN ROUTE
+   ══════════════════════════════════════════════════════════════ */
+(function demarrage() {
+  /* Décor : la vraie photo si elle est fournie */
+  if (PHOTO) {
+    const img = new Image();
+    img.alt = ""; img.decoding = "async"; img.src = PHOTO;
+    img.onload = () => { const d = $("#decor"); d.innerHTML = ""; d.appendChild(img); };
+  }
+
+  /* Réglages venus du lien, puis de l’appareil */
+  let params;
+  try { params = new URL(location.href).searchParams; } catch (e) { params = new URLSearchParams(""); }
+  const baseLien = nettoyerBase(params.get("db") || "");
+  Classement.base = baseLien || lire(CLE.base, "") || "";
+  Classement.salle = (params.get("salle") || lire(CLE.salle, "") || SALLE_PAR_DEFAUT).toLowerCase();
+  if (baseLien) { ecrire(CLE.base, Classement.base); ecrire(CLE.salle, Classement.salle); }
+  $("#base-url").value = Classement.base;
+  $("#salle").value = Classement.salle;
+
+  /* Scores gardés sur l’appareil */
+  Classement.entrees = lire(CLE.scores, []) || [];
+
+  /* Scores transportés par le lien (#s=…) */
+  const h = location.hash || "";
+  if (h.indexOf("#s=") === 0) {
+    try { Classement.fusionner(Classement.depuisLien(JSON.parse(dec64(h.slice(3))))); } catch (e) {}
+    try { history.replaceState(null, "", location.href.split("#")[0]); } catch (e) {}
+  }
+
+  Classement.brancher();
+  construireOnglets();
+
+  /* Prénom déjà connu */
+  const champ = $("#prenom");
+  if (moi && moi.nom) { champ.value = moi.nom; $("#btn-commencer").disabled = false; }
+  const verifier = () => { $("#btn-commencer").disabled = champ.value.trim().length < 2; };
+  champ.addEventListener("input", verifier);
+  champ.addEventListener("keydown", e => { if (e.key === "Enter" && champ.value.trim().length >= 2) entrer(); });
+  verifier();
+
+  function entrer() {
+    identifier(champ.value);
+    $("#salutation").textContent = "As-salāmu ʿalaykum, " + moi.nom;
+    montrer("voies");
+  }
+  $("#btn-commencer").addEventListener("click", entrer);
+
+  /* Navigation */
+  $$(".retour").forEach(b => { if (b.closest("#classement")) return; b.addEventListener("click", () => montrer(b.dataset.vers)); });
+  $("#classement .retour").addEventListener("click", () => montrer(ecranPrecedent));
+  $("#btn-classement-accueil").addEventListener("click", () => montrer("classement"));
+  $("#btn-classement-voies").addEventListener("click", () => montrer("classement"));
+  $("#btn-voir-classement").addEventListener("click", () => {
+    if (derniereNote) { ongletActif = derniereNote.mode; construireOnglets(); }
+    montrer("classement");
+  });
+  $("#btn-reglages").addEventListener("click", () => montrer("reglages"));
+  $("#btn-autre-voie").addEventListener("click", () => montrer("voies"));
+  $("#btn-rejouer").addEventListener("click", () => demarrer(partie.mode));
+  $("#btn-classement-jouer").addEventListener("click", () => montrer(moi ? "voies" : "accueil"));
+  $$(".voie").forEach(b => b.addEventListener("click", () => demarrer(b.dataset.mode)));
+
+  /* Quitter le quiz en cours revient au choix des voies, sans enregistrer */
+  majMeilleurs();
+  majEtatSync();
+  rendreClassement();
+})();
+</script>
+</body>
+</html>
