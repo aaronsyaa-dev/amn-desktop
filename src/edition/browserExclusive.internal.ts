@@ -301,6 +301,23 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
         body: JSON.stringify({ confirm }),
       });
     },
+    async deleteUser(orgId: string, userId: string) {
+      const { user } = await ctx.apiFetch<{ user: { id: string; email: string } }>(
+        `/v1/admin/organizations/${encodeURIComponent(orgId)}/users/${encodeURIComponent(userId)}`,
+        { owner: true, method: 'DELETE' },
+      );
+      return user;
+    },
+    async createUser(orgId: string, input: { email: string; role: 'owner' | 'admin' | 'member' }) {
+      return ctx.apiFetch<{
+        user: AdminOrgUser;
+        invitation: { token: string; url: string | null; expiresAt: string };
+      }>(`/v1/admin/organizations/${encodeURIComponent(orgId)}/users`, {
+        owner: true,
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+    },
     async setOrganizationStatus(id: string, status: OrgStatus) {
       const { organization } = await ctx.apiFetch<{ organization: AdminOrganization }>(
         `/v1/admin/organizations/${encodeURIComponent(id)}/status`,

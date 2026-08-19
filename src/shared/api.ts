@@ -234,7 +234,21 @@ export interface TempPasswordResult {
 }
 
 /** Ce qu'AMN DevSec a fait sur le dossier d'une cliente, et quand. */
-export type OrgAccessAction = 'enter' | 'leave' | 'suspend' | 'reactivate' | 'invite' | 'password';
+export type OrgAccessAction =
+  | 'enter'
+  | 'leave'
+  | 'suspend'
+  | 'reactivate'
+  | 'invite'
+  | 'password'
+  /**
+   * Un compte de l'organisation a été supprimé depuis notre supervision.
+   *
+   * Inscrit au journal DE LA CLIENTE, et pas seulement au nôtre : c'est chez
+   * elle qu'un accès a disparu, et elle doit pouvoir le lire depuis ses
+   * propres paramètres sans nous le demander.
+   */
+  | 'user_removed';
 
 export interface OrgAccessEntry {
   id: number;
@@ -2002,6 +2016,33 @@ export interface AmnBridge {
         confirm: string,
       ): Promise<{ organization: AdminOrganization; removed: { users: number; records: number; sites: number } }>;
       listUsers(orgId: string): Promise<AdminOrgUser[]>;
+      /**
+       * SUPPRIME un compte d'une organisation cliente.
+       *
+       * Le cas réel : un départ chez elle, ou un compte créé par erreur. La
+       * suppression coupe l'accès immédiatement — ses sessions tombent avec sa
+       * ligne — mais LAISSE son travail : fiches, factures et rendez-vous
+       * appartiennent à l'organisation, pas à la personne qui les a saisis.
+       *
+       * Le serveur refuse le dernier propriétaire actif : une organisation que
+       * personne ne peut plus administrer de l'intérieur n'est pas un état
+       * qu'on veut pouvoir atteindre par distraction.
+       */
+      deleteUser(orgId: string, userId: string): Promise<{ id: string; email: string }>;
+      /**
+       * OUVRE un compte chez une cliente, et rend son lien d'activation.
+       *
+       * Le compte est créé sans mot de passe : c'est la personne qui choisit le
+       * sien en suivant le lien. Aaron ouvre la porte, il ne fabrique pas la
+       * clé — et ne la connaît donc jamais.
+       */
+      createUser(
+        orgId: string,
+        input: { email: string; role: 'owner' | 'admin' | 'member' },
+      ): Promise<{
+        user: AdminOrgUser;
+        invitation: { token: string; url: string | null; expiresAt: string };
+      }>;
       /** Réémet un lien d'activation (7 jours, usage unique). */
       /**
        * Réémet un accès à un compte QUI EXISTE dans cette organisation. Pas de
@@ -2270,6 +2311,8 @@ export const IPC = {
   remoteAdminSetOrgStatus: 'remote:adminSetOrgStatus',
   remoteAdminDeleteOrg: 'remote:adminDeleteOrg',
   remoteAdminListUsers: 'remote:adminListUsers',
+  remoteAdminDeleteUser: 'remote:adminDeleteUser',
+  remoteAdminCreateUser: 'remote:adminCreateUser',
   remoteAdminReissueInvitation: 'remote:adminReissueInvitation',
   remoteAdminResetPassword: 'remote:adminResetPassword',
   remoteAdminAccessLog: 'remote:adminAccessLog',

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Lock, ShieldAlert, X } from 'lucide-react';
 import { useSync, useCollection } from '../../state/SyncContext';
@@ -6,7 +6,7 @@ import { bridge } from '../../lib/bridge';
 import { cleanErrorMessage } from '../../lib/errorMessage';
 import { SaveIndicator } from '../SaveIndicator';
 import { ACCENTS, DEFAULT_ACCENT_ID } from '../../lib/accent';
-import type { AdminOrganization, OrgPulse } from '../../shared/api';
+import type { AdminOrganization, AdminOrgUser, OrgPulse } from '../../shared/api';
 import { relativeTime } from '../../lib/time';
 
 /**
@@ -110,6 +110,38 @@ export function OrgDossierPanel({
     revérifie. L'écran empêche le clic distrait ; le serveur empêche le reste
     — un appel scripté, un identifiant recopié depuis la mauvaise ligne.
   */
+  /*
+    LES COMPTES DE L'ORGANISATION — le cycle de vie qui s'arrêtait au milieu.
+
+    On savait inviter et réémettre un mot de passe. On ne savait pas retirer,
+    alors que c'est le geste réel : un employé part de chez la cliente, ou un
+    compte a été créé par erreur. Il fallait donc laisser un accès ouvert, ou
+    demander à la cliente de s'en occuper elle-même — ce qui est précisément ce
+    qu'une supervision doit lui épargner.
+  */
+  const [comptes, setComptes] = useState<AdminOrgUser[] | null>(null);
+  const [compteEnCours, setCompteEnCours] = useState<string | null>(null);
+  const [nouvelEmail, setNouvelEmail] = useState('');
+  const [ouverture, setOuverture] = useState(false);
+  /**
+   * Le lien d'activation du dernier compte ouvert, rendu UNE fois.
+   *
+   * Il n'est pas stocké côté serveur — seule son empreinte l'est — donc il ne
+   * peut plus être retrouvé après. L'afficher tout de suite, en clair, avec de
+   * quoi le copier, est la seule façon qu'il serve à quelque chose.
+   */
+  const [lienOuvert, setLienOuvert] = useState<{ email: string; url: string | null; token: string } | null>(
+    null,
+  );
+
+  const chargerComptes = useCallback(() => {
+    void bridge()
+      .remote.admin.listUsers(org.id)
+      .then(setComptes)
+      .catch(() => setComptes([]));
+  }, [org.id]);
+  useEffect(chargerComptes, [chargerComptes]);
+
   const [confirmation, setConfirmation] = useState('');
   const [suppression, setSuppression] = useState(false);
   const nomExact = confirmation.trim() === org.name.trim();
@@ -416,6 +448,143 @@ export function OrgDossierPanel({
               }
               className="input-focus mt-2 w-full resize-none border border-border bg-bg px-3 py-2 text-sm leading-relaxed text-text-primary outline-none"
             />
+          </div>
+
+          <div className="my-5 border-t border-border" />
+
+          {/* ------------------------------------------------- comptes ----- */}
+          <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+            Comptes de l’organisation
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-text-secondary">
+            Retirer un compte coupe son accès à l’instant.{' '}
+            <span className="text-text-muted">
+              Ce qu’il a saisi reste chez elle : une fiche ou une facture appartient à
+              l’organisation, pas à la personne qui l’a tapée.
+            </span>
+          </p>
+
+          {/*
+            OUVRIR UN COMPTE — le geste qui manquait.
+
+            Aaron choisit un nombre de sièges à l'Atelier, puis n'avait aucun
+            moyen de les remplir : la console savait réémettre un accès à un
+            compte existant, jamais en ouvrir un. Ici il ouvre la porte ; la
+            personne choisit sa clé en suivant le lien.
+          */}
+          <div className="mt-3 flex gap-2">
+            <input
+              value={nouvelEmail}
+              onChange={(e) => setNouvelEmail(e.target.value)}
+              inputMode="email"
+              autoComplete="off"
+              placeholder="adresse@sa-cliente.fr"
+              className="input-focus min-w-0 flex-1 border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-muted"
+            />
+            <button
+              type="button"
+              disabled={ouverture || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(nouvelEmail.trim())}
+              onClick={() => {
+                const email = nouvelEmail.trim().toLowerCase();
+                setOuverture(true);
+                setError(null);
+                void bridge()
+                  .remote.admin.createUser(org.id, { email, role: 'member' })
+                  .then((res) => {
+                    setNouvelEmail('');
+                    setLienOuvert({ email, url: res.invitation.url, token: res.invitation.token });
+                    chargerComptes();
+                  })
+                  .catch((err) => setError(cleanErrorMessage(err, 'Impossible d’ouvrir ce compte.')))
+                  .finally(() => setOuverture(false));
+              }}
+              className="flex-shrink-0 border border-border-strong px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-text-primary transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {ouverture ? '…' : 'Ouvrir'}
+            </button>
+          </div>
+
+          {lienOuvert && (
+            <div className="mt-2 border border-border bg-surface px-3 py-2">
+              <p className="text-xs leading-relaxed text-text-primary">
+                Compte ouvert pour{' '}
+                <span className="font-mono text-[11px]">{lienOuvert.email}</span>. Envoyez-lui ce
+                lien — <span className="text-text-muted">il ne sera plus affiché.</span>
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <code className="min-w-0 flex-1 overflow-x-auto border border-border bg-bg px-2 py-1.5 font-mono text-[11px] text-text-primary">
+                  {lienOuvert.url ?? lienOuvert.token}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => void navigator.clipboard?.writeText(lienOuvert.url ?? lienOuvert.token)}
+                  className="flex-shrink-0 border border-border-strong px-2 py-1.5 font-mono text-[10px] uppercase tracking-wider text-text-primary transition-colors hover:bg-surface-hover"
+                >
+                  Copier
+                </button>
+              </div>
+              {!lienOuvert.url && (
+                <p className="mt-2 text-[11px] leading-relaxed text-warning">
+                  Aucune adresse d’application Business n’est configurée sur amn-api
+                  (APP_BUSINESS_PUBLIC_URL) : seul le jeton est disponible, et il ne se colle nulle
+                  part tel quel.
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="mt-3 border border-border">
+            {comptes === null ? (
+              <p className="px-3 py-3 text-xs text-text-muted">Chargement…</p>
+            ) : comptes.length === 0 ? (
+              <p className="px-3 py-3 text-xs text-text-muted">Aucun compte.</p>
+            ) : (
+              comptes.map((compte) => {
+                // Le dernier propriétaire actif est protégé côté serveur ; on
+                // évite de proposer ici un geste qu'il refusera de toute façon.
+                const dernierProprietaire =
+                  compte.role === 'owner' &&
+                  comptes.filter((c) => c.role === 'owner' && c.status !== 'suspended').length <= 1;
+                return (
+                  <div
+                    key={compte.id}
+                    className="flex items-center gap-2 border-b border-border/60 px-3 py-2 last:border-b-0"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs text-text-primary">{compte.email}</p>
+                      <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                        {compte.role}
+                        {compte.status !== 'active' ? ` · ${compte.status}` : ''}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={dernierProprietaire || compteEnCours !== null}
+                      title={
+                        dernierProprietaire
+                          ? 'Dernier propriétaire : le retirer rendrait l’organisation inadministrable.'
+                          : `Retirer ${compte.email}`
+                      }
+                      onClick={() => {
+                        if (dernierProprietaire || compteEnCours) return;
+                        setCompteEnCours(compte.id);
+                        setError(null);
+                        void bridge()
+                          .remote.admin.deleteUser(org.id, compte.id)
+                          .then(() => {
+                            setComptes((liste) => (liste ?? []).filter((c) => c.id !== compte.id));
+                          })
+                          .catch((err) => setError(cleanErrorMessage(err, 'Suppression refusée.')))
+                          .finally(() => setCompteEnCours(null));
+                      }}
+                      className="flex-shrink-0 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary transition-colors hover:border-danger hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      {compteEnCours === compte.id ? '…' : 'Retirer'}
+                    </button>
+                  </div>
+                );
+              })
+            )}
           </div>
 
           <div className="my-5 border-t border-border" />

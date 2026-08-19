@@ -322,6 +322,7 @@ export const ACCESS_VERB: Record<string, string> = {
   reactivate: 'a réactivé',
   invite: 'a réémis une invitation pour',
   password: 'a réinitialisé un mot de passe chez',
+  user_removed: 'a supprimé un compte chez',
 };
 
 

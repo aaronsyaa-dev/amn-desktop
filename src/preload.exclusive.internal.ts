@@ -128,6 +128,8 @@ export const exclusivePreload: ExclusiveRemote = {
       ipcRenderer.invoke(IPC.remoteAdminSetOrgStatus, { id, status }),
     deleteOrganization: (id, confirm) => ipcRenderer.invoke(IPC.remoteAdminDeleteOrg, { id, confirm }),
     listUsers: (orgId) => ipcRenderer.invoke(IPC.remoteAdminListUsers, orgId),
+    deleteUser: (orgId, userId) => ipcRenderer.invoke(IPC.remoteAdminDeleteUser, { orgId, userId }),
+    createUser: (orgId, input) => ipcRenderer.invoke(IPC.remoteAdminCreateUser, { orgId, input }),
     reissueInvitation: (orgId, email) =>
       ipcRenderer.invoke(IPC.remoteAdminReissueInvitation, { orgId, email }),
     resetPassword: (orgId, userId) =>

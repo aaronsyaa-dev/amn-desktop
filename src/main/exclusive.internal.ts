@@ -263,6 +263,25 @@ const adminApi = {
     });
   },
 
+  async deleteUser(orgId: string, userId: string): Promise<{ id: string; email: string }> {
+    const { user } = await apiFetch<{ user: { id: string; email: string } }>(
+      `/v1/admin/organizations/${encodeURIComponent(orgId)}/users/${encodeURIComponent(userId)}`,
+      { owner: true, method: 'DELETE' },
+    );
+    return user;
+  },
+
+  async createUser(orgId: string, input: { email: string; role: 'owner' | 'admin' | 'member' }) {
+    return apiFetch<{
+      user: AdminOrgUser;
+      invitation: { token: string; url: string | null; expiresAt: string };
+    }>(`/v1/admin/organizations/${encodeURIComponent(orgId)}/users`, {
+      owner: true,
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  },
+
   async setOrganizationStatus(id: string, status: OrgStatus): Promise<AdminOrganization> {
     const { organization } = await apiFetch<{ organization: AdminOrganization }>(
       `/v1/admin/organizations/${encodeURIComponent(id)}/status`,
@@ -500,6 +519,16 @@ export function registerExclusiveIpc(
       adminApi.deleteOrganization(payload.id, payload.confirm),
   );
   ipcMain.handle(IPC.remoteAdminListUsers, (_event, orgId: string) => adminApi.listUsers(orgId));
+  ipcMain.handle(
+    IPC.remoteAdminCreateUser,
+    (_event, payload: { orgId: string; input: { email: string; role: 'owner' | 'admin' | 'member' } }) =>
+      adminApi.createUser(payload.orgId, payload.input),
+  );
+  ipcMain.handle(
+    IPC.remoteAdminDeleteUser,
+    (_event, payload: { orgId: string; userId: string }) =>
+      adminApi.deleteUser(payload.orgId, payload.userId),
+  );
   ipcMain.handle(
     IPC.remoteAdminReissueInvitation,
     (_event, payload: { orgId: string; email: string }) =>
