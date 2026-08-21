@@ -22,6 +22,8 @@ import { bridge } from '../lib/bridge';
 import { relativeTime } from '../lib/time';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { OrgBanner } from '../components/org-rail/OrgBanner';
+import { useParcInsights } from '../state/parcInsights';
+import { computeTrend, trendSymbol } from '../lib/trend';
 import type { OrgAccessEntry, SupervisionState } from '../shared/api';
 
 /**
@@ -50,6 +52,12 @@ export function ControlTowerScreen() {
   }, [sites]);
 
   const suspended = organizations.filter((o) => o.status === 'suspended').length;
+  /*
+    `releve`, et non `parc` : ce nom-là est déjà celui des SITES supervisés,
+    juste au-dessus. Deux « parcs » dans le même écran finiraient par se
+    confondre à la relecture, et ils ne comptent pas la même chose.
+  */
+  const releve = useParcInsights();
   const [linkPanel, setLinkPanel] = useState(false);
 
   return (
@@ -96,6 +104,46 @@ export function ControlTowerScreen() {
                   { label: 'Hors ligne', value: parc.offline, emphasis: parc.offline > 0 },
                 ]),
             { label: 'Clientes', value: organizations.length },
+            /*
+              CE QUE FONT LES CLIENTES, PAS SEULEMENT COMBIEN ELLES SONT
+              (BLOCS E ET F)
+
+              « Clientes : 4 » est un état civil. Ces deux relevés-ci répondent
+              aux deux questions qu'on se pose vraiment en ouvrant la console :
+              combien s'en servent cette semaine, et combien travaillent à
+              l'instant où je regarde.
+
+              « Au travail », et non « En ligne » : ce libellé-là est déjà pris,
+              deux relevés plus haut, par les SITES supervisés. Deux « En
+              ligne » côte à côte comptant des choses différentes seraient lus
+              l'un pour l'autre.
+
+              Les deux disparaissent tant que le relevé n'est pas arrivé —
+              `ScreenHeader` retire une colonne dont la valeur est `undefined`.
+              Un zéro d'attente serait pris pour un zéro mesuré.
+            */
+            {
+              label: releve.data ? `Actives (${releve.data.windowDays} j)` : 'Actives',
+              value: releve.data ? (
+                <span className="inline-flex items-baseline gap-1.5">
+                  {releve.data.totals.active7d}
+                  <span className="font-mono text-[11px] text-text-muted">
+                    {trendSymbol(
+                      computeTrend(releve.data.totals.records7d, releve.data.totals.previous7d)
+                        .direction,
+                    )}
+                  </span>
+                </span>
+              ) : undefined,
+              title: releve.data
+                ? `Clientes ayant écrit quelque chose sur ${releve.data.windowDays} jours. Volume : ${computeTrend(releve.data.totals.records7d, releve.data.totals.previous7d).sentence}.`
+                : undefined,
+            },
+            {
+              label: 'Au travail',
+              value: releve.data && !releve.stale ? releve.data.totals.connectedOrgs : undefined,
+              title: 'Espaces clients ayant au moins une connexion ouverte à l’instant.',
+            },
             ...(suspended > 0 ? [{ label: 'Suspendues', value: suspended, emphasis: true }] : []),
           ]}
           actions={

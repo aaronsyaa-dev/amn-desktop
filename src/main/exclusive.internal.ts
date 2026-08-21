@@ -9,6 +9,7 @@ import {
   type DownloadLink,
   type BusinessRelease,
   type SupervisionState,
+  type ParcInsights,
   type OrgIdentity,
   type OrgInvitationResult,
   type OrgStatus,
@@ -354,6 +355,11 @@ const adminApi = {
     return apiFetch<SupervisionState>('/v1/admin/supervision', { owner: true });
   },
 
+  /** Le relevé du parc : activité réelle et connexions ouvertes (BLOCS E, F). */
+  async insights(): Promise<ParcInsights> {
+    return apiFetch<ParcInsights>('/v1/admin/insights', { owner: true });
+  },
+
   async downloadLink(orgId?: string): Promise<DownloadLink> {
     return apiFetch<DownloadLink>('/v1/admin/download-links', {
       owner: true,
@@ -560,6 +566,7 @@ export function registerExclusiveIpc(
     adminApi.organizationPulse(orgId),
   );
   ipcMain.handle(IPC.remoteAdminSupervision, () => adminApi.supervision());
+  ipcMain.handle(IPC.remoteAdminInsights, () => adminApi.insights());
   ipcMain.handle(IPC.remoteAdminDownloadLink, (_event, orgId?: string) =>
     adminApi.downloadLink(orgId),
   );

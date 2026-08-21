@@ -35,6 +35,7 @@ import type {
   DownloadLink,
   BusinessRelease,
   SupervisionState,
+  ParcInsights,
   OrgPlan,
 } from '../shared/api';
 
@@ -372,6 +373,10 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
     },
     async supervision(): Promise<SupervisionState> {
       return ctx.apiFetch<SupervisionState>('/v1/admin/supervision', { owner: true });
+    },
+
+    async insights(): Promise<ParcInsights> {
+      return ctx.apiFetch<ParcInsights>('/v1/admin/insights', { owner: true });
     },
     async downloadLink(orgId?: string): Promise<DownloadLink> {
       return ctx.apiFetch<DownloadLink>('/v1/admin/download-links', {

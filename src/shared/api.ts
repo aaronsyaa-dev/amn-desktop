@@ -131,6 +131,57 @@ export interface OrgPulse {
   users: { total: number; active: number };
 }
 
+/**
+ * LE RELEVÉ DU PARC (BLOCS E ET F)
+ * ════════════════════════════════
+ *
+ * Ce que la Tour de contrôle sait de ses clientes, en un appel.
+ *
+ * Le bandeau comptait des organisations : « 4 clientes ». C'est un état civil,
+ * pas une mesure — une cliente créée il y a six mois et jamais rouverte y
+ * pesait autant qu'une autre qui facture tous les jours.
+ *
+ * Le relevé ne rend que des NOMBRES et des dates. Jamais de contenu, jamais
+ * d'identité : on apprend qu'un espace est vivant, pas qui s'y trouve. C'est
+ * la même limite que celle du pouls, et elle est tenue côté serveur.
+ */
+export interface ParcOrgInsight {
+  id: string;
+  name: string;
+  status: string;
+  /**
+   * Sockets ouvertes et AUTHENTIFIÉES pour cette organisation, à l'instant de
+   * l'appel.
+   *
+   * Des connexions, pas des personnes : la même personne avec deux fenêtres en
+   * vaut deux. L'écran allume son point sur « au moins une », ce qui est
+   * exact ; annoncer « deux personnes » ne le serait pas.
+   */
+  connections: number;
+  /** ISO de la dernière écriture réelle, ou null si l'espace n'a rien produit. */
+  lastActivityAt: string | null;
+  /** Ce qu'elle a écrit sur la fenêtre courante. */
+  records7d: number;
+  /** La fenêtre d'avant, pour que « en hausse » repose sur deux nombres. */
+  previous7d: number;
+}
+
+export interface ParcInsights {
+  orgs: ParcOrgInsight[];
+  totals: {
+    organizations: number;
+    /** Celles qui ont ÉCRIT sur la fenêtre — pas celles qui existent. */
+    active7d: number;
+    /** Combien d'espaces ont au moins une connexion ouverte. */
+    connectedOrgs: number;
+    records7d: number;
+    previous7d: number;
+  };
+  /** La largeur de fenêtre employée, pour que l'écran l'annonce sans la deviner. */
+  windowDays: number;
+  at: string;
+}
+
 /** L'état d'une ronde de supervision de fond (BLOC F). */
 export interface SupervisionSweep {
   name: string;
@@ -2086,6 +2137,14 @@ export interface AmnBridge {
       /** L'état réel des rondes de supervision de fond (BLOC F). */
       supervision(): Promise<SupervisionState>;
       /**
+       * Le relevé du parc : activité réelle et connexions ouvertes (BLOCS E, F).
+       *
+       * Un seul appel pour toutes les clientes. Une requête par organisation
+       * aurait multiplié les allers-retours au rythme des signatures, et c'est
+       * ce qui rend ce genre d'écran lent au moment où il devient utile.
+       */
+      insights(): Promise<ParcInsights>;
+      /**
        * Émet un lien de téléchargement de l'installeur Business.
        *
        * Rejette avec `code: 'no_release'` quand aucune version n'est publiée —
@@ -2346,6 +2405,7 @@ export const IPC = {
   remoteAdminAccessLog: 'remote:adminAccessLog',
   remoteAdminOrgPulse: 'remote:adminOrgPulse',
   remoteAdminSupervision: 'remote:adminSupervision',
+  remoteAdminInsights: 'remote:adminInsights',
   remoteAdminDownloadLink: 'remote:adminDownloadLink',
   remoteAdminReleases: 'remote:adminReleases',
   remoteSupportEnter: 'remote:supportEnter',

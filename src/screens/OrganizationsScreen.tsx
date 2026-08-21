@@ -8,6 +8,8 @@ import { OrgBanner } from '../components/org-rail/OrgBanner';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { bridge } from '../lib/bridge';
+import { useParcInsights } from '../state/parcInsights';
+import { computeTrend, trendSymbol } from '../lib/trend';
 import { cleanErrorMessage } from '../lib/errorMessage';
 import type { AdminOrganization } from '../shared/api';
 
@@ -33,6 +35,7 @@ export function OrganizationsScreen() {
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dossierOrg, setDossierOrg] = useState<AdminOrganization | null>(null);
+  const parc = useParcInsights();
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -66,11 +69,53 @@ export function OrganizationsScreen() {
           eyebrow="Tour de contrôle · Supervision"
           title="Organisations"
           description="Le registre des clientes gérées — chercher, suspendre, ouvrir un dossier. Survolez une banderole pour lire ce que l’organisation produit réellement."
+          /*
+            COMPTER CE QUI SE PASSE, PAS CE QUI EXISTE (BLOCS E ET F)
+
+            « Actives » disait jusqu'ici « non suspendues » — un état civil.
+            Une cliente installée il y a six mois et jamais rouverte y pesait
+            autant qu'une autre qui facture tous les jours, et le bandeau
+            manquait donc exactement de ce qu'on lui demande : de la
+            profondeur.
+
+            Les trois relevés qui restent répondent chacun à une vraie
+            question : combien j'en gère, combien s'en servent vraiment cette
+            semaine, et combien travaillent à l'instant où je regarde. « Non
+            suspendues » n'est pas perdu pour autant — c'est le filtre juste
+            au-dessous, et la mention « Suspendue » sur la banderole.
+
+            `undefined` tant que le relevé n'est pas là : `ScreenHeader` retire
+            la colonne plutôt que d'afficher un zéro qu'on finirait par croire.
+          */
           stats={[
             { label: 'Gérées', value: organizations.length },
             {
-              label: 'Actives',
-              value: organizations.filter((o) => o.status === 'active').length,
+              label: parc.data ? `Actives (${parc.data.windowDays} j)` : 'Actives',
+              value: parc.data ? (
+                <span className="inline-flex items-baseline gap-1.5">
+                  {parc.data.totals.active7d}
+                  {/*
+                    La tendance porte sur le VOLUME écrit, pas sur le nombre de
+                    clientes actives : à parc constant — le cas courant — ce
+                    second chiffre ne bouge jamais et la flèche serait morte.
+                    Ce qui varie d'une semaine à l'autre, c'est ce qui est
+                    produit, et c'est ce que l'infobulle détaille.
+                  */}
+                  <span className="font-mono text-[11px] text-text-muted">
+                    {trendSymbol(
+                      computeTrend(parc.data.totals.records7d, parc.data.totals.previous7d).direction,
+                    )}
+                  </span>
+                </span>
+              ) : undefined,
+              title: parc.data
+                ? `Organisations ayant écrit quelque chose sur ${parc.data.windowDays} jours. Volume : ${computeTrend(parc.data.totals.records7d, parc.data.totals.previous7d).sentence}.`
+                : undefined,
+            },
+            {
+              label: 'En ligne',
+              value: parc.data && !parc.stale ? parc.data.totals.connectedOrgs : undefined,
+              title: 'Espaces clients ayant au moins une connexion ouverte à l’instant.',
             },
             {
               label: 'Suspendues',

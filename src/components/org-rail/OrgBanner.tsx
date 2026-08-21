@@ -2,6 +2,8 @@ import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, ArrowRight, Building2, Loader2 } from 'lucide-react';
 import type { AdminOrganization, OrgPulse } from '../../shared/api';
+import { PresenceDot } from './PresenceDot';
+import { insightFor, useParcInsights } from '../../state/parcInsights';
 import { OrgAvatar } from './OrgAvatar';
 import { bridge } from '../../lib/bridge';
 import { relativeTime } from '../../lib/time';
@@ -85,6 +87,18 @@ export function OrgBanner({
   actions?: React.ReactNode;
 }) {
   const [open, setOpen] = React.useState(false);
+  /*
+    LA PRÉSENCE VIENT DU RELEVÉ PARTAGÉ, PAS D'UNE REQUÊTE PAR BANDEROLE (BLOC F)
+
+    Vingt banderoles à l'écran feraient vingt rondes d'interrogation sur une
+    donnée strictement identique pour toutes. `useParcInsights` n'en tient
+    qu'une, quel que soit le nombre d'abonnés — voir state/parcInsights.ts.
+
+    À la différence du pouls, la présence n'attend PAS le dépliement : c'est
+    justement ce qu'on veut voir en balayant la liste sans rien survoler.
+  */
+  const parc = useParcInsights();
+  const presence = insightFor(parc, org.id);
   const [pulse, setPulse] = React.useState<OrgPulse | null>(null);
   const [pulseError, setPulseError] = React.useState(false);
   const asked = React.useRef(false);
@@ -135,6 +149,7 @@ export function OrgBanner({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
+            <PresenceDot insight={presence} unknown={parc.stale || parc.loading} />
             <p className="truncate text-[15px] font-medium leading-tight text-text-primary">
               {org.name}
             </p>
