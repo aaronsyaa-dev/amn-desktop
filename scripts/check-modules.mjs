@@ -306,6 +306,16 @@ function keyGroups(source) {
   `ClientSidebar` destine à la barre du pouce, la contient sans être elle.
 */
 for (const [fichier, requis, interdits] of [
+  /*
+    La barre de l'édition INTERNE a été la dernière à rejoindre cette liste, et
+    c'est instructif : le catalogue déclarait ses six groupes depuis toujours,
+    trois surfaces sur quatre les affichaient, et la quatrième — celle
+    qu'Aaron a sous les yeux tous les jours — montrait une bande d'épinglés qui
+    avait fini par contenir les dix-huit modules, à plat, sans un intitulé.
+    Une règle qui ne couvre que les surfaces d'une édition laisse l'autre
+    dériver.
+  */
+  ['src/components/Sidebar.tsx', ['sectionsForSpace(', 'section.label'], [/\bNAV_ITEMS\b/, /itemsForSpace\(/]],
   ['src/business/BusinessSidebar.tsx', ['sectionsForSpace(', 'section.label'], [/\bNAV_ITEMS\b/, /itemsForSpace\(/]],
   ['src/components/AppLauncher.tsx', ['sectionsForSpace(', 'section.label'], [/\bNAV_ITEMS\b/, /itemsForSpace\(/]],
   ['src/client-context/ClientSidebar.tsx', ['clientSections(', 'section.label'], [/\bNAV_ITEMS\b/, /itemsForSpace\(/]],
@@ -314,9 +324,9 @@ for (const [fichier, requis, interdits] of [
   for (const marqueur of requis) {
     if (!source.includes(marqueur)) {
       failures.push(
-        `${fichier} ne contient plus « ${marqueur} » : cette surface liste les modules d'une ` +
-          `cliente et doit les RANGER en sections. Une liste plate y est déjà passée une fois ` +
-          `sans que rien ne le signale.`,
+        `${fichier} ne contient plus « ${marqueur} » : cette surface liste des modules et doit ` +
+          `les RANGER en sections. Une liste plate y est déjà passée deux fois — côté cliente, ` +
+          `puis côté interne — sans que rien ne le signale.`,
       );
     }
   }
@@ -324,8 +334,8 @@ for (const [fichier, requis, interdits] of [
     if (interdit.test(source)) {
       failures.push(
         `${fichier} lit le catalogue à plat (${interdit.source}) : cette surface doit passer ` +
-          `par les sections, sinon la cliente retrouve la liste plate que ce contrôle existe ` +
-          `pour empêcher.`,
+          `par les sections, sinon on retrouve la liste plate que ce contrôle existe pour ` +
+          `empêcher.`,
       );
     }
   }

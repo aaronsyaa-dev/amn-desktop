@@ -6,7 +6,6 @@ import {
   ChevronsLeft,
   ChevronsRight,
   ChevronDown,
-  LayoutGrid,
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
@@ -16,9 +15,8 @@ import { StatusBadge } from './StatusBadge';
 import { useSitePanel } from './site-panel/SitePanelContext';
 import { AppLauncher } from './AppLauncher';
 import { OrgSwitchButton } from './org-rail/OrgSwitchButton';
-import { NAV_ITEMS, type NavItem } from '../data/navigation';
-import { SPACES, itemsForSpace, spaceByKey, spaceForPath, sectionsForSpace } from '../data/spaces';
-import { useNavFavorites } from '../state/useNavFavorites';
+import { type NavItem } from '../data/navigation';
+import { SPACES, spaceByKey, spaceForPath, sectionsForSpace } from '../data/spaces';
 
 const COLLAPSED_WIDTH = 72;
 const EXPANDED_WIDTH = 224;
@@ -51,7 +49,6 @@ export function Sidebar({
   const [isExpandedDesktop, setIsExpanded] = useState(false);
   const [isSitesFlyoutOpen, setIsSitesFlyoutOpen] = useState(false);
   const [isLauncherOpen, setLauncherOpen] = useState(false);
-  const { favorites } = useNavFavorites();
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();
@@ -94,18 +91,12 @@ export function Sidebar({
   // de commandes ou par une notification doit basculer la colonne, sans que
   // l'appelant ait à y penser.
   const space = spaceForPath(location.pathname);
-  const spaceItems = itemsForSpace(space);
 
   // The pinned modules, in the catalogue's own order so the strip never
   // reshuffles itself under the cursor. An unknown key (a module removed since
   // the choice was made) is dropped rather than rendered as a dead row.
   // Restreint à l'espace courant : une épingle posée dans un espace n'a pas à
   // apparaître dans l'autre.
-  const pinnedItems: NavItem[] =
-    space === 'control'
-      ? spaceItems
-      : NAV_ITEMS.filter((item) => favorites.includes(item.key) && spaceItems.includes(item));
-
   // One nav row. Shared by both sections (workspace + produits) so the badge,
   // active indicator and collapsed/expanded behaviour stay identical.
   const renderNavItem = (item: NavItem) => {
@@ -253,58 +244,49 @@ export function Sidebar({
             showing a grey gutter down the middle of the chrome. */}
         {/* Pinned strip. Fixed by choice, not by catalogue size: adding a
             module adds a tile to the launcher, never a row here. */}
-        <nav className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3">
+        <nav className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3">
           {/*
-            LA TOUR DE CONTRÔLE EST GROUPÉE, LE POSTE DE TRAVAIL EST ÉPINGLÉ.
+            LES DEUX ESPACES SONT GROUPÉS — ET LE POSTE DE TRAVAIL A ÉTÉ LE
+            DERNIER À L'ÊTRE.
 
-            Deux espaces, deux réponses, parce que les deux questions ne sont
-            pas les mêmes. Au poste de travail on revient chaque jour sur cinq
-            écrans : la barre montre ces cinq-là, le reste vit dans le lanceur.
-            À la Tour de contrôle, on ne « revient » pas — on balaie : tout doit
-            être visible d'un coup, et huit entrées d'affilée sans intitulé se
-            relisent depuis le haut à chaque fois. Les sections (Supervision,
-            Parc, Produits) donnent à l'œil trois blocs au lieu de huit lignes.
+            Il montrait une bande d'épinglés : cinq écrans choisis, le reste
+            dans le lanceur. L'intention se défendait, mais elle ne survit pas à
+            l'usage — on épingle, on épingle encore, et la bande finit par
+            porter les dix-huit modules dans l'ordre du catalogue, sans un
+            intitulé. C'est exactement ce qu'Aaron avait sous les yeux : une
+            longue liste plate, pendant que sa cliente, elle, avait ses cinq
+            groupes.
+
+            Trois surfaces montraient déjà des sections — la Tour de contrôle
+            ici même, la barre de l'édition Business, et le contexte de support
+            qui reflète celle d'une cliente. Celle-ci était la quatrième, et la
+            seule à ne pas suivre.
+
+            Le catalogue déclarait pourtant ses six groupes depuis le début
+            (`modules.internal.ts` : Pilotage, Clients & revenus, Production,
+            Collectif, Livrables, Système). Rien à inventer : il suffisait de
+            les lire.
           */}
-          {space === 'control'
-            ? sectionsForSpace('control').map((section) => (
-                <div key={section.key} className="flex flex-col gap-1">
-                  {isExpanded ? (
-                    <p className="eyebrow px-3 pb-1 pt-2">{section.label}</p>
-                  ) : (
-                    // Barre repliée : l'intitulé ne tiendrait pas dans 72 px, le
-                    // filet garde la coupure sans prétendre la nommer.
-                    <span className="mx-auto my-1.5 h-px w-6 bg-border" aria-hidden />
-                  )}
-                  {section.items.map(renderNavItem)}
-                </div>
-              ))
-            : pinnedItems.map(renderNavItem)}
-
-          {/* La Tour de contrôle affiche déjà tous ses modules : un bouton
-              « tous les modules » y ouvrirait la même liste que celle qu'on
-              regarde. */}
-          {space === 'workspace' && (
-            <button
-              type="button"
-              onClick={() => setLauncherOpen(true)}
-              title={!isExpanded ? 'Tous les modules' : undefined}
-              aria-label="Tous les modules"
-              aria-haspopup="dialog"
-              aria-expanded={isLauncherOpen}
-              // 44 px sur téléphone, comme les lignes du tiroir juste au-dessus :
-              // ce bouton avait été oublié lors de la passe précédente.
-              className={`group mt-1 flex min-h-11 items-center gap-3 rounded-lg py-1.5 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary md:min-h-0 ${
-                isExpanded ? 'px-3' : 'justify-center px-0'
-              }`}
-            >
-              <span className="relative transition-transform duration-200 group-hover:scale-105">
-                <LayoutGrid size={20} strokeWidth={1.75} />
-              </span>
-              {isExpanded && (
-                <span className="select-none whitespace-nowrap">Tous les modules</span>
+          {sectionsForSpace(space).map((section) => (
+            <div key={section.key} className="flex flex-col gap-1">
+              {isExpanded ? (
+                <p className="eyebrow px-3 pb-1 pt-1">{section.label}</p>
+              ) : (
+                // Barre repliée : l'intitulé ne tiendrait pas dans 72 px, le
+                // filet garde la coupure sans prétendre la nommer.
+                <span className="mx-auto my-1.5 h-px w-6 bg-border" aria-hidden />
               )}
-            </button>
-          )}
+              {section.items.map(renderNavItem)}
+            </div>
+          ))}
+
+          {/*
+            Plus de bouton « Tous les modules » ici, dans aucun des deux
+            espaces : il ouvrirait la liste qu'on est en train de regarder. Le
+            lanceur reste monté dans `AppLayout` pour la barre du pouce, où il
+            garde son utilité propre — choisir les épingles qui la nourrissent
+            sur téléphone.
+          */}
         </nav>
 
         <div className="mt-auto flex flex-col gap-1 border-t border-border px-3 pt-2">
