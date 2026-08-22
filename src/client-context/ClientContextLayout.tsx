@@ -9,11 +9,8 @@ import { MobileBottomNav } from '../components/MobileBottomNav';
 import { isModuleEnabled } from '../data/spaces';
 import { useOrgContext } from '../state/OrgContextContext';
 import { ClientViewProvider } from '../state/ClientViewContext';
-import { ProfilesProvider } from '../state/ProfilesContext';
-import { SyncProvider } from '../state/SyncContext';
-import { ToastProvider } from '../state/ToastContext';
-import { UndoProvider } from '../state/UndoContext';
-import { TagProvider } from '../components/tags/TagProvider';
+import { SpaceProviders } from '../state/SpaceProviders';
+import { BootHealthy } from '../components/BootHealthy';
 import { SyncStatusIndicator } from '../components/SyncStatusIndicator';
 import { variantsForPath } from '../lib/transitions';
 import { StatusRail } from '../components/StatusRail';
@@ -57,11 +54,11 @@ export function ClientContextLayout() {
       de tâches proposerait de les assigner à nos adresses @amn-devsec.com.
     */
     <ClientViewProvider>
-      <SyncProvider key={scope} scope={scope}>
-        <ProfilesProvider>
-        <ToastProvider>
-          <UndoProvider>
-            <TagProvider>
+      {/*
+        La `key` remonte TOUTE la pile quand on change d'organisation : aucun
+        état React d'une cliente ne survit à la bascule vers une autre.
+      */}
+      <SpaceProviders key={scope} scope={scope}>
               <ClientBanner />
               <div
                 className="app-ground flex flex-col overflow-hidden text-text-primary"
@@ -123,11 +120,8 @@ export function ClientContextLayout() {
                   onOpenLauncher={() => setNavOpen(true)}
                 />
               </div>
-            </TagProvider>
-          </UndoProvider>
-        </ToastProvider>
-        </ProfilesProvider>
-      </SyncProvider>
+        <BootHealthy />
+      </SpaceProviders>
     </ClientViewProvider>
   );
 }

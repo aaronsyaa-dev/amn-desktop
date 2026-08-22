@@ -4,12 +4,9 @@ import { motion } from 'framer-motion';
 import { BusinessSidebar } from './BusinessSidebar';
 import { BusinessTopBar } from './BusinessTopBar';
 import { AppointmentReminders } from './AppointmentReminders';
-import { ProfilesProvider } from '../state/ProfilesContext';
-import { SyncProvider } from '../state/SyncContext';
-import { ActivityProvider, useActivity } from '../state/ActivityContext';
-import { UndoProvider } from '../state/UndoContext';
-import { ToastProvider } from '../state/ToastContext';
-import { TagProvider } from '../components/tags/TagProvider';
+import { useActivity } from '../state/ActivityContext';
+import { SpaceProviders } from '../state/SpaceProviders';
+import { BootHealthy } from '../components/BootHealthy';
 import { SyncActivityNotifier } from '../components/SyncActivityNotifier';
 import { MobileBottomNav } from '../components/MobileBottomNav';
 import { StatusRail } from '../components/StatusRail';
@@ -91,12 +88,7 @@ export function BusinessLayout() {
   }, [location.pathname]);
 
   return (
-    <SyncProvider>
-      <ProfilesProvider>
-        <ActivityProvider>
-          <ToastProvider>
-            <UndoProvider>
-              <TagProvider>
+    <SpaceProviders>
                 <div
                   onTouchStart={onTouchStart}
                   onTouchEnd={onTouchEnd}
@@ -147,14 +139,10 @@ export function BusinessLayout() {
                 <AppointmentReminders />
                 <SyncActivityNotifier />
                 <RouteSeenTracker />
+                <BootHealthy />
                 <UpdateNotice />
                 <UpdateReady />
-              </TagProvider>
-            </UndoProvider>
-          </ToastProvider>
-        </ActivityProvider>
-      </ProfilesProvider>
-    </SyncProvider>
+    </SpaceProviders>
   );
 }
 

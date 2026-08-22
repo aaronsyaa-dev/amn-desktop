@@ -13,6 +13,7 @@ import { RemoteSitesProvider } from '../state/RemoteSitesContext';
 import { ProfilesProvider } from '../state/ProfilesContext';
 import { SyncProvider } from '../state/SyncContext';
 import { ActivityProvider, useActivity } from '../state/ActivityContext';
+import { BootHealthy } from './BootHealthy';
 import { CallProvider } from '../state/CallContext';
 import { CallOverlay } from './call/CallOverlay';
 import { UndoProvider } from '../state/UndoContext';
@@ -200,6 +201,7 @@ export function AppLayout() {
               <SyncActivityNotifier />
               <RegressionNotifier />
               <RouteSeenTracker />
+              <BootHealthy />
               <IdleScreensaver />
               {showWelcome && <WelcomeOverlay onDone={() => setShowWelcome(false)} />}
               {!showWelcome && <UpdateNotice />}

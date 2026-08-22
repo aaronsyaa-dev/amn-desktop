@@ -1,4 +1,5 @@
 import React from 'react';
+import { clearNavigationState } from '../lib/safeBoot';
 
 interface Props {
   children: React.ReactNode;
@@ -30,6 +31,26 @@ export class ErrorBoundary extends React.Component<Props, State> {
   handleRetry = () => this.setState({ error: null });
   handleReload = () => window.location.reload();
 
+  /**
+   * Abandonne le contexte AVANT de repartir.
+   *
+   * L'ordre compte : effacer d'abord, naviguer ensuite. L'inverse rechargerait
+   * la page avec l'état fautif encore en place.
+   *
+   * `hash = '#/'` parce que l'application est servie en `file://` dans
+   * l'exécutable empaqueté : y écrire un chemin absolu viserait la racine du
+   * disque et n'ouvrirait rien du tout.
+   */
+  handleHome = () => {
+    clearNavigationState();
+    try {
+      window.location.hash = '#/';
+    } catch {
+      /* rien à faire de plus : le rechargement ci-dessous suffit */
+    }
+    window.location.reload();
+  };
+
   render() {
     if (!this.state.error) return this.props.children;
 
@@ -46,7 +67,8 @@ export class ErrorBoundary extends React.Component<Props, State> {
           <h1 className="text-lg font-bold text-text-primary">Une erreur inattendue s’est produite</h1>
           <p className="max-w-sm text-sm text-text-secondary">
             L’application a rencontré un problème d’affichage. Vos données enregistrées sont intactes.
-            Vous pouvez réessayer sans tout recharger.
+            Vous pouvez réessayer sans tout recharger — ou revenir à l’accueil, ce qui
+            quitte l’organisation en cours de consultation et repart sur un écran sûr.
           </p>
         </div>
 
@@ -56,11 +78,18 @@ export class ErrorBoundary extends React.Component<Props, State> {
           </pre>
         )}
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={this.handleHome}
+            className="bg-accent px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
+          >
+            Retour à l’accueil
+          </button>
           <button
             type="button"
             onClick={this.handleRetry}
-            className="bg-accent px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
+            className="border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
           >
             Réessayer
           </button>

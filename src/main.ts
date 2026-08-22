@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, Notification, Tray, desktopCapturer, nativeImage, shell } from 'electron';
+import { app, BrowserWindow, Menu, Notification, Tray, desktopCapturer, nativeImage, screen, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -69,11 +69,61 @@ interface SavedBounds {
 }
 const boundsFile = () => path.join(app.getPath('userData'), 'window-state.json');
 
+/**
+ * La position retenue est-elle encore ATTEIGNABLE ?
+ *
+ * Le défaut que cette fonction existe pour empêcher : une fenêtre restaurée à
+ * des coordonnées qui ne correspondent plus à aucun écran s'ouvre bel et bien —
+ * mais hors du champ visible. L'application tourne, ne dit rien, et paraît
+ * simplement « ne plus se lancer ». C'est le pire des symptômes, parce qu'il
+ * n'offre aucune prise : pas de fenêtre, pas de message, rien à fermer.
+ *
+ * Ça n'a rien d'exotique : un écran secondaire débranché, une station d'accueil
+ * retirée, une résolution changée, et les coordonnées d'hier tombent dans le
+ * vide. Et comme ce fichier vit dans `userData`, il survit à une
+ * désinstallation — réinstaller ne répare donc pas, ce qui achève de rendre le
+ * symptôme incompréhensible.
+ *
+ * On exige qu'un morceau SUFFISANT de la fenêtre retombe sur un écran présent,
+ * pas seulement un pixel : une fenêtre dont seul le bord affleure est aussi
+ * inutilisable qu'une fenêtre absente, et on ne peut même pas l'attraper par sa
+ * barre de titre.
+ */
+function boundsAreReachable(b: SavedBounds): boolean {
+  const { x, y } = b;
+  if (typeof x !== 'number' || typeof y !== 'number') return true; // centrée par Electron
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+  try {
+    const MINIMUM_VISIBLE = 120;
+    return screen.getAllDisplays().some((display) => {
+      const w = display.workArea;
+      const chevauchementX = Math.min(x + b.width, w.x + w.width) - Math.max(x, w.x);
+      const chevauchementY = Math.min(y + b.height, w.y + w.height) - Math.max(y, w.y);
+      return chevauchementX >= MINIMUM_VISIBLE && chevauchementY >= MINIMUM_VISIBLE;
+    });
+  } catch {
+    // `screen` n'est lisible qu'après `app.whenReady()`. Dans le doute, on
+    // préfère une fenêtre centrée par défaut à une fenêtre invisible.
+    return false;
+  }
+}
+
 function loadBounds(): SavedBounds | null {
   try {
     const raw = fs.readFileSync(boundsFile(), 'utf-8');
     const b = JSON.parse(raw) as SavedBounds;
-    if (typeof b.width === 'number' && typeof b.height === 'number') return b;
+    if (typeof b.width !== 'number' || typeof b.height !== 'number') return null;
+    if (!Number.isFinite(b.width) || !Number.isFinite(b.height)) return null;
+    if (b.width < 1 || b.height < 1) return null;
+    if (!boundsAreReachable(b)) {
+      // On garde la TAILLE, on abandonne la position : Electron centre alors la
+      // fenêtre sur l'écran principal. Repartir aussi sur la taille par défaut
+      // ferait perdre un réglage que l'utilisateur avait choisi, sans nécessité.
+      // eslint-disable-next-line no-console
+      console.warn('[amn] position de fenêtre hors écran — fenêtre recentrée.');
+      return { width: b.width, height: b.height };
+    }
+    return b;
   } catch {
     /* first run or unreadable — use defaults */
   }
