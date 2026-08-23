@@ -40,8 +40,13 @@ import type {
  * from this list still *writes* through `upsert` (and reaches amn-api), but it
  * is never read back — so its data silently disappears on the next reload.
  * Anything added to `SyncedCollection` must be listed here too.
+ *
+ * Exportée : `src/lib/backup.ts` s'en sert comme liste de ce qu'il faut
+ * sauvegarder, au lieu d'en tenir une copie. Une copie avait été tenue, elle a
+ * cessé de suivre, et l'export a passé des mois à ne ramener que neuf
+ * collections sur vingt et une.
  */
-const SYNCED_COLLECTIONS: SyncedCollection[] = [
+export const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'tasks',
   'decisions',
   'knowledge',

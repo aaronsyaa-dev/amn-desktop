@@ -52,8 +52,14 @@ animations Framer Motion.
   et l'historique des changements ; notification « Nouvelle mise à jour ! » au
   premier lancement après une mise à jour. Le changelog est maintenu dans
   [`src/data/changelog.ts`](src/data/changelog.ts).
-- **Sauvegarde** — export d'un instantané JSON complet de l'espace de travail
-  depuis les Paramètres.
+- **Sauvegarde et restauration** — depuis les Paramètres : export d'un
+  instantané JSON de **toutes** les collections synchronisées, et relecture de
+  ce fichier pour remettre les données en place (fusion, jamais suppression).
+  Le coffre-fort en est volontairement exclu — ses entrées sont des mots de
+  passe en clair, et l'écran comme le fichier le disent. Voir
+  [`src/lib/backup.ts`](src/lib/backup.ts) : la liste des collections n'est pas
+  recopiée là-bas, elle vient de `SYNCED_COLLECTIONS`, sans quoi elle cesse de
+  suivre — c'est ce qui était arrivé.
 
 ## Architecture
 
@@ -85,6 +91,19 @@ npm start
   coutures `@edition/*`.
 - `npm run check:business -- --dir dist` — relit la sortie du build et échoue sur
   la moindre trace d'AMN DevSec, de nos produits, de nos comptes ou d'un jeton.
+
+Données partagées :
+
+- `npm run check:sync` — refuse une collection qui synchronise d'un côté et pas
+  de l'autre. Avec `AMN_API_URL` (et un justificatif), la sonde runtime dit en
+  plus si l'API déployée l'accepte vraiment.
+- `npm run check:backup` — refuse une sauvegarde qui recommencerait à tenir sa
+  propre liste de collections, ou à relire les magasins d'avant la migration.
+  Statique, une seconde.
+- `npm run check:backup:reel` — la preuve : construit l'édition Business, la
+  sert contre un faux amn-api qui garde son état, exporte depuis un vrai
+  Chromium, vérifie le fichier, efface des enregistrements côté serveur, puis
+  restaure et vérifie qu'ils sont revenus. Quelques minutes.
 
 ## Stack
 

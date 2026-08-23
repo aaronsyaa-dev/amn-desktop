@@ -1,11 +1,31 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, Camera, Check, Download, Info, KeyRound, Loader2, Power, UserCircle } from 'lucide-react';
+import {
+  AlertTriangle,
+  Bell,
+  Camera,
+  Check,
+  Download,
+  Info,
+  KeyRound,
+  Loader2,
+  Power,
+  Upload,
+  UserCircle,
+} from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { bridge } from '../lib/bridge';
 import { cleanErrorMessage } from '../lib/errorMessage';
-import { downloadBackup } from '../lib/backup';
+import {
+  BackupIncompleteError,
+  downloadBackup,
+  parseBackup,
+  restoreBackup,
+  totalRecords,
+  type BackupSnapshot,
+  type RestoreReport,
+} from '../lib/backup';
 import { resizeImageToDataUrl } from '../lib/imageResize';
 import { ensurePushSubscription, sendPushTest } from '../lib/webPush';
 import { UserAvatar } from '../components/UserAvatar';
@@ -75,38 +95,203 @@ export function SettingsScreen() {
 function BackupSection() {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
 
-  const run = async () => {
+  /* La restauration se fait en deux temps : on lit le fichier et on montre ce
+     qu'il contient, puis on écrit. Écrire directement au choix du fichier
+     serait un clic irréversible sur une pièce jointe mal nommée. */
+  const [aRestaurer, setARestaurer] = useState<BackupSnapshot | null>(null);
+  const [progres, setProgres] = useState<{ fait: number; total: number } | null>(null);
+  const [rapport, setRapport] = useState<RestoreReport | null>(null);
+  const fichier = useRef<HTMLInputElement>(null);
+
+  const exporter = async () => {
     setBusy(true);
     setDone(false);
+    setErreur(null);
     try {
       await downloadBackup();
       setDone(true);
       window.setTimeout(() => setDone(false), 2500);
+    } catch (err) {
+      /* Un export incomplet n'est plus un fichier de tableaux vides téléchargé
+         en silence : il ne se télécharge pas, et l'écran dit quoi a manqué. */
+      setErreur(
+        err instanceof BackupIncompleteError
+          ? `${err.message}. Rien n’a été téléchargé — vérifiez la connexion et recommencez.`
+          : cleanErrorMessage(err),
+      );
     } finally {
       setBusy(false);
     }
   };
 
+  const choisir = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    setErreur(null);
+    setRapport(null);
+    try {
+      setARestaurer(parseBackup(await f.text()));
+    } catch (err) {
+      setARestaurer(null);
+      setErreur(cleanErrorMessage(err));
+    }
+  };
+
+  const restaurer = async () => {
+    if (!aRestaurer) return;
+    setBusy(true);
+    setErreur(null);
+    setProgres({ fait: 0, total: totalRecords(aRestaurer) });
+    try {
+      const r = await restoreBackup(aRestaurer, (fait, total) => setProgres({ fait, total }));
+      setRapport(r);
+      setARestaurer(null);
+    } catch (err) {
+      setErreur(cleanErrorMessage(err));
+    } finally {
+      setBusy(false);
+      setProgres(null);
+    }
+  };
+
+  const lignes = aRestaurer
+    ? Object.entries(aRestaurer.compte)
+        .filter(([, n]) => n > 0)
+        .sort((a, b) => b[1] - a[1])
+    : [];
+
   return (
     <Panel
       icon={Download}
       title="Sauvegarde"
-      subtitle="Exportez une copie complète de vos données (clients, devis, tâches, messages…) dans un fichier."
+      subtitle="Exportez vos données dans un fichier, ou restaurez-les depuis un fichier."
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-text-muted">
-          Le fichier JSON contient un instantané de l’espace de travail, à conserver en lieu sûr.
-        </p>
-        <button
-          type="button"
-          onClick={run}
-          disabled={busy}
-          className="flex items-center gap-2 border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover disabled:opacity-40"
-        >
-          {busy ? <Loader2 size={14} className="animate-spin" /> : done ? <Check size={14} /> : <Download size={14} />}
-          {busy ? 'Export…' : done ? 'Exporté' : 'Exporter une sauvegarde'}
-        </button>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-text-muted">
+            Le fichier JSON contient toutes vos collections synchronisées. Le coffre-fort
+            n’y est <strong className="font-medium text-text-secondary">pas</strong> : ses
+            mots de passe sont en clair et n’ont rien à faire dans un fichier qu’on
+            transporte.
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={exporter}
+              disabled={busy}
+              className="flex items-center gap-2 border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover disabled:opacity-40"
+            >
+              {busy && !progres ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : done ? (
+                <Check size={14} />
+              ) : (
+                <Download size={14} />
+              )}
+              {busy && !progres ? 'Export…' : done ? 'Exporté' : 'Exporter'}
+            </button>
+            <button
+              type="button"
+              onClick={() => fichier.current?.click()}
+              disabled={busy}
+              className="flex items-center gap-2 border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover disabled:opacity-40"
+            >
+              <Upload size={14} />
+              Restaurer…
+            </button>
+            <input
+              ref={fichier}
+              type="file"
+              accept="application/json,.json"
+              onChange={choisir}
+              className="hidden"
+            />
+          </div>
+        </div>
+
+        {erreur && (
+          <p className="flex items-start gap-2 border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
+            <AlertTriangle size={14} className="mt-px shrink-0" />
+            <span>{erreur}</span>
+          </p>
+        )}
+
+        {aRestaurer && (
+          <div className="flex flex-col gap-3 border border-border-strong bg-surface px-3 py-3">
+            <p className="text-xs text-text-secondary">
+              Sauvegarde du{' '}
+              <strong className="font-medium text-text-primary">
+                {new Date(aRestaurer.exportedAt).toLocaleString('fr-FR')}
+              </strong>{' '}
+              — {totalRecords(aRestaurer)} enregistrement(s).
+            </p>
+            <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted">
+              {lignes.map(([nom, n]) => (
+                <li key={nom}>
+                  {nom} <span className="text-text-secondary">{n}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-text-muted">
+              La restauration <strong className="font-medium text-text-secondary">ajoute et
+              écrase</strong>, elle ne supprime rien : ce qui existe déjà et ne figure pas
+              dans le fichier reste en place.
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={restaurer}
+                disabled={busy}
+                className="flex items-center gap-2 border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover disabled:opacity-40"
+              >
+                {progres ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                {progres ? `Restauration… ${progres.fait}/${progres.total}` : 'Restaurer maintenant'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setARestaurer(null)}
+                disabled={busy}
+                className="px-3 py-2 text-sm text-text-muted transition-colors hover:text-text-primary disabled:opacity-40"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        )}
+
+        {rapport && (
+          <div className="flex flex-col gap-2 border border-border-strong bg-surface px-3 py-3 text-xs">
+            <p className="text-text-secondary">
+              {rapport.restaures} enregistrement(s) restauré(s).
+              {rapport.echecs.length > 0 && ` ${rapport.echecs.length} en échec.`}
+              {rapport.ignorees.length > 0 &&
+                ` Collections inconnues de cette version, ignorées : ${rapport.ignorees.join(', ')}.`}
+            </p>
+            {rapport.echecs.length > 0 && (
+              <ul className="flex flex-col gap-1 text-danger">
+                {rapport.echecs.slice(0, 5).map((e) => (
+                  <li key={`${e.collection}:${e.id}`}>
+                    {e.collection} / {e.id} — {e.raison}
+                  </li>
+                ))}
+                {rapport.echecs.length > 5 && <li>…et {rapport.echecs.length - 5} autre(s).</li>}
+              </ul>
+            )}
+            {/* Le miroir en mémoire ne connaît pas encore ce qui vient d'être
+                écrit : sans rechargement, l'écran montrerait l'état d'avant et
+                laisserait croire que la restauration n'a rien fait. */}
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="self-start border border-border-strong bg-surface px-3 py-1.5 font-medium text-text-primary transition-colors hover:bg-surface-hover"
+            >
+              Recharger pour voir les données
+            </button>
+          </div>
+        )}
       </div>
     </Panel>
   );

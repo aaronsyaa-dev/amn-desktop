@@ -149,7 +149,9 @@ export class RemoteApiClient {
   async getPresence(): Promise<PresenceEntry[]> {
     if (!isRemoteConfigured()) return [];
     const { users } = await apiFetch<{ users: PresenceEntry[] }>('/v1/collections/_presence');
-    return users;
+    /* Voir la même garde dans src/lib/bridge.ts : `undefined` ici faisait
+       tomber le chargement de toutes les collections. */
+    return users ?? [];
   }
 
   /* ----------------------------- Session amn-api ---------------------------- */

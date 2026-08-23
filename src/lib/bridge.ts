@@ -514,7 +514,14 @@ function createBrowserRemote(): AmnBridge['remote'] {
     async getPresence() {
       if (!configured) return [];
       const { users } = await apiFetch<{ users: PresenceEntry[] }>('/v1/collections/_presence');
-      return users;
+      /* `?? []` : une réponse sans `users` rendait `undefined`, et l'appelant
+         fait `.catch(() => [])` — qui ne rattrape qu'un rejet, pas un corps
+         mal formé. Le `.filter()` suivant levait alors dans la fonction qui
+         charge TOUTES les collections, donc plus rien ne se chargeait. Trouvé
+         en écrivant le test de sauvegarde, avec un faux serveur qui renvoyait
+         le mauvais nom de champ — exactement ce qu'une amn-api d'une autre
+         version ferait. */
+      return users ?? [];
     },
     onPresence(callback) {
       presenceListeners.add(callback);
