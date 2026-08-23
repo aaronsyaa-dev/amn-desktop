@@ -61,6 +61,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { ARTIFACT_FORBIDDEN, ARTIFACT_REQUIRED } from './business-bundle-rules.mjs';
+import { auditPackage, REMEDE } from './package-rules.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name) => {
@@ -165,6 +166,23 @@ if (!appDir || !fs.existsSync(appDir)) {
       'Publier sans cette vérification est refusé : ce qu’on enregistre ici s’installe\n' +
       'tout seul chez les clientes.',
   );
+  process.exit(1);
+}
+
+/*
+  LE MOTEUR AVANT LE CONTENU.
+
+  L'audit qui suit répond à « est-ce bien l'édition Business ? ». Celui-ci
+  répond à une question plus élémentaire, et qu'on n'avait jamais posée :
+  « est-ce que ça démarre ? » Une livraison s'est installée proprement puis a
+  refusé de s'ouvrir, faute d'`icudtl.dat` — un fichier du moteur Electron, pas
+  du code. Vérifier l'édition d'un exécutable mort n'avance à rien.
+*/
+const moteur = auditPackage(appDir);
+if (!moteur.nonCouvert && moteur.problemes.length > 0) {
+  console.error(`\nPUBLICATION REFUSÉE — le moteur Electron est incomplet dans ${appDir} :\n`);
+  for (const probleme of moteur.problemes) console.error(`  ✗ ${probleme}`);
+  console.error(`\nCette application ne démarrerait pas chez la cliente.\n${REMEDE}`);
   process.exit(1);
 }
 

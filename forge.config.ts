@@ -8,6 +8,8 @@ import { VitePlugin } from '@electron-forge/plugin-vite';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+// Module JS partagé avec `npm run check:package` : une seule liste de règles.
+import { auditPackage, REMEDE } from './scripts/package-rules.mjs';
 
 // Full closure of the packaged app's runtime (main + preload) dependencies.
 // Only these node_modules ship in the app; everything else (the whole build
@@ -38,6 +40,42 @@ const IS_BUSINESS = process.env.AMN_EDITION === 'business';
 const APP_NAME = IS_BUSINESS ? 'AMN Business' : 'AMN Desktop';
 
 const config: ForgeConfig = {
+  /**
+   * LE MOTEUR ELECTRON EST-IL COMPLET ? — vérifié à CHAQUE empaquetage.
+   *
+   * Une version livrée s'est installée sans la moindre erreur puis a refusé de
+   * démarrer : « Invalid file descriptor to ICU data received ». Il manquait
+   * `icudtl.dat` à côté de l'exécutable — un fichier qui ne vient pas de notre
+   * code, mais que l'empaqueteur recopie depuis `node_modules/electron/dist`.
+   * Un `dist` incomplet (téléchargement interrompu, extraction partielle,
+   * antivirus qui met `icudtl.dat` en quarantaine — c'est un faux positif
+   * classique) produit donc un installeur parfaitement valide contenant une
+   * application morte.
+   *
+   * Ni `typecheck`, ni `lint`, ni les contrôles de bundle ne peuvent voir ça :
+   * ils lisent du code, et le code est irréprochable. D'où ce contrôle ici,
+   * sur l'ARTEFACT, au moment où il vient d'être produit — et qui FAIT ÉCHOUER
+   * la construction plutôt que d'avertir. Un avertissement défile ; c'est très
+   * exactement comme ça que cet installeur est parti.
+   */
+  hooks: {
+    async postPackage(_forgeConfig, options) {
+      for (const dossier of options.outputPaths) {
+        const { problemes, nonCouvert, executable, reference } = auditPackage(dossier);
+        if (nonCouvert) continue;
+        if (problemes.length > 0) {
+          const details = problemes.map((p: string) => `  ✗ ${p}`).join('\n');
+          throw new Error(
+            `\nPaquet incomplet — cette application ne démarrerait pas :\n\n${dossier}\n${details}\n\n${REMEDE}\n`,
+          );
+        }
+        console.log(
+          `[amn] paquet vérifié : moteur Electron complet${reference ? ` (Electron ${reference})` : ''}, ` +
+            `application présente (${executable}).`,
+        );
+      }
+    },
+  },
   packagerConfig: {
     name: APP_NAME,
     // Nom du binaire sous Linux (Windows/macOS le dérivent de `name`).
