@@ -71,7 +71,8 @@ export function initDatabase(): Database.Database {
       critical_alert INTEGER NOT NULL DEFAULT 1,
       mention       INTEGER NOT NULL DEFAULT 1,
       task_assigned INTEGER NOT NULL DEFAULT 1,
-      appointment_reminder INTEGER NOT NULL DEFAULT 1
+      appointment_reminder INTEGER NOT NULL DEFAULT 1,
+      client_activity INTEGER NOT NULL DEFAULT 1
     );
 
     CREATE TABLE IF NOT EXISTS clients (
@@ -210,5 +211,6 @@ function runMigrations(database: Database.Database): void {
   // déjà installé garde le comportement qu'il avait, sans que personne ait à
   // rouvrir ses réglages.
   ensureColumn('notification_prefs', 'appointment_reminder', 'INTEGER NOT NULL DEFAULT 1');
+  ensureColumn('notification_prefs', 'client_activity', 'INTEGER NOT NULL DEFAULT 1');
 }
 

@@ -641,6 +641,16 @@ export interface NotificationPrefs {
    * sans effet et taisait le seul événement vrai.
    */
   appointmentReminder: boolean;
+  /**
+   * L'activité des organisations clientes (BLOC G).
+   *
+   * N'existe que dans l'édition interne : une cliente n'a pas de parc à
+   * surveiller. Le réglage n'apparaît donc que dans la liste d'AMN DevSec
+   * (voir NOTIFICATION_PREFS dans @edition/exclusive), et il est réellement
+   * consulté avant d'émettre — l'écran des notifications de ce projet a déjà
+   * porté quatre interrupteurs sans effet, on ne recommence pas.
+   */
+  clientActivity: boolean;
 }
 
 export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
@@ -649,6 +659,7 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   mention: true,
   taskAssigned: true,
   appointmentReminder: true,
+  clientActivity: true,
 };
 
 export interface AppInfo {

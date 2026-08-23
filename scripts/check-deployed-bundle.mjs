@@ -17,7 +17,7 @@
  * Sortie 0 si le déploiement est propre, 1 sinon.
  */
 
-import { FORBIDDEN, REQUIRED } from './business-bundle-rules.mjs';
+import { FORBIDDEN, REQUIRED, maskAllowed, createAllowanceBudget } from './business-bundle-rules.mjs';
 
 const args = process.argv.slice(2);
 const urlArg = args.indexOf('--url');
@@ -67,12 +67,19 @@ for (const ref of referenced) {
 }
 
 const findings = [];
+// Un seul budget de tolérance pour tout ce qui est servi : la signature de
+// marque a droit à UNE occurrence au total, pas une par document.
+const budget = createAllowanceBudget();
 const seenRequired = new Set();
 
 for (const doc of documents) {
   const lower = doc.content.toLowerCase();
   for (const rule of FORBIDDEN) {
-    const haystack = rule.caseSensitive ? doc.content : lower;
+    // Même tolérance qu'en local, et pour la même raison : une exception qui
+    // n'existerait que d'un côté autoriserait en production ce qu'on refuse
+    // avant publication, ou l'inverse.
+    const scanne = maskAllowed(doc.content, rule, budget);
+    const haystack = rule.caseSensitive ? scanne : scanne.toLowerCase();
     const needle = rule.caseSensitive ? rule.pattern : rule.pattern.toLowerCase();
     const index = haystack.indexOf(needle);
     if (index === -1) continue;

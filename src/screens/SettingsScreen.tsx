@@ -22,6 +22,38 @@ import { UpdateSection } from '../components/settings/UpdateSection';
 const ABOUT_TAGLINE = IS_BUSINESS
   ? 'Votre espace de gestion d’activité — agenda, clients, tâches et documents.'
   : 'Poste de commandement AMN DEVSEC — supervision, équipe et clients.';
+
+/**
+ * LA SIGNATURE DE MARQUE, À UN SEUL ENDROIT (BLOC M)
+ * ═════════════════════════════════════════════════
+ *
+ * Aaron veut que l'application livrée dise qui l'a faite. C'est légitime, et
+ * c'est aussi la seule mention de notre raison sociale que voit une cliente :
+ * partout ailleurs, son application est LA SIENNE, et notre nom au milieu de
+ * ses factures ferait d'elle l'utilisatrice d'un outil d'AMN DevSec plutôt que
+ * la propriétaire de son espace.
+ *
+ * ## Pourquoi l'écran « À propos », et pas le pied de page
+ *
+ * Le pied de page (`StatusRail`) était le premier candidat — c'est
+ * littéralement un `<footer>`. Mais il est déclaré `hidden … md:flex` : il
+ * n'existe pas sur téléphone. Or l'édition Business s'utilise aussi au
+ * téléphone. Une signature invisible sur la moitié des écrans n'est pas une
+ * signature discrète, c'est une signature absente.
+ *
+ * « À propos » est l'endroit où l'on va justement pour savoir CE QU'EST ce
+ * logiciel et d'où il vient. La mention y est attendue plutôt que subie, elle
+ * est atteignable sur tous les formats, et elle n'apparaît qu'une fois.
+ *
+ * ## Cette chaîne est surveillée
+ *
+ * `scripts/check-business-bundle.mjs` interdit « AMN DevSec » dans le bundle
+ * d'une cliente. La règle n'est pas contournée : elle autorise EXACTEMENT
+ * cette chaîne-ci, une seule fois (voir `allowExact` dans
+ * business-bundle-rules.mjs). Recopier la signature ailleurs, ou la répéter,
+ * fait échouer le contrôle — ce qui est le comportement voulu.
+ */
+const BRAND_SIGNATURE = 'by AMN DevSec';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { CHANGELOG } from '../data/changelog';
 import { DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs } from '../shared/api';
@@ -198,6 +230,11 @@ function AboutSection() {
             <p className="text-xs text-text-muted">
               {ABOUT_TAGLINE}
             </p>
+            {IS_BUSINESS && (
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+                {BRAND_SIGNATURE}
+              </p>
+            )}
           </div>
           <div className="text-right">
             <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Version</p>

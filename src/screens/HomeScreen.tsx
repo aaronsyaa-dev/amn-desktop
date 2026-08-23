@@ -24,6 +24,7 @@ import { useSitePins } from '../lib/useSitePins';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
 import { StatusBadge } from '../components/StatusBadge';
 import { VeilleTicker } from '../components/VeilleTicker';
+import { SupervisionBand } from '../components/SupervisionBand';
 import { AttentionPanel } from '../components/AttentionPanel';
 import { homeWelcome, homeNudge } from '../lib/homeGreetings';
 import { relativeTime } from '../lib/time';
@@ -185,6 +186,11 @@ export function HomeScreen() {
 
       {/* Veille ticker (Bloc 2) — renders nothing (no margin) when there's no data */}
       <VeilleTicker />
+
+      {/* La veille dit ce qui se passe DEHORS ; celle-ci, ce qui se passe chez
+          nous — clientes connectées, volume écrit, silences, sites en panne.
+          Elle ne s'affiche que s'il y a un fait vrai à dire (BLOC K). */}
+      <SupervisionBand />
 
       {/* Ce que l'application a remarqué toute seule. Ne s'affiche que s'il y a
           quelque chose à dire — voir AttentionPanel. */}

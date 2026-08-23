@@ -204,6 +204,7 @@ interface PrefsRow {
   mention: number;
   task_assigned: number;
   appointment_reminder: number;
+  client_activity: number;
 }
 
 function toPrefs(row: PrefsRow): NotificationPrefs {
@@ -215,6 +216,9 @@ function toPrefs(row: PrefsRow): NotificationPrefs {
     // Colonne ajoutée après coup : une ligne écrite par une version antérieure
     // n'a pas la valeur, et l'absence doit valoir « activé » comme avant.
     appointmentReminder: row.appointment_reminder === undefined ? true : Boolean(row.appointment_reminder),
+    // Même raison, même traitement : une ligne écrite avant l'ajout de la
+    // colonne n'a pas la valeur, et l'absence vaut « activé ».
+    clientActivity: row.client_activity === undefined ? true : Boolean(row.client_activity),
   };
 }
 
@@ -241,6 +245,7 @@ export function updatePrefs(email: string, patch: Partial<NotificationPrefs>): N
     mention: patch.mention,
     task_assigned: patch.taskAssigned,
     appointment_reminder: patch.appointmentReminder,
+    client_activity: patch.clientActivity,
   };
   for (const [column, value] of Object.entries(map)) {
     if (value !== undefined) {

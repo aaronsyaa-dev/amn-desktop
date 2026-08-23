@@ -6,6 +6,7 @@ import { useSync, useCollection } from '../state/SyncContext';
 import { useMessages } from '../state/useMessages';
 import { useProfiles } from '../state/ProfilesContext';
 import { DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs } from '../shared/api';
+import { useParcInsights } from '../state/parcInsights';
 
 interface TaskLike {
   id: string;
@@ -30,7 +31,19 @@ export function NotificationsManager() {
 
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_NOTIFICATION_PREFS);
 
+  /*
+    LE RELEVÉ DU PARC, EN ARRIÈRE-PLAN (BLOC G)
+
+    `background: true` parce qu'un surveillant qui ne tourne que fenêtre
+    visible n'annonce jamais rien qu'Aaron n'aurait pas vu de toute façon —
+    voir state/parcInsights.ts. C'est le seul abonné qui le demande.
+  */
+  const parc = useParcInsights({ background: true });
+
   const seenAlerts = useRef<Set<number>>(new Set());
+  /** État du parc au tour précédent : connexions, et date de dernière écriture. */
+  const parcPrecedent = useRef<Map<string, { connecte: boolean; derniere: string | null }>>(new Map());
+  const parcBaseline = useRef(false);
   const seenMessages = useRef<Set<string>>(new Set());
   const seenTasks = useRef<Set<string>>(new Set());
   const prevOffline = useRef<Set<string>>(new Set());
@@ -114,6 +127,90 @@ export function NotificationsManager() {
       }
     }
   }, [tasks, prefs.taskAssigned, user?.email]);
+
+  /*
+    L'ACTIVITÉ DES ORGANISATIONS CLIENTES (BLOC G)
+    ═════════════════════════════════════════════
+
+    Deux événements seulement, et c'est délibéré. Aaron a demandé d'être
+    prévenu de ce qui mérite vraiment son attention — pas de chaque
+    micro-mouvement. Une notification par écriture de cliente serait un flux
+    continu qu'on apprend à ignorer en trois jours, et le jour où quelque chose
+    compte vraiment, elle passerait dans le tas.
+
+      1. UN ESPACE S'OUVRE — la cliente vient de se connecter. C'est le moment
+         utile : elle travaille maintenant, donc c'est maintenant qu'une
+         question peut arriver.
+
+      2. UNE CLIENTE REPART APRÈS UN SILENCE — plus d'une semaine sans écrire,
+         puis une écriture. Un vrai signal de gestion : soit elle revient, soit
+         quelque chose s'est débloqué chez elle.
+
+    Ce qui n'est PAS notifié, et pourquoi : chaque écriture (bruit continu),
+    chaque déconnexion (elle ferme son ordinateur le soir, ce n'est pas un
+    événement), et l'ouverture d'un espace déjà annoncé le jour même.
+
+    ## Le garde-fou : une fois par organisation et par jour
+
+    Il est gardé en `localStorage`, pas en mémoire. Une limite en mémoire
+    repartirait à zéro à chaque redémarrage de l'application — donc relancer
+    l'app trois fois dans la matinée renotifierait trois fois pour la même
+    cliente, ce qui est exactement le bruit qu'on veut éviter.
+  */
+  const dejaNotifie = (orgId: string): boolean => {
+    const jour = new Date().toISOString().slice(0, 10);
+    try {
+      const cle = `amn.notif.parc.${orgId}`;
+      if (window.localStorage.getItem(cle) === jour) return true;
+      window.localStorage.setItem(cle, jour);
+      return false;
+    } catch {
+      // Stockage indisponible : on préfère notifier que se taire. Une
+      // notification en trop se remarque ; une notification manquée, non.
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    if (!parc.data) return;
+
+    // Le premier relevé sert de repère, jamais de déclencheur : au lancement,
+    // toutes les clientes connectées paraîtraient « venir de se connecter ».
+    if (!parcBaseline.current) {
+      for (const org of parc.data.orgs) {
+        parcPrecedent.current.set(org.id, {
+          connecte: org.connections > 0,
+          derniere: org.lastActivityAt,
+        });
+      }
+      parcBaseline.current = true;
+      return;
+    }
+
+    const SEMAINE_MS = 7 * 24 * 60 * 60 * 1000;
+    for (const org of parc.data.orgs) {
+      const avant = parcPrecedent.current.get(org.id);
+      const connecte = org.connections > 0;
+      parcPrecedent.current.set(org.id, { connecte, derniere: org.lastActivityAt });
+      if (!avant) continue; // organisation apparue en cours de route
+
+      if (prefs.clientActivity && connecte && !avant.connecte && !dejaNotifie(org.id)) {
+        notify('Espace client ouvert', `${org.name} vient de se connecter.`);
+        continue; // une seule notification par organisation et par tour
+      }
+
+      const aEcrit = org.lastActivityAt && org.lastActivityAt !== avant.derniere;
+      const silenceAvant = avant.derniere
+        ? Date.now() - new Date(avant.derniere).getTime() > SEMAINE_MS
+        : true;
+      if (prefs.clientActivity && aEcrit && silenceAvant && !dejaNotifie(org.id)) {
+        notify(
+          'Reprise d’activité',
+          `${org.name} a repris après plus d’une semaine sans activité.`,
+        );
+      }
+    }
+  }, [parc.data, prefs.clientActivity]);
 
   return null;
 }

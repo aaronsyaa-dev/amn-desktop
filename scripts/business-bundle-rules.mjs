@@ -19,7 +19,30 @@
 export const FORBIDDEN = [
   // --- Identité et comptes d'AMN DevSec ---
   { pattern: 'amn-devsec.com', why: 'nos adresses email' },
-  { pattern: 'AMN DevSec', why: 'notre raison sociale' },
+  {
+    pattern: 'AMN DevSec',
+    why: 'notre raison sociale',
+    /*
+      L'UNIQUE EXCEPTION, ET ELLE EST COMPTÉE (BLOC M)
+
+      Aaron veut que l'application livrée dise qui l'a faite. La règle n'est
+      donc pas levée — elle est RÉTRÉCIE à une chaîne exacte, autorisée une
+      fois par fichier, et nulle part ailleurs :
+
+        · « AMN DevSec » seul, sans le « by » : toujours refusé ;
+        · la signature recopiée sur un deuxième écran : refusée, parce que le
+          quota est dépassé et que la deuxième occurrence reste visible au
+          contrôle ;
+        · « by AMN DevSec » dans un autre fichier du bundle : refusé pour la
+          même raison — le quota vaut par fichier, et la signature n'a qu'un
+          seul lieu légitime (l'écran « À propos », voir SettingsScreen.tsx).
+
+      La casse est respectée ici alors que le motif, lui, est cherché sans
+      casse : « BY AMN DEVSEC » en capitales dans une facture ne serait pas la
+      signature, ce serait une fuite.
+    */
+    allowExact: { text: 'by AMN DevSec', max: 1 },
+  },
   { pattern: 'aaron@', why: 'compte opérateur' },
   { pattern: 'mohamed@', why: 'compte opérateur' },
   { pattern: 'AmnQG-2026', why: 'mot de passe de départ des comptes locaux' },
@@ -50,6 +73,58 @@ export const FORBIDDEN = [
   { pattern: 'VITE_AMN_API_WEB_TOKEN', why: 'un build cliente n’embarque aucun jeton' },
   { pattern: 'VITE_AMN_API_OPERATOR_TOKEN', why: 'un build cliente n’embarque aucun jeton' },
 ];
+
+/**
+ * Masque les occurrences EXPRESSÉMENT autorisées avant la recherche.
+ *
+ * Deux contrôles appellent cette fonction (`check-business-bundle.mjs` sur un
+ * `dist/` local, `check-deployed-bundle.mjs` sur ce qu'une URL sert vraiment) :
+ * écrite ici, la tolérance ne peut pas exister dans l'un et manquer dans
+ * l'autre — ce qui reviendrait à autoriser en production ce qu'on refuse en
+ * local, ou l'inverse.
+ *
+ * Le masque a EXACTEMENT la longueur du texte remplacé. Les index ne bougent
+ * donc pas d'un caractère, et l'extrait affiché en cas d'échec continue de
+ * montrer le vrai voisinage de la fuite plutôt qu'un texte décalé.
+ *
+ * Au-delà du quota, les occurrences suivantes ne sont PAS masquées : elles
+ * restent visibles au contrôle, qui échoue. C'est ce qui rend l'exception
+ * comptée plutôt qu'ouverte.
+ *
+ * Le quota vaut pour TOUT LE BUNDLE, pas par fichier — d'où le budget passé
+ * d'un fichier à l'autre. Un quota par fichier aurait laissé passer la même
+ * signature recopiée dans deux morceaux différents, alors que la consigne est
+ * « un seul endroit ». Le découpage en chunks n'est pas décidé par nous : s'en
+ * remettre à lui pour compter reviendrait à faire dépendre une règle d'identité
+ * des choix d'un empaqueteur.
+ */
+export function createAllowanceBudget() {
+  const budget = new Map();
+  for (const rule of FORBIDDEN) {
+    if (rule.allowExact) budget.set(rule.pattern, rule.allowExact.max);
+  }
+  return budget;
+}
+
+export function maskAllowed(content, rule, budget) {
+  const allowed = rule.allowExact;
+  if (!allowed) return content;
+  // Sans budget partagé, on retombe sur le quota nominal — utile pour un
+  // appel isolé (un test), jamais pour un parcours de bundle.
+  let reste = budget ? (budget.get(rule.pattern) ?? 0) : allowed.max;
+  const masque = '\u00B7'.repeat(allowed.text.length);
+  let out = content;
+  let from = 0;
+  while (reste > 0) {
+    const i = out.indexOf(allowed.text, from);
+    if (i === -1) break;
+    out = out.slice(0, i) + masque + out.slice(i + allowed.text.length);
+    from = i + allowed.text.length;
+    reste -= 1;
+  }
+  if (budget) budget.set(rule.pattern, reste);
+  return out;
+}
 
 /**
  * Ce qui DOIT s'y trouver.

@@ -97,10 +97,29 @@ function onVisibilite() {
   void tourner();
 }
 
+/**
+ * Combien d'abonnés ont besoin que la ronde CONTINUE fenêtre masquée.
+ *
+ * La règle par défaut — se taire quand personne ne regarde — est la bonne pour
+ * un écran : interroger le serveur toutes les quinze secondes pour une fenêtre
+ * réduite depuis une heure ne sert personne.
+ *
+ * Elle est fausse pour un SURVEILLANT. Un notificateur qui ne s'exécute que
+ * pendant qu'on regarde l'application n'annonce jamais rien qu'on n'aurait pas
+ * vu de toute façon — c'est-à-dire qu'il ne sert à rien. `document.hidden` est
+ * vrai dès que la fenêtre est réduite, ce qui est exactement le moment où une
+ * notification système a de la valeur.
+ *
+ * D'où ce compteur : tant qu'au moins un abonné demande l'arrière-plan, la
+ * ronde continue. Dès qu'ils sont tous partis, on retrouve le comportement
+ * économe.
+ */
+let abonnesArrierePlan = 0;
+
 function demarrer() {
   if (minuterie) return;
   minuterie = setInterval(() => {
-    if (!document.hidden) void tourner();
+    if (!document.hidden || abonnesArrierePlan > 0) void tourner();
   }, INTERVALLE_MS);
   document.addEventListener('visibilitychange', onVisibilite);
   void tourner();
@@ -117,20 +136,30 @@ function arreter() {
  * la route est réservée à l'opérateur, et l'édition Business n'embarque ni ces
  * écrans ni ce pont.
  */
-export function useParcInsights(): ParcInsightsState {
+export function useParcInsights(options?: {
+  /**
+   * Garder la ronde active même fenêtre masquée. Réservé à ce qui doit
+   * réagir SANS qu'on regarde — un notificateur, typiquement. Un écran ne
+   * doit pas le demander : il n'a rien à afficher quand personne ne le voit.
+   */
+  background?: boolean;
+}): ParcInsightsState {
   const [snapshot, setSnapshot] = useState(etat);
+  const background = options?.background ?? false;
 
   useEffect(() => {
     abonnes.add(setSnapshot);
+    if (background) abonnesArrierePlan += 1;
     demarrer();
     // Le dernier relevé connu, tout de suite : un écran monté en cours de
     // ronde ne doit pas repasser par « je ne sais pas ».
     setSnapshot(etat);
     return () => {
       abonnes.delete(setSnapshot);
+      if (background) abonnesArrierePlan -= 1;
       if (abonnes.size === 0) arreter();
     };
-  }, []);
+  }, [background]);
 
   return snapshot;
 }

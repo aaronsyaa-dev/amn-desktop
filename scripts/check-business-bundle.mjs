@@ -28,7 +28,7 @@ const args = process.argv.slice(2);
 const dirArg = args.indexOf('--dir');
 const OUT_DIR = path.resolve(dirArg >= 0 ? args[dirArg + 1] : 'dist');
 
-import { FORBIDDEN, REQUIRED } from './business-bundle-rules.mjs';
+import { FORBIDDEN, REQUIRED, maskAllowed, createAllowanceBudget } from './business-bundle-rules.mjs';
 
 /** Fichiers texte du dossier de sortie, en profondeur. */
 function walk(dir) {
@@ -57,12 +57,18 @@ if (files.length === 0) {
 
 const findings = [];
 const seenRequired = new Set();
+// Un seul budget de tolérance pour TOUT le bundle : la signature de marque a
+// droit à UNE occurrence au total, pas une par fichier.
+const budget = createAllowanceBudget();
 
 for (const file of files) {
   const content = fs.readFileSync(file, 'utf-8');
   const lower = content.toLowerCase();
   for (const rule of FORBIDDEN) {
-    const haystack = rule.caseSensitive ? content : lower;
+    // Les exceptions comptées sont masquées AVANT la recherche, sur un texte de
+    // longueur inchangée — voir maskAllowed. Sans `allowExact`, rien ne bouge.
+    const scanne = maskAllowed(content, rule, budget);
+    const haystack = rule.caseSensitive ? scanne : scanne.toLowerCase();
     const needle = rule.caseSensitive ? rule.pattern : rule.pattern.toLowerCase();
     let index = haystack.indexOf(needle);
     while (index !== -1) {

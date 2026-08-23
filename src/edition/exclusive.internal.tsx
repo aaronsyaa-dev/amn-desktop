@@ -74,6 +74,11 @@ const AMN_VIEW: ExclusiveView = {
     { key: 'criticalAlert', label: 'Alerte critique', detail: 'Attaque ou incident critique détecté.' },
     { key: 'mention', label: 'Mention', detail: 'Quelqu’un vous mentionne dans un message.' },
     { key: 'taskAssigned', label: 'Tâche assignée', detail: 'Une tâche vous est attribuée.' },
+    {
+      key: 'clientActivity',
+      label: 'Activité cliente',
+      detail: 'Un espace client s’ouvre, ou une cliente repart après une semaine de silence.',
+    },
   ],
   TEAM_ENABLED: true,
   TEAM_MEMBERS: [
