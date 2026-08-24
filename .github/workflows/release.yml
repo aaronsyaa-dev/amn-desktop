@@ -35,8 +35,40 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Publish (build + upload to GitHub Releases)
-        run: npm run publish
+      # ─────────────────────────────────────────────────────────────────────
+      # Construire, VÉRIFIER, puis seulement téléverser.
+      #
+      # `npm run publish` faisait les deux d'un coup : la CI a donc publié trois
+      # installeurs qui ne démarraient pas, sans que rien puisse s'y opposer.
+      # Le découpage ci-dessous vérifie EXACTEMENT les artefacts qui seront
+      # ensuite envoyés — `--from-dry-run` réutilise ceux de l'étape de
+      # construction au lieu d'en refabriquer d'autres.
+      #
+      # Les deux hooks de `forge.config.ts` (postPackage, postMake) bloquent
+      # déjà un artefact incomplet pendant la construction. Ces étapes-ci sont
+      # explicites en plus, pour que le journal de la CI montre noir sur blanc
+      # ce qui a été contrôlé.
+      #
+      # Repli si `--from-dry-run` posait problème : `npm run publish` reste
+      # valable et garde les deux hooks — on perd la garantie « on téléverse
+      # exactement ce qu'on a vérifié », pas le garde-fou lui-même.
+      - name: Bootstrap (rebuild des modules natifs)
+        run: npm run bootstrap
+
+      - name: Build (sans téléversement)
+        run: npx electron-forge publish --dry-run
+        env:
+          AMN_API_URL: ${{ secrets.AMN_API_URL }}
+          AMN_API_OPERATOR_TOKEN: ${{ secrets.AMN_API_OPERATOR_TOKEN }}
+
+      - name: Vérifier le paquet construit (moteur Electron complet)
+        run: npm run check:package
+
+      - name: Vérifier l'installeur (ce qui part vraiment chez la cliente)
+        run: npm run check:installer
+
+      - name: Publier les artefacts vérifiés
+        run: npx electron-forge publish --from-dry-run
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Baked into the app at build time (see vite.main.config.ts) so the

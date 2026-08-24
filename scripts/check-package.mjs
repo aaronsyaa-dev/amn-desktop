@@ -20,12 +20,26 @@ const flag = (nom) => {
   return i >= 0 ? args[i + 1] : null;
 };
 
+/**
+ * Les dossiers de `out/` qui sont VRAIMENT une application empaquetée.
+ *
+ * Reconnue à son contenu (`resources/app.asar`), et non à sa position. La
+ * première version excluait `make` par son nom et prenait tout le reste — elle
+ * a donc audité `out/publish-dry-run`, le dossier d'état que Forge écrit
+ * pendant `publish --dry-run`, et déclaré l'exécutable manquant. Mesuré : le
+ * contrôle censé protéger la publication l'aurait bloquée dès la première
+ * vraie release, sur un problème inexistant.
+ *
+ * Une liste de noms à exclure aurait le même défaut au prochain dossier que
+ * Forge décide d'écrire là. Le contenu, lui, ne ment pas.
+ */
 function paquetsSousOut() {
   if (!fs.existsSync('out')) return [];
   return fs
     .readdirSync('out', { withFileTypes: true })
-    .filter((e) => e.isDirectory() && e.name !== 'make')
-    .map((e) => path.join('out', e.name));
+    .filter((e) => e.isDirectory())
+    .map((e) => path.join('out', e.name))
+    .filter((d) => fs.existsSync(path.join(d, 'resources', 'app.asar')));
 }
 
 const dossiers = flag('dir') ? [flag('dir')] : paquetsSousOut();

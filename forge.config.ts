@@ -10,6 +10,7 @@ import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 // Module JS partagé avec `npm run check:package` : une seule liste de règles.
 import { auditPackage, REMEDE } from './scripts/package-rules.mjs';
+import { auditInstaller, REMEDE_INSTALLEUR } from './scripts/installer-rules.mjs';
 
 // Full closure of the packaged app's runtime (main + preload) dependencies.
 // Only these node_modules ship in the app; everything else (the whole build
@@ -59,6 +60,54 @@ const config: ForgeConfig = {
    * exactement comme ça que cet installeur est parti.
    */
   hooks: {
+    /**
+     * L'INSTALLEUR EST-IL COMPLET ? — vérifié APRÈS les makers, AVANT la publication.
+     *
+     * `postPackage` ci-dessous garde le dossier construit. Il a fait son
+     * travail et n'a pourtant rien empêché : ce dossier n'est pas ce qu'on
+     * livre. `electron-forge publish` enchaîne
+     *
+     *     package → postPackage → makers (Squirrel) → postMake → publication
+     *
+     * et c'est entre les deux hooks que naît le `.nupkg` que Squirrel embarque
+     * dans le `Setup.exe` puis redéploie chez la cliente. Un fichier perdu là —
+     * antivirus qui met `icudtl.dat` en quarantaine pendant la compression, par
+     * exemple, et les runners GitHub ont Defender actif — donne un installeur
+     * qui s'installe proprement et une application qui ne démarre pas.
+     *
+     * Ce hook-ci s'exécute dans `make` COMME dans `publish`, parce que
+     * `publish` passe par `make` (vérifié dans le code d'@electron-forge/core,
+     * api/publish.js : « triggering make »). Il lève une exception, donc la
+     * publication n'a pas lieu : rien de cassé ne peut plus être téléversé.
+     */
+    async postMake(_forgeConfig, makeResults) {
+      for (const resultat of makeResults) {
+        const nupkgs = resultat.artifacts.filter((a: string) => a.endsWith('.nupkg'));
+        if (nupkgs.length === 0) {
+          // Seul Squirrel produit un .nupkg. Les autres makers (deb, rpm, zip)
+          // n'ont rien à vérifier ici — mais un artefact Windows SANS .nupkg
+          // serait anormal et doit se voir.
+          if (resultat.platform === 'win32') {
+            throw new Error(
+              `\nAucun .nupkg produit pour win32 : l'installeur n'a pas été fabriqué comme attendu.\n`,
+            );
+          }
+          continue;
+        }
+        for (const nupkg of nupkgs) {
+          const { problemes, entrees } = auditInstaller(nupkg);
+          if (problemes.length > 0) {
+            const details = problemes.map((p: string) => `  ✗ ${p}`).join('\n');
+            throw new Error(
+              `\nInstalleur incomplet — cette application ne démarrerait pas une fois installée :\n\n` +
+                `${nupkg}\n${details}\n\n${REMEDE_INSTALLEUR}\n`,
+            );
+          }
+          console.log(`[amn] installeur vérifié : ${nupkg} (${entrees} entrées, moteur complet).`);
+        }
+      }
+    },
+
     async postPackage(_forgeConfig, options) {
       for (const dossier of options.outputPaths) {
         const { problemes, nonCouvert, executable, reference } = auditPackage(dossier);
