@@ -236,7 +236,20 @@ export function OrgDossierPanel({
    * peut plus être retrouvé après. L'afficher tout de suite, en clair, avec de
    * quoi le copier, est la seule façon qu'il serve à quelque chose.
    */
-  const [lienOuvert, setLienOuvert] = useState<{ email: string; url: string | null; token: string } | null>(
+  /*
+    LE SECRET MONTRÉ UNE FOIS (BLOC 5.2)
+
+    Un seul état pour les deux gestes qui produisent quelque chose qu'on ne
+    reverra pas : un lien d'activation et un mot de passe temporaire. Deux
+    états séparés auraient permis d'en afficher deux à la fois — et le second
+    aurait poussé le premier hors de l'écran alors qu'il n'était pas encore
+    copié.
+
+    `genre` sert au texte : « envoyez-lui ce lien » et « dictez-lui ce mot de
+    passe » ne se transmettent pas de la même façon, et un libellé commun
+    aurait été juste pour aucun des deux.
+  */
+  const [lienOuvert, setLienOuvert] = useState<{ genre: 'lien' | 'motdepasse'; email: string; url: string | null; token: string } | null>(
     null,
   );
 
@@ -720,7 +733,7 @@ export function OrgDossierPanel({
                   .remote.admin.createUser(org.id, { email, role: 'member' })
                   .then((res) => {
                     setNouvelEmail('');
-                    setLienOuvert({ email, url: res.invitation.url, token: res.invitation.token });
+                    setLienOuvert({ genre: 'lien', email, url: res.invitation.url, token: res.invitation.token });
                     chargerComptes();
                   })
                   .catch((err) => setError(cleanErrorMessage(err, 'Impossible d’ouvrir ce compte.')))
@@ -735,9 +748,10 @@ export function OrgDossierPanel({
           {lienOuvert && (
             <div className="mt-2 border border-border bg-surface px-3 py-2">
               <p className="text-xs leading-relaxed text-text-primary">
-                Compte ouvert pour{' '}
-                <span className="font-mono text-[11px]">{lienOuvert.email}</span>. Envoyez-lui ce
-                lien — <span className="text-text-muted">il ne sera plus affiché.</span>
+                {lienOuvert.genre === 'lien' ? 'Compte ouvert pour ' : 'Nouveau mot de passe pour '}
+                <span className="font-mono text-[11px]">{lienOuvert.email}</span>.{' '}
+                {lienOuvert.genre === 'lien' ? 'Envoyez-lui ce lien' : 'Transmettez-le-lui'} —{' '}
+                <span className="text-text-muted">il ne sera plus affiché.</span>
               </p>
               <div className="mt-2 flex items-center gap-2">
                 <code className="min-w-0 flex-1 overflow-x-auto border border-border bg-bg px-2 py-1.5 font-mono text-[11px] text-text-primary">
@@ -751,7 +765,13 @@ export function OrgDossierPanel({
                   Copier
                 </button>
               </div>
-              {!lienOuvert.url && (
+              {lienOuvert.genre === 'motdepasse' && (
+                <p className="mt-2 text-[11px] leading-relaxed text-text-muted">
+                  Ses sessions ouvertes ont été fermées, et son application lui rappellera de
+                  choisir le sien — ce mot de passe est connu de deux personnes.
+                </p>
+              )}
+              {lienOuvert.genre === 'lien' && !lienOuvert.url && (
                 <p className="mt-2 text-[11px] leading-relaxed text-warning">
                   Aucune adresse d’application Business n’est configurée sur amn-api
                   (APP_BUSINESS_PUBLIC_URL) : seul le jeton est disponible, et il ne se colle nulle
@@ -785,6 +805,80 @@ export function OrgDossierPanel({
                         {compte.status !== 'active' ? ` · ${compte.status}` : ''}
                       </p>
                     </div>
+                    {/*
+                      LES DEUX GESTES DU SUPPORT (BLOC 5.2)
+
+                      Ils existaient dans l'API et dans le pont depuis
+                      longtemps, et n'avaient d'écran QUE dans l'atelier, au
+                      moment de la création. Autrement dit : quand une cliente
+                      appelait en disant « je n'arrive plus à me connecter »,
+                      il n'y avait aucun bouton — ni loin, ni caché : aucun.
+                      L'audit des clics cherchait des gestes trop longs ; il a
+                      trouvé des gestes absents, ce qui coûte plus cher.
+
+                      Ils vivent ici, dans le dossier, parce que c'est là qu'on
+                      est quand on a la personne au téléphone : à côté de son
+                      adresse, de son rôle et de l'état de son compte.
+                    */}
+                    <button
+                      type="button"
+                      disabled={compteEnCours !== null}
+                      title={`Remettre un mot de passe temporaire à ${compte.email}`}
+                      onClick={() => {
+                        if (compteEnCours) return;
+                        setCompteEnCours(compte.id);
+                        setError(null);
+                        void bridge()
+                          .remote.admin.resetPassword(org.id, compte.id)
+                          .then((res) => {
+                            setLienOuvert({
+                              genre: 'motdepasse',
+                              email: compte.email,
+                              url: null,
+                              token: res.password,
+                            });
+                            // Le compte passe « actif » côté serveur : la liste
+                            // doit le dire, sinon l'écran continue d'afficher
+                            // « invited » pour quelqu'un qui peut entrer.
+                            chargerComptes();
+                          })
+                          .catch((err) => setError(cleanErrorMessage(err, 'Mot de passe refusé.')))
+                          .finally(() => setCompteEnCours(null));
+                      }}
+                      className="flex-shrink-0 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      {compteEnCours === compte.id ? '…' : 'Mot de passe'}
+                    </button>
+                    {/* Réinviter n'a de sens que pour qui n'est jamais entré :
+                        proposer un nouveau lien d'activation à un compte actif
+                        offrirait un geste qui ne répond à aucune situation. */}
+                    {compte.status === 'invited' && (
+                      <button
+                        type="button"
+                        disabled={compteEnCours !== null}
+                        title={`Réémettre le lien d’activation de ${compte.email}`}
+                        onClick={() => {
+                          if (compteEnCours) return;
+                          setCompteEnCours(compte.id);
+                          setError(null);
+                          void bridge()
+                            .remote.admin.reissueInvitation(org.id, compte.email)
+                            .then((res) => {
+                              setLienOuvert({
+                                genre: 'lien',
+                                email: compte.email,
+                                url: res.invitation.url,
+                                token: res.invitation.token,
+                              });
+                            })
+                            .catch((err) => setError(cleanErrorMessage(err, 'Réémission refusée.')))
+                            .finally(() => setCompteEnCours(null));
+                        }}
+                        className="flex-shrink-0 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-30"
+                      >
+                        Réinviter
+                      </button>
+                    )}
                     <button
                       type="button"
                       disabled={dernierProprietaire || compteEnCours !== null}
