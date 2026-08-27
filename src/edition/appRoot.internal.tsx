@@ -25,6 +25,7 @@ import { SslScreen } from '../screens/SslScreen';
 import { DecisionsScreen } from '../screens/DecisionsScreen';
 import { KnowledgeScreen } from '../screens/KnowledgeScreen';
 import { NotesScreen } from '../screens/NotesScreen';
+import { PagesScreen } from '../screens/PagesScreen';
 import { MediaLibraryScreen } from '../screens/MediaLibraryScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
@@ -125,6 +126,7 @@ function AmnRoutes() {
         <Route path="/" element={<HomeScreen />} />
         <Route path="/tasks" element={<TasksScreen />} />
         <Route path="/notes" element={<NotesScreen />} />
+        <Route path="/pages" element={<PagesScreen />} />
         <Route path="/clients" element={<ClientsScreen />} />
         <Route path="/facturation" element={<InvoicesScreen />} />
         <Route path="/projets" element={<ProjectsScreen />} />
@@ -252,6 +254,14 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="notes">
               <NotesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/pages"
+          element={
+            <ModuleRoute module="pages">
+              <PagesScreen />
             </ModuleRoute>
           }
         />

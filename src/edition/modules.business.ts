@@ -7,6 +7,7 @@ import {
   FileText,
   Images,
   LayoutDashboard,
+  LayoutTemplate,
   Lock,
   NotebookPen,
   FolderKanban,
@@ -99,6 +100,9 @@ export const NAV_SECTIONS: NavSection[] = [
     label: 'Documents',
     items: [
       { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen, hint: 'Bloc-notes' },
+      // Voisin des Notes, et distinct d'elles : une note est un jet personnel,
+      // une page est un support qu'on tient à jour et que d'autres relisent.
+      { key: 'pages', label: 'Pages', to: '/pages', icon: LayoutTemplate, hint: 'Fiches et supports partagés' },
       { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Comptes-rendus' },
       { key: 'media', label: 'Médias', to: '/media', icon: Images, hint: 'Photos et fichiers' },
     ],
@@ -132,6 +136,9 @@ export const ACTIVITY_TABS: ActivityTab[] = [
   { routeKey: '/tasks', collection: 'tasks', noun: 'Tâche' },
   { routeKey: '/clients', collection: 'clients', noun: 'Client' },
   { routeKey: '/notes', collection: 'notes', noun: 'Note' },
+  // Une page est écrite à plusieurs : c'est justement le module où « quelqu'un
+  // a changé quelque chose depuis l'autre appareil » mérite d'être signalé.
+  { routeKey: '/pages', collection: 'pages', noun: 'Page' },
   { routeKey: '/media', collection: 'media', noun: 'Média' },
   // Une dépense saisie sur le téléphone doit se signaler sur le poste — c'est
   // le cas d'usage même du module : on photographie le reçu dehors, on
@@ -156,6 +163,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/calculateurs', 'analyse'],
   ['/commandes', 'fiches'],
   ['/notes', 'journal'],
+  ['/pages', 'journal'],
   ['/media', 'base'],
   ['/reports', 'livrables'],
   ['/settings', 'reglages'],

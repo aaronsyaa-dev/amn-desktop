@@ -12,6 +12,7 @@ import {
   History,
   Images,
   LayoutDashboard,
+  LayoutTemplate,
   Lock,
   LockKeyhole,
   MonitorDot,
@@ -122,6 +123,10 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { key: 'team', label: 'Équipe', to: '/team', icon: Users, hint: 'Messagerie et présence' },
       { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen, hint: 'Bloc-notes' },
+      // Une note est un jet personnel ; une page est un support commun qu'on
+      // tient à jour et que d'autres relisent. D'où sa place ici, dans le
+      // collectif, et non à côté des livrables.
+      { key: 'pages', label: 'Pages', to: '/pages', icon: LayoutTemplate, hint: 'Fiches et supports partagés' },
       { key: 'decisions', label: 'Décisions', to: '/decisions', icon: Scale, hint: 'Journal des arbitrages' },
       { key: 'knowledge', label: 'Connaissances', to: '/knowledge', icon: BookOpen, hint: 'Base interne' },
     ],
@@ -195,6 +200,7 @@ export const ACTIVITY_TABS: ActivityTab[] = [
   { routeKey: '/decisions', collection: 'decisions', noun: 'Décision' },
   { routeKey: '/knowledge', collection: 'knowledge', noun: 'Connaissance' },
   { routeKey: '/notes', collection: 'notes', noun: 'Note' },
+  { routeKey: '/pages', collection: 'pages', noun: 'Page' },
   // Le calendrier entre dans le Poste de travail : un rendez-vous ajouté par
   // l'un doit se signaler à l'autre, exactement comme une tâche.
   { routeKey: '/agenda', collection: 'appointments', noun: 'Rendez-vous' },
@@ -235,6 +241,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/comply', 'analyse'],
   // SSL Monitor est un écran produit comme les deux autres — même entrée.
   ['/ssl', 'analyse'],
+  ['/pages', 'journal'],
   ['/decisions', 'journal'],
   ['/knowledge', 'base'],
   ['/reports', 'livrables'],

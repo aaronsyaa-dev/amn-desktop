@@ -10,6 +10,7 @@ import {
   FolderKanban,
   Images,
   LayoutDashboard,
+  LayoutTemplate,
   LogOut,
   NotebookPen,
   ReceiptEuro,
@@ -52,6 +53,7 @@ const CLIENT_MODULES: NavItem[] = [
   { key: 'calculators', label: 'Calculateurs', to: '/calculateurs', icon: Calculator, hint: 'Prix, marges, répartition' },
   { key: 'orders', label: 'Commandes', to: '/commandes', icon: ShoppingBag, hint: 'Reçues du site' },
   { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen, hint: 'Bloc-notes' },
+  { key: 'pages', label: 'Pages', to: '/pages', icon: LayoutTemplate, hint: 'Fiches et supports partagés' },
   { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Comptes-rendus' },
   { key: 'media', label: 'Médias', to: '/media', icon: Images, hint: 'Photos et fichiers' },
   { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings, hint: 'Profil' },
@@ -84,7 +86,7 @@ export const CLIENT_SECTIONS: Array<{ label: string; keys: string[] }> = [
   { label: 'Pilotage', keys: ['home', 'agenda', 'projects', 'tasks'] },
   { label: 'Clients & revenus', keys: ['clients', 'invoices', 'orders'] },
   { label: 'Production', keys: ['time', 'expenses', 'calculators'] },
-  { label: 'Documents', keys: ['notes', 'reports', 'media'] },
+  { label: 'Documents', keys: ['notes', 'pages', 'reports', 'media'] },
   { label: 'Système', keys: ['settings'] },
 ];
 

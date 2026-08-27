@@ -18,6 +18,7 @@ import { CalculatorsScreen } from '../screens/CalculatorsScreen';
 import { OrdersScreen } from '../screens/OrdersScreen';
 import { TasksScreen } from '../screens/TasksScreen';
 import { NotesScreen } from '../screens/NotesScreen';
+import { PagesScreen } from '../screens/PagesScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { VaultScreen } from '../screens/VaultScreen';
@@ -135,6 +136,14 @@ export function AppRoot() {
           element={
             <ModuleRoute module="notes">
               <NotesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/pages"
+          element={
+            <ModuleRoute module="pages">
+              <PagesScreen />
             </ModuleRoute>
           }
         />

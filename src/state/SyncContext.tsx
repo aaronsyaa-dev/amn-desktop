@@ -54,6 +54,9 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   // build interne : la liste est le contrat de synchronisation, pas la liste
   // des écrans compilés — et `npm run check:sync` vérifie qu'elle correspond
   // exactement au type SyncedCollection et à la liste ALLOWED d'amn-api.
+  // Pages composées de blocs (BLOC 3) : un seul moteur pour les fiches de
+  // production, les briefs, les pages d'équipe et le module Personnel.
+  'pages',
   'appointments',
   'media',
   'remediation',

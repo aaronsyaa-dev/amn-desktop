@@ -13,7 +13,7 @@ import { applyAccent } from '../lib/accent';
 import { clearGuestQuotaBlock } from '../state/guestQuotaStore';
 import { cleanErrorMessage, isApiUnreachable } from '../lib/errorMessage';
 import { IS_BUSINESS } from '../edition/edition';
-import type { OrgIdentity, RemoteSession, User,
+import type { OrgIdentity, RemoteSession, RemoteSessionUser, User,
   LoginOutcome,
 } from '../shared/api';
 
@@ -44,6 +44,15 @@ interface StoredSession {
   token: string;
   user: User;
   org: OrgIdentity;
+  /**
+   * Le rôle de la session amn-api (BLOC 3).
+   *
+   * Persisté avec le reste : sans lui, un redémarrage rendrait l'application
+   * incapable de dire si l'utilisatrice peut modifier une page tant que la
+   * revalidation n'a pas répondu — donc un écran en lecture seule qui devient
+   * modifiable une seconde plus tard, ce qui se lit comme un défaut.
+   */
+  role?: RemoteSessionUser['role'];
 }
 
 /** Voir `AuthContextValue.sessionKind`. */
@@ -51,6 +60,14 @@ export type SessionKind = 'api' | 'local' | null;
 
 interface AuthContextValue {
   user: User | null;
+  /**
+   * Le rôle dans l'organisation courante — `null` hors session amn-api.
+   *
+   * Sert au droit d'ÉCRITURE côté écran (voir lib/pageBlocks.ts). Ce n'est pas
+   * une barrière de sécurité : amn-api reste seul juge de ce qu'un compte peut
+   * écrire, et l'isolation par organisation ne dépend jamais de cette valeur.
+   */
+  role: RemoteSessionUser['role'] | null;
   /**
    * L'organisation POUR LAQUELLE l'app travaille en ce moment.
    *
@@ -201,6 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => stored?.user ?? read<User>(AUTH_STORAGE_KEY),
   );
   const [sessionOrg, setOrg] = useState<OrgIdentity | null>(() => stored?.org ?? null);
+  const [role, setRole] = useState<RemoteSessionUser['role'] | null>(() => stored?.role ?? null);
   // Organisation substituée par un contexte client. Volontairement PAS
   // persistée : elle est reconstruite au démarrage par la revalidation du jeton
   // de support, qui est la seule source qui fasse autorité.
@@ -250,11 +268,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(refusal);
     }
     const nextUser = userFromSession(session);
-    const toStore: StoredSession = { token: session.token, user: nextUser, org: session.org };
+    const toStore: StoredSession = {
+      token: session.token,
+      user: nextUser,
+      org: session.org,
+      role: session.user.role,
+    };
     window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(toStore));
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
     setUser(nextUser);
     setOrg(session.org);
+    setRole(session.user.role);
     setPasswordFromSupport(Boolean(session.user.passwordFromSupport));
   }, []);
 
@@ -426,6 +450,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       user,
       org,
+      role,
       overrideOrg,
       patchSessionOrg,
       passwordFromSupport,
@@ -442,6 +467,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [
       user,
       org,
+      role,
       overrideOrg,
       patchSessionOrg,
       passwordFromSupport,

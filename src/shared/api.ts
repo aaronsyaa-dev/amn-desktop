@@ -1386,6 +1386,69 @@ export interface RemoteRecord {
 }
 
 /** Collections synced through amn-api. */
+/**
+ * UN BLOC DE CONTENU (BLOC 3)
+ * ═══════════════════════════
+ *
+ * Cinq formes, et cinq seulement. La tentation d'un éditeur ouvert est
+ * permanente ; elle est écartée ici pour une raison précise : chaque forme
+ * nouvelle doit se synchroniser, se rendre en lecture seule, survivre à une
+ * édition simultanée et se relire dans six mois. Cinq formes couvrent ce qui a
+ * été demandé (fiche de production, brief, page d'équipe, courses, budget) et
+ * restent lisibles.
+ *
+ * La VIDÉO est un lien externe, jamais un fichier hébergé. Héberger de la
+ * vidéo, c'est du stockage, de la bande passante et du transcodage — trois
+ * métiers qu'AMN DevSec ne fait pas, pour un besoin (« montrer un rush ») que
+ * n'importe quel lien satisfait.
+ */
+export type PageBlock =
+  | { id: string; type: 'text'; text: string }
+  | { id: string; type: 'image'; url: string; caption?: string }
+  | { id: string; type: 'video'; url: string; caption?: string }
+  | {
+      id: string;
+      type: 'checklist';
+      items: { id: string; text: string; done: boolean }[];
+    }
+  | {
+      id: string;
+      type: 'table';
+      /** En-têtes de colonnes. La largeur du tableau, c'est cette liste. */
+      columns: string[];
+      /** Chaque ligne a exactement `columns.length` cellules — voir `normalizePage`. */
+      rows: string[][];
+    };
+
+/** Les rôles autorisés à MODIFIER une page. Lire ne se restreint jamais. */
+export type PageEditorRole = 'owner' | 'admin' | 'member';
+
+/**
+ * UNE PAGE.
+ *
+ * `editorRoles` porte l'exigence « édition par rôle, lecture par tous » : tout
+ * le monde voit la page à jour, seuls les rôles listés peuvent la changer.
+ * C'est un réglage d'ÉCRITURE, pas une barrière de confidentialité — les
+ * données d'une organisation restent isolées par organisation, comme partout
+ * ailleurs.
+ *
+ * `scope` dit à quel module la page appartient (`equipe`, `personnel`,
+ * `evenement`…). Un seul moteur, plusieurs modules : c'est ce qui évite de
+ * réécrire la logique de blocs à chaque fois.
+ */
+export interface PageData {
+  title: string;
+  /** Emoji ou pictogramme court, purement visuel. */
+  icon?: string;
+  blocks: PageBlock[];
+  editorRoles: PageEditorRole[];
+  /** Le module propriétaire. Absent = page libre. */
+  scope?: string;
+  /** Le gabarit d'origine, gardé pour information. */
+  template?: string;
+  updatedBy?: string;
+}
+
 export type SyncedCollection =
   | 'tasks'
   | 'decisions'
@@ -1399,6 +1462,15 @@ export type SyncedCollection =
   | 'notes'
   | 'reports'
   /** Rendez-vous du module Calendrier (édition Business). */
+  /**
+   * Pages composées de blocs (BLOC 3) — le moteur de contenu configurable.
+   *
+   * Une seule collection pour tout ce qui est « une page qu'on écrit à
+   * plusieurs » : fiche de production, brief, page d'information d'équipe,
+   * et les pages du module Personnel. Les modules qui l'emploient ne
+   * dupliquent pas la logique de blocs, ils déclarent un `scope`.
+   */
+  | 'pages'
   | 'appointments'
   /**
    * Médiathèque autonome. L'édition interne dérive ses médias des pièces
