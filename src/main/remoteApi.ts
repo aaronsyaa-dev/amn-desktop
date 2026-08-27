@@ -11,6 +11,8 @@ import type {
   ActiveSession,
   CallLink,
   CreatedCallLink,
+  ModuleOffer,
+  ModuleRequest,
   OrgAccessRecord,
   OrgIdentity,
   LoginOutcome,
@@ -272,6 +274,25 @@ export class RemoteApiClient {
   async accessLog(): Promise<OrgAccessRecord[]> {
     const res = await apiFetch<{ entries: OrgAccessRecord[] }>('/v1/auth/access-log');
     return res.entries ?? [];
+  }
+
+  /* ---------------- Catalogue et demandes de modules (BLOC 4) --------------- */
+
+  async moduleCatalogue(): Promise<ModuleOffer[]> {
+    const res = await apiFetch<{ modules: ModuleOffer[] }>('/v1/modules');
+    return res.modules ?? [];
+  }
+
+  async requestModule(input: { module: string; message?: string }): Promise<{ request: ModuleRequest; created: boolean }> {
+    return apiFetch<{ request: ModuleRequest; created: boolean }>('/v1/modules/requests', {
+      method: 'POST',
+      body: JSON.stringify({ module: input.module, message: input.message ?? '' }),
+    });
+  }
+
+  async moduleRequests(): Promise<ModuleRequest[]> {
+    const res = await apiFetch<{ requests: ModuleRequest[] }>('/v1/modules/requests');
+    return res.requests ?? [];
   }
 
   /* ------------------- Liens d'appel anonymes (BLOC B.2) ------------------- */

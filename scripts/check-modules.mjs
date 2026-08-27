@@ -150,18 +150,37 @@ function slice(source, from, to) {
   return source.slice(start, end === -1 ? source.length : end);
 }
 
-const apiModules = (() => {
+/**
+ * Le CATALOGUE serveur : clé, intitulé, phrase. Lu en même temps que les clés
+ * parce que les deux viennent maintenant du même endroit — `ORG_MODULES` est
+ * dérivé de `MODULE_CATALOGUE` (amn-api), il ne peut donc plus en diverger.
+ */
+const apiCatalogue = (() => {
   for (const candidate of ['/workspace/amn-api', path.join(ROOT, '..', 'amn-api')]) {
     const file = path.join(candidate, 'src/db/tenancy.js');
     if (!fs.existsSync(file)) continue;
-    const block = /export const ORG_MODULES = \[([\s\S]*?)\];/.exec(
-      withoutComments(fs.readFileSync(file, 'utf-8')),
-    );
-    if (!block) return null;
-    return [...block[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+    const source = withoutComments(fs.readFileSync(file, 'utf-8'));
+    const bloc = /export const MODULE_CATALOGUE = \[([\s\S]*?)\n\];/.exec(source);
+    if (!bloc) return null;
+    const out = [];
+    const re = /key:\s*'([^']+)',\s*label:\s*'([^']+)',\s*summary:\s*'([^']*)'/g;
+    let m;
+    while ((m = re.exec(bloc[1])) !== null) out.push({ key: m[1], label: m[2], summary: m[3] });
+    return out;
   }
   return null;
 })();
+
+/**
+ * Les CLÉS, dérivées du catalogue — comme côté serveur.
+ *
+ * `ORG_MODULES` n'est plus un littéral depuis le BLOC 4 : c'est
+ * `MODULE_CATALOGUE.map(m => m.key)`. Le lire par expression régulière comme
+ * une liste de chaînes rendait donc une liste vide, et ce script annonçait
+ * « amn-api introuvable » alors qu'il l'avait bien lu — un contrôle qui se
+ * saute lui-même en silence est pire qu'un contrôle absent.
+ */
+const apiModules = apiCatalogue ? apiCatalogue.map((entry) => entry.key) : null;
 
 const businessSrc = withoutComments(read('src/edition/modules.business.ts'));
 const businessNav = navEntries(slice(businessSrc, 'export const NAV_SECTIONS', 'export const ACTIVITY_TABS'));
@@ -437,6 +456,99 @@ for (const [key, label] of clientLabels) {
         `le même écran porte deux noms selon qui le regarde.`,
     );
   }
+}
+
+/*
+  6. UNE IDENTITÉ PAR MODULE, ET UNE SEULE SOURCE (BLOC 4)
+
+  Ce qui a motivé ces règles est arrivé pendant le chantier précédent : le
+  module « pages » a été déclaré dans ORG_MODULES, dans les deux catalogues
+  d'édition, dans les deux tables de routes et dans la barre de support — et
+  oublié dans `CONFIGURABLE_MODULES`. Les cinq contrôles ci-dessus sont restés
+  verts, parce qu'aucun ne connaissait cette sixième liste. Conséquence
+  concrète : l'atelier de création ne proposait pas le module, et
+  `check:persistence` — qui énumère depuis CETTE liste — ne demandait donc
+  jamais où vivait sa donnée. Un module invisible à deux contrôles sur trois.
+
+  D'où deux règles de plus, et surtout un déplacement : l'identité d'un module
+  (sa clé, son intitulé, sa phrase) vit désormais dans `MODULE_CATALOGUE` côté
+  amn-api, et `ORG_MODULES` en est DÉRIVÉ. C'est le serveur qui arbitre, comme
+  pour les modules ouverts ; le desktop s'y accorde.
+*/
+if (apiCatalogue) {
+  // 6a. Chaque module a de quoi être nommé à quelqu'un qui ne connaît pas nos
+  // clés. C'est la condition minimale pour qu'un module puisse un jour être
+  // proposé, décrit, ou facturé : « orders » n'est pas un nom de produit.
+  for (const entry of apiCatalogue) {
+    if (!entry.label || entry.label.length < 2) {
+      failures.push(`Le module « ${entry.key} » n'a pas d'intitulé lisible dans MODULE_CATALOGUE.`);
+    }
+    if (!entry.summary || entry.summary.length < 20) {
+      failures.push(
+        `Le module « ${entry.key} » n'a pas de phrase de description (ou elle est trop courte) : ` +
+          `une cliente doit pouvoir comprendre ce qu'elle demande sans qu'on l'appelle.`,
+      );
+    }
+  }
+  if (apiModules && apiCatalogue.length !== apiModules.length) {
+    failures.push(
+      `MODULE_CATALOGUE (${apiCatalogue.length}) et ORG_MODULES (${apiModules.length}) ne ` +
+        `décrivent pas le même nombre de modules — ORG_MODULES doit être DÉRIVÉ du catalogue, ` +
+        `jamais recopié.`,
+    );
+  }
+
+  /*
+    6b. L'atelier de création propose exactement les modules qui existent.
+
+    C'est la règle qui manquait. `CONFIGURABLE_MODULES` alimente l'atelier ET
+    sert de point de départ à `check:persistence` : un module absent d'ici est
+    à la fois impossible à ouvrir à la création et jamais interrogé sur l'endroit
+    où il range sa donnée.
+  */
+  const source = withoutComments(read('src/data/tradeProfiles.ts'));
+  const bloc = slice(source, 'export const CONFIGURABLE_MODULES', '];');
+  const configurables = [...bloc.matchAll(/key:\s*'([^']+)',\s*label:\s*'([^']+)'/g)].map((m) => ({
+    key: m[1],
+    label: m[2],
+  }));
+  if (configurables.length === 0) {
+    failures.push('Aucun module lu dans CONFIGURABLE_MODULES — le lecteur est cassé.');
+  }
+  const cles = new Set(configurables.map((m) => m.key));
+  for (const entry of apiCatalogue) {
+    if (!cles.has(entry.key)) {
+      failures.push(
+        `« ${entry.key} » existe côté serveur (MODULE_CATALOGUE) mais pas dans ` +
+          `CONFIGURABLE_MODULES (src/data/tradeProfiles.ts) : l'atelier ne saurait pas l'ouvrir ` +
+          `à une nouvelle cliente, et check:persistence ne demanderait jamais où vit sa donnée.`,
+      );
+    }
+  }
+  const connues = new Set(apiCatalogue.map((e) => e.key));
+  for (const mod of configurables) {
+    if (!connues.has(mod.key)) {
+      failures.push(
+        `« ${mod.key} » est proposé par l'atelier mais n'existe pas dans MODULE_CATALOGUE ` +
+          `(amn-api) : le serveur refuserait la clé à la création.`,
+      );
+    }
+  }
+  // Le même module porte le même nom des deux côtés : « Facturation » ici et
+  // « Factures » là est le genre d'écart qui fait chercher un écran au
+  // téléphone (voir aussi le contrôle 5c).
+  const parCle = new Map(apiCatalogue.map((e) => [e.key, e.label]));
+  for (const mod of configurables) {
+    const serveur = parCle.get(mod.key);
+    if (serveur && serveur !== mod.label) {
+      failures.push(
+        `« ${mod.key} » s'appelle « ${serveur} » côté serveur et « ${mod.label} » dans ` +
+          `l'atelier : la cliente lit l'un, nous parlons de l'autre.`,
+      );
+    }
+  }
+} else {
+  notes.push('MODULE_CATALOGUE illisible — les contrôles d’identité de module sont sautés.');
 }
 
 /* ---------------------------------------------------------------- verdict -- */

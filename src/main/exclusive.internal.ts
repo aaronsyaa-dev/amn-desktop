@@ -6,6 +6,7 @@ import {
   type CreateOrganizationResult,
   type OrgAccessEntry,
   type OrgPulse,
+  type ModuleRequestForOperator,
   type DownloadLink,
   type BusinessRelease,
   type SupervisionState,
@@ -350,6 +351,28 @@ const adminApi = {
     return pulse;
   },
 
+  /** Les demandes de module des clientes (BLOC 4). */
+  async moduleRequests(status?: string): Promise<ModuleRequestForOperator[]> {
+    const suffixe = status ? `?status=${encodeURIComponent(status)}` : '';
+    const { requests } = await apiFetch<{ requests: ModuleRequestForOperator[] }>(
+      `/v1/admin/module-requests${suffixe}`,
+      { owner: true },
+    );
+    return requests ?? [];
+  },
+
+  /** Marque une demande traitée. N'ouvre PAS le module — voir le contrat. */
+  async resolveModuleRequest(
+    id: string,
+    input: { status: 'done' | 'declined'; note?: string },
+  ): Promise<ModuleRequestForOperator> {
+    const { request } = await apiFetch<{ request: ModuleRequestForOperator }>(
+      `/v1/admin/module-requests/${encodeURIComponent(id)}`,
+      { owner: true, method: 'PUT', body: JSON.stringify({ status: input.status, note: input.note ?? '' }) },
+    );
+    return request;
+  },
+
   /** L'état réel des rondes de supervision de fond (BLOC F). */
   async supervision(): Promise<SupervisionState> {
     return apiFetch<SupervisionState>('/v1/admin/supervision', { owner: true });
@@ -561,6 +584,14 @@ export function registerExclusiveIpc(
   );
   ipcMain.handle(IPC.remoteAdminAccessLog, (_event, opts: { orgId?: string; limit?: number }) =>
     adminApi.accessLog(opts ?? {}),
+  );
+  ipcMain.handle(IPC.remoteAdminModuleRequests, (_event, status?: string) =>
+    adminApi.moduleRequests(status),
+  );
+  ipcMain.handle(
+    IPC.remoteAdminResolveModuleRequest,
+    (_event, payload: { id: string; input: { status: 'done' | 'declined'; note?: string } }) =>
+      adminApi.resolveModuleRequest(payload.id, payload.input),
   );
   ipcMain.handle(IPC.remoteAdminOrgPulse, (_event, orgId: string) =>
     adminApi.organizationPulse(orgId),

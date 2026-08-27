@@ -12,6 +12,7 @@ import { ensurePushSubscription, sendPushTest } from '../lib/webPush';
 import { UserAvatar } from '../components/UserAvatar';
 import { Logo } from '../components/Logo';
 import { SettingsPanel as Panel } from '../components/SettingsPanel';
+import { ModulesSection } from '../components/settings/ModulesSection';
 import { APP_VERSION, EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/edition';
 import { OllamaSection, useExclusive } from '@edition/exclusive';
 import { AccountSecuritySection } from '../components/settings/AccountSecuritySection';
@@ -143,6 +144,19 @@ export function SettingsScreen() {
       {bridge().env.isElectron && (
         <StaggerItem>
           <StartupSection />
+        </StaggerItem>
+      )}
+      {/*
+        LE CATALOGUE DES MODULES (BLOC 4).
+
+        Masqué en session de support : la demande doit venir d'elle. Une
+        demande faite « en son nom » par AMN DevSec apparaîtrait dans une liste
+        dont tout l'intérêt est qu'elle exprime SON envie — et le serveur la
+        refuse de toute façon (`allowSupport: false`).
+      */}
+      {!support && (
+        <StaggerItem>
+          <ModulesSection />
         </StaggerItem>
       )}
       <StaggerItem>

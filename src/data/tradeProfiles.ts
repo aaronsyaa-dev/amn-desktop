@@ -141,6 +141,7 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'calculators', label: 'Calculateurs', hint: 'Prix, marges, répartition' },
   { key: 'orders', label: 'Commandes', hint: 'Reçues du site public' },
   { key: 'notes', label: 'Notes', hint: 'Bloc-notes' },
+  { key: 'pages', label: 'Pages', hint: 'Fiches et supports partagés' },
   { key: 'media', label: 'Médias', hint: 'Photos et fichiers' },
   { key: 'reports', label: 'Rapports', hint: 'Comptes-rendus' },
   { key: 'vault', label: 'Coffre-fort', hint: 'Mots de passe et accès' },

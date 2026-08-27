@@ -158,6 +158,12 @@ const bridge: AmnBridge = {
     accessLog: () => ipcRenderer.invoke(IPC.remoteAccessLog),
     exportOrganization: () => ipcRenderer.invoke(IPC.remoteExportOrganization),
     setOrganizationAccent: (accent) => ipcRenderer.invoke(IPC.remoteSetOrgAccent, accent),
+    modules: {
+      catalogue: () => ipcRenderer.invoke(IPC.remoteModuleCatalogue),
+      request: (input: { module: string; message?: string }) =>
+        ipcRenderer.invoke(IPC.remoteModuleRequest, input),
+      requests: () => ipcRenderer.invoke(IPC.remoteModuleRequests),
+    },
     callLinks: {
       create: (input) => ipcRenderer.invoke(IPC.remoteCallLinkCreate, input),
       list: () => ipcRenderer.invoke(IPC.remoteCallLinkList),

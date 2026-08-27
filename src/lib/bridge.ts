@@ -16,6 +16,8 @@ import type {
   ActiveSession,
   CallLink,
   CreatedCallLink,
+  ModuleOffer,
+  ModuleRequest,
   OrgAccessRecord,
   AddClientEventInput,
   AmnBridge,
@@ -596,6 +598,22 @@ function createBrowserRemote(): AmnBridge['remote'] {
           body: JSON.stringify(input),
         });
         return res.mfa;
+      },
+    },
+    modules: {
+      async catalogue(): Promise<ModuleOffer[]> {
+        const res = await apiFetch<{ modules: ModuleOffer[] }>('/v1/modules');
+        return res.modules ?? [];
+      },
+      async request(input: { module: string; message?: string }) {
+        return apiFetch<{ request: ModuleRequest; created: boolean }>('/v1/modules/requests', {
+          method: 'POST',
+          body: JSON.stringify({ module: input.module, message: input.message ?? '' }),
+        });
+      },
+      async requests(): Promise<ModuleRequest[]> {
+        const res = await apiFetch<{ requests: ModuleRequest[] }>('/v1/modules/requests');
+        return res.requests ?? [];
       },
     },
     callLinks: {

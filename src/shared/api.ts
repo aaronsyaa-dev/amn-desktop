@@ -1440,6 +1440,43 @@ export type PageBlock =
       rows: string[][];
     };
 
+/**
+ * Un module du catalogue, tel qu'une organisation le voit (BLOC 4).
+ *
+ * `enabled` et `requested` sont calculés PAR LE SERVEUR pour cette
+ * organisation : `modules: null` en base veut dire « tous », et un client qui
+ * comparerait deux listes lui-même devrait connaître cette convention pour ne
+ * pas afficher un catalogue entièrement fermé.
+ */
+export interface ModuleOffer {
+  key: string;
+  label: string;
+  /** Ce que le module fait, en une phrase, sans jargon interne. */
+  summary: string;
+  enabled: boolean;
+  /** Une demande est déjà en attente pour ce module. */
+  requested: boolean;
+}
+
+/** Une demande de module. Lue par un humain — rien ne s'ouvre ni ne se facture tout seul. */
+export interface ModuleRequest {
+  id: string;
+  orgId: string;
+  moduleKey: string;
+  message: string;
+  requestedByEmail: string;
+  status: 'pending' | 'done' | 'declined';
+  createdAt: string;
+  handledAt: string | null;
+  handledByEmail: string | null;
+  handledNote: string | null;
+}
+
+/** Une demande vue par AMN DevSec : la même, plus le nom de l'organisation. */
+export interface ModuleRequestForOperator extends ModuleRequest {
+  orgName: string;
+}
+
 /** Les rôles autorisés à MODIFIER une page. Lire ne se restreint jamais. */
 export type PageEditorRole = 'owner' | 'admin' | 'member';
 
@@ -2062,6 +2099,39 @@ export interface AmnBridge {
     /** Signalling messages addressed to this operator. Returns an unsubscribe. */
     onCallSignal(callback: (signal: CallSignal) => void): () => void;
 
+    /* --- Le catalogue des modules, et les demander (BLOC 4) --- */
+    /**
+     * MODULES : UNE IDENTITÉ, PAS UNE CLÉ NUE
+     *
+     * Le catalogue vit sur le SERVEUR (`MODULE_CATALOGUE`, amn-api) et non dans
+     * une édition du desktop, pour la même raison que la liste des modules
+     * ouverts : c'est le serveur qui arbitre, le poste apprend.
+     *
+     * Le catalogue montre AUSSI ce qui n'est pas ouvert ici. Montrer une porte
+     * fermée est le prix à payer pour qu'une demande soit possible : une
+     * cliente qui ignore qu'un module existe ne le réclamera jamais, et la
+     * seule façon de le lui apprendre serait de l'appeler pour le lui vendre.
+     *
+     * Aucun prix n'y figure. Le chantier demandait la fondation d'une
+     * tarification par module, pas la tarification : un prix suppose une
+     * monnaie, une périodicité, une TVA, un prorata et un moyen de paiement,
+     * cinq décisions qui ne sont pas prises. En afficher un ici en ferait un
+     * engagement.
+     */
+    modules: {
+      /** Le catalogue complet, avec ce qui est ouvert et ce qui est déjà demandé. */
+      catalogue(): Promise<ModuleOffer[]>;
+      /**
+       * Demande un module. Rend `created: false` quand la demande existait
+       * déjà : recliquer par hésitation ne doit ni échouer ni faire doublon.
+       * Lève quand le module est déjà ouvert (409) — un écran qui le propose
+       * alors qu'on l'a se trompe, et le taire cacherait le défaut.
+       */
+      request(input: { module: string; message?: string }): Promise<{ request: ModuleRequest; created: boolean }>;
+      /** Ce que cette organisation a déjà demandé, traité ou non. */
+      requests(): Promise<ModuleRequest[]>;
+    };
+
     /* --- Liens d'appel anonymes (BLOC B.2) --- */
     callLinks: {
       /** Émet un lien. Le jeton en clair n'est lisible QUE dans cette réponse. */
@@ -2237,6 +2307,20 @@ export interface AmnBridge {
       accessLog(opts?: { orgId?: string; limit?: number }): Promise<OrgAccessEntry[]>;
       /** Le pouls d'une cliente : des comptes calculés, jamais son contenu. */
       organizationPulse(orgId: string): Promise<OrgPulse>;
+      /**
+       * Les demandes de module des clientes (BLOC 4).
+       *
+       * `resolve` marque une demande traitée et RIEN D'AUTRE : ouvrir le
+       * module reste `updateOrganization({ modules })`, un geste séparé.
+       * Dépiler une liste ne doit pas ouvrir des modules par inadvertance, et
+       * le jour où un module aura un prix, « j'ai lu » ne devra jamais valoir
+       * « je facture ».
+       */
+      moduleRequests(status?: 'pending' | 'done' | 'declined'): Promise<ModuleRequestForOperator[]>;
+      resolveModuleRequest(
+        id: string,
+        input: { status: 'done' | 'declined'; note?: string },
+      ): Promise<ModuleRequestForOperator>;
       /** L'état réel des rondes de supervision de fond (BLOC F). */
       supervision(): Promise<SupervisionState>;
       /**
@@ -2458,6 +2542,9 @@ export const IPC = {
   remoteSessionAcceptInvitation: 'remote:sessionAcceptInvitation',
   remoteSessionMyOrganizations: 'remote:sessionMyOrganizations',
   remoteSessionSwitchOrg: 'remote:sessionSwitchOrg',
+  remoteModuleCatalogue: 'remote:moduleCatalogue',
+  remoteModuleRequest: 'remote:moduleRequest',
+  remoteModuleRequests: 'remote:moduleRequests',
   remoteCallLinkCreate: 'remote:callLinkCreate',
   remoteCallLinkList: 'remote:callLinkList',
   remoteCallLinkRevoke: 'remote:callLinkRevoke',
@@ -2507,6 +2594,8 @@ export const IPC = {
   remoteAdminResetPassword: 'remote:adminResetPassword',
   remoteAdminAccessLog: 'remote:adminAccessLog',
   remoteAdminOrgPulse: 'remote:adminOrgPulse',
+  remoteAdminModuleRequests: 'remote:adminModuleRequests',
+  remoteAdminResolveModuleRequest: 'remote:adminResolveModuleRequest',
   remoteAdminSupervision: 'remote:adminSupervision',
   remoteAdminInsights: 'remote:adminInsights',
   remoteAdminDownloadLink: 'remote:adminDownloadLink',

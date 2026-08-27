@@ -137,6 +137,9 @@ export const exclusivePreload: ExclusiveRemote = {
       ipcRenderer.invoke(IPC.remoteAdminResetPassword, { orgId, userId }),
     accessLog: (opts) => ipcRenderer.invoke(IPC.remoteAdminAccessLog, opts ?? {}),
     organizationPulse: (orgId) => ipcRenderer.invoke(IPC.remoteAdminOrgPulse, orgId),
+    moduleRequests: (status) => ipcRenderer.invoke(IPC.remoteAdminModuleRequests, status),
+    resolveModuleRequest: (id, input) =>
+      ipcRenderer.invoke(IPC.remoteAdminResolveModuleRequest, { id, input }),
     supervision: () => ipcRenderer.invoke(IPC.remoteAdminSupervision),
     insights: () => ipcRenderer.invoke(IPC.remoteAdminInsights),
     downloadLink: (orgId) => ipcRenderer.invoke(IPC.remoteAdminDownloadLink, orgId),

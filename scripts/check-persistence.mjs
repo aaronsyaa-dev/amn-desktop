@@ -73,11 +73,40 @@ function allowedCollections() {
  * le fichier plutôt que recopié : un module ajouté là-bas entre
  * automatiquement dans ce contrôle, ce qui est tout l'intérêt.
  */
+/**
+ * Les modules qu'une cliente peut avoir sous les yeux.
+ *
+ * Deux sources, et la seconde a été ajoutée parce qu'elle manquait : les
+ * modules TOUJOURS OUVERTS (`ALWAYS_ON_MODULES`, src/data/spaces.ts) n'ont pas
+ * de clé serveur — un bonus inclus n'a pas d'interrupteur — et échappaient donc
+ * à cette énumération, qui partait de `CONFIGURABLE_MODULES`. Le module
+ * Personnel, dont le budget vit en `localStorage`, n'aurait jamais été
+ * interrogé sur l'endroit où il range sa donnée. Or c'est exactement le cas
+ * que ce script existe pour ne pas laisser passer : la question n'est pas
+ * « ce module se vend-il ? », c'est « quelqu'un perdra-t-il quelque chose ? ».
+ *
+ * `home` et `settings` sont écartés : ce sont des écrans de l'application, pas
+ * des modules qui produisent une donnée à eux.
+ */
 function offerableModules() {
   const src = read('src/data/tradeProfiles.ts');
   const start = src.indexOf('CONFIGURABLE_MODULES');
   const block = src.slice(start, src.indexOf('];', start));
-  return [...block.matchAll(/\{ key: '([a-zA-Z]+)'/g)].map((m) => m[1]);
+  const configurables = [...block.matchAll(/\{ key: '([a-zA-Z]+)'/g)].map((m) => m[1]);
+
+  const spaces = read('src/data/spaces.ts');
+  const bloc = /export const ALWAYS_ON_MODULES = \[([\s\S]*?)\];/.exec(spaces);
+  if (!bloc) {
+    failures.push(
+      'ALWAYS_ON_MODULES est introuvable dans src/data/spaces.ts — les modules toujours ' +
+        'ouverts ne seraient pas interrogés sur l’endroit où vit leur donnée.',
+    );
+    return configurables;
+  }
+  const toujours = [...bloc[1].matchAll(/'([^']+)'/g)]
+    .map((m) => m[1])
+    .filter((key) => key !== 'home' && key !== 'settings');
+  return [...configurables, ...toujours];
 }
 
 /**
@@ -100,9 +129,16 @@ const MODULE_DATA = {
   calculators: [], // Un moteur de calcul : il lit, il ne stocke rien.
   orders: ['orders'],
   notes: ['notes'],
+  pages: ['pages'],
   media: ['media'],
   reports: ['reports'],
   vault: [], // Déclaré local ci-dessous.
+  // Module Personnel (BLOC 2). `courses` roule sur la collection `pages` — la
+  // liste de courses s'écrit au bureau et se relit dans le magasin, donc elle
+  // se synchronise. `budget` ne stocke RIEN sur le serveur, délibérément :
+  // déclaré local ci-dessous.
+  courses: ['pages'],
+  budget: [],
 };
 
 /**
@@ -131,9 +167,12 @@ const MODULE_FILES = {
   calculators: ['src/screens/CalculatorsScreen.tsx'],
   orders: ['src/screens/OrdersScreen.tsx', 'src/state/useOrders.ts'],
   notes: ['src/screens/NotesScreen.tsx', 'src/state/useNotes.ts'],
+  pages: ['src/screens/PagesScreen.tsx', 'src/lib/pageBlocks.ts'],
   media: ['src/business/MediaSoloScreen.tsx', 'src/screens/MediaLibraryScreen.tsx'],
   reports: ['src/screens/ReportsScreen.tsx', 'src/state/useReports.ts'],
   vault: ['src/screens/VaultScreen.tsx', 'src/state/useVault.ts'],
+  courses: ['src/screens/PagesScreen.tsx', 'src/lib/pageBlocks.ts'],
+  budget: ['src/screens/PersonalBudgetScreen.tsx', 'src/state/usePersonalBudget.ts'],
 };
 
 /**
@@ -144,6 +183,14 @@ const MODULE_FILES = {
  * déjà déclaré fait échouer le contrôle tant qu'on n'a pas dit pourquoi.
  */
 const ECRITURES_LOCALES_ADMISES = {
+  'src/state/usePersonalBudget.ts': {
+    nombre: 1,
+    raison:
+      'le module Personnel est déclaré LOCAL_ONLY, et cette écriture EST la façon dont il ' +
+      'l’est. La déclarer ici plutôt que d’exempter le fichier : le nombre est compté, donc ' +
+      'une seconde écriture — un jour où l’on voudrait y ranger autre chose — fera échouer ' +
+      'le contrôle tant que personne n’aura dit pourquoi.',
+  },
   'src/state/useNotes.ts': {
     nombre: 1,
     raison:
@@ -163,6 +210,18 @@ const ECRITURES_LOCALES_ADMISES = {
  * oublier, seulement décider de les garder.
  */
 const LOCAL_ONLY = {
+  budget: {
+    raison:
+      'un solde bancaire et une date de paie. Les enregistrements synchronisés sont ' +
+      'isolés PAR ORGANISATION, jamais par personne : dans une organisation à plusieurs, ' +
+      'qui l’administre pourrait les lire. Le module s’appelle « Personnel » ; le tenir ' +
+      'sur le poste est ce qui rend ce nom vrai.',
+    consequence:
+      'ces chiffres ne suivent pas sur le téléphone, sont perdus si la machine est ' +
+      'réinstallée, et sont absents de l’export de portabilité. En contrepartie, ils ' +
+      'ne sont lisibles par personne d’autre.',
+    ecranPrevient: 'src/screens/PersonalBudgetScreen.tsx',
+  },
   vault: {
     raison:
       'chiffré par le trousseau du système d’exploitation (Electron safeStorage), ' +

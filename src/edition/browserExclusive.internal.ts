@@ -31,6 +31,7 @@ import type {
   SiteSummary,
   SslStatus,
   TrackerTier,
+  ModuleRequestForOperator,
   OrgPulse,
   DownloadLink,
   BusinessRelease,
@@ -370,6 +371,24 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
         { owner: true },
       );
       return pulse;
+    },
+    async moduleRequests(status?: string): Promise<ModuleRequestForOperator[]> {
+      const suffixe = status ? `?status=${encodeURIComponent(status)}` : '';
+      const { requests } = await ctx.apiFetch<{ requests: ModuleRequestForOperator[] }>(
+        `/v1/admin/module-requests${suffixe}`,
+        { owner: true },
+      );
+      return requests ?? [];
+    },
+    async resolveModuleRequest(
+      id: string,
+      input: { status: 'done' | 'declined'; note?: string },
+    ): Promise<ModuleRequestForOperator> {
+      const { request } = await ctx.apiFetch<{ request: ModuleRequestForOperator }>(
+        `/v1/admin/module-requests/${encodeURIComponent(id)}`,
+        { owner: true, method: 'PUT', body: JSON.stringify({ status: input.status, note: input.note ?? '' }) },
+      );
+      return request;
     },
     async supervision(): Promise<SupervisionState> {
       return ctx.apiFetch<SupervisionState>('/v1/admin/supervision', { owner: true });

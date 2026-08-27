@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ModuleRequestsPanel } from '../components/tour/ModuleRequestsPanel';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Building2, FolderLock, Plus, Search, ShieldOff, ShieldCheck } from 'lucide-react';
@@ -144,6 +145,13 @@ export function OrganizationsScreen() {
             </button>
           }
         />
+      </StaggerItem>
+
+      {/* Les demandes de module (BLOC 4), avant le registre : ce sont les
+          seules lignes de cet écran où quelqu'un attend une réponse. Le
+          panneau ne s'affiche pas quand la file est vide. */}
+      <StaggerItem>
+        <ModuleRequestsPanel />
       </StaggerItem>
 
       <StaggerItem>
