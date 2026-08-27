@@ -101,30 +101,84 @@ export function OrgBanner({
   const presence = insightFor(parc, org.id);
   const [pulse, setPulse] = React.useState<OrgPulse | null>(null);
   const [pulseError, setPulseError] = React.useState(false);
-  const asked = React.useRef(false);
+  /** L'organisation pour laquelle un pouls a déjà été demandé. */
+  const demande = React.useRef<string | null>(null);
+  /**
+   * Vrai tant que le composant est monté. À ne PAS confondre avec « déplié » :
+   * c'est toute la cause du défaut corrigé ci-dessous.
+   */
+  const monte = React.useRef(true);
+  React.useEffect(() => {
+    monte.current = true;
+    return () => {
+      monte.current = false;
+    };
+  }, []);
+
+  // Une autre organisation dans la même banderole : on repart de zéro plutôt
+  // que d'afficher le pouls de la précédente.
+  React.useEffect(() => {
+    demande.current = null;
+    setPulse(null);
+    setPulseError(false);
+  }, [org.id]);
 
   const suspended = org.status === 'suspended';
 
-  // Le pouls, une seule fois, au premier dépliement.
+  /*
+    LE POULS — ET LE DÉFAUT QUI LE LAISSAIT TOURNER POUR TOUJOURS
+    ─────────────────────────────────────────────────────────────
+    Constaté en usage réel : certaines organisations restaient bloquées sur
+    « Lecture du pouls… », indéfiniment, pendant que les autres s'affichaient.
+
+    La cause était une course, et elle tenait en trois lignes :
+
+      1. le verrou « déjà demandé » se posait AVANT la réponse ;
+      2. le nettoyage de l'effet — qui coupait l'écriture d'état — se
+         déclenchait à chaque REPLI du survol, pas au démontage ;
+      3. donc survoler puis quitter avant l'arrivée de la réponse jetait
+         celle-ci, sans poser ni le pouls ni l'erreur… et le verrou empêchait
+         toute nouvelle tentative. L'état restait « ni chargé, ni en erreur »,
+         c'est-à-dire l'écran de chargement, définitivement.
+
+    Ce qui explique que le défaut frappe CERTAINES organisations : plus une
+    organisation a produit, plus sa requête est longue, plus la fenêtre pour
+    quitter le survol avant la réponse est large. Les plus grosses étaient donc
+    les plus touchées — exactement ce qui a été observé.
+
+    Trois corrections, chacune nécessaire :
+      · le garde d'écriture suit le MONTAGE, pas le dépliement ;
+      · un échec réarme le verrou, pour qu'un nouveau survol retente ;
+      · un délai maximum ferme le cas où le serveur ne répond jamais — un
+        chargement qui ne se résout pas est un mensonge, au même titre qu'un
+        zéro inventé.
+  */
   React.useEffect(() => {
-    if (!open || asked.current) return;
-    asked.current = true;
-    let alive = true;
-    void bridge()
-      .remote.admin.organizationPulse(org.id)
+    if (!open || demande.current === org.id) return;
+    demande.current = org.id;
+    const cible = org.id;
+
+    /** Au-delà, on cesse d'attendre et on le dit. */
+    const DELAI_MAX_MS = 15000;
+    const expiration = new Promise<never>((_, rejeter) =>
+      setTimeout(() => rejeter(new Error('délai dépassé')), DELAI_MAX_MS),
+    );
+
+    void Promise.race([bridge().remote.admin.organizationPulse(cible), expiration])
       .then((p) => {
-        if (alive) setPulse(p);
+        // `cible` et non `org.id` : si l'organisation a changé entre-temps, ce
+        // pouls-ci n'est plus celui qu'on regarde.
+        if (monte.current && demande.current === cible) setPulse(p as OrgPulse);
       })
       .catch(() => {
         // Un pouls indisponible n'est pas une erreur d'écran : la banderole
         // reste utilisable, elle dit simplement qu'elle ne sait pas. Prétendre
         // « 0 enregistrement » serait un mensonge, et c'est exactement le
         // genre de zéro qu'on finirait par croire.
-        if (alive) setPulseError(true);
+        if (monte.current && demande.current === cible) setPulseError(true);
+        // Réarmé : un nouveau survol doit pouvoir retenter.
+        if (demande.current === cible) demande.current = null;
       });
-    return () => {
-      alive = false;
-    };
   }, [open, org.id]);
 
   const lastActivity = pulse?.records.lastAt ?? org.lastActivityAt;

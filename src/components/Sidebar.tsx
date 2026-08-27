@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -7,10 +7,13 @@ import {
   ChevronsRight,
   ChevronDown,
   LogOut,
+  Pin,
+  PinOff,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useRemoteSites } from '../state/RemoteSitesContext';
 import { useActivity } from '../state/ActivityContext';
+import { useNavFavorites } from '../state/useNavFavorites';
 import { StatusBadge } from './StatusBadge';
 import { useSitePanel } from './site-panel/SitePanelContext';
 import { AppLauncher } from './AppLauncher';
@@ -55,6 +58,7 @@ export function Sidebar({
   const { openSite } = useSitePanel();
   const { sites } = useRemoteSites();
   const { unseen } = useActivity();
+  const { favorites, isFavorite, toggleFavorite } = useNavFavorites();
 
   // On mobile the drawer always shows the full (labelled) sidebar; on desktop
   // the collapse toggle controls it. Deriving it here keeps every render site
@@ -91,6 +95,22 @@ export function Sidebar({
   // de commandes ou par une notification doit basculer la colonne, sans que
   // l'appelant ait à y penser.
   const space = spaceForPath(location.pathname);
+  /*
+    Les modules épinglés de l'ESPACE COURANT, dans l'ordre du catalogue.
+
+    Filtrés sur l'espace : une épingle posée sur « Trackers » (Tour de contrôle)
+    n'a rien à faire en tête du Poste de travail. Et l'ordre vient du catalogue
+    plutôt que de l'ordre d'épinglage — la barre doit se relire pareil d'un jour
+    à l'autre, pas se réorganiser selon l'ordre où l'on a cliqué.
+  */
+  const epingles = useMemo(
+    () =>
+      sectionsForSpace(space)
+        .flatMap((section) => section.items)
+        .filter((item) => favorites.includes(item.key)),
+    [favorites, space],
+  );
+
 
   // The pinned modules, in the catalogue's own order so the strip never
   // reshuffles itself under the cursor. An unknown key (a module removed since
@@ -167,6 +187,57 @@ export function Sidebar({
               {badge}
             </span>
           ))}
+        {/*
+          L'ÉPINGLE, RENDUE À LA BARRE (BLOC 1)
+
+          L'épinglage n'avait pas disparu du code : il vivait dans le lanceur
+          « Tous les modules », et le rangement en sections a retiré le seul
+          bouton qui l'ouvrait sur ordinateur. La fonction est donc restée
+          entière et devenue inatteignable — le lanceur ne subsiste que dans la
+          barre du pouce, sous `md`.
+
+          Elle revient ici, sur la ligne elle-même : c'est l'endroit où l'on est
+          déjà quand on se dit « celui-là, je l'ouvre tous les jours », et ça
+          n'ajoute aucun écran. Au survol seulement — une colonne d'épingles
+          visible en permanence ferait dix-huit boutons devant dix-huit modules.
+
+          `<span role="button">` et non `<button>` : la ligne EST un lien, et un
+          bouton imbriqué dans un lien n'est pas du HTML valide (le même procédé
+          que la liste rapide des sites, juste en dessous).
+        */}
+        {isExpanded && (
+          <span
+            role="button"
+            tabIndex={0}
+            aria-label={
+              isFavorite(item.key) ? `Détacher ${item.label}` : `Épingler ${item.label}`
+            }
+            title={isFavorite(item.key) ? 'Détacher des épinglés' : 'Épingler en haut'}
+            onClick={(event) => {
+              // La ligne est un lien : sans ça, épingler navigue.
+              event.preventDefault();
+              event.stopPropagation();
+              toggleFavorite(item.key);
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' && event.key !== ' ') return;
+              event.preventDefault();
+              event.stopPropagation();
+              toggleFavorite(item.key);
+            }}
+            className={`relative ml-auto flex h-6 w-6 flex-shrink-0 items-center justify-center rounded transition-opacity hover:bg-surface-hover ${
+              isFavorite(item.key)
+                ? 'text-text-secondary opacity-100'
+                : 'text-text-muted opacity-0 focus:opacity-100 group-hover:opacity-100'
+            }`}
+          >
+            {isFavorite(item.key) ? (
+              <PinOff size={12} strokeWidth={2} />
+            ) : (
+              <Pin size={12} strokeWidth={2} />
+            )}
+          </span>
+        )}
         {item.key === 'sites' && isExpanded && (
           <span
             role="button"
@@ -267,6 +338,32 @@ export function Sidebar({
             Collectif, Livrables, Système). Rien à inventer : il suffisait de
             les lire.
           */}
+          {/*
+            LES ÉPINGLÉS, AU-DESSUS DES SECTIONS
+
+            Un RACCOURCI, pas une septième catégorie — et c'est une décision.
+            Les six sections sont le rangement ; les épingles sont un chemin
+            court vers ce qu'on ouvre tous les jours. Deux conséquences
+            assumées :
+
+              · un module épinglé reste AUSSI dans sa section. Le retirer
+                ferait disparaître « Clients » de « Clients & revenus », et la
+                première question serait « où est passé Clients ? ». Un
+                raccourci qui déplace la chose au lieu d'y mener n'est pas un
+                raccourci ;
+              · la bande n'a pas d'intitulé en majuscules et se ferme sur un
+                filet, pour qu'elle se lise comme une avance sur la liste et
+                non comme un groupe de plus.
+
+            Les mêmes épingles nourrissent la barre du pouce sur téléphone
+            (MobileBottomNav) : une seule notion, deux surfaces.
+          */}
+          {isExpanded && epingles.length > 0 && (
+            <div className="flex flex-col gap-1 border-b border-border pb-2">
+              {epingles.map(renderNavItem)}
+            </div>
+          )}
+
           {sectionsForSpace(space).map((section) => (
             <div key={section.key} className="flex flex-col gap-1">
               {isExpanded ? (
