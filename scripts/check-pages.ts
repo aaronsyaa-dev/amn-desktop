@@ -47,7 +47,14 @@ interface Moteur {
   emptyBlock(type: string): any;
   addColumn(bloc: any, nom: string): any;
   removeColumn(bloc: any, index: number): any;
-  PAGE_TEMPLATES: { id: string; label: string; build: () => any }[];
+  PAGE_TEMPLATES: { id: string; label: string; scope?: string; build: () => any }[];
+  templatesForScope(scope?: string): { id: string; scope?: string }[];
+  checklistTotals(items: { done: boolean; priceCents?: number }[]): {
+    totalCents: number;
+    restantCents: number;
+    prisCents: number;
+    sansPrix: number;
+  };
 }
 
 const M = await loadFromSrc<Moteur>('src/lib/pageBlocks.ts');
@@ -165,6 +172,104 @@ check('les gabarits produisent des pages déjà valides', () => {
 check('un titre vide ou absent ne rend pas une page anonyme', () => {
   assert.equal(M.normalizePage({}).title, 'Sans titre');
   assert.equal(M.normalizePage({ title: '   ' }).title, 'Sans titre');
+});
+
+/* ================= La liste de courses (BLOC 2, module Personnel) ========== */
+
+check('COURSES : un prix illisible n’empoisonne pas le total', () => {
+  /*
+    Le défaut que ce contrôle existe pour empêcher : `NaN` est un `number` pour
+    TypeScript. Il traverse la synchronisation, s'additionne sans broncher, et
+    le total des courses affiche « NaN € » — c'est-à-dire précisément le chiffre
+    qu'on était venu chercher. Une chaîne, un négatif et un infini prennent le
+    même chemin.
+  */
+  const bloc = M.normalizePage({
+    blocks: [
+      {
+        id: 'b1',
+        type: 'checklist',
+        shopping: true,
+        items: [
+          { id: 'i1', text: 'Lessive', done: false, priceCents: Number.NaN },
+          { id: 'i2', text: 'Café', done: false, priceCents: '12,50' },
+          { id: 'i3', text: 'Pain', done: false, priceCents: -300 },
+          { id: 'i4', text: 'Sel', done: false, priceCents: Number.POSITIVE_INFINITY },
+          { id: 'i5', text: 'Riz', done: false, priceCents: 240 },
+        ],
+      },
+    ],
+  }).blocks[0];
+  const prix = bloc.items.map((i: any) => i.priceCents);
+  assert.deepEqual(prix, [undefined, 13, undefined, undefined, 240]);
+  const t = M.checklistTotals(bloc.items);
+  assert.ok(Number.isFinite(t.totalCents), 'total non fini');
+  assert.equal(t.totalCents, 253);
+  assert.equal(t.sansPrix, 3, 'les articles sans prix sont comptés, pas ignorés');
+});
+
+check('COURSES : le total dit ce qu’il reste à prendre, pas seulement la somme', () => {
+  const t = M.checklistTotals([
+    { done: true, priceCents: 500 },
+    { done: false, priceCents: 300 },
+    { done: false, priceCents: 200 },
+  ]);
+  assert.equal(t.totalCents, 1000);
+  assert.equal(t.prisCents, 500);
+  assert.equal(t.restantCents, 500);
+  assert.equal(t.sansPrix, 0);
+});
+
+check('COURSES : une liste sans aucun prix rend zéro, pas NaN', () => {
+  const t = M.checklistTotals([{ done: false }, { done: true }]);
+  assert.equal(t.totalCents, 0);
+  assert.equal(t.restantCents, 0);
+  assert.equal(t.sansPrix, 2);
+});
+
+check('COURSES : un lien vide ne devient pas une ancre morte', () => {
+  const bloc = M.normalizePage({
+    blocks: [
+      {
+        id: 'b1',
+        type: 'checklist',
+        items: [
+          { id: 'i1', text: 'a', done: false, url: '   ' },
+          { id: 'i2', text: 'b', done: false, url: ' https://exemple.test/x ' },
+        ],
+      },
+    ],
+  }).blocks[0];
+  assert.equal(bloc.items[0].url, undefined, 'un lien blanc doit valoir pas de lien');
+  assert.equal(bloc.items[1].url, 'https://exemple.test/x', 'les espaces sont retirés');
+});
+
+check('COURSES : le drapeau « courses » survit à la normalisation', () => {
+  const avec = M.normalizePage({ blocks: [{ id: 'b', type: 'checklist', shopping: true, items: [] }] });
+  assert.equal(avec.blocks[0].shopping, true);
+  const sans = M.normalizePage({ blocks: [{ id: 'b', type: 'checklist', items: [] }] });
+  assert.equal(sans.blocks[0].shopping, false, 'une checklist ordinaire ne devient pas une liste de courses');
+});
+
+check('GABARITS : chaque module ne propose que les siens, plus la page vierge', () => {
+  /*
+    Sans ce filtre, le module Personnel proposerait « Fiche de production » et
+    les Pages de travail proposeraient « Liste de courses » : chaque module
+    deviendrait la somme de tous les autres.
+  */
+  const travail = M.templatesForScope(undefined).map((t) => t.id);
+  const perso = M.templatesForScope('personnel').map((t) => t.id);
+  assert.ok(travail.includes('production'), 'la fiche de production est un gabarit de travail');
+  assert.ok(!travail.includes('courses'), 'la liste de courses ne doit pas fuir dans le travail');
+  assert.ok(perso.includes('courses'), 'la liste de courses est un gabarit personnel');
+  assert.ok(!perso.includes('production'), 'la fiche de production ne doit pas fuir dans le personnel');
+  assert.ok(travail.includes('vierge') && perso.includes('vierge'), 'la page vierge est partout');
+  // Tout gabarit déclaré appartient à un module atteignable : un gabarit
+  // rangé sous une portée qu'aucun écran n'ouvre serait invisible.
+  for (const t of M.PAGE_TEMPLATES) {
+    const liste = M.templatesForScope(t.scope).map((x) => x.id);
+    assert.ok(liste.includes(t.id), `${t.id} n’est proposé nulle part`);
+  }
 });
 
 if (failures.length > 0) {

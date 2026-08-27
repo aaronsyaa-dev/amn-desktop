@@ -85,6 +85,11 @@ interface ProfilesModule {
   DEFAULT_CALC_PROFILE_ID: string;
   calcProfileById(id: string): Profile | undefined;
 }
+interface PersonalProfilesModule {
+  PERSONAL_CALC_PROFILES: Profile[];
+  DEFAULT_PERSONAL_PROFILE_ID: string;
+  personalProfileById(id: string): Profile | undefined;
+}
 
 const { evaluateFormula, evaluateProfile, validateProfile, outputsOf, tokenize } =
   await loadFromSrc<EngineModule>('src/state/calcEngine.ts');
@@ -92,6 +97,17 @@ const { CALC_PROFILES, DEFAULT_CALC_PROFILE_ID, calcProfileById } =
   await loadFromSrc<ProfilesModule>('src/state/calcProfiles.ts');
 const { distributeCents, monthlySummary, recentMonths, monthOfDay } =
   await loadFromSrc<SplitModule>('src/state/monthlySplit.ts');
+const { PERSONAL_CALC_PROFILES, DEFAULT_PERSONAL_PROFILE_ID, personalProfileById } =
+  await loadFromSrc<PersonalProfilesModule>('src/state/personalProfiles.ts');
+
+/*
+  Les contrôles génériques portent sur TOUS les profils déclarés, métier ET
+  personnels (BLOC 2). Les profils personnels s'affichent ailleurs — c'est le
+  seul motif du fichier séparé — mais ils sont déroulés par le même moteur, et
+  un profil qui plante à l'ouverture plante de la même façon des deux côtés.
+  N'éprouver que `CALC_PROFILES` laisserait la moitié récente sans filet.
+*/
+const TOUS_PROFILS: Profile[] = [...CALC_PROFILES, ...PERSONAL_CALC_PROFILES];
 
 /**
  * Le profil, ou un échec net.
@@ -100,7 +116,7 @@ const { distributeCents, monthlySummary, recentMonths, monthOfDay } =
  * undefined » depuis le fond d'un test : le nom manquant est l'information.
  */
 function profileOf(id: string): Profile {
-  const found = calcProfileById(id);
+  const found = calcProfileById(id) ?? personalProfileById(id);
   if (!found) throw new Error(`Profil introuvable : ${id}`);
   return found;
 }
@@ -234,7 +250,8 @@ check('tokenize refuse les caractères hors arithmétique', () => {
 
 check('TOUS les profils déclarés sont valides', () => {
   assert.ok(CALC_PROFILES.length >= 4, 'au moins quatre métiers déclarés');
-  for (const profile of CALC_PROFILES) {
+  assert.ok(PERSONAL_CALC_PROFILES.length >= 1, 'au moins un calculateur personnel déclaré');
+  for (const profile of TOUS_PROFILS) {
     const problems = validateProfile(profile);
     assert.deepEqual(problems, [], `${profile.id} : ${problems.join(' · ')}`);
   }
@@ -242,7 +259,7 @@ check('TOUS les profils déclarés sont valides', () => {
 
 check('chaque profil a une identité et des libellés utilisables', () => {
   const ids = new Set<string>();
-  for (const profile of CALC_PROFILES) {
+  for (const profile of TOUS_PROFILS) {
     assert.ok(profile.id && !ids.has(profile.id), `id manquant ou en double : ${profile.id}`);
     ids.add(profile.id);
     assert.ok(profile.label.length > 0, `${profile.id} sans libellé`);
@@ -252,12 +269,23 @@ check('chaque profil a une identité et des libellés utilisables', () => {
   }
   assert.ok(calcProfileById(DEFAULT_CALC_PROFILE_ID), 'le profil par défaut existe');
   assert.equal(calcProfileById('inexistant'), undefined);
+  assert.ok(personalProfileById(DEFAULT_PERSONAL_PROFILE_ID), 'le profil personnel par défaut existe');
+  assert.equal(personalProfileById('inexistant'), undefined);
+  // Les deux catalogues sont DISJOINTS : un profil personnel qui remonterait
+  // dans le module Calculateurs afficherait un budget de fin de mois dans
+  // l'écran de travail d'une cliente.
+  for (const profile of PERSONAL_CALC_PROFILES) {
+    assert.equal(calcProfileById(profile.id), undefined, `${profile.id} fuit dans CALC_PROFILES`);
+  }
+  for (const profile of CALC_PROFILES) {
+    assert.equal(personalProfileById(profile.id), undefined, `${profile.id} fuit dans les profils personnels`);
+  }
 });
 
 check('tout profil se déroule sur ses valeurs par défaut, sans erreur', () => {
   // Un profil dont les valeurs par défaut plantent accueillerait l'utilisateur
   // par un écran d'erreurs à la première ouverture.
-  for (const profile of CALC_PROFILES) {
+  for (const profile of TOUS_PROFILS) {
     const result = evaluateProfile(profile);
     assert.deepEqual(result.errors, [], `${profile.id} : ${JSON.stringify(result.errors)}`);
     assert.ok(outputsOf(result).length > 0, `${profile.id} sans sortie`);
@@ -270,7 +298,7 @@ check('tout profil se déroule sur ses valeurs par défaut, sans erreur', () => 
 check('aucun profil ne casse quand TOUTES les entrées sont à zéro', () => {
   // Le cas réel : un formulaire fraîchement vidé. Il doit rendre des chiffres
   // ou des erreurs nommées, jamais un NaN ni une exception qui remonte.
-  for (const profile of CALC_PROFILES) {
+  for (const profile of TOUS_PROFILS) {
     const zeros = Object.fromEntries(profile.inputs.map((i) => [i.key, 0]));
     const result = evaluateProfile(profile, zeros);
     for (const line of result.lines) {
@@ -758,6 +786,75 @@ check('les douze derniers mois se suivent, changement d’année compris', () =>
   assert.equal(monthOfDay(''), '');
 });
 
+/* ================= Le budget avant la paie (BLOC 2, personnel) ============= */
+
+check('BUDGET : cas connu, vérifié à la main', () => {
+  const profile = profileOf('personnel-budget-avant-paie');
+  /*
+    842,50 € sur le compte, 120 € de remboursement attendu, 615 € de
+    prélèvements encore à passer, 100 € qu'on veut voir le jour de la paie,
+    douze jours à tenir.
+
+      reste vraiment = 84250 + 12000 - 61500 = 34750
+      manque         = max(-34750, 0)        = 0
+      dépensable     = max(34750 - 10000, 0) = 24750
+      par jour       = 24750 / 12 = 2062,5   → 2063 (arrondi au centime)
+      par semaine    = min(2063 × 7, 24750)  = 14441
+  */
+  const result = evaluateProfile(profile, {
+    solde: 84250, aVenir: 12000, prelevements: 61500, matelas: 10000, jours: 12,
+  });
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.scope.reelDisponible, 34750);
+  assert.equal(result.scope.manque, 0);
+  assert.equal(result.scope.depensable, 24750);
+  assert.equal(result.scope.parJour, 2063);
+  assert.equal(result.scope.parSemaine, 14441);
+});
+
+check('BUDGET : dans le rouge, le « par jour » ne devient JAMAIS négatif', () => {
+  /*
+    Le défaut que ce contrôle existe pour empêcher : 50 € sur le compte, 300 €
+    de prélèvements à venir. Une soustraction nue rendrait « -50 € par jour »,
+    un chiffre qui se lit comme un budget alors qu'il décrit une dette. Le
+    manque doit être dit comme un manque, et le dépensable rester à zéro.
+  */
+  const profile = profileOf('personnel-budget-avant-paie');
+  const result = evaluateProfile(profile, {
+    solde: 5000, aVenir: 0, prelevements: 30000, matelas: 0, jours: 5,
+  });
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.scope.reelDisponible, -25000);
+  assert.equal(result.scope.manque, 25000, 'le manque est nommé');
+  assert.equal(result.scope.depensable, 0);
+  assert.equal(result.scope.parJour, 0, 'jamais un budget quotidien négatif');
+  assert.equal(result.scope.parSemaine, 0);
+});
+
+check('BUDGET : le jour de la paie, zéro jour ne divise pas par zéro', () => {
+  const profile = profileOf('personnel-budget-avant-paie');
+  const result = evaluateProfile(profile, {
+    solde: 20000, aVenir: 0, prelevements: 0, matelas: 0, jours: 0,
+  });
+  assert.deepEqual(result.errors, []);
+  assert.ok(Number.isFinite(result.scope.parJour), 'pas d’infini');
+  assert.equal(result.scope.parJour, 20000, 'ce qu’il reste EST ce qu’il reste');
+});
+
+check('BUDGET : la semaine ne dépasse pas ce qu’il reste', () => {
+  // Quatre jours à tenir : une semaine n'en vaut pas sept, sinon l'écran
+  // autorise à dépenser deux fois ce qui existe.
+  const profile = profileOf('personnel-budget-avant-paie');
+  const result = evaluateProfile(profile, {
+    solde: 40000, aVenir: 0, prelevements: 0, matelas: 0, jours: 4,
+  });
+  assert.equal(result.scope.depensable, 40000);
+  assert.equal(result.scope.parJour, 10000);
+  assert.equal(result.scope.parSemaine, 40000, 'plafonné au dépensable');
+});
+
+/* --------------------------------------------------------------------------- */
+
 /* --------------------------------------------------------------------------- */
 
 function roundish(value: number): number {
@@ -769,4 +866,7 @@ if (failures.length > 0) {
   for (const name of failures) console.error(`  - ${name}`);
   process.exit(1);
 }
-console.log(`\nMoteur de calcul : tous les contrôles passent (${CALC_PROFILES.length} profils validés).`);
+console.log(
+  `\nMoteur de calcul : tous les contrôles passent ` +
+    `(${CALC_PROFILES.length} profils métier, ${PERSONAL_CALC_PROFILES.length} personnel${PERSONAL_CALC_PROFILES.length > 1 ? 's' : ''}).`,
+);

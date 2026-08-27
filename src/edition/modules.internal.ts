@@ -17,7 +17,9 @@ import {
   LockKeyhole,
   MonitorDot,
   NotebookPen,
+  PiggyBank,
   Radar,
+  ShoppingBasket,
   FolderKanban,
   ReceiptEuro,
   Scale,
@@ -141,6 +143,22 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    /*
+      PERSONNEL (BLOC 2) — voir le commentaire jumeau dans `modules.business.ts`.
+
+      Présent des deux côtés parce que ce n'est pas un cadeau fait aux
+      clientes depuis l'extérieur : c'est un module qu'Aaron utilise lui aussi,
+      et un module qu'on n'utilise pas est un module qu'on ne corrige pas.
+    */
+    key: 'personnel',
+    label: 'Personnel',
+    space: 'workspace',
+    items: [
+      { key: 'budget', label: 'Avant la paie', to: '/personnel/budget', icon: PiggyBank, hint: 'Ce qu’il reste à dépenser' },
+      { key: 'courses', label: 'Courses', to: '/personnel/courses', icon: ShoppingBasket, hint: 'Liste de courses et pages perso' },
+    ],
+  },
+  {
     key: 'systeme',
     label: 'Système',
     space: 'workspace',
@@ -242,6 +260,8 @@ export const PAGE_ROOMS: [string, string][] = [
   // SSL Monitor est un écran produit comme les deux autres — même entrée.
   ['/ssl', 'analyse'],
   ['/pages', 'journal'],
+  ['/personnel/budget', 'analyse'],
+  ['/personnel/courses', 'journal'],
   ['/decisions', 'journal'],
   ['/knowledge', 'base'],
   ['/reports', 'livrables'],

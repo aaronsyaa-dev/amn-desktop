@@ -53,7 +53,28 @@ function read(rel) {
  * paramètres n'est pas dégradée, elle est cassée. Ils n'ont donc rien à faire
  * dans `ORG_MODULES`, et leur absence n'est pas une divergence.
  */
-const ALWAYS_ON = new Set(['home', 'settings']);
+/**
+ * Les modules toujours ouverts — RELUS dans `src/data/spaces.ts`, jamais
+ * recopiés ici.
+ *
+ * La première version de ce contrôle en tenait sa propre copie. La règle
+ * existait donc dans le script et nulle part dans l'application : la section
+ * « Personnel » passait le contrôle et ne s'affichait chez aucune cliente dont
+ * les modules sont listés explicitement, puisque `isModuleEnabled` ne
+ * connaissait que `home` et `settings`. Deux listes qui disent la même chose
+ * finissent toujours par ne plus la dire.
+ */
+const ALWAYS_ON = (() => {
+  const source = read('src/data/spaces.ts');
+  const bloc = /export const ALWAYS_ON_MODULES = \[([\s\S]*?)\];/.exec(source);
+  if (!bloc) {
+    throw new Error(
+      'ALWAYS_ON_MODULES est introuvable dans src/data/spaces.ts — ce contrôle lit cette ' +
+        'liste-là et refuse d’en inventer une autre.',
+    );
+  }
+  return new Set([...bloc[1].matchAll(/'([^']+)'/g)].map((m) => m[1]));
+})();
 
 /**
  * Absents du contexte de support, volontairement.
@@ -65,6 +86,19 @@ const ALWAYS_ON = new Set(['home', 'settings']);
  */
 const NOT_IN_SUPPORT = new Map([
   ['vault', 'coffre-fort local au poste, jamais celui de la cliente'],
+  /*
+    Même raisonnement que le Coffre-fort, et le même défaut évité.
+
+    « budget » lit `localStorage` sur LE POSTE : en session de support, il
+    afficherait le solde bancaire de l'opérateur sous la bannière de la
+    cliente. « courses » est une page de portée `personnel` — la liste de
+    courses de quelqu'un n'a rien à faire dans un écran de supervision, même
+    la sienne.
+
+    Un écran qui ment sur ce qu'il montre est pire que son absence.
+  */
+  ['budget', 'chiffres personnels, locaux au poste — jamais ceux de la cliente'],
+  ['courses', 'liste personnelle : ne regarde pas le support'],
 ]);
 
 /* ---------------------------------------------------------------- lecture -- */
@@ -161,6 +195,14 @@ if (apiModules) {
     }
   }
   for (const key of apiModules) {
+    if (ALWAYS_ON.has(key)) {
+      failures.push(
+        `« ${key} » est déclaré TOUJOURS OUVERT côté desktop (ALWAYS_ON) et pourtant présent ` +
+          `dans ORG_MODULES (amn-api) : la console d'administration croit pouvoir le fermer, ` +
+          `alors que l'écran resterait là. Choisir l'un des deux.`,
+      );
+      continue;
+    }
     if (!businessNav.some((entry) => entry.key === key)) {
       failures.push(
         `« ${key} » est dans ORG_MODULES (amn-api) mais n'existe dans aucun catalogue du ` +

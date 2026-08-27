@@ -26,6 +26,7 @@ import { DecisionsScreen } from '../screens/DecisionsScreen';
 import { KnowledgeScreen } from '../screens/KnowledgeScreen';
 import { NotesScreen } from '../screens/NotesScreen';
 import { PagesScreen } from '../screens/PagesScreen';
+import { PersonalBudgetScreen } from '../screens/PersonalBudgetScreen';
 import { MediaLibraryScreen } from '../screens/MediaLibraryScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
@@ -127,6 +128,21 @@ function AmnRoutes() {
         <Route path="/tasks" element={<TasksScreen />} />
         <Route path="/notes" element={<NotesScreen />} />
         <Route path="/pages" element={<PagesScreen />} />
+        {/* PERSONNEL (BLOC 2). Volontairement absent de ClientContextRoutes :
+            en session de support, ces écrans montreraient les chiffres et les
+            listes de l'OPÉRATEUR sous la bannière de la cliente — le défaut
+            qui vaut déjà au Coffre-fort d'en être exclu. */}
+        <Route path="/personnel/budget" element={<PersonalBudgetScreen />} />
+        <Route
+          path="/personnel/courses"
+          element={
+            <PagesScreen
+              scope="personnel"
+              title="Personnel"
+              description="Vos listes et vos pages à vous. Elles se synchronisent entre vos appareils — pratique pour écrire la liste ici et la relire dans le magasin."
+            />
+          }
+        />
         <Route path="/clients" element={<ClientsScreen />} />
         <Route path="/facturation" element={<InvoicesScreen />} />
         <Route path="/projets" element={<ProjectsScreen />} />

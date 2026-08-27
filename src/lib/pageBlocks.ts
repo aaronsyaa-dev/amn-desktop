@@ -70,10 +70,60 @@ function normalizeBlock(bloc: PageBlock): PageBlock {
         id: typeof it?.id === 'string' ? it.id : blockId('i'),
         text: typeof it?.text === 'string' ? it.text : '',
         done: Boolean(it?.done),
+        // Un lien vide vaut pas de lien : sans cela, l'écran rendrait une
+        // ancre qui ne mène nulle part et qui a pourtant l'air cliquable.
+        url: typeof it?.url === 'string' && it.url.trim() ? it.url.trim() : undefined,
+        priceCents: normalizePrice(it?.priceCents),
       })),
+      shopping: bloc.shopping === true,
     };
   }
   return bloc;
+}
+
+/**
+ * Un prix reçu, ou rien.
+ *
+ * Trois cas passent par ici et il n'y en a pas un de théorique : la valeur
+ * absente (l'article dont on ne connaît pas le prix), la valeur reçue d'une
+ * autre version sous forme de texte, et `NaN` — qui est un `number` pour
+ * TypeScript, s'additionne sans broncher et contamine un total entier en une
+ * seule ligne. Un total de courses qui affiche « NaN € » n'est pas une petite
+ * laideur : c'est le chiffre qu'on était venu chercher.
+ */
+function normalizePrice(valeur: unknown): number | undefined {
+  const n = typeof valeur === 'string' ? Number(valeur.replace(',', '.')) : valeur;
+  if (typeof n !== 'number' || !Number.isFinite(n) || n < 0) return undefined;
+  return Math.round(n);
+}
+
+/**
+ * Ce que coûte une liste, et ce qu'il reste à prendre.
+ *
+ * Les articles SANS prix sont comptés à part plutôt qu'à zéro. C'est la seule
+ * façon honnête : un total de 12 € sur une liste dont la moitié des articles
+ * n'ont pas de prix se lit comme « les courses coûteront 12 € », ce qui est
+ * faux. L'écran peut alors dire « 12 € · 4 articles sans prix », et la personne
+ * sait ce que le chiffre vaut.
+ */
+export function checklistTotals(items: { done: boolean; priceCents?: number }[]): {
+  totalCents: number;
+  restantCents: number;
+  prisCents: number;
+  sansPrix: number;
+} {
+  let totalCents = 0;
+  let prisCents = 0;
+  let sansPrix = 0;
+  for (const it of items) {
+    if (typeof it.priceCents !== 'number') {
+      sansPrix += 1;
+      continue;
+    }
+    totalCents += it.priceCents;
+    if (it.done) prisCents += it.priceCents;
+  }
+  return { totalCents, restantCents: totalCents - prisCents, prisCents, sansPrix };
 }
 
 /**
@@ -236,8 +286,75 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
       ],
     }),
   },
+  /*
+    BLOC 2 — LE MODULE PERSONNEL, SUR LE MÊME MOTEUR
+
+    Une liste de courses est exactement une checklist : on ajoute, on coche au
+    fur et à mesure. Ce qu'elle demande en plus — le lien du produit et le
+    prix — tient dans deux champs optionnels d'un article (voir `PageBlock`),
+    pas dans un sixième type de bloc.
+
+    `scope: 'personnel'` la range dans le module Personnel : elle ne s'affiche
+    donc pas dans les Pages de travail, et les pages de travail ne s'affichent
+    pas ici.
+  */
+  {
+    id: 'courses',
+    label: 'Liste de courses',
+    description: 'Les articles, leur lien et leur prix. Le total se fait tout seul.',
+    scope: 'personnel',
+    build: () => ({
+      title: 'Courses',
+      icon: '🛒',
+      blocks: [
+        {
+          id: blockId(),
+          type: 'checklist',
+          shopping: true,
+          items: [
+            { id: blockId('i'), text: '', done: false },
+            { id: blockId('i'), text: '', done: false },
+          ],
+        },
+      ],
+    }),
+  },
+  {
+    id: 'avant-paie',
+    label: 'Avant la paie',
+    description: 'Ce qui doit encore passer, et ce qu’on s’autorise d’ici là.',
+    scope: 'personnel',
+    build: () => ({
+      title: 'Avant la paie',
+      icon: '🗓️',
+      blocks: [
+        { id: blockId(), type: 'text', text: 'Ce qui doit encore passer avant la paie, et ce qu’on décide de ne pas dépenser.' },
+        {
+          id: blockId(),
+          type: 'table',
+          columns: ['Quoi', 'Quand', 'Combien'],
+          rows: [['', '', ''], ['', '', '']],
+        },
+      ],
+    }),
+  },
 ];
 
 export function templateById(id: string): PageTemplate | undefined {
   return PAGE_TEMPLATES.find((t) => t.id === id);
+}
+
+/**
+ * Les gabarits proposés dans un module donné.
+ *
+ * Sans ce filtre, le module Personnel proposerait « Fiche de production » et
+ * les Pages de travail proposeraient « Liste de courses » — un catalogue
+ * commun ferait de chaque module la somme de tous les autres.
+ *
+ * La page vierge échappe à la règle, et c'est la seule : elle n'appartient à
+ * aucun module puisqu'elle ne contient rien. La retirer d'un module
+ * obligerait à démonter un gabarit pour partir de zéro.
+ */
+export function templatesForScope(scope?: string): PageTemplate[] {
+  return PAGE_TEMPLATES.filter((t) => t.scope === scope || t.id === 'vierge');
 }

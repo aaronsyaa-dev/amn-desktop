@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   ChevronDown,
   ChevronUp,
+  ExternalLink,
   FileText,
   Image as ImageIcon,
   ListChecks,
@@ -19,7 +20,6 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { ConfirmDelete } from '../components/ConfirmDelete';
 import {
-  PAGE_TEMPLATES,
   addColumn,
   blockId,
   canEditPage,
@@ -28,7 +28,10 @@ import {
   normalizePage,
   normalizeRoles,
   removeColumn,
+  templatesForScope,
 } from '../lib/pageBlocks';
+import { checklistTotals } from '../lib/pageBlocks';
+import { centsToInput, formatCents, parsePositiveAmount } from '../lib/money';
 import type { PageBlock, PageData, PageEditorRole } from '../shared/api';
 
 /**
@@ -103,7 +106,7 @@ export function PagesScreen({ scope, title, description }: {
   const enregistrer = (id: string, data: PageData) => void upsert('pages', id, { ...data });
 
   const creer = (templateId: string) => {
-    const gabarit = PAGE_TEMPLATES.find((t) => t.id === templateId);
+    const gabarit = templatesForScope(scope).find((t) => t.id === templateId);
     if (!gabarit) return;
     const id = uid('page');
     const base = gabarit.build();
@@ -164,7 +167,7 @@ export function PagesScreen({ scope, title, description }: {
                 Un point de départ, pas un formulaire : tout se démonte ensuite.
               </p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {PAGE_TEMPLATES.map((t) => (
+                {templatesForScope(scope).map((t) => (
                   <button
                     key={t.id}
                     type="button"
@@ -466,6 +469,8 @@ function Contenu({
   }
 
   if (bloc.type === 'checklist') {
+    const courses = bloc.shopping === true;
+    const totaux = checklistTotals(bloc.items);
     return (
       <div className="flex flex-col gap-1.5 pr-20">
         {bloc.items.map((item, i) => (
@@ -491,11 +496,57 @@ function Contenu({
                   items: bloc.items.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)),
                 })
               }
-              placeholder="À faire…"
+              placeholder={courses ? 'Article…' : 'À faire…'}
               className={`min-w-0 flex-1 bg-transparent outline-none placeholder:text-text-muted disabled:cursor-default ${
                 item.done ? 'text-text-muted line-through' : 'text-text-secondary'
               }`}
             />
+            {courses && (
+              <>
+                {/* Le lien n'est cliquable qu'une fois rempli : une ancre vide
+                    a l'air d'un lien et ne mène nulle part. */}
+                {item.url ? (
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`Ouvrir la fiche produit de ${item.text || 'cet article'}`}
+                    className="flex-shrink-0 text-text-muted hover:text-text-primary"
+                  >
+                    <ExternalLink size={12} />
+                  </a>
+                ) : null}
+                <input
+                  value={item.url ?? ''}
+                  disabled={!modifiable}
+                  onChange={(e) =>
+                    onChange({
+                      ...bloc,
+                      items: bloc.items.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)),
+                    })
+                  }
+                  placeholder="lien du produit"
+                  className="w-28 flex-shrink-0 bg-transparent font-mono text-[10px] text-text-muted outline-none placeholder:text-text-muted disabled:cursor-default sm:w-40"
+                />
+                <input
+                  inputMode="decimal"
+                  defaultValue={typeof item.priceCents === 'number' ? centsToInput(item.priceCents) : ''}
+                  disabled={!modifiable}
+                  onBlur={(e) => {
+                    const brut = e.target.value.trim();
+                    const prix = brut === '' ? undefined : parsePositiveAmount(brut);
+                    onChange({
+                      ...bloc,
+                      items: bloc.items.map((x, j) => (j === i ? { ...x, priceCents: prix } : x)),
+                    });
+                  }}
+                  placeholder="prix"
+                  aria-label="Prix de l’article"
+                  className="w-14 flex-shrink-0 bg-transparent text-right font-mono text-[11px] text-text-secondary outline-none placeholder:text-text-muted disabled:cursor-default"
+                />
+              </>
+            )}
             {modifiable && (
               <button
                 type="button"
@@ -522,6 +573,31 @@ function Contenu({
             className="self-start text-xs text-text-muted hover:text-text-primary"
           >
             + une ligne
+          </button>
+        )}
+        {courses && (
+          /*
+            Le total dit AUSSI ce qu'il ne sait pas. Afficher « 24,80 € » sur
+            une liste dont six articles n'ont pas de prix se lirait comme le
+            montant des courses, et ce serait faux.
+          */
+          <p className="mt-1 border-t border-border pt-1.5 font-mono text-[11px] text-text-secondary">
+            {formatCents(totaux.restantCents)} à prendre
+            <span className="text-text-muted"> · {formatCents(totaux.totalCents)} en tout</span>
+            {totaux.sansPrix > 0 && (
+              <span className="text-text-muted">
+                {' '}· {totaux.sansPrix} sans prix
+              </span>
+            )}
+          </p>
+        )}
+        {modifiable && (
+          <button
+            type="button"
+            onClick={() => onChange({ ...bloc, shopping: !courses })}
+            className="self-start text-[11px] text-text-muted hover:text-text-primary"
+          >
+            {courses ? 'Masquer les liens et les prix' : 'Liste de courses (liens et prix)'}
           </button>
         )}
       </div>

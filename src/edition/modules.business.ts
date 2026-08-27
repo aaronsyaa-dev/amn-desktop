@@ -10,6 +10,8 @@ import {
   LayoutTemplate,
   Lock,
   NotebookPen,
+  PiggyBank,
+  ShoppingBasket,
   FolderKanban,
   ReceiptEuro,
   Settings,
@@ -108,6 +110,31 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    /*
+      PERSONNEL — UN BONUS, PAS UN PRODUIT (BLOC 2)
+
+      Inclus dans les desktops business déjà payés. Ce n'est pas une phrase de
+      commercial posée sur du code neutre : ces deux modules n'ont AUCUNE clé
+      dans `ORG_MODULES` (amn-api), donc rien ne permet de les ouvrir ni de
+      les fermer par organisation, donc rien ne permet de les vendre. Il n'y a
+      pas de levier parce qu'il n'y en a pas — voir `ALWAYS_ON` dans
+      `scripts/check-modules.mjs`.
+
+      Ils ne sont pas non plus visibles en session de support : un budget de
+      fin de mois et une liste de courses ne regardent pas AMN DevSec. Voir
+      `NOT_IN_SUPPORT`, où le Coffre-fort figure déjà pour la même raison.
+
+      Rangés en dernier, juste avant Système : c'est ce qu'on ouvre le soir,
+      pas ce qu'on ouvre pour travailler.
+    */
+    key: 'personnel',
+    label: 'Personnel',
+    items: [
+      { key: 'budget', label: 'Avant la paie', to: '/personnel/budget', icon: PiggyBank, hint: 'Ce qu’il reste à dépenser' },
+      { key: 'courses', label: 'Courses', to: '/personnel/courses', icon: ShoppingBasket, hint: 'Liste de courses et pages perso' },
+    ],
+  },
+  {
     key: 'systeme',
     label: 'Système',
     items: [
@@ -164,6 +191,8 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/commandes', 'fiches'],
   ['/notes', 'journal'],
   ['/pages', 'journal'],
+  ['/personnel/budget', 'analyse'],
+  ['/personnel/courses', 'journal'],
   ['/media', 'base'],
   ['/reports', 'livrables'],
   ['/settings', 'reglages'],

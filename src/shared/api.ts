@@ -1409,7 +1409,27 @@ export type PageBlock =
   | {
       id: string;
       type: 'checklist';
-      items: { id: string; text: string; done: boolean }[];
+      items: {
+        id: string;
+        text: string;
+        done: boolean;
+        /**
+         * Le lien du produit (BLOC 2). Optionnel, et c'est ce qui permet à la
+         * liste de courses d'être une checklist ordinaire plutôt qu'un
+         * sixième type de bloc : on retrouve la référence exacte au lieu de
+         * chercher « la lessive, celle en bidon bleu ».
+         */
+        url?: string;
+        /** Le prix en centimes, quand on le connaît. Sert au total du bloc. */
+        priceCents?: number;
+      }[];
+      /**
+       * Affiche le lien, le prix et le total. Un drapeau plutôt qu'un type de
+       * bloc distinct : une checklist de tournage n'a que faire de trois
+       * colonnes de plus, et une liste de courses est exactement une checklist
+       * — cocher au fur et à mesure EST le geste.
+       */
+      shopping?: boolean;
     }
   | {
       id: string;

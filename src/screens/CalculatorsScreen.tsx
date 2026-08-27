@@ -14,7 +14,8 @@ import {
   recentMonths,
   type SplitMode,
 } from '../state/monthlySplit';
-import { centsToInput, formatCents, parsePositiveAmount } from '../lib/money';
+import { formatCents } from '../lib/money';
+import { defaultText, formatValue, parseValue } from '../lib/calcFormat';
 import { durationMs } from '../state/timeEngine';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 
@@ -390,25 +391,4 @@ function Cell({
       <dd className={`mt-0.5 font-mono text-sm tabular-nums ${tone}`}>{value}</dd>
     </div>
   );
-}
-
-/* --------------------------------- Formats -------------------------------- */
-
-/** Ce que le champ montre tant que personne n'y a touché. */
-function defaultText(value: number, kind: CalcKind): string {
-  if (kind === 'money') return centsToInput(value) || '0';
-  return String(value);
-}
-
-function parseValue(raw: string, kind: CalcKind): number {
-  if (kind === 'money') return parsePositiveAmount(raw);
-  const value = Number.parseFloat(String(raw).replace(',', '.'));
-  return Number.isFinite(value) ? value : 0;
-}
-
-function formatValue(value: number, kind: CalcKind): string {
-  if (kind === 'money') return formatCents(value);
-  if (kind === 'percent') return `${value.toFixed(1).replace('.', ',')} %`;
-  // Un « nombre » reste lisible : 89,89 entrées se lit mieux que 89,8876404494.
-  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace('.', ',');
 }

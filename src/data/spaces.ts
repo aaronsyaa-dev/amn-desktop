@@ -67,12 +67,30 @@ export function setEnabledModules(modules: string[] | null | undefined): void {
 }
 
 /**
- * Un module est-il ouvert ? `home` et `settings` le sont toujours : une
- * organisation sans accueil ni paramètres n'est pas dégradée, elle est cassée.
+ * LES MODULES QUI NE SE FERMENT PAS.
+ *
+ * Deux familles, et deux raisons différentes :
+ *
+ *   - `home` et `settings` : une organisation sans accueil ni paramètres n'est
+ *     pas dégradée, elle est cassée.
+ *   - `budget` et `courses` (module Personnel, BLOC 2) : un bonus inclus dans
+ *     les desktops business déjà payés. Ils n'ont AUCUNE clé dans `ORG_MODULES`
+ *     côté amn-api — il n'existe donc rien à consulter pour savoir s'ils sont
+ *     ouverts, parce qu'il n'existe aucun geste pour les fermer, donc aucun
+ *     pour les vendre.
+ *
+ * Cette liste est la SEULE source : `scripts/check-modules.mjs` la relit dans
+ * ce fichier plutôt que d'en tenir une copie. C'est ce qui a manqué la
+ * première fois — la règle vivait dans le contrôle, l'application l'ignorait,
+ * et la section « Personnel » ne s'affichait chez personne dont les modules
+ * sont listés explicitement.
  */
+export const ALWAYS_ON_MODULES = ['home', 'settings', 'budget', 'courses'];
+
+/** Un module est-il ouvert ? */
 export function isModuleEnabled(key: string): boolean {
+  if (ALWAYS_ON_MODULES.includes(key)) return true;
   if (!enabledModules) return true;
-  if (key === 'home' || key === 'settings') return true;
   return enabledModules.includes(key);
 }
 

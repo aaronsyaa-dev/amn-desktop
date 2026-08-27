@@ -19,6 +19,7 @@ import { OrdersScreen } from '../screens/OrdersScreen';
 import { TasksScreen } from '../screens/TasksScreen';
 import { NotesScreen } from '../screens/NotesScreen';
 import { PagesScreen } from '../screens/PagesScreen';
+import { PersonalBudgetScreen } from '../screens/PersonalBudgetScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { VaultScreen } from '../screens/VaultScreen';
@@ -161,6 +162,20 @@ export function AppRoot() {
             <ModuleRoute module="reports">
               <ReportsScreen />
             </ModuleRoute>
+          }
+        />
+        {/* PERSONNEL (BLOC 2) — sans <ModuleRoute>, et c'est délibéré : ces
+            écrans n'ont aucune clé serveur, donc rien à consulter pour savoir
+            s'ils sont ouverts. Un bonus inclus n'a pas d'interrupteur. */}
+        <Route path="/personnel/budget" element={<PersonalBudgetScreen />} />
+        <Route
+          path="/personnel/courses"
+          element={
+            <PagesScreen
+              scope="personnel"
+              title="Personnel"
+              description="Vos listes et vos pages à vous. Elles se synchronisent entre vos appareils — pratique pour écrire la liste ici et la relire dans le magasin."
+            />
           }
         />
         <Route path="/settings" element={<SettingsScreen />} />
