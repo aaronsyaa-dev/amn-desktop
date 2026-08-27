@@ -36,30 +36,40 @@ function code(rel) {
     .replace(/^\s*\/\/.*$/gm, '');
 }
 
-/* 1. Le publisher GitHub est débranché dans l'édition Business. --------------
-   Sans ça, `npm run publish` lancé avec AMN_EDITION=business téléverserait
-   l'installeur d'une cliente dans les Releases du dépôt interne — et le
-   service de mise à jour d'Electron le proposerait à Aaron et Mohamed. */
+/* 1. Le bloc `publish` est débranché dans l'édition Business. ----------------
+   electron-builder écrit `app-update.yml` (le flux qu'electron-updater lira)
+   à partir de ce bloc. S'il existait dans un build Business, l'application
+   d'une cliente saurait interroger les Releases du dépôt interne — et
+   s'installerait notre édition à la première version publiée. */
 {
-  const forge = code('forge.config.ts');
-  if (!/publishers:\s*IS_BUSINESS\s*\n?\s*\?\s*\[\s*\]/.test(forge)) {
+  const builder = code('electron-builder.config.mjs');
+  if (!/publish:\s*IS_BUSINESS\s*\n?\s*\?\s*null/.test(builder)) {
     failures.push(
-      'forge.config.ts : `publishers` doit rester vide dans l’édition Business ' +
-        '(`publishers: IS_BUSINESS ? [] : [...]`). Sinon un build Business peut être ' +
-        'publié dans les Releases du dépôt interne.',
+      'electron-builder.config.mjs : `publish` doit valoir null dans l’édition Business ' +
+        '(`publish: IS_BUSINESS ? null : [...]`). Un tableau vide ne suffit PAS — mesuré : ' +
+        'electron-builder déduit alors le dépôt du remote git et écrit app-update.yml.',
+    );
+  }
+  // La valeur de config ne prouve rien : le hook afterPack doit refuser
+  // l'artefact lui-même si le flux y apparaît.
+  const hook = code('scripts/eb-after-pack.mjs');
+  if (!/app-update\.yml/.test(hook) || !/throw new Error/.test(hook)) {
+    failures.push(
+      'scripts/eb-after-pack.mjs doit REFUSER un build Business contenant app-update.yml — ' +
+        'c’est le contrôle sur l’artefact, pas sur la config.',
     );
   }
 }
 
 /* 2. Le canal interne est inatteignable depuis un build Business. ------------
-   `updateElectronApp` lit les Releases de aaronsyaa-dev/amn-desktop, qui
+   `electron-updater` lit les Releases de aaronsyaa-dev/amn-desktop, qui
    portent les artefacts INTERNES. La sortie anticipée doit venir avant. */
 {
   const updater = code('src/main/updater.ts');
   /*
     L'ancre est `if (!app.isPackaged) return;`, et il a fallu deux essais pour
-    y arriver. Chercher un `if (IS_BUSINESS)` « quelque part avant
-    updateElectronApp » ne prouvait rien : `setupAutoUpdate` en contient un
+    y arriver. Chercher un `if (IS_BUSINESS)` « quelque part avant le
+    branchement du canal » ne prouvait rien : `setupAutoUpdate` en contient un
     autre, dans le gestionnaire IPC d'installation, qui satisfaisait la règle
     à lui seul. La garde pouvait donc disparaître de l'endroit qui compte sans
     que rien ne bronche — mesuré en la retirant, pas supposé.
@@ -68,18 +78,18 @@ function code(rel) {
     plus qu'une chose : la sortie Business. C'est celle-là qu'on exige.
   */
   const debut = updater.indexOf('if (!app.isPackaged) return;');
-  const service = updater.indexOf('updateElectronApp');
+  const service = updater.indexOf("require('electron-updater')");
   const amont = debut === -1 || service === -1 || debut > service ? '' : updater.slice(debut, service);
   if (!amont) {
     failures.push(
-      'src/main/updater.ts : impossible de lire `setupAutoUpdate` avant l’appel à ' +
-        '`updateElectronApp` — le contrôle ne peut rien affirmer.',
+      'src/main/updater.ts : impossible de lire `setupAutoUpdate` avant le chargement ' +
+        "d'electron-updater — le contrôle ne peut rien affirmer.",
     );
   } else if (!/if\s*\(IS_BUSINESS\)\s*\{[\s\S]*?\breturn;/.test(amont)) {
     failures.push(
       'src/main/updater.ts : `setupAutoUpdate` doit sortir sur `if (IS_BUSINESS) { … return; }` ' +
-        'AVANT `updateElectronApp`. Un build Business branché sur le service public ' +
-        'installerait l’édition interne chez une cliente.',
+        "AVANT le chargement d'electron-updater. Un build Business branché sur le flux " +
+        'GitHub installerait l’édition interne chez une cliente.',
     );
   }
 }

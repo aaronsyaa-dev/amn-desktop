@@ -1,3 +1,14 @@
+/*
+  DÉVELOPPEMENT UNIQUEMENT depuis la migration hors Squirrel.
+
+  `npm start` (Forge + plugin Vite) reste le chemin du développement, avec le
+  rechargement à chaud. L'EMPAQUETAGE et la PUBLICATION, eux, passent par
+  electron-builder + NSIS (`electron-builder.config.mjs`, `npm run make`,
+  release.yml) : quatre versions Squirrel installées d'affilée ne démarraient
+  plus alors que leurs artefacts étaient sains à l'octet près — la mécanique
+  d'installation Squirrel était le maillon défaillant. Ne réutilisez pas
+  `electron-forge make/publish` pour livrer.
+*/
 import type { ForgeConfig } from '@electron-forge/shared-types';
 import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerZIP } from '@electron-forge/maker-zip';

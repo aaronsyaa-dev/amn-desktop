@@ -88,6 +88,12 @@ if (!apiUrl || !token) {
 function findPackagedApp() {
   const explicite = flag('app');
   if (explicite) return explicite;
+  // electron-builder : le dossier déballé accompagne toujours l'installeur.
+  // L'exécutable `amn-business` distingue l'édition — le nom du dossier, non.
+  const builder = 'dist-app/win-unpacked';
+  if (fs.existsSync(path.join(builder, 'AMN Business.exe'))) return builder;
+  const builderLinux = 'dist-app/linux-unpacked';
+  if (fs.existsSync(path.join(builderLinux, 'amn-business'))) return builderLinux;
   if (!fs.existsSync('out')) return null;
   const candidats = fs
     .readdirSync('out', { withFileTypes: true })
@@ -129,15 +135,18 @@ function auditPackagedApp(appDir) {
 
 /** Retrouve l'installeur produit par `make:business`, si on ne l'a pas nommé. */
 function findInstaller() {
-  const roots = ['out/make/squirrel.windows/x64', 'out/make/squirrel.windows/ia32', 'out/make'];
+  // `dist-app/` d'abord : la chaîne electron-builder/NSIS est celle de la
+  // publication depuis la migration hors Squirrel. Les chemins `out/make`
+  // restent lus pour un artefact Forge historique passé avec --file.
+  const roots = ['dist-app', 'out/make/squirrel.windows/x64', 'out/make/squirrel.windows/ia32', 'out/make'];
   for (const root of roots) {
     if (!fs.existsSync(root)) continue;
     const found = fs
       .readdirSync(root, { withFileTypes: true })
       .filter((e) => e.isFile() && /\.exe$/i.test(e.name))
-      // Les deux éditions déposent leur installeur dans CE dossier. Filtrer sur
-      // le nom ne prouve rien (voir l'audit de l'artefact plus bas), mais évite
-      // de partir sur le mauvais fichier quand les deux sont là.
+      // Les deux éditions peuvent déposer leur installeur dans CE dossier.
+      // Filtrer sur le nom ne prouve rien (voir l'audit de l'artefact plus
+      // bas), mais évite de partir sur le mauvais fichier quand les deux sont là.
       .filter((e) => /business/i.test(e.name))
       .map((e) => path.join(root, e.name));
     if (found.length > 0) return found[0];

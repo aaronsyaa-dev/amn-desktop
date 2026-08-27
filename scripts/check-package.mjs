@@ -34,12 +34,18 @@ const flag = (nom) => {
  * Forge décide d'écrire là. Le contenu, lui, ne ment pas.
  */
 function paquetsSousOut() {
-  if (!fs.existsSync('out')) return [];
-  return fs
-    .readdirSync('out', { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .map((e) => path.join('out', e.name))
-    .filter((d) => fs.existsSync(path.join(d, 'resources', 'app.asar')));
+  const dossiers = [];
+  // Les deux chaînes d'empaquetage : `out/` (Forge, conservé pour le dev) et
+  // `dist-app/` (electron-builder, la chaîne de publication).
+  for (const racine of ['out', 'dist-app']) {
+    if (!fs.existsSync(racine)) continue;
+    for (const e of fs.readdirSync(racine, { withFileTypes: true })) {
+      if (!e.isDirectory()) continue;
+      const d = path.join(racine, e.name);
+      if (fs.existsSync(path.join(d, 'resources', 'app.asar'))) dossiers.push(d);
+    }
+  }
+  return dossiers;
 }
 
 const dossiers = flag('dir') ? [flag('dir')] : paquetsSousOut();

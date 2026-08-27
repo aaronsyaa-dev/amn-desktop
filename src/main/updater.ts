@@ -1,4 +1,5 @@
-import { app, autoUpdater, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import type { AppUpdater } from 'electron-updater';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -16,11 +17,17 @@ import { remoteConfig } from './remoteConfig';
  *
  * ## L'édition interne
  *
- * Elle passe par le service public d'Electron, qui lit les Releases GitHub du
- * dépôt : Squirrel télécharge et met de côté tout seul, en arrière-plan. Quand
- * une version est prête, on n'affiche PAS la boîte de dialogue d'Electron
- * (`notifyUser: false`) — on prévient le renderer, qui montre un panneau
- * soigné avec un seul bouton (voir UpdateReady.tsx).
+ * Elle passe par `electron-updater`, qui lit `latest.yml` dans les Releases
+ * GitHub du dépôt (publié par electron-builder), télécharge l'installeur NSIS
+ * en différentiel et le met de côté tout seul, en arrière-plan. Quand une
+ * version est prête, on prévient le renderer, qui montre un panneau soigné
+ * avec un seul bouton (voir UpdateReady.tsx).
+ *
+ * (Historique : ce canal passait par Squirrel.Windows via update-electron-app.
+ * Quatre versions installées d'affilée ne démarraient plus alors que leurs
+ * artefacts, autopsiés octet par octet, étaient sains — la mécanique
+ * d'installation Squirrel elle-même était le maillon défaillant. Migration
+ * complète : electron-builder.config.mjs.)
  *
  * ## L'édition Business, et le défaut que ce fichier corrige
  *
@@ -104,6 +111,11 @@ export function compareVersions(a: string, b: string): number {
 
 /** La version mise de côté, prête à s'installer. */
 let staged: { version: string; notes: string; file: string } | null = null;
+/**
+ * L'updater interne (electron-updater), branché par `setupAutoUpdate`.
+ * Chargé paresseusement : le dev et l'édition Business ne le touchent jamais.
+ */
+let interne: AppUpdater | null = null;
 /** Un téléchargement est en cours — on n'en lance pas un second. */
 let fetching = '';
 
@@ -228,14 +240,23 @@ async function checkNow(): Promise<UpdateCheck> {
 
   if (IS_BUSINESS) return checkBusiness();
 
-  // Édition interne : Squirrel sait déjà interroger le service.
+  // Édition interne : electron-updater interroge le flux des Releases GitHub.
   if (staged) return { status: 'ready', version: staged.version };
+  if (!interne) {
+    return {
+      status: 'error',
+      message: 'Le canal de mise à jour n’a pas pu être initialisé au démarrage.',
+    };
+  }
   try {
-    autoUpdater.checkForUpdates();
-    // `checkForUpdates` est asynchrone et sans promesse : on ne peut pas
-    // prétendre connaître son verdict ici. « Je regarde » est la seule réponse
-    // honnête — le panneau « prête à installer » apparaîtra tout seul.
-    return { status: 'downloading' };
+    const resultat = await interne.checkForUpdates();
+    const distante = resultat?.updateInfo?.version ?? '';
+    if (distante && compareVersions(distante, app.getVersion()) > 0) {
+      // Le téléchargement part tout seul (autoDownload) ; le panneau « prête à
+      // installer » apparaîtra quand `update-downloaded` tombera.
+      return { status: 'downloading', version: distante };
+    }
+    return { status: 'uptodate', version: app.getVersion() };
   } catch (err) {
     return {
       status: 'error',
@@ -347,7 +368,7 @@ export function setupAutoUpdate(): void {
       return;
     }
     try {
-      autoUpdater.quitAndInstall();
+      interne?.quitAndInstall();
     } catch {
       /* rien de mis de côté / non supporté — on ignore */
     }
@@ -367,24 +388,38 @@ export function setupAutoUpdate(): void {
   }
 
   try {
-    // Lazy require so dev/test (and the Linux CI) never load native update code.
+    // Requis paresseusement : le dev, les tests et la CI Linux ne chargent
+    // jamais le code de mise à jour.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { updateElectronApp, UpdateSourceType } = require('update-electron-app');
-    updateElectronApp({
-      updateSource: {
-        type: UpdateSourceType.ElectronPublicUpdateService,
-        repo: 'aaronsyaa-dev/amn-desktop',
-      },
-      updateInterval: '1 hour',
-      notifyUser: false, // we present our own in-app UI instead of the stock dialog
+    const { autoUpdater: updater } = require('electron-updater') as typeof import('electron-updater');
+    interne = updater;
+
+    // Le flux (dépôt GitHub, canal) vient d'app-update.yml, écrit dans les
+    // ressources par electron-builder à l'empaquetage : l'application n'a pas
+    // à connaître l'adresse, et ne peut donc pas se tromper de dépôt.
+    updater.autoDownload = true;
+    updater.autoInstallOnAppQuit = true;
+
+    updater.on('update-downloaded', (info) => {
+      const version = info.version || 'nouvelle version';
+      const notes = typeof info.releaseNotes === 'string' ? info.releaseNotes : '';
+      staged = { version, notes, file: '' };
+      annonceAuRenderer(version, notes);
+    });
+    updater.on('error', (err) => {
+      // Non fatal — l'application vit très bien sans mise à jour ; le bouton
+      // « Vérifier maintenant » remontera l'erreur en clair s'il est utilisé.
+      // eslint-disable-next-line no-console
+      console.warn('[amn] mise à jour interne — erreur :', err?.message ?? err);
     });
 
-    // When Squirrel has downloaded + staged an update, surface it in-app.
-    autoUpdater.on('update-downloaded', (_event, notes, releaseName) => {
-      const version = (releaseName || '').replace(/^v/, '') || 'nouvelle version';
-      staged = { version, notes: notes || '', file: '' };
-      annonceAuRenderer(version, notes || '');
-    });
+    // Une ronde à l'heure, comme avant, plus un premier passage différé : au
+    // démarrage, l'opérateur attend sa fenêtre, pas un téléchargement.
+    const ronde = () => {
+      void interne?.checkForUpdates().catch(() => undefined);
+    };
+    setTimeout(ronde, 30_000).unref?.();
+    setInterval(ronde, 60 * 60 * 1000).unref?.();
   } catch (err) {
     // Non-fatal: the app runs fine without auto-update.
     // eslint-disable-next-line no-console
