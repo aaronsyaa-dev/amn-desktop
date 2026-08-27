@@ -95,12 +95,61 @@ jobs:
           $i = Start-Process -FilePath $setup.FullName -ArgumentList "/S" -PassThru
           if (-not $i.WaitForExit(180000)) { $i.Kill(); Write-Error "installation : délai dépassé"; exit 1 }
           if ($i.ExitCode -ne 0) { Write-Error "installation : code $($i.ExitCode)"; exit 1 }
-          $exe = Join-Path $env:LOCALAPPDATA "Programs\AMN Desktop\AMN Desktop.exe"
-          if (-not (Test-Path $exe)) { Write-Error "exécutable installé introuvable : $exe"; exit 1 }
+
+          <#
+            LE DOSSIER D'INSTALLATION N'EST PAS « <nom de produit> ».
+
+            Confirmé en exécutant la fonction réelle d'electron-builder
+            (getWindowsInstallationDirName, app-builder-lib/out/targets/
+            targetUtil.js) avec nos quatre combinaisons oneClick/perMachine :
+            SEULE la nôtre (oneClick: true, perMachine: false — un installeur
+            un clic, par utilisateur) rend un nom de dossier différent du nom
+            de produit. Dans ce cas précis, electron-builder nomme le dossier
+            d'après le champ "name" de package.json ("amn-desktop"), jamais
+            "productName" ("AMN Desktop") — voir NsisTarget.js :
+            APP_FILENAME = getWindowsInstallationDirName(appInfo, !oneClick || isPerMachine).
+            Avec nos valeurs, cette condition vaut FALSE, donc le nom retenu
+            est TOUJOURS appInfo.sanitizedName, quel que soit productName.
+
+            Ce n'est pas un problème de minutage : l'extraction NSIS
+            (Nsis7z::Extract, CopyFiles /SILENT) s'exécute dans LE MÊME
+            processus que celui attendu par WaitForExit — rien dans les
+            gabarits NSIS ne détache la copie de fichiers dans un processus
+            enfant pour une installation par utilisateur sans élévation. Le
+            code de sortie 0 sans dépassement de délai le confirme déjà :
+            l'installation avait réellement terminé, au bon endroit — juste
+            pas celui que ce script devinait.
+
+            On calcule donc le nom réel comme electron-builder le calcule,
+            plutôt que de le deviner une seconde fois.
+          #>
+          $pkgName = (Get-Content package.json -Raw | ConvertFrom-Json).name
+          $installDir = Join-Path $env:LOCALAPPDATA "Programs\$pkgName"
+          $exe = Join-Path $installDir "AMN Desktop.exe"
+
+          # Filet de sécurité, pas le correctif : un antivirus qui verrouille
+          # encore le fichier juste après l'écriture reste un cas réel sur les
+          # runners Windows. On attend sa présence jusqu'à 60 s plutôt que de
+          # se fier à un seul Test-Path immédiat.
+          $found = $false
+          for ($attempt = 0; $attempt -lt 30; $attempt++) {
+            if (Test-Path $exe) { $found = $true; break }
+            Start-Sleep -Seconds 2
+          }
+          if (-not $found) {
+            Write-Error "exécutable installé introuvable après 60 s : $exe"
+            $programsDir = Join-Path $env:LOCALAPPDATA "Programs"
+            if (Test-Path $programsDir) {
+              Write-Host "contenu de $programsDir :"
+              Get-ChildItem $programsDir | ForEach-Object { Write-Host "  $($_.Name)" }
+            }
+            exit 1
+          }
+
           $p = Start-Process -FilePath $exe -ArgumentList "--smoke-test" -PassThru -NoNewWindow
           if (-not $p.WaitForExit(60000)) { $p.Kill(); Write-Error "smoke test installé : délai dépassé"; exit 1 }
           if ($p.ExitCode -ne 0) { Write-Error "smoke test installé : code $($p.ExitCode)"; exit 1 }
-          Write-Host "smoke test OK — l'application INSTALLÉE a démarré. Publication autorisée."
+          Write-Host "smoke test OK — l'application INSTALLÉE ($installDir) a démarré. Publication autorisée."
 
       # ───────────────────────────── Publication ─────────────────────────────
       # `gh release upload` envoie les fichiers DÉJÀ vérifiés ci-dessus —
