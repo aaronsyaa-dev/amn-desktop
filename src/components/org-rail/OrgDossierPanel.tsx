@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { roleLabel } from '../../lib/roleLabels';
 import { motion } from 'framer-motion';
 import { Check, Lock, ShieldAlert, X } from 'lucide-react';
 import { useSync, useCollection } from '../../state/SyncContext';
@@ -800,8 +801,12 @@ export function OrgDossierPanel({
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs text-text-primary">{compte.email}</p>
+                      {/* Le rôle DANS SA LANGUE (BLOC 6) : « Gérante » chez une
+                          boutique, « Président » chez une association. Seul
+                          l'intitulé change — les droits restent ceux
+                          qu'arbitre amn-api. */}
                       <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                        {compte.role}
+                        {roleLabel(compte.role, org.trade)}
                         {compte.status !== 'active' ? ` · ${compte.status}` : ''}
                       </p>
                     </div>

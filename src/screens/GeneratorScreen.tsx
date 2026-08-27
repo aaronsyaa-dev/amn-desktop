@@ -179,6 +179,19 @@ export function GeneratorScreen() {
         ownerEmail: trimmedEmail,
         plan,
         logoDataUrl: logo || undefined,
+        /*
+          LE MÉTIER EST CONSERVÉ (BLOC 6).
+
+          Jusqu'ici le profil métier disparaissait à la création : il proposait
+          des modules, un calculateur et une couleur, puis plus rien ne savait
+          qu'AllStore est une boutique. C'est ce qui manquait pour parler la
+          langue de la cliente — « Gérante » plutôt que « Propriétaire ».
+        */
+        // `profile?.id` : l'atelier laisse créer sans avoir choisi de métier
+        // (on part d'une page blanche et on coche soi-même). Le serveur
+        // accepte l'absence, et l'organisation affichera les libellés
+        // génériques plutôt qu'un métier deviné.
+        trade: profile?.id,
       });
       if (!created.owner) throw new Error('Organisation créée sans compte propriétaire.');
 

@@ -551,6 +551,72 @@ if (apiCatalogue) {
   notes.push('MODULE_CATALOGUE illisible — les contrôles d’identité de module sont sautés.');
 }
 
+/*
+  7. LES MÉTIERS (BLOC 6)
+
+  Trois listes, et elles servent à trois choses différentes :
+
+    - `ORG_TRADES` (amn-api) : ce que le serveur ACCEPTE d'écrire. Un métier
+      absent d'ici est refusé à la création, quoi qu'affiche l'atelier.
+    - `TRADE_PROFILES` (src/data/tradeProfiles.ts) : ce que l'atelier PROPOSE.
+      Un métier proposé mais inconnu du serveur fait échouer la création après
+      coup, alors que tout paraissait bien rempli.
+    - `PAR_METIER` (src/lib/roleLabels.ts) : les intitulés de rôle. Un métier
+      sans intitulés n'est pas une panne — on retombe sur les génériques — mais
+      c'est le geste qu'on oublie, et le résultat est une cliente à qui l'on
+      avait promis sa langue et qui lit la nôtre.
+*/
+const tradesApi = (() => {
+  for (const candidate of ['/workspace/amn-api', path.join(ROOT, '..', 'amn-api')]) {
+    const file = path.join(candidate, 'src/db/tenancy.js');
+    if (!fs.existsSync(file)) continue;
+    const bloc = /export const ORG_TRADES = \[([\s\S]*?)\];/.exec(
+      withoutComments(fs.readFileSync(file, 'utf-8')),
+    );
+    if (!bloc) return null;
+    return [...bloc[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+  }
+  return null;
+})();
+
+if (tradesApi) {
+  const profils = [...withoutComments(read('src/data/tradeProfiles.ts')).matchAll(/^\s*id: '([^']+)',$/gm)]
+    .map((m) => m[1]);
+  if (profils.length === 0) failures.push('Aucun métier lu dans TRADE_PROFILES — le lecteur est cassé.');
+
+  for (const id of profils) {
+    if (!tradesApi.includes(id)) {
+      failures.push(
+        `Le métier « ${id} » est proposé par l'atelier mais absent d'ORG_TRADES (amn-api) : ` +
+          `la création serait refusée après que tout a été rempli.`,
+      );
+    }
+  }
+  for (const id of tradesApi) {
+    if (!profils.includes(id)) {
+      failures.push(
+        `Le métier « ${id} » est accepté par le serveur mais n'existe dans aucun profil de ` +
+          `l'atelier : rien ne permettrait de le choisir.`,
+      );
+    }
+  }
+
+  const labels = withoutComments(read('src/lib/roleLabels.ts'));
+  const bloc = slice(labels, 'const PAR_METIER', '\n};');
+  const avecLibelles = [...bloc.matchAll(/^\s{2}([a-zA-Z]+):\s*\{/gm)].map((m) => m[1]);
+  for (const id of tradesApi) {
+    if (!avecLibelles.includes(id)) {
+      failures.push(
+        `Le métier « ${id} » n'a pas d'intitulés de rôle dans src/lib/roleLabels.ts : ses ` +
+          `comptes s'afficheraient « Propriétaire » et « Membre » alors que tout l'intérêt du ` +
+          `métier est de dire « Gérante » et « Vendeur ».`,
+      );
+    }
+  }
+} else {
+  notes.push('ORG_TRADES illisible — les contrôles de métier sont sautés.');
+}
+
 /* ---------------------------------------------------------------- verdict -- */
 
 for (const note of notes) console.log(`  note  ${note}`);

@@ -77,6 +77,8 @@ export interface AdminOrganization {
   modules?: string[] | null;
   /** Couleur d'accent (identifiant de palette) ; `null` = défaut. */
   accent?: string | null;
+  /** Métier de l'organisation (BLOC 6) ; `null` = inconnu, libellés génériques. */
+  trade?: string | null;
   userCount: number;
   /** ISO, ou null si l'organisation n'a encore rien produit. */
   lastActivityAt: string | null;
@@ -235,6 +237,18 @@ export interface AdminOrgUser {
   joinedAt: string | null;
 }
 
+/**
+ * Les rôles d'un compte dans son organisation.
+ *
+ * Nommé plutôt que répété : ces quatre valeurs apparaissaient en toutes
+ * lettres à quatre endroits, et `lib/roleLabels.ts` a besoin d'en parler pour
+ * les traduire dans la langue du métier (BLOC 6).
+ *
+ * `guest` n'est pas un siège de travail : c'est un accès occasionnel externe,
+ * borné par un quota quotidien décompté côté serveur.
+ */
+export type UserRole = 'owner' | 'admin' | 'member' | 'guest';
+
 export interface CreateOrganizationInput {
   /** Raison sociale — apparaît dans l'app de la cliente ET sur ses devis. */
   name: string;
@@ -242,6 +256,15 @@ export interface CreateOrganizationInput {
   plan: OrgPlan;
   /** Logo déjà redimensionné, en data-URL. Vide = initiales. */
   logoDataUrl?: string;
+  /**
+   * Le MÉTIER de l'organisation (BLOC 6), conservé côté serveur.
+   *
+   * Facultatif, et il le restera : la boîte de dialogue rapide du rail ne le
+   * demande pas, et une organisation sans métier est parfaitement valable —
+   * elle affiche les libellés de rôle génériques. En inventer un afficherait
+   * des intitulés faux avec l'aplomb d'une donnée saisie.
+   */
+  trade?: string;
 }
 
 /**
@@ -399,7 +422,7 @@ export interface RemoteSessionUser {
    * côté serveur. Ce n'est pas un siège de travail : un employé permanent est
    * un `member`.
    */
-  role: 'owner' | 'admin' | 'member' | 'guest';
+  role: UserRole;
   /**
    * Ce mot de passe a-t-il été émis par le support plutôt que choisi par elle ?
    *
@@ -2235,6 +2258,8 @@ export interface AmnBridge {
           timezone?: string | null;
           /** Identifiant de couleur d'accent ; `null` = défaut. */
           accent?: string | null;
+          /** Métier ; `null` efface le métier et rend les libellés génériques. */
+          trade?: string | null;
         },
       ): Promise<AdminOrganization>;
       setOrganizationStatus(id: string, status: OrgStatus): Promise<AdminOrganization>;
