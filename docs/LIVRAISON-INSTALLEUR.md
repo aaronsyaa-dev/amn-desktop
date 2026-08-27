@@ -16,9 +16,9 @@ d'une cliente à l'autre, c'est son compte — et l'Atelier le crée déjà.
 
 ## Pourquoi amn-api ne fabrique pas le fichier
 
-L'installeur Windows est produit par **Squirrel, qui exige une machine
-Windows**. amn-api tourne sous Linux : aucun code écrit côté serveur n'y changera
-rien. La production reste un geste d'atelier — sur votre machine, ou dans une CI
+L'installeur Windows est produit par **electron-builder (NSIS), qui exige une
+machine Windows**. amn-api tourne sous Linux : aucun code écrit côté serveur n'y
+changera rien. La production reste un geste d'atelier — sur votre machine, ou dans une CI
 Windows.
 
 Ce qu'amn-api fait, en revanche : elle **tient le registre** des versions et
@@ -39,7 +39,8 @@ AMN_API_URL=https://votre-amn-api OPERATOR_TOKEN=… npm run publish:release
    téléchargement de l'installeur.
 
 Le script calcule l'empreinte SHA-256, lit la version dans `package.json` et
-retrouve le fichier dans `out/make` tout seul.
+retrouve le fichier dans `dist-app/` tout seul (la chaîne NSIS a remplacé
+Squirrel — voir electron-builder.config.mjs pour le pourquoi).
 
 ## Où vivent les octets
 

@@ -8,9 +8,9 @@
   "scripts": {
     "bootstrap": "npm rebuild esbuild electron-winstaller fsevents",
     "start": "npm run bootstrap && electron-forge start",
-    "package": "npm run bootstrap && electron-forge package",
-    "make": "npm run bootstrap && electron-forge make",
-    "publish": "npm run bootstrap && electron-forge publish",
+    "build:desktop": "node scripts/build-desktop.mjs",
+    "package": "npm run bootstrap && npm run build:desktop && electron-builder --config electron-builder.config.mjs --dir",
+    "make": "npm run bootstrap && npm run build:desktop && electron-builder --config electron-builder.config.mjs",
     "lint": "eslint --ext .ts,.tsx .",
     "typecheck": "tsc --noEmit",
     "build:web": "node scripts/build-web.mjs",
@@ -69,6 +69,7 @@
     "@vitejs/plugin-react": "^4.7.0",
     "cross-env": "^7.0.3",
     "electron": "43.2.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.32.0",
     "framer-motion": "^12.42.2",
@@ -84,9 +85,8 @@
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^13.0.1",
     "dotenv": "^17.4.2",
-    "electron-squirrel-startup": "^1.0.1",
+    "electron-updater": "^6.8.9",
     "koffi": "^3.1.4",
-    "update-electron-app": "^3.3.0",
     "ws": "^8.21.1"
   }
 }

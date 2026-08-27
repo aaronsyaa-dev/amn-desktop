@@ -1,13 +1,30 @@
 name: Release
 
-# Builds the Windows installer and publishes it to GitHub Releases, which is
-# what update.electronjs.org (and therefore the in-app auto-updater) reads.
+# Construit l'installeur Windows (NSIS, electron-builder), PROUVE qu'il
+# démarre, puis le publie dans les Releases GitHub — que lit electron-updater
+# dans l'application installée (édition interne uniquement).
 #
-# Trigger: push a version tag matching the package.json version, e.g.:
+# Déclenchement : pousser un tag correspondant à la version du package.json :
 #   git tag v1.0.1 && git push origin v1.0.1
 #
-# No local Windows machine or manual `npm run publish` needed — this runs the
-# whole "bump version → tag → push" flow to a public Release automatically.
+# ─────────────────────────────────────────────────────────────────────────────
+# POURQUOI CE WORKFLOW EXIGE UN DÉMARRAGE RÉEL
+#
+# Quatre versions publiées d'affilée (v1.2.35 → v1.2.38) s'installaient sans
+# erreur et mouraient au lancement. L'autopsie des artefacts publiés a montré
+# des fichiers moteur identiques à l'octet près à l'Electron officiel : les
+# contrôles de contenu étaient verts, et ils disaient vrai — la panne vivait
+# dans la mécanique d'installation Squirrel, le seul maillon qu'aucune
+# vérification de fichiers ne peut voir.
+#
+# La leçon est câblée ici : la publication n'a lieu que si l'exécutable — 
+# celui du paquet construit ET celui réellement installé par l'installeur
+# final — a littéralement démarré sur le runner Windows (`--smoke-test`,
+# voir src/main.ts). Une CI verte signifie désormais « l'application s'est
+# ouverte », pas « les fichiers avaient l'air bons ».
+#
+# La publication téléverse EXACTEMENT les fichiers vérifiés, via l'API GitHub —
+# aucune reconstruction entre la vérification et l'envoi.
 on:
   push:
     tags:
@@ -35,46 +52,68 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # ─────────────────────────────────────────────────────────────────────
-      # Construire, VÉRIFIER, puis seulement téléverser.
-      #
-      # `npm run publish` faisait les deux d'un coup : la CI a donc publié trois
-      # installeurs qui ne démarraient pas, sans que rien puisse s'y opposer.
-      # Le découpage ci-dessous vérifie EXACTEMENT les artefacts qui seront
-      # ensuite envoyés — `--from-dry-run` réutilise ceux de l'étape de
-      # construction au lieu d'en refabriquer d'autres.
-      #
-      # Les deux hooks de `forge.config.ts` (postPackage, postMake) bloquent
-      # déjà un artefact incomplet pendant la construction. Ces étapes-ci sont
-      # explicites en plus, pour que le journal de la CI montre noir sur blanc
-      # ce qui a été contrôlé.
-      #
-      # Repli si `--from-dry-run` posait problème : `npm run publish` reste
-      # valable et garde les deux hooks — on perd la garantie « on téléverse
-      # exactement ce qu'on a vérifié », pas le garde-fou lui-même.
-      - name: Bootstrap (rebuild des modules natifs)
-        run: npm run bootstrap
-
-      - name: Build (sans téléversement)
-        run: npx electron-forge publish --dry-run
+      - name: Build (bundles Vite, édition interne)
+        run: node scripts/build-desktop.mjs
         env:
+          # Cuits dans le bundle principal à la construction (vite.main.config.ts)
+          # pour que le binaire installé parle à amn-api. AMN_API_OPERATOR_TOKEN
+          # doit égaler l'OPERATOR_TOKEN configuré sur amn-api (Render).
           AMN_API_URL: ${{ secrets.AMN_API_URL }}
           AMN_API_OPERATOR_TOKEN: ${{ secrets.AMN_API_OPERATOR_TOKEN }}
 
-      - name: Vérifier le paquet construit (moteur Electron complet)
-        run: npm run check:package
+      - name: Empaqueter (NSIS, sans publication)
+        run: npx electron-builder --config electron-builder.config.mjs --win --x64 --publish never
 
-      - name: Vérifier l'installeur (ce qui part vraiment chez la cliente)
-        run: npm run check:installer
+      # ───────────────────────── Vérifications, avant tout envoi ─────────────
+      # 1. Intégrité : chaque fichier du moteur Electron du paquet est comparé
+      #    par SHA-256 à node_modules/electron/dist (même version, même
+      #    plateforme, sur ce runner). Tout écart = échec.
+      - name: Intégrité du moteur (SHA-256 contre le dist Electron)
+        run: npm run check:package -- --dir "dist-app/win-unpacked"
 
+      # 2. Démarrage réel du paquet construit : l'exécutable doit atteindre
+      #    whenReady et sortir avec le code 0. C'est la préuve qu'ICU, V8 et
+      #    tout le moteur s'initialisent — la classe de pannes qui a frappé.
+      - name: Smoke test — l'exécutable construit démarre
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "dist-app\win-unpacked\AMN Desktop.exe" -ArgumentList "--smoke-test" -PassThru -NoNewWindow
+          if (-not $p.WaitForExit(60000)) { $p.Kill(); Write-Error "smoke test : délai dépassé (60 s)"; exit 1 }
+          if ($p.ExitCode -ne 0) { Write-Error "smoke test : code de sortie $($p.ExitCode)"; exit 1 }
+          Write-Host "smoke test OK — l'exécutable construit a démarré et s'est arrêté proprement."
+
+      # 3. Le test définitif : installer l'INSTALLEUR FINAL en silencieux, puis
+      #    démarrer l'application INSTALLÉE. C'est le chemin exact d'une
+      #    utilisatrice — l'étape que les quatre versions cassées auraient
+      #    toutes échouée.
+      - name: Smoke test — l'application INSTALLÉE démarre
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem "dist-app\*Setup*.exe" | Select-Object -First 1
+          if (-not $setup) { Write-Error "installeur introuvable dans dist-app/"; exit 1 }
+          Write-Host "installation silencieuse de $($setup.Name)…"
+          $i = Start-Process -FilePath $setup.FullName -ArgumentList "/S" -PassThru
+          if (-not $i.WaitForExit(180000)) { $i.Kill(); Write-Error "installation : délai dépassé"; exit 1 }
+          if ($i.ExitCode -ne 0) { Write-Error "installation : code $($i.ExitCode)"; exit 1 }
+          $exe = Join-Path $env:LOCALAPPDATA "Programs\AMN Desktop\AMN Desktop.exe"
+          if (-not (Test-Path $exe)) { Write-Error "exécutable installé introuvable : $exe"; exit 1 }
+          $p = Start-Process -FilePath $exe -ArgumentList "--smoke-test" -PassThru -NoNewWindow
+          if (-not $p.WaitForExit(60000)) { $p.Kill(); Write-Error "smoke test installé : délai dépassé"; exit 1 }
+          if ($p.ExitCode -ne 0) { Write-Error "smoke test installé : code $($p.ExitCode)"; exit 1 }
+          Write-Host "smoke test OK — l'application INSTALLÉE a démarré. Publication autorisée."
+
+      # ───────────────────────────── Publication ─────────────────────────────
+      # `gh release upload` envoie les fichiers DÉJÀ vérifiés ci-dessus —
+      # l'installeur, latest.yml (le flux qu'electron-updater lit) et le
+      # blockmap (les mises à jour différentielles).
       - name: Publier les artefacts vérifiés
-        run: npx electron-forge publish --from-dry-run
+        shell: pwsh
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Baked into the app at build time (see vite.main.config.ts) so the
-          # packaged binary talks to amn-api and the sync WebSocket connects.
-          # Set these two repository secrets in GitHub → Settings → Secrets and
-          # variables → Actions. AMN_API_OPERATOR_TOKEN MUST equal the
-          # OPERATOR_TOKEN env var configured on the amn-api server (Render).
-          AMN_API_URL: ${{ secrets.AMN_API_URL }}
-          AMN_API_OPERATOR_TOKEN: ${{ secrets.AMN_API_OPERATOR_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${env:GITHUB_REF}" -replace "refs/tags/", ""
+          gh release create $tag --title $tag --notes "Publication automatique — installeur vérifié (intégrité SHA-256 + démarrage réel sur le runner)." 2>$null
+          if ($LASTEXITCODE -ne 0) { Write-Host "release $tag existe déjà — on téléverse dedans." }
+          $assets = Get-ChildItem "dist-app" -File | Where-Object { $_.Name -match "Setup.*\.exe$|\.blockmap$|^latest\.yml$" }
+          if (-not ($assets | Where-Object { $_.Name -eq "latest.yml" })) { Write-Error "latest.yml manquant — electron-updater ne verrait jamais cette version."; exit 1 }
+          foreach ($a in $assets) { Write-Host "téléversement de $($a.Name)"; gh release upload $tag $a.FullName --clobber; if ($LASTEXITCODE -ne 0) { exit 1 } }

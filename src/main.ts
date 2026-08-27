@@ -7,7 +7,6 @@ import { backfillSyncIds, restoreFromRemote } from './main/clientsSync';
 import { registerIpcHandlers } from './main/ipc';
 import { RemoteApiClient } from './main/remoteApi';
 import { setupAutoUpdate } from './main/updater';
-import { handleSquirrelStartup } from './main/windowsIntegration';
 import { SCAN_REPORTS_DIR } from './main/scanReports';
 import { EDITION_PRODUCT_NAME, IS_BUSINESS } from './edition/edition';
 
@@ -18,31 +17,42 @@ import { EDITION_PRODUCT_NAME, IS_BUSINESS } from './edition/edition';
 // une cliente, et mélangerait deux organisations dans un même fichier.
 app.setName(EDITION_PRODUCT_NAME);
 
-// Handle Squirrel.Windows install/update/uninstall events. On --squirrel-updated
-// this explicitly recreates the Desktop + Start-menu shortcuts (they can vanish
-// after an auto-update otherwise). Quits early when an event was handled.
-const squirrelHandled = handleSquirrelStartup();
-if (squirrelHandled) {
-  app.quit();
+/*
+  LE TEST DE FUMÉE — la preuve que l'exécutable démarre, exigée par la CI
+  ─────────────────────────────────────────────────────────────────────────
+  Quatre versions publiées d'affilée mouraient avant d'afficher quoi que ce
+  soit (« Invalid file descriptor to ICU data received » : le moteur meurt
+  avant même que notre code s'exécute). Aucun contrôle de fichiers ne peut
+  prouver qu'un exécutable démarre — seul son démarrage le prouve.
+
+  `--smoke-test` : atteindre `whenReady`, dire qu'on l'a atteint, sortir avec
+  le code 0. Atteindre `whenReady` signifie que TOUT le moteur (ICU, V8,
+  snapshots, .pak) s'est initialisé — précisément la classe de pannes qui a
+  frappé. La CI lance l'exécutable installé avec ce drapeau et ne publie que
+  si le code de sortie est 0 (voir release.yml).
+
+  Enregistré AVANT tout le reste : son `whenReady` part en premier, et
+  `app.exit(0)` coupe net — la fenêtre, la base, la synchronisation ne
+  démarrent jamais. Le garde-temps interne couvre le cas où `ready` ne vient
+  jamais : mieux vaut un échec net qu'un processus suspendu que la CI devra
+  tuer sans comprendre.
+*/
+if (process.argv.includes('--smoke-test')) {
+  void app.whenReady().then(() => {
+    // eslint-disable-next-line no-console
+    console.log(`[amn] smoke-test : moteur initialisé (${app.getName()} ${app.getVersion()}).`);
+    app.exit(0);
+  });
+  setTimeout(() => app.exit(1), 45_000).unref?.();
 }
 
-// Windows only shows toast notifications from a packaged app when the running
-// process declares an explicit AppUserModelID that matches an installed
-// shortcut's AUMID — otherwise `new Notification().show()` is silently dropped
-// (this was never set, so native notifications never worked on installed
-// Windows, only in dev via electron.exe's own AUMID). Squirrel.Windows creates
-// the Start-menu/desktop shortcut with the AUMID `com.squirrel.<pkgId>.<exe>`,
-// where the maker uses pkgId = package.json name with '-' → '_' (amn_desktop)
-// and exe = the productName ("AMN Desktop"). We must set the exact same string.
+// Windows n'affiche les notifications d'une application empaquetée que si le
+// processus déclare un AppUserModelID identique à celui du raccourci installé.
+// L'installeur NSIS (electron-builder) pose l'appId comme AUMID des
+// raccourcis : la chaîne ci-dessous doit être EXACTEMENT l'appId de
+// electron-builder.config.mjs, édition par édition.
 if (process.platform === 'win32') {
-  // Le maker Squirrel construit l'AUMID à partir du nom du paquet et du
-  // productName : il diffère donc d'une édition à l'autre, et les toasts ne
-  // partent que si la chaîne correspond exactement au raccourci installé.
-  app.setAppUserModelId(
-    IS_BUSINESS
-      ? 'com.squirrel.amn_business.AMN Business'
-      : 'com.squirrel.amn_desktop.AMN Desktop',
-  );
+  app.setAppUserModelId(IS_BUSINESS ? 'com.amndevsec.business' : 'com.amndevsec.desktop');
 }
 
 // Single-instance: a second launch (e.g. via the start-with-Windows shortcut,

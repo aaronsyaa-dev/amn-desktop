@@ -97,3 +97,4 @@ dist/
 # Sorties de build de vérification (audit du bundle par édition)
 dist-business/
 dist-internal/
+dist-app/

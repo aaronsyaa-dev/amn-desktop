@@ -45,6 +45,7 @@
  *   npm run check:package -- --dir "out/AMN Desktop-win32-x64"
  */
 
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -100,6 +101,14 @@ function tailleDe(p) {
   try {
     const s = fs.statSync(p);
     return s.isDirectory() ? -1 : s.size;
+  } catch {
+    return null;
+  }
+}
+
+function sha256De(p) {
+  try {
+    return crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
   } catch {
     return null;
   }
@@ -180,6 +189,22 @@ export function auditPackage(dossier) {
         }
       } else if (attendu >= 0 && obtenu !== attendu) {
         problemes.push(`${entree} — taille ${obtenu} au lieu de ${attendu} (fichier tronqué ou remplacé)`);
+      } else if (attendu >= 0) {
+        /*
+          Même taille ne veut pas dire même contenu : un octet retourné par un
+          disque fatigué, une écriture concurrente ou une « désinfection »
+          d'antivirus laisse la taille intacte. L'empreinte SHA-256, elle, ne
+          pardonne rien. Elle n'est calculée que quand les tailles concordent —
+          la comparaison de tailles suffit à condamner le reste, sans payer le
+          hachage de fichiers déjà condamnés.
+        */
+        const empreinteAttendue = sha256De(path.join(DIST, entree));
+        const empreinteObtenue = sha256De(path.join(dossier, entree));
+        if (empreinteAttendue && empreinteObtenue && empreinteAttendue !== empreinteObtenue) {
+          problemes.push(
+            `${entree} — même taille mais CONTENU différent du dist Electron (sha256 ${empreinteObtenue.slice(0, 12)}… au lieu de ${empreinteAttendue.slice(0, 12)}…)`,
+          );
+        }
       }
     }
   }
