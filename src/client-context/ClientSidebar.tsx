@@ -80,7 +80,7 @@ export const CLIENT_NAV_ITEMS = CLIENT_MODULES;
  * écran est exactement le défaut que `scripts/check-modules.mjs` a été écrit
  * pour attraper.
  */
-const CLIENT_SECTIONS: Array<{ label: string; keys: string[] }> = [
+export const CLIENT_SECTIONS: Array<{ label: string; keys: string[] }> = [
   { label: 'Pilotage', keys: ['home', 'agenda', 'projects', 'tasks'] },
   { label: 'Clients & revenus', keys: ['clients', 'invoices', 'orders'] },
   { label: 'Production', keys: ['time', 'expenses', 'calculators'] },

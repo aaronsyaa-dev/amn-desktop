@@ -6,6 +6,7 @@ import { bridge } from '../../lib/bridge';
 import { cleanErrorMessage } from '../../lib/errorMessage';
 import { SaveIndicator } from '../SaveIndicator';
 import { ACCENTS, DEFAULT_ACCENT_ID } from '../../lib/accent';
+import { CLIENT_SECTIONS } from '../../client-context/ClientSidebar';
 import type { AdminOrganization, AdminOrgUser, OrgPulse } from '../../shared/api';
 import { relativeTime } from '../../lib/time';
 
@@ -72,6 +73,88 @@ const TOGGLEABLE: { key: string; label: string }[] = [
   { key: 'vault', label: 'Coffre-fort' },
 ];
 
+/**
+ * LA FICHE DE CONFIGURATION (BLOC 5)
+ * ══════════════════════════════════
+ *
+ * « Je ne dois jamais me sentir perdu en gérant plusieurs clientes. » Jusqu'ici
+ * la seule façon de savoir ce qu'une organisation avait était de PARCOURIR la
+ * grille de cases à cocher et de les compter. C'est lisible pour une cliente,
+ * pénible pour quatre, et ça se retient de mémoire — donc ça se trompe.
+ *
+ * La fiche est DÉRIVÉE de la configuration réelle, jamais saisie : elle ne peut
+ * pas mentir, et elle suit toute modification sans que personne la mette à jour.
+ *
+ * Le rangement est celui que la cliente a sous les yeux (`CLIENT_SECTIONS`,
+ * importé et non recopié) : Aaron lit sa configuration dans les mêmes mots
+ * qu'elle voit dans sa barre latérale, ce qui est la seule façon de parler de
+ * la même chose au téléphone.
+ *
+ * Les modules NON réglables — Accueil, Commandes, Calculateurs, Paramètres —
+ * sont annoncés « toujours ouvert » plutôt que passés sous silence : leur
+ * absence de la grille ne veut pas dire qu'ils sont fermés, et une fiche qui
+ * les omettrait laisserait croire l'inverse.
+ */
+/**
+ * Les identifiants de forfait ne sont pas des mots — même raison que dans
+ * OrgBanner, où `business_premium` s'affichait « BUSINESS_PREMIUM ».
+ */
+const PLAN_LABELS: Record<string, string> = {
+  business_standard: 'Business standard',
+  business_premium: 'Business premium',
+  internal: 'Interne',
+};
+
+interface LigneFiche {
+  section: string;
+  ouverts: string[];
+  fermes: string[];
+  /** Modules de la section qui ne se règlent pas : ils sont là quoi qu'il arrive. */
+  permanents: number;
+}
+
+function ficheConfiguration(modules: string[] | null | undefined): LigneFiche[] {
+  // `null` en base = tout le catalogue, y compris ce qui viendra plus tard.
+  const actif = (cle: string) => modules === null || modules === undefined || modules.includes(cle);
+  const reglable = new Map(TOGGLEABLE.map((m) => [m.key, m.label]));
+
+  const lignes = CLIENT_SECTIONS.map((section) => {
+    const ouverts: string[] = [];
+    const fermes: string[] = [];
+    let permanents = 0;
+    for (const cle of section.keys) {
+      const label = reglable.get(cle);
+      if (!label) {
+        permanents += 1;
+        continue;
+      }
+      (actif(cle) ? ouverts : fermes).push(label);
+    }
+    return { section: section.label, ouverts, fermes, permanents };
+  });
+
+  /*
+    CE QU'AUCUNE SECTION NE RÉCLAME NE DOIT PAS DISPARAÎTRE.
+
+    Défaut mesuré à la première version : la fiche annonçait « 10/10 modules »
+    alors que onze se règlent. « Coffre-fort » n'appartient à aucun groupe de
+    `CLIENT_SECTIONS`, il n'était donc jamais parcouru — donc ni compté, ni
+    affiché. Une fiche de configuration qui omet un module en silence est pire
+    qu'absente : on la croit.
+
+    Même remède que `clientSections()` dans ClientSidebar, qui range déjà ses
+    orphelins dans le dernier groupe plutôt que de les perdre.
+  */
+  const reclames = new Set(CLIENT_SECTIONS.flatMap((section) => section.keys));
+  const orphelins = TOGGLEABLE.filter((m) => !reclames.has(m.key));
+  if (orphelins.length > 0) {
+    const derniere = lignes[lignes.length - 1];
+    for (const m of orphelins) (actif(m.key) ? derniere.ouverts : derniere.fermes).push(m.label);
+  }
+
+  return lignes.filter((l) => l.ouverts.length + l.fermes.length + l.permanents > 0);
+}
+
 interface DossierData {
   body: string;
   updatedBy: string;
@@ -131,6 +214,16 @@ export function OrgDossierPanel({
   */
   const [nom, setNom] = useState(org.name);
   const [forfait, setForfait] = useState(org.plan);
+
+  // La fiche et sa synthèse, dérivées de la configuration réelle à chaque
+  // rendu : un réglage modifié ci-dessous se lit immédiatement en haut.
+  const fiche = useMemo(() => ficheConfiguration(org.modules), [org.modules]);
+  const resume = useMemo(() => {
+    const ouverts = fiche.reduce((n, l) => n + l.ouverts.length, 0);
+    const total = fiche.reduce((n, l) => n + l.ouverts.length + l.fermes.length, 0);
+    const sections = fiche.filter((l) => l.ouverts.length + l.permanents > 0).length;
+    return { ouverts, total, sections };
+  }, [fiche]);
   const [identiteEnCours, setIdentiteEnCours] = useState(false);
   const identiteModifiee = nom.trim() !== org.name || forfait !== org.plan;
 
@@ -259,6 +352,16 @@ export function OrgDossierPanel({
             <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
               Dossier interne · non visible chez elle
             </p>
+            {/*
+              La configuration en une ligne, SANS DÉFILER. C'est la question
+              qu'on se pose en ouvrant le dossier d'une cliente qu'on n'a pas vue
+              depuis trois semaines : « elle a quoi, déjà ? ». Le détail par
+              section attend plus bas, à côté des réglages qui le changent.
+            */}
+            <p className="mt-1 truncate font-mono text-[10px] text-text-secondary">
+              {PLAN_LABELS[org.plan] ?? org.plan} · {resume.ouverts}/{resume.total} modules ·{' '}
+              {resume.sections} section{resume.sections > 1 ? 's' : ''}
+            </p>
           </div>
           <button
             type="button"
@@ -343,6 +446,43 @@ export function OrgDossierPanel({
 
           {/* ------------------------------------------------- modules ----- */}
           <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+            Sa configuration
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-text-secondary">
+            Rangée comme dans SA barre latérale — de quoi en parler avec elle dans les mêmes
+            mots.{' '}
+            <span className="text-text-muted">
+              Générée depuis la configuration réelle : elle suit les réglages ci-dessous sans que
+              personne la tienne à jour.
+            </span>
+          </p>
+          <div className="mt-3 flex flex-col gap-1.5 border border-border bg-surface px-3 py-2.5">
+            {fiche.map((ligne) => (
+              <div key={ligne.section} className="flex items-baseline gap-2 text-xs">
+                <span className="w-32 flex-shrink-0 truncate text-text-muted">{ligne.section}</span>
+                <span className="min-w-0 flex-1 text-text-secondary">
+                  {ligne.ouverts.length === 0 && ligne.permanents === 0 ? (
+                    <span className="text-text-muted">— fermée</span>
+                  ) : (
+                    <>
+                      {ligne.ouverts.join(', ')}
+                      {ligne.permanents > 0 && (
+                        <span className="text-text-muted">
+                          {ligne.ouverts.length > 0 ? ' · ' : ''}
+                          {ligne.permanents} toujours ouvert{ligne.permanents > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </>
+                  )}
+                  {ligne.fermes.length > 0 && (
+                    <span className="text-text-muted"> · fermé : {ligne.fermes.join(', ')}</span>
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-5 font-mono text-[10px] uppercase tracking-widest text-text-muted">
             Modules ouverts
           </p>
           <p className="mt-1 text-xs leading-relaxed text-text-secondary">
