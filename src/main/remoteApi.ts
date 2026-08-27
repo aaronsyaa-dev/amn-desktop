@@ -344,7 +344,17 @@ export class RemoteApiClient {
       body: JSON.stringify({ orgId }),
     });
     this.applySession(res.token);
-    return res;
+      /*
+        Le rôle rendu au PREMIER niveau par `/organizations/switch` est celui
+        de l'APPARTENANCE — le seul juste pour l'organisation où l'on entre.
+        `res.user.role`, lui, reste celui de l'organisation d'origine.
+
+        On normalise ici pour que le contrat tienne partout : dans une
+        `RemoteSession`, `user.role` est TOUJOURS le rôle effectif. Sans cette
+        ligne, basculer chez une cliente qui a invité Aaron comme membre lui
+        rendrait, à l'écran, ses pouvoirs de propriétaire de chez lui.
+      */
+      return { ...res, user: { ...res.user, role: (res.role as RemoteSessionUser['role']) ?? res.user.role } };
   }
 
   /**
@@ -360,10 +370,32 @@ export class RemoteApiClient {
       const me = await apiFetch<{
         org: OrgIdentity | null;
         user: RemoteSessionUser | null;
+        /*
+          LE RÔLE EFFECTIF, ET POURQUOI CE N'EST PAS `user.role`.
+
+          `/v1/auth/me` rend DEUX rôles, et ils diffèrent : `user.role` est
+          celui du compte dans son organisation D'ORIGINE, `auth.role` celui
+          de l'organisation ACTIVE — c'est-à-dire de l'appartenance quand la
+          session a basculé (voir `effectiveRole`, amn-api/middleware/
+          tenantAuth.js).
+
+          Cette restauration ne lisait que `me.user`, donc jetait `auth.role`.
+          Deux défauts en un : le rôle n'arrivait jamais jusqu'à l'écran (il
+          restait `null` après tout redémarrage), et le jour où on l'aurait
+          pris dans `user.role` par commodité, Aaron — propriétaire chez AMN
+          DevSec, simple membre chez une cliente qui l'a invité — aurait reçu
+          chez elle les pouvoirs de chez lui.
+        */
+        auth?: { role?: RemoteSessionUser['role'] } | null;
       }>('/v1/auth/me');
       if (!me.user || !me.org) throw new Error('session sans utilisateur');
       this.applySession(token);
-      return { token, expiresAt: '', user: me.user, org: me.org };
+      return {
+        token,
+        expiresAt: '',
+        user: { ...me.user, role: me.auth?.role ?? me.user.role },
+        org: me.org,
+      };
     } catch {
       remoteConfig.sessionToken = previous;
       return null;
