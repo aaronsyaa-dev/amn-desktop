@@ -1887,7 +1887,14 @@ export interface ScanFinding {
   id: string;
   title: string;
   severity: ScanSeverity;
-  /** transport | headers | cookies | disclosure | cms | cve | injection | xss | ports */
+  /**
+   * transport | headers | cookies | disclosure | email | cms | cve | injection |
+   * xss | ports | exposure
+   *
+   * `email` (SPF/DMARC) et `exposure` (fichiers sensibles, méthodes HTTP) sont
+   * venus combler deux angles morts : le scanner ne regardait pas le DNS, donc
+   * pas l'usurpation d'email — le risque le plus probable pour une PME.
+   */
   category: string;
   detail: string;
   recommendation: string;
