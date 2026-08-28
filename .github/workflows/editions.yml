@@ -31,8 +31,9 @@ jobs:
       - run: npm ci
       - name: Build web (interne)
         run: npm run build:web
-      - name: Parité des collections synchronisées
-        run: npm run check:sync
+      # `check:sync` a quitté cette tâche pour `croises` : sans amn-api à côté
+      # il n'a rien à comparer et passe au vert en le disant — un vert qui ne
+      # prouve rien est exactement ce qu'on cherche à éviter ici.
       # L'arithmétique de facturation : une erreur d'un centime ne se voit sur
       # aucun écran et traverse tout le circuit jusqu'à la comptabilité.
       - name: Arithmétique de facturation
@@ -44,6 +45,133 @@ jobs:
         run: npm run check:accent
       - name: La sortie doit exister
         run: test -f dist/index.html
+
+  garde_fous:
+    name: Les garde-fous
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      # LE DÉFAUT QUE CETTE TÂCHE CORRIGE
+      #
+      # Vingt-cinq contrôles existent dans ce dépôt ; quatre tournaient ici.
+      # Les autres n'ont jamais tourné ailleurs que sur un poste, à la main, le
+      # jour où ils ont été écrits. Un garde-fou qu'on doit penser à lancer
+      # n'est pas un garde-fou, c'est une note.
+      #
+      # Ils sont regroupés dans une seule tâche parce qu'ils sont rapides et
+      # sans dépendance : lire du code, comparer des listes. Un échec nomme le
+      # contrôle fautif dans son propre message.
+      - name: Le type et la compilation
+        run: npx tsc --noEmit -p tsconfig.json
+      - name: Lint
+        run: npm run lint
+
+      - name: Écrans — une seule voix
+        run: npm run check:ecrans
+      - name: Modules — catalogues et rangement
+        run: npm run check:modules
+      - name: Messages — qui peut supprimer quoi
+        run: npm run check:messages
+      - name: Profils — l'écriture ne se bâtit pas sur un repli
+        run: npm run check:profiles
+      - name: Persistance
+        run: npm run check:persistence
+      - name: Pages et blocs
+        run: npm run check:pages
+      - name: Résilience
+        run: npm run check:resilience
+      - name: Panneau d'attention — l'ordre EST le message
+        run: npm run check:attention
+      - name: Calculateurs
+        run: npm run check:calc
+      - name: Tendances
+        run: npm run check:trend
+      - name: Export FEC
+        run: npm run check:fec
+      - name: Traçage
+        run: npm run check:tracking
+      - name: Canal de mise à jour
+        run: npm run check:updates
+      - name: Le paquet livré
+        run: npm run check:package
+      # Deux contrôles nés cette nuit : le premier refuse une requête écrite à
+      # la main qui partirait avec le jeton de BUILD au lieu du justificatif
+      # vivant — c'est ainsi que le rapport d'une cliente pouvait être le
+      # nôtre. Le second refuse une signature à moitié configurée.
+      - name: Justificatif des requêtes écrites à la main
+        run: npm run check:justificatif
+      - name: Signature de code
+        run: npm run check:signing
+
+  croises:
+    name: Garde-fous croisés (poste ↔ serveur)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # LE SERVEUR, À CÔTÉ — et ce que ça change.
+      #
+      # Quatre contrôles comparent ce que le poste DÉCLARE à ce que le serveur
+      # ÉMET vraiment : les natures d'alerte, les rôles, les actions du journal
+      # d'audit, et les noms de produit. Sans amn-api à côté, ils ne peuvent
+      # rien comparer — et ils le disent, en note, puis passent au vert.
+      #
+      # C'est le comportement correct pour un poste de développement, et c'est
+      # un piège en CI : un vert qui ne prouve rien. On récupère donc le dépôt
+      # voisin, et l'étape suivante REFUSE de passer s'il manque.
+      # `actions/checkout` n'écrit QUE dans l'espace de travail : le dépôt
+      # voisin ne peut pas atterrir à `../amn-api`. Il va donc dans un
+      # sous-dossier, et les contrôles apprennent où par `AMN_API_ROOT` (voir
+      # scripts/api-root.mjs).
+      - name: Récupérer amn-api
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: aaronsyaa-dev/amn-api
+          path: serveur
+          token: ${{ secrets.AMN_API_TOKEN || github.token }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      - name: amn-api doit être là, sinon ces contrôles ne prouvent rien
+        run: |
+          if [ ! -f serveur/src/db/tenancy.js ]; then
+            echo "amn-api n'a pas pu être récupéré."
+            echo "Les contrôles croisés passeraient au vert sans rien comparer :"
+            echo "on préfère un échec franc à un vert qui ne prouve rien."
+            echo
+            echo "Remède : un secret AMN_API_TOKEN avec accès en lecture au dépôt."
+            exit 1
+          fi
+
+      - name: Supervision — les listes de natures s'accordent
+        run: npm run check:supervision
+        env:
+          AMN_API_ROOT: ${{ github.workspace }}/serveur
+      - name: Journal d'audit — écrit, déclaré, et lisible
+        run: npm run check:journal
+        env:
+          AMN_API_ROOT: ${{ github.workspace }}/serveur
+      - name: Rôles — poste et serveur disent la même chose
+        run: npm run check:roles
+        env:
+          AMN_API_ROOT: ${{ github.workspace }}/serveur
+      - name: Identité des éditions
+        run: npm run check:naming
+        env:
+          AMN_API_ROOT: ${{ github.workspace }}/serveur
+      - name: Parité des collections synchronisées
+        run: npm run check:sync
+        env:
+          AMN_API_ROOT: ${{ github.workspace }}/serveur
 
   business:
     name: Build business + contrôle de fuite

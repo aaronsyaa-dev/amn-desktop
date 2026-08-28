@@ -30,6 +30,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { trouverApiRoot } from './api-root.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const failures = [];
@@ -72,9 +73,7 @@ const nommees = libelles ? [...libelles[1].matchAll(/^\s*([a-z_]+):/gm)].map((m)
 
 /* ─── Ce que le serveur émet vraiment ────────────────────────────────────── */
 
-const apiRoot = ['/workspace/amn-api', path.join(ROOT, '..', 'amn-api')].find((c) =>
-  fs.existsSync(path.join(c, 'src/tracker')),
-);
+const apiRoot = trouverApiRoot(ROOT);
 
 if (!apiRoot) {
   notes.push('amn-api introuvable localement — le croisement avec le serveur est sauté.');

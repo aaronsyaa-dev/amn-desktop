@@ -44,7 +44,10 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
  * vérités différentes.
  */
 function findApiRoot() {
-  for (const candidate of ['/workspace/amn-api', path.join(ROOT, '..', 'amn-api')]) {
+  // `AMN_API_ROOT` d'abord : en CI, `actions/checkout` ne sait écrire que
+  // dans l'espace de travail, donc le dépôt voisin ne peut pas atterrir à
+  // `../amn-api`. Voir scripts/api-root.mjs.
+  for (const candidate of [process.env.AMN_API_ROOT, '/workspace/amn-api', path.join(ROOT, '..', 'amn-api')].filter(Boolean)) {
     if (fs.existsSync(path.join(candidate, 'src/routes/collections.js'))) return candidate;
   }
   return null;

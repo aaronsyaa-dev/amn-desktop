@@ -32,6 +32,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { trouverApiRoot } from './api-root.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const failures = [];
@@ -233,9 +234,7 @@ for (const fichier of CONTEXTES) {
 
 /* ═════ 5. Les rôles du poste sont ceux que le serveur reconnaît ══════════ */
 
-const apiRoot = ['/workspace/amn-api', path.join(ROOT, '..', 'amn-api')].find((c) =>
-  fs.existsSync(path.join(c, 'src/db/tenancy.js')),
-);
+const apiRoot = trouverApiRoot(ROOT);
 
 if (!apiRoot) {
   notes.push('amn-api introuvable localement — comparaison des rôles sautée.');

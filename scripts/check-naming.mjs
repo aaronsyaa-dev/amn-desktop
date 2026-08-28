@@ -30,6 +30,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { trouverApiRoot } from './api-root.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const failures = [];
@@ -260,9 +261,7 @@ for (const fichier of fichiers) {
   l'organisation du destinataire (`productNameForOrg`), et `links.js` est le
   seul fichier autorisé à l'écrire.
 */
-const apiRoot = ['/workspace/amn-api', path.join(ROOT, '..', 'amn-api')].find((c) =>
-  fs.existsSync(path.join(c, 'src/lib/links.js')),
-);
+const apiRoot = trouverApiRoot(ROOT);
 
 if (!apiRoot) {
   console.log('  note  amn-api introuvable localement — contrôle du serveur sauté.');

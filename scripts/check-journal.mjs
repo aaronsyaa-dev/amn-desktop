@@ -35,6 +35,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { trouverApiRoot } from './api-root.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const failures = [];
@@ -52,9 +53,7 @@ const nommees = verbes ? [...verbes[1].matchAll(/^\s*([a-z_]+):/gm)].map((m) => 
 
 /* ─── Ce que le serveur déclare et écrit ─────────────────────────────────── */
 
-const apiRoot = ['/workspace/amn-api', path.join(ROOT, '..', 'amn-api')].find((c) =>
-  fs.existsSync(path.join(c, 'src/db/tenancy.js')),
-);
+const apiRoot = trouverApiRoot(ROOT);
 
 if (!apiRoot) {
   notes.push('amn-api introuvable localement — le croisement avec le serveur est sauté.');

@@ -156,7 +156,10 @@ function slice(source, from, to) {
  * dérivé de `MODULE_CATALOGUE` (amn-api), il ne peut donc plus en diverger.
  */
 const apiCatalogue = (() => {
-  for (const candidate of ['/workspace/amn-api', path.join(ROOT, '..', 'amn-api')]) {
+  // `AMN_API_ROOT` d'abord : en CI, `actions/checkout` ne sait écrire que
+  // dans l'espace de travail, donc le dépôt voisin ne peut pas atterrir à
+  // `../amn-api`. Voir scripts/api-root.mjs.
+  for (const candidate of [process.env.AMN_API_ROOT, '/workspace/amn-api', path.join(ROOT, '..', 'amn-api')].filter(Boolean)) {
     const file = path.join(candidate, 'src/db/tenancy.js');
     if (!fs.existsSync(file)) continue;
     const source = withoutComments(fs.readFileSync(file, 'utf-8'));
@@ -567,7 +570,10 @@ if (apiCatalogue) {
       avait promis sa langue et qui lit la nôtre.
 */
 const tradesApi = (() => {
-  for (const candidate of ['/workspace/amn-api', path.join(ROOT, '..', 'amn-api')]) {
+  // `AMN_API_ROOT` d'abord : en CI, `actions/checkout` ne sait écrire que
+  // dans l'espace de travail, donc le dépôt voisin ne peut pas atterrir à
+  // `../amn-api`. Voir scripts/api-root.mjs.
+  for (const candidate of [process.env.AMN_API_ROOT, '/workspace/amn-api', path.join(ROOT, '..', 'amn-api')].filter(Boolean)) {
     const file = path.join(candidate, 'src/db/tenancy.js');
     if (!fs.existsSync(file)) continue;
     const bloc = /export const ORG_TRADES = \[([\s\S]*?)\];/.exec(
