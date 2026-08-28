@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -96,14 +97,28 @@ export function ProjectsScreen() {
       Sans liste, la section se dimensionne sur son contenu.
     */
     <section className={`flex flex-col gap-4 ${projects.length === 0 ? '' : 'screen-h'}`}>
-      <div className="flex items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">Projets</h1>
-          <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-widest text-text-muted sm:text-xs">
-            {projects.length} projet{projects.length > 1 ? 's' : ''}
-            <span className="hidden sm:inline"> · tout ce qui s’y rattache, au même endroit</span>
-          </p>
-        </div>
+      <ScreenHeader
+        eyebrow="Poste de travail · Projets"
+        title="Projets"
+        description="Tout ce qui s’y rattache, au même endroit."
+        stats={[
+          { label: 'Projets', value: projects.length },
+          /*
+            Le premier statut configuré est celui d'un projet qui DÉMARRE, et
+            le dernier celui d'un projet fini : c'est l'ordre dans lequel la
+            configuration les présente. On compte donc « en cours » comme tout
+            ce qui n'est pas au dernier statut, plutôt que de coder en dur un
+            libellé que chaque organisation peut renommer.
+          */
+          {
+            label: 'En cours',
+            value: projects.filter((p) => p.status !== config.statuses[config.statuses.length - 1]?.key)
+              .length,
+            emphasis: true,
+          },
+          { label: 'Affichés', value: visible.length, title: 'Après le filtre de statut ci-dessous.' },
+        ]}
+        actions={
         <div className="flex flex-shrink-0 items-center gap-2">
           <button
             type="button"
@@ -124,8 +139,8 @@ export function ProjectsScreen() {
             <span className="sm:hidden">Projet</span>
           </button>
         </div>
-      </div>
-
+        }
+      >
       <div className="flex flex-shrink-0 gap-1.5 overflow-x-auto pb-0.5">
         <FilterChip active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>
           Tous
@@ -140,6 +155,7 @@ export function ProjectsScreen() {
           </FilterChip>
         ))}
       </div>
+      </ScreenHeader>
 
       {/*
         LA COLONNE DE DÉTAIL DISPARAÎT QUAND IL N'Y A RIEN À DÉTAILLER (BLOC A).

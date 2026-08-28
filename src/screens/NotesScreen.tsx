@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { motion } from 'framer-motion';
 import {
   Bold,
@@ -70,14 +71,24 @@ export function NotesScreen() {
 
   return (
     <section className={`flex flex-col gap-4 ${notes.length === 0 ? '' : 'screen-h'}`}>
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-text-primary">Notes</h1>
-          <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
-            Bloc-notes · {notes.length} note{notes.length > 1 ? 's' : ''}
-            {TEAM_ENABLED ? ' · perso & équipe' : ''}
-          </p>
-        </div>
+      <ScreenHeader
+        eyebrow="Poste de travail · Notes"
+        title="Notes"
+        description={
+          TEAM_ENABLED
+            ? 'Le bloc-notes : ce qui est à vous, et ce qui est à l’équipe.'
+            : 'Le bloc-notes — tout ce qu’on garde sous la main.'
+        }
+        stats={
+          TEAM_ENABLED
+            ? [
+                { label: 'Notes', value: notes.length },
+                { label: 'Personnelles', value: notes.filter((n) => n.scope === 'personal').length },
+                { label: 'Équipe', value: notes.filter((n) => n.scope !== 'personal').length },
+              ]
+            : [{ label: 'Notes', value: notes.length }]
+        }
+        actions={
         <div className="relative">
           <button
             type="button"
@@ -113,7 +124,8 @@ export function NotesScreen() {
             </>
           )}
         </div>
-      </div>
+        }
+      />
 
       {/* Même règle que Projets et Facturation : pas de colonne de détail
           sans sujet (BLOC A). */}

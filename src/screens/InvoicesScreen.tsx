@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -141,21 +142,31 @@ export function InvoicesScreen() {
 
   return (
     <section className={`flex flex-col gap-4 ${invoices.length === 0 ? '' : 'screen-h'}`}>
-      <div className="flex items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
-            Facturation
-          </h1>
-          {/*
-            Deux longueurs plutôt qu'une coupée : « DEVIS, ENCAI… » sur
-            téléphone n'informait de rien et donnait l'impression d'un texte
-            qui déborde.
-          */}
-          <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-widest text-text-muted sm:text-xs">
-            {invoices.length} document{invoices.length > 1 ? 's' : ''}
-            <span className="hidden sm:inline"> · devis, encaissements, relances</span>
-          </p>
-        </div>
+      {/*
+        LE RELEVÉ D'ARGENT REMONTE DANS L'EN-TÊTE.
+
+        Il vivait dans une bande de trois tuiles juste en dessous — donc deux
+        rangées de chiffres l'une sur l'autre dès que l'en-tête a eu les
+        siennes. Or c'est exactement ce que l'en-tête est fait pour porter :
+        « ce que l'écran vaut MAINTENANT ». La bande disparaît, les trois
+        chiffres restent, et la liste remonte d'autant.
+      */}
+      <ScreenHeader
+        eyebrow="Poste de travail · Facturation"
+        title="Facturation"
+        description="Devis, encaissements et relances."
+        stats={[
+          { label: `Encaissé ${summary.year}`, value: formatCentsCompact(summary.collectedCents) },
+          { label: 'En attente', value: formatCentsCompact(summary.outstandingCents) },
+          {
+            label: summary.overdueCount > 0 ? `En retard · ${summary.overdueCount}` : 'En retard',
+            value: formatCentsCompact(summary.overdueCents),
+            emphasis: summary.overdueCents > 0,
+            title: 'Des documents dont l’échéance est passée et qui ne sont pas réglés.',
+          },
+          { label: 'Documents', value: invoices.length },
+        ]}
+        actions={
         <div className="flex flex-shrink-0 items-center gap-2">
           {/*
             L'export comptable vit à côté des coordonnées de facturation plutôt
@@ -192,9 +203,8 @@ export function InvoicesScreen() {
             <span className="sm:hidden">Facture</span>
           </button>
         </div>
-      </div>
-
-      <MoneyStrip summary={summary} />
+        }
+      />
 
       {!identityComplete && (
         <button
@@ -372,49 +382,6 @@ export function InvoicesScreen() {
 }
 
 /* ----------------------------------------------------------------- résumé -- */
-
-function MoneyStrip({
-  summary,
-}: {
-  summary: {
-    collectedCents: number;
-    outstandingCents: number;
-    overdueCents: number;
-    overdueCount: number;
-    year: string;
-  };
-}) {
-  return (
-    <div className="grid flex-shrink-0 grid-cols-3 gap-px border border-border bg-border">
-      <Tile label={`Encaissé ${summary.year}`} value={formatCentsCompact(summary.collectedCents)} />
-      <Tile label="En attente" value={formatCentsCompact(summary.outstandingCents)} />
-      <Tile
-        label={summary.overdueCount > 0 ? `En retard · ${summary.overdueCount}` : 'En retard'}
-        value={formatCentsCompact(summary.overdueCents)}
-        alert={summary.overdueCents > 0}
-      />
-    </div>
-  );
-}
-
-function Tile({ label, value, alert = false }: { label: string; value: string; alert?: boolean }) {
-  return (
-    <div className="bg-surface px-3 py-2.5">
-      <p className="truncate font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
-        {label}
-      </p>
-      <p
-        className={`mt-1 truncate text-base font-semibold tabular-nums sm:text-lg ${
-          alert ? 'text-danger' : 'text-text-primary'
-        }`}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ liste -- */
 
 function InvoiceRow({
   invoice,

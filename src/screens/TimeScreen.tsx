@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Pencil, Play, Plus, ReceiptEuro, Square, Trash2 } from 'lucide-react';
@@ -145,23 +146,31 @@ export function TimeScreen() {
 
   return (
     <section className="flex flex-col gap-4">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">Temps</h1>
-          <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-text-muted sm:text-xs">
-            Ce que vous passez, sans le noter à la main
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setManualOpen(true)}
-          className="flex h-11 items-center gap-2 border border-border px-3 text-sm text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:h-9"
-        >
-          <Plus size={15} strokeWidth={2} />
-          <span className="hidden sm:inline">Ajouter à la main</span>
-          <span className="sm:hidden">À la main</span>
-        </button>
-      </header>
+      <ScreenHeader
+        eyebrow="Poste de travail · Temps"
+        title="Temps"
+        description="Ce que vous passez, sans le noter à la main."
+        stats={[
+          { label: 'Aujourd’hui', value: formatDuration(totals.todayMs) },
+          { label: 'Cette semaine', value: formatDuration(totals.weekMs) },
+          {
+            label: 'Chronomètre',
+            value: running ? 'en cours' : 'à l’arrêt',
+            emphasis: Boolean(running),
+          },
+        ]}
+        actions={
+          <button
+            type="button"
+            onClick={() => setManualOpen(true)}
+            className="flex h-11 items-center gap-2 rounded-lg border border-border px-3 text-sm text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:h-9"
+          >
+            <Plus size={15} strokeWidth={2} />
+            <span className="hidden sm:inline">Ajouter à la main</span>
+            <span className="sm:hidden">À la main</span>
+          </button>
+        }
+      />
 
       {/* ------------------------------------------------- le chronomètre --- */}
       <div className="border border-border bg-surface p-4">

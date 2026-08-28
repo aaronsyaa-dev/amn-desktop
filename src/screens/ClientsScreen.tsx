@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, FileText, Globe, ImagePlus, Info, Mail, Phone, Plus, Printer, ReceiptEuro, X } from 'lucide-react';
@@ -149,24 +150,33 @@ export function ClientsScreen() {
 
   return (
     <section className={`flex flex-col gap-4 ${clients.length === 0 ? '' : 'screen-h'}`}>
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-text-primary">
-            Clients
-          </h1>
-          <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
-            {clients.length} fiches · relation & missions
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          className="flex items-center gap-2 bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
-        >
-          <Plus size={16} strokeWidth={2.25} />
-          Nouveau client
-        </button>
-      </div>
+      <ScreenHeader
+        eyebrow="Poste de travail · Clients"
+        title="Clients"
+        description="La relation et les missions, fiche par fiche."
+        stats={[
+          { label: 'Fiches', value: clients.length },
+          {
+            label: 'Actifs',
+            value: clients.filter((c) => c.status === 'active').length,
+          },
+          {
+            label: 'Prospects',
+            value: clients.filter((c) => c.status === 'prospect').length,
+            title: 'Des fiches ouvertes qui ne sont pas encore devenues des missions.',
+          },
+        ]}
+        actions={
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
+          >
+            <Plus size={16} strokeWidth={2.25} />
+            Nouveau client
+          </button>
+        }
+      />
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[300px_1fr]">
         <ClientList

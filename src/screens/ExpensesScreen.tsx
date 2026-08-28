@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Plus, SlidersHorizontal, X } from 'lucide-react';
 import { useExpenses } from '../state/useExpenses';
@@ -90,13 +91,15 @@ export function ExpensesScreen() {
 
   return (
     <section className="flex flex-col gap-4">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">Dépenses</h1>
-          <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-text-muted sm:text-xs">
-            Ce que vous sortez, mois par mois
-          </p>
-        </div>
+      <ScreenHeader
+        eyebrow="Poste de travail · Dépenses"
+        title="Dépenses"
+        description="Ce que vous sortez, mois par mois."
+        stats={[
+          { label: 'Ce mois-ci', value: formatCentsCompact(total) },
+          { label: 'Lignes affichées', value: visible.length },
+        ]}
+        actions={
         <div className="flex flex-shrink-0 items-center gap-2">
           <button
             type="button"
@@ -120,7 +123,8 @@ export function ExpensesScreen() {
             <span className="sm:hidden">Dépense</span>
           </button>
         </div>
-      </header>
+        }
+      />
 
       {/* ------------------------------------------------------ le mois ----- */}
       <div className="flex items-center gap-3 border border-border bg-surface p-4">
