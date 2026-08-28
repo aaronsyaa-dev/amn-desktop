@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../auth/AuthContext';
+import { isAdminRole } from '../auth/roles';
 import { bridge } from '../lib/bridge';
 import type { ParcInsights } from '../shared/api';
 
@@ -146,8 +148,29 @@ export function useParcInsights(options?: {
 }): ParcInsightsState {
   const [snapshot, setSnapshot] = useState(etat);
   const background = options?.background ?? false;
+  /*
+    LA RONDE NE PART PAS POUR QUI N'Y A PAS DROIT.
+
+    `/v1/admin/insights` passe par `foundingOrgAdmin` : il faut être chez AMN
+    DevSec ET y être owner ou admin. Le commentaire de ce fichier disait déjà
+    « à n'utiliser que dans les écrans d'AMN DevSec » — mais la bande de
+    supervision est sur l'Accueil, que TOUT le monde voit, `member` compris.
+
+    Mesuré sur un compte `member` de l'interne : un 403 toutes les quinze
+    secondes, indéfiniment, tant que l'application reste ouverte. La bande se
+    cachait correctement (le relevé restait `stale`), donc rien ne se voyait à
+    l'écran — c'est côté serveur que ça se payait. Des 403 réguliers venus de
+    comptes parfaitement légitimes, c'est le bruit dans lequel un vrai refus
+    devient invisible.
+
+    On teste le rôle plutôt que d'attraper l'erreur : une requête qu'on sait
+    perdue d'avance ne se fait pas.
+  */
+  const { role, org } = useAuth();
+  const autorise = isAdminRole(role) && (!org || org.plan === 'internal');
 
   useEffect(() => {
+    if (!autorise) return;
     abonnes.add(setSnapshot);
     if (background) abonnesArrierePlan += 1;
     demarrer();
@@ -159,7 +182,7 @@ export function useParcInsights(options?: {
       if (background) abonnesArrierePlan -= 1;
       if (abonnes.size === 0) arreter();
     };
-  }, [background]);
+  }, [background, autorise]);
 
   return snapshot;
 }

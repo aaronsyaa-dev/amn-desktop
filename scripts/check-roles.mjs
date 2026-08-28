@@ -272,6 +272,82 @@ if (!apiRoot) {
   }
 }
 
+/* ─── 6. « owner ou admin » ne s'écrit qu'à un seul endroit ──────────────── */
+
+/*
+  Le motif exact qui a coûté son rôle à Aaron : plusieurs listes disant la même
+  chose, jamais croisées, jusqu'au jour où l'une bouge.
+
+  « owner ou admin » était écrit en toutes lettres à cinq endroits du poste —
+  la modération des messages, le panneau Membres, les gabarits de pages, deux
+  écrans de dossier. Un seul aurait suffi à créer une divergence silencieuse.
+  La liste vit désormais dans `src/auth/roles.ts`, et ce contrôle refuse toute
+  autre écriture en dur.
+
+  `PagesScreen` est admis : il ne teste pas un droit, il fabrique la liste
+  d'éditeurs PAR DÉFAUT d'une page neuve — une donnée enregistrée, pas une
+  décision. La confondre avec le droit d'administrer figerait l'une sur
+  l'autre.
+*/
+const SOURCE_ADMIN = 'src/auth/roles.ts';
+const ADMIN_TOLERE = new Set([SOURCE_ADMIN, 'src/screens/PagesScreen.tsx']);
+
+const listeAdmin = /export const ADMIN_ROLES: readonly UserRole\[\] = \[([^\]]*)\];/.exec(
+  read(SOURCE_ADMIN),
+);
+if (!listeAdmin) {
+  failures.push(
+    `\`ADMIN_ROLES\` est introuvable dans ${SOURCE_ADMIN} : la liste unique des ` +
+      `rôles qui administrent a disparu, et chaque écran va la réinventer.`,
+  );
+} else {
+  const posteAdmin = [...listeAdmin[1].matchAll(/'([^']+)'/g)].map((x) => x[1]);
+
+  // Croisée avec celle du serveur, qui décide vraiment.
+  if (apiRoot) {
+    const garde = /if \(!\[([^\]]*)\]\.includes\(req\.auth\.role\)\)/.exec(
+      fs.readFileSync(path.join(apiRoot, 'src/middleware/tenantAuth.js'), 'utf-8'),
+    );
+    if (!garde) {
+      failures.push(
+        "Le contrôle de rôle de `foundingOrgAdmin` (amn-api) n'a plus la forme " +
+          'attendue : la comparaison avec la liste du poste ne peut plus se faire.',
+      );
+    } else {
+      const serveurAdmin = [...garde[1].matchAll(/'([^']+)'/g)].map((x) => x[1]);
+      const memes =
+        posteAdmin.length === serveurAdmin.length &&
+        posteAdmin.every((r) => serveurAdmin.includes(r));
+      if (!memes) {
+        failures.push(
+          `Le poste administre avec [${posteAdmin.join(', ')}] et le serveur avec ` +
+            `[${serveurAdmin.join(', ')}]. L'écart se paie dans un seul sens : ` +
+            `le poste propose un geste que le serveur refuse, et la personne ` +
+            `croit à une panne.`,
+        );
+      }
+    }
+  }
+
+  for (const fichier of fichiersSrc) {
+    if (ADMIN_TOLERE.has(fichier)) continue;
+    const src = sansCommentaires(read(fichier));
+    if (/\['owner',\s*'admin'\]/.test(src)) {
+      failures.push(
+        `${fichier} écrit « ['owner', 'admin'] » en dur. Cette liste vit dans ` +
+          `${SOURCE_ADMIN} (\`isAdminRole\`) — une copie ne suivra pas le jour où ` +
+          `un rôle s'ajoute.`,
+      );
+    }
+    if (/role === 'owner' \|\| role === 'admin'|role === 'admin' \|\| role === 'owner'/.test(src)) {
+      failures.push(
+        `${fichier} teste « owner ou admin » à la main. Utiliser \`isAdminRole\` ` +
+          `(${SOURCE_ADMIN}) plutôt que de rejouer la liste.`,
+      );
+    }
+  }
+}
+
 /* ───────────────────────────────── verdict ───────────────────────────────── */
 
 for (const note of notes) console.log(`  note  ${note}`);

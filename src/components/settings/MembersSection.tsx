@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Check, Copy, Loader2, ShieldCheck, UserPlus, Users } from 'lucide-react';
 import { bridge } from '../../lib/bridge';
+import { isAdminRole } from '../../auth/roles';
 import { useAuth } from '../../auth/AuthContext';
 import { roleLabel, assignableRoles } from '../../lib/roleLabels';
 import { cleanErrorMessage } from '../../lib/errorMessage';
@@ -58,7 +59,7 @@ export function MembersSection() {
 
   // Le serveur reste seul juge ; l'écran évite seulement de proposer un geste
   // qu'il refusera. `role` vient de la session revalidée (voir auth/session.ts).
-  const peutGerer = role === 'owner' || role === 'admin';
+  const peutGerer = isAdminRole(role);
   const trade = null; // les libellés métier suivent l'organisation ; non exposé ici
 
   const charger = useCallback(async () => {

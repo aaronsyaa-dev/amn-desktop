@@ -27,9 +27,7 @@
  */
 
 import { AJMANI_EMAIL } from './ajmaniIdentity';
-
-/** Les seuls rôles qui retirent le message d'un autre. */
-const ROLES_MODERATION = ['owner', 'admin'] as const;
+import { isAdminRole } from '../auth/roles';
 
 /** La même adresse, quelle que soit la casse ou les espaces autour. */
 function memeAdresse(a: string | null | undefined, b: string | null | undefined): boolean {
@@ -48,10 +46,15 @@ export function isOwnMessage(
   return memeAdresse(currentEmail, message.authorEmail);
 }
 
-/** Ce rôle modère-t-il le fil ? */
+/**
+ * Ce rôle modère-t-il le fil ?
+ *
+ * La liste vient d'`auth/roles` et n'est pas recopiée ici : c'est la même
+ * question que « qui administre l'organisation », et deux listes qui disent la
+ * même chose finissent par diverger.
+ */
 export function canModerateMessages(role: string | null | undefined): boolean {
-  if (!role) return false;
-  return (ROLES_MODERATION as readonly string[]).includes(role);
+  return isAdminRole(role);
 }
 
 /**

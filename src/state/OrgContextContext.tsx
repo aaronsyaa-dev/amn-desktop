@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { isAdminRole } from '../auth/roles';
 import { storedFromSession, writeStoredSession } from '../auth/session';
 import { bridge } from '../lib/bridge';
 import { cleanErrorMessage } from '../lib/errorMessage';
@@ -181,7 +182,7 @@ function writeStoredToken(token: string | null): void {
 
 export function OrgContextProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  const { org: activeOrg, overrideOrg, sessionKind, reauthenticate } = useAuth();
+  const { org: activeOrg, role, overrideOrg, sessionKind, reauthenticate } = useAuth();
 
   const [organizations, setOrganizations] = useState<AdminOrganization[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(true);
@@ -316,6 +317,25 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
       setLoadingOrgs(false);
       return;
     }
+    /*
+      Le MÊME défaut, sur l'autre axe — trouvé de la même façon, en regardant
+      le trafic réel d'un compte de test.
+
+      Le garde au-dessus couvre l'organisation ; il ne couvrait pas le rôle.
+      `foundingOrgAdmin` (amn-api, middleware/tenantAuth.js) exige d'être chez
+      AMN DevSec ET d'y être owner ou admin. Un compte `member` de l'interne
+      passait donc ce garde et récoltait un 403 à chaque montage du rail.
+
+      Ce n'est pas qu'une requête gaspillée. Des 403 réguliers venus de comptes
+      légitimes, c'est le bruit dans lequel un vrai refus se perd — la
+      supervision du serveur devient moins lisible à chaque poste ouvert.
+    */
+    if (!isAdminRole(role)) {
+      setOrganizations([]);
+      setOrgsError(null);
+      setLoadingOrgs(false);
+      return;
+    }
     try {
       const all = await bridge().remote.admin.listOrganizations();
       // AMN DevSec est le contexte par défaut du rail, pas une entrée de la
@@ -331,7 +351,7 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
     } finally {
       setLoadingOrgs(false);
     }
-  }, [activeOrg]);
+  }, [activeOrg, role]);
 
   useEffect(() => {
     void refreshOrganizations();
