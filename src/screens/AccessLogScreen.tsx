@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { History, RefreshCw } from 'lucide-react';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { useOrgContext } from '../state/OrgContextContext';
@@ -67,13 +68,15 @@ export function AccessLogScreen() {
   return (
     <StaggerGroup className="flex flex-col gap-6">
       <StaggerItem>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-text-primary">Journal d’accès</h1>
-            <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
-              Qui est entré chez qui, et quand · consigné par amn-api
-            </p>
-          </div>
+        <ScreenHeader
+          eyebrow="Tour de contrôle · Journal"
+          title="Journal d’accès"
+          description="Qui est entré chez qui, et quand — consigné par amn-api, jamais par ce poste."
+          stats={[
+            { label: 'Entrées', value: entries === null ? '…' : entries.length },
+            { label: 'Affichées', value: rows.length, title: 'Après le filtre d’organisation.' },
+          ]}
+          actions={
           <div className="flex items-center gap-2">
             <select
               value={orgFilter}
@@ -98,7 +101,8 @@ export function AccessLogScreen() {
               <RefreshCw size={15} strokeWidth={1.75} className={reloading ? 'animate-spin' : ''} />
             </button>
           </div>
-        </div>
+          }
+        />
       </StaggerItem>
 
       {error && (

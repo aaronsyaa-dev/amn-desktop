@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Lock, RefreshCw, ShieldCheck } from 'lucide-react';
 import { bridge } from '../lib/bridge';
@@ -105,27 +106,31 @@ export function SslScreen() {
   return (
     <StaggerGroup className="flex flex-col gap-5">
       <StaggerItem>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight text-text-primary">
-              <Lock size={24} strokeWidth={1.75} className="text-text-secondary" />
-              SSL Monitor
-            </h1>
-            <p className="mt-1 text-sm text-text-secondary">
-              Surveillance des certificats TLS des sites supervisés. La vérification part d’amn-api,
-              jamais de ce poste.
-            </p>
-          </div>
+        <ScreenHeader
+          eyebrow="Produits · SSL Monitor"
+          title="SSL Monitor"
+          description="Les certificats TLS des sites supervisés. La vérification part d’amn-api, jamais de ce poste."
+          stats={[
+            { label: 'Hôtes', value: sorted.length },
+            {
+              label: 'À renouveler',
+              value: atRisk,
+              emphasis: atRisk > 0,
+              title: 'Expirés, ou à moins de trente jours.',
+            },
+          ]}
+          actions={
           <button
             type="button"
             onClick={() => void load()}
             aria-label="Rafraîchir"
-            className="flex items-center gap-2 border border-border px-3 py-2.5 text-sm text-text-secondary transition-colors hover:text-text-primary"
+            className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5 text-sm text-text-secondary transition-colors hover:text-text-primary"
           >
             <RefreshCw size={14} strokeWidth={1.75} />
             <span className="hidden sm:inline">Rafraîchir</span>
           </button>
-        </div>
+          }
+        />
       </StaggerItem>
 
       {error && (

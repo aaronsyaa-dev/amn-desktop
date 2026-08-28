@@ -17,6 +17,7 @@
     "check:sync": "node scripts/check-sync-parity.mjs",
     "check:supervision": "node scripts/check-supervision.mjs",
     "check:journal": "node scripts/check-journal.mjs",
+    "check:ecrans": "node scripts/check-ecrans.mjs",
     "typecheck:business": "tsc --noEmit -p tsconfig.business.json",
     "start:business": "cross-env AMN_EDITION=business npm run start",
     "package:business": "cross-env AMN_EDITION=business npm run package",

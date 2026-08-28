@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { motion } from 'framer-motion';
 import { AlertTriangle, BadgeCheck, Clock, Loader2 } from 'lucide-react';
 import { bridge } from '../lib/bridge';
@@ -131,14 +132,12 @@ export function ComplyScreen() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Comply</h1>
-        <p className="mt-1 text-sm text-text-secondary">
-          Conformité RGPD de base — analyse passive d’une page publique. Indicateur de première
-          ligne, pas un audit juridique.
-        </p>
-      </header>
-
+      <ScreenHeader
+        eyebrow="Produits · Comply"
+        title="Comply"
+        description="Conformité RGPD de base — analyse passive d’une page publique."
+        stats={[{ label: 'Contrôles', value: history.length }]}
+      />
       {/* Launch form — stacked on mobile, inline from md up. */}
       <section className="border border-border bg-surface p-4 sm:p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-end">

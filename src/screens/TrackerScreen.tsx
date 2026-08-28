@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { Link, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Activity, ArrowRight, BarChart3, Check, ChevronDown, Copy, Download, Globe, Layers, MonitorDot, Radar, Settings2, Terminal } from 'lucide-react';
@@ -47,23 +48,25 @@ export function TrackerScreen() {
   return (
     <StaggerGroup className="flex flex-col gap-6">
       <StaggerItem>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-text-primary">Trackers</h1>
-            <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
-              Modules de supervision installables · {totalInstalled} module{totalInstalled > 1 ? 's' : ''} déployé
-              {totalInstalled > 1 ? 's' : ''} sur {equippedSites.length} site{equippedSites.length > 1 ? 's' : ''}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setWizard({ open: true })}
-            className="flex items-center gap-2 bg-accent px-4 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
-          >
-            <Download size={16} strokeWidth={2} />
-            Installer un tracker
-          </button>
-        </div>
+        <ScreenHeader
+          eyebrow="Parc · Trackers"
+          title="Trackers"
+          description="Les modules de supervision installés chez les clientes."
+          stats={[
+            { label: 'Modules déployés', value: totalInstalled },
+            { label: 'Sites équipés', value: equippedSites.length },
+          ]}
+          actions={
+            <button
+              type="button"
+              onClick={() => setWizard({ open: true })}
+              className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
+            >
+              <Download size={16} strokeWidth={2} />
+              Installer un tracker
+            </button>
+          }
+        />
       </StaggerItem>
 
       {/*

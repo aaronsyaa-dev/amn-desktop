@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FileText, Plus } from 'lucide-react';
@@ -81,12 +82,24 @@ export function DecisionsScreen() {
   return (
     <StaggerGroup className="flex flex-col gap-6">
       <StaggerItem>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-text-primary">Journal de décisions</h1>
-          <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
-            Choix techniques et business, horodatés · {decisions.length} entrée{decisions.length > 1 ? 's' : ''} · partagé
-          </p>
-        </div>
+        <ScreenHeader
+          eyebrow="Poste de travail · Décisions"
+          title="Journal de décisions"
+          description="Les choix techniques et business, horodatés — et pourquoi ils ont été pris."
+          stats={[
+            { label: 'Entrées', value: decisions.length },
+            /*
+              Ce mois-ci, parce que c'est la question qu'on se pose devant un
+              journal : « qu'est-ce qu'on a tranché récemment ». Le total seul
+              ne bouge presque jamais et n'apprend rien.
+            */
+            {
+              label: 'Ce mois-ci',
+              value: decisions.filter((d) => (d.createdAt ?? '').slice(0, 7) === new Date().toISOString().slice(0, 7))
+                .length,
+            },
+          ]}
+        />
       </StaggerItem>
 
       <StaggerItem>

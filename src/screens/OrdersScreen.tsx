@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { motion } from 'framer-motion';
 import { ChevronRight, Package, ReceiptEuro } from 'lucide-react';
 import { useOrders, ORDER_STATUS_LABELS, NEXT_STATUSES, STATUS_ORDER, orderTotals } from '../state/useOrders';
@@ -82,25 +83,28 @@ export function OrdersScreen() {
 
   return (
     <motion.section variants={staggerContainer} initial="hidden" animate="show" className="flex flex-col gap-5">
-      <motion.header variants={staggerItem}>
-        <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">Commandes</h1>
-        <p className="mt-1 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-text-muted sm:text-xs">
-          {/*
-            La pastille ne pulse QUE s'il y a réellement des commandes à
-            traiter. Une animation permanente cesse d'être une information au
-            bout de dix minutes — elle devient un fond d'écran.
-          */}
-          {waiting > 0 && (
-            <span className="relative flex h-1.5 w-1.5" aria-hidden>
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-70" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
-            </span>
-          )}
-          {waiting > 0
-            ? `${waiting} commande${waiting > 1 ? 's' : ''} à traiter`
-            : `${orders.length} commande${orders.length > 1 ? 's' : ''} · rien en attente`}
-        </p>
-      </motion.header>
+      <motion.div variants={staggerItem}>
+        {/*
+          « À traiter » porte l'emphase UNIQUEMENT s'il y en a. C'est le même
+          principe que la pastille pulsante qu'il remplace : une mise en avant
+          permanente cesse d'être une information au bout de dix minutes, elle
+          devient un fond d'écran.
+        */}
+        <ScreenHeader
+          eyebrow="Poste de travail · Commandes"
+          title="Commandes"
+          description={
+            waiting > 0
+              ? 'Ce qui attend une réponse, en premier.'
+              : 'Rien en attente — tout est traité.'
+          }
+          stats={[
+            { label: 'À traiter', value: waiting, emphasis: waiting > 0 },
+            { label: 'Total', value: orders.length },
+            { label: 'Affichées', value: shown.length, title: 'Après le filtre ci-dessous.' },
+          ]}
+        />
+      </motion.div>
 
       <motion.div variants={staggerItem} className="flex flex-wrap gap-1.5">
         <Chip label="Toutes" count={orders.length} active={filter === 'all'} onClick={() => setFilter('all')} />

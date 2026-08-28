@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Film, ImageOff, Play, X } from 'lucide-react';
@@ -100,12 +101,16 @@ export function MediaLibraryScreen() {
   return (
     <LightboxProvider gallery={imageGallery}>
       <section className="flex flex-col gap-5">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-text-primary">Médias</h1>
-          <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
-            Images &amp; vidéos partagées dans le chat · {all.length} élément{all.length > 1 ? 's' : ''}
-          </p>
-        </div>
+        <ScreenHeader
+          eyebrow="Poste de travail · Médias"
+          title="Médias"
+          description="Les images et vidéos partagées dans le fil d’équipe, rassemblées."
+          stats={[
+            { label: 'Éléments', value: all.length },
+            { label: 'Images', value: all.filter((m) => (m.kind ?? 'image') === 'image').length },
+            { label: 'Vidéos', value: all.filter((m) => m.kind === 'video').length },
+          ]}
+        />
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2.5">

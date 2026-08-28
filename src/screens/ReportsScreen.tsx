@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -185,28 +186,27 @@ export function ReportsScreen() {
 
   return (
     <section className="screen-h flex flex-col gap-4">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-text-primary">Rapports</h1>
-          {/* « Mémoire de l'équipe » suppose une équipe. Chez une cliente, ce
-              sont ses comptes-rendus à elle — le mot juste est le sien. */}
-          <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
-            {TEAM_ENABLED ? 'Mémoire de l’équipe' : 'Vos comptes-rendus'} · {reports.length} rapport
-            {reports.length > 1 ? 's' : ''}
-          </p>
-        </div>
+      {/* « Mémoire de l'équipe » suppose une équipe. Chez une cliente, ce sont
+          ses comptes-rendus à elle — le mot juste est le sien. */}
+      <ScreenHeader
+        eyebrow="Poste de travail · Rapports"
+        title="Rapports"
+        description={TEAM_ENABLED ? 'La mémoire de l’équipe.' : 'Vos comptes-rendus.'}
+        stats={[{ label: 'Rapports', value: reports.length }]}
+        actions={
         <button
           type="button"
           onClick={() => {
             setEditing({ draft: emptyDraft() });
             setSelection(null);
           }}
-          className="flex items-center gap-2 bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
+          className="flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
         >
           <Plus size={16} strokeWidth={2.25} />
           Nouveau rapport
         </button>
-      </div>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-2.5">
         <Segmented

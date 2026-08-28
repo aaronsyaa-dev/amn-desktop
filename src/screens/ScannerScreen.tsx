@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { motion } from 'framer-motion';
 import { AlertTriangle, ChevronDown, Clock, Loader2, ScanLine } from 'lucide-react';
 import { bridge } from '../lib/bridge';
@@ -110,13 +111,12 @@ export function ScannerScreen() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Scanner</h1>
-        <p className="mt-1 text-sm text-text-secondary">
-          Audit de sécurité passif — détection sans exploitation. Le scan part d’amn-api, jamais de ce poste.
-        </p>
-      </header>
-
+      <ScreenHeader
+        eyebrow="Produits · Scanner"
+        title="Scanner"
+        description="Audit de sécurité passif — détection sans exploitation. Le scan part d’amn-api, jamais de ce poste."
+        stats={[{ label: 'Scans', value: history.length }]}
+      />
       {/* ---------------------------- Launch form ---------------------------- */}
       <section className="border border-border bg-surface p-4 sm:p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-end">

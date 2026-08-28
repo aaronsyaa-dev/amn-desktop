@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -90,16 +91,18 @@ export function VaultScreen() {
 
   return (
     <section className={`flex flex-col gap-4 ${entries.length === 0 ? '' : 'screen-h'}`}>
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
-            <Lock size={22} strokeWidth={2} />
-            Coffre-fort
-          </h1>
-          <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
-            {loading ? 'Chargement…' : `${entries.length} entrée${entries.length > 1 ? 's' : ''}`}
-          </p>
-        </div>
+      <ScreenHeader
+        eyebrow="Poste de travail · Coffre-fort"
+        title="Coffre-fort"
+        description="Chiffré sur cette machine, et sur elle seule — le serveur n’en voit rien."
+        stats={[
+          {
+            label: 'Entrées',
+            value: loading ? '…' : entries.length,
+            title: 'Le contenu ne quitte jamais ce poste : il n’y a rien à synchroniser.',
+          },
+        ]}
+        actions={
         <div className="flex flex-shrink-0 items-center gap-2">
           {/*
             LA SORTIE DE SECOURS.
@@ -152,7 +155,8 @@ export function VaultScreen() {
             <span className="hidden sm:inline">Nouvelle entrée</span>
           </button>
         </div>
-      </div>
+        }
+      />
 
       {/*
         CE BANDEAU DISAIT UNE PROPRIÉTÉ, PAS SA CONSÉQUENCE.

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import {
   Check,
   ChevronDown,
@@ -134,26 +135,29 @@ export function SitesDashboardScreen() {
 
   return (
     <section className="flex flex-col gap-5">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
-            Registre des sites
-          </h1>
-          <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
-            {loading
-              ? 'Chargement…'
-              : `${sites.length} site${sites.length > 1 ? 's' : ''} enregistré${sites.length > 1 ? 's' : ''}`}
-          </p>
-        </div>
+      <ScreenHeader
+        eyebrow="Parc · Sites"
+        title="Registre des sites"
+        description="Les sites supervisés, et l’état dans lequel ils répondent."
+        stats={[
+          { label: 'Sites', value: loading ? '…' : sites.length },
+          {
+            label: 'Hors ligne',
+            value: sites.filter((s) => s.status === 'offline').length,
+            emphasis: sites.some((s) => s.status === 'offline'),
+          },
+        ]}
+        actions={
         <button
           type="button"
           onClick={() => setRegistering(true)}
-          className="flex flex-shrink-0 items-center gap-2 bg-accent px-3 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
+          className="flex flex-shrink-0 items-center gap-2 rounded-lg bg-accent px-3 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
         >
           <Plus size={16} strokeWidth={2.25} />
           <span className="hidden sm:inline">Nouveau site</span>
         </button>
-      </div>
+        }
+      />
 
       <ConnectionBanner status={connectionStatus} />
 

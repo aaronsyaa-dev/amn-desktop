@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { motion } from 'framer-motion';
 import { Calculator, Scale, TrendingDown, TrendingUp, Users } from 'lucide-react';
 import { useExpenses } from '../state/useExpenses';
@@ -74,14 +75,17 @@ export function CalculatorsScreen() {
       animate="show"
       className="flex flex-col gap-5"
     >
-      <motion.header variants={staggerItem}>
-        <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
-          Calculateurs
-        </h1>
-        <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-text-muted sm:text-xs">
-          {CALC_PROFILES.length} calculateurs · un moteur, aucune formule en dur
-        </p>
-      </motion.header>
+      <motion.div variants={staggerItem}>
+        <ScreenHeader
+          eyebrow="Poste de travail · Calculateurs"
+          title="Calculateurs"
+          description="Un seul moteur, aucune formule écrite en dur — chaque métier a le sien."
+          stats={[
+            { label: 'Métiers couverts', value: CALC_PROFILES.length },
+            { label: 'Métier affiché', value: profile.label },
+          ]}
+        />
+      </motion.div>
 
       {/* --------------------------- Choix du métier --------------------------- */}
       <motion.div variants={staggerItem} className="flex flex-wrap gap-1.5">
