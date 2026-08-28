@@ -16,9 +16,18 @@ import { IS_BUSINESS } from '../edition/edition';
 import type { OrgIdentity, RemoteSession, RemoteSessionUser, User,
   LoginOutcome,
 } from '../shared/api';
+import {
+  clearStoredSession,
+  patchStoredOrg,
+  localUserFromSession,
+  readStoredSession,
+  sessionRole,
+  storedFromSession,
+  writeStoredSession,
+  type StoredSession,
+} from './session';
 
 const AUTH_STORAGE_KEY = 'amn-desktop.auth.user';
-const SESSION_STORAGE_KEY = 'amn-desktop.auth.session';
 
 /**
  * Qui est connecté, et POUR QUELLE ORGANISATION.
@@ -39,21 +48,6 @@ const SESSION_STORAGE_KEY = 'amn-desktop.auth.session';
  * l'utilisatrice elle-même — pas un secret de build comme le jeton opérateur —
  * et le process main s'en sert pour parler à amn-api (voir remoteConfig.ts).
  */
-
-interface StoredSession {
-  token: string;
-  user: User;
-  org: OrgIdentity;
-  /**
-   * Le rôle de la session amn-api (BLOC 3).
-   *
-   * Persisté avec le reste : sans lui, un redémarrage rendrait l'application
-   * incapable de dire si l'utilisatrice peut modifier une page tant que la
-   * revalidation n'a pas répondu — donc un écran en lecture seule qui devient
-   * modifiable une seconde plus tard, ce qui se lit comme un défaut.
-   */
-  role?: RemoteSessionUser['role'];
-}
 
 /** Voir `AuthContextValue.sessionKind`. */
 export type SessionKind = 'api' | 'local' | null;
@@ -188,32 +182,8 @@ function read<T>(key: string): T | null {
   }
 }
 
-/**
- * Nom affichable par défaut, tiré de l'adresse — remplaçable dans Paramètres.
- *
- * CHAQUE mot prend sa majuscule, pas seulement le premier. `marie.dupont`
- * donnait « Marie dupont », et cette chaîne-là s'affiche en grand sur le tout
- * premier écran qu'une cliente voit, avant même qu'elle ait eu l'occasion de
- * renseigner son nom. Une faute d'orthographe sur son propre nom, en
- * accueil : c'est le genre de détail qui décide de la confiance qu'on accorde
- * au reste.
- */
-function nameFromEmail(email: string): string {
-  const local = email.split('@')[0] ?? email;
-  const cleaned = local.replace(/[._-]+/g, ' ').trim();
-  if (!cleaned) return email;
-  return cleaned
-    .split(' ')
-    .map((mot) => (mot ? mot.charAt(0).toUpperCase() + mot.slice(1) : mot))
-    .join(' ');
-}
-
-function userFromSession(session: RemoteSession): User {
-  return { id: 0, email: session.user.email, name: nameFromEmail(session.user.email) };
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const stored = useMemo(() => read<StoredSession>(SESSION_STORAGE_KEY), []);
+  const stored = useMemo(() => readStoredSession(), []);
   const [user, setUser] = useState<User | null>(
     () => stored?.user ?? read<User>(AUTH_STORAGE_KEY),
   );
@@ -230,6 +200,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // l'inverse — et l'inverse est pire.
   const [passwordFromSupport, setPasswordFromSupport] = useState(false);
 
+  /*
+    QUI, OÙ, AVEC QUEL RÔLE — LES TROIS ENSEMBLE, OU RIEN
+    ─────────────────────────────────────────────────────
+    `setUser` et `setRole` ne sont appelés QUE dans les deux fonctions qui
+    suivent, et `npm run check:roles` refuse tout autre appel dans ce fichier.
+
+    Ce n'est pas de la coquetterie : le défaut corrigé ici venait exactement
+    de leur séparation. Quatre chemins réglaient l'utilisateur sans toucher au
+    rôle — la revalidation au démarrage, la reconnexion silencieuse, le repli
+    local, et la déconnexion. Chacun laissait donc un rôle faux : périmé dans
+    un cas, absent dans les trois autres. Aucun ne plantait, aucun ne se
+    voyait, et l'application refusait poliment à quelqu'un qui avait tous les
+    droits.
+
+    Une identité incomplète n'est plus représentable : on l'adopte entière,
+    ou on l'oublie entière.
+  */
+  const adopterIdentite = useCallback(
+    (next: { user: User; org: OrgIdentity | null; role: RemoteSessionUser['role'] | null }) => {
+      setUser(next.user);
+      setOrg(next.org);
+      setRole(next.role);
+    },
+    [],
+  );
+
+  const oublierIdentite = useCallback(() => {
+    setUser(null);
+    setOrg(null);
+    setRole(null);
+  }, []);
+
   // Revalidation au démarrage. Une session expirée, un compte suspendu ou une
   // organisation suspendue ramènent à l'écran de connexion tout de suite,
   // plutôt que d'ouvrir un espace de travail qui échouerait appel par appel.
@@ -240,20 +242,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const session = await bridge().remote.session.restore(stored.token).catch(() => null);
       if (!active) return;
       if (session) {
-        setUser(userFromSession(session));
-        setOrg(session.org);
+        /*
+          Le rôle est RÉÉCRIT ici, pas seulement lu au démarrage.
+
+          C'est la ligne qui manquait. Une session ouverte par une version
+          antérieure — ou par une bascule d'organisation — n'a pas de rôle en
+          stockage ; sans cette réécriture, il restait `null` pour toujours,
+          puisque plus rien après ne le renseignait. La revalidation parle au
+          serveur : c'est le moment exact où l'on connaît la vérité, et donc
+          celui où il faut la consigner.
+        */
+        const aStocker = { ...storedFromSession(session), token: stored.token };
+        adopterIdentite({ user: aStocker.user, org: aStocker.org, role: aStocker.role ?? null });
+        writeStoredSession(aStocker);
         setPasswordFromSupport(Boolean(session.user.passwordFromSupport));
       } else {
-        window.localStorage.removeItem(SESSION_STORAGE_KEY);
-        setUser(null);
-        setOrg(null);
+        clearStoredSession();
+        oublierIdentite();
       }
       setBootstrapping(false);
     })();
     return () => {
       active = false;
     };
-  }, [stored]);
+  }, [stored, adopterIdentite, oublierIdentite]);
 
   /**
    * Adopte une session amn-api : garde-fou d'édition, stockage, état.
@@ -267,20 +279,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await bridge().remote.session.clear().catch(() => undefined);
       throw new Error(refusal);
     }
-    const nextUser = userFromSession(session);
-    const toStore: StoredSession = {
-      token: session.token,
-      user: nextUser,
-      org: session.org,
-      role: session.user.role,
-    };
-    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(toStore));
+    const toStore: StoredSession = storedFromSession(session);
+    writeStoredSession(toStore);
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
-    setUser(nextUser);
-    setOrg(session.org);
-    setRole(session.user.role);
+    adopterIdentite({ user: toStore.user, org: toStore.org, role: toStore.role ?? null });
     setPasswordFromSupport(Boolean(session.user.passwordFromSupport));
-  }, []);
+  }, [adopterIdentite]);
 
   /**
    * Seconde étape : le code du téléphone, ou un code de secours.
@@ -349,11 +353,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(result.error ?? unreachable?.message ?? 'Échec de la connexion.');
     }
     window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(result.user));
-    setUser(result.user);
-    setOrg(null);
+    /*
+      Le repli local ne parle pas à amn-api : il n'a donc AUCUN rôle à
+      annoncer, et `null` est la seule réponse honnête. Il laissait jusqu'ici
+      en place le rôle du compte précédent — un poste partagé pouvait donc
+      ouvrir une session locale et hériter à l'écran des droits de quelqu'un
+      d'autre.
+    */
+    adopterIdentite({ user: result.user, org: null, role: null });
     // Le repli local n'a pas de MFA : il ne parle pas à amn-api.
     return { kind: 'session', session: null as unknown as RemoteSession };
-  }, [adoptSession]);
+  }, [adoptSession, adopterIdentite]);
 
   const acceptInvitation = useCallback(
     async (token: string, password: string): Promise<LoginOutcome> => {
@@ -379,7 +389,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // place accueillerait le compte suivant avec le blocage du précédent.
     clearGuestQuotaBlock();
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
-    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    clearStoredSession();
     // Les miroirs de collections sont indexés par poste, pas par organisation :
     // les laisser en place ferait apparaître les données du compte précédent
     // pendant la première seconde du suivant. On les efface à la déconnexion.
@@ -387,20 +397,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (key.startsWith('amn.sync.')) window.localStorage.removeItem(key);
     }
     void bridge().remote.session.clear().catch(() => undefined);
-    setUser(null);
-    setOrg(null);
+    // Le rôle part avec le reste : le laisser en place accueillait le compte
+    // suivant avec les droits du précédent.
+    oublierIdentite();
     setContextOrg(null);
-  }, []);
+  }, [oublierIdentite]);
 
   const reauthenticate = useCallback(async (): Promise<boolean> => {
-    const current = read<StoredSession>(SESSION_STORAGE_KEY);
+    const current = readStoredSession();
     if (!current?.token) return false;
     const session = await bridge().remote.session.restore(current.token).catch(() => null);
     if (!session) return false;
-    setUser(userFromSession(session));
-    setOrg(session.org);
+    // Même exigence qu'au démarrage : ce que le serveur vient de dire est
+    // consigné, en mémoire ET en stockage. Sans quoi la reconnexion
+    // silencieuse « réparait » la session tout en laissant le rôle faux.
+    const aStocker = { ...storedFromSession(session), token: current.token };
+    adopterIdentite({ user: aStocker.user, org: aStocker.org, role: aStocker.role ?? null });
+    writeStoredSession(aStocker);
     return true;
-  }, []);
+  }, [adopterIdentite]);
 
   const overrideOrg = useCallback((next: OrgIdentity | null) => setContextOrg(next), []);
 
@@ -430,13 +445,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const patchSessionOrg = useCallback((next: OrgIdentity) => {
     setOrg(next);
     try {
-      const current = read<StoredSession>(SESSION_STORAGE_KEY);
-      if (current) {
-        window.localStorage.setItem(
-          SESSION_STORAGE_KEY,
-          JSON.stringify({ ...current, org: next }),
-        );
-      }
+      // L'organisation seule : ce n'est pas un changement d'identité (ni le
+      // compte ni le rôle ne bougent), donc pas d'`adopterIdentite` ici.
+      patchStoredOrg(next);
     } catch {
       /* Le stockage peut être refusé (mode privé) : l'état en mémoire suffit
          pour cette session, et `/v1/auth/me` rétablira la vérité au prochain
@@ -475,6 +486,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sessionKind,
       bootstrapping,
       login,
+      // `completeMfa` était publié sans être surveillé — même classe de défaut
+      // que celui qui a coûté son rôle à Aaron, trouvé par `check:roles` en
+      // écrivant ce contrôle. Sans effet visible ici (il ne dépend que de
+      // fonctions stables), et corrigé quand même : la règle est que ce qu'on
+      // publie, on le surveille.
+      completeMfa,
       acceptInvitation,
       logout,
       reauthenticate,

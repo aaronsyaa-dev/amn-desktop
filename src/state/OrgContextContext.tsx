@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { storedFromSession, writeStoredSession } from '../auth/session';
 import { bridge } from '../lib/bridge';
 import { cleanErrorMessage } from '../lib/errorMessage';
 import { purgeContextMirror } from './SyncContext';
@@ -263,13 +264,27 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
       if (orgId === activeOrgId) return;
       try {
         const session = await bridge().remote.session.switchOrganization(orgId);
-        // Écrit dans la forme qu'attend AuthContext au démarrage : après le
-        // rechargement, l'app reprend cette session comme si on venait de s'y
-        // connecter.
-        window.localStorage.setItem(
-          'amn-desktop.auth.session',
-          JSON.stringify({ token: session.token, user: session.user, org: session.org }),
-        );
+        /*
+          UNE SEULE FABRIQUE, UN SEUL ÉCRIVAIN (voir auth/session.ts).
+
+          Ces lignes écrivaient la session « à la main », sous la clé retapée
+          en toutes lettres, et dans une forme qui n'était pas celle
+          qu'AuthContext écrit à la connexion : le RÔLE manquait, et `user`
+          était la forme serveur — donc sans nom affichable.
+
+          Le rôle absent était le vrai dégât. Après une seule bascule, plus
+          rien ne savait quel rôle avait la personne, et rien ne le
+          rétablissait : les écrans qui demandent « puis-je modifier ceci ? »
+          recevaient `null` et refusaient, à quelqu'un qui avait pourtant tous
+          les droits. Tout le reste marchait, ce qui rendait le défaut
+          presque invisible — il fallait se déconnecter pour en sortir.
+
+          `storedFromSession` prend le rôle EFFECTIF de la nouvelle
+          organisation (les ponts l'ont normalisé) : c'est bien le rôle de
+          l'appartenance dans l'organisation où l'on entre, jamais celui de
+          l'organisation d'origine.
+        */
+        writeStoredSession(storedFromSession(session));
         // Le contexte de support éventuel n'a plus lieu d'être : on quitte
         // l'organisation, pas seulement l'écran.
         window.localStorage.removeItem(SUPPORT_TOKEN_KEY);
@@ -578,6 +593,36 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
       signalLocalSession,
       enterOrganization,
       leaveOrganization,
+      /*
+        CES QUATRE-LÀ MANQUAIENT, ET C'EST TOUT LE DÉFAUT.
+
+        L'objet ci-dessus PUBLIE `myOrganizations`, `loadingMine`,
+        `activeOrgId` et `switchToOrganization` ; le tableau de dépendances,
+        lui, ne les surveillait pas. Le memo ne se recalculait donc pas quand
+        ils changeaient : les consommateurs gardaient les valeurs figées au
+        premier rendu — liste vide, `activeOrgId` nul, `loadingMine` vrai.
+
+        Ce n'était pas franc, et c'est ce qui l'a rendu si difficile à voir :
+        le memo se recalculait quand même dès qu'une autre dépendance de la
+        liste bougeait (`organizations`, `support`, `transition`…), et
+        ramassait au passage les valeurs à jour. Tant que la Tour de contrôle
+        rechargeait sa propre liste, tout paraissait normal.
+
+        Après une bascule vers une organisation CLIENTE, plus rien ne bougeait
+        de ce côté — `refreshOrganizations` s'arrête volontairement quand
+        l'organisation active n'est pas `internal`. Le rail restait donc figé
+        sur son premier rendu : les organisations rejointes disparaissaient, le
+        bouton « chez moi » se croyait actif, et son clic était inerte (il teste
+        `homeOrg`, qui était nul). On se retrouvait coincé dans l'organisation
+        où l'on venait d'entrer, avec le rôle qui va avec.
+
+        Mesuré : la réponse serveur portait bien deux organisations et la bonne
+        organisation active, à l'instant même où le rail n'en affichait aucune.
+      */
+      myOrganizations,
+      loadingMine,
+      activeOrgId,
+      switchToOrganization,
     ],
   );
 

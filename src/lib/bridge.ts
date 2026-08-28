@@ -467,7 +467,20 @@ function createBrowserRemote(): AmnBridge['remote'] {
         // Le serveur a tué l'ancien jeton en réémettant : adopter le nouveau
         // immédiatement, sinon la requête suivante part avec un mort.
         applySession(res.token);
-        return res;
+      /*
+        Le rôle rendu au PREMIER niveau par `/organizations/switch` est celui
+        de l'APPARTENANCE — le seul juste pour l'organisation où l'on entre.
+        `res.user.role`, lui, reste celui de l'organisation d'origine.
+
+        On normalise ici pour que le contrat tienne partout : dans une
+        `RemoteSession`, `user.role` est TOUJOURS le rôle effectif. Sans cette
+        ligne, basculer chez une cliente qui a invité Aaron comme membre lui
+        rendrait, à l'écran, ses pouvoirs de propriétaire de chez lui.
+      */
+        return {
+          ...res,
+          user: { ...res.user, role: (res.role as RemoteSessionUser['role']) ?? res.user.role },
+        };
       },
       async loginMfa(input: { challenge: string; code?: string; backupCode?: string }) {
         const session = await publicPost<RemoteSession>('/v1/auth/login/mfa', input);
@@ -479,12 +492,23 @@ function createBrowserRemote(): AmnBridge['remote'] {
         const previous = sessionToken;
         sessionToken = tokenToCheck;
         try {
-          const me = await apiFetch<{ org: OrgIdentity | null; user: RemoteSessionUser | null }>(
-            '/v1/auth/me',
-          );
+          // `auth.role` est le rôle EFFECTIF dans l'organisation active ;
+          // `user.role` celui de l'organisation d'origine. Les deux diffèrent
+          // dès qu'une session a basculé, et seul le premier fait autorité —
+          // même raisonnement, mot pour mot, que dans main/remoteApi.ts.
+          const me = await apiFetch<{
+            org: OrgIdentity | null;
+            user: RemoteSessionUser | null;
+            auth?: { role?: RemoteSessionUser['role'] } | null;
+          }>('/v1/auth/me');
           if (!me.user || !me.org) throw new Error('session sans utilisateur');
           applySession(tokenToCheck);
-          return { token: tokenToCheck, expiresAt: '', user: me.user, org: me.org };
+          return {
+            token: tokenToCheck,
+            expiresAt: '',
+            user: { ...me.user, role: me.auth?.role ?? me.user.role },
+            org: me.org,
+          };
         } catch {
           sessionToken = previous;
           return null;
