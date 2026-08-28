@@ -25,6 +25,7 @@
     "check:roles": "node scripts/check-roles.mjs",
     "check:naming": "node scripts/check-naming.mjs",
     "check:signing": "node scripts/check-signing.mjs",
+    "check:profiles": "node scripts/check-profiles.mjs",
     "check:persistence": "node scripts/check-persistence.mjs",
     "check:accent": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-accent.ts",
     "check:money": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-money.ts",

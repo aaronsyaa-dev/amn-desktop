@@ -352,6 +352,15 @@ function ProfileSection({ email }: { email: string }) {
   const [name, setName] = useState(profile.name);
   const [presenceText, setPresenceText] = useState(profile.presenceText);
   const [savedTick, setSavedTick] = useState(false);
+  /*
+    Ce que dit l'écran quand l'enregistrement est REFUSÉ (BLOC 11).
+
+    `updateSelf` rend `false` tant que le miroir n'a pas été relu — écrire un
+    nom par-dessus une photo qu'on n'a pas encore lue l'effacerait. Afficher la
+    coche « enregistré » dans ce cas serait un mensonge, et la personne
+    quitterait l'écran en croyant sa photo posée.
+  */
+  const [refus, setRefus] = useState(false);
 
   useEffect(() => {
     setName(profile.name);
@@ -359,27 +368,31 @@ function ProfileSection({ email }: { email: string }) {
   }, [profile.email, profile.name, profile.presenceText]);
 
   const flashSaved = () => {
+    setRefus(false);
     setSavedTick(true);
     window.setTimeout(() => setSavedTick(false), 1200);
+  };
+
+  /** Une écriture rendue par `updateSelf` : coche si elle a eu lieu, message sinon. */
+  const rendreCompte = (enregistre: boolean) => {
+    if (enregistre) flashSaved();
+    else setRefus(true);
   };
 
   const onPhoto = async (file: File | undefined) => {
     if (!file) return;
     const dataUrl = await resizeImageToDataUrl(file, 512, 0.85);
-    await updateSelf(email, { photoDataUrl: dataUrl });
-    flashSaved();
+    rendreCompte(await updateSelf(email, { photoDataUrl: dataUrl }));
   };
 
   const saveName = async () => {
     if (name.trim() && name !== profile.name) {
-      await updateSelf(email, { name: name.trim() });
-      flashSaved();
+      rendreCompte(await updateSelf(email, { name: name.trim() }));
     }
   };
   const savePresence = async () => {
     if (presenceText !== profile.presenceText) {
-      await updateSelf(email, { presenceText: presenceText.trim() });
-      flashSaved();
+      rendreCompte(await updateSelf(email, { presenceText: presenceText.trim() }));
     }
   };
 
@@ -410,8 +423,7 @@ function ProfileSection({ email }: { email: string }) {
             <button
               type="button"
               onClick={async () => {
-                await updateSelf(email, { photoDataUrl: '' });
-                flashSaved();
+                rendreCompte(await updateSelf(email, { photoDataUrl: '' }));
               }}
               className="font-mono text-[10px] uppercase tracking-wider text-text-muted hover:text-danger"
             >
@@ -463,6 +475,16 @@ function ProfileSection({ email }: { email: string }) {
               className="flex items-center gap-1 text-xs text-success"
             >
               <Check size={13} strokeWidth={2.25} /> Enregistré
+            </motion.p>
+          )}
+          {refus && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-xs text-warning"
+            >
+              Pas enregistré : votre profil n’a pas encore été relu depuis le serveur.
+              Réessayez dans un instant — écrire maintenant effacerait votre photo.
             </motion.p>
           )}
         </div>

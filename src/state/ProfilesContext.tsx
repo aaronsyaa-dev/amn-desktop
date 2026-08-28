@@ -25,7 +25,12 @@ interface ProfileData {
 interface ProfilesContextValue {
   profiles: UserProfile[];
   profileFor: (email: string) => UserProfile;
-  updateSelf: (email: string, patch: UpdateProfileInput) => Promise<void>;
+  /**
+   * Enregistre une modification du profil. Rend `false` — sans rien écrire —
+   * quand le miroir n'est pas encore fiable : voir `miroirFiable` plus bas.
+   * L'écran doit dire « pas enregistré » plutôt que d'afficher une coche.
+   */
+  updateSelf: (email: string, patch: UpdateProfileInput) => Promise<boolean>;
   /** Marks the Équipe tab as read now for this operator (read receipts). */
   markTeamSeen: (email: string) => void;
   /** When the given operator last opened the Équipe tab, or null if never. */
@@ -119,13 +124,44 @@ export function ProfilesProvider({ children }: { children: React.ReactNode }) {
   // collection de profils. Sans ce garde-fou, ouvrir son espace y déposait une
   // fiche « Aaron / aaron@amn-devsec.com » — une trace de nous dans ses données,
   // créée par le seul fait de la dépanner.
+  /*
+    LA PHOTO QUI DISPARAÎT — la cause, reproduite (BLOC 11).
+
+    Le profil est un enregistrement ENTIER : la synchronisation ne connaît pas
+    les modifications partielles, tout écrit remplace tout. `baseData` relit
+    donc l'enregistrement existant avant chaque écriture… et rendait un repli
+    — `photoDataUrl: ''` — quand `records` ne le contenait pas encore.
+
+    Or `markTeamSeen` s'exécute à l'ouverture de l'écran Équipe, sans attendre
+    quoi que ce soit. Sur une liaison lente, l'écran monte AVANT que le miroir
+    soit hydraté : le repli part alors sur le serveur et efface la photo pour
+    tout le monde, en dernier écrivain.
+
+    Reproduit, avec témoin, sur l'application réellement construite :
+
+      · arrivée directe sur #/team, liaison normale ........ photo intacte
+      · mêmes conditions, GET de synchro retardés de 3 s ... PHOTO EFFACÉE
+      · idem retardés de 8 s .............................. PHOTO EFFACÉE
+      · témoin : arrivée sur #/ (aucun markTeamSeen) ...... photo intacte
+
+    Le témoin est ce qui désigne le coupable : même lenteur, même compte, même
+    amorçage — seul l'écran change. Et le retard explique enfin pourquoi le bug
+    s'observait depuis un téléphone.
+
+    Le correctif est en dessous : plus aucune écriture de profil ne peut être
+    bâtie sur un repli tant que le miroir n'est pas fiable. Ce n'est pas un
+    garde posé sur `markTeamSeen` seul — l'accusé d'aujourd'hui — mais sur
+    `baseData`, la fabrique que tous les chemins d'écriture traversent.
+  */
+  const miroirFiable = ready && (!configured || !pullFailed);
+
   const clientView = useClientView();
   useEffect(() => {
     if (clientView) return;
-    if (ready && (!configured || !pullFailed) && user && !records.some((r) => r.id === user.email)) {
+    if (miroirFiable && user && !records.some((r) => r.id === user.email)) {
       upsert('profiles', user.email, { name: user.name, photoDataUrl: '', presenceText: '' });
     }
-  }, [clientView, ready, configured, pullFailed, user, records, upsert]);
+  }, [clientView, miroirFiable, user, records, upsert]);
 
   const profileFor = useCallback(
     (email: string) => {
@@ -137,26 +173,45 @@ export function ProfilesProvider({ children }: { children: React.ReactNode }) {
 
   // Full existing profile data (preserving fields not in ProfileData's core
   // three, e.g. teamSeenAt) so no patch silently drops the read-receipt marker.
+  /*
+    La base d'une écriture — ou `null` quand il n'y en a pas de sûre.
+
+    Rendre un repli pour un enregistrement absent est LÉGITIME quand le miroir
+    est fiable : l'enregistrement n'existe alors réellement pas, et il n'y a
+    rien à perdre. C'est quand le miroir n'est PAS fiable que le même repli
+    devient un effacement, parce qu'« absent du miroir » n'y veut pas dire
+    « inexistant ».
+
+    Rendre `null` plutôt que d'écrire quand même rend l'effacement
+    inexprimable, au lieu de le laisser à la vigilance de chaque appelant.
+  */
   const baseData = useCallback(
-    (key: string): ProfileData => {
+    (key: string): ProfileData | null => {
       const existing = records.find((r) => r.id === key);
-      return existing
-        ? {
-            name: existing.name,
-            photoDataUrl: existing.photoDataUrl,
-            presenceText: existing.presenceText,
-            teamSeenAt: existing.teamSeenAt,
-          }
-        : { name: fallbackProfile(key).name, photoDataUrl: '', presenceText: '' };
+      if (existing) {
+        return {
+          name: existing.name,
+          photoDataUrl: existing.photoDataUrl,
+          presenceText: existing.presenceText,
+          teamSeenAt: existing.teamSeenAt,
+        };
+      }
+      if (!miroirFiable) return null;
+      return { name: fallbackProfile(key).name, photoDataUrl: '', presenceText: '' };
     },
-    [records],
+    [records, miroirFiable],
   );
 
   const updateSelf = useCallback(
-    async (email: string, patch: UpdateProfileInput) => {
+    async (email: string, patch: UpdateProfileInput): Promise<boolean> => {
       const key = normaliseEmail(email);
-      if (!key) return; // nothing to update without an identity
-      await upsert('profiles', key, { ...baseData(key), ...patch });
+      if (!key) return false; // nothing to update without an identity
+      const base = baseData(key);
+      // Refuser plutôt qu'écrire à l'aveugle : enregistrer un nom par-dessus
+      // une photo qu'on n'a pas encore lue la supprimerait.
+      if (!base) return false;
+      await upsert('profiles', key, { ...base, ...patch });
+      return true;
     },
     [baseData, upsert],
   );
@@ -165,7 +220,12 @@ export function ProfilesProvider({ children }: { children: React.ReactNode }) {
     (email: string) => {
       const key = normaliseEmail(email);
       if (!key) return;
-      void upsert('profiles', key, { ...baseData(key), teamSeenAt: new Date().toISOString() });
+      const base = baseData(key);
+      // Le chemin exact de la disparition. Un accusé de lecture se réémet à
+      // chaque message suivant : le sauter une fois ne coûte rien, alors
+      // qu'une photo effacée ne revient pas.
+      if (!base) return;
+      void upsert('profiles', key, { ...base, teamSeenAt: new Date().toISOString() });
     },
     [baseData, upsert],
   );
