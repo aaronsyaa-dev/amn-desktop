@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
+  ArrowUpRight,
   Activity,
   AlertTriangle,
   ArrowLeft,
@@ -419,11 +420,53 @@ function TrafficChart({ summary }: { summary: SiteSummary }) {
 
 /* ----------------------------- Alert history ------------------------------ */
 
+/**
+ * L'HISTORIQUE D'UN SITE, ET LE CHEMIN VERS LE GESTE.
+ *
+ * Cette liste était en lecture seule, et elle le reste : ce qu'on regarde ici
+ * est une chronologie, pas une file de travail. Mais elle ignorait totalement
+ * les incidents — on voyait passer vingt alertes d'une même campagne sans
+ * pouvoir ni les relier ni agir dessus, et il fallait deviner qu'un autre
+ * écran savait le faire.
+ *
+ * Deux choses changent, et pas une de plus :
+ *
+ *   · les alertes rattachées à un MÊME incident sont marquées comme telles.
+ *     Vingt lignes qui se suivent ne se lisent pas comme vingt problèmes dès
+ *     lors qu'on voit qu'elles n'en font qu'un ;
+ *   · un raccourci mène au bureau de supervision, là où le geste existe.
+ *
+ * On ne recopie PAS les boutons d'acquittement ici. Deux endroits pour le même
+ * geste, c'est deux endroits où l'état peut diverger sous les yeux de deux
+ * opérateurs — et le bureau montre l'incident ENTIER, ce que cette liste, par
+ * construction, ne montre jamais.
+ */
 function AlertHistory({ alerts }: { alerts: RemoteEvent[] }) {
   const ordered = useMemo(
     () => [...alerts].sort((a, b) => (b.occurredAt || '').localeCompare(a.occurredAt || '')),
     [alerts],
   );
+
+  /*
+    Combien d'INCIDENTS derrière ces alertes, et le rang de chacune dans le
+    sien. C'est ce rang qui fait la différence à la lecture : « 3ᵉ alerte du
+    même incident » dit « c'est la suite », là où trois lignes identiques
+    disent « trois problèmes ».
+  */
+  const { incidents, rang } = useMemo(() => {
+    const compte = new Map<string, number>();
+    const rangs = new Map<number, number>();
+    // Du plus ancien au plus récent : le rang doit compter dans le sens du
+    // temps, pas dans celui de l'affichage.
+    for (const a of [...ordered].reverse()) {
+      const id = a.incidentId;
+      if (!id) continue;
+      const n = (compte.get(id) ?? 0) + 1;
+      compte.set(id, n);
+      rangs.set(a.id, n);
+    }
+    return { incidents: compte.size, rang: rangs };
+  }, [ordered]);
 
   return (
     <section className="border border-border bg-surface">
@@ -433,6 +476,15 @@ function AlertHistory({ alerts }: { alerts: RemoteEvent[] }) {
           Historique des alertes
         </h2>
         <span className="ml-auto font-mono text-[11px] text-text-muted">{ordered.length}</span>
+        {incidents > 0 && (
+          <Link
+            to="/supervision"
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
+          >
+            {incidents} incident{incidents > 1 ? 's' : ''}
+            <ArrowUpRight size={12} strokeWidth={2} />
+          </Link>
+        )}
       </div>
 
       {ordered.length === 0 ? (
@@ -466,6 +518,14 @@ function AlertHistory({ alerts }: { alerts: RemoteEvent[] }) {
                       {alertKindLabel(alert.payload?.kind)}
                     </span>
                     {ip && <span className="font-mono text-[11px] text-text-muted">{ip}</span>}
+                    {(rang.get(alert.id) ?? 0) > 1 && (
+                      <span
+                        className="font-mono text-[10px] text-text-muted"
+                        title="Cette alerte prolonge un incident déjà ouvert — ce n’est pas un problème de plus."
+                      >
+                        · {rang.get(alert.id)}ᵉ du même incident
+                      </span>
+                    )}
                   </div>
                   {alert.message && (
                     <p className="mt-0.5 break-words text-xs leading-relaxed text-text-secondary">{alert.message}</p>
