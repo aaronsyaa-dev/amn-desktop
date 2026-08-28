@@ -175,6 +175,112 @@ for (const fichier of fichiers) {
   }
 }
 
+/* ─── 5. Le SERVEUR ne nomme pas un produit en dur ───────────────────────── */
+
+/*
+  LE RENOMMAGE N'AVAIT JAMAIS ATTEINT amn-api.
+
+  Mesuré après coup : deux textes que des HUMAINS lisent nommaient
+  « AMN Desktop » en dur — la notification d'un appel entrant et celle du
+  bouton d'essai. Depuis l'échange des noms, ce nom désigne le produit des
+  CLIENTES : un opérateur d'AMN DevSec recevait donc un appel « sur AMN
+  Desktop », c'est-à-dire sur une application qui n'est pas la sienne.
+
+  Personne ne l'aurait vu. Le message reste plausible, il est simplement faux —
+  et un produit qui ne connaît pas son propre nom use la confiance d'une
+  cliente plus vite qu'une panne, parce qu'une panne s'explique.
+
+  Quatre commentaires étaient inversés par-dessus le marché, dont deux sur les
+  variables d'environnement `APP_PUBLIC_URL` / `APP_BUSINESS_PUBLIC_URL` : de
+  quoi configurer les deux adresses à l'envers, une fois, en silence.
+
+  La règle est celle du poste, appliquée au serveur : le nom se déduit de
+  l'organisation du destinataire (`productNameForOrg`), et `links.js` est le
+  seul fichier autorisé à l'écrire.
+*/
+const apiRoot = ['/workspace/amn-api', path.join(ROOT, '..', 'amn-api')].find((c) =>
+  fs.existsSync(path.join(c, 'src/lib/links.js')),
+);
+
+if (!apiRoot) {
+  console.log('  note  amn-api introuvable localement — contrôle du serveur sauté.');
+} else {
+  const SOURCE_SERVEUR = 'src/lib/links.js';
+
+  const source = fs.readFileSync(path.join(apiRoot, SOURCE_SERVEUR), 'utf-8');
+  if (!/export function productNameForOrg\(orgId\)/.test(source)) {
+    failures.push(
+      "`productNameForOrg` a disparu d'amn-api/src/lib/links.js. C'est le seul " +
+        "endroit qui sait quel produit porte quel nom côté serveur — sans lui, " +
+        'chaque texte le réinvente, et se trompe.',
+    );
+  } else {
+    // Les deux noms doivent correspondre à ceux d'electron-builder, croisés.
+    const rendus = /return orgId === AMN_ORG_ID \? '([^']+)' : '([^']+)'/.exec(source);
+    if (!rendus) {
+      failures.push('`productNameForOrg` n’a plus la forme attendue : le croisement est impossible.');
+    } else {
+      const [, nomInterne, nomCliente] = rendus;
+      if (nomInterne !== interne.productName) {
+        failures.push(
+          `amn-api nomme l'interne « ${nomInterne} » et l'installeur « ${interne.productName} ». ` +
+            `La notification d'un appel dirait donc un nom que l'application n'affiche nulle part.`,
+        );
+      }
+      if (nomCliente !== cliente.productName) {
+        failures.push(
+          `amn-api nomme le produit CLIENT « ${nomCliente} » et l'installeur ` +
+            `« ${cliente.productName} ». C'est le nom qu'une cliente lit dans ses ` +
+            `notifications : il doit être celui de l'application qu'elle a installée.`,
+        );
+      }
+    }
+  }
+
+  /*
+    Aucun nom de produit dans une CHAÎNE ailleurs. On retire commentaires et
+    apostrophes typographiques avant de lire — ces fichiers sont commentés en
+    français, et « l'échange des noms » citerait le nom sans qu'il soit dans
+    une chaîne.
+  */
+  const dossiers = ['src', 'src/routes', 'src/lib', 'src/ws', 'src/tracker', 'src/scanner', 'src/db', 'src/middleware'];
+  for (const dossier of dossiers) {
+    const dir = path.join(apiRoot, dossier);
+    if (!fs.existsSync(dir)) continue;
+    for (const f of fs.readdirSync(dir)) {
+      if (!f.endsWith('.js')) continue;
+      const rel = `${dossier}/${f}`;
+      if (rel === SOURCE_SERVEUR) continue;
+      const src = fs
+        .readFileSync(path.join(dir, f), 'utf-8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, '');
+      for (const nom of NOMS) {
+        /*
+          Le nom NU, une fois les commentaires retirés — pas seulement
+          `'AMN Desktop'`.
+
+          Le premier jet cherchait les trois formes de délimiteur, et laissait
+          donc passer exactement le défaut d'origine : le nom vivait DANS un
+          gabarit interpolé, `\`${user} vous appelle sur AMN Desktop.\``. Un
+          contrôle qui rate le cas pour lequel il a été écrit ne garde rien.
+
+          Un nom de produit contient une espace : hors commentaire, il ne peut
+          apparaître que dans une chaîne. La recherche nue est donc exacte, et
+          non une approximation.
+        */
+        if (src.includes(nom)) {
+          failures.push(
+            `amn-api/${rel} écrit « ${nom} » dans une chaîne. Le serveur sert les DEUX ` +
+              `produits : le nom doit venir de \`productNameForOrg(orgId)\`, qui le déduit ` +
+              `de l'organisation du destinataire, jamais d'une constante.`,
+          );
+        }
+      }
+    }
+  }
+}
+
 /* ─────────────────────────────── verdict ───────────────────────────────── */
 
 if (failures.length > 0) {
