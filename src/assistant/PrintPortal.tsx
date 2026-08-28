@@ -4,6 +4,7 @@ import { Logo } from '../components/Logo';
 import { triggerPrint } from '../lib/print';
 import type { AssistantReport } from './types';
 import { ReportBlocks } from './ReportBlocks';
+import { EDITION_PRODUCT_NAME } from '../edition/edition';
 
 /**
  * Renders a report into a light-themed, print-only region attached to
@@ -38,7 +39,7 @@ export function PrintPortal({
       <ReportBlocks blocks={report.blocks} variant="print" />
 
       <p className="mt-10 border-t border-neutral-200 pt-4 text-xs text-neutral-400">
-        Document généré par l’assistant AMN Desktop · confidentiel
+        Document généré par l’assistant {EDITION_PRODUCT_NAME} · confidentiel
       </p>
     </div>,
     document.body,

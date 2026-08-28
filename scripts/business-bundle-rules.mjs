@@ -58,6 +58,20 @@ export const FORBIDDEN = [
   { pattern: 'SSL Monitor', why: 'produit exclusif' },
   { pattern: 'Comply', why: 'produit exclusif (RGPD)' },
   { pattern: 'Ajmani', why: 'assistant local, exclusif' },
+  /*
+    LE NOM DE NOTRE PRODUIT INTERNE.
+
+    Il manquait à cette liste, et le trou s'est vu : une constante « le nom de
+    l'autre édition » y faisait entrer « AMN Business » alors que le seul
+    message qui l'employait ne s'affiche jamais dans un paquet cliente (son
+    refus est gardé par `!IS_BUSINESS`). Rien ne l'a signalé.
+
+    Une cliente n'a aucune raison de lire le nom de l'application qu'elle n'a
+    pas. Ce n'est pas un secret, mais c'est une trace de notre organisation
+    dans un fichier qu'elle peut ouvrir — au même titre que le reste de cette
+    liste.
+  */
+  { pattern: 'AMN Business', why: 'le nom produit de l’édition INTERNE' },
 
   // --- Routes et canaux qui n'existent pas chez une cliente ---
   { pattern: '/v1/admin/', why: 'console inter-organisations' },

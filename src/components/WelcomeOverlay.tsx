@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Logo } from './Logo';
 import { useAuth } from '../auth/AuthContext';
+import { EDITION_PRODUCT_NAME } from '../edition/edition';
 
 const LAST_SHOWN_KEY = 'amn.welcome.lastShown';
 const DURATION_MS = 5200;
@@ -59,7 +60,7 @@ function speakWelcome(name: string): void {
 
     const doSpeak = () => {
       const voice = pickBestFrenchVoice(synth.getVoices());
-      const utter = new SpeechSynthesisUtterance(`Bienvenue sur AMN Desktop. Bonjour ${name}.`);
+      const utter = new SpeechSynthesisUtterance(`Bienvenue sur ${EDITION_PRODUCT_NAME}. Bonjour ${name}.`);
       if (voice) utter.voice = voice;
       utter.lang = voice?.lang || 'fr-FR';
       utter.rate = 0.93; // slightly slower — calmer, more posed
@@ -80,7 +81,7 @@ function speakWelcome(name: string): void {
 }
 
 /**
- * Full-screen "Welcome to AMN Desktop" curtain shown once per day on launch,
+ * Rideau plein écran « Welcome to <produit> », une fois par jour au lancement,
  * with a spoken greeting and a soft reveal, in the app's monochrome identity.
  * Auto-dismisses after ~5s; click anywhere to skip.
  */
@@ -162,7 +163,7 @@ export function WelcomeOverlay({ onDone }: { onDone: () => void }) {
                 transition={{ delay: 0.4, duration: 0.6 }}
                 className="text-3xl font-bold tracking-tight text-text-primary sm:text-4xl"
               >
-                Welcome to AMN Desktop
+                Welcome to {EDITION_PRODUCT_NAME}
               </motion.h1>
               <motion.p
                 initial={{ opacity: 0 }}

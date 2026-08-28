@@ -12,7 +12,7 @@ import { setEnabledModules } from '../data/spaces';
 import { applyAccent } from '../lib/accent';
 import { clearGuestQuotaBlock } from '../state/guestQuotaStore';
 import { cleanErrorMessage, isApiUnreachable } from '../lib/errorMessage';
-import { IS_BUSINESS } from '../edition/edition';
+import { IS_BUSINESS, CLIENT_PRODUCT_NAME } from '../edition/edition';
 import type { OrgIdentity, RemoteSession, RemoteSessionUser, User,
   LoginOutcome,
 } from '../shared/api';
@@ -298,7 +298,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const session = await bridge().remote.session.loginMfa(input);
       await adoptSession(
         session,
-        'Ce compte appartient à une organisation cliente. Utilisez l’application AMN Business.',
+        `Ce compte appartient à une organisation cliente. Utilisez l’application ${CLIENT_PRODUCT_NAME}.`,
       );
       return session;
     },
@@ -315,14 +315,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (outcome.kind === 'mfa') return outcome;
       const session = outcome.session;
 
-      // Garde-fou d'édition. Un build interne embarque les produits exclusifs
-      // d'AMN DevSec : une organisation cliente n'a rien à y faire, même avec
-      // des identifiants valides. L'inverse est permis — Aaron peut ouvrir
-      // AMN Business avec son propre compte pour vérifier ce que voit sa
-      // cliente.
+      /*
+        Garde-fou d'édition. Un build interne embarque les produits exclusifs
+        d'AMN DevSec : une organisation cliente n'a rien à y faire, même avec
+        des identifiants valides. L'inverse est permis — Aaron peut ouvrir
+        l'application CLIENTE avec son propre compte pour vérifier ce que voit
+        sa cliente.
+
+        Le message nomme l'AUTRE édition, jamais celle-ci, et il le fait par
+        `CLIENT_PRODUCT_NAME` : écrit en dur, il disait « AMN Business »
+        — l'édition interne — à une utilisatrice cliente qu'il fallait envoyer
+        vers « AMN Desktop ». Le seul message dont le rôle est d'orienter
+        envoyait au mauvais endroit.
+      */
       await adoptSession(
         session,
-        'Ce compte appartient à une organisation cliente. Utilisez l’application AMN Business.',
+        `Ce compte appartient à une organisation cliente. Utilisez l’application ${CLIENT_PRODUCT_NAME}.`,
       );
       return { kind: 'session', session };
     } catch (err) {
@@ -377,7 +385,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // avec une invitation parfaitement valide.
       await adoptSession(
         outcome.session,
-        'Cette invitation concerne une organisation cliente. Utilisez l’application AMN Business.',
+        `Cette invitation concerne une organisation cliente. Utilisez l’application ${CLIENT_PRODUCT_NAME}.`,
       );
       return outcome;
     },

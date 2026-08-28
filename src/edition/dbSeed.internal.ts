@@ -1,3 +1,4 @@
+import { EDITION_PRODUCT_NAME } from './edition';
 import type Database from 'better-sqlite3';
 import bcrypt from 'bcryptjs';
 import { SEED_ACCOUNTS } from '../main/seed';
@@ -126,7 +127,7 @@ function seedKnowledge(database: Database.Database): void {
     )
     .run(
       'Installation du tracker (procédure)',
-      '1. npm install @amn-devsec/security-monitor\n2. Enregistrer le site depuis AMN Desktop (onglet Sites) pour obtenir la clé API\n3. Ajouter AMN_API_URL et AMN_API_KEY dans le .env du site client\n4. const tracker = createTracker(); app.use(tracker.middleware()); tracker.start();\n5. Vérifier dans AMN Desktop que le site passe "en ligne" après le premier heartbeat.',
+      `1. npm install @amn-devsec/security-monitor\n2. Enregistrer le site depuis ${EDITION_PRODUCT_NAME} (onglet Sites) pour obtenir la clé API\n3. Ajouter AMN_API_URL et AMN_API_KEY dans le .env du site client\n4. const tracker = createTracker(); app.use(tracker.middleware()); tracker.start();\n5. Vérifier dans ${EDITION_PRODUCT_NAME} que le site passe « en ligne » après le premier heartbeat.`,
       now,
       now,
     );

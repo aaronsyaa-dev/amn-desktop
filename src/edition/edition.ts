@@ -48,6 +48,29 @@ export const IS_BUSINESS = EDITION === 'business';
 export const EDITION_PRODUCT_NAME = IS_BUSINESS ? 'AMN Desktop' : 'AMN Business';
 
 /**
+ * Le nom de l'application CLIENTE — le même pour tout le monde.
+ *
+ * Sert aux rares textes qui envoient quelqu'un vers l'application des
+ * clientes : le refus de connexion, quand un compte client se présente sur un
+ * build interne. Ce message était écrit en dur et nommait « AMN Business »,
+ * c'est-à-dire l'édition INTERNE, à l'utilisatrice cliente qu'il fallait
+ * envoyer vers « AMN Desktop ». Le seul message dont le rôle est d'orienter
+ * envoyait au mauvais endroit — l'échange des noms commerciaux rend l'erreur
+ * facile à écrire de mémoire.
+ *
+ * Une constante fixe, et non « le nom de l'autre édition » : celle-ci
+ * vaudrait « AMN Business » dans le paquet d'une cliente, où le message ne
+ * s'affiche jamais (le refus est gardé par `!IS_BUSINESS`). On y ferait donc
+ * entrer le nom de notre produit interne pour rien — et `check:business` le
+ * refuse désormais.
+ *
+ * Dans l'édition cliente, cette constante vaut exactement
+ * `EDITION_PRODUCT_NAME` : aucune chaîne supplémentaire n'entre dans son
+ * paquet.
+ */
+export const CLIENT_PRODUCT_NAME = 'AMN Desktop';
+
+/**
  * La version de ce build.
  *
  * À préférer TOUJOURS à `CURRENT_VERSION` du changelog, qui n'est que le titre

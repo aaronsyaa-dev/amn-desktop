@@ -1,3 +1,5 @@
+import { EDITION_PRODUCT_NAME } from '../edition/edition';
+
 /**
  * Catalogue des offres de tracking AMN. Mock/statique pour l'instant — aucune
  * dépendance à une base de données, ce contenu ne change pas dynamiquement.
@@ -27,7 +29,7 @@
  *    des vérifications de disponibilité synthétiques (uptime/perf actifs,
  *    pas seulement passifs via heartbeat), un scan de dépendances
  *    vulnérables programmé, et la génération automatique de rapports
- *    d'incident (branché sur l'assistant IA déjà présent dans AMN Desktop).
+ *    d'incident (branché sur l'assistant IA déjà présent dans l'application).
  *    C'est la offre "supervision + business", pensée pour un client qui
  *    veut un véritable centre de pilotage plutôt qu'un simple capteur.
  *
@@ -66,7 +68,7 @@ export const trackerCatalog: TrackerOffer[] = [
     name: 'AMN Sentinel',
     tagline: 'Sécurité de base, temps réel',
     description:
-      'Détection de force brute, rate limiting et injections basiques (SQL/NoSQL/XSS). Remonte vers AMN Desktop en quasi temps réel, avec file d’attente durable si le site est temporairement injoignable.',
+      `Détection de force brute, rate limiting et injections basiques (SQL/NoSQL/XSS). Remonte vers ${EDITION_PRODUCT_NAME} en quasi temps réel, avec file d’attente durable si le site est temporairement injoignable.`,
     rating: 2,
     features: [
       'Force brute (fenêtre glissante par identifiant)',

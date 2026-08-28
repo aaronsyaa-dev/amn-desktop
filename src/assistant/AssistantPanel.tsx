@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { EDITION_PRODUCT_NAME } from '../edition/edition';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUp,
@@ -883,7 +884,7 @@ function WatchTab() {
           <p className="max-w-xs text-sm text-text-secondary">
             {isElectron
               ? 'Impossible de joindre les sources pour le moment. Réessayez une fois la connexion rétablie.'
-              : 'La veille en direct est disponible dans l’application de bureau AMN Desktop.'}
+              : `La veille en direct est disponible dans l’application de bureau ${EDITION_PRODUCT_NAME}.`}
           </p>
         </div>
       )}
