@@ -30,6 +30,7 @@ import { spaceForPath } from '../data/spaces';
 import { AppLauncher } from './AppLauncher';
 import { UpdateNotice } from './UpdateNotice';
 import { UpdateReady } from './UpdateReady';
+import { PwaUpdateNotice } from './PwaUpdateNotice';
 import { variantsForPath } from '../lib/transitions';
 import { StatusRail } from './StatusRail';
 import { useAuth } from '../auth/AuthContext';
@@ -206,6 +207,7 @@ export function AppLayout() {
               {showWelcome && <WelcomeOverlay onDone={() => setShowWelcome(false)} />}
               {!showWelcome && <UpdateNotice />}
               <UpdateReady />
+              <PwaUpdateNotice />
               </TagProvider>
               </UndoProvider>
             </CommandPaletteProvider>

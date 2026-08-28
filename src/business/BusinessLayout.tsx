@@ -13,6 +13,7 @@ import { StatusRail } from '../components/StatusRail';
 import { AppLauncher } from '../components/AppLauncher';
 import { UpdateNotice } from '../components/UpdateNotice';
 import { UpdateReady } from '../components/UpdateReady';
+import { PwaUpdateNotice } from '../components/PwaUpdateNotice';
 import { variantsForPath } from '../lib/transitions';
 import { useAuth } from '../auth/AuthContext';
 
@@ -142,6 +143,7 @@ export function BusinessLayout() {
                 <BootHealthy />
                 <UpdateNotice />
                 <UpdateReady />
+                <PwaUpdateNotice />
     </SpaceProviders>
   );
 }

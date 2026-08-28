@@ -198,6 +198,75 @@ function code(rel) {
   }
 }
 
+/* ─── 8. La mise à jour de la PWA se VOIT (BLOC 4) ──────────────────────── */
+
+/*
+  Le poste de bureau avait `UpdateReady`. La PWA n'avait rien : le service
+  worker appelait `skipWaiting()` dès l'installation, prenait la main
+  immédiatement, et la page continuait de faire tourner l'ANCIEN JavaScript
+  sans jamais être rechargée ni le dire.
+
+  Ce que ça donnait sur un téléphone : une PWA laissée ouverte gardait
+  l'ancienne version des jours durant. Aucun message, et le seul remède —
+  fermer complètement l'application — n'est ni évident ni fait par personne.
+
+  Trois choses tiennent ce correctif, et chacune casse le motif si elle
+  disparaît :
+
+    · le worker n'appelle plus `skipWaiting()` à l'INSTALLATION ;
+    · il l'appelle sur MESSAGE, quand la page a obtenu l'accord ;
+    · la page recharge sur `controllerchange`, jamais au clic — sinon l'ancien
+      worker sert encore les anciens fichiers et la page « neuve » repart sur
+      l'ancienne version.
+*/
+/*
+  Commentaires retirés AVANT lecture. Le premier jet lisait le commentaire
+  « PAS de `skipWaiting()` ici » comme du code et accusait le correctif d'être
+  le défaut — un contrôle qui ne distingue pas ce qui s'exécute de ce qui
+  s'explique accuse toujours au mauvais endroit.
+*/
+const sansCommentaires = (source) =>
+  source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+const sw = sansCommentaires(fs.readFileSync(path.join(ROOT, 'public/sw.js'), 'utf-8'));
+const notice = sansCommentaires(
+  fs.readFileSync(path.join(ROOT, 'src/components/PwaUpdateNotice.tsx'), 'utf-8'),
+);
+
+const installBloc = /addEventListener\('install'[\s\S]*?\n\}\);/.exec(sw);
+if (!installBloc) {
+  failures.push("Le gestionnaire `install` du service worker est introuvable.");
+} else if (/skipWaiting\(\)/.test(installBloc[0])) {
+  failures.push(
+    "Le service worker appelle `skipWaiting()` à l'INSTALLATION : il reprend donc " +
+      "la main tout seul, sur une page qui continue de faire tourner l'ancien " +
+      'JavaScript, et personne n’est prévenu. C’est exactement le défaut du Bloc 4.',
+  );
+}
+
+if (!/addEventListener\('message'[\s\S]{0,300}?SKIP_WAITING[\s\S]{0,120}?skipWaiting\(\)/.test(sw)) {
+  failures.push(
+    "Le service worker n'écoute plus `SKIP_WAITING` : la page n'a plus aucun moyen " +
+      "de lui dire d'y aller, et la mise à jour n'arrivera jamais.",
+  );
+}
+
+if (!/addEventListener\('controllerchange'/.test(notice)) {
+  failures.push(
+    "`PwaUpdateNotice` n'écoute plus `controllerchange` : le rechargement ne serait " +
+      'plus lié à la prise de contrôle, donc la page pourrait repartir sur l’ancienne ' +
+      'version servie par l’ancien worker.',
+  );
+}
+
+if (!/navigator\.serviceWorker\.controller/.test(notice)) {
+  failures.push(
+    "`PwaUpdateNotice` ne vérifie plus qu'un worker contrôlait déjà la page : la " +
+      "bannière apparaîtrait à la PREMIÈRE visite, pour annoncer le remplacement " +
+      "d'une version qui n'a jamais existé.",
+  );
+}
+
 /* -------------------------------------------------------------- verdict -- */
 
 if (failures.length > 0) {
@@ -208,5 +277,5 @@ if (failures.length > 0) {
 
 console.log(
   '\nCanaux de mise à jour : interne et Business restent séparés ' +
-    '(7 règles, du publisher à l’installation silencieuse chez la cliente).',
+    '(8 règles, du publisher à la mise à jour visible sur la PWA).',
 );

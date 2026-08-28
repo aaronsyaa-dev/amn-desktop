@@ -34,12 +34,50 @@
  * v4 adds Web Push handling. A closed PWA has no page and no WebSocket, so the
  * service worker is the ONLY thing that can be woken to announce an incoming
  * call — which is why a call to a phone previously produced nothing at all.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * v5 — LA MISE À JOUR CESSE D'ÊTRE MUETTE (BLOC 4)
+ *
+ * Jusqu'ici : `skipWaiting()` dès l'installation. Le nouveau worker prenait
+ * donc la main IMMÉDIATEMENT — sur une page qui continuait, elle, de faire
+ * tourner l'ANCIEN JavaScript. La page n'était jamais rechargée, et personne
+ * n'était prévenu.
+ *
+ * Ce que ça donnait sur un téléphone : une PWA laissée ouverte gardait
+ * l'ancienne version des jours durant. Aucun message, aucun geste possible —
+ * la seule façon d'avoir la nouvelle était de fermer complètement
+ * l'application, ce que personne ne fait, et ce que rien n'indiquait.
+ *
+ * Le worker attend donc désormais, et c'est la PAGE qui décide du moment :
+ *
+ *   1. le nouveau worker s'installe et reste en attente (`waiting`) ;
+ *   2. la page le voit et propose « une nouvelle version est prête » ;
+ *   3. sur acceptation, elle lui envoie `SKIP_WAITING` ;
+ *   4. il prend la main, `controllerchange` se déclenche, la page recharge.
+ *
+ * L'ordre compte : recharger APRÈS la prise de contrôle garantit que le
+ * JavaScript rechargé et le worker qui le sert viennent du même build. Le
+ * comportement d'avant ne le garantissait pas — c'était sans conséquence ici
+ * (aucun découpage dynamique du bundle, vérifié), mais c'était vrai par
+ * chance, pas par construction.
  */
-const CACHE = 'amn-pwa-v4';
+const CACHE = 'amn-pwa-v5';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.png'];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // PAS de `skipWaiting()` ici : le worker se prépare et attend que la page
+  // dise quand. Voir le préambule (v5).
+  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
+});
+
+/**
+ * Le seul message que ce worker accepte : « tu peux prendre la main ».
+ *
+ * Envoyé par la page quand quelqu'un a accepté la mise à jour. On ne l'exécute
+ * jamais de nous-mêmes — c'est tout l'intérêt de v5.
+ */
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {

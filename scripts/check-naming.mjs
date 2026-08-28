@@ -130,6 +130,50 @@ if (!affiche) {
   }
 }
 
+/* ─── 3 bis. Le nom que la PWA annonce est celui du produit ──────────────── */
+
+/*
+  LA QUATRIÈME LISTE, celle qu'aucun contrôle ne regardait.
+
+  `vite.renderer.config.mts` remplace les jetons du manifeste PWA et du service
+  worker. Elle décide donc du nom sur l'écran d'accueil d'un téléphone, du
+  titre de la fenêtre, et du titre des notifications push.
+
+  Mesuré : elle n'avait pas suivi l'échange du Bloc 1. Une cliente installait
+  « AMN Desktop » et son téléphone affichait « AMN Business » ; l'édition
+  interne s'annonçait « AMN DevSec », le nom de la boîte et non du produit.
+  Invisible depuis `src/`, invisible en CI, visible uniquement sur un vrai
+  téléphone — c'est-à-dire chez la cliente.
+*/
+const vite = read('vite.renderer.config.mts');
+const identite = /const IDENTITY: Record<Edition, \{ name: string; description: string \}> = \{([\s\S]*?)\n\};/.exec(vite);
+
+if (!identite) {
+  failures.push(
+    "`IDENTITY` est introuvable dans vite.renderer.config.mts : le nom annoncé par " +
+      'la PWA ne peut plus être croisé avec celui de l’installeur.',
+  );
+} else {
+  const noms = {};
+  for (const m of identite[1].matchAll(/(internal|business):\s*\{\s*name:\s*'([^']+)'/g)) {
+    noms[m[1]] = m[2];
+  }
+  if (noms.internal !== interne.productName) {
+    failures.push(
+      `La PWA interne s'annonce « ${noms.internal} » et l'installeur produit ` +
+        `« ${interne.productName} ». C'est le nom que porte l'icône sur un écran ` +
+        `d'accueil et le titre des notifications.`,
+    );
+  }
+  if (noms.business !== cliente.productName) {
+    failures.push(
+      `La PWA CLIENTE s'annonce « ${noms.business} » et l'installeur produit ` +
+        `« ${cliente.productName} ». Une cliente installerait donc une application ` +
+        `dont le nom sur son téléphone n'est pas celui qu'elle a acheté.`,
+    );
+  }
+}
+
 /* ─── 4. Aucun nom de produit écrit en dur ailleurs ─────────────────────── */
 
 /*
