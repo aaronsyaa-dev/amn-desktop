@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   Check,
   Copy,
+  FileText,
   History,
   KeyRound,
   Link2,
@@ -20,6 +21,7 @@ import { VaultTransferButton } from '../components/vault/VaultTransferButton';
 import { organizationTransfer } from '../lib/orgAccessVault';
 import { cleanErrorMessage } from '../lib/errorMessage';
 import { relativeTime } from '../lib/time';
+import { MonthlyReportPanel } from '../components/MonthlyReportPanel';
 import type { AdminOrgUser, OrgAccessEntry } from '../shared/api';
 
 /**
@@ -36,6 +38,7 @@ import type { AdminOrgUser, OrgAccessEntry } from '../shared/api';
  * sur ces routes. Chacune laisse une ligne au journal.
  */
 export function ClientAdminScreen() {
+  const [rapportOuvert, setRapportOuvert] = useState(false);
   const { support, organizations, refreshOrganizations, leaveOrganization } = useOrgContext();
   const org = organizations.find((o) => o.id === support?.orgId);
 
@@ -223,6 +226,42 @@ export function ClientAdminScreen() {
       </StaggerItem>
 
       <StaggerItem>
+        {/*
+          LE RAPPORT MENSUEL DE LA CLIENTE, DEPUIS SON DOSSIER.
+
+          C'est ici qu'il devait vivre, et il n'y était pas : le seul chemin
+          menant au rapport était le bureau de supervision, qui ne rend que
+          NOTRE propre rapport. Le livrable commercial — celui d'une cliente,
+          à son nom, avec sa marque — était donc injoignable.
+
+          Ouvert d'ici, le pont part avec le justificatif de support : le
+          rapport assemblé est celui de la cliente dont on a ouvert le dossier,
+          et le document porte « AMN Desktop ». Rien à choisir, rien à se
+          tromper — l'organisation vient du contexte, jamais d'une liste
+          déroulante.
+        */}
+        <section className="elev-1 rounded-2xl border border-border bg-surface p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <FileText size={16} strokeWidth={1.75} className="text-text-secondary" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-text-primary">Rapport mensuel de supervision</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-text-muted">
+                Ce qu'on lui remet une fois par mois : les incidents du mois, ce qui a été traité, et
+                en combien de temps. À relire avant de l'envoyer.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRapportOuvert(true)}
+              className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
+            >
+              Ouvrir le rapport
+            </button>
+          </div>
+        </section>
+      </StaggerItem>
+
+      <StaggerItem>
         <section className="elev-1 rounded-2xl border border-border bg-surface p-4">
           <div className="flex flex-wrap items-center gap-3">
             {suspended ? (
@@ -284,6 +323,8 @@ export function ClientAdminScreen() {
           )}
         </section>
       </StaggerItem>
+
+      {rapportOuvert && <MonthlyReportPanel onClose={() => setRapportOuvert(false)} />}
     </StaggerGroup>
   );
 }
