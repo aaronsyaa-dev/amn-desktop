@@ -42,7 +42,21 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf-8');
   rapport ou un essai. Admises explicitement — une liste qui dit ce qu'on a
   décidé vaut mieux qu'un filtre qui cache ce qu'on a oublié.
 */
-const HORS_SUPERVISION = new Set(['weekly_report', 'comply', 'scan', 'test']);
+const HORS_SUPERVISION = new Set([
+  'weekly_report', // le digest hebdomadaire
+  'comply',        // un contrôle RGPD terminé
+  'scan',          // un scan de sécurité terminé
+  /*
+    Ces deux-là nomment une NOTIFICATION, pas une alerte : le `kind` d'un
+    message push (`test`, `call`, `incident`) est un autre espace de noms que
+    le `kind` d'un événement. Le relevé par `kind: '…'` ne peut pas les
+    distinguer, et il a signalé « incident » dès que l'escalade a été écrite —
+    ce qui est le bon comportement : mieux vaut une liste qui réclame une
+    décision qu'un filtre qui cache ce qu'on a oublié.
+  */
+  'test',
+  'incident',
+]);
 
 /* ─── Ce que le poste déclare ────────────────────────────────────────────── */
 

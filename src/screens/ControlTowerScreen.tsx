@@ -362,7 +362,19 @@ function RecentAccessPanel() {
   );
 }
 
-/** Le journal est lu par des humains : « enter » n'est pas une phrase. */
+/**
+ * Le journal est lu par des humains : « enter » n'est pas une phrase.
+ *
+ * Et il n'est pas lu que par nous : une cliente relit ses propres lignes dans
+ * ses paramètres. Une clé technique brute y serait à la fois illisible et
+ * inquiétante — « member_role_changed » ressemble à une erreur, pas à un
+ * geste que sa propre associée vient de faire.
+ *
+ * `npm run check:journal` croise cette liste avec `ACCESS_LOG_ACTIONS`
+ * (amn-api) et avec ce que les routes écrivent RÉELLEMENT. Les trois avaient
+ * divergé : la liste du serveur ignorait `user_removed`, écrite depuis des
+ * mois, et quatre gestes sensibles n'étaient tracés nulle part.
+ */
 export const ACCESS_VERB: Record<string, string> = {
   enter: 'a ouvert le dossier de',
   leave: 'a quitté le dossier de',
@@ -371,6 +383,11 @@ export const ACCESS_VERB: Record<string, string> = {
   invite: 'a réémis une invitation pour',
   password: 'a réinitialisé un mot de passe chez',
   user_removed: 'a supprimé un compte chez',
+  org_updated: 'a modifié les réglages de',
+  plan_changed: 'a changé la formule de',
+  member_suspended: 'a suspendu un membre de',
+  member_reactivated: 'a réactivé un membre de',
+  member_role_changed: 'a changé un rôle chez',
 };
 
 
