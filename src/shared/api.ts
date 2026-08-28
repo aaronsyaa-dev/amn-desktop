@@ -1453,6 +1453,8 @@ export interface Incident {
   note: string;
   /** Calculé par le serveur : le même texte part à l'écran, au rapport et à la notification. */
   title: string;
+  /** L'étouffoir qui fait taire cet incident, s'il y en a un. */
+  suppressedBy?: string | null;
 }
 
 /**
@@ -1485,6 +1487,38 @@ export interface IncidentDetail {
  * entièrement dans nos données, et en MÉDIANE — un incident laissé ouvert un
  * week-end décale une moyenne au point de la rendre inutile.
  */
+/**
+ * UN ÉTOUFFOIR DE FAUX POSITIF.
+ *
+ * Portée : un site, un acteur, une nature — les trois. Voir le long
+ * commentaire d'amn-api `src/tracker/incidents.js` pour le raisonnement, dont
+ * la raison pour laquelle une indisponibilité ne s'étouffe jamais.
+ */
+export interface AlertSuppression {
+  id: string;
+  siteId: string;
+  siteName: string | null;
+  actor: string;
+  kind: string;
+  /** Le libellé français de la nature, calculé par le serveur. */
+  libelle: string;
+  /** La note obligatoire : ce qui a été vérifié, et pourquoi. */
+  note: string;
+  createdBy: string | null;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  /** Ni révoqué ni expiré. */
+  actif: boolean;
+  /**
+   * Ce que la règle a réellement absorbé — le seul chiffre qui permette de la
+   * juger autrement que sur l'intention de qui l'a posée. Rien en trente jours
+   * et elle n'avait pas lieu d'être ; deux mille et elle cachait peut-être
+   * autre chose.
+   */
+  absorbe: { incidents: number; alertes: number };
+}
+
 export interface IncidentMetrics {
   windowDays: number;
   total: number;
@@ -2461,13 +2495,38 @@ export interface AmnBridge {
      * en charge. Un incident acquitté n'est pas terminé : le sortir de la file
      * le ferait oublier.
      */
-    listIncidents(options?: { status?: 'open' | 'all' | IncidentStatus; siteId?: string }): Promise<Incident[]>;
+    /**
+     * `suppressed` : `'exclus'` (défaut) écarte ce qui est mis en sourdine,
+     * `'seuls'` ne rend que ça — la réponse à « qu'est-ce que cette règle a
+     * mangé ? », qui est la seule question qui permette de juger un étouffoir.
+     */
+    listIncidents(options?: {
+      status?: 'open' | 'all' | IncidentStatus;
+      siteId?: string;
+      suppressed?: 'exclus' | 'seuls' | 'tous';
+    }): Promise<Incident[]>;
     getIncident(id: string): Promise<IncidentDetail>;
     incidentMetrics(days?: number): Promise<IncidentMetrics>;
     /** « Je m'en occupe. » Refusé si quelqu'un l'a déjà pris. */
     acknowledgeIncident(id: string): Promise<Incident>;
     /** Une note est OBLIGATOIRE pour un faux positif — le serveur la réclame. */
-    resolveIncident(id: string, resolution: IncidentResolution, note?: string): Promise<Incident>;
+    /**
+     * `suppress` n'a de sens qu'avec `'false_positive'` : c'est au moment où
+     * l'on écrit la note qu'on sait pourquoi on fait taire quelque chose. Un
+     * écran « règles de suppression » rempli plus tard, de mémoire, se
+     * remplirait de règles dont personne ne saurait plus dire ce qu'elles
+     * taisent.
+     */
+    resolveIncident(
+      id: string,
+      resolution: IncidentResolution,
+      note?: string,
+      suppress?: { kind: string },
+    ): Promise<{ incident: Incident; suppression: AlertSuppression | null }>;
+    /** Ce qui est actuellement tu, et ce que chaque règle a réellement absorbé. */
+    listSuppressions(includeInactive?: boolean): Promise<AlertSuppression[]>;
+    /** Rend la parole. Ne réveille PAS rétroactivement les incidents déjà tus. */
+    revokeSuppression(id: string): Promise<AlertSuppression>;
     reopenIncident(id: string): Promise<Incident>;
 
     /* --- Rapport mensuel de supervision --- */
@@ -2901,6 +2960,8 @@ export const IPC = {
   remoteAcknowledgeIncident: 'remote:acknowledgeIncident',
   remoteResolveIncident: 'remote:resolveIncident',
   remoteReopenIncident: 'remote:reopenIncident',
+  remoteListSuppressions: 'remote:listSuppressions',
+  remoteRevokeSuppression: 'remote:revokeSuppression',
   remoteMonthlyReport: 'remote:monthlyReport',
   remoteMonthlyReportUrl: 'remote:monthlyReportUrl',
   remoteIncidentEscalationPush: 'remote:incidentEscalationPush',

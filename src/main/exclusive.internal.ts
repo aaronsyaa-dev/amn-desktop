@@ -5,6 +5,7 @@ import {
   type IncidentDetail,
   type IncidentMetrics,
   type MonthlyReport,
+  type AlertSuppression,
   type IncidentResolution,
   type IncidentStatus,
   type AdminOrganization,
@@ -100,10 +101,17 @@ const exclusiveApi = {
 
 /* --- Incidents : la file de travail de la supervision --- */
 
-  async listIncidents(options: { status?: 'open' | 'all' | IncidentStatus; siteId?: string } = {}) {
+  async listIncidents(
+    options: {
+      status?: 'open' | 'all' | IncidentStatus;
+      siteId?: string;
+      suppressed?: 'exclus' | 'seuls' | 'tous';
+    } = {},
+  ) {
     const params = new URLSearchParams();
     params.set('status', options.status ?? 'open');
     if (options.siteId) params.set('site_id', options.siteId);
+    if (options.suppressed) params.set('suppressed', options.suppressed);
     const { incidents } = await apiFetch<{ incidents: Incident[] }>(
       `/v1/incidents?${params.toString()}`,
     );
@@ -126,12 +134,38 @@ const exclusiveApi = {
     return incident;
   },
 
-  async resolveIncident(id: string, resolution: IncidentResolution, note?: string): Promise<Incident> {
-    const { incident } = await apiFetch<{ incident: Incident }>(
+  async resolveIncident(
+    id: string,
+    resolution: IncidentResolution,
+    note?: string,
+    suppress?: { kind: string },
+  ): Promise<{ incident: Incident; suppression: AlertSuppression | null }> {
+    return apiFetch<{ incident: Incident; suppression: AlertSuppression | null }>(
       `/v1/incidents/${encodeURIComponent(id)}/resolve`,
-      { method: 'POST', body: JSON.stringify({ resolution, note }) },
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          resolution,
+          note,
+          ...(suppress ? { suppress: true, suppressKind: suppress.kind } : {}),
+        }),
+      },
     );
-    return incident;
+  },
+
+  async listSuppressions(includeInactive = false): Promise<AlertSuppression[]> {
+    const { suppressions } = await apiFetch<{ suppressions: AlertSuppression[] }>(
+      `/v1/incidents/suppressions${includeInactive ? '?all=1' : ''}`,
+    );
+    return suppressions;
+  },
+
+  async revokeSuppression(id: string): Promise<AlertSuppression> {
+    const { suppression } = await apiFetch<{ suppression: AlertSuppression }>(
+      `/v1/incidents/suppressions/${encodeURIComponent(id)}`,
+      { method: 'DELETE' },
+    );
+    return suppression;
   },
 
   async reopenIncident(id: string): Promise<Incident> {
@@ -616,8 +650,10 @@ export function registerExclusiveIpc(
   ipcMain.handle(IPC.remoteGetIncident, (_e, id: string) => exclusiveApi.getIncident(id));
   ipcMain.handle(IPC.remoteIncidentMetrics, (_e, days?: number) => exclusiveApi.incidentMetrics(days));
   ipcMain.handle(IPC.remoteAcknowledgeIncident, (_e, id: string) => exclusiveApi.acknowledgeIncident(id));
-  ipcMain.handle(IPC.remoteResolveIncident, (_e, id: string, resolution, note?: string) =>
-    exclusiveApi.resolveIncident(id, resolution, note));
+  ipcMain.handle(IPC.remoteResolveIncident, (_e, id: string, resolution, note?: string, suppress?: { kind: string }) =>
+    exclusiveApi.resolveIncident(id, resolution, note, suppress));
+  ipcMain.handle(IPC.remoteListSuppressions, (_e, tout?: boolean) => exclusiveApi.listSuppressions(tout));
+  ipcMain.handle(IPC.remoteRevokeSuppression, (_e, id: string) => exclusiveApi.revokeSuppression(id));
   ipcMain.handle(IPC.remoteReopenIncident, (_e, id: string) => exclusiveApi.reopenIncident(id));
   ipcMain.handle(IPC.remoteMonthlyReport, (_e, month?: string) => exclusiveApi.monthlyReport(month));
   ipcMain.handle(IPC.remoteMonthlyReportUrl, (_e, month?: string) => exclusiveApi.monthlyReportUrl(month));

@@ -125,3 +125,36 @@ export function ordonner(incidents: Incident[]): Incident[] {
     return (b.lastSeenAt || '').localeCompare(a.lastSeenAt || '');
   });
 }
+
+/**
+ * LES NATURES QU'ON REFUSE DE FAIRE TAIRE
+ * ═══════════════════════════════════════
+ *
+ * Miroir de `NATURES_INETOUFFABLES` (amn-api `src/tracker/incidents.js`), et
+ * `check:supervision` refuse que les deux listes divergent.
+ *
+ * Pourquoi le poste en a besoin alors que le serveur refuse déjà : proposer
+ * une case à cocher qui se fera refuser en 400 est une promesse qu'on ne tient
+ * pas. L'écran doit dire NON lui-même, et dire pourquoi.
+ *
+ * Le raisonnement, lui, vit côté serveur : une indisponibilité n'est jamais un
+ * faux positif au sens où on l'entend — soit le site répondait, soit il ne
+ * répondait pas. Si la sonde se trompe, c'est la sonde qu'il faut corriger.
+ */
+export const NATURES_INETOUFFABLES: readonly string[] = [
+  'availability_down',
+  'availability_ping',
+  'site_unreachable',
+];
+
+/**
+ * La nature d'un incident qu'on peut proposer de faire taire, ou `null`.
+ *
+ * La PREMIÈRE étouffable, et une seule : dire « ce scanner commandé n'est pas
+ * une attaque » ne dit rien de l'injection que la même adresse tentera demain.
+ * Un incident qui ne porte que des natures inétouffables rend `null`, et
+ * l'écran explique alors pourquoi plutôt que de masquer la case.
+ */
+export function natureEtouffable(kinds: readonly string[] | undefined): string | null {
+  return (kinds ?? []).find((k) => k && !NATURES_INETOUFFABLES.includes(k)) ?? null;
+}

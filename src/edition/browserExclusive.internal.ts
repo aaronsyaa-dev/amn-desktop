@@ -4,6 +4,7 @@ import type {
   IncidentDetail,
   IncidentMetrics,
   MonthlyReport,
+  AlertSuppression,
   IncidentResolution,
   IncidentStatus,
   AdminOrganization,
@@ -122,6 +123,8 @@ type ExclusiveRemote = Pick<
   | 'acknowledgeIncident'
   | 'resolveIncident'
   | 'reopenIncident'
+  | 'listSuppressions'
+  | 'revokeSuppression'
   | 'monthlyReport'
   | 'monthlyReportUrl'
   | 'listSchedules'
@@ -215,10 +218,17 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
   },
 /* --- Incidents : la file de travail de la supervision --- */
 
-  async listIncidents(options: { status?: 'open' | 'all' | IncidentStatus; siteId?: string } = {}) {
+  async listIncidents(
+    options: {
+      status?: 'open' | 'all' | IncidentStatus;
+      siteId?: string;
+      suppressed?: 'exclus' | 'seuls' | 'tous';
+    } = {},
+  ) {
     const params = new URLSearchParams();
     params.set('status', options.status ?? 'open');
     if (options.siteId) params.set('site_id', options.siteId);
+    if (options.suppressed) params.set('suppressed', options.suppressed);
     const { incidents } = await ctx.apiFetch<{ incidents: Incident[] }>(
       `/v1/incidents?${params.toString()}`,
     );
@@ -241,12 +251,38 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
     return incident;
   },
 
-  async resolveIncident(id: string, resolution: IncidentResolution, note?: string) {
-    const { incident } = await ctx.apiFetch<{ incident: Incident }>(
+  async resolveIncident(
+    id: string,
+    resolution: IncidentResolution,
+    note?: string,
+    suppress?: { kind: string },
+  ) {
+    return ctx.apiFetch<{ incident: Incident; suppression: AlertSuppression | null }>(
       `/v1/incidents/${encodeURIComponent(id)}/resolve`,
-      { method: 'POST', body: JSON.stringify({ resolution, note }) },
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          resolution,
+          note,
+          ...(suppress ? { suppress: true, suppressKind: suppress.kind } : {}),
+        }),
+      },
     );
-    return incident;
+  },
+
+  async listSuppressions(includeInactive = false) {
+    const { suppressions } = await ctx.apiFetch<{ suppressions: AlertSuppression[] }>(
+      `/v1/incidents/suppressions${includeInactive ? '?all=1' : ''}`,
+    );
+    return suppressions;
+  },
+
+  async revokeSuppression(id: string) {
+    const { suppression } = await ctx.apiFetch<{ suppression: AlertSuppression }>(
+      `/v1/incidents/suppressions/${encodeURIComponent(id)}`,
+      { method: 'DELETE' },
+    );
+    return suppression;
   },
 
   async reopenIncident(id: string) {

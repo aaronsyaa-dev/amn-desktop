@@ -44,6 +44,8 @@ type ExclusiveRemote = Pick<
   | 'acknowledgeIncident'
   | 'resolveIncident'
   | 'reopenIncident'
+  | 'listSuppressions'
+  | 'revokeSuppression'
   | 'monthlyReport'
   | 'monthlyReportUrl'
   | 'onIncidentEscalation'
@@ -106,13 +108,19 @@ export const exclusivePreload: ExclusiveRemote = {
     ipcRenderer.on(IPC.remoteEventPush, listener);
     return () => ipcRenderer.removeListener(IPC.remoteEventPush, listener);
   },
-  listIncidents: (options?: { status?: 'open' | 'all' | IncidentStatus; siteId?: string }) =>
+  listIncidents: (options?: {
+    status?: 'open' | 'all' | IncidentStatus;
+    siteId?: string;
+    suppressed?: 'exclus' | 'seuls' | 'tous';
+  }) =>
     ipcRenderer.invoke(IPC.remoteListIncidents, options ?? {}),
   getIncident: (id: string) => ipcRenderer.invoke(IPC.remoteGetIncident, id),
   incidentMetrics: (days?: number) => ipcRenderer.invoke(IPC.remoteIncidentMetrics, days),
   acknowledgeIncident: (id: string) => ipcRenderer.invoke(IPC.remoteAcknowledgeIncident, id),
-  resolveIncident: (id: string, resolution: IncidentResolution, note?: string) =>
-    ipcRenderer.invoke(IPC.remoteResolveIncident, id, resolution, note),
+  resolveIncident: (id: string, resolution: IncidentResolution, note?: string, suppress?: { kind: string }) =>
+    ipcRenderer.invoke(IPC.remoteResolveIncident, id, resolution, note, suppress),
+  listSuppressions: (tout?: boolean) => ipcRenderer.invoke(IPC.remoteListSuppressions, tout),
+  revokeSuppression: (id: string) => ipcRenderer.invoke(IPC.remoteRevokeSuppression, id),
   reopenIncident: (id: string) => ipcRenderer.invoke(IPC.remoteReopenIncident, id),
   monthlyReport: (month?: string) => ipcRenderer.invoke(IPC.remoteMonthlyReport, month),
   monthlyReportUrl: (month?: string) => ipcRenderer.invoke(IPC.remoteMonthlyReportUrl, month),

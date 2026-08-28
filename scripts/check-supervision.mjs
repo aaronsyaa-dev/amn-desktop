@@ -149,6 +149,63 @@ if (!/IncidentsScreen/.test(routes)) {
   );
 }
 
+/* ─── Les natures qu'on refuse de faire taire ────────────────────────────── */
+
+/*
+  `NATURES_INETOUFFABLES` existe des DEUX côtés, et pour de bonnes raisons :
+  le serveur refuse en 400, le poste doit refuser lui-même plutôt que de
+  proposer une case à cocher qui se fera rejeter.
+
+  Deux listes veulent dire deux vérités possibles. Si le poste en oublie une,
+  il propose de faire taire une indisponibilité — la seule chose qui dise à
+  une cliente que son site est tombé — et l'opératrice découvre le refus après
+  coup. S'il en ajoute une, il masque une case que le serveur aurait acceptée,
+  et le bruit qu'on voulait couper reste.
+*/
+function listeDeChaines(source, nom) {
+  const i = source.indexOf(nom);
+  if (i === -1) return null;
+  /*
+    On part du SIGNE ÉGAL, pas du nom.
+
+    Côté poste la déclaration est annotée — `NATURES_INETOUFFABLES: readonly
+    string[] = [...]` — et le premier crochet rencontré est celui du TYPE. Un
+    premier jet le prenait pour l'ouverture de la liste, lisait « [] », et
+    concluait que le poste avait vidé sa liste alors qu'elle était intacte.
+  */
+  const egal = source.indexOf('=', i);
+  if (egal === -1) return null;
+  const debut = source.indexOf('[', egal);
+  const fin = source.indexOf(']', debut);
+  if (debut === -1 || fin === -1) return null;
+  return [...source.slice(debut, fin).matchAll(/'([^']+)'/g)].map((m) => m[1]).sort();
+}
+
+const inetouffablesPoste = listeDeChaines(read('src/lib/incidentDisplay.ts'), 'NATURES_INETOUFFABLES');
+const inetouffablesServeur = apiRoot
+  ? listeDeChaines(
+      fs.readFileSync(path.join(apiRoot, 'src/tracker/incidents.js'), 'utf-8'),
+      'NATURES_INETOUFFABLES',
+    )
+  : null;
+
+if (!inetouffablesPoste) {
+  failures.push(
+    '`NATURES_INETOUFFABLES` est introuvable dans src/lib/incidentDisplay.ts — ' +
+      "l'écran ne sait plus quelles natures il ne doit pas proposer de faire taire.",
+  );
+} else if (!inetouffablesServeur) {
+  notes.push('amn-api introuvable — comparaison des natures inétouffables sautée.');
+} else if (JSON.stringify(inetouffablesPoste) !== JSON.stringify(inetouffablesServeur)) {
+  failures.push(
+    'Les natures INÉTOUFFABLES ont divergé.\n' +
+      `      poste   : ${inetouffablesPoste.join(', ') || '(vide)'}\n` +
+      `      serveur : ${inetouffablesServeur.join(', ') || '(vide)'}\n` +
+      "      Le poste propose alors une case que le serveur refusera, ou masque " +
+      "une case qu'il aurait acceptée.",
+  );
+}
+
 /* ─────────────────────────────── verdict ───────────────────────────────── */
 
 for (const n of notes) console.log(`  note  ${n}`);
@@ -161,5 +218,6 @@ if (failures.length > 0) {
 
 console.log(
   `\nSupervision : les trois listes s'accordent avec ce qu'amn-api émet.\n` +
-    `  ${declarees.length} natures déclarées, toutes nommées, toutes réellement émises.`,
+    `  ${declarees.length} natures déclarées, toutes nommées, toutes réellement émises.\n` +
+    `  ${inetouffablesPoste?.length ?? 0} natures inétouffables, identiques des deux côtés.`,
 );

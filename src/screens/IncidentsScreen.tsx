@@ -13,6 +13,7 @@ import { bridge } from '../lib/bridge';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { EmptyState } from '../components/EmptyState';
 import { MonthlyReportPanel } from '../components/MonthlyReportPanel';
+import { SuppressionsPanel } from '../components/tracker/SuppressionsPanel';
 import { cleanErrorMessage } from '../lib/errorMessage';
 import { formatDateTime, relativeTime } from '../lib/time';
 import { alertKindLabel } from '../lib/trackerAlerts';
@@ -21,6 +22,7 @@ import {
   dureeLisible,
   ordonner,
   resumeSupervision,
+  natureEtouffable as natureEtouffableDe,
   STATUT_LABEL,
   TON_STYLE,
   tonIncident,
@@ -57,7 +59,7 @@ import type { Incident, IncidentMetrics, RemoteEvent } from '../shared/api';
 export function IncidentsScreen() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [metrics, setMetrics] = useState<IncidentMetrics | null>(null);
-  const [portee, setPortee] = useState<'open' | 'all'>('open');
+  const [portee, setPortee] = useState<'open' | 'all' | 'sourdine'>('open');
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState<string | null>(null);
   const [rapportOuvert, setRapportOuvert] = useState(false);
@@ -69,7 +71,18 @@ export function IncidentsScreen() {
       if (!silencieux) setChargement(true);
       try {
         const [liste, mesures] = await Promise.all([
-          bridge().remote.listIncidents({ status: portee }),
+          /*
+            « Mis en sourdine » n'est pas un STATUT, c'est une autre vue des
+            mêmes incidents : on demande donc tous les statuts et on ne garde
+            que les étouffés. Sans quoi la vue serait vide dès qu'un incident
+            tu a été clos, ce qui est le cas de tous ceux qui ont servi à poser
+            la règle.
+          */
+          bridge().remote.listIncidents(
+            portee === 'sourdine'
+              ? { status: 'all', suppressed: 'seuls' }
+              : { status: portee },
+          ),
           bridge().remote.incidentMetrics(30),
         ]);
         setIncidents(liste);
@@ -195,7 +208,7 @@ export function IncidentsScreen() {
         }
       >
         <div className="flex items-center gap-1">
-          {(['open', 'all'] as const).map((p) => (
+          {(['open', 'all', 'sourdine'] as const).map((p) => (
             <button
               key={p}
               type="button"
@@ -206,7 +219,7 @@ export function IncidentsScreen() {
                   : 'text-text-muted hover:text-text-secondary'
               }`}
             >
-              {p === 'open' ? 'À traiter' : 'Tout, clos compris'}
+              {p === 'open' ? 'À traiter' : p === 'all' ? 'Tout, clos compris' : 'Mis en sourdine'}
             </button>
           ))}
         </div>
@@ -222,12 +235,18 @@ export function IncidentsScreen() {
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface px-6 py-16 text-center">
           <ShieldCheck size={22} strokeWidth={1.5} className="text-text-muted" />
           <p className="text-sm font-medium text-text-primary">
-            {portee === 'open' ? 'Rien à traiter.' : 'Aucun incident enregistré.'}
+            {portee === 'open'
+              ? 'Rien à traiter.'
+              : portee === 'sourdine'
+                ? 'Aucune détection mise en sourdine.'
+                : 'Aucun incident enregistré.'}
           </p>
           <p className="max-w-md text-[13px] leading-relaxed text-text-secondary">
             {portee === 'open'
               ? 'Force brute, injections, débit anormal, indisponibilités et certificats arrivent ici dès qu’ils sont détectés — regroupés par acteur, pour qu’une campagne se lise comme une campagne.'
-              : 'Les incidents apparaîtront ici dès la première alerte détectée sur un site supervisé.'}
+              : portee === 'sourdine'
+                ? 'Rien n’est actuellement tu. Une détection se met en sourdine en la clôturant comme faux positif, et seulement pour une adresse, une nature et un site à la fois.'
+                : 'Les incidents apparaîtront ici dès la première alerte détectée sur un site supervisé.'}
           </p>
         </div>
       ) : (
@@ -241,8 +260,11 @@ export function IncidentsScreen() {
                 occupe={enCours === incident.id}
                 onBasculer={() => setOuvert((c) => (c === incident.id ? null : incident.id))}
                 onAcquitter={() => agir(incident.id, () => bridge().remote.acknowledgeIncident(incident.id))}
-                onResoudre={(resolution, note) =>
-                  agir(incident.id, () => bridge().remote.resolveIncident(incident.id, resolution, note))
+                onResoudre={(resolution, note, suppress) =>
+                  agir(incident.id, async () =>
+                    (await bridge().remote.resolveIncident(incident.id, resolution, note, suppress))
+                      .incident,
+                  )
                 }
                 onRouvrir={() => agir(incident.id, () => bridge().remote.reopenIncident(incident.id))}
               />
@@ -250,6 +272,15 @@ export function IncidentsScreen() {
           </AnimatePresence>
         </ul>
       )}
+
+      {/*
+        Sous la file, et pas au-dessus : ce qui est TU vient après ce qu'il
+        reste à faire. L'inverse ferait commencer la journée par la liste de ce
+        qu'on a décidé d'ignorer.
+      */}
+      <div className="mt-6">
+        <SuppressionsPanel />
+      </div>
 
       {rapportOuvert && <MonthlyReportPanel onClose={() => setRapportOuvert(false)} />}
     </section>
@@ -270,13 +301,19 @@ function LigneIncident({
   occupe: boolean;
   onBasculer: () => void;
   onAcquitter: () => void;
-  onResoudre: (resolution: 'resolved' | 'false_positive', note?: string) => void;
+  onResoudre: (
+    resolution: 'resolved' | 'false_positive',
+    note?: string,
+    suppress?: { kind: string },
+  ) => void;
   onRouvrir: () => void;
 }) {
   const ton = tonIncident(incident);
   const style = TON_STYLE[ton];
   const [fauxPositif, setFauxPositif] = useState(false);
   const [note, setNote] = useState('');
+  const [etouffer, setEtouffer] = useState(false);
+  const natureEtouffable = natureEtouffableDe(incident.kinds);
 
   return (
     <motion.li
@@ -392,29 +429,76 @@ function LigneIncident({
             transition={{ duration: 0.2 }}
             className="border-t border-border bg-bg/40"
           >
-            <div className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center">
-              <input
-                autoFocus
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Ce qui a été vérifié, et pourquoi ce n’en était pas un"
-                className="input-focus min-w-0 flex-1 rounded-md border border-border bg-bg px-3 py-2 text-[13px] text-text-primary outline-none placeholder:text-text-muted"
-              />
-              <div className="flex items-center gap-1.5">
-                <Bouton
-                  onClick={() => {
-                    onResoudre('false_positive', note.trim());
-                    setFauxPositif(false);
-                    setNote('');
-                  }}
-                  disabled={occupe || note.trim().length < 3}
-                >
-                  Enregistrer
-                </Bouton>
-                <Bouton onClick={() => { setFauxPositif(false); setNote(''); }} discret>
-                  Annuler
-                </Bouton>
+            <div className="flex flex-col gap-3 p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <input
+                  autoFocus
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Ce qui a été vérifié, et pourquoi ce n’en était pas un"
+                  className="input-focus min-w-0 flex-1 rounded-md border border-border bg-bg px-3 py-2 text-[13px] text-text-primary outline-none placeholder:text-text-muted"
+                />
+                <div className="flex items-center gap-1.5">
+                  <Bouton
+                    onClick={() => {
+                      onResoudre(
+                        'false_positive',
+                        note.trim(),
+                        etouffer && natureEtouffable ? { kind: natureEtouffable } : undefined,
+                      );
+                      setFauxPositif(false);
+                      setNote('');
+                      setEtouffer(false);
+                    }}
+                    disabled={occupe || note.trim().length < 3}
+                  >
+                    Enregistrer
+                  </Bouton>
+                  <Bouton onClick={() => { setFauxPositif(false); setNote(''); setEtouffer(false); }} discret>
+                    Annuler
+                  </Bouton>
+                </div>
               </div>
+
+              {/*
+                L'ÉTOUFFOIR SE DEMANDE ICI, au moment où l'on écrit la note.
+
+                C'est le seul moment où l'on sait pourquoi. Un écran « règles de
+                suppression » rempli plus tard et de mémoire se remplirait de
+                règles dont personne ne saurait plus dire ce qu'elles taisent.
+
+                Il est DÉCOCHÉ par défaut : clore un faux positif est courant,
+                faire taire une détection pour trente jours ne doit pas être le
+                geste par défaut de quelqu'un qui vide sa file.
+              */}
+              {natureEtouffable ? (
+                <label className="flex cursor-pointer items-start gap-2.5 text-[12px] leading-relaxed text-text-secondary">
+                  <input
+                    type="checkbox"
+                    checked={etouffer}
+                    onChange={(e) => setEtouffer(e.target.checked)}
+                    className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 accent-accent"
+                  />
+                  <span>
+                    Faire taire{' '}
+                    <strong className="font-medium text-text-primary">
+                      {alertKindLabel(natureEtouffable)}
+                    </strong>{' '}
+                    depuis{' '}
+                    <strong className="font-medium text-text-primary">{incident.actor}</strong> sur ce
+                    site, pendant trente jours.
+                    <span className="block text-text-muted">
+                      Les autres natures depuis cette adresse continueront de remonter, et tout reste
+                      enregistré — seule l’alerte s’arrête.
+                    </span>
+                  </span>
+                </label>
+              ) : (
+                <p className="text-[12px] leading-relaxed text-text-muted">
+                  Cette nature ne peut pas être mise en sourdine : une indisponibilité se corrige à la
+                  sonde, elle ne se fait pas taire.
+                </p>
+              )}
             </div>
           </motion.div>
         )}
