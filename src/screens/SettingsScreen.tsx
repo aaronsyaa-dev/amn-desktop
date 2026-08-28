@@ -12,6 +12,7 @@ import { ensurePushSubscription, sendPushTest } from '../lib/webPush';
 import { UserAvatar } from '../components/UserAvatar';
 import { Logo } from '../components/Logo';
 import { SettingsPanel as Panel } from '../components/SettingsPanel';
+import { MembersSection } from '../components/settings/MembersSection';
 import { ModulesSection } from '../components/settings/ModulesSection';
 import { APP_VERSION, EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/edition';
 import { OllamaSection, useExclusive } from '@edition/exclusive';
@@ -154,6 +155,19 @@ export function SettingsScreen() {
         dont tout l'intérêt est qu'elle exprime SON envie — et le serveur la
         refuse de toute façon (`allowSupport: false`).
       */}
+      {/*
+        LES MEMBRES (BLOCS 6 et 7).
+
+        Masqué en session de support pour la même raison que le catalogue de
+        modules : ces routes agissent sur l'organisation de la SESSION. Un
+        opérateur d'AMN DevSec y verrait — et y modifierait — les comptes de
+        SON organisation à lui, affichés sous la bannière de la cliente.
+      */}
+      {!support && (
+        <StaggerItem>
+          <MembersSection />
+        </StaggerItem>
+      )}
       {!support && (
         <StaggerItem>
           <ModulesSection />

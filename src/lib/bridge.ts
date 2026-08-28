@@ -18,6 +18,9 @@ import type {
   CreatedCallLink,
   ModuleOffer,
   ModuleRequest,
+  MemberInvitation,
+  OrgMember,
+  UserRole,
   OrgAccessRecord,
   AddClientEventInput,
   AmnBridge,
@@ -622,6 +625,32 @@ function createBrowserRemote(): AmnBridge['remote'] {
           body: JSON.stringify(input),
         });
         return res.mfa;
+      },
+    },
+    members: {
+      async list(): Promise<OrgMember[]> {
+        const res = await apiFetch<{ users: OrgMember[] }>('/v1/auth/users');
+        return res.users ?? [];
+      },
+      async invite(input: { email: string; role: UserRole }): Promise<MemberInvitation> {
+        return apiFetch<MemberInvitation>('/v1/auth/invitations', {
+          method: 'POST',
+          body: JSON.stringify({ email: input.email, role: input.role }),
+        });
+      },
+      async setRole(userId: string, role: UserRole): Promise<OrgMember> {
+        const res = await apiFetch<{ user: OrgMember }>(
+          `/v1/auth/users/${encodeURIComponent(userId)}/role`,
+          { method: 'PUT', body: JSON.stringify({ role }) },
+        );
+        return res.user;
+      },
+      async setStatus(userId: string, status: 'active' | 'suspended'): Promise<OrgMember> {
+        const res = await apiFetch<{ user: OrgMember }>(
+          `/v1/auth/users/${encodeURIComponent(userId)}/status`,
+          { method: 'PUT', body: JSON.stringify({ status }) },
+        );
+        return res.user;
       },
     },
     modules: {

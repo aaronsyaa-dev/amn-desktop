@@ -1,4 +1,5 @@
 import { app, BrowserWindow, Notification, ipcMain } from 'electron';
+import type { UserRole } from '../shared/api';
 import { EDITION_PRODUCT_NAME } from '../edition/edition';
 import {
   IPC,
@@ -261,6 +262,18 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   ipcMain.handle(IPC.remoteSessionMyOrganizations, () => remote.listMyOrganizations());
   ipcMain.handle(IPC.remoteSessionSwitchOrg, (_event, payload: { orgId: string }) =>
     remote.switchOrganization(payload.orgId),
+  );
+  ipcMain.handle(IPC.remoteMembersList, () => remote.listMembers());
+  ipcMain.handle(IPC.remoteMembersInvite, (_event, input: { email: string; role: UserRole }) =>
+    remote.inviteMember(input),
+  );
+  ipcMain.handle(IPC.remoteMembersSetRole, (_event, p: { userId: string; role: UserRole }) =>
+    remote.setMemberRole(p.userId, p.role),
+  );
+  ipcMain.handle(
+    IPC.remoteMembersSetStatus,
+    (_event, p: { userId: string; status: 'active' | 'suspended' }) =>
+      remote.setMemberStatus(p.userId, p.status),
   );
   ipcMain.handle(IPC.remoteModuleCatalogue, () => remote.moduleCatalogue());
   ipcMain.handle(IPC.remoteModuleRequest, (_event, input: { module: string; message?: string }) =>

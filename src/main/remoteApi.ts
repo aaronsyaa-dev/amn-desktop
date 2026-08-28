@@ -13,6 +13,9 @@ import type {
   CreatedCallLink,
   ModuleOffer,
   ModuleRequest,
+  MemberInvitation,
+  OrgMember,
+  UserRole,
   OrgAccessRecord,
   OrgIdentity,
   LoginOutcome,
@@ -274,6 +277,36 @@ export class RemoteApiClient {
   async accessLog(): Promise<OrgAccessRecord[]> {
     const res = await apiFetch<{ entries: OrgAccessRecord[] }>('/v1/auth/access-log');
     return res.entries ?? [];
+  }
+
+  /* -------------- Les membres de MON organisation (BLOCS 6 et 7) ------------ */
+
+  async listMembers(): Promise<OrgMember[]> {
+    const res = await apiFetch<{ users: OrgMember[] }>('/v1/auth/users');
+    return res.users ?? [];
+  }
+
+  async inviteMember(input: { email: string; role: UserRole }): Promise<MemberInvitation> {
+    return apiFetch<MemberInvitation>('/v1/auth/invitations', {
+      method: 'POST',
+      body: JSON.stringify({ email: input.email, role: input.role }),
+    });
+  }
+
+  async setMemberRole(userId: string, role: UserRole): Promise<OrgMember> {
+    const res = await apiFetch<{ user: OrgMember }>(
+      `/v1/auth/users/${encodeURIComponent(userId)}/role`,
+      { method: 'PUT', body: JSON.stringify({ role }) },
+    );
+    return res.user;
+  }
+
+  async setMemberStatus(userId: string, status: 'active' | 'suspended'): Promise<OrgMember> {
+    const res = await apiFetch<{ user: OrgMember }>(
+      `/v1/auth/users/${encodeURIComponent(userId)}/status`,
+      { method: 'PUT', body: JSON.stringify({ status }) },
+    );
+    return res.user;
   }
 
   /* ---------------- Catalogue et demandes de modules (BLOC 4) --------------- */

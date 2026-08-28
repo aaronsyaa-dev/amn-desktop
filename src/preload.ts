@@ -2,6 +2,7 @@
 // renderer over IPC. The renderer never sees Electron or the database directly.
 // See src/shared/api.ts for the contract and src/lib/bridge.ts for the consumer.
 import { contextBridge, ipcRenderer } from 'electron';
+import type { UserRole } from './shared/api';
 import {
   IPC,
   type AddClientEventInput,
@@ -158,6 +159,15 @@ const bridge: AmnBridge = {
     accessLog: () => ipcRenderer.invoke(IPC.remoteAccessLog),
     exportOrganization: () => ipcRenderer.invoke(IPC.remoteExportOrganization),
     setOrganizationAccent: (accent) => ipcRenderer.invoke(IPC.remoteSetOrgAccent, accent),
+    members: {
+      list: () => ipcRenderer.invoke(IPC.remoteMembersList),
+      invite: (input: { email: string; role: UserRole }) =>
+        ipcRenderer.invoke(IPC.remoteMembersInvite, input),
+      setRole: (userId: string, role: UserRole) =>
+        ipcRenderer.invoke(IPC.remoteMembersSetRole, { userId, role }),
+      setStatus: (userId: string, status: 'active' | 'suspended') =>
+        ipcRenderer.invoke(IPC.remoteMembersSetStatus, { userId, status }),
+    },
     modules: {
       catalogue: () => ipcRenderer.invoke(IPC.remoteModuleCatalogue),
       request: (input: { module: string; message?: string }) =>

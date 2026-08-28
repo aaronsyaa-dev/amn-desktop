@@ -1500,6 +1500,29 @@ export interface ModuleRequestForOperator extends ModuleRequest {
   orgName: string;
 }
 
+/** Un compte de MON organisation, tel que je le vois (BLOC 6). */
+export interface OrgMember {
+  id: string;
+  email: string;
+  role: UserRole;
+  status: string;
+  invitedAt: string | null;
+  joinedAt: string | null;
+}
+
+/**
+ * Une invitation émise. Le lien n'est rendu qu'UNE fois.
+ *
+ * `url` est nulle quand amn-api ne connaît pas l'adresse publique de
+ * l'application (`APP_PUBLIC_URL`) : le jeton seul reste alors la seule chose
+ * transmissible, et l'écran doit le dire plutôt que de laisser copier un lien
+ * qui n'existe pas.
+ */
+export interface MemberInvitation {
+  user: OrgMember;
+  invitation: { token: string; url: string | null; expiresAt: string };
+}
+
 /** Les rôles autorisés à MODIFIER une page. Lire ne se restreint jamais. */
 export type PageEditorRole = 'owner' | 'admin' | 'member';
 
@@ -2122,6 +2145,34 @@ export interface AmnBridge {
     /** Signalling messages addressed to this operator. Returns an unsubscribe. */
     onCallSignal(callback: (signal: CallSignal) => void): () => void;
 
+    /* --- Les membres de MON organisation (BLOCS 6 et 7) --- */
+    /**
+     * MES COLLÈGUES — pas la console d'administration d'AMN DevSec.
+     *
+     * Ces routes agissent sur l'organisation de la session, jamais sur une
+     * autre : le serveur prend l'organisation dans `req.auth`, donc aucun
+     * identifiant fabriqué dans un corps de requête ne peut la détourner.
+     * C'est ce qui les distingue de `remote.admin.*`, réservé à AMN DevSec.
+     *
+     * Elles existaient côté serveur depuis longtemps sans qu'aucun écran ne
+     * les appelle : une organisation cliente devait donc nous écrire pour
+     * ajouter quelqu'un chez elle.
+     */
+    members: {
+      /** Tous les comptes de l'organisation. Lisible par n'importe quel membre. */
+      list(): Promise<OrgMember[]>;
+      /**
+       * Invite une adresse. Rend un lien à USAGE UNIQUE, affiché une seule
+       * fois : amn-api n'a aucun transport mail, et le jeton n'est pas
+       * conservé en clair. À transmettre soi-même.
+       */
+      invite(input: { email: string; role: UserRole }): Promise<MemberInvitation>;
+      /** Change le rôle d'un membre. Réservé à owner/admin par le serveur. */
+      setRole(userId: string, role: UserRole): Promise<OrgMember>;
+      /** Suspend ou réactive un membre. */
+      setStatus(userId: string, status: 'active' | 'suspended'): Promise<OrgMember>;
+    };
+
     /* --- Le catalogue des modules, et les demander (BLOC 4) --- */
     /**
      * MODULES : UNE IDENTITÉ, PAS UNE CLÉ NUE
@@ -2567,6 +2618,10 @@ export const IPC = {
   remoteSessionAcceptInvitation: 'remote:sessionAcceptInvitation',
   remoteSessionMyOrganizations: 'remote:sessionMyOrganizations',
   remoteSessionSwitchOrg: 'remote:sessionSwitchOrg',
+  remoteMembersList: 'remote:membersList',
+  remoteMembersInvite: 'remote:membersInvite',
+  remoteMembersSetRole: 'remote:membersSetRole',
+  remoteMembersSetStatus: 'remote:membersSetStatus',
   remoteModuleCatalogue: 'remote:moduleCatalogue',
   remoteModuleRequest: 'remote:moduleRequest',
   remoteModuleRequests: 'remote:moduleRequests',
