@@ -3,6 +3,7 @@ import type {
   IncidentEscalation,
   IncidentDetail,
   IncidentMetrics,
+  MonthlyReport,
   IncidentResolution,
   IncidentStatus,
   AdminOrganization,
@@ -61,7 +62,31 @@ import type {
 export interface BrowserExclusiveContext {
   apiFetch: <T>(path: string, init?: RequestInit & { owner?: boolean }) => Promise<T>;
   apiUrl: string;
+  /**
+   * Le jeton de BUILD (`VITE_AMN_API_WEB_TOKEN`), et rien d'autre. Il est vide
+   * dans la plupart des déploiements, et il est vide PAR CONSTRUCTION dans
+   * l'édition Business.
+   *
+   * Ne l'employez pas pour authentifier une requête : utilisez `credential()`.
+   * Voir le commentaire de `credential` juste en dessous.
+   */
   token: string;
+  /**
+   * LE JUSTIFICATIF VIVANT — celui qu'`apiFetch` emploie réellement.
+   *
+   * `supportToken || sessionToken || token`, relu à CHAQUE appel. Les rares
+   * endroits qui composent une requête à la main (les documents qu'on va
+   * ouvrir dans une fenêtre : rapport de scan, rapport mensuel) doivent passer
+   * par ici et jamais par `token`.
+   *
+   * Le défaut qui a mené à cette fonction : ces requêtes envoyaient `token`,
+   * donc rien du tout sur un déploiement web sans jeton de build — le document
+   * répondait 401 et le bouton ne faisait visiblement rien. Et dans le dossier
+   * d'une organisation cliente, elles envoyaient le jeton d'OPÉRATEUR : le
+   * document rendu était celui d'AMN DevSec, pendant qu'on croyait lire celui
+   * de la cliente. C'est la version grave du même oubli.
+   */
+  credential: () => string;
   ensureStarted: () => void;
   socket: () => WebSocket | null;
   eventListeners: Set<(push: RemoteEventPush) => void>;
@@ -96,6 +121,8 @@ type ExclusiveRemote = Pick<
   | 'acknowledgeIncident'
   | 'resolveIncident'
   | 'reopenIncident'
+  | 'monthlyReport'
+  | 'monthlyReportUrl'
   | 'listSchedules'
   | 'createSchedule'
   | 'deleteSchedule'
@@ -226,6 +253,24 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
     return incident;
   },
 
+  async monthlyReport(month?: string) {
+    const { report } = await ctx.apiFetch<{ report: MonthlyReport }>(
+      `/v1/reports/monthly${month ? `?month=${encodeURIComponent(month)}` : ''}`,
+    );
+    return report;
+  },
+
+  async monthlyReportUrl(month?: string) {
+    // Le document est derrière le jeton, qu'un `window.open()` nu ne sait pas
+    // envoyer : on le récupère ici avec l'en-tête, et on rend un `blob:`.
+    const res = await fetch(
+      `${ctx.apiUrl}/v1/reports/monthly.html${month ? `?month=${encodeURIComponent(month)}` : ''}`,
+      { headers: { Authorization: `Bearer ${ctx.credential()}` } },
+    );
+    if (!res.ok) throw new Error(`amn-api ${res.status} ${res.statusText}`);
+    return URL.createObjectURL(new Blob([await res.text()], { type: 'text/html' }));
+  },
+
   async listSchedules() {
     const { schedules } = await ctx.apiFetch<{ schedules: ProductSchedule[] }>('/v1/schedules');
     return schedules;
@@ -306,10 +351,12 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
     return scan;
   },
   async scanReportUrl(id: string): Promise<string> {
-    // The report is behind the operator ctx.token, which a plain window.open()
-    // can't send. Fetch it here (with the header) and hand back a blob: URL.
+    // Le rapport est derrière le justificatif, qu'un `window.open()` nu ne
+    // sait pas envoyer : on le récupère ici avec l'en-tête, et on rend un
+    // `blob:`. `ctx.credential()` et non `ctx.token` — voir son commentaire :
+    // dans le dossier d'une cliente, `token` rendait NOTRE rapport.
     const res = await fetch(`${ctx.apiUrl}/v1/scans/${encodeURIComponent(id)}/pdf`, {
-      headers: { Authorization: `Bearer ${ctx.token}` },
+      headers: { Authorization: `Bearer ${ctx.credential()}` },
     });
     if (!res.ok) throw new Error(`amn-api ${res.status} ${res.statusText}`);
     return URL.createObjectURL(new Blob([await res.text()], { type: 'text/html' }));

@@ -1490,6 +1490,59 @@ export interface IncidentMetrics {
 }
 
 /**
+ * LE RAPPORT MENSUEL DE SUPERVISION
+ *
+ * Ce que l'organisation reçoit une fois par mois : la seule chose qui rende
+ * visible un travail dont, le plus souvent, elle ne voit rien passer.
+ *
+ * Les champs sont en français parce que le document l'est : ce rapport part
+ * chez une cliente, et le traduire à l'affichage aurait fait diverger le
+ * chiffre de l'écran et celui du PDF — c'est le PDF qui aurait été cru.
+ *
+ * Ce que ce type NE porte PAS est délibéré, et documenté côté serveur
+ * (amn-api `src/reports/monthly.js`) : aucune note globale inventée, aucun
+ * délai de détection, aucun pourcentage de disponibilité.
+ */
+export interface MonthlyReport {
+  organisation: { id: string; nom: string };
+  /** `AAAA-MM`. */
+  mois: string;
+  /** « août 2026 » — déjà mis en forme par le serveur, source unique. */
+  moisLisible: string;
+  periode: { debut: string; fin: string };
+  parc: { sites: number; noms: string[] };
+  incidents: {
+    total: number;
+    traites: number;
+    fauxPositifs: number;
+    encoreOuverts: number;
+    critiques: number;
+    delaiMedianPriseEnChargeMs: number | null;
+    delaiMedianResolutionMs: number | null;
+    plusLongResoluMs: number | null;
+    parNature: { kind: string; libelle: string; n: number }[];
+    marquants: {
+      titre: string;
+      statut: IncidentStatus;
+      resolution: IncidentResolution | null;
+      premierVu: string;
+      alertes: number;
+    }[];
+  };
+  disponibilite: {
+    /** Des interruptions CONSTATÉES, jamais un pourcentage extrapolé. */
+    interruptions: number;
+    commentaire: string;
+  };
+  certificats: {
+    surveilles: number;
+    aRenouveler: number;
+    details: { hote: string; joursRestants: number }[];
+  };
+  analyses: { scans: number; conformite: number };
+}
+
+/**
  * Message pushed from amn-api's WebSocket stream, relayed verbatim by main.
  * amn-api emits each ingest under both `tracker:event` (canonical) and `event`
  * (kept so already-deployed desktop builds keep working); main forwards one.
@@ -2404,6 +2457,20 @@ export interface AmnBridge {
     /** Une note est OBLIGATOIRE pour un faux positif — le serveur la réclame. */
     resolveIncident(id: string, resolution: IncidentResolution, note?: string): Promise<Incident>;
     reopenIncident(id: string): Promise<Incident>;
+
+    /* --- Rapport mensuel de supervision --- */
+    /**
+     * Les chiffres du mois `AAAA-MM`. Sans argument : le dernier mois
+     * COMPLET, jamais celui en cours — un rapport « du mois en cours » le 3
+     * du mois annonce trois jours d'activité et se lit comme un mois calme.
+     */
+    monthlyReport(month?: string): Promise<MonthlyReport>;
+    /**
+     * L'URL du même rapport en document imprimable (ouvert, puis imprimé en
+     * PDF). Même chemin que {@link scanReportUrl} : le document est derrière
+     * le jeton, qu'un `window.open()` nu ne sait pas envoyer.
+     */
+    monthlyReportUrl(month?: string): Promise<string>;
     /**
      * Escalades poussées par le serveur. Rend une fonction de désabonnement.
      *
@@ -2811,6 +2878,8 @@ export const IPC = {
   remoteAcknowledgeIncident: 'remote:acknowledgeIncident',
   remoteResolveIncident: 'remote:resolveIncident',
   remoteReopenIncident: 'remote:reopenIncident',
+  remoteMonthlyReport: 'remote:monthlyReport',
+  remoteMonthlyReportUrl: 'remote:monthlyReportUrl',
   remoteIncidentEscalationPush: 'remote:incidentEscalationPush',
   remoteListSchedules: 'remote:listSchedules',
   remoteCreateSchedule: 'remote:createSchedule',

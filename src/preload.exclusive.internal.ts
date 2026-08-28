@@ -44,6 +44,8 @@ type ExclusiveRemote = Pick<
   | 'acknowledgeIncident'
   | 'resolveIncident'
   | 'reopenIncident'
+  | 'monthlyReport'
+  | 'monthlyReportUrl'
   | 'onIncidentEscalation'
   | 'listSchedules'
   | 'createSchedule'
@@ -109,6 +111,8 @@ export const exclusivePreload: ExclusiveRemote = {
   resolveIncident: (id: string, resolution: IncidentResolution, note?: string) =>
     ipcRenderer.invoke(IPC.remoteResolveIncident, id, resolution, note),
   reopenIncident: (id: string) => ipcRenderer.invoke(IPC.remoteReopenIncident, id),
+  monthlyReport: (month?: string) => ipcRenderer.invoke(IPC.remoteMonthlyReport, month),
+  monthlyReportUrl: (month?: string) => ipcRenderer.invoke(IPC.remoteMonthlyReportUrl, month),
   onIncidentEscalation: (callback: (escalation: IncidentEscalation) => void) => {
     const listener = (_e: unknown, payload: IncidentEscalation) => callback(payload);
     ipcRenderer.on(IPC.remoteIncidentEscalationPush, listener);

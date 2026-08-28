@@ -426,6 +426,7 @@ function createBrowserRemote(): AmnBridge['remote'] {
     apiFetch,
     apiUrl,
     token,
+    credential,
     ensureStarted,
     socket: () => socket,
     eventListeners,

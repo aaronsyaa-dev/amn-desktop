@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity,
   Check,
+  FileText,
   ChevronDown,
   RotateCcw,
   ShieldCheck,
@@ -11,6 +12,7 @@ import {
 import { bridge } from '../lib/bridge';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { EmptyState } from '../components/EmptyState';
+import { MonthlyReportPanel } from '../components/MonthlyReportPanel';
 import { cleanErrorMessage } from '../lib/errorMessage';
 import { formatDateTime, relativeTime } from '../lib/time';
 import { alertKindLabel } from '../lib/trackerAlerts';
@@ -58,6 +60,7 @@ export function IncidentsScreen() {
   const [portee, setPortee] = useState<'open' | 'all'>('open');
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState<string | null>(null);
+  const [rapportOuvert, setRapportOuvert] = useState(false);
   const [ouvert, setOuvert] = useState<string | null>(null);
   const [enCours, setEnCours] = useState<string | null>(null);
 
@@ -166,14 +169,29 @@ export function IncidentsScreen() {
           },
         ]}
         actions={
-          <button
+          <>
+            {/*
+              Le rapport mensuel s'ouvre D'ICI, et pas d'un module « Rapports »
+              séparé : c'est ce bureau qui le produit, et un livrable rangé
+              ailleurs que là où il se fabrique ne se retrouve pas.
+            */}
+            <button
+              type="button"
+              onClick={() => setRapportOuvert(true)}
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-[12px] font-medium text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
+            >
+              <FileText size={14} strokeWidth={1.75} />
+              <span className="hidden sm:inline">Rapport mensuel</span>
+            </button>
+            <button
             type="button"
             onClick={() => void recharger()}
             aria-label="Relire maintenant"
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:text-text-primary"
           >
             <RotateCcw size={15} strokeWidth={1.75} className={chargement ? 'animate-spin' : ''} />
-          </button>
+            </button>
+          </>
         }
       >
         <div className="flex items-center gap-1">
@@ -232,6 +250,8 @@ export function IncidentsScreen() {
           </AnimatePresence>
         </ul>
       )}
+
+      {rapportOuvert && <MonthlyReportPanel onClose={() => setRapportOuvert(false)} />}
     </section>
   );
 }

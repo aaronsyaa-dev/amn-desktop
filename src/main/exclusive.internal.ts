@@ -4,6 +4,7 @@ import {
   type IncidentEscalation,
   type IncidentDetail,
   type IncidentMetrics,
+  type MonthlyReport,
   type IncidentResolution,
   type IncidentStatus,
   type AdminOrganization,
@@ -138,6 +139,36 @@ const exclusiveApi = {
       { method: 'POST' },
     );
     return incident;
+  },
+
+  /*
+    LE RAPPORT MENSUEL.
+
+    Le mois est passé tel quel quand il est fourni, et OMIS sinon — le défaut
+    (« le dernier mois complet ») est calculé par le serveur, pas ici. Deux
+    calendriers qui décideraient chacun de leur côté quel est « le mois
+    dernier » finiraient par se contredire une nuit de changement d'heure ou
+    à cheval sur un fuseau, et c'est le document imprimé qui aurait tort.
+  */
+  async monthlyReport(month?: string): Promise<MonthlyReport> {
+    const { report } = await apiFetch<{ report: MonthlyReport }>(
+      `/v1/reports/monthly${month ? `?month=${encodeURIComponent(month)}` : ''}`,
+    );
+    return report;
+  },
+
+  async monthlyReportUrl(month?: string): Promise<string> {
+    const res = await fetch(
+      `${remoteConfig.apiUrl}/v1/reports/monthly.html${month ? `?month=${encodeURIComponent(month)}` : ''}`,
+      { headers: { Authorization: `Bearer ${apiCredential()}` } },
+    );
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`amn-api ${res.status} ${res.statusText}: ${body.slice(0, 200)}`);
+    }
+    // Même écriture que le rapport de scan : Electron refuse d'ouvrir une URL
+    // `data:`, il faut un fichier dans le répertoire déjà autorisé.
+    return writeScanReportFile(await res.text());
   },
 
   async listSchedules(): Promise<ProductSchedule[]> {
@@ -575,6 +606,8 @@ export function registerExclusiveIpc(
   ipcMain.handle(IPC.remoteResolveIncident, (_e, id: string, resolution, note?: string) =>
     exclusiveApi.resolveIncident(id, resolution, note));
   ipcMain.handle(IPC.remoteReopenIncident, (_e, id: string) => exclusiveApi.reopenIncident(id));
+  ipcMain.handle(IPC.remoteMonthlyReport, (_e, month?: string) => exclusiveApi.monthlyReport(month));
+  ipcMain.handle(IPC.remoteMonthlyReportUrl, (_e, month?: string) => exclusiveApi.monthlyReportUrl(month));
   ipcMain.handle(IPC.remoteListSslStatus, () => exclusiveApi.listSslStatus());
   ipcMain.handle(IPC.remoteCheckSsl, (_event, host: string) => exclusiveApi.checkSsl(host));
   ipcMain.handle(IPC.remoteListSchedules, () => exclusiveApi.listSchedules());

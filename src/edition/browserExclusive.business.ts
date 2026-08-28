@@ -17,6 +17,7 @@ export interface BrowserExclusiveContext {
   apiFetch: <T>(path: string, init?: RequestInit & { owner?: boolean }) => Promise<T>;
   apiUrl: string;
   token: string;
+  credential: () => string;
   ensureStarted: () => void;
   socket: () => WebSocket | null;
   eventListeners: Set<unknown>;
