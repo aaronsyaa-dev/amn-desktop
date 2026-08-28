@@ -104,8 +104,15 @@ jobs:
         run: npm run check:tracking
       - name: Canal de mise à jour
         run: npm run check:updates
-      - name: Le paquet livré
-        run: npm run check:package
+      # `check:package` N'EST PAS ICI, et c'est une correction.
+      #
+      # Il relit une application EMPAQUETÉE (`dist-app/`), que cette tâche ne
+      # construit pas — empaqueter Electron prend des minutes et une plateforme.
+      # Il passait sur mon poste parce qu'un paquet y traînait d'une session
+      # précédente : vérifié dans un environnement qui n'était pas le sien.
+      # Et il y est DÉJÀ : `release.yml` le lance sur
+      # `dist-app/win-unpacked`, après l'empaquetage. Mon ajout était donc à la
+      # fois redondant et cassé.
       # Deux contrôles nés cette nuit : le premier refuse une requête écrite à
       # la main qui partirait avec le jeton de BUILD au lieu du justificatif
       # vivant — c'est ainsi que le rapport d'une cliente pouvait être le
@@ -118,63 +125,95 @@ jobs:
   croises:
     name: Garde-fous croisés (poste ↔ serveur)
     runs-on: ubuntu-latest
+    # Le secret n'est pas lisible dans un `if:` de tâche — il l'est dans `env`,
+    # et l'`env` est lisible dans un `if:` d'étape. D'où ce relais.
+    env:
+      JETON_API: ${{ secrets.AMN_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      # LE SERVEUR, À CÔTÉ — et ce que ça change.
+
+      # QUATRE CONTRÔLES COMPARENT LE POSTE AU SERVEUR
       #
-      # Quatre contrôles comparent ce que le poste DÉCLARE à ce que le serveur
-      # ÉMET vraiment : les natures d'alerte, les rôles, les actions du journal
-      # d'audit, et les noms de produit. Sans amn-api à côté, ils ne peuvent
-      # rien comparer — et ils le disent, en note, puis passent au vert.
+      # Natures d'alerte, rôles, actions du journal d'audit, noms de produit,
+      # collections synchronisées. Sans amn-api à côté, ils ne peuvent rien
+      # comparer — ils le disent en note et passent au vert, ce qui est le bon
+      # comportement sur un poste et un piège en CI.
       #
-      # C'est le comportement correct pour un poste de développement, et c'est
-      # un piège en CI : un vert qui ne prouve rien. On récupère donc le dépôt
-      # voisin, et l'étape suivante REFUSE de passer s'il manque.
-      # `actions/checkout` n'écrit QUE dans l'espace de travail : le dépôt
-      # voisin ne peut pas atterrir à `../amn-api`. Il va donc dans un
-      # sous-dossier, et les contrôles apprennent où par `AMN_API_ROOT` (voir
-      # scripts/api-root.mjs).
+      # Le jeton par défaut du workflow ne donne accès qu'À CE dépôt : il ne
+      # peut pas récupérer le voisin. Il faut un secret `AMN_API_TOKEN` avec
+      # accès en lecture à `aaronsyaa-dev/amn-api`.
+      #
+      # `actions/checkout` n'écrit que dans l'espace de travail : le voisin va
+      # donc dans un sous-dossier, et les contrôles apprennent où par
+      # `AMN_API_ROOT` (voir scripts/api-root.mjs).
       - name: Récupérer amn-api
+        if: env.JETON_API != ''
         uses: actions/checkout@v4
-        continue-on-error: true
         with:
           repository: aaronsyaa-dev/amn-api
           path: serveur
-          token: ${{ secrets.AMN_API_TOKEN || github.token }}
+          token: ${{ secrets.AMN_API_TOKEN }}
+
+      - name: Sans le secret, ces contrôles sont SAUTÉS — et on le dit
+        if: env.JETON_API == ''
+        run: |
+          echo "::warning title=Contrôles croisés sautés::le secret AMN_API_TOKEN n'est pas configuré"
+          echo
+          echo "Cinq contrôles comparent ce que le poste DÉCLARE à ce que le"
+          echo "serveur FAIT vraiment. Ils ne tournent pas ici, faute d'accès au"
+          echo "dépôt amn-api — le jeton par défaut du workflow ne donne accès"
+          echo "qu'à ce dépôt-ci."
+          echo
+          echo "Ils continuent de tourner en local, où les deux dépôts sont côte"
+          echo "à côte : npm run check:supervision, check:journal, check:roles,"
+          echo "check:naming, check:sync."
+          echo
+          echo "Remède : ajouter un secret AMN_API_TOKEN (lecture sur"
+          echo "aaronsyaa-dev/amn-api) dans les réglages du dépôt."
+
       - uses: actions/setup-node@v4
+        if: env.JETON_API != ''
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+        if: env.JETON_API != ''
 
-      - name: amn-api doit être là, sinon ces contrôles ne prouvent rien
+      # Le secret EXISTE mais le dépôt n'est pas là : c'est une vraie panne
+      # (jeton expiré, droits retirés), et on refuse alors de passer au vert.
+      - name: Le secret est là, le dépôt doit l'être aussi
+        if: env.JETON_API != ''
         run: |
           if [ ! -f serveur/src/db/tenancy.js ]; then
-            echo "amn-api n'a pas pu être récupéré."
+            echo "AMN_API_TOKEN est configuré, mais amn-api n'a pas pu être récupéré."
+            echo "Jeton expiré, ou droits de lecture retirés sur le dépôt."
             echo "Les contrôles croisés passeraient au vert sans rien comparer :"
             echo "on préfère un échec franc à un vert qui ne prouve rien."
-            echo
-            echo "Remède : un secret AMN_API_TOKEN avec accès en lecture au dépôt."
             exit 1
           fi
 
       - name: Supervision — les listes de natures s'accordent
+        if: env.JETON_API != ''
         run: npm run check:supervision
         env:
           AMN_API_ROOT: ${{ github.workspace }}/serveur
       - name: Journal d'audit — écrit, déclaré, et lisible
+        if: env.JETON_API != ''
         run: npm run check:journal
         env:
           AMN_API_ROOT: ${{ github.workspace }}/serveur
       - name: Rôles — poste et serveur disent la même chose
+        if: env.JETON_API != ''
         run: npm run check:roles
         env:
           AMN_API_ROOT: ${{ github.workspace }}/serveur
       - name: Identité des éditions
+        if: env.JETON_API != ''
         run: npm run check:naming
         env:
           AMN_API_ROOT: ${{ github.workspace }}/serveur
       - name: Parité des collections synchronisées
+        if: env.JETON_API != ''
         run: npm run check:sync
         env:
           AMN_API_ROOT: ${{ github.workspace }}/serveur
