@@ -21,7 +21,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="AMN" />
-    <link rel="apple-touch-icon" href="./icon.png" />
+    <!-- 180x180 avec marge : iOS arrondit fortement le coin, et l'icône
+         1024 bord à bord y perdait ses extrémités (Bloc 5). -->
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
   </head>
   <body>
     <div id="root"></div>

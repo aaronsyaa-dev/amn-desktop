@@ -112,6 +112,42 @@ async function rasterise(taille) {
 }
 
 /**
+ * Rastérise avec une MARGE DE SÉCURITÉ, pour les icônes « maskable ».
+ *
+ * Android n'affiche pas l'icône telle quelle : il lui applique un masque —
+ * cercle, goutte, carré arrondi selon le constructeur — et ne garantit que le
+ * « safe zone », un disque central de 80 % du côté. Une icône dessinée bord à
+ * bord est donc rognée sur les quatre côtés, et une marque au trait comme la
+ * nôtre y perd ses extrémités.
+ *
+ * Le manifeste déclarait pourtant la MÊME image en `any` et en `maskable`.
+ * Déclarer « maskable » sans marge, c'est promettre à Android qu'il peut
+ * rogner sans dommage — et il le fait.
+ *
+ * 20 % de marge totale (10 % de chaque côté) place toute la marque dans le
+ * disque garanti.
+ */
+async function rasteriseAvecMarge(taille, marge = 0.2) {
+  const interieur = Math.round(taille * (1 - marge));
+  const page = await browser.newPage({
+    viewport: { width: taille, height: taille },
+    deviceScaleFactor: 1,
+  });
+  await page.setContent(
+    `<html><body style="margin:0;padding:0;background:#0a0a0a">` +
+      `<div style="width:${taille}px;height:${taille}px;display:flex;align-items:center;justify-content:center;background:#0a0a0a">` +
+      `<div style="width:${interieur}px;height:${interieur}px">` +
+      svg.replace('<svg', `<svg width="${interieur}" height="${interieur}"`) +
+      `</div></div></body></html>`,
+    { waitUntil: 'load' },
+  );
+  await page.waitForTimeout(200);
+  const octets = await page.screenshot({ type: 'png' });
+  await page.close();
+  return octets;
+}
+
+/**
  * Assemble des PNG en un `.ico`.
  *
  * Le format est un simple conteneur : un en-tête, une entrée de 16 octets par
@@ -152,6 +188,38 @@ fs.writeFileSync(path.join(ROOT, 'images', 'icon.png'), grand);
 fs.writeFileSync(path.join(ROOT, 'public', 'icon.png'), grand);
 console.log('images/icon.png  1024x1024');
 console.log('public/icon.png  1024x1024  (PWA — écran d’accueil du téléphone)');
+
+/*
+  LES TAILLES QUE LE MOBILE ATTEND VRAIMENT (BLOC 5).
+
+  Le manifeste ne déclarait qu'un seul fichier — `icon.png` en 1024×1024 —
+  référencé deux fois, en `any` ET en `maskable`. Trois manques, tous visibles
+  sur un vrai téléphone :
+
+    · ni 192 ni 512, les deux tailles qu'Android et Chrome citent
+      explicitement pour l'invite d'installation ;
+    · la variante `maskable` sans marge, donc rognée par le masque du système ;
+    · aucun `apple-touch-icon` — sur iOS, « ajouter à l'écran d'accueil »
+      retombait sur une capture de la page.
+
+  Ces fichiers sont écrits dans `public/`, donc copiés tels quels par le build
+  web ; rien à recopier à la main.
+*/
+const PWA = [
+  { nom: 'icon-192.png', taille: 192, marge: false },
+  { nom: 'icon-512.png', taille: 512, marge: false },
+  { nom: 'icon-maskable-192.png', taille: 192, marge: true },
+  { nom: 'icon-maskable-512.png', taille: 512, marge: true },
+  // 180 px : la taille qu'iOS demande pour l'écran d'accueil. Avec marge,
+  // parce qu'iOS applique lui aussi un coin arrondi prononcé.
+  { nom: 'apple-touch-icon.png', taille: 180, marge: true },
+];
+
+for (const { nom, taille, marge } of PWA) {
+  const octets = marge ? await rasteriseAvecMarge(taille) : await rasterise(taille);
+  fs.writeFileSync(path.join(ROOT, 'public', nom), octets);
+  console.log(`public/${nom.padEnd(24)} ${taille}x${taille}${marge ? '  (marge de sécurité)' : ''}`);
+}
 
 const petites = [];
 for (const taille of ICO_SIZES) {
