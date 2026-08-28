@@ -53,6 +53,9 @@ type ExclusiveRemote = Pick<
   | 'onProductRegression'
   | 'getOrgOverview'
   | 'getSiteBadge'
+  | 'getSiteStatusPage'
+  | 'publishSiteStatusPage'
+  | 'revokeSiteStatusPage'
   | 'sendCallSignal'
   | 'onCallSignal'
   | 'startScan'
@@ -136,6 +139,9 @@ export const exclusivePreload: ExclusiveRemote = {
   },
   getOrgOverview: (days: number) => ipcRenderer.invoke(IPC.remoteGetOrgOverview, days),
   getSiteBadge: (siteId: string) => ipcRenderer.invoke(IPC.remoteGetSiteBadge, siteId),
+  getSiteStatusPage: (siteId: string) => ipcRenderer.invoke(IPC.remoteGetSiteStatusPage, siteId),
+  publishSiteStatusPage: (siteId: string) => ipcRenderer.invoke(IPC.remotePublishSiteStatusPage, siteId),
+  revokeSiteStatusPage: (siteId: string) => ipcRenderer.invoke(IPC.remoteRevokeSiteStatusPage, siteId),
   sendCallSignal: (signal: OutgoingCallSignal) =>
     ipcRenderer.invoke(IPC.remoteSendCallSignal, signal),
   onCallSignal: (callback: (signal: CallSignal) => void) => {

@@ -39,6 +39,7 @@ import {
   type ScanProgress,
   type ScanTier,
   type SiteBadge,
+  type SiteStatusPage,
   type SiteDigest,
   type SiteSummary,
   type SslStatus,
@@ -194,6 +195,18 @@ const exclusiveApi = {
 
   async getSiteBadge(siteId: string): Promise<SiteBadge> {
     return apiFetch<SiteBadge>(`/v1/sites/${siteId}/badge`);
+  },
+
+  async getSiteStatusPage(siteId: string): Promise<SiteStatusPage> {
+    return apiFetch<SiteStatusPage>(`/v1/sites/${siteId}/status-page`);
+  },
+
+  async publishSiteStatusPage(siteId: string): Promise<SiteStatusPage> {
+    return apiFetch<SiteStatusPage>(`/v1/sites/${siteId}/status-page`, { method: 'POST' });
+  },
+
+  async revokeSiteStatusPage(siteId: string): Promise<SiteStatusPage> {
+    return apiFetch<SiteStatusPage>(`/v1/sites/${siteId}/status-page`, { method: 'DELETE' });
   },
 
   async registerSite(name: string): Promise<RegisterSiteResult> {
@@ -617,6 +630,9 @@ export function registerExclusiveIpc(
   ipcMain.handle(IPC.remoteDeleteSchedule, (_event, id: string) => exclusiveApi.deleteSchedule(id));
   ipcMain.handle(IPC.remoteGetOrgOverview, (_event, days: number) => exclusiveApi.getOrgOverview(days));
   ipcMain.handle(IPC.remoteGetSiteBadge, (_event, siteId: string) => exclusiveApi.getSiteBadge(siteId));
+  ipcMain.handle(IPC.remoteGetSiteStatusPage, (_e, siteId: string) => exclusiveApi.getSiteStatusPage(siteId));
+  ipcMain.handle(IPC.remotePublishSiteStatusPage, (_e, siteId: string) => exclusiveApi.publishSiteStatusPage(siteId));
+  ipcMain.handle(IPC.remoteRevokeSiteStatusPage, (_e, siteId: string) => exclusiveApi.revokeSiteStatusPage(siteId));
   ipcMain.handle(IPC.remoteStartScan, (_event, payload: { url: string; tier: ScanTier }) =>
     exclusiveApi.startScan(payload.url, payload.tier),
   );

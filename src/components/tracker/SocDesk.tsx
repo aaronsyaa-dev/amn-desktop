@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, Check, Copy, Globe2, ShieldCheck } from 'lucide-react';
 import { bridge } from '../../lib/bridge';
+import { useOrgSites } from './useOrgSites';
 import { relativeTime } from '../../lib/time';
 import type { OrgOverview, SiteBadge } from '../../shared/api';
 
@@ -436,20 +437,7 @@ export function SocDesk({
 
 /** Le badge, rendu séparément par la Tour de contrôle (voir `withBadgeExport`). */
 export function SiteBadgeExport() {
-  const [sites, setSites] = useState<OrgOverview['sites']>([]);
-  useEffect(() => {
-    let active = true;
-    bridge()
-      .remote.getOrgOverview(7)
-      .then((data) => {
-        if (active) setSites(data.sites);
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, []);
-  return <BadgeExport sites={sites} />;
+  return <BadgeExport sites={useOrgSites()} />;
 }
 
 /**

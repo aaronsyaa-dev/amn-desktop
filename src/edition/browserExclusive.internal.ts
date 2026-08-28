@@ -34,6 +34,7 @@ import type {
   Scan,
   ScanTier,
   SiteBadge,
+  SiteStatusPage,
   SiteDigest,
   SiteSummary,
   SslStatus,
@@ -130,6 +131,9 @@ type ExclusiveRemote = Pick<
   | 'onIncidentEscalation'
   | 'getOrgOverview'
   | 'getSiteBadge'
+  | 'getSiteStatusPage'
+  | 'publishSiteStatusPage'
+  | 'revokeSiteStatusPage'
   | 'sendCallSignal'
   | 'onCallSignal'
   | 'startScan'
@@ -300,6 +304,15 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
   },
   async getSiteBadge(siteId: string) {
     return ctx.apiFetch<SiteBadge>(`/v1/sites/${siteId}/badge`);
+  },
+  async getSiteStatusPage(siteId: string) {
+    return ctx.apiFetch<SiteStatusPage>(`/v1/sites/${siteId}/status-page`);
+  },
+  async publishSiteStatusPage(siteId: string) {
+    return ctx.apiFetch<SiteStatusPage>(`/v1/sites/${siteId}/status-page`, { method: 'POST' });
+  },
+  async revokeSiteStatusPage(siteId: string) {
+    return ctx.apiFetch<SiteStatusPage>(`/v1/sites/${siteId}/status-page`, { method: 'DELETE' });
   },
   async sendCallSignal(signal) {
     ctx.ensureStarted();

@@ -1364,6 +1364,18 @@ export interface SiteBadge {
   snippet: string;
 }
 
+/**
+ * L'état de la page de statut PUBLIQUE d'un site (BLOC 30).
+ *
+ * Volontairement minuscule : publiée ou non, et son adresse. Le jeton lui-même
+ * n'a pas à remonter jusqu'à l'écran — ce qu'on y fait, c'est copier un lien
+ * ou le retirer, et un jeton affiché finit copié ailleurs qu'il ne faut.
+ */
+export interface SiteStatusPage {
+  published: boolean;
+  url: string | null;
+}
+
 /** Structured weekly summary behind the Suite tier's recurring report. */
 export interface SiteDigest {
   siteId: string;
@@ -2497,6 +2509,17 @@ export interface AmnBridge {
     /** Issues (once) and returns the site's public embeddable security badge. */
     getSiteBadge(siteId: string): Promise<SiteBadge>;
 
+    /* --- La page de statut publique d'un site (BLOC 30) --- */
+    /** Publiée ou non, et son adresse. Ne publie rien. */
+    getSiteStatusPage(siteId: string): Promise<SiteStatusPage>;
+    /**
+     * Ouvre l'adresse publique. Idempotent : republier rend la MÊME adresse,
+     * pour qu'un lien déjà envoyé aux clients de la cliente ne meure pas.
+     */
+    publishSiteStatusPage(siteId: string): Promise<SiteStatusPage>;
+    /** Referme l'adresse. Elle répond 404 dans la seconde qui suit. */
+    revokeSiteStatusPage(siteId: string): Promise<SiteStatusPage>;
+
     /** Live scan progress pushed from amn-api. Returns an unsubscribe function. */
     onScanProgress(callback: (progress: ScanProgress) => void): () => void;
 
@@ -2909,6 +2932,9 @@ export const IPC = {
   remoteSupportLeave: 'remote:supportLeave',
   remoteGetOrgOverview: 'remote:getOrgOverview',
   remoteGetSiteBadge: 'remote:getSiteBadge',
+  remoteGetSiteStatusPage: 'remote:getSiteStatusPage',
+  remotePublishSiteStatusPage: 'remote:publishSiteStatusPage',
+  remoteRevokeSiteStatusPage: 'remote:revokeSiteStatusPage',
   remoteSendCallSignal: 'remote:sendCallSignal',
   remoteCallSignalPush: 'remote:callSignalPush',
   systemNotify: 'system:notify',

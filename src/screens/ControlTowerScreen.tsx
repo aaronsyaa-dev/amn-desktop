@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { SiteBadgeExport, SocDesk } from '../components/tracker/SocDesk';
+import { SiteStatusPageExport } from '../components/tracker/StatusPageExport';
 import { CallLinkPanel } from '../components/call/CallLinkPanel';
 import { AttentionPanel } from '../components/AttentionPanel';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
@@ -222,6 +223,10 @@ export function ControlTowerScreen() {
       <StaggerItem>
         <SiteBadgeExport />
       </StaggerItem>
+
+      <StaggerItem>
+        <SiteStatusPageExport />
+      </StaggerItem>
     </StaggerGroup>
   );
 }
@@ -388,6 +393,10 @@ export const ACCESS_VERB: Record<string, string> = {
   member_suspended: 'a suspendu un membre de',
   member_reactivated: 'a réactivé un membre de',
   member_role_changed: 'a changé un rôle chez',
+  // Ces deux-là ouvrent et referment une adresse PUBLIQUE : la formulation le
+  // dit, parce que c'est la seule ligne du journal qui concerne des tiers.
+  status_page_published: 'a publié la page de statut d’un site de',
+  status_page_revoked: 'a retiré la page de statut d’un site de',
 };
 
 
