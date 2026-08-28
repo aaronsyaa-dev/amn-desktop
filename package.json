@@ -1,6 +1,6 @@
 {
   "name": "amn-desktop",
-  "productName": "AMN Desktop",
+  "productName": "AMN Business",
   "version": "1.2.42",
   "description": "AMN Desktop - Electron + React application for monitoring sites",
   "main": ".vite/build/main.js",
@@ -23,6 +23,7 @@
     "check:business": "node scripts/check-business-bundle.mjs",
     "check:modules": "node scripts/check-modules.mjs",
     "check:roles": "node scripts/check-roles.mjs",
+    "check:naming": "node scripts/check-naming.mjs",
     "check:persistence": "node scripts/check-persistence.mjs",
     "check:accent": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-accent.ts",
     "check:money": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-money.ts",

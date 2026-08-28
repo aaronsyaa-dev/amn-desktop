@@ -77,7 +77,9 @@ jobs:
       - name: Smoke test — l'exécutable construit démarre
         shell: pwsh
         run: |
-          $p = Start-Process -FilePath "dist-app\win-unpacked\AMN Desktop.exe" -ArgumentList "--smoke-test" -PassThru -NoNewWindow
+          # Le nom de l'exe suit productName, qui change d'une édition à l'autre.
+          $nom = node --input-type=module -e "import c from './electron-builder.config.mjs'; console.log(c.productName);"
+          $p = Start-Process -FilePath "dist-app\win-unpacked\$nom.exe" -ArgumentList "--smoke-test" -PassThru -NoNewWindow
           if (-not $p.WaitForExit(60000)) { $p.Kill(); Write-Error "smoke test : délai dépassé (60 s)"; exit 1 }
           if ($p.ExitCode -ne 0) { Write-Error "smoke test : code de sortie $($p.ExitCode)"; exit 1 }
           Write-Host "smoke test OK — l'exécutable construit a démarré et s'est arrêté proprement."
@@ -123,9 +125,23 @@ jobs:
             On calcule donc le nom réel comme electron-builder le calcule,
             plutôt que de le deviner une seconde fois.
           #>
-          $pkgName = (Get-Content package.json -Raw | ConvertFrom-Json).name
-          $installDir = Join-Path $env:LOCALAPPDATA "Programs\$pkgName"
-          $exe = Join-Path $installDir "AMN Desktop.exe"
+          <#
+            Le nom du dossier ET celui de l'exe sont LUS DANS LA CONFIGURATION
+            d'electron-builder, jamais devinés une seconde fois.
+
+            Deux raisons, et la seconde est arrivée au Bloc 1. La première :
+            avec oneClick+perUser, NSIS nomme le dossier d'après le champ `name`
+            de package.json, pas d'après productName. La seconde : ce champ est
+            désormais RÉÉCRIT par édition via `extraMetadata.name`, parce que
+            les deux éditions partagent un dépôt et s'installaient donc dans le
+            même dossier — l'une écrasant l'autre. Lire package.json ici
+            donnerait maintenant la mauvaise réponse.
+          #>
+          $ident = node --input-type=module -e "import c from './electron-builder.config.mjs'; console.log(JSON.stringify({ dir: c.extraMetadata.name, exe: c.productName }));" | ConvertFrom-Json
+          $installDir = Join-Path $env:LOCALAPPDATA "Programs\$($ident.dir)"
+          $exe = Join-Path $installDir "$($ident.exe).exe"
+          Write-Host "installation attendue dans : $installDir"
+          Write-Host "exécutable attendu         : $exe"
 
           # Filet de sécurité, pas le correctif : un antivirus qui verrouille
           # encore le fichier juste après l'écriture reste un cas réel sur les

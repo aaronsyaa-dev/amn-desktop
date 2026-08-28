@@ -134,7 +134,9 @@ export function maskAllowed(content, rule, budget) {
  * confirment qu'on a bien relu une édition Business construite.
  */
 export const REQUIRED = [
-  { pattern: 'AMN Business', why: 'le nom produit de l’édition livrée' },
+  // Nom échangé au Bloc 1 : l'édition LIVRÉE aux clientes s'appelle désormais
+  // « AMN Desktop ». Ce marqueur confirme qu'on a bien relu la bonne édition.
+  { pattern: 'AMN Desktop', why: 'le nom produit de l’édition livrée' },
   { pattern: 'Agenda', why: 'le calendrier, module quotidien de l’édition Business' },
   { pattern: 'Coffre-fort', why: 'un module de l’édition Business' },
 ];
@@ -196,7 +198,9 @@ export const ARTIFACT_FORBIDDEN = [
  * satisfaire.
  */
 export const ARTIFACT_REQUIRED = [
-  { pattern: 'AMN Business', why: 'le nom produit de l’édition livrée' },
+  // Nom échangé au Bloc 1 : l'édition LIVRÉE aux clientes s'appelle désormais
+  // « AMN Desktop ». Ce marqueur confirme qu'on a bien relu la bonne édition.
+  { pattern: 'AMN Desktop', why: 'le nom produit de l’édition livrée' },
   { pattern: 'Coffre-fort', why: 'un module de l’édition Business' },
   { pattern: '/v1/updates/business', why: 'le canal de mise à jour des clientes' },
   /*

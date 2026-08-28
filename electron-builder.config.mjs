@@ -34,7 +34,7 @@
  * et un exécutable distincts — donc un dossier de données distinct, et deux
  * installations qui coexistent sur la machine d'Aaron sans se toucher.
  *
- * L'édition Business n'a PAS de bloc `publish` : son canal de mise à jour est
+ * L'édition CLIENTE (cible `business`) n'a PAS de bloc `publish` : son canal de mise à jour est
  * le registre amn-api (voir src/main/updater.ts, Bloc O), jamais les Releases
  * GitHub de ce dépôt — c'est la séparation stricte des deux chaînes, et elle
  * est structurelle ici, pas documentaire.
@@ -43,8 +43,38 @@
 const IS_BUSINESS = process.env.AMN_EDITION === 'business';
 
 const config = {
-  appId: IS_BUSINESS ? 'com.amndevsec.business' : 'com.amndevsec.desktop',
-  productName: IS_BUSINESS ? 'AMN Business' : 'AMN Desktop',
+  /*
+    LES NOMS ONT ÉTÉ ÉCHANGÉS (BLOC 1).
+
+    La cible `business` est celle livrée aux CLIENTES : elle s'appelle
+    désormais « AMN Desktop ». La cible `internal`, celle d'Aaron et Mohamed,
+    s'appelle « AMN Business ». Les identifiants de cible n'ont pas suivi —
+    voir `src/edition/edition.ts` pour la raison.
+  */
+  appId: IS_BUSINESS ? 'com.amndevsec.desktop' : 'com.amndevsec.business',
+  productName: IS_BUSINESS ? 'AMN Desktop' : 'AMN Business',
+
+  /*
+    LE DOSSIER D'INSTALLATION, ET UN DÉFAUT QUE LE RENOMMAGE A RÉVÉLÉ.
+
+    Avec `oneClick: true` + `perMachine: false`, NSIS ne nomme PAS le dossier
+    d'après `productName` : il le nomme d'après le champ `name` de
+    package.json (voir `getWindowsInstallationDirName`, app-builder-lib). Or ce
+    champ est UNIQUE pour les deux éditions, puisqu'elles partagent un dépôt.
+
+    Mesuré avant de toucher à quoi que ce soit : les deux éditions
+    s'installaient dans `%LOCALAPPDATA%\Programs\amn-desktop`. Installer l'une
+    écrasait l'autre — alors que le commentaire de ce fichier affirmait qu'elles
+    « coexistent sans se toucher ». C'était vrai du dossier de DONNÉES
+    (`app.setName`), faux du dossier d'installation.
+
+    `extraMetadata.name` réécrit ce champ à la construction, par édition. Les
+    deux applications ont donc enfin un dossier chacune. Le renommage seul
+    n'aurait fait qu'échanger laquelle écrase l'autre.
+  */
+  extraMetadata: {
+    name: IS_BUSINESS ? 'amn-desktop' : 'amn-business',
+  },
   directories: {
     output: 'dist-app',
     buildResources: 'images',
@@ -92,7 +122,7 @@ const config = {
     // aux vérifications réelles (smoke test, contrôle du moteur) dans un
     // environnement où l'on peut lancer l'exécutable.
     target: [{ target: 'dir', arch: ['x64'] }],
-    executableName: IS_BUSINESS ? 'amn-business' : 'amn-desktop',
+    executableName: IS_BUSINESS ? 'amn-desktop' : 'amn-business',
     icon: 'images/icon.png',
   },
   /*

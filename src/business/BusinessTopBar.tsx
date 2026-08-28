@@ -1,4 +1,5 @@
 import React from 'react';
+import { EDITION_PRODUCT_NAME } from '../edition/edition';
 import { useNavigate } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
@@ -31,7 +32,9 @@ export function BusinessTopBar({ onMenu }: { onMenu: () => void }) {
       </button>
 
       <span className="truncate font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
-        {org?.name ?? 'AMN Business'}
+        {/* Repli sur le nom de l'ÉDITION plutôt qu'une chaîne figée : au
+            Bloc 1, la chaîne figée disait encore l'ancien nom. */}
+        {org?.name ?? EDITION_PRODUCT_NAME}
       </span>
 
       <div className="ml-auto flex items-center gap-2">

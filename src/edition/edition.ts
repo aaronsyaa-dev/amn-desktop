@@ -3,11 +3,11 @@
  *
  * Deux éditions, un seul dépôt :
  *
- *   - `internal` — AMN Desktop, ce que font tourner Aaron et Mohamed. Tous les
+ *   - `internal` — AMN Business, ce que font tourner Aaron et Mohamed. Tous les
  *     modules, y compris les produits de cybersécurité (Trackers, Scanner,
  *     Comply, SSL Monitor) et les modules d'équipe (Équipe, Décisions,
  *     Connaissances).
- *   - `business` — AMN Business, livré aux organisations clientes. Les modules
+ *   - `business` — AMN Desktop, livré aux organisations clientes. Les modules
  *     ci-dessus n'y sont pas masqués : ils n'y sont pas COMPILÉS. Les points
  *     d'entrée `@edition/*` sont réécrits par Vite vers leurs variantes
  *     `*.business.*`, donc rien de ce qu'elles n'importent pas n'entre dans le
@@ -29,10 +29,23 @@ export const EDITION: Edition = __AMN_EDITION__;
 export const IS_BUSINESS = EDITION === 'business';
 
 /**
- * Nom produit affiché. Le nom du binaire est fixé par forge.config.ts ; celui-ci
- * est ce que lit l'utilisatrice dans l'app.
+ * Nom produit affiché — la source unique, lue par tous les écrans.
+ *
+ * ATTENTION à la lecture : la CIBLE de build s'appelle toujours `internal` et
+ * `business`, mais les NOMS COMMERCIAUX ont été échangés. L'édition interne
+ * (celle d'Aaron et Mohamed) s'appelle désormais « AMN Business » ; celle
+ * livrée aux clientes s'appelle « AMN Desktop ».
+ *
+ * Les identifiants de cible n'ont pas été renommés avec eux, et c'est
+ * délibéré : ils apparaissent dans les alias Vite (`@edition/*`), les noms de
+ * fichiers (`*.business.tsx`), `AMN_EDITION`, et une centaine de commentaires.
+ * Les renommer aurait mêlé un changement de marque à un changement de
+ * structure, dans le même diff, sans qu'aucun contrôle ne puisse distinguer
+ * les deux. Le nom commercial vit ici ; la cible reste ce qu'elle était.
+ *
+ * Le nom du binaire, lui, est fixé par `electron-builder.config.mjs`.
  */
-export const EDITION_PRODUCT_NAME = IS_BUSINESS ? 'AMN Business' : 'AMN Desktop';
+export const EDITION_PRODUCT_NAME = IS_BUSINESS ? 'AMN Desktop' : 'AMN Business';
 
 /**
  * La version de ce build.

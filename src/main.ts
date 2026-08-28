@@ -52,7 +52,10 @@ if (process.argv.includes('--smoke-test')) {
 // raccourcis : la chaîne ci-dessous doit être EXACTEMENT l'appId de
 // electron-builder.config.mjs, édition par édition.
 if (process.platform === 'win32') {
-  app.setAppUserModelId(IS_BUSINESS ? 'com.amndevsec.business' : 'com.amndevsec.desktop');
+  // Noms échangés au Bloc 1 : la cible `business` est l'édition CLIENTE, donc
+  // `com.amndevsec.desktop`. Ces deux chaînes doivent rester exactement celles
+  // d'`electron-builder.config.mjs` — `check:naming` le vérifie.
+  app.setAppUserModelId(IS_BUSINESS ? 'com.amndevsec.desktop' : 'com.amndevsec.business');
 }
 
 // Single-instance: a second launch (e.g. via the start-with-Windows shortcut,
