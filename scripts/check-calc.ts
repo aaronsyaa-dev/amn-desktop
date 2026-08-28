@@ -39,31 +39,69 @@ async function loadFromSrc<T>(entry: string): Promise<T> {
 }
 
 type Kind = 'money' | 'percent' | 'number';
+interface Input {
+  key: string;
+  label: string;
+  kind: Kind;
+  defaultValue: number;
+  help?: string;
+}
+interface Step {
+  key: string;
+  label: string;
+  kind: Kind;
+  formula: string;
+  output?: boolean;
+  headline?: boolean;
+  help?: string;
+}
+interface RowBlock {
+  label: string;
+  addLabel: string;
+  nameLabel?: string;
+  help?: string;
+  inputs: Input[];
+  steps: Step[];
+  defaultRows?: number;
+}
 interface Profile {
   id: string;
   label: string;
   description: string;
-  inputs: { key: string; label: string; kind: Kind; defaultValue: number; help?: string }[];
-  steps: {
-    key: string;
-    label: string;
-    kind: Kind;
-    formula: string;
-    output?: boolean;
-    headline?: boolean;
-    help?: string;
-  }[];
+  rows?: RowBlock;
+  inputs: Input[];
+  steps: Step[];
+}
+interface Line {
+  key: string;
+  label: string;
+  kind: Kind;
+  value: number;
+  output: boolean;
+  headline: boolean;
+}
+interface RowResult {
+  index: number;
+  lines: Line[];
+  scope: Record<string, number>;
+  errors: { key: string; message: string }[];
 }
 interface Result {
   scope: Record<string, number>;
-  lines: { key: string; label: string; kind: Kind; value: number; output: boolean; headline: boolean }[];
+  lines: Line[];
+  rows: RowResult[];
   errors: { key: string; message: string }[];
 }
 interface EngineModule {
   evaluateFormula(formula: string, scope: Record<string, number>): number;
-  evaluateProfile(profile: Profile, values?: Record<string, number>): Result;
+  evaluateProfile(
+    profile: Profile,
+    values?: Record<string, number>,
+    rowValues?: Record<string, number>[],
+  ): Result;
   validateProfile(profile: Profile): string[];
-  outputsOf(result: Result): Result['lines'];
+  outputsOf(result: Result): Line[];
+  totalKey(key: string): string;
   tokenize(formula: string): unknown[];
   CalcError: new (message: string) => Error;
 }
@@ -99,7 +137,7 @@ interface PersonalProfilesModule {
   personalProfileById(id: string): Profile | undefined;
 }
 
-const { evaluateFormula, evaluateProfile, validateProfile, outputsOf, tokenize } =
+const { evaluateFormula, evaluateProfile, validateProfile, outputsOf, tokenize, totalKey } =
   await loadFromSrc<EngineModule>('src/state/calcEngine.ts');
 const { CALC_PROFILES, DEFAULT_CALC_PROFILE_ID, calcProfileById } =
   await loadFromSrc<ProfilesModule>('src/state/calcProfiles.ts');
@@ -358,6 +396,7 @@ check('TÊTE : la réponse attendue, calculateur par calculateur', () => {
   */
   const attendu: [string, string, string][] = [
     ['ecommerce-prix-client', 'prixClient', 'la description promet « le prix à afficher »'],
+    ['ecommerce-panier', 'prixPanier', '« le prix à demander pour l’ensemble »'],
     ['evenementiel-rentabilite', 'seuilEntrees', '« combien d’entrées vendues avant que… »'],
     ['groupe-cagnotte', 'partRestante', '« ce qu’il reste à demander à chacun » — la relance'],
     ['startup-repartition', 'partFinale', 'la part du fondateur, seule question posée'],
@@ -649,6 +688,427 @@ check('PRIX CLIENT : plus d’associés ne change pas le prix, seulement les par
 });
 
 /* ======================== Les autres métiers (BLOC C) ===================== */
+
+/* ------------------------- Le panier à plusieurs lignes ------------------- */
+
+check('PANIER : le chemin de l’argent, refait comme la banque', () => {
+  /*
+    L'invariant qui tient tout le profil : une fois la plateforme prélevée,
+    la livraison payée, chaque fournisseur payé et les charges de CHAQUE ligne
+    versées à SON taux, il doit rester exactement la somme des marges visées.
+
+    Refait à la main, comme un relevé — c'est la seule vérification qui ne
+    puisse pas se tromper de la même façon que le profil.
+  */
+  const profile = profileOf('ecommerce-panier');
+  const paniers: { livraison: number; taux: number; fixe: number; lignes: number[][] }[] = [
+    // [coût unitaire, quantité, marge visée, taux de charges]
+    { livraison: 0, taux: 1.5, fixe: 25, lignes: [[4500, 3, 2000, 22], [12000, 1, 6000, 45]] },
+    { livraison: 890, taux: 2.9, fixe: 30, lignes: [[999, 10, 300, 22]] },
+    {
+      livraison: 1500,
+      taux: 1.5,
+      fixe: 25,
+      lignes: [
+        [4500, 2, 2000, 22],
+        [700, 12, 150, 0],
+        [25000, 1, 9000, 45],
+        [100, 1, 0, 22],
+      ],
+    },
+    { livraison: 0, taux: 0, fixe: 0, lignes: [[1000, 1, 1000, 50]] },
+  ];
+
+  for (const panier of paniers) {
+    const rows = panier.lignes.map(([coutUnitaire, quantite, margeUnitaire, tauxChargesLigne]) => ({
+      coutUnitaire,
+      quantite,
+      margeUnitaire,
+      tauxChargesLigne,
+    }));
+    const r = evaluateProfile(
+      profile,
+      { fraisLivraison: panier.livraison, tauxTransaction: panier.taux, fixeTransaction: panier.fixe },
+      rows,
+    );
+    assert.deepEqual(r.errors, [], JSON.stringify(r.errors));
+    for (const row of r.rows) assert.deepEqual(row.errors, [], `ligne ${row.index} : ${JSON.stringify(row.errors)}`);
+
+    const prix = r.scope.prixPanier;
+    // 1. La plateforme se sert : part variable, puis part fixe — UNE fois.
+    let reste = prix - (prix * panier.taux) / 100 - panier.fixe;
+    // 2. On expédie la commande.
+    reste -= panier.livraison;
+    // 3. On paie chaque fournisseur.
+    for (const [coutUnitaire, quantite] of panier.lignes) reste -= coutUnitaire * quantite;
+    // 4. Chaque ligne cotise à SON taux, sur SA marge.
+    for (const [, quantite, margeUnitaire, tauxCharges] of panier.lignes) {
+      const brute = margeUnitaire / (1 - tauxCharges / 100);
+      reste -= (brute - margeUnitaire) * quantite;
+    }
+    // 5. Ce qui reste est la marge visée, à l'arrondi près.
+    const visee = panier.lignes.reduce((sum, [, quantite, marge]) => sum + marge * quantite, 0);
+    // Chaque étape « money » arrondit une fois, par ligne : la tolérance suit
+    // le nombre de lignes plutôt qu'un chiffre magique.
+    const tolerance = 2 + 2 * panier.lignes.length;
+    assert.ok(
+      Math.abs(reste - visee) <= tolerance,
+      `il reste ${reste.toFixed(2)} au lieu de ${visee} (${panier.lignes.length} ligne(s))`,
+    );
+  }
+});
+
+check('PANIER : la QUANTITÉ n’amplifie pas l’arrondi', () => {
+  /*
+    LE DÉFAUT QUE CE CONTRÔLE FERME, trouvé par le contrôle précédent.
+
+    Chaque étape « money » arrondit au centime. Une première version calculait
+    la marge brute PAR UNITÉ puis multipliait par la quantité : l'arrondi de
+    l'unité était multiplié lui aussi. Sur une marge de 3 € à 22 % de charges,
+    l'unité arrondit de 0,385 centime — invisible à l'unité, 3,85 € faux à mille
+    exemplaires. Personne ne l'aurait vu : le prix reste crédible.
+
+    L'écart doit donc rester borné par le nombre de LIGNES, jamais par les
+    quantités. On éprouve la même marge à cinq échelles séparées par des ordres
+    de grandeur, avec un taux qui ne tombe pas rond exprès.
+  */
+  const profile = profileOf('ecommerce-panier');
+  for (const quantite of [1, 10, 100, 1000, 7777]) {
+    const r = evaluateProfile(
+      profile,
+      { fraisLivraison: 0, tauxTransaction: 1.5, fixeTransaction: 25 },
+      [{ coutUnitaire: 999, quantite, margeUnitaire: 300, tauxChargesLigne: 22 }],
+    );
+    assert.deepEqual(r.errors, []);
+    const prix = r.scope.prixPanier;
+    const reste = prix - (prix * 1.5) / 100 - 25 - 999 * quantite;
+    const brute = (300 * quantite) / (1 - 0.22);
+    const net = reste - (brute - 300 * quantite);
+    assert.ok(
+      Math.abs(net - 300 * quantite) <= 4,
+      `à ${quantite} exemplaires l’écart vaut ${(net - 300 * quantite).toFixed(2)} centimes — l’arrondi suit la quantité`,
+    );
+  }
+});
+
+check('PANIER : les frais fixes se prennent UNE FOIS, pas une par ligne', () => {
+  /*
+    LA RAISON D'ÊTRE DU PROFIL, éprouvée directement.
+
+    Calculer cinq articles séparément et additionner ajoute cinq parts fixes :
+    le panier ressort trop cher, d'autant plus qu'il a de lignes. C'est
+    l'erreur que fait n'importe qui avec le calculateur à un article, et elle
+    est invisible — le total a l'air juste.
+
+    Cinq lignes identiques, comparées à cinq fois le prix d'un article seul :
+    l'écart doit valoir exactement les QUATRE parts fixes en trop, remontées
+    par le taux variable comme n'importe quel autre montant.
+  */
+  const panier = profileOf('ecommerce-panier');
+  const article = profileOf('ecommerce-prix-client');
+  const taux = 1.5;
+  const fixe = 25;
+  const ligne = { coutUnitaire: 4500, quantite: 1, margeUnitaire: 2000, tauxChargesLigne: 22 };
+
+  const cinq = evaluateProfile(
+    panier,
+    { fraisLivraison: 0, tauxTransaction: taux, fixeTransaction: fixe },
+    Array.from({ length: 5 }, () => ({ ...ligne })),
+  );
+  const seul = evaluateProfile(article, {
+    coutFournisseur: 4500,
+    fraisLivraison: 0,
+    margeVisee: 2000,
+    tauxCharges: 22,
+    tauxTransaction: taux,
+    fixeTransaction: fixe,
+  });
+
+  const naif = seul.scope.prixClient * 5;
+  const economie = naif - cinq.scope.prixPanier;
+  const attendu = (4 * fixe) / (1 - taux / 100);
+  assert.ok(
+    Math.abs(economie - attendu) <= 5,
+    `l’écart vaut ${economie.toFixed(2)} au lieu de ${attendu.toFixed(2)} — la part fixe est comptée plusieurs fois`,
+  );
+  assert.ok(economie > 0, 'le panier devrait coûter MOINS que cinq articles calculés séparément');
+
+  // Et une ligne de quantité 5 doit donner le même prix que cinq lignes de 1 :
+  // le découpage du panier ne doit rien changer au total.
+  const groupee = evaluateProfile(
+    panier,
+    { fraisLivraison: 0, tauxTransaction: taux, fixeTransaction: fixe },
+    [{ ...ligne, quantite: 5 }],
+  );
+  assert.ok(
+    Math.abs(groupee.scope.prixPanier - cinq.scope.prixPanier) <= 5,
+    `regrouper les lignes change le prix : ${groupee.scope.prixPanier} vs ${cinq.scope.prixPanier}`,
+  );
+});
+
+check('PANIER : chaque ligne cotise à SON taux, et ça CHANGE le résultat', () => {
+  /*
+    La seconde raison d'être. Un taux unique appliqué au total est faux dès que
+    le panier mélange un produit revendu et une prestation.
+
+    La seconde assertion est celle qui compte : sans elle, le contrôle
+    passerait aussi bien avec un taux moyen, et ne prouverait donc rien.
+  */
+  const profile = profileOf('ecommerce-panier');
+  const lignes = [
+    { coutUnitaire: 4500, quantite: 2, margeUnitaire: 2000, tauxChargesLigne: 22 },
+    { coutUnitaire: 25000, quantite: 1, margeUnitaire: 9000, tauxChargesLigne: 45 },
+  ];
+  const r = evaluateProfile(profile, {}, lignes);
+  assert.deepEqual(r.errors, []);
+
+  const attendu = lignes.reduce((sum, l) => {
+    const brute = l.margeUnitaire / (1 - l.tauxChargesLigne / 100);
+    return sum + roundish((brute - l.margeUnitaire) * l.quantite);
+  }, 0);
+  assert.ok(
+    Math.abs(r.scope.chargesPanier - attendu) <= 2,
+    `charges ${r.scope.chargesPanier} au lieu de ${attendu}`,
+  );
+
+  // Un taux moyen (33,5 %) sur la marge totale donnerait un autre chiffre :
+  // la ventilation par ligne n'est donc pas décorative.
+  const margeTotale = lignes.reduce((sum, l) => sum + l.margeUnitaire * l.quantite, 0);
+  const moyen = margeTotale / (1 - 0.335) - margeTotale;
+  assert.ok(
+    Math.abs(moyen - attendu) > 100,
+    'un taux moyen donnerait le même résultat : ce contrôle ne prouve rien',
+  );
+});
+
+check('PANIER : une ligne en échec ne laisse PAS passer un total incomplet', () => {
+  /*
+    Le piège que ce comportement évite : sommer les lignes qui ont marché.
+    Le total serait parfaitement crédible, plus petit que la réalité, et
+    personne n'aurait de raison de le mettre en doute.
+
+    Un taux de charges à 100 % divise par zéro — c'est une saisie que rien
+    n'interdit à l'écran, et c'est le cas réel.
+  */
+  const profile = profileOf('ecommerce-panier');
+  const r = evaluateProfile(profile, {}, [
+    { coutUnitaire: 4500, quantite: 1, margeUnitaire: 2000, tauxChargesLigne: 22 },
+    { coutUnitaire: 4500, quantite: 1, margeUnitaire: 2000, tauxChargesLigne: 100 },
+  ]);
+
+  assert.deepEqual(r.rows[0].errors, [], 'la première ligne, elle, doit passer');
+  assert.ok(r.rows[1].errors.length > 0, 'la seconde ligne doit échouer');
+  assert.ok(
+    r.rows[1].errors[0].message.startsWith('Ligne 2'),
+    `l’erreur doit nommer sa ligne : ${r.rows[1].errors[0].message}`,
+  );
+
+  // Le total refusé, et tout ce qui en dépend refusé à son tour.
+  assert.equal(r.scope.total_netLigne, undefined, 'un total partiel est entré dans la portée');
+  assert.equal(r.scope.prixPanier, undefined, 'un prix a été calculé sur un panier incomplet');
+  const cles = r.errors.map((e) => e.key);
+  assert.ok(cles.includes('total_netLigne'), JSON.stringify(r.errors));
+  assert.ok(cles.includes('prixPanier'), JSON.stringify(r.errors));
+
+  // Et le coût, lui, se totalise quand même : `coutLigne` ne dépend pas de la
+  // ligne fautive. Une erreur ne doit pas emporter ce qu'elle ne touche pas.
+  assert.equal(r.scope.total_coutLigne, 9000);
+});
+
+check('PANIER : sans lignes fournies, l’écran s’ouvre sur un panier qui tient debout', () => {
+  // À la première ouverture, personne n'a rien saisi. Le profil doit rendre
+  // ses `defaultRows` lignes remplies des valeurs par défaut, et un prix.
+  const profile = profileOf('ecommerce-panier');
+  const r = evaluateProfile(profile);
+  assert.deepEqual(r.errors, []);
+  assert.equal(r.rows.length, 2, 'defaultRows n’est pas respecté');
+  for (const row of r.rows) assert.deepEqual(row.errors, []);
+  assert.ok(r.scope.prixPanier > 0);
+  assert.equal(r.scope.nbLignes, 2);
+});
+
+check('LIGNES : une colonne ne fuit pas d’une ligne à la suivante', () => {
+  /*
+    Chaque ligne part d'une COPIE de la portée globale. Sans cette copie, une
+    colonne laissée vide sur la ligne 2 hériterait de la ligne 1 : le résultat
+    dépendrait de l'ordre de saisie, ce qui est la pire sorte de bug — il ne se
+    reproduit pas quand on le cherche.
+  */
+  const profile = profileOf('ecommerce-panier');
+  const r = evaluateProfile(profile, {}, [
+    { coutUnitaire: 90000, quantite: 1, margeUnitaire: 1, tauxChargesLigne: 0 },
+    {}, // rien de saisi : les valeurs par défaut des colonnes, et elles seules
+  ]);
+  assert.deepEqual(r.errors, []);
+  assert.equal(r.rows[1].scope.coutUnitaire, 4500, 'la ligne 2 a hérité du coût de la ligne 1');
+  assert.equal(r.rows[1].scope.margeUnitaire, 2000);
+  assert.equal(r.rows[1].scope.tauxChargesLigne, 22);
+});
+
+check('LIGNES : une étape de ligne voit les entrées globales, jamais les étapes globales', () => {
+  /*
+    C'est la limite assumée du modèle : les lignes sont déroulées AVANT les
+    étapes globales, donc une ligne ne peut pas nommer un calcul global. La
+    déclarer ici, c'est s'assurer qu'elle est refusée à la validation plutôt
+    que découverte comme un « Valeur inconnue » à l'écran.
+  */
+  const base = {
+    id: 'essai-lignes',
+    label: 'Essai',
+    description: 'Un profil d’essai, uniquement pour éprouver la portée des lignes.',
+    inputs: [{ key: 'tva', label: 'TVA', kind: 'percent' as Kind, defaultValue: 20 }],
+  };
+  const colonnes = [{ key: 'ht', label: 'HT', kind: 'money' as Kind, defaultValue: 1000 }];
+
+  // Une entrée globale vue depuis une ligne : accepté, et calculé juste.
+  const bon = {
+    ...base,
+    rows: {
+      label: 'Lignes',
+      addLabel: 'Ajouter',
+      inputs: colonnes,
+      steps: [{ key: 'ttc', label: 'TTC', kind: 'money' as Kind, formula: 'ht * (1 + tva / 100)', output: true }],
+    },
+    steps: [{ key: 'total', label: 'Total', kind: 'money' as Kind, formula: 'total_ttc', output: true, headline: true }],
+  };
+  assert.deepEqual(validateProfile(bon), []);
+  const r = evaluateProfile(bon, {}, [{ ht: 1000 }, { ht: 2500 }]);
+  assert.deepEqual(r.errors, []);
+  assert.equal(r.rows[0].scope.ttc, 1200);
+  assert.equal(r.rows[1].scope.ttc, 3000);
+  assert.equal(r.scope.total, 1200 + 3000);
+
+  // Une étape GLOBALE vue depuis une ligne : refusée, avec la raison.
+  const mauvais = {
+    ...base,
+    rows: {
+      label: 'Lignes',
+      addLabel: 'Ajouter',
+      inputs: colonnes,
+      steps: [{ key: 'ttc', label: 'TTC', kind: 'money' as Kind, formula: 'ht * coefficient', output: true }],
+    },
+    steps: [
+      { key: 'coefficient', label: 'Coefficient', kind: 'number' as Kind, formula: '1 + tva / 100' },
+      { key: 'total', label: 'Total', kind: 'money' as Kind, formula: 'total_ttc', output: true, headline: true },
+    ],
+  };
+  const problemes = validateProfile(mauvais);
+  assert.ok(
+    problemes.some((p) => p.includes('coefficient') && p.includes('(ligne)')),
+    `une ligne nommant une étape globale a été acceptée : ${JSON.stringify(problemes)}`,
+  );
+});
+
+check('LIGNES : une colonne ne peut pas masquer une entrée globale', () => {
+  // Elle l'écraserait dans la portée de la ligne — sans le dire, et seulement
+  // là. Les deux valeurs porteraient le même nom et n'auraient pas la même
+  // valeur selon l'endroit où on les lit.
+  const problemes = validateProfile({
+    id: 'essai-masque',
+    label: 'Essai',
+    description: 'Un profil d’essai, uniquement pour éprouver le masquage de portée.',
+    inputs: [{ key: 'taux', label: 'Taux', kind: 'percent', defaultValue: 20 }],
+    rows: {
+      label: 'Lignes',
+      addLabel: 'Ajouter',
+      inputs: [{ key: 'taux', label: 'Taux de la ligne', kind: 'percent', defaultValue: 5 }],
+      steps: [{ key: 'x', label: 'X', kind: 'number', formula: 'taux * 2', output: true }],
+    },
+    steps: [{ key: 'y', label: 'Y', kind: 'number', formula: 'nbLignes', output: true, headline: true }],
+  });
+  assert.ok(
+    problemes.some((p) => p.includes('déjà pris par une entrée globale')),
+    JSON.stringify(problemes),
+  );
+});
+
+check('LIGNES : ne se totalise que ce dont la somme veut dire quelque chose', () => {
+  /*
+    DEUX REFUS, ET ILS N'ONT PAS LA MÊME FORCE.
+
+    Un TAUX ne se totalise jamais : 22 % et 45 % ne font pas 67 %. C'est une
+    règle du moteur, rien ne la lève.
+
+    Une COLONNE SAISIE ne se totalise que si le profil le dit. « Quantité » se
+    totalise ; « Coût unitaire » non — 45 € et 45 € n'en font pas 90, ils font
+    deux articles à 45 €. Le moteur ne peut pas trancher depuis la nature de
+    la colonne : les deux sont des nombres, l'un est un compte et l'autre un
+    prix. C'est donc le profil qui le dit, et le pied du tableau n'affiche que
+    ce qu'il a déclaré.
+
+    Le message doit dire POURQUOI, sinon l'auteur du profil contourne au lieu
+    de comprendre.
+  */
+  const base = {
+    id: 'essai-totaux',
+    label: 'Essai',
+    description: 'Un profil d’essai, uniquement pour éprouver ce qui se totalise.',
+    inputs: [],
+    steps: [{ key: 'somme', label: 'Somme', kind: 'number' as Kind, formula: 'total_remise', output: true, headline: true }],
+  };
+
+  // Un taux : refusé, et « sum » n'y change rien.
+  for (const sum of [undefined, true]) {
+    const problemes = validateProfile({
+      ...base,
+      rows: {
+        label: 'Lignes',
+        addLabel: 'Ajouter',
+        inputs: [{ key: 'remise', label: 'Remise', kind: 'percent', defaultValue: 10, sum }],
+        steps: [],
+      },
+    });
+    assert.ok(
+      problemes.some((p) => p.includes('ne se totalise pas')),
+      `sum=${String(sum)} : ${JSON.stringify(problemes)}`,
+    );
+  }
+
+  // Une colonne ordinaire non déclarée : refusée aussi.
+  const sansDeclaration = validateProfile({
+    ...base,
+    rows: {
+      label: 'Lignes',
+      addLabel: 'Ajouter',
+      inputs: [{ key: 'remise', label: 'Remise', kind: 'money', defaultValue: 10 }],
+      steps: [],
+    },
+  });
+  assert.ok(
+    sansDeclaration.some((p) => p.includes('ne se totalise pas')),
+    JSON.stringify(sansDeclaration),
+  );
+
+  // La même, déclarée : acceptée, et le total tombe juste.
+  const declaree = {
+    ...base,
+    rows: {
+      label: 'Lignes',
+      addLabel: 'Ajouter',
+      inputs: [{ key: 'remise', label: 'Remise', kind: 'money' as Kind, defaultValue: 10, sum: true }],
+      steps: [],
+    },
+  };
+  assert.deepEqual(validateProfile(declaree), []);
+  assert.equal(evaluateProfile(declaree, {}, [{ remise: 300 }, { remise: 450 }]).scope.somme, 750);
+
+  // Et sur le profil livré, à l'exécution.
+  const panier = evaluateProfile(profileOf('ecommerce-panier'));
+  assert.equal(panier.scope[totalKey('tauxChargesLigne')], undefined, 'la somme de deux taux est dans la portée');
+  assert.equal(panier.scope[totalKey('coutUnitaire')], undefined, 'la somme de deux prix unitaires est dans la portée');
+  assert.ok(panier.scope[totalKey('quantite')] > 0, 'la quantité, elle, doit se totaliser');
+  assert.ok(panier.scope[totalKey('coutLigne')] > 0, 'une étape de ligne se totalise toujours');
+});
+
+check('LIGNES : un profil SANS bloc de lignes se comporte exactement comme avant', () => {
+  // La non-régression : les quatre profils historiques n'ont pas de lignes, et
+  // rien de ce qui les concerne ne doit avoir changé.
+  for (const profile of TOUS_PROFILS.filter((p) => !p.rows)) {
+    const r = evaluateProfile(profile);
+    assert.deepEqual(r.rows, [], `${profile.id} rend des lignes alors qu’il n’en déclare pas`);
+    assert.equal(r.scope.nbLignes, undefined, `${profile.id} : nbLignes ne devrait pas exister`);
+  }
+});
 
 check('ÉVÉNEMENTIEL : le seuil de rentabilité tombe juste', () => {
   const profile = profileOf('evenementiel-rentabilite');

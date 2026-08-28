@@ -1,12 +1,18 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { motion } from 'framer-motion';
-import { Calculator, Scale, TrendingDown, TrendingUp, Users } from 'lucide-react';
+import { Calculator, Plus, Scale, Trash2, TrendingDown, TrendingUp, Users } from 'lucide-react';
 import { useExpenses } from '../state/useExpenses';
 import { useInvoices, invoiceTotals } from '../state/useInvoices';
 import { useTimeTracking } from '../state/useTimeTracking';
 import { useCollection, recordWriter } from '../state/SyncContext';
-import { evaluateProfile, outputsOf, type CalcKind } from '../state/calcEngine';
+import {
+  evaluateProfile,
+  outputsOf,
+  totalKey,
+  type CalcRowBlock,
+  type CalcRowResult,
+} from '../state/calcEngine';
 import { CALC_PROFILES, DEFAULT_CALC_PROFILE_ID, calcProfileById } from '../state/calcProfiles';
 import {
   formatWorked,
@@ -51,6 +57,38 @@ export function CalculatorsScreen() {
   const [texts, setTexts] = useState<Record<string, Record<string, string>>>({});
   const current = useMemo(() => texts[profile.id] ?? {}, [texts, profile.id]);
 
+  /*
+    Les LIGNES suivent la même règle que les champs simples : le texte saisi
+    est conservé tel quel, et chaque profil garde le sien. Un panier commencé
+    ne doit pas disparaître parce qu'on est allé regarder un autre
+    calculateur.
+
+    Le profil décide du nombre de lignes d'ouverture ; le tableau n'en a
+    jamais zéro, sans quoi le premier geste demandé à l'utilisateur serait
+    « ajouter une ligne » devant un tableau vide.
+  */
+  const [rowDrafts, setRowDrafts] = useState<Record<string, RowDraft[]>>({});
+  const rows = useMemo(
+    () => rowDrafts[profile.id] ?? emptyRows(profile.rows?.defaultRows ?? 1),
+    [rowDrafts, profile.id, profile.rows],
+  );
+  const setRows = (next: RowDraft[]) =>
+    setRowDrafts((prev) => ({ ...prev, [profile.id]: next.length ? next : emptyRows(1) }));
+
+  const parsedRows = useMemo(() => {
+    if (!profile.rows) return undefined;
+    const colonnes = profile.rows.inputs;
+    return rows.map((row) => {
+      const out: Record<string, number> = {};
+      for (const colonne of colonnes) {
+        const raw = row.values[colonne.key];
+        if (raw === undefined) continue;
+        out[colonne.key] = parseValue(raw, colonne.kind);
+      }
+      return out;
+    });
+  }, [profile.rows, rows]);
+
   const parsed = useMemo(() => {
     const out: Record<string, number> = {};
     for (const input of profile.inputs) {
@@ -62,7 +100,10 @@ export function CalculatorsScreen() {
     return out;
   }, [profile, current]);
 
-  const result = useMemo(() => evaluateProfile(profile, parsed), [profile, parsed]);
+  const result = useMemo(
+    () => evaluateProfile(profile, parsed, parsedRows),
+    [profile, parsed, parsedRows],
+  );
   /*
     `outputsOf` rend LA RÉPONSE EN PREMIER, pas la première étape calculée.
 
@@ -121,13 +162,32 @@ export function CalculatorsScreen() {
         {profile.description}
       </motion.p>
 
-      <motion.div variants={staggerItem} className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+      {/*
+        UNE COLONNE dès qu'il y a des lignes, deux sinon.
+
+        Un tableau de six colonnes chiffrées dans une demi-largeur d'écran ne
+        se lit pas : on perd l'alignement des colonnes, qui est précisément ce
+        qui rend un panier comparable. L'ordre de lecture devient alors celui
+        du raisonnement — ce qu'on sait, les lignes, le résultat.
+      */}
+      <motion.div
+        variants={staggerItem}
+        className={`grid gap-4 ${profile.rows ? '' : 'lg:grid-cols-[1fr_1fr]'}`}
+      >
         {/* ------------------------------ Entrées ------------------------------ */}
         <section className="border border-border bg-surface p-4">
           <h2 className="mb-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary">
             Ce que vous savez
           </h2>
-          <div className="flex flex-col gap-3">
+          {/*
+            En pleine largeur, une colonne d'entrées donne des champs d'un
+            mètre de long pour y taper « 22 ». La grille n'apparaît donc que
+            là où la place existe — c'est-à-dire quand un tableau de lignes a
+            poussé la section sur toute la largeur.
+          */}
+          <div
+            className={`grid gap-3 ${profile.rows ? 'sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}
+          >
             {profile.inputs.map((input) => (
               <label key={input.key} className="block">
                 <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-text-muted">
@@ -150,6 +210,16 @@ export function CalculatorsScreen() {
             ))}
           </div>
         </section>
+
+        {profile.rows && (
+          <RowsSection
+            bloc={profile.rows}
+            rows={rows}
+            results={result.rows}
+            scope={result.scope}
+            onChange={setRows}
+          />
+        )}
 
         {/* ------------------------------ Résultats ---------------------------- */}
         <section className="border border-border bg-surface p-4">
@@ -224,6 +294,269 @@ export function CalculatorsScreen() {
     </motion.section>
   );
 }
+
+/* ------------------------------ Les lignes -------------------------------- */
+
+/** Ce qu'une ligne du panier retient : un libellé libre et ses colonnes. */
+interface RowDraft {
+  name: string;
+  values: Record<string, string>;
+}
+
+function emptyRows(count: number): RowDraft[] {
+  return Array.from({ length: Math.max(count, 1) }, () => ({ name: '', values: {} }));
+}
+
+/**
+ * Le tableau des lignes — un panier, un devis.
+ *
+ * ## Pourquoi un tableau et pas des cartes empilées
+ *
+ * Les colonnes se comparent. Un devis dont une ligne coûte dix fois les autres
+ * se repère d'un coup d'œil sur une colonne alignée, et pas du tout sur six
+ * cartes qui se ressemblent. Les chiffres sont donc en `tabular-nums`, alignés
+ * à droite, dans des colonnes de largeur stable.
+ *
+ * ## Ce que la ligne de totaux fait, et ce qu'elle refuse de faire
+ *
+ * Elle n'additionne que ce qui s'additionne. Une colonne en POURCENTAGE n'y
+ * figure pas : 22 % et 45 % ne font pas 67 %, et un chiffre faux à cet endroit
+ * aurait toute l'autorité d'un total. Le moteur ne l'expose pas non plus (voir
+ * `calcEngine`), donc les deux refusent la même chose au même endroit.
+ */
+function RowsSection({
+  bloc,
+  rows,
+  results,
+  scope,
+  onChange,
+}: {
+  bloc: CalcRowBlock;
+  rows: RowDraft[];
+  results: CalcRowResult[];
+  scope: Record<string, number>;
+  onChange: (next: RowDraft[]) => void;
+}) {
+  const sorties = bloc.steps.filter((step) => step.output);
+
+  /*
+    UNE erreur par ligne, la PREMIÈRE — pas les trois.
+
+    Le moteur retire une étape en échec de la portée, ce qui fait échouer
+    proprement celles qui en dépendent : c'est la bonne règle à l'intérieur,
+    mais tout relayer donnait trois messages pour une seule faute de frappe,
+    dont deux identiques (« Valeur inconnue : margeBruteLigne ») et aucun
+    n'ajoutant rien au premier. La première erreur est la CAUSE ; les
+    suivantes en sont les conséquences, et on ne demande pas à quelqu'un de
+    corriger une conséquence.
+  */
+  const erreurs = results.flatMap((row) => row.errors.slice(0, 1));
+
+  const setCell = (index: number, key: string, raw: string) =>
+    onChange(
+      rows.map((row, i) =>
+        i === index ? { ...row, values: { ...row.values, [key]: raw } } : row,
+      ),
+    );
+
+  const setName = (index: number, name: string) =>
+    onChange(rows.map((row, i) => (i === index ? { ...row, name } : row)));
+
+  return (
+    /*
+      `min-w-0` N'EST PAS DÉCORATIF.
+
+      Un enfant de grille vaut `min-width: auto` par défaut : il refuse de
+      devenir plus étroit que son contenu. Le tableau, large de 40 rem,
+      élargissait donc la colonne de grille, puis la page — sur téléphone, les
+      bordures des sections et la fin des phrases d'aide sortaient de l'écran,
+      et le `overflow-x-auto` juste en dessous n'avait rien à faire défiler
+      puisqu'il avait la place. Avec `min-w-0`, la section se laisse serrer et
+      c'est le tableau, lui seul, qui défile.
+    */
+    <section className="min-w-0 border border-border bg-surface p-4">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">
+          {bloc.label}
+        </h2>
+        <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+          {rows.length} ligne{rows.length > 1 ? 's' : ''}
+        </span>
+      </div>
+      {bloc.help && (
+        <p className="mb-3 text-[11px] leading-relaxed text-text-muted">{bloc.help}</p>
+      )}
+
+      {/* Un tableau large ne doit jamais pousser la page : il défile chez lui. */}
+      <div className="-mx-4 overflow-x-auto px-4">
+        <table className="w-full min-w-[40rem] border-collapse">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="w-8 pb-2 text-left font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                #
+              </th>
+              {bloc.nameLabel && (
+                <th className="pb-2 pl-2 text-left font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                  {bloc.nameLabel}
+                </th>
+              )}
+              {bloc.inputs.map((input) => (
+                <th
+                  key={input.key}
+                  title={input.help}
+                  className="pb-2 pl-2 text-right font-mono text-[10px] uppercase tracking-widest text-text-muted"
+                >
+                  {input.label}
+                  {input.kind === 'percent' && ' (%)'}
+                </th>
+              ))}
+              {/* Un filet sépare ce qu'on TAPE de ce qui se CALCULE : sans lui,
+                  neuf colonnes de chiffres se lisent comme un seul bloc et on
+                  cherche du regard où s'arrête la saisie. */}
+              {sorties.map((step, i) => (
+                <th
+                  key={step.key}
+                  className={`pb-2 pl-2 text-right font-mono text-[10px] uppercase tracking-widest text-text-secondary ${
+                    i === 0 ? 'border-l border-border' : ''
+                  }`}
+                >
+                  {step.label}
+                </th>
+              ))}
+              <th className="w-8 pb-2" aria-label="Retirer" />
+            </tr>
+          </thead>
+
+          <tbody>
+            {rows.map((row, index) => {
+              const calcul = results[index];
+              const enEchec = (calcul?.errors.length ?? 0) > 0;
+              return (
+                <tr key={index} className="border-b border-border/60">
+                  <td className="py-1.5 font-mono text-[11px] tabular-nums text-text-muted">
+                    {index + 1}
+                  </td>
+                  {bloc.nameLabel && (
+                    <td className="py-1.5 pl-2">
+                      <input
+                        value={row.name}
+                        onChange={(e) => setName(index, e.target.value)}
+                        placeholder="—"
+                        aria-label={`${bloc.nameLabel}, ligne ${index + 1}`}
+                        className="input-focus min-h-9 w-full min-w-28 border border-border bg-bg px-2 text-xs text-text-primary outline-none"
+                      />
+                    </td>
+                  )}
+                  {bloc.inputs.map((input) => (
+                    <td key={input.key} className="py-1.5 pl-2">
+                      <input
+                        inputMode="decimal"
+                        value={row.values[input.key] ?? defaultText(input.defaultValue, input.kind)}
+                        onChange={(e) => setCell(index, input.key, e.target.value)}
+                        placeholder={defaultText(input.defaultValue, input.kind)}
+                        aria-label={`${input.label}, ligne ${index + 1}`}
+                        className="input-focus min-h-9 w-full min-w-20 border border-border bg-bg px-2 text-right font-mono text-xs tabular-nums text-text-primary outline-none"
+                      />
+                    </td>
+                  ))}
+                  {sorties.map((step, i) => {
+                    const ligne = calcul?.lines.find((l) => l.key === step.key);
+                    return (
+                      <td
+                        key={step.key}
+                        className={`py-1.5 pl-2 text-right font-mono text-xs tabular-nums ${
+                          ligne ? 'text-text-secondary' : 'text-text-muted'
+                        } ${i === 0 ? 'border-l border-border' : ''}`}
+                      >
+                        {/* Un tiret, pas un zéro : une ligne en échec n'est pas
+                            une ligne à zéro, et les deux se lisent autrement. */}
+                        {ligne ? formatValue(ligne.value, ligne.kind) : '—'}
+                      </td>
+                    );
+                  })}
+                  <td className="py-1.5 pl-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => onChange(rows.filter((_, i) => i !== index))}
+                      disabled={rows.length <= 1}
+                      title={rows.length <= 1 ? 'Il faut au moins une ligne' : 'Retirer cette ligne'}
+                      aria-label={`Retirer la ligne ${index + 1}`}
+                      className="p-1 text-text-muted transition-colors hover:text-danger disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-text-muted"
+                    >
+                      <Trash2 size={13} strokeWidth={1.75} />
+                    </button>
+                  </td>
+                  {enEchec && <td className="hidden" />}
+                </tr>
+              );
+            })}
+          </tbody>
+
+          <tfoot>
+            <tr>
+              <td className="pt-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                Σ
+              </td>
+              {bloc.nameLabel && <td />}
+              {bloc.inputs.map((input) => (
+                <td
+                  key={input.key}
+                  className="pt-2 pl-2 text-right font-mono text-xs tabular-nums text-text-muted"
+                >
+                  {/*
+                    Une case VIDE, pas un zéro ni un tiret : cette colonne ne
+                    se totalise pas, et il n'y a donc rien à annoncer. Le
+                    moteur décide (voir `colonnesTotalisables`), l'écran se
+                    contente de lire — les deux ne peuvent pas diverger.
+                  */}
+                  {scope[totalKey(input.key)] === undefined
+                    ? ''
+                    : formatValue(scope[totalKey(input.key)], input.kind)}
+                </td>
+              ))}
+              {sorties.map((step, i) => (
+                <td
+                  key={step.key}
+                  className={`pt-2 pl-2 text-right font-mono text-xs tabular-nums text-text-primary ${
+                    i === 0 ? 'border-l border-border' : ''
+                  }`}
+                >
+                  {scope[totalKey(step.key)] === undefined
+                    ? '—'
+                    : formatValue(scope[totalKey(step.key)], step.kind)}
+                </td>
+              ))}
+              <td />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      {erreurs.length > 0 && (
+        <ul className="mt-3 flex flex-col gap-1">
+          {erreurs.map((err, i) => (
+            <li
+              key={`${err.key}-${i}`}
+              className="border border-warning/40 bg-warning-muted px-3 py-2 text-xs leading-relaxed text-text-primary"
+            >
+              {err.message}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <button
+        type="button"
+        onClick={() => onChange([...rows, { name: '', values: {} }])}
+        className="mt-3 flex min-h-11 items-center gap-2 border border-border px-3 text-xs text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:min-h-0 md:py-2"
+      >
+        <Plus size={13} strokeWidth={1.75} />
+        {bloc.addLabel}
+      </button>
+    </section>
+  );
+}
+
 
 /* ------------------------------ Synthèse du mois --------------------------- */
 

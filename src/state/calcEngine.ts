@@ -51,6 +51,21 @@ export interface CalcInput {
   defaultValue: number;
   /** Une phrase qui dit d'où vient ce chiffre — jamais un simple synonyme du libellé. */
   help?: string;
+  /**
+   * COLONNE DE LIGNE uniquement : cette colonne se totalise.
+   *
+   * Toutes ne le peuvent pas, et le moteur ne peut pas le deviner de leur
+   * nature. « Quantité » se totalise — deux articles plus trois en font cinq.
+   * « Coût unitaire » ne se totalise PAS : 45 € et 45 € n'en font pas 90, ils
+   * font deux articles à 45 €. Le chiffre existerait, s'afficherait sous une
+   * colonne, en bas, précédé d'un sigma — et n'aurait aucun sens.
+   *
+   * Non déclaré, la colonne n'a simplement pas de `total_<clé>` : ni dans le
+   * pied du tableau, ni dans la portée des formules. Ce qui se totalise
+   * toujours, sans rien déclarer, ce sont les ÉTAPES de ligne : une étape de
+   * ligne est par construction un montant de LIGNE, pas d'unité.
+   */
+  sum?: boolean;
 }
 
 export interface CalcStep {
@@ -80,6 +95,62 @@ export interface CalcStep {
   help?: string;
 }
 
+/**
+ * Un bloc de LIGNES — un panier, un devis, une commande à plusieurs articles.
+ *
+ * ## Ce qu'il résout
+ *
+ * Le moteur traitait un article. Un panier de cinq références, chacune avec
+ * son coût d'achat et sa quantité, obligeait à ouvrir le calculateur cinq fois
+ * et à additionner à la main — c'est-à-dire à refaire dehors ce que l'outil
+ * est censé faire dedans.
+ *
+ * ## L'ordre, encore
+ *
+ * Le fichier tient parce qu'une valeur ne voit que ce qui la précède. Les
+ * lignes ne dérogent pas ; elles ajoutent un seul étage, toujours au même
+ * endroit :
+ *
+ *   1. les entrées globales entrent dans la portée ;
+ *   2. le bloc de lignes est déroulé — CHAQUE ligne dans sa propre portée,
+ *      qui voit les entrées globales, ses propres colonnes, et les étapes de
+ *      ligne qui la précèdent ;
+ *   3. les agrégats (`total_<clé>`, `nbLignes`) entrent dans la portée
+ *      globale ;
+ *   4. les étapes globales se déroulent, et voient tout ce qui précède.
+ *
+ * Une étape de ligne ne peut donc pas nommer une étape globale. C'est une
+ * vraie limite, assumée : l'autoriser demanderait de savoir quelle étape
+ * globale vient « avant » le bloc, donc un graphe de dépendances — exactement
+ * ce que ce moteur refuse d'avoir à déboguer. Dans les cas réels, ce qu'une
+ * ligne doit connaître (un taux de charges, un taux de commission) est une
+ * ENTRÉE, pas un calcul.
+ */
+export interface CalcRowBlock {
+  /** Sert de libellé de section, pas de préfixe : les agrégats nomment la colonne. */
+  label: string;
+  /** Le texte du bouton d'ajout. Écrit dans le profil parce qu'il parle du métier. */
+  addLabel: string;
+  /** Une phrase sous le titre. Facultative. */
+  help?: string;
+  /**
+   * L'en-tête de la colonne de LIBELLÉ — « Référence », « Poste », « Article ».
+   *
+   * Cette colonne est du texte libre que le moteur ne voit jamais : elle
+   * n'entre dans aucune portée et ne se totalise pas. Elle existe parce qu'un
+   * panier de six lignes de chiffres nus est illisible ; sans elle, il faut
+   * tenir le tableau de tête pendant qu'on le remplit. Facultative — un bloc
+   * qui ne la déclare pas n'affiche pas la colonne.
+   */
+  nameLabel?: string;
+  /** Les colonnes saisies, une valeur par ligne. */
+  inputs: CalcInput[];
+  /** Calculées pour CHAQUE ligne, dans l'ordre. */
+  steps: CalcStep[];
+  /** Combien de lignes vides à l'ouverture. Au moins une. */
+  defaultRows?: number;
+}
+
 export interface CalcProfile {
   id: string;
   label: string;
@@ -87,6 +158,8 @@ export interface CalcProfile {
   description: string;
   inputs: CalcInput[];
   steps: CalcStep[];
+  /** Facultatif : un panier, un devis. Voir `CalcRowBlock`. */
+  rows?: CalcRowBlock;
 }
 
 /* ------------------------------ L'évaluateur ------------------------------- */
@@ -347,14 +420,49 @@ export interface CalcLine {
   help?: string;
 }
 
+/** Une ligne du panier, déroulée. */
+export interface CalcRowResult {
+  /** Le rang affiché, à partir de 1 — c'est lui qui nomme les erreurs. */
+  index: number;
+  /** Colonnes saisies puis étapes de ligne, dans l'ordre de déclaration. */
+  lines: CalcLine[];
+  scope: Record<string, number>;
+  errors: { key: string; message: string }[];
+}
+
 export interface CalcResult {
   /** Toutes les valeurs calculées, entrées comprises. */
   scope: Record<string, number>;
   /** Les étapes, dans l'ordre de déclaration. */
   lines: CalcLine[];
+  /** Les lignes du panier, vide si le profil n'en déclare pas. */
+  rows: CalcRowResult[];
   /** Ce qui n'a pas pu être calculé, avec la raison. Jamais silencieux. */
   errors: { key: string; message: string }[];
 }
+
+/** Le nom sous lequel une colonne totalisée entre dans la portée globale. */
+export function totalKey(key: string): string {
+  return `total_${key}`;
+}
+
+/**
+ * Les colonnes d'un bloc qui se totalisent — la règle, écrite UNE fois.
+ *
+ * Lue par l'évaluateur, par la validation et par l'écran : les trois doivent
+ * refuser exactement la même chose, sinon le pied du tableau affiche un total
+ * que les formules n'ont pas, ou l'inverse.
+ *
+ *   - une ÉTAPE de ligne se totalise toujours : c'est un montant de ligne ;
+ *   - une COLONNE SAISIE ne se totalise que si le profil le dit (`sum`) ;
+ *   - un TAUX ne se totalise jamais, quoi qu'on déclare.
+ */
+export function colonnesTotalisables(bloc: CalcRowBlock): (CalcInput | CalcStep)[] {
+  return [...bloc.inputs.filter((c) => c.sum), ...bloc.steps].filter((c) => c.kind !== 'percent');
+}
+
+/** Combien de lignes le panier compte, sous son nom de portée. */
+export const NB_LIGNES = 'nbLignes';
 
 /**
  * Déroule un profil.
@@ -366,6 +474,7 @@ export interface CalcResult {
 export function evaluateProfile(
   profile: CalcProfile,
   values: Record<string, number> = {},
+  rowValues?: Record<string, number>[],
 ): CalcResult {
   const scope: Record<string, number> = {};
   const errors: { key: string; message: string }[] = [];
@@ -373,6 +482,31 @@ export function evaluateProfile(
   for (const input of profile.inputs) {
     const raw = values[input.key];
     scope[input.key] = Number.isFinite(raw) ? raw : input.defaultValue;
+  }
+
+  const rows = profile.rows ? evaluateRows(profile.rows, scope, rowValues) : [];
+  if (profile.rows) {
+    /*
+      LES TOTAUX, ET CE QU'ON REFUSE DE TOTALISER
+
+      Une colonne dont UNE ligne a échoué n'entre pas dans la portée. La
+      tentation serait de sommer ce qui a marché : on obtiendrait un total
+      parfaitement crédible, plus petit que la réalité, sur lequel personne ne
+      poserait de question. Les étapes globales qui en dépendent échouent donc
+      avec un nom — même discipline que pour une étape simple.
+    */
+    for (const colonne of colonnesTotalisables(profile.rows)) {
+      const manquante = rows.find((row) => !(colonne.key in row.scope));
+      if (manquante) {
+        errors.push({
+          key: totalKey(colonne.key),
+          message: `Total impossible pour « ${colonne.label} » : la ligne ${manquante.index} n’a pas pu être calculée`,
+        });
+        continue;
+      }
+      scope[totalKey(colonne.key)] = rows.reduce((sum, row) => sum + row.scope[colonne.key], 0);
+    }
+    scope[NB_LIGNES] = rows.length;
   }
 
   const lines: CalcLine[] = [];
@@ -398,7 +532,72 @@ export function evaluateProfile(
     }
   }
 
-  return { scope, lines, errors };
+  return { scope, lines, rows, errors };
+}
+
+/**
+ * Déroule le bloc de lignes.
+ *
+ * Chaque ligne part d'une COPIE de la portée globale : une colonne ne peut donc
+ * pas fuir d'une ligne à la suivante, ce qui ferait dépendre le résultat de
+ * l'ordre de saisie. Sans lignes fournies, on en rend `defaultRows` remplies
+ * des valeurs par défaut des colonnes — c'est ce qui permet à
+ * `evaluateProfile(profile)` seul de rendre un panier d'exemple qui tient
+ * debout, à l'ouverture de l'écran comme dans les contrôles.
+ */
+function evaluateRows(
+  bloc: CalcRowBlock,
+  global: Record<string, number>,
+  rowValues?: Record<string, number>[],
+): CalcRowResult[] {
+  const fournies: Record<string, number>[] = rowValues?.length
+    ? rowValues
+    : Array.from({ length: Math.max(bloc.defaultRows ?? 1, 1) }, () => ({}));
+
+  return fournies.map((valeurs, i) => {
+    const scope: Record<string, number> = { ...global };
+    const lines: CalcLine[] = [];
+    const errors: { key: string; message: string }[] = [];
+
+    for (const input of bloc.inputs) {
+      const raw = valeurs[input.key];
+      const value = Number.isFinite(raw) ? raw : input.defaultValue;
+      scope[input.key] = value;
+      lines.push({
+        key: input.key,
+        label: input.label,
+        kind: input.kind,
+        value,
+        output: false,
+        headline: false,
+        help: input.help,
+      });
+    }
+
+    for (const step of bloc.steps) {
+      try {
+        const raw = evaluateFormula(step.formula, scope);
+        const value = step.kind === 'money' ? roundHalfAwayFromZero(raw) : raw;
+        scope[step.key] = value;
+        lines.push({
+          key: step.key,
+          label: step.label,
+          kind: step.kind,
+          value,
+          output: Boolean(step.output),
+          headline: false,
+          help: step.help,
+        });
+      } catch (err) {
+        errors.push({
+          key: step.key,
+          message: `Ligne ${i + 1} — ${err instanceof Error ? err.message : String(err)}`,
+        });
+      }
+    }
+
+    return { index: i + 1, lines, scope, errors };
+  });
 }
 
 /**
@@ -412,14 +611,17 @@ export function evaluateProfile(
 export function validateProfile(profile: CalcProfile): string[] {
   const problems: string[] = [];
   const known = new Set<string>();
+  /** Les totaux qui n'existent PAS exprès, et le libellé de la colonne visée. */
+  const interditsDeTotal = new Map<string, string>();
 
-  for (const input of profile.inputs) {
-    if (known.has(input.key)) problems.push(`Entrée en double : ${input.key}`);
-    known.add(input.key);
-  }
-
-  for (const step of profile.steps) {
-    if (known.has(step.key)) problems.push(`Clé en double : ${step.key}`);
+  /**
+   * Éprouve une étape et l'ajoute au vocabulaire connu.
+   *
+   * Partagé entre les étapes globales et celles des lignes : ce sont les mêmes
+   * règles, et les écrire deux fois garantissait qu'elles divergent.
+   */
+  const eprouverEtape = (step: CalcStep, vocabulaire: Set<string>, ou: string): void => {
+    if (vocabulaire.has(step.key)) problems.push(`Clé en double : ${step.key}${ou}`);
     let tokens: Token[];
     try {
       tokens = tokenize(step.formula);
@@ -428,18 +630,78 @@ export function validateProfile(profile: CalcProfile): string[] {
       compileFormula(step.formula);
     } catch (err) {
       problems.push(`${step.key} : ${err instanceof Error ? err.message : String(err)}`);
-      known.add(step.key);
-      continue;
+      vocabulaire.add(step.key);
+      return;
     }
     for (const token of tokens) {
-      if (token.t === 'id' && !known.has(token.v)) {
-        // Une étape ne voit que ce qui la précède : nommer une étape ultérieure
-        // est la seule façon d'écrire un cycle, et c'est refusé ici.
-        problems.push(`${step.key} : « ${token.v} » n’est pas défini avant cette étape`);
+      if (token.t !== 'id' || vocabulaire.has(token.v)) continue;
+      const colonne = interditsDeTotal.get(token.v);
+      if (colonne) {
+        problems.push(
+          `${step.key} : « ${token.v} » n’existe pas — la colonne « ${colonne} » ne se totalise pas. Un taux jamais ; une colonne saisie seulement si elle porte « sum: true », et seulement quand la somme veut dire quelque chose.`,
+        );
+        continue;
+      }
+      // Une étape ne voit que ce qui la précède : nommer une étape ultérieure
+      // est la seule façon d'écrire un cycle, et c'est refusé ici.
+      problems.push(`${step.key} : « ${token.v} » n’est pas défini avant cette étape${ou}`);
+    }
+    vocabulaire.add(step.key);
+  };
+
+  for (const input of profile.inputs) {
+    if (known.has(input.key)) problems.push(`Entrée en double : ${input.key}`);
+    known.add(input.key);
+  }
+
+  /*
+    LE BLOC DE LIGNES SE VALIDE AVANT LES ÉTAPES GLOBALES
+
+    C'est l'ordre d'évaluation (voir `CalcRowBlock`), donc c'est l'ordre du
+    contrôle : les agrégats doivent être connus quand on éprouve les étapes
+    globales, et les étapes globales ne doivent PAS être connues quand on
+    éprouve celles des lignes.
+  */
+  if (profile.rows) {
+    const bloc = profile.rows;
+    // Une colonne portant le nom d'une entrée globale l'écraserait dans la
+    // portée de la ligne — sans le dire, et seulement là. On refuse.
+    const ligne = new Set(known);
+    for (const colonne of bloc.inputs) {
+      if (ligne.has(colonne.key)) {
+        problems.push(`Colonne « ${colonne.key} » : ce nom est déjà pris par une entrée globale`);
+      }
+      ligne.add(colonne.key);
+    }
+    for (const step of bloc.steps) eprouverEtape(step, ligne, ' (ligne)');
+
+    if (bloc.inputs.length === 0) problems.push('Le bloc de lignes n’a aucune colonne saisie');
+    if ((bloc.defaultRows ?? 1) < 1) problems.push('Le bloc de lignes doit ouvrir sur au moins une ligne');
+
+    for (const colonne of bloc.inputs) {
+      if (colonne.sum && colonne.kind === 'percent') {
+        problems.push(`Colonne « ${colonne.key} » : un taux ne se totalise pas — « sum » n’a pas de sens ici`);
       }
     }
-    known.add(step.key);
+    const totalisables = new Set(colonnesTotalisables(bloc).map((c) => c.key));
+    for (const colonne of [...bloc.inputs, ...bloc.steps]) {
+      const total = totalKey(colonne.key);
+      if (!totalisables.has(colonne.key)) {
+        // Déclaré comme interdit plutôt que simplement absent : sans ça,
+        // l'auteur d'un profil lirait « n'est pas défini » et ajouterait une
+        // colonne pour contourner, au lieu de comprendre POURQUOI ce total
+        // n'existe pas.
+        interditsDeTotal.set(total, colonne.label);
+        continue;
+      }
+      if (known.has(total)) problems.push(`Le total « ${total} » écraserait une valeur existante`);
+      known.add(total);
+    }
+    if (known.has(NB_LIGNES)) problems.push(`« ${NB_LIGNES} » est réservé au nombre de lignes`);
+    known.add(NB_LIGNES);
   }
+
+  for (const step of profile.steps) eprouverEtape(step, known, '');
 
   if (!profile.steps.some((s) => s.output)) {
     problems.push(`${profile.id} : aucune étape marquée comme sortie`);

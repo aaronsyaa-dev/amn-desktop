@@ -83,6 +83,86 @@ ce qui garde un profil minimal déclarable en trois lignes.
    pas ; elle rend un chiffre crédible. C'est la seule protection réelle.
 4. **Ouvrir l'écran.** Il n'y a rien à câbler.
 
+## Les lignes : un panier, un devis, une commande
+
+Un calculateur peut déclarer un **bloc de lignes** — plusieurs articles, chacun
+avec ses propres colonnes. C'est ce qui manquait au module : « Prix client »
+traite UN article, et une commande de six références obligeait à l'ouvrir six
+fois et à additionner à la main.
+
+```ts
+rows: {
+  label: 'Les lignes de la commande',
+  addLabel: 'Ajouter une ligne',
+  nameLabel: 'Référence',        // colonne de texte libre, ignorée du moteur
+  defaultRows: 2,
+  inputs: [
+    { key: 'coutUnitaire', label: 'Coût unitaire', kind: 'money', defaultValue: 4500 },
+    { key: 'quantite', label: 'Quantité', kind: 'number', defaultValue: 1, sum: true },
+  ],
+  steps: [
+    { key: 'coutLigne', label: 'Coût de la ligne', kind: 'money',
+      formula: 'coutUnitaire * quantite', output: true },
+  ],
+},
+```
+
+### L'ordre, encore
+
+Le moteur tient parce qu'une valeur ne voit que ce qui la précède. Les lignes
+n'y dérogent pas ; elles ajoutent **un seul étage, toujours au même endroit** :
+
+1. les entrées globales entrent dans la portée ;
+2. le bloc de lignes est déroulé — **chaque ligne dans sa propre portée**, qui
+   voit les entrées globales, ses colonnes, et les étapes de ligne précédentes ;
+3. les agrégats (`total_<clé>`, `nbLignes`) entrent dans la portée globale ;
+4. les étapes globales se déroulent, et voient tout ce qui précède.
+
+Une étape de ligne ne peut donc **pas** nommer une étape globale. Limite
+assumée : l'autoriser demanderait un graphe de dépendances, exactement ce que ce
+moteur refuse d'avoir à déboguer. Dans les cas réels, ce qu'une ligne doit
+connaître (un taux de charges, une commission) est une **entrée**, pas un
+calcul.
+
+Chaque ligne part d'une **copie** de la portée globale : une colonne ne peut pas
+fuir d'une ligne à la suivante. Sans cette copie, une colonne laissée vide sur
+la ligne 2 hériterait de la ligne 1 — le résultat dépendrait de l'ordre de
+saisie, la pire sorte de bug puisqu'il ne se reproduit pas quand on le cherche.
+
+### Ce qui se totalise, et ce qui ne se totalise pas
+
+- une **étape** de ligne se totalise toujours : c'est par construction un montant
+  de ligne ;
+- une **colonne saisie** ne se totalise que si elle porte `sum: true` ;
+- un **taux** ne se totalise jamais, quoi qu'on déclare.
+
+« Quantité » se totalise — deux articles plus trois en font cinq. « Coût
+unitaire » non : 45 € et 45 € n'en font pas 90, ils font deux articles à 45 €.
+Le moteur ne peut pas trancher depuis la nature de la colonne, les deux sont des
+nombres ; c'est donc le profil qui le dit. Une colonne non totalisable n'a
+simplement pas de `total_<clé>` : ni dans le pied du tableau, ni dans la portée
+des formules — et une formule qui la nommerait est refusée **avec la raison**,
+sans quoi l'auteur contourne au lieu de comprendre.
+
+### Une ligne en échec n'invente pas un total
+
+Si une seule ligne échoue, la colonne concernée **n'entre pas** dans la portée.
+La tentation serait de sommer ce qui a marché : on obtiendrait un total
+parfaitement crédible, plus petit que la réalité, sur lequel personne ne
+poserait de question. Les étapes globales qui en dépendent échouent donc avec un
+nom. Ce que l'erreur ne touche pas, en revanche, se totalise normalement.
+
+### Deux pièges d'arithmétique, tous deux vérifiés
+
+- **La part fixe se prend une fois.** Le client paie une fois, quel que soit le
+  nombre d'articles. Calculer six articles séparément ajoute six parts fixes ;
+  le panier ressort trop cher, d'autant plus qu'il a de lignes.
+- **On multiplie par la quantité d'abord, on divise ensuite.** Chaque étape
+  `money` arrondit au centime. Calculer une marge brute **par unité** puis la
+  multiplier par la quantité multiplie l'arrondi lui aussi : 0,385 centime à
+  l'unité — invisible — fait 3,85 € de faux à mille exemplaires. Toutes les
+  étapes de ligne travaillent donc au niveau de la **ligne**.
+
 ## Les unités, une fois pour toutes
 
 | `kind` | Unité stockée | Affichage |
@@ -137,7 +217,8 @@ dire quelle ligne l'a produit.
 
 | `id` | Ce qu'il répond |
 | --- | --- |
-| `ecommerce-prix-client` | À quel prix vendre pour dégager la marge visée, URSSAF et frais d'encaissement compris. |
+| `ecommerce-prix-client` | À quel prix vendre UN article pour dégager la marge visée, URSSAF et frais d'encaissement compris — plus le prix plancher et une fourchette de négociation. |
+| `ecommerce-panier` | Le même raisonnement sur une commande à plusieurs références, chacune avec SA charge, et la part fixe prélevée une seule fois. |
 | `evenementiel-rentabilite` | Combien d'entrées vendues couvrent les frais, et à quel prix. |
 | `groupe-cagnotte` | Combien chacun met, et combien de temps il reste pour y arriver. |
 | `startup-repartition` | Une part de départ entre fondateurs, capital et temps pondérés. |

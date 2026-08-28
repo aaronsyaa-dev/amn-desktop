@@ -229,6 +229,210 @@ const ECOMMERCE_PRICE: CalcProfile = {
   ],
 };
 
+/**
+ * Le panier fournisseur — plusieurs références, chacune avec SA charge.
+ *
+ * ## Ce qu'il répond
+ *
+ * « Prix client » traite UN article. Une commande de six références obligeait à
+ * l'ouvrir six fois et à additionner à la main — c'est-à-dire à refaire dehors
+ * ce que l'outil est censé faire dedans, avec le risque d'erreur que ça suppose
+ * et sans trace de ce qui a été additionné.
+ *
+ * ## Deux choses que le calcul ligne à ligne ne peut PAS faire
+ *
+ * Elles justifient à elles seules ce profil, parce qu'elles ne se rattrapent
+ * pas en additionnant des résultats séparés.
+ *
+ *   - **Les frais fixes de paiement se prennent UNE FOIS.** Le client paie une
+ *     fois, quel que soit le nombre d'articles. Calculer six articles
+ *     séparément ajoute six fois la part fixe : le panier ressort trop cher, et
+ *     d'autant plus qu'il a de lignes. C'est pour cela que la part fixe est une
+ *     entrée GLOBALE et n'apparaît dans aucune formule de ligne.
+ *   - **Chaque ligne a sa propre charge.** Un produit revendu et une prestation
+ *     ne cotisent pas au même taux. Un taux unique appliqué au total est faux
+ *     dès que le panier mélange les deux, et l'écart grandit avec le montant.
+ *
+ * ## Le chemin de l'argent, dans l'ordre
+ *
+ * Le client paie le prix du panier. La plateforme prélève sa part variable et
+ * sa part fixe. Ce qui reste paie la livraison, puis le fournisseur de chaque
+ * ligne, puis les charges de chaque ligne à SON taux. Ce qui reste alors est la
+ * marge nette — et elle doit valoir exactement la somme des marges visées ligne
+ * par ligne. C'est cette égalité que `check:calc` refait comme la banque.
+ */
+const ECOMMERCE_BASKET: CalcProfile = {
+  id: 'ecommerce-panier',
+  label: 'Panier fournisseur',
+  description:
+    'Une commande à plusieurs références, chacune avec son coût et sa charge : le prix à demander pour l’ensemble, et ce qu’il vous reste.',
+  inputs: [
+    {
+      key: 'fraisLivraison',
+      label: 'Livraison de la commande',
+      kind: 'money',
+      defaultValue: 0,
+      help: 'Ce que VOUS payez pour expédier l’ensemble — une fois, pas par article.',
+    },
+    {
+      key: 'tauxTransaction',
+      label: 'Frais de paiement (Stripe)',
+      kind: 'percent',
+      defaultValue: 1.5,
+      help: 'Part variable, prélevée sur le montant encaissé.',
+    },
+    {
+      key: 'fixeTransaction',
+      label: 'Frais fixes par paiement',
+      kind: 'money',
+      defaultValue: 25,
+      help: 'Prélevés UNE FOIS sur la commande, quel que soit le nombre d’articles.',
+    },
+  ],
+  rows: {
+    label: 'Les lignes de la commande',
+    addLabel: 'Ajouter une ligne',
+    nameLabel: 'Référence',
+    help: 'Une ligne par référence. Le taux de charges est propre à chacune : un produit revendu et une prestation ne cotisent pas pareil.',
+    defaultRows: 2,
+    inputs: [
+      {
+        key: 'coutUnitaire',
+        label: 'Coût unitaire',
+        kind: 'money',
+        defaultValue: 4500,
+        help: 'Ce que l’article vous coûte à l’unité.',
+      },
+      // La seule colonne SAISIE dont la somme veut dire quelque chose : deux
+      // articles plus trois en font bien cinq. Les montants unitaires
+      // au-dessus et en dessous, eux, ne se totalisent pas — 45 € et 45 € ne
+      // font pas 90 €, ils font deux articles à 45 €.
+      { key: 'quantite', label: 'Quantité', kind: 'number', defaultValue: 1, sum: true },
+      {
+        key: 'margeUnitaire',
+        label: 'Marge visée / unité',
+        kind: 'money',
+        defaultValue: 2000,
+        help: 'Ce qu’il doit rester par article, une fois tout payé.',
+      },
+      {
+        key: 'tauxChargesLigne',
+        // Pas « Charges de la ligne » : l'étape calculée porte déjà ce
+        // libellé, et deux colonnes du même nom — l'une en %, l'autre en
+        // euros — se lisent comme une erreur d'affichage.
+        label: 'Taux de charges',
+        kind: 'percent',
+        defaultValue: 22,
+        help: 'Le taux propre à cette ligne. Appliqué à sa marge, pas à son chiffre d’affaires.',
+      },
+    ],
+    /*
+      ON MULTIPLIE PAR LA QUANTITÉ D'ABORD, ON DIVISE ENSUITE.
+
+      Chaque étape « money » est arrondie au centime, comme une ligne de
+      facture. Une première version calculait la marge brute PAR UNITÉ puis la
+      multipliait par la quantité : l'arrondi de l'unité se trouvait donc
+      multiplié par la quantité lui aussi. Sur une marge de 3 € à 22 % de
+      charges, l'unité arrondit de 0,385 centime — invisible ; à mille
+      exemplaires, le panier était faux de 3,85 €.
+
+      Toutes les étapes ci-dessous travaillent donc au niveau de la LIGNE :
+      l'arrondi reste d'un centime par ligne, quelle que soit la quantité.
+      C'est aussi ce que fait déjà `lineAmounts` en facturation.
+    */
+    steps: [
+      {
+        key: 'coutLigne',
+        label: 'Coût de la ligne',
+        kind: 'money',
+        formula: 'coutUnitaire * quantite',
+        output: true,
+      },
+      {
+        key: 'margeLigne',
+        label: 'Marge nette de la ligne',
+        kind: 'money',
+        formula: 'margeUnitaire * quantite',
+        output: true,
+      },
+      {
+        key: 'margeBruteLigne',
+        label: 'Marge avant charges',
+        kind: 'money',
+        formula: 'margeLigne / (1 - tauxChargesLigne / 100)',
+      },
+      {
+        key: 'chargesLigne',
+        label: 'Charges de la ligne',
+        kind: 'money',
+        formula: 'margeBruteLigne - margeLigne',
+        output: true,
+      },
+      {
+        key: 'netLigne',
+        label: 'À encaisser pour la ligne',
+        kind: 'money',
+        // Les frais de paiement N'ENTRENT PAS ici : ils portent sur le panier
+        // entier, une seule fois. Les faire descendre dans la ligne est
+        // précisément l'erreur que ce profil existe pour éviter.
+        formula: 'coutLigne + margeBruteLigne',
+        output: true,
+      },
+    ],
+  },
+  steps: [
+    {
+      key: 'netPanier',
+      label: 'Net à encaisser',
+      kind: 'money',
+      formula: 'total_netLigne + fraisLivraison',
+      help: 'La somme des lignes, plus la livraison : ce qui doit rester après les frais de paiement.',
+    },
+    {
+      key: 'prixPanier',
+      label: 'Prix du panier',
+      kind: 'money',
+      // Comme pour un article seul, le prix se trouve en REMONTANT : les frais
+      // se calculent sur lui, donc on ne peut pas les ajouter au net.
+      formula: '(netPanier + fixeTransaction) / (1 - tauxTransaction / 100)',
+      output: true,
+      headline: true,
+      help: 'Le prix à demander pour l’ensemble de la commande.',
+    },
+    {
+      key: 'fraisPaiement',
+      label: 'Frais de paiement',
+      kind: 'money',
+      formula: 'prixPanier - netPanier',
+      output: true,
+      help: 'Part variable et part fixe réunies, prélevées une seule fois.',
+    },
+    {
+      key: 'margePanier',
+      label: 'Marge nette du panier',
+      kind: 'money',
+      formula: 'total_margeLigne',
+      output: true,
+      help: 'La somme des marges visées, une fois les charges de chaque ligne payées.',
+    },
+    {
+      key: 'chargesPanier',
+      label: 'Charges sociales',
+      kind: 'money',
+      formula: 'total_chargesLigne',
+      output: true,
+    },
+    {
+      key: 'prixMoyenArticle',
+      label: 'Prix moyen par article',
+      kind: 'money',
+      formula: 'prixPanier / max(total_quantite, 1)',
+      output: true,
+      help: 'Pour se situer, pas pour vendre à l’unité : la part fixe y est diluée.',
+    },
+  ],
+};
+
 /* ============================ ÉVÉNEMENTIEL (BLOC C) ======================== */
 
 /**
@@ -452,6 +656,7 @@ const STARTUP_SPLIT: CalcProfile = {
 
 export const CALC_PROFILES: CalcProfile[] = [
   ECOMMERCE_PRICE,
+  ECOMMERCE_BASKET,
   EVENT_BREAKEVEN,
   GROUP_POT,
   STARTUP_SPLIT,
