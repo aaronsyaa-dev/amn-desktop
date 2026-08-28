@@ -397,6 +397,10 @@ export const ACCESS_VERB: Record<string, string> = {
   // dit, parce que c'est la seule ligne du journal qui concerne des tiers.
   status_page_published: 'a publié la page de statut d’un site de',
   status_page_revoked: 'a retiré la page de statut d’un site de',
+  // Une détection qui cesse de remonter pendant trente jours : la ligne dit
+  // « mis en sourdine », pas « supprimé » — rien n'est supprimé.
+  suppression_created: 'a mis une détection en sourdine chez',
+  suppression_revoked: 'a rendu la parole à une détection chez',
 };
 
 
