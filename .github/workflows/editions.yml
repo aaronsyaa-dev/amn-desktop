@@ -13,9 +13,15 @@ name: Éditions
 #     Business) avant qu'elle n'atteigne un déploiement ;
 #   - dans `scripts/build-web.mjs`, exécuté par TOUT build Business où qu'il
 #     tourne — y compris chez Vercel — pour attraper une régression de CONFIG.
+#
+# NODE 22 PARTOUT, et pas 20 : `better-sqlite3` (13.x) déclare
+# `engines: node >= 22` et SEGFAULTE en dessous. Ce dépôt l'embarque pour le
+# processus principal d'Electron. Trouvé le jour où la CI d'amn-api a tourné
+# pour la première fois — vingt-sept fichiers de test en SIGSEGV, exactement
+# ceux qui touchent la base.
 on:
   push:
-    branches: [main]
+    branches: [main, 'claude/**']
   pull_request:
 
 jobs:
@@ -26,7 +32,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
       - name: Build web (interne)
@@ -53,7 +59,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
 
@@ -137,7 +143,7 @@ jobs:
           token: ${{ secrets.AMN_API_TOKEN || github.token }}
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
 
@@ -180,7 +186,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
       # Le build échoue de lui-même si le bundle contient une trace interne :
