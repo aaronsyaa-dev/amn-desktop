@@ -1508,6 +1508,16 @@ export interface AlertSuppression {
   createdAt: string;
   expiresAt: string;
   revokedAt: string | null;
+  /**
+   * Qui a rendu la parole.
+   *
+   * Le serveur l'enregistre depuis le premier jour ; rien ne le LISAIT. Une
+   * supervision où l'on sait qui a fait taire une détection mais pas qui l'a
+   * réveillée n'a qu'une moitié de piste : c'est la levée qui explique
+   * pourquoi une alerte est réapparue un matin sans que rien n'ait changé
+   * chez la cliente.
+   */
+  revokedBy: string | null;
   /** Ni révoqué ni expiré. */
   actif: boolean;
   /**

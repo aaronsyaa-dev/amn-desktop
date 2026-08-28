@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BellOff, RotateCcw, X } from 'lucide-react';
+import { BellOff, ChevronDown, ChevronRight, RotateCcw, X } from 'lucide-react';
 import { bridge } from '../../lib/bridge';
 import { cleanErrorMessage } from '../../lib/errorMessage';
-import { futureTime } from '../../lib/time';
+import { futureTime, relativeTime } from '../../lib/time';
 import type { AlertSuppression } from '../../shared/api';
 
 /**
@@ -31,15 +31,35 @@ import type { AlertSuppression } from '../../shared/api';
  * Elle est obligatoire à la création — c'est le seul moment où l'on sait
  * pourquoi. La ranger derrière un clic reviendrait à ne pas l'avoir demandée :
  * personne ne déplie douze règles pour retrouver celle qui pose problème.
+ *
+ * ## Ce qui a été LEVÉ compte autant que ce qui est tu
+ *
+ * Le serveur enregistre depuis le premier jour qui a rendu la parole et quand
+ * (`revoked_by`, `revoked_at`) ; rien ne le lisait. Une supervision où l'on
+ * sait qui a fait taire une détection mais pas qui l'a réveillée n'a qu'une
+ * moitié de piste — et c'est justement la levée qui explique pourquoi une
+ * alerte réapparaît un matin sans que rien n'ait changé chez la cliente.
+ *
+ * L'historique est REPLIÉ, pas absent : il grossit sans fin, et ce qui presse
+ * est ce qui est tu MAINTENANT. Mais il reste à un clic, et le panneau ne
+ * disparaît plus dès que la dernière règle active est levée — sans quoi le
+ * geste de lever effacerait l'accès à sa propre trace.
  */
 export function SuppressionsPanel() {
   const [regles, setRegles] = useState<AlertSuppression[] | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [enCours, setEnCours] = useState<string | null>(null);
+  const [historique, setHistorique] = useState(false);
 
+  /*
+    UN SEUL APPEL, avec l'historique : le serveur marque déjà chaque règle
+    `actif` ou non. Deux appels — un pour les actives, un pour tout — feraient
+    deux vérités à tenir d'accord et un décompte qui clignote pendant que la
+    seconde réponse arrive.
+  */
   const charger = useCallback(async () => {
     try {
-      setRegles(await bridge().remote.listSuppressions());
+      setRegles(await bridge().remote.listSuppressions(true));
       setErreur(null);
     } catch (err) {
       setRegles([]);
@@ -66,12 +86,19 @@ export function SuppressionsPanel() {
     }
   };
 
+  const actives = (regles ?? []).filter((r) => r.actif);
+  const revolues = (regles ?? []).filter((r) => !r.actif);
+
   /*
-    Rien de tu ? Le panneau DISPARAÎT.
+    Rien de tu, JAMAIS ? Le panneau DISPARAÎT.
 
     Une section « aucune règle » permanente sur le bureau de supervision
     occuperait de la place pour ne rien dire, tous les jours, pour l'exception.
     Il réapparaît dès qu'il y a quelque chose à montrer.
+
+    « Jamais » et non « en ce moment », depuis que l'historique existe : lever
+    la dernière règle active faisait disparaître le panneau, donc l'accès à la
+    trace de ce qu'on venait de lever. Le geste effaçait sa propre preuve.
   */
   if (regles !== null && regles.length === 0 && !erreur) return null;
 
@@ -91,8 +118,9 @@ export function SuppressionsPanel() {
       </div>
 
       <p className="mt-2 text-xs leading-relaxed text-text-secondary">
-        Ces détections ne remontent plus dans la file et ne réveillent personne. Tout reste
-        enregistré : le décompte dit ce que chaque règle a réellement absorbé.
+        {actives.length === 0
+          ? 'Plus rien n’est en sourdine : toutes les détections remontent. L’historique ci-dessous dit ce qui l’a été, et qui a rendu la parole.'
+          : 'Ces détections ne remontent plus dans la file et ne réveillent personne. Tout reste enregistré : le décompte dit ce que chaque règle a réellement absorbé.'}
       </p>
 
       {erreur && <p className="mt-3 text-sm text-danger">{erreur}</p>}
@@ -100,7 +128,7 @@ export function SuppressionsPanel() {
 
       <ul className="mt-3 flex flex-col">
         <AnimatePresence initial={false}>
-          {(regles ?? []).map((r) => (
+          {actives.map((r) => (
             <motion.li
               key={r.id}
               initial={{ opacity: 0, height: 0 }}
@@ -153,6 +181,69 @@ export function SuppressionsPanel() {
           ))}
         </AnimatePresence>
       </ul>
+
+      {revolues.length > 0 && (
+        <div className="mt-3 border-t border-border pt-3">
+          <button
+            type="button"
+            onClick={() => setHistorique((v) => !v)}
+            aria-expanded={historique}
+            className="flex w-full items-center gap-2 text-left text-[11px] font-medium text-text-muted transition-colors hover:text-text-secondary"
+          >
+            {historique ? (
+              <ChevronDown size={13} strokeWidth={1.75} />
+            ) : (
+              <ChevronRight size={13} strokeWidth={1.75} />
+            )}
+            {revolues.length} règle{revolues.length > 1 ? 's' : ''} levée
+            {revolues.length > 1 ? 's' : ''} ou expirée{revolues.length > 1 ? 's' : ''}
+          </button>
+
+          <AnimatePresence initial={false}>
+            {historique && (
+              <motion.ul
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                {revolues.map((r) => (
+                  <li key={r.id} className="border-b border-border/60 py-2.5 last:border-b-0">
+                    <p className="text-[12px] text-text-secondary">
+                      <span className="font-medium">{r.libelle}</span>
+                      <span className="text-text-muted"> depuis </span>
+                      <span className="font-mono text-[11px]">{r.actor}</span>
+                      {r.siteName && <span className="text-text-muted"> · {r.siteName}</span>}
+                    </p>
+                    <p className="mt-0.5 text-[11px] leading-relaxed text-text-muted">{r.note}</p>
+                    <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                      {/*
+                        LEVÉE ou EXPIRÉE : les deux fins ne se valent pas.
+
+                        Une règle levée l'a été par quelqu'un, qui a jugé qu'on
+                        pouvait réécouter — c'est une décision, et elle porte un
+                        nom. Une règle expirée s'est éteinte toute seule au bout
+                        de trente jours, et personne n'a rien décidé. Les
+                        confondre ferait croire à un arbitrage là où il n'y a eu
+                        que le calendrier.
+                      */}
+                      {r.revokedAt
+                        ? `levée ${relativeTime(r.revokedAt)}${r.revokedBy ? ` par ${r.revokedBy}` : ''}`
+                        : `expirée ${relativeTime(r.expiresAt)}`}
+                      {' · '}
+                      {r.absorbe.alertes === 0
+                        ? 'rien absorbé'
+                        : `${r.absorbe.alertes} alerte${r.absorbe.alertes > 1 ? 's' : ''} absorbée${r.absorbe.alertes > 1 ? 's' : ''}`}
+                      {r.createdBy ? ` · posée par ${r.createdBy}` : ''}
+                    </p>
+                  </li>
+                ))}
+              </motion.ul>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
     </section>
   );
 }
