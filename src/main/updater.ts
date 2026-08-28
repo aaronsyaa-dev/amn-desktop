@@ -318,19 +318,34 @@ async function checkBusiness(): Promise<UpdateCheck> {
 /**
  * Applique la version mise de côté : on lance l'installeur, puis on s'efface.
  *
- * L'ordre compte. L'installeur Squirrel remplace des fichiers que l'exécutable
- * en cours tient ouverts ; il commence donc par attendre la fin du processus.
- * Le lancer APRÈS avoir quitté serait impossible — plus personne pour le
- * lancer — et quitter sans l'avoir lancé laisserait la cliente devant une
- * application fermée qui n'a rien mis à jour.
+ * L'ordre compte. L'installeur remplace des fichiers que l'exécutable en cours
+ * tient ouverts ; il commence donc par attendre la fin du processus. Le lancer
+ * APRÈS avoir quitté serait impossible — plus personne pour le lancer — et
+ * quitter sans l'avoir lancé laisserait la cliente devant une application
+ * fermée qui n'a rien mis à jour.
+ *
+ * ## `/S`, et pourquoi il manquait (BLOC 3)
+ *
+ * L'installeur était lancé SANS argument. Avec un installeur NSIS `oneClick`,
+ * ça n'ouvre pas d'assistant — mais ça affiche quand même une bannière de
+ * progression, sur une machine dont personne ne s'occupe : la mise à jour
+ * était automatique de bout en bout SAUF ce dernier écran.
+ *
+ * `/S` est le mode silencieux de NSIS. Il n'est posé que sous Windows :
+ * ailleurs, l'installeur n'est pas un NSIS et l'argument n'aurait aucun sens.
+ *
+ * Le commentaire de cette fonction parlait encore de « l'installeur
+ * Squirrel », abandonné depuis la migration vers NSIS. Un commentaire faux
+ * sur un chemin critique coûte plus cher qu'un commentaire absent.
  */
 async function appliquerBusiness(): Promise<void> {
   if (!staged) return;
   const fichier = staged.file;
+  const arguments_ = process.platform === 'win32' ? ['/S'] : [];
 
   const lance = await new Promise<boolean>((resolve) => {
     try {
-      const enfant = spawn(fichier, [], { detached: true, stdio: 'ignore' });
+      const enfant = spawn(fichier, arguments_, { detached: true, stdio: 'ignore' });
       enfant.once('error', () => resolve(false));
       enfant.once('spawn', () => {
         enfant.unref();

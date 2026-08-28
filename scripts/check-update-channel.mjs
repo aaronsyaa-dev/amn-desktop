@@ -166,6 +166,38 @@ function code(rel) {
   }
 }
 
+/* ─── 7. La mise à jour cliente s'applique EN SILENCE (BLOC 3) ─────────── */
+
+/*
+  Le canal client fait tout seul le trajet complet : il interroge le flux,
+  télécharge, vérifie l'empreinte SHA-256, met de côté, lance l'installeur et
+  quitte. Un seul maillon manquait, et il ne se voyait qu'à la toute fin :
+  l'installeur était lancé SANS argument.
+
+  Avec un NSIS `oneClick`, ça n'ouvre pas d'assistant — mais ça affiche une
+  bannière de progression, sur la machine de quelqu'un qui ne s'attendait à
+  rien. La mise à jour était automatique de bout en bout SAUF ce dernier écran.
+
+  `/S` est le mode silencieux de NSIS, et il n'a de sens que sous Windows.
+*/
+{
+  const updater = read('src/main/updater.ts');
+  if (!/process\.platform === 'win32' \? \['\/S'\]/.test(updater)) {
+    failures.push(
+      "src/main/updater.ts ne lance plus l'installeur client avec `/S` sous Windows : " +
+        "la mise à jour d'une cliente afficherait une bannière d'installation sur une " +
+        "machine dont personne ne s'occupe.",
+    );
+  }
+  if (/installeur Squirrel/.test(updater)) {
+    failures.push(
+      "src/main/updater.ts parle encore de « l'installeur Squirrel », abandonné depuis la " +
+        "migration vers NSIS. Un commentaire faux sur le chemin de mise à jour coûte plus " +
+        "cher qu'un commentaire absent.",
+    );
+  }
+}
+
 /* -------------------------------------------------------------- verdict -- */
 
 if (failures.length > 0) {
@@ -176,5 +208,5 @@ if (failures.length > 0) {
 
 console.log(
   '\nCanaux de mise à jour : interne et Business restent séparés ' +
-    '(6 règles, du publisher au contrôle de l’artefact).',
+    '(7 règles, du publisher à l’installation silencieuse chez la cliente).',
 );
