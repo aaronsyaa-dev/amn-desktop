@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useSync, useCollection, uid, stripMeta } from './SyncContext';
-import { AJMANI_EMAIL } from '../lib/ajmaniChat';
+import { AJMANI_EMAIL } from '../lib/ajmaniIdentity';
+import { canDeleteMessage } from '../lib/messageRules';
 import type { MessageAttachment, MessageReaction } from '../shared/api';
 
 export interface MessageData {
@@ -22,8 +23,8 @@ export type SyncMessage = MessageData & { id: string; updatedAt: string };
  * activity feed read one consistent source.
  */
 export function useMessages() {
-  const { user } = useAuth();
-  const { upsert } = useSync();
+  const { user, role } = useAuth();
+  const { upsert, remove } = useSync();
   const raw = useCollection<MessageData>('messages');
 
   const messages = useMemo<SyncMessage[]>(
@@ -83,5 +84,24 @@ export function useMessages() {
     upsert('messages', message.id, { ...stripMeta(message), pinned: !message.pinned });
   };
 
-  return { messages, send, sendAjmani, react, togglePin };
+  /**
+   * Retire un message du fil (BLOC 10).
+   *
+   * La règle vit dans `lib/messageRules` et elle est REJOUÉE ici, pas
+   * seulement dans l'écran : cacher le bouton ne suffit pas. Un appel venu
+   * d'ailleurs — une prochaine palette de commandes, un raccourci — passerait
+   * à côté du JSX, et la suppression est irréversible pour tout le monde,
+   * puisqu'elle voyage par la synchronisation.
+   *
+   * `remove` pose une pierre tombale plutôt qu'un effacement local : sans
+   * elle, le poste d'en face rendrait le message à la prochaine passe.
+   */
+  const canDelete = (message: SyncMessage) => canDeleteMessage(role, user?.email, message);
+
+  const removeMessage = (message: SyncMessage) => {
+    if (!canDelete(message)) return;
+    void remove('messages', message.id);
+  };
+
+  return { messages, send, sendAjmani, react, togglePin, canDelete, removeMessage };
 }

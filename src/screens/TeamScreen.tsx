@@ -30,6 +30,8 @@ import { useProfiles } from '../state/ProfilesContext';
 import { useClients } from '../state/useClients';
 import { useCall } from '../state/CallContext';
 import { useMessages, type SyncMessage } from '../state/useMessages';
+import { deleteMessageLabel } from '../lib/messageRules';
+import { ConfirmDelete } from '../components/ConfirmDelete';
 import { UserAvatar } from '../components/UserAvatar';
 import { parseMentions, urlDisplayHost, type ClientRef, type TaskRef } from '../lib/mentions';
 import { resizeImageToDataUrl } from '../lib/imageResize';
@@ -96,7 +98,7 @@ const TEAM = [
 export function TeamScreen() {
   const { user } = useAuth();
   const { sites, eventsBySite, ensureEventsLoaded } = useRemoteSites();
-  const { messages, send, sendAjmani, react, togglePin } = useMessages();
+  const { messages, send, sendAjmani, react, togglePin, canDelete, removeMessage } = useMessages();
   const [replyTo, setReplyTo] = useState<SyncMessage | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -147,6 +149,19 @@ export function TeamScreen() {
           .finally(() => setAjmaniThinking(false));
       }
     }
+  };
+
+  /*
+    Supprimer, en dénouant ce que le message laisse derrière lui.
+
+    Deux fils pendants sinon : le brouillon de réponse continuerait de citer un
+    message disparu, et l'épinglé resterait dans le bandeau. Le second se
+    résout tout seul (le bandeau se calcule sur les messages vivants), le
+    premier non — il vit dans un état local.
+  */
+  const supprimer = (message: SyncMessage) => {
+    removeMessage(message);
+    setReplyTo((courant) => (courant?.id === message.id ? null : courant));
   };
 
   const jumpToMessage = (id: string) => {
@@ -207,6 +222,8 @@ export function TeamScreen() {
           onReply={setReplyTo}
           onReact={react}
           onTogglePin={togglePin}
+          canDelete={canDelete}
+          onDelete={supprimer}
           onJump={jumpToMessage}
         />
         <Composer onSend={handleSend} sites={sites} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} />
@@ -407,6 +424,8 @@ function MessageList({
   onReply,
   onReact,
   onTogglePin,
+  canDelete,
+  onDelete,
   onJump,
 }: {
   messages: SyncMessage[];
@@ -419,6 +438,8 @@ function MessageList({
   onReply: (message: SyncMessage) => void;
   onReact: (message: SyncMessage, emoji: string) => void;
   onTogglePin: (message: SyncMessage) => void;
+  canDelete: (message: SyncMessage) => boolean;
+  onDelete: (message: SyncMessage) => void;
   onJump: (id: string) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -482,6 +503,7 @@ function MessageList({
           seen={Boolean(otherSeenAt && otherSeenAt >= message.createdAt)}
           sites={sites}
           repliedTo={message.replyToId ? byId.get(message.replyToId) ?? null : null}
+          replyLost={Boolean(message.replyToId) && !byId.has(message.replyToId ?? '')}
           highlighted={highlightId === message.id}
           registerRef={(el) => {
             if (el) rowRefs.current.set(message.id, el);
@@ -490,6 +512,9 @@ function MessageList({
           onReply={() => onReply(message)}
           onReact={(emoji) => onReact(message, emoji)}
           onTogglePin={() => onTogglePin(message)}
+          deletable={canDelete(message)}
+          deleteLabel={deleteMessageLabel(currentEmail, message)}
+          onDelete={() => onDelete(message)}
           onJumpToReply={() => message.replyToId && onJump(message.replyToId)}
         />
       ))}
@@ -537,11 +562,15 @@ function MessageBubble({
   seen,
   sites,
   repliedTo,
+  replyLost,
   highlighted,
   registerRef,
   onReply,
   onReact,
   onTogglePin,
+  deletable,
+  deleteLabel,
+  onDelete,
   onJumpToReply,
 }: {
   message: SyncMessage;
@@ -550,11 +579,15 @@ function MessageBubble({
   seen: boolean;
   sites: DerivedSite[];
   repliedTo: SyncMessage | null;
+  replyLost: boolean;
   highlighted: boolean;
   registerRef: (el: HTMLDivElement | null) => void;
   onReply: () => void;
   onReact: (emoji: string) => void;
   onTogglePin: () => void;
+  deletable: boolean;
+  deleteLabel: string;
+  onDelete: () => void;
   onJumpToReply: () => void;
 }) {
   const { profileFor } = useProfiles();
@@ -590,6 +623,26 @@ function MessageBubble({
           </span>
         )}
 
+        {/*
+          Un message cité qui a été supprimé (BLOC 10).
+
+          Sans ce cas, la citation disparaîtrait purement et simplement et la
+          réponse deviendrait illisible — « oui, tout à fait » suspendu dans le
+          vide. Dire « message supprimé » coûte une ligne et garde le fil
+          compréhensible. Le bloc n'est pas cliquable : il n'y a plus rien où
+          aller.
+        */}
+        {replyLost && (
+          <span
+            className={`mb-1 flex max-w-[75%] items-center gap-1.5 rounded-md border border-dashed border-border bg-bg/40 px-2.5 py-1 text-xs italic text-text-muted ${
+              own ? 'self-end' : 'self-start'
+            }`}
+          >
+            <CornerUpLeft size={11} strokeWidth={2} className="flex-shrink-0" />
+            <span className="truncate">Message supprimé</span>
+          </span>
+        )}
+
         {repliedTo && (
           <button
             type="button"
@@ -607,7 +660,7 @@ function MessageBubble({
 
         <div className="relative flex items-end gap-1.5">
           {own && (
-            <BubbleActions onReply={onReply} onTogglePin={onTogglePin} pinned={message.pinned} pickerOpen={pickerOpen} setPickerOpen={setPickerOpen} onReact={onReact} side="left" />
+            <BubbleActions onReply={onReply} onTogglePin={onTogglePin} pinned={message.pinned} pickerOpen={pickerOpen} setPickerOpen={setPickerOpen} onReact={onReact} deletable={deletable} deleteLabel={deleteLabel} onDelete={onDelete} side="left" />
           )}
           <div
             className={`max-w-[75%] px-4 py-2.5 text-sm ${
@@ -628,7 +681,7 @@ function MessageBubble({
             {message.body && <MessageBody body={message.body} light={own} sites={sites} />}
           </div>
           {!own && (
-            <BubbleActions onReply={onReply} onTogglePin={onTogglePin} pinned={message.pinned} pickerOpen={pickerOpen} setPickerOpen={setPickerOpen} onReact={onReact} side="right" />
+            <BubbleActions onReply={onReply} onTogglePin={onTogglePin} pinned={message.pinned} pickerOpen={pickerOpen} setPickerOpen={setPickerOpen} onReact={onReact} deletable={deletable} deleteLabel={deleteLabel} onDelete={onDelete} side="right" />
           )}
         </div>
 
@@ -672,6 +725,9 @@ function BubbleActions({
   pickerOpen,
   setPickerOpen,
   onReact,
+  deletable,
+  deleteLabel,
+  onDelete,
   side,
 }: {
   onReply: () => void;
@@ -680,6 +736,9 @@ function BubbleActions({
   pickerOpen: boolean;
   setPickerOpen: (v: boolean) => void;
   onReact: (emoji: string) => void;
+  deletable: boolean;
+  deleteLabel: string;
+  onDelete: () => void;
   side: 'left' | 'right';
 }) {
   return (
@@ -731,6 +790,16 @@ function BubbleActions({
       >
         {pinned ? <PinOff size={13} strokeWidth={1.75} /> : <Pin size={13} strokeWidth={1.75} />}
       </button>
+      {/*
+        Le même geste en deux temps que partout ailleurs (Clients, Devis,
+        Décisions, Facturation) : `ConfirmDelete` demande « Sûr ? » sur place.
+        Réinventer un modal ici aurait donné à la suppression d'un message une
+        gravité différente de celle d'un devis, sans raison.
+
+        Le libellé, lui, distingue les deux droits — corriger le sien, ou
+        modérer celui d'un autre.
+      */}
+      {deletable && <ConfirmDelete onConfirm={onDelete} label={deleteLabel} size={13} />}
     </div>
   );
 }

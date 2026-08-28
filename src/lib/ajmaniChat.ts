@@ -13,8 +13,7 @@ import type { RemoteEvent } from '../shared/api';
  * on the receiver's — so two connected operators never double-generate the same
  * answer. See useMessages.sendWithAjmani.
  */
-export const AJMANI_EMAIL = 'ajmani@amn-devsec.com';
-export const AJMANI_NAME = 'Ajmani';
+export { AJMANI_EMAIL, AJMANI_NAME } from './ajmaniIdentity';
 
 /** Detects an `@Ajmani` mention (case-insensitive, word-boundaried). */
 export function mentionsAjmani(body: string): boolean {
