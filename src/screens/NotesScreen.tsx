@@ -196,7 +196,18 @@ export function NotesScreen() {
                       onClick: () => startNew(TEAM_ENABLED ? 'personal' : 'team'),
                     }}
                   >
-                    Aucune note pour l’instant.
+                    {/*
+                      « Aucune note pour l'instant » constate, et n'invite à
+                      rien. Vu en ouvrant l'application avec une organisation
+                      neuve : c'était l'un des deux seuls modules à ne pas dire
+                      ce qu'il sert à faire, alors que tous les autres le
+                      faisaient — Clients, Projets, Dépenses et Temps se
+                      présentent en une phrase.
+                    */}
+                    Rien de noté pour l’instant.{' '}
+                    {TEAM_ENABLED
+                      ? 'Une note personnelle ne quitte pas ce compte ; une note d’équipe est visible de tous.'
+                      : 'De quoi garder une idée, un numéro, un brouillon — tout ce qu’on écrirait sur un coin de table.'}
                   </EmptyState>
                 )}
               </div>

@@ -229,6 +229,7 @@ export function TasksScreen() {
                 onAddMarker={addMarker}
                 onRemoveMarker={removeMarker}
                 onOpen={setOpenTaskId}
+                tableauVide={tasks.length === 0}
               />
             ))}
           </div>
@@ -278,6 +279,7 @@ function TaskColumn({
   onAddMarker,
   onRemoveMarker,
   onOpen,
+  tableauVide,
 }: {
   label: string;
   status: SharedTaskStatus;
@@ -290,6 +292,8 @@ function TaskColumn({
   onAddMarker: (task: SyncTask, marker: TaskMarker) => void;
   onRemoveMarker: (task: SyncTask, markerId: string) => void;
   onOpen: (id: string) => void;
+  /** Vrai quand AUCUNE des trois colonnes n'a de tâche — le premier jour. */
+  tableauVide: boolean;
 }) {
   return (
     <div className="flex min-h-0 flex-col border border-border bg-surface">
@@ -304,7 +308,35 @@ function TaskColumn({
         className="flex-1 space-y-2 overflow-y-auto p-3"
       >
         {tasks.length === 0 ? (
-          <p className="px-1 py-4 font-mono text-xs text-text-muted">Rien ici.</p>
+          /*
+            TROIS FOIS « RIEN ICI » N'EST PAS UN ÉTAT VIDE, C'EST UN ÉCHO.
+
+            Vu en ouvrant l'application avec une organisation neuve : les trois
+            colonnes répétaient la même phrase, et le premier module de la
+            navigation ne disait rien de ce qu'il sert à faire — au moment
+            précis où quelqu'un décide si l'outil lui parle.
+
+            Le tableau vide parle donc UNE FOIS, dans la colonne où l'on
+            commence. Les deux autres se taisent : une colonne « Fait » qui
+            annonce son vide avant qu'on ait rien fait est du bruit, et le
+            composant `EmptyState` porte déjà cette règle — un état vide muet
+            pour les zones secondaires d'un écran déjà vide ailleurs.
+          */
+          tableauVide && status !== 'todo' ? (
+            <p className="px-1 py-4 font-mono text-xs text-text-muted/50">—</p>
+          ) : tableauVide ? (
+            <div className="px-1 py-4">
+              <p className="text-[13px] leading-relaxed text-text-secondary">
+                Une tâche, c’est une chose à faire et une seule. Elle passe d’une colonne à la
+                suivante en la déposant, et peut porter un site, un client ou une échéance.
+              </p>
+              <p className="mt-2 text-[13px] leading-relaxed text-text-muted">
+                Commencez par la plus proche : celle que vous auriez notée sur un papier.
+              </p>
+            </div>
+          ) : (
+            <p className="px-1 py-4 font-mono text-xs text-text-muted">Rien ici.</p>
+          )
         ) : (
           tasks.map((task) => (
             <TaskCard
