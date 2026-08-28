@@ -41,6 +41,11 @@ export function NotificationsManager() {
   const parc = useParcInsights({ background: true });
 
   const seenAlerts = useRef<Set<number>>(new Set());
+  /**
+   * Les incidents déjà annoncés. Une campagne de vingt alertes ne doit sonner
+   * qu'une fois — voir l'effet des alertes critiques plus bas.
+   */
+  const seenIncidents = useRef<Set<string>>(new Set());
   /** État du parc au tour précédent : connexions, et date de dernière écriture. */
   const parcPrecedent = useRef<Map<string, { connecte: boolean; derniere: string | null }>>(new Map());
   const parcBaseline = useRef(false);
@@ -64,7 +69,13 @@ export function NotificationsManager() {
   useEffect(() => {
     if (baselined.current || !ready) return;
     for (const events of Object.values(eventsBySite)) {
-      for (const e of events) if (e.type === 'security_alert') seenAlerts.current.add(e.id);
+      for (const e of events) {
+        if (e.type !== 'security_alert') continue;
+        seenAlerts.current.add(e.id);
+        // Et son incident : sans cela, la première alerte NOUVELLE d'un
+        // incident déjà en cours au démarrage sonnerait comme s'il était neuf.
+        if (e.incidentId) seenIncidents.current.add(e.incidentId);
+      }
     }
     for (const m of messages) seenMessages.current.add(m.id);
     for (const t of tasks) seenTasks.current.add(t.id);
@@ -72,7 +83,23 @@ export function NotificationsManager() {
     baselined.current = true;
   }, [ready, eventsBySite, messages, tasks, sites]);
 
-  // Critical security alerts.
+  /*
+    ALERTES CRITIQUES — UNE PAR INCIDENT, PLUS UNE PAR ALERTE.
+
+    Le défaut, mesuré une fois les incidents introduits : une IP qui mitraille
+    produit vingt alertes critiques en deux minutes, donc vingt notifications
+    système. C'est exactement le bruit qui fait couper les notifications — et
+    une fois coupées, la nuit où ça compte, personne n'est prévenu.
+
+    Or ces vingt alertes forment UN incident. On notifie donc la première
+    alerte de chaque incident, et on se tait pour les suivantes : le
+    regroupement a été fait côté serveur, l'écran n'a qu'à s'en servir.
+
+    Le repli sur `e.id` couvre les alertes sans incident — celles enregistrées
+    avant que le rattachement existe, ou dont le rattachement a échoué. Elles
+    gardent alors l'ancien comportement, une notification chacune, plutôt que
+    de disparaître silencieusement.
+  */
   useEffect(() => {
     if (!baselined.current) return;
     for (const [siteId, events] of Object.entries(eventsBySite)) {
@@ -80,9 +107,13 @@ export function NotificationsManager() {
       for (const e of events) {
         if (e.type !== 'security_alert' || seenAlerts.current.has(e.id)) continue;
         seenAlerts.current.add(e.id);
-        if (prefs.criticalAlert && e.severity === 'critical') {
-          notify(`Alerte critique — ${site?.name ?? 'site'}`, e.message || 'Incident de sécurité détecté.');
-        }
+        if (!prefs.criticalAlert || e.severity !== 'critical') continue;
+
+        const groupe = e.incidentId ?? `alerte:${e.id}`;
+        if (seenIncidents.current.has(groupe)) continue;
+        seenIncidents.current.add(groupe);
+
+        notify(`Alerte critique — ${site?.name ?? 'site'}`, e.message || 'Incident de sécurité détecté.');
       }
     }
   }, [eventsBySite, sites, prefs.criticalAlert]);
