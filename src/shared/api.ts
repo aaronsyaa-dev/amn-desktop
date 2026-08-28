@@ -1443,6 +1443,22 @@ export interface Incident {
   title: string;
 }
 
+/**
+ * L'ESCALADE D'UN INCIDENT, poussée par amn-api.
+ *
+ * Elle ne dit pas « il s'est passé quelque chose » — le fil d'événements le
+ * dit déjà. Elle dit « PERSONNE N'A ENCORE REGARDÉ », ce qu'un poste ouvert ne
+ * peut pas déduire seul : c'est le serveur qui compte les minutes depuis la
+ * première alerte, et lui seul sait que le délai est dépassé.
+ */
+export interface IncidentEscalation {
+  incidentId: string;
+  /** 1 = première alerte d'escalade, 2 = relance. Il n'y a pas de niveau 3. */
+  level: number;
+  title: string;
+  body: string;
+}
+
 /** Un incident avec la chronologie complète de ses alertes. */
 export interface IncidentDetail {
   incident: Incident;
@@ -2388,6 +2404,13 @@ export interface AmnBridge {
     /** Une note est OBLIGATOIRE pour un faux positif — le serveur la réclame. */
     resolveIncident(id: string, resolution: IncidentResolution, note?: string): Promise<Incident>;
     reopenIncident(id: string): Promise<Incident>;
+    /**
+     * Escalades poussées par le serveur. Rend une fonction de désabonnement.
+     *
+     * L'écran n'a rien à recalculer : le serveur a déjà décidé que le délai
+     * était dépassé, et le poste se contente de le dire.
+     */
+    onIncidentEscalation(callback: (escalation: IncidentEscalation) => void): () => void;
 
     /* --- Analyses récurrentes (BLOC 5) --- */
     listSchedules(): Promise<ProductSchedule[]>;
@@ -2788,6 +2811,7 @@ export const IPC = {
   remoteAcknowledgeIncident: 'remote:acknowledgeIncident',
   remoteResolveIncident: 'remote:resolveIncident',
   remoteReopenIncident: 'remote:reopenIncident',
+  remoteIncidentEscalationPush: 'remote:incidentEscalationPush',
   remoteListSchedules: 'remote:listSchedules',
   remoteCreateSchedule: 'remote:createSchedule',
   remoteDeleteSchedule: 'remote:deleteSchedule',

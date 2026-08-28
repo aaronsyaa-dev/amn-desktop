@@ -1,6 +1,7 @@
 import {
   IPC,
   type Incident,
+  type IncidentEscalation,
   type IncidentDetail,
   type IncidentMetrics,
   type IncidentResolution,
@@ -703,6 +704,10 @@ export function registerExclusiveIpc(
   );
   remote.onFrame('comply:progress', (frame) =>
     broadcastToAll(IPC.remoteComplyProgressPush, frame.progress as ComplyProgress),
+  );
+  // L'escalade d'un incident : « personne n'a regardé depuis dix minutes ».
+  remote.onFrame('incident:escalated', (frame) =>
+    broadcastToAll(IPC.remoteIncidentEscalationPush, frame as unknown as IncidentEscalation),
   );
   remote.onFrame('product:regression', (frame) =>
     broadcastToAll(IPC.remoteProductRegressionPush, frame as unknown as ProductRegression),

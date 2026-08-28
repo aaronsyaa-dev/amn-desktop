@@ -1,6 +1,7 @@
 import { ipcRenderer } from 'electron';
 import {
   IPC,
+  type IncidentEscalation,
   type IncidentResolution,
   type IncidentStatus,
   type AmnBridge,
@@ -43,6 +44,7 @@ type ExclusiveRemote = Pick<
   | 'acknowledgeIncident'
   | 'resolveIncident'
   | 'reopenIncident'
+  | 'onIncidentEscalation'
   | 'listSchedules'
   | 'createSchedule'
   | 'deleteSchedule'
@@ -107,6 +109,16 @@ export const exclusivePreload: ExclusiveRemote = {
   resolveIncident: (id: string, resolution: IncidentResolution, note?: string) =>
     ipcRenderer.invoke(IPC.remoteResolveIncident, id, resolution, note),
   reopenIncident: (id: string) => ipcRenderer.invoke(IPC.remoteReopenIncident, id),
+  onIncidentEscalation: (callback: (escalation: IncidentEscalation) => void) => {
+    const listener = (_e: unknown, payload: IncidentEscalation) => callback(payload);
+    ipcRenderer.on(IPC.remoteIncidentEscalationPush, listener);
+    // Le désabonnement rend `void` : `removeListener` rend l'émetteur, ce qui
+    // ne correspond pas au contrat et ferait fuir un détail d'Electron
+    // jusqu'au renderer.
+    return () => {
+      ipcRenderer.removeListener(IPC.remoteIncidentEscalationPush, listener);
+    };
+  },
   listSslStatus: () => ipcRenderer.invoke(IPC.remoteListSslStatus),
   checkSsl: (host: string) => ipcRenderer.invoke(IPC.remoteCheckSsl, host),
   listSchedules: () => ipcRenderer.invoke(IPC.remoteListSchedules),

@@ -1,5 +1,6 @@
 import type {
   Incident,
+  IncidentEscalation,
   IncidentDetail,
   IncidentMetrics,
   IncidentResolution,
@@ -99,6 +100,7 @@ type ExclusiveRemote = Pick<
   | 'createSchedule'
   | 'deleteSchedule'
   | 'onProductRegression'
+  | 'onIncidentEscalation'
   | 'getOrgOverview'
   | 'getSiteBadge'
   | 'sendCallSignal'
@@ -243,6 +245,10 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
   onProductRegression(callback) {
     ctx.ensureStarted();
     return ctx.onFrame('product:regression', (frame) => callback(frame as unknown as ProductRegression));
+  },
+  onIncidentEscalation(callback) {
+    ctx.ensureStarted();
+    return ctx.onFrame('incident:escalated', (frame) => callback(frame as unknown as IncidentEscalation));
   },
   async getOrgOverview(days: number) {
     return ctx.apiFetch<OrgOverview>(`/v1/sites/overview?days=${encodeURIComponent(String(days))}`);

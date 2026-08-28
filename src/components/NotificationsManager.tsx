@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { IS_BUSINESS } from '../edition/edition';
 import { bridge } from '../lib/bridge';
 import { useAuth } from '../auth/AuthContext';
 import { useRemoteSites } from '../state/RemoteSitesContext';
@@ -117,6 +118,28 @@ export function NotificationsManager() {
       }
     }
   }, [eventsBySite, sites, prefs.criticalAlert]);
+
+  /*
+    L'ESCALADE — « personne n'a regardé », et le poste est ouvert.
+
+    Cas réel : l'application tourne, l'incident est dans la file, et il y
+    reste. La notification d'alerte a déjà eu lieu il y a dix minutes ; celle-ci
+    dit autre chose — que le délai est passé et que PERSONNE ne l'a pris. C'est
+    le serveur qui compte les minutes, un poste ouvert ne peut pas le déduire
+    seul.
+
+    Elle suit la préférence « alerte critique » : une escalade n'est jamais
+    autre chose que la suite d'une alerte critique, et quelqu'un qui a coupé
+    celles-ci ne veut pas de celles-là.
+  */
+  useEffect(() => {
+    if (IS_BUSINESS) return;
+    const off = bridge().remote.onIncidentEscalation((escalade) => {
+      if (!prefs.criticalAlert) return;
+      notify(escalade.title, escalade.body);
+    });
+    return off;
+  }, [prefs.criticalAlert]);
 
   // Site went offline.
   useEffect(() => {
