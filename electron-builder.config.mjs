@@ -42,6 +42,28 @@
 
 const IS_BUSINESS = process.env.AMN_EDITION === 'business';
 
+/*
+  LA SIGNATURE DE CODE (BLOC 2) — présente ou franchement absente, jamais
+  « peut-être ».
+
+  Lu dans app-builder-lib 26.15.3 plutôt que dans la documentation :
+  `windowsSignToolManager.js` récupère le certificat via
+  `getCscLink('WIN_CSC_LINK')`, qui retombe sur `CSC_LINK`, et le mot de passe
+  via `CSC_KEY_PASSWORD`. Quand `cscLink` est vide, la fonction rend `null` —
+  et la construction CONTINUE, sans signature, sans erreur. C'est le vrai
+  danger : une CI verte qui publie un binaire non signé parce qu'un secret a
+  été mal nommé.
+
+  D'où `forceCodeSigning` calculé, et non écrit en dur : dès qu'un certificat
+  est fourni, `_sign` (winPackager.js) lève si la signature n'a pas eu lieu.
+  Tant qu'aucun certificat n'est configuré — l'état d'aujourd'hui — la
+  construction reste possible et non signée, ce que `release.yml` annonce
+  bruyamment.
+*/
+const CERTIFICAT_FOURNI = Boolean(
+  (process.env.WIN_CSC_LINK || process.env.CSC_LINK || '').trim(),
+);
+
 const config = {
   /*
     LES NOMS ONT ÉTÉ ÉCHANGÉS (BLOC 1).
@@ -101,9 +123,31 @@ const config = {
   npmRebuild: false,
   // Les fuses (RunAsNode coupé, etc.) sont posées ici — voir le script.
   afterPack: './scripts/eb-after-pack.mjs',
+  /*
+    Signer, ou échouer — mais ne pas livrer un binaire nu en silence.
+    Faux tant qu'aucun certificat n'est fourni, vrai dès qu'il l'est.
+  */
+  forceCodeSigning: CERTIFICAT_FOURNI,
   win: {
     icon: 'images/icon.ico',
     target: [{ target: 'nsis', arch: ['x64'] }],
+    signtoolOptions: {
+      /*
+        L'HORODATAGE N'EST PAS UN DÉTAIL.
+
+        Sans serveur d'horodatage, une signature cesse d'être valide le jour où
+        le certificat expire — y compris sur les installeurs déjà distribués.
+        Avec, elle atteste que la signature existait pendant la validité du
+        certificat, et elle survit à son expiration. C'est la différence entre
+        « les clientes réinstallent sans alerte dans trois ans » et « tous les
+        artefacts publiés deviennent suspects le même jour ».
+
+        RFC 3161 (et non le vieux protocole Authenticode) parce que SHA-256 le
+        demande.
+      */
+      rfc3161TimeStampServer: 'http://timestamp.digicert.com',
+      signingHashAlgorithms: ['sha256'],
+    },
   },
   nsis: {
     /*

@@ -61,8 +61,75 @@ jobs:
           AMN_API_URL: ${{ secrets.AMN_API_URL }}
           AMN_API_OPERATOR_TOKEN: ${{ secrets.AMN_API_OPERATOR_TOKEN }}
 
+      # ─────────────────────── Signature de code (BLOC 2) ────────────────────
+      # Le certificat est OPTIONNEL aujourd'hui — Aaron ne l'a pas encore —
+      # mais sa configuration ne doit jamais être à moitié faite.
+      #
+      # Mesuré dans app-builder-lib 26.15.3, pas supposé : quand `CSC_LINK` est
+      # vide, `windowsSignToolManager.getCscInfo()` rend `null` et la
+      # construction CONTINUE sans signer, sans erreur. Un secret mal nommé
+      # publierait donc un binaire nu sous une CI verte. Cette étape refuse
+      # cette situation AVANT l'empaquetage, et dit clairement l'autre cas.
+      - name: État de la signature de code
+        shell: pwsh
+        env:
+          CERT: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+          PASS: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          $aCert = -not [string]::IsNullOrWhiteSpace($env:CERT)
+          $aPass = -not [string]::IsNullOrWhiteSpace($env:PASS)
+          if ($aCert -and -not $aPass) {
+            Write-Error "WINDOWS_CERT_PFX_BASE64 est defini mais WINDOWS_CERT_PASSWORD manque : electron-builder tenterait d'ouvrir le .pfx avec un mot de passe vide."
+            exit 1
+          }
+          if ($aPass -and -not $aCert) {
+            Write-Error "WINDOWS_CERT_PASSWORD est defini mais WINDOWS_CERT_PFX_BASE64 manque : la construction ne signerait rien, en silence."
+            exit 1
+          }
+          if ($aCert) {
+            Write-Host "certificat present — la construction DOIT signer (forceCodeSigning actif)."
+          } else {
+            Write-Warning "AUCUN certificat configure : les artefacts de cette publication seront NON SIGNES. Windows SmartScreen affichera un avertissement a l'installation. Voir docs/SIGNATURE-CODE.md."
+          }
+
       - name: Empaqueter (NSIS, sans publication)
         run: npx electron-builder --config electron-builder.config.mjs --win --x64 --publish never
+        env:
+          # Les deux noms lus par app-builder-lib. Vides = build non signe,
+          # et `forceCodeSigning` reste faux ; renseignes = signature exigee.
+          CSC_LINK: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+
+      # La configuration ne prouve rien : on INTERROGE les fichiers produits.
+      # Le meme motif que le smoke test — on ne croit pas l'outil sur parole.
+      - name: Vérifier la signature des artefacts
+        shell: pwsh
+        env:
+          CERT: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+        run: |
+          $ident = node --input-type=module -e "import c from './electron-builder.config.mjs'; console.log(c.productName);"
+          $cibles = @(
+            "dist-app\win-unpacked\$ident.exe",
+            (Get-ChildItem "dist-app\*Setup*.exe" | Select-Object -First 1).FullName
+          )
+          $attenduSigne = -not [string]::IsNullOrWhiteSpace($env:CERT)
+          foreach ($c in $cibles) {
+            if (-not (Test-Path $c)) { Write-Error "artefact introuvable : $c"; exit 1 }
+            $sig = Get-AuthenticodeSignature $c
+            Write-Host "$([System.IO.Path]::GetFileName($c)) : $($sig.Status)"
+            if ($attenduSigne) {
+              if ($sig.Status -ne 'Valid') { Write-Error "signature invalide ($($sig.Status)) sur $c"; exit 1 }
+              # L'horodatage est ce qui fait survivre la signature a
+              # l'expiration du certificat. Sans lui, tout se met a alerter le
+              # meme jour, y compris les installeurs deja distribues.
+              if (-not $sig.TimeStamperCertificate) { Write-Error "signature NON HORODATEE sur $c : elle expirera avec le certificat."; exit 1 }
+              Write-Host "  signe par   : $($sig.SignerCertificate.Subject)"
+              Write-Host "  horodate par: $($sig.TimeStamperCertificate.Subject)"
+            } elseif ($sig.Status -eq 'Valid') {
+              Write-Error "artefact signe alors qu'aucun certificat n'est configure : verifier d'ou vient cette signature."
+              exit 1
+            }
+          }
 
       # ───────────────────────── Vérifications, avant tout envoi ─────────────
       # 1. Intégrité : chaque fichier du moteur Electron du paquet est comparé
