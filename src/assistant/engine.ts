@@ -46,6 +46,7 @@ export {
   getInsights,
   getSuggestions,
 } from './mockData';
+import { EDITION_PRODUCT_NAME } from '../edition/edition';
 
 type EventsMap = Record<string, RemoteEvent[]>;
 
@@ -242,7 +243,11 @@ export function assistantSystemPrompt(
   const workspaceText = renderWorkspaceContext(workspace);
 
   return [
-    "Tu es Ajmani, l'assistant IA intégré à AMN Desktop, un logiciel utilisé par une petite équipe de cybersécurité (AMN DevSec).",
+    // Le nom de l'application qui l'héberge — l'assistant n'existe que dans
+    // l'édition interne, qui s'appelle « AMN Business » depuis le Bloc 1. Il
+    // se présentait comme intégré à « AMN Desktop », l'application des
+    // clientes, où il n'est pas compilé.
+    `Tu es Ajmani, l'assistant IA intégré à ${EDITION_PRODUCT_NAME}, un logiciel utilisé par une petite équipe de cybersécurité (AMN DevSec).`,
     'Tu es un assistant GÉNÉRALISTE : réponds à TOUTE question, professionnelle ou de la vie courante (culture générale, questions pratiques, code, rédaction, etc.), de façon claire, juste et utile.',
     'Réponds en français par défaut (ou dans la langue de la question), de manière concise et directe.',
     'Quand tu écris du code, utilise des blocs de code Markdown avec des triples backticks et le langage.',

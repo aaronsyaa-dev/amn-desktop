@@ -25,6 +25,7 @@ import { isModuleEnabled } from '../data/spaces';
 import { useOrgContext } from '../state/OrgContextContext';
 import { OrgAvatar } from '../components/org-rail/OrgAvatar';
 import { OrgSwitchButton } from '../components/org-rail/OrgSwitchButton';
+import { CLIENT_PRODUCT_NAME } from '../edition/edition';
 
 const TRANSITION = { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const };
 
@@ -194,8 +195,17 @@ export function ClientSidebar({
             <p className="truncate text-[13px] font-semibold leading-tight text-text-primary">
               {support?.orgName}
             </p>
+            {/*
+              Le produit que la CLIENTE fait tourner, pas le nôtre.
+
+              La ligne disait « AMN Business » — notre application interne —
+              juste sous le nom de la cliente, comme si c'était la sienne. Elle
+              en fait tourner une autre, qui s'appelle « AMN Desktop », et c'est
+              cette information-là qui est utile ici : on regarde son
+              organisation, pas la nôtre.
+            */}
             <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
-              AMN Business
+              {CLIENT_PRODUCT_NAME}
             </p>
           </div>
         </div>

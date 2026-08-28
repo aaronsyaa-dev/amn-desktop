@@ -209,7 +209,25 @@ for (const fichier of fichiers) {
   if (SOURCES_LEGITIMES.has(fichier)) continue;
   const source = read(fichier).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   for (const nom of NOMS) {
-    if (source.includes(`'${nom}'`) || source.includes(`"${nom}"`)) {
+    /*
+      Le nom NU, une fois les commentaires retirés — pas seulement `'AMN
+      Business'`.
+
+      Cette règle cherchait les formes entre guillemets, et ratait donc le
+      cas le plus naturel pour un nom VISIBLE : le texte JSX, qui n'en a pas.
+
+        <p className="…">
+          AMN Business
+        </p>
+
+      Exactement ce qui se trouvait sous le nom d'une CLIENTE dans son
+      dossier — notre produit interne, affiché comme si c'était le sien.
+
+      C'est le même défaut que la règle 5 a eu, et qui y a déjà été corrigé de
+      la même façon : un nom de produit contient une espace ; hors commentaire,
+      il ne peut être que du texte affiché.
+    */
+    if (source.includes(nom)) {
       failures.push(
         `${fichier} écrit « ${nom} » en dur. Le nom d'une édition vient de ` +
           `EDITION_PRODUCT_NAME (affichage) ou de la configuration d'electron-builder ` +

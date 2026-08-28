@@ -35,6 +35,17 @@
 
 import crypto from 'node:crypto';
 
+/*
+  Le nom de l'édition CLIENTE, lu dans sa configuration.
+
+  Ce message disait « installer AMN Business » à une cliente : c'est le nom de
+  NOTRE application interne depuis le renommage du Bloc 1. On lui demandait
+  donc d'installer la mauvaise — celle qui embarque la Tour de contrôle et les
+  produits de cybersécurité.
+*/
+process.env.AMN_EDITION = 'business';
+const NOM_CLIENTE = (await import('../electron-builder.config.mjs')).default.productName;
+
 const args = process.argv.slice(2);
 function flag(name) {
   const i = args.indexOf(`--${name}`);
@@ -147,7 +158,7 @@ console.log(`  Rôle              : ${session.user.role}`);
 console.log('──────────────────────────────────────────────────────────────\n');
 console.log(
   'À faire ensuite :\n' +
-    '  1. installer AMN Business (npm run make:business) sur son poste ;\n' +
+    `  1. installer ${NOM_CLIENTE} (npm run make:business) sur son poste ;\n` +
     '  2. lui faire changer ce mot de passe dans Paramètres → Sécurité ;\n' +
     '  3. vérifier la synchro : AMN_API_EMAIL / AMN_API_PASSWORD + npm run check:sync.\n',
 );

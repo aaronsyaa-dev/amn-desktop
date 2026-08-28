@@ -48,7 +48,7 @@
  * Usage :
  *   AMN_API_URL=https://… OPERATOR_TOKEN=… node scripts/publish-release.mjs \
  *     [--file out/make/squirrel.windows/x64/AMN-Business-1.2.31-Setup.exe] \
- *     [--app  out/AMN Business-win32-x64]   # l'app empaquetée à relire
+ *     [--app  "out/AMN Desktop-win32-x64"]  # l'app empaquetée à relire
  *     [--location https://…]                # si les octets vivent ailleurs
  *     [--notes "Correctif de sécurité."]
  *
@@ -62,6 +62,34 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { ARTIFACT_FORBIDDEN, ARTIFACT_REQUIRED } from './business-bundle-rules.mjs';
 import { auditPackage, REMEDE } from './package-rules.mjs';
+
+/*
+  LE NOM DE L'ÉDITION CLIENTE, LU DANS SA CONFIGURATION — jamais écrit ici.
+
+  Ce script cherchait « AMN Business » partout : l'exécutable, le dossier
+  déballé, et un filtre `/business/i` sur le nom de l'installeur. C'était juste
+  avant le renommage du Bloc 1 ; depuis, l'édition CLIENTE s'appelle « AMN
+  Desktop » et c'est l'édition INTERNE qui s'appelle « AMN Business ».
+
+  Toutes les recherches de ce script étaient donc INVERSÉES. Deux conséquences,
+  et la seconde est celle qui compte :
+
+    · l'installeur cliente (`AMN Desktop-Setup-…exe`) n'était plus trouvé, et
+      le script s'arrêtait sur « Aucun installeur Business trouvé » ;
+    · si les deux builds étaient là, le filtre `/business/i` sélectionnait
+      l'installeur INTERNE. La relecture de l'asar l'aurait refusé — elle
+      cherche des marqueurs, pas des noms — mais on ne serait passé à côté de
+      la publication de notre propre application chez toutes les clientes que
+      grâce à un second contrôle.
+
+  D'où la lecture de la configuration : `AMN_EDITION=business` donne le nom que
+  le paquet portera VRAIMENT, et ce script ne peut plus se tromper d'édition en
+  se fiant à une chaîne écrite un jour où elle était vraie.
+*/
+process.env.AMN_EDITION = 'business';
+const configCliente = (await import('../electron-builder.config.mjs')).default;
+const NOM_CLIENTE = configCliente.productName;
+const EXEC_LINUX = configCliente.linux?.executableName ?? NOM_CLIENTE;
 
 const args = process.argv.slice(2);
 const flag = (name) => {
@@ -80,7 +108,7 @@ if (!apiUrl || !token) {
 /**
  * L'application empaquetée de l'édition Business.
  *
- * `electron-forge package` la dépose dans `out/AMN Business-<plateforme>-<arch>`
+ * `electron-forge package` la dépose dans `out/AMN Desktop-<plateforme>-<arch>`
  * — le nom vient de `packagerConfig.name`, qui dépend de `AMN_EDITION`. Deux
  * éditions, deux dossiers : c'est la seule séparation que le système de
  * fichiers nous donne, et elle sert de point de départ, jamais de preuve.
@@ -91,13 +119,13 @@ function findPackagedApp() {
   // electron-builder : le dossier déballé accompagne toujours l'installeur.
   // L'exécutable `amn-business` distingue l'édition — le nom du dossier, non.
   const builder = 'dist-app/win-unpacked';
-  if (fs.existsSync(path.join(builder, 'AMN Business.exe'))) return builder;
+  if (fs.existsSync(path.join(builder, `${NOM_CLIENTE}.exe`))) return builder;
   const builderLinux = 'dist-app/linux-unpacked';
-  if (fs.existsSync(path.join(builderLinux, 'amn-business'))) return builderLinux;
+  if (fs.existsSync(path.join(builderLinux, EXEC_LINUX))) return builderLinux;
   if (!fs.existsSync('out')) return null;
   const candidats = fs
     .readdirSync('out', { withFileTypes: true })
-    .filter((e) => e.isDirectory() && e.name.startsWith('AMN Business-'))
+    .filter((e) => e.isDirectory() && e.name.startsWith(`${NOM_CLIENTE}-`))
     .map((e) => path.join('out', e.name));
   return candidats[0] ?? null;
 }
@@ -147,7 +175,13 @@ function findInstaller() {
       // Les deux éditions peuvent déposer leur installeur dans CE dossier.
       // Filtrer sur le nom ne prouve rien (voir l'audit de l'artefact plus
       // bas), mais évite de partir sur le mauvais fichier quand les deux sont là.
-      .filter((e) => /business/i.test(e.name))
+      /*
+        Le nom du paquet CLIENT, et pas le mot « business » — qui désigne
+        désormais l'édition interne. Filtrer sur le nom ne prouve rien (voir
+        l'audit de l'artefact plus bas), mais il faut au moins partir sur le
+        bon fichier quand les deux sont là.
+      */
+      .filter((e) => e.name.startsWith(NOM_CLIENTE))
       .map((e) => path.join(root, e.name));
     if (found.length > 0) return found[0];
   }
@@ -157,7 +191,7 @@ function findInstaller() {
 const file = flag('file') ?? findInstaller();
 if (!file || !fs.existsSync(file)) {
   console.error(
-    'Aucun installeur Business trouvé. Lancez `npm run make:business` sur une machine Windows,\n' +
+    `Aucun installeur « ${NOM_CLIENTE} » trouvé. Lancez \`npm run make:business\` sur une machine Windows,\n` +
       'ou passez le chemin avec --file.',
   );
   process.exit(1);
@@ -169,7 +203,7 @@ const appDir = findPackagedApp();
 if (!appDir || !fs.existsSync(appDir)) {
   console.error(
     'Application empaquetée introuvable : impossible de vérifier que cet installeur est\n' +
-      'bien l’édition Business. Attendu un dossier `out/AMN Business-…` produit par\n' +
+      `bien l’édition cliente. Attendu un dossier \`out/${NOM_CLIENTE}-…\` produit par\n` +
       '`npm run make:business`, ou passez-le avec --app.\n' +
       '\n' +
       'Publier sans cette vérification est refusé : ce qu’on enregistre ici s’installe\n' +
