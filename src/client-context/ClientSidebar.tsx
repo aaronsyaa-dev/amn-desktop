@@ -13,6 +13,7 @@ import {
   LayoutTemplate,
   LogOut,
   NotebookPen,
+  PartyPopper,
   ReceiptEuro,
   Settings,
   ShieldCheck,
@@ -53,6 +54,7 @@ const CLIENT_MODULES: NavItem[] = [
   { key: 'time', label: 'Temps', to: '/temps', icon: Timer, hint: 'Chronomètre et temps passé' },
   { key: 'calculators', label: 'Calculateurs', to: '/calculateurs', icon: Calculator, hint: 'Prix, marges, répartition' },
   { key: 'orders', label: 'Commandes', to: '/commandes', icon: ShoppingBag, hint: 'Reçues du site' },
+  { key: 'evenements', label: 'Événements', to: '/evenements', icon: PartyPopper, hint: 'Dates, jauge, équilibre' },
   { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen, hint: 'Bloc-notes' },
   { key: 'pages', label: 'Pages', to: '/pages', icon: LayoutTemplate, hint: 'Fiches et supports partagés' },
   { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Comptes-rendus' },
@@ -85,7 +87,7 @@ export const CLIENT_NAV_ITEMS = CLIENT_MODULES;
  */
 export const CLIENT_SECTIONS: Array<{ label: string; keys: string[] }> = [
   { label: 'Pilotage', keys: ['home', 'agenda', 'projects', 'tasks'] },
-  { label: 'Clients & revenus', keys: ['clients', 'invoices', 'orders'] },
+  { label: 'Clients & revenus', keys: ['clients', 'invoices', 'orders', 'evenements'] },
   { label: 'Production', keys: ['time', 'expenses', 'calculators'] },
   { label: 'Documents', keys: ['notes', 'pages', 'reports', 'media'] },
   { label: 'Système', keys: ['settings'] },

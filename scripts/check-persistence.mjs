@@ -131,6 +131,7 @@ const MODULE_DATA = {
   time: ['timeEntries', 'timeConfig'],
   calculators: [], // Un moteur de calcul : il lit, il ne stocke rien.
   orders: ['orders'],
+  evenements: ['evenements'],
   notes: ['notes'],
   pages: ['pages'],
   media: ['media'],
@@ -169,6 +170,11 @@ const MODULE_FILES = {
   time: ['src/screens/TimeScreen.tsx', 'src/state/useTimeTracking.ts'],
   calculators: ['src/screens/CalculatorsScreen.tsx'],
   orders: ['src/screens/OrdersScreen.tsx', 'src/state/useOrders.ts'],
+  evenements: [
+    'src/screens/EventsScreen.tsx',
+    'src/state/useEvenements.ts',
+    'src/state/eventEngine.ts',
+  ],
   notes: ['src/screens/NotesScreen.tsx', 'src/state/useNotes.ts'],
   pages: ['src/screens/PagesScreen.tsx', 'src/lib/pageBlocks.ts'],
   media: ['src/business/MediaSoloScreen.tsx', 'src/screens/MediaLibraryScreen.tsx'],

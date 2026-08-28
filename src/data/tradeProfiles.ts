@@ -84,7 +84,22 @@ export const TRADE_PROFILES: TradeProfile[] = [
     pitch:
       'Monte des événements. Chaque date est un budget à l’équilibre, et un calendrier qui ne pardonne pas.',
     icon: PartyPopper,
-    modules: ['agenda', 'clients', 'invoices', 'projects', 'expenses', 'calculators', 'media', 'tasks'],
+    // « evenements » EN TÊTE, et non ajouté au bout : c'est le module qui
+    // porte le métier. Une organisation événementielle qui recevrait tout le
+    // reste sans lui aurait un agenda et des dépenses, mais nulle part où
+    // lire le nombre d'entrées avant l'équilibre — c'est-à-dire nulle part où
+    // décider.
+    modules: [
+      'evenements',
+      'agenda',
+      'clients',
+      'invoices',
+      'projects',
+      'expenses',
+      'calculators',
+      'media',
+      'tasks',
+    ],
     calcProfileId: 'evenementiel-rentabilite',
     suggestedAccent: 'corail',
     seats: 4,
@@ -140,6 +155,7 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'time', label: 'Temps', hint: 'Chronomètre et temps passé' },
   { key: 'calculators', label: 'Calculateurs', hint: 'Prix, marges, répartition' },
   { key: 'orders', label: 'Commandes', hint: 'Reçues du site public' },
+  { key: 'evenements', label: 'Événements', hint: 'Dates, jauge, seuil de rentabilité' },
   { key: 'notes', label: 'Notes', hint: 'Bloc-notes' },
   { key: 'pages', label: 'Pages', hint: 'Fiches et supports partagés' },
   { key: 'media', label: 'Médias', hint: 'Photos et fichiers' },

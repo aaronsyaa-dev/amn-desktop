@@ -93,6 +93,9 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'timeEntries',
   'timeConfig',
   'orders',
+  // Les événements. Voir `SyncedCollection` pour la raison du nom français :
+  // `events` désigne déjà, côté amn-api, une observation brute de tracker.
+  'evenements',
 ];
 
 const MIRROR_PREFIX = 'amn.sync.';

@@ -319,6 +319,95 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
       ],
     }),
   },
+  /*
+    LE MODULE ÉVÉNEMENTS, SUR LE MÊME MOTEUR
+
+    Trois documents qu'on écrit pour chaque date, et qu'on relit sur place :
+    la fiche (où, quand, qui appeler), le minutage (l'ordre des choses) et la
+    check-list du jour J. Aucun ne demande un type de bloc de plus — un
+    minutage est un tableau, une check-list est une check-list.
+
+    `scope: 'evenement'` les range dans le module Événements : elles ne
+    s'affichent donc pas dans les Pages de travail, et les fiches de production
+    ne s'affichent pas ici.
+  */
+  {
+    id: 'fiche-evenement',
+    label: 'Fiche d’événement',
+    description: 'Lieu, accès, contacts — ce qu’on relit sur place, sur un téléphone.',
+    scope: 'evenement',
+    build: () => ({
+      title: 'Fiche d’événement',
+      icon: '🎪',
+      blocks: [
+        {
+          id: blockId(),
+          type: 'text',
+          text: 'Adresse exacte, accès livraison, où se garer, à quelle heure la salle ouvre. Cette page est la référence : si quelque chose change, on le corrige ici et tout le monde le voit.',
+        },
+        {
+          id: blockId(),
+          type: 'table',
+          columns: ['Qui', 'Rôle', 'Téléphone'],
+          rows: [
+            ['', 'Régie', ''],
+            ['', 'Sécurité', ''],
+            ['', 'Contact salle', ''],
+          ],
+        },
+      ],
+    }),
+  },
+  {
+    id: 'minutage',
+    label: 'Conduite / minutage',
+    description: 'L’ordre des choses, heure par heure, et qui en est responsable.',
+    scope: 'evenement',
+    build: () => ({
+      title: 'Conduite',
+      icon: '⏱️',
+      blocks: [
+        {
+          id: blockId(),
+          type: 'text',
+          text: 'Le déroulé, dans l’ordre. Une ligne par moment, même pour ce qui paraît évident : c’est ce qui manque toujours le jour même.',
+        },
+        {
+          id: blockId(),
+          type: 'table',
+          columns: ['Heure', 'Ce qui se passe', 'Qui'],
+          rows: [
+            ['', 'Montage', ''],
+            ['', 'Balances', ''],
+            ['', 'Ouverture des portes', ''],
+            ['', 'Démontage', ''],
+          ],
+        },
+      ],
+    }),
+  },
+  {
+    id: 'jour-j',
+    label: 'Check-list du jour J',
+    description: 'Ce qu’on coche en arrivant, et ce qu’on ne peut pas oublier.',
+    scope: 'evenement',
+    build: () => ({
+      title: 'Jour J',
+      icon: '✅',
+      blocks: [
+        {
+          id: blockId(),
+          type: 'checklist',
+          items: [
+            { id: blockId('i'), text: 'Autorisations et assurances à jour', done: false },
+            { id: blockId('i'), text: 'Caisse et terminal de paiement', done: false },
+            { id: blockId('i'), text: 'Liste des entrées vendues imprimée', done: false },
+            { id: blockId('i'), text: 'Contacts d’urgence affichés en régie', done: false },
+          ],
+        },
+      ],
+    }),
+  },
   {
     id: 'avant-paie',
     label: 'Avant la paie',

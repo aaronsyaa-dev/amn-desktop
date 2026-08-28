@@ -1872,7 +1872,19 @@ export type SyncedCollection =
   // Commandes reçues du site public. Déposées par amn-api (voir
   // docs/COMMANDES.md côté serveur), lues et pilotées ici comme n'importe quel
   // enregistrement partagé.
-  | 'orders';
+  | 'orders'
+  /**
+   * Les événements du module Événements.
+   *
+   * POURQUOI CE NOM EST EN FRANÇAIS, seul de toute cette liste : `events`
+   * était déjà pris. Côté amn-api, un « event » est une observation BRUTE
+   * remontée par un tracker installé chez une cliente — une connexion, une
+   * requête, un battement de cœur. Deux sens différents sur un même mot, dans
+   * un dépôt où l'un des deux est déjà partout, se paie en relectures ratées
+   * pendant des années. Le nom français lève l'ambiguïté à la lecture, ce qui
+   * est exactement son travail.
+   */
+  | 'evenements';
 
 export interface PresenceEntry {
   email: string;

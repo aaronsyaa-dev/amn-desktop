@@ -16,6 +16,7 @@ import { ExpensesScreen } from '../screens/ExpensesScreen';
 import { TimeScreen } from '../screens/TimeScreen';
 import { CalculatorsScreen } from '../screens/CalculatorsScreen';
 import { OrdersScreen } from '../screens/OrdersScreen';
+import { EventsScreen } from '../screens/EventsScreen';
 import { TasksScreen } from '../screens/TasksScreen';
 import { NotesScreen } from '../screens/NotesScreen';
 import { PagesScreen } from '../screens/PagesScreen';
@@ -129,6 +130,26 @@ export function AppRoot() {
           element={
             <ModuleRoute module="orders">
               <OrdersScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/evenements"
+          element={
+            <ModuleRoute module="evenements">
+              <EventsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/evenements/documents"
+          element={
+            <ModuleRoute module="evenements">
+              <PagesScreen
+                scope="evenement"
+                title="Documents d’événement"
+                description="Les fiches, conduites et check-lists de vos dates. Écrites à plusieurs, relues sur place — souvent depuis un téléphone, en régie."
+              />
             </ModuleRoute>
           }
         />

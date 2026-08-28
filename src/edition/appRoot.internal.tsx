@@ -17,6 +17,7 @@ import { ExpensesScreen } from '../screens/ExpensesScreen';
 import { TimeScreen } from '../screens/TimeScreen';
 import { CalculatorsScreen } from '../screens/CalculatorsScreen';
 import { OrdersScreen } from '../screens/OrdersScreen';
+import { EventsScreen } from '../screens/EventsScreen';
 import { ComplyScreen } from '../screens/ComplyScreen';
 import { ScannerScreen } from '../screens/ScannerScreen';
 import { TrackerScreen } from '../screens/TrackerScreen';
@@ -151,6 +152,23 @@ function AmnRoutes() {
         <Route path="/temps" element={<TimeScreen />} />
         <Route path="/calculateurs" element={<CalculatorsScreen />} />
         <Route path="/commandes" element={<OrdersScreen />} />
+        <Route path="/evenements" element={<EventsScreen />} />
+        {/* Les documents d'un événement vivent sur le moteur de pages, comme
+            la liste de courses du module Personnel : une fiche, une conduite,
+            une check-list du jour J n'ont besoin d'aucun type de bloc de plus.
+            Une route à part et non un onglet dans l'écran : l'éditeur de pages
+            porte son propre en-tête et sa propre liste, et l'imbriquer
+            donnerait deux titres l'un sous l'autre. */}
+        <Route
+          path="/evenements/documents"
+          element={
+            <PagesScreen
+              scope="evenement"
+              title="Documents d’événement"
+              description="Les fiches, conduites et check-lists de vos dates. Écrites à plusieurs, relues sur place — souvent depuis un téléphone, en régie."
+            />
+          }
+        />
         <Route path="/sites" element={<SitesDashboardScreen />} />
         <Route path="/team" element={<TeamScreen />} />
         <Route path="/reports" element={<ReportsScreen />} />
@@ -266,6 +284,26 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="orders">
               <OrdersScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/evenements"
+          element={
+            <ModuleRoute module="evenements">
+              <EventsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/evenements/documents"
+          element={
+            <ModuleRoute module="evenements">
+              <PagesScreen
+                scope="evenement"
+                title="Documents d’événement"
+                description="Les fiches, conduites et check-lists de vos dates. Écrites à plusieurs, relues sur place — souvent depuis un téléphone, en régie."
+              />
             </ModuleRoute>
           }
         />

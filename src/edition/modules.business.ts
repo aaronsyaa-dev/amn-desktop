@@ -1,20 +1,21 @@
 import {
   Calculator,
   CalendarDays,
-  ShoppingBag,
   CheckSquare,
   Contact,
   FileText,
+  FolderKanban,
   Images,
   LayoutDashboard,
   LayoutTemplate,
   Lock,
   NotebookPen,
+  PartyPopper,
   PiggyBank,
-  ShoppingBasket,
-  FolderKanban,
   ReceiptEuro,
   Settings,
+  ShoppingBag,
+  ShoppingBasket,
   Timer,
   Wallet,
 } from 'lucide-react';
@@ -83,6 +84,10 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'clients', label: 'Clients', to: '/clients', icon: Contact, hint: 'Fiches et devis' },
       { key: 'invoices', label: 'Facturation', to: '/facturation', icon: ReceiptEuro, hint: 'Factures et encaissements' },
       { key: 'orders', label: 'Commandes', to: '/commandes', icon: ShoppingBag, hint: 'Reçues du site' },
+      // Les événements vivent avec les revenus, et non dans « Production » :
+      // ce qu'on y regarde est un seuil de rentabilité et un nombre d'entrées
+      // vendues, pas un temps passé.
+      { key: 'evenements', label: 'Événements', to: '/evenements', icon: PartyPopper, hint: 'Dates, jauge, équilibre' },
     ],
   },
   {
