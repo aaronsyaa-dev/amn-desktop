@@ -22,7 +22,8 @@ Trois listes :
   taux de charges, un nombre d'associés) ;
 - des **étapes** de calcul — des formules arithmétiques sur les entrées et sur
   les étapes précédentes ;
-- parmi ces étapes, celles marquées `output: true` sont les **résultats**.
+- parmi ces étapes, celles marquées `output: true` sont les **résultats**, et
+  celle marquée `headline: true` est **la réponse** — voir plus bas.
 
 ```ts
 {
@@ -34,7 +35,7 @@ Trois listes :
     { key: 'vente', label: 'Prix de vente', kind: 'money', defaultValue: 7900 },
   ],
   steps: [
-    { key: 'marge', label: 'Marge', kind: 'money', formula: 'vente - achat', output: true },
+    { key: 'marge', label: 'Marge', kind: 'money', formula: 'vente - achat', output: true, headline: true },
     { key: 'taux', label: 'Taux de marge', kind: 'percent', formula: 'marge / vente * 100', output: true },
   ],
 }
@@ -42,6 +43,33 @@ Trois listes :
 
 Rien d'autre. L'écran l'affichera, `npm run check:calc` le validera, et il
 apparaîtra dans le sélecteur — sans qu'une ligne du moteur ou de l'écran change.
+
+### La tête : nommer LE chiffre qu'on vient chercher
+
+`headline: true` désigne la seule étape que l'écran met en avant — plus grande,
+filet d'accent, en premier. Une par profil, et forcément une sortie.
+
+Elle existe parce qu'elle a manqué. L'écran mettait en avant la **première
+sortie déclarée**, c'est-à-dire la première dans l'ordre du **calcul** — un
+ordre imposé par les dépendances entre étapes, qui n'a aucune raison de
+coïncider avec l'importance. Un prix client ne peut pas être calculé avant les
+charges qui entrent dedans, donc « Prix client » ouvrait sur les charges
+sociales. « Rentabilité d'un événement » ouvrait sur les coûts fixes, alors que
+le commentaire de ce profil dit en toutes lettres que le chiffre qui compte est
+le nombre d'entrées. Trois profils sur cinq annonçaient autre chose que leur
+réponse.
+
+Un chiffre juste, affiché à la place d'un autre, se lit comme une réponse.
+Personne ne signale ce genre d'erreur : on lit le gros chiffre.
+
+`check:calc` exige que tout profil livré nomme sa tête, refuse qu'il y en ait
+deux, refuse une tête qui n'est pas une sortie, et **vérifie profil par profil
+que c'est la bonne** — la liste attendue est écrite en clair dans le contrôle,
+justifiée par la description de chaque profil. Si la tête et la description
+divergent un jour, l'une des deux est fausse et il faudra choisir sciemment.
+
+Un profil sans tête reste valide : la première sortie redevient la tête. C'est
+ce qui garde un profil minimal déclarable en trois lignes.
 
 ## La recette, en quatre gestes
 
@@ -71,7 +99,14 @@ la fin ferait diverger le détail affiché de son total.
 ## Ce que le moteur sait faire, et rien de plus
 
 - `+`, `-`, `*`, `/`, les parenthèses, le moins unaire (`-x`) ;
-- quatre fonctions : `min(a, b)`, `max(a, b)`, `abs(x)`, `round(x)`.
+- six fonctions : `min(a, b)`, `max(a, b)`, `abs(x)`, `round(x)`, `ceil(x)`,
+  `floor(x)`.
+
+`ceil` et `floor` existent pour les grandeurs qui se **comptent**. Le seuil de
+rentabilité d'un événement valait 103,37 : personne ne vend 0,37 entrée, et
+`round` aurait affiché 103, c'est-à-dire un seuil auquel l'événement perd
+encore de l'argent. Le sens du calcul décide de l'arrondi, donc c'est au profil
+de le dire — le moteur ne devine pas.
 
 C'est volontairement peu. Le besoin réel est de l'arithmétique commerciale ; un
 moteur qui essaie de tout prévoir devient un langage à maintenir.

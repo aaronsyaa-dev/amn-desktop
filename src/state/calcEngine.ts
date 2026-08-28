@@ -61,6 +61,22 @@ export interface CalcStep {
   kind: CalcKind;
   /** Affichée comme résultat. Une étape non marquée reste un intermédiaire. */
   output?: boolean;
+  /**
+   * LA réponse du calculateur — le chiffre qu'on est venu chercher.
+   *
+   * Une seule par profil, et forcément une sortie. Sans elle, l'écran mettait
+   * en avant la PREMIÈRE sortie déclarée, c'est-à-dire la première dans
+   * l'ordre de CALCUL — un ordre imposé par les dépendances entre étapes, qui
+   * n'a aucune raison de coïncider avec l'importance. Le calculateur « Prix
+   * client » ouvrait donc sur les charges sociales, et « Rentabilité d'un
+   * événement » sur les coûts fixes, alors que le commentaire de ce profil
+   * dit en toutes lettres que le chiffre qui compte est le nombre d'entrées.
+   *
+   * Facultatif : sans déclaration, la première sortie reste la tête, ce qui
+   * garde un profil minimal valide. `check:calc` exige en revanche que les
+   * profils LIVRÉS la nomment.
+   */
+  headline?: boolean;
   help?: string;
 }
 
@@ -83,12 +99,22 @@ type Token =
   | { t: 'paren'; v: '(' | ')' }
   | { t: 'comma' };
 
-/** Les seules fonctions admises. Volontairement peu : voir l'en-tête du fichier. */
+/**
+ * Les seules fonctions admises. Volontairement peu : voir l'en-tête du fichier.
+ *
+ * `ceil` et `floor` sont là pour les grandeurs qui se COMPTENT. Un seuil de
+ * rentabilité en billets valait 103,37 : personne ne vend 0,37 entrée, et
+ * arrondir au plus proche donnait 103, c'est-à-dire un seuil auquel
+ * l'événement perd encore de l'argent. Le sens du calcul décide de l'arrondi,
+ * donc le profil doit pouvoir le dire.
+ */
 const FUNCTIONS: Record<string, (args: number[]) => number> = {
   min: (a) => Math.min(...a),
   max: (a) => Math.max(...a),
   abs: (a) => Math.abs(a[0]),
   round: (a) => roundHalfAwayFromZero(a[0]),
+  ceil: (a) => Math.ceil(a[0]),
+  floor: (a) => Math.floor(a[0]),
 };
 
 /**
@@ -97,7 +123,7 @@ const FUNCTIONS: Record<string, (args: number[]) => number> = {
  * Déclaré plutôt que deviné : c'est ce qui permet de vérifier la FORME d'une
  * formule sans l'exécuter (voir `assertWellFormed`).
  */
-const ARITY: Record<string, number> = { min: 2, max: 2, abs: 1, round: 1 };
+const ARITY: Record<string, number> = { min: 2, max: 2, abs: 1, round: 1, ceil: 1, floor: 1 };
 
 const PRECEDENCE: Record<string, number> = { '+': 1, '-': 1, '*': 2, '/': 2 };
 
@@ -316,6 +342,8 @@ export interface CalcLine {
   kind: CalcKind;
   value: number;
   output: boolean;
+  /** Vrai sur la ligne à mettre en avant. Voir `CalcStep.headline`. */
+  headline: boolean;
   help?: string;
 }
 
@@ -362,6 +390,7 @@ export function evaluateProfile(
         kind: step.kind,
         value,
         output: Boolean(step.output),
+        headline: Boolean(step.headline),
         help: step.help,
       });
     } catch (err) {
@@ -415,10 +444,34 @@ export function validateProfile(profile: CalcProfile): string[] {
   if (!profile.steps.some((s) => s.output)) {
     problems.push(`${profile.id} : aucune étape marquée comme sortie`);
   }
+
+  // Deux têtes valent zéro tête : l'écran en prendrait une, arbitrairement.
+  const tetes = profile.steps.filter((s) => s.headline);
+  if (tetes.length > 1) {
+    problems.push(
+      `${profile.id} : plusieurs étapes en tête (${tetes.map((s) => s.key).join(', ')}) — il n’en faut qu’une`,
+    );
+  }
+  for (const tete of tetes) {
+    if (!tete.output) {
+      problems.push(`${tete.key} : mise en tête mais pas déclarée comme sortie`);
+    }
+  }
   return problems;
 }
 
-/** Les seules lignes à montrer en tête : les résultats. */
+/**
+ * Les seules lignes à montrer : les résultats, LA RÉPONSE EN PREMIER.
+ *
+ * L'ordre des étapes est celui du calcul, imposé par les dépendances : le prix
+ * client ne peut pas être calculé avant les charges qui entrent dedans. Rendre
+ * les sorties dans cet ordre revenait donc à mettre en avant un intermédiaire.
+ * La tête déclarée passe devant ; le reste garde l'ordre du calcul, qui se lit
+ * comme la démonstration du chiffre affiché au-dessus.
+ */
 export function outputsOf(result: CalcResult): CalcLine[] {
-  return result.lines.filter((line) => line.output);
+  const sorties = result.lines.filter((line) => line.output);
+  const tete = sorties.find((line) => line.headline);
+  if (!tete) return sorties;
+  return [tete, ...sorties.filter((line) => line !== tete)];
 }

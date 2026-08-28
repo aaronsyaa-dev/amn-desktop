@@ -102,6 +102,7 @@ const BUDGET_AVANT_PAIE: CalcProfile = {
       formula: 'solde + aVenir - prelevements',
       kind: 'money',
       output: true,
+      headline: true,
       help: 'Le solde une fois les prélèvements connus passés et les rentrées sûres arrivées.',
     },
     {

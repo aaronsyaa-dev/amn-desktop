@@ -63,6 +63,17 @@ export function CalculatorsScreen() {
   }, [profile, current]);
 
   const result = useMemo(() => evaluateProfile(profile, parsed), [profile, parsed]);
+  /*
+    `outputsOf` rend LA RÉPONSE EN PREMIER, pas la première étape calculée.
+
+    L'écran met en avant `outputs[0]` — plus grand, filet d'accent. Tant que
+    cette liste suivait l'ordre du CALCUL, cette mise en avant tombait sur un
+    intermédiaire : le calculateur « Prix client » ouvrait sur les charges
+    sociales, « Rentabilité d'un événement » sur les coûts fixes. L'ordre des
+    étapes est contraint par les dépendances, jamais par l'importance ; c'est
+    donc au profil de nommer sa tête (`headline`), et `check:calc` exige
+    qu'il le fasse.
+  */
   const outputs = outputsOf(result);
 
   const setValue = (key: string, raw: string) =>

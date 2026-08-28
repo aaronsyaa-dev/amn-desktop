@@ -98,6 +98,31 @@ const ECOMMERCE_PRICE: CalcProfile = {
       kind: 'number',
       defaultValue: 3,
     },
+    /*
+      LA FOURCHETTE — deux marges de plus, et rien d'autre.
+
+      Un prix unique ne se négocie pas. Une gérante à qui l'on demande un geste
+      sur dix pièces veut savoir jusqu'où elle peut descendre SANS calculer, et
+      un client qui accepte tout de suite lui apprend qu'elle était trop bas.
+
+      Ces deux entrées encadrent `margeVisee` ; elles ne la remplacent pas. Le
+      prix suggéré reste celui de la marge visée, et la fourchette dit ce qu'on
+      peut faire autour.
+    */
+    {
+      key: 'margeBasse',
+      label: 'Marge minimale acceptable',
+      kind: 'money',
+      defaultValue: 1000,
+      help: 'La marge en dessous de laquelle la vente ne vaut plus la peine — pas celle où l’on perd de l’argent, qui est le prix plancher.',
+    },
+    {
+      key: 'margeHaute',
+      label: 'Marge confortable',
+      kind: 'money',
+      defaultValue: 3000,
+      help: 'Ce qu’on demande quand rien n’oblige à négocier.',
+    },
   ],
   steps: [
     {
@@ -129,6 +154,7 @@ const ECOMMERCE_PRICE: CalcProfile = {
       // calculent sur lui, donc on ne peut pas les ajouter au net.
       formula: '(aEncaisser + fixeTransaction) / (1 - tauxTransaction / 100)',
       output: true,
+      headline: true,
       help: 'Prix affiché. Les frais de paiement portent sur ce montant, d’où la division.',
     },
     {
@@ -145,6 +171,60 @@ const ECOMMERCE_PRICE: CalcProfile = {
       formula: 'margeVisee / max(associes, 1)',
       output: true,
       help: 'Division simple. La répartition pondérée par le temps se règle dans la vue mensuelle.',
+    },
+
+    /*
+      LE PRIX PLANCHER — le seul chiffre de cet écran qui soit une LIMITE.
+
+      C'est le prix auquel la vente ne rapporte rien : coûts couverts, frais de
+      paiement couverts, marge nulle. En dessous, chaque article vendu coûte de
+      l'argent.
+
+      Il ne demande aucune entrée nouvelle — c'est la même chaîne que le prix
+      client avec une marge de zéro, d'où l'absence de terme de marge. Les
+      charges n'y figurent pas non plus, et c'est juste : elles s'appliquent à
+      la marge, et il n'y en a pas.
+
+      Il vaut d'être affiché même quand personne ne négocie : une remise de 30 %
+      consentie au téléphone se compare à ce chiffre, pas au prix affiché.
+    */
+    {
+      key: 'prixPlancher',
+      label: 'Prix plancher (marge nulle)',
+      kind: 'money',
+      formula: '(coutFournisseur + fraisLivraison + fixeTransaction) / (1 - tauxTransaction / 100)',
+      output: true,
+      help: 'En dessous, la vente vous coûte de l’argent. Les charges n’y sont pas : elles portent sur une marge qui est nulle ici.',
+    },
+
+    /*
+      LES DEUX BORNES, calculées par la MÊME chaîne que le prix suggéré.
+
+      Écrites en entier plutôt que dérivées du prix visé : le moteur n'a pas de
+      fonctions, et une règle de trois sur `prixClient` serait fausse — les
+      frais fixes par transaction ne sont pas proportionnels à la marge.
+
+      La répétition est donc voulue, et c'est le contrôle qui la tient : les
+      trois formules doivent rendre le même résultat que `prixClient` quand on
+      leur donne `margeVisee` (voir check-calc).
+    */
+    {
+      key: 'prixBas',
+      label: 'Prix bas de fourchette',
+      kind: 'money',
+      formula:
+        '(coutFournisseur + fraisLivraison + margeBasse / (1 - tauxCharges / 100) + fixeTransaction) / (1 - tauxTransaction / 100)',
+      output: true,
+      help: 'Le plus bas qu’on puisse consentir en gardant la marge minimale.',
+    },
+    {
+      key: 'prixHaut',
+      label: 'Prix haut de fourchette',
+      kind: 'money',
+      formula:
+        '(coutFournisseur + fraisLivraison + margeHaute / (1 - tauxCharges / 100) + fixeTransaction) / (1 - tauxTransaction / 100)',
+      output: true,
+      help: 'Ce qu’on demande quand rien n’oblige à négocier.',
     },
   ],
 };
@@ -212,9 +292,16 @@ const EVENT_BREAKEVEN: CalcProfile = {
       // `max(…, 1)` : une recette nette nulle ou négative rendrait le seuil
       // infini. On préfère un nombre absurdement grand mais fini, que l'écran
       // affiche à côté de la recette négative qui l'explique.
-      formula: 'coutsFixes / max(recetteNetteBillet, 1)',
+      //
+      // `ceil` et non `round` : on compte des entrées. Le calcul brut donnait
+      // 103,37 sur les valeurs par défaut, et l'arrondi au plus proche aurait
+      // affiché 103 — un seuil auquel l'événement perd encore de l'argent.
+      // Le chiffre annoncé doit être celui à partir duquel on est à
+      // l'équilibre, donc toujours l'entier SUPÉRIEUR.
+      formula: 'ceil(coutsFixes / max(recetteNetteBillet, 1))',
       output: true,
-      help: 'En dessous, l’événement coûte de l’argent.',
+      headline: true,
+      help: 'À partir de ce nombre d’entrées vendues, l’événement est à l’équilibre.',
     },
     {
       key: 'margeSalleComble',
@@ -281,6 +368,7 @@ const GROUP_POT: CalcProfile = {
       kind: 'money',
       formula: 'restant / max(restantsAPayer, 1)',
       output: true,
+      headline: true,
       help: 'Le montant à mettre dans la relance.',
     },
     {
@@ -354,6 +442,7 @@ const STARTUP_SPLIT: CalcProfile = {
       kind: 'percent',
       formula: '(partCapital * poidsCapital + partTemps * poidsTemps) / sommePoids',
       output: true,
+      headline: true,
       help: 'Moyenne pondérée. À discuter, pas à appliquer les yeux fermés.',
     },
   ],

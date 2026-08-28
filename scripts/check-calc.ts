@@ -44,11 +44,19 @@ interface Profile {
   label: string;
   description: string;
   inputs: { key: string; label: string; kind: Kind; defaultValue: number; help?: string }[];
-  steps: { key: string; label: string; kind: Kind; formula: string; output?: boolean; help?: string }[];
+  steps: {
+    key: string;
+    label: string;
+    kind: Kind;
+    formula: string;
+    output?: boolean;
+    headline?: boolean;
+    help?: string;
+  }[];
 }
 interface Result {
   scope: Record<string, number>;
-  lines: { key: string; label: string; kind: Kind; value: number; output: boolean }[];
+  lines: { key: string; label: string; kind: Kind; value: number; output: boolean; headline: boolean }[];
   errors: { key: string; message: string }[];
 }
 interface EngineModule {
@@ -174,6 +182,15 @@ check('les fonctions admises, et elles seules', () => {
   assert.equal(evaluateFormula('abs(0 - 8)', {}), 8);
   assert.equal(evaluateFormula('round(2.5)', {}), 3, 'arrondi commercial : 0,5 s’éloigne de zéro');
   assert.equal(evaluateFormula('round(-2.5)', {}), -3);
+  // `ceil` sert aux grandeurs qui se COMPTENT : un seuil en billets ne
+  // s'arrondit pas au plus proche, il monte. Sur un entier exact il ne bouge
+  // pas — c'est la moitié du contrat, et celle qu'un `x + 1` casserait.
+  assert.equal(evaluateFormula('ceil(2.01)', {}), 3);
+  assert.equal(evaluateFormula('ceil(2)', {}), 2, 'un entier exact ne doit pas monter');
+  assert.equal(evaluateFormula('ceil(-2.5)', {}), -2);
+  assert.equal(evaluateFormula('floor(2.99)', {}), 2);
+  assert.equal(evaluateFormula('floor(2)', {}), 2);
+  assert.equal(evaluateFormula('floor(-2.5)', {}), -3);
   throws(() => evaluateFormula('sqrt(4)', {}), 'une fonction inconnue doit lever');
 });
 
@@ -295,6 +312,112 @@ check('tout profil se déroule sur ses valeurs par défaut, sans erreur', () => 
   }
 });
 
+check('TÊTE : chaque calculateur livré nomme LE chiffre qu’on vient chercher', () => {
+  /*
+    LE DÉFAUT QUE CE CONTRÔLE FERME
+
+    L'écran met en avant la PREMIÈRE sortie — plus grande, filet d'accent — et
+    cette liste suivait l'ordre des étapes, c'est-à-dire l'ordre du CALCUL.
+    Or cet ordre est imposé par les dépendances : le prix client ne peut pas
+    être calculé avant les charges qui entrent dedans. Résultat, « Prix
+    client » ouvrait sur les charges sociales et « Rentabilité d'un
+    événement » sur les coûts fixes — alors que le commentaire de ce profil
+    dit en toutes lettres que le chiffre qui compte est le nombre d'entrées.
+
+    Un chiffre juste, affiché à la place d'un autre, se lit comme une réponse.
+    Personne ne signale ce genre d'erreur : on lit le gros chiffre.
+  */
+  for (const profile of TOUS_PROFILS) {
+    const tetes = profile.steps.filter((step) => step.headline);
+    assert.equal(
+      tetes.length,
+      1,
+      `${profile.id} : ${tetes.length} étape(s) en tête — un calculateur livré doit nommer sa réponse`,
+    );
+    assert.ok(tetes[0].output, `${profile.id}/${tetes[0].key} : en tête mais pas déclarée comme sortie`);
+
+    // Et le moteur la rend bien en premier : c'est de cette position que
+    // l'écran tire la mise en avant.
+    const sorties = outputsOf(evaluateProfile(profile));
+    assert.equal(
+      sorties[0].key,
+      tetes[0].key,
+      `${profile.id} : ${sorties[0].key} est affiché en tête à la place de ${tetes[0].key}`,
+    );
+  }
+});
+
+check('TÊTE : la réponse attendue, calculateur par calculateur', () => {
+  /*
+    Le contrôle précédent exige UNE tête ; celui-ci exige LA BONNE. Sans lui,
+    marquer n'importe quelle étape suffirait à passer au vert.
+
+    Chaque ligne est justifiée par la description du profil lui-même — ce sont
+    les mêmes mots, et c'est voulu : si la tête et la description divergent un
+    jour, l'une des deux est fausse et il faut choisir sciemment.
+  */
+  const attendu: [string, string, string][] = [
+    ['ecommerce-prix-client', 'prixClient', 'la description promet « le prix à afficher »'],
+    ['evenementiel-rentabilite', 'seuilEntrees', '« combien d’entrées vendues avant que… »'],
+    ['groupe-cagnotte', 'partRestante', '« ce qu’il reste à demander à chacun » — la relance'],
+    ['startup-repartition', 'partFinale', 'la part du fondateur, seule question posée'],
+    ['personnel-budget-avant-paie', 'reelDisponible', '« ce qu’il reste vraiment » avant la paie'],
+  ];
+  for (const [id, cle, pourquoi] of attendu) {
+    const profile = TOUS_PROFILS.find((p) => p.id === id);
+    assert.ok(profile, `profil disparu : ${id}`);
+    const tete = profile.steps.find((step) => step.headline);
+    assert.equal(tete?.key, cle, `${id} : la tête devrait être ${cle} — ${pourquoi}`);
+  }
+});
+
+check('TÊTE : le moteur refuse deux têtes, et une tête qui n’est pas une sortie', () => {
+  // La validation, pas seulement la convention : deux têtes valent zéro tête,
+  // puisque l'écran en prendrait une au hasard de l'ordre de déclaration.
+  const base = {
+    id: 'essai-tete',
+    label: 'Essai',
+    description: 'Un profil d’essai, uniquement pour éprouver la validation des têtes.',
+    inputs: [{ key: 'a', label: 'A', kind: 'number' as Kind, defaultValue: 2 }],
+  };
+
+  const deux = validateProfile({
+    ...base,
+    steps: [
+      { key: 'x', label: 'X', kind: 'number', formula: 'a * 2', output: true, headline: true },
+      { key: 'y', label: 'Y', kind: 'number', formula: 'a * 3', output: true, headline: true },
+    ],
+  });
+  assert.ok(
+    deux.some((p) => p.includes('plusieurs étapes en tête')),
+    `deux têtes acceptées : ${JSON.stringify(deux)}`,
+  );
+
+  const intermediaire = validateProfile({
+    ...base,
+    steps: [
+      { key: 'x', label: 'X', kind: 'number', formula: 'a * 2', headline: true },
+      { key: 'y', label: 'Y', kind: 'number', formula: 'x + 1', output: true },
+    ],
+  });
+  assert.ok(
+    intermediaire.some((p) => p.includes('pas déclarée comme sortie')),
+    `une tête invisible acceptée : ${JSON.stringify(intermediaire)}`,
+  );
+
+  // Et le cas sain passe, sinon les deux assertions ci-dessus ne prouvent rien.
+  assert.deepEqual(
+    validateProfile({
+      ...base,
+      steps: [
+        { key: 'x', label: 'X', kind: 'number', formula: 'a * 2' },
+        { key: 'y', label: 'Y', kind: 'number', formula: 'x + 1', output: true, headline: true },
+      ],
+    }),
+    [],
+  );
+});
+
 check('aucun profil ne casse quand TOUTES les entrées sont à zéro', () => {
   // Le cas réel : un formulaire fraîchement vidé. Il doit rendre des chiffres
   // ou des erreurs nommées, jamais un NaN ni une exception qui remonte.
@@ -390,6 +513,113 @@ check('PRIX CLIENT : le prix couvre RÉELLEMENT tout, une fois encaissé', () =>
   }
 });
 
+check('FOURCHETTE : les trois bornes sortent de la MÊME chaîne que le prix visé', () => {
+  /*
+    Les formules du plancher, du bas et du haut répètent en entier la chaîne de
+    `prixClient` — le moteur n'a pas de fonctions, et une règle de trois sur le
+    prix visé serait FAUSSE : les frais fixes par transaction ne sont pas
+    proportionnels à la marge.
+
+    Cette répétition est le risque : trois formules qui doivent rester
+    d'accord. On donne donc `margeVisee` à la formule du bas et on exige
+    exactement le prix suggéré. Une divergence future — un terme oublié dans
+    une seule des trois — tombe ici.
+  */
+  const profile = profileOf('ecommerce-prix-client');
+  for (const [cout, livraison, marge, charges, taux, fixe] of [
+    [4500, 0, 2000, 22, 1.5, 25],
+    [1200, 350, 500, 22, 1.5, 25],
+    [25000, 0, 8000, 45, 2.9, 30],
+    [999, 0, 100, 0, 0, 0],
+  ]) {
+    const commun = {
+      coutFournisseur: cout,
+      fraisLivraison: livraison,
+      margeVisee: marge,
+      tauxCharges: charges,
+      tauxTransaction: taux,
+      fixeTransaction: fixe,
+      associes: 3,
+    };
+    const r = evaluateProfile(profile, { ...commun, margeBasse: marge, margeHaute: marge });
+    assert.deepEqual(r.errors, []);
+    assert.equal(
+      r.scope.prixBas,
+      r.scope.prixClient,
+      `à marge égale, le bas de fourchette doit valoir le prix suggéré (cout=${cout})`,
+    );
+    assert.equal(r.scope.prixHaut, r.scope.prixClient, 'idem pour le haut');
+  }
+});
+
+check('PRIX PLANCHER : à ce prix il ne reste RIEN, et pas moins que rien', () => {
+  /*
+    La définition, vérifiée en refaisant le chemin comme la banque : Stripe
+    prélève, le fournisseur et la livraison sont payés — il doit rester zéro.
+
+    C'est le seul chiffre de cet écran qui soit une limite : une remise
+    consentie au téléphone se compare à lui, pas au prix affiché.
+  */
+  const profile = profileOf('ecommerce-prix-client');
+  for (const [cout, livraison, taux, fixe] of [
+    [4500, 0, 1.5, 25],
+    [1200, 350, 2.9, 30],
+    [25000, 1200, 1.5, 25],
+    [999, 0, 0, 0],
+  ]) {
+    const r = evaluateProfile(profile, {
+      coutFournisseur: cout,
+      fraisLivraison: livraison,
+      margeVisee: 2000,
+      tauxCharges: 22,
+      tauxTransaction: taux,
+      fixeTransaction: fixe,
+      associes: 3,
+      margeBasse: 1000,
+      margeHaute: 3000,
+    });
+    const plancher = r.scope.prixPlancher;
+    const encaisse = plancher - (plancher * taux) / 100 - fixe;
+    const reste = encaisse - cout - livraison;
+    assert.ok(
+      Math.abs(reste) <= 2,
+      `cout=${cout} livraison=${livraison} → il reste ${reste.toFixed(2)} au prix plancher, au lieu de 0`,
+    );
+  }
+});
+
+check('FOURCHETTE : plancher < bas < visé < haut, toujours', () => {
+  /*
+    L'ordre EST le message. Un plancher au-dessus du prix bas, ou un haut
+    au-dessous du visé, se lit comme une erreur de saisie et fait perdre
+    confiance dans les quatre chiffres à la fois.
+  */
+  const profile = profileOf('ecommerce-prix-client');
+  for (const [basse, visee, haute] of [
+    [1000, 2000, 3000],
+    [1, 2, 3],
+    [5000, 5001, 5002],
+    [0, 100, 20000],
+  ]) {
+    const r = evaluateProfile(profile, {
+      coutFournisseur: 4500,
+      fraisLivraison: 0,
+      margeVisee: visee,
+      margeBasse: basse,
+      margeHaute: haute,
+      tauxCharges: 22,
+      tauxTransaction: 1.5,
+      fixeTransaction: 25,
+      associes: 3,
+    });
+    const { prixPlancher, prixBas, prixClient, prixHaut } = r.scope;
+    assert.ok(
+      prixPlancher <= prixBas && prixBas <= prixClient && prixClient <= prixHaut,
+      `marges ${basse}/${visee}/${haute} → ${prixPlancher} / ${prixBas} / ${prixClient} / ${prixHaut}`,
+    );
+  }
+});
+
 check('PRIX CLIENT : le prix monte quand un coût monte', () => {
   // Monotonie : une calculatrice qui baisserait le prix quand le coût augmente
   // serait fausse d'une façon qu'aucun cas connu isolé n'attraperait.
@@ -439,8 +669,48 @@ check('ÉVÉNEMENTIEL : le seuil de rentabilité tombe juste', () => {
   assert.deepEqual(r.errors, []);
   assert.equal(r.scope.coutsFixes, 200000);
   assert.equal(r.scope.recetteNetteBillet, 2225);
-  assert.ok(Math.abs(r.scope.seuilEntrees - 89.887) < 0.01, String(r.scope.seuilEntrees));
+  // 200 000 / 2 225 = 89,887 entrées. On en annonce 90 : à 89 entrées vendues
+  // il manque encore 1 975 centimes, et un seuil qu'on atteint en étant
+  // toujours à perte n'est pas un seuil.
+  assert.equal(r.scope.seuilEntrees, 90, String(r.scope.seuilEntrees));
+  assert.ok(2225 * 89 < 200000, 'à 89 entrées, l’événement perd encore — le seuil ne peut pas être 89');
+  assert.ok(2225 * 90 >= 200000, 'à 90 entrées, l’équilibre est atteint');
   assert.equal(r.scope.margeSalleComble, 2225 * 200 - 200000);
+});
+
+check('ÉVÉNEMENTIEL : le seuil est un NOMBRE D’ENTRÉES, jamais une fraction', () => {
+  /*
+    On ne vend pas 0,37 billet. Le seuil affiché doit être le premier nombre
+    ENTIER d'entrées à partir duquel l'événement ne perd plus d'argent — donc
+    toujours l'entier supérieur, jamais l'arrondi au plus proche.
+
+    Éprouvé sur des coûts qui tombent juste et sur d'autres qui ne tombent pas
+    juste : un entier exact ne doit pas grimper d'une unité au passage.
+  */
+  const profile = profileOf('evenementiel-rentabilite');
+  for (const coutLieu of [100000, 100001, 122500, 200000, 222500, 222501]) {
+    const r = evaluateProfile(profile, {
+      coutLieu,
+      coutPrestataires: 0,
+      coutCommunication: 0,
+      coutParEntree: 150,
+      prixBillet: 2500,
+      commissionBilletterie: 5,
+      capacite: 1000,
+    });
+    assert.deepEqual(r.errors, []);
+    const seuil = r.scope.seuilEntrees;
+    assert.equal(seuil, Math.trunc(seuil), `seuil fractionnaire : ${seuil} (coûts ${coutLieu})`);
+    const recette = r.scope.recetteNetteBillet;
+    // Le contrat, dans les deux sens : à ce nombre-là on y est, un de moins
+    // et on n'y est pas. La seconde moitié est celle qu'un `ceil` remplacé
+    // par `round` casse, et la première celle qu'un `+ 1` gratuit casserait.
+    assert.ok(recette * seuil >= coutLieu, `à ${seuil} entrées on perd encore (coûts ${coutLieu})`);
+    assert.ok(
+      recette * (seuil - 1) < coutLieu,
+      `${seuil} entrées, mais ${seuil - 1} suffisaient déjà (coûts ${coutLieu})`,
+    );
+  }
 });
 
 check('ÉVÉNEMENTIEL : un billet vendu à perte ne produit pas l’infini', () => {
