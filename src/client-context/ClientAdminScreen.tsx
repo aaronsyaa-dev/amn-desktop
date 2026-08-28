@@ -23,6 +23,7 @@ import { cleanErrorMessage } from '../lib/errorMessage';
 import { relativeTime } from '../lib/time';
 import { MonthlyReportPanel } from '../components/MonthlyReportPanel';
 import { SiteStatusPageExport } from '../components/tracker/StatusPageExport';
+import { SiteBadgeExport } from '../components/tracker/SocDesk';
 import type { AdminOrgUser, OrgAccessEntry } from '../shared/api';
 
 /**
@@ -275,6 +276,22 @@ export function ClientAdminScreen() {
       */}
       <StaggerItem>
         <SiteStatusPageExport />
+      </StaggerItem>
+
+      {/*
+        LE BADGE — troisième et dernier du même défaut.
+
+        Les trois choses qu'on remet à une cliente pour SON site — le rapport,
+        la page de statut, le badge — n'étaient joignables que depuis la Tour
+        de contrôle, qui ne voit que nos propres sites. Elles étaient donc
+        toutes les trois produisibles pour AMN DevSec seulement, c'est-à-dire
+        pour personne.
+
+        Elles vivent maintenant là où l'on gère une cliente, et lisent le
+        contexte courant.
+      */}
+      <StaggerItem>
+        <SiteBadgeExport />
       </StaggerItem>
 
       <StaggerItem>
