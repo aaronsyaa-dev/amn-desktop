@@ -42,7 +42,9 @@ export type AttentionKind =
   | 'client-silent'
   | 'certificate-expired'
   | 'certificate-expiring'
-  | 'certificate-unknown';
+  | 'certificate-unknown'
+  | 'incident-critical'
+  | 'incident-stale';
 
 export type AttentionSeverity = 'critical' | 'warning' | 'info';
 
@@ -77,6 +79,8 @@ export interface AttentionThresholds {
   invoiceDueSoonDays: number;
   /** Retard de paiement au-delà duquel le rappel devient critique. */
   invoiceSeriousDays: number;
+  /** Heures au-delà desquelles un incident non critique qui attend remonte. */
+  incidentStaleHours: number;
   /** Une tâche ouverte ET intouchée depuis ce nombre de jours ressort. */
   taskStaleDays: number;
   /** Au-delà, elle n'est plus « en attente » : elle est oubliée. */
@@ -103,6 +107,16 @@ export const DEFAULT_THRESHOLDS: AttentionThresholds = {
   // renouvellement automatique qui ne s'est PAS fait, sans crier avant.
   certificateWarnDays: 21,
   certificateCriticalDays: 7,
+  /*
+    Un incident CRITIQUE non pris en charge remonte tout de suite : il n'y a
+    pas de délai acceptable pour « personne n'a encore regardé une attaque en
+    cours ». Le seuil ci-dessous ne concerne donc que ce qui est MOINS grave.
+
+    Quatre heures : assez pour qu'une alerte de nuit ne réveille pas l'écran
+    d'accueil au premier café, assez court pour qu'une journée ne se termine
+    pas avec un incident jamais ouvert.
+  */
+  incidentStaleHours: 4,
 };
 
 /* ------------------------------ Formes d'entrée ---------------------------- */
@@ -149,6 +163,23 @@ export interface AttentionInput {
   tasks: AttentionTask[];
   clients: AttentionClient[];
   certificates: AttentionCertificate[];
+  incidents: AttentionIncident[];
+}
+
+/**
+ * Un incident de supervision ENCORE OUVERT.
+ *
+ * Volontairement réduit à quatre champs : le moteur n'a pas à connaître la
+ * corrélation, les acteurs ni les alertes. Il répond à une seule question —
+ * est-ce que ça attend depuis trop longtemps.
+ */
+export interface AttentionIncident {
+  id: string;
+  title: string;
+  severity: 'critical' | 'warning' | 'info';
+  status: 'new' | 'acknowledged' | 'resolved';
+  /** Première alerte de l'incident, en ISO. C'est de là que court l'attente. */
+  firstSeenAt: string;
 }
 
 /* -------------------------------- Le calendrier ---------------------------- */
@@ -208,8 +239,27 @@ function item(
   base: Omit<AttentionItem, 'weight'>,
   /** L'ancienneté du problème, en jours : à gravité égale, le plus vieux passe devant. */
   age: number,
+  /**
+   * L'EXCEPTION À LA RÈGLE DE L'ANCIENNETÉ, et il n'y en a qu'une.
+   *
+   * « À gravité égale, le plus vieux passe devant » est la bonne règle pour
+   * des dettes : une facture impayée depuis trois mois est plus urgente qu'une
+   * facture impayée depuis un mois. Elle est FAUSSE pour ce qui est en train de
+   * se produire.
+   *
+   * Mesuré en écrivant le contrôle : une facture en retard de 90 jours passait
+   * devant une intrusion détectée à l'instant, parce que les deux sont
+   * « critiques » et que la facture est plus vieille. Les deux étaient bien
+   * affichées, mais dans le mauvais ordre — et sur un panneau qu'on parcourt
+   * en trois secondes, l'ordre EST le message.
+   *
+   * Une facture attend depuis trois mois : une heure de plus ne change rien.
+   * Une attaque en cours, si.
+   */
+  urgenceVive = false,
 ): AttentionItem {
-  return { ...base, weight: SEVERITY_WEIGHT[base.severity] + Math.min(age, 999) };
+  const poids = SEVERITY_WEIGHT[base.severity] + Math.min(age, 999);
+  return { ...base, weight: urgenceVive ? poids + 10_000 : poids };
 }
 
 function invoiceItems(
@@ -427,6 +477,91 @@ function certificateItems(
  * `now` est un paramètre et non `new Date()` en dur : c'est ce qui rend chaque
  * seuil rejouable sur ses deux bords par le contrôle.
  */
+/**
+ * LES INCIDENTS QUI ATTENDENT.
+ *
+ * Une file de supervision qu'il faut penser à ouvrir est une file qu'on ouvre
+ * à neuf heures. Le point d'attention est ce qui la ramène là où les yeux vont
+ * déjà — l'accueil.
+ *
+ * Deux règles, et la distinction entre les deux est le cœur du sujet :
+ *
+ *   · un incident CRITIQUE que personne n'a pris remonte immédiatement. Il n'y
+ *     a pas de délai raisonnable pour « une attaque est en cours et personne
+ *     n'a regardé » ;
+ *   · tout autre incident ouvert remonte après quelques heures d'attente.
+ *
+ * Ce qui est PRIS EN CHARGE ne remonte pas, même critique. Quelqu'un s'est
+ * annoncé ; le rappeler à l'accueil ferait douter de la prise en charge, et
+ * transformerait le panneau en second journal — exactement ce qu'on cherche à
+ * éviter.
+ */
+function incidentItems(
+  incidents: AttentionIncident[],
+  t: AttentionThresholds,
+  now: Date,
+): AttentionItem[] {
+  const out: AttentionItem[] = [];
+  for (const incident of incidents) {
+    if (incident.status !== 'new') continue;
+
+    const attenteMs = now.getTime() - Date.parse(incident.firstSeenAt);
+    // Une date illisible ne doit pas fabriquer une attente de plusieurs
+    // millions d'heures : on la traite comme « à l'instant ».
+    const heures = Number.isFinite(attenteMs) && attenteMs > 0 ? attenteMs / 3_600_000 : 0;
+    const jours = heures / 24;
+
+    if (incident.severity === 'critical') {
+      out.push(
+        item(
+          {
+            key: `incident-critical:${incident.id}`,
+            kind: 'incident-critical',
+            severity: 'critical',
+            title: incident.title,
+            evidence:
+              heures < 1
+                ? 'Détecté à l’instant, personne ne l’a encore pris'
+                : `Non pris en charge depuis ${formatAttente(heures)}`,
+            action: 'Ouvrir le bureau de supervision',
+            to: '/supervision',
+          },
+          jours,
+          // Ce qui se produit MAINTENANT passe devant ce qui traîne.
+          true,
+        ),
+      );
+      continue;
+    }
+
+    if (heures >= t.incidentStaleHours) {
+      out.push(
+        item(
+          {
+            key: `incident-stale:${incident.id}`,
+            kind: 'incident-stale',
+            severity: 'warning',
+            title: incident.title,
+            evidence: `En attente depuis ${formatAttente(heures)}`,
+            action: 'Ouvrir le bureau de supervision',
+            to: '/supervision',
+          },
+          jours,
+        ),
+      );
+    }
+  }
+  return out;
+}
+
+/** Une attente en heures, dite comme on la dirait à voix haute. */
+function formatAttente(heures: number): string {
+  if (heures < 1) return 'moins d’une heure';
+  if (heures < 24) return `${Math.round(heures)} h`;
+  const j = Math.round(heures / 24);
+  return `${j} jour${j > 1 ? 's' : ''}`;
+}
+
 export function attentionItems(
   input: Partial<AttentionInput>,
   options: { now?: Date; thresholds?: Partial<AttentionThresholds> } = {},
@@ -439,6 +574,7 @@ export function attentionItems(
     ...taskItems(input.tasks ?? [], day, t),
     ...clientItems(input.clients ?? [], day, t),
     ...certificateItems(input.certificates ?? [], t),
+    ...incidentItems(input.incidents ?? [], t, options.now ?? new Date()),
   ];
 
   // Tri stable : le poids décide, la clé départage. Sans le second critère,

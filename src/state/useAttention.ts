@@ -3,7 +3,12 @@ import { useCollection } from './SyncContext';
 import { useClients } from './useClients';
 import { useInvoices } from './useInvoices';
 import { useAppointments } from './useAppointments';
-import { attentionItems, type AttentionCertificate, type AttentionItem } from '../lib/attention';
+import {
+  attentionItems,
+  type AttentionCertificate,
+  type AttentionIncident,
+  type AttentionItem,
+} from '../lib/attention';
 import { documentTotals } from '../lib/money';
 import { bridge } from '../lib/bridge';
 import { IS_BUSINESS } from '../edition/edition';
@@ -52,6 +57,7 @@ export function useAttention(): AttentionState {
   const { appointments } = useAppointments();
   const tasks = useCollection<TaskRow>('tasks');
   const { certificates, settled: certificatesSettled } = useCertificates();
+  const { incidents, settled: incidentsSettled } = useIncidentsOuverts();
 
   const items = useMemo(() => {
     /*
@@ -105,8 +111,9 @@ export function useAttention(): AttentionState {
         traces: tracesByClient.get(client.id) ?? [],
       })),
       certificates,
+      incidents,
     });
-  }, [invoices, tasks, clients, appointments, certificates]);
+  }, [invoices, tasks, clients, appointments, certificates, incidents]);
 
   /*
     Horodater l'évaluation, et seulement quand elle vaut quelque chose.
@@ -115,7 +122,7 @@ export function useAttention(): AttentionState {
     que l'heure a changé, et un `setState` à chaque recalcul d'`items`
     rejouerait le rendu une fois de plus pour rien.
   */
-  const complete = clientsReady && certificatesSettled;
+  const complete = clientsReady && certificatesSettled && incidentsSettled;
   const checkedAt = useRef<string | null>(null);
   if (complete) checkedAt.current = new Date().toISOString();
 
@@ -171,4 +178,59 @@ function useCertificates(): { certificates: AttentionCertificate[]; settled: boo
   }, []);
 
   return { certificates, settled };
+}
+
+/**
+ * Les incidents de supervision ENCORE OUVERTS.
+ *
+ * Même forme que les certificats, et pour les mêmes raisons : absent de
+ * l'édition Business (une cliente n'a pas de parc à superviser), un échec de
+ * lecture rend une liste vide plutôt que de faire tomber le panneau, et
+ * `settled` distingue « rien à signaler » de « je n'ai pas encore regardé ».
+ *
+ * La ronde est plus fréquente que celle des certificats — une minute — parce
+ * qu'un incident vit à une autre échelle : un certificat expire dans trois
+ * semaines, une intrusion se joue dans l'heure.
+ */
+function useIncidentsOuverts(): { incidents: AttentionIncident[]; settled: boolean } {
+  const [incidents, setIncidents] = useState<AttentionIncident[]>([]);
+  const [settled, setSettled] = useState(IS_BUSINESS);
+
+  useEffect(() => {
+    if (IS_BUSINESS) return;
+    let cancelled = false;
+
+    const lire = async () => {
+      try {
+        const liste = await bridge().remote.listIncidents({ status: 'open' });
+        if (cancelled) return;
+        setIncidents(
+          liste.map((i) => ({
+            id: i.id,
+            title: i.title,
+            severity: i.severity,
+            status: i.status,
+            firstSeenAt: i.firstSeenAt,
+          })),
+        );
+      } catch {
+        // Un serveur de supervision muet ne doit pas effacer les rappels de
+        // facturation : ils n'ont rien à voir.
+        if (!cancelled) setIncidents([]);
+      } finally {
+        if (!cancelled) setSettled(true);
+      }
+    };
+
+    void lire();
+    const t = window.setInterval(() => {
+      if (!document.hidden) void lire();
+    }, 60_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, []);
+
+  return { incidents, settled };
 }

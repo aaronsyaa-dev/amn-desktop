@@ -83,8 +83,16 @@ interface Client {
 interface Certificate {
   host: string; daysLeft: number | null; error: string | null; lastCheckedAt: string | null;
 }
+interface Incident {
+  id: string;
+  title: string;
+  severity: 'critical' | 'warning' | 'info';
+  status: 'new' | 'acknowledged' | 'resolved';
+  firstSeenAt: string;
+}
 interface Input {
   invoices?: Invoice[]; tasks?: Task[]; clients?: Client[]; certificates?: Certificate[];
+  incidents?: Incident[];
 }
 interface AttentionModule {
   DEFAULT_THRESHOLDS: Thresholds;
@@ -478,6 +486,89 @@ check('une entrée vide ou absente ne fait rien exploser', () => {
 });
 
 /* --------------------------------------------------------------------------- */
+
+check('un incident critique non pris remonte IMMEDIATEMENT', () => {
+  /*
+    Il n'y a pas de delai raisonnable pour « une attaque est en cours et
+    personne n'a regarde ». Un seuil, meme court, ferait que la premiere heure
+    d'une intrusion ne se voit nulle part.
+  */
+  const items = attentionItems(
+    {
+      incidents: [
+        { id: 'i1', title: 'Campagne (2 techniques) — 203.0.113.9', severity: 'critical', status: 'new', firstSeenAt: new Date().toISOString() },
+      ],
+    },
+    { now: new Date() },
+  );
+  assert.equal(items.length, 1, 'le critique doit remonter sans attendre');
+  assert.equal(items[0].kind, 'incident-critical');
+  assert.equal(items[0].severity, 'critical');
+  assert.equal(items[0].to, '/supervision');
+  assert.ok(items[0].evidence.length > 0, 'un point d’attention porte toujours son chiffre');
+});
+
+check('un incident PRIS EN CHARGE ne remonte pas, meme critique', () => {
+  /*
+    Quelqu'un s'est annonce. Le rappeler a l'accueil ferait douter de la prise
+    en charge et transformerait le panneau en second journal.
+  */
+  const vieux = new Date(Date.now() - 72 * 3_600_000).toISOString();
+  for (const status of ['acknowledged', 'resolved'] as const) {
+    const items = attentionItems(
+      { incidents: [{ id: 'i2', title: 'X', severity: 'critical', status, firstSeenAt: vieux }] },
+      { now: new Date() },
+    );
+    assert.equal(items.length, 0, `un incident « ${status} » ne doit pas remonter`);
+  }
+});
+
+check('un incident non critique attend le seuil avant de remonter', () => {
+  const now = new Date();
+  const ilYA = (h: number) => new Date(now.getTime() - h * 3_600_000).toISOString();
+  const avec = (h: number) =>
+    attentionItems(
+      { incidents: [{ id: 'i3', title: 'Robot identifie', severity: 'warning', status: 'new', firstSeenAt: ilYA(h) }] },
+      { now },
+    );
+  // Les deux bords du seuil, comme pour tous les autres seuils de ce moteur.
+  assert.equal(avec(3.9).length, 0, 'avant le seuil : rien');
+  assert.equal(avec(4.1).length, 1, 'apres le seuil : un point d’attention');
+  assert.equal(avec(4.1)[0].kind, 'incident-stale');
+  assert.equal(avec(4.1)[0].severity, 'warning', 'ce n’est pas critique, et ne doit pas le devenir');
+});
+
+check('une date d’incident illisible ne fabrique pas une attente absurde', () => {
+  /*
+    Une horloge de traceur de travers, un champ vide venu d'une version
+    anterieure : la soustraction rendrait NaN, et « en attente depuis NaN
+    jours » finirait a l'ecran.
+  */
+  for (const date of ['', 'pas-une-date', '0000-00-00']) {
+    const items = attentionItems(
+      { incidents: [{ id: 'i4', title: 'X', severity: 'critical', status: 'new', firstSeenAt: date }] },
+      { now: new Date() },
+    );
+    assert.equal(items.length, 1);
+    assert.ok(!/NaN|Infinity|undefined/.test(items[0].evidence), `evidence illisible : ${items[0].evidence}`);
+  }
+});
+
+check('le critique passe DEVANT tout le reste', () => {
+  /*
+    Le tri par poids doit placer une attaque en cours au-dessus d'une facture
+    en retard. Sans cela le panneau serait exact et inutile.
+  */
+  const items = attentionItems(
+    {
+      invoices: [invoice({ dueAt: daysAgo(90) })],
+      incidents: [{ id: 'i5', title: 'Force brute', severity: 'critical', status: 'new', firstSeenAt: NOW.toISOString() }],
+    },
+    { now: NOW },
+  );
+  assert.ok(items.length >= 2, 'les deux sources doivent produire quelque chose');
+  assert.equal(items[0].kind, 'incident-critical', `en tete : ${items[0].kind}`);
+});
 
 if (failures.length > 0) {
   console.error(`\n${failures.length} contrôle(s) en échec :`);
