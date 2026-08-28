@@ -1,4 +1,5 @@
 import {
+  ShieldAlert,
   BadgeCheck,
   BookOpen,
   Building2,
@@ -189,6 +190,13 @@ export const NAV_SECTIONS: NavSection[] = [
     // le surveillent. Le registre des sites n'a jamais servi au travail
     // quotidien : on l'ouvre quand on supervise, jamais quand on facture.
     items: [
+      /*
+        Le bureau de supervision passe DEVANT les trackers, et ce n'est pas un
+        détail d'ordre. « Trackers » répond à « qu'est-ce qui est installé »,
+        le bureau répond à « qu'est-ce qui se passe » — et c'est la seconde
+        question qu'on se pose en ouvrant l'application un matin.
+      */
+      { key: 'supervision', label: 'Supervision', to: '/supervision', icon: ShieldAlert, hint: 'Incidents à traiter' },
       { key: 'sites', label: 'Sites', to: '/sites', icon: Globe, hint: 'Registre des sites clients' },
       { key: 'tracker', label: 'Trackers', to: '/tracker', icon: Radar, hint: 'Supervision temps réel' },
     ],
@@ -254,6 +262,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/temps', 'registre'],
   ['/calculateurs', 'analyse'],
   ['/commandes', 'fiches'],
+  ['/supervision', 'supervision'],
   ['/tracker', 'supervision'],
   ['/scanner', 'analyse'],
   ['/comply', 'analyse'],

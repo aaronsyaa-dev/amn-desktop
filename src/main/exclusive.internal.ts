@@ -1,5 +1,10 @@
 import {
   IPC,
+  type Incident,
+  type IncidentDetail,
+  type IncidentMetrics,
+  type IncidentResolution,
+  type IncidentStatus,
   type AdminOrganization,
   type AdminOrgUser,
   type CreateOrganizationInput,
@@ -88,6 +93,50 @@ const exclusiveApi = {
       body: JSON.stringify({ host }),
     });
     return status;
+  },
+
+/* --- Incidents : la file de travail de la supervision --- */
+
+  async listIncidents(options: { status?: 'open' | 'all' | IncidentStatus; siteId?: string } = {}) {
+    const params = new URLSearchParams();
+    params.set('status', options.status ?? 'open');
+    if (options.siteId) params.set('site_id', options.siteId);
+    const { incidents } = await apiFetch<{ incidents: Incident[] }>(
+      `/v1/incidents?${params.toString()}`,
+    );
+    return incidents;
+  },
+
+  async getIncident(id: string): Promise<IncidentDetail> {
+    return await apiFetch<IncidentDetail>(`/v1/incidents/${encodeURIComponent(id)}`);
+  },
+
+  async incidentMetrics(days = 30): Promise<IncidentMetrics> {
+    return await apiFetch<IncidentMetrics>(`/v1/incidents/metrics?days=${days}`);
+  },
+
+  async acknowledgeIncident(id: string): Promise<Incident> {
+    const { incident } = await apiFetch<{ incident: Incident }>(
+      `/v1/incidents/${encodeURIComponent(id)}/acknowledge`,
+      { method: 'POST' },
+    );
+    return incident;
+  },
+
+  async resolveIncident(id: string, resolution: IncidentResolution, note?: string): Promise<Incident> {
+    const { incident } = await apiFetch<{ incident: Incident }>(
+      `/v1/incidents/${encodeURIComponent(id)}/resolve`,
+      { method: 'POST', body: JSON.stringify({ resolution, note }) },
+    );
+    return incident;
+  },
+
+  async reopenIncident(id: string): Promise<Incident> {
+    const { incident } = await apiFetch<{ incident: Incident }>(
+      `/v1/incidents/${encodeURIComponent(id)}/reopen`,
+      { method: 'POST' },
+    );
+    return incident;
   },
 
   async listSchedules(): Promise<ProductSchedule[]> {
@@ -518,6 +567,13 @@ export function registerExclusiveIpc(
       exclusiveApi.getSiteSummary(payload.id, payload.hours),
   );
   ipcMain.handle(IPC.remoteSiteDigest, (_event, id: string) => exclusiveApi.getSiteDigest(id));
+  ipcMain.handle(IPC.remoteListIncidents, (_e, options) => exclusiveApi.listIncidents(options ?? {}));
+  ipcMain.handle(IPC.remoteGetIncident, (_e, id: string) => exclusiveApi.getIncident(id));
+  ipcMain.handle(IPC.remoteIncidentMetrics, (_e, days?: number) => exclusiveApi.incidentMetrics(days));
+  ipcMain.handle(IPC.remoteAcknowledgeIncident, (_e, id: string) => exclusiveApi.acknowledgeIncident(id));
+  ipcMain.handle(IPC.remoteResolveIncident, (_e, id: string, resolution, note?: string) =>
+    exclusiveApi.resolveIncident(id, resolution, note));
+  ipcMain.handle(IPC.remoteReopenIncident, (_e, id: string) => exclusiveApi.reopenIncident(id));
   ipcMain.handle(IPC.remoteListSslStatus, () => exclusiveApi.listSslStatus());
   ipcMain.handle(IPC.remoteCheckSsl, (_event, host: string) => exclusiveApi.checkSsl(host));
   ipcMain.handle(IPC.remoteListSchedules, () => exclusiveApi.listSchedules());

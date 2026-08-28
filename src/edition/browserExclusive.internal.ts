@@ -1,4 +1,9 @@
 import type {
+  Incident,
+  IncidentDetail,
+  IncidentMetrics,
+  IncidentResolution,
+  IncidentStatus,
   AdminOrganization,
   AdminOrgUser,
   CreateOrganizationInput,
@@ -84,6 +89,12 @@ type ExclusiveRemote = Pick<
   | 'onEvent'
   | 'listSslStatus'
   | 'checkSsl'
+  | 'listIncidents'
+  | 'getIncident'
+  | 'incidentMetrics'
+  | 'acknowledgeIncident'
+  | 'resolveIncident'
+  | 'reopenIncident'
   | 'listSchedules'
   | 'createSchedule'
   | 'deleteSchedule'
@@ -169,6 +180,50 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
     });
     return status;
   },
+/* --- Incidents : la file de travail de la supervision --- */
+
+  async listIncidents(options: { status?: 'open' | 'all' | IncidentStatus; siteId?: string } = {}) {
+    const params = new URLSearchParams();
+    params.set('status', options.status ?? 'open');
+    if (options.siteId) params.set('site_id', options.siteId);
+    const { incidents } = await ctx.apiFetch<{ incidents: Incident[] }>(
+      `/v1/incidents?${params.toString()}`,
+    );
+    return incidents;
+  },
+
+  async getIncident(id: string) {
+    return await ctx.apiFetch<IncidentDetail>(`/v1/incidents/${encodeURIComponent(id)}`);
+  },
+
+  async incidentMetrics(days = 30) {
+    return await ctx.apiFetch<IncidentMetrics>(`/v1/incidents/metrics?days=${days}`);
+  },
+
+  async acknowledgeIncident(id: string) {
+    const { incident } = await ctx.apiFetch<{ incident: Incident }>(
+      `/v1/incidents/${encodeURIComponent(id)}/acknowledge`,
+      { method: 'POST' },
+    );
+    return incident;
+  },
+
+  async resolveIncident(id: string, resolution: IncidentResolution, note?: string) {
+    const { incident } = await ctx.apiFetch<{ incident: Incident }>(
+      `/v1/incidents/${encodeURIComponent(id)}/resolve`,
+      { method: 'POST', body: JSON.stringify({ resolution, note }) },
+    );
+    return incident;
+  },
+
+  async reopenIncident(id: string) {
+    const { incident } = await ctx.apiFetch<{ incident: Incident }>(
+      `/v1/incidents/${encodeURIComponent(id)}/reopen`,
+      { method: 'POST' },
+    );
+    return incident;
+  },
+
   async listSchedules() {
     const { schedules } = await ctx.apiFetch<{ schedules: ProductSchedule[] }>('/v1/schedules');
     return schedules;

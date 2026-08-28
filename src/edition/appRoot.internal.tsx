@@ -22,6 +22,7 @@ import { ScannerScreen } from '../screens/ScannerScreen';
 import { TrackerScreen } from '../screens/TrackerScreen';
 import { SiteControlScreen } from '../screens/SiteControlScreen';
 import { SslScreen } from '../screens/SslScreen';
+import { IncidentsScreen } from '../screens/IncidentsScreen';
 import { DecisionsScreen } from '../screens/DecisionsScreen';
 import { KnowledgeScreen } from '../screens/KnowledgeScreen';
 import { NotesScreen } from '../screens/NotesScreen';
@@ -169,6 +170,9 @@ function AmnRoutes() {
         {/* L'atelier (BLOC C). Un ÉCRAN, plus une boîte de dialogue : on ne
             referme pas un acte de création, on en sort avec quelque chose. */}
         <Route path="/tour/generateur" element={<GeneratorScreen />} />
+        {/* Le bureau de supervision : la file de travail, avant les écrans
+            par site. C'est là qu'on arrive quand quelque chose se passe. */}
+        <Route path="/supervision" element={<IncidentsScreen />} />
         <Route path="/tracker" element={<TrackerScreen />} />
         <Route path="/tracker/site/:siteId" element={<SiteControlScreen />} />
         <Route path="/scanner" element={<ScannerScreen />} />

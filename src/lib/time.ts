@@ -70,3 +70,20 @@ export function compactEuro(value: number): string {
 export function euro(value: number): string {
   return `${value.toLocaleString('fr-FR')} €`;
 }
+
+/**
+ * Date + heure, format français court.
+ *
+ * Vivait en double : une copie locale dans SiteControlScreen, et le besoin est
+ * revenu avec le bureau de supervision. Deux copies d'un formateur de date
+ * finissent toujours par diverger d'un champ — et deux écrans qui datent la
+ * même alerte différemment font douter des deux.
+ */
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}

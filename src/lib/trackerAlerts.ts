@@ -15,7 +15,17 @@ const KIND_LABELS: Record<AlertKind, string> = {
   traffic_anomaly: 'Anomalie de trafic',
   site_unreachable: 'Site injoignable',
   availability_down: 'Indisponibilité',
+  availability_ping: 'Sonde de disponibilité',
+  ssl_expiry: 'Certificat proche de l’expiration',
+  dependency_scan: 'Analyse des dépendances',
   vulnerable_dependency: 'Dépendance vulnérable',
+  // Les familles d'injection : le moteur émet `injection` comme nature de
+  // l'alerte, et la famille précise voyage dans le payload. Les deux
+  // s'affichent, donc les deux sont nommées.
+  sql: 'Injection SQL',
+  xss: 'Injection XSS',
+  nosql: 'Injection NoSQL',
+  traversal: 'Traversée de répertoire',
 };
 
 /** Human label for an alert's `payload.kind`; falls back to the raw value. */

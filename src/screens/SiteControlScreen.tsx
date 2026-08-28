@@ -15,6 +15,7 @@ import {
   Users,
 } from 'lucide-react';
 import { bridge } from '../lib/bridge';
+import { formatDateTime } from '../lib/time';
 import { useRemoteSites } from '../state/RemoteSitesContext';
 import { useReports } from '../state/useReports';
 import { useToast } from '../state/ToastContext';
@@ -46,15 +47,6 @@ const REFRESH_MS = 60 * 1000;
 
 function formatHour(iso: string): string {
   return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 export function SiteControlScreen() {

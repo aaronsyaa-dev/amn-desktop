@@ -1,6 +1,8 @@
 import { ipcRenderer } from 'electron';
 import {
   IPC,
+  type IncidentResolution,
+  type IncidentStatus,
   type AmnBridge,
   type CallSignal,
   type ComplyProgress,
@@ -35,6 +37,12 @@ type ExclusiveRemote = Pick<
   | 'onEvent'
   | 'listSslStatus'
   | 'checkSsl'
+  | 'listIncidents'
+  | 'getIncident'
+  | 'incidentMetrics'
+  | 'acknowledgeIncident'
+  | 'resolveIncident'
+  | 'reopenIncident'
   | 'listSchedules'
   | 'createSchedule'
   | 'deleteSchedule'
@@ -91,6 +99,14 @@ export const exclusivePreload: ExclusiveRemote = {
     ipcRenderer.on(IPC.remoteEventPush, listener);
     return () => ipcRenderer.removeListener(IPC.remoteEventPush, listener);
   },
+  listIncidents: (options?: { status?: 'open' | 'all' | IncidentStatus; siteId?: string }) =>
+    ipcRenderer.invoke(IPC.remoteListIncidents, options ?? {}),
+  getIncident: (id: string) => ipcRenderer.invoke(IPC.remoteGetIncident, id),
+  incidentMetrics: (days?: number) => ipcRenderer.invoke(IPC.remoteIncidentMetrics, days),
+  acknowledgeIncident: (id: string) => ipcRenderer.invoke(IPC.remoteAcknowledgeIncident, id),
+  resolveIncident: (id: string, resolution: IncidentResolution, note?: string) =>
+    ipcRenderer.invoke(IPC.remoteResolveIncident, id, resolution, note),
+  reopenIncident: (id: string) => ipcRenderer.invoke(IPC.remoteReopenIncident, id),
   listSslStatus: () => ipcRenderer.invoke(IPC.remoteListSslStatus),
   checkSsl: (host: string) => ipcRenderer.invoke(IPC.remoteCheckSsl, host),
   listSchedules: () => ipcRenderer.invoke(IPC.remoteListSchedules),

@@ -1154,6 +1154,20 @@ export type TrackerTier = 'sentinel' | 'sentinel-plus' | 'suite';
  * `payload.kind` (see amn-api/src/tracker/engine.js); alerts forwarded straight
  * from a site's own tracker may carry none.
  */
+/**
+ * Les natures d'alerte, telles qu'amn-api les émet réellement.
+ *
+ * Cette liste est la TROISIÈME du même sujet — il y a celle du serveur
+ * (`kind: '…'` dans src/tracker) et celle des libellés (lib/trackerAlerts).
+ * Sept natures manquaient ici : les quatre familles d'injection, la sonde de
+ * disponibilité, l'expiration de certificat et l'analyse de dépendances. Elles
+ * s'affichaient donc en clé brute — « ssl_expiry » au lieu de « Certificat
+ * proche de l'expiration ».
+ *
+ * `npm run check:supervision` croise désormais les trois listes avec ce que le
+ * serveur émet vraiment, pour que l'oubli suivant fasse échouer un contrôle au
+ * lieu de s'afficher chez une cliente.
+ */
 export type AlertKind =
   | 'brute_force'
   | 'rate_limit'
@@ -1163,7 +1177,15 @@ export type AlertKind =
   | 'traffic_anomaly'
   | 'site_unreachable'
   | 'availability_down'
-  | 'vulnerable_dependency';
+  | 'availability_ping'
+  | 'ssl_expiry'
+  | 'dependency_scan'
+  | 'vulnerable_dependency'
+  // Les familles d'injection, telles que le moteur de signatures les nomme.
+  | 'sql'
+  | 'xss'
+  | 'nosql'
+  | 'traversal';
 
 export interface RemoteSiteState {
   siteId: string;
@@ -1368,6 +1390,87 @@ export interface RemoteEvent {
   message: string | null;
   payload: Record<string, unknown>;
   occurredAt: string;
+  /**
+   * L'incident auquel cette alerte a été rattachée, s'il y en a un.
+   *
+   * Optionnel, et il le restera : les alertes enregistrées avant l'existence
+   * des incidents n'en ont pas, et une alerte dont le rattachement a échoué
+   * doit exister quand même — l'observation prime sur son regroupement.
+   */
+  incidentId?: string | null;
+}
+
+/** Les trois états d'un incident. Il n'y en a pas de quatrième. */
+export type IncidentStatus = 'new' | 'acknowledged' | 'resolved';
+
+/**
+ * Les deux façons de fermer un incident, et elles ne disent pas la même chose.
+ *
+ * `resolved` : c'était vrai, c'est traité. `false_positive` : ce n'en était
+ * pas un. Les distinguer est ce qui permettra un jour de corriger une
+ * détection qui se trompe — au lieu d'apprendre aux opérateurs à ne plus la
+ * lire.
+ */
+export type IncidentResolution = 'resolved' | 'false_positive';
+
+/**
+ * UN INCIDENT — le regroupement des alertes d'un même acteur sur un même site.
+ *
+ * Une alerte est une observation et ne se modifie jamais ; ce qu'on en décide
+ * vit ici. Voir amn-api/src/tracker/incidents.js pour les trois bornes de la
+ * corrélation, dont la principale : un incident résolu n'absorbe plus rien.
+ */
+export interface Incident {
+  id: string;
+  siteId: string;
+  /** L'IP mise en cause, ou un acteur symbolique `infra:…` quand personne n'agit. */
+  actor: string;
+  actorKind: 'ip' | 'infrastructure' | 'inconnu';
+  status: IncidentStatus;
+  severity: RemoteSeverity;
+  /** Les natures réunies. Plusieurs = une campagne, et c'est le cas qui vaut. */
+  kinds: string[];
+  alertCount: number;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  acknowledgedAt: string | null;
+  acknowledgedBy: string | null;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+  resolution: IncidentResolution | null;
+  note: string;
+  /** Calculé par le serveur : le même texte part à l'écran, au rapport et à la notification. */
+  title: string;
+}
+
+/** Un incident avec la chronologie complète de ses alertes. */
+export interface IncidentDetail {
+  incident: Incident;
+  events: RemoteEvent[];
+}
+
+/**
+ * Les mesures de la supervision.
+ *
+ * Pas de délai de détection : il demanderait de savoir quand l'attaque a
+ * commencé, ce que nous ne savons pas. Les deux délais rendus ici sont
+ * entièrement dans nos données, et en MÉDIANE — un incident laissé ouvert un
+ * week-end décale une moyenne au point de la rendre inutile.
+ */
+export interface IncidentMetrics {
+  windowDays: number;
+  total: number;
+  open: number;
+  new: number;
+  acknowledged: number;
+  resolved: number;
+  falsePositives: number;
+  /** Incidents critiques ENCORE ouverts — le chiffre qui fait agir. */
+  critical: number;
+  medianTimeToAcknowledgeMs: number | null;
+  medianTimeToResolveMs: number | null;
+  /** Une médiane rassurante peut cacher un dossier oublié depuis trois mois. */
+  oldestOpenAt: string | null;
 }
 
 /**
@@ -2264,6 +2367,21 @@ export interface AmnBridge {
     /** Re-checks one host immediately instead of waiting for the sweep. */
     checkSsl(host: string): Promise<SslStatus>;
 
+    /* --- Incidents : la file de travail de la supervision --- */
+    /**
+     * `'open'` (défaut) rend ce qui reste à faire — les nouveaux ET les pris
+     * en charge. Un incident acquitté n'est pas terminé : le sortir de la file
+     * le ferait oublier.
+     */
+    listIncidents(options?: { status?: 'open' | 'all' | IncidentStatus; siteId?: string }): Promise<Incident[]>;
+    getIncident(id: string): Promise<IncidentDetail>;
+    incidentMetrics(days?: number): Promise<IncidentMetrics>;
+    /** « Je m'en occupe. » Refusé si quelqu'un l'a déjà pris. */
+    acknowledgeIncident(id: string): Promise<Incident>;
+    /** Une note est OBLIGATOIRE pour un faux positif — le serveur la réclame. */
+    resolveIncident(id: string, resolution: IncidentResolution, note?: string): Promise<Incident>;
+    reopenIncident(id: string): Promise<Incident>;
+
     /* --- Analyses récurrentes (BLOC 5) --- */
     listSchedules(): Promise<ProductSchedule[]>;
     /** Arms (or re-arms) a recurring Scanner/Comply run. */
@@ -2657,6 +2775,12 @@ export const IPC = {
   remotePresencePush: 'remote:presencePush',
   remoteListSslStatus: 'remote:listSslStatus',
   remoteCheckSsl: 'remote:checkSsl',
+  remoteListIncidents: 'remote:listIncidents',
+  remoteGetIncident: 'remote:getIncident',
+  remoteIncidentMetrics: 'remote:incidentMetrics',
+  remoteAcknowledgeIncident: 'remote:acknowledgeIncident',
+  remoteResolveIncident: 'remote:resolveIncident',
+  remoteReopenIncident: 'remote:reopenIncident',
   remoteListSchedules: 'remote:listSchedules',
   remoteCreateSchedule: 'remote:createSchedule',
   remoteDeleteSchedule: 'remote:deleteSchedule',
