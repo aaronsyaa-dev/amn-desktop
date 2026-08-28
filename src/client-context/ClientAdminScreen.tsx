@@ -22,6 +22,7 @@ import { organizationTransfer } from '../lib/orgAccessVault';
 import { cleanErrorMessage } from '../lib/errorMessage';
 import { relativeTime } from '../lib/time';
 import { MonthlyReportPanel } from '../components/MonthlyReportPanel';
+import { SiteStatusPageExport } from '../components/tracker/StatusPageExport';
 import type { AdminOrgUser, OrgAccessEntry } from '../shared/api';
 
 /**
@@ -259,6 +260,21 @@ export function ClientAdminScreen() {
             </button>
           </div>
         </section>
+      </StaggerItem>
+
+      {/*
+        LA PAGE DE STATUT D'UN SITE DE LA CLIENTE.
+
+        Même raison qu'au-dessus : le seul chemin menant à ce panneau était la
+        Tour de contrôle, qui ne voit que NOS sites. Publier la page de statut
+        du site d'une cliente — la seule qui ait un intérêt — n'était possible
+        par aucun écran.
+
+        Le panneau lit les sites du contexte courant : ouvert d'ici, ce sont
+        ceux de la cliente.
+      */}
+      <StaggerItem>
+        <SiteStatusPageExport />
       </StaggerItem>
 
       <StaggerItem>
