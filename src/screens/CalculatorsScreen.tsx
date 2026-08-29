@@ -268,7 +268,13 @@ export function CalculatorsScreen() {
               vérifiable plutôt qu'à croire sur parole. */}
           {result.lines.some((l) => !l.output) && (
             <details className="mt-3">
-              <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-widest text-text-muted hover:text-text-secondary">
+              {/*
+                `-my-2 py-2` : la zone tactile passe de 15 à 31 px sans que la
+                mise en page bouge d'un pixel — la marge négative rend ce que
+                le rembourrage a pris. Un dépliant de 15 px se rate au doigt,
+                et on le rate en tapant sur le chiffre juste au-dessus.
+              */}
+              <summary className="-my-2 cursor-pointer py-2 font-mono text-[10px] uppercase tracking-widest text-text-muted hover:text-text-secondary">
                 Détail du calcul
               </summary>
               <dl className="mt-2 flex flex-col gap-1">

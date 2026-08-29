@@ -209,7 +209,9 @@ export function DayBand() {
           className="min-w-0 flex-1"
         >
           {fait.to ? (
-            <Link to={fait.to} className="block min-w-0 hover:text-text-primary">
+            // `-my-1.5 py-1.5` : la cible passe de 16 à 28 px en empruntant au
+            // rembourrage du conteneur, donc sans rien déplacer.
+            <Link to={fait.to} className="-my-1.5 block min-w-0 py-1.5 hover:text-text-primary">
               {contenu}
             </Link>
           ) : (

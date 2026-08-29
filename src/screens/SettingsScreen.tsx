@@ -763,15 +763,32 @@ function Toggle({ on, onClick, label }: { on: boolean; onClick: () => void; labe
       aria-checked={on}
       aria-label={label}
       onClick={onClick}
-      className={`relative h-5 w-9 flex-shrink-0 rounded-full border transition-colors ${
-        on ? 'border-accent bg-accent' : 'border-border-strong bg-transparent'
-      }`}
+      /*
+        LA PASTILLE FAIT 20 × 36, LA CIBLE FAIT 36 × 52.
+
+        L'interrupteur visuel garde sa taille — c'est la convention, et le
+        grossir le rendrait grossier. Mais ce qu'on TOUCHE n'a pas à être ce
+        qu'on voit : le bouton porte le rembourrage, la pastille n'est qu'un
+        `<span>` à l'intérieur. `-m-2` rend au voisinage ce que `p-2` a pris,
+        donc rien ne bouge à l'écran.
+
+        Vingt pixels de haut, c'est sous le minimum de WCAG 2.5.8 (24), et il
+        y en a quatre à la suite sur cet écran : rater le bon en bascule un
+        autre, et on ne s'en aperçoit pas tout de suite.
+      */
+      className="-m-2 flex-shrink-0 p-2"
     >
-      <motion.span
-        layout
-        transition={{ type: 'spring', stiffness: 500, damping: 34 }}
-        className={`absolute top-0.5 h-3.5 w-3.5 rounded-full ${on ? 'right-0.5 bg-bg' : 'left-0.5 bg-text-muted'}`}
-      />
+      <span
+        className={`relative block h-5 w-9 rounded-full border transition-colors ${
+          on ? 'border-accent bg-accent' : 'border-border-strong bg-transparent'
+        }`}
+      >
+        <motion.span
+          layout
+          transition={{ type: 'spring', stiffness: 500, damping: 34 }}
+          className={`absolute top-0.5 h-3.5 w-3.5 rounded-full ${on ? 'right-0.5 bg-bg' : 'left-0.5 bg-text-muted'}`}
+        />
+      </span>
     </button>
   );
 }

@@ -153,7 +153,9 @@ export function NotesScreen() {
                   key={s}
                   type="button"
                   onClick={() => setScope(s)}
-                  className={`flex-1 rounded-md px-2 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors ${
+                  // `py-2.5` et non `py-1` : 15 px de haut au doigt, c'est en
+                  // dessous du minimum tenable (WCAG 2.5.8 en demande 24).
+                  className={`flex-1 rounded-lg px-2 py-2.5 font-mono text-[10px] uppercase tracking-wider transition-colors ${
                     scope === s ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:text-text-primary'
                   }`}
                 >

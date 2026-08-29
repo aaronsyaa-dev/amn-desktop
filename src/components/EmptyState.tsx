@@ -48,10 +48,24 @@ export function EmptyState({
     <div className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 py-3 ${quiet ? 'opacity-60' : ''}`}>
       <p className="text-[13px] leading-relaxed text-text-secondary">{children}</p>
       {action && (
+        /*
+          `-my-2 py-2` : le lien mesurait 15 px de haut.
+
+          C'est l'UNIQUE action d'un écran vide — donc, très souvent, le premier
+          geste que quelqu'un fait dans un module qu'il découvre, et sur
+          téléphone. Quinze pixels se ratent au doigt (WCAG 2.5.8 en demande 24),
+          et rater sa première tentative sur une page qui ne propose qu'une seule
+          chose laisse croire que le bouton ne marche pas.
+
+          La marge négative rend au voisinage ce que le rembourrage prend : la
+          zone tactile passe à 31 px, l'écran ne bouge pas d'un pixel. Corrigé
+          ici plutôt que dans chaque appelant — cet état vide est partagé par
+          tous les modules.
+        */
         <button
           type="button"
           onClick={action.onClick}
-          className="font-mono text-[10px] uppercase tracking-wider text-text-primary underline decoration-border-strong underline-offset-4 transition-colors hover:decoration-text-primary"
+          className="-my-2 py-2 font-mono text-[10px] uppercase tracking-wider text-text-primary underline decoration-border-strong underline-offset-4 transition-colors hover:decoration-text-primary"
         >
           {action.label}
         </button>
