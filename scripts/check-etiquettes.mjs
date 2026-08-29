@@ -54,7 +54,8 @@ if (!EMAIL || !MOT_DE_PASSE) {
 }
 
 const { chromium } = await import('playwright-core');
-const { parcourirVuesDetail, parcourirBascules, exigerDesVuesDetail } = await import('./lib/vues-detail.mjs');
+const { parcourirEcrans, parcourirVuesDetail, parcourirBascules, exigerDesVuesDetail } =
+  await import('./lib/vues-detail.mjs');
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const nav = await chromium.launch({ executablePath: CHROMIUM, args: ['--no-sandbox'] });
@@ -78,23 +79,20 @@ if ((await page.content()).includes('name="password"')) {
 }
 await attendre(2000);
 
-const routes = await page.evaluate(() => [
-  ...new Set([...document.querySelectorAll('a[href^="#/"]')].map((a) => a.getAttribute('href'))),
-]);
-if (routes.length === 0) {
-  console.error('ÉCHEC : aucune route trouvée dans la navigation. Rien n’a pu être mesuré.');
-  await nav.close();
-  process.exit(1);
-}
-
 const muets = new Map();
+let mesures = 0;
 let examines = 0;
 let detailsOuverts = 0;
 let basculesVues = 0;
 
-for (const route of routes) {
-  await page.goto(APP + route).catch(() => undefined);
-  await attendre(1000);
+/*
+  De proche en proche, et pas depuis l'accueil seul : ce contrôle relevait les
+  liens de la première page et s'arrêtait là — vingt-trois écrans, quand le
+  contrôle des cibles en atteignait trente-trois par la même application. Dix
+  écrans n'avaient donc jamais vu passer le contrôle des étiquettes.
+*/
+for await (const route of parcourirEcrans(page, APP, attendre, 1000)) {
+  mesures += 1;
 
   const mesurer = async (ou) => {
     const releve = await page.evaluate(() => {
@@ -220,6 +218,6 @@ if (muets.size > 0) {
 }
 
 console.log(
-  `OK — ${routes.length} écrans + ${detailsOuverts} vue(s) de détail + ${basculesVues} bascule(s), ` +
+  `OK — ${mesures} écrans + ${detailsOuverts} vue(s) de détail + ${basculesVues} bascule(s), ` +
     `${examines} éléments examinés, tous nommés.`,
 );

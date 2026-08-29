@@ -4,6 +4,7 @@ import { Check, Copy, Link2, Loader2, MessageSquare, Trash2, X } from 'lucide-re
 import { bridge } from '../../lib/bridge';
 import { PUBLIC_URL_MISSING, publicOrigin } from '../../lib/publicUrl';
 import { cleanErrorMessage } from '../../lib/errorMessage';
+import { useFocusALOuverture } from '../../lib/useFocusALOuverture';
 import { callInvitationMessage } from '../../lib/callInvite';
 import type { CallLink } from '../../shared/api';
 import { useFermetureEchap } from '../../lib/useFermetureEchap';
@@ -73,6 +74,7 @@ export function CallLinkPanel({ onClose }: { onClose: () => void }) {
   // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
   useFermetureEchap(true, onClose);
 
+  const fenetre = useFocusALOuverture<HTMLDivElement>();
   const [links, setLinks] = useState<CallLink[]>([]);
   const [minutes, setMinutes] = useState(30);
   const [label, setLabel] = useState('');
@@ -149,11 +151,16 @@ export function CallLinkPanel({ onClose }: { onClose: () => void }) {
         className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
       />
       <motion.div
+        ref={fenetre}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Lien d’appel"
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 24 }}
         transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-        className="relative flex max-h-[92vh] w-full max-w-lg flex-col border border-border-strong bg-surface"
+        className="relative flex max-h-[92vh] w-full max-w-lg flex-col border border-border-strong bg-surface outline-none"
       >
         <div className="flex flex-shrink-0 items-center justify-between border-b border-border px-4 py-3">
           <h2 className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">

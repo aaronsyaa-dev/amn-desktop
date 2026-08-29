@@ -29,6 +29,76 @@
  * garantissait qu'ils divergeraient — l'un corrigé, les autres pas.
  */
 
+/**
+ * LE PARCOURS DE L'APPLICATION — de proche en proche, et pas depuis l'accueil
+ * ═════════════════════════════════════════════════════════════════════════
+ *
+ * Deux contrôles relevaient les liens de la PREMIÈRE page et s'arrêtaient à
+ * cette liste ; trois autres repartaient de chaque écran atteint pour y
+ * chercher les suivants. Résultat mesuré sur l'édition interne le 29 août :
+ *
+ *     check:cibles, check:contraste, check:largeur  →  33 écrans
+ *     check:focus, check:etiquettes                 →  23 écrans
+ *
+ * Dix écrans — ceux qu'on n'atteint qu'en passant par un autre — n'avaient
+ * donc jamais vu passer ni le contrôle du focus ni celui des étiquettes. Ce
+ * n'était pas une décision, c'était deux boucles écrites séparément qui ont
+ * divergé, ce que l'en-tête de ce fichier annonçait déjà comme le risque.
+ *
+ * D'où ce générateur : une seule frontière, partagée. Il rend les routes une
+ * à une, et l'appelant n'a qu'à mesurer — la découverte se fait toute seule
+ * après chaque `yield`, sur l'écran que l'appelant vient de quitter.
+ *
+ * Il vérifie aussi que chaque route a bien OUVERT l'application. Une route qui
+ * rend une page d'erreur se mesurerait sans rien dire, et donnerait le vert le
+ * plus trompeur qui soit : celui d'un écran vide.
+ */
+export async function* parcourirEcrans(page, app, attendre, pause = 900) {
+  const depart = await page.evaluate(() => [
+    ...new Set([...document.querySelectorAll('a[href^="#/"]')].map((a) => a.getAttribute('href'))),
+  ]);
+  if (depart.length === 0) {
+    console.error('ÉCHEC : aucune route trouvée dans la navigation. Rien n’a pu être mesuré.');
+    process.exit(1);
+  }
+
+  const aVisiter = [...depart];
+  const vues = new Set();
+
+  while (aVisiter.length > 0) {
+    const route = aVisiter.shift();
+    if (vues.has(route)) continue;
+    vues.add(route);
+
+    await page.goto(app + route).catch(() => undefined);
+    await attendre(pause);
+
+    const dansLApp = await page.evaluate(
+      () =>
+        !document.body.textContent.includes('Error response') &&
+        Boolean(document.querySelector('nav, main')),
+    );
+    if (!dansLApp) {
+      console.error(`ÉCHEC : ${route} n’a pas ouvert l’application — mesure impossible.`);
+      process.exit(1);
+    }
+
+    yield route;
+
+    /*
+      La découverte a lieu APRÈS la mesure, sur l'écran tel que l'appelant l'a
+      laissé : une vue de détail ouverte puis refermée, une bascule remise à
+      son état de départ. Les liens qu'il a fait apparaître comptent.
+    */
+    const nouvelles = await page
+      .evaluate(() => [
+        ...new Set([...document.querySelectorAll('a[href^="#/"]')].map((a) => a.getAttribute('href'))),
+      ])
+      .catch(() => []);
+    for (const r of nouvelles) if (!vues.has(r)) aVisiter.push(r);
+  }
+}
+
 /** Ce qui crée ou trie, plutôt que d'ouvrir. */
 const PAS_UNE_LIGNE = 'Nouveau|Nouvelle|Ajouter|Créer|Importer|Enregistrer|Filtrer|Trier';
 

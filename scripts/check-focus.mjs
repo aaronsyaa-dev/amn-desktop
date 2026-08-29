@@ -71,6 +71,7 @@ if (!EMAIL || !MOT_DE_PASSE) {
 }
 
 const { chromium } = await import('playwright-core');
+const { parcourirEcrans } = await import('./lib/vues-detail.mjs');
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const nav = await chromium.launch({ executablePath: CHROMIUM, args: ['--no-sandbox'] });
@@ -93,14 +94,18 @@ if ((await page.content()).includes('name="password"')) {
 }
 await attendre(2000);
 
-const routes = await page.evaluate(() => [
-  ...new Set([...document.querySelectorAll('a[href^="#/"]')].map((a) => a.getAttribute('href'))),
-]);
-if (routes.length === 0) {
-  console.error('ÉCHEC : aucune route trouvée dans la navigation. Rien n’a pu être mesuré.');
-  await nav.close();
-  process.exit(1);
-}
+/*
+  Les écrans sont découverts DE PROCHE EN PROCHE. Ce contrôle relevait les
+  liens de la première page et s'arrêtait là — vingt-trois écrans, quand le
+  contrôle des cibles en atteignait trente-trois dans la même application.
+  Dix écrans, ceux qu'on n'atteint qu'en passant par un autre, n'avaient donc
+  jamais vu passer le contrôle du focus.
+
+  Le parcours n'a lieu QU'UNE FOIS : sa liste est gardée pour la seconde
+  passe, celle des fenêtres. Redécouvrir doublerait le temps du contrôle pour
+  retrouver exactement les mêmes routes.
+*/
+const routes = [];
 
 const muets = new Map();
 let arrets = 0;
@@ -140,9 +145,8 @@ const SEUIL_LIGNE_ACTIVE = 0.5;
 const barrePerdue = [];
 let reperesTrouves = 0;
 
-for (const route of routes) {
-  await page.goto(APP + route).catch(() => undefined);
-  await attendre(1100);
+for await (const route of parcourirEcrans(page, APP, attendre, 1100)) {
+  routes.push(route);
 
   const repere = await page
     .evaluate(() => {
@@ -334,6 +338,33 @@ const dansUnCalque = () =>
     return false;
   });
 
+/*
+  REMETTRE L'ÉCRAN À NEUF — et pourquoi un `goto` ne suffisait pas.
+
+  Après avoir ouvert une fenêtre, la boucle revenait à l'écran par
+  `page.goto(APP + route)`. Sur une application à routage par HASH, aller à
+  l'adresse où l'on est DÉJÀ ne recharge rien : la fenêtre restait ouverte, et
+  tous les boutons cliqués ensuite sur le même écran étaient trouvés « dans un
+  calque » — donc signalés en défaut.
+
+  Mesuré : sur `#/tour`, une seule vraie fenêtre sans focus (« Lien d'appel »)
+  en produisait CINQ, dont trois boutons de période et un dépliant. Un
+  garde-fou qui invente quatre défauts sur cinq est un garde-fou qu'on
+  apprendra à ignorer, et c'est pire que pas de garde-fou du tout.
+
+  Échap d'abord — c'est le geste normal, et il vérifie au passage que la
+  fenêtre se ferme. S'il reste quelque chose, on recharge pour de bon.
+*/
+const remettreALEcran = async (route) => {
+  await page.keyboard.press('Escape').catch(() => undefined);
+  await attendre(300);
+  if (await calqueOuvert()) {
+    await page.goto(APP + route).catch(() => undefined);
+    await page.reload().catch(() => undefined);
+    await attendre(1100);
+  }
+};
+
 const fuites = [];
 const sansFocus = [];
 let fenetres = 0;
@@ -378,8 +409,7 @@ for (const route of routes) {
       if (await calqueOuvert()) {
         sansFocus.push({ route, libelle });
       }
-      await page.goto(APP + route).catch(() => undefined);
-      await attendre(700);
+      await remettreALEcran(route);
       continue;
     }
     fenetres += 1;
@@ -391,10 +421,7 @@ for (const route of routes) {
     }
     if (sorties > 0) fuites.push({ route, libelle, sorties });
 
-    await page.keyboard.press('Escape');
-    await attendre(300);
-    await page.goto(APP + route).catch(() => undefined);
-    await attendre(700);
+    await remettreALEcran(route);
   }
 }
 
