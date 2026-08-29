@@ -85,6 +85,15 @@ const {
   ATTENTE_MAX_MS: number;
 }>('src/lib/fileEnvoi.ts');
 
+const { statutErreur, cleanErrorMessage } = await loadFromSrc<{
+  statutErreur: (e: unknown) => number | undefined;
+  cleanErrorMessage: (e: unknown, fallback?: string) => string;
+}>('src/lib/errorMessage.ts');
+
+const { marquerStatut } = await loadFromSrc<{
+  marquerStatut: (message: string, statut: number) => string;
+}>('src/shared/api.ts');
+
 let vus = 0;
 const dit = (nom: string, fn: () => void) => {
   fn();
@@ -363,6 +372,59 @@ dit('les trois abandons ont chacun leurs mots, et aucun n’est vide', () => {
   }
   // Une suppression et une modification ne se racontent pas pareil.
   assert.match(motsAbandon({ entree: suppression('tasks', 'x'), motif: 'refus' }), /suppression/i);
+});
+
+/* ─── Le code HTTP doit SURVIVRE au trajet ─────────────────────────────────── */
+
+/*
+  La file distingue « plus tard » de « non » par le code HTTP. Ce code voyage
+  dans le MESSAGE de l'erreur — comme les deux marqueurs qui existaient déjà —
+  parce que c'est tout ce qui survit au pont IPC d'Electron : une propriété
+  posée sur l'objet `Error` est perdue entre le processus principal et
+  l'interface.
+
+  Si le code ne se relit pas, `vautLaPeine` reçoit `undefined`, comprend
+  « aucune réponse », et réessaie un refus jusqu'à la limite. Toute la règle 3
+  tombe — silencieusement, et seulement là où le trajet est le plus long.
+*/
+
+dit('le code posé sur un message se relit', () => {
+  assert.equal(statutErreur(new Error(marquerStatut('Service Unavailable', 503))), 503);
+  assert.equal(statutErreur(new Error(marquerStatut('montant invalide', 422))), 422);
+});
+
+dit('LE PIÈGE : il se relit AUSSI à travers l’emballage IPC d’Electron', () => {
+  /*
+    Sous Electron le message arrive enrobé :
+
+      Error invoking remote method 'remote:upsertRecord': Error: [amn-statut:422] …
+
+    Ma première expression régulière ancrait le marqueur en début de chaîne. Il
+    aurait donc été invisible sur le POSTE et lisible sur le WEB : la file
+    aurait réessayé indéfiniment un refus, mais seulement dans l'application
+    installée — le genre de défaut qu'on ne reproduit jamais en développement.
+  */
+  const commeIPC = new Error(
+    `Error invoking remote method 'remote:upsertRecord': Error: ${marquerStatut('montant invalide', 422)}`,
+  );
+  assert.equal(statutErreur(commeIPC), 422);
+  assert.equal(vautLaPeine(statutErreur(commeIPC)), false, 'sinon le refus boucle sur le poste');
+});
+
+dit('une erreur SANS code rend `undefined`, et non zéro', () => {
+  // `undefined` veut dire « aucune réponse » — le cas le plus réessayable.
+  // Un zéro serait lu comme un statut, donc comme un refus, et une simple
+  // coupure réseau perdrait l'écriture au lieu de la garder.
+  assert.equal(statutErreur(new Error('réseau injoignable')), undefined);
+  assert.equal(statutErreur(undefined), undefined);
+  assert.equal(vautLaPeine(statutErreur(new Error('réseau injoignable'))), true);
+});
+
+dit('et le marqueur ne s’affiche JAMAIS à l’utilisateur', () => {
+  // « [amn-statut:503] Service Unavailable » ne dit rien à personne.
+  const propre = cleanErrorMessage(new Error(marquerStatut('Le serveur est indisponible.', 503)));
+  assert.equal(propre, 'Le serveur est indisponible.');
+  assert.ok(!propre.includes('amn-statut'));
 });
 
 /* ─── Refermer un espace client emporte sa file ────────────────────────────── */
