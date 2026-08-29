@@ -61,6 +61,8 @@ const {
   renommerDansLes,
   suggestions,
   portee,
+  saisieEnCours,
+  insererLien,
 } = await loadFromSrc<{
   extraireLiens: (corps: string) => Lien[];
   normaliserTitre: (t: string) => string;
@@ -75,6 +77,13 @@ const {
   ) => Array<{ id: string; body: string }>;
   suggestions: (q: string, depuis: Note, toutes: readonly Note[], max?: number) => Note[];
   portee: (n: { scope: 'team' | 'personal' }, c: readonly Note[]) => Note[];
+  saisieEnCours: (t: string, c: number) => { debut: number; requete: string } | null;
+  insererLien: (
+    t: string,
+    s: { debut: number; requete: string },
+    titre: string,
+    curseur: number,
+  ) => { texte: string; curseur: number };
 }>('src/lib/notesLiens.ts');
 
 let vus = 0;
@@ -352,6 +361,41 @@ dit('et les suggestions respectent la portée', () => {
   const src = note('t0', 'Source', '', 'team');
   const s = suggestions('', src, [src, note('p1', 'Perso', '', 'personal')]);
   assert.deepEqual(s, [], 'une note d’équipe ne se voit pas proposer une note personnelle');
+});
+
+/* ─── La saisie d’un lien, pendant la frappe ───────────────────────────────── */
+
+dit('un `[[` ouvert donne ce qui a été tapé depuis', () => {
+  const s = saisieEnCours('Voir [[réu', 10);
+  assert.deepEqual(s, { debut: 5, requete: 'réu' });
+});
+
+dit('LA RÈGLE : un lien déjà refermé n’ouvre plus de suggestions', () => {
+  // Sinon la liste réapparaîtrait dès qu'on écrit après un lien terminé.
+  assert.equal(saisieEnCours('Voir [[Réunion]] ensuite', 24), null);
+});
+
+dit('et un `[[` resté ouvert en haut du document n’en ouvre pas non plus', () => {
+  /*
+    Sans la garde sur le saut de ligne, un crochet oublié vingt lignes plus
+    haut ferait s'ouvrir la liste à chaque frappe, partout en dessous.
+  */
+  assert.equal(saisieEnCours('[[oublié\nune ligne plus bas', 26), null);
+});
+
+dit('une fois l’alias commencé, la cible est choisie', () => {
+  assert.equal(saisieEnCours('Voir [[Réunion|le point', 23), null);
+});
+
+dit('du texte ordinaire ne déclenche rien', () => {
+  assert.equal(saisieEnCours('Une note sans lien', 18), null);
+});
+
+dit('insérer un titre remplace la saisie et pose le curseur APRÈS', () => {
+  // On vient de choisir : on continue d'écrire sa phrase.
+  const r = insererLien('Voir [[réu et la suite', { debut: 5, requete: 'réu' }, 'Réunion client', 10);
+  assert.equal(r.texte, 'Voir [[Réunion client]] et la suite');
+  assert.equal(r.curseur, 'Voir [[Réunion client]]'.length);
 });
 
 console.log(`\nOK — ${vus} contrôles.\n`);

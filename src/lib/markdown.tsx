@@ -1,4 +1,5 @@
 import React from 'react';
+import { extraireLiens } from './notesLiens';
 
 /**
  * Minimal, dependency-free Markdown renderer for the Notes editor (Bloc 2).
@@ -7,6 +8,85 @@ import React from 'react';
  * and bullet / numbered lists. Everything is built as React nodes (no
  * dangerouslySetInnerHTML), so untrusted note content can never inject markup.
  */
+
+/**
+ * CE QU'IL FAUT POUR RENDRE UN `[[lien]]` CLIQUABLE.
+ *
+ * Le rendu ne sait pas résoudre les liens — il ne connaît pas le carnet. C'est
+ * l'appelant qui lui dit, pour un titre donné, s'il mène quelque part et ce
+ * qu'il faut faire au clic. Sans ce branchement, le module Notes rendrait les
+ * liens et aucun autre écran ne pourrait s'en servir.
+ */
+export interface BranchementLiens {
+  /** L'identifiant visé par ce titre, ou `null` si la note n'existe pas encore. */
+  resoudre: (titre: string) => string | null;
+  /** Ouvrir la note visée. */
+  ouvrir: (id: string) => void;
+  /**
+   * Créer la note manquante, si l'écran le permet. Absent = le lien mort reste
+   * affiché comme tel, sans geste.
+   */
+  creer?: (titre: string) => void;
+}
+
+/**
+ * Découpe une ligne sur ses `[[liens]]`, et rend le reste au moteur d'emphase.
+ *
+ * Un lien MORT n'est pas une faute : c'est une note pas encore écrite, et c'est
+ * même une façon de travailler — on cite ce qu'on n'a pas encore rédigé, puis
+ * on clique pour le créer. Il se distingue donc par son trait pointillé, pas
+ * par une couleur d'erreur.
+ */
+function renderAvecLiens(
+  text: string,
+  keyPrefix: string,
+  liens: BranchementLiens,
+): React.ReactNode[] {
+  const trouves = extraireLiens(text);
+  if (trouves.length === 0) return renderInline(text, keyPrefix);
+
+  const nodes: React.ReactNode[] = [];
+  let last = 0;
+  trouves.forEach((lien, i) => {
+    if (lien.debut > last) nodes.push(...renderInline(text.slice(last, lien.debut), `${keyPrefix}-t${i}`));
+    const cible = liens.resoudre(lien.cible);
+    const key = `${keyPrefix}-l${i}`;
+    if (cible) {
+      nodes.push(
+        <button
+          key={key}
+          type="button"
+          onClick={() => liens.ouvrir(cible)}
+          title={`Ouvrir « ${lien.cible} »`}
+          className="rounded-sm text-accent underline decoration-accent/40 underline-offset-2 transition-colors hover:decoration-accent"
+        >
+          {lien.texte}
+        </button>,
+      );
+    } else if (liens.creer) {
+      nodes.push(
+        <button
+          key={key}
+          type="button"
+          onClick={() => liens.creer?.(lien.cible)}
+          title={`Créer la note « ${lien.cible} »`}
+          className="rounded-sm text-text-muted underline decoration-dotted decoration-text-muted/60 underline-offset-2 transition-colors hover:text-text-secondary"
+        >
+          {lien.texte}
+        </button>,
+      );
+    } else {
+      nodes.push(
+        <span key={key} className="text-text-muted underline decoration-dotted underline-offset-2">
+          {lien.texte}
+        </span>,
+      );
+    }
+    last = lien.fin;
+  });
+  if (last < text.length) nodes.push(...renderInline(text.slice(last), `${keyPrefix}-fin`));
+  return nodes;
+}
 
 /** Parses inline emphasis/code within a single line of text. */
 function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
@@ -46,7 +126,17 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
 }
 
 /** Renders Markdown text into a styled React tree. */
-export function Markdown({ text, className = '' }: { text: string; className?: string }) {
+export function Markdown({
+  text,
+  className = '',
+  liens,
+}: {
+  text: string;
+  className?: string;
+  /** Absent = les `[[…]]` restent du texte, comme avant. */
+  liens?: BranchementLiens;
+}) {
+  const inline = (t: string, k: string) => (liens ? renderAvecLiens(t, k, liens) : renderInline(t, k));
   const lines = text.replace(/\r\n/g, '\n').split('\n');
   const blocks: React.ReactNode[] = [];
   let i = 0;
@@ -84,7 +174,7 @@ export function Markdown({ text, className = '' }: { text: string; className?: s
       const size = level === 1 ? 'text-lg' : level === 2 ? 'text-base' : 'text-sm';
       blocks.push(
         <p key={`b${key++}`} className={`${size} font-semibold text-text-primary`}>
-          {renderInline(h[2], `h${key}`)}
+          {inline(h[2], `h${key}`)}
         </p>,
       );
       i += 1;
@@ -101,7 +191,7 @@ export function Markdown({ text, className = '' }: { text: string; className?: s
       }
       const inner = items.map((it, idx) => (
         <li key={idx} className="text-text-secondary">
-          {renderInline(it, `li${key}-${idx}`)}
+          {inline(it, `li${key}-${idx}`)}
         </li>
       ));
       blocks.push(
@@ -127,7 +217,7 @@ export function Markdown({ text, className = '' }: { text: string; className?: s
     // Paragraph (single line; consecutive non-empty lines become separate <p>)
     blocks.push(
       <p key={`b${key++}`} className="text-sm leading-relaxed text-text-secondary">
-        {renderInline(line, `p${key}`)}
+        {inline(line, `p${key}`)}
       </p>,
     );
     i += 1;

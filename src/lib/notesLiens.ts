@@ -334,3 +334,56 @@ export function suggestions(
     })
     .slice(0, maximum);
 }
+
+/**
+ * EST-ON EN TRAIN D'ÉCRIRE UN LIEN ?
+ *
+ * Rend, quand le curseur se trouve dans un `[[` pas encore refermé, où il
+ * commence et ce qui a été tapé depuis. C'est ce qui permet de proposer des
+ * titres pendant la frappe plutôt qu'après coup.
+ *
+ * Trois refus, et chacun évite une liste de suggestions qui s'ouvre au mauvais
+ * moment :
+ *
+ *   · pas de `[[` avant le curseur — on écrit du texte ordinaire ;
+ *   · un `]]` est passé entre les deux — le lien est refermé, on écrit APRÈS
+ *     lui ;
+ *   · un saut de ligne s'est glissé dedans — un `[[` resté ouvert en haut du
+ *     document ferait s'ouvrir la liste vingt lignes plus bas, à chaque frappe.
+ */
+export function saisieEnCours(
+  texte: string,
+  curseur: number,
+): { debut: number; requete: string } | null {
+  const avant = texte.slice(0, curseur);
+  const debut = avant.lastIndexOf('[[');
+  if (debut === -1) return null;
+  const dedans = avant.slice(debut + 2);
+  if (dedans.includes(']]') || dedans.includes('\n')) return null;
+  /*
+    L'alias vient après la barre : une fois qu'on l'écrit, la cible est
+    choisie et proposer des titres n'a plus de sens.
+  */
+  if (dedans.includes('|')) return null;
+  return { debut, requete: dedans };
+}
+
+/**
+ * Remplace la saisie en cours par le titre choisi, et rend le texte et la
+ * nouvelle position du curseur.
+ *
+ * Le curseur se pose APRÈS le `]]` : on vient de choisir, on continue d'écrire
+ * sa phrase. Le laisser dans le lien obligerait à un geste de plus à chaque
+ * insertion.
+ */
+export function insererLien(
+  texte: string,
+  saisie: { debut: number; requete: string },
+  titre: string,
+  curseur: number,
+): { texte: string; curseur: number } {
+  const avant = texte.slice(0, saisie.debut);
+  const apres = texte.slice(curseur);
+  const insertion = `[[${titre}]]`;
+  return { texte: avant + insertion + apres, curseur: avant.length + insertion.length };
+}

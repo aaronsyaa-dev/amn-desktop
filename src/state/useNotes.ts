@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
+import { construireGraphe, portee, renommerDansLes } from '../lib/notesLiens';
 import { useSync, useCollection, uid, stripMeta } from './SyncContext';
 import { IS_BUSINESS } from '../edition/edition';
 
@@ -240,5 +241,52 @@ export function useNotes() {
     [isTeamNote, remove, personal, persistPersonal],
   );
 
-  return { notes, createNote, updateNote, togglePin, deleteNote };
+  /*
+    L'ORDRE D'ANCIENNETÉ, POUR TRANCHER LES HOMONYMES.
+
+    Deux notes peuvent porter le même titre ; un lien va toujours à la plus
+    ANCIENNE (voir `notesLiens.ts`). On calcule le rang une fois ici plutôt
+    qu'à chaque résolution : sans ça, chaque rendu d'une note refait le tri de
+    tout le carnet.
+  */
+  const ordre = useMemo(() => {
+    const tries = [...notes].sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+    return new Map(tries.map((n, i) => [n.id, i]));
+  }, [notes]);
+
+  const graphe = useMemo(() => construireGraphe(notes, ordre), [notes, ordre]);
+
+  /**
+   * RENOMMER EN GARDANT LES LIENS.
+   *
+   * Le titre est la clé d'un `[[lien]]` : le changer casserait tout ce qui
+   * pointe ici. On réécrit donc les liens dans la foulée — sans quoi personne
+   * n'ose plus corriger une faute de frappe dans un titre auquel trois notes
+   * sont liées.
+   *
+   * Les corps sont réécrits AVANT le titre : si l'écriture du titre échoue, on
+   * se retrouve avec des liens qui pointent vers un titre qui n'existe pas
+   * encore — cassés. Dans l'autre sens, on aurait des liens cassés ET un titre
+   * changé, c'est-à-dire le même dégât sans le rattrapage possible.
+   */
+  const renommer = useCallback(
+    async (id: string, nouveauTitre: string) => {
+      const note = notes.find((n) => n.id === id);
+      if (!note || note.title === nouveauTitre) return;
+      /*
+        Seules les notes qui VOIENT celle-ci sont réécrites. Une note d'équipe
+        renommée ne doit pas aller modifier le brouillon personnel de
+        quelqu'un — d'ailleurs elle ne le pourrait pas, il est dans un autre
+        navigateur.
+      */
+      const concernees = notes.filter((n) => portee(n, [note]).length > 0);
+      for (const maj of renommerDansLes(concernees, note.title, nouveauTitre)) {
+        await updateNote(maj.id, { body: maj.body });
+      }
+      await updateNote(id, { title: nouveauTitre });
+    },
+    [notes, updateNote],
+  );
+
+  return { notes, createNote, updateNote, togglePin, deleteNote, graphe, ordre, renommer };
 }

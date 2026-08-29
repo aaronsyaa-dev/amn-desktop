@@ -1,12 +1,14 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { motion } from 'framer-motion';
 import {
   Bold,
   Code2,
+  CornerUpLeft,
   Eye,
   Heading1,
   Italic,
+  Link2 as LinkIcon,
   List,
   Lock,
   Pencil,
@@ -26,12 +28,32 @@ import { staggerContainer, staggerItem } from '../lib/transitions';
 import { relativeTime } from '../lib/time';
 import { EmptyState } from '../components/EmptyState';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
+import {
+  insererLien,
+  resoudre,
+  retroliens,
+  saisieEnCours,
+  suggestions,
+  type Graphe,
+} from '../lib/notesLiens';
+
+/*
+  L'ordre d'ancienneté, pour trancher les homonymes (voir `notesLiens.ts`).
+  Recalculé ici parce que l'éditeur résout un titre à la volée pour l'aperçu,
+  sur une note fabriquée qui n'est pas dans le carnet.
+*/
+const ordreDe = (notes: Note[]) =>
+  new Map(
+    [...notes]
+      .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''))
+      .map((n, i) => [n.id, i]),
+  );
 
 type ScopeFilter = 'all' | 'team' | 'personal';
 
 export function NotesScreen() {
   const { TEAM_ENABLED } = useExclusive();
-  const { notes, createNote, updateNote, togglePin, deleteNote } = useNotes();
+  const { notes, createNote, updateNote, togglePin, deleteNote, graphe, renommer } = useNotes();
   const { isPending, scheduleDelete } = useUndo();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -257,9 +279,28 @@ export function NotesScreen() {
           <NoteEditor
             key={selected.id}
             note={selected}
+            notes={notes}
+            graphe={graphe}
             onSave={(patch) => updateNote(selected.id, patch)}
+            onRenommer={(titre) => void renommer(selected.id, titre)}
             onTogglePin={() => togglePin(selected)}
             onRemove={() => removeNote(selected)}
+            onOuvrir={(id) => setSelectedId(id)}
+            /*
+              CRÉER DEPUIS UN LIEN MORT.
+
+              C'est le geste qui fait d'un lien non résolu une façon de
+              travailler plutôt qu'une erreur : on cite ce qu'on n'a pas encore
+              écrit, et on clique quand on est prêt à l'écrire. La note naît
+              dans la MÊME portée que celle qui la cite — sinon une note
+              d'équipe créerait un brouillon personnel que personne d'autre ne
+              verrait, et le lien resterait mort pour tout le monde.
+            */
+            onCreer={(titre) => {
+              const id = createNote(selected.scope);
+              updateNote(id, { title: titre });
+              setSelectedId(id);
+            }}
           />
         ) : notes.length === 0 ? null : (
           <div className="flex items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted">
@@ -273,14 +314,25 @@ export function NotesScreen() {
 
 function NoteEditor({
   note,
+  notes,
+  graphe,
   onSave,
+  onRenommer,
   onTogglePin,
   onRemove,
+  onOuvrir,
+  onCreer,
 }: {
   note: Note;
+  notes: Note[];
+  graphe: Graphe;
   onSave: (patch: { title?: string; body?: string }) => void;
+  /** Renommer passe par un chemin à part : il réécrit les liens qui pointent ici. */
+  onRenommer: (titre: string) => void;
   onTogglePin: () => void;
   onRemove: () => void;
+  onOuvrir: (id: string) => void;
+  onCreer: (titre: string) => void;
 }) {
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
@@ -288,6 +340,77 @@ function NoteEditor({
   const [preview, setPreview] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  /*
+    LA SAISIE D'UN LIEN, PENDANT LA FRAPPE.
+
+    `saisie` vaut `null` la plupart du temps ; il ne porte quelque chose que
+    lorsque le curseur est dans un `[[` pas encore refermé. La règle qui le
+    décide vit dans `notesLiens.ts`, avec ses trois refus — voir
+    `saisieEnCours`.
+  */
+  const [saisie, setSaisie] = useState<{ debut: number; requete: string } | null>(null);
+  const [choix, setChoix] = useState(0);
+
+  const proposees = useMemo(
+    () => (saisie ? suggestions(saisie.requete, note, notes) : []),
+    [saisie, note, notes],
+  );
+
+  /** Ce que le rendu markdown a besoin de savoir pour rendre un lien cliquable. */
+  const branchement = useMemo(
+    () => ({
+      resoudre: (titre: string) => {
+        const cible = resoudre({ ...note, body: `[[${titre}]]` }, notes, ordreDe(notes))[0];
+        return cible?.cibleId ?? null;
+      },
+      ouvrir: onOuvrir,
+      creer: onCreer,
+    }),
+    [note, notes, onOuvrir, onCreer],
+  );
+
+  const retro = useMemo(() => retroliens(graphe, note.id), [graphe, note.id]);
+
+  /*
+    Valider le titre : c'est le seul chemin qui touche au titre, parce que
+    c'est le seul qui sait réécrire les liens.
+
+    `titreRef` porte la dernière valeur tapée pour que le nettoyage de l'effet
+    ci-dessous la voie : une fonction de nettoyage capture les valeurs du rendu
+    où elle a été créée, donc lire `title` directement y donnerait le titre
+    d'AVANT la frappe, et le renommage serait perdu.
+  */
+  const titreRef = useRef(title);
+  titreRef.current = title;
+
+  const validerTitre = useCallback(() => {
+    const propose = titreRef.current.trim();
+    if (propose === note.title || propose === '') return;
+    onRenommer(propose);
+  }, [note.title, onRenommer]);
+
+  /*
+    LE FILET : quitter la note sans quitter le champ.
+
+    On tape un titre puis on clique une autre note dans la liste. Le champ perd
+    le focus… mais React démonte souvent l'éditeur avant que `blur` ne parte, et
+    le renommage serait simplement perdu. Le nettoyage rattrape ce cas.
+  */
+  useEffect(() => () => validerTitre(), [validerTitre]);
+
+  const choisir = (titre: string) => {
+    const el = bodyRef.current;
+    if (!el || !saisie) return;
+    const r = insererLien(body, saisie, titre, el.selectionStart);
+    setBody(r.texte);
+    scheduleSave(title, r.texte);
+    setSaisie(null);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(r.curseur, r.curseur);
+    });
+  };
 
   const scheduleSave = (nextTitle: string, nextBody: string) => {
     setSaved(false);
@@ -361,11 +484,27 @@ function NoteEditor({
             {note.scope === 'personal' ? 'Perso' : 'Équipe'}
           </span>
         )}
+        {/*
+          LE TITRE SE VALIDE QUAND ON QUITTE LE CHAMP, PAS À CHAQUE TOUCHE.
+
+          Renommer ne change pas que cette note : ça réécrit les `[[liens]]`
+          de toutes celles qui pointent ici. Le faire à chaque frappe
+          réécrirait le carnet vingt fois pour un titre de vingt lettres — et
+          chaque état intermédiaire produirait des liens vers des titres qui
+          n'ont jamais existé (« R », « Ré », « Réu »…).
+
+          Le corps, lui, continue de s'enregistrer au fil de la frappe : il ne
+          concerne que cette note.
+        */}
         <input
           value={title}
-          onChange={(e) => {
-            setTitle(e.target.value);
-            scheduleSave(e.target.value, body);
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={() => validerTitre()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              e.currentTarget.blur();
+            }
           }}
           placeholder="Titre de la note"
           className="min-w-0 flex-1 bg-transparent text-lg font-semibold text-text-primary outline-none placeholder:text-text-muted"
@@ -426,22 +565,111 @@ function NoteEditor({
       {preview ? (
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {body.trim() ? (
-            <Markdown text={body} />
+            <Markdown text={body} liens={branchement} />
           ) : (
             <p className="font-mono text-xs text-text-muted">Note vide.</p>
           )}
         </div>
       ) : (
-        <textarea
-          ref={bodyRef}
-          value={body}
-          onChange={(e) => {
-            setBody(e.target.value);
-            scheduleSave(title, e.target.value);
-          }}
-          placeholder="Écrivez ici… **gras**, *italique*, # titre, - liste, ``` bloc de code ```"
-          className="min-h-0 flex-1 resize-none bg-transparent p-4 font-mono text-sm leading-relaxed text-text-primary outline-none placeholder:text-text-muted"
-        />
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <textarea
+            ref={bodyRef}
+            value={body}
+            onChange={(e) => {
+              setBody(e.target.value);
+              scheduleSave(title, e.target.value);
+              setSaisie(saisieEnCours(e.target.value, e.target.selectionStart));
+              setChoix(0);
+            }}
+            /*
+              Le curseur peut bouger sans que le texte change — flèches, clic,
+              Origine/Fin. Sans ces deux écoutes, la liste resterait ouverte
+              après être sorti du `[[` à la flèche droite, ou ne s'ouvrirait
+              pas en revenant dedans au clic.
+            */
+            onKeyUp={(e) => setSaisie(saisieEnCours(body, e.currentTarget.selectionStart))}
+            onClick={(e) => setSaisie(saisieEnCours(body, e.currentTarget.selectionStart))}
+            onKeyDown={(e) => {
+              if (proposees.length === 0) return;
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setChoix((c) => (c + 1) % proposees.length);
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setChoix((c) => (c - 1 + proposees.length) % proposees.length);
+              } else if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                choisir(proposees[choix].title);
+              } else if (e.key === 'Escape') {
+                /*
+                  Échap ferme la liste et RIEN D'AUTRE. Sans `stopPropagation`,
+                  il remonterait jusqu'au calque parent, qui se fermerait — on
+                  perdrait la note pour avoir voulu annuler une suggestion.
+                */
+                e.stopPropagation();
+                setSaisie(null);
+              }
+            }}
+            placeholder="Écrivez ici… **gras**, *italique*, # titre, - liste, [[lien vers une note]]"
+            className="min-h-0 flex-1 resize-none bg-transparent p-4 font-mono text-sm leading-relaxed text-text-primary outline-none placeholder:text-text-muted"
+          />
+
+          {proposees.length > 0 && (
+            <ul
+              role="listbox"
+              aria-label="Notes à lier"
+              className="elev-2 absolute bottom-3 left-4 right-4 z-10 max-h-56 overflow-y-auto rounded-lg border border-border bg-surface py-1"
+            >
+              {proposees.map((n, i) => (
+                <li key={n.id}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={i === choix}
+                    onMouseEnter={() => setChoix(i)}
+                    onClick={() => choisir(n.title)}
+                    className={`flex min-h-11 w-full items-center gap-2.5 px-3 text-left text-sm transition-colors ${
+                      i === choix ? 'bg-accent-muted text-text-primary' : 'text-text-secondary'
+                    }`}
+                  >
+                    <LinkIcon size={13} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
+                    <span className="truncate">{n.title || 'Sans titre'}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/*
+        QUI PARLE DE CETTE NOTE.
+
+        C'est ce qu'aucune recherche ne donne : une recherche rend les notes qui
+        CONTIENNENT un mot, celle-ci rend celles qui ont décidé de pointer ici.
+        Le panneau ne s'affiche que s'il a quelque chose à dire — un cadre vide
+        sous chaque note apprendrait surtout à ne plus regarder à cet endroit.
+      */}
+      {retro.length > 0 && (
+        <div className="flex-shrink-0 border-t border-border px-4 py-3">
+          <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+            {retro.length === 1 ? 'Une note pointe ici' : `${retro.length} notes pointent ici`}
+          </p>
+          <ul className="flex flex-col gap-1.5">
+            {retro.map((n) => (
+              <li key={n.id}>
+                <button
+                  type="button"
+                  onClick={() => onOuvrir(n.id)}
+                  className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+                >
+                  <CornerUpLeft size={13} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
+                  <span className="truncate">{n.title || 'Sans titre'}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );
