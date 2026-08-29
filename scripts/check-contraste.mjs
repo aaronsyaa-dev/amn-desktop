@@ -131,9 +131,6 @@ for (let i = 0; i < 15 && (await page.content()).includes('name="password"'); i 
 if ((await page.content()).includes('name="password"')) {
   console.error('ÉCHEC : la connexion n’a pas abouti. Rien n’a pu être mesuré.');
   await nav.close();
-
-exigerDesVuesDetail(detailsOuverts, 'check:contraste');
-
   process.exit(1);
 }
 await attendre(2000);
@@ -278,6 +275,19 @@ while (aVisiter.length > 0) {
 }
 
 await nav.close();
+
+/*
+  LE TÉMOIN DES VUES DE DÉTAIL — posé ICI, après la boucle, et pas près du
+  premier `nav.close()` venu.
+
+  Mon premier jet l'avait accroché à la fermeture de la branche « la connexion
+  n'a pas abouti », qui vit AVANT la déclaration de `detailsOuverts`. Une
+  session refusée ne donnait donc plus le message clair prévu pour elle, mais
+  un `ReferenceError: Cannot access 'detailsOuverts' before initialization` —
+  c'est-à-dire un contrôle qui parle de sa propre plomberie au moment précis où
+  quelqu'un a besoin de savoir que son mot de passe ne passe pas.
+*/
+exigerDesVuesDetail(detailsOuverts, 'check:contraste');
 
 /*
   LE TÉMOIN, comme dans `check-mouvement` : sans texte lu, il n'y a pas de

@@ -74,7 +74,6 @@ if ((await page.content()).includes('name="password"')) {
   console.error('ÉCHEC : la connexion n’a pas abouti. Rien n’a pu être mesuré.');
   await nav.close();
 
-exigerDesVuesDetail(detailsOuverts, 'check:etiquettes');
   process.exit(1);
 }
 await attendre(2000);
@@ -177,6 +176,20 @@ for (const route of routes) {
 }
 
 await nav.close();
+
+/*
+  LE TÉMOIN DES VUES DE DÉTAIL — posé ICI, après la boucle, et pas près du
+  premier `nav.close()` venu.
+
+  Mon premier jet l'avait accroché à la fermeture d'une branche d'échec
+  PRÉCOCE, qui vit avant la déclaration de `detailsOuverts`. Une session
+  refusée ne donnait donc plus le message clair prévu pour elle, mais un
+  `ReferenceError: Cannot access 'detailsOuverts' before initialization` —
+  c'est-à-dire un contrôle qui parle de sa propre plomberie au moment précis
+  où quelqu'un a besoin de savoir que son mot de passe ne passe pas.
+*/
+exigerDesVuesDetail(detailsOuverts, 'check:etiquettes');
+
 
 /* Le témoin : sans élément examiné, il n'y a pas de bonne nouvelle. */
 if (examines === 0) {
