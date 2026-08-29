@@ -131,6 +131,10 @@ export function MediaSoloScreen() {
         actions={
           <>
           <select
+            // Un `<select>` sans étiquette s'annonce « liste déroulante », et
+            // rien de plus : on ne sait pas ce qu'il filtre. La première
+            // option porte le sens à l'œil, jamais à l'oreille.
+            aria-label="Filtrer par cliente"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             className="input-focus cursor-pointer border border-border bg-surface px-2.5 py-2 font-mono text-[10px] uppercase tracking-wider text-text-secondary outline-none"

@@ -184,6 +184,15 @@ export function BusinessSidebar({
           <button
             type="button"
             onClick={handleSignOut}
+            /*
+              Le libellé disparaît quand la barre est repliée — il ne reste
+              qu'une icône, sans nom pour un lecteur d'écran ni au survol. Les
+              liens de navigation juste au-dessus portent déjà les deux ; ce
+              bouton-ci était le seul oublié, et c'est le plus conséquent :
+              on ne se déconnecte pas par erreur.
+            */
+            aria-label="Se déconnecter"
+            title={!isExpanded ? 'Se déconnecter' : undefined}
             className="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm text-text-muted transition-colors hover:bg-surface-hover hover:text-danger md:min-h-0"
           >
             <LogOut size={18} strokeWidth={1.75} />

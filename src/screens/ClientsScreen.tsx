@@ -734,6 +734,9 @@ function TimelineBlock({
           type="button"
           onClick={submit}
           disabled={!title.trim()}
+          // Un « + » seul ne dit rien à l'oreille : le champ à côté porte le
+          // sens, mais un lecteur d'écran annonce les deux séparément.
+          aria-label="Ajouter cet échange"
           className="flex items-center justify-center border border-border-strong bg-surface px-3 text-text-primary transition-colors hover:bg-surface-hover disabled:opacity-40"
         >
           <Plus size={16} strokeWidth={2} />
