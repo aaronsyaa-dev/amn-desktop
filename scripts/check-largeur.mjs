@@ -103,6 +103,7 @@ if (!EMAIL || !MOT_DE_PASSE) {
 }
 
 const { chromium } = await import('playwright-core');
+const { parcourirVuesDetail, exigerDesVuesDetail } = await import('./lib/vues-detail.mjs');
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const nav = await chromium.launch({ executablePath: CHROMIUM, args: ['--no-sandbox'] });
@@ -122,6 +123,8 @@ for (let i = 0; i < 15 && (await page.content()).includes('name="password"'); i 
 if ((await page.content()).includes('name="password"')) {
   console.error('ÉCHEC : la connexion n’a pas abouti. Rien n’a pu être mesuré.');
   await nav.close();
+
+exigerDesVuesDetail(detailsOuverts, 'check:largeur');
   process.exit(1);
 }
 await attendre(2000);
@@ -153,6 +156,7 @@ const vues = new Set();
 const coupables = [];
 const ecrases = [];
 let mesures = 0;
+let detailsOuverts = 0;
 
 while (aVisiter.length > 0) {
   const route = aVisiter.shift();
@@ -172,6 +176,7 @@ while (aVisiter.length > 0) {
   }
   mesures += 1;
 
+  const mesurer = async (ou) => {
   const pire = await page.evaluate(() => {
     const vp = window.innerWidth;
     const defilable = (el) => {
@@ -198,7 +203,7 @@ while (aVisiter.length > 0) {
     return trouve;
   });
 
-  if (pire) coupables.push({ route, pire });
+  if (pire) coupables.push({ route: ou, pire });
 
   const comprimes = await page.evaluate(
     ({ largeurMax, minCaracteres }) => {
@@ -226,7 +231,19 @@ while (aVisiter.length > 0) {
     },
     { largeurMax: ETROIT_PX, minCaracteres: ETROIT_CARACTERES },
   );
-  if (comprimes) ecrases.push({ route, pire: comprimes });
+  if (comprimes) ecrases.push({ route: ou, pire: comprimes });
+  };
+
+  await mesurer(route);
+
+  /*
+    LES VUES DE DÉTAIL, ET PAS SEULEMENT LES LISTES.
+
+    C'est là que vivent les tableaux — l'éditeur de pages en compose, les
+    factures en affichent — et un tableau est ce qui déborde le plus
+    naturellement sur un écran de 390 px. Ce contrôle ne les avait jamais vus.
+  */
+  detailsOuverts += await parcourirVuesDetail(page, route, mesurer, attendre);
 
   // Les liens de CET écran rejoignent la file : c'est ainsi qu'on atteint la
   // Tour de contrôle, le contexte client, et tout ce qui n'est pas dans la
@@ -270,5 +287,6 @@ if (coupables.length > 0) {
 if (coupables.length > 0 || ecrases.length > 0) process.exit(1);
 
 console.log(
-  `OK — ${mesures} écrans mesurés à ${LARGEUR} px : rien de coupé sans recours, rien d’écrasé.`,
+  `OK — ${mesures} écrans + ${detailsOuverts} vue(s) de détail à ${LARGEUR} px : ` +
+    'rien de coupé sans recours, rien d’écrasé.',
 );
