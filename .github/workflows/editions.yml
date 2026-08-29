@@ -96,6 +96,13 @@ jobs:
         run: npm run check:attention
       - name: Calculateurs
         run: npm run check:calc
+      # Ces deux-là ont été écrits dans la nuit du 28 et sont restés hors CI :
+      # un garde-fou qu'on ne lance pas ne garde rien, et c'est précisément la
+      # forme de dérive que tous les autres cherchent à empêcher.
+      - name: Événements — jours restants, seuil, verdicts
+        run: npm run check:evenements
+      - name: Sauvegarde — ce qu'un fichier relu vaut vraiment
+        run: npm run check:sauvegarde
       - name: Tendances
         run: npm run check:trend
       - name: Export FEC
