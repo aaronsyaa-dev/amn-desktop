@@ -8,6 +8,7 @@ import {
   type AttentionCertificate,
   type AttentionIncident,
   type AttentionItem,
+  type AttentionScan,
 } from '../lib/attention';
 import { documentTotals } from '../lib/money';
 import { bridge } from '../lib/bridge';
@@ -58,6 +59,7 @@ export function useAttention(): AttentionState {
   const tasks = useCollection<TaskRow>('tasks');
   const { certificates, settled: certificatesSettled } = useCertificates();
   const { incidents, settled: incidentsSettled } = useIncidentsOuverts();
+  const { scans, settled: scansSettled } = useBalayagesRecents();
 
   const items = useMemo(() => {
     /*
@@ -112,8 +114,9 @@ export function useAttention(): AttentionState {
       })),
       certificates,
       incidents,
+      scans,
     });
-  }, [invoices, tasks, clients, appointments, certificates, incidents]);
+  }, [invoices, tasks, clients, appointments, certificates, incidents, scans]);
 
   /*
     Horodater l'évaluation, et seulement quand elle vaut quelque chose.
@@ -122,7 +125,7 @@ export function useAttention(): AttentionState {
     que l'heure a changé, et un `setState` à chaque recalcul d'`items`
     rejouerait le rendu une fois de plus pour rien.
   */
-  const complete = clientsReady && certificatesSettled && incidentsSettled;
+  const complete = clientsReady && certificatesSettled && incidentsSettled && scansSettled;
   const checkedAt = useRef<string | null>(null);
   if (complete) checkedAt.current = new Date().toISOString();
 
@@ -192,6 +195,55 @@ function useCertificates(): { certificates: AttentionCertificate[]; settled: boo
  * qu'un incident vit à une autre échelle : un certificat expire dans trois
  * semaines, une intrusion se joue dans l'heure.
  */
+/**
+ * LES BALAYAGES RÉCENTS, pour la seule question qu'on leur pose : le score
+ * a-t-il baissé.
+ *
+ * Lu UNE FOIS, sans ronde, contrairement aux incidents. Un balayage est
+ * hebdomadaire ou mensuel : le relire toutes les minutes interrogerait le
+ * serveur mille fois pour une valeur qui change six fois par an. La liste se
+ * rafraîchit au prochain montage de l'écran, ce qui est amplement à l'échelle
+ * de la chose observée.
+ *
+ * La comparaison, elle, vit dans `lib/attention.ts` — ce hook ne fait que
+ * traduire, comme les deux autres.
+ */
+function useBalayagesRecents(): { scans: AttentionScan[]; settled: boolean } {
+  const [scans, setScans] = useState<AttentionScan[]>([]);
+  const [settled, setSettled] = useState(IS_BUSINESS);
+
+  useEffect(() => {
+    // Le Scanner est un produit de l'édition interne : une organisation
+    // cliente n'a pas de `/v1/scans` à interroger.
+    if (IS_BUSINESS) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const liste = await bridge().remote.listScans();
+        if (cancelled) return;
+        setScans(
+          liste.map((s) => ({
+            id: s.id,
+            url: s.url,
+            tier: s.tier,
+            score: s.score,
+            finishedAt: s.finishedAt,
+          })),
+        );
+      } catch {
+        if (!cancelled) setScans([]);
+      } finally {
+        if (!cancelled) setSettled(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { scans, settled };
+}
+
 function useIncidentsOuverts(): { incidents: AttentionIncident[]; settled: boolean } {
   const [incidents, setIncidents] = useState<AttentionIncident[]>([]);
   const [settled, setSettled] = useState(IS_BUSINESS);

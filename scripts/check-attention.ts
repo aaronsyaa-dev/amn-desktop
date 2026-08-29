@@ -71,6 +71,8 @@ interface Thresholds {
   clientSilentDays: number;
   certificateWarnDays: number;
   certificateCriticalDays: number;
+  scanDropPoints: number;
+  scanCriticalScore: number;
 }
 interface Invoice {
   id: string; number: string; status: string; issuedAt: string; dueAt: string;
@@ -90,9 +92,12 @@ interface Incident {
   status: 'new' | 'acknowledged' | 'resolved';
   firstSeenAt: string;
 }
+interface Scan {
+  id: string; url: string; tier: string; score: number | null; finishedAt: string | null;
+}
 interface Input {
   invoices?: Invoice[]; tasks?: Task[]; clients?: Client[]; certificates?: Certificate[];
-  incidents?: Incident[];
+  incidents?: Incident[]; scans?: Scan[];
 }
 interface AttentionModule {
   DEFAULT_THRESHOLDS: Thresholds;
@@ -169,6 +174,15 @@ const cert = (o: Partial<Certificate> = {}): Certificate => ({
   daysLeft: o.daysLeft === undefined ? 30 : o.daysLeft,
   error: o.error ?? null,
   lastCheckedAt: o.lastCheckedAt ?? at(daysAgo(1)),
+});
+
+let numeroScan = 0;
+const scan = (o: Partial<Scan> = {}): Scan => ({
+  id: o.id ?? `s${(numeroScan += 1)}`,
+  url: o.url ?? 'https://boutique-essai.fr/',
+  tier: o.tier ?? 'lite',
+  score: o.score === undefined ? 90 : o.score,
+  finishedAt: o.finishedAt === undefined ? at(daysAgo(1)) : o.finishedAt,
 });
 
 const run = (input: Input, thresholds?: Partial<Thresholds>) =>
@@ -650,6 +664,156 @@ check('SALUTATION : quand c’est vraiment calme, elle a le droit de le dire', (
   for (const [creneau, phrases] of Object.entries(S.GREETINGS_SEREINES)) {
     assert.ok(phrases.length > 0, `créneau sans variante sereine : ${creneau}`);
   }
+});
+
+/* ------------------- La chute de score entre deux balayages ---------------- */
+
+/*
+  LE SILENCE QUE CETTE RÈGLE RÉPARE.
+
+  amn-api repère déjà une chute de score entre deux passages programmés, et la
+  diffuse sous `product:regression` — sur la WebSocket, et NULLE PART ailleurs.
+  Un balayage hebdomadaire qui tombe à quatre heures du matin s'annonce donc à
+  un poste que personne ne regarde. Au matin il ne reste qu'une ligne de plus
+  dans l'historique, que rien ne distingue des autres.
+
+  C'est la forme de défaut trouvée trois fois cette nuit : ce qui est OBSERVÉ
+  est bien enregistré, c'est le RÉVEIL qui ne survit pas.
+
+  Le piège de la règle est la COMPARABILITÉ : deux balayages de profondeurs
+  différentes ne notent pas les mêmes choses, et les comparer inventerait une
+  chute là où il n'y a qu'un changement de profondeur. La moitié des contrôles
+  ci-dessous porte là-dessus.
+*/
+
+check('une chute entre deux balayages comparables ressort, avec ses deux chiffres', () => {
+  const items = run({
+    scans: [
+      scan({ id: 'recent', score: 74, finishedAt: at(daysAgo(1)) }),
+      scan({ id: 'ancien', score: 91, finishedAt: at(daysAgo(8)) }),
+    ],
+  });
+  assert.deepEqual(kinds(items), ['scan-regression']);
+  assert.match(items[0].evidence, /91 → 74/, 'les deux scores, pas un adjectif');
+  assert.match(items[0].evidence, /17 points perdus/);
+  assert.match(items[0].title, /boutique-essai\.fr/, 'l’hôte identifie le site');
+  assert.equal(items[0].severity, 'warning', '74 reste au-dessus du seuil de gravité');
+});
+
+check('sous le score critique, la chute devient critique', () => {
+  const items = run({
+    scans: [
+      scan({ id: 'recent', score: 44, finishedAt: at(daysAgo(1)) }),
+      scan({ id: 'ancien', score: 60, finishedAt: at(daysAgo(8)) }),
+    ],
+  });
+  assert.equal(items[0].severity, 'critical');
+});
+
+check('le seuil de bruit est tenu sur ses DEUX bords', () => {
+  const chute = (n: number) =>
+    run({
+      scans: [
+        scan({ id: 'recent', score: 90 - n, finishedAt: at(daysAgo(1)) }),
+        scan({ id: 'ancien', score: 90, finishedAt: at(daysAgo(8)) }),
+      ],
+    });
+  const seuil = DEFAULT_THRESHOLDS.scanDropPoints;
+  assert.equal(chute(seuil - 1).length, 0, `une chute de ${seuil - 1} points reste du bruit`);
+  assert.equal(chute(seuil).length, 1, `une chute de ${seuil} points se dit`);
+});
+
+check('une REMONTÉE ne produit rien', () => {
+  const items = run({
+    scans: [
+      scan({ id: 'recent', score: 95, finishedAt: at(daysAgo(1)) }),
+      scan({ id: 'ancien', score: 60, finishedAt: at(daysAgo(8)) }),
+    ],
+  });
+  assert.equal(items.length, 0, 'une bonne nouvelle n’est pas un point d’attention');
+});
+
+check('un seul balayage ne prouve aucune chute, même avec un score bas', () => {
+  const items = run({ scans: [scan({ score: 12 })] });
+  assert.equal(items.length, 0, 'le panneau repère ce qui a CHANGÉ, il ne note pas un site');
+});
+
+check('DEUX PROFONDEURS ne se comparent pas', () => {
+  const items = run({
+    scans: [
+      scan({ id: 'leger', tier: 'lite', score: 70, finishedAt: at(daysAgo(1)) }),
+      scan({ id: 'complet', tier: 'suite', score: 92, finishedAt: at(daysAgo(8)) }),
+    ],
+  });
+  assert.equal(
+    items.length,
+    0,
+    'un balayage léger note moins de choses qu’un complet : l’écart n’est pas une chute',
+  );
+});
+
+check('deux ADRESSES ne se comparent pas non plus', () => {
+  const items = run({
+    scans: [
+      scan({ id: 'a', url: 'https://a-essai.fr/', score: 70, finishedAt: at(daysAgo(1)) }),
+      scan({ id: 'b', url: 'https://b-essai.fr/', score: 92, finishedAt: at(daysAgo(8)) }),
+    ],
+  });
+  assert.equal(items.length, 0);
+});
+
+check('un balayage SANS score ne fabrique pas une chute de cent points', () => {
+  for (const rate of [null, undefined]) {
+    const items = run({
+      scans: [
+        scan({ id: 'rate', score: rate as number | null, finishedAt: at(daysAgo(1)) }),
+        scan({ id: 'bon', score: 92, finishedAt: at(daysAgo(8)) }),
+      ],
+    });
+    assert.equal(items.length, 0, `un balayage à score ${String(rate)} ne prouve rien`);
+  }
+});
+
+check('une date de fin absente ou illisible écarte le balayage', () => {
+  for (const quand of [null, 'pas-une-date']) {
+    const items = run({
+      scans: [
+        scan({ id: 'sans-date', score: 40, finishedAt: quand }),
+        scan({ id: 'bon', score: 92, finishedAt: at(daysAgo(8)) }),
+      ],
+    });
+    assert.equal(items.length, 0, `date « ${String(quand)} »`);
+  }
+});
+
+check('c’est la date de FIN qui ordonne, pas l’ordre d’arrivée', () => {
+  /*
+    La route rend les balayages triés par date de CRÉATION. Deux balayages
+    lancés à la suite peuvent se terminer dans l'autre ordre — un complet
+    lancé en premier finit après un léger. Se fier à l'ordre reçu inverserait
+    alors « avant » et « après », et une remontée se lirait comme une chute.
+  */
+  const items = run({
+    scans: [
+      scan({ id: 'vieux', score: 91, finishedAt: at(daysAgo(9)) }),
+      scan({ id: 'recent', score: 70, finishedAt: at(daysAgo(1)) }),
+    ],
+  });
+  assert.equal(items.length, 1);
+  assert.match(items[0].evidence, /91 → 70/, 'le plus récent est bien l’arrivée');
+  assert.equal(items[0].key, 'scan-regression:recent', 'la clé porte le balayage récent');
+});
+
+check('une seule ligne par adresse, celle de la comparaison la plus récente', () => {
+  const items = run({
+    scans: [
+      scan({ id: 's3', score: 60, finishedAt: at(daysAgo(1)) }),
+      scan({ id: 's2', score: 80, finishedAt: at(daysAgo(8)) }),
+      scan({ id: 's1', score: 95, finishedAt: at(daysAgo(15)) }),
+    ],
+  });
+  assert.equal(items.length, 1, 'un site n’a pas trois problèmes, il en a un');
+  assert.match(items[0].evidence, /80 → 60/, 'les deux plus récents');
 });
 
 if (failures.length > 0) {

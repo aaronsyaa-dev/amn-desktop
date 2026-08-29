@@ -44,7 +44,8 @@ export type AttentionKind =
   | 'certificate-expiring'
   | 'certificate-unknown'
   | 'incident-critical'
-  | 'incident-stale';
+  | 'incident-stale'
+  | 'scan-regression';
 
 export type AttentionSeverity = 'critical' | 'warning' | 'info';
 
@@ -91,6 +92,10 @@ export interface AttentionThresholds {
   certificateWarnDays: number;
   /** Certificat : sous ce délai, le renouvellement n'est plus optionnel. */
   certificateCriticalDays: number;
+  /** Chute de score entre deux balayages comparables à partir de laquelle on le dit. */
+  scanDropPoints: number;
+  /** Sous ce score, une chute n'est plus un avertissement. */
+  scanCriticalScore: number;
 }
 
 export const DEFAULT_THRESHOLDS: AttentionThresholds = {
@@ -117,6 +122,23 @@ export const DEFAULT_THRESHOLDS: AttentionThresholds = {
     pas avec un incident jamais ouvert.
   */
   incidentStaleHours: 4,
+  /*
+    Cinq points, le même seuil que celui du serveur (`SCORE_DROP_THRESHOLD`
+    dans amn-api/src/tracker/schedules.js) et pour la même raison : en dessous,
+    c'est le bruit d'un en-tête qui varie ou d'une page plus lente à répondre.
+    Au-delà, quelque chose a changé sur le site.
+
+    Les deux seuils sont volontairement identiques : deux chiffres différents
+    pour la même notion finiraient par diverger, et le poste dirait « rien à
+    signaler » pendant que le serveur signale.
+  */
+  scanDropPoints: 5,
+  /*
+    Sous 50, la chute n'est plus un avertissement. Un site qui perd 6 points en
+    partant de 92 reste bien tenu ; le même qui perd 6 points en partant de 54
+    passe sous la moitié, et ce n'est plus une dérive, c'est un site à reprendre.
+  */
+  scanCriticalScore: 50,
 };
 
 /* ------------------------------ Formes d'entrée ---------------------------- */
@@ -164,6 +186,48 @@ export interface AttentionInput {
   clients: AttentionClient[];
   certificates: AttentionCertificate[];
   incidents: AttentionIncident[];
+  scans: AttentionScan[];
+}
+
+/**
+ * UN BALAYAGE DE SÉCURITÉ TERMINÉ.
+ *
+ * ## Le silence qu'il répare
+ *
+ * amn-api sait déjà repérer une chute de score entre deux passages programmés,
+ * et la diffuse sous `product:regression` — sur la WebSocket, et nulle part
+ * ailleurs. Un balayage hebdomadaire qui tombe à quatre heures du matin
+ * s'annonce donc à un poste que personne ne regarde, et il ne reste au matin
+ * qu'une ligne de plus dans l'historique des scans, que rien ne distingue.
+ *
+ * C'est la même forme de défaut que les deux autres de cette nuit : ce qui est
+ * OBSERVÉ est bien enregistré, c'est le RÉVEIL qui ne survit pas. Et un
+ * balayage récurrent dont la seule alarme est une notification volatile n'est
+ * pas de la supervision, c'est un gadget.
+ *
+ * ## Pourquoi on RECALCULE plutôt que de stocker
+ *
+ * Rien n'est ajouté en base, et c'est délibéré : les scores sont déjà tous là,
+ * un par balayage. La régression est une SOUSTRACTION entre deux d'entre eux,
+ * pas un fait à conserver — et une régression écrite en base serait à effacer
+ * dès le balayage suivant, ce qui demanderait un second mécanisme.
+ *
+ * ## Deux balayages ne sont comparables que s'ils ont fait le même travail
+ *
+ * `tier` fait partie de l'identité, pas seulement `url`. Un balayage `lite` et
+ * un balayage `suite` de la même adresse ne notent pas les mêmes choses : les
+ * comparer inventerait une chute là où il n'y a qu'un changement de profondeur.
+ * C'est le piège de cette règle, et c'est pour ça que la clé de comparaison
+ * les porte tous les deux.
+ */
+export interface AttentionScan {
+  id: string;
+  url: string;
+  /** Profondeur du balayage. Deux profondeurs différentes ne se comparent pas. */
+  tier: string;
+  /** `null` quand le balayage a échoué : il ne prouve alors aucune chute. */
+  score: number | null;
+  finishedAt: string | null;
 }
 
 /**
@@ -570,6 +634,104 @@ function incidentItems(
   return out;
 }
 
+/**
+ * LA CHUTE DE SCORE ENTRE DEUX BALAYAGES COMPARABLES.
+ *
+ * Une seule ligne par adresse, celle de la comparaison la plus récente : un
+ * site qui a perdu douze points il y a trois semaines et n'a pas bougé depuis
+ * n'a pas douze problèmes, il en a un, et le panneau sert à décider par quoi
+ * commencer.
+ *
+ * Ce qui NE produit rien, et chaque cas pour une raison :
+ *
+ *   · un seul balayage — il n'y a rien à comparer, et un score bas n'est pas
+ *     une chute. Le panneau ne juge pas la tenue d'un site, il repère ce qui
+ *     a CHANGÉ ;
+ *   · un balayage sans score (échoué, en cours) — il ne prouve rien, et le
+ *     compter comme un zéro fabriquerait une chute de cent points ;
+ *   · une profondeur différente — voir `AttentionScan` ;
+ *   · une remontée, ou une chute sous le seuil de bruit.
+ */
+function scanItems(scans: AttentionScan[], t: AttentionThresholds, now: Date): AttentionItem[] {
+  /*
+    On NORMALISE avant de comparer, plutôt que de traîner des `null` jusqu'à la
+    soustraction. Un balayage sans score chiffré (échoué, en cours) ou sans
+    date de fin lisible ne prouve rien : le garder pour l'écarter plus tard
+    obligerait à s'en méfier à chaque ligne, et c'est ainsi qu'un `null` finit
+    par être compté comme un zéro — soit une chute de cent points inventée.
+  */
+  interface Comparable {
+    id: string;
+    url: string;
+    score: number;
+    fin: number;
+  }
+
+  /*
+    Groupés par adresse ET profondeur. La clé les joint par un caractère qui
+    ne peut apparaître dans ni l'un ni l'autre, pour que « a.fr » + « b » et
+    « a.frb » + « » ne se retrouvent jamais dans la même piste.
+  */
+  const pistes = new Map<string, Comparable[]>();
+  for (const scan of scans) {
+    if (typeof scan.score !== 'number' || !Number.isFinite(scan.score)) continue;
+    const fin = scan.finishedAt ? Date.parse(scan.finishedAt) : Number.NaN;
+    if (!Number.isFinite(fin)) continue;
+    const cle = `${scan.url}\u0000${scan.tier}`;
+    const piste = pistes.get(cle) ?? [];
+    piste.push({ id: scan.id, url: scan.url, score: scan.score, fin });
+    pistes.set(cle, piste);
+  }
+
+  const out: AttentionItem[] = [];
+  for (const piste of pistes.values()) {
+    if (piste.length < 2) continue;
+    /*
+      Trié par date de FIN, jamais sur l'ordre reçu : la route rend les
+      balayages par date de CRÉATION, et deux balayages lancés à la suite
+      peuvent se terminer dans l'autre ordre — un complet lancé en premier
+      finit après un léger. S'y fier inverserait « avant » et « après », et
+      une remontée se lirait comme une chute.
+    */
+    piste.sort((a, b) => b.fin - a.fin);
+    const [dernier, precedent] = piste;
+    const chute = precedent.score - dernier.score;
+    if (chute < t.scanDropPoints) continue;
+
+    const grave = dernier.score < t.scanCriticalScore;
+    const jours = Math.max(0, (now.getTime() - dernier.fin) / DAY_MS);
+
+    out.push(
+      item(
+        {
+          // La clé porte le balayage RÉCENT : au suivant, l'élément change
+          // d'identité plutôt que de rester le même en affichant autre chose.
+          key: `scan-regression:${dernier.id}`,
+          kind: 'scan-regression',
+          severity: grave ? 'critical' : 'warning',
+          title: `Sécurité en recul — ${hote(dernier.url)}`,
+          // Le chiffre qui l'a produite, comme partout ici : jamais « en
+          // baisse » tout court.
+          evidence: `${precedent.score} → ${dernier.score} sur 100 (${chute} point${chute > 1 ? 's' : ''} perdu${chute > 1 ? 's' : ''})`,
+          action: 'Ouvrir le dernier balayage',
+          to: '/scanner',
+        },
+        jours,
+      ),
+    );
+  }
+  return out;
+}
+
+/** L'adresse réduite à son hôte : le reste n'aide pas à reconnaître le site. */
+function hote(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
 /** Une attente en heures, dite comme on la dirait à voix haute. */
 function formatAttente(heures: number): string {
   if (heures < 1) return 'moins d’une heure';
@@ -591,6 +753,7 @@ export function attentionItems(
     ...clientItems(input.clients ?? [], day, t),
     ...certificateItems(input.certificates ?? [], t),
     ...incidentItems(input.incidents ?? [], t, options.now ?? new Date()),
+    ...scanItems(input.scans ?? [], t, options.now ?? new Date()),
   ];
 
   // Tri stable : le poids décide, la clé départage. Sans le second critère,
