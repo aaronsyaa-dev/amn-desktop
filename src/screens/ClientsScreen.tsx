@@ -1013,6 +1013,25 @@ function NewQuoteModal({
     onClose();
   };
 
+  /*
+    LA FENÊTRE PREND LE FOCUS EN S'OUVRANT.
+
+    MESURÉ : elle s'ouvrait sans le prendre. La personne au clavier restait
+    derrière le voile, à tabuler dans une page qu'elle ne voit plus, sans rien
+    pour lui dire où elle se trouve — et le piège de `pileCalques.ts` ne peut
+    pas la rattraper : il ne retient le focus que lorsqu'il y est déjà entré.
+
+    Pas d'`autoFocus` sur un champ : la première étape n'en a pas, elle propose
+    des offres à choisir. C'est donc le conteneur qui reçoit la main, comme
+    dans `AppLauncher` — même motif, même délai, le temps que l'animation
+    d'ouverture ait posé l'élément.
+  */
+  const panneauRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const t = window.setTimeout(() => panneauRef.current?.focus(), 60);
+    return () => window.clearTimeout(t);
+  }, []);
+
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
       <motion.div
@@ -1022,10 +1041,15 @@ function NewQuoteModal({
         className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
       />
       <motion.div
+        ref={panneauRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Nouveau devis pour ${client.name}`}
         initial={{ opacity: 0, scale: 0.98, y: -6 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-        className="relative w-full max-w-lg border border-border-strong bg-surface"
+        className="relative w-full max-w-lg border border-border-strong bg-surface outline-none"
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-3">
           <h2 className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">

@@ -230,6 +230,38 @@ if (muets.size > 0) {
 */
 const DANGEREUX = /supprim|retir|effac|déconnex|deconnex|révoqu|revoqu|vider|désactiv/i;
 
+/**
+ * Un calque qui BARRE LA PAGE est-il ouvert, où que soit le focus ?
+ *
+ * `pointer-events` fait toute la distinction, et elle est structurelle — pas
+ * une liste de noms à tenir à jour :
+ *
+ *   · le mode « pointer un endroit de l'app » pose deux voiles en
+ *     `pointer-events: none`. Les clics les TRAVERSENT, et c'est tout l'objet
+ *     de ce mode : on clique dans la page pour y déposer un repère. Lui donner
+ *     le focus casserait la fonction. Ce n'est pas une fenêtre, c'est une
+ *     teinte ;
+ *   · une vraie fenêtre intercepte les clics. Elle prend la main sur la page,
+ *     donc elle doit prendre le focus avec.
+ *
+ * Un premier jet ne regardait que la position et la taille, et rangeait les
+ * deux ensemble. Il aurait fallu nommer une dispense pour le mode de capture —
+ * là où une propriété mesurable disait déjà la vérité.
+ */
+const calqueOuvert = () =>
+  page.evaluate(() => {
+    for (const el of document.querySelectorAll('*')) {
+      const cs = getComputedStyle(el);
+      if (cs.position !== 'fixed' || Number(cs.zIndex) < 50) continue;
+      if (cs.pointerEvents === 'none') continue; // une teinte, pas une fenêtre
+      const r = el.getBoundingClientRect();
+      if (r.width > 200 && r.height > 100 && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.5) {
+        return true;
+      }
+    }
+    return false;
+  });
+
 const dansUnCalque = () =>
   page.evaluate(() => {
     const el = document.activeElement;
@@ -242,6 +274,7 @@ const dansUnCalque = () =>
   });
 
 const fuites = [];
+const sansFocus = [];
 let fenetres = 0;
 
 for (const route of routes) {
@@ -268,7 +301,22 @@ for (const route of routes) {
     await bouton.click({ timeout: 2500 }).catch(() => undefined);
     await attendre(700);
     if (!(await dansUnCalque())) {
-      // Rien ne s'est ouvert, ou le focus n'y est pas entré : rien à mesurer.
+      /*
+        DEUX CAS QUE LE PREMIER JET CONFONDAIT.
+
+        Il écartait ensemble « rien ne s'est ouvert » et « un calque s'est
+        ouvert mais le focus n'y est pas entré », sous le même commentaire
+        « rien à mesurer ». Le second n'est pas une absence de matière : c'est
+        un DÉFAUT. Une fenêtre qui s'ouvre sans prendre le focus laisse la
+        personne au clavier derrière le voile, à tabuler dans une page qu'elle
+        ne voit plus, sans rien qui indique où elle se trouve.
+
+        Et le piège de `pileCalques.ts` ne peut pas la rattraper : il ne
+        retient le focus que lorsqu'il est déjà entré quelque part.
+      */
+      if (await calqueOuvert()) {
+        sansFocus.push({ route, libelle });
+      }
       await page.goto(APP + route).catch(() => undefined);
       await attendre(700);
       continue;
@@ -290,6 +338,18 @@ for (const route of routes) {
 }
 
 await nav.close();
+
+if (sansFocus.length > 0) {
+  console.error(`\n${sansFocus.length} fenêtre(s) qui s'ouvrent SANS prendre le focus :\n`);
+  for (const f of sansFocus) console.error(`  ✗ ${f.route} — « ${f.libelle} »`);
+  console.error('');
+  console.error('La personne au clavier reste derrière le voile : elle tabule dans une page');
+  console.error('qu’elle ne voit plus, et rien ne lui dit où elle est. Le piège de');
+  console.error('src/lib/pileCalques.ts ne peut pas la rattraper — il ne retient le focus');
+  console.error('que lorsqu’il est déjà entré. À l’ouverture, placez le curseur sur le');
+  console.error('premier champ, ou sur le conteneur (`tabIndex={-1}` puis `.focus()`).');
+  process.exit(1);
+}
 
 if (fuites.length > 0) {
   console.error(`\n${fuites.length} fenêtre(s) d'où le focus s'échappe :\n`);
