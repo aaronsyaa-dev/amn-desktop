@@ -37,6 +37,21 @@ encaissé (d'où la division par `1 - taux`), les charges sur la marge.
 **Coût estimé** : le seuil et la fourchette sont deux petites additions au
 profil existant. Les charges par ligne sont un vrai chantier de moteur.
 
+> **Fait depuis, et vérifié le 29 août.** Les trois manques ci-dessus sont
+> comblés, et ce tableau ne décrit plus l'état du code :
+>
+> - les **charges par ligne** existent — le moteur connaît un bloc de lignes
+>   (`CalcRowBlock` dans `src/state/calcEngine.ts`), et le profil
+>   `ecommerce-panier` s'en sert ;
+> - le **prix plancher** (seuil de rentabilité e-commerce) est une étape du
+>   profil `ecommerce-prix-client` ;
+> - la **fourchette** y est aussi, sous la forme de deux entrées de marge —
+>   basse et confortable — qui encadrent la marge visée sans la remplacer.
+>
+> Ce paragraphe est conservé plutôt que réécrit : un audit est daté, et effacer
+> ce qu'il disait ferait perdre le fait que ces trois points ont bien été
+> ouverts puis fermés.
+
 ---
 
 ## 2. Le module « événementiel »

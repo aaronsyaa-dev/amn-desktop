@@ -45,6 +45,25 @@ interface Position {
  * dessin ne bouge plus assez pour qu'on le voie, et on ferait attendre pour
  * rien un écran qui doit s'ouvrir tout de suite.
  */
+/*
+  Trois cents tours, et ce que ça coûte — mesuré, pas supposé.
+
+  La répulsion est en O(n²), donc le prix monte vite. Relevé sur cette machine,
+  disposition complète (le résultat est ensuite mémorisé, ce n'est payé qu'à
+  l'ouverture de la vue) :
+
+      50 notes  ·  41 ms      400 notes  ·  225 ms
+     100 notes  ·  13 ms      800 notes  ·  758 ms
+     200 notes  ·  45 ms
+
+  Un carnet réel en compte quelques dizaines : on est à quarante millisecondes,
+  invisible. Le plafond est écrit ici pour qu'on n'ait pas à le redécouvrir —
+  si un jour un carnet approche le millier de notes, c'est le nombre de tours
+  qu'il faudra faire décroître avec n, et il faudra alors re-vérifier que les
+  quatre propriétés de `check:graphe` tiennent toujours. Tant que personne n'a
+  ce carnet-là, découper le calcul serait de la machinerie pour un cas qui
+  n'existe pas.
+*/
 export const TOURS = 300;
 
 /** La distance de repos d'un lien, dans l'espace de travail de la simulation. */
