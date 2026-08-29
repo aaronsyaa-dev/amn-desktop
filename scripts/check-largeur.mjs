@@ -43,8 +43,9 @@
  *
  * Il lui faut un vrai navigateur, un build servi, et une session ouverte —
  * c'est-à-dire un environnement complet, pas une lecture de fichiers. Il vit
- * donc à côté de `check:deployed`, qui a la même nature : on le lance quand on
- * a l'environnement sous la main, et son mode d'emploi est ici.
+ * donc à côté de `check:deployed` et de `check:mouvement`, qui ont la même
+ * nature : on les lance quand on a l'environnement sous la main, et leur mode
+ * d'emploi est en tête de chacun.
  *
  *   1. npm run build:web                      (ou build:web:business)
  *   2. npx serve -s dist -l 4180
