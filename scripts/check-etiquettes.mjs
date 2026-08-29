@@ -54,7 +54,7 @@ if (!EMAIL || !MOT_DE_PASSE) {
 }
 
 const { chromium } = await import('playwright-core');
-const { parcourirVuesDetail, exigerDesVuesDetail } = await import('./lib/vues-detail.mjs');
+const { parcourirVuesDetail, parcourirBascules, exigerDesVuesDetail } = await import('./lib/vues-detail.mjs');
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const nav = await chromium.launch({ executablePath: CHROMIUM, args: ['--no-sandbox'] });
@@ -90,6 +90,7 @@ if (routes.length === 0) {
 const muets = new Map();
 let examines = 0;
 let detailsOuverts = 0;
+let basculesVues = 0;
 
 for (const route of routes) {
   await page.goto(APP + route).catch(() => undefined);
@@ -173,6 +174,12 @@ for (const route of routes) {
     de navigation, qui portent tous leur texte.
   */
   detailsOuverts += await parcourirVuesDetail(page, route, mesurer, attendre);
+
+  /*
+    Les bascules de vue (« Liste » / « Graphe »…) : ce que l'autre état de
+    l'écran dessine n'avait jamais été mesuré, alors qu'on y passe des heures.
+  */
+  basculesVues += await parcourirBascules(page, route, mesurer, attendre);
 }
 
 await nav.close();
@@ -213,6 +220,6 @@ if (muets.size > 0) {
 }
 
 console.log(
-  `OK — ${routes.length} écrans + ${detailsOuverts} vue(s) de détail, ` +
+  `OK — ${routes.length} écrans + ${detailsOuverts} vue(s) de détail + ${basculesVues} bascule(s), ` +
     `${examines} éléments examinés, tous nommés.`,
 );

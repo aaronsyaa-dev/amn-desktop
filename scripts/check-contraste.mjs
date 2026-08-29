@@ -113,7 +113,7 @@ if (!EMAIL || !MOT_DE_PASSE) {
 }
 
 const { chromium } = await import('playwright-core');
-const { parcourirVuesDetail, exigerDesVuesDetail } = await import('./lib/vues-detail.mjs');
+const { parcourirVuesDetail, parcourirBascules, exigerDesVuesDetail } = await import('./lib/vues-detail.mjs');
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const nav = await chromium.launch({ executablePath: CHROMIUM, args: ['--no-sandbox'] });
@@ -151,6 +151,7 @@ const invisibles = new Map();
 let mesures = 0;
 let textesLus = 0;
 let detailsOuverts = 0;
+let basculesVues = 0;
 
 while (aVisiter.length > 0) {
   const route = aVisiter.shift();
@@ -269,6 +270,12 @@ while (aVisiter.length > 0) {
   */
   detailsOuverts += await parcourirVuesDetail(page, route, mesurer, attendre);
 
+  /*
+    Les bascules de vue (« Liste » / « Graphe »…) : ce que l'autre état de
+    l'écran dessine n'avait jamais été mesuré, alors qu'on y passe des heures.
+  */
+  basculesVues += await parcourirBascules(page, route, mesurer, attendre);
+
   const nouvelles = await page.evaluate(() => [
     ...new Set([...document.querySelectorAll('a[href^="#/"]')].map((a) => a.getAttribute('href'))),
   ]);
@@ -360,6 +367,6 @@ if (faibles.size > 0) {
 }
 
 console.log(
-  `OK — ${mesures} écrans + ${detailsOuverts} vue(s) de détail, ${textesLus} textes mesurés, ` +
+  `OK — ${mesures} écrans + ${detailsOuverts} vue(s) de détail + ${basculesVues} bascule(s), ${textesLus} textes mesurés, ` +
     'aucun sous le seuil WCAG AA.',
 );

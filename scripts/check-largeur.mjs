@@ -105,7 +105,7 @@ if (!EMAIL || !MOT_DE_PASSE) {
 }
 
 const { chromium } = await import('playwright-core');
-const { parcourirVuesDetail, exigerDesVuesDetail } = await import('./lib/vues-detail.mjs');
+const { parcourirVuesDetail, parcourirBascules, exigerDesVuesDetail } = await import('./lib/vues-detail.mjs');
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const nav = await chromium.launch({ executablePath: CHROMIUM, args: ['--no-sandbox'] });
@@ -158,6 +158,7 @@ const coupables = [];
 const ecrases = [];
 let mesures = 0;
 let detailsOuverts = 0;
+let basculesVues = 0;
 
 while (aVisiter.length > 0) {
   const route = aVisiter.shift();
@@ -246,6 +247,12 @@ while (aVisiter.length > 0) {
   */
   detailsOuverts += await parcourirVuesDetail(page, route, mesurer, attendre);
 
+  /*
+    Les bascules de vue (« Liste » / « Graphe »…) : ce que l'autre état de
+    l'écran dessine n'avait jamais été mesuré, alors qu'on y passe des heures.
+  */
+  basculesVues += await parcourirBascules(page, route, mesurer, attendre);
+
   // Les liens de CET écran rejoignent la file : c'est ainsi qu'on atteint la
   // Tour de contrôle, le contexte client, et tout ce qui n'est pas dans la
   // barre de l'accueil.
@@ -302,6 +309,6 @@ if (coupables.length > 0) {
 if (coupables.length > 0 || ecrases.length > 0) process.exit(1);
 
 console.log(
-  `OK — ${mesures} écrans + ${detailsOuverts} vue(s) de détail à ${LARGEUR} px : ` +
+  `OK — ${mesures} écrans + ${detailsOuverts} vue(s) de détail + ${basculesVues} bascule(s) à ${LARGEUR} px : ` +
     'rien de coupé sans recours, rien d’écrasé.',
 );

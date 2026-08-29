@@ -15,6 +15,8 @@ import {
   Pin,
   PinOff,
   Plus,
+  Network,
+  Rows3,
   Search,
   Trash2,
   Users,
@@ -33,9 +35,11 @@ import {
   resoudre,
   retroliens,
   saisieEnCours,
+  sousGraphe,
   suggestions,
   type Graphe,
 } from '../lib/notesLiens';
+import { NotesGraphe } from '../components/NotesGraphe';
 
 /*
   L'ordre d'ancienneté, pour trancher les homonymes (voir `notesLiens.ts`).
@@ -59,6 +63,7 @@ export function NotesScreen() {
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<ScopeFilter>('all');
   const [newMenuOpen, setNewMenuOpen] = useState(false);
+  const [vue, setVue] = useState<'liste' | 'graphe'>('liste');
 
   /*
     Un menu déroulant se ferme à Échap comme une fenêtre : c'est le même geste
@@ -81,6 +86,16 @@ export function NotesScreen() {
   useEffect(() => {
     if (selectedId && !notes.some((n) => n.id === selectedId)) setSelectedId(null);
   }, [notes, selectedId]);
+
+  /*
+    Le dessin suit le même filtre que la liste. Sans ça, cliquer « Perso »
+    laisserait le graphe montrer des notes d'équipe qui viennent de disparaître
+    de la colonne d'à côté — deux vues du même carnet qui se contredisent.
+  */
+  const grapheVisible = useMemo(
+    () => sousGraphe(graphe, new Set(visible.map((n) => n.id))),
+    [graphe, visible],
+  );
 
   const selected = useMemo(() => notes.find((n) => n.id === selectedId) ?? null, [notes, selectedId]);
 
@@ -120,6 +135,35 @@ export function NotesScreen() {
             : [{ label: 'Notes', value: notes.length }]
         }
         actions={
+        <div className="flex items-center gap-3">
+          {/*
+            LISTE OU GRAPHE.
+
+            Deux vues du même carnet, pas deux écrans : le filtre, la recherche
+            et la note choisie survivent au passage de l'une à l'autre. On
+            bascule pour retrouver quelque chose, pas pour changer de contexte.
+          */}
+          <div className="flex items-center gap-1 rounded-lg border border-border p-1" role="group" aria-label="Affichage des notes">
+            {([
+              ['liste', 'Liste', Rows3],
+              ['graphe', 'Graphe', Network],
+            ] as const).map(([v, nom, Icone]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setVue(v)}
+                aria-pressed={vue === v}
+                className={`flex min-h-8 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs transition-colors ${
+                  vue === v
+                    ? 'bg-accent-muted text-text-primary'
+                    : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
+                }`}
+              >
+                <Icone size={13} strokeWidth={1.75} />
+                {nom}
+              </button>
+            ))}
+          </div>
         <div className="relative">
           <button
             type="button"
@@ -155,9 +199,35 @@ export function NotesScreen() {
             </>
           )}
         </div>
+        </div>
         }
       />
 
+      {/*
+        LE GRAPHE PREND TOUTE LA PLACE.
+
+        Un graphe dans une colonne de 300 px n'est pas un petit graphe : c'est
+        un amas. Et on n'y vient pas pour lire une note — on y vient pour en
+        RETROUVER une. Cliquer un point ramène donc à la liste, note ouverte :
+        le graphe est un chemin vers l'éditeur, pas un endroit où rester.
+      */}
+      {vue === 'graphe' ? (
+        <NotesGraphe
+          graphe={grapheVisible}
+          selectionne={selectedId}
+          onOuvrir={(id) => {
+            setSelectedId(id);
+            setVue('liste');
+          }}
+          onCreer={(titre) => {
+            const id = createNote(selected?.scope ?? 'team');
+            updateNote(id, { title: titre });
+            setSelectedId(id);
+            setVue('liste');
+          }}
+        />
+      ) : (
+      <>
       {/* Même règle que Projets et Facturation : pas de colonne de détail
           sans sujet (BLOC A). */}
       <div
@@ -308,6 +378,8 @@ export function NotesScreen() {
           </div>
         )}
       </div>
+      </>
+      )}
     </section>
   );
 }

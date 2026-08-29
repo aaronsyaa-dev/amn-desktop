@@ -327,13 +327,106 @@ await poser('knowledge', 'essai-doc-2', {
   createdAt: instant(-24 * 12),
 });
 
-await poser('notes', 'essai-note-1', {
-  title: 'Idées vitrine automne',
-  body: 'Dahlias, branches de chêne, courges décoratives. Palette rouille et vert profond.',
-  authorEmail: EMAIL,
-  pinned: true,
-  createdAt: instant(-24 * 4),
-});
+/*
+  UN CARNET QUI SE TIENT, ET PAS DIX NOTES SANS RAPPORT.
+
+  Il n'y en avait qu'une. Une note seule ne prouve rien de la vue graphe : elle
+  y apparaît comme un point isolé au milieu du vide, et les garde-fous
+  mesuraient donc un graphe SANS ARC — c'est-à-dire pas un graphe.
+
+  Ces notes-ci se citent les unes les autres comme un vrai carnet le fait :
+  une note centrale (« Vitrine automne ») que plusieurs autres visent, des
+  chaînes courtes, une note qui n'est reliée à rien (il y en a toujours), et un
+  titre cité qui n'existe PAS encore — c'est le cas qui nourrit le pointillé
+  dans le texte et la liste « cité mais pas encore écrit » sous le graphe.
+*/
+const carnet = [
+  [
+    'essai-note-1',
+    'Vitrine automne',
+    'Dahlias, branches de chêne, courges décoratives. Palette rouille et vert profond.\n\n' +
+      'Les fleurs viennent de [[Fournisseurs et délais]] ; pour la tenue, voir\n' +
+      '[[Conservation des fleurs coupées]].',
+    true,
+    4,
+  ],
+  [
+    'essai-note-2',
+    'Fournisseurs et délais',
+    'Marché de gros : mardi et vendredi, commande la veille avant 16 h.\n' +
+      'Producteur local : mai à octobre seulement, deux jours de délai.\n\n' +
+      'Pour l’automne, tout passe par le marché — voir [[Vitrine automne]].',
+    false,
+    12,
+  ],
+  [
+    'essai-note-3',
+    'Conservation des fleurs coupées',
+    'Recouper en biseau sous l’eau, changer l’eau tous les deux jours, tenir à\n' +
+      'l’écart des fruits mûrs.\n\n' +
+      'Les pivoines demandent un traitement à part : [[Pivoines, cueillette et ouverture]].',
+    false,
+    30,
+  ],
+  [
+    'essai-note-4',
+    'Pivoines, cueillette et ouverture',
+    'Cueillies en bouton, elles s’ouvrent en trois à cinq jours.\n' +
+      'Stock froid : compter une semaine de plus.',
+    false,
+    28,
+  ],
+  [
+    'essai-note-5',
+    'Mariage Loiseau — septembre',
+    'Arche, six bouquets de table, boutonnières. Blanc et vert, rien de rose.\n\n' +
+      'Commande à passer selon [[Fournisseurs et délais]]. Devis dans\n' +
+      '[[Grille de prix 2026]].',
+    false,
+    9,
+  ],
+  [
+    'essai-note-6',
+    'Grille de prix 2026',
+    'Bouquet simple 28 €, composition 45 €, arche sur devis.\n' +
+      'Livraison offerte au-delà de 60 €.',
+    false,
+    40,
+  ],
+  [
+    'essai-note-7',
+    'Abonnements accueil',
+    'Trois entreprises, livraison le mardi matin. Renouvellement tacite.\n\n' +
+      'Tarifs alignés sur [[Grille de prix 2026]].',
+    false,
+    18,
+  ],
+  [
+    'essai-note-8',
+    'Refaire les étiquettes',
+    'Papier kraft, tampon à l’encre sépia. Devis imprimeur à demander.',
+    false,
+    6,
+  ],
+  [
+    'essai-note-9',
+    'Atelier couronnes de l’Avent',
+    'Deux sessions de dix personnes, début décembre. Matériel à chiffrer dans\n' +
+      '[[Grille de prix 2026]].\n\n' +
+      'Le déroulé reste à écrire : [[Déroulé atelier couronnes]].',
+    false,
+    2,
+  ],
+];
+for (const [id, title, body, pinned, jours] of carnet) {
+  await poser('notes', id, {
+    title,
+    body,
+    authorEmail: EMAIL,
+    pinned,
+    createdAt: instant(-24 * jours),
+  });
+}
 
 await poser('decisions', 'essai-dec-1', {
   title: 'Arrêter les livraisons du samedi',

@@ -487,7 +487,14 @@ function RowsSection({
                       disabled={rows.length <= 1}
                       title={rows.length <= 1 ? 'Il faut au moins une ligne' : 'Retirer cette ligne'}
                       aria-label={`Retirer la ligne ${index + 1}`}
-                      className="p-1 text-text-muted transition-colors hover:text-danger disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-text-muted"
+                      /*
+                        `h-6 w-6` : `p-1` autour d'une icône de 13 px donnait
+                        21 × 21, sous le minimum de WCAG 2.5.8 — et c'est le
+                        bouton qui SUPPRIME une ligne, celui qu'on préfère ne
+                        pas atteindre par erreur. La cellule ne bouge pas : six
+                        unités tiennent dans la hauteur de rangée existante.
+                      */
+                      className="ml-auto flex h-6 w-6 items-center justify-center rounded text-text-muted transition-colors hover:text-danger disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-text-muted"
                     >
                       <Trash2 size={13} strokeWidth={1.75} />
                     </button>

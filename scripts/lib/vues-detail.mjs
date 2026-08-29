@@ -106,6 +106,62 @@ export async function parcourirVuesDetail(page, route, mesurer, attendre, combie
 }
 
 /**
+ * LES BASCULES DE VUE — le second angle mort, jumeau du premier.
+ *
+ * Un écran qui propose « Liste » ou « Graphe », « Semaine » ou « Mois »,
+ * n'existait pour les garde-fous que dans son état par DÉFAUT. Tout ce que
+ * l'autre vue dessine — ses cibles, ses contrastes, ses noms — n'a jamais été
+ * mesuré, alors qu'il suffit d'un clic pour y être et qu'on y passe des
+ * heures.
+ *
+ * Repérées par `aria-pressed`, qui est précisément ce qu'une bascule doit
+ * porter : on ne devine pas des classes, on lit ce que l'interface déclare
+ * déjà à un lecteur d'écran. Une bascule qui n'en porte pas est un défaut à
+ * part, et `check:etiquettes` en parle mieux que ce module.
+ *
+ * L'état de départ est RESTAURÉ à la fin : la suite du parcours — les vues de
+ * détail, l'écran suivant — doit retrouver l'écran tel qu'elle l'attend.
+ */
+export async function parcourirBascules(page, route, mesurer, attendre) {
+  const bascules = await page
+    .evaluate(() => {
+      const main = document.querySelector('main') ?? document.body;
+      const out = { autres: [], depart: null };
+      for (const b of main.querySelectorAll('button[aria-pressed]')) {
+        const r = b.getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) continue;
+        const t = (b.textContent || b.getAttribute('aria-label') || '').trim().slice(0, 40);
+        if (!t) continue;
+        if (b.getAttribute('aria-pressed') === 'true') out.depart ??= t;
+        else out.autres.push(t);
+      }
+      return out;
+    })
+    .catch(() => ({ autres: [], depart: null }));
+
+  let vues = 0;
+  for (const nom of bascules.autres.slice(0, 3)) {
+    try {
+      await page.locator('main button', { hasText: nom }).first().click({ timeout: 2500 });
+    } catch {
+      continue;
+    }
+    await attendre(700);
+    vues += 1;
+    await mesurer(`${route} (${nom})`);
+  }
+  if (vues > 0 && bascules.depart) {
+    await page
+      .locator('main button', { hasText: bascules.depart })
+      .first()
+      .click({ timeout: 2500 })
+      .catch(() => undefined);
+    await attendre(500);
+  }
+  return vues;
+}
+
+/**
  * Le témoin : sans une seule vue de détail ouverte, le contrôle est retombé
  * dans l'angle mort qui lui faisait manquer la moitié de l'application. Un vert
  * obtenu en ne regardant que des listes n'est pas un vert.

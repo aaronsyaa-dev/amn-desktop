@@ -250,6 +250,28 @@ export function retroliens(graphe: Graphe, noteId: string): NoteLiable[] {
   return graphe.noeuds.filter((n) => ids.has(n.id));
 }
 
+/**
+ * LE GRAPHE RESTREINT À UNE PARTIE DU CARNET.
+ *
+ * Filtrer le carnet sur « Perso » ou « Équipe » doit filtrer le dessin avec
+ * lui. Un arc dont une seule extrémité survit est un trait qui part vers rien :
+ * il ne dit plus « ces deux-là se parlent », il dit seulement « il y a quelque
+ * chose là-bas », et l'œil le lit comme un nœud invisible. On les retire.
+ *
+ * Les titres cités sans note (`manquants`) sont conservés tels quels : ils ne
+ * dépendent d'aucun nœud, et une note à écrire reste à écrire quel que soit le
+ * filtre affiché.
+ */
+export function sousGraphe(graphe: Graphe, gardes: ReadonlySet<string>): Graphe {
+  const noeuds = graphe.noeuds.filter((n) => gardes.has(n.id));
+  const restants = new Set(noeuds.map((n) => n.id));
+  return {
+    noeuds,
+    arcs: graphe.arcs.filter((a) => restants.has(a.de) && restants.has(a.vers)),
+    manquants: [...graphe.manquants],
+  };
+}
+
 /** Les notes que personne ne cite et qui ne citent personne. */
 export function isolees(graphe: Graphe): NoteLiable[] {
   const relies = new Set<string>();

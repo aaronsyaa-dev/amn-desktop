@@ -58,6 +58,7 @@ const {
   construireGraphe,
   retroliens,
   isolees,
+  sousGraphe,
   renommerDansLes,
   suggestions,
   portee,
@@ -70,6 +71,7 @@ const {
   construireGraphe: (notes: readonly Note[], ordre: ReadonlyMap<string, number>) => Graphe;
   retroliens: (g: Graphe, id: string) => Note[];
   isolees: (g: Graphe) => Note[];
+  sousGraphe: (g: Graphe, gardes: ReadonlySet<string>) => Graphe;
   renommerDansLes: (
     notes: readonly Note[],
     ancien: string,
@@ -396,6 +398,41 @@ dit('insérer un titre remplace la saisie et pose le curseur APRÈS', () => {
   const r = insererLien('Voir [[réu et la suite', { debut: 5, requete: 'réu' }, 'Réunion client', 10);
   assert.equal(r.texte, 'Voir [[Réunion client]] et la suite');
   assert.equal(r.curseur, 'Voir [[Réunion client]]'.length);
+});
+
+/* ─── Le graphe restreint à une partie du carnet ───────────────────────────── */
+
+dit('filtrer le carnet filtre le dessin avec lui', () => {
+  const carnet = [note('a', 'A', 'voir [[B]]'), note('b', 'B', ''), note('c', 'C', 'voir [[A]]')];
+  const g = construireGraphe(carnet, rangs('a', 'b', 'c'));
+  const sous = sousGraphe(g, new Set(['a', 'b']));
+  assert.deepEqual(
+    sous.noeuds.map((n) => n.id),
+    ['a', 'b'],
+  );
+});
+
+dit('LA RÈGLE : un arc dont une extrémité est masquée disparaît aussi', () => {
+  /*
+    Sinon le dessin porte un trait qui part vers rien. L'œil ne lit pas
+    « l'autre bout est filtré », il lit « il y a un nœud invisible là-bas ».
+  */
+  const carnet = [note('a', 'A', 'voir [[B]]'), note('b', 'B', ''), note('c', 'C', 'voir [[A]]')];
+  const g = construireGraphe(carnet, rangs('a', 'b', 'c'));
+  assert.equal(g.arcs.length, 2, 'le carnet entier a bien deux arcs');
+  const sous = sousGraphe(g, new Set(['a', 'b']));
+  assert.deepEqual(
+    sous.arcs.map((x) => `${x.de}→${x.vers}`),
+    ['a→b'],
+    'seul l’arc dont les deux bouts survivent reste',
+  );
+});
+
+dit('les titres cités sans note survivent au filtre', () => {
+  // Une note à écrire reste à écrire, quel que soit le filtre affiché.
+  const carnet = [note('a', 'A', 'voir [[Pas encore]]'), note('b', 'B', '')];
+  const g = construireGraphe(carnet, rangs('a', 'b'));
+  assert.deepEqual(sousGraphe(g, new Set(['b'])).manquants, ['Pas encore']);
 });
 
 console.log(`\nOK — ${vus} contrôles.\n`);
