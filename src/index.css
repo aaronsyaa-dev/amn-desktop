@@ -131,10 +131,29 @@ body {
   suffit à faire descendre le changement dans tous ses enfants — y compris ceux
   qu'on écrira demain.
 */
-:where([class*='bg-surface-hover'], [class*='bg-raised'], [class*='bg-border']) {
+/*
+  `~=` ET NON `*=`, ET ÇA CHANGE TOUT.
+
+  Premier jet : `[class*='bg-surface-hover']`, une correspondance par
+  SOUS-CHAÎNE. Elle attrapait donc aussi `hover:bg-surface-hover` — c'est-à-dire
+  tout élément qui DÉCLARE un fond de survol, qu'il soit survolé ou non. L'encre
+  discrète montait d'un cran partout dans l'application, au repos, sur des
+  centaines d'éléments dont le fond n'avait pas bougé.
+
+  Mesuré sur les boutons de l'agenda : ils rendaient #9a9a97 sans que personne
+  ne les survole. Le contraste s'en trouvait meilleur, ce qui est précisément ce
+  qui rendait le défaut invisible aux contrôles — un garde-fou ne signale pas ce
+  qui va « trop bien ».
+
+  `~=` compare des MOTS séparés par des espaces : `bg-surface-hover` ne
+  correspond plus à `hover:bg-surface-hover`, qui est un autre mot. La règle ne
+  s'applique donc qu'aux fonds réellement posés — une ligne sélectionnée — et
+  la variante de survol a sa propre ligne, avec son `:hover`.
+*/
+:where([class~='bg-surface-hover'], [class~='bg-raised'], [class~='bg-border']) {
   --color-text-muted: var(--color-text-secondary);
 }
-:where([class*='hover\:bg-surface-hover'], [class*='hover\:bg-raised']):hover {
+:where([class~='hover:bg-surface-hover'], [class~='hover:bg-raised'], [class~='hover:bg-border']):hover {
   --color-text-muted: var(--color-text-secondary);
 }
 

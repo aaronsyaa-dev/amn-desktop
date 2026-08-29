@@ -586,15 +586,27 @@ function DayColumn({
         onClick={() => onCreate(day)}
         aria-label={`Ajouter un rendez-vous le ${day.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}`}
         className={`flex items-center justify-center gap-1 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors hover:bg-surface-hover hover:text-text-primary ${
-          asGround
-            ? // Discret sur un jour vide : présent, atteignable au clavier, mais
-              // il ne réclame pas l'attention sept fois de suite.
-              'text-transparent group-hover/day:text-text-muted focus-visible:text-text-primary'
-            : 'border-t border-border text-text-muted'
+          asGround ? 'text-text-muted' : 'border-t border-border text-text-muted'
         }`}
       >
         <Plus size={11} strokeWidth={2} />
-        Ajouter
+        {/*
+          LE MOT SE CACHE, PAS LE BOUTON.
+
+          Le premier jet rendait le bouton entier `text-transparent` sur un jour
+          vide, et le révélait au survol. L'intention était bonne — il ne doit
+          pas réclamer l'attention sept fois de suite — mais l'icône hérite de
+          `currentColor` : elle disparaissait avec le mot.
+
+          MESURÉ à 390 px : cinq jours sur sept portaient un bouton de
+          356 × 27 px totalement INVISIBLE. Et sur un téléphone il n'y a pas de
+          survol, donc rien ne le révélait jamais. Le seul moyen d'ajouter un
+          rendez-vous à un jour vide était un rectangle qu'on ne voit pas.
+
+          Un « + » seul suffit à dire ce qu'il y a à faire, se lit sans survol,
+          et reste discret. Le mot vient en plus quand on approche.
+        */}
+        <span className={asGround ? 'hidden group-hover/day:inline' : undefined}>Ajouter</span>
       </button>
     </div>
   );
