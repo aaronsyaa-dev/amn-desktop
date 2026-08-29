@@ -370,6 +370,103 @@ await poser('reports', 'essai-rap-1', {
   createdAt: instant(-24 * 3),
 });
 
+/* ─── La supervision : tous ses ÉTATS, pas seulement « nouveau » ───────────── */
+
+/*
+  Les incidents d'une base d'essai naissent tous « nouveau » et « critique ».
+  Les écrans de supervision rendent pourtant quatre états — nouveau, acquitté,
+  traité, fausse alerte — chacun avec sa couleur, sa pastille et ses commandes,
+  et un « traité » n'apparaît même pas dans la liste par défaut (`status=open`,
+  ce qui est le bon réglage : elle montre ce qui reste à faire).
+
+  Sans ce passage, les garde-fous ne mesuraient qu'un quart de l'écran qui
+  compte le plus pour une entreprise de cybersécurité.
+
+  On ne CRÉE pas d'incident ici : un incident naît d'alertes réelles, passées
+  par le tracker, et en fabriquer directement en base inventerait un objet que
+  le produit n'a jamais construit lui-même. On se contente de faire avancer
+  ceux qui existent — ce qu'un opérateur ferait.
+*/
+const listeIncidents = await fetch(`${API}/v1/incidents?status=tous&suppressed=tous`, {
+  headers: { Authorization: `Bearer ${login.token}` },
+})
+  .then((r) => r.json())
+  .then((j) => j.incidents ?? [])
+  .catch(() => []);
+
+const nouveaux = listeIncidents.filter((i) => i.status === 'new');
+/*
+  Les états DÉJÀ là — statuts et résolutions confondus, parce que « traité » et
+  « fausse alerte » partagent le statut `resolved` et ne se ressemblent pas à
+  l'écran : le second porte une note obligatoire et un libellé à lui.
+
+  Un premier jet ne regardait que les statuts, et une base qui avait déjà un
+  « traité » n'obtenait donc JAMAIS de fausse alerte — l'état le plus rare, et
+  celui qu'on relit quand on veut corriger la détection.
+*/
+const dejaVus = new Set([
+  ...listeIncidents.map((i) => i.status),
+  ...listeIncidents.map((i) => i.resolution).filter(Boolean),
+]);
+
+const avances = [];
+
+async function faireAvancer(id, chemin, corps) {
+  const r = await fetch(`${API}/v1/incidents/${id}/${chemin}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${login.token}` },
+    body: JSON.stringify(corps ?? {}),
+  });
+  if (r.ok) {
+    ecrits += 1;
+    avances.push(corps?.resolution ?? chemin);
+  } else {
+    echecs += 1;
+    console.error(`  ✗ incident ${chemin} → ${r.status} ${(await r.text()).slice(0, 160)}`);
+  }
+}
+
+if (nouveaux.length === 0) {
+  console.log(
+    '\n  (aucun incident dans cette organisation : les états de supervision ne\n' +
+      '   seront pas peuplés. Un incident naît du tracker, pas de ce script.)',
+  );
+} else {
+  const aPrendre = (n) => nouveaux.splice(0, n);
+  if (!dejaVus.has('acknowledged')) {
+    for (const i of aPrendre(2)) await faireAvancer(i.id, 'acknowledge');
+  }
+  if (!dejaVus.has('resolved')) {
+    for (const i of aPrendre(2)) {
+      await faireAvancer(i.id, 'resolve', {
+        resolution: 'resolved',
+        note: 'Panne de liaison confirmée côté hébergeur, service rétabli.',
+      });
+    }
+  }
+  // Gardé SÉPARÉ du « traité » : les deux partagent le statut `resolved`, et
+  // les confondre privait de fausse alerte toute base qui avait déjà un traité.
+  if (!dejaVus.has('false_positive')) {
+    const [fauxPositif] = aPrendre(1);
+    if (fauxPositif) {
+      // Un faux positif EXIGE une note côté serveur, et c'est bien ainsi : dire
+      // « ce n'en était pas un » sans dire pourquoi ne se relit pas.
+      await faireAvancer(fauxPositif.id, 'resolve', {
+        resolution: 'false_positive',
+        note:
+          'Sonde de disponibilité lancée depuis un réseau bloqué par le pare-feu : ' +
+          'le site répondait normalement ailleurs.',
+      });
+    }
+  }
+}
+
+console.log(
+  `\nSupervision : ${listeIncidents.length} incident(s) en base, ` +
+    `états déjà présents ${[...dejaVus].join(', ') || 'aucun'}` +
+    (avances.length > 0 ? `, avancés ici : ${avances.join(', ')}` : ', rien à avancer'),
+);
+
 console.log(`\n${ecrits} enregistrement(s) écrit(s), ${echecs} échec(s).`);
 if (echecs > 0) process.exit(1);
 console.log('\nLes écrans ont maintenant quelque chose dessus. Relancez les gardes navigateur.\n');
