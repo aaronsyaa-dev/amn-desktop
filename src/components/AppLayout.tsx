@@ -12,6 +12,7 @@ import { AssistantPanel } from '../assistant/AssistantPanel';
 import { RemoteSitesProvider } from '../state/RemoteSitesContext';
 import { ProfilesProvider } from '../state/ProfilesContext';
 import { SyncProvider } from '../state/SyncContext';
+import { EnvoiEnAttente } from './EnvoiEnAttente';
 import { ActivityProvider, useActivity } from '../state/ActivityContext';
 import { BootHealthy } from './BootHealthy';
 import { CallProvider } from '../state/CallContext';
@@ -208,6 +209,7 @@ export function AppLayout() {
               {!showWelcome && <UpdateNotice />}
               <UpdateReady />
               <PwaUpdateNotice />
+              <EnvoiEnAttente />
               </TagProvider>
               </UndoProvider>
             </CommandPaletteProvider>

@@ -1,4 +1,4 @@
-import { API_UNREACHABLE_PREFIX, GUEST_QUOTA_PREFIX } from '../shared/api';
+import { API_UNREACHABLE_PREFIX, GUEST_QUOTA_PREFIX, lireStatut } from '../shared/api';
 import type { GuestQuotaState } from '../shared/api';
 
 /**
@@ -18,7 +18,13 @@ const IPC_WRAPPER = /^Error invoking remote method '[^']*':\s*(?:[A-Za-z]*Error:
 
 export function cleanErrorMessage(error: unknown, fallback = 'Une erreur est survenue.'): string {
   const raw = error instanceof Error ? error.message : String(error ?? '');
-  const cleaned = raw.replace(IPC_WRAPPER, '').replace(API_UNREACHABLE_PREFIX, '').trim();
+  const cleaned = raw
+    .replace(IPC_WRAPPER, '')
+    .replace(API_UNREACHABLE_PREFIX, '')
+    // Le code HTTP sert à la file d'envoi, pas à l'utilisateur : « [amn-statut:503]
+    // Service Unavailable » affiché tel quel ne dit rien à personne.
+    .replace(/\[amn-statut:\d{3}\]\s*/, '')
+    .trim();
   return cleaned || fallback;
 }
 
@@ -62,4 +68,16 @@ export function readGuestQuotaRefusal(error: unknown): GuestQuotaState | null {
     // même, avec des chiffres vides. Laisser passer serait le pire des deux.
     return { minutesPerDay: 0, minutesUsed: 0, resetsAt: '' };
   }
+}
+
+/**
+ * Le code HTTP porté par une erreur d'écriture, ou `undefined`.
+ *
+ * `undefined` veut dire « aucune réponse » — réseau coupé, serveur éteint — et
+ * non « statut inconnu ». La file d'envoi lit cette absence comme le cas le
+ * plus réessayable de tous ; confondre les deux ferait boucler un refus.
+ */
+export function statutErreur(error: unknown): number | undefined {
+  const raw = error instanceof Error ? error.message : String(error ?? '');
+  return lireStatut(raw);
 }

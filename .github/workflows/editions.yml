@@ -107,6 +107,9 @@ jobs:
         run: npm run check:clavier
       - name: Pile des calques — un appui d'Échap, un calque
         run: npm run check:calques
+
+      - name: Contrôle de la file d'envoi
+        run: npm run check:envoi
       - name: Tendances
         run: npm run check:trend
       - name: Export FEC

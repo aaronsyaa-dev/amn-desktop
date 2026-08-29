@@ -403,6 +403,46 @@ export const API_UNREACHABLE_PREFIX = '[amn-api-injoignable] ';
 export const GUEST_QUOTA_PREFIX = '[quota-invite-epuise] ';
 
 /**
+ * LE CODE HTTP D'UN REFUS, ACCROCHÉ AU MESSAGE.
+ *
+ * La file d'envoi (`src/lib/fileEnvoi.ts`) doit distinguer « plus tard » de
+ * « non » : un 503 se renvoie, un 422 ne se renverra jamais avec succès et
+ * doit sortir de la file en le disant. Sans le code, il ne resterait qu'à
+ * reconnaître le refus à sa phrase — qui change au premier mot que le serveur
+ * reformule, et qui est traduite.
+ *
+ * Même procédé que les deux marqueurs ci-dessus, et pour la même raison : une
+ * propriété posée sur l'objet `Error` ne survit pas au pont IPC d'Electron,
+ * seul le `message` traverse. `cleanErrorMessage` le retire avant affichage.
+ */
+export const STATUT_PREFIX = '[amn-statut:';
+
+/** Accroche le code au message. */
+export function marquerStatut(message: string, statut: number): string {
+  return `${STATUT_PREFIX}${statut}] ${message}`;
+}
+
+/**
+ * Relit le code accroché par `marquerStatut`.
+ *
+ * Rend `undefined` quand il n'y en a pas — ce qui veut dire « la requête n'a
+ * jamais eu de réponse », et non « statut inconnu ». La file d'envoi lit
+ * précisément cette absence comme le cas du réseau coupé, donc le plus
+ * réessayable de tous.
+ */
+export function lireStatut(message: string): number | undefined {
+  /*
+    Pas d'ancrage sur le début : sous Electron le message traverse le pont IPC
+    enrobé d'un « Error invoking remote method '…': », donc le marqueur n'est
+    plus en tête. Un `^` ici rendrait le code invisible sur le poste, et
+    visible sur le web — la file aurait réessayé indéfiniment un refus, mais
+    seulement dans l'application installée.
+  */
+  const m = /\[amn-statut:(\d{3})\]/.exec(message);
+  return m ? Number(m[1]) : undefined;
+}
+
+/**
  * Ce qu'il faut afficher quand le temps du jour est épuisé. Les minutes
  * viennent du serveur : le poste ne décide de rien, il rend compte.
  */

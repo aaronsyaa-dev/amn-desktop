@@ -1,4 +1,9 @@
-import { API_UNREACHABLE_PREFIX, DEFAULT_NOTIFICATION_PREFS, GUEST_QUOTA_PREFIX } from '../shared/api';
+import {
+  API_UNREACHABLE_PREFIX,
+  DEFAULT_NOTIFICATION_PREFS,
+  GUEST_QUOTA_PREFIX,
+  marquerStatut,
+} from '../shared/api';
 import { APP_VERSION, EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/edition';
 import { showLocalNotification } from './webPush';
 import {
@@ -350,7 +355,14 @@ function createBrowserRemote(): AmnBridge['remote'] {
       if (body?.code === 'guest_quota_exhausted') {
         throw new Error(`${GUEST_QUOTA_PREFIX}${JSON.stringify(body.quota ?? {})}|${detail ?? ''}`);
       }
-      throw new Error(detail || `amn-api ${res.status} ${res.statusText}`);
+      /*
+        Le code voyage dans le message : c'est la file d'envoi qui le lit, pour
+        distinguer « plus tard » (503, on renvoie) de « non » (422, on sort et
+        on le dit). Sans lui il ne resterait qu'à reconnaître le refus à sa
+        phrase, qui est écrite pour un humain et change au premier mot
+        reformulé. `cleanErrorMessage` le retire avant affichage.
+      */
+      throw new Error(marquerStatut(detail || `amn-api ${res.status} ${res.statusText}`, res.status));
     }
     return res.json() as Promise<T>;
   }

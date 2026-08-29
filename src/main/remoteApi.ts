@@ -6,7 +6,7 @@ import {
   ownerCredential,
   TOKEN_PROVENANCE,
 } from './remoteConfig';
-import { API_UNREACHABLE_PREFIX, GUEST_QUOTA_PREFIX } from '../shared/api';
+import { API_UNREACHABLE_PREFIX, GUEST_QUOTA_PREFIX, marquerStatut } from '../shared/api';
 import type {
   ActiveSession,
   CallLink,
@@ -85,7 +85,13 @@ export async function apiFetch<T>(
     if (body?.code === 'guest_quota_exhausted') {
       throw new Error(`${GUEST_QUOTA_PREFIX}${JSON.stringify(body.quota ?? {})}|${detail ?? ''}`);
     }
-    throw new Error(detail || `amn-api ${res.status} ${res.statusText}`);
+    /*
+      Le code HTTP voyage dans le message, comme les deux marqueurs ci-dessus
+      et pour la même raison : seul le `message` traverse le pont IPC. C'est la
+      file d'envoi qui le lit, pour distinguer « plus tard » (503, on renvoie)
+      de « non » (422, on sort et on le dit).
+    */
+    throw new Error(marquerStatut(detail || `amn-api ${res.status} ${res.statusText}`, res.status));
   }
   return res.json() as Promise<T>;
 }

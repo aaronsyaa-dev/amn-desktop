@@ -9,6 +9,16 @@ import React, {
 } from 'react';
 import { bridge } from '../lib/bridge';
 import { reportGuestQuotaError } from './guestQuotaStore';
+import {
+  appliquer as appliquerVerdict,
+  attenteAvantEssai,
+  poser as poserEnFile,
+  pretALEnvoi,
+  resume as resumeFile,
+  type Abandon,
+  type EntreeEnvoi,
+} from '../lib/fileEnvoi';
+import { statutErreur } from '../lib/errorMessage';
 import { useAuth } from '../auth/AuthContext';
 import type {
   PresenceEntry,
@@ -120,6 +130,37 @@ function mirrorKey(scope: string | undefined, collection: string): string {
 }
 
 /**
+ * Où la file d'envoi attend, en clair et par contexte.
+ *
+ * Elle vit à côté du miroir et pour la même raison : ce qui n'est pas parti
+ * doit survivre à la fermeture de l'application. Une file gardée seulement en
+ * mémoire perdrait, au premier redémarrage, exactement les écritures qu'elle
+ * est là pour sauver — et c'est un redémarrage qu'on fait volontiers quand
+ * « ça ne marche pas ».
+ */
+function fileKey(scope: string | undefined): string {
+  return scope ? `${MIRROR_PREFIX}ctx-${scope}.__envoi` : `${MIRROR_PREFIX}__envoi`;
+}
+
+function readFile(scope: string | undefined): EntreeEnvoi[] {
+  try {
+    const raw = window.localStorage.getItem(fileKey(scope));
+    const parsed = raw ? (JSON.parse(raw) as EntreeEnvoi[]) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeFile(scope: string | undefined, file: readonly EntreeEnvoi[]): void {
+  try {
+    window.localStorage.setItem(fileKey(scope), JSON.stringify(file));
+  } catch {
+    /* quota — l'état en mémoire reste la référence pour cette session */
+  }
+}
+
+/**
  * Efface le miroir d'un contexte client. Appelé en quittant : les données d'une
  * cliente n'ont pas à rester sur le disque de l'opérateur une fois la porte
  * refermée.
@@ -216,6 +257,28 @@ interface SyncContextValue {
   /** Live, non-deleted records of a collection. */
   useRecords: (collection: SyncedCollection) => RemoteRecord[];
   upsert: (collection: SyncedCollection, id: string, data: Record<string, unknown>) => Promise<void>;
+  /**
+   * Combien d'écritures attendent d'atteindre le serveur.
+   *
+   * Zéro la quasi-totalité du temps. Ce n'est pas un indicateur de santé mais
+   * un indicateur d'ATTENTE : le défaut réparé était le silence, et pendant une
+   * longue coupure on doit pouvoir savoir que le travail n'est pas encore parti
+   * avant de fermer l'application.
+   */
+  enAttenteEnvoi: number;
+  /** La même chose en une phrase, ou `null` quand il n'y a rien à dire. */
+  resumeEnvoi: string | null;
+  /**
+   * Les écritures qui ne partiront jamais — refusées par le serveur, ou
+   * abandonnées après trop d'essais. C'est le seul cas où l'utilisateur DOIT
+   * être dérangé : la donnée est sur cet appareil et n'ira nulle part.
+   *
+   * Elles sont exposées plutôt que notifiées d'ici parce que `ToastProvider`
+   * vit SOUS `SyncProvider` (voir AppLayout et SpaceProviders) : c'est un
+   * composant placé plus bas qui les annonce, et appelle `oublierAbandons`.
+   */
+  abandonsEnvoi: Abandon[];
+  oublierAbandons: () => void;
   remove: (collection: SyncedCollection, id: string) => Promise<void>;
   /** True if this record id was written by *this* client (to suppress self-notifications). */
   isLocalWrite: (collection: SyncedCollection, id: string) => boolean;
@@ -268,6 +331,21 @@ export function SyncProvider({
   // stays referentially stable across sign-in changes.
   const emailRef = useRef(user?.email);
   emailRef.current = user?.email;
+  /*
+    LA FILE D'ENVOI — ce qui n'est pas parti attend ici.
+
+    Elle est tenue dans une `ref` et non dans un state : le vidage lit et récrit
+    la file plusieurs fois par passage, et un state ne serait à jour qu'au
+    rendu suivant — deux envois concurrents repartiraient alors de la même
+    version et l'un écraserait l'autre. `enAttente` porte la seule chose dont
+    l'écran a besoin, et ne change qu'à chaque variation réelle.
+  */
+  const fileRef = useRef<EntreeEnvoi[]>([]);
+  const [enAttente, setEnAttente] = useState(0);
+  const [abandons, setAbandons] = useState<Abandon[]>([]);
+  const videEnCours = useRef(false);
+  const relanceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const remoteChangeSubs = useRef<Set<(c: RemoteChange) => void>>(new Set());
   const onRemoteChange = useCallback((cb: (c: RemoteChange) => void) => {
     remoteChangeSubs.current.add(cb);
@@ -412,6 +490,101 @@ export function SyncProvider({
     };
   }, [applyRecords]);
 
+  /** Range la file, la persiste, et met l'écran à jour. */
+  const rangerFile = useCallback(
+    (suite: EntreeEnvoi[], nouveauxAbandons: Abandon[]) => {
+      fileRef.current = suite;
+      writeFile(scope, suite);
+      setEnAttente(suite.length);
+      if (nouveauxAbandons.length > 0) setAbandons((prev) => [...prev, ...nouveauxAbandons]);
+    },
+    [scope],
+  );
+
+  /**
+   * VIDER LA FILE — une entrée à la fois, dans l'ordre.
+   *
+   * En série et non en parallèle : l'ordre de création porte du sens (un devis
+   * part après le client qu'il cite), et vingt requêtes lancées ensemble sur
+   * une API qui vient à peine de se relever la remettraient à terre — la file
+   * aggraverait la panne qu'elle absorbe.
+   *
+   * Le premier échec ARRÊTE le passage. Continuer ferait, sur un serveur
+   * éteint, deux cents requêtes vouées à l'échec à chaque retour d'onglet, et
+   * ferait monter d'un coup le compteur d'essais de toute la file — qui
+   * atteindrait sa limite et abandonnerait tout, pour une coupure de trente
+   * secondes.
+   */
+  const viderFile = useCallback(async () => {
+    if (videEnCours.current) return;
+    if (fileRef.current.length === 0) return;
+    videEnCours.current = true;
+    try {
+      const remote = bridge().remote;
+      // Une copie du premier tour : la file peut changer sous nos pieds pendant
+      // l'envoi, et `appliquerVerdict` sait déjà reconnaître une entrée périmée.
+      for (const entree of [...fileRef.current]) {
+        // L'attente entre deux essais est portée par l'entrée elle-même : une
+        // entrée qui vient d'échouer ne doit pas repartir au retour d'onglet
+        // suivant, sinon le doublement ne sert à rien.
+        if (!pretALEnvoi(entree, Date.now())) continue;
+        try {
+          if (entree.geste === 'suppression') {
+            await remote.deleteRecord(entree.collection as SyncedCollection, entree.id);
+          } else {
+            const saved = await remote.upsertRecord(
+              entree.collection as SyncedCollection,
+              entree.id,
+              entree.donnees ?? {},
+            );
+            applyRecords(entree.collection, [saved]); // adopter l'horodatage serveur
+          }
+          const r = appliquerVerdict(fileRef.current, entree, { parti: true });
+          rangerFile(r.file, r.abandons);
+        } catch (err) {
+          reportGuestQuotaError(err);
+          const statut = statutErreur(err);
+          const r = appliquerVerdict(fileRef.current, entree, {
+            parti: false,
+            statut,
+            detail: err instanceof Error ? err.message : undefined,
+          });
+          rangerFile(r.file, r.abandons);
+          // Un REFUS ne dit rien de l'entrée suivante : le serveur répond, il
+          // rejette celle-ci. On continue. Une panne, elle, vaut pour toutes.
+          if (statut === undefined || statut >= 500) break;
+        }
+      }
+    } finally {
+      videEnCours.current = false;
+    }
+
+    /*
+      Se redonner rendez-vous tant qu'il reste quelque chose. Sans ça, une file
+      bloquée n'attendrait qu'un geste de l'utilisateur — retour d'onglet,
+      nouvelle écriture — et sur un poste laissé ouvert toute la nuit rien ne
+      repartirait avant le matin.
+    */
+    if (relanceRef.current) clearTimeout(relanceRef.current);
+    relanceRef.current = null;
+    const reste = fileRef.current;
+    if (reste.length > 0) {
+      const dans = Math.max(1000, Math.min(...reste.map((e) => attenteAvantEssai(e.essais) || 1000)));
+      relanceRef.current = setTimeout(() => {
+        void viderFile();
+      }, dans);
+    }
+  }, [applyRecords, rangerFile]);
+
+  /** Met un geste en file, et tente aussitôt de la vider. */
+  const mettreEnFile = useCallback(
+    (entree: EntreeEnvoi) => {
+      const r = poserEnFile(fileRef.current, entree);
+      rangerFile(r.file, r.abandons);
+    },
+    [rangerFile],
+  );
+
   const upsert = useCallback(
     async (collection: SyncedCollection, id: string, data: Record<string, unknown>) => {
       localWrites.current.add(`${collection}:${id}`);
@@ -431,12 +604,35 @@ export function SyncProvider({
         try {
           const saved = await bridge().remote.upsertRecord(collection, id, stamped);
           applyRecords(collection, [saved]); // adopt server timestamp
-        } catch {
-          /* offline: mirror keeps the optimistic record; will re-sync later */
+        } catch (err) {
+          /*
+            CE QUI N'EST PAS PARTI REPART.
+
+            Ce `catch` avalait l'échec avec, pour tout traitement, un
+            commentaire qui promettait « will re-sync later ». Rien ne le
+            faisait : `pullAll()` ne fait que TIRER. MESURÉ au navigateur,
+            l'API répondant 503, cinq soumissions sur cinq — rendez-vous,
+            tâche, client, facture, rapport — sans le moindre mot, et deux fois
+            la fenêtre s'est même refermée, ce que tout le monde lit comme
+            « c'est enregistré ». La facture existait sur le poste, pas sur le
+            serveur, donc pas sur le téléphone ni pour le collègue.
+
+            L'écriture optimiste reste : l'écran ne doit pas attendre le
+            réseau. Ce qui change, c'est qu'elle est maintenant SUIVIE.
+          */
+          reportGuestQuotaError(err);
+          mettreEnFile({
+            collection,
+            id,
+            geste: 'ecriture',
+            donnees: stamped,
+            pose: optimistic.updatedAt,
+            essais: 0,
+          });
         }
       }
     },
-    [applyRecords, configured],
+    [applyRecords, configured, mettreEnFile],
   );
 
   const remove = useCallback(
@@ -452,13 +648,70 @@ export function SyncProvider({
       if (configured) {
         try {
           await bridge().remote.deleteRecord(collection, id);
-        } catch {
-          /* offline: tombstone stays in the mirror */
+        } catch (err) {
+          /*
+            Une suppression perdue est PIRE qu'une écriture perdue : ce qu'on a
+            supprimé continue d'exister pour tout le monde sauf pour soi, donc
+            on ne le voit plus et on ne peut plus le supprimer.
+          */
+          reportGuestQuotaError(err);
+          mettreEnFile({
+            collection,
+            id,
+            geste: 'suppression',
+            pose: tombstone.updatedAt,
+            essais: 0,
+          });
         }
       }
     },
-    [applyRecords, configured],
+    [applyRecords, configured, mettreEnFile],
   );
+
+  /*
+    LA FILE REPART — et pas seulement quand on écrit.
+
+    Les mêmes signaux que la relecture (`refreshIfStale`), plus la reprise de
+    connexion : le défaut réparé ici est précisément que RIEN ne renvoyait une
+    écriture perdue. Un seul déclencheur — la prochaine écriture — aurait laissé
+    la facture d'hier soir sur le poste jusqu'à ce qu'on en saisisse une autre.
+
+    La file est relue du stockage au montage : ce qui n'était pas parti à la
+    fermeture doit repartir à l'ouverture, et c'est justement le redémarrage
+    qu'on fait quand « ça ne marche pas ».
+  */
+  useEffect(() => {
+    const dejaLa = readFile(scope);
+    fileRef.current = dejaLa;
+    setEnAttente(dejaLa.length);
+
+    const relancer = () => {
+      void viderFile();
+    };
+    relancer();
+    window.addEventListener('online', relancer);
+    window.addEventListener('focus', relancer);
+    window.addEventListener('visibilitychange', relancer);
+    return () => {
+      window.removeEventListener('online', relancer);
+      window.removeEventListener('focus', relancer);
+      window.removeEventListener('visibilitychange', relancer);
+      if (relanceRef.current) clearTimeout(relanceRef.current);
+    };
+  }, [scope, viderFile]);
+
+  // Une écriture qui vient d'échouer ne doit pas attendre le prochain signal.
+  useEffect(() => {
+    if (enAttente > 0) void viderFile();
+  }, [enAttente, viderFile]);
+
+  // La connexion revient : c'est le moment le plus probable pour que ça passe.
+  useEffect(() => {
+    if (connectionStatus === 'online') void viderFile();
+  }, [connectionStatus, viderFile]);
+
+  /** Les abandons non encore montrés, et de quoi dire qu'ils l'ont été. */
+  const oublierAbandons = useCallback(() => setAbandons([]), []);
 
   const useRecords = useCallback(
     (collection: SyncedCollection): RemoteRecord[] =>
@@ -480,11 +733,29 @@ export function SyncProvider({
       onlineEmails,
       useRecords,
       upsert,
+      enAttenteEnvoi: enAttente,
+      resumeEnvoi: resumeFile(fileRef.current),
+      abandonsEnvoi: abandons,
+      oublierAbandons,
       remove,
       isLocalWrite,
       onRemoteChange,
     }),
-    [ready, configured, pullFailed, connectionStatus, onlineEmails, useRecords, upsert, remove, isLocalWrite, onRemoteChange],
+    [
+      ready,
+      configured,
+      pullFailed,
+      connectionStatus,
+      onlineEmails,
+      useRecords,
+      upsert,
+      enAttente,
+      abandons,
+      oublierAbandons,
+      remove,
+      isLocalWrite,
+      onRemoteChange,
+    ],
   );
 
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;

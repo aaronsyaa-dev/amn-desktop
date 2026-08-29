@@ -2,6 +2,7 @@ import React from 'react';
 import { ActivityProvider } from './ActivityContext';
 import { ProfilesProvider } from './ProfilesContext';
 import { SyncProvider } from './SyncContext';
+import { EnvoiEnAttente } from '../components/EnvoiEnAttente';
 import { ToastProvider } from './ToastContext';
 import { UndoProvider } from './UndoContext';
 import { TagProvider } from '../components/tags/TagProvider';
@@ -65,7 +66,16 @@ export function SpaceProviders({
         <ActivityProvider>
           <ToastProvider>
             <UndoProvider>
-              <TagProvider>{children}</TagProvider>
+              <TagProvider>
+                {children}
+                {/*
+                  Le contexte client a sa PROPRE file : le miroir est cloisonné
+                  par organisation, et la file l'est avec lui. Sans cet
+                  indicateur ici, une écriture bloquée dans un dossier cliente
+                  n'aurait rien pour se signaler.
+                */}
+                <EnvoiEnAttente />
+              </TagProvider>
             </UndoProvider>
           </ToastProvider>
         </ActivityProvider>
