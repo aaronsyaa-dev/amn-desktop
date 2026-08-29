@@ -571,7 +571,19 @@ function LinkedSitesBlock({
                   linked ? 'border-border-strong bg-accent-muted text-text-primary' : 'border-border text-text-muted'
                 }`}
               >
-                <button type="button" onClick={() => toggle(site.id)} className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => toggle(site.id)}
+                  /*
+                    La dispense disait « élargir la zone les ferait se
+                    chevaucher » : vrai HORIZONTALEMENT — la pastille d'état et
+                    la flèche sont juste à côté — mais la puce a déjà son
+                    `py-1`, et grandir VERTICALEMENT ne coûte rien à personne.
+                    `-my-1 py-1` reprend exactement ce remplissage : 16 px
+                    deviennent 24, sans qu'un seul pixel bouge à l'écran.
+                  */
+                  className="-my-1 flex items-center gap-1.5 py-1"
+                >
                   <Globe size={11} strokeWidth={1.75} />
                   {site.name}
                 </button>
@@ -1219,7 +1231,20 @@ function InlineField({
     <button
       type="button"
       onClick={() => setEditing(true)}
-      className={`block w-full truncate border-b border-transparent text-left hover:border-border ${className ?? ''} ${
+      /*
+        `min-h-6` plutôt qu'un `-my-* py-*`.
+
+        La dispense disait « empilés sans aucun écart vertical, même raison » :
+        deux de ces champs se suivent directement (le nom et la société d'une
+        fiche), et leur donner un remplissage négatif ferait se CHEVAUCHER
+        leurs deux zones cliquables — cliquer entre les deux deviendrait un
+        tirage au sort entre « modifier le nom » et « modifier la société ».
+
+        Une hauteur minimale grandit l'élément lui-même : elle ne mord sur
+        personne, n'a besoin d'aucun écart dans le conteneur, et ne déplace
+        rien là où le texte fait déjà ses 24 px — c'est-à-dire presque partout.
+      */
+      className={`block min-h-6 w-full truncate border-b border-transparent text-left hover:border-border ${className ?? ''} ${
         value ? '' : 'text-text-muted'
       }`}
     >

@@ -70,19 +70,32 @@ const MINIMUM_PX = 24;
  * c'est ce qui identifie un composant sans dépendre de son texte, qui change
  * avec les données.
  */
-const CONNUES = new Map([
-  [
-    'flex items-center gap-1.5',
-    'liste de sites d’un dossier client : les puces se TOUCHENT — 0 px d’écart horizontal ' +
-      'mesuré, 9 px de vertical. Élargir la zone les ferait se chevaucher, et on ouvrirait ' +
-      'le site d’à côté. Il faut les écarter, ce qui est un choix de mise en page.',
-  ],
-  [
-    'block w-full truncate border-b border-transparent ',
-    'champs modifiables sur place d’un dossier client : empilés sans aucun écart vertical ' +
-      '(0 px mesuré). Même raison.',
-  ],
-]);
+/*
+  LA CARTE EST VIDE, ET C'EST LE BUT.
+
+  Elle a porté deux familles, toutes deux renvoyées à « un choix de mise en
+  page » qu'il fallait laisser à quelqu'un d'autre. Les deux étaient des
+  renoncements trop rapides :
+
+    · les puces de sites d'un dossier — « élargir la zone les ferait se
+      chevaucher ». Vrai HORIZONTALEMENT, la pastille d'état est juste à côté.
+      Mais la puce avait déjà son `py-1`, et grandir VERTICALEMENT ne coûtait
+      rien à personne : `-my-1 py-1` reprend exactement ce remplissage, 16 px
+      deviennent 24, et pas un pixel ne bouge à l'écran ;
+
+    · les champs modifiables sur place — « empilés sans aucun écart vertical ».
+      Vrai aussi, et un remplissage négatif aurait fait se chevaucher les zones
+      du nom et de la société. Mais une hauteur MINIMALE grandit l'élément
+      lui-même : elle ne mord sur personne et n'a besoin d'aucun écart.
+
+  Les deux fois, la dispense décrivait correctement l'obstacle et concluait
+  trop vite qu'il n'y avait pas de porte. C'est le même travers que les huit
+  dispenses démontées plus tôt cette nuit, à ceci près qu'ici c'est moi qui les
+  avais écrites.
+
+  Une dispense se MÉRITE, et se relit.
+*/
+const CONNUES = new Map([]);
 
 if (!EMAIL || !MOT_DE_PASSE) {
   console.log('Contrôle des cibles : SAUTÉ — il faut une session pour atteindre les écrans.\n');
@@ -234,6 +247,26 @@ if (dispensees.length > 0) {
   console.log(`${dispensees.length} famille(s) connue(s), chantier nommé :\n`);
   for (const c of dispensees) console.log(`  · ${CONNUES.get(c)}`);
   console.log('');
+}
+
+/*
+  UNE DISPENSE QUI NE SERT PLUS DOIT PARTIR.
+
+  Sans ce contrôle, une famille corrigée resterait inscrite ici pour toujours,
+  et couvrirait en silence sa propre RÉAPPARITION : le jour où quelqu'un
+  réécrit ces puces trop petites, la dispense les absoudrait sans que personne
+  ne le voie. Une carte de dispenses non relue finit par être une carte de
+  défauts tolérés.
+*/
+const inutiles = [...CONNUES.keys()].filter((c) => !dispensees.includes(c));
+if (inutiles.length > 0) {
+  console.error(`\n${inutiles.length} dispense(s) qui ne servent plus :\n`);
+  for (const c of inutiles) console.error(`  · ${CONNUES.get(c)}\n    (sélecteur « ${c} »)`);
+  console.error(
+    '\nCes familles ne sont plus sous le seuil. Retirez-les de `CONNUES` : une\n' +
+      'dispense qui traîne couvre la réapparition du défaut qu’elle décrivait.',
+  );
+  process.exit(1);
 }
 
 if (petites.size > 0) {
