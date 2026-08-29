@@ -322,6 +322,23 @@ export function Sidebar({
       <motion.aside
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
+        /*
+          `initial` À LA LARGEUR RÉSOLUE : la barre ne s'ouvre pas en glissant
+          à chaque chargement.
+
+          Tant qu'elle démarrait toujours repliée, `animate` seul suffisait —
+          il n'y avait rien à parcourir au montage. Depuis qu'elle démarre
+          dépliée sur un grand écran, framer-motion animait la largeur de 72 à
+          224 px À CHAQUE OUVERTURE DE PAGE. Deux défauts d'un coup :
+          `check:mouvement` l'a signalé sur trois écrans (jusqu'à 289 px de
+          déplacement malgré « réduire les animations » — `reducedMotion` ne
+          couvre pas une largeur), et visuellement une navigation qui se
+          déplie sous les yeux à chaque page fait bon marché.
+
+          L'animation reste ce pour quoi elle est faite : le geste de replier
+          ou de déplier, qui vient de quelqu'un.
+        */
+        initial={{ width: isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
         animate={{ width: isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
         transition={TRANSITION}
         className={`fixed inset-y-0 left-0 z-50 flex h-full flex-shrink-0 flex-col border-r border-border bg-[#0d0d0d] py-4 transition-transform duration-300 md:relative md:z-30 md:translate-x-0 ${
