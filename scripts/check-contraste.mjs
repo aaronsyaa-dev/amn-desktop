@@ -34,6 +34,8 @@
  * ## Mode d'emploi
  *
  *   1. npm run build:web            (ou build:web:business)
+ *   1bis. npm run seed:essai        — sinon les écrans sont VIDES, et ce
+ *                                     contrôle ne mesure que des états vides
  *   2. npx serve -s dist -l 4180
  *   3. AMN_E2E_EMAIL=… AMN_E2E_PASSWORD=… npm run check:contraste
  *
