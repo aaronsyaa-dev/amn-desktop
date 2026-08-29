@@ -62,7 +62,15 @@ export const GREETINGS_NEUTRES: Record<Slot, string[]> = {
 
 /** Elles affirment le calme. Réservées aux moments où c'est vrai. */
 export const GREETINGS_SEREINES: Record<Slot, string[]> = {
-  night: ['La nuit est calme, {name}.', 'Bonsoir {name} — veille tranquille.'],
+  /*
+    « veille tranquille » a été retiré : c'est du vocabulaire de SOC, et ce
+    fichier sert AUSSI l'édition livrée aux clientes. Une fleuriste qui ouvre
+    son application à une heure du matin ne tient pas une veille — elle finit
+    sa journée. « Rien à signaler » dit la même chose et se comprend des deux
+    côtés ; c'est en plus le mot exact qu'emploie le panneau d'attention juste
+    en dessous.
+  */
+  night: ['La nuit est calme, {name}.', 'Bonsoir {name} — rien à signaler.'],
   morning: ['Bonjour {name} — tout est en ordre.', 'Matinée dégagée, {name}.'],
   afternoon: ['Bon après-midi {name} — au calme.', 'Rien ne presse, {name}.'],
   evening: ['Bonsoir {name} — journée bientôt bouclée.', 'Soirée tranquille, {name}.'],
