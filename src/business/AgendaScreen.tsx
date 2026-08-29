@@ -585,7 +585,14 @@ function DayColumn({
         type="button"
         onClick={() => onCreate(day)}
         aria-label={`Ajouter un rendez-vous le ${day.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}`}
-        className={`flex items-center justify-center gap-1 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors hover:bg-surface-hover hover:text-text-primary ${
+        /*
+          `min-h-6` : en cachant le mot sur un jour vide, il ne reste que
+          l'icône de 11 px, et le bouton retombait à 23 px de haut — sous les
+          24 exigés. C'est `check:cibles` qui l'a dit, sur les deux éditions et
+          quinze occurrences : la correction de visibilité avait créé un défaut
+          de taille.
+        */
+        className={`flex min-h-6 items-center justify-center gap-1 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors hover:bg-surface-hover hover:text-text-primary ${
           asGround ? 'text-text-muted' : 'border-t border-border text-text-muted'
         }`}
       >
