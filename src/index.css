@@ -49,6 +49,27 @@
   --color-warning: #8f8f8c;
   --color-warning-muted: rgba(255, 255, 255, 0.05);
   --color-danger: #ff4230;
+  /*
+    DEUX ROUGES DÉRIVÉS, PARCE QU'UN ROUGE NE FAIT PAS TOUT
+
+    `--color-danger` reste EXACTEMENT ce qu'il est : le seul signal coloré du
+    produit, celui des bordures, des remplissages et du sens « critique ». On
+    n'y touche pas — c'est lui qu'on reconnaît d'un coup d'œil à trois mètres.
+
+    Mais un fond et une encre n'ont pas les mêmes contraintes :
+
+    · en FOND sous du blanc, #ff4230 donne 3,46 — la pastille de compteur de
+      notifications, mesurée 42 fois sur les écrans, était sous le seuil. Un
+      cran plus sombre suffit : 4,66, et c'est le même rouge à l'œil ;
+    · en ENCRE sur une surface haute (#262626, le fond des listes à filet),
+      #ff4230 donne 4,38 — à trois dixièmes. Un cran plus clair donne 4,86,
+      et 6,68 sur le fond principal.
+
+    Ce sont deux ajustements de LISIBILITÉ sur un signal inchangé, pas un
+    troisième et un quatrième rouge dans la palette.
+  */
+  --color-danger-fill: #dd2f26;
+  --color-danger-ink: #ff5847;
   --color-danger-muted: rgba(255, 66, 48, 0.14);
 }
 
@@ -72,6 +93,49 @@ body {
   color-scheme: dark;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/*
+  SUR UNE LIGNE QUI MONTE D'UN CRAN, L'ENCRE MONTE AVEC ELLE
+  ══════════════════════════════════════════════════════════
+
+  MESURÉ : `--color-text-muted` (#808080) tient WCAG AA sur le fond (4,85) et
+  sur les surfaces (4,66) — mais tombe à **4,32** sur `--color-surface-hover`,
+  le fond que prend une ligne de liste survolée ou sélectionnée. C'est-à-dire
+  précisément la ligne qu'on est en train de regarder : vingt-deux textes,
+  horodatages, noms de société et scores, sur les listes de documents, de
+  notes, de scans, de clients et de sites.
+
+  ## Les deux portes qu'on n'a pas prises, et pourquoi
+
+  **Éclaircir le gris.** Il faudrait #8c8c8c pour tenir sur tous les fonds. Or
+  `--color-warning` vaut #8f8f8c : les deux crans seraient à 1,03 l'un de
+  l'autre, c'est-à-dire indiscernables, et un avertissement qui ressemble à du
+  texte discret n'avertit plus. La rampe est volontairement resserrée — le
+  rouge est le seul signal coloré du produit — et l'élargir ici la casserait
+  ailleurs.
+
+  **Assombrir le survol.** Il faudrait descendre `--color-surface-hover` à
+  #171717 pour que #808080 y tienne. Le survol se distinguerait alors de la
+  surface par un rapport de **1,028** : on ne le verrait plus. On échangerait
+  un texte illisible contre un survol invisible.
+
+  ## La porte qu'on prend
+
+  La ligne CHANGE DÉJÀ d'état quand on la survole ou la sélectionne. Faire
+  monter son encre discrète avec son fond ne fait qu'achever ce mouvement — et
+  rend plus lisible, pas moins, la seule ligne qui compte à cet instant.
+
+  Une règle, et pas vingt-deux retouches : les crans de Tailwind v4 sont des
+  variables CSS, donc redéfinir `--color-text-muted` sur le porteur du fond
+  suffit à faire descendre le changement dans tous ses enfants — y compris ceux
+  qu'on écrira demain.
+*/
+:where([class*='bg-surface-hover'], [class*='bg-raised'], [class*='bg-border']) {
+  --color-text-muted: var(--color-text-secondary);
+}
+:where([class*='hover\:bg-surface-hover'], [class*='hover\:bg-raised']):hover {
+  --color-text-muted: var(--color-text-secondary);
 }
 
 /* Tabular, monospaced figures for data/timestamps/ids */

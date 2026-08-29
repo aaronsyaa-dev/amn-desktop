@@ -44,58 +44,59 @@
  */
 
 /*
-  LES SIX COMBINAISONS CONNUES, ET POURQUOI ELLES ATTENDENT UNE DÉCISION
-  ══════════════════════════════════════════════════════════════════════
+  LES SIX COMBINAISONS QUI ATTENDAIENT UNE DÉCISION — ET QUI N'ATTENDENT PLUS
+  ══════════════════════════════════════════════════════════════════════════
 
-  Relever `--color-text-muted` de `#616160` à `#808080` a fait passer l'édition
-  CLIENTE de 355 occurrences fautives à zéro. L'édition interne en garde six,
-  et elles ne se règlent pas en poussant le même curseur :
+  Relever `--color-text-muted` de #616160 à #808080 avait fait passer l'édition
+  cliente de 355 occurrences fautives à zéro. L'édition interne en gardait six,
+  71 occurrences, renvoyées à « un arbitrage de palette, il est d'Aaron ».
 
-    · l'édition interne pose du texte sur DEUX fonds plus clairs que ceux de
-      l'édition cliente — `--color-surface-hover` (#1c1c1c) et `--color-border`
-      (#262626). Pour y passer AA, `muted` devrait monter à #8c8c8c… soit la
-      valeur de `--color-warning` (#8f8f8c) à trois niveaux près. Les deux
-      crans deviendraient indiscernables, et le sens avec ;
-    · le badge de notification est du BLANC sur le rouge de signal
-      (`#ff4230`), à 3,46. Le corriger demande d'assombrir le rouge — celui-là
-      même qui est « le seul réservé au critique » — ou d'y poser du texte
-      sombre. Les deux changent l'apparence du signal.
+  Deux des portes envisagées étaient bel et bien fermées, et le rester :
 
-  Autrement dit : la rampe de gris est trop resserrée pour satisfaire AA à tous
-  les crans, et c'est un arbitrage de PALETTE, pas une correction. Il est
-  d'Aaron, pas de ce contrôle.
+    · **éclaircir le gris.** Il faudrait #8c8c8c pour tenir sur tous les fonds.
+      Or `--color-warning` vaut #8f8f8c : les deux crans seraient à 1,03 l'un
+      de l'autre — indiscernables — et un avertissement qui ressemble à du
+      texte discret n'avertit plus ;
+    · **assombrir le survol.** Il faudrait descendre `--color-surface-hover` à
+      #171717 pour que #808080 y tienne. Le survol se distinguerait alors de la
+      surface par 1,028 : on ne le verrait plus. Un texte illisible échangé
+      contre un survol invisible.
 
-  Elles sont donc NOMMÉES, une par une, comme les dispenses de `check:ecrans` —
-  ce qui les garde visibles, et laisse le contrôle attraper tout ce qui est
-  NOUVEAU. Une liste automatique absoudrait le prochain oubli ; celle-ci non.
+  Mais la troisième n'avait pas été essayée, et c'est celle qui s'ouvre.
+
+  ## Où étaient vraiment les fautes
+
+  Mesurées élément par élément, les 22 fautes grises étaient TOUTES du texte
+  discret sur une ligne de liste **survolée ou sélectionnée** — documents,
+  notes, scans, clients, sites. C'est-à-dire la ligne qu'on est en train de
+  regarder.
+
+  Une ligne qui change déjà d'état peut changer son encre avec : `src/index.css`
+  redéfinit `--color-text-muted` sur les porteurs de fond haut, et les crans de
+  Tailwind v4 étant des variables CSS, le changement descend dans tous les
+  enfants — y compris ceux qu'on écrira demain. Une règle, pas vingt-deux
+  retouches.
+
+  Les 48 fautes rouges étaient deux usages différents d'un même rouge : du
+  blanc POSÉ SUR lui (pastille de compteur, 42×, et deux boutons « raccrocher »)
+  et lui-même EN TEXTE sur une liste à filet (6×). `--color-danger` ne bouge
+  pas — c'est le seul signal coloré du produit — mais deux dérivés portent ces
+  deux charges : `--color-danger-fill` d'un cran plus sombre (blanc à 4,66) et
+  `--color-danger-ink` d'un cran plus clair (4,86 sur le fond haut).
+
+  ## La carte est vide
+
+  Contrairement à `check:cibles`, une dispense non rencontrée n'est PAS fatale
+  ici, et c'est voulu : les deux éditions ne montrent pas les mêmes écrans, et
+  une combinaison qui n'existe que dans la supervision serait légitimement
+  absente du build client. Le contrôle la signale et laisse conclure — voir
+  plus bas.
+
+  La carte est vide aujourd'hui. Si quelque chose y revient un jour, qu'il y
+  revienne nommé, mesuré, et avec la porte qu'on n'a pas pu ouvrir écrite à
+  côté — pas seulement celle qu'on n'a pas essayée.
 */
-const CONNUES = new Map([
-  [
-    'rgb(255, 255, 255) sur rgb(255, 66, 48) @10px/600',
-    'badge de notification : blanc sur le rouge de signal (3,46). Assombrir le rouge ' +
-      'ou y poser du texte sombre change l’apparence du seul signal réservé au critique.',
-  ],
-  [
-    'rgb(128, 128, 128) sur rgb(38, 38, 38) @12px/400',
-    'gris discret sur une bordure claire (3,83) — voir la note de rampe ci-dessus.',
-  ],
-  [
-    'rgb(255, 66, 48) sur rgb(38, 38, 38) @12px/400',
-    'rouge de signal sur une bordure claire (4,38) — à trois dixièmes du seuil.',
-  ],
-  [
-    'rgb(128, 128, 128) sur rgb(28, 28, 28) @11px/400',
-    'gris discret sur la surface survolée (4,32) — voir la note de rampe.',
-  ],
-  [
-    'rgb(128, 128, 128) sur rgb(28, 28, 28) @10px/400',
-    'gris discret sur la surface survolée (4,32) — voir la note de rampe.',
-  ],
-  [
-    'rgb(128, 128, 128) sur rgb(28, 28, 28) @10px/600',
-    'gris discret sur la surface survolée (4,32) — voir la note de rampe.',
-  ],
-]);
+const CONNUES = new Map([]);
 
 const APP = (process.env.AMN_E2E_URL ?? 'http://127.0.0.1:4180/').replace(/\/?$/, '/');
 const CHROMIUM = process.env.AMN_E2E_CHROMIUM ?? '/opt/pw-browsers/chromium';

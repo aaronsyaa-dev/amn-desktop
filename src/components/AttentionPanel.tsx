@@ -40,7 +40,10 @@ const SEVERITY: Record<
 > = {
   critical: {
     icon: CircleAlert,
-    text: 'text-danger',
+    // Posée sur la liste à filet (`bg-border`, #262626), l'encre rouge donne
+    // 4,38 — sous le seuil. `--color-danger-ink` est le même rouge d'un cran
+    // plus clair : 4,86 ici, 6,68 sur le fond principal.
+    text: 'text-danger-ink',
     border: 'border-danger/40',
     bg: 'bg-danger-muted',
   },

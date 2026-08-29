@@ -60,7 +60,13 @@ export function NotificationCenter() {
       >
         <Bell size={17} strokeWidth={1.75} />
         {criticalCount > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold text-white">
+          <span /*
+              Mesurée 42 fois sur les écrans : du blanc sur `--color-danger`
+              donne 3,46, sous les 4,5 exigés. `--color-danger-fill` est le
+              même rouge d'un cran plus sombre — 4,66 — et le signal reste le
+              signal.
+            */
+            className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger-fill px-1 text-[10px] font-semibold text-white">
             {criticalCount}
           </span>
         )}
