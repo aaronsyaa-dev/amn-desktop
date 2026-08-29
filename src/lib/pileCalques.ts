@@ -35,6 +35,71 @@ const pile: Fermeture[] = [];
 let ecouteurPose = false;
 
 /**
+ * Le conteneur du calque où le focus se trouvait la dernière fois.
+ *
+ * C'est ce qui permet de le ramener quand il essaie de sortir, sans que chaque
+ * calque ait à déclarer son élément : à l'ouverture le focus entre dans la
+ * fenêtre (tous nos calques placent le curseur sur leur premier champ), donc
+ * le conteneur est connu avant que la tabulation puisse en sortir.
+ */
+let dernierConteneur: HTMLElement | null = null;
+
+/** Ce qui peut recevoir le focus, dans l'ordre du document. */
+const SELECTEUR_FOCUSABLE = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  'summary',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+/**
+ * LE PROCHAIN ARRÊT DE TABULATION, EN BOUCLE.
+ *
+ * Fonction pure, et c'est délibéré : c'est la règle qui compte — « après le
+ * dernier vient le premier » — et elle s'éprouve sans navigateur.
+ *
+ * Rend `null` quand il n'y a rien à cibler : l'appelant laisse alors la touche
+ * suivre son cours plutôt que de bloquer le focus sur place.
+ */
+export function prochainFocus(
+  focusables: readonly HTMLElement[],
+  actuel: HTMLElement | null,
+  versArriere: boolean,
+): HTMLElement | null {
+  if (focusables.length === 0) return null;
+  const i = actuel ? focusables.indexOf(actuel) : -1;
+  if (i === -1) {
+    // Le focus n'est pas (ou plus) dans la fenêtre : on le ramène au bout par
+    // lequel il essayait d'entrer.
+    return versArriere ? focusables[focusables.length - 1] : focusables[0];
+  }
+  const suivant = versArriere ? i - 1 : i + 1;
+  if (suivant >= 0 && suivant < focusables.length) return null; // rien à forcer
+  return versArriere ? focusables[focusables.length - 1] : focusables[0];
+}
+
+/** Les éléments focusables d'un conteneur, ceux qu'on voit seulement. */
+function focusablesDe(conteneur: HTMLElement): HTMLElement[] {
+  return [...conteneur.querySelectorAll<HTMLElement>(SELECTEUR_FOCUSABLE)].filter((el) => {
+    if (el.hasAttribute('inert')) return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  });
+}
+
+/** Le calque qui contient cet élément, s'il y en a un. */
+function calqueDe(el: Element | null): HTMLElement | null {
+  for (let n = el as HTMLElement | null; n; n = n.parentElement) {
+    const cs = getComputedStyle(n);
+    if (cs.position === 'fixed' && Number(cs.zIndex) >= 50) return n;
+  }
+  return null;
+}
+
+/**
  * Fait réagir le calque du dessus, s'il y en a un.
  *
  * Rend `true` quand quelque chose s'est fermé — ce qui permet à l'appelant de
@@ -47,7 +112,40 @@ export function fermerLeSommet(): boolean {
   return true;
 }
 
+/**
+ * LA TABULATION NE SORT PAS D'UNE FENÊTRE OUVERTE.
+ *
+ * Mesuré avant correctif, fenêtre ouverte, trente tabulations : le focus en
+ * sortait quinze à vingt-quatre fois, et se promenait dans la navigation
+ * DERRIÈRE le voile — « Accueil », « Agenda », « Projets ». Des liens qu'on ne
+ * voit pas, qu'on peut atteindre, et activer d'un appui sur Entrée pendant
+ * qu'un formulaire est ouvert par-dessus.
+ *
+ * On ne bloque rien tant que le focus circule à l'intérieur : la touche suit
+ * son cours normal, et l'ordre du document reste celui du navigateur. On
+ * n'intervient qu'au moment où il allait franchir un bord.
+ */
+function surTabulation(e: KeyboardEvent): void {
+  if (e.key !== 'Tab') return;
+  if (pile.length === 0) return;
+
+  const actuel = document.activeElement as HTMLElement | null;
+  const conteneur = calqueDe(actuel) ?? dernierConteneur;
+  if (!conteneur || !conteneur.isConnected) return;
+  dernierConteneur = conteneur;
+
+  const focusables = focusablesDe(conteneur);
+  const cible = prochainFocus(focusables, calqueDe(actuel) ? actuel : null, e.shiftKey);
+  if (!cible) return;
+  e.preventDefault();
+  cible.focus();
+}
+
 function surTouche(e: KeyboardEvent): void {
+  if (e.key === 'Tab') {
+    surTabulation(e);
+    return;
+  }
   if (e.key !== 'Escape') return;
   /*
     Pendant une saisie au clavier japonais ou chinois, Échap annule la
@@ -79,6 +177,10 @@ export function inscrireCalque(fermer: Fermeture): () => void {
     ecouteurPose = true;
   }
 
+  // Le conteneur se redécouvrira au premier Tab : un calque qui vient de
+  // s'ouvrir n'a pas encore reçu le focus au moment de l'inscription.
+  dernierConteneur = null;
+
   let retire = false;
   return () => {
     // Idempotent : React peut rejouer un nettoyage (mode strict, remontages).
@@ -98,9 +200,12 @@ export function inscrireCalque(fermer: Fermeture): () => void {
     */
     const i = pile.lastIndexOf(fermer);
     if (i !== -1) pile.splice(i, 1);
-    if (pile.length === 0 && ecouteurPose && typeof window !== 'undefined') {
-      window.removeEventListener('keydown', surTouche);
-      ecouteurPose = false;
+    if (pile.length === 0) {
+      dernierConteneur = null;
+      if (ecouteurPose && typeof window !== 'undefined') {
+        window.removeEventListener('keydown', surTouche);
+        ecouteurPose = false;
+      }
     }
   };
 }
@@ -113,6 +218,7 @@ export function calquesOuverts(): number {
 /** Remet la pile à zéro. Réservé aux contrôles — jamais appelé par l'application. */
 export function viderLaPile(): void {
   pile.length = 0;
+  dernierConteneur = null;
   if (ecouteurPose && typeof window !== 'undefined') {
     window.removeEventListener('keydown', surTouche);
     ecouteurPose = false;

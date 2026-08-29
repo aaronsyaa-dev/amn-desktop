@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
- * Contrôle du FOCUS VISIBLE — sait-on où l'on est quand on tabule ?
+ * Contrôle du FOCUS — où il se voit, et où il reste.
+ *
+ * Deux règles, mesurées dans un vrai navigateur en tabulant pour de bon.
  *
  * ## Ce qu'il mesure, et pourquoi ce n'est pas de la lecture de CSS
  *
@@ -27,6 +29,18 @@
  * aurait signalé comme fautifs tous les champs dont le focus se marque par un
  * changement de bordure — un choix parfaitement valide, et celui du produit.
  * Comparer l'avant et l'après ne présume d'aucune technique.
+ *
+ * ## 2. La tabulation ne sort pas d'une fenêtre ouverte
+ *
+ * Mesuré avant correctif, fenêtre ouverte, trente tabulations : le focus en
+ * sortait quinze à vingt-quatre fois selon l'écran, et se promenait dans la
+ * navigation DERRIÈRE le voile — « Accueil », « Agenda », « Projets ». Des
+ * liens qu'on ne voit pas, qu'on peut atteindre, et activer d'un appui sur
+ * Entrée pendant qu'un formulaire est ouvert par-dessus.
+ *
+ * Le focus ENTRE bien dans les fenêtres (chaque calque place le curseur sur
+ * son premier champ) — c'était déjà fait, et c'est ce qui permet au piège de
+ * `lib/pileCalques.ts` de savoir quel conteneur retenir.
  *
  * ## Mode d'emploi
  *
@@ -62,7 +76,7 @@ const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
 const nav = await chromium.launch({ executablePath: CHROMIUM, args: ['--no-sandbox'] });
 const page = await (await nav.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
 
-console.log(`Contrôle du focus visible — ${APP}\n`);
+console.log(`Contrôle du focus — visibilité et confinement — ${APP}\n`);
 
 await page.goto(APP);
 await attendre(2500);
@@ -91,9 +105,30 @@ if (routes.length === 0) {
 const muets = new Map();
 let arrets = 0;
 
+/*
+  LES TRANSITIONS SONT COUPÉES LE TEMPS DE LA MESURE.
+
+  `.input-focus` anime sa bordure et son halo sur 150 ms. Lire les styles juste
+  après un `blur()` rend alors une valeur INTERPOLÉE, encore proche de l'état
+  focalisé — les deux lectures se ressemblent, et le contrôle conclut « aucune
+  différence » sur un champ parfaitement correct.
+
+  C'est ce qui expliquait deux échecs isolés, jamais reproduits en six
+  exécutions ensuite. Un contrôle qui dépend du moment où il regarde n'est pas
+  un contrôle : on mesure l'état STABLE, donc on retire l'animation.
+*/
+await page.addStyleTag({
+  content: '*, *::before, *::after { transition: none !important; animation: none !important; }',
+});
+
 for (const route of routes) {
   await page.goto(APP + route).catch(() => undefined);
   await attendre(1100);
+  // Une navigation par hash ne recharge pas, mais un `goto` complet si : on
+  // repose la règle à chaque écran plutôt que de parier sur sa survie.
+  await page.addStyleTag({
+    content: '*, *::before, *::after { transition: none !important; animation: none !important; }',
+  });
   await page.evaluate(() => document.body.focus());
 
   for (let i = 0; i < TABULATIONS; i += 1) {
@@ -158,8 +193,6 @@ for (const route of routes) {
   }
 }
 
-await nav.close();
-
 /*
   Le témoin, comme dans les autres contrôles de cette famille : sans arrêt de
   focus mesuré, il n'y a pas de bonne nouvelle, il y a une mesure vide. Une
@@ -167,6 +200,7 @@ await nav.close();
 */
 if (arrets === 0) {
   console.error('ÉCHEC : aucun arrêt de focus mesuré. Le contrôle n’a rien vu, il ne conclut pas.');
+  await nav.close();
   process.exit(1);
 }
 
@@ -182,9 +216,95 @@ if (muets.size > 0) {
   console.error('plus où l’on est. `index.css` pose déjà un anneau sur les boutons et les');
   console.error('liens, et `.input-focus` une bordure et un halo sur les champs — le plus');
   console.error('souvent il suffit d’ajouter cette classe.');
+  await nav.close();
+  process.exit(1);
+}
+
+/* ═══════ 2. La tabulation ne sort pas d'une fenêtre ouverte ═══════════════ */
+
+/*
+  On ne devine aucun libellé : on reprend les boutons de chaque écran, on
+  clique, et si un calque s'ouvre on tabule trente fois en comptant les sorties.
+  Les gestes destructeurs sont écartés par leur libellé — ce contrôle explore,
+  il ne doit rien casser.
+*/
+const DANGEREUX = /supprim|retir|effac|déconnex|deconnex|révoqu|revoqu|vider|désactiv/i;
+
+const dansUnCalque = () =>
+  page.evaluate(() => {
+    const el = document.activeElement;
+    if (!el || el === document.body) return false;
+    for (let p = el; p; p = p.parentElement) {
+      const cs = getComputedStyle(p);
+      if (cs.position === 'fixed' && Number(cs.zIndex) >= 50) return true;
+    }
+    return false;
+  });
+
+const fuites = [];
+let fenetres = 0;
+
+for (const route of routes) {
+  await page.goto(APP + route).catch(() => undefined);
+  await attendre(1100);
+
+  const libelles = await page.evaluate(() =>
+    [
+      ...new Set(
+        [...document.querySelectorAll('button')]
+          .filter((b) => {
+            const r = b.getBoundingClientRect();
+            return r.width && r.height;
+          })
+          .map((b) => (b.getAttribute('aria-label') || b.textContent || '').replace(/\s+/g, ' ').trim()),
+      ),
+    ].filter((t) => t.length > 1 && t.length < 40),
+  );
+
+  for (const libelle of libelles) {
+    if (DANGEREUX.test(libelle)) continue;
+    const bouton = page.locator(`button:text-is("${libelle.replace(/"/g, '\\"')}")`).first();
+    if ((await bouton.count()) === 0) continue;
+    await bouton.click({ timeout: 2500 }).catch(() => undefined);
+    await attendre(700);
+    if (!(await dansUnCalque())) {
+      // Rien ne s'est ouvert, ou le focus n'y est pas entré : rien à mesurer.
+      await page.goto(APP + route).catch(() => undefined);
+      await attendre(700);
+      continue;
+    }
+    fenetres += 1;
+
+    let sorties = 0;
+    for (let i = 0; i < 30; i += 1) {
+      await page.keyboard.press('Tab');
+      if (!(await dansUnCalque())) sorties += 1;
+    }
+    if (sorties > 0) fuites.push({ route, libelle, sorties });
+
+    await page.keyboard.press('Escape');
+    await attendre(300);
+    await page.goto(APP + route).catch(() => undefined);
+    await attendre(700);
+  }
+}
+
+await nav.close();
+
+if (fuites.length > 0) {
+  console.error(`\n${fuites.length} fenêtre(s) d'où le focus s'échappe :\n`);
+  for (const f of fuites) {
+    console.error(`  ✗ ${f.route} — « ${f.libelle} » : ${f.sorties} sortie(s) sur 30 tabulations`);
+  }
+  console.error('');
+  console.error('Le focus part derrière le voile, sur des liens qu’on ne voit pas et qu’on');
+  console.error('peut activer d’un appui sur Entrée. Le piège vit dans lib/pileCalques.ts et');
+  console.error('s’arme dès qu’un calque est inscrit : vérifiez que la fenêtre appelle bien');
+  console.error('`useFermetureEchap`.');
   process.exit(1);
 }
 
 console.log(
-  `OK — ${routes.length} écrans, ${arrets} arrêts de focus, tous visibles.`,
+  `OK — ${routes.length} écrans, ${arrets} arrêts de focus tous visibles, ` +
+    `${fenetres} fenêtre(s) dont le focus ne sort pas.`,
 );

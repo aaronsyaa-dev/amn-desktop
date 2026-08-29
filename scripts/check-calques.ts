@@ -41,12 +41,14 @@ async function loadFromSrc<T>(entry: string): Promise<T> {
   )) as T;
 }
 
-const { inscrireCalque, fermerLeSommet, calquesOuverts, viderLaPile } = await loadFromSrc<{
-  inscrireCalque: (fermer: () => void) => () => void;
-  fermerLeSommet: () => boolean;
-  calquesOuverts: () => number;
-  viderLaPile: () => void;
-}>('src/lib/pileCalques.ts');
+const { inscrireCalque, fermerLeSommet, calquesOuverts, viderLaPile, prochainFocus } =
+  await loadFromSrc<{
+    inscrireCalque: (fermer: () => void) => () => void;
+    fermerLeSommet: () => boolean;
+    calquesOuverts: () => number;
+    viderLaPile: () => void;
+    prochainFocus: <T>(focusables: readonly T[], actuel: T | null, versArriere: boolean) => T | null;
+  }>('src/lib/pileCalques.ts');
 
 let vus = 0;
 const dit = (nom: string, fn: () => void) => {
@@ -176,6 +178,57 @@ dit('la fermeture lue est la DERNIÈRE fournie, pas celle de l’inscription', (
   boite.fermer = () => (cible = 'courante');
   fermerLeSommet();
   assert.equal(cible, 'courante');
+});
+
+/* ─── La tabulation ne sort pas d'une fenêtre ouverte ─────────────────────── */
+
+/*
+  MESURÉ AVANT CORRECTIF, fenêtre ouverte, trente tabulations : le focus en
+  sortait quinze à vingt-quatre fois selon l'écran, et se promenait dans la
+  navigation DERRIÈRE le voile — « Accueil », « Agenda », « Projets ». Des
+  liens qu'on ne voit pas, qu'on peut atteindre, et activer d'un appui sur
+  Entrée pendant qu'un formulaire est ouvert par-dessus.
+
+  La règle est une boucle : après le dernier arrêt vient le premier. Elle
+  s'éprouve sans navigateur, donc elle est ici — la partie DOM se réduit à
+  « quels éléments, dans quel conteneur ».
+
+  `null` veut dire « laisse faire » : tant que le focus circule à l'intérieur,
+  on ne touche à rien et l'ordre du document reste celui du navigateur.
+*/
+
+dit('au milieu de la fenêtre, on ne force rien', () => {
+  const f = ['a', 'b', 'c'];
+  assert.equal(prochainFocus(f, 'a', false), null);
+  assert.equal(prochainFocus(f, 'b', false), null);
+  assert.equal(prochainFocus(f, 'c', true), null);
+  assert.equal(prochainFocus(f, 'b', true), null);
+});
+
+dit('LA BOUCLE : après le dernier vient le premier', () => {
+  const f = ['a', 'b', 'c'];
+  assert.equal(prochainFocus(f, 'c', false), 'a', 'Tab depuis le dernier');
+  assert.equal(prochainFocus(f, 'a', true), 'c', 'Maj+Tab depuis le premier');
+});
+
+dit('un focus ÉCHAPPÉ est ramené par le bord qu’il visait', () => {
+  const f = ['a', 'b', 'c'];
+  // `null` = le focus n'est plus dans la fenêtre. Il faut le rattraper, et le
+  // poser du côté vers lequel il allait plutôt qu'arbitrairement au début.
+  assert.equal(prochainFocus(f, null, false), 'a');
+  assert.equal(prochainFocus(f, null, true), 'c');
+});
+
+dit('une fenêtre sans rien de focusable ne piège pas le focus', () => {
+  // Sinon la touche serait avalée en boucle sur une fenêtre purement
+  // informative, et on ne pourrait plus rien faire au clavier.
+  assert.equal(prochainFocus([], null, false), null);
+  assert.equal(prochainFocus([], 'a', false), null);
+});
+
+dit('un seul élément focusable : la boucle revient sur lui', () => {
+  assert.equal(prochainFocus(['seul'], 'seul', false), 'seul');
+  assert.equal(prochainFocus(['seul'], 'seul', true), 'seul');
 });
 
 console.log(`\nOK — ${vus} contrôles.\n`);
