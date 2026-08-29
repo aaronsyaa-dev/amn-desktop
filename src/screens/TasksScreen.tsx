@@ -398,7 +398,10 @@ function TaskCard({
         <button
           type="button"
           onClick={() => onOpen(task.id)}
-          className="flex min-w-0 items-start gap-1.5 text-left"
+          // `-my-1.5 py-1.5` : la zone cliquable passe de 19 à 31 px sans rien
+          // déplacer. C'est la cible principale de la carte — celle qu'on vise
+          // pour ouvrir la tâche — et elle était la plus petite.
+          className="-my-1.5 flex min-w-0 items-start gap-1.5 py-1.5 text-left"
           title="Ouvrir la tâche"
         >
           <span
@@ -449,7 +452,7 @@ function TaskCard({
             <button
               type="button"
               onClick={() => showMarker(m)}
-              className="flex items-center gap-1 hover:underline"
+              className="-my-1.5 flex items-center gap-1 py-1.5 hover:underline"
               title={`Voir le repère · ${m.label}`}
             >
               <MapPin size={10} strokeWidth={2} />
@@ -469,7 +472,7 @@ function TaskCard({
           type="button"
           onClick={() => beginCapture((marker) => onAddMarker(task, marker))}
           disabled={capturing}
-          className="flex items-center gap-1 rounded-sm border border-dashed border-border px-1.5 py-0.5 font-mono text-[10px] text-text-muted transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-40"
+          className="flex items-center gap-1 rounded-sm border border-dashed border-border px-1.5 py-1 font-mono text-[10px] text-text-muted transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-40"
           title="Pointer un endroit de l’app à associer à cette tâche"
         >
           <MapPin size={10} strokeWidth={2} />
@@ -501,7 +504,7 @@ function TaskCard({
             key={col.status}
             type="button"
             onClick={() => onMove(task, col.status)}
-            className="flex-1 border border-border py-1 font-mono text-[9px] uppercase tracking-wider text-text-secondary hover:border-border-strong hover:text-text-primary"
+            className="flex-1 border border-border py-1.5 font-mono text-[9px] uppercase tracking-wider text-text-secondary hover:border-border-strong hover:text-text-primary"
           >
             → {col.label}
           </button>
@@ -913,7 +916,7 @@ function TaskDetailModal({
                           onClose();
                           showMarker(m);
                         }}
-                        className="flex items-center gap-1 hover:underline"
+                        className="-my-1.5 flex items-center gap-1 py-1.5 hover:underline"
                       >
                         <MapPin size={10} strokeWidth={2} /> {m.label}
                       </button>
@@ -934,7 +937,7 @@ function TaskDetailModal({
                       onClose();
                       beginCapture((marker) => onAddMarker(task, marker));
                     }}
-                    className="flex items-center gap-1 rounded-sm border border-dashed border-border px-1.5 py-0.5 font-mono text-[10px] text-text-muted transition-colors hover:border-accent/50 hover:text-accent"
+                    className="flex items-center gap-1 rounded-sm border border-dashed border-border px-1.5 py-1 font-mono text-[10px] text-text-muted transition-colors hover:border-accent/50 hover:text-accent"
                   >
                     <MapPin size={10} strokeWidth={2} /> Ajouter un repère
                   </button>

@@ -175,7 +175,10 @@ function DocEditor({
           type="button"
           onClick={() => onRemove(doc.id)}
           aria-label="Supprimer le document"
-          className="text-text-muted hover:text-danger"
+          // 15 × 15 px mesurés, pour un geste IRRÉVERSIBLE posé juste à côté du
+          // titre qu'on est en train d'éditer. `-m-1.5 p-1.5` porte la zone à
+          // 27 px sans déplacer quoi que ce soit sur la ligne.
+          className="-m-1.5 p-1.5 text-text-muted hover:text-danger"
         >
           <Trash2 size={15} strokeWidth={1.75} />
         </button>
