@@ -368,7 +368,7 @@ function BlocEditeur({
   return (
     <div className="group relative border border-border bg-surface p-3">
       {modifiable && (
-        <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="absolute right-2 top-2 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
           <BoutonBloc onClick={onMonter} label="Monter" icon={ChevronUp} />
           <BoutonBloc onClick={onDescendre} label="Descendre" icon={ChevronDown} />
           <BoutonBloc onClick={onSupprimer} label="Supprimer le bloc" icon={Trash2} />
@@ -394,7 +394,13 @@ function BoutonBloc({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="flex h-6 w-6 items-center justify-center border border-border bg-raised text-text-muted transition-colors hover:text-text-primary"
+      /*
+        36 px, et un écart sur le conteneur. Voir
+        `docs/PRINCIPE-CONFORT.md` : une barre d'outils serre ses boutons par
+        habitude, mais 28 px à 4 px d'écart reste une rangée de petites icônes
+        grises qui se ressemblent toutes.
+      */
+      className="flex h-9 w-9 items-center justify-center border border-border bg-raised text-text-muted transition-colors hover:text-text-primary"
     >
       <Icone size={12} strokeWidth={2} />
     </button>

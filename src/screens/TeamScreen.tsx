@@ -742,8 +742,14 @@ function BubbleActions({
   onDelete: () => void;
   side: 'left' | 'right';
 }) {
+  /*
+    `gap-2` et non `gap-0.5` : ces actions font 36 px et se suivaient à 2 px
+    l'une de l'autre. Voir `docs/PRINCIPE-CONFORT.md` — elles se ressemblent
+    toutes, trois petites icônes grises alignées, et l'une d'elles SUPPRIME le
+    message. Sous 44 px, une cible a besoin d'un vrai écart.
+  */
   return (
-    <div className="relative flex items-center gap-0.5 opacity-0 transition-opacity group-hover/msg:opacity-100">
+    <div className="relative flex items-center gap-2 opacity-0 transition-opacity group-hover/msg:opacity-100">
       {pickerOpen && (
         <div
           className={`absolute bottom-full z-10 mb-1 flex items-center gap-0.5 rounded-lg border border-border bg-surface p-1 shadow-lg ${
@@ -769,7 +775,7 @@ function BubbleActions({
         type="button"
         onClick={() => setPickerOpen(!pickerOpen)}
         aria-label="Réagir"
-        className="flex h-6 w-6 items-center justify-center rounded text-text-muted hover:bg-surface-hover hover:text-text-primary"
+        className="flex h-9 w-9 items-center justify-center rounded text-text-muted hover:bg-surface-hover hover:text-text-primary"
       >
         <SmilePlus size={13} strokeWidth={1.75} />
       </button>
@@ -777,7 +783,7 @@ function BubbleActions({
         type="button"
         onClick={onReply}
         aria-label="Répondre"
-        className="flex h-6 w-6 items-center justify-center rounded text-text-muted hover:bg-surface-hover hover:text-text-primary"
+        className="flex h-9 w-9 items-center justify-center rounded text-text-muted hover:bg-surface-hover hover:text-text-primary"
       >
         <CornerUpLeft size={13} strokeWidth={1.75} />
       </button>

@@ -65,7 +65,14 @@ export function AccentSection() {
         toutes été vérifiées pour rester lisibles sur fond sombre.
       </p>
 
-      <div className="flex flex-wrap gap-2">
+      {/*
+        `gap-2.5` et non `gap-2` : la pastille active porte un `scale-105` qui
+        mange le dernier pixel, et l'écart mesuré tombait à 7 px pour des
+        cibles de 36 px. Voir `docs/PRINCIPE-CONFORT.md` — plutôt que de retirer
+        l'agrandissement, qui est le seul signe visible du choix courant, on
+        laisse la place qu'il prend.
+      */}
+      <div className="flex flex-wrap gap-2.5">
         {ACCENTS.map((accent) => {
           const active = accent.id === current;
           return (

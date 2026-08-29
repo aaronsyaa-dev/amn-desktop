@@ -1094,7 +1094,7 @@ function NewQuoteModal({
             <FileText size={14} strokeWidth={1.75} />
             Nouveau devis · {client.name}
           </h2>
-          <button type="button" onClick={onClose} aria-label="Fermer" className="-m-2 flex h-9 w-9 items-center justify-center p-2 text-text-secondary hover:text-text-primary">
+          <button type="button" onClick={onClose} aria-label="Fermer" className="flex h-9 w-9 items-center justify-center text-text-secondary hover:text-text-primary">
             <X size={18} strokeWidth={2} />
           </button>
         </div>
@@ -1355,7 +1355,7 @@ function NewClientModal({
             type="button"
             onClick={onClose}
             aria-label="Fermer"
-            className="-m-2 flex h-9 w-9 items-center justify-center p-2 text-text-secondary hover:text-text-primary"
+            className="flex h-9 w-9 items-center justify-center text-text-secondary hover:text-text-primary"
           >
             <X size={18} strokeWidth={2} />
           </button>

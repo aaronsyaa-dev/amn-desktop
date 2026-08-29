@@ -156,7 +156,7 @@ export function NotesScreen() {
               />
             </div>
             {TEAM_ENABLED && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               {(['all', 'personal', 'team'] as ScopeFilter[]).map((s) => (
                 <button
                   key={s}
@@ -375,7 +375,7 @@ function NoteEditor({
           type="button"
           onClick={onTogglePin}
           aria-label={note.pinned ? 'Désépingler' : 'Épingler'}
-          className={`flex h-7 w-7 items-center justify-center rounded ${note.pinned ? 'text-accent' : 'text-text-muted hover:text-text-primary'}`}
+          className={`flex h-9 w-9 items-center justify-center rounded ${note.pinned ? 'text-accent' : 'text-text-muted hover:text-text-primary'}`}
         >
           {note.pinned ? <PinOff size={15} strokeWidth={1.75} /> : <Pin size={15} strokeWidth={1.75} />}
         </button>
@@ -383,14 +383,21 @@ function NoteEditor({
           type="button"
           onClick={onRemove}
           aria-label="Supprimer la note"
-          className="flex h-7 w-7 items-center justify-center rounded text-text-muted hover:text-danger"
+          className="flex h-9 w-9 items-center justify-center rounded text-text-muted hover:text-danger"
         >
           <Trash2 size={15} strokeWidth={1.75} />
         </button>
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center gap-1 border-b border-border px-3 py-1.5">
+      {/*
+        `gap-2` : une barre d'outils serre ses boutons par habitude, mais 36 px
+        à 4 px d'écart reste une rangée de petites icônes grises qui se
+        ressemblent toutes — gras, italique, titre, lien, liste. Voir
+        `docs/PRINCIPE-CONFORT.md` : sous 44 px, une cible a besoin d'un vrai
+        dégagement.
+      */}
+      <div className="flex items-center gap-2 border-b border-border px-3 py-1.5">
         {tools.map((t) => (
           <button
             key={t.label}
@@ -399,7 +406,7 @@ function NoteEditor({
             disabled={preview}
             aria-label={t.label}
             title={t.label}
-            className="flex h-7 w-7 items-center justify-center rounded text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary disabled:opacity-30"
+            className="flex h-9 w-9 items-center justify-center rounded text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary disabled:opacity-30"
           >
             <t.icon size={15} strokeWidth={1.75} />
           </button>

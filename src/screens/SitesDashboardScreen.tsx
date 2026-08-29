@@ -440,7 +440,7 @@ function SiteRow({
 
         {/* Row actions */}
         <div
-          className={`col-span-2 flex items-center gap-1 justify-self-end transition-opacity focus-within:opacity-100 group-hover:opacity-100 md:col-span-1 ${
+          className={`col-span-2 flex items-center gap-2 justify-self-end transition-opacity focus-within:opacity-100 group-hover:opacity-100 md:col-span-1 ${
             pinned ? 'opacity-100' : 'opacity-100 md:opacity-0'
           }`}
         >
@@ -450,7 +450,7 @@ function SiteRow({
             aria-label={pinned ? 'Retirer des favoris' : 'Épingler en favori'}
             aria-pressed={pinned}
             title={pinned ? 'Retirer des favoris' : 'Épingler'}
-            className={`flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-white/5 ${
+            className={`flex h-9 w-9 items-center justify-center rounded transition-colors hover:bg-white/5 ${
               pinned ? 'text-accent' : 'text-text-muted hover:text-text-primary'
             }`}
           >
@@ -461,7 +461,7 @@ function SiteRow({
             onClick={startEdit}
             aria-label="Renommer le site"
             title="Renommer"
-            className="flex h-7 w-7 items-center justify-center rounded text-text-muted transition-colors hover:bg-white/5 hover:text-text-primary"
+            className="flex h-9 w-9 items-center justify-center rounded text-text-muted transition-colors hover:bg-white/5 hover:text-text-primary"
           >
             <Pencil size={14} strokeWidth={1.75} />
           </button>
@@ -470,7 +470,7 @@ function SiteRow({
             onClick={remove}
             aria-label="Supprimer le site"
             title="Supprimer"
-            className="flex h-7 w-7 items-center justify-center rounded text-text-muted transition-colors hover:bg-danger-muted hover:text-danger"
+            className="flex h-9 w-9 items-center justify-center rounded text-text-muted transition-colors hover:bg-danger-muted hover:text-danger"
           >
             <Trash2 size={14} strokeWidth={1.75} />
           </button>
@@ -702,7 +702,7 @@ function RegisterSiteModal({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             aria-label="Fermer"
-            className="-m-2 flex h-9 w-9 items-center justify-center p-2 text-text-secondary hover:text-text-primary"
+            className="flex h-9 w-9 items-center justify-center text-text-secondary hover:text-text-primary"
           >
             <X size={18} strokeWidth={2} />
           </button>

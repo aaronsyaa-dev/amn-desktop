@@ -194,7 +194,13 @@ export function AgendaScreen() {
             généreux jusqu'à `sm`, et redevient compact à la souris, où viser
             n'a jamais été le problème.
           */}
-          <div className="flex items-center gap-1">
+          {/*
+            `gap-2` : ces trois commandes font 40 px et se suivaient à 4 px.
+            Voir `docs/PRINCIPE-CONFORT.md` — sous 44 px, une cible a besoin
+            d'un vrai écart, et « précédent » et « suivant » se ressemblent
+            assez pour qu'on se trompe de sens sans le voir.
+          */}
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => step(-1)}
@@ -653,7 +659,7 @@ function AppointmentDetail({
           type="button"
           onClick={onClose}
           aria-label="Fermer"
-          className="-m-2 flex h-9 w-9 items-center justify-center p-2 text-text-secondary hover:text-text-primary"
+          className="flex h-9 w-9 items-center justify-center text-text-secondary hover:text-text-primary"
         >
           <X size={18} strokeWidth={2} />
         </button>
@@ -807,7 +813,7 @@ function AppointmentForm({
             type="button"
             onClick={onClose}
             aria-label="Fermer"
-            className="-m-2 flex h-9 w-9 items-center justify-center p-2 text-text-secondary hover:text-text-primary"
+            className="flex h-9 w-9 items-center justify-center text-text-secondary hover:text-text-primary"
           >
             <X size={18} strokeWidth={2} />
           </button>

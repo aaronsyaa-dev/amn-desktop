@@ -529,7 +529,7 @@ export function GeneratorScreen() {
                     application grise le premier jour, et elle en change quand elle veut depuis ses
                     propres paramètres — le générateur ne fixe l’identité visuelle de personne.
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2.5">
                     {ACCENTS.map((accent) => (
                       <button
                         key={accent.id}
@@ -538,7 +538,12 @@ export function GeneratorScreen() {
                         title={accent.label}
                         aria-label={accent.label}
                         aria-pressed={accentId === accent.id}
-                        className={`flex h-8 w-8 items-center justify-center border transition-transform ${
+                        /*
+                          36 px et `gap-2.5` : mesurées à 32 px avec 7 px
+                          d'écart — le `scale-105` de la pastille active mange
+                          le dernier pixel. Voir `docs/PRINCIPE-CONFORT.md`.
+                        */
+                        className={`flex h-9 w-9 items-center justify-center border transition-transform ${
                           accentId === accent.id
                             ? 'border-text-primary scale-105'
                             : 'border-border hover:border-border-strong'

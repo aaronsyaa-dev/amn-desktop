@@ -64,6 +64,16 @@ const MOT_DE_PASSE = process.env.AMN_E2E_PASSWORD ?? '';
 const MINIMUM_PX = 24;
 
 /**
+ * La taille à partir de laquelle une cible ne se rate plus, donc n'a pas
+ * besoin d'être écartée de sa voisine. 44 px est la recommandation de
+ * WCAG 2.5.5 (AAA) — ici on ne l'exige pas, on s'en sert comme frontière.
+ */
+const CIBLE_PLEINE_PX = 44;
+
+/** Le dégagement qu'il faut à une cible plus petite que ça. */
+const DEGAGEMENT_PX = 8;
+
+/**
  * Les familles connues de l'édition interne, avec leur raison.
  *
  * La clé est la signature de classe telle que le navigateur la rend, tronquée :
@@ -146,6 +156,7 @@ const petites = new Map();
 let mesures = 0;
 let cibles = 0;
 let detailsOuverts = 0;
+const collees = new Map();
 
 while (aVisiter.length > 0) {
   const route = aVisiter.shift();
@@ -168,6 +179,83 @@ while (aVisiter.length > 0) {
   mesures += 1;
 
   const mesurer = async (ou) => {
+    /*
+      DEUX CIBLES VOISINES QUI SE TOUCHENT — LA SECONDE RÈGLE
+      ═══════════════════════════════════════════════════════
+
+      Voir `docs/PRINCIPE-CONFORT.md`. Atteindre les 24 px de WCAG 2.5.8 en
+      COLLANT deux cibles ne rend pas le geste confortable : on vise juste, ou
+      on déclenche la voisine. Le seuil est un plancher légal, pas un objectif.
+
+      Mais un écart minimal appliqué bêtement serait pire que rien. Mesuré sur
+      l'édition interne : 536 paires de cibles voisines à moins de 8 px, dont
+      la quasi-totalité est parfaitement confortable — 337 liens de navigation
+      hauts de 44 px, 92 onglets pleine hauteur, 22 lignes pleine largeur. On
+      ne rate pas une ligne qui prend tout l'écran. Signaler ces 337-là, c'est
+      obtenir un garde-fou qu'on apprend à ignorer.
+
+      Ce qui compte est donc l'écart RAPPORTÉ À LA TAILLE, dans l'axe où l'on
+      vise :
+
+        une cible d'au moins 44 px dans cet axe → on ne peut pas la manquer,
+        l'écart n'a pas d'importance ;
+        en dessous → il lui faut 8 px de dégagement.
+
+      Calibrée ainsi, la règle rendait quatre familles au premier passage — les
+      actions d'un message (36 px à 2 px, dont une qui supprime), la navigation
+      de période de l'agenda, les pastilles d'accent, les boutons de
+      l'enregistreur vocal — et zéro une fois celles-ci corrigées. C'est le
+      signe d'un seuil qui décrit quelque chose plutôt qu'un seuil choisi pour
+      passer.
+
+      Seulement entre ENFANTS DIRECTS d'un même conteneur : deux boutons de
+      régions différentes qui se frôlent à l'écran ne se confondent pas, et les
+      comparer donnait un bruit ingérable.
+    */
+    const serrees = await page.evaluate(
+      ({ pleine, degagement }) => {
+        const SEL = 'button,a[href],input:not([type=hidden]),select,textarea,[role=button]';
+        const visible = (el) => {
+          const b = el.getBoundingClientRect();
+          const cs = getComputedStyle(el);
+          return b.width > 0 && b.height > 0 && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.1;
+        };
+        const out = [];
+        for (const parent of document.querySelectorAll('*')) {
+          const enfants = [...parent.children].filter((c) => c.matches(SEL) && visible(c));
+          for (let i = 0; i < enfants.length - 1; i += 1) {
+            const A = enfants[i].getBoundingClientRect();
+            const B = enfants[i + 1].getBoundingClientRect();
+            const dx = Math.max(0, Math.max(A.left - B.right, B.left - A.right));
+            const dy = Math.max(0, Math.max(A.top - B.bottom, B.top - A.bottom));
+            // L'axe où elles se suivent : celui qui porte l'écart.
+            const cote = dx > 0 || (dy === 0 && A.top < B.bottom && B.top < A.bottom);
+            const ecart = cote ? dx : dy;
+            const petite = Math.min(cote ? A.width : A.height, cote ? B.width : B.height);
+            if (petite >= pleine || ecart >= degagement) continue;
+            out.push({
+              ecart: Math.round(ecart),
+              petite: Math.round(petite),
+              cls: String(enfants[i].className || '').slice(0, 50),
+              txt: (enfants[i].getAttribute('aria-label') || enfants[i].textContent || '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .slice(0, 30),
+            });
+          }
+        }
+        return out;
+      },
+      { pleine: CIBLE_PLEINE_PX, degagement: DEGAGEMENT_PX },
+    );
+    for (const x of serrees) {
+      const e = collees.get(x.cls) ?? { ...x, n: 0, routes: new Set() };
+      e.n += 1;
+      e.routes.add(ou);
+      e.ecart = Math.min(e.ecart, x.ecart);
+      collees.set(x.cls, e);
+    }
+
     const releve = await page.evaluate((minimum) => {
       const out = [];
       let vus = 0;
@@ -269,6 +357,24 @@ if (inutiles.length > 0) {
   process.exit(1);
 }
 
+if (collees.size > 0) {
+  const total = [...collees.values()].reduce((n, e) => n + e.n, 0);
+  console.error(
+    `\n${collees.size} famille(s) de cibles VOISINES trop serrées — ${total} occurrence(s) :\n`,
+  );
+  for (const e of [...collees.values()].sort((a, b) => b.n - a.n)) {
+    console.error(`  ✗ ${e.n}×  cible ${e.petite} px, écart ${e.ecart} px  « ${e.txt} »`);
+    console.error(`      [${e.cls}]  ${[...e.routes].slice(0, 4).join(' ')}\n`);
+  }
+  console.error(
+    `Sous ${CIBLE_PLEINE_PX} px, une cible a besoin de ${DEGAGEMENT_PX} px de dégagement : atteindre\n` +
+      `les ${MINIMUM_PX} px de WCAG en COLLANT deux cibles ne rend pas le geste confortable — on vise\n` +
+      'juste, ou on déclenche la voisine. Écartez-les (`gap-2` sur le conteneur), ou\n' +
+      `portez-les à ${CIBLE_PLEINE_PX} px. Voir docs/PRINCIPE-CONFORT.md.`,
+  );
+  process.exit(1);
+}
+
 if (petites.size > 0) {
   const total = [...petites.values()].reduce((n, e) => n + e.n, 0);
   console.error(`${petites.size} forme(s) sous ${MINIMUM_PX} px — ${total} occurrence(s) :\n`);
@@ -286,5 +392,5 @@ if (petites.size > 0) {
 
 console.log(
   `OK — ${mesures} écrans + ${detailsOuverts} vue(s) de détail, ${cibles} cibles mesurées, ` +
-    `aucune sous ${MINIMUM_PX} px hors familles nommées.`,
+    `aucune sous ${MINIMUM_PX} px, et aucune paire voisine trop serrée.`,
 );

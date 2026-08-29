@@ -437,7 +437,7 @@ function LigneIncident({
           </div>
         </div>
 
-        <div className="flex flex-shrink-0 items-center gap-1.5">
+        <div className="flex flex-shrink-0 items-center gap-2">
           {incident.status === 'new' && (
             <Bouton onClick={onAcquitter} disabled={occupe} principal>
               Je m’en occupe
@@ -463,7 +463,13 @@ function LigneIncident({
             onClick={onBasculer}
             aria-label={ouvert ? 'Replier la chronologie' : 'Voir la chronologie'}
             aria-expanded={ouvert}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
+            /*
+              `flex-shrink-0` autant que la taille : sans lui, la rangée
+              d'actions le comprimait à 15 px de large sur un écran de 390 px —
+              mesuré 231 fois. Une cible qui rétrécit quand l'écran rétrécit est
+              une cible qui disparaît là où elle est la plus difficile à viser.
+            */
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
           >
             <motion.span animate={{ rotate: ouvert ? 180 : 0 }} transition={{ duration: 0.18 }}>
               <ChevronDown size={15} strokeWidth={1.75} />
@@ -659,12 +665,21 @@ function Bouton({
   principal?: boolean;
   discret?: boolean;
 }) {
+  /*
+    36 px de haut, et non 28. Voir `docs/PRINCIPE-CONFORT.md`.
+
+    Ce sont les gestes CENTRAUX du bureau de supervision — « Je m'en occupe »,
+    « Clore », « Faux positif », « Rouvrir » — et ils se suivaient à 6 px
+    d'écart sur 28 px de haut, 249 fois sur les écrans mesurés. Trois libellés
+    voisins de la même couleur, sur la file de travail qu'on parcourt le matin :
+    c'est exactement là qu'on ne veut pas se tromper de bouton.
+  */
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+      className={`flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
         principal
           ? 'bg-accent text-bg hover:bg-accent-hover'
           : discret

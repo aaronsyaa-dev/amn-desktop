@@ -589,9 +589,9 @@ function NewTaskModal({
         transition={{ type: 'spring', stiffness: 420, damping: 32 }}
         className="relative w-full max-w-md border border-border-strong bg-surface"
       >
-        <div className="flex items-center justify-between border-b border-border px-5 py-3">
+        <div className="flex items-center justify-between gap-2 border-b border-border px-5 py-3">
           <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">Nouvelle tâche</h2>
-          <button type="button" onClick={onClose} aria-label="Fermer" className="-m-2 flex h-9 w-9 items-center justify-center p-2 text-text-secondary hover:text-text-primary">
+          <button type="button" onClick={onClose} aria-label="Fermer" className="flex h-9 w-9 items-center justify-center text-text-secondary hover:text-text-primary">
             <X size={18} strokeWidth={2} />
           </button>
         </div>
@@ -774,19 +774,19 @@ function TaskDetailModal({
         transition={{ type: 'spring', stiffness: 420, damping: 32 }}
         className="relative flex max-h-[85vh] w-full max-w-lg flex-col border border-border-strong bg-surface"
       >
-        <div className="flex items-center justify-between border-b border-border px-5 py-3">
+        <div className="flex items-center justify-between gap-2 border-b border-border px-5 py-3">
           <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">Tâche</h2>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             {!editing && (
               <button
                 type="button"
                 onClick={() => setEditing(true)}
-                className="flex items-center gap-1.5 rounded-sm px-2 py-1 text-xs text-text-secondary hover:text-text-primary"
+                className="flex min-h-9 items-center gap-1.5 rounded-sm px-2 py-1 text-xs text-text-secondary hover:text-text-primary"
               >
                 <Pencil size={13} strokeWidth={1.75} /> Modifier
               </button>
             )}
-            <button type="button" onClick={onClose} aria-label="Fermer" className="-m-2 flex h-9 w-9 items-center justify-center p-2 text-text-secondary hover:text-text-primary">
+            <button type="button" onClick={onClose} aria-label="Fermer" className="flex h-9 w-9 items-center justify-center text-text-secondary hover:text-text-primary">
               <X size={18} strokeWidth={2} />
             </button>
           </div>

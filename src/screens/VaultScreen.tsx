@@ -374,11 +374,11 @@ function VaultReader({
           </span>
           <h2 className="truncate text-2xl font-semibold leading-tight text-text-primary">{entry.label}</h2>
         </div>
-        <div className="flex flex-shrink-0 items-center gap-1">
+        <div className="flex flex-shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={onEdit}
-            className="flex items-center gap-1.5 rounded-sm px-2 py-1 text-xs text-text-secondary hover:text-text-primary"
+            className="flex min-h-9 items-center gap-1.5 rounded-sm px-2 py-1 text-xs text-text-secondary hover:text-text-primary"
           >
             <Pencil size={13} strokeWidth={1.75} /> Éditer
           </button>
@@ -386,7 +386,7 @@ function VaultReader({
             type="button"
             onClick={onRemove}
             aria-label="Supprimer"
-            className="flex h-7 w-7 items-center justify-center rounded text-text-muted hover:text-danger"
+            className="flex h-9 w-9 items-center justify-center rounded text-text-muted hover:text-danger"
           >
             <Trash2 size={15} strokeWidth={1.75} />
           </button>
@@ -521,7 +521,7 @@ function VaultEditor({
           type="button"
           onClick={onCancel}
           aria-label="Fermer"
-          className="-m-2 flex h-9 w-9 items-center justify-center p-2 text-text-secondary hover:text-text-primary"
+          className="flex h-9 w-9 items-center justify-center text-text-secondary hover:text-text-primary"
         >
           <X size={18} strokeWidth={2} />
         </button>
