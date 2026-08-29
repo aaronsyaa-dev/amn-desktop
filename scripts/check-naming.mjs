@@ -16,13 +16,18 @@
  * d'après le champ `name` de package.json — unique pour les deux éditions,
  * puisqu'elles partagent un dépôt — et non d'après `productName`.
  *
- * Quatre règles :
+ * Six règles :
  *
  *   1. l'AUMID de `src/main.ts` est EXACTEMENT l'appId d'electron-builder,
  *      édition par édition (sinon Windows n'affiche aucune notification) ;
  *   2. les deux éditions ont des identités DISTINCTES deux à deux ;
- *   3. le nom affiché (`EDITION_PRODUCT_NAME`) est celui du paquet ;
- *   4. aucun nom de produit n'est écrit en dur hors des deux sources.
+ *   3. le nom affiché (`EDITION_PRODUCT_NAME`) est celui du paquet, et
+ *      3 bis, celui que la PWA annonce l'est aussi ;
+ *   4. aucun nom de produit n'est écrit en dur hors des deux sources ;
+ *   5. amn-api ne nomme aucun produit en dur — il sert les DEUX ;
+ *   6. personne ne REDÉCIDE le nom sous une autre forme. La règle 4 cherche
+ *      « AMN Desktop » ; le logo écrivait « Desktop » tout court, à l'envers,
+ *      et personne ne le voyait.
  *
  *   node scripts/check-naming.mjs
  */
@@ -233,6 +238,78 @@ for (const fichier of fichiers) {
         `${fichier} écrit « ${nom} » en dur. Le nom d'une édition vient de ` +
           `EDITION_PRODUCT_NAME (affichage) ou de la configuration d'electron-builder ` +
           `(paquet) — une chaîne figée ne suivra pas le prochain renommage.`,
+      );
+    }
+  }
+}
+
+/* ─── 6. Personne ne REDÉCIDE le nom sous une autre forme ───────────────── */
+
+/*
+  LA RÈGLE QUE LE LOGO A PRISE EN DÉFAUT.
+
+  La règle 4 cherche les noms COMPLETS — « AMN Desktop », « AMN Business ».
+  `src/components/Logo.tsx` écrivait le mot NU :
+
+      const APP_WORD = IS_BUSINESS ? 'Business' : 'Desktop';
+
+  Aucun nom complet, donc rien à trouver, et pourtant l'inverse exact de la
+  vérité : le logo de l'application d'une CLIENTE dessinait « AMN Business »,
+  le nom de notre produit interne, et le nôtre dessinait le sien. Le même
+  `<svg>` annonçait `EDITION_PRODUCT_NAME` en `aria-label` — le bon nom à voix
+  haute, le mauvais à l'œil, dans le même élément.
+
+  C'est le LOGO. Il ouvre l'écran « À propos ». Un produit qui ne connaît pas
+  son propre nom use la confiance d'une cliente plus vite qu'une panne, parce
+  qu'une panne s'explique.
+
+  La règle cherche donc le MOTIF plutôt que la chaîne : un aiguillage sur
+  `IS_BUSINESS` dont les deux branches sont des morceaux des deux noms de
+  produit. C'est exact plutôt qu'approximatif — il faut que les DEUX branches
+  correspondent, chacune à un nom, pour que ce soit un aiguillage d'identité
+  et pas une phrase qui parle de bureau. Les vrais aiguillages du dépôt
+  (AUMID, textes d'écran) n'y répondent pas.
+
+  Un morceau de nom de moins de quatre lettres est ignoré : « AMN » est commun
+  aux deux, et ne distingue rien.
+*/
+const MORCEAU_MIN = 4;
+const morceauDe = (mot, nom) => mot.length >= MORCEAU_MIN && nom.includes(mot);
+
+for (const fichier of fichiers) {
+  if (SOURCES_LEGITIMES.has(fichier)) continue;
+  /*
+    COMMENTAIRES RETIRÉS D'ABORD, comme à la règle 4 — et pour une raison
+    qu'on a rencontrée en écrivant celle-ci : le commentaire qui explique le
+    défaut CITE le code fautif. Sans ce nettoyage, la règle signalait le
+    fichier déjà corrigé, en lisant sa propre explication. Un contrôle doit
+    lire du code, pas de la prose à propos du code.
+  */
+  const source = read(fichier).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  for (const m of source.matchAll(/IS_BUSINESS\s*\?\s*'([^']*)'\s*:\s*'([^']*)'/g)) {
+    const [, brancheCliente, brancheInterne] = m;
+    if (brancheCliente === brancheInterne) continue;
+
+    const inverse =
+      morceauDe(brancheCliente, interne.productName) && morceauDe(brancheInterne, cliente.productName);
+    const droit =
+      morceauDe(brancheCliente, cliente.productName) && morceauDe(brancheInterne, interne.productName);
+
+    if (inverse) {
+      failures.push(
+        `${fichier} nomme les éditions À L'ENVERS : « ${brancheCliente} » du côté client ` +
+          `(c'est un morceau de « ${interne.productName} », notre produit INTERNE) et ` +
+          `« ${brancheInterne} » du côté interne. Le nom se déduit de EDITION_PRODUCT_NAME ` +
+          `— par exemple \`EDITION_PRODUCT_NAME.replace(/^AMN\\s+/, '')\` — et n'est jamais ` +
+          `réécrit à la main : c'est exactement ainsi que le logo a fini par dessiner, ` +
+          `pendant des semaines, le nom d'un produit que la cliente n'a pas acheté.`,
+      );
+    } else if (droit) {
+      failures.push(
+        `${fichier} redécide le nom des éditions (« ${brancheCliente} » / ` +
+          `« ${brancheInterne} »). Il est juste aujourd'hui, et c'est une SECONDE source de ` +
+          `vérité : elle ne suivra pas le prochain renommage. Déduisez-le de ` +
+          `EDITION_PRODUCT_NAME.`,
       );
     }
   }

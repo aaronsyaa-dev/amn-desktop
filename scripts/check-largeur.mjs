@@ -1,5 +1,16 @@
 /**
- * Contrôle de LARGEUR — ce qui dépasse d'un téléphone sans qu'on puisse y accéder.
+ * Contrôle de LARGEUR — ce qu'un téléphone rend illisible sans le dire.
+ *
+ * Deux défauts, opposés, et muets tous les deux :
+ *
+ *   - **ce qui DÉBORDE** — coupé par la coque, sans barre de défilement ;
+ *   - **ce qui est ÉCRASÉ** — un paragraphe réduit à une colonne de dix
+ *     caractères pour garder un bouton sur la même ligne.
+ *
+ * Le second a été trouvé APRÈS que le premier soit passé au vert : dix-neuf
+ * écrans « aucun contenu coupé », et dans les réglages un texte de cent
+ * quatre-vingts caractères rendu sur 88 px de large et 254 px de haut. Rien ne
+ * dépassait — tout était comprimé. Voir la deuxième règle, plus bas.
  *
  * ## Le défaut qu'il cherche, et pourquoi rien d'autre ne le voit
  *
@@ -56,6 +67,29 @@ const APP = (process.env.AMN_E2E_URL ?? 'http://127.0.0.1:4180/').replace(/\/?$/
 const LARGEUR = Number(process.env.AMN_E2E_LARGEUR ?? 390);
 const CHROMIUM = process.env.AMN_E2E_CHROMIUM ?? '/opt/pw-browsers/chromium';
 const EMAIL = process.env.AMN_E2E_EMAIL ?? '';
+
+/*
+  LA DEUXIÈME RÈGLE : le texte écrasé.
+
+  Un enfant de flex avec `flex-1 min-w-0` et sans base rétrécit jusqu'à zéro
+  pour garder son voisin — un bouton, en général — sur la même ligne. Sur un
+  écran large personne ne le voit ; sur un téléphone, le paragraphe devient un
+  ruban vertical d'un mot par ligne, et le bouton, lui, reste confortable.
+
+  C'est invisible à la première règle : rien ne déborde. C'est invisible à la
+  lecture du CSS : `flex-wrap` est bien là, et l'auteur croit que la ligne se
+  cassera. Elle ne se casse pas, parce que rien ne dit à quelle largeur.
+
+  Les deux seuils sont mesurés, pas devinés. Le défaut d'origine faisait 88 px
+  pour 173 caractères ; après correctif, l'application entière — dix-neuf
+  écrans — ne contient plus AUCUN bloc de plus de 90 caractères sous 220 px de
+  large. Le seuil est posé à 160 px, entre les deux, donc large des deux côtés.
+
+  Seul le texte porté par l'élément LUI-MÊME est compté : un conteneur hérite
+  sinon du texte de tous ses enfants et serait signalé à leur place.
+*/
+const ETROIT_PX = 160;
+const ETROIT_CARACTERES = 90;
 const MOT_DE_PASSE = process.env.AMN_E2E_PASSWORD ?? '';
 
 if (!EMAIL || !MOT_DE_PASSE) {
@@ -116,6 +150,7 @@ if (aVisiter.length === 0) {
 
 const vues = new Set();
 const coupables = [];
+const ecrases = [];
 let mesures = 0;
 
 while (aVisiter.length > 0) {
@@ -164,6 +199,34 @@ while (aVisiter.length > 0) {
 
   if (pire) coupables.push({ route, pire });
 
+  const comprimes = await page.evaluate(
+    ({ largeurMax, minCaracteres }) => {
+      const out = [];
+      for (const el of document.querySelectorAll('p,li,span,div,td,h1,h2,h3,h4,label,a,button')) {
+        const propre = [...el.childNodes]
+          .filter((n) => n.nodeType === 3)
+          .map((n) => n.textContent)
+          .join('')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (propre.length < minCaracteres) continue;
+        const b = el.getBoundingClientRect();
+        if (b.width === 0 || b.width >= largeurMax) continue;
+        out.push({
+          w: Math.round(b.width),
+          h: Math.round(b.height),
+          n: propre.length,
+          tag: el.tagName.toLowerCase(),
+          cls: String(el.className || '').slice(0, 100),
+          txt: propre.slice(0, 60),
+        });
+      }
+      return out.sort((a, b) => a.w - b.w)[0] ?? null;
+    },
+    { largeurMax: ETROIT_PX, minCaracteres: ETROIT_CARACTERES },
+  );
+  if (comprimes) ecrases.push({ route, pire: comprimes });
+
   // Les liens de CET écran rejoignent la file : c'est ainsi qu'on atteint la
   // Tour de contrôle, le contexte client, et tout ce qui n'est pas dans la
   // barre de l'accueil.
@@ -174,6 +237,20 @@ while (aVisiter.length > 0) {
 }
 
 await nav.close();
+
+if (ecrases.length > 0) {
+  console.error(`${ecrases.length} écran(s) au texte écrasé sur ${mesures} mesuré(s) :\n`);
+  for (const c of ecrases) {
+    console.error(`  ✗ ${c.route} — ${c.pire.n} caractères dans ${c.pire.w} px de large (${c.pire.h} px de haut)`);
+    console.error(`      <${c.pire.tag}> ${c.pire.cls}`);
+    console.error(`      « ${c.pire.txt} »`);
+    console.error('');
+  }
+  console.error('Rien ne déborde ici : le texte est COMPRIMÉ pour garder son voisin sur la');
+  console.error('même ligne. La cause est presque toujours un `flex-1 min-w-0` sans base :');
+  console.error('ajoutez `basis-64` (ou une base adaptée) pour que la ligne se casse et que');
+  console.error('le voisin passe dessous. Voir l’en-tête de ce fichier.');
+}
 
 if (coupables.length > 0) {
   console.error(`${coupables.length} écran(s) coupé(s) sur ${mesures} mesuré(s) :\n`);
@@ -187,7 +264,10 @@ if (coupables.length > 0) {
   console.error('sans barre de défilement pour le laisser deviner. La cause est presque');
   console.error('toujours un enfant de grille ou de flex sans `min-w-0` — il refuse de');
   console.error('devenir plus étroit que son contenu. Voir l’en-tête de ce fichier.');
-  process.exit(1);
 }
 
-console.log(`OK — ${mesures} écrans mesurés à ${LARGEUR} px, aucun contenu coupé sans recours.`);
+if (coupables.length > 0 || ecrases.length > 0) process.exit(1);
+
+console.log(
+  `OK — ${mesures} écrans mesurés à ${LARGEUR} px : rien de coupé sans recours, rien d’écrasé.`,
+);

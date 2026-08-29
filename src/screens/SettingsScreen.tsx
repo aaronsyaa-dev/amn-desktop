@@ -6,7 +6,6 @@ import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { bridge } from '../lib/bridge';
 import { cleanErrorMessage } from '../lib/errorMessage';
-import { downloadBackup } from '../lib/backup';
 import { resizeImageToDataUrl } from '../lib/imageResize';
 import { ensurePushSubscription, sendPushTest } from '../lib/webPush';
 import { UserAvatar } from '../components/UserAvatar';
@@ -18,6 +17,7 @@ import { APP_VERSION, EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/editi
 import { OllamaSection, useExclusive } from '@edition/exclusive';
 import { AccountSecuritySection } from '../components/settings/AccountSecuritySection';
 import { MfaSection } from '../components/settings/MfaSection';
+import { DataSection } from '../components/settings/DataSection';
 import { UpdateSection } from '../components/settings/UpdateSection';
 
 /** Une phrase d'identité par édition — celle de l'interne nomme AMN DevSec. */
@@ -174,60 +174,12 @@ export function SettingsScreen() {
         </StaggerItem>
       )}
       <StaggerItem>
-        <BackupSection />
+        <DataSection />
       </StaggerItem>
       <StaggerItem>
         <AboutSection />
       </StaggerItem>
     </StaggerGroup>
-  );
-}
-
-function BackupSection() {
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
-
-  const run = async () => {
-    setBusy(true);
-    setDone(false);
-    try {
-      await downloadBackup();
-      setDone(true);
-      window.setTimeout(() => setDone(false), 2500);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Panel
-      icon={Download}
-      title="Mes données"
-      subtitle="Emportez une copie de tout ce que contient votre espace, dans un seul fichier."
-    >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {/*
-          Le sous-titre énumérait « clients, devis, tâches, messages… » — la
-          liste de ce que l'export contenait VRAIMENT, à savoir neuf
-          collections sur vingt-deux, et pas celles d'une cliente. Il ne
-          promet plus une énumération qu'il faudrait tenir à jour : il promet
-          tout, et c'est le serveur qui tient la liste (voir lib/backup.ts).
-        */}
-        <p className="text-xs text-text-muted">
-          Un fichier JSON, à conserver en lieu sûr : vos fiches, vos documents et vos réglages
-          y sont. Le coffre-fort en est absent — il ne quitte pas cet appareil.
-        </p>
-        <button
-          type="button"
-          onClick={run}
-          disabled={busy}
-          className="flex items-center gap-2 border border-border-strong bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover disabled:opacity-40"
-        >
-          {busy ? <Loader2 size={14} className="animate-spin" /> : done ? <Check size={14} /> : <Download size={14} />}
-          {busy ? 'Export…' : done ? 'Exporté' : 'Exporter mes données'}
-        </button>
-      </div>
-    </Panel>
   );
 }
 

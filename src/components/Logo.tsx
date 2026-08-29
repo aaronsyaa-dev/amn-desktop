@@ -4,13 +4,34 @@ import { EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/edition';
 /** Raison sociale affichée sous le logo. Une cliente n'a pas à voir la nôtre. */
 const BRAND_NAME = IS_BUSINESS ? EDITION_PRODUCT_NAME : 'AMN DevSec';
 
-/** Mot apposé au sigle : « Desktop » en interne, « Business » chez une cliente. */
-const APP_WORD = IS_BUSINESS ? 'Business' : 'Desktop';
+/**
+ * Le mot apposé au sigle — DÉDUIT du nom produit, jamais recopié.
+ *
+ * Il valait `IS_BUSINESS ? 'Business' : 'Desktop'`, c'est-à-dire l'inverse
+ * exact de la vérité : le logo de l'application d'une CLIENTE dessinait
+ * « AMN Business », le nom de notre produit interne, et le nôtre dessinait
+ * « AMN Desktop », le sien. Le commentaire qui l'accompagnait décrivait
+ * fidèlement ce mauvais mapping — c'était un fossile d'avant l'échange des
+ * noms commerciaux, et le renommage n'avait jamais atteint ce fichier.
+ *
+ * Ce n'est pas un détail de coin d'écran : c'est le LOGO. Il est en tête de
+ * l'écran « À propos », et une cliente qui l'y lit apprend le nom d'un produit
+ * qu'elle n'a pas acheté. Le même `<svg>` annonçait d'ailleurs
+ * `EDITION_PRODUCT_NAME` à un lecteur d'écran — donc le bon nom à voix haute
+ * et le mauvais à l'œil, dans le même élément. Deux sources de vérité pour un
+ * seul nom, qui avaient fini par diverger.
+ *
+ * Il n'y en a plus qu'une. `EDITION_PRODUCT_NAME` vaut « AMN Desktop » ou
+ * « AMN Business » ; on en retire la marque, et il reste le mot à tracer. Un
+ * prochain renommage suit tout seul, et `check-naming.mjs` (règle 6) refuse
+ * désormais qu'un fichier redécide ce nom pour son compte.
+ */
+const APP_WORD = EDITION_PRODUCT_NAME.replace(/^AMN\s+/, '');
 
 interface LogoProps {
   /** Show the "DEVSEC" tagline under the wordmark. */
   showTagline?: boolean;
-  /** Append " Desktop" (the app name) after the wordmark, smaller and muted. */
+  /** Append the product word after the wordmark, smaller and muted. */
   showAppName?: boolean;
   /** Rendered height in px; width scales with the aspect ratio. */
   height?: number;
