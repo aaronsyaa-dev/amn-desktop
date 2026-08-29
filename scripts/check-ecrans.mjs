@@ -28,7 +28,22 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SCREENS = path.join(ROOT, 'src/screens');
+
+/*
+  DEUX DOSSIERS, ET LE SECOND EST CELUI DE LA CLIENTE.
+
+  Ce contrôle ne lisait que `src/screens/`. Or l'édition livrée aux clientes a
+  ses écrans à elle, dans `src/business/`, et AUCUN ne passait par
+  `ScreenHeader` : trois titres faits main, en `text-lg` — 18 px contre les 22
+  à 24 du composant.
+
+  L'ironie est complète : la refonte disait « la même voix sur les trente-deux
+  écrans », le contrôle la faisait respecter sur ceux d'AMN DevSec, et
+  l'édition qu'on VEND gardait la voix d'avant. Et le tableau du dessus
+  affichait fièrement « 26 écrans migrés » — sur un dénominateur qui excluait
+  les seuls écrans qu'une cliente voit.
+*/
+const DOSSIERS = ['src/screens', 'src/business'];
 const failures = [];
 
 /*
@@ -52,12 +67,24 @@ const SANS_ENTETE = new Map([
   ['PagesScreen', 'déjà migré'],
   ['PersonalBudgetScreen', 'déjà migré'],
   ['IncidentsScreen', 'déjà migré'],
+  // src/business — l'édition cliente.
+  ['HomeSoloScreen', 'l’accueil est lui-même l’en-tête de l’application'],
+  ['BusinessLayout', 'une coque, pas un écran'],
+  ['BusinessSidebar', 'une barre de navigation'],
+  ['BusinessTopBar', 'une barre supérieure'],
+  ['DayBand', 'une bande de contenu, montée DANS un écran'],
+  ['SoloPulse', 'un encart de l’accueil'],
+  ['AppointmentReminders', 'un encart de l’agenda'],
 ]);
 
-const fichiers = fs
-  .readdirSync(SCREENS)
-  .filter((f) => f.endsWith('.tsx'))
-  .map((f) => ({ nom: f.replace(/\.tsx$/, ''), chemin: path.join(SCREENS, f) }));
+const fichiers = DOSSIERS.flatMap((dossier) => {
+  const dir = path.join(ROOT, dossier);
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith('.tsx'))
+    .map((f) => ({ nom: f.replace(/\.tsx$/, ''), chemin: path.join(dir, f), dossier }));
+});
 
 let migres = 0;
 

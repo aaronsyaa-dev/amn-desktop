@@ -86,6 +86,28 @@ export function monthLabel(date: Date): string {
   return `${MONTH_LABELS[date.getMonth()]} ${date.getFullYear()}`;
 }
 
+/**
+ * La première lettre en capitale, ET RIEN D'AUTRE.
+ *
+ * Les trois libellés de l'agenda passaient par la classe CSS `capitalize`, qui
+ * met une capitale à CHAQUE mot. En anglais c'est la convention ; en français
+ * c'est une faute, et elle se lisait à l'écran :
+ *
+ *     Semaine Du 24 Août        au lieu de   Semaine du 24 août
+ *     Lundi 24 Août             au lieu de   Lundi 24 août
+ *
+ * Les noms de mois et de jours ne prennent pas de majuscule en français, et
+ * « du » encore moins. `toLocaleDateString('fr-FR')` rend d'ailleurs déjà tout
+ * en minuscules — c'est exactement ce qu'il faut, à la première lettre près
+ * quand le libellé ouvre une phrase.
+ *
+ * D'où cette fonction plutôt qu'une classe : seul l'appelant sait si son
+ * libellé commence une phrase, et le CSS ne sait pas lire le français.
+ */
+export function capitaliserPhrase(texte: string): string {
+  return texte ? texte.charAt(0).toUpperCase() + texte.slice(1) : texte;
+}
+
 export function longDayLabel(date: Date): string {
   return date.toLocaleDateString('fr-FR', {
     weekday: 'long',

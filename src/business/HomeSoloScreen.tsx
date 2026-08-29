@@ -6,7 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useClients } from '../state/useClients';
 import { useCollection } from '../state/SyncContext';
 import { appointmentEnd, useAppointments, type Appointment } from '../state/useAppointments';
-import { dayKey, longDayLabel, relativeToNow, timeLabel } from '../lib/calendar';
+import { capitaliserPhrase, dayKey, longDayLabel, relativeToNow, timeLabel } from '../lib/calendar';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { AttentionPanel } from '../components/AttentionPanel';
 import { useAttention } from '../state/useAttention';
@@ -109,7 +109,7 @@ export function HomeSoloScreen() {
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-text-primary">
           {homeWelcome(user?.name?.split(' ')[0] ?? '', now, serein)}
         </h1>
-        <p className="mt-0.5 text-sm capitalize text-text-secondary">{longDayLabel(now)}</p>
+        <p className="mt-0.5 text-sm text-text-secondary">{capitaliserPhrase(longDayLabel(now))}</p>
       </header>
 
       {!hasAnything && <FirstRunCard />}

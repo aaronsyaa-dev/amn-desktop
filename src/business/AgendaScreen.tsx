@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Bell,
@@ -26,6 +27,7 @@ import {
   WEEKDAY_LABELS,
   addDays,
   addMonths,
+  capitaliserPhrase,
   dayKey,
   fromDateTimeLocalValue,
   isToday,
@@ -105,41 +107,80 @@ export function AgendaScreen() {
 
   const selected = appointments.find((a) => a.id === selectedId) ?? null;
 
+  /*
+    LES RELEVÉS DE L'EN-TÊTE, calculés sur les rendez-vous réels.
+
+    Trois chiffres qu'on peut agir : ce qu'il reste AUJOURD'HUI, ce que porte
+    la semaine affichée, et ce qui n'a pas encore été confirmé. Le dernier
+    porte l'emphase — c'est le seul qui appelle un geste, et le mettre partout
+    reviendrait à ne le mettre nulle part.
+  */
+  const releves = useMemo(() => {
+    const maintenant = Date.now();
+    const aujourdhui = byDay.get(dayKey(new Date())) ?? [];
+    const restants = aujourdhui.filter((a) => new Date(a.startAt).getTime() >= maintenant).length;
+    const semaine = weekDays(anchor).reduce((n, jour) => n + (byDay.get(dayKey(jour))?.length ?? 0), 0);
+    const aConfirmer = appointments.filter(
+      (a) => a.status !== 'done' && a.status !== 'cancelled' && new Date(a.startAt).getTime() >= maintenant,
+    ).length;
+    return [
+      { label: 'Aujourd’hui', value: restants, title: 'Rendez-vous restants dans la journée' },
+      { label: 'Cette semaine', value: semaine, title: 'Sur la semaine affichée' },
+      { label: 'À venir', value: aConfirmer, emphasis: aConfirmer > 0 },
+    ];
+  }, [appointments, byDay, anchor]);
+
   const step = (direction: 1 | -1) => {
     if (view === 'month') setAnchor(addMonths(anchor, direction));
     else if (view === 'week') setAnchor(addDays(anchor, 7 * direction));
     else setAnchor(addDays(anchor, direction));
   };
 
+  /*
+    La capitale se pose ICI, sur la première lettre, et pas par la classe CSS
+    `capitalize` : celle-ci en met une à chaque mot, ce qui donnait « Semaine
+    Du 24 Août ». Voir `capitaliserPhrase`.
+
+    La ligne « Semaine du … » commence déjà par une capitale et n'en demande
+    donc aucune ; les deux autres viennent de `toLocaleDateString`, tout en
+    minuscules.
+  */
   const periodLabel =
     view === 'month'
-      ? monthLabel(anchor)
+      ? capitaliserPhrase(monthLabel(anchor))
       : view === 'week'
         ? `Semaine du ${weekDays(anchor)[0].toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`
-        : longDayLabel(anchor);
+        : capitaliserPhrase(longDayLabel(anchor));
 
   return (
     <div className="flex flex-col gap-5">
       <header className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <CalendarDays size={18} strokeWidth={1.75} className="text-text-secondary" />
-            <div>
-              <h1 className="text-lg font-bold tracking-tight text-text-primary">Agenda</h1>
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
-                Rendez-vous et disponibilités
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setEditing({ appointment: null, at: defaultSlot(anchor) })}
-            className="flex items-center gap-1.5 bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
-          >
-            <Plus size={15} strokeWidth={2} />
-            Nouveau rendez-vous
-          </button>
-        </div>
+        {/*
+          `ScreenHeader`, comme les vingt-six écrans de l'autre édition — voir
+          le même commentaire dans MediaSoloScreen. Le titre était écrit à la
+          main en `text-lg`, soit 18 px contre les 22 à 24 du composant, et le
+          contrôle `check:ecrans` ne regardait pas ce dossier.
+
+          Les relevés ne sont pas décoratifs : ils disent ce que la semaine
+          affichée VAUT avant qu'on ait lu une case. Ils se recalculent sur les
+          rendez-vous rendus, jamais sur une constante.
+        */}
+        <ScreenHeader
+          eyebrow="Mon espace · Agenda"
+          title="Agenda"
+          description="Vos rendez-vous et vos disponibilités."
+          stats={releves}
+          actions={
+            <button
+              type="button"
+              onClick={() => setEditing({ appointment: null, at: defaultSlot(anchor) })}
+              className="flex items-center gap-1.5 bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
+            >
+              <Plus size={15} strokeWidth={2} />
+              Nouveau rendez-vous
+            </button>
+          }
+        />
 
         <div className="flex flex-wrap items-center justify-between gap-3 border border-border bg-surface px-3 py-2">
           {/*
@@ -157,14 +198,14 @@ export function AgendaScreen() {
               type="button"
               onClick={() => step(-1)}
               aria-label="Période précédente"
-              className="rounded p-3 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary sm:p-1.5"
+              className="rounded-lg p-3 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary sm:p-1.5"
             >
               <ChevronLeft size={16} strokeWidth={2} />
             </button>
             <button
               type="button"
               onClick={() => setAnchor(startOfDay(new Date()))}
-              className="rounded px-2.5 py-3 font-mono text-[10px] uppercase tracking-widest text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary sm:py-1"
+              className="rounded-lg px-2.5 py-3 font-mono text-[10px] uppercase tracking-widest text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary sm:py-1"
             >
               Aujourd’hui
             </button>
@@ -172,11 +213,11 @@ export function AgendaScreen() {
               type="button"
               onClick={() => step(1)}
               aria-label="Période suivante"
-              className="rounded p-3 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary sm:p-1.5"
+              className="rounded-lg p-3 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary sm:p-1.5"
             >
               <ChevronRight size={16} strokeWidth={2} />
             </button>
-            <span className="ml-1 truncate text-sm font-medium capitalize text-text-primary">
+            <span className="ml-1 truncate text-sm font-medium text-text-primary">
               {periodLabel}
             </span>
           </div>
@@ -187,7 +228,7 @@ export function AgendaScreen() {
                 key={mode}
                 type="button"
                 onClick={() => setView(mode)}
-                className={`rounded-md px-2.5 py-3 font-mono text-[10px] uppercase tracking-wider transition-colors sm:py-1 ${
+                className={`rounded-lg px-2.5 py-3 font-mono text-[10px] uppercase tracking-wider transition-colors sm:py-1 ${
                   view === mode
                     ? 'bg-accent-muted text-text-primary'
                     : 'text-text-secondary hover:text-text-primary'
@@ -584,7 +625,7 @@ function AppointmentDetail({
             {appointment.title || 'Rendez-vous'}
           </h2>
           <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-            <span className="capitalize">{longDayLabel(start)}</span> · {timeLabel(appointment.startAt)} –{' '}
+            <span>{capitaliserPhrase(longDayLabel(start))}</span> · {timeLabel(appointment.startAt)} –{' '}
             {timeLabel(appointmentEnd(appointment).toISOString())}
           </p>
         </div>

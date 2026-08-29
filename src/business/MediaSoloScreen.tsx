@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Contact, ImagePlus, Images, Loader2, X } from 'lucide-react';
+import { Contact, ImagePlus, Loader2, X } from 'lucide-react';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { useClients } from '../state/useClients';
 import { useCollection, useSync, uid, stripMeta } from '../state/SyncContext';
 import { resizeImageToDataUrl } from '../lib/imageResize';
@@ -100,17 +101,27 @@ export function MediaSoloScreen() {
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <Images size={18} strokeWidth={1.75} className="text-text-secondary" />
-          <div>
-            <h1 className="text-lg font-bold tracking-tight text-text-primary">Médias</h1>
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
-              Photos et fichiers de votre activité
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
+      {/*
+        `ScreenHeader`, comme les vingt-six écrans de l'autre édition.
+
+        Cet écran écrivait son titre à la main, en `text-lg` — 18 px, contre
+        les 22 à 24 du composant. Son jumeau interne (`MediaLibraryScreen`)
+        passe par `ScreenHeader` depuis la refonte. Deux voix pour le même
+        produit, et c'est l'édition CLIENTE qui avait la moins soignée.
+
+        Le contrôle `check:ecrans` ne pouvait pas le voir : il ne lisait que
+        `src/screens/`. Il lit désormais `src/business/` aussi.
+      */}
+      <ScreenHeader
+        eyebrow="Mon espace · Médias"
+        title="Médias"
+        description="Photos et fichiers de votre activité, rassemblés."
+        stats={[
+          { label: 'Éléments', value: items.length },
+          { label: 'Clients', value: new Set(items.map((i) => i.clientId).filter(Boolean)).size },
+        ]}
+        actions={
+          <>
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -140,8 +151,9 @@ export function MediaSoloScreen() {
             hidden
             onChange={(e) => void onPick(e.target.files)}
           />
-        </div>
-      </header>
+          </>
+        }
+      />
 
       {error && (
         <p role="alert" className="border border-danger/40 bg-danger-muted px-3 py-2 font-mono text-xs text-danger">
