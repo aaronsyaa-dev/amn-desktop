@@ -46,6 +46,7 @@
     "check:envoi": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-envoi.ts",
     "check:calques": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-calques.ts",
     "check:clavier": "node scripts/check-clavier.mjs",
+    "gardes": "node scripts/gardes-navigateur.mjs",
     "seed:essai": "node scripts/seed-essai.mjs",
     "check:etiquettes": "node scripts/check-etiquettes.mjs",
     "check:focus": "node scripts/check-focus.mjs",
