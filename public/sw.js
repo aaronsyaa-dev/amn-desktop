@@ -61,13 +61,86 @@
  * (aucun découpage dynamique du bundle, vérifié), mais c'était vrai par
  * chance, pas par construction.
  */
-const CACHE = 'amn-pwa-v5';
+/*
+ * ─────────────────────────────────────────────────────────────────────────────
+ * v6 — L'IMPASSE QUE v5 A CRÉÉE, ET LES FICHIERS QUI NE POUVAIENT PAS CHANGER
+ *
+ * Remonté en testant : « la version mobile n'est pas à jour du tout, ni icône
+ * ni contenu ». Deux causes, et la première est de mon fait.
+ *
+ * ## 1. Une politesse qui bloque pour toujours
+ *
+ * v5 a retiré `skipWaiting()` de l'installation — pour de bonnes raisons : un
+ * worker qui prend la main sur une page dont le JavaScript est resté à
+ * l'ancienne version est un défaut. Le nouveau worker attend donc que la PAGE
+ * lui dise d'y aller.
+ *
+ * Sauf que ça suppose une page qui SAIT le dire. Sur un téléphone dont le
+ * worker en place est antérieur à v5, la page servie est celle de ce
+ * build-là : elle ne contient pas `PwaUpdateNotice`, donc elle n'enverra
+ * jamais `SKIP_WAITING`. Le nouveau worker attend indéfiniment, l'ancien
+ * continue de servir — et si cet ancien est v1 ou v2, il sert TOUT depuis son
+ * cache, y compris `index.html`. L'application est alors figée sur le premier
+ * build jamais installé, définitivement, sans aucun geste possible.
+ *
+ * C'est exactement « pas à jour du tout ». Et c'est irrattrapable depuis
+ * l'appareil : il n'y a pas d'écran à toucher pour en sortir.
+ *
+ * Le worker prend donc la main TOUT SEUL, mais dans un seul cas : quand le
+ * worker qu'il remplace est antérieur à v5, c'est-à-dire quand la page en
+ * place ne sait pas demander. Face à un worker v5 ou plus récent, il attend
+ * comme avant — la politesse de v5 vaut pour tous ceux qui peuvent répondre.
+ *
+ * ## 2. Des fichiers dont le nom ne change jamais
+ *
+ * Les icônes et le manifeste étaient servis CACHE-FIRST. Ils ne portent pas
+ * d'empreinte dans leur nom — `icon.png` reste `icon.png` — donc leur version
+ * en cache ne pouvait être remplacée que par un changement de `CACHE`. Entre
+ * deux, une icône refaite ou un nom de produit corrigé dans le manifeste
+ * restaient invisibles sur un téléphone qui avait déjà installé l'application.
+ *
+ * Ils passent en réseau d'abord, cache en secours. Ils sont petits, et c'est
+ * la seule façon qu'un fichier au nom fixe cesse d'être figé.
+ */
+const CACHE = 'amn-pwa-v6';
+const GENERATION = 6;
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.png'];
 
+/** La génération v5 est la première dont la page sait réclamer la mise à jour. */
+const PREMIERE_GENERATION_QUI_SAIT_DEMANDER = 5;
+
+/**
+ * Le worker qu'on remplace savait-il se faire réclamer la main ?
+ *
+ * On le lit dans les caches laissés en place : `amn-pwa-v4` dit une page qui
+ * n'a pas `PwaUpdateNotice`, donc qui n'enverra jamais `SKIP_WAITING`.
+ */
+async function pageSaitDemander() {
+  const noms = (await caches.keys()).filter((n) => n.startsWith('amn-pwa-v') && n !== CACHE);
+  if (noms.length === 0) return true; // première installation : rien à remplacer
+  return noms.every((n) => {
+    const g = Number(n.slice('amn-pwa-v'.length));
+    return Number.isFinite(g) && g >= PREMIERE_GENERATION_QUI_SAIT_DEMANDER;
+  });
+}
+
 self.addEventListener('install', (event) => {
-  // PAS de `skipWaiting()` ici : le worker se prépare et attend que la page
-  // dise quand. Voir le préambule (v5).
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open(CACHE);
+      await cache.addAll(SHELL);
+      /*
+        LA SEULE PRISE DE MAIN AUTOMATIQUE, ET ELLE EST CONDITIONNELLE.
+
+        Voir le préambule v6 : sans elle, un téléphone dont le worker est
+        antérieur à v5 reste figé pour toujours, parce que sa page ne sait pas
+        envoyer `SKIP_WAITING`. Face à un worker v5 ou plus, on attend comme
+        v5 l'a voulu — c'est `check:updates` qui vérifie que cette condition
+        est bien là et qu'elle n'a pas été élargie.
+      */
+      if (!(await pageSaitDemander())) await self.skipWaiting();
+    })(),
+  );
 });
 
 /**
@@ -118,7 +191,26 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Everything else (hashed build assets, icons): cache-first is safe because
+  /*
+    LES FICHIERS DONT LE NOM NE CHANGE JAMAIS : RÉSEAU D'ABORD.
+
+    `icon.png` reste `icon.png`, `manifest.webmanifest` reste
+    `manifest.webmanifest`. Servis cache-first, ils ne pouvaient être remplacés
+    que par un changement de `CACHE` — donc une icône refaite ou un nom de
+    produit corrigé restaient invisibles sur un téléphone déjà installé, ce qui
+    est précisément ce qui a été remonté. Ils sont petits ; le réseau d'abord
+    avec le cache en secours ne coûte rien et supprime la classe entière.
+  */
+  if (/\/(manifest\.webmanifest|[\w-]*icon[\w-]*\.png)$/.test(url.pathname)) {
+    event.respondWith(
+      fetch(request)
+        .then((res) => cachePut(request, res))
+        .catch(() => caches.match(request)),
+    );
+    return;
+  }
+
+  // Everything else (hashed build assets): cache-first is safe because
   // a content change produces a new filename, so a stale entry is never served
   // for new content. On a genuine network failure the request fails for real —
   // it must never be silently answered with index.html's HTML, which the

@@ -233,15 +233,58 @@ const notice = sansCommentaires(
   fs.readFileSync(path.join(ROOT, 'src/components/PwaUpdateNotice.tsx'), 'utf-8'),
 );
 
+/*
+  UNE PRISE DE MAIN AUTOMATIQUE : INTERDITE, SAUF LA SEULE QUI SAUVE.
+
+  La règle d'origine interdisait tout `skipWaiting()` à l'installation. Elle
+  avait raison sur le fond — un worker qui prend la main sur une page restée à
+  l'ancien JavaScript est un défaut — et tort d'être absolue : c'est dans
+  l'écart qu'un vrai défaut s'est logé, remonté en testant sur téléphone.
+
+  Un appareil dont le worker est ANTÉRIEUR à v5 sert une page qui ne contient
+  pas `PwaUpdateNotice`. Elle n'enverra donc jamais `SKIP_WAITING`, le nouveau
+  worker attend indéfiniment, et si l'ancien est v1 ou v2 il sert tout depuis
+  son cache — application figée sur le premier build, définitivement, sans
+  aucun geste possible depuis l'appareil.
+
+  Une exception est donc nécessaire, et une seule : prendre la main quand la
+  page en place ne sait pas la réclamer. Ce contrôle vérifie qu'elle reste
+  CONDITIONNELLE — un `skipWaiting()` nu à l'installation redevient le défaut
+  du Bloc 4.
+*/
+const GARDE_HERITAGE = 'pageSaitDemander';
+
 const installBloc = /addEventListener\('install'[\s\S]*?\n\}\);/.exec(sw);
 if (!installBloc) {
   failures.push("Le gestionnaire `install` du service worker est introuvable.");
 } else if (/skipWaiting\(\)/.test(installBloc[0])) {
-  failures.push(
-    "Le service worker appelle `skipWaiting()` à l'INSTALLATION : il reprend donc " +
-      "la main tout seul, sur une page qui continue de faire tourner l'ancien " +
-      'JavaScript, et personne n’est prévenu. C’est exactement le défaut du Bloc 4.',
-  );
+  const conditionnel = new RegExp(
+    `if\\s*\\(\\s*!\\s*\\(?\\s*await\\s+${GARDE_HERITAGE}\\(\\)[\\s\\S]{0,40}?skipWaiting\\(\\)`,
+  ).test(installBloc[0]);
+  if (!conditionnel) {
+    failures.push(
+      "Le service worker appelle `skipWaiting()` à l'INSTALLATION sans condition : il " +
+        "reprend donc la main tout seul, sur une page qui continue de faire tourner " +
+        "l'ancien JavaScript, et personne n’est prévenu. C’est le défaut du Bloc 4.\n" +
+        `      La SEULE forme admise est \`if (!(await ${GARDE_HERITAGE}())) await self.skipWaiting();\` — ` +
+        'la reprise de main réservée aux appareils dont la page ne sait pas réclamer.',
+    );
+  }
+}
+
+/*
+  Et le garde-fou de l'exception elle-même : si `pageSaitDemander` disparaît ou
+  cesse de lire les caches, la condition ci-dessus devient vraie n'importe quand
+  et l'exception se transforme en règle.
+*/
+if (/skipWaiting\(\)/.test(installBloc?.[0] ?? '')) {
+  if (!new RegExp(`function ${GARDE_HERITAGE}\\(`).test(sw) || !/caches\.keys\(\)/.test(sw)) {
+    failures.push(
+      `\`${GARDE_HERITAGE}()\` doit exister et LIRE les caches en place (\`caches.keys()\`) : ` +
+        "c'est ce qui distingue un appareil incapable de réclamer la mise à jour de tous " +
+        'les autres. Sans cette lecture, la reprise de main automatique redevient générale.',
+    );
+  }
 }
 
 if (!/addEventListener\('message'[\s\S]{0,300}?SKIP_WAITING[\s\S]{0,120}?skipWaiting\(\)/.test(sw)) {
