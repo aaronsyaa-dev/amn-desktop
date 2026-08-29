@@ -116,6 +116,9 @@ jobs:
 
       - name: Contrôle des liens entre notes
         run: npm run check:liens
+
+      - name: Contrôle de la disposition du graphe
+        run: npm run check:graphe
       - name: Tendances
         run: npm run check:trend
       - name: Export FEC
