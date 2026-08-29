@@ -410,6 +410,42 @@ export function SyncProvider({
     // changes the other operator made while we were offline are picked up.
     const pullAll = async () => {
       let anyFailed = false;
+
+      /*
+        UN ALLER-RETOUR, PAS VINGT-HUIT.
+
+        MESURÉ en entrant dans le dossier d'une organisation cliente : une
+        requête par collection. Le temps SERVEUR est négligeable — deux
+        millisecondes chacune — mais un navigateur n'ouvre que six connexions
+        par origine, donc vingt-huit requêtes font cinq vagues successives. À
+        300 ms de latence, une seconde et demie passée à attendre plutôt qu'à
+        calculer, et c'est exactement ce qui se voyait à l'entrée d'un espace.
+
+        Le repli une-par-une reste : une amn-api plus ancienne ne connaît pas
+        `_bulk` et rendrait un 404. Mieux vaut une entrée lente qu'un espace
+        vide, et c'est le genre de décalage qui arrive en vrai — le poste se
+        met à jour tout seul, le serveur non.
+      */
+      try {
+        const groupe = await remote.listRecordsBulk(SYNCED_COLLECTIONS);
+        const manquantes = SYNCED_COLLECTIONS.filter((c) => !Array.isArray(groupe[c]));
+        if (manquantes.length === 0) {
+          if (active) {
+            for (const collection of SYNCED_COLLECTIONS) applyRecords(collection, groupe[collection]);
+            setPullFailed(false);
+          }
+          const presenceGroupee = await remote.getPresence().catch(() => [] as PresenceEntry[]);
+          if (active) {
+            setOnlineEmails(new Set(presenceGroupee.filter((p) => p.online).map((p) => p.email)));
+          }
+          return;
+        }
+        // Réponse incomplète : on ne devine pas ce qui manque, on refait tout
+        // par la voie sûre plutôt que d'afficher un espace à moitié chargé.
+      } catch (err) {
+        reportGuestQuotaError(err);
+      }
+
       await Promise.all(
         SYNCED_COLLECTIONS.map(async (collection) => {
           try {

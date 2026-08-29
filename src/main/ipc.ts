@@ -213,6 +213,9 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   ipcMain.handle(IPC.remoteListRecords, (_event, collection: SyncedCollection) =>
     remote.listRecords(collection),
   );
+  ipcMain.handle(IPC.remoteListRecordsBulk, (_event, collections: SyncedCollection[]) =>
+    remote.listRecordsBulk(collections),
+  );
   ipcMain.handle(
     IPC.remoteUpsertRecord,
     (_event, payload: { collection: SyncedCollection; id: string; data: Record<string, unknown> }) =>

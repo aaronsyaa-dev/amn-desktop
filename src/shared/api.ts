@@ -2468,6 +2468,20 @@ export interface AmnBridge {
 
     /* --- Shared collections (tasks/decisions/… synced between operators) --- */
     listRecords(collection: SyncedCollection): Promise<RemoteRecord[]>;
+    /**
+     * TOUT L'ESPACE EN UN ALLER-RETOUR.
+     *
+     * MESURÉ en entrant dans le dossier d'une organisation cliente :
+     * vingt-huit `listRecords`, une par collection. Le temps SERVEUR est
+     * négligeable — deux millisecondes chacune — mais un navigateur n'ouvre que
+     * six connexions par origine, donc vingt-huit requêtes font cinq vagues
+     * successives. À 300 ms de latence, une seconde et demie passée à attendre.
+     *
+     * Rend une carte `collection → enregistrements`. Une collection demandée et
+     * vide est PRÉSENTE et vide : l'absence d'une clé signifie que le serveur
+     * ne l'a pas traitée, ce qui n'est pas la même chose.
+     */
+    listRecordsBulk(collections: SyncedCollection[]): Promise<Record<string, RemoteRecord[]>>;
     upsertRecord(
       collection: SyncedCollection,
       id: string,
@@ -3042,6 +3056,7 @@ export const IPC = {
   remoteDeleteSite: 'remote:deleteSite',
   remoteConnectionStatus: 'remote:connectionStatus',
   remoteListRecords: 'remote:listRecords',
+  remoteListRecordsBulk: 'remote:listRecordsBulk',
   remoteUpsertRecord: 'remote:upsertRecord',
   remoteDeleteRecord: 'remote:deleteRecord',
   remoteSetIdentity: 'remote:setIdentity',

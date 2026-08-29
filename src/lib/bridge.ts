@@ -304,11 +304,28 @@ function createBrowserRemote(): AmnBridge['remote'] {
       }
     };
     socket.onclose = () => {
-      // A deliberate re-handshake (identity change) stays "connecting" and
-      // reconnects immediately — it is not a server failure.
+      /*
+        UNE POIGNÉE DE MAIN VOLONTAIRE N'EST PAS UNE COUPURE.
+
+        MESURÉ en entrant dans le contexte d'une organisation cliente : 58
+        requêtes `/v1/collections/` au lieu de 29. La moitié était une
+        relecture COMPLÈTE de l'espace de l'opérateur — vingt-huit collections
+        qu'il venait de charger et qui n'avaient pas changé.
+
+        La cause était ici. Changer de justificatif referme la socket et la
+        rouvre aussitôt ; en passant par « connecting » puis « online », le
+        contexte de synchronisation lisait une reconnexion (`lastStatus !==
+        'online'`) et relançait `pullAll()` sur CHAQUE espace monté.
+
+        On ne signale donc plus ce clignotement. Il ne dure que le temps d'un
+        aller-retour, aucune donnée n'est perdue, et l'espace client qui vient
+        de se monter fait son propre chargement de toute façon. Si la reprise
+        échoue vraiment, `reconnectingOnPurpose` est déjà retombé et le
+        prochain `onclose` passera par le chemin normal : « offline », puis
+        relecture — celle-là légitime.
+      */
       if (reconnectingOnPurpose) {
         reconnectingOnPurpose = false;
-        setStatus('connecting');
         setTimeout(connect, 0);
         return;
       }
@@ -566,6 +583,13 @@ function createBrowserRemote(): AmnBridge['remote'] {
     async listRecords(collection) {
       const { records } = await apiFetch<{ records: RemoteRecord[] }>(`/v1/collections/${collection}`);
       return records;
+    },
+    async listRecordsBulk(collections) {
+      if (collections.length === 0) return {};
+      const { collections: rendues } = await apiFetch<{
+        collections: Record<string, RemoteRecord[]>;
+      }>(`/v1/collections/_bulk?names=${collections.map(encodeURIComponent).join(',')}`);
+      return rendues ?? {};
     },
     async upsertRecord(collection, id, data) {
       const { record } = await apiFetch<{ record: RemoteRecord }>(

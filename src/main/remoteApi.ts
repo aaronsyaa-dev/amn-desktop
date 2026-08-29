@@ -147,6 +147,15 @@ export class RemoteApiClient {
     return records;
   }
 
+  /** Voir `AmnBridge.remote.listRecordsBulk` : un aller-retour au lieu de vingt-huit. */
+  async listRecordsBulk(collections: SyncedCollection[]): Promise<Record<string, RemoteRecord[]>> {
+    if (collections.length === 0) return {};
+    const res = await apiFetch<{ collections: Record<string, RemoteRecord[]> }>(
+      `/v1/collections/_bulk?names=${collections.map(encodeURIComponent).join(',')}`,
+    );
+    return res.collections ?? {};
+  }
+
   async upsertRecord(
     collection: SyncedCollection,
     id: string,
@@ -716,13 +725,19 @@ export class RemoteApiClient {
     socket.on('close', (code: number, reasonBuf: Buffer) => {
       const reason = reasonBuf?.toString() || '';
 
-      // A close we asked for (identity change) is not a connection loss: stay
-      // on "connecting", keep the backoff counter untouched, and re-handshake
-      // immediately rather than waiting out a delay meant for a broken server.
+      /*
+        UNE POIGNÉE DE MAIN VOLONTAIRE N'EST PAS UNE COUPURE.
+
+        Voir le même correctif dans `src/lib/bridge.ts` : annoncer
+        « connecting » puis « online » faisait lire une reconnexion au contexte
+        de synchronisation, qui relançait une relecture complète de chaque
+        espace monté — vingt-huit collections inutiles à chaque entrée dans un
+        dossier client. On ne signale plus ce clignotement, qui ne dure que le
+        temps d'un aller-retour et ne perd rien.
+      */
       if (this.reconnectingOnPurpose) {
         this.reconnectingOnPurpose = false;
         log(`WS closed for identity change (code=${code}). Reconnecting now.`);
-        this.setStatus('connecting');
         if (!this.stopped) this.reconnectTimer = setTimeout(() => this.connect(), 0);
         return;
       }

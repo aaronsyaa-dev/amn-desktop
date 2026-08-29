@@ -120,6 +120,8 @@ const bridge: AmnBridge = {
     },
     listRecords: (collection: SyncedCollection) =>
       ipcRenderer.invoke(IPC.remoteListRecords, collection),
+    listRecordsBulk: (collections: SyncedCollection[]) =>
+      ipcRenderer.invoke(IPC.remoteListRecordsBulk, collections),
     upsertRecord: (collection: SyncedCollection, id: string, data: Record<string, unknown>) =>
       ipcRenderer.invoke(IPC.remoteUpsertRecord, { collection, id, data }),
     deleteRecord: (collection: SyncedCollection, id: string) =>
