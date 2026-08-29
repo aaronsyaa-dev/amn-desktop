@@ -158,7 +158,9 @@ export function SiteControlScreen() {
         <button
           type="button"
           onClick={() => navigate('/tracker')}
-          className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-text-muted transition-colors hover:text-text-primary"
+          // 14 px de haut mesurés : c'est le retour en arrière, le geste le
+          // plus fréquent d'un écran de détail. `-my-2 py-2` le porte à 30.
+          className="-my-2 flex items-center gap-1.5 py-2 font-mono text-[10px] uppercase tracking-widest text-text-muted transition-colors hover:text-text-primary"
         >
           <ArrowLeft size={13} strokeWidth={2} />
           Bureau de contrôle

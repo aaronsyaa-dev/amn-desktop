@@ -591,7 +591,7 @@ function NewTaskModal({
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-3">
           <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">Nouvelle tâche</h2>
-          <button type="button" onClick={onClose} aria-label="Fermer" className="text-text-secondary hover:text-text-primary">
+          <button type="button" onClick={onClose} aria-label="Fermer" className="-m-2 flex h-9 w-9 items-center justify-center p-2 text-text-secondary hover:text-text-primary">
             <X size={18} strokeWidth={2} />
           </button>
         </div>
@@ -786,7 +786,7 @@ function TaskDetailModal({
                 <Pencil size={13} strokeWidth={1.75} /> Modifier
               </button>
             )}
-            <button type="button" onClick={onClose} aria-label="Fermer" className="text-text-secondary hover:text-text-primary">
+            <button type="button" onClick={onClose} aria-label="Fermer" className="-m-2 flex h-9 w-9 items-center justify-center p-2 text-text-secondary hover:text-text-primary">
               <X size={18} strokeWidth={2} />
             </button>
           </div>

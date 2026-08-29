@@ -581,7 +581,15 @@ function LinkedSitesBlock({
                     <button
                       type="button"
                       onClick={() => openSite(site.id)}
-                      className="text-text-muted hover:text-text-primary"
+                      // Mesuré 10 × 16 px, dix-huit fois sur l'écran : la
+                      // flèche est le seul moyen d'ouvrir la fiche d'un site
+                      // depuis la liste. `-m-2 p-2` la porte à 26 × 32 sans
+                      // déplacer les pastilles de statut à côté.
+                      className="-m-2 p-2 text-text-muted hover:text-text-primary"
+                      // « ↗ » n'est pas un nom : à l'oreille, c'est une flèche
+                      // vers le nord-est. Le `title` restait le seul recours,
+                      // et il ne sert qu'à la souris.
+                      aria-label={`Voir la fiche du site ${site.name ?? ''}`.trim()}
                       title="Voir la fiche du site"
                     >
                       ↗
@@ -1012,7 +1020,7 @@ function NewQuoteModal({
             <FileText size={14} strokeWidth={1.75} />
             Nouveau devis · {client.name}
           </h2>
-          <button type="button" onClick={onClose} aria-label="Fermer" className="text-text-secondary hover:text-text-primary">
+          <button type="button" onClick={onClose} aria-label="Fermer" className="-m-2 flex h-9 w-9 items-center justify-center p-2 text-text-secondary hover:text-text-primary">
             <X size={18} strokeWidth={2} />
           </button>
         </div>
@@ -1261,7 +1269,7 @@ function NewClientModal({
             type="button"
             onClick={onClose}
             aria-label="Fermer"
-            className="text-text-secondary hover:text-text-primary"
+            className="-m-2 flex h-9 w-9 items-center justify-center p-2 text-text-secondary hover:text-text-primary"
           >
             <X size={18} strokeWidth={2} />
           </button>

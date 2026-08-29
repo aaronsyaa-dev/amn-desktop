@@ -485,7 +485,11 @@ function Contenu({
                   items: bloc.items.map((x, j) => (j === i ? { ...x, done: !x.done } : x)),
                 })
               }
-              className="h-4 w-4 flex-shrink-0 accent-[var(--color-accent)]"
+              // 16 px mesurés. Sur une case à cocher, `p-1` ne sert à rien : la
+              // boîte a une hauteur FIXE et le remplissage se range dedans. Il
+              // faut agrandir la boîte — et cocher une course est le geste
+              // principal de ce bloc, il mérite ses 24 px.
+              className="h-6 w-6 flex-shrink-0 accent-[var(--color-accent)]"
             />
             <input
               value={item.text}
@@ -554,7 +558,9 @@ function Contenu({
                 onClick={() =>
                   onChange({ ...bloc, items: bloc.items.filter((_, j) => j !== i) })
                 }
-                className="flex-shrink-0 text-text-muted hover:text-text-primary"
+                // 12 × 12 px pour une SUPPRESSION, la plus petite cible de
+                // toute l’application. `-m-1.5 p-1.5` la porte à 24.
+                className="-m-1.5 flex-shrink-0 p-1.5 text-text-muted hover:text-text-primary"
               >
                 <Trash2 size={12} />
               </button>
@@ -570,7 +576,7 @@ function Contenu({
                 items: [...bloc.items, { id: blockId('i'), text: '', done: false }],
               })
             }
-            className="self-start text-xs text-text-muted hover:text-text-primary"
+            className="-my-1 self-start py-1 text-xs text-text-muted hover:text-text-primary"
           >
             + une ligne
           </button>
@@ -595,7 +601,7 @@ function Contenu({
           <button
             type="button"
             onClick={() => onChange({ ...bloc, shopping: !courses })}
-            className="self-start text-[11px] text-text-muted hover:text-text-primary"
+            className="-my-1.5 self-start py-1.5 text-[11px] text-text-muted hover:text-text-primary"
           >
             {courses ? 'Masquer les liens et les prix' : 'Liste de courses (liens et prix)'}
           </button>
@@ -669,7 +675,8 @@ function Contenu({
                       onClick={() =>
                         onChange({ ...bloc, rows: bloc.rows.filter((_, j) => j !== r) })
                       }
-                      className="text-text-muted hover:text-text-primary"
+                      // Même suppression de 12 px, côté tableau.
+                      className="-m-1.5 p-1.5 text-text-muted hover:text-text-primary"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -687,7 +694,7 @@ function Contenu({
             onClick={() =>
               onChange({ ...bloc, rows: [...bloc.rows, bloc.columns.map(() => '')] })
             }
-            className="text-xs text-text-muted hover:text-text-primary"
+            className="-my-1 py-1 text-xs text-text-muted hover:text-text-primary"
           >
             + une ligne
           </button>
@@ -695,7 +702,7 @@ function Contenu({
             <button
               type="button"
               onClick={() => onChange(removeColumn(bloc, bloc.columns.length - 1))}
-              className="text-xs text-text-muted hover:text-text-primary"
+              className="-my-1 py-1 text-xs text-text-muted hover:text-text-primary"
             >
               − la dernière colonne
             </button>

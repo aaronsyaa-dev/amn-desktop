@@ -511,7 +511,7 @@ function VaultEditor({
           type="button"
           onClick={onCancel}
           aria-label="Fermer"
-          className="text-text-secondary hover:text-text-primary"
+          className="-m-2 flex h-9 w-9 items-center justify-center p-2 text-text-secondary hover:text-text-primary"
         >
           <X size={18} strokeWidth={2} />
         </button>
