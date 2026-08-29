@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -166,6 +166,17 @@ export function ClientSidebar({
   const isActive = (to: string) =>
     to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
 
+  /*
+    Même règle que les deux autres barres : la ligne courante doit être
+    visible, sinon on arrive sur un écran et la barre ne dit pas où l'on est.
+    `nearest` — une ligne déjà visible ne fait rien bouger.
+  */
+  const barre = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const l = barre.current?.querySelector('a[aria-current="page"]');
+    if (l && l.getBoundingClientRect().height > 0) l.scrollIntoView({ block: 'nearest' });
+  }, [location.pathname]);
+
   return (
     <>
       <AnimatePresence>
@@ -220,7 +231,7 @@ export function ClientSidebar({
           </div>
         </div>
 
-        <nav className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3">
+        <nav ref={barre} className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3">
           {clientSections().map((section) => (
             <div key={section.label} className="flex flex-col gap-0.5">
               <p className="eyebrow px-3 pb-1.5">{section.label}</p>
@@ -232,6 +243,9 @@ export function ClientSidebar({
                     key={item.key}
                     to={item.to}
                     onClick={onClose}
+                    // Laquelle des entrées est l'écran courant, pour un lecteur
+                    // d'écran comme pour le défilement ci-dessus.
+                    aria-current={active ? 'page' : undefined}
                     className={`group relative flex min-h-11 items-center gap-3 overflow-hidden rounded-lg px-3 py-1.5 text-sm transition-colors duration-200 md:min-h-0 ${
                       active
                         ? 'text-text-primary'
@@ -261,6 +275,7 @@ export function ClientSidebar({
           <Link
             to="/administration"
             onClick={onClose}
+            aria-current={isActive('/administration') ? 'page' : undefined}
             className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-200 md:min-h-0 ${
               isActive('/administration')
                 ? 'bg-accent-muted text-text-primary'

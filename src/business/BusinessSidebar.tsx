@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronsLeft, ChevronsRight, LogOut } from 'lucide-react';
@@ -77,6 +77,18 @@ export function BusinessSidebar({
     to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
 
   const touchStartX = useRef<number | null>(null);
+
+  /*
+    RAMENER LA LIGNE COURANTE DANS LA VUE — même règle que la barre interne,
+    et pour la même raison : sur une fenêtre courte, l'écran où l'on vient
+    d'arriver peut être défilé hors du cadre, et la barre ne dit alors plus
+    rien. `nearest` : une ligne déjà visible ne fait rien bouger.
+  */
+  const barre = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const l = barre.current?.querySelector('a[aria-current="page"]');
+    if (l && l.getBoundingClientRect().height > 0) l.scrollIntoView({ block: 'nearest' });
+  }, [location.pathname]);
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0]?.clientX ?? null;
   };
@@ -124,7 +136,7 @@ export function BusinessSidebar({
           {isExpanded ? <Logo height={22} /> : <LogoMark size={22} />}
         </div>
 
-        <nav className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
+        <nav ref={barre} className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
           {sectionsForSpace('workspace').map((section) => (
             <div key={section.key} className="flex flex-col gap-1">
               {isExpanded ? (
@@ -145,6 +157,9 @@ export function BusinessSidebar({
                     onClick={onClose}
                     title={!isExpanded ? item.label : undefined}
                     aria-label={item.label}
+                    // Ce qui dit à un lecteur d'écran laquelle des entrées est
+                    // l'écran courant — et ce que le défilement ci-dessus vise.
+                    aria-current={active ? 'page' : undefined}
                     className={`relative flex min-h-11 items-center gap-3 rounded-lg py-1.5 text-sm transition-colors md:min-h-0 ${
                       isExpanded ? 'px-3' : 'justify-center px-0'
                     } ${
