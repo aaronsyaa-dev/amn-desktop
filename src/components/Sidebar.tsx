@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -154,6 +154,43 @@ export function Sidebar({
   // apparaître dans l'autre.
   // One nav row. Shared by both sections (workspace + produits) so the badge,
   // active indicator and collapsed/expanded behaviour stay identical.
+  /*
+    RAMENER L'ÉLÉMENT COURANT DANS LA VUE.
+
+    Mesuré : en arrivant sur `#/notes` côté interne, le lien actif de la barre
+    était visible à ZÉRO pour cent — entièrement défilé hors du cadre. La barre
+    porte trente-trois entrées ; tout ce qui vit sous la ligne de flottaison
+    laissait donc l'utilisateur sans repère, sur l'écran même où il venait
+    d'arriver. La barre disait « tu n'es nulle part ».
+
+    `block: 'nearest'` et pas `'center'` : quand l'élément est DÉJÀ visible, le
+    navigateur ne bouge rien. On ne recentre donc pas la barre à chaque
+    navigation — ce serait un mouvement gratuit, et la règle de confort
+    (`docs/PRINCIPE-CONFORT.md`) tient autant contre l'agitation que pour la
+    lisibilité. Le défilement est instantané, jamais animé : personne n'a
+    demandé à regarder une barre glisser avant de lire son écran.
+  */
+  const barre = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    /*
+      On cherche la ligne dans le DOM plutôt que de garder une `ref` dessus :
+      un même écran peut apparaître DEUX fois dans la barre (« Tâches » vit à
+      la fois dans le poste de travail et dans le pilotage), plus une troisième
+      dans le tiroir du téléphone, replié à zéro pixel. Une `ref` posée sur
+      « l'élément actif » recevait donc le dernier rendu — la copie invisible —
+      et faisait défiler vers rien du tout.
+
+      On prend la première ligne active qui a une hauteur : celle qu'on voit.
+    */
+    const lignes = barre.current?.querySelectorAll('a[aria-current="page"]') ?? [];
+    for (const l of lignes) {
+      if (l.getBoundingClientRect().height > 0) {
+        l.scrollIntoView({ block: 'nearest' });
+        return;
+      }
+    }
+  }, [location.pathname]);
+
   const renderNavItem = (item: NavItem) => {
     const active = isActive(item.to);
     const Icon = item.icon;
@@ -163,6 +200,10 @@ export function Sidebar({
       <Link
         key={item.key}
         to={item.to}
+        // `aria-current` dit à un lecteur d'écran laquelle des trente-trois
+        // entrées est l'écran courant — et sert de repère au défilement
+        // ci-dessus, qui n'a alors rien à deviner.
+        aria-current={active ? 'page' : undefined}
         onClick={handleNavClick}
         title={!isExpanded ? item.label : undefined}
         aria-label={item.label}
@@ -367,7 +408,7 @@ export function Sidebar({
             showing a grey gutter down the middle of the chrome. */}
         {/* Pinned strip. Fixed by choice, not by catalogue size: adding a
             module adds a tile to the launcher, never a row here. */}
-        <nav className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3">
+        <nav ref={barre} className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3">
           {/*
             LES DEUX ESPACES SONT GROUPÉS — ET LE POSTE DE TRAVAIL A ÉTÉ LE
             DERNIER À L'ÊTRE.

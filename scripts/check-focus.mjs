@@ -121,9 +121,54 @@ await page.addStyleTag({
   content: '*, *::before, *::after { transition: none !important; animation: none !important; }',
 });
 
+/*
+  ── ET « SAIT-ON OÙ L'ON EST » ? ────────────────────────────────────────────
+
+  Voisin de la visibilité du focus, et mesuré ici parce que ce contrôle passe
+  déjà sur chaque écran : le lien ACTIF de la barre latérale doit être visible.
+
+  Trouvé le 29 août : en arrivant sur `#/notes` côté interne, il l'était à
+  ZÉRO pour cent — entièrement défilé hors du cadre. La barre porte
+  trente-trois entrées ; tout ce qui vit sous la ligne de flottaison laissait
+  donc l'utilisateur sans repère sur l'écran même où il venait d'arriver.
+
+  Le seuil est la MOITIÉ de la ligne. Une bande de quelques pixels au bord du
+  cadre n'est pas un repère : on ne la lit pas, et on ne la reconnaît pas au
+  passage suivant.
+*/
+const SEUIL_LIGNE_ACTIVE = 0.5;
+const barrePerdue = [];
+
 for (const route of routes) {
   await page.goto(APP + route).catch(() => undefined);
   await attendre(1100);
+
+  const repere = await page
+    .evaluate((route) => {
+      const lien = [...document.querySelectorAll('a[href^="#/"]')].find(
+        (a) => a.getAttribute('href') === route && a.closest('nav, aside'),
+      );
+      if (!lien) return null;
+      const r = lien.getBoundingClientRect();
+      if (r.height === 0) return null;
+      let boite = lien.parentElement;
+      while (boite) {
+        const cs = getComputedStyle(boite);
+        if (/auto|scroll/.test(cs.overflowY) && boite.scrollHeight > boite.clientHeight) break;
+        boite = boite.parentElement;
+      }
+      // Pas de conteneur défilant : rien ne peut cacher la ligne.
+      if (!boite) return { part: 1 };
+      const c = boite.getBoundingClientRect();
+      const vu = Math.max(0, Math.min(r.bottom, c.bottom) - Math.max(r.top, c.top));
+      return { part: vu / r.height };
+    }, route)
+    .catch(() => null);
+
+  if (repere && repere.part < SEUIL_LIGNE_ACTIVE) {
+    barrePerdue.push({ route, part: Math.round(repere.part * 100) });
+  }
+
   // Une navigation par hash ne recharge pas, mais un `goto` complet si : on
   // repose la règle à chaque écran plutôt que de parier sur sa survie.
   await page.addStyleTag({
@@ -364,7 +409,22 @@ if (fuites.length > 0) {
   process.exit(1);
 }
 
+if (barrePerdue.length > 0) {
+  console.error(
+    `${barrePerdue.length} écran(s) où le lien actif de la barre est hors de vue :\n`,
+  );
+  for (const x of barrePerdue) console.error(`  ✗ ${x.route}  — visible à ${x.part} %`);
+  console.error(
+    '\nOn arrive sur l’écran et la barre ne dit pas où l’on est. Le correctif tient\n' +
+      'en une ligne : `scrollIntoView({ block: \'nearest\' })` sur le lien actif quand\n' +
+      'la route change — voir `src/components/Sidebar.tsx`. `nearest` et pas\n' +
+      '`center` : une ligne déjà visible ne doit rien faire bouger.',
+  );
+  process.exit(1);
+}
+
 console.log(
   `OK — ${routes.length} écrans, ${arrets} arrêts de focus tous visibles, ` +
-    `${fenetres} fenêtre(s) dont le focus ne sort pas.`,
+    `${fenetres} fenêtre(s) dont le focus ne sort pas, ` +
+    'le lien actif de la barre visible partout.',
 );
