@@ -147,6 +147,16 @@ export function Sidebar({
   );
 
 
+  /*
+    Les clés RÉELLEMENT dessinées dans la bande. `epingles` ne suffit pas : la
+    bande ne s'affiche que barre dépliée, et repliée c'est la ligne de section
+    qui redevient l'unique occurrence.
+  */
+  const dansLaBande = useMemo(
+    () => new Set(isExpanded ? epingles.map((e) => e.key) : []),
+    [epingles, isExpanded],
+  );
+
   // The pinned modules, in the catalogue's own order so the strip never
   // reshuffles itself under the cursor. An unknown key (a module removed since
   // the choice was made) is dropped rather than rendered as a dead row.
@@ -191,7 +201,35 @@ export function Sidebar({
     }
   }, [location.pathname]);
 
-  const renderNavItem = (item: NavItem) => {
+  /*
+    UN SEUL « VOUS ÊTES ICI », ET C'EST CELUI DE LA SECTION.
+
+    Cinq modules apparaissent DEUX fois dans la barre : une fois dans la bande
+    d'épingles, une fois dans leur section (c'est assumé — un raccourci qui
+    déplace la chose au lieu d'y mener n'est pas un raccourci). Sur `#/tasks`,
+    les deux lignes se déclaraient donc courantes, et deux défauts avec :
+
+      · deux `aria-current="page"` — l'attribut désigne LA page courante, au
+        singulier. Un lecteur d'écran en annonçait deux ;
+      · deux `layoutId` identiques pour framer-motion, qui est un cas non
+        défini : deux éléments prétendent être le même, et c'est la
+        bibliothèque qui arbitre en silence.
+
+    Laquelle gagne ? La question a été tranchée par le MOUVEMENT, pas par le
+    balisage. Les épingles sont la liste que l'utilisateur s'est faite de ce
+    qu'il ouvre le plus. Si la ligne courante est celle de la section, alors
+    ces cinq écrans-là — les plus fréquents — font défiler la barre à chaque
+    fois, et la bande d'épingles disparaît vers le haut. En donnant la ligne
+    courante à l'épingle, la barre ne bouge pas du tout pour eux et le repère
+    est toujours au même endroit. « Utilisable des heures durant » se joue
+    exactement là (`docs/PRINCIPE-CONFORT.md`).
+
+    L'épingle est donc canonique quand elle est DESSINÉE — barre repliée, la
+    bande n'existe pas et la section reprend le rôle. La ligne perdante garde
+    la couleur du texte actif : on voit qu'on y est, sans le fond ni le trait,
+    qui n'ont qu'un seul porteur.
+  */
+  const renderNavItem = (item: NavItem, canonique = true) => {
     const active = isActive(item.to);
     const Icon = item.icon;
     const count = unseen[item.to] ?? 0;
@@ -203,7 +241,7 @@ export function Sidebar({
         // `aria-current` dit à un lecteur d'écran laquelle des trente-trois
         // entrées est l'écran courant — et sert de repère au défilement
         // ci-dessus, qui n'a alors rien à deviner.
-        aria-current={active ? 'page' : undefined}
+        aria-current={active && canonique ? 'page' : undefined}
         onClick={handleNavClick}
         title={!isExpanded ? item.label : undefined}
         aria-label={item.label}
@@ -223,7 +261,7 @@ export function Sidebar({
             elements — the tint and the left bar — travel together, which is the
             whole micro-interaction: the eye follows the selection instead of
             re-finding it. */}
-        {active && (
+        {active && canonique && (
           <>
             <motion.span
               layoutId="sidebar-active-surface"
@@ -453,7 +491,7 @@ export function Sidebar({
           */}
           {isExpanded && epingles.length > 0 && (
             <div className="flex flex-col gap-1 border-b border-border pb-2">
-              {epingles.map(renderNavItem)}
+              {epingles.map((item) => renderNavItem(item))}
             </div>
           )}
 
@@ -466,7 +504,7 @@ export function Sidebar({
                 // filet garde la coupure sans prétendre la nommer.
                 <span className="mx-auto my-1.5 h-px w-6 bg-border" aria-hidden />
               )}
-              {section.items.map(renderNavItem)}
+              {section.items.map((item) => renderNavItem(item, !dansLaBande.has(item.key)))}
             </div>
           ))}
 

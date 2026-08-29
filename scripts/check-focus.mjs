@@ -138,16 +138,29 @@ await page.addStyleTag({
 */
 const SEUIL_LIGNE_ACTIVE = 0.5;
 const barrePerdue = [];
+let reperesTrouves = 0;
 
 for (const route of routes) {
   await page.goto(APP + route).catch(() => undefined);
   await attendre(1100);
 
   const repere = await page
-    .evaluate((route) => {
-      const lien = [...document.querySelectorAll('a[href^="#/"]')].find(
-        (a) => a.getAttribute('href') === route && a.closest('nav, aside'),
-      );
+    .evaluate(() => {
+      /*
+        On cherche `aria-current="page"` et pas le lien dont l'adresse
+        correspond, pour une raison qui a coûté un aller-retour : cinq modules
+        apparaissent DEUX fois dans la barre (une épingle, une ligne de
+        section), et « le premier lien qui a la bonne adresse » désignait alors
+        celui que l'application n'avait pas choisi de mettre en avant. Le
+        contrôle réclamait la visibilité d'une ligne dont ce n'était pas le
+        rôle — et deux lignes ne peuvent pas être visibles en même temps dans
+        une liste qu'on fait défiler.
+
+        `aria-current` est la déclaration de l'application : « voici la ligne
+        courante ». C'est elle qu'on doit voir, et c'est aussi ce qu'un lecteur
+        d'écran annonce. Une seule par page, par définition.
+      */
+      const lien = document.querySelector('nav a[aria-current="page"], aside a[aria-current="page"]');
       if (!lien) return null;
       const r = lien.getBoundingClientRect();
       if (r.height === 0) return null;
@@ -162,11 +175,14 @@ for (const route of routes) {
       const c = boite.getBoundingClientRect();
       const vu = Math.max(0, Math.min(r.bottom, c.bottom) - Math.max(r.top, c.top));
       return { part: vu / r.height };
-    }, route)
+    })
     .catch(() => null);
 
-  if (repere && repere.part < SEUIL_LIGNE_ACTIVE) {
-    barrePerdue.push({ route, part: Math.round(repere.part * 100) });
+  if (repere) {
+    reperesTrouves += 1;
+    if (repere.part < SEUIL_LIGNE_ACTIVE) {
+      barrePerdue.push({ route, part: Math.round(repere.part * 100) });
+    }
   }
 
   // Une navigation par hash ne recharge pas, mais un `goto` complet si : on
@@ -406,6 +422,22 @@ if (fuites.length > 0) {
   console.error('peut activer d’un appui sur Entrée. Le piège vit dans lib/pileCalques.ts et');
   console.error('s’arme dès qu’un calque est inscrit : vérifiez que la fenêtre appelle bien');
   console.error('`useFermetureEchap`.');
+  process.exit(1);
+}
+
+/*
+  Le témoin de cette règle-ci : si plus aucune ligne ne porte `aria-current`,
+  la boucle ci-dessus ne trouve rien et ne signale donc rien — un vert obtenu
+  en ne regardant nulle part. Or l'absence d'`aria-current` EST le défaut le
+  plus grave des deux : la barre ne dit plus du tout où l'on est, ni à l'œil
+  ni à l'oreille.
+*/
+if (reperesTrouves < routes.length / 2) {
+  console.error(
+    `ÉCHEC : seulement ${reperesTrouves} écran(s) sur ${routes.length} ont une ligne de barre\n` +
+      '  marquée `aria-current="page"`. La barre ne déclare plus l’écran courant — ni\n' +
+      '  pour un lecteur d’écran, ni pour ce contrôle, qui ne peut alors rien mesurer.',
+  );
   process.exit(1);
 }
 
