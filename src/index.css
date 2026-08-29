@@ -36,7 +36,7 @@
   /* Text */
   --color-text-primary: #f2f2f0;
   --color-text-secondary: #9a9a97;
-  --color-text-muted: #616160;
+  --color-text-muted: #808080;
 
   /* "Accent" is now a near-white highlight — monochrome, not a colour */
   --color-accent: #ededed;

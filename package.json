@@ -43,6 +43,7 @@
     "check:attention": "cross-env TZ=Europe/Paris node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-attention.ts",
     "check:fec": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-fec.ts",
     "check:tracking": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-tracking.ts",
+    "check:contraste": "node scripts/check-contraste.mjs",
     "check:mouvement": "node scripts/check-mouvement.mjs",
     "check:largeur": "node scripts/check-largeur.mjs",
     "check:deployed": "node scripts/check-deployed-bundle.mjs",
