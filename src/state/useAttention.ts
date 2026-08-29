@@ -208,6 +208,7 @@ function useIncidentsOuverts(): { incidents: AttentionIncident[]; settled: boole
           liste.map((i) => ({
             id: i.id,
             title: i.title,
+            siteName: i.siteName ?? null,
             severity: i.severity,
             status: i.status,
             firstSeenAt: i.firstSeenAt,

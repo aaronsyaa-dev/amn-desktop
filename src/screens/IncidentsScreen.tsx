@@ -363,7 +363,35 @@ function LigneIncident({
               <span className={`rounded-sm border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider ${style.puce}`}>
                 {STATUT_LABEL[incident.status]}
               </span>
-              <h2 className="truncate text-sm font-medium text-text-primary">{incident.title}</h2>
+              <h2 className="truncate text-sm font-medium text-text-primary">
+                {/*
+                  LE SITE D'ABORD, quand le titre ne suffit pas à distinguer.
+
+                  Le titre d'une panne d'infrastructure est le même partout —
+                  « Site injoignable — sonde et traceur muets » — et douze
+                  sites hors ligne donnaient douze lignes identiques au mot
+                  près. On ne peut décider par quoi commencer que si les
+                  lignes diffèrent.
+
+                  Pour une attaque, le titre porte déjà l'adresse de
+                  l'attaquant et se distingue tout seul ; le site vient donc
+                  après, en gris, comme un complément.
+                */}
+                {incident.actorKind === 'infrastructure' && incident.siteName ? (
+                  <>
+                    <span>{incident.siteName}</span>
+                    {/* Point médian, pas tiret : le titre en contient déjà un. */}
+                    <span className="text-text-muted"> · {incident.title}</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{incident.title}</span>
+                    {incident.siteName && (
+                      <span className="text-text-muted"> · {incident.siteName}</span>
+                    )}
+                  </>
+                )}
+              </h2>
             </div>
             <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[11px] text-text-muted">
               <span>

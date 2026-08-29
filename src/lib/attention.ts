@@ -176,6 +176,14 @@ export interface AttentionInput {
 export interface AttentionIncident {
   id: string;
   title: string;
+  /**
+   * Le site touché.
+   *
+   * Sans lui, trois pannes sur trois sites donnaient trois cartes identiques
+   * au mot près. Le panneau d'attention sert à décider PAR QUOI COMMENCER : un
+   * titre qui ne distingue pas deux lignes ne permet aucune décision.
+   */
+  siteName?: string | null;
   severity: 'critical' | 'warning' | 'info';
   status: 'new' | 'acknowledged' | 'resolved';
   /** Première alerte de l'incident, en ISO. C'est de là que court l'attente. */
@@ -518,7 +526,15 @@ function incidentItems(
             key: `incident-critical:${incident.id}`,
             kind: 'incident-critical',
             severity: 'critical',
-            title: incident.title,
+            /*
+              Le site D'ABORD : c'est ce qui distingue deux lignes, et le titre
+              d'une panne d'infrastructure est le même partout.
+
+              Séparé par un point médian et non un tiret : le titre en contient
+              déjà un (« Site injoignable — sonde et traceur muets »), et deux
+              tirets dans la même phrase la rendent illisible.
+            */
+            title: incident.siteName ? `${incident.siteName} · ${incident.title}` : incident.title,
             evidence:
               heures < 1
                 ? 'Détecté à l’instant, personne ne l’a encore pris'
@@ -541,7 +557,7 @@ function incidentItems(
             key: `incident-stale:${incident.id}`,
             kind: 'incident-stale',
             severity: 'warning',
-            title: incident.title,
+            title: incident.siteName ? `${incident.siteName} · ${incident.title}` : incident.title,
             evidence: `En attente depuis ${formatAttente(heures)}`,
             action: 'Ouvrir le bureau de supervision',
             to: '/supervision',

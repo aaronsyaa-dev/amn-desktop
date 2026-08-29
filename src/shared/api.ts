@@ -1435,6 +1435,19 @@ export type IncidentResolution = 'resolved' | 'false_positive';
 export interface Incident {
   id: string;
   siteId: string;
+  /**
+   * Le nom du site, résolu par le serveur.
+   *
+   * Il manquait, et ça se voyait au pire endroit : trois cartes rouges
+   * strictement identiques sur l'accueil — « Site injoignable — sonde et
+   * traceur muets », trois fois — pour trois sites différents. Rien ne
+   * permettait de savoir lesquels, ni s'il s'agissait d'un doublon
+   * d'affichage. Un identifiant ne se lit pas ; un nom, si.
+   *
+   * `null` si le site a été retiré depuis : l'incident survit à son site, et
+   * son histoire reste lisible.
+   */
+  siteName?: string | null;
   /** L'IP mise en cause, ou un acteur symbolique `infra:…` quand personne n'agit. */
   actor: string;
   actorKind: 'ip' | 'infrastructure' | 'inconnu';

@@ -525,7 +525,9 @@ function SupervisionPanel() {
             </span>
             {sweep.overdue && (
               <span className="flex-shrink-0 font-mono text-[9px] uppercase tracking-wider text-warning">
-                Due
+                {/* « Due » était le seul mot anglais de cet écran, et il n'a
+                    même pas le même sens en français. */}
+                En retard
               </span>
             )}
           </li>
@@ -535,9 +537,18 @@ function SupervisionPanel() {
   );
 }
 
-/** Les noms internes des rondes ne sont pas des phrases. */
+/**
+ * Les noms internes des rondes ne sont pas des phrases.
+ *
+ * `escalation` manquait : la ronde a été ajoutée au serveur sans passer par
+ * ici, et l'écran affichait donc « escalation » en anglais et en minuscules,
+ * au milieu de six libellés français capitalisés. Le repli `?? sweep.name` est
+ * un bon repli — il montre quelque chose plutôt que rien — mais il ne se
+ * signale pas, et personne ne relit une liste qui a l'air de marcher.
+ */
 const SWEEP_LABELS: Record<string, string> = {
   heartbeat: 'Battements',
+  escalation: 'Escalade',
   availability: 'Disponibilité',
   schedules: 'Scanner / Comply',
   digest: 'Rapports',
