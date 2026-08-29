@@ -498,7 +498,16 @@ export function GeneratorScreen() {
                                 /* Ce que le métier recommandait : visible même
                                    quand on l'a décoché, pour qu'un écart soit un
                                    choix et pas un oubli. */
-                                <span className="font-mono text-[8px] uppercase tracking-wider text-text-muted">
+                                <span
+                                  /*
+                                    Mesuré à 8 px dans le gris le plus pâle :
+                                    ratio 4,32 contre 4,5 exigés, sept fois sur
+                                    l'écran. Une marque censée faire d'un écart
+                                    « un choix et pas un oubli » ne peut pas
+                                    être la chose la moins lisible de la page.
+                                  */
+                                  className="font-mono text-[10px] uppercase tracking-wider text-text-secondary"
+                                >
                                   conseillé
                                 </span>
                               )}

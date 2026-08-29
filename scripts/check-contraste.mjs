@@ -110,6 +110,7 @@ if (!EMAIL || !MOT_DE_PASSE) {
 }
 
 const { chromium } = await import('playwright-core');
+const { parcourirVuesDetail, exigerDesVuesDetail } = await import('./lib/vues-detail.mjs');
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const nav = await chromium.launch({ executablePath: CHROMIUM, args: ['--no-sandbox'] });
@@ -128,6 +129,9 @@ for (let i = 0; i < 15 && (await page.content()).includes('name="password"'); i 
 if ((await page.content()).includes('name="password"')) {
   console.error('ÉCHEC : la connexion n’a pas abouti. Rien n’a pu être mesuré.');
   await nav.close();
+
+exigerDesVuesDetail(detailsOuverts, 'check:contraste');
+
   process.exit(1);
 }
 await attendre(2000);
@@ -146,6 +150,7 @@ const faibles = new Map();
 const invisibles = new Map();
 let mesures = 0;
 let textesLus = 0;
+let detailsOuverts = 0;
 
 while (aVisiter.length > 0) {
   const route = aVisiter.shift();
@@ -167,7 +172,8 @@ while (aVisiter.length > 0) {
   }
   mesures += 1;
 
-  const releve = await page.evaluate(() => {
+  const mesurer = async (ou) => {
+    const releve = await page.evaluate(() => {
     const rgb = (s) => {
       const m = /rgba?\(([^)]+)\)/.exec(s ?? '');
       if (!m) return null;
@@ -234,22 +240,34 @@ while (aVisiter.length > 0) {
       if (ratio < seuil) bas.push({ cle, exemple, ratio: +ratio.toFixed(2), seuil });
     }
     return { bas, nuls, lus };
-  });
+    });
 
-  textesLus += releve.lus;
-  for (const x of releve.bas) {
-    const e = faibles.get(x.cle) ?? { ...x, n: 0, exemples: new Set(), routes: new Set() };
-    e.n += 1;
-    e.exemples.add(x.exemple);
-    e.routes.add(route);
-    faibles.set(x.cle, e);
-  }
-  for (const x of releve.nuls) {
-    const e = invisibles.get(x.cle) ?? { ...x, n: 0, routes: new Set() };
-    e.n += 1;
-    e.routes.add(route);
-    invisibles.set(x.cle, e);
-  }
+    textesLus += releve.lus;
+    for (const x of releve.bas) {
+      const e = faibles.get(x.cle) ?? { ...x, n: 0, exemples: new Set(), routes: new Set() };
+      e.n += 1;
+      e.exemples.add(x.exemple);
+      e.routes.add(ou);
+      faibles.set(x.cle, e);
+    }
+    for (const x of releve.nuls) {
+      const e = invisibles.get(x.cle) ?? { ...x, n: 0, routes: new Set() };
+      e.n += 1;
+      e.routes.add(ou);
+      invisibles.set(x.cle, e);
+    }
+  };
+
+  await mesurer(route);
+
+  /*
+    LES VUES DE DÉTAIL, ET PAS SEULEMENT LES LISTES.
+
+    Le texte le plus serré et le plus pâle du produit est dans les fiches et
+    les fenêtres — libellés de champs, mentions, unités, horodatages — et pas
+    sur les écrans de liste que ce contrôle visitait seul.
+  */
+  detailsOuverts += await parcourirVuesDetail(page, route, mesurer, attendre);
 
   const nouvelles = await page.evaluate(() => [
     ...new Set([...document.querySelectorAll('a[href^="#/"]')].map((a) => a.getAttribute('href'))),
@@ -329,5 +347,6 @@ if (faibles.size > 0) {
 }
 
 console.log(
-  `OK — ${mesures} écrans, ${textesLus} textes mesurés, aucun sous le seuil WCAG AA.`,
+  `OK — ${mesures} écrans + ${detailsOuverts} vue(s) de détail, ${textesLus} textes mesurés, ` +
+    'aucun sous le seuil WCAG AA.',
 );

@@ -92,6 +92,7 @@ if (!EMAIL || !MOT_DE_PASSE) {
 }
 
 const { chromium } = await import('playwright-core');
+const { parcourirVuesDetail, exigerDesVuesDetail } = await import('./lib/vues-detail.mjs');
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const nav = await chromium.launch({ executablePath: CHROMIUM, args: ['--no-sandbox'] });
@@ -196,63 +197,17 @@ while (aVisiter.length > 0) {
   /*
     LES VUES DE DÉTAIL, ET PAS SEULEMENT LES LISTES.
 
-    Ce contrôle ne visitait que des écrans de liste, et il était vert. Deux
-    défauts trouvés le même soir en disent la raison : le bouton « Supprimer le
-    document » (15 × 15 px, un geste irréversible) ne s'affiche qu'une fois un
-    document OUVERT, et la carte de tâche — titre cliquable, repères, boutons
-    d'état, quatre cibles sous 24 px — n'apparaît que si une tâche existe.
+    Ce contrôle ne visitait que des écrans de liste, et il était vert. Le
+    bouton « Supprimer le document » (15 × 15 px, un geste irréversible) ne
+    s'affiche qu'une fois un document OUVERT ; le « Fermer » de huit fenêtres
+    mesurait 18 px ; « Retirer la ligne », dans l'éditeur de pages, 12 × 12.
+    Rien de tout ça n'était atteignable depuis une liste.
 
-    Les vues de détail sont précisément celles où l'on trouve les gestes
-    destructeurs et les commandes serrées. Les ignorer laissait la moitié de
-    l'application hors de portée du contrôle, sans que rien ne le signale.
-
-    On ouvre donc, sur chaque écran, les deux premières choses ouvrables — un
-    élément de liste, une carte, une ligne de tableau — puis on referme à Échap
-    (ce qui, accessoirement, ne marche que parce que `check:clavier` l'exige).
+    La boucle vit dans `scripts/lib/vues-detail.mjs` : quatre contrôles ont le
+    même angle mort, et recopier le parcours dans chacun garantissait qu'ils
+    divergeraient.
   */
-  /*
-    Repérées par leur GÉOMÉTRIE, pas par leurs classes. Un premier jet cherchait
-    `li button`, `article button`, `[role=button]` — du balisage que l'édition
-    interne emploie et pas l'édition cliente, dont les lignes de liste sont de
-    simples `<button>` dans un `<div>`. Le contrôle n'ouvrait alors plus rien du
-    tout, et c'est le témoin qui l'a dit.
-
-    Ce qu'on cherche n'est pas une balise, c'est une LIGNE : large comme son
-    conteneur, assez haute pour qu'on la vise, et qui n'est pas le bouton
-    d'action principal de l'écran.
-  */
-  const rangs = await page.evaluate(() => {
-    const main = document.querySelector('main') ?? document.body;
-    const large = main.getBoundingClientRect().width;
-    const out = [];
-    for (const b of main.querySelectorAll('button')) {
-      const r = b.getBoundingClientRect();
-      if (r.width < large * 0.6 || r.height < 40) continue;
-      const t = (b.textContent || '').trim();
-      if (!t || /^(Nouveau|Nouvelle|Ajouter|Créer|Importer|Enregistrer)/i.test(t)) continue;
-      out.push(t.slice(0, 40));
-      if (out.length >= 2) break;
-    }
-    return out;
-  });
-  for (let i = 0; i < rangs.length; i += 1) {
-    const ouvrables = page.locator('main button', { hasText: rangs[i] });
-    const avant = await page.evaluate(() => document.body.innerHTML.length);
-    try {
-      await ouvrables.first().click({ timeout: 2500 });
-    } catch {
-      continue; // recouvert, détaché, hors écran : ce n'est pas un défaut
-    }
-    await attendre(700);
-    const apres = await page.evaluate(() => document.body.innerHTML.length);
-    // Rien n'a bougé : le clic n'a pas ouvert de vue, inutile de re-mesurer les
-    // mêmes cibles une seconde fois et de gonfler le compte.
-    if (Math.abs(apres - avant) < 400) continue;
-    detailsOuverts += 1;
-    await mesurer(`${route} (détail)`);
-    await page.keyboard.press('Escape');
-    await attendre(400);
-  }
+  detailsOuverts += await parcourirVuesDetail(page, route, mesurer, attendre);
 
   const nouvelles = await page.evaluate(() => [
     ...new Set([...document.querySelectorAll('a[href^="#/"]')].map((a) => a.getAttribute('href'))),
@@ -262,24 +217,7 @@ while (aVisiter.length > 0) {
 
 await nav.close();
 
-/*
-  LE TÉMOIN DES VUES DE DÉTAIL.
-
-  Si plus aucune ne s'ouvre — un sélecteur devenu faux, un jeu d'essai vidé —
-  le contrôle retombe silencieusement dans l'angle mort qui lui a fait manquer
-  cinq cibles, dont un « Supprimer le document » de 15 px. Un vert obtenu en
-  ne regardant que des listes n'est pas un vert.
-*/
-if (detailsOuverts === 0) {
-  console.error(
-    'ÉCHEC : aucune vue de détail n’a pu être ouverte. Ce contrôle n’aurait mesuré\n' +
-      'que des écrans de liste — c’est exactement ce qui lui avait fait manquer le\n' +
-      'bouton « Supprimer le document » (15 × 15 px). Vérifiez que le jeu d’essai\n' +
-      'contient bien des enregistrements, et que les sélecteurs d’ouverture tiennent\n' +
-      'toujours (voir la boucle « ouvrables »).',
-  );
-  process.exit(1);
-}
+exigerDesVuesDetail(detailsOuverts, 'check:cibles');
 
 /* Le témoin : sans cible mesurée, il n'y a pas de bonne nouvelle. */
 if (cibles === 0) {

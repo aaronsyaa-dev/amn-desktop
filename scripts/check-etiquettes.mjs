@@ -52,6 +52,7 @@ if (!EMAIL || !MOT_DE_PASSE) {
 }
 
 const { chromium } = await import('playwright-core');
+const { parcourirVuesDetail, exigerDesVuesDetail } = await import('./lib/vues-detail.mjs');
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const nav = await chromium.launch({ executablePath: CHROMIUM, args: ['--no-sandbox'] });
@@ -70,6 +71,8 @@ for (let i = 0; i < 15 && (await page.content()).includes('name="password"'); i 
 if ((await page.content()).includes('name="password"')) {
   console.error('ÉCHEC : la connexion n’a pas abouti. Rien n’a pu être mesuré.');
   await nav.close();
+
+exigerDesVuesDetail(detailsOuverts, 'check:etiquettes');
   process.exit(1);
 }
 await attendre(2000);
@@ -85,12 +88,14 @@ if (routes.length === 0) {
 
 const muets = new Map();
 let examines = 0;
+let detailsOuverts = 0;
 
 for (const route of routes) {
   await page.goto(APP + route).catch(() => undefined);
   await attendre(1000);
 
-  const releve = await page.evaluate(() => {
+  const mesurer = async (ou) => {
+    const releve = await page.evaluate(() => {
     const out = [];
     let n = 0;
 
@@ -144,16 +149,29 @@ for (const route of routes) {
     }
 
     return { out, n };
-  });
+    });
 
-  examines += releve.n;
-  for (const x of releve.out) {
-    const cle = `${x.genre}|${x.tag}|${x.cls}`;
-    const e = muets.get(cle) ?? { ...x, n: 0, routes: new Set() };
-    e.n += 1;
-    e.routes.add(route);
-    muets.set(cle, e);
-  }
+    examines += releve.n;
+    for (const x of releve.out) {
+      const cle = `${x.genre}|${x.tag}|${x.cls}`;
+      const e = muets.get(cle) ?? { ...x, n: 0, routes: new Set() };
+      e.n += 1;
+      e.routes.add(ou);
+      muets.set(cle, e);
+    }
+  };
+
+  await mesurer(route);
+
+  /*
+    LES VUES DE DÉTAIL, ET PAS SEULEMENT LES LISTES.
+
+    Les champs de saisie et les commandes à icône seule — celles qui ont besoin
+    d'un nom — vivent dans les formulaires et les fenêtres, pas sur les écrans
+    de liste que ce contrôle visitait seul. Il mesurait donc surtout des liens
+    de navigation, qui portent tous leur texte.
+  */
+  detailsOuverts += await parcourirVuesDetail(page, route, mesurer, attendre);
 }
 
 await nav.close();
@@ -179,4 +197,7 @@ if (muets.size > 0) {
   process.exit(1);
 }
 
-console.log(`OK — ${routes.length} écrans, ${examines} éléments examinés, tous nommés.`);
+console.log(
+  `OK — ${routes.length} écrans + ${detailsOuverts} vue(s) de détail, ` +
+    `${examines} éléments examinés, tous nommés.`,
+);
