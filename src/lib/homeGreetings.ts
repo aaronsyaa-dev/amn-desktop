@@ -106,3 +106,92 @@ export function homeWelcome(name: string, now = new Date(), serein = false): str
 export function homeNudge(): string {
   return pick(NUDGES, 7);
 }
+
+/* ------------------- Qui a le droit de dire que c'est calme ---------------- */
+
+/**
+ * L'ÉTAT DU PARC, tel qu'il autorise — ou non — une phrase rassurante.
+ *
+ * ## Le trou trouvé après coup
+ *
+ * `serein` se calculait dans les écrans, et il comptait les sites HORS LIGNE.
+ * Il ne comptait pas les sites dont le traceur n'a **jamais** rien envoyé.
+ *
+ * Mesuré sur la base d'essai : dix-neuf sites supervisés, douze hors ligne, et
+ * **sept dont on n'a jamais eu le moindre signe**. Ces sept-là n'entraient dans
+ * aucun des deux chiffres de l'accueil, ni « en ligne » ni « hors ligne ». Un
+ * parc entièrement composé de sites jamais vus — traceur jamais posé, ou posé
+ * et jamais fonctionnel — donnait donc zéro hors ligne, zéro point d'attention,
+ * et « La nuit est calme ».
+ *
+ * C'est exactement le défaut corrigé plus haut dans ce fichier, revenu par une
+ * autre porte : on avait bouché le cas « ça va mal », pas le cas « on n'en sait
+ * rien ». Or « jamais vu » est le PIRE des trois pour une entreprise de
+ * supervision — un site hors ligne, au moins, on l'a vu vivre une fois. Un site
+ * jamais vu est une supervision facturée qui n'a jamais commencé.
+ *
+ * Le moteur des points d'attention dit la même chose de son côté depuis
+ * toujours, pour les certificats : « un certificat jamais vérifié ne produit
+ * rien du tout — ni valide ni à surveiller ». Même doctrine, même défaut.
+ *
+ * ## Pourquoi c'est une fonction, et pas trois lignes dans l'écran
+ *
+ * Parce que c'est une RÈGLE. Calculée dans deux écrans, elle y était déjà
+ * écrite de deux façons différentes ; à la troisième elle aurait divergé pour
+ * de bon. Ici elle est unique et éprouvée.
+ */
+export interface EtatDuParc {
+  /** Points d'attention en cours. */
+  attentions: number;
+  /**
+   * L'évaluation a-t-elle réellement eu lieu ?
+   *
+   * Une liste vide peut vouloir dire « rien à signaler » ou « je n'ai pas
+   * encore regardé », et affirmer le calme dans le second cas est un mensonge
+   * qu'on ne peut même pas qualifier d'erreur.
+   */
+  regarde: boolean;
+  /** Sites qui ne répondent plus. */
+  horsLigne?: number;
+  /** Sites dont le traceur n'a JAMAIS rien envoyé. */
+  jamaisVus?: number;
+}
+
+export function parcSerein(etat: EtatDuParc): boolean {
+  return (
+    etat.regarde &&
+    etat.attentions === 0 &&
+    (etat.horsLigne ?? 0) === 0 &&
+    (etat.jamaisVus ?? 0) === 0
+  );
+}
+
+/**
+ * La ligne rouge sous la salutation, ou `null` quand il n'y a rien à dire.
+ *
+ * Les deux états ne demandent pas le même geste, et la phrase le dit :
+ *
+ *   · hors ligne → **à regarder**. Le site a vécu, il ne répond plus, quelqu'un
+ *     ouvre le parc et va voir ;
+ *   · jamais vu → il n'y a rien à « regarder » au sens de la supervision. Le
+ *     traceur n'a jamais parlé : il n'a pas été posé, ou il ne marche pas. Le
+ *     geste est une installation, pas un diagnostic.
+ *
+ * Les mélanger sous un même « à regarder » enverrait ouvrir un tableau vide.
+ */
+export function alerteParc(etat: { horsLigne?: number; jamaisVus?: number }): string | null {
+  const bas = etat.horsLigne ?? 0;
+  const muets = etat.jamaisVus ?? 0;
+  const s = (n: number) => (n > 1 ? 's' : '');
+
+  if (bas > 0 && muets > 0) {
+    return `${bas} site${s(bas)} hors ligne · ${muets} sans aucun signe de vie — à regarder`;
+  }
+  if (bas > 0) return `${bas} site${s(bas)} hors ligne — à regarder`;
+  if (muets > 0) {
+    return muets > 1
+      ? `${muets} sites n’ont jamais donné signe de vie`
+      : '1 site n’a jamais donné signe de vie';
+  }
+  return null;
+}

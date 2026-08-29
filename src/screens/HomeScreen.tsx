@@ -27,7 +27,7 @@ import { VeilleTicker } from '../components/VeilleTicker';
 import { SupervisionBand } from '../components/SupervisionBand';
 import { AttentionPanel } from '../components/AttentionPanel';
 import { useAttention } from '../state/useAttention';
-import { homeWelcome, homeNudge } from '../lib/homeGreetings';
+import { homeWelcome, homeNudge, parcSerein, alerteParc } from '../lib/homeGreetings';
 import { relativeTime } from '../lib/time';
 
 /**
@@ -101,12 +101,29 @@ export function HomeScreen() {
     salutation était le seul endroit qui s'en dispensait.
   */
   const attention = useAttention();
-  const offlineCount = sites.filter((s) => s.status === 'offline').length;
-  const serein = Boolean(attention.checkedAt) && attention.items.length === 0 && offlineCount === 0;
+  /*
+    « JAMAIS VU » COMPTE, et c'est le chiffre qui manquait.
+
+    Un site dont le traceur n'a jamais rien envoyé n'était NI en ligne NI hors
+    ligne : il n'apparaissait dans aucun des deux compteurs, et n'empêchait pas
+    l'accueil d'annoncer le calme. Mesuré : dix-neuf sites, douze hors ligne,
+    sept jamais vus, et aucun des sept nulle part à l'écran.
+
+    La règle vit dans lib/homeGreetings.ts, pas ici : elle était déjà écrite de
+    deux façons différentes dans les deux accueils.
+  */
+  const horsLigne = sites.filter((s) => s.status === 'offline').length;
+  const jamaisVus = sites.filter((s) => s.status === 'unknown').length;
+  const serein = parcSerein({
+    attentions: attention.items.length,
+    regarde: Boolean(attention.checkedAt),
+    horsLigne,
+    jamaisVus,
+  });
   const welcome = homeWelcome(displayName, now, serein);
   const dateLabel = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
-  const offline = sites.filter((s) => s.status === 'offline').length;
+  const alerte = alerteParc({ horsLigne, jamaisVus });
 
   // A three-number pulse of the workspace. Kept to counts the operator can act
   // on — nothing here is a vanity metric, and each one is a link to the screen
@@ -115,12 +132,21 @@ export function HomeScreen() {
   const stats = useMemo(
     () => [
       { key: 'sites', value: sites.length, label: 'Sites supervisés', to: '/sites' },
-      {
-        key: 'online',
-        value: sites.filter((s) => s.status === 'online').length,
-        label: 'En ligne',
-        to: '/sites',
-      },
+      /*
+        « En ligne » seul laissait un trou : dix-neuf supervisés, zéro en
+        ligne, et rien qui dise où sont les dix-neuf autres. Le compteur des
+        sites JAMAIS VUS prend la place quand il y en a — c'est le chiffre le
+        plus grave des deux, et celui qu'on ne peut lire nulle part ailleurs.
+        Quand tout a déjà parlé au moins une fois, il redevient « En ligne ».
+      */
+      jamaisVus > 0
+        ? { key: 'jamais-vus', value: jamaisVus, label: 'Jamais vus', to: '/sites' }
+        : {
+            key: 'online',
+            value: sites.filter((s) => s.status === 'online').length,
+            label: 'En ligne',
+            to: '/sites',
+          },
       {
         key: 'tasks',
         value: openTasks.filter((t) => t.status !== 'done').length,
@@ -128,7 +154,7 @@ export function HomeScreen() {
         to: '/tasks',
       },
     ],
-    [sites, openTasks],
+    [sites, openTasks, jamaisVus],
   );
 
   const destinations = [
@@ -163,13 +189,13 @@ export function HomeScreen() {
           transition={{ delay: 0.35, duration: 0.8 }}
           className="mt-3 text-base text-text-secondary"
         >
-          {offline > 0 ? (
+          {alerte ? (
             <button
               type="button"
               onClick={() => navigate('/sites')}
               className="text-danger underline decoration-danger/40 underline-offset-4 transition-colors hover:decoration-danger"
             >
-              {offline} site{offline > 1 ? 's' : ''} hors ligne — à regarder
+              {alerte}
             </button>
           ) : (
             nudge

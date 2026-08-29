@@ -590,6 +590,13 @@ interface SalutationModule {
   homeWelcome(name: string, now?: Date, serein?: boolean): string;
   GREETINGS_NEUTRES: Record<string, string[]>;
   GREETINGS_SEREINES: Record<string, string[]>;
+  parcSerein(etat: {
+    attentions: number;
+    regarde: boolean;
+    horsLigne?: number;
+    jamaisVus?: number;
+  }): boolean;
+  alerteParc(etat: { horsLigne?: number; jamaisVus?: number }): string | null;
 }
 const S = await loadFromSrc<SalutationModule>('src/lib/homeGreetings.ts');
 
@@ -814,6 +821,75 @@ check('une seule ligne par adresse, celle de la comparaison la plus récente', (
   });
   assert.equal(items.length, 1, 'un site n’a pas trois problèmes, il en a un');
   assert.match(items[0].evidence, /80 → 60/, 'les deux plus récents');
+});
+
+/* ────────── Le site JAMAIS VU : ni en ligne, ni hors ligne, ni compté ────── */
+
+/*
+  LE TROU QUI RESTAIT APRÈS LA PREMIÈRE CORRECTION.
+
+  La salutation avait été bouchée du côté « ça va mal » : plus de « la nuit est
+  calme » au-dessus de douze sites hors ligne. Le cas « on n'en sait rien » est
+  resté ouvert quelques heures de plus.
+
+  Mesuré sur la base d'essai : dix-neuf sites supervisés, douze hors ligne, et
+  SEPT dont le traceur n'a jamais rien envoyé. Ces sept-là n'entraient dans
+  aucun des deux compteurs de l'accueil — ni « en ligne », ni « hors ligne » —
+  et n'empêchaient rien. Un parc entièrement composé de sites jamais vus
+  donnait donc zéro hors ligne, zéro point d'attention, et « La nuit est calme ».
+
+  « Jamais vu » est pourtant le pire des trois états pour une entreprise de
+  supervision : un site hors ligne, on l'a au moins vu vivre une fois. Un site
+  jamais vu est une supervision facturée qui n'a jamais commencé.
+*/
+
+check('SALUTATION : un parc jamais vu n’autorise AUCUNE réassurance', () => {
+  assert.equal(
+    S.parcSerein({ attentions: 0, regarde: true, horsLigne: 0, jamaisVus: 7 }),
+    false,
+    'sept sites dont on n’a jamais eu de nouvelles ne sont pas « le calme »',
+  );
+  assert.equal(
+    S.parcSerein({ attentions: 0, regarde: true, horsLigne: 0, jamaisVus: 0 }),
+    true,
+    'le témoin : quand tout a parlé et que rien n’attend, elle a le droit',
+  );
+});
+
+check('SALUTATION : chaque condition suffit à retirer le droit', () => {
+  const base = { attentions: 0, regarde: true, horsLigne: 0, jamaisVus: 0 };
+  assert.equal(S.parcSerein({ ...base, regarde: false }), false, 'pas encore regardé');
+  assert.equal(S.parcSerein({ ...base, attentions: 1 }), false, 'un point d’attention');
+  assert.equal(S.parcSerein({ ...base, horsLigne: 1 }), false, 'un site hors ligne');
+  assert.equal(S.parcSerein({ ...base, jamaisVus: 1 }), false, 'un site jamais vu');
+});
+
+check('SALUTATION : une édition sans parc ne dépend que de l’attention', () => {
+  // L'accueil client ne passe ni `horsLigne` ni `jamaisVus` : les absents
+  // valent zéro, jamais « inconnu donc bloquant ».
+  assert.equal(S.parcSerein({ attentions: 0, regarde: true }), true);
+  assert.equal(S.parcSerein({ attentions: 2, regarde: true }), false);
+});
+
+check('la ligne d’alerte nomme les deux états, et ne les confond pas', () => {
+  assert.equal(S.alerteParc({ horsLigne: 0, jamaisVus: 0 }), null, 'rien à dire, rien de dit');
+
+  assert.equal(S.alerteParc({ horsLigne: 12 }), '12 sites hors ligne — à regarder');
+  assert.equal(S.alerteParc({ horsLigne: 1 }), '1 site hors ligne — à regarder');
+
+  /*
+    « à regarder » ne convient PAS aux sites jamais vus : il n'y a rien à
+    diagnostiquer, le traceur n'a jamais parlé. Le geste est une installation.
+    Les fondre dans la même phrase enverrait ouvrir un tableau vide.
+  */
+  const muets = S.alerteParc({ jamaisVus: 7 }) ?? '';
+  assert.match(muets, /jamais donné signe de vie/);
+  assert.ok(!/à regarder/.test(muets), 'un site jamais vu ne se « regarde » pas');
+  assert.match(S.alerteParc({ jamaisVus: 1 }) ?? '', /^1 site n’a jamais/, 'accord au singulier');
+
+  const deux = S.alerteParc({ horsLigne: 12, jamaisVus: 7 }) ?? '';
+  assert.match(deux, /12 sites hors ligne/);
+  assert.match(deux, /7 sans aucun signe de vie/);
 });
 
 if (failures.length > 0) {

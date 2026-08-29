@@ -12,7 +12,7 @@ import { AttentionPanel } from '../components/AttentionPanel';
 import { useAttention } from '../state/useAttention';
 import { SoloPulse } from './SoloPulse';
 import { DayBand } from './DayBand';
-import { homeWelcome } from '../lib/homeGreetings';
+import { homeWelcome, parcSerein } from '../lib/homeGreetings';
 import type { SharedTaskStatus } from '../shared/api';
 
 /**
@@ -46,7 +46,16 @@ export function HomeSoloScreen() {
     donc les points d'attention suffisent à trancher.
   */
   const attention = useAttention();
-  const serein = Boolean(attention.checkedAt) && attention.items.length === 0;
+  /*
+    Même règle que l'accueil interne, même fonction : une organisation cliente
+    n'a pas de parc supervisé, donc les deux compteurs de sites valent zéro et
+    seule la condition d'attention joue. La partager évite qu'elles divergent —
+    elles étaient déjà écrites de deux façons.
+  */
+  const serein = parcSerein({
+    attentions: attention.items.length,
+    regarde: Boolean(attention.checkedAt),
+  });
 
   /*
     L'horloge de l'accueil (BLOC B).
