@@ -20,6 +20,7 @@ import { AppLauncher } from './AppLauncher';
 import { OrgSwitchButton } from './org-rail/OrgSwitchButton';
 import { type NavItem } from '../data/navigation';
 import { SPACES, spaceByKey, spaceForPath, sectionsForSpace } from '../data/spaces';
+import { CLE_CHOIX, deplierAuDemarrage, lireChoix } from '../lib/barreLaterale';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
 
 const COLLAPSED_WIDTH = 72;
@@ -57,7 +58,30 @@ export function Sidebar({
   */
   useFermetureEchap(mobileOpen, () => onClose?.());
 
-  const [isExpandedDesktop, setIsExpanded] = useState(false);
+  /*
+    DÉPLIÉE PAR DÉFAUT QUAND L'ÉCRAN LE PERMET.
+
+    C'était `useState(false)` — replié en toutes circonstances, sans raison
+    écrite. Conséquence mesurée à 1 280, 1 400 et 1 920 px : le sélecteur
+    d'espace se réduisait à une icône de 47 × 44 px sans texte, et les mots
+    « Poste de travail » / « Tour de contrôle » n'apparaissaient nulle part.
+    Or c'est par là qu'on atteint la Supervision, les Sites, les Trackers, le
+    Scanner et Comply — tout le métier. D'où « l'étouffoir est introuvable » :
+    il ne manquait pas, il était derrière une icône muette.
+
+    La règle vit dans `src/lib/barreLaterale.ts`, avec ses deux entrées : un
+    choix explicite gagne toujours, la largeur décide sinon.
+  */
+  const [isExpandedDesktop, setIsExpanded] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    let choix: boolean | null = null;
+    try {
+      choix = lireChoix(window.localStorage.getItem(CLE_CHOIX));
+    } catch {
+      /* stockage refusé (navigation privée) : la largeur décidera */
+    }
+    return deplierAuDemarrage(window.innerWidth, choix);
+  });
   const [isSitesFlyoutOpen, setIsSitesFlyoutOpen] = useState(false);
 
   /* Le volet des sites se referme à Échap, comme tout ce qui s’ouvre par-dessus. */
@@ -415,7 +439,21 @@ export function Sidebar({
 
           <button
             type="button"
-            onClick={() => setIsExpanded((v) => !v)}
+            onClick={() =>
+              setIsExpanded((v) => {
+                /*
+                  Le geste est un CHOIX, et il se retient. Sans ça, replier la
+                  barre sur un grand écran ne durerait que jusqu'au prochain
+                  rechargement — un réglage qu'on doit refaire n'en est pas un.
+                */
+                try {
+                  window.localStorage.setItem(CLE_CHOIX, String(!v));
+                } catch {
+                  /* stockage refusé : le choix ne vaut que pour cette session */
+                }
+                return !v;
+              })
+            }
             className={`hidden items-center gap-3 rounded-lg py-2 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary md:flex ${
               isExpanded ? 'px-3' : 'justify-center px-0'
             }`}

@@ -110,6 +110,9 @@ jobs:
 
       - name: Contrôle de la file d'envoi
         run: npm run check:envoi
+
+      - name: Contrôle de la barre latérale
+        run: npm run check:barre
       - name: Tendances
         run: npm run check:trend
       - name: Export FEC
