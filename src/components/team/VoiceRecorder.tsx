@@ -110,24 +110,32 @@ export function VoiceRecorder({ onRecorded }: { onRecorded: (att: MessageAttachm
 
   if (recording) {
     return (
-      <div className="flex flex-shrink-0 items-center gap-1.5 rounded-md border border-danger/40 bg-danger-muted px-2 py-1">
+      <div className="flex flex-shrink-0 items-center gap-2.5 rounded-md border border-danger/40 bg-danger-muted px-2 py-1">
         <span className="h-2 w-2 animate-pulse rounded-full bg-danger" />
         <span className="tnum font-mono text-xs text-danger">{fmt(elapsed)}</span>
+        {/*
+          MESURÉ : 24 × 24 px, deux px l'un de l'autre. Voir
+          `docs/PRINCIPE-CONFORT.md` — et ici les deux gestes sont opposés :
+          l'un JETTE l'enregistrement, l'autre l'envoie. Se tromper de cible
+          perd ce qu'on vient de dire, et il n'y a pas de retour en arrière.
+
+          Deux cibles de 36 px, séparées par l'écart de la rangée.
+        */}
         <button
           type="button"
           onClick={cancel}
           aria-label="Annuler l'enregistrement"
-          className="flex h-6 w-6 items-center justify-center rounded text-text-muted transition-colors hover:text-text-primary"
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
         >
-          <Trash2 size={14} strokeWidth={1.75} />
+          <Trash2 size={15} strokeWidth={1.75} />
         </button>
         <button
           type="button"
           onClick={stopAndSend}
           aria-label="Terminer et joindre"
-          className="flex h-6 w-6 items-center justify-center rounded bg-accent text-bg transition-colors hover:bg-accent-hover"
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded bg-accent text-bg transition-colors hover:bg-accent-hover"
         >
-          <Check size={14} strokeWidth={2.5} />
+          <Check size={15} strokeWidth={2.5} />
         </button>
       </div>
     );

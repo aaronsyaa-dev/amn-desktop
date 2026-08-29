@@ -2,7 +2,20 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, FileText, Globe, ImagePlus, Info, Mail, Phone, Plus, Printer, ReceiptEuro, X } from 'lucide-react';
+import {
+  ArrowRight,
+  ArrowUpRight,
+  FileText,
+  Globe,
+  ImagePlus,
+  Info,
+  Mail,
+  Phone,
+  Plus,
+  Printer,
+  ReceiptEuro,
+  X,
+} from 'lucide-react';
 import { useClients } from '../state/useClients';
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
@@ -445,7 +458,16 @@ function ClientHeader({
         onChange={(e) => onFile(e.target.files?.[0])}
       />
 
-      <div className="min-w-0 flex-1">
+      {/*
+        UN ÉCART ENTRE DEUX CHAMPS MODIFIABLES SUR PLACE.
+
+        Voir `docs/PRINCIPE-CONFORT.md`. Le nom et la société se suivaient sans
+        le moindre espace : deux zones cliquables collées, 0 px mesuré. On
+        atteignait les 24 px de WCAG par une hauteur minimale, mais cliquer
+        entre les deux restait un tirage au sort entre « modifier le nom » et
+        « modifier la société ».
+      */}
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
         <InlineField
           value={client.name}
           onSave={(v) => onPatch(client.id, { name: v })}
@@ -561,57 +583,73 @@ function LinkedSitesBlock({
           Aucun site enregistré. La santé du client se base uniquement sur la date du dernier contact.
         </p>
       ) : (
-        <div className="flex flex-wrap gap-1.5">
+        /*
+          UNE LIGNE PAR SITE, PAS UNE SOUPE DE PUCES
+          ══════════════════════════════════════════
+
+          Voir `docs/PRINCIPE-CONFORT.md`. Cette liste était une rangée de
+          puces qui passaient à la ligne, et chaque puce contenait DEUX cibles
+          collées l'une à l'autre : le nom (qui lie ou délie le site) et la
+          flèche (qui ouvre sa fiche). 0 px d'écart horizontal mesuré. On
+          atteignait les 24 px de WCAG en agrandissant les zones, mais deux
+          cibles collées ne se visent pas confortablement pour autant — on vise
+          juste, ou on déclenche la voisine. Le seuil est un plancher légal, pas
+          un objectif de confort.
+
+          Une puce ne tenait de toute façon pas la charge : douze sites
+          donnaient trois lignes de pastilles où plus rien ne se lisait.
+
+          Chaque site est donc une LIGNE : le geste principal — lier ou délier —
+          prend toute la largeur disponible à gauche, l'ouverture de la fiche
+          est un bouton séparé à droite, et un vrai écart les sépare. Les lignes
+          sont espacées entre elles, et l'état se lit en bout de ligne, toujours
+          au même endroit.
+        */
+        <ul className="flex flex-col gap-1.5">
           {sites.map((site) => {
             const linked = client.linkedSiteIds.includes(site.id);
             return (
-              <span
+              <li
                 key={site.id}
-                className={`flex items-center gap-1.5 border px-2 py-1 text-xs ${
-                  linked ? 'border-border-strong bg-accent-muted text-text-primary' : 'border-border text-text-muted'
+                className={`flex items-center gap-2 rounded-lg border px-1 py-1 ${
+                  linked ? 'border-border-strong bg-accent-muted' : 'border-border'
                 }`}
               >
                 <button
                   type="button"
                   onClick={() => toggle(site.id)}
-                  /*
-                    La dispense disait « élargir la zone les ferait se
-                    chevaucher » : vrai HORIZONTALEMENT — la pastille d'état et
-                    la flèche sont juste à côté — mais la puce a déjà son
-                    `py-1`, et grandir VERTICALEMENT ne coûte rien à personne.
-                    `-my-1 py-1` reprend exactement ce remplissage : 16 px
-                    deviennent 24, sans qu'un seul pixel bouge à l'écran.
-                  */
-                  className="-my-1 flex items-center gap-1.5 py-1"
+                  aria-pressed={linked}
+                  title={linked ? 'Délier ce site de la fiche' : 'Lier ce site à la fiche'}
+                  className={`flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-left text-xs transition-colors hover:bg-surface-hover ${
+                    linked ? 'text-text-primary' : 'text-text-muted'
+                  }`}
                 >
-                  <Globe size={11} strokeWidth={1.75} />
-                  {site.name}
+                  <Globe size={13} strokeWidth={1.75} className="flex-shrink-0" />
+                  <span className="truncate">{site.name}</span>
                 </button>
                 {linked && (
                   <>
                     <StatusBadge status={site.status} />
+                    {/*
+                      Séparé du nom par l'écart de la ligne, et assez grand pour
+                      qu'on le vise sans réfléchir : c'est le seul moyen
+                      d'ouvrir la fiche d'un site depuis ici.
+                    */}
                     <button
                       type="button"
                       onClick={() => openSite(site.id)}
-                      // Mesuré 10 × 16 px, dix-huit fois sur l'écran : la
-                      // flèche est le seul moyen d'ouvrir la fiche d'un site
-                      // depuis la liste. `-m-2 p-2` la porte à 26 × 32 sans
-                      // déplacer les pastilles de statut à côté.
-                      className="-m-2 p-2 text-text-muted hover:text-text-primary"
-                      // « ↗ » n'est pas un nom : à l'oreille, c'est une flèche
-                      // vers le nord-est. Le `title` restait le seul recours,
-                      // et il ne sert qu'à la souris.
                       aria-label={`Voir la fiche du site ${site.name ?? ''}`.trim()}
                       title="Voir la fiche du site"
+                      className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
                     >
-                      ↗
+                      <ArrowUpRight size={16} strokeWidth={1.75} />
                     </button>
                   </>
                 )}
-              </span>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
     </div>
   );
@@ -1256,19 +1294,18 @@ function InlineField({
       type="button"
       onClick={() => setEditing(true)}
       /*
-        `min-h-6` plutôt qu'un `-my-* py-*`.
+        `min-h-9` — 36 px, et non les 24 px du plancher WCAG.
 
-        La dispense disait « empilés sans aucun écart vertical, même raison » :
-        deux de ces champs se suivent directement (le nom et la société d'une
-        fiche), et leur donner un remplissage négatif ferait se CHEVAUCHER
-        leurs deux zones cliquables — cliquer entre les deux deviendrait un
-        tirage au sort entre « modifier le nom » et « modifier la société ».
+        Un champ qu'on modifie en cliquant dessus est une cible qu'on vise
+        plusieurs fois par fiche. `min-h-6` le faisait passer le seuil légal ;
+        il ne le rendait pas confortable. Voir `docs/PRINCIPE-CONFORT.md` : le
+        seuil est un plancher, pas un objectif.
 
-        Une hauteur minimale grandit l'élément lui-même : elle ne mord sur
-        personne, n'a besoin d'aucun écart dans le conteneur, et ne déplace
-        rien là où le texte fait déjà ses 24 px — c'est-à-dire presque partout.
+        Une hauteur minimale grandit l'élément lui-même, donc elle ne mord sur
+        aucun voisin — et le conteneur, lui, pose un vrai écart entre deux
+        champs qui se suivent.
       */
-      className={`block min-h-6 w-full truncate border-b border-transparent text-left hover:border-border ${className ?? ''} ${
+      className={`flex min-h-9 w-full items-center truncate border-b border-transparent text-left hover:border-border ${className ?? ''} ${
         value ? '' : 'text-text-muted'
       }`}
     >

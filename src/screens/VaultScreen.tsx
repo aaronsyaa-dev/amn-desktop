@@ -215,7 +215,17 @@ export function VaultScreen() {
                 key={opt.value}
                 type="button"
                 onClick={() => setCategory(opt.value)}
-                className={`flex-shrink-0 whitespace-nowrap px-3 py-2 font-mono text-[11px] uppercase tracking-wider transition-colors duration-150 ${
+                /*
+                Voir `docs/PRINCIPE-CONFORT.md`. Ces filtres se touchent, et
+                c'est JUSTE : un contrôle segmenté se lit comme un seul objet, et
+                le segment actif est rempli — on ne se trompe pas de cible parce
+                qu'on ne voit pas la frontière, on la voit très bien.
+
+                Ce qui manquait n'était pas l'écart mais la HAUTEUR : 31 px
+                mesurés, sous les 44 px qui rendent un geste confortable sans
+                qu'on ait à viser. `min-h-11` les y porte.
+            */
+                className={`flex min-h-11 flex-shrink-0 items-center whitespace-nowrap px-3 py-2 font-mono text-[11px] uppercase tracking-wider transition-colors duration-150 ${
                   category === opt.value
                     ? 'bg-accent-muted text-text-primary'
                     : 'text-text-secondary hover:text-text-primary'

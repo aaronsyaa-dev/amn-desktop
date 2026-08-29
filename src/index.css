@@ -35,8 +35,45 @@
 
   /* Text */
   --color-text-primary: #f2f2f0;
-  --color-text-secondary: #9a9a97;
-  --color-text-muted: #808080;
+  /*
+    LA RAMPE MONTE D'UN CRAN — LE CONFORT PASSE AVANT LA DENSITÉ
+    ════════════════════════════════════════════════════════════
+
+    Voir `docs/PRINCIPE-CONFORT.md`. Le desktop doit être utilisable des heures
+    durant, par tout le monde ; partout où lisibilité et distinction stricte
+    s'opposent, c'est la lisibilité qui gagne.
+
+    Ce que ça change, sur les quatre fonds du produit (fond, surface, survol,
+    bordure) :
+
+      secondary  #9a9a97 → #b4b4b1    5,36 → 7,28 au pire cas   (AAA partout)
+      muted      #808080 → #9a9a97    3,83 → 5,36 au pire cas   (AA large)
+
+    `muted` passait SOUS le seuil AA sur les deux fonds les plus clairs — les
+    lignes de liste survolées ou sélectionnées, c'est-à-dire celle qu'on est en
+    train de regarder. Il y tient maintenant avec de la marge, et atteint AAA
+    (7,02) sur le fond principal.
+
+    ## Ce que ça coûte, et pourquoi c'est peu
+
+    L'argument qui avait retenu la rampe était le voisinage avec
+    `--color-warning` (#8f8f8c). Il tenait : porter `muted` à #8c8c8c l'aurait
+    mis à **1,03** de l'avertissement, indiscernable.
+
+    Monter TOUTE la rampe plutôt que ce seul cran donne un bien meilleur
+    marché — les écarts entre crans voisins bougent à peine :
+
+      secondary / muted   1,400 → 1,357
+      muted / warning     1,218 → 1,149
+
+    Deux crans restent donc distincts, et les deux gagnent une lisibilité qui
+    manquait vraiment. Un texte sous 4,5:1 est illisible pour une partie des
+    gens tout le temps ; deux gris voisins gênent quelqu'un qui compare deux
+    libellés côte à côte, ce qui arrive rarement et se rattrape par la place,
+    l'icône et le contexte.
+  */
+  --color-text-secondary: #b4b4b1;
+  --color-text-muted: #9a9a97;
 
   /* "Accent" is now a near-white highlight — monochrome, not a colour */
   --color-accent: #ededed;
@@ -96,66 +133,20 @@ body {
 }
 
 /*
-  SUR UNE LIGNE QUI MONTE D'UN CRAN, L'ENCRE MONTE AVEC ELLE
-  ══════════════════════════════════════════════════════════
+  LA RÈGLE « L'ENCRE MONTE AVEC LA LIGNE » A ÉTÉ RETIRÉE, ET C'EST UN PROGRÈS.
 
-  MESURÉ : `--color-text-muted` (#808080) tient WCAG AA sur le fond (4,85) et
-  sur les surfaces (4,66) — mais tombe à **4,32** sur `--color-surface-hover`,
-  le fond que prend une ligne de liste survolée ou sélectionnée. C'est-à-dire
-  précisément la ligne qu'on est en train de regarder : vingt-deux textes,
-  horodatages, noms de société et scores, sur les listes de documents, de
-  notes, de scans, de clients et de sites.
+  Elle relevait `--color-text-muted` d'un cran sur les fonds hauts — lignes
+  survolées ou sélectionnées — parce que le gris de l'époque (#808080) y
+  tombait à 4,32:1, sous le seuil. C'était un contournement : une règle en plus
+  pour compenser une valeur trop sombre.
 
-  ## Les deux portes qu'on n'a pas prises, et pourquoi
-
-  **Éclaircir le gris.** Il faudrait #8c8c8c pour tenir sur tous les fonds. Or
-  `--color-warning` vaut #8f8f8c : les deux crans seraient à 1,03 l'un de
-  l'autre, c'est-à-dire indiscernables, et un avertissement qui ressemble à du
-  texte discret n'avertit plus. La rampe est volontairement resserrée — le
-  rouge est le seul signal coloré du produit — et l'élargir ici la casserait
-  ailleurs.
-
-  **Assombrir le survol.** Il faudrait descendre `--color-surface-hover` à
-  #171717 pour que #808080 y tienne. Le survol se distinguerait alors de la
-  surface par un rapport de **1,028** : on ne le verrait plus. On échangerait
-  un texte illisible contre un survol invisible.
-
-  ## La porte qu'on prend
-
-  La ligne CHANGE DÉJÀ d'état quand on la survole ou la sélectionne. Faire
-  monter son encre discrète avec son fond ne fait qu'achever ce mouvement — et
-  rend plus lisible, pas moins, la seule ligne qui compte à cet instant.
-
-  Une règle, et pas vingt-deux retouches : les crans de Tailwind v4 sont des
-  variables CSS, donc redéfinir `--color-text-muted` sur le porteur du fond
-  suffit à faire descendre le changement dans tous ses enfants — y compris ceux
-  qu'on écrira demain.
+  La rampe montée d'un cran (voir plus haut) rend `muted` lisible sur les
+  QUATRE fonds, 5,36 au pire. La cause a disparu, donc le contournement aussi.
+  Une couleur qui tient partout vaut mieux qu'une couleur qui ne tient nulle
+  part et une règle qui la rattrape sur trois sélecteurs — dont un que j'avais
+  d'ailleurs écrit trop large, et qui relevait l'encre au repos dans toute
+  l'application.
 */
-/*
-  `~=` ET NON `*=`, ET ÇA CHANGE TOUT.
-
-  Premier jet : `[class*='bg-surface-hover']`, une correspondance par
-  SOUS-CHAÎNE. Elle attrapait donc aussi `hover:bg-surface-hover` — c'est-à-dire
-  tout élément qui DÉCLARE un fond de survol, qu'il soit survolé ou non. L'encre
-  discrète montait d'un cran partout dans l'application, au repos, sur des
-  centaines d'éléments dont le fond n'avait pas bougé.
-
-  Mesuré sur les boutons de l'agenda : ils rendaient #9a9a97 sans que personne
-  ne les survole. Le contraste s'en trouvait meilleur, ce qui est précisément ce
-  qui rendait le défaut invisible aux contrôles — un garde-fou ne signale pas ce
-  qui va « trop bien ».
-
-  `~=` compare des MOTS séparés par des espaces : `bg-surface-hover` ne
-  correspond plus à `hover:bg-surface-hover`, qui est un autre mot. La règle ne
-  s'applique donc qu'aux fonds réellement posés — une ligne sélectionnée — et
-  la variante de survol a sa propre ligne, avec son `:hover`.
-*/
-:where([class~='bg-surface-hover'], [class~='bg-raised'], [class~='bg-border']) {
-  --color-text-muted: var(--color-text-secondary);
-}
-:where([class~='hover:bg-surface-hover'], [class~='hover:bg-raised'], [class~='hover:bg-border']):hover {
-  --color-text-muted: var(--color-text-secondary);
-}
 
 /* Tabular, monospaced figures for data/timestamps/ids */
 .tnum {
