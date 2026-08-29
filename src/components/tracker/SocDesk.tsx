@@ -233,7 +233,21 @@ export function SocDesk({
         </div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+      {/*
+        `[&>*]:min-w-0` N'EST PAS DÉCORATIF.
+
+        Un enfant de grille vaut `min-width: auto` par défaut : il refuse de
+        devenir plus étroit que son contenu. Sur téléphone, ces deux sections
+        prenaient 621 px dans une colonne de 357 — et comme `<main>` porte
+        `overflow-x-hidden`, la page ne défilait même pas : elle COUPAIT. Un
+        quart du bureau de supervision était invisible sur un téléphone, sans
+        barre de défilement pour le laisser deviner.
+
+        Trouvé par un balayage de tous les écrans à 390 px. La première version
+        de ce balayage annonçait « aucun débordement » — elle naviguait vers de
+        mauvaises adresses et mesurait des pages 404, qui ne débordent jamais.
+      */}
+      <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr] [&>*]:min-w-0">
         {/* Incident feed */}
         <section className="elev-1 flex min-h-0 flex-col rounded-2xl border border-border bg-surface">
           <header className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
