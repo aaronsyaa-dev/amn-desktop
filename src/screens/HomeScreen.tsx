@@ -356,7 +356,7 @@ export function HomeScreen() {
             key={s.label}
             type="button"
             onClick={() => navigate(s.to)}
-            className="flex items-center gap-1.5 text-xs text-text-muted transition-colors hover:text-text-secondary"
+            className="-my-1.5 flex items-center gap-1.5 py-1.5 text-xs text-text-muted transition-colors hover:text-text-secondary"
           >
             <s.icon size={13} strokeWidth={1.75} />
             {s.label}

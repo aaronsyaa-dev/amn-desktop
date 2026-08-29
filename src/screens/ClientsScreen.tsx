@@ -803,7 +803,7 @@ function QuotesBlock({
           <button
             type="button"
             onClick={() => setCreating(true)}
-            className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-text-secondary hover:text-text-primary"
+            className="-my-1.5 flex items-center gap-1 py-1.5 font-mono text-[10px] uppercase tracking-widest text-text-secondary hover:text-text-primary"
           >
             <Plus size={12} strokeWidth={2.25} />
             Nouveau devis

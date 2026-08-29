@@ -250,7 +250,7 @@ export function MaintenancePanel() {
             type="button"
             onClick={() => setHistorique((v) => !v)}
             aria-expanded={historique}
-            className="text-[11px] font-medium text-text-muted transition-colors hover:text-text-secondary"
+            className="-my-2 py-2 text-[11px] font-medium text-text-muted transition-colors hover:text-text-secondary"
           >
             {historique ? '▾' : '▸'} {revolues.length} maintenance
             {revolues.length > 1 ? 's' : ''} passée{revolues.length > 1 ? 's' : ''}

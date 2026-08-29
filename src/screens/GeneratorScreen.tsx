@@ -284,7 +284,7 @@ export function GeneratorScreen() {
             <button
               type="button"
               onClick={() => (step === 'metier' ? navigate('/tour') : setStep('metier'))}
-              className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-text-muted transition-colors hover:text-text-primary"
+              className="-my-2 flex items-center gap-1.5 py-2 font-mono text-[10px] uppercase tracking-wider text-text-muted transition-colors hover:text-text-primary"
             >
               <ArrowLeft size={12} strokeWidth={2} />
               {step === 'metier' ? 'Tour de contrôle' : 'Changer de métier'}

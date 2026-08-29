@@ -188,7 +188,7 @@ export function SuppressionsPanel() {
             type="button"
             onClick={() => setHistorique((v) => !v)}
             aria-expanded={historique}
-            className="flex w-full items-center gap-2 text-left text-[11px] font-medium text-text-muted transition-colors hover:text-text-secondary"
+            className="-my-2 flex w-full items-center gap-2 py-2 text-left text-[11px] font-medium text-text-muted transition-colors hover:text-text-secondary"
           >
             {historique ? (
               <ChevronDown size={13} strokeWidth={1.75} />

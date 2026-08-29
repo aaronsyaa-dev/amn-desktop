@@ -277,7 +277,7 @@ function ClientOrgsPanel({ loading, error }: { loading: boolean; error: string |
         <h2 className="mr-auto text-sm font-semibold text-text-primary">Organisations clientes</h2>
         <Link
           to="/tour/organisations"
-          className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-text-muted transition-colors hover:text-text-primary"
+          className="-my-2 flex items-center gap-1 py-2 font-mono text-[10px] uppercase tracking-widest text-text-muted transition-colors hover:text-text-primary"
         >
           Tout gérer
           <ArrowRight size={12} strokeWidth={2} />
@@ -346,7 +346,7 @@ function RecentAccessPanel() {
         <h2 className="mr-auto text-sm font-semibold text-text-primary">Derniers accès</h2>
         <Link
           to="/tour/journal"
-          className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-text-muted transition-colors hover:text-text-primary"
+          className="-my-2 flex items-center gap-1 py-2 font-mono text-[10px] uppercase tracking-widest text-text-muted transition-colors hover:text-text-primary"
         >
           Journal complet
           <ArrowRight size={12} strokeWidth={2} />

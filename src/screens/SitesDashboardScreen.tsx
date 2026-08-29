@@ -532,10 +532,22 @@ function SiteUrlField({
 
   if (!href) {
     return (
+      /*
+        `-my-2 py-2` : la cible passait de 15 px de haut, sous le minimum de
+        WCAG 2.5.8 (24). Mesuré sur cet écran avant d'y toucher : 156 px
+        d'espace vertical entre deux lignes et aucun voisin horizontal — il y a
+        largement la place, et la marge négative rend au tableau ce que le
+        rembourrage lui prend, donc rien ne bouge.
+
+        C'est ce que la mesure a corrigé dans mon propre raisonnement : j'avais
+        rangé cette famille parmi celles « qui demandent d'écarter les lignes »,
+        avec celles du dossier client. Elles n'ont rien à voir — là-bas deux
+        cibles se touchent (0 px d'écart horizontal), ici elles sont à 156.
+      */
       <button
         type="button"
         onClick={start}
-        className="flex items-center gap-1.5 font-mono text-[11px] text-text-muted transition-colors hover:text-text-primary"
+        className="-my-2 flex items-center gap-1.5 py-2 font-mono text-[11px] text-text-muted transition-colors hover:text-text-primary"
       >
         <Link2 size={12} strokeWidth={1.75} />
         Ajouter une URL
@@ -551,7 +563,9 @@ function SiteUrlField({
         rel="noopener noreferrer"
         onClick={(e) => e.stopPropagation()}
         title={href}
-        className="flex min-w-0 items-center gap-1.5 font-mono text-[11px] text-text-secondary transition-colors hover:text-text-primary hover:underline"
+        // Même correction, même mesure : 15 px de haut dans un tableau qui en
+        // laisse 156 entre deux lignes.
+        className="-my-2 flex min-w-0 items-center gap-1.5 py-2 font-mono text-[11px] text-text-secondary transition-colors hover:text-text-primary hover:underline"
       >
         <ExternalLink size={11} strokeWidth={1.75} className="flex-shrink-0" />
         <span className="truncate">{href.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>

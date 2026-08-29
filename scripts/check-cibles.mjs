@@ -28,10 +28,22 @@
  *
  * ## Les dispenses
  *
- * L'édition interne garde 51 occurrences sous le seuil, regroupées en huit
- * familles nommées ci-dessous. Elles vivent dans les écrans de supervision les
- * plus denses, où élargir demande d'écarter — donc de redessiner. C'est un
- * chantier, pas une ligne à changer, et il est nommé plutôt qu'oublié.
+ * L'édition interne garde des occurrences sous le seuil, regroupées en familles
+ * nommées ci-dessous. Elles vivent dans les écrans de supervision les plus
+ * denses, où élargir demande d'écarter — donc de redessiner. C'est un chantier,
+ * pas une ligne à changer, et il est nommé plutôt qu'oublié.
+ *
+ * MAIS UNE DISPENSE SE MÉRITE, ELLE AUSSI. Le premier jet en comptait dix, sur
+ * la seule impression que ces écrans étaient « denses ». En les mesurant une
+ * par une — écart au voisin cliquable le plus proche, vertical et horizontal —
+ * HUIT avaient largement la place : 156 px entre deux lignes du tableau des
+ * sites, 179 px sous un dépliant du bureau de supervision, 40 px sous un lien
+ * de la tour. Elles sont corrigées, pas dispensées.
+ *
+ * Il en reste deux, et celles-là sont mesurées aussi : dans le dossier client,
+ * les puces de sites ont ZÉRO pixel d'écart horizontal, et les champs
+ * modifiables zéro en vertical. Élargir la zone les ferait se chevaucher — on
+ * ouvrirait le site d'à côté. Il faut écarter, donc redessiner.
  *
  * L'édition CLIENTE, elle, n'en a aucune : c'est celle qu'on utilise au doigt.
  *
@@ -57,16 +69,17 @@ const MINIMUM_PX = 24;
  * avec les données.
  */
 const CONNUES = new Map([
-  ['flex items-center gap-1.5', 'liste de sites d’un dossier client : dix-sept puces adjacentes — élargir sans écarter les ferait se chevaucher.'],
-  ['flex min-w-0 items-center gap-1.5 font-mono text-[', 'adresses des sites : une par ligne, dans un tableau serré.'],
-  ['flex items-center gap-1.5 font-mono text-[11px] te', '« Ajouter une URL » : sept fois dans la même colonne étroite.'],
-  ['flex items-center gap-1 font-mono text-[10px] uppe', 'liens d’action en ligne de la tour de contrôle.'],
-  ['flex items-center gap-1.5 font-mono text-[10px] up', 'retour vers la tour depuis le générateur.'],
-  ['flex items-center gap-1.5 text-xs text-text-muted ', 'liens secondaires de l’accueil interne (Notes, Décisions, Connaissances).'],
-  ['block w-full truncate border-b border-transparent ', 'champs modifiables sur place d’un dossier client.'],
-  ['text-[11px] font-medium text-text-muted transition', 'dépliants d’historique du bureau de supervision.'],
-  ['flex w-full items-center gap-2 text-left text-[11p', 'dépliants d’historique du bureau de supervision.'],
-  ['block min-w-0 hover:text-text-primary', 'bande du jour de l’accueil interne.'],
+  [
+    'flex items-center gap-1.5',
+    'liste de sites d’un dossier client : les puces se TOUCHENT — 0 px d’écart horizontal ' +
+      'mesuré, 9 px de vertical. Élargir la zone les ferait se chevaucher, et on ouvrirait ' +
+      'le site d’à côté. Il faut les écarter, ce qui est un choix de mise en page.',
+  ],
+  [
+    'block w-full truncate border-b border-transparent ',
+    'champs modifiables sur place d’un dossier client : empilés sans aucun écart vertical ' +
+      '(0 px mesuré). Même raison.',
+  ],
 ]);
 
 if (!EMAIL || !MOT_DE_PASSE) {

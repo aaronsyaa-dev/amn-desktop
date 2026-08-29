@@ -213,7 +213,7 @@ export function SupervisionBand() {
           className="min-w-0 flex-1"
         >
           {fait.to ? (
-            <Link to={fait.to} className="block min-w-0 hover:text-text-primary">
+            <Link to={fait.to} className="-my-1 block min-w-0 py-1 hover:text-text-primary">
               {contenu}
             </Link>
           ) : (
