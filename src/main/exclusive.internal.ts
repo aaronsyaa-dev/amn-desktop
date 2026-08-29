@@ -6,6 +6,7 @@ import {
   type IncidentMetrics,
   type MonthlyReport,
   type AlertSuppression,
+  type MaintenanceWindow,
   type IncidentResolution,
   type IncidentStatus,
   type AdminOrganization,
@@ -166,6 +167,34 @@ const exclusiveApi = {
       { method: 'DELETE' },
     );
     return suppression;
+  },
+
+  async listMaintenance(includePast = false): Promise<MaintenanceWindow[]> {
+    const { maintenance } = await apiFetch<{ maintenance: MaintenanceWindow[] }>(
+      `/v1/incidents/maintenance${includePast ? '?all=1' : ''}`,
+    );
+    return maintenance;
+  },
+
+  async declareMaintenance(input: {
+    siteId: string;
+    startsAt: string;
+    endsAt: string;
+    reason: string;
+  }): Promise<MaintenanceWindow> {
+    const { maintenance } = await apiFetch<{ maintenance: MaintenanceWindow }>(
+      '/v1/incidents/maintenance',
+      { method: 'POST', body: JSON.stringify(input) },
+    );
+    return maintenance;
+  },
+
+  async cancelMaintenance(id: string): Promise<MaintenanceWindow> {
+    const { maintenance } = await apiFetch<{ maintenance: MaintenanceWindow }>(
+      `/v1/incidents/maintenance/${encodeURIComponent(id)}`,
+      { method: 'DELETE' },
+    );
+    return maintenance;
   },
 
   async reopenIncident(id: string): Promise<Incident> {
@@ -652,6 +681,10 @@ export function registerExclusiveIpc(
   ipcMain.handle(IPC.remoteAcknowledgeIncident, (_e, id: string) => exclusiveApi.acknowledgeIncident(id));
   ipcMain.handle(IPC.remoteResolveIncident, (_e, id: string, resolution, note?: string, suppress?: { kind: string }) =>
     exclusiveApi.resolveIncident(id, resolution, note, suppress));
+  ipcMain.handle(IPC.remoteListMaintenance, (_e, tout?: boolean) => exclusiveApi.listMaintenance(tout));
+  ipcMain.handle(IPC.remoteDeclareMaintenance, (_e, input: Parameters<typeof exclusiveApi.declareMaintenance>[0]) =>
+    exclusiveApi.declareMaintenance(input));
+  ipcMain.handle(IPC.remoteCancelMaintenance, (_e, id: string) => exclusiveApi.cancelMaintenance(id));
   ipcMain.handle(IPC.remoteListSuppressions, (_e, tout?: boolean) => exclusiveApi.listSuppressions(tout));
   ipcMain.handle(IPC.remoteRevokeSuppression, (_e, id: string) => exclusiveApi.revokeSuppression(id));
   ipcMain.handle(IPC.remoteReopenIncident, (_e, id: string) => exclusiveApi.reopenIncident(id));

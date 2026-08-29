@@ -5,6 +5,7 @@ import type {
   IncidentMetrics,
   MonthlyReport,
   AlertSuppression,
+  MaintenanceWindow,
   IncidentResolution,
   IncidentStatus,
   AdminOrganization,
@@ -125,6 +126,9 @@ type ExclusiveRemote = Pick<
   | 'reopenIncident'
   | 'listSuppressions'
   | 'revokeSuppression'
+  | 'listMaintenance'
+  | 'declareMaintenance'
+  | 'cancelMaintenance'
   | 'monthlyReport'
   | 'monthlyReportUrl'
   | 'listSchedules'
@@ -283,6 +287,34 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
       { method: 'DELETE' },
     );
     return suppression;
+  },
+
+  async listMaintenance(includePast = false) {
+    const { maintenance } = await ctx.apiFetch<{ maintenance: MaintenanceWindow[] }>(
+      `/v1/incidents/maintenance${includePast ? '?all=1' : ''}`,
+    );
+    return maintenance;
+  },
+
+  async declareMaintenance(input: {
+    siteId: string;
+    startsAt: string;
+    endsAt: string;
+    reason: string;
+  }) {
+    const { maintenance } = await ctx.apiFetch<{ maintenance: MaintenanceWindow }>(
+      '/v1/incidents/maintenance',
+      { method: 'POST', body: JSON.stringify(input) },
+    );
+    return maintenance;
+  },
+
+  async cancelMaintenance(id: string) {
+    const { maintenance } = await ctx.apiFetch<{ maintenance: MaintenanceWindow }>(
+      `/v1/incidents/maintenance/${encodeURIComponent(id)}`,
+      { method: 'DELETE' },
+    );
+    return maintenance;
   },
 
   async reopenIncident(id: string) {

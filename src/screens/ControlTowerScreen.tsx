@@ -401,6 +401,13 @@ export const ACCESS_VERB: Record<string, string> = {
   // « mis en sourdine », pas « supprimé » — rien n'est supprimé.
   suppression_created: 'a mis une détection en sourdine chez',
   suppression_revoked: 'a rendu la parole à une détection chez',
+  // Une maintenance annoncée : pendant sa fenêtre, plus rien ne réveille
+  // personne sur ce site — quelle que soit la nature de l'alerte. C'est le
+  // geste le plus large de la supervision, et la formulation le dit sans
+  // détour plutôt que de parler de « fenêtre », qui ne veut rien dire pour
+  // qui lit son propre journal.
+  maintenance_declared: 'a annoncé une maintenance sur un site de',
+  maintenance_cancelled: 'a annulé une maintenance annoncée chez',
 };
 
 

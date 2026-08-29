@@ -14,6 +14,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { EmptyState } from '../components/EmptyState';
 import { MonthlyReportPanel } from '../components/MonthlyReportPanel';
 import { SuppressionsPanel } from '../components/tracker/SuppressionsPanel';
+import { MaintenancePanel } from '../components/tracker/MaintenancePanel';
 import { cleanErrorMessage } from '../lib/errorMessage';
 import { formatDateTime, relativeTime } from '../lib/time';
 import { alertKindLabel } from '../lib/trackerAlerts';
@@ -278,7 +279,16 @@ export function IncidentsScreen() {
         reste à faire. L'inverse ferait commencer la journée par la liste de ce
         qu'on a décidé d'ignorer.
       */}
-      <div className="mt-6">
+      <div className="mt-6 flex flex-col gap-4">
+        {/*
+          LA MAINTENANCE AVANT LA SOURDINE, et l'ordre a un sens.
+
+          Une fenêtre se déclare AVANT la panne, souvent en fin de journée pour
+          le soir même ; un étouffoir se pose APRÈS coup, sur un incident qu'on
+          vient de lire. Le premier est donc le geste qu'on vient chercher, le
+          second celui qu'on relit.
+        */}
+        <MaintenancePanel />
         <SuppressionsPanel />
       </div>
 
@@ -363,6 +373,26 @@ function LigneIncident({
               <span title={formatDateTime(incident.lastSeenAt)}>
                 dernière {relativeTime(incident.lastSeenAt)}
               </span>
+              {/*
+                NÉ PENDANT UNE MAINTENANCE ANNONCÉE — dit, jamais masqué.
+
+                L'incident est dans la file et se traite normalement ; il n'a
+                simplement réveillé personne. Le taire serait pire : un
+                critique qu'on découvre au matin sans savoir pourquoi le
+                téléphone n'a pas sonné est plus inquiétant que le même,
+                étiqueté.
+              */}
+              {incident.maintenanceId && (
+                <>
+                  <span aria-hidden>·</span>
+                  <span
+                    className="text-text-secondary"
+                    title="Né pendant une maintenance annoncée : enregistré et visible, mais sans réveil."
+                  >
+                    maintenance annoncée
+                  </span>
+                </>
+              )}
               {incident.acknowledgedBy && (
                 <>
                   <span aria-hidden>·</span>

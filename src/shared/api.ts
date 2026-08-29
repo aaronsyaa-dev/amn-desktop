@@ -1455,6 +1455,15 @@ export interface Incident {
   title: string;
   /** L'étouffoir qui fait taire cet incident, s'il y en a un. */
   suppressedBy?: string | null;
+  /**
+   * La fenêtre de maintenance pendant laquelle il est né, s'il y en a une.
+   *
+   * Il est dans la file, il se traite normalement — il n'a simplement réveillé
+   * personne. L'écran le dit plutôt que de le masquer : un incident critique
+   * qu'on découvre au matin sans savoir pourquoi le téléphone n'a pas sonné
+   * est plus inquiétant que le même, étiqueté.
+   */
+  maintenanceId?: string | null;
 }
 
 /**
@@ -1527,6 +1536,45 @@ export interface AlertSuppression {
    * autre chose.
    */
   absorbe: { incidents: number; alertes: number };
+}
+
+/**
+ * UNE FENÊTRE DE MAINTENANCE — quand l'indisponibilité était PRÉVUE.
+ *
+ * À ne pas confondre avec un étouffoir, qui est son opposé sur trois axes :
+ *
+ * |            | Étouffoir             | Fenêtre                       |
+ * |------------|-----------------------|-------------------------------|
+ * | Portée     | site + acteur + nature| le site ENTIER                |
+ * | Durée      | trente jours          | quelques heures, 24 h au plus |
+ * | Posée      | après coup            | AVANT, sur un créneau         |
+ * | Nature     | jamais la disponibilité | surtout la disponibilité    |
+ *
+ * Ce qu'elle fait est étroit et c'est voulu : elle ne supprime rien — les
+ * sondes tournent, les alertes sont enregistrées, l'incident est créé — elle
+ * coupe seulement le RÉVEIL. Au matin l'incident est là, étiqueté, et se clôt
+ * d'un geste. Voir amn-api `src/tracker/incidents.js` pour le raisonnement.
+ */
+export interface MaintenanceWindow {
+  id: string;
+  siteId: string;
+  siteName: string | null;
+  /** Ce qui est prévu, en une phrase. Obligatoire — le serveur la réclame. */
+  reason: string;
+  startsAt: string;
+  endsAt: string;
+  createdBy: string | null;
+  createdAt: string;
+  cancelledAt: string | null;
+  cancelledBy: string | null;
+  /** Calculé par le serveur : les trois états n'appellent pas les mêmes gestes. */
+  etat: 'a-venir' | 'en-cours' | 'terminee' | 'annulee';
+  /**
+   * Ce qu'elle a réellement couvert. Même rôle que le décompte d'un
+   * étouffoir : rien de couvert et la fenêtre était inutile — ou la migration
+   * ne s'est pas faite.
+   */
+  couvert: { incidents: number; alertes: number };
 }
 
 export interface IncidentMetrics {
@@ -2545,6 +2593,20 @@ export interface AmnBridge {
       note?: string,
       suppress?: { kind: string },
     ): Promise<{ incident: Incident; suppression: AlertSuppression | null }>;
+    /**
+     * Les maintenances annoncées. `includePast` rend l'historique, qui sert à
+     * expliquer après coup pourquoi une nuit n'a réveillé personne.
+     */
+    listMaintenance(includePast?: boolean): Promise<MaintenanceWindow[]>;
+    /** Annoncer une indisponibilité prévue. La raison est obligatoire. */
+    declareMaintenance(input: {
+      siteId: string;
+      startsAt: string;
+      endsAt: string;
+      reason: string;
+    }): Promise<MaintenanceWindow>;
+    /** Annuler une fenêtre à venir, ou écourter une fenêtre en cours. */
+    cancelMaintenance(id: string): Promise<MaintenanceWindow>;
     /** Ce qui est actuellement tu, et ce que chaque règle a réellement absorbé. */
     listSuppressions(includeInactive?: boolean): Promise<AlertSuppression[]>;
     /** Rend la parole. Ne réveille PAS rétroactivement les incidents déjà tus. */
@@ -2982,6 +3044,9 @@ export const IPC = {
   remoteAcknowledgeIncident: 'remote:acknowledgeIncident',
   remoteResolveIncident: 'remote:resolveIncident',
   remoteReopenIncident: 'remote:reopenIncident',
+  remoteListMaintenance: 'remote:listMaintenance',
+  remoteDeclareMaintenance: 'remote:declareMaintenance',
+  remoteCancelMaintenance: 'remote:cancelMaintenance',
   remoteListSuppressions: 'remote:listSuppressions',
   remoteRevokeSuppression: 'remote:revokeSuppression',
   remoteMonthlyReport: 'remote:monthlyReport',

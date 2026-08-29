@@ -46,6 +46,9 @@ type ExclusiveRemote = Pick<
   | 'reopenIncident'
   | 'listSuppressions'
   | 'revokeSuppression'
+  | 'listMaintenance'
+  | 'declareMaintenance'
+  | 'cancelMaintenance'
   | 'monthlyReport'
   | 'monthlyReportUrl'
   | 'onIncidentEscalation'
@@ -119,6 +122,10 @@ export const exclusivePreload: ExclusiveRemote = {
   acknowledgeIncident: (id: string) => ipcRenderer.invoke(IPC.remoteAcknowledgeIncident, id),
   resolveIncident: (id: string, resolution: IncidentResolution, note?: string, suppress?: { kind: string }) =>
     ipcRenderer.invoke(IPC.remoteResolveIncident, id, resolution, note, suppress),
+  listMaintenance: (tout?: boolean) => ipcRenderer.invoke(IPC.remoteListMaintenance, tout),
+  declareMaintenance: (input: { siteId: string; startsAt: string; endsAt: string; reason: string }) =>
+    ipcRenderer.invoke(IPC.remoteDeclareMaintenance, input),
+  cancelMaintenance: (id: string) => ipcRenderer.invoke(IPC.remoteCancelMaintenance, id),
   listSuppressions: (tout?: boolean) => ipcRenderer.invoke(IPC.remoteListSuppressions, tout),
   revokeSuppression: (id: string) => ipcRenderer.invoke(IPC.remoteRevokeSuppression, id),
   reopenIncident: (id: string) => ipcRenderer.invoke(IPC.remoteReopenIncident, id),
