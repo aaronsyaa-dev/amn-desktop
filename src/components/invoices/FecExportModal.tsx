@@ -5,6 +5,7 @@ import { buildFec, closingDay, fecFileName, toFecFile } from '../../lib/fec';
 import { downloadText } from '../../lib/download';
 import { formatCents } from '../../lib/money';
 import type { BillingIdentity, Invoice } from '../../shared/api';
+import { useFermetureEchap } from '../../lib/useFermetureEchap';
 
 /**
  * Export comptable au format FEC.
@@ -29,6 +30,9 @@ export function FecExportModal({
 }) {
   /* Les exercices réellement présents, du plus récent au plus ancien. Proposer
      une année sans la moindre facture ne sert personne. */
+  // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
+  useFermetureEchap(true, onClose);
+
   const years = useMemo(() => {
     const found = new Set<number>();
     for (const invoice of invoices) {

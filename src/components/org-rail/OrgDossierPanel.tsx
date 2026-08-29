@@ -10,6 +10,7 @@ import { ACCENTS, DEFAULT_ACCENT_ID } from '../../lib/accent';
 import { CLIENT_SECTIONS } from '../../client-context/ClientSidebar';
 import type { AdminOrganization, AdminOrgUser, OrgPulse } from '../../shared/api';
 import { relativeTime } from '../../lib/time';
+import { useFermetureEchap } from '../../lib/useFermetureEchap';
 
 /**
  * Le dossier d'une organisation cliente, vu d'AMN DevSec (BLOC E).
@@ -178,6 +179,9 @@ export function OrgDossierPanel({
     notes) marche sans lui, et un dossier qui refuserait de s'ouvrir parce
     qu'un chiffre manque serait un mauvais échange.
   */
+  // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
+  useFermetureEchap(true, onClose);
+
   const [pulse, setPulse] = useState<OrgPulse | null>(null);
 
   /*

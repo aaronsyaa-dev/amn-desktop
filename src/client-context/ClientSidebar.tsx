@@ -27,6 +27,7 @@ import { useOrgContext } from '../state/OrgContextContext';
 import { OrgAvatar } from '../components/org-rail/OrgAvatar';
 import { OrgSwitchButton } from '../components/org-rail/OrgSwitchButton';
 import { CLIENT_PRODUCT_NAME } from '../edition/edition';
+import { useFermetureEchap } from '../lib/useFermetureEchap';
 
 const TRANSITION = { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const };
 
@@ -141,6 +142,13 @@ export function ClientSidebar({
   mobileOpen?: boolean;
   onClose?: () => void;
 }) {
+  /*
+    Le tiroir de navigation sur téléphone. Il couvre l'écran entier, et son
+    fond ne se referme qu'au doigt — Échap est le seul recours au clavier,
+    y compris sur un poste où la fenêtre est étroite.
+  */
+  useFermetureEchap(mobileOpen, () => onClose?.());
+
   const location = useLocation();
   const { support, leaveOrganization } = useOrgContext();
 

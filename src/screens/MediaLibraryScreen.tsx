@@ -9,6 +9,7 @@ import { LightboxProvider, useLightbox, type LightboxImage } from '../components
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { AJMANI_EMAIL, AJMANI_NAME } from '../lib/ajmaniChat';
+import { useFermetureEchap } from '../lib/useFermetureEchap';
 
 /**
  * Bibliothèque média (Bloc 3).
@@ -74,6 +75,10 @@ export function MediaLibraryScreen() {
   const [sender, setSender] = useState<string>('all');
   const [period, setPeriod] = useState<PeriodFilter>('all');
   const [video, setVideo] = useState<MediaItem | null>(null);
+
+  /* Une vidéo ouverte en plein écran se ferme à Échap — c’est le geste attendu
+     partout ailleurs pour sortir d’un plein écran. */
+  useFermetureEchap(video !== null, () => setVideo(null));
 
   const senders = useMemo(() => {
     const set = new Set(all.map((m) => m.authorEmail));

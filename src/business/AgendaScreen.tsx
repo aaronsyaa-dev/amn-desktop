@@ -42,6 +42,7 @@ import {
 import { ConfirmDelete } from '../components/ConfirmDelete';
 import { metaOf } from '../lib/records';
 import { staggerContainer, staggerItem } from '../lib/transitions';
+import { useFermetureEchap } from '../lib/useFermetureEchap';
 
 /**
  * Agenda — le module que la cliente ouvre en premier chaque matin.
@@ -936,6 +937,9 @@ function Overlay({
   onClose: () => void;
   labelledBy: string;
 }) {
+  // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
+  useFermetureEchap(true, onClose);
+
   return (
     <>
       <motion.div

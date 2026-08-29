@@ -6,6 +6,7 @@ import { PUBLIC_URL_MISSING, publicOrigin } from '../../lib/publicUrl';
 import { cleanErrorMessage } from '../../lib/errorMessage';
 import { callInvitationMessage } from '../../lib/callInvite';
 import type { CallLink } from '../../shared/api';
+import { useFermetureEchap } from '../../lib/useFermetureEchap';
 
 /**
  * Émettre un lien d'appel pour quelqu'un qui n'a pas de compte (BLOC B.2).
@@ -69,6 +70,9 @@ function remaining(expiresAt: string): string {
 }
 
 export function CallLinkPanel({ onClose }: { onClose: () => void }) {
+  // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
+  useFermetureEchap(true, onClose);
+
   const [links, setLinks] = useState<CallLink[]>([]);
   const [minutes, setMinutes] = useState(30);
   const [label, setLabel] = useState('');

@@ -25,6 +25,7 @@ import { Markdown } from '../lib/markdown';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { relativeTime } from '../lib/time';
 import { EmptyState } from '../components/EmptyState';
+import { useFermetureEchap } from '../lib/useFermetureEchap';
 
 type ScopeFilter = 'all' | 'team' | 'personal';
 
@@ -36,6 +37,14 @@ export function NotesScreen() {
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<ScopeFilter>('all');
   const [newMenuOpen, setNewMenuOpen] = useState(false);
+
+  /*
+    Un menu déroulant se ferme à Échap comme une fenêtre : c'est le même geste
+    de renoncement, et il est encore plus attendu ici — on vient d'ouvrir le
+    menu par erreur et on veut juste qu'il parte. Le fond invisible qui capte
+    le clic extérieur ne sert qu'à la souris.
+  */
+  useFermetureEchap(newMenuOpen, () => setNewMenuOpen(false));
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();

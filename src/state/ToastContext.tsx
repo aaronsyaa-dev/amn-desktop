@@ -81,6 +81,25 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, x: 24, scale: 0.98 }}
                 transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                /*
+                  UN TOAST N'EST UNE COMMANDE QUE S'IL PORTE UNE ACTION.
+
+                  Quand `onClick` existe, le toast est cliquable — il doit
+                  alors s'annoncer comme tel et s'activer à Entrée comme à
+                  Espace, sinon il n'existe que pour la souris. Sans action, il
+                  reste un simple message : lui donner un arrêt de tabulation
+                  ferait buter le clavier sur un texte qui va disparaître tout
+                  seul.
+                */
+                role={t.onClick ? 'button' : undefined}
+                tabIndex={t.onClick ? 0 : undefined}
+                onKeyDown={(e) => {
+                  if (!t.onClick) return;
+                  if (e.key !== 'Enter' && e.key !== ' ') return;
+                  e.preventDefault();
+                  t.onClick();
+                  dismiss(t.id);
+                }}
                 onClick={() => {
                   t.onClick?.();
                   dismiss(t.id);

@@ -50,6 +50,7 @@ import {
 } from '../lib/ajmaniChat';
 import type { MessageAttachment } from '../shared/api';
 import { REACTION_EMOJIS } from '../shared/api';
+import { useFermetureEchap } from '../lib/useFermetureEchap';
 
 /** Max raw size for a chat video, before the ~33% base64 inflation, kept under
  * amn-api's 12 MB JSON body limit. Short clips only — see Bloc 3 for a heavier
@@ -989,6 +990,10 @@ function Composer({
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+
+  /* Le tiroir des modèles se referme à Échap : on l’ouvre souvent par erreur
+     en visant le bouton d’envoi juste à côté. */
+  useFermetureEchap(templatesOpen, () => setTemplatesOpen(false));
   const [uploadError, setUploadError] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);

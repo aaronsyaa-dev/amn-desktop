@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useActivity } from '../state/ActivityContext';
 import { Logo, LogoMark } from '../components/Logo';
 import { sectionsForSpace } from '../data/spaces';
+import { useFermetureEchap } from '../lib/useFermetureEchap';
 
 const COLLAPSED_WIDTH = 72;
 const EXPANDED_WIDTH = 224;
@@ -57,6 +58,13 @@ export function BusinessSidebar({
   mobileOpen?: boolean;
   onClose?: () => void;
 }) {
+  /*
+    Le tiroir de navigation sur téléphone. Il couvre l'écran entier, et son
+    fond ne se referme qu'au doigt — Échap est le seul recours au clavier,
+    y compris sur un poste où la fenêtre est étroite.
+  */
+  useFermetureEchap(mobileOpen, () => onClose?.());
+
   const [isExpandedDesktop, setIsExpanded] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();

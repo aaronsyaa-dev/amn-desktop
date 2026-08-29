@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Plus, Trash2, X } from 'lucide-react';
 import { centsToInput, parsePositiveAmount } from '../../lib/money';
 import { categoryKey, type ExpenseConfig } from '../../state/expenseEngine';
+import { useFermetureEchap } from '../../lib/useFermetureEchap';
 
 /**
  * Les catégories et les budgets, au même endroit.
@@ -33,6 +34,9 @@ export function BudgetPanel({
   onSave: (next: ExpenseConfig) => void;
   onClose: () => void;
 }) {
+  // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
+  useFermetureEchap(true, onClose);
+
   const [draft, setDraft] = useState<ExpenseConfig>(() => structuredClone(config));
   const [newCategory, setNewCategory] = useState('');
 

@@ -8,6 +8,7 @@ import { resizeImageToDataUrl } from '../lib/imageResize';
 import { relativeTime } from '../lib/time';
 import { ConfirmDelete } from '../components/ConfirmDelete';
 import { staggerContainer, staggerItem } from '../lib/transitions';
+import { useFermetureEchap } from '../lib/useFermetureEchap';
 
 /**
  * Médiathèque de l'édition Business.
@@ -42,6 +43,13 @@ export function MediaSoloScreen() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('');
   const [preview, setPreview] = useState<string | null>(null);
+
+  /*
+    L'aperçu plein écran se ferme à Échap. Sortir d'un plein écran est
+    précisément ce que cette touche fait partout ailleurs — dans le
+    navigateur, dans le lecteur vidéo, dans le système.
+  */
+  useFermetureEchap(preview !== null, () => setPreview(null));
 
   const items = useMemo(
     () =>

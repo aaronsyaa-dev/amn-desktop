@@ -19,6 +19,7 @@ import { useTags } from '../components/tags/TagProvider';
 import type { TaskMarker } from '../lib/taskMarkers';
 import type { ReportDraft } from '../state/useReports';
 import type { Client, SharedTaskStatus } from '../shared/api';
+import { useFermetureEchap } from '../lib/useFermetureEchap';
 
 const COLUMNS: { status: SharedTaskStatus; label: string }[] = [
   { status: 'todo', label: 'À faire' },
@@ -546,6 +547,9 @@ function NewTaskModal({
 }) {
   const { user } = useAuth();
   const { TEAM_ENABLED, TEAM_MEMBERS, SITES_ENABLED } = useExclusive();
+  // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
+  useFermetureEchap(true, onClose);
+
   const [title, setTitle] = useState('');
   const [detail, setDetail] = useState('');
   // Sans équipe, une tâche appartient forcément à celle qui la crée.
@@ -718,6 +722,9 @@ function TaskDetailModal({
   onRemoveMarker: (task: SyncTask, markerId: string) => void;
 }) {
   const { user } = useAuth();
+  // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
+  useFermetureEchap(true, onClose);
+
   const { TEAM_ENABLED, TEAM_MEMBERS } = useExclusive();
   const { profileFor } = useProfiles();
   const { beginCapture, showMarker } = useTags();

@@ -43,6 +43,8 @@
     "check:attention": "cross-env TZ=Europe/Paris node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-attention.ts",
     "check:fec": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-fec.ts",
     "check:tracking": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-tracking.ts",
+    "check:calques": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-calques.ts",
+    "check:clavier": "node scripts/check-clavier.mjs",
     "check:cibles": "node scripts/check-cibles.mjs",
     "check:contraste": "node scripts/check-contraste.mjs",
     "check:mouvement": "node scripts/check-mouvement.mjs",

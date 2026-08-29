@@ -43,6 +43,7 @@ import { staggerContainer, staggerItem } from '../lib/transitions';
 import type { BillingIdentity, Client, Invoice, InvoiceLine, InvoiceStatus } from '../shared/api';
 import { metaOf } from '../lib/records';
 import { EmptyState, FirstRun } from '../components/EmptyState';
+import { useFermetureEchap } from '../lib/useFermetureEchap';
 
 /**
  * Facturation.
@@ -1065,6 +1066,9 @@ function IdentityModal({
   onSave: (patch: Partial<BillingIdentity>) => void;
   onClose: () => void;
 }) {
+  // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
+  useFermetureEchap(true, onClose);
+
   const [form, setForm] = useState<BillingIdentity>(identity);
 
   const set = (patch: Partial<BillingIdentity>) => setForm((prev) => ({ ...prev, ...patch }));

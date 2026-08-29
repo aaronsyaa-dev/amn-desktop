@@ -6,6 +6,7 @@ import { useTrackers } from '../../state/useTrackers';
 import { useVault } from '../../state/useVault';
 import { TRACKER_MODULES, MATURITY_META, moduleByKey } from '../../data/trackerModules';
 import { MaturityBadge } from './MaturityBadge';
+import { useFermetureEchap } from '../../lib/useFermetureEchap';
 
 type Step = 0 | 1 | 2;
 type InstallMode = 'express' | 'serverless' | 'static';
@@ -27,6 +28,9 @@ const MODE_META: Record<InstallMode, { label: string; hint: string; icon: typeof
  * module set (via useTrackers) so the control desk reflects it.
  */
 export function InstallWizard({ initialSiteId, onClose }: { initialSiteId?: string; onClose: () => void }) {
+  // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
+  useFermetureEchap(true, onClose);
+
   const { sites } = useRemoteSites();
   const { modulesForSite, setModules } = useTrackers();
   const { recordTracker } = useVault();

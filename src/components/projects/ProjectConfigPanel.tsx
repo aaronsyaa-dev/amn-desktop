@@ -10,6 +10,7 @@ import {
   type OptionalFieldKey,
   type ProjectConfig,
 } from '../../state/projectEngine';
+import { useFermetureEchap } from '../../lib/useFermetureEchap';
 
 /**
  * Le réglage du moteur pour cette organisation (BLOC A).
@@ -37,6 +38,9 @@ export function ProjectConfigPanel({
   onSave: (next: ProjectConfig) => void;
   onClose: () => void;
 }) {
+  // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
+  useFermetureEchap(true, onClose);
+
   const [draft, setDraft] = useState<ProjectConfig>(() => structuredClone(config));
   const [newStructure, setNewStructure] = useState('');
   const [confirmProfile, setConfirmProfile] = useState<string | null>(null);

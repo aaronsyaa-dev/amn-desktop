@@ -5,6 +5,7 @@ import { resizeImageToDataUrl } from '../../lib/imageResize';
 import { centsToInput, formatCents, parsePositiveAmount } from '../../lib/money';
 import { ProjectPicker } from '../projects/ProjectPicker';
 import type { Expense, ExpenseConfig } from '../../state/expenseEngine';
+import { useFermetureEchap } from '../../lib/useFermetureEchap';
 
 /**
  * La saisie d'une dépense.
@@ -52,6 +53,9 @@ export function ExpenseForm({
   onDelete?: () => void;
   onClose: () => void;
 }) {
+  // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
+  useFermetureEchap(true, onClose);
+
   const [amount, setAmount] = useState(expense ? centsToInput(expense.amountCents) : '');
   const [category, setCategory] = useState(
     expense?.category || config.categories[0]?.key || 'autre',

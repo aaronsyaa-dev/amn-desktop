@@ -20,6 +20,7 @@ import { AppLauncher } from './AppLauncher';
 import { OrgSwitchButton } from './org-rail/OrgSwitchButton';
 import { type NavItem } from '../data/navigation';
 import { SPACES, spaceByKey, spaceForPath, sectionsForSpace } from '../data/spaces';
+import { useFermetureEchap } from '../lib/useFermetureEchap';
 
 const COLLAPSED_WIDTH = 72;
 const EXPANDED_WIDTH = 224;
@@ -49,8 +50,18 @@ export function Sidebar({
   /** Close the mobile drawer (nav click, backdrop tap, swipe-left). */
   onClose?: () => void;
 }) {
+  /*
+    Le tiroir de navigation sur téléphone. Il couvre l'écran entier, et son
+    fond ne se referme qu'au doigt — Échap est le seul recours au clavier,
+    y compris sur un poste où la fenêtre est étroite.
+  */
+  useFermetureEchap(mobileOpen, () => onClose?.());
+
   const [isExpandedDesktop, setIsExpanded] = useState(false);
   const [isSitesFlyoutOpen, setIsSitesFlyoutOpen] = useState(false);
+
+  /* Le volet des sites se referme à Échap, comme tout ce qui s’ouvre par-dessus. */
+  useFermetureEchap(isSitesFlyoutOpen, () => setIsSitesFlyoutOpen(false));
   const [isLauncherOpen, setLauncherOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();

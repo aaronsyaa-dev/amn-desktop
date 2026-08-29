@@ -34,6 +34,7 @@ import type {
   UpdateClientInput,
 } from '../shared/api';
 import { FirstRun } from '../components/EmptyState';
+import { useFermetureEchap } from '../lib/useFermetureEchap';
 
 const STATUS_META: Record<
   ClientStatus,
@@ -965,6 +966,9 @@ function NewQuoteModal({
   onClose: () => void;
   onCreate: (input: CreateQuoteInput) => Promise<Quote>;
 }) {
+  // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
+  useFermetureEchap(true, onClose);
+
   const { QUOTE_OFFERS } = useExclusive();
   const [step, setStep] = useState(0);
   const [trackerTier, setTrackerTier] = useState(QUOTE_OFFERS[0]?.id ?? '');
@@ -1220,6 +1224,9 @@ function NewClientModal({
   onClose: () => void;
   onCreate: (input: CreateClientInput) => Promise<void>;
 }) {
+  // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
+  useFermetureEchap(true, onClose);
+
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [status, setStatus] = useState<ClientStatus>('prospect');

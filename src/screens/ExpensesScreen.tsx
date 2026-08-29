@@ -20,6 +20,7 @@ import { BudgetPanel } from '../components/expenses/BudgetPanel';
 import { ProjectTag } from '../components/projects/ProjectPicker';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { EmptyState, FirstRun } from '../components/EmptyState';
+import { useFermetureEchap } from '../lib/useFermetureEchap';
 
 /**
  * Dépenses — le module qui ne doit surtout pas ressembler à un tableur.
@@ -69,6 +70,13 @@ export function ExpensesScreen() {
   const [editing, setEditing] = useState<Expense | null>(null);
   const [budgetsOpen, setBudgetsOpen] = useState(false);
   const [preview, setPreview] = useState<Expense | null>(null);
+
+  /*
+    L'aperçu plein écran se ferme à Échap. Sortir d'un plein écran est
+    précisément ce que cette touche fait partout ailleurs — dans le
+    navigateur, dans le lecteur vidéo, dans le système.
+  */
+  useFermetureEchap(preview !== null, () => setPreview(null));
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
   const monthExpenses = useMemo(() => ofMonth(month), [ofMonth, month]);

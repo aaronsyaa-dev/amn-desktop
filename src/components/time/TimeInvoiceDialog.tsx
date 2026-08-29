@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { centsToInput, formatCents, parsePositiveAmount } from '../../lib/money';
 import { formatDuration, msToBillableHours, totalMs, type TimeEntry } from '../../state/timeEngine';
+import { useFermetureEchap } from '../../lib/useFermetureEchap';
 
 /**
  * Un temps passé qui devient une ligne de facture.
@@ -41,6 +42,9 @@ export function TimeInvoiceDialog({
   onConfirm: (values: { hours: number; rateCents: number; entryIds: string[] }) => void;
   onClose: () => void;
 }) {
+  // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
+  useFermetureEchap(true, onClose);
+
   const [rate, setRate] = useState(defaultRateCents > 0 ? centsToInput(defaultRateCents) : '');
   const [hoursInput, setHoursInput] = useState('');
   const [error, setError] = useState<string | null>(null);

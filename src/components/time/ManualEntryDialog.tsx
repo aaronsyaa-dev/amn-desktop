@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { ProjectPicker } from '../projects/ProjectPicker';
 import { formatDuration, parseDurationInput } from '../../state/timeEngine';
+import { useFermetureEchap } from '../../lib/useFermetureEchap';
 
 /**
  * La saisie de secours : « j'ai oublié de lancer le chrono ».
@@ -25,6 +26,9 @@ export function ManualEntryDialog({
   onSubmit: (values: { day: string; minutes: number; label: string; projectId?: string }) => void;
   onClose: () => void;
 }) {
+  // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
+  useFermetureEchap(true, onClose);
+
   const [day, setDay] = useState(defaultDay);
   const [duration, setDuration] = useState('');
   const [label, setLabel] = useState('');

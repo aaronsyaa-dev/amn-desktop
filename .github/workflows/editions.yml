@@ -103,6 +103,10 @@ jobs:
         run: npm run check:evenements
       - name: Sauvegarde — ce qu'un fichier relu vaut vraiment
         run: npm run check:sauvegarde
+      - name: Accès clavier — rien d'inatteignable
+        run: npm run check:clavier
+      - name: Pile des calques — un appui d'Échap, un calque
+        run: npm run check:calques
       - name: Tendances
         run: npm run check:trend
       - name: Export FEC

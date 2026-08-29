@@ -26,6 +26,7 @@ import { TimeInvoiceDialog } from '../components/time/TimeInvoiceDialog';
 import { uid } from '../state/SyncContext';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { FirstRun } from '../components/EmptyState';
+import { useFermetureEchap } from '../lib/useFermetureEchap';
 
 /**
  * Temps — le chronomètre d'abord, la feuille d'heures jamais.
@@ -482,6 +483,9 @@ function EditEntryDialog({
   onSave: (patch: { label: string; projectId?: string }) => void;
   onClose: () => void;
 }) {
+  // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
+  useFermetureEchap(true, onClose);
+
   const [label, setLabel] = useState(entry.label);
   const [projectId, setProjectId] = useState(entry.projectId ?? '');
 

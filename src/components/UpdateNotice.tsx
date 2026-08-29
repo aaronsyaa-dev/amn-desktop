@@ -4,6 +4,7 @@ import { Sparkles, X } from 'lucide-react';
 import { bridge } from '../lib/bridge';
 import { CHANGELOG, changesSince, type ChangelogEntry } from '../data/changelog';
 import { APP_VERSION } from '../edition/edition';
+import { useFermetureEchap } from '../lib/useFermetureEchap';
 
 const LAST_SEEN_KEY = 'amn.lastSeenVersion';
 
@@ -78,6 +79,13 @@ export function UpdateNotice() {
   }, []);
 
   const dismiss = () => setEntries(null);
+
+  /*
+    Le bandeau des nouveautés couvre l'écran au premier lancement d'une
+    version. Échap le referme : c'est une information, pas une décision, et
+    rien ne justifie d'obliger à viser une croix pour reprendre son travail.
+  */
+  useFermetureEchap(Boolean(entries && entries.length > 0), dismiss);
 
   return (
     <AnimatePresence>
