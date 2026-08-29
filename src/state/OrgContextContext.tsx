@@ -13,7 +13,7 @@ import { isAdminRole } from '../auth/roles';
 import { storedFromSession, writeStoredSession } from '../auth/session';
 import { bridge } from '../lib/bridge';
 import { cleanErrorMessage } from '../lib/errorMessage';
-import { purgeContextMirror } from './SyncContext';
+import { motsPurge, purgeContextMirror } from './SyncContext';
 import type { AdminOrganization, MyOrganization, SupportContext } from '../shared/api';
 
 /**
@@ -390,7 +390,9 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
    */
   const closeCurrent = useCallback(async (context: SupportContext, token: string) => {
     if (token) await bridge().remote.support.leave(token).catch(() => undefined);
-    purgeContextMirror(context.orgId);
+    const mots = motsPurge(purgeContextMirror(context.orgId));
+    // Rare, mais jamais silencieux : ce qui n'est pas parti ne partira plus.
+    if (mots) setActionError(mots);
   }, []);
 
   const enterOrganization = useCallback(
@@ -503,13 +505,16 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
   */
   const expireContext = useCallback(
     (contexte: SupportContext) => {
-      purgeContextMirror(contexte.orgId);
+      const mots = motsPurge(purgeContextMirror(contexte.orgId));
       setSupport(null);
       writeStoredToken(null);
       storedToken.current = '';
       setActionError(
         `La session de support sur ${contexte.orgName} a expiré. Son espace est refermé — ` +
-          'rouvrez-en une depuis la Tour de contrôle si vous en avez encore besoin.',
+          'rouvrez-en une depuis la Tour de contrôle si vous en avez encore besoin.' +
+          // Une expiration n'est décidée par personne : c'est le seul cas où on
+          // peut perdre du travail sans avoir rien fait pour ça.
+          (mots ? ` ${mots}` : ''),
       );
       navigate('/');
     },

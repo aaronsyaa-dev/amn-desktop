@@ -319,3 +319,26 @@ export function motsAbandon(a: Abandon): string {
       return `${quoi} a été abandonnée : plus de ${FILE_MAX} modifications attendaient d’être envoyées. Vérifiez la connexion au serveur.`;
   }
 }
+
+/**
+ * CE QUI PART AVEC LE MIROIR DOIT ÊTRE DIT.
+ *
+ * La file d'un contexte client vit sous le même préfixe que son miroir, et
+ * c'est voulu : les données d'une cliente n'ont pas à rester sur le disque de
+ * l'opérateur une fois la porte refermée, la file comprise.
+ *
+ * Mais une file non vide au moment de la purge, ce sont des écritures qui
+ * n'atteindront jamais le serveur. Les effacer sans un mot rejouerait
+ * exactement le défaut que la file répare — et au pire moment : une session de
+ * support qui EXPIRE toute seule, sans que personne n'ait décidé de partir.
+ * C'est le seul cas où l'on perd du travail sans avoir rien fait pour ça.
+ *
+ * Rend `null` quand il n'y avait rien en attente — de très loin le cas le plus
+ * courant, et qui ne mérite aucun mot.
+ */
+export function motsPurge(perdues: number): string | null {
+  if (perdues <= 0) return null;
+  return perdues === 1
+    ? '1 modification n’avait pas encore atteint le serveur et a été perdue en refermant cet espace.'
+    : `${perdues} modifications n’avaient pas encore atteint le serveur et ont été perdues en refermant cet espace.`;
+}

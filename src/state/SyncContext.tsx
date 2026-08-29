@@ -15,6 +15,7 @@ import {
   poser as poserEnFile,
   pretALEnvoi,
   resume as resumeFile,
+  motsPurge,
   type Abandon,
   type EntreeEnvoi,
 } from '../lib/fileEnvoi';
@@ -165,8 +166,25 @@ function writeFile(scope: string | undefined, file: readonly EntreeEnvoi[]): voi
  * cliente n'ont pas à rester sur le disque de l'opérateur une fois la porte
  * refermée.
  */
-export function purgeContextMirror(scope: string): void {
+export { motsPurge };
+
+export function purgeContextMirror(scope: string): number {
+  let perdues = 0;
   try {
+    /*
+      CE QUI PART AVEC LE MIROIR DOIT ÊTRE DIT.
+
+      La file d'envoi vit sous le même préfixe que le miroir, et c'est
+      volontaire : les données d'une cliente n'ont pas à rester sur le disque
+      de l'opérateur une fois la porte refermée, la file comprise.
+
+      Mais une file non vide au moment de la purge, ce sont des écritures qui
+      n'atteindront jamais le serveur. Les effacer sans un mot rejouerait
+      exactement le défaut que la file répare — et au pire moment, celui d'une
+      session de support qui EXPIRE toute seule, sans que personne n'ait
+      décidé de partir. On compte donc, et l'appelant le dit.
+    */
+    perdues = readFile(scope).length;
     const prefix = `${MIRROR_PREFIX}ctx-${scope}.`;
     for (const key of Object.keys(window.localStorage)) {
       if (key.startsWith(prefix)) window.localStorage.removeItem(key);
@@ -174,7 +192,9 @@ export function purgeContextMirror(scope: string): void {
   } catch {
     /* quota / mode privé — rien à faire de plus */
   }
+  return perdues;
 }
+
 
 type CollectionMap = Record<string, RemoteRecord>; // id -> record (incl. tombstones)
 type Store = Record<string, CollectionMap>; // collection -> map

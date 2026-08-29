@@ -62,6 +62,7 @@ const {
   attenteAvantEssai,
   resume,
   motsAbandon,
+  motsPurge,
   FILE_MAX,
   ESSAIS_MAX,
   ATTENTE_MAX_MS,
@@ -78,6 +79,7 @@ const {
   attenteAvantEssai: (essais: number) => number;
   resume: (file: readonly Entree[]) => string | null;
   motsAbandon: (a: Abandon) => string;
+  motsPurge: (perdues: number) => string | null;
   FILE_MAX: number;
   ESSAIS_MAX: number;
   ATTENTE_MAX_MS: number;
@@ -361,6 +363,33 @@ dit('les trois abandons ont chacun leurs mots, et aucun n’est vide', () => {
   }
   // Une suppression et une modification ne se racontent pas pareil.
   assert.match(motsAbandon({ entree: suppression('tasks', 'x'), motif: 'refus' }), /suppression/i);
+});
+
+/* ─── Refermer un espace client emporte sa file ────────────────────────────── */
+
+dit('une purge sans rien en attente ne dit rien', () => {
+  // Le cas de très loin le plus courant. Un mot ici serait du bruit à chaque
+  // sortie de dossier.
+  assert.equal(motsPurge(0), null);
+  assert.equal(motsPurge(-1), null);
+});
+
+dit('LA RÈGLE : ce qui part avec le miroir doit être DIT', () => {
+  /*
+    La file d'un contexte client vit sous le même préfixe que son miroir, donc
+    la purge l'emporte — et c'est voulu, les données d'une cliente n'ont pas à
+    rester sur le disque de l'opérateur. Mais l'effacer sans un mot rejouerait
+    le défaut que la file répare, au pire moment : une session de support qui
+    EXPIRE toute seule, sans que personne n'ait décidé de partir.
+  */
+  const un = motsPurge(1);
+  assert.ok(un && /1 modification/.test(un), un ?? '(rien)');
+  assert.ok(un && !/modifications/.test(un), 'au singulier');
+  assert.match(un ?? '', /perdue/);
+
+  const trois = motsPurge(3);
+  assert.match(trois ?? '', /3 modifications/);
+  assert.match(trois ?? '', /perdues/);
 });
 
 console.log(`\nOK — ${vus} contrôles.\n`);
