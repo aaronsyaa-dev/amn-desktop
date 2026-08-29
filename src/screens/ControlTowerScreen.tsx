@@ -16,6 +16,7 @@ import { SiteBadgeExport, SocDesk } from '../components/tracker/SocDesk';
 import { SiteStatusPageExport } from '../components/tracker/StatusPageExport';
 import { CallLinkPanel } from '../components/call/CallLinkPanel';
 import { AttentionPanel } from '../components/AttentionPanel';
+import { useAttention } from '../state/useAttention';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { useRemoteSites } from '../state/RemoteSitesContext';
 import { useOrgContext } from '../state/OrgContextContext';
@@ -44,6 +45,8 @@ import type { OrgAccessEntry, SupervisionState } from '../shared/api';
 export function ControlTowerScreen() {
   const { sites } = useRemoteSites();
   const { organizations, loadingOrgs, orgsError } = useOrgContext();
+  // Évalué ici et passé au panneau : une seule lecture, une seule minuterie.
+  const attention = useAttention();
 
   const parc = useMemo(() => {
     const online = sites.filter((s) => s.status ==='online').length;
@@ -191,7 +194,7 @@ export function ControlTowerScreen() {
         consulter ».
       */}
       <StaggerItem>
-        <AttentionPanel />
+        <AttentionPanel state={attention} />
       </StaggerItem>
 
       {/* Le mur : incidents inter-sites, origine des visiteurs, activité horaire. */}

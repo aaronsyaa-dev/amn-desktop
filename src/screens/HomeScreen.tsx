@@ -26,6 +26,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { VeilleTicker } from '../components/VeilleTicker';
 import { SupervisionBand } from '../components/SupervisionBand';
 import { AttentionPanel } from '../components/AttentionPanel';
+import { useAttention } from '../state/useAttention';
 import { homeWelcome, homeNudge } from '../lib/homeGreetings';
 import { relativeTime } from '../lib/time';
 
@@ -83,7 +84,26 @@ export function HomeScreen() {
   // Varies by time of day + a per-launch pick. Recomputed from the ticking
   // clock so it stays coherent with the real hour even if the app is left open
   // across a slot boundary (e.g. midnight); the pick is stable within a slot.
-  const welcome = homeWelcome(displayName, now);
+  /*
+    LA SALUTATION N'AFFIRME LE CALME QUE SI ON L'A VÉRIFIÉ.
+
+    Vu sur une capture réelle : « La nuit est calme, Aaron. » au-dessus de
+    « 12 sites hors ligne » et de vingt et un points d'attention. La première
+    phrase que lit l'opérateur contredisait tout ce qui la suivait.
+
+    Trois conditions, et les trois comptent :
+      · `checkedAt` — on a réellement regardé. Avant, on ne dit rien ;
+      · aucun point d'attention ;
+      · aucun site hors ligne.
+
+    C'est la même règle que le panneau juste en dessous applique depuis
+    toujours (« on n'affirme pas tout va bien avant d'avoir regardé ») ; la
+    salutation était le seul endroit qui s'en dispensait.
+  */
+  const attention = useAttention();
+  const offlineCount = sites.filter((s) => s.status === 'offline').length;
+  const serein = Boolean(attention.checkedAt) && attention.items.length === 0 && offlineCount === 0;
+  const welcome = homeWelcome(displayName, now, serein);
   const dateLabel = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const offline = sites.filter((s) => s.status === 'offline').length;
@@ -194,7 +214,7 @@ export function HomeScreen() {
 
       {/* Ce que l'application a remarqué toute seule. Ne s'affiche que s'il y a
           quelque chose à dire — voir AttentionPanel. */}
-      <AttentionPanel className="mt-10" />
+      <AttentionPanel state={attention} className="mt-10" />
 
       {/* Sites suivis — personal shortcut, only when the operator pinned some */}
       {pinnedSites.length > 0 && (

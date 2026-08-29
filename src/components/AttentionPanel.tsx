@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, Check, ChevronDown, CircleAlert, Info } from 'lucide-react';
-import { useAttention } from '../state/useAttention';
+import type { AttentionState } from '../state/useAttention';
 import { formatCentsCompact } from '../lib/money';
 import type { AttentionItem, AttentionSeverity } from '../lib/attention';
 
@@ -55,8 +55,26 @@ const SEVERITY: Record<
 
 const VISIBLE = 3;
 
-export function AttentionPanel({ className = '' }: { className?: string } = {}) {
-  const { items, checkedAt } = useAttention();
+/**
+ * L'ÉTAT VIENT DE L'ÉCRAN, il n'est plus relu ici.
+ *
+ * Le panneau appelait `useAttention()` lui-même. C'était commode tant que
+ * personne d'autre n'en avait besoin — mais la salutation d'accueil doit
+ * savoir, elle aussi, s'il y a quelque chose à traiter : elle affirmait « la
+ * nuit est calme » au-dessus de vingt et un points d'attention.
+ *
+ * Deux appels auraient donné deux évaluations, deux minuteries de soixante
+ * secondes et deux lectures d'incidents — pour deux vérités qui peuvent
+ * diverger d'un rendu à l'autre. L'écran évalue une fois et passe l'état ici.
+ */
+export function AttentionPanel({
+  state,
+  className = '',
+}: {
+  state: AttentionState;
+  className?: string;
+}) {
+  const { items, checkedAt } = state;
   const [expanded, setExpanded] = useState(false);
   const navigate = useNavigate();
 

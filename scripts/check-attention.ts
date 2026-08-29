@@ -570,6 +570,88 @@ check('le critique passe DEVANT tout le reste', () => {
   assert.equal(items[0].kind, 'incident-critical', `en tete : ${items[0].kind}`);
 });
 
+/* ═══════════ La salutation d'accueil n'a pas le droit d'affirmer ═══════════ */
+
+interface SalutationModule {
+  homeWelcome(name: string, now?: Date, serein?: boolean): string;
+  GREETINGS_NEUTRES: Record<string, string[]>;
+  GREETINGS_SEREINES: Record<string, string[]>;
+}
+const S = await loadFromSrc<SalutationModule>('src/lib/homeGreetings.ts');
+
+/** Les mots par lesquels une phrase AFFIRME que tout va bien. */
+const AFFIRMATIONS = [/calme/i, /tranquille/i, /en ordre/i, /dégagée?/i, /rien ne presse/i, /bouclée/i];
+
+check('SALUTATION : sans certificat de calme, elle n’affirme RIEN', () => {
+  /*
+    LE DÉFAUT QUE CE CONTRÔLE FERME, vu sur une capture réelle :
+
+        La nuit est calme, Aaron.
+        12 sites hors ligne — à regarder
+        21 points d'attention
+
+    La première phrase que lit l'opérateur contredisait tout ce qui la suivait.
+    Dans un produit de cybersécurité, un accueil qui rassure pendant que le
+    parc brûle est pire qu'un accueil muet : il apprend à ne plus le croire, et
+    le jour où il dit vrai personne ne l'écoute.
+
+    Le paramètre `serein` vaut FAUX par défaut, exprès : un appelant qui
+    l'oublie obtient une salutation neutre, jamais une fausse réassurance.
+  */
+  for (const [creneau, phrases] of Object.entries(S.GREETINGS_NEUTRES)) {
+    for (const phrase of phrases) {
+      for (const mot of AFFIRMATIONS) {
+        assert.ok(
+          !mot.test(phrase),
+          `« ${phrase} » (${creneau}) affirme le calme alors qu’elle est rangée dans les NEUTRES`,
+        );
+      }
+    }
+  }
+
+  // Et à toute heure, l'appel sans certificat ne peut rien produire d'autre.
+  for (let h = 0; h < 24; h += 1) {
+    const quand = new Date(2026, 7, 29, h, 30);
+    const dite = S.homeWelcome('Aaron', quand);
+    for (const mot of AFFIRMATIONS) {
+      assert.ok(!mot.test(dite), `à ${h} h, sans certificat : « ${dite} »`);
+    }
+    assert.ok(dite.includes('Aaron'), `le prénom doit rester : « ${dite} »`);
+  }
+});
+
+check('SALUTATION : le défaut du paramètre penche du bon côté', () => {
+  /*
+    La garantie qui compte à long terme : un troisième écran d'accueil, écrit
+    dans six mois, qui appellerait `homeWelcome(nom, now)` sans réfléchir doit
+    obtenir une phrase neutre. C'est ce qui distingue un défaut sûr d'un piège.
+  */
+  const quand = new Date(2026, 7, 29, 2, 0);
+  const sansRien = S.homeWelcome('Aaron', quand);
+  const explicitementFaux = S.homeWelcome('Aaron', quand, false);
+  assert.equal(sansRien, explicitementFaux, 'omettre le paramètre doit valoir « pas serein »');
+});
+
+check('SALUTATION : quand c’est vraiment calme, elle a le droit de le dire', () => {
+  /*
+    Le TÉMOIN. Sans lui, les deux contrôles ci-dessus passeraient aussi bien si
+    les variantes sereines avaient été supprimées — et l'accueil deviendrait
+    plat tous les jours de l'année, ce qui n'était pas le but.
+  */
+  let trouvee = false;
+  for (let h = 0; h < 24; h += 1) {
+    const dite = S.homeWelcome('Aaron', new Date(2026, 7, 29, h, 30), true);
+    if (AFFIRMATIONS.some((m) => m.test(dite))) trouvee = true;
+  }
+  assert.ok(trouvee, 'aucune variante sereine n’affirme quoi que ce soit — la famille est vide ?');
+
+  // Et chaque créneau en a au moins une, sinon certaines heures perdraient
+  // silencieusement la nuance.
+  for (const [creneau, phrases] of Object.entries(S.GREETINGS_SEREINES)) {
+    assert.ok(phrases.length > 0, `créneau sans variante sereine : ${creneau}`);
+  }
+});
+
 if (failures.length > 0) {
   console.error(`\n${failures.length} contrôle(s) en échec :`);
   for (const name of failures) console.error(`  - ${name}`);

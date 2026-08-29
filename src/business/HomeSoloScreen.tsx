@@ -9,6 +9,7 @@ import { appointmentEnd, useAppointments, type Appointment } from '../state/useA
 import { dayKey, longDayLabel, relativeToNow, timeLabel } from '../lib/calendar';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { AttentionPanel } from '../components/AttentionPanel';
+import { useAttention } from '../state/useAttention';
 import { SoloPulse } from './SoloPulse';
 import { DayBand } from './DayBand';
 import { homeWelcome } from '../lib/homeGreetings';
@@ -37,6 +38,15 @@ export function HomeSoloScreen() {
   const { appointments } = useAppointments();
   const { clients } = useClients();
   const tasks = useCollection<TaskData>('tasks');
+
+  /*
+    Même règle que l'accueil interne : on n'affirme le calme qu'après avoir
+    regardé, et seulement s'il n'y a rien à traiter. Ici il n'y a pas de parc à
+    surveiller — une organisation cliente n'a pas de sites sous supervision —
+    donc les points d'attention suffisent à trancher.
+  */
+  const attention = useAttention();
+  const serein = Boolean(attention.checkedAt) && attention.items.length === 0;
 
   /*
     L'horloge de l'accueil (BLOC B).
@@ -88,7 +98,7 @@ export function HomeSoloScreen() {
             application qui dit exactement la même phrase tous les matins finit
             par ne plus rien dire du tout. */}
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-text-primary">
-          {homeWelcome(user?.name?.split(' ')[0] ?? '', now)}
+          {homeWelcome(user?.name?.split(' ')[0] ?? '', now, serein)}
         </h1>
         <p className="mt-0.5 text-sm capitalize text-text-secondary">{longDayLabel(now)}</p>
       </header>
@@ -106,7 +116,7 @@ export function HomeSoloScreen() {
 
       {/* Factures impayées, tâches enlisées, clients sans nouvelles. Rien ne
           s'affiche tant qu'il n'y a rien à signaler. */}
-      <AttentionPanel />
+      <AttentionPanel state={attention} />
 
       <StaggerGroup className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <StaggerItem className="lg:col-span-2">
