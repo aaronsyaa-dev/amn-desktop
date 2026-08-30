@@ -239,3 +239,100 @@ d'incidents COMPTE maintenant en glissant (AnimatedCounter, 500 ms) — on voit
 le temps se rembobiner. Étendre le rejeu à d'autres écrans demanderait des
 données historisées qu'ils n'ont pas (les statuts de sites ne gardent pas
 d'historique) — non simulé, donc non fait, comme demandé.
+
+---
+
+# Rapport final
+
+## Écran par écran
+
+**Connexion (deux éditions).** Transformé : carte-instrument (repères
+d'angle, élévation, bandeau), registres séparés (« Console d'accès » /
+« Votre espace »), ligne de lieu versionnée ancrée au bord bas. Signature :
+le sceau — le point d'état dit la vérité réseau et s'ouvre en anneau à la
+réussite. Boucle : it.2 = 4/4/4*/5/5, l'immobilité au repos est le choix.
+Retiré après autocritique : le balayage d'amorçage (un effet de trop).
+
+**Accueil cliente.** Transformé : la page a un récit — salutation, relève,
+bande du jour, pouls vivant, attention, travail. Signature : le Majordome
+(grammaire déterministe, 14 contrôles + 3 mutations). Le pouls porte ses
+courbes réelles et ses deltas en toutes lettres. Boucle : it.2 = 4/4/4/5/5.
+Vérifié de bout en bout par sonde (fermeture, absence antidatée,
+réouverture) à 1440 et 390 px.
+
+**Clients / Tâches / Facturation (cliente).** Relevés d'en-tête vivants
+(séries réelles par ScreenHeader). Les montants restent nus — règle « pas de
+série, pas de courbe » dans les deux sens. Le reste de ces écrans garde sa
+structure (listes, panneaux) : c'était déjà la refonte d'août, pas l'ancien
+style.
+
+**Accueil interne.** Transformé : relève SOC sous la salutation, même
+enveloppe que le Majordome. La ligne d'alerte rouge reste le seul rouge de
+l'écran. Boucle : 4/4/4/5/5.
+
+**Le rail (interne).** Signature : le battement — l'anneau de l'organisation
+respire avec l'état réel du parc, s'embrase en rouge sur critique, s'éteint
+quand la ronde échoue. Infobulle nommée.
+
+**Bureau de supervision.** Le relevé « À traiter » porte sa courbe
+d'arrivées réelles. Le scrub temporel du bureau SOC COMPTE en glissant
+(valeurs historiques réelles, rien de simulé).
+
+**Salle de contrôle.** L'écran le plus transformé : noir absolu,
+constellation déterministe (phyllotaxie, phase par identifiant), la lumière
+comme seule information, verdict calculé. Deux entrées : veille (4 min) et
+route `#/salle` depuis la Tour. Boucle : 5/5/5/5/5 — la capture à montrer.
+
+**Mobile.** Vérifié en continu à 390 px. Le pouls (l'accueil) est au centre
+de la barre du pouce ; `check:largeur` a attrapé mon propre débordement de
+la Tour (le mot « Salle de contrôle » se replie en icône).
+
+**Connexion → typographie.** Espaces fines insécables (? ! ; et guillemets)
+dans les nœuds de texte JSX, « Nouvelle mise à jour » sans cri, nombres
+français partout (Intl fr-FR déjà en place).
+
+## Ce qui reste dans l'ancien style, dit sans enjoliver
+
+- **Le flux visible** (le jeton qui voyage du rail au compteur) : non
+  construit. Exige une chorégraphie WebSocket source→destination que je ne
+  pouvais pas vérifier honnêtement cette nuit ; un flux simulé aurait été
+  pire que pas de flux.
+- **La Trousse** (remplaçante de la barre basse interne) : non construite —
+  c'est un produit (repères épinglables + glisser + calculette), pas un
+  habillage ; le rusher aurait donné le bricolage que le brief interdit.
+- **Densité compact/confortable** : différée. L'appliquer proprement touche
+  chaque rangée de huit écrans ; un override CSS central aurait trahi le
+  système de tokens. Le confortable par défaut EST l'état actuel.
+- **Présence OS** (tray vivant, badge, Jump List, toasts) : travail main
+  process Electron, invérifiable dans cet environnement web — au backlog
+  avec le fenêtrage de la Salle.
+- **Icônes d'app distinctes + illustrations dessinées main** : travail
+  d'assets, hors de portée d'une session de code.
+- **La voix** (annonce vocale critique, opt-in) et le **premier lancement
+  personnalisé** : non faits.
+- **Bande LiveMetrics au-dessus de chaque grande table** : les en-têtes
+  d'écran la portent ; les tables elles-mêmes n'ont pas reçu de bande
+  dédiée.
+
+## Le scrub temporel — verdict demandé
+
+Possible, et fait là où les données le permettent : le bureau SOC rejouait
+déjà des jours réels (occurredAt), ses compteurs comptent maintenant en
+glissant. L'étendre aux autres écrans demanderait un historique d'états
+(statuts de sites jour par jour) qui n'existe pas côté serveur — non simulé,
+donc non fait.
+
+## Le tag de sauvegarde
+
+Utile en creux : il n'a pas servi à revenir en arrière, mais sa pose a
+révélé que l'environnement refuse les tags (403) — d'où le hash épinglé ici
+et la commande de retour documentée. Rien n'a été perdu, rien n'a dû être
+défait.
+
+## L'état des gardes à la fin
+
+33 gardes hors navigateur verts. Navigateur : 12 contrôles verts sur les
+deux éditions au dernier passage complet, puis `largeur` et `cibles`
+re-vérifiés verts après la dernière correction (le débordement que
+`largeur` avait attrapé). `check:vitaux` (13) et `check:releve` (14) créés
+cette nuit, mutations éprouvées des deux côtés.
