@@ -1,12 +1,13 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDays, CheckSquare, ReceiptEuro } from 'lucide-react';
-import { AnimatedCounter } from '../components/AnimatedCounter';
 import { useAppointments } from '../state/useAppointments';
 import { useCollection } from '../state/SyncContext';
 import { useInvoices, invoiceTotals } from '../state/useInvoices';
 import { formatCentsCompact } from '../lib/money';
 import { dayKey } from '../lib/calendar';
+import { LiveMetric } from '../components/LiveMetric';
+import { serieFlux, serieStock } from '../lib/serieVitale';
 
 /**
  * Le pouls de son activité — trois nombres, sur l'accueil Business (BLOC B).
@@ -41,6 +42,7 @@ import { dayKey } from '../lib/calendar';
 
 interface TacheLigne {
   status?: string;
+  createdAt?: string;
 }
 
 /** Lundi de la semaine de `date`, à minuit. La semaine française commence lundi. */
@@ -90,11 +92,43 @@ export function SoloPulse() {
     [invoices],
   );
 
+  /*
+    LA MÉMOIRE DES CHIFFRES (Signes Vitaux). Trois nombres qui ne sont plus
+    posés : chacun porte sa courbe des sept derniers jours, calculée sur les
+    vraies dates des enregistrements — jamais simulée (règle de check:vitaux).
+
+    · les rendez-vous sont un FLUX : combien ont eu lieu chaque jour ;
+    · les tâches ouvertes sont un STOCK : le cumul de leurs créations, dont le
+      dernier point est le compte d'aujourd'hui ;
+    · le montant à encaisser reste un nombre seul : une somme d'euros n'est
+      pas un compte d'arrivées, et une courbe de comptage sous un montant
+      dirait autre chose que le chiffre. Plutôt pas de courbe qu'une courbe
+      qui ment sur sa nature.
+  */
+  const serieRdv = useMemo(
+    () =>
+      serieFlux(
+        appointments.filter((a) => a.status !== 'cancelled').map((a) => a.startAt),
+        7,
+        maintenant,
+      ),
+    [appointments, dayKey(maintenant)],
+  );
+  const serieTaches = useMemo(
+    () =>
+      serieStock(
+        taches.filter((t) => t.status !== 'done').map((t) => t.createdAt),
+        7,
+        maintenant,
+      ),
+    [taches, dayKey(maintenant)],
+  );
+
   const chiffres = [
     {
       cle: 'semaine',
       icone: CalendarDays,
-      rendu: <AnimatedCounter value={semaine} />,
+      rendu: <LiveMetric value={semaine} serie={serieRdv} emphasis />,
       // « rendez-vous » est invariable : le pluriel se lit sur le nombre, pas sur le mot.
       libelle: 'rendez-vous cette semaine',
       to: '/agenda',
@@ -102,7 +136,7 @@ export function SoloPulse() {
     {
       cle: 'taches',
       icone: CheckSquare,
-      rendu: <AnimatedCounter value={ouvertes} />,
+      rendu: <LiveMetric value={ouvertes} serie={serieTaches} emphasis />,
       libelle: ouvertes > 1 ? 'tâches ouvertes' : 'tâche ouverte',
       to: '/tasks',
     },
@@ -110,8 +144,9 @@ export function SoloPulse() {
       cle: 'encaisser',
       icone: ReceiptEuro,
       // Un montant ne se balaie pas comme un compte : voir défiler des euros
-      // au hasard donne l'impression que la somme hésite. Il s'affiche.
-      rendu: <span>{formatCentsCompact(aEncaisser)}</span>,
+      // au hasard donne l'impression que la somme hésite. `format` l'affiche
+      // tel quel — et sans série : voir le commentaire au-dessus.
+      rendu: <LiveMetric value={aEncaisser} format={formatCentsCompact} emphasis />,
       libelle: 'à encaisser',
       to: '/facturation',
     },
@@ -129,7 +164,7 @@ export function SoloPulse() {
             <Icone size={18} strokeWidth={1.5} />
           </span>
           <span className="min-w-0">
-            <span className="block text-xl font-bold leading-none tracking-tight text-text-primary">
+            <span className="block leading-none">
               {rendu}
             </span>
             <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">

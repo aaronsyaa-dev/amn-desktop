@@ -1,4 +1,6 @@
 import React from 'react';
+import { LiveMetric } from './LiveMetric';
+import type { SerieVitale } from '../lib/serieVitale';
 
 /**
  * L'en-tête d'écran — la même voix sur les trente-deux écrans (REFONTE).
@@ -30,6 +32,17 @@ export interface ScreenStat {
   label: string;
   /** Le chiffre lui-même, déjà formaté. */
   value: React.ReactNode;
+  /*
+    LA MÉMOIRE DU CHIFFRE (Signes Vitaux). Quand l'écran peut la calculer sur
+    de vraies dates, le relevé gagne sa courbe fantôme, son delta et sa vie —
+    voir LiveMetric. Sans elle, rien ne change : le nombre s'affiche comme
+    avant. JAMAIS de série simulée — c'est la règle que check:vitaux garde.
+  */
+  serie?: SerieVitale;
+  /** La valeur numérique brute, requise avec `serie` (le compteur compte). */
+  brut?: number;
+  /** Avec `serie` : comment écrire le nombre (montants). */
+  format?: (n: number) => string;
   /**
    * Attire l'œil sur ce relevé. Réservé à ce qui APPELLE une action — des
    * impayés, une alerte ouverte, une commande non traitée. Mis partout, il
@@ -95,13 +108,22 @@ export function ScreenHeader({
               }`}
             >
               <span className="eyebrow mb-1.5">{stat.label}</span>
-              <span
-                className={`tnum text-[19px] font-medium leading-none ${
-                  stat.emphasis ? 'text-text-primary' : 'text-text-secondary'
-                }`}
-              >
-                {stat.value}
-              </span>
+              {stat.serie && stat.brut !== undefined ? (
+                <LiveMetric
+                  value={stat.brut}
+                  serie={stat.serie}
+                  format={stat.format}
+                  emphasis={stat.emphasis}
+                />
+              ) : (
+                <span
+                  className={`tnum text-[19px] font-medium leading-none ${
+                    stat.emphasis ? 'text-text-primary' : 'text-text-secondary'
+                  }`}
+                >
+                  {stat.value}
+                </span>
+              )}
             </div>
           ))}
         </div>

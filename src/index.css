@@ -108,6 +108,38 @@
   --color-danger-fill: #dd2f26;
   --color-danger-ink: #ff5847;
   --color-danger-muted: rgba(255, 66, 48, 0.14);
+
+  /*
+    L'ÉCHELLE TYPOGRAPHIQUE — six tailles, ratio ≈ 1,31, et rien entre elles.
+
+    Les tailles étaient choisies écran par écran (text-2xl ici, 19px là,
+    13px ailleurs) : rien de faux isolément, mais pas d'échelle — donc pas de
+    voix commune. Six crans suffisent à toute l'application ; un besoin de
+    septième taille est un problème de hiérarchie, pas de typographie.
+
+      v1 36px — le SEUL chiffre-héros d'un écran (le Pouls, la Salle de contrôle)
+      v2 27px — titre d'écran
+      v3 21px — chiffre de relevé, titre de carte forte
+      v4 16px — corps confortable
+      v5 12px — méta, libellés secondaires
+      v6 10px — l'eyebrow. PLANCHER ABSOLU : rien en dessous, jamais.
+
+    La hiérarchie se porte par le poids et la couleur plus que par la taille :
+    le poids le plus lourd et le contraste le plus fort vont au seul élément
+    le plus important de chaque carte.
+  */
+  --text-v1: 36px;
+  --text-v1--line-height: 1.05;
+  --text-v2: 27px;
+  --text-v2--line-height: 1.15;
+  --text-v3: 21px;
+  --text-v3--line-height: 1.2;
+  --text-v4: 16px;
+  --text-v4--line-height: 1.5;
+  --text-v5: 12px;
+  --text-v5--line-height: 1.4;
+  --text-v6: 10px;
+  --text-v6--line-height: 1;
 }
 
 * {
@@ -130,6 +162,18 @@ body {
   color-scheme: dark;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /*
+    CHIFFRES TABULAIRES PARTOUT — posé une fois, au sol.
+
+    Un compteur en chiffres proportionnels tremble en comptant (le « 1 » est
+    plus étroit, chaque tick déplace tout ce qui suit), et deux montants ne
+    s'alignent pas en colonne. Le poser sur `body` interdit le défaut PAR
+    CONSTRUCTION : plus aucun chiffre de l'application ne peut trembler, y
+    compris ceux qu'on écrira dans six mois sans y penser. Space Grotesk porte
+    la fonctionnalité ; là où une fonte de repli ne l'aurait pas, c'est un
+    no-op, jamais une régression.
+  */
+  font-variant-numeric: tabular-nums;
 }
 
 /*
