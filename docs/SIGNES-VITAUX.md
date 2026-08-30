@@ -111,4 +111,32 @@ delta n'est plus fléché ↑↓ (réflexe dashboard) mais écrit en toutes lett
 
 ## Famille 1 — le web d'abord : connexion + accueil cliente
 
-*(plans et notes de boucle ajoutés au fil du travail)*
+### Écran de connexion — plan
+
+Concept : le sas d'un organisme. Au repos, l'écran est IMMOBILE et c'est
+voulu — on est dehors, rien ne doit prétendre vivre. La carte est un
+instrument (repères d'angle, élévation, bandeau `panel-head`), pas un
+formulaire. Élément signature : **le sceau** — le point d'état du bandeau dit
+la vérité réseau (`navigator.onLine`, nommé au survol), et à la réussite il
+s'ouvre en anneau qui balaie vers l'extérieur : le sas s'ouvre. Un seul effet,
+causé par le geste, transform/opacity, rien en mouvement réduit.
+
+Registres : « Console d'accès » côté interne, « Votre espace » côté cliente —
+une fleuriste n'entre pas dans une console. La ligne de lieu est ancrée au
+bord bas de la fenêtre et porte la version réelle : le vide n'est premium que
+s'il a une architecture (marque / porte / lieu), et la version est le détail
+que vérifie précisément un acheteur de sécurité.
+
+Autocritique : « carte centrée sur fond noir » est la forme la plus générique
+qui soit — ce qui l'en sort est le bandeau-instrument à état réel, le sceau,
+et la ligne de lieu versionnée. Retiré après critique : le balayage lumineux
+d'amorçage au montage (deuxième effet — il y en avait un de trop).
+
+Boucle visuelle (1440 px et 390 px) :
+  it.1 — distinctif 3, hiérarchie 4, vivant 2, conforme 5, honnête 5.
+         La composition flottait ; le point d'état décoratif mentait.
+  it.2 — distinctif 4, hiérarchie 4, vivant 4*, conforme 5, honnête 5.
+         (*l'immobilité au repos est le choix ; l'anneau vérifié en vrai par
+         sonde : il joue pendant la sortie, et l'arrivée aboutit.)
+         `check:mouvement` vert après changements.
+

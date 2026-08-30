@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Eye, EyeOff, Loader2, ShieldCheck} from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { Logo } from '../components/Logo';
-import { EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/edition';
+import { APP_VERSION, EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/edition';
 
 interface LocationState {
   from?: { pathname: string };
@@ -21,6 +21,29 @@ export function LoginScreen() {
   const { login, completeMfa, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const mouvementReduit = useReducedMotion();
+
+  /*
+    LE POINT D'ÉTAT DIT LA VÉRITÉ (Signes Vitaux).
+
+    Il était vert par décoration — allumé même sans réseau, c'est-à-dire un
+    mensonge à l'endroit exact où l'on va taper un mot de passe. Il suit
+    maintenant `navigator.onLine` : la seule chose réellement observable
+    depuis un écran de connexion, sans envoyer quoi que ce soit.
+  */
+  const [enLigne, setEnLigne] = useState(() =>
+    typeof navigator === 'undefined' ? true : navigator.onLine,
+  );
+  useEffect(() => {
+    const oui = () => setEnLigne(true);
+    const non = () => setEnLigne(false);
+    window.addEventListener('online', oui);
+    window.addEventListener('offline', non);
+    return () => {
+      window.removeEventListener('online', oui);
+      window.removeEventListener('offline', non);
+    };
+  }, []);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -104,7 +127,7 @@ export function LoginScreen() {
     <motion.div
       animate={{ opacity: leaving ? 0 : 1, scale: leaving ? 0.98 : 1 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      className="flex min-h-screen flex-col items-center justify-center px-4"
+      className="relative flex min-h-screen flex-col items-center justify-center px-4"
     >
       <motion.div
         initial={{ opacity: 0, y: 8 }}
@@ -130,9 +153,9 @@ export function LoginScreen() {
           onSubmit={submitCode}
           noValidate
           aria-label="Double authentification"
-          className="w-[340px] border border-border bg-surface"
+          className="panel-ticks elev-2 w-[340px] border border-border bg-surface"
         >
-          <div className="flex items-center justify-between border-b border-border px-5 py-2.5">
+          <div className="panel-head flex items-center justify-between border-b border-border px-5 py-2.5">
             <span className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">
               Double authentification
             </span>
@@ -201,13 +224,38 @@ export function LoginScreen() {
         transition={{ duration: 0.3, delay: 0.08, ease: 'easeOut' }}
         onSubmit={handleSubmit}
         noValidate
-        className="w-[340px] border border-border bg-surface"
+        className="panel-ticks elev-2 w-[340px] border border-border bg-surface"
       >
-        <div className="flex items-center justify-between border-b border-border px-5 py-2.5">
+        <div className="panel-head flex items-center justify-between border-b border-border px-5 py-2.5">
           <span className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">
-            Console d’accès
+            {/* Le registre suit l'édition : « Console d'accès » est la langue
+                du centre de supervision, pas celle d'une fleuriste. */}
+            {IS_BUSINESS ? 'Votre espace' : 'Console d’accès'}
           </span>
-          <span className="h-1.5 w-1.5 rounded-full bg-success" />
+          {/*
+            LE SCEAU — l'élément signature de cet écran.
+
+            Au repos : un point qui dit l'état réseau RÉEL (allumé = en ligne,
+            éteint = hors ligne, nommé au survol). À la réussite : le point
+            s'ouvre en anneau qui balaie vers l'extérieur — le sas s'ouvre.
+            Un seul effet, causé par le geste de l'utilisateur, uniquement
+            transform/opacity, et rien du tout en mouvement réduit.
+          */}
+          <span className="relative flex h-1.5 w-1.5 items-center justify-center">
+            {leaving && !mouvementReduit && (
+              <motion.span
+                aria-hidden
+                initial={{ scale: 0.5, opacity: 0.9 }}
+                animate={{ scale: 10, opacity: 0 }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute h-1.5 w-1.5 rounded-full border border-success"
+              />
+            )}
+            <span
+              title={enLigne ? 'En ligne' : 'Hors ligne'}
+              className={`h-1.5 w-1.5 rounded-full ${enLigne ? 'bg-success' : 'bg-border-strong'}`}
+            />
+          </span>
         </div>
 
         <div className="flex flex-col gap-4 p-6">
@@ -285,8 +333,16 @@ export function LoginScreen() {
         </div>
       </motion.form>
       )}
-      <p className="mt-6 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+      {/*
+        La ligne de lieu, ANCRÉE AU BORD BAS de la fenêtre — pas collée sous la
+        carte. Le vide autour d'un écran de connexion n'est premium que s'il a
+        une architecture : quelque chose en haut (la marque), quelque chose au
+        centre (la porte), quelque chose au bord (où l'on est, et quelle
+        version — le détail que vérifie précisément un acheteur de sécurité).
+      */}
+      <p className="absolute bottom-6 left-0 right-0 text-center font-mono text-[10px] uppercase tracking-widest text-text-muted">
         {IS_BUSINESS ? `${EDITION_PRODUCT_NAME} · Espace de travail` : 'AMN DevSec · Centre de supervision'}
+        <span className="mx-2 text-border-strong">·</span>v{APP_VERSION}
       </p>
     </motion.div>
   );
