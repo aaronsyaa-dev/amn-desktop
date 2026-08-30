@@ -111,7 +111,7 @@ export function ManualEntryDialog({
 
           <label className="mt-4 block">
             <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-text-muted">
-              Sur quoi ? (facultatif)
+              Sur quoi ? (facultatif)
             </span>
             <input
               value={label}

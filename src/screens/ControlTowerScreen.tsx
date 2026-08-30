@@ -292,7 +292,7 @@ function ClientOrgsPanel({ loading, error }: { loading: boolean; error: string |
         <div className="px-4 py-8 text-center">
           <p className="text-sm font-medium text-text-primary">Aucune organisation cliente</p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-text-secondary">
-            Créez-en une depuis le « + » du rail, à gauche : l’organisation, son compte
+            Créez-en une depuis le « + » du rail, à gauche : l’organisation, son compte
             propriétaire et son accès sont générés d’un coup.
           </p>
         </div>

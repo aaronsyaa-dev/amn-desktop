@@ -480,7 +480,7 @@ function MessageList({
       <div className="flex flex-1 flex-col items-center justify-center gap-1 px-6 text-center">
         <p className="text-sm font-medium text-text-primary">Aucun message pour l’instant</p>
         <p className="text-sm text-text-secondary">
-          Démarrez la conversation. Astuce : tapez « @ » pour mentionner un site ou un client.
+          Démarrez la conversation. Astuce : tapez « @ » pour mentionner un site ou un client.
         </p>
       </div>
     );

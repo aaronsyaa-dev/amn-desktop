@@ -337,7 +337,7 @@ export function ProjectConfigPanel({
               Champs libres ({draft.extraFields.length}/{MAX_EXTRA_FIELDS})
             </p>
             <p className="mt-1 text-xs leading-relaxed text-text-secondary">
-              Du texte, pour ce que le moteur ne prévoit pas — « n° de dossier », « interlocuteur ».
+              Du texte, pour ce que le moteur ne prévoit pas — « n° de dossier », « interlocuteur ».
               <span className="text-text-muted">
                 {' '}
                 Volontairement limités : au-delà, ce n’est plus un réglage, c’est une base de données

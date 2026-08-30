@@ -127,7 +127,7 @@ function Veil({ onWake }: { onWake: () => void }) {
         <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.3em] text-text-muted">{date}</p>
 
         <h2 className="mt-12 text-2xl font-semibold tracking-tight text-text-secondary">
-          Une petite pause ?
+          Une petite pause ?
         </h2>
 
         <AnimatePresence mode="wait">

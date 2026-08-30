@@ -31,7 +31,7 @@ export function ConfirmDelete({
             transition={{ duration: 0.12 }}
             className="flex items-center gap-1"
           >
-            <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Sûr ?</span>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Sûr ?</span>
             <button
               type="button"
               onClick={() => {

@@ -549,7 +549,7 @@ export function OrgDossierPanel({
               onClick={() => void bridge().remote.admin.updateOrganization(org.id, { modules: null }).then(onSaved)}
               className="mt-2 font-mono text-[9px] uppercase tracking-widest text-text-muted underline-offset-2 hover:text-text-secondary hover:underline"
             >
-              Revenir à « tous les modules »
+              Revenir à « tous les modules »
             </button>
           )}
 

@@ -433,7 +433,7 @@ function WelcomeState({ onPrompt }: { onPrompt: (text: string) => void }) {
           <Sparkles size={22} strokeWidth={1.75} />
         </span>
         <h3 className="mt-4 text-lg font-semibold text-text-primary">
-          Comment puis-je vous aider ?
+          Comment puis-je vous aider ?
         </h3>
         <p className="mt-1 text-sm text-text-secondary">
           Je suis Ajmani. Je réponds à vos questions — sur votre parc comme sur

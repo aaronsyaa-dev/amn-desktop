@@ -186,7 +186,7 @@ export function CallLinkPanel({ onClose }: { onClose: () => void }) {
 
           <label className="mt-4 block">
             <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-text-muted">
-              Pour qui ? (mémo privé, jamais montré au visiteur)
+              Pour qui ? (mémo privé, jamais montré au visiteur)
             </span>
             <input
               value={label}
@@ -255,8 +255,8 @@ export function CallLinkPanel({ onClose }: { onClose: () => void }) {
                 {copied === 'message' ? 'Message copié' : 'Copier le message à envoyer'}
               </button>
               <p className="mt-1.5 text-xs leading-relaxed text-text-secondary">
-                Le message contient l’adresse <em>et</em> la consigne « à ouvrir directement, pas à
-                rechercher ». C’est ce qui évite qu’elle finisse dans une barre de recherche.
+                Le message contient l’adresse <em>et</em> la consigne « à ouvrir directement, pas à
+                rechercher ». C’est ce qui évite qu’elle finisse dans une barre de recherche.
               </p>
 
               <button

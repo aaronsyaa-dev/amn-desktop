@@ -463,7 +463,7 @@ export function GeneratorScreen() {
                   <p className="mb-4 text-[11px] leading-snug text-text-muted">
                     Accueil et Paramètres sont toujours ouverts : une organisation sans eux n’est pas
                     allégée, elle est cassée. Ce que vous fermez ici disparaît de sa barre — sans
-                    laisser d’écran vide qui dirait « il y a autre chose, mais pas pour vous ».
+                    laisser d’écran vide qui dirait « il y a autre chose, mais pas pour vous ».
                   </p>
                   <div className="grid gap-1.5 sm:grid-cols-2">
                     {CONFIGURABLE_MODULES.map((mod) => {
@@ -740,7 +740,7 @@ export function GeneratorScreen() {
                   <p className="eyebrow mb-3">Application web et téléphone</p>
                   <p className="mb-4 text-[13px] leading-relaxed text-text-secondary">
                     La même adresse pour tout le monde : l’application y apprend son organisation à
-                    la connexion. Sur téléphone, « Ajouter à l’écran d’accueil » lui donne une
+                    la connexion. Sur téléphone, « Ajouter à l’écran d’accueil » lui donne une
                     icône — c’est ce qui en fait une application plutôt qu’un onglet.
                   </p>
                   <div className="flex items-center gap-2">

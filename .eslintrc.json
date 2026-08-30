@@ -17,7 +17,17 @@
     "import/no-unresolved": [
       "error",
       {
-        "ignore": ["^@edition/"]
+        "ignore": [
+          "^@edition/"
+        ]
+      }
+    ],
+    "no-irregular-whitespace": [
+      "error",
+      {
+        "skipStrings": true,
+        "skipTemplates": true,
+        "skipJSXText": true
       }
     ]
   }

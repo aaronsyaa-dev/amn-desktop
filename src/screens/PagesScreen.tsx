@@ -191,7 +191,7 @@ export function PagesScreen({ scope, title, description }: {
             {!ready && <p className="px-2 py-3 text-xs text-text-muted">Chargement…</p>}
             {ready && pages.length === 0 && (
               <p className="px-2 py-3 text-xs text-text-muted">
-                Aucune page pour l’instant. « Nouvelle page » en crée une depuis un gabarit.
+                Aucune page pour l’instant. « Nouvelle page » en crée une depuis un gabarit.
               </p>
             )}
             {pages.map((p) => (

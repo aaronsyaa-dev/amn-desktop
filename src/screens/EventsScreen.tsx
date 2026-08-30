@@ -462,7 +462,7 @@ function DetailEvenement({
           */}
           {confirmSuppression ? (
             <>
-              <span className="text-xs text-text-secondary">Supprimer définitivement ?</span>
+              <span className="text-xs text-text-secondary">Supprimer définitivement ?</span>
               <button
                 type="button"
                 onClick={onDelete}

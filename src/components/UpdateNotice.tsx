@@ -40,7 +40,7 @@ async function resolveVersion(): Promise<string> {
 }
 
 /**
- * On the first launch after an update, shows a "Nouvelle mise à jour !" panel
+ * On the first launch after an update, shows a "Nouvelle mise à jour" panel
  * listing what changed since the version the user last saw. First-ever launch
  * shows nothing (we just record the current version). Fully local — the
  * changelog ships with the app (see src/data/changelog.ts).
@@ -125,7 +125,7 @@ export function UpdateNotice() {
                 </span>
                 <div>
                   <h2 className="text-lg font-bold tracking-tight text-text-primary">
-                    Nouvelle mise à jour !
+                    Nouvelle mise à jour
                   </h2>
                   <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-text-muted">
                     Version {version}

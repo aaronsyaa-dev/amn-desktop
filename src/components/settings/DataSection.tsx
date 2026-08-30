@@ -157,7 +157,7 @@ function Verifier() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="min-w-0 flex-1 basis-64 text-xs leading-relaxed text-text-muted">
-          Vous gardez déjà un fichier ? Ouvrez-le ici pour savoir ce qu’il contient vraiment,
+          Vous gardez déjà un fichier ? Ouvrez-le ici pour savoir ce qu’il contient vraiment,
           et de quand il date. Tout se passe sur cet appareil : le fichier n’est envoyé nulle part.
         </p>
         <input

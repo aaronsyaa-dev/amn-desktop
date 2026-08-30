@@ -1160,7 +1160,7 @@ function IdentityModal({
               <span className="min-w-0 flex-1 text-xs leading-tight text-text-primary">
                 Franchise en base de TVA
                 <span className="block text-text-muted">
-                  Aucune TVA sur les factures ; la mention « art. 293 B du CGI » est ajoutée.
+                  Aucune TVA sur les factures ; la mention « art. 293 B du CGI » est ajoutée.
                 </span>
               </span>
             </button>

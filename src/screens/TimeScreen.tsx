@@ -191,7 +191,7 @@ export function TimeScreen() {
         ) : (
           <>
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
-              Sur quoi travaillez-vous ?
+              Sur quoi travaillez-vous ?
             </p>
             <input
               value={label}
@@ -457,7 +457,7 @@ function EntryRow({
         }`}
       >
         {confirmDelete ? (
-          <span className="font-mono text-[9px] uppercase tracking-widest">Sûr ?</span>
+          <span className="font-mono text-[9px] uppercase tracking-widest">Sûr ?</span>
         ) : (
           <Trash2 size={14} strokeWidth={1.75} />
         )}
@@ -513,7 +513,7 @@ function EditEntryDialog({
         <div className="p-4">
           <label className="block">
             <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-text-muted">
-              Sur quoi ?
+              Sur quoi ?
             </span>
             <input
               value={label}

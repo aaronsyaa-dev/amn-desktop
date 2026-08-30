@@ -286,7 +286,7 @@ function EmptyRegistry({ onRegister }: { onRegister: () => void }) {
       </p>
       <p className="max-w-sm text-sm text-text-secondary">
         Enregistrez votre premier site pour obtenir sa clé API, puis installez
-        le tracker (onglet « Trackers ») pour commencer à recevoir des
+        le tracker (onglet « Trackers ») pour commencer à recevoir des
         données réelles.
       </p>
       <button

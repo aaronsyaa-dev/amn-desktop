@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { bridge } from '../lib/bridge';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { serieFlux } from '../lib/serieVitale';
 import { EmptyState } from '../components/EmptyState';
 import { MonthlyReportPanel } from '../components/MonthlyReportPanel';
 import { SuppressionsPanel } from '../components/tracker/SuppressionsPanel';
@@ -162,7 +163,28 @@ export function IncidentsScreen() {
         title="Bureau de supervision"
         description={resumeSupervision(metrics)}
         stats={[
-          { label: 'À traiter', value: metrics ? metrics.new : '—', emphasis: (metrics?.new ?? 0) > 0 },
+          {
+            label: 'À traiter',
+            value: metrics ? metrics.new : '—',
+            emphasis: (metrics?.new ?? 0) > 0,
+            /*
+              La mémoire du chiffre (Signes Vitaux) : les incidents APPARUS
+              par jour, sur les vraies premières alertes de la liste chargée.
+              Un bureau de supervision qui monte à trente par jour et un qui
+              en voit deux par semaine sont deux métiers différents — la
+              courbe le dit avant qu'on ait lu une ligne.
+            */
+            ...(metrics
+              ? {
+                  serie: serieFlux(
+                    incidents.map((i) => i.firstSeenAt),
+                    7,
+                    new Date(),
+                  ),
+                  brut: metrics.new,
+                }
+              : {}),
+          },
           { label: 'En cours', value: metrics ? metrics.acknowledged : '—' },
           {
             label: 'Prise en charge',

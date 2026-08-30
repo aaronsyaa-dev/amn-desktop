@@ -257,7 +257,7 @@ function StepSite({
   }
   return (
     <div>
-      <p className="mb-3 text-sm text-text-secondary">Sur quel site installer le tracker ?</p>
+      <p className="mb-3 text-sm text-text-secondary">Sur quel site installer le tracker ?</p>
       <div className="flex flex-col gap-2">
         {sites.map((site) => (
           <button
@@ -440,7 +440,7 @@ function StepInstall({
       </div>
       <p className="-mt-1 text-[11px] text-text-muted">
         La clé API n’est affichée qu’une seule fois, au moment de l’enregistrement du site. Collez-la ici pour l’intégrer
-        directement au script ; sinon un espace réservé est laissé.
+        directement au script ; sinon un espace réservé est laissé.
       </p>
 
       <div>
@@ -463,7 +463,7 @@ function StepInstall({
       </div>
 
       <p className="text-[11px] text-text-muted">
-        Cliquez sur « Confirmer l’installation » pour enregistrer les modules choisis sur ce site : ils apparaîtront dans
+        Cliquez sur « Confirmer l’installation » pour enregistrer les modules choisis sur ce site : ils apparaîtront dans
         le bureau de contrôle et remonteront leurs données une fois le script déployé.
       </p>
     </div>
