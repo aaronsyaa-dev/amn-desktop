@@ -7,6 +7,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { LogoMark } from '../Logo';
 import { OrgAvatar } from './OrgAvatar';
 import { OrgSwitcher } from './OrgSwitcher';
+import { usePoulsDuParc } from '../../state/poulsDuParc';
 
 const RAIL_WIDTH = 64;
 const TRANSITION = { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const };
@@ -99,6 +100,14 @@ export function OrgRail() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  /*
+    LE BATTEMENT (Signes Vitaux). L'anneau de l'organisation active respire au
+    rythme de l'état réel du parc : lent quand il est calme, court quand un
+    incident critique est ouvert, ÉTEINT quand la dernière ronde a échoué —
+    voir poulsDuParc.ts pour la règle d'honnêteté.
+  */
+  const pouls = usePoulsDuParc();
+
   return (
     <>
       <aside
@@ -108,7 +117,16 @@ export function OrgRail() {
       >
         <RailButton
           label={homeOrg?.name ?? 'AMN DevSec'}
-          sublabel="Votre organisation"
+          sublabel={
+            !pouls.vivant
+              ? 'Votre organisation'
+              : pouls.critiques > 0
+                ? `${pouls.critiques} incident${pouls.critiques > 1 ? 's' : ''} critique${pouls.critiques > 1 ? 's' : ''} ouvert${pouls.critiques > 1 ? 's' : ''}`
+                : pouls.ouverts > 0
+                  ? `${pouls.ouverts} incident${pouls.ouverts > 1 ? 's' : ''} ouvert${pouls.ouverts > 1 ? 's' : ''}`
+                  : 'Parc calme'
+          }
+          pouls={!pouls.vivant ? null : pouls.critiques > 0 ? 'tendu' : 'calme'}
           active={!support && (!activeOrgId || activeOrgId === homeOrg?.id)}
           onClick={() => {
             // Depuis un contexte client, cliquer AMN DevSec est un geste de
@@ -219,6 +237,7 @@ function RailButton({
   small = false,
   dashed = false,
   warning = false,
+  pouls = null,
   onClick,
 }: {
   children: React.ReactNode;
@@ -231,11 +250,26 @@ function RailButton({
   small?: boolean;
   dashed?: boolean;
   warning?: boolean;
+  /** Le souffle de l'anneau actif : calme, tendu, ou rien (ronde muette). */
+  pouls?: 'calme' | 'tendu' | null;
   onClick: () => void;
 }) {
   const size = small ? 36 : 44;
   return (
     <div className="group relative flex-shrink-0">
+      {/*
+        Le souffle : une couche pré-rendue par-dessus l'anneau, dont seule
+        l'opacité vit (60 fps, même sur une petite machine). Rouge uniquement
+        quand c'est CRITIQUE — c'est le monopole du rouge, et son travail.
+      */}
+      {active && pouls && (
+        <span
+          aria-hidden
+          className={`pointer-events-none absolute -inset-[3px] rounded-2xl ring-2 ${
+            pouls === 'tendu' ? 'ring-danger sv-souffle-tendu' : 'ring-white sv-souffle-calme'
+          }`}
+        />
+      )}
       {active && (
         <motion.span
           layoutId="rail-active-marker"

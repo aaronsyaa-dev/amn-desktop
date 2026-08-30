@@ -172,3 +172,27 @@ distinctif 4, hiérarchie 4, vivant 4, conforme 5, honnête 5. Sonde de bout en
 bout : fermeture du poste, battement antidaté hors application, réouverture
 dans un onglet neuf → « Depuis le 27 août · trois factures créées · cinq
 tâches ajoutées · Tout va bien. »
+
+## Famille 3 — l'accueil interne : le battement et la relève SOC
+
+Élément signature : **le battement**. L'anneau de l'organisation active du
+rail respire — une couche pré-rendue dont seule l'opacité vit (60 fps), 4 s
+quand le parc est calme, 1,8 s et ANNEAU ROUGE quand un incident critique est
+ouvert (le monopole du rouge, à son poste). Règle d'honnêteté, écrite dans
+`poulsDuParc.ts` : si la dernière ronde a échoué, le battement s'ÉTEINT — un
+battement sur des données qu'on ne sait plus lire serait un mensonge. La
+source est réelle (incidents ouverts, ronde de 60 s partagée façon
+parcInsights, suspendue fenêtre cachée), et l'infobulle du rail nomme l'état
+(« Parc calme » / « n incidents critiques ouverts »). En mouvement réduit :
+intensité statique, l'information reste.
+
+La relève SOC partage l'enveloppe du Majordome (`RelevePoste`) — repère de
+passage, mise en scène, grammaire : une seule écriture pour les deux tons,
+parce que la même règle écrite à deux endroits est le motif de défaut le plus
+fréquent du dépôt. Sonde sur le jeu d'essai : « Depuis le 27 août · 100
+incidents apparus · 97 points à voir. » — les données de test sont bruyantes,
+et la relève les rapporte telles quelles, ce qui est exactement son travail.
+
+Boucle (interne, 1440 px) : distinctif 4, hiérarchie 4 (salutation → ligne
+rouge → relève → compteurs), vivant 4, conforme 5, honnête 5.
+`check:mouvement`, `check:contraste`, `check:etiquettes` verts.

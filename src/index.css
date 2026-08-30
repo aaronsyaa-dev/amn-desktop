@@ -638,10 +638,45 @@ button:not(:disabled):not(.card-interactive):active,
   }
 }
 
+/*
+ * LE SOUFFLE — « l'organisme respire » (Signes Vitaux).
+ *
+ * Réservé à l'anneau de l'organisation active du rail, et piloté par l'état
+ * RÉEL du parc (src/state/poulsDuParc.ts) : quatre secondes quand le parc est
+ * calme, nettement plus court quand un incident critique est ouvert — et
+ * PLUS RIEN quand la dernière ronde a échoué, parce qu'un battement sur des
+ * données qu'on ne sait plus lire serait un mensonge.
+ *
+ * C'est une couche pré-rendue dont seule l'OPACITÉ vit : pas de box-shadow
+ * animée, pas de scale permanent — la règle des 60 fps sur la machine de la
+ * sœur d'Aaron.
+ */
+@keyframes sv-souffle {
+  0%,
+  100% {
+    opacity: 0.14;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+.sv-souffle-calme {
+  animation: sv-souffle 4s ease-in-out infinite;
+}
+.sv-souffle-tendu {
+  animation: sv-souffle 1.8s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .live-dot,
   .just-changed {
     animation: none;
+  }
+  /* La respiration devient une intensité statique : l'information reste. */
+  .sv-souffle-calme,
+  .sv-souffle-tendu {
+    animation: none;
+    opacity: 0.4;
   }
 }
 

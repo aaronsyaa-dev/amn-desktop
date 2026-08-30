@@ -27,6 +27,9 @@ import { VeilleTicker } from '../components/VeilleTicker';
 import { SupervisionBand } from '../components/SupervisionBand';
 import { AttentionPanel } from '../components/AttentionPanel';
 import { useAttention } from '../state/useAttention';
+import { passagePrecedent, RelevePoste } from '../components/RelevePoste';
+import { bridge } from '../lib/bridge';
+import type { Observation } from '../lib/releve';
 import { homeWelcome, homeNudge, parcSerein, alerteParc } from '../lib/homeGreetings';
 import { relativeTime } from '../lib/time';
 
@@ -36,7 +39,7 @@ import { relativeTime } from '../lib/time';
  * own tabs). Soft, staggered entrance for a settled feeling on open.
  */
 export function HomeScreen() {
-  const { user } = useAuth();
+  const { user, org } = useAuth();
   const { sites } = useRemoteSites();
   const { open: openAssistant } = useAssistant();
   const { isPinned } = useSitePins();
@@ -101,6 +104,53 @@ export function HomeScreen() {
     salutation était le seul endroit qui s'en dispensait.
   */
   const attention = useAttention();
+
+  /*
+    LA RELÈVE SOC (Signes Vitaux). Le dernier passage sur ce poste, et les
+    incidents APPARUS depuis — une lecture au montage, pas une ronde : le
+    présent est déjà surveillé par le panneau d'attention, la relève ne parle
+    que du passé.
+  */
+  const depuisReleve = useMemo(() => passagePrecedent(org?.id), [org?.id]);
+  const tachesReleve = useCollection<{ status?: string; createdAt?: string }>('tasks');
+  const [incidentsApparus, setIncidentsApparus] = useState(0);
+  useEffect(() => {
+    if (!depuisReleve) return;
+    let vivant = true;
+    (async () => {
+      try {
+        const liste = await bridge().remote.listIncidents({ status: 'open' });
+        if (!vivant) return;
+        setIncidentsApparus(
+          liste.filter((i) => Date.parse(i.firstSeenAt) > depuisReleve.getTime()).length,
+        );
+      } catch {
+        /* relève sans cette ligne — plutôt manquer que mentir */
+      }
+    })();
+    return () => {
+      vivant = false;
+    };
+  }, [depuisReleve]);
+
+  const observationsReleve = useMemo((): Observation[] => {
+    if (!depuisReleve) return [];
+    return [
+      {
+        nombre: incidentsApparus,
+        un: 'un incident apparu',
+        plusieurs: 'incidents apparus',
+      },
+      {
+        nombre: tachesReleve.filter((t) => {
+          const d = t.createdAt ? Date.parse(t.createdAt) : NaN;
+          return Number.isFinite(d) && d > depuisReleve.getTime();
+        }).length,
+        un: 'une tâche ajoutée',
+        plusieurs: 'tâches ajoutées',
+      },
+    ];
+  }, [depuisReleve, incidentsApparus, tachesReleve]);
   /*
     « JAMAIS VU » COMPTE, et c'est le chiffre qui manquait.
 
@@ -202,6 +252,16 @@ export function HomeScreen() {
           )}
         </motion.p>
       </motion.div>
+
+      {/* La relève SOC : ce qui est apparu pendant l'absence, et un verdict.
+          Même grammaire que le Majordome cliente, un degré plus froid. */}
+      <RelevePoste
+        depuis={depuisReleve}
+        observations={observationsReleve}
+        attentions={attention.items.length}
+        ton="soc"
+        className="mt-8"
+      />
 
       {/* Live counts. They animate on display so the screen reads as awake
           rather than as a static poster, and they re-count in place when sync
