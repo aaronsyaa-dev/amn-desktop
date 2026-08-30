@@ -233,36 +233,71 @@ export function HomeSoloScreen() {
  * l'impression que quelque chose a échoué.
  */
 function FirstRunCard() {
+  const { org } = useAuth();
+
+  /*
+    LE PREMIER LANCEMENT LA CONNAÎT DÉJÀ (Signes Vitaux).
+
+    La carte proposait « premier rendez-vous » et « première fiche client » à
+    TOUT le monde — y compris à une organisation dont l'agenda n'est pas
+    ouvert : le premier geste jamais proposé menait alors à un module fermé.
+    Les gestes viennent maintenant de SES modules (l'atelier les a choisis,
+    la session les connaît), trois au plus, chacun nommé par son résultat.
+
+    Ce qui manque encore, et pourquoi : le MÉTIER (« votre espace de
+    fleuriste ») n'est pas dans l'identité de session — le serveur le garde
+    côté console. Le nommer ici demande d'abord ce champ-là ; en attendant,
+    c'est le nom de l'organisation qui personnalise, et il est vrai.
+  */
+  const ouverts = useMemo(() => {
+    const modules = org?.modules ?? null;
+    const ouvert = (m: string) => modules === null || modules.includes(m);
+    const gestes = [
+      { module: 'agenda', to: '/agenda', label: 'Poser un premier rendez-vous', fort: true },
+      { module: 'clients', to: '/clients', label: 'Créer une première fiche client', fort: false },
+      { module: 'invoices', to: '/facturation', label: 'Écrire un premier devis', fort: false },
+      { module: 'orders', to: '/commandes', label: 'Enregistrer une première commande', fort: false },
+      { module: 'notes', to: '/notes', label: 'Prendre une première note', fort: false },
+      { module: 'tasks', to: '/tasks', label: 'Poser une première tâche', fort: false },
+    ].filter((g) => ouvert(g.module));
+    // Le premier proposé est le geste fort ; il hérite du bouton plein.
+    return gestes.slice(0, 3).map((g, i) => ({ ...g, fort: i === 0 }));
+  }, [org?.modules]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: 'easeOut' }}
-      className="border border-border-strong bg-surface p-5"
+      className="panel-ticks border border-border-strong bg-surface p-5"
     >
       <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
         Bienvenue
       </p>
       <h2 className="mt-1.5 text-base font-semibold text-text-primary">
-        Votre espace est prêt, et vide — c’est normal.
+        {org?.name
+          ? `L’espace ${/^[aeiouyàâéèêëîïôöûüh]/i.test(org.name) ? 'd’' : 'de '}${org.name} est prêt — et vide, c’est normal.`
+          : 'Votre espace est prêt, et vide — c’est normal.'}
       </h2>
       <p className="mt-1 max-w-prose text-sm text-text-secondary">
-        Tout ce que vous créez ici n’appartient qu’à votre organisation. Commencez par le plus
-        utile : poser un premier rendez-vous, ou créer la fiche d’un client.
+        Tout ce que vous créez ici n’appartient qu’à votre organisation. Commencez par le geste
+        qui vous ressemble le plus :
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
-        <Link
-          to="/agenda"
-          className="flex items-center gap-1.5 bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
-        >
-          <Plus size={14} strokeWidth={2} /> Premier rendez-vous
-        </Link>
-        <Link
-          to="/clients"
-          className="flex items-center gap-1.5 border border-border px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
-        >
-          <Contact size={14} strokeWidth={1.75} /> Première fiche client
-        </Link>
+        {ouverts.map((g) => (
+          <Link
+            key={g.module}
+            to={g.to}
+            className={
+              g.fort
+                ? 'flex items-center gap-1.5 bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover'
+                : 'flex items-center gap-1.5 border border-border px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary'
+            }
+          >
+            {g.fort ? <Plus size={14} strokeWidth={2} /> : <Contact size={14} strokeWidth={1.75} />}
+            {g.label}
+          </Link>
+        ))}
       </div>
     </motion.div>
   );
