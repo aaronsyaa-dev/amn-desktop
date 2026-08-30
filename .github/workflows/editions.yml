@@ -119,6 +119,10 @@ jobs:
 
       - name: Contrôle de la disposition du graphe
         run: npm run check:graphe
+      - name: Contrôle des séries vitales
+        run: npm run check:vitaux
+      - name: Contrôle de la grammaire de la Relève
+        run: npm run check:releve
       - name: Tendances
         run: npm run check:trend
       - name: Export FEC
