@@ -157,11 +157,15 @@ export function ControlTowerScreen() {
                   respire, un incident l'embrase — voir MurDeControle. */}
               <Link
                 to="/salle"
+                aria-label="Salle de contrôle"
                 title="Le mur de supervision, en plein écran — à poser sur un deuxième moniteur"
                 className="flex min-h-11 items-center gap-2 border border-border px-3 text-sm text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
               >
                 <MonitorPlay size={15} strokeWidth={1.75} />
-                Salle de contrôle
+                {/* À 390 px, trois actions étiquetées débordaient de 10 px —
+                    c'est check:largeur qui l'a dit. Le mot se replie, le
+                    geste reste nommé (aria-label + title). */}
+                <span className="hidden sm:inline">Salle de contrôle</span>
               </Link>
               {/* L'atelier, à portée depuis la vue d'ensemble : créer une
                   cliente est un geste qu'on fait EN supervisant le parc. */}

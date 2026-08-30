@@ -55,7 +55,26 @@ export function MobileBottomNav({
   // réorganiser sous le pouce d'une visite à l'autre.
   const pinned = available.filter((item) => favorites.includes(item.key)).slice(0, MAX_ITEMS);
   // Un compte qui n'a rien épinglé garde une barre utile plutôt que vide.
-  const items = pinned.length > 0 ? pinned : available.slice(0, MAX_ITEMS);
+  const bruts = pinned.length > 0 ? pinned : available.slice(0, MAX_ITEMS);
+
+  /*
+    LE POULS AU CENTRE (Signes Vitaux). La meilleure place d'une barre du
+    pouce est son milieu — c'est là que le pouce tombe sans viser. Elle
+    revient à l'accueil, qui est la vue vitale : la relève, le pouls, les
+    points d'attention. L'accueil était rangé tout à gauche, la place la plus
+    DURE à atteindre d'une main droite — exactement l'inverse de son rôle.
+
+    Le milieu se calcule sur les cinq emplacements rendus (les liens + le
+    bouton Modules), pas sur la seule liste des liens : avec quatre liens,
+    le centre visuel est le troisième emplacement.
+  */
+  const accueil = bruts.find((i) => i.to === '/');
+  let items = bruts;
+  if (accueil && bruts.length >= 3) {
+    const autres = bruts.filter((i) => i !== accueil);
+    const centre = Math.floor((bruts.length + 1) / 2) - (bruts.length % 2 === 0 ? 0 : 1);
+    items = [...autres.slice(0, centre), accueil, ...autres.slice(centre)];
+  }
 
   const isActive = (to: string) =>
     to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
