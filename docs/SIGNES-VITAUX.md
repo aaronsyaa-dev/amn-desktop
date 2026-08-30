@@ -293,10 +293,13 @@ français partout (Intl fr-FR déjà en place).
 
 ## Ce qui reste dans l'ancien style, dit sans enjoliver
 
-- **Le flux visible** (le jeton qui voyage du rail au compteur) : non
-  construit. Exige une chorégraphie WebSocket source→destination que je ne
-  pouvais pas vérifier honnêtement cette nuit ; un flux simulé aurait été
-  pire que pas de flux.
+- ~~Le flux visible~~ — FAIT, finalement, et éprouvé : un jeton vole de
+  l'indicateur de synchronisation vers le relevé qui compte, uniquement sur
+  une vraie arrivée réseau écrite par quelqu'un d'autre (sonde : une
+  écriture distante → exactement un jeton envolé). Le trajet part de
+  l'indicateur de synchronisation plutôt que du point du rail : c'est là que
+  la donnée entre RÉELLEMENT dans le poste, et le rail n'existe pas côté
+  cliente.
 - **La Trousse** (remplaçante de la barre basse interne) : non construite —
   c'est un produit (repères épinglables + glisser + calculette), pas un
   habillage ; le rusher aurait donné le bricolage que le brief interdit.
@@ -308,8 +311,12 @@ français partout (Intl fr-FR déjà en place).
   avec le fenêtrage de la Salle.
 - **Icônes d'app distinctes + illustrations dessinées main** : travail
   d'assets, hors de portée d'une session de code.
-- **La voix** (annonce vocale critique, opt-in) et le **premier lancement
-  personnalisé** : non faits.
+- **La voix** (annonce vocale critique, opt-in) : non faite.
+- ~~Le premier lancement personnalisé~~ — FAIT pour ce que la session sait :
+  l'espace porte le nom de l'organisation (élision comprise) et les trois
+  premiers gestes viennent de SES modules — la carte pouvait proposer un
+  module fermé. Le MÉTIER n'est pas dans l'identité de session (champ côté
+  console seulement) : le nommer demande d'abord ce champ serveur.
 - **Bande LiveMetrics au-dessus de chaque grande table** : les en-têtes
   d'écran la portent ; les tables elles-mêmes n'ont pas reçu de bande
   dédiée.
