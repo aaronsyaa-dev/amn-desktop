@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from '../components/ProtectedRoute';
+import { SalleScreen } from '../screens/SalleScreen';
 import { ModuleRoute } from '../components/ModuleRoute';
 import { AppLayout } from '../components/AppLayout';
 import { LoginScreen } from '../screens/LoginScreen';
@@ -82,6 +83,7 @@ export function AppRoot() {
           jamais de compte. Elle n'affiche aucune marque et ne connaît aucune
           route de données — voir GuestCallScreen. */}
       <Route path="/appel" element={<GuestCallScreen />} />
+
       <Route
         path="/*"
         element={
@@ -125,6 +127,10 @@ function AmnRoutes() {
   return (
     <Routes>
       <Route element={<AppLayout />}>
+        {/* Le mur plein écran (deuxième moniteur). DANS la table de routage de
+            l'espace : il lit les sites et le pouls, qui vivent sous ces
+            fournisseurs — son `fixed inset-0` recouvre la coquille. */}
+        <Route path="/salle" element={<SalleScreen />} />
         {/* Poste de travail */}
         <Route path="/" element={<HomeScreen />} />
         <Route path="/tasks" element={<TasksScreen />} />

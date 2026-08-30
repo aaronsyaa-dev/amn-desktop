@@ -4,6 +4,7 @@ import { AlertTriangle, Check, Copy, Globe2, ShieldCheck } from 'lucide-react';
 import { bridge } from '../../lib/bridge';
 import { useOrgSites } from './useOrgSites';
 import { relativeTime } from '../../lib/time';
+import { AnimatedCounter } from '../AnimatedCounter';
 import type { OrgOverview, SiteBadge } from '../../shared/api';
 
 /**
@@ -254,7 +255,15 @@ export function SocDesk({
             <h3 className="mr-auto text-sm font-semibold text-text-primary">
               Incidents
               <span className="ml-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                {incidents.length}
+                {/*
+                  LE SCRUB COMPTE (Signes Vitaux). Glisser « DIRECT → J-n »
+                  refiltre la liste sur le jour rejoué, et ce compteur COMPTE
+                  vers la valeur historique au lieu de sauter — on voit le
+                  temps se rembobiner. Les données sont celles déjà chargées
+                  (occurredAt réels) : rien n'est simulé, le rejeu montre ce
+                  que le serveur a réellement enregistré ce jour-là.
+                */}
+                <AnimatedCounter value={incidents.length} durationMs={500} />
               </span>
             </h3>
             <select

@@ -196,3 +196,46 @@ et la relève les rapporte telles quelles, ce qui est exactement son travail.
 Boucle (interne, 1440 px) : distinctif 4, hiérarchie 4 (salutation → ligne
 rouge → relève → compteurs), vivant 4, conforme 5, honnête 5.
 `check:mouvement`, `check:contraste`, `check:etiquettes` verts.
+
+## Famille 5 — la Salle de contrôle
+
+L'horloge de veille (une des premières fiertés du projet) devient un vrai mur
+de supervision, et le NOIR ABSOLU y fait son unique apparition — le noir
+total est un événement, pas un fond de travail.
+
+- **La constellation est déterministe** : spirale de phyllotaxie (angle d'or),
+  ordonnée par nom — chaque site a SA place, la même à chaque ouverture. Un
+  mur qu'on regarde tous les jours devient un lieu. La phase de respiration de
+  chaque point dérive de son identifiant : le mur scintille, il ne clignote
+  jamais d'un bloc. Aucun aléa à l'exécution.
+- **La lumière est une information, et rien d'autre** : point blanc qui
+  respire = en ligne ; point terne immobile = hors ligne (un pixel mort ne
+  respire pas) ; anneau creux = jamais vu ; point ROUGE au souffle court = un
+  incident l'embrase — le monopole du rouge, à son poste.
+- **Le verdict est calculé, jamais tiré au sort.** Les phrases de veille
+  (« Rien d'urgent à l'horizon ») pouvaient s'afficher au-dessus de douze
+  sites hors ligne ; le mur dit maintenant l'état réel, et le jeu d'essai le
+  prouve par l'absurde : « 100 incidents critiques ouverts. », constellation
+  embrasée — c'est exactement ce qu'il doit montrer d'un parc en feu.
+
+Deux entrées : l'écran de veille (après quatre minutes d'inactivité, réveil au
+geste) et la route `#/salle` depuis la Tour de contrôle — un onglet à poser
+sur un deuxième moniteur, sortie visible + Échap. La « fenêtre Electron
+séparée sans cadre » du brief reste au backlog : la route plein écran en livre
+l'essentiel web-d'abord, le fenêtrage main-process viendra avec un poste pour
+le tester.
+
+Boucle : distinctif 5, hiérarchie 5 (l'horloge puis le verdict), vivant 5,
+conforme 5, honnête 5 — première pièce à faire 5 partout, et c'est la
+capture d'écran qu'on montrera.
+
+## Le scrub temporel — verdict
+
+Il existait déjà à moitié : le bureau SOC (`SocDesk`) porte un curseur
+« DIRECT → J-n » qui refiltre incidents et répartition par pays sur le jour
+rejoué, à partir de données réellement chargées (`occurredAt`). Ce qui
+manquait : les chiffres SAUTAIENT vers leurs valeurs historiques. Le compteur
+d'incidents COMPTE maintenant en glissant (AnimatedCounter, 500 ms) — on voit
+le temps se rembobiner. Étendre le rejeu à d'autres écrans demanderait des
+données historisées qu'ils n'ont pas (les statuts de sites ne gardent pas
+d'historique) — non simulé, donc non fait, comme demandé.

@@ -11,6 +11,7 @@ import {
   Radar,
   ScanLine,
   Sparkles,
+  MonitorPlay,
 } from 'lucide-react';
 import { SiteBadgeExport, SocDesk } from '../components/tracker/SocDesk';
 import { SiteStatusPageExport } from '../components/tracker/StatusPageExport';
@@ -152,6 +153,16 @@ export function ControlTowerScreen() {
           ]}
           actions={
             <>
+              {/* Le mur, pour un deuxième écran : chaque site un point qui
+                  respire, un incident l'embrase — voir MurDeControle. */}
+              <Link
+                to="/salle"
+                title="Le mur de supervision, en plein écran — à poser sur un deuxième moniteur"
+                className="flex min-h-11 items-center gap-2 border border-border px-3 text-sm text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
+              >
+                <MonitorPlay size={15} strokeWidth={1.75} />
+                Salle de contrôle
+              </Link>
               {/* L'atelier, à portée depuis la vue d'ensemble : créer une
                   cliente est un geste qu'on fait EN supervisant le parc. */}
               <Link

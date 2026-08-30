@@ -30,11 +30,17 @@ export interface PoulsDuParc {
   ouverts: number;
   /** Faux si la dernière ronde a échoué : le battement doit alors s'éteindre. */
   vivant: boolean;
+  /**
+   * Les sites qui portent un incident ouvert — pour que la Salle de contrôle
+   * embrase les BONS points, pas un compteur anonyme. 'critical' l'emporte
+   * quand un site en cumule plusieurs.
+   */
+  enIncident: ReadonlyMap<string, 'critical' | 'autre'>;
 }
 
 const INTERVALLE_MS = 60_000;
 
-let etat: PoulsDuParc = { critiques: 0, ouverts: 0, vivant: false };
+let etat: PoulsDuParc = { critiques: 0, ouverts: 0, vivant: false, enIncident: new Map() };
 const abonnes = new Set<(p: PoulsDuParc) => void>();
 let minuterie: ReturnType<typeof setInterval> | null = null;
 let enVol = false;
@@ -49,10 +55,17 @@ async function ronde() {
   enVol = true;
   try {
     const liste = await bridge().remote.listIncidents({ status: 'open' });
+    const enIncident = new Map<string, 'critical' | 'autre'>();
+    for (const i of liste) {
+      if (!i.siteId) continue;
+      const grave = i.severity === 'critical';
+      if (grave || !enIncident.has(i.siteId)) enIncident.set(i.siteId, grave ? 'critical' : 'autre');
+    }
     publier({
       critiques: liste.filter((i) => i.severity === 'critical').length,
       ouverts: liste.length,
       vivant: true,
+      enIncident,
     });
   } catch {
     publier({ ...etat, vivant: false });

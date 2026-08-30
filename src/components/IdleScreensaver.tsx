@@ -1,7 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Logo } from './Logo';
-import { useRemoteSites } from '../state/RemoteSitesContext';
+import { MurDeControle } from './MurDeControle';
 
 /**
  * Cozy idle screensaver (Partie 4). After a few minutes without mouse/keyboard
@@ -67,95 +66,21 @@ export function IdleScreensaver() {
 }
 
 function Veil({ onWake }: { onWake: () => void }) {
-  // Glanceable, calm-by-default: surface a real problem (a site down) so an
-  // always-on secondary screen still tells you when something needs attention.
-  const { sites } = useRemoteSites();
-  const offline = sites.filter((s) => s.status === 'offline').length;
-
-  const [now, setNow] = useState(() => new Date());
-  const [phrase, setPhrase] = useState(pickPhrase);
-
-  // Clock + gently rotating phrase — only while the veil is shown.
-  useEffect(() => {
-    const clock = setInterval(() => setNow(new Date()), 30_000);
-    const rotator = setInterval(() => setPhrase(pickPhrase()), 30_000);
-    return () => {
-      clearInterval(clock);
-      clearInterval(rotator);
-    };
-  }, []);
-
-  const time = useMemo(
-    () => now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-    [now],
-  );
-  const date = useMemo(
-    () => now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }),
-    [now],
-  );
-
+  /*
+    Le voile de veille EST la Salle de contrôle : même mur, même vérité —
+    voir MurDeControle pour tout ce qu'il dit et s'interdit de dire. Ici il
+    n'ajoute que deux choses : l'entrée en fondu, et le réveil au geste.
+  */
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-bg"
-      // Clicking/tapping the veil also wakes (belt-and-suspenders with the
-      // global activity listener, which fires first in practice).
+      className="fixed inset-0 z-[200]"
       onMouseDown={onWake}
     >
-      <motion.div
-        initial={{ opacity: 0, y: 12, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
-        className="flex flex-col items-center text-center"
-      >
-        <div className="mb-10 opacity-40">
-          <Logo height={30} />
-        </div>
-
-        {/* Very slow breathing on the time — the only motion, intentionally calm. */}
-        <motion.p
-          animate={{ opacity: [0.72, 1, 0.72] }}
-          transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-          className="font-mono text-7xl font-light tracking-tight text-text-primary tabular-nums sm:text-8xl"
-        >
-          {time}
-        </motion.p>
-
-        <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.3em] text-text-muted">{date}</p>
-
-        <h2 className="mt-12 text-2xl font-semibold tracking-tight text-text-secondary">
-          Une petite pause ?
-        </h2>
-
-        <AnimatePresence mode="wait">
-          <motion.p
-            key={phrase}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.2 }}
-            className="mt-3 max-w-sm text-sm text-text-muted"
-          >
-            {phrase}
-          </motion.p>
-        </AnimatePresence>
-
-        {offline > 0 && (
-          <div className="mt-8 flex items-center gap-2 rounded-full border border-danger/40 bg-danger-muted px-3 py-1.5">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" />
-            <span className="font-mono text-[11px] uppercase tracking-widest text-danger">
-              {offline} site{offline > 1 ? 's' : ''} hors ligne
-            </span>
-          </div>
-        )}
-
-        <p className="mt-16 font-mono text-[10px] uppercase tracking-[0.25em] text-text-muted/60">
-          Bougez la souris pour reprendre
-        </p>
-      </motion.div>
+      <MurDeControle enVeille />
     </motion.div>
   );
 }
