@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { serieStock } from '../lib/serieVitale';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -165,7 +166,15 @@ export function InvoicesScreen() {
             emphasis: summary.overdueCents > 0,
             title: 'Des documents dont l’échéance est passée et qui ne sont pas réglés.',
           },
-          { label: 'Documents', value: invoices.length },
+          {
+            // Les montants restent des nombres seuls — une somme d'euros n'est
+            // pas un compte d'arrivées. C'est le NOMBRE de documents qui porte
+            // la mémoire de l'activité.
+            label: 'Documents',
+            value: invoices.length,
+            serie: serieStock(invoices.map((f) => f.createdAt), 7, new Date()),
+            brut: invoices.length,
+          },
         ]}
         actions={
         <div className="flex flex-shrink-0 items-center gap-2">

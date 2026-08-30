@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { serieStock } from '../lib/serieVitale';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -169,7 +170,14 @@ export function ClientsScreen() {
         title="Clients"
         description="La relation et les missions, fiche par fiche."
         stats={[
-          { label: 'Fiches', value: clients.length },
+          {
+            label: 'Fiches',
+            value: clients.length,
+            /* La mémoire du chiffre (Signes Vitaux) : le cumul des créations,
+               sur les vraies dates — jamais simulé (check:vitaux). */
+            serie: serieStock(clients.map((c) => c.createdAt), 7, new Date()),
+            brut: clients.length,
+          },
           {
             label: 'Actifs',
             value: clients.filter((c) => c.status === 'active').length,

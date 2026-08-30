@@ -11,6 +11,7 @@ import { UserAvatar } from '../components/UserAvatar';
 import { SkeletonBoard } from '../components/Skeleton';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { serieStock } from '../lib/serieVitale';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { relativeTime } from '../lib/time';
 import { oneOf } from '../lib/records';
@@ -194,7 +195,17 @@ export function TasksScreen() {
               : 'Ce qu’il reste à faire, du premier jet au terminé.'
           }
           stats={[
-            { label: 'À faire', value: counts.todo, emphasis: counts.todo > 0 },
+            {
+              label: 'À faire',
+              value: counts.todo,
+              emphasis: counts.todo > 0,
+              serie: serieStock(
+                tasks.filter((t) => t.status === 'todo').map((t) => t.createdAt),
+                7,
+                new Date(),
+              ),
+              brut: counts.todo,
+            },
             { label: 'En cours', value: counts.doing },
             { label: 'Terminées', value: counts.done },
           ]}
