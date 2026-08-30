@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useSync } from '../state/SyncContext';
+import { poserSourceDuFlux } from '../lib/fluxVisible';
 
 /**
  * Discreet live-sync status pill for the top bar. Reflects the amn-api
@@ -8,6 +9,17 @@ import { useSync } from '../state/SyncContext';
  */
 export function SyncStatusIndicator() {
   const { connectionStatus } = useSync();
+
+  /*
+    LA SOURCE DU FLUX VISIBLE : c'est ici que la donnée entre dans le poste,
+    donc c'est d'ici que le jeton part quand un enregistrement arrive par la
+    liaison — voir lib/fluxVisible.ts.
+  */
+  const ancre = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    poserSourceDuFlux(ancre.current);
+    return () => poserSourceDuFlux(null);
+  }, []);
 
   const meta = {
     online: { dot: 'bg-success', pulse: false, label: 'Synchronisé', title: 'Connecté à amn-api — changements partagés en temps réel.' },
@@ -18,6 +30,7 @@ export function SyncStatusIndicator() {
 
   return (
     <span
+      ref={ancre}
       title={meta.title}
       className="inline-flex items-center gap-1.5 border border-border bg-surface px-2 py-1.5 font-mono text-[10px] uppercase tracking-wider text-text-secondary sm:px-2.5"
     >

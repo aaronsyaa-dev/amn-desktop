@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { signalerArrivee } from '../lib/fluxVisible';
 import { bridge } from '../lib/bridge';
 import { reportGuestQuotaError } from './guestQuotaStore';
 import {
@@ -484,6 +485,12 @@ export function SyncProvider({
       // Notify subscribers only for changes made by the OTHER operator — a
       // live WS push whose id we didn't write ourselves this session.
       if (!localWrites.current.has(`${record.collection}:${record.id}`)) {
+        /*
+          LE FLUX VISIBLE (Signes Vitaux) : une vraie arrivée réseau, écrite
+          par quelqu'un d'autre — le seul cas où montrer « d'où vient le +1 »
+          dit quelque chose de vrai. Voir lib/fluxVisible.ts.
+        */
+        if (!record.deleted) signalerArrivee(record.collection);
         for (const cb of remoteChangeSubs.current) {
           cb({
             collection: record.collection as SyncedCollection,

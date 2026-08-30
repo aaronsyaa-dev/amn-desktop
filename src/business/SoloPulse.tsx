@@ -128,7 +128,7 @@ export function SoloPulse() {
     {
       cle: 'semaine',
       icone: CalendarDays,
-      rendu: <LiveMetric value={semaine} serie={serieRdv} emphasis />,
+      rendu: <LiveMetric value={semaine} serie={serieRdv} emphasis collection="appointments" />,
       // « rendez-vous » est invariable : le pluriel se lit sur le nombre, pas sur le mot.
       libelle: 'rendez-vous cette semaine',
       to: '/agenda',
@@ -136,7 +136,7 @@ export function SoloPulse() {
     {
       cle: 'taches',
       icone: CheckSquare,
-      rendu: <LiveMetric value={ouvertes} serie={serieTaches} emphasis />,
+      rendu: <LiveMetric value={ouvertes} serie={serieTaches} emphasis collection="tasks" />,
       libelle: ouvertes > 1 ? 'tâches ouvertes' : 'tâche ouverte',
       to: '/tasks',
     },
@@ -146,7 +146,7 @@ export function SoloPulse() {
       // Un montant ne se balaie pas comme un compte : voir défiler des euros
       // au hasard donne l'impression que la somme hésite. `format` l'affiche
       // tel quel — et sans série : voir le commentaire au-dessus.
-      rendu: <LiveMetric value={aEncaisser} format={formatCentsCompact} emphasis />,
+      rendu: <LiveMetric value={aEncaisser} format={formatCentsCompact} emphasis collection="invoices" />,
       libelle: 'à encaisser',
       to: '/facturation',
     },

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatedCounter } from './AnimatedCounter';
 import { phraseDelta, traceSerie, type SerieVitale } from '../lib/serieVitale';
+import { poserCibleDuFlux } from '../lib/fluxVisible';
 
 /**
  * LIVEMETRIC — la colonne vertébrale des Signes Vitaux.
@@ -55,6 +56,7 @@ export function LiveMetric({
   serie,
   emphasis = false,
   size = 'md',
+  collection,
 }: {
   /** La valeur d'aujourd'hui — TOUJOURS calculée sur les données affichées. */
   value: number;
@@ -68,8 +70,19 @@ export function LiveMetric({
   serie?: SerieVitale;
   emphasis?: boolean;
   size?: 'md' | 'lg';
+  /**
+   * La collection que ce relevé compte — pour le FLUX VISIBLE : quand un
+   * enregistrement de cette collection arrive par la liaison, le jeton vole
+   * de l'indicateur de synchronisation jusqu'ici (lib/fluxVisible.ts).
+   */
+  collection?: string;
 }) {
   const [survole, setSurvole] = useState(false);
+  const bloc = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    if (!collection || !bloc.current) return;
+    return poserCibleDuFlux(collection, bloc.current);
+  }, [collection]);
 
   /*
     L'impulsion d'événement : une couche claire dont l'opacité s'allume puis
@@ -99,6 +112,7 @@ export function LiveMetric({
 
   return (
     <span
+      ref={bloc}
       className="relative inline-flex flex-col"
       onMouseEnter={() => setSurvole(true)}
       onMouseLeave={() => setSurvole(false)}
