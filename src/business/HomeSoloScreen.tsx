@@ -11,6 +11,7 @@ import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { AttentionPanel } from '../components/AttentionPanel';
 import { useAttention } from '../state/useAttention';
 import { SoloPulse } from './SoloPulse';
+import { Majordome } from './Majordome';
 import { DayBand } from './DayBand';
 import { homeWelcome, parcSerein } from '../lib/homeGreetings';
 import type { SharedTaskStatus } from '../shared/api';
@@ -113,6 +114,10 @@ export function HomeSoloScreen() {
       </header>
 
       {!hasAnything && <FirstRunCard />}
+
+      {/* La relève de poste, au ton de la maison : ce qui est arrivé pendant
+          l'absence, et un verdict. Se tait sous quatre heures (check:releve). */}
+      <Majordome attentions={attention.items.length} />
 
       {/* Sa journée en une ligne, qui tourne (BLOC L) : le prochain rendez-vous,
           ce qui vient d'arriver dans son espace, la liaison quand elle est

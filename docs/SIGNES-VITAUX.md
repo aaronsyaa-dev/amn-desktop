@@ -140,3 +140,35 @@ Boucle visuelle (1440 px et 390 px) :
          sonde : il joue pendant la sortie, et l'arrivée aboutit.)
          `check:mouvement` vert après changements.
 
+
+### Accueil cliente — plan et notes
+
+Concept : le matin d'une commerçante. La page gagne un RÉCIT — salutation,
+relève, bande du jour, pouls, points d'attention, travail — au lieu de blocs
+de même poids. Élément signature : **le Majordome**, la relève de poste au ton
+de la maison. Deux lignes et un verdict, composés par la grammaire
+déterministe de `releve.ts` (14 contrôles, 3 mutations éprouvées) : trois
+lignes max dont le verdict FERME toujours, petits nombres en lettres, jamais
+d'exclamation, se tait sous quatre heures d'absence.
+
+Écart assumé avec le brief : le Majordome vit DANS la page, pas en voile
+immersif skippable. Un voile qui intercepte le premier clic de la journée est
+ce qu'on reproche aux applications qui se regardent travailler, et il
+piégerait le focus avant le contenu. La version plein-noir reste pour la
+Salle de contrôle, où l'on ne travaille pas pendant qu'elle parle.
+
+Ce que la sonde a tué, deux fois : (1) le remontage derrière la garde d'auth
+relisait le repère que le premier montage venait de poser ; (2) corrigé par un
+cache de module, le DOUBLE DÉMARRAGE de la PWA (le service worker prend la
+page et la recharge) recommençait la même mort — « absence : 0,3 s », silence
+à chaque déploiement. Le premier démarrage d'un onglet épingle maintenant SA
+lecture en sessionStorage ; les redémarrages du même onglet la relisent. C'est
+la forme de défaut la plus récidiviste du dépôt : ce qui est observé est bien
+enregistré, c'est le réveil qui ne survit pas.
+
+Boucle visuelle (1440/390) : it.1 — les chiffres vivent (courbes réelles),
+mais la page n'a pas de centre : distinctif 3, vivant 3. it.2 (Majordome) —
+distinctif 4, hiérarchie 4, vivant 4, conforme 5, honnête 5. Sonde de bout en
+bout : fermeture du poste, battement antidaté hors application, réouverture
+dans un onglet neuf → « Depuis le 27 août · trois factures créées · cinq
+tâches ajoutées · Tout va bien. »
