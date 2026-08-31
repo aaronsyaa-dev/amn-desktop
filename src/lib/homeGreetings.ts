@@ -44,6 +44,7 @@
  */
 
 type Slot = 'night' | 'morning' | 'afternoon' | 'evening';
+type LangueAccueil = 'fr' | 'en';
 
 function slotFor(hour: number): Slot {
   if (hour < 6) return 'night';
@@ -52,16 +53,31 @@ function slotFor(hour: number): Slot {
   return 'evening';
 }
 
+/**
+ * Chaque langue a SES variantes, écrites à la main — jamais un gabarit
+ * traduit mot à mot (la règle de la Relève vaut ici aussi). Les deux
+ * familles et le défaut prudent sont la STRUCTURE, partagée ; les phrases
+ * appartiennent à chaque langue.
+ */
+
 /** Elles saluent, et n'affirment rien. Vraies quoi qu'il arrive. */
-export const GREETINGS_NEUTRES: Record<Slot, string[]> = {
-  night: ['Encore là, {name} ?', 'Bonsoir {name}.', 'Toujours debout, {name} ?'],
-  morning: ['Bonjour {name}.', 'Belle matinée, {name}.', 'On démarre, {name} ?'],
-  afternoon: ['Bon après-midi, {name}.', 'Content de te revoir, {name}.', 'Ça avance, {name} ?'],
-  evening: ['Bonsoir, {name}.', 'Bonne soirée, {name}.', 'On fait le point, {name} ?'],
+export const GREETINGS_NEUTRES: Record<LangueAccueil, Record<Slot, string[]>> = {
+  fr: {
+    night: ['Encore là, {name} ?', 'Bonsoir {name}.', 'Toujours debout, {name} ?'],
+    morning: ['Bonjour {name}.', 'Belle matinée, {name}.', 'On démarre, {name} ?'],
+    afternoon: ['Bon après-midi, {name}.', 'Content de te revoir, {name}.', 'Ça avance, {name} ?'],
+    evening: ['Bonsoir, {name}.', 'Bonne soirée, {name}.', 'On fait le point, {name} ?'],
+  },
+  en: {
+    night: ['Still up, {name}?', 'Good evening {name}.', 'Burning the midnight oil, {name}?'],
+    morning: ['Good morning {name}.', 'A fine morning, {name}.', 'Ready when you are, {name}.'],
+    afternoon: ['Good afternoon, {name}.', 'Good to see you, {name}.', 'How is it going, {name}?'],
+    evening: ['Good evening, {name}.', 'Winding down, {name}?', 'Time to take stock, {name}?'],
+  },
 };
 
 /** Elles affirment le calme. Réservées aux moments où c'est vrai. */
-export const GREETINGS_SEREINES: Record<Slot, string[]> = {
+export const GREETINGS_SEREINES: Record<LangueAccueil, Record<Slot, string[]>> = {
   /*
     « veille tranquille » a été retiré : c'est du vocabulaire de SOC, et ce
     fichier sert AUSSI l'édition livrée aux clientes. Une fleuriste qui ouvre
@@ -70,19 +86,36 @@ export const GREETINGS_SEREINES: Record<Slot, string[]> = {
     côtés ; c'est en plus le mot exact qu'emploie le panneau d'attention juste
     en dessous.
   */
-  night: ['La nuit est calme, {name}.', 'Bonsoir {name} — rien à signaler.'],
-  morning: ['Bonjour {name} — tout est en ordre.', 'Matinée dégagée, {name}.'],
-  afternoon: ['Bon après-midi {name} — au calme.', 'Rien ne presse, {name}.'],
-  evening: ['Bonsoir {name} — journée bientôt bouclée.', 'Soirée tranquille, {name}.'],
+  fr: {
+    night: ['La nuit est calme, {name}.', 'Bonsoir {name} — rien à signaler.'],
+    morning: ['Bonjour {name} — tout est en ordre.', 'Matinée dégagée, {name}.'],
+    afternoon: ['Bon après-midi {name} — au calme.', 'Rien ne presse, {name}.'],
+    evening: ['Bonsoir {name} — journée bientôt bouclée.', 'Soirée tranquille, {name}.'],
+  },
+  en: {
+    night: ['A quiet night, {name}.', 'Good evening {name} — nothing to report.'],
+    morning: ['Good morning {name} — everything in order.', 'A clear morning, {name}.'],
+    afternoon: ['Good afternoon {name} — all quiet.', 'Nothing pressing, {name}.'],
+    evening: ['Good evening {name} — the day is nearly wrapped up.', 'A quiet evening, {name}.'],
+  },
 };
 
-const NUDGES: string[] = [
-  'Par où commencer ?',
-  'Que veux-tu regarder ?',
-  'Un endroit où aller ?',
-  'On commence par quoi ?',
-  'Choisis un point de départ.',
-];
+const NUDGES: Record<LangueAccueil, string[]> = {
+  fr: [
+    'Par où commencer ?',
+    'Que veux-tu regarder ?',
+    'Un endroit où aller ?',
+    'On commence par quoi ?',
+    'Choisis un point de départ.',
+  ],
+  en: [
+    'Where shall we start?',
+    'What would you like to look at?',
+    'Somewhere to go?',
+    'What shall we start with?',
+    'Pick a starting point.',
+  ],
+};
 
 /** Tirage stable pendant une session, différent au lancement suivant. */
 const launchSeed = Math.floor(Math.random() * 100000);
@@ -97,14 +130,19 @@ function pick<T>(arr: T[], salt: number): T {
  * hors ligne. Voir l'en-tête pour la raison : le défaut penche du côté qui ne
  * ment pas.
  */
-export function homeWelcome(name: string, now = new Date(), serein = false): string {
+export function homeWelcome(
+  name: string,
+  now = new Date(),
+  serein = false,
+  langue: LangueAccueil = 'fr',
+): string {
   const slot = slotFor(now.getHours());
-  const source = serein ? GREETINGS_SEREINES[slot] : GREETINGS_NEUTRES[slot];
+  const source = serein ? GREETINGS_SEREINES[langue][slot] : GREETINGS_NEUTRES[langue][slot];
   return pick(source, 0).replace('{name}', name);
 }
 
-export function homeNudge(): string {
-  return pick(NUDGES, 7);
+export function homeNudge(langue: LangueAccueil = 'fr'): string {
+  return pick(NUDGES[langue], 7);
 }
 
 /* ------------------- Qui a le droit de dire que c'est calme ---------------- */
@@ -179,11 +217,31 @@ export function parcSerein(etat: EtatDuParc): boolean {
  *
  * Les mélanger sous un même « à regarder » enverrait ouvrir un tableau vide.
  */
-export function alerteParc(etat: { horsLigne?: number; jamaisVus?: number }): string | null {
+export function alerteParc(
+  etat: { horsLigne?: number; jamaisVus?: number },
+  langue: LangueAccueil = 'fr',
+): string | null {
   const bas = etat.horsLigne ?? 0;
   const muets = etat.jamaisVus ?? 0;
-  const s = (n: number) => (n > 1 ? 's' : '');
 
+  // Chaque langue accorde à SA façon : le « s » français après 1 et le
+  // pluriel anglais ne suivent pas la même règle — deux grammaires, pas une
+  // grammaire traduite.
+  if (langue === 'en') {
+    const s = (n: number) => (n === 1 ? '' : 's');
+    if (bas > 0 && muets > 0) {
+      return `${bas} site${s(bas)} offline · ${muets} with no sign of life — worth a look`;
+    }
+    if (bas > 0) return `${bas} site${s(bas)} offline — worth a look`;
+    if (muets > 0) {
+      return muets > 1
+        ? `${muets} sites have never given a sign of life`
+        : '1 site has never given a sign of life';
+    }
+    return null;
+  }
+
+  const s = (n: number) => (n > 1 ? 's' : '');
   if (bas > 0 && muets > 0) {
     return `${bas} site${s(bas)} hors ligne · ${muets} sans aucun signe de vie — à regarder`;
   }

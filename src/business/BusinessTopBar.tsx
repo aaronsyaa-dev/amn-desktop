@@ -5,6 +5,7 @@ import { Menu } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { UserAvatar } from '../components/UserAvatar';
 import { SyncStatusIndicator } from '../components/SyncStatusIndicator';
+import { useLangue } from '../i18n';
 
 /**
  * Barre haute de l'édition Business.
@@ -16,6 +17,7 @@ import { SyncStatusIndicator } from '../components/SyncStatusIndicator';
  */
 export function BusinessTopBar({ onMenu }: { onMenu: () => void }) {
   const { user, org } = useAuth();
+  const { t } = useLangue();
   const navigate = useNavigate();
 
   return (
@@ -23,7 +25,7 @@ export function BusinessTopBar({ onMenu }: { onMenu: () => void }) {
       <button
         type="button"
         onClick={onMenu}
-        aria-label="Ouvrir le menu"
+        aria-label={t('chrome.ouvrirMenu')}
         // 44 px de côté sur téléphone : la même correction que la barre du
         // haut interne, qui n'avait jamais été portée sur celle-ci.
         className="flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary md:hidden"
@@ -42,7 +44,7 @@ export function BusinessTopBar({ onMenu }: { onMenu: () => void }) {
         <button
           type="button"
           onClick={() => navigate('/settings')}
-          aria-label="Paramètres du compte"
+          aria-label={t('chrome.parametresCompte')}
           className="flex h-11 w-11 items-center justify-center rounded-full transition-opacity hover:opacity-80 md:h-9 md:w-9"
         >
           <UserAvatar email={user?.email ?? ''} size={28} />

@@ -1,0 +1,22 @@
+/* Poste VIERGE : aucun choix personnel — la langue doit venir de l'ORGANISATION. */
+const { chromium } = await import('playwright-core');
+const a = (ms) => new Promise((r) => setTimeout(r, ms));
+const nav = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--no-sandbox'] });
+const p = await (await nav.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+await p.goto('http://127.0.0.1:4180/'); await a(2000);
+const avant = await p.evaluate(() => document.body.innerText);
+console.log('connexion en FRANÇAIS (défaut, aucun choix) ?', avant.includes('Se connecter'));
+await p.locator('input[name="email"]').fill('atelier.london.0831@exemple.test');
+await p.locator('input[name="password"]').fill('London-2026-Essai');
+await p.locator('button[type="submit"]').first().click();
+for (let i = 0; i < 20 && (await p.content()).includes('name="password"'); i += 1) await a(1000);
+await a(3200);
+await p.screenshot({ path: '/tmp/e2e/lang/v1-welcome-org-en.png' });
+const pendant = await p.evaluate(() => document.body.innerText);
+console.log('rideau/écran EN par la seule identité d’organisation ?', /Welcome to|Hello/.test(pendant));
+await a(3000); await p.mouse.click(720, 860); await a(1500);
+await p.screenshot({ path: '/tmp/e2e/lang/v1-accueil-org-en.png' });
+const apres = await p.evaluate(() => document.body.innerText);
+console.log('accueil : Sign out/WORKSPACE EN ?', /Sign out|Workspace|WORKSPACE/i.test(apres));
+console.log('choix localStorage posé ?', await p.evaluate(() => localStorage.getItem('amn.langue.utilisateur')));
+await nav.close();

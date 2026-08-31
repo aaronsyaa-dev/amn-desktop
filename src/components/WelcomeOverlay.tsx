@@ -203,7 +203,7 @@ export function WelcomeOverlay({ onDone }: { onDone: () => void }) {
             transition={{ delay: 1.6, duration: 0.8 }}
             className="absolute bottom-10 font-mono text-[10px] uppercase tracking-widest text-text-muted"
           >
-            Cliquez pour passer
+            {t('bienvenue.passer')}
           </motion.p>
         </motion.div>
       )}

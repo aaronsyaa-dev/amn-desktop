@@ -341,7 +341,7 @@ export function LoginScreen() {
         version — le détail que vérifie précisément un acheteur de sécurité).
       */}
       <p className="absolute bottom-6 left-0 right-0 text-center font-mono text-[10px] uppercase tracking-widest text-text-muted">
-        {IS_BUSINESS ? t('connexion.lieuCliente', { produit: EDITION_PRODUCT_NAME }) : t('connexion.lieuInterne')}
+        {IS_BUSINESS ? t('connexion.lieuCliente', { produit: EDITION_PRODUCT_NAME }) : t('connexion.lieuInterne', { marque: 'AMN DevSec' })}
         <span className="mx-2 text-border-strong">·</span>v{APP_VERSION}
       </p>
     </motion.div>

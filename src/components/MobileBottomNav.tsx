@@ -4,6 +4,7 @@ import { LayoutGrid } from 'lucide-react';
 import { itemsForSpace, spaceForPath } from '../data/spaces';
 import type { NavItem } from '../data/navigation';
 import { useNavFavorites } from '../state/useNavFavorites';
+import { useLangue, libelleNav } from '../i18n';
 
 /**
  * La navigation du pouce (B.2).
@@ -40,12 +41,14 @@ export function MobileBottomNav({
    */
   items: override,
   /** Ce que fait le dernier bouton. « Modules » ouvre le lanceur, sinon le tiroir. */
-  moreLabel = 'Modules',
+  moreLabel,
 }: {
   onOpenLauncher: () => void;
   items?: NavItem[];
   moreLabel?: string;
 }) {
+  const { t } = useLangue();
+  const libellePlus = moreLabel ?? t('chrome.modules');
   const location = useLocation();
   const { favorites } = useNavFavorites();
 
@@ -91,7 +94,7 @@ export function MobileBottomNav({
           <Link
             key={item.key}
             to={item.to}
-            aria-label={item.label}
+            aria-label={libelleNav(item)}
             aria-current={active ? 'page' : undefined}
             // 56 px de haut : au-dessus du minimum de 44, parce qu'une barre
             // basse se touche en diagonale et sans regarder.
@@ -110,7 +113,7 @@ export function MobileBottomNav({
               )}
             </span>
             <span className="w-full truncate px-1 text-center text-[10px] leading-none">
-              {item.label}
+              {libelleNav(item)}
             </span>
           </Link>
         );
@@ -119,13 +122,13 @@ export function MobileBottomNav({
       <button
         type="button"
         onClick={onOpenLauncher}
-        aria-label={moreLabel === 'Modules' ? 'Tous les modules' : moreLabel}
+        aria-label={moreLabel === undefined ? t('chrome.tousModules') : moreLabel}
         aria-haspopup="dialog"
         className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2.5 text-text-muted transition-colors"
         style={{ minHeight: 56 }}
       >
         <LayoutGrid size={20} strokeWidth={1.75} />
-        <span className="w-full truncate px-1 text-center text-[10px] leading-none">{moreLabel}</span>
+        <span className="w-full truncate px-1 text-center text-[10px] leading-none">{libellePlus}</span>
       </button>
     </nav>
   );

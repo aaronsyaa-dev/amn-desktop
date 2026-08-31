@@ -17,6 +17,7 @@ import { useNavFavorites } from '../state/useNavFavorites';
 import { StatusBadge } from './StatusBadge';
 import { useSitePanel } from './site-panel/SitePanelContext';
 import { AppLauncher } from './AppLauncher';
+import { useLangue, libelleNav, libelleSection, libelleEspace } from '../i18n';
 import { OrgSwitchButton } from './org-rail/OrgSwitchButton';
 import { type NavItem } from '../data/navigation';
 import { SPACES, spaceByKey, spaceForPath, sectionsForSpace } from '../data/spaces';
@@ -51,6 +52,7 @@ export function Sidebar({
   /** Close the mobile drawer (nav click, backdrop tap, swipe-left). */
   onClose?: () => void;
 }) {
+  const { t } = useLangue();
   /*
     Le tiroir de navigation sur téléphone. Il couvre l'écran entier, et son
     fond ne se referme qu'au doigt — Échap est le seul recours au clavier,
@@ -243,8 +245,8 @@ export function Sidebar({
         // ci-dessus, qui n'a alors rien à deviner.
         aria-current={active && canonique ? 'page' : undefined}
         onClick={handleNavClick}
-        title={!isExpanded ? item.label : undefined}
-        aria-label={item.label}
+        title={!isExpanded ? libelleNav(item) : undefined}
+        aria-label={libelleNav(item)}
         // 44 px sous `md` : le tiroir est la navigation principale du
         // téléphone, ses lignes ne peuvent pas être plus petites que les
         // cibles de la barre basse. Au pointeur, la densité d'origine reste.
@@ -286,7 +288,7 @@ export function Sidebar({
         </span>
         {isExpanded && (
           <span className="relative select-none whitespace-nowrap">
-            {item.label}
+            {libelleNav(item)}
           </span>
         )}
         {/* Unseen-activity badge (A3.3): additions/changes by the other
@@ -324,7 +326,7 @@ export function Sidebar({
             role="button"
             tabIndex={0}
             aria-label={
-              isFavorite(item.key) ? `Détacher ${item.label}` : `Épingler ${item.label}`
+              isFavorite(item.key) ? t('chrome.detacher', { nom: libelleNav(item) }) : t('chrome.epingler', { nom: libelleNav(item) })
             }
             title={isFavorite(item.key) ? 'Détacher des épinglés' : 'Épingler en haut'}
             onClick={(event) => {
@@ -498,7 +500,7 @@ export function Sidebar({
           {sectionsForSpace(space).map((section) => (
             <div key={section.key} className="flex flex-col gap-1">
               {isExpanded ? (
-                <p className="eyebrow px-3 pb-1 pt-1">{section.label}</p>
+                <p className="eyebrow px-3 pb-1 pt-1">{libelleSection(section.label)}</p>
               ) : (
                 // Barre repliée : l'intitulé ne tiendrait pas dans 72 px, le
                 // filet garde la coupure sans prétendre la nommer.
@@ -521,15 +523,15 @@ export function Sidebar({
           <button
             type="button"
             onClick={logout}
-            title={!isExpanded ? 'Déconnexion' : undefined}
-            aria-label="Déconnexion"
+            title={!isExpanded ? t('chrome.deconnexion') : undefined}
+            aria-label={t('chrome.deconnexion')}
             className={`flex min-h-11 items-center gap-3 rounded-lg py-2 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary md:min-h-0 ${
               isExpanded ? 'px-3' : 'justify-center px-0'
             }`}
           >
             <LogOut size={20} strokeWidth={1.75} />
             {isExpanded && (
-              <span className="select-none whitespace-nowrap">Déconnexion</span>
+              <span className="select-none whitespace-nowrap">{t('chrome.deconnexion')}</span>
             )}
           </button>
 
@@ -553,7 +555,7 @@ export function Sidebar({
             className={`hidden items-center gap-3 rounded-lg py-2 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary md:flex ${
               isExpanded ? 'px-3' : 'justify-center px-0'
             }`}
-            aria-label={isExpanded ? 'Réduire le menu' : 'Étendre le menu'}
+            aria-label={isExpanded ? t('chrome.replierBarre') : t('chrome.deplierBarre')}
           >
             {isExpanded ? (
               <ChevronsLeft size={20} strokeWidth={1.75} />
@@ -655,6 +657,8 @@ function SpaceSwitcher({
   const [open, setOpen] = useState(false);
   const current = spaceByKey(spaceForPath(location.pathname));
   const CurrentIcon = current.icon;
+  const { t } = useLangue();
+  const courant = libelleEspace(current);
   const { org } = useAuth();
   const orgName = org?.name ?? 'AMN DevSec';
 
@@ -678,7 +682,7 @@ function SpaceSwitcher({
         }}
         aria-haspopup={expanded ? 'menu' : undefined}
         aria-expanded={expanded ? open : undefined}
-        title={expanded ? undefined : `${current.label} — cliquer pour changer d’espace`}
+        title={expanded ? undefined : t('chrome.changerEspace', { espace: courant.label })}
         className={`group flex h-11 w-full items-center gap-2.5 rounded-xl border border-border bg-surface transition-colors duration-200 hover:border-border-strong ${
           expanded ? 'px-3' : 'justify-center px-0'
         }`}
@@ -690,7 +694,7 @@ function SpaceSwitcher({
           <>
             <span className="min-w-0 flex-1 text-left">
               <span className="block truncate text-[13px] font-semibold leading-tight text-text-primary">
-                {current.label}
+                {courant.label}
               </span>
               {/* L'organisation RÉELLE, pas une chaîne en dur.
                   Elle l'était : en contexte client, ce sous-titre affichait
@@ -740,6 +744,7 @@ function SpaceSwitcher({
               {SPACES.map((space) => {
                 const Icon = space.icon;
                 const active = space.key === current.key;
+                const libelles = libelleEspace(space);
                 return (
                   <button
                     key={space.key}
@@ -755,10 +760,10 @@ function SpaceSwitcher({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-[13px] font-medium text-text-primary">
-                        {space.label}
+                        {libelles.label}
                       </span>
                       <span className="block text-[11px] leading-snug text-text-muted">
-                        {space.hint}
+                        {libelles.hint}
                       </span>
                     </span>
                     {active && (

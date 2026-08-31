@@ -7,6 +7,7 @@ import { useActivity } from '../state/ActivityContext';
 import { Logo, LogoMark } from '../components/Logo';
 import { sectionsForSpace } from '../data/spaces';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
+import { useLangue, libelleNav, libelleSection } from '../i18n';
 
 const COLLAPSED_WIDTH = 72;
 const EXPANDED_WIDTH = 224;
@@ -64,6 +65,7 @@ export function BusinessSidebar({
     y compris sur un poste où la fenêtre est étroite.
   */
   useFermetureEchap(mobileOpen, () => onClose?.());
+  const { t } = useLangue();
 
   const [isExpandedDesktop, setIsExpanded] = useState(false);
   const location = useLocation();
@@ -140,7 +142,7 @@ export function BusinessSidebar({
           {sectionsForSpace('workspace').map((section) => (
             <div key={section.key} className="flex flex-col gap-1">
               {isExpanded ? (
-                <p className="eyebrow px-3 pb-1">{section.label}</p>
+                <p className="eyebrow px-3 pb-1">{libelleSection(section.label)}</p>
               ) : (
                 // Barre repliée : l'intitulé ne tiendrait pas dans 72 px. Le
                 // filet garde la coupure sans prétendre la nommer — un texte
@@ -155,8 +157,8 @@ export function BusinessSidebar({
                     key={item.key}
                     to={item.to}
                     onClick={onClose}
-                    title={!isExpanded ? item.label : undefined}
-                    aria-label={item.label}
+                    title={!isExpanded ? libelleNav(item) : undefined}
+                    aria-label={libelleNav(item)}
                     // Ce qui dit à un lecteur d'écran laquelle des entrées est
                     // l'écran courant — et ce que le défilement ci-dessus vise.
                     aria-current={active ? 'page' : undefined}
@@ -171,7 +173,7 @@ export function BusinessSidebar({
                     <span className="flex-shrink-0">
                       <Icon size={18} strokeWidth={1.75} />
                     </span>
-                    {isExpanded && <span className="truncate">{item.label}</span>}
+                    {isExpanded && <span className="truncate">{libelleNav(item)}</span>}
                     {(unseen[item.to] ?? 0) > 0 && (
                       <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-accent" />
                     )}
@@ -186,7 +188,7 @@ export function BusinessSidebar({
           <button
             type="button"
             onClick={() => setIsExpanded((v) => !v)}
-            aria-label={isExpandedDesktop ? 'Replier la barre' : 'Déplier la barre'}
+            aria-label={isExpandedDesktop ? t('chrome.replierBarre') : t('chrome.deplierBarre')}
             className="hidden items-center gap-3 rounded-lg px-3 py-2 text-sm text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary md:flex"
           >
             {isExpandedDesktop ? (
@@ -194,7 +196,7 @@ export function BusinessSidebar({
             ) : (
               <ChevronsRight size={18} strokeWidth={1.75} />
             )}
-            {isExpanded && <span>Replier</span>}
+            {isExpanded && <span>{t('chrome.replier')}</span>}
           </button>
           <button
             type="button"
@@ -206,12 +208,12 @@ export function BusinessSidebar({
               bouton-ci était le seul oublié, et c'est le plus conséquent :
               on ne se déconnecte pas par erreur.
             */
-            aria-label="Se déconnecter"
-            title={!isExpanded ? 'Se déconnecter' : undefined}
+            aria-label={t('chrome.seDeconnecter')}
+            title={!isExpanded ? t('chrome.seDeconnecter') : undefined}
             className="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm text-text-muted transition-colors hover:bg-surface-hover hover:text-danger md:min-h-0"
           >
             <LogOut size={18} strokeWidth={1.75} />
-            {isExpanded && <span>Se déconnecter</span>}
+            {isExpanded && <span>{t('chrome.seDeconnecter')}</span>}
           </button>
         </div>
       </motion.aside>

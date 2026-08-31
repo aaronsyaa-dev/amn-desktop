@@ -5,6 +5,7 @@ import { useOpenAtelier } from './useOpenAtelier';
 import { OrgAvatar } from './OrgAvatar';
 import { OrgSwitcher } from './OrgSwitcher';
 import { LogoMark } from '../Logo';
+import { useLangue } from '../../i18n';
 
 /**
  * L'entrée du rail pour les écrans étroits.
@@ -30,6 +31,7 @@ export function OrgSwitchButton({
   onNavigate?: () => void;
   className?: string;
 }) {
+  const { t } = useLangue();
   const { support } = useOrgContext();
   const openAtelier = useOpenAtelier();
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -62,7 +64,7 @@ export function OrgSwitchButton({
               colonne de 113 px : une instruction verbeuse là où un mot suffit,
               le chevron disant déjà que c'est cliquable. */}
           <span className="block truncate font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
-            Organisation
+            {t('chrome.organisation')}
           </span>
           <span className="block truncate text-[13px] font-semibold leading-tight text-text-primary">
             {support ? support.orgName : 'AMN DevSec'}

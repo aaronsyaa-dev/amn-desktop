@@ -33,7 +33,7 @@ export const en = {
   'connexion.erreurGenerique': 'Something went wrong while signing in.',
   'connexion.enLigne': 'Online',
   'connexion.horsLigne': 'Offline',
-  'connexion.lieuInterne': 'AMN DevSec · Supervision centre',
+  'connexion.lieuInterne': '{marque} · Supervision centre',
   'connexion.lieuCliente': '{produit} · Workspace',
   'connexion.mfa.titre': 'Two-factor authentication',
   'connexion.mfa.consigne': 'Open your authenticator app and enter the six-digit code.',
@@ -55,14 +55,21 @@ export const en = {
   'chrome.notifications': 'Notifications',
   'chrome.aideRapide': 'Quick help',
   'chrome.monProfil': 'My profile',
+  'chrome.parametresCompte': 'Account settings',
   'chrome.ouvrirMenu': 'Open the menu',
   'chrome.deconnexion': 'Sign out',
+  'chrome.seDeconnecter': 'Sign out',
+  'chrome.replier': 'Collapse',
   'chrome.replierBarre': 'Collapse the sidebar',
   'chrome.deplierBarre': 'Expand the sidebar',
   'chrome.modules': 'Modules',
   'chrome.tousModules': 'All modules',
+  'chrome.fermer': 'Close',
+  'chrome.epingler': 'Pin {nom}',
+  'chrome.detacher': 'Unpin {nom}',
   'chrome.lienActif': 'Live link',
   'chrome.espaceTravail': 'Workspace',
+  'chrome.changerEspace': '{espace} — click to switch space',
   'sync.synchronise': 'Synced',
   'sync.synchroniseTitre': 'Connected to amn-api — changes are shared in real time.',
   'sync.connexion': 'Connecting…',
@@ -73,6 +80,20 @@ export const en = {
   'sync.local': 'Local',
   'sync.localTitre': 'Local mode (no sync server configured).',
 
+  /* ── Status rail (bottom line, both editions) ───────────────────────── */
+  'rail.lienActifTitre': 'Connected to the server — changes are shared in real time.',
+  'rail.connexion': 'Connecting',
+  'rail.connexionTitre': 'Connecting to the server.',
+  'rail.horsLigne': 'Offline',
+  'rail.horsLigneTitre':
+    'Server unreachable — changes are saved on this workstation and will sync back when the network returns.',
+  'rail.local': 'Local',
+  'rail.localTitre': 'Local mode: no sync server configured.',
+  'rail.tourControle': 'Control tower',
+  'rail.posteTravail': 'Workstation',
+  'rail.sessionSupport': 'Support session',
+  'rail.heureLocale': 'Local time',
+
   /* ── Settings: language ─────────────────────────────────────────────── */
   'reglages.langue.titre': 'Language',
   'reglages.langue.description':
@@ -80,6 +101,40 @@ export const en = {
   'reglages.langue.francais': 'Français',
   'reglages.langue.anglais': 'English',
   'reglages.langue.suitOrganisation': 'Follow the organisation ({langue})',
+
+  /* ── Welcome curtain (skip line) ────────────────────────────────────── */
+  'bienvenue.passer': 'Click to skip',
+
+  /* ── Internal home: counters and destinations ───────────────────────── */
+  'accueil.stats.sitesSupervises': 'Sites monitored',
+  'accueil.stats.jamaisVus': 'Never seen',
+  'accueil.stats.enLigne': 'Online',
+  'accueil.stats.tachesOuvertes': 'Open tasks',
+  'accueil.dest.sites': 'Sites',
+  'accueil.dest.sites.hint': 'Monitored estate',
+  'accueil.dest.taches': 'Tasks',
+  'accueil.dest.taches.hint': 'Who does what',
+  'accueil.dest.clients': 'Clients',
+  'accueil.dest.clients.hint': 'Records & relations',
+  'accueil.dest.equipe': 'Team',
+  'accueil.dest.equipe.hint': 'Messaging',
+  'accueil.dest.assistant.hint': 'AI assistant',
+  'accueil.dest.trackers': 'Trackers',
+  'accueil.dest.trackers.hint': 'Monitoring',
+  'accueil.sec.notes': 'Notes',
+  'accueil.sec.decisions': 'Decisions',
+  'accueil.sec.connaissances': 'Knowledge',
+
+  /* ── Attention panel (both editions) ────────────────────────────────── */
+  'attention.titre': 'Attention points',
+  'attention.un': 'One attention point',
+  'attention.n': '{n} attention points',
+  'attention.reduire': 'Collapse',
+  'attention.dePlus': '{n} more',
+  'attention.rien': 'Attention points · nothing to report · checked at {heure}',
+
+  /* ── Org switch (internal chrome) ───────────────────────────────────── */
+  'chrome.organisation': 'Organisation',
 
   /* ── Client home ────────────────────────────────────────────────────── */
   'accueil.relev.aria': 'While you were away',

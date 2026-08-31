@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { en, type CleTraduction, type Dictionnaire } from './en';
 import { fr } from './fr';
+import { ESPACES_EN, NAV_EN, SECTIONS_EN } from '@edition/navLexique';
+
+export type { CleTraduction, Dictionnaire };
 
 /**
  * LA LANGUE — un magasin de module, pas une bibliothèque
@@ -93,6 +96,46 @@ export function t(cle: CleTraduction, valeurs?: Record<string, string | number>)
   return brut.replace(/\{(\w+)\}/g, (tout, nom: string) =>
     nom in valeurs ? String(valeurs[nom]) : tout,
   );
+}
+
+/* ── La navigation : le catalogue français, traduit au rendu ─────────────────
+ *
+ * Les catalogues de modules restent la SOURCE française (les gardes de
+ * check-modules lisent leurs littéraux) ; l'anglais vit dans `nav.en.ts`,
+ * par clé de module, et se résout ICI, au moment d'afficher. Une entrée
+ * absente retombe sur le français — visible, honnête.
+ */
+
+export type SurfaceNav = 'interne' | 'business' | 'support';
+
+export function libelleNav(item: { key: string; label: string }): string {
+  if (langueActive() !== 'en') return item.label;
+  return NAV_EN[item.key]?.label ?? item.label;
+}
+
+export function indiceNav(
+  item: { key: string; hint: string },
+  surface: SurfaceNav = 'interne',
+): string {
+  if (langueActive() !== 'en') return item.hint;
+  const entree = NAV_EN[item.key];
+  if (!entree) return item.hint;
+  const specifique =
+    surface === 'business' ? entree.hintBusiness : surface === 'support' ? entree.hintSupport : undefined;
+  return specifique ?? entree.hint ?? item.hint;
+}
+
+export function libelleSection(label: string): string {
+  if (langueActive() !== 'en') return label;
+  return SECTIONS_EN[label] ?? label;
+}
+
+export function libelleEspace(space: { key: string; label: string; hint: string }): {
+  label: string;
+  hint: string;
+} {
+  if (langueActive() !== 'en') return { label: space.label, hint: space.hint };
+  return ESPACES_EN[space.key] ?? { label: space.label, hint: space.hint };
 }
 
 /** L'abonnement React : re-rend le composant quand la langue change. */

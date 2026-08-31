@@ -5,6 +5,11 @@ import { Pin, PinOff, X } from 'lucide-react';
 import type { SpaceKey } from '../data/navigation';
 import { sectionsForSpace } from '../data/spaces';
 import { useNavFavorites } from '../state/useNavFavorites';
+import { useLangue, libelleNav, libelleSection, indiceNav } from '../i18n';
+import { IS_BUSINESS } from '../edition/edition';
+
+/** La surface de ce lanceur suit l'édition compilée — jamais l'écran. */
+const SURFACE = IS_BUSINESS ? ('business' as const) : ('interne' as const);
 
 /**
  * The module launcher (BLOC C).
@@ -44,6 +49,7 @@ export function AppLauncher({
    */
   space?: SpaceKey;
 }) {
+  const { t } = useLangue();
   const location = useLocation();
   const { isFavorite, toggleFavorite } = useNavFavorites();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -92,7 +98,7 @@ export function AppLauncher({
             tabIndex={-1}
             role="dialog"
             aria-modal="true"
-            aria-label="Tous les modules"
+            aria-label={t('chrome.tousModules')}
             // Mobile: rises from the bottom edge like a sheet.
             // Desktop (sm+): slides in from the sidebar and fades, anchored left.
             initial={{ opacity: 0, y: 28, scale: 0.985 }}
@@ -109,7 +115,7 @@ export function AppLauncher({
 
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-lg font-bold tracking-tight text-text-primary">Tous les modules</h2>
+                <h2 className="text-lg font-bold tracking-tight text-text-primary">{t('chrome.tousModules')}</h2>
                 <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
                   Épinglez ceux que vous ouvrez tous les jours
                 </p>
@@ -117,7 +123,7 @@ export function AppLauncher({
               <button
                 type="button"
                 onClick={onClose}
-                aria-label="Fermer"
+                aria-label={t('chrome.fermer')}
                 className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-white/5 hover:text-text-primary"
               >
                 <X size={16} strokeWidth={2} />
@@ -128,7 +134,7 @@ export function AppLauncher({
               {sectionsForSpace(space).map((section) => (
                 <div key={section.key}>
                   <p className="mb-2.5 font-mono text-[9px] uppercase tracking-[0.25em] text-text-muted">
-                    {section.label}
+                    {libelleSection(section.label)}
                   </p>
                   <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
                     {section.items.map((item) => {
@@ -149,16 +155,16 @@ export function AppLauncher({
                               <Icon size={22} strokeWidth={1.5} />
                             </span>
                             <span className="text-sm font-medium leading-tight text-text-primary">
-                              {item.label}
+                              {libelleNav(item)}
                             </span>
-                            <span className="text-[11px] leading-snug text-text-muted">{item.hint}</span>
+                            <span className="text-[11px] leading-snug text-text-muted">{indiceNav(item, SURFACE)}</span>
                           </Link>
                           {/* Pinning is what keeps the sidebar short AND personal:
                               the strip is a choice, not a fixed list. */}
                           <button
                             type="button"
                             onClick={() => toggleFavorite(item.key)}
-                            aria-label={pinned ? `Détacher ${item.label}` : `Épingler ${item.label}`}
+                            aria-label={pinned ? t('chrome.detacher', { nom: libelleNav(item) }) : t('chrome.epingler', { nom: libelleNav(item) })}
                             title={pinned ? 'Détacher de la barre' : 'Épingler à la barre'}
                             className={`absolute right-1.5 top-1.5 rounded-md p-1.5 transition-colors ${
                               pinned

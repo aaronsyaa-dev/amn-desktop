@@ -77,7 +77,6 @@ export function HomeScreen() {
   const pinnedSites = useMemo(() => sites.filter((s) => isPinned(s.id)), [sites, isPinned]);
 
   const displayName = user?.name?.split(' ')[0] ?? 'opérateur';
-  const nudge = useMemo(() => homeNudge(), []);
 
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -172,10 +171,17 @@ export function HomeScreen() {
     horsLigne,
     jamaisVus,
   });
-  const welcome = homeWelcome(displayName, now, serein);
-  const dateLabel = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const welcome = homeWelcome(displayName, now, serein, langueReleve);
+  // Tiré une fois par montage (le tirage reste stable), dans la langue du
+  // moment ; un changement de langue re-rend l'écran et retire dans la sienne.
+  const nudge = useMemo(() => homeNudge(langueReleve), [langueReleve]);
+  const dateLabel = now.toLocaleDateString(langueReleve === 'en' ? 'en-GB' : 'fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
 
-  const alerte = alerteParc({ horsLigne, jamaisVus });
+  const alerte = alerteParc({ horsLigne, jamaisVus }, langueReleve);
 
   // A three-number pulse of the workspace. Kept to counts the operator can act
   // on — nothing here is a vanity metric, and each one is a link to the screen
@@ -183,7 +189,7 @@ export function HomeScreen() {
   const openTasks = useCollection<{ status?: string }>('tasks');
   const stats = useMemo(
     () => [
-      { key: 'sites', value: sites.length, label: 'Sites supervisés', to: '/sites' },
+      { key: 'sites', value: sites.length, label: tr('accueil.stats.sitesSupervises'), to: '/sites' },
       /*
         « En ligne » seul laissait un trou : dix-neuf supervisés, zéro en
         ligne, et rien qui dise où sont les dix-neuf autres. Le compteur des
@@ -192,36 +198,36 @@ export function HomeScreen() {
         Quand tout a déjà parlé au moins une fois, il redevient « En ligne ».
       */
       jamaisVus > 0
-        ? { key: 'jamais-vus', value: jamaisVus, label: 'Jamais vus', to: '/sites' }
+        ? { key: 'jamais-vus', value: jamaisVus, label: tr('accueil.stats.jamaisVus'), to: '/sites' }
         : {
             key: 'online',
             value: sites.filter((s) => s.status === 'online').length,
-            label: 'En ligne',
+            label: tr('accueil.stats.enLigne'),
             to: '/sites',
           },
       {
         key: 'tasks',
         value: openTasks.filter((t) => t.status !== 'done').length,
-        label: 'Tâches ouvertes',
+        label: tr('accueil.stats.tachesOuvertes'),
         to: '/tasks',
       },
     ],
-    [sites, openTasks, jamaisVus],
+    [sites, openTasks, jamaisVus, langueReleve],
   );
 
   const destinations = [
-    { key: 'sites', label: 'Sites', hint: 'Parc supervisé', icon: Globe, to: () => navigate('/sites') },
-    { key: 'tasks', label: 'Tâches', hint: 'Qui fait quoi', icon: CheckSquare, to: () => navigate('/tasks') },
-    { key: 'clients', label: 'Clients', hint: 'Fiches & relation', icon: Contact, to: () => navigate('/clients') },
-    { key: 'team', label: 'Équipe', hint: 'Messagerie', icon: Users, to: () => navigate('/team') },
-    { key: 'assistant', label: 'Ajmani', hint: 'Assistant IA', icon: Sparkles, to: () => openAssistant() },
-    { key: 'tracker', label: 'Trackers', hint: 'Supervision', icon: Radar, to: () => navigate('/tracker') },
+    { key: 'sites', label: tr('accueil.dest.sites'), hint: tr('accueil.dest.sites.hint'), icon: Globe, to: () => navigate('/sites') },
+    { key: 'tasks', label: tr('accueil.dest.taches'), hint: tr('accueil.dest.taches.hint'), icon: CheckSquare, to: () => navigate('/tasks') },
+    { key: 'clients', label: tr('accueil.dest.clients'), hint: tr('accueil.dest.clients.hint'), icon: Contact, to: () => navigate('/clients') },
+    { key: 'team', label: tr('accueil.dest.equipe'), hint: tr('accueil.dest.equipe.hint'), icon: Users, to: () => navigate('/team') },
+    { key: 'assistant', label: 'Ajmani', hint: tr('accueil.dest.assistant.hint'), icon: Sparkles, to: () => openAssistant() },
+    { key: 'tracker', label: tr('accueil.dest.trackers'), hint: tr('accueil.dest.trackers.hint'), icon: Radar, to: () => navigate('/tracker') },
   ];
 
   const secondary = [
-    { label: 'Notes', icon: NotebookPen, to: '/notes' },
-    { label: 'Décisions', icon: Scale, to: '/decisions' },
-    { label: 'Connaissances', icon: BookOpen, to: '/knowledge' },
+    { label: tr('accueil.sec.notes'), icon: NotebookPen, to: '/notes' },
+    { label: tr('accueil.sec.decisions'), icon: Scale, to: '/decisions' },
+    { label: tr('accueil.sec.connaissances'), icon: BookOpen, to: '/knowledge' },
   ];
 
   return (

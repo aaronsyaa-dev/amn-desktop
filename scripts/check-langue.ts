@@ -41,6 +41,25 @@ async function loadFromSrc<T>(entry: string): Promise<T> {
 
 const { en } = await loadFromSrc<{ en: Record<string, string> }>('src/i18n/en.ts');
 const { fr } = await loadFromSrc<{ fr: Record<string, string> }>('src/i18n/fr.ts');
+const { NAV_EN, SECTIONS_EN, ESPACES_EN } = await loadFromSrc<{
+  NAV_EN: Record<string, { label?: string; hint?: string; hintBusiness?: string; hintSupport?: string }>;
+  SECTIONS_EN: Record<string, string>;
+  ESPACES_EN: Record<string, { label: string; hint: string }>;
+}>('src/edition/navLexique.internal.ts');
+
+/** Toutes les valeurs anglaises du lexique de navigation, à plat. */
+const valeursNavEn: Array<[string, string]> = [
+  ...Object.entries(NAV_EN).flatMap(([k, e]) =>
+    (['label', 'hint', 'hintBusiness', 'hintSupport'] as const)
+      .filter((champ) => e[champ] !== undefined)
+      .map((champ): [string, string] => [`nav.${k}.${champ}`, e[champ] as string]),
+  ),
+  ...Object.entries(SECTIONS_EN).map(([k, v]): [string, string] => [`section.${k}`, v]),
+  ...Object.entries(ESPACES_EN).flatMap(([k, e]): Array<[string, string]> => [
+    [`espace.${k}.label`, e.label],
+    [`espace.${k}.hint`, e.hint],
+  ]),
+];
 
 let vus = 0;
 const dit = (nom: string, fn: () => void) => {
@@ -102,4 +121,19 @@ dit('le français devant ? ! ; porte l’espace fine — pas l’espace simple',
   }
 });
 
-console.log(`\nOK — ${vus} contrôles sur ${clesEn.length} clés.\n`);
+dit('le lexique de navigation anglais suit les mêmes règles', () => {
+  // Mêmes exigences que le dictionnaire : rien de vide, pas d'exclamation,
+  // pas de résidu français — le catalogue français reste, lui, gardé par
+  // check-modules (parité support/business) et par la relecture. Les espaces
+  // typographiques en ÉCHAPPEMENTS : en littéraux ils sont invisibles, et une
+  // copie qui les perd ferait matcher l'espace simple — vécu.
+  const residus = /[«»\u202f\u00a0]|\b(le|la|les|un|une|des|votre|vos|est|sont|avec|pour|dans)\b/i;
+  assert.ok(valeursNavEn.length > 30, 'le lexique de navigation semble vide — le chargeur est cassé');
+  for (const [k, v] of valeursNavEn) {
+    assert.ok(v.trim().length > 0, `valeur vide : ${k}`);
+    assert.ok(!v.includes('!'), `exclamation : ${k} → ${v}`);
+    assert.ok(!residus.test(v), `résidu français dans l'anglais : ${k} → ${v}`);
+  }
+});
+
+console.log(`\nOK — ${vus} contrôles sur ${clesEn.length} clés (+ ${valeursNavEn.length} entrées de navigation).\n`);

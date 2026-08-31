@@ -587,21 +587,28 @@ check('le critique passe DEVANT tout le reste', () => {
 /* ═══════════ La salutation d'accueil n'a pas le droit d'affirmer ═══════════ */
 
 interface SalutationModule {
-  homeWelcome(name: string, now?: Date, serein?: boolean): string;
-  GREETINGS_NEUTRES: Record<string, string[]>;
-  GREETINGS_SEREINES: Record<string, string[]>;
+  homeWelcome(name: string, now?: Date, serein?: boolean, langue?: 'fr' | 'en'): string;
+  GREETINGS_NEUTRES: Record<string, Record<string, string[]>>;
+  GREETINGS_SEREINES: Record<string, Record<string, string[]>>;
   parcSerein(etat: {
     attentions: number;
     regarde: boolean;
     horsLigne?: number;
     jamaisVus?: number;
   }): boolean;
-  alerteParc(etat: { horsLigne?: number; jamaisVus?: number }): string | null;
+  alerteParc(etat: { horsLigne?: number; jamaisVus?: number }, langue?: 'fr' | 'en'): string | null;
 }
 const S = await loadFromSrc<SalutationModule>('src/lib/homeGreetings.ts');
 
-/** Les mots par lesquels une phrase AFFIRME que tout va bien. */
-const AFFIRMATIONS = [/calme/i, /tranquille/i, /en ordre/i, /dégagée?/i, /rien ne presse/i, /bouclée/i];
+/**
+ * Les mots par lesquels une phrase AFFIRME que tout va bien — PAR langue :
+ * la règle « neutre n'affirme rien » vaut dans chacune, avec ses mots à elle.
+ */
+const AFFIRMATIONS: Record<'fr' | 'en', RegExp[]> = {
+  fr: [/calme/i, /tranquille/i, /en ordre/i, /dégagée?/i, /rien ne presse/i, /bouclée/i],
+  en: [/quiet/i, /in order/i, /clear/i, /nothing pressing/i, /wrapped up/i, /nothing to report/i],
+};
+const LANGUES_ACCUEIL = ['fr', 'en'] as const;
 
 check('SALUTATION : sans certificat de calme, elle n’affirme RIEN', () => {
   /*
@@ -619,25 +626,27 @@ check('SALUTATION : sans certificat de calme, elle n’affirme RIEN', () => {
     Le paramètre `serein` vaut FAUX par défaut, exprès : un appelant qui
     l'oublie obtient une salutation neutre, jamais une fausse réassurance.
   */
-  for (const [creneau, phrases] of Object.entries(S.GREETINGS_NEUTRES)) {
-    for (const phrase of phrases) {
-      for (const mot of AFFIRMATIONS) {
-        assert.ok(
-          !mot.test(phrase),
-          `« ${phrase} » (${creneau}) affirme le calme alors qu’elle est rangée dans les NEUTRES`,
-        );
+  for (const langue of LANGUES_ACCUEIL) {
+    for (const [creneau, phrases] of Object.entries(S.GREETINGS_NEUTRES[langue])) {
+      for (const phrase of phrases) {
+        for (const mot of AFFIRMATIONS[langue]) {
+          assert.ok(
+            !mot.test(phrase),
+            `« ${phrase} » (${langue}, ${creneau}) affirme le calme alors qu’elle est rangée dans les NEUTRES`,
+          );
+        }
       }
     }
-  }
 
-  // Et à toute heure, l'appel sans certificat ne peut rien produire d'autre.
-  for (let h = 0; h < 24; h += 1) {
-    const quand = new Date(2026, 7, 29, h, 30);
-    const dite = S.homeWelcome('Aaron', quand);
-    for (const mot of AFFIRMATIONS) {
-      assert.ok(!mot.test(dite), `à ${h} h, sans certificat : « ${dite} »`);
+    // Et à toute heure, l'appel sans certificat ne peut rien produire d'autre.
+    for (let h = 0; h < 24; h += 1) {
+      const quand = new Date(2026, 7, 29, h, 30);
+      const dite = S.homeWelcome('Aaron', quand, false, langue);
+      for (const mot of AFFIRMATIONS[langue]) {
+        assert.ok(!mot.test(dite), `à ${h} h (${langue}), sans certificat : « ${dite} »`);
+      }
+      assert.ok(dite.includes('Aaron'), `le prénom doit rester : « ${dite} »`);
     }
-    assert.ok(dite.includes('Aaron'), `le prénom doit rester : « ${dite} »`);
   }
 });
 
@@ -659,17 +668,22 @@ check('SALUTATION : quand c’est vraiment calme, elle a le droit de le dire', (
     les variantes sereines avaient été supprimées — et l'accueil deviendrait
     plat tous les jours de l'année, ce qui n'était pas le but.
   */
-  let trouvee = false;
-  for (let h = 0; h < 24; h += 1) {
-    const dite = S.homeWelcome('Aaron', new Date(2026, 7, 29, h, 30), true);
-    if (AFFIRMATIONS.some((m) => m.test(dite))) trouvee = true;
-  }
-  assert.ok(trouvee, 'aucune variante sereine n’affirme quoi que ce soit — la famille est vide ?');
+  for (const langue of LANGUES_ACCUEIL) {
+    let trouvee = false;
+    for (let h = 0; h < 24; h += 1) {
+      const dite = S.homeWelcome('Aaron', new Date(2026, 7, 29, h, 30), true, langue);
+      if (AFFIRMATIONS[langue].some((m) => m.test(dite))) trouvee = true;
+    }
+    assert.ok(
+      trouvee,
+      `aucune variante sereine n’affirme quoi que ce soit en ${langue} — la famille est vide ?`,
+    );
 
-  // Et chaque créneau en a au moins une, sinon certaines heures perdraient
-  // silencieusement la nuance.
-  for (const [creneau, phrases] of Object.entries(S.GREETINGS_SEREINES)) {
-    assert.ok(phrases.length > 0, `créneau sans variante sereine : ${creneau}`);
+    // Et chaque créneau en a au moins une, sinon certaines heures perdraient
+    // silencieusement la nuance.
+    for (const [creneau, phrases] of Object.entries(S.GREETINGS_SEREINES[langue])) {
+      assert.ok(phrases.length > 0, `créneau sans variante sereine : ${langue}, ${creneau}`);
+    }
   }
 });
 
@@ -890,6 +904,20 @@ check('la ligne d’alerte nomme les deux états, et ne les confond pas', () => 
   const deux = S.alerteParc({ horsLigne: 12, jamaisVus: 7 }) ?? '';
   assert.match(deux, /12 sites hors ligne/);
   assert.match(deux, /7 sans aucun signe de vie/);
+});
+
+check('la ligne d’alerte parle anglais avec SA grammaire, pas une traduction', () => {
+  assert.equal(S.alerteParc({ horsLigne: 0, jamaisVus: 0 }, 'en'), null);
+  assert.equal(S.alerteParc({ horsLigne: 12 }, 'en'), '12 sites offline — worth a look');
+  assert.equal(S.alerteParc({ horsLigne: 1 }, 'en'), '1 site offline — worth a look');
+
+  const muets = S.alerteParc({ jamaisVus: 7 }, 'en') ?? '';
+  assert.match(muets, /never given a sign of life/);
+  assert.ok(!/worth a look/.test(muets), 'un site jamais vu ne se « regarde » pas — en anglais non plus');
+  assert.match(S.alerteParc({ jamaisVus: 1 }, 'en') ?? '', /^1 site has never/, 'accord au singulier anglais');
+
+  // Et sans langue demandée, le français : le produit actuel ne perd rien.
+  assert.match(S.alerteParc({ horsLigne: 2 }) ?? '', /hors ligne/);
 });
 
 if (failures.length > 0) {

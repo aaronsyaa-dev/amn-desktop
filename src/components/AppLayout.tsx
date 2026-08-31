@@ -35,10 +35,12 @@ import { PwaUpdateNotice } from './PwaUpdateNotice';
 import { variantsForPath } from '../lib/transitions';
 import { StatusRail } from './StatusRail';
 import { useAuth } from '../auth/AuthContext';
+import { useLangue } from '../i18n';
 
 const LAST_TAB_KEY = 'amn.lastTab';
 
 export function AppLayout() {
+  const { t } = useLangue();
   const location = useLocation();
   const navigate = useNavigate();
   const { org } = useAuth();
@@ -185,7 +187,7 @@ export function AppLayout() {
                   relue. */}
               <StatusRail
                 orgName={org?.name ?? 'AMN DevSec'}
-                context={spaceForPath(location.pathname) === 'control' ? 'Tour de contrôle' : 'Poste de travail'}
+                context={spaceForPath(location.pathname) === 'control' ? t('rail.tourControle') : t('rail.posteTravail')}
               />
               {/* Sous le contenu, jamais par-dessus : une barre superposée
                   masquerait la dernière ligne de chaque écran. */}

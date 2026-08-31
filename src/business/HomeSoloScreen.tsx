@@ -14,6 +14,7 @@ import { SoloPulse } from './SoloPulse';
 import { Majordome } from './Majordome';
 import { DayBand } from './DayBand';
 import { homeWelcome, parcSerein } from '../lib/homeGreetings';
+import { useLangue } from '../i18n';
 import type { SharedTaskStatus } from '../shared/api';
 
 /**
@@ -47,6 +48,7 @@ export function HomeSoloScreen() {
     donc les points d'attention suffisent à trancher.
   */
   const attention = useAttention();
+  const { langue } = useLangue();
   /*
     Même règle que l'accueil interne, même fonction : une organisation cliente
     n'a pas de parc supervisé, donc les deux compteurs de sites valent zéro et
@@ -108,7 +110,7 @@ export function HomeSoloScreen() {
             application qui dit exactement la même phrase tous les matins finit
             par ne plus rien dire du tout. */}
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-text-primary">
-          {homeWelcome(user?.name?.split(' ')[0] ?? '', now, serein)}
+          {homeWelcome(user?.name?.split(' ')[0] ?? '', now, serein, langue)}
         </h1>
         <p className="mt-0.5 text-sm text-text-secondary">{capitaliserPhrase(longDayLabel(now))}</p>
       </header>

@@ -5,6 +5,7 @@ import { AlertTriangle, Check, ChevronDown, CircleAlert, Info } from 'lucide-rea
 import type { AttentionState } from '../state/useAttention';
 import { formatCentsCompact } from '../lib/money';
 import type { AttentionItem, AttentionSeverity } from '../lib/attention';
+import { useLangue } from '../i18n';
 
 /**
  * Points d'attention, sur l'accueil.
@@ -83,6 +84,7 @@ export function AttentionPanel({
 }) {
   const { items, checkedAt } = state;
   const [expanded, setExpanded] = useState(false);
+  const { t } = useLangue();
   const navigate = useNavigate();
 
   // État 1 : rien n'a encore été évalué. On se tait plutôt que d'annoncer un
@@ -101,11 +103,11 @@ export function AttentionPanel({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.35, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-      aria-label="Points d’attention"
+      aria-label={t('attention.titre')}
       className={className}
     >
       <p className="mb-2 text-center font-mono text-[10px] uppercase tracking-[0.25em] text-text-muted">
-        {items.length === 1 ? 'Un point d’attention' : `${items.length} points d’attention`}
+        {items.length === 1 ? t('attention.un') : t('attention.n', { n: items.length })}
       </p>
 
       <ul className="flex flex-col gap-px overflow-hidden rounded-2xl border border-border bg-border">
@@ -131,7 +133,7 @@ export function AttentionPanel({
           onClick={() => setExpanded((v) => !v)}
           className="mx-auto mt-2 flex min-h-11 items-center gap-1.5 px-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted transition-colors hover:text-text-secondary md:min-h-0 md:py-2"
         >
-          {expanded ? 'Réduire' : `${hidden} de plus`}
+          {expanded ? t('attention.reduire') : t('attention.dePlus', { n: hidden })}
           <ChevronDown
             size={13}
             strokeWidth={2}
@@ -150,7 +152,8 @@ export function AttentionPanel({
  * tourné d'un bloc qui ne s'affiche pas.
  */
 function NothingToReport({ checkedAt, className = '' }: { checkedAt: string; className?: string }) {
-  const time = new Date(checkedAt).toLocaleTimeString('fr-FR', {
+  const { t, langue } = useLangue();
+  const time = new Date(checkedAt).toLocaleTimeString(langue === 'en' ? 'en-GB' : 'fr-FR', {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -159,11 +162,11 @@ function NothingToReport({ checkedAt, className = '' }: { checkedAt: string; cla
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ delay: 0.35, duration: 0.7 }}
-      aria-label="Points d’attention"
+      aria-label={t('attention.titre')}
       className={`flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted ${className}`}
     >
       <Check size={12} strokeWidth={2.5} className="flex-shrink-0 text-success" />
-      Points d’attention · rien à signaler · vérifié à {time}
+      {t('attention.rien', { heure: time })}
     </motion.p>
   );
 }

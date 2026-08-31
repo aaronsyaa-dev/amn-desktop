@@ -8,8 +8,10 @@ import { remoteEventDetail, remoteEventIcon, remoteEventLabel } from '../lib/rem
 import { relativeTime } from '../lib/time';
 import { useSitePanel } from './site-panel/SitePanelContext';
 import type { RemoteEvent } from '../shared/api';
+import { useLangue } from '../i18n';
 
 export function NotificationCenter() {
+  const { t } = useLangue();
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const { openSite } = useSitePanel();
@@ -53,7 +55,7 @@ export function NotificationCenter() {
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
-        aria-label="Notifications"
+        aria-label={t('chrome.notifications')}
         // 44 px au pouce sous `md`, 36 px au pointeur ensuite — même règle que
         // les autres boutons de cette barre.
         className="relative flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary transition-colors duration-200 hover:text-text-primary md:h-9 md:w-9"
@@ -90,7 +92,7 @@ export function NotificationCenter() {
             >
               <div className="flex items-center justify-between border-b border-border px-4 py-3">
                 <p className="text-sm font-semibold text-text-primary">
-                  Notifications
+                  {t('chrome.notifications')}
                 </p>
                 <span className="text-xs text-text-muted">
                   {criticalCount} critique{criticalCount > 1 ? 's' : ''}

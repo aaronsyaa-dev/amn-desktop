@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AtSign, Command, HelpCircle, Keyboard, MessageSquarePlus, Sparkles, X } from 'lucide-react';
+import { useLangue } from '../i18n';
 
 function useModifierKey(): string {
   const [key, setKey] = useState('Ctrl');
@@ -20,6 +21,7 @@ interface HelpItem {
 
 /** A discreet "?" button that opens a quick reference; also bound to the "?" key. */
 export function HelpButton() {
+  const { t } = useLangue();
   const [open, setOpen] = useState(false);
 
   // Global "?" opens help — but never while typing in a field.
@@ -45,8 +47,8 @@ export function HelpButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        title="Aide rapide (?)"
-        aria-label="Aide rapide"
+        title={`${t('chrome.aideRapide')} (?)`}
+        aria-label={t('chrome.aideRapide')}
         className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-text-muted transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary"
       >
         <HelpCircle size={16} strokeWidth={1.75} />
@@ -57,6 +59,7 @@ export function HelpButton() {
 }
 
 function HelpOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useLangue();
   const modKey = useModifierKey();
 
   useEffect(() => {
@@ -111,7 +114,7 @@ function HelpOverlay({ open, onClose }: { open: boolean; onClose: () => void }) 
           <motion.div
             role="dialog"
             aria-modal="true"
-            aria-label="Aide rapide"
+            aria-label={t('chrome.aideRapide')}
             initial={{ opacity: 0, y: 16, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
@@ -124,7 +127,7 @@ function HelpOverlay({ open, onClose }: { open: boolean; onClose: () => void }) 
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-bg">
                   <HelpCircle size={16} className="text-text-primary" />
                 </span>
-                <h2 className="text-lg font-bold tracking-tight text-text-primary">Aide rapide</h2>
+                <h2 className="text-lg font-bold tracking-tight text-text-primary">{t('chrome.aideRapide')}</h2>
               </div>
               <button
                 type="button"

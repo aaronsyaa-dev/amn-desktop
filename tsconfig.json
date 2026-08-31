@@ -20,6 +20,7 @@
     // deux faces de la couture exposent bien le même contrat.
     "paths": {
       "@edition/modules": ["src/edition/modules.internal.ts"],
+      "@edition/navLexique": ["src/edition/navLexique.internal.ts"],
       "@edition/dbSeed": ["src/edition/dbSeed.internal.ts"],
       "@edition/changelog": ["src/edition/changelog.internal.ts"],
       "@edition/seeds": ["src/edition/seeds.internal.ts"],

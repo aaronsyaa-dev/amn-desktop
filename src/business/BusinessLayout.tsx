@@ -16,6 +16,7 @@ import { UpdateReady } from '../components/UpdateReady';
 import { PwaUpdateNotice } from '../components/PwaUpdateNotice';
 import { variantsForPath } from '../lib/transitions';
 import { useAuth } from '../auth/AuthContext';
+import { useLangue } from '../i18n';
 
 const LAST_TAB_KEY = 'amn.lastTab';
 
@@ -39,6 +40,7 @@ const LAST_TAB_KEY = 'amn.lastTab';
  * on travaille seul, c'est le rendez-vous qui approche.
  */
 export function BusinessLayout() {
+  const { t } = useLangue();
   const location = useLocation();
   const { org } = useAuth();
   const [navOpen, setNavOpen] = React.useState(false);
@@ -129,7 +131,7 @@ export function BusinessLayout() {
                       barre du pouce : c'est la ligne qui donne à l'application
                       son caractère d'instrument, et une cliente y a droit
                       exactement comme nous. */}
-                  <StatusRail orgName={org?.name ?? ''} context="Espace de travail" />
+                  <StatusRail orgName={org?.name ?? ''} context={t('chrome.espaceTravail')} />
                   <MobileBottomNav onOpenLauncher={() => setLauncherOpen(true)} />
                   <AppLauncher
                     open={launcherOpen}

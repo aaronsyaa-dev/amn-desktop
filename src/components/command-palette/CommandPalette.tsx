@@ -25,6 +25,7 @@ import { useSitePanel } from '../site-panel/SitePanelContext';
 import { useAssistant } from '../../assistant/AssistantContext';
 import { StatusBadge } from '../StatusBadge';
 import { SPACES, itemsForSpace } from '../../data/spaces';
+import { libelleNav } from '../../i18n';
 
 interface CommandPaletteContextValue {
   open: () => void;
@@ -69,7 +70,7 @@ function navCommandsFromCatalog(): Extract<Command, { kind: 'nav' }>[] {
   return SPACES.flatMap((space) => itemsForSpace(space.key)).map((item) => ({
     kind: 'nav' as const,
     id: `nav-${item.key}`,
-    label: item.label,
+    label: libelleNav(item),
     icon: item.icon,
     to: item.to,
   }));

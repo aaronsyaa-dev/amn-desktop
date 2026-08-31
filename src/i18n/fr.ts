@@ -24,7 +24,7 @@ export const fr: Dictionnaire = {
   'connexion.erreurGenerique': 'Une erreur est survenue lors de la connexion.',
   'connexion.enLigne': 'En ligne',
   'connexion.horsLigne': 'Hors ligne',
-  'connexion.lieuInterne': 'AMN DevSec · Centre de supervision',
+  'connexion.lieuInterne': '{marque} · Centre de supervision',
   'connexion.lieuCliente': '{produit} · Espace de travail',
   'connexion.mfa.titre': 'Double authentification',
   'connexion.mfa.consigne':
@@ -47,14 +47,21 @@ export const fr: Dictionnaire = {
   'chrome.notifications': 'Notifications',
   'chrome.aideRapide': 'Aide rapide',
   'chrome.monProfil': 'Mon profil',
+  'chrome.parametresCompte': 'Paramètres du compte',
   'chrome.ouvrirMenu': 'Ouvrir le menu',
-  'chrome.deconnexion': 'Se déconnecter',
+  'chrome.deconnexion': 'Déconnexion',
+  'chrome.seDeconnecter': 'Se déconnecter',
+  'chrome.replier': 'Replier',
   'chrome.replierBarre': 'Replier la barre',
   'chrome.deplierBarre': 'Déplier la barre',
   'chrome.modules': 'Modules',
   'chrome.tousModules': 'Tous les modules',
+  'chrome.fermer': 'Fermer',
+  'chrome.epingler': 'Épingler {nom}',
+  'chrome.detacher': 'Détacher {nom}',
   'chrome.lienActif': 'Lien actif',
   'chrome.espaceTravail': 'Espace de travail',
+  'chrome.changerEspace': '{espace} — cliquer pour changer d’espace',
   'sync.synchronise': 'Synchronisé',
   'sync.synchroniseTitre': 'Connecté à amn-api — changements partagés en temps réel.',
   'sync.connexion': 'Connexion…',
@@ -65,6 +72,20 @@ export const fr: Dictionnaire = {
   'sync.local': 'Local',
   'sync.localTitre': 'Mode local (serveur de synchronisation non configuré).',
 
+  /* ── Bandeau d'état (ligne du bas, deux éditions) ───────────────────── */
+  'rail.lienActifTitre': 'Connecté au serveur — les changements sont partagés en temps réel.',
+  'rail.connexion': 'Connexion',
+  'rail.connexionTitre': 'Connexion au serveur en cours.',
+  'rail.horsLigne': 'Hors ligne',
+  'rail.horsLigneTitre':
+    'Serveur injoignable — les changements sont enregistrés sur ce poste et repartiront au retour du réseau.',
+  'rail.local': 'Local',
+  'rail.localTitre': 'Poste en mode local : aucun serveur de synchronisation configuré.',
+  'rail.tourControle': 'Tour de contrôle',
+  'rail.posteTravail': 'Poste de travail',
+  'rail.sessionSupport': 'Session de support',
+  'rail.heureLocale': 'Heure locale',
+
   /* ── Réglages : langue ──────────────────────────────────────────────── */
   'reglages.langue.titre': 'Langue',
   'reglages.langue.description':
@@ -72,6 +93,40 @@ export const fr: Dictionnaire = {
   'reglages.langue.francais': 'Français',
   'reglages.langue.anglais': 'English',
   'reglages.langue.suitOrganisation': 'Suivre l’organisation ({langue})',
+
+  /* ── Rideau de bienvenue (ligne de passage) ─────────────────────────── */
+  'bienvenue.passer': 'Cliquez pour passer',
+
+  /* ── Accueil interne : compteurs et destinations ────────────────────── */
+  'accueil.stats.sitesSupervises': 'Sites supervisés',
+  'accueil.stats.jamaisVus': 'Jamais vus',
+  'accueil.stats.enLigne': 'En ligne',
+  'accueil.stats.tachesOuvertes': 'Tâches ouvertes',
+  'accueil.dest.sites': 'Sites',
+  'accueil.dest.sites.hint': 'Parc supervisé',
+  'accueil.dest.taches': 'Tâches',
+  'accueil.dest.taches.hint': 'Qui fait quoi',
+  'accueil.dest.clients': 'Clients',
+  'accueil.dest.clients.hint': 'Fiches & relation',
+  'accueil.dest.equipe': 'Équipe',
+  'accueil.dest.equipe.hint': 'Messagerie',
+  'accueil.dest.assistant.hint': 'Assistant IA',
+  'accueil.dest.trackers': 'Trackers',
+  'accueil.dest.trackers.hint': 'Supervision',
+  'accueil.sec.notes': 'Notes',
+  'accueil.sec.decisions': 'Décisions',
+  'accueil.sec.connaissances': 'Connaissances',
+
+  /* ── Points d'attention (deux éditions) ─────────────────────────────── */
+  'attention.titre': 'Points d’attention',
+  'attention.un': 'Un point d’attention',
+  'attention.n': '{n} points d’attention',
+  'attention.reduire': 'Réduire',
+  'attention.dePlus': '{n} de plus',
+  'attention.rien': 'Points d’attention · rien à signaler · vérifié à {heure}',
+
+  /* ── Sélecteur d'organisation (coquille interne) ────────────────────── */
+  'chrome.organisation': 'Organisation',
 
   /* ── Accueil cliente ────────────────────────────────────────────────── */
   'accueil.relev.aria': 'Pendant votre absence',

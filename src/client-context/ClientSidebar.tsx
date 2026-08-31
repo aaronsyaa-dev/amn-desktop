@@ -28,6 +28,7 @@ import { OrgAvatar } from '../components/org-rail/OrgAvatar';
 import { OrgSwitchButton } from '../components/org-rail/OrgSwitchButton';
 import { CLIENT_PRODUCT_NAME } from '../edition/edition';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
+import { libelleNav, libelleSection, useLangue } from '../i18n';
 
 const TRANSITION = { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const };
 
@@ -122,7 +123,7 @@ function clientSections(): Array<{ label: string; items: NavItem[] }> {
   // deux fois la même liste, jamais dans le même ordre, ce qui est exactement
   // ce que ce contexte existe pour éviter.
   const sections = CLIENT_SECTIONS.map((section) => ({
-    label: section.label,
+    label: libelleSection(section.label),
     items: section.keys
       .map((key) => open.find((item) => item.key === key))
       .filter((item): item is NavItem => Boolean(item)),
@@ -142,6 +143,7 @@ export function ClientSidebar({
   mobileOpen?: boolean;
   onClose?: () => void;
 }) {
+  useLangue();
   /*
     Le tiroir de navigation sur téléphone. Il couvre l'écran entier, et son
     fond ne se referme qu'au doigt — Échap est le seul recours au clavier,
@@ -234,7 +236,7 @@ export function ClientSidebar({
         <nav ref={barre} className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3">
           {clientSections().map((section) => (
             <div key={section.label} className="flex flex-col gap-0.5">
-              <p className="eyebrow px-3 pb-1.5">{section.label}</p>
+              <p className="eyebrow px-3 pb-1.5">{libelleSection(section.label)}</p>
               {section.items.map((item) => {
                 const active = isActive(item.to);
                 const Icon = item.icon;
@@ -263,7 +265,7 @@ export function ClientSidebar({
                     <span className="relative">
                       <Icon size={19} strokeWidth={1.75} />
                     </span>
-                    <span className="relative select-none whitespace-nowrap">{item.label}</span>
+                    <span className="relative select-none whitespace-nowrap">{libelleNav(item)}</span>
                   </Link>
                 );
               })}

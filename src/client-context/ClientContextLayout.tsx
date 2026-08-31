@@ -14,6 +14,7 @@ import { BootHealthy } from '../components/BootHealthy';
 import { SyncStatusIndicator } from '../components/SyncStatusIndicator';
 import { variantsForPath } from '../lib/transitions';
 import { StatusRail } from '../components/StatusRail';
+import { useLangue } from '../i18n';
 
 /**
  * La coquille d'un contexte client.
@@ -36,6 +37,7 @@ import { StatusRail } from '../components/StatusRail';
  * ajouter nos outils en ferait un troisième produit, que personne n'utilise.
  */
 export function ClientContextLayout() {
+  const { t } = useLangue();
   const location = useLocation();
   const { support } = useOrgContext();
   const [navOpen, setNavOpen] = React.useState(false);
@@ -78,7 +80,7 @@ export function ClientContextLayout() {
                     <button
                       type="button"
                       onClick={() => setNavOpen(true)}
-                      aria-label="Ouvrir le menu"
+                      aria-label={t('chrome.ouvrirMenu')}
                       className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary md:hidden"
                     >
                       <Menu size={18} strokeWidth={1.75} />
@@ -113,7 +115,7 @@ export function ClientContextLayout() {
                 {/* Le bandeau nomme le contexte, et il n'y a rien de plus
                     honnête à écrire ici : on regarde SON organisation, en
                     session de support. */}
-                <StatusRail orgName={support?.orgName ?? ''} context="Session de support" />
+                <StatusRail orgName={support?.orgName ?? ''} context={t('rail.sessionSupport')} />
                 <MobileBottomNav
                   items={CLIENT_NAV_ITEMS.filter((item) => isModuleEnabled(item.key))}
                   moreLabel="Menu"
