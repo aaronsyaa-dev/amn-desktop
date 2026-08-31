@@ -33,7 +33,9 @@ export type TaskPriority = 'low' | 'normal' | 'high';
 const PRIORITIES: { value: TaskPriority; label: string; dot: string; text: string }[] = [
   { value: 'low', label: 'Basse', dot: 'bg-text-muted', text: 'text-text-muted' },
   { value: 'normal', label: 'Normale', dot: 'bg-accent', text: 'text-text-secondary' },
-  { value: 'high', label: 'Haute', dot: 'bg-danger', text: 'text-danger' },
+  // Une priorité haute n'est pas un incident : le point porte le rouge,
+  // le mot reste de l'encre (docs/ROUGE.md, F3).
+  { value: 'high', label: 'Haute', dot: 'bg-danger', text: 'text-text-secondary' },
 ];
 
 function priorityMeta(p: TaskPriority | undefined) {

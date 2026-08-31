@@ -153,7 +153,7 @@ export function ClientAdminScreen() {
 
       {error && (
         <StaggerItem>
-          <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-text-secondary">
+          <p className="rounded-lg border border-border border-l-2 border-l-danger bg-surface px-3 py-2 text-xs text-text-secondary">
             {error}
           </p>
         </StaggerItem>

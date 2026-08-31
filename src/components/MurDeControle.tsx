@@ -27,8 +27,10 @@ import { usePoulsDuParc } from '../state/poulsDuParc';
  *   point qui respire, blanc   le site est EN LIGNE, observé
  *   point terne, immobile      hors ligne — un pixel mort ne respire pas
  *   anneau creux               jamais vu : le traceur n'a encore rien envoyé
- *   point ROUGE, souffle court un incident ouvert l'embrase (critique = rouge,
- *                              c'est le monopole du rouge et son travail)
+ *   point de BRAISE            un incident ouvert couve là (braise sombre
+ *                              désaturée, docs/ROUGE.md — cent incidents ne
+ *                              font pas cent points rouge vif ; le seul rouge
+ *                              vif du mur est la ligne de synthèse)
  *
  * Les phrases décoratives de l'ancien écran de veille (« Rien d'urgent à
  * l'horizon ») pouvaient s'afficher au-dessus de douze sites hors ligne. Le
@@ -112,13 +114,19 @@ export function MurDeControle({ enVeille = false }: { enVeille?: boolean }) {
               style={{ left: `${x}%`, top: `${y}%` }}
             >
               {embrase ? (
+                /*
+                  LA BRAISE, PAS L'INCENDIE (docs/ROUGE.md, F1). Cent incidents
+                  ne font pas cent points rouge vif : le point critique est une
+                  braise sombre désaturée, sans lueur, au souffle court. Le
+                  SEUL rouge vif du mur est la ligne de synthèse, plus bas.
+                */
                 <span
-                  className="sv-souffle-tendu block h-2.5 w-2.5 rounded-full bg-danger"
-                  style={{ animationDelay: `-${phase}ms`, boxShadow: '0 0 12px rgba(255,66,48,0.55)' }}
+                  className="sv-souffle-tendu block h-2.5 w-2.5 rounded-full bg-braise"
+                  style={{ animationDelay: `-${phase}ms` }}
                 />
               ) : incident ? (
                 <span
-                  className="sv-souffle-calme block h-2 w-2 rounded-full bg-warning"
+                  className="sv-souffle-calme block h-2 w-2 rounded-full bg-braise opacity-70"
                   style={{ animationDelay: `-${phase}ms` }}
                 />
               ) : enligne ? (

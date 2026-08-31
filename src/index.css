@@ -108,6 +108,17 @@
   --color-danger-fill: #dd2f26;
   --color-danger-ink: #ff5847;
   --color-danger-muted: rgba(255, 66, 48, 0.14);
+  /*
+    LA BRAISE — le rouge éteint des nuées (audit du rouge, docs/ROUGE.md).
+
+    Sur le mur de veille, cent incidents ne font pas cent points rouge vif :
+    l'écran resterait rouge, plus noir. La braise est un rouge désaturé et
+    sombre — visible sur le noir comme une braise dans l'obscurité, incapable
+    de baigner quoi que ce soit. Jamais pour du texte : elle ne tient pas le
+    contraste, et ce n'est pas son rôle — l'information passe par la ligne de
+    synthèse, qui garde le seul rouge vif de l'écran.
+  */
+  --color-braise: #7d332b;
 
   /*
     L'ÉCHELLE TYPOGRAPHIQUE — six tailles, ratio ≈ 1,31, et rien entre elles.

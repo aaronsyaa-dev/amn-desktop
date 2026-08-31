@@ -218,7 +218,7 @@ export function SiteControlScreen() {
 
       {error && (
         <StaggerItem>
-          <div className="flex items-start gap-2 border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-text-secondary">
+          <div className="flex items-start gap-2 border border-border border-l-2 border-l-danger bg-surface px-4 py-3 text-sm text-text-secondary">
             <AlertTriangle size={15} className="mt-0.5 flex-shrink-0 text-danger" strokeWidth={2} />
             <span>{error}</span>
           </div>

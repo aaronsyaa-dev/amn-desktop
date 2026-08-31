@@ -439,7 +439,7 @@ function ProjectDetail({
 
       <div className="min-h-0 flex-1 overflow-y-auto p-3 md:p-4">
         {late && (
-          <p className="mb-3 border border-danger/50 bg-danger-muted px-3 py-2 text-xs leading-tight text-text-primary">
+          <p className="mb-3 border border-border border-l-2 border-l-danger bg-surface px-3 py-2 text-xs leading-tight text-text-primary">
             <strong className="font-semibold">Échéance dépassée</strong> — attendue le{' '}
             {formatDay(project.deadline)}.
           </p>

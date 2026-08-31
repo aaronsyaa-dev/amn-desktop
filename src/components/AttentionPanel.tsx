@@ -36,24 +36,28 @@ import type { AttentionItem, AttentionSeverity } from '../lib/attention';
 
 const SEVERITY: Record<
   AttentionSeverity,
-  { icon: typeof AlertTriangle; text: string; border: string; bg: string }
+  { icon: typeof AlertTriangle; icone: string; border: string; bg: string }
 > = {
+  /*
+    UNE CARTE CRITIQUE SE REPÈRE, ELLE NE SE LIT PAS À TRAVERS UN FILTRE ROUGE
+    (docs/ROUGE.md, F4). Avant : fond rouge + bordure rouge + texte rouge —
+    trois cartes suffisaient à baigner l'accueil. Le rouge se replie sur DEUX
+    porteurs : l'arête gauche et l'icône. Le titre redevient de l'encre
+    normale — il se lit mieux, et la carte crie moins en disant autant.
+  */
   critical: {
     icon: CircleAlert,
-    // Posée sur la liste à filet (`bg-border`, #262626), l'encre rouge donne
-    // 4,38 — sous le seuil. `--color-danger-ink` est le même rouge d'un cran
-    // plus clair : 4,86 ici, 6,68 sur le fond principal.
-    text: 'text-danger-ink',
-    border: 'border-danger/40',
-    bg: 'bg-danger-muted',
+    icone: 'text-danger-ink',
+    border: 'border-border border-l-2 border-l-danger',
+    bg: 'bg-surface',
   },
   warning: {
     icon: AlertTriangle,
-    text: 'text-warning',
-    border: 'border-warning/40',
-    bg: 'bg-warning-muted',
+    icone: 'text-warning',
+    border: 'border-border border-l-2 border-l-warning',
+    bg: 'bg-surface',
   },
-  info: { icon: Info, text: 'text-text-muted', border: 'border-border', bg: 'bg-surface' },
+  info: { icon: Info, icone: 'text-text-muted', border: 'border-border', bg: 'bg-surface' },
 };
 
 const VISIBLE = 3;
@@ -172,9 +176,9 @@ function Row({ item, onGo }: { item: AttentionItem; onGo: () => void }) {
     <button
       type="button"
       onClick={onGo}
-      className={`group flex w-full min-h-11 items-start gap-3 px-4 py-3 text-left transition-colors ${tone.bg} hover:bg-surface-hover`}
+      className={`group flex w-full min-h-11 items-start gap-3 px-4 py-3 text-left transition-colors ${tone.bg} ${tone.border} hover:bg-surface-hover`}
     >
-      <Icon size={15} strokeWidth={2} className={`mt-0.5 flex-shrink-0 ${tone.text}`} />
+      <Icon size={15} strokeWidth={2} className={`mt-0.5 flex-shrink-0 ${tone.icone}`} />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm text-text-primary">{item.title}</span>
         {/*
@@ -183,7 +187,10 @@ function Row({ item, onGo }: { item: AttentionItem; onGo: () => void }) {
           « facture à surveiller » ne se vérifie pas.
         */}
         <span className="mt-0.5 block text-xs leading-tight text-text-muted">
-          <span className={tone.text}>{item.evidence}</span>
+          {/* La preuve redevient de l'encre : la gravité est déjà portée par
+              l'arête et l'icône — la répéter sur chaque mot est l'ambiance
+              que l'audit du rouge retire (docs/ROUGE.md, F4). */}
+          <span className="text-text-secondary">{item.evidence}</span>
           {item.amountCents !== undefined && ` · ${formatCentsCompact(item.amountCents)}`}
           {item.action && ` — ${item.action}`}
         </span>

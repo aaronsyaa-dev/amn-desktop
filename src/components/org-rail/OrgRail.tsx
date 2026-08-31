@@ -263,11 +263,25 @@ function RailButton({
         quand c'est CRITIQUE — c'est le monopole du rouge, et son travail.
       */}
       {active && pouls && (
+        /*
+          L'ANNEAU RESTE MONOCHROME, TOUJOURS (docs/ROUGE.md, F2). Le premier
+          jet teintait l'anneau en rouge sur critique — c'est-à-dire le LOGO
+          en rouge, ce qui est interdit : la marque n'est jamais colorée. Le
+          souffle s'accélère quand le parc est tendu, et le critique se
+          signale par un point rouge au coin du bouton — un signal posé À
+          CÔTÉ de la marque, pas une teinte dessus.
+        */
         <span
           aria-hidden
-          className={`pointer-events-none absolute -inset-[3px] rounded-2xl ring-2 ${
-            pouls === 'tendu' ? 'ring-danger sv-souffle-tendu' : 'ring-white sv-souffle-calme'
+          className={`pointer-events-none absolute -inset-[3px] rounded-2xl ring-2 ring-white ${
+            pouls === 'tendu' ? 'sv-souffle-tendu' : 'sv-souffle-calme'
           }`}
+        />
+      )}
+      {active && pouls === 'tendu' && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 h-2 w-2 rounded-full bg-danger"
         />
       )}
       {active && (

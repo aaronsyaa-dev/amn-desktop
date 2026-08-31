@@ -33,8 +33,10 @@ export function toneFor(status: Pick<SslStatus, 'daysLeft' | 'error'>): SslTone 
 const TONE_STYLE: Record<SslTone, string> = {
   ok: 'border-border text-text-secondary',
   warn: 'border-border-strong text-text-primary',
-  urgent: 'border-danger/50 text-danger',
-  expired: 'border-danger bg-danger/10 text-danger',
+  // Un porteur rouge par puce (docs/ROUGE.md, F8) : le mot suffit, la
+  // teinte de fond et la bordure rouge par-dessus étaient l'ambiance.
+  urgent: 'border-border text-danger',
+  expired: 'border-danger/40 text-danger',
   unknown: 'border-border text-text-muted',
 };
 
@@ -135,7 +137,7 @@ export function SslScreen() {
 
       {error && (
         <StaggerItem>
-          <div className="flex items-start gap-2 border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-text-secondary">
+          <div className="flex items-start gap-2 border border-border border-l-2 border-l-danger bg-surface px-4 py-3 text-sm text-text-secondary">
             <AlertTriangle size={15} className="mt-0.5 flex-shrink-0 text-danger" strokeWidth={2} />
             <span>{error}</span>
           </div>

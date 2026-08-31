@@ -209,7 +209,7 @@ export function MonthlyReportPanel({ onClose }: { onClose: () => void }) {
         </div>
 
         {erreur && (
-          <p className="mb-4 rounded-lg border border-danger/40 bg-danger-muted px-3 py-2 text-[13px] text-danger">
+          <p className="mb-4 rounded-lg border border-border border-l-2 border-l-danger bg-surface px-3 py-2 text-[13px] text-text-primary">
             {erreur}
           </p>
         )}

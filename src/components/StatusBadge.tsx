@@ -17,7 +17,13 @@ const STATUS_CONFIG: Record<
   },
   offline: {
     label: 'HORS LIGNE',
-    text: 'text-danger',
+    /*
+      LE POINT PORTE LE SIGNAL, LE MOT REDEVIENT DE L'ENCRE (docs/ROUGE.md,
+      F3). Douze sites en panne faisaient vingt-quatre éléments rouges — le
+      rouge cessait d'être un signal pour devenir l'ambiance de la liste. Le
+      point rouge suffit à balayer une colonne d'un regard.
+    */
+    text: 'text-text-secondary',
     dot: 'bg-danger',
   },
   unknown: {
@@ -41,7 +47,6 @@ export function StatusBadge({
   compact?: boolean;
 }) {
   const config = STATUS_CONFIG[status];
-  const critical = status === 'offline';
 
   if (compact) {
     return (
@@ -49,24 +54,21 @@ export function StatusBadge({
         role="img"
         aria-label={config.label}
         title={config.label}
-        className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${config.dot} ${
-          status === 'offline' ? 'animate-pulse' : ''
-        }`}
+        // Plus de pulsation sur la panne : le battement veut dire « flux
+        // vivant », un point de panne qui respire est un mensonge de
+        // vocabulaire (docs/ROUGE.md, F3).
+        className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${config.dot}`}
       />
     );
   }
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider ${config.text} ${
-        critical ? 'border-danger/40 bg-danger-muted' : 'border-border bg-white/[0.03]'
-      }`}
+      className={`inline-flex items-center gap-1.5 border border-border bg-white/[0.03] px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider ${config.text}`}
     >
-      <span
-        className={`h-1.5 w-1.5 rounded-full ${config.dot} ${
-          status === 'offline' ? 'animate-pulse' : ''
-        }`}
-      />
+      {/* Le badge complet suit la même règle que le compact : le point porte
+          le signal, le cadre et le mot restent neutres (docs/ROUGE.md, F3). */}
+      <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
       {config.label}
     </span>
   );

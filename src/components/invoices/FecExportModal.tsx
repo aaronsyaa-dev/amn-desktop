@@ -138,7 +138,7 @@ export function FecExportModal({
           */}
           <div
             className={`mt-px flex items-center gap-2 border px-3 py-2 ${
-              balanced ? 'border-border bg-surface' : 'border-danger/50 bg-danger-muted'
+              balanced ? 'border-border bg-surface' : 'border-border border-l-2 border-l-danger bg-surface'
             }`}
           >
             {balanced ? (

@@ -234,7 +234,7 @@ export function InvoicesScreen() {
       {duplicateNumbers.length > 0 && (
         <div
           role="alert"
-          className="flex items-center gap-2.5 border border-danger/50 bg-danger-muted px-3 py-2"
+          className="flex items-center gap-2.5 border border-border border-l-2 border-l-danger bg-surface px-3 py-2"
         >
           <AlertTriangle size={15} strokeWidth={2} className="flex-shrink-0 text-danger" />
           <span className="min-w-0 flex-1 text-xs leading-tight text-text-primary">
@@ -554,7 +554,7 @@ function InvoiceDetail({
 
       <div className="min-h-0 flex-1 overflow-y-auto p-3 md:p-4">
         {late && (
-          <p className="mb-3 border border-danger/50 bg-danger-muted px-3 py-2 text-xs leading-tight text-text-primary">
+          <p className="mb-3 border border-border border-l-2 border-l-danger bg-surface px-3 py-2 text-xs leading-tight text-text-primary">
             <strong className="font-semibold">Échéance dépassée</strong> — attendue le{' '}
             {formatDay(invoice.dueAt)}.
           </p>
@@ -1123,7 +1123,7 @@ function IdentityModal({
             <label key={field.key} className="mt-3 block first:mt-0">
               <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-text-muted">
                 {field.label}
-                {field.required && <span className="text-danger"> *</span>}
+                {field.required && <span className="text-text-muted"> *</span>}
               </span>
               {field.multiline ? (
                 <textarea
