@@ -123,6 +123,8 @@ jobs:
         run: npm run check:vitaux
       - name: Contrôle de la grammaire de la Relève
         run: npm run check:releve
+      - name: Contrôle de la langue (dictionnaires + lexique de navigation)
+        run: npm run check:langue
       - name: Tendances
         run: npm run check:trend
       - name: Export FEC
