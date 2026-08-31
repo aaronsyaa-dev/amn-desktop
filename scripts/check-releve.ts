@@ -54,8 +54,9 @@ const { construireReleve, nommeLAbsence, ABSENCE_MIN_MS } = await loadFromSrc<{
     observations: Obs[];
     attentions: number;
     ton: 'majordome' | 'soc';
+    langue?: 'fr' | 'en';
   }) => Releve | null;
-  nommeLAbsence: (d: Date, m: Date) => string;
+  nommeLAbsence: (d: Date, m: Date, langue?: 'fr' | 'en') => string;
   ABSENCE_MIN_MS: number;
 }>('src/lib/releve.ts');
 
@@ -221,6 +222,78 @@ dit('parti mardi, revenu vendredi : la date, en français', () => {
 dit('même journée : ces dernières heures', () => {
   const matin = new Date(2026, 2, 16, 4, 0);
   assert.equal(nommeLAbsence(matin, LUNDI_9H), 'Ces dernières heures');
+});
+
+/* ─── La grammaire anglaise — ses propres règles, pas une traduction ──────── */
+
+dit('EN : les petits nombres suivent la convention anglaise (one…nine)', () => {
+  const r = construireReleve({
+    depuis: vendrediSoir,
+    maintenant: LUNDI_9H,
+    observations: [obs(3, 'a new order', 'new orders')],
+    attentions: 0,
+    ton: 'majordome',
+    langue: 'en',
+  });
+  assert.ok(r);
+  assert.equal(r.lignes[0], 'three new orders');
+});
+
+dit('EN : les verdicts sont ÉCRITS en anglais, pas convertis', () => {
+  const calme = (ton: 'majordome' | 'soc') =>
+    construireReleve({
+      depuis: vendrediSoir,
+      maintenant: LUNDI_9H,
+      observations: [],
+      attentions: 0,
+      ton,
+      langue: 'en',
+    });
+  assert.equal(calme('majordome')?.lignes.at(-1), 'All is well.');
+  assert.equal(calme('soc')?.lignes.at(-1), 'Nothing else to report.');
+  const deux = construireReleve({
+    depuis: vendrediSoir,
+    maintenant: LUNDI_9H,
+    observations: [],
+    attentions: 2,
+    ton: 'soc',
+    langue: 'en',
+  });
+  assert.equal(deux?.lignes.at(-1), 'Two things to look at.');
+});
+
+dit('EN : l’absence porte son nom anglais (week-end, nuit, hier, date)', () => {
+  assert.equal(nommeLAbsence(vendrediSoir, LUNDI_9H, 'en'), 'Over the weekend');
+  assert.equal(nommeLAbsence(new Date(2026, 2, 15, 19, 0), LUNDI_9H, 'en'), 'Overnight');
+  assert.equal(
+    nommeLAbsence(new Date(2026, 2, 10, 15, 0), new Date(2026, 2, 13, 9, 0), 'en'),
+    'Since 10 March',
+  );
+});
+
+dit('EN : jamais d’exclamation non plus, et zéro nouveauté parle anglais', () => {
+  const r = construireReleve({
+    depuis: vendrediSoir,
+    maintenant: LUNDI_9H,
+    observations: [obs(0, 'an order', 'orders')],
+    attentions: 0,
+    ton: 'majordome',
+    langue: 'en',
+  });
+  assert.ok(r);
+  assert.match(r.lignes[0], /Nothing new/);
+  for (const l of [r.entete, ...r.lignes]) assert.ok(!l.includes('!'), l);
+});
+
+dit('LA RÈGLE : sans langue demandée, le français — le produit ne perd rien', () => {
+  const r = construireReleve({
+    depuis: vendrediSoir,
+    maintenant: LUNDI_9H,
+    observations: [],
+    attentions: 0,
+    ton: 'majordome',
+  });
+  assert.equal(r?.lignes.at(-1), 'Tout va bien.');
 });
 
 console.log(`\nOK — ${vus} contrôles.\n`);

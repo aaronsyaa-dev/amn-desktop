@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useSync } from '../state/SyncContext';
 import { poserSourceDuFlux } from '../lib/fluxVisible';
+import { useLangue } from '../i18n';
 
 /**
  * Discreet live-sync status pill for the top bar. Reflects the amn-api
@@ -9,6 +10,7 @@ import { poserSourceDuFlux } from '../lib/fluxVisible';
  */
 export function SyncStatusIndicator() {
   const { connectionStatus } = useSync();
+  const { t } = useLangue();
 
   /*
     LA SOURCE DU FLUX VISIBLE : c'est ici que la donnée entre dans le poste,
@@ -22,10 +24,10 @@ export function SyncStatusIndicator() {
   }, []);
 
   const meta = {
-    online: { dot: 'bg-success', pulse: false, label: 'Synchronisé', title: 'Connecté à amn-api — changements partagés en temps réel.' },
-    connecting: { dot: 'bg-warning', pulse: true, label: 'Connexion…', title: 'Connexion au serveur de synchronisation en cours.' },
-    offline: { dot: 'bg-warning', pulse: true, label: 'Hors ligne', title: 'Serveur injoignable — vos changements sont enregistrés localement et se resynchroniseront automatiquement au retour de la connexion.' },
-    unconfigured: { dot: 'bg-text-muted', pulse: false, label: 'Local', title: 'Mode local (serveur de synchronisation non configuré).' },
+    online: { dot: 'bg-success', pulse: false, label: t('sync.synchronise'), title: t('sync.synchroniseTitre') },
+    connecting: { dot: 'bg-warning', pulse: true, label: t('sync.connexion'), title: t('sync.connexionTitre') },
+    offline: { dot: 'bg-warning', pulse: true, label: t('sync.horsLigne'), title: t('sync.horsLigneTitre') },
+    unconfigured: { dot: 'bg-text-muted', pulse: false, label: t('sync.local'), title: t('sync.localTitre') },
   }[connectionStatus];
 
   return (

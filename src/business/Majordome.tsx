@@ -6,6 +6,7 @@ import { useCollection } from '../state/SyncContext';
 import { useInvoices } from '../state/useInvoices';
 import { passagePrecedent, RelevePoste } from '../components/RelevePoste';
 import type { Observation } from '../lib/releve';
+import { useLangue } from '../i18n';
 
 /**
  * LE MAJORDOME — la relève de poste, au ton de la maison.
@@ -35,6 +36,7 @@ export function Majordome({ attentions }: { attentions: number }) {
   const { clients } = useClients();
   const { invoices } = useInvoices();
   const taches = useCollection<TacheLigne>('tasks');
+  const { t, langue } = useLangue();
 
   const depuis = useMemo(() => passagePrecedent(org?.id), [org?.id]);
 
@@ -48,27 +50,27 @@ export function Majordome({ attentions }: { attentions: number }) {
     return [
       {
         nombre: invoices.filter((f) => apres(f.createdAt, depuis)).length,
-        un: 'une facture créée',
-        plusieurs: 'factures créées',
+        un: t('relev.facture.un'),
+        plusieurs: t('relev.facture.des'),
       },
       {
         nombre: appointments.filter((a) => a.status !== 'cancelled' && apres(a.createdAt, depuis))
           .length,
-        un: 'un rendez-vous posé',
-        plusieurs: 'rendez-vous posés',
+        un: t('relev.rdv.un'),
+        plusieurs: t('relev.rdv.des'),
       },
       {
         nombre: clients.filter((c) => apres(c.createdAt, depuis)).length,
-        un: 'une nouvelle fiche client',
-        plusieurs: 'nouvelles fiches clients',
+        un: t('relev.fiche.un'),
+        plusieurs: t('relev.fiche.des'),
       },
       {
         nombre: taches.filter((t) => apres(t.createdAt, depuis)).length,
-        un: 'une tâche ajoutée',
-        plusieurs: 'tâches ajoutées',
+        un: t('relev.tache.un'),
+        plusieurs: t('relev.tache.des'),
       },
     ];
-  }, [depuis, invoices, appointments, clients, taches]);
+  }, [depuis, invoices, appointments, clients, taches, langue]);
 
   return (
     <RelevePoste depuis={depuis} observations={observations} attentions={attentions} ton="majordome" />

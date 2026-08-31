@@ -30,6 +30,7 @@ import { useAttention } from '../state/useAttention';
 import { passagePrecedent, RelevePoste } from '../components/RelevePoste';
 import { bridge } from '../lib/bridge';
 import type { Observation } from '../lib/releve';
+import { useLangue } from '../i18n';
 import { homeWelcome, homeNudge, parcSerein, alerteParc } from '../lib/homeGreetings';
 import { relativeTime } from '../lib/time';
 
@@ -113,6 +114,7 @@ export function HomeScreen() {
   */
   const depuisReleve = useMemo(() => passagePrecedent(org?.id), [org?.id]);
   const tachesReleve = useCollection<{ status?: string; createdAt?: string }>('tasks');
+  const { t: tr, langue: langueReleve } = useLangue();
   const [incidentsApparus, setIncidentsApparus] = useState(0);
   useEffect(() => {
     if (!depuisReleve) return;
@@ -138,19 +140,19 @@ export function HomeScreen() {
     return [
       {
         nombre: incidentsApparus,
-        un: 'un incident apparu',
-        plusieurs: 'incidents apparus',
+        un: tr('relev.incident.un'),
+        plusieurs: tr('relev.incident.des'),
       },
       {
         nombre: tachesReleve.filter((t) => {
           const d = t.createdAt ? Date.parse(t.createdAt) : NaN;
           return Number.isFinite(d) && d > depuisReleve.getTime();
         }).length,
-        un: 'une tâche ajoutée',
-        plusieurs: 'tâches ajoutées',
+        un: tr('relev.tache.un'),
+        plusieurs: tr('relev.tache.des'),
       },
     ];
-  }, [depuisReleve, incidentsApparus, tachesReleve]);
+  }, [depuisReleve, incidentsApparus, tachesReleve, langueReleve]);
   /*
     « JAMAIS VU » COMPTE, et c'est le chiffre qui manquait.
 

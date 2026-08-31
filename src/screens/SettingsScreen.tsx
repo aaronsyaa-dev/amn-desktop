@@ -60,6 +60,7 @@ import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { CHANGELOG } from '../data/changelog';
 import { DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs } from '../shared/api';
 import { AccentSection } from '../components/settings/AccentSection';
+import { LangueSection } from '../components/settings/LangueSection';
 import { useSupportContext } from '../state/OrgContextContext';
 
 export function SettingsScreen() {
@@ -111,6 +112,12 @@ export function SettingsScreen() {
           <AccentSection />
         </StaggerItem>
       )}
+      {/* La langue du POSTE — un choix de personne, en localStorage : il ne
+          part pas en synchronisation et ne change rien pour personne d'autre.
+          La langue de l'ORGANISATION se choisit à l'atelier. */}
+      <StaggerItem>
+        <LangueSection />
+      </StaggerItem>
       {/*
         Sécurité du compte : appareils connectés et journal d'accès.
 

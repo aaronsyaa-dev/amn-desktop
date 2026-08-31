@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Logo } from './Logo';
 import { useAuth } from '../auth/AuthContext';
 import { EDITION_PRODUCT_NAME } from '../edition/edition';
+import { langueActive, t } from '../i18n';
 
 const LAST_SHOWN_KEY = 'amn.welcome.lastShown';
 const DURATION_MS = 5200;
@@ -29,27 +30,32 @@ function markWelcomeShown(): void {
 }
 
 /**
- * Picks the most natural French voice the machine offers. Modern Windows
- * (10/11) and macOS ship higher-quality "Natural"/"Neural"/"Enhanced" voices
- * alongside the basic default — we score for those and for known-good French
- * voice names, falling back to any French voice, then the system default.
+ * Picks the most natural voice the machine offers FOR THE ACTIVE LANGUAGE.
+ * Modern Windows (10/11) and macOS ship higher-quality "Natural"/"Neural"/
+ * "Enhanced" voices alongside the basic default — we score for those and for
+ * known-good names, falling back to any voice of the language, then the
+ * system default. A French voice reading English (or the reverse) is the
+ * spoken version of the bilingual splash this file used to be.
  */
-function pickBestFrenchVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
-  const french = voices.filter((v) => v.lang?.toLowerCase().startsWith('fr'));
-  if (french.length === 0) return null;
+function pickBestVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+  const prefixe = langueActive() === 'en' ? 'en' : 'fr';
+  const dans = voices.filter((v) => v.lang?.toLowerCase().startsWith(prefixe));
+  if (dans.length === 0) return null;
 
   const NATURAL = /natural|neural|enhanced|premium|online/i;
-  const GOOD_NAMES = /(google|denise|henri|julie|paul|amélie|amelie|thomas|audrey|aurélie|aurelie|charlotte|léa|lea)/i;
+  const GOOD_NAMES =
+    /(google|denise|henri|julie|paul|amélie|amelie|thomas|audrey|aurélie|aurelie|charlotte|léa|lea|daniel|libby|sonia|ryan|aria|jenny|guy)/i;
 
   const score = (v: SpeechSynthesisVoice) => {
     let s = 0;
     if (NATURAL.test(v.name)) s += 5;
     if (GOOD_NAMES.test(v.name)) s += 3;
-    if (v.lang?.toLowerCase() === 'fr-fr') s += 1;
+    const lang = v.lang?.toLowerCase();
+    if (lang === 'fr-fr' || lang === 'en-gb' || lang === 'en-us') s += 1;
     return s;
   };
 
-  return [...french].sort((a, b) => score(b) - score(a))[0];
+  return [...dans].sort((a, b) => score(b) - score(a))[0];
 }
 
 /** Speaks the welcome via the free native Web Speech API, best voice available. */
@@ -59,10 +65,12 @@ function speakWelcome(name: string): void {
     if (!synth) return;
 
     const doSpeak = () => {
-      const voice = pickBestFrenchVoice(synth.getVoices());
-      const utter = new SpeechSynthesisUtterance(`Bienvenue sur ${EDITION_PRODUCT_NAME}. Bonjour ${name}.`);
+      const voice = pickBestVoice(synth.getVoices());
+      const utter = new SpeechSynthesisUtterance(
+        t('bienvenue.voix', { produit: EDITION_PRODUCT_NAME, nom: name }),
+      );
       if (voice) utter.voice = voice;
-      utter.lang = voice?.lang || 'fr-FR';
+      utter.lang = voice?.lang || (langueActive() === 'en' ? 'en-GB' : 'fr-FR');
       utter.rate = 0.93; // slightly slower — calmer, more posed
       utter.pitch = 1.02;
       synth.cancel();
@@ -163,7 +171,10 @@ export function WelcomeOverlay({ onDone }: { onDone: () => void }) {
                 transition={{ delay: 0.4, duration: 0.6 }}
                 className="text-3xl font-bold tracking-tight text-text-primary sm:text-4xl"
               >
-                Welcome to {EDITION_PRODUCT_NAME}
+                {/* LE SPLASH NE MÉLANGE PLUS : « Welcome to AMN Business »
+                    au-dessus de « BONJOUR » était l'écran bilingue type.
+                    Titre, salut et voix sortent du MÊME dictionnaire. */}
+                {t('bienvenue.titre', { produit: EDITION_PRODUCT_NAME })}
               </motion.h1>
               <motion.p
                 initial={{ opacity: 0 }}
@@ -171,7 +182,7 @@ export function WelcomeOverlay({ onDone }: { onDone: () => void }) {
                 transition={{ delay: 0.9, duration: 0.8 }}
                 className="font-mono text-sm uppercase tracking-[0.3em] text-text-secondary"
               >
-                Bonjour {name}
+                {t('bienvenue.salut', { nom: name })}
               </motion.p>
             </div>
 

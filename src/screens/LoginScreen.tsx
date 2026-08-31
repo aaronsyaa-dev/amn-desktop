@@ -5,6 +5,7 @@ import { Eye, EyeOff, Loader2, ShieldCheck} from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { Logo } from '../components/Logo';
 import { APP_VERSION, EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/edition';
+import { useLangue } from '../i18n';
 
 interface LocationState {
   from?: { pathname: string };
@@ -22,6 +23,7 @@ export function LoginScreen() {
   const navigate = useNavigate();
   const location = useLocation();
   const mouvementReduit = useReducedMotion();
+  const { t } = useLangue();
 
   /*
     LE POINT D'ÉTAT DIT LA VÉRITÉ (Signes Vitaux).
@@ -76,7 +78,7 @@ export function LoginScreen() {
     setError(null);
 
     if (!email || !password) {
-      setError('Veuillez renseigner votre email et votre mot de passe.');
+      setError(t('connexion.champsRequis'));
       return;
     }
 
@@ -97,7 +99,7 @@ export function LoginScreen() {
       setError(
         err instanceof Error
           ? err.message
-          : 'Une erreur est survenue lors de la connexion.',
+          : t('connexion.erreurGenerique'),
       );
     }
   };
@@ -117,7 +119,7 @@ export function LoginScreen() {
     } catch (err) {
       setPhase('idle');
       setCode('');
-      setError(err instanceof Error ? err.message : 'Code invalide.');
+      setError(err instanceof Error ? err.message : t('connexion.mfa.codeInvalide'));
     }
   };
 
@@ -157,16 +159,14 @@ export function LoginScreen() {
         >
           <div className="panel-head flex items-center justify-between border-b border-border px-5 py-2.5">
             <span className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">
-              Double authentification
+              {t('connexion.mfa.titre')}
             </span>
             <ShieldCheck size={13} strokeWidth={2} className="text-success" />
           </div>
 
           <div className="flex flex-col gap-4 p-6">
             <p className="text-xs leading-relaxed text-text-secondary">
-              {useBackup
-                ? 'Saisissez l’un de vos codes de secours. Il ne servira qu’une fois.'
-                : 'Ouvrez votre application d’authentification et saisissez le code à six chiffres.'}
+              {useBackup ? t('connexion.mfa.consigneSecours') : t('connexion.mfa.consigne')}
               <span className="mt-1 block font-mono text-[10px] text-text-muted">
                 {challenge.email}
               </span>
@@ -174,7 +174,7 @@ export function LoginScreen() {
 
             <label className="flex flex-col gap-1.5">
               <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                {useBackup ? 'Code de secours' : 'Code à six chiffres'}
+                {useBackup ? t('connexion.mfa.codeSecours') : t('connexion.mfa.code')}
               </span>
               <input
                 // `one-time-code` : c'est ce qui déclenche la proposition
@@ -201,7 +201,7 @@ export function LoginScreen() {
               disabled={phase === 'submitting' || code.trim().length < 6}
               className="flex min-h-11 items-center justify-center gap-2 bg-accent text-sm font-semibold text-bg transition-colors hover:bg-accent-hover disabled:opacity-40"
             >
-              {phase === 'submitting' ? 'Vérification…' : 'Valider'}
+              {phase === 'submitting' ? t('connexion.verification') : t('connexion.mfa.valider')}
             </button>
 
             <button
@@ -213,7 +213,7 @@ export function LoginScreen() {
               }}
               className="min-h-11 font-mono text-[10px] uppercase tracking-widest text-text-muted transition-colors hover:text-text-secondary md:min-h-0"
             >
-              {useBackup ? 'Utiliser l’application' : 'Utiliser un code de secours'}
+              {useBackup ? t('connexion.mfa.utiliserApp') : t('connexion.mfa.utiliserSecours')}
             </button>
           </div>
         </motion.form>
@@ -230,7 +230,7 @@ export function LoginScreen() {
           <span className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">
             {/* Le registre suit l'édition : « Console d'accès » est la langue
                 du centre de supervision, pas celle d'une fleuriste. */}
-            {IS_BUSINESS ? 'Votre espace' : 'Console d’accès'}
+            {IS_BUSINESS ? t('connexion.espace') : t('connexion.console')}
           </span>
           {/*
             LE SCEAU — l'élément signature de cet écran.
@@ -252,7 +252,7 @@ export function LoginScreen() {
               />
             )}
             <span
-              title={enLigne ? 'En ligne' : 'Hors ligne'}
+              title={enLigne ? t('connexion.enLigne') : t('connexion.horsLigne')}
               className={`h-1.5 w-1.5 rounded-full ${enLigne ? 'bg-success' : 'bg-border-strong'}`}
             />
           </span>
@@ -261,7 +261,7 @@ export function LoginScreen() {
         <div className="flex flex-col gap-4 p-6">
           <label className="flex flex-col gap-1.5">
             <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-              Identifiant
+              {t('connexion.identifiant')}
             </span>
             <input
               type="email"
@@ -277,7 +277,7 @@ export function LoginScreen() {
 
           <label className="flex flex-col gap-1.5">
             <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-              Mot de passe
+              {t('connexion.motDePasse')}
             </span>
             <div className="input-focus relative flex items-center border border-border bg-bg focus-within:border-border-strong focus-within:shadow-[0_0_0_3px_rgba(255,255,255,0.1)]">
               <input
@@ -296,7 +296,7 @@ export function LoginScreen() {
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
                 tabIndex={-1}
-                aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                aria-label={showPassword ? t('connexion.masquerMdp') : t('connexion.afficherMdp')}
                 className="flex h-full items-center px-3 text-text-muted transition-colors hover:text-text-secondary"
               >
                 {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -308,7 +308,7 @@ export function LoginScreen() {
                 animate={{ opacity: 1, y: 0 }}
                 className="font-mono text-[10px] uppercase tracking-widest text-warning"
               >
-                Verr. Maj activé
+                {t('connexion.verrMaj')}
               </motion.span>
             )}
           </label>
@@ -328,7 +328,7 @@ export function LoginScreen() {
             className="mt-1 flex items-center justify-center gap-2 bg-accent px-3 py-2.5 text-sm font-semibold text-bg transition-colors duration-200 hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             {(isSubmitting || leaving) && <Loader2 size={15} className="animate-spin" />}
-            {leaving ? 'Bienvenue…' : isSubmitting ? 'Vérification…' : 'Se connecter'}
+            {leaving ? t('connexion.bienvenue') : isSubmitting ? t('connexion.verification') : t('connexion.seConnecter')}
           </button>
         </div>
       </motion.form>
@@ -341,7 +341,7 @@ export function LoginScreen() {
         version — le détail que vérifie précisément un acheteur de sécurité).
       */}
       <p className="absolute bottom-6 left-0 right-0 text-center font-mono text-[10px] uppercase tracking-widest text-text-muted">
-        {IS_BUSINESS ? `${EDITION_PRODUCT_NAME} · Espace de travail` : 'AMN DevSec · Centre de supervision'}
+        {IS_BUSINESS ? t('connexion.lieuCliente', { produit: EDITION_PRODUCT_NAME }) : t('connexion.lieuInterne')}
         <span className="mx-2 text-border-strong">·</span>v{APP_VERSION}
       </p>
     </motion.div>

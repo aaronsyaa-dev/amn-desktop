@@ -49,15 +49,28 @@ export interface Releve {
   readonly lignes: string[];
 }
 
+export type LangueReleve = 'fr' | 'en';
+
 /** Le seuil en dessous duquel une absence n'est pas une absence. */
 export const ABSENCE_MIN_MS = 4 * 60 * 60 * 1000;
 
-const EN_LETTRES = ['zéro', 'une', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix'];
+/*
+  CHAQUE LANGUE A SA GRAMMAIRE — jamais un gabarit traduit mot à mot.
 
-/** Féminin par défaut : les noms observés ici sont surtout féminins (commande,
-    tâche, facture, fiche). L'appelant qui compte des masculins passe par `un`. */
-function enLettres(n: number): string {
-  return n >= 0 && n <= 10 ? EN_LETTRES[n] : String(n);
+  Le français écrit les petits nombres en lettres jusqu'à dix ; l'anglais
+  suit sa propre convention d'édition (spell out one through nine) et n'a pas
+  de genre à porter. Les verdicts, les en-têtes et les replis sont ÉCRITS
+  dans chaque langue, pas convertis — c'est la règle du chantier langue, et
+  `check:releve` l'éprouve dans les deux.
+*/
+const LETTRES_FR = ['zéro', 'une', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix'];
+const LETTRES_EN = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+
+/** FR : féminin par défaut — les noms observés sont surtout féminins
+    (commande, tâche, facture, fiche) ; un masculin passe par `un`. */
+function enLettres(n: number, langue: LangueReleve): string {
+  if (langue === 'en') return n >= 0 && n <= 9 ? LETTRES_EN[n] : String(n);
+  return n >= 0 && n <= 10 ? LETTRES_FR[n] : String(n);
 }
 
 /**
@@ -68,7 +81,7 @@ function enLettres(n: number): string {
  * matin d'après), puis hier, puis la date. « Ces dernières heures » couvre le
  * reste d'une même journée.
  */
-export function nommeLAbsence(depuis: Date, maintenant: Date): string {
+export function nommeLAbsence(depuis: Date, maintenant: Date, langue: LangueReleve = 'fr'): string {
   const jourDepart = depuis.getDay();
   const memeJour =
     depuis.getFullYear() === maintenant.getFullYear() &&
@@ -81,21 +94,27 @@ export function nommeLAbsence(depuis: Date, maintenant: Date): string {
     depuis.getMonth() === hier.getMonth() &&
     depuis.getDate() === hier.getDate();
 
+  const anglais = langue === 'en';
   if ((jourDepart === 5 || jourDepart === 6 || jourDepart === 0) && !memeJour && !partiHier) {
-    return 'Pendant le week-end';
+    return anglais ? 'Over the weekend' : 'Pendant le week-end';
   }
   if (partiHier && depuis.getHours() >= 17 && maintenant.getHours() < 13) {
-    return 'Pendant la nuit';
+    return anglais ? 'Overnight' : 'Pendant la nuit';
   }
-  if (partiHier) return 'Depuis hier';
-  if (memeJour) return 'Ces dernières heures';
+  if (partiHier) return anglais ? 'Since yesterday' : 'Depuis hier';
+  if (memeJour) return anglais ? 'These past hours' : 'Ces dernières heures';
+  if (anglais) {
+    // La convention anglaise : « Since 12 March » (jour puis mois, sans « le »).
+    const quand = depuis.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+    return `Since ${quand}`;
+  }
   const quand = depuis.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
   return `Depuis le ${quand}`;
 }
 
-function ligneDe(obs: Observation): string {
+function ligneDe(obs: Observation, langue: LangueReleve): string {
   if (obs.nombre === 1) return obs.un;
-  return `${enLettres(obs.nombre)} ${obs.plusieurs}`;
+  return `${enLettres(obs.nombre, langue)} ${obs.plusieurs}`;
 }
 
 export function construireReleve({
@@ -104,25 +123,40 @@ export function construireReleve({
   observations,
   attentions,
   ton,
+  langue = 'fr',
 }: {
   /** Le dernier passage sur CE poste, ou null si on ne le connaît pas. */
   depuis: Date | null;
   maintenant: Date;
-  /** Déjà comptées, déjà ordonnées par importance — l'ordre fait foi. */
+  /** Déjà comptées, déjà ordonnées par importance — l'ordre fait foi.
+      Les libellés `un`/`plusieurs` arrivent DÉJÀ dans la langue voulue. */
   observations: readonly Observation[];
   /** Combien de points d'attention sont ouverts en ce moment. */
   attentions: number;
   ton: 'majordome' | 'soc';
+  langue?: LangueReleve;
 }): Releve | null {
   if (!depuis) return null;
   const absence = maintenant.getTime() - depuis.getTime();
   if (!Number.isFinite(absence) || absence < ABSENCE_MIN_MS) return null;
 
   const chaud = ton === 'majordome';
+  const anglais = langue === 'en';
 
-  const nouvelles = observations.filter((o) => o.nombre > 0).slice(0, 2).map(ligneDe);
+  const nouvelles = observations
+    .filter((o) => o.nombre > 0)
+    .slice(0, 2)
+    .map((o) => ligneDe(o, langue));
   if (nouvelles.length === 0) {
-    nouvelles.push(chaud ? 'Rien de nouveau pendant votre absence' : 'Aucune arrivée pendant l’absence');
+    nouvelles.push(
+      anglais
+        ? chaud
+          ? 'Nothing new while you were away'
+          : 'No arrivals during the absence'
+        : chaud
+          ? 'Rien de nouveau pendant votre absence'
+          : 'Aucune arrivée pendant l’absence',
+    );
   }
 
   /*
@@ -131,18 +165,29 @@ export function construireReleve({
     dit s'il peut poser son manteau ou pas.
   */
   let verdict: string;
-  if (attentions === 0) {
+  if (anglais) {
+    if (attentions === 0) {
+      verdict = chaud ? 'All is well.' : 'Nothing else to report.';
+    } else if (attentions === 1) {
+      verdict = 'One thing to look at.';
+    } else {
+      verdict = `${enLettres(attentions, 'en')} things to look at.`.replace(/^./, (c) =>
+        c.toUpperCase(),
+      );
+    }
+  } else if (attentions === 0) {
     verdict = chaud ? 'Tout va bien.' : 'Rien d’autre à savoir.';
   } else if (attentions === 1) {
     verdict = 'Un point à voir.';
   } else {
-    verdict = `${enLettres(attentions).replace(/^une$/, 'Une')} points à voir.`.replace(/^./, (c) =>
-      c.toUpperCase(),
+    verdict = `${enLettres(attentions, 'fr').replace(/^une$/, 'Une')} points à voir.`.replace(
+      /^./,
+      (c) => c.toUpperCase(),
     );
   }
 
   return {
-    entete: nommeLAbsence(depuis, maintenant),
+    entete: nommeLAbsence(depuis, maintenant, langue),
     lignes: [...nouvelles, verdict],
   };
 }

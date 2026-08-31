@@ -10,6 +10,7 @@ import React, {
 import { bridge } from '../lib/bridge';
 import { setEnabledModules } from '../data/spaces';
 import { applyAccent } from '../lib/accent';
+import { poserLangueOrganisation } from '../i18n';
 import { clearGuestQuotaBlock } from '../state/guestQuotaStore';
 import { cleanErrorMessage, isApiUnreachable } from '../lib/errorMessage';
 import { IS_BUSINESS, CLIENT_PRODUCT_NAME } from '../edition/edition';
@@ -438,6 +439,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   */
   useLayoutEffect(() => {
     setEnabledModules(org?.modules ?? null);
+    // La langue de l'organisation suit le même chemin que ses modules et sa
+    // couleur : elle vient de l'identité de session, jamais d'un réglage
+    // local — voir src/i18n pour qui a le dernier mot.
+    poserLangueOrganisation(org?.language ?? null);
     // La couleur d'accent suit la même organisation, et par le même chemin :
     // décidée par le serveur, appliquée par le poste. Avant peinture, pour
     // qu'aucun rendu n'affiche la couleur de l'organisation précédente.

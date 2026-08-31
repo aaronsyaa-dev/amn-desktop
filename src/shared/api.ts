@@ -55,6 +55,12 @@ export interface OrgIdentity {
    * validé une fois pour toutes dans `src/lib/accent.ts`.
    */
   accent?: string | null;
+  /**
+   * La langue de l'organisation ('fr' | 'en'), choisie à l'atelier, ou
+   * `null` = français. Le poste la suit, sauf choix de la personne
+   * (Réglages → Langue) — voir src/i18n.
+   */
+  language?: string | null;
 }
 
 export type OrgStatus = 'active' | 'suspended';
@@ -79,6 +85,8 @@ export interface AdminOrganization {
   accent?: string | null;
   /** Métier de l'organisation (BLOC 6) ; `null` = inconnu, libellés génériques. */
   trade?: string | null;
+  /** Langue de l'organisation ('fr' | 'en') ; `null` = français. */
+  language?: string | null;
   userCount: number;
   /** ISO, ou null si l'organisation n'a encore rien produit. */
   lastActivityAt: string | null;
@@ -265,6 +273,14 @@ export interface CreateOrganizationInput {
    * des intitulés faux avec l'aplomb d'une donnée saisie.
    */
   trade?: string;
+  /**
+   * La LANGUE de l'organisation ('fr' | 'en'), choisie à l'atelier.
+   *
+   * Facultative : absente, l'organisation parle français — le produit actuel
+   * ne perd rien. Chaque poste peut ensuite la suivre ou la remplacer par un
+   * choix personnel (Réglages), qui reste local à ce poste-là.
+   */
+  language?: string;
 }
 
 /**
@@ -2759,6 +2775,8 @@ export interface AmnBridge {
           accent?: string | null;
           /** Métier ; `null` efface le métier et rend les libellés génériques. */
           trade?: string | null;
+          /** Langue de l'organisation ('fr' | 'en') ; `null` = français. */
+          language?: string | null;
         },
       ): Promise<AdminOrganization>;
       setOrganizationStatus(id: string, status: OrgStatus): Promise<AdminOrganization>;

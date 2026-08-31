@@ -390,6 +390,10 @@ const adminApi = {
         plan: input.plan,
         ownerEmail: input.ownerEmail,
         logoDataUrl: input.logoDataUrl || undefined,
+        // Le métier et la langue voyagent DÈS la création : les omettre ici
+        // les faisait silencieusement disparaître entre l'atelier et l'API.
+        trade: input.trade || undefined,
+        language: input.language || undefined,
       }),
     });
   },
@@ -403,6 +407,8 @@ const adminApi = {
       guestDailyMinutes?: number | null;
       timezone?: string | null;
       accent?: string | null;
+      trade?: string | null;
+      language?: string | null;
     },
   ): Promise<AdminOrganization> {
     const { organization } = await apiFetch<{ organization: AdminOrganization }>(

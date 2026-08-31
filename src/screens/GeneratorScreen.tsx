@@ -86,6 +86,10 @@ export function GeneratorScreen() {
   const [accentId, setAccentId] = React.useState('blanc');
   const [seats, setSeats] = React.useState(2);
   const [guestMinutes, setGuestMinutes] = React.useState(60);
+  // La langue de l'organisation entière — chaque poste peut ensuite la suivre
+  // ou choisir la sienne dans ses Réglages. 'fr' par défaut : le produit
+  // actuel ne perd rien.
+  const [langueOrg, setLangueOrg] = React.useState<'fr' | 'en'>('fr');
   const [handover, setHandover] = React.useState<Handover>('password');
 
   const [busy, setBusy] = React.useState(false);
@@ -192,6 +196,7 @@ export function GeneratorScreen() {
         // accepte l'absence, et l'organisation affichera les libellés
         // génériques plutôt qu'un métier deviné.
         trade: profile?.id,
+        language: langueOrg,
       });
       if (!created.owner) throw new Error('Organisation créée sans compte propriétaire.');
 
@@ -550,6 +555,38 @@ export function GeneratorScreen() {
                         }`}
                       >
                         <span className="h-4 w-4" style={{ background: accent.value }} />
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="panel p-4">
+                  <p className="eyebrow mb-2">Langue de l’espace</p>
+                  <p className="mb-4 text-[11px] leading-snug text-text-muted">
+                    La langue de toute l’organisation : ses écrans, sa relève, ses courriers.
+                    Chaque personne peut ensuite préférer une autre langue sur son propre poste,
+                    depuis ses paramètres — sans rien changer pour les autres.
+                  </p>
+                  <div className="flex flex-wrap gap-2" role="group" aria-label="Langue de l’espace">
+                    {(
+                      [
+                        { valeur: 'fr', libelle: 'Français' },
+                        { valeur: 'en', libelle: 'English' },
+                      ] as const
+                    ).map((l) => (
+                      <button
+                        key={l.valeur}
+                        type="button"
+                        onClick={() => setLangueOrg(l.valeur)}
+                        aria-pressed={langueOrg === l.valeur}
+                        className={`flex min-h-11 items-center gap-2 border px-3 text-sm transition-colors md:min-h-9 ${
+                          langueOrg === l.valeur
+                            ? 'border-border-strong bg-accent-muted text-text-primary'
+                            : 'border-border text-text-secondary hover:border-border-strong hover:text-text-primary'
+                        }`}
+                      >
+                        {langueOrg === l.valeur && <Check size={14} strokeWidth={2} />}
+                        {l.libelle}
                       </button>
                     ))}
                   </div>

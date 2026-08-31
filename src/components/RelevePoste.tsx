@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { construireReleve, type Observation } from '../lib/releve';
+import { useLangue } from '../i18n';
 
 /**
  * LA RELÈVE DE POSTE — l'enveloppe partagée des deux tons (Signes Vitaux).
@@ -84,6 +85,7 @@ export function RelevePoste({
   className?: string;
 }) {
   const mouvementReduit = useReducedMotion();
+  const { langue, t } = useLangue();
 
   const releve = useMemo(() => {
     if (!depuis) return null;
@@ -93,8 +95,9 @@ export function RelevePoste({
       observations: [...observations],
       attentions,
       ton,
+      langue,
     });
-  }, [depuis, observations, attentions, ton]);
+  }, [depuis, observations, attentions, ton, langue]);
 
   if (!releve) return null;
 
@@ -106,7 +109,7 @@ export function RelevePoste({
   */
   return (
     <motion.section
-      aria-label="Pendant votre absence"
+      aria-label={t('accueil.relev.aria')}
       initial={mouvementReduit ? false : 'cache'}
       animate="visible"
       variants={{ visible: { transition: { staggerChildren: 0.9, delayChildren: 0.4 } } }}
