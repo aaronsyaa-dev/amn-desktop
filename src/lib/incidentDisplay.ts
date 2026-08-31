@@ -65,9 +65,16 @@ export function tonIncident(incident: Pick<Incident, 'severity' | 'status'>): 'u
 
 export const TON_STYLE: Record<ReturnType<typeof tonIncident>, { point: string; puce: string; bord: string }> = {
   urgent: {
+    /*
+      UN PORTEUR ROUGE PAR CARTE (docs/ROUGE.md, F4). Le ton urgent cumulait
+      point rouge + puce rouge + arête rouge — cent quarante-huit cartes à
+      trois porteurs chacune, l'écran cessait d'être noir. Le POINT garde le
+      rouge (c'est lui qui pulse pour un critique non pris) ; la puce et
+      l'arête redeviennent la voix neutre des autres tons.
+    */
     point: 'bg-danger',
-    puce: 'border-danger/50 text-danger',
-    bord: 'border-l-danger',
+    puce: 'border-border-strong text-text-primary',
+    bord: 'border-l-border-strong',
   },
   attention: {
     point: 'bg-text-primary',
