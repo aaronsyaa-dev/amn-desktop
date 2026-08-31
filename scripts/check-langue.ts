@@ -108,7 +108,7 @@ dit('LA RÈGLE : l’anglais est sans résidu français', () => {
     anglaise : refusés. (Les noms propres et « Français » comme nom de
     langue dans son propre sélecteur sont légitimes.)
   */
-  const residus = /[«»  ]|\b(le|la|les|un|une|des|votre|vos|est|sont|avec|pour|dans)\b/i;
+  const residus = /[«»\u202f\u00a0]|\b(le|la|les|un|une|des|votre|vos|est|sont|avec|pour|dans)\b/i;
   for (const [k, v] of Object.entries(en)) {
     if (k === 'reglages.langue.francais') continue; // « Français » se nomme chez lui
     assert.ok(!residus.test(v), `résidu français dans l'anglais : ${k} → ${v}`);
