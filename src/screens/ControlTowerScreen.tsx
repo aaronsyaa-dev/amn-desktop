@@ -26,7 +26,7 @@ import { relativeTime } from '../lib/time';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { OrgBanner } from '../components/org-rail/OrgBanner';
 import { useParcInsights } from '../state/parcInsights';
-import { computeTrend, trendSymbol } from '../lib/trend';
+import { computeTrend } from '../lib/trend';
 import type { OrgAccessEntry, SupervisionState } from '../shared/api';
 
 /**
@@ -129,17 +129,9 @@ export function ControlTowerScreen() {
             */
             {
               label: releve.data ? `Actives (${releve.data.windowDays} j)` : 'Actives',
-              value: releve.data ? (
-                <span className="inline-flex items-baseline gap-1.5">
-                  {releve.data.totals.active7d}
-                  <span className="font-mono text-[11px] text-text-muted">
-                    {trendSymbol(
-                      computeTrend(releve.data.totals.records7d, releve.data.totals.previous7d)
-                        .direction,
-                    )}
-                  </span>
-                </span>
-              ) : undefined,
+              // Plus de flèche : voir le commentaire jumeau d'OrganizationsScreen —
+              // la tendance du volume se dit en toutes lettres dans l'infobulle.
+              value: releve.data ? releve.data.totals.active7d : undefined,
               title: releve.data
                 ? `Clientes ayant écrit quelque chose sur ${releve.data.windowDays} jours. Volume : ${computeTrend(releve.data.totals.records7d, releve.data.totals.previous7d).sentence}.`
                 : undefined,

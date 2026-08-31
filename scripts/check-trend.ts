@@ -44,11 +44,11 @@ interface Trend {
 }
 interface TrendModule {
   computeTrend(current: number, previous: number): Trend;
-  trendSymbol(direction: TrendDirection): string;
   SEUIL_BRUIT: number;
 }
 
-const { computeTrend, trendSymbol, SEUIL_BRUIT } = await loadFromSrc<TrendModule>('src/lib/trend.ts');
+const module_ = await loadFromSrc<TrendModule & Record<string, unknown>>('src/lib/trend.ts');
+const { computeTrend, SEUIL_BRUIT } = module_;
 
 const failures: string[] = [];
 function check(name: string, run: () => void) {
@@ -68,7 +68,6 @@ check('deux périodes vides : aucune tendance, et aucun pourcentage', () => {
   const t = computeTrend(0, 0);
   assert.equal(t.direction, 'none');
   assert.equal(t.percent, null, 'un 0 % ici prétendrait qu’on a mesuré quelque chose');
-  assert.equal(trendSymbol(t.direction), '', 'rien à signaler : rien à afficher');
 });
 
 check('période précédente vide : un DÉBUT, pas une hausse de x %', () => {
@@ -77,7 +76,6 @@ check('période précédente vide : un DÉBUT, pas une hausse de x %', () => {
   assert.equal(t.percent, null);
   // Le vrai défaut que ce cas existe pour empêcher : (7 - 0) / 0 = Infinity.
   assert.ok(!/Infinity|NaN/.test(t.sentence), t.sentence);
-  assert.notEqual(trendSymbol(t.direction), '↑', 'une flèche ferait croire à une progression mesurée');
 });
 
 check('un écart sous le seuil reste du bruit', () => {
@@ -85,14 +83,12 @@ check('un écart sous le seuil reste du bruit', () => {
   const t = computeTrend(41, 40);
   assert.equal(t.direction, 'flat');
   assert.ok(Math.abs(t.percent as number) < SEUIL_BRUIT);
-  assert.equal(trendSymbol(t.direction), '');
 });
 
 check('au-delà du seuil, la hausse est dite', () => {
   const t = computeTrend(30, 20);
   assert.equal(t.direction, 'up');
   assert.equal(t.percent, 50);
-  assert.equal(trendSymbol(t.direction), '↑');
   assert.match(t.sentence, /\+50 %/);
 });
 
@@ -100,7 +96,13 @@ check('une baisse se dit baisse — rien n’est enjolivé', () => {
   const t = computeTrend(10, 20);
   assert.equal(t.direction, 'down');
   assert.equal(t.percent, -50);
-  assert.equal(trendSymbol(t.direction), '↓');
+});
+
+check('LA RÈGLE : la flèche est retirée — la tendance se dit, elle ne se dessine pas', () => {
+  // « 5 ↑ » collait la tendance du VOLUME au chiffre des clientes ACTIVES :
+  // deux mesures lues comme une seule. La phrase est la seule sortie.
+  assert.equal(module_.trendSymbol, undefined, 'trendSymbol ne doit pas revenir');
+  assert.match(computeTrend(30, 20).sentence, /\+50 % \(30 contre 20\)/);
 });
 
 check('tomber à zéro est une baisse de 100 %, pas une absence de tendance', () => {

@@ -10,7 +10,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { bridge } from '../lib/bridge';
 import { useParcInsights } from '../state/parcInsights';
-import { computeTrend, trendSymbol } from '../lib/trend';
+import { computeTrend } from '../lib/trend';
 import { cleanErrorMessage } from '../lib/errorMessage';
 import type { AdminOrganization } from '../shared/api';
 
@@ -92,23 +92,16 @@ export function OrganizationsScreen() {
             { label: 'Gérées', value: organizations.length },
             {
               label: parc.data ? `Actives (${parc.data.windowDays} j)` : 'Actives',
-              value: parc.data ? (
-                <span className="inline-flex items-baseline gap-1.5">
-                  {parc.data.totals.active7d}
-                  {/*
-                    La tendance porte sur le VOLUME écrit, pas sur le nombre de
-                    clientes actives : à parc constant — le cas courant — ce
-                    second chiffre ne bouge jamais et la flèche serait morte.
-                    Ce qui varie d'une semaine à l'autre, c'est ce qui est
-                    produit, et c'est ce que l'infobulle détaille.
-                  */}
-                  <span className="font-mono text-[11px] text-text-muted">
-                    {trendSymbol(
-                      computeTrend(parc.data.totals.records7d, parc.data.totals.previous7d).direction,
-                    )}
-                  </span>
-                </span>
-              ) : undefined,
+              /*
+                Plus de flèche à côté du chiffre : elle portait sur le VOLUME
+                écrit alors que le chiffre compte les clientes actives — deux
+                mesures collées l'une à l'autre se lisent comme une seule. La
+                règle des Signes Vitaux (« pas de flèche ↑↓, réflexe de tableau
+                de bord ») tranche : la tendance se DIT, en toutes lettres,
+                dans l'infobulle — et sur l'accueil, la bande de supervision
+                l'écrit déjà en une phrase complète.
+              */
+              value: parc.data ? parc.data.totals.active7d : undefined,
               title: parc.data
                 ? `Organisations ayant écrit quelque chose sur ${parc.data.windowDays} jours. Volume : ${computeTrend(parc.data.totals.records7d, parc.data.totals.previous7d).sentence}.`
                 : undefined,

@@ -85,17 +85,10 @@ export function computeTrend(current: number, previous: number): Trend {
   };
 }
 
-/**
- * Le signe à poser à côté du chiffre.
- *
- * Une chaîne vide pour `flat` et `none` : un symbole « stable » ajouterait du
- * bruit visuel à l'endroit précis où il n'y a rien à signaler. `new` reçoit un
- * point, pas une flèche — une flèche vers le haut sur une première semaine
- * ferait croire à une progression mesurée.
- */
-export function trendSymbol(direction: TrendDirection): string {
-  if (direction === 'up') return '↑';
-  if (direction === 'down') return '↓';
-  if (direction === 'new') return '·';
-  return '';
-}
+/*
+  `trendSymbol` n'existe plus : la flèche ↑↓ posée à côté d'un chiffre est le
+  réflexe de tableau de bord que les Signes Vitaux ont retiré partout — et
+  celle-ci portait en plus sur une AUTRE mesure (le volume écrit) que le
+  chiffre qu'elle décorait (les clientes actives). La tendance se DIT :
+  `sentence` est la seule sortie affichable, en toutes lettres.
+*/
