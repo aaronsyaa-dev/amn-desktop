@@ -57,6 +57,9 @@ import {
   ArrowLeftRight,
   Workflow,
   Download,
+  Banknote,
+  Route,
+  CalendarClock,
 } from 'lucide-react';
 import type { NavItem } from '../data/navigation';
 import { isModuleEnabled } from '../data/spaces';
@@ -142,6 +145,9 @@ const CLIENT_MODULES: NavItem[] = [
   { key: 'templates', label: 'Modèles', to: '/outils/modeles', icon: LayoutTemplate, hint: 'Des textes prêts, à trous' },
   { key: 'automations', label: 'Automatisations', to: '/outils/automatisations', icon: Workflow, hint: 'Si ceci arrive, alors cela se fait' },
   { key: 'dataPort', label: 'Import / export', to: '/outils/donnees', icon: Download, hint: 'Vos données, dans les deux sens' },
+  { key: 'cashCount', label: 'Caisse du jour', to: '/caisse', icon: Banknote, hint: 'Le fond, les espèces comptées, l’écart' },
+  { key: 'rounds', label: 'Tournées', to: '/tournees', icon: Route, hint: 'Les livraisons du jour, arrêt par arrêt' },
+  { key: 'equipment', label: 'Matériel', to: '/materiel', icon: CalendarClock, hint: 'Qui a quoi, quand — sans double réservation' },
 ];
 
 /**
@@ -169,8 +175,8 @@ export const CLIENT_NAV_ITEMS = CLIENT_MODULES;
  */
 export const CLIENT_SECTIONS: Array<{ label: string; keys: string[] }> = [
   { label: 'Pilotage', keys: ['home', 'agenda', 'projects', 'tasks', 'okr', 'weekly', 'meetings', 'priorities', 'routines', 'logbook', 'forms', 'minisite', 'newsletter', 'esign', 'portfolio'] },
-  { label: 'Clients & revenus', keys: ['clients', 'invoices', 'orders', 'evenements', 'pipeline', 'reminders', 'subscriptions', 'contracts', 'reviews', 'loyalty', 'referrals', 'booking'] },
-  { label: 'Production', keys: ['time', 'expenses', 'calculators', 'board', 'stock', 'suppliers', 'shifts', 'checklists', 'assembly', 'aftersales', 'bom'] },
+  { label: 'Clients & revenus', keys: ['clients', 'invoices', 'orders', 'evenements', 'pipeline', 'reminders', 'subscriptions', 'contracts', 'reviews', 'loyalty', 'referrals', 'booking', 'cashCount'] },
+  { label: 'Production', keys: ['time', 'expenses', 'calculators', 'board', 'stock', 'suppliers', 'shifts', 'checklists', 'assembly', 'aftersales', 'bom', 'rounds', 'equipment'] },
   { label: 'Documents', keys: ['notes', 'pages', 'reports', 'media'] },
   { label: 'Collectif', keys: ['dm', 'groups', 'announcements', 'polls', 'leaves', 'directory', 'calls'] },
   { label: 'Outils', keys: ['qr', 'converters', 'templates', 'automations', 'dataPort'] },

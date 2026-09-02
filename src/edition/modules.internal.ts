@@ -69,6 +69,9 @@ import {
   Download,
   Gauge,
   FileBarChart,
+  Banknote,
+  Route,
+  CalendarClock,
 } from 'lucide-react';
 import type { NavSection } from '../data/navigation';
 import type { ActivityTab } from '../state/ActivityContext';
@@ -162,6 +165,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'loyalty', label: 'Fidélité', to: '/fidelite', icon: Stamp, hint: 'La carte à tampons, sans le carton' },
       { key: 'referrals', label: 'Parrainage', to: '/parrainage', icon: HeartHandshake, hint: 'Qui a amené qui, et ce qu’on lui doit' },
       { key: 'booking', label: 'Rendez-vous en ligne', to: '/rdv-en-ligne', icon: CalendarCheck, hint: 'Une page publique branchée sur l’Agenda' },
+      { key: 'cashCount', label: 'Caisse du jour', to: '/caisse', icon: Banknote, hint: 'Le fond, les espèces comptées, l’écart' },
     ],
   },
   {
@@ -184,6 +188,8 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'assembly', label: 'Suivi de montage', to: '/montage', icon: Wrench, hint: 'Chaque chantier, étape par étape' },
       { key: 'aftersales', label: 'SAV', to: '/sav', icon: LifeBuoy, hint: 'Les demandes après vente, de l’ouverture à la résolution' },
       { key: 'bom', label: 'Nomenclatures', to: '/nomenclatures', icon: ListTree, hint: 'Ce qui compose un produit, et ce qu’il coûte' },
+      { key: 'rounds', label: 'Tournées', to: '/tournees', icon: Route, hint: 'Les livraisons du jour, arrêt par arrêt' },
+      { key: 'equipment', label: 'Matériel', to: '/materiel', icon: CalendarClock, hint: 'Qui a quoi, quand — sans double réservation' },
     ],
   },
   {
@@ -377,6 +383,9 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/settings', 'reglages'],
   ['/membres', 'reglages'],
   ['/assistance', 'fil'],
+  ['/materiel', 'tableau'],
+  ['/tournees', 'registre'],
+  ['/caisse', 'registre'],
   ['/rapport-client', 'fiches'],
   ['/alertes-personnalisees', 'reglages'],
   ['/comparatif', 'tableau'],

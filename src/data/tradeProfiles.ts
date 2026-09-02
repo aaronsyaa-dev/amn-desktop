@@ -204,4 +204,7 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'templates', label: 'Modèles', hint: 'Des textes prêts, à trous' },
   { key: 'automations', label: 'Automatisations', hint: 'Si ceci arrive, alors cela se fait' },
   { key: 'dataPort', label: 'Import / export', hint: 'Vos données, dans les deux sens' },
+  { key: 'cashCount', label: 'Caisse du jour', hint: 'Le fond, les espèces comptées, l’écart' },
+  { key: 'rounds', label: 'Tournées', hint: 'Les livraisons du jour, arrêt par arrêt' },
+  { key: 'equipment', label: 'Matériel', hint: 'Qui a quoi, quand — sans double réservation' },
 ];

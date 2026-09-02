@@ -2177,7 +2177,11 @@ export type SyncedCollection =
   | 'portfolioItems'
   | 'templates'
   | 'automations'
-  | 'customAlerts';
+  | 'customAlerts'
+  | 'cashCounts'
+  | 'deliveryRounds'
+  | 'resources'
+  | 'resourceBookings';
 
 export interface PresenceEntry {
   email: string;

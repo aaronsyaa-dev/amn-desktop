@@ -145,6 +145,10 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'templates',
   'automations',
   'customAlerts',
+  'cashCounts',
+  'deliveryRounds',
+  'resources',
+  'resourceBookings',
 ];
 
 const MIRROR_PREFIX = 'amn.sync.';

@@ -30,6 +30,9 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { MembersScreen } from '../screens/MembersScreen';
 import { AssistanceScreen } from '../screens/AssistanceScreen';
 import { LibraryScreen } from '../screens/LibraryScreen';
+import { EquipmentBookingScreen } from '../screens/EquipmentBookingScreen';
+import { DeliveryRoundsScreen } from '../screens/DeliveryRoundsScreen';
+import { CashCountScreen } from '../screens/CashCountScreen';
 import { DataPortScreen } from '../screens/DataPortScreen';
 import { AutomationsScreen } from '../screens/AutomationsScreen';
 import { TemplatesScreen } from '../screens/TemplatesScreen';
@@ -603,6 +606,30 @@ export function AppRoot() {
           element={
             <ModuleRoute module="dataPort">
               <DataPortScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/caisse"
+          element={
+            <ModuleRoute module="cashCount">
+              <CashCountScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/tournees"
+          element={
+            <ModuleRoute module="rounds">
+              <DeliveryRoundsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/materiel"
+          element={
+            <ModuleRoute module="equipment">
+              <EquipmentBookingScreen />
             </ModuleRoute>
           }
         />

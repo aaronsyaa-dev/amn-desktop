@@ -194,6 +194,9 @@ const MODULE_DATA = {
   orgCompare: [],
   customAlerts: ['customAlerts'],
   clientReport: [],
+  cashCount: ['cashCounts'],
+  rounds: ['deliveryRounds'],
+  equipment: ['resources', 'resourceBookings'],
 };
 
 /**
@@ -284,6 +287,9 @@ const MODULE_FILES = {
   orgCompare: ['src/screens/OrgCompareScreen.tsx'],
   customAlerts: ['src/screens/CustomAlertsScreen.tsx'],
   clientReport: ['src/screens/ClientReportScreen.tsx'],
+  cashCount: ['src/screens/CashCountScreen.tsx'],
+  rounds: ['src/screens/DeliveryRoundsScreen.tsx'],
+  equipment: ['src/screens/EquipmentBookingScreen.tsx'],
 };
 
 /**

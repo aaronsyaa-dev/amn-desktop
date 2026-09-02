@@ -40,6 +40,9 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { MembersScreen } from '../screens/MembersScreen';
 import { AssistanceScreen } from '../screens/AssistanceScreen';
 import { LibraryScreen } from '../screens/LibraryScreen';
+import { EquipmentBookingScreen } from '../screens/EquipmentBookingScreen';
+import { DeliveryRoundsScreen } from '../screens/DeliveryRoundsScreen';
+import { CashCountScreen } from '../screens/CashCountScreen';
 import { ClientReportScreen } from '../screens/ClientReportScreen';
 import { CustomAlertsScreen } from '../screens/CustomAlertsScreen';
 import { OrgCompareScreen } from '../screens/OrgCompareScreen';
@@ -298,6 +301,9 @@ function AmnRoutes() {
         <Route path="/comparatif" element={<OrgCompareScreen />} />
         <Route path="/alertes-personnalisees" element={<CustomAlertsScreen />} />
         <Route path="/rapport-client" element={<ClientReportScreen />} />
+        <Route path="/caisse" element={<CashCountScreen />} />
+        <Route path="/tournees" element={<DeliveryRoundsScreen />} />
+        <Route path="/materiel" element={<EquipmentBookingScreen />} />
         <Route path="/bibliotheque" element={<LibraryScreen />} />
         <Route path="/vault" element={<VaultScreen />} />
 
@@ -803,6 +809,30 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="dataPort">
               <DataPortScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/caisse"
+          element={
+            <ModuleRoute module="cashCount">
+              <CashCountScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/tournees"
+          element={
+            <ModuleRoute module="rounds">
+              <DeliveryRoundsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/materiel"
+          element={
+            <ModuleRoute module="equipment">
+              <EquipmentBookingScreen />
             </ModuleRoute>
           }
         />

@@ -32,6 +32,9 @@ export interface TraductionNav {
 }
 
 export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
+  equipment: { label: 'Equipment', hint: 'Who has what, when — no double booking' },
+  rounds: { label: 'Rounds', hint: 'Today’s deliveries, stop by stop' },
+  cashCount: { label: 'Daily till', hint: 'The float, the cash counted, the gap' },
   clientReport: { label: 'Enriched client report', hint: 'Everything known about a client, on one printable page' },
   customAlerts: { label: 'Custom alerts', hint: 'Your own thresholds on the fleet' },
   orgCompare: { label: 'Client comparison', hint: 'All organisations side by side' },
