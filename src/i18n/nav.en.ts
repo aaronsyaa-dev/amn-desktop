@@ -32,6 +32,14 @@ export interface TraductionNav {
 }
 
 export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
+  bom: { label: 'Bills of materials', hint: 'What goes into a product, and what it costs' },
+  aftersales: { label: 'After-sales', hint: 'After-sales requests, from opening to resolution' },
+  assembly: { label: 'Assembly tracking', hint: 'Each job, step by step' },
+  checklists: { label: 'Quality checks', hint: 'Checklists, and the record of each run' },
+  shifts: { label: 'Team schedule', hint: 'Who is in on which day, week by week' },
+  suppliers: { label: 'Suppliers', hint: 'Who supplies what, and since when' },
+  stock: { label: 'Stock', hint: 'What is left, and what will run out' },
+  board: { label: 'Project board', hint: 'Projects in columns, moved in one gesture' },
   booking: { label: 'Online booking', hint: 'A public page wired to the Calendar' },
   referrals: { label: 'Referrals', hint: 'Who brought whom, and what is owed' },
   loyalty: { label: 'Loyalty', hint: 'The stamp card, without the cardboard' },

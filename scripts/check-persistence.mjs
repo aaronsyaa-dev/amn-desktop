@@ -162,6 +162,14 @@ const MODULE_DATA = {
   loyalty: ['loyaltyCards'],
   referrals: ['referrals'],
   booking: ['bookingConfig'],
+  board: [],
+  stock: ['stockItems'],
+  suppliers: ['suppliers'],
+  shifts: ['shifts'],
+  checklists: ['checklists', 'checkRuns'],
+  assembly: ['assemblies'],
+  aftersales: ['tickets'],
+  bom: ['boms'],
 };
 
 /**
@@ -220,6 +228,14 @@ const MODULE_FILES = {
   loyalty: ['src/screens/LoyaltyScreen.tsx'],
   referrals: ['src/screens/ReferralsScreen.tsx'],
   booking: ['src/screens/BookingScreen.tsx', 'src/screens/PublicBookingScreen.tsx'],
+  board: ['src/screens/ProjectBoardScreen.tsx'],
+  stock: ['src/screens/StockScreen.tsx'],
+  suppliers: ['src/screens/SuppliersScreen.tsx'],
+  shifts: ['src/screens/ShiftsScreen.tsx'],
+  checklists: ['src/screens/ChecklistsScreen.tsx'],
+  assembly: ['src/screens/AssemblyScreen.tsx'],
+  aftersales: ['src/screens/AfterSalesScreen.tsx'],
+  bom: ['src/screens/BomScreen.tsx'],
 };
 
 /**

@@ -38,6 +38,14 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { MembersScreen } from '../screens/MembersScreen';
 import { AssistanceScreen } from '../screens/AssistanceScreen';
 import { LibraryScreen } from '../screens/LibraryScreen';
+import { BomScreen } from '../screens/BomScreen';
+import { AfterSalesScreen } from '../screens/AfterSalesScreen';
+import { AssemblyScreen } from '../screens/AssemblyScreen';
+import { ChecklistsScreen } from '../screens/ChecklistsScreen';
+import { ShiftsScreen } from '../screens/ShiftsScreen';
+import { SuppliersScreen } from '../screens/SuppliersScreen';
+import { StockScreen } from '../screens/StockScreen';
+import { ProjectBoardScreen } from '../screens/ProjectBoardScreen';
 import { BookingScreen } from '../screens/BookingScreen';
 import { ReferralsScreen } from '../screens/ReferralsScreen';
 import { LoyaltyScreen } from '../screens/LoyaltyScreen';
@@ -229,6 +237,14 @@ function AmnRoutes() {
         <Route path="/fidelite" element={<LoyaltyScreen />} />
         <Route path="/parrainage" element={<ReferralsScreen />} />
         <Route path="/rdv-en-ligne" element={<BookingScreen />} />
+        <Route path="/tableau-projets" element={<ProjectBoardScreen />} />
+        <Route path="/stock" element={<StockScreen />} />
+        <Route path="/fournisseurs" element={<SuppliersScreen />} />
+        <Route path="/planning" element={<ShiftsScreen />} />
+        <Route path="/controles" element={<ChecklistsScreen />} />
+        <Route path="/montage" element={<AssemblyScreen />} />
+        <Route path="/sav" element={<AfterSalesScreen />} />
+        <Route path="/nomenclatures" element={<BomScreen />} />
         <Route path="/bibliotheque" element={<LibraryScreen />} />
         <Route path="/vault" element={<VaultScreen />} />
 
@@ -510,6 +526,70 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="booking">
               <BookingScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/tableau-projets"
+          element={
+            <ModuleRoute module="board">
+              <ProjectBoardScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/stock"
+          element={
+            <ModuleRoute module="stock">
+              <StockScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/fournisseurs"
+          element={
+            <ModuleRoute module="suppliers">
+              <SuppliersScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/planning"
+          element={
+            <ModuleRoute module="shifts">
+              <ShiftsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/controles"
+          element={
+            <ModuleRoute module="checklists">
+              <ChecklistsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/montage"
+          element={
+            <ModuleRoute module="assembly">
+              <AssemblyScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/sav"
+          element={
+            <ModuleRoute module="aftersales">
+              <AfterSalesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/nomenclatures"
+          element={
+            <ModuleRoute module="bom">
+              <BomScreen />
             </ModuleRoute>
           }
         />

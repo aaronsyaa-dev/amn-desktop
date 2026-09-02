@@ -2154,7 +2154,15 @@ export type SyncedCollection =
   | 'reviews'
   | 'loyaltyCards'
   | 'referrals'
-  | 'bookingConfig';
+  | 'bookingConfig'
+  | 'stockItems'
+  | 'suppliers'
+  | 'shifts'
+  | 'checklists'
+  | 'checkRuns'
+  | 'assemblies'
+  | 'tickets'
+  | 'boms';
 
 export interface PresenceEntry {
   email: string;

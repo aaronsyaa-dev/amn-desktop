@@ -176,4 +176,12 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'loyalty', label: 'Fidélité', hint: 'La carte à tampons, sans le carton' },
   { key: 'referrals', label: 'Parrainage', hint: 'Qui a amené qui, et ce qu’on lui doit' },
   { key: 'booking', label: 'Rendez-vous en ligne', hint: 'Une page publique branchée sur l’Agenda' },
+  { key: 'board', label: 'Tableau des projets', hint: 'Les projets en colonnes, déplacés d’un geste' },
+  { key: 'stock', label: 'Stock', hint: 'Ce qu’il reste, et ce qui va manquer' },
+  { key: 'suppliers', label: 'Fournisseurs', hint: 'Qui vous fournit quoi, et depuis quand' },
+  { key: 'shifts', label: 'Planning d’équipe', hint: 'Qui est là quel jour, semaine par semaine' },
+  { key: 'checklists', label: 'Contrôles qualité', hint: 'Des listes à cocher, et la trace de chaque passage' },
+  { key: 'assembly', label: 'Suivi de montage', hint: 'Chaque chantier, étape par étape' },
+  { key: 'aftersales', label: 'SAV', hint: 'Les demandes après vente, de l’ouverture à la résolution' },
+  { key: 'bom', label: 'Nomenclatures', hint: 'Ce qui compose un produit, et ce qu’il coûte' },
 ];

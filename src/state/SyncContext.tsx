@@ -122,6 +122,14 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'loyaltyCards',
   'referrals',
   'bookingConfig',
+  'stockItems',
+  'suppliers',
+  'shifts',
+  'checklists',
+  'checkRuns',
+  'assemblies',
+  'tickets',
+  'boms',
 ];
 
 const MIRROR_PREFIX = 'amn.sync.';

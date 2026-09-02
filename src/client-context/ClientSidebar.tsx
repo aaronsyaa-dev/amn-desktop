@@ -35,6 +35,13 @@ import {
   Stamp,
   HeartHandshake,
   CalendarCheck,
+  Boxes,
+  Truck,
+  CalendarRange,
+  ClipboardCheck,
+  Wrench,
+  LifeBuoy,
+  ListTree,
 } from 'lucide-react';
 import type { NavItem } from '../data/navigation';
 import { isModuleEnabled } from '../data/spaces';
@@ -92,6 +99,14 @@ const CLIENT_MODULES: NavItem[] = [
   { key: 'loyalty', label: 'Fidélité', to: '/fidelite', icon: Stamp, hint: 'La carte à tampons, sans le carton' },
   { key: 'referrals', label: 'Parrainage', to: '/parrainage', icon: HeartHandshake, hint: 'Qui a amené qui, et ce qu’on lui doit' },
   { key: 'booking', label: 'Rendez-vous en ligne', to: '/rdv-en-ligne', icon: CalendarCheck, hint: 'Une page publique branchée sur l’Agenda' },
+  { key: 'board', label: 'Tableau des projets', to: '/tableau-projets', icon: SquareKanban, hint: 'Les projets en colonnes, déplacés d’un geste' },
+  { key: 'stock', label: 'Stock', to: '/stock', icon: Boxes, hint: 'Ce qu’il reste, et ce qui va manquer' },
+  { key: 'suppliers', label: 'Fournisseurs', to: '/fournisseurs', icon: Truck, hint: 'Qui vous fournit quoi, et depuis quand' },
+  { key: 'shifts', label: 'Planning d’équipe', to: '/planning', icon: CalendarRange, hint: 'Qui est là quel jour, semaine par semaine' },
+  { key: 'checklists', label: 'Contrôles qualité', to: '/controles', icon: ClipboardCheck, hint: 'Des listes à cocher, et la trace de chaque passage' },
+  { key: 'assembly', label: 'Suivi de montage', to: '/montage', icon: Wrench, hint: 'Chaque chantier, étape par étape' },
+  { key: 'aftersales', label: 'SAV', to: '/sav', icon: LifeBuoy, hint: 'Les demandes après vente, de l’ouverture à la résolution' },
+  { key: 'bom', label: 'Nomenclatures', to: '/nomenclatures', icon: ListTree, hint: 'Ce qui compose un produit, et ce qu’il coûte' },
 ];
 
 /**
@@ -120,7 +135,7 @@ export const CLIENT_NAV_ITEMS = CLIENT_MODULES;
 export const CLIENT_SECTIONS: Array<{ label: string; keys: string[] }> = [
   { label: 'Pilotage', keys: ['home', 'agenda', 'projects', 'tasks'] },
   { label: 'Clients & revenus', keys: ['clients', 'invoices', 'orders', 'evenements', 'pipeline', 'reminders', 'subscriptions', 'contracts', 'reviews', 'loyalty', 'referrals', 'booking'] },
-  { label: 'Production', keys: ['time', 'expenses', 'calculators'] },
+  { label: 'Production', keys: ['time', 'expenses', 'calculators', 'board', 'stock', 'suppliers', 'shifts', 'checklists', 'assembly', 'aftersales', 'bom'] },
   { label: 'Documents', keys: ['notes', 'pages', 'reports', 'media'] },
   { label: 'Collectif', keys: ['dm', 'groups', 'announcements', 'polls', 'leaves', 'directory', 'calls'] },
   { label: 'Système', keys: ['settings'] },
