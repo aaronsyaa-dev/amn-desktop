@@ -92,7 +92,7 @@ export function LoyaltyScreen() {
                       {c.lastStampAt ? relativeTime(c.lastStampAt) : t('fidelite.jamais')}
                     </p>
                   </div>
-                  <button type="button" onClick={() => void remove('loyaltyCards', c.id)} aria-label={t('fidelite.supprimer')} title={t('fidelite.supprimer')} className="text-[10px] uppercase tracking-wider text-text-muted hover:text-danger">{t('fidelite.supprimerCourt')}</button>
+                  <button type="button" onClick={() => void remove('loyaltyCards', c.id)} aria-label={t('fidelite.supprimer')} title={t('fidelite.supprimer')} className="-my-2 py-2 text-[10px] uppercase tracking-wider text-text-muted hover:text-danger">{t('fidelite.supprimerCourt')}</button>
                 </div>
                 <div className="grid grid-cols-5 gap-1.5" aria-label={t('fidelite.progression', { n: c.stamps, seuil: SEUIL })}>
                   {Array.from({ length: SEUIL }, (_, i) => (

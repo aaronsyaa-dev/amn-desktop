@@ -183,8 +183,8 @@ export function DataPortScreen() {
         <section aria-label={t('donnees.importer')} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
           <p className="eyebrow">{t('donnees.importer')}</p>
           <p className="text-xs text-text-muted">{t('donnees.importerAide')}</p>
-          <input ref={fichierClients} type="file" accept=".csv,text/csv" className="sr-only" aria-label={t('donnees.importerClients')} onChange={(e) => { const f = e.target.files?.[0]; if (f) void importerClients(f); e.target.value = ''; }} />
-          <input ref={fichierStock} type="file" accept=".csv,text/csv" className="sr-only" aria-label={t('donnees.importerStock')} onChange={(e) => { const f = e.target.files?.[0]; if (f) void importerStock(f); e.target.value = ''; }} />
+          <input ref={fichierClients} type="file" accept=".csv,text/csv" className="hidden" aria-label={t('donnees.importerClients')} onChange={(e) => { const f = e.target.files?.[0]; if (f) void importerClients(f); e.target.value = ''; }} />
+          <input ref={fichierStock} type="file" accept=".csv,text/csv" className="hidden" aria-label={t('donnees.importerStock')} onChange={(e) => { const f = e.target.files?.[0]; if (f) void importerStock(f); e.target.value = ''; }} />
           <div className="flex flex-wrap gap-2">
             <button type="button" disabled={occupe} onClick={() => fichierClients.current?.click()} className="flex min-h-11 items-center gap-2 border border-border-strong px-4 text-sm text-text-primary hover:bg-surface-hover disabled:opacity-40 md:min-h-0 md:py-2"><Upload size={14} /> {t('donnees.importerClients')}</button>
             <button type="button" disabled={occupe} onClick={() => fichierStock.current?.click()} className="flex min-h-11 items-center gap-2 border border-border-strong px-4 text-sm text-text-primary hover:bg-surface-hover disabled:opacity-40 md:min-h-0 md:py-2"><Upload size={14} /> {t('donnees.importerStock')}</button>

@@ -102,7 +102,7 @@ export function ReferralsScreen() {
                     <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">{r.reward || t('parrainage.sansRecompense')} · {relativeTime(r.updatedAt)}</p>
                   </div>
                 </div>
-                <div className="flex flex-shrink-0 items-center gap-1.5">
+                <div className="flex flex-shrink-0 items-center gap-2">
                   <span className={`rounded-sm border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider ${r.status === 'recompense' ? 'border-success/40 text-success' : r.status === 'venu' ? 'border-warning/40 text-warning' : 'border-border text-text-muted'}`}>{statut(r.status)}</span>
                   {SUITE[r.status] && (
                     <button type="button" onClick={() => void avancer(r)} className="flex min-h-11 items-center gap-1 border border-border-strong px-2.5 text-xs text-text-primary hover:bg-surface-hover md:min-h-0 md:py-1.5">

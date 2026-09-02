@@ -116,7 +116,7 @@ export function PipelineScreen() {
                     <span>{relativeTime(p.movedAt)}</span>
                   </p>
                   {p.note && <p className="text-xs leading-snug text-text-muted">{p.note}</p>}
-                  <div className="mt-1 flex flex-wrap gap-1">
+                  <div className="mt-1 flex flex-wrap gap-2">
                     {SUIVANT[s] && (
                       <button type="button" onClick={() => void deplacer(p, SUIVANT[s] as Stage)} className="flex min-h-11 items-center gap-1 border border-border-strong px-2 text-[11px] text-text-primary hover:bg-surface-hover md:min-h-0 md:py-1">
                         {etape(SUIVANT[s] as Stage)} <ArrowRight size={11} />

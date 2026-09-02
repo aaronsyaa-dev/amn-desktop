@@ -110,8 +110,8 @@ export function SuppliersScreen() {
                 {(f.contact || f.phone || f.email) && (
                   <p className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-text-secondary">
                     {f.contact && <span>{f.contact}</span>}
-                    {f.phone && <a href={`tel:${f.phone}`} className="flex items-center gap-1 hover:text-text-primary"><Phone size={11} /> {f.phone}</a>}
-                    {f.email && <a href={`mailto:${f.email}`} className="flex items-center gap-1 hover:text-text-primary"><Mail size={11} /> {f.email}</a>}
+                    {f.phone && <a href={`tel:${f.phone}`} className="-my-2 flex items-center gap-1 py-2 hover:text-text-primary"><Phone size={11} /> {f.phone}</a>}
+                    {f.email && <a href={`mailto:${f.email}`} className="-my-2 flex items-center gap-1 py-2 hover:text-text-primary"><Mail size={11} /> {f.email}</a>}
                   </p>
                 )}
                 <button type="button" onClick={() => void commander(f)} className="mt-1 flex min-h-11 items-center justify-center gap-2 border border-border-strong px-3 text-xs text-text-primary hover:bg-surface-hover md:min-h-0 md:py-1.5">

@@ -103,7 +103,7 @@ export function RemindersScreen() {
                       {d && <span> · {t('relances.derniere', { quand: relativeTime(d.sentAt) })}</span>}
                     </p>
                   </div>
-                  <div className="flex flex-shrink-0 flex-wrap gap-1.5">
+                  <div className="flex flex-shrink-0 flex-wrap gap-2">
                     <button type="button" onClick={() => void copier(f)} className="flex min-h-11 items-center gap-1.5 border border-border-strong px-3 text-xs text-text-primary hover:bg-surface-hover md:min-h-0 md:py-1.5">
                       {copiee === f.id ? <Check size={13} /> : <Copy size={13} />} {copiee === f.id ? t('relances.copie') : t('relances.copier')}
                     </button>

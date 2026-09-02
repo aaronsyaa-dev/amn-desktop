@@ -75,14 +75,14 @@ export function ProjectBoardScreen() {
                   const retard = !col.done && p.deadline && p.deadline < aujourdhui;
                   return (
                     <article key={p.id} className="flex flex-col gap-1 rounded-lg border border-border bg-bg p-2.5">
-                      <button type="button" onClick={() => navigate('/projets')} className="text-left text-sm font-medium leading-tight text-text-primary hover:underline">{p.title}</button>
+                      <button type="button" onClick={() => navigate('/projets')} className="-my-2 py-2 text-left text-sm font-medium leading-tight text-text-primary hover:underline">{p.title}</button>
                       {p.nextAction && <p className="truncate text-xs text-text-secondary">{p.nextAction}</p>}
                       {p.deadline && (
                         <p className={`font-mono text-[10px] uppercase tracking-wider ${retard ? 'text-danger' : 'text-text-muted'}`}>
                           {t('tableau.echeance', { date: dateCourte(p.deadline) })}{retard ? ` · ${t('tableau.enRetard')}` : ''}
                         </p>
                       )}
-                      <div className="mt-1 flex gap-1">
+                      <div className="mt-1 flex gap-2">
                         {precedente && (
                           <button type="button" onClick={() => void updateProject(p.id, { status: precedente.key })} aria-label={t('tableau.deplacer', { vers: precedente.label })} title={t('tableau.deplacer', { vers: precedente.label })} className="flex min-h-11 min-w-11 items-center justify-center border border-border text-text-muted hover:text-text-primary md:min-h-0 md:min-w-0 md:px-2 md:py-1"><ArrowLeft size={12} /></button>
                         )}

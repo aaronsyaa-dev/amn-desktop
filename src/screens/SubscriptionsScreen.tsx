@@ -129,7 +129,7 @@ export function SubscriptionsScreen() {
                     {formatCents(s.amountCents)} · {periode(s.period)} · {s.active ? (du ? <span className="text-warning">{t('abonnements.echeanceDepassee')}</span> : t('abonnements.prochaine', { date: new Date(`${s.nextAt}T00:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'short' }) })) : t('abonnements.suspendu')}
                   </p>
                 </div>
-                <div className="flex flex-shrink-0 flex-wrap gap-1.5">
+                <div className="flex flex-shrink-0 flex-wrap gap-2">
                   {s.active && (
                     <button type="button" onClick={() => void facturer(s)} className={`flex min-h-11 items-center gap-1.5 border px-3 text-xs md:min-h-0 md:py-1.5 ${du ? 'border-accent text-text-primary' : 'border-border-strong text-text-primary hover:bg-surface-hover'}`}>
                       <ReceiptEuro size={13} /> {t('abonnements.facturer')}

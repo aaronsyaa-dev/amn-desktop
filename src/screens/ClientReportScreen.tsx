@@ -133,16 +133,20 @@ export function ClientReportScreen() {
             { label: t('rapportClient.membres'), value: dossier ? dossier.membres.filter((m) => m.status === 'active').length : '—' },
           ]}
           actions={
-            <div className="flex flex-wrap items-center gap-2">
-              <select value={orgId} onChange={(e) => setOrgId(e.target.value)} aria-label={t('rapportClient.choisir')} className="input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none">
-                {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-              </select>
-              <button type="button" onClick={() => void copier()} disabled={!dossier} className="flex min-h-11 items-center gap-2 border border-border px-3 text-sm text-text-secondary hover:text-text-primary disabled:opacity-40">{copie ? <Check size={14} /> : <Copy size={14} />} {copie ? t('rapportClient.copie') : t('rapportClient.copier')}</button>
-              <button type="button" onClick={() => window.print()} disabled={!dossier} className="flex min-h-11 items-center gap-2 bg-accent px-3 text-sm font-semibold text-bg disabled:opacity-40"><Printer size={14} /> {t('rapportClient.imprimer')}</button>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => void copier()} disabled={!dossier} className="flex min-h-11 items-center gap-2 border border-border px-3 text-sm text-text-secondary hover:text-text-primary disabled:opacity-40">{copie ? <Check size={14} /> : <Copy size={14} />} <span className="hidden sm:inline">{copie ? t('rapportClient.copie') : t('rapportClient.copier')}</span></button>
+              <button type="button" onClick={() => window.print()} disabled={!dossier} className="flex min-h-11 items-center gap-2 bg-accent px-3 text-sm font-semibold text-bg disabled:opacity-40"><Printer size={14} /> <span className="hidden sm:inline">{t('rapportClient.imprimer')}</span></button>
             </div>
           }
         />
       </motion.div>
+
+      <motion.label variants={staggerItem} className="flex flex-col gap-1 text-xs text-text-muted">
+        {t('rapportClient.choisir')}
+        <select value={orgId} onChange={(e) => setOrgId(e.target.value)} className="input-focus min-h-11 w-full max-w-md border border-border bg-bg px-3 text-sm text-text-primary outline-none">
+          {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+        </select>
+      </motion.label>
 
       {etat === 'echec' && <motion.p variants={staggerItem} role="alert" className="text-sm text-danger">{t('parcSup.echec')}</motion.p>}
       {etat === 'pret' && orgs.length === 0 && <motion.div variants={staggerItem}><FirstRun title={t('rapportClient.vide.titre')}>{t('rapportClient.vide.texte')}</FirstRun></motion.div>}

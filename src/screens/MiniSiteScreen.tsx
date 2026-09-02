@@ -108,11 +108,11 @@ export function MiniSiteScreen() {
         <section aria-label={t('miniPage.section.blocs')} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
           <p className="eyebrow">{t('miniPage.section.blocs')}</p>
           <label className="flex min-h-11 items-center gap-3 text-sm text-text-primary">
-            <input type="checkbox" checked={config.showReviews} onChange={(e) => void enregistrer({ showReviews: e.target.checked })} className="h-4 w-4" />
+            <input type="checkbox" checked={config.showReviews} onChange={(e) => void enregistrer({ showReviews: e.target.checked })} className="h-6 w-6" />
             {t('miniPage.montrerAvis')} <span className="tnum text-text-muted">({publiables})</span>
           </label>
           <label className="flex min-h-11 items-center gap-3 text-sm text-text-primary">
-            <input type="checkbox" checked={config.showPortfolio} onChange={(e) => void enregistrer({ showPortfolio: e.target.checked })} className="h-4 w-4" />
+            <input type="checkbox" checked={config.showPortfolio} onChange={(e) => void enregistrer({ showPortfolio: e.target.checked })} className="h-6 w-6" />
             {t('miniPage.montrerPortfolio')} <span className="tnum text-text-muted">({visibles})</span>
           </label>
           <p className="text-xs leading-relaxed text-text-muted">{t('miniPage.rdv')}</p>

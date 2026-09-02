@@ -117,7 +117,7 @@ export function ContractsScreen() {
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5">
+                <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
                   <span className={`rounded-sm border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider ${c.status === 'active' ? 'border-success/40 text-success' : 'border-border text-text-muted'}`}>{statut(c.status)}</span>
                   {c.status === 'active' && (
                     <button type="button" onClick={() => void upsert('contracts', c.id, { ...c, status: 'ended' })} className="min-h-11 border border-border px-3 text-xs text-text-secondary hover:text-text-primary md:min-h-0 md:py-1.5">{t('contrats.terminer')}</button>

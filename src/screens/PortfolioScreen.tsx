@@ -97,7 +97,7 @@ export function PortfolioScreen() {
                   <button type="button" onClick={() => void remove('portfolioItems', f.id)} aria-label={t('portfolio.supprimer')} title={t('portfolio.supprimer')} className="min-h-11 px-1 text-text-muted opacity-0 hover:text-danger focus:opacity-100 group-hover:opacity-100 md:min-h-0"><Trash2 size={13} /></button>
                 </div>
                 {f.description && <p className="text-xs leading-relaxed text-text-secondary">{f.description}</p>}
-                <div className="mt-auto flex flex-wrap gap-1 pt-1">
+                <div className="mt-auto flex flex-wrap gap-2 pt-1">
                   <button type="button" onClick={() => void upsert('portfolioItems', f.id, { ...f, visible: !f.visible })} aria-pressed={f.visible} className="flex min-h-11 items-center gap-1 border border-border px-2 text-[11px] text-text-secondary hover:text-text-primary md:min-h-0 md:py-1">
                     {f.visible ? <Eye size={11} /> : <EyeOff size={11} />} {f.visible ? t('portfolio.visible') : t('portfolio.masquee')}
                   </button>

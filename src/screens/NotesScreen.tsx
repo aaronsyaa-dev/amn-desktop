@@ -182,7 +182,7 @@ export function NotesScreen() {
             className="flex min-h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
           >
             <CalendarDays size={13} strokeWidth={1.75} />
-            Note du jour
+            <span className="hidden sm:inline">Note du jour</span>
           </button>
           <div className="flex items-center gap-1 rounded-lg border border-border p-1" role="group" aria-label="Affichage des notes">
             {([
@@ -212,7 +212,7 @@ export function NotesScreen() {
             className="flex items-center gap-2 bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
           >
             <Plus size={16} strokeWidth={2.25} />
-            Nouvelle note
+            <span className="hidden sm:inline">Nouvelle note</span>
           </button>
           {TEAM_ENABLED && newMenuOpen && (
             <>

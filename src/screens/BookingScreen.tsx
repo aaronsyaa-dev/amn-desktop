@@ -146,7 +146,7 @@ export function BookingScreen() {
               return (
                 <li key={j} className="flex flex-wrap items-center gap-2">
                   <label className="flex min-h-11 w-28 items-center gap-2 text-sm text-text-primary md:min-h-0">
-                    <input type="checkbox" checked={Boolean(f)} onChange={(e) => void reglerJour(j, e.target.checked ? { from: '09:00', to: '12:00' } : null)} className="h-4 w-4" />
+                    <input type="checkbox" checked={Boolean(f)} onChange={(e) => void reglerJour(j, e.target.checked ? { from: '09:00', to: '12:00' } : null)} className="h-6 w-6" />
                     {jourLibelle(j)}
                   </label>
                   {f && (

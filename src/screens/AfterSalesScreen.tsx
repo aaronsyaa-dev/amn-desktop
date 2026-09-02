@@ -122,7 +122,7 @@ export function AfterSalesScreen() {
                     </p>
                     {tk.note && <p className="text-xs leading-snug text-text-muted">{tk.note}</p>}
                     {tk.takenBy && s !== 'ouvert' && <p className="truncate text-[11px] text-text-secondary">{tk.takenBy}</p>}
-                    <div className="mt-1 flex flex-wrap gap-1">
+                    <div className="mt-1 flex flex-wrap gap-2">
                       {s === 'ouvert' && (
                         <button type="button" onClick={() => void passer(tk, 'enCours')} className="flex min-h-11 items-center gap-1 border border-border-strong px-2 text-[11px] text-text-primary hover:bg-surface-hover md:min-h-0 md:py-1"><UserCheck size={11} /> {t('sav.prendre')}</button>
                       )}
