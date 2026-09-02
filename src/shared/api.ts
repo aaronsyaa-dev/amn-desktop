@@ -2146,7 +2146,15 @@ export type SyncedCollection =
   | 'groupMessages'
   | 'announcements'
   | 'polls'
-  | 'leaves';
+  | 'leaves'
+  | 'prospects'
+  | 'paymentReminders'
+  | 'subscriptions'
+  | 'contracts'
+  | 'reviews'
+  | 'loyaltyCards'
+  | 'referrals'
+  | 'bookingConfig';
 
 export interface PresenceEntry {
   email: string;

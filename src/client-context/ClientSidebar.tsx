@@ -27,6 +27,14 @@ import {
   CalendarOff,
   ContactRound,
   PhoneCall,
+  SquareKanban,
+  BellRing,
+  Repeat,
+  Signature,
+  Star,
+  Stamp,
+  HeartHandshake,
+  CalendarCheck,
 } from 'lucide-react';
 import type { NavItem } from '../data/navigation';
 import { isModuleEnabled } from '../data/spaces';
@@ -76,6 +84,14 @@ const CLIENT_MODULES: NavItem[] = [
   { key: 'leaves', label: 'Absences', to: '/absences', icon: CalendarOff, hint: 'Congés, maladie, télétravail — qui est là' },
   { key: 'directory', label: 'Trombinoscope', to: '/trombinoscope', icon: ContactRound, hint: 'Les visages, les rôles, qui est là' },
   { key: 'calls', label: 'Appels', to: '/appels', icon: PhoneCall, hint: 'Appeler un membre, inviter un visiteur par lien' },
+  { key: 'pipeline', label: 'Pipeline', to: '/pipeline', icon: SquareKanban, hint: 'Les prospects, de contact à gagné' },
+  { key: 'reminders', label: 'Relances', to: '/relances', icon: BellRing, hint: 'Les factures échues, et le mot à envoyer' },
+  { key: 'subscriptions', label: 'Abonnements', to: '/abonnements', icon: Repeat, hint: 'Ce qui revient chaque mois, facturé en un geste' },
+  { key: 'contracts', label: 'Contrats', to: '/contrats', icon: Signature, hint: 'Ce qui est signé, jusqu’à quand, pour combien' },
+  { key: 'reviews', label: 'Avis', to: '/avis', icon: Star, hint: 'Ce que les clientes disent, gardé ensemble' },
+  { key: 'loyalty', label: 'Fidélité', to: '/fidelite', icon: Stamp, hint: 'La carte à tampons, sans le carton' },
+  { key: 'referrals', label: 'Parrainage', to: '/parrainage', icon: HeartHandshake, hint: 'Qui a amené qui, et ce qu’on lui doit' },
+  { key: 'booking', label: 'Rendez-vous en ligne', to: '/rdv-en-ligne', icon: CalendarCheck, hint: 'Une page publique branchée sur l’Agenda' },
 ];
 
 /**
@@ -103,7 +119,7 @@ export const CLIENT_NAV_ITEMS = CLIENT_MODULES;
  */
 export const CLIENT_SECTIONS: Array<{ label: string; keys: string[] }> = [
   { label: 'Pilotage', keys: ['home', 'agenda', 'projects', 'tasks'] },
-  { label: 'Clients & revenus', keys: ['clients', 'invoices', 'orders', 'evenements'] },
+  { label: 'Clients & revenus', keys: ['clients', 'invoices', 'orders', 'evenements', 'pipeline', 'reminders', 'subscriptions', 'contracts', 'reviews', 'loyalty', 'referrals', 'booking'] },
   { label: 'Production', keys: ['time', 'expenses', 'calculators'] },
   { label: 'Documents', keys: ['notes', 'pages', 'reports', 'media'] },
   { label: 'Collectif', keys: ['dm', 'groups', 'announcements', 'polls', 'leaves', 'directory', 'calls'] },

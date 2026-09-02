@@ -154,6 +154,14 @@ const MODULE_DATA = {
   leaves: ['leaves'],
   directory: [],
   calls: [],
+  pipeline: ['prospects'],
+  reminders: ['paymentReminders'],
+  subscriptions: ['subscriptions'],
+  contracts: ['contracts'],
+  reviews: ['reviews'],
+  loyalty: ['loyaltyCards'],
+  referrals: ['referrals'],
+  booking: ['bookingConfig'],
 };
 
 /**
@@ -204,6 +212,14 @@ const MODULE_FILES = {
   leaves: ['src/screens/LeavesScreen.tsx'],
   directory: ['src/screens/DirectoryScreen.tsx'],
   calls: ['src/screens/CallsScreen.tsx'],
+  pipeline: ['src/screens/PipelineScreen.tsx'],
+  reminders: ['src/screens/RemindersScreen.tsx'],
+  subscriptions: ['src/screens/SubscriptionsScreen.tsx'],
+  contracts: ['src/screens/ContractsScreen.tsx'],
+  reviews: ['src/screens/ReviewsScreen.tsx'],
+  loyalty: ['src/screens/LoyaltyScreen.tsx'],
+  referrals: ['src/screens/ReferralsScreen.tsx'],
+  booking: ['src/screens/BookingScreen.tsx', 'src/screens/PublicBookingScreen.tsx'],
 };
 
 /**

@@ -40,6 +40,14 @@ import {
   CalendarOff,
   ContactRound,
   PhoneCall,
+  SquareKanban,
+  BellRing,
+  Repeat,
+  Signature,
+  Star,
+  Stamp,
+  HeartHandshake,
+  CalendarCheck,
 } from 'lucide-react';
 import type { NavSection } from '../data/navigation';
 import type { ActivityTab } from '../state/ActivityContext';
@@ -114,6 +122,14 @@ export const NAV_SECTIONS: NavSection[] = [
       // ce qu'on y regarde est un seuil de rentabilité et un nombre d'entrées
       // vendues, pas un temps passé.
       { key: 'evenements', label: 'Événements', to: '/evenements', icon: PartyPopper, hint: 'Dates, jauge, équilibre' },
+      { key: 'pipeline', label: 'Pipeline', to: '/pipeline', icon: SquareKanban, hint: 'Les prospects, de contact à gagné' },
+      { key: 'reminders', label: 'Relances', to: '/relances', icon: BellRing, hint: 'Les factures échues, et le mot à envoyer' },
+      { key: 'subscriptions', label: 'Abonnements', to: '/abonnements', icon: Repeat, hint: 'Ce qui revient chaque mois, facturé en un geste' },
+      { key: 'contracts', label: 'Contrats', to: '/contrats', icon: Signature, hint: 'Ce qui est signé, jusqu’à quand, pour combien' },
+      { key: 'reviews', label: 'Avis', to: '/avis', icon: Star, hint: 'Ce que les clientes disent, gardé ensemble' },
+      { key: 'loyalty', label: 'Fidélité', to: '/fidelite', icon: Stamp, hint: 'La carte à tampons, sans le carton' },
+      { key: 'referrals', label: 'Parrainage', to: '/parrainage', icon: HeartHandshake, hint: 'Qui a amené qui, et ce qu’on lui doit' },
+      { key: 'booking', label: 'Rendez-vous en ligne', to: '/rdv-en-ligne', icon: CalendarCheck, hint: 'Une page publique branchée sur l’Agenda' },
     ],
   },
   {
@@ -301,6 +317,14 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/settings', 'reglages'],
   ['/membres', 'reglages'],
   ['/assistance', 'fil'],
+  ['/rdv-en-ligne', 'reglages'],
+  ['/parrainage', 'registre'],
+  ['/fidelite', 'fiches'],
+  ['/avis', 'fiches'],
+  ['/contrats', 'registre'],
+  ['/abonnements', 'registre'],
+  ['/relances', 'fiches'],
+  ['/pipeline', 'tableau'],
   ['/appels', 'reglages'],
   ['/trombinoscope', 'fiches'],
   ['/absences', 'registre'],

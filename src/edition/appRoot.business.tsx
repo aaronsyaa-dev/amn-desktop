@@ -7,6 +7,7 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { InvitationScreen } from '../screens/InvitationScreen';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { GuestCallScreen } from '../screens/GuestCallScreen';
+import { PublicBookingScreen } from '../screens/PublicBookingScreen';
 import { HomeSoloScreen } from '../business/HomeSoloScreen';
 import { AgendaScreen } from '../business/AgendaScreen';
 import { MediaSoloScreen } from '../business/MediaSoloScreen';
@@ -27,6 +28,14 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { MembersScreen } from '../screens/MembersScreen';
 import { AssistanceScreen } from '../screens/AssistanceScreen';
 import { LibraryScreen } from '../screens/LibraryScreen';
+import { BookingScreen } from '../screens/BookingScreen';
+import { ReferralsScreen } from '../screens/ReferralsScreen';
+import { LoyaltyScreen } from '../screens/LoyaltyScreen';
+import { ReviewsScreen } from '../screens/ReviewsScreen';
+import { ContractsScreen } from '../screens/ContractsScreen';
+import { SubscriptionsScreen } from '../screens/SubscriptionsScreen';
+import { RemindersScreen } from '../screens/RemindersScreen';
+import { PipelineScreen } from '../screens/PipelineScreen';
 import { CallsScreen } from '../screens/CallsScreen';
 import { DirectoryScreen } from '../screens/DirectoryScreen';
 import { LeavesScreen } from '../screens/LeavesScreen';
@@ -68,6 +77,9 @@ export function AppRoot() {
           jamais de compte. Elle n'affiche aucune marque et ne connaît aucune
           route de données — voir GuestCallScreen. */}
       <Route path="/appel" element={<GuestCallScreen />} />
+      {/* Prise de rendez-vous publique : un visiteur sans compte, une organisation
+          désignée par l'adresse — voir PublicBookingScreen. */}
+      <Route path="/rdv" element={<PublicBookingScreen />} />
       <Route
         element={
           <ProtectedRoute>
@@ -270,6 +282,70 @@ export function AppRoot() {
           element={
             <ModuleRoute module="calls">
               <CallsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/pipeline"
+          element={
+            <ModuleRoute module="pipeline">
+              <PipelineScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/relances"
+          element={
+            <ModuleRoute module="reminders">
+              <RemindersScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/abonnements"
+          element={
+            <ModuleRoute module="subscriptions">
+              <SubscriptionsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/contrats"
+          element={
+            <ModuleRoute module="contracts">
+              <ContractsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/avis"
+          element={
+            <ModuleRoute module="reviews">
+              <ReviewsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/fidelite"
+          element={
+            <ModuleRoute module="loyalty">
+              <LoyaltyScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/parrainage"
+          element={
+            <ModuleRoute module="referrals">
+              <ReferralsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/rdv-en-ligne"
+          element={
+            <ModuleRoute module="booking">
+              <BookingScreen />
             </ModuleRoute>
           }
         />

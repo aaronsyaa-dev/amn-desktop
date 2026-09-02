@@ -168,4 +168,12 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'leaves', label: 'Absences', hint: 'Congés, maladie, télétravail — qui est là' },
   { key: 'directory', label: 'Trombinoscope', hint: 'Les visages, les rôles, qui est là' },
   { key: 'calls', label: 'Appels', hint: 'Appeler un membre, inviter un visiteur par lien' },
+  { key: 'pipeline', label: 'Pipeline', hint: 'Les prospects, de contact à gagné' },
+  { key: 'reminders', label: 'Relances', hint: 'Les factures échues, et le mot à envoyer' },
+  { key: 'subscriptions', label: 'Abonnements', hint: 'Ce qui revient chaque mois, facturé en un geste' },
+  { key: 'contracts', label: 'Contrats', hint: 'Ce qui est signé, jusqu’à quand, pour combien' },
+  { key: 'reviews', label: 'Avis', hint: 'Ce que les clientes disent, gardé ensemble' },
+  { key: 'loyalty', label: 'Fidélité', hint: 'La carte à tampons, sans le carton' },
+  { key: 'referrals', label: 'Parrainage', hint: 'Qui a amené qui, et ce qu’on lui doit' },
+  { key: 'booking', label: 'Rendez-vous en ligne', hint: 'Une page publique branchée sur l’Agenda' },
 ];

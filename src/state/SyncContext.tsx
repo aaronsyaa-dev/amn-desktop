@@ -114,6 +114,14 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'announcements',
   'polls',
   'leaves',
+  'prospects',
+  'paymentReminders',
+  'subscriptions',
+  'contracts',
+  'reviews',
+  'loyaltyCards',
+  'referrals',
+  'bookingConfig',
 ];
 
 const MIRROR_PREFIX = 'amn.sync.';

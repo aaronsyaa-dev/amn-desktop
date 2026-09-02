@@ -32,6 +32,14 @@ export interface TraductionNav {
 }
 
 export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
+  booking: { label: 'Online booking', hint: 'A public page wired to the Calendar' },
+  referrals: { label: 'Referrals', hint: 'Who brought whom, and what is owed' },
+  loyalty: { label: 'Loyalty', hint: 'The stamp card, without the cardboard' },
+  reviews: { label: 'Reviews', hint: 'What customers say, kept together' },
+  contracts: { label: 'Contracts', hint: 'What is signed, until when, for how much' },
+  subscriptions: { label: 'Subscriptions', hint: 'What recurs monthly, invoiced in one move' },
+  reminders: { label: 'Reminders', hint: 'Overdue invoices, and the message to send' },
+  pipeline: { label: 'Pipeline', hint: 'Prospects, from contact to won' },
   calls: { label: 'Calls', hint: 'Call a member, invite a visitor by link' },
   directory: { label: 'People', hint: 'Faces, roles, who is in' },
   leaves: { label: 'Time off', hint: 'Leave, sick days, remote — who is in' },
