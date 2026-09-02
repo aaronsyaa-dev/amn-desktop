@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Eye, EyeOff, Loader2, ShieldCheck} from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+import { bridge } from '../lib/bridge';
 import { Logo } from '../components/Logo';
 import { APP_VERSION, EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/edition';
 import { useLangue } from '../i18n';
@@ -51,6 +52,13 @@ export function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
+  /*
+    MOT DE PASSE OUBLIÉ (Bloc 3). amn-api n'a aucun transport mail : le
+    bouton PRÉVIENT le prestataire — une ligne dans sa file, lue par un
+    humain — et le dit tel quel. Aucun faux envoi. La réponse du serveur est
+    la même que l'adresse existe ou non : personne n'énumère des comptes ici.
+  */
+  const [oublie, setOublie] = useState<'ferme' | 'ouvert' | 'envoi' | 'fait'>('ferme');
   const [phase, setPhase] = useState<Phase>('idle');
   const [error, setError] = useState<string | null>(null);
   /*
@@ -217,7 +225,7 @@ export function LoginScreen() {
             </button>
           </div>
         </motion.form>
-      ) : (
+      ) : oublie !== 'ferme' ? null : (
       <motion.form
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -330,8 +338,68 @@ export function LoginScreen() {
             {(isSubmitting || leaving) && <Loader2 size={15} className="animate-spin" />}
             {leaving ? t('connexion.bienvenue') : isSubmitting ? t('connexion.verification') : t('connexion.seConnecter')}
           </button>
+          <button
+            type="button"
+            onClick={() => { setOublie('ouvert'); setError(null); }}
+            className="mt-1 flex min-h-11 w-full items-center justify-center text-xs text-text-muted transition-colors hover:text-text-secondary md:min-h-9"
+          >
+            {t('connexion.oublie')}
+          </button>
         </div>
       </motion.form>
+      )}
+
+      {oublie !== 'ferme' && (
+        <motion.form
+          key="oublie"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (oublie === 'envoi' || oublie === 'fait') return;
+            setOublie('envoi');
+            try {
+              await bridge().remote.forgotPassword(email.trim());
+            } catch {
+              /* la réponse est la même quoi qu'il arrive : le message ci-dessous vaut */
+            }
+            setOublie('fait');
+          }}
+          className="relative z-10 w-full max-w-sm border border-border bg-surface p-6"
+        >
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">{t('connexion.oublie.titre')}</p>
+          {oublie === 'fait' ? (
+            <p className="mt-3 text-sm leading-relaxed text-text-primary">{t('connexion.oublie.fait')}</p>
+          ) : (
+            <>
+              <p className="mt-3 text-sm leading-relaxed text-text-secondary">{t('connexion.oublie.consigne')}</p>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoFocus
+                autoComplete="username"
+                aria-label={t('connexion.identifiant')}
+                className="input-focus mt-4 min-h-11 w-full border border-border bg-bg px-3 font-mono text-sm text-text-primary outline-none"
+              />
+              <button
+                type="submit"
+                disabled={oublie === 'envoi' || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())}
+                className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 bg-accent px-3 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover disabled:opacity-50"
+              >
+                {oublie === 'envoi' && <Loader2 size={15} className="animate-spin" />}
+                {t('connexion.oublie.envoyer')}
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => setOublie('ferme')}
+            className="mt-3 flex min-h-11 w-full items-center justify-center text-xs text-text-muted transition-colors hover:text-text-secondary md:min-h-9"
+          >
+            {t('connexion.oublie.annuler')}
+          </button>
+        </motion.form>
       )}
       {/*
         La ligne de lieu, ANCRÉE AU BORD BAS de la fenêtre — pas collée sous la

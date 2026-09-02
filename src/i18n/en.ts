@@ -44,6 +44,13 @@ export const en = {
   'connexion.mfa.utiliserApp': 'Use the authenticator app',
   'connexion.mfa.utiliserSecours': 'Use a backup code',
   'connexion.mfa.codeInvalide': 'Invalid code.',
+  'connexion.oublie': 'Forgotten password?',
+  'connexion.oublie.titre': 'Forgotten password',
+  'connexion.oublie.consigne':
+    'Enter your email address. Your provider will be notified and will hand you a temporary password.',
+  'connexion.oublie.envoyer': 'Notify my provider',
+  'connexion.oublie.annuler': 'Back to sign in',
+  'connexion.oublie.fait': 'Your provider has been notified — you will receive a temporary password.',
 
   /* ── Welcome curtain ────────────────────────────────────────────────── */
   'bienvenue.titre': 'Welcome to {produit}',

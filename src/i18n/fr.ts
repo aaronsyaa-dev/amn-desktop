@@ -36,6 +36,13 @@ export const fr: Dictionnaire = {
   'connexion.mfa.utiliserApp': 'Utiliser l’application',
   'connexion.mfa.utiliserSecours': 'Utiliser un code de secours',
   'connexion.mfa.codeInvalide': 'Code invalide.',
+  'connexion.oublie': 'Mot de passe oublié ?',
+  'connexion.oublie.titre': 'Mot de passe oublié',
+  'connexion.oublie.consigne':
+    'Indiquez votre adresse email. Votre prestataire sera prévenu et vous remettra un mot de passe temporaire.',
+  'connexion.oublie.envoyer': 'Prévenir mon prestataire',
+  'connexion.oublie.annuler': 'Retour à la connexion',
+  'connexion.oublie.fait': 'Votre prestataire a été prévenu — vous recevrez un mot de passe temporaire.',
 
   /* ── Rideau de bienvenue ────────────────────────────────────────────── */
   'bienvenue.titre': 'Bienvenue sur {produit}',

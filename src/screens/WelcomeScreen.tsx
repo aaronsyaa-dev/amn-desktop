@@ -41,7 +41,7 @@ Politique d'utilisation d'AMN Desktop.
 
 1. L'espace de travail et les données qui y sont saisies appartiennent à votre organisation.
 2. Vos accès sont personnels : un identifiant, un mot de passe, une personne.
-3. AMN DevSec assure l'hébergement, la supervision et la sauvegarde de votre espace.
+3. Votre prestataire assure l'hébergement, la supervision et la sauvegarde de votre espace.
 4. Vous pouvez demander l'export complet de vos données à tout moment.
 
 [Fin du gabarit.]`;
@@ -60,17 +60,26 @@ export function WelcomeScreen() {
   const [copie, setCopie] = useState<'identifiant' | 'motdepasse' | null>(null);
   const [motDePasseVisible, setMotDePasseVisible] = useState(true);
 
-  // Le jeton est lu une fois, puis retiré de l'adresse — c'est un secret.
+  // Le jeton est lu à l'arrivée — et à chaque nouveau lien collé dans la même
+  // fenêtre — puis retiré de l'adresse : c'est un secret.
   useEffect(() => {
-    const hash = window.location.hash;
-    const query = hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : '';
-    const found = (new URLSearchParams(query).get('token') ?? '').trim();
-    if (found) {
-      setToken(found);
-      window.history.replaceState(null, '', `${window.location.pathname}#/bienvenue`);
-    } else {
-      setEtape('indisponible');
-    }
+    const lire = () => {
+      const hash = window.location.hash;
+      const query = hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : '';
+      const found = (new URLSearchParams(query).get('token') ?? '').trim();
+      if (found) {
+        setAcces(null);
+        setPolitiqueAcceptee(false);
+        setEtape('lecture');
+        setToken(found);
+        window.history.replaceState(null, '', `${window.location.pathname}#/bienvenue`);
+      } else if (!window.location.hash.includes('token=')) {
+        setEtape((e) => (e === 'lecture' ? 'indisponible' : e));
+      }
+    };
+    lire();
+    window.addEventListener('hashchange', lire);
+    return () => window.removeEventListener('hashchange', lire);
   }, []);
 
   useEffect(() => {
