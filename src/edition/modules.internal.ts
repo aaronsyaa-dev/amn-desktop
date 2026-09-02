@@ -67,6 +67,8 @@ import {
   ArrowLeftRight,
   Workflow,
   Download,
+  Gauge,
+  FileBarChart,
 } from 'lucide-react';
 import type { NavSection } from '../data/navigation';
 import type { ActivityTab } from '../state/ActivityContext';
@@ -293,6 +295,10 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'supervision', label: 'Supervision', to: '/supervision', icon: ShieldAlert, hint: 'Incidents à traiter' },
       { key: 'sites', label: 'Sites', to: '/sites', icon: Globe, hint: 'Registre des sites clients' },
       { key: 'tracker', label: 'Trackers', to: '/tracker', icon: Radar, hint: 'Supervision temps réel' },
+      { key: 'socMaturity', label: 'Maturité SOC', to: '/maturite-soc', icon: Gauge, hint: 'Où en est chaque cliente, sur des signaux réels' },
+      { key: 'orgCompare', label: 'Comparatif clientes', to: '/comparatif', icon: Scale, hint: 'Toutes les organisations côte à côte' },
+      { key: 'customAlerts', label: 'Alertes personnalisées', to: '/alertes-personnalisees', icon: BellRing, hint: 'Vos propres seuils sur le parc' },
+      { key: 'clientReport', label: 'Rapport client enrichi', to: '/rapport-client', icon: FileBarChart, hint: 'Tout ce qu’on sait d’une cliente, en une page imprimable' },
     ],
   },
   {
@@ -371,6 +377,10 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/settings', 'reglages'],
   ['/membres', 'reglages'],
   ['/assistance', 'fil'],
+  ['/rapport-client', 'fiches'],
+  ['/alertes-personnalisees', 'reglages'],
+  ['/comparatif', 'tableau'],
+  ['/maturite-soc', 'tableau'],
   ['/outils/donnees', 'reglages'],
   ['/outils/automatisations', 'reglages'],
   ['/outils/modeles', 'fiches'],

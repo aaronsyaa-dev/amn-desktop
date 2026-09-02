@@ -32,6 +32,10 @@ export interface TraductionNav {
 }
 
 export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
+  clientReport: { label: 'Enriched client report', hint: 'Everything known about a client, on one printable page' },
+  customAlerts: { label: 'Custom alerts', hint: 'Your own thresholds on the fleet' },
+  orgCompare: { label: 'Client comparison', hint: 'All organisations side by side' },
+  socMaturity: { label: 'SOC maturity', hint: 'Where each client stands, on real signals' },
   dataPort: { label: 'Import / export', hint: 'Your data, both ways' },
   automations: { label: 'Automations', hint: 'If this happens, then that gets done' },
   templates: { label: 'Templates', hint: 'Ready texts, with blanks' },
@@ -130,6 +134,7 @@ export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
  * côté catalogue retombe sur le français, visiblement.
  */
 export const SECTIONS_EN_COMMUN: Record<string, string> = {
+  'Parc': 'Fleet',
   'Outils': 'Tools',
   'Collectif': 'Team',
   Pilotage: 'Planning',

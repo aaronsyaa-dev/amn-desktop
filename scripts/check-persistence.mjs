@@ -190,6 +190,10 @@ const MODULE_DATA = {
   templates: ['templates'],
   automations: ['automations'],
   dataPort: [],
+  socMaturity: [],
+  orgCompare: [],
+  customAlerts: ['customAlerts'],
+  clientReport: [],
 };
 
 /**
@@ -276,6 +280,10 @@ const MODULE_FILES = {
   templates: ['src/screens/TemplatesScreen.tsx'],
   automations: ['src/screens/AutomationsScreen.tsx'],
   dataPort: ['src/screens/DataPortScreen.tsx'],
+  socMaturity: ['src/screens/SocMaturityScreen.tsx'],
+  orgCompare: ['src/screens/OrgCompareScreen.tsx'],
+  customAlerts: ['src/screens/CustomAlertsScreen.tsx'],
+  clientReport: ['src/screens/ClientReportScreen.tsx'],
 };
 
 /**

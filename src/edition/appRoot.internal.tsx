@@ -40,6 +40,10 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { MembersScreen } from '../screens/MembersScreen';
 import { AssistanceScreen } from '../screens/AssistanceScreen';
 import { LibraryScreen } from '../screens/LibraryScreen';
+import { ClientReportScreen } from '../screens/ClientReportScreen';
+import { CustomAlertsScreen } from '../screens/CustomAlertsScreen';
+import { OrgCompareScreen } from '../screens/OrgCompareScreen';
+import { SocMaturityScreen } from '../screens/SocMaturityScreen';
 import { DataPortScreen } from '../screens/DataPortScreen';
 import { AutomationsScreen } from '../screens/AutomationsScreen';
 import { TemplatesScreen } from '../screens/TemplatesScreen';
@@ -290,6 +294,10 @@ function AmnRoutes() {
         <Route path="/outils/modeles" element={<TemplatesScreen />} />
         <Route path="/outils/automatisations" element={<AutomationsScreen />} />
         <Route path="/outils/donnees" element={<DataPortScreen />} />
+        <Route path="/maturite-soc" element={<SocMaturityScreen />} />
+        <Route path="/comparatif" element={<OrgCompareScreen />} />
+        <Route path="/alertes-personnalisees" element={<CustomAlertsScreen />} />
+        <Route path="/rapport-client" element={<ClientReportScreen />} />
         <Route path="/bibliotheque" element={<LibraryScreen />} />
         <Route path="/vault" element={<VaultScreen />} />
 

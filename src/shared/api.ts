@@ -2176,7 +2176,8 @@ export type SyncedCollection =
   | 'signatures'
   | 'portfolioItems'
   | 'templates'
-  | 'automations';
+  | 'automations'
+  | 'customAlerts';
 
 export interface PresenceEntry {
   email: string;

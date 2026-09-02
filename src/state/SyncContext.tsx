@@ -144,6 +144,7 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'portfolioItems',
   'templates',
   'automations',
+  'customAlerts',
 ];
 
 const MIRROR_PREFIX = 'amn.sync.';
