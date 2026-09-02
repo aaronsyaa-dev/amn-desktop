@@ -20,7 +20,7 @@ import { AppLauncher } from './AppLauncher';
 import { useLangue, libelleNav, libelleSection, libelleEspace } from '../i18n';
 import { OrgSwitchButton } from './org-rail/OrgSwitchButton';
 import { type NavItem } from '../data/navigation';
-import { SPACES, spaceByKey, spaceForPath, sectionsForSpace, itemsForSpace } from '../data/spaces';
+import { SPACES, spaceByKey, spaceForPath, sectionsForSpace } from '../data/spaces';
 import { CLE_CHOIX, deplierAuDemarrage, lireChoix } from '../lib/barreLaterale';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
 
@@ -141,7 +141,9 @@ export function Sidebar({
   */
   const cheminCourant = useMemo(() => {
     let meilleur = '';
-    for (const item of itemsForSpace(space)) {
+    // Par les sections, jamais par la liste à plat : c'est la règle que
+    // check:modules tient pour cette surface, et elle vaut ici aussi.
+    for (const item of sectionsForSpace(space).flatMap((section) => section.items)) {
       if (item.to === '/') continue;
       const colle = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
       if (colle && item.to.length > meilleur.length) meilleur = item.to;

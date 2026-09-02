@@ -20,6 +20,7 @@ import {
   Timer,
   Users,
   Wallet,
+  Compass,
 } from 'lucide-react';
 import type { NavSection } from '../data/navigation';
 import type { ActivityTab } from '../state/ActivityContext';
@@ -148,6 +149,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings, hint: 'Profil et notifications' },
       { key: 'members', label: 'Membres', to: '/membres', icon: Users, hint: 'Qui travaille ici, et les places' },
       { key: 'assistance', label: 'Assistance', to: '/assistance', icon: MessageSquareText, hint: 'Écrire à votre prestataire' },
+      { key: 'discover', label: 'Découvrir', to: '/decouvrir', icon: Compass, hint: 'Tout ce qui existe, rangé' },
       { key: 'vault', label: 'Coffre-fort', to: '/vault', icon: Lock, hint: 'Mots de passe et accès' },
     ],
   },
@@ -207,5 +209,6 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/settings', 'reglages'],
   ['/membres', 'reglages'],
   ['/assistance', 'fil'],
+  ['/decouvrir', 'reglages'],
   ['/vault', 'coffre'],
 ];

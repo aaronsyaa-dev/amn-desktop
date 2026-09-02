@@ -26,6 +26,7 @@ import { ReportsScreen } from '../screens/ReportsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { MembersScreen } from '../screens/MembersScreen';
 import { AssistanceScreen } from '../screens/AssistanceScreen';
+import { LibraryScreen } from '../screens/LibraryScreen';
 import { VaultScreen } from '../screens/VaultScreen';
 
 /**
@@ -209,6 +210,7 @@ export function AppRoot() {
         <Route path="/settings" element={<SettingsScreen />} />
         <Route path="/membres" element={<MembersScreen />} />
         <Route path="/assistance" element={<AssistanceScreen />} />
+        <Route path="/decouvrir" element={<LibraryScreen />} />
         <Route
           path="/vault"
           element={

@@ -32,6 +32,7 @@ import {
   Timer,
   Users,
   Wallet,
+  LibraryBig,
 } from 'lucide-react';
 import type { NavSection } from '../data/navigation';
 import type { ActivityTab } from '../state/ActivityContext';
@@ -173,6 +174,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings, hint: 'Profil et notifications' },
       { key: 'members', label: 'Membres', to: '/membres', icon: Users, hint: 'Qui travaille ici, et les places' },
       { key: 'assistance', label: 'Assistance', to: '/assistance', icon: MessageSquareText, hint: 'Écrire au prestataire' },
+      { key: 'library', label: 'Bibliothèque', to: '/bibliotheque', icon: LibraryBig, hint: 'Tous les modules, rangés par sections' },
       { key: 'vault', label: 'Coffre-fort', to: '/vault', icon: Lock, hint: 'Clés et accès' },
     ],
   },
@@ -285,5 +287,6 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/settings', 'reglages'],
   ['/membres', 'reglages'],
   ['/assistance', 'fil'],
+  ['/bibliotheque', 'reglages'],
   ['/vault', 'coffre'],
 ];

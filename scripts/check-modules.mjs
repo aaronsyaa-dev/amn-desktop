@@ -108,6 +108,9 @@ const NOT_IN_SUPPORT = new Map([
   ['members', 'comptes de la session, pas de la cliente : son dossier les gère'],
   // Écrire « à son prestataire » depuis une session de support, c'est nous écrire à nous-mêmes.
   ['assistance', 'le prestataire ne s’écrit pas à lui-même : la file vit dans la Tour'],
+  // La Bibliothèque de la cliente se compose depuis son dossier (la même grille, en mode « composer »).
+  ['discover', 'le rangement se lit chez elle ; en support, son dossier compose ce qu’elle reçoit'],
+  ['library', 'la Bibliothèque interne : tous les modules, deux espaces — pas un écran de cliente'],
 ]);
 
 /* ---------------------------------------------------------------- lecture -- */

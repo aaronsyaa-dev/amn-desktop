@@ -1,0 +1,137 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import { Search } from 'lucide-react';
+import { ScreenHeader } from '../components/ScreenHeader';
+import { ModuleGrid, type EtatModule } from '../components/ModuleGrid';
+import { NAV_SECTIONS } from '../data/navigation';
+import { ALWAYS_ON_MODULES, isModuleEnabled } from '../data/spaces';
+import { bridge } from '../lib/bridge';
+import { useLangue } from '../i18n';
+import { IS_BUSINESS } from '../edition/edition';
+import { staggerContainer, staggerItem } from '../lib/transitions';
+import type { ModuleOffer } from '../shared/api';
+
+/**
+ * LA BIBLIOTHÈQUE — le rangement de référence.
+ *
+ * Édition interne : « Bibliothèque ». Tous les modules du produit, les deux
+ * espaces, rangés par sections, avec une recherche. Chez AMN DevSec tout est
+ * ouvert : c'est l'endroit où l'on retrouve un écran en deux secondes.
+ *
+ * Édition cliente : « Découvrir ». La même grille, mais lue depuis chez elle :
+ * ses modules ouverts (on y va), ce qui est inclus quoi qu'il arrive, et ce
+ * qui existe par ailleurs — avec le geste pour le demander, qui écrit un
+ * message à son prestataire et rien d'autre (voir routes/modules.js). Jamais
+ * un desktop qui a l'air vide : la Bibliothèque est là même quand la barre
+ * est courte. Jamais un catalogue qui a l'air d'un mur : rangé, cherchable,
+ * un mot d'état par tuile.
+ *
+ * Épingler et la Trousse restent le raccourci rapide ; ceci est le rangement.
+ */
+export function LibraryScreen() {
+  const { t } = useLangue();
+  const [recherche, setRecherche] = useState('');
+  const [offres, setOffres] = useState<ModuleOffer[] | null>(null);
+  const [enCours, setEnCours] = useState<string | null>(null);
+  const [erreur, setErreur] = useState<string | null>(null);
+
+  // Côté cliente, le serveur sait ce qui est demandé : on le lit une fois.
+  useEffect(() => {
+    if (!IS_BUSINESS) return;
+    let vivant = true;
+    bridge()
+      .remote.modules.catalogue()
+      .then((liste) => vivant && setOffres(liste))
+      .catch(() => vivant && setOffres([]));
+    return () => {
+      vivant = false;
+    };
+  }, []);
+
+  const sections = useMemo(
+    () => NAV_SECTIONS.map((s) => ({ key: s.key, label: s.label, items: s.items })),
+    [],
+  );
+
+  const demandes = useMemo(() => new Set((offres ?? []).filter((o) => o.requested).map((o) => o.key)), [offres]);
+  const etat = (key: string): EtatModule => {
+    if (ALWAYS_ON_MODULES.includes(key)) return 'inclus';
+    if (isModuleEnabled(key)) return 'ouvert';
+    return demandes.has(key) ? 'demande' : 'disponible';
+  };
+
+  const total = sections.reduce((n, s) => n + s.items.length, 0);
+  const comptes = sections
+    .flatMap((s) => s.items)
+    .reduce(
+      (acc, item) => {
+        acc[etat(item.key)] += 1;
+        return acc;
+      },
+      { ouvert: 0, inclus: 0, disponible: 0, demande: 0 } as Record<EtatModule, number>,
+    );
+
+  const demander = async (cle: string) => {
+    setEnCours(cle);
+    setErreur(null);
+    try {
+      await bridge().remote.modules.request({ module: cle });
+      setOffres((prev) => (prev ?? []).some((o) => o.key === cle)
+        ? (prev ?? []).map((o) => (o.key === cle ? { ...o, requested: true } : o))
+        : [...(prev ?? []), { key: cle, label: cle, summary: '', enabled: false, requested: true }]);
+    } catch {
+      setErreur(t('biblio.demande.echec'));
+    } finally {
+      setEnCours(null);
+    }
+  };
+
+  return (
+    <motion.section variants={staggerContainer} initial="hidden" animate="show" className="flex flex-col gap-5">
+      <motion.div variants={staggerItem}>
+        <ScreenHeader
+          eyebrow={IS_BUSINESS ? t('biblio.surtitreCliente') : t('biblio.surtitreInterne')}
+          title={IS_BUSINESS ? t('biblio.titreCliente') : t('biblio.titreInterne')}
+          description={IS_BUSINESS ? t('biblio.descriptionCliente') : t('biblio.descriptionInterne')}
+          stats={[
+            { label: t('biblio.stat.modules'), value: total },
+            { label: t('biblio.stat.ouverts'), value: comptes.ouvert + comptes.inclus },
+            ...(IS_BUSINESS ? [{ label: t('biblio.stat.disponibles'), value: comptes.disponible + comptes.demande }] : []),
+          ]}
+        />
+      </motion.div>
+
+      <motion.div variants={staggerItem}>
+        <label className="input-focus flex min-h-11 max-w-xl items-center gap-2 rounded-lg border border-border bg-surface px-3">
+          <Search size={15} className="flex-shrink-0 text-text-muted" />
+          <input
+            type="search"
+            value={recherche}
+            onChange={(e) => setRecherche(e.target.value)}
+            placeholder={t('biblio.rechercher')}
+            aria-label={t('biblio.rechercher')}
+            className="min-w-0 flex-1 bg-transparent py-2 text-sm text-text-primary outline-none placeholder:text-text-muted"
+          />
+        </label>
+      </motion.div>
+
+      {erreur && (
+        <motion.p variants={staggerItem} role="alert" className="border border-warning/40 bg-warning-muted px-3 py-2 text-xs text-text-primary">
+          {erreur}
+        </motion.p>
+      )}
+
+      <motion.div variants={staggerItem}>
+        <ModuleGrid
+          sections={sections}
+          etat={etat}
+          mode={IS_BUSINESS ? 'demander' : 'lire'}
+          surface={IS_BUSINESS ? 'business' : 'interne'}
+          recherche={recherche}
+          enCours={enCours}
+          onDemander={(cle) => void demander(cle)}
+        />
+      </motion.div>
+    </motion.section>
+  );
+}

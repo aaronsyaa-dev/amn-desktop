@@ -145,6 +145,8 @@ const MODULE_DATA = {
   // déclaré local ci-dessous.
   courses: ['pages'],
   budget: [],
+  library: [], // La Bibliothèque lit les catalogues ; Découvrir lit le catalogue serveur. Rien d'écrit.
+  discover: [],
 };
 
 /**
@@ -163,6 +165,8 @@ const MODULE_DATA = {
  * écrire dans le stockage local sans être déclarés ci-dessous.
  */
 const MODULE_FILES = {
+  library: ['src/screens/LibraryScreen.tsx', 'src/components/ModuleGrid.tsx'],
+  discover: ['src/screens/LibraryScreen.tsx', 'src/components/ModuleGrid.tsx'],
   agenda: ['src/business/AgendaScreen.tsx', 'src/state/useAppointments.ts'],
   clients: ['src/screens/ClientsScreen.tsx', 'src/state/useClients.ts'],
   invoices: ['src/screens/InvoicesScreen.tsx', 'src/state/useInvoices.ts'],

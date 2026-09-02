@@ -32,6 +32,8 @@ export interface TraductionNav {
 }
 
 export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
+  library: { label: 'Library', hint: 'Every module, by section' },
+  discover: { label: 'Discover', hint: 'Everything that exists, arranged' },
   home: { label: 'Home', hint: 'Today’s HQ', hintBusiness: 'Your day', hintSupport: 'Their day' },
   agenda: {
     label: 'Calendar',

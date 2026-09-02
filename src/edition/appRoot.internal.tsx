@@ -36,6 +36,7 @@ import { ReportsScreen } from '../screens/ReportsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { MembersScreen } from '../screens/MembersScreen';
 import { AssistanceScreen } from '../screens/AssistanceScreen';
+import { LibraryScreen } from '../screens/LibraryScreen';
 import { VaultScreen } from '../screens/VaultScreen';
 import { ControlTowerScreen } from '../screens/ControlTowerScreen';
 import { OrganizationsScreen } from '../screens/OrganizationsScreen';
@@ -194,6 +195,7 @@ function AmnRoutes() {
         <Route path="/settings" element={<SettingsScreen />} />
         <Route path="/membres" element={<MembersScreen />} />
         <Route path="/assistance" element={<AssistanceScreen />} />
+        <Route path="/bibliotheque" element={<LibraryScreen />} />
         <Route path="/vault" element={<VaultScreen />} />
 
         {/* Tour de contrôle */}

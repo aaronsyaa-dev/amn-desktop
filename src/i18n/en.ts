@@ -195,6 +195,29 @@ export const en = {
   'membres.retirerConfirmer': 'Remove this account',
   'membres.retirerGarder': 'Keep',
   'membres.retirerFait': '{email} has been removed. The seat is free.',
+
+  /* ── Library / Discover ─────────────────────────────────────────────── */
+  'biblio.titreInterne': 'Library',
+  'biblio.surtitreInterne': 'System · Library',
+  'biblio.descriptionInterne': 'Every module of the product, by section. Search, then go.',
+  'biblio.titreCliente': 'Discover',
+  'biblio.surtitreCliente': 'System · Discover',
+  'biblio.descriptionCliente': 'What your workspace holds, and what exists besides. Asking writes to your provider — nothing opens by itself.',
+  'biblio.rechercher': 'Find a module…',
+  'biblio.rienTrouve': 'Nothing matches “{recherche}”.',
+  'biblio.etat.ouvert': 'Open',
+  'biblio.etat.inclus': 'Included',
+  'biblio.etat.disponible': 'Available',
+  'biblio.etat.demande': 'Requested',
+  'biblio.stat.modules': 'Modules',
+  'biblio.stat.ouverts': 'Open',
+  'biblio.stat.disponibles': 'Available',
+  'biblio.demander': 'Ask for it',
+  'biblio.demande.faite': 'Requested',
+  'biblio.demande.echec': 'The request did not leave. Try again in a moment.',
+  'biblio.composer.inclus': 'Included',
+  'biblio.composer.retirer': 'Open · click to close',
+  'biblio.composer.ouvrir': 'Closed · click to open',
 } as const;
 
 /*

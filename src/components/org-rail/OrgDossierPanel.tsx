@@ -7,7 +7,9 @@ import { bridge } from '../../lib/bridge';
 import { cleanErrorMessage } from '../../lib/errorMessage';
 import { SaveIndicator } from '../SaveIndicator';
 import { ACCENTS, DEFAULT_ACCENT_ID } from '../../lib/accent';
-import { CLIENT_SECTIONS } from '../../client-context/ClientSidebar';
+import { CLIENT_SECTIONS, CLIENT_NAV_ITEMS } from '../../client-context/ClientSidebar';
+import { ModuleGrid } from '../ModuleGrid';
+import type { NavItem } from '../../data/navigation';
 import type { AdminOrganization, AdminOrgUser, OrgPulse } from '../../shared/api';
 import { relativeTime } from '../../lib/time';
 import { useFermetureEchap } from '../../lib/useFermetureEchap';
@@ -512,32 +514,27 @@ export function OrgDossierPanel({
             </span>
           </p>
 
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {TOGGLEABLE.map((module) => {
-              const on = isOn(module.key);
-              return (
-                <button
-                  key={module.key}
-                  type="button"
-                  disabled={pendingModule !== null}
-                  onClick={() => void toggle(module.key)}
-                  className={`flex min-h-11 items-center gap-2.5 border px-3 text-left text-sm transition-colors disabled:opacity-50 ${
-                    on
-                      ? 'border-border-strong text-text-primary'
-                      : 'border-border text-text-muted'
-                  }`}
-                >
-                  <span
-                    className={`flex h-4 w-4 flex-shrink-0 items-center justify-center border ${
-                      on ? 'border-accent bg-accent text-bg' : 'border-border'
-                    }`}
-                  >
-                    {on && <Check size={11} strokeWidth={3} />}
-                  </span>
-                  <span className="truncate">{module.label}</span>
-                </button>
-              );
-            })}
+          {/*
+            LA MÊME GRILLE QUE LA BIBLIOTHÈQUE, en mode « composer » : c'est ici
+            qu'Aaron compose un desktop. Rangée par les sections que la cliente
+            voit chez elle (CLIENT_SECTIONS), avec ce qui est inclus quoi qu'il
+            arrive marqué comme tel — on ne coche pas l'accueil.
+          */}
+          <div className="mt-3">
+            <ModuleGrid
+              mode="composer"
+              surface="support"
+              sections={CLIENT_SECTIONS.map((section) => ({
+                key: section.label,
+                label: section.label,
+                items: section.keys
+                  .map((cle) => CLIENT_NAV_ITEMS.find((item) => item.key === cle))
+                  .filter((item): item is NavItem => Boolean(item)),
+              }))}
+              etat={(cle) => (TOGGLEABLE.some((m) => m.key === cle) ? (isOn(cle) ? 'ouvert' : 'disponible') : 'inclus')}
+              enCours={pendingModule}
+              onToggle={(cle) => void toggle(cle)}
+            />
           </div>
 
           {org.modules === null || org.modules === undefined ? (
