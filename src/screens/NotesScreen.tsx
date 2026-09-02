@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ScreenHeader } from '../components/ScreenHeader';
 import { motion } from 'framer-motion';
 import {
+  CalendarDays,
   Bold,
   Code2,
   CornerUpLeft,
@@ -31,7 +32,10 @@ import { relativeTime } from '../lib/time';
 import { EmptyState } from '../components/EmptyState';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
 import {
+  extraireTags,
   insererLien,
+  lierMention,
+  mentionsNonLiees,
   resoudre,
   retroliens,
   saisieEnCours,
@@ -79,9 +83,37 @@ export function NotesScreen() {
       if (isPending(`notes:${n.id}`)) return false;
       if (scope !== 'all' && n.scope !== scope) return false;
       if (!q) return true;
+      // « #devis » : la recherche devient un filtre d'étiquette, exact et non fragmentaire.
+      if (q.startsWith('#')) return extraireTags(n.body).includes(q.slice(1));
       return n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q);
     });
   }, [notes, query, scope, isPending]);
+
+  /*
+    LES ÉTIQUETTES DU CARNET. Ce qu'Obsidian appelle des tags : un mot précédé
+    d'un dièse, écrit dans le corps. Elles ne sont pas une liste à tenir : on
+    les lit dans les notes, et cliquer l'une d'elles filtre. Les plus
+    fréquentes d'abord, douze au plus — au-delà, c'est la recherche.
+  */
+  const etiquettes = useMemo(() => {
+    const compte = new Map<string, number>();
+    for (const n of notes) for (const tag of extraireTags(n.body)) compte.set(tag, (compte.get(tag) ?? 0) + 1);
+    return [...compte.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 12);
+  }, [notes]);
+  const tagActif = query.trim().toLowerCase().startsWith('#') ? query.trim().toLowerCase().slice(1) : null;
+
+  /* LA NOTE DU JOUR : une par jour, titrée par la date, ouverte ou créée d'un geste. */
+  const titreDuJour = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const ouvrirNoteDuJour = () => {
+    const existante = notes.find((n) => n.title.trim().toLowerCase() === titreDuJour.toLowerCase());
+    if (existante) {
+      setSelectedId(existante.id);
+      return;
+    }
+    const id = createNote(TEAM_ENABLED ? 'personal' : 'team', titreDuJour);
+    setScope('all');
+    setSelectedId(id);
+  };
 
   useEffect(() => {
     if (selectedId && !notes.some((n) => n.id === selectedId)) setSelectedId(null);
@@ -143,6 +175,15 @@ export function NotesScreen() {
             et la note choisie survivent au passage de l'une à l'autre. On
             bascule pour retrouver quelque chose, pas pour changer de contexte.
           */}
+          <button
+            type="button"
+            onClick={ouvrirNoteDuJour}
+            title={titreDuJour}
+            className="flex min-h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+          >
+            <CalendarDays size={13} strokeWidth={1.75} />
+            Note du jour
+          </button>
           <div className="flex items-center gap-1 rounded-lg border border-border p-1" role="group" aria-label="Affichage des notes">
             {([
               ['liste', 'Liste', Rows3],
@@ -247,6 +288,23 @@ export function NotesScreen() {
                 className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
               />
             </div>
+            {etiquettes.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1" role="group" aria-label="Étiquettes">
+                {etiquettes.map(([tag, n]) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    aria-pressed={tagActif === tag}
+                    onClick={() => setQuery(tagActif === tag ? '' : `#${tag}`)}
+                    className={`min-h-8 rounded-md border px-2 font-mono text-[11px] transition-colors ${
+                      tagActif === tag ? 'border-border-strong bg-surface-hover text-text-primary' : 'border-border text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    #{tag} <span className="text-text-muted">{n}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             {TEAM_ENABLED && (
             <div className="flex items-center gap-2">
               {(['all', 'personal', 'team'] as ScopeFilter[]).map((s) => (
@@ -352,6 +410,10 @@ export function NotesScreen() {
             notes={notes}
             graphe={graphe}
             onSave={(patch) => updateNote(selected.id, patch)}
+            onLier={(noteId) => {
+              const autre = notes.find((n) => n.id === noteId);
+              if (autre) updateNote(noteId, { body: lierMention(autre.body, selected.title) });
+            }}
             onRenommer={(titre) => void renommer(selected.id, titre)}
             onTogglePin={() => togglePin(selected)}
             onRemove={() => removeNote(selected)}
@@ -394,6 +456,7 @@ function NoteEditor({
   onRemove,
   onOuvrir,
   onCreer,
+  onLier,
 }: {
   note: Note;
   notes: Note[];
@@ -405,6 +468,8 @@ function NoteEditor({
   onRemove: () => void;
   onOuvrir: (id: string) => void;
   onCreer: (titre: string) => void;
+  /** Transformer une mention en clair, dans une AUTRE note, en lien vers celle-ci. */
+  onLier: (noteId: string) => void;
 }) {
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
@@ -443,6 +508,7 @@ function NoteEditor({
   );
 
   const retro = useMemo(() => retroliens(graphe, note.id), [graphe, note.id]);
+  const mentions = useMemo(() => mentionsNonLiees(note, notes, graphe), [note, notes, graphe]);
 
   /*
     Valider le titre : c'est le seul chemin qui touche au titre, parce que
@@ -722,6 +788,30 @@ function NoteEditor({
         Le panneau ne s'affiche que s'il a quelque chose à dire — un cadre vide
         sous chaque note apprendrait surtout à ne plus regarder à cet endroit.
       */}
+      {/*
+        LES MENTIONS NON LIÉES. Des notes citent ce titre en clair sans pointer
+        ici : c'est le geste d'Obsidian qui relie un carnet après coup. « Lier »
+        réécrit la mention en [[lien]] dans l'autre note — un clic, pas une retape.
+      */}
+      {mentions.length > 0 && (
+        <div className="flex-shrink-0 border-t border-border px-4 py-3">
+          <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+            {mentions.length === 1 ? 'Une note mentionne ce titre sans lien' : `${mentions.length} notes mentionnent ce titre sans lien`}
+          </p>
+          <ul className="flex flex-col gap-1.5">
+            {mentions.map((n) => (
+              <li key={n.id} className="flex items-center gap-1">
+                <button type="button" onClick={() => onOuvrir(n.id)} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-left text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary md:min-h-8">
+                  <span className="truncate">{n.title || 'Sans titre'}</span>
+                </button>
+                <button type="button" onClick={() => onLier(n.id)} className="min-h-11 flex-shrink-0 rounded-md border border-border px-2.5 text-xs text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:min-h-8">
+                  Lier
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {retro.length > 0 && (
         <div className="flex-shrink-0 border-t border-border px-4 py-3">
           <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">

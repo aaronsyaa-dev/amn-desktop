@@ -86,6 +86,20 @@ export function NotesGraphe({
   const places = useMemo(() => disposer(graphe.noeuds, graphe.arcs), [graphe]);
   const parId = useMemo(() => new Map(graphe.noeuds.map((n) => [n.id, n])), [graphe]);
   const seules = useMemo(() => isolees(graphe), [graphe]);
+  /*
+    LE VOISINAGE. Quand une note est choisie, ses voisines restent nettes et
+    le reste s'efface à moitié : on lit d'un coup « à quoi elle se rattache »
+    sans que rien ne bouge — les positions ne changent jamais.
+  */
+  const voisins = useMemo(() => {
+    const set = new Set<string>();
+    if (!selectionne) return set;
+    for (const a of graphe.arcs) {
+      if (a.de === selectionne) set.add(a.vers);
+      if (a.vers === selectionne) set.add(a.de);
+    }
+    return set;
+  }, [graphe, selectionne]);
 
   /*
     √n × un pas : la densité reste constante quand le carnet grossit, au lieu
@@ -183,6 +197,7 @@ export function NotesGraphe({
             if (!note) return null;
             const d = rayon(p.degre) * 2;
             const actif = p.id === selectionne;
+            const efface = selectionne !== null && !actif && !voisins.has(p.id);
             return (
               <button
                 key={p.id}
@@ -190,7 +205,7 @@ export function NotesGraphe({
                 onClick={() => onOuvrir(p.id)}
                 title={note.title || 'Sans titre'}
                 className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center gap-1 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                style={{ left: px(p.x), top: px(p.y), minWidth: CIBLE_PX, minHeight: CIBLE_PX }}
+                style={{ left: px(p.x), top: px(p.y), minWidth: CIBLE_PX, minHeight: CIBLE_PX, opacity: efface ? 0.4 : 1 }}
               >
                 <span
                   aria-hidden

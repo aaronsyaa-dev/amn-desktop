@@ -158,7 +158,7 @@ export function useNotes() {
   }, [personal, upsert, email, persistPersonal]);
 
   const createNote = useCallback(
-    (scopeDemande: 'team' | 'personal'): string => {
+    (scopeDemande: 'team' | 'personal', titre = ''): string => {
       /*
         La portée demandée est IGNORÉE quand il n'y a pas d'équipe.
 
@@ -172,7 +172,7 @@ export function useNotes() {
       if (scope === 'team') {
         const id = uid('tnote');
         upsert('notes', id, {
-          title: '',
+          title: titre,
           body: '',
           authorEmail: email,
           pinned: false,
@@ -182,7 +182,7 @@ export function useNotes() {
       }
       const id = uid('pnote');
       persistPersonal([
-        { id, title: '', body: '', authorEmail: email, pinned: false, createdAt: now, updatedAt: now },
+        { id, title: titre, body: '', authorEmail: email, pinned: false, createdAt: now, updatedAt: now },
         ...personal,
       ]);
       return id;

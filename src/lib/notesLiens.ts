@@ -409,3 +409,50 @@ export function insererLien(
   const insertion = `[[${titre}]]`;
   return { texte: avant + insertion + apres, curseur: avant.length + insertion.length };
 }
+
+/* ───────────────────────── Étiquettes et mentions ───────────────────────── */
+
+/**
+ * LES ÉTIQUETTES — « #devis », « #boulangerie-martin » — telles qu'écrites
+ * dans le corps, hors des liens [[…]] et des adresses. Sans doublon, dans
+ * l'ordre d'apparition, en minuscules pour que #Devis et #devis se
+ * retrouvent.
+ */
+export function extraireTags(corps: string): string[] {
+  const sansLiens = corps.replace(/\[\[[^\]]*\]\]/g, ' ').replace(/https?:\/\/\S+/g, ' ');
+  const vus = new Set<string>();
+  for (const m of sansLiens.matchAll(/(?:^|[\s(,;])#([\p{L}\p{N}][\p{L}\p{N}_-]{0,39})/gu)) vus.add(m[1].toLowerCase());
+  return [...vus];
+}
+
+/** Le titre apparaît-il en clair dans ce corps, hors de tout lien [[…]] ? */
+function mentionneEnClair(corps: string, titre: string): boolean {
+  const propre = titre.trim();
+  if (propre.length < 3) return false;
+  const sansLiens = corps.replace(/\[\[[^\]]*\]\]/g, ' ');
+  return sansLiens.toLowerCase().includes(propre.toLowerCase());
+}
+
+/**
+ * LES MENTIONS NON LIÉES — les notes qui citent ce titre en clair sans
+ * pointer ici. C'est le geste d'Obsidian qui fait qu'un carnet se relie tout
+ * seul : on écrit d'abord, on relie ensuite, en un clic. Une note ne se
+ * mentionne pas elle-même ; une note qui pointe déjà ici n'est pas une
+ * mention, c'est un lien.
+ */
+export function mentionsNonLiees(note: NoteLiable, toutes: readonly NoteLiable[], graphe: Graphe): NoteLiable[] {
+  if (note.title.trim().length < 3) return [];
+  const dejaLiees = new Set(graphe.arcs.filter((a) => a.vers === note.id).map((a) => a.de));
+  return portee(note, toutes).filter((n) => n.id !== note.id && !dejaLiees.has(n.id) && mentionneEnClair(n.body, note.title));
+}
+
+/** Remplace la première occurrence en clair du titre par un lien [[titre]], en gardant la casse écrite. */
+export function lierMention(corps: string, titre: string): string {
+  const propre = titre.trim();
+  if (!propre) return corps;
+  const sansLiens = corps.replace(/\[\[[^\]]*\]\]/g, (m) => ' '.repeat(m.length));
+  const index = sansLiens.toLowerCase().indexOf(propre.toLowerCase());
+  if (index < 0) return corps;
+  const ecrit = corps.slice(index, index + propre.length);
+  return `${corps.slice(0, index)}[[${ecrit === propre ? propre : `${propre}|${ecrit}`}]]${corps.slice(index + propre.length)}`;
+}
