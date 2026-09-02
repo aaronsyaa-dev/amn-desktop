@@ -314,6 +314,8 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   remote.onStatusChange((status) => broadcastToAll(IPC.remoteConnectionStatusPush, status));
   remote.onRecord((record) => broadcastToAll(IPC.remoteRecordPush, record));
   remote.onPresence((users) => broadcastToAll(IPC.remotePresencePush, users));
+  // La réponse du prestataire (Bloc 4) : une trame de l'organisation, relayée telle quelle.
+  remote.onFrame('support:answered', (frame) => broadcastToAll(IPC.remoteSupportAnsweredPush, frame.request));
 
   // Produits exclusifs d'AMN DevSec (parc de sites, Scanner, Comply, SSL
   // Monitor, analyses récurrentes, bureau SOC, appels audio). Dans l'édition

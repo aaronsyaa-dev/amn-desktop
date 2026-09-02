@@ -15,6 +15,7 @@ import {
   LayoutTemplate,
   Lock,
   LockKeyhole,
+  MessageSquareText,
   MonitorDot,
   NotebookPen,
   PartyPopper,
@@ -171,6 +172,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings, hint: 'Profil et notifications' },
       { key: 'members', label: 'Membres', to: '/membres', icon: Users, hint: 'Qui travaille ici, et les places' },
+      { key: 'assistance', label: 'Assistance', to: '/assistance', icon: MessageSquareText, hint: 'Écrire au prestataire' },
       { key: 'vault', label: 'Coffre-fort', to: '/vault', icon: Lock, hint: 'Clés et accès' },
     ],
   },
@@ -282,5 +284,6 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/reports', 'livrables'],
   ['/settings', 'reglages'],
   ['/membres', 'reglages'],
+  ['/assistance', 'fil'],
   ['/vault', 'coffre'],
 ];

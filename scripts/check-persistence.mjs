@@ -131,6 +131,7 @@ const MODULE_DATA = {
   time: ['timeEntries', 'timeConfig'],
   calculators: [], // Un moteur de calcul : il lit, il ne stocke rien.
   members: [], // Les comptes vivent chez amn-api (users, invitations) : l'écran lit et écrit par l'API, rien de local.
+  assistance: [], // Les demandes vivent chez amn-api (support_requests) : lues et écrites par l'API, rien de local.
   orders: ['orders'],
   evenements: ['evenements'],
   notes: ['notes'],
@@ -171,6 +172,7 @@ const MODULE_FILES = {
   time: ['src/screens/TimeScreen.tsx', 'src/state/useTimeTracking.ts'],
   calculators: ['src/screens/CalculatorsScreen.tsx'],
   members: ['src/screens/MembersScreen.tsx', 'src/components/settings/MembersSection.tsx'],
+  assistance: ['src/screens/AssistanceScreen.tsx'],
   orders: ['src/screens/OrdersScreen.tsx', 'src/state/useOrders.ts'],
   evenements: [
     'src/screens/EventsScreen.tsx',

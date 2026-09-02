@@ -1905,6 +1905,25 @@ export interface SupportRequestForOperator extends SupportRequest {
   orgName: string | null;
 }
 
+/* ───────────── La sentinelle des entrées (Bloc 5) ───────────── */
+
+export type InputAlertFamily = 'sql_injection' | 'xss' | 'path_traversal' | 'command_injection';
+
+/** Une tentative d'injection détectée dans un champ — un événement de sécurité, pas un blocage. */
+export interface InputAlert {
+  id: string;
+  orgId: string | null;
+  orgName?: string | null;
+  userEmail: string | null;
+  ip: string | null;
+  route: string;
+  field: string;
+  family: InputAlertFamily;
+  sample: string;
+  statusCode: number | null;
+  createdAt: string;
+}
+
 /* ───────────── Le lien de bienvenue (Bloc 2) ───────────── */
 
 export type WelcomeLinkState = 'ready' | 'used' | 'expired';
@@ -2654,6 +2673,8 @@ export interface AmnBridge {
       reveal(token: string): Promise<WelcomeAccess>;
       confirm(token: string): Promise<{ ok: boolean; status: WelcomeLinkState }>;
     };
+    /** La réponse du prestataire arrive sur la socket de l'organisation (Bloc 4). */
+    onSupportAnswered(callback: (request: SupportRequest) => void): () => void;
 
     /* --- Le catalogue des modules, et les demander (BLOC 4) --- */
     /**
@@ -2828,6 +2849,10 @@ export interface AmnBridge {
     deleteSchedule(id: string): Promise<void>;
     /** Regression notices pushed by amn-api. Returns an unsubscribe function. */
     onProductRegression(callback: (regression: ProductRegression) => void): () => void;
+    /** Une demande de cliente arrive dans la file (Bloc 4). Réservé à AMN DevSec : exclusif. */
+    onSupportRequest?(callback: (request: SupportRequestForOperator) => void): () => void;
+    /** Une tentative d'injection vient d'être détectée chez une cliente (Bloc 5). Exclusif. */
+    onInputAlert?(callback: (alert: InputAlert) => void): () => void;
 
     /* --- Bureau de contrôle SOC (BLOC 4) --- */
     /**
@@ -2977,6 +3002,8 @@ export interface AmnBridge {
         input: { status: 'answered' | 'closed'; reply?: string },
       ): Promise<SupportRequestForOperator>;
       /** Émet un lien de bienvenue pour un compte d'une cliente (Bloc 2). L'URL n'est rendue qu'une fois. */
+      /** Les tentatives d'injection détectées par la sentinelle des entrées (Bloc 5). */
+      inputAlerts(opts?: { limit?: number; orgId?: string }): Promise<InputAlert[]>;
       createWelcomeLink(orgId: string, userId: string): Promise<WelcomeLinkIssued>;
       listWelcomeLinks(orgId: string): Promise<AdminWelcomeLink[]>;
       revokeWelcomeLink(orgId: string, linkId: string): Promise<void>;
@@ -3212,6 +3239,10 @@ export const IPC = {
   remoteWelcomeInspect: 'remote:welcomeInspect',
   remoteWelcomeReveal: 'remote:welcomeReveal',
   remoteWelcomeConfirm: 'remote:welcomeConfirm',
+  remoteSupportAnsweredPush: 'remote:supportAnsweredPush',
+  remoteSupportRequestPush: 'remote:supportRequestPush',
+  remoteInputAlertPush: 'remote:inputAlertPush',
+  remoteAdminInputAlerts: 'remote:adminInputAlerts',
   remoteModuleCatalogue: 'remote:moduleCatalogue',
   remoteModuleRequest: 'remote:moduleRequest',
   remoteModuleRequests: 'remote:moduleRequests',

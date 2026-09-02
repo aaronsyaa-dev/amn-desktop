@@ -727,6 +727,19 @@ function createBrowserRemote(): AmnBridge['remote'] {
         return res.request;
       },
     },
+    onSupportAnswered(callback: (request: SupportRequest) => void) {
+      ensureStarted();
+      let set = frameListeners.get('support:answered');
+      if (!set) {
+        set = new Set();
+        frameListeners.set('support:answered', set);
+      }
+      const listener = (frame: Record<string, unknown>) => callback(frame.request as SupportRequest);
+      set.add(listener);
+      return () => {
+        set?.delete(listener);
+      };
+    },
     async forgotPassword(email: string) {
       return publicPost<{ ok: boolean; message: string }>('/v1/support/forgot', { email });
     },

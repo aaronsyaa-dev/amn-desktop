@@ -15,6 +15,7 @@ import {
   type ScanTier,
   type TrackerTier,
 } from './shared/api';
+import type { SupportRequestForOperator, InputAlert } from './shared/api';
 
 /**
  * La part exclusive du pont : les canaux IPC des produits d'AMN DevSec (parc
@@ -56,6 +57,8 @@ type ExclusiveRemote = Pick<
   | 'createSchedule'
   | 'deleteSchedule'
   | 'onProductRegression'
+  | 'onSupportRequest'
+  | 'onInputAlert'
   | 'getOrgOverview'
   | 'getSiteBadge'
   | 'getSiteStatusPage'
@@ -147,6 +150,16 @@ export const exclusivePreload: ExclusiveRemote = {
   createSchedule: (input: CreateScheduleInput) =>
     ipcRenderer.invoke(IPC.remoteCreateSchedule, input),
   deleteSchedule: (id: string) => ipcRenderer.invoke(IPC.remoteDeleteSchedule, id),
+  onInputAlert: (callback: (a: InputAlert) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, a: InputAlert) => callback(a);
+    ipcRenderer.on(IPC.remoteInputAlertPush, listener);
+    return () => ipcRenderer.removeListener(IPC.remoteInputAlertPush, listener);
+  },
+  onSupportRequest: (callback: (r: SupportRequestForOperator) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, r: SupportRequestForOperator) => callback(r);
+    ipcRenderer.on(IPC.remoteSupportRequestPush, listener);
+    return () => ipcRenderer.removeListener(IPC.remoteSupportRequestPush, listener);
+  },
   onProductRegression: (callback: (r: ProductRegression) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, r: ProductRegression) => callback(r);
     ipcRenderer.on(IPC.remoteProductRegressionPush, listener);
@@ -198,6 +211,7 @@ export const exclusivePreload: ExclusiveRemote = {
       ipcRenderer.invoke(IPC.remoteAdminAnswerSupportRequest, { id, input }),
     createWelcomeLink: (orgId, userId) =>
       ipcRenderer.invoke(IPC.remoteAdminWelcomeLinkCreate, { orgId, userId }),
+    inputAlerts: (opts) => ipcRenderer.invoke(IPC.remoteAdminInputAlerts, opts ?? {}),
     listWelcomeLinks: (orgId) => ipcRenderer.invoke(IPC.remoteAdminWelcomeLinkList, orgId),
     revokeWelcomeLink: (orgId, linkId) =>
       ipcRenderer.invoke(IPC.remoteAdminWelcomeLinkRevoke, { orgId, linkId }),

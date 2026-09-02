@@ -57,6 +57,7 @@ const SANS_ENTETE = new Map([
   ['LoginScreen', 'la console d’accès : pas de navigation, pas de fil d’Ariane'],
   ['InvitationScreen', 'écran public d’activation, hors application'],
   ['GuestCallScreen', 'écran public d’appel, hors application'],
+  ['WelcomeScreen', 'écran public de bienvenue, hors application — lu une fois, puis détruit'],
   ['HomeScreen', 'l’accueil est lui-même l’en-tête de l’application'],
   ['SettingsScreen', 'une suite de panneaux, sans liste à dénombrer'],
   ['GeneratorScreen', 'un atelier en étapes : le titre change à chaque étape'],

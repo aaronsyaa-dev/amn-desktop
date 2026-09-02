@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ModuleRequestsPanel } from '../components/tour/ModuleRequestsPanel';
+import { RequestsQueuePanel } from '../components/tour/RequestsQueuePanel';
+import { InputAlertsPanel } from '../components/tour/InputAlertsPanel';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Building2, FolderLock, Plus, Search, ShieldOff, ShieldCheck } from 'lucide-react';
@@ -143,6 +145,12 @@ export function OrganizationsScreen() {
       {/* Les demandes de module (BLOC 4), avant le registre : ce sont les
           seules lignes de cet écran où quelqu'un attend une réponse. Le
           panneau ne s'affiche pas quand la file est vide. */}
+      <StaggerItem>
+        <RequestsQueuePanel />
+      </StaggerItem>
+      <StaggerItem>
+        <InputAlertsPanel />
+      </StaggerItem>
       <StaggerItem>
         <ModuleRequestsPanel />
       </StaggerItem>

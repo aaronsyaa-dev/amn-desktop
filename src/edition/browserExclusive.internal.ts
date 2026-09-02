@@ -51,6 +51,7 @@ import type {
   SupportRequestForOperator,
   WelcomeLinkIssued,
   AdminWelcomeLink,
+  InputAlert,
 } from '../shared/api';
 
 /**
@@ -138,6 +139,8 @@ type ExclusiveRemote = Pick<
   | 'createSchedule'
   | 'deleteSchedule'
   | 'onProductRegression'
+  | 'onSupportRequest'
+  | 'onInputAlert'
   | 'onIncidentEscalation'
   | 'getOrgOverview'
   | 'getSiteBadge'
@@ -361,6 +364,14 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
     await ctx.apiFetch<{ ok: boolean }>(`/v1/schedules/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     });
+  },
+  onInputAlert(callback) {
+    ctx.ensureStarted();
+    return ctx.onFrame('security:input', (frame) => callback(frame.alert as InputAlert));
+  },
+  onSupportRequest(callback) {
+    ctx.ensureStarted();
+    return ctx.onFrame('support:request', (frame) => callback(frame.request as SupportRequestForOperator));
   },
   onProductRegression(callback) {
     ctx.ensureStarted();
@@ -607,6 +618,14 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
         { owner: true, method: 'PUT', body: JSON.stringify(input) },
       );
       return request;
+    },
+    async inputAlerts(opts: { limit?: number; orgId?: string } = {}): Promise<InputAlert[]> {
+      const params = new URLSearchParams();
+      if (opts.limit) params.set('limit', String(opts.limit));
+      if (opts.orgId) params.set('org', opts.orgId);
+      const qs = params.toString();
+      const { alerts } = await ctx.apiFetch<{ alerts: InputAlert[] }>(`/v1/admin/input-alerts${qs ? `?${qs}` : ''}`, { owner: true });
+      return alerts ?? [];
     },
     async createWelcomeLink(orgId: string, userId: string): Promise<WelcomeLinkIssued> {
       return ctx.apiFetch<WelcomeLinkIssued>(

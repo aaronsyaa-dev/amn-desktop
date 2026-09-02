@@ -74,6 +74,7 @@ export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
   courses: { label: 'Groceries', hint: 'Shopping list & personal pages' },
   settings: { label: 'Settings', hint: 'Profile & notifications', hintSupport: 'Profile' },
   members: { label: 'Members', hint: 'Who works here, and the seats' },
+  assistance: { label: 'Support', hint: 'Write to your provider' },
   vault: { label: 'Vault', hint: 'Keys & access', hintBusiness: 'Passwords & access' },
 };
 

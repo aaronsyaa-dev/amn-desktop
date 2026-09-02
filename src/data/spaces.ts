@@ -90,7 +90,7 @@ export function setEnabledModules(modules: string[] | null | undefined): void {
   ne peut pas voir qui travaille chez elle ni combien de places il lui reste
   n'est pas dégradée, elle est aveugle. Ce n'est pas un module qu'on vend.
 */
-export const ALWAYS_ON_MODULES = ['home', 'settings', 'members', 'budget', 'courses'];
+export const ALWAYS_ON_MODULES = ['home', 'settings', 'members', 'assistance', 'budget', 'courses'];
 
 /** Un module est-il ouvert ? */
 export function isModuleEnabled(key: string): boolean {

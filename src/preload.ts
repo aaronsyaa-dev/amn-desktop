@@ -2,7 +2,10 @@
 // renderer over IPC. The renderer never sees Electron or the database directly.
 // See src/shared/api.ts for the contract and src/lib/bridge.ts for the consumer.
 import { contextBridge, ipcRenderer } from 'electron';
-import type { UserRole } from './shared/api';
+import type {
+  UserRole,
+  SupportRequest,
+} from './shared/api';
 import {
   IPC,
   type AddClientEventInput,
@@ -175,6 +178,11 @@ const bridge: AmnBridge = {
       send: (input) => ipcRenderer.invoke(IPC.remoteSupportSend, input),
     },
     forgotPassword: (email: string) => ipcRenderer.invoke(IPC.remoteForgotPassword, email),
+    onSupportAnswered: (callback: (request: SupportRequest) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, request: SupportRequest) => callback(request);
+      ipcRenderer.on(IPC.remoteSupportAnsweredPush, listener);
+      return () => ipcRenderer.removeListener(IPC.remoteSupportAnsweredPush, listener);
+    },
     welcome: {
       inspect: (token: string) => ipcRenderer.invoke(IPC.remoteWelcomeInspect, token),
       reveal: (token: string) => ipcRenderer.invoke(IPC.remoteWelcomeReveal, token),

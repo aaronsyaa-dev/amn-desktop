@@ -5,6 +5,7 @@ import { Check, Copy, Download, ExternalLink, KeyRound, Loader2, ShieldCheck } f
 import { bridge } from '../lib/bridge';
 import { cleanErrorMessage } from '../lib/errorMessage';
 import { Logo } from '../components/Logo';
+import { EDITION_PRODUCT_NAME } from '../edition/edition';
 import type { WelcomeAccess, WelcomePreview } from '../shared/api';
 
 /**
@@ -35,9 +36,9 @@ import type { WelcomeAccess, WelcomePreview } from '../shared/api';
  * marqué qu'Aaron remplace ; rien ici n'engage juridiquement.
  */
 
-const POLITIQUE_GABARIT = `[GABARIT — À REMPLACER PAR LE TEXTE D'AARON]
+const politiqueGabarit = (produit: string) => `[GABARIT — À REMPLACER PAR LE TEXTE D'AARON]
 
-Politique d'utilisation d'AMN Desktop.
+Politique d'utilisation de ${produit}.
 
 1. L'espace de travail et les données qui y sont saisies appartiennent à votre organisation.
 2. Vos accès sont personnels : un identifiant, un mot de passe, une personne.
@@ -141,7 +142,7 @@ export function WelcomeScreen() {
     }
   };
 
-  const produit = apercu?.productName ?? acces?.productName ?? 'AMN Desktop';
+  const produit = apercu?.productName ?? acces?.productName ?? EDITION_PRODUCT_NAME;
   const prenom = apercu?.firstName ?? null;
   const salut = useMemo(() => (prenom ? `Bienvenue, ${prenom}.` : 'Bienvenue.'), [prenom]);
 
@@ -212,7 +213,7 @@ export function WelcomeScreen() {
                 Politique d’utilisation
               </p>
               <pre className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap border border-border bg-bg p-3 font-sans text-[12px] leading-relaxed text-text-secondary">
-                {POLITIQUE_GABARIT}
+                {politiqueGabarit(produit)}
               </pre>
               <label className="mt-3 flex min-h-11 cursor-pointer items-start gap-3">
                 <input

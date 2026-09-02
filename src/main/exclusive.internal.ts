@@ -54,7 +54,7 @@ import { apiFetch, type RemoteApiClient } from './remoteApi';
 import { writeScanReportFile } from './scanReports';
 import { getWatch, warmWatch } from './watch';
 import { ollamaChat, ollamaStatus } from './ollama';
-import type { SupportRequestForOperator, WelcomeLinkIssued, AdminWelcomeLink } from '../shared/api';
+import type { SupportRequestForOperator, WelcomeLinkIssued, AdminWelcomeLink, InputAlert } from '../shared/api';
 
 /**
  * Tout ce qu'amn-api expose et qui n'appartient qu'à AMN DevSec : le parc de
@@ -560,6 +560,15 @@ const adminApi = {
     return request;
   },
 
+  async inputAlerts(opts: { limit?: number; orgId?: string } = {}): Promise<InputAlert[]> {
+    const params = new URLSearchParams();
+    if (opts.limit) params.set('limit', String(opts.limit));
+    if (opts.orgId) params.set('org', opts.orgId);
+    const qs = params.toString();
+    const { alerts } = await apiFetch<{ alerts: InputAlert[] }>(`/v1/admin/input-alerts${qs ? `?${qs}` : ''}`, { owner: true });
+    return alerts ?? [];
+  },
+
   async createWelcomeLink(orgId: string, userId: string): Promise<WelcomeLinkIssued> {
     return apiFetch<WelcomeLinkIssued>(
       `/v1/admin/organizations/${encodeURIComponent(orgId)}/welcome-links`,
@@ -834,6 +843,9 @@ export function registerExclusiveIpc(
   ipcMain.handle(IPC.remoteAdminWelcomeLinkCreate, (_event, payload: { orgId: string; userId: string }) =>
     adminApi.createWelcomeLink(payload.orgId, payload.userId),
   );
+  ipcMain.handle(IPC.remoteAdminInputAlerts, (_event, opts?: { limit?: number; orgId?: string }) =>
+    adminApi.inputAlerts(opts ?? {}),
+  );
   ipcMain.handle(IPC.remoteAdminWelcomeLinkList, (_event, orgId: string) => adminApi.listWelcomeLinks(orgId));
   ipcMain.handle(IPC.remoteAdminWelcomeLinkRevoke, (_event, payload: { orgId: string; linkId: string }) =>
     adminApi.revokeWelcomeLink(payload.orgId, payload.linkId),
@@ -893,6 +905,12 @@ export function registerExclusiveIpc(
   // L'escalade d'un incident : « personne n'a regardé depuis dix minutes ».
   remote.onFrame('incident:escalated', (frame) =>
     broadcastToAll(IPC.remoteIncidentEscalationPush, frame as unknown as IncidentEscalation),
+  );
+  remote.onFrame('security:input', (frame) =>
+    broadcastToAll(IPC.remoteInputAlertPush, frame.alert as unknown as InputAlert),
+  );
+  remote.onFrame('support:request', (frame) =>
+    broadcastToAll(IPC.remoteSupportRequestPush, frame.request as unknown as SupportRequestForOperator),
   );
   remote.onFrame('product:regression', (frame) =>
     broadcastToAll(IPC.remoteProductRegressionPush, frame as unknown as ProductRegression),

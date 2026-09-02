@@ -106,6 +106,8 @@ const NOT_IN_SUPPORT = new Map([
     Les comptes d'une cliente se gèrent depuis son dossier, dans la Tour.
   */
   ['members', 'comptes de la session, pas de la cliente : son dossier les gère'],
+  // Écrire « à son prestataire » depuis une session de support, c'est nous écrire à nous-mêmes.
+  ['assistance', 'le prestataire ne s’écrit pas à lui-même : la file vit dans la Tour'],
 ]);
 
 /* ---------------------------------------------------------------- lecture -- */

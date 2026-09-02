@@ -22,6 +22,7 @@ import { ToastProvider } from '../state/ToastContext';
 import { TagProvider } from './tags/TagProvider';
 import { NotificationsManager } from './NotificationsManager';
 import { SyncActivityNotifier } from './SyncActivityNotifier';
+import { SupportNotifier } from './SupportNotifier';
 import { RegressionNotifier } from './RegressionNotifier';
 import { IdleScreensaver } from './IdleScreensaver';
 import { WelcomeOverlay, shouldShowWelcome } from './WelcomeOverlay';
@@ -204,6 +205,7 @@ export function AppLayout() {
               <NotificationsManager />
               <SyncActivityNotifier />
               <RegressionNotifier />
+              <SupportNotifier />
               <RouteSeenTracker />
               <BootHealthy />
               <IdleScreensaver />

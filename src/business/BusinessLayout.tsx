@@ -8,6 +8,7 @@ import { useActivity } from '../state/ActivityContext';
 import { SpaceProviders } from '../state/SpaceProviders';
 import { BootHealthy } from '../components/BootHealthy';
 import { SyncActivityNotifier } from '../components/SyncActivityNotifier';
+import { SupportNotifier } from '../components/SupportNotifier';
 import { MobileBottomNav } from '../components/MobileBottomNav';
 import { StatusRail } from '../components/StatusRail';
 import { AppLauncher } from '../components/AppLauncher';
@@ -141,6 +142,7 @@ export function BusinessLayout() {
                 </div>
                 <AppointmentReminders />
                 <SyncActivityNotifier />
+              <SupportNotifier />
                 <RouteSeenTracker />
                 <BootHealthy />
                 <UpdateNotice />

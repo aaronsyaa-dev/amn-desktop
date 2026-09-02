@@ -1,0 +1,34 @@
+/* Assistance : la cliente écrit, la Tour répond (par l'API), la cliente relit — et l'arrivée notifie. */
+const { chromium } = await import('playwright-core');
+const a = (ms) => new Promise((r) => setTimeout(r, ms));
+const OUT = process.env.OUT || '/tmp/e2e/soir';
+const API = 'http://127.0.0.1:4171';
+const TOK = 'test-operator-token';
+const H = String(Date.now()).slice(-5);
+const nav = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--no-sandbox'] });
+const p = await (await nav.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+p.on('pageerror', (e) => console.log('ERREUR PAGE:', String(e).slice(0, 200)));
+await p.goto('http://127.0.0.1:4180/'); await a(2000);
+await p.locator('input[name="email"]').fill('fleuriste.essai@exemple.test');
+await p.locator('input[name="password"]').fill('Fleuriste-2026-Essai');
+await p.locator('button[type="submit"]').first().click();
+for (let i = 0; i < 20 && (await p.content()).includes('name="password"'); i += 1) await a(1000);
+await a(2500); await p.mouse.click(720, 860); await a(700);
+await p.goto('http://127.0.0.1:4180/#/assistance'); await a(2000);
+await p.screenshot({ path: `${OUT}/assistance-01.png` });
+await p.locator('input[placeholder*="changer mon logo"]').fill(`Question ${H}`);
+await p.locator('textarea').first().fill('Comment changer la couleur de mon application ?');
+await p.locator('button:has-text("Envoyer")').first().click(); await a(1800);
+let t = await p.evaluate(() => document.body.innerText);
+console.log('envoyé ?', /prestataire est prévenu/.test(t), '| dans l’historique ?', t.includes(`Question ${H}`));
+await p.screenshot({ path: `${OUT}/assistance-02-envoye.png` });
+// La Tour répond (par l'API — l'écran de la Tour est sondé sur le build interne)
+const file = await (await fetch(`${API}/v1/admin/support-requests?status=pending`, { headers: { Authorization: `Bearer ${TOK}` } })).json();
+const mienne = file.requests.find((r) => r.subject === `Question ${H}`);
+console.log('dans la file ?', Boolean(mienne), '| org :', mienne?.orgName);
+await fetch(`${API}/v1/admin/support-requests/${mienne.id}`, { method: 'PUT', headers: { Authorization: `Bearer ${TOK}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'answered', reply: 'Depuis Paramètres → Couleur de l’application : la teinte change pour toute l’organisation.' }) });
+await a(2500);
+t = await p.evaluate(() => document.body.innerText);
+console.log('réponse relue à l’écran (sans recharger) ?', /Couleur de l’application/.test(t), '| toast « Réponse de votre prestataire » ?', /Réponse de votre prestataire/.test(t));
+await p.screenshot({ path: `${OUT}/assistance-03-reponse.png` });
+await nav.close();
