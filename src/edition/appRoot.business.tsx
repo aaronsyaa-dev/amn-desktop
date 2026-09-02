@@ -27,6 +27,13 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { MembersScreen } from '../screens/MembersScreen';
 import { AssistanceScreen } from '../screens/AssistanceScreen';
 import { LibraryScreen } from '../screens/LibraryScreen';
+import { CallsScreen } from '../screens/CallsScreen';
+import { DirectoryScreen } from '../screens/DirectoryScreen';
+import { LeavesScreen } from '../screens/LeavesScreen';
+import { PollsScreen } from '../screens/PollsScreen';
+import { AnnouncementsScreen } from '../screens/AnnouncementsScreen';
+import { GroupsScreen } from '../screens/GroupsScreen';
+import { DirectMessagesScreen } from '../screens/DirectMessagesScreen';
 import { VaultScreen } from '../screens/VaultScreen';
 
 /**
@@ -210,6 +217,62 @@ export function AppRoot() {
         <Route path="/settings" element={<SettingsScreen />} />
         <Route path="/membres" element={<MembersScreen />} />
         <Route path="/assistance" element={<AssistanceScreen />} />
+        <Route
+          path="/messages-prives"
+          element={
+            <ModuleRoute module="dm">
+              <DirectMessagesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/groupes"
+          element={
+            <ModuleRoute module="groups">
+              <GroupsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/annonces"
+          element={
+            <ModuleRoute module="announcements">
+              <AnnouncementsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/sondages"
+          element={
+            <ModuleRoute module="polls">
+              <PollsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/absences"
+          element={
+            <ModuleRoute module="leaves">
+              <LeavesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/trombinoscope"
+          element={
+            <ModuleRoute module="directory">
+              <DirectoryScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/appels"
+          element={
+            <ModuleRoute module="calls">
+              <CallsScreen />
+            </ModuleRoute>
+          }
+        />
         <Route path="/decouvrir" element={<LibraryScreen />} />
         <Route
           path="/vault"

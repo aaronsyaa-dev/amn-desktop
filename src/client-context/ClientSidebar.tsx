@@ -20,6 +20,13 @@ import {
   ShoppingBag,
   Timer,
   Wallet,
+  MessageCircle,
+  UsersRound,
+  Megaphone,
+  Vote,
+  CalendarOff,
+  ContactRound,
+  PhoneCall,
 } from 'lucide-react';
 import type { NavItem } from '../data/navigation';
 import { isModuleEnabled } from '../data/spaces';
@@ -62,6 +69,13 @@ const CLIENT_MODULES: NavItem[] = [
   { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Comptes-rendus' },
   { key: 'media', label: 'Médias', to: '/media', icon: Images, hint: 'Photos et fichiers' },
   { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings, hint: 'Profil' },
+  { key: 'dm', label: 'Messages privés', to: '/messages-prives', icon: MessageCircle, hint: 'Écrire à une personne, sans le groupe' },
+  { key: 'groups', label: 'Groupes', to: '/groupes', icon: UsersRound, hint: 'Des fils à plusieurs, par sujet ou par équipe' },
+  { key: 'announcements', label: 'Annonces', to: '/annonces', icon: Megaphone, hint: 'Ce que tout le monde doit avoir lu' },
+  { key: 'polls', label: 'Sondages', to: '/sondages', icon: Vote, hint: 'Une question, un vote par personne' },
+  { key: 'leaves', label: 'Absences', to: '/absences', icon: CalendarOff, hint: 'Congés, maladie, télétravail — qui est là' },
+  { key: 'directory', label: 'Trombinoscope', to: '/trombinoscope', icon: ContactRound, hint: 'Les visages, les rôles, qui est là' },
+  { key: 'calls', label: 'Appels', to: '/appels', icon: PhoneCall, hint: 'Appeler un membre, inviter un visiteur par lien' },
 ];
 
 /**
@@ -92,6 +106,7 @@ export const CLIENT_SECTIONS: Array<{ label: string; keys: string[] }> = [
   { label: 'Clients & revenus', keys: ['clients', 'invoices', 'orders', 'evenements'] },
   { label: 'Production', keys: ['time', 'expenses', 'calculators'] },
   { label: 'Documents', keys: ['notes', 'pages', 'reports', 'media'] },
+  { label: 'Collectif', keys: ['dm', 'groups', 'announcements', 'polls', 'leaves', 'directory', 'calls'] },
   { label: 'Système', keys: ['settings'] },
 ];
 

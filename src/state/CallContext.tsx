@@ -892,10 +892,37 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   return <CallCtx.Provider value={value}>{children}</CallCtx.Provider>;
 }
 
+/*
+  SANS FOURNISSEUR, UN APPEL IMPOSSIBLE — PAS UN ÉCRAN CASSÉ.
+
+  Le Trombinoscope, les Appels et les Messages privés lisent l'état des
+  appels. Dans une coquille qui ne monte pas CallProvider (le contexte de
+  support, un test), lever une exception faisait tomber tout l'écran pour
+  un bouton qui aurait simplement dû rester grisé. Le repli dit la vérité :
+  aucun appel n'est possible ici, et tout le reste s'affiche.
+*/
+const SANS_APPELS: CallContextValue = {
+  ...IDLE,
+  callsAvailable: false,
+  call: async () => undefined,
+  accept: async () => undefined,
+  reject: () => undefined,
+  hangup: () => undefined,
+  toggleMute: () => undefined,
+  missed: [],
+  clearMissed: () => undefined,
+  startScreenShare: async () => 'Les appels ne sont pas disponibles ici.',
+  stopScreenShare: async () => undefined,
+  remoteScreen: null,
+  requestControl: () => false,
+  answerControl: async () => undefined,
+  stopControl: () => undefined,
+  sendInput: () => undefined,
+};
+
 export function useCall(): CallContextValue {
   const ctx = useContext(CallCtx);
-  if (!ctx) throw new Error('useCall must be used within a CallProvider');
-  return ctx;
+  return ctx ?? SANS_APPELS;
 }
 
 /** `123` -> `2:03`. */

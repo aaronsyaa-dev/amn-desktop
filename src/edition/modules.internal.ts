@@ -33,6 +33,13 @@ import {
   Users,
   Wallet,
   LibraryBig,
+  MessageCircle,
+  UsersRound,
+  Megaphone,
+  Vote,
+  CalendarOff,
+  ContactRound,
+  PhoneCall,
 } from 'lucide-react';
 import type { NavSection } from '../data/navigation';
 import type { ActivityTab } from '../state/ActivityContext';
@@ -139,6 +146,13 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'pages', label: 'Pages', to: '/pages', icon: LayoutTemplate, hint: 'Fiches et supports partagés' },
       { key: 'decisions', label: 'Décisions', to: '/decisions', icon: Scale, hint: 'Journal des arbitrages' },
       { key: 'knowledge', label: 'Connaissances', to: '/knowledge', icon: BookOpen, hint: 'Base interne' },
+      { key: 'dm', label: 'Messages privés', to: '/messages-prives', icon: MessageCircle, hint: 'Écrire à une personne, sans le groupe' },
+      { key: 'groups', label: 'Groupes', to: '/groupes', icon: UsersRound, hint: 'Des fils à plusieurs, par sujet ou par équipe' },
+      { key: 'announcements', label: 'Annonces', to: '/annonces', icon: Megaphone, hint: 'Ce que tout le monde doit avoir lu' },
+      { key: 'polls', label: 'Sondages', to: '/sondages', icon: Vote, hint: 'Une question, un vote par personne' },
+      { key: 'leaves', label: 'Absences', to: '/absences', icon: CalendarOff, hint: 'Congés, maladie, télétravail — qui est là' },
+      { key: 'directory', label: 'Trombinoscope', to: '/trombinoscope', icon: ContactRound, hint: 'Les visages, les rôles, qui est là' },
+      { key: 'calls', label: 'Appels', to: '/appels', icon: PhoneCall, hint: 'Appeler un membre, inviter un visiteur par lien' },
     ],
   },
   {
@@ -287,6 +301,13 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/settings', 'reglages'],
   ['/membres', 'reglages'],
   ['/assistance', 'fil'],
+  ['/appels', 'reglages'],
+  ['/trombinoscope', 'fiches'],
+  ['/absences', 'registre'],
+  ['/sondages', 'tableau'],
+  ['/annonces', 'fil'],
+  ['/groupes', 'fil'],
+  ['/messages-prives', 'fil'],
   ['/bibliotheque', 'reglages'],
   ['/vault', 'coffre'],
 ];

@@ -147,6 +147,13 @@ const MODULE_DATA = {
   budget: [],
   library: [], // La Bibliothèque lit les catalogues ; Découvrir lit le catalogue serveur. Rien d'écrit.
   discover: [],
+  dm: ['dms'],
+  groups: ['groups', 'groupMessages'],
+  announcements: ['announcements'],
+  polls: ['polls'],
+  leaves: ['leaves'],
+  directory: [],
+  calls: [],
 };
 
 /**
@@ -190,6 +197,13 @@ const MODULE_FILES = {
   vault: ['src/screens/VaultScreen.tsx', 'src/state/useVault.ts'],
   courses: ['src/screens/PagesScreen.tsx', 'src/lib/pageBlocks.ts'],
   budget: ['src/screens/PersonalBudgetScreen.tsx', 'src/state/usePersonalBudget.ts'],
+  dm: ['src/screens/DirectMessagesScreen.tsx'],
+  groups: ['src/screens/GroupsScreen.tsx'],
+  announcements: ['src/screens/AnnouncementsScreen.tsx'],
+  polls: ['src/screens/PollsScreen.tsx'],
+  leaves: ['src/screens/LeavesScreen.tsx'],
+  directory: ['src/screens/DirectoryScreen.tsx'],
+  calls: ['src/screens/CallsScreen.tsx'],
 };
 
 /**

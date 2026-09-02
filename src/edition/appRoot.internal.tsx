@@ -37,6 +37,13 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { MembersScreen } from '../screens/MembersScreen';
 import { AssistanceScreen } from '../screens/AssistanceScreen';
 import { LibraryScreen } from '../screens/LibraryScreen';
+import { CallsScreen } from '../screens/CallsScreen';
+import { DirectoryScreen } from '../screens/DirectoryScreen';
+import { LeavesScreen } from '../screens/LeavesScreen';
+import { PollsScreen } from '../screens/PollsScreen';
+import { AnnouncementsScreen } from '../screens/AnnouncementsScreen';
+import { GroupsScreen } from '../screens/GroupsScreen';
+import { DirectMessagesScreen } from '../screens/DirectMessagesScreen';
 import { VaultScreen } from '../screens/VaultScreen';
 import { ControlTowerScreen } from '../screens/ControlTowerScreen';
 import { OrganizationsScreen } from '../screens/OrganizationsScreen';
@@ -195,6 +202,13 @@ function AmnRoutes() {
         <Route path="/settings" element={<SettingsScreen />} />
         <Route path="/membres" element={<MembersScreen />} />
         <Route path="/assistance" element={<AssistanceScreen />} />
+        <Route path="/messages-prives" element={<DirectMessagesScreen />} />
+        <Route path="/groupes" element={<GroupsScreen />} />
+        <Route path="/annonces" element={<AnnouncementsScreen />} />
+        <Route path="/sondages" element={<PollsScreen />} />
+        <Route path="/absences" element={<LeavesScreen />} />
+        <Route path="/trombinoscope" element={<DirectoryScreen />} />
+        <Route path="/appels" element={<CallsScreen />} />
         <Route path="/bibliotheque" element={<LibraryScreen />} />
         <Route path="/vault" element={<VaultScreen />} />
 
@@ -359,6 +373,62 @@ function ClientContextRoutes() {
         <Route path="/settings" element={<SettingsScreen />} />
         <Route path="/membres" element={<MembersScreen />} />
         <Route path="/assistance" element={<AssistanceScreen />} />
+        <Route
+          path="/messages-prives"
+          element={
+            <ModuleRoute module="dm">
+              <DirectMessagesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/groupes"
+          element={
+            <ModuleRoute module="groups">
+              <GroupsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/annonces"
+          element={
+            <ModuleRoute module="announcements">
+              <AnnouncementsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/sondages"
+          element={
+            <ModuleRoute module="polls">
+              <PollsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/absences"
+          element={
+            <ModuleRoute module="leaves">
+              <LeavesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/trombinoscope"
+          element={
+            <ModuleRoute module="directory">
+              <DirectoryScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/appels"
+          element={
+            <ModuleRoute module="calls">
+              <CallsScreen />
+            </ModuleRoute>
+          }
+        />
         <Route path="/administration" element={<ClientAdminScreen />} />
         {/* Un écran qui n'existe pas chez elle (un `/tracker` mémorisé, par
             exemple) ramène à son accueil — jamais à un écran d'AMN DevSec. */}

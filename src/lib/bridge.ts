@@ -4,6 +4,8 @@ import {
   GUEST_QUOTA_PREFIX,
   marquerStatut,
   MemberJournalEntry,
+  type CallSignal,
+  type OutgoingCallSignal,
 } from '../shared/api';
 import { avecReprise, messageServeurAbsent, serveurAbsent } from '../shared/reprise';
 import { signalerReprise } from './reprise';
@@ -781,6 +783,52 @@ function createBrowserRemote(): AmnBridge['remote'] {
     },
     async forgotPassword(email: string) {
       return publicPost<{ ok: boolean; message: string }>('/v1/support/forgot', { email });
+    },
+    // Appels audio : la signalisation vaut pour toute organisation à plusieurs,
+    // donc elle vit dans le pont commun aux deux éditions.
+    async sendCallSignal(signal: OutgoingCallSignal) {
+      ensureStarted();
+      if (!socket || socket.readyState !== WebSocket.OPEN) return false;
+      socket.send(
+        JSON.stringify({
+          type: 'signal',
+          to: signal.to,
+          kind: signal.kind,
+          callId: signal.callId,
+          payload: signal.payload ?? null,
+        }),
+      );
+      return true;
+    },
+    onCallSignal(callback: (signal: CallSignal) => void) {
+      ensureStarted();
+      const subscribe = (type: string, listener: (frame: Record<string, unknown>) => void) => {
+        let set = frameListeners.get(type);
+        if (!set) {
+          set = new Set();
+          frameListeners.set(type, set);
+        }
+        set.add(listener);
+        return () => {
+          set?.delete(listener);
+        };
+      };
+      const offSignal = subscribe('signal', (frame) => callback(frame as unknown as CallSignal));
+      // « Personne n'écoutait » devient sa propre nature de signal, comme côté
+      // Electron : l'appelant peut conclure « hors ligne » au lieu d'attendre.
+      const offUndelivered = subscribe('signal:undelivered', (frame) =>
+        callback({
+          type: 'signal',
+          kind: 'undelivered',
+          callId: String(frame.callId ?? ''),
+          from: String(frame.to ?? ''),
+          payload: { kind: String(frame.kind ?? '') },
+        }),
+      );
+      return () => {
+        offSignal();
+        offUndelivered();
+      };
     },
     welcome: {
       async inspect(token: string): Promise<WelcomePreview> {

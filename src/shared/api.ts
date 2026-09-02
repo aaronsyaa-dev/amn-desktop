@@ -2140,7 +2140,13 @@ export type SyncedCollection =
    * pendant des années. Le nom français lève l'ambiguïté à la lecture, ce qui
    * est exactement son travail.
    */
-  | 'evenements';
+  | 'evenements'
+  | 'dms'
+  | 'groups'
+  | 'groupMessages'
+  | 'announcements'
+  | 'polls'
+  | 'leaves';
 
 export interface PresenceEntry {
   email: string;

@@ -90,6 +90,11 @@ if (!apiRoot) {
       'les natures de DEMANDES (message, place, mot de passe oublié) — pas des alertes ; ' +
         'leur liste vit dans SUPPORT_KINDS côté serveur et SupportRequestKind côté poste',
     ],
+    [
+      'admin.js',
+      'les natures du changement d’organisation (created, updated, removed) poussées à la Tour — ' +
+        'pas des alertes ; elles vivent dans OrgChange côté poste',
+    ],
   ]);
   for (const dossier of ['src/tracker', 'src/routes', 'src/scanner']) {
     const dir = path.join(apiRoot, dossier);

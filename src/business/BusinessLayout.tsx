@@ -18,6 +18,8 @@ import { PwaUpdateNotice } from '../components/PwaUpdateNotice';
 import { variantsForPath } from '../lib/transitions';
 import { useAuth } from '../auth/AuthContext';
 import { useLangue } from '../i18n';
+import { CallProvider } from '../state/CallContext';
+import { CallOverlay } from '../components/call/CallOverlay';
 
 const LAST_TAB_KEY = 'amn.lastTab';
 
@@ -29,9 +31,14 @@ const LAST_TAB_KEY = 'amn.lastTab';
  * a un sens pour une personne seule. Ce qui manque manque exprès :
  *
  *   - `RemoteSitesProvider`, `SitePanelProvider` — pas de parc de sites ;
- *   - `CallProvider`, `CallOverlay` — les appels audio et le partage d'écran
- *     n'ont d'objet qu'à plusieurs, et ne sont pas vérifiés sous Windows en
- *     conditions réelles ;
+
+ * `CallProvider` et `CallOverlay` sont revenus (vague 1 du Collectif) : une
+ * organisation cliente n'est plus une personne seule — Syraagensy, AllStore
+ * ont des équipes — et les appels entre membres, comme le lien d'appel vers
+ * un visiteur, font partie de leur quotidien. Reste vrai : le partage d'écran
+ * n'est pas vérifié sous Windows en conditions réelles.
+ *
+ * Ce qui manque encore, exprès :
  *   - `AssistantProvider` — l'assistant raisonne sur le parc, les décisions et
  *     la base de connaissances, qui n'existent pas ici ;
  *   - `RegressionNotifier`, `IdleScreensaver`, `NotificationsManager` — tous
@@ -93,6 +100,7 @@ export function BusinessLayout() {
 
   return (
     <SpaceProviders>
+    <CallProvider>
                 <div
                   onTouchStart={onTouchStart}
                   onTouchEnd={onTouchEnd}
@@ -143,11 +151,13 @@ export function BusinessLayout() {
                 <AppointmentReminders />
                 <SyncActivityNotifier />
               <SupportNotifier />
+              <CallOverlay />
                 <RouteSeenTracker />
                 <BootHealthy />
                 <UpdateNotice />
                 <UpdateReady />
                 <PwaUpdateNotice />
+    </CallProvider>
     </SpaceProviders>
   );
 }

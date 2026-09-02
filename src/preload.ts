@@ -10,6 +10,8 @@ import {
   IPC,
   type AddClientEventInput,
   type AmnBridge,
+  type CallSignal,
+  type OutgoingCallSignal,
   type CreateClientInput,
   type CreateDecisionInput,
   type CreateKnowledgeDocInput,
@@ -184,6 +186,12 @@ const bridge: AmnBridge = {
       const listener = (_event: Electron.IpcRendererEvent, request: SupportRequest) => callback(request);
       ipcRenderer.on(IPC.remoteSupportAnsweredPush, listener);
       return () => ipcRenderer.removeListener(IPC.remoteSupportAnsweredPush, listener);
+    },
+    sendCallSignal: (signal: OutgoingCallSignal) => ipcRenderer.invoke(IPC.remoteSendCallSignal, signal),
+    onCallSignal: (callback: (signal: CallSignal) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, signal: CallSignal) => callback(signal);
+      ipcRenderer.on(IPC.remoteCallSignalPush, listener);
+      return () => ipcRenderer.removeListener(IPC.remoteCallSignalPush, listener);
     },
     welcome: {
       inspect: (token: string) => ipcRenderer.invoke(IPC.remoteWelcomeInspect, token),

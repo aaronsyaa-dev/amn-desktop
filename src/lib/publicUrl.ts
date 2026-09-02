@@ -83,5 +83,5 @@ export function canBuildPublicLink(): boolean {
  */
 export const PUBLIC_URL_MISSING =
   'Le lien a été créé, mais aucune adresse publique n’est configurée : impossible d’en faire une ' +
-  'adresse envoyable. Réglez APP_PUBLIC_URL sur amn-api (l’adresse de la version web, par exemple ' +
-  'https://app.amn-devsec.com) — une seule fois, et tous les postes en profitent.';
+  'adresse envoyable. Votre prestataire règle l’adresse de la version web sur le serveur — une ' +
+  'seule fois, et tous les postes en profitent.';

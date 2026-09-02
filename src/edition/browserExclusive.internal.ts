@@ -20,7 +20,6 @@ import type {
   SupportSession,
   TempPasswordResult,
   AmnBridge,
-  CallSignal,
   ComplyProgress,
   ProductRegression,
   RemoteEventPush,
@@ -149,8 +148,6 @@ type ExclusiveRemote = Pick<
   | 'getSiteStatusPage'
   | 'publishSiteStatusPage'
   | 'revokeSiteStatusPage'
-  | 'sendCallSignal'
-  | 'onCallSignal'
   | 'startScan'
   | 'listScans'
   | 'getScan'
@@ -401,40 +398,6 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
   },
   async revokeSiteStatusPage(siteId: string) {
     return ctx.apiFetch<SiteStatusPage>(`/v1/sites/${siteId}/status-page`, { method: 'DELETE' });
-  },
-  async sendCallSignal(signal) {
-    ctx.ensureStarted();
-    const socket = ctx.socket();
-      if (!socket || socket.readyState !== WebSocket.OPEN) return false;
-    socket.send(
-      JSON.stringify({
-        type: 'signal',
-        to: signal.to,
-        kind: signal.kind,
-        callId: signal.callId,
-        payload: signal.payload ?? null,
-      }),
-    );
-    return true;
-  },
-  onCallSignal(callback) {
-    ctx.ensureStarted();
-    const offSignal = ctx.onFrame('signal', (frame) => callback(frame as unknown as CallSignal));
-    // « Personne n'écoutait » devient sa propre nature de signal, comme côté
-    // Electron : l'appelant peut conclure « hors ligne » au lieu d'attendre.
-    const offUndelivered = ctx.onFrame('signal:undelivered', (frame) =>
-      callback({
-        type: 'signal',
-        kind: 'undelivered',
-        callId: String(frame.callId ?? ''),
-        from: String(frame.to ?? ''),
-        payload: { kind: String(frame.kind ?? '') },
-      }),
-    );
-    return () => {
-      offSignal();
-      offUndelivered();
-    };
   },
   async startScan(url: string, tier: ScanTier): Promise<Scan> {
     const { scan } = await ctx.apiFetch<{ scan: Scan }>('/v1/scan', {

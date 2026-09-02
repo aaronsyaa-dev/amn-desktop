@@ -161,4 +161,11 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'media', label: 'Médias', hint: 'Photos et fichiers' },
   { key: 'reports', label: 'Rapports', hint: 'Comptes-rendus' },
   { key: 'vault', label: 'Coffre-fort', hint: 'Mots de passe et accès' },
+  { key: 'dm', label: 'Messages privés', hint: 'Écrire à une personne, sans le groupe' },
+  { key: 'groups', label: 'Groupes', hint: 'Des fils à plusieurs, par sujet ou par équipe' },
+  { key: 'announcements', label: 'Annonces', hint: 'Ce que tout le monde doit avoir lu' },
+  { key: 'polls', label: 'Sondages', hint: 'Une question, un vote par personne' },
+  { key: 'leaves', label: 'Absences', hint: 'Congés, maladie, télétravail — qui est là' },
+  { key: 'directory', label: 'Trombinoscope', hint: 'Les visages, les rôles, qui est là' },
+  { key: 'calls', label: 'Appels', hint: 'Appeler un membre, inviter un visiteur par lien' },
 ];

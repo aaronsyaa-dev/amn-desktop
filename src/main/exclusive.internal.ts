@@ -27,7 +27,6 @@ import {
   type SupportContext,
   type SupportSession,
   type TempPasswordResult,
-  type CallSignal,
   type ComplyCheck,
   type ComplyReferentialCatalog,
   type ComplyProgress,
@@ -46,7 +45,6 @@ import {
   type SiteSummary,
   type SslStatus,
   type Scan,
-  type OutgoingCallSignal,
   type TrackerTier,
   OrgChange,
 } from '../shared/api';
@@ -867,17 +865,6 @@ export function registerExclusiveIpc(
   ipcMain.handle(IPC.remoteListComplyReferentials, () => exclusiveApi.listComplyReferentials());
   ipcMain.handle(IPC.remoteListComplyChecks, () => exclusiveApi.listComplyChecks());
   ipcMain.handle(IPC.remoteGetComplyCheck, (_event, id: string) => exclusiveApi.getComplyCheck(id));
-  // Appels audio : la signalisation ne vaut qu'à plusieurs dans une même
-  // organisation, donc elle part avec le reste dans l'édition Business.
-  ipcMain.handle(IPC.remoteSendCallSignal, (_event, signal: OutgoingCallSignal) =>
-    remote.sendFrame({
-      type: 'signal',
-      to: signal.to,
-      kind: signal.kind,
-      callId: signal.callId,
-      payload: signal.payload ?? null,
-    }),
-  );
 
   // Veille RSS et modèle local Ollama : les deux n'alimentent que l'assistant
   // Ajmani et le bandeau de veille, qui n'existent pas dans l'édition Business.
@@ -916,20 +903,5 @@ export function registerExclusiveIpc(
   remote.onFrame('org:changed', (frame) => broadcastToAll(IPC.remoteOrgChangedPush, frame as unknown as OrgChange));
   remote.onFrame('product:regression', (frame) =>
     broadcastToAll(IPC.remoteProductRegressionPush, frame as unknown as ProductRegression),
-  );
-  remote.onFrame('signal', (frame) =>
-    broadcastToAll(IPC.remoteCallSignalPush, frame as unknown as CallSignal),
-  );
-  // « Personne n'écoutait » est sa propre nature de signal côté renderer : il
-  // permet de terminer l'appel sur « hors ligne » plutôt que d'attendre le
-  // délai de garde.
-  remote.onFrame('signal:undelivered', (frame) =>
-    broadcastToAll(IPC.remoteCallSignalPush, {
-      type: 'signal',
-      kind: 'undelivered',
-      callId: String(frame.callId ?? ''),
-      from: String(frame.to ?? ''),
-      payload: { kind: String(frame.kind ?? '') },
-    } satisfies CallSignal),
   );
 }

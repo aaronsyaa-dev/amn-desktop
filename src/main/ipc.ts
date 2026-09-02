@@ -4,6 +4,8 @@ import { EDITION_PRODUCT_NAME } from '../edition/edition';
 import {
   IPC,
   type AddClientEventInput,
+  type CallSignal,
+  type OutgoingCallSignal,
   type ChangePasswordInput,
   type NotificationPrefs,
   type UpdateProfileInput,
@@ -305,6 +307,17 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   ipcMain.handle(IPC.remoteSetOrgAccent, (_event, accent: string | null) =>
     remote.setOrganizationAccent(accent),
   );
+  // Appels audio : la signalisation vaut pour toute organisation à plusieurs,
+  // donc elle est commune aux deux éditions.
+  ipcMain.handle(IPC.remoteSendCallSignal, (_event, signal: OutgoingCallSignal) =>
+    remote.sendFrame({
+      type: 'signal',
+      to: signal.to,
+      kind: signal.kind,
+      callId: signal.callId,
+      payload: signal.payload ?? null,
+    }),
+  );
 
   // Push channels: broadcast to every open window rather than replying to a
   // specific invoke() call, since these are server-initiated updates.
@@ -318,6 +331,19 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   remote.onPresence((users) => broadcastToAll(IPC.remotePresencePush, users));
   // La réponse du prestataire (Bloc 4) : une trame de l'organisation, relayée telle quelle.
   remote.onFrame('support:answered', (frame) => broadcastToAll(IPC.remoteSupportAnsweredPush, frame.request));
+  remote.onFrame('signal', (frame) => broadcastToAll(IPC.remoteCallSignalPush, frame as unknown as CallSignal));
+  // « Personne n'écoutait » est sa propre nature de signal côté renderer : il
+  // permet de terminer l'appel sur « hors ligne » plutôt que d'attendre le
+  // délai de garde.
+  remote.onFrame('signal:undelivered', (frame) =>
+    broadcastToAll(IPC.remoteCallSignalPush, {
+      type: 'signal',
+      kind: 'undelivered',
+      callId: String(frame.callId ?? ''),
+      from: String(frame.to ?? ''),
+      payload: { kind: String(frame.kind ?? '') },
+    } satisfies CallSignal),
+  );
 
   // Produits exclusifs d'AMN DevSec (parc de sites, Scanner, Comply, SSL
   // Monitor, analyses récurrentes, bureau SOC, appels audio). Dans l'édition

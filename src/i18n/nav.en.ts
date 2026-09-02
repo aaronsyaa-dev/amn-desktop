@@ -32,6 +32,13 @@ export interface TraductionNav {
 }
 
 export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
+  calls: { label: 'Calls', hint: 'Call a member, invite a visitor by link' },
+  directory: { label: 'People', hint: 'Faces, roles, who is in' },
+  leaves: { label: 'Time off', hint: 'Leave, sick days, remote — who is in' },
+  polls: { label: 'Polls', hint: 'One question, one vote per person' },
+  announcements: { label: 'Announcements', hint: 'What everyone must have read' },
+  groups: { label: 'Groups', hint: 'Threads for a few people, by topic or team' },
+  dm: { label: 'Direct messages', hint: 'Write to one person, not the group' },
   library: { label: 'Library', hint: 'Every module, by section' },
   discover: { label: 'Discover', hint: 'Everything that exists, arranged' },
   home: { label: 'Home', hint: 'Today’s HQ', hintBusiness: 'Your day', hintSupport: 'Their day' },
@@ -87,6 +94,7 @@ export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
  * côté catalogue retombe sur le français, visiblement.
  */
 export const SECTIONS_EN_COMMUN: Record<string, string> = {
+  'Collectif': 'Team',
   Pilotage: 'Planning',
   'Clients & revenus': 'Clients & revenue',
   Production: 'Production',

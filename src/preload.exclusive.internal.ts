@@ -5,10 +5,8 @@ import {
   type IncidentResolution,
   type IncidentStatus,
   type AmnBridge,
-  type CallSignal,
   type ComplyProgress,
   type CreateScheduleInput,
-  type OutgoingCallSignal,
   type ProductRegression,
   type RemoteEventPush,
   type ScanProgress,
@@ -66,8 +64,6 @@ type ExclusiveRemote = Pick<
   | 'getSiteStatusPage'
   | 'publishSiteStatusPage'
   | 'revokeSiteStatusPage'
-  | 'sendCallSignal'
-  | 'onCallSignal'
   | 'startScan'
   | 'listScans'
   | 'getScan'
@@ -177,13 +173,6 @@ export const exclusivePreload: ExclusiveRemote = {
   getSiteStatusPage: (siteId: string) => ipcRenderer.invoke(IPC.remoteGetSiteStatusPage, siteId),
   publishSiteStatusPage: (siteId: string) => ipcRenderer.invoke(IPC.remotePublishSiteStatusPage, siteId),
   revokeSiteStatusPage: (siteId: string) => ipcRenderer.invoke(IPC.remoteRevokeSiteStatusPage, siteId),
-  sendCallSignal: (signal: OutgoingCallSignal) =>
-    ipcRenderer.invoke(IPC.remoteSendCallSignal, signal),
-  onCallSignal: (callback: (signal: CallSignal) => void) => {
-    const listener = (_event: Electron.IpcRendererEvent, signal: CallSignal) => callback(signal);
-    ipcRenderer.on(IPC.remoteCallSignalPush, listener);
-    return () => ipcRenderer.removeListener(IPC.remoteCallSignalPush, listener);
-  },
   startScan: (url: string, tier: ScanTier) => ipcRenderer.invoke(IPC.remoteStartScan, { url, tier }),
   listScans: () => ipcRenderer.invoke(IPC.remoteListScans),
   getScan: (id: string) => ipcRenderer.invoke(IPC.remoteGetScan, id),
