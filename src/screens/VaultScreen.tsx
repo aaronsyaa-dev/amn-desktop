@@ -25,6 +25,24 @@ import { bridge } from '../lib/bridge';
 import type { VaultCategory, VaultEntry } from '../shared/api';
 import { VAULT_CATEGORIES as CATEGORIES, vaultCategoryLabel as categoryLabel } from '../lib/vaultCategories';
 
+/**
+ * Vingt signes au hasard cryptographique, avec au moins une minuscule, une
+ * majuscule, un chiffre et un symbole — sans les caractères qu'on confond
+ * (l, I, 1, O, 0).
+ */
+export function genererMotDePasse(longueur = 20): string {
+  const familles = ['abcdefghijkmnpqrstuvwxyz', 'ABCDEFGHJKLMNPQRSTUVWXYZ', '23456789', '!#$%&*+-=?@_'];
+  const tout = familles.join('');
+  const tirer = (alphabet: string) => alphabet[crypto.getRandomValues(new Uint32Array(1))[0] % alphabet.length];
+  const signes = familles.map(tirer);
+  while (signes.length < longueur) signes.push(tirer(tout));
+  for (let i = signes.length - 1; i > 0; i -= 1) {
+    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+    [signes[i], signes[j]] = [signes[j], signes[i]];
+  }
+  return signes.join('');
+}
+
 const emptyDraft = (): VaultDraft => ({
   label: '',
   username: '',
@@ -583,6 +601,22 @@ function VaultEditor({
               {showPassword ? <EyeOff size={15} strokeWidth={1.75} /> : <Eye size={15} strokeWidth={1.75} />}
             </button>
           </div>
+          {/*
+            Le générateur : vingt signes tirés au hasard cryptographique, avec
+            au moins une minuscule, une majuscule, un chiffre et un symbole.
+            Un mot de passe qu'on n'a pas choisi est un mot de passe qu'on ne
+            réutilise pas — c'est ce que le coffre-fort doit rendre facile.
+          */}
+          <button
+            type="button"
+            onClick={() => {
+              setDraft({ password: genererMotDePasse(20) });
+              setShowPassword(true);
+            }}
+            className="flex min-h-11 w-fit items-center gap-1.5 border border-border px-3 text-xs text-text-secondary transition-colors hover:text-text-primary md:min-h-0 md:py-1.5"
+          >
+            <KeyRound size={13} strokeWidth={1.75} /> Générer un mot de passe fort
+          </button>
         </label>
 
         <label className="flex flex-col gap-1.5">

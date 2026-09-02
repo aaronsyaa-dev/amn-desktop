@@ -181,6 +181,15 @@ const MODULE_DATA = {
   newsletter: ['newsletters'],
   esign: ['signatures'],
   portfolio: ['portfolioItems'],
+  habits: [],
+  personalGoals: [],
+  diary: [],
+  pomodoro: [],
+  qr: [],
+  converters: [],
+  templates: ['templates'],
+  automations: ['automations'],
+  dataPort: [],
 };
 
 /**
@@ -258,6 +267,15 @@ const MODULE_FILES = {
   newsletter: ['src/screens/NewsletterScreen.tsx'],
   esign: ['src/screens/SignatureScreen.tsx'],
   portfolio: ['src/screens/PortfolioScreen.tsx'],
+  habits: ['src/screens/HabitsScreen.tsx'],
+  personalGoals: ['src/screens/PersonalGoalsScreen.tsx'],
+  diary: ['src/screens/DiaryScreen.tsx'],
+  pomodoro: ['src/screens/PomodoroScreen.tsx'],
+  qr: ['src/screens/QrScreen.tsx'],
+  converters: ['src/screens/ConvertersScreen.tsx'],
+  templates: ['src/screens/TemplatesScreen.tsx'],
+  automations: ['src/screens/AutomationsScreen.tsx'],
+  dataPort: ['src/screens/DataPortScreen.tsx'],
 };
 
 /**

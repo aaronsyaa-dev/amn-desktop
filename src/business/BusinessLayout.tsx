@@ -9,6 +9,7 @@ import { SpaceProviders } from '../state/SpaceProviders';
 import { BootHealthy } from '../components/BootHealthy';
 import { SyncActivityNotifier } from '../components/SyncActivityNotifier';
 import { SupportNotifier } from '../components/SupportNotifier';
+import { AutomationsRunner } from '../components/AutomationsRunner';
 import { MobileBottomNav } from '../components/MobileBottomNav';
 import { StatusRail } from '../components/StatusRail';
 import { AppLauncher } from '../components/AppLauncher';
@@ -151,6 +152,7 @@ export function BusinessLayout() {
                 <AppointmentReminders />
                 <SyncActivityNotifier />
               <SupportNotifier />
+              <AutomationsRunner />
               <CallOverlay />
                 <RouteSeenTracker />
                 <BootHealthy />

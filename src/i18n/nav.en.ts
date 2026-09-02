@@ -32,6 +32,15 @@ export interface TraductionNav {
 }
 
 export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
+  dataPort: { label: 'Import / export', hint: 'Your data, both ways' },
+  automations: { label: 'Automations', hint: 'If this happens, then that gets done' },
+  templates: { label: 'Templates', hint: 'Ready texts, with blanks' },
+  converters: { label: 'Converters', hint: 'Units, VAT, currencies: the right number right away' },
+  qr: { label: 'QR codes', hint: 'An address, a code to print' },
+  pomodoro: { label: 'Pomodoro', hint: '25 minutes, then a break — and the time logged' },
+  diary: { label: 'Personal diary', hint: 'A few lines a day, for you' },
+  personalGoals: { label: 'Personal goals', hint: 'What you aim for, and the steps to get there' },
+  habits: { label: 'Habits', hint: 'Yours, day after day' },
   portfolio: { label: 'Portfolio', hint: 'Your work, shown on the mini-page' },
   esign: { label: 'On-the-spot signature', hint: 'Have a quote or slip signed on screen' },
   newsletter: { label: 'Newsletter', hint: 'A word to all your customers, from your own mail' },
@@ -121,6 +130,7 @@ export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
  * côté catalogue retombe sur le français, visiblement.
  */
 export const SECTIONS_EN_COMMUN: Record<string, string> = {
+  'Outils': 'Tools',
   'Collectif': 'Team',
   Pilotage: 'Planning',
   'Clients & revenus': 'Clients & revenue',

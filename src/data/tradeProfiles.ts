@@ -195,4 +195,13 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'newsletter', label: 'Lettre d’information', hint: 'Un mot à tous vos clients, depuis votre messagerie' },
   { key: 'esign', label: 'Signature sur place', hint: 'Faire signer un devis ou un bon sur l’écran' },
   { key: 'portfolio', label: 'Portfolio', hint: 'Vos réalisations, montrées sur la mini-page' },
+  { key: 'habits', label: 'Habitudes', hint: 'Les vôtres, jour après jour' },
+  { key: 'personalGoals', label: 'Objectifs perso', hint: 'Ce que vous visez, et les pas pour y aller' },
+  { key: 'diary', label: 'Journal perso', hint: 'Quelques lignes par jour, pour vous' },
+  { key: 'pomodoro', label: 'Pomodoro', hint: '25 minutes, puis une pause — et le temps compté' },
+  { key: 'qr', label: 'QR codes', hint: 'Une adresse, un code à imprimer' },
+  { key: 'converters', label: 'Convertisseurs', hint: 'Unités, TVA, devises : le bon chiffre tout de suite' },
+  { key: 'templates', label: 'Modèles', hint: 'Des textes prêts, à trous' },
+  { key: 'automations', label: 'Automatisations', hint: 'Si ceci arrive, alors cela se fait' },
+  { key: 'dataPort', label: 'Import / export', hint: 'Vos données, dans les deux sens' },
 ];

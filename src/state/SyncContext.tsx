@@ -142,6 +142,8 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'newsletters',
   'signatures',
   'portfolioItems',
+  'templates',
+  'automations',
 ];
 
 const MIRROR_PREFIX = 'amn.sync.';

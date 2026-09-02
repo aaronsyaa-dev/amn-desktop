@@ -61,6 +61,12 @@ import {
   RotateCw,
   Send,
   PenTool,
+  Sunrise,
+  Trophy,
+  QrCode,
+  ArrowLeftRight,
+  Workflow,
+  Download,
 } from 'lucide-react';
 import type { NavSection } from '../data/navigation';
 import type { ActivityTab } from '../state/ActivityContext';
@@ -213,6 +219,18 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    key: 'outils',
+    label: 'Outils',
+    space: 'workspace',
+    items: [
+      { key: 'qr', label: 'QR codes', to: '/outils/qr', icon: QrCode, hint: 'Une adresse, un code à imprimer' },
+      { key: 'converters', label: 'Convertisseurs', to: '/outils/convertisseurs', icon: ArrowLeftRight, hint: 'Unités, TVA, devises : le bon chiffre tout de suite' },
+      { key: 'templates', label: 'Modèles', to: '/outils/modeles', icon: LayoutTemplate, hint: 'Des textes prêts, à trous' },
+      { key: 'automations', label: 'Automatisations', to: '/outils/automatisations', icon: Workflow, hint: 'Si ceci arrive, alors cela se fait' },
+      { key: 'dataPort', label: 'Import / export', to: '/outils/donnees', icon: Download, hint: 'Vos données, dans les deux sens' },
+    ],
+  },
+  {
     /*
       PERSONNEL (BLOC 2) — voir le commentaire jumeau dans `modules.business.ts`.
 
@@ -226,6 +244,10 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { key: 'budget', label: 'Avant la paie', to: '/personnel/budget', icon: PiggyBank, hint: 'Ce qu’il reste à dépenser' },
       { key: 'courses', label: 'Courses', to: '/personnel/courses', icon: ShoppingBasket, hint: 'Liste de courses et pages perso' },
+      { key: 'habits', label: 'Habitudes', to: '/personnel/habitudes', icon: Sunrise, hint: 'Les vôtres, jour après jour' },
+      { key: 'personalGoals', label: 'Objectifs perso', to: '/personnel/objectifs', icon: Trophy, hint: 'Ce que vous visez, et les pas pour y aller' },
+      { key: 'diary', label: 'Journal perso', to: '/personnel/journal', icon: NotebookPen, hint: 'Quelques lignes par jour, pour vous' },
+      { key: 'pomodoro', label: 'Pomodoro', to: '/personnel/pomodoro', icon: Timer, hint: '25 minutes, puis une pause — et le temps compté' },
     ],
   },
   {
@@ -349,6 +371,15 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/settings', 'reglages'],
   ['/membres', 'reglages'],
   ['/assistance', 'fil'],
+  ['/outils/donnees', 'reglages'],
+  ['/outils/automatisations', 'reglages'],
+  ['/outils/modeles', 'fiches'],
+  ['/outils/convertisseurs', 'registre'],
+  ['/outils/qr', 'registre'],
+  ['/personnel/pomodoro', 'registre'],
+  ['/personnel/journal', 'fil'],
+  ['/personnel/objectifs', 'registre'],
+  ['/personnel/habitudes', 'registre'],
   ['/portfolio', 'fiches'],
   ['/signature', 'registre'],
   ['/lettre', 'fil'],

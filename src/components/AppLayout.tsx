@@ -23,6 +23,7 @@ import { TagProvider } from './tags/TagProvider';
 import { NotificationsManager } from './NotificationsManager';
 import { SyncActivityNotifier } from './SyncActivityNotifier';
 import { SupportNotifier } from './SupportNotifier';
+import { AutomationsRunner } from './AutomationsRunner';
 import { RegressionNotifier } from './RegressionNotifier';
 import { IdleScreensaver } from './IdleScreensaver';
 import { WelcomeOverlay, shouldShowWelcome } from './WelcomeOverlay';
@@ -206,6 +207,7 @@ export function AppLayout() {
               <SyncActivityNotifier />
               <RegressionNotifier />
               <SupportNotifier />
+              <AutomationsRunner />
               <RouteSeenTracker />
               <BootHealthy />
               <IdleScreensaver />

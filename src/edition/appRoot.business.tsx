@@ -30,6 +30,15 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { MembersScreen } from '../screens/MembersScreen';
 import { AssistanceScreen } from '../screens/AssistanceScreen';
 import { LibraryScreen } from '../screens/LibraryScreen';
+import { DataPortScreen } from '../screens/DataPortScreen';
+import { AutomationsScreen } from '../screens/AutomationsScreen';
+import { TemplatesScreen } from '../screens/TemplatesScreen';
+import { ConvertersScreen } from '../screens/ConvertersScreen';
+import { QrScreen } from '../screens/QrScreen';
+import { PomodoroScreen } from '../screens/PomodoroScreen';
+import { DiaryScreen } from '../screens/DiaryScreen';
+import { PersonalGoalsScreen } from '../screens/PersonalGoalsScreen';
+import { HabitsScreen } from '../screens/HabitsScreen';
 import { PortfolioScreen } from '../screens/PortfolioScreen';
 import { SignatureScreen } from '../screens/SignatureScreen';
 import { NewsletterScreen } from '../screens/NewsletterScreen';
@@ -522,6 +531,78 @@ export function AppRoot() {
           element={
             <ModuleRoute module="portfolio">
               <PortfolioScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/personnel/habitudes"
+          element={
+            <ModuleRoute module="habits">
+              <HabitsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/personnel/objectifs"
+          element={
+            <ModuleRoute module="personalGoals">
+              <PersonalGoalsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/personnel/journal"
+          element={
+            <ModuleRoute module="diary">
+              <DiaryScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/personnel/pomodoro"
+          element={
+            <ModuleRoute module="pomodoro">
+              <PomodoroScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/outils/qr"
+          element={
+            <ModuleRoute module="qr">
+              <QrScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/outils/convertisseurs"
+          element={
+            <ModuleRoute module="converters">
+              <ConvertersScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/outils/modeles"
+          element={
+            <ModuleRoute module="templates">
+              <TemplatesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/outils/automatisations"
+          element={
+            <ModuleRoute module="automations">
+              <AutomationsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/outils/donnees"
+          element={
+            <ModuleRoute module="dataPort">
+              <DataPortScreen />
             </ModuleRoute>
           }
         />

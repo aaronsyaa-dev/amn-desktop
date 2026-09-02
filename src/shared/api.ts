@@ -2174,7 +2174,9 @@ export type SyncedCollection =
   | 'minisite'
   | 'newsletters'
   | 'signatures'
-  | 'portfolioItems';
+  | 'portfolioItems'
+  | 'templates'
+  | 'automations';
 
 export interface PresenceEntry {
   email: string;
