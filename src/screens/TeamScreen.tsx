@@ -48,9 +48,11 @@ import {
   mentionsAjmani,
   stripAjmaniMention,
 } from '../lib/ajmaniChat';
-import type { MessageAttachment } from '../shared/api';
+import type { MemberJournalEntry, MessageAttachment, OrgMember } from '../shared/api';
 import { REACTION_EMOJIS } from '../shared/api';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
+import { useLangue } from '../i18n';
+import { bridge } from '../lib/bridge';
 
 /** Max raw size for a chat video, before the ~33% base64 inflation, kept under
  * amn-api's 12 MB JSON body limit. Short clips only — see Bloc 3 for a heavier
@@ -90,11 +92,6 @@ function useMentionTasks(): TaskRef[] {
     [rows],
   );
 }
-
-const TEAM = [
-  { email: 'aaron@amn-devsec.com' },
-  { email: 'mohamed@amn-devsec.com' },
-];
 
 export function TeamScreen() {
   const { user } = useAuth();
@@ -235,76 +232,204 @@ export function TeamScreen() {
   );
 }
 
+/*
+  LA PRÉSENCE — LES MEMBRES RÉELS, PAS UNE LISTE ÉCRITE DANS LE CODE.
+
+  Le retour d'AllStore : un nouveau compte n'apparaissait pas ici, parce que
+  la barre itérait une constante `TEAM` de deux adresses — celles d'AMN
+  DevSec. Chez une cliente, elle montrait donc Aaron et Mohamed, et jamais
+  Riyad. Elle lit maintenant les comptes de l'organisation (la même liste que
+  Système → Membres) et, pour chacun :
+
+    · un point vert quand la personne est connectée (présence réelle, par la
+      liaison temps réel) ;
+    · sinon « connecté il y a une heure », lu dans le journal d'audit — la
+      ligne `login` que le serveur écrit à chaque connexion. Une seule
+      source : la même que la Tour ;
+    · au clic, son historique — connexions et gestes — depuis ce journal.
+*/
 function PresenceBar({ currentEmail }: { currentEmail?: string }) {
   const { onlineEmails, configured } = useSync();
   const { profileFor } = useProfiles();
   const { call, callsAvailable, phase } = useCall();
+  const { t } = useLangue();
+  const [membres, setMembres] = useState<OrgMember[] | null>(null);
+  const [ouvert, setOuvert] = useState<OrgMember | null>(null);
+
+  const charger = React.useCallback(async () => {
+    try {
+      const liste = await bridge().remote.members.list();
+      // Les suspendus vivent dans Système → Membres : ici, l'équipe qui travaille.
+      setMembres(liste.filter((m) => m.status !== 'suspended'));
+    } catch {
+      // Poste local sans serveur : on ne montre que soi, sans prétendre le reste.
+      setMembres(currentEmail ? [{ id: 'moi', email: currentEmail, role: 'owner', status: 'active', invitedAt: null, joinedAt: null }] : []);
+    }
+  }, [currentEmail]);
+
+  useEffect(() => {
+    void charger();
+  }, [charger]);
+  // Une présence qui change peut signaler une première connexion : on relit
+  // la liste, c'est une lecture légère et la dernière connexion se met à jour.
+  useEffect(() => {
+    if (membres !== null) void charger();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onlineEmails]);
 
   return (
-    <div className="flex flex-wrap gap-3">
-      {TEAM.map((member) => {
-        const isSelf = member.email === currentEmail;
-        const profile = profileFor(member.email);
-        // Real presence (via the amn-api WebSocket) when configured; you are
-        // always shown online since you're the one looking at the screen.
-        const online = isSelf || onlineEmails.has(member.email);
-        // When amn-api isn't configured we can't know the other operator's
-        // real presence, so we say so rather than claiming "hors ligne".
-        const statusLine = isSelf
-          ? profile.presenceText || 'En ligne'
-          : !configured
-            ? 'Présence indisponible'
-            : online
-              ? profile.presenceText || 'En ligne'
-              : 'Hors ligne';
-        return (
-          <div
-            key={member.email}
-            className="flex items-center gap-2.5 rounded-xl border border-border bg-surface px-3 py-2"
-          >
-            <span className="relative">
-              <UserAvatar email={member.email} size={32} />
-              <span
-                className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface ${
-                  online ? 'bg-success' : 'bg-text-muted'
-                }`}
-              />
-            </span>
-            <div className="leading-tight">
-              <p className="text-sm font-medium text-text-primary">
-                {profile.name}
-                {isSelf && <span className="text-text-muted"> (vous)</span>}
-              </p>
-              <p className="text-xs text-text-secondary">
-                {statusLine}
-                {!isSelf && !configured && <span className="text-text-muted"> · hors-ligne</span>}
-              </p>
-            </div>
-            {/* Audio call (BLOC 2). Only offered for the *other* operator, and
-                only while they're actually online — a call button that can
-                only fail is worse than no button. */}
-            {!isSelf && online && configured && (
+    <>
+      <div className="flex flex-wrap gap-3">
+        {(membres ?? []).map((member) => {
+          const isSelf = member.email === currentEmail;
+          const profile = profileFor(member.email);
+          const online = isSelf || onlineEmails.has(member.email);
+          const statusLine = isSelf
+            ? profile.presenceText || t('equipe.enLigne')
+            : !configured
+              ? t('equipe.presenceIndisponible')
+              : online
+                ? profile.presenceText || t('equipe.enLigne')
+                : member.lastSeenAt
+                  ? t('equipe.connecteIlYa', { quand: relativeTime(member.lastSeenAt) })
+                  : t('equipe.jamaisConnecte');
+          return (
+            <div
+              key={member.id}
+              className="flex items-center gap-2.5 rounded-xl border border-border bg-surface px-3 py-2"
+            >
               <button
                 type="button"
-                onClick={() => void call(member.email)}
-                disabled={!callsAvailable || phase !== 'idle'}
-                title={
-                  !callsAvailable
-                    ? 'Appels indisponibles — connexion au serveur AMN perdue'
-                    : phase !== 'idle'
-                      ? 'Un appel est déjà en cours'
-                      : `Appeler ${profile.name}`
-                }
-                aria-label={`Appeler ${profile.name}`}
-                className="ml-1 flex h-9 w-9 items-center justify-center rounded-full border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                onClick={() => setOuvert(member)}
+                title={t('equipe.historiqueDe', { nom: profile.name })}
+                aria-label={t('equipe.historiqueDe', { nom: profile.name })}
+                className="flex min-h-11 items-center gap-2.5 text-left md:min-h-0"
               >
-                <Phone size={16} strokeWidth={1.75} />
+                <span className="relative">
+                  <UserAvatar email={member.email} size={32} />
+                  <span
+                    className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface ${
+                      online ? 'bg-success' : 'bg-text-muted'
+                    }`}
+                  />
+                </span>
+                <span className="leading-tight">
+                  <span className="block text-sm font-medium text-text-primary">
+                    {profile.name}
+                    {isSelf && <span className="text-text-muted"> {t('equipe.vous')}</span>}
+                  </span>
+                  <span className="block text-xs text-text-secondary">{statusLine}</span>
+                </span>
               </button>
-            )}
-          </div>
-        );
-      })}
-    </div>
+              {/* L'appel n'est proposé qu'à qui est là : un bouton qui ne peut
+                  qu'échouer vaut moins que pas de bouton. */}
+              {!isSelf && online && configured && (
+                <button
+                  type="button"
+                  onClick={() => void call(member.email)}
+                  disabled={!callsAvailable || phase !== 'idle'}
+                  title={
+                    !callsAvailable
+                      ? 'Appels indisponibles — connexion au serveur AMN perdue'
+                      : phase !== 'idle'
+                        ? 'Un appel est déjà en cours'
+                        : t('equipe.appeler', { nom: profile.name })
+                  }
+                  aria-label={t('equipe.appeler', { nom: profile.name })}
+                  className="ml-1 flex h-9 w-9 items-center justify-center rounded-full border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Phone size={16} strokeWidth={1.75} />
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <AnimatePresence>
+        {ouvert && <HistoriqueMembre membre={ouvert} nom={profileFor(ouvert.email).name} onClose={() => setOuvert(null)} />}
+      </AnimatePresence>
+    </>
+  );
+}
+
+/** L'historique d'une personne : ses connexions et ses gestes, depuis le journal. */
+function HistoriqueMembre({ membre, nom, onClose }: { membre: OrgMember; nom: string; onClose: () => void }) {
+  const { t, langue } = useLangue();
+  const [entrees, setEntrees] = useState<MemberJournalEntry[] | null>(null);
+  useFermetureEchap(true, onClose);
+
+  useEffect(() => {
+    let actif = true;
+    bridge()
+      .remote.members.journal(membre.id)
+      .then((liste) => actif && setEntrees(liste))
+      .catch(() => actif && setEntrees([]));
+    return () => {
+      actif = false;
+    };
+  }, [membre.id]);
+
+  const libelle = (action: string) => {
+    const cle = `equipe.action.${action}` as Parameters<typeof t>[0];
+    const texte = t(cle);
+    return texte === cle ? action : texte;
+  };
+  const locale = langue === 'en' ? 'en-GB' : 'fr-FR';
+
+  return (
+    <motion.aside
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="historique-titre"
+      initial={{ opacity: 0, x: 24 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 24 }}
+      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+      className="fixed inset-y-0 right-0 z-[120] flex w-full max-w-md flex-col border-l border-border bg-surface shadow-2xl"
+    >
+      <header className="flex items-center gap-3 border-b border-border px-4 py-3">
+        <UserAvatar email={membre.email} size={36} />
+        <div className="min-w-0 flex-1">
+          <p id="historique-titre" className="truncate text-sm font-medium text-text-primary">
+            {t('equipe.historiqueDe', { nom })}
+          </p>
+          <p className="truncate text-xs text-text-muted">{membre.email}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={t('chrome.fermer')}
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+        >
+          <X size={16} />
+        </button>
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+        {entrees === null && <p className="text-xs text-text-muted">{t('equipe.historiqueLecture')}</p>}
+        {entrees !== null && entrees.length === 0 && (
+          <p className="text-sm leading-relaxed text-text-secondary">{t('equipe.historiqueVide')}</p>
+        )}
+        {entrees !== null && entrees.length > 0 && (
+          <ol className="flex flex-col gap-px bg-border">
+            {entrees.map((e) => (
+              <li key={e.id} className="flex items-baseline justify-between gap-3 bg-surface px-3 py-2">
+                <span className="min-w-0">
+                  <span className="block text-sm text-text-primary">{libelle(e.action)}</span>
+                  {e.detail && <span className="block truncate text-xs text-text-muted">{e.detail}</span>}
+                </span>
+                <time
+                  dateTime={e.createdAt}
+                  title={new Date(e.createdAt).toLocaleString(locale)}
+                  className="tnum flex-shrink-0 font-mono text-[10px] uppercase tracking-wider text-text-muted"
+                >
+                  {relativeTime(e.createdAt)}
+                </time>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+    </motion.aside>
   );
 }
 

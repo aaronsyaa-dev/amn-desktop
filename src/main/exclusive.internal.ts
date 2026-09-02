@@ -48,6 +48,7 @@ import {
   type Scan,
   type OutgoingCallSignal,
   type TrackerTier,
+  OrgChange,
 } from '../shared/api';
 import { apiCredential, remoteConfig } from './remoteConfig';
 import { apiFetch, type RemoteApiClient } from './remoteApi';
@@ -912,6 +913,7 @@ export function registerExclusiveIpc(
   remote.onFrame('support:request', (frame) =>
     broadcastToAll(IPC.remoteSupportRequestPush, frame.request as unknown as SupportRequestForOperator),
   );
+  remote.onFrame('org:changed', (frame) => broadcastToAll(IPC.remoteOrgChangedPush, frame as unknown as OrgChange));
   remote.onFrame('product:regression', (frame) =>
     broadcastToAll(IPC.remoteProductRegressionPush, frame as unknown as ProductRegression),
   );

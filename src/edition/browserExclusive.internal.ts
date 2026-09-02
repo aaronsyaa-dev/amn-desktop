@@ -52,6 +52,7 @@ import type {
   WelcomeLinkIssued,
   AdminWelcomeLink,
   InputAlert,
+  OrgChange,
 } from '../shared/api';
 
 /**
@@ -140,6 +141,7 @@ type ExclusiveRemote = Pick<
   | 'deleteSchedule'
   | 'onProductRegression'
   | 'onSupportRequest'
+  | 'onOrgChanged'
   | 'onInputAlert'
   | 'onIncidentEscalation'
   | 'getOrgOverview'
@@ -372,6 +374,10 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
   onSupportRequest(callback) {
     ctx.ensureStarted();
     return ctx.onFrame('support:request', (frame) => callback(frame.request as SupportRequestForOperator));
+  },
+  onOrgChanged(callback) {
+    ctx.ensureStarted();
+    return ctx.onFrame('org:changed', (frame) => callback(frame as unknown as OrgChange));
   },
   onProductRegression(callback) {
     ctx.ensureStarted();

@@ -403,7 +403,7 @@ function LigneIncident({
               <span className={`rounded-sm border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider ${style.puce}`}>
                 {STATUT_LABEL[incident.status]}
               </span>
-              <h2 className="truncate text-sm font-medium text-text-primary">
+              <h2 className="min-w-0 text-sm font-medium leading-snug text-text-primary [overflow-wrap:anywhere]">
                 {/*
                   LE SITE D'ABORD, quand le titre ne suffit pas à distinguer.
 

@@ -183,7 +183,10 @@ function Row({ item, onGo }: { item: AttentionItem; onGo: () => void }) {
     >
       <Icon size={15} strokeWidth={2} className={`mt-0.5 flex-shrink-0 ${tone.icone}`} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm text-text-primary">{item.title}</span>
+        {/* Le titre se lit EN ENTIER. Mohamed lisait « Certificat TLS de … expiration d… » :
+            une ellipse qui cache le nom du site et l'échéance cache exactement ce
+            qu'on vient lire. Il passe à la ligne, jamais coupé. */}
+        <span className="block text-sm leading-snug text-text-primary [overflow-wrap:anywhere]">{item.title}</span>
         {/*
           La preuve, toujours affichée à côté du titre. C'est ce qui distingue
           un signal d'une impression : « échue depuis 34 jours » se vérifie,

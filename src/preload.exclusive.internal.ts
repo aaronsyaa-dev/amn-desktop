@@ -14,6 +14,7 @@ import {
   type ScanProgress,
   type ScanTier,
   type TrackerTier,
+  OrgChange,
 } from './shared/api';
 import type { SupportRequestForOperator, InputAlert } from './shared/api';
 
@@ -58,6 +59,7 @@ type ExclusiveRemote = Pick<
   | 'deleteSchedule'
   | 'onProductRegression'
   | 'onSupportRequest'
+  | 'onOrgChanged'
   | 'onInputAlert'
   | 'getOrgOverview'
   | 'getSiteBadge'
@@ -159,6 +161,11 @@ export const exclusivePreload: ExclusiveRemote = {
     const listener = (_event: Electron.IpcRendererEvent, r: SupportRequestForOperator) => callback(r);
     ipcRenderer.on(IPC.remoteSupportRequestPush, listener);
     return () => ipcRenderer.removeListener(IPC.remoteSupportRequestPush, listener);
+  },
+  onOrgChanged: (callback: (c: OrgChange) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, c: OrgChange) => callback(c);
+    ipcRenderer.on(IPC.remoteOrgChangedPush, listener);
+    return () => ipcRenderer.removeListener(IPC.remoteOrgChangedPush, listener);
   },
   onProductRegression: (callback: (r: ProductRegression) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, r: ProductRegression) => callback(r);

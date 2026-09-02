@@ -1873,6 +1873,19 @@ export interface OrgMember {
   status: string;
   invitedAt: string | null;
   joinedAt: string | null;
+  /** Dernière connexion, lue dans le journal (ligne `login`). `null` : jamais entrée. */
+  lastSeenAt?: string | null;
+}
+
+/** Une ligne du journal d'une personne : connexion ou geste, dans son organisation. */
+export interface MemberJournalEntry {
+  id: number;
+  orgId: string;
+  actorId: string | null;
+  actorEmail: string;
+  action: string;
+  detail: string | null;
+  createdAt: string;
 }
 
 /**
@@ -1906,6 +1919,12 @@ export interface SupportRequest {
   handledByEmail: string | null;
   handledAt: string | null;
   createdAt: string;
+}
+
+/** Ce que la Tour annonce quand une organisation naît, change ou disparaît. */
+export interface OrgChange {
+  kind: 'created' | 'updated' | 'removed';
+  organization: AdminOrganization;
 }
 
 export interface SupportRequestForOperator extends SupportRequest {
@@ -2655,6 +2674,10 @@ export interface AmnBridge {
        * conservé en clair. À transmettre soi-même.
        */
       invite(input: { email: string; role: UserRole }): Promise<MemberInvitation>;
+      /** Retire un compte : ses sessions tombent, sa place se libère. Propriétaire ou admin. */
+      remove(userId: string): Promise<void>;
+      /** L'historique d'une personne — connexions et gestes — depuis le journal. */
+      journal(userId: string): Promise<MemberJournalEntry[]>;
       /** Change le rôle d'un membre. Réservé à owner/admin par le serveur. */
       setRole(userId: string, role: UserRole): Promise<OrgMember>;
       /** Suspend ou réactive un membre. */
@@ -2859,6 +2882,8 @@ export interface AmnBridge {
     onProductRegression(callback: (regression: ProductRegression) => void): () => void;
     /** Une demande de cliente arrive dans la file (Bloc 4). Réservé à AMN DevSec : exclusif. */
     onSupportRequest?(callback: (request: SupportRequestForOperator) => void): () => void;
+    /** Une organisation naît, change ou disparaît (Tour) — le rail se relit. */
+    onOrgChanged?(callback: (change: OrgChange) => void): () => void;
     /** Une tentative d'injection vient d'être détectée chez une cliente (Bloc 5). Exclusif. */
     onInputAlert?(callback: (alert: InputAlert) => void): () => void;
 
@@ -3241,6 +3266,8 @@ export const IPC = {
   remoteMembersInvite: 'remote:membersInvite',
   remoteMembersSetRole: 'remote:membersSetRole',
   remoteMembersSetStatus: 'remote:membersSetStatus',
+  remoteMembersRemove: 'remote:membersRemove',
+  remoteMembersJournal: 'remote:membersJournal',
   remoteSupportList: 'remote:supportList',
   remoteSupportSend: 'remote:supportSend',
   remoteForgotPassword: 'remote:forgotPassword',
@@ -3249,6 +3276,7 @@ export const IPC = {
   remoteWelcomeConfirm: 'remote:welcomeConfirm',
   remoteSupportAnsweredPush: 'remote:supportAnsweredPush',
   remoteSupportRequestPush: 'remote:supportRequestPush',
+  remoteOrgChangedPush: 'remote:orgChangedPush',
   remoteInputAlertPush: 'remote:inputAlertPush',
   remoteAdminInputAlerts: 'remote:adminInputAlerts',
   remoteModuleCatalogue: 'remote:moduleCatalogue',

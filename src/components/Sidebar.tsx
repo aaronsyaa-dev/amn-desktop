@@ -494,6 +494,15 @@ export function Sidebar({
           */}
           {isExpanded && epingles.length > 0 && (
             <div className="flex flex-col gap-1 border-b border-border pb-2">
+              {/* Un intitulé quand même, et petit : Aaron lisait « Atelier » en
+                  tête de barre sans savoir pourquoi il était là. Une bande sans
+                  nom se lit comme une erreur de rangement ; nommée, c'est un
+                  choix qu'on reconnaît — et l'épingle reste visible sur la
+                  ligne pour le défaire. */}
+              <p className="eyebrow flex items-center gap-1.5 px-3 pb-1 pt-1 text-text-muted">
+                <Pin size={10} strokeWidth={2} aria-hidden />
+                {t('chrome.epingles')}
+              </p>
               {epingles.map((item) => renderNavItem(item))}
             </div>
           )}

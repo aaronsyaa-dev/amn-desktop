@@ -6,7 +6,9 @@ import {
   ownerCredential,
   TOKEN_PROVENANCE,
 } from './remoteConfig';
-import { API_UNREACHABLE_PREFIX, GUEST_QUOTA_PREFIX, marquerStatut } from '../shared/api';
+import { API_UNREACHABLE_PREFIX, GUEST_QUOTA_PREFIX, marquerStatut,
+  MemberJournalEntry,
+} from '../shared/api';
 import { avecReprise, messageServeurAbsent, serveurAbsent } from '../shared/reprise';
 import type {
   ActiveSession,
@@ -342,6 +344,15 @@ export class RemoteApiClient {
       { method: 'PUT', body: JSON.stringify({ status }) },
     );
     return res.user;
+  }
+
+  async removeMember(userId: string): Promise<void> {
+    await apiFetch<{ ok: true }>(`/v1/auth/users/${encodeURIComponent(userId)}`, { method: 'DELETE' });
+  }
+
+  async memberJournal(userId: string): Promise<MemberJournalEntry[]> {
+    const res = await apiFetch<{ entries: MemberJournalEntry[] }>(`/v1/auth/users/${encodeURIComponent(userId)}/journal`);
+    return res.entries;
   }
 
   /* ---------- Écrire au prestataire, bienvenue, mot de passe oublié ---------- */

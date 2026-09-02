@@ -357,6 +357,15 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
     void refreshOrganizations();
   }, [refreshOrganizations]);
 
+  /*
+    LA LISTE SUIT LA TOUR. Une organisation créée par Mohamed n'apparaissait
+    chez Aaron qu'au prochain rechargement : la liste était lue une fois, au
+    montage. Le serveur annonce désormais chaque naissance, changement ou
+    disparition (trame `org:changed`, livrée à tout membre d'AMN DevSec), et
+    le rail se relit à l'instant.
+  */
+  useEffect(() => bridge().remote.onOrgChanged?.(() => void refreshOrganizations()) ?? undefined, [refreshOrganizations]);
+
   // Reprise du contexte au démarrage. Tant qu'elle n'a pas abouti, le pont
   // parle encore au nom d'AMN DevSec : c'est pour ça que le layout client
   // attend `restoring === false` avant d'afficher le moindre écran.

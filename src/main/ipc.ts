@@ -286,6 +286,8 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
     (_event, p: { userId: string; status: 'active' | 'suspended' }) =>
       remote.setMemberStatus(p.userId, p.status),
   );
+  ipcMain.handle(IPC.remoteMembersRemove, (_event, userId: string) => remote.removeMember(userId));
+  ipcMain.handle(IPC.remoteMembersJournal, (_event, userId: string) => remote.memberJournal(userId));
   ipcMain.handle(IPC.remoteModuleCatalogue, () => remote.moduleCatalogue());
   ipcMain.handle(IPC.remoteModuleRequest, (_event, input: { module: string; message?: string }) =>
     remote.requestModule(input),

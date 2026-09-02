@@ -172,6 +172,8 @@ const bridge: AmnBridge = {
         ipcRenderer.invoke(IPC.remoteMembersSetRole, { userId, role }),
       setStatus: (userId: string, status: 'active' | 'suspended') =>
         ipcRenderer.invoke(IPC.remoteMembersSetStatus, { userId, status }),
+      remove: (userId: string) => ipcRenderer.invoke(IPC.remoteMembersRemove, userId),
+      journal: (userId: string) => ipcRenderer.invoke(IPC.remoteMembersJournal, userId),
     },
     assistance: {
       list: () => ipcRenderer.invoke(IPC.remoteSupportList),

@@ -409,6 +409,9 @@ export const ACCESS_VERB: Record<string, string> = {
   welcome_consumed: 'a confirmé ses accès chez',
   // Une demande (message, place, mot de passe oublié) a reçu une réponse.
   request_answered: 'a répondu à une demande de',
+  login: 's’est connecté chez',
+  member_removed: 'a retiré un compte chez',
+  org_created: 'a créé',
   // Ces deux-là ouvrent et referment une adresse PUBLIQUE : la formulation le
   // dit, parce que c'est la seule ligne du journal qui concerne des tiers.
   status_page_published: 'a publié la page de statut d’un site de',

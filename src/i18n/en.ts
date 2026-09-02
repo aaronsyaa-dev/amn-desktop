@@ -72,6 +72,7 @@ export const en = {
   'chrome.modules': 'Modules',
   'chrome.tousModules': 'All modules',
   'chrome.fermer': 'Close',
+  'chrome.epingles': 'Pinned',
   'chrome.epingler': 'Pin {nom}',
   'chrome.detacher': 'Unpin {nom}',
   'chrome.lienActif': 'Live link',
@@ -159,6 +160,41 @@ export const en = {
   'relev.tache.des': 'tasks added',
   'relev.incident.un': 'an incident appeared',
   'relev.incident.des': 'incidents appeared',
+
+  /* ── Team: presence and history ─────────────────────────────────────── */
+  'equipe.enLigne': 'Online',
+  'equipe.connecteIlYa': 'Connected {quand}',
+  'equipe.jamaisConnecte': 'Never signed in',
+  'equipe.presenceIndisponible': 'Presence unavailable',
+  'equipe.vous': '(you)',
+  'equipe.historique': 'History',
+  'equipe.historiqueDe': 'History of {nom}',
+  'equipe.historiqueVide': 'Nothing yet: no sign-in, no action recorded.',
+  'equipe.historiqueLecture': 'Reading the journal…',
+  'equipe.appeler': 'Call {nom}',
+  'equipe.action.login': 'Signed in',
+  'equipe.action.member_suspended': 'Suspended an account',
+  'equipe.action.member_reactivated': 'Reactivated an account',
+  'equipe.action.member_role_changed': 'Changed a role',
+  'equipe.action.member_removed': 'Removed an account',
+  'equipe.action.invite': 'Invited someone',
+  'equipe.action.status_page_published': 'Published a status page',
+  'equipe.action.status_page_revoked': 'Revoked a status page',
+  'equipe.action.suppression_created': 'Muted an alert',
+  'equipe.action.suppression_revoked': 'Unmuted an alert',
+  'equipe.action.maintenance_declared': 'Declared a maintenance',
+  'equipe.action.maintenance_cancelled': 'Cancelled a maintenance',
+  'equipe.action.welcome_consumed': 'Confirmed receiving their access',
+
+  /* ── Members: removal ────────────────────────────────────────────────── */
+  'membres.retirer': 'Remove',
+  'membres.retirerTitre': 'Remove this account',
+  'membres.retirerQuestion': 'Remove {email}?',
+  'membres.retirerConsequence':
+    'Their sessions close right away and their seat is freed. What they entered stays with the organisation.',
+  'membres.retirerConfirmer': 'Remove this account',
+  'membres.retirerGarder': 'Keep',
+  'membres.retirerFait': '{email} has been removed. The seat is free.',
 } as const;
 
 /*

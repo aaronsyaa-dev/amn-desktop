@@ -14,6 +14,8 @@ import { BootHealthy } from '../components/BootHealthy';
 import { SyncStatusIndicator } from '../components/SyncStatusIndicator';
 import { variantsForPath } from '../lib/transitions';
 import { StatusRail } from '../components/StatusRail';
+import { ToastProvider } from '../state/ToastContext';
+import { SupportNotifier } from '../components/SupportNotifier';
 import { useLangue } from '../i18n';
 
 /**
@@ -101,6 +103,19 @@ export function ClientContextLayout() {
                     >
                       <Outlet />
                     </motion.div>
+                    {/*
+                      LA TOUR PARLE AUSSI ICI. Aaron a envoyé une demande depuis
+                      un compte cliente et ne l'a jamais vue : il regardait une
+                      autre cliente, et cette coquille — celle du contexte de
+                      support — ne montait pas le notificateur. Le serveur
+                      livre désormais la trame où qu'il regarde (hub.tower) ;
+                      encore faut-il quelqu'un pour l'entendre. Son propre
+                      fournisseur de toasts, parce que cette coquille n'a pas
+                      celui d'AppLayout.
+                    */}
+                    <ToastProvider>
+                      <SupportNotifier />
+                    </ToastProvider>
                   </div>
                 </main>
                 </div>

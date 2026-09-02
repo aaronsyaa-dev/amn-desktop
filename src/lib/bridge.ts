@@ -3,6 +3,7 @@ import {
   DEFAULT_NOTIFICATION_PREFS,
   GUEST_QUOTA_PREFIX,
   marquerStatut,
+  MemberJournalEntry,
 } from '../shared/api';
 import { avecReprise, messageServeurAbsent, serveurAbsent } from '../shared/reprise';
 import { signalerReprise } from './reprise';
@@ -743,6 +744,13 @@ function createBrowserRemote(): AmnBridge['remote'] {
           { method: 'PUT', body: JSON.stringify({ status }) },
         );
         return res.user;
+      },
+      async remove(userId: string): Promise<void> {
+        await apiFetch<{ ok: true }>(`/v1/auth/users/${encodeURIComponent(userId)}`, { method: 'DELETE' });
+      },
+      async journal(userId: string): Promise<MemberJournalEntry[]> {
+        const res = await apiFetch<{ entries: MemberJournalEntry[] }>(`/v1/auth/users/${encodeURIComponent(userId)}/journal`);
+        return res.entries;
       },
     },
     assistance: {

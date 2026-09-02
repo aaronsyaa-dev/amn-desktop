@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Check, Copy, Loader2, ShieldCheck, UserPlus, Users } from 'lucide-react';
+import { Check, Copy, Loader2, ShieldCheck, UserMinus, UserPlus, Users } from 'lucide-react';
 import { bridge } from '../../lib/bridge';
 import { isAdminRole } from '../../auth/roles';
 import { useAuth } from '../../auth/AuthContext';
@@ -7,6 +7,7 @@ import { roleLabel, assignableRoles } from '../../lib/roleLabels';
 import { cleanErrorMessage } from '../../lib/errorMessage';
 import type { MemberInvitation, OrgMember, UserRole } from '../../shared/api';
 import { SettingsPanel as Panel } from '../SettingsPanel';
+import { useLangue } from '../../i18n';
 
 /**
  * QUI TRAVAILLE ICI, ET AVEC QUELS DROITS (BLOCS 6 ET 7)
@@ -50,6 +51,11 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
   const [membres, setMembres] = useState<OrgMember[] | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [enCours, setEnCours] = useState<string | null>(null);
+  // Le retrait demande une confirmation POSÉE : la question, la conséquence
+  // (sessions fermées, place libérée, données conservées), puis le geste.
+  const [aRetirer, setARetirer] = useState<OrgMember | null>(null);
+  const [retire, setRetire] = useState<string | null>(null);
+  const { t } = useLangue();
 
   const [ouvrirInvitation, setOuvrirInvitation] = useState(false);
   const [email, setEmail] = useState('');
@@ -84,6 +90,22 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
       // Le message du serveur est la réponse — « Seul un propriétaire peut
       // nommer ou retirer un propriétaire. » dit exactement ce qu'il faut.
       setErreur(cleanErrorMessage(err, 'Changement de rôle refusé.'));
+    } finally {
+      setEnCours(null);
+    }
+  };
+
+  const retirer = async (membre: OrgMember) => {
+    setEnCours(membre.id);
+    setErreur(null);
+    try {
+      await bridge().remote.members.remove(membre.id);
+      setARetirer(null);
+      setRetire(membre.email);
+      await charger();
+      onChange?.();
+    } catch (err) {
+      setErreur(cleanErrorMessage(err, 'Le compte n’a pas pu être retiré.'));
     } finally {
       setEnCours(null);
     }
@@ -207,6 +229,16 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
                       >
                         {enCours === m.id ? '…' : suspendu ? 'Réactiver' : 'Suspendre'}
                       </button>
+                      <button
+                        type="button"
+                        disabled={enCours !== null}
+                        onClick={() => setARetirer(m)}
+                        title={t('membres.retirerTitre')}
+                        className="flex min-h-11 items-center gap-1 border border-border px-2.5 font-mono text-[10px] uppercase tracking-wider text-text-secondary transition-colors hover:border-danger/60 hover:text-danger disabled:opacity-40 md:min-h-0 md:py-2"
+                      >
+                        <UserMinus size={12} strokeWidth={2} />
+                        {t('membres.retirer')}
+                      </button>
                     </div>
                   ) : (
                     <span className="flex flex-shrink-0 items-center gap-1.5 text-[11px] text-text-muted">
@@ -218,6 +250,39 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
               );
             })}
           </ul>
+
+          {aRetirer && (
+            <div role="alertdialog" aria-labelledby="retirer-titre" className="border border-border-strong bg-bg px-4 py-3">
+              <p id="retirer-titre" className="text-sm font-medium text-text-primary">
+                {t('membres.retirerQuestion', { email: aRetirer.email })}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-text-secondary">{t('membres.retirerConsequence')}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={enCours !== null}
+                  onClick={() => void retirer(aRetirer)}
+                  className="flex min-h-11 items-center gap-1.5 border border-danger/60 px-3 text-xs text-danger transition-colors hover:bg-danger-muted disabled:opacity-40 md:min-h-0 md:py-2"
+                >
+                  {enCours === aRetirer.id ? <Loader2 size={13} className="animate-spin" /> : <UserMinus size={13} />}
+                  {t('membres.retirerConfirmer')}
+                </button>
+                <button
+                  type="button"
+                  disabled={enCours !== null}
+                  onClick={() => setARetirer(null)}
+                  className="flex min-h-11 items-center border border-border px-3 text-xs text-text-secondary transition-colors hover:text-text-primary md:min-h-0 md:py-2"
+                >
+                  {t('membres.retirerGarder')}
+                </button>
+              </div>
+            </div>
+          )}
+          {retire && !aRetirer && (
+            <p role="status" className="text-xs text-text-secondary">
+              {t('membres.retirerFait', { email: retire })}
+            </p>
+          )}
 
           {peutGerer && (
             <div className="mt-4">
