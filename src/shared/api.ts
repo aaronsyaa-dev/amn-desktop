@@ -61,6 +61,14 @@ export interface OrgIdentity {
    * (Réglages → Langue) — voir src/i18n.
    */
   language?: string | null;
+  /** Les places de la formule (Bloc 1) ; `null` = sans limite (AMN DevSec). */
+  seats?: number | null;
+  /**
+   * L'adresse publique de l'application où cette organisation travaille
+   * (Bloc 7). Le poste s'en sert pour renvoyer un compte ouvert sur la
+   * mauvaise édition ; `null` tant que le serveur ne la connaît pas.
+   */
+  appUrl?: string | null;
 }
 
 export type OrgStatus = 'active' | 'suspended';
@@ -87,6 +95,8 @@ export interface AdminOrganization {
   trade?: string | null;
   /** Langue de l'organisation ('fr' | 'en') ; `null` = français. */
   language?: string | null;
+  /** Les places posées ; `null` = la formule décide (2 standard, 5 premium). */
+  seats?: number | null;
   userCount: number;
   /** ISO, ou null si l'organisation n'a encore rien produit. */
   lastActivityAt: string | null;
@@ -281,6 +291,8 @@ export interface CreateOrganizationInput {
    * choix personnel (Réglages), qui reste local à ce poste-là.
    */
   language?: string;
+  /** Les places de la formule : 1, 2, 5, 10 ou 25. */
+  seats?: number;
 }
 
 /**
@@ -1868,6 +1880,77 @@ export interface MemberInvitation {
   invitation: { token: string; url: string | null; expiresAt: string };
 }
 
+/* ───────────── La file des demandes (Blocs 1, 3, 4) ───────────── */
+
+export type SupportRequestKind = 'message' | 'seat' | 'password_reset';
+export type SupportRequestStatus = 'pending' | 'answered' | 'closed';
+
+/** Une demande d'une cliente à son prestataire — et la réponse, quand elle vient. */
+export interface SupportRequest {
+  id: string;
+  orgId: string | null;
+  kind: SupportRequestKind;
+  subject: string;
+  body: string;
+  requestedByEmail: string;
+  status: SupportRequestStatus;
+  reply: string | null;
+  handledByEmail: string | null;
+  handledAt: string | null;
+  createdAt: string;
+}
+
+export interface SupportRequestForOperator extends SupportRequest {
+  /** `null` quand l'adresse est inconnue de nous (mot de passe oublié). */
+  orgName: string | null;
+}
+
+/* ───────────── Le lien de bienvenue (Bloc 2) ───────────── */
+
+export type WelcomeLinkState = 'ready' | 'used' | 'expired';
+
+export interface AdminWelcomeLink {
+  id: string;
+  orgId: string;
+  userId: string;
+  email: string | null;
+  createdByEmail: string;
+  createdAt: string;
+  expiresAt: string;
+  revealedAt: string | null;
+  consumedAt: string | null;
+  revokedAt: string | null;
+  state: WelcomeLinkState;
+}
+
+/** Un lien émis. L'URL n'est rendue qu'UNE fois — le serveur n'en garde que l'empreinte. */
+export interface WelcomeLinkIssued {
+  link: AdminWelcomeLink;
+  token: string;
+  url: string | null;
+  expiresAt: string;
+}
+
+/** Ce que la page publique sait AVANT la politique d'utilisation. */
+export interface WelcomePreview {
+  status: WelcomeLinkState;
+  orgName?: string;
+  productName?: string;
+  firstName?: string | null;
+  expiresAt?: string;
+  alreadyRevealed?: boolean;
+}
+
+/** Les accès, rendus une fois après acceptation de la politique. */
+export interface WelcomeAccess {
+  email: string;
+  password: string;
+  appUrl: string | null;
+  productName: string;
+  installer: { url: string; version: string } | null;
+  expiresAt: string;
+}
+
 /** Les rôles autorisés à MODIFIER une page. Lire ne se restreint jamais. */
 export type PageEditorRole = 'owner' | 'admin' | 'member';
 
@@ -2551,6 +2634,27 @@ export interface AmnBridge {
       setStatus(userId: string, status: 'active' | 'suspended'): Promise<OrgMember>;
     };
 
+    /* --- Écrire à son prestataire, demander une place (Blocs 1, 4) --- */
+    assistance: {
+      /** Les demandes de CETTE organisation, avec leurs réponses. */
+      list(): Promise<SupportRequest[]>;
+      /** Envoie une demande. `seat` = une place de plus ; `message` = objet + texte. */
+      send(input: { kind: 'message' | 'seat'; subject?: string; body?: string }): Promise<SupportRequest>;
+    };
+
+    /* --- Sans session : mot de passe oublié, lien de bienvenue (Blocs 2, 3) --- */
+    /**
+     * « Mot de passe oublié » : prévient le prestataire. La réponse est la
+     * même que l'adresse existe ou non — amn-api n'a pas de transport mail,
+     * rien n'est envoyé, et c'est dit honnêtement.
+     */
+    forgotPassword(email: string): Promise<{ ok: boolean; message: string }>;
+    welcome: {
+      inspect(token: string): Promise<WelcomePreview>;
+      reveal(token: string): Promise<WelcomeAccess>;
+      confirm(token: string): Promise<{ ok: boolean; status: WelcomeLinkState }>;
+    };
+
     /* --- Le catalogue des modules, et les demander (BLOC 4) --- */
     /**
      * MODULES : UNE IDENTITÉ, PAS UNE CLÉ NUE
@@ -2777,6 +2881,8 @@ export interface AmnBridge {
           trade?: string | null;
           /** Langue de l'organisation ('fr' | 'en') ; `null` = français. */
           language?: string | null;
+          /** Les places (1, 2, 5, 10, 25) ; `null` = la formule décide. */
+          seats?: number | null;
         },
       ): Promise<AdminOrganization>;
       setOrganizationStatus(id: string, status: OrgStatus): Promise<AdminOrganization>;
@@ -2863,6 +2969,17 @@ export interface AmnBridge {
         id: string,
         input: { status: 'done' | 'declined'; note?: string },
       ): Promise<ModuleRequestForOperator>;
+      /** La file des demandes des clientes (Blocs 1, 3, 4). */
+      supportRequests(status?: SupportRequestStatus): Promise<SupportRequestForOperator[]>;
+      /** Répondre (`answered`, avec un texte) ou clore. */
+      answerSupportRequest(
+        id: string,
+        input: { status: 'answered' | 'closed'; reply?: string },
+      ): Promise<SupportRequestForOperator>;
+      /** Émet un lien de bienvenue pour un compte d'une cliente (Bloc 2). L'URL n'est rendue qu'une fois. */
+      createWelcomeLink(orgId: string, userId: string): Promise<WelcomeLinkIssued>;
+      listWelcomeLinks(orgId: string): Promise<AdminWelcomeLink[]>;
+      revokeWelcomeLink(orgId: string, linkId: string): Promise<void>;
       /** L'état réel des rondes de supervision de fond (BLOC F). */
       supervision(): Promise<SupervisionState>;
       /**
@@ -3089,6 +3206,12 @@ export const IPC = {
   remoteMembersInvite: 'remote:membersInvite',
   remoteMembersSetRole: 'remote:membersSetRole',
   remoteMembersSetStatus: 'remote:membersSetStatus',
+  remoteSupportList: 'remote:supportList',
+  remoteSupportSend: 'remote:supportSend',
+  remoteForgotPassword: 'remote:forgotPassword',
+  remoteWelcomeInspect: 'remote:welcomeInspect',
+  remoteWelcomeReveal: 'remote:welcomeReveal',
+  remoteWelcomeConfirm: 'remote:welcomeConfirm',
   remoteModuleCatalogue: 'remote:moduleCatalogue',
   remoteModuleRequest: 'remote:moduleRequest',
   remoteModuleRequests: 'remote:moduleRequests',
@@ -3157,6 +3280,11 @@ export const IPC = {
   remoteAdminOrgPulse: 'remote:adminOrgPulse',
   remoteAdminModuleRequests: 'remote:adminModuleRequests',
   remoteAdminResolveModuleRequest: 'remote:adminResolveModuleRequest',
+  remoteAdminSupportRequests: 'remote:adminSupportRequests',
+  remoteAdminAnswerSupportRequest: 'remote:adminAnswerSupportRequest',
+  remoteAdminWelcomeLinkCreate: 'remote:adminWelcomeLinkCreate',
+  remoteAdminWelcomeLinkList: 'remote:adminWelcomeLinkList',
+  remoteAdminWelcomeLinkRevoke: 'remote:adminWelcomeLinkRevoke',
   remoteAdminSupervision: 'remote:adminSupervision',
   remoteAdminInsights: 'remote:adminInsights',
   remoteAdminDownloadLink: 'remote:adminDownloadLink',

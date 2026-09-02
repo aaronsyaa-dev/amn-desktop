@@ -267,6 +267,14 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
     remote.switchOrganization(payload.orgId),
   );
   ipcMain.handle(IPC.remoteMembersList, () => remote.listMembers());
+  ipcMain.handle(IPC.remoteSupportList, () => remote.listSupportRequests());
+  ipcMain.handle(IPC.remoteSupportSend, (_event, input: { kind: 'message' | 'seat'; subject?: string; body?: string }) =>
+    remote.sendSupportRequest(input),
+  );
+  ipcMain.handle(IPC.remoteForgotPassword, (_event, email: string) => remote.forgotPassword(email));
+  ipcMain.handle(IPC.remoteWelcomeInspect, (_event, token: string) => remote.welcomeInspect(token));
+  ipcMain.handle(IPC.remoteWelcomeReveal, (_event, token: string) => remote.welcomeReveal(token));
+  ipcMain.handle(IPC.remoteWelcomeConfirm, (_event, token: string) => remote.welcomeConfirm(token));
   ipcMain.handle(IPC.remoteMembersInvite, (_event, input: { email: string; role: UserRole }) =>
     remote.inviteMember(input),
   );

@@ -48,6 +48,9 @@ import type {
   SupervisionState,
   ParcInsights,
   OrgPlan,
+  SupportRequestForOperator,
+  WelcomeLinkIssued,
+  AdminWelcomeLink,
 } from '../shared/api';
 
 /**
@@ -467,6 +470,7 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
           // les faisait silencieusement disparaître entre l'atelier et l'API.
           trade: input.trade || undefined,
           language: input.language || undefined,
+          seats: input.seats || undefined,
         }),
       });
     },
@@ -481,6 +485,7 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
         accent?: string | null;
         trade?: string | null;
         language?: string | null;
+        seats?: number | null;
       },
     ) {
       const { organization } = await ctx.apiFetch<{ organization: AdminOrganization }>(
@@ -584,6 +589,43 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
         { owner: true, method: 'PUT', body: JSON.stringify({ status: input.status, note: input.note ?? '' }) },
       );
       return request;
+    },
+    async supportRequests(status?: string): Promise<SupportRequestForOperator[]> {
+      const suffixe = status ? `?status=${encodeURIComponent(status)}` : '';
+      const { requests } = await ctx.apiFetch<{ requests: SupportRequestForOperator[] }>(
+        `/v1/admin/support-requests${suffixe}`,
+        { owner: true },
+      );
+      return requests ?? [];
+    },
+    async answerSupportRequest(
+      id: string,
+      input: { status: 'answered' | 'closed'; reply?: string },
+    ): Promise<SupportRequestForOperator> {
+      const { request } = await ctx.apiFetch<{ request: SupportRequestForOperator }>(
+        `/v1/admin/support-requests/${encodeURIComponent(id)}`,
+        { owner: true, method: 'PUT', body: JSON.stringify(input) },
+      );
+      return request;
+    },
+    async createWelcomeLink(orgId: string, userId: string): Promise<WelcomeLinkIssued> {
+      return ctx.apiFetch<WelcomeLinkIssued>(
+        `/v1/admin/organizations/${encodeURIComponent(orgId)}/welcome-links`,
+        { owner: true, method: 'POST', body: JSON.stringify({ userId }) },
+      );
+    },
+    async listWelcomeLinks(orgId: string): Promise<AdminWelcomeLink[]> {
+      const { links } = await ctx.apiFetch<{ links: AdminWelcomeLink[] }>(
+        `/v1/admin/organizations/${encodeURIComponent(orgId)}/welcome-links`,
+        { owner: true },
+      );
+      return links ?? [];
+    },
+    async revokeWelcomeLink(orgId: string, linkId: string): Promise<void> {
+      await ctx.apiFetch<{ ok: boolean }>(
+        `/v1/admin/organizations/${encodeURIComponent(orgId)}/welcome-links/${encodeURIComponent(linkId)}`,
+        { owner: true, method: 'DELETE' },
+      );
     },
     async supervision(): Promise<SupervisionState> {
       return ctx.apiFetch<SupervisionState>('/v1/admin/supervision', { owner: true });

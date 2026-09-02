@@ -29,6 +29,10 @@ import type {
   RemoteRecord,
   SyncedCollection,
   MyOrganizations,
+  SupportRequest,
+  WelcomePreview,
+  WelcomeAccess,
+  WelcomeLinkState,
 } from '../shared/api';
 
 const RECONNECT_DELAYS_MS = [1000, 2000, 5000, 10000, 20000, 30000];
@@ -324,6 +328,37 @@ export class RemoteApiClient {
     return res.user;
   }
 
+  /* ---------- Écrire au prestataire, bienvenue, mot de passe oublié ---------- */
+
+  async listSupportRequests(): Promise<SupportRequest[]> {
+    const res = await apiFetch<{ requests: SupportRequest[] }>('/v1/support/requests');
+    return res.requests ?? [];
+  }
+
+  async sendSupportRequest(input: { kind: 'message' | 'seat'; subject?: string; body?: string }): Promise<SupportRequest> {
+    const res = await apiFetch<{ request: SupportRequest }>('/v1/support/requests', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return res.request;
+  }
+
+  async forgotPassword(email: string): Promise<{ ok: boolean; message: string }> {
+    return this.publicPost<{ ok: boolean; message: string }>('/v1/support/forgot', { email });
+  }
+
+  async welcomeInspect(token: string): Promise<WelcomePreview> {
+    return this.publicGet<WelcomePreview>(`/v1/welcome/${encodeURIComponent(token)}`);
+  }
+
+  async welcomeReveal(token: string): Promise<WelcomeAccess> {
+    return this.publicPost<WelcomeAccess>(`/v1/welcome/${encodeURIComponent(token)}/reveal`, { policyAccepted: true });
+  }
+
+  async welcomeConfirm(token: string): Promise<{ ok: boolean; status: WelcomeLinkState }> {
+    return this.publicPost<{ ok: boolean; status: WelcomeLinkState }>(`/v1/welcome/${encodeURIComponent(token)}/confirm`, {});
+  }
+
   /* ---------------- Catalogue et demandes de modules (BLOC 4) --------------- */
 
   async moduleCatalogue(): Promise<ModuleOffer[]> {
@@ -490,6 +525,19 @@ export class RemoteApiClient {
       });
     }
     this.applySession(null);
+  }
+
+  /** Lecture publique (lien de bienvenue) : un 404 porteur d'un `status` est une réponse, pas une panne. */
+  private async publicGet<T>(path: string): Promise<T> {
+    if (!isRemoteConfigured()) {
+      throw new Error("L'API centrale (amn-api) n'est pas configurée sur ce poste.");
+    }
+    const res = await fetch(`${remoteConfig.apiUrl}${path}`);
+    const body = (await res.json().catch(() => null)) as (T & { error?: string }) | null;
+    if (!res.ok && !(body && 'status' in (body as object))) {
+      throw new Error(body?.error || `amn-api ${res.status} ${res.statusText}`);
+    }
+    return body as T;
   }
 
   private async publicPost<T>(path: string, body: unknown, bearer?: string): Promise<T> {

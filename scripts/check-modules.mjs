@@ -99,6 +99,13 @@ const NOT_IN_SUPPORT = new Map([
   */
   ['budget', 'chiffres personnels, locaux au poste — jamais ceux de la cliente'],
   ['courses', 'liste personnelle : ne regarde pas le support'],
+  /*
+    « members » lit et modifie les comptes de l'organisation de la SESSION :
+    en support, ce serait ceux d'AMN DevSec sous la bannière de la cliente —
+    le même défaut que la section Membres des Réglages, déjà masquée là-bas.
+    Les comptes d'une cliente se gèrent depuis son dossier, dans la Tour.
+  */
+  ['members', 'comptes de la session, pas de la cliente : son dossier les gère'],
 ]);
 
 /* ---------------------------------------------------------------- lecture -- */

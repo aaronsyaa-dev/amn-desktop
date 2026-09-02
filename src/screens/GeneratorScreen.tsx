@@ -67,7 +67,11 @@ const LOGO_MAX_CHARS = 44 * 1024;
  * trois on se parle, à cinq on a besoin que l'outil se souvienne. Le curseur
  * l'écrit sous lui plutôt que de le décider en silence.
  */
-const PREMIUM_FROM_SEATS = 4;
+/** Les formules de places — la même liste qu'amn-api (`ORG_SEAT_FORMULAS`). */
+const SEAT_FORMULAS = [1, 2, 5, 10, 25] as const;
+const PREMIUM_FROM_SEATS = 5;
+/** Un profil métier propose un nombre de personnes ; la formule qui le contient est la sienne. */
+const versFormule = (n: number): number => SEAT_FORMULAS.find((f) => f >= n) ?? 25;
 
 export function GeneratorScreen() {
   const navigate = useNavigate();
@@ -127,7 +131,7 @@ export function GeneratorScreen() {
     setProfileId(id);
     setModules(chosen.modules);
     setAccentId(chosen.suggestedAccent);
-    setSeats(chosen.seats);
+    setSeats(versFormule(chosen.seats));
     setStep('configuration');
   };
 
@@ -197,6 +201,7 @@ export function GeneratorScreen() {
         // génériques plutôt qu'un métier deviné.
         trade: profile?.id,
         language: langueOrg,
+        seats,
       });
       if (!created.owner) throw new Error('Organisation créée sans compte propriétaire.');
 
@@ -432,19 +437,44 @@ export function GeneratorScreen() {
                 <section className="panel p-4">
                   <p className="eyebrow mb-4">Dimensionnement</p>
                   <div className="flex flex-col gap-6">
-                    <RangeControl
-                      label="Sièges"
-                      value={seats}
-                      min={1}
-                      max={25}
-                      onChange={setSeats}
-                      format={(v) => `${v} personne${v > 1 ? 's' : ''}`}
-                      consequence={
-                        seats >= PREMIUM_FROM_SEATS
-                          ? 'Business premium — à partir de quatre, la coordination devient le sujet et l’outil doit s’en souvenir.'
-                          : 'Business standard — à trois on se parle, l’outil n’a pas à arbitrer.'
-                      }
-                    />
+                    {/*
+                      LES PLACES SONT UNE FORMULE, PAS UN CURSEUR (Bloc 1).
+
+                      Le curseur continu de 1 à 25 laissait choisir « 7 » — un
+                      nombre qui n'existe dans aucune offre. Le serveur n'accepte
+                      que 1, 2, 5, 10 et 25 places, et c'est lui qui refusera la
+                      sixième invitation d'une formule à cinq.
+                    */}
+                    <div>
+                      <div className="mb-2 flex items-baseline justify-between">
+                        <span className="text-xs text-text-secondary">Places</span>
+                        <span className="tnum font-mono text-[11px] text-text-primary">
+                          {seats} personne{seats > 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2" role="group" aria-label="Places de la formule">
+                        {SEAT_FORMULAS.map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setSeats(n)}
+                            aria-pressed={seats === n}
+                            className={`flex min-h-11 min-w-11 items-center justify-center border px-3 text-sm tabular-nums transition-colors md:min-h-9 ${
+                              seats === n
+                                ? 'border-border-strong bg-accent-muted text-text-primary'
+                                : 'border-border text-text-secondary hover:border-border-strong hover:text-text-primary'
+                            }`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-2 text-[11px] leading-snug text-text-muted">
+                        {seats >= PREMIUM_FROM_SEATS
+                          ? 'Business premium — à partir de cinq, la coordination devient le sujet et l’outil doit s’en souvenir.'
+                          : 'Business standard — à deux on se parle, l’outil n’a pas à arbitrer.'}
+                      </p>
+                    </div>
 
                     <RangeControl
                       label="Quota d’un compte invité"

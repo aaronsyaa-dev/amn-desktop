@@ -219,6 +219,7 @@ export function OrgDossierPanel({
   */
   const [nom, setNom] = useState(org.name);
   const [forfait, setForfait] = useState(org.plan);
+  const [places, setPlaces] = useState<number | null>(org.seats ?? null);
 
   // La fiche et sa synthèse, dérivées de la configuration réelle à chaque
   // rendu : un réglage modifié ci-dessous se lit immédiatement en haut.
@@ -230,7 +231,7 @@ export function OrgDossierPanel({
     return { ouverts, total, sections };
   }, [fiche]);
   const [identiteEnCours, setIdentiteEnCours] = useState(false);
-  const identiteModifiee = nom.trim() !== org.name || forfait !== org.plan;
+  const identiteModifiee = nom.trim() !== org.name || forfait !== org.plan || places !== (org.seats ?? null);
 
   const [nouvelEmail, setNouvelEmail] = useState('');
   const [ouverture, setOuverture] = useState(false);
@@ -254,7 +255,7 @@ export function OrgDossierPanel({
     passe » ne se transmettent pas de la même façon, et un libellé commun
     aurait été juste pour aucun des deux.
   */
-  const [lienOuvert, setLienOuvert] = useState<{ genre: 'lien' | 'motdepasse'; email: string; url: string | null; token: string } | null>(
+  const [lienOuvert, setLienOuvert] = useState<{ genre: 'lien' | 'motdepasse' | 'bienvenue'; email: string; url: string | null; token: string } | null>(
     null,
   );
 
@@ -653,6 +654,27 @@ export function OrgDossierPanel({
           </label>
 
           {/*
+            LES PLACES (Bloc 1). C'est la seule chose de cette carte qui a un
+            effet réel : le serveur refuse l'invitation au-delà. « La formule
+            décide » vaut deux places en standard, cinq en premium.
+          */}
+          <label className="mt-3 flex flex-col gap-1.5">
+            <span className="text-xs text-text-secondary">Places</span>
+            <select
+              value={places === null ? '' : String(places)}
+              onChange={(e) => setPlaces(e.target.value === '' ? null : Number(e.target.value))}
+              className="input-focus w-full cursor-pointer border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
+            >
+              <option value="">La formule décide ({forfait === 'business_premium' ? 5 : 2})</option>
+              {[1, 2, 5, 10, 25].map((n) => (
+                <option key={n} value={n}>
+                  {n} personne{n > 1 ? 's' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {/*
             CE QUE LA FORMULE CHANGE — c'est-à-dire rien, et il faut le dire.
 
             Aaron demandait ce que veut dire l'étiquette « Business standard »
@@ -685,6 +707,9 @@ export function OrgDossierPanel({
               }
               if (forfait !== org.plan) {
                 gestes.push(bridge().remote.admin.setOrganizationPlan(org.id, forfait));
+              }
+              if (places !== (org.seats ?? null)) {
+                gestes.push(bridge().remote.admin.updateOrganization(org.id, { seats: places }));
               }
               void Promise.all(gestes)
                 .then(() => onSaved())
@@ -753,9 +778,9 @@ export function OrgDossierPanel({
           {lienOuvert && (
             <div className="mt-2 border border-border bg-surface px-3 py-2">
               <p className="text-xs leading-relaxed text-text-primary">
-                {lienOuvert.genre === 'lien' ? 'Compte ouvert pour ' : 'Nouveau mot de passe pour '}
+                {lienOuvert.genre === 'lien' ? 'Compte ouvert pour ' : lienOuvert.genre === 'bienvenue' ? 'Lien de bienvenue pour ' : 'Nouveau mot de passe pour '}
                 <span className="font-mono text-[11px]">{lienOuvert.email}</span>.{' '}
-                {lienOuvert.genre === 'lien' ? 'Envoyez-lui ce lien' : 'Transmettez-le-lui'} —{' '}
+                {lienOuvert.genre === 'lien' || lienOuvert.genre === 'bienvenue' ? 'Envoyez-lui ce lien' : 'Transmettez-le-lui'} —{' '}
                 <span className="text-text-muted">il ne sera plus affiché.</span>
               </p>
               <div className="mt-2 flex items-center gap-2">
@@ -776,7 +801,14 @@ export function OrgDossierPanel({
                   choisir le sien — ce mot de passe est connu de deux personnes.
                 </p>
               )}
-              {lienOuvert.genre === 'lien' && !lienOuvert.url && (
+              {lienOuvert.genre === 'bienvenue' && (
+                <p className="mt-2 text-[11px] leading-relaxed text-text-muted">
+                  Sept jours, usage unique. La page la félicite, lui fait accepter la politique
+                  d’utilisation, affiche ses accès une fois, puis se détruit quand elle confirme.
+                  Tout est journalisé — émis, lu, consommé.
+                </p>
+              )}
+              {(lienOuvert.genre === 'lien' || lienOuvert.genre === 'bienvenue') && !lienOuvert.url && (
                 <p className="mt-2 text-[11px] leading-relaxed text-warning">
                   Aucune adresse d’application Business n’est configurée sur amn-api
                   (APP_BUSINESS_PUBLIC_URL) : seul le jeton est disponible, et il ne se colle nulle
@@ -858,6 +890,31 @@ export function OrgDossierPanel({
                     >
                       {compteEnCours === compte.id ? '…' : 'Mot de passe'}
                     </button>
+                    {/* LE LIEN DE BIENVENUE (Bloc 2) — la remise digne du produit : une
+                        page à notre image qui félicite, fait accepter la politique, montre
+                        les accès une fois et se détruit. Pour tout compte non suspendu. */}
+                    {compte.status !== 'suspended' && (
+                      <button
+                        type="button"
+                        disabled={compteEnCours !== null}
+                        title={`Émettre un lien de bienvenue pour ${compte.email}`}
+                        onClick={() => {
+                          setCompteEnCours(compte.id);
+                          setError(null);
+                          void bridge()
+                            .remote.admin.createWelcomeLink(org.id, compte.id)
+                            .then((res) => {
+                              setLienOuvert({ genre: 'bienvenue', email: compte.email, url: res.url, token: res.token });
+                              chargerComptes();
+                            })
+                            .catch((err) => setError(cleanErrorMessage(err, 'Le lien de bienvenue n’a pas pu être émis.')))
+                            .finally(() => setCompteEnCours(null));
+                        }}
+                        className="flex-shrink-0 border border-border-strong px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text-primary transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Bienvenue
+                      </button>
+                    )}
                     {/* Réinviter n'a de sens que pour qui n'est jamais entré :
                         proposer un nouveau lien d'activation à un compte actif
                         offrirait un geste qui ne répond à aucune situation. */}

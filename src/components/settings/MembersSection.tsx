@@ -45,7 +45,7 @@ import { SettingsPanel as Panel } from '../SettingsPanel';
  * propriétaire ; le suspendre suffit à lui couper l'accès à l'instant, et se
  * défait.
  */
-export function MembersSection() {
+export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
   const { role, user } = useAuth();
   const [membres, setMembres] = useState<OrgMember[] | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -96,6 +96,7 @@ export function MembersSection() {
     try {
       const maj = await bridge().remote.members.setStatus(membre.id, suivant);
       setMembres((prev) => (prev ? prev.map((m) => (m.id === maj.id ? maj : m)) : prev));
+      onChange?.();
     } catch (err) {
       setErreur(cleanErrorMessage(err, 'Changement de statut refusé.'));
     } finally {
@@ -113,6 +114,7 @@ export function MembersSection() {
       setEmail('');
       setOuvrirInvitation(false);
       void charger();
+      onChange?.();
     } catch (err) {
       setErreur(cleanErrorMessage(err, 'L’invitation n’a pas pu être émise.'));
     } finally {

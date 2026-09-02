@@ -130,6 +130,7 @@ const MODULE_DATA = {
   expenses: ['expenses', 'expenseConfig'],
   time: ['timeEntries', 'timeConfig'],
   calculators: [], // Un moteur de calcul : il lit, il ne stocke rien.
+  members: [], // Les comptes vivent chez amn-api (users, invitations) : l'écran lit et écrit par l'API, rien de local.
   orders: ['orders'],
   evenements: ['evenements'],
   notes: ['notes'],
@@ -169,6 +170,7 @@ const MODULE_FILES = {
   expenses: ['src/screens/ExpensesScreen.tsx', 'src/state/useExpenses.ts'],
   time: ['src/screens/TimeScreen.tsx', 'src/state/useTimeTracking.ts'],
   calculators: ['src/screens/CalculatorsScreen.tsx'],
+  members: ['src/screens/MembersScreen.tsx', 'src/components/settings/MembersSection.tsx'],
   orders: ['src/screens/OrdersScreen.tsx', 'src/state/useOrders.ts'],
   evenements: [
     'src/screens/EventsScreen.tsx',

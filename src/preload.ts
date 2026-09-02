@@ -170,6 +170,16 @@ const bridge: AmnBridge = {
       setStatus: (userId: string, status: 'active' | 'suspended') =>
         ipcRenderer.invoke(IPC.remoteMembersSetStatus, { userId, status }),
     },
+    assistance: {
+      list: () => ipcRenderer.invoke(IPC.remoteSupportList),
+      send: (input) => ipcRenderer.invoke(IPC.remoteSupportSend, input),
+    },
+    forgotPassword: (email: string) => ipcRenderer.invoke(IPC.remoteForgotPassword, email),
+    welcome: {
+      inspect: (token: string) => ipcRenderer.invoke(IPC.remoteWelcomeInspect, token),
+      reveal: (token: string) => ipcRenderer.invoke(IPC.remoteWelcomeReveal, token),
+      confirm: (token: string) => ipcRenderer.invoke(IPC.remoteWelcomeConfirm, token),
+    },
     modules: {
       catalogue: () => ipcRenderer.invoke(IPC.remoteModuleCatalogue),
       request: (input: { module: string; message?: string }) =>

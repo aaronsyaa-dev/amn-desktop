@@ -54,6 +54,7 @@ import { apiFetch, type RemoteApiClient } from './remoteApi';
 import { writeScanReportFile } from './scanReports';
 import { getWatch, warmWatch } from './watch';
 import { ollamaChat, ollamaStatus } from './ollama';
+import type { SupportRequestForOperator, WelcomeLinkIssued, AdminWelcomeLink } from '../shared/api';
 
 /**
  * Tout ce qu'amn-api expose et qui n'appartient qu'à AMN DevSec : le parc de
@@ -394,6 +395,7 @@ const adminApi = {
         // les faisait silencieusement disparaître entre l'atelier et l'API.
         trade: input.trade || undefined,
         language: input.language || undefined,
+        seats: input.seats || undefined,
       }),
     });
   },
@@ -409,6 +411,7 @@ const adminApi = {
       accent?: string | null;
       trade?: string | null;
       language?: string | null;
+      seats?: number | null;
     },
   ): Promise<AdminOrganization> {
     const { organization } = await apiFetch<{ organization: AdminOrganization }>(
@@ -534,6 +537,49 @@ const adminApi = {
       { owner: true, method: 'PUT', body: JSON.stringify({ status: input.status, note: input.note ?? '' }) },
     );
     return request;
+  },
+
+  /** La file des demandes des clientes (Blocs 1, 3, 4). */
+  async supportRequests(status?: string): Promise<SupportRequestForOperator[]> {
+    const suffixe = status ? `?status=${encodeURIComponent(status)}` : '';
+    const { requests } = await apiFetch<{ requests: SupportRequestForOperator[] }>(
+      `/v1/admin/support-requests${suffixe}`,
+      { owner: true },
+    );
+    return requests ?? [];
+  },
+
+  async answerSupportRequest(
+    id: string,
+    input: { status: 'answered' | 'closed'; reply?: string },
+  ): Promise<SupportRequestForOperator> {
+    const { request } = await apiFetch<{ request: SupportRequestForOperator }>(
+      `/v1/admin/support-requests/${encodeURIComponent(id)}`,
+      { owner: true, method: 'PUT', body: JSON.stringify(input) },
+    );
+    return request;
+  },
+
+  async createWelcomeLink(orgId: string, userId: string): Promise<WelcomeLinkIssued> {
+    return apiFetch<WelcomeLinkIssued>(
+      `/v1/admin/organizations/${encodeURIComponent(orgId)}/welcome-links`,
+      { owner: true, method: 'POST', body: JSON.stringify({ userId }) },
+    );
+  },
+
+  async listWelcomeLinks(orgId: string): Promise<AdminWelcomeLink[]> {
+    const { links } = await apiFetch<{ links: AdminWelcomeLink[] }>(
+      `/v1/admin/organizations/${encodeURIComponent(orgId)}/welcome-links`,
+      { owner: true },
+    );
+    return links ?? [];
+  },
+
+  async revokeWelcomeLink(orgId: string, linkId: string): Promise<void> {
+    await apiFetch<{ ok: boolean }>(
+      `/v1/admin/organizations/${encodeURIComponent(orgId)}/welcome-links/${encodeURIComponent(linkId)}`,
+      { owner: true, method: 'DELETE' },
+    );
   },
 
   /** L'état réel des rondes de supervision de fond (BLOC F). */
@@ -776,6 +822,21 @@ export function registerExclusiveIpc(
   );
   ipcMain.handle(IPC.remoteAdminOrgPulse, (_event, orgId: string) =>
     adminApi.organizationPulse(orgId),
+  );
+  ipcMain.handle(IPC.remoteAdminSupportRequests, (_event, status?: string) =>
+    adminApi.supportRequests(status),
+  );
+  ipcMain.handle(
+    IPC.remoteAdminAnswerSupportRequest,
+    (_event, payload: { id: string; input: { status: 'answered' | 'closed'; reply?: string } }) =>
+      adminApi.answerSupportRequest(payload.id, payload.input),
+  );
+  ipcMain.handle(IPC.remoteAdminWelcomeLinkCreate, (_event, payload: { orgId: string; userId: string }) =>
+    adminApi.createWelcomeLink(payload.orgId, payload.userId),
+  );
+  ipcMain.handle(IPC.remoteAdminWelcomeLinkList, (_event, orgId: string) => adminApi.listWelcomeLinks(orgId));
+  ipcMain.handle(IPC.remoteAdminWelcomeLinkRevoke, (_event, payload: { orgId: string; linkId: string }) =>
+    adminApi.revokeWelcomeLink(payload.orgId, payload.linkId),
   );
   ipcMain.handle(IPC.remoteAdminSupervision, () => adminApi.supervision());
   ipcMain.handle(IPC.remoteAdminInsights, () => adminApi.insights());

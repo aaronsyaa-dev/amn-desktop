@@ -11,7 +11,6 @@ import { ensurePushSubscription, sendPushTest } from '../lib/webPush';
 import { UserAvatar } from '../components/UserAvatar';
 import { Logo } from '../components/Logo';
 import { SettingsPanel as Panel } from '../components/SettingsPanel';
-import { MembersSection } from '../components/settings/MembersSection';
 import { ModulesSection } from '../components/settings/ModulesSection';
 import { APP_VERSION, EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/edition';
 import { OllamaSection, useExclusive } from '@edition/exclusive';
@@ -170,11 +169,8 @@ export function SettingsScreen() {
         opérateur d'AMN DevSec y verrait — et y modifierait — les comptes de
         SON organisation à lui, affichés sous la bannière de la cliente.
       */}
-      {!support && (
-        <StaggerItem>
-          <MembersSection />
-        </StaggerItem>
-      )}
+      {/* Les membres ont leur ÉCRAN depuis le 1er septembre (Système → Membres) :
+          la section vivait ici, au fond, et personne ne la trouvait. */}
       {!support && (
         <StaggerItem>
           <ModulesSection />

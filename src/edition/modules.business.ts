@@ -17,6 +17,7 @@ import {
   ShoppingBag,
   ShoppingBasket,
   Timer,
+  Users,
   Wallet,
 } from 'lucide-react';
 import type { NavSection } from '../data/navigation';
@@ -144,6 +145,7 @@ export const NAV_SECTIONS: NavSection[] = [
     label: 'Système',
     items: [
       { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings, hint: 'Profil et notifications' },
+      { key: 'members', label: 'Membres', to: '/membres', icon: Users, hint: 'Qui travaille ici, et les places' },
       { key: 'vault', label: 'Coffre-fort', to: '/vault', icon: Lock, hint: 'Mots de passe et accès' },
     ],
   },
@@ -201,5 +203,6 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/media', 'base'],
   ['/reports', 'livrables'],
   ['/settings', 'reglages'],
+  ['/membres', 'reglages'],
   ['/vault', 'coffre'],
 ];

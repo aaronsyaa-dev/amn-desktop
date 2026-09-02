@@ -170,6 +170,7 @@ export const NAV_SECTIONS: NavSection[] = [
     space: 'workspace',
     items: [
       { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings, hint: 'Profil et notifications' },
+      { key: 'members', label: 'Membres', to: '/membres', icon: Users, hint: 'Qui travaille ici, et les places' },
       { key: 'vault', label: 'Coffre-fort', to: '/vault', icon: Lock, hint: 'Clés et accès' },
     ],
   },
@@ -280,5 +281,6 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/knowledge', 'base'],
   ['/reports', 'livrables'],
   ['/settings', 'reglages'],
+  ['/membres', 'reglages'],
   ['/vault', 'coffre'],
 ];

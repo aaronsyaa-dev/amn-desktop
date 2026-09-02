@@ -85,7 +85,12 @@ export function setEnabledModules(modules: string[] | null | undefined): void {
  * et la section « Personnel » ne s'affichait chez personne dont les modules
  * sont listés explicitement.
  */
-export const ALWAYS_ON_MODULES = ['home', 'settings', 'budget', 'courses'];
+/*
+  `members` (Bloc 1, septembre 2026) rejoint la liste : une organisation qui
+  ne peut pas voir qui travaille chez elle ni combien de places il lui reste
+  n'est pas dégradée, elle est aveugle. Ce n'est pas un module qu'on vend.
+*/
+export const ALWAYS_ON_MODULES = ['home', 'settings', 'members', 'budget', 'courses'];
 
 /** Un module est-il ouvert ? */
 export function isModuleEnabled(key: string): boolean {

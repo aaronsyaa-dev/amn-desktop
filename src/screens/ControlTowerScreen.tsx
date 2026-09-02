@@ -403,6 +403,12 @@ export const ACCESS_VERB: Record<string, string> = {
   member_suspended: 'a suspendu un membre de',
   member_reactivated: 'a réactivé un membre de',
   member_role_changed: 'a changé un rôle chez',
+  // Le lien de bienvenue (Bloc 2) : émis par nous, lu puis consommé par elle.
+  welcome_link_created: 'a émis un lien de bienvenue chez',
+  welcome_revealed: 'a lu ses accès de bienvenue chez',
+  welcome_consumed: 'a confirmé ses accès chez',
+  // Une demande (message, place, mot de passe oublié) a reçu une réponse.
+  request_answered: 'a répondu à une demande de',
   // Ces deux-là ouvrent et referment une adresse PUBLIQUE : la formulation le
   // dit, parce que c'est la seule ligne du journal qui concerne des tiers.
   status_page_published: 'a publié la page de statut d’un site de',

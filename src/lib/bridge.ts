@@ -67,6 +67,10 @@ import type {
   LoginOutcome,
   MfaEnrolment,
   MfaStatus,
+  SupportRequest,
+  WelcomePreview,
+  WelcomeAccess,
+  WelcomeLinkState,
 } from '../shared/api';
 
 declare global {
@@ -384,6 +388,26 @@ function createBrowserRemote(): AmnBridge['remote'] {
     return res.json() as Promise<T>;
   }
 
+  /** Lecture publique (lien de bienvenue) : aucune session n'existe encore. */
+  async function publicGet<T>(path: string): Promise<T> {
+    if (!apiUrl) {
+      throw new Error(`${API_UNREACHABLE_PREFIX}L'API centrale (amn-api) n'est pas configurée pour cette build.`);
+    }
+    let res: Response;
+    try {
+      res = await fetch(`${apiUrl}${path}`);
+    } catch {
+      throw new Error(`${API_UNREACHABLE_PREFIX}amn-api est injoignable depuis ce navigateur (réseau ou URL).`);
+    }
+    // Un lien inconnu répond 404 avec un corps utile ({ status: 'expired' }) :
+    // la page doit le lire, pas le prendre pour une panne.
+    const body = (await res.json().catch(() => null)) as (T & { error?: string }) | null;
+    if (!res.ok && !(body && 'status' in (body as object))) {
+      throw new Error(body?.error || `amn-api ${res.status} ${res.statusText}`);
+    }
+    return body as T;
+  }
+
   /** Requête publique (connexion) : aucune session n'existe encore. */
   async function publicPost<T>(path: string, body: unknown, bearer?: string): Promise<T> {
     if (!apiUrl) {
@@ -688,6 +712,33 @@ function createBrowserRemote(): AmnBridge['remote'] {
           { method: 'PUT', body: JSON.stringify({ status }) },
         );
         return res.user;
+      },
+    },
+    assistance: {
+      async list(): Promise<SupportRequest[]> {
+        const res = await apiFetch<{ requests: SupportRequest[] }>('/v1/support/requests');
+        return res.requests ?? [];
+      },
+      async send(input: { kind: 'message' | 'seat'; subject?: string; body?: string }): Promise<SupportRequest> {
+        const res = await apiFetch<{ request: SupportRequest }>('/v1/support/requests', {
+          method: 'POST',
+          body: JSON.stringify(input),
+        });
+        return res.request;
+      },
+    },
+    async forgotPassword(email: string) {
+      return publicPost<{ ok: boolean; message: string }>('/v1/support/forgot', { email });
+    },
+    welcome: {
+      async inspect(token: string): Promise<WelcomePreview> {
+        return publicGet<WelcomePreview>(`/v1/welcome/${encodeURIComponent(token)}`);
+      },
+      async reveal(token: string): Promise<WelcomeAccess> {
+        return publicPost<WelcomeAccess>(`/v1/welcome/${encodeURIComponent(token)}/reveal`, { policyAccepted: true });
+      },
+      async confirm(token: string) {
+        return publicPost<{ ok: boolean; status: WelcomeLinkState }>(`/v1/welcome/${encodeURIComponent(token)}/confirm`, {});
       },
     },
     modules: {

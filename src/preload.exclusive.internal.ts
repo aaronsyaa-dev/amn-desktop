@@ -193,6 +193,14 @@ export const exclusivePreload: ExclusiveRemote = {
     moduleRequests: (status) => ipcRenderer.invoke(IPC.remoteAdminModuleRequests, status),
     resolveModuleRequest: (id, input) =>
       ipcRenderer.invoke(IPC.remoteAdminResolveModuleRequest, { id, input }),
+    supportRequests: (status) => ipcRenderer.invoke(IPC.remoteAdminSupportRequests, status),
+    answerSupportRequest: (id, input) =>
+      ipcRenderer.invoke(IPC.remoteAdminAnswerSupportRequest, { id, input }),
+    createWelcomeLink: (orgId, userId) =>
+      ipcRenderer.invoke(IPC.remoteAdminWelcomeLinkCreate, { orgId, userId }),
+    listWelcomeLinks: (orgId) => ipcRenderer.invoke(IPC.remoteAdminWelcomeLinkList, orgId),
+    revokeWelcomeLink: (orgId, linkId) =>
+      ipcRenderer.invoke(IPC.remoteAdminWelcomeLinkRevoke, { orgId, linkId }),
     supervision: () => ipcRenderer.invoke(IPC.remoteAdminSupervision),
     insights: () => ipcRenderer.invoke(IPC.remoteAdminInsights),
     downloadLink: (orgId) => ipcRenderer.invoke(IPC.remoteAdminDownloadLink, orgId),

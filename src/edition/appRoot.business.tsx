@@ -5,6 +5,7 @@ import { ModuleRoute } from '../components/ModuleRoute';
 import { BusinessLayout } from '../business/BusinessLayout';
 import { LoginScreen } from '../screens/LoginScreen';
 import { InvitationScreen } from '../screens/InvitationScreen';
+import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { GuestCallScreen } from '../screens/GuestCallScreen';
 import { HomeSoloScreen } from '../business/HomeSoloScreen';
 import { AgendaScreen } from '../business/AgendaScreen';
@@ -23,6 +24,7 @@ import { PagesScreen } from '../screens/PagesScreen';
 import { PersonalBudgetScreen } from '../screens/PersonalBudgetScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { MembersScreen } from '../screens/MembersScreen';
 import { VaultScreen } from '../screens/VaultScreen';
 
 /**
@@ -48,6 +50,10 @@ export function AppRoot() {
           l'invitée n'a par définition pas encore de compte, donc l'écran
           d'activation ne peut pas vivre derrière une exigence de session. */}
       <Route path="/invitation" element={<InvitationScreen />} />
+      {/* Le lien de bienvenue (Bloc 2) : publique, comme l'activation — la
+          personne n'a pas encore ouvert de session, c'est cette page qui lui
+          remet ses accès. */}
+      <Route path="/bienvenue" element={<WelcomeScreen />} />
       {/* Page d'appel d'un visiteur SANS COMPTE (BLOC B.2). Publique pour la
           même raison que l'activation, et plus encore : le visiteur n'aura
           jamais de compte. Elle n'affiche aucune marque et ne connaît aucune
@@ -200,6 +206,7 @@ export function AppRoot() {
           }
         />
         <Route path="/settings" element={<SettingsScreen />} />
+        <Route path="/membres" element={<MembersScreen />} />
         <Route
           path="/vault"
           element={
