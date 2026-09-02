@@ -2162,7 +2162,19 @@ export type SyncedCollection =
   | 'checkRuns'
   | 'assemblies'
   | 'tickets'
-  | 'boms';
+  | 'boms'
+  | 'okrs'
+  | 'weeklyReviews'
+  | 'meetings'
+  | 'dailyPriorities'
+  | 'routines'
+  | 'logbook'
+  | 'forms'
+  | 'formAnswers'
+  | 'minisite'
+  | 'newsletters'
+  | 'signatures'
+  | 'portfolioItems';
 
 export interface PresenceEntry {
   email: string;

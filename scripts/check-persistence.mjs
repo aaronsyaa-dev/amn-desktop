@@ -170,6 +170,17 @@ const MODULE_DATA = {
   assembly: ['assemblies'],
   aftersales: ['tickets'],
   bom: ['boms'],
+  okr: ['okrs'],
+  weekly: ['weeklyReviews'],
+  meetings: ['meetings'],
+  priorities: ['dailyPriorities'],
+  routines: ['routines'],
+  logbook: ['logbook'],
+  forms: ['forms', 'formAnswers'],
+  minisite: ['minisite'],
+  newsletter: ['newsletters'],
+  esign: ['signatures'],
+  portfolio: ['portfolioItems'],
 };
 
 /**
@@ -236,6 +247,17 @@ const MODULE_FILES = {
   assembly: ['src/screens/AssemblyScreen.tsx'],
   aftersales: ['src/screens/AfterSalesScreen.tsx'],
   bom: ['src/screens/BomScreen.tsx'],
+  okr: ['src/screens/OkrScreen.tsx'],
+  weekly: ['src/screens/WeeklyReviewScreen.tsx'],
+  meetings: ['src/screens/MeetingsScreen.tsx'],
+  priorities: ['src/screens/PrioritiesScreen.tsx'],
+  routines: ['src/screens/RoutinesScreen.tsx'],
+  logbook: ['src/screens/LogbookScreen.tsx'],
+  forms: ['src/screens/FormsScreen.tsx', 'src/screens/PublicFormScreen.tsx'],
+  minisite: ['src/screens/MiniSiteScreen.tsx', 'src/screens/PublicPageScreen.tsx'],
+  newsletter: ['src/screens/NewsletterScreen.tsx'],
+  esign: ['src/screens/SignatureScreen.tsx'],
+  portfolio: ['src/screens/PortfolioScreen.tsx'],
 };
 
 /**

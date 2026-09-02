@@ -130,6 +130,18 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'assemblies',
   'tickets',
   'boms',
+  'okrs',
+  'weeklyReviews',
+  'meetings',
+  'dailyPriorities',
+  'routines',
+  'logbook',
+  'forms',
+  'formAnswers',
+  'minisite',
+  'newsletters',
+  'signatures',
+  'portfolioItems',
 ];
 
 const MIRROR_PREFIX = 'amn.sync.';

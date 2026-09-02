@@ -32,6 +32,17 @@ export interface TraductionNav {
 }
 
 export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
+  portfolio: { label: 'Portfolio', hint: 'Your work, shown on the mini-page' },
+  esign: { label: 'On-the-spot signature', hint: 'Have a quote or slip signed on screen' },
+  newsletter: { label: 'Newsletter', hint: 'A word to all your customers, from your own mail' },
+  minisite: { label: 'Public mini-page', hint: 'Your page, with your reviews and portfolio' },
+  forms: { label: 'Forms', hint: 'A question asked publicly, answers here' },
+  logbook: { label: 'Logbook', hint: 'What happened, dated, rereadable' },
+  routines: { label: 'Routines', hint: 'What recurs, ticked each day' },
+  priorities: { label: 'Today’s priorities', hint: 'Three things, not ten' },
+  meetings: { label: 'Meetings', hint: 'An agenda, decisions, follow-ups' },
+  weekly: { label: 'Weekly review', hint: 'Five questions on Friday, a clearer week ahead' },
+  okr: { label: 'Objectives & results', hint: 'Three objectives, measured results, one season' },
   bom: { label: 'Bills of materials', hint: 'What goes into a product, and what it costs' },
   aftersales: { label: 'After-sales', hint: 'After-sales requests, from opening to resolution' },
   assembly: { label: 'Assembly tracking', hint: 'Each job, step by step' },

@@ -8,6 +8,8 @@ import { InvitationScreen } from '../screens/InvitationScreen';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { GuestCallScreen } from '../screens/GuestCallScreen';
 import { PublicBookingScreen } from '../screens/PublicBookingScreen';
+import { PublicPageScreen } from '../screens/PublicPageScreen';
+import { PublicFormScreen } from '../screens/PublicFormScreen';
 import { HomeSoloScreen } from '../business/HomeSoloScreen';
 import { AgendaScreen } from '../business/AgendaScreen';
 import { MediaSoloScreen } from '../business/MediaSoloScreen';
@@ -28,6 +30,17 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { MembersScreen } from '../screens/MembersScreen';
 import { AssistanceScreen } from '../screens/AssistanceScreen';
 import { LibraryScreen } from '../screens/LibraryScreen';
+import { PortfolioScreen } from '../screens/PortfolioScreen';
+import { SignatureScreen } from '../screens/SignatureScreen';
+import { NewsletterScreen } from '../screens/NewsletterScreen';
+import { MiniSiteScreen } from '../screens/MiniSiteScreen';
+import { FormsScreen } from '../screens/FormsScreen';
+import { LogbookScreen } from '../screens/LogbookScreen';
+import { RoutinesScreen } from '../screens/RoutinesScreen';
+import { PrioritiesScreen } from '../screens/PrioritiesScreen';
+import { MeetingsScreen } from '../screens/MeetingsScreen';
+import { WeeklyReviewScreen } from '../screens/WeeklyReviewScreen';
+import { OkrScreen } from '../screens/OkrScreen';
 import { BomScreen } from '../screens/BomScreen';
 import { AfterSalesScreen } from '../screens/AfterSalesScreen';
 import { AssemblyScreen } from '../screens/AssemblyScreen';
@@ -88,6 +101,9 @@ export function AppRoot() {
       {/* Prise de rendez-vous publique : un visiteur sans compte, une organisation
           désignée par l'adresse — voir PublicBookingScreen. */}
       <Route path="/rdv" element={<PublicBookingScreen />} />
+      {/* La mini-page et les formulaires publics : même doctrine, sans session. */}
+      <Route path="/p" element={<PublicPageScreen />} />
+      <Route path="/f" element={<PublicFormScreen />} />
       <Route
         element={
           <ProtectedRoute>
@@ -418,6 +434,94 @@ export function AppRoot() {
           element={
             <ModuleRoute module="bom">
               <BomScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/objectifs-resultats"
+          element={
+            <ModuleRoute module="okr">
+              <OkrScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/revue-hebdo"
+          element={
+            <ModuleRoute module="weekly">
+              <WeeklyReviewScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/reunions"
+          element={
+            <ModuleRoute module="meetings">
+              <MeetingsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/priorites"
+          element={
+            <ModuleRoute module="priorities">
+              <PrioritiesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/routines"
+          element={
+            <ModuleRoute module="routines">
+              <RoutinesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/journal-de-bord"
+          element={
+            <ModuleRoute module="logbook">
+              <LogbookScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/formulaires"
+          element={
+            <ModuleRoute module="forms">
+              <FormsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/mini-page"
+          element={
+            <ModuleRoute module="minisite">
+              <MiniSiteScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/lettre"
+          element={
+            <ModuleRoute module="newsletter">
+              <NewsletterScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/signature"
+          element={
+            <ModuleRoute module="esign">
+              <SignatureScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/portfolio"
+          element={
+            <ModuleRoute module="portfolio">
+              <PortfolioScreen />
             </ModuleRoute>
           }
         />

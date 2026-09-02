@@ -42,6 +42,15 @@ import {
   Wrench,
   LifeBuoy,
   ListTree,
+  Target,
+  ListChecks,
+  Users,
+  Flame,
+  RotateCw,
+  BookOpen,
+  Globe,
+  Send,
+  PenTool,
 } from 'lucide-react';
 import type { NavItem } from '../data/navigation';
 import { isModuleEnabled } from '../data/spaces';
@@ -107,6 +116,17 @@ const CLIENT_MODULES: NavItem[] = [
   { key: 'assembly', label: 'Suivi de montage', to: '/montage', icon: Wrench, hint: 'Chaque chantier, étape par étape' },
   { key: 'aftersales', label: 'SAV', to: '/sav', icon: LifeBuoy, hint: 'Les demandes après vente, de l’ouverture à la résolution' },
   { key: 'bom', label: 'Nomenclatures', to: '/nomenclatures', icon: ListTree, hint: 'Ce qui compose un produit, et ce qu’il coûte' },
+  { key: 'okr', label: 'Objectifs & résultats', to: '/objectifs-resultats', icon: Target, hint: 'Trois objectifs, des résultats mesurés, une saison' },
+  { key: 'weekly', label: 'Revue hebdo', to: '/revue-hebdo', icon: ListChecks, hint: 'Cinq questions le vendredi, la semaine d’après plus nette' },
+  { key: 'meetings', label: 'Réunions', to: '/reunions', icon: Users, hint: 'Un ordre du jour, des décisions, des suites' },
+  { key: 'priorities', label: 'Priorités du jour', to: '/priorites', icon: Flame, hint: 'Trois choses, pas dix' },
+  { key: 'routines', label: 'Routines', to: '/routines', icon: RotateCw, hint: 'Ce qui revient, coché chaque jour' },
+  { key: 'logbook', label: 'Journal de bord', to: '/journal-de-bord', icon: BookOpen, hint: 'Ce qui s’est passé, daté, relisible' },
+  { key: 'forms', label: 'Formulaires', to: '/formulaires', icon: FileText, hint: 'Une question posée au public, les réponses ici' },
+  { key: 'minisite', label: 'Mini-page publique', to: '/mini-page', icon: Globe, hint: 'Votre page, avec vos avis et votre portfolio' },
+  { key: 'newsletter', label: 'Lettre d’information', to: '/lettre', icon: Send, hint: 'Un mot à tous vos clients, depuis votre messagerie' },
+  { key: 'esign', label: 'Signature sur place', to: '/signature', icon: PenTool, hint: 'Faire signer un devis ou un bon sur l’écran' },
+  { key: 'portfolio', label: 'Portfolio', to: '/portfolio', icon: Images, hint: 'Vos réalisations, montrées sur la mini-page' },
 ];
 
 /**
@@ -133,7 +153,7 @@ export const CLIENT_NAV_ITEMS = CLIENT_MODULES;
  * pour attraper.
  */
 export const CLIENT_SECTIONS: Array<{ label: string; keys: string[] }> = [
-  { label: 'Pilotage', keys: ['home', 'agenda', 'projects', 'tasks'] },
+  { label: 'Pilotage', keys: ['home', 'agenda', 'projects', 'tasks', 'okr', 'weekly', 'meetings', 'priorities', 'routines', 'logbook', 'forms', 'minisite', 'newsletter', 'esign', 'portfolio'] },
   { label: 'Clients & revenus', keys: ['clients', 'invoices', 'orders', 'evenements', 'pipeline', 'reminders', 'subscriptions', 'contracts', 'reviews', 'loyalty', 'referrals', 'booking'] },
   { label: 'Production', keys: ['time', 'expenses', 'calculators', 'board', 'stock', 'suppliers', 'shifts', 'checklists', 'assembly', 'aftersales', 'bom'] },
   { label: 'Documents', keys: ['notes', 'pages', 'reports', 'media'] },
