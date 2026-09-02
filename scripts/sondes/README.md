@@ -30,3 +30,12 @@ partent dans `/tmp/e2e/`.
 | `incident-cycle.mjs` | prise puis clôture d'un incident, compteurs à l'appui |
 | `parcours-interne.mjs` | tour, organisations, supervision, bascule d'org, salle |
 | `parcours-cliente.mjs` | créer une fiche, une tâche, une note — et survivre au rechargement |
+| `membres.mjs` | l'écran Membres : places de la formule, invitation, refus quand c'est plein, demande de place |
+| `bienvenue.mjs` | le lien de bienvenue : accueil, politique, accès révélés, destruction, connexion |
+| `oublie.mjs` | « mot de passe oublié » sans email : le message, la ligne dans la file de la Tour |
+| `assistance.mjs` | la cliente écrit, la Tour répond par l'API, la réponse revient en direct |
+| `tour-demandes.mjs` | la Tour : file des demandes, tentatives d'injection, dossier et bouton « Bienvenue » (build interne) |
+| `edition-redirige.mjs` | une cliente sur l'édition interne (web) est emmenée vers son application (interne sur `:4181`) |
+| `barre-epingles.mjs` | épingler un écran ne le montre plus deux fois ; une seule ligne courante |
+| `reveil.mjs` | le serveur dort (502 via `reveil-proxy.mjs` sur `:4172`) : « Reconnexion en cours », retour, dernier recours |
+| `cliente-web.mjs` | l'expérience cliente du login à l'accueil, poste et téléphone (build cliente) |

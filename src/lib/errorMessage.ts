@@ -1,4 +1,4 @@
-import { API_UNREACHABLE_PREFIX, GUEST_QUOTA_PREFIX, lireStatut } from '../shared/api';
+import { API_UNREACHABLE_PREFIX, GUEST_QUOTA_PREFIX, REDIRECTION_PREFIX, lireStatut } from '../shared/api';
 import type { GuestQuotaState } from '../shared/api';
 
 /**
@@ -21,6 +21,7 @@ export function cleanErrorMessage(error: unknown, fallback = 'Une erreur est sur
   const cleaned = raw
     .replace(IPC_WRAPPER, '')
     .replace(API_UNREACHABLE_PREFIX, '')
+    .replace(REDIRECTION_PREFIX, '')
     // Le code HTTP sert à la file d'envoi, pas à l'utilisateur : « [amn-statut:503]
     // Service Unavailable » affiché tel quel ne dit rien à personne.
     .replace(/\[amn-statut:\d{3}\]\s*/, '')
@@ -40,6 +41,12 @@ export function cleanErrorMessage(error: unknown, fallback = 'Une erreur est sur
 export function isApiUnreachable(error: unknown): boolean {
   const raw = error instanceof Error ? error.message : String(error ?? '');
   return raw.includes(API_UNREACHABLE_PREFIX);
+}
+
+/** Vrai quand l'erreur n'en est pas une : la page de connexion emmène ailleurs. */
+export function isRedirection(error: unknown): boolean {
+  const raw = error instanceof Error ? error.message : String(error ?? '');
+  return raw.includes(REDIRECTION_PREFIX);
 }
 
 /**

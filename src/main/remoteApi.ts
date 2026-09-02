@@ -7,6 +7,7 @@ import {
   TOKEN_PROVENANCE,
 } from './remoteConfig';
 import { API_UNREACHABLE_PREFIX, GUEST_QUOTA_PREFIX, marquerStatut } from '../shared/api';
+import { avecReprise, messageServeurAbsent, serveurAbsent } from '../shared/reprise';
 import type {
   ActiveSession,
   CallLink,
@@ -65,14 +66,29 @@ export async function apiFetch<T>(
     );
   }
   const { owner, ...request } = init;
-  const res = await fetch(`${remoteConfig.apiUrl}${path}`, {
-    ...request,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${owner ? ownerCredential() : apiCredential()}`,
-      ...init.headers,
-    },
-  });
+  const lancer = () =>
+    fetch(`${remoteConfig.apiUrl}${path}`, {
+      ...request,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${owner ? ownerCredential() : apiCredential()}`,
+        ...init.headers,
+      },
+    });
+  // La même grâce que dans le navigateur (src/lib/bridge.ts), pour la même
+  // raison — voir src/shared/reprise.ts. Lectures seulement.
+  const lecture = !request.method || request.method.toUpperCase() === 'GET';
+  const res = lecture
+    ? await avecReprise<Response>(async () => {
+        let reponse: Response;
+        try {
+          reponse = await lancer();
+        } catch {
+          throw new Error(`${API_UNREACHABLE_PREFIX}${messageServeurAbsent()}`);
+        }
+        return serveurAbsent(reponse.status) ? { ok: false, statut: reponse.status } : { ok: true, valeur: reponse };
+      })
+    : await lancer();
   if (!res.ok) {
     // amn-api écrit ses refus pour l'utilisateur final (« Mot de passe actuel
     // incorrect. », « Votre accès a été suspendu. »). Les remonter tels quels

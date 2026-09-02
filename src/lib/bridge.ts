@@ -4,6 +4,8 @@ import {
   GUEST_QUOTA_PREFIX,
   marquerStatut,
 } from '../shared/api';
+import { avecReprise, messageServeurAbsent, serveurAbsent } from '../shared/reprise';
+import { signalerReprise } from './reprise';
 import { APP_VERSION, EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/edition';
 import { showLocalNotification } from './webPush';
 import {
@@ -346,14 +348,43 @@ function createBrowserRemote(): AmnBridge['remote'] {
     init: RequestInit & { owner?: boolean } = {},
   ): Promise<T> {
     const { owner, ...request } = init;
-    const res = await fetch(`${apiUrl}${path}`, {
-      ...request,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${owner ? ownerCredential() : credential()}`,
-        ...init.headers,
-      },
-    });
+    const lancer = () =>
+      fetch(`${apiUrl}${path}`, {
+        ...request,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${owner ? ownerCredential() : credential()}`,
+          ...init.headers,
+        },
+      });
+    /*
+      LA GRÂCE DU SERVEUR QUI REDÉMARRE — sur les LECTURES seulement.
+
+      Une lecture peut être rejouée sans risque ; une écriture qui n'a pas eu
+      de réponse est peut-être passée, et la file d'envoi (lib/fileEnvoi.ts)
+      sait déjà la reprendre. Pendant l'attente, le bandeau dit « reconnexion
+      en cours » ; après trois reprises, l'erreur se dit en trois parties, en
+      français — plus jamais « Failed to fetch » ni « 502 Bad Gateway » nus.
+    */
+    const lecture = !request.method || request.method.toUpperCase() === 'GET';
+    const res = lecture
+      ? await avecReprise<Response>(
+          async () => {
+            let reponse: Response;
+            try {
+              reponse = await lancer();
+            } catch {
+              // Pas de réponse du tout — c'est aussi ce qu'un serveur endormi
+              // produit dans un navigateur : sa page 502 n'a pas les en-têtes
+              // d'origine croisée, et le navigateur ne rend rien. Le marqueur
+              // reste (la connexion s'en sert) ; la phrase est en trois parties.
+              throw new Error(`${API_UNREACHABLE_PREFIX}${messageServeurAbsent()}`);
+            }
+            return serveurAbsent(reponse.status) ? { ok: false, statut: reponse.status } : { ok: true, valeur: reponse };
+          },
+          { signaler: signalerReprise },
+        )
+      : await lancer();
     if (!res.ok) {
       // Surface amn-api's own message when it sends one. Without this the UI
       // could only show "amn-api 400 Bad Request", hiding actionable errors

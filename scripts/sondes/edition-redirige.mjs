@@ -1,0 +1,20 @@
+/* Bloc 7 : une cliente qui se connecte sur l'édition INTERNE (web) est emmenée vers son application, calmement. */
+const { chromium } = await import('playwright-core');
+const a = (ms) => new Promise((r) => setTimeout(r, ms));
+const OUT = process.env.OUT || '/tmp/e2e/soir';
+const INTERNE = process.env.INTERNE || 'http://127.0.0.1:4181';
+const nav = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--no-sandbox'] });
+const p = await (await nav.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+p.on('pageerror', (e) => console.log('ERREUR PAGE:', String(e).slice(0, 200)));
+await p.goto(`${INTERNE}/`); await a(2000);
+console.log('titre interne :', await p.title());
+await p.locator('input[name="email"]').fill('fleuriste.essai@exemple.test');
+await p.locator('input[name="password"]').fill('Fleuriste-2026-Essai');
+await p.locator('button[type="submit"]').first().click(); await a(900);
+let t = await p.evaluate(() => document.body.innerText);
+console.log('message calme ?', /Votre espace est sur AMN Desktop — nous vous y emmenons\./.test(t), '| rouge (role=alert) ?', (await p.locator('[role="alert"]').count()) > 0, '| status ?', (await p.locator('[role="status"]').count()) > 0);
+await p.screenshot({ path: `${OUT}/edition-01-emmene.png` });
+await a(2600);
+console.log('adresse après :', p.url(), '| titre :', await p.title());
+await p.screenshot({ path: `${OUT}/edition-02-arrivee.png` });
+await nav.close();

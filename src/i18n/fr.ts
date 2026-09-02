@@ -78,6 +78,8 @@ export const fr: Dictionnaire = {
     'Serveur injoignable — vos changements sont enregistrés localement et se resynchroniseront automatiquement au retour de la connexion.',
   'sync.local': 'Local',
   'sync.localTitre': 'Mode local (serveur de synchronisation non configuré).',
+  'sync.reprise': 'Reconnexion en cours…',
+  'sync.repriseTitre': 'Le serveur redémarre — cet écran se rafraîchira de lui-même dans un instant.',
 
   /* ── Bandeau d'état (ligne du bas, deux éditions) ───────────────────── */
   'rail.lienActifTitre': 'Connecté au serveur — les changements sont partagés en temps réel.',
@@ -88,6 +90,8 @@ export const fr: Dictionnaire = {
     'Serveur injoignable — les changements sont enregistrés sur ce poste et repartiront au retour du réseau.',
   'rail.local': 'Local',
   'rail.localTitre': 'Poste en mode local : aucun serveur de synchronisation configuré.',
+  'rail.reprise': 'Reconnexion en cours',
+  'rail.repriseTitre': 'Le serveur redémarre — l’écran se rafraîchira de lui-même dans un instant.',
   'rail.tourControle': 'Tour de contrôle',
   'rail.posteTravail': 'Poste de travail',
   'rail.sessionSupport': 'Session de support',

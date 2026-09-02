@@ -86,6 +86,8 @@ export const en = {
     'Server unreachable — your changes are saved locally and will sync back automatically when the connection returns.',
   'sync.local': 'Local',
   'sync.localTitre': 'Local mode (no sync server configured).',
+  'sync.reprise': 'Reconnecting…',
+  'sync.repriseTitre': 'The server is restarting — this screen will refresh by itself in a moment.',
 
   /* ── Status rail (bottom line, both editions) ───────────────────────── */
   'rail.lienActifTitre': 'Connected to the server — changes are shared in real time.',
@@ -96,6 +98,8 @@ export const en = {
     'Server unreachable — changes are saved on this workstation and will sync back when the network returns.',
   'rail.local': 'Local',
   'rail.localTitre': 'Local mode: no sync server configured.',
+  'rail.reprise': 'Reconnecting',
+  'rail.repriseTitre': 'The server is restarting — the screen will refresh by itself in a moment.',
   'rail.tourControle': 'Control tower',
   'rail.posteTravail': 'Workstation',
   'rail.sessionSupport': 'Support session',

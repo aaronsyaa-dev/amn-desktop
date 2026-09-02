@@ -420,6 +420,14 @@ export interface SupportSession {
 export const API_UNREACHABLE_PREFIX = '[amn-api-injoignable] ';
 
 /**
+ * Marqueur d'une REDIRECTION d'édition : le compte est valide, mais son
+ * espace vit sur l'autre application, et la page de connexion l'y emmène.
+ * Même mécanique que les autres marqueurs — ce n'est pas un refus, et
+ * l'écran ne doit pas le peindre en rouge.
+ */
+export const REDIRECTION_PREFIX = '[amn-redirection] ';
+
+/**
  * Marqueur du refus « quota invité épuisé » (BLOC D).
  *
  * Même procédé que `API_UNREACHABLE_PREFIX`, et pour la même raison : une

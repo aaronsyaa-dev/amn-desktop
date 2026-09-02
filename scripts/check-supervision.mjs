@@ -79,11 +79,24 @@ if (!apiRoot) {
   notes.push('amn-api introuvable localement — le croisement avec le serveur est sauté.');
 } else {
   const emises = new Set();
+  /*
+    Des fichiers où `kind:` ne désigne PAS une alerte. Nommés un par un, avec
+    la raison : une exclusion par motif finirait par absoudre la prochaine
+    nature oubliée.
+  */
+  const SANS_ALERTE = new Map([
+    [
+      'support.js',
+      'les natures de DEMANDES (message, place, mot de passe oublié) — pas des alertes ; ' +
+        'leur liste vit dans SUPPORT_KINDS côté serveur et SupportRequestKind côté poste',
+    ],
+  ]);
   for (const dossier of ['src/tracker', 'src/routes', 'src/scanner']) {
     const dir = path.join(apiRoot, dossier);
     if (!fs.existsSync(dir)) continue;
     for (const f of fs.readdirSync(dir)) {
       if (!f.endsWith('.js')) continue;
+      if (SANS_ALERTE.has(f)) continue;
       for (const m of fs.readFileSync(path.join(dir, f), 'utf-8').matchAll(/kind:\s*'([a-z_]+)'/g)) {
         emises.add(m[1]);
       }

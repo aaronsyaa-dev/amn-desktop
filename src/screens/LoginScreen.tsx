@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { Eye, EyeOff, Loader2, ShieldCheck} from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { bridge } from '../lib/bridge';
+import { cleanErrorMessage, isRedirection } from '../lib/errorMessage';
 import { Logo } from '../components/Logo';
 import { APP_VERSION, EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/edition';
 import { useLangue } from '../i18n';
@@ -322,11 +323,21 @@ export function LoginScreen() {
           </label>
 
           {error && (
+            /*
+              Une redirection d'édition n'est pas un refus : la phrase se lit
+              en gris, avec le point qui bat, pendant que la page emmène vers
+              l'application de la cliente (voir AuthContext.adoptSession).
+            */
             <p
-              role="alert"
-              className="border border-danger/40 bg-danger-muted px-3 py-2 font-mono text-xs text-danger"
+              role={isRedirection(error) ? 'status' : 'alert'}
+              className={
+                isRedirection(error)
+                  ? 'flex items-center gap-2 border border-border bg-surface px-3 py-2 font-mono text-xs text-text-secondary'
+                  : 'border border-danger/40 bg-danger-muted px-3 py-2 font-mono text-xs text-danger'
+              }
             >
-              {error}
+              {isRedirection(error) && <span className="live-dot h-1.5 w-1.5 flex-shrink-0 rounded-full bg-warning" />}
+              {cleanErrorMessage(error)}
             </p>
           )}
 

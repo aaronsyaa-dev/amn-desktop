@@ -20,7 +20,7 @@ import { AppLauncher } from './AppLauncher';
 import { useLangue, libelleNav, libelleSection, libelleEspace } from '../i18n';
 import { OrgSwitchButton } from './org-rail/OrgSwitchButton';
 import { type NavItem } from '../data/navigation';
-import { SPACES, spaceByKey, spaceForPath, sectionsForSpace } from '../data/spaces';
+import { SPACES, spaceByKey, spaceForPath, sectionsForSpace, itemsForSpace } from '../data/spaces';
 import { CLE_CHOIX, deplierAuDemarrage, lireChoix } from '../lib/barreLaterale';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
 
@@ -102,8 +102,6 @@ export function Sidebar({
   // below working unchanged for both platforms.
   const isExpanded = isExpandedDesktop || mobileOpen;
 
-  const isActive = (to: string) =>
-    to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
 
   // Every nav item — Sites included — navigates to its screen. The Sites
   // "registre" lives at /sites (with the "Nouveau site" button), so clicking
@@ -132,6 +130,25 @@ export function Sidebar({
   // de commandes ou par une notification doit basculer la colonne, sans que
   // l'appelant ait à y penser.
   const space = spaceForPath(location.pathname);
+  /*
+    UNE SEULE LIGNE COURANTE, LA PLUS PRÉCISE.
+
+    Vu sur `#/tour/organisations` : « Vue d'ensemble » (`/tour`) ET
+    « Organisations » (`/tour/organisations`) s'allumaient toutes les deux,
+    parce que la première est un préfixe de la seconde. La ligne courante est
+    celle dont le chemin colle le plus long ; les autres, même préfixes,
+    restent éteintes.
+  */
+  const cheminCourant = useMemo(() => {
+    let meilleur = '';
+    for (const item of itemsForSpace(space)) {
+      if (item.to === '/') continue;
+      const colle = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+      if (colle && item.to.length > meilleur.length) meilleur = item.to;
+    }
+    return meilleur;
+  }, [location.pathname, space]);
+  const isActive = (to: string) => (to === '/' ? location.pathname === '/' : to === cheminCourant);
   /*
     Les modules épinglés de l'ESPACE COURANT, dans l'ordre du catalogue.
 
@@ -204,34 +221,17 @@ export function Sidebar({
   }, [location.pathname]);
 
   /*
-    UN SEUL « VOUS ÊTES ICI », ET C'EST CELUI DE LA SECTION.
+    UN SEUL « VOUS ÊTES ICI ».
 
-    Cinq modules apparaissent DEUX fois dans la barre : une fois dans la bande
-    d'épingles, une fois dans leur section (c'est assumé — un raccourci qui
-    déplace la chose au lieu d'y mener n'est pas un raccourci). Sur `#/tasks`,
-    les deux lignes se déclaraient donc courantes, et deux défauts avec :
-
-      · deux `aria-current="page"` — l'attribut désigne LA page courante, au
-        singulier. Un lecteur d'écran en annonçait deux ;
-      · deux `layoutId` identiques pour framer-motion, qui est un cas non
-        défini : deux éléments prétendent être le même, et c'est la
-        bibliothèque qui arbitre en silence.
-
-    Laquelle gagne ? La question a été tranchée par le MOUVEMENT, pas par le
-    balisage. Les épingles sont la liste que l'utilisateur s'est faite de ce
-    qu'il ouvre le plus. Si la ligne courante est celle de la section, alors
-    ces cinq écrans-là — les plus fréquents — font défiler la barre à chaque
-    fois, et la bande d'épingles disparaît vers le haut. En donnant la ligne
-    courante à l'épingle, la barre ne bouge pas du tout pour eux et le repère
-    est toujours au même endroit. « Utilisable des heures durant » se joue
-    exactement là (`docs/PRINCIPE-CONFORT.md`).
-
-    L'épingle est donc canonique quand elle est DESSINÉE — barre repliée, la
-    bande n'existe pas et la section reprend le rôle. La ligne perdante garde
-    la couleur du texte actif : on voit qu'on y est, sans le fond ni le trait,
-    qui n'ont qu'un seul porteur.
+    Chaque écran n'apparaît plus qu'une fois dans la barre (voir la bande
+    d'épingles plus bas) : la ligne active est donc unique, et avec elle
+    `aria-current="page"` — l'attribut désigne LA page courante, au
+    singulier — et le `layoutId` de framer-motion, qui ne tolère qu'un
+    porteur. Le tiroir du téléphone rend la même barre une seconde fois,
+    repliée à zéro pixel ; c'est pourquoi le défilement ci-dessus cherche la
+    première ligne active qui a une hauteur.
   */
-  const renderNavItem = (item: NavItem, canonique = true) => {
+  const renderNavItem = (item: NavItem) => {
     const active = isActive(item.to);
     const Icon = item.icon;
     const count = unseen[item.to] ?? 0;
@@ -243,7 +243,7 @@ export function Sidebar({
         // `aria-current` dit à un lecteur d'écran laquelle des trente-trois
         // entrées est l'écran courant — et sert de repère au défilement
         // ci-dessus, qui n'a alors rien à deviner.
-        aria-current={active && canonique ? 'page' : undefined}
+        aria-current={active ? 'page' : undefined}
         onClick={handleNavClick}
         title={!isExpanded ? libelleNav(item) : undefined}
         aria-label={libelleNav(item)}
@@ -263,7 +263,7 @@ export function Sidebar({
             elements — the tint and the left bar — travel together, which is the
             whole micro-interaction: the eye follows the selection instead of
             re-finding it. */}
-        {active && canonique && (
+        {active && (
           <>
             <motion.span
               layoutId="sidebar-active-surface"
@@ -479,11 +479,12 @@ export function Sidebar({
             court vers ce qu'on ouvre tous les jours. Deux conséquences
             assumées :
 
-              · un module épinglé reste AUSSI dans sa section. Le retirer
-                ferait disparaître « Clients » de « Clients & revenus », et la
-                première question serait « où est passé Clients ? ». Un
-                raccourci qui déplace la chose au lieu d'y mener n'est pas un
-                raccourci ;
+              · un module épinglé quitte sa section tant que la bande est
+                visible. La première version le laissait aux deux endroits,
+                et Aaron lisait « Atelier » deux fois dans la même colonne ;
+                une barre qu'on relit n'est plus un repère. Barre repliée,
+                la bande n'existe pas et la section reprend sa ligne — rien
+                ne disparaît jamais, ça change seulement de place ;
               · la bande n'a pas d'intitulé en majuscules et se ferme sur un
                 filet, pour qu'elle se lise comme une avance sur la liste et
                 non comme un groupe de plus.
@@ -497,18 +498,34 @@ export function Sidebar({
             </div>
           )}
 
-          {sectionsForSpace(space).map((section) => (
-            <div key={section.key} className="flex flex-col gap-1">
-              {isExpanded ? (
-                <p className="eyebrow px-3 pb-1 pt-1">{libelleSection(section.label)}</p>
-              ) : (
-                // Barre repliée : l'intitulé ne tiendrait pas dans 72 px, le
-                // filet garde la coupure sans prétendre la nommer.
-                <span className="mx-auto my-1.5 h-px w-6 bg-border" aria-hidden />
-              )}
-              {section.items.map((item) => renderNavItem(item, !dansLaBande.has(item.key)))}
-            </div>
-          ))}
+          {/*
+            CHAQUE ÉCRAN UNE SEULE FOIS.
+
+            Vu sur le poste d'Aaron : « Atelier » deux fois dans la même barre
+            — une fois dans la bande d'épingles, une fois dans sa section — et
+            des sections qui semblaient dans le désordre parce que leurs
+            premières lignes étaient déjà montées plus haut. Une épingle est
+            un raccourci ; mais un raccourci qui laisse une copie derrière lui
+            fait lire la barre deux fois. La ligne épinglée est donc la seule
+            occurrence de son écran tant que la bande est visible ; barre
+            repliée, la bande disparaît et la section reprend sa ligne. Une
+            section vidée par ses épingles ne laisse pas d'intitulé orphelin.
+          */}
+          {sectionsForSpace(space)
+            .map((section) => ({ ...section, items: section.items.filter((item) => !dansLaBande.has(item.key)) }))
+            .filter((section) => section.items.length > 0)
+            .map((section) => (
+              <div key={section.key} className="flex flex-col gap-1">
+                {isExpanded ? (
+                  <p className="eyebrow px-3 pb-1 pt-1">{libelleSection(section.label)}</p>
+                ) : (
+                  // Barre repliée : l'intitulé ne tiendrait pas dans 72 px, le
+                  // filet garde la coupure sans prétendre la nommer.
+                  <span className="mx-auto my-1.5 h-px w-6 bg-border" aria-hidden />
+                )}
+                {section.items.map((item) => renderNavItem(item))}
+              </div>
+            ))}
 
           {/*
             Plus de bouton « Tous les modules » ici, dans aucun des deux

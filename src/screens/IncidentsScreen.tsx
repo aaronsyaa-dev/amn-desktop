@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity,
@@ -68,8 +68,22 @@ export function IncidentsScreen() {
   const [ouvert, setOuvert] = useState<string | null>(null);
   const [enCours, setEnCours] = useState<string | null>(null);
 
+  /*
+    LE NUMÉRO DE LA DERNIÈRE DEMANDE.
+
+    Mesuré : un incident « amn-api 502 Bad Gateway » apparaissait dans les
+    trois vues — À traiter, Maintenances, Sourdine — alors qu'il n'appartenait
+    qu'à une seule. Changer de portée lançait une nouvelle lecture pendant
+    que la précédente courait encore ; la plus lente arrivait en dernier et
+    posait SA liste sur l'écran de l'autre portée. Chaque demande porte donc
+    son numéro, et seule la plus récente a le droit d'écrire.
+  */
+  const derniereDemande = useRef(0);
+
   const recharger = useCallback(
     async (silencieux = false) => {
+      const numero = derniereDemande.current + 1;
+      derniereDemande.current = numero;
       if (!silencieux) setChargement(true);
       try {
         const [liste, mesures] = await Promise.all([
@@ -87,13 +101,17 @@ export function IncidentsScreen() {
           ),
           bridge().remote.incidentMetrics(30),
         ]);
+        // Une réponse dépassée par une demande plus récente est jetée : elle
+        // décrit une portée que l'écran n'affiche plus.
+        if (numero !== derniereDemande.current) return;
         setIncidents(liste);
         setMetrics(mesures);
         setErreur(null);
       } catch (err) {
+        if (numero !== derniereDemande.current) return;
         setErreur(cleanErrorMessage(err, 'Supervision indisponible.'));
       } finally {
-        setChargement(false);
+        if (numero === derniereDemande.current) setChargement(false);
       }
     },
     [portee],

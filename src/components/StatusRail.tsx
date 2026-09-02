@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSync } from '../state/SyncContext';
 import { useLangue, type CleTraduction } from '../i18n';
+import { useReprise } from '../lib/reprise';
 
 /**
  * LE BANDEAU D'ÉTAT — le bas de l'écran, sur tous les écrans (REFONTE).
@@ -55,7 +56,12 @@ export function StatusRail({
 }) {
   const { connectionStatus } = useSync();
   const { langue, t } = useLangue();
-  const link = LINK[connectionStatus];
+  const reprise = useReprise();
+  // Une lecture attend un serveur qui redémarre : le bandeau le dit, en
+  // français, avant tout état de la liaison — c'est l'attente qu'on vit.
+  const link: (typeof LINK)[keyof typeof LINK] = reprise
+    ? { dot: 'bg-warning', live: true, label: 'rail.reprise', title: 'rail.repriseTitre' }
+    : LINK[connectionStatus];
 
   // L'horloge bat à la seconde. C'est le seul endroit de l'application où une
   // seconde compte : ailleurs, un rafraîchissement par seconde serait du bruit.

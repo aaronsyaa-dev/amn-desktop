@@ -12,8 +12,10 @@ import { setEnabledModules } from '../data/spaces';
 import { applyAccent } from '../lib/accent';
 import { poserLangueOrganisation } from '../i18n';
 import { clearGuestQuotaBlock } from '../state/guestQuotaStore';
-import { cleanErrorMessage, isApiUnreachable } from '../lib/errorMessage';
+import { cleanErrorMessage, isApiUnreachable, isRedirection } from '../lib/errorMessage';
 import { IS_BUSINESS, CLIENT_PRODUCT_NAME } from '../edition/edition';
+import { isWeb } from '../lib/platform';
+import { REDIRECTION_PREFIX } from '../shared/api';
 import type { OrgIdentity, RemoteSession, RemoteSessionUser, User,
   LoginOutcome,
 } from '../shared/api';
@@ -278,7 +280,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const adoptSession = useCallback(async (session: RemoteSession, refusal: string) => {
     if (!IS_BUSINESS && session.org.plan !== 'internal') {
       await bridge().remote.session.clear().catch(() => undefined);
-      throw new Error(refusal);
+      /*
+        SUR LE WEB, ON L'EMMÈNE — ON NE LA RENVOIE PAS (Bloc 7).
+
+        Une cliente qui tape l'adresse de l'édition interne dans son
+        navigateur n'a pas fait d'erreur qu'elle puisse corriger : elle a
+        suivi un lien. Le serveur connaît l'adresse de SON application
+        (`org.appUrl`, décidée par lui et jamais par ce poste) ; quand elle
+        existe et n'est pas celle-ci, la page de connexion le dit en une
+        phrase calme et l'y conduit. Dans l'application Electron interne, il
+        n'y a rien vers quoi naviguer : le refus reste, mais il nomme
+        l'adresse à ouvrir.
+      */
+      const destination = session.org.appUrl?.replace(/\/+$/, '') ?? '';
+      const ailleurs = destination !== '' && destination !== window.location.origin;
+      if (ailleurs && isWeb()) {
+        window.setTimeout(() => window.location.assign(`${destination}/#/login`), 1800);
+        throw new Error(`${REDIRECTION_PREFIX}Votre espace est sur ${CLIENT_PRODUCT_NAME} — nous vous y emmenons.`);
+      }
+      throw new Error(ailleurs ? `${refusal} Son adresse : ${destination}` : refusal);
     }
     const toStore: StoredSession = storedFromSession(session);
     writeStoredSession(toStore);
@@ -335,6 +355,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
       return { kind: 'session', session };
     } catch (err) {
+      // La redirection d'édition garde son marqueur : c'est lui que l'écran de
+      // connexion lit pour ne pas la peindre en rouge. `cleanErrorMessage`
+      // l'aurait retiré.
+      if (isRedirection(err)) throw err;
       const message = cleanErrorMessage(err, 'Échec de la connexion.');
       // Le refus d'édition ci-dessus n'est pas un « essayez autre chose » : il
       // ne doit pas retomber sur un compte local du même poste.

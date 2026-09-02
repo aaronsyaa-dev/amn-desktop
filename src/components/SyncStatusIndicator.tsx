@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useSync } from '../state/SyncContext';
 import { poserSourceDuFlux } from '../lib/fluxVisible';
 import { useLangue } from '../i18n';
+import { useReprise } from '../lib/reprise';
 
 /**
  * Discreet live-sync status pill for the top bar. Reflects the amn-api
@@ -11,6 +12,7 @@ import { useLangue } from '../i18n';
 export function SyncStatusIndicator() {
   const { connectionStatus } = useSync();
   const { t } = useLangue();
+  const reprise = useReprise();
 
   /*
     LA SOURCE DU FLUX VISIBLE : c'est ici que la donnée entre dans le poste,
@@ -29,17 +31,22 @@ export function SyncStatusIndicator() {
     offline: { dot: 'bg-warning', pulse: true, label: t('sync.horsLigne'), title: t('sync.horsLigneTitre') },
     unconfigured: { dot: 'bg-text-muted', pulse: false, label: t('sync.local'), title: t('sync.localTitre') },
   }[connectionStatus];
+  // Une lecture attend un serveur qui redémarre : c'est l'état qui compte,
+  // quel que soit celui de la liaison temps réel — et il se dit en français.
+  const affiche = reprise
+    ? { dot: 'bg-warning', pulse: true, label: t('sync.reprise'), title: t('sync.repriseTitre') }
+    : meta;
 
   return (
     <span
       ref={ancre}
-      title={meta.title}
+      title={affiche.title}
       className="inline-flex items-center gap-1.5 border border-border bg-surface px-2 py-1.5 font-mono text-[10px] uppercase tracking-wider text-text-secondary sm:px-2.5"
     >
-      <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${meta.dot} ${meta.pulse ? 'animate-pulse' : ''}`} />
+      <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${affiche.dot} ${affiche.pulse ? 'animate-pulse' : ''}`} />
       {/* Label hidden on the narrowest screens — the coloured dot alone carries
           the status there (full text returns at sm+). */}
-      <span className="hidden sm:inline">{meta.label}</span>
+      <span className="hidden sm:inline">{affiche.label}</span>
     </span>
   );
 }
