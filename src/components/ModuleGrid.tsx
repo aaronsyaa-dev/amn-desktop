@@ -42,10 +42,12 @@ export function ModuleGrid({
   onToggle,
   onDemander,
   annotation,
+  estAllege,
+  onBasculer,
 }: {
   sections: SectionGrille[];
   etat: (key: string) => EtatModule;
-  mode: 'lire' | 'composer' | 'demander';
+  mode: 'lire' | 'composer' | 'demander' | 'alleger';
   surface?: SurfaceNav;
   /** Filtre libre : intitulé ou phrase, sans accent ni casse. */
   recherche?: string;
@@ -59,6 +61,9 @@ export function ModuleGrid({
    * verrouille pas : la tuile reste cliquable quoi qu'elle dise.
    */
   annotation?: (key: string) => string | null;
+  /** Mode alléger : les modules retirés de MA barre, et le geste pour basculer. */
+  estAllege?: (key: string) => boolean;
+  onBasculer?: (key: string) => void;
 }) {
   const { t } = useLangue();
   const normaliser = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -170,6 +175,32 @@ export function ModuleGrid({
                       ) : (
                         t('biblio.composer.ouvrir')
                       )}
+                    </span>
+                  </button>
+                );
+              }
+
+              if (mode === 'alleger') {
+                /*
+                  ALLÉGER / RAJOUTER (Bloc 3). La tuile ne mène nulle part ici :
+                  un clic la retire de ma barre (elle s'estompe) ou l'y remet.
+                  Ce qui est ouvert quoi qu'il arrive ne s'allège pas. Rien
+                  d'autre ne bouge : ni l'accès, ni les données.
+                */
+                const allege = estAllege?.(item.key) ?? false;
+                const fixe = e === 'inclus' || !ouvert;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    disabled={fixe}
+                    aria-pressed={!allege}
+                    onClick={() => onBasculer?.(item.key)}
+                    className={`${cadre} disabled:cursor-default ${allege ? 'opacity-40' : ''}`}
+                  >
+                    {corps}
+                    <span className="mt-auto flex items-center gap-1.5 pt-1 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                      {fixe ? t('biblio.alleger.fixe') : allege ? t('biblio.alleger.rajouter') : t('biblio.alleger.retirer')}
                     </span>
                   </button>
                 );

@@ -208,6 +208,22 @@ export class RemoteApiClient {
     return users;
   }
 
+  /* ------------------------------ Préférences ----------------------------- */
+
+  async getPrefs(): Promise<Record<string, unknown>> {
+    if (!isRemoteConfigured()) return {};
+    const { prefs } = await apiFetch<{ prefs: Record<string, unknown> }>('/v1/auth/me/prefs');
+    return prefs ?? {};
+  }
+
+  async setPref(key: string, value: unknown): Promise<Record<string, unknown>> {
+    const { prefs } = await apiFetch<{ prefs: Record<string, unknown> }>(
+      `/v1/auth/me/prefs/${encodeURIComponent(key)}`,
+      { method: 'PUT', body: JSON.stringify({ value }) },
+    );
+    return prefs ?? {};
+  }
+
   /* ----------------------------- Session amn-api ---------------------------- */
 
   /**

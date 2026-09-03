@@ -229,6 +229,8 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
       remote.deleteRecord(payload.collection, payload.id),
   );
   ipcMain.handle(IPC.remoteGetPresence, () => remote.getPresence());
+  ipcMain.handle(IPC.remotePrefsGet, () => remote.getPrefs());
+  ipcMain.handle(IPC.remotePrefsSet, (_event, payload: { key: string; value: unknown }) => remote.setPref(payload.key, payload.value));
   // setIdentity is fire-and-forget from the renderer (no reply needed).
   ipcMain.on(IPC.remoteSetIdentity, (_event, email: string | null) => remote.setIdentity(email));
   // Session amn-api. Le renderer conserve le jeton (c'est le justificatif de

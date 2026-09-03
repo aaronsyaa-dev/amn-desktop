@@ -1818,6 +1818,14 @@ export const en = {
   'carte.ssl.quoi': 'Certificates, their expiry, their weaknesses.',
   'carte.ssl.pourQui': 'Whoever runs the SOC.',
   'carte.ssl.exemple': '“example.fr: expires in 9 days.”',
+  'biblio.alleger.entrer': 'Lighten my bar',
+  'biblio.alleger.terminer': 'Done',
+  'biblio.alleger.aide': 'Click the modules you never open: they fade and leave your bar. A second click brings them back. Nothing changes for others, nor for your data.',
+  'biblio.alleger.compte': '{n} module(s) lightened from your bar — “Lighten my bar” to bring them back.',
+  'biblio.alleger.aucun': 'Your bar shows everything that is open. You can lighten it: a display choice, for you alone.',
+  'biblio.alleger.retirer': 'In my bar · click to lighten',
+  'biblio.alleger.rajouter': 'Lightened · click to bring back',
+  'biblio.alleger.fixe': 'Stays in the bar',
 } as const;
 
 /*

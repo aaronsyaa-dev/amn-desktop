@@ -1811,4 +1811,12 @@ export const fr: Dictionnaire = {
   'carte.ssl.quoi': 'Les certificats, leur expiration, leurs faiblesses.',
   'carte.ssl.pourQui': 'Qui tient le SOC.',
   'carte.ssl.exemple': '« exemple.fr : expire dans 9 jours. »',
+  'biblio.alleger.entrer': 'Alléger ma barre',
+  'biblio.alleger.terminer': 'Terminer',
+  'biblio.alleger.aide': 'Cliquez les modules que vous n’ouvrez jamais : ils s’estompent et quittent votre barre. Un second clic les rajoute. Rien ne change pour les autres, ni pour vos données.',
+  'biblio.alleger.compte': '{n} module(s) allégé(s) dans votre barre — « Alléger ma barre » pour les rajouter.',
+  'biblio.alleger.aucun': 'Votre barre montre tout ce qui est ouvert. Vous pouvez l’alléger : c’est un affichage, pour vous seul.',
+  'biblio.alleger.retirer': 'Dans ma barre · cliquer pour alléger',
+  'biblio.alleger.rajouter': 'Allégé · cliquer pour rajouter',
+  'biblio.alleger.fixe': 'Reste dans la barre',
 };

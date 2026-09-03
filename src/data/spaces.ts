@@ -92,6 +92,23 @@ export function setEnabledModules(modules: string[] | null | undefined): void {
 */
 export const ALWAYS_ON_MODULES = ['home', 'settings', 'members', 'assistance', 'budget', 'courses', 'library', 'discover'];
 
+/*
+  LES MODULES ALLÉGÉS (Bloc 3) — un affichage, jamais un accès.
+
+  Une personne peut retirer de SA barre les modules qu'elle n'ouvre jamais :
+  ils s'effacent de la barre latérale, du lanceur et de la barre du pouce,
+  et restent ouverts par leur adresse et depuis la Bibliothèque, où on les
+  rajoute d'un geste. Rien ne change pour les autres personnes de
+  l'organisation, ni pour les données, ni pour les droits.
+*/
+let allegedModules: string[] = [];
+export function setAllegedModules(keys: string[]): void {
+  allegedModules = keys.filter((k) => !ALWAYS_ON_MODULES.includes(k));
+}
+export function isModuleAllege(key: string): boolean {
+  return allegedModules.includes(key);
+}
+
 /** Un module est-il ouvert ? */
 export function isModuleEnabled(key: string): boolean {
   if (ALWAYS_ON_MODULES.includes(key)) return true;
@@ -104,7 +121,10 @@ export function sectionsForSpace(space: SpaceKey): NavSection[] {
   // Une section sans espace appartient au Poste de travail : c'est le cas de
   // l'édition Business, qui n'en a qu'un et n'a donc rien à déclarer.
   return NAV_SECTIONS.filter((section) => (section.space ?? 'workspace') === space)
-    .map((section) => ({ ...section, items: section.items.filter((item) => isModuleEnabled(item.key)) }))
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => isModuleEnabled(item.key) && !isModuleAllege(item.key)),
+    }))
     // Une section vidée de tous ses modules disparaît : un intitulé seul dans
     // le lanceur dirait « il y a autre chose, mais pas pour vous ».
     .filter((section) => section.items.length > 0);

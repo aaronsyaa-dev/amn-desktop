@@ -210,6 +210,10 @@ const bridge: AmnBridge = {
       revoke: (id: string) => ipcRenderer.invoke(IPC.remoteCallLinkRevoke, id),
     },
     getPresence: () => ipcRenderer.invoke(IPC.remoteGetPresence),
+    prefs: {
+      get: () => ipcRenderer.invoke(IPC.remotePrefsGet),
+      set: (key, value) => ipcRenderer.invoke(IPC.remotePrefsSet, { key, value }),
+    },
     onPresence: (callback: (users: PresenceEntry[]) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, users: PresenceEntry[]) => callback(users);
       ipcRenderer.on(IPC.remotePresencePush, listener);

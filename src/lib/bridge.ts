@@ -877,6 +877,20 @@ function createBrowserRemote(): AmnBridge['remote'] {
       const { users } = await apiFetch<{ users: PresenceEntry[] }>('/v1/collections/_presence');
       return users;
     },
+    prefs: {
+      async get() {
+        if (!configured) return {};
+        const { prefs } = await apiFetch<{ prefs: Record<string, unknown> }>('/v1/auth/me/prefs');
+        return prefs ?? {};
+      },
+      async set(key: string, value: unknown) {
+        const { prefs } = await apiFetch<{ prefs: Record<string, unknown> }>(`/v1/auth/me/prefs/${encodeURIComponent(key)}`, {
+          method: 'PUT',
+          body: JSON.stringify({ value }),
+        });
+        return prefs ?? {};
+      },
+    },
     onPresence(callback) {
       presenceListeners.add(callback);
       ensureStarted();

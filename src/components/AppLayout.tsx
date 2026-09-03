@@ -38,6 +38,7 @@ import { variantsForPath } from '../lib/transitions';
 import { StatusRail } from './StatusRail';
 import { useAuth } from '../auth/AuthContext';
 import { useLangue } from '../i18n';
+import { PremiereOuverture } from './PremiereOuverture';
 
 const LAST_TAB_KEY = 'amn.lastTab';
 
@@ -178,6 +179,7 @@ export function AppLayout() {
                     initial="initial"
                     animate="animate"
                   >
+                    <PremiereOuverture />
                     <Outlet />
                   </motion.div>
                 </div>

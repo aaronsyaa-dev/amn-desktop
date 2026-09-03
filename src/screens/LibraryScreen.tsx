@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search } from 'lucide-react';
+import { Search, SlidersHorizontal } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { ModuleGrid, type EtatModule } from '../components/ModuleGrid';
 import { NAV_SECTIONS } from '../data/navigation';
 import { ALWAYS_ON_MODULES, isModuleEnabled } from '../data/spaces';
+import { useNavAlleges } from '../state/useNavAlleges';
 import { bridge } from '../lib/bridge';
 import { useLangue } from '../i18n';
 import { IS_BUSINESS } from '../edition/edition';
@@ -54,6 +55,14 @@ export function LibraryScreen() {
   );
 
   const demandes = useMemo(() => new Set((offres ?? []).filter((o) => o.requested).map((o) => o.key)), [offres]);
+  /*
+    ALLÉGER MA BARRE (Bloc 3). Un mode de la Bibliothèque, pas un écran de
+    plus : on l'entre, on clique les modules qu'on n'ouvre jamais (ils
+    s'estompent), on en sort. Le même mode sert à les rajouter. Par personne,
+    mémorisé sur le serveur : le téléphone suit.
+  */
+  const [allegement, setAllegement] = useState(false);
+  const { alleges, estAllege, basculer } = useNavAlleges();
   const etat = (key: string): EtatModule => {
     if (ALWAYS_ON_MODULES.includes(key)) return 'inclus';
     if (isModuleEnabled(key)) return 'ouvert';
@@ -101,6 +110,27 @@ export function LibraryScreen() {
         />
       </motion.div>
 
+      <motion.div variants={staggerItem} className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setAllegement((v) => !v)}
+          aria-pressed={allegement}
+          className={`flex min-h-11 items-center gap-2 border px-3 text-sm font-medium transition-colors md:min-h-0 md:py-1.5 ${
+            allegement ? 'border-accent bg-accent text-bg' : 'border-border-strong bg-surface text-text-primary hover:bg-surface-hover'
+          }`}
+        >
+          <SlidersHorizontal size={14} />
+          {allegement ? t('biblio.alleger.terminer') : t('biblio.alleger.entrer')}
+        </button>
+        <p className="text-xs text-text-secondary">
+          {allegement
+            ? t('biblio.alleger.aide')
+            : alleges.length > 0
+              ? t('biblio.alleger.compte', { n: alleges.length })
+              : t('biblio.alleger.aucun')}
+        </p>
+      </motion.div>
+
       <motion.div variants={staggerItem}>
         <label className="input-focus flex min-h-11 max-w-xl items-center gap-2 rounded-lg border border-border bg-surface px-3">
           <Search size={15} className="flex-shrink-0 text-text-muted" />
@@ -125,7 +155,9 @@ export function LibraryScreen() {
         <ModuleGrid
           sections={sections}
           etat={etat}
-          mode={IS_BUSINESS ? 'demander' : 'lire'}
+          mode={allegement ? 'alleger' : IS_BUSINESS ? 'demander' : 'lire'}
+          estAllege={estAllege}
+          onBasculer={basculer}
           surface={IS_BUSINESS ? 'business' : 'interne'}
           recherche={recherche}
           enCours={enCours}

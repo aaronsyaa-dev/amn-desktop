@@ -2691,6 +2691,16 @@ export interface AmnBridge {
     /** Tells the main process which operator is signed in (for presence + attribution). */
     setIdentity(email: string | null): void;
     getPresence(): Promise<PresenceEntry[]>;
+    /**
+     * Les préférences de la PERSONNE connectée (Bloc 3) : ce qui la suit d'un
+     * appareil à l'autre sans appartenir à l'organisation — les modules
+     * qu'elle a allégés dans sa barre. Par compte ; refusé sur une session
+     * de support et sur un jeton partagé.
+     */
+    prefs: {
+      get(): Promise<Record<string, unknown>>;
+      set(key: string, value: unknown): Promise<Record<string, unknown>>;
+    };
     onPresence(callback: (users: PresenceEntry[]) => void): () => void;
 
     /* --- Appels audio (WebRTC) --- */
@@ -3350,6 +3360,8 @@ export const IPC = {
   remoteExportOrganization: 'remote:exportOrganization',
   remoteSetOrgAccent: 'remote:setOrgAccent',
   remoteGetPresence: 'remote:getPresence',
+  remotePrefsGet: 'remote:prefsGet',
+  remotePrefsSet: 'remote:prefsSet',
   /** Push channels (main -> renderer via webContents.send, not invoke/handle). */
   remoteStartScan: 'remote:startScan',
   remoteListScans: 'remote:listScans',
