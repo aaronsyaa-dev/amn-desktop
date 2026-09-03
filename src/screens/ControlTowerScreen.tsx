@@ -400,6 +400,11 @@ export const ACCESS_VERB: Record<string, string> = {
   user_removed: 'a supprimé un compte chez',
   org_updated: 'a modifié les réglages de',
   plan_changed: 'a changé la formule de',
+  // Un module ouvert ou fermé par-dessus la formule ; le détail dit lequel et
+  // dans quel sens (ajouté hors formule, retiré de la formule, retour).
+  module_opened: 'a ouvert un module chez',
+  module_closed: 'a fermé un module chez',
+  modules_reset: 'a remis la formule de',
   member_suspended: 'a suspendu un membre de',
   member_reactivated: 'a réactivé un membre de',
   member_role_changed: 'a changé un rôle chez',

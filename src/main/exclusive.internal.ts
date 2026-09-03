@@ -458,6 +458,22 @@ const adminApi = {
     return organization;
   },
 
+  async setOrganizationModule(id: string, key: string, open: boolean): Promise<AdminOrganization> {
+    const { organization } = await apiFetch<{ organization: AdminOrganization }>(
+      `/v1/admin/organizations/${encodeURIComponent(id)}/modules/${encodeURIComponent(key)}`,
+      { owner: true, method: 'PUT', body: JSON.stringify({ open }) },
+    );
+    return organization;
+  },
+
+  async resetOrganizationModules(id: string): Promise<AdminOrganization> {
+    const { organization } = await apiFetch<{ organization: AdminOrganization }>(
+      `/v1/admin/organizations/${encodeURIComponent(id)}/modules`,
+      { owner: true, method: 'DELETE' },
+    );
+    return organization;
+  },
+
   async setOrganizationStatus(id: string, status: OrgStatus): Promise<AdminOrganization> {
     const { organization } = await apiFetch<{ organization: AdminOrganization }>(
       `/v1/admin/organizations/${encodeURIComponent(id)}/status`,
@@ -786,6 +802,12 @@ export function registerExclusiveIpc(
     (_event, payload: { id: string; plan: OrgPlan }) =>
       adminApi.setOrganizationPlan(payload.id, payload.plan),
   );
+  ipcMain.handle(
+    IPC.remoteAdminSetOrgModule,
+    (_event, payload: { id: string; key: string; open: boolean }) =>
+      adminApi.setOrganizationModule(payload.id, payload.key, payload.open),
+  );
+  ipcMain.handle(IPC.remoteAdminResetOrgModules, (_event, id: string) => adminApi.resetOrganizationModules(id));
   ipcMain.handle(
     IPC.remoteAdminSetOrgStatus,
     (_event, payload: { id: string; status: OrgStatus }) =>

@@ -215,7 +215,7 @@ export const en = {
   'biblio.demander': 'Ask for it',
   'biblio.demande.faite': 'Requested',
   'biblio.demande.echec': 'The request did not leave. Try again in a moment.',
-  'biblio.composer.inclus': 'Included',
+  'biblio.composer.inclus': 'Always open',
   'biblio.composer.retirer': 'Open · click to close',
   'biblio.composer.ouvrir': 'Closed · click to open',
 
@@ -1246,6 +1246,29 @@ export const en = {
   'materiel.supprimer': 'Cancel this booking',
   'materiel.vide.titre': 'No resource declared.',
   'materiel.vide.texte': 'Three people want the van on the same Tuesday. Here, a resource, a slot, and the overlap refused before it exists — the screen says who already has it.',
+  // ---- An organisation's dossier: formula, adjustments, seats ----
+  'biblio.composer.formule': 'Included in the formula',
+  'biblio.composer.ajoute': 'Added outside the formula',
+  'biblio.composer.retire': 'Removed from the formula',
+  'dossier.formule.titre': 'Its formula',
+  'dossier.formule.inclut': '{formule} includes {modules} modules and {places} seats.',
+  'dossier.formule.inclutTout': '{formule} includes the whole catalogue ({modules} modules, upcoming ones included) and {places} seats.',
+  'dossier.formule.explication': 'The formula defines the included modules and the seats. “Included” describes, it forbids nothing: every module opens or closes below for this organisation only, and every change is written to its log.',
+  'dossier.formule.ajustements': '{ajoutes} added outside the formula · {retires} removed from the formula',
+  'dossier.formule.aucunAjustement': 'No adjustment: exactly its formula.',
+  'dossier.formule.revenir': 'Back to the formula',
+  'dossier.formule.revenirAide': 'Clears the adjustments: it gets exactly the modules of its formula back.',
+  'dossier.modules.titre': 'Open modules',
+  'dossier.modules.aide': 'Opening or closing removes the screen and its navigation on their side. It is not a security boundary: their data stays isolated per organisation, like everyone else’s.',
+  'dossier.places.titre': 'Seats',
+  'dossier.places.formule': 'The formula decides ({n})',
+  'dossier.places.formuleSansNombre': 'The formula decides',
+  'dossier.places.une': 'One person',
+  'dossier.places.plusieurs': '{n} people',
+  'dossier.places.occupees': '{comptes} account(s) take a seat today.',
+  'dossier.places.plancher': 'It has {comptes} accounts: remove {retirer} before going down to {places} seats.',
+  'chrome.epinglezConseil': 'Pin the ones you open every day',
+  'chrome.epinglezVide': 'Nothing is pinned: the bar shows the first modules. Tap a module’s pin to keep it under your thumb.',
 } as const;
 
 /*

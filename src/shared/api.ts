@@ -89,6 +89,16 @@ export interface AdminOrganization {
   logoDataUrl: string | null;
   /** Modules ouverts ; `null` = tous. Réglable depuis la console. */
   modules?: string[] | null;
+  /**
+   * Les ajustements par rapport à la formule, résolus par le serveur : ce
+   * qu'Aaron a ajouté hors formule, ce qu'il a retiré de la formule. Une
+   * organisation d'avant les formules les reçoit aussi — sa liste `modules`
+   * se relit comme tels.
+   */
+  modulesAdded?: string[];
+  modulesRemoved?: string[];
+  /** Ce que sa formule inclut : des places (`null` = sans limite) et des modules (`null` = tout le catalogue). */
+  formula?: { seats: number | null; modules: string[] | null };
   /** Couleur d'accent (identifiant de palette) ; `null` = défaut. */
   accent?: string | null;
   /** Métier de l'organisation (BLOC 6) ; `null` = inconnu, libellés génériques. */
@@ -2999,6 +3009,14 @@ export interface AmnBridge {
        */
       setOrganizationPlan(id: string, plan: OrgPlan): Promise<AdminOrganization>;
       /**
+       * Ouvre ou ferme UN module pour cette organisation, par-dessus sa
+       * formule. Le serveur traduit le geste en ajustement (ajouté hors
+       * formule, retiré de la formule, retour à la formule) et le consigne.
+       */
+      setOrganizationModule(id: string, key: string, open: boolean): Promise<AdminOrganization>;
+      /** Efface tous les ajustements : l'organisation revient exactement à sa formule. */
+      resetOrganizationModules(id: string): Promise<AdminOrganization>;
+      /**
        * SUPPRIME une organisation cliente, définitivement.
        *
        * `confirm` doit être le nom EXACT de l'organisation. Ce n'est pas une
@@ -3378,6 +3396,8 @@ export const IPC = {
   remoteAdminUpdateOrg: 'remote:adminUpdateOrg',
   remoteAdminSetOrgStatus: 'remote:adminSetOrgStatus',
   remoteAdminSetOrgPlan: 'remote:adminSetOrgPlan',
+  remoteAdminSetOrgModule: 'remote:adminSetOrgModule',
+  remoteAdminResetOrgModules: 'remote:adminResetOrgModules',
   remoteAdminDeleteOrg: 'remote:adminDeleteOrg',
   remoteAdminListUsers: 'remote:adminListUsers',
   remoteAdminDeleteUser: 'remote:adminDeleteUser',

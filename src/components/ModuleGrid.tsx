@@ -41,6 +41,7 @@ export function ModuleGrid({
   enCours = null,
   onToggle,
   onDemander,
+  annotation,
 }: {
   sections: SectionGrille[];
   etat: (key: string) => EtatModule;
@@ -52,6 +53,12 @@ export function ModuleGrid({
   enCours?: string | null;
   onToggle?: (key: string) => void;
   onDemander?: (key: string) => void;
+  /**
+   * Mode composer : d'où vient l'état de la tuile — « inclus dans la
+   * formule », « ajouté hors formule », « retiré de la formule ». Décrit, ne
+   * verrouille pas : la tuile reste cliquable quoi qu'elle dise.
+   */
+  annotation?: (key: string) => string | null;
 }) {
   const { t } = useLangue();
   const normaliser = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -119,6 +126,7 @@ export function ModuleGrid({
 
               if (mode === 'composer') {
                 const verrou = e === 'inclus';
+                const origine = verrou ? null : annotation?.(item.key) ?? null;
                 return (
                   <button
                     key={item.key}
@@ -129,6 +137,7 @@ export function ModuleGrid({
                     className={`${cadre} disabled:cursor-default ${enCours !== null && !verrou ? 'opacity-60' : ''}`}
                   >
                     {corps}
+                    {origine && <span className="text-[10px] leading-snug text-text-secondary">{origine}</span>}
                     <span className="mt-auto flex items-center gap-1.5 pt-1 font-mono text-[10px] uppercase tracking-wider text-text-muted">
                       {verrou ? (
                         <>

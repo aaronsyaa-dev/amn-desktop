@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
-import { Pin, PinOff, X } from 'lucide-react';
+import { Pin, X } from 'lucide-react';
 import type { SpaceKey } from '../data/navigation';
 import { sectionsForSpace } from '../data/spaces';
 import { useNavFavorites } from '../state/useNavFavorites';
@@ -51,7 +51,7 @@ export function AppLauncher({
 }) {
   const { t } = useLangue();
   const location = useLocation();
-  const { isFavorite, toggleFavorite } = useNavFavorites();
+  const { favorites, isFavorite, toggleFavorite } = useNavFavorites();
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Escape closes, and focus moves into the panel so the keyboard has somewhere
@@ -117,7 +117,7 @@ export function AppLauncher({
               <div>
                 <h2 className="text-lg font-bold tracking-tight text-text-primary">{t('chrome.tousModules')}</h2>
                 <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
-                  Épinglez ceux que vous ouvrez tous les jours
+                  {t('chrome.epinglezConseil')}
                 </p>
               </div>
               <button
@@ -129,6 +129,22 @@ export function AppLauncher({
                 <X size={16} strokeWidth={2} />
               </button>
             </div>
+
+            {/*
+              L'ÉPINGLE INVISIBLE (retour réel, septembre 2026). Sur le poste,
+              l'épingle n'apparaît qu'au survol — élégant, et parfaitement
+              invisible sur un téléphone, où rien ne se survole. Quand rien
+              n'était épinglé, la personne n'avait aucun moyen de découvrir
+              que ça existait. Deux réponses : l'épingle est toujours dessinée
+              là où il n'y a pas de survol, et une phrase dit quoi faire tant
+              que rien n'est épinglé.
+            */}
+            {favorites.length === 0 && (
+              <p className="mb-4 flex items-start gap-2 rounded-lg border border-border bg-bg px-3 py-2 text-xs leading-relaxed text-text-secondary">
+                <Pin size={13} strokeWidth={2} className="mt-0.5 flex-shrink-0 text-accent" aria-hidden />
+                {t('chrome.epinglezVide')}
+              </p>
+            )}
 
             <motion.div variants={GRID} initial="hidden" animate="shown" className="flex flex-col gap-6">
               {sectionsForSpace(space).map((section) => (
@@ -166,17 +182,15 @@ export function AppLauncher({
                             onClick={() => toggleFavorite(item.key)}
                             aria-label={pinned ? t('chrome.detacher', { nom: libelleNav(item) }) : t('chrome.epingler', { nom: libelleNav(item) })}
                             title={pinned ? 'Détacher de la barre' : 'Épingler à la barre'}
-                            className={`absolute right-1.5 top-1.5 rounded-md p-1.5 transition-colors ${
+                            className={`absolute right-1 top-1 flex h-9 w-9 items-center justify-center rounded-md transition-colors sm:h-7 sm:w-7 ${
                               pinned
                                 ? 'text-accent hover:text-text-primary'
-                                : 'text-transparent hover:bg-white/5 hover:text-text-secondary group-hover:text-text-muted'
+                                : 'text-text-muted hover:bg-white/5 hover:text-text-secondary [@media(hover:hover)]:text-transparent [@media(hover:hover)]:group-hover:text-text-muted'
                             }`}
                           >
-                            {pinned ? (
-                              <Pin size={13} strokeWidth={2} />
-                            ) : (
-                              <PinOff size={13} strokeWidth={2} />
-                            )}
+                            {/* Une épingle pleine = épinglé, vide = à épingler. La version
+                                barrée disait « détacher » là où il n'y avait rien à détacher. */}
+                            <Pin size={14} strokeWidth={2} fill={pinned ? 'currentColor' : 'none'} />
                           </button>
                         </motion.div>
                       );

@@ -508,6 +508,20 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
       );
       return organization;
     },
+    async setOrganizationModule(id: string, key: string, open: boolean) {
+      const { organization } = await ctx.apiFetch<{ organization: AdminOrganization }>(
+        `/v1/admin/organizations/${encodeURIComponent(id)}/modules/${encodeURIComponent(key)}`,
+        { owner: true, method: 'PUT', body: JSON.stringify({ open }) },
+      );
+      return organization;
+    },
+    async resetOrganizationModules(id: string) {
+      const { organization } = await ctx.apiFetch<{ organization: AdminOrganization }>(
+        `/v1/admin/organizations/${encodeURIComponent(id)}/modules`,
+        { owner: true, method: 'DELETE' },
+      );
+      return organization;
+    },
     async setOrganizationStatus(id: string, status: OrgStatus) {
       const { organization } = await ctx.apiFetch<{ organization: AdminOrganization }>(
         `/v1/admin/organizations/${encodeURIComponent(id)}/status`,

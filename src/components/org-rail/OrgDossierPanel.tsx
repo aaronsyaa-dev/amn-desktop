@@ -13,6 +13,8 @@ import type { NavItem } from '../../data/navigation';
 import type { AdminOrganization, AdminOrgUser, OrgPulse } from '../../shared/api';
 import { relativeTime } from '../../lib/time';
 import { useFermetureEchap } from '../../lib/useFermetureEchap';
+import { useLangue, libelleNav } from '../../i18n';
+import { ALWAYS_ON_MODULES } from '../../data/spaces';
 
 /**
  * Le dossier d'une organisation cliente, vu d'AMN DevSec (BLOC E).
@@ -62,20 +64,17 @@ function moduleLabel(collection: string): string {
   return NOM_COLLECTION[collection] ?? collection;
 }
 
-/** Les modules réglables. Doit rester aligné sur `ORG_MODULES` d'amn-api. */
-const TOGGLEABLE: { key: string; label: string }[] = [
-  { key: 'agenda', label: 'Agenda' },
-  { key: 'clients', label: 'Clients' },
-  { key: 'invoices', label: 'Facturation' },
-  { key: 'projects', label: 'Projets' },
-  { key: 'tasks', label: 'Tâches' },
-  { key: 'expenses', label: 'Dépenses' },
-  { key: 'time', label: 'Temps' },
-  { key: 'notes', label: 'Notes' },
-  { key: 'media', label: 'Médias' },
-  { key: 'reports', label: 'Rapports' },
-  { key: 'vault', label: 'Coffre-fort' },
-];
+/**
+ * Les modules réglables : TOUT le catalogue de la cliente, moins ce qui est
+ * ouvert quoi qu'il arrive (accueil, réglages, membres, assistance,
+ * personnel, bibliothèque, découvrir).
+ *
+ * Dérivé du catalogue, jamais recopié. La liste figée qui vivait ici
+ * s'arrêtait aux onze modules d'origine : les cinquante suivants tombaient
+ * dans la branche « inclus », avec un cadenas — et il était impossible
+ * d'ajouter un module à une organisation. C'est le défaut qu'Aaron a vu.
+ */
+const REGLABLES: NavItem[] = CLIENT_NAV_ITEMS.filter((item) => !ALWAYS_ON_MODULES.includes(item.key));
 
 /**
  * LA FICHE DE CONFIGURATION (BLOC 5)
@@ -117,10 +116,9 @@ interface LigneFiche {
   permanents: number;
 }
 
-function ficheConfiguration(modules: string[] | null | undefined): LigneFiche[] {
+function ficheConfiguration(modules: string[] | null | undefined, reglable: Map<string, string>): LigneFiche[] {
   // `null` en base = tout le catalogue, y compris ce qui viendra plus tard.
   const actif = (cle: string) => modules === null || modules === undefined || modules.includes(cle);
-  const reglable = new Map(TOGGLEABLE.map((m) => [m.key, m.label]));
 
   const lignes = CLIENT_SECTIONS.map((section) => {
     const ouverts: string[] = [];
@@ -150,7 +148,7 @@ function ficheConfiguration(modules: string[] | null | undefined): LigneFiche[] 
     orphelins dans le dernier groupe plutôt que de les perdre.
   */
   const reclames = new Set(CLIENT_SECTIONS.flatMap((section) => section.keys));
-  const orphelins = TOGGLEABLE.filter((m) => !reclames.has(m.key));
+  const orphelins = [...reglable].filter(([key]) => !reclames.has(key)).map(([key, label]) => ({ key, label }));
   if (orphelins.length > 0) {
     const derniere = lignes[lignes.length - 1];
     for (const m of orphelins) (actif(m.key) ? derniere.ouverts : derniere.fermes).push(m.label);
@@ -222,10 +220,36 @@ export function OrgDossierPanel({
   const [nom, setNom] = useState(org.name);
   const [forfait, setForfait] = useState(org.plan);
   const [places, setPlaces] = useState<number | null>(org.seats ?? null);
+  const { t, langue } = useLangue();
+  const reglable = useMemo(
+    // Les intitulés suivent la langue : `langue` est la vraie dépendance.
+    () => new Map(REGLABLES.map((item) => [item.key, libelleNav(item)])),
+    [langue],
+  );
 
   // La fiche et sa synthèse, dérivées de la configuration réelle à chaque
   // rendu : un réglage modifié ci-dessous se lit immédiatement en haut.
-  const fiche = useMemo(() => ficheConfiguration(org.modules), [org.modules]);
+  const fiche = useMemo(() => ficheConfiguration(org.modules, reglable), [org.modules, reglable]);
+
+  /*
+    LA FORMULE ET SES AJUSTEMENTS — rendus par le serveur, jamais recalculés
+    ici. Le dossier n'a aucune règle de formule à connaître : il affiche ce
+    qu'amn-api lui rend (ce que la formule inclut, ce qui a été ajouté hors
+    formule, ce qui en a été retiré), et chaque tuile dit d'où vient son état.
+  */
+  const formule = org.formula ?? null;
+  const ajoutes = useMemo(() => new Set(org.modulesAdded ?? []), [org.modulesAdded]);
+  const retires = useMemo(() => new Set(org.modulesRemoved ?? []), [org.modulesRemoved]);
+  const dansFormule = (cle: string) => (formule ? formule.modules === null || formule.modules.includes(cle) : false);
+  const origine = (cle: string) =>
+    ajoutes.has(cle)
+      ? t('biblio.composer.ajoute')
+      : retires.has(cle)
+        ? t('biblio.composer.retire')
+        : dansFormule(cle)
+          ? t('biblio.composer.formule')
+          : null;
+  const nbAjustements = ajoutes.size + retires.size;
   const resume = useMemo(() => {
     const ouverts = fiche.reduce((n, l) => n + l.ouverts.length, 0);
     const total = fiche.reduce((n, l) => n + l.ouverts.length + l.fermes.length, 0);
@@ -316,14 +340,17 @@ export function OrgDossierPanel({
     }
   };
 
+  /*
+    Un module, un geste, un mot dans le journal. Le serveur traduit « ouvrir »
+    ou « fermer » en ajustement par rapport à la formule (ajouté hors
+    formule, retiré de la formule, retour à la formule) : c'est lui qui
+    connaît la formule, et lui seul qui écrit.
+  */
   const toggle = async (key: string) => {
     setError(null);
     setPendingModule(key);
     try {
-      const base = enabled === null ? new Set(TOGGLEABLE.map((m) => m.key)) : new Set(enabled);
-      if (base.has(key)) base.delete(key);
-      else base.add(key);
-      await bridge().remote.admin.updateOrganization(org.id, { modules: [...base] });
+      await bridge().remote.admin.setOrganizationModule(org.id, key, !isOn(key));
       onSaved();
     } catch (err) {
       setError(cleanErrorMessage(err, 'amn-api a refusé la modification.'));
@@ -331,6 +358,22 @@ export function OrgDossierPanel({
       setPendingModule(null);
     }
   };
+  const revenirFormule = async () => {
+    setError(null);
+    setPendingModule('__formule');
+    try {
+      await bridge().remote.admin.resetOrganizationModules(org.id);
+      onSaved();
+    } catch (err) {
+      setError(cleanErrorMessage(err, 'amn-api a refusé le retour à la formule.'));
+    } finally {
+      setPendingModule(null);
+    }
+  };
+  // Les places occupées : un compte qui travaille, actif ou invité. Même
+  // règle que `countsAsSeat` côté serveur — qui reste seul juge.
+  const occupees = (comptes ?? []).filter((c) => c.status === 'active' || c.status === 'invited').length;
+  const sousPlancher = places !== null && places < occupees;
 
   const saveNotes = () => {
     setSavingNotes(true);
@@ -504,15 +547,9 @@ export function OrgDossierPanel({
           </div>
 
           <p className="mt-5 font-mono text-[10px] uppercase tracking-widest text-text-muted">
-            Modules ouverts
+            {t('dossier.modules.titre')}
           </p>
-          <p className="mt-1 text-xs leading-relaxed text-text-secondary">
-            Retire l’écran et sa navigation chez elle.{' '}
-            <span className="text-text-muted">
-              Ce n’est pas une barrière de sécurité : ses données restent isolées par organisation,
-              comme celles de toutes les autres.
-            </span>
-          </p>
+          <p className="mt-1 text-xs leading-relaxed text-text-secondary">{t('dossier.modules.aide')}</p>
 
           {/*
             LA MÊME GRILLE QUE LA BIBLIOTHÈQUE, en mode « composer » : c'est ici
@@ -531,25 +568,31 @@ export function OrgDossierPanel({
                   .map((cle) => CLIENT_NAV_ITEMS.find((item) => item.key === cle))
                   .filter((item): item is NavItem => Boolean(item)),
               }))}
-              etat={(cle) => (TOGGLEABLE.some((m) => m.key === cle) ? (isOn(cle) ? 'ouvert' : 'disponible') : 'inclus')}
+              etat={(cle) => (ALWAYS_ON_MODULES.includes(cle) ? 'inclus' : isOn(cle) ? 'ouvert' : 'disponible')}
+              annotation={origine}
               enCours={pendingModule}
               onToggle={(cle) => void toggle(cle)}
             />
           </div>
 
-          {org.modules === null || org.modules === undefined ? (
-            <p className="mt-2 font-mono text-[9px] uppercase tracking-widest text-text-muted">
-              Aucun réglage : tous les modules du catalogue, y compris ceux à venir
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border border-border bg-surface px-3 py-2">
+            <p className="text-xs text-text-secondary">
+              {nbAjustements === 0
+                ? t('dossier.formule.aucunAjustement')
+                : t('dossier.formule.ajustements', { ajoutes: ajoutes.size, retires: retires.size })}
             </p>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void bridge().remote.admin.updateOrganization(org.id, { modules: null }).then(onSaved)}
-              className="mt-2 font-mono text-[9px] uppercase tracking-widest text-text-muted underline-offset-2 hover:text-text-secondary hover:underline"
-            >
-              Revenir à « tous les modules »
-            </button>
-          )}
+            {nbAjustements > 0 && (
+              <button
+                type="button"
+                disabled={pendingModule !== null}
+                onClick={() => void revenirFormule()}
+                title={t('dossier.formule.revenirAide')}
+                className="min-h-11 border border-border-strong px-3 text-xs font-medium text-text-primary transition-colors hover:bg-surface-hover disabled:opacity-40 md:min-h-0 md:py-1.5"
+              >
+                {t('dossier.formule.revenir')}
+              </button>
+            )}
+          </div>
 
           {/* -------------------------------------------------- accent ----- */}
           <div className="mt-6 border-t border-border pt-4">
@@ -662,40 +705,66 @@ export function OrgDossierPanel({
               onChange={(e) => setPlaces(e.target.value === '' ? null : Number(e.target.value))}
               className="input-focus w-full cursor-pointer border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
             >
-              <option value="">La formule décide ({forfait === 'business_premium' ? 5 : 2})</option>
+              <option value="">
+                {forfait === org.plan && formule?.seats != null
+                  ? t('dossier.places.formule', { n: formule.seats })
+                  : t('dossier.places.formuleSansNombre')}
+              </option>
               {[1, 2, 5, 10, 25].map((n) => (
-                <option key={n} value={n}>
-                  {n} personne{n > 1 ? 's' : ''}
+                <option key={n} value={n} disabled={n < occupees}>
+                  {n === 1 ? t('dossier.places.une') : t('dossier.places.plusieurs', { n })}
                 </option>
               ))}
             </select>
           </label>
+          {/*
+            LE PLANCHER : jamais moins de places que de comptes. Les options
+            en dessous sont grisées, la phrase dit combien retirer, et le
+            serveur refuse de toute façon (409 `seats_below_accounts`) — un
+            appel scripté n'y échappe pas.
+          */}
+          {occupees > 0 && (
+            <p className="mt-1 text-[11px] leading-relaxed text-text-muted">{t('dossier.places.occupees', { comptes: occupees })}</p>
+          )}
+          {sousPlancher && (
+            <p role="alert" className="mt-1 text-[11px] leading-relaxed text-warning">
+              {t('dossier.places.plancher', { comptes: occupees, retirer: occupees - (places ?? 0), places: places ?? 0 })}
+            </p>
+          )}
 
           {/*
-            CE QUE LA FORMULE CHANGE — c'est-à-dire rien, et il faut le dire.
+            CE QUE LA FORMULE CHANGE — désormais quelque chose, et il faut le dire.
 
-            Aaron demandait ce que veut dire l'étiquette « Business standard »
-            qu'il voit sur chaque cliente. Réponse vérifiée dans le code des
-            deux dépôts : la valeur `plan` n'a qu'un seul effet technique,
-            distinguer `internal` du reste — c'est elle qui autorise l'édition
-            interne. Entre `standard` et `premium`, AUCUNE limite, AUCUN module
-            et AUCUN quota ne diffèrent.
-
-            L'écrire ici plutôt que de laisser croire à une barrière : une
-            étiquette qu'on prend pour un verrou finit par produire une promesse
-            commerciale que le produit ne tient pas.
+            Longtemps « Business standard » n'a été qu'une étiquette : aucun
+            module, aucune place n'en dépendait, et ce panneau l'écrivait pour
+            qu'on ne prenne pas l'étiquette pour un verrou. Depuis septembre
+            2026 la formule est la SOURCE : elle inclut des modules et des
+            places (amn-api, `PLAN_FORMULAS`), l'organisation en hérite, et
+            Aaron ajuste par-dessus, module par module, journalisé. « Inclus »
+            décrit ; il n'interdit rien.
           */}
-          <p className="mt-2 text-[11px] leading-relaxed text-text-muted">
-            La formule est une <span className="text-text-secondary">étiquette commerciale</span>.
-            Elle n’ouvre et ne ferme rien aujourd’hui : les modules se règlent ci-dessous, le quota
-            invité dans les réglages de l’organisation. Aucun écran de la cliente n’en dépend.
-          </p>
+          <p className="mt-2 text-[11px] leading-relaxed text-text-muted">{t('dossier.formule.explication')}</p>
+          {formule && forfait === org.plan && (
+            <p className="mt-1 text-[11px] leading-relaxed text-text-secondary">
+              {formule.modules === null
+                ? t('dossier.formule.inclutTout', {
+                    formule: PLAN_LABELS[org.plan] ?? org.plan,
+                    modules: REGLABLES.length,
+                    places: formule.seats ?? '—',
+                  })
+                : t('dossier.formule.inclut', {
+                    formule: PLAN_LABELS[org.plan] ?? org.plan,
+                    modules: formule.modules.length,
+                    places: formule.seats ?? '—',
+                  })}
+            </p>
+          )}
 
           <button
             type="button"
-            disabled={!identiteModifiee || identiteEnCours || !nom.trim()}
+            disabled={!identiteModifiee || identiteEnCours || !nom.trim() || sousPlancher}
             onClick={() => {
-              if (!identiteModifiee || identiteEnCours) return;
+              if (!identiteModifiee || identiteEnCours || sousPlancher) return;
               setIdentiteEnCours(true);
               setError(null);
               const gestes: Promise<unknown>[] = [];
