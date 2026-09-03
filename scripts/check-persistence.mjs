@@ -456,7 +456,20 @@ for (const [mod, info] of Object.entries(LOCAL_ONLY)) {
   // L'avertissement doit être VISIBLE, donc dans du texte rendu — pas seulement
   // dans un commentaire de code que la cliente ne lira jamais.
   const sansCommentaires = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-  if (!/cet (appareil|ordinateur)|cette machine|reste sur/i.test(sansCommentaires)) {
+  /*
+    Depuis que les écrans historiques passent par i18n (audit du 4 septembre
+    2026), la phrase peut vivre dans le dictionnaire français plutôt que dans
+    l'écran : on lit alors les valeurs des clés que l'écran appelle.
+  */
+  const dictionnaire = read('src/i18n/fr.ts');
+  const valeurs = [...sansCommentaires.matchAll(/\bt?r?\(\s*'([^']+)'/g)]
+    .map((m) => {
+      const cle = m[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const trouve = new RegExp(`'${cle}':\\s*'((?:[^'\\\\]|\\\\.)*)'`).exec(dictionnaire);
+      return trouve ? trouve[1] : '';
+    })
+    .join('\n');
+  if (!/cet (appareil|ordinateur)|cette machine|reste sur/i.test(`${sansCommentaires}\n${valeurs}`)) {
     failures.push(
       `« ${mod} » : sa donnée est locale, mais ${info.ecranPrevient} ne le dit pas à l’écran. ` +
         'Une cliente non technique supposera que tout est sauvegardé comme le reste.',

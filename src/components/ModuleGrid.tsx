@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Check, Loader2, Lock, Send } from 'lucide-react';
 import type { NavItem } from '../data/navigation';
-import { useLangue, libelleNav, libelleSection, indiceNav, type SurfaceNav } from '../i18n';
+import { useLangue, libelleNav, libelleSection, indiceNav, carteModule, type SurfaceNav } from '../i18n';
 
 /**
  * LA GRILLE DES MODULES — un seul rangement, trois lectures.
@@ -66,9 +66,11 @@ export function ModuleGrid({
   const visibles = sections
     .map((section) => ({
       ...section,
-      items: section.items.filter(
-        (item) => !filtre || normaliser(`${libelleNav(item)} ${indiceNav(item, surface)}`).includes(filtre),
-      ),
+      items: section.items.filter((item) => {
+        if (!filtre) return true;
+        const carte = carteModule(item.key);
+        return normaliser(`${libelleNav(item)} ${indiceNav(item, surface)} ${carte ? `${carte.quoi} ${carte.pourQui} ${carte.exemple}` : ''}`).includes(filtre);
+      }),
     }))
     .filter((section) => section.items.length > 0);
 
@@ -94,6 +96,12 @@ export function ModuleGrid({
               const e = etat(item.key);
               const ouvert = e === 'ouvert' || e === 'inclus';
               const attente = enCours === item.key;
+              /*
+                LA CARTE (Bloc 3) : ce que ça fait, pour qui, un exemple —
+                trois lignes qu'on lit en cinq secondes. La phrase d'aide de
+                la navigation reste le repli d'un module sans carte.
+              */
+              const carte = carteModule(item.key);
               const corps = (
                 <>
                   <span className="flex items-start justify-between gap-2">
@@ -117,7 +125,15 @@ export function ModuleGrid({
                   <span className={`text-sm font-medium leading-tight ${ouvert ? 'text-text-primary' : 'text-text-secondary'}`}>
                     {libelleNav(item)}
                   </span>
-                  <span className="text-[11px] leading-snug text-text-muted">{indiceNav(item, surface)}</span>
+                  <span className="text-[11px] leading-snug text-text-muted">{carte?.quoi ?? indiceNav(item, surface)}</span>
+                  {carte && mode !== 'composer' && (
+                    <>
+                      <span className="text-[11px] leading-snug text-text-muted">
+                        <span className="text-text-secondary">{t('carte.pourQui')} :</span> {carte.pourQui}
+                      </span>
+                      <span className="text-[11px] italic leading-snug text-text-secondary">{carte.exemple}</span>
+                    </>
+                  )}
                 </>
               );
               const cadre = `group flex h-full flex-col gap-2 rounded-xl border p-3 text-left transition-colors duration-200 ${

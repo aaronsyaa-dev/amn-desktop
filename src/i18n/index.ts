@@ -106,6 +106,27 @@ export function t(cle: CleTraduction, valeurs?: Record<string, string | number>)
  * absente retombe sur le français — visible, honnête.
  */
 
+/**
+ * LA CARTE D'UN MODULE — ce que ça fait, pour qui, un exemple.
+ *
+ * Trois phrases par module, dans la langue active, lues par la Bibliothèque,
+ * Découvrir, le dossier d'une cliente et la présentation à la première
+ * ouverture. Les clés sont dynamiques (`carte.<module>.quoi`), donc lues
+ * en dehors du typage strict de `t` : un module sans carte rend `null`, et
+ * l'écran retombe sur sa phrase d'aide — jamais sur une clé nue.
+ */
+export function carteModule(cle: string): { quoi: string; pourQui: string; exemple: string } | null {
+  const langue = langueActive();
+  const dico = DICTIONNAIRES[langue] as Record<string, string>;
+  const secours = en as Record<string, string>;
+  const lire = (suffixe: string) => dico[`carte.${cle}.${suffixe}`] ?? secours[`carte.${cle}.${suffixe}`];
+  const quoi = lire('quoi');
+  const pourQui = lire('pourQui');
+  const exemple = lire('exemple');
+  if (!quoi || !pourQui || !exemple) return null;
+  return { quoi, pourQui, exemple };
+}
+
 export type SurfaceNav = 'interne' | 'business' | 'support';
 
 export function libelleNav(item: { key: string; label: string }): string {
