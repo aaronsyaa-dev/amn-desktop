@@ -61,8 +61,11 @@ import { DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs } from '../shared/ap
 import { AccentSection } from '../components/settings/AccentSection';
 import { LangueSection } from '../components/settings/LangueSection';
 import { useSupportContext } from '../state/OrgContextContext';
+import { useLangue, t as tr } from '../i18n';
 
 export function SettingsScreen() {
+  // Abonnement à la langue : les textes ci-dessous passent par `tr`, lu au rendu.
+  useLangue();
   const { user, org } = useAuth();
   // `support` vaut null hors contexte client. Lu ici plutôt que dans la section
   // elle-même : c'est l'écran qui sait dans quel contexte il est monté.
@@ -74,10 +77,8 @@ export function SettingsScreen() {
     <StaggerGroup className="flex flex-col gap-6">
       <StaggerItem>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-text-primary">Paramètres</h1>
-          <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
-            Profil · sécurité · notifications
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight text-text-primary">{tr('hist.settings.parametres')}</h1>
+          <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">{tr('hist.settings.profilSecuriteNotifications')}</p>
         </div>
       </StaggerItem>
 
@@ -205,7 +206,7 @@ function AboutSection() {
   }, []);
 
   return (
-    <Panel icon={Info} title="À propos" subtitle="Version, historique des mises à jour et identité de l’application.">
+    <Panel icon={Info} title={tr('hist.settings.aPropos')} subtitle="Version, historique des mises à jour et identité de l’application.">
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5">
           <div className="flex flex-col gap-2">
@@ -226,9 +227,7 @@ function AboutSection() {
         </div>
 
         <div>
-          <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-text-muted">
-            Historique des versions
-          </p>
+          <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.settings.historiqueDesVersions')}</p>
           <div className="space-y-4">
             {CHANGELOG.map((entry) => (
               <div key={entry.version} className="border-l border-border pl-4">
@@ -279,7 +278,7 @@ function StartupSection() {
   return (
     <Panel
       icon={Power}
-      title="Démarrage"
+      title={tr('hist.settings.demarrage')}
       subtitle={`Lancer ${EDITION_PRODUCT_NAME} automatiquement, discrètement en arrière-plan.`}
     >
       {loading ? (
@@ -287,12 +286,10 @@ function StartupSection() {
       ) : (
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-text-primary">Démarrer avec Windows</p>
-            <p className="text-xs text-text-muted">
-              L’app démarre en arrière-plan à l’ouverture de session et reste dans la barre système.
-            </p>
+            <p className="text-sm font-medium text-text-primary">{tr('hist.settings.demarrerAvecWindows')}</p>
+            <p className="text-xs text-text-muted">{tr('hist.settings.lAppDemarreEn')}</p>
           </div>
-          <Toggle on={autoLaunch} onClick={toggle} label="Démarrer avec Windows" />
+          <Toggle on={autoLaunch} onClick={toggle} label={tr('hist.settings.demarrerAvecWindows')} />
         </div>
       )}
     </Panel>
@@ -367,7 +364,7 @@ function ProfileSection({ email }: { email: string }) {
             type="button"
             onClick={() => fileRef.current?.click()}
             className="group relative overflow-hidden rounded-full"
-            title="Changer la photo"
+            title={tr('hist.settings.changerLaPhoto')}
           >
             <UserAvatar email={email} size={88} ring />
             <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/55 opacity-0 transition-opacity group-hover:opacity-100">
@@ -399,7 +396,7 @@ function ProfileSection({ email }: { email: string }) {
 
         <div className="flex-1 space-y-3">
           <label className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Nom affiché</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.settings.nomAffiche')}</span>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -409,9 +406,7 @@ function ProfileSection({ email }: { email: string }) {
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-              Statut personnalisé (optionnel)
-            </span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.settings.statutPersonnaliseOptionnel')}</span>
             <input
               value={presenceText}
               onChange={(e) => setPresenceText(e.target.value)}
@@ -429,8 +424,7 @@ function ProfileSection({ email }: { email: string }) {
               animate={{ opacity: 1 }}
               className="flex items-center gap-1 text-xs text-success"
             >
-              <Check size={13} strokeWidth={2.25} /> Enregistré
-            </motion.p>
+              <Check size={13} strokeWidth={2.25} />{tr('hist.settings.enregistre')}</motion.p>
           )}
           {refus && (
             <motion.p
@@ -465,7 +459,7 @@ function PasswordSection({ email, remote }: { email: string; remote: boolean }) 
   const submit = async () => {
     setMsg(null);
     if (next !== confirm) {
-      setMsg({ ok: false, text: 'La confirmation ne correspond pas.' });
+      setMsg({ ok: false, text: tr('hist.settings.laConfirmationNeCorrespond') });
       return;
     }
     setBusy(true);
@@ -480,7 +474,7 @@ function PasswordSection({ email, remote }: { email: string; remote: boolean }) 
         });
         if (!res.ok) throw new Error(res.error ?? 'Échec de la mise à jour.');
       }
-      setMsg({ ok: true, text: 'Mot de passe mis à jour.' });
+      setMsg({ ok: true, text: tr('hist.settings.motDePasseMis') });
       // Le serveur a déjà baissé le drapeau ; on l'éteint ici pour que le
       // bandeau disparaisse dans le même geste que la validation.
       clearPasswordFromSupport();
@@ -528,7 +522,7 @@ function PasswordSection({ email, remote }: { email: string; remote: boolean }) 
         >
           <AlertTriangle size={15} strokeWidth={2} className="mt-px flex-shrink-0 text-warning" />
           <p className="min-w-0 flex-1 text-xs leading-relaxed text-text-primary">
-            <span className="font-semibold">Ce mot de passe n’est pas le vôtre.</span> Il vous a été
+            <span className="font-semibold">{tr('hist.settings.ceMotDePasse')}</span> Il vous a été
             envoyé par message, donc il est écrit quelque part et une autre personne le connaît.
             Choisissez-en un vous-même ci-dessous — ce sera le seul à ne pas avoir circulé.
           </p>
@@ -593,7 +587,7 @@ function NotificationsSection({ email }: { email: string }) {
   return (
     <Panel
       icon={Bell}
-      title="Notifications système"
+      title={tr('hist.settings.notificationsSysteme')}
       subtitle="Choisissez les événements qui déclenchent une notification de bureau."
     >
       {loading ? (
@@ -698,14 +692,14 @@ function PushSection({ email }: { email: string }) {
             : 'Aucun appareil enregistré pour ce compte.',
       );
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Échec du test.');
+      setMessage(err instanceof Error ? err.message : tr('hist.settings.echecDuTest'));
     }
   };
 
   return (
     <Panel
       icon={Bell}
-      title="Notifications sur cet appareil"
+      title={tr('hist.settings.notificationsSurCetAppareil')}
       /*
         Le sous-titre parlait d'« un appel entrant » — une fonctionnalité d'AMN
         DevSec, que la cliente n'a pas. Ce bouton est pourtant le SEUL endroit
@@ -736,9 +730,7 @@ function PushSection({ email }: { email: string }) {
             type="button"
             onClick={() => void test()}
             className="rounded-lg border border-border px-3 py-2 text-xs uppercase tracking-wider text-text-secondary transition-colors hover:text-text-primary"
-          >
-            Envoyer un test
-          </button>
+          >{tr('hist.settings.envoyerUnTest')}</button>
         )}
       </div>
       {message && (

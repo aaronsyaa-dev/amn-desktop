@@ -21,9 +21,10 @@ import type { TaskMarker } from '../lib/taskMarkers';
 import type { ReportDraft } from '../state/useReports';
 import type { Client, SharedTaskStatus } from '../shared/api';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
+import { useLangue, t as tr } from '../i18n';
 
 const COLUMNS: { status: SharedTaskStatus; label: string }[] = [
-  { status: 'todo', label: 'À faire' },
+  { status: 'todo', label: tr('hist.tasks.aFaire') },
   { status: 'doing', label: 'En cours' },
   { status: 'done', label: 'Fait' },
 ];
@@ -189,8 +190,8 @@ export function TasksScreen() {
           le reste de cet écran (`TEAM_ENABLED`).
         */}
         <ScreenHeader
-          eyebrow="Poste de travail · Tâches"
-          title="Tâches"
+          eyebrow={tr('hist.surtitre', { module: tr('hist.tasks.titre') })}
+          title={tr('hist.tasks.titre')}
           description={
             TEAM_ENABLED
               ? 'Qui fait quoi, partagé en équipe.'
@@ -198,7 +199,7 @@ export function TasksScreen() {
           }
           stats={[
             {
-              label: 'À faire',
+              label: tr('hist.tasks.aFaire'),
               value: counts.todo,
               emphasis: counts.todo > 0,
               serie: serieStock(
@@ -209,7 +210,7 @@ export function TasksScreen() {
               brut: counts.todo,
             },
             { label: 'En cours', value: counts.doing },
-            { label: 'Terminées', value: counts.done },
+            { label: tr('hist.tasks.terminees'), value: counts.done },
           ]}
           actions={
             <button
@@ -217,9 +218,7 @@ export function TasksScreen() {
               onClick={() => setCreating(true)}
               className="flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
             >
-              <Plus size={16} strokeWidth={2.25} />
-              Nouvelle tâche
-            </button>
+              <Plus size={16} strokeWidth={2.25} />{tr('hist.tasks.nouvelleTache')}</button>
           }
         />
       </StaggerItem>
@@ -340,16 +339,11 @@ function TaskColumn({
             <p className="px-1 py-4 font-mono text-xs text-text-muted/50">—</p>
           ) : tableauVide ? (
             <div className="px-1 py-4">
-              <p className="text-[13px] leading-relaxed text-text-secondary">
-                Une tâche, c’est une chose à faire et une seule. Elle passe d’une colonne à la
-                suivante en la déposant, et peut porter un site, un client ou une échéance.
-              </p>
-              <p className="mt-2 text-[13px] leading-relaxed text-text-muted">
-                Commencez par la plus proche : celle que vous auriez notée sur un papier.
-              </p>
+              <p className="text-[13px] leading-relaxed text-text-secondary">{tr('hist.tasks.uneTacheCEst')}</p>
+              <p className="mt-2 text-[13px] leading-relaxed text-text-muted">{tr('hist.tasks.commencezParLaPlus')}</p>
             </div>
           ) : (
-            <p className="px-1 py-4 font-mono text-xs text-text-muted">Rien ici.</p>
+            <p className="px-1 py-4 font-mono text-xs text-text-muted">{tr('hist.tasks.rienIci')}</p>
           )
         ) : (
           tasks.map((task) => (
@@ -415,7 +409,7 @@ function TaskCard({
           // déplacer. C'est la cible principale de la carte — celle qu'on vise
           // pour ouvrir la tâche — et elle était la plus petite.
           className="-my-1.5 flex min-w-0 items-start gap-1.5 py-1.5 text-left"
-          title="Ouvrir la tâche"
+          title={tr('hist.tasks.ouvrirLaTache')}
         >
           <span
             className={`mt-1 h-2 w-2 flex-shrink-0 rounded-full ${prio.dot}`}
@@ -426,7 +420,7 @@ function TaskCard({
         <button
           type="button"
           onClick={() => onRemove(task.id)}
-          aria-label="Supprimer la tâche"
+          aria-label={tr('hist.tasks.supprimerLaTache')}
           className="flex-shrink-0 text-text-muted opacity-0 transition-opacity hover:text-danger group-hover/card:opacity-100"
         >
           <Trash2 size={13} strokeWidth={1.75} />
@@ -474,7 +468,7 @@ function TaskCard({
             <button
               type="button"
               onClick={() => onRemoveMarker(task, m.id)}
-              aria-label="Retirer le repère"
+              aria-label={tr('hist.tasks.retirerLeRepere')}
               className="opacity-0 transition-opacity hover:text-danger group-hover/mark:opacity-100"
             >
               <X size={9} strokeWidth={2.5} />
@@ -486,11 +480,9 @@ function TaskCard({
           onClick={() => beginCapture((marker) => onAddMarker(task, marker))}
           disabled={capturing}
           className="flex items-center gap-1 rounded-sm border border-dashed border-border px-1.5 py-1 font-mono text-[10px] text-text-muted transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-40"
-          title="Pointer un endroit de l’app à associer à cette tâche"
+          title={tr('hist.tasks.pointerUnEndroitDe')}
         >
-          <MapPin size={10} strokeWidth={2} />
-          Ajouter un repère
-        </button>
+          <MapPin size={10} strokeWidth={2} />{tr('hist.tasks.ajouterUnRepere')}</button>
       </div>
 
       <div className="mt-3 flex items-center justify-between">
@@ -535,9 +527,7 @@ function TaskCard({
           }
           className="mt-2 flex w-full items-center justify-center gap-1.5 border border-accent/40 bg-accent/10 py-1.5 font-mono text-[10px] uppercase tracking-wider text-accent transition-colors hover:bg-accent/20"
         >
-          <FileText size={11} strokeWidth={2} />
-          Faire un rapport
-        </button>
+          <FileText size={11} strokeWidth={2} />{tr('hist.tasks.faireUnRapport')}</button>
       )}
     </motion.div>
   );
@@ -603,7 +593,7 @@ function NewTaskModal({
         className="relative w-full max-w-md border border-border-strong bg-surface"
       >
         <div className="flex items-center justify-between gap-2 border-b border-border px-5 py-3">
-          <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">Nouvelle tâche</h2>
+          <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">{tr('hist.tasks.nouvelleTache')}</h2>
           <button type="button" onClick={onClose} aria-label="Fermer" className="flex h-9 w-9 items-center justify-center text-text-secondary hover:text-text-primary">
             <X size={18} strokeWidth={2} />
           </button>
@@ -620,7 +610,7 @@ function NewTaskModal({
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Détail</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.tasks.detail')}</span>
             <textarea
               value={detail}
               onChange={(e) => setDetail(e.target.value)}
@@ -630,7 +620,7 @@ function NewTaskModal({
           </label>
           {TEAM_ENABLED && (
           <label className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Assigné à</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.tasks.assigneA')}</span>
             <div className="flex border border-border">
               {TEAM_MEMBERS.map((m) => (
                 <button
@@ -648,7 +638,7 @@ function NewTaskModal({
           </label>
           )}
           <label className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Priorité</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.tasks.priorite')}</span>
             <div className="flex border border-border">
               {PRIORITIES.map((p) => (
                 <button
@@ -667,13 +657,13 @@ function NewTaskModal({
           </label>
           {SITES_ENABLED && (
           <label className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Lier à un site (optionnel)</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.tasks.lierAUnSite')}</span>
             <select
               value={siteId}
               onChange={(e) => setSiteId(e.target.value)}
               className="input-focus border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
             >
-              <option value="">— Aucun —</option>
+              <option value="">{tr('hist.tasks.aucun')}</option>
               {sites.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -683,13 +673,13 @@ function NewTaskModal({
           </label>
           )}
           <label className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Lier à un client (optionnel)</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.tasks.lierAUnClient')}</span>
             <select
               value={clientId}
               onChange={(e) => setClientId(e.target.value)}
               className="input-focus border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
             >
-              <option value="">— Aucun —</option>
+              <option value="">{tr('hist.tasks.aucun')}</option>
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -702,9 +692,7 @@ function NewTaskModal({
             onClick={submit}
             disabled={!title.trim()}
             className="mt-1 bg-accent px-3 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover disabled:opacity-40"
-          >
-            Créer la tâche
-          </button>
+          >{tr('hist.tasks.creerLaTache')}</button>
         </div>
       </motion.div>
     </div>
@@ -818,7 +806,7 @@ function TaskDetailModal({
                 />
               </label>
               <label className="flex flex-col gap-1.5">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Détail</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.tasks.detail')}</span>
                 <textarea
                   value={detail}
                   onChange={(e) => setDetail(e.target.value)}
@@ -828,7 +816,7 @@ function TaskDetailModal({
               </label>
               {TEAM_ENABLED && (
               <label className="flex flex-col gap-1.5">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Assigné à</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.tasks.assigneA')}</span>
                 <div className="flex border border-border">
                   {TEAM_MEMBERS.map((m) => (
                     <button
@@ -846,7 +834,7 @@ function TaskDetailModal({
               </label>
               )}
               <label className="flex flex-col gap-1.5">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Priorité</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.tasks.priorite')}</span>
                 <div className="flex border border-border">
                   {PRIORITIES.map((p) => (
                     <button
@@ -869,9 +857,7 @@ function TaskDetailModal({
                   onClick={saveEdit}
                   disabled={!title.trim()}
                   className="flex-1 bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover disabled:opacity-40"
-                >
-                  Enregistrer
-                </button>
+                >{tr('hist.tasks.enregistrer')}</button>
                 <button
                   type="button"
                   onClick={() => {
@@ -919,7 +905,7 @@ function TaskDetailModal({
 
               {/* Markers (A4) */}
               <div className="mt-4">
-                <p className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-text-muted">Repères</p>
+                <p className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.tasks.reperes')}</p>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {markers.map((m) => (
                     <span key={m.id} className="group/mk flex items-center gap-1 rounded-sm bg-accent/10 px-1.5 py-0.5 font-mono text-[10px] text-accent">
@@ -936,7 +922,7 @@ function TaskDetailModal({
                       <button
                         type="button"
                         onClick={() => onRemoveMarker(task, m.id)}
-                        aria-label="Retirer le repère"
+                        aria-label={tr('hist.tasks.retirerLeRepere')}
                         className="opacity-0 transition-opacity hover:text-danger group-hover/mk:opacity-100"
                       >
                         <X size={9} strokeWidth={2.5} />
@@ -952,8 +938,7 @@ function TaskDetailModal({
                     }}
                     className="flex items-center gap-1 rounded-sm border border-dashed border-border px-1.5 py-1 font-mono text-[10px] text-text-muted transition-colors hover:border-accent/50 hover:text-accent"
                   >
-                    <MapPin size={10} strokeWidth={2} /> Ajouter un repère
-                  </button>
+                    <MapPin size={10} strokeWidth={2} />{tr('hist.tasks.ajouterUnRepere')}</button>
                 </div>
               </div>
 
@@ -964,7 +949,7 @@ function TaskDetailModal({
                 </p>
                 <div className="flex flex-col gap-3">
                   {comments.length === 0 ? (
-                    <p className="text-xs text-text-muted">Aucun commentaire. Lancez la discussion.</p>
+                    <p className="text-xs text-text-muted">{tr('hist.tasks.aucunCommentaireLancezLa')}</p>
                   ) : (
                     comments.map((c) => (
                       <div key={c.id} className="flex gap-2">
@@ -1004,7 +989,7 @@ function TaskDetailModal({
               type="button"
               onClick={sendComment}
               disabled={!draft.trim()}
-              aria-label="Envoyer le commentaire"
+              aria-label={tr('hist.tasks.envoyerLeCommentaire')}
               className="flex h-9 w-9 items-center justify-center bg-accent text-bg transition-colors hover:bg-accent-hover disabled:opacity-40"
             >
               <Send size={15} strokeWidth={2} />
@@ -1012,7 +997,7 @@ function TaskDetailModal({
             <button
               type="button"
               onClick={() => onRemove(task.id)}
-              aria-label="Supprimer la tâche"
+              aria-label={tr('hist.tasks.supprimerLaTache')}
               className="flex h-9 w-9 items-center justify-center border border-border text-text-muted transition-colors hover:border-danger/50 hover:text-danger"
             >
               <Trash2 size={15} strokeWidth={1.75} />

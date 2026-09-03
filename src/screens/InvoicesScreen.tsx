@@ -45,6 +45,7 @@ import type { BillingIdentity, Client, Invoice, InvoiceLine, InvoiceStatus } fro
 import { metaOf } from '../lib/records';
 import { EmptyState, FirstRun } from '../components/EmptyState';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
+import { useLangue, t as tr } from '../i18n';
 
 /**
  * Facturation.
@@ -72,13 +73,15 @@ type Filter = 'all' | InvoiceStatus | 'overdue';
 const FILTERS: { value: Filter; label: string }[] = [
   { value: 'all', label: 'Toutes' },
   { value: 'draft', label: 'Brouillons' },
-  { value: 'issued', label: 'À encaisser' },
+  { value: 'issued', label: tr('hist.invoices.aEncaisser') },
   { value: 'overdue', label: 'En retard' },
-  { value: 'paid', label: 'Encaissées' },
-  { value: 'cancelled', label: 'Annulées' },
+  { value: 'paid', label: tr('hist.invoices.encaissees') },
+  { value: 'cancelled', label: tr('hist.invoices.annulees') },
 ];
 
 export function InvoicesScreen() {
+  // Abonnement à la langue : les textes ci-dessous passent par `tr`, lu au rendu.
+  useLangue();
   const { clients } = useClients();
   const {
     invoices,
@@ -154,9 +157,9 @@ export function InvoicesScreen() {
         chiffres restent, et la liste remonte d'autant.
       */}
       <ScreenHeader
-        eyebrow="Poste de travail · Facturation"
-        title="Facturation"
-        description="Devis, encaissements et relances."
+        eyebrow={tr('hist.surtitre', { module: tr('hist.invoices.titre') })}
+        title={tr('hist.invoices.titre')}
+        description={tr('hist.invoices.devisEncaissementsEtRelances')}
         stats={[
           { label: `Encaissé ${summary.year}`, value: formatCentsCompact(summary.collectedCents) },
           { label: 'En attente', value: formatCentsCompact(summary.outstandingCents) },
@@ -164,7 +167,7 @@ export function InvoicesScreen() {
             label: summary.overdueCount > 0 ? `En retard · ${summary.overdueCount}` : 'En retard',
             value: formatCentsCompact(summary.overdueCents),
             emphasis: summary.overdueCents > 0,
-            title: 'Des documents dont l’échéance est passée et qui ne sont pas réglés.',
+            title: tr('hist.invoices.desDocumentsDontL'),
           },
           {
             // Les montants restent des nombres seuls — une somme d'euros n'est
@@ -196,8 +199,8 @@ export function InvoicesScreen() {
           <button
             type="button"
             onClick={() => setEditingIdentity(true)}
-            title="Coordonnées de facturation"
-            aria-label="Coordonnées de facturation"
+            title={tr('hist.invoices.coordonneesDeFacturation')}
+            aria-label={tr('hist.invoices.coordonneesDeFacturation')}
             className="flex h-11 w-11 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:h-9 md:w-9"
           >
             <Building2 size={16} strokeWidth={1.75} />
@@ -209,7 +212,7 @@ export function InvoicesScreen() {
             className="flex h-11 items-center gap-2 bg-accent px-3 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover disabled:opacity-40 md:h-9"
           >
             <Plus size={16} strokeWidth={2.25} />
-            <span className="hidden sm:inline">Nouvelle facture</span>
+            <span className="hidden sm:inline">{tr('hist.invoices.nouvelleFacture')}</span>
             <span className="sm:hidden">Facture</span>
           </button>
         </div>
@@ -224,10 +227,7 @@ export function InvoicesScreen() {
         >
           <AlertTriangle size={15} strokeWidth={2} className="flex-shrink-0 text-warning" />
           <span className="min-w-0 flex-1 text-xs leading-tight text-text-primary">
-            <strong className="font-semibold">Coordonnées de facturation incomplètes.</strong> Raison
-            sociale, adresse et SIRET sont obligatoires sur une facture — sans eux, l’émission reste
-            bloquée.
-          </span>
+            <strong className="font-semibold">{tr('hist.invoices.coordonneesDeFacturationIncompletes')}</strong>{tr('hist.invoices.raisonSocialeAdresseEt')}</span>
         </button>
       )}
 
@@ -308,17 +308,11 @@ export function InvoicesScreen() {
               */
               <div className="px-4">
                 {clients.length === 0 ? (
-                  <FirstRun title="Créez d’abord une fiche client">
-                    Une facture est toujours adressée à quelqu’un : elle reprend ses coordonnées et
-                    ses mentions légales. Sans fiche, il n’y a personne à facturer.
-                  </FirstRun>
+                  <FirstRun title={tr('hist.invoices.creezDAbordUne')}>{tr('hist.invoices.uneFactureEstToujours')}</FirstRun>
                 ) : filter === 'all' ? (
-                  <EmptyState>
-                    Aucune facture émise. Un devis accepté se transforme en facture depuis la fiche
-                    du client.
-                  </EmptyState>
+                  <EmptyState>{tr('hist.invoices.aucuneFactureEmiseUn')}</EmptyState>
                 ) : (
-                  <EmptyState quiet>Rien dans ce filtre.</EmptyState>
+                  <EmptyState quiet>{tr('hist.invoices.rienDansCeFiltre')}</EmptyState>
                 )}
               </div>
             ) : (
@@ -357,9 +351,7 @@ export function InvoicesScreen() {
             onEditIdentity={() => setEditingIdentity(true)}
           />
         ) : invoices.length === 0 ? null : (
-          <div className="hidden items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted md:flex">
-            Sélectionnez une facture
-          </div>
+          <div className="hidden items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted md:flex">{tr('hist.invoices.selectionnezUneFacture')}</div>
         )}
       </div>
 
@@ -524,7 +516,7 @@ function InvoiceDetail({
         <button
           type="button"
           onClick={onBack}
-          aria-label="Retour à la liste"
+          aria-label={tr('hist.invoices.retourALaListe')}
           className="flex h-9 w-9 flex-shrink-0 items-center justify-center text-text-secondary transition-colors hover:text-text-primary md:hidden"
         >
           <ArrowLeft size={18} strokeWidth={2} />
@@ -555,20 +547,20 @@ function InvoiceDetail({
       <div className="min-h-0 flex-1 overflow-y-auto p-3 md:p-4">
         {late && (
           <p className="mb-3 border border-border border-l-2 border-l-danger bg-surface px-3 py-2 text-xs leading-tight text-text-primary">
-            <strong className="font-semibold">Échéance dépassée</strong> — attendue le{' '}
+            <strong className="font-semibold">{tr('hist.invoices.echeanceDepassee')}</strong> — attendue le{' '}
             {formatDay(invoice.dueAt)}.
           </p>
         )}
         {invoice.status === 'cancelled' && (
           <p className="mb-3 border border-border px-3 py-2 text-xs leading-tight text-text-secondary">
-            <strong className="font-semibold text-text-primary">Facture annulée.</strong> Son numéro
+            <strong className="font-semibold text-text-primary">{tr('hist.invoices.factureAnnulee')}</strong> Son numéro
             reste pris : la séquence légale ne doit pas comporter de trou.
             {invoice.cancelReason && ` Motif : ${invoice.cancelReason}`}
           </p>
         )}
         {invoice.status === 'paid' && (
           <p className="mb-3 border border-success/50 px-3 py-2 text-xs leading-tight text-text-secondary">
-            <strong className="font-semibold text-text-primary">Encaissée</strong> le{' '}
+            <strong className="font-semibold text-text-primary">{tr('hist.invoices.encaissee')}</strong> le{' '}
             {formatDay(invoice.paidAt)}
             {invoice.paymentMethod ? ` — ${invoice.paymentMethod}` : ''}.
           </p>
@@ -656,9 +648,7 @@ function InvoiceDetail({
             onClick={() => onUpdate({ lines: [...invoice.lines, emptyLine()] })}
             className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 border border-dashed border-border font-mono text-[10px] uppercase tracking-widest text-text-muted transition-colors hover:border-border-strong hover:text-text-secondary"
           >
-            <Plus size={13} strokeWidth={2} />
-            Ajouter une ligne
-          </button>
+            <Plus size={13} strokeWidth={2} />{tr('hist.invoices.ajouterUneLigne')}</button>
         )}
 
         {/* --------------------------------------------------------- totaux -- */}
@@ -710,18 +700,18 @@ function InvoiceDetail({
         )}
 
         {draft ? (
-          <Field label="Notes portées sur la facture">
+          <Field label={tr('hist.invoices.notesPorteesSurLa')}>
             <textarea
               rows={3}
               value={invoice.notes}
               onChange={(e) => onUpdate({ notes: e.target.value })}
-              placeholder="Conditions particulières, référence de commande…"
+              placeholder={tr('hist.invoices.conditionsParticulieresReferenceDe')}
               className="input-focus w-full resize-none border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
             />
           </Field>
         ) : (
           invoice.notes && (
-            <Field label="Notes portées sur la facture">
+            <Field label={tr('hist.invoices.notesPorteesSurLa')}>
               <p className="whitespace-pre-wrap text-sm text-text-secondary">{invoice.notes}</p>
             </Field>
           )
@@ -753,15 +743,13 @@ function InvoiceDetail({
               }}
               className="flex min-h-11 flex-1 items-center justify-center gap-2 bg-accent px-3 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
             >
-              <Send size={15} strokeWidth={2.25} />
-              Émettre la facture
-            </button>
+              <Send size={15} strokeWidth={2.25} />{tr('hist.invoices.emettreLaFacture')}</button>
             <button
               type="button"
               onClick={() => (confirmDelete ? onDelete() : setConfirmDelete(true))}
               onBlur={() => setConfirmDelete(false)}
-              aria-label="Supprimer le brouillon"
-              title="Supprimer le brouillon"
+              aria-label={tr('hist.invoices.supprimerLeBrouillon')}
+              title={tr('hist.invoices.supprimerLeBrouillon')}
               className={`flex min-h-11 items-center justify-center gap-2 border px-3 text-xs uppercase tracking-wider transition-colors ${
                 confirmDelete
                   ? 'border-danger bg-danger-muted text-danger'
@@ -781,9 +769,7 @@ function InvoiceDetail({
               onClick={() => setPaying(true)}
               className="flex min-h-11 flex-1 items-center justify-center gap-2 bg-accent px-3 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
             >
-              <Check size={15} strokeWidth={2.5} />
-              Marquer encaissée
-            </button>
+              <Check size={15} strokeWidth={2.5} />{tr('hist.invoices.marquerEncaissee')}</button>
             <button
               type="button"
               onClick={() => setCancelling(true)}
@@ -808,7 +794,7 @@ function InvoiceDetail({
               <input
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
-                aria-label="Moyen de règlement"
+                aria-label={tr('hist.invoices.moyenDeReglement')}
                 placeholder="Virement"
                 className="input-focus min-h-11 flex-1 border border-border bg-bg px-3 text-sm text-text-primary outline-none"
               />
@@ -854,9 +840,7 @@ function InvoiceDetail({
                   setCancelReason('');
                 }}
                 className="flex min-h-11 flex-1 items-center justify-center border border-danger bg-danger-muted px-3 text-sm font-semibold text-danger transition-colors disabled:opacity-40"
-              >
-                Annuler la facture
-              </button>
+              >{tr('hist.invoices.annulerLaFacture')}</button>
               <button
                 type="button"
                 onClick={() => setCancelling(false)}
@@ -978,14 +962,14 @@ function LineEditor({
         <input
           value={line.label}
           onChange={(e) => onChange({ label: e.target.value })}
-          placeholder="Désignation de la prestation"
+          placeholder={tr('hist.invoices.designationDeLaPrestation')}
           className="input-focus min-h-11 min-w-0 flex-1 border border-border bg-bg px-2.5 text-sm text-text-primary outline-none"
         />
         {onRemove && (
           <button
             type="button"
             onClick={onRemove}
-            aria-label="Retirer la ligne"
+            aria-label={tr('hist.invoices.retirerLaLigne')}
             className="flex h-11 w-9 flex-shrink-0 items-center justify-center text-text-muted transition-colors hover:text-danger"
           >
             <X size={15} strokeWidth={2} />
@@ -994,7 +978,7 @@ function LineEditor({
       </div>
       <div className="mt-2 grid grid-cols-3 gap-2">
         <label className="flex flex-col gap-1">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">Qté</span>
+          <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">{tr('hist.invoices.qte')}</span>
           <input
             type="number"
             min={0}
@@ -1061,7 +1045,7 @@ const IDENTITY_FIELDS: {
   { key: 'rcsCity', label: 'RCS (ville)', placeholder: 'Paris' },
   { key: 'vatNumber', label: 'N° TVA intracommunautaire', placeholder: 'FR00000000000' },
   { key: 'email', label: 'E-mail', placeholder: 'contact@…' },
-  { key: 'phone', label: 'Téléphone' },
+  { key: 'phone', label: tr('hist.invoices.telephone') },
   { key: 'iban', label: 'IBAN' },
   { key: 'bic', label: 'BIC' },
 ];
@@ -1100,9 +1084,7 @@ function IdentityModal({
       >
         <div className="flex flex-shrink-0 items-center justify-between border-b border-border px-4 py-3">
           <h2 className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">
-            <Building2 size={14} strokeWidth={1.75} />
-            Coordonnées de facturation
-          </h2>
+            <Building2 size={14} strokeWidth={1.75} />{tr('hist.invoices.coordonneesDeFacturation')}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -1159,18 +1141,14 @@ function IdentityModal({
               </span>
               <span className="min-w-0 flex-1 text-xs leading-tight text-text-primary">
                 Franchise en base de TVA
-                <span className="block text-text-muted">
-                  Aucune TVA sur les factures ; la mention « art. 293 B du CGI » est ajoutée.
-                </span>
+                <span className="block text-text-muted">{tr('hist.invoices.aucuneTvaSurLes')}</span>
               </span>
             </button>
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-3">
             <label className="block">
-              <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                Délai de règlement (jours)
-              </span>
+              <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.invoices.delaiDeReglementJours')}</span>
               <input
                 type="number"
                 min={0}
@@ -1180,9 +1158,7 @@ function IdentityModal({
               />
             </label>
             <label className="block">
-              <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                Pénalités de retard (%/an)
-              </span>
+              <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.invoices.penalitesDeRetardAn')}</span>
               <input
                 type="number"
                 min={0}
@@ -1203,9 +1179,7 @@ function IdentityModal({
               onClose();
             }}
             className="min-h-11 flex-1 bg-accent px-3 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
-          >
-            Enregistrer
-          </button>
+          >{tr('hist.invoices.enregistrer')}</button>
           <button
             type="button"
             onClick={onClose}

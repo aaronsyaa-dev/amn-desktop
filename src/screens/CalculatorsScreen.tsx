@@ -25,6 +25,7 @@ import { formatCents } from '../lib/money';
 import { defaultText, formatValue, parseValue } from '../lib/calcFormat';
 import { durationMs } from '../state/timeEngine';
 import { staggerContainer, staggerItem } from '../lib/transitions';
+import { useLangue, t as tr } from '../i18n';
 
 /**
  * Calculateurs métier (BLOCS A/B/C).
@@ -129,12 +130,12 @@ export function CalculatorsScreen() {
     >
       <motion.div variants={staggerItem}>
         <ScreenHeader
-          eyebrow="Poste de travail · Calculateurs"
-          title="Calculateurs"
-          description="Un seul moteur, aucune formule écrite en dur — chaque métier a le sien."
+          eyebrow={tr('hist.surtitre', { module: tr('hist.calculators.titre') })}
+          title={tr('hist.calculators.titre')}
+          description={tr('hist.calculators.unSeulMoteurAucune')}
           stats={[
-            { label: 'Métiers couverts', value: CALC_PROFILES.length },
-            { label: 'Métier affiché', value: profile.label },
+            { label: tr('hist.calculators.metiersCouverts'), value: CALC_PROFILES.length },
+            { label: tr('hist.calculators.metierAffiche'), value: profile.label },
           ]}
         />
       </motion.div>
@@ -224,9 +225,7 @@ export function CalculatorsScreen() {
         {/* ------------------------------ Résultats ---------------------------- */}
         <section className="border border-border bg-surface p-4">
           <h2 className="mb-3 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">
-            <Calculator size={13} strokeWidth={1.75} />
-            Ce que ça donne
-          </h2>
+            <Calculator size={13} strokeWidth={1.75} />{tr('hist.calculators.ceQueCaDonne')}</h2>
 
           {result.errors.length > 0 && (
             <ul className="mb-3 flex flex-col gap-1">
@@ -274,9 +273,7 @@ export function CalculatorsScreen() {
                 le rembourrage a pris. Un dépliant de 15 px se rate au doigt,
                 et on le rate en tapant sur le chiffre juste au-dessus.
               */}
-              <summary className="-my-2 cursor-pointer py-2 font-mono text-[10px] uppercase tracking-widest text-text-muted hover:text-text-secondary">
-                Détail du calcul
-              </summary>
+              <summary className="-my-2 cursor-pointer py-2 font-mono text-[10px] uppercase tracking-widest text-text-muted hover:text-text-secondary">{tr('hist.calculators.detailDuCalcul')}</summary>
               <dl className="mt-2 flex flex-col gap-1">
                 {result.lines
                   .filter((l) => !l.output)
@@ -646,9 +643,7 @@ function MonthlyPanel() {
     <section className="border border-border bg-surface p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">
-          <Scale size={13} strokeWidth={1.75} />
-          Le mois, et sa répartition
-        </h2>
+          <Scale size={13} strokeWidth={1.75} />{tr('hist.calculators.leMoisEtSa')}</h2>
         <select
           value={month}
           onChange={(e) => setMonth(e.target.value)}
@@ -664,8 +659,8 @@ function MonthlyPanel() {
       </div>
 
       <dl className="grid grid-cols-3 gap-px border border-border bg-border">
-        <Cell icon={TrendingUp} label="Encaissé" value={formatCents(summary.revenueCents)} />
-        <Cell icon={TrendingDown} label="Dépensé" value={formatCents(summary.expensesCents)} />
+        <Cell icon={TrendingUp} label={tr('hist.calculators.encaisse')} value={formatCents(summary.revenueCents)} />
+        <Cell icon={TrendingDown} label={tr('hist.calculators.depense')} value={formatCents(summary.expensesCents)} />
         <Cell
           icon={Scale}
           label={positive ? 'Bénéfice' : 'Perte'}
@@ -698,10 +693,7 @@ function MonthlyPanel() {
         quelqu'un qui a travaillé trois fois plus touche la même chose.
       */}
       {summary.fellBackToEqual && (
-        <p className="mt-2 border border-warning/40 bg-warning-muted px-3 py-2 text-xs leading-relaxed text-text-primary">
-          Aucun temps enregistré sur ce mois : la répartition affichée est <strong>équitable</strong>,
-          pas pondérée. Chronométrez le travail pour que la pondération ait une base.
-        </p>
+        <p className="mt-2 border border-warning/40 bg-warning-muted px-3 py-2 text-xs leading-relaxed text-text-primary">{tr('hist.calculators.aucunTempsEnregistreSur')}<strong>{tr('hist.calculators.equitable')}</strong>{tr('hist.calculators.pasPondereeChronometrezLe')}</p>
       )}
 
       {partners.length === 0 ? (

@@ -10,6 +10,7 @@ import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { AJMANI_EMAIL, AJMANI_NAME } from '../lib/ajmaniChat';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
+import { useLangue, t as tr } from '../i18n';
 
 /**
  * Bibliothèque média (Bloc 3).
@@ -107,13 +108,13 @@ export function MediaLibraryScreen() {
     <LightboxProvider gallery={imageGallery}>
       <section className="flex flex-col gap-5">
         <ScreenHeader
-          eyebrow="Poste de travail · Médias"
-          title="Médias"
-          description="Les images et vidéos partagées dans le fil d’équipe, rassemblées."
+          eyebrow={tr('hist.medialibrary.posteDeTravailMedias')}
+          title={tr('hist.medialibrary.medias')}
+          description={tr('hist.medialibrary.lesImagesEtVideos')}
           stats={[
-            { label: 'Éléments', value: all.length },
+            { label: tr('hist.medialibrary.elements'), value: all.length },
             { label: 'Images', value: all.filter((m) => (m.kind ?? 'image') === 'image').length },
-            { label: 'Vidéos', value: all.filter((m) => m.kind === 'video').length },
+            { label: tr('hist.medialibrary.videos'), value: all.filter((m) => m.kind === 'video').length },
           ]}
         />
 
@@ -123,18 +124,18 @@ export function MediaLibraryScreen() {
             value={type}
             onChange={(v) => setType(v as TypeFilter)}
             options={[
-              { value: 'all', label: 'Tout' },
+              { value: 'all', label: tr('hist.medialibrary.tout') },
               { value: 'image', label: 'Images' },
-              { value: 'video', label: 'Vidéos' },
+              { value: 'video', label: tr('hist.medialibrary.videos') },
             ]}
           />
           <select
             value={sender}
             onChange={(e) => setSender(e.target.value)}
-            aria-label="Filtrer par expéditeur"
+            aria-label={tr('hist.medialibrary.filtrerParExpediteur')}
             className="input-focus cursor-pointer border border-border bg-surface px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-text-secondary"
           >
-            <option value="all">Tous les expéditeurs</option>
+            <option value="all">{tr('hist.medialibrary.tousLesExpediteurs')}</option>
             {senders.map((email) => (
               <option key={email} value={email}>
                 {senderName(email)}
@@ -155,7 +156,7 @@ export function MediaLibraryScreen() {
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-2 border border-dashed border-border py-20 text-center">
             <ImageOff size={24} strokeWidth={1.5} className="text-text-muted" />
-            <p className="text-sm font-medium text-text-primary">Aucun média</p>
+            <p className="text-sm font-medium text-text-primary">{tr('hist.medialibrary.aucunMedia')}</p>
             <p className="max-w-sm text-sm text-text-secondary">
               {all.length === 0
                 ? 'Les images et vidéos envoyées dans l’onglet Équipe apparaîtront ici.'
@@ -276,8 +277,7 @@ function MediaTile({
             </span>
           </span>
           <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-white">
-            <Film size={9} strokeWidth={2} /> Vidéo
-          </span>
+            <Film size={9} strokeWidth={2} />{tr('hist.medialibrary.video')}</span>
         </>
       )}
       {/* Meta on hover */}

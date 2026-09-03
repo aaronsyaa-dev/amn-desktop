@@ -49,6 +49,7 @@ import type {
 } from '../shared/api';
 import { FirstRun } from '../components/EmptyState';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
+import { useLangue, t as tr } from '../i18n';
 
 const STATUS_META: Record<
   ClientStatus,
@@ -67,16 +68,16 @@ const STATUS_ORDER: ClientStatus[] = ['active', 'paused', 'prospect'];
 
 const QUOTE_STATUS_META: Record<QuoteStatus, { label: string; dot: string }> = {
   draft: { label: 'BROUILLON', dot: 'bg-text-muted' },
-  sent: { label: 'ENVOYÉ', dot: 'border border-text-secondary bg-transparent' },
-  accepted: { label: 'ACCEPTÉ', dot: 'bg-success' },
-  refused: { label: 'REFUSÉ', dot: 'bg-danger' },
+  sent: { label: tr('hist.clients.envoye'), dot: 'border border-text-secondary bg-transparent' },
+  accepted: { label: tr('hist.clients.accepte'), dot: 'bg-success' },
+  refused: { label: tr('hist.clients.refuse'), dot: 'bg-danger' },
 };
 const QUOTE_STATUS_ORDER: QuoteStatus[] = ['draft', 'sent', 'accepted', 'refused'];
 
 const PAYMENT_META: Record<PaymentStatus, { label: string; dot: string; text: string }> = {
-  unpaid: { label: 'Non facturé', dot: 'bg-text-muted', text: 'text-text-secondary' },
+  unpaid: { label: tr('hist.clients.nonFacture'), dot: 'bg-text-muted', text: 'text-text-secondary' },
   pending: { label: 'En attente', dot: 'bg-warning', text: 'text-text-secondary' },
-  paid: { label: 'Payé', dot: 'bg-success', text: 'text-text-primary' },
+  paid: { label: tr('hist.clients.paye'), dot: 'bg-success', text: 'text-text-primary' },
   late: { label: 'En retard', dot: 'bg-danger', text: 'text-danger' },
 };
 const PAYMENT_ORDER: PaymentStatus[] = ['unpaid', 'pending', 'paid', 'late'];
@@ -90,6 +91,8 @@ function initials(name: string): string {
 }
 
 export function ClientsScreen() {
+  // Abonnement à la langue : les textes ci-dessous passent par `tr`, lu au rendu.
+  useLangue();
   const { sites } = useLinkedSites();
   const location = useLocation();
   // A @client mention (or any navigation) can request a specific client be
@@ -166,9 +169,9 @@ export function ClientsScreen() {
   return (
     <section className={`flex flex-col gap-4 ${clients.length === 0 ? '' : 'screen-h'}`}>
       <ScreenHeader
-        eyebrow="Poste de travail · Clients"
-        title="Clients"
-        description="La relation et les missions, fiche par fiche."
+        eyebrow={tr('hist.surtitre', { module: tr('hist.clients.titre') })}
+        title={tr('hist.clients.titre')}
+        description={tr('hist.clients.laRelationEtLes')}
         stats={[
           {
             label: 'Fiches',
@@ -185,7 +188,7 @@ export function ClientsScreen() {
           {
             label: 'Prospects',
             value: clients.filter((c) => c.status === 'prospect').length,
-            title: 'Des fiches ouvertes qui ne sont pas encore devenues des missions.',
+            title: tr('hist.clients.desFichesOuvertesQui'),
           },
         ]}
         actions={
@@ -194,9 +197,7 @@ export function ClientsScreen() {
             onClick={() => setAdding(true)}
             className="flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
           >
-            <Plus size={16} strokeWidth={2.25} />
-            Nouveau client
-          </button>
+            <Plus size={16} strokeWidth={2.25} />{tr('hist.clients.nouveauClient')}</button>
         }
       />
 
@@ -233,12 +234,9 @@ export function ClientsScreen() {
               <p className="eyebrow">Chargement…</p>
             ) : (
               <FirstRun
-                title="Aucune fiche client"
-                action={{ label: 'Créer une fiche', onClick: () => setAdding(true) }}
-              >
-                Une fiche rassemble les coordonnées, les échanges, les devis et l’état des
-                paiements. C’est le point de rattachement de la facturation.
-              </FirstRun>
+                title={tr('hist.clients.aucuneFicheClient')}
+                action={{ label: tr('hist.clients.creerUneFiche'), onClick: () => setAdding(true) }}
+              >{tr('hist.clients.uneFicheRassembleLes')}</FirstRun>
             )}
           </div>
         )}
@@ -266,9 +264,7 @@ function ClientList({
 }) {
   return (
     <div className="flex min-h-0 flex-col border border-border bg-surface">
-      <div className="border-b border-border px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary">
-        Répertoire
-      </div>
+      <div className="border-b border-border px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary">{tr('hist.clients.repertoire')}</div>
       <motion.div
         variants={staggerContainer}
         initial="initial"
@@ -486,7 +482,7 @@ function ClientHeader({
           value={client.company}
           onSave={(v) => onPatch(client.id, { company: v })}
           className="font-mono text-sm text-text-secondary"
-          placeholder="Société"
+          placeholder={tr('hist.clients.societe')}
         />
         <button
           type="button"
@@ -495,7 +491,7 @@ function ClientHeader({
           title={CLIENT_HEALTH_EXPLAINER}
         >
           <span className={`h-2 w-2 rounded-full ${health.dot}`} />
-          <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Santé relation</span>
+          <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">{tr('hist.clients.santeRelation')}</span>
           <span className={`text-xs font-semibold ${health.text}`}>{health.label}</span>
           <Info size={11} strokeWidth={2} className="text-text-muted" />
         </button>
@@ -524,7 +520,7 @@ function ClientHeader({
             </div>
             {breakdown.toImprove.length > 0 && (
               <div className="mt-2.5 border-t border-border/60 pt-2">
-                <p className="mb-1 font-mono text-[10px] uppercase tracking-widest text-text-muted">Pour l’améliorer</p>
+                <p className="mb-1 font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.clients.pourLAmeliorer')}</p>
                 <ul className="flex flex-col gap-1">
                   {breakdown.toImprove.map((t, i) => (
                     <li key={i} className="flex gap-1.5 text-[11px] leading-snug text-text-secondary">
@@ -536,7 +532,7 @@ function ClientHeader({
               </div>
             )}
             {breakdown.toImprove.length === 0 && (
-              <p className="mt-2 text-[11px] text-success">Relation au vert — rien à faire pour l’instant.</p>
+              <p className="mt-2 text-[11px] text-success">{tr('hist.clients.relationAuVertRien')}</p>
             )}
           </div>
         )}
@@ -552,12 +548,10 @@ function ClientHeader({
           onClick={() => navigate('/reports', { state: { reportDraft: clientReportDraft(client) } })}
           className="flex items-center gap-1.5 border border-accent/40 bg-accent/10 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider text-accent transition-colors hover:bg-accent/20"
         >
-          <FileText size={11} strokeWidth={2} />
-          Faire un rapport
-        </button>
+          <FileText size={11} strokeWidth={2} />{tr('hist.clients.faireUnRapport')}</button>
         <ConfirmDelete
           onConfirm={() => onRemove(client.id)}
-          label="Supprimer le client"
+          label={tr('hist.clients.supprimerLeClient')}
           className="border border-border px-1"
         />
       </div>
@@ -585,11 +579,9 @@ function LinkedSitesBlock({
 
   return (
     <div>
-      <BlockTitle>Sites liés</BlockTitle>
+      <BlockTitle>{tr('hist.clients.sitesLies')}</BlockTitle>
       {sites.length === 0 ? (
-        <p className="text-xs text-text-muted">
-          Aucun site enregistré. La santé du client se base uniquement sur la date du dernier contact.
-        </p>
+        <p className="text-xs text-text-muted">{tr('hist.clients.aucunSiteEnregistreLa')}</p>
       ) : (
         /*
           UNE LIGNE PAR SITE, PAS UNE SOUPE DE PUCES
@@ -647,7 +639,7 @@ function LinkedSitesBlock({
                       type="button"
                       onClick={() => openSite(site.id)}
                       aria-label={`Voir la fiche du site ${site.name ?? ''}`.trim()}
-                      title="Voir la fiche du site"
+                      title={tr('hist.clients.voirLaFicheDu')}
                       className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
                     >
                       <ArrowUpRight size={16} strokeWidth={1.75} />
@@ -762,7 +754,7 @@ function NotesBlock({
       <textarea
         value={notes}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Notes libres sur le client…"
+        placeholder={tr('hist.clients.notesLibresSurLe')}
         className="input-focus min-h-[120px] flex-1 resize-none border border-border bg-bg p-3 text-sm leading-relaxed text-text-primary outline-none placeholder:text-text-muted"
       />
     </div>
@@ -793,7 +785,7 @@ function TimelineBlock({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && submit()}
-          placeholder="Ajouter un échange / une mission…"
+          placeholder={tr('hist.clients.ajouterUnEchangeUne')}
           className="input-focus flex-1 border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-muted"
         />
         <button
@@ -802,7 +794,7 @@ function TimelineBlock({
           disabled={!title.trim()}
           // Un « + » seul ne dit rien à l'oreille : le champ à côté porte le
           // sens, mais un lecteur d'écran annonce les deux séparément.
-          aria-label="Ajouter cet échange"
+          aria-label={tr('hist.clients.ajouterCetEchange')}
           className="flex items-center justify-center border border-border-strong bg-surface px-3 text-text-primary transition-colors hover:bg-surface-hover disabled:opacity-40"
         >
           <Plus size={16} strokeWidth={2} />
@@ -811,7 +803,7 @@ function TimelineBlock({
 
       <ol className="relative">
         {client.events.length === 0 && (
-          <li className="font-mono text-xs text-text-muted">Aucun échange.</li>
+          <li className="font-mono text-xs text-text-muted">{tr('hist.clients.aucunEchange')}</li>
         )}
         {client.events.map((event, i) => (
           <li key={event.id} className="relative flex gap-3 pb-4 last:pb-0">
@@ -875,15 +867,13 @@ function QuotesBlock({
             onClick={() => setCreating(true)}
             className="-my-1.5 flex items-center gap-1 py-1.5 font-mono text-[10px] uppercase tracking-widest text-text-secondary hover:text-text-primary"
           >
-            <Plus size={12} strokeWidth={2.25} />
-            Nouveau devis
-          </button>
+            <Plus size={12} strokeWidth={2.25} />{tr('hist.clients.nouveauDevis')}</button>
         }
       >
         Devis
       </BlockTitle>
       {quotes.length === 0 ? (
-        <p className="text-xs text-text-muted">Aucun devis pour ce client.</p>
+        <p className="text-xs text-text-muted">{tr('hist.clients.aucunDevisPourCe')}</p>
       ) : (
         <div className="flex flex-col gap-2">
           {quotes.map((quote) => (
@@ -952,7 +942,7 @@ function QuoteRow({
           >
             <Printer size={14} strokeWidth={1.75} />
           </button>
-          <ConfirmDelete onConfirm={onRemove} label="Supprimer le devis" />
+          <ConfirmDelete onConfirm={onRemove} label={tr('hist.clients.supprimerLeDevis')} />
         </div>
       </div>
 
@@ -1153,7 +1143,7 @@ function NewQuoteModal({
                   autoFocus
                   value={trackerTier}
                   onChange={(e) => setTrackerTier(e.target.value)}
-                  placeholder="ex. Prestation à la journée, forfait…"
+                  placeholder={tr('hist.clients.exPrestationALa')}
                   className="input-focus border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
                 />
               )}
@@ -1162,9 +1152,7 @@ function NewQuoteModal({
 
           {step === 1 && (
             <label className="flex flex-col gap-1.5">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                Tarif de la mission (€) *
-              </span>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.clients.tarifDeLaMission')}</span>
               <input
                 autoFocus
                 type="number"
@@ -1180,9 +1168,7 @@ function NewQuoteModal({
           {step === 2 && (
             <>
               <label className="flex flex-col gap-1.5">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                  Titre de la mission *
-                </span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.clients.titreDeLaMission')}</span>
                 <input
                   autoFocus
                   value={title}
@@ -1211,9 +1197,7 @@ function NewQuoteModal({
               onClick={() => setStep((s) => Math.max(0, s - 1))}
               disabled={step === 0}
               className="px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-text-muted hover:text-text-secondary disabled:opacity-0"
-            >
-              Précédent
-            </button>
+            >{tr('hist.clients.precedent')}</button>
             {step < steps.length - 1 ? (
               <button
                 type="button"
@@ -1229,9 +1213,7 @@ function NewQuoteModal({
                 onClick={submit}
                 disabled={!title.trim() || !priceEuro}
                 className="bg-accent px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover disabled:opacity-40"
-              >
-                Créer le devis
-              </button>
+              >{tr('hist.clients.creerLeDevis')}</button>
             )}
           </div>
         </div>
@@ -1356,9 +1338,7 @@ function NewClientModal({
         className="relative w-full max-w-md border border-border-strong bg-surface"
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">
-            Nouveau client
-          </h2>
+          <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">{tr('hist.clients.nouveauClient')}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -1382,9 +1362,7 @@ function NewClientModal({
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-              Société
-            </span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.clients.societe')}</span>
             <input
               value={company}
               onChange={(e) => setCompany(e.target.value)}
@@ -1403,9 +1381,7 @@ function NewClientModal({
             onClick={submit}
             disabled={!name.trim()}
             className="mt-1 bg-accent px-3 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover disabled:opacity-40"
-          >
-            Créer la fiche
-          </button>
+          >{tr('hist.clients.creerLaFiche')}</button>
         </div>
       </motion.div>
     </div>

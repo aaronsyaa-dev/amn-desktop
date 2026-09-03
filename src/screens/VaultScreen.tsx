@@ -24,6 +24,7 @@ import { downloadBlob } from '../lib/download';
 import { bridge } from '../lib/bridge';
 import type { VaultCategory, VaultEntry } from '../shared/api';
 import { VAULT_CATEGORIES as CATEGORIES, vaultCategoryLabel as categoryLabel } from '../lib/vaultCategories';
+import { useLangue, t as tr } from '../i18n';
 
 /**
  * Vingt signes au hasard cryptographique, avec au moins une minuscule, une
@@ -110,14 +111,14 @@ export function VaultScreen() {
   return (
     <section className={`flex flex-col gap-4 ${entries.length === 0 ? '' : 'screen-h'}`}>
       <ScreenHeader
-        eyebrow="Poste de travail · Coffre-fort"
-        title="Coffre-fort"
-        description="Chiffré sur cette machine, et sur elle seule — le serveur n’en voit rien."
+        eyebrow={tr('hist.surtitre', { module: tr('hist.vault.titre') })}
+        title={tr('hist.vault.titre')}
+        description={tr('hist.vault.chiffreSurCetteMachine')}
         stats={[
           {
-            label: 'Entrées',
+            label: tr('hist.vault.entrees'),
             value: loading ? '…' : entries.length,
-            title: 'Le contenu ne quitte jamais ce poste : il n’y a rien à synchroniser.',
+            title: tr('hist.vault.leContenuNeQuitte'),
           },
         ]}
         actions={
@@ -154,7 +155,7 @@ export function VaultScreen() {
                   `coffre-fort-${new Date().toISOString().slice(0, 10)}.json`,
                 );
               }}
-              title="Enregistrer une copie de secours — le fichier contient vos mots de passe en clair"
+              title={tr('hist.vault.enregistrerUneCopieDe')}
               className="flex items-center gap-2 border border-border px-3 py-2.5 text-sm text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
             >
               <Download size={15} strokeWidth={1.75} />
@@ -170,7 +171,7 @@ export function VaultScreen() {
             className="flex items-center gap-2 bg-accent px-3 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
           >
             <Plus size={16} strokeWidth={2.25} />
-            <span className="hidden sm:inline">Nouvelle entrée</span>
+            <span className="hidden sm:inline">{tr('hist.vault.nouvelleEntree')}</span>
           </button>
         </div>
         }
@@ -196,7 +197,7 @@ export function VaultScreen() {
           <div className="flex items-start gap-2 border border-border bg-surface px-4 py-2.5 text-xs text-text-secondary">
             <ShieldCheck size={14} className="mt-0.5 flex-shrink-0 text-success" strokeWidth={2} />
             <span>
-              <span className="text-text-primary">Ce coffre reste sur cet appareil.</span> Il est
+              <span className="text-text-primary">{tr('hist.vault.ceCoffreResteSur')}</span> Il est
               chiffré par le trousseau du système et ne part jamais sur le réseau — donc personne
               d’autre ne peut le lire, mais il n’est ni synchronisé avec vos autres appareils, ni
               sauvegardé, ni inclus dans l’export de vos données. Faites-en une copie.
@@ -206,8 +207,8 @@ export function VaultScreen() {
           <div className="flex items-start gap-2 border border-warning/40 bg-warning-muted px-4 py-2.5 font-mono text-xs text-text-secondary">
             <AlertTriangle size={14} className="mt-px flex-shrink-0 text-warning" strokeWidth={2} />
             {bridge().env.isElectron
-              ? 'Ce coffre reste sur cet appareil, et le trousseau du système n’est pas disponible ici : il n’est donc pas chiffré. Lisible par qui a accès à cette session, ni synchronisé, ni sauvegardé, ni inclus dans l’export de vos données.'
-              : 'Ce coffre reste dans CE navigateur, sans chiffrement — n’y mettez pas de secret important. Il n’est ni synchronisé avec vos autres appareils, ni sauvegardé, ni inclus dans l’export de vos données.'}
+              ? tr('hist.vault.sansTrousseau')
+              : tr('hist.vault.navigateur')}
           </div>
         ))}
 
@@ -222,12 +223,12 @@ export function VaultScreen() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Rechercher par nom…"
+            placeholder={tr('hist.vault.rechercherParNom')}
             className="input-focus w-full border border-border bg-surface py-2 pl-9 pr-3 font-mono text-sm text-text-primary placeholder:text-text-muted"
           />
         </div>
         <div className="flex max-w-full items-center overflow-x-auto border border-border bg-surface">
-          {([{ value: 'all', label: 'Tous' }, ...CATEGORIES] as { value: CategoryFilter; label: string }[]).map(
+          {([{ value: 'all', label: tr('hist.vault.tous') }, ...CATEGORIES] as { value: CategoryFilter; label: string }[]).map(
             (opt) => (
               <button
                 key={opt.value}
@@ -274,7 +275,7 @@ export function VaultScreen() {
             <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
               <KeyRound size={22} strokeWidth={1.5} className="text-text-muted" />
               <p className="text-sm text-text-secondary">
-                {entries.length === 0 ? 'Aucune entrée pour l’instant.' : 'Aucune entrée pour ces filtres.'}
+                {entries.length === 0 ? tr('hist.vault.aucuneEntree') : tr('hist.vault.aucuneEntreeFiltres')}
               </p>
             </div>
           ) : (
@@ -318,9 +319,7 @@ export function VaultScreen() {
               onClick={closeDetail}
               className="flex items-center gap-1.5 border-b border-border px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-widest text-text-muted transition-colors hover:text-text-primary lg:hidden"
             >
-              <ArrowLeft size={13} strokeWidth={2} />
-              Retour à la liste
-            </button>
+              <ArrowLeft size={13} strokeWidth={2} />{tr('hist.vault.retourALaListe')}</button>
           )}
           {editing ? (
             <VaultEditor
@@ -350,10 +349,8 @@ export function VaultScreen() {
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
               <Lock size={26} strokeWidth={1.5} className="text-text-muted" />
-              <p className="text-sm font-medium text-text-primary">Sélectionnez une entrée</p>
-              <p className="max-w-sm text-sm text-text-secondary">
-                Ou créez-en une pour un identifiant, une clé d’API ou un accès serveur.
-              </p>
+              <p className="text-sm font-medium text-text-primary">{tr('hist.vault.selectionnezUneEntree')}</p>
+              <p className="max-w-sm text-sm text-text-secondary">{tr('hist.vault.ouCreezEnUne')}</p>
             </div>
           )}
         </div>
@@ -398,12 +395,11 @@ function VaultReader({
             onClick={onEdit}
             className="flex min-h-9 items-center gap-1.5 rounded-sm px-2 py-1 text-xs text-text-secondary hover:text-text-primary"
           >
-            <Pencil size={13} strokeWidth={1.75} /> Éditer
-          </button>
+            <Pencil size={13} strokeWidth={1.75} />{tr('hist.vault.editer')}</button>
           <button
             type="button"
             onClick={onRemove}
-            aria-label="Supprimer"
+            aria-label={tr('hist.vault.supprimer')}
             className="flex h-9 w-9 items-center justify-center rounded text-text-muted hover:text-danger"
           >
             <Trash2 size={15} strokeWidth={1.75} />
@@ -440,7 +436,7 @@ function VaultReader({
             <button
               type="button"
               onClick={() => copy('password', entry.password)}
-              aria-label="Copier le mot de passe"
+              aria-label={tr('hist.vault.copierLeMotDe')}
               className="flex-shrink-0 text-text-muted transition-colors hover:text-text-primary"
             >
               {copiedField === 'password' ? (
@@ -450,9 +446,7 @@ function VaultReader({
               )}
             </button>
           </div>
-          <p className="mt-1 font-mono text-[10px] text-text-muted">
-            La copie s’efface du presse-papiers après 30 secondes.
-          </p>
+          <p className="mt-1 font-mono text-[10px] text-text-muted">{tr('hist.vault.laCopieSEfface')}</p>
         </div>
 
         {entry.url && (
@@ -559,7 +553,7 @@ function VaultEditor({
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Catégorie</span>
+          <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.vault.categorie')}</span>
           <select
             value={draft.category}
             onChange={(e) => setDraft({ category: e.target.value as VaultCategory })}
@@ -615,8 +609,7 @@ function VaultEditor({
             }}
             className="flex min-h-11 w-fit items-center gap-1.5 border border-border px-3 text-xs text-text-secondary transition-colors hover:text-text-primary md:min-h-0 md:py-1.5"
           >
-            <KeyRound size={13} strokeWidth={1.75} /> Générer un mot de passe fort
-          </button>
+            <KeyRound size={13} strokeWidth={1.75} />{tr('hist.vault.genererUnMotDe')}</button>
         </label>
 
         <label className="flex flex-col gap-1.5">
@@ -647,9 +640,7 @@ function VaultEditor({
           onClick={onSave}
           disabled={!draft.label.trim() || !draft.password.trim()}
           className="bg-accent px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover disabled:opacity-40"
-        >
-          Enregistrer
-        </button>
+        >{tr('hist.vault.enregistrer')}</button>
         <button
           type="button"
           onClick={onCancel}

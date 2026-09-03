@@ -13,6 +13,7 @@ import {
 } from '../state/eventEngine';
 import { centsToInput, formatCents, parsePositiveAmount } from '../lib/money';
 import { staggerContainer, staggerItem } from '../lib/transitions';
+import { useLangue, t as tr } from '../i18n';
 
 /**
  * LE MODULE ÉVÉNEMENTS
@@ -93,17 +94,17 @@ export function EventsScreen() {
     >
       <motion.div variants={staggerItem}>
         <ScreenHeader
-          eyebrow="Poste de travail · Événements"
-          title="Événements"
+          eyebrow={tr('hist.events.posteDeTravailEvenements')}
+          title={tr('hist.events.evenements')}
           description={
             aTraiter.length > 0
               ? 'Ce qui approche, et ce qu’il reste à vendre pour l’équilibre.'
               : 'La date, la jauge, et le seuil de rentabilité.'
           }
           stats={[
-            { label: 'À traiter', value: aTraiter.length, emphasis: aTraiter.length > 0 },
-            { label: 'À venir', value: (compte.imminent ?? 0) + (compte['a-venir'] ?? 0) },
-            { label: 'Passés', value: (compte.passe ?? 0) + (compte.annule ?? 0) },
+            { label: tr('hist.events.aTraiter'), value: aTraiter.length, emphasis: aTraiter.length > 0 },
+            { label: tr('hist.events.aVenir'), value: (compte.imminent ?? 0) + (compte['a-venir'] ?? 0) },
+            { label: tr('hist.events.passes'), value: (compte.passe ?? 0) + (compte.annule ?? 0) },
           ]}
         />
       </motion.div>
@@ -114,9 +115,7 @@ export function EventsScreen() {
           onClick={() => setSelectedId(creer())}
           className="flex min-h-11 items-center gap-2 bg-accent px-4 text-[13px] font-semibold text-bg transition-colors hover:bg-accent-hover md:min-h-0 md:py-2"
         >
-          <Plus size={14} strokeWidth={2} />
-          Nouvel événement
-        </button>
+          <Plus size={14} strokeWidth={2} />{tr('hist.events.nouvelEvenement')}</button>
         {revolus.length > 0 && (
           <button
             type="button"
@@ -151,14 +150,14 @@ export function EventsScreen() {
               <div className="px-4">
                 {vus.length === 0 ? (
                   <FirstRun
-                    title="Aucun événement"
-                    action={{ label: 'Créer le premier', onClick: () => setSelectedId(creer()) }}
+                    title={tr('hist.events.aucunEvenement')}
+                    action={{ label: tr('hist.events.creerLePremier'), onClick: () => setSelectedId(creer()) }}
                   >
                     Un événement rassemble sa date, sa jauge et ses coûts — et vous dit combien
                     d’entrées il reste à vendre avant qu’il ne coûte plus d’argent.
                   </FirstRun>
                 ) : (
-                  <EmptyState quiet>Rien à venir. Les passés sont repliés.</EmptyState>
+                  <EmptyState quiet>{tr('hist.events.rienAVenirLes')}</EmptyState>
                 )}
               </div>
             ) : (
@@ -186,9 +185,7 @@ export function EventsScreen() {
             }}
           />
         ) : vus.length === 0 ? null : (
-          <div className="hidden items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted md:flex">
-            Sélectionnez un événement
-          </div>
+          <div className="hidden items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted md:flex">{tr('hist.events.selectionnezUnEvenement')}</div>
         )}
       </div>
     </motion.section>
@@ -294,7 +291,7 @@ function DetailEvenement({
         <button
           type="button"
           onClick={onBack}
-          aria-label="Revenir à la liste"
+          aria-label={tr('hist.events.revenirALaListe')}
           className="p-1 text-text-muted transition-colors hover:text-text-primary md:hidden"
         >
           <ArrowLeft size={16} strokeWidth={1.75} />
@@ -302,8 +299,8 @@ function DetailEvenement({
         <input
           value={evenement.nom}
           onChange={(e) => onPatch({ nom: e.target.value })}
-          placeholder="Nom de l’événement"
-          aria-label="Nom de l’événement"
+          placeholder={tr('hist.events.nomDeLEvenement')}
+          aria-label={tr('hist.events.nomDeLEvenement')}
           className="input-focus min-w-0 flex-1 bg-transparent text-[15px] font-medium text-text-primary outline-none placeholder:text-text-muted"
         />
         <span
@@ -325,7 +322,7 @@ function DetailEvenement({
                 type="date"
                 value={evenement.date}
                 onChange={(e) => onPatch({ date: e.target.value })}
-                aria-label="Date de l’événement"
+                aria-label={tr('hist.events.dateDeLEvenement')}
                 className="input-focus min-h-11 w-full border border-border bg-bg px-3 font-mono text-sm text-text-primary outline-none"
               />
             </Champ>
@@ -360,7 +357,7 @@ function DetailEvenement({
               onChange={(v) => onPatch({ capacite: Math.max(Math.round(v), 0) })}
             />
             <ChampNombre
-              label="Entrées vendues"
+              label={tr('hist.events.entreesVendues')}
               aide="C’est ce chiffre qu’on compare au seuil."
               value={evenement.billetsVendus}
               onChange={(v) => onPatch({ billetsVendus: Math.max(Math.round(v), 0) })}
@@ -398,7 +395,7 @@ function DetailEvenement({
               onChange={(v) => onPatch({ coutCommunicationCents: v })}
             />
             <ChampArgent
-              label="Coût par entrée"
+              label={tr('hist.events.coutParEntree')}
               aide="Ce que chaque personne coûte en plus : bracelet, boisson."
               value={evenement.coutParEntreeCents}
               onChange={(v) => onPatch({ coutParEntreeCents: v })}
@@ -427,9 +424,7 @@ function DetailEvenement({
             to="/evenements/documents"
             className="flex min-h-11 items-center gap-2 border border-border px-3 text-xs text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:min-h-0 md:py-2"
           >
-            <FileText size={13} strokeWidth={1.75} />
-            Fiches, conduite et check-list du jour J
-          </Link>
+            <FileText size={13} strokeWidth={1.75} />{tr('hist.events.fichesConduiteEtCheck')}</Link>
         </Bloc>
 
         {/* ------------------------------- Notes ------------------------------ */}
@@ -438,7 +433,7 @@ function DetailEvenement({
             value={evenement.notes ?? ''}
             onChange={(e) => onPatch({ notes: e.target.value })}
             rows={4}
-            placeholder="Contacts, accès, ce qu’il ne faut pas oublier."
+            placeholder={tr('hist.events.contactsAccesCeQu')}
             aria-label="Notes"
             className="input-focus w-full resize-y border border-border bg-bg px-3 py-2 text-sm leading-relaxed text-text-primary outline-none"
           />
@@ -462,15 +457,13 @@ function DetailEvenement({
           */}
           {confirmSuppression ? (
             <>
-              <span className="text-xs text-text-secondary">Supprimer définitivement ?</span>
+              <span className="text-xs text-text-secondary">{tr('hist.events.supprimerDefinitivement')}</span>
               <button
                 type="button"
                 onClick={onDelete}
                 className="flex min-h-11 items-center gap-2 border border-danger/50 px-3 text-xs text-danger transition-colors hover:bg-danger/10 md:min-h-0 md:py-2"
               >
-                <Trash2 size={13} strokeWidth={1.75} />
-                Oui, supprimer
-              </button>
+                <Trash2 size={13} strokeWidth={1.75} />{tr('hist.events.ouiSupprimer')}</button>
               <button
                 type="button"
                 onClick={() => setConfirmSuppression(false)}
@@ -485,9 +478,7 @@ function DetailEvenement({
               onClick={() => setConfirmSuppression(true)}
               className="flex min-h-11 items-center gap-2 px-2 text-xs text-text-muted transition-colors hover:text-danger md:min-h-0"
             >
-              <Trash2 size={13} strokeWidth={1.75} />
-              Supprimer
-            </button>
+              <Trash2 size={13} strokeWidth={1.75} />{tr('hist.events.supprimer')}</button>
           )}
         </div>
       </div>
@@ -530,9 +521,7 @@ function Verdict({ vu, jours }: { vu: EvenementVu; jours: number | null }) {
     <div className="border-l-2 border-accent bg-bg/40 px-4 py-3">
       {!economie.atteignable ? (
         <>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-            Rentabilité
-          </p>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.events.rentabilite')}</p>
           <p className="mt-1 text-[15px] font-medium text-danger">
             {economie.seuilEntrees === null
               ? 'Chaque entrée vendue coûte de l’argent'
@@ -546,7 +535,7 @@ function Verdict({ vu, jours }: { vu: EvenementVu; jours: number | null }) {
         </>
       ) : revolu ? (
         <>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Résultat</p>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.events.resultat')}</p>
           <p
             className={`mt-1 font-mono text-xl tabular-nums ${
               economie.resultatActuelCents >= 0 ? 'text-text-primary' : 'text-danger'
@@ -583,8 +572,8 @@ function Verdict({ vu, jours }: { vu: EvenementVu; jours: number | null }) {
       )}
 
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-border/60 pt-3 sm:grid-cols-4">
-        <Mesure label="Coûts fixes" valeur={formatCents(economie.coutsFixesCents)} />
-        <Mesure label="Net par entrée" valeur={formatCents(economie.recetteNetteBilletCents)} />
+        <Mesure label={tr('hist.events.coutsFixes')} valeur={formatCents(economie.coutsFixesCents)} />
+        <Mesure label={tr('hist.events.netParEntree')} valeur={formatCents(economie.recetteNetteBilletCents)} />
         {/*
           UN TIRET, PAS UN NOMBRE, quand il n'existe pas de seuil.
 

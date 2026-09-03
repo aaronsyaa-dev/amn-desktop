@@ -34,6 +34,7 @@ import { ProjectConfigPanel } from '../components/projects/ProjectConfigPanel';
 import { formatDay, isoDay } from '../state/useInvoices';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { EmptyState, FirstRun } from '../components/EmptyState';
+import { useLangue, t as tr } from '../i18n';
 
 /**
  * Projets — la première application concrète du moteur (BLOC A).
@@ -84,7 +85,7 @@ export function ProjectsScreen() {
   );
 
   const newProject = () => {
-    const id = createProject({ title: 'Nouveau projet' });
+    const id = createProject({ title: tr('hist.projects.nouveauProjet') });
     setSelectedId(id);
     setStatusFilter('all');
   };
@@ -98,9 +99,9 @@ export function ProjectsScreen() {
     */
     <section className={`flex flex-col gap-4 ${projects.length === 0 ? '' : 'screen-h'}`}>
       <ScreenHeader
-        eyebrow="Poste de travail · Projets"
-        title="Projets"
-        description="Tout ce qui s’y rattache, au même endroit."
+        eyebrow={tr('hist.surtitre', { module: tr('hist.projects.titre') })}
+        title={tr('hist.projects.titre')}
+        description={tr('hist.projects.toutCeQuiS')}
         stats={[
           { label: 'Projets', value: projects.length },
           /*
@@ -116,15 +117,15 @@ export function ProjectsScreen() {
               .length,
             emphasis: true,
           },
-          { label: 'Affichés', value: visible.length, title: 'Après le filtre de statut ci-dessous.' },
+          { label: tr('hist.projects.affiches'), value: visible.length, title: tr('hist.projects.apresLeFiltreDe') },
         ]}
         actions={
         <div className="flex flex-shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={() => setConfigOpen(true)}
-            title="Configurer le module"
-            aria-label="Configurer le module"
+            title={tr('hist.projects.configurerLeModule')}
+            aria-label={tr('hist.projects.configurerLeModule')}
             className="flex h-11 w-11 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:h-9 md:w-9"
           >
             <Settings2 size={16} strokeWidth={1.75} />
@@ -135,16 +136,14 @@ export function ProjectsScreen() {
             className="flex h-11 items-center gap-2 bg-accent px-3 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover md:h-9"
           >
             <Plus size={16} strokeWidth={2.25} />
-            <span className="hidden sm:inline">Nouveau projet</span>
+            <span className="hidden sm:inline">{tr('hist.projects.nouveauProjet')}</span>
             <span className="sm:hidden">Projet</span>
           </button>
         </div>
         }
       >
       <div className="flex flex-shrink-0 gap-1.5 overflow-x-auto pb-0.5">
-        <FilterChip active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>
-          Tous
-        </FilterChip>
+        <FilterChip active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>{tr('hist.projects.tous')}</FilterChip>
         {config.statuses.map((status) => (
           <FilterChip
             key={status.key}
@@ -198,12 +197,9 @@ export function ProjectsScreen() {
               */
               <div className="px-4">
                 {projects.length === 0 ? (
-                  <FirstRun title="Aucun projet ouvert">
-                    Un projet rassemble ce qui avance et ce qui bloque : ses tâches, son temps, ses
-                    dépenses et ses factures s’y rattachent.
-                  </FirstRun>
+                  <FirstRun title={tr('hist.projects.aucunProjetOuvert')}>{tr('hist.projects.unProjetRassembleCe')}</FirstRun>
                 ) : (
-                  <EmptyState quiet>Rien dans ce filtre.</EmptyState>
+                  <EmptyState quiet>{tr('hist.projects.rienDansCeFiltre')}</EmptyState>
                 )}
               </div>
             ) : (
@@ -240,9 +236,7 @@ export function ProjectsScreen() {
             }}
           />
         ) : projects.length === 0 ? null : (
-          <div className="hidden items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted md:flex">
-            Sélectionnez un projet
-          </div>
+          <div className="hidden items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted md:flex">{tr('hist.projects.selectionnezUnProjet')}</div>
         )}
       </div>
 
@@ -405,7 +399,7 @@ function ProjectDetail({
         <button
           type="button"
           onClick={onBack}
-          aria-label="Retour à la liste"
+          aria-label={tr('hist.projects.retourALaListe')}
           className="flex h-9 w-9 flex-shrink-0 items-center justify-center text-text-secondary transition-colors hover:text-text-primary md:hidden"
         >
           <ArrowLeft size={18} strokeWidth={2} />
@@ -424,8 +418,8 @@ function ProjectDetail({
              accessible, il était invisible pour un lecteur d'écran comme
              pour un balayage automatique — un bouton destructeur ne peut
              pas être anonyme. */
-          aria-label="Supprimer le projet"
-          title="Supprimer le projet"
+          aria-label={tr('hist.projects.supprimerLeProjet')}
+          title={tr('hist.projects.supprimerLeProjet')}
           className={`flex h-11 flex-shrink-0 items-center gap-1.5 border px-2.5 font-mono text-[10px] uppercase tracking-wider transition-colors md:h-9 ${
             confirmDelete
               ? 'border-danger bg-danger-muted text-danger'
@@ -440,7 +434,7 @@ function ProjectDetail({
       <div className="min-h-0 flex-1 overflow-y-auto p-3 md:p-4">
         {late && (
           <p className="mb-3 border border-border border-l-2 border-l-danger bg-surface px-3 py-2 text-xs leading-tight text-text-primary">
-            <strong className="font-semibold">Échéance dépassée</strong> — attendue le{' '}
+            <strong className="font-semibold">{tr('hist.projects.echeanceDepassee')}</strong> — attendue le{' '}
             {formatDay(project.deadline)}.
           </p>
         )}
@@ -464,7 +458,7 @@ function ProjectDetail({
             <input
               value={project.nextAction}
               onChange={(e) => onPatch({ nextAction: e.target.value })}
-              placeholder="La prochaine chose à faire, en une ligne"
+              placeholder={tr('hist.projects.laProchaineChoseA')}
               className="input-focus min-h-11 w-full border border-border bg-bg px-3 text-sm text-text-primary outline-none"
             />
           </Field>
@@ -552,7 +546,7 @@ function ProjectDetail({
                   href={project.link}
                   target="_blank"
                   rel="noreferrer noopener"
-                  aria-label="Ouvrir le lien"
+                  aria-label={tr('hist.projects.ouvrirLeLien')}
                   className="flex h-11 w-11 flex-shrink-0 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
                 >
                   <ExternalLink size={15} strokeWidth={1.75} />
@@ -583,13 +577,8 @@ function ProjectDetail({
 
         {/* ------------------------------------------------- rattachés ----- */}
         <div className="mt-5 border-t border-border pt-4">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-            Rattaché à ce projet
-          </p>
-          <p className="mt-1 text-xs leading-relaxed text-text-secondary">
-            Ces éléments vivent dans leurs propres modules et portent l’identifiant de ce projet.
-            Rien n’est recopié ici — les modifier là-bas les modifie ici.
-          </p>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.projects.rattacheACeProjet')}</p>
+          <p className="mt-1 text-xs leading-relaxed text-text-secondary">{tr('hist.projects.cesElementsViventDans')}</p>
 
           <div className="mt-3 flex flex-col gap-2">
             <AttachmentGroup
@@ -619,7 +608,7 @@ function ProjectDetail({
             {isModuleEnabled('expenses') && (
               <AttachmentGroup
                 icon={Wallet}
-                label="Dépenses"
+                label={tr('hist.projects.depenses')}
                 count={attachments.expenses.length}
                 onOpen={() => navigate('/depenses')}
               />
@@ -627,7 +616,7 @@ function ProjectDetail({
             {isModuleEnabled('time') && (
               <AttachmentGroup
                 icon={Timer}
-                label="Temps passé"
+                label={tr('hist.projects.tempsPasse')}
                 count={attachments.timeEntries.length}
                 onOpen={() => navigate('/temps')}
               />

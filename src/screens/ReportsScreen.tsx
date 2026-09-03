@@ -29,11 +29,12 @@ import { Markdown } from '../lib/markdown';
 import { relativeTime } from '../lib/time';
 import { useExclusive, useProductReports } from '@edition/exclusive';
 import { EmptyState } from '../components/EmptyState';
+import { useLangue, t as tr } from '../i18n';
 
 const TYPES: { value: ReportType; label: string }[] = [
   { value: 'task', label: 'Tâche' },
   { value: 'client', label: 'Client' },
-  { value: 'decision', label: 'Décision' },
+  { value: 'decision', label: tr('hist.reports.decision') },
   { value: 'manual', label: 'Manuel' },
 ];
 
@@ -189,9 +190,9 @@ export function ReportsScreen() {
       {/* « Mémoire de l'équipe » suppose une équipe. Chez une cliente, ce sont
           ses comptes-rendus à elle — le mot juste est le sien. */}
       <ScreenHeader
-        eyebrow="Poste de travail · Rapports"
-        title="Rapports"
-        description={TEAM_ENABLED ? 'La mémoire de l’équipe.' : 'Vos comptes-rendus.'}
+        eyebrow={tr('hist.surtitre', { module: tr('hist.reports.titre') })}
+        title={tr('hist.reports.titre')}
+        description={TEAM_ENABLED ? tr('hist.reports.memoireEquipe') : tr('hist.reports.vosComptesRendus')}
         stats={[{ label: 'Rapports', value: reports.length }]}
         actions={
         <button
@@ -202,9 +203,7 @@ export function ReportsScreen() {
           }}
           className="flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
         >
-          <Plus size={16} strokeWidth={2.25} />
-          Nouveau rapport
-        </button>
+          <Plus size={16} strokeWidth={2.25} />{tr('hist.reports.nouveauRapport')}</button>
         }
       />
 
@@ -213,7 +212,7 @@ export function ReportsScreen() {
           value={typeFilter}
           onChange={(v) => setTypeFilter(v as ListFilter)}
           options={[
-            { value: 'all', label: 'Tous' },
+            { value: 'all', label: tr('hist.reports.tous') },
             ...proposableTypes(TEAM_ENABLED).map((t) => ({ value: t.value, label: t.label })),
             ...products.filters,
           ]}
@@ -304,9 +303,7 @@ export function ReportsScreen() {
               onClick={closeDetail}
               className="flex items-center gap-1.5 border-b border-border px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-widest text-text-muted transition-colors hover:text-text-primary lg:hidden"
             >
-              <ArrowLeft size={13} strokeWidth={2} />
-              Retour à la liste
-            </button>
+              <ArrowLeft size={13} strokeWidth={2} />{tr('hist.reports.retourALaListe')}</button>
           )}
           {editing ? (
             <ReportEditor
@@ -336,11 +333,11 @@ export function ReportsScreen() {
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
               <FileText size={26} strokeWidth={1.5} className="text-text-muted" />
-              <p className="text-sm font-medium text-text-primary">Sélectionnez un rapport</p>
+              <p className="text-sm font-medium text-text-primary">{tr('hist.reports.selectionnezUnRapport')}</p>
               <p className="max-w-sm text-sm text-text-secondary">
                 {products.enabled
-                  ? 'Ou générez-en un depuis une tâche terminée, un client, une décision, ou un scan Elite.'
-                  : 'Ou générez-en un depuis une tâche terminée ou une fiche client.'}
+                  ? tr('hist.reports.genererInterne')
+                  : tr('hist.reports.genererCliente')}
               </p>
             </div>
           )}
@@ -381,12 +378,11 @@ function ReportReader({
             onClick={onEdit}
             className="flex min-h-9 items-center gap-1.5 rounded-sm px-2 py-1 text-xs text-text-secondary hover:text-text-primary"
           >
-            <Pencil size={13} strokeWidth={1.75} /> Éditer
-          </button>
+            <Pencil size={13} strokeWidth={1.75} />{tr('hist.reports.editer')}</button>
           <button
             type="button"
             onClick={onRemove}
-            aria-label="Supprimer"
+            aria-label={tr('hist.reports.supprimer')}
             className="flex h-9 w-9 items-center justify-center rounded text-text-muted hover:text-danger"
           >
             <Trash2 size={15} strokeWidth={1.75} />
@@ -562,7 +558,7 @@ function ReportEditor({
             ref={bodyRef}
             value={draft.body}
             onChange={(e) => setDraft({ body: e.target.value })}
-            placeholder="Rédigez le rapport… **gras**, *italique*, ## titre, - liste, ``` bloc de code ```"
+            placeholder={tr('hist.reports.redigezLeRapportGras')}
             className="h-full min-h-[12rem] w-full resize-none bg-transparent px-5 py-4 font-mono text-sm leading-relaxed text-text-primary outline-none placeholder:text-text-muted"
           />
         )}
@@ -577,9 +573,7 @@ function ReportEditor({
           onClick={onSave}
           disabled={!draft.title.trim() && !draft.body.trim()}
           className="bg-accent px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover disabled:opacity-40"
-        >
-          Enregistrer
-        </button>
+        >{tr('hist.reports.enregistrer')}</button>
         <button
           type="button"
           onClick={onCancel}
@@ -617,7 +611,7 @@ function LinkManager({ links, onChange }: { links: ReportLink[]; onChange: (link
   return (
     <div className="border-t border-border px-3 py-2">
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Éléments liés</span>
+        <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.reports.elementsLies')}</span>
         {links.map((l) => {
           const Icon = l.kind === 'task' ? CheckSquare : l.kind === 'client' ? Contact : Scale;
           return (
@@ -627,7 +621,7 @@ function LinkManager({ links, onChange }: { links: ReportLink[]; onChange: (link
               <button
                 type="button"
                 onClick={() => removeLink(l)}
-                aria-label="Retirer le lien"
+                aria-label={tr('hist.reports.retirerLeLien')}
                 className="opacity-0 transition-opacity hover:text-danger group-hover/l:opacity-100"
               >
                 <X size={10} strokeWidth={2.5} />
@@ -650,7 +644,7 @@ function LinkManager({ links, onChange }: { links: ReportLink[]; onChange: (link
               className="absolute bottom-full left-0 z-20 mb-1 max-h-64 w-64 overflow-y-auto rounded-lg border border-border bg-surface elev-2"
             >
               {candidates.length === 0 ? (
-                <p className="px-3 py-2 text-xs text-text-muted">Rien à lier.</p>
+                <p className="px-3 py-2 text-xs text-text-muted">{tr('hist.reports.rienALier')}</p>
               ) : (
                 candidates.slice(0, 40).map((c) => {
                   const Icon = c.kind === 'task' ? CheckSquare : c.kind === 'client' ? Contact : Scale;

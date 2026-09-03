@@ -33,6 +33,7 @@ import {
 import { checklistTotals } from '../lib/pageBlocks';
 import { centsToInput, formatCents, parsePositiveAmount } from '../lib/money';
 import type { PageBlock, PageData, PageEditorRole } from '../shared/api';
+import { useLangue, t as tr } from '../i18n';
 
 /**
  * LES PAGES — UN MOTEUR, PLUSIEURS MODULES (BLOC 3)
@@ -67,14 +68,14 @@ import type { PageBlock, PageData, PageEditorRole } from '../shared/api';
 
 const TYPES: { type: PageBlock['type']; label: string; icon: typeof Type }[] = [
   { type: 'text', label: 'Texte', icon: Type },
-  { type: 'checklist', label: 'Liste à cocher', icon: ListChecks },
+  { type: 'checklist', label: tr('hist.pages.listeACocher'), icon: ListChecks },
   { type: 'table', label: 'Tableau', icon: TableIcon },
   { type: 'image', label: 'Image', icon: ImageIcon },
-  { type: 'video', label: 'Vidéo', icon: Video },
+  { type: 'video', label: tr('hist.pages.video'), icon: Video },
 ];
 
 const ROLES: { role: PageEditorRole; label: string }[] = [
-  { role: 'owner', label: 'Propriétaire' },
+  { role: 'owner', label: tr('hist.pages.proprietaire') },
   { role: 'admin', label: 'Administrateur' },
   { role: 'member', label: 'Membre' },
 ];
@@ -134,10 +135,10 @@ export function PagesScreen({ scope, title, description }: {
       <StaggerItem>
         <ScreenHeader
           eyebrow={scope ? `Pages · ${scope}` : 'Pages'}
-          title={title ?? 'Pages'}
+          title={title ?? tr('hist.pages.titre')}
           description={
             description ??
-            'Des pages composées de blocs, écrites à plusieurs. Tout le monde les voit à jour ; les rôles choisis peuvent les modifier.'
+            tr('hist.pages.description')
           }
           stats={[{ label: 'Pages', value: pages.length }]}
           actions={
@@ -146,9 +147,7 @@ export function PagesScreen({ scope, title, description }: {
               onClick={() => setCreation((v) => !v)}
               className="flex items-center gap-2 bg-accent px-4 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
             >
-              <Plus size={16} strokeWidth={2} />
-              Nouvelle page
-            </button>
+              <Plus size={16} strokeWidth={2} />{tr('hist.pages.nouvellePage')}</button>
           }
         />
       </StaggerItem>
@@ -162,10 +161,8 @@ export function PagesScreen({ scope, title, description }: {
             className="overflow-hidden"
           >
             <div className="panel p-4">
-              <p className="eyebrow">Partir d’un gabarit</p>
-              <p className="mt-1 text-xs text-text-secondary">
-                Un point de départ, pas un formulaire : tout se démonte ensuite.
-              </p>
+              <p className="eyebrow">{tr('hist.pages.partirDUnGabarit')}</p>
+              <p className="mt-1 text-xs text-text-secondary">{tr('hist.pages.unPointDeDepart')}</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 {templatesForScope(scope).map((t) => (
                   <button
@@ -190,9 +187,7 @@ export function PagesScreen({ scope, title, description }: {
           <div className="panel flex flex-col gap-1 p-2">
             {!ready && <p className="px-2 py-3 text-xs text-text-muted">Chargement…</p>}
             {ready && pages.length === 0 && (
-              <p className="px-2 py-3 text-xs text-text-muted">
-                Aucune page pour l’instant. « Nouvelle page » en crée une depuis un gabarit.
-              </p>
+              <p className="px-2 py-3 text-xs text-text-muted">{tr('hist.pages.aucunePagePourL')}</p>
             )}
             {pages.map((p) => (
               <button
@@ -217,9 +212,7 @@ export function PagesScreen({ scope, title, description }: {
           {/* ----------------------------------------------- l'éditeur ---- */}
           <div className="panel min-h-[300px] p-4">
             {!courante ? (
-              <p className="text-sm text-text-muted">
-                Choisissez une page à gauche, ou créez-en une.
-              </p>
+              <p className="text-sm text-text-muted">{tr('hist.pages.choisissezUnePageA')}</p>
             ) : (
               <>
                 <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-3">
@@ -230,22 +223,19 @@ export function PagesScreen({ scope, title, description }: {
                       enregistrer(courante.id, { ...courante.data, title: e.target.value })
                     }
                     className="min-w-0 flex-1 bg-transparent text-lg font-semibold text-text-primary outline-none disabled:cursor-default"
-                    aria-label="Titre de la page"
+                    aria-label={tr('hist.pages.titreDeLaPage')}
                   />
                   {modifiable && (
                     <ConfirmDelete
                       onConfirm={() => void remove('pages', courante.id)}
-                      label="Supprimer la page"
+                      label={tr('hist.pages.supprimerLaPage')}
                     />
                   )}
                 </div>
 
                 {!modifiable && (
                   <p className="mt-3 flex items-center gap-2 border border-border bg-surface px-3 py-2 text-xs text-text-secondary">
-                    <Lock size={12} className="flex-shrink-0" />
-                    Lecture seule : votre rôle n’est pas autorisé à modifier cette page. Vous en
-                    voyez toujours la dernière version.
-                  </p>
+                    <Lock size={12} className="flex-shrink-0" />{tr('hist.pages.lectureSeuleVotreRole')}</p>
                 )}
 
                 {/* ------------------------------------------- les blocs -- */}
@@ -302,10 +292,7 @@ export function PagesScreen({ scope, title, description }: {
                     {/* --------------------------------------- les rôles -- */}
                     <div className="mt-4 border-t border-border pt-4">
                       <p className="eyebrow">Qui peut modifier</p>
-                      <p className="mt-1 text-xs text-text-muted">
-                        Tout le monde lit la page. Le propriétaire garde toujours la main — sans
-                        quoi une page pourrait devenir impossible à corriger.
-                      </p>
+                      <p className="mt-1 text-xs text-text-muted">{tr('hist.pages.toutLeMondeLit')}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {ROLES.map(({ role: r, label }) => {
                           const on = courante.data.editorRoles.includes(r);
@@ -371,7 +358,7 @@ function BlocEditeur({
         <div className="absolute right-2 top-2 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
           <BoutonBloc onClick={onMonter} label="Monter" icon={ChevronUp} />
           <BoutonBloc onClick={onDescendre} label="Descendre" icon={ChevronDown} />
-          <BoutonBloc onClick={onSupprimer} label="Supprimer le bloc" icon={Trash2} />
+          <BoutonBloc onClick={onSupprimer} label={tr('hist.pages.supprimerLeBloc')} icon={Trash2} />
         </div>
       )}
       <Contenu bloc={bloc} modifiable={modifiable} onChange={onChange} />
@@ -423,7 +410,7 @@ function Contenu({
         disabled={!modifiable}
         rows={Math.max(2, bloc.text.split('\n').length)}
         onChange={(e) => onChange({ ...bloc, text: e.target.value })}
-        placeholder="Écrire…"
+        placeholder={tr('hist.pages.ecrire')}
         className="w-full resize-none bg-transparent pr-20 text-sm leading-relaxed text-text-secondary outline-none placeholder:text-text-muted disabled:cursor-default"
       />
     );
@@ -459,15 +446,13 @@ function Contenu({
             rel="noreferrer"
             className="flex items-center gap-2 self-start border border-border bg-raised px-3 py-2 text-xs text-text-secondary hover:text-text-primary"
           >
-            <Video size={13} />
-            Ouvrir la vidéo
-          </a>
+            <Video size={13} />{tr('hist.pages.ouvrirLaVideo')}</a>
         )}
         <input
           value={bloc.caption ?? ''}
           disabled={!modifiable}
           onChange={(e) => onChange({ ...bloc, caption: e.target.value })}
-          placeholder="Légende (facultative)"
+          placeholder={tr('hist.pages.legendeFacultative')}
           className="w-full bg-transparent text-xs text-text-muted outline-none disabled:cursor-default"
         />
       </div>
@@ -560,7 +545,7 @@ function Contenu({
             {modifiable && (
               <button
                 type="button"
-                aria-label="Retirer la ligne"
+                aria-label={tr('hist.pages.retirerLaLigne')}
                 onClick={() =>
                   onChange({ ...bloc, items: bloc.items.filter((_, j) => j !== i) })
                 }
@@ -583,9 +568,7 @@ function Contenu({
               })
             }
             className="-my-1 self-start py-1 text-xs text-text-muted hover:text-text-primary"
-          >
-            + une ligne
-          </button>
+          >{tr('hist.pages.uneLigne')}</button>
         )}
         {courses && (
           /*
@@ -642,8 +625,8 @@ function Contenu({
                 <th className="w-8 border border-border bg-raised p-0">
                   <button
                     type="button"
-                    aria-label="Ajouter une colonne"
-                    title="Ajouter une colonne"
+                    aria-label={tr('hist.pages.ajouterUneColonne')}
+                    title={tr('hist.pages.ajouterUneColonne')}
                     onClick={() => onChange(addColumn(bloc, `Colonne ${bloc.columns.length + 1}`))}
                     className="flex h-full w-full items-center justify-center py-1.5 text-text-muted hover:text-text-primary"
                   >
@@ -677,7 +660,7 @@ function Contenu({
                   <td className="border border-border text-center">
                     <button
                       type="button"
-                      aria-label="Retirer la ligne"
+                      aria-label={tr('hist.pages.retirerLaLigne')}
                       onClick={() =>
                         onChange({ ...bloc, rows: bloc.rows.filter((_, j) => j !== r) })
                       }
@@ -701,17 +684,13 @@ function Contenu({
               onChange({ ...bloc, rows: [...bloc.rows, bloc.columns.map(() => '')] })
             }
             className="-my-1 py-1 text-xs text-text-muted hover:text-text-primary"
-          >
-            + une ligne
-          </button>
+          >{tr('hist.pages.uneLigne')}</button>
           {bloc.columns.length > 1 && (
             <button
               type="button"
               onClick={() => onChange(removeColumn(bloc, bloc.columns.length - 1))}
               className="-my-1 py-1 text-xs text-text-muted hover:text-text-primary"
-            >
-              − la dernière colonne
-            </button>
+            >{tr('hist.pages.laDerniereColonne')}</button>
           )}
         </div>
       )}

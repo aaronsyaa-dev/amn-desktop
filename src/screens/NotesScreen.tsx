@@ -44,6 +44,7 @@ import {
   type Graphe,
 } from '../lib/notesLiens';
 import { NotesGraphe } from '../components/NotesGraphe';
+import { useLangue, t as tr } from '../i18n';
 
 /*
   L'ordre d'ancienneté, pour trancher les homonymes (voir `notesLiens.ts`).
@@ -60,6 +61,8 @@ const ordreDe = (notes: Note[]) =>
 type ScopeFilter = 'all' | 'team' | 'personal';
 
 export function NotesScreen() {
+  // Abonnement à la langue : les textes ci-dessous passent par `tr`, lu au rendu.
+  useLangue();
   const { TEAM_ENABLED } = useExclusive();
   const { notes, createNote, updateNote, togglePin, deleteNote, graphe, renommer } = useNotes();
   const { isPending, scheduleDelete } = useUndo();
@@ -150,19 +153,19 @@ export function NotesScreen() {
   return (
     <section className={`flex flex-col gap-4 ${notes.length === 0 ? '' : 'screen-h'}`}>
       <ScreenHeader
-        eyebrow="Poste de travail · Notes"
-        title="Notes"
+        eyebrow={tr('hist.surtitre', { module: tr('hist.notes.titre') })}
+        title={tr('hist.notes.titre')}
         description={
           TEAM_ENABLED
-            ? 'Le bloc-notes : ce qui est à vous, et ce qui est à l’équipe.'
-            : 'Le bloc-notes — tout ce qu’on garde sous la main.'
+            ? tr('hist.notes.descriptionEquipe')
+            : tr('hist.notes.descriptionSolo')
         }
         stats={
           TEAM_ENABLED
             ? [
                 { label: 'Notes', value: notes.length },
                 { label: 'Personnelles', value: notes.filter((n) => n.scope === 'personal').length },
-                { label: 'Équipe', value: notes.filter((n) => n.scope !== 'personal').length },
+                { label: tr('hist.notes.equipe'), value: notes.filter((n) => n.scope !== 'personal').length },
               ]
             : [{ label: 'Notes', value: notes.length }]
         }
@@ -184,7 +187,7 @@ export function NotesScreen() {
             <CalendarDays size={13} strokeWidth={1.75} />
             <span className="hidden sm:inline">Note du jour</span>
           </button>
-          <div className="flex items-center gap-1 rounded-lg border border-border p-1" role="group" aria-label="Affichage des notes">
+          <div className="flex items-center gap-1 rounded-lg border border-border p-1" role="group" aria-label={tr('hist.notes.affichageDesNotes')}>
             {([
               ['liste', 'Liste', Rows3],
               ['graphe', 'Graphe', Network],
@@ -212,7 +215,7 @@ export function NotesScreen() {
             className="flex items-center gap-2 bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
           >
             <Plus size={16} strokeWidth={2.25} />
-            <span className="hidden sm:inline">Nouvelle note</span>
+            <span className="hidden sm:inline">{tr('hist.notes.nouvelleNote')}</span>
           </button>
           {TEAM_ENABLED && newMenuOpen && (
             <>
@@ -225,7 +228,7 @@ export function NotesScreen() {
                 >
                   <Lock size={14} strokeWidth={1.75} className="text-text-muted" />
                   <span className="flex-1">Note personnelle</span>
-                  <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">Privé</span>
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">{tr('hist.notes.prive')}</span>
                 </button>
                 <button
                   type="button"
@@ -233,8 +236,8 @@ export function NotesScreen() {
                   className="flex w-full items-center gap-2.5 border-t border-border px-3 py-2.5 text-left text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
                 >
                   <Users size={14} strokeWidth={1.75} className="text-text-muted" />
-                  <span className="flex-1">Note d’équipe</span>
-                  <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">Partagé</span>
+                  <span className="flex-1">{tr('hist.notes.noteDEquipe')}</span>
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">{tr('hist.notes.partage')}</span>
                 </button>
               </div>
             </>
@@ -289,7 +292,7 @@ export function NotesScreen() {
               />
             </div>
             {etiquettes.length > 0 && (
-              <div className="mb-2 flex flex-wrap gap-1" role="group" aria-label="Étiquettes">
+              <div className="mb-2 flex flex-wrap gap-1" role="group" aria-label={tr('hist.notes.etiquettes')}>
                 {etiquettes.map(([tag, n]) => (
                   <button
                     key={tag}
@@ -338,7 +341,7 @@ export function NotesScreen() {
               */
               <div className="px-4">
                 {query || scope !== 'all' ? (
-                  <EmptyState quiet>Aucune note ne correspond.</EmptyState>
+                  <EmptyState quiet>{tr('hist.notes.aucuneNoteNeCorrespond')}</EmptyState>
                 ) : (
                   <EmptyState
                     action={{
@@ -435,9 +438,7 @@ export function NotesScreen() {
             }}
           />
         ) : notes.length === 0 ? null : (
-          <div className="flex items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted">
-            Sélectionnez une note
-          </div>
+          <div className="flex items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted">{tr('hist.notes.selectionnezUneNote')}</div>
         )}
       </div>
       </>
@@ -644,7 +645,7 @@ function NoteEditor({
               e.currentTarget.blur();
             }
           }}
-          placeholder="Titre de la note"
+          placeholder={tr('hist.notes.titreDeLaNote')}
           className="min-w-0 flex-1 bg-transparent text-lg font-semibold text-text-primary outline-none placeholder:text-text-muted"
         />
         <SaveIndicator saved={saved} />
@@ -659,7 +660,7 @@ function NoteEditor({
         <button
           type="button"
           onClick={onRemove}
-          aria-label="Supprimer la note"
+          aria-label={tr('hist.notes.supprimerLaNote')}
           className="flex h-9 w-9 items-center justify-center rounded text-text-muted hover:text-danger"
         >
           <Trash2 size={15} strokeWidth={1.75} />
@@ -748,14 +749,14 @@ function NoteEditor({
                 setSaisie(null);
               }
             }}
-            placeholder="Écrivez ici… **gras**, *italique*, # titre, - liste, [[lien vers une note]]"
+            placeholder={tr('hist.notes.ecrivezIciGrasItalique')}
             className="min-h-0 flex-1 resize-none bg-transparent p-4 font-mono text-sm leading-relaxed text-text-primary outline-none placeholder:text-text-muted"
           />
 
           {proposees.length > 0 && (
             <ul
               role="listbox"
-              aria-label="Notes à lier"
+              aria-label={tr('hist.notes.notesALier')}
               className="elev-2 absolute bottom-3 left-4 right-4 z-10 max-h-56 overflow-y-auto rounded-lg border border-border bg-surface py-1"
             >
               {proposees.map((n, i) => (

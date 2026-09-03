@@ -21,6 +21,7 @@ import { ProjectTag } from '../components/projects/ProjectPicker';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { EmptyState, FirstRun } from '../components/EmptyState';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
+import { useLangue, t as tr } from '../i18n';
 
 /**
  * Dépenses — le module qui ne doit surtout pas ressembler à un tableur.
@@ -100,20 +101,20 @@ export function ExpensesScreen() {
   return (
     <section className="flex flex-col gap-4">
       <ScreenHeader
-        eyebrow="Poste de travail · Dépenses"
-        title="Dépenses"
-        description="Ce que vous sortez, mois par mois."
+        eyebrow={tr('hist.expenses.posteDeTravailDepenses')}
+        title={tr('hist.expenses.depenses')}
+        description={tr('hist.expenses.ceQueVousSortez')}
         stats={[
           { label: 'Ce mois-ci', value: formatCentsCompact(total) },
-          { label: 'Lignes affichées', value: visible.length },
+          { label: tr('hist.expenses.lignesAffichees'), value: visible.length },
         ]}
         actions={
         <div className="flex flex-shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={() => setBudgetsOpen(true)}
-            title="Catégories et budgets"
-            aria-label="Catégories et budgets"
+            title={tr('hist.expenses.categoriesEtBudgets')}
+            aria-label={tr('hist.expenses.categoriesEtBudgets')}
             className="flex h-11 w-11 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:h-9 md:w-9"
           >
             <SlidersHorizontal size={16} strokeWidth={1.75} />
@@ -127,8 +128,8 @@ export function ExpensesScreen() {
             className="flex h-11 items-center gap-2 bg-accent px-3 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover md:h-9"
           >
             <Plus size={16} strokeWidth={2.25} />
-            <span className="hidden sm:inline">Nouvelle dépense</span>
-            <span className="sm:hidden">Dépense</span>
+            <span className="hidden sm:inline">{tr('hist.expenses.nouvelleDepense')}</span>
+            <span className="sm:hidden">{tr('hist.expenses.depense')}</span>
           </button>
         </div>
         }
@@ -140,7 +141,7 @@ export function ExpensesScreen() {
           type="button"
           onClick={() => goToMonth(-1)}
           disabled={!canGoBack}
-          aria-label="Mois précédent"
+          aria-label={tr('hist.expenses.moisPrecedent')}
           className="flex h-11 w-11 flex-shrink-0 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:opacity-30"
         >
           <ChevronLeft size={18} strokeWidth={2} />
@@ -173,9 +174,7 @@ export function ExpensesScreen() {
       {/* -------------------------------------------------- répartition ----- */}
       {breakdown.length > 0 && (
         <div className="flex flex-col gap-2.5 border border-border bg-surface p-4">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-            Répartition
-          </p>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.expenses.repartition')}</p>
           {breakdown.map((slice, index) => (
             <CategoryBar
               key={slice.key}
@@ -213,14 +212,11 @@ export function ExpensesScreen() {
         expenses.length === 0 ? (
           <FirstRun
             title="Suivre ce que vous sortez"
-            action={{ label: 'Saisir une dépense', onClick: () => setFormOpen(true) }}
-          >
-            Montant, catégorie, photo du reçu — trois gestes. Les dépenses saisies ici alimentent
-            la synthèse du mois et les calculateurs de marge.
-          </FirstRun>
+            action={{ label: tr('hist.expenses.saisirUneDepense'), onClick: () => setFormOpen(true) }}
+          >{tr('hist.expenses.montantCategoriePhotoDu')}</FirstRun>
         ) : (
           <EmptyState
-            action={{ label: 'Saisir une dépense', onClick: () => setFormOpen(true) }}
+            action={{ label: tr('hist.expenses.saisirUneDepense'), onClick: () => setFormOpen(true) }}
           >
             {monthExpenses.length === 0
               ? 'Rien de dépensé sur ce mois.'
@@ -437,7 +433,7 @@ function ExpenseCard({
         <button
           type="button"
           onClick={onOpenPhoto}
-          aria-label="Voir le justificatif"
+          aria-label={tr('hist.expenses.voirLeJustificatif')}
           className="aspect-square overflow-hidden bg-bg"
         >
           <img

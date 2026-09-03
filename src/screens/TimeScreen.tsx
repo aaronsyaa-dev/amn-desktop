@@ -27,6 +27,7 @@ import { uid } from '../state/SyncContext';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { FirstRun } from '../components/EmptyState';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
+import { useLangue, t as tr } from '../i18n';
 
 /**
  * Temps — le chronomètre d'abord, la feuille d'heures jamais.
@@ -136,7 +137,7 @@ export function TimeScreen() {
       saveConfig({ ...config, hourlyRateCents: values.rateCents });
     }
     notify({
-      title: 'Brouillon de facture créé',
+      title: tr('hist.time.brouillonDeFactureCree'),
       body: 'Relisez-le dans Facturation avant de l’émettre.',
       onClick: () => navigate('/facturation'),
     });
@@ -148,14 +149,14 @@ export function TimeScreen() {
   return (
     <section className="flex flex-col gap-4">
       <ScreenHeader
-        eyebrow="Poste de travail · Temps"
-        title="Temps"
-        description="Ce que vous passez, sans le noter à la main."
+        eyebrow={tr('hist.surtitre', { module: tr('hist.time.titre') })}
+        title={tr('hist.time.titre')}
+        description={tr('hist.time.ceQueVousPassez')}
         stats={[
           { label: 'Aujourd’hui', value: formatDuration(totals.todayMs) },
           { label: 'Cette semaine', value: formatDuration(totals.weekMs) },
           {
-            label: 'Chronomètre',
+            label: tr('hist.time.chronometre'),
             value: running ? 'en cours' : 'à l’arrêt',
             emphasis: Boolean(running),
           },
@@ -167,8 +168,8 @@ export function TimeScreen() {
             className="flex h-11 items-center gap-2 rounded-lg border border-border px-3 text-sm text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:h-9"
           >
             <Plus size={15} strokeWidth={2} />
-            <span className="hidden sm:inline">Ajouter à la main</span>
-            <span className="sm:hidden">À la main</span>
+            <span className="hidden sm:inline">{tr('hist.time.ajouterALaMain')}</span>
+            <span className="sm:hidden">{tr('hist.time.aLaMain')}</span>
           </button>
         }
       />
@@ -190,9 +191,7 @@ export function TimeScreen() {
           </>
         ) : (
           <>
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
-              Sur quoi travaillez-vous ?
-            </p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">{tr('hist.time.surQuoiTravaillezVous')}</p>
             <input
               value={label}
               onChange={(e) => setLabel(e.target.value)}
@@ -239,9 +238,7 @@ export function TimeScreen() {
       {/* --------------------------------------------------- par projet ----- */}
       {perProject.length > 0 && (
         <div className="flex flex-col gap-2.5 border border-border bg-surface p-4">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-            Cette semaine, par projet
-          </p>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.time.cetteSemaineParProjet')}</p>
           {perProject.map((row, index) => {
             const billable = row.projectId ? billableOf(row.projectId) : [];
             return (
@@ -271,10 +268,7 @@ export function TimeScreen() {
           Le chronomètre est déjà en haut de l'écran : l'état vide n'a donc
           aucune action à proposer, il a seulement à ne pas encombrer.
         */
-        <FirstRun title="Rien de chronométré pour l’instant">
-          Un bouton, deux fois : au début et à la fin. Le temps enregistré ici se retrouve dans la
-          synthèse du mois et se refacture depuis une fiche client.
-        </FirstRun>
+        <FirstRun title={tr('hist.time.rienDeChronometrePour')}>{tr('hist.time.unBoutonDeuxFois')}</FirstRun>
       ) : (
         <motion.div variants={staggerContainer} initial="initial" animate="animate" className="flex flex-col gap-3">
           {byDay.map((group) => (
@@ -379,7 +373,7 @@ function ProjectBar({
             <button
               type="button"
               onClick={onInvoice}
-              title="Créer un brouillon de facture à partir de ce temps"
+              title={tr('hist.time.creerUnBrouillonDe')}
               className="flex h-8 items-center gap-1 border border-border px-2 font-mono text-[9px] uppercase tracking-widest text-text-muted transition-colors hover:border-border-strong hover:text-text-primary"
             >
               <ReceiptEuro size={12} strokeWidth={2} />
@@ -424,9 +418,7 @@ function EntryRow({
           </span>
           <ProjectTag projectId={entry.projectId} />
           {entry.invoicedAt && (
-            <span className="border border-border px-1.5 py-px font-mono text-[9px] uppercase tracking-widest text-text-muted">
-              Facturé
-            </span>
+            <span className="border border-border px-1.5 py-px font-mono text-[9px] uppercase tracking-widest text-text-muted">{tr('hist.time.facture')}</span>
           )}
         </div>
       </div>
@@ -457,7 +449,7 @@ function EntryRow({
         }`}
       >
         {confirmDelete ? (
-          <span className="font-mono text-[9px] uppercase tracking-widest">Sûr ?</span>
+          <span className="font-mono text-[9px] uppercase tracking-widest">{tr('hist.time.sur')}</span>
         ) : (
           <Trash2 size={14} strokeWidth={1.75} />
         )}
@@ -512,9 +504,7 @@ function EditEntryDialog({
         </div>
         <div className="p-4">
           <label className="block">
-            <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-text-muted">
-              Sur quoi ?
-            </span>
+            <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.time.surQuoi')}</span>
             <input
               value={label}
               onChange={(e) => setLabel(e.target.value)}
@@ -523,10 +513,7 @@ function EditEntryDialog({
             />
           </label>
           <ProjectPicker value={projectId} onChange={setProjectId} className="mt-4" />
-          <p className="mt-3 text-xs leading-relaxed text-text-secondary">
-            La durée n’est pas modifiable ici : si elle est fausse, supprimez cette période et
-            ressaisissez-la.
-          </p>
+          <p className="mt-3 text-xs leading-relaxed text-text-secondary">{tr('hist.time.laDureeNEst')}</p>
         </div>
         <div className="flex items-center justify-end gap-2 border-t border-border p-3">
           <button
@@ -543,9 +530,7 @@ function EditEntryDialog({
               onClose();
             }}
             className="flex min-h-11 items-center bg-accent px-4 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
-          >
-            Enregistrer
-          </button>
+          >{tr('hist.time.enregistrer')}</button>
         </div>
       </motion.div>
     </div>
