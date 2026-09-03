@@ -469,7 +469,20 @@ export function SyncProvider({
         met à jour tout seul, le serveur non.
       */
       try {
-        const groupe = await remote.listRecordsBulk(SYNCED_COLLECTIONS);
+        /*
+          PAR LOTS DE CINQUANTE. Mesuré à l'audit du 4 septembre 2026 : le
+          contrat compte 69 collections depuis les cinquante modules, une
+          amn-api d'avant ce jour plafonne à 50, et un seul appel recevait un
+          400 — puis 69 requêtes une par une, à chaque ouverture, sur chaque
+          poste. Deux allers-retours au lieu de soixante-neuf, quel que soit
+          l'âge du serveur en face ; le repli une-par-une reste pour les
+          serveurs qui ne connaissent pas `_bulk` du tout.
+        */
+        const LOT = 50;
+        const groupe: Record<string, RemoteRecord[]> = {};
+        for (let i = 0; i < SYNCED_COLLECTIONS.length; i += LOT) {
+          Object.assign(groupe, await remote.listRecordsBulk(SYNCED_COLLECTIONS.slice(i, i + LOT)));
+        }
         const manquantes = SYNCED_COLLECTIONS.filter((c) => !Array.isArray(groupe[c]));
         if (manquantes.length === 0) {
           if (active) {
