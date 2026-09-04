@@ -64,7 +64,7 @@ export function lireCsv(texte: string): Record<string, string>[] {
   ligne.push(cellule);
   if (ligne.some((v) => v.trim())) lignes.push(ligne);
   const [entete = [], ...corps] = lignes;
-  const cles = entete.map((h) => h.trim().replace(/^﻿/, '').toLowerCase());
+  const cles = entete.map((h) => h.trim().replace(/^\uFEFF/, '').toLowerCase());
   return corps.map((l) => Object.fromEntries(cles.map((k, i) => [k, (l[i] ?? '').trim()])));
 }
 const colonne = (ligne: Record<string, string>, ...noms: string[]) => noms.map((n) => ligne[n]).find((v) => v !== undefined && v !== '') ?? '';
