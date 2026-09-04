@@ -54,7 +54,8 @@ const failures: string[] = [];
 const check = (nom: string, f: () => Promise<void>) =>
   f().catch((err) => failures.push(`${nom} — ${err instanceof Error ? err.message : String(err)}`));
 
-const immediat = async () => {};
+// Entre deux reprises, ne pas attendre : le test mesure la logique, pas le temps.
+const immediat = () => Promise.resolve();
 
 await check('502 puis 200 : le résultat arrive, et l’attente a été dite puis éteinte', async () => {
   const reponses: Tentative<string>[] = [{ ok: false, statut: 502 }, { ok: false, statut: 503 }, { ok: true, valeur: 'liste' }];
