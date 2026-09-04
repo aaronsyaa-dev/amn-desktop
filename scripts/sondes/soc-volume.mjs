@@ -1,0 +1,34 @@
+/* Bloc 6 — la file du parc sur la base de volume (100 000 sites, 300 000 incidents), rondes actives. L'API sur :4171 doit servir /tmp/e2e/volume.db. */
+const { chromium } = await import('playwright-core');
+const a = (ms) => new Promise((r) => setTimeout(r, ms));
+const OUT = process.env.OUT || 'docs/captures/supervision-2026-09-04';
+const nav = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--no-sandbox'] });
+const p = await (await nav.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+p.on('pageerror', (e) => console.log('ERREUR PAGE:', String(e).slice(0, 160)));
+const reseau = [];
+p.on('response', (r) => { if (r.url().includes('/v1/admin/incidents')) reseau.push({ url: r.url().replace('http://127.0.0.1:4171', ''), status: r.status(), ms: 0 }); });
+await p.goto('http://127.0.0.1:4181/'); await a(1800);
+await p.locator('input[name="email"]').fill('volume.interne@exemple.test'); await p.locator('input[name="password"]').fill('Volume-2026-Essai');
+await p.locator('button[type="submit"]').first().click();
+for (let i = 0; i < 20 && (await p.content()).includes('name="password"'); i += 1) await a(1000);
+await a(2500); await p.mouse.click(720, 860); await a(500);
+await p.goto('http://127.0.0.1:4181/#/tour'); await a(2000);
+const texte = () => p.evaluate(() => document.body.innerText);
+const t0 = performance.now();
+await p.goto('http://127.0.0.1:4181/#/supervision');
+await p.locator('section[aria-label="La file du parc"] ul li').first().waitFor({ timeout: 30000 });
+console.log(`supervision : la file du parc affichée en ${(performance.now() - t0).toFixed(0)} ms`);
+await a(1500);
+let t = await texte();
+const section = await p.locator('section[aria-label="La file du parc"]').innerText();
+console.log('comptes :', section.split('\n').slice(0, 16).filter((l) => /^\d|—|min/.test(l)).join(' | '));
+console.log('total / affichés :', (section.match(/\d+ ouverts? · \d+ affichés?/i) || ['—'])[0]);
+await p.screenshot({ path: `${OUT}/15-soc-file-du-parc.png` });
+await p.locator('section[aria-label="La file du parc"] button:has-text("Cinquante de plus")').click(); await a(1500);
+console.log('après cinquante de plus :', (await p.locator('section[aria-label="La file du parc"]').innerText()).match(/\d+ ouverts? · \d+ affichés?/i)?.[0]);
+await p.locator('select[aria-label="Gravité"]').selectOption('critical'); await a(1800);
+console.log('critiques seulement :', (await p.locator('section[aria-label="La file du parc"]').innerText()).match(/\d+ ouverts? · \d+ affichés?/i)?.[0]);
+const sante = [];
+for (let i = 0; i < 5; i += 1) { const s = performance.now(); await fetch('http://127.0.0.1:4171/v1/health'); sante.push(Math.round(performance.now() - s)); await a(400); }
+console.log('santé du serveur pendant la sonde, rondes actives (ms) :', sante.join(' '), '| appels admin/incidents :', reseau.length, reseau.every((r) => r.status === 200) ? 'tous 200' : 'ERREURS');
+await nav.close();
