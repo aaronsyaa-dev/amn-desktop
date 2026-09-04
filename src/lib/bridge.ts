@@ -352,9 +352,25 @@ function createBrowserRemote(): AmnBridge['remote'] {
     init: RequestInit & { owner?: boolean } = {},
   ): Promise<T> {
     const { owner, ...request } = init;
+    /*
+      L'ÉCRITURE LANCÉE PENDANT QUE LA PAGE SE CACHE.
+
+      Un rechargement, un onglet fermé : le navigateur abandonne les requêtes
+      en vol, et la dernière phrase d'une note partait avec elles (mesuré,
+      suite « casser »). `keepalive` lui demande de la laisser finir. On ne le
+      pose que là — page cachée, corps court : le navigateur plafonne ces
+      requêtes à 64 Ko, et le reste du trafic n'a rien à y gagner.
+    */
+    const ecriture = Boolean(request.method) && request.method!.toUpperCase() !== 'GET';
+    const enPartant =
+      ecriture &&
+      typeof document !== 'undefined' &&
+      document.visibilityState === 'hidden' &&
+      (typeof request.body !== 'string' || request.body.length < 60_000);
     const lancer = () =>
       fetch(`${apiUrl}${path}`, {
         ...request,
+        ...(enPartant ? { keepalive: true } : {}),
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${owner ? ownerCredential() : credential()}`,

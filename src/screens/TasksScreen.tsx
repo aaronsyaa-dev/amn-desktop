@@ -93,6 +93,8 @@ export type SyncTask = TaskData & { id: string; updatedAt: string };
 
 /** Le domaine des statuts, à l'exécution (voir src/lib/records.ts). */
 const TASK_STATUSES: SharedTaskStatus[] = ['todo', 'doing', 'done'];
+/** Cartes posées par colonne avant le bouton « en afficher davantage ». */
+const LOT_CARTES = 100;
 
 export function TasksScreen() {
   const { TEAM_ENABLED } = useExclusive();
@@ -308,6 +310,16 @@ function TaskColumn({
   /** Vrai quand AUCUNE des trois colonnes n'a de tâche — le premier jour. */
   tableauVide: boolean;
 }) {
+  /*
+    LA COLONNE NE DESSINE PAS TROIS MILLE CARTES.
+
+    Chaque carte pèse une trentaine de nœuds ; un téléphone qui en reçoit
+    trois mille d'un coup passe plus d'une seconde à les poser avant de
+    répondre au premier geste (mesuré, suite « casser »). On en pose cent,
+    puis cent de plus à la demande — la liste reste complète, et le compteur
+    de la colonne dit le vrai total dès le premier rendu.
+  */
+  const [visibles, setVisibles] = useState(LOT_CARTES);
   return (
     <div className="flex min-h-0 flex-col border border-border bg-surface">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -346,20 +358,31 @@ function TaskColumn({
             <p className="px-1 py-4 font-mono text-xs text-text-muted">{tr('hist.tasks.rienIci')}</p>
           )
         ) : (
-          tasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              status={status}
-              sites={sites}
-              clients={clients}
-              onMove={onMove}
-              onRemove={onRemove}
-              onAddMarker={onAddMarker}
-              onRemoveMarker={onRemoveMarker}
-              onOpen={onOpen}
-            />
-          ))
+          <>
+            {tasks.slice(0, visibles).map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                status={status}
+                sites={sites}
+                clients={clients}
+                onMove={onMove}
+                onRemove={onRemove}
+                onAddMarker={onAddMarker}
+                onRemoveMarker={onRemoveMarker}
+                onOpen={onOpen}
+              />
+            ))}
+            {tasks.length > visibles && (
+              <button
+                type="button"
+                onClick={() => setVisibles((v) => v + LOT_CARTES)}
+                className="mt-1 min-h-11 w-full border border-dashed border-border px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+              >
+                {tr('hist.tasks.afficherLaSuite').replace('{n}', String(Math.min(LOT_CARTES, tasks.length - visibles)))}
+              </button>
+            )}
+          </>
         )}
       </motion.div>
     </div>

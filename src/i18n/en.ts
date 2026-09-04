@@ -1274,6 +1274,7 @@ export const en = {
   'hist.tasks.uneTacheCEst': 'A task is one thing to do, and only one. It moves from one column to the next by dropping it, and can carry a site, a client or a due date.',
   'hist.tasks.commencezParLaPlus': 'Start with the nearest one: the one you would have written on a piece of paper.',
   'hist.tasks.rienIci': 'Nothing here.',
+  'hist.tasks.afficherLaSuite': 'Show the next {n}',
   'hist.tasks.ajouterUnRepere': 'Add a marker',
   'hist.tasks.faireUnRapport': 'Write a report',
   'hist.tasks.detail': 'Detail',

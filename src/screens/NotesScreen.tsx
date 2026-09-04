@@ -26,6 +26,7 @@ import { useNotes, type Note } from '../state/useNotes';
 import { useExclusive } from '@edition/exclusive';
 import { useUndo } from '../state/UndoContext';
 import { SaveIndicator } from '../components/SaveIndicator';
+import { useSauvegardeDifferee } from '../lib/useSauvegardeDifferee';
 import { Markdown } from '../lib/markdown';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { relativeTime } from '../lib/time';
@@ -474,9 +475,31 @@ function NoteEditor({
 }) {
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
-  const [saved, setSaved] = useState(true);
   const [preview, setPreview] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { programmer, saved } = useSauvegardeDifferee<{ title: string; body: string }>((v) => onSave(v));
+
+  /*
+    DEUX POSTES SUR LA MÊME NOTE.
+
+    Chacun tape, chacun enregistre ; le serveur garde le dernier. Mais le
+    poste qui avait perdu continuait d'afficher SA version — sans le savoir,
+    et sa frappe suivante l'aurait remise par-dessus l'autre (mesuré, suite
+    « casser »). Ici, ce qui arrive du serveur et qu'on n'a pas touché depuis
+    est adopté ; ce qu'on est en train d'écrire ne l'est jamais : il partira,
+    et c'est l'autre poste, au repos, qui l'adoptera. Les deux finissent
+    toujours par lire la même chose.
+  */
+  const adopte = useRef({ title: note.title, body: note.body });
+  useEffect(() => {
+    if (note.title !== adopte.current.title) {
+      if (title === adopte.current.title) setTitle(note.title);
+      adopte.current.title = note.title;
+    }
+    if (note.body !== adopte.current.body) {
+      if (body === adopte.current.body) setBody(note.body);
+      adopte.current.body = note.body;
+    }
+  }, [note.title, note.body]);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   /*
@@ -551,14 +574,7 @@ function NoteEditor({
     });
   };
 
-  const scheduleSave = (nextTitle: string, nextBody: string) => {
-    setSaved(false);
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      onSave({ title: nextTitle, body: nextBody });
-      setSaved(true);
-    }, 600);
-  };
+  const scheduleSave = (nextTitle: string, nextBody: string) => programmer({ title: nextTitle, body: nextBody });
 
   /** Wraps the current selection with markdown markers (bold/italic/code). */
   const wrap = (before: string, after = before) => {

@@ -14,7 +14,6 @@ import { BootHealthy } from '../components/BootHealthy';
 import { SyncStatusIndicator } from '../components/SyncStatusIndicator';
 import { variantsForPath } from '../lib/transitions';
 import { StatusRail } from '../components/StatusRail';
-import { ToastProvider } from '../state/ToastContext';
 import { SupportNotifier } from '../components/SupportNotifier';
 import { useLangue } from '../i18n';
 
@@ -124,13 +123,13 @@ export function ClientContextLayout() {
                       autre cliente, et cette coquille — celle du contexte de
                       support — ne montait pas le notificateur. Le serveur
                       livre désormais la trame où qu'il regarde (hub.tower) ;
-                      encore faut-il quelqu'un pour l'entendre. Son propre
-                      fournisseur de toasts, parce que cette coquille n'a pas
-                      celui d'AppLayout.
+                      encore faut-il quelqu'un pour l'entendre. Les toasts,
+                      eux, viennent de la pile partagée (`SpaceProviders`, plus
+                      haut) : un second fournisseur monté ici à la main est
+                      exactement ce que `check:resilience` interdit — c'est
+                      ainsi que les piles des coquilles ont divergé une fois.
                     */}
-                    <ToastProvider>
-                      <SupportNotifier />
-                    </ToastProvider>
+                    <SupportNotifier />
                   </div>
                 </main>
                 </div>

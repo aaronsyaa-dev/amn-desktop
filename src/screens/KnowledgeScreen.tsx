@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useSauvegardeDifferee } from '../lib/useSauvegardeDifferee';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { motion } from 'framer-motion';
 import { BookOpen, Plus, Trash2 } from 'lucide-react';
@@ -146,17 +147,22 @@ function DocEditor({
 }) {
   const [title, setTitle] = useState(doc.title);
   const [body, setBody] = useState(doc.body);
-  const [saved, setSaved] = useState(true);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { programmer, saved } = useSauvegardeDifferee<{ title: string; body: string }>((v) => onSave(doc.id, v));
+  const scheduleSave = (nextTitle: string, nextBody: string) => programmer({ title: nextTitle, body: nextBody });
 
-  const scheduleSave = (nextTitle: string, nextBody: string) => {
-    setSaved(false);
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      onSave(doc.id, { title: nextTitle, body: nextBody });
-      setSaved(true);
-    }, 600);
-  };
+  // Même règle que les Notes : ce qui arrive d'un autre poste et qu'on n'a
+  // pas touché depuis est adopté ; ce qu'on tape ne l'est jamais.
+  const adopte = useRef({ title: doc.title, body: doc.body });
+  useEffect(() => {
+    if (doc.title !== adopte.current.title) {
+      if (title === adopte.current.title) setTitle(doc.title);
+      adopte.current.title = doc.title;
+    }
+    if (doc.body !== adopte.current.body) {
+      if (body === adopte.current.body) setBody(doc.body);
+      adopte.current.body = doc.body;
+    }
+  }, [doc.title, doc.body]);
 
   return (
     <div className="flex min-h-0 flex-col border border-border bg-surface">

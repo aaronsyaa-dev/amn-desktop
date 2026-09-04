@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { isModuleEnabled } from '../data/spaces';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, CalendarDays, CheckSquare, Contact, FileText, Plus } from 'lucide-react';
@@ -139,7 +140,7 @@ export function HomeSoloScreen() {
           <Card
             icon={CalendarDays}
             title="Aujourd’hui"
-            action={{ to: '/agenda', label: 'Ouvrir l’agenda' }}
+            action={isModuleEnabled('agenda') ? { to: '/agenda', label: 'Ouvrir l’agenda' } : undefined}
           >
             {next && (
               <div className="mb-3 border border-border-strong bg-accent-muted px-3 py-2.5">
@@ -168,7 +169,7 @@ export function HomeSoloScreen() {
         </StaggerItem>
 
         <StaggerItem>
-          <Card icon={CheckSquare} title="À faire" action={{ to: '/tasks', label: 'Toutes les tâches' }}>
+          <Card icon={CheckSquare} title="À faire" action={isModuleEnabled('tasks') ? { to: '/tasks', label: 'Toutes les tâches' } : undefined}>
             {openTasks.length === 0 ? (
               <Empty>Rien en attente.</Empty>
             ) : (
@@ -187,7 +188,7 @@ export function HomeSoloScreen() {
         </StaggerItem>
 
         <StaggerItem className="lg:col-span-2">
-          <Card icon={Contact} title="Clients" action={{ to: '/clients', label: 'Toutes les fiches' }}>
+          <Card icon={Contact} title="Clients" action={isModuleEnabled('clients') ? { to: '/clients', label: 'Toutes les fiches' } : undefined}>
             {clients.length === 0 ? (
               <Empty>Aucune fiche client pour l’instant.</Empty>
             ) : (
@@ -217,11 +218,17 @@ export function HomeSoloScreen() {
 
         <StaggerItem>
           <Card icon={FileText} title="Raccourcis">
+            {/*
+              Un raccourci vers un module fermé à cette organisation est une
+              porte peinte sur un mur : le clic ramène à l'accueil sans un mot
+              (vu en session de support, suite « casser »). On ne propose que
+              ce qui s'ouvre.
+            */}
             <div className="flex flex-col gap-2">
-              <Shortcut to="/agenda" label="Planifier un rendez-vous" />
-              <Shortcut to="/clients" label="Ajouter un client" />
-              <Shortcut to="/notes" label="Prendre une note" />
-              <Shortcut to="/reports" label="Rédiger un compte-rendu" />
+              {isModuleEnabled('agenda') && <Shortcut to="/agenda" label="Planifier un rendez-vous" />}
+              {isModuleEnabled('clients') && <Shortcut to="/clients" label="Ajouter un client" />}
+              {isModuleEnabled('notes') && <Shortcut to="/notes" label="Prendre une note" />}
+              {isModuleEnabled('reports') && <Shortcut to="/reports" label="Rédiger un compte-rendu" />}
             </div>
           </Card>
         </StaggerItem>

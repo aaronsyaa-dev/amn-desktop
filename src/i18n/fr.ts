@@ -1267,6 +1267,7 @@ export const fr: Dictionnaire = {
   'hist.tasks.uneTacheCEst': 'Une tâche, c’est une chose à faire et une seule. Elle passe d’une colonne à la suivante en la déposant, et peut porter un site, un client ou une échéance.',
   'hist.tasks.commencezParLaPlus': 'Commencez par la plus proche : celle que vous auriez notée sur un papier.',
   'hist.tasks.rienIci': 'Rien ici.',
+  'hist.tasks.afficherLaSuite': 'Afficher les {n} suivantes',
   'hist.tasks.ajouterUnRepere': 'Ajouter un repère',
   'hist.tasks.faireUnRapport': 'Faire un rapport',
   'hist.tasks.detail': 'Détail',
