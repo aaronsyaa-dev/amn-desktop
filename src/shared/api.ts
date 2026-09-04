@@ -145,6 +145,33 @@ export interface BulkResult {
   done: number;
   failed: Array<{ id: string; error: string }>;
 }
+/** Un incident dans la file du parc (Bloc 6) : le même qu'à l'organisation, avec le nom de celle-ci. */
+export type FleetIncident = Incident & { orgId: string; orgName: string; escalationLevel: number };
+export interface FleetIncidentsPage {
+  incidents: FleetIncident[];
+  total: number;
+  nextCursor: string | null;
+}
+export interface FleetIncidentsQuery {
+  status?: 'open' | 'all' | IncidentStatus;
+  severity?: 'info' | 'warning' | 'critical';
+  org?: string;
+  cursor?: string | null;
+  limit?: number;
+}
+/** Les comptes du SOC, agrégés par le serveur — jamais calculés en chargeant les incidents. */
+export interface SocSummary {
+  open: number;
+  new: number;
+  critical: number;
+  escalated: number;
+  suppressed: number;
+  oldestNewAt: string | null;
+  oldestNewMinutes: number | null;
+  sitesOffline: number;
+  organizationsAffected: number;
+  at: string;
+}
 export interface ModuleLock {
   module: string;
   lockedAt: string;
@@ -3115,6 +3142,9 @@ export interface AmnBridge {
        * journalisée une par une côté serveur. Cinq cents identifiants au plus.
        */
       bulk(input: BulkInput): Promise<BulkResult>;
+      /** La file du SOC à l'échelle du parc (Bloc 6) : tous les incidents ouverts, par pages, avec le total. */
+      incidentsQueue(query: FleetIncidentsQuery): Promise<FleetIncidentsPage>;
+      incidentsSummary(): Promise<SocSummary>;
       /** Efface tous les ajustements : l'organisation revient exactement à sa formule. */
       resetOrganizationModules(id: string): Promise<AdminOrganization>;
       /**
@@ -3505,6 +3535,8 @@ export const IPC = {
   remoteAdminOrgDossier: 'remote:adminOrgDossier',
   remoteAdminSetOrgTags: 'remote:adminSetOrgTags',
   remoteAdminBulk: 'remote:adminBulk',
+  remoteAdminIncidentsQueue: 'remote:adminIncidentsQueue',
+  remoteAdminIncidentsSummary: 'remote:adminIncidentsSummary',
   remoteLocksList: 'remote:locksList',
   remoteLocksSet: 'remote:locksSet',
   remoteAdminResetOrgModules: 'remote:adminResetOrgModules',

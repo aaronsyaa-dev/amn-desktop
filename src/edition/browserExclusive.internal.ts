@@ -58,6 +58,9 @@ import type {
   ModuleLock,
   BulkInput,
   BulkResult,
+  FleetIncidentsQuery,
+  FleetIncidentsPage,
+  SocSummary,
 } from '../shared/api';
 
 /**
@@ -543,6 +546,15 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
         body: JSON.stringify({ tags }),
       });
       return res.tags;
+    },
+    async incidentsQueue(query: FleetIncidentsQuery) {
+      const params = new URLSearchParams();
+      for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== null && v !== '') params.set(k, String(v));
+      return ctx.apiFetch<FleetIncidentsPage>(`/v1/admin/incidents/queue?${params.toString()}`, { owner: true });
+    },
+    async incidentsSummary() {
+      const { summary } = await ctx.apiFetch<{ summary: SocSummary }>('/v1/admin/incidents/summary', { owner: true });
+      return summary;
     },
     async bulk(input: BulkInput) {
       return ctx.apiFetch<BulkResult>('/v1/admin/organizations/bulk', { owner: true, method: 'POST', body: JSON.stringify(input) });

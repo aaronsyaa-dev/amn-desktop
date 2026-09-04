@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { bridge } from '../lib/bridge';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { ParcSocPanel } from '../components/tour/ParcSocPanel';
 import { serieFlux } from '../lib/serieVitale';
 import { EmptyState } from '../components/EmptyState';
 import { MonthlyReportPanel } from '../components/MonthlyReportPanel';
@@ -235,6 +236,8 @@ export function IncidentsScreen() {
               className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-[12px] font-medium text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
             >
               <FileText size={14} strokeWidth={1.75} />
+      {/* La file du parc (Bloc 6) : toutes les organisations, avant la file de celle-ci. */}
+      <ParcSocPanel />
               <span className="hidden sm:inline">Rapport mensuel</span>
             </button>
             <button

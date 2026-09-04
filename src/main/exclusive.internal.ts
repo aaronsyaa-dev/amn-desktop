@@ -53,6 +53,9 @@ import {
   type ModuleLock,
   type BulkInput,
   type BulkResult,
+  type FleetIncidentsQuery,
+  type FleetIncidentsPage,
+  type SocSummary,
 } from '../shared/api';
 import { apiCredential, remoteConfig } from './remoteConfig';
 import { apiFetch, type RemoteApiClient } from './remoteApi';
@@ -496,6 +499,16 @@ const adminApi = {
     return res.tags;
   },
 
+  async incidentsQueue(query: FleetIncidentsQuery): Promise<FleetIncidentsPage> {
+    const params = new URLSearchParams();
+    for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== null && v !== '') params.set(k, String(v));
+    return apiFetch<FleetIncidentsPage>(`/v1/admin/incidents/queue?${params.toString()}`, { owner: true });
+  },
+  async incidentsSummary(): Promise<SocSummary> {
+    const { summary } = await apiFetch<{ summary: SocSummary }>('/v1/admin/incidents/summary', { owner: true });
+    return summary;
+  },
+
   async bulk(input: BulkInput): Promise<BulkResult> {
     return apiFetch<BulkResult>('/v1/admin/organizations/bulk', { owner: true, method: 'POST', body: JSON.stringify(input) });
   },
@@ -850,6 +863,8 @@ export function registerExclusiveIpc(
   ipcMain.handle(IPC.remoteAdminOrgsSummary, () => adminApi.organizationsSummary());
   ipcMain.handle(IPC.remoteAdminOrgDossier, (_event, id: string) => adminApi.organizationDossier(id));
   ipcMain.handle(IPC.remoteAdminBulk, (_event, input: BulkInput) => adminApi.bulk(input));
+  ipcMain.handle(IPC.remoteAdminIncidentsQueue, (_event, query: FleetIncidentsQuery) => adminApi.incidentsQueue(query));
+  ipcMain.handle(IPC.remoteAdminIncidentsSummary, () => adminApi.incidentsSummary());
   ipcMain.handle(IPC.remoteAdminSetOrgTags, (_event, payload: { id: string; tags: string[] }) => adminApi.setOrganizationTags(payload.id, payload.tags));
   ipcMain.handle(
     IPC.remoteAdminSetOrgStatus,
