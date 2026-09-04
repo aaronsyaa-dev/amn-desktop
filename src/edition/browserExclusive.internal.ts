@@ -52,6 +52,12 @@ import type {
   AdminWelcomeLink,
   InputAlert,
   OrgChange,
+  ParcPageQuery,
+  ParcPage,
+  ParcSummary,
+  ModuleLock,
+  BulkInput,
+  BulkResult,
 } from '../shared/api';
 
 /**
@@ -514,6 +520,32 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
         { owner: true, method: 'PUT', body: JSON.stringify({ open }) },
       );
       return organization;
+    },
+    async organizationsPage(query: ParcPageQuery) {
+      const params = new URLSearchParams();
+      for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== null && v !== '') params.set(k, String(v));
+      return ctx.apiFetch<ParcPage>(`/v1/admin/organizations/page?${params.toString()}`, { owner: true });
+    },
+    async organizationsSummary() {
+      const { summary } = await ctx.apiFetch<{ summary: ParcSummary }>('/v1/admin/organizations/summary', { owner: true });
+      return summary;
+    },
+    async organizationDossier(id: string) {
+      return ctx.apiFetch<{ organization: AdminOrganization; tags: string[]; locks: ModuleLock[] }>(
+        `/v1/admin/organizations/${encodeURIComponent(id)}/dossier`,
+        { owner: true },
+      );
+    },
+    async setOrganizationTags(id: string, tags: string[]) {
+      const res = await ctx.apiFetch<{ tags: string[] }>(`/v1/admin/organizations/${encodeURIComponent(id)}/tags`, {
+        owner: true,
+        method: 'PUT',
+        body: JSON.stringify({ tags }),
+      });
+      return res.tags;
+    },
+    async bulk(input: BulkInput) {
+      return ctx.apiFetch<BulkResult>('/v1/admin/organizations/bulk', { owner: true, method: 'POST', body: JSON.stringify(input) });
     },
     async resetOrganizationModules(id: string) {
       const { organization } = await ctx.apiFetch<{ organization: AdminOrganization }>(

@@ -405,6 +405,11 @@ export const ACCESS_VERB: Record<string, string> = {
   module_opened: 'a ouvert un module chez',
   module_closed: 'a fermé un module chez',
   modules_reset: 'a remis la formule de',
+  tags_changed: 'a étiqueté',
+  // Le consentement : c'est la CLIENTE qui ferme ou rouvre à son prestataire.
+  module_locked: 'a fermé un module à son prestataire chez',
+  module_unlocked: 'a rouvert un module à son prestataire chez',
+  announcement_sent: 'a déposé une annonce chez',
   member_suspended: 'a suspendu un membre de',
   member_reactivated: 'a réactivé un membre de',
   member_role_changed: 'a changé un rôle chez',

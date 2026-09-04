@@ -8,6 +8,7 @@ import {
 } from './remoteConfig';
 import { API_UNREACHABLE_PREFIX, GUEST_QUOTA_PREFIX, marquerStatut,
   MemberJournalEntry,
+  ModuleLock,
 } from '../shared/api';
 import { avecReprise, messageServeurAbsent, serveurAbsent } from '../shared/reprise';
 import type {
@@ -206,6 +207,22 @@ export class RemoteApiClient {
     if (!isRemoteConfigured()) return [];
     const { users } = await apiFetch<{ users: PresenceEntry[] }>('/v1/collections/_presence');
     return users;
+  }
+
+  /* ------------------------------ Verrous de consentement ----------------------------- */
+
+  async listLocks(): Promise<ModuleLock[]> {
+    if (!isRemoteConfigured()) return [];
+    const { locks } = await apiFetch<{ locks: ModuleLock[] }>('/v1/modules/locks');
+    return locks ?? [];
+  }
+
+  async setLock(module: string, locked: boolean): Promise<ModuleLock[]> {
+    const { locks } = await apiFetch<{ locks: ModuleLock[] }>(`/v1/modules/${encodeURIComponent(module)}/lock`, {
+      method: 'PUT',
+      body: JSON.stringify({ locked }),
+    });
+    return locks ?? [];
   }
 
   /* ------------------------------ Préférences ----------------------------- */

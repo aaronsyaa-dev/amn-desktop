@@ -81,6 +81,74 @@ export type OrgStatus = 'active' | 'suspended';
  * savoir si elle tourne, le compte d'utilisateurs et la dernière activité pour
  * savoir si elle vit. Rien de son travail — la console ne le lit pas.
  */
+/** Une ligne du parc, telle que le serveur la rend page par page (Bloc 4). */
+export interface ParcOrganization {
+  id: string;
+  name: string;
+  plan: OrgPlan;
+  status: OrgStatus;
+  trade: string | null;
+  language: string | null;
+  seats: number | null;
+  createdAt: string;
+  lastActivityAt: string | null;
+  userCount: number;
+  tags: string[];
+  openIncidents: number;
+  /** Modules dont la cliente a verrouillé le contenu à son prestataire. */
+  locks: number;
+}
+export interface ParcPageQuery {
+  q?: string;
+  status?: OrgStatus;
+  plan?: OrgPlan;
+  trade?: string;
+  language?: string;
+  tag?: string;
+  activity?: '7d' | '30d' | 'silent30d' | 'never';
+  incidents?: 'open';
+  sort?: 'name' | 'created' | 'activity';
+  cursor?: string | null;
+  limit?: number;
+}
+export interface ParcPage {
+  organizations: ParcOrganization[];
+  total: number;
+  nextCursor: string | null;
+}
+/** Les comptes du parc, agrégés par le serveur — jamais calculés en chargeant les organisations. */
+export interface ParcSummary {
+  total: number;
+  byStatus: Record<string, number>;
+  byPlan: Record<string, number>;
+  byTrade: Record<string, number>;
+  byLanguage: Record<string, number>;
+  active7d: number;
+  active30d: number;
+  silent30d: number;
+  never: number;
+  withOpenIncidents: number;
+  openIncidents: number;
+  tags: Array<{ tag: string; count: number }>;
+  at: string;
+}
+export type BulkAction = 'suspend' | 'reactivate' | 'module_open' | 'module_close' | 'tag_add' | 'tag_remove' | 'announce';
+export interface BulkInput {
+  ids: string[];
+  action: BulkAction;
+  params?: { module?: string; tag?: string; title?: string; body?: string; maintenance?: boolean };
+  confirm: true;
+}
+export interface BulkResult {
+  done: number;
+  failed: Array<{ id: string; error: string }>;
+}
+export interface ModuleLock {
+  module: string;
+  lockedAt: string;
+  byEmail: string;
+}
+
 export interface AdminOrganization {
   id: string;
   name: string;
@@ -2701,6 +2769,14 @@ export interface AmnBridge {
       get(): Promise<Record<string, unknown>>;
       set(key: string, value: unknown): Promise<Record<string, unknown>>;
     };
+    /**
+     * Les verrous de consentement de l'organisation (Bloc 4) : la cliente
+     * ferme à son prestataire le contenu d'un module, et le rouvre.
+     */
+    locks: {
+      list(): Promise<ModuleLock[]>;
+      set(module: string, locked: boolean): Promise<ModuleLock[]>;
+    };
     onPresence(callback: (users: PresenceEntry[]) => void): () => void;
 
     /* --- Appels audio (WebRTC) --- */
@@ -3024,6 +3100,17 @@ export interface AmnBridge {
        * formule, retiré de la formule, retour à la formule) et le consigne.
        */
       setOrganizationModule(id: string, key: string, open: boolean): Promise<AdminOrganization>;
+      /** Une page du parc, filtrée, triée et comptée par le serveur (Bloc 4). */
+      organizationsPage(query: ParcPageQuery): Promise<ParcPage>;
+      organizationsSummary(): Promise<ParcSummary>;
+      /** Le dossier complet : la fiche, ses étiquettes, ses verrous de consentement. */
+      organizationDossier(id: string): Promise<{ organization: AdminOrganization; tags: string[]; locks: ModuleLock[] }>;
+      setOrganizationTags(id: string, tags: string[]): Promise<string[]>;
+      /**
+       * Une action sur N organisations en un geste (Bloc 4) : confirmée,
+       * journalisée une par une côté serveur. Cinq cents identifiants au plus.
+       */
+      bulk(input: BulkInput): Promise<BulkResult>;
       /** Efface tous les ajustements : l'organisation revient exactement à sa formule. */
       resetOrganizationModules(id: string): Promise<AdminOrganization>;
       /**
@@ -3409,6 +3496,13 @@ export const IPC = {
   remoteAdminSetOrgStatus: 'remote:adminSetOrgStatus',
   remoteAdminSetOrgPlan: 'remote:adminSetOrgPlan',
   remoteAdminSetOrgModule: 'remote:adminSetOrgModule',
+  remoteAdminOrgsPage: 'remote:adminOrgsPage',
+  remoteAdminOrgsSummary: 'remote:adminOrgsSummary',
+  remoteAdminOrgDossier: 'remote:adminOrgDossier',
+  remoteAdminSetOrgTags: 'remote:adminSetOrgTags',
+  remoteAdminBulk: 'remote:adminBulk',
+  remoteLocksList: 'remote:locksList',
+  remoteLocksSet: 'remote:locksSet',
   remoteAdminResetOrgModules: 'remote:adminResetOrgModules',
   remoteAdminDeleteOrg: 'remote:adminDeleteOrg',
   remoteAdminListUsers: 'remote:adminListUsers',

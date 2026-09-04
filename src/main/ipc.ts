@@ -230,6 +230,8 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   );
   ipcMain.handle(IPC.remoteGetPresence, () => remote.getPresence());
   ipcMain.handle(IPC.remotePrefsGet, () => remote.getPrefs());
+  ipcMain.handle(IPC.remoteLocksList, () => remote.listLocks());
+  ipcMain.handle(IPC.remoteLocksSet, (_event, payload: { module: string; locked: boolean }) => remote.setLock(payload.module, payload.locked));
   ipcMain.handle(IPC.remotePrefsSet, (_event, payload: { key: string; value: unknown }) => remote.setPref(payload.key, payload.value));
   // setIdentity is fire-and-forget from the renderer (no reply needed).
   ipcMain.on(IPC.remoteSetIdentity, (_event, email: string | null) => remote.setIdentity(email));

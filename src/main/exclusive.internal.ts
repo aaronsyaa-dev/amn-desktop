@@ -47,6 +47,12 @@ import {
   type Scan,
   type TrackerTier,
   OrgChange,
+  type ParcPageQuery,
+  type ParcPage,
+  type ParcSummary,
+  type ModuleLock,
+  type BulkInput,
+  type BulkResult,
 } from '../shared/api';
 import { apiCredential, remoteConfig } from './remoteConfig';
 import { apiFetch, type RemoteApiClient } from './remoteApi';
@@ -466,6 +472,34 @@ const adminApi = {
     return organization;
   },
 
+  async organizationsPage(query: ParcPageQuery): Promise<ParcPage> {
+    const params = new URLSearchParams();
+    for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== null && v !== '') params.set(k, String(v));
+    return apiFetch<ParcPage>(`/v1/admin/organizations/page?${params.toString()}`, { owner: true });
+  },
+  async organizationsSummary(): Promise<ParcSummary> {
+    const { summary } = await apiFetch<{ summary: ParcSummary }>('/v1/admin/organizations/summary', { owner: true });
+    return summary;
+  },
+  async organizationDossier(id: string) {
+    return apiFetch<{ organization: AdminOrganization; tags: string[]; locks: ModuleLock[] }>(
+      `/v1/admin/organizations/${encodeURIComponent(id)}/dossier`,
+      { owner: true },
+    );
+  },
+  async setOrganizationTags(id: string, tags: string[]): Promise<string[]> {
+    const res = await apiFetch<{ tags: string[] }>(`/v1/admin/organizations/${encodeURIComponent(id)}/tags`, {
+      owner: true,
+      method: 'PUT',
+      body: JSON.stringify({ tags }),
+    });
+    return res.tags;
+  },
+
+  async bulk(input: BulkInput): Promise<BulkResult> {
+    return apiFetch<BulkResult>('/v1/admin/organizations/bulk', { owner: true, method: 'POST', body: JSON.stringify(input) });
+  },
+
   async resetOrganizationModules(id: string): Promise<AdminOrganization> {
     const { organization } = await apiFetch<{ organization: AdminOrganization }>(
       `/v1/admin/organizations/${encodeURIComponent(id)}/modules`,
@@ -808,6 +842,11 @@ export function registerExclusiveIpc(
       adminApi.setOrganizationModule(payload.id, payload.key, payload.open),
   );
   ipcMain.handle(IPC.remoteAdminResetOrgModules, (_event, id: string) => adminApi.resetOrganizationModules(id));
+  ipcMain.handle(IPC.remoteAdminOrgsPage, (_event, query: ParcPageQuery) => adminApi.organizationsPage(query));
+  ipcMain.handle(IPC.remoteAdminOrgsSummary, () => adminApi.organizationsSummary());
+  ipcMain.handle(IPC.remoteAdminOrgDossier, (_event, id: string) => adminApi.organizationDossier(id));
+  ipcMain.handle(IPC.remoteAdminBulk, (_event, input: BulkInput) => adminApi.bulk(input));
+  ipcMain.handle(IPC.remoteAdminSetOrgTags, (_event, payload: { id: string; tags: string[] }) => adminApi.setOrganizationTags(payload.id, payload.tags));
   ipcMain.handle(
     IPC.remoteAdminSetOrgStatus,
     (_event, payload: { id: string; status: OrgStatus }) =>

@@ -6,6 +6,7 @@ import {
   MemberJournalEntry,
   type CallSignal,
   type OutgoingCallSignal,
+  ModuleLock,
 } from '../shared/api';
 import { avecReprise, messageServeurAbsent, serveurAbsent } from '../shared/reprise';
 import { signalerReprise } from './reprise';
@@ -876,6 +877,20 @@ function createBrowserRemote(): AmnBridge['remote'] {
       if (!configured) return [];
       const { users } = await apiFetch<{ users: PresenceEntry[] }>('/v1/collections/_presence');
       return users;
+    },
+    locks: {
+      async list() {
+        if (!configured) return [];
+        const { locks } = await apiFetch<{ locks: ModuleLock[] }>('/v1/modules/locks');
+        return locks ?? [];
+      },
+      async set(module: string, locked: boolean) {
+        const { locks } = await apiFetch<{ locks: ModuleLock[] }>(`/v1/modules/${encodeURIComponent(module)}/lock`, {
+          method: 'PUT',
+          body: JSON.stringify({ locked }),
+        });
+        return locks ?? [];
+      },
     },
     prefs: {
       async get() {
