@@ -1766,7 +1766,7 @@ export const fr: Dictionnaire = {
   'biblio.alleger.rajouter': 'Allégé · cliquer pour rajouter',
   'biblio.alleger.fixe': 'Reste dans la barre',
   'support.verrou.titre': 'La cliente a fermé ce module à son prestataire.',
-  'support.verrou.texte': 'Son contenu ne s’ouvre pas depuis cette session d’assistance. Elle peut le rouvrir depuis ses réglages ; son compte, sa formule et ses places restent administrables depuis le dossier.',
+  'support.verrou.texte': 'Son contenu ne s’ouvre pas depuis cette session d’assistance. Elle peut le rouvrir depuis ses réglages ; son compte, sa formule et ses places restent administrables depuis le dossier.',
   'consentement.titre': 'Ce que votre prestataire peut ouvrir',
   'consentement.aide': 'Depuis une session d’assistance, votre prestataire peut ouvrir vos modules pour vous aider. Vous pouvez lui fermer le contenu d’un module, et le rouvrir quand vous voulez : chaque geste s’inscrit dans votre journal. Votre compte, votre formule et vos places restent gérés par lui.',
   'consentement.ferme': 'Fermé au prestataire',
