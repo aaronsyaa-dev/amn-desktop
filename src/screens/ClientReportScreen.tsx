@@ -9,6 +9,7 @@ import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
 import type { AdminOrganization, AdminOrgUser, InputAlert, ModuleRequestForOperator, OrgPulse, SupportRequestForOperator } from '../shared/api';
+import { echantillonParc } from '../lib/parcEchantillon';
 
 interface Dossier {
   org: AdminOrganization;
@@ -40,7 +41,7 @@ export function ClientReportScreen() {
   const [copie, setCopie] = useState(false);
 
   useEffect(() => {
-    bridge().remote.admin.listOrganizations().then((liste) => {
+    echantillonParc().then((liste) => {
       const clientes = (liste as AdminOrganization[]).filter((o) => o.plan !== 'internal').sort((a, b) => a.name.localeCompare(b.name));
       setOrgs(clientes);
       setOrgId((id) => id || clientes[0]?.id || '');

@@ -15,6 +15,7 @@ import { bridge } from '../lib/bridge';
 import { cleanErrorMessage } from '../lib/errorMessage';
 import { motsPurge, purgeContextMirror } from './SyncContext';
 import type { AdminOrganization, MyOrganization, SupportContext } from '../shared/api';
+import { echantillonParc } from '../lib/parcEchantillon';
 
 /**
  * Le contexte actif d'AMN Desktop — AMN DevSec, ou le dossier d'une cliente.
@@ -338,7 +339,8 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
       return;
     }
     try {
-      const all = await bridge().remote.admin.listOrganizations();
+      // Le rail montre les organisations les plus actives, jamais le parc entier (Bloc 4).
+      const all = await echantillonParc();
       // AMN DevSec est le contexte par défaut du rail, pas une entrée de la
       // liste des clientes : elle a sa propre place, tout en haut.
       setOrganizations(

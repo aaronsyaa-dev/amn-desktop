@@ -8,6 +8,7 @@ import { bridge } from '../lib/bridge';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
 import type { AdminOrganization, ModuleRequestForOperator, OrgPulse, SupportRequestForOperator } from '../shared/api';
+import { echantillonParc } from '../lib/parcEchantillon';
 
 type Nature = 'silence' | 'critiques' | 'support' | 'sitesHorsLigne' | 'modules';
 interface AlertRuleData {
@@ -100,7 +101,7 @@ export function CustomAlertsScreen() {
     const lire = async () => {
       try {
         const admin = bridge().remote.admin;
-        const [orgs, support, modules] = await Promise.all([admin.listOrganizations(), admin.supportRequests('pending'), admin.moduleRequests('pending')]);
+        const [orgs, support, modules] = await Promise.all([echantillonParc(), admin.supportRequests('pending'), admin.moduleRequests('pending')]);
         const clientes = (orgs as AdminOrganization[]).filter((o) => o.plan !== 'internal');
         const pouls = await Promise.all(clientes.map((o) => admin.organizationPulse(o.id).catch(() => null)));
         if (!vivant) return;

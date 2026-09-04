@@ -8,6 +8,7 @@ import { lireMaturite, SIGNAUX, type Maturite, type Niveau, type Signal } from '
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
 import type { AdminOrganization, InputAlert, ModuleRequestForOperator, OrgPulse, SupportRequestForOperator } from '../shared/api';
+import { echantillonParc } from '../lib/parcEchantillon';
 
 /**
  * LA MATURITÉ SOC — où en est chaque cliente, sur des signaux réels.
@@ -29,7 +30,7 @@ export function SocMaturityScreen() {
       try {
         const admin = bridge().remote.admin;
         const [orgs, entrees, support, modules] = await Promise.all([
-          admin.listOrganizations(),
+          echantillonParc(),
           admin.inputAlerts({ limit: 500 }),
           admin.supportRequests('pending'),
           admin.moduleRequests('pending'),

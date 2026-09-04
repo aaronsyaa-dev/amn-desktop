@@ -8,6 +8,7 @@ import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
 import type { AdminOrganization, OrgPulse, ParcInsights } from '../shared/api';
+import { echantillonParc } from '../lib/parcEchantillon';
 
 interface Ligne {
   org: AdminOrganization;
@@ -38,7 +39,7 @@ export function OrgCompareScreen() {
     const lire = async () => {
       try {
         const admin = bridge().remote.admin;
-        const [orgs, insights] = await Promise.all([admin.listOrganizations(), admin.insights()]);
+        const [orgs, insights] = await Promise.all([echantillonParc(), admin.insights()]);
         const clientes = (orgs as AdminOrganization[]).filter((o) => o.plan !== 'internal');
         const pouls = await Promise.all(clientes.map((o) => admin.organizationPulse(o.id).catch(() => null)));
         if (!vivant) return;
