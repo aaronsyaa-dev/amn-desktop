@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { en, type CleTraduction, type Dictionnaire } from './en';
 import { fr } from './fr';
 import { ESPACES_EN, NAV_EN, SECTIONS_EN } from '@edition/navLexique';
+import { CARTES_INTERNES_EN, CARTES_INTERNES_FR } from '@edition/cartes';
 
 export type { CleTraduction, Dictionnaire };
 
@@ -119,7 +120,9 @@ export function carteModule(cle: string): { quoi: string; pourQui: string; exemp
   const langue = langueActive();
   const dico = DICTIONNAIRES[langue] as Record<string, string>;
   const secours = en as Record<string, string>;
-  const lire = (suffixe: string) => dico[`carte.${cle}.${suffixe}`] ?? secours[`carte.${cle}.${suffixe}`];
+  const internes = langue === 'en' ? CARTES_INTERNES_EN : CARTES_INTERNES_FR;
+  const lire = (suffixe: string) =>
+    dico[`carte.${cle}.${suffixe}`] ?? internes[`${cle}.${suffixe}`] ?? CARTES_INTERNES_EN[`${cle}.${suffixe}`] ?? secours[`carte.${cle}.${suffixe}`];
   const quoi = lire('quoi');
   const pourQui = lire('pourQui');
   const exemple = lire('exemple');

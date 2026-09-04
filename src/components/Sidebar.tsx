@@ -23,6 +23,7 @@ import { type NavItem } from '../data/navigation';
 import { SPACES, spaceByKey, spaceForPath, sectionsForSpace } from '../data/spaces';
 import { CLE_CHOIX, deplierAuDemarrage, lireChoix } from '../lib/barreLaterale';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
+import { useNavAlleges } from '../state/useNavAlleges';
 
 const COLLAPSED_WIDTH = 72;
 const EXPANDED_WIDTH = 224;
@@ -52,6 +53,8 @@ export function Sidebar({
   /** Close the mobile drawer (nav click, backdrop tap, swipe-left). */
   onClose?: () => void;
 }) {
+  // Les modules allégés par la personne : s'abonner, pour que la barre suive le geste sans rechargement.
+  useNavAlleges();
   const { t } = useLangue();
   /*
     Le tiroir de navigation sur téléphone. Il couvre l'écran entier, et son

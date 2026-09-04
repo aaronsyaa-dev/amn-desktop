@@ -29,6 +29,7 @@ export function editionAliases(edition: Edition): Record<string, string> {
   return {
     '@edition/modules': at(`src/edition/modules.${suffix}.ts`),
     '@edition/navLexique': at(`src/edition/navLexique.${suffix}.ts`),
+    '@edition/cartes': at(`src/edition/cartes.${suffix}.ts`),
     '@edition/dbSeed': at(`src/edition/dbSeed.${suffix}.ts`),
     '@edition/changelog': at(`src/edition/changelog.${suffix}.ts`),
     '@edition/seeds': at(`src/edition/seeds.${suffix}.ts`),

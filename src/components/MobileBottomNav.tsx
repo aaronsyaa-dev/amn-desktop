@@ -5,6 +5,7 @@ import { itemsForSpace, spaceForPath } from '../data/spaces';
 import type { NavItem } from '../data/navigation';
 import { useNavFavorites } from '../state/useNavFavorites';
 import { useLangue, libelleNav } from '../i18n';
+import { useNavAlleges } from '../state/useNavAlleges';
 
 /**
  * La navigation du pouce (B.2).
@@ -47,6 +48,8 @@ export function MobileBottomNav({
   items?: NavItem[];
   moreLabel?: string;
 }) {
+  // Les modules allégés par la personne : s'abonner, pour que la barre suive le geste sans rechargement.
+  useNavAlleges();
   const { t } = useLangue();
   const libellePlus = moreLabel ?? t('chrome.modules');
   const location = useLocation();

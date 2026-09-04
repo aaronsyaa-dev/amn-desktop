@@ -8,6 +8,7 @@
     "paths": {
       "@edition/modules": ["src/edition/modules.business.ts"],
       "@edition/navLexique": ["src/edition/navLexique.business.ts"],
+      "@edition/cartes": ["src/edition/cartes.business.ts"],
       "@edition/dbSeed": ["src/edition/dbSeed.business.ts"],
       "@edition/changelog": ["src/edition/changelog.business.ts"],
       "@edition/seeds": ["src/edition/seeds.business.ts"],

@@ -11,7 +11,8 @@ const connecter = async (p, base, email, mdp, clic) => {
   await a(2500); await p.mouse.click(...clic); await a(600);
 };
 const texte = (p) => p.evaluate(() => document.body.innerText);
-const barre = (p) => p.evaluate(() => [...document.querySelectorAll('nav a[href^="#/"]')].map((x) => x.textContent.trim()).filter(Boolean));
+// Les liens de navigation hors contenu : barre latérale + lanceur, jamais l'écran lui-même.
+const barre = (p) => p.evaluate(() => [...document.querySelectorAll('a[href^="#/"]')].filter((x) => !x.closest('main')).map((x) => x.getAttribute('href')));
 
 const p = await (await nav.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
 p.on('pageerror', (e) => console.log('ERREUR PAGE:', String(e).slice(0, 160)));
@@ -44,11 +45,12 @@ console.log('après clic :', (await tuile.innerText()).split('\n').pop(), '| opa
 await p.screenshot({ path: `${OUT}/09-alleger-ma-barre.png` });
 await p.locator('button:has-text("Terminer")').click(); await a(500);
 const apres = await barre(p);
-console.log('barre latérale : Sondages avant ?', avant.includes('Sondages'), '→ après ?', apres.includes('Sondages'), `(${avant.length} → ${apres.length} liens)`);
+console.log('barre latérale : lien #/sondages avant ?', avant.includes('#/sondages'), '→ après ?', apres.includes('#/sondages'), `(${avant.length} → ${apres.length} liens)`);
 await p.reload(); await a(2600); await p.mouse.click(720, 860); await a(400);
-console.log('après rechargement : Sondages dans la barre ?', (await barre(p)).includes('Sondages'), '| adresse directe ouvre encore ?', await (async () => { await p.goto('http://127.0.0.1:4180/#/sondages'); await a(1500); return /Sondages/.test(await p.evaluate(() => document.querySelector('h1')?.innerText ?? '')); })());
-const prefs = await p.evaluate(async () => { const r = await fetch('http://127.0.0.1:4171/v1/auth/me/prefs', { headers: { Authorization: `Bearer ${localStorage.getItem('amn.remote.token') ?? ''}` } }); return r.status; });
-console.log('préférence côté serveur (statut lecture) :', prefs);
+console.log('après rechargement : lien #/sondages dans la barre ?', (await barre(p)).includes('#/sondages'), '| adresse directe ouvre encore ?', await (async () => { await p.goto('http://127.0.0.1:4180/#/sondages'); await a(1500); return /Sondages/.test(await p.evaluate(() => document.querySelector('h1')?.innerText ?? '')); })());
+const login = await (await fetch('http://127.0.0.1:4171/v1/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'fleuriste.essai@exemple.test', password: 'Fleuriste-2026-Essai' }) })).json();
+const prefs = await (await fetch('http://127.0.0.1:4171/v1/auth/me/prefs', { headers: { Authorization: `Bearer ${login.token}` } })).json();
+console.log('préférence côté serveur nav-alleges :', JSON.stringify(prefs.prefs['nav-alleges']));
 
 // 3. Téléphone : la même personne, même barre allégée (le serveur fait foi)
 const m = await (await nav.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })).newPage();
@@ -65,5 +67,5 @@ await p.locator('button:has-text("Alléger ma barre")').click(); await a(500);
 const t2 = p.locator('button[aria-pressed]').filter({ hasText: 'Sondages' }).first();
 await t2.evaluate((el) => el.scrollIntoView({ block: 'center' })); await a(300); await t2.click(); await a(1000);
 await p.locator('button:has-text("Terminer")').click(); await a(500);
-console.log('rajouté : Sondages dans la barre ?', (await barre(p)).includes('Sondages'));
+console.log('rajouté : lien #/sondages dans la barre ?', (await barre(p)).includes('#/sondages'));
 await nav.close();

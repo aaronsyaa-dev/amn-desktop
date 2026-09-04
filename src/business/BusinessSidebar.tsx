@@ -8,6 +8,7 @@ import { Logo, LogoMark } from '../components/Logo';
 import { sectionsForSpace } from '../data/spaces';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
 import { useLangue, libelleNav, libelleSection } from '../i18n';
+import { useNavAlleges } from '../state/useNavAlleges';
 
 const COLLAPSED_WIDTH = 72;
 const EXPANDED_WIDTH = 224;
@@ -59,6 +60,8 @@ export function BusinessSidebar({
   mobileOpen?: boolean;
   onClose?: () => void;
 }) {
+  // Les modules allégés par la personne : s'abonner, pour que la barre suive le geste sans rechargement.
+  useNavAlleges();
   /*
     Le tiroir de navigation sur téléphone. Il couvre l'écran entier, et son
     fond ne se referme qu'au doigt — Échap est le seul recours au clavier,

@@ -10,6 +10,8 @@ import { BootHealthy } from '../components/BootHealthy';
 import { SyncActivityNotifier } from '../components/SyncActivityNotifier';
 import { SupportNotifier } from '../components/SupportNotifier';
 import { AutomationsRunner } from '../components/AutomationsRunner';
+import { PremiereOuverture } from '../components/PremiereOuverture';
+import { NavAllegesSync } from '../components/NavAllegesSync';
 import { MobileBottomNav } from '../components/MobileBottomNav';
 import { StatusRail } from '../components/StatusRail';
 import { AppLauncher } from '../components/AppLauncher';
@@ -122,6 +124,8 @@ export function BusinessLayout() {
                           initial="initial"
                           animate="animate"
                         >
+                          <NavAllegesSync />
+                          <PremiereOuverture />
                           <Outlet />
                         </motion.div>
                       </div>

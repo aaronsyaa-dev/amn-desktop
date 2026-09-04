@@ -7,6 +7,7 @@ import { sectionsForSpace } from '../data/spaces';
 import { useNavFavorites } from '../state/useNavFavorites';
 import { useLangue, libelleNav, libelleSection, indiceNav } from '../i18n';
 import { IS_BUSINESS } from '../edition/edition';
+import { useNavAlleges } from '../state/useNavAlleges';
 
 /** La surface de ce lanceur suit l'édition compilée — jamais l'écran. */
 const SURFACE = IS_BUSINESS ? ('business' as const) : ('interne' as const);
@@ -49,6 +50,8 @@ export function AppLauncher({
    */
   space?: SpaceKey;
 }) {
+  // Les modules allégés par la personne : s'abonner, pour que la barre suive le geste sans rechargement.
+  useNavAlleges();
   const { t } = useLangue();
   const location = useLocation();
   const { favorites, isFavorite, toggleFavorite } = useNavFavorites();
