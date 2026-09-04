@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Blocks, Check, Loader2, Lock, LockOpen, Send } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
+import { isAdminRole } from '../../auth/roles';
 import { t as tr } from '../../i18n';
 import type { ModuleLock } from '../../shared/api';
 import { bridge } from '../../lib/bridge';
@@ -47,7 +48,7 @@ export function ModulesSection() {
     gère (owner ou admin) décide.
   */
   const { role } = useAuth();
-  const peutDecider = role === 'owner' || role === 'admin';
+  const peutDecider = isAdminRole(role);
   const [verrous, setVerrous] = useState<ModuleLock[] | null>(null);
   const [verrouEnCours, setVerrouEnCours] = useState<string | null>(null);
   useEffect(() => {

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { roleLabel } from '../../lib/roleLabels';
 import { motion } from 'framer-motion';
-import { Check, Lock, ShieldAlert, X } from 'lucide-react';
+import { Check, Lock, ShieldAlert, Tag, X } from 'lucide-react';
 import { useSync, useCollection } from '../../state/SyncContext';
 import { bridge } from '../../lib/bridge';
 import { cleanErrorMessage } from '../../lib/errorMessage';
@@ -10,7 +10,7 @@ import { ACCENTS, DEFAULT_ACCENT_ID } from '../../lib/accent';
 import { CLIENT_SECTIONS, CLIENT_NAV_ITEMS } from '../../client-context/ClientSidebar';
 import { ModuleGrid } from '../ModuleGrid';
 import type { NavItem } from '../../data/navigation';
-import type { AdminOrganization, AdminOrgUser, OrgPulse } from '../../shared/api';
+import type { AdminOrganization, AdminOrgUser, ModuleLock, OrgPulse } from '../../shared/api';
 import { relativeTime } from '../../lib/time';
 import { useFermetureEchap } from '../../lib/useFermetureEchap';
 import { useLangue, libelleNav } from '../../i18n';
@@ -164,10 +164,16 @@ interface DossierData {
 
 export function OrgDossierPanel({
   org,
+  tags: tagsInitiales = [],
+  locks = [],
   onClose,
   onSaved,
 }: {
   org: AdminOrganization;
+  /** Les étiquettes du parc posées sur elle (Bloc 4). */
+  tags?: string[];
+  /** Les modules dont elle a fermé le contenu à son prestataire (Bloc 4). */
+  locks?: ModuleLock[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -375,6 +381,34 @@ export function OrgDossierPanel({
   const occupees = (comptes ?? []).filter((c) => c.status === 'active' || c.status === 'invited').length;
   const sousPlancher = places !== null && places < occupees;
 
+  /*
+    LES ÉTIQUETTES (Bloc 4) : segmenter le parc à la main — « pilote »,
+    « fleuristes », « à relancer ». Un mot, jamais une phrase ; posées ici,
+    filtrées dans le registre, journalisées.
+  */
+  const [tags, setTags] = useState<string[]>(tagsInitiales);
+  const [tagSaisi, setTagSaisi] = useState('');
+  const [tagsEnCours, setTagsEnCours] = useState(false);
+  useEffect(() => setTags(tagsInitiales), [tagsInitiales]);
+  const poserTags = async (suivantes: string[]) => {
+    setTagsEnCours(true);
+    setError(null);
+    try {
+      setTags(await bridge().remote.admin.setOrganizationTags(org.id, suivantes));
+      onSaved();
+    } catch (err) {
+      setError(cleanErrorMessage(err, 'amn-api a refusé ces étiquettes.'));
+    } finally {
+      setTagsEnCours(false);
+    }
+  };
+  const ajouterTag = () => {
+    const t = tagSaisi.trim();
+    if (!t || tags.some((x) => x.toLowerCase() === t.toLowerCase())) return;
+    setTagSaisi('');
+    void poserTags([...tags, t]);
+  };
+
   const saveNotes = () => {
     setSavingNotes(true);
     upsert('orgDossier', org.id, { body: notes, updatedBy: '' } satisfies DossierData);
@@ -507,6 +541,47 @@ export function OrgDossierPanel({
               <div className="my-5 border-t border-border" />
             </>
           )}
+
+          {/* ------------------------------------------------ étiquettes ----- */}
+          <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Étiquettes</p>
+          <p className="mt-1 text-xs leading-relaxed text-text-secondary">
+            Des mots pour segmenter le parc — « pilote », « fleuristes », « à relancer » — et agir sur un segment d’un geste depuis le registre.
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {tags.map((t) => (
+              <span key={t} className="flex items-center gap-1 border border-border bg-surface px-2 py-1 text-xs text-text-primary">
+                <Tag size={10} className="text-text-muted" /> {t}
+                <button type="button" onClick={() => void poserTags(tags.filter((x) => x !== t))} disabled={tagsEnCours} aria-label={`Retirer l’étiquette ${t}`} className="-my-2 px-1 py-2 text-text-muted hover:text-danger"><X size={11} /></button>
+              </span>
+            ))}
+            <form onSubmit={(e) => { e.preventDefault(); ajouterTag(); }} className="flex items-center gap-1">
+              <input value={tagSaisi} onChange={(e) => setTagSaisi(e.target.value)} placeholder="Nouvelle étiquette" aria-label="Nouvelle étiquette" maxLength={40} className="input-focus min-h-11 w-40 border border-border bg-bg px-2 text-xs text-text-primary outline-none md:min-h-0 md:py-1.5" />
+              <button type="submit" disabled={tagsEnCours || !tagSaisi.trim()} className="min-h-11 border border-border-strong px-2 text-xs text-text-primary hover:bg-surface-hover disabled:opacity-40 md:min-h-0 md:py-1.5">Poser</button>
+            </form>
+          </div>
+
+          {/* --------------------------------------------- consentement ----- */}
+          <p className="mt-5 font-mono text-[10px] uppercase tracking-widest text-text-muted">Ce qu’elle nous a fermé</p>
+          {locks.length === 0 ? (
+            <p className="mt-1 text-xs leading-relaxed text-text-secondary">
+              Aucun verrou : la session d’assistance ouvre tous ses modules.{' '}
+              <span className="text-text-muted">Elle peut en fermer le contenu depuis ses réglages, à tout moment ; nous ne pouvons pas rouvrir à sa place.</span>
+            </p>
+          ) : (
+            <ul className="mt-2 flex flex-col divide-y divide-border border border-warning/40 bg-surface">
+              {locks.map((l) => (
+                <li key={l.module} className="flex items-center gap-2 px-3 py-2 text-xs">
+                  <Lock size={12} className="flex-shrink-0 text-warning" />
+                  <span className="flex-1 text-text-primary">{reglable.get(l.module) ?? l.module}</span>
+                  <span className="text-text-muted">fermé par {l.byEmail.split('@')[0]} · {relativeTime(l.lockedAt)}</span>
+                </li>
+              ))}
+              <li className="px-3 py-2 text-[11px] leading-relaxed text-text-muted">
+                Le contenu de ces modules ne s’ouvre pas en session d’assistance. Son compte, sa formule et ses places restent réglables ici. Seule la cliente rouvre.
+              </li>
+            </ul>
+          )}
+          <div className="my-5 border-t border-border" />
 
           {/* ------------------------------------------------- modules ----- */}
           <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
