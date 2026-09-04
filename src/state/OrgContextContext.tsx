@@ -215,6 +215,7 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
             // s'appliquait jamais malgré un enregistrement réussi côté
             // serveur.
             modules: support.modules,
+            locks: support.locks ?? [],
             accent: support.accent,
           }
         : null,

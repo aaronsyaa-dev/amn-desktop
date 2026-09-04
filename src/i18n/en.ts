@@ -1772,6 +1772,16 @@ export const en = {
   'biblio.alleger.retirer': 'In my bar · click to lighten',
   'biblio.alleger.rajouter': 'Lightened · click to bring back',
   'biblio.alleger.fixe': 'Stays in the bar',
+  'support.verrou.titre': 'The client has closed this module to her provider.',
+  'support.verrou.texte': 'Its content does not open from this support session. She can reopen it from her settings; her account, plan and seats remain manageable from the dossier.',
+  'consentement.titre': 'What your provider can open',
+  'consentement.aide': 'From a support session, your provider can open your modules to help you. You can close a module’s content to them, and reopen it whenever you want: every change is written to your log. Your account, plan and seats remain managed by them.',
+  'consentement.ferme': 'Closed to the provider',
+  'consentement.ouvert': 'Open to the provider',
+  'consentement.fermer': 'Close',
+  'consentement.rouvrir': 'Reopen',
+  'consentement.seulGerant': 'Only the person who runs the organisation decides on the provider’s access.',
+  'consentement.echec': 'The lock could not be changed. Try again in a moment.',
 } as const;
 
 /*

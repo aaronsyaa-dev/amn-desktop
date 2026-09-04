@@ -37,6 +37,8 @@ export type OrgPlan = 'internal' | 'business_standard' | 'business_premium';
 
 export interface OrgIdentity {
   id: string;
+  /** Modules verrouillés par la cliente à son prestataire — posé seulement sur l'identité d'un contexte de support. */
+  locks?: string[];
   name: string;
   plan: OrgPlan;
   /** Logo en data-URL, ou absent/`null` — le rail retombe alors sur les initiales. */
@@ -466,6 +468,8 @@ export interface SupportContext {
    */
   accent?: string | null;
   /** L'opérateur AMN DevSec au nom de qui l'accès est ouvert. */
+  /** Les modules dont la cliente a fermé le contenu à son prestataire (Bloc 4) : le poste de support ne les ouvre pas. */
+  locks?: string[];
   actorEmail: string;
   /** ISO — au-delà, amn-api refuse le jeton et l'app quitte le contexte. */
   expiresAt: string;

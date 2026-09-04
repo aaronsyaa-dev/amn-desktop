@@ -8,7 +8,7 @@ import React, {
   useState,
 } from 'react';
 import { bridge } from '../lib/bridge';
-import { setEnabledModules } from '../data/spaces';
+import { setEnabledModules, setLockedModules } from '../data/spaces';
 import { applyAccent } from '../lib/accent';
 import { poserLangueOrganisation } from '../i18n';
 import { clearGuestQuotaBlock } from '../state/guestQuotaStore';
@@ -463,6 +463,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   */
   useLayoutEffect(() => {
     setEnabledModules(org?.modules ?? null);
+    setLockedModules(org?.locks ?? []);
     // La langue de l'organisation suit le même chemin que ses modules et sa
     // couleur : elle vient de l'identité de session, jamais d'un réglage
     // local — voir src/i18n pour qui a le dernier mot.

@@ -1,12 +1,12 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Menu } from 'lucide-react';
+import { Lock, Menu } from 'lucide-react';
 import { ClientSidebar, CLIENT_NAV_ITEMS } from './ClientSidebar';
 import { ClientBanner, CLIENT_BANNER_HEIGHT } from './ClientBanner';
 import { OrgRail } from '../components/org-rail/OrgRail';
 import { MobileBottomNav } from '../components/MobileBottomNav';
-import { isModuleEnabled } from '../data/spaces';
+import { isModuleEnabled, isModuleLocked } from '../data/spaces';
 import { useOrgContext } from '../state/OrgContextContext';
 import { ClientViewProvider } from '../state/ClientViewContext';
 import { SpaceProviders } from '../state/SpaceProviders';
@@ -39,6 +39,13 @@ import { useLangue } from '../i18n';
  * ajouter nos outils en ferait un troisième produit, que personne n'utilise.
  */
 export function ClientContextLayout() {
+  /*
+    LE VERROU DE CONSENTEMENT, à l'écran (Bloc 4). La cliente a fermé ce
+    module à son prestataire : l'entrée n'est pas dans sa barre, et ouvrir
+    l'adresse directement montre pourquoi plutôt qu'un écran vide.
+  */
+  const cheminVerrou = useLocation().pathname;
+  const moduleVerrouille = CLIENT_NAV_ITEMS.some((item) => item.to !== '/' && (cheminVerrou === item.to || cheminVerrou.startsWith(`${item.to}/`)) && isModuleLocked(item.key));
   const { t } = useLangue();
   const location = useLocation();
   const { support } = useOrgContext();
@@ -101,7 +108,15 @@ export function ClientContextLayout() {
                       initial="initial"
                       animate="animate"
                     >
+                      {moduleVerrouille ? (
+                      <div className="mx-auto max-w-lg py-16 text-center">
+                        <Lock size={22} strokeWidth={1.5} className="mx-auto text-text-muted" />
+                        <p className="mt-3 text-[15px] font-medium text-text-primary">{t('support.verrou.titre')}</p>
+                        <p className="mt-1.5 text-[13px] leading-relaxed text-text-secondary">{t('support.verrou.texte')}</p>
+                      </div>
+                    ) : (
                       <Outlet />
+                    )}
                     </motion.div>
                     {/*
                       LA TOUR PARLE AUSSI ICI. Aaron a envoyé une demande depuis

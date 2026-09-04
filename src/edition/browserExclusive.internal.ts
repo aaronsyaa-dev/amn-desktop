@@ -689,6 +689,7 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
         token: string;
         expiresAt: string;
         organization: AdminOrganization;
+        locks?: ModuleLock[];
       }>(`/v1/admin/organizations/${encodeURIComponent(orgId)}/support-session`, {
         owner: true,
         method: 'POST',
@@ -708,6 +709,7 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
           // l'organisation cliente.
           modules: created.organization.modules ?? null,
           accent: created.organization.accent ?? null,
+          locks: (created.locks ?? []).map((l) => l.module),
           actorEmail: me.support?.actorEmail ?? '',
           expiresAt: created.expiresAt,
         },
@@ -721,9 +723,11 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
         const me = await ctx.apiFetch<{
           org: (OrgIdentity & { status?: OrgStatus }) | null;
           support: { orgId: string; orgName: string; actorEmail: string } | null;
+          locks?: ModuleLock[];
         }>('/v1/auth/me');
         if (!me.support || !me.org) throw new Error('jeton hors contexte client');
         return {
+          locks: (me.locks ?? []).map((l) => l.module),
           orgId: me.org.id,
           orgName: me.org.name,
           plan: me.org.plan,

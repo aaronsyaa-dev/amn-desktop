@@ -671,8 +671,10 @@ function contextFrom(
   organization: AdminOrganization | (OrgIdentity & { status?: OrgStatus }),
   actorEmail: string,
   expiresAt: string,
+  locks: string[] = [],
 ): SupportContext {
   return {
+    locks,
     orgId: organization.id,
     orgName: organization.name,
     plan: organization.plan,
@@ -696,6 +698,7 @@ function supportApi(remote: RemoteApiClient) {
         token: string;
         expiresAt: string;
         organization: AdminOrganization;
+        locks?: ModuleLock[];
       }>(`/v1/admin/organizations/${encodeURIComponent(orgId)}/support-session`, {
         owner: true,
         method: 'POST',
@@ -707,7 +710,7 @@ function supportApi(remote: RemoteApiClient) {
       const me = await apiFetch<{ support: { actorEmail: string } | null }>('/v1/auth/me');
       return {
         token: created.token,
-        context: contextFrom(created.organization, me.support?.actorEmail ?? '', created.expiresAt),
+        context: contextFrom(created.organization, me.support?.actorEmail ?? '', created.expiresAt, (created.locks ?? []).map((l) => l.module)),
       };
     },
 
@@ -725,13 +728,14 @@ function supportApi(remote: RemoteApiClient) {
         const me = await apiFetch<{
           org: (OrgIdentity & { status?: OrgStatus }) | null;
           support: { orgId: string; orgName: string; actorEmail: string } | null;
+          locks?: ModuleLock[];
         }>('/v1/auth/me');
         if (!me.support || !me.org) throw new Error('jeton hors contexte client');
         remote.applySupportToken(token);
         // `expiresAt` n'est pas rendu par /v1/auth/me : amn-api tranche de
         // toute façon à chaque appel, et une date approximative affichée dans
         // le bandeau vaudrait moins que pas de date du tout.
-        return contextFrom(me.org, me.support.actorEmail, '');
+        return contextFrom(me.org, me.support.actorEmail, '', (me.locks ?? []).map((l) => l.module));
       } catch {
         remoteConfig.supportToken = previous;
         return null;

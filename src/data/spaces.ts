@@ -109,8 +109,24 @@ export function isModuleAllege(key: string): boolean {
   return allegedModules.includes(key);
 }
 
+/*
+  LES VERROUS DE CONSENTEMENT (Bloc 4), côté poste de support : les modules
+  que la cliente a fermés à son prestataire. Posés depuis l'identité du
+  contexte client, jamais depuis l'organisation de la personne elle-même.
+  Un module verrouillé n'est pas « fermé » : il existe chez elle, c'est nous
+  qui n'y entrons pas — et l'écran le dit au lieu de se taire.
+*/
+let lockedModules: string[] = [];
+export function setLockedModules(keys: string[] | undefined | null): void {
+  lockedModules = Array.isArray(keys) ? keys : [];
+}
+export function isModuleLocked(key: string): boolean {
+  return lockedModules.includes(key);
+}
+
 /** Un module est-il ouvert ? */
 export function isModuleEnabled(key: string): boolean {
+  if (lockedModules.includes(key)) return false;
   if (ALWAYS_ON_MODULES.includes(key)) return true;
   if (!enabledModules) return true;
   return enabledModules.includes(key);

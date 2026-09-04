@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Blocks, Check, Loader2, Send } from 'lucide-react';
+import { Blocks, Check, Loader2, Lock, LockOpen, Send } from 'lucide-react';
+import { useAuth } from '../../auth/AuthContext';
+import { t as tr } from '../../i18n';
+import type { ModuleLock } from '../../shared/api';
 import { bridge } from '../../lib/bridge';
 import type { ModuleOffer } from '../../shared/api';
 import { SettingsPanel as Panel } from '../SettingsPanel';
@@ -35,6 +38,39 @@ import { SettingsPanel as Panel } from '../SettingsPanel';
  */
 export function ModulesSection() {
   const [modules, setModules] = useState<ModuleOffer[] | null>(null);
+  /*
+    LE CONSENTEMENT (Bloc 4). La cliente décide, module par module, si son
+    prestataire peut en ouvrir le CONTENU depuis une session d'assistance.
+    Fermé, le module reste le sien : c'est nous qui n'y entrons plus, et son
+    journal le dit. Son compte — formule, places, comptes — reste géré par le
+    prestataire : c'est le contrat, pas le contenu. Seule la personne qui
+    gère (owner ou admin) décide.
+  */
+  const { role } = useAuth();
+  const peutDecider = role === 'owner' || role === 'admin';
+  const [verrous, setVerrous] = useState<ModuleLock[] | null>(null);
+  const [verrouEnCours, setVerrouEnCours] = useState<string | null>(null);
+  useEffect(() => {
+    let vivant = true;
+    bridge()
+      .remote.locks.list()
+      .then((liste) => vivant && setVerrous(liste))
+      .catch(() => vivant && setVerrous([]));
+    return () => {
+      vivant = false;
+    };
+  }, []);
+  const basculerVerrou = async (cle: string, fermer: boolean) => {
+    setVerrouEnCours(cle);
+    setErreur(null);
+    try {
+      setVerrous(await bridge().remote.locks.set(cle, fermer));
+    } catch {
+      setErreur(tr('consentement.echec'));
+    } finally {
+      setVerrouEnCours(null);
+    }
+  };
   const [erreur, setErreur] = useState<string | null>(null);
   const [enCours, setEnCours] = useState<string | null>(null);
 
@@ -110,6 +146,37 @@ export function ModulesSection() {
                 </span>
               ))}
             </div>
+          </div>
+
+          <div>
+            <p className="eyebrow mb-1">{tr('consentement.titre')}</p>
+            <p className="mb-2 text-xs leading-relaxed text-text-secondary">{tr('consentement.aide')}</p>
+            {verrous === null ? (
+              <p className="flex items-center gap-2 text-xs text-text-muted"><Loader2 size={13} className="animate-spin" /> …</p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-border border border-border bg-bg">
+                {ouverts.map((m) => {
+                  const ferme = verrous.some((v) => v.module === m.key);
+                  return (
+                    <li key={m.key} className="flex items-center gap-3 px-3 py-2">
+                      <span className={`flex-shrink-0 ${ferme ? 'text-warning' : 'text-text-muted'}`}>{ferme ? <Lock size={13} /> : <LockOpen size={13} />}</span>
+                      <span className="min-w-0 flex-1 truncate text-sm text-text-primary">{m.label}</span>
+                      <span className="hidden font-mono text-[10px] uppercase tracking-wider text-text-muted sm:inline">{ferme ? tr('consentement.ferme') : tr('consentement.ouvert')}</span>
+                      <button
+                        type="button"
+                        disabled={!peutDecider || verrouEnCours === m.key}
+                        onClick={() => void basculerVerrou(m.key, !ferme)}
+                        aria-pressed={ferme}
+                        className="min-h-11 border border-border-strong px-3 text-xs font-medium text-text-primary transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40 md:min-h-0 md:py-1.5"
+                      >
+                        {ferme ? tr('consentement.rouvrir') : tr('consentement.fermer')}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {!peutDecider && <p className="mt-2 text-[11px] text-text-muted">{tr('consentement.seulGerant')}</p>}
           </div>
 
           {/* Une section vide dirait « il y a autre chose, mais pas pour
