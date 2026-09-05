@@ -236,3 +236,34 @@ export interface GardeAccueil {
   ordres: { id: string; auteurEmail: string; cible: string; texte: string; intention: string | null; etat: string; reponse: string | null; createdAt: string }[];
   at: string;
 }
+
+/* ── Bloc 5 : la Garde des Comptes et le site ─────────────────────── */
+
+export interface GardeJeton {
+  id: string;
+  module: string | null;
+  formule: string | null;
+  places: number | null;
+  note: string | null;
+  etat: 'emis' | 'utilise' | 'expire' | 'revoque';
+  emisPar: string;
+  expiresAt: string;
+  utiliseAt: string | null;
+  utiliseParOrg: string | null;
+  utiliseParOrgName: string | null;
+  createdAt: string;
+}
+/** Ce que rend l'émission : le secret n'est lisible QUE dans cette réponse. */
+export interface GardeJetonEmis { jeton: GardeJeton; secret: string; aTransmettre: string; error?: string }
+export interface GardeCompte {
+  orgId: string;
+  orgName: string | null;
+  etat: 'a_jour' | 'impaye' | 'grace' | 'suspendu';
+  echeanceAt: string | null;
+  impayeDepuis: string | null;
+  preavisEnvoyeAt: string | null;
+  graceJusqua: string | null;
+  suspenduAt: string | null;
+  modulesSuspendus: string[];
+  note: string | null;
+}

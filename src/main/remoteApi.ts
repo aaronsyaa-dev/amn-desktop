@@ -37,6 +37,7 @@ import type {
   WelcomePreview,
   WelcomeAccess,
   WelcomeLinkState,
+  JetonDepose,
 } from '../shared/api';
 
 const RECONNECT_DELAYS_MS = [1000, 2000, 5000, 10000, 20000, 30000];
@@ -436,6 +437,10 @@ export class RemoteApiClient {
   async moduleRequests(): Promise<ModuleRequest[]> {
     const res = await apiFetch<{ requests: ModuleRequest[] }>('/v1/modules/requests');
     return res.requests ?? [];
+  }
+
+  async deposerJeton(input: { jeton: string }): Promise<JetonDepose> {
+    return apiFetch<JetonDepose>('/v1/modules/jeton', { method: 'POST', body: JSON.stringify({ jeton: input.jeton }) });
   }
 
   /* ------------------- Liens d'appel anonymes (BLOC B.2) ------------------- */

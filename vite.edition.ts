@@ -28,6 +28,7 @@ export function editionAliases(edition: Edition): Record<string, string> {
   const at = (rel: string) => path.resolve(root, rel);
   return {
     '@edition/modules': at(`src/edition/modules.${suffix}.ts`),
+    '@edition/ajmani': at(`src/edition/ajmani.${suffix}.ts`),
     '@edition/navLexique': at(`src/edition/navLexique.${suffix}.ts`),
     '@edition/cartes': at(`src/edition/cartes.${suffix}.ts`),
     '@edition/dbSeed': at(`src/edition/dbSeed.${suffix}.ts`),

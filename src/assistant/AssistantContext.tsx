@@ -414,8 +414,8 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           .then((r) => {
             gardeConfirmationRef.current = r.confirmation ? trimmed : null;
             const lignes = [r.question ?? r.reponse];
-            if (r.confirmation) lignes.push('', t('garde.ajmani.repondezOui'));
-            if (r.guide?.length) lignes.push('', t('garde.ajmani.saisFaire'), ...r.guide.map((g) => `- ${g.libelle} — « ${g.exemple} »`));
+            if (r.confirmation) lignes.push('', t('garde.chef.repondezOui'));
+            if (r.guide?.length) lignes.push('', t('garde.chef.saisFaire'), ...r.guide.map((g) => `- ${g.libelle} — « ${g.exemple} »`));
             appendAnswer({ kind: 'answer', blocks: textToBlocks(lignes.join('\n')) });
           })
           .catch((err) => appendAnswer({ kind: 'answer', blocks: [{ type: 'paragraph', text: t('garde.erreur', { message: err instanceof Error ? err.message : String(err) }) }] }))

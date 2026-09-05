@@ -4,6 +4,7 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { GraviteChip } from '../../components/garde/GardeUi';
 import { garde } from '../../lib/garde';
 import { useLangue } from '../../i18n';
+import { NOM_DU_CHEF } from '@edition/ajmani';
 import { relativeTime } from '../../lib/time';
 import type { GardeDossier, GardePileDossiers, GardePouls, GardeRemontee } from '../../shared/garde';
 
@@ -54,7 +55,7 @@ export function GardePileScreen() {
   const confier = async (d: GardeDossier) => {
     if (!d.recommandation) return;
     const r = await garde.donnerMandat({ agent: d.agent, famille: d.famille, decision: d.recommandation });
-    setMessage(t('garde.ajmani.decidezSeulFait', { decision: d.recommandation ?? '', n: r.appliquees }));
+    setMessage(t('garde.chef.decidezSeulFait', { decision: d.recommandation ?? '', n: r.appliquees, chef: NOM_DU_CHEF }));
     await charger();
   };
 
@@ -94,13 +95,13 @@ export function GardePileScreen() {
                 {d.contexte && <p className="text-[13px] leading-relaxed text-text-secondary"><span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{t('garde.pile.contexte')} · </span>{d.contexte}</p>}
                 {d.recommandation
                   ? <p className="text-[13px] leading-relaxed text-text-primary"><span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{t('garde.pile.recommande')} · </span>{d.recommandation}</p>
-                  : <p className="text-[13px] leading-relaxed text-text-secondary">{t('garde.pile.sansRecommandation')}</p>}
+                  : <p className="text-[13px] leading-relaxed text-text-secondary">{t('garde.pile.sansRecommandation', { chef: NOM_DU_CHEF })}</p>}
                 <div className="flex flex-col gap-2 border-t border-border pt-2">
                   <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{t('garde.pile.options')}</p>
                   <div className="flex flex-wrap gap-2">
                     {d.options.map((o) => <button key={o} type="button" onClick={() => void deciderDossier(d, o)} className="min-h-11 border border-border bg-bg px-2.5 text-xs text-text-primary hover:border-border-strong md:min-h-0 md:py-1">{o}</button>)}
                     {d.orgId && <Link to={`/tour/organisations?org=${encodeURIComponent(d.orgId)}`} className="min-h-11 border border-border px-2.5 text-xs text-text-secondary hover:text-text-primary md:min-h-0 md:py-1">{t('garde.pile.dossier')}</Link>}
-                    {d.recommandation && d.gravite !== 'critique' && <button type="button" onClick={() => void confier(d)} className="min-h-11 border border-dashed border-border px-2.5 text-xs text-text-secondary hover:border-border-strong hover:text-text-primary md:min-h-0 md:py-1">{t('garde.ajmani.decidezSeul')}</button>}
+                    {d.recommandation && d.gravite !== 'critique' && <button type="button" onClick={() => void confier(d)} className="min-h-11 border border-dashed border-border px-2.5 text-xs text-text-secondary hover:border-border-strong hover:text-text-primary md:min-h-0 md:py-1">{t('garde.chef.decidezSeul')}</button>}
                   </div>
                   <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (libre[d.id]?.trim()) void deciderDossier(d, libre[d.id].trim()); }}>
                     <input value={libre[d.id] ?? ''} onChange={(e) => setLibre((l) => ({ ...l, [d.id]: e.target.value }))} placeholder={t('garde.pile.decisionLibre')} aria-label={t('garde.pile.decisionLibre')} className="input-focus min-w-0 flex-1 border border-border bg-bg px-2 py-1 text-xs text-text-primary outline-none" />

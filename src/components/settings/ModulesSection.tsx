@@ -93,6 +93,21 @@ export function ModulesSection() {
     };
   }, []);
 
+  const [jeton, setJeton] = useState('');
+  const [jetonDit, setJetonDit] = useState<string | null>(null);
+  const deposerJeton = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!jeton.trim()) return;
+    setJetonDit(null);
+    try {
+      const r = await bridge().remote.modules.jeton({ jeton: jeton.trim() });
+      setJetonDit(r.texte);
+      if (r.recevable) { setJeton(''); setModules(await bridge().remote.modules.catalogue()); }
+    } catch {
+      setJetonDit(tr('biblio.jeton.echec'));
+    }
+  };
+
   const demander = async (cle: string) => {
     setEnCours(cle);
     setErreur(null);
@@ -123,6 +138,18 @@ export function ModulesSection() {
           Lecture du catalogue…
         </p>
       )}
+
+      <form onSubmit={(e) => void deposerJeton(e)} aria-label={tr('biblio.jeton.titre')} className="mb-4 flex flex-col gap-1.5">
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="eyebrow">{tr('biblio.jeton.titre')}</span>
+            <input value={jeton} onChange={(e) => setJeton(e.target.value)} placeholder="jeton:…" aria-label={tr('biblio.jeton.titre')} className="input-focus min-w-0 border border-border bg-bg px-2 py-1.5 font-mono text-[13px] text-text-primary outline-none" />
+          </label>
+          <button type="submit" disabled={!jeton.trim()} className="min-h-11 border border-border-strong bg-surface px-3 text-sm font-medium text-text-primary hover:bg-surface-hover disabled:opacity-50 md:min-h-0 md:py-1.5">{tr('biblio.jeton.envoyer')}</button>
+        </div>
+        <p className="text-[11px] text-text-muted">{tr('biblio.jeton.aide')}</p>
+        {jetonDit && <p className="text-[13px] text-text-primary" aria-live="polite" data-jeton-reponse>{jetonDit}</p>}
+      </form>
 
       {erreur && (
         <p className="border border-warning/40 bg-warning-muted px-3 py-2 text-xs text-text-primary">

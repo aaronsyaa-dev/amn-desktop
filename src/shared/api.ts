@@ -1983,6 +1983,15 @@ export interface ModuleRequest {
   handledNote: string | null;
 }
 
+/** Ce que rend le dépôt d'un jeton de paiement : la demande posée, et le verdict de la Garde des Comptes. */
+export interface JetonDepose {
+  request: ModuleRequest;
+  etat: 'approved' | 'declined' | 'pending' | string;
+  /** `null` quand aucune Garde ne tourne sur l'instance : la demande attend un humain. */
+  recevable: boolean | null;
+  texte: string;
+}
+
 /** Une demande vue par AMN DevSec : la même, plus le nom de l'organisation. */
 export interface ModuleRequestForOperator extends ModuleRequest {
   orgName: string;
@@ -2920,6 +2929,12 @@ export interface AmnBridge {
       request(input: { module: string; message?: string }): Promise<{ request: ModuleRequest; created: boolean }>;
       /** Ce que cette organisation a déjà demandé, traité ou non. */
       requests(): Promise<ModuleRequest[]>;
+      /**
+       * Dépose un jeton de paiement (« jeton:… », émis par le site après
+       * règlement). La Garde des Comptes le vérifie sur-le-champ et ouvre ce
+       * qu'il porte — module, formule ou places — ou dit pourquoi non.
+       */
+      jeton(input: { jeton: string }): Promise<JetonDepose>;
     };
 
     /* --- Liens d'appel anonymes (BLOC B.2) --- */
@@ -3500,6 +3515,7 @@ export const IPC = {
   remoteAdminInputAlerts: 'remote:adminInputAlerts',
   remoteModuleCatalogue: 'remote:moduleCatalogue',
   remoteModuleRequest: 'remote:moduleRequest',
+  remoteModuleJeton: 'remote:moduleJeton',
   remoteModuleRequests: 'remote:moduleRequests',
   remoteCallLinkCreate: 'remote:callLinkCreate',
   remoteCallLinkList: 'remote:callLinkList',

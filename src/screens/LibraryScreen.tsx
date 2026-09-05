@@ -86,6 +86,29 @@ export function LibraryScreen() {
       { ouvert: 0, inclus: 0, disponible: 0, demande: 0 } as Record<EtatModule, number>,
     );
 
+  // Un jeton de paiement, émis par le site : collé ici, vérifié sur-le-champ par la Garde des Comptes.
+  const [jeton, setJeton] = useState('');
+  const [jetonDit, setJetonDit] = useState<string | null>(null);
+  const [jetonEnCours, setJetonEnCours] = useState(false);
+  const deposerJeton = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!jeton.trim() || jetonEnCours) return;
+    setJetonEnCours(true);
+    setJetonDit(null);
+    try {
+      const r = await bridge().remote.modules.jeton({ jeton: jeton.trim() });
+      setJetonDit(r.texte);
+      if (r.recevable) {
+        setJeton('');
+        setOffres(await bridge().remote.modules.catalogue());
+      }
+    } catch {
+      setJetonDit(t('biblio.jeton.echec'));
+    } finally {
+      setJetonEnCours(false);
+    }
+  };
+
   const demander = async (cle: string) => {
     setEnCours(cle);
     setErreur(null);
@@ -115,6 +138,20 @@ export function LibraryScreen() {
           ]}
         />
       </motion.div>
+
+      {IS_BUSINESS && (
+        <motion.form variants={staggerItem} onSubmit={(e) => void deposerJeton(e)} aria-label={t('biblio.jeton.titre')} className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-3">
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-text-secondary">{t('biblio.jeton.titre')}</span>
+              <input value={jeton} onChange={(e) => setJeton(e.target.value)} placeholder="jeton:…" aria-label={t('biblio.jeton.titre')} className="input-focus min-w-0 border border-border bg-bg px-2 py-1.5 font-mono text-[13px] text-text-primary outline-none" />
+            </label>
+            <button type="submit" disabled={jetonEnCours || !jeton.trim()} className="min-h-11 border border-border-strong bg-surface px-3 text-sm font-medium text-text-primary hover:bg-surface-hover disabled:opacity-50 md:min-h-0 md:py-1.5">{t('biblio.jeton.envoyer')}</button>
+          </div>
+          <p className="text-[11px] text-text-muted">{t('biblio.jeton.aide')}</p>
+          {jetonDit && <p className="text-[13px] text-text-primary" aria-live="polite" data-jeton-reponse>{jetonDit}</p>}
+        </motion.form>
+      )}
 
       <motion.div variants={staggerItem} className="flex flex-wrap items-center gap-3">
         <button

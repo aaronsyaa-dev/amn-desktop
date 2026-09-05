@@ -4,6 +4,7 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { Conversation, PoulsBadge } from '../../components/garde/GardeUi';
 import { garde } from '../../lib/garde';
 import { useLangue } from '../../i18n';
+import { NOM_DU_CHEF } from '@edition/ajmani';
 import { relativeTime } from '../../lib/time';
 import type { GardeAccueil, GardeGeste, GardeGuideEntree } from '../../shared/garde';
 
@@ -63,17 +64,17 @@ export function GardeAjmaniScreen() {
 
   return (
     <section className="flex flex-col gap-5">
-      <ScreenHeader eyebrow={t('garde.surtitre')} title={t('garde.ajmani.titre')} description={t('garde.ajmani.description')} stats={acc ? [{ label: t('garde.pile.dossiers'), value: acc.pile.compte.dossiers, emphasis: acc.pile.compte.critiques > 0 }, { label: t('garde.gravite.critique'), value: acc.pile.compte.critiques, emphasis: acc.pile.compte.critiques > 0 }, { label: t('garde.ajmani.mandat'), value: Object.keys(acc.mandat.regles).length }] : []} />
+      <ScreenHeader eyebrow={t('garde.surtitre')} title={t('garde.chef.titre', { chef: NOM_DU_CHEF })} description={t('garde.chef.description')} stats={acc ? [{ label: t('garde.pile.dossiers'), value: acc.pile.compte.dossiers, emphasis: acc.pile.compte.critiques > 0 }, { label: t('garde.gravite.critique'), value: acc.pile.compte.critiques, emphasis: acc.pile.compte.critiques > 0 }, { label: t('garde.chef.mandat'), value: Object.keys(acc.mandat.regles).length }] : []} />
       {erreur && <p role="alert" className="border border-warning/40 bg-warning-muted px-3 py-2 text-xs text-text-primary">{t('garde.erreur', { message: erreur })}</p>}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="flex flex-col gap-5">
           {/* Il parle en premier : une seule proposition, ses gestes. */}
-          <section className="rounded-xl border border-border-strong bg-surface p-4" aria-label={t('garde.ajmani.parole')} aria-live="polite">
+          <section className="rounded-xl border border-border-strong bg-surface p-4" aria-label={t('garde.chef.parole')} aria-live="polite">
             <div className="mb-3 flex flex-wrap items-center gap-3">
-              <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.ajmani.parole')}</h2>
+              <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.chef.parole')}</h2>
               {acc && <PoulsBadge pouls={acc.pouls} compact />}
-              {acc && <span className={`font-mono text-[10px] uppercase tracking-widest ${acc.silence.actif ? 'text-warning' : 'text-text-muted'}`}>{acc.silence.actif ? t('garde.ajmani.silenceActif') : t('garde.ajmani.silenceInactif')} · {acc.silence.de} h – {acc.silence.a} h</span>}
+              {acc && <span className={`font-mono text-[10px] uppercase tracking-widest ${acc.silence.actif ? 'text-warning' : 'text-text-muted'}`}>{acc.silence.actif ? t('garde.chef.silenceActif') : t('garde.chef.silenceInactif')} · {acc.silence.de} h – {acc.silence.a} h</span>}
             </div>
             {!acc && !erreur && <p className="font-mono text-xs text-text-muted">{t('garde.salle.chargement')}</p>}
             {acc && (
@@ -98,7 +99,7 @@ export function GardeAjmaniScreen() {
                 )}
                 {acc.aveux.length > 0 && (
                   <div className="mt-4 border-t border-border pt-3">
-                    <h3 className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{t('garde.ajmani.saitPas')}</h3>
+                    <h3 className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{t('garde.chef.saitPas')}</h3>
                     <ul className="mt-1 flex flex-col gap-1">
                       {acc.aveux.map((x) => <li key={x} className="text-[13px] leading-relaxed text-text-secondary">{x}</li>)}
                     </ul>
@@ -109,13 +110,13 @@ export function GardeAjmaniScreen() {
           </section>
 
           {/* Le guide, puis la conversation : on lui parle ; il répond avec ses preuves, ou dit qu'il ne sait pas. */}
-          <section className="rounded-xl border border-border bg-surface p-4" aria-label={t('garde.ajmani.guide')}>
-            <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.ajmani.guide')}</h2>
-            <p className="mb-3 mt-1 text-[12px] text-text-muted">{t('garde.ajmani.guideAide')}</p>
+          <section className="rounded-xl border border-border bg-surface p-4" aria-label={t('garde.chef.guide')}>
+            <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.chef.guide')}</h2>
+            <p className="mb-3 mt-1 text-[12px] text-text-muted">{t('garde.chef.guideAide')}</p>
             <div className="mb-4 grid gap-3 sm:grid-cols-3">
               {familles.map((f) => (
                 <div key={f}>
-                  <h3 className="mb-1 font-mono text-[10px] uppercase tracking-widest text-text-muted">{t(`garde.ajmani.famille.${f}`)}</h3>
+                  <h3 className="mb-1 font-mono text-[10px] uppercase tracking-widest text-text-muted">{t(`garde.chef.famille.${f}`)}</h3>
                   <ul className="flex flex-col gap-0.5">
                     {guide.filter((g) => g.famille === f).map((g) => <li key={g.intention} className="text-[12px] text-text-secondary" title={g.exemple}>{g.libelle}{g.modifie ? <span className="text-text-muted"> ·</span> : null}</li>)}
                   </ul>
@@ -127,10 +128,10 @@ export function GardeAjmaniScreen() {
         </div>
 
         <div className="flex flex-col gap-5">
-          <section className="rounded-xl border border-border bg-surface p-4" aria-label={t('garde.ajmani.mandat')}>
-            <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.ajmani.mandat')}</h2>
-            <p className="mb-2 mt-1 text-[12px] text-text-muted">{t('garde.ajmani.mandatAide')}</p>
-            {acc && Object.keys(acc.mandat.regles).length === 0 && <p className="font-mono text-xs text-text-muted">{t('garde.ajmani.mandatVide')}</p>}
+          <section className="rounded-xl border border-border bg-surface p-4" aria-label={t('garde.chef.mandat')}>
+            <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.chef.mandat')}</h2>
+            <p className="mb-2 mt-1 text-[12px] text-text-muted">{t('garde.chef.mandatAide')}</p>
+            {acc && Object.keys(acc.mandat.regles).length === 0 && <p className="font-mono text-xs text-text-muted">{t('garde.chef.mandatVide')}</p>}
             <ul className="flex flex-col divide-y divide-border">
               {acc && Object.entries(acc.mandat.regles).map(([cle, r]) => (
                 <li key={cle} className="flex items-start gap-2 py-2">
@@ -138,24 +139,24 @@ export function GardeAjmaniScreen() {
                     <p className="text-[13px] text-text-primary">« {r.decision} »</p>
                     <p className="font-mono text-[10px] text-text-muted">{r.agent} · {r.famille} · {r.par} · {relativeTime(r.at)}</p>
                   </div>
-                  <button type="button" onClick={() => void retirer(cle)} className="min-h-11 border border-border px-2 text-[11px] text-text-secondary hover:border-border-strong hover:text-text-primary md:min-h-0 md:py-0.5">{t('garde.ajmani.retirer')}</button>
+                  <button type="button" onClick={() => void retirer(cle)} className="min-h-11 border border-border px-2 text-[11px] text-text-secondary hover:border-border-strong hover:text-text-primary md:min-h-0 md:py-0.5">{t('garde.chef.retirer')}</button>
                 </li>
               ))}
             </ul>
           </section>
 
-          <section className="rounded-xl border border-border bg-surface p-4" aria-label={t('garde.ajmani.silence')}>
-            <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.ajmani.silence')}</h2>
-            <p className="mb-2 mt-1 text-[12px] text-text-muted">{t('garde.ajmani.silenceAide')}</p>
+          <section className="rounded-xl border border-border bg-surface p-4" aria-label={t('garde.chef.silence')}>
+            <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.chef.silence')}</h2>
+            <p className="mb-2 mt-1 text-[12px] text-text-muted">{t('garde.chef.silenceAide')}</p>
             {acc && (
               <div className="flex flex-wrap items-center gap-2 text-[12px] text-text-secondary">
-                <label className="flex items-center gap-1">{t('garde.ajmani.silenceDe')}
-                  <select value={acc.silence.de} onChange={(e) => void reglerSilence({ de: Number(e.target.value) })} aria-label={`${t('garde.ajmani.silence')} ${t('garde.ajmani.silenceDe')}`} className="input-focus bg-bg px-1 py-0.5 text-[12px] text-text-primary outline-none">
+                <label className="flex items-center gap-1">{t('garde.chef.silenceDe')}
+                  <select value={acc.silence.de} onChange={(e) => void reglerSilence({ de: Number(e.target.value) })} aria-label={`${t('garde.chef.silence')} ${t('garde.chef.silenceDe')}`} className="input-focus bg-bg px-1 py-0.5 text-[12px] text-text-primary outline-none">
                     {HEURES.map((h) => <option key={h} value={h}>{t('garde.commune.heures', { h })}</option>)}
                   </select>
                 </label>
-                <label className="flex items-center gap-1">{t('garde.ajmani.silenceA')}
-                  <select value={acc.silence.a} onChange={(e) => void reglerSilence({ a: Number(e.target.value) })} aria-label={`${t('garde.ajmani.silence')} ${t('garde.ajmani.silenceA')}`} className="input-focus bg-bg px-1 py-0.5 text-[12px] text-text-primary outline-none">
+                <label className="flex items-center gap-1">{t('garde.chef.silenceA')}
+                  <select value={acc.silence.a} onChange={(e) => void reglerSilence({ a: Number(e.target.value) })} aria-label={`${t('garde.chef.silence')} ${t('garde.chef.silenceA')}`} className="input-focus bg-bg px-1 py-0.5 text-[12px] text-text-primary outline-none">
                     {HEURES.map((h) => <option key={h} value={h}>{t('garde.commune.heures', { h })}</option>)}
                   </select>
                 </label>
@@ -163,17 +164,17 @@ export function GardeAjmaniScreen() {
             )}
           </section>
 
-          <section className="rounded-xl border border-border bg-surface p-4" aria-label={t('garde.ajmani.derniersMots')}>
-            <h2 className="mb-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.ajmani.derniersMots')}</h2>
-            {acc && acc.messages.length === 0 && <p className="font-mono text-xs text-text-muted">{t('garde.ajmani.rienDit')}</p>}
+          <section className="rounded-xl border border-border bg-surface p-4" aria-label={t('garde.chef.derniersMots')}>
+            <h2 className="mb-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.chef.derniersMots')}</h2>
+            {acc && acc.messages.length === 0 && <p className="font-mono text-xs text-text-muted">{t('garde.chef.rienDit')}</p>}
             <ol className="flex flex-col gap-2">
               {acc?.messages.map((m) => <li key={m.id} className="text-[13px] leading-relaxed text-text-secondary"><span className="font-mono text-[10px] text-text-muted">{relativeTime(m.createdAt)} · </span>{m.texte}</li>)}
             </ol>
           </section>
 
-          <section className="rounded-xl border border-border bg-surface p-4" aria-label={t('garde.ajmani.ordres')}>
-            <h2 className="mb-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.ajmani.ordres')}</h2>
-            {acc && acc.ordres.length === 0 && <p className="font-mono text-xs text-text-muted">{t('garde.ajmani.ordresVide')}</p>}
+          <section className="rounded-xl border border-border bg-surface p-4" aria-label={t('garde.chef.ordres')}>
+            <h2 className="mb-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.chef.ordres')}</h2>
+            {acc && acc.ordres.length === 0 && <p className="font-mono text-xs text-text-muted">{t('garde.chef.ordresVide')}</p>}
             <ol className="flex flex-col divide-y divide-border">
               {acc?.ordres.map((o) => (
                 <li key={o.id} className="py-2">

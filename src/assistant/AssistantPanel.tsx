@@ -22,6 +22,7 @@ import { useLocation } from 'react-router-dom';
 import { useRemoteSites } from '../state/RemoteSitesContext';
 import { spaceForPath } from '../data/spaces';
 import { useLangue } from '../i18n';
+import { NOM_DU_CHEF } from '@edition/ajmani';
 import { ALERT_SEVERITY_CONFIG } from '../lib/alerts';
 import { bridge } from '../lib/bridge';
 import { relativeTime } from '../lib/time';
@@ -377,7 +378,7 @@ function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
       <div className="border-t border-border p-4">
         <div className="mb-2 flex items-center justify-between gap-2 px-1">
           <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-            {enGarde ? t('garde.ajmani.voixCapitaine') : ollamaAvailable ? 'IA locale active' : 'Moteur intégré'}
+            {enGarde ? t('garde.chef.voixCapitaine', { chef: NOM_DU_CHEF }) : ollamaAvailable ? 'IA locale active' : 'Moteur intégré'}
           </span>
           <ModelPicker />
         </div>
@@ -440,11 +441,11 @@ function WelcomeState({ onPrompt, enGarde = false }: { onPrompt: (text: string) 
           <Sparkles size={22} strokeWidth={1.75} />
         </span>
         <h3 className="mt-4 text-lg font-semibold text-text-primary">
-          {enGarde ? t('garde.ajmani.titre') : 'Comment puis-je vous aider ?'}
+          {enGarde ? t('garde.chef.titre', { chef: NOM_DU_CHEF }) : 'Comment puis-je vous aider ?'}
         </h3>
         <p className="mt-1 text-sm text-text-secondary">
           {enGarde
-            ? t('garde.ajmani.bienvenue')
+            ? t('garde.chef.bienvenue')
             : 'Je suis Ajmani. Je réponds à vos questions — sur votre parc comme sur tout autre sujet — et je génère des rapports interne / client à partir de vos vraies données.'}
         </p>
       </div>

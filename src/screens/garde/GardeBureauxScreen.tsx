@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { Conversation, EtatPoint, GraviteChip, JournalLigne } from '../../components/garde/GardeUi';
+import { ComptesBureau } from '../../components/garde/ComptesBureau';
 import { garde } from '../../lib/garde';
 import { useLangue } from '../../i18n';
 import { relativeTime } from '../../lib/time';
@@ -106,6 +107,8 @@ function Bureau({ equipeKey, definition }: { equipeKey: string; definition: Gard
             </section>
           )}
 
+          {/* Le Chef des Comptes a un pupitre : les jetons et les règlements (Bloc 5). */}
+          {equipeKey === 'comptes' && <ComptesBureau />}
           <section className="rounded-xl border border-border bg-surface p-4" aria-label={t('garde.bureau.historique')}>
             <h2 className="mb-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.bureau.historique')}</h2>
             {bureau && bureau.journal.length === 0 && <p className="font-mono text-xs text-text-muted">{t('garde.salle.rienRecent')}</p>}

@@ -203,6 +203,7 @@ const bridge: AmnBridge = {
       request: (input: { module: string; message?: string }) =>
         ipcRenderer.invoke(IPC.remoteModuleRequest, input),
       requests: () => ipcRenderer.invoke(IPC.remoteModuleRequests),
+      jeton: (input: { jeton: string }) => ipcRenderer.invoke(IPC.remoteModuleJeton, input),
     },
     callLinks: {
       create: (input) => ipcRenderer.invoke(IPC.remoteCallLinkCreate, input),

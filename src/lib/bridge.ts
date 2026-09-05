@@ -77,6 +77,7 @@ import type {
   WelcomePreview,
   WelcomeAccess,
   WelcomeLinkState,
+  JetonDepose,
 } from '../shared/api';
 
 declare global {
@@ -872,6 +873,9 @@ function createBrowserRemote(): AmnBridge['remote'] {
       async requests(): Promise<ModuleRequest[]> {
         const res = await apiFetch<{ requests: ModuleRequest[] }>('/v1/modules/requests');
         return res.requests ?? [];
+      },
+      async jeton(input: { jeton: string }): Promise<JetonDepose> {
+        return apiFetch<JetonDepose>('/v1/modules/jeton', { method: 'POST', body: JSON.stringify({ jeton: input.jeton }) });
       },
     },
     callLinks: {

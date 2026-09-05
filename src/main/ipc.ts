@@ -299,6 +299,7 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
     remote.requestModule(input),
   );
   ipcMain.handle(IPC.remoteModuleRequests, () => remote.moduleRequests());
+  ipcMain.handle(IPC.remoteModuleJeton, (_event, input: { jeton: string }) => remote.deposerJeton(input));
   ipcMain.handle(IPC.remoteCallLinkCreate, (_event, input: { label?: string; minutes?: number }) =>
     remote.createCallLink(input ?? {}),
   );
