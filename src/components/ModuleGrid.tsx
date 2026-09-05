@@ -37,6 +37,7 @@ export function ModuleGrid({
   etat,
   mode,
   surface = 'interne',
+  prises,
   recherche = '',
   enCours = null,
   onToggle,
@@ -49,6 +50,8 @@ export function ModuleGrid({
   etat: (key: string) => EtatModule;
   mode: 'lire' | 'composer' | 'demander' | 'alleger';
   surface?: SurfaceNav;
+  /** Les prises de la Garde sur ce module (Bloc 10) : quelles équipes le lisent, lesquelles le modifient. Interne seulement. */
+  prises?: Record<string, { lit: string[]; modifie: string[] }>;
   /** Filtre libre : intitulé ou phrase, sans accent ni casse. */
   recherche?: string;
   /** La clé en cours de changement — la tuile attend, les autres restent. */
@@ -138,6 +141,13 @@ export function ModuleGrid({
                       </span>
                       <span className="text-[11px] italic leading-snug text-text-secondary">{carte.exemple}</span>
                     </>
+                  )}
+                  {prises?.[item.key] && (prises[item.key].lit.length > 0 || prises[item.key].modifie.length > 0) && (
+                    <span className="text-[10px] leading-snug text-text-muted" data-prises={item.key}>
+                      <span className="font-mono uppercase tracking-wider">{t('biblio.prises.titre')}</span>
+                      {prises[item.key].lit.length > 0 ? ` · ${t('biblio.prises.lu', { equipes: prises[item.key].lit.join(', ') })}` : ''}
+                      {prises[item.key].modifie.length > 0 ? ` · ${t('biblio.prises.modifie', { equipes: prises[item.key].modifie.join(', ') })}` : ''}
+                    </span>
                   )}
                 </>
               );

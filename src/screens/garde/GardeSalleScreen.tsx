@@ -4,6 +4,7 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { StaggerGroup, StaggerItem } from '../../components/Stagger';
 import { AgentTuile, PoulsBadge } from '../../components/garde/GardeUi';
 import { garde } from '../../lib/garde';
+import { relativeTime } from '../../lib/time';
 import { useLangue } from '../../i18n';
 import type { GardeAgent, GardeJournalEntree, GardeSalle } from '../../shared/garde';
 
@@ -51,6 +52,13 @@ export function GardeSalleScreen() {
   }, []);
 
   const equipes = useMemo(() => (salle ? salle.equipes.filter((e) => equipe === 'toutes' || e.key === equipe) : []), [salle, equipe]);
+  // Les collaborations se lisent à part : le journal des rondes les enterrerait en quelques minutes.
+  const [collaborations, setCollaborations] = useState<GardeJournalEntree[]>([]);
+  const chargerCollaborations = useCallback(async () => {
+    try { setCollaborations((await garde.journal({ action: 'collaboration', limit: 24 })).filter((e) => /^demande à|refusée/.test(e.pourquoi)).slice(0, 6)); } catch { setCollaborations([]); }
+  }, []);
+  useEffect(() => { void chargerCollaborations(); }, [chargerCollaborations]);
+  useEffect(() => garde.onGarde((trame) => { if (trame.type === 'garde:collaboration') void chargerCollaborations(); }), [chargerCollaborations]);
   const agentsParEquipe = useMemo(() => {
     const m = new Map<string, GardeAgent[]>();
     for (const a of salle?.agents ?? []) m.set(a.equipe, [...(m.get(a.equipe) ?? []), a]);
@@ -85,6 +93,22 @@ export function GardeSalleScreen() {
             </select>
           </label>
         </div>
+      )}
+
+      {/* Les collaborations (Bloc 9) : un garde en sollicite un autre, le Capitaine arbitre et avance sa ronde — ou refuse, budget atteint, organisation gelée. */}
+      {collaborations.length > 0 && (
+        <section className="rounded-xl border border-border bg-surface p-3" aria-label={t('garde.salle.collaborations')} data-collaborations={collaborations.length}>
+          <h2 className="mb-1 font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.salle.collaborations')}</h2>
+          <ol className="flex flex-col gap-0.5">
+            {collaborations.map((e) => (
+              <li key={e.id} className="text-[12px] text-text-secondary">
+                <span className={`font-mono text-[10px] uppercase tracking-wider ${e.resultat === 'refuse' ? 'text-text-muted' : 'text-success'}`}>{e.resultat === 'refuse' ? t('garde.salle.refusee') : t('garde.salle.arbitree')}</span>
+                <span className="text-text-muted"> · {relativeTime(e.createdAt)} · </span>
+                <span className="text-text-primary">{e.agent}</span> — {e.pourquoi}
+              </li>
+            ))}
+          </ol>
+        </section>
       )}
 
       <StaggerGroup className="flex flex-col gap-5">

@@ -18,6 +18,7 @@ import { relativeTime } from '../../lib/time';
 import { useFermetureEchap } from '../../lib/useFermetureEchap';
 import { useLangue, libelleNav } from '../../i18n';
 import { ALWAYS_ON_MODULES } from '../../data/spaces';
+import { GardeChezElle } from '../garde/GardeChezElle';
 
 /**
  * Le dossier d'une organisation cliente, vu d'AMN DevSec (BLOC E).
@@ -774,6 +775,9 @@ export function OrgDossierPanel({
               className="input-focus mt-2 w-full resize-none border border-border bg-bg px-3 py-2 text-sm leading-relaxed text-text-primary outline-none"
             />
           </div>
+
+          {/* La Garde chez elle (Bloc 9) : ce que les gardes y ont fait, et à qui parler. Rien si elle n'y est jamais passée. */}
+          <GardeChezElle orgId={org.id} />
 
           <div className="my-5 border-t border-border" />
 

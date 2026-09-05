@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { allegementsPourPrereglage } from '../data/prereglagesBarre';
 import { PROFILS_INTERNES_ORDRE, allegementsPourProfil } from '../data/profilsInternes';
+import { garde as gardeClient } from '../lib/garde';
+import { prisesParModule } from '../data/prisesGarde';
 import { motion } from 'framer-motion';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -51,6 +53,15 @@ export function LibraryScreen() {
     return () => {
       vivant = false;
     };
+  }, []);
+
+  // Les prises de la Garde (Bloc 10) : ce que chaque équipe lit ou modifie, module par module — interne seulement.
+  const [prises, setPrises] = useState<Record<string, { lit: string[]; modifie: string[] }> | undefined>(undefined);
+  useEffect(() => {
+    if (IS_BUSINESS) return;
+    let vivant = true;
+    gardeClient.salle().then((salle) => { if (vivant) setPrises(prisesParModule(salle)); }).catch(() => undefined);
+    return () => { vivant = false; };
   }, []);
 
   const sections = useMemo(
@@ -250,6 +261,7 @@ export function LibraryScreen() {
           estAllege={estAllege}
           onBasculer={basculer}
           surface={IS_BUSINESS ? 'business' : 'interne'}
+          prises={prises}
           recherche={recherche}
           enCours={enCours}
           onDemander={(cle) => void demander(cle)}

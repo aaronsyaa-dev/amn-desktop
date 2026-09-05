@@ -8,6 +8,7 @@ import { SyncStatusIndicator } from './SyncStatusIndicator';
 import { OrgSwitchButton } from './org-rail/OrgSwitchButton';
 import { UserAvatar } from './UserAvatar';
 import { useAssistant } from '../assistant/AssistantContext';
+import { GardeBadge } from './garde/GardeBadge';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { useLangue } from '../i18n';
@@ -96,6 +97,8 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
         <SyncStatusIndicator />
+        {/* L'insigne de la Garde (Bloc 9) : le pouls, qui est en ronde, chez qui — un clic vers la Salle. */}
+        <GardeBadge />
         <button
           type="button"
           onClick={() => openAssistant()}

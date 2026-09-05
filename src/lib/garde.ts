@@ -25,7 +25,7 @@ export const garde = {
   agent: (key: string) => appel<{ agent: GardeAgent; definition: (Pick<GardeDefinitionAgent, 'role' | 'prises' | 'regles'>) | null; rondes: GardeRonde[]; journal: GardeJournalEntree[] }>(`/agents/${encodeURIComponent(key)}`),
   majAgent: async (key: string, patch: Partial<Pick<GardeAgent, 'actif' | 'everyMs' | 'parametres' | 'geleOrgs' | 'couloir'>>) => (await appel<{ agent: GardeAgent }>(`/agents/${encodeURIComponent(key)}`, 'PUT', patch)).agent,
   ronde: (key: string) => appel<{ ronde: { rondeId: string; resume: string; erreur: string | null; dureeMs: number } | null }>(`/agents/${encodeURIComponent(key)}/ronde`, 'POST', {}),
-  journal: async (params: { agent?: string; equipe?: string; org?: string; ressource?: string; since?: string; limit?: number; mauvais?: '1' } = {}) => (await appel<{ journal: GardeJournalEntree[] }>(`/journal${q(params)}`)).journal,
+  journal: async (params: { action?: string; agent?: string; equipe?: string; org?: string; ressource?: string; since?: string; limit?: number; mauvais?: '1' } = {}) => (await appel<{ journal: GardeJournalEntree[] }>(`/journal${q(params)}`)).journal,
   mauvais: (id: string, note: string) => appel<{ entree: GardeJournalEntree; correction: { type: string; texte: string } }>(`/journal/${encodeURIComponent(id)}/mauvais`, 'POST', { note }),
   remontees: (etat: 'ouverte' | 'decidee' | 'resolue' | 'ignoree' | 'toutes' = 'ouverte', params: { equipe?: string; org?: string; limit?: number } = {}) => appel<{ remontees: GardeRemontee[]; compte: GardePouls['compte'] }>(`/remontees${q({ etat, ...params })}`),
   decider: async (id: string, decision: string) => (await appel<{ remontee: GardeRemontee }>(`/remontees/${encodeURIComponent(id)}/decision`, 'POST', { decision })).remontee,

@@ -16,6 +16,7 @@ import {
   NotebookPen,
   Scale,
   Search,
+  Shield,
   Sparkles,
 } from 'lucide-react';
 import { useRemoteSites } from '../../state/RemoteSitesContext';
@@ -25,6 +26,9 @@ import { useSitePanel } from '../site-panel/SitePanelContext';
 import { useAssistant } from '../../assistant/AssistantContext';
 import { StatusBadge } from '../StatusBadge';
 import { SPACES, itemsForSpace } from '../../data/spaces';
+import { garde } from '../../lib/garde';
+import type { GardeGuideEntree, GardeOrdreReponse } from '../../shared/garde';
+import { t as tr } from '../../i18n';
 import { libelleNav } from '../../i18n';
 
 interface CommandPaletteContextValue {
@@ -42,7 +46,9 @@ type Command =
   | { kind: 'nav'; id: string; label: string; icon: IconType; to: string }
   | { kind: 'action'; id: string; label: string; icon: IconType; run: () => void }
   | { kind: 'site'; id: string; label: string; siteId: string }
-  | { kind: 'record'; id: string; label: string; icon: IconType; to: string; hint: string };
+  | { kind: 'record'; id: string; label: string; icon: IconType; to: string; hint: string }
+  /* La Garde (Bloc 10) : un ordre au Capitaine, depuis la palette — la réponse s'affiche sur place, avec ses preuves. */
+  | { kind: 'garde'; id: string; label: string; hint: string; ordre: string };
 
 /**
  * Les commandes de navigation, DÉRIVÉES du catalogue de modules.
@@ -134,6 +140,13 @@ function CommandPaletteModal({
   const { notes } = useNotes();
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
+  const [guide, setGuide] = useState<GardeGuideEntree[]>([]);
+  const [reponse, setReponse] = useState<{ ordre: string; r: GardeOrdreReponse } | null>(null);
+  const [enAttente, setEnAttente] = useState(false);
+  useEffect(() => {
+    if (!isOpen || guide.length > 0) return;
+    garde.guide().then((g) => setGuide(g.guide)).catch(() => setGuide([]));
+  }, [isOpen, guide.length]);
 
   const results = useMemo<Command[]>(() => {
     const q = query.trim().toLowerCase();
@@ -182,14 +195,33 @@ function CommandPaletteModal({
           .map((r) => ({ kind: 'record' as const, id: r.key, label: r.label, to: r.to, hint: r.hint, icon: r.icon }))
       : [];
 
-    return [...navCommands, ...actionCommands, ...siteCommands, ...recordCommands];
-  }, [query, openAssistant, sites, tasks, decisions, knowledge, notes]);
+    /*
+      LA GARDE DANS LA PALETTE. Ce que la Garde sait faire est cherchable comme
+      un écran (« qui n'a pas payé », « lance une ronde »), et tout ce qu'on tape
+      qui ne ressemble pas à un écran peut lui être demandé tel quel : la réponse
+      vient du Capitaine, avec ses preuves, sans quitter la palette.
+    */
+    const normaliser = (x: string) => x.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const nq = normaliser(q);
+    const gardeCommands: Command[] = q
+      ? [
+          ...guide
+            .filter((g) => normaliser(g.libelle).includes(nq) || normaliser(g.exemple).includes(nq))
+            .slice(0, 4)
+            .map((g) => ({ kind: 'garde' as const, id: `garde-${g.intention}`, label: g.libelle, hint: g.exemple, ordre: g.exemple })),
+          ...(guide.length > 0 && q.length >= 4 ? [{ kind: 'garde' as const, id: 'garde-libre', label: tr('palette.garde.demander', { texte: query.trim() }), hint: tr('palette.garde.hint'), ordre: query.trim() }] : []),
+        ]
+      : [];
+
+    return [...navCommands, ...actionCommands, ...siteCommands, ...recordCommands, ...gardeCommands];
+  }, [query, openAssistant, sites, tasks, decisions, knowledge, notes, guide]);
 
   // Reset transient state whenever the palette opens.
   useEffect(() => {
     if (isOpen) {
       setQuery('');
       setActiveIndex(0);
+      setReponse(null);
     }
   }, [isOpen]);
 
@@ -200,6 +232,16 @@ function CommandPaletteModal({
   const runCommand = useCallback(
     (command: Command | undefined) => {
       if (!command) return;
+      if (command.kind === 'garde') {
+        // On reste dans la palette : la réponse vient du Capitaine ; un ordre qui modifie demande confirmation ici même.
+        setEnAttente(true);
+        const confirmer = reponse?.r.confirmation && reponse.ordre === command.ordre;
+        garde.ordre(command.ordre, Boolean(confirmer))
+          .then((r) => setReponse({ ordre: command.ordre, r }))
+          .catch((err) => setReponse({ ordre: command.ordre, r: { ordre: { id: '', etat: 'echec', texte: command.ordre }, intention: null, params: null, reponse: tr('garde.erreur', { message: err instanceof Error ? err.message : String(err) }) } }))
+          .finally(() => setEnAttente(false));
+        return;
+      }
       if (command.kind === 'nav' || command.kind === 'record') {
         navigate(command.to);
       } else if (command.kind === 'action') {
@@ -210,7 +252,7 @@ function CommandPaletteModal({
       }
       onClose();
     },
-    [navigate, openSite, onClose],
+    [navigate, openSite, onClose, reponse],
   );
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -280,6 +322,21 @@ function CommandPaletteModal({
                 ))
               )}
             </div>
+            {(reponse || enAttente) && (
+              <div className="border-t border-border px-4 py-3 text-sm" aria-live="polite" data-palette-garde>
+                <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('palette.garde.reponse')}</p>
+                {enAttente ? (
+                  <p className="mt-1 text-text-muted">…</p>
+                ) : reponse ? (
+                  <>
+                    <p className="mt-1 whitespace-pre-line leading-relaxed text-text-primary">{reponse.r.question ?? reponse.r.reponse}</p>
+                    {reponse.r.confirmation && (
+                      <button type="button" onClick={() => runCommand({ kind: 'garde', id: 'garde-confirme', label: '', hint: '', ordre: reponse.ordre })} className="mt-2 border border-accent bg-accent px-2.5 py-1 text-xs font-medium text-bg">{tr('garde.bureau.confirmer')}</button>
+                    )}
+                  </>
+                ) : null}
+              </div>
+            )}
           </motion.div>
         </div>
       )}
@@ -316,7 +373,9 @@ function CommandRow({
           active ? 'bg-accent/20 text-accent' : 'bg-white/5 text-text-secondary'
         }`}
       >
-        {command.kind === 'nav' || command.kind === 'action' || command.kind === 'record' ? (
+        {command.kind === 'garde' ? (
+          <Shield size={15} strokeWidth={1.75} />
+        ) : command.kind === 'nav' || command.kind === 'action' || command.kind === 'record' ? (
           <command.icon size={15} strokeWidth={1.75} />
         ) : (
           <Globe size={15} strokeWidth={1.75} />

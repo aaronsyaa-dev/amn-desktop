@@ -88,7 +88,7 @@ export function ScreenHeader({
             </p>
           )}
         </div>
-        {actions && <div className="flex flex-shrink-0 items-center gap-2">{actions}</div>}
+        {actions && <div className="flex flex-shrink-0 items-center gap-2" data-screen-actions>{actions}</div>}
       </div>
 
       {shown.length > 0 && (
@@ -129,7 +129,7 @@ export function ScreenHeader({
         </div>
       )}
 
-      {children && <div className="mt-4">{children}</div>}
+      {children && <div className="mt-4" data-screen-actions>{children}</div>}
 
       <div className="rule-fade mt-5" />
     </header>

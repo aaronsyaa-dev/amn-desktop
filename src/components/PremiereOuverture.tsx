@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { sectionsForSpace, spaceForPath } from '../data/spaces';
@@ -41,6 +41,25 @@ export function PremiereOuverture() {
   const location = useLocation();
   const email = user?.email ?? '';
   const [vues, setVues] = useState<string[]>(() => lireVues(email));
+  /*
+    LES TROIS GESTES PRINCIPAUX (Bloc 10) — lus sur l'écran, jamais inventés.
+    Les boutons d'action de l'en-tête sont ce que l'écran sait faire ; on les
+    relit après le rendu (et à chaque changement d'écran) plutôt que de tenir
+    une liste à la main qui mentirait au premier bouton renommé.
+  */
+  const [gestes, setGestes] = useState<string[]>([]);
+  useEffect(() => {
+    let vivant = true;
+    const lire = () => {
+      if (!vivant) return;
+      const boutons = [...document.querySelectorAll<HTMLElement>('main [data-screen-actions] button, main [data-screen-actions] a')];
+      const textes = boutons.map((b) => (b.getAttribute('aria-label') || b.textContent || '').replace(/\s+/g, ' ').trim()).filter((x) => x.length > 1 && x.length < 40);
+      setGestes([...new Set(textes)].slice(0, 3));
+    };
+    const t1 = window.setTimeout(lire, 250);
+    const t2 = window.setTimeout(lire, 1500);
+    return () => { vivant = false; window.clearTimeout(t1); window.clearTimeout(t2); };
+  }, [location.pathname]);
 
   // Le module courant : le chemin le plus long qui colle, dans l'espace courant.
   const items = sectionsForSpace(spaceForPath(location.pathname)).flatMap((s) => s.items);
@@ -78,6 +97,11 @@ export function PremiereOuverture() {
           <span className="text-text-muted">{t('carte.pourQui')} :</span> {carte.pourQui}
         </p>
         <p className="mt-0.5 text-xs italic text-text-secondary">{carte.exemple}</p>
+        {gestes.length > 0 && (
+          <p className="mt-1 text-xs text-text-secondary" data-gestes={gestes.length}>
+            <span className="text-text-muted">{t('carte.gestes')} :</span> {gestes.join(' · ')}
+          </p>
+        )}
       </div>
       <button
         type="button"
