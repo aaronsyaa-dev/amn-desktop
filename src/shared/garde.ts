@@ -267,3 +267,14 @@ export interface GardeCompte {
   modulesSuspendus: string[];
   note: string | null;
 }
+
+/* ── Bloc 7 : les exceptions d'abord, pour la Tour ────────────────── */
+export interface GardeExceptions {
+  calme: boolean;
+  critiques: { n: number; dossiers: { id: string; titre: string; orgNom: string | null; agent: string; n: number }[] };
+  demandes: { support: number; modules: number; depuis: string | null };
+  comptes: { impayes: number; grace: number; suspendus: number };
+  enEchec: { key: string; nom: string; phrase: string }[];
+  pile: { dossiers: number; remontees: number };
+  at: string;
+}

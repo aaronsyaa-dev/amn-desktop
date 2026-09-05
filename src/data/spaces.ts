@@ -31,14 +31,14 @@ export const SPACES: Space[] = [
   {
     key: 'workspace',
     label: 'Poste de travail',
-    hint: 'Le quotidien : clients, tâches, notes, agenda',
+    hint: 'Agir : le quotidien, clients, tâches, notes, agenda',
     home: '/',
     icon: Briefcase,
   },
   {
     key: 'control',
     label: 'Tour de contrôle',
-    hint: 'Le transverse : incidents, produits, organisations',
+    hint: 'Décider : ce qui attend, les organisations, les demandes',
     home: '/tour',
     icon: MonitorDot,
   },

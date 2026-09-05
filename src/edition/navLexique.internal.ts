@@ -53,6 +53,7 @@ export const SECTIONS_EN: Record<string, string> = {
 
 /** Les deux espaces internes, par clé. L'édition Business n'en a pas. */
 export const ESPACES_EN: Record<string, { label: string; hint: string }> = {
-  workspace: { label: 'Workstation', hint: 'Day-to-day: clients, tasks, notes, calendar' },
-  control: { label: 'Control tower', hint: 'Across the estate: incidents, products, organisations' },
+  workspace: { label: 'Workstation', hint: 'Act: day-to-day, clients, tasks, notes, calendar' },
+  control: { label: 'Control tower', hint: 'Decide: what is waiting, organisations, requests' },
+  garde: { label: 'The Guard', hint: 'Delegate: the teams that watch, their offices' },
 };

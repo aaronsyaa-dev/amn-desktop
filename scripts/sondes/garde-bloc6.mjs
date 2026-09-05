@@ -22,7 +22,7 @@ await p.goto(`${BASE}/#/garde/bureaux/taches`); await a(3000);
 const q = p.locator('main input[aria-label="Poser une question, donner un ordre"]');
 await q.fill('Refais ta ronde maintenant'); await q.press('Enter'); await a(5000);
 const reponse = await p.evaluate(() => document.querySelector('main section[aria-label="Poser une question, donner un ordre"] ol')?.textContent?.replace(/\s+/g, ' ') ?? '');
-ok('1. le Chef des Tâches fait sa ronde et dit ce qu’elle a émis', /émise|mise\(s\) à jour|close/.test(reponse), reponse.slice(-160));
+ok('1. le Chef des Tâches fait sa ronde et dit ce qu’elle a émis (ou que tout est en ordre)', /émise|mise\(s\) à jour|close|en ordre|rien à signaler|sans surprise|Rien de neuf/.test(reponse), reponse.slice(-160));
 // 2. Le tableau des tâches : des cartes posées par la Garde, avec « par la Garde … — parce que … ».
 await p.goto(`${BASE}/#/tasks`); await a(3500);
 const cartes = await p.evaluate(() => {

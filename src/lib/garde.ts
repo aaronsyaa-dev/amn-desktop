@@ -7,7 +7,7 @@
  */
 import { bridge } from './bridge';
 import type { GardeTrame } from '../shared/api';
-import type { GardeCompte, GardeJeton, GardeJetonEmis, GardeAccueil, GardeDossier, GardeGuideEntree, GardeMandat, GardePileDossiers, GardeAgent, GardeBureau, GardeCalendrierItem, GardeDefinitionAgent, GardeJournalEntree, GardeMessage, GardeOrdreReponse, GardePouls, GardeProposition, GardeReleve, GardeRemontee, GardeRonde, GardeSalle } from '../shared/garde';
+import type { GardeExceptions, GardeCompte, GardeJeton, GardeJetonEmis, GardeAccueil, GardeDossier, GardeGuideEntree, GardeMandat, GardePileDossiers, GardeAgent, GardeBureau, GardeCalendrierItem, GardeDefinitionAgent, GardeJournalEntree, GardeMessage, GardeOrdreReponse, GardePouls, GardeProposition, GardeReleve, GardeRemontee, GardeRonde, GardeSalle } from '../shared/garde';
 
 const g = () => bridge().remote.garde;
 const appel = <T,>(path: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET', body?: unknown) => g().appel<T>({ path, method, ...(body !== undefined ? { body } : {}) });
@@ -49,6 +49,8 @@ export const garde = {
   guide: async () => (await appel<{ guide: GardeGuideEntree[]; version: string; familles: Record<string, { un: string; des: string }> }>('/lexique')),
   mandat: async () => (await appel<{ mandat: GardeMandat }>('/ajmani/mandat')).mandat,
   donnerMandat: (input: { agent: string; famille: string; decision: string }) => appel<{ mandat: GardeMandat; appliquees: number }>('/ajmani/mandat', 'POST', input),
+  // Bloc 7 — les exceptions d'abord.
+  exceptions: () => appel<GardeExceptions>('/exceptions'),
   // Bloc 5 — la Garde des Comptes et le site.
   jetons: async (etat?: GardeJeton['etat']) => (await appel<{ jetons: GardeJeton[] }>(`/jetons${q({ etat })}`)).jetons,
   emettreJeton: (input: { module?: string; formule?: string; places?: number; expiresInDays?: number; note?: string }) => appel<GardeJetonEmis>('/jetons', 'POST', input),

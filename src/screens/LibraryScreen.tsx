@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { allegementsPourPrereglage } from '../data/prereglagesBarre';
+import { PROFILS_INTERNES_ORDRE, allegementsPourProfil } from '../data/profilsInternes';
 import { motion } from 'framer-motion';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -187,11 +188,17 @@ export function LibraryScreen() {
             <button type="button" onClick={() => remplacer(cataloguePrereglable)} className={BOUTON_ALLEGER}>{t('biblio.alleger.toutAlleger')}</button>
             <span className="mx-1 h-4 w-px bg-border" aria-hidden />
             <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{t('biblio.alleger.prereglages')}</span>
-            {(['leger', 'commerce', 'service'] as const).map((pre) => (
-              <button key={pre} type="button" onClick={() => remplacer(allegementsPourPrereglage(pre, catalogue, ALWAYS_ON_MODULES))} className={BOUTON_ALLEGER}>
-                {t(`biblio.alleger.pre.${pre}`)}
-              </button>
-            ))}
+            {IS_BUSINESS
+              ? (['leger', 'commerce', 'service'] as const).map((pre) => (
+                <button key={pre} type="button" onClick={() => remplacer(allegementsPourPrereglage(pre, catalogue, ALWAYS_ON_MODULES))} className={BOUTON_ALLEGER}>
+                  {t(`biblio.alleger.pre.${pre}`)}
+                </button>
+              ))
+              : PROFILS_INTERNES_ORDRE.map((profil) => (
+                <button key={profil} type="button" onClick={() => remplacer(allegementsPourProfil(profil, catalogue, ALWAYS_ON_MODULES))} className={BOUTON_ALLEGER}>
+                  {t(`profil.${profil}`)}
+                </button>
+              ))}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{t('biblio.alleger.parSection')}</span>

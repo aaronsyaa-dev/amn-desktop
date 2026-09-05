@@ -24,6 +24,7 @@ import { useOrgContext } from '../state/OrgContextContext';
 import { bridge } from '../lib/bridge';
 import { relativeTime } from '../lib/time';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { TourExceptions } from '../components/tour/TourExceptions';
 import { OrgBanner } from '../components/org-rail/OrgBanner';
 import { useParcInsights } from '../state/parcInsights';
 import { computeTrend } from '../lib/trend';
@@ -97,7 +98,7 @@ export function ControlTowerScreen() {
             */
             parc.total === 0
               ? 'Aucun site n’est supervisé pour l’instant — les relevés du parc apparaîtront dès le premier tracker installé.'
-              : 'Le parc, les clientes et les rondes de fond, en un seul écran.'
+              : 'Décider : ce qui attend une décision d’abord, puis le parc, les clientes et les rondes de fond.'
           }
           stats={[
             ...(parc.total === 0
@@ -180,6 +181,11 @@ export function ControlTowerScreen() {
             </>
           }
         />
+      </StaggerItem>
+
+      {/* LES EXCEPTIONS D'ABORD (Bloc 7) : ce qui attend une décision, en un geste chacun, avant le parc. */}
+      <StaggerItem>
+        <TourExceptions />
       </StaggerItem>
 
       {/* Ce que la supervision de fond a réellement fait, et quand (BLOC F). */}

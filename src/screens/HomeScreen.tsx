@@ -28,6 +28,7 @@ import { SupervisionBand } from '../components/SupervisionBand';
 import { AttentionPanel } from '../components/AttentionPanel';
 import { useAttention } from '../state/useAttention';
 import { passagePrecedent, RelevePoste } from '../components/RelevePoste';
+import { ProfilInterneCarte } from '../components/ProfilInterneCarte';
 import { bridge } from '../lib/bridge';
 import type { Observation } from '../lib/releve';
 import { useLangue } from '../i18n';
@@ -263,6 +264,8 @@ export function HomeScreen() {
 
       {/* La relève SOC : ce qui est apparu pendant l'absence, et un verdict.
           Même grammaire que le Majordome cliente, un degré plus froid. */}
+      {/* Un nouveau compte interne choisit sa mission d'un geste (Bloc 7) ; la carte ne revient pas. */}
+      <ProfilInterneCarte />
       <RelevePoste
         depuis={depuisReleve}
         observations={observationsReleve}
