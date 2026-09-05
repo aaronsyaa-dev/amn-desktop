@@ -234,6 +234,10 @@ export interface GardeAccueil {
   aveux: string[];
   messages: GardeMessage[];
   ordres: { id: string; auteurEmail: string; cible: string; texte: string; intention: string | null; etat: string; reponse: string | null; createdAt: string }[];
+  /** Bloc 11 : ce qu'Ajmani a dit de lui-même aujourd'hui, sur combien ; ce qu'il retient pour demain. */
+  budget: { jour: string; dites: number; max: number; retenues: number; reste: number };
+  /** Bloc 12 : la clôture d'hier soir, rappelée une fois au matin. */
+  cloture: { at: string; par: string; reste: string; ouvertes: number; graves: number; demandes: number; rondesNuit: number } | null;
   at: string;
 }
 

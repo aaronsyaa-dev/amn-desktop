@@ -41,7 +41,7 @@ export const garde = {
   propositions: async (etat = 'proposee') => (await appel<{ propositions: GardeProposition[] }>(`/propositions${q({ etat })}`)).propositions,
   deciderProposition: async (id: string, etat: 'acceptee' | 'refusee', couloir: { min: number; max: number } | null = null) => (await appel<{ proposition: GardeProposition }>(`/propositions/${encodeURIComponent(id)}`, 'POST', { etat, couloir })).proposition,
   etSi: async (agent: string, regle: string, parametre: string, valeur: number) => (await appel<{ etsi: { avant: number | null; apres: number | null; phrase?: string; note?: string } }>(`/etsi${q({ agent, regle, parametre, valeur })}`)).etsi,
-  reglages: async (patch: { heureTour?: number; silence?: { de: number; a: number } }) => (await appel<{ reglages: { heureTour: number; silence?: { de: number; a: number } } }>('/reglages', 'PUT', patch)).reglages,
+  reglages: async (patch: { heureTour?: number; silence?: { de: number; a: number }; budgetParoles?: number }) => (await appel<{ reglages: { heureTour: number; silence?: { de: number; a: number }; budgetParoles?: number } }>('/reglages', 'PUT', patch)).reglages,
   // Bloc 4 — Ajmani, chef d'état-major.
   accueil: () => appel<GardeAccueil>('/ajmani'),
   pile: (limit = 50) => appel<GardePileDossiers>(`/pile${q({ limit })}`),

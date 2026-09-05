@@ -20,6 +20,7 @@ import type { GardeAccueil, GardeGeste, GardeGuideEntree } from '../../shared/ga
  * Aucune formulation ici : tout vient du Capitaine, avec ses preuves.
  */
 const HEURES = Array.from({ length: 24 }, (_, h) => h);
+const BUDGETS = [0, 2, 4, 6, 8, 10, 12];
 
 export function GardeAjmaniScreen() {
   const { t } = useLangue();
@@ -59,6 +60,9 @@ export function GardeAjmaniScreen() {
     await charger();
   };
   const retirer = async (cle: string) => { await garde.retirerMandat(cle); await charger(); };
+  const reglerBudget = async (budgetParoles: number) => { await garde.reglages({ budgetParoles }); await charger(); };
+  // La clôture du soir : un seul ordre, « je ferme pour ce soir » — le Capitaine dit ce qui attend et ce que la Garde fera cette nuit.
+  const cloturer = () => geste({ label: t('garde.chef.cloture'), ordre: 'je ferme pour ce soir' });
   const familles: GardeGuideEntree['famille'][] = ['savoir', 'faire', 'regler'];
   const rapides = guide.map((g) => ({ label: g.libelle, texte: g.exemple }));
 
@@ -85,9 +89,10 @@ export function GardeAjmaniScreen() {
                   {acc.proposition.gestes.map((g) => g.vers
                     ? <Link key={g.label} to={g.vers} className="min-h-11 border border-border px-3 text-sm text-text-primary hover:border-border-strong md:min-h-0 md:py-1.5">{g.label}</Link>
                     : <button key={g.label} type="button" disabled={busy} onClick={() => void geste(g)} className="min-h-11 border border-accent bg-accent px-3 text-sm font-medium text-bg hover:bg-accent-hover disabled:opacity-50 md:min-h-0 md:py-1.5">{g.label}</button>)}
+                  <button type="button" disabled={busy} onClick={() => void cloturer()} data-cloture title={t('garde.chef.clotureAide')} className="min-h-11 border border-border px-3 text-sm text-text-secondary hover:border-border-strong hover:text-text-primary disabled:opacity-50 md:min-h-0 md:py-1.5">{t('garde.chef.cloture')}</button>
                 </div>
                 {reponse && (
-                  <div className="mt-3 whitespace-pre-line rounded-lg border border-border bg-bg px-3 py-2 text-[13px] leading-relaxed text-text-primary">
+                  <div className="mt-3 whitespace-pre-line rounded-lg border border-border bg-bg px-3 py-2 text-[13px] leading-relaxed text-text-primary" data-chef-reponse>
                     {reponse.texte}
                     {reponse.confirmation && reponse.original && (
                       <div className="mt-2 flex gap-2">
@@ -143,6 +148,21 @@ export function GardeAjmaniScreen() {
                 </li>
               ))}
             </ul>
+          </section>
+
+          <section className="rounded-xl border border-border bg-surface p-4" aria-label={t('garde.chef.budget')}>
+            <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.chef.budget')}</h2>
+            <p className="mb-2 mt-1 text-[12px] text-text-muted">{t('garde.chef.budgetAide', { chef: NOM_DU_CHEF })}</p>
+            {acc && (
+              <div className="flex flex-wrap items-center gap-3 text-[12px] text-text-secondary">
+                <p className="text-[13px] text-text-primary" data-budget={acc.budget.dites} data-budget-max={acc.budget.max}>{t('garde.chef.budgetJour', { dites: acc.budget.dites, max: acc.budget.max })}{acc.budget.retenues > 0 ? ` · ${t('garde.chef.budgetRetenues', { n: acc.budget.retenues })}` : ''}</p>
+                <label className="flex items-center gap-1">{t('garde.chef.budgetMax')}
+                  <select value={BUDGETS.includes(acc.budget.max) ? acc.budget.max : 6} onChange={(e) => void reglerBudget(Number(e.target.value))} aria-label={t('garde.chef.budgetMax')} className="input-focus bg-bg px-1 py-0.5 text-[12px] text-text-primary outline-none">
+                    {BUDGETS.map((n) => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </label>
+              </div>
+            )}
           </section>
 
           <section className="rounded-xl border border-border bg-surface p-4" aria-label={t('garde.chef.silence')}>

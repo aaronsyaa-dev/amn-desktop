@@ -147,7 +147,16 @@ function Bureau({ equipeKey, definition }: { equipeKey: string; definition: Gard
                       <p className="text-[11px] text-text-muted"><span className="font-mono uppercase tracking-wider">{t('garde.bureau.prises')}</span> — {a.prises.lit.join(', ') || '—'} · {a.prises.modifie.join(', ') || '—'} · {a.prises.demande.join(', ') || '—'}</p>
                       {Object.entries(a.regles).length > 0 && (
                         <ul className="flex flex-col gap-0.5 pl-3">
-                          {Object.entries(a.regles).map(([k, r]) => <li key={k} className="text-[11px] text-text-secondary">{r.description}{Object.keys(r.parametres).length ? ` (${Object.entries(etat?.parametres?.[k] ?? r.parametres).map(([n, v]) => `${n} ${String(v)}`).join(', ')})` : ''}</li>)}
+                          {Object.entries(a.regles).map(([k, r]) => {
+                            const parametres = (etat?.parametres?.[k] ?? r.parametres) as Record<string, unknown>;
+                            const premier = Object.keys(r.parametres)[0];
+                            return (
+                              <li key={k} className="text-[11px] text-text-secondary">
+                                {r.description}{Object.keys(r.parametres).length ? ` (${Object.entries(parametres).map(([n, v]) => `${n} ${String(v)}`).join(', ')})` : ''}
+                                {r.rejouable && premier && <EtSi agent={a.key} regle={k} parametre={premier} valeur={Number(parametres[premier] ?? r.parametres[premier])} />}
+                              </li>
+                            );
+                          })}
                         </ul>
                       )}
                     </li>
@@ -159,5 +168,39 @@ function Bureau({ equipeKey, definition }: { equipeKey: string; definition: Gard
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * « ET SI ? » — un seuil rejoué sur le mois écoulé, sans rien changer.
+ *
+ * Le garde relit ses propres traces (pings, incidents, demandes) avec la
+ * valeur proposée et dit ce que le mois aurait produit, contre ce qu'il a
+ * produit. Rien n'est modifié : c'est une lecture. Pour changer la règle,
+ * on passe par la proposition d'ajustement ou par un ordre.
+ */
+function EtSi({ agent, regle, parametre, valeur }: { agent: string; regle: string; parametre: string; valeur: number }) {
+  const { t } = useLangue();
+  const [essai, setEssai] = useState(String(valeur));
+  const [resultat, setResultat] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const rejouer = async () => {
+    const v = Number(essai);
+    if (!Number.isFinite(v) || busy) return;
+    setBusy(true);
+    try {
+      const r = await garde.etSi(agent, regle, parametre, v);
+      setResultat(r.apres === null ? (r.note ?? t('garde.bureau.etsiImpossible')) : t('garde.bureau.etsiResultat', { parametre, valeur: v, apres: r.apres, avant: r.avant ?? '—' }));
+    } catch (err) { setResultat(t('garde.erreur', { message: err instanceof Error ? err.message : String(err) })); } finally { setBusy(false); }
+  };
+  return (
+    <form className="mt-1 flex flex-wrap items-center gap-2" aria-label={`${t('garde.bureau.etsiTitre')} ${regle}`} onSubmit={(e) => { e.preventDefault(); void rejouer(); }}>
+      <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{t('garde.bureau.etsiTitre')}</span>
+      <label className="flex items-center gap-1 text-[11px] text-text-secondary">{parametre}
+        <input type="number" inputMode="numeric" value={essai} onChange={(e) => setEssai(e.target.value)} aria-label={`${t('garde.bureau.etsiTitre')} ${parametre}`} className="input-focus w-20 border border-border bg-bg px-2 py-0.5 text-[12px] text-text-primary outline-none" />
+      </label>
+      <button type="submit" disabled={busy} className="min-h-11 border border-border px-2 text-[11px] text-text-secondary hover:border-border-strong hover:text-text-primary disabled:opacity-50 md:min-h-0 md:py-0.5">{t('garde.bureau.etsiEssayer')}</button>
+      {resultat && <span className="text-[11px] text-text-primary" data-etsi={regle}>{resultat}</span>}
+    </form>
   );
 }
