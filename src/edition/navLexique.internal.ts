@@ -21,6 +21,7 @@ const NAV_EN_INTERNE: Record<string, TraductionNav> = {
   knowledge: { label: 'Knowledge', hint: 'Internal knowledge base' },
   tour: { label: 'Overview', hint: 'The SOC wall' },
   gardeSalle: { label: 'The Room', hint: 'The wall of guards: who does what, now' },
+  gardeAjmani: { label: 'Ajmani', hint: 'The chief of staff: speaks first, one proposal' },
   gardePile: { label: 'Your call', hint: 'What awaits a human decision' },
   gardeBureaux: { label: 'The offices', hint: 'Talk to a guard chief' },
   gardeCommune: { label: 'Common room', hint: 'Talk to the whole Guard, the daily brief' },

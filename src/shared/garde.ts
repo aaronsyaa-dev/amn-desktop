@@ -58,7 +58,7 @@ export interface GardeSalle {
   pouls: GardePouls;
   absence: GardeAbsence | null;
   priorite: { texte: string; par: string; at: string; jusqua: string } | null;
-  reglages: { heureTour: number };
+  reglages: { heureTour: number; silence?: { de: number; a: number } };
   lexique: string;
 }
 export interface GardeJournalEntree {
@@ -115,7 +115,7 @@ export interface GardeRemontee {
 export interface GardeMessage {
   id: string;
   agent: string;
-  canal: 'bureau' | 'commune' | 'pile';
+  canal: 'bureau' | 'commune' | 'pile' | 'ajmani';
   texte: string;
   preuves: string[];
   lu: boolean;
@@ -142,6 +142,8 @@ export interface GardeOrdreReponse {
   remontees?: GardeRemontee[];
   releve?: GardeReleve;
   reponses?: GardeMessage[];
+  /** Rendu quand l’ordre n’est pas compris, ou sur « que veux-tu faire » : ce que la Garde sait faire. */
+  guide?: GardeGuideEntree[];
 }
 export interface GardeReleve {
   at: string;
@@ -167,4 +169,70 @@ export interface GardeBureau {
   messages: GardeMessage[];
   journal: GardeJournalEntree[];
   propositions: GardeProposition[];
+}
+
+/* ── Bloc 4 : Ajmani, chef d'état-major ───────────────────────────── */
+
+/** Une entrée du guide « Que voulez-vous faire ? » — dérivée de la table des intentions du Lexique. */
+export interface GardeGuideEntree {
+  intention: string;
+  famille: 'savoir' | 'faire' | 'regler';
+  libelle: string;
+  exemple: string;
+  modifie: boolean;
+}
+
+/** Un dossier de la pile : les remontées d'un même agent, d'une même famille, chez une même organisation. */
+export interface GardeDossier {
+  id: string;
+  agent: string;
+  equipe: string;
+  famille: string;
+  orgId: string | null;
+  orgNom: string | null;
+  gravite: GardeGravite;
+  n: number;
+  vues: number;
+  titre: string;
+  exemples: string[];
+  options: string[];
+  recommandation: string | null;
+  sansRecommandation: boolean;
+  contexte: string;
+  depuis: string;
+  derniere: string;
+  remontees: string[];
+  tache: boolean;
+  differees: number;
+  /** L'arbitrage : chez une organisation, le plus grave mène ; les autres se rangent derrière lui. */
+  chefDeFile: boolean;
+  derriere: string | null;
+  memeOrg: number;
+}
+export interface GardePileDossiers {
+  dossiers: GardeDossier[];
+  compte: { dossiers: number; remontees: number; critiques: number; hautes: number; normales: number; sansRecommandation: number };
+}
+/** Un geste proposé par Ajmani : un ordre à donner, une décision de dossier, ou un endroit où aller. */
+export interface GardeGeste {
+  label: string;
+  ordre?: string;
+  vers?: string;
+  dossier?: string;
+  decision?: string;
+}
+export interface GardeMandatRegle { agent: string; famille: string; decision: string; par: string; at: string }
+export interface GardeMandat { regles: Record<string, GardeMandatRegle> }
+export interface GardeAccueil {
+  salut: string;
+  proposition: { cle: 'critique' | 'pile' | 'tour' | 'apprentissage' | 'rien'; texte: string; dossier: string | null; gestes: GardeGeste[] };
+  pile: GardePileDossiers;
+  pouls: GardePouls;
+  silence: { de: number; a: number; actif: boolean };
+  mandat: GardeMandat;
+  releve: GardeReleve | null;
+  aveux: string[];
+  messages: GardeMessage[];
+  ordres: { id: string; auteurEmail: string; cible: string; texte: string; intention: string | null; etat: string; reponse: string | null; createdAt: string }[];
+  at: string;
 }

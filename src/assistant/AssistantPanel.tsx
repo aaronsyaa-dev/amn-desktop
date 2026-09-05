@@ -18,7 +18,10 @@ import {
   WifiOff,
   X,
 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { useRemoteSites } from '../state/RemoteSitesContext';
+import { spaceForPath } from '../data/spaces';
+import { useLangue } from '../i18n';
 import { ALERT_SEVERITY_CONFIG } from '../lib/alerts';
 import { bridge } from '../lib/bridge';
 import { relativeTime } from '../lib/time';
@@ -341,6 +344,8 @@ function ModelPicker() {
 
 function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
   const { messages, isThinking, sendMessage, ollamaAvailable } = useAssistant();
+  const { t } = useLangue();
+  const enGarde = spaceForPath(useLocation().pathname) === 'garde';
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -358,7 +363,7 @@ function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
     <div className="flex h-full flex-col">
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-5">
         {messages.length === 0 ? (
-          <WelcomeState onPrompt={sendMessage} />
+          <WelcomeState onPrompt={sendMessage} enGarde={enGarde} />
         ) : (
           <div className="flex flex-col gap-5">
             {messages.map((m) => (
@@ -372,7 +377,7 @@ function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
       <div className="border-t border-border p-4">
         <div className="mb-2 flex items-center justify-between gap-2 px-1">
           <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-            {ollamaAvailable ? 'IA locale active' : 'Moteur intégré'}
+            {enGarde ? t('garde.ajmani.voixCapitaine') : ollamaAvailable ? 'IA locale active' : 'Moteur intégré'}
           </span>
           <ModelPicker />
         </div>
@@ -387,7 +392,7 @@ function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
               }
             }}
             rows={1}
-            placeholder="Posez n’importe quelle question, ou « génère un rapport sur… »"
+            placeholder={enGarde ? t('garde.bureau.question') : 'Posez n’importe quelle question, ou « génère un rapport sur… »'}
             className="max-h-32 flex-1 resize-none bg-transparent py-1.5 text-sm text-text-primary outline-none placeholder:text-text-muted"
           />
           <button
@@ -405,8 +410,9 @@ function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
   );
 }
 
-function WelcomeState({ onPrompt }: { onPrompt: (text: string) => void }) {
+function WelcomeState({ onPrompt, enGarde = false }: { onPrompt: (text: string) => void; enGarde?: boolean }) {
   const { sites, eventsBySite } = useRemoteSites();
+  const { t } = useLangue();
   const suggestions = useMemo(
     () => getSuggestions(sites, eventsBySite),
     [sites, eventsBySite],
@@ -416,8 +422,9 @@ function WelcomeState({ onPrompt }: { onPrompt: (text: string) => void }) {
     [sites],
   );
 
-  const chips =
-    sites.length === 0
+  const chips = enGarde
+    ? ['Qu’est-ce qui s’est passé cette nuit ?', 'Qui n’a pas payé ?', 'Rassemble-moi les tâches', 'Que veux-tu faire ?']
+    : sites.length === 0
       ? ['Explique-moi ce qu’est une injection SQL', 'C’est quand le Ramadan cette année ?']
       : [
           'Génère un rapport global',
@@ -433,12 +440,12 @@ function WelcomeState({ onPrompt }: { onPrompt: (text: string) => void }) {
           <Sparkles size={22} strokeWidth={1.75} />
         </span>
         <h3 className="mt-4 text-lg font-semibold text-text-primary">
-          Comment puis-je vous aider ?
+          {enGarde ? t('garde.ajmani.titre') : 'Comment puis-je vous aider ?'}
         </h3>
         <p className="mt-1 text-sm text-text-secondary">
-          Je suis Ajmani. Je réponds à vos questions — sur votre parc comme sur
-          tout autre sujet — et je génère des rapports interne / client à partir
-          de vos vraies données.
+          {enGarde
+            ? t('garde.ajmani.bienvenue')
+            : 'Je suis Ajmani. Je réponds à vos questions — sur votre parc comme sur tout autre sujet — et je génère des rapports interne / client à partir de vos vraies données.'}
         </p>
       </div>
 

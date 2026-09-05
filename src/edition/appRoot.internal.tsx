@@ -100,6 +100,7 @@ import { HomeSoloScreen } from '../business/HomeSoloScreen';
 import { MediaSoloScreen } from '../business/MediaSoloScreen';
 import { ClientContextLayout } from '../client-context/ClientContextLayout';
 import { GardeSalleScreen } from '../screens/garde/GardeSalleScreen';
+import { GardeAjmaniScreen } from '../screens/garde/GardeAjmaniScreen';
 import { GardePileScreen } from '../screens/garde/GardePileScreen';
 import { GardeBureauxScreen } from '../screens/garde/GardeBureauxScreen';
 import { GardeCommuneScreen } from '../screens/garde/GardeCommuneScreen';
@@ -314,6 +315,7 @@ function AmnRoutes() {
 
         {/* La Garde (Bloc 3) : le troisième espace — déléguer. */}
         <Route path="/garde" element={<GardeSalleScreen />} />
+        <Route path="/garde/ajmani" element={<GardeAjmaniScreen />} />
         <Route path="/garde/pile" element={<GardePileScreen />} />
         <Route path="/garde/bureaux" element={<GardeBureauxScreen />} />
         <Route path="/garde/bureaux/:equipe" element={<GardeBureauxScreen />} />

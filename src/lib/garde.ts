@@ -7,7 +7,7 @@
  */
 import { bridge } from './bridge';
 import type { GardeTrame } from '../shared/api';
-import type { GardeAgent, GardeBureau, GardeCalendrierItem, GardeDefinitionAgent, GardeJournalEntree, GardeMessage, GardeOrdreReponse, GardePouls, GardeProposition, GardeReleve, GardeRemontee, GardeRonde, GardeSalle } from '../shared/garde';
+import type { GardeAccueil, GardeDossier, GardeGuideEntree, GardeMandat, GardePileDossiers, GardeAgent, GardeBureau, GardeCalendrierItem, GardeDefinitionAgent, GardeJournalEntree, GardeMessage, GardeOrdreReponse, GardePouls, GardeProposition, GardeReleve, GardeRemontee, GardeRonde, GardeSalle } from '../shared/garde';
 
 const g = () => bridge().remote.garde;
 const appel = <T,>(path: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET', body?: unknown) => g().appel<T>({ path, method, ...(body !== undefined ? { body } : {}) });
@@ -41,7 +41,15 @@ export const garde = {
   propositions: async (etat = 'proposee') => (await appel<{ propositions: GardeProposition[] }>(`/propositions${q({ etat })}`)).propositions,
   deciderProposition: async (id: string, etat: 'acceptee' | 'refusee', couloir: { min: number; max: number } | null = null) => (await appel<{ proposition: GardeProposition }>(`/propositions/${encodeURIComponent(id)}`, 'POST', { etat, couloir })).proposition,
   etSi: async (agent: string, regle: string, parametre: string, valeur: number) => (await appel<{ etsi: { avant: number | null; apres: number | null; phrase?: string; note?: string } }>(`/etsi${q({ agent, regle, parametre, valeur })}`)).etsi,
-  reglages: async (heureTour: number) => (await appel<{ reglages: { heureTour: number } }>('/reglages', 'PUT', { heureTour })).reglages,
+  reglages: async (patch: { heureTour?: number; silence?: { de: number; a: number } }) => (await appel<{ reglages: { heureTour: number; silence?: { de: number; a: number } } }>('/reglages', 'PUT', patch)).reglages,
+  // Bloc 4 — Ajmani, chef d'état-major.
+  accueil: () => appel<GardeAccueil>('/ajmani'),
+  pile: (limit = 50) => appel<GardePileDossiers>(`/pile${q({ limit })}`),
+  deciderDossier: (id: string, decision: string) => appel<{ n: number; decision: string }>(`/pile/${encodeURIComponent(id)}/decision`, 'POST', { decision }),
+  guide: async () => (await appel<{ guide: GardeGuideEntree[]; version: string; familles: Record<string, { un: string; des: string }> }>('/lexique')),
+  mandat: async () => (await appel<{ mandat: GardeMandat }>('/ajmani/mandat')).mandat,
+  donnerMandat: (input: { agent: string; famille: string; decision: string }) => appel<{ mandat: GardeMandat; appliquees: number }>('/ajmani/mandat', 'POST', input),
+  retirerMandat: (cle: string) => appel<{ mandat: GardeMandat; retire: boolean }>(`/ajmani/mandat/${encodeURIComponent(cle)}`, 'DELETE'),
   onGarde: (callback: (trame: GardeTrame) => void): (() => void) => g().onGarde?.(callback) ?? (() => undefined),
 };
 

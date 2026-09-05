@@ -101,7 +101,7 @@ export function JournalLigne({ entree, onMauvais }: { entree: GardeJournalEntree
  * avec ses preuves ; s'il manque une précision, il pose la question ; si
  * l'ordre modifie quelque chose, il demande confirmation avant de faire.
  */
-export function Conversation({ envoyer, rapides = [], aide }: { envoyer: (texte: string, confirmer: boolean) => Promise<GardeOrdreReponse>; rapides?: string[]; aide?: string }) {
+export function Conversation({ envoyer, rapides = [], aide }: { envoyer: (texte: string, confirmer: boolean) => Promise<GardeOrdreReponse>; rapides?: (string | { label: string; texte: string })[]; aide?: string }) {
   const { t } = useLangue();
   const [texte, setTexte] = useState('');
   const [fil, setFil] = useState<{ de: 'moi' | 'garde'; texte: string; confirmation?: string; original?: string }[]>([]);
@@ -125,7 +125,7 @@ export function Conversation({ envoyer, rapides = [], aide }: { envoyer: (texte:
     <div className="flex flex-col gap-3">
       {rapides.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {rapides.map((r) => <button key={r} type="button" onClick={() => void poser(r)} disabled={busy} className="border border-border bg-bg px-2.5 py-1 text-xs text-text-secondary hover:border-border-strong hover:text-text-primary disabled:opacity-50">{r}</button>)}
+          {rapides.map((r) => (typeof r === 'string' ? { label: r, texte: r } : r)).map((r) => <button key={r.texte} title={r.texte} type="button" onClick={() => void poser(r.texte)} disabled={busy} className="border border-border bg-bg px-2.5 py-1 text-xs text-text-secondary hover:border-border-strong hover:text-text-primary disabled:opacity-50">{r.label}</button>)}
         </div>
       )}
       {fil.length > 0 && (

@@ -74,7 +74,7 @@ export function GardeCommuneScreen() {
               <button type="button" disabled={busy} onClick={() => void geste(() => garde.tour())} className="min-h-11 border border-border px-2.5 text-xs text-text-secondary hover:border-border-strong hover:text-text-primary disabled:opacity-50 md:min-h-0 md:py-1">{t('garde.commune.tour')}</button>
               <label className="flex items-center gap-2 text-[11px] text-text-muted">
                 {t('garde.commune.heureTour')}
-                <select value={salle?.reglages.heureTour ?? 8} onChange={(e) => void geste(() => garde.reglages(Number(e.target.value)))} aria-label={t('garde.commune.heureTour')} className="input-focus bg-bg px-2 py-1 text-[11px] text-text-primary outline-none">
+                <select value={salle?.reglages.heureTour ?? 8} onChange={(e) => void geste(() => garde.reglages({ heureTour: Number(e.target.value) }))} aria-label={t('garde.commune.heureTour')} className="input-focus bg-bg px-2 py-1 text-[11px] text-text-primary outline-none">
                   {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{t('garde.commune.heures', { h })}</option>)}
                 </select>
               </label>

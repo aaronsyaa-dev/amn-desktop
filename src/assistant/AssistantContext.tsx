@@ -7,7 +7,10 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { generateReport, runAssistant, type Generate } from './engine';
+import { generateReport, runAssistant, textToBlocks, type Generate } from './engine';
+import { spaceForPath } from '../data/spaces';
+import { garde } from '../lib/garde';
+import { t } from '../i18n';
 import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
 import { useCollection } from '../state/SyncContext';
 import { EMPTY_WORKSPACE, type WorkspaceData, type WorkspaceRecord } from './workspaceContext';
@@ -92,6 +95,8 @@ async function loadFreshEvents(
 export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  /** Dans la Garde : l'ordre qui attend un « oui » pour être fait. */
+  const gardeConfirmationRef = useRef<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const { sites, eventsBySite, loadEvents } = useRemoteSites();
   const { user } = useAuth();
@@ -395,6 +400,28 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           bridge().system.notify({ title: 'Ajmani a répondu', body: preview.slice(0, 120) });
         }
       };
+
+      // DANS LA GARDE, AJMANI EST LA VOIX DU CAPITAINE : pas de modèle, pas de
+      // formulation — l'ordre part au serveur, la réponse revient avec ses
+      // preuves, ou dit qu'elle ne sait pas faire (et ce qu'elle sait faire).
+      // Un ordre qui modifie demande confirmation : « oui » relance le même
+      // ordre, confirmé.
+      const chemin = window.location.hash.replace(/^#/, '').split('?')[0] || '/';
+      if (spaceForPath(chemin) === 'garde') {
+        const attente = gardeConfirmationRef.current;
+        const oui = /^(oui|ok|d.accord|vas.y|fais.le|faites.le|confirme|allez.y|je confirme)\b/i.test(trimmed);
+        (attente && oui ? garde.ordre(attente, true) : garde.ordre(trimmed))
+          .then((r) => {
+            gardeConfirmationRef.current = r.confirmation ? trimmed : null;
+            const lignes = [r.question ?? r.reponse];
+            if (r.confirmation) lignes.push('', t('garde.ajmani.repondezOui'));
+            if (r.guide?.length) lignes.push('', t('garde.ajmani.saisFaire'), ...r.guide.map((g) => `- ${g.libelle} — « ${g.exemple} »`));
+            appendAnswer({ kind: 'answer', blocks: textToBlocks(lignes.join('\n')) });
+          })
+          .catch((err) => appendAnswer({ kind: 'answer', blocks: [{ type: 'paragraph', text: t('garde.erreur', { message: err instanceof Error ? err.message : String(err) }) }] }))
+          .finally(() => setIsThinking(false));
+        return;
+      }
 
       loadFreshEvents(sites, loadEvents, eventsBySite)
         .then((freshEvents) =>

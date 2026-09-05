@@ -286,6 +286,7 @@ export const NAV_SECTIONS: NavSection[] = [
     space: 'garde',
     items: [
       { key: 'gardeSalle', label: 'La Salle', to: '/garde', icon: Shield, hint: 'Le mur des gardes : qui fait quoi, maintenant' },
+      { key: 'gardeAjmani', label: 'Ajmani', to: '/garde/ajmani', icon: Sparkles, hint: 'Le chef d’état-major : il parle en premier, d’une seule proposition' },
       { key: 'gardePile', label: 'À votre avis', to: '/garde/pile', icon: Inbox, hint: 'Ce qui attend une décision humaine' },
       { key: 'gardeBureaux', label: 'Les bureaux', to: '/garde/bureaux', icon: DoorOpen, hint: 'Parler à un chef de garde' },
       { key: 'gardeCommune', label: 'Salle commune', to: '/garde/commune', icon: MessagesSquare, hint: 'Parler à toute la Garde, la Relève du jour' },
