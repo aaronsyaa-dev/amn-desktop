@@ -708,8 +708,9 @@ function SpaceSwitcher({
             setOpen((v) => !v);
             return;
           }
-          const other = SPACES.find((s) => s.key !== current.key);
-          if (other) go(other.home);
+          // Trois espaces désormais : replié, le clic passe au suivant, en boucle.
+          const other = SPACES[(SPACES.findIndex((s) => s.key === current.key) + 1) % SPACES.length];
+          if (other && other.key !== current.key) go(other.home);
         }}
         aria-haspopup={expanded ? 'menu' : undefined}
         aria-expanded={expanded ? open : undefined}

@@ -193,7 +193,7 @@ export function AppLayout() {
                   relue. */}
               <StatusRail
                 orgName={org?.name ?? 'AMN DevSec'}
-                context={spaceForPath(location.pathname) === 'control' ? t('rail.tourControle') : t('rail.posteTravail')}
+                context={spaceForPath(location.pathname) === 'control' ? t('rail.tourControle') : spaceForPath(location.pathname) === 'garde' ? t('rail.garde') : t('rail.posteTravail')}
               />
               {/* Sous le contenu, jamais par-dessus : une barre superposée
                   masquerait la dernière ligne de chaque écran. */}

@@ -99,6 +99,11 @@ import { AgendaScreen } from '../business/AgendaScreen';
 import { HomeSoloScreen } from '../business/HomeSoloScreen';
 import { MediaSoloScreen } from '../business/MediaSoloScreen';
 import { ClientContextLayout } from '../client-context/ClientContextLayout';
+import { GardeSalleScreen } from '../screens/garde/GardeSalleScreen';
+import { GardePileScreen } from '../screens/garde/GardePileScreen';
+import { GardeBureauxScreen } from '../screens/garde/GardeBureauxScreen';
+import { GardeCommuneScreen } from '../screens/garde/GardeCommuneScreen';
+import { GardeCalendrierScreen } from '../screens/garde/GardeCalendrierScreen';
 import { ClientAdminScreen } from '../client-context/ClientAdminScreen';
 import { ContextBoot } from '../client-context/ContextBoot';
 import { OrgContextProvider, useOrgContext } from '../state/OrgContextContext';
@@ -306,6 +311,14 @@ function AmnRoutes() {
         <Route path="/materiel" element={<EquipmentBookingScreen />} />
         <Route path="/bibliotheque" element={<LibraryScreen />} />
         <Route path="/vault" element={<VaultScreen />} />
+
+        {/* La Garde (Bloc 3) : le troisième espace — déléguer. */}
+        <Route path="/garde" element={<GardeSalleScreen />} />
+        <Route path="/garde/pile" element={<GardePileScreen />} />
+        <Route path="/garde/bureaux" element={<GardeBureauxScreen />} />
+        <Route path="/garde/bureaux/:equipe" element={<GardeBureauxScreen />} />
+        <Route path="/garde/commune" element={<GardeCommuneScreen />} />
+        <Route path="/garde/calendrier" element={<GardeCalendrierScreen />} />
 
         {/* Tour de contrôle */}
         <Route path="/tour" element={<ControlTowerScreen />} />

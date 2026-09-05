@@ -1,5 +1,5 @@
 import type React from 'react';
-import { Briefcase, MonitorDot } from 'lucide-react';
+import { Briefcase, MonitorDot, Shield } from 'lucide-react';
 import { NAV_SECTIONS, type NavItem, type NavSection, type SpaceKey } from './navigation';
 
 /**
@@ -41,6 +41,20 @@ export const SPACES: Space[] = [
     hint: 'Le transverse : incidents, produits, organisations',
     home: '/tour',
     icon: MonitorDot,
+  },
+  /*
+    LE TROISIÈME ESPACE (Bloc 3 de la Garde). Le Poste de travail, c'est le
+    quotidien ; la Tour, c'est décider ; la Garde, c'est déléguer — les
+    équipes qui veillent côté serveur, leurs bureaux, la pile « À votre
+    avis ». Au même niveau que les deux autres, pas une pièce entassée dans
+    la Tour.
+  */
+  {
+    key: 'garde',
+    label: 'La Garde',
+    hint: 'Déléguer : les équipes qui veillent, leurs bureaux',
+    home: '/garde',
+    icon: Shield,
   },
 ];
 

@@ -1,67 +1,4 @@
-import type {
-  Incident,
-  IncidentEscalation,
-  IncidentDetail,
-  IncidentMetrics,
-  MonthlyReport,
-  AlertSuppression,
-  MaintenanceWindow,
-  IncidentResolution,
-  IncidentStatus,
-  AdminOrganization,
-  AdminOrgUser,
-  CreateOrganizationInput,
-  CreateOrganizationResult,
-  OrgAccessEntry,
-  OrgIdentity,
-  OrgInvitationResult,
-  OrgStatus,
-  SupportContext,
-  SupportSession,
-  TempPasswordResult,
-  AmnBridge,
-  ComplyProgress,
-  ProductRegression,
-  RemoteEventPush,
-  ScanProgress,
-  ComplyCheck,
-  ComplyReferentialCatalog,
-  CreateScheduleInput,
-  OrgOverview,
-  ProductSchedule,
-  RegisterSiteResult,
-  RemoteEvent,
-  RemoteSite,
-  Scan,
-  ScanTier,
-  SiteBadge,
-  SiteStatusPage,
-  SiteDigest,
-  SiteSummary,
-  SslStatus,
-  TrackerTier,
-  ModuleRequestForOperator,
-  OrgPulse,
-  DownloadLink,
-  BusinessRelease,
-  SupervisionState,
-  ParcInsights,
-  OrgPlan,
-  SupportRequestForOperator,
-  WelcomeLinkIssued,
-  AdminWelcomeLink,
-  InputAlert,
-  OrgChange,
-  ParcPageQuery,
-  ParcPage,
-  ParcSummary,
-  ModuleLock,
-  BulkInput,
-  BulkResult,
-  FleetIncidentsQuery,
-  FleetIncidentsPage,
-  SocSummary,
-} from '../shared/api';
+import type { Incident, IncidentEscalation, IncidentDetail, IncidentMetrics, MonthlyReport, AlertSuppression, MaintenanceWindow, IncidentResolution, IncidentStatus, AdminOrganization, AdminOrgUser, CreateOrganizationInput, CreateOrganizationResult, OrgAccessEntry, OrgIdentity, OrgInvitationResult, OrgStatus, SupportContext, SupportSession, TempPasswordResult, AmnBridge, ComplyProgress, ProductRegression, RemoteEventPush, ScanProgress, ComplyCheck, ComplyReferentialCatalog, CreateScheduleInput, OrgOverview, ProductSchedule, RegisterSiteResult, RemoteEvent, RemoteSite, Scan, ScanTier, SiteBadge, SiteStatusPage, SiteDigest, SiteSummary, SslStatus, TrackerTier, ModuleRequestForOperator, OrgPulse, DownloadLink, BusinessRelease, SupervisionState, ParcInsights, OrgPlan, SupportRequestForOperator, WelcomeLinkIssued, AdminWelcomeLink, InputAlert, OrgChange, ParcPageQuery, ParcPage, ParcSummary, ModuleLock, BulkInput, BulkResult, FleetIncidentsQuery, FleetIncidentsPage, SocSummary, GardeAppel, GardeTrame } from '../shared/api';
 
 /**
  * Part exclusive du pont NAVIGATEUR — édition interne.
@@ -167,6 +104,7 @@ type ExclusiveRemote = Pick<
   | 'listComplyReferentials'
   | 'getComplyCheck'
   | 'onComplyProgress'
+  | 'garde'
   | 'admin'
   | 'support'
 >;
@@ -437,6 +375,15 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
   onScanProgress(callback) {
     ctx.ensureStarted();
     return ctx.onFrame('scan:progress', (frame) => callback(frame.progress as ScanProgress));
+  },
+  garde: {
+    appel<T = unknown>(req: GardeAppel) {
+      return ctx.apiFetch<T>(`/v1/garde${req.path.startsWith('/') ? req.path : `/${req.path}`}`, { owner: true, method: req.method ?? 'GET', ...(req.body !== undefined ? { body: JSON.stringify(req.body) } : {}) });
+    },
+    onGarde(callback: (t: GardeTrame) => void) {
+      const arrets = ['garde:presence', 'garde:journal', 'garde:remontee', 'garde:remontee-resolue', 'garde:remontee-decidee', 'garde:ronde', 'garde:releve', 'garde:absence', 'garde:collaboration', 'garde:correction'].map((type) => ctx.onFrame(type, (frame) => callback(frame as unknown as GardeTrame)));
+      return () => { for (const a of arrets) a(); };
+    },
   },
   admin: {
     async listOrganizations(): Promise<AdminOrganization[]> {

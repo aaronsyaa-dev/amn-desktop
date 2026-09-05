@@ -29,7 +29,7 @@ export interface NavItem {
  * renseigne donc jamais ce champ — voir `src/data/spaces.ts`, qui traite
  * l'absence comme « Poste de travail ».
  */
-export type SpaceKey = 'workspace' | 'control';
+export type SpaceKey = 'workspace' | 'control' | 'garde';
 
 export interface NavSection {
   key: string;

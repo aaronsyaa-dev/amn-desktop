@@ -84,6 +84,18 @@ export type OrgStatus = 'active' | 'suspended';
  * savoir si elle vit. Rien de son travail — la console ne le lit pas.
  */
 /** Une ligne du parc, telle que le serveur la rend page par page (Bloc 4). */
+/** Un appel à la Garde : chemin sous /v1/garde, méthode, corps. */
+export interface GardeAppel {
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  path: string;
+  body?: unknown;
+}
+/** Une trame poussée par la Garde (présence, journal, remontée, ronde, relève, absence…). */
+export interface GardeTrame {
+  type: string;
+  [k: string]: unknown;
+}
+
 export interface ParcOrganization {
   id: string;
   name: string;
@@ -3089,6 +3101,15 @@ export interface AmnBridge {
      * dossier sont deux gestes différents, et amn-api refuse d'ailleurs le
      * second jeton sur ces routes.
      */
+    /**
+     * LA GARDE (Bloc 3) — les équipes qui veillent côté serveur, vues d'ici.
+     * Un seul appel typé par chemin (src/lib/garde.ts) et une seule trame
+     * poussée (`garde:*`) : la Salle, les bureaux, la pile, les ordres.
+     */
+    garde: {
+      appel<T = unknown>(req: GardeAppel): Promise<T>;
+      onGarde?(callback: (trame: GardeTrame) => void): () => void;
+    };
     admin: {
       listOrganizations(): Promise<AdminOrganization[]>;
       createOrganization(input: CreateOrganizationInput): Promise<CreateOrganizationResult>;
@@ -3540,6 +3561,8 @@ export const IPC = {
   remoteAdminSetOrgModule: 'remote:adminSetOrgModule',
   remoteAdminOrgsPage: 'remote:adminOrgsPage',
   remoteAdminOrgLogos: 'remote:adminOrgLogos',
+  remoteGardeAppel: 'remote:gardeAppel',
+  remoteGardePush: 'remote:gardePush',
   remoteAdminOrgsSummary: 'remote:adminOrgsSummary',
   remoteAdminOrgDossier: 'remote:adminOrgDossier',
   remoteAdminSetOrgTags: 'remote:adminSetOrgTags',

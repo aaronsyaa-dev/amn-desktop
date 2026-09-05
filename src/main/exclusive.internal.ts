@@ -62,7 +62,7 @@ import { apiFetch, type RemoteApiClient } from './remoteApi';
 import { writeScanReportFile } from './scanReports';
 import { getWatch, warmWatch } from './watch';
 import { ollamaChat, ollamaStatus } from './ollama';
-import type { SupportRequestForOperator, WelcomeLinkIssued, AdminWelcomeLink, InputAlert } from '../shared/api';
+import type { SupportRequestForOperator, WelcomeLinkIssued, AdminWelcomeLink, InputAlert, GardeAppel, GardeTrame } from '../shared/api';
 
 /**
  * Tout ce qu'amn-api expose et qui n'appartient qu'à AMN DevSec : le parc de
@@ -381,6 +381,18 @@ const exclusiveApi = {
  * qu'on ressort. amn-api refuse d'ailleurs un jeton de support sur la console,
  * donc oublier ce drapeau se verrait tout de suite : pas de dérive silencieuse.
  */
+/** Les trames que la Garde pousse à la Tour ; toutes arrivent au poste par un seul canal. */
+export const TRAMES_GARDE = ['garde:presence', 'garde:journal', 'garde:remontee', 'garde:remontee-resolue', 'garde:remontee-decidee', 'garde:ronde', 'garde:releve', 'garde:absence', 'garde:collaboration', 'garde:correction'];
+
+/** Un appel à la Garde, au nom d'AMN DevSec (jeton du propriétaire), quel que soit le contexte courant. */
+export async function gardeAppel<T = unknown>(req: GardeAppel): Promise<T> {
+  return apiFetch<T>(`/v1/garde${req.path.startsWith('/') ? req.path : `/${req.path}`}`, {
+    owner: true,
+    method: req.method ?? 'GET',
+    ...(req.body !== undefined ? { body: JSON.stringify(req.body) } : {}),
+  });
+}
+
 const adminApi = {
   async listOrganizations(): Promise<AdminOrganization[]> {
     const { organizations } = await apiFetch<{ organizations: AdminOrganization[] }>(
@@ -869,6 +881,7 @@ export function registerExclusiveIpc(
   ipcMain.handle(IPC.remoteAdminResetOrgModules, (_event, id: string) => adminApi.resetOrganizationModules(id));
   ipcMain.handle(IPC.remoteAdminOrgsPage, (_event, query: ParcPageQuery) => adminApi.organizationsPage(query));
   ipcMain.handle(IPC.remoteAdminOrgLogos, (_event, ids: string[]) => adminApi.organizationLogos(ids));
+  ipcMain.handle(IPC.remoteGardeAppel, (_event, req: GardeAppel) => gardeAppel(req));
   ipcMain.handle(IPC.remoteAdminOrgsSummary, () => adminApi.organizationsSummary());
   ipcMain.handle(IPC.remoteAdminOrgDossier, (_event, id: string) => adminApi.organizationDossier(id));
   ipcMain.handle(IPC.remoteAdminBulk, (_event, input: BulkInput) => adminApi.bulk(input));
@@ -990,6 +1003,7 @@ export function registerExclusiveIpc(
     broadcastToAll(IPC.remoteSupportRequestPush, frame.request as unknown as SupportRequestForOperator),
   );
   remote.onFrame('org:changed', (frame) => broadcastToAll(IPC.remoteOrgChangedPush, frame as unknown as OrgChange));
+  for (const type of TRAMES_GARDE) remote.onFrame(type, (frame) => broadcastToAll(IPC.remoteGardePush, frame as unknown as GardeTrame));
   remote.onFrame('product:regression', (frame) =>
     broadcastToAll(IPC.remoteProductRegressionPush, frame as unknown as ProductRegression),
   );

@@ -72,6 +72,10 @@ import {
   Banknote,
   Route,
   CalendarClock,
+  Shield,
+  Inbox,
+  MessagesSquare,
+  DoorOpen,
 } from 'lucide-react';
 import type { NavSection } from '../data/navigation';
 import type { ActivityTab } from '../state/ActivityContext';
@@ -268,6 +272,24 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'assistance', label: 'Assistance', to: '/assistance', icon: MessageSquareText, hint: 'Écrire au prestataire' },
       { key: 'library', label: 'Bibliothèque', to: '/bibliotheque', icon: LibraryBig, hint: 'Tous les modules, rangés par sections' },
       { key: 'vault', label: 'Coffre-fort', to: '/vault', icon: Lock, hint: 'Clés et accès' },
+    ],
+  },
+  /*
+    LA GARDE (Bloc 3) — l'espace où l'on délègue : la Salle (le mur des
+    gardes), les bureaux des chefs, la pile « À votre avis », la Salle
+    commune, le calendrier. Tout vient du serveur (/v1/garde) ; rien ici
+    n'est une démonstration.
+  */
+  {
+    key: 'garde',
+    label: 'La Garde',
+    space: 'garde',
+    items: [
+      { key: 'gardeSalle', label: 'La Salle', to: '/garde', icon: Shield, hint: 'Le mur des gardes : qui fait quoi, maintenant' },
+      { key: 'gardePile', label: 'À votre avis', to: '/garde/pile', icon: Inbox, hint: 'Ce qui attend une décision humaine' },
+      { key: 'gardeBureaux', label: 'Les bureaux', to: '/garde/bureaux', icon: DoorOpen, hint: 'Parler à un chef de garde' },
+      { key: 'gardeCommune', label: 'Salle commune', to: '/garde/commune', icon: MessagesSquare, hint: 'Parler à toute la Garde, la Relève du jour' },
+      { key: 'gardeCalendrier', label: 'Calendrier', to: '/garde/calendrier', icon: CalendarClock, hint: 'Ce que la Garde fera cette semaine' },
     ],
   },
   {

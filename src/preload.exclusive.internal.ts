@@ -14,7 +14,7 @@ import {
   type TrackerTier,
   OrgChange,
 } from './shared/api';
-import type { SupportRequestForOperator, InputAlert } from './shared/api';
+import type { SupportRequestForOperator, InputAlert, GardeAppel, GardeTrame } from './shared/api';
 
 /**
  * La part exclusive du pont : les canaux IPC des produits d'AMN DevSec (parc
@@ -77,6 +77,7 @@ type ExclusiveRemote = Pick<
   // Console des organisations clientes et contexte client : hors de l'édition
   // Business par construction — une cliente n'a pas d'organisations à gérer, et
   // ne doit surtout pas disposer du canal qui en ouvrirait une.
+  | 'garde'
   | 'admin'
   | 'support'
 >;
@@ -181,6 +182,14 @@ export const exclusivePreload: ExclusiveRemote = {
     const listener = (_event: Electron.IpcRendererEvent, progress: ScanProgress) => callback(progress);
     ipcRenderer.on(IPC.remoteScanProgressPush, listener);
     return () => ipcRenderer.removeListener(IPC.remoteScanProgressPush, listener);
+  },
+  garde: {
+    appel: (req: GardeAppel) => ipcRenderer.invoke(IPC.remoteGardeAppel, req),
+    onGarde: (callback: (t: GardeTrame) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, t: GardeTrame) => callback(t);
+      ipcRenderer.on(IPC.remoteGardePush, listener);
+      return () => ipcRenderer.removeListener(IPC.remoteGardePush, listener);
+    },
   },
   admin: {
     listOrganizations: () => ipcRenderer.invoke(IPC.remoteAdminListOrgs),

@@ -10,6 +10,21 @@
  * Clés : `<module>.quoi` / `.pourQui` / `.exemple`, lues par `carteModule`.
  */
 export const CARTES_INTERNES_FR: Record<string, string> = {
+  'gardeSalle.quoi': 'Le mur des gardes : chaque équipe, chaque agent, ce qu’il fait maintenant, ce qu’il a trouvé.',
+  'gardeSalle.pourQui': 'AMN DevSec — pour voir que quelqu’un veille.',
+  'gardeSalle.exemple': '« Disponibilité · en ronde : les sites joignables de l’extérieur. »',
+  'gardePile.quoi': 'Une seule pile de ce qui attend une décision humaine, triée par gravité, avec le contexte et une recommandation.',
+  'gardePile.pourQui': 'Aaron et Mohamed.',
+  'gardePile.exemple': '« Le certificat de jardin.fr expire dans trois jours — prévenir la cliente ? »',
+  'gardeBureaux.quoi': 'Le bureau de chaque chef de garde : on lui pose des questions, il répond avec ses preuves, on lui donne des ordres.',
+  'gardeBureaux.pourQui': 'AMN DevSec.',
+  'gardeBureaux.exemple': '« Qu’as-tu fait cette nuit ? » — « Trois points réglés sans vous, une remontée. »',
+  'gardeCommune.quoi': 'Parler à toute la Garde d’un coup : une consigne, une absence, et la Relève du jour.',
+  'gardeCommune.pourQui': 'Aaron, avant de partir et en revenant.',
+  'gardeCommune.exemple': '« On va s’absenter un petit temps. » — chaque chef répond en une ligne.',
+  'gardeCalendrier.quoi': 'Ce que la Garde fera cette semaine : rondes, rapports, fins de grâce, la Relève. Aucune surprise.',
+  'gardeCalendrier.pourQui': 'AMN DevSec.',
+  'gardeCalendrier.exemple': '« Lundi 8 h — tour des bureaux. Mardi — fin de grâce de NWSY. »',
   'team.quoi': 'L’équipe interne : qui fait quoi, qui est joignable.',
   'team.pourQui': 'AMN DevSec.',
   'team.exemple': '« Mohamed — supervision — en ligne. »',
@@ -67,6 +82,21 @@ export const CARTES_INTERNES_FR: Record<string, string> = {
 };
 
 export const CARTES_INTERNES_EN: Record<string, string> = {
+  'gardeSalle.quoi': 'The wall of guards: every team, every agent, what it is doing now, what it found.',
+  'gardeSalle.pourQui': 'AMN DevSec, to see that someone is watching.',
+  'gardeSalle.exemple': '“Availability · on patrol: sites reachable from outside.”',
+  'gardePile.quoi': 'One pile of what awaits a human decision, sorted by severity, with context and a recommendation.',
+  'gardePile.pourQui': 'Aaron and Mohamed.',
+  'gardePile.exemple': '“The certificate of jardin.fr expires in three days: warn the client?”',
+  'gardeBureaux.quoi': 'Each guard chief’s office: ask questions, get answers with proof, give orders.',
+  'gardeBureaux.pourQui': 'AMN DevSec.',
+  'gardeBureaux.exemple': '“What did you do tonight?” — “Three points settled without you, one escalated.”',
+  'gardeCommune.quoi': 'Talk to the whole Guard at once: an instruction, an absence, and the daily brief.',
+  'gardeCommune.pourQui': 'Aaron, before leaving and when back.',
+  'gardeCommune.exemple': '“We will be away for a while.” — every chief answers in one line.',
+  'gardeCalendrier.quoi': 'What the Guard will do this week: patrols, reports, grace deadlines, the brief. No surprises.',
+  'gardeCalendrier.pourQui': 'AMN DevSec.',
+  'gardeCalendrier.exemple': '“Monday 8 am: office tour. Tuesday: NWSY grace ends.”',
   'team.quoi': 'The internal team: who does what, who is reachable.',
   'team.pourQui': 'AMN DevSec.',
   'team.exemple': '“Mohamed — supervision — online.”',
