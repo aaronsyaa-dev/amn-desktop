@@ -1274,6 +1274,8 @@ export const fr: Dictionnaire = {
   'hist.tasks.commencezParLaPlus': 'Commencez par la plus proche : celle que vous auriez notée sur un papier.',
   'hist.tasks.rienIci': 'Rien ici.',
   'hist.tasks.afficherLaSuite': 'Afficher les {n} suivantes',
+  'hist.tasks.parLaGarde': 'par la Garde {equipe} — parce que {pourquoi}',
+  'hist.tasks.action': 'Action\u202f:',
   'hist.tasks.ajouterUnRepere': 'Ajouter un repère',
   'hist.tasks.faireUnRapport': 'Faire un rapport',
   'hist.tasks.detail': 'Détail',

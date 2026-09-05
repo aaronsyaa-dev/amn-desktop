@@ -88,7 +88,26 @@ interface TaskData {
   markers?: TaskMarker[];
   /** Discussion thread scoped to this task (A5.1). */
   comments?: TaskComment[];
+  /** Posée par la Garde (Bloc 6) : qui, pourquoi, avec quelle preuve, quelle action. Absente sur une tâche humaine. */
+  garde?: TacheDeLaGarde;
 }
+export interface TacheDeLaGarde {
+  agent: string;
+  equipe: string;
+  dossier?: string;
+  famille?: string;
+  orgId?: string | null;
+  orgNom?: string | null;
+  gravite: 'critique' | 'haute' | 'normale';
+  n?: number;
+  vues?: number;
+  pourquoi: string;
+  preuve: string;
+  action: string;
+  reste?: boolean;
+}
+/** Le nom de chaque équipe de la Garde, au génitif — « par la Garde des Sites ». */
+const GARDE_EQUIPE: Record<string, string> = { sites: 'des Sites', securite: 'de la Sécurité', comptes: 'des Comptes', registre: 'du Registre', clientes: 'des Clientes', produit: 'du Produit', taches: 'des Tâches', memoire: 'de la Mémoire' };
 export type SyncTask = TaskData & { id: string; updatedAt: string };
 
 /** Le domaine des statuts, à l'exécution (voir src/lib/records.ts). */
@@ -449,7 +468,14 @@ function TaskCard({
           <Trash2 size={13} strokeWidth={1.75} />
         </button>
       </div>
-      {task.detail && <p className="mt-1 text-xs leading-relaxed text-text-secondary">{task.detail}</p>}
+      {task.garde?.pourquoi ? (
+        <p className="mt-1 text-[11px] leading-relaxed text-text-muted" data-garde={task.garde.agent}>
+          {tr('hist.tasks.parLaGarde', { equipe: GARDE_EQUIPE[task.garde.equipe] ?? task.garde.equipe, pourquoi: task.garde.pourquoi })}
+          {task.garde.action ? <> · <span className="text-text-secondary">{tr('hist.tasks.action')} {task.garde.action}</span></> : null}
+        </p>
+      ) : (
+        task.detail && <p className="mt-1 text-xs leading-relaxed text-text-secondary">{task.detail}</p>
+      )}
 
       {(site || client) && (
         <div className="mt-2 flex flex-wrap gap-1.5">

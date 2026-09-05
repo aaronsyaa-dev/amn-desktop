@@ -1281,6 +1281,8 @@ export const en = {
   'hist.tasks.commencezParLaPlus': 'Start with the nearest one: the one you would have written on a piece of paper.',
   'hist.tasks.rienIci': 'Nothing here.',
   'hist.tasks.afficherLaSuite': 'Show the next {n}',
+  'hist.tasks.parLaGarde': 'by the Guard {equipe} — because {pourquoi}',
+  'hist.tasks.action': 'Action:',
   'hist.tasks.ajouterUnRepere': 'Add a marker',
   'hist.tasks.faireUnRapport': 'Write a report',
   'hist.tasks.detail': 'Detail',
