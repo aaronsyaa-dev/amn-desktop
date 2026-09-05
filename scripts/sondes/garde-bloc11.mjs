@@ -63,7 +63,8 @@ await p.keyboard.press('Escape'); await a(300); await p.keyboard.press('Escape')
 // 4. La cliente qui arrive : l'Accueil l'installe à sa ronde, et le dit.
 const ronde = await api('/v1/garde/agents/clientes.accueil/ronde', { method: 'POST', body: '{}' });
 ok('4. la ronde d’Accueil, forcée par l’API', ronde.status === 200, `${ronde.status} · ${JSON.stringify(ronde.body).slice(0, 140)}`);
-await p.goto(`${BASE}/#/garde/bureaux/clientes`); await a(3500);
+// La palette reste posée sur l'écran après une réponse de la Garde : on recharge, comme le ferait un retour au poste.
+await p.goto(`${BASE}/#/garde/bureaux/clientes`); await a(800); await p.reload(); await a(3500); await p.mouse.click(720, 860).catch(() => {}); await a(600);
 const bureau = await p.evaluate(() => document.querySelector('main')?.textContent?.replace(/\s+/g, ' ') ?? '');
 const accueillie = new RegExp(`${nom.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}[^.]{0,40}arrivée à`).test(bureau);
 ok('   le bureau des Clientes dit l’arrivée et l’installation', accueillie && /formule Standard/.test(bureau) && /(lien d’accueil|invitation court)/.test(bureau), (bureau.match(new RegExp(`.{0,60}${nom}.{0,140}`)) ?? [''])[0].slice(0, 200));
