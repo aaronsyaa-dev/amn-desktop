@@ -1,5 +1,6 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { ongletMemorise, routeMemorisable } from '../lib/memoireOnglet';
 import { motion } from 'framer-motion';
 import { BusinessSidebar } from './BusinessSidebar';
 import { BusinessTopBar } from './BusinessTopBar';
@@ -84,8 +85,8 @@ export function BusinessLayout() {
     if (restored.current) return;
     restored.current = true;
     try {
-      const last = window.localStorage.getItem(LAST_TAB_KEY);
-      if (last && last !== '/' && location.pathname === '/') {
+      const last = ongletMemorise(window.localStorage.getItem(LAST_TAB_KEY));
+      if (last && location.pathname === '/') {
         window.location.hash = `#${last}`;
       }
     } catch {
@@ -94,6 +95,7 @@ export function BusinessLayout() {
   }, [location.pathname]);
 
   React.useEffect(() => {
+    if (!routeMemorisable(location.pathname)) return;
     try {
       window.localStorage.setItem(LAST_TAB_KEY, location.pathname);
     } catch {

@@ -40,6 +40,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useLangue } from '../i18n';
 import { PremiereOuverture } from './PremiereOuverture';
 import { NavAllegesSync } from './NavAllegesSync';
+import { ongletMemorise, routeMemorisable } from '../lib/memoireOnglet';
 
 const LAST_TAB_KEY = 'amn.lastTab';
 
@@ -84,14 +85,16 @@ export function AppLayout() {
     if (restored.current) return;
     restored.current = true;
     try {
-      const last = window.localStorage.getItem(LAST_TAB_KEY);
-      if (last && last !== '/' && location.pathname === '/') navigate(last, { replace: true });
+      // Jamais un plein écran (la Salle) : on s'y retrouverait sans porte de sortie — voir lib/memoireOnglet.ts.
+      const last = ongletMemorise(window.localStorage.getItem(LAST_TAB_KEY));
+      if (last && location.pathname === '/') navigate(last, { replace: true });
     } catch {
       /* ignore */
     }
   }, [location.pathname, navigate]);
 
   React.useEffect(() => {
+    if (!routeMemorisable(location.pathname)) return;
     try {
       window.localStorage.setItem(LAST_TAB_KEY, location.pathname);
     } catch {

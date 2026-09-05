@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MurDeControle } from '../components/MurDeControle';
+import { sortirDuPleinEcran } from '../lib/memoireOnglet';
 
 /**
  * LA SALLE DE CONTRÔLE, EN ROUTE PLEIN ÉCRAN — `#/salle`.
@@ -13,13 +14,19 @@ import { MurDeControle } from '../components/MurDeControle';
  * C'est la déclinaison web-d'abord de la « fenêtre Electron séparée » du
  * brief : elle en livre l'essentiel (un mur autonome sur un autre écran) sans
  * attendre le travail de fenêtrage côté main process, qui reste au backlog.
+ *
+ * LA SORTIE NE SUPPOSE RIEN. Reculer d'une page (`navigate(-1)`) ne mène nulle
+ * part quand la Salle est la première page de la fenêtre — c'est exactement ce
+ * qui arrivait quand l'app se rouvrait dessus : Échap et « Quitter » ne
+ * faisaient rien, et l'on restait en veille pour de bon. `sortirDuPleinEcran`
+ * recule s'il y a une page derrière, et ramène au poste sinon.
  */
 export function SalleScreen() {
   const navigate = useNavigate();
 
   useEffect(() => {
     const surTouche = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') navigate(-1);
+      if (e.key === 'Escape') sortirDuPleinEcran(navigate);
     };
     window.addEventListener('keydown', surTouche);
     return () => window.removeEventListener('keydown', surTouche);
@@ -36,7 +43,7 @@ export function SalleScreen() {
       */}
       <button
         type="button"
-        onClick={() => navigate(-1)}
+        onClick={() => sortirDuPleinEcran(navigate)}
         className="absolute bottom-5 right-5 border border-border px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-text-muted transition-colors hover:border-border-strong hover:text-text-primary"
       >
         Quitter · Échap

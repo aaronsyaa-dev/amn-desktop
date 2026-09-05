@@ -65,6 +65,7 @@
     "publish:release": "node scripts/publish-release.mjs",
     "check:migration": "node scripts/check-migration.mjs",
     "check:parole": "node scripts/check-parole.mjs",
+    "check:veille": "node scripts/check-veille.mjs",
     "check:updates": "node scripts/check-update-channel.mjs",
     "check:package": "node scripts/check-package.mjs",
     "check:installer": "node scripts/check-installer.mjs",
