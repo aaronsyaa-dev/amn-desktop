@@ -236,8 +236,6 @@ export function IncidentsScreen() {
               className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-[12px] font-medium text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
             >
               <FileText size={14} strokeWidth={1.75} />
-      {/* La file du parc (Bloc 6) : toutes les organisations, avant la file de celle-ci. */}
-      <ParcSocPanel />
               <span className="hidden sm:inline">Rapport mensuel</span>
             </button>
             <button
@@ -268,6 +266,13 @@ export function IncidentsScreen() {
           ))}
         </div>
       </ScreenHeader>
+      {/*
+        La file du parc (Bloc 6) : toutes les organisations, avant la file de
+        celle-ci. Elle vient APRÈS l'en-tête, dans le flux de la page : montée
+        parmi les actions de l'en-tête, elle flottait par-dessus le titre
+        (Bloc 1 de la Garde).
+      */}
+      <ParcSocPanel />
 
       {erreur && (
         <p className="mb-4 rounded-lg border border-danger/40 bg-danger-muted px-3 py-2 text-[13px] text-danger">

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { allegementsPourPrereglage } from '../data/prereglagesBarre';
 import { motion } from 'framer-motion';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -7,7 +8,7 @@ import { NAV_SECTIONS } from '../data/navigation';
 import { ALWAYS_ON_MODULES, isModuleEnabled } from '../data/spaces';
 import { useNavAlleges } from '../state/useNavAlleges';
 import { bridge } from '../lib/bridge';
-import { useLangue } from '../i18n';
+import { useLangue, libelleSection } from '../i18n';
 import { IS_BUSINESS } from '../edition/edition';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import type { ModuleOffer } from '../shared/api';
@@ -29,6 +30,8 @@ import type { ModuleOffer } from '../shared/api';
  *
  * Épingler et la Trousse restent le raccourci rapide ; ceci est le rangement.
  */
+const BOUTON_ALLEGER = 'min-h-9 border border-border bg-bg px-2.5 py-1 text-xs text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:min-h-0';
+
 export function LibraryScreen() {
   const { t } = useLangue();
   const [recherche, setRecherche] = useState('');
@@ -62,7 +65,10 @@ export function LibraryScreen() {
     mémorisé sur le serveur : le téléphone suit.
   */
   const [allegement, setAllegement] = useState(false);
-  const { alleges, estAllege, basculer } = useNavAlleges();
+  const { alleges, estAllege, basculer, remplacer } = useNavAlleges();
+  // Tout ce qui peut s'alléger dans cette édition — les préréglages disent ce qu'ils gardent, le reste s'allège.
+  const catalogue = useMemo(() => sections.flatMap((sec) => sec.items.map((i) => i.key)), [sections]);
+  const cataloguePrereglable = useMemo(() => catalogue.filter((k) => !ALWAYS_ON_MODULES.includes(k)), [catalogue]);
   const etat = (key: string): EtatModule => {
     if (ALWAYS_ON_MODULES.includes(key)) return 'inclus';
     if (isModuleEnabled(key)) return 'ouvert';
@@ -130,6 +136,47 @@ export function LibraryScreen() {
               : t('biblio.alleger.aucun')}
         </p>
       </motion.div>
+
+      {allegement && (
+        /*
+          TOUT, RIEN, PAR SECTION, PRÉRÉGLAGES — parce que soixante tuiles une
+          à une, c'est long (Bloc 1 de la Garde). Chaque bouton pose la liste
+          entière ; les tuiles en dessous suivent, et un second geste défait.
+        */
+        <motion.div variants={staggerItem} className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3" aria-label={t('biblio.alleger.outils')}>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{t('biblio.alleger.dUnGeste')}</span>
+            <button type="button" onClick={() => remplacer([])} className={BOUTON_ALLEGER}>{t('biblio.alleger.toutGarder')}</button>
+            <button type="button" onClick={() => remplacer(cataloguePrereglable)} className={BOUTON_ALLEGER}>{t('biblio.alleger.toutAlleger')}</button>
+            <span className="mx-1 h-4 w-px bg-border" aria-hidden />
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{t('biblio.alleger.prereglages')}</span>
+            {(['leger', 'commerce', 'service'] as const).map((pre) => (
+              <button key={pre} type="button" onClick={() => remplacer(allegementsPourPrereglage(pre, catalogue, ALWAYS_ON_MODULES))} className={BOUTON_ALLEGER}>
+                {t(`biblio.alleger.pre.${pre}`)}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{t('biblio.alleger.parSection')}</span>
+            {sections.map((section) => {
+              const cles = section.items.map((i) => i.key).filter((k) => !ALWAYS_ON_MODULES.includes(k));
+              if (cles.length === 0) return null;
+              const touteAllegee = cles.every((k) => alleges.includes(k));
+              return (
+                <button
+                  key={section.key}
+                  type="button"
+                  aria-pressed={touteAllegee}
+                  onClick={() => remplacer(touteAllegee ? alleges.filter((k) => !cles.includes(k)) : [...alleges, ...cles])}
+                  className={`${BOUTON_ALLEGER} ${touteAllegee ? 'opacity-60' : ''}`}
+                >
+                  {touteAllegee ? t('biblio.alleger.garderSection', { section: libelleSection(section.label) }) : t('biblio.alleger.allegerSection', { section: libelleSection(section.label) })}
+                </button>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
 
       <motion.div variants={staggerItem}>
         <label className="input-focus flex min-h-11 max-w-xl items-center gap-2 rounded-lg border border-border bg-surface px-3">

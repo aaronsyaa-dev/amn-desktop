@@ -98,6 +98,21 @@ export function useNavAlleges() {
     [email],
   );
 
+  /** Poser la liste entière d'un coup — tout, rien, une section, un préréglage (Bloc 1 de la Garde). */
+  const remplacer = useCallback(
+    (liste: string[]) => {
+      const suivant = [...new Set(liste)].filter((k) => !ALWAYS_ON_MODULES.includes(k));
+      ecrireLocal(email, suivant);
+      emettre(suivant);
+      void bridge()
+        .remote.prefs.set(PREF, suivant)
+        .catch(() => {
+          // Le cache local a la liste ; le serveur la recevra au prochain geste.
+        });
+    },
+    [email],
+  );
+
   const estAllege = useCallback((key: string) => alleges.includes(key), [alleges]);
-  return { alleges, estAllege, basculer };
+  return { alleges, estAllege, basculer, remplacer };
 }
