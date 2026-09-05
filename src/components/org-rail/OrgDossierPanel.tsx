@@ -1,4 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { resizeImageToDataUrl } from '../../lib/imageResize';
+import { OrgAvatar } from './OrgAvatar';
+import { oublierLogo } from '../../lib/parcEchantillon';
 import { roleLabel } from '../../lib/roleLabels';
 import { motion } from 'framer-motion';
 import { Check, Lock, ShieldAlert, Tag, X } from 'lucide-react';
@@ -162,6 +165,10 @@ interface DossierData {
   updatedBy: string;
 }
 
+/** Mêmes bornes que l'Atelier (GeneratorScreen) : 160 px de côté, 44 Ko une fois encodé. */
+const LOGO_MAX_DIM = 160;
+const LOGO_MAX_CHARS = 44 * 1024;
+
 export function OrgDossierPanel({
   org,
   tags: tagsInitiales = [],
@@ -226,6 +233,37 @@ export function OrgDossierPanel({
   const [nom, setNom] = useState(org.name);
   const [forfait, setForfait] = useState(org.plan);
   const [places, setPlaces] = useState<number | null>(org.seats ?? null);
+  // Le logo : lu et réduit sur ce poste, envoyé seul, puis l'échantillon du parc oublie l'ancien.
+  const fichierLogo = useRef<HTMLInputElement | null>(null);
+  const [logoLocal, setLogoLocal] = useState<string | null | undefined>(undefined);
+  const [logoEnCours, setLogoEnCours] = useState(false);
+  const [logoErreur, setLogoErreur] = useState<string | null>(null);
+  const poserLogo = async (dataUrl: string | null) => {
+    setLogoEnCours(true);
+    setLogoErreur(null);
+    try {
+      await bridge().remote.admin.updateOrganization(org.id, { logoDataUrl: dataUrl });
+      oublierLogo(org.id);
+      setLogoLocal(dataUrl);
+    } catch (err) {
+      setLogoErreur(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLogoEnCours(false);
+    }
+  };
+  const lireLogo = async (file: File) => {
+    setLogoErreur(null);
+    try {
+      const dataUrl = await resizeImageToDataUrl(file, LOGO_MAX_DIM);
+      if (dataUrl.length > LOGO_MAX_CHARS) {
+        setLogoErreur(t('dossier.logo.tropLourd'));
+        return;
+      }
+      await poserLogo(dataUrl);
+    } catch {
+      setLogoErreur(t('dossier.logo.illisible'));
+    }
+  };
   const { t, langue } = useLangue();
   const reglable = useMemo(
     // Les intitulés suivent la langue : `langue` est la vraie dépendance.
@@ -744,6 +782,53 @@ export function OrgDossierPanel({
             Identité et forfait
           </p>
 
+          {/*
+            LE LOGO SE CHANGE ICI, SUR UNE ORGANISATION QUI EXISTE.
+
+            Il ne se posait qu'à la création (Atelier) : une fois l'organisation
+            née, aucun geste ne permettait d'en remettre un — et quand l'écran a
+            cessé de les montrer (1.2.44), Aaron n'avait aucun moyen d'agir. Même
+            réduction que l'Atelier (160 px, 44 Ko), envoi en `logoDataUrl`, et le
+            serveur ne touche à ce champ que lorsqu'on le lui donne.
+          */}
+          <div className="flex items-center gap-3">
+            <OrgAvatar name={org.name} logoDataUrl={logoLocal ?? org.logoDataUrl} size={40} rounded="rounded-lg" />
+            <div className="flex flex-col gap-1">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={logoEnCours}
+                  onClick={() => fichierLogo.current?.click()}
+                  className="border border-border bg-bg px-2.5 py-1 text-[11px] text-text-secondary hover:border-border-strong hover:text-text-primary disabled:opacity-50"
+                >
+                  {t('dossier.logo.changer')}
+                </button>
+                {(logoLocal ?? org.logoDataUrl) && (
+                  <button
+                    type="button"
+                    disabled={logoEnCours}
+                    onClick={() => void poserLogo(null)}
+                    className="border border-border bg-bg px-2.5 py-1 text-[11px] text-text-muted hover:border-border-strong hover:text-danger disabled:opacity-50"
+                  >
+                    {t('dossier.logo.retirer')}
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px] leading-relaxed text-text-muted">{logoErreur ?? t('dossier.logo.aide')}</p>
+            </div>
+            <input
+              ref={fichierLogo}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              aria-label={t('dossier.logo.changer')}
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                e.target.value = '';
+                if (f) void lireLogo(f);
+              }}
+            />
+          </div>
           <label className="mt-3 flex flex-col gap-1.5">
             <span className="text-xs text-text-secondary">
               Raison sociale{' '}

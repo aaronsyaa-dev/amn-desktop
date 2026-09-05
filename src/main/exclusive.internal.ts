@@ -484,6 +484,14 @@ const adminApi = {
     const { summary } = await apiFetch<{ summary: ParcSummary }>('/v1/admin/organizations/summary', { owner: true });
     return summary;
   },
+  async organizationLogos(ids: string[]): Promise<Record<string, string | null>> {
+    if (ids.length === 0) return {};
+    const { logos } = await apiFetch<{ logos: Record<string, string | null> }>(
+      `/v1/admin/organizations/logos?ids=${ids.slice(0, 100).map(encodeURIComponent).join(',')}`,
+      { owner: true },
+    );
+    return logos;
+  },
   async organizationDossier(id: string) {
     return apiFetch<{ organization: AdminOrganization; tags: string[]; locks: ModuleLock[] }>(
       `/v1/admin/organizations/${encodeURIComponent(id)}/dossier`,
@@ -860,6 +868,7 @@ export function registerExclusiveIpc(
   );
   ipcMain.handle(IPC.remoteAdminResetOrgModules, (_event, id: string) => adminApi.resetOrganizationModules(id));
   ipcMain.handle(IPC.remoteAdminOrgsPage, (_event, query: ParcPageQuery) => adminApi.organizationsPage(query));
+  ipcMain.handle(IPC.remoteAdminOrgLogos, (_event, ids: string[]) => adminApi.organizationLogos(ids));
   ipcMain.handle(IPC.remoteAdminOrgsSummary, () => adminApi.organizationsSummary());
   ipcMain.handle(IPC.remoteAdminOrgDossier, (_event, id: string) => adminApi.organizationDossier(id));
   ipcMain.handle(IPC.remoteAdminBulk, (_event, input: BulkInput) => adminApi.bulk(input));

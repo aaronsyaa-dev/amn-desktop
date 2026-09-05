@@ -99,6 +99,8 @@ export interface ParcOrganization {
   openIncidents: number;
   /** Modules dont la cliente a verrouillé le contenu à son prestataire. */
   locks: number;
+  /** Un logo existe en base ; il se demande par lot (`organizationLogos`), la page ne le transporte pas. */
+  hasLogo: boolean;
 }
 export interface ParcPageQuery {
   q?: string;
@@ -3134,6 +3136,12 @@ export interface AmnBridge {
       /** Une page du parc, filtrée, triée et comptée par le serveur (Bloc 4). */
       organizationsPage(query: ParcPageQuery): Promise<ParcPage>;
       organizationsSummary(): Promise<ParcSummary>;
+      /**
+       * Les logos de quelques organisations (cent au plus par appel), `null`
+       * quand il n'y en a pas. La page du parc dit seulement `hasLogo` : c'est
+       * l'oubli de ce chemin qui a fait disparaître les logos du rail à la 1.2.44.
+       */
+      organizationLogos(ids: string[]): Promise<Record<string, string | null>>;
       /** Le dossier complet : la fiche, ses étiquettes, ses verrous de consentement. */
       organizationDossier(id: string): Promise<{ organization: AdminOrganization; tags: string[]; locks: ModuleLock[] }>;
       setOrganizationTags(id: string, tags: string[]): Promise<string[]>;
@@ -3531,6 +3539,7 @@ export const IPC = {
   remoteAdminSetOrgPlan: 'remote:adminSetOrgPlan',
   remoteAdminSetOrgModule: 'remote:adminSetOrgModule',
   remoteAdminOrgsPage: 'remote:adminOrgsPage',
+  remoteAdminOrgLogos: 'remote:adminOrgLogos',
   remoteAdminOrgsSummary: 'remote:adminOrgsSummary',
   remoteAdminOrgDossier: 'remote:adminOrgDossier',
   remoteAdminSetOrgTags: 'remote:adminSetOrgTags',

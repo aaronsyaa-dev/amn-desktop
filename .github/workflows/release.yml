@@ -34,7 +34,51 @@ permissions:
   contents: write
 
 jobs:
+  # ─────────────── Aucune donnée ne se perd à la mise à jour ───────────────
+  # La 1.2.44 a fait disparaître les logos des organisations de l'écran (la
+  # base les avait, la page du parc ne les portait plus). Ce travail rejoue,
+  # avant toute publication : la version précédente d'amn-api écrit un jeu de
+  # données complet, le candidat démarre dessus, chaque ligne est comparée,
+  # puis le desktop candidat est ouvert dans un vrai navigateur et doit montrer
+  # tout ce qui a été écrit. Deux mutations prouvent que le garde attrape bien
+  # une perte, en base et à l'écran. Rien ne se publie s'il manque une donnée.
+  migration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: aaronsyaa-dev/amn-api
+          path: amn-api
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Dépendances (desktop et amn-api)
+        run: |
+          npm ci
+          npm --prefix amn-api ci --omit=dev
+      - name: Navigateur de la sonde
+        run: npx playwright-core install --with-deps chromium
+      - name: check:migration
+        env:
+          AMN_API_DIR: ${{ github.workspace }}/amn-api
+          CHROMIUM: ''
+        run: |
+          export CHROMIUM="$(node -e "console.log(require('playwright-core').chromium.executablePath())")"
+          npm run check:migration
+      - name: check:migration refuse une perte (mutations)
+        env:
+          AMN_API_DIR: ${{ github.workspace }}/amn-api
+        run: |
+          export CHROMIUM="$(node -e "console.log(require('playwright-core').chromium.executablePath())")"
+          npm run check:migration -- --mutation=poste
+          npm run check:migration -- --mutation=serveur
+
   release:
+    needs: migration
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4

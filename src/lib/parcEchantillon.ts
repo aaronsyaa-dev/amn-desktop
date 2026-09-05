@@ -13,13 +13,46 @@ import type { AdminOrganization, ParcOrganization } from '../shared/api';
  */
 export const ECHANTILLON_PARC = 200;
 
-function commeAdmin(o: ParcOrganization): AdminOrganization {
+/*
+  LES LOGOS, DEMANDÉS À PART — et pourquoi ce fichier les avait perdus.
+
+  La page du parc ne transporte pas le logo (jusqu'à 48 Ko par ligne) ; ce
+  fichier le mettait à `null`, et le rail, la Vue d'ensemble et le dossier
+  ont perdu leurs images à la 1.2.44 alors que la base les avait toujours.
+  Désormais la page dit `hasLogo`, et on demande les logos des seules
+  organisations qui en ont, cent par appel, en gardant ce qu'on a déjà reçu :
+  cinq écrans lisent l'échantillon, un seul aller-retour par logo suffit.
+*/
+const logosConnus = new Map<string, string | null>();
+
+async function completerLogos(lignes: ParcOrganization[]): Promise<Map<string, string | null>> {
+  const manquants = lignes.filter((o) => o.hasLogo && !logosConnus.has(o.id)).map((o) => o.id);
+  for (let i = 0; i < manquants.length; i += 100) {
+    const lot = manquants.slice(i, i + 100);
+    try {
+      const logos = await bridge().remote.admin.organizationLogos(lot);
+      for (const id of lot) logosConnus.set(id, logos[id] ?? null);
+    } catch {
+      // Sans logos on garde les initiales ; l'échantillon lui-même n'est pas en cause.
+    }
+  }
+  // Un logo retiré ou changé : la page le dit (`hasLogo`), la mémoire suit.
+  for (const o of lignes) if (!o.hasLogo) logosConnus.delete(o.id);
+  return logosConnus;
+}
+
+/** Oublier un logo mémorisé — après l'avoir changé ou retiré depuis le dossier. */
+export function oublierLogo(id: string): void {
+  logosConnus.delete(id);
+}
+
+function commeAdmin(o: ParcOrganization, logoDataUrl: string | null): AdminOrganization {
   return {
     id: o.id,
     name: o.name,
     plan: o.plan,
     status: o.status,
-    logoDataUrl: null,
+    logoDataUrl,
     trade: o.trade,
     language: o.language,
     seats: o.seats,
@@ -39,5 +72,7 @@ export async function echantillonParc(limite = ECHANTILLON_PARC): Promise<AdminO
     cursor = page.nextCursor;
     if (!cursor) break;
   }
-  return lignes.filter((o) => o.plan !== 'internal').map(commeAdmin);
+  const clientes = lignes.filter((o) => o.plan !== 'internal');
+  const logos = await completerLogos(clientes);
+  return clientes.map((o) => commeAdmin(o, logos.get(o.id) ?? null));
 }

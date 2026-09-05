@@ -192,6 +192,7 @@ export const exclusivePreload: ExclusiveRemote = {
     setOrganizationModule: (id, key, open) => ipcRenderer.invoke(IPC.remoteAdminSetOrgModule, { id, key, open }),
     resetOrganizationModules: (id) => ipcRenderer.invoke(IPC.remoteAdminResetOrgModules, id),
     organizationsPage: (query) => ipcRenderer.invoke(IPC.remoteAdminOrgsPage, query),
+    organizationLogos: (ids) => ipcRenderer.invoke(IPC.remoteAdminOrgLogos, ids),
     organizationsSummary: () => ipcRenderer.invoke(IPC.remoteAdminOrgsSummary),
     organizationDossier: (id) => ipcRenderer.invoke(IPC.remoteAdminOrgDossier, id),
     setOrganizationTags: (id, tags) => ipcRenderer.invoke(IPC.remoteAdminSetOrgTags, { id, tags }),

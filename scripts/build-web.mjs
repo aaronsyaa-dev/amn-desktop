@@ -27,14 +27,15 @@ import { spawnSync } from 'node:child_process';
  * n'est pas exactement « business » est interne.
  */
 const edition = process.env.AMN_EDITION === 'business' ? 'business' : 'internal';
-const outDir = 'dist';
+// `AMN_WEB_OUT` : construire ailleurs que dans dist/ (check:migration bâtit le candidat dans un dossier temporaire).
+const outDir = process.env.AMN_WEB_OUT || 'dist';
 
 // eslint-disable-next-line no-console
 console.log(`[amn] build web — édition ${edition}`);
 
 const build = spawnSync(
   process.execPath,
-  ['node_modules/vite/bin/vite.js', 'build', '--config', 'vite.renderer.config.mts'],
+  ['node_modules/vite/bin/vite.js', 'build', '--config', 'vite.renderer.config.mts', ...(process.env.AMN_WEB_OUT ? ['--outDir', outDir, '--emptyOutDir'] : [])],
   { stdio: 'inherit', env: { ...process.env, AMN_EDITION: edition } },
 );
 if (build.status !== 0) process.exit(build.status ?? 1);

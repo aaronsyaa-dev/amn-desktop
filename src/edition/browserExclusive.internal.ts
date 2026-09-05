@@ -533,6 +533,14 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
       const { summary } = await ctx.apiFetch<{ summary: ParcSummary }>('/v1/admin/organizations/summary', { owner: true });
       return summary;
     },
+    async organizationLogos(ids: string[]) {
+      if (ids.length === 0) return {};
+      const { logos } = await ctx.apiFetch<{ logos: Record<string, string | null> }>(
+        `/v1/admin/organizations/logos?ids=${ids.slice(0, 100).map(encodeURIComponent).join(',')}`,
+        { owner: true },
+      );
+      return logos;
+    },
     async organizationDossier(id: string) {
       return ctx.apiFetch<{ organization: AdminOrganization; tags: string[]; locks: ModuleLock[] }>(
         `/v1/admin/organizations/${encodeURIComponent(id)}/dossier`,
