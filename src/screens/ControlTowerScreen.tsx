@@ -212,7 +212,7 @@ export function ControlTowerScreen() {
 
       {/* Le mur : incidents inter-sites, origine des visiteurs, activité horaire. */}
       <StaggerItem>
-        <SocDesk withBadgeExport={false} />
+        <SocDesk withBadgeExport={false} apercu={6} />
       </StaggerItem>
 
       <AnimatePresence>

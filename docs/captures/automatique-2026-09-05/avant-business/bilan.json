@@ -1,0 +1,114 @@
+[
+  {
+    "surface": "poste",
+    "route": "/",
+    "mots": 109,
+    "paragraphesLongs": 0,
+    "cartes": 4
+  },
+  {
+    "surface": "poste",
+    "route": "/agenda",
+    "mots": 53,
+    "paragraphesLongs": 0,
+    "cartes": 0
+  },
+  {
+    "surface": "poste",
+    "route": "/tasks",
+    "mots": 100,
+    "paragraphesLongs": 3,
+    "cartes": 0
+  },
+  {
+    "surface": "poste",
+    "route": "/bibliotheque",
+    "mots": 109,
+    "paragraphesLongs": 0,
+    "cartes": 4
+  },
+  {
+    "surface": "poste",
+    "route": "/clients",
+    "mots": 70,
+    "paragraphesLongs": 0,
+    "cartes": 1
+  },
+  {
+    "surface": "poste",
+    "route": "/facturation",
+    "mots": 104,
+    "paragraphesLongs": 0,
+    "cartes": 1
+  },
+  {
+    "surface": "poste",
+    "route": "/notes",
+    "mots": 56,
+    "paragraphesLongs": 0,
+    "cartes": 1
+  },
+  {
+    "surface": "poste",
+    "route": "/reglages",
+    "mots": 109,
+    "paragraphesLongs": 0,
+    "cartes": 4
+  },
+  {
+    "surface": "telephone",
+    "route": "/",
+    "mots": 107,
+    "paragraphesLongs": 1,
+    "cartes": 4
+  },
+  {
+    "surface": "telephone",
+    "route": "/agenda",
+    "mots": 52,
+    "paragraphesLongs": 0,
+    "cartes": 0
+  },
+  {
+    "surface": "telephone",
+    "route": "/tasks",
+    "mots": 99,
+    "paragraphesLongs": 3,
+    "cartes": 0
+  },
+  {
+    "surface": "telephone",
+    "route": "/bibliotheque",
+    "mots": 107,
+    "paragraphesLongs": 1,
+    "cartes": 4
+  },
+  {
+    "surface": "telephone",
+    "route": "/clients",
+    "mots": 69,
+    "paragraphesLongs": 1,
+    "cartes": 1
+  },
+  {
+    "surface": "telephone",
+    "route": "/facturation",
+    "mots": 102,
+    "paragraphesLongs": 1,
+    "cartes": 1
+  },
+  {
+    "surface": "telephone",
+    "route": "/notes",
+    "mots": 50,
+    "paragraphesLongs": 1,
+    "cartes": 1
+  },
+  {
+    "surface": "telephone",
+    "route": "/reglages",
+    "mots": 107,
+    "paragraphesLongs": 1,
+    "cartes": 4
+  }
+]

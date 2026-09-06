@@ -1,5 +1,6 @@
 import React from 'react';
 import { LiveMetric } from './LiveMetric';
+import { Depliable } from './Depliable';
 import type { SerieVitale } from '../lib/serieVitale';
 
 /**
@@ -83,9 +84,10 @@ export function ScreenHeader({
             {title}
           </h1>
           {description && (
-            <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-text-secondary">
-              {description}
-            </p>
+            /* Deux lignes au plus, dépliables : l'écran se lit d'abord par son titre et son relevé, pas par sa notice. */
+            <Depliable lignes={2} className="mt-1.5 max-w-2xl">
+              <p className="text-[13px] leading-relaxed text-text-secondary">{description}</p>
+            </Depliable>
           )}
         </div>
         {actions && <div className="flex flex-shrink-0 items-center gap-2" data-screen-actions>{actions}</div>}
@@ -116,9 +118,10 @@ export function ScreenHeader({
                   emphasis={stat.emphasis}
                 />
               ) : (
+                /* Un compteur à zéro s'efface : il ne réclame pas la même place qu'un chiffre qui dit quelque chose. */
                 <span
-                  className={`tnum text-[19px] font-medium leading-none ${
-                    stat.emphasis ? 'text-text-primary' : 'text-text-secondary'
+                  className={`tnum leading-none ${
+                    stat.value === 0 || stat.value === '0' ? 'text-[15px] font-normal text-text-muted' : `text-[19px] font-medium ${stat.emphasis ? 'text-text-primary' : 'text-text-secondary'}`
                   }`}
                 >
                   {stat.value}

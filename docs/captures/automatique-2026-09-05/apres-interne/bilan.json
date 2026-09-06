@@ -1,0 +1,142 @@
+[
+  {
+    "surface": "poste",
+    "route": "/",
+    "mots": 251,
+    "paragraphesLongs": 0,
+    "cartes": 2
+  },
+  {
+    "surface": "poste",
+    "route": "/tour",
+    "mots": 790,
+    "paragraphesLongs": 1,
+    "cartes": 12
+  },
+  {
+    "surface": "poste",
+    "route": "/garde",
+    "mots": 242,
+    "paragraphesLongs": 0,
+    "cartes": 9
+  },
+  {
+    "surface": "poste",
+    "route": "/garde/ajmani",
+    "mots": 1559,
+    "paragraphesLongs": 0,
+    "cartes": 8
+  },
+  {
+    "surface": "poste",
+    "route": "/garde/pile",
+    "mots": 777,
+    "paragraphesLongs": 0,
+    "cartes": 1
+  },
+  {
+    "surface": "poste",
+    "route": "/garde/bureaux/sites",
+    "mots": 1332,
+    "paragraphesLongs": 0,
+    "cartes": 6
+  },
+  {
+    "surface": "poste",
+    "route": "/bibliotheque",
+    "mots": 1221,
+    "paragraphesLongs": 0,
+    "cartes": 13
+  },
+  {
+    "surface": "poste",
+    "route": "/tasks",
+    "mots": 3299,
+    "paragraphesLongs": 30,
+    "cartes": 0
+  },
+  {
+    "surface": "poste",
+    "route": "/tour/organisations",
+    "mots": 151,
+    "paragraphesLongs": 0,
+    "cartes": 0
+  },
+  {
+    "surface": "poste",
+    "route": "/incidents",
+    "mots": 251,
+    "paragraphesLongs": 0,
+    "cartes": 2
+  },
+  {
+    "surface": "telephone",
+    "route": "/",
+    "mots": 240,
+    "paragraphesLongs": 1,
+    "cartes": 2
+  },
+  {
+    "surface": "telephone",
+    "route": "/tour",
+    "mots": 768,
+    "paragraphesLongs": 4,
+    "cartes": 12
+  },
+  {
+    "surface": "telephone",
+    "route": "/garde",
+    "mots": 196,
+    "paragraphesLongs": 0,
+    "cartes": 9
+  },
+  {
+    "surface": "telephone",
+    "route": "/garde/ajmani",
+    "mots": 1549,
+    "paragraphesLongs": 2,
+    "cartes": 8
+  },
+  {
+    "surface": "telephone",
+    "route": "/garde/pile",
+    "mots": 781,
+    "paragraphesLongs": 9,
+    "cartes": 1
+  },
+  {
+    "surface": "telephone",
+    "route": "/garde/bureaux/sites",
+    "mots": 1323,
+    "paragraphesLongs": 1,
+    "cartes": 6
+  },
+  {
+    "surface": "telephone",
+    "route": "/bibliotheque",
+    "mots": 1212,
+    "paragraphesLongs": 0,
+    "cartes": 13
+  },
+  {
+    "surface": "telephone",
+    "route": "/tasks",
+    "mots": 3302,
+    "paragraphesLongs": 30,
+    "cartes": 0
+  },
+  {
+    "surface": "telephone",
+    "route": "/tour/organisations",
+    "mots": 118,
+    "paragraphesLongs": 0,
+    "cartes": 0
+  },
+  {
+    "surface": "telephone",
+    "route": "/incidents",
+    "mots": 240,
+    "paragraphesLongs": 1,
+    "cartes": 2
+  }
+]

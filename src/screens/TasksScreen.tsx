@@ -469,9 +469,10 @@ function TaskCard({
         </button>
       </div>
       {task.garde?.pourquoi ? (
-        <p className="mt-1 text-[11px] leading-relaxed text-text-muted" data-garde={task.garde.agent}>
-          {tr('hist.tasks.parLaGarde', { equipe: GARDE_EQUIPE[task.garde.equipe] ?? task.garde.equipe, pourquoi: task.garde.pourquoi })}
-          {task.garde.action ? <> · <span className="text-text-secondary">{tr('hist.tasks.action')} {task.garde.action}</span></> : null}
+        /* Deux lignes au plus (Bloc 1 de l'Automatique) : qui l'a posée, et l'action ; le pourquoi complet est dans la fiche. */
+        <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-text-muted" data-garde={task.garde.agent} title={task.garde.pourquoi}>
+          {tr('hist.tasks.parLaGardeCourt', { equipe: GARDE_EQUIPE[task.garde.equipe] ?? task.garde.equipe })}
+          {task.garde.action ? <> · <span className="text-text-secondary">{task.garde.action}</span></> : null}
         </p>
       ) : (
         task.detail && <p className="mt-1 text-xs leading-relaxed text-text-secondary">{task.detail}</p>

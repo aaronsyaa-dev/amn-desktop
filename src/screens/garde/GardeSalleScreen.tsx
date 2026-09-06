@@ -4,7 +4,7 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { StaggerGroup, StaggerItem } from '../../components/Stagger';
 import { AgentTuile, PoulsBadge } from '../../components/garde/GardeUi';
 import { garde } from '../../lib/garde';
-import { relativeTime } from '../../lib/time';
+import { relativeTime, dansTemps } from '../../lib/time';
 import { useLangue } from '../../i18n';
 import type { GardeAgent, GardeJournalEntree, GardeSalle } from '../../shared/garde';
 
@@ -97,9 +97,9 @@ export function GardeSalleScreen() {
 
       {/* Les collaborations (Bloc 9) : un garde en sollicite un autre, le Capitaine arbitre et avance sa ronde — ou refuse, budget atteint, organisation gelée. */}
       {collaborations.length > 0 && (
-        <section className="rounded-xl border border-border bg-surface p-3" aria-label={t('garde.salle.collaborations')} data-collaborations={collaborations.length}>
-          <h2 className="mb-1 font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.salle.collaborations')}</h2>
-          <ol className="flex flex-col gap-0.5">
+        <details className="rounded-xl border border-border bg-surface p-3" aria-label={t('garde.salle.collaborations')} data-collaborations={collaborations.length}>
+          <summary className="cursor-pointer font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.salle.collaborations')} · {collaborations.length}</summary>
+          <ol className="mt-1 flex flex-col gap-0.5">
             {collaborations.map((e) => (
               <li key={e.id} className="text-[12px] text-text-secondary">
                 <span className={`font-mono text-[10px] uppercase tracking-wider ${e.resultat === 'refuse' ? 'text-text-muted' : 'text-success'}`}>{e.resultat === 'refuse' ? t('garde.salle.refusee') : t('garde.salle.arbitree')}</span>
@@ -108,20 +108,43 @@ export function GardeSalleScreen() {
               </li>
             ))}
           </ol>
-        </section>
+        </details>
       )}
 
       <StaggerGroup className="flex flex-col gap-5">
         {equipes.map((e) => (
           <StaggerItem key={e.key}>
             <section aria-label={e.nom} className="flex flex-col gap-2">
-              <div className="flex items-baseline justify-between gap-2">
-                <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">{e.nom}</h2>
-                <span className="truncate text-[11px] text-text-muted">{e.chef.nom} · {e.chef.role}</span>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {(agentsParEquipe.get(e.key) ?? []).map((a) => <AgentTuile key={a.key} agent={a} equipeKey={e.key} journal={journal} onRafraichir={() => void charger()} />)}
-              </div>
+              {(() => {
+                // Ce qui parle pour rien disparaît de la vue par défaut : un garde au repos sans constat récent se range sous « n au repos ».
+                // Une équipe entièrement au repos tient en UNE ligne : son nom, combien, et quand elle repasse.
+                const tous = agentsParEquipe.get(e.key) ?? [];
+                const parle = (a: GardeAgent) => a.etat !== 'repos' || !a.actif || journal.some((j) => j.agent === a.key);
+                const actifs = tous.filter(parle); const repos = tous.filter((a) => !parle(a));
+                const prochaine = repos.map((a) => a.prochaineRondeAt).filter(Boolean).sort()[0];
+                const resume = `${t('commun.auRepos', { n: repos.length })}${prochaine ? ` · ${t('garde.salle.prochaine').toLowerCase()} ${dansTemps(prochaine)}` : ''}`;
+                return (
+                  <details className="group/equipe" open={actifs.length > 0} data-equipe={e.key} data-actifs={actifs.length}>
+                    <summary className="flex cursor-pointer list-none items-baseline justify-between gap-3 py-1">
+                      <span className="flex items-baseline gap-3">
+                        <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">{e.nom}</h2>
+                        {actifs.length === 0 && <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{resume}</span>}
+                      </span>
+                      <span className="hidden truncate text-[11px] text-text-muted sm:inline">{e.chef.nom} · {e.chef.role}</span>
+                    </summary>
+                    <div className="mt-1 rounded-xl border border-border bg-surface px-3">
+                      <ul>{actifs.map((a) => <AgentTuile key={a.key} agent={a} equipeKey={e.key} journal={journal} onRafraichir={() => void charger()} />)}</ul>
+                      {repos.length > 0 && actifs.length > 0 && (
+                        <details className="border-t border-border" data-repos={repos.length}>
+                          <summary className="cursor-pointer py-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">{resume}</summary>
+                          <ul>{repos.map((a) => <AgentTuile key={a.key} agent={a} equipeKey={e.key} journal={journal} onRafraichir={() => void charger()} />)}</ul>
+                        </details>
+                      )}
+                      {actifs.length === 0 && <ul>{repos.map((a) => <AgentTuile key={a.key} agent={a} equipeKey={e.key} journal={journal} onRafraichir={() => void charger()} />)}</ul>}
+                    </div>
+                  </details>
+                );
+              })()}
             </section>
           </StaggerItem>
         ))}

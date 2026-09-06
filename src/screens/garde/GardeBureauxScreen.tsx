@@ -57,6 +57,7 @@ function Bureau({ equipeKey, definition }: { equipeKey: string; definition: Gard
   const [bureau, setBureau] = useState<GardeBureau | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [couloirs, setCouloirs] = useState<Record<string, { min: string; max: string }>>({});
+  const [toutJournal, setToutJournal] = useState(false);
   const charger = useCallback(async () => {
     try { setBureau(await garde.bureau(equipeKey)); setErreur(null); } catch (err) { setErreur(err instanceof Error ? err.message : String(err)); }
   }, [equipeKey]);
@@ -113,8 +114,11 @@ function Bureau({ equipeKey, definition }: { equipeKey: string; definition: Gard
             <h2 className="mb-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.bureau.historique')}</h2>
             {bureau && bureau.journal.length === 0 && <p className="font-mono text-xs text-text-muted">{t('garde.salle.rienRecent')}</p>}
             <ul>
-              {(bureau?.journal ?? []).map((e) => <JournalLigne key={e.id} entree={e} onMauvais={async (id, note) => { await garde.mauvais(id, note); await charger(); }} />)}
+              {(bureau?.journal ?? []).slice(0, toutJournal ? undefined : 12).map((e) => <JournalLigne key={e.id} entree={e} onMauvais={async (id, note) => { await garde.mauvais(id, note); await charger(); }} />)}
             </ul>
+            {bureau && bureau.journal.length > 12 && !toutJournal && (
+              <button type="button" onClick={() => setToutJournal(true)} className="mt-2 min-h-8 font-mono text-[10px] uppercase tracking-widest text-text-muted hover:text-text-primary">{t('commun.voirPlus', { n: bureau.journal.length - 12 })}</button>
+            )}
           </section>
         </div>
 
@@ -146,7 +150,9 @@ function Bureau({ equipeKey, definition }: { equipeKey: string; definition: Gard
                       <div className="flex items-center gap-2"><EtatPoint etat={etat?.etat ?? 'repos'} actif={etat?.actif ?? true} /><span className="text-sm font-medium text-text-primary">{a.nom}</span><span className="text-[11px] text-text-muted">{a.role}</span></div>
                       <p className="text-[11px] text-text-muted"><span className="font-mono uppercase tracking-wider">{t('garde.bureau.prises')}</span> — {a.prises.lit.join(', ') || '—'} · {a.prises.modifie.join(', ') || '—'} · {a.prises.demande.join(', ') || '—'}</p>
                       {Object.entries(a.regles).length > 0 && (
-                        <ul className="flex flex-col gap-0.5 pl-3">
+                        <details className="pl-3">
+                        <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-widest text-text-muted">{t('commun.details')}</summary>
+                        <ul className="mt-1 flex flex-col gap-0.5">
                           {Object.entries(a.regles).map(([k, r]) => {
                             const parametres = (etat?.parametres?.[k] ?? r.parametres) as Record<string, unknown>;
                             const premier = Object.keys(r.parametres)[0];
@@ -158,6 +164,7 @@ function Bureau({ equipeKey, definition }: { equipeKey: string; definition: Gard
                             );
                           })}
                         </ul>
+                        </details>
                       )}
                     </li>
                   );

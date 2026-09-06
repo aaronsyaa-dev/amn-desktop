@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLangue } from '../../i18n';
-import { relativeTime } from '../../lib/time';
+import { relativeTime, dansTemps } from '../../lib/time';
 import { garde } from '../../lib/garde';
 import type { GardeAgent, GardeGravite, GardeJournalEntree, GardeOrdreReponse, GardePouls } from '../../shared/garde';
 
@@ -155,35 +155,49 @@ export function Conversation({ envoyer, rapides = [], aide }: { envoyer: (texte:
 }
 
 export function AgentTuile({ agent, equipeKey, journal, onRafraichir }: { agent: GardeAgent; equipeKey: string; journal: GardeJournalEntree[]; onRafraichir: () => void }) {
+  /*
+    UNE LIGNE PAR GARDE (Bloc 1 de l'Automatique). Vingt tuiles de même poids,
+    chacune avec deux boutons et « Rien en cours ; je repasse à… », c'était la
+    cantine. La ligne dit le point, le nom, sa phrase, et quand il repasse ;
+    le détail (ses derniers constats, sa réponse) s'ouvre au clic ; les gestes
+    n'apparaissent qu'au survol ou au clavier sur le poste — toujours visibles
+    au doigt, où le survol n'existe pas.
+
+    « Prochaine à l'instant » était un mensonge : une ronde due mais pas
+    encore passée se dit « imminente », pas « à l'instant ».
+  */
   const { t } = useLangue();
   const [reponse, setReponse] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ouvert, setOuvert] = useState(false);
   const etat = !agent.actif ? 'inactif' : agent.etat;
   const constats = journal.filter((e) => e.agent === agent.key).slice(0, 3);
+  const prochaine = agent.prochaineRondeAt ? dansTemps(agent.prochaineRondeAt) : '—';
   return (
-    <article className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-3" aria-label={agent.nom}>
-      <div className="flex items-start gap-2">
-        <EtatPoint etat={agent.etat} actif={agent.actif} size={9} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-text-primary">{agent.nom}</p>
-          <p className="truncate text-[11px] text-text-muted">{agent.role}</p>
+    <li className="group border-b border-border last:border-b-0" data-agent={agent.key} data-etat={etat}>
+      <div className="flex items-center gap-3 py-2">
+        <EtatPoint etat={agent.etat} actif={agent.actif} size={8} />
+        <button type="button" onClick={() => setOuvert((o) => !o)} aria-expanded={ouvert} className="min-w-0 flex-1 text-left">
+          <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+            <span className="text-[13px] font-medium text-text-primary">{agent.nom}</span>
+            <span className="min-w-0 truncate text-[12px] text-text-secondary">{agent.phrase || t('garde.salle.rienRecent')}</span>
+          </span>
+        </button>
+        <span className="hidden flex-shrink-0 font-mono text-[10px] uppercase tracking-wider text-text-muted sm:inline" title={`${t('garde.salle.derniere')} ${agent.derniereRondeAt ? relativeTime(agent.derniereRondeAt) : t('garde.salle.jamais')}`}>
+          {etat === 'ronde' ? t('garde.etat.ronde') : `${t('garde.salle.prochaine')} ${prochaine}`}
+        </span>
+        <span className="flex flex-shrink-0 gap-1.5 md:opacity-0 md:transition-opacity md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+          <button type="button" disabled={busy} onClick={() => { setBusy(true); void garde.ronde(agent.key).then(() => onRafraichir()).finally(() => setBusy(false)); }} className="min-h-8 border border-border px-2 text-[11px] text-text-secondary hover:border-border-strong hover:text-text-primary disabled:opacity-50">{t('garde.salle.rondeMaintenant')}</button>
+          <button type="button" disabled={busy} onClick={() => { setBusy(true); setOuvert(true); void garde.question(equipeKey, `tu fais quoi ${agent.nom}`).then((r) => setReponse(r.reponse)).finally(() => setBusy(false)); }} className="min-h-8 border border-border px-2 text-[11px] text-text-secondary hover:border-border-strong hover:text-text-primary disabled:opacity-50">{t('garde.salle.tuFaisQuoi')}</button>
+        </span>
+      </div>
+      {ouvert && (
+        <div className="mb-2 ml-5 flex flex-col gap-1 text-[12px]">
+          <p className="text-text-muted">{agent.role} · {t('garde.salle.derniere')} {agent.derniereRondeAt ? relativeTime(agent.derniereRondeAt) : t('garde.salle.jamais')}</p>
+          {constats.map((e) => <p key={e.id} className="truncate text-text-secondary" title={e.pourquoi}>{e.pourquoi || e.action}</p>)}
+          {reponse && <p className="text-text-primary">{reponse}</p>}
         </div>
-        <span className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">{t(`garde.etat.${etat}`)}</span>
-      </div>
-      <p className="text-[13px] leading-snug text-text-secondary">{agent.phrase || t('garde.salle.rienRecent')}</p>
-      <p className="font-mono text-[10px] text-text-muted">
-        {t('garde.salle.derniere')} {agent.derniereRondeAt ? relativeTime(agent.derniereRondeAt) : t('garde.salle.jamais')} · {t('garde.salle.prochaine')} {agent.prochaineRondeAt ? relativeTime(agent.prochaineRondeAt) : '—'}
-      </p>
-      {constats.length > 0 && (
-        <ul className="flex flex-col gap-0.5 border-t border-border pt-2">
-          {constats.map((e) => <li key={e.id} className="truncate text-[11px] text-text-secondary" title={e.pourquoi}>{e.pourquoi || e.action}</li>)}
-        </ul>
       )}
-      {reponse && <p className="border-t border-border pt-2 text-[12px] text-text-primary">{reponse}</p>}
-      <div className="mt-auto flex flex-wrap gap-2 pt-1">
-        <button type="button" disabled={busy} onClick={() => { setBusy(true); void garde.ronde(agent.key).then(() => onRafraichir()).finally(() => setBusy(false)); }} className="border border-border px-2 py-1 text-[11px] text-text-secondary hover:border-border-strong hover:text-text-primary disabled:opacity-50">{t('garde.salle.rondeMaintenant')}</button>
-        <button type="button" disabled={busy} onClick={() => { setBusy(true); void garde.question(equipeKey, `tu fais quoi ${agent.nom}`).then((r) => setReponse(r.reponse)).finally(() => setBusy(false)); }} className="border border-border px-2 py-1 text-[11px] text-text-secondary hover:border-border-strong hover:text-text-primary disabled:opacity-50">{t('garde.salle.tuFaisQuoi')}</button>
-      </div>
-    </article>
+    </li>
   );
 }

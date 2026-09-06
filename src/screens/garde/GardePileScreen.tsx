@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { Depliable } from '../../components/Depliable';
 import { GraviteChip } from '../../components/garde/GardeUi';
 import { garde } from '../../lib/garde';
 import { useLangue } from '../../i18n';
@@ -92,7 +93,7 @@ export function GardePileScreen() {
                 {d.n > 1 && (
                   <p className="text-[12px] text-text-secondary"><span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{t('garde.pile.exemples')} · </span>{d.exemples.join(' ; ')}</p>
                 )}
-                {d.contexte && <p className="text-[13px] leading-relaxed text-text-secondary"><span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{t('garde.pile.contexte')} · </span>{d.contexte}</p>}
+                {d.contexte && <Depliable lignes={2}><p className="text-[13px] leading-relaxed text-text-secondary"><span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{t('garde.pile.contexte')} · </span>{d.contexte}</p></Depliable>}
                 {d.recommandation
                   ? <p className="text-[13px] leading-relaxed text-text-primary"><span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{t('garde.pile.recommande')} · </span>{d.recommandation}</p>
                   : <p className="text-[13px] leading-relaxed text-text-secondary">{t('garde.pile.sansRecommandation', { chef: NOM_DU_CHEF })}</p>}
@@ -127,7 +128,7 @@ export function GardePileScreen() {
                   <span className="ml-auto font-mono text-[10px] text-text-muted">{relativeTime(r.updatedAt)}</span>
                 </div>
                 <p className="text-sm font-semibold text-text-primary">{r.titre}</p>
-                {r.contexte && <p className="text-[13px] leading-relaxed text-text-secondary"><span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{t('garde.pile.contexte')} · </span>{r.contexte}</p>}
+                {r.contexte && <Depliable lignes={2}><p className="text-[13px] leading-relaxed text-text-secondary"><span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{t('garde.pile.contexte')} · </span>{r.contexte}</p></Depliable>}
                 {r.etat === 'ouverte' ? (
                   <div className="flex flex-wrap gap-2 border-t border-border pt-2">
                     {r.options.map((o) => <button key={o} type="button" onClick={() => void decider(r.id, o)} className="min-h-11 border border-border bg-bg px-2.5 text-xs text-text-primary hover:border-border-strong md:min-h-0 md:py-1">{o}</button>)}

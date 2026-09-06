@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { AlertTriangle, Check, Copy, Globe2, ShieldCheck } from 'lucide-react';
 import { bridge } from '../../lib/bridge';
 import { useOrgSites } from './useOrgSites';
@@ -68,8 +69,16 @@ export function SocDesk({
    * regarder.
    */
   withBadgeExport = true,
+  apercu = null,
 }: {
   withBadgeExport?: boolean;
+  /**
+   * Sur la Tour, le mur d'incidents est un APERÇU (Bloc 1 de l'Automatique) :
+   * trois cents lignes dans un cadre de 26 rem faisaient de la vue
+   * d'ensemble le plus long écran du produit — 5 168 mots sur 5 788. On
+   * montre les premières, et un seul lien vers l'écran des incidents.
+   */
+  apercu?: number | null;
 } = {}) {
   const [days, setDays] = useState<(typeof WINDOWS)[number]>(7);
   const [overview, setOverview] = useState<OrgOverview | null>(null);
@@ -302,7 +311,7 @@ export function SocDesk({
             ) : (
               <ul className="divide-y divide-border">
                 <AnimatePresence initial={false}>
-                  {incidents.map((incident) => {
+                  {(apercu ? incidents.slice(0, apercu) : incidents).map((incident) => {
                     const severity = (incident.severity ?? 'info') as Severity;
                     return (
                       <motion.li
@@ -334,6 +343,11 @@ export function SocDesk({
                   })}
                 </AnimatePresence>
               </ul>
+            )}
+            {apercu && incidents.length > apercu && (
+              <Link to="/incidents" className="block border-t border-border px-4 py-2.5 font-mono text-[10px] uppercase tracking-widest text-text-muted hover:text-text-primary" data-apercu-reste={incidents.length - apercu}>
+                {incidents.length - apercu} de plus · voir les incidents →
+              </Link>
             )}
           </div>
         </section>

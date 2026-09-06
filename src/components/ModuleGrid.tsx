@@ -133,17 +133,18 @@ export function ModuleGrid({
                   <span className={`text-sm font-medium leading-tight ${ouvert ? 'text-text-primary' : 'text-text-secondary'}`}>
                     {libelleNav(item)}
                   </span>
-                  <span className="text-[11px] leading-snug text-text-muted">{carte?.quoi ?? indiceNav(item, surface)}</span>
+                  <span className="line-clamp-2 text-[11px] leading-snug text-text-muted">{carte?.quoi ?? indiceNav(item, surface)}</span>
+                  {/* « Pour qui » et l'exemple ne s'affichent qu'au survol ou au clavier (Bloc 1 de l'Automatique) : une carte, une ligne ; le détail quand on s'y arrête. Sur téléphone, la présentation de première ouverture les dit. */}
                   {carte && mode !== 'composer' && (
-                    <>
+                    <span className="hidden flex-col gap-1 group-hover:flex group-focus-within:flex" data-carte-detail>
                       <span className="text-[11px] leading-snug text-text-muted">
                         <span className="text-text-secondary">{t('carte.pourQui')} :</span> {carte.pourQui}
                       </span>
                       <span className="text-[11px] italic leading-snug text-text-secondary">{carte.exemple}</span>
-                    </>
+                    </span>
                   )}
                   {prises?.[item.key] && (prises[item.key].lit.length > 0 || prises[item.key].modifie.length > 0) && (
-                    <span className="text-[10px] leading-snug text-text-muted" data-prises={item.key}>
+                    <span className="hidden text-[10px] leading-snug text-text-muted group-hover:inline group-focus-within:inline" data-prises={item.key}>
                       <span className="font-mono uppercase tracking-wider">{t('biblio.prises.titre')}</span>
                       {prises[item.key].lit.length > 0 ? ` · ${t('biblio.prises.lu', { equipes: prises[item.key].lit.join(', ') })}` : ''}
                       {prises[item.key].modifie.length > 0 ? ` · ${t('biblio.prises.modifie', { equipes: prises[item.key].modifie.join(', ') })}` : ''}

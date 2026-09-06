@@ -87,3 +87,20 @@ export function formatDateTime(iso: string): string {
     minute: '2-digit',
   });
 }
+
+/**
+ * Une échéance à venir, dite comme on la dirait : « dans 4 min », « dans 2 h ».
+ * Une échéance passée ou à moins d'une minute est « imminente » — jamais
+ * « à l'instant », qui affirmait qu'une chose venait d'avoir lieu alors
+ * qu'elle n'avait pas encore eu lieu (la Salle disait « prochaine à
+ * l'instant » pendant dix minutes).
+ */
+export function dansTemps(iso: string, now: number = Date.now()): string {
+  const sec = Math.round((new Date(iso).getTime() - now) / 1000);
+  if (sec < 60) return 'imminente';
+  const min = Math.round(sec / 60);
+  if (min < 60) return `dans ${min} min`;
+  const hours = Math.round(min / 60);
+  if (hours < 24) return `dans ${hours} h`;
+  return `dans ${Math.round(hours / 24)} j`;
+}
