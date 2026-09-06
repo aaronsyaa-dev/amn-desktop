@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatedCounter } from '../../components/AnimatedCounter';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { Depliable } from '../../components/Depliable';
 import { GraviteChip } from '../../components/garde/GardeUi';
@@ -31,6 +33,11 @@ export function GardePileScreen() {
   const [libre, setLibre] = useState<Record<string, string>>({});
   /** Ce qu'Ajmani vient de faire — en tête, parce qu'un dossier décidé disparaît de la liste avec sa carte. */
   const [message, setMessage] = useState<string | null>(null);
+  /* La progression visible : ce que VOUS avez décidé depuis l'ouverture de l'écran. Le compteur compte — une micro-satisfaction honnête, jamais un score. */
+  const [decideesSeance, setDecideesSeance] = useState(0);
+  const mouvementReduit = useReducedMotion();
+  /* Un dossier décidé se retire d'un souffle au lieu de disparaître d'un coup — et sans mouvement demandé, il disparaît simplement. */
+  const sortie = mouvementReduit ? {} : { initial: { opacity: 0, y: 6 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, height: 0, marginBottom: -12, overflow: 'hidden' as const }, transition: { duration: 0.26, ease: 'easeOut' as const } };
   const charger = useCallback(async () => {
     try {
       if (onglet === 'ouverte') {
@@ -47,20 +54,22 @@ export function GardePileScreen() {
   }, [onglet]);
   useEffect(() => { void charger(); }, [charger]);
   useEffect(() => garde.onGarde((trame) => { if (trame.type.startsWith('garde:remontee') || trame.type === 'garde:mandat') void charger(); }), [charger]);
-  const decider = async (id: string, decision: string) => { await garde.decider(id, decision); await charger(); };
+  const decider = async (id: string, decision: string) => { await garde.decider(id, decision); setDecideesSeance((n) => n + 1); await charger(); };
   const deciderDossier = async (d: GardeDossier, decision: string) => {
     const r = await garde.deciderDossier(d.id, decision);
+    setDecideesSeance((n) => n + r.n);
     setMessage(t('garde.pile.decideDossier', { n: r.n }));
     await charger();
   };
   const confier = async (d: GardeDossier) => {
     if (!d.recommandation) return;
     const r = await garde.donnerMandat({ agent: d.agent, famille: d.famille, decision: d.recommandation });
+    setDecideesSeance((n) => n + r.appliquees);
     setMessage(t('garde.chef.decidezSeulFait', { decision: d.recommandation ?? '', n: r.appliquees, chef: NOM_DU_CHEF }));
     await charger();
   };
 
-  const stats = compte ? [{ label: t('garde.pile.ouvertes'), value: compte.ouvertes, emphasis: compte.critiques > 0 }, { label: t('garde.pile.dossiers'), value: pile?.compte.dossiers ?? '—' }, { label: t('garde.gravite.critique'), value: compte.critiques, emphasis: compte.critiques > 0 }, { label: t('garde.pile.decidees'), value: compte.decidees }] : [];
+  const stats = compte ? [{ label: t('garde.pile.ouvertes'), value: compte.ouvertes, emphasis: compte.critiques > 0 }, { label: t('garde.pile.dossiers'), value: pile?.compte.dossiers ?? '—' }, { label: t('garde.gravite.critique'), value: compte.critiques, emphasis: compte.critiques > 0 }, { label: t('garde.pile.decidees'), value: compte.decidees }, ...(decideesSeance > 0 ? [{ label: t('garde.pile.decideesSeance'), value: <AnimatedCounter value={decideesSeance} /> }] : [])] : [];
 
   return (
     <section className="flex flex-col gap-5">
@@ -79,8 +88,9 @@ export function GardePileScreen() {
         <>
           {pile && pile.dossiers.length === 0 && !erreur && <p className="font-mono text-xs text-text-muted">{t('garde.pile.vide')}</p>}
           <ol className="flex flex-col gap-3" aria-label={t('garde.pile.dossiers')}>
+            <AnimatePresence initial={false}>
             {pile?.dossiers.map((d) => (
-              <li key={d.id} data-dossier={d.famille} className={`flex flex-col gap-2 rounded-xl border bg-surface p-4 ${d.chefDeFile ? 'border-border' : 'ml-4 border-border/70 md:ml-8'}`}>
+              <motion.li key={d.id} {...sortie} data-dossier={d.famille} className={`flex flex-col gap-2 rounded-xl border bg-surface p-4 ${d.chefDeFile ? 'border-border' : 'ml-4 border-border/70 md:ml-8'}`}>
                 <div className="flex flex-wrap items-center gap-2">
                   <GraviteChip gravite={d.gravite} />
                   <span className="font-mono text-[10px] text-text-muted">{t('garde.pile.par', { agent: d.agent })}</span>
@@ -111,8 +121,9 @@ export function GardePileScreen() {
                   {d.tache && <p className="font-mono text-[10px] text-text-muted">{t('garde.pile.tache')}</p>}
                   {d.chefDeFile && d.memeOrg > 0 && <p className="font-mono text-[10px] text-text-muted">{t('garde.pile.aussi')} · {d.memeOrg}</p>}
                 </div>
-              </li>
+              </motion.li>
             ))}
+            </AnimatePresence>
           </ol>
         </>
       ) : (

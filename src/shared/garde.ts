@@ -60,6 +60,8 @@ export interface GardeSalle {
   priorite: { texte: string; par: string; at: string; jusqua: string } | null;
   reglages: { heureTour: number; silence?: { de: number; a: number } };
   lexique: string;
+  /** Les sept derniers jours comptés par le serveur (clé YYYY-MM-DD → n) : la mémoire des chiffres de l'en-tête. */
+  series?: { remontees: Record<string, number>; reglees: Record<string, number> };
 }
 export interface GardeJournalEntree {
   id: string;

@@ -27,8 +27,9 @@ export function EtatPoint({ etat, actif = true, size = 8 }: { etat: GardeAgent['
   const classe = !actif ? 'bg-text-muted' : etat === 'ronde' ? 'bg-accent' : etat === 'trouve' ? 'bg-warning' : etat === 'echec' ? 'bg-danger' : 'bg-success';
   return (
     <span className="relative inline-flex flex-shrink-0" style={{ width: size, height: size }} aria-hidden>
-      {actif && etat === 'ronde' && <span className={`absolute inset-0 rounded-full ${classe} opacity-60 motion-safe:animate-ping`} />}
-      <span className={`relative inline-flex h-full w-full rounded-full ${classe}`} />
+      {/* En ronde, le point respire (le souffle des Signes Vitaux) ; il ne « pingue » pas — un radar qui balaie dit « démo », un souffle dit « vivant ». */}
+      {actif && etat === 'ronde' && <span className={`sv-souffle-tendu absolute -inset-1 rounded-full ${classe}`} />}
+      <span className={`relative inline-flex h-full w-full rounded-full transition-colors duration-700 ${classe}`} />
     </span>
   );
 }
@@ -39,10 +40,11 @@ export function PoulsBadge({ pouls, compact = false }: { pouls: GardePouls | nul
   const classe = pouls.niveau === 'critique' ? 'border-danger/60 text-danger' : pouls.niveau === 'attention' ? 'border-warning/60 text-text-primary' : 'border-success/50 text-text-primary';
   const point = pouls.niveau === 'critique' ? 'bg-danger' : pouls.niveau === 'attention' ? 'bg-warning' : 'bg-success';
   return (
-    <div className={`flex items-center gap-3 rounded-xl border bg-surface px-3 py-2 ${classe}`} aria-label={t('garde.pouls.titre')}>
+    <div className={`flex items-center gap-3 rounded-xl border bg-surface px-3 py-2 transition-colors duration-700 ${classe}`} aria-label={t('garde.pouls.titre')} data-pouls={pouls.niveau}>
+      {/* L'anneau qui respire : quatre secondes au calme, plus court quand quelque chose attend — la même respiration que le rail. La couleur glisse quand l'état change au lieu de sauter. */}
       <span className="relative inline-flex h-3 w-3" aria-hidden>
-        {pouls.niveau !== 'calme' && <span className={`absolute inset-0 rounded-full ${point} opacity-50 motion-safe:animate-ping`} />}
-        <span className={`relative inline-flex h-3 w-3 rounded-full ${point}`} />
+        <span className={`absolute -inset-1.5 rounded-full transition-colors duration-700 ${point} ${pouls.niveau === 'calme' ? 'sv-souffle-calme' : 'sv-souffle-tendu'}`} />
+        <span className={`relative inline-flex h-3 w-3 rounded-full transition-colors duration-700 ${point}`} />
       </span>
       <div className="min-w-0">
         <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{t('garde.pouls.titre')}</p>

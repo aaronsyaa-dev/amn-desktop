@@ -5,6 +5,7 @@ import { StaggerGroup, StaggerItem } from '../../components/Stagger';
 import { AgentTuile, PoulsBadge } from '../../components/garde/GardeUi';
 import { garde } from '../../lib/garde';
 import { relativeTime, dansTemps } from '../../lib/time';
+import { serieFluxComptee } from '../../lib/serieVitale';
 import { useLangue } from '../../i18n';
 import type { GardeAgent, GardeJournalEntree, GardeSalle } from '../../shared/garde';
 
@@ -22,7 +23,9 @@ export function GardeSalleScreen() {
   const [salle, setSalle] = useState<GardeSalle | null>(null);
   const [journal, setJournal] = useState<GardeJournalEntree[]>([]);
   const [erreur, setErreur] = useState<string | null>(null);
-  const [equipe, setEquipe] = useState<string>('toutes');
+  /* L'équipe regardée hier est l'équipe regardée aujourd'hui : le filtre se souvient, personne ne le rechoisit à chaque ouverture. */
+  const [equipe, setEquipeBrut] = useState<string>(() => { try { return window.localStorage.getItem('amn.garde.salle.equipe') || 'toutes'; } catch { return 'toutes'; } });
+  const setEquipe = (e: string) => { setEquipeBrut(e); try { window.localStorage.setItem('amn.garde.salle.equipe', e); } catch { /* sans mémoire locale, le filtre repart de « toutes » */ } };
   const [plein, setPlein] = useState(false);
 
   const charger = useCallback(async () => {
@@ -51,6 +54,19 @@ export function GardeSalleScreen() {
     return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
 
+  /* Les chiffres à mémoire : « ouvertes » est un stock sans historique (nombre seul) ; les remontées et ce que la Garde a réglé seule sont des flux, comptés par jour côté serveur. */
+  const stats = useMemo(() => {
+    if (!salle) return [];
+    const maintenant = new Date();
+    const remontees = salle.series ? serieFluxComptee(salle.series.remontees, 7, maintenant) : undefined;
+    const reglees = salle.series ? serieFluxComptee(salle.series.reglees, 7, maintenant) : undefined;
+    return [
+      { label: t('garde.pile.ouvertes'), value: salle.pouls.compte.ouvertes, emphasis: salle.pouls.compte.critiques > 0 },
+      { label: t('garde.salle.remontees7'), value: remontees?.delta ?? '—', brut: remontees?.delta, serie: remontees, title: t('garde.salle.remontees7.aide') },
+      { label: t('garde.salle.reglees7'), value: reglees?.delta ?? '—', brut: reglees?.delta, serie: reglees, title: t('garde.salle.reglees7.aide') },
+    ];
+  }, [salle, t]);
+
   const equipes = useMemo(() => (salle ? salle.equipes.filter((e) => equipe === 'toutes' || e.key === equipe) : []), [salle, equipe]);
   // Les collaborations se lisent à part : le journal des rondes les enterrerait en quelques minutes.
   const [collaborations, setCollaborations] = useState<GardeJournalEntree[]>([]);
@@ -67,7 +83,7 @@ export function GardeSalleScreen() {
 
   return (
     <section className="flex flex-col gap-5" id="garde-salle">
-      <ScreenHeader eyebrow={t('garde.surtitre')} title={t('garde.salle.titre')} description={t('garde.salle.description')} stats={salle ? [{ label: t('garde.salle.equipe'), value: salle.equipes.length }, { label: t('garde.pile.ouvertes'), value: salle.pouls.compte.ouvertes, emphasis: salle.pouls.compte.critiques > 0 }] : []}>
+      <ScreenHeader eyebrow={t('garde.surtitre')} title={t('garde.salle.titre')} description={t('garde.salle.description')} stats={stats}>
         <button
           type="button"
           onClick={() => { const el = document.getElementById('garde-salle'); if (document.fullscreenElement) void document.exitFullscreen(); else void el?.requestFullscreen?.(); }}

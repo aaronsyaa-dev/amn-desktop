@@ -95,6 +95,25 @@ export function serieFlux(
 }
 
 /**
+ * FLUX DÉJÀ COMPTÉ — quand le serveur a fait le compte par jour (la Garde ne
+ * renvoie pas cent mille dates, elle renvoie sept nombres). Même fenêtre, même
+ * honnêteté : un jour absent vaut zéro, un jour hors fenêtre n'existe pas.
+ */
+export function serieFluxComptee(
+  comptes: Readonly<Record<string, number>>,
+  jours: number,
+  maintenant: Date,
+): SerieVitale {
+  const fenetre = derniersJours(jours, maintenant);
+  const points = fenetre.map((jour) => ({ jour, valeur: Math.max(0, Math.round(Number(comptes[jour]) || 0)) }));
+  return {
+    points,
+    delta: points.reduce((somme, p) => somme + p.valeur, 0),
+    nature: 'flux',
+  };
+}
+
+/**
  * STOCK — le cumul des créations, jour par jour.
  *
  * Chaque point vaut « combien existaient à la fin de ce jour-là », en ne

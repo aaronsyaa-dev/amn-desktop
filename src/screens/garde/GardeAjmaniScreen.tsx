@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { motion, useReducedMotion } from 'framer-motion';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { PoulsBadge } from '../../components/garde/GardeUi';
 import { garde } from '../../lib/garde';
@@ -38,6 +39,9 @@ export function GardeAjmaniScreen() {
   const [busy, setBusy] = useState(false);
   const [catalogue, setCatalogue] = useState(false);
   const bas = useRef<HTMLDivElement | null>(null);
+  /* Une bulle qui arrive glisse d'un souffle ; sans mouvement demandé, elle apparaît simplement. */
+  const mouvementReduit = useReducedMotion();
+  const arrivee = mouvementReduit ? {} : { initial: { opacity: 0, y: 6 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.22, ease: 'easeOut' as const } };
 
   const charger = useCallback(async () => {
     try {
@@ -135,7 +139,7 @@ export function GardeAjmaniScreen() {
               </span>
             </li>
             {fil.map((m, i) => (
-              <li key={`f${i}`} className={`max-w-[85%] whitespace-pre-line rounded-lg border px-3 py-2 text-[13px] leading-relaxed ${m.de === 'moi' ? 'self-end border-border-strong bg-bg text-text-primary' : 'self-start border-border bg-surface text-text-primary'}`} data-chef-reponse={m.de === 'chef' ? '' : undefined}>
+              <motion.li key={`f${i}`} {...arrivee} className={`max-w-[85%] whitespace-pre-line rounded-lg border px-3 py-2 text-[13px] leading-relaxed ${m.de === 'moi' ? 'self-end border-border-strong bg-bg text-text-primary' : 'self-start border-border bg-surface text-text-primary'}`} data-chef-reponse={m.de === 'chef' ? '' : undefined}>
                 {m.texte}
                 {m.confirmation && m.original && (
                   <span className="mt-2 flex gap-2">
@@ -143,7 +147,7 @@ export function GardeAjmaniScreen() {
                     <button type="button" onClick={() => setFil((f) => [...f, { de: 'chef', texte: t('garde.bureau.annuler') }])} className="border border-border px-2.5 py-1 text-xs text-text-muted">{t('garde.bureau.annuler')}</button>
                   </span>
                 )}
-              </li>
+              </motion.li>
             ))}
           </ol>
         )}

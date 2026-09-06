@@ -50,11 +50,12 @@ interface Serie {
   nature: 'flux' | 'stock';
 }
 
-const { cleJour, derniersJours, serieFlux, serieStock, phraseDelta, litLeNombre, traceSerie } =
+const { cleJour, derniersJours, serieFlux, serieFluxComptee, serieStock, phraseDelta, litLeNombre, traceSerie } =
   await loadFromSrc<{
     cleJour: (d: Date) => string;
     derniersJours: (n: number, m: Date) => string[];
     serieFlux: (dates: unknown[], jours: number, m: Date) => Serie;
+    serieFluxComptee: (comptes: Record<string, number>, jours: number, m: Date) => Serie;
     serieStock: (dates: unknown[], jours: number, m: Date) => Serie;
     phraseDelta: (s: Serie) => string;
     litLeNombre: (n: number) => string;
@@ -105,6 +106,16 @@ dit('un flux compte par jour, dans la fenêtre seulement', () => {
   assert.equal(s.points[6].valeur, 2, 'deux aujourd’hui');
   assert.equal(s.points[3].valeur, 1, 'un le 12');
   assert.equal(s.delta, 3, 'le delta est le total de la fenêtre — le 1er mars n’y est pas');
+});
+
+dit('un flux déjà compté par le serveur garde la fenêtre : jour absent = zéro, hors fenêtre = rien', () => {
+  const s = serieFluxComptee({ '2026-03-15': 2, '2026-03-12': 1, '2026-03-01': 9, '2026-03-13': -3 }, 7, M);
+  assert.equal(s.points.length, 7);
+  assert.equal(s.points[6].valeur, 2, 'deux aujourd’hui');
+  assert.equal(s.points[3].valeur, 1, 'un le 12');
+  assert.equal(s.points[4].valeur, 0, 'un compte négatif ne se dessine pas');
+  assert.equal(s.delta, 3, 'le 1er mars n’est pas dans la fenêtre');
+  assert.equal(s.nature, 'flux');
 });
 
 dit('une date invalide ne compte pas — plutôt manquer que mentir', () => {

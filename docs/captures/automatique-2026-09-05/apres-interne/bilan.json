@@ -2,44 +2,44 @@
   {
     "surface": "poste",
     "route": "/",
-    "mots": 251,
+    "mots": 250,
     "paragraphesLongs": 0,
     "cartes": 2
   },
   {
     "surface": "poste",
     "route": "/tour",
-    "mots": 790,
+    "mots": 879,
     "paragraphesLongs": 1,
-    "cartes": 12
+    "cartes": 16
   },
   {
     "surface": "poste",
     "route": "/garde",
-    "mots": 242,
+    "mots": 293,
     "paragraphesLongs": 0,
     "cartes": 9
   },
   {
     "surface": "poste",
     "route": "/garde/ajmani",
-    "mots": 1559,
-    "paragraphesLongs": 0,
-    "cartes": 8
+    "mots": 1135,
+    "paragraphesLongs": 2,
+    "cartes": 5
   },
   {
     "surface": "poste",
     "route": "/garde/pile",
-    "mots": 777,
-    "paragraphesLongs": 0,
+    "mots": 405,
+    "paragraphesLongs": 1,
     "cartes": 1
   },
   {
     "surface": "poste",
     "route": "/garde/bureaux/sites",
-    "mots": 1332,
+    "mots": 1121,
     "paragraphesLongs": 0,
-    "cartes": 6
+    "cartes": 5
   },
   {
     "surface": "poste",
@@ -51,65 +51,65 @@
   {
     "surface": "poste",
     "route": "/tasks",
-    "mots": 3299,
+    "mots": 3320,
     "paragraphesLongs": 30,
     "cartes": 0
   },
   {
     "surface": "poste",
     "route": "/tour/organisations",
-    "mots": 151,
+    "mots": 203,
     "paragraphesLongs": 0,
     "cartes": 0
   },
   {
     "surface": "poste",
     "route": "/incidents",
-    "mots": 251,
+    "mots": 250,
     "paragraphesLongs": 0,
     "cartes": 2
   },
   {
     "surface": "telephone",
     "route": "/",
-    "mots": 240,
+    "mots": 241,
     "paragraphesLongs": 1,
     "cartes": 2
   },
   {
     "surface": "telephone",
     "route": "/tour",
-    "mots": 768,
+    "mots": 837,
     "paragraphesLongs": 4,
-    "cartes": 12
+    "cartes": 16
   },
   {
     "surface": "telephone",
     "route": "/garde",
-    "mots": 196,
+    "mots": 241,
     "paragraphesLongs": 0,
     "cartes": 9
   },
   {
     "surface": "telephone",
     "route": "/garde/ajmani",
-    "mots": 1549,
+    "mots": 1120,
     "paragraphesLongs": 2,
-    "cartes": 8
+    "cartes": 5
   },
   {
     "surface": "telephone",
     "route": "/garde/pile",
-    "mots": 781,
-    "paragraphesLongs": 9,
+    "mots": 404,
+    "paragraphesLongs": 3,
     "cartes": 1
   },
   {
     "surface": "telephone",
     "route": "/garde/bureaux/sites",
-    "mots": 1323,
+    "mots": 1112,
     "paragraphesLongs": 1,
-    "cartes": 6
+    "cartes": 5
   },
   {
     "surface": "telephone",
@@ -121,21 +121,21 @@
   {
     "surface": "telephone",
     "route": "/tasks",
-    "mots": 3302,
+    "mots": 3314,
     "paragraphesLongs": 30,
     "cartes": 0
   },
   {
     "surface": "telephone",
     "route": "/tour/organisations",
-    "mots": 118,
+    "mots": 138,
     "paragraphesLongs": 0,
     "cartes": 0
   },
   {
     "surface": "telephone",
     "route": "/incidents",
-    "mots": 240,
+    "mots": 241,
     "paragraphesLongs": 1,
     "cartes": 2
   }
