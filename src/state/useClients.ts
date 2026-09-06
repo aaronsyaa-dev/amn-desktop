@@ -93,9 +93,13 @@ function stripId<T extends { id: unknown; updatedAt?: unknown }>(row: T): Record
 }
 
 export function useClients() {
-  const { upsert, remove, ready, configured, pullFailed } = useSync();
+  const { upsert, remove, ready, configured, pullFailed, useRecordsWithTombstones } = useSync();
   const clientRows = useCollection<StoredClient>('clients');
   const quoteRows = useCollection<StoredQuote>('quotes');
+  // Pour la migration ci-dessous, et pour elle seule : ce qui a EXISTÉ, tombes
+  // comprises. Voir la note sur useRecordsWithTombstones dans SyncContext.
+  const clientTombs = useRecordsWithTombstones('clients');
+  const quoteTombs = useRecordsWithTombstones('quotes');
 
   const clients = useMemo(
     () => clientRows.map(toClient).sort((a, b) => a.name.localeCompare(b.name, 'fr')),
@@ -112,10 +116,18 @@ export function useClients() {
    * known to have succeeded, so an empty in-memory collection caused by a
    * transient amn-api hiccup is never mistaken for "nothing has been migrated
    * yet". Existing records are never overwritten.
+   *
+   * « Existant » inclut les SUPPRIMÉS. Le magasin hérité, lui, ne connaît pas
+   * les tombes : une fiche effacée dans l'espace synchronisé y est toujours,
+   * et l'import la trouvait « inconnue » — elle revenait au lancement
+   * suivant, avec ses devis et son historique, sur chaque poste qui l'avait
+   * eue avant la migration. On compare donc à la liste avec tombes : un
+   * identifiant ou une identité (nom + société) déjà vus, vivants ou
+   * effacés, ne se réimportent pas.
    */
   const importedRef = useRef(false);
-  const rowsRef = useRef({ clients: clientRows, quotes: quoteRows });
-  rowsRef.current = { clients: clientRows, quotes: quoteRows };
+  const rowsRef = useRef({ clients: clientTombs, quotes: quoteTombs });
+  rowsRef.current = { clients: clientTombs, quotes: quoteTombs };
   // Le magasin hérité est celui de CE poste — nos fiches, dans notre base
   // SQLite locale ou notre localStorage. L'importer depuis le dossier d'une
   // cliente y déverserait nos clients à nous : une migration devenue une fuite.
@@ -141,7 +153,7 @@ export function useClients() {
       const identity = (name: unknown, company: unknown) =>
         `${String(name ?? '').trim().toLowerCase()}|${String(company ?? '').trim().toLowerCase()}`;
       const knownIdentities = new Set(
-        rowsRef.current.clients.map((r) => identity(r.name, r.company)),
+        rowsRef.current.clients.map((r) => identity(r.data.name, r.data.company)),
       );
       for (const c of legacyClients) {
         if (known.has(String(c.id))) continue;

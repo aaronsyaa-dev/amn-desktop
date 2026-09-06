@@ -206,6 +206,16 @@ interface SyncContextValue {
   onlineEmails: Set<string>;
   /** Live, non-deleted records of a collection. */
   useRecords: (collection: SyncedCollection) => RemoteRecord[];
+  /**
+   * Tous les enregistrements d'une collection, PIERRES TOMBALES COMPRISES.
+   *
+   * À n'utiliser que pour répondre à « cet identifiant a-t-il déjà existé ? ».
+   * La migration des magasins hérités (useClients) se posait la question sur
+   * la liste FILTRÉE : une fiche supprimée n'y figurait plus, donc elle
+   * n'était pas « connue », donc elle était réimportée — à chaque lancement,
+   * avec ses devis. La suppression ne survivait pas au redémarrage.
+   */
+  useRecordsWithTombstones: (collection: SyncedCollection) => RemoteRecord[];
   upsert: (collection: SyncedCollection, id: string, data: Record<string, unknown>) => Promise<void>;
   remove: (collection: SyncedCollection, id: string) => Promise<void>;
   /** True if this record id was written by *this* client (to suppress self-notifications). */
@@ -457,6 +467,11 @@ export function SyncProvider({
     [store],
   );
 
+  const useRecordsWithTombstones = useCallback(
+    (collection: SyncedCollection): RemoteRecord[] => Object.values(store[collection] ?? {}),
+    [store],
+  );
+
   const isLocalWrite = useCallback(
     (collection: SyncedCollection, id: string) => localWrites.current.has(`${collection}:${id}`),
     [],
@@ -470,12 +485,13 @@ export function SyncProvider({
       connectionStatus,
       onlineEmails,
       useRecords,
+      useRecordsWithTombstones,
       upsert,
       remove,
       isLocalWrite,
       onRemoteChange,
     }),
-    [ready, configured, pullFailed, connectionStatus, onlineEmails, useRecords, upsert, remove, isLocalWrite, onRemoteChange],
+    [ready, configured, pullFailed, connectionStatus, onlineEmails, useRecords, useRecordsWithTombstones, upsert, remove, isLocalWrite, onRemoteChange],
   );
 
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;
