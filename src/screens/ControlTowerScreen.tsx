@@ -447,140 +447,78 @@ export const ACCESS_VERB: Record<string, string> = {
 
 
 /**
- * LES RONDES DE FOND — ce que la supervision a réellement fait (BLOC F).
+ * LA GARDE, DE FOND — une seule source de vérité (BLOC 0 de l'Automatique).
  *
- * Aaron demandait : « les scanners etc, ça doit vraiment pouvoir tourner en
- * fond. » Elles tournaient déjà côté serveur — mais rien, nulle part, ne
- * permettait de le CONSTATER, et une supervision qu'on doit croire sur parole
- * n'est pas une supervision. Ce panneau est la réponse observable.
+ * Ce panneau lisait `monitor_runs`, la table de l'ancien ordonnanceur, que la
+ * Garde ne remplit pas : la Tour disait « 6 en retard sur 7, passée il y a
+ * 15 h » pendant que la Salle disait « dernière ronde il y a 1 min ». Il lit
+ * désormais la même chose que la Salle — le battement du Capitaine et ses
+ * rondes — par `/v1/admin/supervision`, qui le dérive de la Garde.
  *
- * Chaque ligne dit la périodicité voulue, la dernière exécution réelle et si la
- * ronde est en retard. Le verdict de retard vient du SERVEUR : c'est lui qui
- * connaît sa propre horloge, et deux horloges qui divergent donneraient deux
- * verdicts pour la même ronde.
- *
- * Le point ne bat que sur une ronde à l'heure. Une ronde en retard reste fixe —
- * un point qui continuerait de battre dirait « ça tourne » au moment précis où
- * ça ne tourne plus, ce qui est exactement le mensonge qu'une animation ne doit
- * jamais commettre.
+ * Et il dit peu : le battement, le nombre de gardes, les retards s'il y en a,
+ * la dernière interruption s'il y en a eu. Le détail est dans la Salle. Un
+ * indicateur d'état ne bouge que quand l'état change : la lecture est faite
+ * toutes les minutes, et le rendu ne change que si le texte change.
  */
 function SupervisionPanel() {
   const [state, setState] = useState<SupervisionState | null>(null);
   const [failed, setFailed] = useState(false);
-  // L'heure de la LECTURE, pas celle du rendu : c'est ce qu'on attesterait
-  // devant quelqu'un qui demande « c'est à jour ? ».
-  const [readAt, setReadAt] = useState(() => new Date());
 
   useEffect(() => {
     let alive = true;
     const load = () =>
       bridge()
         .remote.admin.supervision()
-        .then((s) => {
-          if (!alive) return;
-          setState(s);
-          setReadAt(new Date());
-        })
-        .catch(() => {
-          if (alive) setFailed(true);
-        });
+        .then((s) => { if (alive) { setState(s); setFailed(false); } })
+        .catch(() => { if (alive && !state) setFailed(true); });
     void load();
-    // Une relecture par minute : les périodicités vont de la minute à la
-    // journée, donc rafraîchir plus vite ne montrerait rien de plus.
     const id = window.setInterval(() => void load(), 60_000);
-    return () => {
-      alive = false;
-      window.clearInterval(id);
-    };
+    return () => { alive = false; window.clearInterval(id); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (failed || !state) return null;
-
-  const late = state.sweeps.filter((s) => s.overdue).length;
-
-  /*
-    CE QUI FAISAIT « FAUX » (BLOC B), second point : L'ABSENCE DE PROVENANCE.
-
-    Un vrai relevé dit toujours d'où il vient et quand il a été pris. Sans ça,
-    un chiffre juste et un chiffre inventé se ressemblent — et c'est exactement
-    la sensation décrite : « tout est faux dessus, même si c'est vrai ».
-
-    Ce panneau lisait déjà des données réelles, mais il ne les ATTESTAIT pas. Il
-    dit maintenant depuis combien de temps le serveur tourne et quand cette
-    lecture a été faite. Ce n'est pas une décoration de plus : c'est ce qui
-    transforme un affichage en relevé.
-  */
-  const uptime = state.uptimeSeconds;
-  const uptimeLabel =
-    uptime < 3600
-      ? `${Math.max(1, Math.round(uptime / 60))} min`
-      : uptime < 86400
-        ? `${Math.round(uptime / 3600)} h`
-        : `${Math.round(uptime / 86400)} j`;
+  const b = state.battement;
+  const retards = b?.enRetard ?? state.sweeps.filter((s) => s.overdue).map((s) => ({ agent: s.name, nom: SWEEP_LABELS[s.name] ?? s.name, retardMs: 0 }));
+  const dernier = b?.dernierBattementAt ?? state.sweeps.map((s) => s.lastRunAt).filter(Boolean).sort().at(-1) ?? null;
+  const vivante = Boolean(dernier) && Date.now() - Date.parse(dernier as string) < 5 * 60_000;
+  const interruption = b?.derniereInterruption ?? null;
 
   return (
-    <section className="panel panel-ticks">
+    <section className="panel panel-ticks" aria-label="La Garde, de fond" data-garde-fond={retards.length}>
       <header className="panel-head flex flex-wrap items-center gap-2 px-4 py-2.5">
         <Radar size={14} strokeWidth={1.75} className="text-text-secondary" />
-        <h2 className="mr-auto text-[13px] font-semibold text-text-primary">Rondes de fond</h2>
-        <span className="eyebrow">
-          {late === 0
-            ? `${state.sweeps.length} à l’heure`
-            : `${late} en retard sur ${state.sweeps.length}`}
-        </span>
+        <h2 className="mr-auto text-[13px] font-semibold text-text-primary">La Garde, de fond</h2>
+        <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${retards.length > 0 ? 'bg-warning' : vivante ? 'bg-success live-dot' : 'bg-text-muted'}`} aria-hidden />
+        <span className="eyebrow">{retards.length === 0 ? (vivante ? 'à l’heure' : 'sans battement') : `${retards.length} en retard`}</span>
       </header>
-
-      {/* La provenance, sous l'en-tête et avant les chiffres : qui répond, depuis
-          quand, et à quelle heure cette lecture a été faite. */}
-      <p className="eyebrow border-b border-border px-4 py-1.5">
-        amn-api · en service depuis {uptimeLabel} · lu à {readAt.toLocaleTimeString('fr-FR')}
-      </p>
-
-      <ul className="divide-y divide-border">
-        {state.sweeps.map((sweep) => (
-          <li key={sweep.name} className="flex items-center gap-3 px-4 py-2">
-            <span
-              className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${
-                sweep.overdue ? 'bg-warning' : 'bg-success live-dot'
-              }`}
-              aria-hidden
-            />
-            <span className="w-36 flex-shrink-0 truncate font-mono text-[11px] text-text-primary">
-              {SWEEP_LABELS[sweep.name] ?? sweep.name}
-            </span>
-            {/* `whitespace-nowrap` : à cette graisse et cet interlettrage,
-                « toutes les 15 min » repassait à la ligne dans sa colonne et
-                chevauchait la ligne suivante. Vu sur une capture réelle, pas
-                dans le code. La périodicité est donc dite courte. */}
-            <span className="eyebrow w-20 flex-shrink-0 whitespace-nowrap" title="Périodicité voulue">
-              {everyLabel(sweep.everyMs)}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-[11px] text-text-secondary">
-              {sweep.lastRunAt ? `passée ${relativeTime(sweep.lastRunAt)}` : 'jamais exécutée'}
-            </span>
-            {sweep.overdue && (
-              <span className="flex-shrink-0 font-mono text-[9px] uppercase tracking-wider text-warning">
-                {/* « Due » était le seul mot anglais de cet écran, et il n'a
-                    même pas le même sens en français. */}
-                En retard
-              </span>
-            )}
-          </li>
-        ))}
-      </ul>
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3">
+        <p className="text-[13px] text-text-primary">
+          {dernier ? `Dernier battement ${relativeTime(dernier)}` : 'Aucun battement encore'}
+          {b ? <span className="text-text-secondary"> · {b.agents} gardes</span> : null}
+        </p>
+        <Link to="/garde" className="eyebrow text-text-secondary hover:text-text-primary">Voir la Salle →</Link>
+      </div>
+      {retards.length > 0 && (
+        <ul className="divide-y divide-border border-t border-border">
+          {retards.map((r) => (
+            <li key={r.agent} className="flex items-center gap-3 px-4 py-2 text-[12px]">
+              <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-warning" aria-hidden />
+              <span className="min-w-0 flex-1 truncate text-text-primary">{r.nom}</span>
+              <span className="eyebrow">{r.retardMs > 0 ? `en retard de ${everyLabel(r.retardMs)}` : 'en retard'}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {interruption && Date.now() - Date.parse(interruption.a) < 48 * 3_600_000 && (
+        <p className="eyebrow border-t border-border px-4 py-2 text-warning" data-garde-interruption>
+          interrompue {everyLabel(interruption.dureeMs)}, reprise {relativeTime(interruption.a)}
+        </p>
+      )}
     </section>
   );
 }
 
-/**
- * Les noms internes des rondes ne sont pas des phrases.
- *
- * `escalation` manquait : la ronde a été ajoutée au serveur sans passer par
- * ici, et l'écran affichait donc « escalation » en anglais et en minuscules,
- * au milieu de six libellés français capitalisés. Le repli `?? sweep.name` est
- * un bon repli — il montre quelque chose plutôt que rien — mais il ne se
- * signale pas, et personne ne relit une liste qui a l'air de marcher.
- */
 const SWEEP_LABELS: Record<string, string> = {
   heartbeat: 'Battements',
   escalation: 'Escalade',
@@ -591,10 +529,10 @@ const SWEEP_LABELS: Record<string, string> = {
   dependencies: 'Dépendances',
 };
 
-/** Une périodicité en millisecondes, dite comme on la dirait à voix haute. */
+/** Une durée en millisecondes, dite comme on la dirait à voix haute. */
 function everyLabel(ms: number): string {
   const minutes = Math.round(ms / 60000);
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 60) return `${Math.max(1, minutes)} min`;
   const hours = Math.round(minutes / 60);
   if (hours < 24) return `${hours} h`;
   return `${Math.round(hours / 24)} j`;

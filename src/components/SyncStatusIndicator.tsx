@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useSync } from '../state/SyncContext';
 import { poserSourceDuFlux } from '../lib/fluxVisible';
 import { useLangue } from '../i18n';
@@ -12,7 +12,22 @@ import { useReprise } from '../lib/reprise';
 export function SyncStatusIndicator() {
   const { connectionStatus } = useSync();
   const { t } = useLangue();
-  const reprise = useReprise();
+  const repriseBrute = useReprise();
+  /*
+    UN INDICATEUR D'ÉTAT NE BOUGE QUE QUAND L'ÉTAT CHANGE (Bloc 0 de
+    l'Automatique). Une lecture de fond qui rencontre un 502 et réussit à la
+    reprise suivante faisait passer ce badge par « reconnexion en cours »
+    pendant une seconde — et, les lectures de fond étant régulières, il
+    clignotait à leur rythme. « Reconnexion » ne se dit désormais que si
+    l'attente dure plus de deux secondes, et l'état stable revient sans
+    saccade.
+  */
+  const [reprise, setReprise] = useState(false);
+  useEffect(() => {
+    if (!repriseBrute) { setReprise(false); return; }
+    const id = window.setTimeout(() => setReprise(true), 2000);
+    return () => window.clearTimeout(id);
+  }, [repriseBrute]);
 
   /*
     LA SOURCE DU FLUX VISIBLE : c'est ici que la donnée entre dans le poste,

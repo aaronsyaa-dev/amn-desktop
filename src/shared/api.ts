@@ -335,6 +335,10 @@ export interface SupervisionSweep {
 
 export interface SupervisionState {
   uptimeSeconds: number;
+  /** `garde` quand la Garde tourne (les rondes de fond sont les siennes), `moniteurs` sinon. */
+  source?: 'garde' | 'moniteurs';
+  /** Le battement du Capitaine — la même source que la Salle. */
+  battement?: { actif: boolean; dernierBattementAt: string | null; depuisMs: number | null; tickMs: number; agents: number; enRetard: { agent: string; nom: string; retardMs: number }[]; derniereInterruption: { de: string; a: string; dureeMs: number; texte?: string } | null; at: string } | null;
   sweeps: SupervisionSweep[];
 }
 
