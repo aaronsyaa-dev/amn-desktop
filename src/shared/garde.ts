@@ -240,6 +240,8 @@ export interface GardeAccueil {
   ordres: { id: string; auteurEmail: string; cible: string; texte: string; intention: string | null; etat: string; reponse: string | null; createdAt: string }[];
   /** Bloc 11 : ce qu'Ajmani a dit de lui-même aujourd'hui, sur combien ; ce qu'il retient pour demain. */
   budget: { jour: string; dites: number; max: number; retenues: number; reste: number };
+  /** Le cerveau (Claude, côté serveur) : en ligne ou non, pourquoi, et son budget du mois. Absent sur un serveur d'avant. */
+  cerveau?: { actif: boolean; raison: 'sans_cle' | 'budget' | null; modele: string; mois: string; budget: { eur: number; cout: number; appels: number; rejets: number; epuise: boolean } } | null;
   /** Bloc 12 : la clôture d'hier soir, rappelée une fois au matin. */
   cloture: { at: string; par: string; reste: string; ouvertes: number; graves: number; demandes: number; rondesNuit: number } | null;
   at: string;

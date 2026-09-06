@@ -213,6 +213,19 @@ export function GardeAjmaniScreen() {
               </div>
             )}
           </section>
+          {/* Son cerveau : en ligne ou non, et ce qu'il a coûté ce mois-ci. Sans clé, il le dit ; il ne se règle pas d'ici (la clé vit sur le serveur). */}
+          {acc?.cerveau !== undefined && (
+            <section aria-label={t('garde.chef.cerveau')} data-cerveau={acc.cerveau ? (acc.cerveau.actif && !acc.cerveau.budget.epuise ? 'actif' : acc.cerveau.raison ?? 'inactif') : 'absent'}>
+              <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.chef.cerveau')}</h2>
+              <p className="mt-1 text-[13px] text-text-primary">
+                {!acc.cerveau ? t('garde.chef.cerveauAbsent')
+                  : acc.cerveau.raison === 'sans_cle' ? t('garde.chef.cerveauSansCle')
+                    : acc.cerveau.raison === 'budget' ? t('garde.chef.cerveauBudget', { cout: acc.cerveau.budget.cout, eur: acc.cerveau.budget.eur })
+                      : t('garde.chef.cerveauActif', { cout: acc.cerveau.budget.cout, eur: acc.cerveau.budget.eur, appels: acc.cerveau.budget.appels })}
+              </p>
+              {acc.cerveau && acc.cerveau.budget.rejets > 0 && <p className="text-[11px] text-text-muted">{t('garde.chef.cerveauRejets', { n: acc.cerveau.budget.rejets })}</p>}
+            </section>
+          )}
         </div>
       </details>
     </section>
