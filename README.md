@@ -112,6 +112,11 @@ Données partagées :
   sert contre un faux amn-api qui garde son état, exporte depuis un vrai
   Chromium, vérifie le fichier, efface des enregistrements côté serveur, puis
   restaure et vérifie qu'ils sont revenus. Quelques minutes.
+- `npm run check:outbox` — la file de reprise hors ligne (`src/state/outbox.ts`),
+  exercée en Node avec un stockage en mémoire : ordre, remplacement, arrêt sur
+  panne réseau, poursuite sur refus du serveur, plafond de cinq refus, clé
+  propre à l'organisation. Une seconde. Avant cette file, une écriture faite
+  hors ligne n'atteignait jamais amn-api — la pastille promettait le contraire.
 
 ## Stack
 

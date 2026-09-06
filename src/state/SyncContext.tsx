@@ -8,13 +8,15 @@ import React, {
   useState,
 } from 'react';
 import { bridge } from '../lib/bridge';
+import { enqueue, flushOutbox, outboxCounts, outboxKey, readOutbox } from './outbox';
 import { reportGuestQuotaError } from './guestQuotaStore';
 import { useAuth } from '../auth/AuthContext';
-import type {
-  PresenceEntry,
-  RemoteConnectionStatus,
-  RemoteRecord,
-  SyncedCollection,
+import {
+  API_UNREACHABLE_PREFIX,
+  type PresenceEntry,
+  type RemoteConnectionStatus,
+  type RemoteRecord,
+  type SyncedCollection,
 } from '../shared/api';
 
 /**
@@ -204,6 +206,14 @@ interface SyncContextValue {
   pullFailed: boolean;
   connectionStatus: RemoteConnectionStatus;
   onlineEmails: Set<string>;
+  /**
+   * Écritures faites hors ligne qui attendent encore le réseau. Ce chiffre
+   * est ce que la pastille affiche à la place de la promesse d'avant — voir
+   * src/state/outbox.ts pour la file, et pourquoi elle n'existait pas.
+   */
+  pendingWrites: number;
+  /** Écritures que le serveur a refusées cinq fois : gardées, montrées, plus rejouées. */
+  rejectedWrites: number;
   /** Live, non-deleted records of a collection. */
   useRecords: (collection: SyncedCollection) => RemoteRecord[];
   /**
@@ -250,7 +260,18 @@ export function SyncProvider({
    */
   scope?: string;
 }) {
-  const { user } = useAuth();
+  const { user, org } = useAuth();
+  // La file de reprise est propre à l'organisation ET au contexte client :
+  // une autre organisation sur ce poste ne doit jamais la rejouer.
+  const outboxKeyRef = useRef(outboxKey(org?.id ?? 'local', scope));
+  outboxKeyRef.current = outboxKey(org?.id ?? 'local', scope);
+  const [pendingWrites, setPendingWrites] = useState(0);
+  const [rejectedWrites, setRejectedWrites] = useState(0);
+  const refreshOutboxCounts = useCallback(() => {
+    const { pending, rejected } = outboxCounts(readOutbox(window.localStorage, outboxKeyRef.current));
+    setPendingWrites(pending);
+    setRejectedWrites(rejected);
+  }, []);
   const [store, setStore] = useState<Store>(() => {
     const initial: Store = {};
     for (const c of SYNCED_COLLECTIONS) initial[c] = toMap(readMirror(scope, c));
@@ -312,6 +333,27 @@ export function SyncProvider({
     // startup and again whenever the connection is (re)established, so any
     // changes the other operator made while we were offline are picked up.
     const pullAll = async () => {
+      // D'abord ce que CE poste doit au serveur, ensuite ce que le serveur
+      // nous doit. Dans l'autre ordre, un enregistrement modifié ici hors
+      // ligne serait écrasé par sa version périmée du serveur, puis renvoyé
+      // — et une suppression hors ligne perdrait contre un `updatedAt` plus
+      // récent de l'autre opérateur.
+      try {
+        const flushed = await flushOutbox(
+          window.localStorage,
+          outboxKeyRef.current,
+          { upsert: remote.upsertRecord, remove: remote.deleteRecord },
+          { unreachablePrefix: API_UNREACHABLE_PREFIX },
+        );
+        for (const saved of flushed.sent) {
+          localWrites.current.add(`${saved.collection}:${saved.id}`);
+          if (active) applyRecords(saved.collection as SyncedCollection, [saved]);
+        }
+      } catch {
+        /* la file reste telle quelle ; le prochain rattrapage réessaiera */
+      }
+      if (active) refreshOutboxCounts();
+
       let anyFailed = false;
       await Promise.all(
         SYNCED_COLLECTIONS.map(async (collection) => {
@@ -334,6 +376,7 @@ export function SyncProvider({
       if (active) setOnlineEmails(new Set(presence.filter((p) => p.online).map((p) => p.email)));
     };
 
+    refreshOutboxCounts();
     (async () => {
       const status = await remote.getConnectionStatus().catch(() => 'unconfigured' as const);
       if (!active) return;
@@ -411,7 +454,7 @@ export function SyncProvider({
       window.removeEventListener('focus', refreshIfStale);
       window.removeEventListener('online', refreshIfStale);
     };
-  }, [applyRecords]);
+  }, [applyRecords, refreshOutboxCounts]);
 
   const upsert = useCallback(
     async (collection: SyncedCollection, id: string, data: Record<string, unknown>) => {
@@ -433,11 +476,15 @@ export function SyncProvider({
           const saved = await bridge().remote.upsertRecord(collection, id, stamped);
           applyRecords(collection, [saved]); // adopt server timestamp
         } catch {
-          /* offline: mirror keeps the optimistic record; will re-sync later */
+          // Hors ligne, ou refus : le miroir garde la version optimiste, et
+          // la file de reprise garde l'écriture jusqu'au prochain rattrapage.
+          // Avant, ce bloc disait « will re-sync later » et rien ne le faisait.
+          enqueue(window.localStorage, outboxKeyRef.current, { collection, id, data: stamped }, optimistic.updatedAt);
+          refreshOutboxCounts();
         }
       }
     },
-    [applyRecords, configured],
+    [applyRecords, configured, refreshOutboxCounts],
   );
 
   const remove = useCallback(
@@ -454,11 +501,15 @@ export function SyncProvider({
         try {
           await bridge().remote.deleteRecord(collection, id);
         } catch {
-          /* offline: tombstone stays in the mirror */
+          // La tombe reste dans le miroir, et la suppression part dans la
+          // file : sans ça, l'autre opérateur qui retouche l'enregistrement
+          // le faisait revenir ici au prochain rattrapage.
+          enqueue(window.localStorage, outboxKeyRef.current, { collection, id, data: null }, tombstone.updatedAt);
+          refreshOutboxCounts();
         }
       }
     },
-    [applyRecords, configured],
+    [applyRecords, configured, refreshOutboxCounts],
   );
 
   const useRecords = useCallback(
@@ -484,6 +535,8 @@ export function SyncProvider({
       pullFailed,
       connectionStatus,
       onlineEmails,
+      pendingWrites,
+      rejectedWrites,
       useRecords,
       useRecordsWithTombstones,
       upsert,
@@ -491,7 +544,7 @@ export function SyncProvider({
       isLocalWrite,
       onRemoteChange,
     }),
-    [ready, configured, pullFailed, connectionStatus, onlineEmails, useRecords, useRecordsWithTombstones, upsert, remove, isLocalWrite, onRemoteChange],
+    [ready, configured, pullFailed, connectionStatus, onlineEmails, pendingWrites, rejectedWrites, useRecords, useRecordsWithTombstones, upsert, remove, isLocalWrite, onRemoteChange],
   );
 
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;
