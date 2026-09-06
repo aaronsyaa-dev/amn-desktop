@@ -44,6 +44,31 @@ interface StoredSession {
   org: OrgIdentity;
 }
 
+/**
+ * Efface le miroir de synchronisation (`amn.sync.*`) si l'organisation qui
+ * s'ouvre n'est pas celle de la session précédente sur ce poste.
+ *
+ * `null` = session locale sans organisation. Aucune session précédente = rien
+ * à purger. Même organisation = on garde : c'est le miroir qui permet de
+ * travailler hors ligne, et il n'appartient qu'à elle.
+ */
+function purgeSyncMirrorIfOrgChanged(nextOrgId: string | null): void {
+  let previous: string | null = null;
+  try {
+    const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
+    previous = raw ? ((JSON.parse(raw) as StoredSession).org?.id ?? null) : null;
+  } catch {
+    previous = null;
+  }
+  const hadRemote = previous !== null;
+  const hadLocal = window.localStorage.getItem(AUTH_STORAGE_KEY) !== null;
+  if (!hadRemote && !hadLocal) return;
+  if (previous === nextOrgId) return;
+  for (const key of Object.keys(window.localStorage)) {
+    if (key.startsWith('amn.sync.')) window.localStorage.removeItem(key);
+  }
+}
+
 /** Voir `AuthContextValue.sessionKind`. */
 export type SessionKind = 'api' | 'local' | null;
 
@@ -186,6 +211,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const nextUser = userFromSession(session);
       const toStore: StoredSession = { token: session.token, user: nextUser, org: session.org };
+      // Le miroir de synchronisation est indexé par POSTE. Si l'organisation
+      // qui se connecte n'est pas celle d'avant, il contient encore les
+      // enregistrements de la précédente : ils s'afficheraient pendant la
+      // première seconde, et tout ce qui relit le miroir pour écrire — la
+      // migration des magasins hérités, une reprise — les rejouerait dans le
+      // tenant suivant. On ne purge QUE sur changement d'organisation : la
+      // même qui revient hors ligne a besoin de son miroir.
+      purgeSyncMirrorIfOrgChanged(session.org.id);
       window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(toStore));
       window.localStorage.removeItem(AUTH_STORAGE_KEY);
       setUser(nextUser);
@@ -218,6 +251,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!result.ok || !result.user) {
       throw new Error(result.error ?? unreachable?.message ?? 'Échec de la connexion.');
     }
+    // Le compte local n'a pas d'organisation amn-api : si un tenant était
+    // ouvert avant, son miroir n'a rien à faire sous une session locale.
+    purgeSyncMirrorIfOrgChanged(null);
     window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(result.user));
     setUser(result.user);
     setOrg(null);
