@@ -99,6 +99,10 @@ export function HomeSoloScreen() {
   );
 
   const hasAnything = appointments.length > 0 || tasks.length > 0 || clients.length > 0;
+  /* Une seule absence parle (EmptyState, règle 3) : la première carte vide le dit, les suivantes se taisent. */
+  const vides = [today.length === 0, openTasks.length === 0, clients.length === 0];
+  const premierVide = vides.indexOf(true);
+  const muet = (i: number) => vides[i] && i !== premierVide;
 
   return (
     <div className="flex flex-col gap-6">
@@ -135,8 +139,9 @@ export function HomeSoloScreen() {
           s'affiche tant qu'il n'y a rien à signaler. */}
       <AttentionPanel state={attention} />
 
+      {/* L'espace vide ne montre pas trois cartes vides : la carte de bienvenue est la seule chose à lire, les raccourcis la seule chose à faire. */}
       <StaggerGroup className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <StaggerItem className="lg:col-span-2">
+        {hasAnything && <StaggerItem className="lg:col-span-2">
           <Card
             icon={CalendarDays}
             title="Aujourd’hui"
@@ -157,7 +162,7 @@ export function HomeSoloScreen() {
             )}
 
             {today.length === 0 ? (
-              <Empty>Aucun rendez-vous aujourd’hui.</Empty>
+              <Empty muet={muet(0)}>Aucun rendez-vous aujourd’hui.</Empty>
             ) : (
               <ul className="flex flex-col divide-y divide-border/60">
                 {today.map((appointment) => (
@@ -166,12 +171,12 @@ export function HomeSoloScreen() {
               </ul>
             )}
           </Card>
-        </StaggerItem>
+        </StaggerItem>}
 
-        <StaggerItem>
+        {hasAnything && <StaggerItem>
           <Card icon={CheckSquare} title="À faire" action={isModuleEnabled('tasks') ? { to: '/tasks', label: 'Toutes les tâches' } : undefined}>
             {openTasks.length === 0 ? (
-              <Empty>Rien en attente.</Empty>
+              <Empty muet={muet(1)}>Rien en attente.</Empty>
             ) : (
               <ul className="flex flex-col divide-y divide-border/60">
                 {openTasks.map((task) => (
@@ -185,12 +190,12 @@ export function HomeSoloScreen() {
               </ul>
             )}
           </Card>
-        </StaggerItem>
+        </StaggerItem>}
 
-        <StaggerItem className="lg:col-span-2">
+        {hasAnything && <StaggerItem className="lg:col-span-2">
           <Card icon={Contact} title="Clients" action={isModuleEnabled('clients') ? { to: '/clients', label: 'Toutes les fiches' } : undefined}>
             {clients.length === 0 ? (
-              <Empty>Aucune fiche client pour l’instant.</Empty>
+              <Empty muet={muet(2)}>Aucune fiche client pour l’instant.</Empty>
             ) : (
               <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {clients.slice(0, 6).map((client) => (
@@ -214,9 +219,9 @@ export function HomeSoloScreen() {
               </ul>
             )}
           </Card>
-        </StaggerItem>
+        </StaggerItem>}
 
-        <StaggerItem>
+        {hasAnything && <StaggerItem>
           <Card icon={FileText} title="Raccourcis">
             {/*
               Un raccourci vers un module fermé à cette organisation est une
@@ -231,7 +236,7 @@ export function HomeSoloScreen() {
               {isModuleEnabled('reports') && <Shortcut to="/reports" label="Rédiger un compte-rendu" />}
             </div>
           </Card>
-        </StaggerItem>
+        </StaggerItem>}
       </StaggerGroup>
     </div>
   );
@@ -262,12 +267,12 @@ function FirstRunCard() {
     const modules = org?.modules ?? null;
     const ouvert = (m: string) => modules === null || modules.includes(m);
     const gestes = [
-      { module: 'agenda', to: '/agenda', label: 'Poser un premier rendez-vous', fort: true },
-      { module: 'clients', to: '/clients', label: 'Créer une première fiche client', fort: false },
-      { module: 'invoices', to: '/facturation', label: 'Écrire un premier devis', fort: false },
-      { module: 'orders', to: '/commandes', label: 'Enregistrer une première commande', fort: false },
-      { module: 'notes', to: '/notes', label: 'Prendre une première note', fort: false },
-      { module: 'tasks', to: '/tasks', label: 'Poser une première tâche', fort: false },
+      { module: 'agenda', to: '/agenda', label: 'Poser un premier rendez-vous', fort: true, icone: CalendarDays },
+      { module: 'clients', to: '/clients', label: 'Créer une première fiche client', fort: false, icone: Contact },
+      { module: 'invoices', to: '/facturation', label: 'Écrire un premier devis', fort: false, icone: FileText },
+      { module: 'orders', to: '/commandes', label: 'Enregistrer une première commande', fort: false, icone: FileText },
+      { module: 'notes', to: '/notes', label: 'Prendre une première note', fort: false, icone: FileText },
+      { module: 'tasks', to: '/tasks', label: 'Poser une première tâche', fort: false, icone: CheckSquare },
     ].filter((g) => ouvert(g.module));
     // Le premier proposé est le geste fort ; il hérite du bouton plein.
     return gestes.slice(0, 3).map((g, i) => ({ ...g, fort: i === 0 }));
@@ -289,8 +294,7 @@ function FirstRunCard() {
           : 'Votre espace est prêt, et vide — c’est normal.'}
       </h2>
       <p className="mt-1 max-w-prose text-sm text-text-secondary">
-        Tout ce que vous créez ici n’appartient qu’à votre organisation. Commencez par le geste
-        qui vous ressemble le plus :
+        Commencez par le geste qui vous ressemble :
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         {ouverts.map((g) => (
@@ -303,7 +307,7 @@ function FirstRunCard() {
                 : 'flex items-center gap-1.5 border border-border px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary'
             }
           >
-            {g.fort ? <Plus size={14} strokeWidth={2} /> : <Contact size={14} strokeWidth={1.75} />}
+            {g.fort ? <Plus size={14} strokeWidth={2} /> : <g.icone size={14} strokeWidth={1.75} />}
             {g.label}
           </Link>
         ))}
@@ -377,8 +381,8 @@ function Card({
   );
 }
 
-function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="py-2 font-mono text-xs text-text-muted">{children}</p>;
+function Empty({ children, muet = false }: { children: React.ReactNode; muet?: boolean }) {
+  return <p className={`py-2 font-mono text-xs text-text-muted ${muet ? 'opacity-60' : ''}`}>{children}</p>;
 }
 
 function Shortcut({ to, label }: { to: string; label: string }) {

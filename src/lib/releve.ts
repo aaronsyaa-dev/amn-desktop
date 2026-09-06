@@ -151,10 +151,10 @@ export function construireReleve({
     nouvelles.push(
       anglais
         ? chaud
-          ? 'Nothing new while you were away'
+          ? 'Nothing new while you were away; everything waited for you'
           : 'No arrivals during the absence'
         : chaud
-          ? 'Rien de nouveau pendant votre absence'
+          ? 'Rien de nouveau pendant votre absence ; tout vous a attendu'
           : 'Aucune arrivée pendant l’absence',
     );
   }

@@ -16,6 +16,7 @@ import {
   Printer,
   ReceiptEuro,
   X,
+  Contact,
 } from 'lucide-react';
 import { useClients } from '../state/useClients';
 import { relativeTime } from '../lib/time';
@@ -201,14 +202,15 @@ export function ClientsScreen() {
         }
       />
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[300px_1fr]">
-        <ClientList
+      <div className={`grid min-h-0 flex-1 grid-cols-1 gap-4 ${clients.length === 0 && !loading ? '' : 'md:grid-cols-[300px_1fr]'}`}>
+        {/* Un répertoire vide est une boîte creuse : il n'apparaît qu'avec sa première fiche. */}
+        {(clients.length > 0 || loading) && <ClientList
           clients={clients}
           sites={sites}
           loading={loading}
           selectedId={selectedId}
           onSelect={setSelectedId}
-        />
+        />}
         {selected ? (
           <ClientDetail
             key={selected.id}
@@ -234,6 +236,7 @@ export function ClientsScreen() {
               <p className="eyebrow">Chargement…</p>
             ) : (
               <FirstRun
+                icone={Contact}
                 title={tr('hist.clients.aucuneFicheClient')}
                 action={{ label: tr('hist.clients.creerUneFiche'), onClick: () => setAdding(true) }}
               >{tr('hist.clients.uneFicheRassembleLes')}</FirstRun>

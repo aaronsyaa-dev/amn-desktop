@@ -30,3 +30,18 @@ Captures dans `docs/captures/automatique-2026-09-05/apres-interne/` (poste et t�
 Auto-notation : Salle 4/5 (deux fois), À votre avis 4/5, Ajmani 4/5. « Est-ce que ça donne envie de lire ? » — la Salle et la pile, oui ; Ajmani reste dépendant de la longueur de ses réponses (voir Bloc 5).
 
 Limite dite : le souffle et le glissement ne se voient pas sur une capture fixe ; ils se vérifient en ouvrant l'écran (classes `sv-souffle-*`, `motion.li`).
+
+## Bloc 4 — L'édition cliente
+
+### Ce qui change
+
+- **Une chose d'abord** : un espace encore vide n'affiche plus trois cartes vides (« Aucun rendez-vous », « Rien en attente », « Aucune fiche ») ni des raccourcis qui répètent la carte de bienvenue. Il affiche la carte de bienvenue, ses trois gestes, et la ligne des points d'attention. Les cartes reviennent avec la première donnée.
+- **Une seule absence parle** : quand l'espace vit mais qu'une carte est vide, la première le dit, les suivantes se taisent (opacité réduite), comme le veut la règle 3 de `EmptyState`.
+- **Le Majordome, un degré plus chaud** : « Rien de nouveau pendant votre absence ; tout vous a attendu » (FR/EN). Le verdict « Tout va bien. » reste tel quel, gardé par `check:releve`.
+- **États vides illustrés, sobrement** : `FirstRun` accepte le glyphe du module, en filet, à la taille du titre. Pas d'image, pas de couleur — un trait qui dit « c'est ici ». Appliqué aux Clients, où le répertoire vide (une boîte creuse) n'apparaît plus avant la première fiche.
+- **Moins de texte** : la carte de bienvenue perd sa phrase juridique (« Tout ce que vous créez ici n'appartient qu'à votre organisation ») — c'est vrai, et c'est dans les conditions ; ce n'est pas ce qu'on lit en ouvrant la porte. Chaque geste porte le bon glyphe (un devis n'a plus l'icône d'une fiche client).
+
+### Mesure
+
+Captures dans `docs/captures/automatique-2026-09-05/apres-business/`. Accueil vide : 4/5 (deux fois) ; Clients vide : 4/5. « Est-ce que ça donne envie de lire ? » — oui pour l'accueil vide, qui tient en une carte.
+Limite dite : les captures sont prises sur un compte d'essai sans données ; l'accueil « vivant » (cartes remplies, une seule absence qui parle) est vérifié par le code et les gardes, pas par une capture.

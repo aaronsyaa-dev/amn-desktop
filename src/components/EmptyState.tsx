@@ -83,20 +83,31 @@ export function EmptyState({
  * facture » est un module qui n'a pas démarré. Le second mérite d'expliquer à
  * quoi sert l'écran ; le premier n'a rien à expliquer et doit rester bref.
  *
- * Même retenue de forme malgré tout : pas de cadre, pas d'icône, deux phrases
- * au plus.
+ * Même retenue de forme malgré tout : pas de cadre, deux phrases au plus.
+ * L'ILLUSTRATION (L'Automatique, Bloc 4) est un trait, pas un décor : le glyphe
+ * du module, en filet, à la taille du titre — il dit « c'est ici que ça se
+ * passe » sans donner au vide la surface d'un contenu. Aucune image, aucune
+ * couleur : un état vide illustré reste un état vide.
  */
 export function FirstRun({
   title,
   children,
   action,
+  icone: Icone,
 }: {
   title: string;
   children: React.ReactNode;
   action?: { label: string; onClick: () => void };
+  /** Le glyphe du module (lucide), en filet. Optionnel : sans lui, rien ne change. */
+  icone?: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
 }) {
   return (
     <div className="max-w-lg py-6">
+      {Icone && (
+        <span className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border text-text-muted" aria-hidden>
+          <Icone size={18} strokeWidth={1.5} />
+        </span>
+      )}
       <p className="text-[15px] font-medium text-text-primary">{title}</p>
       <p className="mt-1.5 text-[13px] leading-relaxed text-text-secondary">{children}</p>
       {action && (
