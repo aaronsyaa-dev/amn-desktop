@@ -21,12 +21,13 @@ await connecter(p, [720, 860]);
 
 // 0. On repart sans mandat : la sonde doit pouvoir rejouer.
 await p.goto(`${BASE}/#/garde/ajmani`); await a(3500);
+await p.locator('main details[data-reglages] summary').click().catch(() => {}); await a(400);
 for (let i = 0; i < 6; i += 1) { const r = p.locator('main section[aria-label="Le mandat"] button', { hasText: 'Retirer' }).first(); if (!(await r.count())) break; await r.click(); await a(1200); }
 
 // 1. Ajmani parle en premier : une proposition, ses gestes.
 await p.goto(`${BASE}/#/garde/ajmani`); await a(3500);
 const parole = await p.evaluate(() => {
-  const s = document.querySelector('main section[aria-label="Il parle en premier"]');
+  const s = document.querySelector('main section[aria-label="La conversation"]');
   const prop = s?.querySelector('[data-proposition]');
   return { cle: prop?.getAttribute('data-proposition'), texte: prop?.textContent?.trim(), gestes: [...(s?.querySelectorAll('a, button') ?? [])].map((b) => b.textContent?.trim()).filter(Boolean), aveux: s?.textContent?.includes('Ce qu’il ne sait pas') };
 });
@@ -34,19 +35,20 @@ ok('1. Ajmani parle en premier, d’une seule proposition', Boolean(parole.cle) 
 console.log('   dit ce qu’il ne sait pas ?', parole.aveux);
 await p.screenshot({ path: `${OUT}/20-garde-ajmani.png` });
 
-// 2. Le guide « Que voulez-vous faire ? » : trois familles, dérivées du Lexique ; une chip envoie son exemple.
+// 2. Le guide « Que voulez-vous faire ? » : derrière « ? », trois familles dérivées du Lexique ; une entrée envoie son exemple.
+await p.locator('main button[aria-label="Que voulez-vous faire ?"]').click(); await a(600);
 const guide = await p.evaluate(() => {
   const s = document.querySelector('main section[aria-label="Que voulez-vous faire ?"]');
   return { familles: [...(s?.querySelectorAll('h3') ?? [])].map((h) => h.textContent?.trim()), entrees: s?.querySelectorAll('li').length ?? 0, chips: [...(s?.querySelectorAll('button[title]') ?? [])].length };
 });
 ok('2. le guide dérivé du Lexique', guide.familles.length === 3 && guide.entrees >= 20 && guide.chips >= 20, `${guide.familles.join(' / ')} · ${guide.entrees} entrées · ${guide.chips} chips`);
 await p.locator('main section[aria-label="Que voulez-vous faire ?"] button[title]', { hasText: 'Qui n’a pas payé' }).first().click(); await a(3000);
-const fil1 = await texte(p, 'main section[aria-label="Que voulez-vous faire ?"] ol');
+const fil1 = await texte(p, 'main section[aria-label="La conversation"] ol');
 ok('   la chip envoie l’exemple et le Capitaine répond', /pay|jour|retard/i.test(fil1), fil1.slice(0, 160));
 // 3. « Je ne sais pas faire cela » : un ordre hors Lexique.
-const champ = p.locator('main section[aria-label="Que voulez-vous faire ?"] input[aria-label="Poser une question, donner un ordre"]');
+const champ = p.locator('main section[aria-label="La conversation"] input[aria-label="Poser une question, donner un ordre"]');
 await champ.fill('Chante-moi une chanson'); await champ.press('Enter'); await a(3000);
-const fil2 = await texte(p, 'main section[aria-label="Que voulez-vous faire ?"] ol');
+const fil2 = await texte(p, 'main section[aria-label="La conversation"] ol');
 ok('3. hors Lexique, il dit qu’il ne sait pas', /pas compris|ne sais pas faire/i.test(fil2), fil2.slice(-200));
 
 // 4. La pile en dossiers : moins de dossiers que de situations ; le plus grave mène.
@@ -75,11 +77,12 @@ if (aConfier) { await confier.click(); await a(2500); }
 const ditMandat = await p.evaluate(() => document.querySelector('main [data-message="pile"]')?.textContent ?? '');
 ok('5. « Décidez seul, désormais » : le mandat est donné et ce qui attendait est décidé', aConfier > 0 && /Ajmani décide seul/.test(ditMandat), ditMandat.slice(0, 160) || 'aucun dossier confiable (tous critiques ou sans recommandation)');
 await p.goto(`${BASE}/#/garde/ajmani`); await a(3000);
+await p.locator('main details[data-reglages] summary').click(); await a(400);
 const mandat = await texte(p, 'main section[aria-label="Le mandat"]');
 ok('   le mandat se lit chez Ajmani, avec « Retirer »', /Retirer/.test(mandat) && !/Aucun mandat/.test(mandat), mandat.slice(0, 200));
 // 6. Le silence se règle.
 await p.locator('main section[aria-label="Le silence"] select').first().selectOption('23'); await a(1500);
-const silence = await texte(p, 'main section[aria-label="Il parle en premier"]');
+const silence = await texte(p, 'main details[data-reglages] summary');
 ok('6. le silence se règle (23 h)', /23 h/.test(silence), silence.match(/\d+ h – \d+ h/)?.[0] ?? '');
 await p.locator('main section[aria-label="Le silence"] select').first().selectOption('22'); await a(1000);
 
@@ -109,9 +112,9 @@ ok('   hors Garde, le panneau redevient Ajmani du poste', !/voix du Capitaine/.t
 await p.keyboard.press('Escape');
 // On dégèle Fleuriste pour laisser la base comme on l'a trouvée.
 await p.goto(`${BASE}/#/garde/ajmani`); await a(2500);
-const c2 = p.locator('main section[aria-label="Que voulez-vous faire ?"] input[aria-label="Poser une question, donner un ordre"]');
+const c2 = p.locator('main section[aria-label="La conversation"] input[aria-label="Poser une question, donner un ordre"]');
 await c2.fill('Tu peux retoucher à Fleuriste'); await c2.press('Enter'); await a(2500);
-const ouiBtn = p.locator('main section[aria-label="Que voulez-vous faire ?"] button', { hasText: 'Oui, faites-le' }).first();
+const ouiBtn = p.locator('main section[aria-label="La conversation"] button', { hasText: 'Oui, faites-le' }).first();
 if (await ouiBtn.count()) { await ouiBtn.click(); await a(2000); }
 await p.context().close();
 

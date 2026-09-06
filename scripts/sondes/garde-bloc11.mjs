@@ -41,6 +41,8 @@ await p.screenshot({ path: `${OUT}/80-ajmani-cloture.png` });
 
 // 2. « Et si ? » : un seuil rejoué sur le mois, au bureau des Sites, sans rien changer.
 await p.goto(`${BASE}/#/garde/bureaux/sites`); await a(3500);
+// Les règles d'un garde sont repliées sous « Détails » (Bloc 1 de l'Automatique) : on les ouvre, comme on le ferait.
+await p.locator('main details:has(form[aria-label="Et si\u202f? tombe"]) > summary').first().click(); await a(500);
 const formEtSi = p.locator('main form[aria-label="Et si ? tombe"]').first();
 ok('2. le bureau des Sites propose « Et si ? » sur la règle qui se rejoue', (await formEtSi.count()) === 1);
 await formEtSi.locator('input[type="number"]').fill('5'); await formEtSi.locator('button[type="submit"]').click(); await a(3000);

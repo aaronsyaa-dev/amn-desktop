@@ -133,6 +133,8 @@ export interface GardeProposition {
   createdAt: string;
 }
 export interface GardeOrdreReponse {
+  /** Au plus trois suites suggérées par le contexte (Bloc 3 de l'Automatique). */
+  suites?: string[];
   ordre: { id: string; etat: string; texte: string };
   intention: string | null;
   params: Record<string, unknown> | null;

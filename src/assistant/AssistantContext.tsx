@@ -8,6 +8,7 @@ import React, {
   useState,
 } from 'react';
 import { generateReport, runAssistant, textToBlocks, type Generate } from './engine';
+import { reformulerSansInventer } from '../lib/reformuler';
 import { spaceForPath } from '../data/spaces';
 import { garde } from '../lib/garde';
 import { t } from '../i18n';
@@ -411,9 +412,12 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         const attente = gardeConfirmationRef.current;
         const oui = /^(oui|ok|d.accord|vas.y|fais.le|faites.le|confirme|allez.y|je confirme)\b/i.test(trimmed);
         (attente && oui ? garde.ordre(attente, true) : garde.ordre(trimmed))
-          .then((r) => {
+          .then(async (r) => {
             gardeConfirmationRef.current = r.confirmation ? trimmed : null;
-            const lignes = [r.question ?? r.reponse];
+            // Là où Ollama tourne, il enrichit la formulation — jamais les faits (Bloc 3 de l'Automatique) : voir reformulerSansInventer.
+            const reponse = r.question ?? r.reponse;
+            const dite = generate && !r.confirmation && !r.question ? await reformulerSansInventer(reponse, generate) : reponse;
+            const lignes = [dite];
             if (r.confirmation) lignes.push('', t('garde.chef.repondezOui'));
             if (r.guide?.length) lignes.push('', t('garde.chef.saisFaire'), ...r.guide.map((g) => `- ${g.libelle} — « ${g.exemple} »`));
             appendAnswer({ kind: 'answer', blocks: textToBlocks(lignes.join('\n')) });
@@ -544,3 +548,4 @@ export function useAssistant(): AssistantContextValue {
   }
   return context;
 }
+
