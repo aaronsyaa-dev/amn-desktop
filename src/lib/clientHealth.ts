@@ -1,7 +1,19 @@
 import type { Client } from '../shared/api';
 import type { DerivedSite } from '../state/RemoteSitesContext';
+import { IS_BUSINESS } from '../edition/edition';
 
 export type ClientHealth = 'good' | 'medium' | 'attention';
+
+/**
+ * La supervision de sites n'existe que dans l'édition interne. Dans
+ * l'édition Business, chaque fiche affichait pourtant un facteur « Sites
+ * supervisés : aucun site lié » en orange et le conseil « Liez au moins un
+ * site supervisé » — vers un écran qui n'existe pas chez la cliente. Le
+ * score, lui, était juste (aucun site = aucun malus) ; c'est le DISCOURS
+ * qui promettait une fonction absente. Quand il n'y a pas de supervision,
+ * la santé ne parle que du dernier échange.
+ */
+const SUPERVISION = !IS_BUSINESS;
 
 const CONTACT_ATTENTION_DAYS = 60;
 const CONTACT_MEDIUM_DAYS = 21;
@@ -43,25 +55,30 @@ export const CLIENT_HEALTH_META: Record<
     label: 'Bon',
     dot: 'bg-success',
     text: 'text-text-primary',
-    hint: 'Contact récent et sites liés opérationnels.',
+    hint: SUPERVISION ? 'Contact récent et sites liés opérationnels.' : 'Contact récent.',
   },
   medium: {
     label: 'Moyen',
     dot: 'bg-warning',
     text: 'text-text-secondary',
-    hint: 'Contact qui date un peu, ou un site lié dégradé — à relancer bientôt.',
+    hint: SUPERVISION
+      ? 'Contact qui date un peu, ou un site lié dégradé — à relancer bientôt.'
+      : 'Contact qui date un peu (21 j+) — à relancer bientôt.',
   },
   attention: {
     label: 'À surveiller',
     dot: 'bg-danger',
     text: 'text-danger',
-    hint: 'Contact ancien (60 j+) ou un site lié hors ligne — action recommandée.',
+    hint: SUPERVISION
+      ? 'Contact ancien (60 j+) ou un site lié hors ligne — action recommandée.'
+      : 'Contact ancien (60 j+) — action recommandée.',
   },
 };
 
 /** One-line, plain-language explanation of what the score combines. */
-export const CLIENT_HEALTH_EXPLAINER =
-  'Santé = ancienneté du dernier échange + état des sites supervisés de ce client.';
+export const CLIENT_HEALTH_EXPLAINER = SUPERVISION
+  ? 'Santé = ancienneté du dernier échange + état des sites supervisés de ce client.'
+  : 'Santé = ancienneté du dernier échange avec ce client.';
 
 export interface HealthFactor {
   label: string;
@@ -114,16 +131,18 @@ export function computeClientHealthBreakdown(
 
   const toImprove: string[] = [];
   if (contactTone !== 'good') toImprove.push('Ajoutez un échange sur la fiche pour rafraîchir le suivi.');
-  if (linked.length === 0) toImprove.push('Liez au moins un site supervisé à ce client.');
-  if (offlineSites.length > 0) toImprove.push(`Traitez le(s) site(s) hors ligne : ${offlineSites.map((s) => s.name).join(', ')}.`);
-  else if (degradedSites.length > 0) toImprove.push(`Vérifiez le(s) site(s) dégradé(s) : ${degradedSites.map((s) => s.name).join(', ')}.`);
+  if (SUPERVISION) {
+    if (linked.length === 0) toImprove.push('Liez au moins un site supervisé à ce client.');
+    if (offlineSites.length > 0) toImprove.push(`Traitez le(s) site(s) hors ligne : ${offlineSites.map((s) => s.name).join(', ')}.`);
+    else if (degradedSites.length > 0) toImprove.push(`Vérifiez le(s) site(s) dégradé(s) : ${degradedSites.map((s) => s.name).join(', ')}.`);
+  }
+
+  const factors: HealthFactor[] = [{ label: 'Dernier échange', value: contactValue, tone: contactTone }];
+  if (SUPERVISION) factors.push({ label: 'Sites supervisés', value: sitesValue, tone: sitesTone });
 
   return {
     health: computeClientHealth(client, sites, now),
-    factors: [
-      { label: 'Dernier échange', value: contactValue, tone: contactTone },
-      { label: 'Sites supervisés', value: sitesValue, tone: sitesTone },
-    ],
+    factors,
     toImprove,
   };
 }
