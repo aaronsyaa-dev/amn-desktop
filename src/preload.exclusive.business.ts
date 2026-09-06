@@ -19,3 +19,15 @@ export const exclusivePreload = {} as unknown as AmnBridge['remote'];
 
 /** Ni veille RSS ni modèle local dans cette édition — voir l'en-tête. */
 export const exclusiveBridge = {} as unknown as Pick<AmnBridge, 'watch' | 'ollama'>;
+
+/**
+ * Pas de contrôle à distance non plus : `window.amn.system` d'une cliente n'a
+ * ni `canBeRemoteControlled` ni `injectRemoteInput`, et le process main n'a
+ * pas le canal (src/main/exclusive.business.ts). Pilotage de la souris et du
+ * clavier du poste = SendInput de user32.dll : ça ne se masque pas, ça
+ * s'enlève.
+ */
+export const exclusiveSystem = {} as unknown as Pick<
+  AmnBridge['system'],
+  'canBeRemoteControlled' | 'injectRemoteInput'
+>;

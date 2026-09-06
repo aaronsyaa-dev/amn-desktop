@@ -46,9 +46,38 @@ export const FORBIDDEN = [
   { pattern: 'G20 Corvetto', why: 'client de démonstration' },
   { pattern: 'Atlas Retail', why: 'client de démonstration' },
 
+  // --- Contrôle à distance ---
+  // `injectRemoteInput` appelle SendInput de user32.dll : la vraie souris, le
+  // vrai clavier, dans toute application du poste. Interne seulement (appel
+  // d'équipe entre les deux opérateurs). Il a été livré sans condition dans le
+  // process main Business jusqu'à l'audit de sécurité : ces deux motifs ne
+  // vivent que dans src/main/remoteInput.ts, donc les trouver dans un bundle
+  // Business (main OU préchargement, passer --dir .vite/build) veut dire que
+  // la couture @edition/mainExclusive a été contournée.
+  { pattern: 'user32.dll', why: 'injection d’entrées — contrôle à distance, interne seulement' },
+  { pattern: 'SendInput', why: 'injection d’entrées — contrôle à distance, interne seulement', caseSensitive: true },
+
   // --- Jetons ---
   { pattern: 'VITE_AMN_API_WEB_TOKEN', why: 'un build cliente n’embarque aucun jeton' },
   { pattern: 'VITE_AMN_API_OPERATOR_TOKEN', why: 'un build cliente n’embarque aucun jeton' },
+];
+
+/**
+ * Ce qui ne doit pas apparaître dans le PROCESS MAIN ni dans le PRÉCHARGEMENT
+ * de l'édition Business — et seulement là.
+ *
+ * `injectRemoteInput` est aussi le nom d'une méthode du pont navigateur
+ * (src/lib/bridge.ts, qui répond « non » faute d'OS) : dans le build web il
+ * est légitime, dans un bundle Electron livré à une cliente il veut dire que
+ * le contrôle à distance est revenu. D'où une liste à part, appliquée par
+ * check-business-main.mjs.
+ */
+export const FORBIDDEN_NODE = [
+  // Le nom du canal IPC (`system:injectRemoteInput`) est une CHAÎNE : il
+  // survit à la minification, contrairement aux identifiants. C'est pour ça
+  // que la liste ne cite pas `isRemoteInputAvailable` ni le nom du module —
+  // un motif qu'un build de production efface de lui-même ne contrôle rien.
+  { pattern: 'injectRemoteInput', why: 'contrôle à distance — le canal IPC' },
 ];
 
 /**

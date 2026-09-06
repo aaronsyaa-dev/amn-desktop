@@ -29,8 +29,10 @@ import {
   type SslStatus,
   type Scan,
   type OutgoingCallSignal,
+  type RemoteInputEvent,
   type TrackerTier,
 } from '../shared/api';
+import { injectRemoteInput, isRemoteInputAvailable } from './remoteInput';
 import { apiCredential, remoteConfig } from './remoteConfig';
 import { apiFetch, type RemoteApiClient } from './remoteApi';
 import { writeScanReportFile } from './scanReports';
@@ -47,6 +49,16 @@ import { ollamaChat, ollamaStatus } from './ollama';
  * rien. Conséquence concrète et vérifiable — dans l'app livrée à une cliente,
  * ces routes n'existent pas dans le bundle ET aucun canal IPC ne les expose,
  * donc même du code renderer malveillant n'aurait rien à appeler.
+ *
+ * Le CONTRÔLE À DISTANCE (B.2) est ici pour la même raison, en plus forte.
+ * `injectRemoteInput` appelle `SendInput` de user32.dll : il déplace la vraie
+ * souris et tape au clavier dans N'IMPORTE QUELLE application du poste. Il
+ * n'a de sens qu'entre les deux opérateurs d'AMN DevSec, pendant un appel
+ * d'équipe — qui n'existe pas dans l'édition Business. Il y était pourtant
+ * enregistré sans condition dans ipc.ts, et exposé par le pont : n'importe
+ * quel script arrivé dans le renderer d'une cliente (une note en markdown mal
+ * échappée aurait suffi) pouvait piloter sa machine. Trouvé par l'audit de
+ * sécurité ; déplacé ici pour que le canal n'existe pas chez elle.
  */
 
 const exclusiveApi = {
@@ -383,6 +395,15 @@ export function registerExclusiveIpc(
   remote: RemoteApiClient,
   broadcastToAll: (channel: string, payload: unknown) => void,
 ): void {
+  // Contrôle à distance (B.2). Le process main exécute sans juger : c'est le
+  // renderer qui tient l'état du consentement et n'envoie des événements que
+  // tant que l'opérateur a accordé la main. Voir l'en-tête pour pourquoi ce
+  // canal n'existe QUE dans cette édition.
+  ipcMain.handle(IPC.systemCanRemoteControl, () => isRemoteInputAvailable());
+  ipcMain.handle(IPC.systemInjectRemoteInput, (_event, input: RemoteInputEvent) =>
+    injectRemoteInput(input),
+  );
+
   ipcMain.handle(IPC.remoteListSites, () => exclusiveApi.listSites());
   ipcMain.handle(
     IPC.remoteSiteEvents,

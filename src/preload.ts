@@ -25,7 +25,7 @@ import {
   type UpdateQuoteInput,
   type UpdateSharedTaskInput,
 } from './shared/api';
-import { exclusiveBridge, exclusivePreload } from '@edition/preloadExclusive';
+import { exclusiveBridge, exclusivePreload, exclusiveSystem } from '@edition/preloadExclusive';
 
 const bridge: AmnBridge = {
   // Vide dans l'édition Business : voir @edition/preloadExclusive.
@@ -150,8 +150,10 @@ const bridge: AmnBridge = {
     getAutoLaunch: () => ipcRenderer.invoke(IPC.systemGetAutoLaunch),
     setAutoLaunch: (enabled: boolean) => ipcRenderer.invoke(IPC.systemSetAutoLaunch, enabled),
     getAppInfo: () => ipcRenderer.invoke(IPC.systemGetAppInfo),
-    canBeRemoteControlled: () => ipcRenderer.invoke(IPC.systemCanRemoteControl),
-    injectRemoteInput: (event: unknown) => ipcRenderer.invoke(IPC.systemInjectRemoteInput, event),
+    // Contrôle à distance : vide dans l'édition Business, voir
+    // @edition/preloadExclusive. Le pont d'une cliente ne connaît pas la
+    // fonction, et le process main n'a pas le canal.
+    ...exclusiveSystem,
   },
   updates: {
     onDownloaded: (cb: (info: { version: string; notes?: string }) => void) => {

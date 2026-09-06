@@ -91,6 +91,14 @@ npm start
   coutures `@edition/*`.
 - `npm run check:business -- --dir dist` — relit la sortie du build et échoue sur
   la moindre trace d'AMN DevSec, de nos produits, de nos comptes ou d'un jeton.
+- `npm run check:business:main` — la même chose pour le **process main et le
+  préchargement** Electron, que le build web ne montre pas. C'est là que vivait
+  le contrôle à distance (`SendInput` de user32.dll : la vraie souris, le vrai
+  clavier) — enregistré sans condition d'édition jusqu'à l'audit de sécurité.
+  Le script construit les deux bundles Business comme electron-forge, minifiés,
+  et les relit ; il construit AUSSI l'édition interne pour exiger d'y voir
+  `SendInput` et `injectRemoteInput` — un contrôle qui ne peut pas échouer ne
+  contrôle rien.
 
 Données partagées :
 

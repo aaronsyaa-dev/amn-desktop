@@ -20,7 +20,6 @@ import {
   type UpdateObjectiveInput,
   type UpdateQuoteInput,
   type UpdateSharedTaskInput,
-  type RemoteInputEvent,
 } from '../shared/api';
 import {
   addClientEvent,
@@ -67,7 +66,6 @@ import type { RemoteApiClient } from './remoteApi';
 import { getAutoLaunch, setAutoLaunch } from './windowsIntegration';
 import { isVaultEncryptionAvailable, loadVault, saveVault } from './vault';
 import { getDb } from './db';
-import { injectRemoteInput, isRemoteInputAvailable } from './remoteInput';
 import { registerExclusiveIpc } from '@edition/mainExclusive';
 import { pushClient, pushQuote } from './clientsSync';
 
@@ -287,13 +285,8 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
     },
   );
 
-  // Remote control (B.2). The main process is a dumb executor: it never
-  // decides whether control is allowed — the renderer holds the consent state,
-  // and only sends events while the operator has granted control.
-  ipcMain.handle(IPC.systemCanRemoteControl, () => isRemoteInputAvailable());
-  ipcMain.handle(IPC.systemInjectRemoteInput, (_event, input: RemoteInputEvent) =>
-    injectRemoteInput(input),
-  );
+  // Le contrôle à distance (B.2) est enregistré par @edition/mainExclusive,
+  // donc seulement dans l'édition interne : voir exclusive.internal.ts.
 
   // Launch-at-login toggle (Settings → "Démarrer avec Windows"). Delegated to
   // windowsIntegration so the login item registers against Squirrel's stable

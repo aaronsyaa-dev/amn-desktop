@@ -59,6 +59,16 @@ type ExclusiveRemote = Pick<
   | 'support'
 >;
 
+/**
+ * Le contrôle à distance (B.2) : la main sur la souris et le clavier du poste
+ * pendant un appel d'équipe. Interne seulement — voir l'en-tête de
+ * src/main/exclusive.internal.ts pour ce que ça coûterait chez une cliente.
+ */
+export const exclusiveSystem: Pick<AmnBridge['system'], 'canBeRemoteControlled' | 'injectRemoteInput'> = {
+  canBeRemoteControlled: () => ipcRenderer.invoke(IPC.systemCanRemoteControl),
+  injectRemoteInput: (event: unknown) => ipcRenderer.invoke(IPC.systemInjectRemoteInput, event),
+};
+
 /** Part exclusive du pont hors `remote` : veille RSS et modèle local. */
 export const exclusiveBridge: Pick<AmnBridge, 'watch' | 'ollama'> = {
   watch: {
