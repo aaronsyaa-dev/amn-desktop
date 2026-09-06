@@ -278,6 +278,7 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
     remote.sendSupportRequest(input),
   );
   ipcMain.handle(IPC.remoteForgotPassword, (_event, email: string) => remote.forgotPassword(email));
+  ipcMain.handle(IPC.remoteResetPassword, (_event, token: string, password: string) => remote.resetPassword(token, password));
   ipcMain.handle(IPC.remoteWelcomeInspect, (_event, token: string) => remote.welcomeInspect(token));
   ipcMain.handle(IPC.remoteWelcomeReveal, (_event, token: string) => remote.welcomeReveal(token));
   ipcMain.handle(IPC.remoteWelcomeConfirm, (_event, token: string) => remote.welcomeConfirm(token));

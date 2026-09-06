@@ -56,6 +56,8 @@ const failures = [];
 const SANS_ENTETE = new Map([
   ['LoginScreen', 'la console d’accès : pas de navigation, pas de fil d’Ariane'],
   ['InvitationScreen', 'écran public d’activation, hors application'],
+  ['ReinitialisationScreen', 'écran public du lien de réinitialisation, hors application'],
+
   ['GuestCallScreen', 'écran public d’appel, hors application'],
   ['WelcomeScreen', 'écran public de bienvenue, hors application — lu une fois, puis détruit'],
   ['PublicBookingScreen', 'page publique de prise de rendez-vous, hors application — un visiteur sans compte'],

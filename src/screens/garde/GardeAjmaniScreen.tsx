@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { PoulsBadge } from '../../components/garde/GardeUi';
+import { Depliable } from '../../components/Depliable';
 import { garde } from '../../lib/garde';
 import { useLangue } from '../../i18n';
 import { NOM_DU_CHEF } from '@edition/ajmani';
@@ -124,7 +125,10 @@ export function GardeAjmaniScreen() {
         {acc && (
           <ol className="flex flex-col gap-2">
             {historique.map((m, i) => (
-              <li key={`h${i}`} className={`max-w-[85%] whitespace-pre-line rounded-lg border px-3 py-2 text-[13px] leading-relaxed ${m.de === 'moi' ? 'self-end border-border bg-bg text-text-secondary' : 'self-start border-border bg-surface text-text-secondary'}`} title={m.at ? relativeTime(m.at) : undefined}>{m.texte}</li>
+              /* L'historique se relit plié : une vieille réponse longue reste disponible, elle ne fait plus un pavé au-dessus de la conversation. */
+              <li key={`h${i}`} className={`max-w-[85%] rounded-lg border px-3 py-2 text-[13px] leading-relaxed ${m.de === 'moi' ? 'self-end border-border bg-bg text-text-secondary' : 'self-start border-border bg-surface text-text-secondary'}`} title={m.at ? relativeTime(m.at) : undefined}>
+                {m.de === 'chef' ? <Depliable lignes={3}><span className="block whitespace-pre-line">{m.texte}</span></Depliable> : <span className="block whitespace-pre-line">{m.texte}</span>}
+              </li>
             ))}
             <li className="max-w-[85%] self-start rounded-lg border border-border-strong bg-bg px-3 py-2.5 text-[13px] leading-relaxed text-text-primary">
               <span className="flex flex-wrap items-center gap-2 pb-1"><PoulsBadge pouls={acc.pouls} compact />{acc.silence.actif && <span className="font-mono text-[10px] uppercase tracking-widest text-warning">{t('garde.chef.silenceActif')}</span>}</span>

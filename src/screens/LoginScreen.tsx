@@ -60,6 +60,7 @@ export function LoginScreen() {
     la même que l'adresse existe ou non : personne n'énumère des comptes ici.
   */
   const [oublie, setOublie] = useState<'ferme' | 'ouvert' | 'envoi' | 'fait'>('ferme');
+  const [oublieChemin, setOublieChemin] = useState<'envoye' | 'manuel'>('manuel');
   const [phase, setPhase] = useState<Phase>('idle');
   const [error, setError] = useState<string | null>(null);
   /*
@@ -370,7 +371,8 @@ export function LoginScreen() {
             if (oublie === 'envoi' || oublie === 'fait') return;
             setOublie('envoi');
             try {
-              await bridge().remote.forgotPassword(email.trim());
+              const r = await bridge().remote.forgotPassword(email.trim());
+              setOublieChemin(r.courrier);
             } catch {
               /* la réponse est la même quoi qu'il arrive : le message ci-dessous vaut */
             }
@@ -380,7 +382,7 @@ export function LoginScreen() {
         >
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">{t('connexion.oublie.titre')}</p>
           {oublie === 'fait' ? (
-            <p className="mt-3 text-sm leading-relaxed text-text-primary">{t('connexion.oublie.fait')}</p>
+            <p className="mt-3 text-sm leading-relaxed text-text-primary" data-oublie={oublieChemin}>{t(oublieChemin === 'envoye' ? 'connexion.oublie.faitCourriel' : 'connexion.oublie.fait')}</p>
           ) : (
             <>
               <p className="mt-3 text-sm leading-relaxed text-text-secondary">{t('connexion.oublie.consigne')}</p>

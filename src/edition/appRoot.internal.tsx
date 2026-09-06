@@ -6,6 +6,7 @@ import { ModuleRoute } from '../components/ModuleRoute';
 import { AppLayout } from '../components/AppLayout';
 import { LoginScreen } from '../screens/LoginScreen';
 import { InvitationScreen } from '../screens/InvitationScreen';
+import { ReinitialisationScreen } from '../screens/ReinitialisationScreen';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { GuestCallScreen } from '../screens/GuestCallScreen';
 import { PublicBookingScreen } from '../screens/PublicBookingScreen';
@@ -141,6 +142,7 @@ export function AppRoot() {
           l'invitée n'a par définition pas encore de compte, donc l'écran
           d'activation ne peut pas vivre derrière une exigence de session. */}
       <Route path="/invitation" element={<InvitationScreen />} />
+      <Route path="/reinitialiser" element={<ReinitialisationScreen />} />
       {/* Le lien de bienvenue (Bloc 2) : publique, comme l'activation — la
           personne n'a pas encore ouvert de session, c'est cette page qui lui
           remet ses accès. */}

@@ -182,6 +182,7 @@ const bridge: AmnBridge = {
       send: (input) => ipcRenderer.invoke(IPC.remoteSupportSend, input),
     },
     forgotPassword: (email: string) => ipcRenderer.invoke(IPC.remoteForgotPassword, email),
+    resetPassword: (token: string, password: string) => ipcRenderer.invoke(IPC.remoteResetPassword, token, password),
     onSupportAnswered: (callback: (request: SupportRequest) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, request: SupportRequest) => callback(request);
       ipcRenderer.on(IPC.remoteSupportAnsweredPush, listener);

@@ -404,8 +404,20 @@ export class RemoteApiClient {
     return res.request;
   }
 
-  async forgotPassword(email: string): Promise<{ ok: boolean; message: string }> {
-    return this.publicPost<{ ok: boolean; message: string }>('/v1/support/forgot', { email });
+  async forgotPassword(email: string): Promise<{ ok: boolean; courrier: 'envoye' | 'manuel' }> {
+    // Le courrier du serveur d'abord ; un serveur d'avant n'a pas la route, le prestataire est prévenu comme avant.
+    try {
+      const r = await this.publicPost<{ ok: boolean; courrier?: 'envoye' | 'manuel' }>('/v1/courrier/mot-de-passe/oublie', { email });
+      if (r.courrier === 'envoye') return { ok: true, courrier: 'envoye' };
+    } catch {
+      /* route absente : chemin manuel */
+    }
+    await this.publicPost<{ ok: boolean; message: string }>('/v1/support/forgot', { email });
+    return { ok: true, courrier: 'manuel' };
+  }
+
+  async resetPassword(token: string, password: string): Promise<{ ok: boolean }> {
+    return this.publicPost<{ ok: boolean }>('/v1/courrier/mot-de-passe/reinitialiser', { token, password });
   }
 
   async welcomeInspect(token: string): Promise<WelcomePreview> {

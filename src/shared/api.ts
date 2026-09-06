@@ -2889,11 +2889,14 @@ export interface AmnBridge {
 
     /* --- Sans session : mot de passe oublié, lien de bienvenue (Blocs 2, 3) --- */
     /**
-     * « Mot de passe oublié » : prévient le prestataire. La réponse est la
-     * même que l'adresse existe ou non — amn-api n'a pas de transport mail,
-     * rien n'est envoyé, et c'est dit honnêtement.
+     * « Mot de passe oublié ». Le courrier du serveur d'abord (L'Automatique,
+     * Bloc 6) : en ligne, un lien part par courriel (`courrier: 'envoye'`).
+     * Sinon le prestataire est prévenu et remet un mot de passe temporaire
+     * (`'manuel'`). La réponse est la même que l'adresse existe ou non.
      */
-    forgotPassword(email: string): Promise<{ ok: boolean; message: string }>;
+    forgotPassword(email: string): Promise<{ ok: boolean; courrier: 'envoye' | 'manuel' }>;
+    /** Le lien reçu par courriel : poser le nouveau mot de passe. */
+    resetPassword(token: string, password: string): Promise<{ ok: boolean }>;
     welcome: {
       inspect(token: string): Promise<WelcomePreview>;
       reveal(token: string): Promise<WelcomeAccess>;
@@ -3509,6 +3512,7 @@ export const IPC = {
   remoteSupportList: 'remote:supportList',
   remoteSupportSend: 'remote:supportSend',
   remoteForgotPassword: 'remote:forgotPassword',
+  remoteResetPassword: 'remote:resetPassword',
   remoteWelcomeInspect: 'remote:welcomeInspect',
   remoteWelcomeReveal: 'remote:welcomeReveal',
   remoteWelcomeConfirm: 'remote:welcomeConfirm',

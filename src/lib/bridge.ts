@@ -799,8 +799,23 @@ function createBrowserRemote(): AmnBridge['remote'] {
         set?.delete(listener);
       };
     },
-    async forgotPassword(email: string) {
-      return publicPost<{ ok: boolean; message: string }>('/v1/support/forgot', { email });
+    /**
+     * Mot de passe oublié. Le courrier du serveur d'abord (L'Automatique, Bloc 6) : s'il est en
+     * ligne, un lien part par courriel. Sinon — serveur d'avant, ou sans clé — le prestataire est
+     * prévenu comme avant et remet un mot de passe temporaire. Rend par quel chemin c'est passé.
+     */
+    async forgotPassword(email: string): Promise<{ ok: boolean; courrier: 'envoye' | 'manuel' }> {
+      try {
+        const r = await publicPost<{ ok: boolean; courrier?: 'envoye' | 'manuel' }>('/v1/courrier/mot-de-passe/oublie', { email });
+        if (r.courrier === 'envoye') return { ok: true, courrier: 'envoye' };
+      } catch {
+        /* serveur d'avant : la route n'existe pas encore */
+      }
+      await publicPost<{ ok: boolean; message: string }>('/v1/support/forgot', { email });
+      return { ok: true, courrier: 'manuel' };
+    },
+    async resetPassword(token: string, password: string) {
+      return publicPost<{ ok: boolean }>('/v1/courrier/mot-de-passe/reinitialiser', { token, password });
     },
     // Appels audio : la signalisation vaut pour toute organisation à plusieurs,
     // donc elle vit dans le pont commun aux deux éditions.
