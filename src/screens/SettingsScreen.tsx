@@ -32,7 +32,7 @@ import { UserAvatar } from '../components/UserAvatar';
 import { Logo } from '../components/Logo';
 import { SettingsPanel as Panel } from '../components/SettingsPanel';
 import { IS_BUSINESS } from '../edition/edition';
-import { OllamaSection } from '@edition/exclusive';
+import { NOTIFIABLE_EVENTS, OllamaSection, PUSH_PURPOSE } from '@edition/exclusive';
 
 /** Une phrase d'identité par édition — celle de l'interne nomme AMN DevSec. */
 const ABOUT_TAGLINE = IS_BUSINESS
@@ -64,9 +64,13 @@ export function SettingsScreen() {
       <StaggerItem>
         <PasswordSection email={user.email} remote={org !== null} />
       </StaggerItem>
-      <StaggerItem>
-        <NotificationsSection email={user.email} />
-      </StaggerItem>
+      {/* Une édition sans événement notifiable n'affiche pas un panneau vide —
+          même règle que PushSection et OllamaSection juste en dessous. */}
+      {NOTIFIABLE_EVENTS.length > 0 && (
+        <StaggerItem>
+          <NotificationsSection email={user.email} />
+        </StaggerItem>
+      )}
       {!bridge().env.isElectron && (
         <StaggerItem>
           <PushSection email={user.email} />
@@ -600,13 +604,6 @@ function PasswordSection({ email, remote }: { email: string; remote: boolean }) 
   );
 }
 
-const PREF_LABELS: { key: keyof NotificationPrefs; label: string; detail: string }[] = [
-  { key: 'siteOffline', label: 'Site hors ligne', detail: 'Un site supervisé ne répond plus.' },
-  { key: 'criticalAlert', label: 'Alerte critique', detail: 'Attaque ou incident critique détecté.' },
-  { key: 'mention', label: 'Mention', detail: 'Quelqu’un vous mentionne dans un message.' },
-  { key: 'taskAssigned', label: 'Tâche assignée', detail: 'Une tâche vous est attribuée.' },
-];
-
 function NotificationsSection({ email }: { email: string }) {
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_NOTIFICATION_PREFS);
   const [loading, setLoading] = useState(true);
@@ -638,7 +635,7 @@ function NotificationsSection({ email }: { email: string }) {
         <p className="text-sm text-text-secondary">Chargement…</p>
       ) : (
         <div className="divide-y divide-border/60">
-          {PREF_LABELS.map(({ key, label, detail }) => (
+          {NOTIFIABLE_EVENTS.map(({ key, label, detail }) => (
             <div key={key} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
               <div>
                 <p className="text-sm font-medium text-text-primary">{label}</p>
@@ -716,7 +713,7 @@ function PushSection({ email }: { email: string }) {
     <Panel
       icon={Bell}
       title="Notifications sur cet appareil"
-      subtitle="Nécessaire pour être prévenu d’un appel entrant quand l’application est fermée."
+      subtitle={PUSH_PURPOSE}
     >
       <div className="flex flex-wrap items-center gap-3">
         <button

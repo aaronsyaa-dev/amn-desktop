@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { VaultCategory } from '../shared/api';
+import type { NotificationPrefs, VaultCategory } from '../shared/api';
 import type { DerivedSite } from '../state/RemoteSitesContext';
 
 /**
@@ -109,3 +109,19 @@ export function useSitePanelLink(): { openSite: (siteId: string) => void } {
 export function OllamaSection(): null {
   return null;
 }
+
+/**
+ * Un seul événement notifiable dans l'édition d'une cliente : le rappel
+ * avant un rendez-vous, émis par `AppointmentReminders`. Voir la note de la
+ * face interne pour ce que les quatre autres faisaient là.
+ */
+export const NOTIFIABLE_EVENTS: { key: keyof NotificationPrefs; label: string; detail: string }[] = [
+  {
+    key: 'appointmentReminder',
+    label: 'Rappel de rendez-vous',
+    detail: 'Au préavis choisi sur le rendez-vous.',
+  },
+];
+
+/** Il n'y a pas d'appel entrant dans cette édition — le panneau le dit. */
+export const PUSH_PURPOSE = 'Nécessaire pour recevoir vos rappels de rendez-vous quand l’application est fermée.';

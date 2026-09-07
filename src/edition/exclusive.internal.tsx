@@ -12,7 +12,7 @@ import { OllamaSection as OllamaSettingsSection } from '../components/settings/O
 import { bridge } from '../lib/bridge';
 import { scoreColor } from '../lib/scanSeverity';
 import { relativeTime } from '../lib/time';
-import type { ComplyCheck, Scan, VaultCategory } from '../shared/api';
+import type { ComplyCheck, NotificationPrefs, Scan, VaultCategory } from '../shared/api';
 
 /**
  * La couture entre les écrans partagés et les produits exclusifs d'AMN DevSec.
@@ -340,3 +340,25 @@ export function OllamaSection() {
   if (useClientView()) return null;
   return <OllamaSettingsSection />;
 }
+
+/**
+ * Les événements qui peuvent réellement déclencher une notification, dans
+ * CETTE édition — même procédé que `VAULT_PRODUCT_CATEGORIES`.
+ *
+ * L'écran Réglages tenait cette liste lui-même, donc une cliente voyait
+ * quatre interrupteurs pour « Site hors ligne », « Attaque ou incident
+ * critique détecté », « Mention » et « Tâche assignée ». Aucun ne pouvait
+ * sonner chez elle : ni parc de sites, ni chat d'équipe, ni assignation de
+ * tâches dans son édition. Pire, ces intitulés lui faisaient croire que
+ * l'application surveillait ses sites — la promesse d'AMN DevSec, pas ce
+ * qu'elle avait installé.
+ */
+export const NOTIFIABLE_EVENTS: { key: keyof NotificationPrefs; label: string; detail: string }[] = [
+  { key: 'siteOffline', label: 'Site hors ligne', detail: 'Un site supervisé ne répond plus.' },
+  { key: 'criticalAlert', label: 'Alerte critique', detail: 'Attaque ou incident critique détecté.' },
+  { key: 'mention', label: 'Mention', detail: 'Quelqu’un vous mentionne dans un message.' },
+  { key: 'taskAssigned', label: 'Tâche assignée', detail: 'Une tâche vous est attribuée.' },
+];
+
+/** Ce que le panneau « sur cet appareil » sert à recevoir, ici : les appels. */
+export const PUSH_PURPOSE = 'Nécessaire pour être prévenu d’un appel entrant quand l’application est fermée.';

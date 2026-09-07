@@ -282,6 +282,15 @@ export interface NotificationPrefs {
   criticalAlert: boolean;
   mention: boolean;
   taskAssigned: boolean;
+  /**
+   * Rappel avant un rendez-vous (édition Business).
+   *
+   * Ajouté après coup : le rappel était le SEUL événement qui déclenchait
+   * réellement une notification chez une cliente, et il était le seul à
+   * n'avoir aucun interrupteur — pendant que quatre interrupteurs pilotaient
+   * des événements qui n'existent pas dans son édition.
+   */
+  appointmentReminder: boolean;
 }
 
 export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
@@ -289,6 +298,7 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   criticalAlert: true,
   mention: true,
   taskAssigned: true,
+  appointmentReminder: true,
 };
 
 export interface AppInfo {

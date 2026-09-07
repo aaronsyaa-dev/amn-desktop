@@ -203,6 +203,7 @@ interface PrefsRow {
   critical_alert: number;
   mention: number;
   task_assigned: number;
+  appointment_reminder: number;
 }
 
 function toPrefs(row: PrefsRow): NotificationPrefs {
@@ -211,6 +212,7 @@ function toPrefs(row: PrefsRow): NotificationPrefs {
     criticalAlert: Boolean(row.critical_alert),
     mention: Boolean(row.mention),
     taskAssigned: Boolean(row.task_assigned),
+    appointmentReminder: Boolean(row.appointment_reminder),
   };
 }
 
@@ -236,6 +238,7 @@ export function updatePrefs(email: string, patch: Partial<NotificationPrefs>): N
     critical_alert: patch.criticalAlert,
     mention: patch.mention,
     task_assigned: patch.taskAssigned,
+    appointment_reminder: patch.appointmentReminder,
   };
   for (const [column, value] of Object.entries(map)) {
     if (value !== undefined) {
