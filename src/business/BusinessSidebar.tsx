@@ -7,6 +7,7 @@ import { useActivity } from '../state/ActivityContext';
 import { Logo, LogoMark } from '../components/Logo';
 import { AppLauncher } from '../components/AppLauncher';
 import { NAV_ITEMS, type NavItem } from '../data/navigation';
+import { isModuleEnabled } from '../data/spaces';
 import { useNavFavorites } from '../state/useNavFavorites';
 
 const COLLAPSED_WIDTH = 72;
@@ -63,9 +64,17 @@ export function BusinessSidebar({
     if (dx < -45) onClose?.();
   };
 
+  // Une clé inconnue est écartée (module retiré depuis l'épinglage), et un
+  // module FERMÉ pour cette organisation aussi. Sans ce second filtre, une
+  // cliente dont l'abonnement n'ouvre pas la facturation voyait quand même
+  // « Factures » épinglé — DEFAULT_FAVORITES est figé à la compilation et
+  // ignore ce que le serveur a ouvert — et le clic la renvoyait à l'accueil
+  // sans un mot. Les quatre autres surfaces de navigation filtrent déjà ;
+  // celle-ci était la cinquième, exactement le trou que `data/spaces.ts`
+  // dit vouloir éviter.
   const pinned: NavItem[] = favorites
     .map((key) => NAV_ITEMS.find((item) => item.key === key))
-    .filter((item): item is NavItem => Boolean(item));
+    .filter((item): item is NavItem => item !== undefined && isModuleEnabled(item.key));
 
   const handleSignOut = () => {
     logout();
