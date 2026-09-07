@@ -170,10 +170,38 @@ export function partyFromClient(client: Client | undefined): InvoiceParty {
   };
 }
 
+/**
+ * L'identité légale de l'émettrice, seule.
+ *
+ * Extraite de `useInvoices` parce que le devis en a besoin autant que la
+ * facture, et qu'il n'a aucune raison de charger toute la liste des factures
+ * pour obtenir une ligne. La normalisation vit ici, en un seul endroit : un
+ * enregistrement absent ou incomplet retombe sur `EMPTY_IDENTITY`, et les deux
+ * champs numériques sont relus, parce que la couche de synchronisation les
+ * rend parfois en texte.
+ */
+export function useBillingIdentity(): BillingIdentity {
+  const rawBilling = useCollection<BillingIdentity>('billing');
+  return useMemo<BillingIdentity>(() => {
+    const row = rawBilling.find((r) => r.id === IDENTITY_ID);
+    if (!row) return EMPTY_IDENTITY;
+    return {
+      ...EMPTY_IDENTITY,
+      ...row,
+      vatExempt: Boolean(row.vatExempt),
+      paymentTermDays: Number.isFinite(Number(row.paymentTermDays))
+        ? Number(row.paymentTermDays)
+        : EMPTY_IDENTITY.paymentTermDays,
+      latePenaltyRate: Number.isFinite(Number(row.latePenaltyRate))
+        ? Number(row.latePenaltyRate)
+        : EMPTY_IDENTITY.latePenaltyRate,
+    };
+  }, [rawBilling]);
+}
+
 export function useInvoices() {
   const { upsert, remove } = useSync();
   const rawInvoices = useCollection<InvoiceData>('invoices');
-  const rawBilling = useCollection<BillingIdentity>('billing');
 
   const invoices = useMemo<Invoice[]>(
     () =>
@@ -192,21 +220,7 @@ export function useInvoices() {
     [rawInvoices],
   );
 
-  const identity = useMemo<BillingIdentity>(() => {
-    const row = rawBilling.find((r) => r.id === IDENTITY_ID);
-    if (!row) return EMPTY_IDENTITY;
-    return {
-      ...EMPTY_IDENTITY,
-      ...row,
-      vatExempt: Boolean(row.vatExempt),
-      paymentTermDays: Number.isFinite(Number(row.paymentTermDays))
-        ? Number(row.paymentTermDays)
-        : EMPTY_IDENTITY.paymentTermDays,
-      latePenaltyRate: Number.isFinite(Number(row.latePenaltyRate))
-        ? Number(row.latePenaltyRate)
-        : EMPTY_IDENTITY.latePenaltyRate,
-    };
-  }, [rawBilling]);
+  const identity = useBillingIdentity();
 
   /**
    * L'identité est-elle suffisante pour ÉMETTRE ?
