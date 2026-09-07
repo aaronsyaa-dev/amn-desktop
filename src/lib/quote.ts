@@ -82,6 +82,29 @@ export function quoteLines(quote: Pick<Quote, 'lines'>, secours: InvoiceLine): I
   return hasDetailedLines(quote) ? (quote.lines as InvoiceLine[]) : [secours];
 }
 
+/**
+ * Les lignes telles qu'un DOCUMENT doit les montrer.
+ *
+ * C'est l'identité légale qui décide de la TVA, jamais les lignes. Sans cette
+ * règle, l'enchaînement le plus banal produisait un devis qui se contredit :
+ * une auto-entrepreneuse installe l'application, fait un premier devis avant
+ * d'avoir rempli son identité — et comme `EMPTY_IDENTITY.vatExempt` vaut
+ * `false`, ses lignes naissent à 20 %. Elle coche ensuite « Franchise en base
+ * de TVA », qui est sa situation réelle. Le devis réimprimé affichait alors
+ * une colonne TVA, une ventilation et un « Total TTC » majoré, pendant que
+ * son pied de page imprimait « TVA non applicable, art. 293 B du CGI ». Le
+ * client recevait une taxe qu'elle n'a pas le droit de collecter, et la
+ * facture née du même chiffrage annonçait un autre montant — parce qu'elle,
+ * elle tranchait déjà sur l'identité.
+ *
+ * Les taux ne sont pas effacés du devis, seulement ignorés à l'affichage : le
+ * hors-taxes reste ce qu'elle a chiffré, et c'est le seul montant qu'elle
+ * peut réclamer.
+ */
+export function displayLines(lines: InvoiceLine[], vatExempt: boolean): InvoiceLine[] {
+  return vatExempt ? lines.map((line) => ({ ...line, vatRate: 0 })) : lines;
+}
+
 /** Une ligne vierge, prête à être remplie. */
 export function emptyQuoteLine(id: string, vatRate = 0): InvoiceLine {
   return { id, label: '', quantity: 1, unitPriceCents: 0, vatRate };

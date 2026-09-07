@@ -14,7 +14,7 @@ import {
   formatVatRate,
   lineAmounts,
 } from '../lib/money';
-import { hasDetailedLines, quoteLines } from '../lib/quote';
+import { displayLines, hasDetailedLines, quoteLines } from '../lib/quote';
 import type { Client, Quote } from '../shared/api';
 
 const STATUS_LABEL: Record<Quote['status'], string> = {
@@ -102,15 +102,19 @@ export function QuotePrintPortal({
   // Le chiffrage : le détail s'il existe, sinon la ligne unique reconstituée
   // depuis `priceEuro`, qui redonne exactement le document d'avant.
   const detaille = hasDetailedLines(quote);
-  const lignes = quoteLines(quote, {
+  const saisies = quoteLines(quote, {
     id: 'forfait',
     label: offer?.name ?? quote.trackerTier,
     quantity: 1,
     unitPriceCents: eurosToCents(quote.priceEuro),
     vatRate: 0,
   });
+
+  // C'est l'IDENTITÉ qui décide de la TVA, jamais les lignes : voir
+  // `displayLines` dans src/lib/quote.ts, qui porte le pourquoi.
+  const lignes = displayLines(saisies, identity.vatExempt);
   const totaux = documentTotals(lignes);
-  const avecTva = totaux.vatCents !== 0;
+  const avecTva = !identity.vatExempt && totaux.vatCents !== 0;
   const acompte = depositSplit(totaux.grossCents, quote.depositPct);
 
   return createPortal(
@@ -237,16 +241,20 @@ export function QuotePrintPortal({
                   <td className="py-1 text-[11px] uppercase tracking-wider text-neutral-500">Total HT</td>
                   <td className="py-1 text-right text-neutral-800">{formatCents(totaux.netCents)}</td>
                 </tr>
-                {totaux.vatBuckets
-                  .filter((bucket) => bucket.vatCents !== 0)
-                  .map((bucket) => (
-                    <tr key={bucket.rate}>
-                      <td className="py-1 text-[11px] uppercase tracking-wider text-neutral-500">
-                        TVA {formatVatRate(bucket.rate)} sur {formatCents(bucket.netCents)}
-                      </td>
-                      <td className="py-1 text-right text-neutral-800">{formatCents(bucket.vatCents)}</td>
-                    </tr>
-                  ))}
+                {/*
+                  Aucun taux n'est masqué, pas même 0 % : la ventilation
+                  prétend décomposer le total hors taxes, et une base absente
+                  fait que la somme des lignes affichées ne redonne pas ce
+                  total. La facture ne filtre pas non plus.
+                */}
+                {totaux.vatBuckets.map((bucket) => (
+                  <tr key={bucket.rate}>
+                    <td className="py-1 text-[11px] uppercase tracking-wider text-neutral-500">
+                      TVA {formatVatRate(bucket.rate)} sur {formatCents(bucket.netCents)}
+                    </td>
+                    <td className="py-1 text-right text-neutral-800">{formatCents(bucket.vatCents)}</td>
+                  </tr>
+                ))}
                 <tr className="border-t border-neutral-300">
                   <td className="py-2 text-[11px] uppercase tracking-wider text-neutral-500">Total TTC</td>
                   <td className="py-2 text-right text-lg font-bold text-neutral-900">

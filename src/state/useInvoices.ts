@@ -311,7 +311,14 @@ export function useInvoices() {
         // et ferait diverger deux documents censés dire la même chose.
         lines:
           Array.isArray(quote.lines) && quote.lines.length > 0
-            ? quote.lines.map((line) => ({ ...line, id: uid('line') }))
+            ? quote.lines.map((line) => ({
+                ...line,
+                id: uid('line'),
+                // En franchise en base, un taux resté sur une ligne du devis
+                // est une donnée périmée : la facture ne doit pas le porter,
+                // sans quoi le brouillon contredit ce qu'il affiche.
+                vatRate: identity.vatExempt ? 0 : line.vatRate,
+              }))
             : [
                 {
                   id: uid('line'),
