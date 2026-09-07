@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import { bridge } from '../lib/bridge';
 import { enqueue, flushOutbox, outboxCounts, outboxKey, readOutbox } from './outbox';
+import { fitToBudget, reclaimLargest } from './mirrorBudget';
 import { reportGuestQuotaError } from './guestQuotaStore';
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -172,11 +173,14 @@ function readMirror(scope: string | undefined, collection: string): RemoteRecord
 
 function writeMirror(scope: string | undefined, collection: string, records: RemoteRecord[]): void {
   try {
-    window.localStorage.setItem(mirrorKey(scope, collection), JSON.stringify(records));
+    window.localStorage.setItem(mirrorKey(scope, collection), JSON.stringify(fitToBudget(records)));
   } catch {
     /* quota — ignore, memory state stays authoritative for this session */
   }
 }
+
+/** Ce que la file d'attente appelle quand le stockage refuse une écriture. */
+const reclaimMirrorSpace = (): boolean => reclaimLargest(window.localStorage, MIRROR_PREFIX);
 
 function toMap(records: RemoteRecord[]): CollectionMap {
   const map: CollectionMap = {};
@@ -343,7 +347,7 @@ export function SyncProvider({
           window.localStorage,
           outboxKeyRef.current,
           { upsert: remote.upsertRecord, remove: remote.deleteRecord },
-          { unreachablePrefix: API_UNREACHABLE_PREFIX },
+          { unreachablePrefix: API_UNREACHABLE_PREFIX, reclaim: reclaimMirrorSpace },
         );
         for (const saved of flushed.sent) {
           localWrites.current.add(`${saved.collection}:${saved.id}`);
@@ -479,7 +483,13 @@ export function SyncProvider({
           // Hors ligne, ou refus : le miroir garde la version optimiste, et
           // la file de reprise garde l'écriture jusqu'au prochain rattrapage.
           // Avant, ce bloc disait « will re-sync later » et rien ne le faisait.
-          enqueue(window.localStorage, outboxKeyRef.current, { collection, id, data: stamped }, optimistic.updatedAt);
+          enqueue(
+            window.localStorage,
+            outboxKeyRef.current,
+            { collection, id, data: stamped },
+            optimistic.updatedAt,
+            reclaimMirrorSpace,
+          );
           refreshOutboxCounts();
         }
       }
@@ -504,7 +514,13 @@ export function SyncProvider({
           // La tombe reste dans le miroir, et la suppression part dans la
           // file : sans ça, l'autre opérateur qui retouche l'enregistrement
           // le faisait revenir ici au prochain rattrapage.
-          enqueue(window.localStorage, outboxKeyRef.current, { collection, id, data: null }, tombstone.updatedAt);
+          enqueue(
+            window.localStorage,
+            outboxKeyRef.current,
+            { collection, id, data: null },
+            tombstone.updatedAt,
+            reclaimMirrorSpace,
+          );
           refreshOutboxCounts();
         }
       }

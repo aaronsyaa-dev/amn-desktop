@@ -97,13 +97,44 @@ export function readOutbox(storage: OutboxStorage, key: string): OutboxEntry[] {
   }
 }
 
-function writeOutbox(storage: OutboxStorage, key: string, entries: OutboxEntry[]): void {
-  try {
-    if (entries.length === 0) storage.removeItem(key);
-    else storage.setItem(key, JSON.stringify(entries));
-  } catch {
-    /* quota : la file en mémoire de cet appel reste la seule ; on réessaiera d'écrire à la prochaine mutation */
+/**
+ * Libère de la place quand le stockage est plein. Rendue par l'appelant, qui
+ * seul sait ce qui est jetable : ce module ne connaît rien du miroir.
+ * Retourne `true` si quelque chose a été effacé — donc si un nouvel essai a
+ * une chance.
+ */
+export type ReclaimSpace = () => boolean;
+
+/**
+ * Écrit la file. Le stockage plein N'EST PAS une raison d'abandonner.
+ *
+ * L'ancienne version avalait le dépassement de quota en se disant qu'on
+ * réessaierait à la mutation suivante. Sauf que ce qui remplit le stockage —
+ * des photos dans le miroir — ne rétrécit pas tout seul : la mutation suivante
+ * échouait pareil, et une écriture faite hors ligne était perdue en silence.
+ * C'est exactement ce que la file existe pour empêcher.
+ *
+ * La règle est donc explicite : la file est une INTENTION, le miroir n'est
+ * qu'un CACHE que le serveur peut toujours refournir. Quand les deux ne
+ * tiennent pas ensemble, c'est le cache qui saute.
+ */
+function writeOutbox(
+  storage: OutboxStorage,
+  key: string,
+  entries: OutboxEntry[],
+  reclaim?: ReclaimSpace,
+): boolean {
+  for (let essai = 0; essai < 8; essai += 1) {
+    try {
+      if (entries.length === 0) storage.removeItem(key);
+      else storage.setItem(key, JSON.stringify(entries));
+      return true;
+    } catch {
+      // Plus rien à jeter : la file de cet appel ne vit qu'en mémoire.
+      if (!reclaim || !reclaim()) return false;
+    }
   }
+  return false;
 }
 
 /**
@@ -116,13 +147,14 @@ export function enqueue(
   key: string,
   entry: Pick<OutboxEntry, 'collection' | 'id' | 'data'>,
   now: string,
+  reclaim?: ReclaimSpace,
 ): OutboxEntry[] {
   const entries = readOutbox(storage, key);
   const fresh: OutboxEntry = { ...entry, queuedAt: now, attempts: 0 };
   const index = entries.findIndex((e) => e.collection === entry.collection && e.id === entry.id);
   if (index >= 0) entries[index] = fresh;
   else entries.push(fresh);
-  writeOutbox(storage, key, entries);
+  writeOutbox(storage, key, entries, reclaim);
   return entries;
 }
 
@@ -156,7 +188,7 @@ export async function flushOutbox(
   storage: OutboxStorage,
   key: string,
   sender: OutboxSender,
-  opts: { unreachablePrefix: string; maxAttempts?: number },
+  opts: { unreachablePrefix: string; maxAttempts?: number; reclaim?: ReclaimSpace },
 ): Promise<FlushResult> {
   const maxAttempts = opts.maxAttempts ?? OUTBOX_MAX_ATTEMPTS;
   const entries = readOutbox(storage, key);
@@ -190,7 +222,7 @@ export async function flushOutbox(
     }
   }
 
-  writeOutbox(storage, key, remaining);
+  writeOutbox(storage, key, remaining, opts.reclaim);
   return { sent, remaining, halted };
 }
 

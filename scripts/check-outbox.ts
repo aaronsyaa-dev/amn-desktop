@@ -153,4 +153,82 @@ await cas('un stockage corrompu se lit comme une file vide', () => {
   assert.deepEqual(readOutbox(s, k), []);
 });
 
+/* ------------------------------------------------------------------------ *
+ * Stockage plein — la file gagne contre le cache
+ * ------------------------------------------------------------------------ */
+
+/**
+ * Un stockage à capacité bornée, comme `localStorage` : au-delà du plafond,
+ * `setItem` jette. `miroirs` simule les photos qui l'occupent déjà.
+ */
+function memoirePleine(plafond: number): OutboxStorage & { poids(): number; cles(): string[] } {
+  const m = new Map<string, string>();
+  const poids = () => [...m.entries()].reduce((total, [k, v]) => total + k.length + v.length, 0);
+  return {
+    getItem: (k) => m.get(k) ?? null,
+    setItem: (k, v) => {
+      const sans = m.has(k) ? poids() - k.length - (m.get(k) ?? '').length : poids();
+      if (sans + k.length + v.length > plafond) throw new Error('QuotaExceededError');
+      m.set(k, v);
+    },
+    removeItem: (k) => void m.delete(k),
+    poids,
+    cles: () => [...m.keys()],
+  };
+}
+
+await cas('stockage plein : la file fait jeter le cache plutôt que de se perdre', () => {
+  const s = memoirePleine(400);
+  const k = outboxKey('o');
+  // Le miroir occupe presque tout — comme une poignée de photos.
+  s.setItem('amn.sync.media', 'x'.repeat(300));
+
+  // Sans reprise de place : l'écriture ne rentre pas, et disparaît.
+  enqueue(s, k, { collection: 'clients' as SyncedCollection, id: 'c1', data: { name: 'Hervé' } }, '2026-09-07T10:00:00.000Z');
+  assert.deepEqual(readOutbox(s, k), [], 'sans reprise, c’est exactement la perte qu’on veut empêcher');
+
+  // Avec reprise de place : le miroir cède, l'écriture tient.
+  const reclaim = () => {
+    const cle = s.cles().find((c) => c.startsWith('amn.sync.'));
+    if (!cle) return false;
+    s.removeItem(cle);
+    return true;
+  };
+  enqueue(s, k, { collection: 'clients' as SyncedCollection, id: 'c1', data: { name: 'Hervé' } }, '2026-09-07T10:00:00.000Z', reclaim);
+  const file = readOutbox(s, k);
+  assert.equal(file.length, 1, 'l’écriture est en file');
+  assert.equal(file[0].id, 'c1');
+  assert.ok(!s.cles().includes('amn.sync.media'), 'le cache a cédé, c’est lui le jetable');
+});
+
+await cas('stockage plein et plus rien à jeter : on n’entre pas dans une boucle', () => {
+  const s = memoirePleine(50);
+  const k = outboxKey('o');
+  let appels = 0;
+  const reclaimInutile = () => {
+    appels += 1;
+    return false; // rien de jetable
+  };
+  enqueue(s, k, { collection: 'tasks' as SyncedCollection, id: 't1', data: { title: 'x' } }, '2026-09-07T10:00:00.000Z', reclaimInutile);
+  assert.equal(appels, 1, 'une seule tentative quand la reprise dit qu’elle n’a rien libéré');
+});
+
+await cas('stockage plein pendant le vidage : la file rendue reste juste', async () => {
+  const s = memoirePleine(360);
+  const k = outboxKey('o');
+  const reclaim = () => {
+    const cle = s.cles().find((c) => c.startsWith('amn.sync.'));
+    if (!cle) return false;
+    s.removeItem(cle);
+    return true;
+  };
+  enqueue(s, k, { collection: 'tasks' as SyncedCollection, id: 't1', data: {} }, '2026-09-07T10:00:00.000Z', reclaim);
+  s.setItem('amn.sync.media', 'x'.repeat(200));
+
+  const { sender } = transport(() => 'ok');
+  const r = await flushOutbox(s, k, sender, { ...FLUSH, reclaim });
+  assert.equal(r.sent.length, 1, 'l’écriture est partie');
+  assert.deepEqual(readOutbox(s, k), [], 'et la file est vidée pour de bon, pas seulement en mémoire');
+});
+
 console.log(`\nOK — ${n} cas, la file de reprise fait ce que dit son en-tête.`);
