@@ -1039,6 +1039,19 @@ const IDENTITY_FIELDS: {
   { key: 'phone', label: 'Téléphone' },
   { key: 'iban', label: 'IBAN' },
   { key: 'bic', label: 'BIC' },
+  // Obligatoires sur les devis ET les factures d'une activité de construction
+  // (art. L. 241-1 du code des assurances). Vides pour les autres métiers,
+  // auquel cas rien n'apparaît sur les documents.
+  {
+    key: 'decennaleInsurer',
+    label: 'Assurance décennale — assureur et n° de contrat',
+    placeholder: 'AXA, contrat n° 0000000',
+  },
+  {
+    key: 'decennaleCoverage',
+    label: 'Décennale — couverture géographique',
+    placeholder: 'France métropolitaine',
+  },
 ];
 
 function IdentityModal({

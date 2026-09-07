@@ -24,6 +24,8 @@ import {
   formatCents,
   formatVatRate,
   lineAmounts,
+  depositSplit,
+  safeDepositPct,
 } from '../src/lib/money.ts';
 
 const failures: string[] = [];
@@ -163,6 +165,46 @@ check('les taux s’affichent à la française', () => {
   assert.equal(formatVatRate(20), '20 %');
   assert.equal(formatVatRate(5.5), '5,5 %');
   assert.equal(formatVatRate(0), '0 %');
+});
+
+/* ------------------------------------------------------------ acompte -- */
+
+check('30 % d’acompte : l’acompte plus le solde font le total, au centime', () => {
+  const a = depositSplit(290600, 30);
+  assert.equal(a.pct, 30);
+  assert.equal(a.depositCents, 87180);
+  assert.equal(a.balanceCents, 290600 - 87180);
+  assert.equal(a.depositCents + a.balanceCents, 290600);
+});
+
+check('le solde est une soustraction, jamais un second pourcentage', () => {
+  // Deux arrondis indépendants ne redonnent pas toujours le total : c'est
+  // exactement l'écart d'un centime qu'un client relève sur un devis.
+  for (const total of [1, 3, 7, 101, 333, 4999, 99999, 1234567]) {
+    for (const pct of [1, 15, 30, 33.33, 50, 66.7, 99, 100]) {
+      const a = depositSplit(total, pct);
+      assert.equal(a.depositCents + a.balanceCents, total, `${total} centimes à ${pct} %`);
+      assert.ok(a.depositCents >= 0 && a.depositCents <= total, `${total} à ${pct} % reste dans les bornes`);
+    }
+  }
+});
+
+check('sans acompte, rien à mentionner', () => {
+  assert.deepEqual(depositSplit(50000, 0), { pct: 0, depositCents: 0, balanceCents: 50000 });
+  assert.deepEqual(depositSplit(50000, undefined), { pct: 0, depositCents: 0, balanceCents: 50000 });
+  assert.deepEqual(depositSplit(50000, null), { pct: 0, depositCents: 0, balanceCents: 50000 });
+});
+
+check('un pourcentage absurde est borné au lieu de produire un montant absurde', () => {
+  assert.equal(safeDepositPct(-10), 0);
+  assert.equal(safeDepositPct(1000), 100);
+  assert.equal(safeDepositPct('abc'), 0);
+  assert.equal(safeDepositPct(NaN), 0);
+  assert.equal(safeDepositPct(Infinity), 0);
+  // La couche de synchronisation rend parfois un nombre en texte.
+  assert.equal(safeDepositPct('30'), 30);
+  assert.equal(depositSplit(10000, 250).depositCents, 10000, 'jamais plus que le total');
+  assert.equal(depositSplit(Number.NaN, 30).depositCents, 0, 'un total illisible ne propage pas NaN');
 });
 
 console.log('');

@@ -12,6 +12,8 @@ import type {
   UpdateClientInput,
   UpdateQuoteInput,
 } from '../shared/api';
+import { normalizeQuoteLines, usableLines } from '../lib/quote';
+import { documentTotals, safeDepositPct } from '../lib/money';
 
 /**
  * Clients and quotes, on the synced collections — one implementation for both
@@ -78,6 +80,12 @@ function toQuote(row: StoredQuote): Quote {
     detail: row.detail ?? '',
     trackerTier: row.trackerTier ?? '',
     priceEuro: Number(row.priceEuro ?? 0),
+    // Le chiffrage détaillé, relu de la même façon que le reste : ce qui
+    // revient d'amn-api est du JSON quelconque, et une seule ligne malformée
+    // suffirait à faire imprimer « NaN € » sur un document envoyé au client.
+    // Absent sur tout devis d'avant, ce qui les laisse s'afficher inchangés.
+    lines: row.lines === undefined ? undefined : normalizeQuoteLines(row.lines),
+    depositPct: safeDepositPct(row.depositPct),
     status: row.status ?? 'draft',
     paymentStatus: row.paymentStatus ?? 'unpaid',
     createdAt: row.createdAt ?? row.updatedAt,
@@ -245,12 +253,18 @@ export function useClients() {
     async (input: CreateQuoteInput): Promise<Quote> => {
       const now = new Date().toISOString();
       const id = mintId();
+      const lines = usableLines(input.lines ?? []);
       const data: QuoteData = {
         clientId: input.clientId,
         title: input.title,
         detail: input.detail ?? '',
         trackerTier: input.trackerTier,
-        priceEuro: input.priceEuro,
+        // Dès qu'il y a un chiffrage, le prix en est DÉDUIT : un total affiché
+        // qui ne serait pas la somme des lignes du même document est un
+        // document faux, et personne ne saurait dire lequel des deux croire.
+        priceEuro: lines.length > 0 ? documentTotals(lines).netCents / 100 : input.priceEuro,
+        lines: lines.length > 0 ? lines : undefined,
+        depositPct: safeDepositPct(input.depositPct),
         status: 'draft',
         paymentStatus: 'unpaid',
         createdAt: now,
@@ -267,6 +281,13 @@ export function useClients() {
       const current = quotes.find((q) => q.id === id);
       if (!current) throw new Error(`Devis ${id} introuvable`);
       const next: Quote = { ...current, ...patch, updatedAt: new Date().toISOString() };
+      // Même règle qu'à la création : le prix suit les lignes, jamais l'inverse.
+      if (patch.lines !== undefined) {
+        const lines = usableLines(patch.lines);
+        next.lines = lines.length > 0 ? lines : undefined;
+        if (lines.length > 0) next.priceEuro = documentTotals(lines).netCents / 100;
+      }
+      if (patch.depositPct !== undefined) next.depositPct = safeDepositPct(patch.depositPct);
       await upsert('quotes', String(id), stripId(next));
       return next;
     },

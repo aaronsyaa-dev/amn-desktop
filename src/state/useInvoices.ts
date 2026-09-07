@@ -60,6 +60,8 @@ export const EMPTY_IDENTITY: BillingIdentity = {
   phone: '',
   iban: '',
   bic: '',
+  decennaleInsurer: '',
+  decennaleCoverage: '',
   vatExempt: false,
   paymentTermDays: 30,
   latePenaltyRate: 10,
@@ -302,15 +304,23 @@ export function useInvoices() {
         billTo: partyFromClient(client),
         quoteId: quote.id,
         notes: quote.detail,
-        lines: [
-          {
-            id: uid('line'),
-            label: quote.title || quote.trackerTier || 'Prestation',
-            quantity: 1,
-            unitPriceCents: eurosToCents(quote.priceEuro),
-            vatRate: identity.vatExempt ? 0 : 20,
-          },
-        ],
+        // Le chiffrage du devis passe TEL QUEL dans la facture quand il
+        // existe : c'est tout l'intérêt d'avoir donné aux lignes du devis la
+        // forme d'une ligne de facture. L'aplatir sur une ligne unique
+        // obligerait à ressaisir le détail au moment où il compte le plus,
+        // et ferait diverger deux documents censés dire la même chose.
+        lines:
+          Array.isArray(quote.lines) && quote.lines.length > 0
+            ? quote.lines.map((line) => ({ ...line, id: uid('line') }))
+            : [
+                {
+                  id: uid('line'),
+                  label: quote.title || quote.trackerTier || 'Prestation',
+                  quantity: 1,
+                  unitPriceCents: eurosToCents(quote.priceEuro),
+                  vatRate: identity.vatExempt ? 0 : 20,
+                },
+              ],
       }),
     [createDraft, identity.vatExempt],
   );

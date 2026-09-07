@@ -145,3 +145,35 @@ export function documentTotals(
     vatBuckets: [...buckets.values()].sort((a, b) => a.rate - b.rate),
   };
 }
+
+export interface DepositSplit {
+  /** Pourcentage retenu, après bornage à [0, 100]. */
+  pct: number;
+  /** Acompte à la commande, en centimes. */
+  depositCents: number;
+  /** Solde restant dû, en centimes. */
+  balanceCents: number;
+}
+
+/** Un pourcentage d'acompte utilisable : borné à [0, 100], jamais NaN. */
+export function safeDepositPct(value: unknown): number {
+  const pct = Number(value);
+  if (!Number.isFinite(pct) || pct <= 0) return 0;
+  return Math.min(100, pct);
+}
+
+/**
+ * L'acompte et le solde d'un document.
+ *
+ * Calculés sur le TTC — c'est ce qu'on encaisse. Le solde est une
+ * SOUSTRACTION, jamais un second pourcentage : deux arrondis indépendants ne
+ * redonnent pas toujours le total, et un devis dont l'acompte plus le solde
+ * ne font pas le prix est un devis qu'on rediscute au moment de signer.
+ */
+export function depositSplit(grossCents: number, depositPct: unknown): DepositSplit {
+  const pct = safeDepositPct(depositPct);
+  const total = Number.isFinite(grossCents) ? grossCents : 0;
+  if (pct === 0) return { pct: 0, depositCents: 0, balanceCents: total };
+  const depositCents = roundHalfAwayFromZero((total * pct) / 100);
+  return { pct, depositCents, balanceCents: total - depositCents };
+}

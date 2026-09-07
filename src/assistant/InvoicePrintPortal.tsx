@@ -17,7 +17,8 @@ import type { BillingIdentity, Invoice } from '../shared/api';
  *
  *   - numéro, date d'émission, date d'échéance ;
  *   - identité complète de l'émetteur (raison sociale, forme, capital,
- *     adresse, SIRET, RCS, TVA intracommunautaire) ;
+ *     adresse, SIRET, RCS, TVA intracommunautaire), et l'assurance décennale
+ *     quand l'activité en relève ;
  *   - identité du client facturé, figée à l'émission ;
  *   - désignation, quantité, prix unitaire HT et taux de TVA ligne par ligne ;
  *   - total HT, TVA VENTILÉE PAR TAUX, total TTC ;
@@ -73,6 +74,13 @@ export function InvoicePrintPortal({
           {identity.siret && <p className="text-neutral-600">SIRET {identity.siret}</p>}
           {identity.rcsCity && <p className="text-neutral-600">RCS {identity.rcsCity}</p>}
           {identity.vatNumber && <p className="text-neutral-600">TVA {identity.vatNumber}</p>}
+          {/* Même obligation que sur le devis : voir QuotePrintPortal. */}
+          {identity.decennaleInsurer && (
+            <p className="text-neutral-600">
+              Assurance décennale : {identity.decennaleInsurer}
+              {identity.decennaleCoverage ? ` — ${identity.decennaleCoverage}` : ''}
+            </p>
+          )}
           {identity.email && <p className="text-neutral-600">{identity.email}</p>}
           {identity.phone && <p className="text-neutral-600">{identity.phone}</p>}
         </div>

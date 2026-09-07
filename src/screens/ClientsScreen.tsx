@@ -19,12 +19,24 @@ import { SaveIndicator } from '../components/SaveIndicator';
 import { ConfirmDelete } from '../components/ConfirmDelete';
 import type { ReportDraft } from '../state/useReports';
 import { QuotePrintPortal } from '../assistant/QuotePrintPortal';
-import { useInvoices } from '../state/useInvoices';
+import {
+  centsToInput,
+  depositSplit,
+  documentTotals,
+  eurosToCents,
+  formatCents,
+  formatVatRate,
+  lineAmounts,
+} from '../lib/money';
+import { emptyQuoteLine, usableLines } from '../lib/quote';
+import { VAT_RATES, useBillingIdentity, useInvoices } from '../state/useInvoices';
+import { uid } from '../state/SyncContext';
 import type {
   Client,
   ClientStatus,
   CreateClientInput,
   CreateQuoteInput,
+  InvoiceLine,
   Invoice,
   PaymentStatus,
   Quote,
@@ -924,6 +936,131 @@ function QuoteRow({
   );
 }
 
+/**
+ * Le chiffrage détaillé d'un devis.
+ *
+ * Un forfait se vend avec un prix ; un chantier se vend avec un métré. Tant
+ * que le devis n'avait qu'un montant, il était inutilisable pour un maçon, un
+ * plombier ou un menuisier — les métiers qui font le plus de devis. Cet
+ * éditeur donne au devis les mêmes lignes qu'une facture, ce qui rend au
+ * passage la conversion devis → facture fidèle au lieu de tout aplatir.
+ *
+ * La colonne TVA n'apparaît que si l'émettrice y est assujettie : afficher
+ * « 0 % » sur douze lignes à une auto-entrepreneuse en franchise en base, ce
+ * n'est pas de la rigueur, c'est du bruit.
+ */
+function QuoteLinesEditor({
+  lines,
+  onChange,
+  vatExempt,
+}: {
+  lines: InvoiceLine[];
+  onChange: (next: InvoiceLine[]) => void;
+  vatExempt: boolean;
+}) {
+  const patch = (id: string, change: Partial<InvoiceLine>) =>
+    onChange(lines.map((l) => (l.id === id ? { ...l, ...change } : l)));
+
+  const totals = documentTotals(lines);
+
+  return (
+    <div className="flex flex-col gap-2">
+      {lines.map((line, index) => (
+        <div key={line.id} className="border border-border bg-bg p-2.5">
+          <div className="flex items-start gap-2">
+            <span className="mt-2 font-mono text-[10px] text-text-muted">{index + 1}</span>
+            <input
+              value={line.label}
+              onChange={(e) => patch(line.id, { label: e.target.value })}
+              placeholder="ex. Mur en parpaings, 18 m² à 95 €/m²"
+              aria-label={`Désignation de la ligne ${index + 1}`}
+              className="input-focus min-w-0 flex-1 border border-border bg-surface px-2 py-1.5 text-sm text-text-primary outline-none"
+            />
+            {/* Une seule ligne restante ne s'enlève pas : un devis sans aucune
+                ligne ne dit plus rien, et le bouton « + » serait le seul
+                moyen de revenir en arrière. */}
+            {lines.length > 1 && (
+              <button
+                type="button"
+                onClick={() => onChange(lines.filter((l) => l.id !== line.id))}
+                aria-label={`Supprimer la ligne ${index + 1}`}
+                className="mt-1 px-1 text-text-muted hover:text-danger"
+              >
+                <X size={14} strokeWidth={2} />
+              </button>
+            )}
+          </div>
+          <div className="mt-2 flex flex-wrap items-end gap-2 pl-5">
+            <label className="flex flex-col gap-1">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">Qté</span>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={line.quantity}
+                onChange={(e) => patch(line.id, { quantity: Number(e.target.value) })}
+                className="input-focus w-20 border border-border bg-surface px-2 py-1 text-sm text-text-primary outline-none"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">
+                Prix unitaire HT
+              </span>
+              <input
+                type="text"
+                inputMode="decimal"
+                defaultValue={centsToInput(line.unitPriceCents)}
+                onChange={(e) => patch(line.id, { unitPriceCents: eurosToCents(e.target.value) })}
+                placeholder="0,00"
+                className="input-focus w-28 border border-border bg-surface px-2 py-1 text-sm text-text-primary outline-none"
+              />
+            </label>
+            {!vatExempt && (
+              <label className="flex flex-col gap-1">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">TVA</span>
+                <select
+                  value={line.vatRate}
+                  onChange={(e) => patch(line.id, { vatRate: Number(e.target.value) })}
+                  className="input-focus border border-border bg-surface px-1.5 py-1 text-sm text-text-primary outline-none"
+                >
+                  {VAT_RATES.map((rate) => (
+                    <option key={rate} value={rate}>
+                      {formatVatRate(rate)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <p className="ml-auto pb-1 font-mono text-[11px] text-text-secondary">
+              {formatCents(lineAmounts(line.quantity, line.unitPriceCents, line.vatRate).netCents)} HT
+            </p>
+          </div>
+        </div>
+      ))}
+
+      <button
+        type="button"
+        onClick={() => onChange([...lines, emptyQuoteLine(uid('line'), vatExempt ? 0 : 20)])}
+        className="flex items-center gap-1 self-start px-1 py-1 font-mono text-[10px] uppercase tracking-widest text-text-secondary hover:text-text-primary"
+      >
+        <Plus size={12} strokeWidth={2.25} />
+        Ajouter une ligne
+      </button>
+
+      <div className="mt-1 flex justify-end gap-4 border-t border-border pt-2 font-mono text-[11px]">
+        <span className="text-text-muted">Total HT</span>
+        <span className="font-semibold text-text-primary">{formatCents(totals.netCents)}</span>
+        {totals.vatCents !== 0 && (
+          <>
+            <span className="text-text-muted">TTC</span>
+            <span className="font-semibold text-text-primary">{formatCents(totals.grossCents)}</span>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function NewQuoteModal({
   client,
   onClose,
@@ -934,22 +1071,46 @@ function NewQuoteModal({
   onCreate: (input: CreateQuoteInput) => Promise<Quote>;
 }) {
   const { QUOTE_OFFERS } = useExclusive();
+  const identity = useBillingIdentity();
   const [step, setStep] = useState(0);
   const [trackerTier, setTrackerTier] = useState(QUOTE_OFFERS[0]?.id ?? '');
   const [priceEuro, setPriceEuro] = useState('');
   const [title, setTitle] = useState('');
   const [detail, setDetail] = useState('');
 
-  const steps = ['Offre', 'Tarif', 'Mission'];
+  /*
+    Détaillé ou forfaitaire ?
+
+    Le défaut suit l'édition, parce que les deux ventes n'ont rien à voir :
+    avec un catalogue d'offres (AMN DevSec), on vend un forfait nommé et un
+    prix suffit ; sans catalogue, l'application est celle d'une cliente qui
+    chiffre SES prestations, et un devis d'une ligne ne lui sert à rien. Les
+    deux modes restent atteignables dans les deux éditions.
+  */
+  const [detailed, setDetailed] = useState(QUOTE_OFFERS.length === 0);
+  const [lines, setLines] = useState<InvoiceLine[]>(() => [
+    emptyQuoteLine('line-1', identity.vatExempt ? 0 : 20),
+  ]);
+  const [depositPct, setDepositPct] = useState('');
+
+  const kept = usableLines(lines);
+  const totalCents = documentTotals(kept).netCents;
+  const priceOk = detailed ? kept.length > 0 && totalCents > 0 : Boolean(priceEuro);
+
+  const steps = ['Offre', 'Chiffrage', 'Mission'];
 
   const submit = async () => {
-    if (!title.trim() || !priceEuro) return;
+    if (!title.trim() || !priceOk) return;
     await onCreate({
       clientId: client.id,
       title: title.trim(),
       detail: detail.trim(),
       trackerTier,
-      priceEuro: Number(priceEuro),
+      // En mode détaillé le prix est DÉDUIT des lignes par la couche de
+      // données ; ce qu'on passe ici n'est qu'une valeur de repli cohérente.
+      priceEuro: detailed ? totalCents / 100 : Number(priceEuro),
+      lines: detailed ? kept : undefined,
+      depositPct: detailed ? Number(depositPct) || 0 : 0,
     });
     onClose();
   };
@@ -1032,20 +1193,62 @@ function NewQuoteModal({
           )}
 
           {step === 1 && (
-            <label className="flex flex-col gap-1.5">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                Tarif de la mission (€) *
-              </span>
-              <input
-                autoFocus
-                type="number"
-                min={0}
-                value={priceEuro}
-                onChange={(e) => setPriceEuro(e.target.value)}
-                placeholder="ex. 1800"
-                className="input-focus border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
-              />
-            </label>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                  {detailed ? 'Le détail du chiffrage *' : 'Tarif de la mission (€) *'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setDetailed((v) => !v)}
+                  className="font-mono text-[10px] uppercase tracking-widest text-text-secondary underline decoration-dotted underline-offset-4 hover:text-text-primary"
+                >
+                  {detailed ? 'un prix global' : 'détailler ligne par ligne'}
+                </button>
+              </div>
+
+              {detailed ? (
+                <>
+                  <QuoteLinesEditor lines={lines} onChange={setLines} vatExempt={identity.vatExempt} />
+                  {/*
+                    L'acompte : un artisan ne démarre pas un chantier sans, et
+                    un devis qui n'en mentionne aucun se fait renégocier au
+                    moment de signer. Laissé vide, rien n'apparaît.
+                  */}
+                  <label className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                      Acompte à la commande
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={depositPct}
+                      onChange={(e) => setDepositPct(e.target.value)}
+                      placeholder="30"
+                      className="input-focus w-20 border border-border bg-bg px-2 py-1 text-sm text-text-primary outline-none"
+                    />
+                    <span className="font-mono text-[11px] text-text-muted">
+                      %{' '}
+                      {Number(depositPct) > 0 &&
+                        `→ ${formatCents(
+                          depositSplit(documentTotals(kept).grossCents, Number(depositPct)).depositCents,
+                        )}`}
+                    </span>
+                  </label>
+                </>
+              ) : (
+                <input
+                  autoFocus
+                  type="number"
+                  min={0}
+                  value={priceEuro}
+                  onChange={(e) => setPriceEuro(e.target.value)}
+                  placeholder="ex. 1800"
+                  className="input-focus border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
+                />
+              )}
+            </div>
           )}
 
           {step === 2 && (
@@ -1089,7 +1292,7 @@ function NewQuoteModal({
               <button
                 type="button"
                 onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
-                disabled={step === 1 && !priceEuro}
+                disabled={step === 1 && !priceOk}
                 className="bg-accent px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover disabled:opacity-40"
               >
                 Suivant
@@ -1098,7 +1301,7 @@ function NewQuoteModal({
               <button
                 type="button"
                 onClick={submit}
-                disabled={!title.trim() || !priceEuro}
+                disabled={!title.trim() || !priceOk}
                 className="bg-accent px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover disabled:opacity-40"
               >
                 Créer le devis

@@ -451,7 +451,34 @@ export interface Quote {
   detail: string;
   /** Tracker catalog offer id (see src/data/trackerCatalog.ts), free text. */
   trackerTier: string;
+  /**
+   * Total HORS TAXES en euros.
+   *
+   * Reste le champ que lisent les écrans et la conversion en facture. Quand
+   * `lines` est renseigné, il en est DÉDUIT et ne doit plus être saisi à la
+   * main : voir `totalHtEuros` dans src/lib/quote.ts.
+   */
   priceEuro: number;
+  /**
+   * Le détail chiffré de la prestation, quand il y en a un.
+   *
+   * Absent sur tous les devis créés avant cette version, et sur ceux d'AMN
+   * DevSec qui vendent un forfait de supervision en une ligne. Un devis sans
+   * `lines` continue de s'afficher et de s'imprimer exactement comme avant :
+   * c'est ce qui permet d'ajouter le détail sans réécrire l'existant.
+   *
+   * Même forme que `InvoiceLine` — délibérément : c'est ce qui rend la
+   * conversion devis → facture fidèle au lieu de tout aplatir sur une ligne.
+   */
+  lines?: InvoiceLine[];
+  /**
+   * Acompte demandé à la commande, en pourcentage du TTC (0 à 100).
+   *
+   * Un artisan du bâtiment ne démarre pas un chantier sans acompte, et un
+   * devis qui n'en mentionne aucun se fait renégocier à la signature. Zéro ou
+   * absent : aucune mention n'apparaît sur le document.
+   */
+  depositPct?: number;
   status: QuoteStatus;
   paymentStatus: PaymentStatus;
   createdAt: string;
@@ -464,6 +491,8 @@ export interface CreateQuoteInput {
   detail?: string;
   trackerTier: string;
   priceEuro: number;
+  lines?: InvoiceLine[];
+  depositPct?: number;
 }
 
 export interface UpdateQuoteInput {
@@ -471,6 +500,8 @@ export interface UpdateQuoteInput {
   detail?: string;
   trackerTier?: string;
   priceEuro?: number;
+  lines?: InvoiceLine[];
+  depositPct?: number;
   status?: QuoteStatus;
   paymentStatus?: PaymentStatus;
 }
@@ -588,6 +619,21 @@ export interface BillingIdentity {
    * document ne porte aucune TVA et affiche la mention obligatoire à la place.
    */
   vatExempt: boolean;
+  /**
+   * Assureur de la garantie décennale, et n° de contrat.
+   *
+   * Obligatoire sur les devis ET les factures de quiconque exerce une
+   * activité de construction (art. L. 241-1 du code des assurances) :
+   * maçon, plombier, électricien, menuisier, peintre… Un devis du bâtiment
+   * qui ne porte ni assureur ni couverture géographique se fait écarter par
+   * un client averti, et expose l'artisan en cas de litige.
+   *
+   * Vide pour les métiers non concernés — photographe, coach, formateur —
+   * auquel cas rien n'apparaît sur les documents.
+   */
+  decennaleInsurer: string;
+  /** Couverture géographique du contrat : « France métropolitaine ». */
+  decennaleCoverage: string;
   /** Délai de règlement par défaut, en jours (30 est l'usage). */
   paymentTermDays: number;
   /** Taux annuel des pénalités de retard, en pourcentage — mention obligatoire. */
