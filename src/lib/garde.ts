@@ -7,7 +7,7 @@
  */
 import { bridge } from './bridge';
 import type { GardeTrame } from '../shared/api';
-import type { GardeExceptions, GardeCompte, GardeJeton, GardeJetonEmis, GardeAccueil, GardeDossier, GardeGuideEntree, GardeMandat, GardePileDossiers, GardeAgent, GardeBureau, GardeCalendrierItem, GardeDefinitionAgent, GardeJournalEntree, GardeMessage, GardeOrdreReponse, GardePouls, GardeProposition, GardeReleve, GardeRemontee, GardeRonde, GardeSalle } from '../shared/garde';
+import type { GardeExceptions, GardeCompte, GardeContexte, GardeJeton, GardeJetonEmis, GardeAccueil, GardeDossier, GardeGuideEntree, GardeMandat, GardePileDossiers, GardeAgent, GardeBureau, GardeCalendrierItem, GardeDefinitionAgent, GardeJournalEntree, GardeMessage, GardeOrdreReponse, GardePouls, GardeProposition, GardeReleve, GardeRemontee, GardeRonde, GardeSalle } from '../shared/garde';
 
 const g = () => bridge().remote.garde;
 const appel = <T,>(path: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET', body?: unknown) => g().appel<T>({ path, method, ...(body !== undefined ? { body } : {}) });
@@ -31,7 +31,7 @@ export const garde = {
   decider: async (id: string, decision: string) => (await appel<{ remontee: GardeRemontee }>(`/remontees/${encodeURIComponent(id)}/decision`, 'POST', { decision })).remontee,
   messages: async (params: { canal?: string; agent?: string; nonLus?: '1'; limit?: number } = {}) => (await appel<{ messages: GardeMessage[] }>(`/messages${q(params)}`)).messages,
   lu: (id: string) => appel<{ ok: boolean }>(`/messages/${encodeURIComponent(id)}/lu`, 'POST', {}),
-  ordre: (texte: string, confirmer = false, cible = 'capitaine') => appel<GardeOrdreReponse>('/ordres', 'POST', { texte, confirmer, cible }),
+  ordre: (texte: string, confirmer = false, cible = 'capitaine', contexte?: GardeContexte) => appel<GardeOrdreReponse>('/ordres', 'POST', { texte, confirmer, cible, ...(contexte ? { contexte } : {}) }),
   bureau: (equipe: string) => appel<GardeBureau>(`/bureau/${encodeURIComponent(equipe)}`),
   question: (equipe: string, texte: string, confirmer = false) => appel<GardeOrdreReponse>(`/bureau/${encodeURIComponent(equipe)}/question`, 'POST', { texte, confirmer }),
   commune: (texte: string, confirmer = false) => appel<GardeOrdreReponse>('/commune', 'POST', { texte, confirmer }),

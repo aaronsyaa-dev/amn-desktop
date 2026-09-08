@@ -185,7 +185,7 @@ export async function runAssistant(
   }
 
   await delay(300);
-  return { kind: 'answer', blocks: buildAnswer(prompt, sites, eventsBySite, workspace) };
+  return { kind: 'answer', blocks: reponseLocaleSpecifique(prompt, sites, eventsBySite, workspace) ?? reponseGenerique(sites) };
 }
 
 /**
@@ -408,28 +408,36 @@ function answerFromWorkspace(lower: string, w: WorkspaceData): ReportBlock[] | n
 }
 
 /** Data-grounded free-text answers for common questions (mock). */
-function buildAnswer(
+/**
+ * Les réponses locales SPÉCIFIQUES — un mot-clé précis (hors ligne, alertes, visiteurs, ou une
+ * question directe sur le Poste de travail) donne une réponse chiffrée sans modèle. `null` quand
+ * rien de précis n'a été reconnu : c'est le signal qu'AssistantContext utilise pour escalader vers
+ * le cerveau de la Garde (Ajmani partout, Bloc 1) plutôt que de rendre la phrase générique
+ * ci-dessous, qui ne répond à rien.
+ */
+export function reponseLocaleSpecifique(
   prompt: string,
   sites: DerivedSite[],
   eventsBySite: EventsMap,
   workspace: WorkspaceData,
-): ReportBlock[] {
+  /**
+   * Une fiche précise est ouverte à l'écran (Ajmani partout, Bloc 1) : « résume-moi ce client »
+   * ne doit pas se lire comme une DEMANDE DE LISTE (le mot « client » seul déclenchait le
+   * répertoire entier, ci-dessous) — la question porte sur CETTE fiche, donc sur le cerveau
+   * qui la connaît par le contexte, pas sur cette liste à plat.
+   */
+  hasFocus = false,
+): ReportBlock[] | null {
   const lower = prompt.toLowerCase();
 
   // Without a local model there is no summarising, so the honest fallback for a
   // question about the operator's own data is to hand back the matching records
-  // verbatim rather than a canned sentence that reads like an answer.
-  const workspaceAnswer = answerFromWorkspace(lower, workspace);
+  // verbatim rather than a canned sentence that reads like an answer. Sauf quand une fiche
+  // précise est ouverte : voir le commentaire de `hasFocus` ci-dessus.
+  const workspaceAnswer = hasFocus ? null : answerFromWorkspace(lower, workspace);
   if (workspaceAnswer) return workspaceAnswer;
 
-  if (sites.length === 0) {
-    return [
-      {
-        type: 'paragraph',
-        text: 'Aucun site n’est encore enregistré. Rendez-vous dans l’onglet Sites pour en enregistrer un, puis installez le tracker (onglet Tracker) pour que je puisse commencer à analyser des données réelles.',
-      },
-    ];
-  }
+  if (sites.length === 0) return null;
 
   if (/hors ligne|offline|down|indisponible/.test(lower)) {
     const offline = sites.filter((s) => s.status !== 'online');
@@ -488,7 +496,19 @@ function buildAnswer(
     ];
   }
 
-  // Generic, contextual fallback.
+  return null;
+}
+
+/** La phrase générique de dernier recours — plus aucune question ne devrait plus l'atteindre en pratique : la Garde (Bloc 1) répond avant. Gardée pour un site jamais enregistré ou un serveur inaccessible. */
+function reponseGenerique(sites: DerivedSite[]): ReportBlock[] {
+  if (sites.length === 0) {
+    return [
+      {
+        type: 'paragraph',
+        text: 'Aucun site n’est encore enregistré. Rendez-vous dans l’onglet Sites pour en enregistrer un, puis installez le tracker (onglet Tracker) pour que je puisse commencer à analyser des données réelles.',
+      },
+    ];
+  }
   const online = sites.filter((s) => s.status === 'online').length;
   return [
     {

@@ -148,6 +148,13 @@ export interface GardeOrdreReponse {
   reponses?: GardeMessage[];
   /** Rendu quand l’ordre n’est pas compris, ou sur « que veux-tu faire » : ce que la Garde sait faire. */
   guide?: GardeGuideEntree[];
+  /** Le cerveau (Ajmani partout) : quels outils il a appelés, s’il a dû se taire, et pourquoi. */
+  cerveau?: { modele?: string; outils?: string[]; garde?: string | null; raison?: string };
+}
+/** Ce que l’écran regarde au moment où on parle à Ajmani (Ajmani partout, Bloc 1) : jamais un texte libre. */
+export interface GardeContexte {
+  focus?: { type: string; id: string; label: string } | null;
+  ecran?: string | null;
 }
 export interface GardeReleve {
   at: string;

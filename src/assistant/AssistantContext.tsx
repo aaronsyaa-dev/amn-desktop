@@ -7,7 +7,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { generateReport, runAssistant, textToBlocks, type Generate } from './engine';
+import { generateReport, parseIntent, reponseLocaleSpecifique, runAssistant, textToBlocks, type Generate } from './engine';
+import { contexteActuel } from './ecranContexte';
 import { reformulerSansInventer } from '../lib/reformuler';
 import { spaceForPath } from '../data/spaces';
 import { garde } from '../lib/garde';
@@ -411,7 +412,8 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       if (spaceForPath(chemin) === 'garde') {
         const attente = gardeConfirmationRef.current;
         const oui = /^(oui|ok|d.accord|vas.y|fais.le|faites.le|confirme|allez.y|je confirme)\b/i.test(trimmed);
-        (attente && oui ? garde.ordre(attente, true) : garde.ordre(trimmed))
+        const contexte = contexteActuel();
+        (attente && oui ? garde.ordre(attente, true, 'capitaine', contexte) : garde.ordre(trimmed, false, 'capitaine', contexte))
           .then(async (r) => {
             gardeConfirmationRef.current = r.confirmation ? trimmed : null;
             // Là où Ollama tourne, il enrichit la formulation — jamais les faits (Bloc 3 de l'Automatique) : voir reformulerSansInventer.
@@ -428,22 +430,49 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       }
 
       loadFreshEvents(sites, loadEvents, eventsBySite)
-        .then((freshEvents) =>
-          runAssistant(trimmed, sites, freshEvents, {
-            generate,
-            workspace: workspaceRef.current,
-            siteUrlById: siteUrlRef.current,
-          }),
-        )
+        .then(async (freshEvents) => {
+          const intent = parseIntent(trimmed, sites);
+          // Un rapport se calcule sur les vraies données, sans modèle : inchangé.
+          // Avec Ollama, il reste la voie privilégiée hors Garde : inchangé aussi.
+          if (intent.kind === 'report' || generate) {
+            return runAssistant(trimmed, sites, freshEvents, {
+              generate,
+              workspace: workspaceRef.current,
+              siteUrlById: siteUrlRef.current,
+            });
+          }
+          // Sans Ollama, un mot-clé précis (hors ligne, alertes, visiteurs, le contenu d'un module)
+          // répond exactement comme avant, sans coût, sans réseau.
+          const local = reponseLocaleSpecifique(trimmed, sites, freshEvents, workspaceRef.current, Boolean(contexteActuel()?.focus));
+          if (local) return { kind: 'answer' as const, blocks: local };
+          // AJMANI PARTOUT (L'Automatique) : ce qu'aucun mot-clé ne reconnaît n'est plus une phrase
+          // en boîte — c'est confié au même cerveau que dans la Garde, avec le contexte de l'écran
+          // (la fiche ouverte, par exemple), et la même garde des faits, le même budget, la même
+          // confirmation avant toute écriture.
+          const attente = gardeConfirmationRef.current;
+          const oui = /^(oui|ok|d.accord|vas.y|fais.le|faites.le|confirme|allez.y|je confirme)\b/i.test(trimmed);
+          const contexte = contexteActuel();
+          const r = await (attente && oui
+            ? garde.ordre(attente, true, 'capitaine', contexte)
+            : garde.ordre(trimmed, false, 'capitaine', contexte));
+          gardeConfirmationRef.current = r.confirmation ? trimmed : null;
+          // `r.reponse` porte toujours au moins ce que `r.question` porte (et, sans clé ou budget
+          // épuisé, l'explication en plus) : jamais l'inverse, donc jamais de raison de préférer le second ici.
+          const reponse = r.reponse;
+          const dite = generate && !r.confirmation && !r.question ? await reformulerSansInventer(reponse, generate) : reponse;
+          const lignes = [dite];
+          if (r.confirmation) lignes.push('', t('garde.chef.repondezOui'));
+          // Le guide des trente tournures de la Garde n'a rien à faire sur un écran qui n'est pas
+          // le sien : utile derrière « ? » dans l'espace La Garde, du bruit partout ailleurs.
+          return { kind: 'answer' as const, blocks: textToBlocks(lignes.join('\n')) };
+        })
         .then((turn) => {
           appendAnswer(turn);
           notifyReady(previewOfTurn(turn));
         })
         .catch((err) => {
-          // Ollama was configured but the call failed — be honest rather than
-          // silently returning a canned message that looks like a bug.
-          // The main process now says WHY it failed, so the message stops
-          // telling an operator whose Ollama is running to go start Ollama.
+          // Ollama was configured but the call failed, or Ajmani (la Garde) était injoignable —
+          // be honest rather than silently returning a canned message that looks like a bug.
           const detail = err instanceof Error ? err.message : 'erreur inconnue';
           const blamesServer = /injoignable|inconnue|network|fetch/i.test(detail);
           appendAnswer({
@@ -452,7 +481,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
               {
                 type: 'paragraph',
                 text: blamesServer
-                  ? `${detail} Vérifiez qu'Ollama tourne (Paramètres → Ajmani — modèle local).`
+                  ? `${detail} Vérifiez qu'Ollama tourne (Paramètres → Ajmani — modèle local), ou votre connexion.`
                   : detail,
               },
             ],

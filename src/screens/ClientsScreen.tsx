@@ -18,7 +18,8 @@ import {
   X,
   Contact,
 } from 'lucide-react';
-import { useClients } from '../state/useClients';
+import { useClients, type SyncedClient } from '../state/useClients';
+import { useAjmaniFocus } from '../assistant/ecranContexte';
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import type { DerivedSite } from '../state/RemoteSitesContext';
@@ -365,7 +366,7 @@ function ClientDetail({
   onRemoveQuote,
   onRemoveClient,
 }: {
-  client: Client;
+  client: SyncedClient;
   sites: DerivedSite[];
   quotes: Quote[];
   onPatch: (id: number, p: UpdateClientInput) => Promise<void>;
@@ -376,6 +377,9 @@ function ClientDetail({
   onRemoveClient: (id: number) => Promise<void>;
 }) {
   const { SITES_ENABLED } = useExclusive();
+  // Ajmani partout (Bloc 1) : tant que cette fiche est ouverte, « résume-moi ce client » — ou toute
+  // question posée à Ajmani depuis n'importe quel écran — sait de qui il s'agit, sans qu'on le nomme.
+  useAjmaniFocus(useMemo(() => ({ type: 'client', id: client.recordId, label: client.name || 'sans nom' }), [client.recordId, client.name]));
   return (
     <div className="min-h-0 overflow-y-auto border border-border bg-surface">
       <ClientHeader client={client} sites={sites} onPatch={onPatch} onRemove={onRemoveClient} />
