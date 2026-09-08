@@ -19,16 +19,19 @@ import {
 } from 'lucide-react';
 import { useClients } from '../state/useClients';
 import {
+  creditNotesFor,
   emptyLine,
   formatDay,
   formatShortDay,
   invoiceTotals,
   isOverdue,
   isoDay,
+  netDueCents,
   partyFromClient,
   useInvoices,
   VAT_RATES,
 } from '../state/useInvoices';
+import { useAjmaniFocus } from '../assistant/ecranContexte';
 import {
   centsToInput,
   eurosToCents,
@@ -91,6 +94,7 @@ export function InvoicesScreen() {
     summary,
     saveIdentity,
     createDraft,
+    createCreditNote,
     updateDraft,
     issue,
     markPaid,
@@ -333,6 +337,7 @@ export function InvoicesScreen() {
           <InvoiceDetail
             key={selected.id}
             invoice={selected}
+            invoices={invoices}
             identity={identity}
             identityComplete={identityComplete}
             clients={clients}
@@ -349,6 +354,7 @@ export function InvoicesScreen() {
             }}
             onPrint={() => setPrinting(selected)}
             onEditIdentity={() => setEditingIdentity(true)}
+            onCreateCreditNote={() => setSelectedId(createCreditNote(selected))}
           />
         ) : invoices.length === 0 ? null : (
           <div className="hidden items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted md:flex">{tr('hist.invoices.selectionnezUneFacture')}</div>
@@ -419,6 +425,11 @@ function InvoiceRow({
           <span className="truncate font-mono text-[11px] text-text-secondary">
             {invoice.number || `Créée le ${formatShortDay(invoice.createdAt)}`}
           </span>
+          {invoice.kind === 'creditNote' && (
+            <span className="flex-shrink-0 border border-border-strong px-1.5 py-px font-mono text-[9px] uppercase tracking-widest text-text-secondary">
+              Avoir
+            </span>
+          )}
           <StatusPill invoice={invoice} late={late} />
         </div>
         <p className="mt-0.5 truncate text-sm text-text-primary">
@@ -437,6 +448,7 @@ function InvoiceRow({
           late ? 'text-danger' : 'text-text-primary'
         }`}
       >
+        {invoice.kind === 'creditNote' ? '−' : ''}
         {formatCentsCompact(totals.grossCents)}
       </span>
     </motion.button>
@@ -465,6 +477,7 @@ function StatusPill({ invoice, late }: { invoice: Invoice; late: boolean }) {
 
 function InvoiceDetail({
   invoice,
+  invoices,
   identity,
   identityComplete,
   clients,
@@ -478,8 +491,10 @@ function InvoiceDetail({
   onDelete,
   onPrint,
   onEditIdentity,
+  onCreateCreditNote,
 }: {
   invoice: Invoice;
+  invoices: Invoice[];
   identity: BillingIdentity;
   identityComplete: boolean;
   clients: Client[];
@@ -493,10 +508,20 @@ function InvoiceDetail({
   onDelete: () => void;
   onPrint: () => void;
   onEditIdentity: () => void;
+  onCreateCreditNote: () => void;
 }) {
   const draft = invoice.status === 'draft';
+  const isAvoir = invoice.kind === 'creditNote';
   const totals = invoiceTotals(invoice);
-  const late = isOverdue(invoice, today);
+  const late = isOverdue(invoice, today, invoices);
+  const due = netDueCents(invoice, invoices);
+  const avoirs = creditNotesFor(invoice.id, invoices);
+  const factureOrigine = isAvoir ? invoices.find((i) => i.id === invoice.creditNoteFor) : undefined;
+
+  // Ajmani sait déjà lire une facture (« facture » → collection `invoices`, voir
+  // amn-api/garde/capitaine.js) : cette fiche le lui dit, comme ClientsScreen le
+  // fait pour une fiche client — le contexte de l'écran, pas un outil séparé.
+  useAjmaniFocus(useMemo(() => ({ type: 'facture', id: invoice.id, label: invoice.number || 'brouillon' }), [invoice.id, invoice.number]));
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -523,12 +548,12 @@ function InvoiceDetail({
         </button>
         <div className="min-w-0 flex-1">
           <p className="truncate font-mono text-[11px] uppercase tracking-widest text-text-secondary">
-            {invoice.number ? `Facture ${invoice.number}` : 'Brouillon'}
+            {invoice.number ? `${isAvoir ? 'Avoir' : 'Facture'} ${invoice.number}` : isAvoir ? 'Avoir en brouillon' : 'Brouillon'}
           </p>
           <p className="truncate font-mono text-[9px] uppercase tracking-widest text-text-muted">
             {draft
-              ? 'Modifiable — non émise'
-              : `Émise le ${formatDay(invoice.issuedAt)} · document figé`}
+              ? 'Modifiable — non émis' + (isAvoir ? '' : 'e')
+              : `Émis${isAvoir ? '' : 'e'} le ${formatDay(invoice.issuedAt)} · document figé`}
           </p>
         </div>
         {!draft && (
@@ -545,6 +570,29 @@ function InvoiceDetail({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-3 md:p-4">
+        {isAvoir && (
+          <p className="mb-3 border border-border px-3 py-2 text-xs leading-tight text-text-secondary">
+            <strong className="font-semibold text-text-primary">Avoir</strong> — réduit ce qui reste dû sur{' '}
+            {factureOrigine ? `la facture ${factureOrigine.number || factureOrigine.id}` : 'une facture qui n’existe plus'}.
+          </p>
+        )}
+        {!isAvoir && avoirs.length > 0 && (
+          <div className="mb-3 border border-border px-3 py-2 text-xs leading-tight text-text-secondary">
+            <p>
+              <strong className="font-semibold text-text-primary">
+                {avoirs.length === 1 ? 'Un avoir' : `${avoirs.length} avoirs`}
+              </strong>{' '}
+              émis sur cette facture — {formatCents(totals.grossCents - due)} déduits, {formatCents(due)} restant dû.
+            </p>
+            <ul className="mt-1 flex flex-col gap-0.5 font-mono text-[10px] text-text-muted">
+              {avoirs.map((a) => (
+                <li key={a.id}>
+                  {a.number} · {formatCents(invoiceTotals(a).grossCents)} · {formatDay(a.issuedAt)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {late && (
           <p className="mb-3 border border-border border-l-2 border-l-danger bg-surface px-3 py-2 text-xs leading-tight text-text-primary">
             <strong className="font-semibold">{tr('hist.invoices.echeanceDepassee')}</strong> — attendue le{' '}
@@ -860,6 +908,18 @@ function InvoiceDetail({
           >
             <Undo2 size={14} strokeWidth={2} />
             Repasser en attente
+          </button>
+        )}
+
+        {!isAvoir && (invoice.status === 'issued' || invoice.status === 'paid') && !paying && !cancelling && (
+          <button
+            type="button"
+            onClick={onCreateCreditNote}
+            title="Émettre un avoir sur cette facture"
+            className="flex min-h-11 items-center justify-center gap-2 border border-border px-3 text-xs uppercase tracking-wider text-text-muted transition-colors hover:text-text-primary"
+          >
+            <Undo2 size={14} strokeWidth={2} />
+            Émettre un avoir
           </button>
         )}
       </div>

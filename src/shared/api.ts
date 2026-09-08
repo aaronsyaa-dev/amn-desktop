@@ -1096,6 +1096,13 @@ export interface UpdateQuoteInput {
  */
 export type InvoiceStatus = 'draft' | 'issued' | 'paid' | 'cancelled';
 
+/**
+ * `'creditNote'` (un avoir) réduit ce qui reste dû sur `Invoice.creditNoteFor` — jamais
+ * l'inverse : un avoir n'a pas lui-même d'avoir. Absent = `'invoice'`, pour ne pas réécrire
+ * chaque facture déjà enregistrée quand ce champ est apparu (Bloc 3, facturation avancée).
+ */
+export type InvoiceKind = 'invoice' | 'creditNote';
+
 export interface InvoiceLine {
   id: string;
   /** Désignation de la prestation — mention obligatoire. */
@@ -1160,6 +1167,10 @@ export interface Invoice {
    * enregistrement garde donc un seul endroit où il vit.
    */
   projectId?: string;
+  /** `'invoice'` par défaut (absent = invoice, voir `InvoiceKind`). */
+  kind?: InvoiceKind;
+  /** Facture d'origine que cet avoir réduit — présent seulement si `kind === 'creditNote'`. */
+  creditNoteFor?: string;
 
   createdAt: string;
   updatedAt: string;

@@ -16,8 +16,12 @@
  *
  * ## Ce que ce module produit, et ce qu'il ne produit pas
  *
- * Il produit le **journal des ventes** : une écriture par facture émise, en
- * partie double. C'est ce qu'un outil de facturation doit savoir sortir.
+ * Il produit le **journal des ventes** : une écriture par facture ou avoir émis, en
+ * partie double. C'est ce qu'un outil de facturation doit savoir sortir. Un avoir
+ * (Bloc 3, facturation avancée) bascule chaque écriture — crédit du compte client,
+ * débit des comptes de produits et de TVA — exactement l'inverse d'une facture, avec
+ * les mêmes comptes : c'est la seule différence, et `postings` ci-dessous le traite
+ * en retournant simplement le signe des montants avant construction des lignes.
  *
  * Il ne produit PAS le journal de banque (les encaissements) : l'application
  * sait qu'une facture est payée et par quel moyen, mais elle ne tient aucun
@@ -246,6 +250,8 @@ export function buildFec(
   let empty = 0;
   let anonymousClient = 0;
 
+  const avoirCount = candidates.filter((i) => i.kind === 'creditNote' && i.number).length;
+
   const eligible = candidates
     .filter((invoice) => {
       if (!invoice.number) {
@@ -273,6 +279,14 @@ export function buildFec(
     if (seenNumbers.has(ecritureNum)) duplicates.add(ecritureNum);
     seenNumbers.add(ecritureNum);
 
+    const isAvoir = invoice.kind === 'creditNote';
+    // Le seul traitement qu'un avoir demande : le signe naturel de chaque écriture
+    // s'inverse. `postings`, plus bas, bascule déjà la colonne débit/crédit sur le
+    // signe du montant — inverser ici suffit donc à produire l'écriture inverse
+    // correcte, sans dupliquer la construction des lignes.
+    const sign = isAvoir ? -1 : 1;
+    const noun = isAvoir ? 'Avoir' : 'Facture';
+
     const date = fecDate(invoice.issuedAt);
     // `ValidDate` est la date à laquelle l'écriture est validée, donc figée.
     // Ici, l'émission : c'est exactement le moment où la facture cesse d'être
@@ -286,8 +300,8 @@ export function buildFec(
       {
         account: ACCOUNTS.clients,
         collective: true,
-        label: `Facture ${ecritureNum} - ${clientLabel}`,
-        cents: totals.grossCents,
+        label: `${noun} ${ecritureNum} - ${clientLabel}`,
+        cents: totals.grossCents * sign,
         naturalDebit: true,
       },
     ];
@@ -299,8 +313,8 @@ export function buildFec(
       postings.push({
         account: ACCOUNTS.sales,
         collective: false,
-        label: `Facture ${ecritureNum} - HT ${formatRate(bucket.rate)}`,
-        cents: bucket.netCents,
+        label: `${noun} ${ecritureNum} - HT ${formatRate(bucket.rate)}`,
+        cents: bucket.netCents * sign,
         naturalDebit: false,
       });
       // Un taux à 0 % ne produit pas de ligne de taxe : une écriture à zéro
@@ -309,8 +323,8 @@ export function buildFec(
         postings.push({
           account: ACCOUNTS.vat,
           collective: false,
-          label: `Facture ${ecritureNum} - TVA ${formatRate(bucket.rate)}`,
-          cents: bucket.vatCents,
+          label: `${noun} ${ecritureNum} - TVA ${formatRate(bucket.rate)}`,
+          cents: bucket.vatCents * sign,
           naturalDebit: false,
         });
       }
@@ -364,7 +378,7 @@ export function buildFec(
   }
   if (cancelled > 0) {
     warnings.push(
-      `${cancelled} ${plural(cancelled, 'facture annulée non incluse', 'factures annulées non incluses')} : une annulation se comptabilise par un avoir, que cette application ne sait pas encore émettre. À signaler à votre comptable.`,
+      `${cancelled} ${plural(cancelled, 'facture annulée non incluse', 'factures annulées non incluses')} : une annulation se comptabilise par un avoir. L'application sait désormais en émettre un depuis la fiche de la facture d'origine — pensez à le faire avant de remettre ce fichier à votre comptable si ce n'est pas déjà fait.`,
     );
   }
   if (noNumber > 0) {
@@ -390,6 +404,11 @@ export function buildFec(
   if (duplicates.size > 0) {
     warnings.push(
       `Numéro de facture en double : ${[...duplicates].join(', ')}. La numérotation doit être unique et continue — à corriger avant tout contrôle.`,
+    );
+  }
+  if (avoirCount > 0) {
+    warnings.push(
+      `${avoirCount} ${plural(avoirCount, 'avoir inclus, en écriture inverse', 'avoirs inclus, en écriture inverse')} : le compte client est crédité, les comptes de produits et de TVA sont débités.`,
     );
   }
   warnings.push(

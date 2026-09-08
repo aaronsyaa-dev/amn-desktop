@@ -6,6 +6,7 @@ import type {
   BillingIdentity,
   Client,
   Invoice,
+  InvoiceKind,
   InvoiceLine,
   InvoiceParty,
   InvoiceStatus,
@@ -49,6 +50,7 @@ type InvoiceData = Omit<Invoice, 'id'>;
 /** Le domaine des statuts, à l'exécution : un statut hérité ou mal écrit
  *  redevient un brouillon plutôt que de traverser jusqu'aux tables d'affichage. */
 const INVOICE_STATUSES: InvoiceStatus[] = ['draft', 'issued', 'paid', 'cancelled'];
+const INVOICE_KINDS: InvoiceKind[] = ['invoice', 'creditNote'];
 
 /** L'id réservé de l'unique enregistrement d'identité légale. */
 const IDENTITY_ID = 'identity';
@@ -132,9 +134,34 @@ function toInvoice(row: InvoiceData & { id: string; updatedAt: string }): Invoic
     notes: row.notes ?? '',
     quoteId: row.quoteId === null || row.quoteId === undefined ? null : Number(row.quoteId),
     projectId: row.projectId,
+    kind: oneOf(row.kind, INVOICE_KINDS, 'invoice'),
+    creditNoteFor: row.creditNoteFor || undefined,
     createdAt: row.createdAt ?? row.updatedAt,
     updatedAt: row.updatedAt,
   };
+}
+
+/** Les avoirs ÉMIS qui réduisent cette facture — jamais les brouillons, qui n'engagent encore rien. */
+export function creditNotesFor(invoiceId: string, invoices: Invoice[]): Invoice[] {
+  return invoices.filter(
+    (i) => i.kind === 'creditNote' && i.creditNoteFor === invoiceId && i.status !== 'draft' && i.status !== 'cancelled',
+  );
+}
+
+/** Ce que les avoirs émis ont déjà repris sur cette facture, en centimes. */
+export function creditedCents(invoiceId: string, invoices: Invoice[]): number {
+  return creditNotesFor(invoiceId, invoices).reduce((n, cn) => n + invoiceTotals(cn).grossCents, 0);
+}
+
+/**
+ * Ce qui reste réellement dû sur une facture — jamais négatif : un avoir peut compenser
+ * jusqu'à zéro, jamais mettre la cliente en position créditrice sur CETTE facture (un
+ * avoir plus grand que la facture d'origine serait une erreur de saisie, pas un crédit
+ * à reporter automatiquement ailleurs).
+ */
+export function netDueCents(invoice: Invoice, invoices: Invoice[]): number {
+  if (invoice.kind === 'creditNote') return 0; // un avoir n'est lui-même jamais « dû »
+  return Math.max(0, invoiceTotals(invoice).grossCents - creditedCents(invoice.id, invoices));
 }
 
 /** Les totaux d'une facture, en centimes, TVA ventilée par taux. */
@@ -143,18 +170,29 @@ export function invoiceTotals(invoice: Invoice) {
 }
 
 /**
- * Une facture émise, non payée, non annulée, dont l'échéance est dépassée.
+ * Une facture émise dont l'échéance est dépassée et qui reste réellement due.
  *
  * Calculé et jamais stocké : un statut « en retard » écrit en base serait faux
- * dès le lendemain de son écriture, puisque rien ne repasse dessus.
+ * dès le lendemain de son écriture, puisque rien ne repasse dessus. `invoices`
+ * est optionnel : sans lui, un avoir partiel qui aurait déjà tout compensé
+ * continue de compter en retard — un léger sur-comptage, jamais l'inverse,
+ * pour les appels qui n'ont pas la liste complète sous la main.
  */
-export function isOverdue(invoice: Invoice, today: string = isoDay()): boolean {
-  return invoice.status === 'issued' && Boolean(invoice.dueAt) && invoice.dueAt < today;
+export function isOverdue(invoice: Invoice, today: string = isoDay(), invoices?: Invoice[]): boolean {
+  // Un avoir n'est jamais « en retard » : sa date n'est pas une échéance de paiement.
+  if (invoice.kind === 'creditNote') return false;
+  if (invoice.status !== 'issued' || !invoice.dueAt || invoice.dueAt >= today) return false;
+  if (!invoices) return true;
+  return netDueCents(invoice, invoices) > 0;
 }
 
-/** Numéro suivant : `AAAA-NNNN`, la séquence repartant à 1 chaque année. */
-export function nextNumber(existing: Invoice[], year: number = new Date().getFullYear()): string {
-  const prefix = `${year}-`;
+/**
+ * Numéro suivant. `AAAA-NNNN` pour une facture, `AV-AAAA-NNNN` pour un avoir — deux
+ * séquences distinctes et chacune continue, comme l'exige une pièce comptable de
+ * nature différente ; les préfixes distincts suffisent à ne jamais les mélanger.
+ */
+export function nextNumber(existing: Invoice[], year: number = new Date().getFullYear(), kind: InvoiceKind = 'invoice'): string {
+  const prefix = kind === 'creditNote' ? `AV-${year}-` : `${year}-`;
   let highest = 0;
   for (const invoice of existing) {
     if (!invoice.number.startsWith(prefix)) continue;
@@ -251,6 +289,8 @@ export function useInvoices() {
       quoteId?: number | null;
       dueAt?: string;
       projectId?: string;
+      kind?: InvoiceKind;
+      creditNoteFor?: string;
     }): string => {
       const id = uid('inv');
       const now = new Date();
@@ -271,11 +311,34 @@ export function useInvoices() {
         notes: input.notes ?? '',
         quoteId: input.quoteId ?? null,
         projectId: input.projectId,
+        kind: input.kind ?? 'invoice',
+        creditNoteFor: input.creditNoteFor,
         createdAt: now.toISOString(),
       } satisfies Omit<InvoiceData, 'updatedAt'>);
       return id;
     },
     [identity.paymentTermDays, upsert],
+  );
+
+  /**
+   * Un avoir en brouillon contre une facture émise ou payée : mêmes lignes par défaut
+   * (un crédit total, le cas le plus courant), modifiables avant émission comme
+   * n'importe quel brouillon — un avoir partiel se fait en réduisant les quantités
+   * ou en supprimant des lignes avant d'émettre.
+   */
+  const createCreditNote = useCallback(
+    (invoice: Invoice): string =>
+      createDraft({
+        clientId: invoice.clientId,
+        billTo: invoice.billTo,
+        kind: 'creditNote',
+        creditNoteFor: invoice.id,
+        notes: `Avoir sur la facture ${invoice.number || invoice.id}.`,
+        lines: invoice.lines.map((l) => ({ ...l, id: uid('line') })),
+        dueAt: isoDay(),
+        projectId: invoice.projectId,
+      }),
+    [createDraft],
   );
 
   /**
@@ -331,7 +394,7 @@ export function useInvoices() {
       if (lines.length === 0) return null;
 
       const today = isoDay();
-      const number = nextNumber(invoices, new Date().getFullYear());
+      const number = nextNumber(invoices, new Date().getFullYear(), current.kind ?? 'invoice');
       const due =
         current.dueAt ||
         isoDay(new Date(Date.now() + Math.max(0, identity.paymentTermDays) * 86400000));
@@ -410,7 +473,11 @@ export function useInvoices() {
    * Ce que l'écran affiche en tête : l'argent, en trois chiffres.
    *
    * Les annulées ne comptent nulle part — c'est le sens même de l'annulation —
-   * et les brouillons non plus, puisqu'ils n'ont rien réclamé à personne.
+   * et les brouillons non plus, puisqu'ils n'ont rien réclamé à personne. Les
+   * avoirs eux-mêmes ne comptent pas comme documents séparés ici : leur effet
+   * est déjà pris en compte via `netDueCents`, qui réduit ce que leur facture
+   * d'origine réclame encore — les compter aussi en tant que tels doublerait
+   * l'écart qu'ils corrigent.
    */
   const summary = useMemo(() => {
     const today = isoDay();
@@ -421,14 +488,15 @@ export function useInvoices() {
     let overdueCount = 0;
 
     for (const invoice of invoices) {
-      if (invoice.status === 'cancelled' || invoice.status === 'draft') continue;
-      const { grossCents } = documentTotals(invoice.lines);
+      if (invoice.status === 'cancelled' || invoice.status === 'draft' || invoice.kind === 'creditNote') continue;
       if (invoice.status === 'paid') {
-        if (invoice.paidAt.startsWith(year)) collectedCents += grossCents;
+        const netCollected = Math.max(0, invoiceTotals(invoice).grossCents - creditedCents(invoice.id, invoices));
+        if (invoice.paidAt.startsWith(year)) collectedCents += netCollected;
       } else {
-        outstandingCents += grossCents;
-        if (isOverdue(invoice, today)) {
-          overdueCents += grossCents;
+        const due = netDueCents(invoice, invoices);
+        outstandingCents += due;
+        if (due > 0 && isOverdue(invoice, today, invoices)) {
+          overdueCents += due;
           overdueCount += 1;
         }
       }
@@ -446,6 +514,7 @@ export function useInvoices() {
     saveIdentity,
     createDraft,
     createFromQuote,
+    createCreditNote,
     updateDraft,
     issue,
     markPaid,

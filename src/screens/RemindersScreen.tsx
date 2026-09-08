@@ -1,15 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BellRing, Check, Copy } from 'lucide-react';
+import { AlertTriangle, BellRing, Check, Copy } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FirstRun } from '../components/EmptyState';
 import { useSync, useCollection, uid } from '../state/SyncContext';
-import { useInvoices, invoiceTotals } from '../state/useInvoices';
+import { useInvoices, invoiceTotals, netDueCents } from '../state/useInvoices';
 import { useAuth } from '../auth/AuthContext';
 import { formatCents } from '../lib/money';
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
+import { paliereDe, toneAMonte, cleMessagePalier, CLE_LIBELLE_PALIER, type PalierRelance } from '../lib/relances';
 import type { Invoice } from '../shared/api';
 
 interface ReminderData {
@@ -17,7 +18,16 @@ interface ReminderData {
   sentAt: string;
   byEmail: string;
   note: string;
+  /** Absent sur les relances notées avant ce chantier — traité comme `'rappel'` à la lecture. */
+  palier?: PalierRelance;
 }
+
+const PALIER_TON: Record<PalierRelance, string> = {
+  rappel: 'text-text-secondary',
+  ferme: 'text-warning',
+  'mise-en-demeure': 'text-danger',
+  'dernier-avis': 'text-danger',
+};
 const isoDay = () => new Date().toISOString().slice(0, 10);
 
 /**
@@ -40,21 +50,31 @@ export function RemindersScreen() {
   const jour = isoDay();
   const moi = user?.email ?? '';
 
+  // Un avoir (Bloc 3, facturation avancée) peut avoir tout compensé sur une
+  // facture pourtant échue : elle disparaît alors de cette liste, exactement
+  // comme si elle avait été payée — c'est ce que `netDueCents` calcule, jamais
+  // le montant brut de la facture seule.
   const echues = useMemo(
-    () => invoices.filter((f) => f.status === 'issued' && !f.paidAt && f.dueAt && f.dueAt < jour).sort((a, b) => a.dueAt.localeCompare(b.dueAt)),
+    () =>
+      invoices
+        .filter((f) => f.status === 'issued' && f.kind !== 'creditNote' && f.dueAt && f.dueAt < jour && netDueCents(f, invoices) > 0)
+        .sort((a, b) => a.dueAt.localeCompare(b.dueAt)),
     [invoices, jour],
   );
   const derniere = (f: Invoice) => relances.filter((r) => r.invoiceId === f.id).sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0] ?? null;
-  const total = echues.reduce((n, f) => n + invoiceTotals(f).grossCents, 0);
+  const total = echues.reduce((n, f) => n + netDueCents(f, invoices), 0);
   const locale = langue === 'en' ? 'en-GB' : 'fr-FR';
   const jours = (f: Invoice) => Math.max(1, Math.round((Date.parse(jour) - Date.parse(f.dueAt)) / 86_400_000));
+  /** Le palier qu'un avoir partiel n'annule pas : il se calcule sur le retard, jamais sur le montant restant. */
+  const palierDe = (f: Invoice) => paliereDe(jours(f));
 
   const message = (f: Invoice) =>
-    t('relances.message', {
+    t(cleMessagePalier(palierDe(f)), {
       nom: f.billTo.name,
       numero: f.number,
-      montant: formatCents(invoiceTotals(f).grossCents),
+      montant: formatCents(netDueCents(f, invoices)),
       echeance: new Date(`${f.dueAt}T00:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'long' }),
+      jours: jours(f),
     });
   const copier = async (f: Invoice) => {
     try {
@@ -65,7 +85,14 @@ export function RemindersScreen() {
       /* presse-papiers refusé : le texte reste sélectionnable dans la ligne */
     }
   };
-  const noter = (f: Invoice) => upsert('paymentReminders', uid('rel'), { invoiceId: f.id, sentAt: new Date().toISOString(), byEmail: moi, note: '' });
+  const noter = (f: Invoice) =>
+    upsert('paymentReminders', uid('rel'), {
+      invoiceId: f.id,
+      sentAt: new Date().toISOString(),
+      byEmail: moi,
+      note: '',
+      palier: palierDe(f),
+    });
 
   return (
     <motion.section variants={staggerContainer} initial="hidden" animate="show" className="flex flex-col gap-5">
@@ -90,18 +117,34 @@ export function RemindersScreen() {
         <motion.ul variants={staggerItem} className="flex flex-col gap-px overflow-hidden rounded-xl border border-border bg-border">
           {echues.map((f) => {
             const d = derniere(f);
-            const totaux = invoiceTotals(f);
+            const due = netDueCents(f, invoices);
+            const brut = invoiceTotals(f).grossCents;
+            const palier = palierDe(f);
+            const dernierPalier = d?.palier ?? (d ? 'rappel' : null);
+            const monte = toneAMonte(dernierPalier, palier);
             return (
               <li key={f.id} className="flex flex-col gap-3 bg-surface px-4 py-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-text-primary">
                       {f.billTo.name} <span className="text-text-muted">· {f.number}</span>
+                      <span className={`ml-2 font-mono text-[9px] uppercase tracking-wider ${PALIER_TON[palier]}`}>
+                        {t(CLE_LIBELLE_PALIER[palier])}
+                      </span>
                     </p>
                     <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                      <span className="text-warning">{t('relances.enRetard', { n: jours(f) })}</span> · {formatCents(totaux.grossCents)}
+                      <span className="text-warning">{t('relances.enRetard', { n: jours(f) })}</span> ·{' '}
+                      {formatCents(due)}
+                      {due !== brut && <span className="text-text-muted"> (sur {formatCents(brut)}, avoir déduit)</span>}
                       {d && <span> · {t('relances.derniere', { quand: relativeTime(d.sentAt) })}</span>}
                     </p>
+                    {!d && <p className="text-[10px] text-text-muted">{t('relances.premiereRelance')}</p>}
+                    {monte && dernierPalier && (
+                      <p className="mt-1 flex items-center gap-1.5 text-[10px] text-danger">
+                        <AlertTriangle size={11} strokeWidth={2} />
+                        {t('relances.tonAMonte', { dernier: t(CLE_LIBELLE_PALIER[dernierPalier]), actuel: t(CLE_LIBELLE_PALIER[palier]) })}
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-shrink-0 flex-wrap gap-2">
                     <button type="button" onClick={() => void copier(f)} className="flex min-h-11 items-center gap-1.5 border border-border-strong px-3 text-xs text-text-primary hover:bg-surface-hover md:min-h-0 md:py-1.5">

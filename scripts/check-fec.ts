@@ -122,6 +122,8 @@ interface InvoiceOverrides {
   status?: string;
   company?: string;
   lines?: ReturnType<typeof line>[];
+  kind?: 'invoice' | 'creditNote';
+  creditNoteFor?: string;
 }
 
 function invoice(overrides: InvoiceOverrides = {}) {
@@ -145,6 +147,8 @@ function invoice(overrides: InvoiceOverrides = {}) {
     cancelReason: '',
     notes: '',
     quoteId: null,
+    kind: overrides.kind ?? 'invoice',
+    creditNoteFor: overrides.creditNoteFor,
     createdAt: '2026-03-14T09:00:00.000Z',
     updatedAt: '2026-03-14T09:00:00.000Z',
   };
@@ -334,6 +338,46 @@ check('avoir : un montant négatif change de colonne, il ne devient pas un débi
   const file = toFecFile(result.lines);
   const amounts = file.split('\r\n').slice(1).filter(Boolean).flatMap((r) => [r.split('\t')[11], r.split('\t')[12]]);
   assert.ok(amounts.every((a) => !a.includes('-')), 'aucun montant signé dans le fichier');
+});
+
+check('LE BLOC 3 : un vrai avoir (kind: creditNote) produit l’écriture inverse, avec des montants positifs en lignes', () => {
+  const facture = invoice({ number: '2026-0042', lines: [line(1, 100000, 20)] });
+  const avoir = invoice({
+    number: 'AV-2026-0001',
+    kind: 'creditNote',
+    creditNoteFor: 'inv-2026-0042',
+    lines: [line(1, 100000, 20)],
+  });
+  const result = buildFec([facture, avoir]);
+  const entry = entryOf(result, 'AV-2026-0001');
+
+  assert.equal(entry[0].CompteNum, ACCOUNTS.clients.num);
+  assert.equal(entry[0].Debit, '0,00');
+  assert.equal(entry[0].Credit, '1200,00', 'un avoir crédite le client, il ne le débite pas');
+  assert.ok(entry[0].EcritureLib.startsWith('Avoir'), 'le libellé dit « Avoir », pas « Facture »');
+
+  assert.equal(entry[1].CompteNum, ACCOUNTS.sales.num);
+  assert.equal(entry[1].Debit, '1000,00', 'le produit est débité, l’inverse d’une facture');
+  assert.equal(entry[2].CompteNum, ACCOUNTS.vat.num);
+  assert.equal(entry[2].Debit, '200,00');
+
+  assert.equal(result.totalDebitCents, result.totalCreditCents, 'l’ensemble facture + avoir reste équilibré');
+  assert.equal(result.invoiceCount, 2);
+});
+
+check('un avoir compense exactement sa facture : le total débit/crédit de la paire retombe à zéro net', () => {
+  const facture = invoice({ number: '2026-0050', lines: [line(2, 50000, 10), line(1, 30000, 20)] });
+  const avoir = invoice({ number: 'AV-2026-0002', kind: 'creditNote', creditNoteFor: 'inv-2026-0050', lines: facture.lines });
+  const result = buildFec([facture, avoir]);
+  // Chaque paire compte du débit et du crédit sur les MÊMES comptes : la
+  // facture d'un côté, son avoir de l'autre s'annulent exactement compte par
+  // compte, preuve que l'inversion n'a pas glissé un montant sur le mauvais poste.
+  const parComptes = new Map<string, number>();
+  for (const l of result.lines) {
+    const solde = (parComptes.get(l.CompteNum) ?? 0) + centsOf(l.Debit) - centsOf(l.Credit);
+    parComptes.set(l.CompteNum, solde);
+  }
+  for (const [compte, solde] of parComptes) assert.equal(solde, 0, `le compte ${compte} ne retombe pas à zéro`);
 });
 
 check('l’équilibre tient écriture par écriture, sur un lot varié', () => {
