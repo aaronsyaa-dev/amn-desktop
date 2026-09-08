@@ -45,6 +45,36 @@ export type RaisonEchecVocal =
   | 'trop-court'
   | 'inconnue';
 
+/**
+ * Le message montré pour chaque échec vocal — jamais le même « indisponible » générique pour des
+ * causes différentes (correctif micro, puis bulle Ajmani) : permission / périphérique /
+ * enregistrement sont un problème Windows ou matériel, alors qu'un serveur de transcription
+ * absent ou en erreur n'a rien à voir avec le micro, qui a très bien capté. Partagé entre le
+ * panneau plein (`AssistantPanel`) et la bulle (`AjmaniBubble`) : un seul texte par raison.
+ */
+export function messageEchecVocal(raison: RaisonEchecVocal): string {
+  switch (raison) {
+    case 'permission-refusee':
+      return 'Micro refusé — vérifiez l’accès au microphone dans les réglages de Windows.';
+    case 'aucun-peripherique':
+      return 'Aucun microphone détecté — branchez-en un, ou écrivez votre demande.';
+    case 'enregistrement-impossible':
+      return 'L’enregistrement audio a échoué sur cet appareil — écrivez votre demande.';
+    case 'aucun-serveur-transcription':
+      return 'Micro capté — aucun serveur de transcription local n’est configuré.';
+    case 'serveur-transcription-en-erreur':
+      return 'Micro capté — le serveur de transcription local a répondu en erreur.';
+    case 'reponse-transcription-inattendue':
+      return 'Micro capté — le serveur de transcription local a répondu dans un format inattendu.';
+    case 'transcription-vide':
+      return 'Rien n’a été compris — réessayez, ou écrivez votre demande.';
+    case 'trop-court':
+      return 'Trop court pour être une phrase — maintenez la touche plus longtemps.';
+    case 'inconnue':
+      return 'Échec de la commande vocale — écrivez votre demande.';
+  }
+}
+
 export type DemarrageVocal = { ok: true } | { ok: false; raison: RaisonEchecVocal; detail: string };
 export type ResultatVocal = { texte: string; raison?: undefined } | { texte: null; raison: RaisonEchecVocal; detail: string };
 

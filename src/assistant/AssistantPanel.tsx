@@ -29,7 +29,7 @@ import { ALERT_SEVERITY_CONFIG } from '../lib/alerts';
 import { bridge } from '../lib/bridge';
 import { relativeTime } from '../lib/time';
 import { useAssistant, type AssistantTab as Tab } from './AssistantContext';
-import type { RaisonEchecVocal } from './voix';
+import { messageEchecVocal } from './voix';
 import { getDailySummary, getSuggestions } from './engine';
 import { searchableText } from './conversations';
 import { ReportBlocks } from './ReportBlocks';
@@ -344,35 +344,6 @@ function ModelPicker() {
       </select>
     </label>
   );
-}
-
-/**
- * Le message montré pour chaque échec vocal — jamais le même « indisponible » générique pour des
- * causes différentes (correctif micro, Ajmani partout Bloc 2) : permission / périphérique /
- * enregistrement sont un problème Windows ou matériel, alors qu'un serveur de transcription
- * absent ou en erreur n'a rien à voir avec le micro, qui a très bien capté.
- */
-function messageEchecVocal(raison: RaisonEchecVocal): string {
-  switch (raison) {
-    case 'permission-refusee':
-      return 'Micro refusé — vérifiez l’accès au microphone dans les réglages de Windows.';
-    case 'aucun-peripherique':
-      return 'Aucun microphone détecté — branchez-en un, ou écrivez votre demande.';
-    case 'enregistrement-impossible':
-      return 'L’enregistrement audio a échoué sur cet appareil — écrivez votre demande.';
-    case 'aucun-serveur-transcription':
-      return 'Micro capté — aucun serveur de transcription local n’est configuré.';
-    case 'serveur-transcription-en-erreur':
-      return 'Micro capté — le serveur de transcription local a répondu en erreur.';
-    case 'reponse-transcription-inattendue':
-      return 'Micro capté — le serveur de transcription local a répondu dans un format inattendu.';
-    case 'transcription-vide':
-      return 'Rien n’a été compris — réessayez, ou écrivez votre demande.';
-    case 'trop-court':
-      return 'Trop court pour être une phrase — maintenez la touche plus longtemps.';
-    case 'inconnue':
-      return 'Échec de la commande vocale — écrivez votre demande.';
-  }
 }
 
 function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {

@@ -9,6 +9,7 @@ import { SiteDetailPanel } from './site-panel/SiteDetailPanel';
 import { CommandPaletteProvider } from './command-palette/CommandPalette';
 import { AssistantProvider } from '../assistant/AssistantContext';
 import { AssistantPanel } from '../assistant/AssistantPanel';
+import { AjmaniBubble } from '../assistant/AjmaniBubble';
 import { RemoteSitesProvider } from '../state/RemoteSitesContext';
 import { ProfilesProvider } from '../state/ProfilesContext';
 import { SyncProvider } from '../state/SyncContext';
@@ -210,6 +211,7 @@ export function AppLayout() {
               <CallOverlay />
               <SiteDetailPanel />
               <AssistantPanel />
+              <AjmaniBubble />
               <NotificationsManager />
               <SyncActivityNotifier />
               <RegressionNotifier />

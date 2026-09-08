@@ -70,6 +70,13 @@ interface AssistantContextValue {
   arreterEcoute: () => void;
   voixHaute: boolean;
   setVoixHaute: (actif: boolean) => void;
+  /* --- La bulle flottante (Bloc 2, chantier « bulle Ajmani ») --- */
+  /** F9 ouvre la bulle, jamais le panneau plein — voir `demarrerEcouteBulle`. */
+  bulleOuverte: boolean;
+  /** Rouvre la bulle sur la conversation déjà là, sans relancer l'écoute — la retrouver après fermeture. */
+  ouvrirBulle: () => void;
+  fermerBulle: () => void;
+  demarrerEcouteBulle: () => void;
 }
 
 const AssistantContext = createContext<AssistantContextValue | undefined>(
@@ -81,7 +88,7 @@ function uid(prefix: string): string {
 }
 
 /** Short text preview of an assistant turn, for notifications. */
-function previewOfTurn(turn: ChatMessage['turn']): string {
+export function previewOfTurn(turn: ChatMessage['turn']): string {
   if (!turn) return 'Réponse prête.';
   if (turn.kind === 'report') return turn.report.title;
   const first = turn.blocks.find(
@@ -253,9 +260,24 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
     setVoixHauteActive(actif);
   }, []);
 
-  const demarrerEcoute = useCallback(() => {
+  // LA BULLE (chantier « bulle Ajmani ») : F9 depuis n'importe quel écran ouvre une petite fenêtre
+  // flottante par-dessus, JAMAIS le panneau plein ni un changement de page — voir AjmaniBubble.tsx.
+  // Tenir le bouton micro DANS le panneau plein (ouvert par un clic, pas par F9) garde l'ancien
+  // comportement : le texte se pose dans le champ, relu avant envoi. Tenir F9, en revanche, est
+  // déjà le geste de confirmation (on tient, on parle, on relâche) — la bulle envoie directement,
+  // exactement comme on validerait un texte tapé ; un ordre qui écrit continue de demander sa
+  // confirmation, inchangé, parce que `sendMessage` reste l'unique chemin dans les deux cas.
+  const [bulleOuverte, setBulleOuverte] = useState(false);
+  const ouvrirBulle = useCallback(() => setBulleOuverte(true), []);
+  const fermerBulle = useCallback(() => setBulleOuverte(false), []);
+  const viaBulleRef = useRef(false);
+  const sendMessageRef = useRef<(texte: string) => void>(() => undefined);
+
+  const demarrerEcouteInterne = useCallback((viaBulle: boolean) => {
     if (sessionVocaleRef.current) return; // déjà en écoute : une répétition de touche ne relance rien
-    setIsOpen(true);
+    viaBulleRef.current = viaBulle;
+    if (viaBulle) setBulleOuverte(true);
+    else setIsOpen(true);
     setVoixRaison(null);
     setVoixNiveau(0);
     const session = new SessionVocale();
@@ -270,16 +292,20 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       }
     });
   }, []);
+  const demarrerEcoute = useCallback(() => demarrerEcouteInterne(false), [demarrerEcouteInterne]);
+  const demarrerEcouteBulle = useCallback(() => demarrerEcouteInterne(true), [demarrerEcouteInterne]);
   const arreterEcoute = useCallback(() => {
     const session = sessionVocaleRef.current;
     if (!session) return;
     sessionVocaleRef.current = null;
+    const viaBulle = viaBulleRef.current;
     setVoixNiveau(0);
     setVoixEtat('transcription');
     void session.arreter('fr').then((r) => {
       if (r.texte !== null) {
-        setTexteVocalEnAttente(r.texte);
         setVoixEtat('inactif');
+        if (viaBulle) sendMessageRef.current(r.texte);
+        else setTexteVocalEnAttente(r.texte);
       } else {
         // Le repli : rien n'est perdu, le champ de texte reste la voie normale (Bloc 2, permission explicite du chantier).
         setVoixRaison(r.raison);
@@ -295,7 +321,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
     const onDown = (e: KeyboardEvent) => {
       if (e.key !== 'F9' || enCours) return;
       enCours = true;
-      demarrerEcoute();
+      demarrerEcouteBulle();
     };
     const onUp = (e: KeyboardEvent) => {
       if (e.key !== 'F9') return;
@@ -308,7 +334,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('keydown', onDown);
       window.removeEventListener('keyup', onUp);
     };
-  }, [demarrerEcoute, arreterEcoute]);
+  }, [demarrerEcouteBulle, arreterEcoute]);
 
   const emailRef = useRef(email);
   emailRef.current = email;
@@ -588,6 +614,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
     },
     [sites, eventsBySite, loadEvents, setMessagesSynced, persist, toast],
   );
+  sendMessageRef.current = sendMessage;
 
   const switchReportMode = useCallback(
     (messageId: string, mode: ReportMode) => {
@@ -644,6 +671,10 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       arreterEcoute,
       voixHaute,
       setVoixHaute,
+      bulleOuverte,
+      ouvrirBulle,
+      fermerBulle,
+      demarrerEcouteBulle,
     }),
     [
       isOpen,
@@ -674,6 +705,10 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       arreterEcoute,
       voixHaute,
       setVoixHaute,
+      bulleOuverte,
+      ouvrirBulle,
+      fermerBulle,
+      demarrerEcouteBulle,
     ],
   );
 
