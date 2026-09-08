@@ -362,3 +362,69 @@ issue.
   l'installation — sur un poste qui n'est pas le nôtre, c'est un vrai frein.
 - **Moteur de configuration dynamique** (choix des modules depuis un site) —
   explicitement hors périmètre de cette livraison.
+
+## L'échéance qui décide du sort du module Facturation
+
+Rapportée d'un appel de prospection le 8 septembre 2026, pas d'une veille
+théorique : un plombier de Juan-les-Pins, seul, a répondu qu'il fait ses devis
+et ses factures avec **Abby**, et que ça ne lui coûte **rien**.
+
+### Ce qu'est Abby, vérifié
+
+Un outil français pour indépendants. Plan gratuit **sans limite** de devis ni
+de factures, signature électronique des devis, déclarations URSSAF intégrées
+(partenaire officiel), et surtout : **Plateforme Agréée** pour la facturation
+électronique. Les offres payantes commencent à 9 €/mois et n'ajoutent que du
+confort (connexion bancaire, relances).
+
+Conséquence commerciale, sans détour : **« vos devis et vos factures au même
+endroit » ne se vend pas seul à 35 €/mois.** Un concurrent gratuit le fait, et
+le fait de façon plus conforme que nous. Ce qui reste à nous, et qu'Abby n'a
+pas, c'est le RESTE du poste — agenda, clients, projets, tâches, photos de
+chantier, comptes-rendus — la supervision, et quelqu'un au bout du fil. C'est
+là-dessus que la démonstration doit porter, pas sur la facture.
+
+### L'échéance légale, et ce qu'elle nous impose
+
+Le calendrier de la facturation électronique en France :
+
+| Date | Ce qui devient obligatoire | Pour qui |
+| --- | --- | --- |
+| **1er septembre 2026** | savoir **RECEVOIR** une facture électronique structurée (Factur-X, UBL, CII) | toute entreprise assujettie à la TVA |
+| **1er septembre 2027** | **ÉMETTRE** ses factures B2B par une plateforme | PME, TPE et **micro-entreprises** |
+
+L'émission passe soit par le Portail Public de Facturation, soit par une
+**Plateforme Agréée** choisie dans la liste publiée par impots.gouv.fr.
+
+Notre module de facturation **imprime un PDF**. Ce n'est ni l'un ni l'autre.
+
+Ce que ça veut dire, précisément :
+
+- **La première échéance est déjà passée.** Une cliente doit pouvoir RECEVOIR
+  du Factur-X. Nous ne lisons aucun format structuré : elle reçoit ses factures
+  fournisseurs ailleurs, ce qui est gênant mais pas bloquant.
+- **La seconde tombe dans moins d'un an**, et elle est bloquante pour toute
+  cliente qui facture des ENTREPRISES. À cette date, notre PDF n'est plus une
+  facture recevable pour du B2B domestique.
+- **Le B2C n'est pas concerné par l'émission** : une artisane qui ne facture
+  que des particuliers reste servie par le module tel quel (un e-reporting
+  s'applique, mais ce n'est pas la même obligation). C'est une part réelle de
+  la cible, et c'est ce qui fait que l'échéance n'est pas fatale — seulement
+  décisive.
+
+### Les trois issues, à trancher avant l'été 2027
+
+1. **Se brancher sur une Plateforme Agréée** et lui déléguer l'émission. Le
+   module garde la saisie, le chiffrage, l'identité légale et l'impression ;
+   la transmission part chez le partenaire. C'est le chemin le plus court, et
+   il n'exige aucun agrément de notre part.
+2. **Restreindre le module au B2C** et le dire explicitement, sur le site
+   comme dans l'application. Honnête, mais ça ferme la porte des clientes qui
+   travaillent pour des entreprises — dont les agences, notre forfait le plus
+   cher.
+3. **Ne rien faire.** Alors une cliente qui facture des entreprises devient
+   non conforme le 1er septembre 2027 en utilisant notre outil, sans que rien
+   ne l'en avertisse. Ce n'est pas une option.
+
+Tant que ce n'est pas tranché, **ne pas mettre la facturation en avant devant
+une prospecte qui facture des entreprises.**
