@@ -35,6 +35,26 @@ const TYPES: { value: ReportType; label: string }[] = [
   { value: 'manual', label: 'Manuel' },
 ];
 
+/**
+ * Les types PROPOSABLES ici, selon l'édition.
+ *
+ * « Décision » n'a de sens que là où le module Décisions existe. Cet écran
+ * savait déjà ne pas NAVIGUER vers une décision quand le module est absent
+ * (voir `LinkChip`), mais il continuait de proposer le type dans le filtre et
+ * dans le sélecteur de l'éditeur. Une cliente pouvait donc classer un rapport
+ * sous une rubrique qu'elle ne peut ouvrir nulle part.
+ *
+ * C'est le même défaut que celui de la barre latérale : une liste sur cinq
+ * qu'on a oublié de filtrer.
+ */
+function proposableTypes(decisionsExist: boolean): { value: ReportType; label: string }[] {
+  return decisionsExist ? TYPES : TYPES.filter((t) => t.value !== 'decision');
+}
+
+/**
+ * L'intitulé lu sur un rapport EXISTANT — jamais filtré. Un rapport déjà
+ * enregistré doit garder son étiquette même si son type n'est plus proposable.
+ */
 function typeLabel(t: ReportType): string {
   return TYPES.find((x) => x.value === t)?.label ?? 'Manuel';
 }
@@ -65,6 +85,8 @@ interface EditState {
 
 export function ReportsScreen() {
   const { reports, createReport, updateReport, deleteReport } = useReports();
+  const { DECISIONS_ROUTE } = useExclusive();
+  const types = useMemo(() => proposableTypes(DECISIONS_ROUTE !== null), [DECISIONS_ROUTE]);
   const { isPending, scheduleDelete } = useUndo();
   const location = useLocation();
 
@@ -193,7 +215,7 @@ export function ReportsScreen() {
           onChange={(v) => setTypeFilter(v as ListFilter)}
           options={[
             { value: 'all', label: 'Tous' },
-            ...TYPES.map((t) => ({ value: t.value, label: t.label })),
+            ...types.map((t) => ({ value: t.value, label: t.label })),
             ...products.filters,
           ]}
         />
@@ -421,6 +443,8 @@ function ReportEditor({
   onSave: () => void;
   onCancel: () => void;
 }) {
+  const { DECISIONS_ROUTE } = useExclusive();
+  const types = proposableTypes(DECISIONS_ROUTE !== null);
   const { draft } = state;
   const setDraft = (patch: Partial<ReportDraft>) => onChange({ ...state, draft: { ...draft, ...patch } });
   const [preview, setPreview] = useState(false);
@@ -480,7 +504,7 @@ function ReportEditor({
           aria-label="Type de rapport"
           className="input-focus cursor-pointer border border-border bg-bg px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary"
         >
-          {TYPES.map((t) => (
+          {types.map((t) => (
             <option key={t.value} value={t.value}>
               {t.label}
             </option>
