@@ -8,6 +8,7 @@ import {
   Download,
   History,
   Loader2,
+  Mic,
   MessageSquarePlus,
   Newspaper,
   RefreshCw,
@@ -15,6 +16,7 @@ import {
   Sparkles,
   Sunrise,
   Trash2,
+  Volume2,
   WifiOff,
   X,
 } from 'lucide-react';
@@ -344,7 +346,10 @@ function ModelPicker() {
 }
 
 function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
-  const { messages, isThinking, sendMessage, ollamaAvailable } = useAssistant();
+  const {
+    messages, isThinking, sendMessage, ollamaAvailable,
+    voixEtat, texteVocalEnAttente, consommerTexteVocal, demarrerEcoute, arreterEcoute, voixHaute, setVoixHaute,
+  } = useAssistant();
   const { t } = useLangue();
   const enGarde = spaceForPath(useLocation().pathname) === 'garde';
   const [input, setInput] = useState('');
@@ -353,6 +358,13 @@ function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, isThinking]);
+
+  // La transcription (Bloc 2) se pose dans le champ, jamais envoyée seule : la personne relit, corrige, valide.
+  useEffect(() => {
+    if (texteVocalEnAttente === null) return;
+    setInput((prev) => (prev ? `${prev} ${texteVocalEnAttente}` : texteVocalEnAttente));
+    consommerTexteVocal();
+  }, [texteVocalEnAttente, consommerTexteVocal]);
 
   const submit = () => {
     if (!input.trim()) return;
@@ -396,6 +408,32 @@ function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
             placeholder={enGarde ? t('garde.bureau.question') : 'Posez n’importe quelle question, ou « génère un rapport sur… »'}
             className="max-h-32 flex-1 resize-none bg-transparent py-1.5 text-sm text-text-primary outline-none placeholder:text-text-muted"
           />
+          {/*
+            LA COMMANDE VOCALE (Bloc 2, push-to-talk) : on maintient — au clavier (F9, partout
+            dans l'application) ou ici à la souris — le micro écoute ; on relâche, la transcription
+            se pose dans le champ ci-dessus, jamais envoyée seule. `onMouseLeave` coupe l'écoute si
+            le curseur quitte le bouton en gardant le doigt appuyé — un micro qui reste ouvert par
+            accident serait pire qu'utile.
+          */}
+          <button
+            type="button"
+            onMouseDown={demarrerEcoute}
+            onMouseUp={arreterEcoute}
+            onMouseLeave={() => voixEtat === 'enregistrement' && arreterEcoute()}
+            title="Maintenir pour parler (ou F9)"
+            aria-label="Maintenir pour parler"
+            aria-pressed={voixEtat === 'enregistrement'}
+            data-vocal={voixEtat}
+            className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border transition-colors duration-200 ${
+              voixEtat === 'enregistrement'
+                ? 'border-danger bg-danger-muted text-danger'
+                : voixEtat === 'echec'
+                  ? 'border-danger/50 text-danger'
+                  : 'border-border text-text-muted hover:text-text-primary'
+            }`}
+          >
+            {voixEtat === 'transcription' ? <Loader2 size={15} className="animate-spin" /> : <Mic size={15} strokeWidth={1.75} />}
+          </button>
           <button
             type="button"
             onClick={submit}
@@ -404,6 +442,21 @@ function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
             className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent text-bg transition-colors duration-200 hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ArrowUp size={16} strokeWidth={2.25} />
+          </button>
+        </div>
+        <div className="mt-2 flex items-center justify-between px-1">
+          <span className="font-mono text-[10px] text-text-muted" aria-live="polite">
+            {voixEtat === 'enregistrement' ? 'Écoute…' : voixEtat === 'transcription' ? 'Transcription…' : voixEtat === 'echec' ? 'Micro indisponible — écrivez votre demande.' : ''}
+          </span>
+          <button
+            type="button"
+            onClick={() => setVoixHaute(!voixHaute)}
+            aria-pressed={voixHaute}
+            className={`flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors ${voixHaute ? 'text-accent' : 'text-text-muted hover:text-text-primary'}`}
+            title="Réponse à voix haute"
+          >
+            <Volume2 size={12} strokeWidth={1.75} />
+            {voixHaute ? 'Voix haute activée' : 'Voix haute'}
           </button>
         </div>
       </div>

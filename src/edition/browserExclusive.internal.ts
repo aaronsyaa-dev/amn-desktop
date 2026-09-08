@@ -756,7 +756,7 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
  * serveur local pour Ollama). Le repli navigateur répond honnêtement « pas
  * disponible ici » plutôt que d'échouer en silence.
  */
-export const browserExclusiveBridge: Pick<AmnBridge, 'watch' | 'ollama'> = {
+export const browserExclusiveBridge: Pick<AmnBridge, 'watch' | 'ollama' | 'whisper'> = {
   watch: {
     async list() {
       return { items: [], fetchedAt: null, degraded: true };
@@ -771,6 +771,14 @@ export const browserExclusiveBridge: Pick<AmnBridge, 'watch' | 'ollama'> = {
     },
     async chat() {
       throw new Error('Modèle local indisponible dans le navigateur.');
+    },
+  },
+  whisper: {
+    async status() {
+      return { available: false };
+    },
+    async transcrire() {
+      throw new Error('Transcription vocale indisponible dans le navigateur.');
     },
   },
 };

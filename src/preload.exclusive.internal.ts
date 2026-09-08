@@ -83,7 +83,7 @@ type ExclusiveRemote = Pick<
 >;
 
 /** Part exclusive du pont hors `remote` : veille RSS et modèle local. */
-export const exclusiveBridge: Pick<AmnBridge, 'watch' | 'ollama'> = {
+export const exclusiveBridge: Pick<AmnBridge, 'watch' | 'ollama' | 'whisper'> = {
   watch: {
     list: () => ipcRenderer.invoke(IPC.watchList),
     refresh: () => ipcRenderer.invoke(IPC.watchRefresh),
@@ -92,6 +92,11 @@ export const exclusiveBridge: Pick<AmnBridge, 'watch' | 'ollama'> = {
     status: () => ipcRenderer.invoke(IPC.ollamaStatus),
     chat: (input: { model: string; system: string; prompt: string }) =>
       ipcRenderer.invoke(IPC.ollamaChat, input),
+  },
+  whisper: {
+    status: () => ipcRenderer.invoke(IPC.whisperStatus),
+    transcrire: (input: { base64Audio: string; mimeType: string; langue?: string }) =>
+      ipcRenderer.invoke(IPC.whisperTranscrire, input),
   },
 };
 

@@ -896,6 +896,10 @@ export interface AppInfo {
 }
 
 /** Local Ollama availability + installed models. */
+export interface WhisperStatus {
+  available: boolean;
+  baseUrl?: string;
+}
 export interface OllamaStatus {
   available: boolean;
   models: string[];
@@ -3407,6 +3411,16 @@ export interface AmnBridge {
     /** One non-streaming completion. Rejects on failure (caller falls back). */
     chat(input: { model: string; system: string; prompt: string }): Promise<{ text: string }>;
   };
+  /**
+   * Transcription vocale locale (Ajmani partout, Bloc 2) : un serveur compatible OpenAI
+   * (`/v1/audio/transcriptions`) qu'Aaron installe et fait tourner lui-même. Absent, le repli est
+   * le texte tapé — jamais un blocage.
+   */
+  whisper: {
+    status(): Promise<WhisperStatus>;
+    /** Rejette avec le détail (serveur absent / en erreur) — jamais un texte vide silencieux. */
+    transcrire(input: { base64Audio: string; mimeType: string; langue?: string }): Promise<{ texte: string }>;
+  };
   /** Auto-update (Electron main; Squirrel/autoUpdater). No-ops in the browser. */
   updates: {
     /** Fires when an update has been downloaded and is ready to install. */
@@ -3635,6 +3649,8 @@ export const IPC = {
   watchRefresh: 'watch:refresh',
   ollamaStatus: 'ollama:status',
   ollamaChat: 'ollama:chat',
+  whisperStatus: 'whisper:status',
+  whisperTranscrire: 'whisper:transcrire',
   updateDownloaded: 'update:downloaded',
   updateInstall: 'update:install',
   updateCheck: 'update:check',

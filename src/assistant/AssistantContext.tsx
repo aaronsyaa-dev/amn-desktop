@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import { generateReport, parseIntent, reponseLocaleSpecifique, runAssistant, textToBlocks, type Generate } from './engine';
 import { contexteActuel } from './ecranContexte';
+import { SessionVocale, directAVoixHaute, voixHauteActive, setVoixHauteActive, type EtatVocal } from './voix';
 import { reformulerSansInventer } from '../lib/reformuler';
 import { spaceForPath } from '../data/spaces';
 import { garde } from '../lib/garde';
@@ -56,6 +57,15 @@ interface AssistantContextValue {
   ollamaModel: string | null;
   setOllamaModel: (m: string) => void;
   refreshOllama: () => void;
+  /* --- Commande vocale (Ajmani partout, Bloc 2) --- */
+  voixEtat: EtatVocal;
+  /** Un texte transcrit attend d'être posé dans le champ — jamais envoyé seul. */
+  texteVocalEnAttente: string | null;
+  consommerTexteVocal: () => void;
+  demarrerEcoute: () => void;
+  arreterEcoute: () => void;
+  voixHaute: boolean;
+  setVoixHaute: (actif: boolean) => void;
 }
 
 const AssistantContext = createContext<AssistantContextValue | undefined>(
@@ -223,6 +233,72 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // La commande vocale (Bloc 2) : PUSH-TO-TALK strict — jamais de micro permanent. F9 tenu,
+  // depuis n'importe quel écran, ouvre Ajmani s'il est fermé et écoute ; le relâcher transcrit et
+  // pose le texte dans le champ, jamais envoyé seul (voir voix.ts).
+  const [voixEtat, setVoixEtat] = useState<EtatVocal>('inactif');
+  const [texteVocalEnAttente, setTexteVocalEnAttente] = useState<string | null>(null);
+  const sessionVocaleRef = useRef<SessionVocale | null>(null);
+  const [voixHaute, setVoixHauteState] = useState(() => voixHauteActive());
+  const voixHauteRef = useRef(voixHaute);
+  voixHauteRef.current = voixHaute;
+  const setVoixHaute = useCallback((actif: boolean) => {
+    setVoixHauteState(actif);
+    setVoixHauteActive(actif);
+  }, []);
+
+  const demarrerEcoute = useCallback(() => {
+    if (sessionVocaleRef.current) return; // déjà en écoute : une répétition de touche ne relance rien
+    setIsOpen(true);
+    const session = new SessionVocale();
+    sessionVocaleRef.current = session;
+    setVoixEtat('enregistrement');
+    void session.demarrer().then((r) => {
+      if (!r.ok) {
+        sessionVocaleRef.current = null;
+        setVoixEtat('echec');
+        window.setTimeout(() => setVoixEtat('inactif'), 2500);
+      }
+    });
+  }, []);
+  const arreterEcoute = useCallback(() => {
+    const session = sessionVocaleRef.current;
+    if (!session) return;
+    sessionVocaleRef.current = null;
+    setVoixEtat('transcription');
+    void session.arreter('fr').then((r) => {
+      if (r.texte) {
+        setTexteVocalEnAttente(r.texte);
+        setVoixEtat('inactif');
+      } else {
+        // Le repli : rien n'est perdu, le champ de texte reste la voie normale (Bloc 2, permission explicite du chantier).
+        setVoixEtat('echec');
+        window.setTimeout(() => setVoixEtat('inactif'), 2500);
+      }
+    });
+  }, []);
+  const consommerTexteVocal = useCallback(() => setTexteVocalEnAttente(null), []);
+
+  useEffect(() => {
+    let enCours = false;
+    const onDown = (e: KeyboardEvent) => {
+      if (e.key !== 'F9' || enCours) return;
+      enCours = true;
+      demarrerEcoute();
+    };
+    const onUp = (e: KeyboardEvent) => {
+      if (e.key !== 'F9') return;
+      enCours = false;
+      arreterEcoute();
+    };
+    window.addEventListener('keydown', onDown);
+    window.addEventListener('keyup', onUp);
+    return () => {
+      window.removeEventListener('keydown', onDown);
+      window.removeEventListener('keyup', onUp);
+    };
+  }, [demarrerEcoute, arreterEcoute]);
+
   const emailRef = useRef(email);
   emailRef.current = email;
 
@@ -385,6 +461,15 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         ];
         setMessagesSynced(withAnswer);
         persist(withAnswer);
+        // La voix haute (Bloc 2) : en option, jamais pour un rapport (trop long pour s'écouter) — la
+        // réponse écrite reste systématique, celle-ci n'est qu'un confort par-dessus.
+        if (voixHauteRef.current && turn?.kind === 'answer') {
+          const texteParle = turn.blocks
+            .map((b) => ('text' in b ? b.text : 'items' in b ? b.items.join('. ') : ''))
+            .join(' ')
+            .trim();
+          if (texteParle) directAVoixHaute(texteParle);
+        }
       };
 
       // If the reply lands while the user isn't looking at the panel, nudge them
@@ -539,6 +624,13 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       ollamaModel,
       setOllamaModel,
       refreshOllama,
+      voixEtat,
+      texteVocalEnAttente,
+      consommerTexteVocal,
+      demarrerEcoute,
+      arreterEcoute,
+      voixHaute,
+      setVoixHaute,
     }),
     [
       isOpen,
@@ -560,6 +652,13 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       ollamaModel,
       setOllamaModel,
       refreshOllama,
+      voixEtat,
+      texteVocalEnAttente,
+      consommerTexteVocal,
+      demarrerEcoute,
+      arreterEcoute,
+      voixHaute,
+      setVoixHaute,
     ],
   );
 

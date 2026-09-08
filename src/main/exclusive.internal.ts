@@ -62,6 +62,7 @@ import { apiFetch, type RemoteApiClient } from './remoteApi';
 import { writeScanReportFile } from './scanReports';
 import { getWatch, warmWatch } from './watch';
 import { ollamaChat, ollamaStatus } from './ollama';
+import { whisperStatus, whisperTranscrire } from './whisper';
 import type { SupportRequestForOperator, WelcomeLinkIssued, AdminWelcomeLink, InputAlert, GardeAppel, GardeTrame } from '../shared/api';
 
 /**
@@ -980,6 +981,11 @@ export function registerExclusiveIpc(
   ipcMain.handle(
     IPC.ollamaChat,
     (_event, input: { model: string; system: string; prompt: string }) => ollamaChat(input),
+  );
+  ipcMain.handle(IPC.whisperStatus, () => whisperStatus());
+  ipcMain.handle(
+    IPC.whisperTranscrire,
+    (_event, input: { base64Audio: string; mimeType: string; langue?: string }) => whisperTranscrire(input),
   );
 
   // Trames temps réel des produits exclusifs. Leurs NOMS sont déclarés ici, et
