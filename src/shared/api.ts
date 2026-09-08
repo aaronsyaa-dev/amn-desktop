@@ -900,6 +900,14 @@ export interface WhisperStatus {
   available: boolean;
   baseUrl?: string;
 }
+/**
+ * Le verdict d'une transcription, honnête sur la raison d'un échec (Ajmani partout, correctif
+ * micro) : jamais un rejet générique que l'appelant devrait re-deviner. `'inconnue'` couvre une
+ * panne qui n'est ni « personne n'écoute » ni « le serveur a répondu en erreur ».
+ */
+export type WhisperTranscrireResultat =
+  | { ok: true; texte: string }
+  | { ok: false; kind: 'unreachable' | 'server-error' | 'inconnue'; message: string };
 export interface OllamaStatus {
   available: boolean;
   models: string[];
@@ -3418,8 +3426,8 @@ export interface AmnBridge {
    */
   whisper: {
     status(): Promise<WhisperStatus>;
-    /** Rejette avec le détail (serveur absent / en erreur) — jamais un texte vide silencieux. */
-    transcrire(input: { base64Audio: string; mimeType: string; langue?: string }): Promise<{ texte: string }>;
+    /** Ne rejette jamais : un verdict distinguant succès / serveur absent / serveur en erreur. */
+    transcrire(input: { base64Audio: string; mimeType: string; langue?: string }): Promise<WhisperTranscrireResultat>;
   };
   /** Auto-update (Electron main; Squirrel/autoUpdater). No-ops in the browser. */
   updates: {

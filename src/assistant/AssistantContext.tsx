@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import { generateReport, parseIntent, reponseLocaleSpecifique, runAssistant, textToBlocks, type Generate } from './engine';
 import { contexteActuel } from './ecranContexte';
-import { SessionVocale, directAVoixHaute, voixHauteActive, setVoixHauteActive, type EtatVocal } from './voix';
+import { SessionVocale, directAVoixHaute, voixHauteActive, setVoixHauteActive, type EtatVocal, type RaisonEchecVocal } from './voix';
 import { reformulerSansInventer } from '../lib/reformuler';
 import { spaceForPath } from '../data/spaces';
 import { garde } from '../lib/garde';
@@ -57,8 +57,12 @@ interface AssistantContextValue {
   ollamaModel: string | null;
   setOllamaModel: (m: string) => void;
   refreshOllama: () => void;
-  /* --- Commande vocale (Ajmani partout, Bloc 2) --- */
+  /* --- Commande vocale (Ajmani partout, Bloc 2 ; raison précise ajoutée au correctif micro) --- */
   voixEtat: EtatVocal;
+  /** Pourquoi `voixEtat === 'echec'`, jamais un « indisponible » générique — voir voix.ts. */
+  voixRaison: RaisonEchecVocal | null;
+  /** Niveau sonore 0..1 pendant l'écoute — la preuve visuelle que le micro capte vraiment. */
+  voixNiveau: number;
   /** Un texte transcrit attend d'être posé dans le champ — jamais envoyé seul. */
   texteVocalEnAttente: string | null;
   consommerTexteVocal: () => void;
@@ -237,6 +241,8 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   // depuis n'importe quel écran, ouvre Ajmani s'il est fermé et écoute ; le relâcher transcrit et
   // pose le texte dans le champ, jamais envoyé seul (voir voix.ts).
   const [voixEtat, setVoixEtat] = useState<EtatVocal>('inactif');
+  const [voixRaison, setVoixRaison] = useState<RaisonEchecVocal | null>(null);
+  const [voixNiveau, setVoixNiveau] = useState(0);
   const [texteVocalEnAttente, setTexteVocalEnAttente] = useState<string | null>(null);
   const sessionVocaleRef = useRef<SessionVocale | null>(null);
   const [voixHaute, setVoixHauteState] = useState(() => voixHauteActive());
@@ -250,14 +256,17 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const demarrerEcoute = useCallback(() => {
     if (sessionVocaleRef.current) return; // déjà en écoute : une répétition de touche ne relance rien
     setIsOpen(true);
+    setVoixRaison(null);
+    setVoixNiveau(0);
     const session = new SessionVocale();
     sessionVocaleRef.current = session;
     setVoixEtat('enregistrement');
-    void session.demarrer().then((r) => {
+    void session.demarrer((n) => setVoixNiveau(n)).then((r) => {
       if (!r.ok) {
         sessionVocaleRef.current = null;
+        setVoixRaison(r.raison);
         setVoixEtat('echec');
-        window.setTimeout(() => setVoixEtat('inactif'), 2500);
+        window.setTimeout(() => setVoixEtat('inactif'), 4000);
       }
     });
   }, []);
@@ -265,15 +274,17 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
     const session = sessionVocaleRef.current;
     if (!session) return;
     sessionVocaleRef.current = null;
+    setVoixNiveau(0);
     setVoixEtat('transcription');
     void session.arreter('fr').then((r) => {
-      if (r.texte) {
+      if (r.texte !== null) {
         setTexteVocalEnAttente(r.texte);
         setVoixEtat('inactif');
       } else {
         // Le repli : rien n'est perdu, le champ de texte reste la voie normale (Bloc 2, permission explicite du chantier).
+        setVoixRaison(r.raison);
         setVoixEtat('echec');
-        window.setTimeout(() => setVoixEtat('inactif'), 2500);
+        window.setTimeout(() => setVoixEtat('inactif'), 4000);
       }
     });
   }, []);
@@ -625,6 +636,8 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       setOllamaModel,
       refreshOllama,
       voixEtat,
+      voixRaison,
+      voixNiveau,
       texteVocalEnAttente,
       consommerTexteVocal,
       demarrerEcoute,
@@ -653,6 +666,8 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       setOllamaModel,
       refreshOllama,
       voixEtat,
+      voixRaison,
+      voixNiveau,
       texteVocalEnAttente,
       consommerTexteVocal,
       demarrerEcoute,

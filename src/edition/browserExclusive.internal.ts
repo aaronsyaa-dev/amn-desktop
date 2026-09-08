@@ -778,7 +778,11 @@ export const browserExclusiveBridge: Pick<AmnBridge, 'watch' | 'ollama' | 'whisp
       return { available: false };
     },
     async transcrire() {
-      throw new Error('Transcription vocale indisponible dans le navigateur.');
+      return {
+        ok: false,
+        kind: 'unreachable' as const,
+        message: 'Transcription vocale indisponible dans le navigateur.',
+      };
     },
   },
 };

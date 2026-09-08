@@ -29,6 +29,7 @@ import { ALERT_SEVERITY_CONFIG } from '../lib/alerts';
 import { bridge } from '../lib/bridge';
 import { relativeTime } from '../lib/time';
 import { useAssistant, type AssistantTab as Tab } from './AssistantContext';
+import type { RaisonEchecVocal } from './voix';
 import { getDailySummary, getSuggestions } from './engine';
 import { searchableText } from './conversations';
 import { ReportBlocks } from './ReportBlocks';
@@ -345,10 +346,37 @@ function ModelPicker() {
   );
 }
 
+/**
+ * Le message montré pour chaque échec vocal — jamais le même « indisponible » générique pour des
+ * causes différentes (correctif micro, Ajmani partout Bloc 2) : permission / périphérique /
+ * enregistrement sont un problème Windows ou matériel, alors qu'un serveur de transcription
+ * absent ou en erreur n'a rien à voir avec le micro, qui a très bien capté.
+ */
+function messageEchecVocal(raison: RaisonEchecVocal): string {
+  switch (raison) {
+    case 'permission-refusee':
+      return 'Micro refusé — vérifiez l’accès au microphone dans les réglages de Windows.';
+    case 'aucun-peripherique':
+      return 'Aucun microphone détecté — branchez-en un, ou écrivez votre demande.';
+    case 'enregistrement-impossible':
+      return 'L’enregistrement audio a échoué sur cet appareil — écrivez votre demande.';
+    case 'aucun-serveur-transcription':
+      return 'Micro capté — aucun serveur de transcription local n’est configuré.';
+    case 'serveur-transcription-en-erreur':
+      return 'Micro capté — le serveur de transcription local a répondu en erreur.';
+    case 'transcription-vide':
+      return 'Rien n’a été compris — réessayez, ou écrivez votre demande.';
+    case 'trop-court':
+      return 'Trop court pour être une phrase — maintenez la touche plus longtemps.';
+    case 'inconnue':
+      return 'Échec de la commande vocale — écrivez votre demande.';
+  }
+}
+
 function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
   const {
     messages, isThinking, sendMessage, ollamaAvailable,
-    voixEtat, texteVocalEnAttente, consommerTexteVocal, demarrerEcoute, arreterEcoute, voixHaute, setVoixHaute,
+    voixEtat, voixRaison, voixNiveau, texteVocalEnAttente, consommerTexteVocal, demarrerEcoute, arreterEcoute, voixHaute, setVoixHaute,
   } = useAssistant();
   const { t } = useLangue();
   const enGarde = spaceForPath(useLocation().pathname) === 'garde';
@@ -432,7 +460,19 @@ function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
                   : 'border-border text-text-muted hover:text-text-primary'
             }`}
           >
-            {voixEtat === 'transcription' ? <Loader2 size={15} className="animate-spin" /> : <Mic size={15} strokeWidth={1.75} />}
+            {voixEtat === 'transcription' ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : (
+              <Mic
+                size={15}
+                strokeWidth={1.75}
+                style={
+                  voixEtat === 'enregistrement'
+                    ? { transform: `scale(${1 + voixNiveau * 0.35})`, transition: 'transform 60ms linear' }
+                    : undefined
+                }
+              />
+            )}
           </button>
           <button
             type="button"
@@ -446,7 +486,13 @@ function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
         </div>
         <div className="mt-2 flex items-center justify-between px-1">
           <span className="font-mono text-[10px] text-text-muted" aria-live="polite">
-            {voixEtat === 'enregistrement' ? 'Écoute…' : voixEtat === 'transcription' ? 'Transcription…' : voixEtat === 'echec' ? 'Micro indisponible — écrivez votre demande.' : ''}
+            {voixEtat === 'enregistrement'
+              ? 'Écoute…'
+              : voixEtat === 'transcription'
+                ? 'Transcription…'
+                : voixEtat === 'echec' && voixRaison
+                  ? messageEchecVocal(voixRaison)
+                  : ''}
           </span>
           <button
             type="button"

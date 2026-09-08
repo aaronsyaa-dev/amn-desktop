@@ -1,5 +1,7 @@
 /**
- * LA COMMANDE VOCALE — mains libres, jamais micro permanent (Ajmani partout, Bloc 2).
+ * LA COMMANDE VOCALE — mains libres, jamais micro permanent (Ajmani partout, Bloc 2 ; ce module a
+ * été corrigé après un premier chantier qui n'avait jamais vérifié le chemin avec un vrai
+ * microphone — voir docs/voix-micro-2026-09-08.md pour le diagnostic complet).
  *
  * PUSH-TO-TALK STRICT : on tient une touche (ou le bouton micro), le micro écoute, on relâche, la
  * transcription apparaît dans le champ de texte — JAMAIS envoyée seule. La personne relit, corrige
@@ -8,16 +10,70 @@
  * ne fait que remplir le même champ que le clavier — c'est ce qui garantit qu'elle suit le même
  * chemin (Lexique → cerveau → outils → confirmation → action), sans code séparé pour elle.
  *
- * Ce module fait deux choses, l'une prouvée, l'autre non :
- *  - Prouvé (mécanique JS pure, sans matériel) : l'enregistrement (MediaRecorder), la conversion,
- *    l'appel à `bridge().whisper`, le repli honnête si rien ne répond.
- *  - NON prouvé faute de microphone dans l'environnement où ceci a été écrit : la qualité réelle
- *    d'une transcription, et la présence effective d'un serveur Whisper compatible sur le poste
- *    d'Aaron. Voir docs (rapport du chantier) — le repli texte ne bloque jamais si ça manque.
+ * LA RÈGLE D'HONNÊTETÉ DE CE MODULE : un échec dit TOUJOURS lequel, parmi une liste fermée
+ * (`RaisonEchecVocal`) — jamais un « indisponible » muet qui mélange « personne n'a donné accès au
+ * micro », « il n'y a pas de micro », et « le micro marche mais rien ne sait le transcrire ». Ces
+ * trois situations demandent trois gestes différents de la part de la personne ; un message qui ne
+ * les distingue pas fait perdre du temps à chaque diagnostic futur — c'est exactement ce qui s'est
+ * passé la première fois.
+ *
+ * TESTABLE SANS MICROPHONE NI ÉLECTRON : toute l'IO (micro, enregistreur, décodage, appel au
+ * serveur de transcription) passe par `Adaptateur`, injecté ; `scripts/check-voix.ts` fait circuler
+ * un flux audio simulé à travers exactement ce chemin — getUserMedia → MediaRecorder → base64 →
+ * appel de transcription — et vérifie chaque branche de sortie. Ce que ce test NE prouve PAS : la
+ * qualité d'une vraie transcription, ni qu'un vrai microphone Windows livre des données lisibles à
+ * MediaRecorder — ça, seule une machine avec les deux peut le dire.
  */
 import { bridge } from '../lib/bridge';
+import type { WhisperTranscrireResultat } from '../shared/api';
 
 export type EtatVocal = 'inactif' | 'enregistrement' | 'transcription' | 'echec';
+
+/**
+ * Les raisons d'échec, fermées et distinctes — jamais un texte libre à la place. `detail` porte le
+ * message technique d'origine (utile pour un rapport de bogue), `raison` porte ce qui doit
+ * gouverner le message montré et le geste à proposer.
+ */
+export type RaisonEchecVocal =
+  | 'permission-refusee'
+  | 'aucun-peripherique'
+  | 'enregistrement-impossible'
+  | 'aucun-serveur-transcription'
+  | 'serveur-transcription-en-erreur'
+  | 'transcription-vide'
+  | 'trop-court'
+  | 'inconnue';
+
+export type DemarrageVocal = { ok: true } | { ok: false; raison: RaisonEchecVocal; detail: string };
+export type ResultatVocal = { texte: string; raison?: undefined } | { texte: null; raison: RaisonEchecVocal; detail: string };
+
+/** Une piste minimale : ce que ce module utilise réellement d'un MediaStreamTrack, pour rester substituable dans un test. */
+export interface PisteAudio {
+  stop(): void;
+}
+export interface FluxAudio {
+  getTracks(): PisteAudio[];
+}
+/** Ce que ce module utilise réellement d'un MediaRecorder — un sous-ensemble minimal, substituable. */
+export interface EnregistreurAudio {
+  readonly mimeType: string;
+  start(): void;
+  stop(): void;
+  addEventListener(type: 'dataavailable', cb: (e: { data: { size: number } }) => void): void;
+  addEventListener(type: 'stop', cb: () => void, opts?: { once?: boolean }): void;
+}
+
+/** Toute l'IO du module, injectée — la vraie implémentation par défaut, une fausse dans les tests. */
+export interface AdaptateurVocal {
+  getUserMedia(): Promise<FluxAudio>;
+  creerEnregistreur(flux: FluxAudio): EnregistreurAudio;
+  /** Assemble les morceaux captés en un objet transportable ; `mimeType` vient de l'enregistreur. */
+  assembler(morceaux: unknown[], mimeType: string): { encoderBase64(): Promise<string>; type: string };
+  transcrire(input: { base64Audio: string; mimeType: string; langue?: string }): Promise<WhisperTranscrireResultat>;
+  /** Best-effort, jamais bloquant : un niveau 0..1 pendant l'écoute, pour la preuve visuelle du signal. Peut être un no-op. */
+  suivreNiveau?(flux: FluxAudio, onNiveau: (n: number) => void): () => void;
+  maintenant(): number;
+}
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -32,62 +88,155 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
+/** Le premier type que le navigateur sait vraiment enregistrer — Windows/Chromium n'accepte pas toujours le même. */
+const MIME_PREFERES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+function choisirMimeType(): string | undefined {
+  if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) return undefined;
+  return MIME_PREFERES.find((m) => {
+    try {
+      return MediaRecorder.isTypeSupported(m);
+    } catch {
+      return false;
+    }
+  });
+}
+
+/** Distingue « Windows/le navigateur a refusé » de « il n'y a pas de microphone » — deux gestes différents pour la personne. */
+function classifierErreurMicro(err: unknown): RaisonEchecVocal {
+  const nom = err instanceof Error ? err.name : '';
+  if (nom === 'NotAllowedError' || nom === 'PermissionDeniedError' || nom === 'SecurityError') return 'permission-refusee';
+  if (nom === 'NotFoundError' || nom === 'DevicesNotFoundError' || nom === 'OverconstrainedError') return 'aucun-peripherique';
+  return 'inconnue';
+}
+function detailDe(err: unknown): string {
+  return err instanceof Error ? `${err.name ? `${err.name} : ` : ''}${err.message}` : String(err);
+}
+
+/** L'adaptateur réel — les vraies API du navigateur/Electron. Non instancié dans les tests. */
+export function adaptateurNavigateur(): AdaptateurVocal {
+  return {
+    async getUserMedia() {
+      return navigator.mediaDevices.getUserMedia({ audio: true });
+    },
+    creerEnregistreur(flux) {
+      const mimeType = choisirMimeType();
+      return new MediaRecorder(flux as unknown as MediaStream, mimeType ? { mimeType } : undefined) as unknown as EnregistreurAudio;
+    },
+    assembler(morceaux, mimeType) {
+      const blob = new Blob(morceaux as BlobPart[], { type: mimeType || 'audio/webm' });
+      return { type: blob.type, encoderBase64: () => blobToBase64(blob) };
+    },
+    async transcrire(input) {
+      return bridge().whisper.transcrire(input);
+    },
+    suivreNiveau(flux, onNiveau) {
+      try {
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!AudioCtx) return () => undefined;
+        const ctx = new AudioCtx();
+        const source = ctx.createMediaStreamSource(flux as unknown as MediaStream);
+        const analyseur = ctx.createAnalyser();
+        analyseur.fftSize = 512;
+        source.connect(analyseur);
+        const donnees = new Uint8Array(analyseur.frequencyBinCount);
+        let vivant = true;
+        const boucle = () => {
+          if (!vivant) return;
+          analyseur.getByteTimeDomainData(donnees);
+          let somme = 0;
+          for (const v of donnees) somme += (v - 128) ** 2;
+          onNiveau(Math.min(1, Math.sqrt(somme / donnees.length) / 64));
+          window.requestAnimationFrame(boucle);
+        };
+        boucle();
+        return () => {
+          vivant = false;
+          source.disconnect();
+          void ctx.close();
+        };
+      } catch {
+        // Le niveau sonore est un confort de diagnostic, jamais un chemin critique : son absence ne doit rien bloquer.
+        return () => undefined;
+      }
+    },
+    maintenant: () => Date.now(),
+  };
+}
+
 /**
  * Enregistre tant que `arreter()` n'est pas appelé, puis transcrit via le pont (serveur local
- * compatible OpenAI, voir `main/whisper.ts`). Rend `null` — jamais une exception — quand
- * l'utilisateur n'a pas de microphone, l'a refusé, ou qu'aucun serveur ne répond : c'est
- * `AssistantContext` qui décide alors de dire le repli.
+ * compatible OpenAI, voir `main/whisper.ts`). Ne lève jamais d'exception : chaque échec rend une
+ * `RaisonEchecVocal` précise, jamais un texte générique.
  */
 export class SessionVocale {
-  private recorder: MediaRecorder | null = null;
-  private chunks: Blob[] = [];
-  private stream: MediaStream | null = null;
+  private enregistreur: EnregistreurAudio | null = null;
+  private morceaux: unknown[] = [];
+  private flux: FluxAudio | null = null;
   private demarreA = 0;
+  private arreterSuiviNiveau: (() => void) | null = null;
 
-  async demarrer(): Promise<{ ok: true } | { ok: false; raison: string }> {
+  constructor(private readonly adaptateur: AdaptateurVocal = adaptateurNavigateur()) {}
+
+  async demarrer(onNiveau?: (n: number) => void): Promise<DemarrageVocal> {
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.flux = await this.adaptateur.getUserMedia();
     } catch (err) {
-      return { ok: false, raison: err instanceof Error ? err.message : 'microphone indisponible' };
+      return { ok: false, raison: classifierErreurMicro(err), detail: detailDe(err) };
     }
-    this.chunks = [];
-    this.demarreA = Date.now();
+    this.morceaux = [];
+    this.demarreA = this.adaptateur.maintenant();
     try {
-      this.recorder = new MediaRecorder(this.stream);
+      this.enregistreur = this.adaptateur.creerEnregistreur(this.flux);
     } catch (err) {
-      this.stream.getTracks().forEach((tr) => tr.stop());
-      this.stream = null;
-      return { ok: false, raison: err instanceof Error ? err.message : 'enregistrement indisponible' };
+      this.flux.getTracks().forEach((p) => p.stop());
+      this.flux = null;
+      return { ok: false, raison: 'enregistrement-impossible', detail: detailDe(err) };
     }
-    this.recorder.addEventListener('dataavailable', (e) => {
-      if (e.data.size > 0) this.chunks.push(e.data);
+    this.enregistreur.addEventListener('dataavailable', (e) => {
+      if (e.data.size > 0) this.morceaux.push(e.data);
     });
-    this.recorder.start();
+    if (onNiveau && this.adaptateur.suivreNiveau) this.arreterSuiviNiveau = this.adaptateur.suivreNiveau(this.flux, onNiveau);
+    this.enregistreur.start();
     return { ok: true };
   }
 
-  /** Arrête le micro et rend le texte transcrit (ou `null` avec la raison). Une prise trop courte (bruit d'appui) est ignorée. */
-  async arreter(langue: 'fr' | 'en' = 'fr'): Promise<{ texte: string } | { texte: null; raison: string }> {
-    const recorder = this.recorder;
-    const stream = this.stream;
-    this.recorder = null;
-    this.stream = null;
-    if (!recorder || !stream) return { texte: null, raison: 'aucun enregistrement en cours' };
-    const dureeMs = Date.now() - this.demarreA;
-    const blob = await new Promise<Blob>((resolve) => {
-      recorder.addEventListener('stop', () => resolve(new Blob(this.chunks, { type: recorder.mimeType || 'audio/webm' })), { once: true });
-      recorder.stop();
+  /** Arrête le micro et rend le texte transcrit, ou un échec précis. Une prise trop courte (bruit d'appui) est écartée avant tout appel réseau. */
+  async arreter(langue: 'fr' | 'en' = 'fr'): Promise<ResultatVocal> {
+    const enregistreur = this.enregistreur;
+    const flux = this.flux;
+    this.enregistreur = null;
+    this.flux = null;
+    this.arreterSuiviNiveau?.();
+    this.arreterSuiviNiveau = null;
+    if (!enregistreur || !flux) return { texte: null, raison: 'inconnue', detail: 'aucun enregistrement en cours' };
+    const dureeMs = this.adaptateur.maintenant() - this.demarreA;
+    await new Promise<void>((resolve) => {
+      enregistreur.addEventListener('stop', () => resolve(), { once: true });
+      enregistreur.stop();
     });
-    stream.getTracks().forEach((tr) => tr.stop());
-    if (dureeMs < 300) return { texte: null, raison: 'trop court pour être une phrase' };
+    flux.getTracks().forEach((p) => p.stop());
+    if (dureeMs < 300) return { texte: null, raison: 'trop-court', detail: `${dureeMs} ms` };
+    const paquet = this.adaptateur.assembler(this.morceaux, enregistreur.mimeType);
+    let base64Audio: string;
     try {
-      const base64Audio = await blobToBase64(blob);
-      const r = await bridge().whisper.transcrire({ base64Audio, mimeType: blob.type, langue });
-      if (!r.texte) return { texte: null, raison: 'transcription vide' };
-      return { texte: r.texte };
+      base64Audio = await paquet.encoderBase64();
     } catch (err) {
-      return { texte: null, raison: err instanceof Error ? err.message : 'transcription indisponible' };
+      return { texte: null, raison: 'inconnue', detail: detailDe(err) };
     }
+    let r: WhisperTranscrireResultat;
+    try {
+      r = await this.adaptateur.transcrire({ base64Audio, mimeType: paquet.type, langue });
+    } catch (err) {
+      // Le pont ne devrait plus jeter (voir main/whisper.ts, qui rend un résultat structuré) —
+      // ce filet couvre un pont plus ancien ou une erreur de transport IPC elle-même.
+      return { texte: null, raison: 'inconnue', detail: detailDe(err) };
+    }
+    if (!r.ok) {
+      const raison: RaisonEchecVocal = r.kind === 'unreachable' ? 'aucun-serveur-transcription' : r.kind === 'server-error' ? 'serveur-transcription-en-erreur' : 'inconnue';
+      return { texte: null, raison, detail: r.message };
+    }
+    if (!r.texte.trim()) return { texte: null, raison: 'transcription-vide', detail: '' };
+    return { texte: r.texte };
   }
 }
 

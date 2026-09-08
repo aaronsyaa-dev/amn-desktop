@@ -62,8 +62,8 @@ import { apiFetch, type RemoteApiClient } from './remoteApi';
 import { writeScanReportFile } from './scanReports';
 import { getWatch, warmWatch } from './watch';
 import { ollamaChat, ollamaStatus } from './ollama';
-import { whisperStatus, whisperTranscrire } from './whisper';
-import type { SupportRequestForOperator, WelcomeLinkIssued, AdminWelcomeLink, InputAlert, GardeAppel, GardeTrame } from '../shared/api';
+import { whisperStatus, whisperTranscrire, WhisperError } from './whisper';
+import type { SupportRequestForOperator, WelcomeLinkIssued, AdminWelcomeLink, InputAlert, GardeAppel, GardeTrame, WhisperTranscrireResultat } from '../shared/api';
 
 /**
  * Tout ce qu'amn-api expose et qui n'appartient qu'à AMN DevSec : le parc de
@@ -985,7 +985,24 @@ export function registerExclusiveIpc(
   ipcMain.handle(IPC.whisperStatus, () => whisperStatus());
   ipcMain.handle(
     IPC.whisperTranscrire,
-    (_event, input: { base64Audio: string; mimeType: string; langue?: string }) => whisperTranscrire(input),
+    async (
+      _event,
+      input: { base64Audio: string; mimeType: string; langue?: string },
+    ): Promise<WhisperTranscrireResultat> => {
+      // IPC perd les propriétés d'une Error personnalisée (ici `.kind`) : on la capture ici
+      // et on renvoie un verdict simple, jamais un rejet que le renderer devrait re-décoder.
+      try {
+        const { texte } = await whisperTranscrire(input);
+        return { ok: true, texte };
+      } catch (err) {
+        if (err instanceof WhisperError) return { ok: false, kind: err.kind, message: err.message };
+        return {
+          ok: false,
+          kind: 'inconnue',
+          message: err instanceof Error ? err.message : 'échec de transcription inconnu',
+        };
+      }
+    },
   );
 
   // Trames temps réel des produits exclusifs. Leurs NOMS sont déclarés ici, et
