@@ -62,7 +62,7 @@ import { apiFetch, type RemoteApiClient } from './remoteApi';
 import { writeScanReportFile } from './scanReports';
 import { getWatch, warmWatch } from './watch';
 import { ollamaChat, ollamaStatus } from './ollama';
-import { whisperStatus, whisperTranscrire, WhisperError } from './whisper';
+import { whisperStatus, whisperTranscrire, WhisperError, lireUrlPersistee, ecrireUrlPersistee } from './whisper';
 import type { SupportRequestForOperator, WelcomeLinkIssued, AdminWelcomeLink, InputAlert, GardeAppel, GardeTrame, WhisperTranscrireResultat } from '../shared/api';
 
 /**
@@ -1004,6 +1004,8 @@ export function registerExclusiveIpc(
       }
     },
   );
+  ipcMain.handle(IPC.whisperGetUrl, () => lireUrlPersistee());
+  ipcMain.handle(IPC.whisperSetUrl, (_event, url: string | null) => ecrireUrlPersistee(url));
 
   // Trames temps réel des produits exclusifs. Leurs NOMS sont déclarés ici, et
   // pas dans le client de transport : c'est ce qui les fait disparaître du

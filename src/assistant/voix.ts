@@ -40,6 +40,7 @@ export type RaisonEchecVocal =
   | 'enregistrement-impossible'
   | 'aucun-serveur-transcription'
   | 'serveur-transcription-en-erreur'
+  | 'reponse-transcription-inattendue'
   | 'transcription-vide'
   | 'trop-court'
   | 'inconnue';
@@ -232,7 +233,14 @@ export class SessionVocale {
       return { texte: null, raison: 'inconnue', detail: detailDe(err) };
     }
     if (!r.ok) {
-      const raison: RaisonEchecVocal = r.kind === 'unreachable' ? 'aucun-serveur-transcription' : r.kind === 'server-error' ? 'serveur-transcription-en-erreur' : 'inconnue';
+      const raison: RaisonEchecVocal =
+        r.kind === 'unreachable'
+          ? 'aucun-serveur-transcription'
+          : r.kind === 'server-error'
+            ? 'serveur-transcription-en-erreur'
+            : r.kind === 'unexpected-format'
+              ? 'reponse-transcription-inattendue'
+              : 'inconnue';
       return { texte: null, raison, detail: r.message };
     }
     if (!r.texte.trim()) return { texte: null, raison: 'transcription-vide', detail: '' };

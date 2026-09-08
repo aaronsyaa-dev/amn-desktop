@@ -140,3 +140,7 @@ export function useSitePanelLink(): { openSite: (siteId: string) => void } {
 export function OllamaSection(): null {
   return null;
 }
+
+export function WhisperSection(): null {
+  return null;
+}

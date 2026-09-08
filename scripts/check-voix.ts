@@ -288,6 +288,27 @@ await dit('transcription réussie mais vide (silence) → "transcription-vide"',
   assert.deepEqual(r, { texte: null, raison: 'transcription-vide', detail: '' });
 });
 
+await dit('le serveur a répondu sans texte exploitable → "reponse-transcription-inattendue"', async () => {
+  const { flux } = fluxSimule();
+  const h = horloge(0);
+  const adaptateur: AdaptateurVocalTest = {
+    getUserMedia: async () => flux,
+    creerEnregistreur: () => enregistreurSimule(),
+    assembler: (_m, mimeType) => ({ type: mimeType, encoderBase64: async () => 'QUFB' }),
+    transcrire: async () => ({ ok: false, kind: 'unexpected-format', message: "réponse sans champ « text »" }),
+    maintenant: h.maintenant,
+  };
+  const session = new SessionVocale(adaptateur);
+  await session.demarrer();
+  h.avancer(1000);
+  const r = await session.arreter('fr');
+  assert.deepEqual(r, {
+    texte: null,
+    raison: 'reponse-transcription-inattendue',
+    detail: "réponse sans champ « text »",
+  });
+});
+
 await dit('prise trop courte (bruit d’appui) → "trop-court", sans jamais appeler le serveur de transcription', async () => {
   const { flux } = fluxSimule();
   const h = horloge(0);

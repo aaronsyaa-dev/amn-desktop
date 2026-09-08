@@ -31,5 +31,5 @@ export function createBrowserExclusive(_ctx: BrowserExclusiveContext): AmnBridge
 }
 
 /** Ni veille RSS ni modèle local dans cette édition. */
-export const browserExclusiveBridge = {} as unknown as Pick<AmnBridge, 'watch' | 'ollama'>;
+export const browserExclusiveBridge = {} as unknown as Pick<AmnBridge, 'watch' | 'ollama' | 'whisper'>;
 /* eslint-enable @typescript-eslint/no-unused-vars */

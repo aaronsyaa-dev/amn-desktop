@@ -895,19 +895,21 @@ export interface AppInfo {
   isElectron: boolean;
 }
 
-/** Local Ollama availability + installed models. */
+/** Local whisper.cpp/OpenAI-compatible transcription server, detected + which contrat it parle. */
 export interface WhisperStatus {
   available: boolean;
   baseUrl?: string;
+  flavor?: 'whispercpp' | 'openai-compatible';
 }
 /**
- * Le verdict d'une transcription, honnête sur la raison d'un échec (Ajmani partout, correctif
- * micro) : jamais un rejet générique que l'appelant devrait re-deviner. `'inconnue'` couvre une
- * panne qui n'est ni « personne n'écoute » ni « le serveur a répondu en erreur ».
+ * Le verdict d'une transcription, honnête sur la raison d'un échec (Ajmani partout, correctifs
+ * micro) : jamais un rejet générique que l'appelant devrait re-deviner. `'unexpected-format'`
+ * couvre un serveur qui a répondu, mais pas avec un texte exploitable (mauvais contrat d'API,
+ * mauvaise détection). `'inconnue'` couvre tout le reste, non classé.
  */
 export type WhisperTranscrireResultat =
   | { ok: true; texte: string }
-  | { ok: false; kind: 'unreachable' | 'server-error' | 'inconnue'; message: string };
+  | { ok: false; kind: 'unreachable' | 'server-error' | 'unexpected-format' | 'inconnue'; message: string };
 export interface OllamaStatus {
   available: boolean;
   models: string[];
@@ -3420,14 +3422,18 @@ export interface AmnBridge {
     chat(input: { model: string; system: string; prompt: string }): Promise<{ text: string }>;
   };
   /**
-   * Transcription vocale locale (Ajmani partout, Bloc 2) : un serveur compatible OpenAI
-   * (`/v1/audio/transcriptions`) qu'Aaron installe et fait tourner lui-même. Absent, le repli est
-   * le texte tapé — jamais un blocage.
+   * Transcription vocale locale (Ajmani partout, Bloc 2) : whisper.cpp (`/inference`) ou un
+   * serveur compatible OpenAI (`/v1/audio/transcriptions`), qu'Aaron installe et fait tourner
+   * lui-même. Absent, le repli est le texte tapé — jamais un blocage.
    */
   whisper: {
     status(): Promise<WhisperStatus>;
     /** Ne rejette jamais : un verdict distinguant succès / serveur absent / serveur en erreur. */
     transcrire(input: { base64Audio: string; mimeType: string; langue?: string }): Promise<WhisperTranscrireResultat>;
+    /** L'adresse enregistrée dans les Réglages, si Aaron en a posé une — `null` sinon. */
+    getUrl(): Promise<string | null>;
+    /** `null` efface la préférence (retour à `AMN_WHISPER_URL`/au port par défaut 8080). */
+    setUrl(url: string | null): Promise<void>;
   };
   /** Auto-update (Electron main; Squirrel/autoUpdater). No-ops in the browser. */
   updates: {
@@ -3659,6 +3665,8 @@ export const IPC = {
   ollamaChat: 'ollama:chat',
   whisperStatus: 'whisper:status',
   whisperTranscrire: 'whisper:transcrire',
+  whisperGetUrl: 'whisper:getUrl',
+  whisperSetUrl: 'whisper:setUrl',
   updateDownloaded: 'update:downloaded',
   updateInstall: 'update:install',
   updateCheck: 'update:check',

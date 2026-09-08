@@ -13,7 +13,7 @@ import { Logo } from '../components/Logo';
 import { SettingsPanel as Panel } from '../components/SettingsPanel';
 import { ModulesSection } from '../components/settings/ModulesSection';
 import { APP_VERSION, EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/edition';
-import { OllamaSection, useExclusive } from '@edition/exclusive';
+import { OllamaSection, WhisperSection, useExclusive } from '@edition/exclusive';
 import { AccountSecuritySection } from '../components/settings/AccountSecuritySection';
 import { MfaSection } from '../components/settings/MfaSection';
 import { DataSection } from '../components/settings/DataSection';
@@ -147,6 +147,7 @@ export function SettingsScreen() {
       {bridge().env.isElectron && (
         <StaggerItem>
           <OllamaSection />
+          <WhisperSection />
         </StaggerItem>
       )}
       {bridge().env.isElectron && (

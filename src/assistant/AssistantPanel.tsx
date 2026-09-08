@@ -364,6 +364,8 @@ function messageEchecVocal(raison: RaisonEchecVocal): string {
       return 'Micro capté — aucun serveur de transcription local n’est configuré.';
     case 'serveur-transcription-en-erreur':
       return 'Micro capté — le serveur de transcription local a répondu en erreur.';
+    case 'reponse-transcription-inattendue':
+      return 'Micro capté — le serveur de transcription local a répondu dans un format inattendu.';
     case 'transcription-vide':
       return 'Rien n’a été compris — réessayez, ou écrivez votre demande.';
     case 'trop-court':

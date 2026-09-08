@@ -97,6 +97,8 @@ export const exclusiveBridge: Pick<AmnBridge, 'watch' | 'ollama' | 'whisper'> = 
     status: () => ipcRenderer.invoke(IPC.whisperStatus),
     transcrire: (input: { base64Audio: string; mimeType: string; langue?: string }) =>
       ipcRenderer.invoke(IPC.whisperTranscrire, input),
+    getUrl: () => ipcRenderer.invoke(IPC.whisperGetUrl),
+    setUrl: (url: string | null) => ipcRenderer.invoke(IPC.whisperSetUrl, url),
   },
 };
 

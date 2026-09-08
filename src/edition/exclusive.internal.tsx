@@ -9,6 +9,7 @@ import { BadgeCheck, ScanLine } from 'lucide-react';
 import { ScanDetail as ScanDetailPanel } from '../components/scanner/ScanDetail';
 import { ComplyDetail as ComplyDetailPanel } from '../components/comply/ComplyDetail';
 import { OllamaSection as OllamaSettingsSection } from '../components/settings/OllamaSection';
+import { WhisperSection as WhisperSettingsSection } from '../components/settings/WhisperSection';
 import { bridge } from '../lib/bridge';
 import { scoreColor } from '../lib/scanSeverity';
 import { relativeTime } from '../lib/time';
@@ -363,4 +364,9 @@ function ProductRow({
 export function OllamaSection() {
   if (useClientView()) return null;
   return <OllamaSettingsSection />;
+}
+
+export function WhisperSection() {
+  if (useClientView()) return null;
+  return <WhisperSettingsSection />;
 }
