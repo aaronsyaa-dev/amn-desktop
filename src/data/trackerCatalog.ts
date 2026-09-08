@@ -1,4 +1,13 @@
 /**
+ * CE N'EST PAS UNE LISTE DE PRIX, et ça ne doit plus alimenter un devis.
+ *
+ * Ce fichier décrit la TRAJECTOIRE du tracker : ce qui est codé (Sentinel) et
+ * ce qui ne l'est pas encore (Sentinel+, Suite). Il a servi un temps de
+ * catalogue d'offres au devis — donc on pouvait chiffrer à une prospecte, sans
+ * le moindre avertissement, un palier marqué ici « à venir » ou « verrouillé ».
+ * Ce que vend AMN DevSec est désormais dans `offerCatalog.ts`, recopié de la
+ * page prix du site.
+ *
  * Catalogue des offres de tracking AMN. Mock/statique pour l'instant — aucune
  * dépendance à une base de données, ce contenu ne change pas dynamiquement.
  *

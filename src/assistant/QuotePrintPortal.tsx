@@ -15,6 +15,7 @@ import {
   lineAmounts,
 } from '../lib/money';
 import { displayLines, hasDetailedLines, quoteLines } from '../lib/quote';
+import { resolveOffer } from '../lib/offers';
 import type { Client, Quote } from '../shared/api';
 
 const STATUS_LABEL: Record<Quote['status'], string> = {
@@ -63,12 +64,15 @@ export function QuotePrintPortal({
 
   const { org } = useAuth();
   const identity = useBillingIdentity();
-  const { QUOTE_OFFERS, QUOTE_ISSUER_TAGLINE } = useExclusive();
+  const { QUOTE_OFFERS, QUOTE_LEGACY_OFFERS, QUOTE_ISSUER_TAGLINE } = useExclusive();
   // Tant que l'identité légale n'est pas remplie, le devis retombe sur le nom
   // de l'organisation : un document incomplet reste préférable à un document
   // vide, et l'écran Facturation dit déjà ce qu'il manque.
   const issuerName = identity.legalName.trim() || org?.name || '';
-  const offer = QUOTE_OFFERS.find((o) => o.id === quote.trackerTier);
+  // `resolveOffer` et pas un `find` : un devis déjà envoyé porte peut-être une
+  // offre retirée du catalogue depuis, et il doit continuer de s'imprimer mot
+  // pour mot comme il est parti.
+  const offer = resolveOffer(QUOTE_OFFERS, QUOTE_LEGACY_OFFERS, quote.trackerTier);
   const issued = new Date(quote.createdAt);
   const issuedLabel = issued.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
   const validUntil = new Date(issued.getTime() + 30 * 86400000).toLocaleDateString('fr-FR', {

@@ -29,6 +29,7 @@ import {
   lineAmounts,
 } from '../lib/money';
 import { emptyQuoteLine, usableLines } from '../lib/quote';
+import { resolveOffer } from '../lib/offers';
 import { VAT_RATES, useBillingIdentity, useInvoices } from '../state/useInvoices';
 import { uid } from '../state/SyncContext';
 import type {
@@ -839,8 +840,8 @@ function QuoteRow({
   onRemove: () => void;
   onInvoice: () => void;
 }) {
-  const { QUOTE_OFFERS } = useExclusive();
-  const offer = QUOTE_OFFERS.find((o) => o.id === quote.trackerTier);
+  const { QUOTE_OFFERS, QUOTE_LEGACY_OFFERS } = useExclusive();
+  const offer = resolveOffer(QUOTE_OFFERS, QUOTE_LEGACY_OFFERS, quote.trackerTier);
   const statusMeta = QUOTE_STATUS_META[quote.status];
   const paymentMeta = PAYMENT_META[quote.paymentStatus];
 
@@ -1176,7 +1177,22 @@ function NewQuoteModal({
                         : 'border-border hover:border-border-strong'
                     }`}
                   >
-                    <span className="text-sm font-medium text-text-primary">{offer.name}</span>
+                    <span className="flex w-full items-baseline justify-between gap-3">
+                      <span className="text-sm font-medium text-text-primary">{offer.name}</span>
+                      {/*
+                        Le prix PUBLIÉ, sous les yeux au moment de choisir. Il
+                        n'est pas pré-rempli plus bas : un forfait est mensuel,
+                        un devis porte un montant, et le nombre de mois n'est
+                        pas tranché (voir data/offerCatalog.ts). Ce qui compte
+                        ici, c'est que le chiffre tapé soit celui que la
+                        prospecte a lu sur la page prix.
+                      */}
+                      <span className="flex-shrink-0 font-mono text-[11px] text-text-muted">
+                        {offer.monthlyCents === null
+                          ? 'sur devis'
+                          : `${formatCents(offer.monthlyCents)} / mois, HT`}
+                      </span>
+                    </span>
                     <span className="text-xs text-text-secondary">{offer.tagline}</span>
                   </button>
                 ))

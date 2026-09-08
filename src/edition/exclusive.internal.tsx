@@ -1,7 +1,7 @@
 import { useRemoteSitesOptional } from '../state/RemoteSitesContext';
 import { useSitePanelOptional } from '../components/site-panel/SitePanelContext';
 import { useClientView } from '../state/ClientViewContext';
-import { trackerCatalog } from '../data/trackerCatalog';
+import { legacyOffers, sellableOffers } from '../data/offerCatalog';
 import type { DerivedSite } from '../state/RemoteSitesContext';
 
 import React from 'react';
@@ -56,8 +56,19 @@ export interface ExclusiveView {
   PRODUCTS_ENABLED: boolean;
   /** Route de l'écran Décisions, ou `null` si le module n'existe pas ici. */
   DECISIONS_ROUTE: string | null;
-  /** Offres proposables dans un devis — nos paliers Tracker, en interne. */
-  QUOTE_OFFERS: { id: string; name: string; tagline: string }[];
+  /**
+   * Offres proposables dans un devis — nos forfaits publiés, en interne.
+   *
+   * `monthlyCents` est AFFICHÉ à celui qui rédige, jamais pré-rempli : voir
+   * `data/offerCatalog.ts`, qui explique pourquoi.
+   */
+  QUOTE_OFFERS: { id: string; name: string; tagline: string; monthlyCents: number | null }[];
+  /**
+   * Les offres RETIRÉES du catalogue, pour l'affichage seul : un devis déjà
+   * envoyé doit se réimprimer mot pour mot. Vide dans un contexte sans
+   * catalogue, où `trackerTier` est un intitulé libre.
+   */
+  QUOTE_LEGACY_OFFERS: Record<string, { name: string; tagline: string }>;
   /** Sous-titre de l'émetteur sur un devis imprimé. */
   QUOTE_ISSUER_TAGLINE: string;
 }
@@ -72,11 +83,19 @@ const AMN_VIEW: ExclusiveView = {
   PRODUCTS_ENABLED: true,
   DECISIONS_ROUTE: '/decisions',
   QUOTE_ISSUER_TAGLINE: 'Supervision & sécurité applicative',
-  QUOTE_OFFERS: trackerCatalog.map((offer) => ({
+  /*
+    Les forfaits de la page prix, et rien d'autre. Ils venaient de
+    `trackerCatalog`, qui décrit les paliers du tracker — dont deux ne sont pas
+    codés : on pouvait donc chiffrer à une prospecte un produit qui n'existe
+    pas, sous un nom qu'elle n'avait lu nulle part sur le site.
+  */
+  QUOTE_OFFERS: sellableOffers.map((offer) => ({
     id: offer.id,
     name: offer.name,
     tagline: offer.tagline,
+    monthlyCents: offer.monthlyCents,
   })),
+  QUOTE_LEGACY_OFFERS: legacyOffers,
 };
 
 /**
@@ -93,6 +112,7 @@ const CLIENT_VIEW: ExclusiveView = {
   DECISIONS_ROUTE: null,
   QUOTE_ISSUER_TAGLINE: '',
   QUOTE_OFFERS: [],
+  QUOTE_LEGACY_OFFERS: {},
 };
 
 export function useExclusive(): ExclusiveView {

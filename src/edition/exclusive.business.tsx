@@ -21,7 +21,8 @@ export interface ExclusiveView {
   SITES_ENABLED: boolean;
   PRODUCTS_ENABLED: boolean;
   DECISIONS_ROUTE: string | null;
-  QUOTE_OFFERS: { id: string; name: string; tagline: string }[];
+  QUOTE_OFFERS: { id: string; name: string; tagline: string; monthlyCents: number | null }[];
+  QUOTE_LEGACY_OFFERS: Record<string, { name: string; tagline: string }>;
   QUOTE_ISSUER_TAGLINE: string;
 }
 
@@ -46,6 +47,13 @@ const VIEW: ExclusiveView = {
    * un mettrait une phrase fausse sur un document qu'elle envoie.
    */
   QUOTE_OFFERS: [],
+  /*
+    Aucune offre retirée à réafficher : les devis d'une cliente ne portent que
+    l'intitulé qu'elle a tapé. Et surtout, le catalogue qui alimente cette
+    table côté interne porte les noms de nos paliers Tracker — que le contrôle
+    de bundle interdit ici, à juste titre.
+  */
+  QUOTE_LEGACY_OFFERS: {},
   QUOTE_ISSUER_TAGLINE: '',
 };
 
