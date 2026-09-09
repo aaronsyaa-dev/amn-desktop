@@ -165,15 +165,30 @@ export function BusinessSidebar({
                     // Ce qui dit à un lecteur d'écran laquelle des entrées est
                     // l'écran courant — et ce que le défilement ci-dessus vise.
                     aria-current={active ? 'page' : undefined}
-                    className={`relative flex min-h-11 items-center gap-3 rounded-lg py-1.5 text-sm transition-colors md:min-h-0 ${
-                      isExpanded ? 'px-3' : 'justify-center px-0'
+                    className={`group relative flex min-h-11 items-center gap-3 rounded-lg py-1 text-sm transition-colors md:min-h-0 ${
+                      isExpanded ? 'px-2' : 'justify-center px-0'
                     } ${
                       active
                         ? 'bg-accent-muted text-text-primary'
                         : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
                     }`}
                   >
-                    <span className="flex-shrink-0">
+                    {/*
+                      Le jeton d'icône (redesign Accueil, direction « Le poste
+                      habité ») : 42×42, sur les tokens de thème EXISTANTS de
+                      cette barre — jamais la palette ambre/encre codée en dur
+                      dans `HomeSoloScreen`, qui n'a été validée que pour cet
+                      écran. La barre reste donc au même thème qu'avant, juste
+                      avec des icônes qui respirent.
+                    */}
+                    <span
+                      className={`flex flex-shrink-0 items-center justify-center rounded-lg border transition-colors ${
+                        active
+                          ? 'border-border-strong bg-surface text-accent'
+                          : 'border-border bg-bg text-text-muted group-hover:border-border-strong group-hover:text-text-primary'
+                      }`}
+                      style={{ width: 42, height: 42 }}
+                    >
                       <Icon size={18} strokeWidth={1.75} />
                     </span>
                     {isExpanded && <span className="truncate">{libelleNav(item)}</span>}
