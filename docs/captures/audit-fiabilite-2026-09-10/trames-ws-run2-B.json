@@ -1,0 +1,762 @@
+{
+  "frames": [
+    {
+      "at": 1789067679030,
+      "type": "__close"
+    },
+    {
+      "at": 1789067679114,
+      "type": "presence",
+      "users": [
+        {
+          "email": "demo.interne@exemple.test",
+          "online": true
+        },
+        {
+          "email": "mohamed.audit@exemple.test",
+          "online": true
+        }
+      ]
+    },
+    {
+      "at": 1789067679131,
+      "type": "hello",
+      "message": "connected"
+    },
+    {
+      "at": 1789067679132,
+      "type": "presence",
+      "users": [
+        {
+          "email": "demo.interne@exemple.test",
+          "online": true
+        },
+        {
+          "email": "mohamed.audit@exemple.test",
+          "online": true
+        }
+      ]
+    },
+    {
+      "at": 1789067680923,
+      "type": "signal",
+      "kind": "offer",
+      "callId": "call-mtvwpdcg-kdajyr",
+      "from": "demo.interne@exemple.test",
+      "payload": {
+        "sdp": "v=0\r\no=- 8804109319938537610 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1\r\na=extmap-allow-mixed\r\na=msid-semantic: WMS 71446071-48ec-4067-aaf5-68ff274cd16e\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111 63 9 0 8 13 110 126\r\nc=IN IP4 0.0.0.0\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=ice-ufrag:S2qS\r\na=ice-pwd:3ivpcpjh8YPbP5sdWKPo4mvt\r\na=ice-options:trickle\r\na=fingerprint:sha-256 F4:94:64:C4:7A:AE:58:FD:47:E6:A1:EA:BC:32:08:1E:C6:35:DE:56:B0:2D:03:11:3D:8C:49:40:34:D5:38:20\r\na=setup:actpass\r\na=mid:0\r\na=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=sendrecv\r\na=msid:71446071-48ec-4067-aaf5-68ff274cd16e 68c35c3f-eb81-404a-9c37-b06f54dd131b\r\na=rtcp-mux\r\na=rtcp-rsize\r\na=rtpmap:111 opus/48000/2\r\na=rtcp-fb:111 transport-cc\r\na=fmtp:111 minptime=10;useinbandfec=1\r\na=rtpmap:63 red/48000/2\r\na=fmtp:63 111/111\r\na=rtpmap:9 G722/8000\r\na=rtpmap:0 PCMU/8000\r\na=rtpmap:8 PCMA/8000\r\na=rtpmap:13 CN/8000\r\na=rtpmap:110 telephone-event/48000\r\na=rtpmap:126 telephone-event/8000\r\na=ssrc:223169296 cname:1JAC79uISgMTLnp0\r\na=ssrc:223169296 msid:71446071-48ec-4067-aaf5-68ff274cd16e 68c35c3f-eb81-404a-9c37-b06f54dd131b\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\nc=IN IP4 0.0.0.0\r\na=ice-ufrag:S2qS\r\na=ice-pwd:3ivpcpjh8YPbP5sdWKPo4mvt\r\na=ice-options:trickle\r\na=fingerprint:sha-256 F4:94:64:C4:7A:AE:58:FD:47:E6:A1:EA:BC:32:08:1E:C6:35:DE:56:B0:2D:03:11:3D:8C:49:40:34:D5:38:20\r\na=setup:actpass\r\na=mid:1\r\na=sctp-port:5000\r\na=max-message-size:262144\r\n",
+        "type": "offer"
+      }
+    },
+    {
+      "at": 1789067680939,
+      "type": "signal",
+      "kind": "ice",
+      "callId": "call-mtvwpdcg-kdajyr",
+      "from": "demo.interne@exemple.test",
+      "payload": {
+        "candidate": "candidate:167733738 1 udp 2122260223 192.0.2.2 42116 typ host generation 0 ufrag S2qS network-id 1",
+        "sdpMid": "0",
+        "sdpMLineIndex": 0,
+        "usernameFragment": "S2qS"
+      }
+    },
+    {
+      "at": 1789067680939,
+      "type": "signal",
+      "kind": "ice",
+      "callId": "call-mtvwpdcg-kdajyr",
+      "from": "demo.interne@exemple.test",
+      "payload": {
+        "candidate": "candidate:167733738 1 udp 2122260223 192.0.2.2 42027 typ host generation 0 ufrag S2qS network-id 1",
+        "sdpMid": "1",
+        "sdpMLineIndex": 1,
+        "usernameFragment": "S2qS"
+      }
+    },
+    {
+      "at": 1789067681034,
+      "type": "signal",
+      "kind": "ice",
+      "callId": "call-mtvwpdcg-kdajyr",
+      "from": "demo.interne@exemple.test",
+      "payload": {
+        "candidate": "candidate:4149591422 1 tcp 1518280447 192.0.2.2 9 typ host tcptype active generation 0 ufrag S2qS network-id 1",
+        "sdpMid": "0",
+        "sdpMLineIndex": 0,
+        "usernameFragment": "S2qS"
+      }
+    },
+    {
+      "at": 1789067681034,
+      "type": "signal",
+      "kind": "ice",
+      "callId": "call-mtvwpdcg-kdajyr",
+      "from": "demo.interne@exemple.test",
+      "payload": {
+        "candidate": "candidate:4149591422 1 tcp 1518280447 192.0.2.2 9 typ host tcptype active generation 0 ufrag S2qS network-id 1",
+        "sdpMid": "1",
+        "sdpMLineIndex": 1,
+        "usernameFragment": "S2qS"
+      }
+    },
+    {
+      "at": "2026-09-10T19:14:50.413Z",
+      "type": "garde:presence",
+      "agent": "clientes.demandes",
+      "equipe": "clientes",
+      "nom": "Demandes",
+      "orgId": null,
+      "phrase": "Je vérifie la file des demandes et leurs délais.",
+      "actif": true
+    },
+    {
+      "at": "2026-09-10T19:14:50.415Z",
+      "type": "garde:presence",
+      "agent": "clientes.demandes",
+      "equipe": "clientes",
+      "nom": "Demandes",
+      "orgId": null,
+      "phrase": "Rien à dire sur la file des demandes et leurs délais pour l’instant ; retour dans dix minutes.",
+      "actif": false
+    },
+    {
+      "at": 1789067690423,
+      "type": "garde:ronde",
+      "agent": "clientes.demandes",
+      "equipe": "clientes",
+      "etat": "repos",
+      "resume": "Rien de neuf sur mon domaine.",
+      "dureeMs": 0,
+      "compteurs": {
+        "lus": 0,
+        "regles": 0,
+        "remontes": 0,
+        "collaborations": 0
+      }
+    },
+    {
+      "at": "2026-09-10T19:14:50.416Z",
+      "type": "garde:presence",
+      "agent": "securite.campagnes",
+      "equipe": "securite",
+      "nom": "Campagnes",
+      "orgId": null,
+      "phrase": "En ronde : un même acteur sur plusieurs organisations.",
+      "actif": true
+    },
+    {
+      "at": "2026-09-10T19:14:50.417Z",
+      "type": "garde:presence",
+      "agent": "securite.campagnes",
+      "equipe": "securite",
+      "nom": "Campagnes",
+      "orgId": null,
+      "phrase": "Rien de nouveau sur un même acteur sur plusieurs organisations ; je repasse dans dix minutes.",
+      "actif": false
+    },
+    {
+      "at": 1789067690423,
+      "type": "garde:ronde",
+      "agent": "securite.campagnes",
+      "equipe": "securite",
+      "etat": "repos",
+      "resume": "Vu, vérifié, rien à remonter.",
+      "dureeMs": 1,
+      "compteurs": {
+        "lus": 0,
+        "regles": 0,
+        "remontes": 0,
+        "collaborations": 0
+      }
+    },
+    {
+      "at": 1789067690437,
+      "type": "signal",
+      "kind": "hangup",
+      "callId": "call-mtvwpdcg-kdajyr",
+      "from": "demo.interne@exemple.test",
+      "payload": null
+    },
+    {
+      "at": 1789067690589,
+      "type": "record",
+      "collection": "profiles",
+      "record": {
+        "id": "mohamed.audit@exemple.test",
+        "collection": "profiles",
+        "data": {
+          "name": "Mohamed Audit",
+          "photoDataUrl": "",
+          "presenceText": "",
+          "teamSeenAt": "2026-09-10T19:14:50.535Z",
+          "_by": "mohamed.audit@exemple.test"
+        },
+        "updatedAt": "2026-09-10T19:14:50.549Z",
+        "deleted": false
+      }
+    },
+    {
+      "at": 1789067691404,
+      "type": "record",
+      "collection": "profiles",
+      "record": {
+        "id": "demo.interne@exemple.test",
+        "collection": "profiles",
+        "data": {
+          "name": "Demo Interne",
+          "photoDataUrl": "",
+          "presenceText": "",
+          "teamSeenAt": "2026-09-10T19:14:51.384Z",
+          "_by": "demo.interne@exemple.test"
+        },
+        "updatedAt": "2026-09-10T19:14:51.400Z",
+        "deleted": false
+      }
+    },
+    {
+      "at": 1789067692973,
+      "type": "record",
+      "collection": "messages",
+      "record": {
+        "id": "msg-mtvwpmsf-faosyp",
+        "collection": "messages",
+        "data": {
+          "authorEmail": "demo.interne@exemple.test",
+          "body": "AUDIT S2b sous les yeux 1789067692906",
+          "createdAt": "2026-09-10T19:14:52.959Z",
+          "attachments": [],
+          "replyToId": null,
+          "reactions": [],
+          "pinned": false,
+          "_by": "demo.interne@exemple.test"
+        },
+        "updatedAt": "2026-09-10T19:14:52.968Z",
+        "deleted": false
+      }
+    },
+    {
+      "at": 1789067693023,
+      "type": "record",
+      "collection": "profiles",
+      "record": {
+        "id": "demo.interne@exemple.test",
+        "collection": "profiles",
+        "data": {
+          "name": "Demo Interne",
+          "photoDataUrl": "",
+          "presenceText": "",
+          "teamSeenAt": "2026-09-10T19:14:52.997Z",
+          "_by": "demo.interne@exemple.test"
+        },
+        "updatedAt": "2026-09-10T19:14:53.006Z",
+        "deleted": false
+      }
+    },
+    {
+      "at": 1789067693041,
+      "type": "record",
+      "collection": "profiles",
+      "record": {
+        "id": "mohamed.audit@exemple.test",
+        "collection": "profiles",
+        "data": {
+          "name": "Mohamed Audit",
+          "photoDataUrl": "",
+          "presenceText": "",
+          "teamSeenAt": "2026-09-10T19:14:53.021Z",
+          "_by": "mohamed.audit@exemple.test"
+        },
+        "updatedAt": "2026-09-10T19:14:53.030Z",
+        "deleted": false
+      }
+    },
+    {
+      "at": "2026-09-10T19:15:10.417Z",
+      "type": "garde:presence",
+      "agent": "securite.escalade",
+      "equipe": "securite",
+      "nom": "Escalade",
+      "orgId": null,
+      "phrase": "Passage en cours sur les incidents critiques que personne ne prend.",
+      "actif": true
+    },
+    {
+      "at": "2026-09-10T19:15:10.418Z",
+      "type": "garde:presence",
+      "agent": "securite.escalade",
+      "equipe": "securite",
+      "nom": "Escalade",
+      "orgId": null,
+      "phrase": "Veille tranquille sur les incidents critiques que personne ne prend ; la suite dans une minute.",
+      "actif": false
+    },
+    {
+      "at": 1789067719654,
+      "type": "garde:ronde",
+      "agent": "securite.escalade",
+      "equipe": "securite",
+      "etat": "repos",
+      "resume": "Rien qui bouge ; je note et je passe.",
+      "dureeMs": 0,
+      "compteurs": {
+        "lus": 0,
+        "regles": 0,
+        "remontes": 0,
+        "collaborations": 0
+      }
+    },
+    {
+      "at": "2026-09-10T19:15:10.419Z",
+      "type": "garde:presence",
+      "agent": "sites.battement",
+      "equipe": "sites",
+      "nom": "Battement de cœur",
+      "orgId": null,
+      "phrase": "Je vérifie les sites qui se taisent.",
+      "actif": true
+    },
+    {
+      "at": "2026-09-10T19:15:10.420Z",
+      "type": "garde:presence",
+      "agent": "sites.battement",
+      "equipe": "sites",
+      "nom": "Battement de cœur",
+      "orgId": null,
+      "phrase": "Veille tranquille sur les sites qui se taisent ; la suite dans une minute.",
+      "actif": false
+    },
+    {
+      "at": 1789067719660,
+      "type": "garde:ronde",
+      "agent": "sites.battement",
+      "equipe": "sites",
+      "etat": "repos",
+      "resume": "Rien qui bouge ; je note et je passe.",
+      "dureeMs": 0,
+      "compteurs": {
+        "lus": 0,
+        "regles": 0,
+        "remontes": 0,
+        "collaborations": 0
+      }
+    },
+    {
+      "at": "2026-09-10T19:15:10.420Z",
+      "type": "garde:presence",
+      "agent": "taches.emission",
+      "equipe": "taches",
+      "nom": "Émission des tâches",
+      "orgId": null,
+      "phrase": "En ronde : transformer les remontées en tâches, sans bruit.",
+      "actif": true
+    },
+    {
+      "at": "2026-09-10T19:15:10.421Z",
+      "type": "garde:presence",
+      "agent": "taches.emission",
+      "equipe": "taches",
+      "nom": "Émission des tâches",
+      "orgId": null,
+      "phrase": "Je surveille transformer les remontées en tâches, sans bruit ; je repasse dans deux minutes.",
+      "actif": false
+    },
+    {
+      "at": 1789067719660,
+      "type": "garde:ronde",
+      "agent": "taches.emission",
+      "equipe": "taches",
+      "etat": "repos",
+      "resume": "Tout est en ordre de mon côté.",
+      "dureeMs": 1,
+      "compteurs": {
+        "lus": 0,
+        "regles": 0,
+        "remontes": 0,
+        "collaborations": 0
+      }
+    },
+    {
+      "at": 1789067723665,
+      "type": "record",
+      "collection": "messages",
+      "record": {
+        "id": "msg-mtvwq3j4-f2pnfc",
+        "collection": "messages",
+        "data": {
+          "authorEmail": "mohamed.audit@exemple.test",
+          "body": "AUDIT S4 hors ligne 1789067714587",
+          "createdAt": "2026-09-10T19:15:14.656Z",
+          "attachments": [],
+          "replyToId": null,
+          "reactions": [],
+          "pinned": false,
+          "_by": "mohamed.audit@exemple.test"
+        },
+        "updatedAt": "2026-09-10T19:15:23.658Z",
+        "deleted": false
+      }
+    },
+    {
+      "at": 1789067723692,
+      "type": "record",
+      "collection": "profiles",
+      "record": {
+        "id": "demo.interne@exemple.test",
+        "collection": "profiles",
+        "data": {
+          "name": "Demo Interne",
+          "photoDataUrl": "",
+          "presenceText": "",
+          "teamSeenAt": "2026-09-10T19:15:23.680Z",
+          "_by": "demo.interne@exemple.test"
+        },
+        "updatedAt": "2026-09-10T19:15:23.688Z",
+        "deleted": false
+      }
+    },
+    {
+      "at": 1789067723737,
+      "type": "record",
+      "collection": "profiles",
+      "record": {
+        "id": "mohamed.audit@exemple.test",
+        "collection": "profiles",
+        "data": {
+          "name": "Mohamed Audit",
+          "photoDataUrl": "",
+          "presenceText": "",
+          "teamSeenAt": "2026-09-10T19:15:14.682Z",
+          "_by": "mohamed.audit@exemple.test"
+        },
+        "updatedAt": "2026-09-10T19:15:23.731Z",
+        "deleted": false
+      }
+    },
+    {
+      "at": "2026-09-10T19:16:10.423Z",
+      "type": "garde:presence",
+      "agent": "securite.escalade",
+      "equipe": "securite",
+      "nom": "Escalade",
+      "orgId": null,
+      "phrase": "Passage en cours sur les incidents critiques que personne ne prend.",
+      "actif": true
+    },
+    {
+      "at": "2026-09-10T19:16:10.424Z",
+      "type": "garde:presence",
+      "agent": "securite.escalade",
+      "equipe": "securite",
+      "nom": "Escalade",
+      "orgId": null,
+      "phrase": "Rien de nouveau sur les incidents critiques que personne ne prend ; je repasse dans une minute.",
+      "actif": false
+    },
+    {
+      "at": 1789067789247,
+      "type": "garde:ronde",
+      "agent": "securite.escalade",
+      "equipe": "securite",
+      "etat": "repos",
+      "resume": "Vu, vérifié, rien à remonter.",
+      "dureeMs": 1,
+      "compteurs": {
+        "lus": 0,
+        "regles": 0,
+        "remontes": 0,
+        "collaborations": 0
+      }
+    },
+    {
+      "at": "2026-09-10T19:16:10.424Z",
+      "type": "garde:presence",
+      "agent": "sites.battement",
+      "equipe": "sites",
+      "nom": "Battement de cœur",
+      "orgId": null,
+      "phrase": "Je vérifie les sites qui se taisent.",
+      "actif": true
+    },
+    {
+      "at": "2026-09-10T19:16:10.425Z",
+      "type": "garde:presence",
+      "agent": "sites.battement",
+      "equipe": "sites",
+      "nom": "Battement de cœur",
+      "orgId": null,
+      "phrase": "Rien de nouveau sur les sites qui se taisent ; je repasse dans une minute.",
+      "actif": false
+    },
+    {
+      "at": 1789067789248,
+      "type": "garde:ronde",
+      "agent": "sites.battement",
+      "equipe": "sites",
+      "etat": "repos",
+      "resume": "Vu, vérifié, rien à remonter.",
+      "dureeMs": 0,
+      "compteurs": {
+        "lus": 0,
+        "regles": 0,
+        "remontes": 0,
+        "collaborations": 0
+      }
+    },
+    {
+      "at": "2026-09-10T19:16:10.426Z",
+      "type": "garde:presence",
+      "agent": "comptes.jetons",
+      "equipe": "comptes",
+      "nom": "Jetons",
+      "orgId": null,
+      "phrase": "En ronde : les jetons de paiement transmis par les clientes.",
+      "actif": true
+    },
+    {
+      "at": "2026-09-10T19:16:10.426Z",
+      "type": "garde:presence",
+      "agent": "comptes.jetons",
+      "equipe": "comptes",
+      "nom": "Jetons",
+      "orgId": null,
+      "phrase": "Au repos ; je repasse dans cinq minutes.",
+      "actif": false
+    },
+    {
+      "at": 1789067789248,
+      "type": "garde:ronde",
+      "agent": "comptes.jetons",
+      "equipe": "comptes",
+      "etat": "repos",
+      "resume": "Ronde faite, rien à signaler.",
+      "dureeMs": 0,
+      "compteurs": {
+        "lus": 0,
+        "regles": 0,
+        "remontes": 0,
+        "collaborations": 0
+      }
+    },
+    {
+      "at": "2026-09-10T19:16:10.427Z",
+      "type": "garde:presence",
+      "agent": "sites.disponibilite",
+      "equipe": "sites",
+      "nom": "Disponibilité",
+      "orgId": null,
+      "phrase": "Passage en cours sur les sites joignables de l’extérieur.",
+      "actif": true
+    },
+    {
+      "at": "2026-09-10T19:16:10.428Z",
+      "type": "garde:presence",
+      "agent": "sites.disponibilite",
+      "equipe": "sites",
+      "nom": "Disponibilité",
+      "orgId": null,
+      "phrase": "Veille tranquille sur les sites joignables de l’extérieur ; la suite dans cinq minutes.",
+      "actif": false
+    },
+    {
+      "at": 1789067789257,
+      "type": "garde:ronde",
+      "agent": "sites.disponibilite",
+      "equipe": "sites",
+      "etat": "repos",
+      "resume": "Rien qui bouge ; je note et je passe.",
+      "dureeMs": 0,
+      "compteurs": {
+        "lus": 0,
+        "regles": 0,
+        "remontes": 0,
+        "collaborations": 0
+      }
+    },
+    {
+      "at": 1789067789257,
+      "type": "record",
+      "collection": "messages",
+      "record": {
+        "id": "msg-mtvwpmsf-faosyp",
+        "collection": "messages",
+        "data": {
+          "authorEmail": "demo.interne@exemple.test",
+          "body": "AUDIT S2b sous les yeux 1789067692906",
+          "createdAt": "2026-09-10T19:14:52.959Z",
+          "attachments": [],
+          "replyToId": null,
+          "reactions": [
+            {
+              "emoji": "👍",
+              "authorEmail": "demo.interne@exemple.test"
+            }
+          ],
+          "pinned": false,
+          "_by": "demo.interne@exemple.test"
+        },
+        "updatedAt": "2026-09-10T19:16:29.192Z",
+        "deleted": false
+      }
+    },
+    {
+      "at": 1789067791252,
+      "type": "record",
+      "collection": "messages",
+      "record": {
+        "id": "msg-mtvwpmsf-faosyp",
+        "collection": "messages",
+        "data": {
+          "authorEmail": "demo.interne@exemple.test",
+          "body": "AUDIT S2b sous les yeux 1789067692906",
+          "createdAt": "2026-09-10T19:14:52.959Z",
+          "attachments": [],
+          "replyToId": null,
+          "reactions": [],
+          "pinned": true,
+          "_by": "mohamed.audit@exemple.test"
+        },
+        "updatedAt": "2026-09-10T19:16:31.251Z",
+        "deleted": false
+      }
+    },
+    {
+      "at": 1789067794435,
+      "type": "__close"
+    },
+    {
+      "at": 1789067795420,
+      "type": "__close"
+    },
+    {
+      "at": 1789067797422,
+      "type": "__close"
+    },
+    {
+      "at": 1789067802425,
+      "type": "__close"
+    },
+    {
+      "at": 1789067812462,
+      "type": "presence",
+      "users": [
+        {
+          "email": "mohamed.audit@exemple.test",
+          "online": true
+        }
+      ]
+    },
+    {
+      "at": 1789067812470,
+      "type": "hello",
+      "message": "connected"
+    },
+    {
+      "at": 1789067812470,
+      "type": "presence",
+      "users": [
+        {
+          "email": "mohamed.audit@exemple.test",
+          "online": true
+        }
+      ]
+    },
+    {
+      "at": 1789067812470,
+      "type": "presence",
+      "users": [
+        {
+          "email": "mohamed.audit@exemple.test",
+          "online": true
+        },
+        {
+          "email": "demo.interne@exemple.test",
+          "online": true
+        }
+      ]
+    },
+    {
+      "at": 1789067812505,
+      "type": "record",
+      "collection": "messages",
+      "record": {
+        "id": "msg-mtvwrt9g-9i9kg6",
+        "collection": "messages",
+        "data": {
+          "authorEmail": "demo.interne@exemple.test",
+          "body": "AUDIT S6 serveur éteint 1789067794556",
+          "createdAt": "2026-09-10T19:16:34.660Z",
+          "attachments": [],
+          "replyToId": null,
+          "reactions": [],
+          "pinned": false,
+          "_by": "demo.interne@exemple.test"
+        },
+        "updatedAt": "2026-09-10T19:16:52.485Z",
+        "deleted": false
+      }
+    },
+    {
+      "at": 1789067812586,
+      "type": "record",
+      "collection": "profiles",
+      "record": {
+        "id": "mohamed.audit@exemple.test",
+        "collection": "profiles",
+        "data": {
+          "name": "Mohamed Audit",
+          "photoDataUrl": "",
+          "presenceText": "",
+          "teamSeenAt": "2026-09-10T19:16:52.550Z",
+          "_by": "mohamed.audit@exemple.test"
+        },
+        "updatedAt": "2026-09-10T19:16:52.576Z",
+        "deleted": false
+      }
+    },
+    {
+      "at": 1789067815277,
+      "type": "record",
+      "collection": "dms",
+      "record": {
+        "id": "dm-mtvws95q-2spvvd",
+        "collection": "dms",
+        "data": {
+          "from": "demo.interne@exemple.test",
+          "to": "mohamed.audit@exemple.test",
+          "body": "AUDIT S7 privé 1789067815191",
+          "createdAt": "2026-09-10T19:16:55.262Z",
+          "_by": "demo.interne@exemple.test"
+        },
+        "updatedAt": "2026-09-10T19:16:55.275Z",
+        "deleted": false
+      }
+    }
+  ],
+  "sent": [
+    {
+      "at": 1789067681445,
+      "type": "signal",
+      "to": "demo.interne@exemple.test",
+      "kind": "answer",
+      "callId": "call-mtvwpdcg-kdajyr",
+      "payload": {
+        "sdp": "v=0\r\no=- 3098876622965085068 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1\r\na=extmap-allow-mixed\r\na=msid-semantic: WMS 1647afb1-891b-4c18-8923-bfeb7c41e997\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111 63 9 0 8 13 110 126\r\nc=IN IP4 0.0.0.0\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=ice-ufrag:PqEx\r\na=ice-pwd:eWZK/embVm6PEPm7wswkvPaw\r\na=ice-options:trickle\r\na=fingerprint:sha-256 A0:D8:CD:74:CE:43:80:89:E6:56:3B:D3:FB:37:2B:62:15:90:1C:EA:9B:1A:4A:C6:AF:AE:B1:28:8A:09:DC:12\r\na=setup:active\r\na=mid:0\r\na=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=sendrecv\r\na=msid:1647afb1-891b-4c18-8923-bfeb7c41e997 c8497b94-74ce-436f-b416-03f90a781404\r\na=rtcp-mux\r\na=rtcp-rsize\r\na=rtpmap:111 opus/48000/2\r\na=rtcp-fb:111 transport-cc\r\na=fmtp:111 minptime=10;useinbandfec=1\r\na=rtpmap:63 red/48000/2\r\na=fmtp:63 111/111\r\na=rtpmap:9 G722/8000\r\na=rtpmap:0 PCMU/8000\r\na=rtpmap:8 PCMA/8000\r\na=rtpmap:13 CN/8000\r\na=rtpmap:110 telephone-event/48000\r\na=rtpmap:126 telephone-event/8000\r\na=ssrc:4019837339 cname:N8QnBqEkAZaOq470\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\nc=IN IP4 0.0.0.0\r\na=ice-ufrag:PqEx\r\na=ice-pwd:eWZK/embVm6PEPm7wswkvPaw\r\na=ice-options:trickle\r\na=fingerprint:sha-256 A0:D8:CD:74:CE:43:80:89:E6:56:3B:D3:FB:37:2B:62:15:90:1C:EA:9B:1A:4A:C6:AF:AE:B1:28:8A:09:DC:12\r\na=setup:active\r\na=mid:1\r\na=sctp-port:5000\r\na=max-message-size:262144\r\n",
+        "type": "answer"
+      }
+    },
+    {
+      "at": 1789067681449,
+      "type": "signal",
+      "to": "demo.interne@exemple.test",
+      "kind": "ice",
+      "callId": "call-mtvwpdcg-kdajyr",
+      "payload": {
+        "candidate": "candidate:3403027069 1 udp 2122260223 192.0.2.2 56183 typ host generation 0 ufrag PqEx network-id 1",
+        "sdpMid": "0",
+        "sdpMLineIndex": 0,
+        "usernameFragment": "PqEx"
+      }
+    }
+  ]
+}

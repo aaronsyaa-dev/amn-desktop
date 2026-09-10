@@ -1,0 +1,20 @@
+Audit de fiabilité — RUN 1 (sortie console brute, 2026-09-10)
+Édition interne (AMN Business) en navigateur piloté, amn-api locale (sqlite), deux comptes :
+A = demo.interne@exemple.test, B = mohamed.audit@exemple.test.
+
+[9.33s] S0 — deux sessions ouvertes, WebSocket saluée des deux côtés {"A":true,"B":true}
+[10.86s] S1 — présence : bouton « Appeler » actif (= l’autre est vu en ligne) {"A_voit_B":true,"B_voit_A":true}
+[13.67s] S2 — message A → B {"latence_ws_ms":73,"notif_B":["Message de Demo Interne / AUDIT S2 1789067272151"],"notifs_A_pour_son_propre_message":0}
+[14.42s] S2 — message visible à l’écran de B {"visible":true}
+[20.05s] S2 — après rechargement de B : notifications rejouées pour l’historique {"rejouees":0}
+[20.72s] S3 — B voit l’appel entrant {"sonne_apres_ms":243,"notification_OS":["Demo Interne vous appelle."]}
+[21.33s] S3 — appel accepté — (NOTE : « duree_lue: 19:07 » est l’HORLOGE du rail, pas le compteur d’appel — preuve invalide, refaite au run 2 avec l’état RTCPeerConnection)
+[24.82s] S3 — A raccroche → B revient au repos {"B_au_repos":true}
+[24.87s] S3b — B ferme l’app → chez A le bouton « Appeler » se grise (présence à jour) {"B_vu_hors_ligne":true}
+[46.21s] S4 — B coupé du réseau (NOTE : la lecture du rail par texte de page n’est pas fiable — refaite au run 2 sur les trames WebSocket)
+[46.41s] S4 — écriture hors ligne {"banniere_file":"2 modifications en attente d’envoi","deja_sur_serveur":false,"visible_chez_B":true}
+[54.95s] S4 — retour du réseau {"serveur_a_recu_apres_ms":4041,"A_a_recu_apres_ms":4026,"websocket_B_revenue_apres_ms":4050,"banniere_disparue":false}
+[73.25s] S5 — (NOTE : les clics « Épingler »/« Réagir » ont visé le DERNIER message et non le message S2 — scénario invalide, refait au run 2 avec des sélecteurs scopés)
+[105.40s] S5 — (idem)
+S6 — non exécuté : l’arrêt du serveur (pkill -f) a tué le script lui-même. Refait au run 2.
+S7 — non exécuté au run 1.

@@ -15,6 +15,13 @@ interface TaskLike {
   assigneeEmail: string;
 }
 
+interface DmLike {
+  id: string;
+  from: string;
+  to: string;
+  body: string;
+}
+
 /**
  * Watches the live data streams and raises native OS notifications for the
  * few genuinely important events — respecting the user's per-event
@@ -29,6 +36,7 @@ export function NotificationsManager() {
   const { ready, isLocalWrite } = useSync();
   const { messages } = useMessages();
   const tasks = useCollection<TaskLike>('tasks');
+  const dms = useCollection<DmLike>('dms');
 
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_NOTIFICATION_PREFS);
 
@@ -51,6 +59,7 @@ export function NotificationsManager() {
   const parcPrecedent = useRef<Map<string, { connecte: boolean; derniere: string | null }>>(new Map());
   const parcBaseline = useRef(false);
   const seenMessages = useRef<Set<string>>(new Set());
+  const seenDms = useRef<Set<string>>(new Set());
   const seenTasks = useRef<Set<string>>(new Set());
   const prevOffline = useRef<Set<string>>(new Set());
   const baselined = useRef(false);
@@ -79,10 +88,11 @@ export function NotificationsManager() {
       }
     }
     for (const m of messages) seenMessages.current.add(m.id);
+    for (const m of dms) seenDms.current.add(m.id);
     for (const t of tasks) seenTasks.current.add(t.id);
     for (const s of sites) if (s.status === 'offline') prevOffline.current.add(s.id);
     baselined.current = true;
-  }, [ready, eventsBySite, messages, tasks, sites]);
+  }, [ready, eventsBySite, messages, dms, tasks, sites]);
 
   /*
     ALERTES CRITIQUES — UNE PAR INCIDENT, PLUS UNE PAR ALERTE.
@@ -169,6 +179,25 @@ export function NotificationsManager() {
       }
     }
   }, [messages, prefs.mention, user?.email]);
+
+  /*
+    Un message PRIVÉ qui m'est adressé. Trouvé à l'audit de fiabilité du
+    10 septembre 2026 : la collection `dms` arrivait bien par la synchro, mais
+    rien ne l'annonçait — ni notification, ni pastille. Un mot envoyé à une
+    personne précise est pourtant celui qui a le moins le droit de passer
+    inaperçu. Même préférence que le fil d'équipe, et seulement ce qui M'est
+    adressé : un échange entre deux collègues ne sonne pas chez un troisième.
+  */
+  useEffect(() => {
+    if (!baselined.current || !user) return;
+    for (const m of dms) {
+      if (seenDms.current.has(m.id)) continue;
+      seenDms.current.add(m.id);
+      if (prefs.mention && m.to === user.email && m.from !== user.email) {
+        notify(`Message privé de ${profileFor(m.from).name}`, m.body || 'Message privé');
+      }
+    }
+  }, [dms, prefs.mention, user?.email]);
 
   // A task newly assigned to me by someone else.
   useEffect(() => {

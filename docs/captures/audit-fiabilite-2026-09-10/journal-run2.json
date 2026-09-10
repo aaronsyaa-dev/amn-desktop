@@ -1,0 +1,136 @@
+[
+  {
+    "t": 7.14,
+    "scene": "S0",
+    "msg": "deux sessions, WebSocket saluée des deux côtés",
+    "A": true,
+    "B": true
+  },
+  {
+    "t": 17.5,
+    "scene": "S3",
+    "msg": "appel A → B : sonnerie, acceptation, média établi",
+    "sonne_apres_ms": 368,
+    "rtc_connected_A_ms": 419,
+    "rtc_connected_B_ms": 408,
+    "compteur_duree_A": null,
+    "etats_rtc_A": [
+      "ice:checking",
+      "ice:connected",
+      "connecting",
+      "connected"
+    ],
+    "notif_OS_B": 1
+  },
+  {
+    "t": 18.43,
+    "scene": "S3",
+    "msg": "A raccroche",
+    "B_revenu_au_repos": true,
+    "etats_rtc_B_fin": [
+      "ice:connected",
+      "connected"
+    ]
+  },
+  {
+    "t": 22.55,
+    "scene": "S2b",
+    "msg": "B a le fil OUVERT et visible quand le message arrive",
+    "notification_OS_quand_meme": 1
+  },
+  {
+    "t": 42.55,
+    "scene": "S4",
+    "msg": "B coupé : la socket temps réel tombe",
+    "socket_fermee_apres_ms": "PAS VU EN 20 s"
+  },
+  {
+    "t": 44.22,
+    "scene": "S4",
+    "msg": "écriture hors ligne",
+    "file_attente": [
+      "ecriture:messages/msg-mtvwq3j4-f2pnfc (essais 1)",
+      "ecriture:profiles/mohamed.audit@exemple.test (essais 1)"
+    ],
+    "banniere": "2 modifications en attente d’envoi",
+    "sur_serveur": false
+  },
+  {
+    "t": 96.69,
+    "scene": "S4",
+    "msg": "retour du réseau",
+    "serveur_a_recu_apres_ms": 4051,
+    "A_a_recu_apres_ms": 4016,
+    "socket_B_rouverte_apres_ms": "JAMAIS",
+    "file_videe_apres_ms": 49073,
+    "banniere_finale": "disparue"
+  },
+  {
+    "t": 117.2,
+    "scene": "S5",
+    "msg": "pendant la coupure : B épingle (local), A réagit (arrivé au serveur)",
+    "B_voit_son_epingle": true,
+    "file_B": [
+      "ecriture:messages/msg-mtvwpmsf-faosyp (essais 1)"
+    ],
+    "serveur_reactions": 1,
+    "serveur_pinned": false
+  },
+  {
+    "t": 121.88,
+    "scene": "S5",
+    "msg": "après le retour de B : état FINAL du message",
+    "pinned": true,
+    "reactions": [],
+    "reaction_de_A_conservee": false,
+    "A_voit_encore_sa_reaction": false,
+    "verdict": "ÉCRASEMENT : la réaction faite EN LIGNE par A est perdue"
+  },
+  {
+    "t": 122.52,
+    "scene": "S6",
+    "msg": "amn-api arrêtée : les deux sockets tombent",
+    "A_ms": 42,
+    "B_ms": 30
+  },
+  {
+    "t": 124.21,
+    "scene": "S6",
+    "msg": "écriture pendant la panne",
+    "file_A": [
+      "ecriture:messages/msg-mtvwrt9g-9i9kg6 (essais 1)",
+      "ecriture:profiles/demo.interne@exemple.test (essais 1)"
+    ],
+    "banniere": "2 modifications en attente d’envoi",
+    "rail": "?"
+  },
+  {
+    "t": 140.63,
+    "scene": "S6",
+    "msg": "serveur relancé",
+    "A_socket_rouverte_apres_ms": 7824,
+    "B_socket_rouverte_apres_ms": 7835,
+    "message_de_panne_sur_serveur_apres_ms": 7993,
+    "visible_chez_B_apres_ms": 8021,
+    "file_A_finale": []
+  },
+  {
+    "t": 140.63,
+    "scene": "S6",
+    "msg": "toutes les notifications OS reçues par B (doublons ?)",
+    "par_contenu": {
+      "Appel entrant / Demo Interne vous appelle.": 1,
+      "Message de Demo Interne / AUDIT S2b sous les yeux 1789067692906": 1,
+      "Message de Demo Interne / AUDIT S6 serveur éteint 1789067794556": 1
+    },
+    "doublons": 0
+  },
+  {
+    "t": 146.25,
+    "scene": "S7",
+    "msg": "message privé A → B",
+    "recu_par_websocket_B": true,
+    "notification_OS_chez_B": 0,
+    "barre_laterale": "aucune pastille"
+  }
+]

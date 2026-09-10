@@ -1,0 +1,25 @@
+Audit de fiabilité — RUN 3 (sortie console brute, 2026-09-10)
+
+S9 — une tâche assignée à B arrive par la synchro (PUT /v1/collections/tasks, assigneeEmail = B) :
+PUT tâche : 200
+S9 notifs A : []
+S9 notifs B : [{"title":"Nouvelle tâche assignée","body":"Relire le contrat Corvetto (audit S9)"}]
+→ seul le destinataire est notifié.
+
+S7bis — APRÈS correctif de NotificationsManager (messages privés), vrai geste depuis l'écran
+Messages privés de A vers B :
+S7bis notifs A : []
+S7bis notifs B : [{"title":"Message privé de Demo Interne","body":"AUDIT S7bis privé 1789068198509"}]
+→ le destinataire est notifié, l'expéditeur non (avant correctif, run 2 S7 : 0 notification, aucune pastille).
+
+BATTEMENT WEBSOCKET — preuve du correctif amn-api (src/ws/hub.js), serveur local relancé avec le patch,
+deux clients `ws` : l'un répond aux pings (défaut), l'autre a `autoPong: false` (liaison morte simulée) :
+[0.0s] poste VIVANT connecté
+[0.0s] poste MUET connecté (ne répondra pas aux pings)
+[16.4s] poste VIVANT : ping reçu du serveur → pong automatique
+[16.4s] poste MUET : ping reçu, ignoré volontairement
+[46.4s] poste VIVANT : ping reçu du serveur → pong automatique
+[46.4s] poste MUET : fermé par le serveur (code 1006)
+[75.0s] bilan : vivant=toujours ouvert muet=terminé
+Tests amn-api rejoués avec le patch (confidentialite-notifications, push, api, isolation) : 41/41.
+check:incidents avec le patch : « 24 natures émises, 16 nommées, 7 d'infrastructure — toutes vérifiées. »

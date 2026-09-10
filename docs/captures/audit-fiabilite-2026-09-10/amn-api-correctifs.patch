@@ -1,0 +1,78 @@
+diff --git a/scripts/check-incidents.mjs b/scripts/check-incidents.mjs
+index a4c1b9a..1c5ce47 100644
+--- a/scripts/check-incidents.mjs
++++ b/scripts/check-incidents.mjs
+@@ -88,6 +88,18 @@ const HORS_SUPERVISION = new Set([
+   */
+   'test',
+   'incident',
++  /*
++    Trois natures de TRAMES DE TOUR, pas d'alertes : `org:changed` (routes/admin.js)
++    et `module_request` (routes/modules.js) disent à la Tour de contrôle qu'une
++    organisation ou une demande a été créée, modifiée ou retirée. Elles portent
++    le mot `kind` par commodité de lecture et n'entrent dans aucune file
++    d'incidents. Relevées par le contrôle à leur apparition (audit de fiabilité
++    du 10 septembre 2026 : la CI était rouge depuis trois poussées sans qu'aucun
++    incident réel ne l'explique) — le bon comportement, une décision écrite ici.
++  */
++  'created',
++  'updated',
++  'removed',
+ ]);
+ 
+ /*
+diff --git a/src/ws/hub.js b/src/ws/hub.js
+index 2fbb3b7..8c2482e 100644
+--- a/src/ws/hub.js
++++ b/src/ws/hub.js
+@@ -114,7 +114,42 @@ export function createHub(server, { db } = {}) {
+     broadcast({ type: 'presence', users: presenceSnapshot(orgId) }, orgId);
+   }
+ 
++  /*
++    LE BATTEMENT DE LA SOCKET (audit de fiabilité, 10 septembre 2026).
++
++    Mesuré en coupant le réseau d'un poste : sa socket restait « ouverte » des
++    deux côtés, sans qu'aucun des deux ne s'en aperçoive — le poste affichait
++    « Lien actif » et ne recevait plus rien, le serveur le comptait présent et
++    joignable. Ni le serveur ni le poste n'envoyaient jamais rien spontanément,
++    donc rien ne pouvait révéler une liaison morte.
++
++    Un ping toutes les 30 s : un pair muet à deux battements est terminé, ce qui
++    déclenche côté poste la reconnexion et la relecture ordinaires, et côté
++    serveur la mise à jour de la présence. Les navigateurs et `ws` répondent au
++    ping au niveau du protocole, sans code côté poste.
++  */
++  const BATTEMENT_MS = 30_000;
++  const battement = setInterval(() => {
++    for (const socket of wss.clients) {
++      if (socket.__vivant === false) {
++        socket.terminate();
++        continue;
++      }
++      socket.__vivant = false;
++      try {
++        socket.ping();
++      } catch {
++        /* socket déjà morte : le prochain tour la termine */
++      }
++    }
++  }, BATTEMENT_MS);
++  battement.unref?.();
++
+   wss.on('connection', async (socket, request) => {
++    socket.__vivant = true;
++    socket.on('pong', () => {
++      socket.__vivant = true;
++    });
+     const url = new URL(request.url, 'http://localhost');
+     const token = url.searchParams.get('token');
+     const linkToken = url.searchParams.get('link');
+@@ -468,6 +503,7 @@ export function createHub(server, { db } = {}) {
+    * `wss.close()`. On les termine d'abord.
+    */
+   function close() {
++    clearInterval(battement);
+     for (const socket of wss.clients) socket.terminate();
+     wss.close();
+   }
