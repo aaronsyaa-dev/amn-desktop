@@ -44,15 +44,60 @@ jobs:
   # une perte, en base et à l'écran. Rien ne se publie s'il manque une donnée.
   migration:
     runs-on: ubuntu-latest
+    # Le secret n'est pas lisible dans un `if:` de tâche — il l'est dans `env`,
+    # et l'`env` est lisible dans un `if:` d'étape. D'où ce relais (même
+    # motif que .github/workflows/editions.yml, tâche `croises`).
+    env:
+      JETON_API: ${{ secrets.AMN_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      # `amn-api` est un dépôt PRIVÉ, distinct de celui-ci : le jeton par
+      # défaut du workflow (`GITHUB_TOKEN`) ne donne accès qu'au dépôt qui
+      # déclenche le run, jamais à un voisin, même possédé par le même
+      # compte. Sans jeton dédié, l'API GitHub répond 404 « Not Found » —
+      # elle ne confirme même pas l'existence du dépôt à qui n'a pas le
+      # droit de le voir — plutôt qu'un 403 qui aurait au moins nommé le
+      # problème. Ce garde-fou n'est pas optionnel comme les contrôles
+      # croisés d'`editions.yml` : il gate toute publication, donc un
+      # secret manquant est un ÉCHEC FRANC, jamais un vert qui saute la
+      # comparaison en silence.
+      - name: Le secret AMN_API_TOKEN est requis pour ce garde-fou
+        if: env.JETON_API == ''
+        run: |
+          echo "::error title=AMN_API_TOKEN manquant::check:migration compare le candidat à la version précédente d'amn-api (dépôt privé aaronsyaa-dev/amn-api) et ne peut pas tourner sans un jeton dédié."
+          echo
+          echo "Le jeton par défaut du workflow ne donne accès qu'à amn-desktop :"
+          echo "il ne peut pas récupérer amn-api, dépôt distinct et privé."
+          echo
+          echo "Remède : ajouter un secret AMN_API_TOKEN (lecture sur"
+          echo "aaronsyaa-dev/amn-api) dans les réglages du dépôt — le même"
+          echo "secret qu'utilise déjà .github/workflows/editions.yml."
+          exit 1
+
       - uses: actions/checkout@v4
         with:
           repository: aaronsyaa-dev/amn-api
           path: amn-api
           fetch-depth: 0
+          token: ${{ secrets.AMN_API_TOKEN }}
+
+      # Le secret EXISTE mais le dépôt n'est pas là : une vraie panne (jeton
+      # expiré, droits retirés), pas une absence de configuration. On refuse
+      # alors de passer au vert plutôt que de laisser check:migration tourner
+      # sans rien comparer.
+      - name: Le secret est là, le dépôt doit l'être aussi
+        run: |
+          if [ ! -f amn-api/src/db/tenancy.js ]; then
+            echo "AMN_API_TOKEN est configuré, mais amn-api n'a pas pu être récupéré."
+            echo "Jeton expiré, ou droits de lecture retirés sur le dépôt."
+            echo "check:migration passerait au vert sans rien comparer : on"
+            echo "préfère un échec franc à un vert qui ne prouve rien."
+            exit 1
+          fi
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
