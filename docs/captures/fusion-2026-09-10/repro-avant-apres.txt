@@ -1,0 +1,45 @@
+
+══════════════════════════════════════════════════════════════════════
+MODE « ancien »  (poste d’avant le correctif : il envoie tout, sans base)
+══════════════════════════════════════════════════════════════════════
+1. état de départ, lu par les DEUX postes  ·  updatedAt 2026-09-10T19:53:39.061Z
+   status="todo"  priority="normal"
+
+2. B (HORS LIGNE) : status → "doing". Son écriture part en file d’envoi.
+   elle porte : status="doing" priority="normal" (priority est PÉRIMÉ)
+
+3. A (EN LIGNE) : priority → "high". Le serveur accepte.
+   serveur : status="todo" priority="high"
+
+4. B RETROUVE LE RÉSEAU — sa file rejoue son écriture
+   serveur : status="doing" priority="normal"
+   le serveur n'annonce aucune fusion : il a remplacé l'enregistrement entier
+
+   modification de B (status → doing)  : CONSERVÉE
+   modification de A (priority → high) : PERDUE
+   → DU TRAVAIL A ÉTÉ PERDU, sans que personne en soit averti.
+
+══════════════════════════════════════════════════════════════════════
+MODE « nouveau »  (poste à jour : il dit d’où il part et ce qu’il a changé)
+══════════════════════════════════════════════════════════════════════
+1. état de départ, lu par les DEUX postes  ·  updatedAt 2026-09-10T19:53:39.095Z
+   status="todo"  priority="normal"
+
+2. B (HORS LIGNE) : status → "doing". Son écriture part en file d’envoi.
+   elle porte : status="doing" priority="normal" (priority est PÉRIMÉ)
+
+3. A (EN LIGNE) : priority → "high". Le serveur accepte.
+   serveur : status="todo" priority="high"
+
+4. B RETROUVE LE RÉSEAU — sa file rejoue son écriture
+   serveur : status="doing" priority="high"
+   le serveur annonce une FUSION : champs repris de B = [status, _by]
+
+   modification de B (status → doing)  : CONSERVÉE
+   modification de A (priority → high) : CONSERVÉE
+   → les deux survivent.
+
+══════════════════════════════════════════════════════════════════════
+ancien  : PERTE DE DONNÉES (le défaut de l’audit)
+nouveau : aucune perte — les deux modifications survivent
+══════════════════════════════════════════════════════════════════════

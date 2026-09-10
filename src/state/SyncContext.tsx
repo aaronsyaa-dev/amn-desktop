@@ -13,6 +13,7 @@ import { reportGuestQuotaError } from './guestQuotaStore';
 import {
   appliquer as appliquerVerdict,
   attenteAvantEssai,
+  champsModifies,
   poser as poserEnFile,
   pretALEnvoi,
   resume as resumeFile,
@@ -653,6 +654,10 @@ export function SyncProvider({
               entree.collection as SyncedCollection,
               entree.id,
               entree.donnees ?? {},
+              // C'est ICI que le correctif d'écrasement compte le plus : cette
+              // écriture a pu attendre des heures, et l'autre poste a très bien
+              // pu toucher la même fiche entre-temps.
+              entree.base && entree.patch ? { base: entree.base, patch: entree.patch } : undefined,
             );
             applyRecords(entree.collection, [saved]); // adopter l'horodatage serveur
           }
@@ -709,6 +714,29 @@ export function SyncProvider({
       const stamped = emailRef.current
         ? { ...data, [WRITER_KEY]: emailRef.current }
         : data;
+
+      /*
+        DE QUELLE VERSION CE GESTE PART, ET CE QU'IL CHANGE VRAIMENT.
+
+        Lu AVANT l'écriture optimiste ci-dessous, et c'est tout l'enjeu de
+        l'ordre : deux lignes plus bas, le miroir contient déjà la nouvelle
+        valeur, et la comparaison ne dirait plus rien.
+
+        C'est ce couple qui ferme l'écrasement mesuré à l'audit du 10 septembre
+        2026 : sans lui, le serveur reçoit un enregistrement entier bâti sur une
+        version périmée et ne peut que le prendre tel quel — en effaçant au
+        passage ce qu'un autre poste avait écrit entre-temps. Voir
+        `champsModifies` (lib/fileEnvoi) et amn-api/src/lib/fusion.js.
+
+        `deleted` compte : repartir d'une pierre tombale n'est pas une
+        modification, c'est une résurrection, et elle porte l'enregistrement
+        entier.
+      */
+      const avant = storeRef.current[collection]?.[id];
+      const base = avant && !avant.deleted ? avant.updatedAt : null;
+      const patch = base ? champsModifies(avant?.data, stamped) : null;
+      const fusion = base && patch ? { base, patch } : undefined;
+
       const optimistic: RemoteRecord = {
         id,
         collection,
@@ -719,7 +747,7 @@ export function SyncProvider({
       applyRecords(collection, [optimistic]); // instant local update
       if (configured) {
         try {
-          const saved = await bridge().remote.upsertRecord(collection, id, stamped);
+          const saved = await bridge().remote.upsertRecord(collection, id, stamped, fusion);
           applyRecords(collection, [saved]); // adopt server timestamp
         } catch (err) {
           /*
@@ -743,6 +771,8 @@ export function SyncProvider({
             id,
             geste: 'ecriture',
             donnees: stamped,
+            base: base ?? undefined,
+            patch: patch ?? undefined,
             pose: optimistic.updatedAt,
             essais: 0,
           });
