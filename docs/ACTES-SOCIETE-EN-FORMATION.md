@@ -11,6 +11,7 @@ ni déductible.
 | Date | Objet | Payé par | Montant TTC | Justificatif |
 |---|---|---|---|---|
 | 10/09/2026 | Noms de domaine amndevsec.fr et amndevsec.com, 1 an | Mohamed | 20,40 € | Facture Gandi n° 2026091001374 |
+| 10/09/2026 | Dépôt de la marque « AMN DevSec » à l'INPI, classes 9 et 42 | Mohamed | 230,00 € | INPI, dépôt de marque n° 5296731, référence commande 23472668 |
 
 **À faire à chaque nouvelle dépense** : garder la facture (PDF ou photo), et ajouter
 une ligne ici avec la date exacte, ce que c'est, qui a payé, le montant TTC, et le
