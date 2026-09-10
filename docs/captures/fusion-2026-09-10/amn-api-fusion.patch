@@ -1,0 +1,537 @@
+diff --git a/src/db/postgres.js b/src/db/postgres.js
+index 9fd4fdd..6a66002 100644
+--- a/src/db/postgres.js
++++ b/src/db/postgres.js
+@@ -3,6 +3,7 @@ import fs from 'node:fs';
+ import path from 'node:path';
+ import { fileURLToPath } from 'node:url';
+ import pg from 'pg';
++import { deciderEcriture } from '../lib/fusion.js';
+ 
+ const { Pool } = pg;
+ 
+@@ -961,6 +962,45 @@ export function createPostgresDb(connectionString) {
+       return rowToRecord(rows[0]);
+     },
+ 
++    /**
++     * Voir le pilote SQLite et `src/lib/fusion.js` : la décision est la MÊME
++     * fonction des deux côtés, c'est ce qui garantit que les deux bases se
++     * comportent pareil.
++     *
++     * `FOR UPDATE` verrouille la ligne le temps de la transaction : deux
++     * écritures simultanées sur le même enregistrement s'exécutent alors l'une
++     * après l'autre, et la seconde fusionne sur le résultat de la première —
++     * jamais sur l'état d'avant, qu'elle aurait lu sans le verrou.
++     */
++    async upsertRecordFusion(orgId, collection, id, { data, base, patch }) {
++      requireOrg(orgId);
++      const client = await pool.connect();
++      try {
++        await client.query('BEGIN');
++        await client.query('UPDATE organizations SET last_activity_at = now() WHERE id = $1', [orgId]);
++        const { rows: actuels } = await client.query(
++          'SELECT * FROM shared_records WHERE org_id = $1 AND collection = $2 AND record_id = $3 FOR UPDATE',
++          [orgId, collection, id],
++        );
++        const decision = deciderEcriture(rowToRecord(actuels[0]), { data, base, patch });
++        const { rows } = await client.query(
++          `INSERT INTO shared_records (org_id, collection, record_id, data, updated_at, deleted)
++           VALUES ($4, $1, $2, $3, now(), false)
++           ON CONFLICT (org_id, collection, record_id) DO UPDATE SET
++             data = excluded.data, updated_at = now(), deleted = false
++           RETURNING *`,
++          [collection, id, JSON.stringify(decision.data ?? {}), orgId],
++        );
++        await client.query('COMMIT');
++        return { record: rowToRecord(rows[0]), fusion: decision.fusion };
++      } catch (err) {
++        await client.query('ROLLBACK').catch(() => {});
++        throw err;
++      } finally {
++        client.release();
++      }
++    },
++
+     async deleteRecord(orgId, collection, id) {
+       requireOrg(orgId);
+       const { rows } = await pool.query(
+diff --git a/src/db/sqlite.js b/src/db/sqlite.js
+index 96b7660..cda2c09 100644
+--- a/src/db/sqlite.js
++++ b/src/db/sqlite.js
+@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
+ import Database from 'better-sqlite3';
+ import { AMN_ORG_ID, AMN_ORG_NAME, TENANT_TABLES } from './tenancy.js';
+ import { rangSeverite } from '../tracker/incidents.js';
++import { deciderEcriture } from '../lib/fusion.js';
+ 
+ /**
+  * SQLite-backed implementation of the DB interface, used for local
+@@ -1827,6 +1828,38 @@ export function createSqliteDb(filePath) {
+       );
+     },
+ 
++    /**
++     * Écrire en tenant compte de ce qui a pu bouger entre-temps. La règle vit
++     * dans `src/lib/fusion.js` et elle est COMMUNE aux deux pilotes : SQLite et
++     * Postgres appellent la même décision, donc ils ne peuvent pas diverger —
++     * ce qu'une journée de maintenance sur un seul des deux finirait sinon par
++     * produire, sans que rien ne le signale.
++     *
++     * Lecture et écriture dans UNE transaction : sans elle, deux écritures
++     * simultanées liraient le même « courant » et la seconde fusionnerait sur
++     * un état déjà dépassé — le défaut qu'on ferme, en plus petit et en plus
++     * difficile à voir.
++     */
++    async upsertRecordFusion(orgId, collection, id, { data, base, patch }) {
++      requireOrg(orgId);
++      db.prepare('UPDATE organizations SET last_activity_at = ? WHERE id = ?').run(new Date().toISOString(), orgId);
++      const lire = db.prepare(
++        'SELECT * FROM shared_records WHERE org_id = ? AND collection = ? AND record_id = ?',
++      );
++      const ecrire = db.transaction(() => {
++        const decision = deciderEcriture(rowToRecord(lire.get(orgId, collection, id)), { data, base, patch });
++        const updatedAt = new Date().toISOString();
++        db.prepare(
++          `INSERT INTO shared_records (org_id, collection, record_id, data, updated_at, deleted)
++           VALUES (?, ?, ?, ?, ?, 0)
++           ON CONFLICT (org_id, collection, record_id) DO UPDATE SET
++             data = excluded.data, updated_at = excluded.updated_at, deleted = 0`,
++        ).run(orgId, collection, id, JSON.stringify(decision.data ?? {}), updatedAt);
++        return { record: rowToRecord(lire.get(orgId, collection, id)), fusion: decision.fusion };
++      });
++      return ecrire();
++    },
++
+     async deleteRecord(orgId, collection, id) {
+       requireOrg(orgId);
+       const updatedAt = new Date().toISOString();
+diff --git a/src/lib/fusion.js b/src/lib/fusion.js
+new file mode 100644
+index 0000000..e7c78c0
+--- /dev/null
++++ b/src/lib/fusion.js
+@@ -0,0 +1,117 @@
++/**
++ * LA FUSION D'UNE ÉCRITURE CONCURRENTE — CE QUI DÉCIDE, ET POURQUOI
++ * ════════════════════════════════════════════════════════════════
++ *
++ * ## Le défaut que ce module ferme
++ *
++ * Mesuré à l'audit de fiabilité du 10 septembre 2026, puis rejoué à l'identique
++ * ici (`scripts/check-fusion.mjs`, scénario « le cas central ») :
++ *
++ *   1. une tâche existe ; les deux postes l'ont lue ;
++ *   2. Mohamed perd le réseau et la passe « en cours ». Son écriture attend
++ *      dans la file d'envoi du poste, sous la forme de l'enregistrement ENTIER
++ *      tel qu'il le connaissait ;
++ *   3. pendant ce temps Harun, en ligne, monte la priorité de la même tâche.
++ *      Le serveur accepte ;
++ *   4. Mohamed retrouve le réseau. Sa file rejoue son écriture — bâtie sur une
++ *      version d'avant — et le `PUT` remplace l'enregistrement entier.
++ *
++ * La priorité posée par Harun n'existe alors plus nulle part : ni sur le
++ * serveur, ni sur son écran à la prochaine relecture. Aucun des deux n'est
++ * averti. Ce n'est pas un défaut d'affichage, c'est du travail perdu.
++ *
++ * Le même enchaînement se produit SANS coupure réseau : deux postes qui ont la
++ * même fiche ouverte, l'un change un champ, l'autre en change un autre. Le
++ * second `PUT` porte l'ancienne valeur du premier champ. La coupure ne crée pas
++ * le défaut, elle allonge seulement la fenêtre pendant laquelle il se produit.
++ *
++ * ## Ce qui a été retenu, et ce qui a été écarté
++ *
++ * Deux pistes étaient sur la table.
++ *
++ * **Refuser (409) quand la base a bougé.** Petit changement, mais il transforme
++ * une perte silencieuse en perte annoncée : le poste ne sait rien faire d'un
++ * refus sinon abandonner l'écriture (voir `motsAbandon` côté poste), donc
++ * Mohamed devrait refaire son geste. Surtout, il frapperait le cas le plus
++ * COURANT — deux personnes connectées qui touchent la même fiche à quelques
++ * secondes d'écart, une réaction et une épingle sur le même message — où
++ * pourtant rien ne se contredit. Un refus quotidien sur des gestes qui ne
++ * s'opposent pas, c'est une régression d'usage.
++ *
++ * **Fusionner champ par champ.** C'est ce qui est fait ici. Deux modifications
++ * qui ne portent pas sur le même champ survivent toutes les deux, sans que
++ * personne ait à arbitrer. Il ne reste de conflit vrai que si les deux ont
++ * changé LE MÊME champ — et là, aucune règle automatique ne peut trancher :
++ * c'est le dernier arrivé, comme avant, mais sur ce seul champ.
++ *
++ * La détection, elle, est bien celle de la première piste : le poste dit sur
++ * quelle version il s'est appuyé (`base`). C'est ce qui distingue « personne
++ * n'a bougé » de « quelqu'un a écrit entre-temps » — sans quoi le serveur ne
++ * peut RIEN décider, puisqu'il ne sait pas distinguer un champ que le poste a
++ * délibérément remis à son ancienne valeur d'un champ qu'il n'a jamais touché.
++ *
++ * ## Ce que le serveur ne peut pas savoir, et ne devine donc pas
++ *
++ * La fusion est de PREMIER NIVEAU : un champ change en entier. Un objet
++ * imbriqué (`billTo`) et un tableau (`lines`, `reactions`) sont remplacés d'un
++ * bloc, jamais fusionnés élément par élément. Fusionner deux tableaux demande
++ * de savoir ce qu'est un « même élément », et la réponse dépend du métier :
++ * la deviner ici produirait des lignes de facture en double le jour où deux
++ * postes en ajoutent une chacun.
++ *
++ * Elle ne connaît pas non plus les liens ENTRE champs. Une facture qui s'émet
++ * pose ensemble `status`, `number` et `issuedAt` ; si l'autre poste écrivait au
++ * même moment un `status` périmé, la fusion garderait le numéro et le statut
++ * d'avant. C'est un état incohérent — moins destructeur que l'écrasement total
++ * d'aujourd'hui (qui perdait aussi le numéro), mais incohérent quand même. La
++ * seule vraie réponse serait des groupes de champs atomiques déclarés par
++ * collection ; elle n'est pas dans ce chantier, et elle est écrite ici pour ne
++ * pas être découverte à l'usage.
++ */
++
++/**
++ * Que faire d'une écriture, sachant ce que le serveur détient déjà.
++ *
++ * `courant` est l'enregistrement en base (ou `null`), au format rendu par
++ * `rowToRecord` — c'est-à-dire avec `data` déjà décodé, dans les DEUX pilotes.
++ * C'est ce qui permet à cette décision d'être unique : SQLite et Postgres
++ * appellent la même fonction et ne peuvent donc pas diverger, ce qu'un jour de
++ * maintenance sur l'un des deux seulement finirait sinon par produire.
++ *
++ * Rend `{ data, fusion }` :
++ *   · `data`   — ce qu'il faut écrire, tel quel ;
++ *   · `fusion` — `null` quand l'écriture est passée telle quelle, sinon la
++ *                liste des champs repris du poste et la version qu'il a
++ *                dépassée. La route le renvoie au poste et la trace le dit :
++ *                une fusion silencieuse serait un mensonge par omission.
++ */
++export function deciderEcriture(courant, { data, base, patch }) {
++  // Sans base annoncée, le poste ne dit pas d'où il part : c'est un poste
++  // d'avant ce correctif. On lui garde exactement le comportement qu'il connaît
++  // plutôt que de lui appliquer une règle dont il n'a pas idée.
++  if (!base || !estObjet(patch)) return { data, fusion: null };
++
++  // Rien à fusionner avec ce qui n'existe pas (création), ni avec une pierre
++  // tombale : ressusciter un enregistrement supprimé se fait avec ce que le
++  // poste en sait, pas avec les restes de la version effacée.
++  if (!courant || courant.deleted || !estObjet(courant.data)) return { data, fusion: null };
++
++  // LE CHEMIN NORMAL, et de très loin le plus fréquent : personne n'a écrit
++  // depuis que ce poste a lu. L'enregistrement entier est donc à jour, et il
++  // est écrit tel quel — exactement comme avant ce correctif, au bit près.
++  if (courant.updatedAt === base) return { data, fusion: null };
++
++  // La base a bougé : quelqu'un d'autre est passé. On repart de CE QUE LE
++  // SERVEUR DÉTIENT et on ne réapplique par-dessus que les champs que ce
++  // poste-ci a réellement changés. Un champ qu'il n'a pas touché garde donc la
++  // valeur de l'autre, au lieu d'être remis à l'état d'avant.
++  const cles = Object.keys(patch);
++  return {
++    data: { ...courant.data, ...patch },
++    fusion: { cles, base, depuis: courant.updatedAt },
++  };
++}
++
++function estObjet(valeur) {
++  return typeof valeur === 'object' && valeur !== null && !Array.isArray(valeur);
++}
+diff --git a/src/routes/collections.js b/src/routes/collections.js
+index 6586a14..6c702bd 100644
+--- a/src/routes/collections.js
++++ b/src/routes/collections.js
+@@ -274,9 +274,35 @@ export function collectionsRouter() {
+     if (data === undefined || data === null || typeof data !== 'object') {
+       return res.status(400).json({ error: 'Body must be { data: {...} }' });
+     }
+-    const record = await req.app.locals.db.upsertRecord(req.auth.orgId, collection, id, data);
++
++    /*
++      `base` et `patch` : d'où part ce poste, et ce qu'il a réellement changé.
++
++      Les deux sont FACULTATIFS, et c'est ce qui rend ce correctif déployable
++      dans n'importe quel ordre. Un poste d'avant ne les envoie pas et retrouve
++      exactement le comportement qu'il a toujours eu (l'enregistrement entier
++      remplace) ; un poste à jour parlant à un serveur d'avant voit les deux
++      champs ignorés, sans erreur. Ni l'un ni l'autre ne casse en attendant que
++      l'autre soit mis à jour — voir src/lib/fusion.js pour la règle elle-même.
++    */
++    const base = typeof req.body?.base === 'string' && req.body.base ? req.body.base : null;
++    const patch = req.body?.patch;
++    const patchValide = typeof patch === 'object' && patch !== null && !Array.isArray(patch);
++
++    const resultat =
++      base && patchValide
++        ? await req.app.locals.db.upsertRecordFusion(req.auth.orgId, collection, id, { data, base, patch })
++        : { record: await req.app.locals.db.upsertRecord(req.auth.orgId, collection, id, data), fusion: null };
++
++    const { record, fusion } = resultat;
+     req.app.locals.hub?.broadcast({ type: 'record', collection, record }, req.auth.orgId);
+-    res.status(200).json({ record });
++    /*
++      La fusion est DITE. Le poste n'a rien à en faire aujourd'hui — il adopte
++      l'enregistrement rendu, comme toujours — mais une fusion muette serait un
++      mensonge par omission : c'est le moment précis où deux personnes ont
++      travaillé sur la même fiche, et c'est ce qu'on veut pouvoir relire.
++    */
++    res.status(200).json(fusion ? { record, fusion } : { record });
+   });
+ 
+   router.delete('/:collection/:id', async (req, res) => {
+diff --git a/test/fusion.test.js b/test/fusion.test.js
+new file mode 100644
+index 0000000..a1597a9
+--- /dev/null
++++ b/test/fusion.test.js
+@@ -0,0 +1,257 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import http from 'node:http';
++
++process.env.NODE_ENV = 'test';
++process.env.OPERATOR_TOKEN = 'test-operator-token';
++
++const { createApp } = await import('../src/server.js');
++const { createSqliteDb } = await import('../src/db/sqlite.js');
++const { AMN_ORG_ID } = await import('../src/db/tenancy.js');
++const { hashPassword } = await import('../src/lib/password.js');
++const { deciderEcriture } = await import('../src/lib/fusion.js');
++
++/**
++ * L'ÉCRASEMENT EN ÉDITION CONCURRENTE — le défaut mesuré à l'audit de
++ * fiabilité du 10 septembre 2026 (scénario S5), et ce qui le ferme.
++ *
++ * Le cas central est celui-là, et il vaut la peine d'être relu chaque fois
++ * qu'on touche à `src/lib/fusion.js` : deux personnes modifient des champs
++ * DIFFÉRENTS de la même fiche, l'une hors ligne. Rien ne se contredit, donc
++ * rien ne doit se perdre — or c'est exactement ce qui se perdait.
++ *
++ * Les tests d'API sont doublés de tests de la décision pure : les premiers
++ * prouvent que la route et la base font ce qu'il faut, les seconds décrivent
++ * la règle elle-même, y compris les cas qu'on ne sait pas atteindre par HTTP
++ * sans écrire un scénario à rallonge.
++ */
++
++async function poste(t) {
++  const db = createSqliteDb(':memory:');
++  await db.init();
++  const app = await createApp({ db });
++  const server = http.createServer(app);
++  await new Promise((resolve) => server.listen(0, resolve));
++  const { port } = server.address();
++  t.after(async () => {
++    server.closeAllConnections?.();
++    await new Promise((resolve) => server.close(resolve));
++    await db.close();
++  });
++  await db.createUser({
++    orgId: AMN_ORG_ID,
++    email: 'aaron@amn-test.local',
++    passwordHash: await hashPassword('motdepasse-solide'),
++    role: 'owner',
++    status: 'active',
++  });
++  const login = await fetch(`http://127.0.0.1:${port}/v1/auth/login`, {
++    method: 'POST',
++    headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify({ email: 'aaron@amn-test.local', password: 'motdepasse-solide' }),
++  });
++  const { token } = await login.json();
++  const base = `http://127.0.0.1:${port}`;
++  const entetes = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
++  return {
++    async ecrire(id, corps) {
++      const res = await fetch(`${base}/v1/collections/tasks/${id}`, {
++        method: 'PUT',
++        headers: entetes,
++        body: JSON.stringify(corps),
++      });
++      return { statut: res.status, corps: await res.json() };
++    },
++    async lire(id) {
++      const res = await fetch(`${base}/v1/collections/tasks`, { headers: entetes });
++      const { records } = await res.json();
++      return records.find((r) => r.id === id) ?? null;
++    },
++    async supprimer(id) {
++      await fetch(`${base}/v1/collections/tasks/${id}`, { method: 'DELETE', headers: entetes });
++    },
++  };
++}
++
++const TACHE = {
++  title: 'Relire le contrat Corvetto',
++  detail: '',
++  status: 'todo',
++  priority: 'normal',
++  assigneeEmail: 'aaron@amn-test.local',
++  siteId: null,
++  clientId: null,
++};
++
++/* ─── Le cas central, celui de l'audit ───────────────────────────────────── */
++
++test('LE CAS DE L’AUDIT : le rejeu d’une écriture hors ligne n’efface plus la modification faite en ligne', async (t) => {
++  const p = await poste(t);
++  await p.ecrire('t1', { data: TACHE });
++  const depart = await p.lire('t1');
++
++  // B part hors ligne avec cette version : il passe la tâche « en cours ».
++  const versionDeB = { ...depart.data, status: 'doing' };
++
++  // A, en ligne, monte la priorité de la même tâche.
++  await p.ecrire('t1', {
++    data: { ...depart.data, priority: 'high' },
++    base: depart.updatedAt,
++    patch: { priority: 'high' },
++  });
++
++  // B revient : sa file rejoue son écriture, bâtie sur la version d'avant.
++  const rejeu = await p.ecrire('t1', {
++    data: versionDeB,
++    base: depart.updatedAt,
++    patch: { status: 'doing' },
++  });
++
++  const fin = await p.lire('t1');
++  assert.equal(fin.data.status, 'doing', 'la modification de B est appliquée');
++  assert.equal(fin.data.priority, 'high', 'la modification de A a SURVÉCU — c’est le défaut qui est fermé');
++  assert.deepEqual(rejeu.corps.fusion?.cles, ['status'], 'le serveur dit ce qu’il a repris de B');
++  assert.equal(rejeu.corps.fusion?.base, depart.updatedAt);
++});
++
++test('sans base annoncée, le comportement d’avant est conservé au bit près (poste non mis à jour)', async (t) => {
++  const p = await poste(t);
++  await p.ecrire('t2', { data: TACHE });
++  const depart = await p.lire('t2');
++  await p.ecrire('t2', { data: { ...depart.data, priority: 'high' } });
++  // Un poste d'avant ce correctif : il envoie l'enregistrement entier, sans base.
++  const rejeu = await p.ecrire('t2', { data: { ...depart.data, status: 'doing' } });
++  const fin = await p.lire('t2');
++  assert.equal(fin.data.status, 'doing');
++  assert.equal(fin.data.priority, 'normal', 'il écrase, comme il l’a toujours fait');
++  assert.equal(rejeu.corps.fusion, undefined, 'et aucune fusion n’est annoncée');
++});
++
++test('quand personne n’a bougé, l’enregistrement entier passe tel quel — le chemin normal', async (t) => {
++  const p = await poste(t);
++  await p.ecrire('t3', { data: TACHE });
++  const depart = await p.lire('t3');
++  const res = await p.ecrire('t3', {
++    data: { ...depart.data, title: 'Relire le contrat Corvetto (relu)' },
++    base: depart.updatedAt,
++    patch: { title: 'Relire le contrat Corvetto (relu)' },
++  });
++  assert.equal(res.corps.fusion, undefined, 'aucune fusion : la base n’avait pas bougé');
++  const fin = await p.lire('t3');
++  assert.equal(fin.data.title, 'Relire le contrat Corvetto (relu)');
++  assert.equal(fin.data.status, 'todo');
++});
++
++test('deux modifications du MÊME champ : le dernier arrivé gagne, et lui seul — pas le reste de la fiche', async (t) => {
++  const p = await poste(t);
++  await p.ecrire('t4', { data: TACHE });
++  const depart = await p.lire('t4');
++  // A change le titre ET le statut.
++  await p.ecrire('t4', {
++    data: { ...depart.data, title: 'Titre de A', status: 'doing' },
++    base: depart.updatedAt,
++    patch: { title: 'Titre de A', status: 'doing' },
++  });
++  // B, parti de la même base, ne change que le titre.
++  await p.ecrire('t4', {
++    data: { ...depart.data, title: 'Titre de B' },
++    base: depart.updatedAt,
++    patch: { title: 'Titre de B' },
++  });
++  const fin = await p.lire('t4');
++  assert.equal(fin.data.title, 'Titre de B', 'sur le champ disputé, le dernier arrivé');
++  assert.equal(fin.data.status, 'doing', 'mais le champ que B n’a pas touché garde la valeur de A');
++});
++
++test('trois modifications hors ligne d’affilée : le patch cumulé les porte toutes', async (t) => {
++  const p = await poste(t);
++  await p.ecrire('t5', { data: TACHE });
++  const depart = await p.lire('t5');
++  await p.ecrire('t5', {
++    data: { ...depart.data, assigneeEmail: 'mohamed@amn-test.local' },
++    base: depart.updatedAt,
++    patch: { assigneeEmail: 'mohamed@amn-test.local' },
++  });
++  /*
++    Ce que la file d'envoi du poste envoie après trois gestes hors ligne : UNE
++    entrée, la dernière valeur complète, et le patch cumulé des trois — sur la
++    base d'origine, la seule que le serveur ait jamais eue.
++  */
++  const rejeu = await p.ecrire('t5', {
++    data: { ...depart.data, status: 'doing', priority: 'high', detail: 'vu avec le client' },
++    base: depart.updatedAt,
++    patch: { status: 'doing', priority: 'high', detail: 'vu avec le client' },
++  });
++  const fin = await p.lire('t5');
++  assert.equal(fin.data.status, 'doing');
++  assert.equal(fin.data.priority, 'high');
++  assert.equal(fin.data.detail, 'vu avec le client');
++  assert.equal(fin.data.assigneeEmail, 'mohamed@amn-test.local', 'et l’écriture de l’autre poste tient');
++  assert.equal(rejeu.corps.fusion.cles.length, 3);
++});
++
++test('un enregistrement supprimé entre-temps : le rejeu le ressuscite ENTIER, sans fusionner avec la pierre tombale', async (t) => {
++  const p = await poste(t);
++  await p.ecrire('t6', { data: TACHE });
++  const depart = await p.lire('t6');
++  await p.supprimer('t6');
++  const rejeu = await p.ecrire('t6', {
++    data: { ...depart.data, status: 'doing' },
++    base: depart.updatedAt,
++    patch: { status: 'doing' },
++  });
++  assert.equal(rejeu.corps.fusion, undefined, 'rien à fusionner avec du vide');
++  const fin = await p.lire('t6');
++  assert.equal(fin.data.title, TACHE.title, 'la fiche revient complète');
++  assert.equal(fin.data.status, 'doing');
++});
++
++test('un patch mal formé (tableau, chaîne) est ignoré : l’écriture passe entière plutôt que d’échouer', async (t) => {
++  const p = await poste(t);
++  await p.ecrire('t7', { data: TACHE });
++  const depart = await p.lire('t7');
++  for (const patch of [['status'], 'status', 42]) {
++    const res = await p.ecrire('t7', { data: { ...depart.data, status: 'doing' }, base: depart.updatedAt, patch });
++    assert.equal(res.statut, 200, `patch ${JSON.stringify(patch)} : la requête aboutit`);
++    assert.equal(res.corps.fusion, undefined);
++  }
++  const fin = await p.lire('t7');
++  assert.equal(fin.data.status, 'doing');
++});
++
++/* ─── La règle elle-même, sans HTTP ni base ──────────────────────────────── */
++
++test('la décision : sans base, ou sans patch, on écrit ce que le poste envoie', () => {
++  const courant = { data: { a: 1 }, updatedAt: 'T1', deleted: false };
++  assert.deepEqual(deciderEcriture(courant, { data: { a: 2 } }), { data: { a: 2 }, fusion: null });
++  assert.deepEqual(deciderEcriture(courant, { data: { a: 2 }, base: 'T0' }), { data: { a: 2 }, fusion: null });
++});
++
++test('la décision : la base a bougé — on repart du serveur et on ne réapplique que le patch', () => {
++  const courant = { data: { a: 1, b: 'serveur', c: true }, updatedAt: 'T2', deleted: false };
++  const { data, fusion } = deciderEcriture(courant, {
++    data: { a: 9, b: 'périmé', c: true },
++    base: 'T1',
++    patch: { a: 9 },
++  });
++  assert.deepEqual(data, { a: 9, b: 'serveur', c: true }, 'b garde la valeur du serveur, a prend celle du poste');
++  assert.deepEqual(fusion, { cles: ['a'], base: 'T1', depuis: 'T2' });
++});
++
++test('la décision : un patch vide ne change rien du tout, même si la base a bougé', () => {
++  const courant = { data: { a: 1, b: 2 }, updatedAt: 'T2', deleted: false };
++  const { data } = deciderEcriture(courant, { data: { a: 99, b: 99 }, base: 'T1', patch: {} });
++  assert.deepEqual(data, { a: 1, b: 2 }, 'le poste n’a rien changé : rien ne bouge');
++});
++
++test('la décision : une pierre tombale ou une création ne fusionnent jamais', () => {
++  const tombale = { data: {}, updatedAt: 'T2', deleted: true };
++  assert.deepEqual(deciderEcriture(tombale, { data: { a: 1 }, base: 'T1', patch: { a: 1 } }), {
++    data: { a: 1 },
++    fusion: null,
++  });
++  assert.deepEqual(deciderEcriture(null, { data: { a: 1 }, base: 'T1', patch: { a: 1 } }), {
++    data: { a: 1 },
++    fusion: null,
++  });
++});

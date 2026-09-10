@@ -2833,6 +2833,16 @@ export interface AmnBridge {
       collection: SyncedCollection,
       id: string,
       data: Record<string, unknown>,
+      /**
+       * D'où part ce geste, et ce qu'il a réellement changé.
+       *
+       * Facultatif, et c'est ce qui permet de mettre à jour poste et serveur
+       * dans n'importe quel ordre : absent, le serveur remplace l'enregistrement
+       * entier comme il l'a toujours fait ; présent, il fusionne au lieu
+       * d'écraser ce qu'un autre poste a écrit entre-temps. Voir
+       * `champsModifies` (lib/fileEnvoi) et amn-api/src/lib/fusion.js.
+       */
+      fusion?: { base: string; patch: Record<string, unknown> },
     ): Promise<RemoteRecord>;
     deleteRecord(collection: SyncedCollection, id: string): Promise<RemoteRecord>;
     /** Live record changes pushed from amn-api. Returns an unsubscribe function. */

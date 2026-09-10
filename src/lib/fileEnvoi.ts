@@ -73,6 +73,24 @@ export interface EntreeEnvoi {
   geste: GesteEnvoi;
   /** Absent pour une suppression : il n'y a rien à porter. */
   donnees?: Record<string, unknown>;
+  /**
+   * LA VERSION DONT CE GESTE EST PARTI — `updatedAt` de l'enregistrement tel
+   * que ce poste le connaissait au moment où la personne a agi.
+   *
+   * C'est ce qui permet au serveur de distinguer « personne n'a bougé depuis »
+   * de « quelqu'un a écrit entre-temps », et donc de fusionner plutôt que
+   * d'écraser (voir amn-api/src/lib/fusion.js). Absent pour une création, pour
+   * une suppression, et pour un geste dont le patch n'est pas exprimable :
+   * l'écriture repart alors entière, comme avant ce correctif.
+   */
+  base?: string;
+  /**
+   * Les SEULS champs que ce poste a changés depuis `base`.
+   *
+   * Envoyé à côté de l'enregistrement entier, jamais à la place : si
+   * l'enregistrement n'existe plus côté serveur, il faut de quoi le recréer.
+   */
+  patch?: Record<string, unknown>;
   /** Horodatage du geste, côté client. Sert à l'ordre et au diagnostic. */
   pose: string;
   /** Combien de fois on a essayé de l'envoyer, sans y arriver. */
@@ -85,6 +103,91 @@ export interface EntreeEnvoi {
    * et qui vient d'échouer, et le doublement ne servirait à rien.
    */
   dernierEssai?: string;
+}
+
+/**
+ * CE QUE CE POSTE A CHANGÉ, ET RIEN D'AUTRE
+ * ═════════════════════════════════════════
+ *
+ * L'autre moitié du correctif d'écrasement (l'autre vit dans
+ * `amn-api/src/lib/fusion.js`, qui applique ce que celle-ci calcule).
+ *
+ * Le serveur ne PEUT pas deviner seul quels champs ont bougé : il reçoit un
+ * enregistrement entier, et rien n'y distingue un champ que la personne a
+ * délibérément remis à son ancienne valeur d'un champ qu'elle n'a jamais
+ * touché. C'est donc au poste de le dire — il est le seul à connaître la
+ * version dont il est parti.
+ *
+ * Rend `null`, et non un patch vide, dans les trois cas où une fusion par
+ * champ ne peut pas dire la vérité. L'écriture repart alors entière, c'est-à-
+ * dire exactement comme avant ce correctif : on ne régresse jamais en dessous
+ * du comportement connu.
+ */
+export const PATCH_MAX_OCTETS = 256 * 1024;
+
+function memeValeur(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    return a.every((v, i) => memeValeur(v, b[i]));
+  }
+  const ca = a as Record<string, unknown>;
+  const cb = b as Record<string, unknown>;
+  const cles = Object.keys(ca);
+  if (cles.length !== Object.keys(cb).length) return false;
+  return cles.every((k) => Object.prototype.hasOwnProperty.call(cb, k) && memeValeur(ca[k], cb[k]));
+}
+
+export function champsModifies(
+  avant: Record<string, unknown> | null | undefined,
+  apres: Record<string, unknown>,
+): Record<string, unknown> | null {
+  // Une CRÉATION : il n'y a pas de version d'avant, donc rien à fusionner avec.
+  if (!avant) return null;
+
+  /*
+    Un champ RETIRÉ ne s'exprime pas dans une fusion par champ : le serveur
+    recompose avec `{ ...ce qu'il détient, ...le patch }`, ce qui sait ajouter
+    et remplacer, jamais enlever. On pourrait convenir qu'un `null` veut dire
+    « efface » — mais `null` est une valeur LÉGITIME ici (`clientId`, `siteId`,
+    `quoteId` valent null tous les jours), et la convention effacerait ces
+    champs-là au lieu de les mettre à null. Plutôt que d'inventer une règle qui
+    se trompe sur des cas réels, on renonce au patch pour ce geste-ci.
+  */
+  for (const cle of Object.keys(avant)) {
+    if (!Object.prototype.hasOwnProperty.call(apres, cle)) return null;
+  }
+
+  const champs: Record<string, unknown> = {};
+  for (const [cle, valeur] of Object.entries(apres)) {
+    if (!memeValeur(avant[cle], valeur)) champs[cle] = valeur;
+  }
+
+  /*
+    Un patch énorme n'apporte rien : il voyage EN PLUS de l'enregistrement
+    entier, donc au-delà d'une certaine taille il ne fait que doubler la
+    requête. Les champs sur lesquels deux personnes se marchent dessus — un
+    statut, une priorité, une épingle, une réaction — tiennent tous dans
+    quelques octets.
+  */
+  if (JSON.stringify(champs).length > PATCH_MAX_OCTETS) return null;
+  return champs;
+}
+
+/**
+ * Le patch cumulé de deux gestes successifs sur le même enregistrement.
+ *
+ * `undefined` dès que l'un des deux n'est pas exprimable : l'union d'un patch
+ * et d'un « je ne sais pas dire » ne peut être qu'un « je ne sais pas dire ».
+ */
+export function fusionPatches(
+  ancienne: EntreeEnvoi,
+  nouvelle: EntreeEnvoi,
+): Record<string, unknown> | undefined {
+  if (ancienne.geste !== 'ecriture' || nouvelle.geste !== 'ecriture') return undefined;
+  if (!ancienne.patch || !nouvelle.patch) return undefined;
+  return { ...ancienne.patch, ...nouvelle.patch };
 }
 
 /** Pourquoi une entrée quitte la file sans être partie. */
@@ -157,8 +260,22 @@ export function poser(
       (un devis part après le client qu'il cite). Et le compteur d'essais
       repart de zéro, parce que ce qu'on envoie n'est plus la même chose : les
       échecs de l'ancienne valeur ne condamnent pas la nouvelle.
+
+      LA BASE, ELLE, NE SE REMPLACE PAS. Le deuxième geste hors ligne s'appuie
+      sur le premier, qui n'a jamais atteint le serveur : sa base à lui est une
+      version que le serveur n'a jamais eue. Celle qui compte reste la
+      PREMIÈRE — la dernière version réellement venue du serveur — et les
+      champs changés s'accumulent d'un geste à l'autre. Sans ça, trois
+      modifications hors ligne feraient un patch qui ne décrit que la dernière,
+      et les deux premières seraient perdues à la fusion.
     */
-    suite[i] = { ...entree, essais: 0 };
+    const ancienne = suite[i];
+    suite[i] = {
+      ...entree,
+      base: ancienne.base ?? entree.base,
+      patch: fusionPatches(ancienne, entree),
+      essais: 0,
+    };
     return { file: suite, abandons: [] };
   }
 

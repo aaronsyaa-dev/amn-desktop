@@ -43,6 +43,8 @@ interface Entree {
   id: string;
   geste: Geste;
   donnees?: Record<string, unknown>;
+  base?: string;
+  patch?: Record<string, unknown>;
   pose: string;
   essais: number;
   dernierEssai?: string;
@@ -60,13 +62,22 @@ const {
   pretALEnvoi,
   vautLaPeine,
   attenteAvantEssai,
+  champsModifies,
+  fusionPatches,
   resume,
   motsAbandon,
   motsPurge,
   FILE_MAX,
   ESSAIS_MAX,
   ATTENTE_MAX_MS,
+  PATCH_MAX_OCTETS,
 } = await loadFromSrc<{
+  champsModifies: (
+    avant: Record<string, unknown> | null | undefined,
+    apres: Record<string, unknown>,
+  ) => Record<string, unknown> | null;
+  fusionPatches: (a: Entree, b: Entree) => Record<string, unknown> | undefined;
+  PATCH_MAX_OCTETS: number;
   poser: (file: readonly Entree[], e: Entree) => Resultat;
   appliquer: (
     file: readonly Entree[],
@@ -452,6 +463,108 @@ dit('LA RÈGLE : ce qui part avec le miroir doit être DIT', () => {
   const trois = motsPurge(3);
   assert.match(trois ?? '', /3 modifications/);
   assert.match(trois ?? '', /perdues/);
+});
+
+/* ─── CE QUE CE POSTE A CHANGÉ — l'autre moitié du correctif d'écrasement ─── */
+
+/*
+  Ces contrôles-ci gardent la moitié CLIENTE du correctif d'écrasement mesuré à
+  l'audit du 10 septembre 2026. La moitié serveur vit dans amn-api
+  (`src/lib/fusion.js`, `test/fusion.test.js`) : elle applique ce que celle-ci
+  calcule, et l'une sans l'autre ne répare rien.
+
+  Ce qui se joue ici : le poste est le SEUL à savoir de quelle version il part.
+  S'il se trompe sur les champs qu'il déclare avoir changés, le serveur
+  fusionnera fidèlement une bêtise — un champ qu'on n'a pas touché écraserait
+  celui du collègue, exactement le défaut qu'on ferme.
+*/
+
+dit('un champ changé, et lui seul, entre dans le patch', () => {
+  const patch = champsModifies({ titre: 'A', statut: 'todo' }, { titre: 'A', statut: 'doing' });
+  assert.deepEqual(patch, { statut: 'doing' });
+});
+
+dit('une création n’a pas de patch : il n’y a pas de version d’avant', () => {
+  assert.equal(champsModifies(undefined, { titre: 'A' }), null);
+  assert.equal(champsModifies(null, { titre: 'A' }), null);
+});
+
+dit('rien changé, patch vide — et surtout pas `null`, qui voudrait dire « je ne sais pas »', () => {
+  assert.deepEqual(champsModifies({ a: 1 }, { a: 1 }), {});
+});
+
+dit('LE PIÈGE : une valeur identique mais recomposée ne compte PAS comme un changement', () => {
+  /*
+    `{...stripMeta(tache), reactions}` reconstruit l'objet entier à chaque
+    geste. Une comparaison par référence — ou par `JSON.stringify`, dont l'ordre
+    des clés dépend de la construction — verrait tous les champs comme changés,
+    et le patch écraserait alors ceux du collègue. C'est le cas qui rend la
+    comparaison en profondeur obligatoire.
+  */
+  const avant = { billTo: { nom: 'Marie', ville: 'Lyon' }, lignes: [{ q: 1 }], statut: 'todo' };
+  const apres = { lignes: [{ q: 1 }], billTo: { ville: 'Lyon', nom: 'Marie' }, statut: 'doing' };
+  assert.deepEqual(champsModifies(avant, apres), { statut: 'doing' });
+});
+
+dit('un tableau modifié en profondeur est bien vu comme changé', () => {
+  assert.deepEqual(champsModifies({ l: [{ q: 1 }] }, { l: [{ q: 2 }] }), { l: [{ q: 2 }] });
+  assert.deepEqual(champsModifies({ l: [1, 2] }, { l: [1, 2, 3] }), { l: [1, 2, 3] });
+});
+
+dit('un champ RETIRÉ renonce au patch : une fusion par champ ne sait pas enlever', () => {
+  /*
+    `null` ne peut pas servir de « efface-moi ça » : c'est une valeur légitime
+    partout ici (clientId, siteId, quoteId). Sans convention possible, on rend
+    `null` et l'écriture repart entière — le comportement d'avant, jamais pire.
+  */
+  assert.equal(champsModifies({ a: 1, b: 2 }, { a: 1 }), null);
+  assert.deepEqual(champsModifies({ a: 1, b: 2 }, { a: 1, b: null }), { b: null }, 'mettre à null, en revanche, se dit');
+});
+
+dit('un patch démesuré est abandonné : il voyage EN PLUS de l’enregistrement entier', () => {
+  const gros = 'x'.repeat(PATCH_MAX_OCTETS + 1_000);
+  assert.equal(champsModifies({ piece: '' }, { piece: gros }), null);
+  assert.ok(PATCH_MAX_OCTETS > 100_000, 'la borne reste large devant un statut ou une priorité');
+});
+
+dit('LE CAS CENTRAL DE LA FILE : trois gestes hors ligne gardent la base d’ORIGINE et cumulent leurs champs', () => {
+  /*
+    Le deuxième geste s'appuie sur le premier, qui n'a jamais atteint le
+    serveur : sa base à lui est une version que le serveur n'a jamais eue. Si
+    elle remplaçait la première, le serveur comparerait à un horodatage
+    inconnu, croirait que rien n'a bougé, et réécrirait tout — l'écrasement
+    reviendrait par la porte de derrière.
+  */
+  const un: Entree = { ...ecriture('tasks', 't1', { statut: 'doing' }), base: 'SERVEUR-1', patch: { statut: 'doing' } };
+  const deux: Entree = { ...ecriture('tasks', 't1', { statut: 'doing', priorite: 'haute' }), base: 'LOCAL-2', patch: { priorite: 'haute' } };
+  const trois: Entree = { ...ecriture('tasks', 't1', { statut: 'doing', priorite: 'haute', detail: 'vu' }), base: 'LOCAL-3', patch: { detail: 'vu' } };
+
+  let r = poser([], un);
+  r = poser(r.file, deux);
+  r = poser(r.file, trois);
+
+  assert.equal(r.file.length, 1, 'une seule entrée par enregistrement, comme avant');
+  assert.equal(r.file[0].base, 'SERVEUR-1', 'la base reste celle du premier geste');
+  assert.deepEqual(r.file[0].patch, { statut: 'doing', priorite: 'haute', detail: 'vu' });
+  assert.deepEqual(r.file[0].donnees, { statut: 'doing', priorite: 'haute', detail: 'vu' }, 'et la dernière valeur complète');
+});
+
+dit('un geste sans patch contamine le cumul : l’union ne peut pas être plus sûre que sa moitié la moins sûre', () => {
+  const avecPatch: Entree = { ...ecriture('tasks', 't2', { a: 1 }), base: 'S1', patch: { a: 1 } };
+  const sansPatch: Entree = ecriture('tasks', 't2', { a: 1, b: 2 }); // un champ retiré, par exemple
+  const r = poser(poser([], avecPatch).file, sansPatch);
+  assert.equal(r.file[0].patch, undefined, 'pas de patch : l’écriture repartira entière');
+  assert.equal(r.file[0].base, 'S1', 'la base est conservée, elle ne coûte rien');
+  assert.equal(fusionPatches(avecPatch, sansPatch), undefined);
+});
+
+dit('une suppression n’a ni base ni patch : elle ne se fusionne pas', () => {
+  const ecrit: Entree = { ...ecriture('tasks', 't3', { a: 1 }), base: 'S1', patch: { a: 1 } };
+  const efface = suppression('tasks', 't3');
+  const r = poser(poser([], ecrit).file, efface);
+  assert.equal(r.file[0].geste, 'suppression');
+  assert.equal(r.file[0].patch, undefined);
+  assert.equal(fusionPatches(ecrit, efface), undefined);
 });
 
 console.log(`\nOK — ${vus} contrôles.\n`);

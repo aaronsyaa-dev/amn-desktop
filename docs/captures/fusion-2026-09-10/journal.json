@@ -1,0 +1,80 @@
+[
+  {
+    "t": 9.19,
+    "scene": "C0",
+    "msg": "deux postes connectés",
+    "A": true,
+    "B": true
+  },
+  {
+    "t": 12.15,
+    "scene": "C1",
+    "msg": "un message existe, les deux postes le voient",
+    "updatedAt": "2026-09-10T20:00:27.933Z"
+  },
+  {
+    "t": 32.34,
+    "scene": "C1",
+    "msg": "B (HORS LIGNE) épingle — son écriture attend en file",
+    "en_file": 1,
+    "base_annoncee": "2026-09-10T20:00:27.933Z",
+    "champs_declares": [
+      "pinned",
+      "_by"
+    ]
+  },
+  {
+    "t": 32.61,
+    "scene": "C1",
+    "msg": "A (EN LIGNE) réagit 👍 — le serveur l’enregistre",
+    "reactions_serveur": 1,
+    "pinned_serveur": false
+  },
+  {
+    "t": 37.14,
+    "scene": "C1",
+    "msg": "B RETROUVE LE RÉSEAU — état FINAL du message",
+    "pinned": true,
+    "reactions": 1,
+    "A_voit_encore_sa_reaction": false,
+    "verdict": "LES DEUX SURVIVENT — l’écrasement est fermé"
+  },
+  {
+    "t": 38.18,
+    "scene": "C2",
+    "msg": "synchro normale A → B",
+    "latence_ws_ms": 107,
+    "visible_chez_B": true
+  },
+  {
+    "t": 59.86,
+    "scene": "C3",
+    "msg": "B écrit hors ligne",
+    "banniere": "2 modifications en attente d’envoi — la connexion au serveur ne répond pas",
+    "sur_serveur": false
+  },
+  {
+    "t": 62.03,
+    "scene": "C3",
+    "msg": "retour du réseau",
+    "serveur_apres_ms": 2163,
+    "A_apres_ms": 2029,
+    "file_videe": true
+  },
+  {
+    "t": 63.76,
+    "scene": "C4",
+    "msg": "amn-api arrêtée, A écrit quand même",
+    "banniere": "2 modifications en attente d’envoi"
+  },
+  {
+    "t": 70.22,
+    "scene": "C4",
+    "msg": "serveur relancé",
+    "A_socket_ms": 2415,
+    "B_socket_ms": 2415,
+    "ecriture_de_panne_sur_serveur_ms": 2421,
+    "visible_chez_B_ms": 2448,
+    "file_A_finale": 1
+  }
+]

@@ -184,10 +184,11 @@ export class RemoteApiClient {
     collection: SyncedCollection,
     id: string,
     data: Record<string, unknown>,
+    fusion?: { base: string; patch: Record<string, unknown> },
   ): Promise<RemoteRecord> {
     const { record } = await apiFetch<{ record: RemoteRecord }>(
       `/v1/collections/${collection}/${encodeURIComponent(id)}`,
-      { method: 'PUT', body: JSON.stringify({ data }) },
+      { method: 'PUT', body: JSON.stringify(fusion ? { data, ...fusion } : { data }) },
     );
     return record;
   }

@@ -220,8 +220,15 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   );
   ipcMain.handle(
     IPC.remoteUpsertRecord,
-    (_event, payload: { collection: SyncedCollection; id: string; data: Record<string, unknown> }) =>
-      remote.upsertRecord(payload.collection, payload.id, payload.data),
+    (
+      _event,
+      payload: {
+        collection: SyncedCollection;
+        id: string;
+        data: Record<string, unknown>;
+        fusion?: { base: string; patch: Record<string, unknown> };
+      },
+    ) => remote.upsertRecord(payload.collection, payload.id, payload.data, payload.fusion),
   );
   ipcMain.handle(
     IPC.remoteDeleteRecord,

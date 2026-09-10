@@ -667,10 +667,10 @@ function createBrowserRemote(): AmnBridge['remote'] {
       }>(`/v1/collections/_bulk?names=${collections.map(encodeURIComponent).join(',')}`);
       return rendues ?? {};
     },
-    async upsertRecord(collection, id, data) {
+    async upsertRecord(collection, id, data, fusion) {
       const { record } = await apiFetch<{ record: RemoteRecord }>(
         `/v1/collections/${collection}/${encodeURIComponent(id)}`,
-        { method: 'PUT', body: JSON.stringify({ data }) },
+        { method: 'PUT', body: JSON.stringify(fusion ? { data, ...fusion } : { data }) },
       );
       return record;
     },
