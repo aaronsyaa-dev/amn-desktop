@@ -138,6 +138,10 @@ export const en = {
 
   /* ── Internal home: counters and destinations ───────────────────────── */
   'accueil.stats.sitesSupervises': 'Sites monitored',
+  'accueil.aPrendre.enPremier': 'Handle this first',
+  'accueil.aPrendre.puisNAutres': 'then {n} more',
+  'accueil.aPrendre.puisUnAutre': 'then 1 more',
+  'accueil.parc.titre': 'The fleet',
   'accueil.stats.jamaisVus': 'Never seen',
   'accueil.stats.enLigne': 'Online',
   'accueil.stats.tachesOuvertes': 'Open tasks',

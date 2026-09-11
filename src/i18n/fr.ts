@@ -130,6 +130,10 @@ export const fr: Dictionnaire = {
 
   /* ── Accueil interne : compteurs et destinations ────────────────────── */
   'accueil.stats.sitesSupervises': 'Sites supervisés',
+  'accueil.aPrendre.enPremier': 'À prendre en premier',
+  'accueil.aPrendre.puisNAutres': 'puis {n} autres',
+  'accueil.aPrendre.puisUnAutre': 'puis 1 autre',
+  'accueil.parc.titre': 'Le parc',
   'accueil.stats.jamaisVus': 'Jamais vus',
   'accueil.stats.enLigne': 'En ligne',
   'accueil.stats.tachesOuvertes': 'Tâches ouvertes',
