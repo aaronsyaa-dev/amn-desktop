@@ -2349,6 +2349,36 @@ export interface PresenceEntry {
   online: boolean;
 }
 
+/**
+ * Qui regarde CETTE fiche précise, en ce moment — pas « qui est connecté »
+ * (ça, c'est `PresenceEntry`), mais « qui a cette fiche ouverte ». Sert à
+ * éviter les doublons de travail (deux personnes sur la même fiche client au
+ * même instant), voir amn-api/src/ws/hub.js.
+ */
+export interface RecordWatchers {
+  collection: SyncedCollection;
+  id: string;
+  /** Emails des opérateurs qui ont cette fiche ouverte, soi-même inclus. */
+  emails: string[];
+}
+
+/**
+ * Une ligne du journal d'activité des collections partagées (confort d'usage
+ * à deux, Administration) : qui a créé/modifié/supprimé quoi, récemment.
+ * `actorEmail` peut être `null` — un poste d'avant ce correctif n'annonçait
+ * pas d'auteur — et `label` est un intitulé au mieux (titre, nom…), pas
+ * garanti présent selon la collection. Voir amn-api/src/lib/activityLabel.js.
+ */
+export interface RecordActivityEntry {
+  id: number;
+  actorEmail: string | null;
+  collection: SyncedCollection;
+  recordId: string;
+  action: 'create' | 'update' | 'delete';
+  label: string | null;
+  createdAt: string;
+}
+
 /* ------------------------------ Appels audio (WebRTC) ------------------------------ */
 
 /**
@@ -2844,7 +2874,13 @@ export interface AmnBridge {
        */
       fusion?: { base: string; patch: Record<string, unknown> },
     ): Promise<RemoteRecord>;
-    deleteRecord(collection: SyncedCollection, id: string): Promise<RemoteRecord>;
+    /**
+     * `by` : qui supprime, auto-déclaré comme `WRITER_KEY` sur une écriture —
+     * une suppression n'a pas de corps où le stamper, d'où ce paramètre à
+     * part. Facultatif : sans lui, la suppression est journalisée (voir
+     * record_activity_log) sans auteur plutôt que refusée.
+     */
+    deleteRecord(collection: SyncedCollection, id: string, by?: string | null): Promise<RemoteRecord>;
     /** Live record changes pushed from amn-api. Returns an unsubscribe function. */
     onRecord(callback: (record: RemoteRecord) => void): () => void;
 
@@ -2881,6 +2917,27 @@ export interface AmnBridge {
     sendCallSignal(signal: OutgoingCallSignal): Promise<boolean>;
     /** Signalling messages addressed to this operator. Returns an unsubscribe. */
     onCallSignal(callback: (signal: CallSignal) => void): () => void;
+
+    /**
+     * Présence par fiche — pas « qui est connecté » (`onPresence`), mais
+     * « qui a CETTE fiche ouverte en ce moment ». Sert à éviter les
+     * doublons de travail (deux personnes sur la même fiche client au même
+     * instant). Un seul enregistrement suivi à la fois par poste : ouvrir
+     * une fiche annonce implicitement qu'on quitte la précédente.
+     *
+     * Fire-and-forget côté appelant : un lien coupé ne fait pas échouer
+     * l'ouverture de la fiche, il prive seulement l'écran du badge.
+     */
+    watchRecord(collection: SyncedCollection, id: string): void;
+    /** Annonce qu'on ne regarde plus de fiche (fermeture, navigation). */
+    unwatchRecord(): void;
+    /** Qui regarde la fiche annoncée par la dernière trame `watchers` reçue. */
+    onWatchers(callback: (info: RecordWatchers) => void): () => void;
+    /**
+     * Journal d'activité des collections partagées (Administration, confort
+     * d'usage à deux) : qui a créé/modifié/supprimé quoi, récemment.
+     */
+    activityLog(limit?: number): Promise<RecordActivityEntry[]>;
 
     /* --- Les membres de MON organisation (BLOCS 6 et 7) --- */
     /**
@@ -3674,6 +3731,10 @@ export const IPC = {
   remoteRevokeSiteStatusPage: 'remote:revokeSiteStatusPage',
   remoteSendCallSignal: 'remote:sendCallSignal',
   remoteCallSignalPush: 'remote:callSignalPush',
+  remoteWatchRecord: 'remote:watchRecord',
+  remoteUnwatchRecord: 'remote:unwatchRecord',
+  remoteWatchersPush: 'remote:watchersPush',
+  remoteActivityLog: 'remote:activityLog',
   systemNotify: 'system:notify',
   systemCanRemoteControl: 'system:canRemoteControl',
   systemInjectRemoteInput: 'system:injectRemoteInput',

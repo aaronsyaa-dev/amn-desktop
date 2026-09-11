@@ -6,6 +6,7 @@ import {
   type AddClientEventInput,
   type CallSignal,
   type OutgoingCallSignal,
+  type RecordWatchers,
   type ChangePasswordInput,
   type NotificationPrefs,
   type UpdateProfileInput,
@@ -232,9 +233,10 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   );
   ipcMain.handle(
     IPC.remoteDeleteRecord,
-    (_event, payload: { collection: SyncedCollection; id: string }) =>
-      remote.deleteRecord(payload.collection, payload.id),
+    (_event, payload: { collection: SyncedCollection; id: string; by?: string | null }) =>
+      remote.deleteRecord(payload.collection, payload.id, payload.by),
   );
+  ipcMain.handle(IPC.remoteActivityLog, (_event, limit?: number) => remote.activityLog(limit));
   ipcMain.handle(IPC.remoteGetPresence, () => remote.getPresence());
   ipcMain.handle(IPC.remotePrefsGet, () => remote.getPrefs());
   ipcMain.handle(IPC.remoteLocksList, () => remote.listLocks());
@@ -332,6 +334,14 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
     }),
   );
 
+  // Présence par fiche (confort d'usage à deux) : annoncer/retirer la fiche
+  // qu'on a ouverte, et relayer qui d'autre la regarde. Même transport
+  // générique que la signalisation d'appel — voir amn-api/src/ws/hub.js.
+  ipcMain.handle(IPC.remoteWatchRecord, (_event, input: { collection: string; id: string }) =>
+    remote.sendFrame({ type: 'watch', collection: input.collection, id: input.id }),
+  );
+  ipcMain.handle(IPC.remoteUnwatchRecord, () => remote.sendFrame({ type: 'unwatch' }));
+
   // Push channels: broadcast to every open window rather than replying to a
   // specific invoke() call, since these are server-initiated updates.
   const broadcastToAll = (channel: string, payload: unknown) => {
@@ -357,6 +367,7 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
       payload: { kind: String(frame.kind ?? '') },
     } satisfies CallSignal),
   );
+  remote.onFrame('watchers', (frame) => broadcastToAll(IPC.remoteWatchersPush, frame as unknown as RecordWatchers));
 
   // Produits exclusifs d'AMN DevSec (parc de sites, Scanner, Comply, SSL
   // Monitor, analyses récurrentes, bureau SOC, appels audio). Dans l'édition

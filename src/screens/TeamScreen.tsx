@@ -10,6 +10,7 @@ import {
   CornerUpLeft,
   Film,
   Globe,
+  History,
   Image as ImageIcon,
   Link2,
   MessageSquarePlus,
@@ -48,7 +49,8 @@ import {
   mentionsAjmani,
   stripAjmaniMention,
 } from '../lib/ajmaniChat';
-import type { MemberJournalEntry, MessageAttachment, OrgMember } from '../shared/api';
+import type { MemberJournalEntry, MessageAttachment, OrgMember, RecordActivityEntry } from '../shared/api';
+import { ACTIVITY_TABS } from '@edition/modules';
 import { REACTION_EMOJIS } from '../shared/api';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
 import { useLangue } from '../i18n';
@@ -198,6 +200,7 @@ export function TeamScreen() {
       </div>
 
       <PresenceBar currentEmail={user?.email} />
+      <ActivityLogSection />
 
       <AnimatePresence>
         {searchOpen && (
@@ -349,6 +352,89 @@ function PresenceBar({ currentEmail }: { currentEmail?: string }) {
         {ouvert && <HistoriqueMembre membre={ouvert} nom={profileFor(ouvert.email).name} onClose={() => setOuvert(null)} />}
       </AnimatePresence>
     </>
+  );
+}
+
+/**
+ * Journal d'activité (confort d'usage à deux) : qui a créé, modifié ou
+ * supprimé quoi, récemment, dans les fiches partagées — factures, clients,
+ * tâches… Distinct de l'historique par personne ci-dessous (celui-là ne
+ * couvre que les connexions et gestes d'administration, pas les fiches
+ * métier). Repliée par défaut : c'est un outil qu'on consulte, pas un flux
+ * qu'on regarde en continu, et interroger le serveur toutes les vingt
+ * secondes tant que personne ne la lit serait un aller-retour pour rien.
+ */
+function ActivityLogSection() {
+  const [ouvert, setOuvert] = useState(false);
+  const [entrees, setEntrees] = useState<RecordActivityEntry[] | null>(null);
+  const { profileFor } = useProfiles();
+  const { t, langue } = useLangue();
+  const locale = langue === 'en' ? 'en-GB' : 'fr-FR';
+
+  useEffect(() => {
+    if (!ouvert) return;
+    let actif = true;
+    const charger = () =>
+      bridge()
+        .remote.activityLog(50)
+        .then((liste) => actif && setEntrees(liste))
+        .catch(() => actif && setEntrees([]));
+    charger();
+    const id = window.setInterval(charger, 20_000);
+    return () => {
+      actif = false;
+      window.clearInterval(id);
+    };
+  }, [ouvert]);
+
+  const nomCollection = (collection: string) => ACTIVITY_TABS.find((tab) => tab.collection === collection)?.noun ?? collection;
+  const verbe = (action: RecordActivityEntry['action']) =>
+    action === 'create' ? t('equipe.activite.cree') : action === 'delete' ? t('equipe.activite.supprime') : t('equipe.activite.modifie');
+
+  return (
+    <div className="rounded-xl border border-border bg-surface">
+      <button
+        type="button"
+        onClick={() => setOuvert((v) => !v)}
+        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium text-text-primary"
+      >
+        <History size={15} strokeWidth={1.75} className="text-text-muted" />
+        {t('equipe.activite.titre')}
+        <span className="ml-auto font-mono text-[10px] uppercase tracking-widest text-text-muted">
+          {ouvert ? t('equipe.activite.replier') : t('equipe.activite.deplier')}
+        </span>
+      </button>
+      {ouvert && (
+        <div className="max-h-72 overflow-y-auto border-t border-border">
+          {entrees === null && <p className="px-3 py-3 text-xs text-text-muted">{t('equipe.historiqueLecture')}</p>}
+          {entrees !== null && entrees.length === 0 && (
+            <p className="px-3 py-3 text-sm text-text-secondary">{t('equipe.activite.vide')}</p>
+          )}
+          {entrees !== null && entrees.length > 0 && (
+            <ol className="flex flex-col gap-px bg-border">
+              {entrees.map((e) => (
+                <li key={e.id} className="flex items-baseline justify-between gap-3 bg-surface px-3 py-2">
+                  <span className="min-w-0 text-sm text-text-secondary">
+                    <span className="font-medium text-text-primary">
+                      {e.actorEmail ? profileFor(e.actorEmail).name : t('equipe.activite.auteurInconnu')}
+                    </span>{' '}
+                    {verbe(e.action)} {nomCollection(e.collection).toLowerCase()}
+                    {e.label && <span className="text-text-muted"> · {e.label}</span>}
+                  </span>
+                  <time
+                    dateTime={e.createdAt}
+                    title={new Date(e.createdAt).toLocaleString(locale)}
+                    className="tnum flex-shrink-0 font-mono text-[10px] uppercase tracking-wider text-text-muted"
+                  >
+                    {relativeTime(e.createdAt)}
+                  </time>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

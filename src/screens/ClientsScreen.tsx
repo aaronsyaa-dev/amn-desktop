@@ -19,6 +19,7 @@ import {
   Contact,
 } from 'lucide-react';
 import { useClients, type SyncedClient } from '../state/useClients';
+import { useRecordWatchers } from '../state/useRecordWatchers';
 import { useAjmaniFocus } from '../assistant/ecranContexte';
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
@@ -380,8 +381,19 @@ function ClientDetail({
   // Ajmani partout (Bloc 1) : tant que cette fiche est ouverte, « résume-moi ce client » — ou toute
   // question posée à Ajmani depuis n'importe quel écran — sait de qui il s'agit, sans qu'on le nomme.
   useAjmaniFocus(useMemo(() => ({ type: 'client', id: client.recordId, label: client.name || 'sans nom' }), [client.recordId, client.name]));
+  // Confort d'usage à deux : dire si quelqu'un d'autre a déjà cette fiche ouverte,
+  // pour éviter que deux personnes la travaillent en même temps sans le savoir.
+  const watchers = useRecordWatchers('clients', client.recordId);
   return (
     <div className="min-h-0 overflow-y-auto border border-border bg-surface">
+      {watchers.length > 0 && (
+        <div className="flex items-center gap-2 border-b border-warning/30 bg-warning/10 px-4 py-2 font-mono text-[11px] text-warning">
+          <span className="h-1.5 w-1.5 rounded-full bg-warning" />
+          {watchers.length === 1
+            ? `${watchers[0]} consulte aussi cette fiche en ce moment.`
+            : `${watchers.join(', ')} consultent aussi cette fiche en ce moment.`}
+        </div>
+      )}
       <ClientHeader client={client} sites={sites} onPatch={onPatch} onRemove={onRemoveClient} />
       <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-2">
         <div className="flex flex-col gap-6">

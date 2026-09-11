@@ -12,6 +12,7 @@ import {
   type AmnBridge,
   type CallSignal,
   type OutgoingCallSignal,
+  type RecordWatchers,
   type CreateClientInput,
   type CreateDecisionInput,
   type CreateKnowledgeDocInput,
@@ -133,8 +134,9 @@ const bridge: AmnBridge = {
       data: Record<string, unknown>,
       fusion?: { base: string; patch: Record<string, unknown> },
     ) => ipcRenderer.invoke(IPC.remoteUpsertRecord, { collection, id, data, fusion }),
-    deleteRecord: (collection: SyncedCollection, id: string) =>
-      ipcRenderer.invoke(IPC.remoteDeleteRecord, { collection, id }),
+    deleteRecord: (collection: SyncedCollection, id: string, by?: string | null) =>
+      ipcRenderer.invoke(IPC.remoteDeleteRecord, { collection, id, by }),
+    activityLog: (limit?: number) => ipcRenderer.invoke(IPC.remoteActivityLog, limit),
     onRecord: (callback: (record: RemoteRecord) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, record: RemoteRecord) => callback(record);
       ipcRenderer.on(IPC.remoteRecordPush, listener);
@@ -197,6 +199,17 @@ const bridge: AmnBridge = {
       const listener = (_event: Electron.IpcRendererEvent, signal: CallSignal) => callback(signal);
       ipcRenderer.on(IPC.remoteCallSignalPush, listener);
       return () => ipcRenderer.removeListener(IPC.remoteCallSignalPush, listener);
+    },
+    watchRecord: (collection: SyncedCollection, id: string) => {
+      void ipcRenderer.invoke(IPC.remoteWatchRecord, { collection, id });
+    },
+    unwatchRecord: () => {
+      void ipcRenderer.invoke(IPC.remoteUnwatchRecord);
+    },
+    onWatchers: (callback: (info: RecordWatchers) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, info: RecordWatchers) => callback(info);
+      ipcRenderer.on(IPC.remoteWatchersPush, listener);
+      return () => ipcRenderer.removeListener(IPC.remoteWatchersPush, listener);
     },
     welcome: {
       inspect: (token: string) => ipcRenderer.invoke(IPC.remoteWelcomeInspect, token),

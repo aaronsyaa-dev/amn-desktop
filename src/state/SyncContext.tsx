@@ -648,7 +648,7 @@ export function SyncProvider({
         if (!pretALEnvoi(entree, Date.now())) continue;
         try {
           if (entree.geste === 'suppression') {
-            await remote.deleteRecord(entree.collection as SyncedCollection, entree.id);
+            await remote.deleteRecord(entree.collection as SyncedCollection, entree.id, emailRef.current);
           } else {
             const saved = await remote.upsertRecord(
               entree.collection as SyncedCollection,
@@ -794,7 +794,7 @@ export function SyncProvider({
       applyRecords(collection, [tombstone]);
       if (configured) {
         try {
-          await bridge().remote.deleteRecord(collection, id);
+          await bridge().remote.deleteRecord(collection, id, emailRef.current);
         } catch (err) {
           /*
             Une suppression perdue est PIRE qu'une écriture perdue : ce qu'on a
