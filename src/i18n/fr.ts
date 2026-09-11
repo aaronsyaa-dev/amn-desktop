@@ -731,6 +731,16 @@ export const fr: Dictionnaire = {
 
   /* ── Pilotage & livrables : vague 4 ──────────────────────────────── */
   'pilotage.surtitre': 'Pilotage · {module}',
+  'priorites.principe': 'Trois choses, pas dix.',
+  'priorites.etatDuJour': '{faites} de faite(s). Il reste {restantes} place(s) — le module en refusera une quatrième.',
+  'priorites.emplacementLibre': 'Emplacement libre.',
+  'priorites.troisMaximum': 'Trois au maximum, et c’est voulu',
+  'priorites.cocheeA': 'Cochée à {heure}',
+  'priorites.trenteJours': 'Trente derniers jours',
+  'priorites.journeesTenues': '{n} journées tenues',
+  'priorites.aujourdhui': 'Aujourd’hui',
+  'priorites.serieEnCours': 'Série en cours',
+  'priorites.serieExplication': 'Journées où les trois ont été cochées, d’affilée.',
   'priorites.titre': 'Priorités du jour',
   'priorites.description': 'Trois choses, pas dix : ce qui compte aujourd’hui, coché ou reporté.',
   'priorites.stat.aujourdhui': 'Faites aujourd’hui',

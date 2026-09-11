@@ -739,6 +739,16 @@ export const en = {
 
   /* ── Steering & deliverables: wave 4 ─────────────────────────────── */
   'pilotage.surtitre': 'Steering · {module}',
+  'priorites.principe': 'Three things, not ten.',
+  'priorites.etatDuJour': '{faites} done. {restantes} slot(s) left — the module will refuse a fourth.',
+  'priorites.emplacementLibre': 'Free slot.',
+  'priorites.troisMaximum': 'Three at most, and that is the point',
+  'priorites.cocheeA': 'Ticked at {heure}',
+  'priorites.trenteJours': 'Last thirty days',
+  'priorites.journeesTenues': '{n} days held',
+  'priorites.aujourdhui': 'Today',
+  'priorites.serieEnCours': 'Current streak',
+  'priorites.serieExplication': 'Days when all three were ticked, back to back.',
   'priorites.titre': 'Today’s priorities',
   'priorites.description': 'Three things, not ten: what matters today, ticked or carried over.',
   'priorites.stat.aujourdhui': 'Done today',
