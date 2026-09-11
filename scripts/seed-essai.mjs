@@ -203,12 +203,18 @@ for (const c of CLIENTES) {
 
 /* ─── Devis ────────────────────────────────────────────────────────────────── */
 
+/*
+  `sentAt` est la date d'envoi, et c'est elle que l'écran lit pour dire « sans
+  réponse depuis douze jours ». Elle est écrite ici parce que `updatedAt` est
+  posé par le SERVEUR à l'écriture : un devis semé serait toujours « envoyé à
+  l'instant », et l'ambre de l'écran Devis ne dirait jamais rien.
+*/
 const DEVIS = [
-  ['essai-dev-1', 101, 'Abonnement accueil — trimestre', 'Un bouquet de saison par semaine, livré le mardi.', 540, 'accepted'],
-  ['essai-dev-2', 102, 'Compositions terrasse d’été', 'Douze jardinières, entretien mensuel inclus.', 1290, 'sent'],
-  ['essai-dev-3', 103, 'Mariage — septembre', 'Arche florale, dix bouquets de table, six boutonnières.', 2150, 'draft'],
+  ['essai-dev-1', 101, 'Abonnement accueil — trimestre', 'Un bouquet de saison par semaine, livré le mardi.', 540, 'accepted', -30],
+  ['essai-dev-2', 102, 'Compositions terrasse d’été', 'Douze jardinières, entretien mensuel inclus.', 1290, 'sent', -12],
+  ['essai-dev-3', 103, 'Mariage — septembre', 'Arche florale, dix bouquets de table, six boutonnières.', 2150, 'draft', null],
 ];
-for (const [cle, clientId, title, detail, priceEuro, status] of DEVIS) {
+for (const [cle, clientId, title, detail, priceEuro, status, envoiJours] of DEVIS) {
   await poser('quotes', cle, {
     clientId,
     title,
@@ -216,6 +222,7 @@ for (const [cle, clientId, title, detail, priceEuro, status] of DEVIS) {
     priceEuro,
     status,
     paymentStatus: status === 'accepted' ? 'paid' : 'unpaid',
+    sentAt: envoiJours === null ? '' : instant(24 * envoiJours),
     createdAt: instant(-24 * 20),
   });
 }

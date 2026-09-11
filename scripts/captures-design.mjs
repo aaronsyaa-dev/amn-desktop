@@ -66,6 +66,16 @@ try {
   for (const { nom, route } of ROUTES) {
     await page.goto(APP + route, { waitUntil: 'networkidle' }).catch(() => undefined);
     await page.waitForTimeout(1600);
+    /*
+      Certains objets dominants ne sont pas à l'adresse : le bloc devis vit DANS
+      une fiche cliente, la feuille de contrôle DANS un passage. `AMN_CAPTURE_CLIC`
+      porte un sélecteur à cliquer une fois la page posée, pour qu'on puisse
+      mesurer ce qui n'a pas d'URL à soi.
+    */
+    if (process.env.AMN_CAPTURE_CLIC) {
+      await page.locator(process.env.AMN_CAPTURE_CLIC).first().click({ timeout: 5000 }).catch(() => undefined);
+      await page.waitForTimeout(1400);
+    }
     const fichier = path.join(sortie, `${nom}.png`);
     await page.screenshot({ path: fichier });
     console.log(`  ✓ ${nom} → ${fichier}`);

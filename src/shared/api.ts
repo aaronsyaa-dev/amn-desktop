@@ -1062,6 +1062,18 @@ export interface Quote {
   priceEuro: number;
   status: QuoteStatus;
   paymentStatus: PaymentStatus;
+  /**
+   * Le jour où le devis est PARTI, posé au moment où son statut passe à
+   * « envoyé ». Vide tant qu'il est brouillon, et vide sur les devis écrits
+   * avant que ce champ existe.
+   *
+   * Il faut un champ à lui : `updatedAt` est réécrit à chaque modification,
+   * même minuscule — corriger une faute dans le titre remettait « sans réponse
+   * depuis douze jours » à zéro, c'est-à-dire effaçait exactement l'information
+   * qu'on regarde. Et `createdAt` est la date du brouillon, souvent bien
+   * antérieure à l'envoi.
+   */
+  sentAt?: string;
   createdAt: string;
   updatedAt: string;
 }
