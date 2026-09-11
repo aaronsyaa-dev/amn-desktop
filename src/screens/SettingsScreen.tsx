@@ -1,9 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   AlertTriangle, Bell, Camera, Check, Download, Info, KeyRound, Loader2, Power, UserCircle } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
+import { useAppointments } from '../state/useAppointments';
+import { relativeToNow, timeLabel } from '../lib/calendar';
 import { bridge } from '../lib/bridge';
 import { cleanErrorMessage } from '../lib/errorMessage';
 import { resizeImageToDataUrl } from '../lib/imageResize';
@@ -563,8 +565,32 @@ function PasswordSection({ email, remote }: { email: string; remote: boolean }) 
   Un écran de réglages qui ne correspond pas à ce qu'on vit apprend surtout à
   ne plus lire les réglages. Voir NOTIFICATION_PREFS dans @edition/exclusive.
 */
+/*
+  Les trois règles sont RECOPIÉES d'`AppointmentReminders`, pas devinées :
+  préavis réglé par rendez-vous (30 min à l'ouverture du formulaire, zéro pour
+  aucun rappel), abandon au-delà de cinq minutes de retard, et liste des
+  rappels déjà émis conservée pour qu'un redémarrage ne les refasse pas sonner.
+*/
+const REGLES_DU_RAPPEL = [
+  {
+    terme: 'Préavis',
+    texte:
+      'Réglé rendez-vous par rendez-vous, dans l’agenda — 30 minutes à l’ouverture du formulaire. À zéro, aucun rappel.',
+  },
+  {
+    terme: 'Retard',
+    texte:
+      'Un rappel en retard de plus de cinq minutes est abandonné : ouvrir l’application le soir ne déclenche pas la journée écoulée.',
+  },
+  {
+    terme: 'Doublon',
+    texte: 'Un rappel déjà émis ne sonne pas deux fois, même après un redémarrage.',
+  },
+];
+
 function NotificationsSection({ email }: { email: string }) {
   const { NOTIFICATION_PREFS } = useExclusive();
+  const { appointments } = useAppointments();
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_NOTIFICATION_PREFS);
   const [loading, setLoading] = useState(true);
 
@@ -585,25 +611,148 @@ function NotificationsSection({ email }: { email: string }) {
     await bridge().prefs.update(email, { [key]: next[key] });
   };
 
+  /*
+    L'APERÇU EST CONSTRUIT COMME LA VRAIE NOTIFICATION, PAS COMME UNE IMAGE.
+
+    Titre et corps reprennent exactement la composition d'`AppointmentReminders`
+    — `Rendez-vous <relatif>`, puis heure, intitulé, client et lieu joints par
+    des points médians. Un aperçu écrit à part se serait décalé du vrai texte au
+    premier changement de l'un des deux, et un aperçu faux est pire que pas
+    d'aperçu : il promet une chose et la journée en apporte une autre.
+
+    Sur le prochain rendez-vous réel quand il y en a un. Sinon, rien : inventer
+    un rendez-vous pour illustrer reviendrait à montrer une notification qui ne
+    tombera jamais.
+  */
+  const prochain = useMemo(() => {
+    const maintenant = Date.now();
+    return [...appointments]
+      .filter((a) => a.status === 'scheduled' && a.reminderMin > 0 && new Date(a.startAt).getTime() > maintenant)
+      .sort((a, b) => a.startAt.localeCompare(b.startAt))[0];
+  }, [appointments]);
+
+  /*
+    LE TITRE EST CELUI QUE LA NOTIFICATION PORTERA, PAS UN DÉLAI D'ATTENTE.
+
+    `relativeToNow` est appelé par le moteur AU MOMENT de l'émission, donc
+    toujours à `reminderMin` minutes du rendez-vous : la notification dira
+    « dans 30 min », quel que soit le jour où on regarde ce réglage.
+
+    Deux versions fausses avant celle-ci, pour la même raison — avoir daté
+    l'aperçu d'un instant plutôt que d'un ÉCART. Mesuré depuis maintenant sur
+    l'heure du rendez-vous, il annonçait « dans 37 h 04 » ; mesuré sur l'heure
+    de déclenchement, « dans 36 h 25 ». Aucune des deux n'est jamais tombée
+    sur un écran.
+
+    L'écart, lui, est connu : c'est le préavis. On le lit donc tel quel, en
+    posant une date à `reminderMin` minutes d'ici, ce qui redonne exactement
+    la phrase du moteur sans la réécrire à la main.
+  */
+  const apercu = prochain
+    ? {
+        titre: `Rendez-vous ${relativeToNow(
+          new Date(Date.now() + prochain.reminderMin * 60_000).toISOString(),
+        )}`,
+        corps: [
+          `${timeLabel(prochain.startAt)} — ${prochain.title || 'Rendez-vous'}`,
+          prochain.clientName,
+          prochain.location,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      }
+    : null;
+
   return (
     <Panel
       icon={Bell}
       title={tr('hist.settings.notificationsSysteme')}
-      subtitle="Choisissez les événements qui déclenchent une notification de bureau."
+      subtitle={tr('hist.settings.unSeulEvenement')}
     >
       {loading ? (
         <p className="text-sm text-text-secondary">Chargement…</p>
       ) : (
-        <div className="divide-y divide-border/60">
-          {NOTIFICATION_PREFS.map(({ key, label, detail }) => (
-            <div key={key} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
-              <div>
-                <p className="text-sm font-medium text-text-primary">{label}</p>
-                <p className="text-xs text-text-muted">{detail}</p>
+        <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
+          <div className="flex flex-col gap-4">
+            {NOTIFICATION_PREFS.map(({ key, label, detail }) => (
+              <div key={key} className="border border-border bg-surface p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-[17px] font-semibold leading-snug text-text-primary">{label}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-text-secondary">{detail}</p>
+                  </div>
+                  <Toggle on={prefs[key]} onClick={() => toggle(key)} label={label} />
+                </div>
+
+                {/*
+                  LES TROIS RÈGLES DU RAPPEL, DITES OÙ ON LE RÈGLE.
+
+                  Elles existaient, tenues par `AppointmentReminders`, et
+                  n'étaient écrites que dans son en-tête : un préavis réglé
+                  rendez-vous par rendez-vous, un rappel en retard abandonné,
+                  un rappel déjà émis qui ne sonne pas deux fois.
+
+                  Ne pas les dire ici, c'est laisser croire que l'interrupteur
+                  gouverne tout — et faire passer pour une panne le rappel du
+                  matin qui ne tombe pas le soir, alors que c'est la règle.
+                */}
+                {key === 'appointmentReminder' && (
+                  <dl className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-[88px_1fr] sm:gap-x-5">
+                    {REGLES_DU_RAPPEL.map(({ terme, texte }) => (
+                      <React.Fragment key={terme}>
+                        <dt className="eyebrow sm:pt-1">{terme}</dt>
+                        <dd className="text-sm leading-relaxed text-text-secondary">{texte}</dd>
+                      </React.Fragment>
+                    ))}
+                  </dl>
+                )}
               </div>
-              <Toggle on={prefs[key]} onClick={() => toggle(key)} label={label} />
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <div className="border border-border bg-sunken p-4">
+              <p className="eyebrow">{tr('hist.settings.ceQueVousVerrez')}</p>
+              {apercu ? (
+                <>
+                  <div className="mt-3 flex gap-3 border border-border bg-raised p-3">
+                    <span className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[6px] border border-border text-text-secondary">
+                      <Bell size={13} strokeWidth={2} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold leading-snug text-text-primary">
+                        {apercu.titre}
+                      </span>
+                      <span className="mt-0.5 block text-xs leading-relaxed text-text-secondary">
+                        {apercu.corps}
+                      </span>
+                    </span>
+                  </div>
+                  <p className="mt-3 font-mono text-[10px] uppercase leading-relaxed tracking-wider text-text-muted">
+                    {tr('hist.settings.notificationDuSysteme')}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-2 text-sm text-text-secondary">{tr('hist.settings.aucunRendezVousAVenir')}</p>
+              )}
             </div>
-          ))}
+
+            {/*
+              CE QUI N'EXISTE PAS, DIT PLUTÔT QUE LAISSÉ DEVINER.
+
+              Trois réglages ont été retirés parce qu'ils ne pouvaient rien
+              déclencher chez une cliente qui n'a ni parc supervisé ni équipe.
+              Leur retrait sans un mot laisse une question sans réponse — « je
+              croyais pouvoir être prévenue si le site tombe » — et cette
+              question revient, par message, faute d'être traitée à l'écran.
+            */}
+            <div className="border border-dashed border-border p-4">
+              <p className="eyebrow">{tr('hist.settings.ceQuiNExistePasIci')}</p>
+              <p className="mt-2 text-sm leading-relaxed text-text-secondary">
+                {tr('hist.settings.siteHorsLigneAlerte')}
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </Panel>

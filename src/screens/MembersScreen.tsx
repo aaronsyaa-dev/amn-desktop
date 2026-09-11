@@ -104,14 +104,31 @@ export function MembersScreen() {
           <StaggerItem>
             <section className="panel p-4">
               <p className="eyebrow mb-2">Les places de votre formule</p>
-              {/* La jauge : une barre qui se remplit, sans couleur d'alarme —
-                  des places prises ne sont pas un incident. */}
+              {/*
+                UNE PLACE, UN SEGMENT.
+
+                La jauge était une barre continue : à 4 sur 4 comme à 11 sur 12,
+                elle est pleine, et il fallait lire le chiffre à côté pour
+                savoir de combien on parle. Des segments SE COMPTENT — c'est la
+                seule chose qu'on vienne faire sur cet écran, et une formule à
+                douze places se distingue d'une formule à quatre au premier
+                coup d'œil.
+
+                Aucune couleur d'alarme : des places prises ne sont pas un
+                incident, c'est une formule qui sert.
+              */}
               <div className="mt-3 flex items-center gap-3">
-                <div className="h-1.5 flex-1 overflow-hidden bg-border" aria-hidden>
-                  <div
-                    className="h-full bg-text-secondary transition-[width] duration-500"
-                    style={{ width: `${total > 0 ? Math.min(100, (occupees / total) * 100) : 0}%` }}
-                  />
+                <div
+                  className="flex flex-1 gap-1"
+                  role="img"
+                  aria-label={`${occupees} place(s) occupée(s) sur ${total}`}
+                >
+                  {Array.from({ length: total }, (_, i) => (
+                    <span
+                      key={i}
+                      className={`h-1.5 flex-1 ${i < occupees ? 'bg-text-secondary' : 'bg-border'}`}
+                    />
+                  ))}
                 </div>
                 <span className="tnum font-mono text-[11px] uppercase tracking-wider text-text-secondary">
                   {occupees} sur {total}
@@ -119,16 +136,36 @@ export function MembersScreen() {
               </div>
               <p className="mt-3 max-w-xl text-[12px] leading-relaxed text-text-secondary">
                 {pleines
-                  ? 'Toutes les places sont prises. Une place se libère en suspendant un compte, ou s’ajoute en changeant de formule — demandez-la, quelqu’un la lit.'
+                  ? 'Toutes les places sont prises. Une place se libère en suspendant un compte, ou s’ajoute en changeant de formule.'
                   : `Il reste ${total - occupees} place${total - occupees > 1 ? 's' : ''}. Une place est un compte qui travaille : un invité occasionnel n’en occupe pas.`}
               </p>
               {peutGerer && (
-                <div className="mt-4 flex flex-wrap items-center gap-3">
+                <div className="mt-4">
                   {demandeEnCours ? (
-                    <p className="flex items-center gap-2 text-xs text-text-secondary">
-                      <MailQuestion size={14} />
-                      Une place de plus est demandée — votre prestataire a été prévenu.
-                    </p>
+                    /*
+                      LA DEMANDE EN COURS — L'UNIQUE AMBRE DE L'ÉCRAN.
+
+                      Elle s'écrivait en gris, à la même encre que la phrase
+                      d'explication au-dessus : la seule chose EN SUSPENS de
+                      l'écran avait exactement le poids du texte d'aide. On
+                      redemandait donc une place déjà demandée, faute de voir
+                      que la première était partie.
+
+                      Ambre parce qu'une demande ouverte attend une réponse, et
+                      qu'une attente qu'on ne voit pas se répète. La phrase en
+                      dessous reste sobre : elle dit qui répond, pas qu'il faut
+                      agir.
+                    */
+                    <div data-signal-groupe="place-demandee">
+                      <p className="signal-plate inline-flex items-center gap-2 px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider">
+                        <MailQuestion size={13} strokeWidth={2} />
+                        Une place de plus est demandée
+                      </p>
+                      <p className="mt-2.5 max-w-xl text-[12px] leading-relaxed text-text-secondary">
+                        Votre prestataire a été prévenu — quelqu’un la lit. Aucun robot ne facture quoi
+                        que ce soit.
+                      </p>
+                    </div>
                   ) : (
                     <button
                       type="button"
@@ -155,14 +192,20 @@ export function MembersScreen() {
           <MembersSection onChange={charger} />
         </StaggerItem>
 
-        {!peutGerer && (
-          <StaggerItem>
-            <p className="flex items-center gap-2 text-[12px] text-text-muted">
-              <Users size={13} />
-              Tout le monde lit cette liste ; seuls la propriétaire et les administrateurs la modifient.
-            </p>
-          </StaggerItem>
-        )}
+        {/*
+          LA RÈGLE D'ÉCRITURE SE DIT AUSSI À CELUI QUI L'A.
+
+          Elle n'apparaissait qu'aux comptes SANS droit de gestion — donc
+          jamais à la personne qui peut retirer quelqu'un de l'organisation.
+          Or c'est elle qui a besoin de savoir que la liste est lue par tous :
+          suspendre un compte se voit, et mieux vaut le savoir avant.
+        */}
+        <StaggerItem>
+          <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+            <Users size={12} />
+            Tout le monde lit cette liste ; seuls la propriétaire et les administrateurs la modifient.
+          </p>
+        </StaggerItem>
       </StaggerGroup>
     </section>
   );

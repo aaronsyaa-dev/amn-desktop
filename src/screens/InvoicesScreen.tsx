@@ -1256,10 +1256,32 @@ const IDENTITY_FIELDS: {
   placeholder?: string;
   required?: boolean;
   multiline?: boolean;
+  /*
+    Le nom du champ tel qu'il se dit DANS UNE PHRASE, avec son article.
+
+    Écrit plutôt que dérivé : mettre l'étiquette en minuscules donnait « il
+    manque raison sociale, adresse et siret » — sans articles, et avec un
+    acronyme décapitalisé. Le français ne se fabrique pas à coups de
+    `toLowerCase()`, et seuls les champs obligatoires entrent dans la phrase.
+  */
+  nomDitDansUnePhrase?: string;
 }[] = [
-  { key: 'legalName', label: 'Raison sociale', placeholder: 'Syraagensy', required: true },
-  { key: 'address', label: 'Adresse', placeholder: '12 rue …\n75000 Paris', required: true, multiline: true },
-  { key: 'siret', label: 'SIRET', placeholder: '000 000 000 00000', required: true },
+  {
+    key: 'legalName',
+    label: 'Raison sociale',
+    placeholder: 'Syraagensy',
+    required: true,
+    nomDitDansUnePhrase: 'la raison sociale',
+  },
+  {
+    key: 'address',
+    label: 'Adresse',
+    placeholder: '12 rue …\n75000 Paris',
+    required: true,
+    multiline: true,
+    nomDitDansUnePhrase: 'l’adresse',
+  },
+  { key: 'siret', label: 'SIRET', placeholder: '14 chiffres', required: true, nomDitDansUnePhrase: 'le SIRET' },
   { key: 'legalForm', label: 'Forme juridique', placeholder: 'SASU, EI, auto-entrepreneur…' },
   { key: 'capital', label: 'Capital social', placeholder: '1 000 €' },
   { key: 'rcsCity', label: 'RCS (ville)', placeholder: 'Paris' },
@@ -1269,6 +1291,36 @@ const IDENTITY_FIELDS: {
   { key: 'iban', label: 'IBAN' },
   { key: 'bic', label: 'BIC' },
 ];
+
+/*
+  CE QUI MANQUE POUR POUVOIR ÉMETTRE.
+
+  Trois mentions sont obligatoires — raison sociale, adresse, SIRET — et sans
+  elles le bouton « Émettre » reste refusé. Le formulaire présentait pourtant
+  onze champs d'un même gris, marqués d'une astérisque, sans dire lesquels
+  BLOQUAIENT ni ce qu'ils bloquaient. On remplissait donc au jugé, on fermait,
+  et on découvrait le refus au moment d'émettre — c'est-à-dire au pire moment,
+  devant un client qui attend sa facture.
+
+  Le relevé est calculé sur les champs eux-mêmes, jamais tenu à part : une
+  seconde liste des mentions obligatoires se serait désynchronisée de
+  `IDENTITY_FIELDS` au premier ajout.
+*/
+function completudeLegale(form: BillingIdentity): {
+  exiges: typeof IDENTITY_FIELDS;
+  manquants: typeof IDENTITY_FIELDS;
+  remplis: number;
+} {
+  const exiges = IDENTITY_FIELDS.filter((f) => f.required);
+  const manquants = exiges.filter((f) => String(form[f.key] ?? '').trim() === '');
+  return { exiges, manquants, remplis: exiges.length - manquants.length };
+}
+
+/** « le SIRET », « le SIRET et l'adresse », « la raison sociale, l'adresse et le SIRET ». */
+function enumerer(libelles: string[]): string {
+  if (libelles.length <= 1) return libelles[0] ?? '';
+  return `${libelles.slice(0, -1).join(', ')} et ${libelles[libelles.length - 1]}`;
+}
 
 function IdentityModal({
   identity,
@@ -1283,6 +1335,7 @@ function IdentityModal({
   useFermetureEchap(true, onClose);
 
   const [form, setForm] = useState<BillingIdentity>(identity);
+  const { exiges, manquants, remplis } = completudeLegale(form);
 
   const set = (patch: Partial<BillingIdentity>) => setForm((prev) => ({ ...prev, ...patch }));
 
@@ -1317,34 +1370,107 @@ function IdentityModal({
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <p className="mb-3 text-xs leading-relaxed text-text-secondary">
-            Ces informations apparaissent sur chaque facture émise. La raison sociale, l’adresse et
-            le SIRET sont des mentions obligatoires : sans elles, le document n’a pas de valeur.
+            Ce qui figurera sur chaque facture émise. Une facture émise ne bouge plus : ces
+            informations y sont figées au moment de l’émission.
           </p>
 
-          {IDENTITY_FIELDS.map((field) => (
-            <label key={field.key} className="mt-3 block first:mt-0">
-              <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                {field.label}
-                {field.required && <span className="text-text-muted"> *</span>}
-              </span>
-              {field.multiline ? (
-                <textarea
-                  rows={2}
-                  value={String(form[field.key] ?? '')}
-                  onChange={(e) => set({ [field.key]: e.target.value } as Partial<BillingIdentity>)}
-                  placeholder={field.placeholder}
-                  className="input-focus w-full resize-none border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
-                />
-              ) : (
-                <input
-                  value={String(form[field.key] ?? '')}
-                  onChange={(e) => set({ [field.key]: e.target.value } as Partial<BillingIdentity>)}
-                  placeholder={field.placeholder}
-                  className="input-focus min-h-11 w-full border border-border bg-bg px-3 text-sm text-text-primary outline-none"
-                />
-              )}
-            </label>
-          ))}
+          {/*
+            LA BANDE DE COMPLÉTUDE — L'UNIQUE AMBRE DE CE FORMULAIRE.
+
+            Elle nomme ce qui manque, dit ce que ça bloque, et compte : deux
+            mentions sur trois se voit d'un coup d'œil là où onze champs gris
+            ne se comptent pas.
+
+            L'ambre marque une DÉCISION à prendre, et c'en est une : tant qu'il
+            manque une mention, aucune facture ne peut sortir. La bande, le
+            relevé, le libellé du champ et sa bordure disent tous la même chose
+            — d'où le groupe, qui les compte pour un.
+
+            Le formulaire s'ouvre au-dessus de Facturation, qui porte son propre
+            ambre (le segment en retard). Il est derrière le voile pendant que
+            la fenêtre est là, et la règle vaut par surface lisible : ce qu'on
+            lit ici, c'est une seule chose en ambre.
+          */}
+          {manquants.length > 0 && (
+            <div
+              className="relative mb-4 border border-border bg-sunken p-3.5"
+              data-signal-groupe="identite-incomplete"
+            >
+              <span className="absolute inset-y-0 left-0 w-[2px] bg-signal" aria-hidden />
+              <div className="flex flex-wrap items-start justify-between gap-3 pl-2.5">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold leading-snug text-text-primary">
+                    Il manque {enumerer(manquants.map((f) => f.nomDitDansUnePhrase ?? f.label))} pour pouvoir
+                    émettre.
+                  </p>
+                  <p className="mt-1 max-w-md text-xs leading-relaxed text-text-secondary">
+                    Sans {manquants.length > 1 ? 'ces mentions' : 'cette mention'}, le bouton
+                    « Émettre » reste refusé — un document sans mention légale ne vaut rien devant
+                    un comptable.
+                  </p>
+                </div>
+                <div className="flex flex-shrink-0 items-center gap-2">
+                  <span className="flex gap-1" aria-hidden>
+                    {exiges.map((f) => (
+                      <span
+                        key={f.key}
+                        className={`h-1 w-8 ${
+                          String(form[f.key] ?? '').trim() === '' ? 'bg-signal' : 'bg-text-secondary'
+                        }`}
+                      />
+                    ))}
+                  </span>
+                  <span className="tnum font-mono text-xs text-text-secondary">
+                    {remplis} / {exiges.length}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {IDENTITY_FIELDS.map((field) => {
+            /*
+              Le champ dit son propre statut, à la place de l'astérisque.
+
+              Une astérisque suppose qu'on a lu sa légende, et ne distingue pas
+              « exigé » de « exigé ET vide » — or c'est cette différence-là
+              qu'on vient chercher.
+            */
+            const vide = String(form[field.key] ?? '').trim() === '';
+            const bloquant = field.required === true && vide;
+            return (
+              <label key={field.key} className="mt-3 block first:mt-0">
+                <span
+                  className={`mb-1 block font-mono text-[10px] uppercase tracking-widest ${
+                    bloquant ? 'text-signal' : 'text-text-muted'
+                  }`}
+                >
+                  {field.label}
+                  {field.required && (bloquant ? ' · exigé, manquant' : ' · exigé')}
+                </span>
+                {field.multiline ? (
+                  <textarea
+                    rows={2}
+                    value={String(form[field.key] ?? '')}
+                    onChange={(e) => set({ [field.key]: e.target.value } as Partial<BillingIdentity>)}
+                    placeholder={field.placeholder}
+                    className={`input-focus w-full resize-none border bg-bg px-3 py-2 text-sm text-text-primary outline-none ${
+                      bloquant ? 'border-signal-line' : 'border-border'
+                    }`}
+                  />
+                ) : (
+                  <input
+                    value={String(form[field.key] ?? '')}
+                    onChange={(e) => set({ [field.key]: e.target.value } as Partial<BillingIdentity>)}
+                    placeholder={field.placeholder}
+                    className={`input-focus min-h-11 w-full border bg-bg px-3 text-sm text-text-primary outline-none ${
+                      bloquant ? 'border-signal-line' : 'border-border'
+                    }`}
+                  />
+                )}
+              </label>
+            );
+          })}
 
           <div className="mt-4 border-t border-border pt-3">
             <button
