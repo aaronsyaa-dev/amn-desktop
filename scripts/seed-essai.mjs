@@ -105,24 +105,33 @@ async function poser(collection, id, data) {
 }
 
 /*
-  Les clients portent un identifiant NUMÉRIQUE dérivé de leur clé de synchro
-  (voir `useClients.ts`), et les devis comme les factures s'y rattachent par ce
-  nombre. On fixe donc les deux : sans ça, un devis pointerait vers une fiche
-  qui n'existe pas et l'écran afficherait « client inconnu ».
+  LA CLÉ DE SYNCHRO D'UNE FICHE CLIENTE EST ICI UN NOMBRE, ET CE N'EST PAS UN
+  DÉTAIL D'ÉCRITURE.
+
+  Les devis et les factures se rattachent à une fiche par son identifiant
+  NUMÉRIQUE, que `numericId` (src/lib/records.ts) dérive de la clé : une clé
+  déjà numérique garde sa valeur, toute autre est hachée en un nombre NÉGATIF.
+  Écrire `clients/essai-cli-1` puis `clientId: 101` sur la facture rattachait
+  donc la facture à une fiche qui n'existe pas — silencieusement, puisque
+  personne ne lève d'erreur sur une référence orpheline. Le bac à sable montrait
+  « 0,00 € facturé » sur des fiches qui avaient trois documents chacune.
+
+  D'où des clés `101`, `102`, `103` : le lien tient par construction, et il
+  reste stable d'une exécution à l'autre.
 */
 const CLIENTES = [
   {
-    cle: 'essai-cli-1',
+    cle: '101',
     num: 101,
     name: 'Camille Renaud',
     company: 'Le Jardin d’Élise',
-    status: 'client',
+    status: 'active',
     email: 'camille@jardin-elise.exemple.test',
     phone: '+33 6 11 22 33 44',
     notes: 'Abonnement bouquets hebdomadaires pour l’accueil. Livraison le mardi matin.',
   },
   {
-    cle: 'essai-cli-2',
+    cle: '102',
     num: 102,
     name: 'Hugo Marchand',
     company: 'Brasserie du Port',
@@ -132,11 +141,11 @@ const CLIENTES = [
     notes: 'Demande de compositions pour la terrasse d’été. Devis envoyé, relance prévue.',
   },
   {
-    cle: 'essai-cli-3',
+    cle: '103',
     num: 103,
     name: 'Nadia Bouvier',
     company: '',
-    status: 'client',
+    status: 'active',
     email: 'nadia.bouvier@exemple.test',
     phone: '+33 7 88 99 00 11',
     notes: 'Mariage en septembre : arche, bouquets de table, boutonnières.',
@@ -144,6 +153,23 @@ const CLIENTES = [
 ];
 
 console.log(`\nPeuplement de l’organisation d’essai — ${EMAIL}\n`);
+
+/*
+  LE MÉNAGE DES CLÉS D'HIER.
+
+  Les fiches ont porté les clés `essai-cli-1..3` avant de porter leur numéro.
+  Rejouer le script ne les remplace donc pas : il en AJOUTE trois à côté, et le
+  bac à sable finit avec deux répertoires superposés — six fiches là où on en
+  attend trois, et des moyennes fausses sur tous les écrans qui comptent. On
+  retire donc explicitement les anciennes clés. Supprimer ce qui n'existe pas
+  est sans effet : la boucle est sûre sur un bac à sable neuf.
+*/
+for (const ancienne of ['essai-cli-1', 'essai-cli-2', 'essai-cli-3']) {
+  await fetch(`${API}/v1/collections/clients/${ancienne}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${login.token}` },
+  }).catch(() => undefined);
+}
 
 for (const c of CLIENTES) {
   await poser('clients', c.cle, {
@@ -196,6 +222,18 @@ for (const [cle, clientId, title, detail, priceEuro, status] of DEVIS) {
 
 /* ─── Factures ─────────────────────────────────────────────────────────────── */
 
+/*
+  LES STATUTS SONT CEUX DU DOMAINE, PAS DE L'ANGLAIS COURANT.
+
+  Ce fichier écrivait `status: 'sent'` sur les factures et `'client'` sur les
+  fiches. Aucun des deux n'existe : `InvoiceStatus` vaut draft | issued | paid |
+  cancelled, `ClientStatus` vaut active | paused | prospect. Le décodeur
+  (`oneOf`, dans useInvoices/useClients) ne plante pas là-dessus — il replie sur
+  la valeur sûre. Résultat : TROIS factures d'essai devenaient des brouillons et
+  toutes les fiches des prospects, et le bac à sable montrait un compte à zéro
+  euro là où il devait montrer de l'argent en attente. Un jeu d'essai muet est
+  pire qu'un jeu d'essai absent : on croit avoir mesuré.
+*/
 const ligne = (id, label, quantity, euros, vatRate = 20) => ({
   id,
   label,
@@ -217,7 +255,7 @@ await poser('invoices', 'essai-fac-1', {
   issuedAt: jour(-18),
   dueAt: jour(12),
   lines: [ligne('l1', 'Bouquet de saison — livraison hebdomadaire', 12, 45)],
-  status: 'sent',
+  status: 'issued',
   paidAt: '',
   paymentMethod: '',
   cancelReason: '',
@@ -261,7 +299,7 @@ await poser('invoices', 'essai-fac-3', {
   issuedAt: jour(-75),
   dueAt: jour(-45),
   lines: [ligne('l1', 'Jardinières de terrasse', 6, 130), ligne('l2', 'Pose et mise en place', 1, 180)],
-  status: 'sent',
+  status: 'issued',
   paidAt: '',
   paymentMethod: '',
   cancelReason: '',

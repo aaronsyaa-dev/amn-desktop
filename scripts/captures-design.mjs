@@ -21,7 +21,10 @@ const MOT_DE_PASSE = process.env.AMN_E2E_PASSWORD ?? '';
 /* Les maquettes sont toutes dessinées à 1180 px : on mesure à la même largeur,
    sinon « avant » et « après » ne sont pas comparables. */
 const LARGEUR = 1180;
-const HAUTEUR = 1000;
+/* La hauteur, elle, se règle : un écran qui devient un document (le répertoire
+   des clients sous sa fiche dominante) ne tient pas dans la fenêtre des
+   maquettes, et une capture coupée ne permet de comparer que le haut. */
+const HAUTEUR = Number(process.env.AMN_CAPTURE_HAUTEUR ?? 1000);
 
 const ROUTES = routesArg.length
   ? routesArg.map((r) => {

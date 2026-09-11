@@ -4,6 +4,7 @@ import { serieStock } from '../lib/serieVitale';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
+  ArrowLeft,
   ArrowRight,
   ArrowUpRight,
   FileText,
@@ -31,13 +32,15 @@ import {
   computeClientHealthBreakdown,
   CLIENT_HEALTH_META,
   CLIENT_HEALTH_EXPLAINER,
+  type ClientHealth,
 } from '../lib/clientHealth';
 import { Skeleton } from '../components/Skeleton';
 import { SaveIndicator } from '../components/SaveIndicator';
 import { ConfirmDelete } from '../components/ConfirmDelete';
 import type { ReportDraft } from '../state/useReports';
 import { QuotePrintPortal } from '../assistant/QuotePrintPortal';
-import { useInvoices } from '../state/useInvoices';
+import { useInvoices, netDueCents, invoiceTotals, formatShortDay } from '../state/useInvoices';
+import { formatCents } from '../lib/money';
 import { metaOf } from '../lib/records';
 import type {
   Client,
@@ -121,11 +124,16 @@ export function ClientsScreen() {
   } = useClients();
   const loading = !ready;
 
-  // Select the first client once the list arrives, without fighting a choice
-  // the operator has already made.
-  useEffect(() => {
-    setSelectedId((prev) => prev ?? clients[0]?.id ?? null);
-  }, [clients]);
+  /*
+    PLUS D'OUVERTURE AUTOMATIQUE DE LA PREMIÈRE FICHE.
+
+    L'écran ouvrait d'office `clients[0]` — la plus ancienne fiche créée, qui
+    n'a aucune raison d'être celle qu'on vient voir. Le système de design donne
+    à cet écran un objet dominant nommé : « la fiche qui demande une action ».
+    Sans sélection, l'écran montre donc cette fiche-là et le répertoire trié
+    par santé ; la sélection reste entièrement au clic, et le rail
+    d'accompagnement n'apparaît qu'une fois une fiche ouverte.
+  */
 
   // Honour a requested client focus once the list is loaded (and again if the
   // navigation target changes while the screen stays mounted).
@@ -156,6 +164,24 @@ export function ClientsScreen() {
 
   const createQuote = async (input: CreateQuoteInput) => createQuoteRecord(input);
 
+  /*
+    LE BILAN DE L'ÉCRAN, écrit avec les vrais comptes.
+
+    La phrase sous le titre ne décrit pas le module (« la relation et les
+    missions, fiche par fiche » ne dit rien qu'on ne voie déjà) : elle dit
+    l'état du répertoire à cette seconde, et pourquoi c'est CETTE fiche qui
+    occupe le haut de l'écran.
+  */
+  const bilan = useMemo(() => {
+    const parSante = { attention: 0, medium: 0, good: 0 };
+    for (const c of clients) parSante[computeClientHealth(c, sites)] += 1;
+    const morceaux: string[] = [];
+    if (parSante.attention > 0) morceaux.push(tr('hist.clients.bilanASurveiller', { n: parSante.attention }));
+    if (parSante.medium > 0) morceaux.push(tr('hist.clients.bilanMoyennes', { n: parSante.medium }));
+    if (morceaux.length === 0) return tr('hist.clients.bilanToutAuVert');
+    return tr('hist.clients.bilanVoiciCelle', { etat: morceaux.join(', ') });
+  }, [clients, sites]);
+
   const patchQuote = async (id: number, p: { status?: QuoteStatus; paymentStatus?: PaymentStatus }) => {
     await updateQuote(id, p);
   };
@@ -170,11 +196,16 @@ export function ClientsScreen() {
   };
 
   return (
-    <section className={`flex flex-col gap-4 ${clients.length === 0 ? '' : 'screen-h'}`}>
+    <section className={`flex flex-col gap-4 ${selected ? 'screen-h' : ''}`}>
+      {/*
+        `screen-h` fige la hauteur pour que le rail et la fiche défilent chacun
+        de leur côté. La vue d'ensemble, elle, est un document : elle défile
+        d'un seul tenant et n'a rien à figer.
+      */}
       <ScreenHeader
         eyebrow={tr('hist.surtitre', { module: tr('hist.clients.titre') })}
         title={tr('hist.clients.titre')}
-        description={tr('hist.clients.laRelationEtLes')}
+        description={clients.length > 0 ? bilan : tr('hist.clients.laRelationEtLes')}
         stats={[
           {
             label: 'Fiches',
@@ -204,16 +235,16 @@ export function ClientsScreen() {
         }
       />
 
-      <div className={`grid min-h-0 flex-1 grid-cols-1 gap-4 ${clients.length === 0 && !loading ? '' : 'md:grid-cols-[300px_1fr]'}`}>
-        {/* Un répertoire vide est une boîte creuse : il n'apparaît qu'avec sa première fiche. */}
-        {(clients.length > 0 || loading) && <ClientList
-          clients={clients}
-          sites={sites}
-          loading={loading}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-        />}
-        {selected ? (
+      {selected ? (
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[300px_1fr]">
+          <ClientList
+            clients={clients}
+            sites={sites}
+            loading={loading}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onFermer={() => setSelectedId(null)}
+          />
           <ClientDetail
             key={selected.id}
             client={selected}
@@ -226,30 +257,394 @@ export function ClientsScreen() {
             onRemoveQuote={removeQuote}
             onRemoveClient={removeClient}
           />
-        ) : (
-          /*
-            CLIENTS (BLOC A) — « AUCUN CLIENT » en capitales monospace, centré
-            dans un panneau qui occupait toute la colonne de détail. Le vide
-            avait la taille et le poids d'une fiche client remplie. Il devient
-            une ligne, et il dit ce que l'écran sert à faire.
-          */
-          <div className="p-4">
-            {loading ? (
-              <p className="eyebrow">Chargement…</p>
-            ) : (
-              <FirstRun
-                icone={Contact}
-                title={tr('hist.clients.aucuneFicheClient')}
-                action={{ label: tr('hist.clients.creerUneFiche'), onClick: () => setAdding(true) }}
-              >{tr('hist.clients.uneFicheRassembleLes')}</FirstRun>
-            )}
-          </div>
-        )}
-      </div>
+        </div>
+      ) : loading ? (
+        <p className="eyebrow p-4">Chargement…</p>
+      ) : clients.length === 0 ? (
+        /*
+          CLIENTS (BLOC A) — « AUCUN CLIENT » en capitales monospace, centré
+          dans un panneau qui occupait toute la colonne de détail. Le vide
+          avait la taille et le poids d'une fiche client remplie. Il devient
+          une ligne, et il dit ce que l'écran sert à faire.
+        */
+        <div className="p-4">
+          <FirstRun
+            icone={Contact}
+            title={tr('hist.clients.aucuneFicheClient')}
+            action={{ label: tr('hist.clients.creerUneFiche'), onClick: () => setAdding(true) }}
+          >{tr('hist.clients.uneFicheRassembleLes')}</FirstRun>
+        </div>
+      ) : (
+        <VueDuRepertoire
+          clients={clients}
+          sites={sites}
+          quotes={quotes}
+          onOuvrir={setSelectedId}
+          onAjouterEchange={addEvent}
+        />
+      )}
 
       {adding && (
         <NewClientModal onClose={() => setAdding(false)} onCreate={createClient} />
       )}
+    </section>
+  );
+}
+
+/* Poids d'une santé, du plus urgent au plus calme — sert à trier le répertoire. */
+const POIDS_SANTE: Record<ClientHealth, number> = { attention: 0, medium: 1, good: 2 };
+
+/**
+ * LA VUE D'ENSEMBLE — l'objet dominant de l'écran Clients.
+ *
+ * Le système de design nomme cet objet « la fiche qui demande une action » :
+ * pas la première fiche créée, pas la dernière modifiée — celle dont la
+ * relation s'abîme le plus, et qui pèse le plus lourd si on la laisse filer.
+ * Elle occupe une carte dominante en deux colonnes (l'état d'un côté, la
+ * chronologie et le remède de l'autre), et le répertoire complet s'aligne
+ * dessous, trié par santé.
+ *
+ * L'AMBRE DE CET ÉCRAN est « le montant à traiter » : ce que ce client doit
+ * encore, et rien d'autre. Une santé « moyenne » n'est pas un ambre — c'est un
+ * état, et l'ambre marque les décisions. Quand rien n'est dû, l'écran n'a pas
+ * d'ambre du tout, ce qui est le résultat correct.
+ */
+function VueDuRepertoire({
+  clients,
+  sites,
+  quotes,
+  onOuvrir,
+  onAjouterEchange,
+}: {
+  clients: Client[];
+  sites: DerivedSite[];
+  quotes: Quote[];
+  onOuvrir: (id: number) => void;
+  onAjouterEchange: (id: number, title: string, detail: string) => Promise<void>;
+}) {
+  const { invoices } = useInvoices();
+
+  /* Ce que chaque fiche pèse : facturé, encore dû, santé, dernier échange. */
+  const lignes = useMemo(() => {
+    return clients
+      .map((client) => {
+        const siennes = invoices.filter((inv) => inv.clientId === client.id);
+        const factureCents = siennes
+          .filter((inv) => inv.status !== 'draft' && inv.status !== 'cancelled' && inv.kind !== 'creditNote')
+          .reduce((somme, inv) => somme + invoiceTotals(inv).grossCents, 0);
+        const dues = siennes.filter((inv) => inv.status === 'issued' && netDueCents(inv, invoices) > 0);
+        const duCents = dues.reduce((somme, inv) => somme + netDueCents(inv, invoices), 0);
+        return {
+          client,
+          sante: computeClientHealth(client, sites),
+          factureCents,
+          duCents,
+          /* La plus vieille échéance encore due : c'est elle qu'on date. */
+          echeance: dues.map((inv) => inv.dueAt).filter(Boolean).sort()[0] ?? '',
+          dernierEchange: client.events[0]?.date ?? client.updatedAt,
+          devisAcceptes: quotes.filter((q) => q.clientId === client.id && q.status === 'accepted').length,
+        };
+      })
+      .sort(
+        (a, b) =>
+          POIDS_SANTE[a.sante] - POIDS_SANTE[b.sante] ||
+          b.duCents - a.duCents ||
+          b.factureCents - a.factureCents,
+      );
+  }, [clients, sites, quotes, invoices]);
+
+  const tete = lignes[0];
+  if (!tete) return null;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <FicheDominante ligne={tete} sites={sites} onOuvrir={onOuvrir} onAjouterEchange={onAjouterEchange} />
+      <Repertoire lignes={lignes} onOuvrir={onOuvrir} />
+    </div>
+  );
+}
+
+interface LigneRepertoire {
+  client: Client;
+  sante: ClientHealth;
+  factureCents: number;
+  duCents: number;
+  echeance: string;
+  dernierEchange: string;
+  devisAcceptes: number;
+}
+
+function FicheDominante({
+  ligne,
+  sites,
+  onOuvrir,
+  onAjouterEchange,
+}: {
+  ligne: LigneRepertoire;
+  sites: DerivedSite[];
+  onOuvrir: (id: number) => void;
+  onAjouterEchange: (id: number, title: string, detail: string) => Promise<void>;
+}) {
+  const { client, sante, factureCents, duCents, echeance, devisAcceptes } = ligne;
+  const meta = CLIENT_HEALTH_META[sante];
+  const detail = useMemo(() => computeClientHealthBreakdown(client, sites), [client, sites]);
+  const [ajout, setAjout] = useState(false);
+  const [texte, setTexte] = useState('');
+  const ouvertEn = new Date(client.createdAt).getFullYear();
+
+  const enregistrer = async () => {
+    const titre = texte.trim();
+    if (!titre) return;
+    await onAjouterEchange(client.id, titre, '');
+    setTexte('');
+    setAjout(false);
+  };
+
+  return (
+    <div className="panel-raised panel-raised-wide grid grid-cols-1 lg:grid-cols-[1fr_320px]">
+      {/* Colonne de gauche : de qui il s'agit, et ce que la fiche pèse. */}
+      <div className="flex flex-col gap-6 p-6 sm:p-8">
+        <div className="flex items-center gap-4">
+          <p className="eyebrow flex-shrink-0">{tr('hist.clients.santeDeLaRelation')}</p>
+          <span className="h-px flex-1 bg-border-section" aria-hidden />
+          <span
+            className="flex flex-shrink-0 items-center gap-2 border border-border-raised bg-raised px-2.5 py-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] text-text-primary"
+            title={meta.hint}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+            {meta.label}
+          </span>
+        </div>
+
+        <div className="flex items-start gap-4">
+          <Avatar client={client} size={62} />
+          <div className="min-w-0">
+            <h2 className="truncate text-[26px] font-bold leading-none tracking-[-0.028em] text-text-primary sm:text-[28px]">
+              {client.name}
+            </h2>
+            <p className="eyebrow mt-2.5">
+              {[client.company || null, metaOf(STATUS_META, client.status, STATUS_META.prospect).label,
+                Number.isFinite(ouvertEn) ? tr('hist.clients.ficheOuverteEn', { an: ouvertEn }) : null]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-y-6 sm:grid-cols-4">
+          <Mesure label={tr('hist.clients.facture')} valeur={formatCents(factureCents)} />
+          <Mesure label={tr('hist.clients.devisAcceptes')} valeur={String(devisAcceptes)} filet />
+          {detail.factors.map((f) => (
+            <Mesure
+              key={f.label}
+              label={f.label}
+              valeur={f.value}
+              petit={f.value.length > 12}
+              attenue={f.tone !== 'good'}
+              filet
+            />
+          ))}
+        </div>
+
+        {ajout ? (
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              autoFocus
+              value={texte}
+              onChange={(e) => setTexte(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void enregistrer();
+              }}
+              placeholder={tr('hist.clients.ajouterUnEchangeUne')}
+              className="min-h-11 flex-1 border border-border bg-sunken px-3 text-sm text-text-primary outline-none transition-colors placeholder:text-text-muted focus:border-signal"
+            />
+            <button
+              type="button"
+              onClick={() => void enregistrer()}
+              disabled={!texte.trim()}
+              className="min-h-11 bg-accent px-4 text-[12.5px] font-semibold text-bg shadow-[0_12px_26px_-12px_rgba(0,0,0,.9)] transition-colors hover:bg-accent-hover disabled:opacity-40"
+            >
+              {tr('hist.clients.ajouterCetEchange')}
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setAjout(true)}
+              className="min-h-11 bg-accent px-4 text-[12.5px] font-semibold text-bg shadow-[0_12px_26px_-12px_rgba(0,0,0,.9)] transition-colors hover:bg-accent-hover"
+            >
+              {tr('hist.clients.ajouterUnEchange')}
+            </button>
+            <button
+              type="button"
+              onClick={() => onOuvrir(client.id)}
+              className="min-h-11 border border-border-strong px-4 text-[12.5px] font-semibold text-text-primary transition-colors hover:bg-surface-hover"
+            >
+              {tr('hist.clients.ouvrirLaFiche')}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Colonne de droite : ce qui s'est passé, et ce qui remonterait la note. */}
+      <div className="flex flex-col gap-5 border-t border-border-raised bg-sunken p-6 lg:border-l lg:border-t-0">
+        <div>
+          <p className="eyebrow mb-3.5">{tr('hist.clients.echanges')}</p>
+          <ul className="flex flex-col gap-3.5">
+            {/*
+              L'AMBRE DE L'ÉCRAN, et le seul : ce que ce client doit encore.
+              Le point et le montant disent la même chose au même endroit —
+              d'où le groupe, qui les compte pour un (voir check:signal).
+            */}
+            {duCents > 0 && (
+              <li className="flex gap-3" data-signal-groupe="a-traiter">
+                <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-signal" aria-hidden />
+                <div className="min-w-0">
+                  <p className="text-[13.5px] font-semibold text-signal">{tr('hist.clients.factureEnAttente')}</p>
+                  <p className="tnum mt-1 font-mono text-[11px] tracking-[0.1em] text-text-muted">
+                    {[echeance ? formatShortDay(echeance) : null, formatCents(duCents)].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+              </li>
+            )}
+            {client.events.slice(0, 3).map((ev) => (
+              <li key={ev.id} className="flex gap-3">
+                <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-[#3a3a3a]" aria-hidden />
+                <div className="min-w-0">
+                  <p className="truncate text-[13.5px] text-text-body">{ev.title}</p>
+                  <p className="tnum mt-1 font-mono text-[11px] tracking-[0.1em] text-text-muted">
+                    {formatShortDay(ev.date)}
+                  </p>
+                </div>
+              </li>
+            ))}
+            {duCents === 0 && client.events.length === 0 && (
+              <li className="text-[13.5px] text-text-muted">{tr('hist.clients.aucunEchange')}</li>
+            )}
+          </ul>
+        </div>
+
+        <div className="border-t border-border pt-5">
+          <p className="eyebrow mb-3">{tr('hist.clients.pourLAmeliorer')}</p>
+          {detail.toImprove.length > 0 ? (
+            <ul className="flex flex-col gap-3">
+              {detail.toImprove.map((phrase) => (
+                <li key={phrase} className="text-[13.5px] leading-[1.65] text-text-secondary [text-wrap:pretty]">
+                  {phrase}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[13.5px] leading-[1.65] text-text-secondary">{tr('hist.clients.relationAuVertRien')}</p>
+          )}
+        </div>
+
+        {/* La note de bas de carte : d'où sort la santé, pour qu'elle ne soit jamais un verdict opaque. */}
+        <p className="mt-auto font-mono text-[9.5px] uppercase leading-[1.7] tracking-[0.14em] text-text-muted">
+          {CLIENT_HEALTH_EXPLAINER}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Mesure({
+  label,
+  valeur,
+  filet,
+  petit,
+  attenue,
+}: {
+  label: string;
+  valeur: string;
+  filet?: boolean;
+  petit?: boolean;
+  attenue?: boolean;
+}) {
+  return (
+    <div className={filet ? 'border-l border-border-section pl-5 sm:pl-6' : ''}>
+      <p className="eyebrow mb-2.5">{label}</p>
+      <p
+        className={`tnum font-mono font-semibold leading-[1.15] tracking-[-0.03em] ${
+          petit ? 'text-[15px]' : 'text-[23px]'
+        } ${attenue ? 'text-text-secondary' : 'text-text-primary'}`}
+      >
+        {valeur}
+      </p>
+    </div>
+  );
+}
+
+function Repertoire({
+  lignes,
+  onOuvrir,
+}: {
+  lignes: LigneRepertoire[];
+  onOuvrir: (id: number) => void;
+}) {
+  const maintenant = Date.now();
+  return (
+    <section>
+      <div className="mb-2 flex items-center gap-4">
+        <p className="eyebrow flex-shrink-0">{tr('hist.clients.leRepertoire')}</p>
+        <span className="h-px flex-1 bg-border-section" aria-hidden />
+        <p className="eyebrow flex-shrink-0">{tr('hist.clients.trieParSante')}</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[620px] border-collapse">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="eyebrow py-2.5 text-left font-bold">{tr('hist.clients.colClient')}</th>
+              <th className="eyebrow py-2.5 text-right font-bold">{tr('hist.clients.facture')}</th>
+              <th className="eyebrow py-2.5 text-right font-bold">{tr('hist.clients.colDernierEchange')}</th>
+              <th className="eyebrow py-2.5 pl-6 text-left font-bold">{tr('hist.clients.colSante')}</th>
+              <th className="eyebrow py-2.5 text-right font-bold">{tr('hist.clients.colStatut')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lignes.map(({ client, sante, factureCents, dernierEchange }) => {
+              const meta = CLIENT_HEALTH_META[sante];
+              const statut = metaOf(STATUS_META, client.status, STATUS_META.prospect);
+              const jours = Math.floor((maintenant - new Date(dernierEchange).getTime()) / 86_400_000);
+              return (
+                <tr
+                  key={client.id}
+                  onClick={() => onOuvrir(client.id)}
+                  className="cursor-pointer border-b border-[#161616] transition-colors hover:bg-surface-hover"
+                >
+                  <td className="py-3.5">
+                    <span className="flex items-center gap-3">
+                      <Avatar client={client} size={28} />
+                      <span className="truncate text-[14.5px] font-medium text-text-primary">{client.name}</span>
+                    </span>
+                  </td>
+                  <td className="tnum py-3.5 text-right font-mono text-[13.5px] font-semibold text-text-primary">
+                    {formatCents(factureCents)}
+                  </td>
+                  <td className="tnum py-3.5 text-right font-mono text-[12.5px] tracking-[0.1em] text-text-muted">
+                    {formatShortDay(dernierEchange)}
+                  </td>
+                  <td className="py-3.5 pl-6">
+                    <span className="flex items-center gap-2">
+                      <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${meta.dot}`} />
+                      <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] text-text-secondary">
+                        {meta.label}
+                      </span>
+                      <span className="tnum font-mono text-[11px] tracking-[0.1em] text-text-muted">
+                        · {tr('hist.clients.ilYaNJours', { n: Math.max(0, jours) })}
+                      </span>
+                    </span>
+                  </td>
+                  <td className="py-3.5 text-right font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] text-text-secondary">
+                    {statut.label}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }
@@ -260,16 +655,27 @@ function ClientList({
   loading,
   selectedId,
   onSelect,
+  onFermer,
 }: {
   clients: Client[];
   sites: DerivedSite[];
   loading: boolean;
   selectedId: number | null;
   onSelect: (id: number) => void;
+  onFermer: () => void;
 }) {
   return (
     <div className="flex min-h-0 flex-col border border-border bg-surface">
-      <div className="border-b border-border px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary">{tr('hist.clients.repertoire')}</div>
+      {/* Le chemin du retour : sans lui, ouvrir une fiche enfermerait dans le
+          rail, et la vue d'ensemble ne se retrouverait qu'en quittant l'écran. */}
+      <button
+        type="button"
+        onClick={onFermer}
+        className="flex items-center gap-2 border-b border-border px-4 py-3 text-left font-mono text-[11px] uppercase tracking-widest text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+      >
+        <ArrowLeft size={13} strokeWidth={1.9} />
+        {tr('hist.clients.repertoire')}
+      </button>
       <motion.div
         variants={staggerContainer}
         initial="initial"
