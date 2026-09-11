@@ -567,6 +567,68 @@ for (const [cle, title, startAt, durationMin, clientId, clientName, location, st
   });
 }
 
+/* ─── Réunions ─────────────────────────────────────────────────────────────── */
+
+/*
+  La dernière réunion a des décisions ET des suites ouvertes ; une autre a
+  décidé SANS rien mettre en face — c'est elle qui porte l'unique ambre de
+  l'écran Réunions, et sans elle le signal ne se mesure pas.
+*/
+const REUNIONS = [
+  {
+    cle: 'essai-reu-1',
+    title: 'Point de production',
+    at: aujourdHui(9, 30, -2),
+    attendees: 'Léa, Clara, Samir',
+    agenda: 'Ordre du jour — 1. Retard de la refonte boutique. 2. Charge de la semaine 38. 3. Faut-il refuser le catalogue hiver ?',
+    decisions: [
+      'La livraison Brasserie du Port passe au 19 septembre, annoncée aujourd’hui.',
+      'Le catalogue hiver est refusé — la charge de septembre est déjà pleine.',
+      'Samir reprend la retouche des visuels à partir de jeudi.',
+    ],
+    actions: [
+      { id: 'act-1', label: 'Écrire à Hugo pour la nouvelle date', doneAt: null },
+      { id: 'act-2', label: 'Décaler les jalons du projet', doneAt: null },
+      { id: 'act-3', label: 'Prévenir Nadia du refus', doneAt: instant(-30) },
+      { id: 'act-4', label: 'Bloquer deux jours de retouche jeudi', doneAt: instant(-26) },
+    ],
+  },
+  {
+    cle: 'essai-reu-2',
+    title: 'Revue commerciale',
+    at: aujourdHui(14, 0, -7),
+    attendees: 'Léa, Clara',
+    agenda: 'Ordre du jour — 1. Devis en attente. 2. Relances de septembre.',
+    decisions: [
+      'On relance Hugo Marchand une dernière fois avant de clore le devis.',
+      'Les tarifs 2027 sont gelés jusqu’en novembre.',
+    ],
+    /* Aucune suite : c'est le cas que l'ambre existe pour montrer. */
+    actions: [],
+  },
+  {
+    cle: 'essai-reu-3',
+    title: 'Cadrage Brasserie du Port',
+    at: aujourdHui(11, 0, -10),
+    attendees: 'Léa, Hugo Marchand',
+    agenda: 'Ordre du jour — 1. Périmètre. 2. Budget. 3. Jalons.',
+    decisions: ['Le périmètre est arrêté sur douze jardinières et l’entretien mensuel.'],
+    actions: [{ id: 'act-5', label: 'Envoyer le devis détaillé', doneAt: instant(-200) }],
+  },
+];
+for (const r of REUNIONS) {
+  await poser('meetings', r.cle, {
+    title: r.title,
+    at: r.at.slice(0, 16),
+    attendees: r.attendees,
+    agenda: r.agenda,
+    decisions: r.decisions,
+    actions: r.actions,
+    byEmail: EMAIL,
+    createdAt: r.at,
+  });
+}
+
 /* ─── Tâches ───────────────────────────────────────────────────────────────── */
 
 const TACHES = [
