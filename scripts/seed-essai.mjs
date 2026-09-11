@@ -567,6 +567,48 @@ for (const [cle, title, startAt, durationMin, clientId, clientName, location, st
   });
 }
 
+/* ─── Tournées ─────────────────────────────────────────────────────────────── */
+
+/*
+  Deux arrêts livrés, quatre restants : c'est ce qui fait exister « l'arrêt en
+  cours », l'unique ambre de l'écran Tournées. Une tournée entièrement livrée
+  n'en a pas — elle est là aussi, pour que les deux cas se voient.
+*/
+const arret = (id, label, address, doneAt = null) => ({ id, label, address, doneAt });
+await poser('deliveryRounds', 'essai-trn-1', {
+  title: 'Tournée du matin',
+  day: jour(0),
+  stops: [
+    arret('stp-1', 'Boulangerie Martin', '12 rue des Lilas, Nantes', aujourdHui(8, 24)),
+    arret('stp-2', 'Café des Halles', '3 place du Bouffay, Nantes', aujourdHui(8, 51)),
+    arret('stp-3', 'Fleuriste Camélia', '48 boulevard Gabriel Lauriol, Nantes'),
+    arret('stp-4', 'Épicerie du Marché', '7 rue de Bel Air, Nantes'),
+    arret('stp-5', 'Restaurant Le Cèdre', '21 rue Paul Bellamy, Nantes'),
+    arret('stp-6', 'Atelier Vermeil', '12 rue Béranger, Nantes'),
+  ],
+  createdAt: aujourdHui(7, 0),
+});
+await poser('deliveryRounds', 'essai-trn-2', {
+  title: 'Tournée de l’après-midi',
+  day: jour(0),
+  stops: [
+    arret('stp-7', 'Studio Nord', '4 rue du Calvaire, Nantes'),
+    arret('stp-8', 'Librairie du Guet', '9 rue de Verdun, Nantes'),
+    arret('stp-9', 'Céramique Petit', '30 rue Crébillon, Nantes'),
+  ],
+  createdAt: aujourdHui(7, 0),
+});
+await poser('deliveryRounds', 'essai-trn-3', {
+  title: 'Livraisons du lundi',
+  day: jour(-4),
+  stops: [
+    arret('stp-10', 'Maison Bertaux', '18 rue Jean Jaurès, Nantes', aujourdHui(9, 12, -4)),
+    arret('stp-11', 'Atelier Vermeil', '12 rue Béranger, Nantes', aujourdHui(10, 5, -4)),
+    arret('stp-12', 'Café des Halles', '3 place du Bouffay, Nantes', aujourdHui(11, 30, -4)),
+  ],
+  createdAt: aujourdHui(7, 0, -4),
+});
+
 /* ─── Temps ────────────────────────────────────────────────────────────────── */
 
 /*

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowDown, ArrowUp, Check, Circle, ExternalLink, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, ExternalLink, Plus, Trash2 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FirstRun } from '../components/EmptyState';
 import { useSync, useCollection, uid } from '../state/SyncContext';
@@ -49,7 +49,27 @@ export function DeliveryRoundsScreen() {
   const [stops, setStops] = useState('');
   const aujourdhui = isoJour(new Date());
 
+  const [ouverteId, setOuverteId] = useState<string | null>(null);
   const tournees = useMemo(() => [...brutes].sort((a, b) => b.day.localeCompare(a.day) || a.createdAt.localeCompare(b.createdAt)), [brutes]);
+  /* La tournée ouverte : celle qu'on a choisie, sinon la première du jour,
+     sinon la plus récente. On ouvre cet écran pour LIVRER, pas pour consulter. */
+  const ouverte =
+    tournees.find((r) => r.id === ouverteId) ??
+    tournees.find((r) => r.day === aujourdhui) ??
+    tournees[0] ??
+    null;
+  const autresTournees = useMemo(
+    () => tournees.filter((r) => r.id !== ouverte?.id),
+    [tournees, ouverte],
+  );
+  const faitsOuverte = ouverte ? ouverte.stops.filter((s) => s.doneAt).length : 0;
+  /*
+    L'ARRÊT EN COURS — le premier qui n'est pas livré.
+
+    C'est l'ambre que la table du paquet nomme. Une tournée finie n'en a pas :
+    il n'y a plus rien à décider, et l'écran n'a plus d'ambre du tout.
+  */
+  const arretEnCours = ouverte?.stops.find((s) => !s.doneAt) ?? null;
   const duJour = tournees.filter((r) => r.day === aujourdhui);
   const restants = duJour.reduce((n, r) => n + r.stops.filter((s) => !s.doneAt).length, 0);
   const faits = duJour.reduce((n, r) => n + r.stops.filter((s) => s.doneAt).length, 0);
@@ -69,6 +89,9 @@ export function DeliveryRoundsScreen() {
     return upsert('deliveryRounds', r.id, { ...r, stops });
   };
   const dateLongue = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' });
+  const dateCourte = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(locale, { day: '2-digit', month: 'short' });
+  const heureCourte = (iso: string) =>
+    iso ? new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '';
 
   return (
     <motion.section variants={staggerContainer} initial="hidden" animate="show" className="flex flex-col gap-5">
@@ -106,42 +129,208 @@ export function DeliveryRoundsScreen() {
         <motion.div variants={staggerItem}>
           <FirstRun title={t('tournees.vide.titre')} action={{ label: t('tournees.vide.action'), onClick: () => setOuvert(true) }}>{t('tournees.vide.texte')}</FirstRun>
         </motion.div>
-      ) : (
-        <motion.div variants={staggerItem} className="flex flex-col gap-3">
-          {tournees.map((r) => {
-            const faitsIci = r.stops.filter((s) => s.doneAt).length;
-            const finie = r.stops.length > 0 && faitsIci === r.stops.length;
-            return (
-              <article key={r.id} className={`group rounded-xl border bg-surface p-4 ${finie ? 'border-success/30' : r.day === aujourdhui ? 'border-accent/40' : 'border-border'}`}>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-text-primary">{r.title}</p>
-                    <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">{dateLongue(r.day)} · {t('tournees.avancement', { fait: faitsIci, total: r.stops.length })}</p>
-                  </div>
-                  <button type="button" onClick={() => void remove('deliveryRounds', r.id)} aria-label={t('tournees.supprimer')} title={t('tournees.supprimer')} className="min-h-11 px-1 text-text-muted opacity-0 hover:text-danger focus:opacity-100 group-hover:opacity-100 md:min-h-0"><Trash2 size={13} /></button>
-                </div>
-                <ol className="mt-2 flex flex-col divide-y divide-border">
-                  {r.stops.map((a, i) => (
-                    <li key={a.id} className="flex items-center gap-2 py-1">
-                      <button type="button" onClick={() => void basculer(r, a)} aria-pressed={Boolean(a.doneAt)} aria-label={a.doneAt ? t('tournees.livre') : t('tournees.aLivrer')} className="flex min-h-11 min-w-11 items-center justify-center">
-                        {a.doneAt ? <Check size={16} className="text-success" /> : <Circle size={16} className="text-text-muted" />}
-                      </button>
-                      <span className="tnum w-5 font-mono text-xs text-text-muted">{i + 1}</span>
-                      <div className="min-w-0 flex-1">
-                        <p className={`text-sm ${a.doneAt ? 'text-text-muted line-through' : 'text-text-primary'}`}>{a.label}</p>
-                        {a.address && <p className="truncate text-xs text-text-muted">{a.address}</p>}
+      ) : ouverte ? (
+        /*
+          LA ROUTE DU JOUR — l'objet dominant de l'écran Tournées.
+
+          Les tournées étaient empilées, toutes dépliées, chaque arrêt sur une
+          ligne portant six cibles côte à côte (cocher, carte, monter,
+          descendre…). Une tournée de douze arrêts faisait soixante-douze
+          boutons de la même taille, et rien ne disait OÙ ON EN EST.
+
+          Le tracé vertical le dit : les arrêts livrés au-dessus, barrés et
+          horodatés, l'arrêt EN COURS levé sur sa propre carte avec ses gestes,
+          et ce qui reste en dessous. C'est la lecture qu'on fait depuis un
+          camion, à un feu rouge.
+        */
+        <motion.div variants={staggerItem} className="grid gap-5 lg:grid-cols-[1fr_300px]">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-start gap-4">
+              <div className="min-w-0 flex-1">
+                <p className="eyebrow">
+                  {[dateLongue(ouverte.day), t('tournees.nSurMLivres', { fait: faitsOuverte, total: ouverte.stops.length })].join(' · ')}
+                </p>
+                <h2 className="mt-3 text-[26px] font-bold leading-none tracking-[-0.03em] text-text-primary sm:text-[30px]">
+                  {ouverte.title}
+                </h2>
+              </div>
+              {/* Supprimer la tournée vivait sur chaque carte empilée ; il n'y a
+                  plus qu'une tournée ouverte, donc il vit ici. Le geste n'a pas
+                  disparu avec la refonte — il a suivi son objet. */}
+              <button
+                type="button"
+                onClick={() => {
+                  setOuverteId(null);
+                  void remove('deliveryRounds', ouverte.id);
+                }}
+                aria-label={t('tournees.supprimer')}
+                title={t('tournees.supprimer')}
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center text-text-muted transition-colors hover:text-danger"
+              >
+                <Trash2 size={14} strokeWidth={1.9} />
+              </button>
+            </div>
+
+            <ol className="relative flex flex-col">
+              {/* Le trait qui relie les arrêts : c'est la route, et elle
+                  s'arrête au dernier arrêt, pas au bord du cadre. */}
+              <span
+                className="absolute bottom-6 left-[15px] top-6 w-px bg-border"
+                aria-hidden
+              />
+              {ouverte.stops.map((a, i) => {
+                const livre = Boolean(a.doneAt);
+                const enCours = a.id === arretEnCours?.id;
+                return (
+                  <li
+                    key={a.id}
+                    data-signal-groupe={enCours ? 'arret-en-cours' : undefined}
+                    className={`relative flex items-start gap-4 ${
+                      enCours ? 'panel-raised my-2 px-4 py-4' : 'py-3.5'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => void basculer(ouverte, a)}
+                      aria-pressed={livre}
+                      aria-label={livre ? t('tournees.livre') : t('tournees.aLivrer')}
+                      className={`relative z-10 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border text-[11px] font-bold ${
+                        enCours
+                          ? 'signal-plate border-signal font-mono'
+                          : livre
+                            ? 'border-border-strong bg-surface text-text-muted'
+                            : 'border-border bg-surface font-mono text-text-muted'
+                      }`}
+                    >
+                      {livre ? <Check size={14} strokeWidth={2.5} /> : String(i + 1).padStart(2, '0')}
+                    </button>
+
+                    <div className="min-w-0 flex-1 pt-1">
+                      <p
+                        className={`truncate text-[15.5px] ${
+                          livre ? 'text-text-muted line-through' : enCours ? 'font-semibold text-text-primary' : 'text-text-primary'
+                        }`}
+                      >
+                        {a.label}
+                      </p>
+                      {a.address && <p className="mt-1 truncate text-[13px] text-text-muted">{a.address}</p>}
+                    </div>
+
+                    {livre ? (
+                      <p className="eyebrow flex-shrink-0 pt-1.5">
+                        {t('tournees.livreA', { heure: heureCourte(a.doneAt ?? '') })}
+                      </p>
+                    ) : (
+                      <div className="flex flex-shrink-0 items-center gap-2">
+                        {enCours && (
+                          <button
+                            type="button"
+                            onClick={() => void basculer(ouverte, a)}
+                            className="min-h-11 bg-accent px-4 text-[12.5px] font-semibold text-bg shadow-[0_12px_26px_-12px_rgba(0,0,0,.9)] transition-colors hover:bg-accent-hover"
+                          >
+                            {t('tournees.cocherLivre')}
+                          </button>
+                        )}
+                        <a
+                          href={carte(a)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex min-h-11 items-center gap-1.5 border border-border-strong px-3 text-[12.5px] font-semibold text-text-primary transition-colors hover:bg-surface-hover md:min-h-0 md:py-2"
+                        >
+                          {t('tournees.carte')}
+                          <ExternalLink size={12} strokeWidth={2} />
+                        </a>
+                        {/* Monter et descendre ne sont offerts que sur l'arrêt
+                            en cours : réordonner un arrêt déjà livré n'a pas de
+                            sens, et six cibles par ligne en avaient trop. */}
+                        {enCours && (
+                          <span className="flex flex-col">
+                            <button
+                              type="button"
+                              onClick={() => void deplacer(ouverte, i, -1)}
+                              disabled={i === 0}
+                              aria-label={t('tournees.monter')}
+                              className="flex h-6 w-8 items-center justify-center border border-border text-text-muted transition-colors hover:text-text-primary disabled:opacity-30"
+                            >
+                              <ArrowUp size={11} strokeWidth={2} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void deplacer(ouverte, i, 1)}
+                              disabled={i === ouverte.stops.length - 1}
+                              aria-label={t('tournees.descendre')}
+                              className="flex h-6 w-8 items-center justify-center border border-t-0 border-border text-text-muted transition-colors hover:text-text-primary disabled:opacity-30"
+                            >
+                              <ArrowDown size={11} strokeWidth={2} />
+                            </button>
+                          </span>
+                        )}
                       </div>
-                      <a href={carte(a)} target="_blank" rel="noreferrer" aria-label={t('tournees.carte')} title={t('tournees.carte')} className="flex min-h-11 min-w-11 items-center justify-center text-text-muted hover:text-text-primary"><ExternalLink size={13} /></a>
-                      <button type="button" onClick={() => void deplacer(r, i, -1)} disabled={i === 0} aria-label={t('tournees.monter')} className="flex min-h-11 min-w-11 items-center justify-center text-text-muted hover:text-text-primary disabled:opacity-30 md:min-h-8 md:min-w-8"><ArrowUp size={12} /></button>
-                      <button type="button" onClick={() => void deplacer(r, i, 1)} disabled={i === r.stops.length - 1} aria-label={t('tournees.descendre')} className="flex min-h-11 min-w-11 items-center justify-center text-text-muted hover:text-text-primary disabled:opacity-30 md:min-h-8 md:min-w-8"><ArrowDown size={12} /></button>
-                    </li>
-                  ))}
-                </ol>
-              </article>
-            );
-          })}
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+
+            {/* La phrase de l'en-tête du fichier, enfin écrite à l'écran : elle
+                explique pourquoi il n'y a pas d'optimisation d'itinéraire. */}
+            <p className="font-mono text-[9.5px] uppercase leading-[1.8] tracking-[0.14em] text-text-muted">
+              {t('tournees.lOrdreSeRegle')}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-5">
+            {/* L'avancement : une barre à un segment par arrêt. */}
+            <div className="panel p-4">
+              <p className="eyebrow mb-3.5">{t('tournees.avancementCourt')}</p>
+              <div className="flex gap-1" aria-hidden>
+                {ouverte.stops.map((a) => (
+                  <span
+                    key={a.id}
+                    data-signal-groupe={a.id === arretEnCours?.id ? 'arret-en-cours' : undefined}
+                    className={`h-[7px] min-w-0 flex-1 ${
+                      a.doneAt ? 'bg-[#4a4a48]' : a.id === arretEnCours?.id ? 'bg-signal' : 'bg-[#2b2b2b]'
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className="tnum mt-4 font-mono text-[32px] font-bold leading-none tracking-[-0.04em] text-text-primary">
+                {faitsOuverte} / {ouverte.stops.length}
+              </p>
+              <p className="mt-3 text-[13.5px] text-text-secondary">{t('tournees.arretsLivres')}</p>
+            </div>
+
+            {/* Les autres jours : le rail, sans déplier quoi que ce soit. */}
+            {autresTournees.length > 0 && (
+              <div className="panel p-4">
+                <p className="eyebrow mb-3.5">{t('tournees.autresJours')}</p>
+                <div className="flex flex-col">
+                  {autresTournees.map((r) => {
+                    const f = r.stops.filter((s) => s.doneAt).length;
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => setOuverteId(r.id)}
+                        className="flex flex-col gap-1.5 border-b border-[#1a1a1a] py-3 text-left transition-colors last:border-b-0 hover:text-text-primary"
+                      >
+                        <span className="truncate text-[14px] text-text-body">{r.title}</span>
+                        <span className="eyebrow">
+                          {[
+                            r.day === aujourdhui ? t('tournees.aujourdhui') : dateCourte(r.day),
+                            `${f} / ${r.stops.length}`,
+                          ].join(' · ')}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </motion.div>
-      )}
+      ) : null}
+
     </motion.section>
   );
 }
