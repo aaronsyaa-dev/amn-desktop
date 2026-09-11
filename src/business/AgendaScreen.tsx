@@ -679,7 +679,7 @@ function AppointmentDetail({
 
         {appointment.clientName && (
           <p className="flex items-center gap-2 text-sm text-text-secondary">
-            <Contact size={14} strokeWidth={1.75} className="text-text-muted" />
+            <Contact size={14} strokeWidth={1.9} className="text-text-muted" />
             {appointment.clientName}
             {appointment.clientId === null && (
               <span className="font-mono text-[10px] text-text-muted">(rendez-vous libre)</span>
@@ -688,7 +688,7 @@ function AppointmentDetail({
         )}
         {appointment.location && (
           <p className="flex items-center gap-2 text-sm text-text-secondary">
-            <MapPin size={14} strokeWidth={1.75} className="text-text-muted" />
+            <MapPin size={14} strokeWidth={1.9} className="text-text-muted" />
             {appointment.location}
           </p>
         )}
@@ -806,7 +806,7 @@ function AppointmentForm({
             id="rdv-form-title"
             className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary"
           >
-            <CalendarDays size={14} strokeWidth={1.75} />
+            <CalendarDays size={14} strokeWidth={1.9} />
             {appointment ? 'Modifier le rendez-vous' : 'Nouveau rendez-vous'}
           </h2>
           <button

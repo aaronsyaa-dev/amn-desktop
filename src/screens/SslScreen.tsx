@@ -128,7 +128,7 @@ export function SslScreen() {
             aria-label="Rafraîchir"
             className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5 text-sm text-text-secondary transition-colors hover:text-text-primary"
           >
-            <RefreshCw size={14} strokeWidth={1.75} />
+            <RefreshCw size={14} strokeWidth={1.9} />
             <span className="hidden sm:inline">Rafraîchir</span>
           </button>
           }

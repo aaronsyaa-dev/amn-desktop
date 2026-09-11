@@ -89,7 +89,7 @@ export function GardeSalleScreen() {
           onClick={() => { const el = document.getElementById('garde-salle'); if (document.fullscreenElement) void document.exitFullscreen(); else void el?.requestFullscreen?.(); }}
           className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-[12px] font-medium text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
         >
-          {plein ? <Minimize2 size={14} strokeWidth={1.75} /> : <Maximize2 size={14} strokeWidth={1.75} />}
+          {plein ? <Minimize2 size={14} strokeWidth={1.9} /> : <Maximize2 size={14} strokeWidth={1.9} />}
           <span className="hidden sm:inline">{plein ? t('garde.salle.quitterPleinEcran') : t('garde.salle.pleinEcran')}</span>
         </button>
       </ScreenHeader>

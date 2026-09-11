@@ -185,7 +185,7 @@ export function NotesScreen() {
             title={titreDuJour}
             className="flex min-h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
           >
-            <CalendarDays size={13} strokeWidth={1.75} />
+            <CalendarDays size={13} strokeWidth={1.9} />
             <span className="hidden sm:inline">Note du jour</span>
           </button>
           <div className="flex items-center gap-1 rounded-lg border border-border p-1" role="group" aria-label={tr('hist.notes.affichageDesNotes')}>
@@ -204,7 +204,7 @@ export function NotesScreen() {
                     : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
                 }`}
               >
-                <Icone size={13} strokeWidth={1.75} />
+                <Icone size={13} strokeWidth={1.9} />
                 {nom}
               </button>
             ))}
@@ -227,7 +227,7 @@ export function NotesScreen() {
                   onClick={() => startNew('personal')}
                   className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
                 >
-                  <Lock size={14} strokeWidth={1.75} className="text-text-muted" />
+                  <Lock size={14} strokeWidth={1.9} className="text-text-muted" />
                   <span className="flex-1">Note personnelle</span>
                   <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">{tr('hist.notes.prive')}</span>
                 </button>
@@ -236,7 +236,7 @@ export function NotesScreen() {
                   onClick={() => startNew('team')}
                   className="flex w-full items-center gap-2.5 border-t border-border px-3 py-2.5 text-left text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
                 >
-                  <Users size={14} strokeWidth={1.75} className="text-text-muted" />
+                  <Users size={14} strokeWidth={1.9} className="text-text-muted" />
                   <span className="flex-1">{tr('hist.notes.noteDEquipe')}</span>
                   <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">{tr('hist.notes.partage')}</span>
                 </button>
@@ -284,7 +284,7 @@ export function NotesScreen() {
         <div className="flex min-h-0 flex-col border border-border bg-surface">
           <div className="border-b border-border p-3">
             <div className="input-focus mb-2 flex items-center gap-2 rounded-lg border border-border bg-bg px-2.5 py-1.5">
-              <Search size={14} strokeWidth={1.75} className="text-text-muted" />
+              <Search size={14} strokeWidth={1.9} className="text-text-muted" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -389,9 +389,9 @@ export function NotesScreen() {
                 >
                   {note.id === selectedId && <span className="absolute left-0 top-0 h-full w-0.5 bg-accent" />}
                   {!TEAM_ENABLED ? null : note.scope === 'personal' ? (
-                    <Lock size={13} strokeWidth={1.75} className="mt-0.5 flex-shrink-0 text-text-muted" />
+                    <Lock size={13} strokeWidth={1.9} className="mt-0.5 flex-shrink-0 text-text-muted" />
                   ) : (
-                    <Users size={13} strokeWidth={1.75} className="mt-0.5 flex-shrink-0 text-text-muted" />
+                    <Users size={13} strokeWidth={1.9} className="mt-0.5 flex-shrink-0 text-text-muted" />
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="flex items-center gap-1.5 truncate text-sm font-medium text-text-primary">
@@ -671,7 +671,7 @@ function NoteEditor({
           aria-label={note.pinned ? 'Désépingler' : 'Épingler'}
           className={`flex h-9 w-9 items-center justify-center rounded ${note.pinned ? 'text-accent' : 'text-text-muted hover:text-text-primary'}`}
         >
-          {note.pinned ? <PinOff size={15} strokeWidth={1.75} /> : <Pin size={15} strokeWidth={1.75} />}
+          {note.pinned ? <PinOff size={15} strokeWidth={1.9} /> : <Pin size={15} strokeWidth={1.9} />}
         </button>
         <button
           type="button"
@@ -679,7 +679,7 @@ function NoteEditor({
           aria-label={tr('hist.notes.supprimerLaNote')}
           className="flex h-9 w-9 items-center justify-center rounded text-text-muted hover:text-danger"
         >
-          <Trash2 size={15} strokeWidth={1.75} />
+          <Trash2 size={15} strokeWidth={1.9} />
         </button>
       </div>
 
@@ -702,7 +702,7 @@ function NoteEditor({
             title={t.label}
             className="flex h-9 w-9 items-center justify-center rounded text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary disabled:opacity-30"
           >
-            <t.icon size={15} strokeWidth={1.75} />
+            <t.icon size={15} strokeWidth={1.9} />
           </button>
         ))}
         <div className="ml-auto">
@@ -711,7 +711,7 @@ function NoteEditor({
             onClick={() => setPreview((v) => !v)}
             className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
           >
-            {preview ? <Pencil size={12} strokeWidth={1.75} /> : <Eye size={12} strokeWidth={1.75} />}
+            {preview ? <Pencil size={12} strokeWidth={1.9} /> : <Eye size={12} strokeWidth={1.9} />}
             {preview ? 'Éditer' : 'Aperçu'}
           </button>
         </div>
@@ -787,7 +787,7 @@ function NoteEditor({
                       i === choix ? 'bg-accent-muted text-text-primary' : 'text-text-secondary'
                     }`}
                   >
-                    <LinkIcon size={13} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
+                    <LinkIcon size={13} strokeWidth={1.9} className="flex-shrink-0 text-text-muted" />
                     <span className="truncate">{n.title || 'Sans titre'}</span>
                   </button>
                 </li>
@@ -842,7 +842,7 @@ function NoteEditor({
                   onClick={() => onOuvrir(n.id)}
                   className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
                 >
-                  <CornerUpLeft size={13} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
+                  <CornerUpLeft size={13} strokeWidth={1.9} className="flex-shrink-0 text-text-muted" />
                   <span className="truncate">{n.title || 'Sans titre'}</span>
                 </button>
               </li>

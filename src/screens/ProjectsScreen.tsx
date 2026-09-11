@@ -128,7 +128,7 @@ export function ProjectsScreen() {
             aria-label={tr('hist.projects.configurerLeModule')}
             className="flex h-11 w-11 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:h-9 md:w-9"
           >
-            <Settings2 size={16} strokeWidth={1.75} />
+            <Settings2 size={16} strokeWidth={1.9} />
           </button>
           <button
             type="button"
@@ -549,7 +549,7 @@ function ProjectDetail({
                   aria-label={tr('hist.projects.ouvrirLeLien')}
                   className="flex h-11 w-11 flex-shrink-0 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
                 >
-                  <ExternalLink size={15} strokeWidth={1.75} />
+                  <ExternalLink size={15} strokeWidth={1.9} />
                 </a>
               )}
             </div>
@@ -676,7 +676,7 @@ function AttachmentGroup({
       onClick={onOpen}
       className="flex min-h-11 items-center gap-3 border border-border px-3 text-left transition-colors hover:border-border-strong"
     >
-      <Icon size={15} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
+      <Icon size={15} strokeWidth={1.9} className="flex-shrink-0 text-text-muted" />
       <span className="flex-1 text-sm text-text-primary">{label}</span>
       <span
         className={`font-mono text-[11px] tabular-nums ${

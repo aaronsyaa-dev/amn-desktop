@@ -320,7 +320,7 @@ export function MonthlyReportPanel({ onClose }: { onClose: () => void }) {
               répondre si une cliente demande son « score de sécurité ».
             */}
             <p className="flex items-start gap-2 border-t border-border pt-4 text-[11px] leading-relaxed text-text-muted">
-              <FileText size={13} strokeWidth={1.75} className="mt-0.5 flex-shrink-0" />
+              <FileText size={13} strokeWidth={1.9} className="mt-0.5 flex-shrink-0" />
               <span>
                 Les délais sont des médianes. Aucune note globale, aucun délai de détection et aucun
                 pourcentage de disponibilité ne figurent au rapport : ils supposeraient de savoir des

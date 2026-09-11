@@ -91,7 +91,7 @@ export function ClientContextLayout() {
                       aria-label={t('chrome.ouvrirMenu')}
                       className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary md:hidden"
                     >
-                      <Menu size={18} strokeWidth={1.75} />
+                      <Menu size={18} strokeWidth={1.9} />
                     </button>
                     <span className="truncate font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
                       {support?.orgName ?? ''}
@@ -109,7 +109,7 @@ export function ClientContextLayout() {
                     >
                       {moduleVerrouille ? (
                       <div className="mx-auto max-w-lg py-16 text-center">
-                        <Lock size={22} strokeWidth={1.5} className="mx-auto text-text-muted" />
+                        <Lock size={22} strokeWidth={1.9} className="mx-auto text-text-muted" />
                         <p className="mt-3 text-[15px] font-medium text-text-primary">{t('support.verrou.titre')}</p>
                         <p className="mt-1.5 text-[13px] leading-relaxed text-text-secondary">{t('support.verrou.texte')}</p>
                       </div>

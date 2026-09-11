@@ -82,6 +82,7 @@ export const fr: Dictionnaire = {
   'chrome.tousModules': 'Tous les modules',
   'chrome.fermer': 'Fermer',
   'chrome.epingles': 'Épinglés',
+  'chrome.tout': 'Tout',
   'chrome.epingler': 'Épingler {nom}',
   'chrome.detacher': 'Détacher {nom}',
   'chrome.lienActif': 'Lien actif',

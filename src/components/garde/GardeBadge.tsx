@@ -93,7 +93,7 @@ export function GardeBadge() {
       className="flex h-11 items-center gap-2 rounded-lg border border-border bg-surface px-2.5 text-[12px] text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
     >
       <span className={`inline-flex h-2.5 w-2.5 flex-shrink-0 rounded-full transition-colors duration-700 ${couleur}`} aria-hidden />
-      <Shield size={14} strokeWidth={1.75} className="flex-shrink-0 sm:hidden" aria-hidden />
+      <Shield size={14} strokeWidth={1.9} className="flex-shrink-0 sm:hidden" aria-hidden />
       <span className="hidden sm:inline">{mot}</span>
     </Link>
   );

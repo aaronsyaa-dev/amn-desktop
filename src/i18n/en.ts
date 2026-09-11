@@ -90,6 +90,7 @@ export const en = {
   'chrome.tousModules': 'All modules',
   'chrome.fermer': 'Close',
   'chrome.epingles': 'Pinned',
+  'chrome.tout': 'All',
   'chrome.epingler': 'Pin {nom}',
   'chrome.detacher': 'Unpin {nom}',
   'chrome.lienActif': 'Live link',

@@ -121,7 +121,7 @@ export function OrgSwitcher({
             className="elev-3 fixed inset-x-0 bottom-0 z-[171] flex max-h-[80vh] flex-col overflow-hidden rounded-t-3xl border border-border bg-surface sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-[12vh] sm:w-[min(34rem,calc(100vw-3rem))] sm:-translate-x-1/2 sm:rounded-2xl"
           >
             <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-              <Search size={16} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
+              <Search size={16} strokeWidth={1.9} className="flex-shrink-0 text-text-muted" />
               <input
                 ref={inputRef}
                 value={query}
@@ -170,7 +170,7 @@ export function OrgSwitcher({
                       />
                     ) : (
                       <span className="flex h-[30px] w-[30px] items-center justify-center rounded-xl bg-accent-muted text-text-primary">
-                        <ShieldCheck size={16} strokeWidth={1.75} />
+                        <ShieldCheck size={16} strokeWidth={1.9} />
                       </span>
                     )}
                     <span className="min-w-0 flex-1">
@@ -209,7 +209,7 @@ export function OrgSwitcher({
                 <Plus size={15} strokeWidth={2} />
               </span>
               <span className="flex-1">Créer une organisation cliente</span>
-              <Building2 size={14} strokeWidth={1.75} className="text-text-muted" />
+              <Building2 size={14} strokeWidth={1.9} className="text-text-muted" />
             </button>
           </motion.div>
         </React.Fragment>

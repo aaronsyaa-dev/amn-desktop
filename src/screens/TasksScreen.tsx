@@ -465,7 +465,7 @@ function TaskCard({
           aria-label={tr('hist.tasks.supprimerLaTache')}
           className="flex-shrink-0 text-text-muted opacity-0 transition-opacity hover:text-danger group-hover/card:opacity-100"
         >
-          <Trash2 size={13} strokeWidth={1.75} />
+          <Trash2 size={13} strokeWidth={1.9} />
         </button>
       </div>
       {task.garde?.pourquoi ? (
@@ -834,7 +834,7 @@ function TaskDetailModal({
                 onClick={() => setEditing(true)}
                 className="flex min-h-9 items-center gap-1.5 rounded-sm px-2 py-1 text-xs text-text-secondary hover:text-text-primary"
               >
-                <Pencil size={13} strokeWidth={1.75} /> Modifier
+                <Pencil size={13} strokeWidth={1.9} /> Modifier
               </button>
             )}
             <button type="button" onClick={onClose} aria-label="Fermer" className="flex h-9 w-9 items-center justify-center text-text-secondary hover:text-text-primary">
@@ -1050,7 +1050,7 @@ function TaskDetailModal({
               aria-label={tr('hist.tasks.supprimerLaTache')}
               className="flex h-9 w-9 items-center justify-center border border-border text-text-muted transition-colors hover:border-danger/50 hover:text-danger"
             >
-              <Trash2 size={15} strokeWidth={1.75} />
+              <Trash2 size={15} strokeWidth={1.9} />
             </button>
           </div>
         )}

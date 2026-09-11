@@ -250,7 +250,7 @@ export function CallLinkPanel({ onClose }: { onClose: () => void }) {
                 {copied === 'message' ? (
                   <Check size={15} strokeWidth={2.5} />
                 ) : (
-                  <MessageSquare size={15} strokeWidth={1.75} />
+                  <MessageSquare size={15} strokeWidth={1.9} />
                 )}
                 {copied === 'message' ? 'Message copié' : 'Copier le message à envoyer'}
               </button>
@@ -264,7 +264,7 @@ export function CallLinkPanel({ onClose }: { onClose: () => void }) {
                 onClick={() => void copy('url')}
                 className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 border border-border text-xs text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
               >
-                {copied === 'url' ? <Check size={14} strokeWidth={2.25} /> : <Copy size={14} strokeWidth={1.75} />}
+                {copied === 'url' ? <Check size={14} strokeWidth={2.25} /> : <Copy size={14} strokeWidth={1.9} />}
                 {copied === 'url' ? 'Adresse copiée' : 'Copier l’adresse seule'}
               </button>
 
@@ -307,7 +307,7 @@ export function CallLinkPanel({ onClose }: { onClose: () => void }) {
                         title="Révoquer ce lien"
                         className="flex h-9 w-9 flex-shrink-0 items-center justify-center text-text-muted transition-colors hover:text-danger"
                       >
-                        <Trash2 size={14} strokeWidth={1.75} />
+                        <Trash2 size={14} strokeWidth={1.9} />
                       </button>
                     )}
                   </div>

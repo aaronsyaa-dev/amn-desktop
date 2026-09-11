@@ -358,7 +358,7 @@ export function HomeScreen() {
             className="elev-1 elev-hover group flex flex-col gap-3 rounded-2xl border border-border bg-surface p-5 text-left transition-colors hover:border-border-strong"
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-bg text-text-secondary transition-colors group-hover:text-text-primary">
-              <d.icon size={18} strokeWidth={1.75} />
+              <d.icon size={18} strokeWidth={1.9} />
             </span>
             <div>
               <p className="text-sm font-semibold text-text-primary">{d.label}</p>
@@ -429,7 +429,7 @@ export function HomeScreen() {
             onClick={() => navigate(s.to)}
             className="-my-1.5 flex items-center gap-1.5 py-1.5 text-xs text-text-muted transition-colors hover:text-text-secondary"
           >
-            <s.icon size={13} strokeWidth={1.75} />
+            <s.icon size={13} strokeWidth={1.9} />
             {s.label}
           </button>
         ))}

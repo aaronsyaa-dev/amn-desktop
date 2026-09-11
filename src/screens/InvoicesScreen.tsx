@@ -198,7 +198,7 @@ export function InvoicesScreen() {
             aria-label="Export comptable (FEC)"
             className="flex h-11 w-11 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:h-9 md:w-9"
           >
-            <FileSpreadsheet size={16} strokeWidth={1.75} />
+            <FileSpreadsheet size={16} strokeWidth={1.9} />
           </button>
           <button
             type="button"
@@ -207,7 +207,7 @@ export function InvoicesScreen() {
             aria-label={tr('hist.invoices.coordonneesDeFacturation')}
             className="flex h-11 w-11 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:h-9 md:w-9"
           >
-            <Building2 size={16} strokeWidth={1.75} />
+            <Building2 size={16} strokeWidth={1.9} />
           </button>
           <button
             type="button"
@@ -564,7 +564,7 @@ function InvoiceDetail({
             aria-label="Imprimer / exporter en PDF"
             className="flex h-11 w-11 flex-shrink-0 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:h-9 md:w-9"
           >
-            <Printer size={15} strokeWidth={1.75} />
+            <Printer size={15} strokeWidth={1.9} />
           </button>
         )}
       </div>
@@ -1144,7 +1144,7 @@ function IdentityModal({
       >
         <div className="flex flex-shrink-0 items-center justify-between border-b border-border px-4 py-3">
           <h2 className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">
-            <Building2 size={14} strokeWidth={1.75} />{tr('hist.invoices.coordonneesDeFacturation')}</h2>
+            <Building2 size={14} strokeWidth={1.9} />{tr('hist.invoices.coordonneesDeFacturation')}</h2>
           <button
             type="button"
             onClick={onClose}

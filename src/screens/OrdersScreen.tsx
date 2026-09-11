@@ -253,7 +253,7 @@ function OrderRow({
                     : 'border-border-strong bg-accent-muted text-text-primary'
                 }`}
               >
-                <Package size={13} strokeWidth={1.75} aria-hidden />
+                <Package size={13} strokeWidth={1.9} aria-hidden />
                 Marquer {ORDER_STATUS_LABELS[status].toLowerCase()}
               </button>
             ))}
@@ -265,7 +265,7 @@ function OrderRow({
             */}
             {order.invoiceId ? (
               <span className="flex items-center gap-1.5 px-1 font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                <ReceiptEuro size={13} strokeWidth={1.75} aria-hidden />
+                <ReceiptEuro size={13} strokeWidth={1.9} aria-hidden />
                 Facture créée
               </span>
             ) : (
@@ -275,7 +275,7 @@ function OrderRow({
                   onClick={onInvoice}
                   className="input-focus flex min-h-11 items-center gap-1.5 border border-border px-3 text-xs text-text-secondary transition-colors hover:text-text-primary md:min-h-0 md:py-2"
                 >
-                  <ReceiptEuro size={13} strokeWidth={1.75} aria-hidden />
+                  <ReceiptEuro size={13} strokeWidth={1.9} aria-hidden />
                   Créer un brouillon de facture
                 </button>
               )

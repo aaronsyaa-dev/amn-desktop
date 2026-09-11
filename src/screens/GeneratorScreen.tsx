@@ -338,7 +338,7 @@ export function GeneratorScreen() {
                     className="panel elev-hover group flex flex-col gap-3 p-4 text-left transition-colors hover:border-border-strong"
                   >
                     <span className="flex items-center gap-2.5 text-text-primary">
-                      <Icon size={19} strokeWidth={1.5} />
+                      <Icon size={19} strokeWidth={1.9} />
                       <span className="text-[15px] font-medium">{trade.label}</span>
                     </span>
                     <span className="text-[12px] leading-relaxed text-text-secondary">
@@ -411,7 +411,7 @@ export function GeneratorScreen() {
                     <div className="flex items-center gap-3">
                       <OrgAvatar name={name || 'A'} logoDataUrl={logo} size={40} rounded="rounded-lg" />
                       <label className="flex cursor-pointer items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary">
-                        <ImagePlus size={13} strokeWidth={1.75} />
+                        <ImagePlus size={13} strokeWidth={1.9} />
                         {logo ? 'Changer le logo' : 'Ajouter un logo'}
                         <input
                           type="file"

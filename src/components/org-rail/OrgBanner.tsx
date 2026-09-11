@@ -372,7 +372,7 @@ function Relevé({
 export function OrgBannerEmpty({ message }: { message: string }) {
   return (
     <div className="panel flex items-center gap-3 px-4 py-6 text-sm text-text-muted">
-      <Building2 size={16} strokeWidth={1.75} />
+      <Building2 size={16} strokeWidth={1.9} />
       {message}
     </div>
   );

@@ -171,7 +171,7 @@ export function SiteControlScreen() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
             <h1 className="flex items-center gap-2 truncate text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
-              <Globe size={22} strokeWidth={1.75} className="flex-shrink-0 text-text-secondary" />
+              <Globe size={22} strokeWidth={1.9} className="flex-shrink-0 text-text-secondary" />
               {siteName}
             </h1>
             <p className="mt-1 font-mono text-xs uppercase tracking-widest text-text-muted">
@@ -187,7 +187,7 @@ export function SiteControlScreen() {
               aria-label="Rafraîchir"
               className="flex items-center gap-2 border border-border px-3 py-2.5 text-sm text-text-secondary transition-colors hover:text-text-primary"
             >
-              <RefreshCw size={14} strokeWidth={1.75} />
+              <RefreshCw size={14} strokeWidth={1.9} />
               <span className="hidden sm:inline">Rafraîchir</span>
             </button>
             {/* BLOC 3 — hands Ajmani a question already loaded with this site's
@@ -200,7 +200,7 @@ export function SiteControlScreen() {
               title="Poser une question à Ajmani sur ce site"
               className="flex items-center gap-2 border border-border px-3 py-2.5 text-sm text-text-secondary transition-colors hover:text-text-primary"
             >
-              <Sparkles size={14} strokeWidth={1.75} />
+              <Sparkles size={14} strokeWidth={1.9} />
               <span className="hidden sm:inline">Demander à Ajmani</span>
             </button>
             <button
@@ -335,7 +335,7 @@ function StatCard({
   return (
     <div className="border border-border bg-surface p-4">
       <div className="flex items-center gap-2">
-        <Icon size={14} strokeWidth={1.75} className={tone === 'danger' ? 'text-danger' : 'text-text-muted'} />
+        <Icon size={14} strokeWidth={1.9} className={tone === 'danger' ? 'text-danger' : 'text-text-muted'} />
         <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted">{label}</p>
       </div>
       <p className={`mt-1.5 text-2xl font-bold ${tone === 'danger' ? 'text-danger' : 'text-text-primary'}`}>
@@ -364,7 +364,7 @@ function TrafficChart({ summary }: { summary: SiteSummary }) {
     <section className="border border-border bg-surface p-4">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Activity size={15} strokeWidth={1.75} className="text-text-secondary" />
+          <Activity size={15} strokeWidth={1.9} className="text-text-secondary" />
           <h2 className="text-sm font-semibold uppercase tracking-widest text-text-secondary">Trafic 24 h</h2>
         </div>
         <p className="font-mono text-[11px] text-text-muted">
@@ -473,7 +473,7 @@ function AlertHistory({ alerts }: { alerts: RemoteEvent[] }) {
   return (
     <section className="border border-border bg-surface">
       <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-        <Layers size={15} strokeWidth={1.75} className="text-text-secondary" />
+        <Layers size={15} strokeWidth={1.9} className="text-text-secondary" />
         <h2 className="text-sm font-semibold uppercase tracking-widest text-text-secondary">
           Historique des alertes
         </h2>

@@ -135,7 +135,7 @@ export function InvitationScreen() {
                   Code d’invitation
                 </span>
                 <div className="flex min-h-12 items-center border border-border bg-bg px-3">
-                  <KeyRound size={15} strokeWidth={1.75} className="mr-2 flex-shrink-0 text-text-muted" />
+                  <KeyRound size={15} strokeWidth={1.9} className="mr-2 flex-shrink-0 text-text-muted" />
                   <input
                     value={token}
                     onChange={(e) => setToken(e.target.value)}
@@ -169,7 +169,7 @@ export function InvitationScreen() {
                   title={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                   className="ml-2 flex h-8 w-8 flex-shrink-0 items-center justify-center text-text-muted transition-colors hover:text-text-primary"
                 >
-                  {visible ? <EyeOff size={15} strokeWidth={1.75} /> : <Eye size={15} strokeWidth={1.75} />}
+                  {visible ? <EyeOff size={15} strokeWidth={1.9} /> : <Eye size={15} strokeWidth={1.9} />}
                 </button>
               </div>
               <span

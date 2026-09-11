@@ -94,7 +94,7 @@ export function ScheduleControl({
 
   return (
     <div className="elev-1 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3">
-      <CalendarClock size={15} strokeWidth={1.75} className="flex-shrink-0 text-text-secondary" />
+      <CalendarClock size={15} strokeWidth={1.9} className="flex-shrink-0 text-text-secondary" />
       <div className="mr-auto min-w-0">
         <p className="text-sm text-text-primary">
           {schedule ? 'Analyse récurrente active' : 'Analyse récurrente'}

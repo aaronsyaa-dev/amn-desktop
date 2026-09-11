@@ -77,7 +77,7 @@ export function FecExportModal({
       >
         <div className="flex flex-shrink-0 items-center justify-between border-b border-border px-4 py-3">
           <h2 className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">
-            <FileSpreadsheet size={14} strokeWidth={1.75} />
+            <FileSpreadsheet size={14} strokeWidth={1.9} />
             Export comptable · FEC
           </h2>
           <button

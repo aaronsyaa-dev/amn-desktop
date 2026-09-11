@@ -283,7 +283,7 @@ export function PagesScreen({ scope, title, description }: {
                           }
                           className="flex items-center gap-1.5 border border-border bg-surface px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
                         >
-                          <Icone size={13} strokeWidth={1.75} />
+                          <Icone size={13} strokeWidth={1.9} />
                           {label}
                         </button>
                       ))}

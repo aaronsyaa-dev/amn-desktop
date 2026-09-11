@@ -332,7 +332,7 @@ export function ReportsScreen() {
             <div className="min-h-0 flex-1 overflow-y-auto">{selectedProduct.detail}</div>
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
-              <FileText size={26} strokeWidth={1.5} className="text-text-muted" />
+              <FileText size={26} strokeWidth={1.9} className="text-text-muted" />
               <p className="text-sm font-medium text-text-primary">{tr('hist.reports.selectionnezUnRapport')}</p>
               <p className="max-w-sm text-sm text-text-secondary">
                 {products.enabled
@@ -378,14 +378,14 @@ function ReportReader({
             onClick={onEdit}
             className="flex min-h-9 items-center gap-1.5 rounded-sm px-2 py-1 text-xs text-text-secondary hover:text-text-primary"
           >
-            <Pencil size={13} strokeWidth={1.75} />{tr('hist.reports.editer')}</button>
+            <Pencil size={13} strokeWidth={1.9} />{tr('hist.reports.editer')}</button>
           <button
             type="button"
             onClick={onRemove}
             aria-label={tr('hist.reports.supprimer')}
             className="flex h-9 w-9 items-center justify-center rounded text-text-muted hover:text-danger"
           >
-            <Trash2 size={15} strokeWidth={1.75} />
+            <Trash2 size={15} strokeWidth={1.9} />
           </button>
         </div>
       </div>
@@ -535,7 +535,7 @@ function ReportEditor({
             title={t.label}
             className="flex h-9 w-9 items-center justify-center rounded text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary disabled:opacity-30"
           >
-            <t.icon size={15} strokeWidth={1.75} />
+            <t.icon size={15} strokeWidth={1.9} />
           </button>
         ))}
         <button
@@ -543,7 +543,7 @@ function ReportEditor({
           onClick={() => setPreview((v) => !v)}
           className="ml-auto flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
         >
-          {preview ? <Pencil size={12} strokeWidth={1.75} /> : <Eye size={12} strokeWidth={1.75} />}
+          {preview ? <Pencil size={12} strokeWidth={1.9} /> : <Eye size={12} strokeWidth={1.9} />}
           {preview ? 'Éditer' : 'Aperçu'}
         </button>
       </div>
@@ -655,7 +655,7 @@ function LinkManager({ links, onChange }: { links: ReportLink[]; onChange: (link
                       onClick={() => add(c)}
                       className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
                     >
-                      <Icon size={13} strokeWidth={1.75} className="text-text-muted" />
+                      <Icon size={13} strokeWidth={1.9} className="text-text-muted" />
                       <span className="min-w-0 flex-1 truncate">{c.label}</span>
                       <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">
                         {typeLabel(c.kind)}

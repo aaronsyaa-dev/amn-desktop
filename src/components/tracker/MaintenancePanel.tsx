@@ -124,7 +124,7 @@ export function MaintenancePanel() {
   return (
     <section className="elev-1 rounded-2xl border border-border bg-surface p-4">
       <div className="flex flex-wrap items-center gap-3">
-        <CalendarClock size={15} strokeWidth={1.75} className="text-text-secondary" />
+        <CalendarClock size={15} strokeWidth={1.9} className="text-text-secondary" />
         <h3 className="mr-auto text-sm font-semibold text-text-primary">Maintenances annoncées</h3>
         <button
           type="button"
@@ -132,7 +132,7 @@ export function MaintenancePanel() {
           aria-label="Relire"
           className="rounded-lg p-1.5 text-text-muted transition-colors hover:text-text-primary"
         >
-          <RotateCcw size={13} strokeWidth={1.75} />
+          <RotateCcw size={13} strokeWidth={1.9} />
         </button>
         <button
           type="button"

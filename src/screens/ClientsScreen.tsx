@@ -470,7 +470,7 @@ function ClientHeader({
           </span>
         )}
         <span className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
-          <ImagePlus size={18} strokeWidth={1.75} className="text-white" />
+          <ImagePlus size={18} strokeWidth={1.9} className="text-white" />
         </span>
       </button>
       <input
@@ -643,7 +643,7 @@ function LinkedSitesBlock({
                     linked ? 'text-text-primary' : 'text-text-muted'
                   }`}
                 >
-                  <Globe size={13} strokeWidth={1.75} className="flex-shrink-0" />
+                  <Globe size={13} strokeWidth={1.9} className="flex-shrink-0" />
                   <span className="truncate">{site.name}</span>
                 </button>
                 {linked && (
@@ -661,7 +661,7 @@ function LinkedSitesBlock({
                       title={tr('hist.clients.voirLaFicheDu')}
                       className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
                     >
-                      <ArrowUpRight size={16} strokeWidth={1.75} />
+                      <ArrowUpRight size={16} strokeWidth={1.9} />
                     </button>
                   </>
                 )}
@@ -718,7 +718,7 @@ function ContactBlock({
       <BlockTitle>Contact</BlockTitle>
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2.5 border border-border bg-bg px-3 py-2">
-          <Mail size={14} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
+          <Mail size={14} strokeWidth={1.9} className="flex-shrink-0 text-text-muted" />
           <InlineField
             value={client.email}
             onSave={(v) => onPatch(client.id, { email: v })}
@@ -727,7 +727,7 @@ function ContactBlock({
           />
         </div>
         <div className="flex items-center gap-2.5 border border-border bg-bg px-3 py-2">
-          <Phone size={14} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
+          <Phone size={14} strokeWidth={1.9} className="flex-shrink-0 text-text-muted" />
           <InlineField
             value={client.phone}
             onSave={(v) => onPatch(client.id, { phone: v })}
@@ -959,7 +959,7 @@ function QuoteRow({
             aria-label="Imprimer / exporter en PDF"
             className="flex h-6 w-6 items-center justify-center rounded text-text-muted hover:bg-surface-hover hover:text-text-primary"
           >
-            <Printer size={14} strokeWidth={1.75} />
+            <Printer size={14} strokeWidth={1.9} />
           </button>
           <ConfirmDelete onConfirm={onRemove} label={tr('hist.clients.supprimerLeDevis')} />
         </div>
@@ -1108,7 +1108,7 @@ function NewQuoteModal({
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-3">
           <h2 className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">
-            <FileText size={14} strokeWidth={1.75} />
+            <FileText size={14} strokeWidth={1.9} />
             Nouveau devis · {client.name}
           </h2>
           <button type="button" onClick={onClose} aria-label="Fermer" className="flex h-9 w-9 items-center justify-center text-text-secondary hover:text-text-primary">

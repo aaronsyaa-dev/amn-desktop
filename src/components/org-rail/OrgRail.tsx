@@ -200,11 +200,11 @@ export function OrgRail() {
               small
               warning
             >
-              <PlugZap size={17} strokeWidth={1.75} />
+              <PlugZap size={17} strokeWidth={1.9} />
             </RailButton>
           )}
           <RailButton label="Chercher une organisation" hint="⇧ ⌘ O" onClick={() => setSwitcherOpen(true)} small>
-            <Search size={17} strokeWidth={1.75} />
+            <Search size={17} strokeWidth={1.9} />
           </RailButton>
           <RailButton label="Créer une organisation cliente" onClick={openAtelier} small dashed>
             <Plus size={18} strokeWidth={2} />

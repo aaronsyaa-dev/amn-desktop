@@ -151,7 +151,7 @@ export function AccountSecuritySection() {
         </p>
       ) : access.length === 0 ? (
         <p className="mt-2 flex items-center gap-2 text-sm text-text-secondary">
-          <Eye size={14} strokeWidth={1.75} className="text-text-muted" />
+          <Eye size={14} strokeWidth={1.9} className="text-text-muted" />
           Aucune ouverture enregistrée.
         </p>
       ) : (

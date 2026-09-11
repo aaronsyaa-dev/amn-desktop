@@ -225,7 +225,7 @@ export function CalculatorsScreen() {
         {/* ------------------------------ Résultats ---------------------------- */}
         <section className="border border-border bg-surface p-4">
           <h2 className="mb-3 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">
-            <Calculator size={13} strokeWidth={1.75} />{tr('hist.calculators.ceQueCaDonne')}</h2>
+            <Calculator size={13} strokeWidth={1.9} />{tr('hist.calculators.ceQueCaDonne')}</h2>
 
           {result.errors.length > 0 && (
             <ul className="mb-3 flex flex-col gap-1">
@@ -493,7 +493,7 @@ function RowsSection({
                       */
                       className="ml-auto flex h-6 w-6 items-center justify-center rounded text-text-muted transition-colors hover:text-danger disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-text-muted"
                     >
-                      <Trash2 size={13} strokeWidth={1.75} />
+                      <Trash2 size={13} strokeWidth={1.9} />
                     </button>
                   </td>
                   {enEchec && <td className="hidden" />}
@@ -560,7 +560,7 @@ function RowsSection({
         onClick={() => onChange([...rows, { name: '', values: {} }])}
         className="mt-3 flex min-h-11 items-center gap-2 border border-border px-3 text-xs text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:min-h-0 md:py-2"
       >
-        <Plus size={13} strokeWidth={1.75} />
+        <Plus size={13} strokeWidth={1.9} />
         {bloc.addLabel}
       </button>
     </section>
@@ -643,7 +643,7 @@ function MonthlyPanel() {
     <section className="border border-border bg-surface p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">
-          <Scale size={13} strokeWidth={1.75} />{tr('hist.calculators.leMoisEtSa')}</h2>
+          <Scale size={13} strokeWidth={1.9} />{tr('hist.calculators.leMoisEtSa')}</h2>
         <select
           value={month}
           onChange={(e) => setMonth(e.target.value)}
@@ -706,7 +706,7 @@ function MonthlyPanel() {
         <ul className="mt-3 flex flex-col gap-px bg-border">
           {summary.shares.map((share) => (
             <li key={share.who} className="flex items-center gap-3 bg-surface px-3 py-2.5">
-              <Users size={14} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
+              <Users size={14} strokeWidth={1.9} className="flex-shrink-0 text-text-muted" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm text-text-primary">{share.who}</span>
                 <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">

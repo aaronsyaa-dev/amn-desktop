@@ -25,16 +25,44 @@
     d'état, les en-têtes de panneau) et qu'il n'a rien à voir avec la texture —
     c'est un cran de gris, pas une matière.
   */
-  --color-bg: #0a0a0a;
-  --color-surface: #131313;
-  --color-surface-hover: #1c1c1c;
+  /*
+    LA RAMPE DE GRIS À SIX PALIERS (système de design, direction « Le poste
+    habité »). Le fond DESCEND pour que les cartes puissent monter : c'est ce
+    qui donne la profondeur sans ombre décorative. Chaque palier a un emploi,
+    et un seul — un gris choisi au jugé écran par écran est ce qui donnait
+    soixante-huit applications qui se ressemblent vaguement.
+
+      #060606  fond d'application — derrière tout
+      #0b0b0b  plan creux — bandes d'information, pieds de page, retraits
+      #0c0c0c  barre latérale
+      #0d0d0d  carte calme (`.panel`) — le secondaire, SANS ombre
+      #111111  feuille (`.panel-sheet`) — le document : devis, rapport, passage
+      #121212  carte dominante (`.panel-raised`) — une à deux par écran
+      #141414  plan levé — en-têtes de tableau, onglet actif
+      #161616  survol
+      #191919  ligne de navigation active
+  */
+  --color-bg: #060606;
+  --color-surface: #0d0d0d;
+  --color-surface-hover: #161616;
   /* Un cran au-dessus de `surface` — barres d'outils, en-têtes de panneau. */
-  --color-raised: #171717;
-  --color-border: #262626;
+  --color-raised: #141414;
+  /* Le plan creux : ce qui s'enfonce sous le fond des cartes. */
+  --color-sunken: #0b0b0b;
+  /* La feuille : le document posé, distinct d'une carte (voir `.panel-sheet`). */
+  --color-sheet: #111111;
+  /* La carte dominante (voir `.panel-raised`). */
+  --color-elevated: #121212;
+  --color-border: #1f1f1f;
+  /* Le filet de section — entre la bordure de carte calme et celle d'une dominante. */
+  --color-border-section: #242424;
+  /* La bordure d'une carte dominante, et celle d'une feuille. */
+  --color-border-raised: #262626;
+  --color-border-sheet: #2a2a2a;
   --color-border-strong: #3a3a3a;
 
   /* Text */
-  --color-text-primary: #f2f2f0;
+  --color-text-primary: #f7f7f5;
   /*
     LA RAMPE MONTE D'UN CRAN — LE CONFORT PASSE AVANT LA DENSITÉ
     ════════════════════════════════════════════════════════════
@@ -72,13 +100,69 @@
     libellés côte à côte, ce qui arrive rarement et se rattrape par la place,
     l'icône et le contexte.
   */
-  --color-text-secondary: #b4b4b1;
+  /*
+    ÉCART ASSUMÉ AVEC LE PAQUET DE DESIGN, ET SA MESURE
+    ───────────────────────────────────────────────────
+    Le système de design donne quatre encres : #f7f7f5 (titre), #e4e4e1
+    (corps long), #a3a3a0 (secondaire), #6b6b68 (sourdine). Les trois
+    premières sont adoptées telles quelles.
+
+    La quatrième ne l'est PAS. Mesurée sur le nouveau fond #060606, elle rend
+    3,79:1 — et moins encore sur une carte calme —, là où WCAG AA en demande
+    4,5 pour du texte courant. Or `--color-text-muted` porte les surtitres,
+    les unités et les phrases d'aide : exactement le texte dont quelqu'un qui
+    découvre un module a le plus besoin. Le dépôt l'avait déjà relevé deux
+    fois pour cette raison (#616160 → #808080 → #9a9a97, voir
+    `scripts/check-contraste.mjs` et `docs/PRINCIPE-CONFORT.md`), et le
+    contrôle échoue sous le seuil.
+
+    C'est le même arbitrage que le paquet fait lui-même pour la version muette
+    d'`EmptyState` — il y prend le contrepied du composant actuel au nom de la
+    lisibilité. On applique ici sa logique à son propre chiffre : la sourdine
+    reste à #9a9a97 (7,27:1 sur le fond, 6,31 au pire cas).
+  */
+  --color-text-secondary: #a3a3a0;
   --color-text-muted: #9a9a97;
+  /* Le corps long — un cran sous le titre, pour les paragraphes qui se lisent. */
+  --color-text-body: #e4e4e1;
 
   /* "Accent" is now a near-white highlight — monochrome, not a colour */
   --color-accent: #ededed;
   --color-accent-hover: #ffffff;
   --color-accent-muted: rgba(255, 255, 255, 0.08);
+
+  /*
+    LE SIGNAL — l'ambre, et pourquoi il n'est PAS `--accent`
+    ═══════════════════════════════════════════════════════
+
+    `--accent` vaut #ededed : une encre presque blanche qui sert de FOND aux
+    boutons primaires (`bg-accent text-bg`, 305 occurrences mesurées dans
+    `src/`). Le basculer en ambre aurait rendu ambre chacun de ces 305
+    boutons — et la règle qui tient toute la direction, UN SEUL OBJET AMBRE
+    PAR ÉCRAN, serait morte à la première page. L'ambre aurait cessé d'être
+    un signal pour devenir une couleur de marque.
+
+    D'où un jeton distinct. Ses trois règles d'emploi, à ne pas casser :
+
+      1. UN SEUL objet ambre par écran. Pas un par carte, pas un par colonne.
+         `scripts/check-signal.mjs` le compte et échoue au-delà d'un.
+      2. TOUJOURS en plaque pleine à encre `--signal-ink`. Jamais de l'ambre
+         en texte sur fond sombre pour du corps de texte — sauf un chiffre à
+         l'échelle d'un titre (≥ 27 px), où le contraste suffit (8,11:1 sur
+         le fond).
+      3. L'ambre marque CE QUI DEMANDE UNE DÉCISION — un J-11, un segment en
+         retard, une catégorie dépassée, un créneau déjà pris. Jamais « Bon »,
+         jamais « Payée », jamais un état sain : ceux-là restent en encre.
+
+    Le rouge `--color-danger` reste le critique et ne bouge pas. Ambre et
+    rouge ne cohabitent jamais sur le même objet.
+  */
+  --color-signal: #d09a4a;
+  --color-signal-ink: #080808;
+  --color-signal-glow: rgba(208, 154, 74, 0.85);
+  --color-signal-line: rgba(208, 154, 74, 0.45);
+  /* L'ambre en fond très dilué — bandes d'information, jamais un objet. */
+  --color-signal-muted: rgba(208, 154, 74, 0.12);
 
   /* Status: monochrome, EXCEPT the single reserved signal red for critical */
   --color-success: #d8d8d5;
@@ -498,13 +582,79 @@ button:not(:disabled):not(.card-interactive):active,
   background-color: var(--color-bg);
 }
 
+/*
+ * TROIS VARIANTES DE PANNEAU, PARCE QU'UN ÉCRAN A UNE HIÉRARCHIE
+ * ═════════════════════════════════════════════════════════════
+ *
+ * Une seule forme de carte pour tout un écran, c'est un mur : rien n'y domine,
+ * donc l'œil n'a nulle part où se poser en premier. Le système de design en
+ * demande trois, et leur différence est de MATIÈRE, pas de taille :
+ *
+ *   .panel         carte calme     #0d0d0d + #1f1f1f, SANS ombre — le secondaire
+ *   .panel-raised  carte dominante #121212 + #262626 + liseré + ombre longue
+ *   .panel-sheet   feuille         #111111 + #2a2a2a — le document
+ *
+ * Le LISERÉ INTERNE clair (`inset 0 1px 0 rgba(255,255,255,.06)`) est le détail
+ * qui sépare « bloc » de « carte » : il simule la lumière tombant sur l'arête
+ * haute. Il ne va QUE sur les dominantes — posé partout, il ne dirait plus rien.
+ *
+ * Une à deux dominantes par écran. Au-delà, plus rien ne domine.
+ */
 .panel {
   position: relative;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+}
+
+/*
+ * La carte dominante — l'objet dont l'écran parle. Ombre longue et basse : une
+ * ombre courte colle l'objet au fond, une ombre longue le décolle.
+ */
+.panel-raised {
+  position: relative;
+  background: var(--color-elevated);
+  border: 1px solid var(--color-border-raised);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.045),
-    0 1px 2px rgba(0, 0, 0, 0.5);
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 26px 50px -24px rgba(0, 0, 0, 1);
+}
+
+/* La même, pleine largeur : l'ombre s'allonge avec l'objet, sinon elle rétrécit. */
+.panel-raised-wide {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 34px 62px -28px rgba(0, 0, 0, 1);
+}
+
+/*
+ * La feuille — un devis, un rapport, un passage de contrôle. Ce n'est pas une
+ * carte : c'est un document posé, donc bord plus marqué et ombre plus basse.
+ */
+.panel-sheet {
+  position: relative;
+  background: var(--color-sheet);
+  border: 1px solid var(--color-border-sheet);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 40px 70px -30px rgba(0, 0, 0, 1);
+}
+
+/*
+ * LA PLAQUE DE SIGNAL — la seule façon de poser l'ambre.
+ *
+ * Pleine, à encre `--signal-ink`, jamais du texte ambre sur fond sombre (voir
+ * la règle 2 du jeton). La lueur est courte et sans couleur débordante : elle
+ * décolle la plaque du fond, elle ne la fait pas briller.
+ */
+.signal-plate {
+  background: var(--color-signal);
+  color: var(--color-signal-ink);
+  box-shadow: 0 0 22px -6px var(--color-signal-glow);
+}
+
+/* Le marqueur d'un élément qui demande une décision, sans plaque : un filet. */
+.signal-rule {
+  border-color: var(--color-signal-line);
 }
 
 /*
@@ -555,11 +705,37 @@ button:not(:disabled):not(.card-interactive):active,
  */
 .eyebrow {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9.5px;
+  /* La graisse et l'interlettrage, c'est ce qui la fait lire comme une gravure
+     plutôt que comme un petit titre. Le système de design monte à 700. */
+  font-weight: 700;
   line-height: 1;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--color-text-muted);
+}
+
+/*
+ * LES ICÔNES, ET LE REPROCHE « TROP FINES »
+ * ─────────────────────────────────────────
+ * Le jeton d'icône de navigation : un carré de 26 px, fond un cran au-dessus de
+ * la barre, bord discret, rayon 6 px. C'est l'un des deux seuls rayons admis du
+ * système (avec 50 % sur les avatars) — tout le reste est à angles vifs.
+ */
+.icon-token {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: #151515;
+  border: 1px solid #242424;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 /*

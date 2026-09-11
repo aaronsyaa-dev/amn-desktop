@@ -195,7 +195,7 @@ export function TeamScreen() {
               : 'border-border text-text-secondary hover:text-text-primary'
           }`}
         >
-          <Search size={16} strokeWidth={1.75} />
+          <Search size={16} strokeWidth={1.9} />
         </button>
       </div>
 
@@ -341,7 +341,7 @@ function PresenceBar({ currentEmail }: { currentEmail?: string }) {
                   aria-label={t('equipe.appeler', { nom: profile.name })}
                   className="ml-1 flex h-9 w-9 items-center justify-center rounded-full border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <Phone size={16} strokeWidth={1.75} />
+                  <Phone size={16} strokeWidth={1.9} />
                 </button>
               )}
             </div>
@@ -398,7 +398,7 @@ function ActivityLogSection() {
         onClick={() => setOuvert((v) => !v)}
         className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium text-text-primary"
       >
-        <History size={15} strokeWidth={1.75} className="text-text-muted" />
+        <History size={15} strokeWidth={1.9} className="text-text-muted" />
         {t('equipe.activite.titre')}
         <span className="ml-auto font-mono text-[10px] uppercase tracking-widest text-text-muted">
           {ouvert ? t('equipe.activite.replier') : t('equipe.activite.deplier')}
@@ -548,7 +548,7 @@ function MessageSearch({
       className="overflow-hidden rounded-xl border border-border bg-surface"
     >
       <div className="flex items-center gap-2.5 border-b border-border px-3 py-2.5">
-        <Search size={15} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
+        <Search size={15} strokeWidth={1.9} className="flex-shrink-0 text-text-muted" />
         <input
           autoFocus
           value={query}
@@ -557,7 +557,7 @@ function MessageSearch({
           className="w-full bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
         />
         <button type="button" onClick={onClose} aria-label="Fermer la recherche" className="text-text-muted hover:text-text-primary">
-          <X size={15} strokeWidth={1.75} />
+          <X size={15} strokeWidth={1.9} />
         </button>
       </div>
       {query.trim() && (
@@ -762,7 +762,7 @@ function AjmaniThinkingBubble() {
 function AjmaniAvatar() {
   return (
     <span className="mt-5 flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-full bg-accent-muted text-accent ring-1 ring-accent/40">
-      <Sparkles size={15} strokeWidth={1.75} />
+      <Sparkles size={15} strokeWidth={1.9} />
     </span>
   );
 }
@@ -988,7 +988,7 @@ function BubbleActions({
         aria-label="Réagir"
         className="flex h-9 w-9 items-center justify-center rounded text-text-muted hover:bg-surface-hover hover:text-text-primary"
       >
-        <SmilePlus size={13} strokeWidth={1.75} />
+        <SmilePlus size={13} strokeWidth={1.9} />
       </button>
       <button
         type="button"
@@ -996,7 +996,7 @@ function BubbleActions({
         aria-label="Répondre"
         className="flex h-9 w-9 items-center justify-center rounded text-text-muted hover:bg-surface-hover hover:text-text-primary"
       >
-        <CornerUpLeft size={13} strokeWidth={1.75} />
+        <CornerUpLeft size={13} strokeWidth={1.9} />
       </button>
       <button
         type="button"
@@ -1006,7 +1006,7 @@ function BubbleActions({
           pinned ? 'text-text-primary' : 'text-text-muted hover:text-text-primary'
         }`}
       >
-        {pinned ? <PinOff size={13} strokeWidth={1.75} /> : <Pin size={13} strokeWidth={1.75} />}
+        {pinned ? <PinOff size={13} strokeWidth={1.9} /> : <Pin size={13} strokeWidth={1.9} />}
       </button>
       {/*
         Le même geste en deux temps que partout ailleurs (Clients, Devis,
@@ -1342,7 +1342,7 @@ function Composer({
                   <img src={att.dataUrl} alt={att.name} className="h-16 w-16 rounded-md border border-border object-cover" />
                 ) : (
                   <div className="flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-md border border-border bg-bg text-text-muted">
-                    {kind === 'video' ? <Film size={18} strokeWidth={1.75} /> : <Mic size={18} strokeWidth={1.75} />}
+                    {kind === 'video' ? <Film size={18} strokeWidth={1.9} /> : <Mic size={18} strokeWidth={1.9} />}
                     <span className="px-1 text-[9px] uppercase tracking-wider">{kind === 'video' ? 'Vidéo' : 'Vocal'}</span>
                   </div>
                 )}
@@ -1373,13 +1373,13 @@ function Composer({
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
             >
               {item.kind === 'site' ? (
-                <Globe size={14} strokeWidth={1.75} className="text-text-muted" />
+                <Globe size={14} strokeWidth={1.9} className="text-text-muted" />
               ) : item.kind === 'client' ? (
-                <Building2 size={14} strokeWidth={1.75} className="text-text-muted" />
+                <Building2 size={14} strokeWidth={1.9} className="text-text-muted" />
               ) : item.kind === 'task' ? (
-                <CheckSquare size={14} strokeWidth={1.75} className="text-text-muted" />
+                <CheckSquare size={14} strokeWidth={1.9} className="text-text-muted" />
               ) : (
-                <Sparkles size={14} strokeWidth={1.75} className="text-accent" />
+                <Sparkles size={14} strokeWidth={1.9} className="text-accent" />
               )}
               <span className="min-w-0 flex-1 truncate">{item.name}</span>
               <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">
@@ -1415,7 +1415,7 @@ function Composer({
           title="Image ou vidéo"
           className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
         >
-          <ImageIcon size={16} strokeWidth={1.75} />
+          <ImageIcon size={16} strokeWidth={1.9} />
         </button>
         <VoiceRecorder onRecorded={(att) => setPendingAttachments((prev) => [...prev, att])} />
         <div className="relative flex-shrink-0">
@@ -1427,7 +1427,7 @@ function Composer({
               templatesOpen ? 'text-text-primary' : 'text-text-muted'
             }`}
           >
-            <MessageSquarePlus size={16} strokeWidth={1.75} />
+            <MessageSquarePlus size={16} strokeWidth={1.9} />
           </button>
           {templatesOpen && (
             <>

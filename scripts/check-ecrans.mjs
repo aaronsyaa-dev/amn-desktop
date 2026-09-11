@@ -188,8 +188,15 @@ for (const { nom, chemin } of fichiers) {
 
 /* ─── Le composant lui-même reste la source ──────────────────────────────── */
 
+/*
+  La taille a changé avec le système de design (26 px, 32 en fenêtre large,
+  contre 22/24 avant) : c'est le titre d'écran qui cessait de se distinguer
+  d'un titre de carte. La RÈGLE que ce contrôle tient, elle, n'a pas bougé —
+  une seule source, dans le composant, jamais recopiée écran par écran. Seul
+  le motif suit la nouvelle valeur.
+*/
 const composant = fs.readFileSync(path.join(ROOT, 'src/components/ScreenHeader.tsx'), 'utf-8');
-if (!/text-\[22px\][\s\S]{0,120}sm:text-2xl/.test(composant)) {
+if (!/text-\[26px\][\s\S]{0,160}sm:text-\[32px\]/.test(composant)) {
   failures.push(
     '`ScreenHeader` n’impose plus une taille de titre unique : la règle que ce ' +
       'contrôle fait respecter ailleurs n’a plus de source.',

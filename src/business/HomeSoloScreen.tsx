@@ -367,11 +367,21 @@ function CadranJournee({
       >
         Journée
       </span>
+      {/*
+        L'ANNEAU N'EST PLUS AMBRE — la règle « un seul objet ambre par écran »
+        appliquée à l'écran qui sert de référence à tous les autres.
+
+        Cet anneau et la plaque du rendez-vous étaient tous deux ambre : deux
+        signaux sur le même écran, donc plus de signal du tout. Et à la
+        relecture, l'anneau ne demande aucune décision — il dit qu'il est
+        15 h 30. La règle 3 du jeton tranche : l'ambre marque ce qui appelle un
+        geste, jamais un état. L'anneau passe donc en gris de remplissage, la
+        plaque du rendez-vous reste le seul ambre de l'Accueil.
+      */}
       <div
         className="mt-4 flex h-[132px] w-[132px] items-center justify-center rounded-full"
         style={{
-          background: `conic-gradient(${AMBRE} 0deg ${deg}deg, #2a2a2a ${deg}deg 360deg)`,
-          boxShadow: '0 0 40px -10px rgba(208,154,74,.35)',
+          background: `conic-gradient(#4a4a48 0deg ${deg}deg, #2a2a2a ${deg}deg 360deg)`,
         }}
       >
         <div
@@ -504,8 +514,14 @@ function AEncaisser({
 
   return (
     <section className="relative border p-5" style={{ background: '#101010', borderColor: '#242424' }}>
-      <span className="absolute left-[-1px] top-[-1px] h-0.5 w-5" style={{ background: AMBRE }} />
-      <span className="absolute left-[-1px] top-[-1px] h-5 w-0.5" style={{ background: AMBRE }} />
+      {/*
+        Les repères d'angle passent de l'ambre au gris : l'ambre n'est JAMAIS
+        décoratif (règle 3 du jeton), et deux repères de 5 px ne demandent
+        aucune décision. Le signal de cet encart, c'est le montant et le rouge
+        du retard en dessous — pas ses coins.
+      */}
+      <span className="absolute left-[-1px] top-[-1px] h-0.5 w-5" style={{ background: '#4a4a48' }} />
+      <span className="absolute left-[-1px] top-[-1px] h-5 w-0.5" style={{ background: '#4a4a48' }} />
       <div className="flex items-baseline justify-between">
         <span className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: TEXTE_MUET }}>
           À encaisser
@@ -541,8 +557,9 @@ function AEncaisser({
               className="flex-1"
               style={{
                 height: `${hauteur}%`,
-                background: dernier ? AMBRE : `rgba(255,255,255,${0.06 + (i / serie.points.length) * 0.16})`,
-                boxShadow: dernier ? '0 0 16px -2px rgba(208,154,74,.7)' : undefined,
+                /* Le dernier point est le plus clair, pas ambre : une barre de
+                   série dit où l'on en est, elle ne demande pas de décision. */
+                background: dernier ? '#4a4a48' : `rgba(255,255,255,${0.06 + (i / serie.points.length) * 0.16})`,
               }}
             />
           );
@@ -628,7 +645,7 @@ function FirstRunCard() {
                 : 'flex items-center gap-1.5 border border-border px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary'
             }
           >
-            {g.fort ? <Plus size={14} strokeWidth={2} /> : <g.icone size={14} strokeWidth={1.75} />}
+            {g.fort ? <Plus size={14} strokeWidth={2} /> : <g.icone size={14} strokeWidth={1.9} />}
             {g.label}
           </Link>
         ))}

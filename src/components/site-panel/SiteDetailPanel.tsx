@@ -151,7 +151,7 @@ function ActivitySection({ site, events }: { site: DerivedSite; events: RemoteEv
       <div className="mt-4 border border-border bg-surface p-4">
         <div className="mb-2 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <Users size={14} strokeWidth={1.75} />
+            <Users size={14} strokeWidth={1.9} />
             Volume d’événements · 24h
           </div>
           <span className="tnum text-xs text-text-secondary">
@@ -241,7 +241,7 @@ function TimelineItem({ event, isLast }: { event: RemoteEvent; isLast: boolean }
       <span
         className={`relative z-10 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ring-1 ${severity.bg} ${severity.text} ${severity.ring}`}
       >
-        <Icon size={15} strokeWidth={1.75} />
+        <Icon size={15} strokeWidth={1.9} />
       </span>
       <div className="min-w-0 flex-1 pt-0.5">
         <div className="flex items-center justify-between gap-2">

@@ -44,7 +44,7 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
         // mobile y paraîtrait grossière.
         className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary transition-colors hover:text-text-primary md:hidden"
       >
-        <Menu size={18} strokeWidth={1.75} />
+        <Menu size={18} strokeWidth={1.9} />
       </button>
 
       {/* Mobile : l'organisation active, en permanence et sans rien ouvrir.
@@ -78,7 +78,7 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
         onClick={open}
         className="input-focus group hidden flex-1 items-center gap-2.5 border border-border bg-surface px-3 py-2 text-sm text-text-muted transition-colors duration-200 hover:border-border-strong md:flex md:max-w-xs"
       >
-        <Search size={15} strokeWidth={1.75} />
+        <Search size={15} strokeWidth={1.9} />
         <span className="flex-1 text-left">{t('chrome.rechercher')}</span>
         <kbd className="flex items-center gap-0.5 border border-border px-1.5 py-0.5 font-mono text-[10px] font-medium text-text-secondary">
           {modKey} K
@@ -92,7 +92,7 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
         aria-label={t('chrome.rechercher')}
         className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary transition-colors hover:text-text-primary md:hidden"
       >
-        <Search size={17} strokeWidth={1.75} />
+        <Search size={17} strokeWidth={1.9} />
       </button>
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
@@ -104,7 +104,7 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
           onClick={() => openAssistant()}
           className="flex h-11 items-center gap-2 border border-border-strong bg-surface px-3 text-sm font-medium text-text-primary transition-colors duration-200 hover:bg-surface-hover md:h-9"
         >
-          <Sparkles size={16} strokeWidth={1.75} />
+          <Sparkles size={16} strokeWidth={1.9} />
           <span className="hidden sm:inline">Ajmani</span>
         </button>
         <span className="hidden sm:flex">

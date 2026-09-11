@@ -146,7 +146,7 @@ export function AssistanceScreen() {
         <StaggerItem className="lg:col-span-3">
           <section className="panel p-4">
             <p className="eyebrow mb-3 flex items-center gap-2">
-              <MessageSquareText size={13} strokeWidth={1.75} />
+              <MessageSquareText size={13} strokeWidth={1.9} />
               Vos demandes
             </p>
             {demandes === null && !erreur && (

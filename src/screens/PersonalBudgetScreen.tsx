@@ -68,7 +68,7 @@ export function PersonalBudgetScreen() {
               onClick={reset}
               className="flex min-h-11 items-center gap-2 border border-border px-3 text-xs text-text-muted transition-colors hover:text-text-primary md:min-h-0 md:py-2"
             >
-              <RotateCcw size={13} strokeWidth={1.75} />
+              <RotateCcw size={13} strokeWidth={1.9} />
               Repartir à zéro
             </button>
           }
@@ -108,7 +108,7 @@ export function PersonalBudgetScreen() {
           {/* ------------------------------ Ce que ça donne ----------------------- */}
           <section className="border border-border bg-surface p-4">
             <h2 className="mb-3 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">
-              <Wallet size={13} strokeWidth={1.75} />
+              <Wallet size={13} strokeWidth={1.9} />
               Ce qui reste
             </h2>
 
@@ -151,7 +151,7 @@ export function PersonalBudgetScreen() {
             </dl>
 
             <p className="mt-3 flex items-start gap-2 border border-border bg-bg px-3 py-2 text-[11px] leading-relaxed text-text-muted">
-              <Laptop size={13} strokeWidth={1.75} className="mt-px flex-shrink-0" />
+              <Laptop size={13} strokeWidth={1.9} className="mt-px flex-shrink-0" />
               Ces chiffres restent sur cet ordinateur. Ils ne partent sur aucun serveur, ne suivent
               pas sur le téléphone, et personne d’autre ne les voit. Ils ne sont pas chiffrés pour
               autant&nbsp;: ce qui doit l’être va dans le Coffre-fort.

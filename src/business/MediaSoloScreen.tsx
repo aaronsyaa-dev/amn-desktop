@@ -212,7 +212,7 @@ export function MediaSoloScreen() {
                   {relativeTime(item.createdAt)}
                 </span>
                 <div className="flex items-center gap-1">
-                  <Contact size={11} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
+                  <Contact size={11} strokeWidth={1.9} className="flex-shrink-0 text-text-muted" />
                   <select
                     value={item.clientId === null ? '' : String(item.clientId)}
                     onChange={(e) => relink(item.id, e.target.value)}

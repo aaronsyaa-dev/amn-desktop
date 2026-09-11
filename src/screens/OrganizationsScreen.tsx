@@ -146,7 +146,7 @@ export function OrganizationsScreen() {
       <StaggerItem>
         <div className="flex flex-col gap-2">
           <label className="input-focus flex min-h-11 items-center gap-2 rounded-lg border border-border bg-surface px-3">
-            <Search size={15} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
+            <Search size={15} strokeWidth={1.9} className="flex-shrink-0 text-text-muted" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Chercher une organisation…" aria-label="Chercher une organisation" className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted" />
             {parc.loading && <Loader2 size={14} className="animate-spin text-text-muted" />}
           </label>
@@ -183,7 +183,7 @@ export function OrganizationsScreen() {
       <StaggerItem>
         {parc.rows.length === 0 && !parc.loading ? (
           <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-surface py-12 text-center">
-            <Building2 size={22} strokeWidth={1.5} className="text-text-muted" />
+            <Building2 size={22} strokeWidth={1.9} className="text-text-muted" />
             <p className="text-sm font-medium text-text-primary">{parc.total === 0 && !q && Object.keys(filtres).length <= 1 ? 'Aucune organisation cliente' : 'Aucune organisation ne correspond'}</p>
             <p className="max-w-sm text-sm text-text-secondary">{parc.total === 0 && !q ? 'La création génère l’organisation, son compte propriétaire et son accès en une fois.' : 'Changez un filtre ou effacez la recherche.'}</p>
           </div>
@@ -220,10 +220,10 @@ export function OrganizationsScreen() {
                       {entering === org.id ? '…' : 'Ouvrir'}
                     </button>
                     <button type="button" onClick={() => void ouvrirDossier(org.id)} disabled={dossierEnCours === org.id} title="Dossier interne : formule, modules, étiquettes, verrous, comptes" className="hidden min-h-11 items-center gap-1.5 border border-border px-2.5 font-mono text-[10px] uppercase tracking-wider text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:opacity-50 sm:flex md:min-h-0 md:py-1.5">
-                      <FolderLock size={12} strokeWidth={1.75} /> Dossier
+                      <FolderLock size={12} strokeWidth={1.9} /> Dossier
                     </button>
                     <button type="button" onClick={() => void toggleStatus(org)} disabled={pending === org.id} aria-label={org.status === 'suspended' ? `Réactiver ${org.name}` : `Suspendre ${org.name}`} title={org.status === 'suspended' ? 'Réactiver' : 'Suspendre'} className="hidden min-h-11 items-center border border-border px-2.5 text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:opacity-50 sm:flex md:min-h-0 md:py-1.5">
-                      {org.status === 'suspended' ? <ShieldCheck size={12} strokeWidth={1.75} /> : <ShieldOff size={12} strokeWidth={1.75} />}
+                      {org.status === 'suspended' ? <ShieldCheck size={12} strokeWidth={1.9} /> : <ShieldOff size={12} strokeWidth={1.9} />}
                     </button>
                   </div>
                 </li>

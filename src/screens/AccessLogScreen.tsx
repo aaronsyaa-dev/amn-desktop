@@ -98,7 +98,7 @@ export function AccessLogScreen() {
               aria-label="Rafraîchir"
               className="rounded-lg border border-border p-2 text-text-secondary transition-colors hover:text-text-primary disabled:opacity-50"
             >
-              <RefreshCw size={15} strokeWidth={1.75} className={reloading ? 'animate-spin' : ''} />
+              <RefreshCw size={15} strokeWidth={1.9} className={reloading ? 'animate-spin' : ''} />
             </button>
           </div>
           }
@@ -118,7 +118,7 @@ export function AccessLogScreen() {
           <p className="py-8 text-center text-sm text-text-muted">Chargement…</p>
         ) : days.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-surface py-12 text-center">
-            <History size={22} strokeWidth={1.5} className="text-text-muted" />
+            <History size={22} strokeWidth={1.9} className="text-text-muted" />
             <p className="text-sm font-medium text-text-primary">Aucun accès consigné</p>
             <p className="max-w-sm text-sm text-text-secondary">
               Le journal se remplit dès qu’un dossier client est ouvert depuis le rail.

@@ -166,7 +166,7 @@ export function SitesDashboardScreen() {
           <div className="relative min-w-[200px] flex-1">
             <Search
               size={15}
-              strokeWidth={1.75}
+              strokeWidth={1.9}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
             />
             <input
@@ -181,7 +181,7 @@ export function SitesDashboardScreen() {
           <div className="relative flex items-center">
             <SlidersHorizontal
               size={14}
-              strokeWidth={1.75}
+              strokeWidth={1.9}
               className="pointer-events-none absolute left-3 text-text-muted"
             />
             <select
@@ -198,7 +198,7 @@ export function SitesDashboardScreen() {
             </select>
             <ChevronDown
               size={14}
-              strokeWidth={1.75}
+              strokeWidth={1.9}
               className="pointer-events-none absolute right-3 text-text-muted"
             />
           </div>
@@ -433,7 +433,7 @@ function SiteRow({
               panel === 'discussion' ? 'bg-white/5 text-text-primary' : ''
             }`}
           >
-            <MessageSquare size={14} strokeWidth={1.75} />
+            <MessageSquare size={14} strokeWidth={1.9} />
             {noteCount > 0 && <span className="font-mono text-[10px]">{noteCount}</span>}
           </button>
         </div>
@@ -454,7 +454,7 @@ function SiteRow({
               pinned ? 'text-accent' : 'text-text-muted hover:text-text-primary'
             }`}
           >
-            <Star size={14} strokeWidth={1.75} className={pinned ? 'fill-accent' : ''} />
+            <Star size={14} strokeWidth={1.9} className={pinned ? 'fill-accent' : ''} />
           </button>
           <button
             type="button"
@@ -463,7 +463,7 @@ function SiteRow({
             title="Renommer"
             className="flex h-9 w-9 items-center justify-center rounded text-text-muted transition-colors hover:bg-white/5 hover:text-text-primary"
           >
-            <Pencil size={14} strokeWidth={1.75} />
+            <Pencil size={14} strokeWidth={1.9} />
           </button>
           <button
             type="button"
@@ -472,7 +472,7 @@ function SiteRow({
             title="Supprimer"
             className="flex h-9 w-9 items-center justify-center rounded text-text-muted transition-colors hover:bg-danger-muted hover:text-danger"
           >
-            <Trash2 size={14} strokeWidth={1.75} />
+            <Trash2 size={14} strokeWidth={1.9} />
           </button>
         </div>
       </div>
@@ -549,7 +549,7 @@ function SiteUrlField({
         onClick={start}
         className="-my-2 flex items-center gap-1.5 py-2 font-mono text-[11px] text-text-muted transition-colors hover:text-text-primary"
       >
-        <Link2 size={12} strokeWidth={1.75} />
+        <Link2 size={12} strokeWidth={1.9} />
         Ajouter une URL
       </button>
     );
@@ -567,7 +567,7 @@ function SiteUrlField({
         // laisse 156 entre deux lignes.
         className="-my-2 flex min-w-0 items-center gap-1.5 py-2 font-mono text-[11px] text-text-secondary transition-colors hover:text-text-primary hover:underline"
       >
-        <ExternalLink size={11} strokeWidth={1.75} className="flex-shrink-0" />
+        <ExternalLink size={11} strokeWidth={1.9} className="flex-shrink-0" />
         <span className="truncate">{href.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
       </a>
       <button
@@ -577,7 +577,7 @@ function SiteUrlField({
         title="Modifier l’URL"
         className="flex-shrink-0 text-text-muted opacity-0 transition-opacity hover:text-text-primary group-hover:opacity-100"
       >
-        <Pencil size={11} strokeWidth={1.75} />
+        <Pencil size={11} strokeWidth={1.9} />
       </button>
     </span>
   );

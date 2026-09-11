@@ -369,7 +369,7 @@ function ProfileSection({ email }: { email: string }) {
           >
             <UserAvatar email={email} size={88} ring />
             <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/55 opacity-0 transition-opacity group-hover:opacity-100">
-              <Camera size={20} strokeWidth={1.75} className="text-white" />
+              <Camera size={20} strokeWidth={1.9} className="text-white" />
             </span>
           </button>
           {profile.photoDataUrl && (

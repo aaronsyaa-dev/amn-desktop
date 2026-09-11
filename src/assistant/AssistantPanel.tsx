@@ -158,7 +158,7 @@ function Header({
     <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
       <div className="flex items-center gap-3">
         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-muted text-accent">
-          <Sparkles size={18} strokeWidth={1.75} />
+          <Sparkles size={18} strokeWidth={1.9} />
         </span>
         <div>
           <h2 className="text-lg font-semibold text-text-primary">Ajmani</h2>
@@ -175,7 +175,7 @@ function Header({
           title="Nouvelle conversation"
           className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary"
         >
-          <MessageSquarePlus size={17} strokeWidth={1.75} />
+          <MessageSquarePlus size={17} strokeWidth={1.9} />
         </button>
         <button
           type="button"
@@ -186,7 +186,7 @@ function Header({
             historyOpen ? 'text-text-primary' : 'text-text-secondary'
           }`}
         >
-          <History size={17} strokeWidth={1.75} />
+          <History size={17} strokeWidth={1.9} />
         </button>
         <button
           type="button"
@@ -243,7 +243,7 @@ function HistoryDrawer({ onClose, onOpen }: { onClose: () => void; onOpen: (id: 
         </div>
         <div className="border-b border-border p-3">
           <div className="input-focus flex items-center gap-2 rounded-lg border border-border bg-bg px-2.5 py-1.5">
-            <Search size={14} strokeWidth={1.75} className="text-text-muted" />
+            <Search size={14} strokeWidth={1.9} className="text-text-muted" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -281,7 +281,7 @@ function HistoryDrawer({ onClose, onOpen }: { onClose: () => void; onOpen: (id: 
                     aria-label="Supprimer la conversation"
                     className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-text-muted opacity-0 transition-opacity hover:text-danger group-hover:opacity-100"
                   >
-                    <Trash2 size={13} strokeWidth={1.75} />
+                    <Trash2 size={13} strokeWidth={1.9} />
                   </button>
                 </div>
               ))}
@@ -307,7 +307,7 @@ function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
               : 'text-text-secondary hover:text-text-primary'
           }`}
         >
-          <Icon size={15} strokeWidth={1.75} />
+          <Icon size={15} strokeWidth={1.9} />
           {label}
           {tab === key && (
             <motion.span
@@ -438,7 +438,7 @@ function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
             ) : (
               <Mic
                 size={15}
-                strokeWidth={1.75}
+                strokeWidth={1.9}
                 style={
                   voixEtat === 'enregistrement'
                     ? { transform: `scale(${1 + voixNiveau * 0.35})`, transition: 'transform 60ms linear' }
@@ -474,7 +474,7 @@ function ChatTab({ onExport }: { onExport: (r: AssistantReport) => void }) {
             className={`flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors ${voixHaute ? 'text-accent' : 'text-text-muted hover:text-text-primary'}`}
             title="Réponse à voix haute"
           >
-            <Volume2 size={12} strokeWidth={1.75} />
+            <Volume2 size={12} strokeWidth={1.9} />
             {voixHaute ? 'Voix haute activée' : 'Voix haute'}
           </button>
         </div>
@@ -510,7 +510,7 @@ function WelcomeState({ onPrompt, enGarde = false }: { onPrompt: (text: string) 
     <div className="flex flex-col gap-6">
       <div>
         <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent-muted text-accent">
-          <Sparkles size={22} strokeWidth={1.75} />
+          <Sparkles size={22} strokeWidth={1.9} />
         </span>
         <h3 className="mt-4 text-lg font-semibold text-text-primary">
           {enGarde ? t('garde.chef.titre', { chef: NOM_DU_CHEF }) : 'Comment puis-je vous aider ?'}
@@ -651,7 +651,7 @@ function AnswerBubble({ blocks }: { blocks: import('./types').ReportBlock[] }) {
         title="Copier la réponse"
         className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md border border-border bg-bg text-text-muted opacity-0 transition-opacity hover:text-text-primary group-hover:opacity-100"
       >
-        {copied ? <Check size={12} strokeWidth={2.5} /> : <Copy size={12} strokeWidth={1.75} />}
+        {copied ? <Check size={12} strokeWidth={2.5} /> : <Copy size={12} strokeWidth={1.9} />}
       </button>
     </div>
   );
@@ -680,7 +680,7 @@ function ReportView({
           onClick={() => onExport(report)}
           className="flex flex-shrink-0 items-center gap-1.5 rounded-lg border border-border bg-surface-hover px-2.5 py-1.5 text-xs font-medium text-text-secondary transition-colors duration-200 hover:text-text-primary"
         >
-          <Download size={13} strokeWidth={1.75} />
+          <Download size={13} strokeWidth={1.9} />
           Exporter PDF
         </button>
       </div>
@@ -798,7 +798,7 @@ function SummaryTab() {
   return (
     <div className="h-full overflow-y-auto px-6 py-5">
       <div className="mb-4 flex items-center gap-2 text-xs text-text-muted">
-        <Sunrise size={14} strokeWidth={1.75} />
+        <Sunrise size={14} strokeWidth={1.9} />
         Généré automatiquement à {time}
       </div>
       <div className="rounded-2xl border border-border bg-surface p-5">
@@ -916,7 +916,7 @@ function WatchTab() {
               title="Rafraîchir maintenant"
               className="flex h-7 w-7 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:text-text-primary disabled:opacity-50"
             >
-              <RefreshCw size={13} strokeWidth={1.75} className={refreshing ? 'animate-spin' : ''} />
+              <RefreshCw size={13} strokeWidth={1.9} className={refreshing ? 'animate-spin' : ''} />
             </button>
           )}
         </div>
@@ -945,7 +945,7 @@ function WatchTab() {
 
       {feed?.degraded && items.length > 0 && (
         <div className="mb-3 flex items-center gap-2 rounded-lg border border-border bg-white/[0.03] px-3 py-2 text-xs text-text-muted">
-          <WifiOff size={13} strokeWidth={1.75} />
+          <WifiOff size={13} strokeWidth={1.9} />
           Certaines sources sont momentanément injoignables — contenu partiel.
         </div>
       )}
@@ -959,7 +959,7 @@ function WatchTab() {
 
       {state !== 'loading' && items.length === 0 && (
         <div className="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center">
-          <WifiOff size={22} strokeWidth={1.5} className="text-text-muted" />
+          <WifiOff size={22} strokeWidth={1.9} className="text-text-muted" />
           <p className="text-sm font-medium text-text-primary">Veille indisponible pour l’instant</p>
           <p className="max-w-xs text-sm text-text-secondary">
             {isElectron

@@ -60,7 +60,7 @@ export function NotificationCenter() {
         // les autres boutons de cette barre.
         className="relative flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary transition-colors duration-200 hover:text-text-primary md:h-9 md:w-9"
       >
-        <Bell size={17} strokeWidth={1.75} />
+        <Bell size={17} strokeWidth={1.9} />
         {criticalCount > 0 && (
           <span /*
               Mesurée 42 fois sur les écrans : du blanc sur `--color-danger`
@@ -118,7 +118,7 @@ export function NotificationCenter() {
                         <span
                           className={`mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg ${severity.bg} ${severity.text}`}
                         >
-                          <Icon size={14} strokeWidth={1.75} />
+                          <Icon size={14} strokeWidth={1.9} />
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">

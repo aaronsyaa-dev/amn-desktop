@@ -130,7 +130,7 @@ export function MobileBottomNav({
         className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2.5 text-text-muted transition-colors"
         style={{ minHeight: 56 }}
       >
-        <LayoutGrid size={20} strokeWidth={1.75} />
+        <LayoutGrid size={20} strokeWidth={1.9} />
         <span className="w-full truncate px-1 text-center text-[10px] leading-none">{libellePlus}</span>
       </button>
     </nav>

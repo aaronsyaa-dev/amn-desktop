@@ -355,7 +355,7 @@ export function SocDesk({
         {/* Country breakdown */}
         <section className="elev-1 flex flex-col rounded-2xl border border-border bg-surface">
           <header className="flex items-center gap-2 border-b border-border px-4 py-3">
-            <Globe2 size={15} strokeWidth={1.75} className="text-text-secondary" />
+            <Globe2 size={15} strokeWidth={1.9} className="text-text-secondary" />
             <h3 className="text-sm font-semibold text-text-primary">Origine des visiteurs</h3>
           </header>
           <div className="flex flex-col gap-2.5 px-4 py-4">
@@ -530,7 +530,7 @@ function BadgeExport({ sites }: { sites: OrgOverview['sites'] }) {
   return (
     <section className="elev-1 rounded-2xl border border-border bg-surface p-4">
       <div className="flex flex-wrap items-center gap-3">
-        <ShieldCheck size={15} strokeWidth={1.75} className="text-text-secondary" />
+        <ShieldCheck size={15} strokeWidth={1.9} className="text-text-secondary" />
         <h3 className="mr-auto text-sm font-semibold text-text-primary">
           Badge de sécurité à intégrer
         </h3>

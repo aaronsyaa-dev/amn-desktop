@@ -65,7 +65,7 @@ export function ConfirmDelete({
             title={label}
             className="flex h-6 w-6 items-center justify-center rounded text-text-muted transition-colors hover:bg-surface-hover hover:text-danger"
           >
-            <Trash2 size={size} strokeWidth={1.75} />
+            <Trash2 size={size} strokeWidth={1.9} />
           </motion.button>
         )}
       </AnimatePresence>

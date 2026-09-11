@@ -437,7 +437,7 @@ function EntryRow({
         aria-label="Modifier"
         className="flex h-11 w-9 flex-shrink-0 items-center justify-center text-text-muted transition-colors hover:text-text-primary"
       >
-        <Pencil size={14} strokeWidth={1.75} />
+        <Pencil size={14} strokeWidth={1.9} />
       </button>
       <button
         type="button"
@@ -451,7 +451,7 @@ function EntryRow({
         {confirmDelete ? (
           <span className="font-mono text-[9px] uppercase tracking-widest">{tr('hist.time.sur')}</span>
         ) : (
-          <Trash2 size={14} strokeWidth={1.75} />
+          <Trash2 size={14} strokeWidth={1.9} />
         )}
       </button>
     </div>

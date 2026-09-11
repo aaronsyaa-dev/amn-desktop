@@ -74,7 +74,7 @@ export function AjmaniBubble() {
         aria-label="Ouvrir Ajmani"
         className="fixed bottom-[72px] right-4 z-[55] flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-text-muted opacity-70 shadow-md transition-opacity duration-200 hover:opacity-100 md:bottom-5 md:right-5"
       >
-        <Sparkles size={15} strokeWidth={1.75} />
+        <Sparkles size={15} strokeWidth={1.9} />
       </button>
     );
   }

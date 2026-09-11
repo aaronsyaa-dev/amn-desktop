@@ -117,7 +117,7 @@ export function ExpensesScreen() {
             aria-label={tr('hist.expenses.categoriesEtBudgets')}
             className="flex h-11 w-11 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:h-9 md:w-9"
           >
-            <SlidersHorizontal size={16} strokeWidth={1.75} />
+            <SlidersHorizontal size={16} strokeWidth={1.9} />
           </button>
           <button
             type="button"

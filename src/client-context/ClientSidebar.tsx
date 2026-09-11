@@ -352,7 +352,7 @@ export function ClientSidebar({
                       />
                     )}
                     <span className="relative">
-                      <Icon size={19} strokeWidth={1.75} />
+                      <Icon size={19} strokeWidth={1.9} />
                     </span>
                     <span className="relative select-none whitespace-nowrap">{libelleNav(item)}</span>
                   </Link>
@@ -373,7 +373,7 @@ export function ClientSidebar({
                 : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
             }`}
           >
-            <ShieldCheck size={19} strokeWidth={1.75} />
+            <ShieldCheck size={19} strokeWidth={1.9} />
             <span className="select-none whitespace-nowrap">Administration</span>
           </Link>
           <button
@@ -381,7 +381,7 @@ export function ClientSidebar({
             onClick={() => void leaveOrganization()}
             className="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary md:min-h-0"
           >
-            <LogOut size={19} strokeWidth={1.75} />
+            <LogOut size={19} strokeWidth={1.9} />
             <span className="select-none whitespace-nowrap">Quitter le contexte</span>
           </button>
         </div>

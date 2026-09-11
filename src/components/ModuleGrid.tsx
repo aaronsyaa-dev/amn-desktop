@@ -114,7 +114,7 @@ export function ModuleGrid({
                 <>
                   <span className="flex items-start justify-between gap-2">
                     <span className={`transition-transform duration-200 ${ouvert ? 'text-text-primary group-hover:-translate-y-0.5' : 'text-text-muted'}`}>
-                      <Icon size={22} strokeWidth={1.5} />
+                      <Icon size={22} strokeWidth={1.9} />
                     </span>
                     <span
                       className={`rounded-sm border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider ${

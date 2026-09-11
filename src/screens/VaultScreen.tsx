@@ -158,7 +158,7 @@ export function VaultScreen() {
               title={tr('hist.vault.enregistrerUneCopieDe')}
               className="flex items-center gap-2 border border-border px-3 py-2.5 text-sm text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
             >
-              <Download size={15} strokeWidth={1.75} />
+              <Download size={15} strokeWidth={1.9} />
               <span className="hidden sm:inline">Copie de secours</span>
             </button>
           )}
@@ -216,7 +216,7 @@ export function VaultScreen() {
         <div className="relative min-w-[200px] flex-1">
           <Search
             size={15}
-            strokeWidth={1.75}
+            strokeWidth={1.9}
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
           />
           <input
@@ -273,7 +273,7 @@ export function VaultScreen() {
         >
           {visible.length === 0 ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
-              <KeyRound size={22} strokeWidth={1.5} className="text-text-muted" />
+              <KeyRound size={22} strokeWidth={1.9} className="text-text-muted" />
               <p className="text-sm text-text-secondary">
                 {entries.length === 0 ? tr('hist.vault.aucuneEntree') : tr('hist.vault.aucuneEntreeFiltres')}
               </p>
@@ -348,7 +348,7 @@ export function VaultScreen() {
             />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
-              <Lock size={26} strokeWidth={1.5} className="text-text-muted" />
+              <Lock size={26} strokeWidth={1.9} className="text-text-muted" />
               <p className="text-sm font-medium text-text-primary">{tr('hist.vault.selectionnezUneEntree')}</p>
               <p className="max-w-sm text-sm text-text-secondary">{tr('hist.vault.ouCreezEnUne')}</p>
             </div>
@@ -395,14 +395,14 @@ function VaultReader({
             onClick={onEdit}
             className="flex min-h-9 items-center gap-1.5 rounded-sm px-2 py-1 text-xs text-text-secondary hover:text-text-primary"
           >
-            <Pencil size={13} strokeWidth={1.75} />{tr('hist.vault.editer')}</button>
+            <Pencil size={13} strokeWidth={1.9} />{tr('hist.vault.editer')}</button>
           <button
             type="button"
             onClick={onRemove}
             aria-label={tr('hist.vault.supprimer')}
             className="flex h-9 w-9 items-center justify-center rounded text-text-muted hover:text-danger"
           >
-            <Trash2 size={15} strokeWidth={1.75} />
+            <Trash2 size={15} strokeWidth={1.9} />
           </button>
         </div>
       </div>
@@ -431,7 +431,7 @@ function VaultReader({
               aria-label={revealed ? 'Masquer le mot de passe' : 'Révéler le mot de passe'}
               className="flex-shrink-0 text-text-muted transition-colors hover:text-text-primary"
             >
-              {revealed ? <EyeOff size={15} strokeWidth={1.75} /> : <Eye size={15} strokeWidth={1.75} />}
+              {revealed ? <EyeOff size={15} strokeWidth={1.9} /> : <Eye size={15} strokeWidth={1.9} />}
             </button>
             <button
               type="button"
@@ -442,7 +442,7 @@ function VaultReader({
               {copiedField === 'password' ? (
                 <Check size={15} strokeWidth={2} className="text-success" />
               ) : (
-                <Copy size={15} strokeWidth={1.75} />
+                <Copy size={15} strokeWidth={1.9} />
               )}
             </button>
           </div>
@@ -498,7 +498,7 @@ function VaultField({
           aria-label={`Copier ${label.toLowerCase()}`}
           className="flex-shrink-0 text-text-muted transition-colors hover:text-text-primary"
         >
-          {copied ? <Check size={15} strokeWidth={2} className="text-success" /> : <Copy size={15} strokeWidth={1.75} />}
+          {copied ? <Check size={15} strokeWidth={2} className="text-success" /> : <Copy size={15} strokeWidth={1.9} />}
         </button>
       </div>
     </div>
@@ -592,7 +592,7 @@ function VaultEditor({
               aria-label={showPassword ? 'Masquer' : 'Révéler'}
               className="flex-shrink-0 text-text-muted transition-colors hover:text-text-primary"
             >
-              {showPassword ? <EyeOff size={15} strokeWidth={1.75} /> : <Eye size={15} strokeWidth={1.75} />}
+              {showPassword ? <EyeOff size={15} strokeWidth={1.9} /> : <Eye size={15} strokeWidth={1.9} />}
             </button>
           </div>
           {/*
@@ -609,7 +609,7 @@ function VaultEditor({
             }}
             className="flex min-h-11 w-fit items-center gap-1.5 border border-border px-3 text-xs text-text-secondary transition-colors hover:text-text-primary md:min-h-0 md:py-1.5"
           >
-            <KeyRound size={13} strokeWidth={1.75} />{tr('hist.vault.genererUnMotDe')}</button>
+            <KeyRound size={13} strokeWidth={1.9} />{tr('hist.vault.genererUnMotDe')}</button>
         </label>
 
         <label className="flex flex-col gap-1.5">

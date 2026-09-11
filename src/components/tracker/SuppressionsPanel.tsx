@@ -105,7 +105,7 @@ export function SuppressionsPanel() {
   return (
     <section className="elev-1 rounded-2xl border border-border bg-surface p-4">
       <div className="flex flex-wrap items-center gap-3">
-        <BellOff size={15} strokeWidth={1.75} className="text-text-secondary" />
+        <BellOff size={15} strokeWidth={1.9} className="text-text-secondary" />
         <h3 className="mr-auto text-sm font-semibold text-text-primary">Mis en sourdine</h3>
         <button
           type="button"
@@ -113,7 +113,7 @@ export function SuppressionsPanel() {
           aria-label="Relire"
           className="rounded-lg p-1.5 text-text-muted transition-colors hover:text-text-primary"
         >
-          <RotateCcw size={13} strokeWidth={1.75} />
+          <RotateCcw size={13} strokeWidth={1.9} />
         </button>
       </div>
 
@@ -191,9 +191,9 @@ export function SuppressionsPanel() {
             className="-my-2 flex w-full items-center gap-2 py-2 text-left text-[11px] font-medium text-text-muted transition-colors hover:text-text-secondary"
           >
             {historique ? (
-              <ChevronDown size={13} strokeWidth={1.75} />
+              <ChevronDown size={13} strokeWidth={1.9} />
             ) : (
-              <ChevronRight size={13} strokeWidth={1.75} />
+              <ChevronRight size={13} strokeWidth={1.9} />
             )}
             {revolues.length} règle{revolues.length > 1 ? 's' : ''} levée
             {revolues.length > 1 ? 's' : ''} ou expirée{revolues.length > 1 ? 's' : ''}

@@ -45,7 +45,7 @@ export function ActionButton({
             <Check size={16} strokeWidth={2.25} />
           </motion.span>
         ) : (
-          <Icon size={16} strokeWidth={1.75} />
+          <Icon size={16} strokeWidth={1.9} />
         )}
       </span>
       <span className="flex-1 text-left">{engaged ? activeLabel : label}</span>

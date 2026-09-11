@@ -170,7 +170,7 @@ function ScreenViewer({ stream, peerName }: { stream: MediaStream; peerName: str
         onClick={() => setHidden(false)}
         className="elev-2 fixed bottom-24 right-6 z-[236] flex items-center gap-2 rounded-xl border border-border-strong bg-surface px-3 py-2 text-xs text-text-secondary transition-colors hover:text-text-primary"
       >
-        <Monitor size={14} strokeWidth={1.75} />
+        <Monitor size={14} strokeWidth={1.9} />
         Revoir l’écran de {peerName}
       </button>
     );
@@ -197,7 +197,7 @@ function ScreenViewer({ stream, peerName }: { stream: MediaStream; peerName: str
           title="Plein écran"
           className="rounded-md p-1 text-text-muted transition-colors hover:text-text-primary"
         >
-          <Maximize2 size={14} strokeWidth={1.75} />
+          <Maximize2 size={14} strokeWidth={1.9} />
         </button>
         <button
           type="button"
@@ -206,7 +206,7 @@ function ScreenViewer({ stream, peerName }: { stream: MediaStream; peerName: str
           title="Masquer"
           className="rounded-md p-1 text-text-muted transition-colors hover:text-text-primary"
         >
-          <X size={14} strokeWidth={1.75} />
+          <X size={14} strokeWidth={1.9} />
         </button>
       </div>
       {/* Control strip. Requesting is one click; taking control is never
@@ -328,7 +328,7 @@ function ControlConsent() {
               transition={TRANSITION}
               className="elev-3 w-full max-w-sm rounded-2xl border border-border-strong bg-surface p-6"
             >
-              <ShieldAlert size={22} strokeWidth={1.75} className="text-warning" />
+              <ShieldAlert size={22} strokeWidth={1.9} className="text-warning" />
               <p className="mt-4 text-base font-semibold text-text-primary">
                 {profileFor(controlRequested).name} demande le contrôle de votre poste
               </p>
@@ -478,7 +478,7 @@ export function CallOverlay() {
                   aria-label="Refuser l’appel"
                   className="flex h-14 w-14 items-center justify-center rounded-full bg-danger-fill text-white transition-transform hover:scale-105"
                 >
-                  <PhoneOff size={22} strokeWidth={1.75} />
+                  <PhoneOff size={22} strokeWidth={1.9} />
                 </button>
                 <button
                   type="button"
@@ -486,7 +486,7 @@ export function CallOverlay() {
                   aria-label="Accepter l’appel"
                   className="flex h-14 w-14 items-center justify-center rounded-full bg-accent text-bg transition-transform hover:scale-105"
                 >
-                  <Phone size={22} strokeWidth={1.75} />
+                  <Phone size={22} strokeWidth={1.9} />
                 </button>
               </div>
             </motion.div>
@@ -530,7 +530,7 @@ export function CallOverlay() {
                     : 'border-border text-text-secondary hover:text-text-primary'
                 }`}
               >
-                {muted ? <MicOff size={16} strokeWidth={1.75} /> : <Mic size={16} strokeWidth={1.75} />}
+                {muted ? <MicOff size={16} strokeWidth={1.9} /> : <Mic size={16} strokeWidth={1.9} />}
               </button>
             )}
 
@@ -547,9 +547,9 @@ export function CallOverlay() {
                 }`}
               >
                 {sharingScreen ? (
-                  <MonitorOff size={16} strokeWidth={1.75} />
+                  <MonitorOff size={16} strokeWidth={1.9} />
                 ) : (
-                  <Monitor size={16} strokeWidth={1.75} />
+                  <Monitor size={16} strokeWidth={1.9} />
                 )}
               </button>
             )}
@@ -562,7 +562,7 @@ export function CallOverlay() {
                 title="Raccrocher"
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-danger-fill text-white transition-transform hover:scale-105"
               >
-                <PhoneOff size={16} strokeWidth={1.75} />
+                <PhoneOff size={16} strokeWidth={1.9} />
               </button>
             )}
           </motion.div>

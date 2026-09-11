@@ -91,7 +91,7 @@ export function LightboxProvider({
                   aria-label="Télécharger l'image"
                   className="flex h-9 w-9 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/10 hover:text-white"
                 >
-                  <Download size={17} strokeWidth={1.75} />
+                  <Download size={17} strokeWidth={1.9} />
                 </a>
                 <button
                   type="button"

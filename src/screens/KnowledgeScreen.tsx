@@ -108,7 +108,7 @@ export function KnowledgeScreen() {
                   }`}
                 >
                   {doc.id === selectedId && <span className="absolute left-0 top-0 h-full w-0.5 bg-accent" />}
-                  <BookOpen size={14} strokeWidth={1.75} className="mt-0.5 flex-shrink-0 text-text-muted" />
+                  <BookOpen size={14} strokeWidth={1.9} className="mt-0.5 flex-shrink-0 text-text-muted" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-text-primary">{doc.title || 'Sans titre'}</p>
                     <p className="font-mono text-[10px] text-text-muted">Modifié {relativeTime(doc.updatedAt)}</p>
@@ -186,7 +186,7 @@ function DocEditor({
           // 27 px sans déplacer quoi que ce soit sur la ligne.
           className="-m-1.5 p-1.5 text-text-muted hover:text-danger"
         >
-          <Trash2 size={15} strokeWidth={1.75} />
+          <Trash2 size={15} strokeWidth={1.9} />
         </button>
       </div>
       <textarea

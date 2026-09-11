@@ -142,7 +142,7 @@ export function PwaUpdateNotice() {
         >
           <RefreshCw
             size={16}
-            strokeWidth={1.75}
+            strokeWidth={1.9}
             className={`flex-shrink-0 text-text-secondary ${installing ? 'animate-spin' : ''}`}
           />
           <div className="min-w-0 flex-1">

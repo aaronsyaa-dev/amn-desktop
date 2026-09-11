@@ -51,7 +51,7 @@ export function HelpButton() {
         aria-label={t('chrome.aideRapide')}
         className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-text-muted transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary"
       >
-        <HelpCircle size={16} strokeWidth={1.75} />
+        <HelpCircle size={16} strokeWidth={1.9} />
       </button>
       <HelpOverlay open={open} onClose={() => setOpen(false)} />
     </>
@@ -143,7 +143,7 @@ function HelpOverlay({ open, onClose }: { open: boolean; onClose: () => void }) 
               {items.map((item) => (
                 <div key={item.title} className="flex gap-3.5 py-4">
                   <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-bg text-text-secondary">
-                    <item.icon size={15} strokeWidth={1.75} />
+                    <item.icon size={15} strokeWidth={1.9} />
                   </span>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
