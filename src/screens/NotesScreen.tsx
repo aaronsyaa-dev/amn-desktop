@@ -124,6 +124,22 @@ export function NotesScreen() {
   }, [notes, selectedId]);
 
   /*
+    LE CARNET S'OUVRE SUR UNE NOTE, pas sur « SÉLECTIONNEZ UNE NOTE ».
+
+    L'objet dominant de cet écran est « la note ouverte » : un carnet qu'on
+    ouvre sur une page blanche demande un clic avant de rien donner, et ce clic
+    n'a rien à trancher — on revient presque toujours à ce qu'on écrivait.
+    `notes` arrive déjà trié (épinglées d'abord, puis par date de modification),
+    donc `notes[0]` est exactement cette note-là.
+
+    `prev ?? …` et non une affectation : un choix déjà fait ne se fait pas
+    écraser à chaque arrivée de la synchro.
+  */
+  useEffect(() => {
+    if (visible.length > 0) setSelectedId((prev) => prev ?? visible[0].id);
+  }, [visible]);
+
+  /*
     Le dessin suit le même filtre que la liste. Sans ça, cliquer « Perso »
     laisserait le graphe montrer des notes d'équipe qui viennent de disparaître
     de la colonne d'à côté — deux vues du même carnet qui se contredisent.
@@ -398,7 +414,15 @@ export function NotesScreen() {
                       {note.pinned && <Pin size={11} strokeWidth={2} className="flex-shrink-0 fill-accent text-accent" />}
                       <span className="truncate">{note.title || 'Sans titre'}</span>
                     </p>
-                    <p className="font-mono text-[10px] text-text-muted">Modifié {relativeTime(note.updatedAt)}</p>
+                    {/* L'amorce, sur la note ouverte seulement : sur toutes les
+                        lignes, le rail devient un mur de texte et le titre —
+                        ce qu'on cherche — s'y perd. */}
+                    {note.id === selectedId && note.body.trim() && (
+                      <p className="mt-1 line-clamp-2 text-[12.5px] leading-[1.5] text-text-secondary">
+                        {note.body.trim()}
+                      </p>
+                    )}
+                    <p className="mt-1 font-mono text-[10px] text-text-muted">Modifié {relativeTime(note.updatedAt)}</p>
                   </div>
                 </motion.button>
               ))
@@ -531,6 +555,10 @@ function NoteEditor({
     [note, notes, onOuvrir, onCreer],
   );
 
+  /* Les étiquettes de CETTE note, lues dans son corps — la même source que
+     le carnet entier (`extraireTags`), jamais une seconde liste à tenir. */
+  const etiquettesDeLaNote = useMemo(() => extraireTags(body), [body]);
+
   const retro = useMemo(() => retroliens(graphe, note.id), [graphe, note.id]);
   const mentions = useMemo(() => mentionsNonLiees(note, notes, graphe), [note, notes, graphe]);
 
@@ -639,31 +667,9 @@ function NoteEditor({
             {note.scope === 'personal' ? 'Perso' : 'Équipe'}
           </span>
         )}
-        {/*
-          LE TITRE SE VALIDE QUAND ON QUITTE LE CHAMP, PAS À CHAQUE TOUCHE.
-
-          Renommer ne change pas que cette note : ça réécrit les `[[liens]]`
-          de toutes celles qui pointent ici. Le faire à chaque frappe
-          réécrirait le carnet vingt fois pour un titre de vingt lettres — et
-          chaque état intermédiaire produirait des liens vers des titres qui
-          n'ont jamais existé (« R », « Ré », « Réu »…).
-
-          Le corps, lui, continue de s'enregistrer au fil de la frappe : il ne
-          concerne que cette note.
-        */}
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => validerTitre()}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              e.currentTarget.blur();
-            }
-          }}
-          placeholder={tr('hist.notes.titreDeLaNote')}
-          className="min-w-0 flex-1 bg-transparent text-lg font-semibold text-text-primary outline-none placeholder:text-text-muted"
-        />
+        {/* Le titre a quitté cette barre : il appartient au document, pas au
+            chrome — voir la feuille, plus bas. */}
+        <div className="min-w-0 flex-1" />
         <SaveIndicator saved={saved} />
         <button
           type="button"
@@ -717,8 +723,61 @@ function NoteEditor({
         </div>
       </div>
 
+      {/*
+        UNE NOTE EST UN DOCUMENT, PAS LE CONTENU D'UN PANNEAU.
+
+        Le corps occupait tout le cadre, bord à bord, en 14 px de monospace :
+        une zone de saisie, pas une page. Le système de design donne à cet
+        écran un objet dominant — « la note ouverte » — et la feuille
+        (`panel-sheet`, #111111) est ce qui le rend lisible : fond creux
+        autour, document au centre, une largeur de lecture bornée. La même
+        feuille sert à l'écriture ET à la lecture, pour qu'on n'écrive pas
+        dans une chose puis qu'on relise dans une autre.
+
+        CET ÉCRAN N'A PAS D'AMBRE, et c'est écrit tel quel dans la table du
+        paquet de design : « aucun (écran sans décision) ». Une note ne demande
+        rien ; elle se lit. La maquette en dessine quand même quelques-uns —
+        la pastille « privée », le filet du bloc à vérifier — mais la table
+        fait foi sur ce point, et un écran sans décision qui porterait un
+        signal apprendrait à l'ignorer ailleurs.
+      */}
+      <div className="min-h-0 flex-1 overflow-y-auto bg-sunken p-4 sm:p-8">
+        <div className="panel-sheet mx-auto flex min-h-full max-w-[720px] flex-col p-6 sm:p-10">
+          {/*
+            LE TITRE SE VALIDE QUAND ON QUITTE LE CHAMP, PAS À CHAQUE TOUCHE.
+
+            Renommer ne change pas que cette note : ça réécrit les `[[liens]]`
+            de toutes celles qui pointent ici. Le faire à chaque frappe
+            réécrirait le carnet vingt fois pour un titre de vingt lettres — et
+            chaque état intermédiaire produirait des liens vers des titres qui
+            n'ont jamais existé (« R », « Ré », « Réu »…).
+
+            Le corps, lui, continue de s'enregistrer au fil de la frappe : il ne
+            concerne que cette note.
+          */}
+          {etiquettesDeLaNote.length > 0 && (
+            <p className="eyebrow mb-4">
+              {tr('hist.notes.etiquettesDe', { liste: etiquettesDeLaNote.join(' · ') })}
+            </p>
+          )}
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={() => validerTitre()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                e.currentTarget.blur();
+              }
+            }}
+            placeholder={tr('hist.notes.titreDeLaNote')}
+            className="w-full bg-transparent text-[26px] font-bold leading-[1.15] tracking-[-0.028em] text-text-primary outline-none placeholder:text-text-muted sm:text-[30px]"
+          />
+          {/* Le filet court sous le titre : il sépare sans fermer. */}
+          <span className="mb-6 mt-5 h-px w-24 bg-border-strong" aria-hidden />
+
       {preview ? (
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        <div className="min-h-0 flex-1">
           {body.trim() ? (
             <Markdown text={body} liens={branchement} />
           ) : (
@@ -766,7 +825,17 @@ function NoteEditor({
               }
             }}
             placeholder={tr('hist.notes.ecrivezIciGrasItalique')}
-            className="min-h-0 flex-1 resize-none bg-transparent p-4 font-mono text-sm leading-relaxed text-text-primary outline-none placeholder:text-text-muted"
+            /*
+              ON ÉCRIT DANS LA MÊME FONTE QU'ON LIT.
+
+              Le corps était en monospace : la police d'un fichier, pas d'une
+              note. Le markdown s'écrit très bien en proportionnel — c'est ce
+              que font les carnets qui se veulent des carnets — et c'est la
+              condition pour que la feuille d'écriture et la feuille de lecture
+              soient la MÊME page. Les marqueurs (`**`, `[[…]]`) restent
+              parfaitement visibles ; ce sont des signes, pas de l'alignement.
+            */
+            className="min-h-[40vh] flex-1 resize-none bg-transparent text-[15.5px] leading-[1.75] text-text-body outline-none [text-wrap:pretty] placeholder:text-text-muted"
           />
 
           {proposees.length > 0 && (
@@ -796,6 +865,8 @@ function NoteEditor({
           )}
         </div>
       )}
+        </div>
+      </div>
 
       {/*
         QUI PARLE DE CETTE NOTE.

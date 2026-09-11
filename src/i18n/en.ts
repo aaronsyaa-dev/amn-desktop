@@ -1524,6 +1524,7 @@ export const en = {
   'hist.notes.aucuneNoteNeCorrespond': 'No note matches.',
   'hist.notes.selectionnezUneNote': 'Select a note',
   'hist.notes.affichageDesNotes': 'Notes display',
+  'hist.notes.etiquettesDe': 'Tags: {liste}',
   'hist.notes.etiquettes': 'Tags',
   'hist.notes.titreDeLaNote': 'Note title',
   'hist.notes.supprimerLaNote': 'Delete the note',

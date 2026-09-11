@@ -1517,6 +1517,7 @@ export const fr: Dictionnaire = {
   'hist.notes.aucuneNoteNeCorrespond': 'Aucune note ne correspond.',
   'hist.notes.selectionnezUneNote': 'Sélectionnez une note',
   'hist.notes.affichageDesNotes': 'Affichage des notes',
+  'hist.notes.etiquettesDe': 'Étiquettes : {liste}',
   'hist.notes.etiquettes': 'Étiquettes',
   'hist.notes.titreDeLaNote': 'Titre de la note',
   'hist.notes.supprimerLaNote': 'Supprimer la note',
