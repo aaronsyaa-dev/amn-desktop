@@ -314,6 +314,36 @@ await poser('invoices', 'essai-fac-3', {
   quoteId: null,
 });
 
+/* ─── Abonnements ──────────────────────────────────────────────────────────── */
+
+/*
+  Deux échéances DÉPASSÉES à dessein : ce sont elles qui forment la file, et
+  l'unique ambre de l'écran Abonnements est la plaque « 2 à facturer ». Un bac à
+  sable où tout est à jour ne permet pas de la mesurer. Un abonnement suspendu
+  aussi, pour que le registre montre ses deux états.
+*/
+const ABOS = [
+  ['essai-abo-1', 'Maintenance du site', 'Camille Renaud', 24000, 'monthly', -10, true],
+  ['essai-abo-2', 'Supervision boutique', 'Hugo Marchand', 60000, 'quarterly', -4, true],
+  ['essai-abo-3', 'Hébergement et sauvegardes', 'Nadia Bouvier', 18000, 'monthly', 4, true],
+  ['essai-abo-4', 'Forfait retouches', 'Camille Renaud', 12000, 'monthly', 9, true],
+  ['essai-abo-5', 'Supervision annuelle', 'Hugo Marchand', 284000, 'yearly', 113, true],
+  ['essai-abo-6', 'Lettre mensuelle', 'Nadia Bouvier', 9000, 'monthly', 20, false],
+];
+for (const [cle, label, customerName, amountCents, period, dansJours, active] of ABOS) {
+  await poser('subscriptions', cle, {
+    label,
+    customerName,
+    customerEmail: '',
+    amountCents,
+    vatRate: 20,
+    period,
+    nextAt: jour(dansJours),
+    active,
+    createdAt: instant(-24 * 120),
+  });
+}
+
 /* ─── Dépenses et budgets ──────────────────────────────────────────────────── */
 
 /*

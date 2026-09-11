@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, ReceiptEuro, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FirstRun } from '../components/EmptyState';
 import { useSync, useCollection, uid } from '../state/SyncContext';
@@ -77,6 +77,19 @@ export function SubscriptionsScreen() {
     void id;
   };
   const periode = (p: Period) => t(`abonnements.periode.${p}` as Parameters<typeof t>[0]);
+  /*
+    « Mensuel » plutôt que « Chaque mois ».
+    La forme longue est une phrase, et elle est juste dans le formulaire, où
+    l'on choisit un rythme. En étiquette de colonne elle devient une étiquette
+    de deux lignes qui pousse tout le reste : un adjectif dit la même chose en
+    un mot, et c'est ce que la maquette écrit.
+  */
+  const periodeCourte = (p: Period) => t(`abonnements.periodeCourte.${p}` as Parameters<typeof t>[0]);
+  /* « 15 sep. » — la date d'échéance se lit en un coup d'œil dans une ligne
+     de registre ; l'année ne sert que si elle n'est pas la courante, et une
+     échéance d'abonnement ne va jamais bien loin. */
+  const dateCourte = (iso: string) =>
+    new Date(`${iso}T00:00:00`).toLocaleDateString(locale, { day: '2-digit', month: 'short' });
 
   return (
     <motion.section variants={staggerContainer} initial="hidden" animate="show" className="flex flex-col gap-5">
@@ -85,10 +98,12 @@ export function SubscriptionsScreen() {
           eyebrow={t('commerce.surtitre', { module: t('abonnements.titre') })}
           title={t('abonnements.titre')}
           description={aFacturer.length > 0 ? t('abonnements.aFacturer', { n: aFacturer.length }) : t('abonnements.description')}
+          /* Le revenu récurrent est le CHIFFRE UNIQUE de l'écran, juste
+             dessous, à soixante-seize pixels. Le répéter ici en statistique de
+             quatorze en ferait deux chiffres qui se disputent le même rôle. */
           stats={[
             { label: t('abonnements.stat.actifs'), value: actifs.length },
-            { label: t('abonnements.stat.mrr'), value: formatCents(mrr), title: t('abonnements.stat.mrrTitre') },
-            { label: t('abonnements.stat.aFacturer'), value: aFacturer.length, emphasis: aFacturer.length > 0 },
+            { label: t('abonnements.stat.suspendus'), value: abonnements.length - actifs.length },
           ]}
           actions={
             <button type="button" onClick={() => setOuvert((v) => !v)} className="flex items-center gap-2 bg-accent px-4 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover">
@@ -118,33 +133,164 @@ export function SubscriptionsScreen() {
           <FirstRun title={t('abonnements.vide.titre')} action={{ label: t('abonnements.vide.action'), onClick: () => setOuvert(true) }}>{t('abonnements.vide.texte')}</FirstRun>
         </motion.div>
       ) : (
-        <motion.ul variants={staggerItem} className="flex flex-col gap-px overflow-hidden rounded-xl border border-border bg-border">
-          {abonnements.map((s) => {
-            const du = s.active && s.nextAt <= jour;
-            return (
-              <li key={s.id} className={`flex flex-wrap items-center justify-between gap-3 bg-surface px-4 py-3 ${s.active ? '' : 'opacity-60'}`}>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-text-primary">{s.label}{s.customerName && <span className="text-text-muted"> · {s.customerName}</span>}</p>
-                  <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                    {formatCents(s.amountCents)} · {periode(s.period)} · {s.active ? (du ? <span className="text-warning">{t('abonnements.echeanceDepassee')}</span> : t('abonnements.prochaine', { date: new Date(`${s.nextAt}T00:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'short' }) })) : t('abonnements.suspendu')}
+        <>
+          {/*
+            LE CHIFFRE UNIQUE — l'objet dominant de l'écran Abonnements.
+
+            Le revenu récurrent mensuel était une statistique d'en-tête, à
+            quatorze pixels, entre « actifs » et « à facturer ». C'est pourtant
+            la seule chose qu'on vient vérifier ici, et c'est un chiffre qui se
+            construit : il faut dire comment, sinon il a l'air sorti de nulle
+            part. La phrase l'explique, et la ventilation par périodicité montre
+            d'où vient chaque part.
+          */}
+          <motion.section variants={staggerItem} className="flex flex-col gap-8 lg:flex-row lg:items-start">
+            <div className="min-w-0 flex-1">
+              <p className="eyebrow mb-4">{t('abonnements.revenuRecurrent')}</p>
+              <p className="tnum font-mono text-[46px] font-bold leading-[0.92] tracking-[-0.04em] text-text-primary sm:text-[64px]">
+                {formatCents(mrr)}
+              </p>
+              <p className="mt-5 max-w-[52ch] text-[14.5px] leading-[1.7] text-text-secondary [text-wrap:pretty]">
+                {t('abonnements.chaqueForfaitRamene')}
+              </p>
+            </div>
+
+            {/* La ventilation : trois lignes, une barre proportionnelle chacune. */}
+            <div className="flex w-full flex-shrink-0 flex-col gap-2.5 lg:w-[320px]">
+              {(['monthly', 'quarterly', 'yearly'] as Period[]).map((p) => {
+                const part = actifs
+                  .filter((s) => s.period === p)
+                  .reduce((n, s) => n + Math.round(s.amountCents / MOIS[s.period]), 0);
+                return (
+                  <div key={p} className="flex items-center gap-3">
+                    <span className="eyebrow w-[86px] flex-shrink-0">{periodeCourte(p)}</span>
+                    <span className="h-[5px] min-w-0 flex-1 bg-[#1a1a1a]" aria-hidden>
+                      <span
+                        className="block h-full bg-[#4a4a48]"
+                        style={{ width: `${mrr > 0 ? (part / mrr) * 100 : 0}%` }}
+                      />
+                    </span>
+                    <span className="tnum w-[92px] flex-shrink-0 text-right font-mono text-[12.5px] text-text-secondary">
+                      {formatCents(part)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.section>
+
+          {/*
+            LA FILE — ce qui a dépassé son échéance et attend un geste.
+
+            L'AMBRE DE L'ÉCRAN est là, et nulle part ailleurs : la plaque
+            « 2 à facturer », en encre de signal comme l'exige la règle 2. Rien
+            à facturer, pas de file, pas d'ambre — l'écran redevient un chiffre
+            et un registre, ce qui est exactement ce qu'il faut lire.
+          */}
+          {aFacturer.length > 0 && (
+            <motion.section variants={staggerItem} className="panel-raised">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border-raised px-5 py-3.5">
+                <span className="signal-plate flex items-center gap-2 px-2.5 py-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.2em]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-signal-ink" aria-hidden />
+                  {t('abonnements.nAFacturer', { n: aFacturer.length })}
+                </span>
+                <span className="text-[13.5px] text-text-secondary">{t('abonnements.echeanceDepassee')}</span>
+                <span className="eyebrow ml-auto">{t('abonnements.leBrouillonPartDans')}</span>
+              </div>
+              <ul className="flex flex-col">
+                {aFacturer.map((s) => (
+                  <li
+                    key={s.id}
+                    className="flex flex-wrap items-center gap-x-5 gap-y-3 border-b border-[#1a1a1a] px-5 py-4 last:border-b-0"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[16px] font-semibold text-text-primary">{s.label}</p>
+                      <p className="eyebrow mt-1.5">
+                        {[s.customerName || null, periodeCourte(s.period), t('abonnements.echeanceLe', { date: dateCourte(s.nextAt) })]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </p>
+                    </div>
+                    <p className="tnum flex-shrink-0 font-mono text-[20px] font-semibold tracking-[-0.03em] text-text-primary">
+                      {formatCents(s.amountCents)}
+                    </p>
+                    <div className="flex flex-shrink-0 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void facturer(s)}
+                        className="min-h-11 bg-accent px-4 text-[12.5px] font-semibold text-bg shadow-[0_12px_26px_-12px_rgba(0,0,0,.9)] transition-colors hover:bg-accent-hover"
+                      >
+                        {t('abonnements.facturer')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void upsert('subscriptions', s.id, { ...s, active: false })}
+                        className="min-h-11 border border-border-strong px-4 text-[12.5px] font-semibold text-text-primary transition-colors hover:bg-surface-hover"
+                      >
+                        {t('abonnements.suspendre')}
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </motion.section>
+          )}
+
+          {/* LES FORFAITS — le registre, prochaine échéance d'abord. */}
+          <motion.section variants={staggerItem}>
+            <div className="mb-1 flex items-center gap-4">
+              <p className="eyebrow flex-shrink-0">{t('abonnements.lesForfaits')}</p>
+              <span className="h-px flex-1 bg-border-section" aria-hidden />
+              <p className="eyebrow flex-shrink-0">{t('abonnements.prochaineEcheanceDAbord')}</p>
+            </div>
+            <ul className="flex flex-col">
+              {abonnements.map((s) => (
+                <li
+                  key={s.id}
+                  className={`flex flex-wrap items-baseline gap-x-5 gap-y-2 border-b border-[#161616] py-3.5 last:border-b-0 ${
+                    s.active ? '' : 'text-text-muted'
+                  }`}
+                >
+                  <p className="min-w-0 flex-1 truncate text-[14.5px]">
+                    <span className={s.active ? 'font-semibold text-text-primary' : 'font-semibold'}>{s.label}</span>
+                    {s.customerName && <span className="text-text-muted"> · {s.customerName}</span>}
                   </p>
-                </div>
-                <div className="flex flex-shrink-0 flex-wrap gap-2">
-                  {s.active && (
-                    <button type="button" onClick={() => void facturer(s)} className={`flex min-h-11 items-center gap-1.5 border px-3 text-xs md:min-h-0 md:py-1.5 ${du ? 'border-accent text-text-primary' : 'border-border-strong text-text-primary hover:bg-surface-hover'}`}>
-                      <ReceiptEuro size={13} /> {t('abonnements.facturer')}
-                    </button>
-                  )}
-                  <button type="button" onClick={() => void upsert('subscriptions', s.id, { ...s, active: !s.active })} className="min-h-11 border border-border px-3 text-xs text-text-secondary hover:text-text-primary md:min-h-0 md:py-1.5">
+                  <span className="eyebrow w-[92px] flex-shrink-0">{periodeCourte(s.period)}</span>
+                  <span className="eyebrow w-[140px] flex-shrink-0">
+                    {s.active
+                      ? t('abonnements.prochaineCourt', { date: dateCourte(s.nextAt) })
+                      : t('abonnements.suspendu')}
+                  </span>
+                  <span
+                    className={`tnum w-[100px] flex-shrink-0 text-right font-mono text-[13.5px] font-semibold ${
+                      s.active ? 'text-text-primary' : ''
+                    }`}
+                  >
+                    {formatCents(s.amountCents)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void upsert('subscriptions', s.id, { ...s, active: !s.active })}
+                    className="flex-shrink-0 font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] text-text-muted underline-offset-4 transition-colors hover:text-text-primary hover:underline"
+                  >
                     {s.active ? t('abonnements.suspendre') : t('abonnements.reprendre')}
                   </button>
-                  <button type="button" onClick={() => void remove('subscriptions', s.id)} aria-label={t('abonnements.supprimer')} title={t('abonnements.supprimer')} className="flex min-h-11 items-center border border-border px-2.5 text-text-muted hover:text-danger md:min-h-0 md:py-1.5"><Trash2 size={13} /></button>
-                </div>
-              </li>
-            );
-          })}
-        </motion.ul>
+                  <button
+                    type="button"
+                    onClick={() => void remove('subscriptions', s.id)}
+                    aria-label={t('abonnements.supprimer')}
+                    title={t('abonnements.supprimer')}
+                    className="flex-shrink-0 text-text-muted transition-colors hover:text-danger"
+                  >
+                    <Trash2 size={13} strokeWidth={1.9} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </motion.section>
+        </>
       )}
+
     </motion.section>
   );
 }
