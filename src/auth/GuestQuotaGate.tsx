@@ -59,7 +59,7 @@ export function GuestQuotaGate({ quota }: { quota: GuestQuotaState }) {
     >
       <div className="w-full max-w-sm">
         <span className="mx-auto mb-5 flex h-12 w-12 items-center justify-center border border-border-strong">
-          <Hourglass size={20} strokeWidth={1.75} className="text-text-secondary" />
+          <Hourglass size={20} strokeWidth={1.9} className="text-text-secondary" />
         </span>
 
         <h1 className="text-xl font-bold tracking-tight text-text-primary">

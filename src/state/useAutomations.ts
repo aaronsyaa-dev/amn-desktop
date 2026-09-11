@@ -27,7 +27,7 @@ export interface AutomationData {
 export const DECLENCHEURS: Declencheur[] = ['formAnswer', 'invoiceOverdue', 'ticketOpened', 'prospectWon', 'stockLow'];
 export const ACTIONS: Action[] = ['task', 'logbook'];
 
-interface Source {
+export interface Source {
   id: string;
   titre: string;
   detail: string;
@@ -112,4 +112,53 @@ export function useAutomations(libelles: Record<Declencheur, (a: string, b: stri
 
   const produits = useMemo(() => [...tasks, ...logbook].filter((x) => x.id.startsWith('auto-')).length, [tasks, logbook]);
   return { regles, produits, enAttente: aFaire.length };
+}
+
+/**
+ * CE QUE CHAQUE RÈGLE A PRODUIT, ET CE QUI L'ATTEND SI ELLE EST SUSPENDUE.
+ *
+ * Deux chiffres, et ils ne veulent pas dire la même chose :
+ *
+ *   · `produits` est DURABLE — les enregistrements que cette règle a écrits,
+ *     reconnaissables à leur identifiant `auto-<règle>-<source>` ;
+ *   · `enAttente` n'a de sens QUE sur une règle suspendue. Une règle active ne
+ *     laisse rien en attente : `useAutomations` écrit dès qu'un poste est
+ *     ouvert, et « en attente » ne dure alors que le temps d'un rendu. Afficher
+ *     un compte qui clignote serait une fiction ; sur une règle suspendue, en
+ *     revanche, c'est une vérité durable — voilà ce qui s'accumule pendant
+ *     qu'elle ne tourne pas, et c'est une décision à prendre.
+ *
+ * D'où l'ambre de l'écran, que la table du paquet nomme « 2 en attente ».
+ */
+export function useAutomationsParRegle(
+  libelles: Record<Declencheur, (a: string, b: string) => string>,
+) {
+  const regles = useCollection<AutomationData>('automations');
+  const formAnswers = useCollection<{ formId: string; answers: Record<string, string> }>('formAnswers');
+  const forms = useCollection<{ title: string }>('forms');
+  const invoices = useCollection<{ number: string; status: string; paidAt: string; dueAt: string; billTo?: { name?: string } }>('invoices');
+  const tickets = useCollection<{ subject: string; client: string; status: string }>('tickets');
+  const prospects = useCollection<{ name: string; company: string; stage: string }>('prospects');
+  const stockItems = useCollection<{ name: string; quantity: number; minQuantity: number | null }>('stockItems');
+  const tasks = useCollection<{ title: string }>('tasks');
+  const logbook = useCollection<{ text: string }>('logbook');
+
+  return useMemo(() => {
+    const ecrits = [...tasks.map((x) => x.id), ...logbook.map((x) => x.id)];
+    const parRegle = new Map<string, { produits: number; enAttente: Source[] }>();
+    for (const regle of regles) {
+      const prefixe = `auto-${regle.id}-`;
+      const produits = ecrits.filter((id) => id.startsWith(prefixe)).length;
+      const sources = sourcesPour(
+        regle.trigger,
+        { formAnswers, forms, invoices, tickets, prospects, stockItems },
+        libelles,
+      );
+      const enAttente = regle.enabled
+        ? []
+        : sources.filter((s) => !ecrits.includes(`${prefixe}${s.id}`));
+      parRegle.set(regle.id, { produits, enAttente });
+    }
+    return parRegle;
+  }, [regles, formAnswers, forms, invoices, tickets, prospects, stockItems, tasks, logbook, libelles]);
 }

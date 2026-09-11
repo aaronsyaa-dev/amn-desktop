@@ -21,7 +21,7 @@ export function SettingsPanel({
   return (
     <div className="border border-border bg-surface">
       <div className="flex items-center gap-2.5 border-b border-border px-5 py-3.5">
-        <Icon size={16} strokeWidth={1.75} className="text-text-secondary" />
+        <Icon size={16} strokeWidth={1.9} className="text-text-secondary" />
         <div>
           <h2 className="text-sm font-semibold text-text-primary">{title}</h2>
           <p className="text-xs text-text-muted">{subtitle}</p>

@@ -106,6 +106,18 @@ export function OrdersScreen() {
         />
       </motion.div>
 
+      {orders.length > 0 && (
+        <motion.div variants={staggerItem}>
+          <ChaineDeTraitement
+            orders={orders}
+            counts={counts}
+            onFiltrer={setFilter}
+            onConfirmer={(order) => setStatus(order, 'confirmed')}
+            onFacturer={invoice}
+          />
+        </motion.div>
+      )}
+
       <motion.div variants={staggerItem} className="flex flex-wrap gap-1.5">
         <Chip label="Toutes" count={orders.length} active={filter === 'all'} onClick={() => setFilter('all')} />
         {STATUS_ORDER.filter((s) => counts[s] > 0).map((status) => (
@@ -154,6 +166,207 @@ export function OrdersScreen() {
         </motion.ul>
       )}
     </motion.section>
+  );
+}
+
+/*
+  LA CHAÎNE DE TRAITEMENT — l'objet dominant de l'écran Commandes.
+
+  Une commande passe par cinq états, dans un ordre que le moteur déclare
+  (`STATUS_ORDER`, `NEXT_STATUSES`). L'écran les montrait comme six filtres
+  côte à côte, tous du même poids : une commande arrivée il y a dix minutes et
+  une livrée le mois dernier avaient exactement la même apparence.
+
+  La chaîne les remet dans leur ordre, chacune avec son compte et sa somme, et
+  donne au PREMIER MAILLON — ce qui vient d'arriver et n'a encore reçu aucune
+  réponse — le poids qui lui revient.
+
+  L'AMBRE de cet écran, nommé par la table du paquet : le badge « à traiter ».
+  Il est ici la plaque entière du premier maillon, en encre de signal, ce qui
+  respecte la règle 2 (l'ambre est une plaque pleine, pas un texte teinté) et
+  n'en fait qu'UN objet : tout ce qui est dedans en descend. Quand rien
+  n'attend, la plaque redevient une colonne comme les autres et l'écran n'a
+  plus d'ambre du tout — ce qui est exactement ce qu'il faut lire.
+*/
+const MAILLONS: OrderStatus[] = ['new', 'confirmed', 'preparing', 'shipped', 'delivered'];
+
+function ChaineDeTraitement({
+  orders,
+  counts,
+  onFiltrer,
+  onConfirmer,
+  onFacturer,
+}: {
+  orders: Order[];
+  counts: Record<OrderStatus, number>;
+  onFiltrer: (status: OrderStatus | 'all') => void;
+  onConfirmer: (order: Order) => void;
+  onFacturer: (order: Order) => void;
+}) {
+  const parMaillon = useMemo(
+    () =>
+      MAILLONS.map((status) => {
+        const siennes = orders.filter((o) => o.status === status);
+        return {
+          status,
+          siennes,
+          sommeCents: siennes.reduce((somme, o) => somme + orderTotals(o.lines).grossCents, 0),
+        };
+      }),
+    [orders],
+  );
+
+  /* La tête de file : la PLUS ANCIENNE des nouvelles. `orders` arrive trié du
+     plus récent au plus ancien, donc c'est la dernière du tableau — celle qui
+     attend depuis le plus longtemps, et donc celle qu'on traite. */
+  const nouvelles = parMaillon[0].siennes;
+  const tete = nouvelles[nouvelles.length - 1] ?? null;
+  const annulees = counts.cancelled ?? 0;
+
+  return (
+    /* Le premier maillon est plus large que les autres : c'est le seul qui
+       porte un geste, un montant par ligne et un nom de client en entier.
+       À cinq colonnes égales, « Camille Renaud » devenait « Camille R… ». */
+    <div className="grid grid-cols-1 overflow-hidden border border-border sm:grid-cols-2 lg:grid-cols-[1.45fr_1fr_1fr_1fr_1fr]">
+      {parMaillon.map(({ status, siennes, sommeCents }, index) => {
+        const enAttente = status === 'new' && siennes.length > 0;
+        return (
+          <div
+            key={status}
+            className={`flex flex-col gap-4 border-b border-border p-5 last:border-b-0 sm:border-r lg:border-b-0 lg:last:border-r-0 ${
+              enAttente ? 'signal-plate' : 'bg-surface'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <span
+                className={`flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center font-mono text-[10px] font-bold ${
+                  enAttente ? 'bg-signal-ink/15 text-signal-ink' : 'bg-raised text-text-muted'
+                }`}
+              >
+                {String(index + 1).padStart(2, '0')}
+              </span>
+              <span
+                className={`font-mono text-[9.5px] font-bold uppercase leading-[1.4] tracking-[0.2em] ${
+                  enAttente ? 'text-signal-ink' : 'text-text-muted'
+                }`}
+              >
+                {ORDER_STATUS_LABELS[status]}
+              </span>
+              {enAttente && (
+                <span className="ml-auto flex-shrink-0 bg-signal-ink px-2 py-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] text-signal">
+                  À traiter
+                </span>
+              )}
+            </div>
+
+            <div>
+              {/*
+                Le chiffre du premier maillon est à l'échelle d'un titre — la
+                seconde exception écrite de la règle 2, celle qui autorise un
+                chiffre en ambre plutôt qu'en plaque. Ici il est DANS la plaque,
+                donc en encre de signal : la règle tient sans exception.
+              */}
+              <p
+                className={`tnum font-mono font-bold leading-[0.92] tracking-[-0.04em] ${
+                  enAttente ? 'text-[56px] text-signal-ink' : 'text-[36px] text-text-primary'
+                }`}
+              >
+                {siennes.length}
+              </p>
+              <p
+                className={`tnum mt-2 font-mono text-[12.5px] tracking-[0.1em] ${
+                  enAttente ? 'text-signal-ink/75' : 'text-text-muted'
+                }`}
+              >
+                {formatCents(sommeCents)}
+              </p>
+            </div>
+
+            {siennes.length > 0 && (
+              <ul className="flex flex-col">
+                {siennes.slice(0, 3).map((order) => (
+                  <li
+                    key={order.id}
+                    className={`flex items-baseline gap-2 py-2 ${
+                      enAttente ? 'border-t border-signal-ink/15 first:border-t-0' : ''
+                    }`}
+                  >
+                    <span
+                      className={`tnum flex-shrink-0 font-mono text-[11px] ${
+                        enAttente ? 'text-signal-ink/70' : 'text-text-muted'
+                      }`}
+                    >
+                      {order.reference || '—'}
+                    </span>
+                    <span
+                      className={`min-w-0 flex-1 truncate text-[12.5px] ${
+                        enAttente ? 'font-semibold text-signal-ink' : 'text-text-secondary'
+                      }`}
+                    >
+                      {order.customer.name}
+                    </span>
+                    {enAttente && (
+                      <span className="tnum flex-shrink-0 font-mono text-[11px] text-signal-ink">
+                        {formatCents(orderTotals(order.lines).grossCents)}
+                      </span>
+                    )}
+                  </li>
+                ))}
+                {siennes.length > 3 && (
+                  <li className={`pt-2 font-mono text-[11px] ${enAttente ? 'text-signal-ink/70' : 'text-text-muted'}`}>
+                    + {siennes.length - 3}
+                  </li>
+                )}
+              </ul>
+            )}
+
+            {/*
+              LE GESTE NOMME SA CIBLE.
+
+              « Marquer confirmée » sous une colonne qui compte six commandes
+              ne dit pas laquelle il touche — et un bouton qui agirait sur les
+              six serait une action de masse déguisée en bouton ordinaire. Il
+              porte donc la référence de la tête de file.
+            */}
+            {enAttente && tete && (
+              <div className="mt-auto flex flex-col gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => onConfirmer(tete)}
+                  className="min-h-11 bg-signal-ink px-4 text-[12.5px] font-semibold text-text-primary transition-opacity hover:opacity-90"
+                >
+                  Confirmer {tete.reference || 'la plus ancienne'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onFacturer(tete)}
+                  disabled={Boolean(tete.invoiceId)}
+                  className="font-mono text-[9.5px] font-bold uppercase leading-[1.5] tracking-[0.2em] text-signal-ink/75 underline-offset-4 transition-opacity hover:underline disabled:no-underline disabled:opacity-50"
+                >
+                  {tete.invoiceId ? 'Brouillon de facture déjà créé' : 'ou créer un brouillon de facture'}
+                </button>
+              </div>
+            )}
+
+            {status === 'delivered' && annulees > 0 && (
+              <p className="mt-auto font-mono text-[9.5px] uppercase leading-[1.6] tracking-[0.2em] text-text-muted">
+                {annulees} annulée{annulees > 1 ? 's' : ''} · hors chaîne
+              </p>
+            )}
+
+            {siennes.length > 0 && !enAttente && (
+              <button
+                type="button"
+                onClick={() => onFiltrer(status)}
+                className="mt-auto self-start font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] text-text-muted underline-offset-4 transition-colors hover:text-text-primary hover:underline"
+              >
+                Voir
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -253,7 +466,7 @@ function OrderRow({
                     : 'border-border-strong bg-accent-muted text-text-primary'
                 }`}
               >
-                <Package size={13} strokeWidth={1.75} aria-hidden />
+                <Package size={13} strokeWidth={1.9} aria-hidden />
                 Marquer {ORDER_STATUS_LABELS[status].toLowerCase()}
               </button>
             ))}
@@ -265,7 +478,7 @@ function OrderRow({
             */}
             {order.invoiceId ? (
               <span className="flex items-center gap-1.5 px-1 font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                <ReceiptEuro size={13} strokeWidth={1.75} aria-hidden />
+                <ReceiptEuro size={13} strokeWidth={1.9} aria-hidden />
                 Facture créée
               </span>
             ) : (
@@ -275,7 +488,7 @@ function OrderRow({
                   onClick={onInvoice}
                   className="input-focus flex min-h-11 items-center gap-1.5 border border-border px-3 text-xs text-text-secondary transition-colors hover:text-text-primary md:min-h-0 md:py-2"
                 >
-                  <ReceiptEuro size={13} strokeWidth={1.75} aria-hidden />
+                  <ReceiptEuro size={13} strokeWidth={1.9} aria-hidden />
                   Créer un brouillon de facture
                 </button>
               )

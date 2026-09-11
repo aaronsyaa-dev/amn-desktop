@@ -154,7 +154,7 @@ export function ControlTowerScreen() {
                 title="Le mur de supervision, en plein écran — à poser sur un deuxième moniteur"
                 className="flex min-h-11 items-center gap-2 border border-border px-3 text-sm text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
               >
-                <MonitorPlay size={15} strokeWidth={1.75} />
+                <MonitorPlay size={15} strokeWidth={1.9} />
                 {/* À 390 px, trois actions étiquetées débordaient de 10 px —
                     c'est check:largeur qui l'a dit. Le mot se replie, le
                     geste reste nommé (aria-label + title). */}
@@ -175,7 +175,7 @@ export function ControlTowerScreen() {
               title="Créer un lien d’appel pour un prospect sans compte"
               className="flex min-h-11 items-center gap-2 border border-dashed border-border px-3 text-sm text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
             >
-              <Link2 size={15} strokeWidth={1.75} />
+              <Link2 size={15} strokeWidth={1.9} />
               Lien d’appel
             </button>
             </>
@@ -264,7 +264,7 @@ function ProductTile({
       className="elev-hover group flex flex-col gap-2 rounded-xl border border-border bg-surface p-4 transition-colors duration-200 hover:border-border-strong"
     >
       <span className="text-text-primary transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:scale-110">
-        <Icon size={20} strokeWidth={1.5} />
+        <Icon size={20} strokeWidth={1.9} />
       </span>
       <span className="text-sm font-medium text-text-primary">{label}</span>
       <span className="text-[11px] leading-snug text-text-muted">{hint}</span>
@@ -286,7 +286,7 @@ function ClientOrgsPanel({ loading, error }: { loading: boolean; error: string |
   return (
     <section className="elev-1 rounded-2xl border border-border bg-surface">
       <header className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
-        <Building2 size={15} strokeWidth={1.75} className="text-text-secondary" />
+        <Building2 size={15} strokeWidth={1.9} className="text-text-secondary" />
         <h2 className="mr-auto text-sm font-semibold text-text-primary">Organisations clientes</h2>
         <Link
           to="/tour/organisations"
@@ -355,7 +355,7 @@ function RecentAccessPanel() {
   return (
     <section className="elev-1 rounded-2xl border border-border bg-surface">
       <header className="flex items-center gap-2 border-b border-border px-4 py-3">
-        <History size={15} strokeWidth={1.75} className="text-text-secondary" />
+        <History size={15} strokeWidth={1.9} className="text-text-secondary" />
         <h2 className="mr-auto text-sm font-semibold text-text-primary">Derniers accès</h2>
         <Link
           to="/tour/journal"
@@ -487,7 +487,7 @@ function SupervisionPanel() {
   return (
     <section className="panel panel-ticks" aria-label="La Garde, de fond" data-garde-fond={retards.length}>
       <header className="panel-head flex flex-wrap items-center gap-2 px-4 py-2.5">
-        <Radar size={14} strokeWidth={1.75} className="text-text-secondary" />
+        <Radar size={14} strokeWidth={1.9} className="text-text-secondary" />
         <h2 className="mr-auto text-[13px] font-semibold text-text-primary">La Garde, de fond</h2>
         <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${retards.length > 0 ? 'bg-warning' : vivante ? 'bg-success live-dot' : 'bg-text-muted'}`} aria-hidden />
         <span className="eyebrow">{retards.length === 0 ? (vivante ? 'à l’heure' : 'sans battement') : `${retards.length} en retard`}</span>

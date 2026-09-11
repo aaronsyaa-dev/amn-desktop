@@ -33,13 +33,30 @@ import { formatDuration } from '../state/timeEngine';
  * l'application, et cette direction n'a été validée que pour l'Accueil.
  */
 
+/*
+  LES ENCRES VIENNENT DES JETONS, ELLES NE SONT PLUS RECOPIÉES ICI.
+
+  Les trois valeurs de texte étaient écrites en dur, en copie des jetons
+  globaux. Deux étaient exactes ; la troisième, `#6b6b68`, était la sourdine
+  du paquet de design — précisément la valeur que `index.css` REFUSE depuis
+  deux relevés, parce qu'elle passe sous 4,5:1 (voir l'écart assumé documenté
+  là-bas). L'Accueil rendait donc ses surtitres à 3,35–3,56:1 pendant que le
+  reste de l'application tenait 5,36 au pire : la copie avait dérivé sans que
+  rien ne puisse le dire, puisqu'une constante locale ne suit aucun jeton.
+
+  Une copie de jeton n'est pas une décision de design, c'est une occasion de
+  dérive. Ce qui reste écrit en dur ci-dessous l'est pour une raison : ces
+  valeurs-là N'EXISTENT PAS ailleurs dans l'application, et cette direction
+  n'a été validée que pour l'Accueil.
+*/
+const TEXTE_PRIMAIRE = 'var(--color-text-primary)';
+const TEXTE_SECONDAIRE = 'var(--color-text-secondary)';
+const TEXTE_MUET = 'var(--color-text-muted)';
+const AMBRE = 'var(--color-signal)';
+
 const ENCRE = '#050505';
-const AMBRE = '#d09a4a';
-const ROUGE = '#ff4230';
-const ROUGE_CLAIR = '#ff5847';
-const TEXTE_PRIMAIRE = '#f7f7f5';
-const TEXTE_SECONDAIRE = '#a3a3a0';
-const TEXTE_MUET = '#6b6b68';
+const ROUGE = 'var(--color-danger)';
+const ROUGE_CLAIR = 'var(--color-danger-ink)';
 
 interface TaskData {
   title: string;
@@ -201,7 +218,7 @@ export function HomeSoloScreen() {
           <Link
             to="/agenda"
             className="inline-flex w-fit items-center gap-1.5 px-4 py-3 text-sm font-semibold transition-opacity hover:opacity-90"
-            style={{ background: TEXTE_PRIMAIRE, color: '#080808' }}
+            style={{ background: TEXTE_PRIMAIRE, color: 'var(--color-signal-ink)' }}
           >
             <Plus size={14} strokeWidth={2.5} />
             Rendez-vous
@@ -261,7 +278,7 @@ function MaintenantBlock({
     return (
       <div
         className="flex flex-col justify-center gap-1 border p-6"
-        style={{ borderColor: '#242424', background: '#0d0d0d' }}
+        style={{ borderColor: 'var(--color-border-section)', background: 'var(--color-surface)' }}
       >
         <span
           className="font-mono text-[10px] uppercase tracking-[0.22em]"
@@ -291,7 +308,7 @@ function MaintenantBlock({
       className="relative overflow-hidden p-6"
       style={{
         background: AMBRE,
-        color: '#080808',
+        color: 'var(--color-signal-ink)',
         boxShadow: '0 30px 60px -24px rgba(208,154,74,.45), 0 6px 18px rgba(0,0,0,.5)',
       }}
     >
@@ -323,7 +340,7 @@ function MaintenantBlock({
               target="_blank"
               rel="noreferrer"
               className="px-4 py-2.5 text-[12.5px] font-semibold"
-              style={{ background: '#080808', color: TEXTE_PRIMAIRE }}
+              style={{ background: 'var(--color-signal-ink)', color: TEXTE_PRIMAIRE }}
             >
               Rejoindre
             </a>
@@ -333,7 +350,7 @@ function MaintenantBlock({
               type="button"
               onClick={() => navigate('/clients', { state: { focusClientId: appointment.clientId } })}
               className="border px-4 py-2.5 text-[12.5px] font-semibold"
-              style={{ borderColor: 'rgba(8,8,8,.5)', color: '#080808', background: 'transparent' }}
+              style={{ borderColor: 'rgba(8,8,8,.5)', color: 'var(--color-signal-ink)', background: 'transparent' }}
             >
               Notes du client
             </button>
@@ -359,7 +376,7 @@ function CadranJournee({
   return (
     <div
       className="flex flex-col items-center border p-5"
-      style={{ background: '#111111', borderColor: '#262626' }}
+      style={{ background: 'var(--color-sheet)', borderColor: 'var(--color-border-raised)' }}
     >
       <span
         className="self-start font-mono text-[10px] uppercase tracking-[0.18em]"
@@ -367,16 +384,26 @@ function CadranJournee({
       >
         Journée
       </span>
+      {/*
+        L'ANNEAU N'EST PLUS AMBRE — la règle « un seul objet ambre par écran »
+        appliquée à l'écran qui sert de référence à tous les autres.
+
+        Cet anneau et la plaque du rendez-vous étaient tous deux ambre : deux
+        signaux sur le même écran, donc plus de signal du tout. Et à la
+        relecture, l'anneau ne demande aucune décision — il dit qu'il est
+        15 h 30. La règle 3 du jeton tranche : l'ambre marque ce qui appelle un
+        geste, jamais un état. L'anneau passe donc en gris de remplissage, la
+        plaque du rendez-vous reste le seul ambre de l'Accueil.
+      */}
       <div
         className="mt-4 flex h-[132px] w-[132px] items-center justify-center rounded-full"
         style={{
-          background: `conic-gradient(${AMBRE} 0deg ${deg}deg, #2a2a2a ${deg}deg 360deg)`,
-          boxShadow: '0 0 40px -10px rgba(208,154,74,.35)',
+          background: `conic-gradient(#4a4a48 0deg ${deg}deg, var(--color-border-sheet) ${deg}deg 360deg)`,
         }}
       >
         <div
           className="flex h-[104px] w-[104px] flex-col items-center justify-center rounded-full border"
-          style={{ background: '#111111', borderColor: '#262626' }}
+          style={{ background: 'var(--color-sheet)', borderColor: 'var(--color-border-raised)' }}
         >
           <span className="text-[27px] font-semibold tabular-nums" style={{ color: TEXTE_PRIMAIRE }}>
             {pourcent} %
@@ -409,11 +436,11 @@ function SuiteDuJour({ appointments }: { appointments: Appointment[] }) {
   return (
     <section
       className="border"
-      style={{ background: '#101010', borderColor: '#242424' }}
+      style={{ background: '#101010', borderColor: 'var(--color-border-section)' }}
     >
       <div
         className="flex items-center gap-3 px-5 py-3.5"
-        style={{ background: '#171717', borderBottom: '1px solid #242424' }}
+        style={{ background: '#171717', borderBottom: '1px solid var(--color-border-section)' }}
       >
         <span
           className="font-mono text-[10px] font-bold uppercase tracking-[0.22em]"
@@ -489,7 +516,7 @@ function AEncaisser({
 }) {
   if (outstandingCents === 0) {
     return (
-      <section className="border p-5" style={{ background: '#101010', borderColor: '#242424' }}>
+      <section className="border p-5" style={{ background: '#101010', borderColor: 'var(--color-border-section)' }}>
         <span className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: TEXTE_MUET }}>
           À encaisser
         </span>
@@ -503,9 +530,15 @@ function AEncaisser({
   const max = Math.max(1, ...serie.points.map((p) => p.valeur));
 
   return (
-    <section className="relative border p-5" style={{ background: '#101010', borderColor: '#242424' }}>
-      <span className="absolute left-[-1px] top-[-1px] h-0.5 w-5" style={{ background: AMBRE }} />
-      <span className="absolute left-[-1px] top-[-1px] h-5 w-0.5" style={{ background: AMBRE }} />
+    <section className="relative border p-5" style={{ background: '#101010', borderColor: 'var(--color-border-section)' }}>
+      {/*
+        Les repères d'angle passent de l'ambre au gris : l'ambre n'est JAMAIS
+        décoratif (règle 3 du jeton), et deux repères de 5 px ne demandent
+        aucune décision. Le signal de cet encart, c'est le montant et le rouge
+        du retard en dessous — pas ses coins.
+      */}
+      <span className="absolute left-[-1px] top-[-1px] h-0.5 w-5" style={{ background: '#4a4a48' }} />
+      <span className="absolute left-[-1px] top-[-1px] h-5 w-0.5" style={{ background: '#4a4a48' }} />
       <div className="flex items-baseline justify-between">
         <span className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: TEXTE_MUET }}>
           À encaisser
@@ -513,7 +546,7 @@ function AEncaisser({
         {overdueCount > 0 && (
           <span
             className="px-1.5 py-1 font-mono text-[9px] font-semibold uppercase tracking-[0.16em]"
-            style={{ background: ROUGE, color: '#080808' }}
+            style={{ background: ROUGE, color: 'var(--color-signal-ink)' }}
           >
             {overdueCount} échue{overdueCount > 1 ? 's' : ''}
           </span>
@@ -541,8 +574,9 @@ function AEncaisser({
               className="flex-1"
               style={{
                 height: `${hauteur}%`,
-                background: dernier ? AMBRE : `rgba(255,255,255,${0.06 + (i / serie.points.length) * 0.16})`,
-                boxShadow: dernier ? '0 0 16px -2px rgba(208,154,74,.7)' : undefined,
+                /* Le dernier point est le plus clair, pas ambre : une barre de
+                   série dit où l'on en est, elle ne demande pas de décision. */
+                background: dernier ? '#4a4a48' : `rgba(255,255,255,${0.06 + (i / serie.points.length) * 0.16})`,
               }}
             />
           );
@@ -552,7 +586,7 @@ function AEncaisser({
         <Link
           to="/relances"
           className="mt-4 block w-full border py-2.5 text-center text-[12.5px] font-semibold transition-colors hover:bg-white/5"
-          style={{ borderColor: '#3a3a3a', color: TEXTE_PRIMAIRE }}
+          style={{ borderColor: 'var(--color-border-strong)', color: TEXTE_PRIMAIRE }}
         >
           Envoyer les {overdueCount} relance{overdueCount > 1 ? 's' : ''}
         </Link>
@@ -563,7 +597,7 @@ function AEncaisser({
 
 function MiniStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="border p-4" style={{ background: '#0d0d0d', borderColor: '#1e1e1e' }}>
+    <div className="border p-4" style={{ background: 'var(--color-surface)', borderColor: '#1e1e1e' }}>
       <span className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: TEXTE_MUET }}>
         {label}
       </span>
@@ -628,7 +662,7 @@ function FirstRunCard() {
                 : 'flex items-center gap-1.5 border border-border px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary'
             }
           >
-            {g.fort ? <Plus size={14} strokeWidth={2} /> : <g.icone size={14} strokeWidth={1.75} />}
+            {g.fort ? <Plus size={14} strokeWidth={2} /> : <g.icone size={14} strokeWidth={1.9} />}
             {g.label}
           </Link>
         ))}

@@ -127,7 +127,7 @@ export function VoiceRecorder({ onRecorded }: { onRecorded: (att: MessageAttachm
           aria-label="Annuler l'enregistrement"
           className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
         >
-          <Trash2 size={15} strokeWidth={1.75} />
+          <Trash2 size={15} strokeWidth={1.9} />
         </button>
         <button
           type="button"
@@ -151,7 +151,7 @@ export function VoiceRecorder({ onRecorded }: { onRecorded: (att: MessageAttachm
         error ? 'text-danger' : 'text-text-muted'
       }`}
     >
-      <Mic size={16} strokeWidth={1.75} />
+      <Mic size={16} strokeWidth={1.9} />
     </button>
   );
 }

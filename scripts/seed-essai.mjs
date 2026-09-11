@@ -105,24 +105,33 @@ async function poser(collection, id, data) {
 }
 
 /*
-  Les clients portent un identifiant NUMÉRIQUE dérivé de leur clé de synchro
-  (voir `useClients.ts`), et les devis comme les factures s'y rattachent par ce
-  nombre. On fixe donc les deux : sans ça, un devis pointerait vers une fiche
-  qui n'existe pas et l'écran afficherait « client inconnu ».
+  LA CLÉ DE SYNCHRO D'UNE FICHE CLIENTE EST ICI UN NOMBRE, ET CE N'EST PAS UN
+  DÉTAIL D'ÉCRITURE.
+
+  Les devis et les factures se rattachent à une fiche par son identifiant
+  NUMÉRIQUE, que `numericId` (src/lib/records.ts) dérive de la clé : une clé
+  déjà numérique garde sa valeur, toute autre est hachée en un nombre NÉGATIF.
+  Écrire `clients/essai-cli-1` puis `clientId: 101` sur la facture rattachait
+  donc la facture à une fiche qui n'existe pas — silencieusement, puisque
+  personne ne lève d'erreur sur une référence orpheline. Le bac à sable montrait
+  « 0,00 € facturé » sur des fiches qui avaient trois documents chacune.
+
+  D'où des clés `101`, `102`, `103` : le lien tient par construction, et il
+  reste stable d'une exécution à l'autre.
 */
 const CLIENTES = [
   {
-    cle: 'essai-cli-1',
+    cle: '101',
     num: 101,
     name: 'Camille Renaud',
     company: 'Le Jardin d’Élise',
-    status: 'client',
+    status: 'active',
     email: 'camille@jardin-elise.exemple.test',
     phone: '+33 6 11 22 33 44',
     notes: 'Abonnement bouquets hebdomadaires pour l’accueil. Livraison le mardi matin.',
   },
   {
-    cle: 'essai-cli-2',
+    cle: '102',
     num: 102,
     name: 'Hugo Marchand',
     company: 'Brasserie du Port',
@@ -132,11 +141,11 @@ const CLIENTES = [
     notes: 'Demande de compositions pour la terrasse d’été. Devis envoyé, relance prévue.',
   },
   {
-    cle: 'essai-cli-3',
+    cle: '103',
     num: 103,
     name: 'Nadia Bouvier',
     company: '',
-    status: 'client',
+    status: 'active',
     email: 'nadia.bouvier@exemple.test',
     phone: '+33 7 88 99 00 11',
     notes: 'Mariage en septembre : arche, bouquets de table, boutonnières.',
@@ -144,6 +153,23 @@ const CLIENTES = [
 ];
 
 console.log(`\nPeuplement de l’organisation d’essai — ${EMAIL}\n`);
+
+/*
+  LE MÉNAGE DES CLÉS D'HIER.
+
+  Les fiches ont porté les clés `essai-cli-1..3` avant de porter leur numéro.
+  Rejouer le script ne les remplace donc pas : il en AJOUTE trois à côté, et le
+  bac à sable finit avec deux répertoires superposés — six fiches là où on en
+  attend trois, et des moyennes fausses sur tous les écrans qui comptent. On
+  retire donc explicitement les anciennes clés. Supprimer ce qui n'existe pas
+  est sans effet : la boucle est sûre sur un bac à sable neuf.
+*/
+for (const ancienne of ['essai-cli-1', 'essai-cli-2', 'essai-cli-3']) {
+  await fetch(`${API}/v1/collections/clients/${ancienne}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${login.token}` },
+  }).catch(() => undefined);
+}
 
 for (const c of CLIENTES) {
   await poser('clients', c.cle, {
@@ -177,12 +203,18 @@ for (const c of CLIENTES) {
 
 /* ─── Devis ────────────────────────────────────────────────────────────────── */
 
+/*
+  `sentAt` est la date d'envoi, et c'est elle que l'écran lit pour dire « sans
+  réponse depuis douze jours ». Elle est écrite ici parce que `updatedAt` est
+  posé par le SERVEUR à l'écriture : un devis semé serait toujours « envoyé à
+  l'instant », et l'ambre de l'écran Devis ne dirait jamais rien.
+*/
 const DEVIS = [
-  ['essai-dev-1', 101, 'Abonnement accueil — trimestre', 'Un bouquet de saison par semaine, livré le mardi.', 540, 'accepted'],
-  ['essai-dev-2', 102, 'Compositions terrasse d’été', 'Douze jardinières, entretien mensuel inclus.', 1290, 'sent'],
-  ['essai-dev-3', 103, 'Mariage — septembre', 'Arche florale, dix bouquets de table, six boutonnières.', 2150, 'draft'],
+  ['essai-dev-1', 101, 'Abonnement accueil — trimestre', 'Un bouquet de saison par semaine, livré le mardi.', 540, 'accepted', -30],
+  ['essai-dev-2', 102, 'Compositions terrasse d’été', 'Douze jardinières, entretien mensuel inclus.', 1290, 'sent', -12],
+  ['essai-dev-3', 103, 'Mariage — septembre', 'Arche florale, dix bouquets de table, six boutonnières.', 2150, 'draft', null],
 ];
-for (const [cle, clientId, title, detail, priceEuro, status] of DEVIS) {
+for (const [cle, clientId, title, detail, priceEuro, status, envoiJours] of DEVIS) {
   await poser('quotes', cle, {
     clientId,
     title,
@@ -190,12 +222,25 @@ for (const [cle, clientId, title, detail, priceEuro, status] of DEVIS) {
     priceEuro,
     status,
     paymentStatus: status === 'accepted' ? 'paid' : 'unpaid',
+    sentAt: envoiJours === null ? '' : instant(24 * envoiJours),
     createdAt: instant(-24 * 20),
   });
 }
 
 /* ─── Factures ─────────────────────────────────────────────────────────────── */
 
+/*
+  LES STATUTS SONT CEUX DU DOMAINE, PAS DE L'ANGLAIS COURANT.
+
+  Ce fichier écrivait `status: 'sent'` sur les factures et `'client'` sur les
+  fiches. Aucun des deux n'existe : `InvoiceStatus` vaut draft | issued | paid |
+  cancelled, `ClientStatus` vaut active | paused | prospect. Le décodeur
+  (`oneOf`, dans useInvoices/useClients) ne plante pas là-dessus — il replie sur
+  la valeur sûre. Résultat : TROIS factures d'essai devenaient des brouillons et
+  toutes les fiches des prospects, et le bac à sable montrait un compte à zéro
+  euro là où il devait montrer de l'argent en attente. Un jeu d'essai muet est
+  pire qu'un jeu d'essai absent : on croit avoir mesuré.
+*/
 const ligne = (id, label, quantity, euros, vatRate = 20) => ({
   id,
   label,
@@ -217,7 +262,7 @@ await poser('invoices', 'essai-fac-1', {
   issuedAt: jour(-18),
   dueAt: jour(12),
   lines: [ligne('l1', 'Bouquet de saison — livraison hebdomadaire', 12, 45)],
-  status: 'sent',
+  status: 'issued',
   paidAt: '',
   paymentMethod: '',
   cancelReason: '',
@@ -261,7 +306,7 @@ await poser('invoices', 'essai-fac-3', {
   issuedAt: jour(-75),
   dueAt: jour(-45),
   lines: [ligne('l1', 'Jardinières de terrasse', 6, 130), ligne('l2', 'Pose et mise en place', 1, 180)],
-  status: 'sent',
+  status: 'issued',
   paidAt: '',
   paymentMethod: '',
   cancelReason: '',
@@ -269,17 +314,248 @@ await poser('invoices', 'essai-fac-3', {
   quoteId: null,
 });
 
+/* ─── Abonnements ──────────────────────────────────────────────────────────── */
+
+/*
+  Deux échéances DÉPASSÉES à dessein : ce sont elles qui forment la file, et
+  l'unique ambre de l'écran Abonnements est la plaque « 2 à facturer ». Un bac à
+  sable où tout est à jour ne permet pas de la mesurer. Un abonnement suspendu
+  aussi, pour que le registre montre ses deux états.
+*/
+const ABOS = [
+  ['essai-abo-1', 'Maintenance du site', 'Camille Renaud', 24000, 'monthly', -10, true],
+  ['essai-abo-2', 'Supervision boutique', 'Hugo Marchand', 60000, 'quarterly', -4, true],
+  ['essai-abo-3', 'Hébergement et sauvegardes', 'Nadia Bouvier', 18000, 'monthly', 4, true],
+  ['essai-abo-4', 'Forfait retouches', 'Camille Renaud', 12000, 'monthly', 9, true],
+  ['essai-abo-5', 'Supervision annuelle', 'Hugo Marchand', 284000, 'yearly', 113, true],
+  ['essai-abo-6', 'Lettre mensuelle', 'Nadia Bouvier', 9000, 'monthly', 20, false],
+];
+for (const [cle, label, customerName, amountCents, period, dansJours, active] of ABOS) {
+  await poser('subscriptions', cle, {
+    label,
+    customerName,
+    customerEmail: '',
+    amountCents,
+    vatRate: 20,
+    period,
+    nextAt: jour(dansJours),
+    active,
+    createdAt: instant(-24 * 120),
+  });
+}
+
+/* ─── Dépenses et budgets ──────────────────────────────────────────────────── */
+
+/*
+  Les budgets sont posés par catégorie, et l'un d'eux est DÉPASSÉ à dessein :
+  c'est l'unique ambre de l'écran Dépenses, et un bac à sable où tout tient dans
+  son budget ne permet pas de le mesurer. Les clés de catégorie sont celles du
+  réglage par défaut (voir `defaultConfig` dans src/state/expenseEngine.ts).
+*/
+await poser('expenseConfig', 'config', {
+  categories: [
+    { key: 'fournitures', label: 'Fournitures' },
+    { key: 'deplacement', label: 'Déplacement' },
+    { key: 'prestataire', label: 'Prestataire' },
+    { key: 'materiel', label: 'Matériel' },
+    { key: 'autre', label: 'Autre' },
+  ],
+  categoryBudgets: {
+    prestataire: 90000,
+    fournitures: 60000,
+    deplacement: 45000,
+  },
+  projectBudgets: {},
+});
+
+/*
+  Réparties sur trois mois : le ruban de mois a besoin d'un passé pour que la
+  comparaison qu'il propose ait un sens. Le mois en cours est le plus fourni.
+*/
+const DEPENSES = [
+  ['essai-dep-1', 'Retouchouse — visuels vitrine', 'prestataire', 48000, -2],
+  ['essai-dep-2', 'Mise à jour du site', 'prestataire', 136000, -5],
+  ['essai-dep-3', 'Papier et encre', 'fournitures', 8640, -5],
+  ['essai-dep-4', 'Rouleaux de kraft', 'fournitures', 38160, -8],
+  ['essai-dep-5', 'Train Paris — Lille', 'deplacement', 12400, -7],
+  ['essai-dep-6', 'Péage et carburant', 'deplacement', 18000, -10],
+  ['essai-dep-7', 'Disque dur de sauvegarde', 'materiel', 16800, -9],
+  ['essai-dep-8', 'Sécateurs professionnels', 'materiel', 9400, -12],
+  ['essai-dep-9', 'Location de camionnette', 'deplacement', 24000, -34],
+  ['essai-dep-10', 'Impression de cartes', 'fournitures', 21000, -38],
+  ['essai-dep-11', 'Prestation photo', 'prestataire', 52000, -41],
+  ['essai-dep-12', 'Vitrophanie', 'fournitures', 14500, -66],
+  ['essai-dep-13', 'Honoraires comptables', 'prestataire', 39000, -70],
+  ['essai-dep-14', 'Étagères d’atelier', 'materiel', 27800, -74],
+];
+/*
+  DEUX DÉPENSES PORTENT UN JUSTIFICATIF, ET LES AUTRES NON.
+
+  Ce n'est pas de la décoration : la ligne de dépense a deux états — vignette ou
+  cadre en pointillés marqué « sans justificatif » — et un jeu d'essai qui n'en
+  montre qu'un ne permet pas de voir si l'autre tient. Le justificatif est un
+  SVG minuscule écrit ici même plutôt qu'une photo : il occupe la même place à
+  l'écran sans peser trois cents kilo-octets dans un script de bac à sable.
+*/
+const recu = (couleur) =>
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="${couleur}"/>` +
+      '<rect x="18" y="14" width="44" height="52" fill="#f4f2ec"/>' +
+      '<g fill="#9a978f"><rect x="24" y="24" width="32" height="3"/><rect x="24" y="33" width="24" height="3"/>' +
+      '<rect x="24" y="42" width="28" height="3"/><rect x="24" y="54" width="16" height="4"/></g></svg>',
+  );
+const AVEC_RECU = new Set(['essai-dep-2', 'essai-dep-5']);
+
+for (const [cle, note, category, amountCents, dansJours] of DEPENSES) {
+  await poser('expenses', cle, {
+    amountCents,
+    category,
+    spentAt: jour(dansJours),
+    note,
+    photoDataUrl: AVEC_RECU.has(cle) ? recu(cle === 'essai-dep-2' ? '#2f2a24' : '#26282f') : '',
+    createdAt: instant(24 * dansJours),
+  });
+}
+
+/* ─── Commandes ────────────────────────────────────────────────────────────── */
+
+/*
+  Les commandes n'arrivent normalement PAS d'ici : elles viennent du site
+  public, par la clé de réception (voir docs/COMMANDES.md dans amn-api). On les
+  écrit quand même dans le bac à sable, parce qu'un écran qui n'existe qu'avec
+  des commandes ne se mesure pas sans commandes.
+
+  Une par état de la chaîne, plus deux nouvelles en attente : c'est ce qui donne
+  au premier maillon quelque chose à traiter, donc à l'écran son unique ambre.
+*/
+const COMMANDES = [
+  ['essai-cmd-1', '#1841', 'new', -2, 'Camille Renaud', [['Bouquet de saison', 2, 45]]],
+  ['essai-cmd-2', '#1840', 'new', -9, 'Hugo Marchand', [['Jardinière garnie', 1, 95]]],
+  ['essai-cmd-3', '#1839', 'new', -28, 'Nadia Bouvier', [['Composition de table', 4, 45]]],
+  ['essai-cmd-4', '#1837', 'confirmed', -50, 'Camille Renaud', [['Abonnement hebdomadaire', 4, 45]]],
+  ['essai-cmd-5', '#1834', 'preparing', -74, 'Hugo Marchand', [['Jardinière garnie', 3, 95], ['Pose', 1, 120]]],
+  ['essai-cmd-6', '#1828', 'shipped', -98, 'Nadia Bouvier', [['Boutonnières', 6, 18]]],
+  ['essai-cmd-7', '#1826', 'delivered', -146, 'Camille Renaud', [['Bouquet de saison', 8, 45]]],
+  ['essai-cmd-8', '#1822', 'cancelled', -170, 'Hugo Marchand', [['Arche florale', 1, 420]]],
+];
+for (const [cle, reference, status, dansHeures, nom, articles] of COMMANDES) {
+  const lignes = articles.map(([label, quantity, euros], i) => ({
+    label,
+    sku: `SKU-${String(i + 1).padStart(3, '0')}`,
+    quantity,
+    unitPriceCents: Math.round(euros * 100),
+    vatRate: 20,
+  }));
+  await poser('orders', cle, {
+    reference,
+    placedAt: instant(dansHeures),
+    status,
+    source: 'site',
+    customer: {
+      name: nom,
+      email: `${nom.split(' ')[0].toLowerCase()}@exemple.test`,
+      phone: '',
+      address: '34000 Montpellier',
+    },
+    lines: lignes,
+    note: '',
+    paidCents: 0,
+    totalCents: lignes.reduce((t, l) => t + Math.round(l.quantity * l.unitPriceCents * 1.2), 0),
+    invoiceId: null,
+    updatedAt: instant(dansHeures),
+  });
+}
+
+/* ─── Projets ──────────────────────────────────────────────────────────────── */
+
+/*
+  Les statuts sont les clés du profil par défaut du moteur (`agence-creative`,
+  dans src/state/projectEngine.ts) : idee · en-cours · validation · termine ·
+  archive. Une clé inventée ici ne ferait pas d'erreur — elle produirait un
+  projet rangé sous un statut que l'écran ne sait pas nommer.
+
+  Les échéances sont posées EN JOURS depuis aujourd'hui, pour que la frise ait
+  toujours la même allure quel que soit le jour où on la mesure : une dépassée,
+  quatre à venir étalées sur les dix semaines, une sans date du tout.
+*/
+const PROJETS = [
+  ['essai-prj-1', 'Refonte boutique', 'en-cours', -6, 101, 'Reprendre la mise en page des fiches produit', 'high'],
+  ['essai-prj-2', 'Identité Studio Nord', 'en-cours', 14, 0, 'Maquette 2', 'normal'],
+  ['essai-prj-3', 'Vitrine automne', 'en-cours', 28, 102, 'Valider les visuels', 'normal'],
+  ['essai-prj-4', 'Catalogue hiver', 'idee', 45, 0, 'Devis à envoyer', 'normal'],
+  ['essai-prj-5', 'Signalétique atelier', 'idee', 62, 0, '', 'low'],
+  ['essai-prj-6', 'Cartes de visite', 'termine', -30, 103, '', 'low'],
+];
+for (const [cle, title, status, dansJours, clientId, nextAction, priority] of PROJETS) {
+  await poser('projects', cle, {
+    title,
+    status,
+    structure: '',
+    clientId,
+    priority,
+    nextAction,
+    deadline: jour(dansJours),
+    link: '',
+    notes: '',
+    extra: {},
+    createdAt: instant(-24 * 55),
+  });
+}
+/* Celui-là n'a PAS d'échéance : la frise doit savoir le dire au lieu de le poser
+   au hasard sur la règle. */
+await poser('projects', 'essai-prj-7', {
+  title: 'Enseigne lumineuse',
+  status: 'idee',
+  structure: '',
+  clientId: 0,
+  priority: 'low',
+  nextAction: '',
+  deadline: '',
+  link: '',
+  notes: '',
+  extra: {},
+  createdAt: instant(-24 * 12),
+});
+
 /* ─── Rendez-vous ──────────────────────────────────────────────────────────── */
 
+/*
+  LES RENDEZ-VOUS SONT POSÉS À UNE HEURE PRÉCISE DU JOUR, pas « dans vingt
+  heures ».
+
+  La colonne d'heures de la vue Jour les dessine à leur hauteur réelle : semés
+  en décalage horaire depuis maintenant, ils tombaient tous hors de la journée
+  affichée, ou tous au même endroit selon l'heure d'exécution du script. Un
+  jeu d'essai dont l'allure dépend de l'heure à laquelle on le rejoue ne permet
+  pas de comparer deux captures.
+
+  `aujourdHui(10, 30)` rend donc un instant du jour courant à l'heure dite.
+*/
+const aujourdHui = (heure, minute = 0, decalageJours = 0) => {
+  const d = new Date();
+  d.setDate(d.getDate() + decalageJours);
+  d.setHours(heure, minute, 0, 0);
+  return d.toISOString();
+};
+
 const RDV = [
-  ['essai-rdv-1', 'Livraison hebdomadaire', 20, 60, 101, 'Camille Renaud', 'Le Jardin d’Élise, Montpellier', 'scheduled'],
-  ['essai-rdv-2', 'Repérage terrasse', 54, 90, 102, 'Hugo Marchand', 'Quai Neuf, Sète', 'scheduled'],
-  ['essai-rdv-3', 'Essai bouquet mariage', -48, 45, 103, 'Nadia Bouvier', 'Atelier', 'done'],
+  ['essai-rdv-1', 'Atelier cadrage — refonte boutique', aujourdHui(10, 0), 60, 101, 'Camille Renaud', 'Visio', 'scheduled'],
+  ['essai-rdv-2', 'Point hebdomadaire', aujourdHui(13, 30), 30, 0, '', '', 'scheduled'],
+  ['essai-rdv-3', 'Livraison — Brasserie du Port', aujourdHui(15, 0), 90, 102, 'Hugo Marchand', '8 quai Neuf, Sète', 'scheduled'],
+  ['essai-rdv-4', 'Rappel devis — Nadia', aujourdHui(17, 0), 30, 103, 'Nadia Bouvier', '', 'scheduled'],
+  /* Tard dans la soirée, à dessein : il prouve deux choses d'un coup — que la
+     colonne d'heures ÉLARGIT sa fenêtre au-delà de dix-neuf heures quand un
+     rendez-vous l'exige, et que la carte de rappel apparaît dès qu'il reste un
+     préavis à honorer dans la journée. */
+  ['essai-rdv-7', 'Enlèvement tardif — traiteur', aujourdHui(19, 30), 45, 101, 'Camille Renaud', 'Atelier', 'scheduled'],
+  ['essai-rdv-5', 'Repérage terrasse', aujourdHui(9, 30, 2), 90, 102, 'Hugo Marchand', 'Quai Neuf, Sète', 'scheduled'],
+  ['essai-rdv-6', 'Essai bouquet mariage', aujourdHui(14, 0, -2), 45, 103, 'Nadia Bouvier', 'Atelier', 'done'],
 ];
-for (const [cle, title, dansHeures, durationMin, clientId, clientName, location, status] of RDV) {
+for (const [cle, title, startAt, durationMin, clientId, clientName, location, status] of RDV) {
   await poser('appointments', cle, {
     title,
-    startAt: instant(dansHeures),
+    startAt,
     durationMin,
     clientId,
     clientName,
@@ -288,6 +564,393 @@ for (const [cle, title, dansHeures, durationMin, clientId, clientName, location,
     reminderMin: 30,
     status,
     createdAt: instant(-24 * 10),
+  });
+}
+
+/* ─── Médias ───────────────────────────────────────────────────────────────── */
+
+/*
+  Quatre images, dont trois rattachées à la même cliente : c'est ce qui rend le
+  FILTRE ACTIF mesurable — l'unique ambre de l'écran Médias n'existe que
+  lorsqu'une cliente est choisie. La quatrième est sans cliente, pour que la
+  grille complète se distingue de la grille filtrée.
+
+  Les images sont des SVG écrits ici plutôt que des photos : elles occupent la
+  même place à l'écran sans peser dans un script de bac à sable.
+*/
+const vignette = (fond, trait) =>
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240"><rect width="240" height="240" fill="${fond}"/>` +
+      `<circle cx="120" cy="96" r="42" fill="${trait}" opacity="0.5"/>` +
+      `<rect x="36" y="156" width="168" height="10" fill="${trait}" opacity="0.35"/>` +
+      `<rect x="36" y="180" width="108" height="10" fill="${trait}" opacity="0.25"/></svg>`,
+  );
+const MEDIAS = [
+  ['essai-med-1', 'vitrine-ete-01.jpg', 102, '#2b2722', '#d0c4a8', -2],
+  ['essai-med-2', 'vitrine-ete-02.jpg', 102, '#242a2b', '#a8c6d0', -2],
+  ['essai-med-3', 'panneau-avant.png', 102, '#2a2426', '#d0a8b8', -21],
+  ['essai-med-4', 'croquis-devanture.jpg', null, '#26282a', '#b8b8c0', -34],
+];
+for (const [cle, name, clientId, fond, trait, dansJours] of MEDIAS) {
+  await poser('media', cle, {
+    name,
+    dataUrl: vignette(fond, trait),
+    clientId,
+    createdAt: instant(24 * dansJours),
+  });
+}
+
+/* ─── Pages ────────────────────────────────────────────────────────────────── */
+
+/*
+  Quatre pages, dont une en LECTURE SEULE : c'est ce qui rend le rail lisible
+  autrement que par le nombre de blocs. Une page qu'on ne peut pas modifier ne
+  se distingue d'une autre par aucun contenu — seul son statut la distingue,
+  donc le statut doit être écrit.
+
+  La première porte les trois types de blocs que la maquette montre — texte,
+  liste à cocher, tableau — parce qu'un écran de blocs dont tous les blocs sont
+  du texte ne prouve rien de la pile.
+*/
+const PAGES = [
+  [
+    'essai-page-1',
+    'Accueil d’un nouveau client',
+    ['owner', 'admin'],
+    [
+      {
+        id: 'essai-blc-1',
+        type: 'text',
+        text:
+          'Le premier échange décide de tout le reste. On appelle dans les 24 h, on écoute plus qu’on ne présente, et on repart avec une date.',
+      },
+      {
+        id: 'essai-blc-2',
+        type: 'checklist',
+        items: [
+          { id: 'essai-cch-1', text: 'Créer la fiche client', done: true },
+          { id: 'essai-cch-2', text: 'Envoyer le devis sous 48 h', done: true },
+          { id: 'essai-cch-3', text: 'Poser le rendez-vous de cadrage', done: false },
+        ],
+      },
+      {
+        id: 'essai-blc-3',
+        type: 'table',
+        columns: ['Étape', 'Délai'],
+        rows: [
+          ['Appel de découverte', '24 h'],
+          ['Devis', '48 h'],
+        ],
+      },
+    ],
+  ],
+  [
+    'essai-page-2',
+    'Procédure d’ouverture',
+    ['owner', 'admin'],
+    [
+      { id: 'essai-blc-4', type: 'text', text: 'Ouvrir à 8 h 30. Rideau, caisse, lumières de vitrine.' },
+      {
+        id: 'essai-blc-5',
+        type: 'checklist',
+        items: [
+          { id: 'essai-cch-4', text: 'Relever la caisse de la veille', done: false },
+          { id: 'essai-cch-5', text: 'Allumer la vitrine', done: false },
+        ],
+      },
+    ],
+  ],
+  [
+    'essai-page-3',
+    'Tarifs et remises',
+    /* Personne d'autre que la propriétaire : c'est la page en lecture seule du
+       rail, et celle qui donne son sens à la mention « lecture seule ». */
+    ['owner'],
+    [{ id: 'essai-blc-6', type: 'text', text: 'Remise maximale : 15 %. Au-delà, l’accord se demande.' }],
+  ],
+  [
+    'essai-page-4',
+    'Contacts fournisseurs',
+    ['owner', 'admin', 'member'],
+    [
+      {
+        id: 'essai-blc-7',
+        type: 'table',
+        columns: ['Fournisseur', 'Contact', 'Délai'],
+        rows: [
+          ['Papeterie Vasseur', '01 45 22 08 17', '5 j'],
+          ['Tissus du Nord', 'contact@exemple.test', '10 j'],
+          ['Impression Leroux', '01 45 90 33 02', '3 j'],
+        ],
+      },
+    ],
+  ],
+];
+for (const [cle, title, editorRoles, blocks] of PAGES) {
+  await poser('pages', cle, { title, editorRoles, blocks, updatedAt: instant(-24 * 3) });
+}
+
+/* ─── Automatisations ──────────────────────────────────────────────────────── */
+
+/*
+  Une règle SUSPENDUE sur les factures échues : c'est la seule configuration qui
+  produit l'ambre de l'écran Automatisations (« N en attente »). Une règle
+  active n'attend rien — le moteur écrit dès qu'un poste est ouvert. Les autres
+  sont actives, pour que les deux états de la phrase se voient.
+*/
+const REGLES = [
+  ['essai-aut-1', 'invoiceOverdue', 'task', false, 'design@exemple.test'],
+  ['essai-aut-2', 'formAnswer', 'task', true, ''],
+  ['essai-aut-3', 'stockLow', 'logbook', true, ''],
+  ['essai-aut-4', 'prospectWon', 'task', false, ''],
+];
+for (const [cle, trigger, action, enabled, assigneeEmail] of REGLES) {
+  await poser('automations', cle, { trigger, action, enabled, assigneeEmail, createdAt: instant(-24 * 45) });
+}
+
+/* ─── Contrôles qualité ────────────────────────────────────────────────────── */
+
+/*
+  Quatre modèles, dont un jamais passé : la feuille doit savoir dire « aucun
+  passage » aussi bien que montrer une trace. Les passages portent des heures
+  réelles et des taux de conformité différents — un 4/6 au milieu de deux 6/6,
+  sinon la colonne de droite de la trace n'a rien à distinguer.
+*/
+const MODELES = [
+  ['essai-chk-1', 'Ouverture de boutique', [
+    'Température des vitrines relevée',
+    'Sol lavé et signalétique en place',
+    'Caisse ouverte avec son fond',
+    'Étiquettes de prix vérifiées',
+    'Stock de sacs vérifié',
+    'Terrasse installée',
+  ]],
+  ['essai-chk-2', 'Fermeture', [
+    'Caisse comptée et fermée',
+    'Vitrines éteintes',
+    'Chambre froide contrôlée',
+    'Poubelles sorties',
+    'Alarme enclenchée',
+    'Porte verrouillée',
+    'Clés rangées',
+  ]],
+  ['essai-chk-3', 'Contrôle frigo', [
+    'Température relevée',
+    'Dates de péremption vérifiées',
+    'Joints nettoyés',
+    'Relevé consigné',
+  ]],
+  ['essai-chk-4', 'Réception livraison', [
+    'Bon de livraison vérifié',
+    'Quantités comptées',
+    'État des emballages',
+    'Chaîne du froid respectée',
+    'Réserves notées',
+  ]],
+];
+for (const [cle, title, items] of MODELES) {
+  await poser('checklists', cle, { title, items, createdAt: instant(-24 * 120) });
+}
+
+const coches = (total, conformes) => Array.from({ length: total }, (_, i) => i < conformes);
+const PASSAGES = [
+  ['essai-run-1', 'essai-chk-1', aujourdHui(8, 5, -1), 'lea@exemple.test', coches(6, 6)],
+  ['essai-run-2', 'essai-chk-1', aujourdHui(8, 31, -2), 'samir@exemple.test', coches(6, 4)],
+  ['essai-run-3', 'essai-chk-1', aujourdHui(7, 58, -3), 'lea@exemple.test', coches(6, 6)],
+  ['essai-run-4', 'essai-chk-2', aujourdHui(19, 40, -1), 'lea@exemple.test', coches(7, 7)],
+  ['essai-run-5', 'essai-chk-3', aujourdHui(9, 15, 0), 'samir@exemple.test', coches(4, 4)],
+];
+for (const [cle, checklistId, doneAt, byEmail, checked] of PASSAGES) {
+  await poser('checkRuns', cle, { checklistId, doneAt, byEmail, checked, note: '' });
+}
+
+/* ─── Matériel ─────────────────────────────────────────────────────────────── */
+
+/*
+  Quatre ressources, dont une libre toute la journée — les deux états de la
+  grille d'occupation. Le créneau de la camionnette à 13 h 30 est celui que la
+  maquette refuse : réserver 14 h → 16 h dessus produit le refus, et donc
+  l'unique ambre de l'écran Matériel.
+*/
+const RESSOURCES = [
+  ['essai-res-1', 'Camionnette', 'Véhicule'],
+  ['essai-res-2', 'Salle du fond', 'Salle'],
+  ['essai-res-3', 'Vidéoprojecteur', 'Matériel'],
+  ['essai-res-4', 'Presse à chaud', 'Machine'],
+];
+for (const [cle, name, kind] of RESSOURCES) {
+  await poser('resources', cle, { name, kind, createdAt: instant(-24 * 90) });
+}
+
+/* Les créneaux sont en heure LOCALE sans fuseau (`AAAA-MM-JJTHH:MM`) : c'est
+   le format que l'écran compare en chaînes, et un ISO complet en Z ne s'y
+   ordonnerait pas de la même façon. */
+const creneau = (h, m, h2, m2) =>
+  [`${jour(0)}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
+   `${jour(0)}T${String(h2).padStart(2, '0')}:${String(m2).padStart(2, '0')}`];
+const RESERVATIONS = [
+  ['essai-rsv-1', 'essai-res-1', ...creneau(9, 0, 11, 30), 'Livraison Atelier Vermeil', 'samir@exemple.test'],
+  ['essai-rsv-2', 'essai-res-1', ...creneau(13, 30, 15, 0), 'Tournée de l’après-midi', 'samir@exemple.test'],
+  ['essai-rsv-3', 'essai-res-2', ...creneau(15, 0, 16, 0), 'Point de production', 'clara@exemple.test'],
+  ['essai-rsv-4', 'essai-res-3', ...creneau(11, 0, 12, 30), 'Présentation cliente', 'lea@exemple.test'],
+];
+for (const [cle, resourceId, startAt, endAt, purpose, byEmail] of RESERVATIONS) {
+  await poser('resourceBookings', cle, { resourceId, startAt, endAt, purpose, byEmail, createdAt: instant(-48) });
+}
+
+/* ─── Tournées ─────────────────────────────────────────────────────────────── */
+
+/*
+  Deux arrêts livrés, quatre restants : c'est ce qui fait exister « l'arrêt en
+  cours », l'unique ambre de l'écran Tournées. Une tournée entièrement livrée
+  n'en a pas — elle est là aussi, pour que les deux cas se voient.
+*/
+const arret = (id, label, address, doneAt = null) => ({ id, label, address, doneAt });
+await poser('deliveryRounds', 'essai-trn-1', {
+  title: 'Tournée du matin',
+  day: jour(0),
+  stops: [
+    arret('stp-1', 'Boulangerie Martin', '12 rue des Lilas, Nantes', aujourdHui(8, 24)),
+    arret('stp-2', 'Café des Halles', '3 place du Bouffay, Nantes', aujourdHui(8, 51)),
+    arret('stp-3', 'Fleuriste Camélia', '48 boulevard Gabriel Lauriol, Nantes'),
+    arret('stp-4', 'Épicerie du Marché', '7 rue de Bel Air, Nantes'),
+    arret('stp-5', 'Restaurant Le Cèdre', '21 rue Paul Bellamy, Nantes'),
+    arret('stp-6', 'Atelier Vermeil', '12 rue Béranger, Nantes'),
+  ],
+  createdAt: aujourdHui(7, 0),
+});
+await poser('deliveryRounds', 'essai-trn-2', {
+  title: 'Tournée de l’après-midi',
+  day: jour(0),
+  stops: [
+    arret('stp-7', 'Studio Nord', '4 rue du Calvaire, Nantes'),
+    arret('stp-8', 'Librairie du Guet', '9 rue de Verdun, Nantes'),
+    arret('stp-9', 'Céramique Petit', '30 rue Crébillon, Nantes'),
+  ],
+  createdAt: aujourdHui(7, 0),
+});
+await poser('deliveryRounds', 'essai-trn-3', {
+  title: 'Livraisons du lundi',
+  day: jour(-4),
+  stops: [
+    arret('stp-10', 'Maison Bertaux', '18 rue Jean Jaurès, Nantes', aujourdHui(9, 12, -4)),
+    arret('stp-11', 'Atelier Vermeil', '12 rue Béranger, Nantes', aujourdHui(10, 5, -4)),
+    arret('stp-12', 'Café des Halles', '3 place du Bouffay, Nantes', aujourdHui(11, 30, -4)),
+  ],
+  createdAt: aujourdHui(7, 0, -4),
+});
+
+/* ─── Temps ────────────────────────────────────────────────────────────────── */
+
+/*
+  UNE PÉRIODE EN COURS, et c'est elle qui porte l'unique ambre de l'écran Temps
+  (« 00:14:07 », la seule exception écrite de la règle de la plaque). Elle est
+  démarrée quatorze minutes avant maintenant : le compteur affiche donc un
+  chiffre plausible dès l'ouverture, sans dépendre de l'heure du semis.
+
+  Les autres sont réparties sur la semaine, une déjà facturée, pour que
+  « dont N déjà facturées » et « à facturer » disent chacun quelque chose.
+*/
+const minutesAvant = (n) => new Date(Date.now() - n * 60_000).toISOString();
+const TEMPS = [
+  ['essai-tps-1', 'Maquettes des gabarits', 'essai-prj-1', minutesAvant(14), '', ''],
+  ['essai-tps-2', 'Retouches vitrine', 'essai-prj-3', minutesAvant(700), minutesAvant(549), instant(-20)],
+  ['essai-tps-3', 'Cadrage Brasserie du Port', 'essai-prj-1', minutesAvant(1980), minutesAvant(1740), ''],
+  ['essai-tps-4', 'Intégration des gabarits', 'essai-prj-1', minutesAvant(1670), minutesAvant(1450), ''],
+  ['essai-tps-5', 'Sélection des visuels', 'essai-prj-2', minutesAvant(3100), minutesAvant(2950), ''],
+  ['essai-tps-6', 'Appel client', 'essai-prj-3', minutesAvant(4400), minutesAvant(4340), ''],
+];
+for (const [cle, label, projectId, startedAt, endedAt, invoicedAt] of TEMPS) {
+  await poser('timeEntries', cle, {
+    label,
+    projectId,
+    startedAt,
+    endedAt,
+    invoicedAt,
+    createdAt: startedAt,
+  });
+}
+
+/* ─── Routines ─────────────────────────────────────────────────────────────── */
+
+/*
+  Les cases cochées sont posées en JOURS RÉELS remontant depuis aujourd'hui :
+  c'est ce qui fait qu'une série vaut douze et une autre zéro, et donc que la
+  matrice montre autre chose qu'une grille uniforme. Deux routines sont
+  volontairement jamais faites — le trou doit se voir, c'est tout le propos.
+*/
+const joursCoches = (liste) => liste.map((n) => jour(-n));
+const ROUTINES = [
+  ['essai-rtn-1', 'Relever la caisse', joursCoches([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])],
+  ['essai-rtn-2', 'Sauvegarder les fichiers du jour', joursCoches([0, 1, 4, 6])],
+  ['essai-rtn-3', 'Relire la boîte de réception', joursCoches([0, 1, 2, 3, 5, 6])],
+  ['essai-rtn-4', 'Arroser l’atelier', joursCoches([5, 6])],
+  ['essai-rtn-5', 'Vérifier le frigo', joursCoches([2, 4, 6])],
+];
+for (const [cle, label, ticks] of ROUTINES) {
+  await poser('routines', cle, { label, ticks: [...ticks].sort(), createdAt: instant(-24 * 60) });
+}
+
+/* ─── Réunions ─────────────────────────────────────────────────────────────── */
+
+/*
+  La dernière réunion a des décisions ET des suites ouvertes ; une autre a
+  décidé SANS rien mettre en face — c'est elle qui porte l'unique ambre de
+  l'écran Réunions, et sans elle le signal ne se mesure pas.
+*/
+const REUNIONS = [
+  {
+    cle: 'essai-reu-1',
+    title: 'Point de production',
+    at: aujourdHui(9, 30, -2),
+    attendees: 'Léa, Clara, Samir',
+    agenda: 'Ordre du jour — 1. Retard de la refonte boutique. 2. Charge de la semaine 38. 3. Faut-il refuser le catalogue hiver ?',
+    decisions: [
+      'La livraison Brasserie du Port passe au 19 septembre, annoncée aujourd’hui.',
+      'Le catalogue hiver est refusé — la charge de septembre est déjà pleine.',
+      'Samir reprend la retouche des visuels à partir de jeudi.',
+    ],
+    actions: [
+      { id: 'act-1', label: 'Écrire à Hugo pour la nouvelle date', doneAt: null },
+      { id: 'act-2', label: 'Décaler les jalons du projet', doneAt: null },
+      { id: 'act-3', label: 'Prévenir Nadia du refus', doneAt: instant(-30) },
+      { id: 'act-4', label: 'Bloquer deux jours de retouche jeudi', doneAt: instant(-26) },
+    ],
+  },
+  {
+    cle: 'essai-reu-2',
+    title: 'Revue commerciale',
+    at: aujourdHui(14, 0, -7),
+    attendees: 'Léa, Clara',
+    agenda: 'Ordre du jour — 1. Devis en attente. 2. Relances de septembre.',
+    decisions: [
+      'On relance Hugo Marchand une dernière fois avant de clore le devis.',
+      'Les tarifs 2027 sont gelés jusqu’en novembre.',
+    ],
+    /* Aucune suite : c'est le cas que l'ambre existe pour montrer. */
+    actions: [],
+  },
+  {
+    cle: 'essai-reu-3',
+    title: 'Cadrage Brasserie du Port',
+    at: aujourdHui(11, 0, -10),
+    attendees: 'Léa, Hugo Marchand',
+    agenda: 'Ordre du jour — 1. Périmètre. 2. Budget. 3. Jalons.',
+    decisions: ['Le périmètre est arrêté sur douze jardinières et l’entretien mensuel.'],
+    actions: [{ id: 'act-5', label: 'Envoyer le devis détaillé', doneAt: instant(-200) }],
+  },
+];
+for (const r of REUNIONS) {
+  await poser('meetings', r.cle, {
+    title: r.title,
+    at: r.at.slice(0, 16),
+    attendees: r.attendees,
+    agenda: r.agenda,
+    decisions: r.decisions,
+    actions: r.actions,
+    byEmail: EMAIL,
+    createdAt: r.at,
   });
 }
 
@@ -461,6 +1124,36 @@ await poser('reports', 'essai-rap-1', {
   links: [],
   authorEmail: EMAIL,
   createdAt: instant(-24 * 3),
+});
+
+/*
+  DEUX RAPPORTS TIRÉS D'AILLEURS : sans `links`, la bande de provenance de
+  l'écran Rapports n'existe pas, et c'est justement l'objet dominant de cet
+  écran — et son unique ambre. Le troisième reste manuel, pour que l'absence de
+  bande se voie aussi.
+*/
+await poser('reports', 'essai-rap-2', {
+  type: 'client',
+  title: 'Fin de la vitrine d’été — Brasserie du Port',
+  body: [
+    'La vitrine a été posée le 24 juillet, avec une semaine d’avance sur la date annoncée. Les trois panneaux ont été refaits une fois : le premier tirage rendait mal sous la lumière du soir, ce que le client avait signalé au cadrage.',
+    '',
+    'Ce qu’il faut retenir pour la prochaine : demander une photo de la vitrine à 19 h avant d’imprimer. Le devis suivant, la refonte de la boutique, en tient compte.',
+  ].join('\n'),
+  links: [
+    { kind: 'client', id: '102', label: 'Hugo Marchand' },
+    { kind: 'task', id: 'essai-tac-1', label: 'Livrer la vitrine d’été' },
+  ],
+  authorEmail: EMAIL,
+  createdAt: instant(-24 * 2),
+});
+await poser('reports', 'essai-rap-3', {
+  type: 'task',
+  title: 'Installation Studio Nord',
+  body: 'Pose faite en deux heures, sans reprise. Le local est accessible par l’arrière, ce qui change tout pour le déchargement — à noter pour les prochaines livraisons.',
+  links: [{ kind: 'task', id: 'essai-tac-2', label: 'Installer chez Studio Nord' }],
+  authorEmail: EMAIL,
+  createdAt: instant(-24 * 21),
 });
 
 /* ─── La supervision : tous ses ÉTATS, pas seulement « nouveau » ───────────── */

@@ -246,7 +246,7 @@ function StepSite({
   if (sites.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 py-10 text-center">
-        <Globe size={22} strokeWidth={1.5} className="text-text-muted" />
+        <Globe size={22} strokeWidth={1.9} className="text-text-muted" />
         <p className="text-sm font-medium text-text-primary">Aucun site enregistré</p>
         <p className="max-w-sm text-sm text-text-secondary">
           Enregistrez d’abord un site dans l’onglet <span className="text-text-primary">Sites</span> pour obtenir sa clé
@@ -269,7 +269,7 @@ function StepSite({
             }`}
           >
             <span className="flex items-center gap-2.5">
-              <Globe size={15} strokeWidth={1.75} className="text-text-muted" />
+              <Globe size={15} strokeWidth={1.9} className="text-text-muted" />
               <span className="text-sm font-medium text-text-primary">{site.name}</span>
             </span>
             <span
@@ -398,7 +398,7 @@ function StepInstall({
                   on ? 'border-accent bg-accent-muted' : 'border-border hover:bg-white/[0.03]'
                 }`}
               >
-                <Icon size={15} strokeWidth={1.75} className={on ? 'text-accent' : 'text-text-muted'} />
+                <Icon size={15} strokeWidth={1.9} className={on ? 'text-accent' : 'text-text-muted'} />
                 <span className="text-xs font-semibold text-text-primary">{meta.label}</span>
                 <span className="text-[10px] text-text-muted">{meta.hint}</span>
               </button>

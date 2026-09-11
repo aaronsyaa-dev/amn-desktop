@@ -99,7 +99,7 @@ export function ScannerScreen() {
   if (!configured) {
     return (
       <div className="mx-auto max-w-2xl py-20 text-center">
-        <ScanLine size={28} className="mx-auto mb-4 text-text-muted" strokeWidth={1.5} />
+        <ScanLine size={28} className="mx-auto mb-4 text-text-muted" strokeWidth={1.9} />
         <h1 className="text-xl font-semibold text-text-primary">Scanner indisponible</h1>
         <p className="mt-2 text-sm text-text-secondary">
           Le scanner s’exécute sur amn-api. Cette instance n’est pas reliée à l’API centrale —

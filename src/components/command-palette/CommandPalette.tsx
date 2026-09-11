@@ -291,7 +291,7 @@ function CommandPaletteModal({
             className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-surface elev-3"
           >
             <div className="flex items-center gap-3 border-b border-border px-4">
-              <Search size={18} strokeWidth={1.75} className="text-text-muted" />
+              <Search size={18} strokeWidth={1.9} className="text-text-muted" />
               <input
                 autoFocus
                 value={query}
@@ -374,11 +374,11 @@ function CommandRow({
         }`}
       >
         {command.kind === 'garde' ? (
-          <Shield size={15} strokeWidth={1.75} />
+          <Shield size={15} strokeWidth={1.9} />
         ) : command.kind === 'nav' || command.kind === 'action' || command.kind === 'record' ? (
-          <command.icon size={15} strokeWidth={1.75} />
+          <command.icon size={15} strokeWidth={1.9} />
         ) : (
-          <Globe size={15} strokeWidth={1.75} />
+          <Globe size={15} strokeWidth={1.9} />
         )}
       </span>
       <div className="min-w-0 flex-1">
@@ -393,7 +393,7 @@ function CommandRow({
       {active && (
         <CornerDownLeft
           size={14}
-          strokeWidth={1.75}
+          strokeWidth={1.9}
           className="flex-shrink-0 text-text-muted"
         />
       )}

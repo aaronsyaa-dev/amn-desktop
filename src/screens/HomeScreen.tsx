@@ -36,9 +36,49 @@ import { homeWelcome, homeNudge, parcSerein, alerteParc } from '../lib/homeGreet
 import { relativeTime } from '../lib/time';
 
 /**
- * Calm home. Intentionally sparse: a short, warm welcome and a clear "where to
- * start" grid — no dense stats, activity feed or insights (those live in their
- * own tabs). Soft, staggered entrance for a settled feeling on open.
+ * L'ACCUEIL INTERNE — le poste de supervision d'Harun et Mohamed
+ * ══════════════════════════════════════════════════════════════
+ *
+ * Distinct de `HomeSoloScreen`, qui est l'accueil d'UNE cliente dans son propre
+ * espace. Celui-ci regarde un PARC : des sites supervisés pour plusieurs
+ * clientes, les incidents ouverts dessus, et le travail que l'équipe se
+ * partage. Les deux écrans n'ont donc pas le même objet dominant, et le second
+ * ne doit surtout pas copier la composition du premier.
+ *
+ * ## Ce qui domine, et pourquoi
+ *
+ * « Ce qui attend quelqu'un » — la tête de la file des points d'attention.
+ *
+ * Le candidat évident était la salutation : elle occupait 48 px au centre, et
+ * c'est ce qu'on lisait d'abord. Mais une salutation n'est pas le sujet de
+ * l'écran. Les autres candidats ont été écartés pour une raison chacun :
+ *
+ *   · le nombre de sites supervisés est un ÉTAT, pas une décision ; un état se
+ *     lit en second ;
+ *   · les sites hors ligne sont déjà rouges, et être hors ligne n'implique pas
+ *     que personne ne s'en occupe ;
+ *   · le prochain rendez-vous est l'objet de l'accueil CLIENTE — ici deux
+ *     personnes couvrent plusieurs clientes, il n'y a pas « mon prochain
+ *     rendez-vous » qui vaille pour l'écran.
+ *
+ * Ce qui reste est le seul fait qui parle du travail de L'ÉQUIPE : la chose la
+ * plus grave qui a attendu le plus longtemps. Sur un poste à deux, la panne
+ * n'est pas « on ne savait pas », c'est « chacun pensait que l'autre l'avait ».
+ *
+ * ## La file n'est pas recalculée ici
+ *
+ * La carte dominante PROMEUT la tête de `useAttention`, dont le classement
+ * (gravité + ancienneté) vit dans `lib/attention.ts` et se contrôle hors
+ * application. Écrire un second classement ici, c'est se donner deux vérités
+ * qui finiront par diverger — le panneau dirait une chose, la carte une autre.
+ * Le panneau reçoit donc la file PRIVÉE DE SA TÊTE : promue, pas dupliquée.
+ *
+ * ## L'ambre et le rouge disent deux choses différentes
+ *
+ * Le rouge reste la gravité, et il est déjà porté par les lignes du panneau.
+ * L'ambre de la carte ne redit pas « c'est grave » : il dit « c'est à prendre
+ * en premier ». Un incident critique déjà pris en charge est grave et n'appelle
+ * aucune décision ; celui-ci en appelle une.
  */
 export function HomeScreen() {
   const { user, org } = useAuth();
@@ -182,6 +222,26 @@ export function HomeScreen() {
     month: 'long',
   });
 
+  /*
+    LA TÊTE DE FILE, ET LE RESTE.
+
+    `useAttention` trie déjà par poids (gravité + ancienneté) : la tête est,
+    par construction, la chose la plus grave qui a attendu le plus longtemps.
+    On la sort de la liste plutôt que de la laisser s'y perdre — c'était la
+    sixième chose lisible de l'écran, en 14 px, dans un panneau replié à trois
+    lignes sur treize.
+
+    Le panneau reçoit `reste` : la même file, sans sa tête. Sans cela, l'objet
+    dominant de l'écran serait aussi la première ligne du panneau juste en
+    dessous, et on lirait deux fois la même phrase à deux tailles.
+  */
+  const aPrendre = attention.items[0];
+  const reste = attention.items.length > 1 ? attention.items.length - 1 : 0;
+  const fileRestante = useMemo(
+    () => ({ items: attention.items.slice(1), checkedAt: attention.checkedAt }),
+    [attention.items, attention.checkedAt],
+  );
+
   const alerte = alerteParc({ horsLigne, jamaisVus }, langueReleve);
 
   // A three-number pulse of the workspace. Kept to counts the operator can act
@@ -232,40 +292,104 @@ export function HomeScreen() {
   ];
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-10rem)] max-w-3xl flex-col justify-center py-10">
-      {/* Welcome */}
+    <div className="mx-auto flex w-full max-w-4xl flex-col py-8">
+      {/*
+        LA SALUTATION DESCEND D'UN CRAN, ELLE NE DISPARAÎT PAS.
+
+        Elle était le plus gros objet de l'écran — 48 px, au centre, au-dessus
+        de tout. Ce n'est pas le sujet : la première chose qu'un poste de
+        supervision doit dire, c'est ce qui attend. Elle garde sa règle (voir
+        `parcSerein` : on n'affirme le calme qu'après avoir regardé), et devient
+        la ligne de contexte qu'elle aurait toujours dû être.
+
+        L'écran passe aussi de centré à aligné à gauche, comme les vingt-quatre
+        autres : un tableau de bord qu'on balaie plusieurs fois par jour se lit
+        au bord, pas au milieu.
+      */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-        className="text-center"
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        className="flex flex-wrap items-baseline gap-x-3 gap-y-1"
       >
-        <p className="font-mono text-[11px] uppercase tracking-[0.25em] text-text-muted">{dateLabel}</p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight text-text-primary sm:text-5xl">{welcome}</h1>
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.35, duration: 0.8 }}
-          className="mt-3 text-base text-text-secondary"
+        <p className="eyebrow">{dateLabel}</p>
+        <p className="text-sm text-text-secondary">{welcome}</p>
+        {/*
+          L'alerte OU le clin d'œil, jamais rien.
+
+          Le `nudge` est la phrase des jours où le parc n'a rien à signaler ;
+          il était la branche « sinon » de l'alerte, et un premier jet de cette
+          recomposition l'avait laissé tomber en même temps que la grande
+          salutation — un écran qui ne dit plus rien quand tout va bien apprend
+          qu'il ne dit rien.
+        */}
+        {alerte ? (
+          <button
+            type="button"
+            onClick={() => navigate('/sites')}
+            className="text-sm text-danger underline decoration-danger/40 underline-offset-4 transition-colors hover:decoration-danger"
+          >
+            {alerte}
+          </button>
+        ) : (
+          <span className="text-sm text-text-muted">{nudge}</span>
+        )}
+      </motion.div>
+
+      {/*
+        L'OBJET DOMINANT — ce qui attend quelqu'un.
+
+        Voir l'en-tête du fichier pour l'arbitrage. En résumé : c'est le seul
+        fait de l'écran qui parle du travail de l'équipe plutôt que de l'état du
+        parc, et sur un poste à deux, c'est là que ça casse.
+
+        La plaque ambre porte la POSITION dans la file, pas la gravité : la
+        gravité est déjà dite par la preuve (« non pris en charge depuis 7 h »,
+        « échue depuis 45 jours »), qui vient du moteur et vaut pour les dix
+        sortes de points d'attention. Une plaque qui dirait « critique »
+        mentirait le jour où la tête de file est une facture.
+      */}
+      {aPrendre && (
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="panel-raised mt-5 p-5 sm:p-6"
+          data-signal-groupe="a-prendre"
         >
-          {alerte ? (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <span className="signal-plate px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.18em]">
+              {tr('accueil.aPrendre.enPremier')}
+            </span>
+            {reste > 0 && (
+              <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                {reste === 1
+                  ? tr('accueil.aPrendre.puisUnAutre')
+                  : tr('accueil.aPrendre.puisNAutres', { n: reste })}
+              </span>
+            )}
+          </div>
+
+          <p className="mt-3.5 text-[21px] font-semibold leading-snug text-text-primary sm:text-[25px]">
+            {aPrendre.title}
+          </p>
+          <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">{aPrendre.evidence}</p>
+
+          {aPrendre.action && (
             <button
               type="button"
-              onClick={() => navigate('/sites')}
-              className="text-danger underline decoration-danger/40 underline-offset-4 transition-colors hover:decoration-danger"
+              onClick={() => navigate(aPrendre.to)}
+              className="mt-4 flex min-h-10 items-center gap-2 bg-accent px-4 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
             >
-              {alerte}
+              {aPrendre.action}
+              <ArrowRight size={15} strokeWidth={2} />
             </button>
-          ) : (
-            nudge
           )}
-        </motion.p>
-      </motion.div>
+        </motion.section>
+      )}
 
       {/* La relève SOC : ce qui est apparu pendant l'absence, et un verdict.
           Même grammaire que le Majordome cliente, un degré plus froid. */}
-      {/* Un nouveau compte interne choisit sa mission d'un geste (Bloc 7) ; la carte ne revient pas. */}
-      <ProfilInterneCarte />
       <RelevePoste
         depuis={depuisReleve}
         observations={observationsReleve}
@@ -281,20 +405,30 @@ export function HomeScreen() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-        className="elev-1 mt-8 grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-border bg-border"
+        /*
+          Le parc passe en SECOND, et à angles vifs comme tout le reste.
+
+          Trois chiffres qui décrivent un état : ils ne demandent aucune
+          décision, donc ils ne dominent plus. Les coins arrondis et l'ombre
+          `elev-1` dataient d'avant le système de design, qui pose des cartes
+          franches — voir « Pas de border-radius sur les cartes » dans le
+          paquet, et les trois matières `.panel` / `.panel-raised` /
+          `.panel-sheet` dans index.css.
+        */
+        className="mt-8 grid grid-cols-3 gap-px border border-border bg-border"
       >
         {stats.map((s) => (
           <button
             key={s.key}
             type="button"
             onClick={() => navigate(s.to)}
-            className="group flex flex-col items-center gap-1 bg-surface px-3 py-4 transition-colors hover:bg-surface-hover"
+            className="group flex flex-col items-start gap-1 bg-surface px-4 py-4 text-left transition-colors hover:bg-surface-hover"
           >
             <AnimatedCounter
               value={s.value}
               className="font-mono text-2xl font-semibold tabular-nums text-text-primary sm:text-3xl"
             />
-            <span className="text-center text-[10px] uppercase tracking-[0.18em] text-text-muted transition-colors group-hover:text-text-secondary">
+            <span className="text-[10px] uppercase tracking-[0.18em] text-text-muted transition-colors group-hover:text-text-secondary">
               {s.label}
             </span>
           </button>
@@ -311,7 +445,18 @@ export function HomeScreen() {
 
       {/* Ce que l'application a remarqué toute seule. Ne s'affiche que s'il y a
           quelque chose à dire — voir AttentionPanel. */}
-      <AttentionPanel state={attention} className="mt-10" />
+      <AttentionPanel state={fileRestante} className="mt-8" />
+
+      {/*
+        LE CHOIX DE POSTE PASSE APRÈS LA SUPERVISION.
+
+        Cette carte n'apparaît qu'à la première ouverture d'un compte interne
+        (Bloc 7) et ne revient pas. Elle se posait entre l'objet dominant et le
+        parc, c'est-à-dire au milieu de la seule séquence que l'écran doit
+        servir. Un réglage de barre latérale, si utile soit-il une fois, ne
+        passe pas devant un incident que personne n'a pris.
+      */}
+      <ProfilInterneCarte />
 
       {/* Sites suivis — personal shortcut, only when the operator pinned some */}
       {pinnedSites.length > 0 && (
@@ -321,10 +466,8 @@ export function HomeScreen() {
           transition={{ delay: 0.5, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="mt-10"
         >
-          <p className="mb-2 text-center font-mono text-[10px] uppercase tracking-[0.25em] text-text-muted">
-            Sites suivis
-          </p>
-          <div className="flex flex-wrap justify-center gap-2">
+          <p className="eyebrow mb-2.5">Sites suivis</p>
+          <div className="flex flex-wrap gap-2">
             {pinnedSites.map((s) => (
               <button
                 key={s.id}
@@ -355,10 +498,10 @@ export function HomeScreen() {
             variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             whileHover={{ y: -3 }}
-            className="elev-1 elev-hover group flex flex-col gap-3 rounded-2xl border border-border bg-surface p-5 text-left transition-colors hover:border-border-strong"
+            className="panel group flex flex-col gap-3 p-5 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-bg text-text-secondary transition-colors group-hover:text-text-primary">
-              <d.icon size={18} strokeWidth={1.75} />
+            <span className="flex h-10 w-10 items-center justify-center rounded-[6px] border border-border bg-bg text-text-secondary transition-colors group-hover:text-text-primary">
+              <d.icon size={18} strokeWidth={1.9} />
             </span>
             <div>
               <p className="text-sm font-semibold text-text-primary">{d.label}</p>
@@ -380,10 +523,8 @@ export function HomeScreen() {
           transition={{ delay: 0.6, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="mt-12"
         >
-          <p className="mb-3 text-center font-mono text-[10px] uppercase tracking-[0.25em] text-text-muted">
-            Activité récente
-          </p>
-          <div className="elev-1 mx-auto flex max-w-xl flex-col divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
+          <p className="eyebrow mb-2.5">Activité récente</p>
+          <div className="panel flex flex-col divide-y divide-border">
             {recentActivity.map((ev) => (
               <motion.button
                 key={ev.key}
@@ -397,7 +538,7 @@ export function HomeScreen() {
                 transition={{ duration: 1.4, times: [0, 0.2, 1], ease: 'easeOut' }}
                 className="flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-hover"
               >
-                <span className="flex-shrink-0 rounded-md border border-border bg-bg px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-text-muted">
+                <span className="flex-shrink-0 border border-border bg-bg px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-text-muted">
                   {ev.noun}
                 </span>
                 <span className="min-w-0 flex-1">
@@ -420,7 +561,7 @@ export function HomeScreen() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.7, duration: 0.8 }}
-        className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2"
+        className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2"
       >
         {secondary.map((s) => (
           <button
@@ -429,7 +570,7 @@ export function HomeScreen() {
             onClick={() => navigate(s.to)}
             className="-my-1.5 flex items-center gap-1.5 py-1.5 text-xs text-text-muted transition-colors hover:text-text-secondary"
           >
-            <s.icon size={13} strokeWidth={1.75} />
+            <s.icon size={13} strokeWidth={1.9} />
             {s.label}
           </button>
         ))}

@@ -78,6 +78,9 @@ import type {
   WelcomeAccess,
   WelcomeLinkState,
   JetonDepose,
+  SyncedCollection,
+  RecordWatchers,
+  RecordActivityEntry,
 } from '../shared/api';
 
 declare global {
@@ -674,12 +677,19 @@ function createBrowserRemote(): AmnBridge['remote'] {
       );
       return record;
     },
-    async deleteRecord(collection, id) {
+    async deleteRecord(collection, id, by) {
       const { record } = await apiFetch<{ record: RemoteRecord }>(
         `/v1/collections/${collection}/${encodeURIComponent(id)}`,
-        { method: 'DELETE' },
+        { method: 'DELETE', body: by ? JSON.stringify({ by }) : undefined },
       );
       return record;
+    },
+    async activityLog(limit) {
+      if (!configured) return [];
+      const { entries } = await apiFetch<{ entries: RecordActivityEntry[] }>(
+        `/v1/collections/_activity${limit ? `?limit=${limit}` : ''}`,
+      );
+      return entries ?? [];
     },
     onRecord(callback) {
       recordListeners.add(callback);
@@ -861,6 +871,28 @@ function createBrowserRemote(): AmnBridge['remote'] {
       return () => {
         offSignal();
         offUndelivered();
+      };
+    },
+    watchRecord(collection: SyncedCollection, id: string) {
+      ensureStarted();
+      if (!socket || socket.readyState !== WebSocket.OPEN) return;
+      socket.send(JSON.stringify({ type: 'watch', collection, id }));
+    },
+    unwatchRecord() {
+      if (!socket || socket.readyState !== WebSocket.OPEN) return;
+      socket.send(JSON.stringify({ type: 'unwatch' }));
+    },
+    onWatchers(callback: (info: RecordWatchers) => void) {
+      ensureStarted();
+      let set = frameListeners.get('watchers');
+      if (!set) {
+        set = new Set();
+        frameListeners.set('watchers', set);
+      }
+      const listener = (frame: Record<string, unknown>) => callback(frame as unknown as RecordWatchers);
+      set.add(listener);
+      return () => {
+        set?.delete(listener);
       };
     },
     welcome: {

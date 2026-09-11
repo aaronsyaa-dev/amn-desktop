@@ -171,7 +171,7 @@ export function AppLauncher({
                             }`}
                           >
                             <span className="text-text-primary transition-transform duration-200 group-hover:scale-110 group-hover:-translate-y-0.5">
-                              <Icon size={22} strokeWidth={1.5} />
+                              <Icon size={22} strokeWidth={1.9} />
                             </span>
                             <span className="text-sm font-medium leading-tight text-text-primary">
                               {libelleNav(item)}

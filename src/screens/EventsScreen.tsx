@@ -294,7 +294,7 @@ function DetailEvenement({
           aria-label={tr('hist.events.revenirALaListe')}
           className="p-1 text-text-muted transition-colors hover:text-text-primary md:hidden"
         >
-          <ArrowLeft size={16} strokeWidth={1.75} />
+          <ArrowLeft size={16} strokeWidth={1.9} />
         </button>
         <input
           value={evenement.nom}
@@ -424,7 +424,7 @@ function DetailEvenement({
             to="/evenements/documents"
             className="flex min-h-11 items-center gap-2 border border-border px-3 text-xs text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:min-h-0 md:py-2"
           >
-            <FileText size={13} strokeWidth={1.75} />{tr('hist.events.fichesConduiteEtCheck')}</Link>
+            <FileText size={13} strokeWidth={1.9} />{tr('hist.events.fichesConduiteEtCheck')}</Link>
         </Bloc>
 
         {/* ------------------------------- Notes ------------------------------ */}
@@ -446,7 +446,7 @@ function DetailEvenement({
             onClick={() => onPatch({ annule: !evenement.annule })}
             className="flex min-h-11 items-center gap-2 border border-border px-3 text-xs text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:min-h-0 md:py-2"
           >
-            {evenement.annule ? <Undo2 size={13} strokeWidth={1.75} /> : <XCircle size={13} strokeWidth={1.75} />}
+            {evenement.annule ? <Undo2 size={13} strokeWidth={1.9} /> : <XCircle size={13} strokeWidth={1.9} />}
             {evenement.annule ? 'Rétablir' : 'Annuler l’événement'}
           </button>
 
@@ -463,7 +463,7 @@ function DetailEvenement({
                 onClick={onDelete}
                 className="flex min-h-11 items-center gap-2 border border-danger/50 px-3 text-xs text-danger transition-colors hover:bg-danger/10 md:min-h-0 md:py-2"
               >
-                <Trash2 size={13} strokeWidth={1.75} />{tr('hist.events.ouiSupprimer')}</button>
+                <Trash2 size={13} strokeWidth={1.9} />{tr('hist.events.ouiSupprimer')}</button>
               <button
                 type="button"
                 onClick={() => setConfirmSuppression(false)}
@@ -478,7 +478,7 @@ function DetailEvenement({
               onClick={() => setConfirmSuppression(true)}
               className="flex min-h-11 items-center gap-2 px-2 text-xs text-text-muted transition-colors hover:text-danger md:min-h-0"
             >
-              <Trash2 size={13} strokeWidth={1.75} />{tr('hist.events.supprimer')}</button>
+              <Trash2 size={13} strokeWidth={1.9} />{tr('hist.events.supprimer')}</button>
           )}
         </div>
       </div>

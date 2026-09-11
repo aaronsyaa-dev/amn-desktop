@@ -145,7 +145,7 @@ export function ClientAdminScreen() {
 
       <StaggerItem>
         <p className="flex items-start gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-xs leading-relaxed text-text-secondary">
-          <ShieldAlert size={14} strokeWidth={1.75} className="mt-0.5 flex-shrink-0 text-text-muted" />
+          <ShieldAlert size={14} strokeWidth={1.9} className="mt-0.5 flex-shrink-0 text-text-muted" />
           Ces actions portent sur le COMPTE de l’organisation, pas sur son travail. Elles partent
           avec votre propre justificatif AMN DevSec et sont consignées au journal, avec votre nom.
         </p>
@@ -180,7 +180,7 @@ export function ClientAdminScreen() {
       <StaggerItem>
         <section className="elev-1 rounded-2xl border border-border bg-surface">
           <header className="flex items-center gap-2 border-b border-border px-4 py-3">
-            <Users size={15} strokeWidth={1.75} className="text-text-secondary" />
+            <Users size={15} strokeWidth={1.9} className="text-text-secondary" />
             <h2 className="text-sm font-semibold text-text-primary">Comptes</h2>
           </header>
           {users === null ? (
@@ -208,7 +208,7 @@ export function ClientAdminScreen() {
                     disabled={busy !== null}
                     className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:opacity-50"
                   >
-                    <Link2 size={13} strokeWidth={1.75} />
+                    <Link2 size={13} strokeWidth={1.9} />
                     Réémettre l’invitation
                   </button>
                   <button
@@ -217,7 +217,7 @@ export function ClientAdminScreen() {
                     disabled={busy !== null || user.status === 'suspended'}
                     className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:opacity-50"
                   >
-                    <KeyRound size={13} strokeWidth={1.75} />
+                    <KeyRound size={13} strokeWidth={1.9} />
                     Mot de passe temporaire
                   </button>
                 </li>
@@ -244,7 +244,7 @@ export function ClientAdminScreen() {
         */}
         <section className="elev-1 rounded-2xl border border-border bg-surface p-4">
           <div className="flex flex-wrap items-center gap-3">
-            <FileText size={16} strokeWidth={1.75} className="text-text-secondary" />
+            <FileText size={16} strokeWidth={1.9} className="text-text-secondary" />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-text-primary">Rapport mensuel de supervision</p>
               <p className="mt-0.5 text-[11px] leading-relaxed text-text-muted">
@@ -298,9 +298,9 @@ export function ClientAdminScreen() {
         <section className="elev-1 rounded-2xl border border-border bg-surface p-4">
           <div className="flex flex-wrap items-center gap-3">
             {suspended ? (
-              <ShieldOff size={16} strokeWidth={1.75} className="text-danger" />
+              <ShieldOff size={16} strokeWidth={1.9} className="text-danger" />
             ) : (
-              <ShieldCheck size={16} strokeWidth={1.75} className="text-text-secondary" />
+              <ShieldCheck size={16} strokeWidth={1.9} className="text-text-secondary" />
             )}
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-text-primary">
@@ -330,7 +330,7 @@ export function ClientAdminScreen() {
       <StaggerItem>
         <section className="elev-1 rounded-2xl border border-border bg-surface">
           <header className="flex items-center gap-2 border-b border-border px-4 py-3">
-            <History size={15} strokeWidth={1.75} className="text-text-secondary" />
+            <History size={15} strokeWidth={1.9} className="text-text-secondary" />
             <h2 className="text-sm font-semibold text-text-primary">
               Accès à cette organisation
             </h2>

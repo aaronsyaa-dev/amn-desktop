@@ -113,7 +113,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                     t.tone === 'assistant' ? 'bg-accent-muted text-accent' : 'bg-white/5 text-text-secondary'
                   }`}
                 >
-                  <Icon size={15} strokeWidth={1.75} />
+                  <Icon size={15} strokeWidth={1.9} />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-text-primary">{t.title}</p>

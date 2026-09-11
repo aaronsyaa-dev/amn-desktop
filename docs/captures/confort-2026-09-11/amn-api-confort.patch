@@ -1,0 +1,1092 @@
+diff --git a/src/db/postgres.js b/src/db/postgres.js
+index 9fd4fdd..bb9f692 100644
+--- a/src/db/postgres.js
++++ b/src/db/postgres.js
+@@ -3,6 +3,8 @@ import fs from 'node:fs';
+ import path from 'node:path';
+ import { fileURLToPath } from 'node:url';
+ import pg from 'pg';
++import { deciderEcriture } from '../lib/fusion.js';
++import { actorOf, bestEffortLabel } from '../lib/activityLabel.js';
+ 
+ const { Pool } = pg;
+ 
+@@ -359,6 +361,20 @@ export function createPostgresDb(connectionString) {
+     };
+   }
+ 
++  /**
++   * Voir le pilote SQLite pour le raisonnement complet. `client` est
++   * optionnel : `upsertRecordFusion` l'appelle depuis SA transaction (pour
++   * qu'un journal manqué n'arrive jamais séparément d'une écriture réussie),
++   * les deux autres depuis le pool directement.
++   */
++  async function journaliserActivite(runner, orgId, collection, recordId, action, data, actorEmailOverride) {
++    await runner.query(
++      `INSERT INTO record_activity_log (org_id, actor_email, collection, record_id, action, label, created_at)
++       VALUES ($1, $2, $3, $4, $5, $6, now())`,
++      [orgId, actorEmailOverride ?? actorOf(data), collection, recordId, action, bestEffortLabel(data)],
++    );
++  }
++
+   function rowToComply(row) {
+     if (!row) return null;
+     return {
+@@ -950,6 +966,10 @@ export function createPostgresDb(connectionString) {
+     async upsertRecord(orgId, collection, id, data) {
+       await pool.query('UPDATE organizations SET last_activity_at = now() WHERE id = $1', [orgId]);
+       requireOrg(orgId);
++      const { rows: avant } = await pool.query(
++        'SELECT deleted FROM shared_records WHERE org_id = $1 AND collection = $2 AND record_id = $3',
++        [orgId, collection, id],
++      );
+       const { rows } = await pool.query(
+         `INSERT INTO shared_records (org_id, collection, record_id, data, updated_at, deleted)
+          VALUES ($4, $1, $2, $3, now(), false)
+@@ -958,10 +978,66 @@ export function createPostgresDb(connectionString) {
+          RETURNING *`,
+         [collection, id, JSON.stringify(data ?? {}), orgId],
+       );
++      await journaliserActivite(
++        pool,
++        orgId,
++        collection,
++        id,
++        avant.length === 0 || avant[0].deleted ? 'create' : 'update',
++        data,
++      );
+       return rowToRecord(rows[0]);
+     },
+ 
+-    async deleteRecord(orgId, collection, id) {
++    /**
++     * Voir le pilote SQLite et `src/lib/fusion.js` : la décision est la MÊME
++     * fonction des deux côtés, c'est ce qui garantit que les deux bases se
++     * comportent pareil.
++     *
++     * `FOR UPDATE` verrouille la ligne le temps de la transaction : deux
++     * écritures simultanées sur le même enregistrement s'exécutent alors l'une
++     * après l'autre, et la seconde fusionne sur le résultat de la première —
++     * jamais sur l'état d'avant, qu'elle aurait lu sans le verrou.
++     */
++    async upsertRecordFusion(orgId, collection, id, { data, base, patch }) {
++      requireOrg(orgId);
++      const client = await pool.connect();
++      try {
++        await client.query('BEGIN');
++        await client.query('UPDATE organizations SET last_activity_at = now() WHERE id = $1', [orgId]);
++        const { rows: actuels } = await client.query(
++          'SELECT * FROM shared_records WHERE org_id = $1 AND collection = $2 AND record_id = $3 FOR UPDATE',
++          [orgId, collection, id],
++        );
++        const avant = rowToRecord(actuels[0]);
++        const decision = deciderEcriture(avant, { data, base, patch });
++        const { rows } = await client.query(
++          `INSERT INTO shared_records (org_id, collection, record_id, data, updated_at, deleted)
++           VALUES ($4, $1, $2, $3, now(), false)
++           ON CONFLICT (org_id, collection, record_id) DO UPDATE SET
++             data = excluded.data, updated_at = now(), deleted = false
++           RETURNING *`,
++          [collection, id, JSON.stringify(decision.data ?? {}), orgId],
++        );
++        await journaliserActivite(
++          client,
++          orgId,
++          collection,
++          id,
++          !avant || avant.deleted ? 'create' : 'update',
++          decision.data,
++        );
++        await client.query('COMMIT');
++        return { record: rowToRecord(rows[0]), fusion: decision.fusion };
++      } catch (err) {
++        await client.query('ROLLBACK').catch(() => {});
++        throw err;
++      } finally {
++        client.release();
++      }
++    },
++
++    async deleteRecord(orgId, collection, id, actorEmail = null) {
+       requireOrg(orgId);
+       const { rows } = await pool.query(
+         `INSERT INTO shared_records (org_id, collection, record_id, data, updated_at, deleted)
+@@ -970,9 +1046,29 @@ export function createPostgresDb(connectionString) {
+          RETURNING *`,
+         [collection, id, orgId],
+       );
++      await journaliserActivite(pool, orgId, collection, id, 'delete', null, actorEmail);
+       return rowToRecord(rows[0]);
+     },
+ 
++    /** Voir le pilote SQLite pour le contrat complet. */
++    async listRecordActivity(orgId, { limit = 100 } = {}) {
++      requireOrg(orgId);
++      const bornee = Math.min(500, Math.max(1, Number(limit) || 100));
++      const { rows } = await pool.query(
++        'SELECT * FROM record_activity_log WHERE org_id = $1 ORDER BY created_at DESC, id DESC LIMIT $2',
++        [orgId, bornee],
++      );
++      return rows.map((row) => ({
++        id: Number(row.id),
++        actorEmail: row.actor_email ?? null,
++        collection: row.collection,
++        recordId: row.record_id,
++        action: row.action,
++        label: row.label ?? null,
++        createdAt: new Date(row.created_at).toISOString(),
++      }));
++    },
++
+     /* --------------------------------- Scans -------------------------------- */
+ 
+     /* --------------------- Web Push (A.3) --------------------- */
+diff --git a/src/db/schema.sql b/src/db/schema.sql
+index 6b439fe..f3a3ba6 100644
+--- a/src/db/schema.sql
++++ b/src/db/schema.sql
+@@ -326,6 +326,26 @@ CREATE TABLE IF NOT EXISTS org_access_log (
+ CREATE INDEX IF NOT EXISTS org_access_log_created_at_idx ON org_access_log (created_at DESC);
+ CREATE INDEX IF NOT EXISTS org_access_log_org_idx ON org_access_log (org_id, created_at DESC);
+ 
++-- Journal d'activité des collections partagées (confort d'usage à deux) : qui
++-- a créé/modifié/supprimé quoi, dans quelle collection. Distinct de
++-- org_access_log ci-dessus (ça, c'est AMN DevSec qui ENTRE chez une cliente) :
++-- ici, ce sont les gestes des opérateurs de l'organisation elle-même sur
++-- leurs PROPRES données. `actor_email` vient du champ `_by` que le poste
++-- appose sur chaque écriture (voir WRITER_KEY côté poste) — il peut être NULL
++-- sur un enregistrement écrit par un poste d'avant ce correctif, ou sur une
++-- suppression dont le poste n'a pas dit l'auteur.
++CREATE TABLE IF NOT EXISTS record_activity_log (
++  id          BIGSERIAL PRIMARY KEY,
++  org_id      UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
++  actor_email TEXT,
++  collection  TEXT NOT NULL,
++  record_id   TEXT NOT NULL,
++  action      TEXT NOT NULL,
++  label       TEXT,
++  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
++);
++CREATE INDEX IF NOT EXISTS record_activity_log_org_idx ON record_activity_log (org_id, created_at DESC);
++
+ -- `org_id` on every tenant table. Nullable at the column level so the ALTER
+ -- never fails on a table that already holds rows; the backfill below fills
+ -- them, and the query layer always filters on it.
+diff --git a/src/db/sqlite.js b/src/db/sqlite.js
+index 96b7660..2051cad 100644
+--- a/src/db/sqlite.js
++++ b/src/db/sqlite.js
+@@ -4,6 +4,8 @@ import crypto from 'node:crypto';
+ import Database from 'better-sqlite3';
+ import { AMN_ORG_ID, AMN_ORG_NAME, TENANT_TABLES } from './tenancy.js';
+ import { rangSeverite } from '../tracker/incidents.js';
++import { deciderEcriture } from '../lib/fusion.js';
++import { actorOf, bestEffortLabel } from '../lib/activityLabel.js';
+ 
+ /**
+  * SQLite-backed implementation of the DB interface, used for local
+@@ -620,6 +622,26 @@ export function createSqliteDb(filePath) {
+     CREATE INDEX IF NOT EXISTS org_access_log_created_at_idx ON org_access_log (created_at DESC);
+     CREATE INDEX IF NOT EXISTS org_access_log_org_idx ON org_access_log (org_id, created_at DESC);
+ 
++    -- Journal d'activité des collections partagées (confort d'usage à deux) :
++    -- qui a créé/modifié/supprimé quoi, dans quelle collection. Distinct de
++    -- org_access_log ci-dessus (ça, c'est AMN DevSec qui ENTRE chez une
++    -- cliente) : ici, ce sont les gestes des opérateurs de l'organisation
++    -- elle-même sur leurs PROPRES données. actor_email vient du champ _by
++    -- que le poste appose sur chaque écriture (voir WRITER_KEY côté poste) —
++    -- il peut être NULL sur un enregistrement écrit par un poste d'avant ce
++    -- correctif, ou sur une suppression dont le poste n'a pas dit l'auteur.
++    CREATE TABLE IF NOT EXISTS record_activity_log (
++      id          INTEGER PRIMARY KEY AUTOINCREMENT,
++      org_id      TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
++      actor_email TEXT,
++      collection  TEXT NOT NULL,
++      record_id   TEXT NOT NULL,
++      action      TEXT NOT NULL,
++      label       TEXT,
++      created_at  TEXT NOT NULL
++    );
++    CREATE INDEX IF NOT EXISTS record_activity_log_org_idx ON record_activity_log (org_id, created_at DESC);
++
+     -- Demandes de module (BLOC 4). Voir schema.sql pour le raisonnement ; en
+     -- une phrase : une cliente demande, un humain lit, et ouvrir le module
+     -- reste un geste separe.
+@@ -1068,6 +1090,28 @@ export function createSqliteDb(filePath) {
+     };
+   }
+ 
++  /**
++   * Une ligne dans le journal d'activité des collections (confort d'usage à
++   * deux). `data` peut être `null` (suppression) — c'est de là que vient
++   * `actorEmailOverride`, l'auteur auto-déclaré passé explicitement par la
++   * route de suppression, faute d'un corps de requête à lire (voir
++   * collections.js).
++   */
++  function journaliserActivite(orgId, collection, recordId, action, data, actorEmailOverride) {
++    db.prepare(
++      `INSERT INTO record_activity_log (org_id, actor_email, collection, record_id, action, label, created_at)
++       VALUES (?, ?, ?, ?, ?, ?, ?)`,
++    ).run(
++      orgId,
++      actorEmailOverride ?? actorOf(data),
++      collection,
++      recordId,
++      action,
++      bestEffortLabel(data),
++      new Date().toISOString(),
++    );
++  }
++
+   function rowToSite(row) {
+     if (!row) return null;
+     let dependencies = null;
+@@ -1813,6 +1857,9 @@ export function createSqliteDb(filePath) {
+     async upsertRecord(orgId, collection, id, data) {
+       db.prepare('UPDATE organizations SET last_activity_at = ? WHERE id = ?').run(new Date().toISOString(), orgId);
+       requireOrg(orgId);
++      const avant = db
++        .prepare('SELECT deleted FROM shared_records WHERE org_id = ? AND collection = ? AND record_id = ?')
++        .get(orgId, collection, id);
+       const updatedAt = new Date().toISOString();
+       db.prepare(
+         `INSERT INTO shared_records (org_id, collection, record_id, data, updated_at, deleted)
+@@ -1820,6 +1867,7 @@ export function createSqliteDb(filePath) {
+          ON CONFLICT (org_id, collection, record_id) DO UPDATE SET
+            data = excluded.data, updated_at = excluded.updated_at, deleted = 0`,
+       ).run(orgId, collection, id, JSON.stringify(data ?? {}), updatedAt);
++      journaliserActivite(orgId, collection, id, !avant || avant.deleted ? 'create' : 'update', data);
+       return rowToRecord(
+         db
+           .prepare('SELECT * FROM shared_records WHERE org_id = ? AND collection = ? AND record_id = ?')
+@@ -1827,7 +1875,41 @@ export function createSqliteDb(filePath) {
+       );
+     },
+ 
+-    async deleteRecord(orgId, collection, id) {
++    /**
++     * Écrire en tenant compte de ce qui a pu bouger entre-temps. La règle vit
++     * dans `src/lib/fusion.js` et elle est COMMUNE aux deux pilotes : SQLite et
++     * Postgres appellent la même décision, donc ils ne peuvent pas diverger —
++     * ce qu'une journée de maintenance sur un seul des deux finirait sinon par
++     * produire, sans que rien ne le signale.
++     *
++     * Lecture et écriture dans UNE transaction : sans elle, deux écritures
++     * simultanées liraient le même « courant » et la seconde fusionnerait sur
++     * un état déjà dépassé — le défaut qu'on ferme, en plus petit et en plus
++     * difficile à voir.
++     */
++    async upsertRecordFusion(orgId, collection, id, { data, base, patch }) {
++      requireOrg(orgId);
++      db.prepare('UPDATE organizations SET last_activity_at = ? WHERE id = ?').run(new Date().toISOString(), orgId);
++      const lire = db.prepare(
++        'SELECT * FROM shared_records WHERE org_id = ? AND collection = ? AND record_id = ?',
++      );
++      const ecrire = db.transaction(() => {
++        const avant = rowToRecord(lire.get(orgId, collection, id));
++        const decision = deciderEcriture(avant, { data, base, patch });
++        const updatedAt = new Date().toISOString();
++        db.prepare(
++          `INSERT INTO shared_records (org_id, collection, record_id, data, updated_at, deleted)
++           VALUES (?, ?, ?, ?, ?, 0)
++           ON CONFLICT (org_id, collection, record_id) DO UPDATE SET
++             data = excluded.data, updated_at = excluded.updated_at, deleted = 0`,
++        ).run(orgId, collection, id, JSON.stringify(decision.data ?? {}), updatedAt);
++        journaliserActivite(orgId, collection, id, !avant || avant.deleted ? 'create' : 'update', decision.data);
++        return { record: rowToRecord(lire.get(orgId, collection, id)), fusion: decision.fusion };
++      });
++      return ecrire();
++    },
++
++    async deleteRecord(orgId, collection, id, actorEmail = null) {
+       requireOrg(orgId);
+       const updatedAt = new Date().toISOString();
+       db.prepare(
+@@ -1835,6 +1917,7 @@ export function createSqliteDb(filePath) {
+          VALUES (?, ?, ?, '{}', ?, 1)
+          ON CONFLICT (org_id, collection, record_id) DO UPDATE SET updated_at = excluded.updated_at, deleted = 1`,
+       ).run(orgId, collection, id, updatedAt);
++      journaliserActivite(orgId, collection, id, 'delete', null, actorEmail);
+       return rowToRecord(
+         db
+           .prepare('SELECT * FROM shared_records WHERE org_id = ? AND collection = ? AND record_id = ?')
+@@ -1842,6 +1925,31 @@ export function createSqliteDb(filePath) {
+       );
+     },
+ 
++    /**
++     * Journal d'activité, du plus récent au plus ancien — voir
++     * record_activity_log dans schema.sql. `limit` est borné à 500 (l'écran
++     * Administration n'en montre qu'une fraction, et sans borne un poste
++     * distrait qui redemande en boucle ferait grossir la réponse sans fin).
++     */
++    async listRecordActivity(orgId, { limit = 100 } = {}) {
++      requireOrg(orgId);
++      const bornee = Math.min(500, Math.max(1, Number(limit) || 100));
++      const rows = db
++        .prepare(
++          `SELECT * FROM record_activity_log WHERE org_id = ? ORDER BY created_at DESC, id DESC LIMIT ?`,
++        )
++        .all(orgId, bornee);
++      return rows.map((row) => ({
++        id: Number(row.id),
++        actorEmail: row.actor_email ?? null,
++        collection: row.collection,
++        recordId: row.record_id,
++        action: row.action,
++        label: row.label ?? null,
++        createdAt: row.created_at,
++      }));
++    },
++
+     /* --------------------------------- Scans -------------------------------- */
+ 
+     /* --------------------- Web Push (A.3) --------------------- */
+diff --git a/src/lib/activityLabel.js b/src/lib/activityLabel.js
+new file mode 100644
+index 0000000..402bf2c
+--- /dev/null
++++ b/src/lib/activityLabel.js
+@@ -0,0 +1,34 @@
++/**
++ * Petits utilitaires partagés par les deux pilotes de base (sqlite.js,
++ * postgres.js) pour le journal d'activité des collections (confort d'usage à
++ * deux — voir docs/confort-usage-quotidien-2026-09-10.md).
++ */
++
++/**
++ * Le champ que le poste appose sur chaque écriture pour dire qui l'a faite
++ * (voir `WRITER_KEY` dans amn-desktop/src/state/SyncContext.tsx). Dupliqué
++ * ici plutôt que partagé entre les deux dépôts : c'est un contrat de trame,
++ * pas un module, et les deux cotés savent déjà lire `_by` chacun de leur
++ * côté (le poste pour son fil d'activité, ici pour le journal).
++ */
++export const WRITER_FIELD = '_by';
++
++/**
++ * Un intitulé lisible au mieux, sans connaître la forme de chaque
++ * collection : une tâche a un `title`, un client un `name`, une facture un
++ * `number`. Rien de trouvé → `null`, affiché comme tel plutôt que deviné.
++ */
++export function bestEffortLabel(data) {
++  if (!data || typeof data !== 'object') return null;
++  for (const champ of ['title', 'name', 'number', 'label']) {
++    const v = data[champ];
++    if (typeof v === 'string' && v.trim()) return v.trim().slice(0, 120);
++  }
++  return null;
++}
++
++/** L'auteur auto-déclaré d'une écriture, s'il est présent et valide. */
++export function actorOf(data) {
++  const v = data?.[WRITER_FIELD];
++  return typeof v === 'string' && v.trim() ? v.trim().toLowerCase() : null;
++}
+diff --git a/src/lib/fusion.js b/src/lib/fusion.js
+new file mode 100644
+index 0000000..e7c78c0
+--- /dev/null
++++ b/src/lib/fusion.js
+@@ -0,0 +1,117 @@
++/**
++ * LA FUSION D'UNE ÉCRITURE CONCURRENTE — CE QUI DÉCIDE, ET POURQUOI
++ * ════════════════════════════════════════════════════════════════
++ *
++ * ## Le défaut que ce module ferme
++ *
++ * Mesuré à l'audit de fiabilité du 10 septembre 2026, puis rejoué à l'identique
++ * ici (`scripts/check-fusion.mjs`, scénario « le cas central ») :
++ *
++ *   1. une tâche existe ; les deux postes l'ont lue ;
++ *   2. Mohamed perd le réseau et la passe « en cours ». Son écriture attend
++ *      dans la file d'envoi du poste, sous la forme de l'enregistrement ENTIER
++ *      tel qu'il le connaissait ;
++ *   3. pendant ce temps Harun, en ligne, monte la priorité de la même tâche.
++ *      Le serveur accepte ;
++ *   4. Mohamed retrouve le réseau. Sa file rejoue son écriture — bâtie sur une
++ *      version d'avant — et le `PUT` remplace l'enregistrement entier.
++ *
++ * La priorité posée par Harun n'existe alors plus nulle part : ni sur le
++ * serveur, ni sur son écran à la prochaine relecture. Aucun des deux n'est
++ * averti. Ce n'est pas un défaut d'affichage, c'est du travail perdu.
++ *
++ * Le même enchaînement se produit SANS coupure réseau : deux postes qui ont la
++ * même fiche ouverte, l'un change un champ, l'autre en change un autre. Le
++ * second `PUT` porte l'ancienne valeur du premier champ. La coupure ne crée pas
++ * le défaut, elle allonge seulement la fenêtre pendant laquelle il se produit.
++ *
++ * ## Ce qui a été retenu, et ce qui a été écarté
++ *
++ * Deux pistes étaient sur la table.
++ *
++ * **Refuser (409) quand la base a bougé.** Petit changement, mais il transforme
++ * une perte silencieuse en perte annoncée : le poste ne sait rien faire d'un
++ * refus sinon abandonner l'écriture (voir `motsAbandon` côté poste), donc
++ * Mohamed devrait refaire son geste. Surtout, il frapperait le cas le plus
++ * COURANT — deux personnes connectées qui touchent la même fiche à quelques
++ * secondes d'écart, une réaction et une épingle sur le même message — où
++ * pourtant rien ne se contredit. Un refus quotidien sur des gestes qui ne
++ * s'opposent pas, c'est une régression d'usage.
++ *
++ * **Fusionner champ par champ.** C'est ce qui est fait ici. Deux modifications
++ * qui ne portent pas sur le même champ survivent toutes les deux, sans que
++ * personne ait à arbitrer. Il ne reste de conflit vrai que si les deux ont
++ * changé LE MÊME champ — et là, aucune règle automatique ne peut trancher :
++ * c'est le dernier arrivé, comme avant, mais sur ce seul champ.
++ *
++ * La détection, elle, est bien celle de la première piste : le poste dit sur
++ * quelle version il s'est appuyé (`base`). C'est ce qui distingue « personne
++ * n'a bougé » de « quelqu'un a écrit entre-temps » — sans quoi le serveur ne
++ * peut RIEN décider, puisqu'il ne sait pas distinguer un champ que le poste a
++ * délibérément remis à son ancienne valeur d'un champ qu'il n'a jamais touché.
++ *
++ * ## Ce que le serveur ne peut pas savoir, et ne devine donc pas
++ *
++ * La fusion est de PREMIER NIVEAU : un champ change en entier. Un objet
++ * imbriqué (`billTo`) et un tableau (`lines`, `reactions`) sont remplacés d'un
++ * bloc, jamais fusionnés élément par élément. Fusionner deux tableaux demande
++ * de savoir ce qu'est un « même élément », et la réponse dépend du métier :
++ * la deviner ici produirait des lignes de facture en double le jour où deux
++ * postes en ajoutent une chacun.
++ *
++ * Elle ne connaît pas non plus les liens ENTRE champs. Une facture qui s'émet
++ * pose ensemble `status`, `number` et `issuedAt` ; si l'autre poste écrivait au
++ * même moment un `status` périmé, la fusion garderait le numéro et le statut
++ * d'avant. C'est un état incohérent — moins destructeur que l'écrasement total
++ * d'aujourd'hui (qui perdait aussi le numéro), mais incohérent quand même. La
++ * seule vraie réponse serait des groupes de champs atomiques déclarés par
++ * collection ; elle n'est pas dans ce chantier, et elle est écrite ici pour ne
++ * pas être découverte à l'usage.
++ */
++
++/**
++ * Que faire d'une écriture, sachant ce que le serveur détient déjà.
++ *
++ * `courant` est l'enregistrement en base (ou `null`), au format rendu par
++ * `rowToRecord` — c'est-à-dire avec `data` déjà décodé, dans les DEUX pilotes.
++ * C'est ce qui permet à cette décision d'être unique : SQLite et Postgres
++ * appellent la même fonction et ne peuvent donc pas diverger, ce qu'un jour de
++ * maintenance sur l'un des deux seulement finirait sinon par produire.
++ *
++ * Rend `{ data, fusion }` :
++ *   · `data`   — ce qu'il faut écrire, tel quel ;
++ *   · `fusion` — `null` quand l'écriture est passée telle quelle, sinon la
++ *                liste des champs repris du poste et la version qu'il a
++ *                dépassée. La route le renvoie au poste et la trace le dit :
++ *                une fusion silencieuse serait un mensonge par omission.
++ */
++export function deciderEcriture(courant, { data, base, patch }) {
++  // Sans base annoncée, le poste ne dit pas d'où il part : c'est un poste
++  // d'avant ce correctif. On lui garde exactement le comportement qu'il connaît
++  // plutôt que de lui appliquer une règle dont il n'a pas idée.
++  if (!base || !estObjet(patch)) return { data, fusion: null };
++
++  // Rien à fusionner avec ce qui n'existe pas (création), ni avec une pierre
++  // tombale : ressusciter un enregistrement supprimé se fait avec ce que le
++  // poste en sait, pas avec les restes de la version effacée.
++  if (!courant || courant.deleted || !estObjet(courant.data)) return { data, fusion: null };
++
++  // LE CHEMIN NORMAL, et de très loin le plus fréquent : personne n'a écrit
++  // depuis que ce poste a lu. L'enregistrement entier est donc à jour, et il
++  // est écrit tel quel — exactement comme avant ce correctif, au bit près.
++  if (courant.updatedAt === base) return { data, fusion: null };
++
++  // La base a bougé : quelqu'un d'autre est passé. On repart de CE QUE LE
++  // SERVEUR DÉTIENT et on ne réapplique par-dessus que les champs que ce
++  // poste-ci a réellement changés. Un champ qu'il n'a pas touché garde donc la
++  // valeur de l'autre, au lieu d'être remis à l'état d'avant.
++  const cles = Object.keys(patch);
++  return {
++    data: { ...courant.data, ...patch },
++    fusion: { cles, base, depuis: courant.updatedAt },
++  };
++}
++
++function estObjet(valeur) {
++  return typeof valeur === 'object' && valeur !== null && !Array.isArray(valeur);
++}
+diff --git a/src/routes/collections.js b/src/routes/collections.js
+index 6586a14..7cb3731 100644
+--- a/src/routes/collections.js
++++ b/src/routes/collections.js
+@@ -166,6 +166,20 @@ export function collectionsRouter() {
+     res.json({ users: hub ? hub.presenceSnapshot(req.auth.orgId) : [] });
+   });
+ 
++  /*
++    JOURNAL D'ACTIVITÉ (confort d'usage à deux) : qui a créé/modifié/supprimé
++    quoi, récemment, dans les collections partagées de CETTE organisation.
++    Ouvert à tout opérateur authentifié — comme la présence ci-dessus — parce
++    que c'est un outil de coordination entre collègues, pas une console
++    d'administration. Voir record_activity_log (schema.sql) et
++    listRecordActivity (sqlite.js / postgres.js).
++  */
++  router.get('/_activity', async (req, res) => {
++    const limit = req.query.limit ? Number(req.query.limit) : 100;
++    const entries = await req.app.locals.db.listRecordActivity(req.auth.orgId, { limit });
++    res.json({ entries });
++  });
++
+   /**
+    * TOUT L'ESPACE EN UNE SEULE REQUÊTE.
+    *
+@@ -274,9 +288,35 @@ export function collectionsRouter() {
+     if (data === undefined || data === null || typeof data !== 'object') {
+       return res.status(400).json({ error: 'Body must be { data: {...} }' });
+     }
+-    const record = await req.app.locals.db.upsertRecord(req.auth.orgId, collection, id, data);
++
++    /*
++      `base` et `patch` : d'où part ce poste, et ce qu'il a réellement changé.
++
++      Les deux sont FACULTATIFS, et c'est ce qui rend ce correctif déployable
++      dans n'importe quel ordre. Un poste d'avant ne les envoie pas et retrouve
++      exactement le comportement qu'il a toujours eu (l'enregistrement entier
++      remplace) ; un poste à jour parlant à un serveur d'avant voit les deux
++      champs ignorés, sans erreur. Ni l'un ni l'autre ne casse en attendant que
++      l'autre soit mis à jour — voir src/lib/fusion.js pour la règle elle-même.
++    */
++    const base = typeof req.body?.base === 'string' && req.body.base ? req.body.base : null;
++    const patch = req.body?.patch;
++    const patchValide = typeof patch === 'object' && patch !== null && !Array.isArray(patch);
++
++    const resultat =
++      base && patchValide
++        ? await req.app.locals.db.upsertRecordFusion(req.auth.orgId, collection, id, { data, base, patch })
++        : { record: await req.app.locals.db.upsertRecord(req.auth.orgId, collection, id, data), fusion: null };
++
++    const { record, fusion } = resultat;
+     req.app.locals.hub?.broadcast({ type: 'record', collection, record }, req.auth.orgId);
+-    res.status(200).json({ record });
++    /*
++      La fusion est DITE. Le poste n'a rien à en faire aujourd'hui — il adopte
++      l'enregistrement rendu, comme toujours — mais une fusion muette serait un
++      mensonge par omission : c'est le moment précis où deux personnes ont
++      travaillé sur la même fiche, et c'est ce qu'on veut pouvoir relire.
++    */
++    res.status(200).json(fusion ? { record, fusion } : { record });
+   });
+ 
+   router.delete('/:collection/:id', async (req, res) => {
+@@ -284,7 +324,16 @@ export function collectionsRouter() {
+     if (module) return res.status(403).json({ error: 'La cliente a fermé ce module à son prestataire.', code: 'module_locked', module });
+     const { collection, id } = req.params;
+     if (!ALLOWED.has(collection)) return res.status(404).json({ error: 'Unknown collection' });
+-    const record = await req.app.locals.db.deleteRecord(req.auth.orgId, collection, id);
++    /*
++      `by` : qui supprime, auto-déclaré par le poste — exactement le même
++      niveau de confiance que `_by` sur une écriture (le poste stampe déjà
++      cette identité sur chaque PUT, voir WRITER_KEY) ou que `?user=` sur la
++      WebSocket. FACULTATIF : un poste d'avant ce correctif ne l'envoie pas,
++      et la suppression reste journalisée avec un auteur `null` plutôt que
++      d'échouer.
++    */
++    const by = typeof req.body?.by === 'string' && req.body.by.trim() ? req.body.by.trim().toLowerCase() : null;
++    const record = await req.app.locals.db.deleteRecord(req.auth.orgId, collection, id, by);
+     req.app.locals.hub?.broadcast({ type: 'record', collection, record }, req.auth.orgId);
+     res.status(200).json({ record });
+   });
+diff --git a/src/ws/hub.js b/src/ws/hub.js
+index 2fbb3b7..8ae7fc1 100644
+--- a/src/ws/hub.js
++++ b/src/ws/hub.js
+@@ -14,6 +14,10 @@ import { callLinkState } from '../routes/callLinks.js';
+  *                  updated, or soft-deleted) — this is what makes the workspace
+  *                  sync live between Aaron and Mohamed
+  *   - `presence` — the set of operators currently connected changed
++ *   - `watchers` — who has ONE specific record open right now (confort d'usage
++ *                  à deux : évite que deux opérateurs travaillent sans le
++ *                  savoir sur la même fiche), sent in response to a client's
++ *                  `watch`/`unwatch` message
+  *
+  * Single-process in-memory broadcast: fine for this project's scale (a free
+  * single instance). If amn-api is ever scaled horizontally, this needs a shared
+@@ -61,6 +65,73 @@ export function createHub(server, { db } = {}) {
+     return map;
+   }
+ 
++  /*
++    QUI REGARDE CETTE FICHE (confort d'usage à deux, pas la présence
++    générale ci-dessus). `watchersByOrg` : orgId -> Map(clé "collection:id" ->
++    Set d'emails). Une fiche sans personne dessus n'a pas d'entrée — la carte
++    reste petite même avec des centaines de fiches déjà visitées.
++
++    Un opérateur ne regarde qu'UNE fiche à la fois par socket : `socket.__watching`
++    porte la clé courante, et l'ouverture d'une nouvelle fiche retire
++    implicitement l'ancienne (voir `watch()`). C'est ce qui évite la fuite —
++    sans ça, fermer un onglet sans jamais envoyer `unwatch` laisserait la
++    fiche « occupée » pour toujours.
++  */
++  const watchersByOrg = new Map();
++
++  function watchersMap(orgId) {
++    let map = watchersByOrg.get(orgId);
++    if (!map) {
++      map = new Map();
++      watchersByOrg.set(orgId, map);
++    }
++    return map;
++  }
++
++  function watcherKey(collection, id) {
++    return `${collection}:${id}`;
++  }
++
++  function watchersSnapshot(orgId, key) {
++    return [...(watchersMap(orgId).get(key) ?? [])];
++  }
++
++  function broadcastWatchers(orgId, key) {
++    const [collection, ...rest] = key.split(':');
++    const id = rest.join(':');
++    broadcast({ type: 'watchers', collection, id, emails: watchersSnapshot(orgId, key) }, orgId);
++  }
++
++  /** Retire ce socket de la fiche qu'il regardait, s'il en regardait une. */
++  function stopWatching(socket) {
++    const key = socket.__watching;
++    if (!key) return;
++    socket.__watching = null;
++    const map = watchersMap(socket.__orgId);
++    const set = map.get(key);
++    if (!set || !socket.__user) return;
++    set.delete(socket.__user);
++    if (set.size === 0) map.delete(key);
++    broadcastWatchers(socket.__orgId, key);
++  }
++
++  /** Annonce que ce socket regarde désormais `collection`/`id` (et plus rien d'autre). */
++  function startWatching(socket, collection, id) {
++    if (!socket.__user) return; // un visiteur anonyme n'a pas d'identité à publier
++    const key = watcherKey(collection, id);
++    if (socket.__watching === key) return;
++    stopWatching(socket);
++    socket.__watching = key;
++    const map = watchersMap(socket.__orgId);
++    let set = map.get(key);
++    if (!set) {
++      set = new Set();
++      map.set(key, set);
++    }
++    set.add(socket.__user);
++    broadcastWatchers(socket.__orgId, key);
++  }
++
+   /** Who is online — within ONE organization. Never across tenants. */
+   function presenceSnapshot(orgId) {
+     return [...presenceMap(orgId).entries()]
+@@ -161,6 +232,7 @@ export function createHub(server, { db } = {}) {
+     const drop = () => {
+       if (!clients.has(socket)) return;
+       clients.delete(socket);
++      stopWatching(socket);
+       if (user) {
+         const map = presenceMap(orgId);
+         const next = (map.get(user) ?? 1) - 1;
+@@ -193,6 +265,16 @@ export function createHub(server, { db } = {}) {
+       } catch {
+         return; // malformed frame — ignore rather than kill the socket
+       }
++      if (msg?.type === 'watch') {
++        const collection = typeof msg.collection === 'string' ? msg.collection.trim() : '';
++        const id = typeof msg.id === 'string' ? msg.id.trim() : '';
++        if (collection && id) startWatching(socket, collection, id);
++        return;
++      }
++      if (msg?.type === 'unwatch') {
++        stopWatching(socket);
++        return;
++      }
+       if (msg?.type !== 'signal') return;
+ 
+       // A call needs a burst of ICE candidates, so the budget is generous —
+diff --git a/test/api.test.js b/test/api.test.js
+index 868f238..9dea648 100644
+--- a/test/api.test.js
++++ b/test/api.test.js
+@@ -283,6 +283,57 @@ test('collections: CRUD + auth + soft-delete tombstone', async (t) => {
+   assert.equal(afterDelete[0].deleted, true);
+ });
+ 
++test('collections: activity log records who created/updated/deleted what', async (t) => {
++  const { baseUrl } = await withServer(t);
++  const auth = { Authorization: 'Bearer test-operator-token', 'Content-Type': 'application/json' };
++
++  // Aaron creates a client — `_by` is the field the desktop stamps on every write.
++  await fetch(`${baseUrl}/v1/collections/clients/c-1`, {
++    method: 'PUT',
++    headers: auth,
++    body: JSON.stringify({ data: { name: 'Corvetto SARL', _by: 'aaron@amn-devsec.com' } }),
++  });
++  // Mohamed updates it.
++  await fetch(`${baseUrl}/v1/collections/clients/c-1`, {
++    method: 'PUT',
++    headers: auth,
++    body: JSON.stringify({ data: { name: 'Corvetto SARL', notes: 'a rappelé', _by: 'mohamed@amn-devsec.com' } }),
++  });
++  // Aaron deletes it, self-declaring who via `by` since DELETE carries no data.
++  await fetch(`${baseUrl}/v1/collections/clients/c-1`, {
++    method: 'DELETE',
++    headers: auth,
++    body: JSON.stringify({ by: 'aaron@amn-devsec.com' }),
++  });
++
++  const res = await fetch(`${baseUrl}/v1/collections/_activity`, { headers: auth });
++  assert.equal(res.status, 200);
++  const { entries } = await res.json();
++  // Most recent first.
++  assert.equal(entries.length, 3);
++  assert.equal(entries[0].action, 'delete');
++  assert.equal(entries[0].actorEmail, 'aaron@amn-devsec.com');
++  assert.equal(entries[0].collection, 'clients');
++  assert.equal(entries[0].recordId, 'c-1');
++  assert.equal(entries[1].action, 'update');
++  assert.equal(entries[1].actorEmail, 'mohamed@amn-devsec.com');
++  assert.equal(entries[1].label, 'Corvetto SARL');
++  assert.equal(entries[2].action, 'create');
++  assert.equal(entries[2].actorEmail, 'aaron@amn-devsec.com');
++
++  // A write with no `_by` (a poste from before this correctif) is still
++  // logged — just without an author, rather than being dropped or failing.
++  await fetch(`${baseUrl}/v1/collections/clients/c-2`, {
++    method: 'PUT',
++    headers: auth,
++    body: JSON.stringify({ data: { name: 'Sans auteur' } }),
++  });
++  const after = await (await fetch(`${baseUrl}/v1/collections/_activity`, { headers: auth })).json();
++  const sansAuteur = after.entries.find((e) => e.recordId === 'c-2');
++  assert.ok(sansAuteur);
++  assert.equal(sansAuteur.actorEmail, null);
++});
++
+ test('web token: syncs collections but is blocked from site admin', async (t) => {
+   const { baseUrl } = await withServer(t);
+   const webAuth = { Authorization: 'Bearer test-web-token', 'Content-Type': 'application/json' };
+@@ -344,6 +395,64 @@ test('WebSocket: record changes broadcast + presence tracking', async (t) => {
+   aaron.close();
+ });
+ 
++test('WebSocket: watch/unwatch a record broadcasts who is looking at it', async (t) => {
++  const { WebSocket } = await import('ws');
++  const { baseUrl } = await withServer(t);
++  const wsUrl = baseUrl.replace('http', 'ws');
++
++  const aaron = new WebSocket(`${wsUrl}/v1/stream?token=test-operator-token&user=aaron@amn-devsec.com`);
++  const mohamed = new WebSocket(`${wsUrl}/v1/stream?token=test-operator-token&user=mohamed@amn-devsec.com`);
++  const aaronMsgs = [];
++  const mohamedMsgs = [];
++  aaron.on('message', (buf) => aaronMsgs.push(JSON.parse(buf.toString())));
++  mohamed.on('message', (buf) => mohamedMsgs.push(JSON.parse(buf.toString())));
++  await Promise.all([
++    new Promise((resolve, reject) => { aaron.on('open', resolve); aaron.on('error', reject); }),
++    new Promise((resolve, reject) => { mohamed.on('open', resolve); mohamed.on('error', reject); }),
++  ]);
++  await new Promise((r) => setTimeout(r, 100));
++
++  // Aaron opens the same client record Mohamed is about to open.
++  aaron.send(JSON.stringify({ type: 'watch', collection: 'clients', id: 'c-1' }));
++  await new Promise((r) => setTimeout(r, 100));
++  let watchersMsg = mohamedMsgs.findLast((m) => m.type === 'watchers' && m.id === 'c-1');
++  assert.ok(watchersMsg, 'Mohamed is told someone opened this fiche');
++  assert.deepEqual(watchersMsg.emails, ['aaron@amn-devsec.com']);
++
++  // Mohamed opens it too — both should now appear.
++  mohamedMsgs.length = 0;
++  mohamed.send(JSON.stringify({ type: 'watch', collection: 'clients', id: 'c-1' }));
++  await new Promise((r) => setTimeout(r, 100));
++  watchersMsg = mohamedMsgs.findLast((m) => m.type === 'watchers' && m.id === 'c-1');
++  assert.ok(watchersMsg);
++  assert.deepEqual(new Set(watchersMsg.emails), new Set(['aaron@amn-devsec.com', 'mohamed@amn-devsec.com']));
++
++  // Aaron leaves the fiche — Mohamed is told, and he's the only one left.
++  aaronMsgs.length = 0;
++  mohamedMsgs.length = 0;
++  aaron.send(JSON.stringify({ type: 'unwatch' }));
++  await new Promise((r) => setTimeout(r, 100));
++  watchersMsg = mohamedMsgs.findLast((m) => m.type === 'watchers' && m.id === 'c-1');
++  assert.ok(watchersMsg);
++  assert.deepEqual(watchersMsg.emails, ['mohamed@amn-devsec.com']);
++
++  // Aaron disconnecting outright (tab closed without an explicit unwatch)
++  // must clear his watch just the same — this is the leak `stopWatching` on
++  // socket close exists to prevent.
++  mohamed.send(JSON.stringify({ type: 'watch', collection: 'invoices', id: 'inv-9' }));
++  await new Promise((r) => setTimeout(r, 100));
++  mohamedMsgs.length = 0;
++  aaron.send(JSON.stringify({ type: 'watch', collection: 'invoices', id: 'inv-9' }));
++  await new Promise((r) => setTimeout(r, 100));
++  aaron.close();
++  await new Promise((r) => setTimeout(r, 100));
++  watchersMsg = mohamedMsgs.findLast((m) => m.type === 'watchers' && m.id === 'inv-9');
++  assert.ok(watchersMsg, 'closing the socket announces the departure too');
++  assert.deepEqual(watchersMsg.emails, ['mohamed@amn-devsec.com']);
++
++  mohamed.close();
++});
++
+ test('site rename + delete endpoints', async (t) => {
+   const { baseUrl } = await withServer(t);
+   const auth = { Authorization: 'Bearer test-operator-token', 'Content-Type': 'application/json' };
+diff --git a/test/fusion.test.js b/test/fusion.test.js
+new file mode 100644
+index 0000000..a1597a9
+--- /dev/null
++++ b/test/fusion.test.js
+@@ -0,0 +1,257 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import http from 'node:http';
++
++process.env.NODE_ENV = 'test';
++process.env.OPERATOR_TOKEN = 'test-operator-token';
++
++const { createApp } = await import('../src/server.js');
++const { createSqliteDb } = await import('../src/db/sqlite.js');
++const { AMN_ORG_ID } = await import('../src/db/tenancy.js');
++const { hashPassword } = await import('../src/lib/password.js');
++const { deciderEcriture } = await import('../src/lib/fusion.js');
++
++/**
++ * L'ÉCRASEMENT EN ÉDITION CONCURRENTE — le défaut mesuré à l'audit de
++ * fiabilité du 10 septembre 2026 (scénario S5), et ce qui le ferme.
++ *
++ * Le cas central est celui-là, et il vaut la peine d'être relu chaque fois
++ * qu'on touche à `src/lib/fusion.js` : deux personnes modifient des champs
++ * DIFFÉRENTS de la même fiche, l'une hors ligne. Rien ne se contredit, donc
++ * rien ne doit se perdre — or c'est exactement ce qui se perdait.
++ *
++ * Les tests d'API sont doublés de tests de la décision pure : les premiers
++ * prouvent que la route et la base font ce qu'il faut, les seconds décrivent
++ * la règle elle-même, y compris les cas qu'on ne sait pas atteindre par HTTP
++ * sans écrire un scénario à rallonge.
++ */
++
++async function poste(t) {
++  const db = createSqliteDb(':memory:');
++  await db.init();
++  const app = await createApp({ db });
++  const server = http.createServer(app);
++  await new Promise((resolve) => server.listen(0, resolve));
++  const { port } = server.address();
++  t.after(async () => {
++    server.closeAllConnections?.();
++    await new Promise((resolve) => server.close(resolve));
++    await db.close();
++  });
++  await db.createUser({
++    orgId: AMN_ORG_ID,
++    email: 'aaron@amn-test.local',
++    passwordHash: await hashPassword('motdepasse-solide'),
++    role: 'owner',
++    status: 'active',
++  });
++  const login = await fetch(`http://127.0.0.1:${port}/v1/auth/login`, {
++    method: 'POST',
++    headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify({ email: 'aaron@amn-test.local', password: 'motdepasse-solide' }),
++  });
++  const { token } = await login.json();
++  const base = `http://127.0.0.1:${port}`;
++  const entetes = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
++  return {
++    async ecrire(id, corps) {
++      const res = await fetch(`${base}/v1/collections/tasks/${id}`, {
++        method: 'PUT',
++        headers: entetes,
++        body: JSON.stringify(corps),
++      });
++      return { statut: res.status, corps: await res.json() };
++    },
++    async lire(id) {
++      const res = await fetch(`${base}/v1/collections/tasks`, { headers: entetes });
++      const { records } = await res.json();
++      return records.find((r) => r.id === id) ?? null;
++    },
++    async supprimer(id) {
++      await fetch(`${base}/v1/collections/tasks/${id}`, { method: 'DELETE', headers: entetes });
++    },
++  };
++}
++
++const TACHE = {
++  title: 'Relire le contrat Corvetto',
++  detail: '',
++  status: 'todo',
++  priority: 'normal',
++  assigneeEmail: 'aaron@amn-test.local',
++  siteId: null,
++  clientId: null,
++};
++
++/* ─── Le cas central, celui de l'audit ───────────────────────────────────── */
++
++test('LE CAS DE L’AUDIT : le rejeu d’une écriture hors ligne n’efface plus la modification faite en ligne', async (t) => {
++  const p = await poste(t);
++  await p.ecrire('t1', { data: TACHE });
++  const depart = await p.lire('t1');
++
++  // B part hors ligne avec cette version : il passe la tâche « en cours ».
++  const versionDeB = { ...depart.data, status: 'doing' };
++
++  // A, en ligne, monte la priorité de la même tâche.
++  await p.ecrire('t1', {
++    data: { ...depart.data, priority: 'high' },
++    base: depart.updatedAt,
++    patch: { priority: 'high' },
++  });
++
++  // B revient : sa file rejoue son écriture, bâtie sur la version d'avant.
++  const rejeu = await p.ecrire('t1', {
++    data: versionDeB,
++    base: depart.updatedAt,
++    patch: { status: 'doing' },
++  });
++
++  const fin = await p.lire('t1');
++  assert.equal(fin.data.status, 'doing', 'la modification de B est appliquée');
++  assert.equal(fin.data.priority, 'high', 'la modification de A a SURVÉCU — c’est le défaut qui est fermé');
++  assert.deepEqual(rejeu.corps.fusion?.cles, ['status'], 'le serveur dit ce qu’il a repris de B');
++  assert.equal(rejeu.corps.fusion?.base, depart.updatedAt);
++});
++
++test('sans base annoncée, le comportement d’avant est conservé au bit près (poste non mis à jour)', async (t) => {
++  const p = await poste(t);
++  await p.ecrire('t2', { data: TACHE });
++  const depart = await p.lire('t2');
++  await p.ecrire('t2', { data: { ...depart.data, priority: 'high' } });
++  // Un poste d'avant ce correctif : il envoie l'enregistrement entier, sans base.
++  const rejeu = await p.ecrire('t2', { data: { ...depart.data, status: 'doing' } });
++  const fin = await p.lire('t2');
++  assert.equal(fin.data.status, 'doing');
++  assert.equal(fin.data.priority, 'normal', 'il écrase, comme il l’a toujours fait');
++  assert.equal(rejeu.corps.fusion, undefined, 'et aucune fusion n’est annoncée');
++});
++
++test('quand personne n’a bougé, l’enregistrement entier passe tel quel — le chemin normal', async (t) => {
++  const p = await poste(t);
++  await p.ecrire('t3', { data: TACHE });
++  const depart = await p.lire('t3');
++  const res = await p.ecrire('t3', {
++    data: { ...depart.data, title: 'Relire le contrat Corvetto (relu)' },
++    base: depart.updatedAt,
++    patch: { title: 'Relire le contrat Corvetto (relu)' },
++  });
++  assert.equal(res.corps.fusion, undefined, 'aucune fusion : la base n’avait pas bougé');
++  const fin = await p.lire('t3');
++  assert.equal(fin.data.title, 'Relire le contrat Corvetto (relu)');
++  assert.equal(fin.data.status, 'todo');
++});
++
++test('deux modifications du MÊME champ : le dernier arrivé gagne, et lui seul — pas le reste de la fiche', async (t) => {
++  const p = await poste(t);
++  await p.ecrire('t4', { data: TACHE });
++  const depart = await p.lire('t4');
++  // A change le titre ET le statut.
++  await p.ecrire('t4', {
++    data: { ...depart.data, title: 'Titre de A', status: 'doing' },
++    base: depart.updatedAt,
++    patch: { title: 'Titre de A', status: 'doing' },
++  });
++  // B, parti de la même base, ne change que le titre.
++  await p.ecrire('t4', {
++    data: { ...depart.data, title: 'Titre de B' },
++    base: depart.updatedAt,
++    patch: { title: 'Titre de B' },
++  });
++  const fin = await p.lire('t4');
++  assert.equal(fin.data.title, 'Titre de B', 'sur le champ disputé, le dernier arrivé');
++  assert.equal(fin.data.status, 'doing', 'mais le champ que B n’a pas touché garde la valeur de A');
++});
++
++test('trois modifications hors ligne d’affilée : le patch cumulé les porte toutes', async (t) => {
++  const p = await poste(t);
++  await p.ecrire('t5', { data: TACHE });
++  const depart = await p.lire('t5');
++  await p.ecrire('t5', {
++    data: { ...depart.data, assigneeEmail: 'mohamed@amn-test.local' },
++    base: depart.updatedAt,
++    patch: { assigneeEmail: 'mohamed@amn-test.local' },
++  });
++  /*
++    Ce que la file d'envoi du poste envoie après trois gestes hors ligne : UNE
++    entrée, la dernière valeur complète, et le patch cumulé des trois — sur la
++    base d'origine, la seule que le serveur ait jamais eue.
++  */
++  const rejeu = await p.ecrire('t5', {
++    data: { ...depart.data, status: 'doing', priority: 'high', detail: 'vu avec le client' },
++    base: depart.updatedAt,
++    patch: { status: 'doing', priority: 'high', detail: 'vu avec le client' },
++  });
++  const fin = await p.lire('t5');
++  assert.equal(fin.data.status, 'doing');
++  assert.equal(fin.data.priority, 'high');
++  assert.equal(fin.data.detail, 'vu avec le client');
++  assert.equal(fin.data.assigneeEmail, 'mohamed@amn-test.local', 'et l’écriture de l’autre poste tient');
++  assert.equal(rejeu.corps.fusion.cles.length, 3);
++});
++
++test('un enregistrement supprimé entre-temps : le rejeu le ressuscite ENTIER, sans fusionner avec la pierre tombale', async (t) => {
++  const p = await poste(t);
++  await p.ecrire('t6', { data: TACHE });
++  const depart = await p.lire('t6');
++  await p.supprimer('t6');
++  const rejeu = await p.ecrire('t6', {
++    data: { ...depart.data, status: 'doing' },
++    base: depart.updatedAt,
++    patch: { status: 'doing' },
++  });
++  assert.equal(rejeu.corps.fusion, undefined, 'rien à fusionner avec du vide');
++  const fin = await p.lire('t6');
++  assert.equal(fin.data.title, TACHE.title, 'la fiche revient complète');
++  assert.equal(fin.data.status, 'doing');
++});
++
++test('un patch mal formé (tableau, chaîne) est ignoré : l’écriture passe entière plutôt que d’échouer', async (t) => {
++  const p = await poste(t);
++  await p.ecrire('t7', { data: TACHE });
++  const depart = await p.lire('t7');
++  for (const patch of [['status'], 'status', 42]) {
++    const res = await p.ecrire('t7', { data: { ...depart.data, status: 'doing' }, base: depart.updatedAt, patch });
++    assert.equal(res.statut, 200, `patch ${JSON.stringify(patch)} : la requête aboutit`);
++    assert.equal(res.corps.fusion, undefined);
++  }
++  const fin = await p.lire('t7');
++  assert.equal(fin.data.status, 'doing');
++});
++
++/* ─── La règle elle-même, sans HTTP ni base ──────────────────────────────── */
++
++test('la décision : sans base, ou sans patch, on écrit ce que le poste envoie', () => {
++  const courant = { data: { a: 1 }, updatedAt: 'T1', deleted: false };
++  assert.deepEqual(deciderEcriture(courant, { data: { a: 2 } }), { data: { a: 2 }, fusion: null });
++  assert.deepEqual(deciderEcriture(courant, { data: { a: 2 }, base: 'T0' }), { data: { a: 2 }, fusion: null });
++});
++
++test('la décision : la base a bougé — on repart du serveur et on ne réapplique que le patch', () => {
++  const courant = { data: { a: 1, b: 'serveur', c: true }, updatedAt: 'T2', deleted: false };
++  const { data, fusion } = deciderEcriture(courant, {
++    data: { a: 9, b: 'périmé', c: true },
++    base: 'T1',
++    patch: { a: 9 },
++  });
++  assert.deepEqual(data, { a: 9, b: 'serveur', c: true }, 'b garde la valeur du serveur, a prend celle du poste');
++  assert.deepEqual(fusion, { cles: ['a'], base: 'T1', depuis: 'T2' });
++});
++
++test('la décision : un patch vide ne change rien du tout, même si la base a bougé', () => {
++  const courant = { data: { a: 1, b: 2 }, updatedAt: 'T2', deleted: false };
++  const { data } = deciderEcriture(courant, { data: { a: 99, b: 99 }, base: 'T1', patch: {} });
++  assert.deepEqual(data, { a: 1, b: 2 }, 'le poste n’a rien changé : rien ne bouge');
++});
++
++test('la décision : une pierre tombale ou une création ne fusionnent jamais', () => {
++  const tombale = { data: {}, updatedAt: 'T2', deleted: true };
++  assert.deepEqual(deciderEcriture(tombale, { data: { a: 1 }, base: 'T1', patch: { a: 1 } }), {
++    data: { a: 1 },
++    fusion: null,
++  });
++  assert.deepEqual(deciderEcriture(null, { data: { a: 1 }, base: 'T1', patch: { a: 1 } }), {
++    data: { a: 1 },
++    fusion: null,
++  });
++});

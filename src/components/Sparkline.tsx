@@ -40,7 +40,7 @@ export function Sparkline({
       <polyline
         points={points}
         stroke={color}
-        strokeWidth={1.5}
+        strokeWidth={1.9}
         strokeLinecap="round"
         strokeLinejoin="round"
       />

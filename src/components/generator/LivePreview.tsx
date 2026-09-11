@@ -167,7 +167,7 @@ function PreviewRow({
       }
     >
       {Icon ? (
-        <Icon size={10} strokeWidth={1.75} />
+        <Icon size={10} strokeWidth={1.9} />
       ) : (
         <span className="h-1 w-1 flex-shrink-0 rounded-full bg-current opacity-50" />
       )}

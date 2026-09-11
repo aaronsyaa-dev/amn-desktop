@@ -109,7 +109,7 @@ export function StatusPageExport({ sites }: { sites: OrgOverview['sites'] }) {
   return (
     <section className="elev-1 rounded-2xl border border-border bg-surface p-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Globe size={15} strokeWidth={1.75} className="text-text-secondary" />
+        <Globe size={15} strokeWidth={1.9} className="text-text-secondary" />
         <h3 className="mr-auto text-sm font-semibold text-text-primary">Page de statut publique</h3>
         <select
           value={siteId}

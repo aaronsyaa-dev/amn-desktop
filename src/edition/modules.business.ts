@@ -101,10 +101,18 @@ export const NAV_SECTIONS: NavSection[] = [
     dégradée de ce qu'Aaron a sous les yeux. Ce qui diffère ici, ce sont les
     modules disponibles — pas le soin apporté à leur rangement.
 
-    Les groupes qui n'ont pas d'objet pour quelqu'un qui travaille seul ne sont
-    pas montrés vides : « Collectif » n'existe pas dans cette édition, il ne
-    s'affiche donc nulle part. Une section vide dirait « il y a autre chose,
-    mais pas pour vous ».
+    Les groupes qui n'ont pas d'objet ne sont pas montrés vides : une section
+    sans entrée dirait « il y a autre chose, mais pas pour vous ». C'est une
+    règle sur les sections VIDES, pas sur une section nommée.
+
+    Ce commentaire affirmait jusqu'ici que « Collectif » n'existait pas dans
+    cette édition. C'était faux et le code juste en dessous le contredisait :
+    la section `collectif` est déclarée ici avec ses sept entrées, et
+    `appRoot.business.tsx` porte les sept routes correspondantes. Ce qui est
+    absent de l'édition Business, c'est l'écran `/team` de l'édition interne
+    (`TEAM_ENABLED: false`) — la messagerie d'AMN DevSec, qui n'a rien à voir
+    avec cette famille. La phrase décrivait un état antérieur ; elle est
+    corrigée plutôt que supprimée, pour que la distinction reste écrite.
   */
   {
     key: 'pilotage',

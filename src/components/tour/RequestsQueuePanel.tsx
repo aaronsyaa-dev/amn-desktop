@@ -72,7 +72,7 @@ export function RequestsQueuePanel() {
     <section className="rounded-xl border border-border bg-surface p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="eyebrow flex items-center gap-2">
-          <Inbox size={13} strokeWidth={1.75} />
+          <Inbox size={13} strokeWidth={1.9} />
           Demandes des clientes{enAttente !== null && enAttente > 0 ? ` · ${enAttente}` : ''}
         </p>
         <div className="flex gap-1" role="group" aria-label="Filtrer les demandes">

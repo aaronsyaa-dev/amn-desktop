@@ -198,7 +198,7 @@ export function InvoicesScreen() {
             aria-label="Export comptable (FEC)"
             className="flex h-11 w-11 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:h-9 md:w-9"
           >
-            <FileSpreadsheet size={16} strokeWidth={1.75} />
+            <FileSpreadsheet size={16} strokeWidth={1.9} />
           </button>
           <button
             type="button"
@@ -207,7 +207,7 @@ export function InvoicesScreen() {
             aria-label={tr('hist.invoices.coordonneesDeFacturation')}
             className="flex h-11 w-11 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:h-9 md:w-9"
           >
-            <Building2 size={16} strokeWidth={1.75} />
+            <Building2 size={16} strokeWidth={1.9} />
           </button>
           <button
             type="button"
@@ -249,6 +249,20 @@ export function InvoicesScreen() {
             Deux appareils ont émis en même temps hors ligne. Annulez l’une des deux et réémettez-la.
           </span>
         </div>
+      )}
+
+      {/*
+        LA RÉPARTITION DE L'ANNÉE — l'objet dominant de cet écran (4a).
+
+        L'en-tête portait déjà les trois montants en relevés, et c'était juste :
+        ils disent ce que l'écran vaut maintenant. Mais trois nombres alignés ne
+        disent pas leur PROPORTION — or c'est toute la question qu'on pose à
+        Facturation : « est-ce que ça rentre ? ». La barre de masses répond d'un
+        regard, et le seul ambre de l'écran marque le segment en retard, parce
+        que c'est le seul des trois qui demande un geste.
+      */}
+      {invoices.length > 0 && !selected && (
+        <MassesDeLAnnee summary={summary} invoices={invoices} today={today} onOuvrir={setSelectedId} />
       )}
 
       <div className="flex flex-shrink-0 gap-1.5 overflow-x-auto pb-0.5">
@@ -390,6 +404,152 @@ export function InvoicesScreen() {
 }
 
 /* ----------------------------------------------------------------- résumé -- */
+
+/**
+ * LES MASSES DE L'ANNÉE — encaissé, en attente, en retard, et leur proportion.
+ *
+ * Trois montants, une barre, et deux cartes pour les factures dépassées. Ce
+ * n'est pas un tableau de bord : c'est la réponse à la seule question qu'on
+ * pose en ouvrant Facturation — « est-ce que ça rentre, et qu'est-ce qui
+ * coince ». Tout est calculé sur les factures affichées, jamais figé.
+ *
+ * L'UNIQUE AMBRE : le segment en retard, et le montant qui lui correspond. Un
+ * montant en retard est un chiffre à l'échelle d'un titre, donc l'exception de
+ * la règle 2 du jeton s'applique — il tient le contraste (8,11:1 sur le fond).
+ * L'encaissé, lui, va bien : il reste en encre claire.
+ */
+function MassesDeLAnnee({
+  summary,
+  invoices,
+  today,
+  onOuvrir,
+}: {
+  summary: { collectedCents: number; outstandingCents: number; overdueCents: number; overdueCount: number; year: string };
+  invoices: Invoice[];
+  today: string;
+  onOuvrir: (id: string) => void;
+}) {
+  const total = summary.collectedCents + summary.outstandingCents;
+  /* Les parts. Sans rien encaissé ni rien en attente, la barre se tait plutôt
+     que d'afficher trois zéros qui se disputent cent pour cent. */
+  const partEncaisse = total > 0 ? Math.round((summary.collectedCents / total) * 100) : 0;
+  const partRetard = total > 0 ? Math.round((summary.overdueCents / total) * 100) : 0;
+  const partAttente = Math.max(0, 100 - partEncaisse - partRetard);
+
+  /* Les dépassées, la plus ancienne d'abord : c'est celle qui coûte le plus. */
+  const enRetard = useMemo(
+    () =>
+      invoices
+        .filter((inv) => isOverdue(inv, today, invoices))
+        .sort((a, b) => (a.dueAt ?? '').localeCompare(b.dueAt ?? ''))
+        .slice(0, 2),
+    [invoices, today],
+  );
+  const brouillons = useMemo(() => invoices.filter((inv) => inv.status === 'draft'), [invoices]);
+  const joursDepuis = (jour: string) =>
+    Math.round((new Date(`${today}T00:00:00`).getTime() - new Date(`${jour}T00:00:00`).getTime()) / 86_400_000);
+
+  return (
+    <section className="flex flex-shrink-0 flex-col gap-4">
+      <div className="flex flex-wrap items-end gap-x-10 gap-y-4">
+        <div>
+          <p className="eyebrow mb-2">{tr('hist.invoices.encaisse')}</p>
+          <p className="tnum font-mono text-[40px] font-bold leading-none tracking-[-0.04em] text-text-primary">
+            {formatCents(summary.collectedCents)}
+          </p>
+        </div>
+        <div className="border-l border-border-section pl-10">
+          <p className="eyebrow mb-2">{tr('hist.invoices.enAttente')}</p>
+          <p className="tnum font-mono text-[27px] font-semibold leading-none tracking-[-0.03em] text-text-secondary">
+            {formatCents(summary.outstandingCents)}
+          </p>
+        </div>
+        {summary.overdueCents > 0 && (
+          <div className="border-l border-signal-line pl-10" data-signal-groupe="retard">
+            <p className="eyebrow mb-2 text-signal">
+              {tr('hist.invoices.enRetardN', { n: summary.overdueCount })}
+            </p>
+            <p className="tnum font-mono text-[27px] font-semibold leading-none tracking-[-0.03em] text-signal">
+              {formatCents(summary.overdueCents)}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {total > 0 && (
+        <div>
+          <div className="flex h-2.5 w-full overflow-hidden" aria-hidden>
+            <span className="bg-[#4a4a48]" style={{ width: `${partEncaisse}%` }} />
+            <span className="bg-[#2b2b2b]" style={{ width: `${partAttente}%` }} />
+            {partRetard > 0 && (
+              <span className="bg-signal" style={{ width: `${partRetard}%` }} data-signal-groupe="retard" />
+            )}
+          </div>
+          <div className="mt-1.5 flex justify-between font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
+            <span>{tr('hist.invoices.pourcentEncaisse', { n: partEncaisse })}</span>
+            <span className="flex gap-4">
+              <span>{partAttente} %</span>
+              {partRetard > 0 && <span>{partRetard} %</span>}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Les dépassées : nommées, chiffrées, avec le geste qui les referme. */}
+      {enRetard.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {enRetard.map((inv) => (
+            <div key={inv.id} className="panel-raised flex flex-col gap-3 p-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="tnum font-mono text-[12.5px] text-text-secondary">{inv.number || '—'}</span>
+                <span className="eyebrow text-text-secondary">
+                  {tr('hist.invoices.echeanceDepuis', {
+                    date: inv.dueAt ? formatShortDay(inv.dueAt) : '—',
+                    n: inv.dueAt ? joursDepuis(inv.dueAt) : 0,
+                  })}
+                </span>
+              </div>
+              <p className="truncate text-[18px] font-semibold text-text-primary">
+                {inv.billTo?.name || tr('hist.invoices.clientSansNom')}
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="tnum mr-auto font-mono text-[23px] font-semibold tracking-[-0.03em] text-text-primary">
+                  {formatCents(netDueCents(inv, invoices))}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onOuvrir(inv.id)}
+                  className="min-h-11 border border-border-strong px-3 py-2 text-[12.5px] font-semibold text-text-primary transition-colors hover:bg-surface-hover md:min-h-0"
+                >
+                  {tr('hist.invoices.ouvrirLaFacture')}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* La bande des brouillons : ce qui n'existe pas encore pour le client. */}
+      {brouillons.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border border-border bg-sunken px-4 py-3">
+          <p className="eyebrow">{tr('hist.invoices.nBrouillons', { n: brouillons.length })}</p>
+          {brouillons.slice(0, 3).map((inv) => (
+            <button
+              key={inv.id}
+              type="button"
+              onClick={() => onOuvrir(inv.id)}
+              className="min-h-11 text-left text-[13px] text-text-secondary transition-colors hover:text-text-primary md:min-h-0"
+            >
+              {inv.billTo?.name || tr('hist.invoices.clientSansNom')}
+              <span className="tnum font-mono text-text-muted"> · {formatCents(invoiceTotals(inv).grossCents)}</span>
+            </button>
+          ))}
+          <p className="ml-auto text-[12.5px] text-text-muted">{tr('hist.invoices.brouillonSansNumero')}</p>
+        </div>
+      )}
+    </section>
+  );
+}
 
 function InvoiceRow({
   invoice,
@@ -564,7 +724,7 @@ function InvoiceDetail({
             aria-label="Imprimer / exporter en PDF"
             className="flex h-11 w-11 flex-shrink-0 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:h-9 md:w-9"
           >
-            <Printer size={15} strokeWidth={1.75} />
+            <Printer size={15} strokeWidth={1.9} />
           </button>
         )}
       </div>
@@ -1096,10 +1256,32 @@ const IDENTITY_FIELDS: {
   placeholder?: string;
   required?: boolean;
   multiline?: boolean;
+  /*
+    Le nom du champ tel qu'il se dit DANS UNE PHRASE, avec son article.
+
+    Écrit plutôt que dérivé : mettre l'étiquette en minuscules donnait « il
+    manque raison sociale, adresse et siret » — sans articles, et avec un
+    acronyme décapitalisé. Le français ne se fabrique pas à coups de
+    `toLowerCase()`, et seuls les champs obligatoires entrent dans la phrase.
+  */
+  nomDitDansUnePhrase?: string;
 }[] = [
-  { key: 'legalName', label: 'Raison sociale', placeholder: 'Syraagensy', required: true },
-  { key: 'address', label: 'Adresse', placeholder: '12 rue …\n75000 Paris', required: true, multiline: true },
-  { key: 'siret', label: 'SIRET', placeholder: '000 000 000 00000', required: true },
+  {
+    key: 'legalName',
+    label: 'Raison sociale',
+    placeholder: 'Syraagensy',
+    required: true,
+    nomDitDansUnePhrase: 'la raison sociale',
+  },
+  {
+    key: 'address',
+    label: 'Adresse',
+    placeholder: '12 rue …\n75000 Paris',
+    required: true,
+    multiline: true,
+    nomDitDansUnePhrase: 'l’adresse',
+  },
+  { key: 'siret', label: 'SIRET', placeholder: '14 chiffres', required: true, nomDitDansUnePhrase: 'le SIRET' },
   { key: 'legalForm', label: 'Forme juridique', placeholder: 'SASU, EI, auto-entrepreneur…' },
   { key: 'capital', label: 'Capital social', placeholder: '1 000 €' },
   { key: 'rcsCity', label: 'RCS (ville)', placeholder: 'Paris' },
@@ -1109,6 +1291,36 @@ const IDENTITY_FIELDS: {
   { key: 'iban', label: 'IBAN' },
   { key: 'bic', label: 'BIC' },
 ];
+
+/*
+  CE QUI MANQUE POUR POUVOIR ÉMETTRE.
+
+  Trois mentions sont obligatoires — raison sociale, adresse, SIRET — et sans
+  elles le bouton « Émettre » reste refusé. Le formulaire présentait pourtant
+  onze champs d'un même gris, marqués d'une astérisque, sans dire lesquels
+  BLOQUAIENT ni ce qu'ils bloquaient. On remplissait donc au jugé, on fermait,
+  et on découvrait le refus au moment d'émettre — c'est-à-dire au pire moment,
+  devant un client qui attend sa facture.
+
+  Le relevé est calculé sur les champs eux-mêmes, jamais tenu à part : une
+  seconde liste des mentions obligatoires se serait désynchronisée de
+  `IDENTITY_FIELDS` au premier ajout.
+*/
+function completudeLegale(form: BillingIdentity): {
+  exiges: typeof IDENTITY_FIELDS;
+  manquants: typeof IDENTITY_FIELDS;
+  remplis: number;
+} {
+  const exiges = IDENTITY_FIELDS.filter((f) => f.required);
+  const manquants = exiges.filter((f) => String(form[f.key] ?? '').trim() === '');
+  return { exiges, manquants, remplis: exiges.length - manquants.length };
+}
+
+/** « le SIRET », « le SIRET et l'adresse », « la raison sociale, l'adresse et le SIRET ». */
+function enumerer(libelles: string[]): string {
+  if (libelles.length <= 1) return libelles[0] ?? '';
+  return `${libelles.slice(0, -1).join(', ')} et ${libelles[libelles.length - 1]}`;
+}
 
 function IdentityModal({
   identity,
@@ -1123,6 +1335,7 @@ function IdentityModal({
   useFermetureEchap(true, onClose);
 
   const [form, setForm] = useState<BillingIdentity>(identity);
+  const { exiges, manquants, remplis } = completudeLegale(form);
 
   const set = (patch: Partial<BillingIdentity>) => setForm((prev) => ({ ...prev, ...patch }));
 
@@ -1144,7 +1357,7 @@ function IdentityModal({
       >
         <div className="flex flex-shrink-0 items-center justify-between border-b border-border px-4 py-3">
           <h2 className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">
-            <Building2 size={14} strokeWidth={1.75} />{tr('hist.invoices.coordonneesDeFacturation')}</h2>
+            <Building2 size={14} strokeWidth={1.9} />{tr('hist.invoices.coordonneesDeFacturation')}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -1157,34 +1370,107 @@ function IdentityModal({
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <p className="mb-3 text-xs leading-relaxed text-text-secondary">
-            Ces informations apparaissent sur chaque facture émise. La raison sociale, l’adresse et
-            le SIRET sont des mentions obligatoires : sans elles, le document n’a pas de valeur.
+            Ce qui figurera sur chaque facture émise. Une facture émise ne bouge plus : ces
+            informations y sont figées au moment de l’émission.
           </p>
 
-          {IDENTITY_FIELDS.map((field) => (
-            <label key={field.key} className="mt-3 block first:mt-0">
-              <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                {field.label}
-                {field.required && <span className="text-text-muted"> *</span>}
-              </span>
-              {field.multiline ? (
-                <textarea
-                  rows={2}
-                  value={String(form[field.key] ?? '')}
-                  onChange={(e) => set({ [field.key]: e.target.value } as Partial<BillingIdentity>)}
-                  placeholder={field.placeholder}
-                  className="input-focus w-full resize-none border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
-                />
-              ) : (
-                <input
-                  value={String(form[field.key] ?? '')}
-                  onChange={(e) => set({ [field.key]: e.target.value } as Partial<BillingIdentity>)}
-                  placeholder={field.placeholder}
-                  className="input-focus min-h-11 w-full border border-border bg-bg px-3 text-sm text-text-primary outline-none"
-                />
-              )}
-            </label>
-          ))}
+          {/*
+            LA BANDE DE COMPLÉTUDE — L'UNIQUE AMBRE DE CE FORMULAIRE.
+
+            Elle nomme ce qui manque, dit ce que ça bloque, et compte : deux
+            mentions sur trois se voit d'un coup d'œil là où onze champs gris
+            ne se comptent pas.
+
+            L'ambre marque une DÉCISION à prendre, et c'en est une : tant qu'il
+            manque une mention, aucune facture ne peut sortir. La bande, le
+            relevé, le libellé du champ et sa bordure disent tous la même chose
+            — d'où le groupe, qui les compte pour un.
+
+            Le formulaire s'ouvre au-dessus de Facturation, qui porte son propre
+            ambre (le segment en retard). Il est derrière le voile pendant que
+            la fenêtre est là, et la règle vaut par surface lisible : ce qu'on
+            lit ici, c'est une seule chose en ambre.
+          */}
+          {manquants.length > 0 && (
+            <div
+              className="relative mb-4 border border-border bg-sunken p-3.5"
+              data-signal-groupe="identite-incomplete"
+            >
+              <span className="absolute inset-y-0 left-0 w-[2px] bg-signal" aria-hidden />
+              <div className="flex flex-wrap items-start justify-between gap-3 pl-2.5">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold leading-snug text-text-primary">
+                    Il manque {enumerer(manquants.map((f) => f.nomDitDansUnePhrase ?? f.label))} pour pouvoir
+                    émettre.
+                  </p>
+                  <p className="mt-1 max-w-md text-xs leading-relaxed text-text-secondary">
+                    Sans {manquants.length > 1 ? 'ces mentions' : 'cette mention'}, le bouton
+                    « Émettre » reste refusé — un document sans mention légale ne vaut rien devant
+                    un comptable.
+                  </p>
+                </div>
+                <div className="flex flex-shrink-0 items-center gap-2">
+                  <span className="flex gap-1" aria-hidden>
+                    {exiges.map((f) => (
+                      <span
+                        key={f.key}
+                        className={`h-1 w-8 ${
+                          String(form[f.key] ?? '').trim() === '' ? 'bg-signal' : 'bg-text-secondary'
+                        }`}
+                      />
+                    ))}
+                  </span>
+                  <span className="tnum font-mono text-xs text-text-secondary">
+                    {remplis} / {exiges.length}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {IDENTITY_FIELDS.map((field) => {
+            /*
+              Le champ dit son propre statut, à la place de l'astérisque.
+
+              Une astérisque suppose qu'on a lu sa légende, et ne distingue pas
+              « exigé » de « exigé ET vide » — or c'est cette différence-là
+              qu'on vient chercher.
+            */
+            const vide = String(form[field.key] ?? '').trim() === '';
+            const bloquant = field.required === true && vide;
+            return (
+              <label key={field.key} className="mt-3 block first:mt-0">
+                <span
+                  className={`mb-1 block font-mono text-[10px] uppercase tracking-widest ${
+                    bloquant ? 'text-signal' : 'text-text-muted'
+                  }`}
+                >
+                  {field.label}
+                  {field.required && (bloquant ? ' · exigé, manquant' : ' · exigé')}
+                </span>
+                {field.multiline ? (
+                  <textarea
+                    rows={2}
+                    value={String(form[field.key] ?? '')}
+                    onChange={(e) => set({ [field.key]: e.target.value } as Partial<BillingIdentity>)}
+                    placeholder={field.placeholder}
+                    className={`input-focus w-full resize-none border bg-bg px-3 py-2 text-sm text-text-primary outline-none ${
+                      bloquant ? 'border-signal-line' : 'border-border'
+                    }`}
+                  />
+                ) : (
+                  <input
+                    value={String(form[field.key] ?? '')}
+                    onChange={(e) => set({ [field.key]: e.target.value } as Partial<BillingIdentity>)}
+                    placeholder={field.placeholder}
+                    className={`input-focus min-h-11 w-full border bg-bg px-3 text-sm text-text-primary outline-none ${
+                      bloquant ? 'border-signal-line' : 'border-border'
+                    }`}
+                  />
+                )}
+              </label>
+            );
+          })}
 
           <div className="mt-4 border-t border-border pt-3">
             <button

@@ -28,6 +28,7 @@ import type {
   RemoteSession,
   RemoteSessionUser,
   PresenceEntry,
+  RecordActivityEntry,
   RemoteConnectionStatus,
   RemoteEventPush,
   RemoteRecord,
@@ -193,12 +194,20 @@ export class RemoteApiClient {
     return record;
   }
 
-  async deleteRecord(collection: SyncedCollection, id: string): Promise<RemoteRecord> {
+  async deleteRecord(collection: SyncedCollection, id: string, by?: string | null): Promise<RemoteRecord> {
     const { record } = await apiFetch<{ record: RemoteRecord }>(
       `/v1/collections/${collection}/${encodeURIComponent(id)}`,
-      { method: 'DELETE' },
+      { method: 'DELETE', body: by ? JSON.stringify({ by }) : undefined },
     );
     return record;
+  }
+
+  /** Voir `AmnBridge.remote.activityLog` : le journal des collections partagées. */
+  async activityLog(limit?: number): Promise<RecordActivityEntry[]> {
+    const { entries } = await apiFetch<{ entries: RecordActivityEntry[] }>(
+      `/v1/collections/_activity${limit ? `?limit=${limit}` : ''}`,
+    );
+    return entries;
   }
 
   /* ------------------------------- Scanner ------------------------------- */

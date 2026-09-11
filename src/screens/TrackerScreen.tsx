@@ -82,7 +82,7 @@ export function TrackerScreen() {
           to="/tour"
           className="elev-hover flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 transition-colors hover:border-border-strong"
         >
-          <MonitorDot size={17} strokeWidth={1.75} className="flex-shrink-0 text-text-secondary" />
+          <MonitorDot size={17} strokeWidth={1.9} className="flex-shrink-0 text-text-secondary" />
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-medium text-text-primary">
               Mur d’incidents, visiteurs et activité horaire
@@ -114,7 +114,7 @@ export function TrackerScreen() {
       {/* Control desk */}
       <StaggerItem>
         <div className="flex items-center gap-2">
-          <Radar size={16} strokeWidth={1.75} className="text-text-secondary" />
+          <Radar size={16} strokeWidth={1.9} className="text-text-secondary" />
           <h2 className="text-sm font-semibold uppercase tracking-widest text-text-secondary">Bureau de contrôle</h2>
         </div>
       </StaggerItem>
@@ -122,7 +122,7 @@ export function TrackerScreen() {
       <StaggerItem>
         {sites.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-surface py-12 text-center">
-            <Globe size={22} strokeWidth={1.5} className="text-text-muted" />
+            <Globe size={22} strokeWidth={1.9} className="text-text-muted" />
             <p className="text-sm font-medium text-text-primary">Aucun site enregistré</p>
             <p className="max-w-sm text-sm text-text-secondary">
               Enregistrez un site dans l’onglet Sites, puis installez un tracker pour le superviser ici.
@@ -208,7 +208,7 @@ function ModuleCatalogCard({ mod, installCount }: { mod: TrackerModule; installC
         onClick={() => setShowCode((v) => !v)}
         className="mt-3 flex items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-text-secondary transition-colors hover:bg-white/5 hover:text-text-primary"
       >
-        <Terminal size={12} strokeWidth={1.75} />
+        <Terminal size={12} strokeWidth={1.9} />
         {showCode ? 'Masquer le code' : 'Voir le code d’installation'}
       </button>
 
@@ -263,7 +263,7 @@ function SiteComparator() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <BarChart3 size={16} strokeWidth={1.75} className="text-text-secondary" />
+        <BarChart3 size={16} strokeWidth={1.9} className="text-text-secondary" />
         <h2 className="text-sm font-semibold uppercase tracking-widest text-text-secondary">Comparateur de sites</h2>
         <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">à surveiller en premier</span>
       </div>
@@ -273,7 +273,7 @@ function SiteComparator() {
             <span className="w-5 flex-shrink-0 font-mono text-xs text-text-muted">{i + 1}</span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <Globe size={13} strokeWidth={1.75} className="text-text-muted" />
+                <Globe size={13} strokeWidth={1.9} className="text-text-muted" />
                 <span className="truncate text-sm font-medium text-text-primary">{site.name}</span>
               </div>
               <p className="mt-1 truncate text-xs text-text-muted">{posture.reasons.join(' · ')}</p>
@@ -315,7 +315,7 @@ function SiteControlRow({ site, onManage }: { site: DerivedSite; onManage: () =>
           <span className={`h-2 w-2 flex-shrink-0 rounded-full ${hasModules ? FLOW_DOT[flow.tone] : 'bg-text-muted/40'}`} />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <Globe size={14} strokeWidth={1.75} className="text-text-muted" />
+              <Globe size={14} strokeWidth={1.9} className="text-text-muted" />
               <span className="truncate text-sm font-semibold text-text-primary">{site.name}</span>
             </div>
             <p className="mt-0.5 text-xs text-text-muted">
@@ -488,7 +488,7 @@ function Metric({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <Icon size={14} strokeWidth={1.75} className="text-text-muted" />
+      <Icon size={14} strokeWidth={1.9} className="text-text-muted" />
       <div>
         <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted">{label}</p>
         <p className="text-sm font-semibold text-text-primary">{value}</p>

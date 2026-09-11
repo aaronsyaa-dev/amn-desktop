@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Trash2, Workflow } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FirstRun } from '../components/EmptyState';
 import { useSync, useCollection, uid } from '../state/SyncContext';
 import { useMembers } from '../state/useMembers';
-import { ACTIONS, DECLENCHEURS, type Action, type AutomationData, type Declencheur } from '../state/useAutomations';
+import { ACTIONS, DECLENCHEURS, useAutomationsParRegle, type Action, type AutomationData, type Declencheur } from '../state/useAutomations';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
 
@@ -36,6 +36,20 @@ export function AutomationsScreen() {
   const actives = triees.filter((r) => r.enabled).length;
   const produits = useMemo(() => [...tasks, ...logbook].filter((x) => x.id.startsWith('auto-')).length, [tasks, logbook]);
   const declencheur = (d: Declencheur) => t(`automatisations.si.${d}` as Parameters<typeof t>[0]);
+  /* Les libellés que le moteur emploie pour nommer ce qu'il produirait. Ce sont
+     les mêmes que ceux d'`AutomationsRunner` : l'écran ne doit pas inventer une
+     seconde façon de dire la même chose. */
+  const libelles = useMemo<Record<Declencheur, (a: string, b: string) => string>>(
+    () => ({
+      formAnswer: (formulaire, premiere) => t('automatisations.produit.formAnswer', { formulaire, premiere }),
+      invoiceOverdue: (client, numero) => t('automatisations.produit.invoiceOverdue', { client, numero }),
+      ticketOpened: (sujet, client) => t('automatisations.produit.ticketOpened', { sujet, client }),
+      prospectWon: (nom, societe) => t('automatisations.produit.prospectWon', { nom, societe }),
+      stockLow: (article, quantite) => t('automatisations.produit.stockLow', { article, quantite }),
+    }),
+    [t],
+  );
+  const parRegle = useAutomationsParRegle(libelles);
   const resultat = (a: Action) => t(`automatisations.alors.${a}` as Parameters<typeof t>[0]);
 
   const creer = async () => {
@@ -95,20 +109,117 @@ export function AutomationsScreen() {
           <FirstRun title={t('automatisations.vide.titre')} action={{ label: t('automatisations.vide.action'), onClick: () => setOuvert(true) }}>{t('automatisations.vide.texte')}</FirstRun>
         </motion.div>
       ) : (
-        <motion.ul variants={staggerItem} className="flex flex-col gap-2">
-          {triees.map((r) => (
-            <li key={r.id} className={`group flex flex-wrap items-center gap-3 rounded-xl border bg-surface p-3 ${r.enabled ? 'border-border' : 'border-dashed border-border opacity-70'}`}>
-              <Workflow size={16} className="shrink-0 text-text-muted" />
-              <p className="min-w-0 flex-1 text-sm text-text-primary">
-                <span className="text-text-muted">{t('automatisations.si')} </span>{declencheur(r.trigger)}<span className="text-text-muted">, {t('automatisations.alors').toLowerCase()} </span>{resultat(r.action)}
-                {r.action === 'task' && r.assigneeEmail && <span className="text-text-muted"> · {r.assigneeEmail}</span>}
-              </p>
-              <button type="button" onClick={() => void upsert('automations', r.id, { ...r, enabled: !r.enabled })} aria-pressed={r.enabled} className="min-h-11 border border-border px-3 text-xs text-text-secondary hover:text-text-primary md:min-h-0 md:py-1">{r.enabled ? t('automatisations.suspendre') : t('automatisations.reprendre')}</button>
-              <button type="button" onClick={() => void remove('automations', r.id)} aria-label={t('automatisations.supprimer')} title={t('automatisations.supprimer')} className="min-h-11 px-1 text-text-muted opacity-0 hover:text-danger focus:opacity-100 group-hover:opacity-100 md:min-h-0"><Trash2 size={13} /></button>
-            </li>
-          ))}
+        /*
+          LA PHRASE — l'objet dominant de l'écran Automatisations.
+
+          Une règle était une ligne grise avec une icône, deux boutons et un
+          texte de 14 px où « si » et « alors » avaient la même couleur que le
+          reste. Or une règle EST une phrase : « si une facture est échue, alors
+          créer une tâche ». C'est ce qu'on vient lire, et c'est ce qu'il faut
+          pouvoir relire d'un coup d'œil pour vérifier qu'on n'a pas écrit une
+          bêtise. Elle passe donc à 21 px, avec « SI » et « ALORS » en surtitre
+          — les mots de liaison s'effacent, les termes ressortent.
+
+          L'AMBRE est celui que la table nomme, « 2 en attente », et il ne peut
+          apparaître que sur une règle SUSPENDUE — voir `useAutomationsParRegle`
+          pour le pourquoi : une règle active n'attend rien.
+        */
+        <motion.ul variants={staggerItem} className="flex flex-col gap-3">
+          {triees.map((r) => {
+            const compte = parRegle.get(r.id) ?? { produits: 0, enAttente: [] };
+            const attend = compte.enAttente.length > 0;
+            return (
+              <li
+                key={r.id}
+                data-signal-groupe={attend ? `attente-${r.id}` : undefined}
+                className={`group border ${
+                  attend ? 'border-signal-line bg-signal-muted' : r.enabled ? 'panel' : 'border-dashed border-border'
+                }`}
+              >
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4">
+                  <p className={`min-w-0 flex-1 text-[18px] leading-[1.4] sm:text-[21px] ${r.enabled ? 'text-text-primary' : 'text-text-muted'}`}>
+                    <span className="eyebrow mr-2.5">{t('automatisations.si')}</span>
+                    {declencheur(r.trigger)}
+                    <span className="eyebrow mx-2.5">{t('automatisations.alors')}</span>
+                    {resultat(r.action)}
+                  </p>
+
+                  {attend ? (
+                    <span className="signal-plate flex-shrink-0 px-2.5 py-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.2em]">
+                      {t('automatisations.nEnAttente', { n: compte.enAttente.length })}
+                    </span>
+                  ) : (
+                    <span className="eyebrow flex-shrink-0">
+                      {r.enabled
+                        ? t('automatisations.nProduites', { n: compte.produits })
+                        : t('automatisations.desactivee')}
+                    </span>
+                  )}
+
+                  {/*
+                    L'INTERRUPTEUR DIT SON ÉTAT PAR SA FORME, pas par un mot qui
+                    change. « Suspendre » / « Reprendre » obligeait à lire le
+                    bouton pour savoir dans quel état on est — un bouton nomme
+                    ce qu'il FERA, donc il dit l'inverse de l'état courant.
+                  */}
+                  <button
+                    type="button"
+                    onClick={() => void upsert('automations', r.id, { ...r, enabled: !r.enabled })}
+                    role="switch"
+                    aria-checked={r.enabled}
+                    aria-label={r.enabled ? t('automatisations.suspendre') : t('automatisations.reprendre')}
+                    className={`relative flex h-7 w-12 flex-shrink-0 items-center border transition-colors ${
+                      r.enabled ? 'border-text-primary bg-text-primary' : 'border-border-strong bg-transparent'
+                    }`}
+                  >
+                    <span
+                      className={`absolute h-5 w-5 transition-all ${
+                        r.enabled ? 'left-[26px] bg-bg' : 'left-[2px] bg-border-strong'
+                      }`}
+                    />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => void remove('automations', r.id)}
+                    aria-label={t('automatisations.supprimer')}
+                    title={t('automatisations.supprimer')}
+                    className="flex-shrink-0 text-text-muted opacity-0 transition-opacity hover:text-danger focus:opacity-100 group-hover:opacity-100"
+                  >
+                    <Trash2 size={13} strokeWidth={1.9} />
+                  </button>
+                </div>
+
+                {/* Ce que la règle produirait si on la reprenait — nommé, pas
+                    compté : « 2 en attente » ne dit pas lesquelles. */}
+                {attend && (
+                  <div className="border-t border-signal-line/40 px-5 py-4">
+                    <ul className="flex flex-col gap-2">
+                      {compte.enAttente.slice(0, 3).map((source) => (
+                        <li key={source.id} className="flex flex-wrap items-baseline gap-x-3">
+                          <span className="eyebrow flex-shrink-0">{t('automatisations.aProduire')}</span>
+                          <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-text-primary">
+                            {source.titre}
+                          </span>
+                        </li>
+                      ))}
+                      {compte.enAttente.length > 3 && (
+                        <li className="eyebrow">+ {compte.enAttente.length - 3}</li>
+                      )}
+                    </ul>
+                    <p className="eyebrow mt-3.5 leading-[1.7]">
+                      {r.action === 'task' && r.assigneeEmail
+                        ? t('automatisations.assigneesA', { qui: r.assigneeEmail.split('@')[0] })
+                        : t('automatisations.unEnregistrementParSource')}
+                    </p>
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </motion.ul>
       )}
+
       <motion.p variants={staggerItem} className="text-xs text-text-muted">{t('automatisations.note')}</motion.p>
     </motion.section>
   );

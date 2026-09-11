@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Plus, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Receipt, SlidersHorizontal, X } from 'lucide-react';
 import { useExpenses } from '../state/useExpenses';
 import { useProjectPicker } from '../state/useProjects';
 import {
@@ -9,11 +9,11 @@ import {
   currentMonth,
   monthLabel,
   shiftMonth,
-  type BudgetVerdict,
   type CategorySlice,
   type Expense,
+  type MonthKey,
 } from '../state/expenseEngine';
-import { formatCents, formatCentsCompact } from '../lib/money';
+import { formatCents } from '../lib/money';
 import { formatShortDay } from '../state/useInvoices';
 import { ExpenseForm } from '../components/expenses/ExpenseForm';
 import { BudgetPanel } from '../components/expenses/BudgetPanel';
@@ -49,6 +49,9 @@ import { useLangue, t as tr } from '../i18n';
  * cliente qui a choisi l'ambre.
  */
 export function ExpensesScreen() {
+  // Abonnement à la langue : sans lui, l'écran gardait les libellés de la
+  // langue active AU MONTAGE et ne suivait pas un changement en cours de route.
+  useLangue();
   const {
     config,
     saveConfig,
@@ -81,7 +84,6 @@ export function ExpensesScreen() {
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
   const monthExpenses = useMemo(() => ofMonth(month), [ofMonth, month]);
-  const total = useMemo(() => totalOf(monthExpenses), [monthExpenses, totalOf]);
   const breakdown = useMemo(() => breakdownOf(monthExpenses), [breakdownOf, monthExpenses]);
 
   const visible = useMemo(
@@ -104,9 +106,17 @@ export function ExpensesScreen() {
         eyebrow={tr('hist.expenses.posteDeTravailDepenses')}
         title={tr('hist.expenses.depenses')}
         description={tr('hist.expenses.ceQueVousSortez')}
+        /* Le total du mois est le grand chiffre du ruban, juste en dessous : le
+           répéter ici en ferait le troisième endroit où lire la même somme.
+           L'en-tête dit ce que le ruban ne dit pas — combien de lignes, et
+           combien portent leur justificatif. */
         stats={[
-          { label: 'Ce mois-ci', value: formatCentsCompact(total) },
-          { label: tr('hist.expenses.lignesAffichees'), value: visible.length },
+          { label: tr('hist.expenses.depensesCeMois'), value: monthExpenses.length },
+          {
+            label: tr('hist.expenses.justificatifs'),
+            value: monthExpenses.filter((e) => e.photoDataUrl).length,
+            title: tr('hist.expenses.surNLignes', { n: monthExpenses.length }),
+          },
         ]}
         actions={
         <div className="flex flex-shrink-0 items-center gap-2">
@@ -117,7 +127,7 @@ export function ExpensesScreen() {
             aria-label={tr('hist.expenses.categoriesEtBudgets')}
             className="flex h-11 w-11 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:h-9 md:w-9"
           >
-            <SlidersHorizontal size={16} strokeWidth={1.75} />
+            <SlidersHorizontal size={16} strokeWidth={1.9} />
           </button>
           <button
             type="button"
@@ -136,57 +146,47 @@ export function ExpensesScreen() {
       />
 
       {/* ------------------------------------------------------ le mois ----- */}
-      <div className="flex items-center gap-3 border border-border bg-surface p-4">
-        <button
-          type="button"
-          onClick={() => goToMonth(-1)}
-          disabled={!canGoBack}
-          aria-label={tr('hist.expenses.moisPrecedent')}
-          className="flex h-11 w-11 flex-shrink-0 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:opacity-30"
-        >
-          <ChevronLeft size={18} strokeWidth={2} />
-        </button>
+      {/*
+        LE RUBAN DE MOIS — l'objet dominant de l'écran Dépenses.
 
-        <div className="min-w-0 flex-1 text-center">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
-            {monthLabel(month)}
-          </p>
-          <p className="mt-0.5 truncate text-3xl font-bold tabular-nums tracking-tight text-text-primary sm:text-4xl">
-            {formatCentsCompact(total)}
-          </p>
-          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-widest text-text-muted">
-            {monthExpenses.length === 0
-              ? 'aucune dépense'
-              : `${monthExpenses.length} dépense${monthExpenses.length > 1 ? 's' : ''}`}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => goToMonth(1)}
-          aria-label="Mois suivant"
-          className="flex h-11 w-11 flex-shrink-0 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
-        >
-          <ChevronRight size={18} strokeWidth={2} />
-        </button>
-      </div>
+        Il y avait une flèche, un chiffre, une flèche. On voyait le mois en
+        cours, et RIEN d'autre : pour savoir si 1 964 € était beaucoup, il
+        fallait reculer, lire, avancer, se souvenir. Un ruban pose les cinq
+        derniers côte à côte, et la comparaison se fait sans cliquer — c'est
+        tout le propos de « le mois » comme objet dominant.
+      */}
+      <RubanDeMois
+        mois={month}
+        totalDe={(m) => totalOf(ofMonth(m))}
+        peutReculer={canGoBack}
+        onChoisir={(m) => {
+          setMonth(m);
+          setCategoryFilter(null);
+        }}
+        onDecaler={goToMonth}
+      />
 
       {/* -------------------------------------------------- répartition ----- */}
       {breakdown.length > 0 && (
-        <div className="flex flex-col gap-2.5 border border-border bg-surface p-4">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.expenses.repartition')}</p>
-          {breakdown.map((slice, index) => (
-            <CategoryBar
-              key={slice.key}
-              slice={slice}
-              rank={index}
-              active={categoryFilter === slice.key}
-              onToggle={() =>
-                setCategoryFilter((prev) => (prev === slice.key ? null : slice.key))
-              }
-            />
-          ))}
-        </div>
+        <section>
+          <div className="mb-3 flex items-center gap-4">
+            <p className="eyebrow flex-shrink-0">{tr('hist.expenses.parCategorie')}</p>
+            <span className="h-px flex-1 bg-border-section" aria-hidden />
+            <p className="eyebrow flex-shrink-0">{tr('hist.expenses.budgetMensuel')}</p>
+          </div>
+          <div className="flex flex-col">
+            {breakdown.map((slice) => (
+              <LigneDeCategorie
+                key={slice.key}
+                slice={slice}
+                active={categoryFilter === slice.key}
+                onToggle={() =>
+                  setCategoryFilter((prev) => (prev === slice.key ? null : slice.key))
+                }
+              />
+            ))}
+          </div>
+        </section>
       )}
 
       {/* ------------------------------------------------------ les fiches -- */}
@@ -224,25 +224,39 @@ export function ExpensesScreen() {
           </EmptyState>
         )
       ) : (
-        <motion.div
-          variants={staggerContainer}
-          initial="initial"
-          animate="animate"
-          className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
-        >
-          {visible.map((expense) => (
-            <ExpenseCard
-              key={expense.id}
-              expense={expense}
-              label={categoryLabel(config, expense.category)}
-              onOpenPhoto={() => setPreview(expense)}
-              onEdit={() => {
-                setEditing(expense);
-                setFormOpen(true);
-              }}
-            />
-          ))}
-        </motion.div>
+        /*
+          LE MOIS, JOUR PAR JOUR.
+
+          C'était une grille de vignettes carrées, rangée par rien de visible.
+          La photo du justificatif reste — elle est utile, et c'était une
+          décision prise exprès — mais elle passe en vignette de 34 px au bord
+          d'une LIGNE datée : une dépense se lit d'abord par son jour et son
+          montant, l'objet vient confirmer. La grille demandait de chercher la
+          date en bas de chaque carte, en neuf pixels.
+        */
+        <section>
+          <div className="mb-1 flex items-center gap-4">
+            <p className="eyebrow flex-shrink-0">{tr('hist.expenses.leMoisJourParJour')}</p>
+            <span className="h-px flex-1 bg-border-section" aria-hidden />
+            <p className="eyebrow flex-shrink-0">
+              {tr('hist.expenses.nDepenses', { n: visible.length })}
+            </p>
+          </div>
+          <motion.ul variants={staggerContainer} initial="initial" animate="animate" className="flex flex-col">
+            {visible.map((expense) => (
+              <LigneDeDepense
+                key={expense.id}
+                expense={expense}
+                label={categoryLabel(config, expense.category)}
+                onOpenPhoto={() => setPreview(expense)}
+                onEdit={() => {
+                  setEditing(expense);
+                  setFormOpen(true);
+                }}
+              />
+            ))}
+          </motion.ul>
+        </section>
       )}
 
       <AnimatePresence>
@@ -322,101 +336,187 @@ function defaultDayFor(month: string): string {
 
 /* ------------------------------- La répartition ---------------------------- */
 
-function CategoryBar({
+/**
+ * LE RUBAN DE MOIS.
+ *
+ * Cinq cellules : les quatre mois précédents, puis celui qu'on regarde, plus
+ * large et levé. Chacune porte son total, donc la comparaison est immédiate —
+ * c'est la seule chose que l'ancienne paire de flèches ne pouvait pas donner.
+ *
+ * Les flèches restent : elles servent à sortir de la fenêtre de cinq mois, pas
+ * à se déplacer dedans.
+ */
+function RubanDeMois({
+  mois,
+  totalDe,
+  peutReculer,
+  onChoisir,
+  onDecaler,
+}: {
+  mois: MonthKey;
+  totalDe: (m: MonthKey) => number;
+  peutReculer: boolean;
+  onChoisir: (m: MonthKey) => void;
+  onDecaler: (delta: number) => void;
+}) {
+  const cellules = useMemo(
+    () => [4, 3, 2, 1, 0].map((recul) => shiftMonth(mois, -recul)),
+    [mois],
+  );
+  /* « septembre 2026 » pour le mois courant, « septembre » pour les autres :
+     l'année ne se répète pas cinq fois quand elle ne change pas. */
+  const court = (m: MonthKey) => monthLabel(m).replace(/\s+\d{4}$/, '');
+
+  return (
+    <div className="flex items-stretch border border-border bg-surface">
+      <button
+        type="button"
+        onClick={() => onDecaler(-1)}
+        disabled={!peutReculer}
+        aria-label={tr('hist.expenses.moisPrecedent')}
+        className="flex w-11 flex-shrink-0 items-center justify-center border-r border-border text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary disabled:opacity-30"
+      >
+        <ChevronLeft size={16} strokeWidth={2} />
+      </button>
+
+      <div className="grid min-w-0 flex-1 grid-cols-3 sm:grid-cols-5">
+        {cellules.map((m, i) => {
+          const courant = m === mois;
+          return (
+            <button
+              key={m}
+              type="button"
+              onClick={() => onChoisir(m)}
+              /* Sous 640 px il n'y a plus la place pour cinq mois : on garde
+                 les trois derniers, dont celui qu'on regarde. */
+              className={`flex flex-col items-start gap-2 border-r border-border px-4 py-4 text-left transition-colors last:border-r-0 ${
+                i < 2 ? 'hidden sm:flex' : 'flex'
+              } ${courant ? 'bg-elevated' : 'hover:bg-surface-hover'}`}
+            >
+              <span className={`eyebrow ${courant ? 'text-text-secondary' : ''}`}>
+                {courant ? monthLabel(m) : court(m)}
+              </span>
+              <span
+                className={`tnum truncate font-mono font-semibold leading-none tracking-[-0.03em] ${
+                  courant ? 'text-[27px] text-text-primary' : 'text-[17px] text-text-muted'
+                }`}
+              >
+                {formatCents(totalDe(m))}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onDecaler(1)}
+        aria-label="Mois suivant"
+        className="flex w-11 flex-shrink-0 items-center justify-center border-l border-border text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+      >
+        <ChevronRight size={16} strokeWidth={2} />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * UNE CATÉGORIE, SON BUDGET, SA BARRE.
+ *
+ * L'AMBRE DE L'ÉCRAN vit ici, et nulle part ailleurs : la catégorie dépassée.
+ * Le badge « dépassé de … » et la portion de barre au-delà du budget disent la
+ * même chose, d'où le `data-signal-groupe` qui les compte pour un. Une
+ * catégorie DANS son budget est un état sain — elle n'a pas d'ambre, et c'est
+ * la règle 3 du paquet de design.
+ *
+ * Les catégories sans budget n'ont pas de barre du tout : une barre suppose
+ * une échelle, et sans budget il n'y en a aucune. Elles disent leur montant,
+ * et le surtitre dit pourquoi elles n'ont rien de plus.
+ */
+function LigneDeCategorie({
   slice,
-  rank,
   active,
   onToggle,
 }: {
   slice: CategorySlice;
-  rank: number;
   active: boolean;
   onToggle: () => void;
 }) {
-  // L'accent, dégradé par rang : la plus grosse catégorie est la plus franche.
-  // Plancher à 0,3 pour que la dernière barre reste visible sur le fond.
-  const opacity = Math.max(0.3, 1 - rank * 0.14);
-
+  const { budget } = slice;
+  const depasse = budget.state === 'over';
+  const sansBudget = budget.state === 'none';
   /*
-    Où poser le repère de budget sur la barre.
+    L'ÉCHELLE DE LA BARRE CHANGE QUAND LE BUDGET EST DÉPASSÉ, et c'est ce qui la
+    rend lisible.
 
-    La barre entière représente le total du MOIS, et sa portion pleine la part
-    de cette catégorie. Le repère doit donc être placé sur la même échelle :
-    `budget / total du mois`. Le total du mois se retrouve à partir de ce
-    qu'on a déjà — `totalCents / share` — plutôt que d'être passé en plus, ce
-    qui obligerait chaque appelant à le calculer de son côté.
+    Tant qu'on tient, l'échelle est le BUDGET : la barre dit quelle part en est
+    consommée, et le vide à droite dit ce qui reste. Une fois dépassé, cette
+    échelle ne peut plus rien dire — un dépassement de 5 % et un dépassement du
+    double donnent tous deux une barre pleine. L'échelle devient donc le
+    DÉPENSÉ : la portion pleine marque le budget, les rayures marquent ce qui
+    est passé au-delà, et leur longueur relative dit de combien.
   */
-  const monthTotalCents = slice.share > 0 ? slice.totalCents / slice.share : 0;
-  const markerPercent =
-    slice.budget.state !== 'none' && monthTotalCents > 0
-      ? Math.min(100, (slice.budget.budgetCents / monthTotalCents) * 100)
-      : null;
+  const echelle = depasse ? Math.max(1, budget.spentCents) : Math.max(1, budget.budgetCents);
+  const partTenue = sansBudget ? 0 : (Math.min(budget.spentCents, budget.budgetCents) / echelle) * 100;
+  const partDepassement = depasse ? (budget.deltaCents / echelle) * 100 : 0;
 
   return (
     <button
       type="button"
       onClick={onToggle}
-      className={`group flex w-full flex-col gap-1 border px-2.5 py-2 text-left transition-colors ${
-        active ? 'border-border-strong bg-accent-muted' : 'border-transparent hover:bg-surface-hover'
+      aria-pressed={active}
+      data-signal-groupe={depasse ? 'categorie-depassee' : undefined}
+      className={`flex flex-col gap-2.5 border-b border-[#161616] px-3 py-3.5 text-left transition-colors last:border-b-0 ${
+        active ? 'bg-surface-hover' : 'hover:bg-surface-hover'
       }`}
     >
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="truncate text-sm text-text-primary">{slice.label}</span>
-        <span className="flex-shrink-0 font-mono text-xs tabular-nums text-text-secondary">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
+        <span className="text-[14.5px] font-semibold text-text-primary">{slice.label}</span>
+        {depasse && (
+          <span className="signal-plate px-2 py-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.2em]">
+            {tr('hist.expenses.depasseDe', { montant: formatCents(budget.deltaCents) })}
+          </span>
+        )}
+        {sansBudget && <span className="eyebrow">{tr('hist.expenses.sansBudget')}</span>}
+        <span className="tnum ml-auto font-mono text-[14.5px] font-semibold tracking-[-0.03em] text-text-primary">
           {formatCents(slice.totalCents)}
         </span>
-      </div>
-
-      <div className="relative h-2 w-full bg-bg">
-        <div
-          className="absolute inset-y-0 left-0 bg-accent"
-          style={{ width: `${Math.round(slice.share * 100)}%`, opacity }}
-        />
-        {/* Le repère de budget : un trait vertical sur la barre, à l'endroit où
-            le budget serait atteint. Il n'y a rien à lire — la barre le
-            dépasse, ou non. */}
-        {markerPercent !== null && (
-          <div
-            className="absolute inset-y-[-2px] w-px bg-text-primary"
-            style={{ left: `${markerPercent}%` }}
-          />
+        {!sansBudget && (
+          <span className="tnum flex-shrink-0 font-mono text-[11px] tracking-[0.1em] text-text-muted">
+            / {formatCents(budget.budgetCents)}
+          </span>
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">
-          {Math.round(slice.share * 100)} %
+      {!sansBudget && (
+        <span className="flex h-[5px] w-full overflow-hidden bg-[#1a1a1a]" aria-hidden>
+          <span className={depasse ? 'bg-signal' : 'bg-[#4a4a48]'} style={{ width: `${partTenue}%` }} />
+          {partDepassement > 0 && (
+            <span
+              className="bg-signal-muted"
+              style={{
+                width: `${partDepassement}%`,
+                backgroundImage:
+                  'repeating-linear-gradient(135deg, var(--color-signal) 0 2px, transparent 2px 5px)',
+              }}
+            />
+          )}
         </span>
-        <BudgetChip verdict={slice.budget} />
-      </div>
+      )}
     </button>
   );
 }
 
 /**
- * « Il reste 80 € » / « Dépassé de 45 € ».
+ * UNE LIGNE DE DÉPENSE — jour, justificatif, intitulé, catégorie, montant.
  *
- * Une phrase, pas un pourcentage : « 112 % du budget » oblige à faire le
- * calcul pour savoir ce que ça représente, et c'est précisément le genre de
- * détour qu'on veut éviter.
+ * La vignette du justificatif garde sa place mais pas sa taille : 34 px
+ * suffisent à reconnaître un objet qu'on a photographié soi-même, et une
+ * dépense sans photo n'ouvre plus un carré vide — le cadre dit simplement
+ * « sans justificatif », ce qui est une information utile au moment de la
+ * déclaration.
  */
-function BudgetChip({ verdict }: { verdict: BudgetVerdict }) {
-  if (verdict.state === 'none') return null;
-  const over = verdict.state === 'over';
-  return (
-    <span
-      className={`flex-shrink-0 border px-1.5 py-px font-mono text-[9px] uppercase tracking-widest ${
-        over ? 'border-danger/50 bg-danger-muted text-danger' : 'border-border text-text-muted'
-      }`}
-    >
-      {over ? `Dépassé de ${formatCentsCompact(verdict.deltaCents)}` : `Il reste ${formatCentsCompact(verdict.deltaCents)}`}
-    </span>
-  );
-}
-
-/* --------------------------------- Les fiches ------------------------------ */
-
-function ExpenseCard({
+function LigneDeDepense({
   expense,
   label,
   onOpenPhoto,
@@ -428,50 +528,51 @@ function ExpenseCard({
   onEdit: () => void;
 }) {
   return (
-    <motion.article variants={staggerItem} className="flex flex-col border border-border bg-surface">
-      {expense.photoDataUrl ? (
-        <button
-          type="button"
-          onClick={onOpenPhoto}
-          aria-label={tr('hist.expenses.voirLeJustificatif')}
-          className="aspect-square overflow-hidden bg-bg"
-        >
-          <img
-            src={expense.photoDataUrl}
-            alt=""
-            className="h-full w-full object-cover transition-transform duration-200 hover:scale-105"
-          />
-        </button>
-      ) : (
-        /* Sans photo, la fiche garde la même forme : une grille où une carte
-           sur deux fait la moitié de la hauteur se lit beaucoup moins bien
-           qu'une grille régulière. La place est prise par le montant. */
-        <button
-          type="button"
-          onClick={onEdit}
-          className="flex aspect-square items-center justify-center bg-bg px-2 transition-colors hover:bg-surface-hover"
-        >
-          <span className="text-center text-xl font-bold tabular-nums text-text-primary">
-            {formatCentsCompact(expense.amountCents)}
-          </span>
-        </button>
-      )}
-
-      <button type="button" onClick={onEdit} className="flex flex-col gap-1 p-2 text-left">
-        {expense.photoDataUrl && (
-          <span className="text-sm font-bold tabular-nums text-text-primary">
-            {formatCents(expense.amountCents)}
-          </span>
-        )}
-        <span className="truncate border border-border px-1.5 py-px font-mono text-[9px] uppercase tracking-widest text-text-secondary">
-          {label}
-        </span>
-        {expense.note && <span className="truncate text-xs text-text-secondary">{expense.note}</span>}
-        <span className="font-mono text-[9px] uppercase tracking-wider text-text-muted">
+    <motion.li variants={staggerItem} className="border-b border-[#161616] last:border-b-0">
+      <div className="flex items-center gap-4 py-3">
+        <span className="tnum w-[52px] flex-shrink-0 font-mono text-[11px] tracking-[0.1em] text-text-muted">
           {formatShortDay(expense.spentAt)}
         </span>
-        <ProjectTag projectId={expense.projectId} />
-      </button>
-    </motion.article>
+
+        {expense.photoDataUrl ? (
+          <button
+            type="button"
+            onClick={onOpenPhoto}
+            aria-label={tr('hist.expenses.voirLeJustificatif')}
+            className="h-[34px] w-[34px] flex-shrink-0 overflow-hidden border border-border bg-bg"
+          >
+            <img src={expense.photoDataUrl} alt="" className="h-full w-full object-cover" />
+          </button>
+        ) : (
+          <span
+            className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center border border-dashed border-border text-text-muted"
+            title={tr('hist.expenses.sansJustificatif')}
+          >
+            <Receipt size={13} strokeWidth={1.9} />
+          </span>
+        )}
+
+        <button type="button" onClick={onEdit} className="min-w-0 flex-1 text-left">
+          <span className="block truncate text-[14.5px] text-text-primary">
+            {expense.note || label}
+          </span>
+          <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="eyebrow">{label}</span>
+            {!expense.photoDataUrl && (
+              <>
+                <span className="eyebrow">·</span>
+                <span className="eyebrow">{tr('hist.expenses.sansJustificatif')}</span>
+              </>
+            )}
+            <ProjectTag projectId={expense.projectId} />
+          </span>
+        </button>
+
+        <span className="tnum flex-shrink-0 font-mono text-[14.5px] font-semibold tracking-[-0.03em] text-text-primary">
+          {formatCents(expense.amountCents)}
+        </span>
+      </div>
+    </motion.li>
   );
 }
+

@@ -235,7 +235,7 @@ export function IncidentsScreen() {
               onClick={() => setRapportOuvert(true)}
               className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-[12px] font-medium text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
             >
-              <FileText size={14} strokeWidth={1.75} />
+              <FileText size={14} strokeWidth={1.9} />
               <span className="hidden sm:inline">Rapport mensuel</span>
             </button>
             <button
@@ -244,7 +244,7 @@ export function IncidentsScreen() {
             aria-label="Relire maintenant"
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:text-text-primary"
           >
-            <RotateCcw size={15} strokeWidth={1.75} className={chargement ? 'animate-spin' : ''} />
+            <RotateCcw size={15} strokeWidth={1.9} className={chargement ? 'animate-spin' : ''} />
             </button>
           </>
         }
@@ -282,7 +282,7 @@ export function IncidentsScreen() {
 
       {liste.length === 0 && !chargement ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface px-6 py-16 text-center">
-          <ShieldCheck size={22} strokeWidth={1.5} className="text-text-muted" />
+          <ShieldCheck size={22} strokeWidth={1.9} className="text-text-muted" />
           <p className="text-sm font-medium text-text-primary">
             {portee === 'open'
               ? 'Rien à traiter.'
@@ -503,7 +503,7 @@ function LigneIncident({
           )}
           {incident.status === 'resolved' && (
             <Bouton onClick={onRouvrir} disabled={occupe} discret>
-              <Undo2 size={13} strokeWidth={1.75} /> Rouvrir
+              <Undo2 size={13} strokeWidth={1.9} /> Rouvrir
             </Bouton>
           )}
           <button
@@ -520,7 +520,7 @@ function LigneIncident({
             className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
           >
             <motion.span animate={{ rotate: ouvert ? 180 : 0 }} transition={{ duration: 0.18 }}>
-              <ChevronDown size={15} strokeWidth={1.75} />
+              <ChevronDown size={15} strokeWidth={1.9} />
             </motion.span>
           </button>
         </div>
@@ -660,7 +660,7 @@ function Chronologie({ incident }: { incident: Incident }) {
   return (
     <div className="px-4 py-3">
       <div className="mb-2 flex items-center gap-2">
-        <Activity size={13} strokeWidth={1.75} className="text-text-muted" />
+        <Activity size={13} strokeWidth={1.9} className="text-text-muted" />
         <span className="eyebrow">Chronologie · {events.length} alerte{events.length > 1 ? 's' : ''}</span>
       </div>
 

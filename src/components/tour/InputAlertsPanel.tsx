@@ -46,7 +46,7 @@ export function InputAlertsPanel() {
   return (
     <section className="rounded-xl border border-border bg-surface p-4">
       <p className="eyebrow mb-1 flex items-center gap-2">
-        <ShieldAlert size={13} strokeWidth={1.75} />
+        <ShieldAlert size={13} strokeWidth={1.9} />
         Tentatives d’injection · {alertes.length}
       </p>
       <p className="mb-3 text-xs leading-relaxed text-text-muted">

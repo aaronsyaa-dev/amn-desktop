@@ -239,7 +239,7 @@ export function ExpenseForm({
                   onClick={() => fileRef.current?.click()}
                   className="flex min-h-11 items-center gap-2 border border-border px-3 text-sm text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
                 >
-                  <Camera size={15} strokeWidth={1.75} />
+                  <Camera size={15} strokeWidth={1.9} />
                   Remplacer
                 </button>
                 <button
@@ -247,7 +247,7 @@ export function ExpenseForm({
                   onClick={() => setPhoto('')}
                   className="flex min-h-11 items-center gap-2 border border-border px-3 text-sm text-text-muted transition-colors hover:border-danger hover:text-danger"
                 >
-                  <Trash2 size={15} strokeWidth={1.75} />
+                  <Trash2 size={15} strokeWidth={1.9} />
                   Retirer
                 </button>
               </div>
@@ -259,7 +259,7 @@ export function ExpenseForm({
               disabled={busy}
               className="flex min-h-[4.5rem] w-full items-center justify-center gap-2 border border-dashed border-border text-sm text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:opacity-60"
             >
-              {busy ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} strokeWidth={1.75} />}
+              {busy ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} strokeWidth={1.9} />}
               Photographier le reçu
             </button>
           )}

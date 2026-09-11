@@ -201,7 +201,7 @@ export function MfaSection() {
               onClick={() => void copyCodes()}
               className="flex min-h-11 flex-1 items-center justify-center gap-2 border border-border-strong text-xs text-text-primary transition-colors hover:bg-surface-hover md:min-h-9"
             >
-              {copied ? <Check size={14} strokeWidth={2.5} /> : <Copy size={14} strokeWidth={1.75} />}
+              {copied ? <Check size={14} strokeWidth={2.5} /> : <Copy size={14} strokeWidth={1.9} />}
               {copied ? 'Copiés' : 'Copier'}
             </button>
             <button

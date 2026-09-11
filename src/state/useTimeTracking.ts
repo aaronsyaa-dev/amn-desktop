@@ -190,9 +190,17 @@ export function useTimeTracking() {
     (now = Date.now()) => {
       const today = dayOf(new Date(now).toISOString());
       const monday = weekStart(today);
+      const semaine = entries.filter((e) => dayOf(e.startedAt) >= monday);
       return {
         todayMs: totalMs(entries.filter((e) => dayOf(e.startedAt) === today), now),
-        weekMs: totalMs(entries.filter((e) => dayOf(e.startedAt) >= monday), now),
+        weekMs: totalMs(semaine, now),
+        /*
+          La part de la semaine DÉJÀ PARTIE EN FACTURE.
+          Sans elle, « 18 h 25 cette semaine » ne dit pas si c'est du travail à
+          facturer ou du travail déjà réglé — deux situations qui n'appellent
+          pas du tout le même geste, et que l'écran présentait comme une seule.
+        */
+        weekInvoicedMs: totalMs(semaine.filter((e) => e.invoicedAt), now),
         weekStartDay: monday,
       };
     },

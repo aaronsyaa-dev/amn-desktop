@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Pencil, Play, Plus, ReceiptEuro, Square, Trash2 } from 'lucide-react';
+import { Pencil, Play, Plus, ReceiptEuro, Trash2 } from 'lucide-react';
 import { useTimeTracking } from '../state/useTimeTracking';
 import { useProjects } from '../state/useProjects';
 import { useClients } from '../state/useClients';
@@ -48,6 +48,9 @@ import { useLangue, t as tr } from '../i18n';
  * les huit heures fantômes du lendemain.
  */
 export function TimeScreen() {
+  // Abonnement à la langue : sans lui, l'écran gardait les libellés de la
+  // langue active AU MONTAGE et ne suivait pas un changement en cours de route.
+  useLangue();
   const {
     config,
     saveConfig,
@@ -89,9 +92,59 @@ export function TimeScreen() {
     return () => window.clearInterval(timer);
   }, [running]);
 
+  /* Déclaré ici, avant `aFacturer` qui s'en sert : facturer n'existe que si le
+     module de facturation est actif dans cet espace. */
+  const canInvoice = isModuleEnabled('invoices');
+
   const totals = useMemo(() => summary(now), [summary, now]);
   const monday = totals.weekStartDay;
   const perProject = useMemo(() => byProject(monday, now), [byProject, monday, now]);
+
+  /*
+    LES SEPT JOURS DE LA SEMAINE, du lundi au dimanche, avec leur total.
+
+    `byDay` ne rend que les jours qui portent quelque chose : une semaine à deux
+    jours travaillés donnerait deux barres, et la comparaison — tout le propos
+    du ruban — n'aurait plus d'axe. On construit donc les sept, y compris les
+    vides, qui disent « rien » au lieu de ne rien dire.
+  */
+  const semaine = useMemo(() => {
+    const aujourd = dayOf(new Date(now).toISOString());
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(`${monday}T00:00:00`);
+      d.setDate(d.getDate() + i);
+      const day = dayOf(d.toISOString());
+      const groupe = byDay.find((g) => g.day === day);
+      return {
+        day,
+        ms: groupe ? groupe.rows.reduce((n, e) => n + durationMs(e, now), 0) : 0,
+        aujourdhui: day === aujourd,
+        etiquette: `${d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')} ${String(d.getDate()).padStart(2, '0')}`,
+      };
+    });
+  }, [byDay, monday, now]);
+  const maxJour = useMemo(() => semaine.reduce((n, j) => Math.max(n, j.ms), 0), [semaine]);
+
+  /*
+    LE PROJET QU'IL RESTE À FACTURER — le plus gros d'abord, et un seul.
+
+    La carte de droite en montre UN, pas la liste : c'est un rappel, pas un
+    tableau de bord, et la liste complète par projet vit déjà plus bas. Sans
+    module de facturation activé, `canInvoice` est faux et la carte disparaît
+    entièrement — proposer de facturer sans facturation n'est pas une offre.
+  */
+  const aFacturer = useMemo(() => {
+    if (!canInvoice) return null;
+    const candidats = perProject
+      .filter((row) => row.projectId)
+      .map((row) => ({
+        projectId: row.projectId,
+        ms: billableOf(row.projectId).reduce((n, e) => n + durationMs(e, now), 0),
+      }))
+      .filter((row) => row.ms > 0)
+      .sort((a, b) => b.ms - a.ms);
+    return candidats[0] ?? null;
+  }, [canInvoice, perProject, billableOf, now]);
 
   const projectTitle = (id: string) =>
     projects.find((p) => p.id === id)?.title || (id ? 'Projet supprimé' : 'Sans projet');
@@ -143,7 +196,6 @@ export function TimeScreen() {
     });
   };
 
-  const canInvoice = isModuleEnabled('invoices');
   const invoiceProject = invoiceFor ? projects.find((p) => p.id === invoiceFor) : undefined;
 
   return (
@@ -174,92 +226,230 @@ export function TimeScreen() {
         }
       />
 
-      {/* ------------------------------------------------- le chronomètre --- */}
-      <div className="border border-border bg-surface p-4">
-        {running ? (
-          <>
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
-              En cours depuis {formatClock(running.startedAt)}
-            </p>
-            <p className="mt-1 text-4xl font-bold tabular-nums tracking-tight text-text-primary sm:text-5xl">
-              {formatStopwatch(durationMs(running, now))}
-            </p>
-            <p className="mt-1 truncate text-sm text-text-secondary">
-              {running.label || 'Sans intitulé'}
-              {running.projectId ? ` · ${projectTitle(running.projectId)}` : ''}
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">{tr('hist.time.surQuoiTravaillezVous')}</p>
-            <input
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') toggle();
-              }}
-              placeholder="Retouches photos, appel client… (facultatif)"
-              className="input-focus mt-2 min-h-11 w-full border border-border bg-bg px-3 text-sm text-text-primary outline-none"
-            />
-            <ProjectPicker
-              value={projectId}
-              onChange={setProjectId}
-              label="Projet (facultatif)"
-              className="mt-3"
-            />
-          </>
-        )}
+      {/*
+        LE COMPTEUR QUI TOURNE — l'objet dominant de l'écran Temps.
 
-        {/*
-          Le bouton du pouce : pleine largeur, 64 px de haut, un seul mot. Sur
-          un téléphone tenu d'une main, c'est la cible qu'on atteint sans
-          regarder — et c'est le geste qu'on répète le plus souvent.
-        */}
-        <button
-          type="button"
-          onClick={toggle}
-          className={`mt-4 flex h-16 w-full items-center justify-center gap-2.5 text-lg font-bold transition-colors ${
-            running
-              ? 'border border-danger bg-danger-muted text-danger hover:bg-danger/20'
-              : 'bg-accent text-bg hover:bg-accent-hover'
-          }`}
-        >
-          {running ? <Square size={20} strokeWidth={2.5} /> : <Play size={20} strokeWidth={2.5} />}
-          {running ? 'Arrêter' : 'Démarrer'}
-        </button>
-      </div>
+        Le chronomètre était déjà en haut, et c'était juste. Ce qui manquait,
+        c'est qu'il DOMINE : le chiffre faisait 36 px sous un surtitre, à côté
+        de deux cartes de résumé et d'une barre par projet, tous du même poids.
+        On ne voyait pas, en entrant, si quelque chose tournait.
 
-      {/* ---------------------------------------------------- le résumé ----- */}
-      <div className="grid grid-cols-2 gap-3">
-        <SummaryCard label="Aujourd’hui" value={formatDuration(totals.todayMs)} />
-        <SummaryCard label="Cette semaine" value={formatDuration(totals.weekMs)} />
+        L'AMBRE est nommé tel quel par la table du paquet : `00:14:07`. C'est la
+        SECONDE exception écrite de la règle 2 — un chiffre à l'échelle d'un
+        titre peut porter le signal sans plaque. Rien ne tourne, rien n'est
+        ambre : l'écran redevient un registre.
+      */}
+      <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
+        <div className="panel-raised flex flex-col gap-5 p-5 sm:p-7">
+          {running ? (
+            <>
+              <div className="flex items-center gap-4">
+                <p className="eyebrow flex-shrink-0">{tr('hist.time.caTourne')}</p>
+                <span className="h-px flex-1 bg-border-section" aria-hidden />
+                <p className="eyebrow flex-shrink-0">
+                  {tr('hist.time.demarreA', { heure: formatClock(running.startedAt) })}
+                </p>
+              </div>
+
+              <p
+                className="tnum font-mono text-[44px] font-bold leading-[0.92] tracking-[-0.04em] text-signal sm:text-[58px]"
+                data-signal-groupe="compteur"
+              >
+                {formatStopwatch(durationMs(running, now))}
+              </p>
+
+              <div>
+                <p className="text-[19px] font-semibold leading-tight text-text-primary">
+                  {running.label || tr('hist.time.sansIntitule')}
+                </p>
+                {running.projectId && (
+                  <p className="eyebrow mt-2">
+                    {tr('hist.time.projetNomme', { projet: projectTitle(running.projectId) })}
+                  </p>
+                )}
+              </div>
+
+              {/* La promesse du geste, écrite avant qu'on le fasse : un seul
+                  compteur à la fois, donc jamais deux totaux qui se croisent. */}
+              <p className="max-w-[56ch] text-[14.5px] leading-[1.65] text-text-secondary [text-wrap:pretty]">
+                {tr('hist.time.demarrerArreteCeQui')}
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={toggle}
+                  className="min-h-11 bg-accent px-5 text-[12.5px] font-semibold text-bg shadow-[0_12px_26px_-12px_rgba(0,0,0,.9)] transition-colors hover:bg-accent-hover"
+                >
+                  {tr('hist.time.arreter')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setManualOpen(true)}
+                  className="min-h-11 border border-border-strong px-5 text-[12.5px] font-semibold text-text-primary transition-colors hover:bg-surface-hover"
+                >
+                  {tr('hist.time.saisirALaMain')}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="eyebrow">{tr('hist.time.surQuoiTravaillezVous')}</p>
+              <input
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') toggle();
+                }}
+                placeholder="Retouches photos, appel client… (facultatif)"
+                className="input-focus min-h-11 w-full border border-border bg-sunken px-3 text-sm text-text-primary outline-none placeholder:text-text-muted"
+              />
+              <ProjectPicker value={projectId} onChange={setProjectId} label="Projet (facultatif)" />
+              {/*
+                LE BOUTON DU POUCE RESTE CE QU'IL ÉTAIT : pleine largeur, 64 px,
+                un seul mot. C'est le geste qu'on répète dix fois par jour, et
+                sur un téléphone tenu d'une main c'est la cible qu'on atteint
+                sans regarder. Le compteur qui tourne prend sa place une fois
+                lancé, ce qui est exactement l'échange voulu.
+              */}
+              <button
+                type="button"
+                onClick={toggle}
+                className="mt-1 flex h-16 w-full items-center justify-center gap-2.5 bg-accent text-lg font-bold text-bg transition-colors hover:bg-accent-hover"
+              >
+                <Play size={20} strokeWidth={2.5} />
+                {tr('hist.time.demarrer')}
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* La semaine en chiffres, et ce qui reste à facturer. */}
+        <div className="panel flex flex-col gap-5 p-5 sm:p-6">
+          <div>
+            <p className="eyebrow mb-3">{tr('hist.time.cetteSemaine')}</p>
+            <p className="tnum font-mono text-[34px] font-bold leading-none tracking-[-0.04em] text-text-primary">
+              {formatDuration(totals.weekMs)}
+            </p>
+            {totals.weekInvoicedMs > 0 && (
+              <p className="mt-3 text-[13.5px] text-text-secondary">
+                {tr('hist.time.dontDejaFacturees', { duree: formatDuration(totals.weekInvoicedMs) })}
+              </p>
+            )}
+          </div>
+
+          {aFacturer && (
+            <div className="border-t border-border pt-5">
+              <p className="eyebrow mb-3">
+                {tr('hist.time.projetAFacturer', { projet: projectTitle(aFacturer.projectId) })}
+              </p>
+              <p className="tnum font-mono text-[25px] font-semibold leading-none tracking-[-0.03em] text-text-primary">
+                {tr('hist.time.nHeuresMesurees', { h: (aFacturer.ms / 3_600_000).toFixed(2).replace('.', ',') })}
+              </p>
+              {/*
+                Pourquoi le compteur en cours n'y est pas : sa durée augmente
+                encore. Facturer un temps qui grandit pendant qu'on le facture
+                produit un écart qu'on ne retrouve jamais.
+              */}
+              <p className="mt-3 text-[13.5px] leading-[1.6] text-text-secondary [text-wrap:pretty]">
+                {tr('hist.time.periodesTermineesJamais')}
+              </p>
+              <button
+                type="button"
+                onClick={() => setInvoiceFor(aFacturer.projectId)}
+                className="mt-4 min-h-11 w-full border border-border-strong px-4 text-[12.5px] font-semibold text-text-primary transition-colors hover:bg-surface-hover"
+              >
+                {tr('hist.time.facturerCeTemps')}
+              </button>
+              <p className="eyebrow mt-3.5 leading-[1.9]">{tr('hist.time.heuresEtTarifModifiables')}</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* --------------------------------------------------- par projet ----- */}
+      {/*
+        LE TEMPS PAR PROJET RESTE, et il le fallait.
+
+        La carte de droite ne nomme QU'UN projet à facturer — le plus gros. Avec
+        trois projets qui portent du temps non facturé, les deux autres
+        deviendraient inatteignables si cette section disparaissait : ce serait
+        retirer une fonction sous couvert de mise en page. Elle répond d'ailleurs
+        à une autre question que le ruban de la semaine — QUI a mangé le temps,
+        et non OÙ dans la semaine.
+      */}
       {perProject.length > 0 && (
-        <div className="flex flex-col gap-2.5 border border-border bg-surface p-4">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{tr('hist.time.cetteSemaineParProjet')}</p>
-          {perProject.map((row, index) => {
-            const billable = row.projectId ? billableOf(row.projectId) : [];
-            return (
-              <ProjectBar
-                key={row.projectId || 'aucun'}
-                title={projectTitle(row.projectId)}
-                ms={row.ms}
-                share={perProject[0].ms > 0 ? row.ms / perProject[0].ms : 0}
-                rank={index}
-                /* Facturer n'a de sens que sur un vrai projet, et seulement
-                   s'il reste des périodes terminées non encore reportées. */
-                onInvoice={
-                  canInvoice && row.projectId && billable.length > 0
-                    ? () => setInvoiceFor(row.projectId)
-                    : undefined
-                }
-              />
-            );
-          })}
-        </div>
+        <section>
+          <div className="mb-3 flex items-center gap-4">
+            <p className="eyebrow flex-shrink-0">{tr('hist.time.cetteSemaineParProjet')}</p>
+            <span className="h-px flex-1 bg-border-section" aria-hidden />
+          </div>
+          <div className="flex flex-col gap-2.5">
+            {perProject.map((row, index) => {
+              const billable = row.projectId ? billableOf(row.projectId) : [];
+              return (
+                <ProjectBar
+                  key={row.projectId || 'aucun'}
+                  title={projectTitle(row.projectId)}
+                  ms={row.ms}
+                  share={perProject[0].ms > 0 ? row.ms / perProject[0].ms : 0}
+                  rank={index}
+                  onInvoice={
+                    canInvoice && row.projectId && billable.length > 0
+                      ? () => setInvoiceFor(row.projectId)
+                      : undefined
+                  }
+                />
+              );
+            })}
+          </div>
+        </section>
       )}
+
+      {/* ---------------------------------------------------- la semaine ---- */}
+      {/*
+        SEPT BARRES, UNE PAR JOUR.
+
+        « Cette semaine par projet » répondait à une autre question — qui a
+        mangé le temps — et elle garde son sens, mais elle ne dit pas OÙ dans la
+        semaine. Sept barres à la même échelle disent d'un regard le jour chargé
+        et le jour creux, ce qu'une liste de projets ne peut pas montrer.
+      */}
+      <section>
+        <div className="mb-4 flex items-center gap-4">
+          <p className="eyebrow flex-shrink-0">{tr('hist.time.laSemaine')}</p>
+          <span className="h-px flex-1 bg-border-section" aria-hidden />
+          <p className="eyebrow flex-shrink-0">{tr('hist.time.lundiDAbord')}</p>
+        </div>
+        <div className="flex items-end gap-1.5 sm:gap-3">
+          {semaine.map((jour) => (
+            <div key={jour.day} className="flex min-w-0 flex-1 flex-col gap-2">
+              <span
+                className={`tnum truncate text-center font-mono text-[11px] ${
+                  jour.ms > 0 ? 'text-text-secondary' : 'text-text-muted'
+                }`}
+              >
+                {jour.ms > 0 ? formatDuration(jour.ms) : '—'}
+              </span>
+              {/* La hauteur est relative au jour le plus chargé de la semaine :
+                  c'est une comparaison entre eux, pas contre un idéal de huit
+                  heures que personne n'a demandé. */}
+              <span
+                className={`w-full ${jour.aujourdhui ? 'bg-[#4a4a48]' : 'bg-[#2b2b2b]'}`}
+                style={{ height: Math.max(3, (jour.ms / Math.max(1, maxJour)) * 96) }}
+                aria-hidden
+              />
+              <span
+                className={`truncate border-t pt-2 text-center font-mono text-[9.5px] uppercase tracking-[0.12em] ${
+                  jour.aujourdhui ? 'border-border-strong text-text-primary' : 'border-border text-text-muted'
+                }`}
+              >
+                {jour.etiquette}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* --------------------------------------------------- l'historique --- */}
       {byDay.length === 0 ? (
@@ -336,16 +526,6 @@ export function TimeScreen() {
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border border-border bg-surface p-4">
-      <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{label}</p>
-      <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight text-text-primary sm:text-3xl">
-        {value}
-      </p>
-    </div>
-  );
-}
 
 function ProjectBar({
   title,
@@ -437,7 +617,7 @@ function EntryRow({
         aria-label="Modifier"
         className="flex h-11 w-9 flex-shrink-0 items-center justify-center text-text-muted transition-colors hover:text-text-primary"
       >
-        <Pencil size={14} strokeWidth={1.75} />
+        <Pencil size={14} strokeWidth={1.9} />
       </button>
       <button
         type="button"
@@ -451,7 +631,7 @@ function EntryRow({
         {confirmDelete ? (
           <span className="font-mono text-[9px] uppercase tracking-widest">{tr('hist.time.sur')}</span>
         ) : (
-          <Trash2 size={14} strokeWidth={1.75} />
+          <Trash2 size={14} strokeWidth={1.9} />
         )}
       </button>
     </div>

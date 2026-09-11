@@ -49,7 +49,7 @@ export function ObjectivesWidget() {
   return (
     <div className="border border-border bg-surface">
       <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-        <Target size={14} strokeWidth={1.75} className="text-text-secondary" />
+        <Target size={14} strokeWidth={1.9} className="text-text-secondary" />
         <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">
           Objectifs {objectives[0]?.periodLabel ? `· ${objectives[0].periodLabel}` : ''}
         </h2>

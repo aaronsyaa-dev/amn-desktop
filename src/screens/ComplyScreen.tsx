@@ -120,7 +120,7 @@ export function ComplyScreen() {
   if (!configured) {
     return (
       <div className="mx-auto max-w-2xl py-20 text-center">
-        <BadgeCheck size={28} className="mx-auto mb-4 text-text-muted" strokeWidth={1.5} />
+        <BadgeCheck size={28} className="mx-auto mb-4 text-text-muted" strokeWidth={1.9} />
         <h1 className="text-xl font-semibold text-text-primary">Comply indisponible</h1>
         <p className="mt-2 text-sm text-text-secondary">
           L’analyse de conformité s’exécute sur amn-api. Cette instance n’est pas reliée à l’API

@@ -120,7 +120,7 @@ export function DirectoryScreen() {
                         title={t('equipe.appeler', { nom: m.nom })}
                         className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:opacity-40"
                       >
-                        <Phone size={15} strokeWidth={1.75} />
+                        <Phone size={15} strokeWidth={1.9} />
                       </button>
                     )}
                   </div>

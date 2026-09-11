@@ -130,6 +130,36 @@ export function MediaSoloScreen() {
         ]}
         actions={
           <>
+          {/*
+            LE FILTRE ACTIF SE VOIT, ET SE RETIRE.
+
+            C'était un `<select>` : une fois un client choisi, la liste
+            déroulante l'affichait comme n'importe quelle autre option, du même
+            gris que le reste. On ne voyait pas qu'on regardait une grille
+            FILTRÉE — d'où le « il me manque des photos » qui n'en était pas un.
+
+            L'AMBRE de cet écran, que la table du paquet nomme « le filtre
+            actif », est donc cette pastille : elle dit ce qui est filtré,
+            combien il reste, et porte la croix qui l'enlève. Sans filtre, pas
+            de pastille et pas d'ambre — la grille est complète, il n'y a rien
+            à décider.
+          */}
+          {filter && (
+            <span
+              className="signal-plate flex items-center gap-2.5 py-2 pl-3 pr-2 font-mono text-[9.5px] font-bold uppercase tracking-[0.2em]"
+              data-signal-groupe="filtre-actif"
+            >
+              {clients.find((c) => String(c.id) === filter)?.name ?? 'Client'} · {items.length}
+              <button
+                type="button"
+                onClick={() => setFilter('')}
+                aria-label="Retirer le filtre"
+                className="flex h-5 w-5 items-center justify-center transition-opacity hover:opacity-70"
+              >
+                <X size={13} strokeWidth={2.5} />
+              </button>
+            </span>
+          )}
           <select
             // Un `<select>` sans étiquette s'annonce « liste déroulante », et
             // rien de plus : on ne sait pas ce qu'il filtre. La première
@@ -139,7 +169,7 @@ export function MediaSoloScreen() {
             onChange={(e) => setFilter(e.target.value)}
             className="input-focus cursor-pointer border border-border bg-surface px-2.5 py-2 font-mono text-[10px] uppercase tracking-wider text-text-secondary outline-none"
           >
-            <option value="">Tous les clients</option>
+            <option value="">Toutes les clientes</option>
             {clients.map((client) => (
               <option key={client.id} value={String(client.id)}>
                 {client.name}
@@ -167,6 +197,14 @@ export function MediaSoloScreen() {
         }
       />
 
+      {/*
+        LES TROIS RÈGLES DU MODULE, dites une fois sous la grille.
+
+        Elles existaient dans le code et nulle part à l'écran : images
+        uniquement, réduites avant d'être enregistrées, et l'aperçu plein écran
+        qui se ferme à Échap. Les deux premières expliquent un refus avant qu'il
+        arrive ; la troisième est un raccourci qu'on ne devine pas.
+      */}
       {error && (
         <p role="alert" className="border border-danger/40 bg-danger-muted px-3 py-2 font-mono text-xs text-danger">
           {error}
@@ -212,7 +250,7 @@ export function MediaSoloScreen() {
                   {relativeTime(item.createdAt)}
                 </span>
                 <div className="flex items-center gap-1">
-                  <Contact size={11} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
+                  <Contact size={11} strokeWidth={1.9} className="flex-shrink-0 text-text-muted" />
                   <select
                     value={item.clientId === null ? '' : String(item.clientId)}
                     onChange={(e) => relink(item.id, e.target.value)}
@@ -231,6 +269,12 @@ export function MediaSoloScreen() {
             </motion.figure>
           ))}
         </motion.div>
+      )}
+
+      {items.length > 0 && (
+        <p className="font-mono text-[9.5px] uppercase leading-[1.8] tracking-[0.14em] text-text-muted">
+          Images seules · réduites à 1600 px avant enregistrement · l’aperçu plein écran se ferme à Échap
+        </p>
       )}
 
       <AnimatePresence>

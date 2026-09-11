@@ -177,79 +177,114 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
 
       {membres !== null && (
         <>
-          <ul className="flex flex-col gap-px bg-border">
-            {membres.map((m) => {
-              const moi = m.email === user?.email;
-              const suspendu = m.status === 'suspended';
-              return (
-                <li
-                  key={m.id}
-                  className="flex flex-wrap items-center justify-between gap-3 bg-surface px-3 py-2.5"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm text-text-primary">
-                      {m.email}
-                      {moi && <span className="ml-2 text-[11px] text-text-muted">(vous)</span>}
-                    </p>
-                    <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                      {roleLabel(m.role, trade)}
-                      {m.status === 'invited' && ' · jamais entré'}
-                      {suspendu && ' · suspendu'}
-                    </p>
-                  </div>
+          {/*
+            UNE LIGNE PAR PERSONNE, ET LA PLACE QU'ELLE OCCUPE.
 
-                  {/* Ni son propre rôle ni celui d'un invité qui n'est jamais
-                      entré : le serveur refuse le premier, et le second n'a pas
-                      encore de compte à gouverner. */}
-                  {peutGerer && !moi ? (
-                    <div className="flex flex-shrink-0 items-center gap-1.5">
-                      <label className="sr-only" htmlFor={`role-${m.id}`}>
-                        Rôle de {m.email}
-                      </label>
-                      <select
-                        id={`role-${m.id}`}
-                        value={m.role}
-                        disabled={enCours !== null || m.role === 'guest'}
-                        onChange={(e) => void changerRole(m, e.target.value as UserRole)}
-                        className="input-focus min-h-11 border border-border bg-bg px-2 text-xs text-text-primary outline-none disabled:opacity-40 md:min-h-0 md:py-1.5"
-                      >
-                        {assignableRoles(trade).map((r) => (
-                          <option key={r.role} value={r.role}>
-                            {r.label}
-                          </option>
-                        ))}
-                        {m.role === 'guest' && <option value="guest">Invité</option>}
-                      </select>
-                      <button
-                        type="button"
-                        disabled={enCours !== null}
-                        onClick={() => void changerStatut(m)}
-                        title={suspendu ? 'Réactiver ce compte' : 'Suspendre ce compte'}
-                        className="flex min-h-11 items-center border border-border px-2.5 font-mono text-[10px] uppercase tracking-wider text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:opacity-40 md:min-h-0 md:py-2"
-                      >
-                        {enCours === m.id ? '…' : suspendu ? 'Réactiver' : 'Suspendre'}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={enCours !== null}
-                        onClick={() => setARetirer(m)}
-                        title={t('membres.retirerTitre')}
-                        className="flex min-h-11 items-center gap-1 border border-border px-2.5 font-mono text-[10px] uppercase tracking-wider text-text-secondary transition-colors hover:border-danger/60 hover:text-danger disabled:opacity-40 md:min-h-0 md:py-2"
-                      >
-                        <UserMinus size={12} strokeWidth={2} />
-                        {t('membres.retirer')}
-                      </button>
-                    </div>
-                  ) : (
-                    <span className="flex flex-shrink-0 items-center gap-1.5 text-[11px] text-text-muted">
-                      {!peutGerer && <ShieldCheck size={12} />}
-                      {!peutGerer ? 'lecture seule' : ''}
-                    </span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+            La liste disait le rôle et le statut collés dans une même phrase
+            grise (« Administratrice · jamais entré · suspendu »), et ne disait
+            NULLE PART ce que chaque compte coûte en places. On lisait donc
+            « 4 sur 4 » en haut de l'écran sans pouvoir vérifier d'où venait
+            le compte, ni lequel suspendre pour en libérer une.
+
+            Trois colonnes séparées — droits, état, place — rendent l'arithmétique
+            de la jauge lisible ligne à ligne. La règle de la place est celle du
+            serveur (`countsAsSeat`), pas une seconde règle écrite ici.
+
+            L'identité reste l'ADRESSE : `OrgMember` ne porte pas de nom
+            d'affichage. La maquette en montre un ; l'inventer à partir de
+            l'adresse produirait un nom faux sur un écran de droits.
+          */}
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="eyebrow pb-2 pr-3 font-normal">Personne</th>
+                  <th className="eyebrow pb-2 pr-3 font-normal">Droits</th>
+                  <th className="eyebrow pb-2 pr-3 font-normal">État</th>
+                  <th className="eyebrow pb-2 pr-3 font-normal">Place</th>
+                  <th className="pb-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {membres.map((m) => {
+                  const moi = m.email === user?.email;
+                  const suspendu = m.status === 'suspended';
+                  /* Même règle que le serveur : un invité occasionnel ne prend
+                     pas de place, un compte suspendu rend la sienne. */
+                  const prendUnePlace = m.role !== 'guest' && (m.status === 'active' || m.status === 'invited');
+                  return (
+                    <tr key={m.id} className="border-b border-border last:border-b-0">
+                      <td className="py-3 pr-3 align-middle">
+                        <span className="block truncate text-sm text-text-primary">
+                          {m.email}
+                          {moi && <span className="ml-2 text-[11px] text-text-muted">(vous)</span>}
+                        </span>
+                      </td>
+                      <td className="py-3 pr-3 align-middle font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+                        {roleLabel(m.role, trade)}
+                      </td>
+                      <td className="py-3 pr-3 align-middle font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                        {suspendu ? 'Suspendu' : m.status === 'invited' ? 'Invité' : 'Active'}
+                      </td>
+                      <td className="py-3 pr-3 align-middle font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                        {prendUnePlace ? 'Occupée' : 'Aucune'}
+                      </td>
+                      <td className="py-3 align-middle">
+                        {/* Ni son propre rôle ni celui d'un invité qui n'est
+                            jamais entré : le serveur refuse le premier, et le
+                            second n'a pas encore de compte à gouverner. */}
+                        {peutGerer && !moi ? (
+                          <div className="flex flex-shrink-0 items-center justify-end gap-1.5">
+                            <label className="sr-only" htmlFor={`role-${m.id}`}>
+                              Rôle de {m.email}
+                            </label>
+                            <select
+                              id={`role-${m.id}`}
+                              value={m.role}
+                              disabled={enCours !== null || m.role === 'guest'}
+                              onChange={(e) => void changerRole(m, e.target.value as UserRole)}
+                              className="input-focus min-h-11 border border-border bg-bg px-2 text-xs text-text-primary outline-none disabled:opacity-40 md:min-h-0 md:py-1.5"
+                            >
+                              {assignableRoles(trade).map((r) => (
+                                <option key={r.role} value={r.role}>
+                                  {r.label}
+                                </option>
+                              ))}
+                              {m.role === 'guest' && <option value="guest">Invité</option>}
+                            </select>
+                            <button
+                              type="button"
+                              disabled={enCours !== null}
+                              onClick={() => void changerStatut(m)}
+                              title={suspendu ? 'Réactiver ce compte' : 'Suspendre ce compte'}
+                              className="flex min-h-11 items-center border border-border px-2.5 font-mono text-[10px] uppercase tracking-wider text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:opacity-40 md:min-h-0 md:py-2"
+                            >
+                              {enCours === m.id ? '…' : suspendu ? 'Réactiver' : 'Suspendre'}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={enCours !== null}
+                              onClick={() => setARetirer(m)}
+                              title={t('membres.retirerTitre')}
+                              className="flex min-h-11 items-center gap-1 border border-border px-2.5 font-mono text-[10px] uppercase tracking-wider text-text-secondary transition-colors hover:border-danger/60 hover:text-danger disabled:opacity-40 md:min-h-0 md:py-2"
+                            >
+                              <UserMinus size={12} strokeWidth={2} />
+                              {t('membres.retirer')}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="flex flex-shrink-0 items-center justify-end gap-1.5 text-[11px] text-text-muted">
+                            {!peutGerer && <ShieldCheck size={12} />}
+                            {!peutGerer ? 'lecture seule' : ''}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
           {aRetirer && (
             <div role="alertdialog" aria-labelledby="retirer-titre" className="border border-border-strong bg-bg px-4 py-3">

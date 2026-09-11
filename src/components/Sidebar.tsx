@@ -26,7 +26,7 @@ import { useFermetureEchap } from '../lib/useFermetureEchap';
 import { useNavAlleges } from '../state/useNavAlleges';
 
 const COLLAPSED_WIDTH = 72;
-const EXPANDED_WIDTH = 224;
+const EXPANDED_WIDTH = 236;
 const TRANSITION = { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const };
 
 /**
@@ -272,24 +272,27 @@ export function Sidebar({
           <>
             <motion.span
               layoutId="sidebar-active-surface"
-              className="absolute inset-0 rounded-lg bg-accent-muted"
+              className="absolute inset-0 bg-[#191919]"
               transition={TRANSITION}
               aria-hidden
             />
+            {/*
+              LE MARQUEUR AMBRE — le seul de cette barre, et la même pièce que
+              côté Business (`BusinessSidebar`). Un filet de 3 px au bord
+              gauche : il pointe la ligne courante sans colorer la barre. Le
+              compteur de nouveautés, juste à droite, reste en encre — un
+              compteur informe, il ne demande pas de décision.
+            */}
             <motion.span
               layoutId="sidebar-active-indicator"
-              className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-accent"
+              className="absolute inset-y-0 left-0 w-[3px] bg-signal"
               transition={TRANSITION}
               aria-hidden
             />
           </>
         )}
-        <span
-          className={`relative transition-transform duration-200 ${
-            active ? 'scale-105' : 'group-hover:scale-105'
-          }`}
-        >
-          <Icon size={20} strokeWidth={1.75} />
+        <span className={`icon-token relative ${active ? 'border-border-raised bg-[#1c1c1c]' : ''}`}>
+          <Icon size={14} strokeWidth={2.1} />
         </span>
         {isExpanded && (
           <span className="relative select-none whitespace-nowrap">
@@ -427,7 +430,7 @@ export function Sidebar({
         initial={{ width: isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
         animate={{ width: isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
         transition={TRANSITION}
-        className={`fixed inset-y-0 left-0 z-50 flex h-full flex-shrink-0 flex-col border-r border-border bg-[#0d0d0d] py-4 transition-transform duration-300 md:relative md:z-30 md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-full flex-shrink-0 flex-col border-r border-[#1c1c1c] bg-[#0c0c0c] py-4 transition-transform duration-300 md:relative md:z-30 md:translate-x-0 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         } md:translate-x-0`}
         style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
@@ -560,7 +563,7 @@ export function Sidebar({
               isExpanded ? 'px-3' : 'justify-center px-0'
             }`}
           >
-            <LogOut size={20} strokeWidth={1.75} />
+            <LogOut size={20} strokeWidth={1.9} />
             {isExpanded && (
               <span className="select-none whitespace-nowrap">{t('chrome.deconnexion')}</span>
             )}
@@ -589,9 +592,9 @@ export function Sidebar({
             aria-label={isExpanded ? t('chrome.replierBarre') : t('chrome.deplierBarre')}
           >
             {isExpanded ? (
-              <ChevronsLeft size={20} strokeWidth={1.75} />
+              <ChevronsLeft size={20} strokeWidth={1.9} />
             ) : (
-              <ChevronsRight size={20} strokeWidth={1.75} />
+              <ChevronsRight size={20} strokeWidth={1.9} />
             )}
           </button>
         </div>
@@ -720,7 +723,7 @@ function SpaceSwitcher({
         }`}
       >
         <span className="flex-shrink-0 text-text-primary transition-transform duration-200 group-hover:scale-105">
-          <CurrentIcon size={18} strokeWidth={1.75} />
+          <CurrentIcon size={18} strokeWidth={1.9} />
         </span>
         {expanded && (
           <>
@@ -788,7 +791,7 @@ function SpaceSwitcher({
                     }`}
                   >
                     <span className="mt-0.5 flex-shrink-0 text-text-primary">
-                      <Icon size={16} strokeWidth={1.75} />
+                      <Icon size={16} strokeWidth={1.9} />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-[13px] font-medium text-text-primary">

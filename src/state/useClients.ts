@@ -131,6 +131,7 @@ function toQuote(row: StoredQuote, id: number, clientIdBySyncId: Map<string, num
     priceEuro: Number.isFinite(Number(row.priceEuro)) ? Number(row.priceEuro) : 0,
     status: oneOf(row.status, QUOTE_STATUSES, 'draft'),
     paymentStatus: oneOf(row.paymentStatus, PAYMENT_STATUSES, 'unpaid'),
+    sentAt: typeof row.sentAt === 'string' ? row.sentAt : undefined,
     createdAt: row.createdAt ?? row.updatedAt,
     updatedAt: row.updatedAt,
   };
@@ -333,7 +334,17 @@ export function useClients() {
     async (id: number, patch: UpdateQuoteInput): Promise<SyncedQuote> => {
       const current = quotes.find((q) => q.id === id);
       if (!current) throw new Error(`Devis ${id} introuvable`);
-      const next: SyncedQuote = { ...current, ...patch, updatedAt: new Date().toISOString() };
+      /*
+        LA DATE D'ENVOI SE POSE UNE FOIS, AU PASSAGE À « ENVOYÉ ».
+
+        Une seule fois : repasser un devis en « envoyé » après l'avoir marqué
+        refusé ne le renvoie pas, et ne doit donc pas remettre le compteur
+        « sans réponse » à zéro. `?? new Date()` ne pose la date que si le champ
+        est encore vide.
+      */
+      const sentAt =
+        patch.status === 'sent' ? current.sentAt ?? new Date().toISOString() : current.sentAt;
+      const next: SyncedQuote = { ...current, ...patch, sentAt, updatedAt: new Date().toISOString() };
       await upsert('quotes', current.recordId, stripId(next));
       return next;
     },

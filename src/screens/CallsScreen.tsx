@@ -108,7 +108,7 @@ export function CallsScreen() {
                     title={online ? t('equipe.appeler', { nom: profileFor(m.email).name }) : t('appels.horsLigne')}
                     className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:opacity-30"
                   >
-                    <Phone size={16} strokeWidth={1.75} />
+                    <Phone size={16} strokeWidth={1.9} />
                   </button>
                 </li>
               );

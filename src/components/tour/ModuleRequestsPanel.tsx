@@ -72,7 +72,7 @@ export function ModuleRequestsPanel() {
   return (
     <section className="rounded-xl border border-border bg-surface p-4">
       <p className="eyebrow mb-1 flex items-center gap-2">
-        <Inbox size={13} strokeWidth={1.75} />
+        <Inbox size={13} strokeWidth={1.9} />
         Demandes de module · {demandes.length}
       </p>
       <p className="mb-3 text-xs leading-relaxed text-text-muted">

@@ -155,7 +155,7 @@ export function MediaLibraryScreen() {
 
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-2 border border-dashed border-border py-20 text-center">
-            <ImageOff size={24} strokeWidth={1.5} className="text-text-muted" />
+            <ImageOff size={24} strokeWidth={1.9} className="text-text-muted" />
             <p className="text-sm font-medium text-text-primary">{tr('hist.medialibrary.aucunMedia')}</p>
             <p className="max-w-sm text-sm text-text-secondary">
               {all.length === 0

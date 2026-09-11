@@ -50,7 +50,7 @@ export function ChecklistWidget() {
     <div className="border border-border bg-surface">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
-          <ClipboardCheck size={14} strokeWidth={1.75} className="text-text-secondary" />
+          <ClipboardCheck size={14} strokeWidth={1.9} className="text-text-secondary" />
           <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">
             Vérifications récurrentes
           </h2>
@@ -79,9 +79,9 @@ export function ChecklistWidget() {
               >
                 <motion.span animate={{ scale: justChecked === item.id ? [1, 1.3, 1] : 1 }} className="mt-0.5 flex-shrink-0 text-text-muted">
                   {justChecked === item.id ? (
-                    <CheckCircle2 size={16} strokeWidth={1.75} className="text-success" />
+                    <CheckCircle2 size={16} strokeWidth={1.9} className="text-success" />
                   ) : (
-                    <Circle size={16} strokeWidth={1.75} />
+                    <Circle size={16} strokeWidth={1.9} />
                   )}
                 </motion.span>
                 <div className="min-w-0 flex-1">

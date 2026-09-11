@@ -84,7 +84,7 @@ export function ReinitialisationScreen() {
               <div className="flex min-h-12 items-center border border-border bg-bg px-3">
                 <input type={visible ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} autoFocus={Boolean(token)} autoComplete="new-password" aria-label={t('reinit.motDePasse')} className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none" />
                 <button type="button" onClick={() => setVisible((v) => !v)} aria-label={visible ? t('reinit.masquer') : t('reinit.afficher')} className="ml-2 flex h-8 w-8 flex-shrink-0 items-center justify-center text-text-muted transition-colors hover:text-text-primary">
-                  {visible ? <EyeOff size={15} strokeWidth={1.75} /> : <Eye size={15} strokeWidth={1.75} />}
+                  {visible ? <EyeOff size={15} strokeWidth={1.9} /> : <Eye size={15} strokeWidth={1.9} />}
                 </button>
               </div>
               <span className={`mt-1 block font-mono text-[10px] uppercase tracking-widest ${tooShort ? 'text-danger' : 'text-text-muted'}`}>{t('reinit.minimum', { n: MIN_LENGTH })}</span>

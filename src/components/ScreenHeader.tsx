@@ -76,17 +76,24 @@ export function ScreenHeader({
   const shown = (stats ?? []).filter((s) => s.value !== null && s.value !== undefined);
 
   return (
-    <header className="mb-6">
+    <header className="mb-7">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
-          {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}
-          <h1 className="truncate text-[22px] font-semibold leading-tight tracking-[-0.015em] text-text-primary sm:text-2xl">
+          {eyebrow && <p className="eyebrow mb-2.5">{eyebrow}</p>}
+          {/*
+            LE TITRE MONTE À 32 PX (système de design, §3.2).
+            Il était à 22–24 : la même taille qu'un titre de carte, donc rien ne
+            disait, en entrant, ce qu'on regardait. Trente-deux avec un
+            interlettrage serré (-.03em) fait un titre d'écran, pas un gros
+            libellé. `sm:` garde une fenêtre étroite lisible.
+          */}
+          <h1 className="truncate text-[26px] font-bold leading-none tracking-[-0.03em] text-text-primary sm:text-[32px]">
             {title}
           </h1>
           {description && (
             /* Deux lignes au plus, dépliables : l'écran se lit d'abord par son titre et son relevé, pas par sa notice. */
-            <Depliable lignes={2} className="mt-1.5 max-w-2xl">
-              <p className="text-[13px] leading-relaxed text-text-secondary">{description}</p>
+            <Depliable lignes={2} className="mt-2.5 max-w-2xl">
+              <p className="text-[14.5px] leading-[1.7] text-text-secondary [text-wrap:pretty]">{description}</p>
             </Depliable>
           )}
         </div>
@@ -100,13 +107,13 @@ export function ScreenHeader({
           moitié de l'écran et repousseraient la liste sous la ligne de
           flottaison — or c'est la liste qu'on vient lire.
         */
-        <div className="mt-4 flex flex-wrap items-stretch gap-x-6 gap-y-3">
+        <div className="mt-5 flex flex-wrap items-stretch gap-x-6 gap-y-3">
           {shown.map((stat, index) => (
             <div
               key={stat.label}
               title={stat.title}
               className={`flex flex-col justify-center ${
-                index > 0 ? 'border-l border-border pl-6' : ''
+                index > 0 ? 'border-l border-border-section pl-6' : ''
               }`}
             >
               <span className="eyebrow mb-1.5">{stat.label}</span>
@@ -120,8 +127,10 @@ export function ScreenHeader({
               ) : (
                 /* Un compteur à zéro s'efface : il ne réclame pas la même place qu'un chiffre qui dit quelque chose. */
                 <span
-                  className={`tnum leading-none ${
-                    stat.value === 0 || stat.value === '0' ? 'text-[15px] font-normal text-text-muted' : `text-[19px] font-medium ${stat.emphasis ? 'text-text-primary' : 'text-text-secondary'}`
+                  className={`tnum font-mono leading-none tracking-[-0.03em] ${
+                    stat.value === 0 || stat.value === '0'
+                      ? 'text-[15px] font-normal text-text-muted'
+                      : `text-[23px] font-semibold ${stat.emphasis ? 'text-text-primary' : 'text-text-secondary'}`
                   }`}
                 >
                   {stat.value}

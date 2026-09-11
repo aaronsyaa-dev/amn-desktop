@@ -30,7 +30,7 @@ export function BusinessTopBar({ onMenu }: { onMenu: () => void }) {
         // haut interne, qui n'avait jamais été portée sur celle-ci.
         className="flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary md:hidden"
       >
-        <Menu size={18} strokeWidth={1.75} />
+        <Menu size={18} strokeWidth={1.9} />
       </button>
 
       <span className="truncate font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">

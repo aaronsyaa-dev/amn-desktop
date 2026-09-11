@@ -184,7 +184,7 @@ export function SupervisionBand() {
   const contenu = (
     <span className="flex min-w-0 items-center gap-2.5">
       <span className={fait.alerte ? 'text-warning' : 'text-text-muted'}>
-        <Icone size={14} strokeWidth={1.75} />
+        <Icone size={14} strokeWidth={1.9} />
       </span>
       <span className="truncate text-xs text-text-secondary">{fait.texte}</span>
     </span>

@@ -63,7 +63,7 @@ export function UpdateSection() {
       >
         <RefreshCw
           size={14}
-          strokeWidth={1.75}
+          strokeWidth={1.9}
           className={checking ? 'animate-spin' : undefined}
           aria-hidden
         />
@@ -154,7 +154,7 @@ function Line({
       role="status"
       className={`mt-3 flex items-start gap-2 border px-3 py-2.5 text-xs leading-relaxed ${border} ${color}`}
     >
-      <Icon size={14} strokeWidth={1.75} className="mt-px flex-shrink-0" />
+      <Icon size={14} strokeWidth={1.9} className="mt-px flex-shrink-0" />
       <span>{children}</span>
     </p>
   );

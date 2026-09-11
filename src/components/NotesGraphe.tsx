@@ -275,11 +275,11 @@ function Legende({ seules }: { seules: NoteLiable[] }) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border px-4 py-2 text-[11px] text-text-secondary">
       <span className="flex items-center gap-1.5">
-        <Users size={12} strokeWidth={1.75} className="text-text-secondary" />
+        <Users size={12} strokeWidth={1.9} className="text-text-secondary" />
         Équipe
       </span>
       <span className="flex items-center gap-1.5">
-        <Lock size={12} strokeWidth={1.75} className="text-text-muted" />
+        <Lock size={12} strokeWidth={1.9} className="text-text-muted" />
         Personnelle
       </span>
       <span className="text-text-muted">Un point plus gros a plus de liens.</span>

@@ -4,6 +4,7 @@ import { serieStock } from '../lib/serieVitale';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
+  ArrowLeft,
   ArrowRight,
   ArrowUpRight,
   FileText,
@@ -16,12 +17,13 @@ import {
   Printer,
   ReceiptEuro,
   X,
+  Check,
   Contact,
 } from 'lucide-react';
 import { useClients, type SyncedClient } from '../state/useClients';
+import { useRecordWatchers } from '../state/useRecordWatchers';
 import { useAjmaniFocus } from '../assistant/ecranContexte';
 import { relativeTime } from '../lib/time';
-import { staggerContainer, staggerItem } from '../lib/transitions';
 import type { DerivedSite } from '../state/RemoteSitesContext';
 import { useExclusive, useLinkedSites, useSitePanelLink } from '@edition/exclusive';
 import { StatusBadge } from '../components/StatusBadge';
@@ -30,13 +32,14 @@ import {
   computeClientHealthBreakdown,
   CLIENT_HEALTH_META,
   CLIENT_HEALTH_EXPLAINER,
+  type ClientHealth,
 } from '../lib/clientHealth';
-import { Skeleton } from '../components/Skeleton';
 import { SaveIndicator } from '../components/SaveIndicator';
 import { ConfirmDelete } from '../components/ConfirmDelete';
 import type { ReportDraft } from '../state/useReports';
 import { QuotePrintPortal } from '../assistant/QuotePrintPortal';
-import { useInvoices } from '../state/useInvoices';
+import { useInvoices, netDueCents, invoiceTotals, formatShortDay } from '../state/useInvoices';
+import { formatCents } from '../lib/money';
 import { metaOf } from '../lib/records';
 import type {
   Client,
@@ -74,7 +77,12 @@ const QUOTE_STATUS_META: Record<QuoteStatus, { label: string; dot: string }> = {
   accepted: { label: tr('hist.clients.accepte'), dot: 'bg-success' },
   refused: { label: tr('hist.clients.refuse'), dot: 'bg-danger' },
 };
-const QUOTE_STATUS_ORDER: QuoteStatus[] = ['draft', 'sent', 'accepted', 'refused'];
+/*
+  Il n'y a plus d'ordre de statuts à parcourir : les deux issues d'un devis
+  (accepté, refusé) sont des boutons nommés sur la feuille, et « revenir à
+  brouillon » — c'est-à-dire dé-envoyer un document déjà parti — n'était pas un
+  geste à offrir dans une liste déroulante.
+*/
 
 const PAYMENT_META: Record<PaymentStatus, { label: string; dot: string; text: string }> = {
   unpaid: { label: tr('hist.clients.nonFacture'), dot: 'bg-text-muted', text: 'text-text-secondary' },
@@ -120,11 +128,16 @@ export function ClientsScreen() {
   } = useClients();
   const loading = !ready;
 
-  // Select the first client once the list arrives, without fighting a choice
-  // the operator has already made.
-  useEffect(() => {
-    setSelectedId((prev) => prev ?? clients[0]?.id ?? null);
-  }, [clients]);
+  /*
+    PLUS D'OUVERTURE AUTOMATIQUE DE LA PREMIÈRE FICHE.
+
+    L'écran ouvrait d'office `clients[0]` — la plus ancienne fiche créée, qui
+    n'a aucune raison d'être celle qu'on vient voir. Le système de design donne
+    à cet écran un objet dominant nommé : « la fiche qui demande une action ».
+    Sans sélection, l'écran montre donc cette fiche-là et le répertoire trié
+    par santé ; la sélection reste entièrement au clic, et le rail
+    d'accompagnement n'apparaît qu'une fois une fiche ouverte.
+  */
 
   // Honour a requested client focus once the list is loaded (and again if the
   // navigation target changes while the screen stays mounted).
@@ -155,6 +168,24 @@ export function ClientsScreen() {
 
   const createQuote = async (input: CreateQuoteInput) => createQuoteRecord(input);
 
+  /*
+    LE BILAN DE L'ÉCRAN, écrit avec les vrais comptes.
+
+    La phrase sous le titre ne décrit pas le module (« la relation et les
+    missions, fiche par fiche » ne dit rien qu'on ne voie déjà) : elle dit
+    l'état du répertoire à cette seconde, et pourquoi c'est CETTE fiche qui
+    occupe le haut de l'écran.
+  */
+  const bilan = useMemo(() => {
+    const parSante = { attention: 0, medium: 0, good: 0 };
+    for (const c of clients) parSante[computeClientHealth(c, sites)] += 1;
+    const morceaux: string[] = [];
+    if (parSante.attention > 0) morceaux.push(tr('hist.clients.bilanASurveiller', { n: parSante.attention }));
+    if (parSante.medium > 0) morceaux.push(tr('hist.clients.bilanMoyennes', { n: parSante.medium }));
+    if (morceaux.length === 0) return tr('hist.clients.bilanToutAuVert');
+    return tr('hist.clients.bilanVoiciCelle', { etat: morceaux.join(', ') });
+  }, [clients, sites]);
+
   const patchQuote = async (id: number, p: { status?: QuoteStatus; paymentStatus?: PaymentStatus }) => {
     await updateQuote(id, p);
   };
@@ -169,11 +200,16 @@ export function ClientsScreen() {
   };
 
   return (
-    <section className={`flex flex-col gap-4 ${clients.length === 0 ? '' : 'screen-h'}`}>
+    <section className={`flex flex-col gap-4 ${selected ? 'screen-h' : ''}`}>
+      {/*
+        `screen-h` fige la hauteur pour que le rail et la fiche défilent chacun
+        de leur côté. La vue d'ensemble, elle, est un document : elle défile
+        d'un seul tenant et n'a rien à figer.
+      */}
       <ScreenHeader
         eyebrow={tr('hist.surtitre', { module: tr('hist.clients.titre') })}
         title={tr('hist.clients.titre')}
-        description={tr('hist.clients.laRelationEtLes')}
+        description={clients.length > 0 ? bilan : tr('hist.clients.laRelationEtLes')}
         stats={[
           {
             label: 'Fiches',
@@ -203,48 +239,59 @@ export function ClientsScreen() {
         }
       />
 
-      <div className={`grid min-h-0 flex-1 grid-cols-1 gap-4 ${clients.length === 0 && !loading ? '' : 'md:grid-cols-[300px_1fr]'}`}>
-        {/* Un répertoire vide est une boîte creuse : il n'apparaît qu'avec sa première fiche. */}
-        {(clients.length > 0 || loading) && <ClientList
+      {selected ? (
+        /*
+          LA FICHE OUVERTE PREND TOUTE LA LARGEUR.
+
+          Elle vivait à droite d'un rail de trois cents pixels qui listait les
+          autres fiches. Ce rail avait un sens tant que l'écran s'ouvrait
+          directement sur une fiche : c'était le seul moyen d'en changer.
+          Depuis que l'écran s'ouvre sur le répertoire, il fait le même travail
+          en mieux — trié par santé, avec le facturé et le dernier échange — et
+          le rail ne servait plus qu'à retirer trois cents pixels au document.
+
+          Ce n'est pas un détail de mise en page : le bloc devis est une FEUILLE
+          avec un corps de texte et un tarif, et il tombait à quatre mots par
+          ligne. Le chemin du retour est en tête de fiche, là où on le cherche.
+        */
+        <ClientDetail
+          key={selected.id}
+          client={selected}
+          sites={sites}
+          quotes={quotes.filter((q) => q.clientId === selected.id)}
+          onPatch={patch}
+          onAddEvent={addEvent}
+          onCreateQuote={createQuote}
+          onPatchQuote={patchQuote}
+          onRemoveQuote={removeQuote}
+          onRemoveClient={removeClient}
+          onFermer={() => setSelectedId(null)}
+        />
+      ) : loading ? (
+        <p className="eyebrow p-4">Chargement…</p>
+      ) : clients.length === 0 ? (
+        /*
+          CLIENTS (BLOC A) — « AUCUN CLIENT » en capitales monospace, centré
+          dans un panneau qui occupait toute la colonne de détail. Le vide
+          avait la taille et le poids d'une fiche client remplie. Il devient
+          une ligne, et il dit ce que l'écran sert à faire.
+        */
+        <div className="p-4">
+          <FirstRun
+            icone={Contact}
+            title={tr('hist.clients.aucuneFicheClient')}
+            action={{ label: tr('hist.clients.creerUneFiche'), onClick: () => setAdding(true) }}
+          >{tr('hist.clients.uneFicheRassembleLes')}</FirstRun>
+        </div>
+      ) : (
+        <VueDuRepertoire
           clients={clients}
           sites={sites}
-          loading={loading}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-        />}
-        {selected ? (
-          <ClientDetail
-            key={selected.id}
-            client={selected}
-            sites={sites}
-            quotes={quotes.filter((q) => q.clientId === selected.id)}
-            onPatch={patch}
-            onAddEvent={addEvent}
-            onCreateQuote={createQuote}
-            onPatchQuote={patchQuote}
-            onRemoveQuote={removeQuote}
-            onRemoveClient={removeClient}
-          />
-        ) : (
-          /*
-            CLIENTS (BLOC A) — « AUCUN CLIENT » en capitales monospace, centré
-            dans un panneau qui occupait toute la colonne de détail. Le vide
-            avait la taille et le poids d'une fiche client remplie. Il devient
-            une ligne, et il dit ce que l'écran sert à faire.
-          */
-          <div className="p-4">
-            {loading ? (
-              <p className="eyebrow">Chargement…</p>
-            ) : (
-              <FirstRun
-                icone={Contact}
-                title={tr('hist.clients.aucuneFicheClient')}
-                action={{ label: tr('hist.clients.creerUneFiche'), onClick: () => setAdding(true) }}
-              >{tr('hist.clients.uneFicheRassembleLes')}</FirstRun>
-            )}
-          </div>
-        )}
-      </div>
+          quotes={quotes}
+          onOuvrir={setSelectedId}
+          onAjouterEchange={addEvent}
+        />
+      )}
 
       {adding && (
         <NewClientModal onClose={() => setAdding(false)} onCreate={createClient} />
@@ -253,86 +300,364 @@ export function ClientsScreen() {
   );
 }
 
-function ClientList({
+/* Poids d'une santé, du plus urgent au plus calme — sert à trier le répertoire. */
+const POIDS_SANTE: Record<ClientHealth, number> = { attention: 0, medium: 1, good: 2 };
+
+/**
+ * LA VUE D'ENSEMBLE — l'objet dominant de l'écran Clients.
+ *
+ * Le système de design nomme cet objet « la fiche qui demande une action » :
+ * pas la première fiche créée, pas la dernière modifiée — celle dont la
+ * relation s'abîme le plus, et qui pèse le plus lourd si on la laisse filer.
+ * Elle occupe une carte dominante en deux colonnes (l'état d'un côté, la
+ * chronologie et le remède de l'autre), et le répertoire complet s'aligne
+ * dessous, trié par santé.
+ *
+ * L'AMBRE DE CET ÉCRAN est « le montant à traiter » : ce que ce client doit
+ * encore, et rien d'autre. Une santé « moyenne » n'est pas un ambre — c'est un
+ * état, et l'ambre marque les décisions. Quand rien n'est dû, l'écran n'a pas
+ * d'ambre du tout, ce qui est le résultat correct.
+ */
+function VueDuRepertoire({
   clients,
   sites,
-  loading,
-  selectedId,
-  onSelect,
+  quotes,
+  onOuvrir,
+  onAjouterEchange,
 }: {
   clients: Client[];
   sites: DerivedSite[];
-  loading: boolean;
-  selectedId: number | null;
-  onSelect: (id: number) => void;
+  quotes: Quote[];
+  onOuvrir: (id: number) => void;
+  onAjouterEchange: (id: number, title: string, detail: string) => Promise<void>;
 }) {
+  const { invoices } = useInvoices();
+
+  /* Ce que chaque fiche pèse : facturé, encore dû, santé, dernier échange. */
+  const lignes = useMemo(() => {
+    return clients
+      .map((client) => {
+        const siennes = invoices.filter((inv) => inv.clientId === client.id);
+        const factureCents = siennes
+          .filter((inv) => inv.status !== 'draft' && inv.status !== 'cancelled' && inv.kind !== 'creditNote')
+          .reduce((somme, inv) => somme + invoiceTotals(inv).grossCents, 0);
+        const dues = siennes.filter((inv) => inv.status === 'issued' && netDueCents(inv, invoices) > 0);
+        const duCents = dues.reduce((somme, inv) => somme + netDueCents(inv, invoices), 0);
+        return {
+          client,
+          sante: computeClientHealth(client, sites),
+          factureCents,
+          duCents,
+          /* La plus vieille échéance encore due : c'est elle qu'on date. */
+          echeance: dues.map((inv) => inv.dueAt).filter(Boolean).sort()[0] ?? '',
+          dernierEchange: client.events[0]?.date ?? client.updatedAt,
+          devisAcceptes: quotes.filter((q) => q.clientId === client.id && q.status === 'accepted').length,
+        };
+      })
+      .sort(
+        (a, b) =>
+          POIDS_SANTE[a.sante] - POIDS_SANTE[b.sante] ||
+          b.duCents - a.duCents ||
+          b.factureCents - a.factureCents,
+      );
+  }, [clients, sites, quotes, invoices]);
+
+  const tete = lignes[0];
+  if (!tete) return null;
+
   return (
-    <div className="flex min-h-0 flex-col border border-border bg-surface">
-      <div className="border-b border-border px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary">{tr('hist.clients.repertoire')}</div>
-      <motion.div
-        variants={staggerContainer}
-        initial="initial"
-        animate="animate"
-        className="flex-1 divide-y divide-border/60 overflow-y-auto"
-      >
-        {loading ? (
-          <div className="space-y-2 p-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 px-1 py-1.5">
-                <Skeleton className="h-9 w-9 flex-shrink-0 rounded-sm" />
-                <div className="flex-1 space-y-1.5">
-                  <Skeleton className="h-3 w-2/3 rounded-sm" />
-                  <Skeleton className="h-2.5 w-1/3 rounded-sm" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          clients.map((client) => {
-            // Seconde ligne de défense : le décodage garantit déjà un statut du
-            // domaine (voir useClients), mais un écran ne doit jamais mourir sur
-            // une table absente — c'est ce `undefined.label` qui faisait tomber
-            // TOUT l'écran Clients sur une seule fiche abîmée.
-            const meta = metaOf(STATUS_META, client.status, STATUS_META.prospect);
-            const health = CLIENT_HEALTH_META[computeClientHealth(client, sites)];
-            const active = client.id === selectedId;
-            return (
-              <motion.button
-                key={client.id}
-                variants={staggerItem}
-                type="button"
-                onClick={() => onSelect(client.id)}
-                className={`relative flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-150 ${
-                  active ? 'bg-surface-hover' : 'hover:bg-surface-hover'
-                }`}
-              >
-                {active && (
-                  <span className="absolute left-0 top-0 h-full w-0.5 bg-accent" />
-                )}
-                <Avatar client={client} size={38} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-text-primary">
-                    {client.name}
-                  </p>
-                  <p className="truncate font-mono text-[11px] text-text-muted">
-                    {client.company || '—'}
-                  </p>
-                </div>
-                <span
-                  className="flex flex-col items-center gap-1.5"
-                  title={`Statut : ${meta.label}\nSanté relation : ${health.label} — ${health.hint}`}
-                >
-                  <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
-                  <span className={`h-1.5 w-1.5 rounded-full ${health.dot}`} />
-                </span>
-              </motion.button>
-            );
-          })
-        )}
-      </motion.div>
+    <div className="flex flex-col gap-6">
+      <FicheDominante ligne={tete} sites={sites} onOuvrir={onOuvrir} onAjouterEchange={onAjouterEchange} />
+      <Repertoire lignes={lignes} onOuvrir={onOuvrir} />
     </div>
   );
 }
+
+interface LigneRepertoire {
+  client: Client;
+  sante: ClientHealth;
+  factureCents: number;
+  duCents: number;
+  echeance: string;
+  dernierEchange: string;
+  devisAcceptes: number;
+}
+
+function FicheDominante({
+  ligne,
+  sites,
+  onOuvrir,
+  onAjouterEchange,
+}: {
+  ligne: LigneRepertoire;
+  sites: DerivedSite[];
+  onOuvrir: (id: number) => void;
+  onAjouterEchange: (id: number, title: string, detail: string) => Promise<void>;
+}) {
+  const { client, sante, factureCents, duCents, echeance, devisAcceptes } = ligne;
+  const meta = CLIENT_HEALTH_META[sante];
+  const detail = useMemo(() => computeClientHealthBreakdown(client, sites), [client, sites]);
+  const [ajout, setAjout] = useState(false);
+  const [texte, setTexte] = useState('');
+  const ouvertEn = new Date(client.createdAt).getFullYear();
+
+  const enregistrer = async () => {
+    const titre = texte.trim();
+    if (!titre) return;
+    await onAjouterEchange(client.id, titre, '');
+    setTexte('');
+    setAjout(false);
+  };
+
+  return (
+    <div className="panel-raised panel-raised-wide grid grid-cols-1 lg:grid-cols-[1fr_320px]">
+      {/* Colonne de gauche : de qui il s'agit, et ce que la fiche pèse. */}
+      <div className="flex flex-col gap-6 p-6 sm:p-8">
+        <div className="flex items-center gap-4">
+          <p className="eyebrow flex-shrink-0">{tr('hist.clients.santeDeLaRelation')}</p>
+          <span className="h-px flex-1 bg-border-section" aria-hidden />
+          <span
+            className="flex flex-shrink-0 items-center gap-2 border border-border-raised bg-raised px-2.5 py-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] text-text-primary"
+            title={meta.hint}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+            {meta.label}
+          </span>
+        </div>
+
+        <div className="flex items-start gap-4">
+          <Avatar client={client} size={62} />
+          <div className="min-w-0">
+            <h2 className="truncate text-[26px] font-bold leading-none tracking-[-0.028em] text-text-primary sm:text-[28px]">
+              {client.name}
+            </h2>
+            <p className="eyebrow mt-2.5">
+              {[client.company || null, metaOf(STATUS_META, client.status, STATUS_META.prospect).label,
+                Number.isFinite(ouvertEn) ? tr('hist.clients.ficheOuverteEn', { an: ouvertEn }) : null]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-y-6 sm:grid-cols-4">
+          <Mesure label={tr('hist.clients.facture')} valeur={formatCents(factureCents)} />
+          <Mesure label={tr('hist.clients.devisAcceptes')} valeur={String(devisAcceptes)} filet />
+          {detail.factors.map((f) => (
+            <Mesure
+              key={f.label}
+              label={f.label}
+              valeur={f.value}
+              petit={f.value.length > 12}
+              attenue={f.tone !== 'good'}
+              filet
+            />
+          ))}
+        </div>
+
+        {ajout ? (
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              autoFocus
+              value={texte}
+              onChange={(e) => setTexte(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void enregistrer();
+              }}
+              placeholder={tr('hist.clients.ajouterUnEchangeUne')}
+              className="min-h-11 flex-1 border border-border bg-sunken px-3 text-sm text-text-primary outline-none transition-colors placeholder:text-text-muted focus:border-signal"
+            />
+            <button
+              type="button"
+              onClick={() => void enregistrer()}
+              disabled={!texte.trim()}
+              className="min-h-11 bg-accent px-4 text-[12.5px] font-semibold text-bg shadow-[0_12px_26px_-12px_rgba(0,0,0,.9)] transition-colors hover:bg-accent-hover disabled:opacity-40"
+            >
+              {tr('hist.clients.ajouterCetEchange')}
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setAjout(true)}
+              className="min-h-11 bg-accent px-4 text-[12.5px] font-semibold text-bg shadow-[0_12px_26px_-12px_rgba(0,0,0,.9)] transition-colors hover:bg-accent-hover"
+            >
+              {tr('hist.clients.ajouterUnEchange')}
+            </button>
+            <button
+              type="button"
+              onClick={() => onOuvrir(client.id)}
+              className="min-h-11 border border-border-strong px-4 text-[12.5px] font-semibold text-text-primary transition-colors hover:bg-surface-hover"
+            >
+              {tr('hist.clients.ouvrirLaFiche')}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Colonne de droite : ce qui s'est passé, et ce qui remonterait la note. */}
+      <div className="flex flex-col gap-5 border-t border-border-raised bg-sunken p-6 lg:border-l lg:border-t-0">
+        <div>
+          <p className="eyebrow mb-3.5">{tr('hist.clients.echanges')}</p>
+          <ul className="flex flex-col gap-3.5">
+            {/*
+              L'AMBRE DE L'ÉCRAN, et le seul : ce que ce client doit encore.
+              Le point et le montant disent la même chose au même endroit —
+              d'où le groupe, qui les compte pour un (voir check:signal).
+            */}
+            {duCents > 0 && (
+              <li className="flex gap-3" data-signal-groupe="a-traiter">
+                <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-signal" aria-hidden />
+                <div className="min-w-0">
+                  <p className="text-[13.5px] font-semibold text-signal">{tr('hist.clients.factureEnAttente')}</p>
+                  <p className="tnum mt-1 font-mono text-[11px] tracking-[0.1em] text-text-muted">
+                    {[echeance ? formatShortDay(echeance) : null, formatCents(duCents)].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+              </li>
+            )}
+            {client.events.slice(0, 3).map((ev) => (
+              <li key={ev.id} className="flex gap-3">
+                <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-[#3a3a3a]" aria-hidden />
+                <div className="min-w-0">
+                  <p className="truncate text-[13.5px] text-text-body">{ev.title}</p>
+                  <p className="tnum mt-1 font-mono text-[11px] tracking-[0.1em] text-text-muted">
+                    {formatShortDay(ev.date)}
+                  </p>
+                </div>
+              </li>
+            ))}
+            {duCents === 0 && client.events.length === 0 && (
+              <li className="text-[13.5px] text-text-muted">{tr('hist.clients.aucunEchange')}</li>
+            )}
+          </ul>
+        </div>
+
+        <div className="border-t border-border pt-5">
+          <p className="eyebrow mb-3">{tr('hist.clients.pourLAmeliorer')}</p>
+          {detail.toImprove.length > 0 ? (
+            <ul className="flex flex-col gap-3">
+              {detail.toImprove.map((phrase) => (
+                <li key={phrase} className="text-[13.5px] leading-[1.65] text-text-secondary [text-wrap:pretty]">
+                  {phrase}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[13.5px] leading-[1.65] text-text-secondary">{tr('hist.clients.relationAuVertRien')}</p>
+          )}
+        </div>
+
+        {/* La note de bas de carte : d'où sort la santé, pour qu'elle ne soit jamais un verdict opaque. */}
+        <p className="mt-auto font-mono text-[9.5px] uppercase leading-[1.7] tracking-[0.14em] text-text-muted">
+          {CLIENT_HEALTH_EXPLAINER}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Mesure({
+  label,
+  valeur,
+  filet,
+  petit,
+  attenue,
+}: {
+  label: string;
+  valeur: string;
+  filet?: boolean;
+  petit?: boolean;
+  attenue?: boolean;
+}) {
+  return (
+    <div className={filet ? 'border-l border-border-section pl-5 sm:pl-6' : ''}>
+      <p className="eyebrow mb-2.5">{label}</p>
+      <p
+        className={`tnum font-mono font-semibold leading-[1.15] tracking-[-0.03em] ${
+          petit ? 'text-[15px]' : 'text-[23px]'
+        } ${attenue ? 'text-text-secondary' : 'text-text-primary'}`}
+      >
+        {valeur}
+      </p>
+    </div>
+  );
+}
+
+function Repertoire({
+  lignes,
+  onOuvrir,
+}: {
+  lignes: LigneRepertoire[];
+  onOuvrir: (id: number) => void;
+}) {
+  const maintenant = Date.now();
+  return (
+    <section>
+      <div className="mb-2 flex items-center gap-4">
+        <p className="eyebrow flex-shrink-0">{tr('hist.clients.leRepertoire')}</p>
+        <span className="h-px flex-1 bg-border-section" aria-hidden />
+        <p className="eyebrow flex-shrink-0">{tr('hist.clients.trieParSante')}</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[620px] border-collapse">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="eyebrow py-2.5 text-left font-bold">{tr('hist.clients.colClient')}</th>
+              <th className="eyebrow py-2.5 text-right font-bold">{tr('hist.clients.facture')}</th>
+              <th className="eyebrow py-2.5 text-right font-bold">{tr('hist.clients.colDernierEchange')}</th>
+              <th className="eyebrow py-2.5 pl-6 text-left font-bold">{tr('hist.clients.colSante')}</th>
+              <th className="eyebrow py-2.5 text-right font-bold">{tr('hist.clients.colStatut')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lignes.map(({ client, sante, factureCents, dernierEchange }) => {
+              const meta = CLIENT_HEALTH_META[sante];
+              const statut = metaOf(STATUS_META, client.status, STATUS_META.prospect);
+              const jours = Math.floor((maintenant - new Date(dernierEchange).getTime()) / 86_400_000);
+              return (
+                <tr
+                  key={client.id}
+                  onClick={() => onOuvrir(client.id)}
+                  className="cursor-pointer border-b border-[#161616] transition-colors hover:bg-surface-hover"
+                >
+                  <td className="py-3.5">
+                    <span className="flex items-center gap-3">
+                      <Avatar client={client} size={28} />
+                      <span className="truncate text-[14.5px] font-medium text-text-primary">{client.name}</span>
+                    </span>
+                  </td>
+                  <td className="tnum py-3.5 text-right font-mono text-[13.5px] font-semibold text-text-primary">
+                    {formatCents(factureCents)}
+                  </td>
+                  <td className="tnum py-3.5 text-right font-mono text-[12.5px] tracking-[0.1em] text-text-muted">
+                    {formatShortDay(dernierEchange)}
+                  </td>
+                  <td className="py-3.5 pl-6">
+                    <span className="flex items-center gap-2">
+                      <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${meta.dot}`} />
+                      <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] text-text-secondary">
+                        {meta.label}
+                      </span>
+                      <span className="tnum font-mono text-[11px] tracking-[0.1em] text-text-muted">
+                        · {tr('hist.clients.ilYaNJours', { n: Math.max(0, jours) })}
+                      </span>
+                    </span>
+                  </td>
+                  <td className="py-3.5 text-right font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] text-text-secondary">
+                    {statut.label}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 
 function Avatar({ client, size }: { client: Client; size: number }) {
   if (client.imageDataUrl) {
@@ -365,7 +690,9 @@ function ClientDetail({
   onPatchQuote,
   onRemoveQuote,
   onRemoveClient,
+  onFermer,
 }: {
+  onFermer: () => void;
   client: SyncedClient;
   sites: DerivedSite[];
   quotes: Quote[];
@@ -380,8 +707,38 @@ function ClientDetail({
   // Ajmani partout (Bloc 1) : tant que cette fiche est ouverte, « résume-moi ce client » — ou toute
   // question posée à Ajmani depuis n'importe quel écran — sait de qui il s'agit, sans qu'on le nomme.
   useAjmaniFocus(useMemo(() => ({ type: 'client', id: client.recordId, label: client.name || 'sans nom' }), [client.recordId, client.name]));
+  // Confort d'usage à deux : dire si quelqu'un d'autre a déjà cette fiche ouverte,
+  // pour éviter que deux personnes la travaillent en même temps sans le savoir.
+  const watchers = useRecordWatchers('clients', client.recordId);
   return (
-    <div className="min-h-0 overflow-y-auto border border-border bg-surface">
+    <div className="border border-border bg-surface">
+      {/* Le fil d'Ariane : d'où l'on vient, et ce qu'on regarde. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-4 py-3">
+        <button
+          type="button"
+          onClick={onFermer}
+          className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-text-secondary transition-colors hover:text-text-primary"
+        >
+          <ArrowLeft size={13} strokeWidth={1.9} />
+          {tr('hist.clients.repertoire')}
+        </button>
+        <span className="eyebrow">·</span>
+        <span className="eyebrow">{client.name}</span>
+        {quotes.length > 0 && (
+          <>
+            <span className="eyebrow">·</span>
+            <span className="eyebrow">{tr('hist.clients.nDevis', { n: quotes.length })}</span>
+          </>
+        )}
+      </div>
+      {watchers.length > 0 && (
+        <div className="flex items-center gap-2 border-b border-warning/30 bg-warning/10 px-4 py-2 font-mono text-[11px] text-warning">
+          <span className="h-1.5 w-1.5 rounded-full bg-warning" />
+          {watchers.length === 1
+            ? `${watchers[0]} consulte aussi cette fiche en ce moment.`
+            : `${watchers.join(', ')} consultent aussi cette fiche en ce moment.`}
+        </div>
+      )}
       <ClientHeader client={client} sites={sites} onPatch={onPatch} onRemove={onRemoveClient} />
       <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-2">
         <div className="flex flex-col gap-6">
@@ -390,9 +747,22 @@ function ClientDetail({
           <NotesBlock client={client} onPatch={onPatch} />
         </div>
         <div className="flex flex-col gap-6">
-          <QuotesBlock client={client} quotes={quotes} onCreate={onCreateQuote} onPatch={onPatchQuote} onRemove={onRemoveQuote} />
           <TimelineBlock client={client} onAddEvent={onAddEvent} />
         </div>
+      </div>
+      {/*
+        LE BLOC DEVIS PREND LA LARGEUR DE LA FICHE.
+
+        Il était dans la colonne de droite, sur quatre cents pixels, à côté de
+        la chronologie. Un devis est un DOCUMENT — il a un titre, un corps, un
+        tarif et trois décisions à prendre — et il ne tient pas dans une demi-
+        colonne : le corps y tombait à trois mots par ligne et les gestes
+        passaient par deux listes déroulantes de dix pixels. Le paquet de design
+        lui donne une feuille et ses colonnes de décision, ce qui demande la
+        largeur entière.
+      */}
+      <div className="px-6 pb-6">
+        <QuotesBlock client={client} quotes={quotes} onCreate={onCreateQuote} onPatch={onPatchQuote} onRemove={onRemoveQuote} />
       </div>
     </div>
   );
@@ -458,7 +828,7 @@ function ClientHeader({
           </span>
         )}
         <span className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
-          <ImagePlus size={18} strokeWidth={1.75} className="text-white" />
+          <ImagePlus size={18} strokeWidth={1.9} className="text-white" />
         </span>
       </button>
       <input
@@ -631,7 +1001,7 @@ function LinkedSitesBlock({
                     linked ? 'text-text-primary' : 'text-text-muted'
                   }`}
                 >
-                  <Globe size={13} strokeWidth={1.75} className="flex-shrink-0" />
+                  <Globe size={13} strokeWidth={1.9} className="flex-shrink-0" />
                   <span className="truncate">{site.name}</span>
                 </button>
                 {linked && (
@@ -649,7 +1019,7 @@ function LinkedSitesBlock({
                       title={tr('hist.clients.voirLaFicheDu')}
                       className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
                     >
-                      <ArrowUpRight size={16} strokeWidth={1.75} />
+                      <ArrowUpRight size={16} strokeWidth={1.9} />
                     </button>
                   </>
                 )}
@@ -706,7 +1076,7 @@ function ContactBlock({
       <BlockTitle>Contact</BlockTitle>
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2.5 border border-border bg-bg px-3 py-2">
-          <Mail size={14} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
+          <Mail size={14} strokeWidth={1.9} className="flex-shrink-0 text-text-muted" />
           <InlineField
             value={client.email}
             onSave={(v) => onPatch(client.id, { email: v })}
@@ -715,7 +1085,7 @@ function ContactBlock({
           />
         </div>
         <div className="flex items-center gap-2.5 border border-border bg-bg px-3 py-2">
-          <Phone size={14} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
+          <Phone size={14} strokeWidth={1.9} className="flex-shrink-0 text-text-muted" />
           <InlineField
             value={client.phone}
             onSave={(v) => onPatch(client.id, { phone: v })}
@@ -838,6 +1208,24 @@ function TimelineBlock({
   );
 }
 
+/**
+ * LE BLOC DEVIS — une feuille, et ses colonnes de décision.
+ *
+ * C'était une pile de lignes toutes identiques, chacune portant deux listes
+ * déroulantes. Un devis envoyé depuis douze jours et un brouillon sans tarif
+ * avaient exactement la même apparence ; rien ne disait lequel attendait une
+ * réponse, et « lequel attend » est la seule question qu'on pose à cet écran.
+ *
+ * L'objet dominant que lui donne le paquet de design est « le document qui
+ * attend » : le devis envoyé depuis le plus longtemps s'ouvre en feuille
+ * (`panel-sheet`), avec son corps, son tarif et ses trois décisions. Les
+ * autres tiennent dans une colonne, rangés par ce qu'ils appellent — en
+ * attente, tranchés, brouillons — et cliquer l'un d'eux le pose sur la feuille.
+ *
+ * L'AMBRE est celui que la table nomme : « sans réponse · 12 j ». Le badge de
+ * la feuille et le filet de la carte correspondante disent la même chose, d'où
+ * le groupe qui les compte pour un (voir check:signal).
+ */
 function QuotesBlock({
   client,
   quotes,
@@ -853,17 +1241,35 @@ function QuotesBlock({
 }) {
   const [creating, setCreating] = useState(false);
   const [printing, setPrinting] = useState<Quote | null>(null);
+  const [ouvertId, setOuvertId] = useState<number | null>(null);
   const navigate = useNavigate();
   const { invoices, createFromQuote } = useInvoices();
 
   /*
     La facture née d'un devis, s'il y en a une. C'est elle qui décide de ce que
-    montre la ligne de devis : tant qu'elle n'existe pas, le devis propose de
-    facturer ; dès qu'elle existe, c'est ELLE qui dit où en est l'argent, et le
-    suivi de paiement du devis n'a plus voix au chapitre — deux réponses
-    différentes à « est-ce payé ? » sur le même écran, c'est une de trop.
+    montre le devis : tant qu'elle n'existe pas, le devis propose de facturer ;
+    dès qu'elle existe, c'est ELLE qui dit où en est l'argent, et le suivi de
+    paiement du devis n'a plus voix au chapitre — deux réponses différentes à
+    « est-ce payé ? » sur le même écran, c'est une de trop.
   */
   const invoiceOf = (quote: Quote) => invoices.find((inv) => inv.quoteId === quote.id);
+
+  const attente = useMemo(
+    () => quotes
+        .filter((q) => q.status === 'sent')
+        .sort((a, b) => (a.sentAt || a.updatedAt || '').localeCompare(b.sentAt || b.updatedAt || '')),
+    [quotes],
+  );
+  const tranches = useMemo(
+    () => quotes.filter((q) => q.status === 'accepted' || q.status === 'refused'),
+    [quotes],
+  );
+  const brouillons = useMemo(() => quotes.filter((q) => q.status === 'draft'), [quotes]);
+
+  /* Le devis posé sur la feuille : celui qu'on a choisi, sinon celui qui attend
+     depuis le plus longtemps, sinon le premier de la liste. */
+  const ouvert =
+    quotes.find((q) => q.id === ouvertId) ?? attente[0] ?? quotes[0] ?? null;
 
   return (
     <div>
@@ -882,22 +1288,29 @@ function QuotesBlock({
       {quotes.length === 0 ? (
         <p className="text-xs text-text-muted">{tr('hist.clients.aucunDevisPourCe')}</p>
       ) : (
-        <div className="flex flex-col gap-2">
-          {quotes.map((quote) => (
-            <QuoteRow
-              key={quote.id}
-              quote={quote}
-              invoice={invoiceOf(quote)}
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_300px]">
+          {ouvert && (
+            <FeuilleDeDevis
+              quote={ouvert}
+              client={client}
+              invoice={invoiceOf(ouvert)}
               onPatch={onPatch}
-              onPrint={() => setPrinting(quote)}
-              onRemove={() => onRemove(quote.id)}
+              onPrint={() => setPrinting(ouvert)}
+              onRemove={() => onRemove(ouvert.id)}
               onInvoice={() => {
-                const existing = invoiceOf(quote);
-                const id = existing ? existing.id : createFromQuote(quote, client);
+                const existing = invoiceOf(ouvert);
+                const id = existing ? existing.id : createFromQuote(ouvert, client);
                 navigate('/facturation', { state: { openInvoiceId: id } });
               }}
             />
-          ))}
+          )}
+          <ColonnesDeDecision
+            attente={attente}
+            tranches={tranches}
+            brouillons={brouillons}
+            ouvertId={ouvert?.id ?? null}
+            onOuvrir={setOuvertId}
+          />
         </div>
       )}
 
@@ -911,8 +1324,23 @@ function QuotesBlock({
   );
 }
 
-function QuoteRow({
+/**
+ * Depuis combien de jours ce devis attend-il ?
+ *
+ * `sentAt` est posé au passage à « envoyé » et n'est plus touché ensuite (voir
+ * `useClients.updateQuote`). Le repli sur `updatedAt` ne sert qu'aux devis
+ * écrits avant que ce champ existe : il sur-estime la fraîcheur — une retouche
+ * de titre y compte comme un envoi — mais il ne ment jamais dans l'autre sens.
+ */
+function joursDAttente(quote: Quote, maintenant: number = Date.now()): number {
+  const depuis = new Date(quote.sentAt || quote.updatedAt || quote.createdAt).getTime();
+  if (Number.isNaN(depuis)) return 0;
+  return Math.max(0, Math.floor((maintenant - depuis) / 86_400_000));
+}
+
+function FeuilleDeDevis({
   quote,
+  client,
   invoice,
   onPatch,
   onPrint,
@@ -920,6 +1348,7 @@ function QuoteRow({
   onInvoice,
 }: {
   quote: Quote;
+  client: Client;
   invoice: Invoice | undefined;
   onPatch: (id: number, p: { status?: QuoteStatus; paymentStatus?: PaymentStatus }) => Promise<void>;
   onPrint: () => void;
@@ -929,99 +1358,266 @@ function QuoteRow({
   const { QUOTE_OFFERS } = useExclusive();
   const offer = QUOTE_OFFERS.find((o) => o.id === quote.trackerTier);
   const statusMeta = metaOf(QUOTE_STATUS_META, quote.status, QUOTE_STATUS_META.draft);
-  const paymentMeta = metaOf(PAYMENT_META, quote.paymentStatus, PAYMENT_META.unpaid);
+  const attend = quote.status === 'sent';
+  const jours = joursDAttente(quote);
 
   return (
-    <div className="border border-border bg-bg p-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-text-primary">{quote.title}</p>
-          <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-            {offer?.name ?? quote.trackerTier} · {quote.priceEuro.toLocaleString('fr-FR')} €
-          </p>
-        </div>
-        <div className="flex flex-shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={onPrint}
-            aria-label="Imprimer / exporter en PDF"
-            className="flex h-6 w-6 items-center justify-center rounded text-text-muted hover:bg-surface-hover hover:text-text-primary"
+    <div className="panel-sheet flex flex-col">
+      {/* La bande de tête : d'où vient ce document, et depuis quand. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border-sheet px-5 py-3.5 sm:px-8">
+        <p className="eyebrow">
+          {tr('hist.clients.envoyeLe', { date: formatShortDay(quote.sentAt || quote.updatedAt || quote.createdAt) })}
+        </p>
+        {attend && (
+          <span
+            className="signal-plate flex items-center gap-2 px-2.5 py-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.2em]"
+            data-signal-groupe="sans-reponse"
           >
-            <Printer size={14} strokeWidth={1.75} />
-          </button>
-          <ConfirmDelete onConfirm={onRemove} label={tr('hist.clients.supprimerLeDevis')} />
-        </div>
+            <span className="h-1.5 w-1.5 rounded-full bg-signal-ink" aria-hidden />
+            {tr('hist.clients.sansReponseNJours', { n: jours })}
+          </span>
+        )}
+        <p className="eyebrow ml-auto flex items-center gap-2">
+          {tr('hist.clients.statutValeur', { valeur: statusMeta.label })}
+          <span className={`h-1.5 w-1.5 rounded-full ${statusMeta.dot}`} />
+        </p>
       </div>
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-1.5">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">Statut</span>
-          <select
-            value={quote.status}
-            onChange={(e) => onPatch(quote.id, { status: e.target.value as QuoteStatus })}
-            className="input-focus border border-border bg-surface px-1.5 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary outline-none"
-          >
-            {QUOTE_STATUS_ORDER.map((s) => (
-              <option key={s} value={s}>
-                {QUOTE_STATUS_META[s].label}
-              </option>
-            ))}
-          </select>
-          <span className={`h-1.5 w-1.5 rounded-full ${statusMeta.dot}`} />
-        </label>
-
-        {/*
-          Le suivi de paiement du devis disparaît dès qu'une facture existe :
-          c'est la facture qui fait foi, et laisser les deux côte à côte
-          reviendrait à proposer de contredire un document comptable depuis un
-          menu déroulant.
-        */}
-        {invoice ? (
-          <button
-            type="button"
-            onClick={onInvoice}
-            className="flex items-center gap-1.5 border border-border px-1.5 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
-          >
-            <ReceiptEuro size={11} strokeWidth={2} />
-            {invoice.number ? `Facture ${invoice.number}` : 'Facture (brouillon)'}
-          </button>
-        ) : (
-          <label className="flex items-center gap-1.5">
-            <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">Paiement</span>
-            <select
-              value={quote.paymentStatus}
-              onChange={(e) => onPatch(quote.id, { paymentStatus: e.target.value as PaymentStatus })}
-              className="input-focus border border-border bg-surface px-1.5 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary outline-none"
-            >
-              {PAYMENT_ORDER.map((s) => (
-                <option key={s} value={s}>
-                  {PAYMENT_META[s].label}
-                </option>
-              ))}
-            </select>
-            <span className={`h-1.5 w-1.5 rounded-full ${paymentMeta.dot}`} />
-          </label>
+      <div className="flex flex-1 flex-col p-5 sm:p-8">
+        <p className="eyebrow">{tr('hist.clients.devisPour', { client: client.name })}</p>
+        <h3 className="mt-3 text-[24px] font-bold leading-[1.15] tracking-[-0.028em] text-text-primary sm:text-[30px]">
+          {quote.title}
+        </h3>
+        <span className="mb-6 mt-5 h-px w-24 bg-border-strong" aria-hidden />
+        {quote.detail && (
+          <p className="max-w-[56ch] text-[15.5px] leading-[1.7] text-text-body [text-wrap:pretty]">{quote.detail}</p>
         )}
 
+        <div className="mt-8 flex flex-wrap items-end gap-x-8 gap-y-5">
+          <div>
+            <p className="eyebrow mb-2.5">{tr('hist.clients.tarifDeLaMissionCourt')}</p>
+            <p className="tnum font-mono text-[36px] font-bold leading-[0.92] tracking-[-0.04em] text-text-primary sm:text-[40px]">
+              {quote.priceEuro.toLocaleString('fr-FR')} €
+            </p>
+            {offer?.name && <p className="eyebrow mt-2.5">{offer.name}</p>}
+          </div>
+
+          {/*
+            LES DÉCISIONS SONT DES BOUTONS, PLUS DES LISTES DÉROULANTES.
+
+            Un devis n'a que deux issues — accepté, refusé — et une liste
+            déroulante les cachait derrière un clic tout en proposant de
+            revenir à « brouillon », c'est-à-dire de dé-envoyer un document
+            déjà parti. Les deux gestes sont là, nommés, et seulement quand ils
+            ont un sens : un devis tranché ne se re-tranche pas.
+          */}
+          <div className="ml-auto flex flex-wrap gap-2">
+            {quote.status !== 'accepted' && (
+              <button
+                type="button"
+                onClick={() => void onPatch(quote.id, { status: 'accepted' })}
+                className="min-h-11 bg-accent px-4 text-[12.5px] font-semibold text-bg shadow-[0_12px_26px_-12px_rgba(0,0,0,.9)] transition-colors hover:bg-accent-hover"
+              >
+                {tr('hist.clients.marquerAccepte')}
+              </button>
+            )}
+            {quote.status !== 'refused' && (
+              <button
+                type="button"
+                onClick={() => void onPatch(quote.id, { status: 'refused' })}
+                className="min-h-11 border border-border-strong px-4 text-[12.5px] font-semibold text-text-primary transition-colors hover:bg-surface-hover"
+              >
+                {tr('hist.clients.marquerRefuse')}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onPrint}
+              className="flex min-h-11 items-center gap-2 border border-border px-4 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
+            >
+              <Printer size={14} strokeWidth={1.9} />
+              {tr('hist.clients.imprimer')}
+            </button>
+          </div>
+        </div>
+
         {/*
+          LE LIEN VERS LA FACTURE, ET LA PHRASE QUI L'EXPLIQUE.
+
           Facturer n'est proposé qu'une fois le devis ACCEPTÉ : émettre une
           facture sur une proposition encore en discussion est une erreur qu'on
-          ne peut pas défaire, puisqu'une facture émise ne s'efface pas.
+          ne peut pas défaire, puisqu'une facture émise ne s'efface pas. Et une
+          fois la facture née, c'est elle qu'on ouvre — jamais une seconde.
         */}
-        {!invoice && quote.status === 'accepted' && (
-          <button
-            type="button"
-            onClick={onInvoice}
-            className="ml-auto flex items-center gap-1.5 border border-border-strong px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text-primary transition-colors hover:bg-accent-muted"
-          >
-            <ReceiptEuro size={11} strokeWidth={2} />
-            Facturer
-          </button>
-        )}
+        <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-border pt-5">
+          {invoice ? (
+            <button
+              type="button"
+              onClick={onInvoice}
+              className="flex min-h-11 items-center gap-2 border border-border px-3 font-mono text-[10px] uppercase tracking-widest text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:min-h-0 md:py-2"
+            >
+              <ReceiptEuro size={12} strokeWidth={2} />
+              {invoice.number ? `Facture ${invoice.number}` : tr('hist.clients.factureBrouillon')}
+            </button>
+          ) : quote.status === 'accepted' ? (
+            <button
+              type="button"
+              onClick={onInvoice}
+              className="flex min-h-11 items-center gap-2 border border-border-strong px-3 font-mono text-[10px] uppercase tracking-widest text-text-primary transition-colors hover:bg-surface-hover md:min-h-0 md:py-2"
+            >
+              <ReceiptEuro size={12} strokeWidth={2} />
+              {tr('hist.clients.creerLaFacture')}
+            </button>
+          ) : null}
+
+          {/*
+            LE SUIVI DE PAIEMENT DU DEVIS SURVIT À LA REFONTE.
+
+            Il disparaît dès qu'une facture existe — c'est elle qui fait foi, et
+            laisser les deux côte à côte reviendrait à proposer de contredire un
+            document comptable depuis un menu déroulant. Mais tant qu'il n'y en
+            a pas, c'est la seule trace de ce qui a été réglé, et la refonte de
+            ce bloc n'avait aucune raison de la retirer.
+          */}
+          {!invoice && (
+            <label className="flex items-center gap-2">
+              <span className="eyebrow">{tr('hist.clients.paiement')}</span>
+              <select
+                value={quote.paymentStatus}
+                onChange={(e) => void onPatch(quote.id, { paymentStatus: e.target.value as PaymentStatus })}
+                className="input-focus min-h-11 border border-border bg-surface px-2 font-mono text-[10px] uppercase tracking-wider text-text-secondary outline-none md:min-h-0 md:py-1.5"
+              >
+                {PAYMENT_ORDER.map((s) => (
+                  <option key={s} value={s}>
+                    {PAYMENT_META[s].label}
+                  </option>
+                ))}
+              </select>
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${metaOf(PAYMENT_META, quote.paymentStatus, PAYMENT_META.unpaid).dot}`}
+              />
+            </label>
+          )}
+          <p className="eyebrow max-w-[52ch] leading-[1.7]">{tr('hist.clients.accepteIlDevientUne')}</p>
+          <div className="ml-auto">
+            <ConfirmDelete onConfirm={onRemove} label={tr('hist.clients.supprimerLeDevis')} />
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
+function ColonnesDeDecision({
+  attente,
+  tranches,
+  brouillons,
+  ouvertId,
+  onOuvrir,
+}: {
+  attente: Quote[];
+  tranches: Quote[];
+  brouillons: Quote[];
+  ouvertId: number | null;
+  onOuvrir: (id: number) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-6">
+      {attente.length > 0 && (
+        <section>
+          <EnTeteDeColonne titre={tr('hist.clients.enAttente')} compte={attente.length} />
+          <div className="flex flex-col gap-2">
+            {attente.map((q) => {
+              const dominant = q.id === ouvertId;
+              return (
+                <button
+                  key={q.id}
+                  type="button"
+                  onClick={() => onOuvrir(q.id)}
+                  /* Le filet ambre ne marque QUE le devis posé sur la feuille :
+                     c'est le même signal que son badge, pas un second. */
+                  data-signal-groupe={dominant ? 'sans-reponse' : undefined}
+                  className={`flex flex-col gap-1.5 border border-border p-3.5 text-left transition-colors hover:bg-surface-hover ${
+                    dominant ? 'border-l-2 border-l-signal bg-raised' : ''
+                  }`}
+                >
+                  <span className="truncate text-[14px] font-semibold text-text-primary">{q.title}</span>
+                  <span className="eyebrow">
+                    {tr('hist.clients.envoyeNJours', { n: joursDAttente(q) })}
+                  </span>
+                  <span className="tnum font-mono text-[17px] font-semibold tracking-[-0.03em] text-text-primary">
+                    {q.priceEuro.toLocaleString('fr-FR')} €
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {tranches.length > 0 && (
+        <section>
+          <EnTeteDeColonne titre={tr('hist.clients.tranches')} compte={tranches.length} />
+          <ul className="flex flex-col">
+            {tranches.map((q) => (
+              <li key={q.id} className="border-b border-[#161616] last:border-b-0">
+                <button
+                  type="button"
+                  onClick={() => onOuvrir(q.id)}
+                  className="flex w-full items-baseline gap-2.5 py-2.5 text-left transition-colors hover:text-text-primary"
+                >
+                  {q.status === 'accepted' ? (
+                    <Check size={12} strokeWidth={2.25} className="flex-shrink-0 text-text-secondary" />
+                  ) : (
+                    <X size={12} strokeWidth={2.25} className="flex-shrink-0 text-danger" />
+                  )}
+                  <span
+                    className={`min-w-0 flex-1 truncate text-[13.5px] ${
+                      q.status === 'accepted' ? 'text-text-body' : 'text-text-muted line-through'
+                    }`}
+                  >
+                    {q.title}
+                  </span>
+                  <span className="tnum flex-shrink-0 font-mono text-[12px] text-text-secondary">
+                    {q.priceEuro.toLocaleString('fr-FR')} €
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {brouillons.length > 0 && (
+        <button
+          type="button"
+          onClick={() => onOuvrir(brouillons[0].id)}
+          className="border border-border bg-sunken p-4 text-left transition-colors hover:bg-surface-hover"
+        >
+          <p className="eyebrow mb-2.5">
+            {brouillons.length === 1
+              ? tr('hist.clients.unBrouillon')
+              : tr('hist.clients.nBrouillons', { n: brouillons.length })}
+          </p>
+          <p className="text-[13.5px] leading-[1.6] text-text-secondary [text-wrap:pretty]">
+            {tr('hist.clients.unBrouillonNEngageRien')}
+          </p>
+        </button>
+      )}
+    </div>
+  );
+}
+
+function EnTeteDeColonne({ titre, compte }: { titre: string; compte: number }) {
+  return (
+    <div className="mb-2.5 flex items-center gap-3">
+      <p className="eyebrow flex-shrink-0">{titre}</p>
+      <span className="h-px flex-1 bg-border-section" aria-hidden />
+      <p className="tnum flex-shrink-0 font-mono text-[11px] text-text-muted">{compte}</p>
+    </div>
+  );
+}
+
 
 function NewQuoteModal({
   client,
@@ -1096,7 +1692,7 @@ function NewQuoteModal({
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-3">
           <h2 className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-text-secondary">
-            <FileText size={14} strokeWidth={1.75} />
+            <FileText size={14} strokeWidth={1.9} />
             Nouveau devis · {client.name}
           </h2>
           <button type="button" onClick={onClose} aria-label="Fermer" className="flex h-9 w-9 items-center justify-center text-text-secondary hover:text-text-primary">

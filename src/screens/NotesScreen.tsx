@@ -124,6 +124,22 @@ export function NotesScreen() {
   }, [notes, selectedId]);
 
   /*
+    LE CARNET S'OUVRE SUR UNE NOTE, pas sur « SÉLECTIONNEZ UNE NOTE ».
+
+    L'objet dominant de cet écran est « la note ouverte » : un carnet qu'on
+    ouvre sur une page blanche demande un clic avant de rien donner, et ce clic
+    n'a rien à trancher — on revient presque toujours à ce qu'on écrivait.
+    `notes` arrive déjà trié (épinglées d'abord, puis par date de modification),
+    donc `notes[0]` est exactement cette note-là.
+
+    `prev ?? …` et non une affectation : un choix déjà fait ne se fait pas
+    écraser à chaque arrivée de la synchro.
+  */
+  useEffect(() => {
+    if (visible.length > 0) setSelectedId((prev) => prev ?? visible[0].id);
+  }, [visible]);
+
+  /*
     Le dessin suit le même filtre que la liste. Sans ça, cliquer « Perso »
     laisserait le graphe montrer des notes d'équipe qui viennent de disparaître
     de la colonne d'à côté — deux vues du même carnet qui se contredisent.
@@ -185,7 +201,7 @@ export function NotesScreen() {
             title={titreDuJour}
             className="flex min-h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
           >
-            <CalendarDays size={13} strokeWidth={1.75} />
+            <CalendarDays size={13} strokeWidth={1.9} />
             <span className="hidden sm:inline">Note du jour</span>
           </button>
           <div className="flex items-center gap-1 rounded-lg border border-border p-1" role="group" aria-label={tr('hist.notes.affichageDesNotes')}>
@@ -204,7 +220,7 @@ export function NotesScreen() {
                     : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
                 }`}
               >
-                <Icone size={13} strokeWidth={1.75} />
+                <Icone size={13} strokeWidth={1.9} />
                 {nom}
               </button>
             ))}
@@ -227,7 +243,7 @@ export function NotesScreen() {
                   onClick={() => startNew('personal')}
                   className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
                 >
-                  <Lock size={14} strokeWidth={1.75} className="text-text-muted" />
+                  <Lock size={14} strokeWidth={1.9} className="text-text-muted" />
                   <span className="flex-1">Note personnelle</span>
                   <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">{tr('hist.notes.prive')}</span>
                 </button>
@@ -236,7 +252,7 @@ export function NotesScreen() {
                   onClick={() => startNew('team')}
                   className="flex w-full items-center gap-2.5 border-t border-border px-3 py-2.5 text-left text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
                 >
-                  <Users size={14} strokeWidth={1.75} className="text-text-muted" />
+                  <Users size={14} strokeWidth={1.9} className="text-text-muted" />
                   <span className="flex-1">{tr('hist.notes.noteDEquipe')}</span>
                   <span className="font-mono text-[9px] uppercase tracking-widest text-text-muted">{tr('hist.notes.partage')}</span>
                 </button>
@@ -284,7 +300,7 @@ export function NotesScreen() {
         <div className="flex min-h-0 flex-col border border-border bg-surface">
           <div className="border-b border-border p-3">
             <div className="input-focus mb-2 flex items-center gap-2 rounded-lg border border-border bg-bg px-2.5 py-1.5">
-              <Search size={14} strokeWidth={1.75} className="text-text-muted" />
+              <Search size={14} strokeWidth={1.9} className="text-text-muted" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -389,16 +405,24 @@ export function NotesScreen() {
                 >
                   {note.id === selectedId && <span className="absolute left-0 top-0 h-full w-0.5 bg-accent" />}
                   {!TEAM_ENABLED ? null : note.scope === 'personal' ? (
-                    <Lock size={13} strokeWidth={1.75} className="mt-0.5 flex-shrink-0 text-text-muted" />
+                    <Lock size={13} strokeWidth={1.9} className="mt-0.5 flex-shrink-0 text-text-muted" />
                   ) : (
-                    <Users size={13} strokeWidth={1.75} className="mt-0.5 flex-shrink-0 text-text-muted" />
+                    <Users size={13} strokeWidth={1.9} className="mt-0.5 flex-shrink-0 text-text-muted" />
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="flex items-center gap-1.5 truncate text-sm font-medium text-text-primary">
                       {note.pinned && <Pin size={11} strokeWidth={2} className="flex-shrink-0 fill-accent text-accent" />}
                       <span className="truncate">{note.title || 'Sans titre'}</span>
                     </p>
-                    <p className="font-mono text-[10px] text-text-muted">Modifié {relativeTime(note.updatedAt)}</p>
+                    {/* L'amorce, sur la note ouverte seulement : sur toutes les
+                        lignes, le rail devient un mur de texte et le titre —
+                        ce qu'on cherche — s'y perd. */}
+                    {note.id === selectedId && note.body.trim() && (
+                      <p className="mt-1 line-clamp-2 text-[12.5px] leading-[1.5] text-text-secondary">
+                        {note.body.trim()}
+                      </p>
+                    )}
+                    <p className="mt-1 font-mono text-[10px] text-text-muted">Modifié {relativeTime(note.updatedAt)}</p>
                   </div>
                 </motion.button>
               ))
@@ -531,6 +555,10 @@ function NoteEditor({
     [note, notes, onOuvrir, onCreer],
   );
 
+  /* Les étiquettes de CETTE note, lues dans son corps — la même source que
+     le carnet entier (`extraireTags`), jamais une seconde liste à tenir. */
+  const etiquettesDeLaNote = useMemo(() => extraireTags(body), [body]);
+
   const retro = useMemo(() => retroliens(graphe, note.id), [graphe, note.id]);
   const mentions = useMemo(() => mentionsNonLiees(note, notes, graphe), [note, notes, graphe]);
 
@@ -639,31 +667,9 @@ function NoteEditor({
             {note.scope === 'personal' ? 'Perso' : 'Équipe'}
           </span>
         )}
-        {/*
-          LE TITRE SE VALIDE QUAND ON QUITTE LE CHAMP, PAS À CHAQUE TOUCHE.
-
-          Renommer ne change pas que cette note : ça réécrit les `[[liens]]`
-          de toutes celles qui pointent ici. Le faire à chaque frappe
-          réécrirait le carnet vingt fois pour un titre de vingt lettres — et
-          chaque état intermédiaire produirait des liens vers des titres qui
-          n'ont jamais existé (« R », « Ré », « Réu »…).
-
-          Le corps, lui, continue de s'enregistrer au fil de la frappe : il ne
-          concerne que cette note.
-        */}
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => validerTitre()}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              e.currentTarget.blur();
-            }
-          }}
-          placeholder={tr('hist.notes.titreDeLaNote')}
-          className="min-w-0 flex-1 bg-transparent text-lg font-semibold text-text-primary outline-none placeholder:text-text-muted"
-        />
+        {/* Le titre a quitté cette barre : il appartient au document, pas au
+            chrome — voir la feuille, plus bas. */}
+        <div className="min-w-0 flex-1" />
         <SaveIndicator saved={saved} />
         <button
           type="button"
@@ -671,7 +677,7 @@ function NoteEditor({
           aria-label={note.pinned ? 'Désépingler' : 'Épingler'}
           className={`flex h-9 w-9 items-center justify-center rounded ${note.pinned ? 'text-accent' : 'text-text-muted hover:text-text-primary'}`}
         >
-          {note.pinned ? <PinOff size={15} strokeWidth={1.75} /> : <Pin size={15} strokeWidth={1.75} />}
+          {note.pinned ? <PinOff size={15} strokeWidth={1.9} /> : <Pin size={15} strokeWidth={1.9} />}
         </button>
         <button
           type="button"
@@ -679,7 +685,7 @@ function NoteEditor({
           aria-label={tr('hist.notes.supprimerLaNote')}
           className="flex h-9 w-9 items-center justify-center rounded text-text-muted hover:text-danger"
         >
-          <Trash2 size={15} strokeWidth={1.75} />
+          <Trash2 size={15} strokeWidth={1.9} />
         </button>
       </div>
 
@@ -702,7 +708,7 @@ function NoteEditor({
             title={t.label}
             className="flex h-9 w-9 items-center justify-center rounded text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary disabled:opacity-30"
           >
-            <t.icon size={15} strokeWidth={1.75} />
+            <t.icon size={15} strokeWidth={1.9} />
           </button>
         ))}
         <div className="ml-auto">
@@ -711,14 +717,67 @@ function NoteEditor({
             onClick={() => setPreview((v) => !v)}
             className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
           >
-            {preview ? <Pencil size={12} strokeWidth={1.75} /> : <Eye size={12} strokeWidth={1.75} />}
+            {preview ? <Pencil size={12} strokeWidth={1.9} /> : <Eye size={12} strokeWidth={1.9} />}
             {preview ? 'Éditer' : 'Aperçu'}
           </button>
         </div>
       </div>
 
+      {/*
+        UNE NOTE EST UN DOCUMENT, PAS LE CONTENU D'UN PANNEAU.
+
+        Le corps occupait tout le cadre, bord à bord, en 14 px de monospace :
+        une zone de saisie, pas une page. Le système de design donne à cet
+        écran un objet dominant — « la note ouverte » — et la feuille
+        (`panel-sheet`, #111111) est ce qui le rend lisible : fond creux
+        autour, document au centre, une largeur de lecture bornée. La même
+        feuille sert à l'écriture ET à la lecture, pour qu'on n'écrive pas
+        dans une chose puis qu'on relise dans une autre.
+
+        CET ÉCRAN N'A PAS D'AMBRE, et c'est écrit tel quel dans la table du
+        paquet de design : « aucun (écran sans décision) ». Une note ne demande
+        rien ; elle se lit. La maquette en dessine quand même quelques-uns —
+        la pastille « privée », le filet du bloc à vérifier — mais la table
+        fait foi sur ce point, et un écran sans décision qui porterait un
+        signal apprendrait à l'ignorer ailleurs.
+      */}
+      <div className="min-h-0 flex-1 overflow-y-auto bg-sunken p-4 sm:p-8">
+        <div className="panel-sheet mx-auto flex min-h-full max-w-[720px] flex-col p-6 sm:p-10">
+          {/*
+            LE TITRE SE VALIDE QUAND ON QUITTE LE CHAMP, PAS À CHAQUE TOUCHE.
+
+            Renommer ne change pas que cette note : ça réécrit les `[[liens]]`
+            de toutes celles qui pointent ici. Le faire à chaque frappe
+            réécrirait le carnet vingt fois pour un titre de vingt lettres — et
+            chaque état intermédiaire produirait des liens vers des titres qui
+            n'ont jamais existé (« R », « Ré », « Réu »…).
+
+            Le corps, lui, continue de s'enregistrer au fil de la frappe : il ne
+            concerne que cette note.
+          */}
+          {etiquettesDeLaNote.length > 0 && (
+            <p className="eyebrow mb-4">
+              {tr('hist.notes.etiquettesDe', { liste: etiquettesDeLaNote.join(' · ') })}
+            </p>
+          )}
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={() => validerTitre()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                e.currentTarget.blur();
+              }
+            }}
+            placeholder={tr('hist.notes.titreDeLaNote')}
+            className="w-full bg-transparent text-[26px] font-bold leading-[1.15] tracking-[-0.028em] text-text-primary outline-none placeholder:text-text-muted sm:text-[30px]"
+          />
+          {/* Le filet court sous le titre : il sépare sans fermer. */}
+          <span className="mb-6 mt-5 h-px w-24 bg-border-strong" aria-hidden />
+
       {preview ? (
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        <div className="min-h-0 flex-1">
           {body.trim() ? (
             <Markdown text={body} liens={branchement} />
           ) : (
@@ -766,7 +825,17 @@ function NoteEditor({
               }
             }}
             placeholder={tr('hist.notes.ecrivezIciGrasItalique')}
-            className="min-h-0 flex-1 resize-none bg-transparent p-4 font-mono text-sm leading-relaxed text-text-primary outline-none placeholder:text-text-muted"
+            /*
+              ON ÉCRIT DANS LA MÊME FONTE QU'ON LIT.
+
+              Le corps était en monospace : la police d'un fichier, pas d'une
+              note. Le markdown s'écrit très bien en proportionnel — c'est ce
+              que font les carnets qui se veulent des carnets — et c'est la
+              condition pour que la feuille d'écriture et la feuille de lecture
+              soient la MÊME page. Les marqueurs (`**`, `[[…]]`) restent
+              parfaitement visibles ; ce sont des signes, pas de l'alignement.
+            */
+            className="min-h-[40vh] flex-1 resize-none bg-transparent text-[15.5px] leading-[1.75] text-text-body outline-none [text-wrap:pretty] placeholder:text-text-muted"
           />
 
           {proposees.length > 0 && (
@@ -787,7 +856,7 @@ function NoteEditor({
                       i === choix ? 'bg-accent-muted text-text-primary' : 'text-text-secondary'
                     }`}
                   >
-                    <LinkIcon size={13} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
+                    <LinkIcon size={13} strokeWidth={1.9} className="flex-shrink-0 text-text-muted" />
                     <span className="truncate">{n.title || 'Sans titre'}</span>
                   </button>
                 </li>
@@ -796,6 +865,8 @@ function NoteEditor({
           )}
         </div>
       )}
+        </div>
+      </div>
 
       {/*
         QUI PARLE DE CETTE NOTE.
@@ -842,7 +913,7 @@ function NoteEditor({
                   onClick={() => onOuvrir(n.id)}
                   className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
                 >
-                  <CornerUpLeft size={13} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
+                  <CornerUpLeft size={13} strokeWidth={1.9} className="flex-shrink-0 text-text-muted" />
                   <span className="truncate">{n.title || 'Sans titre'}</span>
                 </button>
               </li>
