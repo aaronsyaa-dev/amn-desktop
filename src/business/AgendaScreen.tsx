@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -30,6 +30,7 @@ import {
   capitaliserPhrase,
   dayKey,
   fromDateTimeLocalValue,
+  isSameDay,
   isToday,
   longDayLabel,
   monthGrid,
@@ -89,7 +90,17 @@ function reminderLabel(minutes: number): string {
 export function AgendaScreen() {
   const { appointments, createAppointment, updateAppointment, setStatus, deleteAppointment } =
     useAppointments();
-  const [view, setView] = useState<ViewMode>('week');
+  /*
+    LA JOURNÉE EST LA VUE D'OUVERTURE.
+
+    L'écran s'ouvrait sur la semaine. C'est la vue qui sert à ORGANISER, et
+    elle garde tout son sens — mais la question du matin n'est pas « comment
+    s'agence ma semaine », c'est « qu'est-ce que je fais maintenant ». La table
+    du paquet de design nomme d'ailleurs « la journée » comme objet dominant de
+    cet écran, et c'est elle qui porte désormais la colonne d'heures et le
+    créneau en cours. La semaine reste à un clic.
+  */
+  const [view, setView] = useState<ViewMode>('day');
   const [anchor, setAnchor] = useState(() => startOfDay(new Date()));
   const [editing, setEditing] = useState<{ appointment: Appointment | null; at: Date } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -153,6 +164,34 @@ export function AgendaScreen() {
         ? `Semaine du ${weekDays(anchor)[0].toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`
         : capitaliserPhrase(longDayLabel(anchor));
 
+  /*
+    LA PHRASE SOUS LE TITRE, écrite avec les vrais rendez-vous du jour.
+
+    « Vos rendez-vous et vos disponibilités » décrivait le module. Sur la vue
+    jour, la phrase dit maintenant ce que la journée PÈSE — combien de
+    rendez-vous, combien d'heures occupées — et dans combien de temps tombe le
+    prochain. Les deux autres vues gardent la phrase descriptive : sur un mois,
+    « le prochain dans 48 minutes » ne veut rien dire.
+  */
+  const resumeDeLaPeriode = useMemo(() => {
+    if (view !== 'day') return 'Vos rendez-vous et vos disponibilités.';
+    const duJour = (byDay.get(dayKey(anchor)) ?? []).filter((a) => a.status !== 'cancelled');
+    if (duJour.length === 0) return 'Rien de prévu ce jour-là.';
+    const minutes = duJour.reduce((n, a) => n + a.durationMin, 0);
+    const morceaux = [
+      `${duJour.length} rendez-vous`,
+      `${dureeLisible(minutes)} occupée${minutes >= 120 ? 's' : ''}`,
+    ];
+    const prochain = duJour
+      .filter((a) => new Date(a.startAt).getTime() >= Date.now())
+      .sort((a, b) => a.startAt.localeCompare(b.startAt))[0];
+    if (prochain) {
+      const dans = Math.round((new Date(prochain.startAt).getTime() - Date.now()) / 60_000);
+      morceaux.push(dans <= 0 ? 'le prochain a commencé' : `le prochain dans ${dureeLisible(dans)}`);
+    }
+    return `${capitaliserPhrase(morceaux.join(', '))}.`;
+  }, [view, byDay, anchor]);
+
   return (
     <div className="flex flex-col gap-5">
       <header className="flex flex-col gap-3">
@@ -166,10 +205,18 @@ export function AgendaScreen() {
           affichée VAUT avant qu'on ait lu une case. Ils se recalculent sur les
           rendez-vous rendus, jamais sur une constante.
         */}
+        {/*
+          LE TITRE EST LA PÉRIODE, pas le nom du module.
+
+          « Agenda » est déjà écrit dans le surtitre et dans la barre latérale ;
+          l'écrire une troisième fois en gros ne dit rien de plus. Ce qu'on a
+          besoin de lire en grand, c'est QUEL JOUR on regarde — c'est la seule
+          information de l'écran qui change à chaque visite.
+        */}
         <ScreenHeader
           eyebrow="Mon espace · Agenda"
-          title="Agenda"
-          description="Vos rendez-vous et vos disponibilités."
+          title={periodLabel}
+          description={resumeDeLaPeriode}
           stats={releves}
           actions={
             <button
@@ -273,6 +320,7 @@ export function AgendaScreen() {
           byDay={byDay}
           onPick={setSelectedId}
           onCreate={(date) => setEditing({ appointment: null, at: defaultSlot(date) })}
+          onPickDay={setAnchor}
         />
       )}
 
@@ -461,21 +509,337 @@ function DayView({
   byDay,
   onPick,
   onCreate,
+  onPickDay,
 }: {
   anchor: Date;
   byDay: Map<string, Appointment[]>;
   onPick: (id: string) => void;
   onCreate: (date: Date) => void;
+  onPickDay: (date: Date) => void;
 }) {
+  const duJour = byDay.get(dayKey(anchor)) ?? [];
   return (
-    <div className="mx-auto w-full max-w-2xl">
-      <DayColumn
-        day={anchor}
-        appointments={byDay.get(dayKey(anchor)) ?? []}
-        onPick={onPick}
-        onCreate={onCreate}
-        expanded
-      />
+    <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
+      <ColonneDHeures day={anchor} appointments={duJour} onPick={onPick} onCreate={onCreate} />
+      <div className="flex flex-col gap-5">
+        <MiniMois anchor={anchor} byDay={byDay} onPickDay={onPickDay} />
+        <CarteDeRappel appointments={duJour} />
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                     LA JOURNÉE — colonne d'heures                          */
+/* -------------------------------------------------------------------------- */
+
+/*
+  L'EN-TÊTE DE CE FICHIER DISAIT : « si un jour un vrai quadrillage est
+  souhaité, seule DayColumn change ». C'est ce jour-là, et c'est bien ce qui
+  change — la vue JOUR seulement.
+
+  Ses objections tenaient, et tiennent toujours, pour la vue SEMAINE : sept
+  colonnes au pixel gèrent mal les chevauchements et deviennent illisibles sur
+  un téléphone. Sur UNE journée, aucune des trois ne s'applique : il y a la
+  place, les chevauchements se voient au lieu de se cacher, et c'est
+  précisément ce que la table du paquet de design demande — « la journée »
+  comme objet dominant, sur une colonne d'heures.
+
+  Semaine et mois gardent donc leurs listes, intactes.
+*/
+
+/** Hauteur d'une heure, en pixels. Une demi-heure reste donc visible à 27 px. */
+const HAUTEUR_HEURE = 54;
+
+/**
+ * Les bornes de la journée dessinée.
+ *
+ * Huit heures à dix-neuf heures par défaut — la journée ouvrable — mais
+ * ÉLARGIES par les rendez-vous réels : un passage à sept heures ou une
+ * livraison à vingt-et-une heures doit apparaître, sinon la colonne ment par
+ * omission. C'est la seule règle ici qui ne soit pas cosmétique.
+ */
+function bornesDuJour(appointments: Appointment[]): { debut: number; fin: number } {
+  let debut = 8;
+  let fin = 19;
+  for (const a of appointments) {
+    const d = new Date(a.startAt);
+    const f = appointmentEnd(a);
+    debut = Math.min(debut, d.getHours());
+    fin = Math.max(fin, f.getMinutes() > 0 ? f.getHours() + 1 : f.getHours());
+  }
+  return { debut, fin: Math.max(fin, debut + 1) };
+}
+
+function ColonneDHeures({
+  day,
+  appointments,
+  onPick,
+  onCreate,
+}: {
+  day: Date;
+  appointments: Appointment[];
+  onPick: (id: string) => void;
+  onCreate: (date: Date) => void;
+}) {
+  const { debut, fin } = useMemo(() => bornesDuJour(appointments), [appointments]);
+  const heures = useMemo(
+    () => Array.from({ length: fin - debut }, (_, i) => debut + i),
+    [debut, fin],
+  );
+
+  /*
+    L'HEURE COURANTE, RAFRAÎCHIE À LA MINUTE.
+
+    Sans horloge, le trait resterait figé à l'heure du montage — et cet écran
+    reste ouvert toute la journée, c'est même sa vocation. Une minute suffit :
+    la position ne bouge que d'un pixel entre deux battements.
+  */
+  const [maintenant, setMaintenant] = useState(() => new Date());
+  useEffect(() => {
+    const battement = setInterval(() => setMaintenant(new Date()), 60_000);
+    return () => clearInterval(battement);
+  }, []);
+
+  const aujourdhui = isToday(day);
+  const minutesDe = (d: Date) => (d.getHours() - debut) * 60 + d.getMinutes();
+  const dansLaFenetre = (m: number) => m >= 0 && m <= (fin - debut) * 60;
+  const minutesMaintenant = minutesDe(maintenant);
+
+  return (
+    <div className="panel relative flex">
+      {/* La règle des heures. */}
+      <div className="w-[52px] flex-shrink-0 border-r border-border">
+        {heures.map((h) => (
+          <div key={h} style={{ height: HAUTEUR_HEURE }} className="relative">
+            <span className="absolute -top-[7px] right-2.5 font-mono text-[11px] tracking-[0.1em] text-text-muted">
+              {String(h).padStart(2, '0')}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Le plan des rendez-vous. */}
+      <div className="relative min-w-0 flex-1">
+        {heures.map((h) => (
+          <button
+            key={h}
+            type="button"
+            onClick={() => {
+              const creneau = startOfDay(day);
+              creneau.setHours(h, 0, 0, 0);
+              onCreate(creneau);
+            }}
+            aria-label={`Ajouter un rendez-vous à ${String(h).padStart(2, '0')} h`}
+            style={{ height: HAUTEUR_HEURE }}
+            /* Chaque heure vide est une cible d'ajout : c'est le geste le plus
+               naturel sur un agenda, et il n'existait nulle part — il fallait
+               passer par le bouton d'en-tête puis ressaisir l'heure. */
+            className="block w-full border-b border-[#161616] transition-colors last:border-b-0 hover:bg-surface-hover"
+          />
+        ))}
+
+        {appointments.map((a) => {
+          const d = new Date(a.startAt);
+          const meta = metaOf(STATUS_META, a.status, STATUS_META.scheduled);
+          const haut = (minutesDe(d) / 60) * HAUTEUR_HEURE;
+          /* Vingt-deux pixels de plancher : un rendez-vous de quinze minutes
+             doit rester lisible, même s'il ment alors légèrement sur sa durée
+             — la durée est écrite en toutes lettres à droite. */
+          const hauteur = Math.max(22, (a.durationMin / 60) * HAUTEUR_HEURE);
+          return (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => onPick(a.id)}
+              style={{ top: haut, height: hauteur }}
+              className="absolute inset-x-2 flex flex-col justify-start overflow-hidden border-l-2 border-l-border-strong bg-raised px-3 py-1.5 text-left transition-colors hover:bg-surface-hover"
+            >
+              <span className="flex w-full items-baseline gap-2.5">
+                <span className="tnum flex-shrink-0 font-mono text-[12.5px] text-text-secondary">
+                  {timeLabel(a.startAt)}
+                </span>
+                <span className={`min-w-0 flex-1 truncate text-[14.5px] font-semibold ${meta.text}`}>
+                  {a.title || 'Rendez-vous'}
+                </span>
+                <span className="eyebrow flex-shrink-0">{dureeLisible(a.durationMin)}</span>
+              </span>
+              {(a.clientName || a.location) && hauteur > 34 && (
+                <span className="eyebrow mt-1.5 truncate">
+                  {[a.clientName, a.location].filter(Boolean).join(' · ')}
+                </span>
+              )}
+            </button>
+          );
+        })}
+
+        {/*
+          LE CRÉNEAU EN COURS — l'ambre de cet écran, et le seul.
+
+          La table du paquet le nomme ainsi. Contrairement à la ligne du jour
+          d'une frise de projets, qui n'est qu'un repère, l'heure qu'il est sur
+          un agenda EST la décision : c'est elle qui dit si le prochain
+          rendez-vous est dans quarante-huit minutes ou déjà commencé. Le trait
+          et la pastille disent la même chose, d'où le groupe.
+        */}
+        {aujourdhui && dansLaFenetre(minutesMaintenant) && (
+          <span
+            className="pointer-events-none absolute inset-x-0 z-10 flex items-center"
+            style={{ top: (minutesMaintenant / 60) * HAUTEUR_HEURE }}
+            data-signal-groupe="creneau-en-cours"
+            aria-hidden
+          >
+            <span className="signal-plate -ml-[52px] w-[52px] flex-shrink-0 py-[3px] text-center font-mono text-[10px] font-bold tracking-[0.05em]">
+              {timeLabel(maintenant.toISOString())}
+            </span>
+            <span className="h-px flex-1 bg-signal" />
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** « 1 h 30 », « 45 min » — la durée telle qu'on la dit, pas en minutes brutes. */
+function dureeLisible(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const reste = minutes % 60;
+  return reste === 0 ? `${h} h` : `${h} h ${reste}`;
+}
+
+/**
+ * LE MINI-MOIS — se repérer sans quitter la journée.
+ *
+ * Il ne remplace pas la vue mois : il dit où l'on est dans le mois et quels
+ * jours portent quelque chose (un point sous le chiffre), pour qu'on saute au
+ * 12 sans passer par « mois », cliquer, puis « jour ».
+ */
+function MiniMois({
+  anchor,
+  byDay,
+  onPickDay,
+}: {
+  anchor: Date;
+  byDay: Map<string, Appointment[]>;
+  onPickDay: (date: Date) => void;
+}) {
+  const [moisVu, setMoisVu] = useState(() => startOfDay(anchor));
+  /* Changer de jour depuis l'extérieur ramène le mini-mois sur ce jour : sans
+     ça, cliquer « aujourd'hui » laissait le petit calendrier en novembre. */
+  useEffect(() => setMoisVu(startOfDay(anchor)), [anchor]);
+  const cases = useMemo(() => monthGrid(moisVu), [moisVu]);
+
+  return (
+    <div className="panel p-4">
+      <div className="mb-4 flex items-center gap-2">
+        <p className="eyebrow flex-1">{capitaliserPhrase(monthLabel(moisVu))}</p>
+        <button
+          type="button"
+          onClick={() => setMoisVu(addMonths(moisVu, -1))}
+          aria-label="Mois précédent"
+          className="flex h-7 w-7 items-center justify-center text-text-muted transition-colors hover:text-text-primary"
+        >
+          <ChevronLeft size={14} strokeWidth={2} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setMoisVu(addMonths(moisVu, 1))}
+          aria-label="Mois suivant"
+          className="flex h-7 w-7 items-center justify-center text-text-muted transition-colors hover:text-text-primary"
+        >
+          <ChevronRight size={14} strokeWidth={2} />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-y-1">
+        {WEEKDAY_LABELS.map((j) => (
+          <span key={j} className="pb-2 text-center font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-muted">
+            {j[0]}
+          </span>
+        ))}
+        {cases.map((jour) => {
+          const combien = byDay.get(dayKey(jour))?.length ?? 0;
+          const choisi = isSameDay(jour, anchor);
+          const duMois = jour.getMonth() === moisVu.getMonth();
+          return (
+            <button
+              key={jour.toISOString()}
+              type="button"
+              onClick={() => onPickDay(startOfDay(jour))}
+              className={`flex h-8 flex-col items-center justify-center transition-colors ${
+                choisi ? 'border border-border-strong bg-raised' : 'hover:bg-surface-hover'
+              }`}
+            >
+              <span
+                className={`tnum font-mono text-[12px] leading-none ${
+                  choisi ? 'text-text-primary' : duMois ? 'text-text-secondary' : 'text-text-muted'
+                }`}
+              >
+                {jour.getDate()}
+              </span>
+              {/* Un point, pas un compte : on veut savoir s'il y a quelque
+                  chose, pas combien — le compte est dans la colonne d'heures. */}
+              <span
+                className={`mt-[3px] h-[3px] w-[3px] rounded-full ${combien > 0 ? 'bg-text-muted' : 'bg-transparent'}`}
+                aria-hidden
+              />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * LA CARTE DE RAPPEL — ce que la notification dira, avant qu'elle sorte.
+ *
+ * Un préavis réglé dans un formulaire est une promesse invérifiable : on coche
+ * « 30 min avant » et on ne sait pas ce qui apparaîtra, ni où, ni quand. La
+ * carte montre le texte exact de la prochaine notification du jour, avec le
+ * délai réellement enregistré sur ce rendez-vous-là.
+ *
+ * La dernière phrase n'est pas une précaution de style : `AppointmentReminders`
+ * abandonne un rappel dont l'heure est passée de plus de cinq minutes, pour ne
+ * pas déverser douze notifications au réveil d'un poste en veille. C'est un
+ * comportement qu'il vaut mieux lire ici que découvrir un matin.
+ */
+function CarteDeRappel({ appointments }: { appointments: Appointment[] }) {
+  const maintenant = Date.now();
+  const prochain = appointments
+    .filter(
+      (a) =>
+        a.status !== 'cancelled' &&
+        a.status !== 'done' &&
+        a.reminderMin > 0 &&
+        new Date(a.startAt).getTime() >= maintenant,
+    )
+    .sort((a, b) => a.startAt.localeCompare(b.startAt))[0];
+
+  if (!prochain) return null;
+
+  return (
+    <div className="panel p-4">
+      <p className="eyebrow mb-3.5">Rappel</p>
+      <p className="text-[14px] leading-[1.65] text-text-secondary [text-wrap:pretty]">
+        Préavis de{' '}
+        <span className="font-semibold text-text-primary">{reminderLabel(prochain.reminderMin)}</span>{' '}
+        sur ce rendez-vous. La notification sortira ainsi :
+      </p>
+      <div className="mt-4 border border-border-raised bg-raised p-3.5">
+        <p className="text-[13.5px] font-semibold text-text-primary">
+          Rendez-vous dans {reminderLabel(prochain.reminderMin).replace(' avant', '')}
+        </p>
+        <p className="mt-1.5 text-[13px] leading-[1.55] text-text-secondary">
+          {[timeLabel(prochain.startAt), prochain.title || 'Rendez-vous', prochain.clientName, prochain.location]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
+      </div>
+      <p className="mt-4 font-mono text-[9.5px] uppercase leading-[1.7] tracking-[0.14em] text-text-muted">
+        Un rappel en retard de plus de cinq minutes est abandonné
+      </p>
     </div>
   );
 }

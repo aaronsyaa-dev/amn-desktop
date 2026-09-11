@@ -520,15 +520,42 @@ await poser('projects', 'essai-prj-7', {
 
 /* ─── Rendez-vous ──────────────────────────────────────────────────────────── */
 
+/*
+  LES RENDEZ-VOUS SONT POSÉS À UNE HEURE PRÉCISE DU JOUR, pas « dans vingt
+  heures ».
+
+  La colonne d'heures de la vue Jour les dessine à leur hauteur réelle : semés
+  en décalage horaire depuis maintenant, ils tombaient tous hors de la journée
+  affichée, ou tous au même endroit selon l'heure d'exécution du script. Un
+  jeu d'essai dont l'allure dépend de l'heure à laquelle on le rejoue ne permet
+  pas de comparer deux captures.
+
+  `aujourdHui(10, 30)` rend donc un instant du jour courant à l'heure dite.
+*/
+const aujourdHui = (heure, minute = 0, decalageJours = 0) => {
+  const d = new Date();
+  d.setDate(d.getDate() + decalageJours);
+  d.setHours(heure, minute, 0, 0);
+  return d.toISOString();
+};
+
 const RDV = [
-  ['essai-rdv-1', 'Livraison hebdomadaire', 20, 60, 101, 'Camille Renaud', 'Le Jardin d’Élise, Montpellier', 'scheduled'],
-  ['essai-rdv-2', 'Repérage terrasse', 54, 90, 102, 'Hugo Marchand', 'Quai Neuf, Sète', 'scheduled'],
-  ['essai-rdv-3', 'Essai bouquet mariage', -48, 45, 103, 'Nadia Bouvier', 'Atelier', 'done'],
+  ['essai-rdv-1', 'Atelier cadrage — refonte boutique', aujourdHui(10, 0), 60, 101, 'Camille Renaud', 'Visio', 'scheduled'],
+  ['essai-rdv-2', 'Point hebdomadaire', aujourdHui(13, 30), 30, 0, '', '', 'scheduled'],
+  ['essai-rdv-3', 'Livraison — Brasserie du Port', aujourdHui(15, 0), 90, 102, 'Hugo Marchand', '8 quai Neuf, Sète', 'scheduled'],
+  ['essai-rdv-4', 'Rappel devis — Nadia', aujourdHui(17, 0), 30, 103, 'Nadia Bouvier', '', 'scheduled'],
+  /* Tard dans la soirée, à dessein : il prouve deux choses d'un coup — que la
+     colonne d'heures ÉLARGIT sa fenêtre au-delà de dix-neuf heures quand un
+     rendez-vous l'exige, et que la carte de rappel apparaît dès qu'il reste un
+     préavis à honorer dans la journée. */
+  ['essai-rdv-7', 'Enlèvement tardif — traiteur', aujourdHui(19, 30), 45, 101, 'Camille Renaud', 'Atelier', 'scheduled'],
+  ['essai-rdv-5', 'Repérage terrasse', aujourdHui(9, 30, 2), 90, 102, 'Hugo Marchand', 'Quai Neuf, Sète', 'scheduled'],
+  ['essai-rdv-6', 'Essai bouquet mariage', aujourdHui(14, 0, -2), 45, 103, 'Nadia Bouvier', 'Atelier', 'done'],
 ];
-for (const [cle, title, dansHeures, durationMin, clientId, clientName, location, status] of RDV) {
+for (const [cle, title, startAt, durationMin, clientId, clientName, location, status] of RDV) {
   await poser('appointments', cle, {
     title,
-    startAt: instant(dansHeures),
+    startAt,
     durationMin,
     clientId,
     clientName,
