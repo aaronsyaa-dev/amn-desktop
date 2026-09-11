@@ -83,6 +83,9 @@ interface EditState {
 }
 
 export function ReportsScreen() {
+  // Abonnement à la langue : sans lui, l'écran gardait les libellés de la
+  // langue active AU MONTAGE et ne suivait pas un changement en cours de route.
+  useLangue();
   const { TEAM_ENABLED } = useExclusive();
   const { reports, createReport, updateReport, deleteReport } = useReports();
   const { isPending, scheduleDelete } = useUndo();
@@ -117,6 +120,21 @@ export function ReportsScreen() {
       setEditing(null);
     }
   }, [location.state]);
+
+  /*
+    L'ÉCRAN S'OUVRE SUR UN RAPPORT, pas sur « sélectionnez un rapport ».
+
+    L'objet dominant que la table du paquet donne à cet écran est LA
+    PROVENANCE — d'où le rapport est tiré. Elle n'existe que sur un rapport
+    ouvert : s'ouvrir sur rien, c'est cacher la seule chose qui distingue ce
+    module d'un traitement de texte. Le plus récent est le bon défaut ; un
+    choix déjà fait n'est jamais écrasé, et un brouillon en cours d'édition
+    non plus.
+  */
+  useEffect(() => {
+    if (editing) return;
+    setSelection((prev) => prev ?? (reports[0] ? { kind: 'report', id: reports[0].id } : null));
+  }, [reports, editing]);
 
   const visibleReports = useMemo(() => {
     // Un filtre produit (« Scanner », « RGPD ») ne laisse passer aucun rapport
@@ -390,21 +408,53 @@ function ReportReader({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {/*
+          LA BANDE DE PROVENANCE — l'objet dominant de l'écran Rapports.
+
+          Les liens étaient une rangée de puces grises noyées en haut du corps,
+          de la même couleur que tout le reste. Or la provenance est CE QUI
+          DISTINGUE ce module d'un traitement de texte : un rapport tiré d'une
+          tâche et d'une fiche cliente n'est pas une note, c'est une pièce
+          rattachée. La table du paquet le dit en un mot — l'objet dominant de
+          cet écran est « la provenance ».
+
+          Elle occupe donc une bande à part, en plan creux, AU-DESSUS du corps.
+
+          L'AMBRE est celui que la table nomme : le surtitre « tiré de ». Un
+          rapport sans lien n'a pas de bande, donc pas d'ambre — et c'est juste,
+          il n'y a alors rien à remonter.
+        */}
         {report.links.length > 0 && (
-          <div className="mb-5 flex flex-wrap gap-2">
-            {report.links.map((l) => (
-              <LinkChip key={`${l.kind}:${l.id}`} link={l} />
-            ))}
+          <div className="border-b border-border bg-sunken px-6 py-4">
+            <div className="mb-3 flex items-center gap-4">
+              <p className="eyebrow flex-shrink-0 text-signal" data-signal-groupe="provenance">
+                {tr('hist.reports.tireDe')}
+              </p>
+              <span className="h-px flex-1 bg-border-section" aria-hidden />
+              {/* Pourquoi les libellés ne bougent plus : `ReportLink.label` est
+                  une copie prise au moment du lien. Renommer la fiche d'origine
+                  ne réécrit pas le rapport — c'est voulu, une pièce doit dire ce
+                  qu'elle disait le jour où elle a été faite. */}
+              <p className="eyebrow flex-shrink-0">{tr('hist.reports.libellesFiges')}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {report.links.map((l) => (
+                <LinkChip key={`${l.kind}:${l.id}`} link={l} />
+              ))}
+            </div>
           </div>
         )}
-        {report.body.trim() ? (
-          <div className="max-w-2xl leading-relaxed">
-            <Markdown text={report.body} />
-          </div>
-        ) : (
-          <p className="font-mono text-xs text-text-muted">Rapport vide.</p>
-        )}
+
+        <div className="px-6 py-6">
+          {report.body.trim() ? (
+            <div className="max-w-[62ch] text-[15.5px] leading-[1.75] text-text-body [text-wrap:pretty]">
+              <Markdown text={report.body} />
+            </div>
+          ) : (
+            <p className="font-mono text-xs text-text-muted">Rapport vide.</p>
+          )}
+        </div>
       </div>
     </>
   );
@@ -423,14 +473,24 @@ function LinkChip({ link }: { link: ReportLink }) {
     else if (DECISIONS_ROUTE) navigate(DECISIONS_ROUTE, { state: { focusDecisionId: link.id } });
   };
   const Icon = link.kind === 'task' ? CheckSquare : link.kind === 'client' ? Contact : Scale;
+  /* Le GENRE du lien s'écrit à côté du libellé au lieu de tenir dans une icône
+     de 12 px : « client » et « décision » ne se devinent pas à la silhouette, et
+     c'est précisément la distinction qui donne son sens à la provenance. */
+  const genre =
+    link.kind === 'task'
+      ? tr('hist.reports.genreTache')
+      : link.kind === 'client'
+        ? tr('hist.reports.genreClient')
+        : tr('hist.reports.genreDecision');
   return (
     <button
       type="button"
       onClick={go}
-      className="flex items-center gap-1.5 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
+      className="flex min-h-11 items-center gap-2.5 border border-border bg-surface px-3 text-left transition-colors hover:border-border-strong md:min-h-0 md:py-2.5"
     >
-      <Icon size={12} strokeWidth={2} />
-      {link.label}
+      <Icon size={13} strokeWidth={1.9} className="flex-shrink-0 text-text-muted" />
+      <span className="eyebrow flex-shrink-0">{genre}</span>
+      <span className="truncate text-[14px] font-semibold text-text-primary">{link.label}</span>
     </button>
   );
 }

@@ -984,6 +984,36 @@ await poser('reports', 'essai-rap-1', {
   createdAt: instant(-24 * 3),
 });
 
+/*
+  DEUX RAPPORTS TIRÉS D'AILLEURS : sans `links`, la bande de provenance de
+  l'écran Rapports n'existe pas, et c'est justement l'objet dominant de cet
+  écran — et son unique ambre. Le troisième reste manuel, pour que l'absence de
+  bande se voie aussi.
+*/
+await poser('reports', 'essai-rap-2', {
+  type: 'client',
+  title: 'Fin de la vitrine d’été — Brasserie du Port',
+  body: [
+    'La vitrine a été posée le 24 juillet, avec une semaine d’avance sur la date annoncée. Les trois panneaux ont été refaits une fois : le premier tirage rendait mal sous la lumière du soir, ce que le client avait signalé au cadrage.',
+    '',
+    'Ce qu’il faut retenir pour la prochaine : demander une photo de la vitrine à 19 h avant d’imprimer. Le devis suivant, la refonte de la boutique, en tient compte.',
+  ].join('\n'),
+  links: [
+    { kind: 'client', id: '102', label: 'Hugo Marchand' },
+    { kind: 'task', id: 'essai-tac-1', label: 'Livrer la vitrine d’été' },
+  ],
+  authorEmail: EMAIL,
+  createdAt: instant(-24 * 2),
+});
+await poser('reports', 'essai-rap-3', {
+  type: 'task',
+  title: 'Installation Studio Nord',
+  body: 'Pose faite en deux heures, sans reprise. Le local est accessible par l’arrière, ce qui change tout pour le déchargement — à noter pour les prochaines livraisons.',
+  links: [{ kind: 'task', id: 'essai-tac-2', label: 'Installer chez Studio Nord' }],
+  authorEmail: EMAIL,
+  createdAt: instant(-24 * 21),
+});
+
 /* ─── La supervision : tous ses ÉTATS, pas seulement « nouveau » ───────────── */
 
 /*
