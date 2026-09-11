@@ -567,6 +567,62 @@ for (const [cle, title, startAt, durationMin, clientId, clientName, location, st
   });
 }
 
+/* ─── Contrôles qualité ────────────────────────────────────────────────────── */
+
+/*
+  Quatre modèles, dont un jamais passé : la feuille doit savoir dire « aucun
+  passage » aussi bien que montrer une trace. Les passages portent des heures
+  réelles et des taux de conformité différents — un 4/6 au milieu de deux 6/6,
+  sinon la colonne de droite de la trace n'a rien à distinguer.
+*/
+const MODELES = [
+  ['essai-chk-1', 'Ouverture de boutique', [
+    'Température des vitrines relevée',
+    'Sol lavé et signalétique en place',
+    'Caisse ouverte avec son fond',
+    'Étiquettes de prix vérifiées',
+    'Stock de sacs vérifié',
+    'Terrasse installée',
+  ]],
+  ['essai-chk-2', 'Fermeture', [
+    'Caisse comptée et fermée',
+    'Vitrines éteintes',
+    'Chambre froide contrôlée',
+    'Poubelles sorties',
+    'Alarme enclenchée',
+    'Porte verrouillée',
+    'Clés rangées',
+  ]],
+  ['essai-chk-3', 'Contrôle frigo', [
+    'Température relevée',
+    'Dates de péremption vérifiées',
+    'Joints nettoyés',
+    'Relevé consigné',
+  ]],
+  ['essai-chk-4', 'Réception livraison', [
+    'Bon de livraison vérifié',
+    'Quantités comptées',
+    'État des emballages',
+    'Chaîne du froid respectée',
+    'Réserves notées',
+  ]],
+];
+for (const [cle, title, items] of MODELES) {
+  await poser('checklists', cle, { title, items, createdAt: instant(-24 * 120) });
+}
+
+const coches = (total, conformes) => Array.from({ length: total }, (_, i) => i < conformes);
+const PASSAGES = [
+  ['essai-run-1', 'essai-chk-1', aujourdHui(8, 5, -1), 'lea@exemple.test', coches(6, 6)],
+  ['essai-run-2', 'essai-chk-1', aujourdHui(8, 31, -2), 'samir@exemple.test', coches(6, 4)],
+  ['essai-run-3', 'essai-chk-1', aujourdHui(7, 58, -3), 'lea@exemple.test', coches(6, 6)],
+  ['essai-run-4', 'essai-chk-2', aujourdHui(19, 40, -1), 'lea@exemple.test', coches(7, 7)],
+  ['essai-run-5', 'essai-chk-3', aujourdHui(9, 15, 0), 'samir@exemple.test', coches(4, 4)],
+];
+for (const [cle, checklistId, doneAt, byEmail, checked] of PASSAGES) {
+  await poser('checkRuns', cle, { checklistId, doneAt, byEmail, checked, note: '' });
+}
+
 /* ─── Matériel ─────────────────────────────────────────────────────────────── */
 
 /*
