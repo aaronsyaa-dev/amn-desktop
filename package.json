@@ -19,6 +19,7 @@
     "check:journal": "node scripts/check-journal.mjs",
     "check:justificatif": "node scripts/check-justificatif.mjs",
     "check:ecrans": "node scripts/check-ecrans.mjs",
+    "check:encres": "node scripts/check-encres.mjs",
     "typecheck:business": "tsc --noEmit -p tsconfig.business.json",
     "start:business": "cross-env AMN_EDITION=business npm run start",
     "package:business": "cross-env AMN_EDITION=business npm run package",
