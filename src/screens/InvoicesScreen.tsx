@@ -231,7 +231,16 @@ export function InvoicesScreen() {
         >
           <AlertTriangle size={15} strokeWidth={2} className="flex-shrink-0 text-warning" />
           <span className="min-w-0 flex-1 text-xs leading-tight text-text-primary">
-            <strong className="font-semibold">{tr('hist.invoices.coordonneesDeFacturationIncompletes')}</strong>{tr('hist.invoices.raisonSocialeAdresseEt')}</span>
+            {/*
+              L'espace entre les deux phrases est POSÉ, il ne peut pas venir du
+              JSX : deux expressions collées se rendent collées, et le bandeau
+              lisait « incomplètes.Raison sociale ». Repéré sur une capture de
+              revue, pas à la relecture du code — l'absence d'espace ne se voit
+              pas dans une ligne de 130 caractères.
+            */}
+            <strong className="font-semibold">{tr('hist.invoices.coordonneesDeFacturationIncompletes')}</strong>{' '}
+            {tr('hist.invoices.raisonSocialeAdresseEt')}
+          </span>
         </button>
       )}
 
