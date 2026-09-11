@@ -567,6 +567,26 @@ for (const [cle, title, startAt, durationMin, clientId, clientName, location, st
   });
 }
 
+/* ─── Routines ─────────────────────────────────────────────────────────────── */
+
+/*
+  Les cases cochées sont posées en JOURS RÉELS remontant depuis aujourd'hui :
+  c'est ce qui fait qu'une série vaut douze et une autre zéro, et donc que la
+  matrice montre autre chose qu'une grille uniforme. Deux routines sont
+  volontairement jamais faites — le trou doit se voir, c'est tout le propos.
+*/
+const joursCoches = (liste) => liste.map((n) => jour(-n));
+const ROUTINES = [
+  ['essai-rtn-1', 'Relever la caisse', joursCoches([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])],
+  ['essai-rtn-2', 'Sauvegarder les fichiers du jour', joursCoches([0, 1, 4, 6])],
+  ['essai-rtn-3', 'Relire la boîte de réception', joursCoches([0, 1, 2, 3, 5, 6])],
+  ['essai-rtn-4', 'Arroser l’atelier', joursCoches([5, 6])],
+  ['essai-rtn-5', 'Vérifier le frigo', joursCoches([2, 4, 6])],
+];
+for (const [cle, label, ticks] of ROUTINES) {
+  await poser('routines', cle, { label, ticks: [...ticks].sort(), createdAt: instant(-24 * 60) });
+}
+
 /* ─── Réunions ─────────────────────────────────────────────────────────────── */
 
 /*
