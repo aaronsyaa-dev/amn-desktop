@@ -567,6 +567,40 @@ for (const [cle, title, startAt, durationMin, clientId, clientName, location, st
   });
 }
 
+/* ─── Médias ───────────────────────────────────────────────────────────────── */
+
+/*
+  Quatre images, dont trois rattachées à la même cliente : c'est ce qui rend le
+  FILTRE ACTIF mesurable — l'unique ambre de l'écran Médias n'existe que
+  lorsqu'une cliente est choisie. La quatrième est sans cliente, pour que la
+  grille complète se distingue de la grille filtrée.
+
+  Les images sont des SVG écrits ici plutôt que des photos : elles occupent la
+  même place à l'écran sans peser dans un script de bac à sable.
+*/
+const vignette = (fond, trait) =>
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240"><rect width="240" height="240" fill="${fond}"/>` +
+      `<circle cx="120" cy="96" r="42" fill="${trait}" opacity="0.5"/>` +
+      `<rect x="36" y="156" width="168" height="10" fill="${trait}" opacity="0.35"/>` +
+      `<rect x="36" y="180" width="108" height="10" fill="${trait}" opacity="0.25"/></svg>`,
+  );
+const MEDIAS = [
+  ['essai-med-1', 'vitrine-ete-01.jpg', 102, '#2b2722', '#d0c4a8', -2],
+  ['essai-med-2', 'vitrine-ete-02.jpg', 102, '#242a2b', '#a8c6d0', -2],
+  ['essai-med-3', 'panneau-avant.png', 102, '#2a2426', '#d0a8b8', -21],
+  ['essai-med-4', 'croquis-devanture.jpg', null, '#26282a', '#b8b8c0', -34],
+];
+for (const [cle, name, clientId, fond, trait, dansJours] of MEDIAS) {
+  await poser('media', cle, {
+    name,
+    dataUrl: vignette(fond, trait),
+    clientId,
+    createdAt: instant(24 * dansJours),
+  });
+}
+
 /* ─── Automatisations ──────────────────────────────────────────────────────── */
 
 /*
