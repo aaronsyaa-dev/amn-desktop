@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Plus, Trash2 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FirstRun } from '../components/EmptyState';
+import { Refus } from '../components/messages/MessagesSysteme';
 import { useSync, useCollection, uid } from '../state/SyncContext';
 import { useAuth } from '../auth/AuthContext';
 import { staggerContainer, staggerItem } from '../lib/transitions';
@@ -21,6 +22,10 @@ interface BookingData {
   byEmail: string;
   createdAt: string;
 }
+/* La journée ouvrable dessinée par la grille d'occupation. Au-delà, une
+   réservation reste possible — elle n'est simplement pas sur la règle. */
+const HEURE_DEBUT = 8;
+const HEURE_FIN = 20;
 const localISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 export const chevauche = (aDebut: string, aFin: string, bDebut: string, bFin: string) => aDebut < bFin && bDebut < aFin;
 
@@ -46,7 +51,22 @@ export function EquipmentBookingScreen() {
   const [startAt, setStartAt] = useState(() => localISO(new Date(Math.ceil(Date.now() / 1_800_000) * 1_800_000)));
   const [endAt, setEndAt] = useState(() => localISO(new Date(Math.ceil(Date.now() / 1_800_000) * 1_800_000 + 3_600_000)));
   const [purpose, setPurpose] = useState('');
-  const [refus, setRefus] = useState<string | null>(null);
+  /*
+    LE REFUS N'EST PLUS UNE PHRASE GRISE, c'est un objet.
+
+    Il portait `string | null` et s'affichait en `text-warning` sous les champs.
+    Le paquet de design en fait une forme à part entière (`Refus`, bloc 3), et
+    ce module en est le MODÈLE — le composant a été écrit d'après cette maquette.
+    Il lui faut donc ce qu'il promet : ce qui bloque, qui le bloque, et des
+    sorties RÉELLES.
+  */
+  const [refus, setRefus] = useState<{
+    quoi: string;
+    parQui?: string;
+    /** L'identifiant de la réservation qui bloque — pour la teinter dans la grille. */
+    conflitId?: string;
+    libres: { debut: string; fin: string }[];
+  } | null>(null);
 
   const triees = useMemo(() => [...ressources].sort((a, b) => a.name.localeCompare(b.name)), [ressources]);
   const cible = resourceId || triees[0]?.id || '';
@@ -64,18 +84,69 @@ export function EquipmentBookingScreen() {
   const reserver = async () => {
     setRefus(null);
     if (!cible || !startAt || !endAt || endAt <= startAt) {
-      setRefus(t('materiel.creneauInvalide'));
+      setRefus({ quoi: t('materiel.creneauInvalide'), libres: [] });
       return;
     }
     const conflit = reservations.find((r) => r.resourceId === cible && chevauche(startAt, endAt, r.startAt, r.endAt));
     if (conflit) {
-      setRefus(t('materiel.conflit', { qui: conflit.byEmail.split('@')[0], quand: quand(conflit.startAt, conflit.endAt) }));
+      setRefus({
+        quoi: t('materiel.conflit', { qui: conflit.byEmail.split('@')[0], quand: quand(conflit.startAt, conflit.endAt) }),
+        parQui: t('materiel.rienEnregistre'),
+        conflitId: conflit.id,
+        libres: creneauxLibres(cible, startAt.slice(0, 10)),
+      });
       return;
     }
     await upsert('resourceBookings', uid('rsv'), { resourceId: cible, startAt, endAt, purpose: purpose.trim(), byEmail: user?.email ?? '', createdAt: new Date().toISOString() });
     setPurpose('');
   };
   const quand = (a: string, b: string) => `${new Date(a).toLocaleString(locale, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} → ${new Date(b).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}`;
+
+  /*
+    LES CRÉNEAUX LIBRES D'UNE RESSOURCE SUR UN JOUR — les sorties du refus.
+
+    Calculés, jamais suggérés : le composant `Refus` exige des chemins réels,
+    « jamais une suggestion inventée pour adoucir le non ». On prend la journée
+    ouvrable (8 h → 20 h), on en retire les réservations existantes, et ce qui
+    reste au-delà d'une demi-heure est proposable. Moins d'une demi-heure n'est
+    pas un créneau, c'est un interstice.
+  */
+  const creneauxLibres = (ressourceId: string, jourISO: string) => {
+    const bornes = (h: number) => `${jourISO}T${String(h).padStart(2, '0')}:00`;
+    const prises = reservations
+      .filter((r) => r.resourceId === ressourceId && r.startAt.slice(0, 10) === jourISO)
+      .sort((a, b) => a.startAt.localeCompare(b.startAt));
+    const libres: { debut: string; fin: string }[] = [];
+    let curseur = bornes(HEURE_DEBUT);
+    for (const prise of prises) {
+      if (prise.startAt > curseur) libres.push({ debut: curseur, fin: prise.startAt });
+      if (prise.endAt > curseur) curseur = prise.endAt;
+    }
+    if (curseur < bornes(HEURE_FIN)) libres.push({ debut: curseur, fin: bornes(HEURE_FIN) });
+    const demiHeure = 30 * 60_000;
+    return libres
+      .filter((c) => new Date(c.fin).getTime() - new Date(c.debut).getTime() >= demiHeure)
+      .slice(0, 2);
+  };
+
+  const heure = (iso: string) => new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  const dureeLibre = (c: { debut: string; fin: string }) => {
+    const min = Math.round((new Date(c.fin).getTime() - new Date(c.debut).getTime()) / 60_000);
+    return min % 60 === 0 ? `${min / 60} h` : `${Math.floor(min / 60)} h ${min % 60}`;
+  };
+
+  /** L'occupation du jour, ressource par ressource, bornée à la journée ouvrable. */
+  const jourISO = maintenant.slice(0, 10);
+  const occupation = useMemo(
+    () =>
+      triees.map((r) => ({
+        ressource: r,
+        prises: reservations
+          .filter((b) => b.resourceId === r.id && b.startAt.slice(0, 10) === jourISO)
+          .sort((a, b) => a.startAt.localeCompare(b.startAt)),
+      })),
+    [triees, reservations, jourISO],
+  );
   const champ = 'input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none';
 
   return (
@@ -125,11 +196,115 @@ export function EquipmentBookingScreen() {
                 <label className="flex flex-col gap-1 text-xs text-text-muted">{t('materiel.champDebut')}<input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={champ} /></label>
                 <label className="flex flex-col gap-1 text-xs text-text-muted">{t('materiel.champFin')}<input type="datetime-local" value={endAt} min={startAt} onChange={(e) => setEndAt(e.target.value)} className={champ} /></label>
                 <input value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder={t('materiel.champMotif')} aria-label={t('materiel.champMotif')} className={`${champ} sm:col-span-2`} />
-                {refus && <p role="alert" className="text-sm text-warning sm:col-span-2">{refus}</p>}
                 <div className="sm:col-span-2">
-                  <button type="submit" className="bg-accent px-4 py-2 text-sm font-semibold text-bg">{t('materiel.reserver')}</button>
+                  <button type="submit" className="min-h-11 w-full bg-accent px-4 text-[12.5px] font-semibold text-bg shadow-[0_12px_26px_-12px_rgba(0,0,0,.9)] transition-colors hover:bg-accent-hover">
+                    {t('materiel.reserver')}
+                  </button>
                 </div>
               </form>
+
+              {/*
+                LE REFUS, À L'ENDROIT DU GESTE — le composant partagé du bloc 3,
+                qui a justement été écrit d'après cette maquette. Ses `issues`
+                sont les créneaux libres RÉELS de la journée : cliquer l'un
+                d'eux remplit le formulaire, ce qui fait du refus un chemin et
+                non un mur.
+
+                C'est aussi l'AMBRE de l'écran — son filet, et le créneau qui
+                bloque dans la grille en dessous, groupés pour n'en faire qu'un.
+              */}
+              {refus && (
+                <div data-signal-groupe="creneau-pris">
+                  <Refus
+                    quoi={refus.quoi}
+                    parQui={refus.parQui}
+                    issues={refus.libres.map((c) => ({
+                      label: `${heure(c.debut)} → ${heure(c.fin)} · ${dureeLibre(c)} libres`,
+                      onClick: () => {
+                        setStartAt(c.debut);
+                        setEndAt(c.fin);
+                        setRefus(null);
+                      },
+                    }))}
+                  />
+                </div>
+              )}
+
+              {/*
+                L'OCCUPATION DU JOUR — une règle de 8 h à 20 h, une ligne par
+                ressource. La liste « à venir » disait QUAND chaque réservation
+                tombe ; elle ne disait pas ce qui est LIBRE, qui est la question
+                qu'on se pose en arrivant devant le tableau des clés.
+              */}
+              {occupation.length > 0 && (
+                <section>
+                  <div className="mb-2 flex items-center gap-4">
+                    <p className="eyebrow flex-shrink-0">{t('materiel.aujourdHuiCourt')}</p>
+                    <span className="h-px flex-1 bg-border-section" aria-hidden />
+                    <p className="eyebrow flex-shrink-0">{HEURE_DEBUT} h → {HEURE_FIN} h</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[620px] border border-border">
+                      {/* La règle des heures, une graduation toutes les deux heures. */}
+                      <div className="flex border-b border-border">
+                        <span className="eyebrow w-[160px] flex-shrink-0 px-3 py-2.5">{t('materiel.ressourceCourt')}</span>
+                        <span className="relative flex-1">
+                          {Array.from({ length: (HEURE_FIN - HEURE_DEBUT) / 2 }, (_, i) => (
+                            <span
+                              key={i}
+                              className="absolute top-2.5 font-mono text-[9.5px] tracking-[0.1em] text-text-muted"
+                              style={{ left: `${((i * 2) / (HEURE_FIN - HEURE_DEBUT)) * 100}%` }}
+                            >
+                              {String(HEURE_DEBUT + i * 2).padStart(2, '0')}
+                            </span>
+                          ))}
+                        </span>
+                      </div>
+                      {occupation.map(({ ressource, prises }) => (
+                        <div key={ressource.id} className="flex border-b border-[#161616] last:border-b-0">
+                          <span className="w-[160px] flex-shrink-0 px-3 py-4">
+                            <span className="block truncate text-[14px] text-text-primary">{ressource.name}</span>
+                            {ressource.kind && <span className="eyebrow mt-1 block truncate">{ressource.kind}</span>}
+                          </span>
+                          <span className="relative min-h-[52px] flex-1">
+                            {prises.length === 0 ? (
+                              <span className="eyebrow absolute left-3 top-1/2 -translate-y-1/2">
+                                {t('materiel.libreToutLeJour')}
+                              </span>
+                            ) : (
+                              prises.map((b) => {
+                                const bloque = b.id === refus?.conflitId;
+                                const part = (iso: string) => {
+                                  const d = new Date(iso);
+                                  const h = d.getHours() + d.getMinutes() / 60;
+                                  return Math.min(100, Math.max(0, ((h - HEURE_DEBUT) / (HEURE_FIN - HEURE_DEBUT)) * 100));
+                                };
+                                const gauche = part(b.startAt);
+                                return (
+                                  <span
+                                    key={b.id}
+                                    data-signal-groupe={bloque ? 'creneau-pris' : undefined}
+                                    title={`${b.byEmail.split('@')[0]} · ${quand(b.startAt, b.endAt)}${b.purpose ? ` · ${b.purpose}` : ''}`}
+                                    className={`absolute top-1/2 flex -translate-y-1/2 items-center overflow-hidden whitespace-nowrap px-2 py-1.5 font-mono text-[10px] ${
+                                      bloque ? 'signal-plate' : 'bg-raised text-text-secondary'
+                                    }`}
+                                    style={{
+                                      left: `${gauche}%`,
+                                      width: `${Math.max(6, part(b.endAt) - gauche)}%`,
+                                    }}
+                                  >
+                                    {b.byEmail.split('@')[0]} · {heure(b.startAt)}
+                                  </span>
+                                );
+                              })
+                            )}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+              )}
               {aVenir.length === 0 ? (
                 <p className="text-sm text-text-secondary">{t('materiel.aucune')}</p>
               ) : (

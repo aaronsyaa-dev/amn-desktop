@@ -567,6 +567,40 @@ for (const [cle, title, startAt, durationMin, clientId, clientName, location, st
   });
 }
 
+/* ─── Matériel ─────────────────────────────────────────────────────────────── */
+
+/*
+  Quatre ressources, dont une libre toute la journée — les deux états de la
+  grille d'occupation. Le créneau de la camionnette à 13 h 30 est celui que la
+  maquette refuse : réserver 14 h → 16 h dessus produit le refus, et donc
+  l'unique ambre de l'écran Matériel.
+*/
+const RESSOURCES = [
+  ['essai-res-1', 'Camionnette', 'Véhicule'],
+  ['essai-res-2', 'Salle du fond', 'Salle'],
+  ['essai-res-3', 'Vidéoprojecteur', 'Matériel'],
+  ['essai-res-4', 'Presse à chaud', 'Machine'],
+];
+for (const [cle, name, kind] of RESSOURCES) {
+  await poser('resources', cle, { name, kind, createdAt: instant(-24 * 90) });
+}
+
+/* Les créneaux sont en heure LOCALE sans fuseau (`AAAA-MM-JJTHH:MM`) : c'est
+   le format que l'écran compare en chaînes, et un ISO complet en Z ne s'y
+   ordonnerait pas de la même façon. */
+const creneau = (h, m, h2, m2) =>
+  [`${jour(0)}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
+   `${jour(0)}T${String(h2).padStart(2, '0')}:${String(m2).padStart(2, '0')}`];
+const RESERVATIONS = [
+  ['essai-rsv-1', 'essai-res-1', ...creneau(9, 0, 11, 30), 'Livraison Atelier Vermeil', 'samir@exemple.test'],
+  ['essai-rsv-2', 'essai-res-1', ...creneau(13, 30, 15, 0), 'Tournée de l’après-midi', 'samir@exemple.test'],
+  ['essai-rsv-3', 'essai-res-2', ...creneau(15, 0, 16, 0), 'Point de production', 'clara@exemple.test'],
+  ['essai-rsv-4', 'essai-res-3', ...creneau(11, 0, 12, 30), 'Présentation cliente', 'lea@exemple.test'],
+];
+for (const [cle, resourceId, startAt, endAt, purpose, byEmail] of RESERVATIONS) {
+  await poser('resourceBookings', cle, { resourceId, startAt, endAt, purpose, byEmail, createdAt: instant(-48) });
+}
+
 /* ─── Tournées ─────────────────────────────────────────────────────────────── */
 
 /*

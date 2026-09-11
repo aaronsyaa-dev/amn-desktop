@@ -72,6 +72,33 @@ try {
       porte un sélecteur à cliquer une fois la page posée, pour qu'on puisse
       mesurer ce qui n'a pas d'URL à soi.
     */
+    /*
+      Certains états ne s'atteignent qu'en SE SERVANT de l'écran : le refus de
+      créneau du module Matériel n'existe qu'après avoir demandé un créneau
+      déjà pris. `AMN_CAPTURE_SCENARIO` porte un bout de script exécuté dans la
+      page — le seul moyen de mesurer un état qui est une RÉPONSE, pas une vue.
+
+      Les champs sont remplis par le setter natif plutôt que par `value = …` :
+      React garde sa propre copie de la valeur et ignore une écriture directe,
+      donc le formulaire aurait affiché la bonne heure et envoyé l'ancienne.
+    */
+    if (process.env.AMN_CAPTURE_SCENARIO) {
+      await page.evaluate((code) => {
+        const poser = (el, valeur) => {
+          const setter = Object.getOwnPropertyDescriptor(
+            el instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype,
+            'value',
+          ).set;
+          setter.call(el, valeur);
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+        // eslint-disable-next-line no-new-func
+        new Function('poser', code)(poser);
+      }, process.env.AMN_CAPTURE_SCENARIO);
+      await page.waitForTimeout(1400);
+    }
+
     if (process.env.AMN_CAPTURE_CLIC) {
       await page.locator(process.env.AMN_CAPTURE_CLIC).first().click({ timeout: 5000 }).catch(() => undefined);
       await page.waitForTimeout(1400);
