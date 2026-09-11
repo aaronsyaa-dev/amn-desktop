@@ -567,6 +567,37 @@ for (const [cle, title, startAt, durationMin, clientId, clientName, location, st
   });
 }
 
+/* ─── Temps ────────────────────────────────────────────────────────────────── */
+
+/*
+  UNE PÉRIODE EN COURS, et c'est elle qui porte l'unique ambre de l'écran Temps
+  (« 00:14:07 », la seule exception écrite de la règle de la plaque). Elle est
+  démarrée quatorze minutes avant maintenant : le compteur affiche donc un
+  chiffre plausible dès l'ouverture, sans dépendre de l'heure du semis.
+
+  Les autres sont réparties sur la semaine, une déjà facturée, pour que
+  « dont N déjà facturées » et « à facturer » disent chacun quelque chose.
+*/
+const minutesAvant = (n) => new Date(Date.now() - n * 60_000).toISOString();
+const TEMPS = [
+  ['essai-tps-1', 'Maquettes des gabarits', 'essai-prj-1', minutesAvant(14), '', ''],
+  ['essai-tps-2', 'Retouches vitrine', 'essai-prj-3', minutesAvant(700), minutesAvant(549), instant(-20)],
+  ['essai-tps-3', 'Cadrage Brasserie du Port', 'essai-prj-1', minutesAvant(1980), minutesAvant(1740), ''],
+  ['essai-tps-4', 'Intégration des gabarits', 'essai-prj-1', minutesAvant(1670), minutesAvant(1450), ''],
+  ['essai-tps-5', 'Sélection des visuels', 'essai-prj-2', minutesAvant(3100), minutesAvant(2950), ''],
+  ['essai-tps-6', 'Appel client', 'essai-prj-3', minutesAvant(4400), minutesAvant(4340), ''],
+];
+for (const [cle, label, projectId, startedAt, endedAt, invoicedAt] of TEMPS) {
+  await poser('timeEntries', cle, {
+    label,
+    projectId,
+    startedAt,
+    endedAt,
+    invoicedAt,
+    createdAt: startedAt,
+  });
+}
+
 /* ─── Routines ─────────────────────────────────────────────────────────────── */
 
 /*
