@@ -307,6 +307,55 @@ await poser('invoices', 'essai-fac-3', {
   quoteId: null,
 });
 
+/* ─── Commandes ────────────────────────────────────────────────────────────── */
+
+/*
+  Les commandes n'arrivent normalement PAS d'ici : elles viennent du site
+  public, par la clé de réception (voir docs/COMMANDES.md dans amn-api). On les
+  écrit quand même dans le bac à sable, parce qu'un écran qui n'existe qu'avec
+  des commandes ne se mesure pas sans commandes.
+
+  Une par état de la chaîne, plus deux nouvelles en attente : c'est ce qui donne
+  au premier maillon quelque chose à traiter, donc à l'écran son unique ambre.
+*/
+const COMMANDES = [
+  ['essai-cmd-1', '#1841', 'new', -2, 'Camille Renaud', [['Bouquet de saison', 2, 45]]],
+  ['essai-cmd-2', '#1840', 'new', -9, 'Hugo Marchand', [['Jardinière garnie', 1, 95]]],
+  ['essai-cmd-3', '#1839', 'new', -28, 'Nadia Bouvier', [['Composition de table', 4, 45]]],
+  ['essai-cmd-4', '#1837', 'confirmed', -50, 'Camille Renaud', [['Abonnement hebdomadaire', 4, 45]]],
+  ['essai-cmd-5', '#1834', 'preparing', -74, 'Hugo Marchand', [['Jardinière garnie', 3, 95], ['Pose', 1, 120]]],
+  ['essai-cmd-6', '#1828', 'shipped', -98, 'Nadia Bouvier', [['Boutonnières', 6, 18]]],
+  ['essai-cmd-7', '#1826', 'delivered', -146, 'Camille Renaud', [['Bouquet de saison', 8, 45]]],
+  ['essai-cmd-8', '#1822', 'cancelled', -170, 'Hugo Marchand', [['Arche florale', 1, 420]]],
+];
+for (const [cle, reference, status, dansHeures, nom, articles] of COMMANDES) {
+  const lignes = articles.map(([label, quantity, euros], i) => ({
+    label,
+    sku: `SKU-${String(i + 1).padStart(3, '0')}`,
+    quantity,
+    unitPriceCents: Math.round(euros * 100),
+    vatRate: 20,
+  }));
+  await poser('orders', cle, {
+    reference,
+    placedAt: instant(dansHeures),
+    status,
+    source: 'site',
+    customer: {
+      name: nom,
+      email: `${nom.split(' ')[0].toLowerCase()}@exemple.test`,
+      phone: '',
+      address: '34000 Montpellier',
+    },
+    lines: lignes,
+    note: '',
+    paidCents: 0,
+    totalCents: lignes.reduce((t, l) => t + Math.round(l.quantity * l.unitPriceCents * 1.2), 0),
+    invoiceId: null,
+    updatedAt: instant(dansHeures),
+  });
+}
+
 /* ─── Projets ──────────────────────────────────────────────────────────────── */
 
 /*
