@@ -89,7 +89,11 @@ const ECRANS = [
   ['Pages', '#/pages'],
   ['Rapports', '#/reports'],
   ['Médias', '#/media'],
-  ['Automatisations', '#/automations'],
+  /* `/outils/automatisations`, et non `/automations` : l'ancienne adresse
+     n'existe dans aucune des deux éditions, et le routeur repliait donc sur
+     l'accueil — cette ligne mesurait l'Accueil une seconde fois, et rendait un
+     vert qui ne parlait pas d'Automatisations. */
+  ['Automatisations', '#/outils/automatisations'],
   ['Avant la paie', '#/personnel/budget'],
   ['Tâches', '#/tasks'],
   ['Objectifs & résultats', '#/objectifs-resultats'],

@@ -567,6 +567,24 @@ for (const [cle, title, startAt, durationMin, clientId, clientName, location, st
   });
 }
 
+/* ─── Automatisations ──────────────────────────────────────────────────────── */
+
+/*
+  Une règle SUSPENDUE sur les factures échues : c'est la seule configuration qui
+  produit l'ambre de l'écran Automatisations (« N en attente »). Une règle
+  active n'attend rien — le moteur écrit dès qu'un poste est ouvert. Les autres
+  sont actives, pour que les deux états de la phrase se voient.
+*/
+const REGLES = [
+  ['essai-aut-1', 'invoiceOverdue', 'task', false, 'design@exemple.test'],
+  ['essai-aut-2', 'formAnswer', 'task', true, ''],
+  ['essai-aut-3', 'stockLow', 'logbook', true, ''],
+  ['essai-aut-4', 'prospectWon', 'task', false, ''],
+];
+for (const [cle, trigger, action, enabled, assigneeEmail] of REGLES) {
+  await poser('automations', cle, { trigger, action, enabled, assigneeEmail, createdAt: instant(-24 * 45) });
+}
+
 /* ─── Contrôles qualité ────────────────────────────────────────────────────── */
 
 /*
