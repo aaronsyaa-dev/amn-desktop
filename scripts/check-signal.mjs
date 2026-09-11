@@ -143,7 +143,27 @@ try {
       }
       // Un descendant d'un objet déjà compté n'est pas un deuxième objet.
       const racines = marques.filter((el) => !marques.some((autre) => autre !== el && autre.contains(el)));
-      return racines.map((el) => {
+      /*
+        UN SIGNAL PEUT S'ÉCRIRE EN DEUX ENDROITS — et reste un signal.
+
+        Cas réel, prévu par le paquet de design lui-même : sur Facturation, le
+        montant en retard et le segment de barre qui le représente disent LA
+        MÊME CHOSE, à deux endroits de la même bande. La table des écrans les
+        nomme d'ailleurs d'un seul terme (« le segment en retard »), et le
+        montant est l'une des deux exceptions écrites de la règle 2.
+        `data-signal-groupe` rend cette parenté explicite dans le code plutôt
+        que de la laisser à l'appréciation de qui relit. Deux groupes
+        différents sur un écran restent deux fautes.
+      */
+      const vus = new Set();
+      const uniques = racines.filter((el) => {
+        const groupe = el.getAttribute('data-signal-groupe') ?? el.closest('[data-signal-groupe]')?.getAttribute('data-signal-groupe');
+        if (!groupe) return true;
+        if (vus.has(groupe)) return false;
+        vus.add(groupe);
+        return true;
+      });
+      return uniques.map((el) => {
         const t = (el.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 48);
         return `${el.tagName.toLowerCase()}${t ? ` « ${t} »` : ''}`;
       });

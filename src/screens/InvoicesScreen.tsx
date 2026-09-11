@@ -251,6 +251,20 @@ export function InvoicesScreen() {
         </div>
       )}
 
+      {/*
+        LA RÉPARTITION DE L'ANNÉE — l'objet dominant de cet écran (4a).
+
+        L'en-tête portait déjà les trois montants en relevés, et c'était juste :
+        ils disent ce que l'écran vaut maintenant. Mais trois nombres alignés ne
+        disent pas leur PROPORTION — or c'est toute la question qu'on pose à
+        Facturation : « est-ce que ça rentre ? ». La barre de masses répond d'un
+        regard, et le seul ambre de l'écran marque le segment en retard, parce
+        que c'est le seul des trois qui demande un geste.
+      */}
+      {invoices.length > 0 && !selected && (
+        <MassesDeLAnnee summary={summary} invoices={invoices} today={today} onOuvrir={setSelectedId} />
+      )}
+
       <div className="flex flex-shrink-0 gap-1.5 overflow-x-auto pb-0.5">
         {FILTERS.map((f) => (
           <button
@@ -390,6 +404,152 @@ export function InvoicesScreen() {
 }
 
 /* ----------------------------------------------------------------- résumé -- */
+
+/**
+ * LES MASSES DE L'ANNÉE — encaissé, en attente, en retard, et leur proportion.
+ *
+ * Trois montants, une barre, et deux cartes pour les factures dépassées. Ce
+ * n'est pas un tableau de bord : c'est la réponse à la seule question qu'on
+ * pose en ouvrant Facturation — « est-ce que ça rentre, et qu'est-ce qui
+ * coince ». Tout est calculé sur les factures affichées, jamais figé.
+ *
+ * L'UNIQUE AMBRE : le segment en retard, et le montant qui lui correspond. Un
+ * montant en retard est un chiffre à l'échelle d'un titre, donc l'exception de
+ * la règle 2 du jeton s'applique — il tient le contraste (8,11:1 sur le fond).
+ * L'encaissé, lui, va bien : il reste en encre claire.
+ */
+function MassesDeLAnnee({
+  summary,
+  invoices,
+  today,
+  onOuvrir,
+}: {
+  summary: { collectedCents: number; outstandingCents: number; overdueCents: number; overdueCount: number; year: string };
+  invoices: Invoice[];
+  today: string;
+  onOuvrir: (id: string) => void;
+}) {
+  const total = summary.collectedCents + summary.outstandingCents;
+  /* Les parts. Sans rien encaissé ni rien en attente, la barre se tait plutôt
+     que d'afficher trois zéros qui se disputent cent pour cent. */
+  const partEncaisse = total > 0 ? Math.round((summary.collectedCents / total) * 100) : 0;
+  const partRetard = total > 0 ? Math.round((summary.overdueCents / total) * 100) : 0;
+  const partAttente = Math.max(0, 100 - partEncaisse - partRetard);
+
+  /* Les dépassées, la plus ancienne d'abord : c'est celle qui coûte le plus. */
+  const enRetard = useMemo(
+    () =>
+      invoices
+        .filter((inv) => isOverdue(inv, today, invoices))
+        .sort((a, b) => (a.dueAt ?? '').localeCompare(b.dueAt ?? ''))
+        .slice(0, 2),
+    [invoices, today],
+  );
+  const brouillons = useMemo(() => invoices.filter((inv) => inv.status === 'draft'), [invoices]);
+  const joursDepuis = (jour: string) =>
+    Math.round((new Date(`${today}T00:00:00`).getTime() - new Date(`${jour}T00:00:00`).getTime()) / 86_400_000);
+
+  return (
+    <section className="flex flex-shrink-0 flex-col gap-4">
+      <div className="flex flex-wrap items-end gap-x-10 gap-y-4">
+        <div>
+          <p className="eyebrow mb-2">{tr('hist.invoices.encaisse')}</p>
+          <p className="tnum font-mono text-[40px] font-bold leading-none tracking-[-0.04em] text-text-primary">
+            {formatCents(summary.collectedCents)}
+          </p>
+        </div>
+        <div className="border-l border-border-section pl-10">
+          <p className="eyebrow mb-2">{tr('hist.invoices.enAttente')}</p>
+          <p className="tnum font-mono text-[27px] font-semibold leading-none tracking-[-0.03em] text-text-secondary">
+            {formatCents(summary.outstandingCents)}
+          </p>
+        </div>
+        {summary.overdueCents > 0 && (
+          <div className="border-l border-signal-line pl-10" data-signal-groupe="retard">
+            <p className="eyebrow mb-2 text-signal">
+              {tr('hist.invoices.enRetardN', { n: summary.overdueCount })}
+            </p>
+            <p className="tnum font-mono text-[27px] font-semibold leading-none tracking-[-0.03em] text-signal">
+              {formatCents(summary.overdueCents)}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {total > 0 && (
+        <div>
+          <div className="flex h-2.5 w-full overflow-hidden" aria-hidden>
+            <span className="bg-[#4a4a48]" style={{ width: `${partEncaisse}%` }} />
+            <span className="bg-[#2b2b2b]" style={{ width: `${partAttente}%` }} />
+            {partRetard > 0 && (
+              <span className="bg-signal" style={{ width: `${partRetard}%` }} data-signal-groupe="retard" />
+            )}
+          </div>
+          <div className="mt-1.5 flex justify-between font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
+            <span>{tr('hist.invoices.pourcentEncaisse', { n: partEncaisse })}</span>
+            <span className="flex gap-4">
+              <span>{partAttente} %</span>
+              {partRetard > 0 && <span>{partRetard} %</span>}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Les dépassées : nommées, chiffrées, avec le geste qui les referme. */}
+      {enRetard.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {enRetard.map((inv) => (
+            <div key={inv.id} className="panel-raised flex flex-col gap-3 p-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="tnum font-mono text-[12.5px] text-text-secondary">{inv.number || '—'}</span>
+                <span className="eyebrow text-text-secondary">
+                  {tr('hist.invoices.echeanceDepuis', {
+                    date: inv.dueAt ? formatShortDay(inv.dueAt) : '—',
+                    n: inv.dueAt ? joursDepuis(inv.dueAt) : 0,
+                  })}
+                </span>
+              </div>
+              <p className="truncate text-[18px] font-semibold text-text-primary">
+                {inv.billTo?.name || tr('hist.invoices.clientSansNom')}
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="tnum mr-auto font-mono text-[23px] font-semibold tracking-[-0.03em] text-text-primary">
+                  {formatCents(netDueCents(inv, invoices))}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onOuvrir(inv.id)}
+                  className="min-h-11 border border-border-strong px-3 py-2 text-[12.5px] font-semibold text-text-primary transition-colors hover:bg-surface-hover md:min-h-0"
+                >
+                  {tr('hist.invoices.ouvrirLaFacture')}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* La bande des brouillons : ce qui n'existe pas encore pour le client. */}
+      {brouillons.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border border-border bg-sunken px-4 py-3">
+          <p className="eyebrow">{tr('hist.invoices.nBrouillons', { n: brouillons.length })}</p>
+          {brouillons.slice(0, 3).map((inv) => (
+            <button
+              key={inv.id}
+              type="button"
+              onClick={() => onOuvrir(inv.id)}
+              className="min-h-11 text-left text-[13px] text-text-secondary transition-colors hover:text-text-primary md:min-h-0"
+            >
+              {inv.billTo?.name || tr('hist.invoices.clientSansNom')}
+              <span className="tnum font-mono text-text-muted"> · {formatCents(invoiceTotals(inv).grossCents)}</span>
+            </button>
+          ))}
+          <p className="ml-auto text-[12.5px] text-text-muted">{tr('hist.invoices.brouillonSansNumero')}</p>
+        </div>
+      )}
+    </section>
+  );
+}
 
 function InvoiceRow({
   invoice,
