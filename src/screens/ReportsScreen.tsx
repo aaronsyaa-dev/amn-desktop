@@ -428,7 +428,7 @@ function ReportReader({
         {report.links.length > 0 && (
           <div className="border-b border-border bg-sunken px-6 py-4">
             <div className="mb-3 flex items-center gap-4">
-              <p className="eyebrow flex-shrink-0 text-signal" data-signal-groupe="provenance">
+              <p className="eyebrow eyebrow-signal flex-shrink-0" data-signal-groupe="provenance">
                 {tr('hist.reports.tireDe')}
               </p>
               <span className="h-px flex-1 bg-border-section" aria-hidden />

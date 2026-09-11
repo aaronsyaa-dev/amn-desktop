@@ -601,6 +601,96 @@ for (const [cle, name, clientId, fond, trait, dansJours] of MEDIAS) {
   });
 }
 
+/* ─── Pages ────────────────────────────────────────────────────────────────── */
+
+/*
+  Quatre pages, dont une en LECTURE SEULE : c'est ce qui rend le rail lisible
+  autrement que par le nombre de blocs. Une page qu'on ne peut pas modifier ne
+  se distingue d'une autre par aucun contenu — seul son statut la distingue,
+  donc le statut doit être écrit.
+
+  La première porte les trois types de blocs que la maquette montre — texte,
+  liste à cocher, tableau — parce qu'un écran de blocs dont tous les blocs sont
+  du texte ne prouve rien de la pile.
+*/
+const PAGES = [
+  [
+    'essai-page-1',
+    'Accueil d’un nouveau client',
+    ['owner', 'admin'],
+    [
+      {
+        id: 'essai-blc-1',
+        type: 'text',
+        text:
+          'Le premier échange décide de tout le reste. On appelle dans les 24 h, on écoute plus qu’on ne présente, et on repart avec une date.',
+      },
+      {
+        id: 'essai-blc-2',
+        type: 'checklist',
+        items: [
+          { id: 'essai-cch-1', text: 'Créer la fiche client', done: true },
+          { id: 'essai-cch-2', text: 'Envoyer le devis sous 48 h', done: true },
+          { id: 'essai-cch-3', text: 'Poser le rendez-vous de cadrage', done: false },
+        ],
+      },
+      {
+        id: 'essai-blc-3',
+        type: 'table',
+        columns: ['Étape', 'Délai'],
+        rows: [
+          ['Appel de découverte', '24 h'],
+          ['Devis', '48 h'],
+        ],
+      },
+    ],
+  ],
+  [
+    'essai-page-2',
+    'Procédure d’ouverture',
+    ['owner', 'admin'],
+    [
+      { id: 'essai-blc-4', type: 'text', text: 'Ouvrir à 8 h 30. Rideau, caisse, lumières de vitrine.' },
+      {
+        id: 'essai-blc-5',
+        type: 'checklist',
+        items: [
+          { id: 'essai-cch-4', text: 'Relever la caisse de la veille', done: false },
+          { id: 'essai-cch-5', text: 'Allumer la vitrine', done: false },
+        ],
+      },
+    ],
+  ],
+  [
+    'essai-page-3',
+    'Tarifs et remises',
+    /* Personne d'autre que la propriétaire : c'est la page en lecture seule du
+       rail, et celle qui donne son sens à la mention « lecture seule ». */
+    ['owner'],
+    [{ id: 'essai-blc-6', type: 'text', text: 'Remise maximale : 15 %. Au-delà, l’accord se demande.' }],
+  ],
+  [
+    'essai-page-4',
+    'Contacts fournisseurs',
+    ['owner', 'admin', 'member'],
+    [
+      {
+        id: 'essai-blc-7',
+        type: 'table',
+        columns: ['Fournisseur', 'Contact', 'Délai'],
+        rows: [
+          ['Papeterie Vasseur', '01 45 22 08 17', '5 j'],
+          ['Tissus du Nord', 'contact@exemple.test', '10 j'],
+          ['Impression Leroux', '01 45 90 33 02', '3 j'],
+        ],
+      },
+    ],
+  ],
+];
+for (const [cle, title, editorRoles, blocks] of PAGES) {
+  await poser('pages', cle, { title, editorRoles, blocks, updatedAt: instant(-24 * 3) });
+}
+
 /* ─── Automatisations ──────────────────────────────────────────────────────── */
 
 /*

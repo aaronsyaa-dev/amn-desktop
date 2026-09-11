@@ -67,12 +67,35 @@ import { useLangue, t as tr } from '../i18n';
  */
 
 const TYPES: { type: PageBlock['type']; label: string; icon: typeof Type }[] = [
-  { type: 'text', label: 'Texte', icon: Type },
+  { type: 'text', label: tr('hist.pages.texte'), icon: Type },
   { type: 'checklist', label: tr('hist.pages.listeACocher'), icon: ListChecks },
-  { type: 'table', label: 'Tableau', icon: TableIcon },
-  { type: 'image', label: 'Image', icon: ImageIcon },
+  { type: 'table', label: tr('hist.pages.tableau'), icon: TableIcon },
+  { type: 'image', label: tr('hist.pages.image'), icon: ImageIcon },
   { type: 'video', label: tr('hist.pages.video'), icon: Video },
 ];
+
+/*
+  LE NOM DU TYPE, DANS LA GOUTTIÈRE DU BLOC.
+
+  Un bloc rempli ne dit plus ce qu'il est : trois lignes de texte et un tableau
+  à une colonne se ressemblent une fois écrits. Le type était visible à la
+  seconde où on l'ajoutait, et invisible ensuite — alors que c'est lui qui dit
+  ce qu'on peut faire du bloc (cocher, ordonner, ajouter une colonne).
+*/
+const nomDuType = (type: PageBlock['type']) => TYPES.find((t) => t.type === type)?.label ?? type;
+
+/*
+  Le sous-titre d'une entrée du rail. Le nombre de blocs dit le POIDS de la
+  page — c'est la seule mesure qu'on ait avant de l'ouvrir. « Lecture seule »
+  passe devant : un accès refusé change ce qu'on va faire de la page, un
+  nombre de blocs non.
+*/
+function sousTitreDeLaPage(nbBlocs: number, modifiable: boolean): string {
+  if (!modifiable) return tr('hist.pages.lectureSeule');
+  if (nbBlocs === 0) return tr('hist.pages.aucunBloc');
+  if (nbBlocs === 1) return tr('hist.pages.unBloc');
+  return tr('hist.pages.nBlocs', { n: nbBlocs });
+}
 
 const ROLES: { role: PageEditorRole; label: string }[] = [
   { role: 'owner', label: tr('hist.pages.proprietaire') },
@@ -140,7 +163,11 @@ export function PagesScreen({ scope, title, description }: {
             description ??
             tr('hist.pages.description')
           }
-          stats={[{ label: 'Pages', value: pages.length }]}
+          /*
+            Le nombre de pages n'est plus un relevé d'en-tête : il est écrit en
+            tête du rail, juste au-dessus de la liste qu'il compte. Le répéter
+            ici en ferait deux chiffres à rapprocher pour la même mesure.
+          */
           actions={
             <button
               type="button"
@@ -152,79 +179,137 @@ export function PagesScreen({ scope, title, description }: {
         />
       </StaggerItem>
 
-      <AnimatePresence initial={false}>
-        {creation && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="panel p-4">
-              <p className="eyebrow">{tr('hist.pages.partirDUnGabarit')}</p>
-              <p className="mt-1 text-xs text-text-secondary">{tr('hist.pages.unPointDeDepart')}</p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {templatesForScope(scope).map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => creer(t.id)}
-                    className="flex flex-col items-start gap-1 border border-border bg-surface px-3 py-2.5 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
-                  >
-                    <span className="text-sm text-text-primary">{t.label}</span>
-                    <span className="text-xs text-text-muted">{t.description}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <StaggerItem>
-        <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
-          {/* ------------------------------------------------ la liste ---- */}
-          <div className="panel flex flex-col gap-1 p-2">
-            {!ready && <p className="px-2 py-3 text-xs text-text-muted">Chargement…</p>}
-            {ready && pages.length === 0 && (
-              <p className="px-2 py-3 text-xs text-text-muted">{tr('hist.pages.aucunePagePourL')}</p>
-            )}
-            {pages.map((p) => (
+        <div className="grid gap-4 lg:grid-cols-[268px_1fr]">
+          {/* ------------------------------------------------- le rail ---- */}
+          <div className="panel flex flex-col self-start">
+            {/*
+              LE RAIL SE COMPTE LUI-MÊME.
+
+              Une pile de pages sans nombre oblige à compter des lignes pour
+              savoir si on les a toutes sous les yeux ou si la liste défile.
+            */}
+            <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+              <p className="eyebrow">
+                {pages.length} {pages.length === 1 ? 'page' : 'pages'}
+              </p>
               <button
-                key={p.id}
                 type="button"
-                onClick={() => setOuverte(p.id)}
-                className={`flex min-h-11 items-center gap-2.5 rounded px-2.5 text-left text-sm transition-colors ${
-                  p.id === ouverte
-                    ? 'bg-accent-muted text-text-primary'
-                    : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
-                }`}
+                onClick={() => setCreation((v) => !v)}
+                aria-label={tr('hist.pages.nouvellePageCourt')}
+                title={tr('hist.pages.nouvellePageCourt')}
+                className="flex h-7 w-7 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
               >
-                <span className="flex-shrink-0">{p.data.icon ?? <FileText size={15} />}</span>
-                <span className="min-w-0 flex-1 truncate">{p.data.title}</span>
-                {!canEditPage(role, p.data) && (
-                  <Lock size={11} className="flex-shrink-0 text-text-muted" aria-label="Lecture seule" />
-                )}
+                <Plus size={14} strokeWidth={2} />
               </button>
-            ))}
+            </div>
+
+            <div className="flex flex-col p-1.5">
+              {!ready && <p className="px-2 py-3 text-xs text-text-muted">Chargement…</p>}
+              {ready && pages.length === 0 && (
+                <p className="px-2 py-3 text-xs text-text-muted">{tr('hist.pages.aucunePagePourL')}</p>
+              )}
+              {pages.map((p) => {
+                const editable = canEditPage(role, p.data);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setOuverte(p.id)}
+                    /*
+                      Un filet à gauche plutôt qu'un fond plein sur la page
+                      ouverte : le rail est une marge, pas une liste de
+                      boutons, et un bloc de couleur y pèse plus que le
+                      document qu'il désigne.
+                    */
+                    className={`flex min-h-12 items-start gap-2.5 border-l-2 px-2.5 py-2 text-left transition-colors ${
+                      p.id === ouverte
+                        ? 'border-l-text-primary bg-surface-hover'
+                        : 'border-l-transparent hover:bg-surface-hover'
+                    }`}
+                  >
+                    <span className="mt-0.5 flex-shrink-0 text-text-muted">
+                      {p.data.icon ?? (editable ? <FileText size={14} /> : <Lock size={13} />)}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={`block text-sm leading-snug ${
+                          p.id === ouverte ? 'text-text-primary' : 'text-text-secondary'
+                        }`}
+                      >
+                        {p.data.title}
+                      </span>
+                      <span className="mt-0.5 block font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                        {sousTitreDeLaPage(p.data.blocks.length, editable)}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/*
+              LES GABARITS VIVENT DANS LE RAIL.
+
+              Ils ouvraient un panneau en pleine largeur au-dessus de l'écran,
+              qui poussait la page en cours de lecture vers le bas. Or choisir
+              un gabarit, c'est choisir une NOUVELLE ENTRÉE du rail : le choix
+              appartient à l'endroit où le résultat apparaîtra.
+            */}
+            <AnimatePresence initial={false}>
+              {creation && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="m-1.5 border border-dashed border-border p-3">
+                    <p className="eyebrow">{tr('hist.pages.partirDUnGabarit')}</p>
+                    <p className="mt-1 text-xs text-text-secondary">{tr('hist.pages.unPointDeDepart')}</p>
+                    <div className="mt-2.5 flex flex-col gap-1.5">
+                      {templatesForScope(scope).map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => creer(t.id)}
+                          className="flex flex-col items-start gap-0.5 border border-border bg-surface px-2.5 py-2 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
+                        >
+                          <span className="text-sm text-text-primary">{t.label}</span>
+                          <span className="text-xs text-text-muted">{t.description}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          {/* ----------------------------------------------- l'éditeur ---- */}
-          <div className="panel min-h-[300px] p-4">
+          {/* -------------------------------------------- le document ---- */}
+          <div className="panel-sheet min-h-[300px] p-5 sm:p-7">
             {!courante ? (
               <p className="text-sm text-text-muted">{tr('hist.pages.choisissezUnePageA')}</p>
             ) : (
               <>
-                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-3">
-                  <input
-                    value={courante.data.title}
-                    disabled={!modifiable}
-                    onChange={(e) =>
-                      enregistrer(courante.id, { ...courante.data, title: e.target.value })
-                    }
-                    className="min-w-0 flex-1 bg-transparent text-lg font-semibold text-text-primary outline-none disabled:cursor-default"
-                    aria-label={tr('hist.pages.titreDeLaPage')}
-                  />
+                {/*
+                  LE STATUT D'ÉCRITURE, EN TÊTE ET UNE SEULE FOIS.
+
+                  « Lecture seule » n'apparaissait qu'en bandeau d'excuse APRÈS
+                  le titre, et seulement quand l'accès était refusé. Le cas
+                  inverse — j'ai le droit d'écrire ici — n'était écrit nulle
+                  part : on le découvrait en essayant.
+                */}
+                <div className="flex flex-wrap items-center gap-2.5 pb-3">
+                  <span className="border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+                    {modifiable ? tr('hist.pages.vousEtesProprietaire') : tr('hist.pages.lectureSeule')}
+                  </span>
+                  {modifiable && (
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                      {tr('hist.pages.toutLeMondeLitCourt')}
+                    </span>
+                  )}
+                  <span className="flex-1" />
                   {modifiable && (
                     <ConfirmDelete
                       onConfirm={() => void remove('pages', courante.id)}
@@ -233,13 +318,33 @@ export function PagesScreen({ scope, title, description }: {
                   )}
                 </div>
 
+                {/*
+                  Le titre est celui d'un DOCUMENT, pas l'étiquette d'un
+                  panneau : il était à 18 px, plus petit que le titre d'écran
+                  qui le surplombait, alors que c'est lui qu'on est venu lire.
+                */}
+                <input
+                  value={courante.data.title}
+                  disabled={!modifiable}
+                  onChange={(e) =>
+                    enregistrer(courante.id, { ...courante.data, title: e.target.value })
+                  }
+                  className="w-full border-b border-border bg-transparent pb-4 text-[27px] font-bold leading-tight tracking-[-0.02em] text-text-primary outline-none disabled:cursor-default sm:text-[32px]"
+                  aria-label={tr('hist.pages.titreDeLaPage')}
+                />
+
+                {/*
+                  La phrase longue reste, mais sous le titre et sans plaque :
+                  l'ÉTAT est déjà dit par le jeton en tête, celle-ci n'en donne
+                  plus que la RAISON — et une raison ne se crie pas.
+                */}
                 {!modifiable && (
-                  <p className="mt-3 flex items-center gap-2 border border-border bg-surface px-3 py-2 text-xs text-text-secondary">
-                    <Lock size={12} className="flex-shrink-0" />{tr('hist.pages.lectureSeuleVotreRole')}</p>
+                  <p className="mt-3 flex items-start gap-2 text-xs text-text-muted">
+                    <Lock size={12} className="mt-0.5 flex-shrink-0" />{tr('hist.pages.lectureSeuleVotreRole')}</p>
                 )}
 
                 {/* ------------------------------------------- les blocs -- */}
-                <div className="mt-4 flex flex-col gap-3">
+                <div className="mt-2 flex flex-col">
                   {courante.data.blocks.map((bloc, index) => (
                     <BlocEditeur
                       key={bloc.id}
@@ -270,28 +375,52 @@ export function PagesScreen({ scope, title, description }: {
 
                 {modifiable && (
                   <>
-                    <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
-                      {TYPES.map(({ type, label, icon: Icone }) => (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() =>
-                            enregistrer(courante.id, {
-                              ...courante.data,
-                              blocks: [...courante.data.blocks, emptyBlock(type)],
-                            })
-                          }
-                          className="flex items-center gap-1.5 border border-border bg-surface px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
-                        >
-                          <Icone size={13} strokeWidth={1.9} />
-                          {label}
-                        </button>
-                      ))}
+                    {/*
+                      LA PALETTE — L'UNIQUE AMBRE DE L'ÉCRAN.
+
+                      Une page est une PILE qu'on allonge : le geste du module,
+                      celui qu'on refait à chaque ouverture, est d'ajouter un
+                      bloc. Il était une rangée de petits boutons gris sans
+                      titre, au ras du dernier bloc — impossible à distinguer
+                      du contenu qu'elle sert à écrire.
+
+                      L'ambre porte ici un SURTITRE et non une plaque : la
+                      règle réserve la plaque au corps de texte, et le paquet
+                      nomme lui-même « ajouter un bloc » comme le signal de cet
+                      écran — même arbitrage qu'en 7b pour « tiré de ».
+
+                      Ambre parce qu'il y a une DÉCISION à prendre : quel type
+                      de bloc ajouter. Les cinq boutons restent sobres — c'est
+                      le choix qui appelle, pas chacune de ses cinq réponses.
+                    */}
+                    <div
+                      className="mt-6 border border-border bg-sunken p-4"
+                      data-signal-groupe="ajouter-un-bloc"
+                    >
+                      <p className="eyebrow eyebrow-signal mb-3">{tr('hist.pages.ajouterUnBloc')}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {TYPES.map(({ type, label, icon: Icone }) => (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() =>
+                              enregistrer(courante.id, {
+                                ...courante.data,
+                                blocks: [...courante.data.blocks, emptyBlock(type)],
+                              })
+                            }
+                            className="flex min-h-9 items-center gap-1.5 border border-border bg-surface px-3 py-1.5 text-sm text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
+                          >
+                            <Icone size={13} strokeWidth={1.9} />
+                            {label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     {/* --------------------------------------- les rôles -- */}
-                    <div className="mt-4 border-t border-border pt-4">
-                      <p className="eyebrow">Qui peut modifier</p>
+                    <div className="mt-5 border-t border-border pt-4">
+                      <p className="eyebrow">{tr('hist.pages.quiPeutModifier')}</p>
                       <p className="mt-1 text-xs text-text-muted">{tr('hist.pages.toutLeMondeLit')}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {ROLES.map(({ role: r, label }) => {
@@ -352,16 +481,25 @@ function BlocEditeur({
   onDescendre: () => void;
   onSupprimer: () => void;
 }) {
+  /*
+    Le bloc n'est plus une carte mais une LIGNE DE DOCUMENT : une gouttière de
+    gauche qui le nomme, le contenu au centre, les commandes à droite. Encadrer
+    chaque bloc donnait une pile de boîtes de même poids, où le texte d'une page
+    avait l'air d'un formulaire à remplir plutôt que d'un document à lire.
+  */
   return (
-    <div className="group relative border border-border bg-surface p-3">
+    <div className="group relative grid gap-2 border-b border-border py-4 last:border-b-0 sm:grid-cols-[86px_1fr] sm:gap-4">
+      <p className="eyebrow leading-[1.35] sm:pt-1">{nomDuType(bloc.type)}</p>
+      <div className="min-w-0">
+        <Contenu bloc={bloc} modifiable={modifiable} onChange={onChange} />
+      </div>
       {modifiable && (
-        <div className="absolute right-2 top-2 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="absolute right-0 top-3 flex gap-2 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
           <BoutonBloc onClick={onMonter} label="Monter" icon={ChevronUp} />
           <BoutonBloc onClick={onDescendre} label="Descendre" icon={ChevronDown} />
           <BoutonBloc onClick={onSupprimer} label={tr('hist.pages.supprimerLeBloc')} icon={Trash2} />
         </div>
       )}
-      <Contenu bloc={bloc} modifiable={modifiable} onChange={onChange} />
     </div>
   );
 }
@@ -558,6 +696,22 @@ function Contenu({
             )}
           </label>
         ))}
+        {/*
+          COMBIEN DE COCHÉES, SUR COMBIEN.
+
+          Une liste de sept lignes dont quatre sont barrées demande qu'on
+          compte des barres pour savoir où elle en est. Le relevé n'apparaît
+          qu'à partir de deux lignes : « 0 / 1 coché » n'apprend rien qu'une
+          case vide ne dise déjà.
+        */}
+        {!courses && bloc.items.length > 1 && (
+          <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+            {tr('hist.pages.nCoches', {
+              faits: bloc.items.filter((x) => x.done).length,
+              total: bloc.items.length,
+            })}
+          </p>
+        )}
         {modifiable && (
           <button
             type="button"

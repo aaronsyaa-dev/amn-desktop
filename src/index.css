@@ -716,6 +716,23 @@ button:not(:disabled):not(.card-interactive):active,
 }
 
 /*
+  LE SURTITRE EN SIGNAL — et pourquoi il lui faut une classe à lui.
+
+  `.eyebrow` fixe sa propre `color`, et cette feuille est chargée APRÈS les
+  utilitaires : écrire `class="eyebrow text-signal"` produisait un surtitre
+  GRIS, à spécificité égale et ordre défavorable. Les deux surtitres ambre du
+  paquet de design — « tiré de » en 7b, « ajouter un bloc » en 7a — étaient donc
+  posés dans le code et absents de l'écran, sans qu'aucune garde le voie : le
+  contrôle « un seul ambre par écran » compte un MAXIMUM, et zéro le satisfait.
+
+  La classe existe donc pour que l'intention soit écrite une fois, au bon
+  niveau, plutôt que rattrapée à coups de `!important` sur chaque écran.
+*/
+.eyebrow-signal {
+  color: var(--color-signal);
+}
+
+/*
  * LES ICÔNES, ET LE REPROCHE « TROP FINES »
  * ─────────────────────────────────────────
  * Le jeton d'icône de navigation : un carré de 26 px, fond un cran au-dessus de
