@@ -314,6 +314,80 @@ await poser('invoices', 'essai-fac-3', {
   quoteId: null,
 });
 
+/* ─── Dépenses et budgets ──────────────────────────────────────────────────── */
+
+/*
+  Les budgets sont posés par catégorie, et l'un d'eux est DÉPASSÉ à dessein :
+  c'est l'unique ambre de l'écran Dépenses, et un bac à sable où tout tient dans
+  son budget ne permet pas de le mesurer. Les clés de catégorie sont celles du
+  réglage par défaut (voir `defaultConfig` dans src/state/expenseEngine.ts).
+*/
+await poser('expenseConfig', 'config', {
+  categories: [
+    { key: 'fournitures', label: 'Fournitures' },
+    { key: 'deplacement', label: 'Déplacement' },
+    { key: 'prestataire', label: 'Prestataire' },
+    { key: 'materiel', label: 'Matériel' },
+    { key: 'autre', label: 'Autre' },
+  ],
+  categoryBudgets: {
+    prestataire: 90000,
+    fournitures: 60000,
+    deplacement: 45000,
+  },
+  projectBudgets: {},
+});
+
+/*
+  Réparties sur trois mois : le ruban de mois a besoin d'un passé pour que la
+  comparaison qu'il propose ait un sens. Le mois en cours est le plus fourni.
+*/
+const DEPENSES = [
+  ['essai-dep-1', 'Retouchouse — visuels vitrine', 'prestataire', 48000, -2],
+  ['essai-dep-2', 'Mise à jour du site', 'prestataire', 136000, -5],
+  ['essai-dep-3', 'Papier et encre', 'fournitures', 8640, -5],
+  ['essai-dep-4', 'Rouleaux de kraft', 'fournitures', 38160, -8],
+  ['essai-dep-5', 'Train Paris — Lille', 'deplacement', 12400, -7],
+  ['essai-dep-6', 'Péage et carburant', 'deplacement', 18000, -10],
+  ['essai-dep-7', 'Disque dur de sauvegarde', 'materiel', 16800, -9],
+  ['essai-dep-8', 'Sécateurs professionnels', 'materiel', 9400, -12],
+  ['essai-dep-9', 'Location de camionnette', 'deplacement', 24000, -34],
+  ['essai-dep-10', 'Impression de cartes', 'fournitures', 21000, -38],
+  ['essai-dep-11', 'Prestation photo', 'prestataire', 52000, -41],
+  ['essai-dep-12', 'Vitrophanie', 'fournitures', 14500, -66],
+  ['essai-dep-13', 'Honoraires comptables', 'prestataire', 39000, -70],
+  ['essai-dep-14', 'Étagères d’atelier', 'materiel', 27800, -74],
+];
+/*
+  DEUX DÉPENSES PORTENT UN JUSTIFICATIF, ET LES AUTRES NON.
+
+  Ce n'est pas de la décoration : la ligne de dépense a deux états — vignette ou
+  cadre en pointillés marqué « sans justificatif » — et un jeu d'essai qui n'en
+  montre qu'un ne permet pas de voir si l'autre tient. Le justificatif est un
+  SVG minuscule écrit ici même plutôt qu'une photo : il occupe la même place à
+  l'écran sans peser trois cents kilo-octets dans un script de bac à sable.
+*/
+const recu = (couleur) =>
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="${couleur}"/>` +
+      '<rect x="18" y="14" width="44" height="52" fill="#f4f2ec"/>' +
+      '<g fill="#9a978f"><rect x="24" y="24" width="32" height="3"/><rect x="24" y="33" width="24" height="3"/>' +
+      '<rect x="24" y="42" width="28" height="3"/><rect x="24" y="54" width="16" height="4"/></g></svg>',
+  );
+const AVEC_RECU = new Set(['essai-dep-2', 'essai-dep-5']);
+
+for (const [cle, note, category, amountCents, dansJours] of DEPENSES) {
+  await poser('expenses', cle, {
+    amountCents,
+    category,
+    spentAt: jour(dansJours),
+    note,
+    photoDataUrl: AVEC_RECU.has(cle) ? recu(cle === 'essai-dep-2' ? '#2f2a24' : '#26282f') : '',
+    createdAt: instant(24 * dansJours),
+  });
+}
+
 /* ─── Commandes ────────────────────────────────────────────────────────────── */
 
 /*
