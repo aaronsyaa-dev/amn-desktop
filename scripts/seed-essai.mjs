@@ -307,6 +307,57 @@ await poser('invoices', 'essai-fac-3', {
   quoteId: null,
 });
 
+/* ─── Projets ──────────────────────────────────────────────────────────────── */
+
+/*
+  Les statuts sont les clés du profil par défaut du moteur (`agence-creative`,
+  dans src/state/projectEngine.ts) : idee · en-cours · validation · termine ·
+  archive. Une clé inventée ici ne ferait pas d'erreur — elle produirait un
+  projet rangé sous un statut que l'écran ne sait pas nommer.
+
+  Les échéances sont posées EN JOURS depuis aujourd'hui, pour que la frise ait
+  toujours la même allure quel que soit le jour où on la mesure : une dépassée,
+  quatre à venir étalées sur les dix semaines, une sans date du tout.
+*/
+const PROJETS = [
+  ['essai-prj-1', 'Refonte boutique', 'en-cours', -6, 101, 'Reprendre la mise en page des fiches produit', 'high'],
+  ['essai-prj-2', 'Identité Studio Nord', 'en-cours', 14, 0, 'Maquette 2', 'normal'],
+  ['essai-prj-3', 'Vitrine automne', 'en-cours', 28, 102, 'Valider les visuels', 'normal'],
+  ['essai-prj-4', 'Catalogue hiver', 'idee', 45, 0, 'Devis à envoyer', 'normal'],
+  ['essai-prj-5', 'Signalétique atelier', 'idee', 62, 0, '', 'low'],
+  ['essai-prj-6', 'Cartes de visite', 'termine', -30, 103, '', 'low'],
+];
+for (const [cle, title, status, dansJours, clientId, nextAction, priority] of PROJETS) {
+  await poser('projects', cle, {
+    title,
+    status,
+    structure: '',
+    clientId,
+    priority,
+    nextAction,
+    deadline: jour(dansJours),
+    link: '',
+    notes: '',
+    extra: {},
+    createdAt: instant(-24 * 55),
+  });
+}
+/* Celui-là n'a PAS d'échéance : la frise doit savoir le dire au lieu de le poser
+   au hasard sur la règle. */
+await poser('projects', 'essai-prj-7', {
+  title: 'Enseigne lumineuse',
+  status: 'idee',
+  structure: '',
+  clientId: 0,
+  priority: 'low',
+  nextAction: '',
+  deadline: '',
+  link: '',
+  notes: '',
+  extra: {},
+  createdAt: instant(-24 * 12),
+});
+
 /* ─── Rendez-vous ──────────────────────────────────────────────────────────── */
 
 const RDV = [

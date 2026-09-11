@@ -28,10 +28,11 @@ import {
   statusLabel,
   type OptionalFieldKey,
   type Project,
+  type ProjectConfig,
   type ProjectPriority,
 } from '../state/projectEngine';
 import { ProjectConfigPanel } from '../components/projects/ProjectConfigPanel';
-import { formatDay, isoDay } from '../state/useInvoices';
+import { formatDay, formatShortDay, isoDay } from '../state/useInvoices';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { EmptyState, FirstRun } from '../components/EmptyState';
 import { useLangue, t as tr } from '../i18n';
@@ -67,11 +68,24 @@ export function ProjectsScreen() {
     attachmentsOf,
     attachmentCount,
   } = useProjects();
+  // Abonnement à la langue : sans lui, l'écran gardait les libellés de la
+  // langue active AU MONTAGE et ne suivait pas un changement en cours de route.
+  useLangue();
   const { clients } = useClients();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  /*
+    DEUX FAÇONS DE REGARDER LE MÊME PORTEFEUILLE, et elles ne répondent pas à
+    la même question. La liste répond à « où en est CE projet » — c'est la vue
+    de travail, celle qui ouvre une fiche. La frise répond à « qu'est-ce qui
+    glisse » : les échéances côte à côte sur la même règle de temps, ce qu'une
+    liste ne peut pas montrer, puisqu'elle range les projets les uns SOUS les
+    autres et jamais les uns EN FACE des autres. C'est l'objet dominant que le
+    système de design donne à cet écran, donc la vue d'ouverture.
+  */
+  const [vue, setVue] = useState<'frise' | 'liste'>('frise');
 
   const today = isoDay();
 
@@ -88,7 +102,29 @@ export function ProjectsScreen() {
     const id = createProject({ title: tr('hist.projects.nouveauProjet') });
     setSelectedId(id);
     setStatusFilter('all');
+    setVue('liste');
   };
+
+  /* La frise ne se dessine que si le moteur a un champ d'échéance activé :
+     sans date, il n'y a pas de règle de temps sur quoi poser les projets. */
+  const friseActive = fieldEnabled(config, 'deadline') && projects.length > 0;
+  const frise = useMemo(
+    () => (friseActive ? construireFrise(projects, config, today) : null),
+    [friseActive, projects, config, today],
+  );
+
+  /* La phrase sous le titre dit la période couverte, puis nomme ce qui glisse. */
+  const resume = useMemo(() => {
+    if (!frise) return tr('hist.projects.toutCeQuiS');
+    const periode = tr('hist.projects.periodeFrise', {
+      debut: moisDe(frise.debut),
+      fin: moisDe(frise.fin),
+    });
+    const retard = frise.lignes.find((l) => l.enRetard);
+    return retard
+      ? `${periode} ${tr('hist.projects.aDepasseSonEcheance', { projet: retard.project.title })}`
+      : `${periode} ${tr('hist.projects.aucuneEcheanceDepassee')}`;
+  }, [frise]);
 
   return (
     /*
@@ -97,11 +133,11 @@ export function ProjectsScreen() {
       liste vide, ça produit un panneau bordé de 700 px contenant une phrase.
       Sans liste, la section se dimensionne sur son contenu.
     */
-    <section className={`flex flex-col gap-4 ${projects.length === 0 ? '' : 'screen-h'}`}>
+    <section className={`flex flex-col gap-4 ${projects.length === 0 || vue === 'frise' ? '' : 'screen-h'}`}>
       <ScreenHeader
         eyebrow={tr('hist.surtitre', { module: tr('hist.projects.titre') })}
         title={tr('hist.projects.titre')}
-        description={tr('hist.projects.toutCeQuiS')}
+        description={resume}
         stats={[
           { label: 'Projets', value: projects.length },
           /*
@@ -121,6 +157,25 @@ export function ProjectsScreen() {
         ]}
         actions={
         <div className="flex flex-shrink-0 items-center gap-2">
+          {friseActive && (
+            <div className="flex border border-border">
+              {(['frise', 'liste'] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => {
+                    setVue(v);
+                    if (v === 'frise') setSelectedId(null);
+                  }}
+                  className={`min-h-11 px-3 font-mono text-[10px] font-bold uppercase tracking-[0.2em] transition-colors md:min-h-0 md:py-2 ${
+                    vue === v ? 'bg-raised text-text-primary' : 'text-text-muted hover:text-text-secondary'
+                  }`}
+                >
+                  {v === 'frise' ? tr('hist.projects.vueFrise') : tr('hist.projects.vueListe')}
+                </button>
+              ))}
+            </div>
+          )}
           <button
             type="button"
             onClick={() => setConfigOpen(true)}
@@ -142,6 +197,9 @@ export function ProjectsScreen() {
         </div>
         }
       >
+      {/* Les filtres appartiennent à la liste : la frise montre tout le temps,
+          et un filtre de statut la trouerait sans rien dire de plus. */}
+      {vue === 'liste' && (
       <div className="flex flex-shrink-0 gap-1.5 overflow-x-auto pb-0.5">
         <FilterChip active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>{tr('hist.projects.tous')}</FilterChip>
         {config.statuses.map((status) => (
@@ -154,6 +212,7 @@ export function ProjectsScreen() {
           </FilterChip>
         ))}
       </div>
+      )}
       </ScreenHeader>
 
       {/*
@@ -170,6 +229,26 @@ export function ProjectsScreen() {
         détail revient à la seconde où un premier projet existe. Rien n'est
         ajouté ; une colonne est retirée quand elle n'a pas de sujet.
       */}
+      {vue === 'frise' && frise ? (
+        <div className="flex flex-col gap-6">
+          <FriseDesEcheances
+            frise={frise}
+            onOuvrir={(id) => {
+              setSelectedId(id);
+              setVue('liste');
+            }}
+          />
+          <ColonnesDeStatut
+            projects={projects}
+            config={config}
+            today={today}
+            onOuvrir={(id) => {
+              setSelectedId(id);
+              setVue('liste');
+            }}
+          />
+        </div>
+      ) : (
       <div
         className={`grid min-h-0 flex-1 gap-4 ${
           projects.length === 0 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-[340px_1fr]'
@@ -239,6 +318,7 @@ export function ProjectsScreen() {
           <div className="hidden items-center justify-center border border-border bg-surface font-mono text-xs uppercase tracking-widest text-text-muted md:flex">{tr('hist.projects.selectionnezUnProjet')}</div>
         )}
       </div>
+      )}
 
       <AnimatePresence>
         {configOpen && (
@@ -250,6 +330,303 @@ export function ProjectsScreen() {
         )}
       </AnimatePresence>
     </section>
+  );
+}
+
+/* ─── LA FRISE ─────────────────────────────────────────────────────────────
+   L'objet dominant de l'écran Projets : dix semaines sur une même règle, et
+   les échéances les unes EN FACE des autres. Tout ce qui suit est du calcul
+   de dates — il vit ici, en dehors des composants, pour qu'on puisse le lire
+   sans traverser du JSX.
+   ──────────────────────────────────────────────────────────────────────── */
+
+const JOUR_MS = 86_400_000;
+const SEMAINES_AFFICHEES = 10;
+/* Une semaine de recul avant aujourd'hui : ce qui vient d'être livré reste
+   visible, et la ligne du jour n'est pas collée au bord gauche. */
+const SEMAINES_DE_RECUL = 1;
+/* Au-delà, la frise devient un mur et ne se lit plus. Le reste est dans les
+   colonnes en dessous, qui, elles, comptent tout. */
+const LIGNES_MAX = 6;
+
+function lundiDe(date: Date): Date {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  /* getDay() rend 0 le dimanche : on le ramène à 7 pour que le lundi soit 1. */
+  d.setDate(d.getDate() - ((d.getDay() || 7) - 1));
+  return d;
+}
+
+/**
+ * Le numéro de semaine ISO 8601 — celui qu'on écrit « S37 » et qui sert de
+ * repère partagé dans à peu près tous les ateliers d'Europe.
+ *
+ * La règle ISO : la semaine 1 est celle qui contient le premier jeudi de
+ * l'année. Le calcul classique consiste donc à se déplacer sur le JEUDI de la
+ * semaine visée, puis à compter les semaines depuis le 1er janvier de l'année
+ * de ce jeudi — ce qui range d'office le 31 décembre en semaine 1 quand il le
+ * faut, sans cas particulier écrit à la main.
+ */
+function semaineIso(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const janvier = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d.getTime() - janvier.getTime()) / JOUR_MS + 1) / 7);
+}
+
+function moisDe(date: Date): string {
+  return date.toLocaleDateString('fr-FR', { month: 'long' });
+}
+
+interface LigneFrise {
+  project: Project;
+  /** Part de la largeur totale, en pourcentage, bornée à la fenêtre affichée. */
+  debut: number;
+  fin: number;
+  /** Le dépassement, de l'échéance à aujourd'hui. Zéro si le projet tient. */
+  depassement: number;
+  enRetard: boolean;
+}
+
+interface Frise {
+  debut: Date;
+  fin: Date;
+  semaines: number[];
+  /** Position de la ligne du jour, en pourcentage de la largeur. */
+  aujourdhui: number;
+  lignes: LigneFrise[];
+}
+
+function construireFrise(projects: Project[], config: ProjectConfig, today: string): Frise {
+  const debut = lundiDe(new Date());
+  debut.setDate(debut.getDate() - SEMAINES_DE_RECUL * 7);
+  const fin = new Date(debut);
+  fin.setDate(fin.getDate() + SEMAINES_AFFICHEES * 7);
+  const etendue = fin.getTime() - debut.getTime();
+  /* Une position en pourcentage, ramenée dans la fenêtre : un projet commencé
+     il y a six mois entre par le bord gauche au lieu de sortir du cadre. */
+  const part = (instant: number) => Math.min(100, Math.max(0, ((instant - debut.getTime()) / etendue) * 100));
+
+  const semaines: number[] = [];
+  for (let i = 0; i < SEMAINES_AFFICHEES; i += 1) {
+    const jour = new Date(debut);
+    jour.setDate(jour.getDate() + i * 7);
+    semaines.push(semaineIso(jour));
+  }
+
+  /*
+    Les dépassées d'abord — c'est la raison d'être de la frise — puis les autres
+    par échéance. `Map` sur l'identifiant : une dépassée est AUSSI dans la
+    fenêtre affichée, et la concaténation naïve la dessinait deux fois.
+  */
+  const enCours = projects.filter((p) => !isDone(config, p) && p.deadline);
+  const parEcheance = (a: Project, b: Project) => a.deadline.localeCompare(b.deadline);
+  const ordonnees = [
+    ...enCours.filter((p) => p.deadline < today).sort(parEcheance),
+    ...enCours.filter((p) => p.deadline >= isoDay(debut)).sort(parEcheance),
+  ];
+  const retenues = [...new Map(ordonnees.map((p) => [p.id, p])).values()].slice(0, LIGNES_MAX);
+
+  const maintenant = new Date(`${today}T00:00:00`).getTime();
+  const lignes: LigneFrise[] = retenues.map((project) => {
+    const echeance = new Date(`${project.deadline}T00:00:00`).getTime();
+    const depart = new Date(project.createdAt || project.updatedAt).getTime();
+    const enRetard = project.deadline < today;
+    return {
+      project,
+      debut: part(depart),
+      fin: part(echeance),
+      depassement: enRetard ? part(maintenant) - part(echeance) : 0,
+      enRetard,
+    };
+  });
+
+  return {
+    debut,
+    fin,
+    semaines,
+    aujourdhui: part(maintenant),
+    lignes,
+  };
+}
+
+function FriseDesEcheances({
+  frise,
+  onOuvrir,
+}: {
+  frise: Frise;
+  onOuvrir: (id: string) => void;
+}) {
+  const semaineCourante = semaineIso(new Date());
+  return (
+    <div className="panel-raised panel-raised-wide overflow-x-auto">
+      <div className="min-w-[760px]">
+        {/* La règle de temps. */}
+        <div className="flex border-b border-border-raised">
+          <div className="eyebrow w-[240px] flex-shrink-0 px-5 py-3">{tr('hist.projects.colProjet')}</div>
+          {frise.semaines.map((s) => (
+            <div
+              key={s}
+              className={`flex-1 border-l border-border py-3 text-center font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] ${
+                s === semaineCourante ? 'bg-raised text-text-primary' : 'text-text-muted'
+              }`}
+            >
+              S{s}
+            </div>
+          ))}
+        </div>
+
+        {/* Le corps : une ligne par projet, et la ligne du jour par-dessus. */}
+        <div className="relative">
+          {/*
+            LA LIGNE DU JOUR N'EST PAS EN AMBRE, et c'est délibéré.
+
+            La maquette la dessine ambre avec sa pastille « AUJ. ». Mais l'ambre
+            de cet écran est nommé par la table du paquet : « la barre de
+            retard ». Aujourd'hui n'est pas une décision — c'est un repère, et
+            il y en a un sur tous les écrans qui montrent du temps. Lui donner
+            l'ambre mettrait deux signaux sur l'écran, c'est-à-dire aucun.
+          */}
+          <span
+            className="pointer-events-none absolute inset-y-0 z-10 w-px bg-[#4a4a48]"
+            style={{ left: `calc(240px + (100% - 240px - 20px) * ${frise.aujourdhui / 100})` }}
+            aria-hidden
+          />
+          {frise.lignes.map((ligne) => (
+            <button
+              key={ligne.project.id}
+              type="button"
+              onClick={() => onOuvrir(ligne.project.id)}
+              /*
+                UN SEUL GROUPE AMBRE POUR TOUT L'ÉCRAN, partagé par les lignes.
+
+                Le libellé « échéance dépassée » et la barre disent la même
+                chose sur la même ligne, et deux projets qui glissent ne sont
+                pas deux signaux : c'est LE signal de la frise, « voici ce qui
+                a glissé », écrit autant de fois qu'il y a de retards. Le
+                groupe partagé rend cette lecture explicite, et `check:signal`
+                les compte pour un.
+              */
+              data-signal-groupe={ligne.enRetard ? 'retard' : undefined}
+              className="flex w-full items-stretch border-b border-[#161616] text-left transition-colors last:border-b-0 hover:bg-surface-hover"
+            >
+              <div className="w-[240px] flex-shrink-0 px-5 py-4">
+                <p className="truncate text-[14.5px] font-semibold text-text-primary">{ligne.project.title}</p>
+                {/* Deux lignes, pas une coupée : « PROCHAINE ACTION : MAQUET… »
+                    ne dit rien de plus que « PROCHAINE ACTION ». */}
+                <p
+                  className={`eyebrow mt-1.5 line-clamp-2 leading-[1.5] ${ligne.enRetard ? 'text-signal' : ''}`}
+                >
+                  {ligne.enRetard
+                    ? tr('hist.projects.echeanceDepasseeLe', { date: formatShortDay(ligne.project.deadline) })
+                    : ligne.project.nextAction
+                      ? tr('hist.projects.prochaineAction', { quoi: ligne.project.nextAction })
+                      : tr('hist.projects.sansProchaineAction')}
+                </p>
+              </div>
+              <div className="relative flex-1 py-4 pr-5">
+                {/* La barre ne porte pas de texte : elle fait parfois quarante
+                    pixels de large, et « EN RETARD » y devenait « EN R… ». Le
+                    mot est dans la colonne de gauche, où il tient toujours. */}
+                <span
+                  className={`absolute top-1/2 h-[22px] -translate-y-1/2 ${
+                    ligne.enRetard ? 'bg-signal' : 'bg-[#2b2b2b]'
+                  }`}
+                  style={{
+                    left: `${ligne.debut}%`,
+                    width: `${Math.max(1.5, ligne.fin - ligne.debut)}%`,
+                  }}
+                />
+                {/* Le dépassement : rayé, parce que ce temps-là n'était pas prévu. */}
+                {ligne.depassement > 0 && (
+                  <span
+                    className="absolute top-1/2 h-[22px] -translate-y-1/2 bg-signal-muted"
+                    style={{
+                      left: `${ligne.fin}%`,
+                      width: `${ligne.depassement}%`,
+                      backgroundImage:
+                        'repeating-linear-gradient(135deg, var(--color-signal) 0 2px, transparent 2px 6px)',
+                    }}
+                    aria-hidden
+                  />
+                )}
+              </div>
+            </button>
+          ))}
+          {frise.lignes.length === 0 && (
+            <p className="px-5 py-8 text-[13.5px] text-text-muted">{tr('hist.projects.aucuneEcheanceDansLa')}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ColonnesDeStatut({
+  projects,
+  config,
+  today,
+  onOuvrir,
+}: {
+  projects: Project[];
+  config: ProjectConfig;
+  today: string;
+  onOuvrir: (id: string) => void;
+}) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {config.statuses.map((statut) => {
+        const siens = projects.filter((p) => p.status === statut.key);
+        const dates = siens.filter((p) => p.deadline).sort((a, b) => a.deadline.localeCompare(b.deadline));
+        const sansDate = siens.length - dates.length;
+        return (
+          <div key={statut.key} className="panel flex flex-col gap-4 p-5">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="eyebrow">{statut.label}</p>
+              <p className="tnum font-mono text-[23px] font-semibold leading-none tracking-[-0.03em] text-text-primary">
+                {siens.length}
+              </p>
+            </div>
+            {siens.length === 0 ? (
+              <p className="text-[13.5px] text-text-muted">{tr('hist.projects.aucunDansCeStatut')}</p>
+            ) : (
+              <ul className="flex flex-col gap-2.5">
+                {dates.slice(0, 3).map((p) => {
+                  const retard = p.deadline < today && !statut.done;
+                  return (
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        onClick={() => onOuvrir(p.id)}
+                        className="flex w-full items-baseline gap-3 border-l border-border-strong pl-3 text-left transition-colors hover:border-text-secondary"
+                      >
+                        <span className="min-w-0 flex-1 truncate text-[13.5px] text-text-body">{p.title}</span>
+                        <span
+                          className={`tnum flex-shrink-0 font-mono text-[11px] tracking-[0.1em] ${
+                            retard ? 'text-text-secondary' : 'text-text-muted'
+                          }`}
+                        >
+                          {formatShortDay(p.deadline)}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+                {sansDate > 0 && (
+                  <li className="pl-3 text-[13.5px] text-text-muted">
+                    {tr('hist.projects.nSansEcheance', { n: sansDate })}
+                  </li>
+                )}
+                {dates.length > 3 && (
+                  <li className="pl-3 text-[13.5px] text-text-muted">
+                    {tr('hist.projects.nDePlus', { n: dates.length - 3 })}
+                  </li>
+                )}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
