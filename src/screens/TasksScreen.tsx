@@ -118,6 +118,9 @@ const LOT_CARTES = 100;
 export function TasksScreen() {
   const { TEAM_ENABLED } = useExclusive();
   const { user } = useAuth();
+  /* Le nom d'une personne, pour la barre de charge : `profileFor` est la
+     source unique, ici comme dans le panneau de tâche. */
+  const { profileFor } = useProfiles();
   const { sites } = useLinkedSites();
   const { upsert, remove, ready } = useSync();
   const { isPending, scheduleDelete } = useUndo();
@@ -201,6 +204,39 @@ export function TasksScreen() {
     return map;
   }, [tasks]);
 
+  /*
+    LA CHARGE — l'objet dominant, et la seule chose que cet écran sait et que
+    les autres ignorent.
+
+    Le tableau à trois colonnes range par STATUT, ce qui est juste : le statut
+    est le flux de travail d'une tâche, et c'est le seul écran de
+    l'application où une colonne par état a un sens. Mais il ne répond pas à la
+    question qu'on pose devant une liste d'équipe — QUI PORTE QUOI, et qu'est-ce
+    qui n'est porté par personne.
+
+    Les terminées sont exclues : une tâche faite ne pèse sur personne.
+  */
+  const ouvertes = useMemo(() => tasks.filter((t) => t.status !== 'done'), [tasks]);
+  const sansPersonne = useMemo(() => ouvertes.filter((t) => !t.assigneeEmail?.trim()), [ouvertes]);
+  const charge = useMemo(() => {
+    const par = new Map<string, SyncTask[]>();
+    for (const t of ouvertes) {
+      const qui = t.assigneeEmail?.trim();
+      if (!qui) continue;
+      par.set(qui, [...(par.get(qui) ?? []), t]);
+    }
+    return [...par.entries()].sort((a, b) => b[1].length - a[1].length);
+  }, [ouvertes]);
+  /* La plus lourde donne l'échelle des barres : comparer des charges entre
+     elles, pas à un total qui ne veut rien dire. */
+  const plusLourde = Math.max(1, ...charge.map(([, l]) => l.length));
+  /* En solo, « qui porte quoi » n'a pas de sens : il n'y a qu'une personne.
+     L'écran range alors par PRIORITÉ, qui est l'autre axe du modèle. */
+  const parPriorite = useMemo(() => {
+    const ordre: TaskPriority[] = ['high', 'normal', 'low'];
+    return ordre.map((p) => ({ p, liste: ouvertes.filter((t) => (t.priority ?? 'normal') === p) }));
+  }, [ouvertes]);
+
   return (
     <StaggerGroup className="flex flex-col gap-4 md:h-[calc(100dvh-8rem)]">
       <StaggerItem>
@@ -243,6 +279,86 @@ export function TasksScreen() {
           }
         />
       </StaggerItem>
+
+      {/*
+        LA CHARGE — l'objet dominant. Voir le calcul plus haut pour le pourquoi,
+        et pourquoi le tableau à colonnes SURVIT ici alors qu'il a été retiré du
+        SAV, du Tableau des projets et des Prospects : sur ces trois écrans les
+        colonnes rangeaient par un état qui n'était pas le sujet. Ici le statut
+        EST le flux de travail d'une tâche. Ce qui manquait n'était pas le
+        tableau, c'était ce qu'il ne dit pas — qui porte quoi.
+      */}
+      {ready && ouvertes.length > 0 && (
+        <StaggerItem>
+          <section className="panel-raised p-5 sm:p-6" data-signal-groupe="sans-personne">
+            {sansPersonne.length > 0 ? (
+              <>
+                <p className="signal-plate mb-3 inline-flex px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider">{tr('hist.tasks.sansPersonne')}</p>
+                <p className="text-[21px] font-semibold leading-tight text-text-primary sm:text-[27px]">
+                  {sansPersonne.length === 1
+                    ? tr('hist.tasks.personneNePorte')
+                    : tr('hist.tasks.personneNePorteN', { n: sansPersonne.length })}
+                </p>
+                <p className="mt-2 max-w-xl text-sm leading-relaxed text-text-secondary">{tr('hist.tasks.personneNePorteAide')}</p>
+                <ul className="mt-4 flex flex-wrap gap-2">
+                  {sansPersonne.slice(0, 6).map((t) => (
+                    <li key={t.id}>
+                      <button type="button" onClick={() => setOpenTaskId(t.id)} className="input-focus flex min-h-11 items-center gap-2 border border-border-strong px-3 text-sm text-text-primary hover:bg-surface-hover md:min-h-0 md:py-2">
+                        <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${priorityMeta(t.priority).dot}`} aria-hidden />
+                        {t.title}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <>
+                <p className="eyebrow mb-3">{TEAM_ENABLED ? tr('hist.tasks.laCharge') : tr('hist.tasks.parPriorite')}</p>
+                <p className="text-[21px] font-semibold leading-tight text-text-primary sm:text-[27px]">{tr('hist.tasks.toutEstPorte')}</p>
+                <p className="mt-2 max-w-xl text-sm leading-relaxed text-text-secondary">{tr('hist.tasks.toutEstPorteAide')}</p>
+              </>
+            )}
+
+            {/* La répartition elle-même : des barres par personne en équipe,
+                par priorité quand on travaille seul. */}
+            <div className="mt-6">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="eyebrow">{TEAM_ENABLED ? tr('hist.tasks.laCharge') : tr('hist.tasks.parPriorite')}</p>
+                <p className="text-[11px] text-text-muted">{TEAM_ENABLED ? tr('hist.tasks.laChargeAide') : tr('hist.tasks.parPrioriteAide')}</p>
+              </div>
+              <ul className="mt-3 flex flex-col gap-2">
+                {TEAM_ENABLED
+                  ? charge.map(([email, liste]) => (
+                      <li key={email} className="flex items-center gap-3">
+                        <span className="flex w-36 flex-shrink-0 items-center gap-2">
+                          <UserAvatar email={email} size={22} />
+                          <span className="min-w-0 truncate text-sm text-text-primary">{profileFor(email).name}</span>
+                        </span>
+                        <span className="relative flex h-7 min-w-0 flex-1 items-center border border-border">
+                          <span className="absolute inset-y-0 left-0 bg-border-strong" style={{ width: `${(liste.length / plusLourde) * 100}%` }} aria-hidden />
+                          <span className="relative px-2.5 text-sm tabular-nums text-text-primary">{liste.length}</span>
+                        </span>
+                      </li>
+                    ))
+                  : parPriorite
+                      .filter((x) => x.liste.length > 0)
+                      .map(({ p, liste }) => (
+                        <li key={p} className="flex items-center gap-3">
+                          <span className="flex w-36 flex-shrink-0 items-center gap-2">
+                            <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${priorityMeta(p).dot}`} aria-hidden />
+                            <span className="min-w-0 truncate text-sm text-text-primary">{priorityMeta(p).label}</span>
+                          </span>
+                          <span className="relative flex h-7 min-w-0 flex-1 items-center border border-border">
+                            <span className="absolute inset-y-0 left-0 bg-border-strong" style={{ width: `${(liste.length / Math.max(1, ...parPriorite.map((x) => x.liste.length))) * 100}%` }} aria-hidden />
+                            <span className="relative px-2.5 text-sm tabular-nums text-text-primary">{liste.length}</span>
+                          </span>
+                        </li>
+                      ))}
+              </ul>
+            </div>
+          </section>
+        </StaggerItem>
+      )}
 
       <StaggerItem className="min-h-0 md:flex-1">
         {!ready ? (

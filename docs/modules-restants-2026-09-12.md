@@ -54,12 +54,18 @@ On vient y chercher une entrée précise, pas surveiller un état. La question
 n'est pas « qu'est-ce qui a changé » mais « où est celui que je cherche » :
 c'est la recherche et l'ordre qui dominent, pas une carte de tête.
 
-### C — Les plans : qui fait quoi, quand
+### C — Les plans : qui fait quoi, quand — **livrée**
 `Planning d'équipe` · `Absences` · `Tableau des projets` · `Pipeline` · `Tâches`
 
 Des données à deux axes (personne × temps, ou étape × affaire). Le piège est la
 matrice : `5d Routines` en a déjà une, et trois matrices de plus feraient une
 famille indistincte. Chacun doit trouver son axe dominant.
+
+**Le piège était pire que prévu, et mesuré** : `Tableau des projets` et
+`Pipeline` étaient le MÊME composant. Chacun a maintenant son axe — la
+couverture du jour, la plage d'absence, la prochaine action, l'argent par
+étape, la charge par personne. Détail et preuves dans
+`docs/captures/plans-2026-09-12/`.
 
 ### D — Les vitrines : ce que le dehors voit
 `Mini-page` · `Portfolio` · `Lettre d'information` · `Formulaires` ·
@@ -119,32 +125,29 @@ d'un bloc.
 
 ## Où ça s'arrête, au 12 septembre
 
-**Neuf modules composés sur quarante-trois**, en deux familles entières :
+**Quatorze modules composés sur quarante-trois**, en trois familles entières :
 
 - **E, le collectif** (4) — Sondages, Annonces, Appels, Groupes.
   Preuves : `docs/captures/collectif-2026-09-12/`.
 - **A, les files** (5) — Relances, SAV, RDV en ligne, Assistance,
   Messages privés. Preuves : `docs/captures/files-2026-09-12/`.
+- **C, les plans** (5) — Planning d'équipe, Absences, Tableau des projets,
+  Prospects, Tâches. Preuves : `docs/captures/plans-2026-09-12/`.
 
-Les trente-quatre autres restent à l'état d'habillage. L'ordre dans lequel
+Les vingt-neuf autres restent à l'état d'habillage. L'ordre dans lequel
 continuer, et pourquoi :
 
-1. **C — les plans** (`Planning d'équipe`, `Absences`, `Tableau des projets`,
-   `Pipeline`, `Tâches`). Cinq modules à deux axes, et le piège de la matrice :
-   `5d Routines` en a déjà une. C'est la famille où l'on risque le plus de
-   refaire quatre fois le même tableau, donc celle qu'il vaut mieux traiter
-   pendant que la règle est fraîche.
-2. **B — les registres** (`Fournisseurs`, `Nomenclatures`, `Modèles`,
+1. **B — les registres** (`Fournisseurs`, `Nomenclatures`, `Modèles`,
    `Trombinoscope`, `Coffre-fort`). Cinq modules qui partagent une vraie
    logique : la RECHERCHE domine, pas une carte de tête. Une fois la première
    composée, les quatre autres suivent vite.
-3. **D — le reste des vitrines** (`Mini-page`, `Portfolio`, `Lettre
+2. **D — le reste des vitrines** (`Mini-page`, `Portfolio`, `Lettre
    d'information`, `Formulaires`, `Signature sur place`, `QR codes`). `RDV en
    ligne` vient d'y tracer la méthode : montrer le RENDU, pas le réglage. Elle
    est donc moins risquée qu'elle n'en avait l'air.
-4. **F — les bilans** (`Revue hebdo`, `Journal de bord`, `Caisse du jour`,
+3. **F — les bilans** (`Revue hebdo`, `Journal de bord`, `Caisse du jour`,
    `Objectifs & résultats`). Le dominant est le RÉSULTAT de la période.
-5. **G — le personnel** (5), **H — la relation** (4), **I — les outils** (3),
+4. **G — le personnel** (5), **H — la relation** (4), **I — les outils** (3),
    **J — la production** (`Suivi de montage`), **K — le système**
    (`Découvrir`).
 
