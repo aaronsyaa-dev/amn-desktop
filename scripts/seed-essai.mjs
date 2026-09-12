@@ -828,6 +828,29 @@ const COLLEGUES = ['nadia@exemple.test', 'hugo@exemple.test', 'ines@exemple.test
 const MOI = EMAIL;
 
 /*
+  LES MESSAGES PRIVÉS — dont deux fils où la balle est dans mon camp.
+
+  L'écran calcule la DETTE : un fil dont le dernier mot vient de l'autre est un
+  fil auquel je n'ai pas répondu. Sans données, cette branche n'existe pas et
+  ne se voit pas. Deux fils se terminent donc sur un message d'un collègue —
+  l'un d'il y a trois jours, l'autre d'hier — et deux autres se terminent sur
+  le mien, pour que la différence se lise côte à côte.
+*/
+const DMS = [
+  ['dm-1', COLLEGUES[0], MOI, 'La cliente de la Brasserie a rappelé pour la terrasse. Tu veux que je passe demain matin ?', -24 * 3],
+  ['dm-2', MOI, COLLEGUES[0], 'Oui, vas-y. Prends les mesures de la jardinière du fond au passage.', -24 * 3 + 1],
+  ['dm-3', COLLEGUES[0], MOI, 'C’est fait. Il manque 40 cm par rapport au plan — je t’envoie la photo. On commande une jardinière de plus ?', -24 * 3 + 6],
+  ['dm-4', COLLEGUES[1], MOI, 'Je récupère le van vendredi à 8 h, ça te va pour la livraison de Sète ?', -20],
+  ['dm-5', COLLEGUES[2], MOI, 'Merci pour le coup de main hier.', -24 * 6],
+  ['dm-6', MOI, COLLEGUES[2], 'Avec plaisir. On remet ça quand tu veux.', -24 * 6 + 1],
+  ['dm-7', MOI, COLLEGUES[3], 'Tu as bien reçu le planning de la semaine prochaine ?', -24 * 2],
+];
+for (const [cle, de, vers, corps, ilYaHeures] of DMS) {
+  await poser('dms', `essai-${cle}`, { from: de, to: vers, body: corps, createdAt: instant(ilYaHeures) });
+}
+
+
+/*
   SONDAGES — un qui attend MA voix, un déjà tranché, un clos.
 
   Le premier est le seul qui demande quelque chose à celui qui regarde : c'est

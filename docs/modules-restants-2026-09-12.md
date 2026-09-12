@@ -23,14 +23,29 @@ Par **nature des données**, pas par section de barre latérale : deux modules
 rangés côte à côte dans la barre peuvent n'avoir aucune logique commune, et deux
 modules éloignés peuvent partager la même.
 
-### A — Les files : quelque chose arrive et attend une réponse
-`Relances` · `SAV` · `RDV en ligne` · `Assistance` · `Messages privés`
+### A — Les files : quelque chose arrive et attend une réponse — **livrée**
+`Relances` · `SAV` · `Assistance` · `Messages privés` — et `RDV en ligne`,
+reclassé en D (voir plus bas)
 
 Même logique : un objet entrant, un âge, un état, et une réponse à donner.
 **C'est la famille la plus dangereuse à composer** : quatre têtes de file
 composées pareil feraient quatre écrans jumeaux. Chacun doit dominer par ce qui
 lui est propre — le TON de la lettre pour les relances, l'ÂGE pour le SAV, le
 CRÉNEAU demandé pour les rendez-vous, le FIL pour les messages.
+
+**Ce qui a été fait, et une erreur de ce document corrigée.** `RDV en ligne`
+n'est pas une file : rien n'y arrive, les réservations tombent directement dans
+l'Agenda et l'écran ne fait que régler une page publique. C'est une VITRINE, et
+il est composé comme tel — l'aperçu de ce que voit le visiteur en tête. Le
+classement ci-dessus était fait sur le nom du module ; la lecture du modèle l'a
+démenti.
+
+Les quatre vraies files ont chacune leur structure : une lettre posée en
+feuille avec l'échelle des paliers (Relances), un âge en chiffre de titre et un
+rangement par tranches (SAV), une correspondance à deux voix (Assistance), une
+dette calculée sans `readBy` — le dernier mot vient de l'autre — avec la boîte
+de réponse dans la carte (Messages privés). Détail et preuves dans
+`docs/captures/files-2026-09-12/`.
 
 ### B — Les registres : une référence qu'on consulte
 `Fournisseurs` · `Nomenclatures` · `Modèles` · `Trombinoscope` · `Coffre-fort`
@@ -48,12 +63,13 @@ famille indistincte. Chacun doit trouver son axe dominant.
 
 ### D — Les vitrines : ce que le dehors voit
 `Mini-page` · `Portfolio` · `Lettre d'information` · `Formulaires` ·
-`Signature sur place` · `QR codes`
+`Signature sur place` · `QR codes` · **`RDV en ligne`** (reclassé depuis A,
+et déjà composé : voir `docs/captures/files-2026-09-12/`)
 
 Le seul groupe dont l'objet n'est pas dans l'application : il est chez le
 visiteur. L'écran doit montrer le RENDU, pas le réglage qui le produit.
 
-### E — Le collectif : ce qui s'écrit à plusieurs
+### E — Le collectif : ce qui s'écrit à plusieurs — **livrée**
 `Groupes` · `Annonces` · `Sondages` · `Appels`
 
 Quatre natures franchement différentes malgré la section commune : une salle,
@@ -101,8 +117,38 @@ capturer l'avant, composer, capturer l'après, passer les gardes. C'est ce qui
 fixe le rythme, et c'est pourquoi ce chantier se livre par familles plutôt que
 d'un bloc.
 
-## Où ça s'arrête
+## Où ça s'arrête, au 12 septembre
 
-Voir le rapport final : les familles réellement livrées y sont listées, avec
-pour chaque module l'objet dominant retenu et la raison. Ce qui n'a pas été
-composé reste à l'état d'habillage, et est nommé.
+**Neuf modules composés sur quarante-trois**, en deux familles entières :
+
+- **E, le collectif** (4) — Sondages, Annonces, Appels, Groupes.
+  Preuves : `docs/captures/collectif-2026-09-12/`.
+- **A, les files** (5) — Relances, SAV, RDV en ligne, Assistance,
+  Messages privés. Preuves : `docs/captures/files-2026-09-12/`.
+
+Les trente-quatre autres restent à l'état d'habillage. L'ordre dans lequel
+continuer, et pourquoi :
+
+1. **C — les plans** (`Planning d'équipe`, `Absences`, `Tableau des projets`,
+   `Pipeline`, `Tâches`). Cinq modules à deux axes, et le piège de la matrice :
+   `5d Routines` en a déjà une. C'est la famille où l'on risque le plus de
+   refaire quatre fois le même tableau, donc celle qu'il vaut mieux traiter
+   pendant que la règle est fraîche.
+2. **B — les registres** (`Fournisseurs`, `Nomenclatures`, `Modèles`,
+   `Trombinoscope`, `Coffre-fort`). Cinq modules qui partagent une vraie
+   logique : la RECHERCHE domine, pas une carte de tête. Une fois la première
+   composée, les quatre autres suivent vite.
+3. **D — le reste des vitrines** (`Mini-page`, `Portfolio`, `Lettre
+   d'information`, `Formulaires`, `Signature sur place`, `QR codes`). `RDV en
+   ligne` vient d'y tracer la méthode : montrer le RENDU, pas le réglage. Elle
+   est donc moins risquée qu'elle n'en avait l'air.
+4. **F — les bilans** (`Revue hebdo`, `Journal de bord`, `Caisse du jour`,
+   `Objectifs & résultats`). Le dominant est le RÉSULTAT de la période.
+5. **G — le personnel** (5), **H — la relation** (4), **I — les outils** (3),
+   **J — la production** (`Suivi de montage`), **K — le système**
+   (`Découvrir`).
+
+Chaque famille demande, dans l'ordre : lire le modèle, semer, capturer l'avant,
+composer, capturer l'après, passer les gardes. Semer est la moitié du travail
+et ne se saute pas : `28-sav.png` du 12 septembre était vide, et un écran vide
+ne prouve rien d'une composition.

@@ -112,6 +112,8 @@ const ECRANS = [
   /* Rendez-vous en ligne : une VITRINE, pas une file — voir l'en-tête de
      `BookingScreen.tsx`. Aucun ambre quand la page est ouverte et pourvue. */
   ['RDV en ligne', '#/rdv-en-ligne'],
+  ['Assistance', '#/assistance'],
+  ['Messages privés', '#/messages-prives'],
 ];
 
 const serveur = spawn('node', [new URL('./servir-bundle.mjs', import.meta.url).pathname, BUNDLE, String(PORT)], {
