@@ -51,7 +51,33 @@ function lireChoix(): Langue | null {
   }
 }
 
+/*
+  LA LANGUE DU DOCUMENT.
+
+  `<html lang>` gouverne la voix des lecteurs d'écran, la césure et les
+  sélecteurs CSS `:lang()`. L'attribut n'existait nulle part : une interface
+  entièrement française était annoncée en anglais.
+
+  CE QU'IL NE FAIT PAS, et c'était l'hypothèse de départ : il ne change pas le
+  format des champs natifs `type="time"` et `type="date"`. Mesuré au navigateur
+  le 12 septembre 2026 — trois champs, l'un sous `<html lang="fr">`, les deux
+  autres portant eux-mêmes `lang="fr"` et `lang="fr-FR"` : les trois rendent
+  « 09:00 AM » tant que la locale du NAVIGATEUR est `en-US`. Chromium suit sa
+  propre locale d'interface, pas le document. Les disponibilités des
+  rendez-vous en ligne s'écrivent donc en 24 h chez qui a un navigateur
+  français, et en AM/PM chez qui n'en a pas ; seul un champ écrit à la main
+  changerait cela.
+*/
+function appliquerAuDocument() {
+  try {
+    document.documentElement.lang = langueActive();
+  } catch {
+    /* pas de document (test, rendu serveur) : rien à appliquer */
+  }
+}
+
 function prevenir() {
+  appliquerAuDocument();
   for (const a of abonnes) a();
 }
 
@@ -86,6 +112,11 @@ export function poserLangueOrganisation(langue: string | null | undefined): void
 export function langueDeLOrganisation(): Langue | null {
   return langueOrganisation;
 }
+
+/* Au chargement : le choix déjà stocké s'applique avant le premier rendu. La
+   langue de l'organisation arrivera plus tard, par `poserLangueOrganisation`,
+   qui appelle `prevenir` — donc `appliquerAuDocument`. */
+appliquerAuDocument();
 
 /** Traduit une clé, avec interpolation `{nom}`. */
 export function t(cle: CleTraduction, valeurs?: Record<string, string | number>): string {

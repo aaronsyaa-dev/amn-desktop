@@ -314,6 +314,126 @@ await poser('invoices', 'essai-fac-3', {
   quoteId: null,
 });
 
+/*
+  LES QUATRE PALIERS DE RELANCE, un par facture.
+
+  `src/lib/relances.ts` gradue le ton sur le retard : rappel jusqu'à 7 jours,
+  ferme au-delà, mise en demeure passé 21, dernier avis passé 45. Une seule
+  facture échue ne montrait qu'un palier, et un écran de relances qui n'a qu'un
+  ton ne prouve rien de la gradation — ni le défaut d'avant (quatre lettres de
+  gravités différentes, toutes de la même taille), ni sa correction.
+
+  Les montants montent avec le retard, ce qui est l'ordre habituel des choses :
+  on laisse plus longtemps filer une grosse facture qu'un petit solde.
+*/
+const ECHUES = [
+  { cle: 'essai-fac-4', numero: '2026-0044', clientId: 104, nom: 'Studio Nord', societe: 'Studio Nord',
+    email: 'contact@studio-nord.exemple.test', adresse: '2 rue Gambetta\n34000 Montpellier',
+    retard: 4, libelle: 'Reportage photo — demi-journée', quantite: 1, prix: 500 },
+  { cle: 'essai-fac-5', numero: '2026-0039', clientId: 105, nom: 'Maison Bertaux', societe: 'Maison Bertaux',
+    email: 'bonjour@maison-bertaux.exemple.test', adresse: '17 boulevard du Jeu de Paume\n34000 Montpellier',
+    retard: 12, libelle: 'Composition florale — vitrine de rentrée', quantite: 4, prix: 185 },
+  { cle: 'essai-fac-6', numero: '2026-0027', clientId: 106, nom: 'Léa Fontaine', societe: 'Atelier Fontaine',
+    email: 'lea@atelier-fontaine.exemple.test', adresse: '9 rue de la Loge\n34000 Montpellier',
+    retard: 61, libelle: 'Aménagement de la cour — solde', quantite: 1, prix: 2400 },
+];
+for (const f of ECHUES) {
+  await poser('invoices', f.cle, {
+    number: f.numero,
+    clientId: f.clientId,
+    billTo: { name: f.nom, company: f.societe, email: f.email, address: f.adresse, vatNumber: '' },
+    issuedAt: jour(-f.retard - 30),
+    dueAt: jour(-f.retard),
+    lines: [ligne('l1', f.libelle, f.quantite, f.prix)],
+    status: 'issued',
+    paidAt: '',
+    paymentMethod: '',
+    cancelReason: '',
+    notes: '',
+    quoteId: null,
+  });
+}
+
+/*
+  UNE RELANCE DÉJÀ ENVOYÉE, à un palier plus doux que celui d'aujourd'hui.
+
+  C'est le seul moyen de faire exister « le ton doit monter » : la facture la
+  plus ancienne a été relancée en ferme il y a un mois, elle est passée en
+  dernier avis depuis. Sans cette trace, la branche ne s'affiche jamais et ne se
+  vérifie pas sur capture.
+*/
+await poser('paymentReminders', 'essai-rel-1', {
+  invoiceId: 'essai-fac-6',
+  sentAt: instant(-24 * 31),
+  byEmail: EMAIL,
+  note: '',
+  palier: 'ferme',
+});
+
+/*
+  LE SAV — des demandes d'âges très différents, dont une qui traîne.
+
+  L'écran de SAV dit de lui-même que ce qui compte est l'ÂGE. Le bac à sable
+  n'avait aucun ticket : la capture du 12 septembre rendait trois colonnes
+  vides, et un écran vide ne prouve rien d'une composition. Les âges vont donc
+  de deux heures à cinq semaines, avec une seule ouverte très vieille — celle
+  que personne n'a prise, et qui doit dominer l'écran.
+*/
+const TICKETS = [
+  { cle: 'essai-sav-1', client: 'Brasserie du Port', sujet: 'Store de terrasse qui ne remonte plus',
+    note: 'Appelé deux fois, sans retour de notre part.', etat: 'ouvert', ouvertIlYaH: 24 * 34, pris: '', resoluIlYaH: null },
+  { cle: 'essai-sav-2', client: 'Maison Bertaux', sujet: 'Jardinière fendue à la livraison',
+    note: 'Photo reçue, remplacement à commander.', etat: 'enCours', ouvertIlYaH: 24 * 9, pris: EMAIL, resoluIlYaH: null },
+  { cle: 'essai-sav-3', client: 'Studio Nord', sujet: 'Deux plantes livrées au lieu de quatre',
+    note: '', etat: 'ouvert', ouvertIlYaH: 24 * 3, pris: '', resoluIlYaH: null },
+  { cle: 'essai-sav-4', client: 'Le Jardin d’Élise', sujet: 'Facture en double sur la commande de juin',
+    note: 'Avoir à établir.', etat: 'enCours', ouvertIlYaH: 30, pris: 'nadia@exemple.test', resoluIlYaH: null },
+  { cle: 'essai-sav-5', client: 'Atelier Fontaine', sujet: 'Demande de devis pour rallonger l’arrosage',
+    note: '', etat: 'ouvert', ouvertIlYaH: 2, pris: '', resoluIlYaH: null },
+  { cle: 'essai-sav-6', client: 'Brasserie du Port', sujet: 'Éclairage de vitrine intermittent',
+    note: '', etat: 'resolu', ouvertIlYaH: 24 * 12, pris: EMAIL, resoluIlYaH: 24 * 9 },
+  { cle: 'essai-sav-7', client: 'Maison Bertaux', sujet: 'Changement d’horaire de livraison',
+    note: '', etat: 'resolu', ouvertIlYaH: 24 * 6, pris: 'hugo@exemple.test', resoluIlYaH: 24 * 5 },
+  { cle: 'essai-sav-8', client: 'Studio Nord', sujet: 'Mousse sur la terrasse après la pluie',
+    note: '', etat: 'resolu', ouvertIlYaH: 24 * 20, pris: EMAIL, resoluIlYaH: 24 * 16 },
+];
+for (const tk of TICKETS) {
+  await poser('tickets', tk.cle, {
+    client: tk.client,
+    subject: tk.sujet,
+    note: tk.note,
+    status: tk.etat,
+    openedAt: instant(-tk.ouvertIlYaH),
+    takenBy: tk.pris,
+    resolvedAt: tk.resoluIlYaH === null ? null : instant(-tk.resoluIlYaH),
+  });
+}
+
+/*
+  LES RENDEZ-VOUS EN LIGNE — la page publique, ouverte et pourvue.
+
+  L'écran de réglage montre désormais l'APERÇU du visiteur : sans config
+  semée, il rend une page fermée, sans titre et sans créneau — l'état d'un
+  compte neuf, pas celui qu'on veut juger. Fenêtres de matin en semaine, plus
+  le samedi matin, et une durée de 30 minutes : de quoi remplir quinze jours
+  de créneaux réels.
+*/
+await poser('bookingConfig', 'config', {
+  enabled: true,
+  title: 'Prendre rendez-vous à l’atelier',
+  intro: 'Trente minutes pour voir votre projet ensemble : plans, végétaux, budget. Venez avec des photos si vous en avez.',
+  durationMin: 30,
+  location: 'Atelier — 14 rue des Aiguières, Montpellier',
+  availability: {
+    mon: [{ from: '09:00', to: '12:00' }],
+    tue: [{ from: '09:00', to: '12:00' }],
+    wed: [{ from: '14:00', to: '17:00' }],
+    thu: [{ from: '09:00', to: '12:00' }],
+    fri: [{ from: '09:00', to: '11:00' }],
+    sat: [{ from: '10:00', to: '12:00' }],
+  },
+});
+
 /* ─── Abonnements ──────────────────────────────────────────────────────────── */
 
 /*

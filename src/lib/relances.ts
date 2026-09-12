@@ -33,6 +33,17 @@ export function paliereDe(joursRetard: number): PalierRelance {
   return trouve?.palier ?? 'rappel';
 }
 
+/**
+ * L'ÉCHELLE, du plus doux au plus dur, avec le retard à partir duquel chaque
+ * palier s'applique.
+ *
+ * `paliereDe` compare en STRICT supérieur : le palier « ferme » commence donc
+ * au huitième jour de retard, pas au septième. L'écran affiche ce seuil tel
+ * quel — il ne le recalcule pas, sous peine de dire « dès 7 j » à côté d'une
+ * facture de 7 jours encore marquée « rappel ».
+ */
+export const ECHELLE: ReadonlyArray<{ palier: PalierRelance; auDela: number }> = [...SEUILS].reverse();
+
 /** L'ordre des paliers, du plus doux au plus dur — pour comparer, pas pour afficher. */
 const ORDRE: PalierRelance[] = ['rappel', 'ferme', 'mise-en-demeure', 'dernier-avis'];
 
