@@ -97,6 +97,10 @@ const ECRANS = [
   ['Avant la paie', '#/personnel/budget'],
   ['Tâches', '#/tasks'],
   ['Objectifs & résultats', '#/objectifs-resultats'],
+  /* La famille « collectif », composée le 12 septembre : deux natures
+     différentes, deux ambres différents, donc deux écrans à mesurer. */
+  ['Sondages', '#/sondages'],
+  ['Annonces', '#/annonces'],
 ];
 
 const serveur = spawn('node', [new URL('./servir-bundle.mjs', import.meta.url).pathname, BUNDLE, String(PORT)], {

@@ -691,6 +691,135 @@ for (const [cle, title, editorRoles, blocks] of PAGES) {
   await poser('pages', cle, { title, editorRoles, blocks, updatedAt: instant(-24 * 3) });
 }
 
+/* ─── Le collectif : sondages, annonces, groupes ───────────────────────────── */
+
+/*
+  Les quatre écrans du collectif ne prouvent rien à une personne seule : un
+  sondage sans votants, une annonce que personne n'a lue et un groupe sans fil
+  sont trois états vides déguisés en contenu. Il faut des COLLÈGUES, et ils
+  existent dans le bac à sable — quatre comptes `@exemple.test` ajoutés à
+  l'organisation interne.
+
+  Les adresses sont écrites ici plutôt que lues : ce script passe par l'API et
+  ne voit pas la table des comptes. Si elles changent, les sondages auront des
+  votes d'inconnus — visible tout de suite à l'écran, donc sans danger.
+*/
+const COLLEGUES = ['nadia@exemple.test', 'hugo@exemple.test', 'ines@exemple.test', 'marc@exemple.test'];
+const MOI = EMAIL;
+
+/*
+  SONDAGES — un qui attend MA voix, un déjà tranché, un clos.
+
+  Le premier est le seul qui demande quelque chose à celui qui regarde : c'est
+  lui qui doit dominer l'écran. Les deux autres existent pour que la différence
+  entre « on attend votre voix » et « c'est réglé » soit visible côte à côte.
+*/
+const SONDAGES = [
+  {
+    cle: 'essai-sond-1',
+    question: 'Quel jour pour la réunion de rentrée ?',
+    options: ['Mardi 22, 9 h', 'Mercredi 23, 14 h', 'Jeudi 24, 9 h'],
+    /* Sans ma voix : c'est ce manque qui fait l'objet dominant. */
+    votes: { [COLLEGUES[0]]: 1, [COLLEGUES[1]]: 1, [COLLEGUES[2]]: 0, [COLLEGUES[3]]: 1 },
+    anonymous: false,
+    closedAt: null,
+    ilYaHeures: -20,
+  },
+  {
+    cle: 'essai-sond-2',
+    question: 'On garde le fournisseur actuel pour les contenants ?',
+    options: ['Oui, on garde', 'Non, on change'],
+    votes: { [MOI]: 0, [COLLEGUES[0]]: 0, [COLLEGUES[1]]: 1, [COLLEGUES[2]]: 0 },
+    anonymous: false,
+    closedAt: null,
+    ilYaHeures: -52,
+  },
+  {
+    cle: 'essai-sond-3',
+    question: 'Nom de la nouvelle gamme',
+    options: ['Atelier', 'Maison', 'Comptoir'],
+    votes: { [MOI]: 1, [COLLEGUES[0]]: 1, [COLLEGUES[1]]: 1, [COLLEGUES[2]]: 2, [COLLEGUES[3]]: 0 },
+    anonymous: true,
+    closedAt: instant(-24 * 6),
+    ilYaHeures: -24 * 9,
+  },
+];
+for (const s of SONDAGES) {
+  await poser('polls', s.cle, {
+    question: s.question,
+    options: s.options,
+    votes: s.votes,
+    createdBy: COLLEGUES[0],
+    createdAt: instant(s.ilYaHeures),
+    closedAt: s.closedAt,
+    anonymous: s.anonymous,
+  });
+}
+
+/*
+  ANNONCES — une que tout le monde n'a PAS lue.
+
+  C'est la seule configuration qui rend l'écran lisible : une annonce lue par
+  tous est une archive, une annonce lue par personne vient d'être écrite. Celle
+  du milieu — trois sur cinq — est la seule qui pose une question à l'autrice,
+  et c'est donc elle qui doit dominer.
+*/
+const ANNONCES = [
+  [
+    'essai-ann-1',
+    'Fermeture exceptionnelle le 25 septembre',
+    'L’atelier sera fermé toute la journée du jeudi 25 pour l’entretien annuel des machines. Les livraisons prévues ce jour-là sont décalées au vendredi 26. Prévenez vos clients cette semaine plutôt que la veille.',
+    [COLLEGUES[0], COLLEGUES[2]],
+    -30,
+  ],
+  [
+    'essai-ann-2',
+    'Nouveau code d’alarme',
+    'Le code change lundi. Il vous sera donné de vive voix, jamais par message.',
+    [COLLEGUES[0], COLLEGUES[1], COLLEGUES[2], COLLEGUES[3]],
+    -24 * 5,
+  ],
+];
+for (const [cle, title, body, readBy, ilYaHeures] of ANNONCES) {
+  await poser('announcements', cle, {
+    title,
+    body,
+    authorEmail: MOI,
+    createdAt: instant(ilYaHeures),
+    readBy: [MOI, ...readBy],
+  });
+}
+
+/*
+  GROUPES — trois salles, et un fil qui a vraiment un dernier mot.
+
+  Un groupe sans message est un nom dans une liste. Ce qui se juge sur cet
+  écran, c'est une CONVERSATION : il en faut une assez longue pour qu'on voie
+  comment elle se lit quand elle défile.
+*/
+const GROUPES = [
+  ['essai-grp-1', 'Boutique', [MOI, COLLEGUES[0], COLLEGUES[1]]],
+  ['essai-grp-2', 'Livraisons', [MOI, COLLEGUES[1], COLLEGUES[3]]],
+  ['essai-grp-3', 'Bureau', [MOI, COLLEGUES[0], COLLEGUES[2]]],
+];
+for (const [cle, name, members] of GROUPES) {
+  await poser('groups', cle, { name, members, createdBy: MOI, createdAt: instant(-24 * 40) });
+}
+
+const MESSAGES = [
+  ['essai-grpm-1', 'essai-grp-1', COLLEGUES[0], 'La vitrine est posée, il reste le bandeau du haut.', -6],
+  ['essai-grpm-2', 'essai-grp-1', MOI, 'Parfait. Tu as la photo pour le dossier ?', -5.5],
+  ['essai-grpm-3', 'essai-grp-1', COLLEGUES[0], 'Je la mets dans Médias ce soir.', -5.2],
+  ['essai-grpm-4', 'essai-grp-1', COLLEGUES[1], 'J’ai décalé la livraison Brasserie à jeudi, ils ferment demain.', -3],
+  ['essai-grpm-5', 'essai-grp-1', MOI, 'Bien vu. Je préviens la cliente.', -2.6],
+  ['essai-grpm-6', 'essai-grp-1', COLLEGUES[0], 'Le nouveau bandeau arrive lundi par transporteur.', -0.6],
+  ['essai-grpm-7', 'essai-grp-2', COLLEGUES[3], 'Camionnette au garage jusqu’à mercredi.', -28],
+  ['essai-grpm-8', 'essai-grp-3', COLLEGUES[2], 'Les contrats de septembre sont signés, tous les trois.', -50],
+];
+for (const [cle, groupId, authorEmail, body, ilYaHeures] of MESSAGES) {
+  await poser('groupMessages', cle, { groupId, authorEmail, body, createdAt: instant(ilYaHeures) });
+}
+
 /* ─── Automatisations ──────────────────────────────────────────────────────── */
 
 /*

@@ -25,6 +25,28 @@ interface PollData {
 /**
  * LES SONDAGES — trancher à plusieurs sans réunion.
  *
+ * ## Ce qui domine : celui qui attend VOTRE voix
+ *
+ * L'écran affichait une grille de cartes égales. Un sondage clos depuis une
+ * semaine, un sondage où tout le monde a voté sauf moi, et un sondage en cours
+ * y avaient la même taille et la même encre — alors qu'un seul des trois
+ * demande quelque chose à celui qui regarde.
+ *
+ * Le compte était pourtant là : `aVoter` se calculait, et s'affichait comme un
+ * relevé d'en-tête, à un mètre de la carte qu'il désignait. Savoir qu'« il y en
+ * a un » sans savoir LEQUEL n'avance à rien.
+ *
+ * Le premier sondage sans ma voix passe donc en tête, à pleine largeur, ses
+ * choix en barres qu'on lit de loin. Les autres descendent en registre d'une
+ * ligne — un sondage déjà voté n'est plus une question, c'est un résultat.
+ *
+ * ## L'ambre
+ *
+ * Sur « il attend votre voix », et nulle part ailleurs. C'est la seule
+ * DÉCISION de l'écran : voter est un geste que personne ne peut faire à ma
+ * place. Un sondage clos est un fait, un sondage déjà voté est un fait ; ni
+ * l'un ni l'autre n'appelle quoi que ce soit.
+ *
  * Pour qui : un collectif ou une petite équipe qui décide d'une date, d'un
  * nom, d'un fournisseur. Ce que ça règle : la question posée trois fois
  * dans le fil et jamais tranchée. Un vote par personne (le serveur ne peut
@@ -47,7 +69,32 @@ export function PollsScreen() {
   const moi = user?.email ?? '';
   const sondages = useMemo(() => [...brutes].sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [brutes]);
   const ouverts = sondages.filter((s) => !s.closedAt);
-  const aVoter = ouverts.filter((s) => s.votes?.[moi] === undefined).length;
+  const enAttenteDeMoi = ouverts.filter((s) => s.votes?.[moi] === undefined);
+  const aVoter = enAttenteDeMoi.length;
+
+  /*
+    LA TÊTE : le plus ANCIEN de ceux qui attendent ma voix.
+
+    Le plus ancien, pas le plus récent : un sondage qui traîne bloque une
+    décision que les autres ont déjà prise. Le dernier arrivé, lui, peut
+    attendre demain sans rien retenir.
+  */
+  const aTrancher = enAttenteDeMoi.length > 0 ? enAttenteDeMoi[enAttenteDeMoi.length - 1] : null;
+  const reste = sondages.filter((s) => s.id !== aTrancher?.id);
+
+  /** Les comptes d'un sondage, dans l'ordre de ses options. */
+  const comptesDe = (s: PollData) => {
+    const votes = s.votes ?? {};
+    return s.options.map((_, i) => Object.values(votes).filter((v) => v === i).length);
+  };
+  /** L'option en tête, et son avance. Sert au registre : un résultat en une ligne. */
+  const enTeteDe = (s: PollData) => {
+    const comptes = comptesDe(s);
+    const max = Math.max(0, ...comptes);
+    const index = comptes.indexOf(max);
+    const total = Object.keys(s.votes ?? {}).length;
+    return { libelle: s.options[index] ?? '', voix: max, total, exaequo: comptes.filter((c) => c === max).length > 1 };
+  };
 
   const creer = async () => {
     const choix = options.split('\n').map((o) => o.trim()).filter(Boolean);
@@ -123,74 +170,148 @@ export function PollsScreen() {
           </FirstRun>
         </motion.div>
       ) : (
-        <motion.ul variants={staggerItem} className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(20rem,1fr))]">
-          {sondages.map((s) => {
-            const votes = s.votes ?? {};
-            const total = Object.keys(votes).length;
-            const monVote = votes[moi];
-            const clos = Boolean(s.closedAt);
-            const peutClore = !clos && (s.createdBy === moi || isAdminRole(role));
-            const comptes = s.options.map((_, i) => Object.values(votes).filter((v) => v === i).length);
-            return (
-              <li key={s.id} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium leading-snug text-text-primary [overflow-wrap:anywhere]">{s.question}</p>
-                    <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                      {profileFor(s.createdBy).name} · {relativeTime(s.createdAt)} · {t('sondages.participants', { n: total })}
-                      {s.anonymous && ` · ${t('sondages.anonymeCourt')}`}
-                    </p>
-                  </div>
-                  {clos && (
-                    <span className="flex flex-shrink-0 items-center gap-1 rounded-sm border border-border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-text-muted">
-                      <Lock size={10} /> {t('sondages.clos')}
-                    </span>
-                  )}
-                </div>
-                <ol className="flex flex-col gap-1.5">
-                  {s.options.map((option, i) => {
-                    const part = total > 0 ? Math.round((comptes[i] / total) * 100) : 0;
-                    const choisi = monVote === i;
-                    const votants = s.anonymous ? [] : Object.entries(votes).filter(([, v]) => v === i).map(([e]) => e);
-                    return (
-                      <li key={i}>
-                        <button
-                          type="button"
-                          disabled={clos}
-                          onClick={() => void voter(s, i)}
-                          aria-pressed={choisi}
-                          className={`relative flex min-h-11 w-full items-center justify-between gap-3 overflow-hidden rounded-lg border px-3 text-left text-sm transition-colors disabled:cursor-default ${choisi ? 'border-accent text-text-primary' : 'border-border text-text-secondary hover:border-border-strong'}`}
-                        >
-                          <span aria-hidden className="absolute inset-y-0 left-0 bg-accent-muted transition-[width] duration-500 motion-reduce:transition-none" style={{ width: `${part}%` }} />
-                          <span className="relative flex min-w-0 items-center gap-2">
-                            {choisi && <Vote size={13} className="flex-shrink-0 text-accent" />}
-                            <span className="truncate">{option}</span>
+        <>
+          {/*
+            LA QUESTION QUI ATTEND — l'objet dominant.
+
+            Pleine largeur, question à l'échelle d'un titre, et les choix en
+            barres hautes : un sondage se lit par sa RÉPARTITION, et une
+            répartition ne se lit pas dans une carte de trois cents pixels.
+          */}
+          {aTrancher && (
+            <motion.section
+              variants={staggerItem}
+              className="panel-raised p-5 sm:p-6"
+              data-signal-groupe="attend-ma-voix"
+            >
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <span className="signal-plate px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.18em]">
+                  {t('sondages.attendVotreVoix')}
+                </span>
+                <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                  {profileFor(aTrancher.createdBy).name} · {relativeTime(aTrancher.createdAt)} ·{' '}
+                  {t('sondages.participants', { n: Object.keys(aTrancher.votes ?? {}).length })}
+                  {aTrancher.anonymous && ` · ${t('sondages.anonymeCourt')}`}
+                </span>
+              </div>
+
+              <p className="mt-3.5 text-[23px] font-semibold leading-snug text-text-primary [overflow-wrap:anywhere] sm:text-[27px]">
+                {aTrancher.question}
+              </p>
+
+              <ol className="mt-5 flex flex-col gap-2">
+                {aTrancher.options.map((option, i) => {
+                  const comptes = comptesDe(aTrancher);
+                  const total = Object.keys(aTrancher.votes ?? {}).length;
+                  const part = total > 0 ? Math.round((comptes[i] / total) * 100) : 0;
+                  const votants = aTrancher.anonymous
+                    ? []
+                    : Object.entries(aTrancher.votes ?? {}).filter(([, v]) => v === i).map(([e]) => e);
+                  return (
+                    <li key={i}>
+                      <button
+                        type="button"
+                        onClick={() => void voter(aTrancher, i)}
+                        className="input-focus relative flex min-h-[52px] w-full items-center justify-between gap-3 overflow-hidden border border-border bg-surface px-4 text-left transition-colors hover:border-border-strong"
+                      >
+                        {/* La barre est le FOND de l'option, pas une jauge à côté :
+                            c'est ce qui fait qu'on lit la répartition sans lire
+                            les pourcentages. */}
+                        <span
+                          aria-hidden
+                          className="absolute inset-y-0 left-0 bg-elevated transition-[width] duration-500 motion-reduce:transition-none"
+                          style={{ width: `${part}%` }}
+                        />
+                        <span className="relative min-w-0 truncate text-[15px] text-text-primary">{option}</span>
+                        <span className="relative flex flex-shrink-0 items-center gap-2.5">
+                          {votants.slice(0, 4).map((e) => (
+                            <UserAvatar key={e} email={e} size={20} />
+                          ))}
+                          <span className="tnum font-mono text-xs text-text-secondary">
+                            {comptes[i]} · {part} %
                           </span>
-                          <span className="relative flex flex-shrink-0 items-center gap-2">
-                            {votants.slice(0, 4).map((e) => <UserAvatar key={e} email={e} size={18} />)}
-                            <span className="tnum font-mono text-[11px] text-text-muted">{comptes[i]} · {part}%</span>
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ol>
-                {(peutClore || s.createdBy === moi || isAdminRole(role)) && (
-                  <div className="flex flex-wrap gap-2">
-                    {peutClore && (
-                      <button type="button" onClick={() => void clore(s)} className="border border-border px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary">
-                        {t('sondages.clore')}
+                        </span>
                       </button>
-                    )}
-                    <button type="button" onClick={() => void remove('polls', s.id)} className="border border-border px-3 py-1.5 text-xs text-text-muted hover:text-danger">
-                      {t('sondages.supprimer')}
-                    </button>
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </motion.ul>
+                    </li>
+                  );
+                })}
+              </ol>
+            </motion.section>
+          )}
+
+          {/*
+            LE REGISTRE — une ligne par sondage réglé.
+
+            Un sondage déjà voté n'est plus une question : c'est un résultat. Il
+            se lit donc comme un résultat — l'option en tête et son avance, sur
+            une ligne — et non comme une carte qu'on pourrait confondre avec
+            celle du haut.
+          */}
+          {reste.length > 0 && (
+            <motion.section variants={staggerItem} className="panel">
+              <p className="eyebrow border-b border-border px-4 py-2.5">{t('sondages.registre')}</p>
+              <ul className="flex flex-col">
+                {reste.map((s) => {
+                  const tete = enTeteDe(s);
+                  const clos = Boolean(s.closedAt);
+                  const peutClore = !clos && (s.createdBy === moi || isAdminRole(role));
+                  return (
+                    <li
+                      key={s.id}
+                      className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-3 last:border-b-0"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm text-text-primary">{s.question}</span>
+                        <span className="mt-0.5 block font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                          {profileFor(s.createdBy).name} · {relativeTime(s.createdAt)} ·{' '}
+                          {t('sondages.participants', { n: tete.total })}
+                          {clos && ` · ${t('sondages.clos')}`}
+                        </span>
+                      </span>
+
+                      {/* L'ex æquo se dit, il ne se cache pas derrière un
+                          « en tête » qui serait faux. */}
+                      <span className="flex flex-shrink-0 items-center gap-2">
+                        {clos ? (
+                          <Lock size={11} className="text-text-muted" />
+                        ) : (
+                          <Vote size={12} className="text-text-muted" />
+                        )}
+                        <span className="text-sm text-text-secondary">
+                          {tete.exaequo ? t('sondages.exaequo') : tete.libelle}
+                        </span>
+                        <span className="tnum font-mono text-[11px] text-text-muted">
+                          {tete.voix}/{tete.total}
+                        </span>
+                      </span>
+
+                      {(peutClore || s.createdBy === moi || isAdminRole(role)) && (
+                        <span className="flex flex-shrink-0 gap-2">
+                          {peutClore && (
+                            <button
+                              type="button"
+                              onClick={() => void clore(s)}
+                              className="border border-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary hover:text-text-primary"
+                            >
+                              {t('sondages.clore')}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => void remove('polls', s.id)}
+                            className="border border-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-text-muted hover:border-danger/60 hover:text-danger"
+                          >
+                            {t('sondages.supprimer')}
+                          </button>
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </motion.section>
+          )}
+        </>
       )}
     </motion.section>
   );
