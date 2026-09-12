@@ -47,12 +47,19 @@ dette calculée sans `readBy` — le dernier mot vient de l'autre — avec la bo
 de réponse dans la carte (Messages privés). Détail et preuves dans
 `docs/captures/files-2026-09-12/`.
 
-### B — Les registres : une référence qu'on consulte
+### B — Les registres : une référence qu'on consulte — **livrée sauf le Coffre-fort**
 `Fournisseurs` · `Nomenclatures` · `Modèles` · `Trombinoscope` · `Coffre-fort`
 
 On vient y chercher une entrée précise, pas surveiller un état. La question
 n'est pas « qu'est-ce qui a changé » mais « où est celui que je cherche » :
 c'est la recherche et l'ordre qui dominent, pas une carte de tête.
+
+**La méthode commune ne donne pas le dominant** : recherche et lignes partout,
+mais les silencieux pour les fournisseurs, la vente à perte pour les
+nomenclatures, les trous à remplir pour les modèles, le rôle pour le
+trombinoscope. Le `Coffre-fort` reste : ses secrets vivent hors synchro et hors
+API, sa boucle de preuve n'est pas celle des autres. Détail dans
+`docs/captures/registres-2026-09-12/`.
 
 ### C — Les plans : qui fait quoi, quand — **livrée**
 `Planning d'équipe` · `Absences` · `Tableau des projets` · `Pipeline` · `Tâches`
@@ -125,7 +132,7 @@ d'un bloc.
 
 ## Où ça s'arrête, au 12 septembre
 
-**Quatorze modules composés sur quarante-trois**, en trois familles entières :
+**Dix-huit modules composés sur quarante-trois**, en quatre familles :
 
 - **E, le collectif** (4) — Sondages, Annonces, Appels, Groupes.
   Preuves : `docs/captures/collectif-2026-09-12/`.
@@ -133,14 +140,16 @@ d'un bloc.
   Messages privés. Preuves : `docs/captures/files-2026-09-12/`.
 - **C, les plans** (5) — Planning d'équipe, Absences, Tableau des projets,
   Prospects, Tâches. Preuves : `docs/captures/plans-2026-09-12/`.
+- **B, les registres** (4 sur 5) — Fournisseurs, Nomenclatures, Modèles,
+  Trombinoscope. Preuves : `docs/captures/registres-2026-09-12/`.
 
-Les vingt-neuf autres restent à l'état d'habillage. L'ordre dans lequel
+Les vingt-cinq autres restent à l'état d'habillage. L'ordre dans lequel
 continuer, et pourquoi :
 
-1. **B — les registres** (`Fournisseurs`, `Nomenclatures`, `Modèles`,
-   `Trombinoscope`, `Coffre-fort`). Cinq modules qui partagent une vraie
-   logique : la RECHERCHE domine, pas une carte de tête. Une fois la première
-   composée, les quatre autres suivent vite.
+1. **Le Coffre-fort**, seul reste de la famille B. À faire d'abord parce qu'il
+   est isolé : sa boucle de preuve demande de semer dans le stockage du
+   NAVIGATEUR, pas dans la base du bac à sable, et cette mécanique servira à
+   tout autre module local qui viendrait après.
 2. **D — le reste des vitrines** (`Mini-page`, `Portfolio`, `Lettre
    d'information`, `Formulaires`, `Signature sur place`, `QR codes`). `RDV en
    ligne` vient d'y tracer la méthode : montrer le RENDU, pas le réglage. Elle
