@@ -638,6 +638,87 @@ await poser('projects', 'essai-prj-7', {
   createdAt: instant(-24 * 12),
 });
 
+/*
+  LES REGISTRES — fournisseurs, nomenclatures, modèles.
+
+  Trois collections vides de plus. Un registre vide ne montre ni son ordre, ni
+  ce qu'on y cherche, ni le défaut qu'il est censé faire remonter.
+
+  Les fournisseurs portent deux SILENCIEUX à dessein : le module dit en tête
+  que « les fournisseurs silencieux depuis trois mois remontent », et il faut
+  de quoi vérifier que c'est vrai. Les nomenclatures portent une marge
+  négative — vendre à perte sans le savoir est le seul vrai défaut de ce
+  module.
+*/
+const FOURNISSEURS = [
+  { cle: 'sup-1', nom: 'Horticulture Vidal', fournit: 'Plants, terreau, engrais', contact: 'Marc Vidal', tel: '04 67 12 34 56', email: 'commandes@horti-vidal.exemple.test', derniereIlYaJours: 6 },
+  { cle: 'sup-2', nom: 'Poterie du Lez', fournit: 'Pots, jardinières, soucoupes', contact: 'Awa Diallo', tel: '04 67 98 76 54', email: 'awa@poterie-lez.exemple.test', derniereIlYaJours: 21 },
+  { cle: 'sup-3', nom: 'Métal & Structure', fournit: 'Supports, treillis, fixations', contact: 'Yannis Roche', tel: '04 67 55 44 33', email: 'contact@metal-structure.exemple.test', derniereIlYaJours: 128 },
+  { cle: 'sup-4', nom: 'Papeterie Sainte-Anne', fournit: 'Étiquettes, rubans, emballages', contact: '', tel: '04 67 22 11 00', email: '', derniereIlYaJours: null },
+  { cle: 'sup-5', nom: 'Bois de l’Hérault', fournit: 'Bacs sur mesure, planches', contact: 'Sophie Nguyen', tel: '04 67 77 88 99', email: 'sophie@bois-herault.exemple.test', derniereIlYaJours: 40 },
+  { cle: 'sup-6', nom: 'Éclairage Sud', fournit: 'Guirlandes, spots de vitrine', contact: '', tel: '', email: 'devis@eclairage-sud.exemple.test', derniereIlYaJours: 95 },
+];
+for (const f of FOURNISSEURS) {
+  await poser('suppliers', `essai-${f.cle}`, {
+    name: f.nom,
+    supplies: f.fournit,
+    contact: f.contact,
+    phone: f.tel,
+    email: f.email,
+    lastOrderAt: f.derniereIlYaJours === null ? null : instant(-24 * f.derniereIlYaJours),
+    createdAt: instant(-24 * 200),
+  });
+}
+
+const compo = (label, quantity, unit, euros) => ({ label, quantity, unit, unitCostCents: Math.round(euros * 100) });
+const NOMENCLATURES = [
+  {
+    cle: 'bom-1',
+    produit: 'Jardinière de terrasse — 1 m',
+    vente: 130,
+    composants: [compo('Bac bois traité', 1, 'pièce', 48), compo('Terreau', 40, 'L', 0.45), compo('Plants vivaces', 6, 'pièce', 4.2), compo('Main-d’œuvre', 1.5, 'h', 22)],
+  },
+  {
+    cle: 'bom-2',
+    produit: 'Composition de vitrine — saison',
+    vente: 185,
+    composants: [compo('Fleurs coupées', 1, 'lot', 62), compo('Feuillage', 1, 'lot', 18), compo('Mousse et support', 1, 'pièce', 9.5), compo('Main-d’œuvre', 2, 'h', 22)],
+  },
+  {
+    /* La marge NÉGATIVE : le seul vrai défaut que ce module puisse montrer. */
+    cle: 'bom-3',
+    produit: 'Suspension macramé — petite',
+    vente: 34,
+    composants: [compo('Corde coton', 18, 'm', 0.9), compo('Anneau laiton', 1, 'pièce', 3.4), compo('Pot céramique', 1, 'pièce', 11), compo('Main-d’œuvre', 0.75, 'h', 22)],
+  },
+  {
+    /* Sans prix de vente : la marge ne doit PAS s'inventer un chiffre. */
+    cle: 'bom-4',
+    produit: 'Arche d’événement — location',
+    vente: null,
+    composants: [compo('Structure alu', 1, 'pièce', 240), compo('Fleurs et feuillage', 1, 'lot', 95), compo('Montage sur place', 3, 'h', 22)],
+  },
+];
+for (const b of NOMENCLATURES) {
+  await poser('boms', `essai-${b.cle}`, {
+    product: b.produit,
+    components: b.composants,
+    sellPriceCents: b.vente === null ? null : Math.round(b.vente * 100),
+    createdAt: instant(-24 * 45),
+  });
+}
+
+const MODELES_DE_TEXTE = [
+  { cle: 'tpl-1', titre: 'Confirmation de commande', corps: 'Bonjour {prénom},\n\nVotre commande {numéro} est confirmée. Nous la préparons pour le {date}, et nous vous prévenons dès qu’elle est prête à retirer.\n\nBelle journée.' },
+  { cle: 'tpl-2', titre: 'Réponse à un devis', corps: 'Bonjour {prénom},\n\nMerci de votre demande. Vous trouverez le devis {numéro} en pièce jointe, valable {validité}. Je reste disponible si vous souhaitez ajuster quoi que ce soit.\n\nCordialement.' },
+  { cle: 'tpl-3', titre: 'Rappel de rendez-vous', corps: 'Bonjour {prénom},\n\nPetit rappel : nous nous voyons {date} à {heure}, {lieu}. Si ça ne va plus, dites-le-moi, on décale sans problème.' },
+  { cle: 'tpl-4', titre: 'Remerciement après livraison', corps: 'Bonjour {prénom},\n\nMerci pour votre confiance. J’espère que {produit} vous plaît. Un mot si quelque chose ne va pas, on s’en occupe.' },
+  { cle: 'tpl-5', titre: 'Fermeture exceptionnelle', corps: 'Bonjour,\n\nL’atelier sera fermé le {date}. Les commandes prévues ce jour-là sont décalées au {report}. Merci de votre compréhension.' },
+];
+for (const m of MODELES_DE_TEXTE) {
+  await poser('templates', `essai-${m.cle}`, { title: m.titre, body: m.corps, createdAt: instant(-24 * 60) });
+}
+
 /* ─── Rendez-vous ──────────────────────────────────────────────────────────── */
 
 /*

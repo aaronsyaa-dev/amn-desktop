@@ -10,7 +10,7 @@ import { useProfiles } from '../state/ProfilesContext';
 import { useSync } from '../state/SyncContext';
 import { useCall } from '../state/CallContext';
 import { useAuth } from '../auth/AuthContext';
-import { roleLabel } from '../lib/roleLabels';
+import { roleLabel, assignableRoles } from '../lib/roleLabels';
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
@@ -24,6 +24,28 @@ import { useLangue } from '../i18n';
  * écran, sans ouvrir la messagerie. Rien n'est saisi ici : les visages
  * viennent des profils, les rôles des comptes, la présence de la liaison, la
  * dernière connexion du journal. Un écran qui lit, et qui ne ment jamais.
+ *
+ * ## Ce qui domine : les visages, rangés par RÔLE
+ *
+ * Les cartes étaient alphabétiques, et c'est le seul ordre qui ne répond à
+ * aucune des deux questions du module. « C'est qui, déjà ? » se résout par le
+ * rôle — on cherche « la personne qui gère les commandes », pas « la personne
+ * dont le nom commence par N ». L'écran groupe donc par rôle, dans l'ordre des
+ * droits, chaque groupe portant son compte.
+ *
+ * ## L'écart avec Appels, qui montre aussi des visages
+ *
+ * Appels répond à « qui puis-je joindre à la seconde » : des portraits
+ * actionnables, triés par présence, avec un bouton d'appel. Le trombinoscope
+ * répond à « c'est qui » : des visages rangés par rôle, avec l'adresse et la
+ * dernière connexion. La présence reste un point sur l'avatar — une
+ * information, pas l'axe.
+ *
+ * ## Pas d'ambre, et c'est la bonne réponse
+ *
+ * Cet écran ne demande rien. Il n'a ni file, ni dette, ni décision : il lit
+ * quatre sources et les met en face l'une de l'autre. Un ambre y serait posé
+ * sur « il y a des gens », ce qui ne veut rien dire.
  */
 export function DirectoryScreen() {
   const { t } = useLangue();
@@ -43,6 +65,25 @@ export function DirectoryScreen() {
       .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
   }, [membres, recherche, profileFor]);
   const enLigne = membres.filter((m) => m.email === user?.email || onlineEmails.has(m.email)).length;
+
+  /*
+    LES GROUPES DE RÔLE, dans l'ordre des droits.
+
+    `assignableRoles` donne déjà cet ordre pour les écrans qui font CHOISIR un
+    rôle ; on le réutilise pour afficher, plutôt que d'en réinventer un. Les
+    rôles hors liste — `guest`, né d'un lien d'appel — ferment la marche sous
+    leur propre intitulé, jamais confondus avec un membre.
+  */
+  const groupes = useMemo(() => {
+    const ordre = [...assignableRoles(null).map((r) => r.role as string), 'guest'];
+    const par = new Map<string, typeof visibles>();
+    for (const m of visibles) par.set(m.role, [...(par.get(m.role) ?? []), m]);
+    return [...par.entries()].sort((a, b) => {
+      const ia = ordre.indexOf(a[0]);
+      const ib = ordre.indexOf(b[0]);
+      return (ia === -1 ? ordre.length : ia) - (ib === -1 ? ordre.length : ib);
+    });
+  }, [visibles]);
 
   return (
     <motion.section variants={staggerContainer} initial="hidden" animate="show" className="flex flex-col gap-5">
@@ -79,8 +120,18 @@ export function DirectoryScreen() {
               />
             </label>
           </motion.div>
-          <motion.div variants={staggerItem} className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(14rem,1fr))]">
-            {visibles.map((m) => {
+          {visibles.length === 0 && (
+            <motion.p variants={staggerItem} className="panel px-4 py-7 text-center text-sm text-text-secondary">{t('trombi.aucunTrouve')}</motion.p>
+          )}
+
+          {groupes.map(([role, gens]) => (
+          <motion.section key={role} variants={staggerItem} className="flex flex-col gap-2">
+            <p className="eyebrow flex items-center gap-2">
+              <span>{roleLabel(role, null)}</span>
+              <span className="tnum text-text-muted">{gens.length}</span>
+            </p>
+            <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(14rem,1fr))]">
+            {gens.map((m) => {
               const moi = m.email === user?.email;
               const online = moi || onlineEmails.has(m.email);
               const profil = profileFor(m.email);
@@ -105,10 +156,11 @@ export function DirectoryScreen() {
                         {m.nom}
                         {moi && <span className="text-text-muted"> {t('equipe.vous')}</span>}
                       </p>
-                      <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">{roleLabel(m.role, null)}</p>
+                      {/* Le rôle titre déjà le groupe : le répéter sur chaque
+                          carte ferait trois fois le même mot par écran. */}
+                      <p className="truncate text-xs text-text-secondary" title={m.email}>{m.email}</p>
                     </div>
                   </div>
-                  <p className="truncate text-xs text-text-secondary" title={m.email}>{m.email}</p>
                   <div className="mt-auto flex items-center justify-between gap-2">
                     <span className="text-xs text-text-secondary">{ligne}</span>
                     {!moi && online && configured && (
@@ -127,7 +179,9 @@ export function DirectoryScreen() {
                 </article>
               );
             })}
-          </motion.div>
+            </div>
+          </motion.section>
+          ))}
         </>
       )}
     </motion.section>

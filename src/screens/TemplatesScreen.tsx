@@ -30,6 +30,26 @@ export function remplir(body: string, valeurs: Record<string, string>): string {
  * Ce que ça règle : un texte avec des trous nommés entre accolades, remplis
  * en un geste, copié. Les Relances et la Lettre ont leur texte propre ; les
  * modèles servent à tout le reste.
+ *
+ * ## Ce qui domine : le modèle en train d'être rempli
+ *
+ * L'écran était un rail de 18 rem et un panneau — le QUATRIÈME rail vertical
+ * de l'application après Notes, Pages et Contrôles, et le deuxième retiré dans
+ * ce chantier après celui de Groupes. À l'ouverture : une colonne de titres et
+ * un « Choisissez un modèle » perdu au milieu de la place restante.
+ *
+ * Or un modèle n'est pas un document qu'on choisit dans une liste : c'est un
+ * FORMULAIRE. Ses trous — `{prénom}`, `{date}` — sont des champs, et le geste
+ * de l'écran est de les remplir puis de copier. Le premier modèle s'ouvre donc
+ * de lui-même, ses champs en tête, le rendu dessous, et la liste passe en
+ * bande horizontale au-dessus avec le nombre de trous de chacun.
+ *
+ * ## L'ambre
+ *
+ * Sur les trous qui restent. C'est la seule chose que cet écran demande de
+ * décider — copier un modèle avec un `{prénom}` non remplacé est précisément
+ * la faute qu'il existe pour éviter. Quand tout est rempli, l'ambre disparaît
+ * et le bouton de copie redevient ordinaire.
  */
 export function TemplatesScreen() {
   const { t } = useLangue();
@@ -42,10 +62,17 @@ export function TemplatesScreen() {
   const [valeurs, setValeurs] = useState<Record<string, string>>({});
   const [copie, setCopie] = useState(false);
 
-  const modeles = useMemo(() => [...brutes].sort((a, b) => a.title.localeCompare(b.title)), [brutes]);
-  const courant = modeles.find((m) => m.id === actif) ?? null;
+  const modeles = useMemo(() => [...brutes].sort((a, b) => a.title.localeCompare(b.title, 'fr')), [brutes]);
+  /* Le premier s'ouvre de lui-même : un écran de modèles qui n'en montre aucun
+     fait perdre un clic à chaque visite, et ne montre rien de ce qu'il fait. */
+  const courant = modeles.find((m) => m.id === actif) ?? modeles[0] ?? null;
   const trous = courant ? trousDe(courant.body) : [];
   const resultat = courant ? remplir(courant.body, valeurs) : '';
+  /* Un trou reste vide tant que sa valeur est vide : `remplir` laisse alors
+     l'accolade en place, et c'est ce qu'il ne faut pas copier. */
+  const restants = trous.filter((trou) => !(valeurs[trou] ?? '').trim());
+  /* Zéro, un, plusieurs : trois phrases écrites plutôt qu'un « trou(s) ». */
+  const ditLesTrous = (n: number) => (n === 0 ? t('modeles.trousAucun') : n === 1 ? t('modeles.trouUn') : t('modeles.trous', { n }));
   const trousTotal = modeles.reduce((n, m) => n + trousDe(m.body).length, 0);
 
   const creer = async () => {
@@ -99,34 +126,83 @@ export function TemplatesScreen() {
           <FirstRun title={t('modeles.vide.titre')} action={{ label: t('modeles.vide.action'), onClick: () => setOuvert(true) }}>{t('modeles.vide.texte')}</FirstRun>
         </motion.div>
       ) : (
-        <motion.div variants={staggerItem} className="grid gap-4 lg:grid-cols-[18rem_1fr]">
-          <ul className="flex flex-col gap-1">
-            {modeles.map((m) => (
-              <li key={m.id} className="group flex items-center gap-1">
-                <button type="button" onClick={() => { setActif(m.id); setValeurs({}); }} aria-pressed={m.id === actif} className={`min-h-11 min-w-0 flex-1 truncate border px-3 text-left text-sm ${m.id === actif ? 'border-border-strong bg-surface-hover text-text-primary' : 'border-border text-text-secondary hover:text-text-primary'}`}>
-                  {m.title} <span className="tnum text-[10px] text-text-muted">· {t('modeles.trous', { n: trousDe(m.body).length })}</span>
-                </button>
-                <button type="button" onClick={() => void remove('templates', m.id)} aria-label={t('modeles.supprimer')} title={t('modeles.supprimer')} className="min-h-11 px-1 text-text-muted opacity-0 hover:text-danger focus:opacity-100 group-hover:opacity-100 md:min-h-0"><Trash2 size={13} /></button>
-              </li>
-            ))}
-          </ul>
-          {courant ? (
-            <section aria-label={courant.title} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-              <p className="text-sm font-semibold text-text-primary">{courant.title}</p>
+        <>
+          {/* LA BANDE DES MODÈLES — pas un rail. Le nombre de trous dit d'un
+              coup lequel demande du travail. */}
+          <motion.section variants={staggerItem} className="panel">
+            <p className="eyebrow border-b border-border px-4 py-2.5">{t('modeles.laBande')}</p>
+            <ul className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-3">
+              {modeles.map((m) => {
+                const n = trousDe(m.body).length;
+                const ouvertCelui = courant?.id === m.id;
+                return (
+                  <li key={m.id} className="group relative flex bg-surface">
+                    <button
+                      type="button"
+                      onClick={() => { setActif(m.id); setValeurs({}); }}
+                      aria-pressed={ouvertCelui}
+                      className={`input-focus flex min-h-11 w-full flex-col gap-1 px-4 py-3 text-left transition-colors ${ouvertCelui ? 'bg-elevated' : 'hover:bg-surface-hover'}`}
+                    >
+                      <span className="truncate text-sm text-text-primary">{m.title}</span>
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">{ditLesTrous(n)}</span>
+                    </button>
+                    <button type="button" onClick={() => void remove('templates', m.id)} aria-label={t('modeles.supprimer')} title={t('modeles.supprimer')} className="absolute right-2 top-2 px-1 text-text-muted opacity-0 hover:text-danger focus:opacity-100 group-hover:opacity-100"><Trash2 size={13} /></button>
+                  </li>
+                );
+              })}
+            </ul>
+          </motion.section>
+
+          {/* LE MODÈLE EN TRAIN D'ÊTRE REMPLI — l'objet dominant : un
+              formulaire, pas un document qu'on choisit. */}
+          {courant && (
+            <motion.section variants={staggerItem} aria-label={courant.title} className="panel-raised p-5 sm:p-6" data-signal-groupe="trous-restants">
               {trous.length > 0 && (
-                <div className="grid gap-2 sm:grid-cols-2">
+                <p
+                  className={`mb-3 inline-flex px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider ${
+                    restants.length > 0 ? 'signal-plate' : 'border border-border-strong text-text-secondary'
+                  }`}
+                >
+                  {restants.length === 0
+                    ? t('modeles.pretACopier')
+                    : restants.length === 1
+                      ? t('modeles.ilResteUn')
+                      : t('modeles.ilResteN', { n: restants.length })}
+                </p>
+              )}
+              <h2 className="text-[19px] font-semibold leading-tight text-text-primary sm:text-[23px]">{courant.title}</h2>
+
+              {trous.length > 0 ? (
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
                   {trous.map((trou) => (
-                    <input key={trou} value={valeurs[trou] ?? ''} onChange={(e) => setValeurs((v) => ({ ...v, [trou]: e.target.value }))} placeholder={trou} aria-label={trou} className="input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none" />
+                    <label key={trou} className="flex flex-col gap-1">
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">{trou}</span>
+                      <input
+                        value={valeurs[trou] ?? ''}
+                        onChange={(e) => setValeurs((v) => ({ ...v, [trou]: e.target.value }))}
+                        placeholder={trou}
+                        aria-label={trou}
+                        className="input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none"
+                      />
+                    </label>
                   ))}
                 </div>
+              ) : (
+                <p className="mt-3 text-sm text-text-secondary">{t('modeles.sansTrou')}</p>
               )}
-              <pre className="whitespace-pre-wrap rounded-lg border border-border bg-bg p-3 font-sans text-sm leading-relaxed text-text-primary">{resultat}</pre>
-              <button type="button" onClick={() => void copier()} className="flex min-h-11 w-fit items-center gap-2 bg-accent px-4 text-sm font-semibold text-bg md:min-h-0 md:py-2">{copie ? <Check size={14} /> : <Copy size={14} />} {copie ? t('modeles.copie') : t('modeles.copier')}</button>
-            </section>
-          ) : (
-            <p className="self-start text-sm text-text-muted">{t('modeles.choisir')}</p>
+
+              <pre className="mt-5 whitespace-pre-wrap border border-border bg-bg px-4 py-3.5 font-sans text-sm leading-relaxed text-text-primary">{resultat}</pre>
+
+              <button
+                type="button"
+                onClick={() => void copier()}
+                className="mt-4 flex min-h-11 w-fit items-center gap-2 bg-accent px-5 text-sm font-semibold text-bg md:min-h-0 md:py-2.5"
+              >
+                {copie ? <Check size={14} /> : <Copy size={14} />} {copie ? t('modeles.copie') : t('modeles.copier')}
+              </button>
+            </motion.section>
           )}
-        </motion.div>
+        </>
       )}
     </motion.section>
   );

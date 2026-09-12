@@ -120,6 +120,12 @@ const ECRANS = [
   ['Absences', '#/absences'],
   ['Tableau des projets', '#/tableau-projets'],
   ['Prospects', '#/pipeline'],
+  /* La famille « registres » : on y cherche une entrée, on n'y surveille pas
+     un état. Trombinoscope n'a AUCUN ambre, et c'est la bonne réponse. */
+  ['Fournisseurs', '#/fournisseurs'],
+  ['Nomenclatures', '#/nomenclatures'],
+  ['Modèles', '#/outils/modeles'],
+  ['Trombinoscope', '#/trombinoscope'],
 ];
 
 const serveur = spawn('node', [new URL('./servir-bundle.mjs', import.meta.url).pathname, BUNDLE, String(PORT)], {

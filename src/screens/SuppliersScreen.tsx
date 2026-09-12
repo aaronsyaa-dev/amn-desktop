@@ -20,6 +20,10 @@ interface SupplierData {
 
 const QUATRE_VINGT_DIX_JOURS = 90 * 86_400_000;
 
+/** Silencieux : jamais commandé, ou plus rien depuis trois mois. */
+const muet = (f: SupplierData, maintenant: number) =>
+  !f.lastOrderAt || maintenant - Date.parse(f.lastOrderAt) > QUATRE_VINGT_DIX_JOURS;
+
 /**
  * LES FOURNISSEURS — qui vous livre quoi, et depuis quand.
  *
@@ -28,6 +32,35 @@ const QUATRE_VINGT_DIX_JOURS = 90 * 86_400_000;
  * qu'il livre, qui appeler, et la date de la dernière commande — posée d'un
  * geste. Les fournisseurs silencieux depuis trois mois remontent : c'est
  * souvent là qu'une commande a été oubliée.
+ *
+ * ## Un commentaire qui mentait, corrigé le 12 septembre
+ *
+ * La phrase ci-dessus — « les fournisseurs silencieux remontent » — décrivait
+ * une intention, pas le code. Les fiches étaient triées par NOM, et le silence
+ * ne se voyait que dans un relevé d'en-tête et une date en orange au milieu
+ * d'une grille de cartes égales. Sur le bac à sable : « Bois de l'Hérault »,
+ * commandé il y a un mois, ouvrait l'écran ; « Métal & Structure », muet
+ * depuis quatre mois, arrivait troisième.
+ *
+ * Ils remontent pour de bon maintenant, et le commentaire est redevenu vrai.
+ *
+ * ## Ce qui domine, et ce que la famille a en commun
+ *
+ * Un registre ne se surveille pas, il se CONSULTE : la question n'est pas
+ * « qu'est-ce qui a changé » mais « où est celui que je cherche ». D'où un
+ * champ de recherche et des LIGNES, pas des cartes — six cartes de 17 rem
+ * remplissaient déjà la fenêtre, et un registre de quarante fournisseurs
+ * demanderait six écrans de défilement.
+ *
+ * Mais chaque registre garde son propre dominant, tiré de sa matière : ici le
+ * SILENCE, parce que c'est le seul défaut qu'une liste de fournisseurs puisse
+ * porter.
+ *
+ * ## L'ambre
+ *
+ * Sur les silencieux, et nulle part ailleurs. Une fiche qu'on consulte n'est
+ * pas une décision ; un fournisseur oublié depuis trois mois en est une —
+ * commander, ou retirer la fiche.
  */
 export function SuppliersScreen() {
   const { t } = useLangue();
@@ -40,8 +73,33 @@ export function SuppliersScreen() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
 
-  const fournisseurs = useMemo(() => [...brutes].sort((a, b) => a.name.localeCompare(b.name)), [brutes]);
+  const [recherche, setRecherche] = useState('');
   const maintenant = Date.now();
+
+  /*
+    L'ORDRE DU REGISTRE : les silencieux d'abord, puis l'alphabet.
+
+    C'est ce que l'en-tête du fichier promettait depuis le début. À l'intérieur
+    d'un groupe, l'alphabet — un registre se parcourt du regard, et un ordre
+    par date y serait imprévisible.
+
+    `maintenant` est relu DANS le mémo, pas capturé dehors : une horloge lue à
+    chaque rendu ne peut pas servir de dépendance honnête.
+  */
+  const fournisseurs = useMemo(() => {
+    const a_present = Date.now();
+    return [...brutes].sort((a, b) => {
+      const ma = muet(a, a_present);
+      const mb = muet(b, a_present);
+      if (ma !== mb) return ma ? -1 : 1;
+      return a.name.localeCompare(b.name, 'fr');
+    });
+  }, [brutes]);
+  const muets = fournisseurs.filter((f) => muet(f, maintenant));
+  const q = recherche.trim().toLowerCase();
+  const trouves = q
+    ? fournisseurs.filter((f) => `${f.name} ${f.supplies} ${f.contact}`.toLowerCase().includes(q))
+    : fournisseurs;
   const debutMois = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
   const commandesMois = fournisseurs.filter((f) => f.lastOrderAt && Date.parse(f.lastOrderAt) >= debutMois).length;
   const silencieux = fournisseurs.filter((f) => !f.lastOrderAt || maintenant - Date.parse(f.lastOrderAt) > QUATRE_VINGT_DIX_JOURS).length;
@@ -92,35 +150,80 @@ export function SuppliersScreen() {
           <FirstRun title={t('fournisseurs.vide.titre')} action={{ label: t('fournisseurs.vide.action'), onClick: () => setOuvert(true) }}>{t('fournisseurs.vide.texte')}</FirstRun>
         </motion.div>
       ) : (
-        <motion.ul variants={staggerItem} className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(17rem,1fr))]">
-          {fournisseurs.map((f) => {
-            const muet = !f.lastOrderAt || maintenant - Date.parse(f.lastOrderAt) > QUATRE_VINGT_DIX_JOURS;
-            return (
-              <li key={f.id} className="group flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-text-primary">{f.name}</p>
-                    {f.supplies && <p className="text-xs text-text-secondary">{f.supplies}</p>}
-                  </div>
-                  <button type="button" onClick={() => void remove('suppliers', f.id)} aria-label={t('fournisseurs.supprimer')} title={t('fournisseurs.supprimer')} className="min-h-11 px-1 text-text-muted opacity-0 hover:text-danger focus:opacity-100 group-hover:opacity-100 md:min-h-0"><Trash2 size={13} /></button>
-                </div>
-                <p className={`font-mono text-[10px] uppercase tracking-wider ${muet ? 'text-warning' : 'text-text-muted'}`}>
-                  {f.lastOrderAt ? t('fournisseurs.derniereCommande', { quand: relativeTime(f.lastOrderAt) }) : t('fournisseurs.jamaisCommande')}
+        <>
+          {/* LES SILENCIEUX — l'objet dominant, et la promesse de l'en-tête
+              enfin tenue. */}
+          <motion.section variants={staggerItem} className="panel-raised p-5 sm:p-6" data-signal-groupe="silencieux">
+            {muets.length > 0 ? (
+              <>
+                <p className="signal-plate mb-3 inline-flex px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider">{t('fournisseurs.stat.silencieux')}</p>
+                <p className="text-[21px] font-semibold leading-tight text-text-primary sm:text-[27px]">
+                  {muets.length === 1 ? t('fournisseurs.silencieuxUn') : t('fournisseurs.silencieuxN', { n: muets.length })}
                 </p>
-                {(f.contact || f.phone || f.email) && (
-                  <p className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-text-secondary">
-                    {f.contact && <span>{f.contact}</span>}
-                    {f.phone && <a href={`tel:${f.phone}`} className="-my-2 flex items-center gap-1 py-2 hover:text-text-primary"><Phone size={11} /> {f.phone}</a>}
-                    {f.email && <a href={`mailto:${f.email}`} className="-my-2 flex items-center gap-1 py-2 hover:text-text-primary"><Mail size={11} /> {f.email}</a>}
-                  </p>
-                )}
-                <button type="button" onClick={() => void commander(f)} className="mt-1 flex min-h-11 items-center justify-center gap-2 border border-border-strong px-3 text-xs text-text-primary hover:bg-surface-hover md:min-h-0 md:py-1.5">
-                  <ShoppingCart size={13} /> {t('fournisseurs.commandeAujourdhui')}
-                </button>
-              </li>
-            );
-          })}
-        </motion.ul>
+                <p className="mt-2 max-w-xl text-sm leading-relaxed text-text-secondary">{t('fournisseurs.silencieuxAide')}</p>
+                <ul className="mt-4 flex flex-wrap gap-2">
+                  {muets.map((f) => (
+                    <li key={f.id} className="flex items-center gap-2 border border-border-strong px-3 py-2">
+                      <span className="text-sm text-text-primary">{f.name}</span>
+                      <span className="font-mono text-[9px] uppercase tracking-wider text-text-muted">
+                        {f.lastOrderAt ? relativeTime(f.lastOrderAt) : t('fournisseurs.jamaisCommande')}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <>
+                <p className="eyebrow mb-3">{t('fournisseurs.stat.silencieux')}</p>
+                <p className="text-[21px] font-semibold leading-tight text-text-primary sm:text-[27px]">{t('fournisseurs.tousServis')}</p>
+                <p className="mt-2 max-w-xl text-sm leading-relaxed text-text-secondary">{t('fournisseurs.tousServisAide')}</p>
+              </>
+            )}
+          </motion.section>
+
+          {/* LE REGISTRE — on vient y chercher une entrée, pas surveiller un
+              état : une recherche, puis des lignes. */}
+          <motion.section variants={staggerItem} className="panel">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2.5">
+              <p className="eyebrow">{t('fournisseurs.leRegistre')}</p>
+              <input
+                type="search"
+                value={recherche}
+                onChange={(e) => setRecherche(e.target.value)}
+                placeholder={t('fournisseurs.rechercher')}
+                aria-label={t('fournisseurs.rechercher')}
+                className="input-focus min-h-11 w-full max-w-xs border border-border bg-bg px-3 text-sm text-text-primary outline-none md:min-h-0 md:py-2"
+              />
+            </div>
+            {trouves.length === 0 ? (
+              <p className="px-4 py-7 text-center text-sm text-text-secondary">{t('fournisseurs.aucunTrouve')}</p>
+            ) : (
+              <ul className="flex flex-col gap-px bg-border">
+                {trouves.map((f) => (
+                  <li key={f.id} className="group flex flex-wrap items-baseline gap-x-4 gap-y-1 bg-surface px-4 py-2.5">
+                    <span className="min-w-0 flex-1">
+                      <span className="text-sm text-text-primary">{f.name}</span>
+                      {f.supplies && <span className="text-sm text-text-muted"> · {f.supplies}</span>}
+                    </span>
+                    <span className={`w-40 flex-shrink-0 font-mono text-[10px] uppercase tracking-wider ${muet(f, maintenant) ? 'text-warning' : 'text-text-muted'}`}>
+                      {f.lastOrderAt ? t('fournisseurs.derniereCommande', { quand: relativeTime(f.lastOrderAt) }) : t('fournisseurs.jamaisCommande')}
+                    </span>
+                    <span className="flex flex-shrink-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-secondary">
+                      {f.phone && <a href={`tel:${f.phone}`} className="-my-2 flex items-center gap-1 py-2 hover:text-text-primary"><Phone size={11} /> {f.phone}</a>}
+                      {f.email && <a href={`mailto:${f.email}`} className="-my-2 flex items-center gap-1 py-2 hover:text-text-primary"><Mail size={11} /> {f.email}</a>}
+                    </span>
+                    <span className="flex flex-shrink-0 gap-2">
+                      <button type="button" onClick={() => void commander(f)} className="flex min-h-11 items-center gap-1.5 border border-border-strong px-2.5 text-[11px] text-text-primary hover:bg-surface-hover md:min-h-0 md:py-1.5">
+                        <ShoppingCart size={12} /> {t('fournisseurs.commandeAujourdhui')}
+                      </button>
+                      <button type="button" onClick={() => void remove('suppliers', f.id)} aria-label={t('fournisseurs.supprimer')} title={t('fournisseurs.supprimer')} className="min-h-11 px-1 text-text-muted opacity-0 hover:text-danger focus:opacity-100 group-hover:opacity-100 md:min-h-0"><Trash2 size={13} /></button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </motion.section>
+        </>
       )}
     </motion.section>
   );
