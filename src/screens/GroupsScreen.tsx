@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowUp, Plus, Trash2, UsersRound } from 'lucide-react';
+import { ArrowLeft, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FirstRun } from '../components/EmptyState';
 import { UserAvatar } from '../components/UserAvatar';
@@ -34,6 +34,27 @@ interface GroupMessageData {
  * ça règle : le fil unique qui mélange tout. Un groupe est une liste de
  * personnes et un nom ; son fil ne s'affiche qu'à ses membres. Celle qui
  * crée le groupe le compose ; un admin peut le dissoudre.
+ *
+ * ## Ce qui domine : la salle qui a parlé en dernier
+ *
+ * Trois autres écrans de l'application se composent en rail vertical + panneau
+ * (Notes, Pages, Contrôles qualité). Un quatrième rail ferait de ce module un
+ * gabarit de plus, alors qu'un groupe n'est pas un document qu'on choisit dans
+ * une liste : c'est une SALLE, et ce qu'on veut savoir en arrivant est
+ * laquelle est vivante.
+ *
+ * Les groupes passent donc en bande horizontale, chacun avec ses visages, le
+ * début de son dernier message et son heure. Le rail disait « 3 membres » —
+ * un nombre qui ne change jamais et qui n'aide à rien pour choisir où entrer.
+ *
+ * ## Pas d'ambre, et c'est un choix
+ *
+ * Une conversation n'appelle aucune décision : elle se lit. Marquer une salle
+ * en ambre supposerait qu'on sache ce qui a été lu, et le modèle ne le suit
+ * pas — `groupMessages` n'a pas de `readBy`. Poser l'ambre sur « le plus
+ * récent » serait le poser sur une heure, pas sur une décision, et l'ambre
+ * finirait par ne plus rien vouloir dire. Zéro ambre est la réponse juste,
+ * comme sur Notes.
  */
 export function GroupsScreen() {
   const { t } = useLangue();
@@ -52,9 +73,34 @@ export function GroupsScreen() {
   const moi = user?.email ?? '';
   const admin = isAdminRole(role);
 
+  /*
+    LE DERNIER MOT DE CHAQUE SALLE.
+
+    Le rail triait par ordre alphabétique — un ordre qui ne dit rien de ce qui
+    se passe. Une salle où l'on a parlé il y a dix minutes et une salle muette
+    depuis trois semaines y étaient voisines, dans l'ordre de leurs initiales.
+    Les salles se rangent donc par leur dernier message, la plus vivante en
+    premier ; celles qui n'ont jamais rien reçu ferment la marche.
+  */
+  const dernierMotDe = useCallback(
+    (groupeId: string) => {
+      const duGroupe = messages.filter((m) => m.groupId === groupeId);
+      if (duGroupe.length === 0) return null;
+      return duGroupe.reduce((a, b) => (a.createdAt > b.createdAt ? a : b));
+    },
+    [messages],
+  );
   const miens = useMemo(
-    () => groupes.filter((g) => admin || (g.members ?? []).includes(moi)).sort((a, b) => a.name.localeCompare(b.name, 'fr')),
-    [groupes, moi, admin],
+    () =>
+      groupes
+        .filter((g) => admin || (g.members ?? []).includes(moi))
+        .sort((a, b) => {
+          const da = dernierMotDe(a.id)?.createdAt ?? '';
+          const db = dernierMotDe(b.id)?.createdAt ?? '';
+          if (da === db) return a.name.localeCompare(b.name, 'fr');
+          return db.localeCompare(da);
+        }),
+    [groupes, dernierMotDe, moi, admin],
   );
   const groupe = miens.find((g) => g.id === ouvert) ?? null;
   const fil = useMemo(
@@ -131,25 +177,71 @@ export function GroupsScreen() {
           <FirstRun title={t('groupes.vide.titre')} action={{ label: t('groupes.vide.action'), onClick: () => setCreation(true) }}>{t('groupes.vide.texte')}</FirstRun>
         </motion.div>
       ) : miens.length > 0 ? (
-        <motion.div variants={staggerItem} className="grid min-h-[60vh] gap-3 md:grid-cols-[17rem_1fr]">
-          <ul className={`flex flex-col gap-px overflow-hidden rounded-xl border border-border bg-border ${ouvert ? 'hidden md:flex' : ''}`}>
-            {miens.map((g) => (
-              <li key={g.id}>
-                <button type="button" onClick={() => setOuvert(g.id)} aria-current={ouvert === g.id ? 'true' : undefined} className={`flex min-h-11 w-full items-center gap-3 px-3 py-2.5 text-left ${ouvert === g.id ? 'bg-accent-muted' : 'bg-surface hover:bg-surface-hover'}`}>
-                  <UsersRound size={18} className="flex-shrink-0 text-text-secondary" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm text-text-primary">{g.name}</span>
-                    <span className="block truncate text-xs text-text-muted">{t('groupes.nMembres', { n: (g.members ?? []).length })}</span>
-                  </span>
-                </button>
-              </li>
-            ))}
+        <motion.div variants={staggerItem} className={`flex flex-col gap-4 ${groupe ? 'min-h-[60vh]' : ''}`}>
+          {/*
+            LA BANDE DES SALLES — pas un rail.
+
+            Chacune montre ses visages, le début de son dernier message et son
+            heure : de quoi choisir où entrer sans y entrer. Voir l'en-tête du
+            fichier pour l'arbitrage contre le quatrième rail vertical.
+          */}
+          <ul className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {miens.map((g) => {
+              const dernier = dernierMotDe(g.id);
+              const actif = ouvert === g.id;
+              return (
+                <li key={g.id}>
+                  <button
+                    type="button"
+                    onClick={() => setOuvert(g.id)}
+                    aria-current={actif ? 'true' : undefined}
+                    className={`input-focus flex w-full flex-col gap-2.5 border p-3.5 text-left transition-colors ${
+                      actif
+                        ? 'border-border-strong bg-elevated'
+                        : 'border-border bg-surface hover:border-border-strong hover:bg-surface-hover'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <span className="flex -space-x-1.5">
+                        {(g.members ?? []).slice(0, 4).map((e) => (
+                          <UserAvatar key={e} email={e} size={22} />
+                        ))}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[15px] text-text-primary">{g.name}</span>
+                      {dernier && (
+                        <span className="flex-shrink-0 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                          {relativeTime(dernier.createdAt)}
+                        </span>
+                      )}
+                    </span>
+                    {/* Le dernier mot, avec qui l'a dit : c'est ce qui fait la
+                        différence entre une salle vivante et un nom. */}
+                    <span className="block truncate text-xs text-text-secondary">
+                      {dernier
+                        ? `${profileFor(dernier.authorEmail).name} · ${dernier.body}`
+                        : t('groupes.premier')}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
-          <div className={`flex min-h-0 flex-col rounded-xl border border-border bg-surface ${ouvert ? '' : 'hidden md:flex'}`}>
-            {!groupe ? (
-              <p className="m-auto p-6 text-sm text-text-secondary">{t('groupes.choisir')}</p>
-            ) : (
-              <>
+
+          {/*
+            LE VIDE MESURÉ.
+
+            Le rail réservait 60 vh au panneau même fermé : on arrivait sur une
+            bande de trois salles suivie d'un trou de la hauteur du pli, avec
+            une phrase grise au milieu. Tant qu'aucune salle n'est ouverte, le
+            panneau n'est donc plus qu'un bandeau — la page s'arrête après la
+            bande, qui est ce qu'on est venu lire.
+          */}
+          {!groupe ? (
+            <p className="border border-border bg-surface px-4 py-7 text-center text-sm text-text-secondary">
+              {t('groupes.choisir')}
+            </p>
+          ) : (
+            <div className="flex min-h-0 flex-1 flex-col border border-border bg-surface">
                 <header className="flex items-center gap-3 border-b border-border px-4 py-3">
                   <button type="button" onClick={() => setOuvert(null)} aria-label={t('dm.retour')} className="flex h-9 w-9 items-center justify-center rounded-lg text-text-secondary hover:bg-surface-hover md:hidden"><ArrowLeft size={16} /></button>
                   <div className="min-w-0 flex-1">
@@ -187,9 +279,8 @@ export function GroupsScreen() {
                   <input value={texte} onChange={(e) => setTexte(e.target.value)} placeholder={t('groupes.ecrire', { nom: groupe.name })} aria-label={t('groupes.ecrire', { nom: groupe.name })} className="input-focus min-h-11 min-w-0 flex-1 rounded-lg border border-border bg-bg px-3 text-sm text-text-primary outline-none" />
                   <button type="submit" disabled={!texte.trim()} aria-label={t('dm.envoyer')} className="flex h-11 w-11 items-center justify-center rounded-lg bg-accent text-bg disabled:opacity-40"><ArrowUp size={16} strokeWidth={2.5} /></button>
                 </form>
-              </>
-            )}
-          </div>
+            </div>
+          )}
         </motion.div>
       ) : null}
     </motion.section>

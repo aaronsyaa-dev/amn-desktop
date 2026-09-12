@@ -82,6 +82,11 @@ export function PollsScreen() {
   const aTrancher = enAttenteDeMoi.length > 0 ? enAttenteDeMoi[enAttenteDeMoi.length - 1] : null;
   const reste = sondages.filter((s) => s.id !== aTrancher?.id);
 
+  /* « 4 vote(s) » ne se lit dans aucune des deux langues. Le français dit
+     « voix », invariable ; l'anglais accorde. La pluralisation vit dans les
+     composants (voir src/i18n/index.ts), donc le choix se fait ici. */
+  const voixDites = (n: number) => (n === 1 ? t('sondages.participantUn') : t('sondages.participants', { n }));
+
   /** Les comptes d'un sondage, dans l'ordre de ses options. */
   const comptesDe = (s: PollData) => {
     const votes = s.votes ?? {};
@@ -190,7 +195,7 @@ export function PollsScreen() {
                 </span>
                 <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
                   {profileFor(aTrancher.createdBy).name} · {relativeTime(aTrancher.createdAt)} ·{' '}
-                  {t('sondages.participants', { n: Object.keys(aTrancher.votes ?? {}).length })}
+                  {voixDites(Object.keys(aTrancher.votes ?? {}).length)}
                   {aTrancher.anonymous && ` · ${t('sondages.anonymeCourt')}`}
                 </span>
               </div>
@@ -264,7 +269,7 @@ export function PollsScreen() {
                         <span className="block truncate text-sm text-text-primary">{s.question}</span>
                         <span className="mt-0.5 block font-mono text-[10px] uppercase tracking-wider text-text-muted">
                           {profileFor(s.createdBy).name} · {relativeTime(s.createdAt)} ·{' '}
-                          {t('sondages.participants', { n: tete.total })}
+                          {voixDites(tete.total)}
                           {clos && ` · ${t('sondages.clos')}`}
                         </span>
                       </span>

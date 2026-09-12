@@ -97,10 +97,15 @@ const ECRANS = [
   ['Avant la paie', '#/personnel/budget'],
   ['Tâches', '#/tasks'],
   ['Objectifs & résultats', '#/objectifs-resultats'],
-  /* La famille « collectif », composée le 12 septembre : deux natures
-     différentes, deux ambres différents, donc deux écrans à mesurer. */
+  /* La famille « collectif », composée le 12 septembre : quatre natures
+     différentes, donc quatre écrans à mesurer. Groupes est dans la liste
+     alors qu'il n'a AUCUN ambre — la garde compte un maximum, zéro la
+     satisfait, et l'écran y figure pour que l'ajout d'un ambre un jour
+     passe devant elle plutôt qu'à côté. */
   ['Sondages', '#/sondages'],
   ['Annonces', '#/annonces'],
+  ['Appels', '#/appels'],
+  ['Groupes', '#/groupes'],
 ];
 
 const serveur = spawn('node', [new URL('./servir-bundle.mjs', import.meta.url).pathname, BUNDLE, String(PORT)], {
