@@ -114,6 +114,12 @@ const ECRANS = [
   ['RDV en ligne', '#/rdv-en-ligne'],
   ['Assistance', '#/assistance'],
   ['Messages privés', '#/messages-prives'],
+  /* La famille « plans » : des données à deux axes, et le piège de la
+     deuxième matrice — voir l'en-tête de `ShiftsScreen.tsx`. */
+  ['Planning d\'équipe', '#/planning'],
+  ['Absences', '#/absences'],
+  ['Tableau des projets', '#/tableau-projets'],
+  ['Prospects', '#/pipeline'],
 ];
 
 const serveur = spawn('node', [new URL('./servir-bundle.mjs', import.meta.url).pathname, BUNDLE, String(PORT)], {

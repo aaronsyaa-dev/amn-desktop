@@ -32,6 +32,29 @@ const SUIVANT: Record<Stage, Stage | null> = { contact: 'qualifie', qualifie: 'p
  * dans Clients ; ici on ne fait qu'avancer. Trello fait des colonnes pour
  * tout ; celles-ci ont un sens fixe et un total en euros, c'est ce qui rend
  * la lecture immédiate.
+ *
+ * ## Ce qui domine : l'argent, en barres — pas les fiches, en colonnes
+ *
+ * Cet écran et le Tableau des projets étaient LE MÊME COMPOSANT : colonnes en
+ * `auto-fit`, cartes de poids égal, bouton fléché par carte. Le fichier disait
+ * pourtant déjà où était la différence, en tête : « celles-ci ont un sens fixe
+ * et UN TOTAL EN EUROS, c'est ce qui rend la lecture immédiate ». Le total en
+ * euros vivait dans un relevé d'en-tête, et les colonnes comptaient des
+ * cartes.
+ *
+ * L'entonnoir devient donc l'objet dominant : une ligne par étape, une barre
+ * dont la longueur est l'ARGENT à cette étape, le nombre de fiches en petit à
+ * côté. Deux fiches à 12 000 € pèsent plus que six à 400 €, et c'est ce qu'on
+ * veut voir sans additionner. Les fiches descendent sous l'entonnoir, en
+ * registre.
+ *
+ * ## L'ambre
+ *
+ * Sur le prospect qui DORT — le plus longtemps sans changer d'étape, au-delà
+ * de quinze jours. C'est la seule décision qu'un pipeline réclame : un
+ * prospect qu'on laisse dormir n'est ni gagné ni perdu, il occupe une colonne
+ * et gonfle le total espéré d'un argent qui ne viendra pas. Gagné et perdu
+ * sont des états, jamais ambre.
  */
 export function PipelineScreen() {
   const { t } = useLangue();
@@ -52,6 +75,32 @@ export function PipelineScreen() {
   const enCours = STAGES.filter((s) => s !== 'gagne' && s !== 'perdu').flatMap((s) => parEtape[s]);
   const espere = enCours.reduce((n, p) => n + (p.valueCents || 0), 0);
   const gagne = parEtape.gagne.reduce((n, p) => n + (p.valueCents || 0), 0);
+
+  /*
+    L'ENTONNOIR — l'argent par étape, et l'échelle qui le dessine.
+
+    La barre se mesure sur l'étape la plus riche, pas sur le total : sinon,
+    avec un « gagné » à 9 000 € et un « contact » à 400 €, la seconde barre
+    ferait deux pixels et ne dirait plus rien.
+  */
+  const argentDe = (s: Stage) => parEtape[s].reduce((n, p) => n + (p.valueCents || 0), 0);
+  const plusRiche = Math.max(1, ...STAGES.map(argentDe));
+
+  /*
+    CELUI QUI DORT — au-delà de quinze jours sans changer d'étape.
+
+    Gagné et perdu sont exclus : une affaire signée n'a plus à bouger. Le seuil
+    est celui qu'un cycle commercial court rend raisonnable ; il est écrit ici
+    et nulle part ailleurs.
+  */
+  const SEUIL_SOMMEIL = 15;
+  const joursDepuis = (iso: string) => Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 86_400_000));
+  const dort = useMemo(() => {
+    const candidats = enCours
+      .filter((p) => joursDepuis(p.movedAt) > SEUIL_SOMMEIL)
+      .sort((a, b) => a.movedAt.localeCompare(b.movedAt));
+    return candidats[0] ?? null;
+  }, [enCours]);
 
   const ajouter = async () => {
     if (!name.trim()) return;
@@ -100,23 +149,101 @@ export function PipelineScreen() {
           <FirstRun title={t('pipeline.vide.titre')} action={{ label: t('pipeline.vide.action'), onClick: () => setOuvert(true) }}>{t('pipeline.vide.texte')}</FirstRun>
         </motion.div>
       ) : (
-        <motion.div variants={staggerItem} className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(13rem,1fr))]">
-          {STAGES.map((s) => (
-            <section key={s} aria-label={etape(s)} className={`flex min-h-[10rem] flex-col gap-2 rounded-xl border p-3 ${s === 'gagne' ? 'border-success/30' : s === 'perdu' ? 'border-border opacity-70' : 'border-border'} bg-surface`}>
-              <p className="eyebrow flex items-center justify-between">
-                <span>{etape(s)}</span>
-                <span className="tnum">{parEtape[s].length}</span>
-              </p>
-              {parEtape[s].map((p) => (
-                <article key={p.id} className="group flex flex-col gap-1 rounded-lg border border-border bg-bg p-2.5">
-                  <p className="text-sm font-medium leading-tight text-text-primary">{p.name}</p>
-                  {p.company && <p className="truncate text-xs text-text-secondary">{p.company}</p>}
-                  <p className="flex items-center justify-between font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                    <span className="tnum">{p.valueCents ? formatCents(p.valueCents) : '—'}</span>
-                    <span>{relativeTime(p.movedAt)}</span>
-                  </p>
-                  {p.note && <p className="text-xs leading-snug text-text-muted">{p.note}</p>}
-                  <div className="mt-1 flex flex-wrap gap-2">
+        <>
+          {/* CELUI QUI DORT — la seule décision de l'écran. */}
+          <motion.section variants={staggerItem} className="panel-raised p-5 sm:p-6" data-signal-groupe="dort">
+            {dort ? (
+              <>
+                <p className="signal-plate mb-3 inline-flex px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider">
+                  {t('pipeline.dort', { n: joursDepuis(dort.movedAt) })}
+                </p>
+                <p className="text-[21px] font-semibold leading-tight text-text-primary sm:text-[27px]">
+                  {t('pipeline.dortTitre', { nom: dort.name, n: joursDepuis(dort.movedAt) })}
+                </p>
+                <p className="mt-2 max-w-xl text-sm leading-relaxed text-text-secondary">{t('pipeline.dortAide')}</p>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                    {etape(dort.stage)} · {dort.valueCents ? formatCents(dort.valueCents) : t('pipeline.aucunMontant')}
+                  </span>
+                  {SUIVANT[dort.stage] && (
+                    <button type="button" onClick={() => void deplacer(dort, SUIVANT[dort.stage] as Stage)} className="flex min-h-11 items-center gap-1.5 border border-border-strong px-3 text-sm text-text-primary hover:bg-surface-hover md:min-h-0 md:py-2">
+                      {etape(SUIVANT[dort.stage] as Stage)} <ArrowRight size={13} />
+                    </button>
+                  )}
+                  <button type="button" onClick={() => void deplacer(dort, 'perdu')} className="flex min-h-11 items-center border border-border px-3 text-sm text-text-secondary hover:text-text-primary md:min-h-0 md:py-2">
+                    {etape('perdu')}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="eyebrow mb-3">{t('pipeline.entonnoir')}</p>
+                <p className="text-[21px] font-semibold leading-tight text-text-primary sm:text-[27px]">{t('pipeline.rienNeDort')}</p>
+                <p className="mt-2 max-w-xl text-sm leading-relaxed text-text-secondary">{t('pipeline.rienNeDortAide')}</p>
+              </>
+            )}
+          </motion.section>
+
+          {/*
+            L'ENTONNOIR — des barres en euros, pas des colonnes de cartes.
+            Voir l'en-tête du fichier pour l'écart avec le Tableau des projets.
+          */}
+          <motion.section variants={staggerItem} className="panel p-4 sm:p-5">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="eyebrow">{t('pipeline.entonnoir')}</p>
+              <p className="text-[11px] text-text-muted">{t('pipeline.entonnoirAide')}</p>
+            </div>
+            <ul className="mt-4 flex flex-col gap-2.5">
+              {STAGES.map((s) => {
+                const argent = argentDe(s);
+                const part = Math.round((argent / plusRiche) * 100);
+                return (
+                  <li key={s} className="flex items-center gap-3">
+                    <span className="w-28 flex-shrink-0 text-sm text-text-primary">{etape(s)}</span>
+                    {/*
+                      LA BARRE — mesurée au navigateur avant d'être gardée.
+
+                      Premier essai : piste `bg-bg` (#060606), remplissage
+                      `bg-elevated` (#121212), dans un panneau `bg-surface`
+                      (#0d0d0d). Douze valeurs d'écart entre le remplissage et
+                      la piste, et une piste PLUS SOMBRE que le panneau : l'œil
+                      lisait la piste comme la barre et le reste comme du fond,
+                      donc les barres semblaient inversées. Mesuré, pas deviné.
+
+                      `border-strong` (#3a3a3a) contre le panneau (#0d0d0d)
+                      tranche pour de bon, et la piste redevient le fond du
+                      panneau — un seul plan au lieu de trois.
+                    */}
+                    <span className="relative flex h-8 min-w-0 flex-1 items-center border border-border">
+                      <span
+                        className={`absolute inset-y-0 left-0 ${s === 'gagne' ? 'bg-success/40' : s === 'perdu' ? 'bg-border' : 'bg-border-strong'}`}
+                        style={{ width: `${part}%` }}
+                        aria-hidden
+                      />
+                      <span className="relative px-2.5 text-sm tabular-nums text-text-primary">{argent ? formatCents(argent) : '—'}</span>
+                    </span>
+                    <span className="w-10 flex-shrink-0 text-right font-mono text-[10px] uppercase tracking-wider text-text-muted tabular-nums">{parEtape[s].length}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </motion.section>
+
+          {/* LES FICHES — le détail, sous l'entonnoir, une ligne chacune. */}
+          <motion.section variants={staggerItem} className="panel">
+            <p className="eyebrow border-b border-border px-4 py-2.5">{t('pipeline.lesFiches')}</p>
+            <ul className="flex flex-col gap-px bg-border">
+              {STAGES.flatMap((s) => parEtape[s].map((p) => ({ p, s }))).map(({ p, s }) => (
+                <li key={p.id} className="group flex flex-wrap items-baseline gap-x-3 gap-y-1 bg-surface px-4 py-2.5">
+                  <span className="w-24 flex-shrink-0 font-mono text-[9px] uppercase tracking-wider text-text-muted">{etape(s)}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="text-sm text-text-primary">{p.name}</span>
+                    {p.company && <span className="text-sm text-text-muted"> · {p.company}</span>}
+                    {p.note && <span className="block truncate text-xs text-text-muted">{p.note}</span>}
+                  </span>
+                  <span className="w-24 flex-shrink-0 text-right text-sm tabular-nums text-text-secondary">{p.valueCents ? formatCents(p.valueCents) : '—'}</span>
+                  <span className="w-24 flex-shrink-0 text-right font-mono text-[10px] uppercase tracking-wider text-text-muted">{relativeTime(p.movedAt)}</span>
+                  <span className="flex flex-shrink-0 gap-2">
                     {SUIVANT[s] && (
                       <button type="button" onClick={() => void deplacer(p, SUIVANT[s] as Stage)} className="flex min-h-11 items-center gap-1 border border-border-strong px-2 text-[11px] text-text-primary hover:bg-surface-hover md:min-h-0 md:py-1">
                         {etape(SUIVANT[s] as Stage)} <ArrowRight size={11} />
@@ -125,13 +252,13 @@ export function PipelineScreen() {
                     {s !== 'perdu' && s !== 'gagne' && (
                       <button type="button" onClick={() => void deplacer(p, 'perdu')} className="min-h-11 border border-border px-2 text-[11px] text-text-muted hover:text-text-primary md:min-h-0 md:py-1">{etape('perdu')}</button>
                     )}
-                    <button type="button" onClick={() => void remove('prospects', p.id)} aria-label={t('pipeline.supprimer')} title={t('pipeline.supprimer')} className="ml-auto min-h-11 px-1 text-text-muted opacity-0 hover:text-danger focus:opacity-100 group-hover:opacity-100 md:min-h-0"><Trash2 size={12} /></button>
-                  </div>
-                </article>
+                    <button type="button" onClick={() => void remove('prospects', p.id)} aria-label={t('pipeline.supprimer')} title={t('pipeline.supprimer')} className="min-h-11 px-1 text-text-muted opacity-0 hover:text-danger focus:opacity-100 group-hover:opacity-100 md:min-h-0"><Trash2 size={12} /></button>
+                  </span>
+                </li>
               ))}
-            </section>
-          ))}
-        </motion.div>
+            </ul>
+          </motion.section>
+        </>
       )}
     </motion.section>
   );

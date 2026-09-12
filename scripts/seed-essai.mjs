@@ -828,6 +828,106 @@ const COLLEGUES = ['nadia@exemple.test', 'hugo@exemple.test', 'ines@exemple.test
 const MOI = EMAIL;
 
 /*
+  LE PLANNING D'ÉQUIPE, LES ABSENCES, LE PIPELINE.
+
+  Les trois collections étaient vides : `shifts`, `leaves`, `prospects`. Un
+  planning vide ne montre ni couverture ni trou, une frise d'absences sans
+  barre ne montre rien du tout, et un entonnoir sans euros n'est pas un
+  entonnoir. Les trois écrans se composent sur ce qui s'y accumule ; sans
+  données, on dessine de mémoire.
+
+  Les dates sont calculées à partir du LUNDI DE LA SEMAINE EN COURS, comme
+  l'écran : semer « le 15 septembre » donnerait une semaine juste aujourd'hui
+  et fausse jeudi prochain.
+*/
+const lundiCourant = () => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+};
+const jourDeLaSemaine = (n) => {
+  const d = lundiCourant();
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/*
+  Un trou VOULU le jeudi : personne n'y est prévu. C'est le seul défaut qu'un
+  planning puisse avoir, et c'est lui que l'écran doit crier.
+*/
+const POSTES = [
+  [MOI, [0, 'journee'], [1, 'matin'], [2, 'journee'], [5, 'matin']],
+  [COLLEGUES[0], [0, 'matin'], [1, 'journee'], [2, 'repos'], [4, 'journee'], [5, 'apresmidi']],
+  [COLLEGUES[1], [0, 'apresmidi'], [2, 'apresmidi'], [4, 'matin']],
+  [COLLEGUES[2], [1, 'apresmidi'], [4, 'apresmidi'], [5, 'journee']],
+  [COLLEGUES[3], [0, 'repos'], [1, 'repos'], [2, 'matin'], [3, 'repos']],
+];
+for (const [email, ...cases] of POSTES) {
+  for (const [n, kind] of cases) {
+    const day = jourDeLaSemaine(n);
+    await poser('shifts', `shift-${email}-${day}`, { email, day, kind, updatedAt: instant(-24 * 2) });
+  }
+}
+
+/*
+  LES ABSENCES — des plages, pas des cases : c'est ce qui distingue cet écran
+  du planning. Une en cours aujourd'hui, deux à venir qui se chevauchent (la
+  semaine où l'équipe sera la plus mince), une à valider, une passée.
+*/
+const ABSENCES = [
+  { cle: 'abs-1', email: COLLEGUES[0], de: -1, a: 1, kind: 'conge', note: 'Déménagement', status: 'approved' },
+  { cle: 'abs-2', email: COLLEGUES[1], de: 6, a: 12, kind: 'conge', note: '', status: 'approved' },
+  { cle: 'abs-3', email: COLLEGUES[2], de: 8, a: 10, kind: 'conge', note: 'Mariage de ma sœur', status: 'approved' },
+  { cle: 'abs-4', email: COLLEGUES[3], de: 3, a: 3, kind: 'teletravail', note: 'Livraison à la maison', status: 'pending' },
+  { cle: 'abs-5', email: COLLEGUES[0], de: 4, a: 4, kind: 'maladie', note: '', status: 'pending' },
+  { cle: 'abs-6', email: COLLEGUES[1], de: -21, a: -18, kind: 'conge', note: '', status: 'approved' },
+];
+for (const a of ABSENCES) {
+  await poser('leaves', `essai-${a.cle}`, {
+    email: a.email,
+    from: jour(a.de),
+    to: jour(a.a),
+    kind: a.kind,
+    note: a.note,
+    status: a.status,
+    decidedBy: a.status === 'approved' ? MOI : null,
+    createdAt: instant(-24 * 9),
+  });
+}
+
+/*
+  LE PIPELINE — des euros, et un prospect qui ne bouge plus.
+
+  Le montant est ce que ce module a de propre : les autres tableaux à colonnes
+  comptent des cartes, celui-ci compte de l'argent. Et « Menuiserie Vidal » n'a
+  pas bougé depuis vingt-six jours, ce qui est la seule chose qu'un pipeline
+  demande de décider.
+*/
+const PROSPECTS = [
+  ['pro-1', 'Claire Vasseur', 'Fleurs & Co', 1800, 'proposition', 'Devis envoyé, relance prévue lundi.', -3],
+  ['pro-2', 'Menuiserie Vidal', 'Menuiserie Vidal', 6400, 'proposition', 'Attend l’accord du gérant.', -26],
+  ['pro-3', 'Théo Lambert', 'Café des Halles', 950, 'qualifie', 'Budget confirmé.', -5],
+  ['pro-4', 'Résidence Les Cèdres', 'Syndic Aurea', 12500, 'qualifie', 'Trois bâtiments, visite faite.', -9],
+  ['pro-5', 'Sophie Arnaud', '', 400, 'contact', '', -1],
+  ['pro-6', 'Garage Peyron', 'Garage Peyron', 2200, 'contact', 'Rencontré au salon.', -2],
+  ['pro-7', 'Hôtel du Parc', 'Hôtel du Parc', 8900, 'gagne', 'Signé — à basculer en client.', -12],
+  ['pro-8', 'Boulangerie Mistral', 'Boulangerie Mistral', 3100, 'perdu', 'Parti chez un concurrent moins cher.', -20],
+];
+for (const [cle, name, company, euros, stage, note, ilYaJours] of PROSPECTS) {
+  await poser('prospects', `essai-${cle}`, {
+    name,
+    company,
+    valueCents: euros * 100,
+    stage,
+    note,
+    createdAt: instant(-24 * (Math.abs(ilYaJours) + 14)),
+    movedAt: instant(24 * ilYaJours),
+  });
+}
+
+
+/*
   LES MESSAGES PRIVÉS — dont deux fils où la balle est dans mon camp.
 
   L'écran calcule la DETTE : un fil dont le dernier mot vient de l'autre est un

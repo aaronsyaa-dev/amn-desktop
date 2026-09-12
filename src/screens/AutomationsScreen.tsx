@@ -33,6 +33,7 @@ export function AutomationsScreen() {
   const [assignee, setAssignee] = useState('');
 
   const triees = useMemo(() => [...regles].sort((a, b) => a.createdAt.localeCompare(b.createdAt)), [regles]);
+
   const actives = triees.filter((r) => r.enabled).length;
   const produits = useMemo(() => [...tasks, ...logbook].filter((x) => x.id.startsWith('auto-')).length, [tasks, logbook]);
   const declencheur = (d: Declencheur) => t(`automatisations.si.${d}` as Parameters<typeof t>[0]);
@@ -50,6 +51,30 @@ export function AutomationsScreen() {
     [t],
   );
   const parRegle = useAutomationsParRegle(libelles);
+  /*
+    UNE SEULE RÈGLE PORTE L'AMBRE, et c'est un correctif du 12 septembre.
+
+    La plaque « N en attente » se posait sur CHAQUE règle suspendue ayant des
+    éléments en attente. Tant que le bac à sable n'en avait qu'une, la garde
+    passait ; en semant la famille « plans », une deuxième est apparue et
+    `check:signal` a refusé l'écran — deux plaques ambre, donc aucun signal.
+
+    La règle qui la porte est celle qui a le PLUS d'éléments en attente : c'est
+    celle dont la reprise change le plus de choses. Les autres gardent leur
+    compte, en encre neutre : l'information reste, l'appel à décider est unique.
+  */
+  const laPlusEnAttente = useMemo(() => {
+    let gagnante: string | null = null;
+    let meilleur = 0;
+    for (const r of triees) {
+      const n = (parRegle.get(r.id)?.enAttente.length ?? 0);
+      if (n > meilleur) {
+        meilleur = n;
+        gagnante = r.id;
+      }
+    }
+    return gagnante;
+  }, [triees, parRegle]);
   const resultat = (a: Action) => t(`automatisations.alors.${a}` as Parameters<typeof t>[0]);
 
   const creer = async () => {
@@ -122,18 +147,21 @@ export function AutomationsScreen() {
 
           L'AMBRE est celui que la table nomme, « 2 en attente », et il ne peut
           apparaître que sur une règle SUSPENDUE — voir `useAutomationsParRegle`
-          pour le pourquoi : une règle active n'attend rien.
+          pour le pourquoi : une règle active n'attend rien. Et sur UNE SEULE
+          règle, la plus en attente : voir `laPlusEnAttente`.
         */
         <motion.ul variants={staggerItem} className="flex flex-col gap-3">
           {triees.map((r) => {
             const compte = parRegle.get(r.id) ?? { produits: 0, enAttente: [] };
             const attend = compte.enAttente.length > 0;
+            /* Seule la plus en attente est ambre — voir `laPlusEnAttente`. */
+            const signale = attend && r.id === laPlusEnAttente;
             return (
               <li
                 key={r.id}
-                data-signal-groupe={attend ? `attente-${r.id}` : undefined}
+                data-signal-groupe={signale ? `attente-${r.id}` : undefined}
                 className={`group border ${
-                  attend ? 'border-signal-line bg-signal-muted' : r.enabled ? 'panel' : 'border-dashed border-border'
+                  signale ? 'border-signal-line bg-signal-muted' : r.enabled ? 'panel' : 'border-dashed border-border'
                 }`}
               >
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4">
@@ -145,7 +173,11 @@ export function AutomationsScreen() {
                   </p>
 
                   {attend ? (
-                    <span className="signal-plate flex-shrink-0 px-2.5 py-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.2em]">
+                    <span
+                      className={`flex-shrink-0 px-2.5 py-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] ${
+                        signale ? 'signal-plate' : 'border border-border-strong text-text-secondary'
+                      }`}
+                    >
                       {t('automatisations.nEnAttente', { n: compte.enAttente.length })}
                     </span>
                   ) : (
@@ -193,7 +225,7 @@ export function AutomationsScreen() {
                 {/* Ce que la règle produirait si on la reprenait — nommé, pas
                     compté : « 2 en attente » ne dit pas lesquelles. */}
                 {attend && (
-                  <div className="border-t border-signal-line/40 px-5 py-4">
+                  <div className={`border-t px-5 py-4 ${signale ? 'border-signal-line/40' : 'border-border'}`}>
                     <ul className="flex flex-col gap-2">
                       {compte.enAttente.slice(0, 3).map((source) => (
                         <li key={source.id} className="flex flex-wrap items-baseline gap-x-3">
