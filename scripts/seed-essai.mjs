@@ -1488,6 +1488,92 @@ for (const [cle, title, status, priority, bloquePar, age] of TACHES) {
   });
 }
 
+/* ─── Objectifs & résultats ────────────────────────────────────────────────── */
+
+/*
+  CINQ RÉSULTATS CLÉS DU TRIMESTRE EN COURS, et deux saisons derrière.
+
+  Ce qu'il faut pour que l'instrument se prouve, et pas seulement s'affiche :
+
+    · un résultat qui part de zéro et monte (le cas ordinaire) ;
+    · un résultat qui DESCEND vers sa cible — « ramener le délai de 48 h à
+      12 h » — parce que c'est là que `pct = (val − min) / (cible − min)` se
+      distingue d'un simple `val / cible`, qui donnerait 400 % ;
+    · un résultat nettement sous son allure, pour que l'ambre ait un porteur ;
+    · un résultat déjà dépassé, pour que le curseur s'arrête au bout de la
+      règle au lieu d'en sortir.
+
+  Les objectifs des saisons passées sont datés dans les trimestres précédents :
+  la colonne de cases à gauche les compte par trimestre civil.
+*/
+const trimestreIso = (reculTrimestres, jourDuTrimestre = 20) => {
+  const d = new Date();
+  const t = Math.floor(d.getMonth() / 3) - reculTrimestres;
+  const annee = d.getFullYear() + Math.floor(t / 4);
+  const mois = ((t % 4) + 4) % 4;
+  return new Date(annee, mois * 3, jourDuTrimestre, 10, 0, 0).toISOString();
+};
+
+const OBJECTIFS = [
+  {
+    cle: 'essai-okr-1',
+    objective: 'Tenir la boutique pleine en automne',
+    recul: 0,
+    resultats: [
+      // monte de 0 vers 40 ; à 87 % du trimestre écoulé, 31/40 est presque pile.
+      ['Bouquets vendus par semaine', 40, '', 0, 31],
+      // DESCEND : départ 48 h, cible 12 h, on en est à 19 h.
+      ['Délai de réponse', 12, 'h', 48, 19],
+      // nettement sous son allure : c'est lui qui portera l'ambre.
+      ['Nouveaux clients', 25, '', 0, 9],
+    ],
+  },
+  {
+    cle: 'essai-okr-2',
+    objective: 'Arrêter de travailler à perte',
+    recul: 0,
+    resultats: [
+      ['Marge moyenne', 38, '%', 22, 34],
+      // déjà dépassé : le curseur doit s'arrêter au bout de la règle.
+      ['Devis envoyés', 30, '', 0, 34],
+    ],
+  },
+  {
+    cle: 'essai-okr-3',
+    objective: 'Remettre la vitrine à niveau',
+    recul: 1,
+    resultats: [
+      ['Vitrines refaites', 3, '', 0, 3],
+      ['Photos publiées', 24, '', 0, 24],
+      ['Avis recueillis', 10, '', 0, 6],
+    ],
+  },
+  {
+    cle: 'essai-okr-4',
+    objective: 'Passer le printemps sans rupture',
+    recul: 2,
+    resultats: [
+      ['Ruptures de stock', 0, '', 7, 1],
+      ['Fournisseurs de secours', 2, '', 0, 2],
+    ],
+  },
+];
+for (const o of OBJECTIFS) {
+  await poser('okrs', o.cle, {
+    objective: o.objective,
+    season: '',
+    keyResults: o.resultats.map(([label, target, unit, start, current], i) => ({
+      id: `${o.cle}-kr-${i + 1}`,
+      label,
+      target,
+      unit,
+      start,
+      current,
+    })),
+    createdAt: trimestreIso(o.recul),
+  });
+}
+
 /* ─── Documents, notes, décisions, objectifs, rapports ─────────────────────── */
 
 await poser('knowledge', 'essai-doc-1', {
