@@ -762,10 +762,30 @@ await poser('expenseConfig', 'config', {
     { key: 'materiel', label: 'Matériel' },
     { key: 'autre', label: 'Autre' },
   ],
+  /*
+    LES BUDGETS SONT CHOISIS POUR EXERCER LES QUATRE ÉTATS D'UN RAIL (`12b`) :
+
+      fournitures   712,00 € sur 600,00 €  → SORT du rail de 112,00 €, et
+                                             c'est le plus gros dépassement,
+                                             donc le seul ambre de l'écran ;
+      autre          32,00 € sur  20,00 €  → sort aussi, mais de moins : il
+                                             reste en gris, et c'est le CRAN
+                                             qui dit qu'il est sorti ;
+      deplacement   450,00 € sur 450,00 €  → AU CRAN, à l'euro. L'écran doit
+                                             écrire « au cran » et non
+                                             « 100 % » — atteindre son budget
+                                             n'est pas le dépasser ;
+      prestataire  1840,00 € sur 2000,00 € → tient, avec de la marge.
+
+    `materiel` n'a pas de budget : pas de rail du tout, et une phrase en pied
+    de carte qui dit pourquoi. Un rail est une longueur ; sans budget, il n'y
+    en a aucune.
+  */
   categoryBudgets: {
-    prestataire: 90000,
+    prestataire: 200000,
     fournitures: 60000,
     deplacement: 45000,
+    autre: 2000,
   },
   projectBudgets: {},
 });
@@ -778,9 +798,9 @@ const DEPENSES = [
   ['essai-dep-1', 'Retouchouse — visuels vitrine', 'prestataire', 48000, -2],
   ['essai-dep-2', 'Mise à jour du site', 'prestataire', 136000, -5],
   ['essai-dep-3', 'Papier et encre', 'fournitures', 8640, -5],
-  ['essai-dep-4', 'Rouleaux de kraft', 'fournitures', 38160, -8],
+  ['essai-dep-4', 'Rouleaux de kraft', 'fournitures', 62560, -8],
   ['essai-dep-5', 'Train Paris — Lille', 'deplacement', 12400, -7],
-  ['essai-dep-6', 'Péage et carburant', 'deplacement', 18000, -10],
+  ['essai-dep-6', 'Péage et carburant', 'deplacement', 32600, -10],
   ['essai-dep-7', 'Disque dur de sauvegarde', 'materiel', 16800, -9],
   ['essai-dep-8', 'Sécateurs professionnels', 'materiel', 9400, -12],
   ['essai-dep-9', 'Location de camionnette', 'deplacement', 24000, -34],
@@ -789,6 +809,19 @@ const DEPENSES = [
   ['essai-dep-12', 'Vitrophanie', 'fournitures', 14500, -66],
   ['essai-dep-13', 'Honoraires comptables', 'prestataire', 39000, -70],
   ['essai-dep-14', 'Étagères d’atelier', 'materiel', 27800, -74],
+  /* Le second dépassement, plus petit : il prouve que l'ambre va au PLUS GROS
+     et que les autres sorties de rail se lisent quand même, par le cran. */
+  ['essai-dep-15', 'Frais de port express', 'autre', 3200, -4],
+  /*
+    LES MOIS DU DÉBUT D'ANNÉE. Les cuves couvrent janvier au mois courant ;
+    sans rien avant juin, neuf cadres dont cinq vides ne montrent pas une
+    année qui se remplit, ils montrent un module qui vient d'être installé.
+  */
+  ['essai-dep-16', 'Salon professionnel', 'deplacement', 42000, -110],
+  ['essai-dep-17', 'Refonte du logo', 'prestataire', 86000, -142],
+  ['essai-dep-18', 'Papeterie de printemps', 'fournitures', 19400, -168],
+  ['essai-dep-19', 'Assurance atelier', 'autre', 64000, -205],
+  ['essai-dep-20', 'Outillage de taille', 'materiel', 31500, -238],
 ];
 /*
   DEUX DÉPENSES PORTENT UN JUSTIFICATIF, ET LES AUTRES NON.
