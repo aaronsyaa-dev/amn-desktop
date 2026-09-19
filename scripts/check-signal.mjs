@@ -106,6 +106,7 @@ const ECRANS = [
   ['Devis', '#/facturation/devis'],
   ['Dépenses', '#/depenses'],
   ['Abonnements', '#/abonnements'],
+  ['Caisse du jour', '#/caisse'],
   ['Agenda', '#/agenda'],
   ['Réunions', '#/reunions'],
   ['Priorités', '#/priorites'],

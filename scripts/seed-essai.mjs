@@ -746,6 +746,90 @@ for (const [cle, label, customerName, amountCents, period, dansJours, active] of
   });
 }
 
+/* ─── Encaissements du mois, par moyen de règlement ────────────────────────── */
+
+/*
+  `Invoice.paymentMethod` est un champ LIBRE, et l'écran Caisse le regroupe par
+  mot-clé après normalisation. Le jeu d'essai écrit donc les libellés tels
+  qu'on les tape vraiment — « CB », « Espèces », « Virement SEPA » — et un
+  quatrième qui n'entre dans aucune classe, pour que la ligne « autre » du
+  regroupement soit visible et dite plutôt que silencieuse.
+*/
+const ENCAISSEMENTS = [
+  ['essai-enc-1', 101, 'Le Jardin d’Élise', 'CB', 24000, -3],
+  ['essai-enc-2', 103, 'Nadia Bouvier', 'Espèces', 8600, -5],
+  ['essai-enc-3', 108, 'Théo Lambert', 'Virement SEPA', 46000, -8],
+  ['essai-enc-4', 102, 'Brasserie du Port', 'Chèque', 12000, -11],
+  ['essai-enc-5', 104, 'Villa Sereine', 'Carte bleue', 31000, -14],
+];
+for (const [cle, clientId, nom, moyen, euros, recul] of ENCAISSEMENTS) {
+  await poser('invoices', cle, {
+    number: `2026-02${cle.slice(-1)}0`,
+    clientId,
+    billTo: { name: nom, company: nom, email: '', address: '', vatNumber: '' },
+    issuedAt: jour(recul - 5),
+    dueAt: jour(recul + 25),
+    lines: [ligne('l1', 'Prestation réglée sur place', 1, euros / 1.2)],
+    status: 'paid',
+    paidAt: jour(recul),
+    paymentMethod: moyen,
+    cancelReason: '',
+    notes: '',
+    quoteId: null,
+  });
+}
+
+/* ─── Caisse du jour ───────────────────────────────────────────────────────── */
+
+/*
+  QUATORZE JOURS, DONT TROIS NON COMPTÉS.
+
+  L'instrument de `11c` pose une règle : un jour dont la caisse n'a pas été
+  comptée n'a PAS de barre, seulement son fantôme, et cette absence est
+  l'information. Une série complète ne permet pas de le vérifier — d'où trois
+  trous volontaires, dont un dimanche.
+
+  La journée habituelle est la MÉDIANE des jours comptés. Les montants tournent
+  donc autour de 420 € avec deux jours francs au-dessus (un samedi de marché) et
+  deux au-dessous : une médiane qui ne bouge pas pour un jour exceptionnel est
+  précisément ce qu'on veut dire par « habituelle ».
+
+  Le jour courant est semé à 78 % de l'habituelle, comme la maquette : la
+  colonne doit se lire aux trois quarts pleine, sous le cran des 100 %.
+*/
+const CAISSE_SUITE = [
+  [13, 41800], [12, 38400], [11, null], [10, 45200], [9, 39600],
+  [8, 62800], [7, null], [6, 42600], [5, 40100], [4, 44300],
+  [3, 58200], [2, null], [1, 40900],
+];
+for (const [recul, especes] of CAISSE_SUITE) {
+  if (especes === null) continue;
+  const j = jour(-recul);
+  /* Le compté s'écarte du attendu de quelques euros certains jours : un écart
+     n'est pas une faute, c'est un chiffre qu'on voit — et une suite d'écarts
+     tous nuls ne permet pas de vérifier que l'écran sait les montrer. */
+  const ecart = recul % 4 === 0 ? -250 : recul % 5 === 0 ? 180 : 0;
+  await poser('cashCounts', `caisse-${j}`, {
+    day: j,
+    floatCents: 15000,
+    expectedCents: especes,
+    countedCents: 15000 + especes + ecart,
+    note: '',
+    byEmail: EMAIL,
+    countedAt: instant(-24 * recul),
+  });
+}
+/* Aujourd'hui : 78 % de l'habituelle (médiane des jours ci-dessus). */
+await poser('cashCounts', `caisse-${jour(0)}`, {
+  day: jour(0),
+  floatCents: 15000,
+  expectedCents: 32900,
+  countedCents: 15000 + 32900,
+  note: 'Journée calme, pluie toute la matinée.',
+  byEmail: EMAIL,
+  countedAt: instant(-2),
+});
+
 /* ─── Dépenses et budgets ──────────────────────────────────────────────────── */
 
 /*
