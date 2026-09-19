@@ -982,6 +982,39 @@ for (const [cle, note, category, amountCents, dansJours] of DEPENSES) {
 
 /* ─── Commandes ────────────────────────────────────────────────────────────── */
 
+/* ─── Stock ────────────────────────────────────────────────────────────────── */
+
+/*
+  LE STOCK EST RAPPROCHÉ DES LIGNES DE COMMANDE PAR NOM.
+
+  Le modèle de stock n'a pas de référence, seulement un `name` — les intitulés
+  sont donc écrits ici exactement comme les lignes de commande les écrivent,
+  sinon la réservation ne trouve rien et l'écran dit « hors stock suivi » pour
+  des articles qui existent.
+
+  Un article est SOUS son seuil et un autre est en RUPTURE : les deux états que
+  la batterie d'anneaux de Stock (`11b`) doit savoir montrer, et de quoi faire
+  manquer le bon du dessus des Commandes.
+*/
+const STOCK = [
+  ['essai-stk-1', 'Bouquet de saison', 18, 8],
+  ['essai-stk-2', 'Jardinière garnie', 1, 4],
+  ['essai-stk-3', 'Composition de table', 12, 6],
+  ['essai-stk-4', 'Boutonnières', 40, 24],
+  ['essai-stk-5', 'Couronne de porte', 0, 3],
+  ['essai-stk-6', 'Mousse florale', 26, 10],
+];
+for (const [cle, name, quantity, minQuantity] of STOCK) {
+  await poser('stockItems', cle, {
+    name,
+    quantity,
+    minQuantity,
+    unit: 'pièce',
+    note: '',
+    createdAt: instant(-24 * 90),
+  });
+}
+
 /*
   Les commandes n'arrivent normalement PAS d'ici : elles viennent du site
   public, par la clé de réception (voir docs/COMMANDES.md dans amn-api). On les
@@ -991,10 +1024,26 @@ for (const [cle, note, category, amountCents, dansJours] of DEPENSES) {
   Une par état de la chaîne, plus deux nouvelles en attente : c'est ce qui donne
   au premier maillon quelque chose à traiter, donc à l'écran son unique ambre.
 */
+/*
+  SIX BONS NON TRAITÉS, ET C'EST VOULU.
+
+  La pile de `14c` montre QUATRE épaisseurs au maximum et annonce le reste en
+  texte. Avec trois bons en attente, la règle ne se vérifie pas : on voit trois
+  feuilles et aucune phrase. Six bons donnent quatre feuilles et « 2 autres
+  attendent derrière », qui est exactement ce que la règle demande.
+
+  Le bon du dessus commande QUATRE jardinières garnies alors que le stock en
+  porte une : la carte « ce que l'acceptation déclenche » doit alors écrire
+  « il manque 3 » en rouge. C'est la seule situation de cet écran qui appelle
+  un geste immédiat, et le rationnement du rouge la réserve à ça.
+*/
 const COMMANDES = [
-  ['essai-cmd-1', '#1841', 'new', -2, 'Camille Renaud', [['Bouquet de saison', 2, 45]]],
+  ['essai-cmd-1', '#1841', 'new', -2, 'Camille Renaud', [['Jardinière garnie', 4, 95], ['Bouquet de saison', 2, 45]]],
   ['essai-cmd-2', '#1840', 'new', -9, 'Hugo Marchand', [['Jardinière garnie', 1, 95]]],
   ['essai-cmd-3', '#1839', 'new', -28, 'Nadia Bouvier', [['Composition de table', 4, 45]]],
+  ['essai-cmd-9', '#1838', 'new', -41, 'Élodie Vasseur', [['Boutonnières', 12, 18]]],
+  ['essai-cmd-10', '#1836', 'new', -57, 'Théo Lambert', [['Bouquet de saison', 3, 45]]],
+  ['essai-cmd-11', '#1835', 'new', -66, 'Salomé Vallon', [['Couronne de porte', 1, 140]]],
   ['essai-cmd-4', '#1837', 'confirmed', -50, 'Camille Renaud', [['Abonnement hebdomadaire', 4, 45]]],
   ['essai-cmd-5', '#1834', 'preparing', -74, 'Hugo Marchand', [['Jardinière garnie', 3, 95], ['Pose', 1, 120]]],
   ['essai-cmd-6', '#1828', 'shipped', -98, 'Nadia Bouvier', [['Boutonnières', 6, 18]]],
