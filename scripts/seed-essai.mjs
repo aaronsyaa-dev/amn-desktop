@@ -249,6 +249,67 @@ const ligne = (id, label, quantity, euros, vatRate = 20) => ({
   vatRate,
 });
 
+/*
+  DEUX FACTURES RÉCENTES, une dans chaque semaine.
+
+  Le miroir de la Revue hebdo compare la semaine en cours à la précédente sur
+  six indicateurs, dont « facturé » et « encaissé ». Sans facture émise dans
+  les quatorze derniers jours, ces deux paires restent à zéro des deux côtés —
+  et une colonne à zéro n'a pas l'air d'un bac à sable incomplet, elle a l'air
+  d'une semaine calme. Les dates sont posées en JOURS pour que les deux
+  tombent toujours de part et d'autre du lundi, quel que soit le jour du semis.
+*/
+const lundiDernier = (() => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+})();
+const enJours = (d) => Math.round((Date.now() - d.getTime()) / 86_400_000);
+const reculCetteSemaine = Math.max(0, enJours(lundiDernier) - 1);
+const reculSemainePassee = enJours(lundiDernier) + 3;
+
+await poser('invoices', 'essai-fac-recente-1', {
+  number: '2026-0047',
+  clientId: 102,
+  billTo: {
+    name: 'Brasserie du Port',
+    company: 'Brasserie du Port',
+    email: 'contact@brasserie-du-port.exemple.test',
+    address: '4 quai des Docks\n34200 Sète',
+    vatNumber: '',
+  },
+  issuedAt: jour(-reculCetteSemaine),
+  dueAt: jour(30 - reculCetteSemaine),
+  lines: [ligne('l1', 'Compositions de table — septembre', 8, 62)],
+  status: 'issued',
+  paidAt: '',
+  paymentMethod: '',
+  cancelReason: '',
+  notes: '',
+  quoteId: null,
+});
+await poser('invoices', 'essai-fac-recente-2', {
+  number: '2026-0046',
+  clientId: 101,
+  billTo: {
+    name: 'Camille Renaud',
+    company: 'Le Jardin d’Élise',
+    email: 'camille@jardin-elise.exemple.test',
+    address: '12 rue des Lilas\n34000 Montpellier',
+    vatNumber: '',
+  },
+  issuedAt: jour(-reculSemainePassee),
+  dueAt: jour(30 - reculSemainePassee),
+  lines: [ligne('l1', 'Bouquet de saison — livraison hebdomadaire', 14, 45)],
+  status: 'issued',
+  paidAt: jour(-reculCetteSemaine),
+  paymentMethod: 'Virement',
+  cancelReason: '',
+  notes: '',
+  quoteId: null,
+});
+
 await poser('invoices', 'essai-fac-1', {
   number: '2026-0041',
   clientId: 101,
@@ -1502,6 +1563,60 @@ for (const [cle, title, status, priority, bloquePar, age] of TACHES) {
     assigneeEmail: EMAIL,
     ...(bloquePar ? { blockedBy: bloquePar } : {}),
     createdAt: instant(age),
+  });
+}
+
+/* ─── Journal de bord ──────────────────────────────────────────────────────── */
+
+/*
+  DES ENTRÉES DE LONGUEURS FRANCHEMENT DIFFÉRENTES, et c'est la seule chose qui
+  compte pour cet instrument.
+
+  La coupe géologique donne à chaque entrée une épaisseur PROPORTIONNELLE au
+  nombre de mots. Un semis où toutes les entrées font trois lignes produirait
+  une pile de strates identiques — c'est-à-dire une liste, exactement ce que
+  l'instrument remplace. On sème donc de « Rien de notable. » (trois mots) à
+  une mise au point de plus de cent mots.
+
+  Les douze mois de la carte de gauche demandent aussi des entrées ANCIENNES :
+  sans elles, onze barres à zéro et une seule qui dépasse.
+*/
+const JOURNAL = [
+  [0, 'note', 'Rien de notable.'],
+  [1, 'visite',
+    'Passage du contrôleur sanitaire. Tout est conforme, il a relevé la température du frigo à 3 °C et vérifié les fiches de traçabilité. Prochain passage annoncé au printemps.'],
+  [2, 'note', 'Livraison Pays-Bas arrivée avec deux heures de retard, rien de cassé.'],
+  [4, 'panne',
+    'Le frigo de réserve s’est arrêté pendant la nuit. Découvert à l’ouverture, tout le contenu était encore froid. Redémarré après avoir dégivré le condenseur — il était pris en glace. À surveiller : si ça recommence, c’est la sonde.'],
+  [5, 'note', 'Nouveau fournisseur de rubans testé sur la commande Fontaine. Qualité correcte.'],
+  [7, 'decision',
+    'Décision prise de fermer le lundi matin à partir d’octobre. Le chiffre du lundi matin ne couvre pas la présence, et c’est le créneau où l’on prépare le mieux les commandes de la semaine. Essai sur trois mois, à revoir en janvier.'],
+  [9, 'note', 'Rupture de ruban de reliure signalée.'],
+  [11, 'incident',
+    'Erreur de livraison sur la commande Brasserie du Port : les compositions sont parties à la mauvaise adresse. Récupérées et relivrées dans la journée, la cliente a été prévenue avant de s’en apercevoir. Cause : deux adresses homonymes dans les fiches, fusionnées depuis.'],
+  [14, 'note', 'Vitrine refaite pour la rentrée.'],
+  [17, 'visite', 'Rendez-vous avec le comptable. Rien à signaler sur le trimestre.'],
+  [21, 'decision',
+    'Mise au point du trimestre. Trois choses en sortent. D’abord, les marges sur les compositions événementielles sont en dessous de ce qu’on croyait une fois le temps de préparation compté — il faut soit remonter les prix, soit réduire la variété proposée. Ensuite, les commandes en ligne ont dépassé les commandes au comptoir pour la première fois, ce qui change la façon dont il faut tenir le stock : moins de fleurs à l’unité, plus de compositions préparées. Enfin, la question de l’embauche se repose pour le printemps, mais pas avant d’avoir vu ce que donne la fermeture du lundi.'],
+  [26, 'note', 'Inventaire des vases fait. Douze manquants depuis le dernier comptage.'],
+  [34, 'panne', 'Rideau métallique bloqué à mi-hauteur. Débloqué à la main, graissé.'],
+  [48, 'note', 'Première commande du site sans intervention. Ça marche.'],
+  [65, 'decision', 'Passage aux emballages papier pour toutes les compositions.'],
+  [92, 'visite', 'Visite du bailleur pour l’état des lieux intermédiaire.'],
+  [120, 'note', 'Saison des pivoines terminée. Bonne année.'],
+  [160, 'incident', 'Coupure d’électricité de quatre heures. Rien perdu.'],
+  [210, 'note', 'Reprise après les congés.'],
+  [260, 'decision', 'Ouverture du samedi après-midi décidée pour l’été.'],
+  [310, 'note', 'Premier mois avec la nouvelle caisse.'],
+];
+for (const [ilYa, kind, texte] of JOURNAL) {
+  const d = new Date(Date.now() - ilYa * 86_400_000);
+  d.setHours(9 + (ilYa % 8), 20, 0, 0);
+  await poser('logbook', `essai-log-${ilYa}`, {
+    text: texte,
+    kind,
+    byEmail: EMAIL,
+    at: d.toISOString(),
   });
 }
 
