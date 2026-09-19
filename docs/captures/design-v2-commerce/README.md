@@ -13,13 +13,20 @@ capture qui ne prouve rien n'a pas sa place ici.
 | `parrainage.png` | Parrainage `23c` | Deux générations, et le CA de branche = somme de la descendance, jamais les factures du parrain lui-même. |
 | `facturation.png` | Facturation `11a` | Le demi-cercle de 340 px, trois arcs proportionnels sur un seul chemin, total émis gravé au centre à 42 px. L'en-tête et la dominante disent **le même** « en attente » : 3 439,20 € des deux côtés (c'était 10 199 vs 3 439 avant correction). |
 | `facturation-entier.png` | Facturation `11a` | L'écran entier : douze mois émis avec le prévisionnel du mois courant en filet pointillé, les brouillons non émis avec leur montant en jeu, et le registre — dont les lignes en retard restent **en encre claire**, l'ambre étant le sujet de la carte du haut. |
+| `clients.png` · `clients-entier.png` | Clients `14a` | Le nuage à deux axes : silence en abscisse (0–180 j), chiffre d'affaires des douze derniers mois en ordonnée (0–12 k€), diamètre du disque repris du même chiffre. Le quadrant critique est calculé sur des seuils écrits — 90 jours, 4 000 € — et Cabinet Vallon (3 740 € · 104 j) en est **exclu de justesse** : la preuve que le seuil travaille vraiment. Villa Sereine (6 000 € · 97 j) y est seule, et porte l'ambre avec son étiquette. Une flèche marque le point dont le CA dépasse le haut de l'axe. |
 | `devis.png` · `devis-entier.png` | Devis `13a` | Le fil d'Ariane dit « Facturation · Devis », la barre latérale garde Facturation en actif, aucune entrée « Devis » n'y est ajoutée. Cinq réglettes sur un axe commun de trente jours ; sonde navigateur : parts `100 / 40 / 30 / 20 / 10 %` pour 34 / 12 / 9 / 6 / 3 jours, et le cran de relance au **même pixel** (`584.3`) sur les cinq lignes — la légende partage bien la grille des réglettes. |
 
 ## Les mesures de la sonde
 
 `check:signal` sur le bundle complet : **53 écrans, aucun n'a plus d'un objet
 ambre**, les écrans vides n'en portent aucun et n'affichent aucun relevé à
-zéro. `check:contraste` : 68 écrans, 8 559 textes, aucun sous WCAG AA.
+zéro. `check:contraste` : 68 écrans, 8 617 textes, aucun sous WCAG AA.
+
+Une phrase de la maquette ne tient pas sur ces données-là, et l'écran le dit :
+`MODULES.md` décrit « les quatre clients à plus de 90 jours, dont trois pèsent
+moins de 1 600 € par an » ; ici un seul est léger. La phrase du panneau
+« Les silencieux » se déduit des comptes plutôt que d'être écrite d'avance —
+une formule figée aurait contredit le tableau juste au-dessus d'elle.
 
 Le demi-cercle : les trois `stroke-dasharray` somment 486,9469 px pour un
 chemin de π × 155 = 486,9469 px — le dernier arc prend le reste exact plutôt
