@@ -886,7 +886,19 @@ export const fr: Dictionnaire = {
   /* ── Pilotage & livrables : vague 4 ──────────────────────────────── */
   'pilotage.surtitre': 'Pilotage · {module}',
   'priorites.principe': 'Trois choses, pas dix.',
-  'priorites.etatDuJour': '{faites} de faite(s). Il reste {restantes} place(s) — le module en refusera une quatrième.',
+  /*
+    LE PLURIEL S'ÉCRIT, IL NE SE PARENTHÈSE PAS — même règle que les Routines.
+
+    « 2 de faite(s). Il reste 0 place(s) » se lit sous un titre de 32 px, en
+    phrase, pas dans un libellé de colonne. Les quatre cas se comptent sur les
+    doigts d'une main, alors ils s'écrivent. Et « il reste 0 place » n'est pas
+    une information : c'est « les trois fentes sont prises », qui est la même
+    chose dite sans un zéro.
+  */
+  'priorites.etatDuJour': '{faites} de faites. Il reste {restantes} places — le module en refusera une quatrième.',
+  'priorites.etatDuJourUneFaite': 'Une de faite. Il reste {restantes} places.',
+  'priorites.etatDuJourUnePlace': '{faites} de faites. Il reste une place.',
+  'priorites.etatDuJourComplet': 'Les trois fentes sont prises. Le module en refusera une quatrième.',
   'priorites.emplacementLibre': 'Emplacement libre.',
   'priorites.troisMaximum': 'Trois au maximum, et c’est voulu',
   'priorites.cocheeA': 'Cochée à {heure}',

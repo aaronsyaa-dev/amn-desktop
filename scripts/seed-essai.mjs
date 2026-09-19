@@ -1377,12 +1377,29 @@ for (const [ilYaJours, heures] of JOURNEES_CHANTIER) {
   volontairement jamais faites — le trou doit se voir, c'est tout le propos.
 */
 const joursCoches = (liste) => liste.map((n) => jour(-n));
+const tous28 = Array.from({ length: 28 }, (_, i) => i);
+
+/*
+  DEUX FORMES QUE L'INSTRUMENT DOIT POUVOIR RENDRE, et qu'un semis au hasard
+  ne produirait jamais :
+
+    · une série JAMAIS ROMPUE sur les vingt-huit jours — c'est elle qui porte
+      l'ambre, et l'ambre récompense la continuité, pas la performance ;
+    · une routine qui manque TOUJOURS LE MÊME JOUR DE SEMAINE. Le diagnostic
+      de gauche existe pour ça : sept barres, une pointe le jeudi, et la
+      conclusion « elle est mal posée » au lieu de « il faut se forcer ».
+
+  Le jeudi se calcule depuis aujourd'hui plutôt que d'être écrit en dur : le
+  semis tourne n'importe quel jour, et une liste figée ferait tomber la pointe
+  sur un autre jour de semaine à chaque exécution.
+*/
+const reculsDuJeudi = tous28.filter((k) => new Date(Date.now() - k * 86_400_000).getDay() === 4);
 const ROUTINES = [
-  ['essai-rtn-1', 'Relever la caisse', joursCoches([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])],
-  ['essai-rtn-2', 'Sauvegarder les fichiers du jour', joursCoches([0, 1, 4, 6])],
-  ['essai-rtn-3', 'Relire la boîte de réception', joursCoches([0, 1, 2, 3, 5, 6])],
-  ['essai-rtn-4', 'Arroser l’atelier', joursCoches([5, 6])],
-  ['essai-rtn-5', 'Vérifier le frigo', joursCoches([2, 4, 6])],
+  ['essai-rtn-1', 'Relever la caisse', joursCoches(tous28)],
+  ['essai-rtn-2', 'Point stock', joursCoches(tous28.filter((k) => !reculsDuJeudi.includes(k)))],
+  ['essai-rtn-3', 'Sauvegarder les fichiers du jour', joursCoches([0, 1, 4, 6, 8, 9, 12, 15, 16, 20, 22, 25])],
+  ['essai-rtn-4', 'Relire la boîte de réception', joursCoches([0, 1, 2, 3, 5, 6, 7, 10, 13, 14, 17, 19, 21, 24, 26])],
+  ['essai-rtn-5', 'Arroser l’atelier', joursCoches([5, 6, 11, 13, 18, 23, 27])],
 ];
 for (const [cle, label, ticks] of ROUTINES) {
   await poser('routines', cle, { label, ticks: [...ticks].sort(), createdAt: instant(-24 * 60) });
@@ -1485,6 +1502,56 @@ for (const [cle, title, status, priority, bloquePar, age] of TACHES) {
     assigneeEmail: EMAIL,
     ...(bloquePar ? { blockedBy: bloquePar } : {}),
     createdAt: instant(age),
+  });
+}
+
+/* ─── Priorités du jour ────────────────────────────────────────────────────── */
+
+/*
+  TRENTE JOURS DE FENTES, pour que la bande du bas prouve la règle.
+
+  L'instrument montre trois cases par jour : ce qui se lit, c'est qu'il n'y a
+  JAMAIS eu de quatrième priorité. Une bande semée avec une seule barre par
+  jour ne dirait pas ça. On sème donc des journées à trois, à deux, à une et à
+  zéro, avec des week-ends vides — parce qu'une moyenne calculée sur les jours
+  ouvrés doit pouvoir se distinguer d'une moyenne calculée sur tout.
+
+  Aujourd'hui garde une fente non cochée en première position : c'est elle qui
+  porte l'ambre, et un écran semé « tout fait » ne le montrerait pas.
+*/
+const slugCourriel = (e) => e.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+const FENTES = [
+  'Rappeler l’Atelier Fontaine',
+  'Finir la vitrine',
+  'Commander les pivoines',
+  'Passer l’écriture comptable',
+  'Relire le devis Studio Nord',
+  'Ranger la réserve',
+];
+for (let k = 0; k < 30; k += 1) {
+  const d = new Date(Date.now() - k * 86_400_000);
+  const jourSemaine = d.getDay();
+  const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  /* Week-end : aucune fente posée — c'est un fait, pas un trou de données.
+     AUJOURD'HUI fait exception : c'est le sujet de l'écran, et un semis qui
+     tombe un samedi laisserait les trois fentes vides, donc l'instrument sans
+     rien à montrer et l'ambre sans porteur. */
+  if (k > 0 && (jourSemaine === 0 || jourSemaine === 6)) continue;
+  // Trois, deux ou une fente selon le jour — jamais quatre.
+  const combien = [3, 3, 2, 3, 1, 2, 3][k % 7];
+  const items = Array.from({ length: combien }, (_, i) => {
+    const fait = k === 0 ? i > 0 : (k + i) % 5 !== 0;
+    return {
+      id: `prio-${k}-${i}`,
+      label: FENTES[(k + i) % FENTES.length],
+      doneAt: fait ? new Date(d.getTime() + (10 + i * 3) * 3_600_000).toISOString() : null,
+    };
+  });
+  await poser('dailyPriorities', `prio-${slugCourriel(EMAIL)}-${iso}`, {
+    email: EMAIL,
+    day: iso,
+    items,
+    updatedAt: d.toISOString(),
   });
 }
 

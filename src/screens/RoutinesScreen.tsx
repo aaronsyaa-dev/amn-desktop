@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FirstRun } from '../components/EmptyState';
 import { useSync, useCollection, uid } from '../state/SyncContext';
@@ -48,7 +48,103 @@ export function RoutinesScreen() {
   const faites = routines.filter((r) => r.ticks.includes(aujourdhui)).length;
   const ratioDuJour = `${faites}/${routines.length}`;
   const meilleure = routines.reduce((n, r) => Math.max(n, serieDe(r.ticks)), 0);
-  const septJours = useMemo(() => Array.from({ length: 7 }, (_, i) => isoJour(new Date(Date.now() - (6 - i) * 86_400_000))), []);
+
+  /*
+    L'AXE FAIT EXACTEMENT 28 JOURS — c'est la règle du paquet, et elle a une
+    raison : quatre semaines pleines montrent le même jour de semaine quatre
+    fois, donc un manque qui revient toujours le jeudi se voit comme une
+    colonne trouée. Sur trente jours, les semaines se décalent et le motif
+    disparaît.
+  */
+  const JOURS_AXE = 28;
+  const axe = useMemo(
+    () => Array.from({ length: JOURS_AXE }, (_, i) => isoJour(new Date(Date.now() - (JOURS_AXE - 1 - i) * 86_400_000))),
+    [],
+  );
+
+  /*
+    LA SÉRIE ININTERROMPUE — l'unique ambre, et il récompense la CONTINUITÉ,
+    pas la performance. Une routine cochée vingt-sept jours sur vingt-huit
+    n'a pas de série : elle a un trou. C'est exactement ce que l'instrument
+    doit rendre visible.
+
+    La routine doit aussi avoir existé sur toute la fenêtre : une routine
+    créée avant-hier et cochée deux fois n'a pas « tenu vingt-huit jours ».
+  */
+  const ininterrompue = useMemo(() => {
+    const debutAxe = axe[0];
+    for (const r of routines) {
+      if (r.createdAt.slice(0, 10) > debutAxe) continue;
+      if (axe.every((d) => r.ticks.includes(d))) return r.id;
+    }
+    return null;
+  }, [routines, axe]);
+
+  /*
+    LA ROUTINE QUI CASSE, et QUAND elle casse. Sept barres, une par jour de
+    semaine : c'est le diagnostic que le module doit rendre — « le point stock
+    échoue le jeudi » — et il ne se lit dans aucun compteur.
+  */
+  const diagnostic = useMemo(() => {
+    /*
+      ON NE CHERCHE PAS CELLE QUI MANQUE LE PLUS, mais celle dont les manques
+      se CONCENTRENT sur un jour de semaine — et la nuance change tout.
+
+      Une routine manquée partout est une routine qu'on ne fait pas : sept
+      barres égales, aucun diagnostic, et la seule réponse honnête est « vous
+      ne la faites pas ». Une routine manquée quatre fois, toujours le jeudi,
+      est une routine MAL POSÉE : elle tombe le jour de la livraison, ou du
+      marché, ou de la fermeture. C'est celle-là que l'instrument doit
+      désigner, parce que c'est la seule dont le remède est de la déplacer.
+
+      La mesure est donc la part du pire jour dans le total des manques, et
+      non le total. Trois manques au minimum : sous ce seuil, une pointe n'est
+      qu'un hasard.
+    */
+    let choisie: { id: string; label: string; manques: number[]; concentration: number } | null = null;
+    for (const r of routines) {
+      const manques = [0, 0, 0, 0, 0, 0, 0];
+      let total = 0;
+      for (const d of axe) {
+        if (r.createdAt.slice(0, 10) > d) continue;
+        if (r.ticks.includes(d)) continue;
+        // `getDay()` rend 0 = dimanche ; on range du lundi au dimanche.
+        const jour = (new Date(`${d}T00:00:00`).getDay() + 6) % 7;
+        manques[jour] += 1;
+        total += 1;
+      }
+      if (total < 3) continue;
+      const concentration = Math.max(...manques) / total;
+      if (choisie === null || concentration > choisie.concentration) {
+        choisie = { id: r.id, label: r.label, manques, concentration };
+      }
+    }
+    return choisie;
+  }, [routines, axe]);
+
+  /*
+    LA TENUE GÉNÉRALE, et ce qu'elle vaudrait sans la routine mal posée. Le
+    deuxième chiffre n'est pas une consolation : il dit qu'une routine
+    impossible à tenir fait baisser la lecture de toutes les autres, et que la
+    réponse est de la déplacer, pas de se forcer.
+  */
+  const tenue = useMemo(() => {
+    const compter = (liste: typeof routines) => {
+      let faits = 0;
+      let possibles = 0;
+      for (const r of liste) {
+        for (const d of axe) {
+          if (r.createdAt.slice(0, 10) > d) continue;
+          possibles += 1;
+          if (r.ticks.includes(d)) faits += 1;
+        }
+      }
+      return possibles === 0 ? null : Math.round((faits / possibles) * 100);
+    };
+    const globale = compter(routines);
+    const sansLaPire = diagnostic ? compter(routines.filter((r) => r.id !== diagnostic.id)) : null;
+    return { globale, sansLaPire };
+  }, [routines, axe, diagnostic]);
 
   /* La phrase sous le titre dit l'état du jour, pas la nature du module : « il
      reste deux gestes » est ce qu'on vient chercher, et ça change chaque matin. */
@@ -128,133 +224,196 @@ export function RoutinesScreen() {
           en-tête est une plaque pleine en encre de signal, et la colonne porte
           un fond teinté qui lui appartient — même groupe, un seul objet.
         */
-        <motion.div variants={staggerItem} className="flex flex-col gap-3">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[620px] border-collapse">
-              <thead>
-                <tr>
-                  <th className="eyebrow border-b border-border px-3 py-3 text-left font-bold">
-                    {t('routines.ceQuiRevient')}
-                  </th>
-                  {septJours.map((d) => {
-                    const ceJour = new Date(`${d}T00:00:00`);
-                    const estAujourdhui = d === aujourdhui;
-                    return (
-                      <th
-                        key={d}
-                        data-signal-groupe={estAujourdhui ? 'serie-en-cours' : undefined}
-                        className={`w-[62px] border-b px-2 py-3 text-center ${
-                          estAujourdhui ? 'signal-plate border-signal' : 'border-border'
+        <motion.div variants={staggerItem} className="flex flex-col gap-[18px]">
+          {/* ── L'OBJET DOMINANT : la matrice de séries ─────────────────── */}
+          <section className="panel-raised panel-raised-wide px-[30px] pb-[26px] pt-[30px]">
+            <div className="mb-[22px] flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+              <span className="eyebrow text-text-secondary">{t('routines.ceQuiRevient')} · 28 jours</span>
+              <span className="font-mono text-[10px] tracking-[0.1em] text-text-muted">
+                {ininterrompue ? 'UNE SÉRIE JAMAIS ROMPUE' : 'AUCUNE SÉRIE COMPLÈTE'}
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <div className="min-w-[680px]">
+                {routines.map((r) => {
+                  const serie = serieDe(r.ticks);
+                  const ambre = ininterrompue === r.id;
+                  const faite = r.ticks.includes(aujourdhui);
+                  return (
+                    <div
+                      key={r.id}
+                      data-signal-groupe={ambre ? 'serie-ininterrompue' : undefined}
+                      className="group grid grid-cols-[180px_1fr_58px] items-center gap-4 border-b border-[#161616] py-2.5 last:border-b-0"
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span
+                          className={`min-w-0 flex-1 truncate text-[13.5px] ${
+                            faite ? 'font-semibold text-text-primary' : 'text-text-secondary'
+                          }`}
+                          title={r.label}
+                        >
+                          {r.label}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => void remove('routines', r.id)}
+                          aria-label={t('routines.supprimer')}
+                          title={t('routines.supprimer')}
+                          className="flex-shrink-0 text-text-muted opacity-0 transition-opacity hover:text-danger focus:opacity-100 group-hover:opacity-100"
+                        >
+                          <Trash2 size={13} strokeWidth={1.9} />
+                        </button>
+                      </span>
+
+                      {/*
+                        LES VINGT-HUIT CASES, de largeur égale. La série se lit
+                        comme un TRAIT CONTINU que les manques interrompent :
+                        c'est la forme de la régularité, pas un compteur.
+
+                        ARBITRAGE SUR LES TROIS ÉTATS. Le paquet décrit
+                        « pleine (fait), grise (partiel), vide cerclée
+                        (manqué) ». Le modèle ne connaît pas le partiel — une
+                        routine est cochée ou ne l'est pas, et c'est
+                        volontaire : « une routine, c'est juste fait ou pas
+                        fait » (en-tête de ce fichier). Les trois états rendus
+                        sont donc pleine / vide cerclée / rien-du-tout, ce
+                        dernier pour les jours ANTÉRIEURS à la création de la
+                        routine — qui ne sont pas des manques. Inventer un
+                        partiel demanderait un champ que personne ne
+                        remplirait.
+                      */}
+                      <span className="flex min-w-0 gap-[3px]">
+                        {axe.map((d) => {
+                          const coche = r.ticks.includes(d);
+                          const avantCreation = r.createdAt.slice(0, 10) > d;
+                          const estAujourdhui = d === aujourdhui;
+                          const contenu = (
+                            <span
+                              className={`block h-[18px] w-full ${
+                                avantCreation
+                                  ? ''
+                                  : coche
+                                    ? ambre
+                                      ? 'bg-signal'
+                                      : 'bg-text-primary'
+                                    : 'border border-border-section'
+                              }`}
+                            />
+                          );
+                          /* Une case ne se coche que pour AUJOURD'HUI : une
+                             série qu'on rattrape après coup ne mesure plus
+                             rien. Les autres cases ne sont pas des boutons. */
+                          return estAujourdhui ? (
+                            <button
+                              key={d}
+                              type="button"
+                              onClick={() => void basculer(r)}
+                              aria-pressed={coche}
+                              aria-label={`${r.label} — ${coche ? t('routines.faite') : t('routines.aFaire')}`}
+                              className="min-w-0 flex-1"
+                              title={d}
+                            >
+                              {contenu}
+                            </button>
+                          ) : (
+                            <span key={d} className="min-w-0 flex-1" title={d}>
+                              {contenu}
+                            </span>
+                          );
+                        })}
+                      </span>
+
+                      {/* LE COMPTE : la série EN COURS, jamais le total de
+                          jours tenus. Les deux diffèrent dès le premier trou,
+                          et c'est le premier que l'instrument mesure. */}
+                      <span
+                        data-signal-groupe={ambre ? 'serie-ininterrompue' : undefined}
+                        className={`tnum text-right font-mono text-[15px] font-semibold tracking-[-0.03em] ${
+                          ambre ? 'text-signal' : 'text-text-primary'
                         }`}
                       >
-                        <span
-                          className={`block font-mono text-[9.5px] font-bold uppercase tracking-[0.15em] ${
-                            estAujourdhui ? 'text-signal-ink' : 'text-text-muted'
-                          }`}
-                        >
-                          {estAujourdhui
-                            ? t('routines.auj')
-                            : ceJour.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}
-                        </span>
-                        <span
-                          className={`tnum mt-1 block font-mono text-[11px] ${
-                            estAujourdhui ? 'text-signal-ink' : 'text-text-secondary'
-                          }`}
-                        >
-                          {String(ceJour.getDate()).padStart(2, '0')}
-                        </span>
-                      </th>
-                    );
-                  })}
-                  <th className="eyebrow w-[74px] border-b border-border px-3 py-3 text-right font-bold">
-                    {t('routines.serieCourte')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {routines.map((r) => {
-                  const faite = r.ticks.includes(aujourdhui);
-                  const serie = serieDe(r.ticks);
-                  return (
-                    <tr key={r.id} className="group border-b border-[#161616] last:border-b-0">
-                      <td className="px-3 py-3.5">
-                        <span className="flex items-center gap-3">
-                          <span className={`min-w-0 flex-1 truncate text-[14.5px] ${faite ? 'font-semibold text-text-primary' : 'text-text-secondary'}`}>
-                            {r.label}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => void remove('routines', r.id)}
-                            aria-label={t('routines.supprimer')}
-                            title={t('routines.supprimer')}
-                            className="flex-shrink-0 text-text-muted opacity-0 transition-opacity hover:text-danger focus:opacity-100 group-hover:opacity-100"
-                          >
-                            <Trash2 size={13} strokeWidth={1.9} />
-                          </button>
-                        </span>
-                      </td>
-                      {septJours.map((d) => {
-                        const coche = r.ticks.includes(d);
-                        const estAujourdhui = d === aujourdhui;
-                        /*
-                          UNE CASE NE SE COCHE QUE POUR AUJOURD'HUI.
-
-                          Le modèle garde une liste de jours, donc rien
-                          n'empêcherait techniquement de cocher mardi dernier —
-                          et c'est précisément ce qu'il ne faut pas offrir : une
-                          série qu'on peut rattraper après coup ne mesure plus
-                          rien. Les autres colonnes sont donc des cellules, pas
-                          des boutons, et le pied de tableau le dit.
-                        */
-                        const carre = coche
-                          ? 'border-text-primary bg-text-primary'
-                          : estAujourdhui
-                            ? 'border-signal-ink/40 bg-signal-ink/10'
-                            : 'border-[#2b2b2b] bg-[#2b2b2b]';
-                        const contenu = (
-                          <span
-                            className={`mx-auto flex h-[18px] w-[18px] items-center justify-center border ${carre}`}
-                          >
-                            {coche && <Check size={12} strokeWidth={3} className="text-bg" />}
-                          </span>
-                        );
-                        return (
-                          <td
-                            key={d}
-                            data-signal-groupe={estAujourdhui ? 'serie-en-cours' : undefined}
-                            className={`px-2 py-3.5 ${estAujourdhui ? 'bg-signal-muted' : ''}`}
-                          >
-                            {estAujourdhui ? (
-                              <button
-                                type="button"
-                                onClick={() => void basculer(r)}
-                                aria-pressed={faite}
-                                aria-label={`${r.label} — ${faite ? t('routines.faite') : t('routines.aFaire')}`}
-                                className="flex min-h-11 w-full items-center justify-center md:min-h-0"
-                              >
-                                {contenu}
-                              </button>
-                            ) : (
-                              contenu
-                            )}
-                          </td>
-                        );
-                      })}
-                      <td className="tnum px-3 py-3.5 text-right font-mono text-[15px] font-semibold tracking-[-0.03em] text-text-primary">
                         {serie}
-                      </td>
-                    </tr>
+                      </span>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </div>
 
-          {/* La règle du jeu, écrite une fois sous le tableau : sans elle, une
-              série qui retombe à zéro passe pour un bug. */}
-          <p className="font-mono text-[9.5px] uppercase leading-[1.7] tracking-[0.14em] text-text-muted">
-            {t('routines.regleDuJeu')}
-          </p>
+            <div className="mt-3.5 flex justify-between font-mono text-[9.5px] tracking-[0.1em] text-text-muted">
+              <span>
+                {new Date(`${axe[0]}T00:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
+              </span>
+              <span>{t('routines.auj')}</span>
+            </div>
+
+            <p className="mt-5 border-t border-border-raised pt-[22px] font-mono text-[9.5px] uppercase leading-[1.7] tracking-[0.14em] text-text-muted">
+              {t('routines.regleDuJeu')}
+            </p>
+          </section>
+
+          {/* ── AUTOUR : où ça casse, et ce que ça coûte ───────────────── */}
+          <div className="grid gap-[18px] lg:grid-cols-[1fr_340px]">
+            <section className="panel min-w-0 px-[22px] pb-[18px] pt-5">
+              <div className="mb-[18px] flex items-baseline justify-between gap-4">
+                <span className="eyebrow text-text-secondary">Où ça casse</span>
+                {diagnostic && (
+                  <span className="min-w-0 truncate font-mono text-[10px] tracking-[0.1em] text-text-muted">
+                    {diagnostic.label.toUpperCase()}
+                  </span>
+                )}
+              </div>
+              {diagnostic ? (
+                <>
+                  <div className="flex h-[88px] items-end gap-3">
+                    {diagnostic.manques.map((n, i) => {
+                      const plafond = Math.max(1, ...diagnostic.manques);
+                      return (
+                        <span
+                          key={i}
+                          className={`flex-1 ${n === plafond && n > 0 ? 'bg-text-primary' : 'bg-border-strong'}`}
+                          style={{ height: `${Math.max(3, (n / plafond) * 88)}px` }}
+                          title={`${n} manque${n > 1 ? 's' : ''}`}
+                        />
+                      );
+                    })}
+                  </div>
+                  <div className="mt-2.5 flex gap-3 font-mono text-[9.5px] tracking-[0.1em] text-text-muted">
+                    {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((j, i) => (
+                      <span key={i} className="flex-1 text-center">
+                        {j}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="mt-4 text-[13.5px] leading-[1.6] text-text-secondary [text-wrap:pretty]">
+                    {diagnostic.concentration >= 0.6
+                      ? 'Le manque revient le même jour de semaine. Une routine qui casse toujours au même endroit n’est pas un manque de discipline : elle est mal posée.'
+                      : 'Les manques se répartissent sur toute la semaine : rien n’indique un jour qui coince, seulement une routine qu’on ne fait pas.'}
+                  </p>
+                </>
+              ) : (
+                <p className="py-3 text-[13.5px] leading-[1.7] text-text-secondary">
+                  Rien ne casse sur les vingt-huit derniers jours.
+                </p>
+              )}
+            </section>
+
+            <section className="panel flex flex-col px-5 pb-[18px] pt-5">
+              <span className="eyebrow mb-5 text-text-secondary">La tenue</span>
+              <span className="tnum block font-mono text-[40px] font-bold leading-[.92] tracking-[-0.04em] text-text-primary">
+                {tenue.globale === null ? '—' : `${tenue.globale} %`}
+              </span>
+              <span className="mt-2.5 block text-[13.5px] leading-[1.55] text-text-secondary">
+                des cases cochées sur les vingt-huit jours.
+              </span>
+              {tenue.sansLaPire !== null && tenue.globale !== null && tenue.sansLaPire > tenue.globale && (
+                <span className="mt-4 block border-t border-border pt-4 font-mono text-[10px] leading-[1.7] tracking-[0.1em] text-text-muted">
+                  SANS « {diagnostic?.label.toUpperCase()} » · {tenue.sansLaPire} %
+                </span>
+              )}
+            </section>
+          </div>
         </motion.div>
       )}
 

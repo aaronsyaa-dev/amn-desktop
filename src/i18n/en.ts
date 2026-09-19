@@ -894,7 +894,10 @@ export const en = {
   /* ── Steering & deliverables: wave 4 ─────────────────────────────── */
   'pilotage.surtitre': 'Steering · {module}',
   'priorites.principe': 'Three things, not ten.',
-  'priorites.etatDuJour': '{faites} done. {restantes} slot(s) left — the module will refuse a fourth.',
+  'priorites.etatDuJour': '{faites} done. {restantes} slots left — the module will refuse a fourth.',
+  'priorites.etatDuJourUneFaite': 'One done. {restantes} slots left.',
+  'priorites.etatDuJourUnePlace': '{faites} done. One slot left.',
+  'priorites.etatDuJourComplet': 'All three slots are taken. The module will refuse a fourth.',
   'priorites.emplacementLibre': 'Free slot.',
   'priorites.troisMaximum': 'Three at most, and that is the point',
   'priorites.cocheeA': 'Ticked at {heure}',
