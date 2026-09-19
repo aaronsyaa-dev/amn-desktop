@@ -131,8 +131,6 @@ const DETTE_CONNUE = new Set([
   'src/screens/EquipmentBookingScreen.tsx:#161616',
   'src/screens/ExpensesScreen.tsx:#161616',
   'src/screens/MeetingsScreen.tsx:#161616',
-  'src/screens/PrioritiesScreen.tsx:#0b0b0b',
-  'src/screens/PrioritiesScreen.tsx:#161616',
   'src/screens/ProjectsScreen.tsx:#161616',
   'src/screens/QrScreen.tsx:#ffffff',
   'src/screens/RoutinesScreen.tsx:#161616',

@@ -55,6 +55,24 @@
   --color-elevated: #121212;
   --color-border: #1f1f1f;
   /* Le filet de section — entre la bordure de carte calme et celle d'une dominante. */
+  /*
+    LA LIGNE DE TABLEAU — le filet le plus discret de la rampe.
+
+    Le système de design lui donne une valeur à lui (§3.4 : « ligne de
+    tableau : padding 13px 0 + border-bottom 1px solid #161616 »), et elle se
+    trouve être la même que `--color-surface-hover`. Ce sont pourtant deux
+    emplois sans rapport : l'un est un fond au survol, l'autre un filet de
+    séparation. Les confondre marchait tant que personne ne touchait à l'un
+    des deux — le jour où le survol s'éclaircit, tous les filets de tableau
+    s'éclaircissent avec lui, et personne ne sait pourquoi.
+
+    Le jeton existe donc pour que l'intention soit écrite. Les trente-trois
+    copies de `#161616` déjà en place dans les écrans restent des dettes
+    connues (voir `DETTE_CONNUE` dans scripts/check-encres.mjs) : les
+    convertir est un balayage à part, qui ne se mélange pas à un chantier de
+    composition.
+  */
+  --color-border-row: #161616;
   --color-border-section: #242424;
   /* La bordure d'une carte dominante, et celle d'une feuille. */
   --color-border-raised: #262626;

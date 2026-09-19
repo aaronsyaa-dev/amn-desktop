@@ -195,7 +195,7 @@ export function LogbookScreen() {
                     <div
                       key={e.id}
                       data-signal-groupe={ambre ? 'strate-du-mois' : undefined}
-                      className={`grid grid-cols-[96px_1fr_84px] items-center gap-4 border-b border-[#161616] px-3 last:border-b-0 ${
+                      className={`grid grid-cols-[96px_1fr_84px] items-center gap-4 border-b border-border-row px-3 last:border-b-0 ${
                         ambre ? 'bg-signal' : ''
                       }`}
                       style={{ height: `${e.epaisseur}px`, background: fond }}
