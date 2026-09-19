@@ -1518,30 +1518,74 @@ for (const a of ABSENCES) {
 }
 
 /*
-  LE PIPELINE — des euros, et un prospect qui ne bouge plus.
+  LE PIPELINE — VINGT-QUATRE FICHES POUR QUE L'ENTONNOIR RÉTRÉCISSE.
 
-  Le montant est ce que ce module a de propre : les autres tableaux à colonnes
-  comptent des cartes, celui-ci compte de l'argent. Et « Menuiserie Vidal » n'a
-  pas bougé depuis vingt-six jours, ce qui est la seule chose qu'un pipeline
-  demande de décider.
+  L'entonnoir de `14e` déduit ses largeurs des EFFECTIFS cumulés : une bande
+  compte les fiches à son stade ou au-delà. Huit fiches donnaient 7 / 6 / 3 / 1,
+  c'est-à-dire un entonnoir qui ne rétrécit presque pas au milieu — et la
+  question du module, « où ça se resserre le plus », n'avait pas de réponse
+  lisible.
+
+  La répartition choisie donne exactement les effectifs cumulés :
+
+    Contact       9 + 7 + 3 + 5 = 24   → 100 %
+    Qualifié          7 + 3 + 5 = 15   →  62,5 %
+    Devis envoyé          3 + 5 =  8   →  33,3 %
+    Gagné                     5 =  5   →  20,8 %
+
+  Les chutes sont donc − 37,5 %, − 46,7 % et − 37,5 % : LA FUITE EST ENTRE
+  QUALIFIÉ ET DEVIS ENVOYÉ, et c'est elle qui porte l'ambre. Sept qualifiés
+  sans devis : c'est le chiffre que la carte de gauche doit nommer.
+
+  LES CINQ GAGNÉS VIENNENT TOUS DU BOUCHE À OREILLE — c'est ce que la carte de
+  provenance doit pouvoir dire sans qu'on l'ait écrit en dur. Le champ
+  `source` existe pour ça ; deux fiches le laissent vide, pour que la ligne
+  « sans provenance notée » se vérifie aussi.
+
+  « Menuiserie Vidal » n'a toujours pas bougé depuis vingt-six jours : c'est la
+  seule décision qu'un pipeline demande, et elle descend sous l'entonnoir.
 */
 const PROSPECTS = [
-  ['pro-1', 'Claire Vasseur', 'Fleurs & Co', 1800, 'proposition', 'Devis envoyé, relance prévue lundi.', -3],
-  ['pro-2', 'Menuiserie Vidal', 'Menuiserie Vidal', 6400, 'proposition', 'Attend l’accord du gérant.', -26],
-  ['pro-3', 'Théo Lambert', 'Café des Halles', 950, 'qualifie', 'Budget confirmé.', -5],
-  ['pro-4', 'Résidence Les Cèdres', 'Syndic Aurea', 12500, 'qualifie', 'Trois bâtiments, visite faite.', -9],
-  ['pro-5', 'Sophie Arnaud', '', 400, 'contact', '', -1],
-  ['pro-6', 'Garage Peyron', 'Garage Peyron', 2200, 'contact', 'Rencontré au salon.', -2],
-  ['pro-7', 'Hôtel du Parc', 'Hôtel du Parc', 8900, 'gagne', 'Signé — à basculer en client.', -12],
-  ['pro-8', 'Boulangerie Mistral', 'Boulangerie Mistral', 3100, 'perdu', 'Parti chez un concurrent moins cher.', -20],
+  /* Gagnés — cinq, tous par bouche à oreille. */
+  ['pro-7', 'Hôtel du Parc', 'Hôtel du Parc', 8900, 'gagne', 'Signé — à basculer en client.', -12, 'bouche'],
+  ['pro-9', 'Clinique Saint-Roch', 'Clinique Saint-Roch', 5400, 'gagne', 'Recommandé par l’Hôtel du Parc.', -19, 'bouche'],
+  ['pro-10', 'Éric Nadaud', 'Cabinet Nadaud', 2100, 'gagne', 'Ami d’une cliente.', -27, 'bouche'],
+  ['pro-11', 'Le Comptoir', 'Le Comptoir', 3600, 'gagne', 'Vu chez un confrère.', -34, 'bouche'],
+  ['pro-12', 'Pharmacie Lauze', 'Pharmacie Lauze', 1500, 'gagne', 'Bouche à oreille de quartier.', -44, 'bouche'],
+  /* Devis envoyé — trois. */
+  ['pro-1', 'Claire Vasseur', 'Fleurs & Co', 1800, 'proposition', 'Devis envoyé, relance prévue lundi.', -3, 'site'],
+  ['pro-2', 'Menuiserie Vidal', 'Menuiserie Vidal', 6400, 'proposition', 'Attend l’accord du gérant.', -26, 'salon'],
+  ['pro-13', 'Studio Rive', 'Studio Rive', 2400, 'proposition', 'Devis parti mardi.', -6, 'site'],
+  /* Qualifiés sans devis — sept, la fuite. */
+  ['pro-3', 'Théo Lambert', 'Café des Halles', 950, 'qualifie', 'Budget confirmé.', -5, 'bouche'],
+  ['pro-4', 'Résidence Les Cèdres', 'Syndic Aurea', 12500, 'qualifie', 'Trois bâtiments, visite faite.', -9, 'salon'],
+  ['pro-14', 'Maison Bertaux', 'Maison Bertaux', 3200, 'qualifie', 'Veut du saisonnier, budget à caler.', -11, 'site'],
+  ['pro-15', 'Crèche Les Lutins', 'Les Lutins', 1400, 'qualifie', 'Plantes non toxiques, à vérifier.', -14, 'bouche'],
+  ['pro-16', 'Atelier Saval', 'Atelier Saval', 2800, 'qualifie', 'Attend la fin des travaux.', -17, 'salon'],
+  ['pro-17', 'Bistrot Nord', 'Bistrot Nord', 1900, 'qualifie', 'Terrasse d’hiver.', -21, ''],
+  ['pro-18', 'Cabinet Ferry', 'Cabinet Ferry', 4100, 'qualifie', 'Deux étages, besoin chiffré.', -8, 'site'],
+  /* Premiers contacts — neuf. */
+  ['pro-5', 'Sophie Arnaud', '', 400, 'contact', '', -1, 'site'],
+  ['pro-6', 'Garage Peyron', 'Garage Peyron', 2200, 'contact', 'Rencontré au salon.', -2, 'salon'],
+  ['pro-19', 'Épicerie Fine', 'Épicerie Fine', 800, 'contact', '', -2, 'site'],
+  ['pro-20', 'Mairie annexe', 'Ville', 5600, 'contact', 'Appel d’offres possible.', -4, ''],
+  ['pro-21', 'Coiffure Onde', 'Coiffure Onde', 700, 'contact', '', -4, 'bouche'],
+  ['pro-22', 'Librairie Sillon', 'Librairie Sillon', 1100, 'contact', 'Vitrine de Noël.', -6, 'site'],
+  ['pro-23', 'Cave Tramontane', 'Cave Tramontane', 1300, 'contact', '', -7, 'salon'],
+  ['pro-24', 'Institut Mira', 'Institut Mira', 2600, 'contact', 'A demandé une visite.', -9, 'bouche'],
+  ['pro-25', 'Traiteur Pons', 'Traiteur Pons', 3400, 'contact', 'Événementiel, gros volumes.', -10, 'salon'],
+  /* Perdus — hors entonnoir, faute d'historique d'étapes. */
+  ['pro-8', 'Boulangerie Mistral', 'Boulangerie Mistral', 3100, 'perdu', 'Parti chez un concurrent moins cher.', -20, 'site'],
+  ['pro-26', 'Hôtel Bellevue', 'Hôtel Bellevue', 4700, 'perdu', 'Budget annulé.', -31, 'salon'],
 ];
-for (const [cle, name, company, euros, stage, note, ilYaJours] of PROSPECTS) {
+for (const [cle, name, company, euros, stage, note, ilYaJours, source] of PROSPECTS) {
   await poser('prospects', `essai-${cle}`, {
     name,
     company,
     valueCents: euros * 100,
     stage,
     note,
+    source,
     createdAt: instant(-24 * (Math.abs(ilYaJours) + 14)),
     movedAt: instant(24 * ilYaJours),
   });
