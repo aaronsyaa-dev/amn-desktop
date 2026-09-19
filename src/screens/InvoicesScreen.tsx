@@ -47,6 +47,7 @@ import { staggerContainer, staggerItem } from '../lib/transitions';
 import type { BillingIdentity, Client, Invoice, InvoiceLine, InvoiceStatus } from '../shared/api';
 import { metaOf } from '../lib/records';
 import { EmptyState, FirstRun } from '../components/EmptyState';
+import { useHaloSignal } from '../components/EtatEcran';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
 import { useLangue, t as tr } from '../i18n';
 
@@ -166,7 +167,19 @@ export function InvoicesScreen() {
         description={tr('hist.invoices.devisEncaissementsEtRelances')}
         stats={[
           { label: `Encaissé ${summary.year}`, value: formatCentsCompact(summary.collectedCents) },
-          { label: 'En attente', value: formatCentsCompact(summary.outstandingCents) },
+          {
+            /*
+              L'ATTENTE EST NETTE DU RETARD.
+
+              `outstandingCents` contient le retard — l'en-tête affichait donc
+              « en attente 10 199 » au-dessus d'une dominante qui dit
+              « en attente 3 439 », deux comptes divergents sous le même mot
+              sur le même écran. Les trois chiffres de l'en-tête partitionnent
+              maintenant le total émis exactement comme les trois arcs.
+            */
+            label: 'En attente',
+            value: formatCentsCompact(Math.max(0, summary.outstandingCents - summary.overdueCents)),
+          },
           {
             label: summary.overdueCount > 0 ? `En retard · ${summary.overdueCount}` : 'En retard',
             value: formatCentsCompact(summary.overdueCents),
@@ -191,6 +204,22 @@ export function InvoicesScreen() {
             réclame l'exercice, et un export enterré dans un autre écran ne se
             retrouve pas le jour où il devient urgent.
           */}
+          {/*
+            L'ENTRÉE VERS LES DEVIS — ici et nulle part ailleurs.
+
+            `MODULES.md` : « Devis n'est pas un module de premier niveau : il
+            vit dans Facturation. » La barre latérale ne reçoit donc PAS
+            d'entrée « Devis » ; c'est cet écran qui y mène, et la barre garde
+            Facturation en actif sur `/facturation/devis` (son `isActive`
+            compare par préfixe de chemin).
+          */}
+          <button
+            type="button"
+            onClick={() => navigate('/facturation/devis')}
+            className="flex h-11 items-center gap-2 border border-border px-3 text-sm font-semibold text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:h-9"
+          >
+            Devis
+          </button>
           <button
             type="button"
             onClick={() => setExportingFec(true)}
@@ -415,17 +444,101 @@ export function InvoicesScreen() {
 /* ----------------------------------------------------------------- résumé -- */
 
 /**
- * LES MASSES DE L'ANNÉE — encaissé, en attente, en retard, et leur proportion.
+ * LE DEMI-CERCLE DES MASSES — l'objet dominant de Facturation (11a).
  *
- * Trois montants, une barre, et deux cartes pour les factures dépassées. Ce
- * n'est pas un tableau de bord : c'est la réponse à la seule question qu'on
- * pose en ouvrant Facturation — « est-ce que ça rentre, et qu'est-ce qui
- * coince ». Tout est calculé sur les factures affichées, jamais figé.
+ * Trois montants alignés ne disent pas leur PROPORTION, et c'est toute la
+ * question qu'on pose en ouvrant cet écran : « est-ce que ça rentre ? ». Les
+ * trois masses de l'exercice — encaissé, en attente, en retard — sont donc
+ * posées sur UN SEUL chemin, à longueur proportionnelle, épaisseur 30 px. On
+ * voit la part avant de lire le montant.
  *
- * L'UNIQUE AMBRE : le segment en retard, et le montant qui lui correspond. Un
- * montant en retard est un chiffre à l'échelle d'un titre, donc l'exception de
- * la règle 2 du jeton s'applique — il tient le contraste (8,11:1 sur le fond).
- * L'encaissé, lui, va bien : il reste en encre claire.
+ * La géométrie, dans l'ordre où elle se déduit :
+ *   • le tracé fait 340 px de large, épaisseur 30 px ;
+ *   • le rayon est donc (340 − 30) / 2, pour que le trait ne déborde pas ;
+ *   • les deux extrémités reposent à y = rayon + épaisseur/2, et la boîte
+ *     descend d'une demi-épaisseur en dessous.
+ *
+ * Le conteneur est contraint à 340 px et centré : les calques posés en
+ * `left:0; right:0` (la gravure centrale) se centreraient sinon sur une autre
+ * boîte que l'arc, et la gravure partirait à côté de son cercle.
+ */
+const ARC_L = 340;
+const ARC_EP = 30;
+const ARC_R = (ARC_L - ARC_EP) / 2;
+const ARC_BASE = ARC_R + ARC_EP / 2;
+const ARC_H = ARC_BASE + ARC_EP / 2;
+const ARC_LONGUEUR = Math.PI * ARC_R;
+const ARC_CHEMIN = `M ${ARC_EP / 2} ${ARC_BASE} A ${ARC_R} ${ARC_R} 0 0 1 ${ARC_L - ARC_EP / 2} ${ARC_BASE}`;
+
+/**
+ * Découpe le chemin en arcs proportionnels.
+ *
+ * Le dernier arc prend EXACTEMENT ce qui reste plutôt que sa propre part
+ * arrondie : sans ça, les arrondis des précédents laissent un cheveu de fond
+ * entre deux masses ou font déborder le dernier. Les `stroke-dasharray`
+ * somment donc rigoureusement la longueur du chemin.
+ */
+function decouperArc(masses: number[]): { debut: number; longueur: number }[] {
+  const total = masses.reduce((s, m) => s + m, 0);
+  if (total <= 0) return masses.map(() => ({ debut: 0, longueur: 0 }));
+  const parts: { debut: number; longueur: number }[] = [];
+  let pose = 0;
+  for (let i = 0; i < masses.length; i += 1) {
+    const longueur =
+      i === masses.length - 1 ? ARC_LONGUEUR - pose : (masses[i] / total) * ARC_LONGUEUR;
+    parts.push({ debut: pose, longueur });
+    pose += longueur;
+  }
+  return parts;
+}
+
+/** Les douze mois glissants, en montants réellement émis. */
+function douzeMois(invoices: Invoice[], aujourdHui: Date) {
+  const mois: { cle: string; libelle: string; cents: number }[] = [];
+  for (let i = 11; i >= 0; i -= 1) {
+    const d = new Date(aujourdHui.getFullYear(), aujourdHui.getMonth() - i, 1);
+    mois.push({
+      cle: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+      libelle: d.toLocaleDateString('fr-FR', { month: 'narrow' }),
+      cents: 0,
+    });
+  }
+  const index = new Map(mois.map((m, i) => [m.cle, i]));
+  for (const inv of invoices) {
+    if (inv.status === 'draft' || inv.status === 'cancelled' || inv.kind === 'creditNote') continue;
+    if (!inv.issuedAt) continue;
+    const i = index.get(inv.issuedAt.slice(0, 7));
+    if (i === undefined) continue;
+    mois[i].cents += netDueCents(inv, invoices) + (inv.status === 'paid' ? invoiceTotals(inv).grossCents - netDueCents(inv, invoices) : 0);
+  }
+  return mois;
+}
+
+const MOIS_H = 92;
+
+/**
+ * La gravure centrale, à la largeur du demi-disque creux.
+ *
+ * Le creux fait 2 × (rayon − épaisseur/2) = 280 px, et une ligne de
+ * JetBrains Mono à 42 px avance d'environ 25 px par glyphe : onze caractères
+ * la remplissent. Au-delà — un exercice au-dessus de cent mille euros — les
+ * centimes sautent plutôt que la gravure ne déborde sur l'arc. Réduire le
+ * corps serait pire : la taille de ce chiffre est ce qui en fait le sujet.
+ */
+const GRAVURE_MAX = 11;
+
+function graverTotal(cents: number): string {
+  const plein = formatCents(cents);
+  return plein.length > GRAVURE_MAX ? formatCentsCompact(Math.round(cents / 100) * 100) : plein;
+}
+
+/**
+ * LES MASSES DE L'ANNÉE.
+ *
+ * L'UNIQUE AMBRE de l'écran : la masse en retard — son arc, son libellé, son
+ * montant et sa barre dans le relevé. Quatre nœuds, tous dans la carte
+ * dominante. La même donnée rappelée plus bas dans le registre reste en encre
+ * claire : un rappel n'est pas un second sujet.
  */
 function MassesDeLAnnee({
   summary,
@@ -438,12 +551,56 @@ function MassesDeLAnnee({
   today: string;
   onOuvrir: (id: string) => void;
 }) {
-  const total = summary.collectedCents + summary.outstandingCents;
-  /* Les parts. Sans rien encaissé ni rien en attente, la barre se tait plutôt
-     que d'afficher trois zéros qui se disputent cent pour cent. */
-  const partEncaisse = total > 0 ? Math.round((summary.collectedCents / total) * 100) : 0;
-  const partRetard = total > 0 ? Math.round((summary.overdueCents / total) * 100) : 0;
-  const partAttente = Math.max(0, 100 - partEncaisse - partRetard);
+  const halo = useHaloSignal(summary.overdueCents > 0);
+
+  /* `outstandingCents` contient déjà le retard : les trois masses disjointes
+     sont donc encaissé / attente nette / retard, et leur somme est le total
+     émis gravé au centre. */
+  const attenteCents = Math.max(0, summary.outstandingCents - summary.overdueCents);
+  const totalEmis = summary.collectedCents + summary.outstandingCents;
+
+  const comptes = useMemo(() => {
+    let encaisse = 0;
+    let attente = 0;
+    for (const inv of invoices) {
+      if (inv.status === 'cancelled' || inv.status === 'draft' || inv.kind === 'creditNote') continue;
+      if (inv.status === 'paid') {
+        if (inv.paidAt.startsWith(summary.year)) encaisse += 1;
+      } else if (netDueCents(inv, invoices) > 0 && !isOverdue(inv, today, invoices)) {
+        attente += 1;
+      }
+    }
+    return { encaisse, attente, retard: summary.overdueCount };
+  }, [invoices, summary.year, summary.overdueCount, today]);
+
+  const arcs = decouperArc([summary.collectedCents, attenteCents, summary.overdueCents]);
+
+  const releves = [
+    {
+      cle: 'encaisse',
+      label: tr('hist.invoices.encaisse'),
+      cents: summary.collectedCents,
+      compte: comptes.encaisse,
+      trait: '#4a4a48',
+      signal: false,
+    },
+    {
+      cle: 'attente',
+      label: tr('hist.invoices.enAttente'),
+      cents: attenteCents,
+      compte: comptes.attente,
+      trait: '#2b2b2b',
+      signal: false,
+    },
+    {
+      cle: 'retard',
+      label: 'En retard',
+      cents: summary.overdueCents,
+      compte: comptes.retard,
+      trait: 'var(--color-signal)',
+      signal: summary.overdueCents > 0,
+    },
+  ];
 
   /* Les dépassées, la plus ancienne d'abord : c'est celle qui coûte le plus. */
   const enRetard = useMemo(
@@ -455,60 +612,210 @@ function MassesDeLAnnee({
     [invoices, today],
   );
   const brouillons = useMemo(() => invoices.filter((inv) => inv.status === 'draft'), [invoices]);
+  const enJeuCents = useMemo(
+    () => brouillons.reduce((n, inv) => n + invoiceTotals(inv).grossCents, 0),
+    [brouillons],
+  );
   const joursDepuis = (jour: string) =>
     Math.round((new Date(`${today}T00:00:00`).getTime() - new Date(`${jour}T00:00:00`).getTime()) / 86_400_000);
 
+  /* Les douze mois, et le prévisionnel du mois courant : ce qui est émis à ce
+     jour, ramené au mois entier. Ce n'est pas une prédiction — c'est la même
+     cadence tenue jusqu'au 31, et le filet pointillé dit bien que ce n'est pas
+     une mesure. */
+  const maintenant = useMemo(() => new Date(`${today}T00:00:00`), [today]);
+  const mois = useMemo(() => douzeMois(invoices, maintenant), [invoices, maintenant]);
+  const joursDuMois = new Date(maintenant.getFullYear(), maintenant.getMonth() + 1, 0).getDate();
+  const fraction = maintenant.getDate() / joursDuMois;
+  const courant = mois[mois.length - 1];
+  const previsionnel = fraction > 0 ? Math.round(courant.cents / fraction) : courant.cents;
+  const hautMois = Math.max(previsionnel, ...mois.map((m) => m.cents), 1);
+
   return (
-    <section className="flex flex-shrink-0 flex-col gap-4">
-      <div className="flex flex-wrap items-end gap-x-10 gap-y-4">
-        <div>
-          <p className="eyebrow mb-2">{tr('hist.invoices.encaisse')}</p>
-          <p className="tnum font-mono text-[40px] font-bold leading-none tracking-[-0.04em] text-text-primary">
-            {formatCents(summary.collectedCents)}
-          </p>
-        </div>
-        <div className="border-l border-border-section pl-10">
-          <p className="eyebrow mb-2">{tr('hist.invoices.enAttente')}</p>
-          <p className="tnum font-mono text-[27px] font-semibold leading-none tracking-[-0.03em] text-text-secondary">
-            {formatCents(summary.outstandingCents)}
-          </p>
-        </div>
-        {summary.overdueCents > 0 && (
-          <div className="border-l border-signal-line pl-10" data-signal-groupe="retard">
-            <p className="eyebrow mb-2 text-signal">
-              {tr('hist.invoices.enRetardN', { n: summary.overdueCount })}
-            </p>
-            <p className="tnum font-mono text-[27px] font-semibold leading-none tracking-[-0.03em] text-signal">
-              {formatCents(summary.overdueCents)}
-            </p>
+    <section className="flex flex-shrink-0 flex-col gap-6">
+      <div className="panel-raised panel-raised-wide panel-ticks px-6 py-6">
+        <p className="eyebrow mb-5">
+          {tr('hist.surtitre', { module: tr('hist.invoices.titre') })} · exercice {summary.year}
+        </p>
+        <div className="grid items-center gap-8 lg:grid-cols-[340px_1fr]">
+          {/*
+            Le conteneur fait la largeur du <svg> et rien de plus : la gravure
+            centrale est posée en `left:0; right:0`, elle se centre donc sur
+            CETTE boîte. Élargie, la boîte emporterait le total ailleurs que
+            sur son cercle.
+          */}
+          <div className="relative mx-auto w-full" style={{ maxWidth: ARC_L }}>
+            <svg
+              viewBox={`0 0 ${ARC_L} ${ARC_H}`}
+              style={{ width: '100%', height: 'auto', display: 'block' }}
+              aria-hidden
+            >
+              {/* La piste : ce qui resterait si tout était à zéro. */}
+              <path
+                d={ARC_CHEMIN}
+                fill="none"
+                stroke="var(--color-border)"
+                strokeWidth={ARC_EP}
+              />
+              {releves.map((r, i) => (
+                <path
+                  key={r.cle}
+                  d={ARC_CHEMIN}
+                  fill="none"
+                  stroke={r.trait}
+                  strokeWidth={ARC_EP}
+                  strokeDasharray={`${arcs[i].longueur} ${ARC_LONGUEUR - arcs[i].longueur}`}
+                  strokeDashoffset={-arcs[i].debut}
+                  className={r.signal ? halo : undefined}
+                  data-signal-groupe={r.signal ? 'retard' : undefined}
+                />
+              ))}
+            </svg>
+            {/*
+              La gravure est remontée d'une demi-épaisseur : posée sur le bord
+              bas de la boîte, sa dernière lettre tombait dans le trait des
+              extrémités de l'arc. Elle tient maintenant dans le demi-disque
+              creux, qui fait 280 px de large (2 × (rayon − épaisseur)).
+            */}
+            <div
+              className="absolute inset-x-0 text-center"
+              style={{ bottom: ARC_EP / 2 + 14 }}
+            >
+              <p className="eyebrow mb-1.5">Total émis</p>
+              <p className="tnum font-mono text-[42px] font-bold leading-none tracking-[-0.04em] text-text-primary">
+                {graverTotal(totalEmis)}
+              </p>
+            </div>
           </div>
-        )}
+
+          <div className="flex flex-col gap-4">
+            {releves.map((r) => (
+              <div key={r.cle} className="flex flex-col gap-1.5">
+                <div className="flex items-baseline justify-between gap-4">
+                  <p
+                    className={r.signal ? 'eyebrow-signal' : 'eyebrow'}
+                    data-signal-groupe={r.signal ? 'retard' : undefined}
+                  >
+                    {r.label}
+                  </p>
+                  <p className="tnum font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
+                    {r.compte} {r.compte > 1 ? 'factures' : 'facture'}
+                  </p>
+                </div>
+                <p
+                  className={`tnum font-mono text-[27px] font-semibold leading-none tracking-[-0.03em] ${
+                    r.signal ? 'text-signal' : 'text-text-primary'
+                  }`}
+                  data-signal-groupe={r.signal ? 'retard' : undefined}
+                >
+                  {formatCents(r.cents)}
+                </p>
+                <div className="h-1.5 w-full bg-border">
+                  <span
+                    className="block h-full"
+                    style={{
+                      width: `${totalEmis > 0 ? (r.cents / totalEmis) * 100 : 0}%`,
+                      background: r.trait,
+                    }}
+                    data-signal-groupe={r.signal ? 'retard' : undefined}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {total > 0 && (
-        <div>
-          <div className="flex h-2.5 w-full overflow-hidden" aria-hidden>
-            <span className="bg-[#4a4a48]" style={{ width: `${partEncaisse}%` }} />
-            <span className="bg-[#2b2b2b]" style={{ width: `${partAttente}%` }} />
-            {partRetard > 0 && (
-              <span className="bg-signal" style={{ width: `${partRetard}%` }} data-signal-groupe="retard" />
-            )}
+      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+        {/* LES DOUZE MOIS — l'histogramme réel, et le mois courant en encre vive. */}
+        <div className="panel px-5 py-4">
+          <div className="mb-4 flex items-baseline justify-between gap-4">
+            <p className="eyebrow">Douze mois émis</p>
+            <p className="tnum font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
+              prévisionnel du mois · {formatCentsCompact(previsionnel)}
+            </p>
           </div>
-          <div className="mt-1.5 flex justify-between font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
-            <span>{tr('hist.invoices.pourcentEncaisse', { n: partEncaisse })}</span>
-            <span className="flex gap-4">
-              <span>{partAttente} %</span>
-              {partRetard > 0 && <span>{partRetard} %</span>}
-            </span>
+          <div className="grid grid-cols-12 items-end gap-1.5" style={{ height: MOIS_H }}>
+            {mois.map((m, i) => {
+              const vif = i === mois.length - 1;
+              return (
+                <div key={m.cle} className="relative flex h-full items-end" title={`${m.cle} · ${formatCents(m.cents)}`}>
+                  {/*
+                    Le prévisionnel n'existe que pour le mois en cours : un mois
+                    clos n'a pas d'avenir, et un filet pointillé sur un mois
+                    passé serait un chiffre inventé.
+                  */}
+                  {vif && previsionnel > m.cents && (
+                    <span
+                      className="absolute inset-x-0 bottom-0 border border-dashed border-border-strong"
+                      style={{ height: `${(previsionnel / hautMois) * 100}%` }}
+                    />
+                  )}
+                  <span
+                    className={`relative block w-full ${vif ? 'bg-[#4a4a48]' : 'bg-[#2b2b2b]'}`}
+                    style={{ height: `${Math.max(m.cents > 0 ? 2 : 0, (m.cents / hautMois) * 100)}%` }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-1.5 grid grid-cols-12 gap-1.5">
+            {mois.map((m, i) => (
+              <span
+                key={m.cle}
+                className={`text-center font-mono text-[9.5px] uppercase tracking-[0.1em] ${
+                  i === mois.length - 1 ? 'text-text-primary' : 'text-text-muted'
+                }`}
+              >
+                {m.libelle}
+              </span>
+            ))}
           </div>
         </div>
-      )}
+
+        {/* LES BROUILLONS — ce qui n'existe encore pour personne, et son montant en jeu. */}
+        <div className="panel flex flex-col px-5 py-4">
+          <p className="eyebrow mb-3">Brouillons non émis</p>
+          {brouillons.length === 0 ? (
+            <p className="text-[13px] leading-relaxed text-text-secondary">
+              Rien en attente d’émission. Tout ce qui a été rédigé est parti.
+            </p>
+          ) : (
+            <>
+              <p className="tnum font-mono text-[27px] font-semibold leading-none tracking-[-0.03em] text-text-primary">
+                {formatCents(enJeuCents)}
+              </p>
+              <p className="mt-1.5 text-[12.5px] text-text-muted">
+                {tr('hist.invoices.nBrouillons', { n: brouillons.length })} ·{' '}
+                {tr('hist.invoices.brouillonSansNumero')}
+              </p>
+              <div className="mt-3 flex flex-col divide-y divide-border-row">
+                {brouillons.slice(0, 3).map((inv) => (
+                  <button
+                    key={inv.id}
+                    type="button"
+                    onClick={() => onOuvrir(inv.id)}
+                    className="flex min-h-11 items-center justify-between gap-3 py-2 text-left text-[13px] text-text-secondary transition-colors hover:text-text-primary md:min-h-0"
+                  >
+                    <span className="truncate">
+                      {inv.billTo?.name || tr('hist.invoices.clientSansNom')}
+                    </span>
+                    <span className="tnum flex-shrink-0 font-mono text-text-muted">
+                      {formatCents(invoiceTotals(inv).grossCents)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
 
       {/* Les dépassées : nommées, chiffrées, avec le geste qui les referme. */}
       {enRetard.length > 0 && (
         <div className="grid gap-4 md:grid-cols-2">
           {enRetard.map((inv) => (
-            <div key={inv.id} className="panel-raised flex flex-col gap-3 p-4">
+            <div key={inv.id} className="panel flex flex-col gap-3 px-5 py-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="tnum font-mono text-[12.5px] text-text-secondary">{inv.number || '—'}</span>
                 <span className="eyebrow text-text-secondary">
@@ -535,25 +842,6 @@ function MassesDeLAnnee({
               </div>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* La bande des brouillons : ce qui n'existe pas encore pour le client. */}
-      {brouillons.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border border-border bg-sunken px-4 py-3">
-          <p className="eyebrow">{tr('hist.invoices.nBrouillons', { n: brouillons.length })}</p>
-          {brouillons.slice(0, 3).map((inv) => (
-            <button
-              key={inv.id}
-              type="button"
-              onClick={() => onOuvrir(inv.id)}
-              className="min-h-11 text-left text-[13px] text-text-secondary transition-colors hover:text-text-primary md:min-h-0"
-            >
-              {inv.billTo?.name || tr('hist.invoices.clientSansNom')}
-              <span className="tnum font-mono text-text-muted"> · {formatCents(invoiceTotals(inv).grossCents)}</span>
-            </button>
-          ))}
-          <p className="ml-auto text-[12.5px] text-text-muted">{tr('hist.invoices.brouillonSansNumero')}</p>
         </div>
       )}
     </section>
@@ -583,6 +871,26 @@ function InvoiceRow({
         active ? 'bg-accent-muted' : 'hover:bg-surface-hover'
       }`}
     >
+      {/*
+        LA BARRE D'ÉTAT DE LA LIGNE.
+
+        Le registre se lit d'abord sans lire : un rail de 2 px par ligne, dont
+        la matière dit l'état avant que la pastille ne le nomme. Il n'y a PAS
+        d'ambre ici — la masse en retard est le sujet de la carte dominante, et
+        la même donnée rappelée plus bas ne redevient pas un second sujet.
+      */}
+      <span
+        aria-hidden
+        className={`-my-3 w-0.5 flex-shrink-0 self-stretch ${
+          late
+            ? 'bg-danger'
+            : invoice.status === 'paid'
+              ? 'bg-[#4a4a48]'
+              : invoice.status === 'cancelled'
+                ? 'bg-transparent'
+                : 'bg-[#2b2b2b]'
+        }`}
+      />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           {/*
@@ -612,11 +920,13 @@ function InvoiceRow({
               : '—'}
         </p>
       </div>
-      <span
-        className={`flex-shrink-0 text-sm font-semibold tabular-nums ${
-          late ? 'text-danger' : 'text-text-primary'
-        }`}
-      >
+      {/*
+        Le montant reste en ENCRE CLAIRE même en retard. Le rail et la pastille
+        portent déjà l'état ; teinter aussi le chiffre en ferait le troisième
+        rappel d'un fait dont la carte du haut est le sujet, et deux zones de
+        l'écran se disputeraient la même urgence.
+      */}
+      <span className="flex-shrink-0 text-sm font-semibold tabular-nums text-text-primary">
         {invoice.kind === 'creditNote' ? '−' : ''}
         {formatCentsCompact(totals.grossCents)}
       </span>

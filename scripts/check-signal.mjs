@@ -101,6 +101,9 @@ const ECRANS = [
   ['Contrats', '#/contrats'],
   ['Commandes', '#/commandes'],
   ['Facturation', '#/facturation'],
+  /* Devis n'est PAS une entrée de barre latérale — il vit sous Facturation
+     (`MODULES.md`, module 19). Il est mesuré ici par son adresse réelle. */
+  ['Devis', '#/facturation/devis'],
   ['Dépenses', '#/depenses'],
   ['Abonnements', '#/abonnements'],
   ['Agenda', '#/agenda'],
@@ -152,6 +155,12 @@ const ECRANS = [
   ['Nomenclatures', '#/nomenclatures'],
   ['Modèles', '#/outils/modeles'],
   ['Trombinoscope', '#/trombinoscope'],
+  /* La famille « ce qui fait revenir » : chacun a un objet à lui, et un seul
+     ambre — le dixième tampon, l'aiguille du peson, la racine de la branche
+     la plus lourde. */
+  ['Fidélité', '#/fidelite'],
+  ['Avis', '#/avis'],
+  ['Parrainage', '#/parrainage'],
 ];
 
 const serveur = spawn('node', [new URL('./servir-bundle.mjs', import.meta.url).pathname, BUNDLE, String(PORT)], {

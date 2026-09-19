@@ -16,6 +16,7 @@ import { AgendaScreen } from '../business/AgendaScreen';
 import { MediaSoloScreen } from '../business/MediaSoloScreen';
 import { ClientsScreen } from '../screens/ClientsScreen';
 import { InvoicesScreen } from '../screens/InvoicesScreen';
+import { QuotesScreen } from '../screens/QuotesScreen';
 import { ProjectsScreen } from '../screens/ProjectsScreen';
 import { ExpensesScreen } from '../screens/ExpensesScreen';
 import { TimeScreen } from '../screens/TimeScreen';
@@ -147,6 +148,14 @@ export function AppRoot() {
           element={
             <ModuleRoute module="invoices">
               <InvoicesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/facturation/devis"
+          element={
+            <ModuleRoute module="invoices">
+              <QuotesScreen />
             </ModuleRoute>
           }
         />

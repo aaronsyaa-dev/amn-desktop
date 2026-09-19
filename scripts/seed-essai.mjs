@@ -249,6 +249,175 @@ const ligne = (id, label, quantity, euros, vatRate = 20) => ({
   vatRate,
 });
 
+/* ─── Le répertoire élargi : cinq fiches de plus ───────────────────────────── */
+
+/*
+  POURQUOI CINQ FICHES DE PLUS.
+
+  Trois clientes suffisaient à remplir une liste ; elles ne suffisent à aucun
+  des deux INSTRUMENTS de cette famille :
+
+    • Le nuage de Clients (`14a`) place chaque fiche selon son silence et son
+      chiffre d'affaires. Avec trois points tous récents, le quadrant « beaucoup
+      de valeur, beaucoup de silence » est vide — l'objet dominant ne dit alors
+      rien, et on ne peut pas vérifier qu'il dit vrai.
+    • Les réglettes de Devis (`13a`) comparent des attentes sur un axe commun.
+      Une seule réglette n'est pas une comparaison.
+
+  Les silences sont posés par la date du dernier échange (`events[0].date`,
+  c'est ce que lit l'écran), et le chiffre d'affaires par de vraies factures
+  encaissées — jamais par un champ de total, qui mentirait dès la première
+  facture ajoutée à la main.
+*/
+const REPERTOIRE_ELARGI = [
+  {
+    cle: '104', num: 104, name: 'Élodie Vasseur', company: 'Villa Sereine',
+    status: 'active', silence: 96,
+    notes: 'Hôtel de neuf chambres. Compositions d’accueil et terrasse. Plus de nouvelles depuis le printemps.',
+    // Beaucoup de valeur, beaucoup de silence : le seul point du quadrant critique.
+    factures: [[2400, 'Compositions d’accueil — trimestre'], [1800, 'Terrasse d’été — installation'], [1200, 'Réassort hebdomadaire']],
+  },
+  {
+    cle: '105', num: 105, name: 'Bertrand Perrin', company: 'Atelier Perrin',
+    status: 'active', silence: 118,
+    notes: 'Menuiserie d’art. Deux jardinières de façade, entretien trimestriel.',
+    factures: [[740, 'Jardinières de façade'], [500, 'Entretien trimestriel']],
+  },
+  {
+    cle: '106', num: 106, name: 'Salomé Vallon', company: 'Cabinet Vallon',
+    status: 'active', silence: 103,
+    notes: 'Kinésithérapie. Plantes d’intérieur pour la salle d’attente.',
+    factures: [[860, 'Plantes d’intérieur — pose et suivi']],
+  },
+  {
+    cle: '107', num: 107, name: 'Jean Estève', company: 'Boulangerie Estève',
+    status: 'active', silence: 94,
+    notes: 'Deux bouquets de comptoir par semaine, suspendus depuis les travaux.',
+    factures: [[980, 'Bouquets de comptoir — semestre'], [500, 'Décor de vitrine — Pâques']],
+  },
+  {
+    cle: '108', num: 108, name: 'Théo Lambert', company: '',
+    status: 'active', silence: 21,
+    notes: 'Fleurit son cabinet d’architecte. Suivi régulier, jamais de retard.',
+    factures: [[1400, 'Décor de bureau — trimestre'], [900, 'Réassort mensuel'], [900, 'Vitrine de rentrée']],
+  },
+];
+
+for (const c of REPERTOIRE_ELARGI) {
+  await poser('clients', c.cle, {
+    name: c.name,
+    company: c.company,
+    status: c.status,
+    email: `${c.cle}@exemple.test`,
+    phone: '',
+    notes: c.notes,
+    imageDataUrl: '',
+    linkedSiteIds: [],
+    createdAt: instant(-24 * (c.silence + 120)),
+    events: [
+      {
+        id: 1,
+        clientId: c.num,
+        title: 'Dernier échange',
+        detail: 'Point sur la prestation en cours.',
+        date: jour(-c.silence),
+      },
+    ],
+  });
+  let n = 0;
+  for (const [euros, intitule] of c.factures) {
+    n += 1;
+    /* Encaissées, et dans l'exercice courant : c'est ce que le nuage lit en
+       ordonnée, et ce que le demi-cercle de Facturation compte en « encaissé ». */
+    const recul = c.silence + n * 21;
+    await poser('invoices', `essai-fac-${c.cle}-${n}`, {
+      number: `2026-01${c.cle}${n}`,
+      clientId: c.num,
+      billTo: { name: c.company || c.name, company: c.company, email: '', address: '', vatNumber: '' },
+      issuedAt: jour(-recul),
+      dueAt: jour(-recul + 30),
+      lines: [ligne('l1', intitule, 1, euros / 1.2)],
+      status: 'paid',
+      paidAt: jour(-recul + 12),
+      paymentMethod: 'virement',
+      cancelReason: '',
+      notes: '',
+      quoteId: null,
+    });
+  }
+}
+
+/* ─── Devis : de quoi faire tourner les réglettes ──────────────────────────── */
+
+/*
+  CE QUE CHAQUE DEVIS PROUVE SUR L'AXE DE TRENTE JOURS.
+
+    −3 / −6 / −9 j   trois réglettes SOUS le cran : le cran sert à quelque
+                     chose, on voit trois attentes encore normales.
+    −12 j            une réglette qui a franchi le cran (le cas de la maquette),
+                     laissée en gris clair : franchie n'est pas la même chose
+                     que « la plus urgente ».
+    −34 j            plus vieille que l'axe : la barre est PLEINE, le chevron
+                     dit que c'est l'axe qui s'arrête, pas l'attente, et c'est
+                     elle qui porte l'ambre parce que c'est la plus ancienne
+                     des franchies.
+    sans sentAt      un devis parti avant que le produit note le jour d'envoi :
+                     il est compté à part, jamais posé à zéro jour.
+*/
+const DEVIS_EN_ATTENTE = [
+  ['essai-dev-4', 104, 'Entretien des massifs — automne', 'Taille, paillage, remise en état des bordures.', 1850, -3],
+  ['essai-dev-5', 108, 'Décor de vitrine — Noël', 'Deux compositions suspendues et un centre de comptoir.', 720, -6],
+  ['essai-dev-6', 105, 'Remise en état des jardinières', 'Terre neuve, replantation, arrosage automatique.', 430, -9],
+  ['essai-dev-7', 106, 'Plantes d’intérieur — salle d’attente', 'Six sujets en pot, visite d’entretien mensuelle.', 980, -34],
+];
+for (const [cle, clientId, title, detail, priceEuro, envoiJours] of DEVIS_EN_ATTENTE) {
+  await poser('quotes', cle, {
+    clientId, title, detail, priceEuro,
+    status: 'sent',
+    paymentStatus: 'unpaid',
+    sentAt: instant(24 * envoiJours),
+    createdAt: instant(24 * (envoiJours - 2)),
+  });
+}
+await poser('quotes', 'essai-dev-8', {
+  clientId: 107,
+  title: 'Bouquets de comptoir — reprise',
+  detail: 'Deux bouquets par semaine, reprise après travaux.',
+  priceEuro: 640,
+  status: 'sent',
+  paymentStatus: 'unpaid',
+  sentAt: '',
+  createdAt: instant(-24 * 26),
+});
+
+/*
+  LA BANDE DES VINGT-QUATRE DERNIERS. Le ratio « accepté sur tranché » doit
+  être VRAI, donc il se compte sur ces devis-là ; il n'est pas écrit quelque
+  part. Les issues alternent sans régularité — quatre acceptés puis un refusé
+  partout donnerait une bande rayée, c'est-à-dire un motif, et l'œil y lirait
+  une cadence qui n'existe pas.
+*/
+const ISSUES = ['accepted', 'accepted', 'refused', 'accepted', 'accepted', 'accepted', 'refused', 'accepted',
+  'accepted', 'accepted', 'accepted', 'refused', 'accepted', 'accepted', 'accepted', 'accepted',
+  'refused', 'accepted', 'accepted', 'accepted'];
+const INTITULES = ['Bouquet de mariée', 'Décor de vitrine', 'Compositions de table', 'Arche florale',
+  'Jardinières de balcon', 'Plantes de bureau', 'Couronne de porte', 'Centre de table',
+  'Massif d’entrée', 'Terrasse ombragée'];
+for (let i = 0; i < ISSUES.length; i += 1) {
+  const clientId = 101 + (i % 8);
+  await poser('quotes', `essai-dev-passe-${i + 1}`, {
+    clientId,
+    title: `${INTITULES[i % INTITULES.length]} — ${2025 + (i % 2)}`,
+    detail: 'Prestation proposée, tranchée depuis.',
+    priceEuro: 180 + i * 45,
+    status: ISSUES[i],
+    paymentStatus: ISSUES[i] === 'accepted' ? 'paid' : 'unpaid',
+    sentAt: instant(-24 * (40 + i * 9)),
+    createdAt: instant(-24 * (44 + i * 9)),
+  });
+}
+
+
 /*
   DEUX FACTURES RÉCENTES, une dans chaque semaine.
 
@@ -821,6 +990,16 @@ const RDV = [
   ['essai-rdv-7', 'Enlèvement tardif — traiteur', aujourdHui(19, 30), 45, 101, 'Camille Renaud', 'Atelier', 'scheduled'],
   ['essai-rdv-5', 'Repérage terrasse', aujourdHui(9, 30, 2), 90, 102, 'Hugo Marchand', 'Quai Neuf, Sète', 'scheduled'],
   ['essai-rdv-6', 'Essai bouquet mariage', aujourdHui(14, 0, -2), 45, 103, 'Nadia Bouvier', 'Atelier', 'done'],
+  /*
+    LE RENDEZ-VOUS QUI CHANGE LA DÉCISION DE L'ÉCRAN DEVIS.
+
+    Sa carte « ce qu'il y a à décider » ne dit pas la même chose selon qu'un
+    rendez-vous physique est prévu le jour même avec le client à relancer : on
+    n'écrit pas un mot à quelqu'un qu'on voit dans trois heures. Ce fait est LU
+    dans l'agenda — d'où ce rendez-vous chez Salomé Vallon (106), la cliente du
+    devis en attente depuis trente-quatre jours.
+  */
+  ['essai-rdv-8', 'Visite cabinet — plantes d’intérieur', aujourdHui(16, 30), 45, 106, 'Salomé Vallon', 'Cabinet Vallon, rue Foch', 'scheduled'],
 ];
 for (const [cle, title, startAt, durationMin, clientId, clientName, location, status] of RDV) {
   await poser('appointments', cle, {
