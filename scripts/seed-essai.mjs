@@ -1409,21 +1409,39 @@ for (const r of REUNIONS) {
 
 /* ─── Tâches ───────────────────────────────────────────────────────────────── */
 
+/*
+  LES TÂCHES, ET CE QU'ELLES S'ATTENDENT LES UNES AUX AUTRES.
+
+  La cinquième colonne est `blockedBy` : la clé de la tâche qu'il faut avoir
+  finie d'abord. Sans elle, l'arbre des blocages de l'écran Tâches n'a rien à
+  dessiner — et un instrument qu'on ne peut pas voir tourner sur de vraies
+  données n'est pas vérifiable.
+
+  La forme semée est celle qui rend l'instrument lisible : UNE racine qui
+  bloque trois choses, et deux de plus derrière l'une d'elles. C'est la thèse
+  du module — une seule réponse en libère quatre.
+*/
 const TACHES = [
-  ['essai-tac-1', 'Commander les pivoines pour septembre', 'todo', 'high'],
-  ['essai-tac-2', 'Relancer la Brasserie du Port', 'doing', 'normal'],
-  ['essai-tac-3', 'Remettre à jour la vitrine', 'todo', 'low'],
-  ['essai-tac-4', 'Facture 2026-0035 — deuxième relance', 'doing', 'high'],
-  ['essai-tac-5', 'Inventaire des vases', 'done', 'low'],
+  ['essai-tac-0', 'Réponse de l’Atelier Fontaine sur le devis', 'doing', 'high', null, -24 * 12],
+  ['essai-tac-1', 'Commander les pivoines pour septembre', 'todo', 'high', 'essai-tac-0', -24 * 9],
+  ['essai-tac-2', 'Relancer la Brasserie du Port', 'doing', 'normal', null, -24 * 6],
+  ['essai-tac-3', 'Remettre à jour la vitrine', 'todo', 'low', 'essai-tac-0', -24 * 8],
+  ['essai-tac-4', 'Facture 2026-0035 — deuxième relance', 'doing', 'high', 'essai-tac-0', -24 * 7],
+  ['essai-tac-5', 'Inventaire des vases', 'done', 'low', null, -24 * 6],
+  ['essai-tac-6', 'Bloquer le créneau de livraison du 24', 'todo', 'normal', 'essai-tac-1', -24 * 5],
+  ['essai-tac-7', 'Passer l’écriture comptable', 'todo', 'low', 'essai-tac-4', -24 * 4],
+  ['essai-tac-8', 'Choisir les papiers d’emballage', 'todo', 'normal', null, -24 * 3],
+  ['essai-tac-9', 'Rappeler le fleuriste de Vitry', 'todo', 'low', null, -24 * 2],
 ];
-for (const [cle, title, status, priority] of TACHES) {
+for (const [cle, title, status, priority, bloquePar, age] of TACHES) {
   await poser('tasks', cle, {
     title,
     detail: '',
     status,
     priority,
     assigneeEmail: EMAIL,
-    createdAt: instant(-24 * 6),
+    ...(bloquePar ? { blockedBy: bloquePar } : {}),
+    createdAt: instant(age),
   });
 }
 
