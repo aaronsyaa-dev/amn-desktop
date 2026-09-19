@@ -672,14 +672,66 @@ await poser('bookingConfig', 'config', {
   sable où tout est à jour ne permet pas de la mesurer. Un abonnement suspendu
   aussi, pour que le registre montre ses deux états.
 */
-const ABOS = [
-  ['essai-abo-1', 'Maintenance du site', 'Camille Renaud', 24000, 'monthly', -10, true],
-  ['essai-abo-2', 'Supervision boutique', 'Hugo Marchand', 60000, 'quarterly', -4, true],
-  ['essai-abo-3', 'Hébergement et sauvegardes', 'Nadia Bouvier', 18000, 'monthly', 4, true],
-  ['essai-abo-4', 'Forfait retouches', 'Camille Renaud', 12000, 'monthly', 9, true],
-  ['essai-abo-5', 'Supervision annuelle', 'Hugo Marchand', 284000, 'yearly', 113, true],
-  ['essai-abo-6', 'Lettre mensuelle', 'Nadia Bouvier', 9000, 'monthly', 20, false],
-];
+/*
+  QUATRE FORFAITS, TREIZE ABONNÉS.
+
+  La colonne du module `13b` empile des FORFAITS, pas des abonnements : trois
+  clients sur la même maintenance forment une seule part de trois fois le
+  montant. Six abonnements tous différents, comme ici avant, donnaient six
+  parts d'un client chacune — c'est-à-dire un second registre, pas une offre.
+
+  Le mélange est choisi pour que la phrase de `MODULES.md` soit vérifiable :
+
+    Maintenance du site          240 € × 3 =   720 €/mois
+    Hébergement et sauvegardes   180 € × 5 =   900 €/mois
+    Forfait retouches             90 € × 4 =   360 €/mois
+    Supervision annuelle       2 640 €/an  =   220 €/mois
+                                             ─────────────
+                                               2 200 €/mois
+
+  Les deux plus lourds font 1 620 € sur 2 200, soit 73,6 % — « deux forfaits
+  sur quatre font les trois quarts ». Et les treize abonnés donnent au ruban
+  exactement les crans de la colonne.
+
+  Deux échéances sont DÉPASSÉES à dessein : elles forment la file, et l'unique
+  ambre de l'écran est la plaque « 2 à facturer ». Un abonnement suspendu
+  aussi, pour que le registre montre ses deux états.
+*/
+const CLIENTS_ABO = ['Camille Renaud', 'Hugo Marchand', 'Nadia Bouvier', 'Élodie Vasseur',
+  'Théo Lambert', 'Bertrand Perrin', 'Salomé Vallon', 'Jean Estève'];
+const ABOS = [];
+/* Maintenance du site — trois clients, dont un en retard (la file). */
+[[-10, true], [6, true], [17, true]].forEach(([dansJours, active], i) => {
+  ABOS.push([`essai-abo-maint-${i + 1}`, 'Maintenance du site', CLIENTS_ABO[i], 24000, 'monthly', dansJours, active]);
+});
+/* Hébergement et sauvegardes — cinq clients, dont un en retard. */
+[[-4, true], [3, true], [11, true], [22, true], [28, true]].forEach(([dansJours, active], i) => {
+  ABOS.push([`essai-abo-heb-${i + 1}`, 'Hébergement et sauvegardes', CLIENTS_ABO[i], 18000, 'monthly', dansJours, active]);
+});
+/* Forfait retouches — quatre clients, tous à jour. */
+[[2, true], [9, true], [15, true], [25, true]].forEach(([dansJours, active], i) => {
+  ABOS.push([`essai-abo-ret-${i + 1}`, 'Forfait retouches', CLIENTS_ABO[i + 3], 9000, 'monthly', dansJours, active]);
+});
+/* Supervision annuelle — un seul client, échéance lointaine : la part existe
+   dans la colonne (ramenée au mois) sans cran dans le ruban, ce qui est
+   exactement ce qu'un annuel doit montrer. */
+ABOS.push(['essai-abo-annuel', 'Supervision annuelle', CLIENTS_ABO[1], 264000, 'yearly', 113, true]);
+/* Un suspendu : le registre doit montrer ses deux états, et la colonne ne
+   doit PAS le compter — un abonnement suspendu ne rapporte rien. */
+ABOS.push(['essai-abo-suspendu', 'Lettre mensuelle', CLIENTS_ABO[2], 9000, 'monthly', 20, false]);
+/*
+  LE MÉNAGE DES CLÉS D'HIER — même raison que pour les fiches clientes : les
+  six abonnements précédents portaient `essai-abo-1..6`. Rejouer le script ne
+  les remplace pas, il ajoute les nouveaux à côté, et la colonne compterait
+  dix-neuf abonnés pour treize.
+*/
+for (const ancienne of ['essai-abo-1', 'essai-abo-2', 'essai-abo-3', 'essai-abo-4', 'essai-abo-5', 'essai-abo-6']) {
+  await fetch(`${API}/v1/collections/subscriptions/${ancienne}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${login.token}` },
+  }).catch(() => undefined);
+}
+
 for (const [cle, label, customerName, amountCents, period, dansJours, active] of ABOS) {
   await poser('subscriptions', cle, {
     label,
