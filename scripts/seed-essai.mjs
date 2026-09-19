@@ -1521,11 +1521,64 @@ for (const r of REUNIONS) {
     at: r.at.slice(0, 16),
     attendees: r.attendees,
     agenda: r.agenda,
+    durationMin: r.durationMin ?? 60,
     decisions: r.decisions,
     actions: r.actions,
     byEmail: EMAIL,
     createdAt: r.at,
   });
+
+/*
+  UNE SEMAINE DE RÉUNIONS POUR LE PEIGNE, et elle doit contenir deux journées
+  qui se ressemblent en TOTAL mais pas en FORME — c'est toute la démonstration
+  de l'instrument.
+
+    · mardi : trois heures d'affilée le matin. Il reste un après-midi entier ;
+    · jeudi : trois heures aussi, mais en trois morceaux espacés. Il ne reste
+      que des bouts.
+
+  Un total de temps ne distingue pas les deux. Le peigne, si — et c'est le
+  jeudi qui doit porter l'ambre, pas la journée la plus chargée.
+
+  Les jours sont posés relativement au LUNDI DE LA SEMAINE EN COURS : semé un
+  samedi, un décalage en jours ferait tomber les réunions sur la semaine
+  suivante, et la bande serait vide.
+*/
+const lundiSemaine = (() => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+})();
+const creneau = (jourIndex, heure, minute) => {
+  const d = new Date(lundiSemaine);
+  d.setDate(d.getDate() + jourIndex);
+  d.setHours(heure, minute, 0, 0);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(heure).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+};
+const SEMAINE_REUNIONS = [
+  ['essai-reu-s1', 'Lancement de semaine', 0, 9, 0, 45, 'Léa, Clara'],
+  ['essai-reu-s2', 'Atelier refonte boutique', 1, 9, 30, 180, 'Léa, Samir, Clara'],
+  ['essai-reu-s3', 'Appel fournisseur', 2, 14, 0, 30, 'Léa'],
+  ['essai-reu-s4', 'Revue des devis', 3, 9, 0, 60, 'Léa, Clara'],
+  ['essai-reu-s5', 'Point client Fontaine', 3, 11, 30, 60, 'Léa, Samir, Clara, Nadia'],
+  ['essai-reu-s6', 'Préparation de la vitrine', 3, 15, 0, 60, 'Léa, Clara'],
+  ['essai-reu-s7', 'Clôture de semaine', 4, 17, 0, 45, 'Léa, Clara, Samir'],
+];
+for (const [cle, title, jourIndex, heure, minute, durationMin, attendees] of SEMAINE_REUNIONS) {
+  const at = creneau(jourIndex, heure, minute);
+  await poser('meetings', cle, {
+    title,
+    at,
+    attendees,
+    agenda: '',
+    durationMin,
+    decisions: [],
+    actions: [],
+    byEmail: EMAIL,
+    createdAt: `${at}:00.000Z`,
+  });
+}
 }
 
 /* ─── Tâches ───────────────────────────────────────────────────────────────── */
