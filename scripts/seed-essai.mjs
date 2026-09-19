@@ -1293,6 +1293,40 @@ const RDV = [
   */
   ['essai-rdv-8', 'Visite cabinet — plantes d’intérieur', aujourdHui(16, 30), 45, 106, 'Salomé Vallon', 'Cabinet Vallon, rue Foch', 'scheduled'],
 ];
+/*
+  QUATRE RENDEZ-VOUS PRIS DEPUIS LA PAGE PUBLIQUE.
+
+  Le plateau de créneaux (`23d`) distingue trois états, et le troisième — le
+  créneau PRIS EN LIGNE, barré — n'existe que si `source: 'booking'` est posé.
+  Sans eux, le plateau ne montre que du libre et du bloqué, et deux de ses
+  trois états ne se vérifient pas.
+
+  Leur motif est celui que le visiteur a tapé : c'est ce que la carte
+  « prises en ligne » affiche, et c'est pour ça qu'il faut de vraies phrases
+  et non des libellés internes.
+*/
+const RDV_EN_LIGNE = [
+  ['essai-rdvl-1', 'Projet de terrasse — premier échange', aujourdHui(11, 30, 2), 'Léna Fabre'],
+  ['essai-rdvl-2', 'Bouquet de mariage — essai', aujourdHui(10, 0, 3), 'Yanis Roche'],
+  ['essai-rdvl-3', 'Plantes de bureau — devis', aujourdHui(15, 0, 4), 'Cabinet Ferry'],
+  ['essai-rdvl-4', 'Composition de deuil', aujourdHui(9, 30, 5), 'Marc Delaunay'],
+];
+for (const [cle, title, startAt, clientName] of RDV_EN_LIGNE) {
+  await poser('appointments', cle, {
+    title,
+    startAt,
+    durationMin: 30,
+    clientId: 0,
+    clientName,
+    location: 'Atelier — 14 rue des Aiguières, Montpellier',
+    notes: '',
+    reminderMin: 30,
+    status: 'scheduled',
+    source: 'booking',
+    createdAt: instant(-24 * 3),
+  });
+}
+
 for (const [cle, title, startAt, durationMin, clientId, clientName, location, status] of RDV) {
   await poser('appointments', cle, {
     title,
