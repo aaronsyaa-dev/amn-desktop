@@ -34,6 +34,23 @@
  *   · un élément invisible (hauteur ou largeur nulle, `display:none`) ne compte
  *     pas : il n'est pas à l'écran.
  *
+ * ## La deuxième règle : un écran VIDE n'a pas d'ambre
+ *
+ * Le système de design la pose comme l'exception écrite à tout ce qui précède,
+ * et elle ne concerne que deux écrans sur soixante-seize : un écran sans
+ * données n'a rien à signaler, donc il ne pose pas de décision, donc il n'a
+ * pas d'ambre. Elle a un corollaire qui compte autant : AUCUN CHIFFRE À ZÉRO.
+ * « 0 € encaissé » se lit comme un échec ; « rien n'est encore passé en
+ * caisse » se lit comme un début. Les deux se mesurent ici, sur un écran qui
+ * DÉCLARE être vide via `<EcranVide>` (src/components/EtatEcran.tsx) — la
+ * garde ne devine pas, elle lit.
+ *
+ * Cette règle se casse dans l'autre sens que la première : la première se
+ * casse en AJOUTANT de l'ambre, la seconde en OUBLIANT de le retirer quand
+ * les données disparaissent. Un écran composé sur un jeu de données rempli
+ * peut être parfait, et poser trois zéros en mono au premier jour de sa
+ * cliente. C'est ce cas-là qui est contrôlé.
+ *
  * ## Mode d'emploi
  *
  *   1. npm run build:web:business   (AMN_WEB_OUT=… pour un dossier à part)
@@ -136,6 +153,9 @@ await new Promise((r) => setTimeout(r, 3000));
 const navigateur = await chromium.launch({ executablePath: CHROMIUM });
 const page = await navigateur.newPage({ viewport: { width: 1180, height: 1000 } });
 const fautifs = [];
+/* Les deux règles de l'écran vide — comptées à part, parce qu'elles se corrigent autrement. */
+const videAmbre = [];
+const videZeros = [];
 let mesures = 0;
 
 try {
@@ -154,7 +174,7 @@ try {
   for (const [nom, route] of ECRANS) {
     await page.goto(APP + route, { waitUntil: 'networkidle' }).catch(() => undefined);
     await page.waitForTimeout(900);
-    const objets = await page.evaluate(() => {
+    const mesure = await page.evaluate(() => {
       // La teinte du signal, sous ses deux écritures possibles une fois rendue.
       const AMBRE = ['rgb(208, 154, 74)', '#d09a4a'];
       const porte = (valeur) => AMBRE.some((a) => (valeur ?? '').toLowerCase().includes(a));
@@ -196,15 +216,48 @@ try {
         vus.add(groupe);
         return true;
       });
-      return uniques.map((el) => {
+      const nomme = (el) => {
         const t = (el.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 48);
         return `${el.tagName.toLowerCase()}${t ? ` « ${t} »` : ''}`;
-      });
+      };
+
+      /*
+        L'ÉCRAN VIDE — la deuxième règle, et son corollaire.
+
+        Le système de design la tire des deux états transverses : « un écran
+        vide n'a pas d'ambre » (il n'a rien à signaler), et « aucun chiffre à
+        zéro nulle part » (« 0 € encaissé » se lit comme un échec). Les deux
+        se mesurent ici parce qu'elles ne se voient qu'une fois rendues, sur
+        un compte qui n'a pas encore de données.
+
+        Le marqueur vient de `<EcranVide>` (src/components/EtatEcran.tsx) : un
+        nœud en `display: contents`, sans boîte, posé autour du contenu de
+        l'écran. Un écran qui ne le pose pas n'est pas contrôlé — la garde ne
+        DEVINE pas qu'un écran est vide, elle lit ce qu'il déclare.
+      */
+      const marqueur = contenu?.querySelector('[data-ecran-vide]');
+      const vide = Boolean(marqueur);
+      const zeros = [];
+      if (vide) {
+        for (const el of contenu.querySelectorAll('.tnum, [class*="font-mono"]')) {
+          const r = el.getBoundingClientRect();
+          if (r.width < 2 || r.height < 2) continue;
+          const t = (el.textContent ?? '').trim();
+          // « 0 », « 0 € », « 0,00 € », « 0 h », « 0 % » — un relevé nul écrit en clair.
+          if (/^0([.,]0+)?\s*(€|%|h|j|min)?$/i.test(t)) zeros.push(nomme(el));
+        }
+      }
+
+      return { objets: uniques.map(nomme), vide, zeros };
     });
     mesures += 1;
+    const { objets, vide, zeros } = mesure;
     if (objets.length > 1) fautifs.push({ nom, route, objets });
-    const etat = objets.length > 1 ? '✗' : objets.length === 1 ? '·' : ' ';
-    console.log(`  ${etat} ${nom.padEnd(24)} ${objets.length} objet(s) ambre`);
+    if (vide && objets.length > 0) videAmbre.push({ nom, route, objets });
+    if (zeros.length > 0) videZeros.push({ nom, route, zeros });
+    const etat = objets.length > 1 || (vide && objets.length > 0) || zeros.length ? '✗' : objets.length === 1 ? '·' : ' ';
+    const suffixe = vide ? ' · écran vide' : '';
+    console.log(`  ${etat} ${nom.padEnd(24)} ${objets.length} objet(s) ambre${suffixe}`);
   }
 } finally {
   await navigateur.close();
@@ -212,17 +265,42 @@ try {
 }
 
 console.log('');
-if (fautifs.length === 0) {
+if (fautifs.length === 0 && videAmbre.length === 0 && videZeros.length === 0) {
   console.log(`OK — ${mesures} écran(s) mesuré(s), aucun n’a plus d’un objet ambre.`);
+  console.log('Les écrans déclarés vides n’en portent aucun, et n’affichent aucun relevé à zéro.');
   process.exit(0);
 }
-console.error(`${fautifs.length} écran(s) portent plus d’un objet ambre :\n`);
-for (const f of fautifs) {
-  console.error(`  ✗ ${f.nom} (${f.route || '/'}) — ${f.objets.length} objets :`);
-  for (const o of f.objets) console.error(`      · ${o}`);
+
+if (fautifs.length > 0) {
+  console.error(`${fautifs.length} écran(s) portent plus d’un objet ambre :\n`);
+  for (const f of fautifs) {
+    console.error(`  ✗ ${f.nom} (${f.route || '/'}) — ${f.objets.length} objets :`);
+    for (const o of f.objets) console.error(`      · ${o}`);
+  }
+  console.error(
+    '\nL’ambre marque ce qui demande une DÉCISION, et un écran n’en pose qu’une à la fois.\n' +
+      'Deux ambres sur un écran, ce n’est pas deux signaux : c’est aucun.',
+  );
 }
-console.error(
-  '\nL’ambre marque ce qui demande une DÉCISION, et un écran n’en pose qu’une à la fois.\n' +
-    'Deux ambres sur un écran, ce n’est pas deux signaux : c’est aucun.',
-);
+
+if (videAmbre.length > 0) {
+  console.error(`\n${videAmbre.length} écran(s) VIDES portent de l’ambre :\n`);
+  for (const f of videAmbre) {
+    console.error(`  ✗ ${f.nom} (${f.route || '/'}) :`);
+    for (const o of f.objets) console.error(`      · ${o}`);
+  }
+  console.error('\nUn écran vide n’a rien à signaler. C’est l’exception écrite à la règle d’ambre.');
+}
+
+if (videZeros.length > 0) {
+  console.error(`\n${videZeros.length} écran(s) vides affichent un relevé à zéro :\n`);
+  for (const f of videZeros) {
+    console.error(`  ✗ ${f.nom} (${f.route || '/'}) :`);
+    for (const z of f.zeros) console.error(`      · ${z}`);
+  }
+  console.error(
+    '\n« 0 € encaissé » se lit comme un échec ; « rien n’est encore passé en caisse »\n' +
+      'se lit comme un début. Sur un écran vide, on écrit la phrase, pas le chiffre.',
+  );
+}
 process.exit(1);

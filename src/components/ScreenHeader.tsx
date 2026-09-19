@@ -1,5 +1,6 @@
 import React from 'react';
 import { LiveMetric } from './LiveMetric';
+import { useEtatEcran } from './EtatEcran';
 import { Depliable } from './Depliable';
 import type { SerieVitale } from '../lib/serieVitale';
 
@@ -59,6 +60,7 @@ export function ScreenHeader({
   title,
   description,
   stats,
+  phraseVide,
   actions,
   children,
 }: {
@@ -68,12 +70,35 @@ export function ScreenHeader({
   /** Une ligne, quand le titre seul ne dit pas à quoi sert l'écran. */
   description?: string;
   stats?: ScreenStat[];
+  /**
+   * CE QUI REMPLACE LES RELEVÉS QUAND L'ÉCRAN EST VIDE (système de design,
+   * `27b`). Une phrase, à la place de la rangée de chiffres. Voir plus bas
+   * pourquoi ce n'est pas un détail de ton.
+   */
+  phraseVide?: string;
   /** Les gestes de l'écran — bouton principal en dernier, à droite. */
   actions?: React.ReactNode;
   /** Filtres, onglets : ce qui appartient à l'en-tête sans être un relevé. */
   children?: React.ReactNode;
 }) {
-  const shown = (stats ?? []).filter((s) => s.value !== null && s.value !== undefined);
+  /*
+    AUCUN CHIFFRE À ZÉRO SUR UN ÉCRAN VIDE (système de design, `27b`)
+    ════════════════════════════════════════════════════════════════
+
+    C'est la règle que le paquet appelle « la plus importante de cet écran »,
+    et elle ne vaut pas que pour lui : « 0 € encaissé » se lit comme un échec,
+    « rien n'est encore passé en caisse » se lit comme un début. Le même fait,
+    deux messages opposés — et le premier est adressé à quelqu'un qui vient
+    d'ouvrir le module pour la première fois.
+
+    L'en-tête était le dernier endroit d'où les zéros revenaient : il les
+    atténuait (« un compteur à zéro s'efface ») au lieu de les retirer, donc
+    un écran vide affichait encore trois 0 en mono sous son titre. La règle
+    est appliquée ICI, une fois, pour les soixante-et-onze modules — l'écran
+    n'a qu'à déclarer son état avec `<EcranVide>`.
+  */
+  const { vide } = useEtatEcran();
+  const shown = vide ? [] : (stats ?? []).filter((s) => s.value !== null && s.value !== undefined);
 
   return (
     <header className="mb-7">
@@ -139,6 +164,17 @@ export function ScreenHeader({
             </div>
           ))}
         </div>
+      )}
+
+      {vide && phraseVide && (
+        /*
+          La phrase prend la place exacte de la rangée de relevés — même
+          gouttière, même filet en dessous. L'en-tête garde sa forme : ce n'est
+          pas un écran amputé, c'est un écran qui n'a pas encore de chiffres.
+        */
+        <p className="mt-5 max-w-2xl text-[14.5px] leading-[1.7] text-text-secondary [text-wrap:pretty]">
+          {phraseVide}
+        </p>
       )}
 
       {children && <div className="mt-4" data-screen-actions>{children}</div>}
