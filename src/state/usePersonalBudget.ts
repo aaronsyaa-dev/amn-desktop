@@ -27,8 +27,54 @@ import { useCallback, useEffect, useState } from 'react';
  */
 
 const KEY = 'amn.personnel.budget';
+const KEY_ENGAGEMENTS = 'amn.personnel.budget.engagements';
 
 export type BudgetInputs = Record<string, string>;
+
+/**
+ * UN PRÉLÈVEMENT ATTENDU — ce qui part du compte avant la paie.
+ *
+ * POURQUOI CETTE LISTE EXISTE. La cascade de soustraction de l'écran (système
+ * de design, `13c`) a besoin d'une marche PAR ENGAGEMENT : « chaque engagement
+ * du mois retire ensuite sa marche, dessinée comme un segment suspendu dont le
+ * haut touche le bas du segment précédent ». Avec un seul total de
+ * prélèvements, la cascade n'a qu'une marche — c'est-à-dire une soustraction
+ * ordinaire, et l'instrument ne montre plus rien que le chiffre ne disait pas.
+ *
+ * Elle ne remplace pas le total : quand la liste est vide, le champ
+ * « prélèvements » saisi à la main reste la source, et la cascade se réduit à
+ * une marche. Quand elle existe, le total s'en déduit — on ne saisit jamais le
+ * même nombre à deux endroits.
+ *
+ * Même garantie que le reste du module : ça ne quitte pas ce poste.
+ */
+export interface EngagementPersonnel {
+  id: string;
+  label: string;
+  /** Le montant en euros, tel que tapé. Une chaîne, comme les autres saisies. */
+  montant: string;
+  /** Le jour du mois où ça part, 1–31. Vide si on ne le sait pas. */
+  jour: string;
+}
+
+function lireEngagements(): EngagementPersonnel[] {
+  try {
+    const raw = window.localStorage.getItem(KEY_ENGAGEMENTS);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((e): e is Record<string, unknown> => Boolean(e) && typeof e === 'object')
+      .map((e) => ({
+        id: typeof e.id === 'string' ? e.id : Math.random().toString(36).slice(2),
+        label: typeof e.label === 'string' ? e.label : '',
+        montant: typeof e.montant === 'string' ? e.montant : '',
+        jour: typeof e.jour === 'string' ? e.jour : '',
+      }));
+  } catch {
+    return [];
+  }
+}
 
 function read(): BudgetInputs {
   try {
@@ -64,7 +110,45 @@ export function usePersonalBudget() {
     setValues((prev) => ({ ...prev, [key]: raw }));
   }, []);
 
-  const reset = useCallback(() => setValues({}), []);
+  const [engagements, setEngagements] = useState<EngagementPersonnel[]>(() =>
+    typeof window === 'undefined' ? [] : lireEngagements(),
+  );
 
-  return { values, setValue, reset };
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(KEY_ENGAGEMENTS, JSON.stringify(engagements));
+    } catch {
+      /* mode privé : même contrepartie que pour les cinq nombres. */
+    }
+  }, [engagements]);
+
+  const ajouterEngagement = useCallback(() => {
+    setEngagements((prev) => [
+      ...prev,
+      { id: Math.random().toString(36).slice(2), label: '', montant: '', jour: '' },
+    ]);
+  }, []);
+
+  const modifierEngagement = useCallback((id: string, patch: Partial<EngagementPersonnel>) => {
+    setEngagements((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+  }, []);
+
+  const retirerEngagement = useCallback((id: string) => {
+    setEngagements((prev) => prev.filter((e) => e.id !== id));
+  }, []);
+
+  const reset = useCallback(() => {
+    setValues({});
+    setEngagements([]);
+  }, []);
+
+  return {
+    values,
+    setValue,
+    reset,
+    engagements,
+    ajouterEngagement,
+    modifierEngagement,
+    retirerEngagement,
+  };
 }

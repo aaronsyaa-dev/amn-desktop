@@ -693,12 +693,21 @@ function CourbeDeBrulage({
                 strokeDasharray="6 6"
                 vectorEffect="non-scaling-stroke"
               />
-              <path d={d(reel)} fill="none" stroke="#e4e4e1" strokeWidth={2.5} vectorEffect="non-scaling-stroke" />
+              {/* Les couleurs viennent des jetons, jamais recopiées : un
+                  attribut de présentation SVG accepte `var()` comme n'importe
+                  quelle valeur CSS. */}
+              <path
+                d={d(reel)}
+                fill="none"
+                stroke="var(--color-text-body)"
+                strokeWidth={2.5}
+                vectorEffect="non-scaling-stroke"
+              />
               {projection.length > 1 && (
                 <path
                   d={d(projection)}
                   fill="none"
-                  stroke="#3a3a3a"
+                  stroke="var(--color-border-strong)"
                   strokeWidth={2}
                   strokeDasharray="5 5"
                   vectorEffect="non-scaling-stroke"
