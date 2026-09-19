@@ -12,6 +12,8 @@ import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
 import { paliereDe, toneAMonte, rangPalier, cleMessagePalier, CLE_LIBELLE_PALIER, ECHELLE, type PalierRelance } from '../lib/relances';
 import type { Invoice } from '../shared/api';
+import { useAppointments } from '../state/useAppointments';
+import { useHaloSignal } from '../components/EtatEcran';
 
 interface ReminderData {
   invoiceId: string;
@@ -29,6 +31,16 @@ const PALIER_TON: Record<PalierRelance, string> = {
   'dernier-avis': 'text-danger',
 };
 const isoDay = () => new Date().toISOString().slice(0, 10);
+
+/**
+ * LES QUATRE MARCHES DE L'ESCALADE (`14d`) — 70, 110, 150, 190 px.
+ *
+ * Des hauteurs CROISSANTES, et c'est tout l'objet : une échelle se monte, et
+ * quatre cases de même taille ne se montent pas, elles se cochent. L'écart
+ * entre marches est constant (40 px) pour que la montée se lise comme
+ * régulière — ce qu'elle est : le ton monte d'un cran à chaque seuil.
+ */
+const MARCHES: number[] = [70, 110, 150, 190];
 
 /**
  * LES RELANCES DE PAIEMENT — l'argent dû, et le mot qu'on envoie.
@@ -159,6 +171,89 @@ export function RemindersScreen() {
       palier: palierDe(f),
     });
 
+  /* ------------------------------------- l'échelle d'escalade (`14d`) -- */
+
+  /*
+    LES CRÉANCES POSÉES SUR LEUR MARCHE. Ce n'est pas un tableau trié par
+    ancienneté : c'est une MONTÉE, et l'on voit ce qui approche du haut.
+  */
+  const parMarche = useMemo(() => {
+    const retard = (f: Invoice) =>
+      Math.max(1, Math.round((Date.parse(jour) - Date.parse(f.dueAt)) / 86_400_000));
+    return ECHELLE.map((cran) => ({
+      cran,
+      creances: echues.filter((f) => paliereDe(retard(f)) === cran.palier),
+    }));
+  }, [echues, jour]);
+
+  /*
+    L'AMBRE VA À LA MARCHE LA PLUS HAUTE QUI PORTE QUELQU'UN.
+
+    C'est ce qui approche du haut, donc ce qui demande une décision. La marche
+    du dernier avis reste DESSINÉE même vide — c'est elle qui donne son sens
+    aux trois autres, et une échelle dont on efface le dernier barreau cesse
+    d'être une échelle.
+  */
+  const marcheAmbre = useMemo(
+    () => [...parMarche].reverse().find((m) => m.creances.length > 0) ?? null,
+    [parMarche],
+  );
+  const halo = useHaloSignal(!!marcheAmbre);
+
+  /*
+    CE QUE L'ÉCHELLE A RÉCUPÉRÉ SUR L'ANNÉE, et jusqu'où elle est montée.
+    Les deux chiffres sont COMPTÉS : une facture encaissée après son échéance
+    est une créance rattrapée, et le palier le plus haut jamais noté se lit
+    dans la trace des relances. Rien n'est affirmé sans être comptable.
+  */
+  const bilan = useMemo(() => {
+    const annee = jour.slice(0, 4);
+    const enRetardUnJour = invoices.filter(
+      (f) =>
+        f.kind !== 'creditNote' &&
+        f.status !== 'draft' &&
+        f.status !== 'cancelled' &&
+        f.dueAt &&
+        f.dueAt.startsWith(annee) &&
+        (f.status === 'paid' ? f.paidAt > f.dueAt : f.dueAt < jour),
+    );
+    const rattrapees = enRetardUnJour.filter((f) => f.status === 'paid');
+    const plusHaut = relances.reduce(
+      (haut, r) => Math.max(haut, rangPalier(r.palier ?? 'rappel')),
+      -1,
+    );
+    return { total: enRetardUnJour.length, rattrapees: rattrapees.length, plusHaut };
+  }, [invoices, relances, jour]);
+
+  /*
+    LE RENDEZ-VOUS DU JOUR avec le client de la marche la plus haute : on
+    n'envoie pas une mise en demeure à quelqu'un qu'on voit dans trois heures.
+    Ce fait est LU dans l'agenda, jamais écrit en dur.
+  */
+  const { appointments } = useAppointments();
+  /*
+    LA CRÉANCE DONT ON PARLE EST CELLE DE LA LETTRE, pas la première de la
+    marche. Vu sur capture : la carte disait « un rendez-vous avec Hugo
+    Marchand » pendant que la lettre s'adressait à Salomé Vallon — l'écran
+    désignait deux personnes comme « celle qu'on relance ». `tete` est la plus
+    dure à écrire, et c'est elle que l'écran a choisie ; la carte la suit.
+  */
+  const clientDeLaMarche =
+    (tete && marcheAmbre?.creances.some((f) => f.id === tete.id) ? tete : marcheAmbre?.creances[0]) ??
+    null;
+  const rdvDuJour = useMemo(() => {
+    if (!clientDeLaMarche) return null;
+    const cible = clientDeLaMarche.billTo.name.trim().toLowerCase();
+    return (
+      appointments.find(
+        (a) =>
+          a.status === 'scheduled' &&
+          a.startAt.startsWith(jour) &&
+          (a.clientName || '').trim().toLowerCase() === cible,
+      ) ?? null
+    );
+  }, [appointments, clientDeLaMarche, jour]);
+
   const palierTete = tete ? palierDe(tete) : null;
   const dernierePourTete = tete ? derniere(tete) : null;
   const dernierPalierTete = dernierePourTete?.palier ?? (dernierePourTete ? 'rappel' : null);
@@ -185,8 +280,154 @@ export function RemindersScreen() {
         </motion.div>
       ) : (
         <>
-          <motion.section variants={staggerItem} className="panel-sheet p-5 sm:p-6" data-signal-groupe="a-ecrire">
-            <p className="eyebrow eyebrow-signal mb-3">{t('relances.aEcrire')}</p>
+          {/* ── L'ÉCHELLE D'ESCALADE — l'objet dominant (`14d`) ──────────── */}
+          <motion.section variants={staggerItem} className="panel-raised panel-raised-wide panel-ticks px-6 py-6">
+            <div className="mb-6 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+              <p className="eyebrow">{t('relances.echelle')}</p>
+              <p className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
+                on monte d’un cran à la main, jamais tout seul
+              </p>
+            </div>
+
+            <div className="flex items-end gap-3 sm:gap-5">
+              {parMarche.map(({ cran, creances }, i) => {
+                const signal = marcheAmbre?.cran.palier === cran.palier;
+                const vide = creances.length === 0;
+                return (
+                  <div key={cran.palier} className="flex min-w-0 flex-1 flex-col justify-end">
+                    {/* LES JETONS, POSÉS SUR LA MARCHE. Ils restent en ENCRE
+                        CLAIRE même sur la marche ambre : la marche est le
+                        sujet, la créance est ce qui s'y trouve. */}
+                    <div className="mb-2 flex flex-col gap-1">
+                      {creances.map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => setChoisie(f.id)}
+                          title={`${f.billTo.name} · ${formatCents(netDueCents(f, invoices))} · ${jours(f)} j`}
+                          className={`flex min-w-0 items-baseline justify-between gap-2 border px-2 py-1.5 text-left transition-colors ${
+                            tete?.id === f.id
+                              ? 'border-border-strong bg-raised'
+                              : 'border-border bg-surface hover:bg-surface-hover'
+                          }`}
+                        >
+                          <span className="min-w-0 flex-1 truncate text-[12px] text-text-primary">
+                            {f.billTo.name}
+                          </span>
+                          <span className="tnum flex-shrink-0 font-mono text-[10px] text-text-muted">
+                            {jours(f)} j
+                          </span>
+                        </button>
+                      ))}
+                      {vide && (
+                        <span className="border border-dashed border-border-strong px-2 py-1.5 text-center font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
+                          personne
+                        </span>
+                      )}
+                    </div>
+
+                    {/* LA MARCHE. Le degré est GRAVÉ dedans. */}
+                    <div
+                      className={`flex items-start justify-center pt-2 ${
+                        signal ? `bg-signal ${halo}` : 'bg-[#2b2b2b]'
+                      }`}
+                      style={{ height: MARCHES[i] }}
+                      data-signal-groupe={signal ? 'marche' : undefined}
+                    >
+                      <span
+                        className={`tnum font-mono text-[13px] font-bold tracking-[0.06em] ${
+                          signal ? 'text-signal-ink' : 'text-text-muted'
+                        }`}
+                        data-signal-groupe={signal ? 'marche' : undefined}
+                      >
+                        {cran.auDela === 0 ? 'J+1' : `J+${cran.auDela + 1}`}
+                      </span>
+                    </div>
+
+                    <p
+                      className={`mt-2 truncate text-center font-mono text-[9.5px] font-bold uppercase tracking-[0.14em] ${
+                        signal ? 'text-signal' : 'text-text-muted'
+                      }`}
+                      data-signal-groupe={signal ? 'marche' : undefined}
+                    >
+                      {t(CLE_LIBELLE_PALIER[cran.palier])}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-7 grid items-start gap-6 border-t border-border-raised pt-5 lg:grid-cols-[1fr_300px]">
+              <div>
+                <p className="eyebrow mb-3">Ce qui se joue avant de monter d’un cran</p>
+                <p className="text-[14.5px] leading-[1.7] text-text-secondary [text-wrap:pretty]">
+                  {marcheAmbre ? (
+                    <>
+                      {marcheAmbre.creances.length}{' '}
+                      {marcheAmbre.creances.length > 1 ? 'créances sont' : 'créance est'} au palier{' '}
+                      <span className="font-semibold text-text-primary">
+                        {t(CLE_LIBELLE_PALIER[marcheAmbre.cran.palier])}
+                      </span>
+                      , pour{' '}
+                      <span className="tnum font-mono font-semibold text-text-primary">
+                        {formatCents(
+                          marcheAmbre.creances.reduce((n, f) => n + netDueCents(f, invoices), 0),
+                        )}
+                      </span>
+                      .{' '}
+                      {rdvDuJour ? (
+                        <>
+                          Un rendez-vous est prévu aujourd’hui avec{' '}
+                          {clientDeLaMarche?.billTo.name}
+                          {rdvDuJour.location ? ` (${rdvDuJour.location})` : ''} : on n’envoie pas
+                          une lettre à quelqu’un qu’on voit dans quelques heures.
+                        </>
+                      ) : (
+                        <>
+                          Rien n’est prévu avec {clientDeLaMarche?.billTo.name} aujourd’hui dans
+                          l’agenda : la marche suivante se franchit par écrit, ou pas du tout.
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <>Aucune créance sur l’échelle — personne n’a de retard à rattraper.</>
+                  )}
+                </p>
+                <p className="mt-3 text-[13px] leading-relaxed text-text-muted">
+                  Le passage au degré suivant est déclenché À LA MAIN, jamais automatiquement :
+                  rien ne part d’ici sans qu’on ait copié le texte et noté l’envoi.
+                </p>
+              </div>
+
+              <div>
+                <p className="eyebrow mb-2">Ce que l’échelle a récupéré</p>
+                <p className="tnum font-mono text-[27px] font-semibold leading-none tracking-[-0.03em] text-text-primary">
+                  {bilan.total > 0 ? `${bilan.rattrapees}/${bilan.total}` : '—'}
+                </p>
+                <p className="mt-2 text-[12.5px] leading-relaxed text-text-muted">
+                  {bilan.total > 0
+                    ? `créances en retard cette année, dont ${bilan.rattrapees} encaissées depuis.`
+                    : 'aucune créance en retard cette année.'}{' '}
+                  {bilan.plusHaut < 0
+                    ? 'Aucune relance notée pour l’instant.'
+                    : bilan.plusHaut < MARCHES.length - 1
+                      ? 'Aucune n’est jamais montée jusqu’en haut.'
+                      : 'Une au moins est montée jusqu’en haut.'}
+                </p>
+              </div>
+            </div>
+          </motion.section>
+
+          <motion.section variants={staggerItem} className="panel-sheet p-5 sm:p-6">
+            {/*
+              LA LETTRE N'EST PLUS AMBRE. Elle l'était (« à écrire »), et
+              c'était juste tant qu'elle était l'objet dominant. `MODULES.md`
+              donne l'ambre à la MARCHE la plus haute occupée, et un écran n'a
+              qu'une région ambre. La lettre garde sa matière de feuille —
+              `panel-sheet`, ombre basse — qui dit déjà que c'est un document
+              qu'on copie tel quel.
+            */}
+            <p className="eyebrow mb-3">{t('relances.aEcrire')}</p>
 
             <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
               <div className="min-w-0">
@@ -250,7 +491,7 @@ export function RemindersScreen() {
             <p className="mt-4 whitespace-pre-wrap border border-border bg-bg px-4 py-3.5 text-sm leading-relaxed text-text-secondary">{message(tete)}</p>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              <button type="button" onClick={() => void copier(tete)} className="signal-plate flex min-h-11 items-center gap-2 px-4 text-sm font-semibold md:min-h-0 md:py-2.5">
+              <button type="button" onClick={() => void copier(tete)} className="flex min-h-11 items-center gap-2 bg-accent px-4 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover md:min-h-0 md:py-2.5">
                 {copiee === tete.id ? <Check size={14} strokeWidth={2.5} /> : <Copy size={14} strokeWidth={2} />}
                 {copiee === tete.id ? t('relances.copie') : t('relances.copier')}
               </button>

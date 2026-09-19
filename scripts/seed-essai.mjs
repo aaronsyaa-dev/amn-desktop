@@ -556,16 +556,37 @@ await poser('invoices', 'essai-fac-3', {
   Les montants montent avec le retard, ce qui est l'ordre habituel des choses :
   on laisse plus longtemps filer une grosse facture qu'un petit solde.
 */
+/*
+  DEUX CORRECTIONS, ET ELLES COMPTENT.
+
+  1. LES NOMS SUIVENT ENFIN LEUR `clientId`. Ces factures portaient « Studio
+     Nord », « Maison Bertaux », « Léa Fontaine » sur les identifiants 104,
+     105 et 106 — qui sont Villa Sereine, Atelier Perrin et Cabinet Vallon.
+     Personne ne levait d'erreur sur une référence qui pointe ailleurs, mais
+     le nuage de Clients (`14a`) additionnait ces montants au chiffre
+     d'affaires de fiches qui ne les avaient jamais facturés. Villa Sereine y
+     pesait 6 000 € au lieu de 5 400.
+
+  2. LE RETARD LE PLUS LONG PASSE DE 61 À 40 JOURS. L'échelle d'escalade
+     (`14d`) doit montrer sa marche du haut VIDE, avec « personne » en filet
+     pointillé : c'est elle qui donne son sens aux trois autres. À 61 jours,
+     la créance montait au dernier avis et la marche n'était jamais vide. À
+     40 elle reste en mise en demeure — ce qui garde la montée de ton
+     (relancée « ferme » il y a un mois) tout en laissant le haut libre.
+*/
 const ECHUES = [
-  { cle: 'essai-fac-4', numero: '2026-0044', clientId: 104, nom: 'Studio Nord', societe: 'Studio Nord',
-    email: 'contact@studio-nord.exemple.test', adresse: '2 rue Gambetta\n34000 Montpellier',
+  { cle: 'essai-fac-4', numero: '2026-0044', clientId: 102, nom: 'Hugo Marchand', societe: 'Brasserie du Port',
+    email: 'h.marchand@brasserie-port.exemple.test', adresse: '4 quai des Docks\n34200 Sète',
     retard: 4, libelle: 'Reportage photo — demi-journée', quantite: 1, prix: 500 },
-  { cle: 'essai-fac-5', numero: '2026-0039', clientId: 105, nom: 'Maison Bertaux', societe: 'Maison Bertaux',
-    email: 'bonjour@maison-bertaux.exemple.test', adresse: '17 boulevard du Jeu de Paume\n34000 Montpellier',
+  { cle: 'essai-fac-5', numero: '2026-0039', clientId: 107, nom: 'Jean Estève', societe: 'Boulangerie Estève',
+    email: '107@exemple.test', adresse: '17 boulevard du Jeu de Paume\n34000 Montpellier',
     retard: 12, libelle: 'Composition florale — vitrine de rentrée', quantite: 4, prix: 185 },
-  { cle: 'essai-fac-6', numero: '2026-0027', clientId: 106, nom: 'Léa Fontaine', societe: 'Atelier Fontaine',
-    email: 'lea@atelier-fontaine.exemple.test', adresse: '9 rue de la Loge\n34000 Montpellier',
-    retard: 61, libelle: 'Aménagement de la cour — solde', quantite: 1, prix: 2400 },
+  { cle: 'essai-fac-7', numero: '2026-0031', clientId: 105, nom: 'Bertrand Perrin', societe: 'Atelier Perrin',
+    email: '105@exemple.test', adresse: '3 rue des Ébénistes\n34000 Montpellier',
+    retard: 30, libelle: 'Jardinières de façade — solde', quantite: 1, prix: 620 },
+  { cle: 'essai-fac-6', numero: '2026-0027', clientId: 106, nom: 'Salomé Vallon', societe: 'Cabinet Vallon',
+    email: '106@exemple.test', adresse: '9 rue de la Loge\n34000 Montpellier',
+    retard: 40, libelle: 'Aménagement de la cour — solde', quantite: 1, prix: 2400 },
 ];
 for (const f of ECHUES) {
   await poser('invoices', f.cle, {
@@ -798,12 +819,22 @@ for (const [cle, title, party, debutJours, finJours, amountCents, autoRenew] of 
   quatrième qui n'entre dans aucune classe, pour que la ligne « autre » du
   regroupement soit visible et dite plutôt que silencieuse.
 */
+/*
+  LES MONTANTS SONT EN EUROS, PAS EN CENTIMES.
+
+  Ils étaient écrits en centimes (24000, 8600, …) et passés à `ligne()`, qui
+  attend des EUROS : un encaissement de 240 € devenait 24 000 €. Le défaut ne
+  se voyait pas sur l'écran Caisse, où les quatre lignes sont juste « grandes »
+  — il s'est vu sur le NUAGE de Clients (`14a`), où tous les disques se sont
+  retrouvés plafonnés en haut de l'axe des 12 k€, flèche comprise. Un
+  instrument qui borne dit qu'il borne, et c'est comme ça qu'on l'attrape.
+*/
 const ENCAISSEMENTS = [
-  ['essai-enc-1', 101, 'Le Jardin d’Élise', 'CB', 24000, -3],
-  ['essai-enc-2', 103, 'Nadia Bouvier', 'Espèces', 8600, -5],
-  ['essai-enc-3', 108, 'Théo Lambert', 'Virement SEPA', 46000, -8],
-  ['essai-enc-4', 102, 'Brasserie du Port', 'Chèque', 12000, -11],
-  ['essai-enc-5', 104, 'Villa Sereine', 'Carte bleue', 31000, -14],
+  ['essai-enc-1', 101, 'Le Jardin d’Élise', 'CB', 240, -3],
+  ['essai-enc-2', 103, 'Nadia Bouvier', 'Espèces', 86, -5],
+  ['essai-enc-3', 108, 'Théo Lambert', 'Virement SEPA', 460, -8],
+  ['essai-enc-4', 102, 'Brasserie du Port', 'Chèque', 120, -11],
+  ['essai-enc-5', 104, 'Villa Sereine', 'Carte bleue', 310, -14],
 ];
 for (const [cle, clientId, nom, moyen, euros, recul] of ENCAISSEMENTS) {
   await poser('invoices', cle, {
