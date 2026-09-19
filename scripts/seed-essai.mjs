@@ -599,15 +599,22 @@ for (const [cle, reference, status, dansHeures, nom, articles] of COMMANDES) {
   toujours la même allure quel que soit le jour où on la mesure : une dépassée,
   quatre à venir étalées sur les dix semaines, une sans date du tout.
 */
+/*
+  Les deux dernières colonnes sont l'ESTIMATION EN JOURNÉES et l'ÂGE du
+  projet. Sans estimation, la courbe de brûlage n'a rien à faire descendre —
+  et un instrument qu'on ne peut pas voir tourner sur de vraies données n'est
+  pas vérifiable. Deux projets en portent une, pour que l'écran ait à CHOISIR
+  lequel montrer (le plus proche de sa livraison) au lieu de n'en avoir qu'un.
+*/
 const PROJETS = [
-  ['essai-prj-1', 'Refonte boutique', 'en-cours', -6, 101, 'Reprendre la mise en page des fiches produit', 'high'],
-  ['essai-prj-2', 'Identité Studio Nord', 'en-cours', 14, 0, 'Maquette 2', 'normal'],
-  ['essai-prj-3', 'Vitrine automne', 'en-cours', 28, 102, 'Valider les visuels', 'normal'],
-  ['essai-prj-4', 'Catalogue hiver', 'idee', 45, 0, 'Devis à envoyer', 'normal'],
-  ['essai-prj-5', 'Signalétique atelier', 'idee', 62, 0, '', 'low'],
-  ['essai-prj-6', 'Cartes de visite', 'termine', -30, 103, '', 'low'],
+  ['essai-prj-1', 'Refonte boutique', 'en-cours', -6, 101, 'Reprendre la mise en page des fiches produit', 'high', 0, 55],
+  ['essai-prj-2', 'Identité Studio Nord', 'en-cours', 14, 0, 'Maquette 2', 'normal', 24, 30],
+  ['essai-prj-3', 'Vitrine automne', 'en-cours', 28, 102, 'Valider les visuels', 'normal', 12, 20],
+  ['essai-prj-4', 'Catalogue hiver', 'idee', 45, 0, 'Devis à envoyer', 'normal', 0, 55],
+  ['essai-prj-5', 'Signalétique atelier', 'idee', 62, 0, '', 'low', 0, 55],
+  ['essai-prj-6', 'Cartes de visite', 'termine', -30, 103, '', 'low', 0, 90],
 ];
-for (const [cle, title, status, dansJours, clientId, nextAction, priority] of PROJETS) {
+for (const [cle, title, status, dansJours, clientId, nextAction, priority, budgetDays, age] of PROJETS) {
   await poser('projects', cle, {
     title,
     status,
@@ -616,10 +623,11 @@ for (const [cle, title, status, dansJours, clientId, nextAction, priority] of PR
     priority,
     nextAction,
     deadline: jour(dansJours),
+    ...(budgetDays > 0 ? { budgetDays } : {}),
     link: '',
     notes: '',
     extra: {},
-    createdAt: instant(-24 * 55),
+    createdAt: instant(-24 * age),
   });
 }
 /* Celui-là n'a PAS d'échéance : la frise doit savoir le dire au lieu de le poser
@@ -1322,6 +1330,41 @@ for (const [cle, label, projectId, startedAt, endedAt, invoicedAt] of TEMPS) {
     endedAt,
     invoicedAt,
     createdAt: startedAt,
+  });
+}
+
+/*
+  LE TEMPS DU CHANTIER ESTIMÉ — ce qui fait descendre la courbe de brûlage.
+
+  Une poignée de saisies ne suffit pas : la courbe se lit sur toute la vie du
+  projet, et six points sur les trois derniers jours donneraient une ligne
+  plate suivie d'une falaise. On sème donc une vingtaine de demi-journées et
+  de journées réparties sur les trente jours du projet, avec des trous — un
+  jour sans saisie EST une information, c'est un palier horizontal, et une
+  répartition régulière serait un mensonge par lissage.
+
+  Les durées sont en heures et se convertissent en journées à sept heures,
+  comme l'instrument (`HEURES_PAR_JOURNEE`).
+*/
+const JOURNEES_CHANTIER = [
+  [29, 6], [28, 7], [26, 3.5], [25, 7], [24, 7],
+  [22, 5], [21, 7], [20, 4], [18, 7], [17, 6.5],
+  [15, 7], [14, 3], [13, 7], [11, 7], [10, 5.5],
+  [8, 7], [7, 4], [5, 7], [4, 6], [2, 3.5],
+];
+let nTemps = 0;
+for (const [ilYaJours, heures] of JOURNEES_CHANTIER) {
+  nTemps += 1;
+  const debut = new Date(Date.now() - ilYaJours * 86_400_000);
+  debut.setHours(9, 0, 0, 0);
+  const fin = new Date(debut.getTime() + heures * 3_600_000);
+  await poser('timeEntries', `essai-tps-chantier-${nTemps}`, {
+    label: 'Identité Studio Nord',
+    projectId: 'essai-prj-2',
+    startedAt: debut.toISOString(),
+    endedAt: fin.toISOString(),
+    invoicedAt: '',
+    createdAt: debut.toISOString(),
   });
 }
 

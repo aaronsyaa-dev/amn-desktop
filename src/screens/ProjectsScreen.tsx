@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { useCollection } from '../state/SyncContext';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -112,6 +113,40 @@ export function ProjectsScreen() {
     () => (friseActive ? construireFrise(projects, config, today) : null),
     [friseActive, projects, config, today],
   );
+
+  /*
+    LE CHANTIER EN COURS — celui dont la courbe de brûlage se dessine.
+
+    Un seul : l'objet dominant de l'écran est UNE courbe, pas six. Le choix
+    n'est pas arbitraire — c'est le projet ouvert, estimé, daté, dont la
+    livraison est la plus proche. C'est celui sur lequel se pose la question
+    « est-ce que je tiens la date », et c'est la seule question à laquelle une
+    courbe de brûlage répond.
+
+    Sans estimation ou sans date de livraison, il n'y a pas de courbe. L'écran
+    passe alors directement à la frise et aux colonnes, ce qui est le bon
+    comportement : une courbe vraisemblable vaut moins que pas de courbe.
+  */
+  const { projectBudget } = useExpenses();
+  const saisiesTemps = useCollection<{ projectId?: string; startedAt?: string; endedAt?: string }>('timeEntries');
+  const brulage = useMemo(() => {
+    const candidats = projects
+      .filter((p) => !isDone(config, p) && p.deadline && (p.budgetDays ?? 0) > 0)
+      .sort((a, b) => a.deadline.localeCompare(b.deadline));
+    for (const p of candidats) {
+      const calcul = calculerBrulage(
+        p,
+        saisiesTemps.map((e) => ({
+          projectId: e.projectId,
+          startedAt: e.startedAt ?? '',
+          endedAt: e.endedAt ?? '',
+        })),
+        new Date(),
+      );
+      if (calcul) return { projet: p, calcul };
+    }
+    return null;
+  }, [projects, config, saisiesTemps]);
 
   /* La phrase sous le titre dit la période couverte, puis nomme ce qui glisse. */
   const resume = useMemo(() => {
@@ -229,6 +264,18 @@ export function ProjectsScreen() {
         détail revient à la seconde où un premier projet existe. Rien n'est
         ajouté ; une colonne est retirée quand elle n'a pas de sujet.
       */}
+      {/* ── L'OBJET DOMINANT : la courbe de brûlage du chantier en cours ── */}
+      {brulage && (
+        <CourbeDeBrulage
+          projet={brulage.projet}
+          brulage={brulage.calcul}
+          /* Le budget en argent est une AUTRE mesure que les journées : il se
+             tient à côté, jamais mélangé à la courbe. Il ne s'affiche que si
+             ce projet a réellement un budget posé. */
+          depense={projectBudget(brulage.projet.id)}
+        />
+      )}
+
       {vue === 'frise' && frise ? (
         <div className="flex flex-col gap-6">
           <FriseDesEcheances
@@ -447,6 +494,281 @@ function construireFrise(projects: Project[], config: ProjectConfig, today: stri
     aujourdhui: part(maintenant),
     lignes,
   };
+}
+
+/**
+ * LA COURBE DE BRÛLAGE — l'objet dominant de Projets (système de design, `16b`)
+ * ════════════════════════════════════════════════════════════════════════════
+ *
+ * Le reste-à-faire, en journées de travail, descend jour après jour depuis
+ * l'estimation jusqu'à zéro. La diagonale du rythme idéal passe derrière en
+ * pointillé. **L'écart vertical entre les deux lignes EST l'avance ou le
+ * retard** — on n'a pas besoin de le chiffrer pour le voir, et c'est tout
+ * l'intérêt de l'instrument : un « 62 % » ne dit pas si on tiendra la date.
+ *
+ * LES DEUX SOURCES, et pourquoi aucune n'est inventée :
+ *
+ *   · l'estimation vient de `Project.budgetDays`, saisie une fois à
+ *     l'ouverture du chantier (voir le commentaire du champ pour l'arbitrage
+ *     qui l'a fait exister) ;
+ *   · le temps fait vient des SAISIES DE TEMPS portant le `projectId` du
+ *     projet. Rien n'est estimé ni lissé : un jour sans saisie est un
+ *     palier horizontal, ce qui est l'information exacte.
+ *
+ * LA GÉOMÉTRIE. Un `<svg viewBox="0 0 1000 250" preserveAspectRatio="none">`
+ * posé en `inset:0`, et le point d'aujourd'hui positionné en POURCENTAGE du
+ * même conteneur — pas en pixels, sinon la ligne et son point se désalignent
+ * dès que la carte change de largeur. Le point tombe sur la date réelle de
+ * l'axe : à mi-parcours calendaire il est à 50 % et pas ailleurs, parce que
+ * son abscisse se déduit de la date et non d'un index de tableau.
+ */
+
+/** Une journée de travail. Le module Temps ne configure qu'un tarif horaire,
+ *  pas une durée de journée : sept heures est écrit ici, une fois, plutôt
+ *  qu'éparpillé — et c'est la seule constante de conversion de l'instrument. */
+const HEURES_PAR_JOURNEE = 7;
+
+const BRULAGE_H = 250;
+
+interface PointBrulage {
+  /** Abscisse en unités de vue (0 → 1000). */
+  x: number;
+  /** Ordonnée en unités de vue (0 = budget entier restant, 250 = rien). */
+  y: number;
+}
+
+/**
+ * Le calcul de la courbe. Renvoie `null` dès qu'il manque de quoi la dessiner —
+ * une estimation, une date de livraison, ou un début antérieur à la fin. Mieux
+ * vaut pas de courbe qu'une courbe vraisemblable.
+ */
+function calculerBrulage(
+  projet: Project,
+  saisies: { projectId?: string; startedAt: string; endedAt: string }[],
+  aujourdHui: Date,
+): {
+  reel: PointBrulage[];
+  projection: PointBrulage[];
+  pctX: number;
+  pctY: number;
+  restant: number;
+  ecart: number;
+  budget: number;
+  debut: Date;
+  fin: Date;
+  faites: number;
+} | null {
+  const budget = projet.budgetDays ?? 0;
+  if (budget <= 0 || !projet.deadline) return null;
+  const debut = new Date(`${(projet.createdAt || projet.updatedAt).slice(0, 10)}T00:00:00`);
+  const fin = new Date(`${projet.deadline}T00:00:00`);
+  const etendue = fin.getTime() - debut.getTime();
+  if (!Number.isFinite(etendue) || etendue <= 0) return null;
+
+  /* Les minutes faites, par jour. Une saisie compte le jour où elle a
+     commencé : une session à cheval sur minuit appartient à la journée de
+     travail où on l'a lancée, pas à celle du lendemain matin. */
+  const parJour = new Map<string, number>();
+  for (const s of saisies) {
+    if (s.projectId !== projet.id || !s.endedAt) continue;
+    const ms = new Date(s.endedAt).getTime() - new Date(s.startedAt).getTime();
+    if (!(ms > 0)) continue;
+    const jour = s.startedAt.slice(0, 10);
+    parJour.set(jour, (parJour.get(jour) ?? 0) + ms / 60_000);
+  }
+
+  const jusqua = aujourdHui.getTime() < fin.getTime() ? aujourdHui : fin;
+  const reel: PointBrulage[] = [];
+  let cumul = 0;
+  for (let t = new Date(debut); t.getTime() <= jusqua.getTime(); t.setDate(t.getDate() + 1)) {
+    const iso = t.toISOString().slice(0, 10);
+    cumul += (parJour.get(iso) ?? 0) / 60 / HEURES_PAR_JOURNEE;
+    const restantJour = Math.max(0, budget - cumul);
+    reel.push({
+      x: ((t.getTime() - debut.getTime()) / etendue) * 1000,
+      y: ((budget - restantJour) / budget) * BRULAGE_H,
+    });
+  }
+  if (reel.length === 0) return null;
+
+  const restant = Math.max(0, budget - cumul);
+  const pctX = ((jusqua.getTime() - debut.getTime()) / etendue) * 100;
+  const pctY = ((budget - restant) / budget) * 100;
+
+  /*
+    L'ÉCART, EN JOURNÉES — le chiffre que l'étiquette porte.
+
+    Le rythme idéal consomme le budget linéairement entre le début et la
+    livraison. À la date d'aujourd'hui, il devrait donc rester
+    `budget × (1 − avancement calendaire)`. La différence avec ce qui reste
+    vraiment est l'avance (positive) ou le retard (négatif). C'est exactement
+    l'écart vertical entre les deux lignes, en unités lisibles.
+  */
+  const idealRestant = budget * (1 - pctX / 100);
+  const ecart = idealRestant - restant;
+
+  /* La projection : au rythme tenu jusqu'ici, où la courbe arrive-t-elle à la
+     livraison. Tracée en pointillé, parce que ce n'est pas une mesure. */
+  const parJourMoyen = pctX > 0 ? (budget - restant) / (((jusqua.getTime() - debut.getTime()) / 86_400_000) || 1) : 0;
+  const joursRestants = (fin.getTime() - jusqua.getTime()) / 86_400_000;
+  const restantALaFin = Math.max(0, restant - parJourMoyen * joursRestants);
+  const projection: PointBrulage[] =
+    joursRestants > 0
+      ? [
+          { x: (pctX / 100) * 1000, y: (pctY / 100) * BRULAGE_H },
+          { x: 1000, y: ((budget - restantALaFin) / budget) * BRULAGE_H },
+        ]
+      : [];
+
+  return { reel, projection, pctX, pctY, restant, ecart, budget, debut, fin, faites: budget - restant };
+}
+
+function moisCourt(d: Date): string {
+  return d
+    .toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+    .replace('.', '')
+    .toUpperCase();
+}
+
+function CourbeDeBrulage({
+  projet,
+  brulage,
+  depense,
+}: {
+  projet: Project;
+  brulage: NonNullable<ReturnType<typeof calculerBrulage>>;
+  depense: { spentCents: number; budgetCents: number } | null;
+}) {
+  const { reel, projection, pctX, pctY, ecart, budget, debut, fin, faites, restant } = brulage;
+  const d = (pts: PointBrulage[]) =>
+    pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+  const enAvance = ecart >= 0;
+  const jours = Math.abs(Math.round(ecart));
+  const milieu = new Date((debut.getTime() + fin.getTime()) / 2);
+  /* Du côté opposé au point d'aujourd'hui, et jamais dans les coins. */
+  const etiquetteIdeal = pctX > 50 ? 22 : 70;
+
+  return (
+    <section className="panel-raised panel-raised-wide px-[30px] pb-[26px] pt-[30px]">
+      <div className="mb-[22px] flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+        <span className="min-w-0">
+          <span className="eyebrow block text-text-secondary">Le chantier en cours</span>
+          <span className="mt-2 block truncate text-[26px] font-bold leading-[1.1] tracking-[-0.028em] text-text-primary">
+            {projet.title}
+          </span>
+        </span>
+        <span className="font-mono text-[10px] tracking-[0.1em] text-text-muted">
+          {budget} JOURNÉES ESTIMÉES · {restant < 0.5 ? 'TOUT EST FAIT' : `${Math.round(restant)} RESTANTES`}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-[44px_1fr] gap-3">
+        {/* L'axe des ordonnées : le budget en haut, zéro au sol. Les libellés
+            sont posés depuis le BAS pour que « 0 » soit exactement au sol. */}
+        <div className="relative font-mono text-[9.5px] text-text-muted" style={{ height: `${BRULAGE_H}px` }}>
+          <span className="absolute right-0" style={{ bottom: `${BRULAGE_H - 5}px` }}>{budget}</span>
+          <span className="absolute right-0" style={{ bottom: `${BRULAGE_H / 2 - 5}px` }}>{Math.round(budget / 2)}</span>
+          <span className="absolute right-0" style={{ bottom: '-5px' }}>0</span>
+        </div>
+
+        <div>
+          <div
+            className="relative overflow-hidden border border-border-raised bg-sunken"
+            style={{ height: `${BRULAGE_H}px` }}
+          >
+            <svg
+              viewBox={`0 0 1000 ${BRULAGE_H}`}
+              preserveAspectRatio="none"
+              className="absolute left-0 top-0 w-full"
+              style={{ height: `${BRULAGE_H}px` }}
+              aria-hidden
+            >
+              {/* Le rythme idéal : du budget entier au premier jour, à zéro le
+                  jour de la livraison. Une droite, toujours la même. */}
+              <path
+                d={`M0 0 L1000 ${BRULAGE_H}`}
+                fill="none"
+                stroke="#2e2e2e"
+                strokeWidth={1.5}
+                strokeDasharray="6 6"
+                vectorEffect="non-scaling-stroke"
+              />
+              <path d={d(reel)} fill="none" stroke="#e4e4e1" strokeWidth={2.5} vectorEffect="non-scaling-stroke" />
+              {projection.length > 1 && (
+                <path
+                  d={d(projection)}
+                  fill="none"
+                  stroke="#3a3a3a"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  vectorEffect="non-scaling-stroke"
+                />
+              )}
+            </svg>
+
+            {/* LE POINT D'AUJOURD'HUI — l'ambre, et l'étiquette qui le nomme.
+                Deux nœuds, une seule position, donc un seul signal. */}
+            <span
+              data-signal-groupe="brulage-aujourdhui"
+              className="absolute h-[13px] w-[13px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-signal shadow-[0_0_26px_-3px_var(--color-signal-glow)]"
+              style={{ left: `${pctX}%`, top: `${pctY}%` }}
+              aria-hidden
+            />
+            <span
+              data-signal-groupe="brulage-aujourdhui"
+              className="absolute -translate-x-1/2 whitespace-nowrap bg-signal px-[9px] py-[5px] font-mono text-[10.5px] font-bold tracking-[0.06em] text-signal-ink"
+              style={{ left: `${Math.min(88, Math.max(12, pctX))}%`, top: `calc(${pctY}% - 42px)` }}
+            >
+              AUJOURD’HUI · {jours === 0 ? 'PILE SUR LE RYTHME' : `${jours} JOURNÉE${jours > 1 ? 'S' : ''} ${enAvance ? 'D’AVANCE' : 'DE RETARD'}`}
+            </span>
+            {/*
+              Le libellé de la diagonale se pose SUR elle, du côté où le point
+              d'aujourd'hui n'est pas. Posé à une abscisse fixe, il finissait
+              sous la pastille ambre dès que le chantier passait la mi-parcours
+              — deux textes superposés, dont l'un est le seul ambre de l'écran.
+              L'ordonnée suit la diagonale : `y = x`, puisqu'elle va de (0,0) à
+              (100,100) en pourcentages.
+            */}
+            <span
+              className="absolute -translate-y-[130%] font-mono text-[9.5px] tracking-[0.12em] text-text-muted"
+              style={{ left: `${etiquetteIdeal}%`, top: `${etiquetteIdeal}%` }}
+            >
+              RYTHME IDÉAL
+            </span>
+          </div>
+
+          <div className="relative mt-2.5 h-[14px] font-mono text-[9.5px] tracking-[0.08em] text-text-muted">
+            <span className="absolute left-0">{moisCourt(debut)}</span>
+            <span className="absolute left-1/2 -translate-x-1/2">{moisCourt(milieu)}</span>
+            <span className="absolute right-0">{moisCourt(fin)} · LIVRAISON</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-3 border-t border-border-raised pt-[22px]">
+        <span>
+          <span className="eyebrow block text-text-muted">Journées faites</span>
+          <span className="tnum mt-1.5 block font-mono text-[23px] font-semibold text-text-secondary">
+            {faites.toFixed(1).replace('.', ',')}
+          </span>
+        </span>
+        {depense && depense.budgetCents > 0 && (
+          <span className="border-l border-border-section pl-8">
+            <span className="eyebrow block text-text-muted">Budget consommé</span>
+            <span className="tnum mt-1.5 block font-mono text-[23px] font-semibold text-text-secondary">
+              {Math.round((depense.spentCents / depense.budgetCents) * 100)} %
+            </span>
+          </span>
+        )}
+        <span className="border-l border-border-section pl-8">
+          <span className="eyebrow block text-text-muted">Livraison</span>
+          <span className="tnum mt-1.5 block font-mono text-[23px] font-semibold text-text-secondary">
+            {fin.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}
+          </span>
+        </span>
+      </div>
+    </section>
+  );
 }
 
 function FriseDesEcheances({
@@ -888,6 +1210,33 @@ function ProjectDetail({
                 type="date"
                 value={project.deadline}
                 onChange={(e) => onPatch({ deadline: e.target.value })}
+                className="input-focus min-h-11 w-full border border-border bg-bg px-3 text-sm text-text-primary outline-none"
+              />
+            </Field>
+          )}
+          {/*
+            L'ESTIMATION EN JOURNÉES — le champ sans lequel il n'y a pas de
+            courbe de brûlage. Posé juste sous l'échéance, parce que les deux
+            se répondent : un budget sans date et une date sans budget ne
+            disent ni l'un ni l'autre si on tiendra.
+
+            `min={0}` et la conversion vide → `undefined` : effacer le champ
+            doit retirer l'estimation, pas la mettre à zéro. Une estimation à
+            zéro ferait une courbe qui part du sol.
+          */}
+          {show('deadline') && (
+            <Field label="Estimation (journées)">
+              <input
+                type="number"
+                min={0}
+                step={0.5}
+                inputMode="decimal"
+                value={project.budgetDays ?? ''}
+                placeholder="—"
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  onPatch({ budgetDays: e.target.value.trim() === '' || !(n > 0) ? undefined : n });
+                }}
                 className="input-focus min-h-11 w-full border border-border bg-bg px-3 text-sm text-text-primary outline-none"
               />
             </Field>
