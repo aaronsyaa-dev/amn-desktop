@@ -1619,6 +1619,130 @@ for (const [cle, title, status, priority, bloquePar, age] of TACHES) {
   });
 }
 
+/* ─── Fidélité, avis, parrainage ───────────────────────────────────────────── */
+
+/*
+  SIX CARTES DE FIDÉLITÉ, dont UNE À NEUF TAMPONS.
+
+  Le sujet du module est la case vide : la carte montrée en grand est celle qui
+  en a le moins, et c'est son dixième emplacement qui porte l'ambre. Un semis
+  où aucune carte n'atteindrait neuf ne montrerait jamais le tampon en attente
+  — l'instrument s'afficherait sans rien dire.
+
+  Les autres cartes sont réparties pour que la rangée de dix pastilles du bas
+  ait quelque chose à comparer : une pleine, une à mi-parcours, deux qui
+  démarrent.
+*/
+const CARTES_FIDELITE = [
+  ['essai-fid-1', 'Camille Renaud', 9, 1, 3],
+  ['essai-fid-2', 'Hugo Marchand', 10, 0, 1],
+  ['essai-fid-3', 'Nadia Bouvier', 5, 2, 12],
+  ['essai-fid-4', 'Théo Lambert', 3, 0, 20],
+  ['essai-fid-5', 'Inès Fabre', 1, 0, 34],
+  ['essai-fid-6', 'Marc Delaunay', 7, 1, 8],
+];
+for (const [cle, customerName, stamps, rewards, ilYaJours] of CARTES_FIDELITE) {
+  await poser('loyaltyCards', cle, {
+    customerName,
+    stamps,
+    rewards,
+    lastStampAt: instant(-24 * ilYaJours),
+    createdAt: instant(-24 * (ilYaJours + 90)),
+  });
+}
+
+/*
+  HUIT AVIS, DONT UN SEUL À UNE ÉTOILE.
+
+  C'est la forme exacte que le peson doit démontrer : une moyenne haute tirée
+  vers le bas par un seul avis sévère, et l'écran qui chiffre combien
+  d'excellents il faudrait pour compenser. Un semis tout à cinq étoiles
+  donnerait un ressort court et une carte qui ne dit rien.
+
+  Les textes sont réels au sens du module : de vraies phrases qu'on écrit, pas
+  des « Lorem ». Le paquet demande que les avis cités soient du texte entier,
+  jamais résumé — ils le sont.
+*/
+const AVIS = [
+  ['essai-avis-1', 'Camille R.', 5, 'Le bouquet était exactement ce que j’avais décrit au téléphone. Livré à l’heure, et la personne a pris le temps de m’expliquer comment le garder.', 'Google', true, 4],
+  ['essai-avis-2', 'Hugo M.', 5, 'Trois ans qu’on prend les compositions ici pour la brasserie. Jamais un retard, jamais une fleur fanée.', 'Sur place', true, 11],
+  ['essai-avis-3', 'Nadia B.', 4, 'Très joli travail pour le mariage. Un petit bémol sur le délai de réponse au premier message, mais tout le reste était parfait.', 'Instagram', true, 19],
+  ['essai-avis-4', 'Théo L.', 5, 'Arrivé la veille pour une commande de dernière minute, et ils ont fait quelque chose de superbe.', 'Google', true, 26],
+  ['essai-avis-5', 'Inès F.', 1, 'Commande passée pour un enterrement, arrivée avec deux heures de retard et sans le ruban demandé. Personne n’a rappelé. Pour ce jour-là, c’était vraiment le mauvais moment.', 'Google', false, 33],
+  ['essai-avis-6', 'Marc D.', 5, 'Conseil de saison toujours juste. On repart avec autre chose que ce qu’on avait en tête, et c’est mieux.', 'Sur place', true, 41],
+  ['essai-avis-7', 'Sophie A.', 4, 'Bon rapport qualité-prix pour l’abonnement bureau. Le mardi matin, c’est parfait.', 'Courriel', false, 52],
+  ['essai-avis-8', 'Yanis K.', 5, 'Arche de mariage magnifique. Les photos ne rendent pas justice.', 'Instagram', true, 68],
+];
+for (const [cle, author, rating, text, source, publishable, ilYaJours] of AVIS) {
+  await poser('reviews', cle, {
+    author,
+    text,
+    rating,
+    source,
+    publishable,
+    receivedAt: instant(-24 * ilYaJours),
+  });
+}
+
+/*
+  UNE LIGNÉE SUR DEUX GÉNÉRATIONS, et c'est toute la démonstration.
+
+  Camille Renaud achète peu pour elle-même, mais sa descendance porte le plus
+  gros chiffre d'affaires de l'arbre : c'est précisément ce qu'une liste de
+  codes de parrainage ne dit pas. Les noms des filleuls correspondent à des
+  noms de facture, sans quoi le CA de branche resterait à zéro — voir
+  l'arbitrage sur le rapprochement par nom dans `ReferralsScreen.tsx`.
+*/
+const PARRAINAGES = [
+  ['essai-par-1', 'Camille Renaud', 'Théo Lambert', 'recompense', 'Bouquet offert', 120],
+  ['essai-par-2', 'Camille Renaud', 'Inès Fabre', 'recompense', 'Bouquet offert', 95],
+  ['essai-par-3', 'Camille Renaud', 'Marc Delaunay', 'venu', '−10 % sur la commande', 40],
+  ['essai-par-4', 'Théo Lambert', 'Sophie Aubry', 'venu', 'Bouquet offert', 30],
+  ['essai-par-5', 'Théo Lambert', 'Yanis Kaddour', 'invite', 'Bouquet offert', 12],
+  ['essai-par-6', 'Inès Fabre', 'Lucie Perrin', 'venu', 'Bouquet offert', 21],
+  ['essai-par-7', 'Hugo Marchand', 'Paul Vasseur', 'invite', '−10 % sur la commande', 6],
+];
+for (const [cle, referrer, referred, status, reward, ilYaJours] of PARRAINAGES) {
+  await poser('referrals', cle, {
+    referrer,
+    referred,
+    status,
+    reward,
+    createdAt: instant(-24 * ilYaJours),
+    updatedAt: instant(-24 * Math.max(1, ilYaJours - 5)),
+  });
+}
+
+/*
+  DES FACTURES AU NOM DES FILLEULS, sans quoi l'arbre de parrainage compte des
+  branches à zéro. Elles sont émises et payées : ce sont de vraies
+  contributions, pas des promesses.
+*/
+const FACTURES_FILLEULS = [
+  ['essai-fac-fil-1', '2026-0051', 'Théo Lambert', 3, 420, 60],
+  ['essai-fac-fil-2', '2026-0052', 'Inès Fabre', 2, 380, 48],
+  ['essai-fac-fil-3', '2026-0053', 'Sophie Aubry', 6, 145, 30],
+  ['essai-fac-fil-4', '2026-0054', 'Yanis Kaddour', 1, 1_240, 22],
+  ['essai-fac-fil-5', '2026-0055', 'Lucie Perrin', 4, 190, 15],
+  ['essai-fac-fil-6', '2026-0056', 'Marc Delaunay', 2, 260, 9],
+];
+for (const [cle, number, nom, quantite, prix, ilYaJours] of FACTURES_FILLEULS) {
+  await poser('invoices', cle, {
+    number,
+    clientId: 0,
+    billTo: { name: nom, company: '', email: '', address: '', vatNumber: '' },
+    issuedAt: jour(-ilYaJours),
+    dueAt: jour(30 - ilYaJours),
+    lines: [ligne('l1', 'Compositions', quantite, prix)],
+    status: 'paid',
+    paidAt: jour(-Math.max(0, ilYaJours - 12)),
+    paymentMethod: 'Virement',
+    cancelReason: '',
+    notes: '',
+    quoteId: null,
+  });
+}
+
 /* ─── Mini-page, portfolio, signatures, lettres ────────────────────────────── */
 
 await poser('minisite', 'config', {

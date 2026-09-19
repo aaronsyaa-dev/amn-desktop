@@ -7,6 +7,8 @@ import { useSync, useCollection, uid } from '../state/SyncContext';
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
+import { useInvoices } from '../state/useInvoices';
+import { formatCents } from '../lib/money';
 
 type ReferralStatus = 'invite' | 'venu' | 'recompense';
 interface ReferralData {
@@ -28,6 +30,234 @@ const SUITE: Record<ReferralStatus, ReferralStatus | null> = { invite: 'venu', v
  * promise. On sait qui parraine le plus, et à qui on doit encore quelque
  * chose. Pas de code promo, pas de site : un registre honnête.
  */
+/**
+ * L'ARBRE DE FILIATION — l'objet dominant du Parrainage (`23c`)
+ * ════════════════════════════════════════════════════════════
+ *
+ * Qui a amené qui, sur deux générations, avec sous chaque nom LE CHIFFRE
+ * D'AFFAIRES PORTÉ PAR SA BRANCHE.
+ *
+ * Une liste de codes de parrainage ne dit pas qu'un client discret a déclenché
+ * une lignée entière. L'arbre le montre, et la valeur d'un parrain se lit à la
+ * TAILLE DE SA DESCENDANCE, pas à ses propres factures — c'est la règle du
+ * paquet et c'est aussi le seul calcul qui rende le module utile : quelqu'un
+ * qui achète peu et amène beaucoup vaut plus qu'un gros client isolé.
+ *
+ * ARBITRAGE SUR L'APPARIEMENT. Le modèle garde des NOMS en texte libre
+ * (« Camille R. »), pas des identifiants de fiche : le parrainage se note
+ * souvent avant que la personne soit cliente. Le chiffre d'affaires est donc
+ * rapproché par le nom, en comparaison insensible à la casse et aux accents.
+ * C'est fragile et c'est dit ici plutôt que caché : un filleul dont le nom ne
+ * correspond à aucune fiche compte pour zéro, et l'écran le montre à zéro
+ * plutôt que de l'omettre — une branche amputée serait pire qu'une branche
+ * incomplète visible.
+ */
+const NOEUD_H = 46;
+const RANGEE = 62;
+
+function cleNom(nom: string): string {
+  return nom
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+}
+
+interface NoeudParrainage {
+  nom: string;
+  /** Le CA propre de la personne, en centimes. */
+  propre: number;
+  /** Le CA de sa descendance, en centimes — JAMAIS le sien. */
+  branche: number;
+  enfants: NoeudParrainage[];
+}
+
+/**
+ * Construit l'arbre et calcule les branches. Renvoie les racines — les gens
+ * qui parrainent sans avoir été parrainés eux-mêmes.
+ */
+function construireArbre(
+  liens: { referrer: string; referred: string }[],
+  caParNom: Map<string, number>,
+): NoeudParrainage[] {
+  const enfantsDe = new Map<string, string[]>();
+  const estFilleul = new Set<string>();
+  const tousLesNoms = new Map<string, string>();
+  for (const l of liens) {
+    const p = cleNom(l.referrer);
+    const f = cleNom(l.referred);
+    if (!p || !f || p === f) continue;
+    tousLesNoms.set(p, l.referrer.trim());
+    tousLesNoms.set(f, l.referred.trim());
+    enfantsDe.set(p, [...(enfantsDe.get(p) ?? []), f]);
+    estFilleul.add(f);
+  }
+
+  /* `vus` coupe les cycles : deux personnes qui se parrainent mutuellement
+     feraient tourner la récursion sans fin, et ça s'écrit en deux lignes de
+     saisie. */
+  const bati = (cle: string, vus: Set<string>, profondeur: number): NoeudParrainage => {
+    const enfants =
+      profondeur >= 2
+        ? []
+        : (enfantsDe.get(cle) ?? [])
+            .filter((c) => !vus.has(c))
+            .map((c) => bati(c, new Set([...vus, c]), profondeur + 1));
+    return {
+      nom: tousLesNoms.get(cle) ?? cle,
+      propre: caParNom.get(cle) ?? 0,
+      /* LE CA DE BRANCHE EST LA SOMME DE LA DESCENDANCE, pas le sien. */
+      branche: enfants.reduce((n, e) => n + e.propre + e.branche, 0),
+      enfants,
+    };
+  };
+
+  return [...enfantsDe.keys()]
+    .filter((p) => !estFilleul.has(p))
+    .map((p) => bati(p, new Set([p]), 0))
+    .sort((a, b) => b.branche - a.branche);
+}
+
+function ArbreDeFiliation({
+  racines,
+  formatCents,
+}: {
+  racines: NoeudParrainage[];
+  formatCents: (c: number) => string;
+}) {
+  /* La racine la plus lourde porte l'ambre. `racines` arrive déjà triée. */
+  const laPlusLourde = racines[0]?.branche > 0 ? racines[0].nom : null;
+
+  /* Chaque racine occupe autant de rangées que sa descendance en a besoin. */
+  const rangees: { noeud: NoeudParrainage; colonne: 0 | 1 | 2; y: number; parentY: number | null }[] = [];
+  let y = 0;
+  for (const racine of racines) {
+    const yRacineDebut = y;
+    if (racine.enfants.length === 0) {
+      rangees.push({ noeud: racine, colonne: 0, y, parentY: null });
+      y += RANGEE;
+      continue;
+    }
+    for (const enfant of racine.enfants) {
+      const yEnfant = y;
+      rangees.push({ noeud: enfant, colonne: 1, y: yEnfant, parentY: null });
+      for (const petit of enfant.enfants) {
+        y += RANGEE;
+        rangees.push({ noeud: petit, colonne: 2, y, parentY: yEnfant });
+      }
+      y += RANGEE;
+    }
+    const yRacine = (yRacineDebut + y - RANGEE) / 2;
+    rangees.push({ noeud: racine, colonne: 0, y: yRacine, parentY: null });
+    /* Les traits racine → 1ʳᵉ génération se tracent depuis ce y-là. */
+    for (const r of rangees) {
+      if (r.colonne === 1 && r.y >= yRacineDebut && r.y < y) r.parentY = yRacine;
+    }
+  }
+  const hauteur = Math.max(RANGEE, y) + 26;
+  const centre = (haut: number) => haut + NOEUD_H / 2;
+
+  return (
+    <section className="panel-raised panel-raised-wide px-[30px] pb-[26px] pt-[30px]">
+      <div className="mb-[22px] flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+        <span className="eyebrow text-text-secondary">Qui a amené qui</span>
+        <span className="font-mono text-[10px] tracking-[0.1em] text-text-muted">
+          {racines.length} PARRAIN{racines.length > 1 ? 'S' : ''} · DEUX GÉNÉRATIONS
+        </span>
+      </div>
+
+      <div className="relative" style={{ height: `${hauteur}px` }}>
+        {/* Les connecteurs, en viewBox comme partout : les nœuds sont en
+            pourcentages, donc les traits doivent l'être aussi. */}
+        <svg
+          viewBox={`0 0 1000 ${hauteur}`}
+          preserveAspectRatio="none"
+          className="absolute left-0 top-0 w-full"
+          style={{ height: `${hauteur}px` }}
+          fill="none"
+          stroke="var(--color-border-strong)"
+          strokeWidth={1.4}
+          aria-hidden
+        >
+          {rangees
+            .filter((r) => r.colonne > 0 && r.parentY !== null)
+            .map((r, i) => {
+              const xDepart = r.colonne === 1 ? 255 : 605;
+              const xCoude = r.colonne === 1 ? 292 : 642;
+              const xArrivee = r.colonne === 1 ? 330 : 680;
+              return (
+                <path
+                  key={i}
+                  d={`M${xDepart} ${centre(r.parentY as number)} H${xCoude} V${centre(r.y)} H${xArrivee}`}
+                  vectorEffect="non-scaling-stroke"
+                />
+              );
+            })}
+        </svg>
+
+        {rangees.map((r, i) => {
+          const ambre = r.colonne === 0 && r.noeud.nom === laPlusLourde;
+          const gauche = r.colonne === 0 ? '0%' : r.colonne === 1 ? '33%' : '68%';
+          const largeur = r.colonne === 0 ? '25.5%' : r.colonne === 1 ? '28%' : '30%';
+          return (
+            <div
+              key={`${r.noeud.nom}-${i}`}
+              data-signal-groupe={ambre ? 'branche-la-plus-lourde' : undefined}
+              className={`absolute box-border px-3 py-2 ${
+                ambre
+                  ? 'bg-signal shadow-[0_0_30px_-6px_var(--color-signal-glow)]'
+                  : 'border border-[#2b2b2b] bg-[#171717]'
+              }`}
+              style={{ left: gauche, top: `${r.y}px`, width: largeur, height: `${NOEUD_H}px` }}
+            >
+              <span
+                className={`block truncate text-[12.5px] font-semibold ${
+                  ambre ? 'text-signal-ink' : 'text-text-primary'
+                }`}
+              >
+                {r.noeud.nom}
+              </span>
+              <span
+                className={`tnum mt-0.5 block truncate font-mono text-[9.5px] tracking-[0.1em] ${
+                  ambre ? 'text-[#3a2a0e]' : 'text-text-muted'
+                }`}
+              >
+                {r.noeud.branche > 0
+                  ? `${formatCents(r.noeud.branche).toUpperCase()} DE BRANCHE`
+                  : r.noeud.propre > 0
+                    ? `${formatCents(r.noeud.propre).toUpperCase()} EN PROPRE`
+                    : 'PAS ENCORE CLIENT'}
+              </span>
+            </div>
+          );
+        })}
+
+        <span className="absolute bottom-0 left-0 font-mono text-[9.5px] tracking-[0.1em] text-text-muted">
+          LE PARRAIN
+        </span>
+        <span className="absolute bottom-0 font-mono text-[9.5px] tracking-[0.1em] text-text-muted" style={{ left: '33%' }}>
+          1ʳᵉ GÉNÉRATION
+        </span>
+        {rangees.some((r) => r.colonne === 2) && (
+          <span className="absolute bottom-0 font-mono text-[9.5px] tracking-[0.1em] text-text-muted" style={{ left: '68%' }}>
+            2ᵉ GÉNÉRATION
+          </span>
+        )}
+      </div>
+
+      {racines[0] && racines[0].branche > 0 && (
+        <p className="mt-5 border-t border-border-raised pt-[22px] text-[13.5px] leading-[1.6] text-text-secondary [text-wrap:pretty]">
+          {racines[0].nom} facture{' '}
+          <strong className="font-semibold text-text-primary">{formatCents(racines[0].propre)}</strong> pour
+          {' '}{racines[0].propre > 0 ? 'elle-même' : 'elle-même — rien'}, et sa descendance en apporte{' '}
+          <strong className="font-semibold text-text-primary">{formatCents(racines[0].branche)}</strong>.
+          La valeur d’un parrain ne se lit pas sur ses propres factures.
+        </p>
+      )}
+    </section>
+  );
+}
+
 export function ReferralsScreen() {
   const { t } = useLangue();
   const { upsert, remove } = useSync();
@@ -39,6 +269,26 @@ export function ReferralsScreen() {
 
   const lignes = useMemo(() => [...brutes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [brutes]);
   const dues = lignes.filter((r) => r.status === 'venu').length;
+  /*
+    LE CA PAR NOM, rapproché depuis les factures émises. Voir l'en-tête de
+    `ArbreDeFiliation` pour pourquoi c'est un rapprochement par NOM et ce que
+    ça coûte.
+  */
+  const { invoices } = useInvoices();
+  const caParNom = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const f of invoices) {
+      if (f.status === 'draft' || f.status === 'cancelled') continue;
+      const nom = cleNom(f.billTo?.name ?? '');
+      if (!nom) continue;
+      const total = (f.lines ?? []).reduce((n, l) => n + l.quantity * l.unitPriceCents, 0);
+      m.set(nom, (m.get(nom) ?? 0) + total);
+    }
+    return m;
+  }, [invoices]);
+
+  const racines = useMemo(() => construireArbre(brutes, caParNom), [brutes, caParNom]);
+
   const meilleurs = useMemo(() => {
     const m = new Map<string, number>();
     for (const r of brutes) if (r.status !== 'invite') m.set(r.referrer, (m.get(r.referrer) ?? 0) + 1);
@@ -73,6 +323,13 @@ export function ReferralsScreen() {
           }
         />
       </motion.div>
+
+      {/* ── L'OBJET DOMINANT : l'arbre de filiation ────────────────────── */}
+      {racines.length > 0 && (
+        <motion.div variants={staggerItem}>
+          <ArbreDeFiliation racines={racines} formatCents={formatCents} />
+        </motion.div>
+      )}
 
       {ouvert && (
         <motion.form variants={staggerItem} onSubmit={(e) => { e.preventDefault(); void ajouter(); }} className="grid gap-3 rounded-xl border border-border bg-surface p-4 sm:grid-cols-3">
