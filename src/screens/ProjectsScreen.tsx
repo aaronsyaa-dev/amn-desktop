@@ -279,6 +279,7 @@ export function ProjectsScreen() {
       {vue === 'frise' && frise ? (
         <div className="flex flex-col gap-6">
           <FriseDesEcheances
+            ambreDisponible={brulage === null}
             frise={frise}
             onOuvrir={(id) => {
               setSelectedId(id);
@@ -783,9 +784,26 @@ function CourbeDeBrulage({
 function FriseDesEcheances({
   frise,
   onOuvrir,
+  ambreDisponible,
 }: {
   frise: Frise;
   onOuvrir: (id: string) => void;
+  /**
+   * LE BUDGET D'AMBRE DE L'ÉCRAN EST-IL ENCORE LIBRE ?
+   *
+   * La frise a son propre signal — « voici ce qui a glissé » — et il était
+   * juste tant qu'elle était l'objet dominant de Projets. Depuis que la
+   * courbe de brûlage occupe cette place, les deux se retrouvent sur le même
+   * écran et l'ambre y apparaît deux fois : c'est-à-dire aucune.
+   *
+   * L'arbitrage est celui du système de design, pas un goût : l'ambre va à
+   * l'OBJET DOMINANT. Quand la courbe est là, la frise garde ses dépassements
+   * en encre claire — l'information ne disparaît pas, elle cesse de crier.
+   * `check:signal` a trouvé ce défaut sur un écran que la capture donnait
+   * pour bon : deux régions ambre ne se voient pas quand elles sont à deux
+   * hauteurs différentes de la page.
+   */
+  ambreDisponible: boolean;
 }) {
   const semaineCourante = semaineIso(new Date());
   return (
@@ -837,7 +855,7 @@ function FriseDesEcheances({
                 groupe partagé rend cette lecture explicite, et `check:signal`
                 les compte pour un.
               */
-              data-signal-groupe={ligne.enRetard ? 'retard' : undefined}
+              data-signal-groupe={ligne.enRetard && ambreDisponible ? 'retard' : undefined}
               className="flex w-full items-stretch border-b border-[#161616] text-left transition-colors last:border-b-0 hover:bg-surface-hover"
             >
               <div className="w-[240px] flex-shrink-0 px-5 py-4">
@@ -845,7 +863,9 @@ function FriseDesEcheances({
                 {/* Deux lignes, pas une coupée : « PROCHAINE ACTION : MAQUET… »
                     ne dit rien de plus que « PROCHAINE ACTION ». */}
                 <p
-                  className={`eyebrow mt-1.5 line-clamp-2 leading-[1.5] ${ligne.enRetard ? 'text-signal' : ''}`}
+                  className={`eyebrow mt-1.5 line-clamp-2 leading-[1.5] ${
+                    ligne.enRetard && ambreDisponible ? 'text-signal' : ''
+                  }`}
                 >
                   {ligne.enRetard
                     ? tr('hist.projects.echeanceDepasseeLe', { date: formatShortDay(ligne.project.deadline) })
@@ -860,7 +880,7 @@ function FriseDesEcheances({
                     mot est dans la colonne de gauche, où il tient toujours. */}
                 <span
                   className={`absolute top-1/2 h-[22px] -translate-y-1/2 ${
-                    ligne.enRetard ? 'bg-signal' : 'bg-[#2b2b2b]'
+                    ligne.enRetard && ambreDisponible ? 'bg-signal' : ligne.enRetard ? 'bg-border-strong' : 'bg-[#2b2b2b]'
                   }`}
                   style={{
                     left: `${ligne.debut}%`,
@@ -870,12 +890,16 @@ function FriseDesEcheances({
                 {/* Le dépassement : rayé, parce que ce temps-là n'était pas prévu. */}
                 {ligne.depassement > 0 && (
                   <span
-                    className="absolute top-1/2 h-[22px] -translate-y-1/2 bg-signal-muted"
+                    className={`absolute top-1/2 h-[22px] -translate-y-1/2 ${
+                      ambreDisponible ? 'bg-signal-muted' : 'bg-surface-hover'
+                    }`}
                     style={{
                       left: `${ligne.fin}%`,
                       width: `${ligne.depassement}%`,
                       backgroundImage:
-                        'repeating-linear-gradient(135deg, var(--color-signal) 0 2px, transparent 2px 6px)',
+                        ambreDisponible
+                          ? 'repeating-linear-gradient(135deg, var(--color-signal) 0 2px, transparent 2px 6px)'
+                          : 'repeating-linear-gradient(135deg, var(--color-border-strong) 0 2px, transparent 2px 6px)',
                     }}
                     aria-hidden
                   />

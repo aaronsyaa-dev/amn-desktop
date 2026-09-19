@@ -30,6 +30,129 @@ interface NewsletterData {
  * elles sont, et l'envoi part du compte de la boutique — c'est aussi ce que
  * la loi attend d'une relation commerciale existante.
  */
+/**
+ * LA PORTÉE DES ENVOIS — l'objet dominant de la Lettre (`22b`)
+ * ═══════════════════════════════════════════════════════════
+ *
+ * L'ARBITRAGE, ET IL EST DÉFINITIF POUR CE MODULE. Le paquet donne pour objet
+ * dominant trois ONDES D'OUVERTURE superposées sur 72 h, et en tire une thèse :
+ * « l'heure d'envoi décide de la hauteur de la vague, pas le contenu ». Les
+ * ouvertures ne peuvent pas être mesurées ici, et ce n'est pas un manque à
+ * combler : ce module n'envoie rien lui-même. Il compose le message et ouvre
+ * LA MESSAGERIE de la personne, qui envoie depuis sa propre adresse. Mesurer
+ * les ouvertures demanderait un pixel espion dans un courriel parti d'un compte
+ * personnel — c'est-à-dire tracer ses propres clients à leur insu depuis sa
+ * propre adresse. Le module a été écrit pour ne pas le faire.
+ *
+ * Ce qui se mesure, et qui est la vraie question du module : À COMBIEN DE GENS
+ * CETTE LETTRE POUVAIT-ELLE ARRIVER. Les envois sont donc des barres
+ * imbriquées sur un axe commun — le carnet d'adresses entier derrière, la
+ * portée de l'envoi devant — et l'axe partagé fait que trois envois se
+ * comparent d'un regard. C'est la carte « autour » du paquet promue en objet
+ * dominant, faute de pouvoir dessiner celle qu'il voulait ; le reste aurait
+ * été un instrument qui affiche des chiffres qu'il n'a pas.
+ *
+ * L'AMBRE : le dernier envoi — sa barre, son heure et sa portée. C'est le seul
+ * sur lequel il reste quelque chose à décider (relancer, corriger, refaire).
+ */
+function PorteeDesEnvois({
+  envois,
+  carnet,
+  sansAdresse,
+}: {
+  envois: (NewsletterData & { id: string })[];
+  carnet: number;
+  sansAdresse: number;
+}) {
+  const trois = envois.slice(0, 3);
+  const plafond = Math.max(carnet, ...trois.map((e) => e.recipients), 1);
+  return (
+    <section className="panel-raised panel-raised-wide px-[30px] pb-[26px] pt-[30px]">
+      <div className="mb-[26px] flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+        <span className="eyebrow text-text-secondary">Les trois derniers envois</span>
+        <span className="font-mono text-[10px] tracking-[0.1em] text-text-muted">
+          CARNET DE {carnet} ADRESSE{carnet > 1 ? 'S' : ''}
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-5">
+        {trois.map((e, i) => {
+          const ambre = i === 0;
+          const quand = e.sentAt ? new Date(e.sentAt) : null;
+          return (
+            <div key={e.id} className="grid grid-cols-[1fr_96px] items-center gap-5">
+              <div className="min-w-0">
+                <span className="flex items-baseline justify-between gap-4">
+                  <span
+                    data-signal-groupe={ambre ? 'dernier-envoi' : undefined}
+                    className={`min-w-0 truncate text-[14px] font-semibold ${
+                      ambre ? 'text-signal' : 'text-text-primary'
+                    }`}
+                  >
+                    {e.subject}
+                  </span>
+                  <span
+                    data-signal-groupe={ambre ? 'dernier-envoi' : undefined}
+                    className={`tnum flex-none font-mono text-[10px] tracking-[0.12em] ${
+                      ambre ? 'text-signal' : 'text-text-muted'
+                    }`}
+                  >
+                    {quand
+                      ? `${quand.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} · ${quand.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+                      : 'BROUILLON'}
+                  </span>
+                </span>
+                {/* Les barres imbriquées : le carnet derrière, la portée
+                    devant, sur le MÊME axe pour les trois envois. Une barre
+                    remise à l'échelle de son propre envoi ne se comparerait
+                    plus à celle du dessus. */}
+                <span className="mt-2.5 block h-[22px] border border-border bg-sunken">
+                  <span
+                    className="block h-full bg-border"
+                    style={{ width: `${(carnet / plafond) * 100}%` }}
+                  >
+                    <span
+                      data-signal-groupe={ambre ? 'dernier-envoi' : undefined}
+                      className={`block h-full ${ambre ? 'bg-signal' : 'bg-border-strong'}`}
+                      style={{ width: carnet === 0 ? '0%' : `${(e.recipients / carnet) * 100}%` }}
+                    />
+                  </span>
+                </span>
+              </div>
+              <span
+                data-signal-groupe={ambre ? 'dernier-envoi' : undefined}
+                className={`tnum text-right font-mono text-[17px] font-semibold tracking-[-0.03em] ${
+                  ambre ? 'text-signal' : 'text-text-primary'
+                }`}
+              >
+                {e.recipients}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-3 border-t border-border-raised pt-[22px]">
+        <span>
+          <span className="eyebrow block text-text-muted">Joignables</span>
+          <span className="tnum mt-1.5 block font-mono text-[23px] font-semibold text-text-secondary">{carnet}</span>
+        </span>
+        <span className="border-l border-border-section pl-8">
+          <span className="eyebrow block text-text-muted">Sans adresse</span>
+          <span className="tnum mt-1.5 block font-mono text-[23px] font-semibold text-text-secondary">
+            {sansAdresse}
+          </span>
+        </span>
+      </div>
+
+      <p className="mt-5 text-[13px] leading-[1.6] text-text-muted [text-wrap:pretty]">
+        Cet écran ne compte pas les ouvertures. La lettre part de votre messagerie, sous votre
+        adresse : il n’y a pas de pixel espion dedans, et il n’y en aura pas.
+      </p>
+    </section>
+  );
+}
+
 export function NewsletterScreen() {
   const { t } = useLangue();
   const { user } = useAuth();
@@ -91,6 +214,17 @@ export function NewsletterScreen() {
             <button type="button" onClick={() => setOuvert(false)} className="border border-border px-4 py-2 text-sm text-text-secondary hover:text-text-primary">{t('chrome.fermer')}</button>
           </div>
         </motion.form>
+      )}
+
+      {/* ── L'OBJET DOMINANT : la portée des envois ────────────────────── */}
+      {envoyees.length > 0 && (
+        <motion.div variants={staggerItem}>
+          <PorteeDesEnvois
+            envois={envoyees}
+            carnet={adresses.length}
+            sansAdresse={Math.max(0, clients.length - adresses.length)}
+          />
+        </motion.div>
       )}
 
       {adresses.length === 0 && <motion.p variants={staggerItem} className="rounded-xl border border-warning/40 bg-warning/5 p-3 text-sm text-text-secondary">{t('lettre.sansDestinataire')}</motion.p>}

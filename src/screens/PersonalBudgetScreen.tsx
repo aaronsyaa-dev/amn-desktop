@@ -366,6 +366,23 @@ export function PersonalBudgetScreen() {
             {/* ── À DROITE : la simulation, en deux barres dont la somme fait le reste ── */}
             <section className="panel flex flex-col px-5 pb-[18px] pt-5">
               <span className="eyebrow mb-5 text-text-secondary">Ce que ça vous laisse</span>
+              {/*
+                AUCUN CHIFFRE À ZÉRO TANT QUE RIEN N'EST SAISI.
+
+                `check:signal` a trouvé quatre « 0,00 € » ici sur un écran que
+                cette même règle déclare vide : les résultats du moteur sont
+                justes — zéro moins zéro fait zéro — mais quatre zéros sous
+                « ce que ça vous laisse » se lisent comme un verdict alors
+                qu'ils ne sont que l'absence de saisie. La phrase les remplace
+                jusqu'au premier nombre.
+              */}
+              {rienDeSaisi ? (
+                <p className="text-[13.5px] leading-[1.7] text-text-secondary [text-wrap:pretty]">
+                  Ces chiffres apparaîtront dès que vous aurez posé votre solde. Rien n’est calculé
+                  tant que rien n’est écrit.
+                </p>
+              ) : (
+              <>
               {principal && (
                 <>
                   <span className="tnum block font-mono text-[40px] font-bold leading-[.92] tracking-[-0.04em] text-text-primary">
@@ -387,6 +404,8 @@ export function PersonalBudgetScreen() {
                     </div>
                   ))}
                 </dl>
+              )}
+              </>
               )}
             </section>
           </div>

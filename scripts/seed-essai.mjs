@@ -1619,6 +1619,136 @@ for (const [cle, title, status, priority, bloquePar, age] of TACHES) {
   });
 }
 
+/* ─── Mini-page, portfolio, signatures, lettres ────────────────────────────── */
+
+await poser('minisite', 'config', {
+  enabled: true,
+  title: 'Les Fleurs d’Élise',
+  intro:
+    'Bouquets de saison, compositions pour mariages et événements, abonnements pour entreprises. ' +
+    'Atelier ouvert du mardi au samedi, commandes la veille pour une livraison le matin.',
+  hours: 'Mardi–samedi 9 h – 19 h\nDimanche 9 h – 13 h',
+  address: '18 rue des Lilas, 34000 Montpellier',
+  phone: '04 67 00 00 00',
+  email: 'bonjour@fleurs-elise.exemple.test',
+  /* Les avis restent ÉTEINTS : il n'y a aucun avis publiable dans ce bac à
+     sable, et montrer un bloc « 0 avis » sur une page publique serait pire
+     que de ne pas le montrer. C'est aussi ce qui fait qu'au moins un bloc se
+     dessine en filet pointillé dans la liste — la règle du paquet ne se
+     vérifie pas sur une liste où tout est allumé. */
+  showReviews: false,
+  showPortfolio: true,
+});
+
+/*
+  DIX-HUIT VUES SUR LA PLANCHE, DANS LES TROIS ÉTATS.
+
+  La planche contact garde retenues, écartées et indécises visibles en même
+  temps — c'est sa thèse. Un semis où tout serait retenu ne montrerait ni la
+  croix ni l'indécision, donc ne prouverait rien.
+*/
+const VUES = [
+  ['Mariage Loiseau — arche', 'Mariage', 'retenue'],
+  ['Mariage Loiseau — table', 'Mariage', 'retenue'],
+  ['Bouquet de mariée blanc', 'Mariage', 'ecartee'],
+  ['Vitrine automne', 'Vitrine', 'retenue'],
+  ['Vitrine printemps', 'Vitrine', null],
+  ['Vitrine Noël', 'Vitrine', 'ecartee'],
+  ['Composition entreprise', 'Entreprise', 'retenue'],
+  ['Accueil hôtel', 'Entreprise', null],
+  ['Bar à fleurs', 'Événement', 'retenue'],
+  ['Couronne de l’Avent', 'Atelier', null],
+  ['Atelier enfants', 'Atelier', 'ecartee'],
+  ['Pivoines de juin', 'Saison', null],
+  ['Dahlias d’octobre', 'Saison', null],
+  ['Renoncules de février', 'Saison', 'ecartee'],
+  ['Deuil — gerbe blanche', 'Deuil', null],
+  ['Deuil — coussin', 'Deuil', 'ecartee'],
+  ['Baptême — arche basse', 'Événement', null],
+  ['Anniversaire — bouquet rond', 'Événement', null],
+];
+for (let i = 0; i < VUES.length; i += 1) {
+  const [title, category, choix] = VUES[i];
+  await poser('portfolioItems', `essai-pfl-${i + 1}`, {
+    title,
+    description: '',
+    category,
+    link: '',
+    visible: choix === 'retenue',
+    ...(choix ? { choix } : {}),
+    createdAt: instant(-24 * (90 - i * 4)),
+  });
+}
+
+/*
+  DEUX BONS SIGNÉS, avec un TRACÉ.
+
+  Le tracé stocké est normalement le PNG du canevas, écrit au moment de signer.
+  Ici c'est un SVG posé en URL de données : un bac à sable ne peut pas signer au
+  doigt, et un rectangle gris à la place du tracé ferait croire que l'écran ne
+  sait pas l'afficher. L'empreinte, elle, est calculée par l'application sur ce
+  qu'elle lit — un bon semé se vérifie donc comme un vrai, et la vérification
+  dira « altéré » si quelqu'un touche au tracé.
+*/
+const traceSignature = (d) =>
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 90"><path d="${d}" fill="none" stroke="#0a0a0a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  );
+const BONS = [
+  [
+    'essai-sig-1',
+    'Installation vitrine — Brasserie du Port',
+    'Camille Renaud',
+    -2,
+    'M14 62 C30 22 40 20 46 44 C52 68 60 70 68 48 C74 30 82 30 86 52 C90 72 100 72 108 50 ' +
+      'C116 28 128 26 134 46 C140 66 152 68 162 46 C172 24 186 30 190 54 C194 76 210 74 224 50 ' +
+      'C236 30 250 36 262 58',
+  ],
+  [
+    'essai-sig-2',
+    'Reprise d’abonnement — Le Jardin d’Élise',
+    'Hugo Marchand',
+    -9,
+    'M18 58 C28 30 38 28 44 50 C50 70 62 72 70 52 C78 32 92 34 98 56 C104 76 120 74 130 52 ' +
+      'C140 30 156 34 164 56 C172 76 190 72 206 48 C218 30 236 38 248 60',
+  ],
+];
+for (const [cle, title, signer, ilYaJours, d] of BONS) {
+  /* `ilYaJours` est négatif comme partout ailleurs dans ce script (-2 = il y a
+     deux jours), donc on ADDITIONNE : une double négation se relit mal. */
+  const signedAt = new Date(Date.now() + ilYaJours * 86_400_000).toISOString();
+  const imageDataUrl = traceSignature(d);
+  // L'empreinte suit exactement la formule de l'écran : titre|signataire|heure|tracé.
+  const { createHash } = await import('node:crypto');
+  const hash = createHash('sha256').update(`${title}|${signer}|${signedAt}|${imageDataUrl}`).digest('hex');
+  await poser('signatures', cle, { title, signer, signedAt, imageDataUrl, hash, byEmail: EMAIL });
+}
+
+/*
+  TROIS LETTRES PARTIES, à des heures différentes et sur un carnet qui grandit.
+  Les portées sont écrites telles qu'elles étaient AU MOMENT DE L'ENVOI : c'est
+  ce que le module enregistre, et une portée recalculée aujourd'hui ferait
+  croire que la première lettre touchait déjà tout le monde.
+*/
+const LETTRES = [
+  ['essai-nws-1', 'Les pivoines sont là', 'Elles arrivent en bouton et s’ouvrent en trois jours.', 4, 7, 30, 41],
+  ['essai-nws-2', 'Fermeture du lundi matin', 'À partir d’octobre, l’atelier ouvre le lundi à 14 h.', 18, 12, 0, 36],
+  ['essai-nws-3', 'Atelier couronnes de l’Avent', 'Deux sessions de dix personnes en décembre.', 45, 18, 30, 29],
+];
+for (const [cle, subject, body, ilYaJours, heure, minute, recipients] of LETTRES) {
+  const d = new Date(Date.now() - ilYaJours * 86_400_000);
+  d.setHours(heure, minute, 0, 0);
+  await poser('newsletters', cle, {
+    subject,
+    body,
+    sentAt: d.toISOString(),
+    recipients,
+    byEmail: EMAIL,
+    createdAt: new Date(d.getTime() - 3_600_000).toISOString(),
+  });
+}
+
 /* ─── Formulaires ──────────────────────────────────────────────────────────── */
 
 /*

@@ -85,6 +85,15 @@ if (!BUNDLE || !EMAIL || !MOT_DE_PASSE) {
   ligne.
 */
 const ECRANS = [
+  /* La famille Pilotage, recomposée en septembre 2026 : chaque module y a
+     reçu son instrument, donc chacun y a une région ambre neuve à mesurer. */
+  ['Journal de bord', '#/journal-de-bord'],
+  ['Revue hebdo', '#/revue-hebdo'],
+  ['Formulaires', '#/formulaires'],
+  ['Mini-page', '#/mini-page'],
+  ['Lettre d\'information', '#/lettre'],
+  ['Signature sur place', '#/signature'],
+  ['Portfolio', '#/portfolio'],
   ['Accueil', ''],
   ['Clients', '#/clients'],
   ['Projets', '#/projets'],
