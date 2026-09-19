@@ -1619,6 +1619,83 @@ for (const [cle, title, status, priority, bloquePar, age] of TACHES) {
   });
 }
 
+/* ─── Formulaires ──────────────────────────────────────────────────────────── */
+
+/*
+  UN FORMULAIRE PUBLIÉ ET SES RÉPONSES, avec un champ que les gens SAUTENT.
+
+  La feuille et ses marges (`17e`) montre, en face de chaque champ, combien de
+  personnes l'ont rempli. Un semis où tous les champs sont remplis produirait
+  sept barres pleines et aucune information — l'instrument existerait sans rien
+  dire. Le champ « budget envisagé » est donc rempli par moins d'un tiers des
+  gens : c'est celui qu'on hésite à écrire à un inconnu, et c'est lui qui doit
+  porter l'ambre.
+
+  Le dernier champ est volontairement BIEN rempli : le piège naturel de cet
+  instrument est de désigner le dernier champ, qui est toujours le moins
+  rempli. Ici il ne l'est pas, donc l'écran doit désigner le bon.
+*/
+const CHAMPS_DEMANDE = [
+  ['f-nom', 'Votre nom', 'text', true],
+  ['f-mail', 'Votre courriel', 'email', true],
+  ['f-tel', 'Votre téléphone', 'phone', false],
+  ['f-occasion', 'L’occasion', 'choice', true],
+  ['f-date', 'La date envisagée', 'text', true],
+  ['f-budget', 'Le budget envisagé', 'text', false],
+  ['f-message', 'Ce que vous imaginez', 'long', false],
+];
+await poser('forms', 'essai-frm-1', {
+  title: 'Demande de composition florale',
+  intro: 'Dites-nous en quelques mots ce que vous cherchez — on revient vers vous sous 48 h.',
+  thanks: 'Merci, votre demande est arrivée. On vous écrit très vite.',
+  published: true,
+  fields: CHAMPS_DEMANDE.map(([id, label, type, required]) => ({
+    id,
+    label,
+    type,
+    required,
+    options: type === 'choice' ? ['Mariage', 'Anniversaire', 'Deuil', 'Entreprise', 'Autre'] : [],
+  })),
+  createdAt: instant(-24 * 60),
+});
+await poser('forms', 'essai-frm-2', {
+  title: 'Inscription atelier couronnes',
+  intro: 'Deux sessions de dix personnes en décembre.',
+  thanks: 'Inscription reçue.',
+  published: true,
+  fields: [
+    { id: 'a-nom', label: 'Votre nom', type: 'text', required: true, options: [] },
+    { id: 'a-mail', label: 'Votre courriel', type: 'email', required: true, options: [] },
+    { id: 'a-session', label: 'La session', type: 'choice', required: true, options: ['6 décembre', '13 décembre'] },
+  ],
+  createdAt: instant(-24 * 20),
+});
+
+const OCCASIONS = ['Mariage', 'Anniversaire', 'Deuil', 'Entreprise', 'Autre'];
+const PRENOMS = ['Camille', 'Hugo', 'Nadia', 'Théo', 'Inès', 'Marc', 'Sophie', 'Yanis', 'Lucie', 'Pierre',
+                 'Amal', 'Jules', 'Clara', 'Malik', 'Éva', 'Antoine', 'Sarah', 'Léo', 'Rim', 'Paul',
+                 'Manon', 'Karim', 'Zoé', 'Bastien'];
+for (let k = 0; k < PRENOMS.length; k += 1) {
+  const reponses = {
+    'f-nom': PRENOMS[k],
+    'f-mail': `${PRENOMS[k].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}@exemple.test`,
+    'f-occasion': OCCASIONS[k % OCCASIONS.length],
+    'f-date': jour(10 + k * 3),
+  };
+  // Le téléphone : deux personnes sur trois le donnent.
+  if (k % 3 !== 2) reponses['f-tel'] = `06 ${10 + k} ${20 + k} ${30 + k} ${40 + k}`;
+  // Le budget : moins d'un tiers. C'est le champ que l'écran doit désigner.
+  if (k % 4 === 0) reponses['f-budget'] = `${200 + k * 25} €`;
+  // Le message, dernier champ, reste bien rempli : le piège est évité.
+  if (k % 8 !== 7) reponses['f-message'] = 'Quelque chose de simple, dans les tons blancs et verts.';
+  await poser('formAnswers', `essai-rep-${k + 1}`, {
+    formId: 'essai-frm-1',
+    answers: reponses,
+    receivedAt: instant(-24 * (2 + k * 2)),
+    source: 'page publique',
+  });
+}
+
 /* ─── Journal de bord ──────────────────────────────────────────────────────── */
 
 /*

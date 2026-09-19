@@ -54,6 +54,161 @@ export function lireChamp(ligne: string): Champ | null {
  * reste, jamais stockée ailleurs. Le serveur revalide chaque réponse contre
  * les champs : un formulaire non publié n'existe pas pour le public.
  */
+/**
+ * LA FEUILLE ET SES MARGES — l'objet dominant des Formulaires (`17e`)
+ * ══════════════════════════════════════════════════════════════════
+ *
+ * Le formulaire est rendu comme le client le voit — les champs empilés,
+ * chacun avec son libellé en mono et son exemple en gris — et DANS LA MARGE
+ * DE DROITE, EN REGARD DE CHAQUE CHAMP, une barre dit combien de personnes
+ * l'ont rempli. On ne lit pas un taux dans un tableau posé à côté : on le lit
+ * en face du champ qui le cause.
+ *
+ * ARBITRAGE, ET C'EST LE PLUS NET DE CE CHANTIER. Le paquet demande le champ
+ * « où la moitié des gens s'arrêtent », c'est-à-dire un taux d'ABANDON par
+ * champ. Le produit ne le mesure pas, et ce n'est pas un oubli : mesurer
+ * l'abandon veut dire enregistrer ce que quelqu'un a commencé à taper dans un
+ * formulaire public PUIS DÉCIDÉ DE NE PAS ENVOYER. C'est une décision de
+ * confidentialité, pas une décision de design, et elle ne se prend pas dans un
+ * chantier d'interface.
+ *
+ * Ce qui SE MESURE, sur les seules réponses envoyées, c'est le taux de
+ * REMPLISSAGE par champ : quels champs les gens sautent quand ils le peuvent.
+ * La géométrie est la même, la question posée est voisine — « quel champ pose
+ * problème » — et la réponse s'appuie sur des données que les gens ont
+ * choisi d'envoyer. L'instrument du paquet est juste ; sa source ne peut pas
+ * être celle qu'il suppose, et le dire vaut mieux qu'un compteur muet.
+ *
+ * LA RÈGLE DE GÉOMÉTRIE : la marge est ALIGNÉE sur le champ, à la même hauteur
+ * de ligne. C'est une seule grille de deux colonnes, rangée par rangée — pas
+ * deux colonnes indépendantes qu'on espère voir coïncider.
+ */
+function FeuilleEtMarges({
+  formulaire,
+  reponses,
+}: {
+  formulaire: FormData & { id: string };
+  reponses: (AnswerData & { id: string })[];
+}) {
+  const total = reponses.length;
+  const mesures = formulaire.fields.map((c) => {
+    const remplis = reponses.filter((r) => (r.answers[c.id] ?? '').trim()).length;
+    return { champ: c, remplis, part: total === 0 ? 0 : remplis / total };
+  });
+
+  /*
+    LE CHAMP FAUTIF EST CELUI QUE LES DONNÉES DÉSIGNENT, PAS LE DERNIER.
+
+    C'est écrit noir sur blanc dans le paquet, et c'est le piège naturel de cet
+    instrument : le dernier champ d'un formulaire est toujours le moins rempli,
+    donc le désigner revient à ne rien mesurer. On cherche le champ le moins
+    rempli PARMI LES FACULTATIFS — un champ requis est rempli par construction,
+    et le signaler n'apprendrait rien —, et seulement s'il manque vraiment sur
+    une part notable des réponses.
+  */
+  const fautif = mesures
+    .filter((m) => !m.champ.required && m.part < 0.75)
+    .sort((a, b) => a.part - b.part)[0] ?? null;
+
+  return (
+    <section className="panel-raised panel-raised-wide px-[30px] pb-[26px] pt-[30px]">
+      <div className="mb-[22px] flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+        <span className="min-w-0">
+          <span className="eyebrow block text-text-secondary">La feuille, telle qu’on la voit</span>
+          <span className="mt-2 block truncate text-[26px] font-bold leading-[1.1] tracking-[-0.028em] text-text-primary">
+            {formulaire.title}
+          </span>
+        </span>
+        <span className="font-mono text-[10px] tracking-[0.1em] text-text-muted">
+          {total} RÉPONSE{total > 1 ? 'S' : ''} · {formulaire.fields.length} CHAMPS
+        </span>
+      </div>
+
+      {/* Une seule grille : le champ et sa mesure sont sur la MÊME rangée, donc
+          à la même hauteur de ligne, par construction. */}
+      <div className="grid grid-cols-[1fr_200px] gap-x-7">
+        {mesures.map(({ champ, remplis, part }) => {
+          const ambre = fautif?.champ.id === champ.id;
+          return (
+            <React.Fragment key={champ.id}>
+              <div
+                data-signal-groupe={ambre ? 'champ-saute' : undefined}
+                className={`border-b border-border-row py-3.5 ${
+                  ambre ? 'border-l-2 border-l-signal bg-signal-muted pl-3.5' : ''
+                }`}
+              >
+                <span
+                  className={`block font-mono text-[10px] uppercase tracking-[0.14em] ${
+                    ambre ? 'text-signal' : 'text-text-muted'
+                  }`}
+                >
+                  {champ.label}
+                  {champ.required ? ' *' : ''}
+                </span>
+                {/* L'exemple va dans le champ dessiné, JAMAIS en double dans
+                    une phrase d'aide à côté : le paquet l'interdit, et deux
+                    exemplaires du même exemple font douter qu'il s'agisse du
+                    même champ. */}
+                <span className="mt-2 block border border-border bg-sunken px-3 py-2 text-[13px] text-text-muted">
+                  {exempleDe(champ)}
+                </span>
+              </div>
+
+              <div
+                data-signal-groupe={ambre ? 'champ-saute' : undefined}
+                className="flex flex-col justify-center border-b border-border-row py-3.5"
+              >
+                <span className="flex items-center gap-3">
+                  <span className="h-1.5 flex-1 bg-[#191919]">
+                    <span
+                      className={`block h-1.5 ${ambre ? 'bg-signal' : 'bg-border-strong'}`}
+                      style={{ width: `${Math.max(2, part * 100)}%` }}
+                    />
+                  </span>
+                  <span
+                    className={`tnum w-[56px] flex-none text-right font-mono text-[12.5px] font-semibold ${
+                      ambre ? 'text-signal' : 'text-text-secondary'
+                    }`}
+                  >
+                    {remplis}/{total}
+                  </span>
+                </span>
+                {ambre && total > remplis && (
+                  <span className="mt-1.5 block text-right font-mono text-[10px] font-bold tracking-[0.1em] text-signal">
+                    − {total - remplis}
+                  </span>
+                )}
+              </div>
+            </React.Fragment>
+          );
+        })}
+      </div>
+
+      <p className="mt-5 border-t border-border-raised pt-[22px] text-[13px] leading-[1.6] text-text-muted [text-wrap:pretty]">
+        La marge compte les champs REMPLIS parmi les réponses reçues. Ce que les gens ont tapé puis
+        renoncé à envoyer n’est pas enregistré, et ne le sera pas : un formulaire public ne garde
+        que ce qu’on lui a confié.
+      </p>
+    </section>
+  );
+}
+
+/** Un exemple plausible pour le type d'un champ. Il vit ICI et nulle part ailleurs. */
+function exempleDe(champ: Champ): string {
+  switch (champ.type) {
+    case 'email':
+      return 'prenom@exemple.fr';
+    case 'phone':
+      return '06 12 34 56 78';
+    case 'long':
+      return 'Quelques lignes…';
+    case 'choice':
+      return champ.options[0] ?? 'Un choix dans la liste';
+    default:
+      return 'Votre réponse';
+  }
+}
+
 export function FormsScreen() {
   const { t } = useLangue();
   const { org } = useAuth();
@@ -77,6 +232,20 @@ export function FormsScreen() {
     return m;
   }, [reponses]);
   const publies = tries.filter((f) => f.published).length;
+
+  /*
+    LA FEUILLE MONTRÉE EST CELLE QU'ON PEUT MESURER : le formulaire publié qui
+    a le plus de réponses. En montrer plusieurs referait un tableau, et une
+    feuille sans réponse n'a pas de marge à dessiner.
+  */
+  const feuille = useMemo(() => {
+    const candidats = tries
+      .filter((f) => f.published)
+      .map((f) => ({ formulaire: f, reponses: parFormulaire.get(f.id) ?? [] }))
+      .filter((x) => x.reponses.length >= 3)
+      .sort((a, b) => b.reponses.length - a.reponses.length);
+    return candidats[0] ?? null;
+  }, [tries, parFormulaire]);
   const adresse = (id: string) => (origine && org ? `${origine}/#/f?org=${encodeURIComponent(org.id)}&id=${encodeURIComponent(id)}` : null);
 
   const creer = async () => {
@@ -116,6 +285,13 @@ export function FormsScreen() {
           }
         />
       </motion.div>
+
+      {/* ── L'OBJET DOMINANT : la feuille et ses marges ───────────────── */}
+      {feuille && (
+        <motion.div variants={staggerItem}>
+          <FeuilleEtMarges formulaire={feuille.formulaire} reponses={feuille.reponses} />
+        </motion.div>
+      )}
 
       {ouvert && (
         <motion.form variants={staggerItem} onSubmit={(e) => { e.preventDefault(); void creer(); }} className="grid gap-3 rounded-xl border border-border bg-surface p-4">
