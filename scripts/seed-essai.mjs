@@ -746,6 +746,49 @@ for (const [cle, label, customerName, amountCents, period, dansJours, active] of
   });
 }
 
+/* ─── Contrats ─────────────────────────────────────────────────────────────── */
+
+/*
+  SEPT CONTRATS, CHOISIS POUR EXERCER LES TROIS RÈGLES DE LA FRISE (`14b`) :
+
+    · une fin dans ONZE JOURS — la barre la plus courte, celle qui porte
+      l'ambre et dont le nom se pose APRÈS son cap faute de place dedans ;
+    · deux TACITES — leur barre court jusqu'au bord en fondu, sans cap ni
+      date, et porte « tacite · sans échéance » à l'intérieur. Leur donner un
+      cap à douze mois inventerait une échéance que personne ne doit préparer ;
+    · une fin AU-DELÀ des douze mois — bornée au bord, chevron : c'est l'axe
+      qui s'arrête, pas le contrat ;
+    · trois fins réparties dans l'année, dont deux assez longues pour porter
+      leur nom dedans.
+
+  Le contrat le plus proche est au nom d'Hugo Marchand, qui porte aussi des
+  abonnements : la carte « ce qui se décide » peut alors montrer ce qui tombe
+  avec lui — par rapprochement de nom, faute de lien dans le modèle, et
+  l'écran le dit.
+*/
+const CONTRATS = [
+  ['essai-ctr-1', 'Maintenance et supervision', 'Hugo Marchand', -300, 11, 480000, false],
+  ['essai-ctr-2', 'Entretien des extérieurs', 'Élodie Vasseur', -120, 74, 264000, false],
+  ['essai-ctr-3', 'Fleurissement hebdomadaire', 'Camille Renaud', -400, 196, 720000, false],
+  ['essai-ctr-4', 'Décoration saisonnière', 'Théo Lambert', -60, 311, 156000, false],
+  ['essai-ctr-5', 'Abonnement bouquets', 'Nadia Bouvier', -220, 30, 96000, true],
+  ['essai-ctr-6', 'Prestation de conseil', 'Salomé Vallon', -90, 30, 42000, true],
+  ['essai-ctr-7', 'Contrat-cadre pluriannuel', 'Jean Estève', -500, 520, 1140000, false],
+];
+for (const [cle, title, party, debutJours, finJours, amountCents, autoRenew] of CONTRATS) {
+  await poser('contracts', cle, {
+    title,
+    party,
+    startsAt: jour(debutJours),
+    endsAt: jour(finJours),
+    amountCents,
+    status: 'active',
+    autoRenew,
+    note: '',
+    createdAt: instant(24 * debutJours),
+  });
+}
+
 /* ─── Encaissements du mois, par moyen de règlement ────────────────────────── */
 
 /*
