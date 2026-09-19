@@ -17,6 +17,7 @@ import {
   PinOff,
   Plus,
   Network,
+  LayoutGrid,
   Rows3,
   Search,
   Trash2,
@@ -61,6 +62,237 @@ const ordreDe = (notes: Note[]) =>
 
 type ScopeFilter = 'all' | 'team' | 'personal';
 
+/**
+ * LE MUR DE FICHES — l'objet dominant des Notes (système de design, `17d`)
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ * L'ENCRE EST LA FRAÎCHEUR. Une note relue hier est franche ; une note de
+ * trois mois est à peine lisible, sans disparaître. Cinq paliers de
+ * vieillissement, et le tri par date devient inutile : l'œil va d'abord au
+ * plus vif, ce qui est exactement ce qu'on cherche en ouvrant un carnet.
+ *
+ * LA RÈGLE QUI EMPÊCHE QUE ÇA DEVIENNE UNE SUPPRESSION. Les notes pâlies
+ * restent LISIBLES AU SURVOL — le vieillissement est une hiérarchie, pas un
+ * effacement, et rien ne disparaît jamais tout seul. C'est la différence
+ * entre un carnet qui range et un carnet qui perd.
+ *
+ * L'AMBRE : la note épinglée, en plaque pleine. Ce qu'elle encode ici n'est
+ * pas « importante » mais « ÉCHAPPE AU VIEILLISSEMENT » : c'est la seule fiche
+ * du mur dont l'encre ne bougera pas dans trois mois.
+ */
+
+/**
+ * Les cinq paliers, et l'encre de chacun. Les seuils sont en jours depuis la
+ * dernière modification : hier, la semaine, le mois, le trimestre, au-delà.
+ *
+ * Le dernier palier s'arrête à `--color-text-muted` (#9a9a97) et non au
+ * #6b6b68 de la maquette : cette valeur est refusée par le dépôt (3,79:1),
+ * et « à peine lisible » ne doit pas vouloir dire « illisible pour une partie
+ * des gens ». Le contraste entre le premier et le dernier palier reste large
+ * — c'est lui qui fait l'instrument, pas la valeur absolue du dernier.
+ */
+const PALIERS = [
+  { jours: 2, fond: '#1c1c1c', encre: 'text-text-primary', extrait: 'text-text-secondary' },
+  { jours: 8, fond: '#181818', encre: 'text-text-body', extrait: 'text-text-secondary' },
+  { jours: 31, fond: '#151515', encre: 'text-text-secondary', extrait: 'text-text-muted' },
+  /* Les deux derniers fonds reprennent des jetons existants plutôt que leur
+     valeur : la rampe de gris est la même partout, et une copie recopie un
+     nombre qui bougera un jour sans que la fiche le sache. */
+  { jours: 93, fond: 'var(--color-elevated)', encre: 'text-text-muted', extrait: 'text-text-muted' },
+  { jours: Infinity, fond: 'var(--color-sheet)', encre: 'text-text-muted', extrait: 'text-text-muted' },
+] as const;
+
+function palierDe(iso: string, maintenant: number) {
+  const jours = (maintenant - new Date(iso).getTime()) / 86_400_000;
+  return PALIERS.find((p) => jours < p.jours) ?? PALIERS[PALIERS.length - 1];
+}
+
+function ageCourt(iso: string, maintenant: number): string {
+  const jours = Math.floor((maintenant - new Date(iso).getTime()) / 86_400_000);
+  if (jours <= 0) return 'aujourd’hui';
+  if (jours === 1) return 'hier';
+  if (jours < 31) return `${jours} j`;
+  const mois = Math.round(jours / 30);
+  return mois < 12 ? `${mois} mois` : `${Math.round(jours / 365)} an${jours >= 730 ? 's' : ''}`;
+}
+
+function MurDeFraicheur({
+  notes,
+  graphe,
+  onOuvrir,
+}: {
+  notes: Note[];
+  graphe: { arcs: readonly { de: string; vers: string }[] };
+  onOuvrir: (id: string) => void;
+}) {
+  const maintenant = Date.now();
+  const epinglee = notes.find((n) => n.pinned) ?? null;
+
+  /*
+    LES NOTES LES PLUS CITÉES — et l'argument qu'elles portent.
+
+    Le paquet demande ici « les notes les plus consultées du mois », que le
+    produit ne mesure pas : il n'y a pas de compteur d'ouverture, et en poser
+    un pour dessiner une barre serait ajouter une trace de lecture par personne
+    à un module qui n'en a jamais eu besoin. Ce qu'on a en revanche, c'est le
+    GRAPHE DES LIENS : combien d'autres notes citent celle-ci.
+
+    L'argument est le même, et il est même plus fort : une note que tout le
+    monde cite n'est pas une note, c'est une référence — et une référence a
+    plus sa place dans un champ de fiche que dans un carnet.
+  */
+  const citees = React.useMemo(() => {
+    /* Le degré d'une note : combien d'arcs la touchent, entrants et sortants
+       confondus. Le graphe ne le porte pas — il porte les arcs, et c'est la
+       bonne façon de le stocker : un degré recopié sur le nœud diverge dès
+       qu'un lien change. On le recompte donc ici, une fois. */
+    const degres = new Map<string, number>();
+    for (const a of graphe.arcs) {
+      degres.set(a.de, (degres.get(a.de) ?? 0) + 1);
+      degres.set(a.vers, (degres.get(a.vers) ?? 0) + 1);
+    }
+    return notes
+      .map((n) => ({ note: n, degre: degres.get(n.id) ?? 0 }))
+      .filter((x) => x.degre > 0)
+      .sort((a, b) => b.degre - a.degre)
+      .slice(0, 5);
+  }, [notes, graphe]);
+
+  const jamaisRouvertes = notes.filter((n) => n.createdAt === n.updatedAt).length;
+  const plusVieille = notes.reduce<Note | null>(
+    (a, b) => (a === null || b.updatedAt < a.updatedAt ? b : a),
+    null,
+  );
+
+  return (
+    <div className="flex flex-col gap-[18px]">
+      <section className="panel-raised panel-raised-wide px-[30px] pb-[26px] pt-[30px]">
+        <div className="mb-[22px] flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+          <span className="eyebrow text-text-secondary">Le carnet</span>
+          <span className="font-mono text-[10px] tracking-[0.1em] text-text-muted">
+            L’ENCRE EST LA FRAÎCHEUR · {notes.length} FICHE{notes.length > 1 ? 'S' : ''}
+          </span>
+        </div>
+
+        <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(212px,1fr))]">
+          {notes.map((n) => {
+            const ambre = epinglee?.id === n.id;
+            const palier = palierDe(n.updatedAt, maintenant);
+            return (
+              <button
+                key={n.id}
+                type="button"
+                onClick={() => onOuvrir(n.id)}
+                data-signal-groupe={ambre ? 'note-epinglee' : undefined}
+                /* `hover:` remet l'encre pleine : le vieillissement est une
+                   hiérarchie, pas un effacement. Une fiche pâlie se relit
+                   d'un survol, et rien ne s'efface jamais tout seul. */
+                className={`group flex min-h-[124px] flex-col border p-3.5 text-left transition-colors ${
+                  ambre ? 'border-signal bg-signal shadow-[0_0_26px_-6px_var(--color-signal-glow)]' : 'border-border'
+                }`}
+                style={ambre ? undefined : { background: palier.fond }}
+              >
+                <span
+                  className={`block truncate text-[13.5px] font-semibold ${
+                    ambre ? 'text-signal-ink' : `${palier.encre} group-hover:text-text-primary`
+                  }`}
+                >
+                  {n.title || 'Sans titre'}
+                </span>
+                <span
+                  className={`mt-2 line-clamp-3 text-[12.5px] leading-[1.5] ${
+                    ambre ? 'text-[#3a2a0e]' : `${palier.extrait} group-hover:text-text-secondary`
+                  }`}
+                >
+                  {n.body.trim() || '—'}
+                </span>
+                <span
+                  className={`mt-auto pt-3 font-mono text-[9.5px] uppercase tracking-[0.12em] ${
+                    ambre ? 'font-bold text-signal-ink' : 'text-text-muted'
+                  }`}
+                >
+                  {ambre ? 'Épinglée' : ageCourt(n.updatedAt, maintenant)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <div className="grid gap-[18px] lg:grid-cols-[1fr_340px]">
+        <section className="panel min-w-0 px-[22px] pb-[18px] pt-5">
+          <div className="mb-[18px] flex items-baseline justify-between gap-4">
+            <span className="eyebrow text-text-secondary">Les plus citées</span>
+            <span className="font-mono text-[10px] tracking-[0.1em] text-text-muted">LIENS ENTRANTS ET SORTANTS</span>
+          </div>
+          {citees.length > 0 ? (
+            <>
+              <ul className="flex flex-col gap-2.5">
+                {citees.map(({ note, degre }) => {
+                  const plafond = Math.max(1, ...citees.map((c) => c.degre));
+                  return (
+                    <li key={note.id}>
+                      <button
+                        type="button"
+                        onClick={() => onOuvrir(note.id)}
+                        className="grid w-full grid-cols-[1fr_132px_28px] items-center gap-4 text-left transition-opacity hover:opacity-80"
+                      >
+                        <span className="min-w-0 truncate text-[13.5px] text-text-primary">
+                          {note.title || 'Sans titre'}
+                        </span>
+                        <span className="h-1.5 bg-[#191919]">
+                          <span
+                            className="block h-1.5 bg-border-strong"
+                            style={{ width: `${(degre / plafond) * 100}%` }}
+                          />
+                        </span>
+                        <span className="tnum text-right font-mono text-[12.5px] text-text-secondary">{degre}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="mt-4 border-t border-border pt-4 text-[13px] leading-[1.6] text-text-muted [text-wrap:pretty]">
+                Une note que tout le reste cite n’est plus une note : c’est une référence. Les
+                premières de cette liste mériteraient un champ dans la fiche concernée plutôt
+                qu’une page du carnet.
+              </p>
+            </>
+          ) : (
+            <p className="py-3 text-[13.5px] leading-[1.7] text-text-secondary">
+              Aucune note n’en cite une autre pour l’instant. Écrire <code>[[titre]]</code> dans une
+              note crée le lien.
+            </p>
+          )}
+        </section>
+
+        <section className="panel flex flex-col px-5 pb-[18px] pt-5">
+          <span className="eyebrow mb-5 text-text-secondary">Le carnet en trois faits</span>
+          <dl className="flex flex-col gap-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-[13px] text-text-secondary">Fiches</dt>
+              <dd className="tnum font-mono text-[19px] font-semibold text-text-primary">{notes.length}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-[13px] text-text-secondary">Jamais rouvertes</dt>
+              <dd className="tnum font-mono text-[19px] font-semibold text-text-secondary">{jamaisRouvertes}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3">
+              <dt className="text-[13px] text-text-secondary">La plus ancienne</dt>
+              <dd className="tnum font-mono text-[19px] font-semibold text-text-secondary">
+                {plusVieille ? ageCourt(plusVieille.updatedAt, maintenant) : '—'}
+              </dd>
+            </div>
+          </dl>
+          <p className="mt-4 text-[13px] leading-[1.6] text-text-muted [text-wrap:pretty]">
+            Rien ne s’efface tout seul. Une fiche qui pâlit reste là, et se relit d’un survol.
+          </p>
+        </section>
+      </div>
+    </div>
+  );
+}
+
 export function NotesScreen() {
   // Abonnement à la langue : les textes ci-dessous passent par `tr`, lu au rendu.
   useLangue();
@@ -71,7 +303,17 @@ export function NotesScreen() {
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<ScopeFilter>('all');
   const [newMenuOpen, setNewMenuOpen] = useState(false);
-  const [vue, setVue] = useState<'liste' | 'graphe'>('liste');
+  /*
+    TROIS VUES, ET LE MUR PAR DÉFAUT.
+
+    Le carnet s'ouvrait directement sur une note, pour éviter le « sélectionnez
+    une note » qui demande un clic sans rien trancher. Le mur règle la même
+    chose autrement, et mieux : on arrive sur TOUT le carnet, rangé par
+    fraîcheur, et l'œil va au plus vif sans avoir à chercher. Cliquer une fiche
+    ouvre l'éditeur — le mur est un chemin vers l'écriture, pas un endroit où
+    rester, exactement comme le graphe.
+  */
+  const [vue, setVue] = useState<'mur' | 'liste' | 'graphe'>('mur');
 
   /*
     Un menu déroulant se ferme à Échap comme une fenêtre : c'est le même geste
@@ -206,6 +448,7 @@ export function NotesScreen() {
           </button>
           <div className="flex items-center gap-1 rounded-lg border border-border p-1" role="group" aria-label={tr('hist.notes.affichageDesNotes')}>
             {([
+              ['mur', 'Mur', LayoutGrid],
               ['liste', 'Liste', Rows3],
               ['graphe', 'Graphe', Network],
             ] as const).map(([v, nom, Icone]) => (
@@ -272,7 +515,18 @@ export function NotesScreen() {
         RETROUVER une. Cliquer un point ramène donc à la liste, note ouverte :
         le graphe est un chemin vers l'éditeur, pas un endroit où rester.
       */}
-      {vue === 'graphe' ? (
+      {vue === 'mur' ? (
+        notes.length === 0 ? null : (
+          <MurDeFraicheur
+            notes={visible}
+            graphe={grapheVisible}
+            onOuvrir={(id) => {
+              setSelectedId(id);
+              setVue('liste');
+            }}
+          />
+        )
+      ) : vue === 'graphe' ? (
         <NotesGraphe
           graphe={grapheVisible}
           selectionne={selectedId}
