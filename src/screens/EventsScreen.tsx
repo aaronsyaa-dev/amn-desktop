@@ -14,6 +14,7 @@ import {
 import { centsToInput, formatCents, parsePositiveAmount } from '../lib/money';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue, t as tr } from '../i18n';
+import { useHaloSignal } from '../components/EtatEcran';
 
 /**
  * LE MODULE ÉVÉNEMENTS
@@ -85,6 +86,19 @@ export function EventsScreen() {
   const revolus = vus.filter((v) => v.etat === 'passe' || v.etat === 'annule');
   const visibles = voirPasses ? vus : vus.filter((v) => !revolus.includes(v));
 
+  /*
+    L'ÉVÉNEMENT AFFICHÉ : celui qu'on a choisi, sinon le PROCHAIN à venir.
+
+    Un événement n'existe pour personne avant d'avoir une affiche, et c'est la
+    prochaine qu'on regarde en ouvrant l'écran — pas la liste, qui ne dit rien
+    de ce que les gens verront. `vus` est déjà trié par le moteur, le premier
+    non révolu est donc le plus proche.
+  */
+  const aAfficher = useMemo(
+    () => selected ?? vus.find((v) => v.etat !== 'passe' && v.etat !== 'annule') ?? null,
+    [selected, vus],
+  );
+
   return (
     <motion.section
       variants={staggerContainer}
@@ -131,6 +145,13 @@ export function EventsScreen() {
           </button>
         )}
       </motion.div>
+
+      {/* ── L'AFFICHE — l'objet dominant (`23e`) ───────────────────────── */}
+      {aAfficher && (
+        <motion.div variants={staggerItem}>
+          <AfficheDeLEvenement vu={aAfficher} passes={revolus} />
+        </motion.div>
+      )}
 
       <div
         className={`grid min-h-0 flex-1 gap-4 ${
@@ -754,5 +775,221 @@ function ChampNombre({
         className="input-focus min-h-11 w-full border border-border bg-bg px-3 text-right font-mono text-sm tabular-nums text-text-primary outline-none"
       />
     </Champ>
+  );
+}
+
+/* --------------------------------------------------- l'affiche (`23e`) ---- */
+
+/**
+ * L'AFFICHE — l'objet dominant d'Événements (`23e`).
+ *
+ * Un événement n'existe pour personne avant d'avoir une affiche. C'est le seul
+ * écran du produit dont l'objet dominant est COMPOSÉ POUR ÊTRE LU À TROIS
+ * MÈTRES : papier clair, titre énorme, date en bandeau, et rien d'autre. Tout
+ * ce qui se lit à cinquante centimètres — la jauge, les coûts, le seuil — vit
+ * ailleurs sur l'écran.
+ *
+ * DEUX RÈGLES DU PAQUET :
+ *
+ *   1. **L'affiche garde son ratio A3 et sa mention de format.** Un aperçu
+ *      qui ne respecte pas le ratio du papier fait composer un titre qui ne
+ *      tiendra pas à l'impression, et on s'en aperçoit chez l'imprimeur.
+ *   2. **Les cases d'inscription sont AU NOMBRE EXACT DE PLACES**, pas une
+ *      barre de pourcentage. « 77 % » ne dit pas s'il reste sept places ou
+ *      soixante-dix ; sept cases vides le disent sans compter.
+ */
+const AFFICHE_L = 268;
+/** A3 : 297 × 420 mm, soit 1 / 1,414 — la racine de deux, comme toute la série A. */
+const AFFICHE_RATIO = 1.4142;
+const AFFICHE_H = Math.round(AFFICHE_L * AFFICHE_RATIO);
+
+/** « SAM 11 OCT » — majuscules, sans point : un bandeau d'affiche ne ponctue pas. */
+function dateDAffiche(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return 'DATE À POSER';
+  return new Date(`${iso}T12:00:00`)
+    .toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })
+    .replace(/\./g, '')
+    .toUpperCase();
+}
+
+function AfficheDeLEvenement({ vu, passes }: { vu: EvenementVu; passes: EvenementVu[] }) {
+  const { evenement, economie } = vu;
+  const places = Math.max(0, Math.round(evenement.capacite || 0));
+  const pris = Math.max(0, Math.min(places, Math.round(evenement.billetsVendus || 0)));
+  const halo = useHaloSignal(!!evenement.date);
+
+  /*
+    CE QU'IL RESTE À FAIRE — déduit des champs vides, jamais une liste saisie.
+    Un événement sans date ni lieu ne s'affiche pas ; le dire ici évite de
+    l'apprendre en regardant l'affiche et en ne comprenant pas ce qui cloche.
+  */
+  const restants = [
+    !evenement.date && 'poser la date',
+    !evenement.horaire && 'préciser l’horaire',
+    !evenement.lieu && 'nommer le lieu',
+    places === 0 && 'fixer la jauge',
+    evenement.prixBilletCents === 0 && 'fixer le prix d’entrée',
+  ].filter(Boolean) as string[];
+
+  return (
+    <section className="panel-raised panel-raised-wide panel-ticks px-6 py-6">
+      <div className="mb-5 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+        <p className="eyebrow">L’affiche · telle qu’elle sera imprimée</p>
+        <p className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
+          composée pour être lue à trois mètres
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
+        {/* L'AFFICHE — papier clair, ratio A3 tenu par le style en ligne. */}
+        <div className="flex-shrink-0">
+          <div
+            className="flex flex-col justify-between overflow-hidden"
+            style={{
+              width: AFFICHE_L,
+              height: AFFICHE_H,
+              background: 'var(--color-text-primary)',
+              boxShadow: '0 40px 70px -30px rgba(0,0,0,1)',
+            }}
+          >
+            <div className="px-5 pt-6">
+              <p className="font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] text-[#5c5c59]">
+                {evenement.lieu || 'lieu à nommer'}
+              </p>
+              <h2
+                /*
+                  L'ENCRE DU TITRE : le jeton `--color-raised` (#141414), pas
+                  une copie de sa valeur. C'est le même noir que le plan levé
+                  de l'application — sur papier clair il fait une encre de
+                  presse, et le jour où la rampe bouge, il bouge avec elle.
+                */
+                className="mt-4 font-bold leading-[0.96] tracking-[-0.03em]"
+                style={{ fontSize: 42, color: 'var(--color-raised)' }}
+              >
+                {evenement.nom || 'Sans titre'}
+              </h2>
+            </div>
+
+            {/*
+              LE BANDEAU DE DATE — l'unique ambre de l'écran. Plaque pleine,
+              encre noire, 17 px mono : c'est la seule ligne de l'affiche qu'on
+              lit avant le titre quand on passe devant.
+            */}
+            <div
+              className={`bg-signal px-5 py-4 ${halo}`}
+              data-signal-groupe="bandeau"
+            >
+              {/*
+                LA DATE ET L'HORAIRE SUR DEUX LIGNES, décidées plutôt que
+                subies. À 17 px mono, « DIM 11 OCT · 10 H → 17 H » dépasse la
+                largeur utile de l'affiche et se coupait n'importe où — vu sur
+                capture, avec « 17 H » seul sur sa ligne. Deux lignes posées
+                se lisent à trois mètres ; une césure au hasard, non.
+              */}
+              <p className="tnum font-mono text-[17px] font-bold leading-[1.25] tracking-[0.03em] text-signal-ink">
+                {dateDAffiche(evenement.date)}
+              </p>
+              {evenement.horaire && (
+                <p className="tnum font-mono text-[17px] font-bold leading-[1.25] tracking-[0.03em] text-signal-ink">
+                  {evenement.horaire.toUpperCase()}
+                </p>
+              )}
+            </div>
+          </div>
+          <p className="mt-2 text-center font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
+            A3 · 297 × 420 mm
+          </p>
+        </div>
+
+        {/* LES INSCRIPTIONS — le nombre, puis une case par place. */}
+        <div className="min-w-0 flex-1">
+          <p className="eyebrow mb-2">Inscrits</p>
+          <p className="tnum font-mono text-[52px] font-bold leading-none tracking-[-0.04em] text-text-primary">
+            {pris}
+          </p>
+          <p className="mt-2 text-[13px] text-text-secondary">
+            sur {places || '—'} place{places > 1 ? 's' : ''}
+            {places > 0 && ` · il en reste ${places - pris}`}
+          </p>
+
+          {places > 0 && (
+            <div className="mt-5 flex flex-wrap gap-1.5">
+              {Array.from({ length: places }).map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-4 w-4 ${i < pris ? 'bg-[#4a4a48]' : 'border border-border-strong'}`}
+                  aria-hidden
+                />
+              ))}
+            </div>
+          )}
+
+          <div className="mt-6 flex flex-col divide-y divide-border-row">
+            <div className="flex items-baseline justify-between gap-4 py-2">
+              <span className="text-[12.5px] text-text-secondary">
+                Entrées à vendre pour l’équilibre
+              </span>
+              <span className="tnum font-mono text-[13px] font-semibold text-text-primary">
+                {economie.entreesAvantEquilibre}
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between gap-4 py-2">
+              <span className="text-[12.5px] text-text-secondary">Résultat à ce jour</span>
+              <span className="tnum font-mono text-[13px] text-text-primary">
+                {formatCents(economie.resultatActuelCents)}
+              </span>
+            </div>
+          </div>
+
+          {/*
+            ÉCART DIT. `MODULES.md` demande ici la COMPOSITION des inscrits
+            (clients / prospects / inconnus) et le fait que quatre d'entre eux
+            attendent un devis. Le produit ne garde PAS la liste des inscrits :
+            `billetsVendus` est un COMPTE, pas un carnet. Répartir ce compte en
+            trois catégories reviendrait à inventer des gens.
+          */}
+          <p className="mt-5 border-t border-border-row pt-3 text-[12.5px] leading-relaxed text-text-muted">
+            Le produit garde un COMPTE d’entrées, pas un carnet d’inscrits : il ne sait pas qui
+            vient, donc il ne dit pas d’où ils viennent. Les répartir en clients, prospects et
+            inconnus reviendrait à inventer des gens.
+          </p>
+
+          {restants.length > 0 && (
+            <p className="mt-3 text-[12.5px] leading-relaxed text-text-secondary">
+              Avant d’imprimer : {restants.join(', ')}.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* LES ÉVÉNEMENTS PASSÉS — ce que les précédents ont donné. */}
+      {passes.length > 0 && (
+        <div className="mt-7 border-t border-border-raised pt-5">
+          <p className="eyebrow mb-3">Ce que les précédents ont donné</p>
+          <div className="flex flex-col divide-y divide-border-row">
+            {passes.slice(0, 4).map((p) => (
+              <div key={p.evenement.id} className="flex flex-wrap items-baseline gap-x-5 gap-y-1 py-2.5">
+                <span className="min-w-0 flex-1 truncate text-[13.5px] text-text-primary">
+                  {p.evenement.nom || 'Sans titre'}
+                </span>
+                <span className="tnum w-[96px] flex-shrink-0 text-right font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+                  {p.evenement.date || '—'}
+                </span>
+                <span className="tnum w-[92px] flex-shrink-0 text-right font-mono text-[12.5px] text-text-secondary">
+                  {p.evenement.billetsVendus}/{p.evenement.capacite}
+                </span>
+                <span className="tnum w-[104px] flex-shrink-0 text-right font-mono text-[12.5px] text-text-primary">
+                  {formatCents(p.economie.resultatActuelCents)}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[12.5px] leading-relaxed text-text-muted">
+            Entrées vendues sur jauge, et résultat. Le nombre de VENUS et les devis issus de
+            l’événement ne sont pas suivis : rien dans le produit ne les enregistre.
+          </p>
+        </div>
+      )}
+    </section>
   );
 }

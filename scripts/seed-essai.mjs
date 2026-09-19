@@ -767,6 +767,74 @@ for (const [cle, label, customerName, amountCents, period, dansJours, active] of
   });
 }
 
+/* ─── Événements ───────────────────────────────────────────────────────────── */
+
+/*
+  TRENTE PLACES, VINGT-TROIS PRISES — les chiffres de la maquette, et ils ne
+  sont pas décoratifs.
+
+  Les cases d'inscription de `23e` sont AU NOMBRE EXACT DE PLACES : trente
+  cases dont vingt-trois pleines. Une jauge de 200 donnerait deux cents petits
+  carrés illisibles, une jauge de 4 ne prouverait rien. Trente est la taille à
+  laquelle la règle se vérifie — on voit les sept restantes sans les compter.
+
+  L'événement porte sa date, son horaire et son lieu : l'affiche a besoin des
+  trois, et un jeu d'essai qui en oublierait un montrerait surtout la phrase
+  « avant d'imprimer ». Un second événement les laisse justement incomplets,
+  pour que cette phrase se vérifie aussi.
+
+  Deux événements passés donnent au pied de l'affiche de quoi comparer.
+*/
+/*
+  LES COÛTS SONT EN EUROS — ils étaient en centimes et multipliés par cent.
+
+  Le même défaut que sur les encaissements : 42000 voulait dire 420 €, et
+  `coutLieu * 100` en faisait 42 000 €. L'affiche annonçait alors un résultat
+  de − 46 762 € et la liste « rentable, jamais ». Le chiffre était absurde, et
+  c'est ce qui l'a fait voir : un instrument qui rend un résultat impossible
+  dit qu'on l'a mal nourri.
+
+  Les coûts sont maintenant choisis pour que le seuil TIENNE DANS LA JAUGE —
+  sinon le module ne montre que son cas dégradé (« rentable, jamais »), qui est
+  bien traité mais n'est pas le cas courant :
+
+    Portes ouvertes   18 € × 0,95 − 4 € = 13,10 € nets par entrée
+                      340 € de coûts fixes → seuil 26 entrées sur 30 places
+                      23 vendues → il en reste 3 à vendre pour l'équilibre,
+                      et 7 places libres. L'affiche a donc quelque chose à
+                      dire, et les deux chiffres ne disent pas la même chose.
+*/
+const EVENEMENTS = [
+  ['essai-evt-1', 'Portes ouvertes de l’atelier', 22, '10 h → 17 h',
+    'Atelier — 14 rue des Aiguières', 30, 23, 18, 5, 150, 120, 70, 400],
+  ['essai-evt-2', 'Atelier couronnes de l’Avent', 74, '',
+    '', 16, 0, 45, 5, 0, 0, 0, 900],
+  ['essai-evt-3', 'Marché de printemps', -46, '9 h → 18 h',
+    'Place de la Comédie', 40, 38, 12, 5, 120, 70, 40, 300],
+  ['essai-evt-4', 'Soirée dégustation', -118, '19 h → 22 h',
+    'Cave Tramontane', 24, 17, 35, 5, 150, 90, 60, 800],
+];
+for (const [cle, nom, dansJours, horaire, lieu, capacite, billetsVendus,
+             prixBillet, commission, coutLieu, coutPrestataires, coutCommunication,
+             coutParEntree] of EVENEMENTS) {
+  await poser('evenements', cle, {
+    nom,
+    date: jour(dansJours),
+    horaire,
+    lieu,
+    capacite,
+    billetsVendus,
+    prixBilletCents: prixBillet * 100,
+    commissionBilletterie: commission,
+    coutLieuCents: coutLieu * 100,
+    coutPrestatairesCents: coutPrestataires * 100,
+    coutCommunicationCents: coutCommunication * 100,
+    coutParEntreeCents: coutParEntree,
+    annule: false,
+    notes: '',
+  });
+}
+
 /* ─── Contrats ─────────────────────────────────────────────────────────────── */
 
 /*

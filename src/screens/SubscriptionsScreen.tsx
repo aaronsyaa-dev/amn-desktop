@@ -187,7 +187,17 @@ export function SubscriptionsScreen() {
                         title={`${part.label} · ${formatCents(part.mensuelCents)} par mois`}
                       >
                         {gravable && (
-                          <span className="tnum font-mono text-[11px] font-bold text-bg">
+                          /*
+                            ENCRE CLAIRE SUR LA TEINTE, PAS ENCRE DE FOND.
+
+                            Le chiffre était gravé en `text-bg` (#060606) sur
+                            #4a4a48 : ratio 2,28 pour un seuil de 4,5 —
+                            illisible, et trouvé par `check:contraste`, pas par
+                            l'œil. Les gris de remplissage de la rampe sont
+                            SOMBRES ; ce qui s'écrit dessus s'écrit en clair.
+                            #f7f7f5 sur #4a4a48 donne 8,4.
+                          */
+                          <span className="tnum font-mono text-[11px] font-bold text-text-primary">
                             {formatCents(part.mensuelCents)}
                           </span>
                         )}
