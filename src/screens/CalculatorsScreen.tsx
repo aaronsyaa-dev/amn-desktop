@@ -12,6 +12,7 @@ import {
   totalKey,
   type CalcRowBlock,
   type CalcRowResult,
+  type CalcKind,
 } from '../state/calcEngine';
 import { CALC_PROFILES, DEFAULT_CALC_PROFILE_ID, calcProfileById } from '../state/calcProfiles';
 import {
@@ -26,6 +27,125 @@ import { defaultText, formatValue, parseValue } from '../lib/calcFormat';
 import { durationMs } from '../state/timeEngine';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue, t as tr } from '../i18n';
+import { useHaloSignal } from '../components/EtatEcran';
+
+/**
+ * Ce que l'abaque a besoin de savoir d'un devis : son montant, et s'il est
+ * parti. Le modèle du produit stocke `priceEuro` — un montant en EUROS, pas
+ * en centimes, à la différence des factures. Le confondre donnait un devis à
+ * 0,00 €, ce qui est exactement le genre de comparaison qui décrédibilise un
+ * écran entier.
+ */
+interface DevisAnnonce {
+  title?: string;
+  sentAt?: string;
+  priceEuro?: number;
+}
+
+/** Le montant d'un devis, ramené en centimes comme tout le reste de l'écran. */
+function totalDuDevis(d: DevisAnnonce): number {
+  return Math.round((typeof d.priceEuro === 'number' ? d.priceEuro : 0) * 100);
+}
+
+/* ─── L'ABAQUE — l'objet dominant des Calculateurs (`25c`) ────────────────── */
+
+/*
+  LÀ OÙ UN CONVERTISSEUR ALIGNE DEUX RÈGLES, L'ABAQUE RÉSOUT UNE RELATION À
+  TROIS TERMES D'UN SEUL TRAIT.
+
+  Trois échelles verticales de 300 px et une droite qui les traverse. Ce n'est
+  pas le trait qui informe : c'est SA PENTE. Une droite qui monte
+  régulièrement dit que le prix suit la charge ; une droite cassée dit qu'il
+  s'en écarte, et on voit de combien avant d'avoir lu un seul chiffre.
+
+  TROIS EXIGENCES LIÉES, et c'est l'objet qui a coûté le plus cher du système.
+
+  (1) LA POSITION D'UN CURSEUR SE DÉDUIT DE SA VALEUR : `pct = (max − val) /
+      (max − min)`, comptée depuis le HAUT. Un chiffre imprimé ne doit jamais
+      pouvoir contredire son curseur, donc il n'existe qu'une expression et
+      les deux la partagent (`partDuCurseur`).
+
+  (2) LES TROIS COLONNES SONT UNE GRILLE À GOUTTIÈRE NULLE. Les respirations
+      sont en `padding` INTERNE. C'est ce qui garantit que leurs centres
+      tombent exactement sur 1/6, 3/6 et 5/6 de la largeur, quelle qu'elle
+      soit — avec une gouttière, ces centres dépendraient de la largeur de la
+      fenêtre, et la droite pointerait à côté des curseurs.
+
+  (3) LE `<svg>` DE LA DROITE est en `inset:0` sur la bande des échelles avec
+      `viewBox="0 0 100 300"` : l'ordonnée de vue égale donc le pixel, et les
+      sommets s'écrivent depuis LES MÊMES valeurs calculées que les curseurs.
+*/
+const ABAQUE_H = 300;
+const ABAQUE_GRADUATIONS = 7;
+const CURSEUR_D = 15;
+/** Les centres des trois colonnes, en pourcentage — 1/6, 3/6, 5/6. */
+const ABAQUE_CENTRES = [100 / 6, 300 / 6, 500 / 6];
+
+/**
+ * La part d'échelle d'une valeur, comptée DEPUIS LE HAUT.
+ *
+ * `(max − val) / (max − min)` : 0 quand la valeur touche le plafond, 1 quand
+ * elle touche le plancher. C'est la seule expression de l'écran qui place un
+ * curseur, et c'est elle aussi qui pose l'ordonnée de la droite.
+ */
+function partDuCurseur(valeur: number, min: number, max: number): number {
+  const etendue = max - min;
+  if (etendue <= 0) return 0.5;
+  return Math.min(1, Math.max(0, (max - valeur) / etendue));
+}
+
+/**
+ * Un plafond d'échelle LISIBLE au-dessus d'une valeur.
+ *
+ * Une échelle taillée exactement sur la valeur mettrait tous les curseurs au
+ * même endroit, et la pente ne dirait plus rien. On monte donc d'un quart
+ * au-dessus, puis on arrondit au 1, 2 ou 5 de la décade — les graduations
+ * tombent alors sur des nombres qu'on lit sans effort.
+ */
+function plafondLisible(valeur: number): number {
+  const cible = Math.max(Math.abs(valeur) * 1.25, 1);
+  const decade = 10 ** Math.floor(Math.log10(cible));
+  for (const pas of [1, 2, 5, 10]) {
+    if (cible <= pas * decade) return pas * decade;
+  }
+  return 10 * decade;
+}
+
+interface EchelleDeLAbaque {
+  cle: string;
+  label: string;
+  valeur: number;
+  kind: CalcKind;
+  min: number;
+  max: number;
+  part: number;
+  /** L'ordonnée du curseur, en pixels comme en unités de vue. */
+  y: number;
+  cherche: boolean;
+}
+
+/**
+ * Construit une échelle à partir d'un terme et de sa valeur.
+ *
+ * `plafondDeRepli` sert aux termes À ZÉRO. Une échelle taillée sur zéro a un
+ * plafond d'un centime : ses sept graduations affichent alors « 0,01 € »
+ * sept fois, ce qui n'est pas une échelle mais une colonne de bruit. On lui
+ * prête donc le plafond du terme de même nature le plus grand — la colonne
+ * reste lisible, son curseur est en bas, et c'est vrai : il n'y a rien
+ * dessus.
+ */
+function echelleDe(
+  cle: string,
+  label: string,
+  valeur: number,
+  kind: CalcKind,
+  cherche: boolean,
+  plafondDeRepli: number,
+): EchelleDeLAbaque {
+  const max = valeur > 0 ? plafondLisible(valeur) : Math.max(plafondDeRepli, 1);
+  const part = partDuCurseur(valeur, 0, max);
+  return { cle, label, valeur, kind, min: 0, max, part, y: part * ABAQUE_H, cherche };
+}
 
 /**
  * Calculateurs métier (BLOCS A/B/C).
@@ -39,7 +159,17 @@ import { useLangue, t as tr } from '../i18n';
  * Facturation, les Dépenses et le Temps qui existent déjà.
  */
 export function CalculatorsScreen() {
+  /*
+    L'ABONNEMENT À LA LANGUE, qui manquait.
+
+    Les libellés de cet écran passent par `tr(...)`, qui lit la langue ACTIVE
+    au moment de l'appel. Sans abonnement, rien ne provoque de nouveau rendu
+    quand on change de langue : l'écran gardait celle du montage. C'est la
+    même correction que celle déjà écrite en tête de `TimeScreen`.
+  */
+  useLangue();
   const [profileId, setProfileId] = useState(DEFAULT_CALC_PROFILE_ID);
+  const devis = useCollection<DevisAnnonce>('quotes');
   const profile = calcProfileById(profileId) ?? CALC_PROFILES[0];
 
   /*
@@ -118,6 +248,73 @@ export function CalculatorsScreen() {
   */
   const outputs = outputsOf(result);
 
+  /*
+    LES TROIS TERMES DE L'ABAQUE.
+
+    Les deux premières entrées déclarées du profil, et la SORTIE DE TÊTE —
+    celle que `headline` désigne, c'est-à-dire la réponse cherchée. L'écran ne
+    choisit donc rien : il lit ce que le profil a nommé. Un profil qui
+    porterait moins de deux entrées n'a pas de relation à trois termes, et
+    l'abaque ne se dessine pas plutôt que de s'inventer un troisième axe.
+  */
+  const echelles = useMemo<EchelleDeLAbaque[] | null>(() => {
+    const entrees = profile.inputs.slice(0, 2);
+    const tete = outputs[0];
+    if (entrees.length < 2 || !tete) return null;
+    const termes = [
+      ...entrees.map((input) => ({
+        cle: input.key,
+        label: input.label,
+        valeur: parsed[input.key] ?? input.defaultValue ?? 0,
+        kind: input.kind,
+        cherche: false,
+      })),
+      { cle: tete.key, label: tete.label, valeur: tete.value, kind: tete.kind, cherche: true },
+    ];
+    /* Le plafond de repli d'un terme nul : celui du plus grand terme DE MÊME
+       NATURE. Prêter une échelle en euros à un pourcentage n'aurait pas de
+       sens, et l'inverse non plus. */
+    const plafondParNature = new Map<CalcKind, number>();
+    for (const t of termes) {
+      if (t.valeur <= 0) continue;
+      const p = plafondLisible(t.valeur);
+      plafondParNature.set(t.kind, Math.max(plafondParNature.get(t.kind) ?? 0, p));
+    }
+    return termes.map((t) =>
+      echelleDe(t.cle, t.label, t.valeur, t.kind, t.cherche, plafondParNature.get(t.kind) ?? 1),
+    );
+  }, [profile.inputs, outputs, parsed]);
+
+  /*
+    L'ÉCART DE PENTE — ce que la droite dit sans qu'on lise un chiffre.
+
+    Si le terme cherché tombait exactement au milieu des deux autres sur son
+    échelle, la droite serait droite : le prix suivrait la charge. L'écart
+    est la distance, en points d'échelle, entre là où il est et là où une
+    droite parfaite l'aurait mis.
+  */
+  const ecartDePente = useMemo(() => {
+    if (!echelles) return null;
+    const milieuDroit = (echelles[0].part + echelles[2].part) / 2;
+    return Math.round((echelles[1].part - milieuDroit) * 100);
+  }, [echelles]);
+
+  const haloAbaque = useHaloSignal(echelles !== null);
+
+  /*
+    LE DEVIS ANNONCÉ — la comparaison que le module demande sous l'abaque.
+
+    On prend le dernier devis ENVOYÉ : un brouillon n'a été annoncé à
+    personne, et comparer un calcul à un chiffre qu'on n'a pas donné ne dit
+    rien. Sans devis envoyé, l'écran le dit au lieu d'afficher un zéro.
+  */
+  const dernierDevis = useMemo(() => {
+    const envoyes = devis
+      .filter((d) => typeof d.sentAt === 'string' && d.sentAt)
+      .sort((a, b) => (b.sentAt ?? '').localeCompare(a.sentAt ?? ''));
+    return envoyes[0] ?? null;
+  }, [devis]);
+
   const setValue = (key: string, raw: string) =>
     setTexts((prev) => ({ ...prev, [profile.id]: { ...(prev[profile.id] ?? {}), [key]: raw } }));
 
@@ -139,6 +336,155 @@ export function CalculatorsScreen() {
           ]}
         />
       </motion.div>
+
+      {/* ── L'ABAQUE — l'objet dominant (`25c`) ─────────────────────────── */}
+      {echelles && (
+        <motion.section variants={staggerItem} className="panel-raised panel-raised-wide p-5 sm:p-6">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+            <p className="eyebrow">{profile.label} · l’abaque</p>
+            <p className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
+              la pente dit si le prix suit la charge
+            </p>
+          </div>
+
+          {/*
+            LA BANDE DES ÉCHELLES. Gouttière NULLE (`gap-0`) : les
+            respirations sont en `px-*` interne, sinon les centres des
+            colonnes ne tomberaient plus sur 1/6, 3/6 et 5/6 et la droite
+            pointerait à côté des curseurs.
+          */}
+          <div className="relative mt-5 w-full" style={{ height: ABAQUE_H }}>
+            <div className="grid h-full grid-cols-3 gap-0">
+              {echelles.map((e) => (
+                <div key={e.cle} className="relative h-full px-4">
+                  {/* LA RÈGLE — un filet vertical au centre exact. */}
+                  <span
+                    aria-hidden
+                    className={`absolute inset-y-0 left-1/2 w-px -translate-x-1/2 ${e.cherche ? 'bg-signal-line' : 'bg-border'}`}
+                  />
+                  {/* SEPT GRADUATIONS, du plafond au plancher. */}
+                  {Array.from({ length: ABAQUE_GRADUATIONS }, (_, i) => {
+                    const part = i / (ABAQUE_GRADUATIONS - 1);
+                    const valeur = e.max - part * (e.max - e.min);
+                    return (
+                      <span
+                        key={i}
+                        aria-hidden
+                        className="absolute left-1/2 flex w-full -translate-x-1/2 -translate-y-1/2 items-center gap-2"
+                        style={{ top: part * ABAQUE_H }}
+                      >
+                        <span className="h-px flex-1 bg-border" />
+                        <span className="tnum flex-shrink-0 font-mono text-[9px] tabular-nums text-text-muted">
+                          {formatValue(valeur, e.kind)}
+                        </span>
+                        <span className="h-px flex-1 bg-border" />
+                      </span>
+                    );
+                  })}
+                  {/* LE CURSEUR — sa position se DÉDUIT de sa valeur. */}
+                  <span
+                    className={`absolute left-1/2 rounded-full ${e.cherche ? `bg-signal ${haloAbaque}` : 'bg-text-secondary'}`}
+                    style={{
+                      top: e.y,
+                      width: CURSEUR_D,
+                      height: CURSEUR_D,
+                      transform: 'translate(-50%, -50%)',
+                    }}
+                    data-signal-groupe={e.cherche ? 'terme-cherche' : undefined}
+                    title={`${e.label} · ${formatValue(e.valeur, e.kind)}`}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* LA DROITE — `inset:0`, `viewBox="0 0 100 300"` : l'ordonnée de
+                vue EST le pixel, et les sommets viennent des mêmes `e.y` que
+                les curseurs. */}
+            <svg
+              aria-hidden
+              className={`pointer-events-none absolute inset-0 h-full w-full ${haloAbaque}`}
+              viewBox={`0 0 100 ${ABAQUE_H}`}
+              preserveAspectRatio="none"
+              data-signal-groupe="terme-cherche"
+            >
+              <polyline
+                points={echelles.map((e, i) => `${ABAQUE_CENTRES[i]},${e.y}`).join(' ')}
+                fill="none"
+                stroke="var(--color-signal)"
+                strokeWidth="1.5"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+          </div>
+
+          {/* LES VALEURS SOUS LES COLONNES — même grille, même gouttière nulle. */}
+          <div className="mt-3 grid grid-cols-3 gap-0">
+            {echelles.map((e) => (
+              <div key={e.cle} className="min-w-0 px-4 text-center">
+                <p
+                  className={`truncate font-mono text-[10px] uppercase tracking-[0.12em] ${e.cherche ? 'text-signal' : 'text-text-muted'}`}
+                  data-signal-groupe={e.cherche ? 'terme-cherche' : undefined}
+                >
+                  {e.label}
+                </p>
+                <p
+                  className={`tnum mt-1 truncate font-mono text-[17px] font-semibold tabular-nums ${e.cherche ? 'text-signal' : 'text-text-primary'}`}
+                  data-signal-groupe={e.cherche ? 'terme-cherche' : undefined}
+                >
+                  {formatValue(e.valeur, e.kind)}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* SOUS L'ABAQUE — la comparaison avec le devis annoncé. */}
+          <div className="mt-5 border-t border-border-row pt-3">
+            {dernierDevis ? (
+              (() => {
+                const annonce = totalDuDevis(dernierDevis);
+                const calcule = echelles[2].kind === 'money' ? Math.round(echelles[2].valeur) : null;
+                if (calcule === null) {
+                  return (
+                    <p className="text-[12.5px] leading-relaxed text-text-muted">
+                      Le terme cherché n’est pas un montant : il n’y a rien à comparer au devis
+                      annoncé.
+                    </p>
+                  );
+                }
+                const ecart = annonce - calcule;
+                return (
+                  <p className="text-[12.5px] leading-relaxed text-text-secondary">
+                    Le dernier devis envoyé
+                    {dernierDevis.title ? ` — ${dernierDevis.title} — ` : ' '}
+                    annonce{' '}
+                    <span className="tnum font-semibold text-text-primary">
+                      {formatCents(annonce)}
+                    </span>
+                    , soit{' '}
+                    <span className="tnum font-semibold text-text-primary">
+                      {ecart >= 0 ? '+' : '−'} {formatCents(Math.abs(ecart))}
+                    </span>{' '}
+                    par rapport à ce que l’abaque donne. Les deux ne portent pas forcément sur la
+                    même prestation : c’est un repère, pas un verdict.
+                  </p>
+                );
+              })()
+            ) : (
+              <p className="text-[12.5px] leading-relaxed text-text-muted">
+                Aucun devis envoyé : il n’y a pas de prix annoncé à comparer. Un brouillon ne
+                compte pas — il n’a été annoncé à personne.
+              </p>
+            )}
+            {ecartDePente !== null && (
+              <p className="mt-2 text-[12.5px] leading-relaxed text-text-muted">
+                {Math.abs(ecartDePente) <= 3
+                  ? 'La droite est droite : le terme cherché suit la charge.'
+                  : `La droite casse de ${Math.abs(ecartDePente)} points : le terme cherché ${ecartDePente > 0 ? 'reste en dessous de' : 'monte au-dessus de'} ce qu’une progression régulière donnerait.`}
+              </p>
+            )}
+          </div>
+        </motion.section>
+      )}
 
       {/* --------------------------- Choix du métier --------------------------- */}
       <motion.div variants={staggerItem} className="flex flex-wrap gap-1.5">
