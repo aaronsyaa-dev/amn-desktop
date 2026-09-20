@@ -1424,6 +1424,72 @@ for (const [cle, title, startAt, clientName] of RDV_EN_LIGNE) {
   });
 }
 
+/*
+  LA CHARGE DU MOIS — ce que le mois en densité (`24b`) demande pour exister.
+
+  Le mois en densité lit la CLARTÉ d'une case comme le nombre d'heures prises
+  ce jour-là, sur quatre paliers, et les pastilles comptent les rendez-vous.
+  Avec une dizaine de rendez-vous tous posés sur trois jours, trente cases
+  restaient identiques et l'objet ne montrait rien : une densité sans
+  variation est un damier.
+
+  Les journées ci-dessous sont choisies pour que LES QUATRE PALIERS existent
+  (moins de 2 h, 2 à 4 h, 4 à 6 h, plus de 6 h) et pour qu'il reste de VRAIS
+  jours vides — un mois plein partout ne dirait pas davantage qu'un mois vide.
+  Elles couvrent aussi la semaine affichée, sans quoi la semaine détachée
+  n'aurait que la colonne du jour à montrer.
+*/
+const MOTIFS_DU_MOIS = [
+  ['Livraison hebdomadaire', 102, 'Hugo Marchand', '8 quai Neuf, Sète'],
+  ['Atelier composition', 103, 'Nadia Bouvier', 'Atelier'],
+  ['Visite chantier', 101, 'Camille Renaud', 'Chantier'],
+  ['Point client', 106, 'Salomé Vallon', 'Visio'],
+  ['Réassort vitrine', 0, '', 'Boutique'],
+  ['Repérage terrasse', 102, 'Hugo Marchand', 'Quai Neuf, Sète'],
+];
+/* [décalage en jours, [[heure, minute, durée en minutes], …]] */
+const CHARGE_DU_MOIS = [
+  [-20, [[10, 0, 30]]],
+  [-18, [[9, 0, 60], [14, 0, 120], [16, 30, 60]]],
+  [-17, [[11, 0, 30]]],
+  [-16, [[8, 30, 90], [15, 0, 60]]],
+  [-15, [[8, 30, 90], [11, 0, 60], [14, 0, 180], [18, 0, 60]]],
+  [-13, [[9, 30, 45], [16, 0, 45]]],
+  [-12, [[9, 0, 60], [13, 0, 60], [16, 0, 90]]],
+  [-11, [[9, 0, 240]]],
+  [-9, [[8, 30, 120], [14, 30, 120]]],
+  [-8, [[17, 0, 60]]],
+  [-7, [[8, 0, 90], [10, 30, 120], [14, 30, 150]]],
+  [-5, [[10, 0, 60], [15, 30, 30]]],
+  [-4, [[9, 0, 60], [11, 0, 90], [16, 0, 60]]],
+  [-3, [[14, 0, 45]]],
+  [7, [[9, 30, 120], [15, 0, 60]]],
+  [8, [[10, 0, 90]]],
+  [10, [[8, 30, 60], [11, 0, 60], [14, 0, 180]]],
+];
+let nCharge = 0;
+for (const [decalage, creneaux] of CHARGE_DU_MOIS) {
+  for (const [heure, minute, duree] of creneaux) {
+    const [title, clientId, clientName, location] = MOTIFS_DU_MOIS[nCharge % MOTIFS_DU_MOIS.length];
+    nCharge += 1;
+    await poser('appointments', `essai-rdvm-${nCharge}`, {
+      title,
+      startAt: aujourdHui(heure, minute, decalage),
+      durationMin: duree,
+      clientId,
+      clientName,
+      location,
+      notes: '',
+      reminderMin: 0,
+      /* Le passé est TERMINÉ, l'avenir est prévu. Laisser des rendez-vous
+         vieux de trois semaines en « prévu » donnerait un relevé « à venir »
+         qui compte l'histoire. */
+      status: decalage < 0 ? 'done' : 'scheduled',
+      createdAt: instant(-24 * 30),
+    });
+  }
+}
+
 for (const [cle, title, startAt, durationMin, clientId, clientName, location, status] of RDV) {
   await poser('appointments', cle, {
     title,
