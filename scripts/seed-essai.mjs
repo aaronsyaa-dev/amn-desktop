@@ -2136,13 +2136,54 @@ await poser('deliveryRounds', 'essai-trn-3', {
   « dont N déjà facturées » et « à facturer » disent chacun quelque chose.
 */
 const minutesAvant = (n) => new Date(Date.now() - n * 60_000).toISOString();
+
+/*
+  LA JOURNÉE DE LA BANDE (`24a`), posée en FRACTIONS DU JOUR ÉCOULÉ.
+
+  La bande va du premier pointage de la journée jusqu'à maintenant. Poser les
+  périodes à des heures fixes — « 08 h 30 → 10 h 15 » — donnerait donc un jeu
+  d'essai juste à 18 h et absurde à 9 h, où la moitié de la journée serait
+  dans le futur. Les bornes sont donc des fractions de ce qui s'est déjà
+  écoulé depuis minuit : la FORME de la journée est la même à toute heure,
+  seules les durées changent.
+
+  La forme est choisie pour que la bande montre tout ce qu'elle doit savoir
+  montrer : deux trous (du temps NON POINTÉ, qui devient un segment hachuré et
+  non un vide), un trajet et un déjeuner sans projet (jamais facturables), du
+  temps rattaché à trois projets, et la période en cours au bout, qui porte
+  l'ambre et le bord vif.
+*/
+const minuitLocal = new Date();
+minuitLocal.setHours(0, 0, 0, 0);
+/*
+  PAS DE PLANCHER SUR L'ÉCOULÉ. Une première version bornait cette durée à une
+  heure pour « avoir une journée présentable » quand le script tourne juste
+  après minuit. Effet réel : à 00 h 39, la journée était projetée jusqu'à
+  01 h 00, et la période en cours démarrait donc à 00 h 51 — DANS LE FUTUR.
+  Le compteur affichait `00:00:00` et le segment vivant n'avait aucune
+  largeur. Un jeu d'essai qui fabrique du futur ne prouve rien : la journée
+  est courte quand elle est courte, et la bande le montre honnêtement.
+*/
+const ecouleDepuisMinuit = Math.max(1, Date.now() - minuitLocal.getTime());
+const fractionDuJour = (f) =>
+  new Date(minuitLocal.getTime() + Math.round(f * ecouleDepuisMinuit)).toISOString();
+
 const TEMPS = [
-  ['essai-tps-1', 'Maquettes des gabarits', 'essai-prj-1', minutesAvant(14), '', ''],
-  ['essai-tps-2', 'Retouches vitrine', 'essai-prj-3', minutesAvant(700), minutesAvant(549), instant(-20)],
-  ['essai-tps-3', 'Cadrage Brasserie du Port', 'essai-prj-1', minutesAvant(1980), minutesAvant(1740), ''],
-  ['essai-tps-4', 'Intégration des gabarits', 'essai-prj-1', minutesAvant(1670), minutesAvant(1450), ''],
-  ['essai-tps-5', 'Sélection des visuels', 'essai-prj-2', minutesAvant(3100), minutesAvant(2950), ''],
-  ['essai-tps-6', 'Appel client', 'essai-prj-3', minutesAvant(4400), minutesAvant(4340), ''],
+  /* clé, intitulé, projet, début, fin, facturé le */
+  ['essai-tps-1', 'Cadrage Brasserie du Port', 'essai-prj-1', fractionDuJour(0), fractionDuJour(0.2), ''],
+  /* 0,20 → 0,26 : un trou. Rien à écrire — c'est l'écran qui le nomme. */
+  ['essai-tps-2', 'Retouches vitrine', 'essai-prj-3', fractionDuJour(0.26), fractionDuJour(0.44), ''],
+  ['essai-tps-3', 'Trajet atelier', '', fractionDuJour(0.44), fractionDuJour(0.5), ''],
+  ['essai-tps-4', 'Déjeuner', '', fractionDuJour(0.5), fractionDuJour(0.58), ''],
+  /* 0,58 → 0,62 : le second trou. */
+  ['essai-tps-5', 'Intégration des gabarits', 'essai-prj-1', fractionDuJour(0.62), fractionDuJour(0.85), ''],
+  /* LA PÉRIODE EN COURS — fin vide, et c'est elle qui porte l'ambre. */
+  ['essai-tps-6', 'Maquettes des gabarits', 'essai-prj-1', fractionDuJour(0.85), '', ''],
+  /* Les jours précédents, dont un déjà facturé : « dont N déjà facturées »
+     et « à facturer » doivent chacun dire quelque chose. */
+  ['essai-tps-7', 'Sélection des visuels', 'essai-prj-2', minutesAvant(3100), minutesAvant(2950), instant(-20)],
+  ['essai-tps-8', 'Appel client', 'essai-prj-3', minutesAvant(4400), minutesAvant(4340), ''],
+  ['essai-tps-9', 'Trajet livraison', '', minutesAvant(4320), minutesAvant(4275), ''],
 ];
 for (const [cle, label, projectId, startedAt, endedAt, invoicedAt] of TEMPS) {
   await poser('timeEntries', cle, {

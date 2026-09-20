@@ -29,6 +29,107 @@ import { FirstRun } from '../components/EmptyState';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
 import { useLangue, t as tr } from '../i18n';
 
+/* ─── LA BANDE DE LA JOURNÉE — l'objet dominant (`24a`) ────────────────────── */
+
+/*
+  LA JOURNÉE EST UNE BANDE, ET LA BANDE EST CONTIGUË.
+
+  76 px de haut, remplie de gauche à droite, un segment par période pointée.
+  Elle n'est pas un graphique de la journée : elle EST la journée, et son
+  extrémité droite est maintenant.
+
+  LA RÈGLE DE CONTIGUÏTÉ, tenue littéralement. `MODULES.md` dit qu'un vide
+  dans la bande signifierait du temps non pointé, « ce qui doit être visible
+  comme tel ». Deux lectures possibles : sauter les trous (la bande ment par
+  omission), ou les dessiner en creux. C'est la seconde — un intervalle entre
+  deux périodes devient un segment `non-pointe`, hachuré, avec sa durée. La
+  bande n'a donc aucun trou : ce qui aurait été un trou porte un nom.
+
+  CE QUI EST FACTURABLE, et ce qui ne l'est jamais. Le modèle du produit ne
+  porte pas de catégorie « trajet » ou « déjeuner » sur une période : il porte
+  un intitulé libre et un projet optionnel. Mais la facturation, elle, EXIGE
+  un projet (voir `billableOf` et `TimeInvoiceDialog`) : une période sans
+  projet ne peut structurellement pas partir en facture. La distinction du
+  module existe donc déjà dans le produit, sous un autre nom — elle est lue
+  là où elle est vraie, et non inventée à partir des mots de l'intitulé.
+*/
+const BANDE_H = 76;
+/*
+  En dessous de cette part de la bande, aucun texte ne tient dans le segment :
+  il passe en bulle de survol. Le seuil est en POURCENTAGE et non en pixels,
+  parce que la bande est fluide — un seuil en pixels serait faux à toutes les
+  largeurs sauf une.
+*/
+const SEGMENT_TEXTE_MIN_PCT = 6;
+/** Deux périodes séparées de moins d'une minute sont contiguës, pas trouées. */
+const TROU_MIN_MS = 60_000;
+
+type NatureDuSegment = 'facturable' | 'interne' | 'non-pointe';
+
+interface SegmentDeJournee {
+  cle: string;
+  ms: number;
+  part: number;
+  nature: NatureDuSegment;
+  intitule: string;
+  enCours: boolean;
+}
+
+const REMPLISSAGE_SEGMENT: Record<NatureDuSegment, string> = {
+  facturable: '#4a4a48',
+  interne: 'var(--color-border-strong)',
+  'non-pointe': 'var(--color-sunken)',
+};
+
+/**
+ * Découpe la journée en segments contigus.
+ *
+ * `periodes` doit être trié par début croissant. La bande va du premier début
+ * au dernier bout — maintenant si quelque chose tourne, la dernière fin
+ * sinon. Les largeurs sont des POURCENTAGES de cette étendue : la somme fait
+ * exactement 100, parce que les trous sont des segments comme les autres.
+ */
+function bandeDuJour(periodes: TimeEntry[], maintenant: number): SegmentDeJournee[] {
+  if (periodes.length === 0) return [];
+  const debut = Date.parse(periodes[0].startedAt);
+  const fin = periodes.reduce(
+    (borne, e) => Math.max(borne, isRunning(e) ? maintenant : Date.parse(e.endedAt)),
+    debut,
+  );
+  const etendue = Math.max(1, fin - debut);
+  const segments: SegmentDeJournee[] = [];
+  let curseur = debut;
+
+  for (const e of periodes) {
+    const d = Date.parse(e.startedAt);
+    const f = isRunning(e) ? maintenant : Date.parse(e.endedAt);
+    if (d - curseur >= TROU_MIN_MS) {
+      const ms = d - curseur;
+      segments.push({
+        cle: `trou-${curseur}`,
+        ms,
+        part: (ms / etendue) * 100,
+        nature: 'non-pointe',
+        intitule: 'Non pointé',
+        enCours: false,
+      });
+    }
+    const ms = Math.max(0, f - Math.max(d, curseur));
+    if (ms > 0) {
+      segments.push({
+        cle: e.id,
+        ms,
+        part: (ms / etendue) * 100,
+        nature: e.projectId ? 'facturable' : 'interne',
+        intitule: e.label || 'Sans intitulé',
+        enCours: isRunning(e),
+      });
+    }
+    curseur = Math.max(curseur, f);
+  }
+  return segments;
+}
+
 /**
  * Temps — le chronomètre d'abord, la feuille d'heures jamais.
  *
@@ -146,6 +247,64 @@ export function TimeScreen() {
     return candidats[0] ?? null;
   }, [canInvoice, perProject, billableOf, now]);
 
+  /*
+    LES PÉRIODES DU JOUR, et la bande qu'elles composent.
+
+    `byDay` porte déjà le groupe du jour ; on le trie par début croissant
+    parce que la bande est un déroulé, pas un classement.
+  */
+  const periodesDuJour = useMemo(() => {
+    const aujourd = dayOf(new Date(now).toISOString());
+    const groupe = byDay.find((g) => g.day === aujourd);
+    return [...(groupe?.rows ?? [])].sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+  }, [byDay, now]);
+
+  const bande = useMemo(() => bandeDuJour(periodesDuJour, now), [periodesDuJour, now]);
+
+  /*
+    LA RÉPARTITION DU JOUR PAR TÂCHE — l'entourage gauche.
+
+    Regroupée par INTITULÉ et non par période : trois sessions de « retouches »
+    font une tâche, pas trois. Le temps non pointé n'y figure pas — ce n'est
+    pas une tâche, c'est l'absence de tâche, et la bande le dit déjà.
+  */
+  const parTache = useMemo(() => {
+    const totaux = new Map<string, { ms: number; facturable: boolean }>();
+    for (const seg of bande) {
+      if (seg.nature === 'non-pointe') continue;
+      const entree = totaux.get(seg.intitule) ?? { ms: 0, facturable: false };
+      entree.ms += seg.ms;
+      entree.facturable = entree.facturable || seg.nature === 'facturable';
+      totaux.set(seg.intitule, entree);
+    }
+    const lignes = [...totaux.entries()]
+      .map(([intitule, v]) => ({ intitule, ...v }))
+      .sort((a, b) => b.ms - a.ms);
+    const plus = lignes[0]?.ms ?? 0;
+    return lignes.map((l) => ({ ...l, part: plus > 0 ? l.ms / plus : 0 }));
+  }, [bande]);
+
+  /*
+    LA SEMAINE EN TROIS CHIFFRES — pointé, facturable, non facturable.
+
+    Le non facturable est une SOUSTRACTION du pointé, jamais un second
+    comptage : deux totaux calculés séparément finissent toujours par ne plus
+    s'additionner, et personne ne sait lequel croire.
+  */
+  const semaineEnTrois = useMemo(() => {
+    let pointe = 0;
+    let facturable = 0;
+    for (const groupe of byDay) {
+      if (groupe.day < monday) continue;
+      for (const e of groupe.rows) {
+        const ms = durationMs(e, now);
+        pointe += ms;
+        if (e.projectId) facturable += ms;
+      }
+    }
+    return { pointe, facturable, nonFacturable: pointe - facturable };
+  }, [byDay, monday, now]);
+
   const projectTitle = (id: string) =>
     projects.find((p) => p.id === id)?.title || (id ? 'Projet supprimé' : 'Sans projet');
 
@@ -227,74 +386,172 @@ export function TimeScreen() {
       />
 
       {/*
-        LE COMPTEUR QUI TOURNE — l'objet dominant de l'écran Temps.
+        LA BANDE DE LA JOURNÉE — l'objet dominant de l'écran Temps (`24a`).
 
-        Le chronomètre était déjà en haut, et c'était juste. Ce qui manquait,
-        c'est qu'il DOMINE : le chiffre faisait 36 px sous un surtitre, à côté
-        de deux cartes de résumé et d'une barre par projet, tous du même poids.
-        On ne voyait pas, en entrant, si quelque chose tournait.
+        Le chronomètre était déjà en haut, et c'était juste. Mais un compteur
+        seul ne dit que « il est 14 h 07 de travail » : il ne dit pas d'où on
+        vient. La bande le dit — et le compteur passe SOUS elle, à sa place,
+        comme la lecture de son extrémité droite.
 
-        L'AMBRE est nommé tel quel par la table du paquet : `00:14:07`. C'est la
-        SECONDE exception écrite de la règle 2 — un chiffre à l'échelle d'un
-        titre peut porter le signal sans plaque. Rien ne tourne, rien n'est
-        ambre : l'écran redevient un registre.
+        L'AMBRE, quatre nœuds tous attachés au même segment : le segment en
+        cours, son bord vif, le compteur, et le surtitre « EN COURS ». Rien ne
+        tourne, rien n'est ambre : l'écran redevient un registre.
       */}
-      <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
-        <div className="panel-raised flex flex-col gap-5 p-5 sm:p-7">
-          {running ? (
-            <>
-              <div className="flex items-center gap-4">
-                <p className="eyebrow flex-shrink-0">{tr('hist.time.caTourne')}</p>
-                <span className="h-px flex-1 bg-border-section" aria-hidden />
-                <p className="eyebrow flex-shrink-0">
-                  {tr('hist.time.demarreA', { heure: formatClock(running.startedAt) })}
-                </p>
-              </div>
+      <div className="panel-raised p-5 sm:p-7">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+          <p className="eyebrow">La journée</p>
+          <p className="tnum font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
+            {bande.length > 0
+              ? `${formatClock(periodesDuJour[0].startedAt)} → ${running ? 'maintenant' : formatClock(periodesDuJour[periodesDuJour.length - 1].endedAt)}`
+              : 'rien de pointé aujourd’hui'}
+          </p>
+        </div>
 
+        {bande.length === 0 ? (
+          <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-text-secondary">
+            La bande se remplit dès la première période pointée. Elle montre la journée telle
+            qu’elle s’est passée, sans trou : un intervalle non pointé y est un segment comme un
+            autre, avec sa durée.
+          </p>
+        ) : (
+          <>
+            {/* LA BANDE — contiguë, de gauche à droite. */}
+            <div
+              className="mt-4 flex w-full overflow-hidden border border-border"
+              style={{ height: BANDE_H }}
+            >
+              {bande.map((seg) => (
+                <span
+                  key={seg.cle}
+                  title={`${seg.intitule} · ${formatDuration(seg.ms)}`}
+                  data-signal-groupe={seg.enCours ? 'en-cours' : undefined}
+                  className={`relative flex min-w-0 items-center overflow-hidden border-r border-bg px-2 last:border-r-0 ${
+                    seg.nature === 'non-pointe' ? 'justify-center' : ''
+                  }`}
+                  style={{
+                    width: `${seg.part}%`,
+                    background: seg.enCours ? 'var(--color-signal-bande)' : REMPLISSAGE_SEGMENT[seg.nature],
+                    ...(seg.nature === 'non-pointe'
+                      ? {
+                          backgroundImage:
+                            'repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0 4px, transparent 4px 9px)',
+                        }
+                      : {}),
+                  }}
+                >
+                  {seg.part >= SEGMENT_TEXTE_MIN_PCT && (
+                    <span
+                      className={`min-w-0 ${
+                        seg.enCours
+                          ? 'text-text-primary'
+                          : seg.nature === 'non-pointe'
+                            ? 'text-text-muted'
+                            : 'text-text-body'
+                      }`}
+                    >
+                      <span className="block truncate text-[12.5px] leading-tight">
+                        {seg.intitule}
+                      </span>
+                      <span className="tnum mt-0.5 block truncate font-mono text-[10px] uppercase tracking-[0.1em] opacity-80">
+                        {formatDuration(seg.ms)}
+                      </span>
+                    </span>
+                  )}
+
+                  {/* LE BORD VIF — 3 px, et c'est LUI qui dit « maintenant ».
+                      Il bat à 1,4 s : le segment s'allonge pendant qu'on le
+                      regarde, ce bord est l'endroit où ça se passe. */}
+                  {seg.enCours && (
+                    <span
+                      aria-hidden
+                      data-signal-groupe="en-cours"
+                      className="bord-vivant absolute inset-y-0 right-0 w-[3px] bg-signal"
+                    />
+                  )}
+                </span>
+              ))}
+            </div>
+
+            {/* LA LÉGENDE DE LA BANDE — en matière : un témoin ambre ici
+                compterait pour un second objet à l'écran. */}
+            <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[11.5px] text-text-muted">
+              <span className="flex items-center gap-2">
+                <span aria-hidden className="h-3 w-4" style={{ background: REMPLISSAGE_SEGMENT.facturable }} />
+                rattaché à un projet
+              </span>
+              <span className="flex items-center gap-2">
+                <span aria-hidden className="h-3 w-4" style={{ background: REMPLISSAGE_SEGMENT.interne }} />
+                sans projet — jamais facturable
+              </span>
+              <span className="flex items-center gap-2">
+                <span
+                  aria-hidden
+                  className="h-3 w-4 border border-border"
+                  style={{
+                    background: REMPLISSAGE_SEGMENT['non-pointe'],
+                    backgroundImage:
+                      'repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0 4px, transparent 4px 9px)',
+                  }}
+                />
+                non pointé
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* SOUS LA BANDE — le compteur, la tâche, et le rattachement. */}
+        {running ? (
+          <div className="mt-6 flex flex-wrap items-end justify-between gap-x-8 gap-y-4 border-t border-border-row pt-5">
+            <div className="min-w-0">
               <p
-                className="tnum font-mono text-[44px] font-bold leading-[0.92] tracking-[-0.04em] text-signal sm:text-[58px]"
-                data-signal-groupe="compteur"
+                className="eyebrow text-signal"
+                data-signal-groupe="en-cours"
+              >
+                En cours · démarré à {formatClock(running.startedAt)}
+              </p>
+              <p
+                className="tnum mt-1 font-mono text-[36px] font-bold leading-none tracking-[-0.04em] text-signal sm:text-[44px]"
+                data-signal-groupe="en-cours"
               >
                 {formatStopwatch(durationMs(running, now))}
               </p>
-
-              <div>
-                <p className="text-[19px] font-semibold leading-tight text-text-primary">
-                  {running.label || tr('hist.time.sansIntitule')}
-                </p>
-                {running.projectId && (
-                  <p className="eyebrow mt-2">
-                    {tr('hist.time.projetNomme', { projet: projectTitle(running.projectId) })}
-                  </p>
-                )}
-              </div>
-
-              {/* La promesse du geste, écrite avant qu'on le fasse : un seul
-                  compteur à la fois, donc jamais deux totaux qui se croisent. */}
-              <p className="max-w-[56ch] text-[14.5px] leading-[1.65] text-text-secondary [text-wrap:pretty]">
-                {tr('hist.time.demarrerArreteCeQui')}
+              <p className="mt-3 text-[17px] font-semibold leading-tight text-text-primary">
+                {running.label || tr('hist.time.sansIntitule')}
               </p>
+              {/*
+                CE À QUOI LE TEMPS SERA RATTACHÉ — dit maintenant, pas au
+                moment de facturer. Une période sans projet ne peut pas partir
+                en facture : l'apprendre en fin de mois, c'est l'apprendre
+                trop tard.
+              */}
+              <p className="mt-1.5 text-[13px] leading-relaxed text-text-secondary">
+                {running.projectId
+                  ? `Sera rattaché à ${projectTitle(running.projectId)} — facturable.`
+                  : 'Aucun projet : ce temps ne pourra pas partir en facture.'}
+              </p>
+            </div>
 
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={toggle}
-                  className="min-h-11 bg-accent px-5 text-[12.5px] font-semibold text-bg shadow-[0_12px_26px_-12px_rgba(0,0,0,.9)] transition-colors hover:bg-accent-hover"
-                >
-                  {tr('hist.time.arreter')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setManualOpen(true)}
-                  className="min-h-11 border border-border-strong px-5 text-[12.5px] font-semibold text-text-primary transition-colors hover:bg-surface-hover"
-                >
-                  {tr('hist.time.saisirALaMain')}
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="eyebrow">{tr('hist.time.surQuoiTravaillezVous')}</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={toggle}
+                className="min-h-11 bg-accent px-5 text-[12.5px] font-semibold text-bg shadow-[0_12px_26px_-12px_rgba(0,0,0,.9)] transition-colors hover:bg-accent-hover"
+              >
+                {tr('hist.time.arreter')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setManualOpen(true)}
+                className="min-h-11 border border-border-strong px-5 text-[12.5px] font-semibold text-text-primary transition-colors hover:bg-surface-hover"
+              >
+                {tr('hist.time.saisirALaMain')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-6 border-t border-border-row pt-5">
+            <p className="eyebrow">{tr('hist.time.surQuoiTravaillezVous')}</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <input
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
@@ -305,32 +562,90 @@ export function TimeScreen() {
                 className="input-focus min-h-11 w-full border border-border bg-sunken px-3 text-sm text-text-primary outline-none placeholder:text-text-muted"
               />
               <ProjectPicker value={projectId} onChange={setProjectId} label="Projet (facultatif)" />
-              {/*
-                LE BOUTON DU POUCE RESTE CE QU'IL ÉTAIT : pleine largeur, 64 px,
-                un seul mot. C'est le geste qu'on répète dix fois par jour, et
-                sur un téléphone tenu d'une main c'est la cible qu'on atteint
-                sans regarder. Le compteur qui tourne prend sa place une fois
-                lancé, ce qui est exactement l'échange voulu.
-              */}
-              <button
-                type="button"
-                onClick={toggle}
-                className="mt-1 flex h-16 w-full items-center justify-center gap-2.5 bg-accent text-lg font-bold text-bg transition-colors hover:bg-accent-hover"
-              >
-                <Play size={20} strokeWidth={2.5} />
-                {tr('hist.time.demarrer')}
-              </button>
-            </>
-          )}
-        </div>
+            </div>
+            {/*
+              LE BOUTON DU POUCE RESTE CE QU'IL ÉTAIT : pleine largeur, 64 px,
+              un seul mot. C'est le geste qu'on répète dix fois par jour, et
+              sur un téléphone tenu d'une main c'est la cible qu'on atteint
+              sans regarder.
+            */}
+            <button
+              type="button"
+              onClick={toggle}
+              className="mt-3 flex h-16 w-full items-center justify-center gap-2.5 bg-accent text-lg font-bold text-bg transition-colors hover:bg-accent-hover"
+            >
+              <Play size={20} strokeWidth={2.5} />
+              {tr('hist.time.demarrer')}
+            </button>
+          </div>
+        )}
+      </div>
 
-        {/* La semaine en chiffres, et ce qui reste à facturer. */}
+      {/* AUTOUR — à gauche le jour par tâche, à droite la semaine. */}
+      <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
+        <section className="panel p-5 sm:p-6">
+          <p className="eyebrow">Le jour, par tâche</p>
+          {parTache.length === 0 ? (
+            <p className="mt-3 text-sm leading-relaxed text-text-secondary">
+              Rien de pointé aujourd’hui.
+            </p>
+          ) : (
+            <div className="mt-4 flex flex-col gap-2.5">
+              {parTache.map((ligne) => (
+                <div key={ligne.intitule} className="grid items-center gap-x-4 grid-cols-[minmax(0,1fr)_minmax(0,2fr)_72px]">
+                  <span className="min-w-0 truncate text-[13.5px] text-text-primary">
+                    {ligne.intitule}
+                  </span>
+                  <span className="relative block h-5 w-full bg-sunken">
+                    <span
+                      className="absolute inset-y-0 left-0 block"
+                      style={{
+                        width: `${Math.max(1, ligne.part * 100)}%`,
+                        background: ligne.facturable
+                          ? REMPLISSAGE_SEGMENT.facturable
+                          : REMPLISSAGE_SEGMENT.interne,
+                      }}
+                    />
+                  </span>
+                  <span className="tnum text-right font-mono text-[12px] text-text-secondary">
+                    {formatDuration(ligne.ms)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
         <div className="panel flex flex-col gap-5 p-5 sm:p-6">
           <div>
             <p className="eyebrow mb-3">{tr('hist.time.cetteSemaine')}</p>
             <p className="tnum font-mono text-[34px] font-bold leading-none tracking-[-0.04em] text-text-primary">
-              {formatDuration(totals.weekMs)}
+              {formatDuration(semaineEnTrois.pointe)}
             </p>
+            {/*
+              LES TROIS CHIFFRES DE LA SEMAINE. Le non facturable est une
+              SOUSTRACTION du pointé, jamais un second comptage : deux totaux
+              calculés séparément finissent par ne plus s'additionner, et
+              personne ne sait lequel croire.
+            */}
+            <dl className="mt-4 flex flex-col gap-2">
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                  facturable
+                </dt>
+                <dd className="tnum font-mono text-[13px] text-text-primary">
+                  {formatDuration(semaineEnTrois.facturable)}
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                  non facturable
+                </dt>
+                <dd className="tnum font-mono text-[13px] text-text-secondary">
+                  {formatDuration(semaineEnTrois.nonFacturable)}
+                </dd>
+              </div>
+            </dl>
             {totals.weekInvoicedMs > 0 && (
               <p className="mt-3 text-[13.5px] text-text-secondary">
                 {tr('hist.time.dontDejaFacturees', { duree: formatDuration(totals.weekInvoicedMs) })}

@@ -216,6 +216,14 @@
   --color-signal-line: rgba(208, 154, 74, 0.45);
   /* L'ambre en fond très dilué — bandes d'information, jamais un objet. */
   --color-signal-muted: rgba(208, 154, 74, 0.12);
+  /*
+    La teinte d'un SEGMENT ambre dans une bande de données — plus soutenue que
+    `signal-muted`, qui est faite pour une hachure ou un fond de plaque. À 12 %
+    sur un fond sombre, un segment large de trois centimètres ne se distingue
+    plus de la matière voisine : le module `24a` demande qu'on voie d'un coup
+    d'œil où en est la journée.
+  */
+  --color-signal-bande: rgba(208, 154, 74, 0.32);
 
   /* Status: monochrome, EXCEPT the single reserved signal red for critical */
   --color-success: #d8d8d5;
@@ -1280,11 +1288,31 @@ button.bg-accent[aria-disabled='true']:hover {
   animation: dvamber 2.8s ease-in-out infinite;
 }
 
+/*
+  Le bord vif du segment en cours — l'extrémité de la bande EST maintenant.
+  1,4 s : plus rapide que le pouls, parce que ce bord avance vraiment pendant
+  qu'on le regarde, là où un pouls ne fait que dire « vivant ».
+*/
+@keyframes dvbord {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.bord-vivant {
+  animation: dvbord 1.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pouls-vivant,
   .halo-signal,
   .anneau-courant,
-  .souffle-signal {
+  .souffle-signal,
+  .bord-vivant {
     animation: none;
   }
   /*
@@ -1295,5 +1323,9 @@ button.bg-accent[aria-disabled='true']:hover {
   */
   .halo-signal {
     filter: drop-shadow(0 0 11px var(--color-signal-glow));
+  }
+  /* Le bord vif reste vif : c'est lui qui dit où en est la journée. */
+  .bord-vivant {
+    opacity: 1;
   }
 }
