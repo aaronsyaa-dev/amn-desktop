@@ -1485,15 +1485,40 @@ for (const b of NOMENCLATURES) {
   });
 }
 
+/*
+  LES EMPLOIS FONT L'ÉTAGÈRE (`18d`).
+
+  L'épaisseur d'une tranche est le nombre d'emplois. Sans compteurs, les cinq
+  modèles auraient exactement la même tranche — une étagère de livres
+  identiques, où « ce qui sert est épais et se voit de loin » ne se voit plus
+  du tout. Les emplois sont donc contrastés à dessein : 92 pour la
+  confirmation de commande qu'on envoie chaque jour, 0 pour la fermeture
+  exceptionnelle qu'on n'a jamais servie.
+
+  Deux modèles n'ont PAS de `updatedAt` : ils n'ont jamais été retouchés
+  depuis leur création, ce que le relevé d'en-tête compte et que la phrase
+  sous l'étagère nomme pour le plus employé.
+*/
 const MODELES_DE_TEXTE = [
-  { cle: 'tpl-1', titre: 'Confirmation de commande', corps: 'Bonjour {prénom},\n\nVotre commande {numéro} est confirmée. Nous la préparons pour le {date}, et nous vous prévenons dès qu’elle est prête à retirer.\n\nBelle journée.' },
-  { cle: 'tpl-2', titre: 'Réponse à un devis', corps: 'Bonjour {prénom},\n\nMerci de votre demande. Vous trouverez le devis {numéro} en pièce jointe, valable {validité}. Je reste disponible si vous souhaitez ajuster quoi que ce soit.\n\nCordialement.' },
-  { cle: 'tpl-3', titre: 'Rappel de rendez-vous', corps: 'Bonjour {prénom},\n\nPetit rappel : nous nous voyons {date} à {heure}, {lieu}. Si ça ne va plus, dites-le-moi, on décale sans problème.' },
-  { cle: 'tpl-4', titre: 'Remerciement après livraison', corps: 'Bonjour {prénom},\n\nMerci pour votre confiance. J’espère que {produit} vous plaît. Un mot si quelque chose ne va pas, on s’en occupe.' },
-  { cle: 'tpl-5', titre: 'Fermeture exceptionnelle', corps: 'Bonjour,\n\nL’atelier sera fermé le {date}. Les commandes prévues ce jour-là sont décalées au {report}. Merci de votre compréhension.' },
+  { cle: 'tpl-1', emplois: 92, retoucheIlYaJours: null, titre: 'Confirmation de commande', corps: 'Bonjour {prénom},\n\nVotre commande {numéro} est confirmée. Nous la préparons pour le {date}, et nous vous prévenons dès qu’elle est prête à retirer.\n\nBelle journée.' },
+  { cle: 'tpl-2', emplois: 41, retoucheIlYaJours: 62, titre: 'Réponse à un devis', corps: 'Bonjour {prénom},\n\nMerci de votre demande. Vous trouverez le devis {numéro} en pièce jointe, valable {validité}. Je reste disponible si vous souhaitez ajuster quoi que ce soit.\n\nCordialement.' },
+  { cle: 'tpl-3', emplois: 28, retoucheIlYaJours: 18, titre: 'Rappel de rendez-vous', corps: 'Bonjour {prénom},\n\nPetit rappel : nous nous voyons {date} à {heure}, {lieu}. Si ça ne va plus, dites-le-moi, on décale sans problème.' },
+  { cle: 'tpl-4', emplois: 9, retoucheIlYaJours: 120, titre: 'Remerciement après livraison', corps: 'Bonjour {prénom},\n\nMerci pour votre confiance. J’espère que {produit} vous plaît. Un mot si quelque chose ne va pas, on s’en occupe.' },
+  { cle: 'tpl-5', emplois: 0, retoucheIlYaJours: null, titre: 'Fermeture exceptionnelle', corps: 'Bonjour,\n\nL’atelier sera fermé le {date}. Les commandes prévues ce jour-là sont décalées au {report}. Merci de votre compréhension.' },
 ];
 for (const m of MODELES_DE_TEXTE) {
-  await poser('templates', `essai-${m.cle}`, { title: m.titre, body: m.corps, createdAt: instant(-24 * 60) });
+  await poser('templates', `essai-${m.cle}`, {
+    title: m.titre,
+    body: m.corps,
+    uses: m.emplois,
+    /* Un modèle jamais employé n'a pas de date d'emploi : l'absence est une
+       information, un zéro daté n'en serait pas une. */
+    lastUsedAt: m.emplois > 0 ? instant(-24 * 2) : '',
+    /* `editedAt`, pas `updatedAt` : la couche de synchro pose le sien et
+       écraserait un champ métier du même nom. */
+    editedAt: m.retoucheIlYaJours === null ? '' : instant(-24 * m.retoucheIlYaJours),
+    createdAt: instant(-24 * 200),
+  });
 }
 
 /* ─── Rendez-vous ──────────────────────────────────────────────────────────── */
@@ -1658,33 +1683,70 @@ for (const [cle, title, startAt, durationMin, clientId, clientName, location, st
 /* ─── Médias ───────────────────────────────────────────────────────────────── */
 
 /*
-  Quatre images, dont trois rattachées à la même cliente : c'est ce qui rend le
-  FILTRE ACTIF mesurable — l'unique ambre de l'écran Médias n'existe que
-  lorsqu'une cliente est choisie. La quatrième est sans cliente, pour que la
-  grille complète se distingue de la grille filtrée.
+  DIX IMAGES, ET DES POIDS QUI DIFFÈRENT VRAIMENT.
 
-  Les images sont des SVG écrits ici plutôt que des photos : elles occupent la
-  même place à l'écran sans peser dans un script de bac à sable.
+  Deux objets vivent sur cet écran et ils demandent des choses opposées :
+
+  · le FILTRE par cliente n'existe qu'avec plusieurs clientes rattachées ;
+  · le PAVAGE (`18c`) montre la part de surface de chaque dossier, et il ne
+    montre rien si tous les fichiers pèsent pareil. Des vignettes identiques
+    donneraient un pavage qui compte les fichiers au lieu de peser les
+    octets — c'est-à-dire un histogramme déguisé.
+
+  Les images sont donc des SVG dont la CHARGE varie : `poids` ajoute des
+  formes, et les octets qui vont avec. Ce ne sont pas des tailles simulées,
+  c'est le vrai poids de ce qui est stocké — le produit garde ses images en
+  `data:`, et c'est cette chaîne-là que le pavage mesure.
+
+  La répartition est choisie pour qu'une cliente occupe à elle seule plus de
+  la moitié de l'espace : c'est le seul cas que le module sache signaler, et
+  sans lui le pavage n'a pas d'ambre. Deux images ont plus de trois mois,
+  pour que la phrase « archiver libérerait N » repose sur une mesure.
 */
-const vignette = (fond, trait) =>
-  'data:image/svg+xml;utf8,' +
-  encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240"><rect width="240" height="240" fill="${fond}"/>` +
-      `<circle cx="120" cy="96" r="42" fill="${trait}" opacity="0.5"/>` +
-      `<rect x="36" y="156" width="168" height="10" fill="${trait}" opacity="0.35"/>` +
-      `<rect x="36" y="180" width="108" height="10" fill="${trait}" opacity="0.25"/></svg>`,
+const vignette = (fond, trait, poids) => {
+  let formes = '';
+  for (let k = 0; k < poids; k += 1) {
+    const x = 12 + ((k * 37) % 200);
+    const y = 12 + ((k * 53) % 200);
+    const r = 6 + (k % 11);
+    formes +=
+      `<circle cx="${x}" cy="${y}" r="${r}" fill="${trait}" opacity="0.${(k % 4) + 2}"/>` +
+      `<rect x="${x}" y="${y}" width="${r * 3}" height="4" fill="${trait}" opacity="0.15"/>`;
+  }
+  return (
+    'data:image/svg+xml;utf8,' +
+    encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240"><rect width="240" height="240" fill="${fond}"/>` +
+        `<circle cx="120" cy="96" r="42" fill="${trait}" opacity="0.5"/>` +
+        formes +
+        `<rect x="36" y="156" width="168" height="10" fill="${trait}" opacity="0.35"/>` +
+        `<rect x="36" y="180" width="108" height="10" fill="${trait}" opacity="0.25"/></svg>`,
+    )
   );
+};
+/* [clé, nom, client, nom du client, fond, trait, poids, jours dans le passé] */
 const MEDIAS = [
-  ['essai-med-1', 'vitrine-ete-01.jpg', 102, '#2b2722', '#d0c4a8', -2],
-  ['essai-med-2', 'vitrine-ete-02.jpg', 102, '#242a2b', '#a8c6d0', -2],
-  ['essai-med-3', 'panneau-avant.png', 102, '#2a2426', '#d0a8b8', -21],
-  ['essai-med-4', 'croquis-devanture.jpg', null, '#26282a', '#b8b8c0', -34],
+  /* Brasserie du Port — le dossier qui mange la moitié de l'espace. */
+  ['essai-med-1', 'vitrine-ete-01.jpg', 102, 'Hugo Marchand', '#2b2722', '#d0c4a8', 60, -2],
+  ['essai-med-2', 'vitrine-ete-02.jpg', 102, 'Hugo Marchand', '#242a2b', '#a8c6d0', 55, -2],
+  ['essai-med-3', 'panneau-avant.png', 102, 'Hugo Marchand', '#2a2426', '#d0a8b8', 48, -21],
+  ['essai-med-5', 'panneau-apres.png', 102, 'Hugo Marchand', '#252a26', '#b0d0a8', 44, -20],
+  ['essai-med-6', 'terrasse-montage.jpg', 102, 'Hugo Marchand', '#2a2822', '#d0c08a', 38, -18],
+  /* Villa Sereine — un dossier moyen. */
+  ['essai-med-7', 'villa-terrasse-01.jpg', 104, 'Élodie Vasseur', '#23262b', '#9fb4d0', 22, -40],
+  ['essai-med-8', 'villa-terrasse-02.jpg', 104, 'Élodie Vasseur', '#262329', '#c0a8d0', 18, -40],
+  /* Cabinet Vallon — un petit dossier, et deux images de plus de trois mois. */
+  ['essai-med-9', 'plantes-bureau.jpg', 106, 'Salomé Vallon', '#222a25', '#a8d0b4', 9, -120],
+  ['essai-med-10', 'bac-recu.jpg', 106, 'Salomé Vallon', '#2a2422', '#d0b0a0', 7, -150],
+  /* Sans cliente : la part que personne n'a rangée. */
+  ['essai-med-4', 'croquis-devanture.jpg', null, '', '#26282a', '#b8b8c0', 14, -34],
 ];
-for (const [cle, name, clientId, fond, trait, dansJours] of MEDIAS) {
+for (const [cle, name, clientId, clientName, fond, trait, poids, dansJours] of MEDIAS) {
   await poser('media', cle, {
     name,
-    dataUrl: vignette(fond, trait),
+    dataUrl: vignette(fond, trait, poids),
     clientId,
+    clientName,
     createdAt: instant(24 * dansJours),
   });
 }
@@ -1755,7 +1817,17 @@ const PAGES = [
     /* Personne d'autre que la propriétaire : c'est la page en lecture seule du
        rail, et celle qui donne son sens à la mention « lecture seule ». */
     ['owner'],
-    [{ id: 'essai-blc-6', type: 'text', text: 'Remise maximale : 15 %. Au-delà, l’accord se demande.' }],
+    /*
+      UN BLOC VIDE, VOULU. La page de profil (`18a`) n'a qu'un défaut à
+      montrer : le bloc qui retient la page. Sans lui, l'objet dominant ne se
+      voit que dans son cas calme — et la règle « un bloc vide se dessine à une
+      hauteur minimale visible, il ne disparaît pas » ne se vérifie sur rien.
+    */
+    [
+      { id: 'essai-blc-6', type: 'text', text: 'Remise maximale : 15 %. Au-delà, l’accord se demande.' },
+      { id: 'essai-blc-6b', type: 'table', columns: ['Palier', 'Remise'], rows: [] },
+      { id: 'essai-blc-6c', type: 'text', text: 'Les remises exceptionnelles se notent sur la fiche du client, pas ici.' },
+    ],
   ],
   [
     'essai-page-4',
@@ -3543,9 +3615,23 @@ await poser('reports', 'essai-rap-2', {
     '',
     'Ce qu’il faut retenir pour la prochaine : demander une photo de la vitrine à 19 h avant d’imprimer. Le devis suivant, la refonte de la boutique, en tient compte.',
   ].join('\n'),
+  /*
+    TROIS LIENS, TROIS ÉTATS DU FIL DE PROVENANCE (`18b`).
+
+    · le client 102 porte encore le nom que le rapport a retenu → fil fin ;
+    · la tâche `essai-tac-6` a été RENOMMÉE depuis (« du 17 » est devenu
+      « du 24 ») → le rapport annonce une chose, la source en dit une autre.
+      C'est ce fil-là qui est ambre et épais : le seul épais de l'écran ;
+    · la tâche `essai-tac-2` porte encore son titre → fil fin lui aussi.
+
+    L'écart n'est pas une erreur du rapport : c'est la source qui a bougé, et
+    c'est exactement ce que la règle du module veut faire voir — un compte
+    rendu ne se régénère pas tout seul.
+  */
   links: [
     { kind: 'client', id: '102', label: 'Hugo Marchand' },
-    { kind: 'task', id: 'essai-tac-1', label: 'Livrer la vitrine d’été' },
+    { kind: 'task', id: 'essai-tac-6', label: 'Bloquer le créneau de livraison du 17' },
+    { kind: 'task', id: 'essai-tac-2', label: 'Relancer la Brasserie du Port' },
   ],
   authorEmail: EMAIL,
   createdAt: instant(-24 * 2),
@@ -3554,7 +3640,12 @@ await poser('reports', 'essai-rap-3', {
   type: 'task',
   title: 'Installation Studio Nord',
   body: 'Pose faite en deux heures, sans reprise. Le local est accessible par l’arrière, ce qui change tout pour le déchargement — à noter pour les prochaines livraisons.',
-  links: [{ kind: 'task', id: 'essai-tac-2', label: 'Installer chez Studio Nord' }],
+  /* UNE SOURCE DISPARUE : la fiche citée n'existe plus. Le rapport, lui,
+     l'annoncera toujours — le fil doit savoir dessiner ce cas aussi. */
+  links: [
+    { kind: 'task', id: 'essai-tac-4', label: 'Facture 2026-0035 — deuxième relance' },
+    { kind: 'task', id: 'essai-tac-effacee', label: 'Commander le support alu' },
+  ],
   authorEmail: EMAIL,
   createdAt: instant(-24 * 21),
 });
