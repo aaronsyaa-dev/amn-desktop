@@ -40,7 +40,16 @@ export const garde = {
   tour: async () => (await appel<{ releve: GardeReleve }>('/tour', 'POST', {})).releve,
   propositions: async (etat = 'proposee') => (await appel<{ propositions: GardeProposition[] }>(`/propositions${q({ etat })}`)).propositions,
   deciderProposition: async (id: string, etat: 'acceptee' | 'refusee', couloir: { min: number; max: number } | null = null) => (await appel<{ proposition: GardeProposition }>(`/propositions/${encodeURIComponent(id)}`, 'POST', { etat, couloir })).proposition,
-  etSi: async (agent: string, regle: string, parametre: string, valeur: number) => (await appel<{ etsi: { avant: number | null; apres: number | null; phrase?: string; note?: string } }>(`/etsi${q({ agent, regle, parametre, valeur })}`)).etsi,
+  /**
+   * « ET SI ? » — le mois écoulé rejoué avec un paramètre changé.
+   *
+   * `avant` et `apres` sont deux TOTAUX sur la même fenêtre de trente jours :
+   * c'est tout ce que `regle.rejouer()` sait produire côté serveur aujourd'hui.
+   * `serieAvant` / `serieApres` — trente valeurs, un jour chacune — permettent
+   * de tracer le calque dans le temps ; elles n'arrivent que d'un serveur qui
+   * sait les compter. Facultatives, donc, et l'écran s'en passe sans mentir.
+   */
+  etSi: async (agent: string, regle: string, parametre: string, valeur: number) => (await appel<{ etsi: { avant: number | null; apres: number | null; actuelle?: number; phrase?: string; note?: string; serieAvant?: number[]; serieApres?: number[] } }>(`/etsi${q({ agent, regle, parametre, valeur })}`)).etsi,
   reglages: async (patch: { heureTour?: number; silence?: { de: number; a: number }; budgetParoles?: number }) => (await appel<{ reglages: { heureTour: number; silence?: { de: number; a: number }; budgetParoles?: number } }>('/reglages', 'PUT', patch)).reglages,
   // Bloc 4 — Ajmani, chef d'état-major.
   accueil: () => appel<GardeAccueil>('/ajmani'),
