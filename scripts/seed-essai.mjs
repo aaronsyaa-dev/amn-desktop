@@ -90,12 +90,51 @@ const instant = (decalageHeures) => new Date(Date.now() + decalageHeures * 3600_
 let ecrits = 0;
 let echecs = 0;
 
-async function poser(collection, id, data) {
-  const res = await fetch(`${API}/v1/collections/${collection}/${encodeURIComponent(id)}`, {
+/*
+  LE SCRIPT SE RALENTIT LUI-MÊME, et ce n'est pas de la politesse.
+
+  `amn-api` limite le nombre d'écritures par fenêtre de temps — la même
+  protection qui existe en production contre un client emballé. Ce script en
+  pose plus de cinq cents à la vitesse du réseau local : il finissait donc par
+  se faire refuser ses dernières lignes en 429, au hasard de la collection qui
+  tombait à ce moment-là. Le symptôme était sournois — « 549 écrits, 1 échec »,
+  sur un enregistrement différent à chaque exécution.
+
+  Deux mesures, dans cet ordre : une respiration régulière pour rester sous la
+  limite, et un RENVOI unique après attente quand elle est quand même
+  atteinte. Renvoyer sans ralentir aurait juste déplacé le problème d'un cran.
+*/
+const RESPIRATION_TOUS_LES = 25;
+const RESPIRATION_MS = 120;
+const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+let poses = 0;
+
+async function ecrire(collection, id, data) {
+  return fetch(`${API}/v1/collections/${collection}/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${login.token}` },
     body: JSON.stringify({ data }),
   });
+}
+
+async function poser(collection, id, data) {
+  poses += 1;
+  if (poses % RESPIRATION_TOUS_LES === 0) await dormir(RESPIRATION_MS);
+
+  let res = await ecrire(collection, id, data);
+  /*
+    TROIS RENVOIS, DE PLUS EN PLUS PATIENTS. Une seule seconde suffit quand la
+    fenêtre vient juste de se remplir ; elle ne suffit pas quand le script est
+    rejoué deux fois de suite, ce qui arrive tout le temps pendant un chantier
+    de design. L'attente double à chaque essai plutôt que de se répéter à
+    l'identique — retenter au même rythme contre une limite de débit, c'est
+    l'alimenter.
+  */
+  for (let essai = 0; res.status === 429 && essai < 3; essai += 1) {
+    await dormir(2000 * 2 ** essai);
+    res = await ecrire(collection, id, data);
+  }
+
   if (res.ok) {
     ecrits += 1;
   } else {
@@ -1337,19 +1376,72 @@ for (const f of FOURNISSEURS) {
   });
 }
 
-const compo = (label, quantity, unit, euros) => ({ label, quantity, unit, unitCostCents: Math.round(euros * 100) });
+const compo = (label, quantity, unit, euros, dedans) => ({
+  label,
+  quantity,
+  unit,
+  unitCostCents: Math.round(euros * 100),
+  ...(dedans ? { components: dedans } : {}),
+});
+
+/*
+  LES BOÎTES GIGOGNES (`25b`) DEMANDENT DE VRAIS EMBOÎTEMENTS.
+
+  Le module tient sur trois choses qu'une liste plate ne peut pas montrer :
+  l'imbrication elle-même, la règle « la quantité d'une boîte MULTIPLIE celle
+  de son contenu », et la boîte de sous-ensemble bloquée par une rupture.
+
+  Deux kits portent donc trois niveaux. « Composition de vitrine » contient un
+  sous-ensemble « Bouquet monté » ×3, qui contient lui-même de la mousse
+  florale et un bouquet de saison : le coût du kit ne se lit correctement que
+  si les 3 se propagent à l'intérieur. Et « Jardinière de terrasse » contient
+  un sous-ensemble « Habillage fleuri » dont un article — « Couronne de
+  porte » — est À ZÉRO dans le stock semé plus haut : c'est cette boîte-là qui
+  porte l'ambre, l'article portant la mention rouge, et c'est le kit entier
+  qui devient indisponible.
+
+  Les deux autres kits restent PLATS à dessein : une nomenclature à un seul
+  niveau doit continuer de s'afficher correctement, puisque c'est ce que le
+  modèle portait avant ce chantier.
+*/
 const NOMENCLATURES = [
   {
     cle: 'bom-1',
     produit: 'Jardinière de terrasse — 1 m',
-    vente: 130,
-    composants: [compo('Bac bois traité', 1, 'pièce', 48), compo('Terreau', 40, 'L', 0.45), compo('Plants vivaces', 6, 'pièce', 4.2), compo('Main-d’œuvre', 1.5, 'h', 22)],
+    vente: 145,
+    composants: [
+      compo('Bac bois traité', 1, 'pièce', 48),
+      compo('Terreau', 40, 'L', 0.45),
+      compo('Habillage fleuri', 1, 'ensemble', 0, [
+        compo('Plants vivaces', 6, 'pièce', 4.2),
+        compo('Mousse florale', 2, 'pièce', 3.2),
+      ]),
+      compo('Main-d’œuvre', 1.5, 'h', 22),
+    ],
   },
   {
     cle: 'bom-2',
     produit: 'Composition de vitrine — saison',
     vente: 185,
-    composants: [compo('Fleurs coupées', 1, 'lot', 62), compo('Feuillage', 1, 'lot', 18), compo('Mousse et support', 1, 'pièce', 9.5), compo('Main-d’œuvre', 2, 'h', 22)],
+    /*
+      TROIS NIVEAUX, ET LA MULTIPLICATION QUI LES TRAVERSE.
+
+      Trois bouquets montés, chacun avec un cœur qui contient lui-même deux
+      articles. Le coût ne tombe juste que si le ×3 se propage jusqu'au
+      troisième niveau : 3 × (1 × (18 + 3,20) + 2 × 3) = 81,60 €. Une somme à
+      plat donnerait 30,20 € — et personne ne verrait l'erreur.
+    */
+    composants: [
+      compo('Bouquet monté', 3, 'pièce', 0, [
+        compo('Cœur du bouquet', 1, 'ensemble', 0, [
+          compo('Bouquet de saison', 1, 'pièce', 18),
+          compo('Mousse florale', 1, 'pièce', 3.2),
+        ]),
+        compo('Feuillage', 2, 'brin', 3),
+      ]),
+      compo('Mousse et support', 1, 'pièce', 9.5),
+      compo('Main-d’œuvre', 2, 'h', 22),
+    ],
   },
   {
     /* La marge NÉGATIVE : le seul vrai défaut que ce module puisse montrer. */
@@ -1363,7 +1455,25 @@ const NOMENCLATURES = [
     cle: 'bom-4',
     produit: 'Arche d’événement — location',
     vente: null,
-    composants: [compo('Structure alu', 1, 'pièce', 240), compo('Fleurs et feuillage', 1, 'lot', 95), compo('Montage sur place', 3, 'h', 22)],
+    /*
+      LE SOUS-ENSEMBLE BLOQUÉ. « Couronne de porte » est à zéro dans le stock
+      semé plus haut : sa boîte parente porte l'ambre, l'article porte la
+      mention rouge, et le kit entier devient indisponible.
+
+      Il est posé ICI, sur le kit SANS prix de vente, et pas sur la
+      jardinière : un article à 95 € glissé dans une nomenclature à 130 €
+      l'aurait fait basculer à perte, et l'écran aurait alors signalé DEUX
+      défauts différents sur le même produit. Un jeu d'essai doit isoler ce
+      qu'il démontre.
+    */
+    composants: [
+      compo('Structure alu', 1, 'pièce', 240),
+      compo('Décor de couronnes', 2, 'ensemble', 0, [
+        compo('Couronne de porte', 1, 'pièce', 95),
+        compo('Mousse florale', 3, 'pièce', 3.2),
+      ]),
+      compo('Montage sur place', 3, 'h', 22),
+    ],
   },
 ];
 for (const b of NOMENCLATURES) {
@@ -2100,6 +2210,85 @@ const PASSAGES = [
 ];
 for (const [cle, checklistId, doneAt, byEmail, checked, note] of PASSAGES) {
   await poser('checkRuns', cle, { checklistId, doneAt, byEmail, checked, note });
+}
+
+/* ─── Montage ──────────────────────────────────────────────────────────────── */
+
+/*
+  TROIS CHANTIERS, ET DES PIÈCES QUI PORTENT DE VRAIS NOMS D'ARTICLES.
+
+  L'éclaté (`25a`) lit la disponibilité d'une pièce DANS LE STOCK, quand le
+  nom de l'étape correspond à un article suivi. Des étapes écrites « poser le
+  socle » ne correspondraient à rien : toutes les pièces seraient « non
+  suivies », et la pièce MANQUANTE — celle qui porte l'ambre et qui est le
+  seul vrai défaut que l'objet sache montrer — n'existerait sur aucun jeu
+  d'essai.
+
+  Le premier chantier porte donc sept pièces dont cinq sont des articles du
+  stock semé plus haut, et l'une d'elles — « Couronne de porte » — est en
+  rupture. Deux pièces restent volontairement hors stock suivi : l'écran doit
+  savoir dire « non suivie » plutôt que de les déclarer disponibles par
+  défaut. La dernière de la pile n'est ni manquante ni posée, pour que la
+  phrase « c'est la seule qui se remplace sans démonter le reste » désigne
+  quelqu'un d'autre que l'ambre.
+*/
+const etape = (id, label, faitIlYaH = null) => ({
+  id,
+  label,
+  doneAt: faitIlYaH === null ? null : instant(-faitIlYaH),
+});
+
+const MONTAGES = [
+  {
+    cle: 'essai-asm-1',
+    title: 'Arche florale — mariage Durand',
+    client: 'Maison Bertaux',
+    majIlYaH: 3,
+    steps: [
+      etape('asm1-a', 'Structure d’arche', 30),
+      etape('asm1-b', 'Mousse florale', 27),
+      etape('asm1-c', 'Bouquet de saison', 22),
+      etape('asm1-d', 'Composition de table'),
+      /* EN RUPTURE DANS LE STOCK — c'est elle, l'ambre de l'écran. */
+      etape('asm1-e', 'Couronne de porte'),
+      etape('asm1-f', 'Boutonnières'),
+      etape('asm1-g', 'Ruban de satin'),
+    ],
+  },
+  {
+    cle: 'essai-asm-2',
+    title: 'Décor de salon — Studio Nord',
+    client: 'Studio Nord',
+    majIlYaH: 30,
+    steps: [
+      etape('asm2-a', 'Plateau de présentation', 120),
+      etape('asm2-b', 'Composition de table', 96),
+      etape('asm2-c', 'Bouquet de saison'),
+      etape('asm2-d', 'Signalétique de stand'),
+      etape('asm2-e', 'Éclairage d’appoint'),
+    ],
+  },
+  {
+    cle: 'essai-asm-3',
+    title: 'Vitrine d’automne — Brasserie du Port',
+    client: 'Brasserie du Port',
+    majIlYaH: 24 * 9,
+    steps: [
+      etape('asm3-a', 'Fond de vitrine', 24 * 12),
+      etape('asm3-b', 'Mousse florale', 24 * 11),
+      etape('asm3-c', 'Jardinière garnie', 24 * 10),
+      etape('asm3-d', 'Guirlande de vitrine', 24 * 9),
+    ],
+  },
+];
+for (const m of MONTAGES) {
+  await poser('assemblies', m.cle, {
+    title: m.title,
+    client: m.client,
+    steps: m.steps,
+    createdAt: instant(-24 * 20),
+    updatedAt: instant(-m.majIlYaH),
+  });
 }
 
 /* ─── Interventions ────────────────────────────────────────────────────────── */
