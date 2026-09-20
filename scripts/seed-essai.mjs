@@ -630,28 +630,68 @@ await poser('paymentReminders', 'essai-rel-1', {
   de deux heures à cinq semaines, avec une seule ouverte très vieille — celle
   que personne n'a prise, et qui doit dominer l'écran.
 */
+/*
+  LES ÂGES SONT CHOISIS POUR LE SABLIER (`24d`), pas au hasard.
+
+  L'engagement est de 48 h. Une série d'âges tous supérieurs à deux jours
+  donnerait cinq sabliers identiques, entièrement écoulés — c'est-à-dire un
+  objet qui ne classe plus rien, alors que classer sans trier est toute sa
+  raison d'être. Les cinq demandes non réglées couvrent donc l'échelle :
+
+    2 h   → sablier presque plein   (4 % consommés)
+    12 h  → un quart passé
+    26 h  → un peu plus de la moitié
+    41 h  → presque écoulé
+    34 j  → écoulé, et largement dépassé — c'est lui qui porte l'ambre
+
+  Le dernier prouve aussi la règle du rouge : une demande dépassée garde son
+  sablier et ne devient PAS rouge, le rouge restant aux ruptures de stock.
+
+  LES MOTIFS nourrissent les barres des douze derniers mois. Ils se répètent à
+  dessein — un motif par demande donnerait autant de barres que de demandes,
+  ce qui n'est pas une distribution mais une liste. Un ticket reste sans
+  motif : le champ est facultatif, et l'écran doit savoir le dire.
+*/
 const TICKETS = [
-  { cle: 'essai-sav-1', client: 'Brasserie du Port', sujet: 'Store de terrasse qui ne remonte plus',
+  { cle: 'essai-sav-1', client: 'Brasserie du Port', sujet: 'Store de terrasse qui ne remonte plus', motif: 'Pose à reprendre',
     note: 'Appelé deux fois, sans retour de notre part.', etat: 'ouvert', ouvertIlYaH: 24 * 34, pris: '', resoluIlYaH: null },
-  { cle: 'essai-sav-2', client: 'Maison Bertaux', sujet: 'Jardinière fendue à la livraison',
-    note: 'Photo reçue, remplacement à commander.', etat: 'enCours', ouvertIlYaH: 24 * 9, pris: EMAIL, resoluIlYaH: null },
-  { cle: 'essai-sav-3', client: 'Studio Nord', sujet: 'Deux plantes livrées au lieu de quatre',
-    note: '', etat: 'ouvert', ouvertIlYaH: 24 * 3, pris: '', resoluIlYaH: null },
-  { cle: 'essai-sav-4', client: 'Le Jardin d’Élise', sujet: 'Facture en double sur la commande de juin',
-    note: 'Avoir à établir.', etat: 'enCours', ouvertIlYaH: 30, pris: 'nadia@exemple.test', resoluIlYaH: null },
-  { cle: 'essai-sav-5', client: 'Atelier Fontaine', sujet: 'Demande de devis pour rallonger l’arrosage',
+  { cle: 'essai-sav-2', client: 'Maison Bertaux', sujet: 'Jardinière fendue à la livraison', motif: 'Article abîmé',
+    note: 'Photo reçue, remplacement à commander.', etat: 'enCours', ouvertIlYaH: 41, pris: EMAIL, resoluIlYaH: null },
+  { cle: 'essai-sav-3', client: 'Studio Nord', sujet: 'Deux plantes livrées au lieu de quatre', motif: 'Erreur de quantité',
+    note: '', etat: 'ouvert', ouvertIlYaH: 26, pris: '', resoluIlYaH: null },
+  { cle: 'essai-sav-4', client: 'Le Jardin d’Élise', sujet: 'Facture en double sur la commande de juin', motif: 'Question de facture',
+    note: 'Avoir à établir.', etat: 'enCours', ouvertIlYaH: 12, pris: 'nadia@exemple.test', resoluIlYaH: null },
+  { cle: 'essai-sav-5', client: 'Atelier Fontaine', sujet: 'Demande de devis pour rallonger l’arrosage', motif: '',
     note: '', etat: 'ouvert', ouvertIlYaH: 2, pris: '', resoluIlYaH: null },
-  { cle: 'essai-sav-6', client: 'Brasserie du Port', sujet: 'Éclairage de vitrine intermittent',
-    note: '', etat: 'resolu', ouvertIlYaH: 24 * 12, pris: EMAIL, resoluIlYaH: 24 * 9 },
-  { cle: 'essai-sav-7', client: 'Maison Bertaux', sujet: 'Changement d’horaire de livraison',
-    note: '', etat: 'resolu', ouvertIlYaH: 24 * 6, pris: 'hugo@exemple.test', resoluIlYaH: 24 * 5 },
-  { cle: 'essai-sav-8', client: 'Studio Nord', sujet: 'Mousse sur la terrasse après la pluie',
-    note: '', etat: 'resolu', ouvertIlYaH: 24 * 20, pris: EMAIL, resoluIlYaH: 24 * 16 },
+
+  /* Les réglées — dont trois DANS l'engagement et trois au-delà, pour que
+     « délai moyen tenu » et « dépassements » disent chacun quelque chose. */
+  { cle: 'essai-sav-6', client: 'Brasserie du Port', sujet: 'Éclairage de vitrine intermittent', motif: 'Pose à reprendre',
+    note: '', etat: 'resolu', ouvertIlYaH: 24 * 12, pris: EMAIL, resoluIlYaH: 24 * 12 - 30 },
+  { cle: 'essai-sav-7', client: 'Maison Bertaux', sujet: 'Changement d’horaire de livraison', motif: 'Livraison en retard',
+    note: '', etat: 'resolu', ouvertIlYaH: 24 * 6, pris: 'hugo@exemple.test', resoluIlYaH: 24 * 6 - 20 },
+  { cle: 'essai-sav-8', client: 'Studio Nord', sujet: 'Mousse sur la terrasse après la pluie', motif: 'Pose à reprendre',
+    note: '', etat: 'resolu', ouvertIlYaH: 24 * 20, pris: EMAIL, resoluIlYaH: 24 * 20 - 96 },
+  { cle: 'essai-sav-9', client: 'Villa Sereine', sujet: 'Livraison arrivée après la fermeture', motif: 'Livraison en retard',
+    note: '', etat: 'resolu', ouvertIlYaH: 24 * 48, pris: EMAIL, resoluIlYaH: 24 * 48 - 40 },
+  { cle: 'essai-sav-10', client: 'Cabinet Vallon', sujet: 'Bac reçu ébréché', motif: 'Article abîmé',
+    note: '', etat: 'resolu', ouvertIlYaH: 24 * 95, pris: 'nadia@exemple.test', resoluIlYaH: 24 * 95 - 24 },
+  { cle: 'essai-sav-11', client: 'Le Jardin d’Élise', sujet: 'Créneau de livraison non tenu', motif: 'Livraison en retard',
+    note: '', etat: 'resolu', ouvertIlYaH: 24 * 140, pris: EMAIL, resoluIlYaH: 24 * 140 - 18 },
+  { cle: 'essai-sav-12', client: 'Studio Nord', sujet: 'Trois bacs au lieu de cinq', motif: 'Erreur de quantité',
+    note: '', etat: 'resolu', ouvertIlYaH: 24 * 190, pris: 'hugo@exemple.test', resoluIlYaH: 24 * 190 - 60 },
+  { cle: 'essai-sav-13', client: 'Brasserie du Port', sujet: 'Commande livrée la veille du besoin', motif: 'Livraison en retard',
+    note: '', etat: 'resolu', ouvertIlYaH: 24 * 250, pris: EMAIL, resoluIlYaH: 24 * 250 - 12 },
+  { cle: 'essai-sav-14', client: 'Maison Bertaux', sujet: 'Composition abîmée au transport', motif: 'Article abîmé',
+    note: '', etat: 'resolu', ouvertIlYaH: 24 * 300, pris: EMAIL, resoluIlYaH: 24 * 300 - 36 },
+  { cle: 'essai-sav-15', client: 'Atelier Fontaine', sujet: 'Remise non appliquée', motif: 'Question de facture',
+    note: '', etat: 'resolu', ouvertIlYaH: 24 * 330, pris: 'nadia@exemple.test', resoluIlYaH: 24 * 330 - 26 },
 ];
 for (const tk of TICKETS) {
   await poser('tickets', tk.cle, {
     client: tk.client,
     subject: tk.sujet,
+    reason: tk.motif,
     note: tk.note,
     status: tk.etat,
     openedAt: instant(-tk.ouvertIlYaH),
