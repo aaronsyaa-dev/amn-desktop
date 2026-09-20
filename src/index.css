@@ -1302,6 +1302,27 @@ button.bg-accent[aria-disabled='true']:hover {
   animation: dvhalo 2s ease-out infinite;
 }
 
+/*
+  Le même anneau, mais en encre sombre : la pastille d'une garde posée sur une
+  plaque ambre. `dvhalo` écarte un anneau blanc — invisible sur l'ambre, donc
+  muet là où il doit justement dire « elle bat encore ».
+*/
+@keyframes dvhalo-encre {
+  0% {
+    box-shadow: 0 0 0 0 rgba(8, 8, 8, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(8, 8, 8, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(8, 8, 8, 0);
+  }
+}
+
+.anneau-courant-encre {
+  animation: dvhalo-encre 2s ease-out infinite;
+}
+
 .souffle-signal {
   animation: dvamber 2.8s ease-in-out infinite;
 }
@@ -1329,6 +1350,7 @@ button.bg-accent[aria-disabled='true']:hover {
   .pouls-vivant,
   .halo-signal,
   .anneau-courant,
+  .anneau-courant-encre,
   .souffle-signal,
   .bord-vivant {
     animation: none;

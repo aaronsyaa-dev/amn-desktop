@@ -62,3 +62,24 @@ export const garde = {
 };
 
 export const EQUIPES_ORDRE = ['sites', 'securite', 'comptes', 'registre', 'clientes', 'produit', 'taches', 'memoire'] as const;
+
+/**
+ * LE RETARD TOLÉRÉ — la formule du Capitaine, recopiée à l'identique.
+ *
+ * `amn-api/src/garde/capitaine.js` décide ceci : `Math.max(3 * everyMs,
+ * 15 min)`. Au-delà, le Capitaine ouvre lui-même une remontée HAUTE
+ * `garde-retard:<clé>` — la Garde surveille la Garde.
+ *
+ * La Salle doit trancher EXACTEMENT comme lui. Une Salle qui dirait « en
+ * retard » là où le Capitaine n'a rien ouvert — ou l'inverse — ferait douter
+ * des deux, et c'est le mur qu'on regarde en premier la nuit. Si la règle
+ * change côté serveur, elle change ici, et les deux phrases restent la même.
+ */
+export const retardTolereMs = (everyMs: number) => Math.max(3 * everyMs, 15 * 60_000);
+
+/** Le retard d'une garde en millisecondes, ou `null` si sa ronde tient encore l'heure. */
+export function retardDeRonde(agent: GardeAgent, now: number = Date.now()): number | null {
+  if (!agent.actif || !agent.prochaineRondeAt) return null;
+  const retard = now - Date.parse(agent.prochaineRondeAt);
+  return retard > retardTolereMs(agent.everyMs) ? retard : null;
+}
