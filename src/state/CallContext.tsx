@@ -10,6 +10,7 @@ import React, {
 import { bridge } from '../lib/bridge';
 import { useAuth } from '../auth/AuthContext';
 import type { CallSignal, CallSignalKind, RemoteInputEvent } from '../shared/api';
+import { useSync, uid } from './SyncContext';
 
 /**
  * Operator-to-operator audio calls (BLOC 2).
@@ -140,8 +141,37 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const myEmail = (user?.email ?? '').trim().toLowerCase();
 
+  const { upsert } = useSync();
   const [state, setState] = useState<CallState>(IDLE);
   const [missed, setMissed] = useState<MissedCall[]>([]);
+
+  /*
+    LE JOURNAL DES APPELS (`calls`), pour le module `20b`.
+
+    Un appel ne laissait aucune trace : la durée vivait dans l'état React le
+    temps de la conversation, et disparaissait avec elle. Le module Appels ne
+    pouvait donc montrer que la présence à la seconde — jamais le RYTHME d'une
+    journée, qui est ce qu'il a de propre à dire.
+
+    Deux refs suffisent, et elles sont des refs et non de l'état pour la même
+    raison que tout ce qui les entoure : `teardown` est appelé depuis des
+    gestionnaires de signal et des minuteurs qui ne reverront jamais un état
+    rafraîchi.
+
+      · `sensRef`  — qui a décroché le téléphone : entrant ou sortant ;
+      · `debutRef` — l'instant où la connexion s'est établie, donc l'instant
+        où l'appel a VRAIMENT commencé. Rester à sonner ne compte pas comme
+        une durée, et c'est la seule définition qui rende les impulsions
+        comparables entre elles.
+  */
+  const sensRef = useRef<'entrant' | 'sortant' | null>(null);
+  const debutRef = useRef<number | null>(null);
+  const journaliser = useCallback(
+    (withEmail: string, sens: 'entrant' | 'sortant', at: string, seconds: number, manque: boolean) => {
+      void upsert('calls', uid('call'), { withEmail, sens, at, seconds, manque });
+    },
+    [upsert],
+  );
   const [callsAvailable, setCallsAvailable] = useState(false);
 
   // Everything below the React state is a live resource that must be released
@@ -250,6 +280,22 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       audioElRef.current = null;
     }
 
+    /* L'APPEL EST JOURNALISÉ AVANT que les refs soient vidées — et seulement
+       s'il a été CONNECTÉ. Un appel qui n'a jamais abouti n'a pas de durée, et
+       une impulsion de durée nulle mentirait sur l'axe. Les manqués sont
+       journalisés ailleurs, là où on les constate, avec `manque: true`. */
+    if (peerRef.current && sensRef.current && debutRef.current !== null) {
+      journaliser(
+        peerRef.current,
+        sensRef.current,
+        new Date(debutRef.current).toISOString(),
+        Math.max(1, Math.round((Date.now() - debutRef.current) / 1000)),
+        false,
+      );
+    }
+    sensRef.current = null;
+    debutRef.current = null;
+
     callIdRef.current = '';
     peerRef.current = '';
     pendingOfferRef.current = null;
@@ -263,7 +309,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     } else {
       setState(IDLE);
     }
-  }, []);
+  }, [journaliser]);
 
   /**
    * Wires the control channel (B.2).
@@ -387,6 +433,9 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
             clearTimeout(connectTimerRef.current);
             connectTimerRef.current = null;
           }
+          /* L'appel commence ICI, pas à la sonnerie : c'est cet instant que
+             le journal retient comme début. */
+          debutRef.current = Date.now();
           setState((prev) => ({ ...prev, phase: 'active', durationSec: 0 }));
           if (!durationTimerRef.current) {
             durationTimerRef.current = setInterval(
@@ -416,6 +465,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       const callId = newCallId();
       callIdRef.current = callId;
       peerRef.current = to;
+      sensRef.current = 'sortant';
       setState({ ...IDLE, phase: 'outgoing', peerEmail: to });
 
       let pc: RTCPeerConnection;
@@ -721,12 +771,14 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         pendingIceRef.current = [];
         callIdRef.current = signal.callId;
         peerRef.current = from;
+        sensRef.current = 'entrant';
         setState({ ...IDLE, phase: 'incoming', peerEmail: from });
         ringTimerRef.current = setTimeout(() => {
           setMissed((prev) => [
             { id: signal.callId, fromEmail: from, at: new Date().toISOString() },
             ...prev,
           ]);
+          journaliser(from, 'entrant', new Date().toISOString(), 0, true);
           void send(from, 'reject', signal.callId);
           teardown('');
         }, RING_TIMEOUT_MS);
@@ -781,6 +833,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
             { id: signal.callId, fromEmail: from, at: new Date().toISOString() },
             ...prev,
           ]);
+          journaliser(from, 'entrant', new Date().toISOString(), 0, true);
           teardown('');
         } else {
           teardown('Appel terminé.');
@@ -828,7 +881,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     };
 
     return bridge().remote.onCallSignal(onSignal);
-  }, [myEmail, send, teardown]);
+  }, [myEmail, send, teardown, journaliser]);
 
   // Calls need the live socket, so the button follows the connection badge
   // rather than pretending to work while offline.

@@ -2320,6 +2320,32 @@ export type SyncedCollection =
   | 'announcements'
   | 'polls'
   | 'leaves'
+  /**
+   * LE JOURNAL DES APPELS — un enregistrement par appel abouti ou manqué.
+   * `sens` dit qui a décroché le téléphone, `seconds` la durée réelle de la
+   * conversation (zéro pour un manqué), `at` l'instant où elle a commencé.
+   * Écrit par `CallContext` au démontage de l'appel ; lu par le module Appels,
+   * qui en fait un train d'impulsions. Aucune trace du CONTENU : l'audio est
+   * de poste à poste et ne transite nulle part.
+   */
+  | 'calls'
+  /**
+   * LE DROIT À CONGÉS, un enregistrement par personne (`quota-<courriel>`).
+   *
+   * POURQUOI CETTE COLLECTION EXISTE, alors que l'écran Absences s'en était
+   * explicitement passé. Un module de congés sans droit ne peut pas répondre
+   * à la seule question que les gens posent — « combien il me reste ». Le
+   * refus d'origine tenait à une crainte juste (un compteur de jours ressemble
+   * à un bulletin de paie) mais tranchée du mauvais côté : un droit à congés
+   * est une donnée d'organisation, pas une donnée de paie. Il n'y a ici ni
+   * acquisition mensuelle, ni ancienneté, ni majoration — un nombre de jours
+   * par personne et par année, saisi à la main.
+   *
+   * Il n'y a AUCUNE valeur par défaut, et c'est délibéré : inventer « 25 »
+   * afficherait un solde faux avec l'aplomb d'un solde vrai. Sans droit saisi,
+   * l'écran le dit et ne dessine pas de carnet.
+   */
+  | 'leaveQuotas'
   | 'prospects'
   | 'paymentReminders'
   | 'subscriptions'

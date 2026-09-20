@@ -1,5 +1,5 @@
 diff --git a/src/db/tenancy.js b/src/db/tenancy.js
-index 24888cb..c155e11 100644
+index 24888cb..e8a43c8 100644
 --- a/src/db/tenancy.js
 +++ b/src/db/tenancy.js
 @@ -277,6 +277,11 @@ export const MODULE_CATALOGUE = [
@@ -14,7 +14,17 @@ index 24888cb..c155e11 100644
    {
      key: 'assembly',
      label: 'Suivi de montage',
-@@ -567,6 +572,7 @@ export const MODULE_COLLECTIONS = {
+@@ -554,7 +559,8 @@ export const MODULE_COLLECTIONS = {
+   groups: ['groups', 'groupMessages'],
+   announcements: ['announcements'],
+   polls: ['polls'],
+-  leaves: ['leaves'],
++  leaves: ['leaves', 'leaveQuotas'],
++  calls: ['calls'],
+   pipeline: ['prospects'],
+   reminders: ['paymentReminders'],
+   subscriptions: ['subscriptions'],
+@@ -567,6 +573,7 @@ export const MODULE_COLLECTIONS = {
    suppliers: ['suppliers'],
    shifts: ['shifts'],
    checklists: ['checklists', 'checkRuns'],
@@ -23,10 +33,19 @@ index 24888cb..c155e11 100644
    aftersales: ['tickets'],
    bom: ['boms'],
 diff --git a/src/routes/collections.js b/src/routes/collections.js
-index 6586a14..c01cfe8 100644
+index 6586a14..4e10747 100644
 --- a/src/routes/collections.js
 +++ b/src/routes/collections.js
-@@ -120,6 +120,7 @@ export const ALLOWED = new Set([
+@@ -107,6 +107,8 @@ export const ALLOWED = new Set([
+   'announcements',
+   'polls',
+   'leaves',
++  'leaveQuotas',
++  'calls',
+   'prospects',
+   'paymentReminders',
+   'subscriptions',
+@@ -120,6 +122,7 @@ export const ALLOWED = new Set([
    'shifts',
    'checklists',
    'checkRuns',
@@ -34,7 +53,7 @@ index 6586a14..c01cfe8 100644
    'assemblies',
    'tickets',
    'boms',
-@@ -166,6 +167,20 @@ export function collectionsRouter() {
+@@ -166,6 +169,20 @@ export function collectionsRouter() {
      res.json({ users: hub ? hub.presenceSnapshot(req.auth.orgId) : [] });
    });
  
@@ -55,7 +74,7 @@ index 6586a14..c01cfe8 100644
    /**
     * TOUT L'ESPACE EN UNE SEULE REQUÊTE.
     *
-@@ -274,9 +289,35 @@ export function collectionsRouter() {
+@@ -274,9 +291,35 @@ export function collectionsRouter() {
      if (data === undefined || data === null || typeof data !== 'object') {
        return res.status(400).json({ error: 'Body must be { data: {...} }' });
      }
@@ -93,7 +112,7 @@ index 6586a14..c01cfe8 100644
    });
  
    router.delete('/:collection/:id', async (req, res) => {
-@@ -284,7 +325,16 @@ export function collectionsRouter() {
+@@ -284,7 +327,16 @@ export function collectionsRouter() {
      if (module) return res.status(403).json({ error: 'La cliente a fermé ce module à son prestataire.', code: 'module_locked', module });
      const { collection, id } = req.params;
      if (!ALLOWED.has(collection)) return res.status(404).json({ error: 'Unknown collection' });

@@ -152,7 +152,10 @@ const ECRANS = [
   ['Tableau des projets', '#/tableau-projets'],
   ['Prospects', '#/pipeline'],
   /* La famille « registres » : on y cherche une entrée, on n'y surveille pas
-     un état. Trombinoscope n'a AUCUN ambre, et c'est la bonne réponse. */
+     un état. Trombinoscope fait exception depuis `20a` : sa fiche ouverte est
+     ambre — non pour dire « décide », mais pour dire où regarde l'œil dans un
+     rang de fiches identiques. Un seul objet, donc la garde reste satisfaite ;
+     l'arbitrage est écrit dans l'en-tête de `DirectoryScreen.tsx`. */
   ['Fournisseurs', '#/fournisseurs'],
   ['Interventions', '#/interventions'],
   ['Nomenclatures', '#/nomenclatures'],
@@ -206,10 +209,27 @@ try {
         if (r.width < 2 || r.height < 2) continue;
         const s = getComputedStyle(el);
         if (s.visibility === 'hidden' || s.display === 'none' || Number(s.opacity) === 0) continue;
+        /*
+          `fill` et `stroke` SONT LUS, comme le fond et l'encre.
+
+          Sans eux, tout un instrument dessiné en SVG — un jeton de
+          diagramme, un curseur d'abaque, une impulsion — pouvait être ambre
+          sans que cette garde le voie. Elle comptait alors zéro objet sur un
+          écran qui en portait un, et aurait laissé passer un SECOND ambre
+          posé plus tard en HTML. Une garde aveugle sur la moitié des dessins
+          est une garde qui rassure à tort.
+
+          `fill` s'HÉRITE en SVG : un `<g>` ambre rend tous ses enfants ambre
+          au calcul. Ce n'est pas un problème ici — le filtre des racines
+          (« un descendant d'un objet déjà compté n'est pas un deuxième
+          objet ») les réduit à un seul nœud, qui est précisément le groupe.
+        */
         const touche =
           porte(s.backgroundColor) ||
           porte(s.backgroundImage) ||
           porte(s.color) ||
+          porte(s.fill) ||
+          porte(s.stroke) ||
           porte(s.borderTopColor) ||
           porte(s.borderLeftColor) ||
           porte(s.boxShadow);

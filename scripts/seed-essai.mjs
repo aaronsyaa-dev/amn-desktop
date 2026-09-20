@@ -1954,17 +1954,96 @@ for (const [email, ...cases] of POSTES) {
 }
 
 /*
-  LES ABSENCES — des plages, pas des cases : c'est ce qui distingue cet écran
-  du planning. Une en cours aujourd'hui, deux à venir qui se chevauchent (la
-  semaine où l'équipe sera la plus mince), une à valider, une passée.
+  LES ABSENCES — cinq carnets qui ne se ressemblent pas.
+
+  L'objet dominant de `19e` est un CARNET À SOUCHES par personne : autant de
+  tickets que de jours de droit, les jours pris arrachés au talon. Pour qu'il
+  dise quelque chose, il faut que les cinq carnets soient usés différemment —
+  et que l'un d'eux le soit visiblement trop peu.
+
+  Les droits sont donc saisis (`leaveQuotas` : 25 jours, 30 pour Marc, qui est
+  le plus ancien), et les congés posés à des dates RÉELLES de l'année en
+  cours, comptés en jours ouvrés :
+
+    · le compte qui regarde  17 jours pris ;
+    · Nadia                  19 ;
+    · Hugo                   10  → très en retard sur le rythme de l'année,
+                                   c'est son carnet qui prend l'ambre ;
+    · Inès                   15  → en retard, mais moins ;
+    · Marc                   21 sur 30.
+
+  LA FERMETURE D'ATELIER n'est pas un type d'absence — le modèle n'en a pas.
+  C'est le fait que TOUT LE MONDE est en congé les mêmes jours, et l'écran le
+  déduit de ça. La semaine du 2 au 6 novembre est donc posée pour les cinq, et
+  la carte du trimestre la nomme sans qu'aucune donnée ne porte ce mot.
+
+  Les trente jours de Marc servent à prouver la règle la plus facile à casser :
+  le nombre de tickets est le nombre de jours RÉEL, jamais une échelle. Son
+  carnet est plus haut que les autres, et il doit l'être.
 */
+const ANNEE = new Date().getFullYear();
+const dateDeLAnnee = (mois, jourDuMois) => `${ANNEE}-${String(mois).padStart(2, '0')}-${String(jourDuMois).padStart(2, '0')}`;
+
+const DROITS = [
+  [MOI, 25],
+  [COLLEGUES[0], 25],
+  [COLLEGUES[1], 25],
+  [COLLEGUES[2], 25],
+  [COLLEGUES[3], 30],
+];
+for (const [email, days] of DROITS) {
+  await poser('leaveQuotas', `quota-${email}`, { email, days, year: ANNEE });
+}
+
+/* [courriel, mois début, jour début, mois fin, jour fin, nature, note] */
+const CONGES = [
+  [MOI, 2, 16, 2, 20, 'conge', ''],
+  [MOI, 4, 13, 4, 17, 'conge', ''],
+  [MOI, 7, 20, 7, 21, 'conge', 'Pont'],
+  [COLLEGUES[0], 3, 2, 3, 6, 'conge', ''],
+  [COLLEGUES[0], 7, 6, 7, 16, 'conge', 'Deux semaines'],
+  [COLLEGUES[1], 8, 10, 8, 14, 'conge', ''],
+  [COLLEGUES[2], 5, 4, 5, 8, 'conge', 'Mariage de ma sœur'],
+  [COLLEGUES[2], 8, 3, 8, 7, 'conge', ''],
+  [COLLEGUES[3], 1, 5, 1, 9, 'conge', ''],
+  [COLLEGUES[3], 6, 1, 6, 12, 'conge', ''],
+  [COLLEGUES[3], 8, 17, 8, 17, 'conge', ''],
+];
+let nConge = 0;
+for (const [email, m1, j1, m2, j2, kind, note] of CONGES) {
+  nConge += 1;
+  await poser('leaves', `essai-abs-c${nConge}`, {
+    email,
+    from: dateDeLAnnee(m1, j1),
+    to: dateDeLAnnee(m2, j2),
+    kind,
+    note,
+    status: 'approved',
+    decidedBy: MOI,
+    createdAt: instant(-24 * 120),
+  });
+}
+
+/* La fermeture d'atelier : les cinq, les mêmes jours. */
+for (const email of MEMBRES_CONNUS) {
+  await poser('leaves', `essai-abs-fermeture-${email}`, {
+    email,
+    from: dateDeLAnnee(11, 2),
+    to: dateDeLAnnee(11, 6),
+    kind: 'conge',
+    note: 'Fermeture de l’atelier',
+    status: 'approved',
+    decidedBy: MOI,
+    createdAt: instant(-24 * 60),
+  });
+}
+
+/* Le reste : ce qui n'est pas un congé, et ce qui attend une décision. */
 const ABSENCES = [
-  { cle: 'abs-1', email: COLLEGUES[0], de: -1, a: 1, kind: 'conge', note: 'Déménagement', status: 'approved' },
-  { cle: 'abs-2', email: COLLEGUES[1], de: 6, a: 12, kind: 'conge', note: '', status: 'approved' },
-  { cle: 'abs-3', email: COLLEGUES[2], de: 8, a: 10, kind: 'conge', note: 'Mariage de ma sœur', status: 'approved' },
+  { cle: 'abs-1', email: COLLEGUES[2], de: -2, a: 2, kind: 'teletravail', note: 'Garde d’enfant', status: 'approved' },
   { cle: 'abs-4', email: COLLEGUES[3], de: 3, a: 3, kind: 'teletravail', note: 'Livraison à la maison', status: 'pending' },
   { cle: 'abs-5', email: COLLEGUES[0], de: 4, a: 4, kind: 'maladie', note: '', status: 'pending' },
-  { cle: 'abs-6', email: COLLEGUES[1], de: -21, a: -18, kind: 'conge', note: '', status: 'approved' },
+  { cle: 'abs-6', email: COLLEGUES[1], de: -21, a: -18, kind: 'maladie', note: '', status: 'approved' },
 ];
 for (const a of ABSENCES) {
   await poser('leaves', `essai-${a.cle}`, {
@@ -1976,6 +2055,78 @@ for (const a of ABSENCES) {
     status: a.status,
     decidedBy: a.status === 'approved' ? MOI : null,
     createdAt: instant(-24 * 9),
+  });
+}
+
+/* Les clés de l'ancienne série d'absences, devenues sans objet : sans cette
+   purge, `abs-2` et `abs-3` survivraient à un reseed et fausseraient les
+   carnets de plusieurs jours. */
+for (const mort of ['essai-abs-2', 'essai-abs-3']) {
+  await fetch(`${API}/v1/collections/leaves/${mort}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${login.token}` },
+  }).catch(() => undefined);
+}
+
+/*
+  LE JOURNAL DES APPELS — une journée qui a un RYTHME.
+
+  Le module `20b` dessine un train d'impulsions : une par appel abouti, vers
+  le haut pour les entrants, vers le bas pour les sortants, la hauteur valant
+  la durée. Un journal plat — dix appels de cinq minutes — dessinerait un
+  peigne et ne dirait rien. Celui-ci est composé pour qu'on LISE la journée
+  sans la compter :
+
+    · une grappe entre 9 h et 10 h (quatre appels courts) ;
+    · la pointe de 11 h 38, vingt-deux minutes avec Nadia — l'ambre ;
+    · le creux du déjeuner, entre 12 h et 14 h : rien du tout ;
+    · trois appels l'après-midi, de durées différentes ;
+    · deux manqués, qui n'ont PAS d'impulsion et se comptent à droite.
+
+  La pointe est avec Nadia, et c'est voulu : le fil de messages privés avec
+  elle est muet depuis six jours. L'écran peut donc dire ce qu'aucun des deux
+  modules ne sait seul — que le seul échange récent avec cette personne n'est
+  écrit nulle part.
+
+  Quelques appels plus anciens complètent la carte « les plus longs », qui
+  regarde tout le journal et non la seule journée dessinée.
+*/
+const AVANT_HIER = 2;
+const instantDuJour = (ilYaJours, heures, minutes) => {
+  const d = new Date();
+  d.setDate(d.getDate() - ilYaJours);
+  d.setHours(heures, minutes, 0, 0);
+  return d.toISOString();
+};
+
+/* [clé, jours en arrière, heure, minute, avec, sens, secondes, manqué] */
+const APPELS = [
+  ['app-1', AVANT_HIER, 9, 12, COLLEGUES[0], 'entrant', 3 * 60 + 20, false],
+  ['app-2', AVANT_HIER, 9, 24, COLLEGUES[1], 'sortant', 2 * 60 + 5, false],
+  ['app-3', AVANT_HIER, 9, 41, COLLEGUES[2], 'entrant', 5 * 60 + 40, false],
+  ['app-4', AVANT_HIER, 10, 5, COLLEGUES[0], 'sortant', 4 * 60, false],
+  ['app-5', AVANT_HIER, 10, 52, COLLEGUES[3], 'entrant', 60 + 30, false],
+  /* La pointe. Vingt-deux minutes, et rien dans le fil de Nadia depuis. */
+  ['app-6', AVANT_HIER, 11, 38, COLLEGUES[0], 'entrant', 22 * 60, false],
+  /* Le creux du déjeuner : aucun appel entre 12 h et 14 h. */
+  ['app-7', AVANT_HIER, 14, 22, COLLEGUES[3], 'sortant', 6 * 60 + 10, false],
+  ['app-8', AVANT_HIER, 15, 47, COLLEGUES[1], 'entrant', 3 * 60, false],
+  ['app-9', AVANT_HIER, 16, 30, COLLEGUES[2], 'sortant', 8 * 60 + 45, false],
+  /* Les manqués du jour : aucune impulsion, un compte. */
+  ['app-10', AVANT_HIER, 13, 6, COLLEGUES[1], 'entrant', 0, true],
+  ['app-11', AVANT_HIER, 17, 18, COLLEGUES[2], 'entrant', 0, true],
+  /* Plus anciens — pour la carte « les plus longs », qui lit tout le journal. */
+  ['app-12', 9, 10, 15, COLLEGUES[2], 'sortant', 31 * 60, false],
+  ['app-13', 14, 16, 40, COLLEGUES[3], 'entrant', 12 * 60, false],
+  ['app-14', 21, 9, 5, COLLEGUES[0], 'sortant', 7 * 60, false],
+];
+for (const [cle, ilYaJours, heures, minutes, withEmail, sens, seconds, manque] of APPELS) {
+  await poser('calls', `essai-${cle}`, {
+    withEmail,
+    sens,
+    at: instantDuJour(ilYaJours, heures, minutes),
+    seconds,
+    manque,
   });
 }
 
@@ -2055,22 +2206,61 @@ for (const [cle, name, company, euros, stage, note, ilYaJours, source] of PROSPE
 
 
 /*
-  LES MESSAGES PRIVÉS — dont deux fils où la balle est dans mon camp.
+  LES MESSAGES PRIVÉS — un fil dont le SILENCE est l'instrument.
 
-  L'écran calcule la DETTE : un fil dont le dernier mot vient de l'autre est un
-  fil auquel je n'ai pas répondu. Sans données, cette branche n'existe pas et
-  ne se voit pas. Deux fils se terminent donc sur un message d'un collègue —
-  l'un d'il y a trois jours, l'autre d'hier — et deux autres se terminent sur
-  le mien, pour que la différence se lise côte à côte.
+  L'écran dessine l'espace entre deux messages à l'échelle du temps écoulé :
+  16 px par jour, un trait nommé au-delà de deux jours, un plafond à dix. Rien
+  de tout cela n'existe sans un fil qui couvre plusieurs semaines et qui porte
+  des écarts VRAIMENT différents. Le fil de Nadia est donc composé pour que
+  l'instrument ait quelque chose à montrer :
+
+    · deux rafales de quelques minutes (le blanc minimal, 6 px) ;
+    · un silence de 6 jours en plein milieu — les 96 px que le système de
+      design donne en exemple, en gris, parce qu'il est refermé ;
+    · un silence de 3 jours ;
+    · et, au bout, MON dernier message sans réponse depuis 6 jours : la seule
+      région ambre de l'écran.
+
+  Les quatre réponses de Nadia dans l'historique tombent entre 18 h et 24 h,
+  donc sa médiane vaut environ 24 h — et le silence en cours, 144 h, fait
+  exactement six fois cette habitude. La carte de droite le dit, et ce nombre
+  n'est pas écrit dans les données : il est calculé.
+
+  Les trois autres fils existent pour que la colonne des habitudes ait des
+  valeurs différentes à comparer : Hugo répond en quelques minutes, Inès en
+  deux jours, Marc n'a jamais répondu (« — », et non pas zéro).
 */
 const DMS = [
-  ['dm-1', COLLEGUES[0], MOI, 'La cliente de la Brasserie a rappelé pour la terrasse. Tu veux que je passe demain matin ?', -24 * 3],
-  ['dm-2', MOI, COLLEGUES[0], 'Oui, vas-y. Prends les mesures de la jardinière du fond au passage.', -24 * 3 + 1],
-  ['dm-3', COLLEGUES[0], MOI, 'C’est fait. Il manque 40 cm par rapport au plan — je t’envoie la photo. On commande une jardinière de plus ?', -24 * 3 + 6],
-  ['dm-4', COLLEGUES[1], MOI, 'Je récupère le van vendredi à 8 h, ça te va pour la livraison de Sète ?', -20],
-  ['dm-5', COLLEGUES[2], MOI, 'Merci pour le coup de main hier.', -24 * 6],
-  ['dm-6', MOI, COLLEGUES[2], 'Avec plaisir. On remet ça quand tu veux.', -24 * 6 + 1],
-  ['dm-7', MOI, COLLEGUES[3], 'Tu as bien reçu le planning de la semaine prochaine ?', -24 * 2],
+  /* Nadia — le fil dominant. Heures comptées avant maintenant. */
+  ['dm-1', MOI, COLLEGUES[0], 'La Brasserie veut refaire la terrasse avant l’été. Tu peux passer prendre les cotes ?', -528],
+  ['dm-2', COLLEGUES[0], MOI, 'Oui, j’y suis jeudi matin de toute façon. Je prends le télémètre.', -504],
+  ['dm-3', MOI, COLLEGUES[0], 'Parfait. Prends aussi la jardinière du fond, elle n’est pas au plan.', -503.5],
+  ['dm-4', COLLEGUES[0], MOI, 'Noté. Je t’envoie les cotes en rentrant.', -480],
+  /* Six jours sans rien — le blanc de 96 px, refermé, donc gris. */
+  ['dm-5', MOI, COLLEGUES[0], 'Tu as pu passer finalement ?', -336],
+  ['dm-6', COLLEGUES[0], MOI, 'Oui, désolée, semaine chargée. Il manque 40 cm par rapport au plan.', -312],
+  ['dm-7', COLLEGUES[0], MOI, 'Je t’envoie la photo.', -311.9],
+  /* Trois jours. */
+  ['dm-8', COLLEGUES[0], MOI, 'On commande une jardinière de plus ou on recoupe celle du fond ?', -240],
+  ['dm-9', MOI, COLLEGUES[0], 'On commande. Recouper, ça se verra au raccord.', -239.8],
+  ['dm-10', COLLEGUES[0], MOI, 'D’accord. Tu me dis quand tu passes la commande, je préviens la Brasserie.', -221],
+  /* Mon dernier mot, six jours sans réponse : la bulle ambre. */
+  ['dm-11', MOI, COLLEGUES[0], 'Commande passée ce matin, livraison annoncée pour mardi. Tu confirmes le rendez-vous de pose avec eux ?', -144],
+
+  /* Hugo — répond en quelques minutes, et a eu le dernier mot. */
+  ['dm-12', MOI, COLLEGUES[1], 'Tu récupères le van vendredi à 8 h ?', -26],
+  ['dm-13', COLLEGUES[1], MOI, 'Oui, 8 h au dépôt.', -25.8],
+  ['dm-14', MOI, COLLEGUES[1], 'Et la livraison de Sète dans la foulée ?', -25.7],
+  ['dm-15', COLLEGUES[1], MOI, 'Ça tient, je serai revenu pour 14 h.', -25.5],
+
+  /* Inès — répond en deux jours, et a eu le dernier mot. */
+  ['dm-16', MOI, COLLEGUES[2], 'Tu as les bons de livraison de la semaine dernière ?', -24 * 9],
+  ['dm-17', COLLEGUES[2], MOI, 'Je les ai retrouvés, je te les scanne.', -24 * 7],
+  ['dm-18', MOI, COLLEGUES[2], 'Merci. Tu peux les ranger dans le dossier Médias tant que tu y es ?', -24 * 7 + 0.3],
+  ['dm-19', COLLEGUES[2], MOI, 'C’est rangé.', -24 * 5],
+
+  /* Marc — jamais répondu. La colonne affiche un tiret, pas un zéro. */
+  ['dm-20', MOI, COLLEGUES[3], 'Tu as bien reçu le planning de la semaine prochaine ?', -24 * 2],
 ];
 for (const [cle, de, vers, corps, ilYaHeures] of DMS) {
   await poser('dms', `essai-${cle}`, { from: de, to: vers, body: corps, createdAt: instant(ilYaHeures) });
@@ -2078,19 +2268,35 @@ for (const [cle, de, vers, corps, ilYaHeures] of DMS) {
 
 
 /*
-  SONDAGES — un qui attend MA voix, un déjà tranché, un clos.
+  SONDAGES — un dépouillement qui doit montrer les trois règles de l'écran.
 
-  Le premier est le seul qui demande quelque chose à celui qui regarde : c'est
-  lui qui doit dominer l'écran. Les deux autres existent pour que la différence
-  entre « on attend votre voix » et « c'est réglé » soit visible côte à côte.
+  1. LE GROUPEMENT PAR CINQ. Les bâtons se groupent par cinq, le cinquième
+     barrant les quatre autres en oblique. À cinq membres, la seule façon de
+     voir ce groupement sur de VRAIES données est un sondage unanime : le
+     sondage clos des contenants l'est, ses cinq voix font donc un groupe
+     complet, oblique comprise. Sans lui, la règle serait écrite dans le code
+     et jamais rendue.
+
+  2. UNE OPTION À ZÉRO VOIX GARDE SA LIGNE. « Mercredi » n'a aucune voix et
+     reste affichée, avec un tiret à la place des bâtons.
+
+  3. LE LIEN AVEC LE PLAN D'ÉQUIPE. Les options nomment des JOURS, et l'option
+     en tête est « Jeudi » — le jour où le plan d'équipe (`15e`) ne pose que
+     4 h pour un besoin de 12. L'écran va lire `shifts` et le dit. Changer le
+     libellé de l'option en tête pour un jour bien couvert ferait disparaître
+     la phrase, ce qui est le comportement voulu.
+
+  Et, pour la carte de droite : la tête a 3 voix, la deuxième 1, il manque
+  1 voix — donc l'avance (2) est plus grande que ce qui reste à distribuer (1),
+  et le résultat ne peut plus être renversé. C'est calculé, pas écrit.
 */
 const SONDAGES = [
   {
     cle: 'essai-sond-1',
     question: 'Quel jour pour la réunion de rentrée ?',
-    options: ['Mardi 22, 9 h', 'Mercredi 23, 14 h', 'Jeudi 24, 9 h'],
-    /* Sans ma voix : c'est ce manque qui fait l'objet dominant. */
-    votes: { [COLLEGUES[0]]: 1, [COLLEGUES[1]]: 1, [COLLEGUES[2]]: 0, [COLLEGUES[3]]: 1 },
+    options: ['Mardi, 9 h', 'Mercredi, 14 h', 'Jeudi, 9 h'],
+    /* Sans ma voix : c'est ce manque que la rangée de cases montre. */
+    votes: { [COLLEGUES[0]]: 2, [COLLEGUES[1]]: 2, [COLLEGUES[2]]: 2, [COLLEGUES[3]]: 0 },
     anonymous: false,
     closedAt: null,
     ilYaHeures: -20,
@@ -2099,19 +2305,29 @@ const SONDAGES = [
     cle: 'essai-sond-2',
     question: 'On garde le fournisseur actuel pour les contenants ?',
     options: ['Oui, on garde', 'Non, on change'],
-    votes: { [MOI]: 0, [COLLEGUES[0]]: 0, [COLLEGUES[1]]: 1, [COLLEGUES[2]]: 0 },
+    /* Unanime, et clos : cinq voix, donc un groupe de bâtons complet. */
+    votes: { [MOI]: 0, [COLLEGUES[0]]: 0, [COLLEGUES[1]]: 0, [COLLEGUES[2]]: 0, [COLLEGUES[3]]: 0 },
     anonymous: false,
-    closedAt: null,
-    ilYaHeures: -52,
+    closedAt: instant(-24 * 2),
+    ilYaHeures: -24 * 6,
   },
   {
     cle: 'essai-sond-3',
     question: 'Nom de la nouvelle gamme',
     options: ['Atelier', 'Maison', 'Comptoir'],
-    votes: { [MOI]: 1, [COLLEGUES[0]]: 1, [COLLEGUES[1]]: 1, [COLLEGUES[2]]: 2, [COLLEGUES[3]]: 0 },
+    votes: { [MOI]: 1, [COLLEGUES[0]]: 1, [COLLEGUES[1]]: 1, [COLLEGUES[2]]: 2 },
     anonymous: true,
     closedAt: instant(-24 * 6),
     ilYaHeures: -24 * 9,
+  },
+  {
+    cle: 'essai-sond-4',
+    question: 'Qui prend la permanence du samedi de novembre ?',
+    options: ['Le premier samedi', 'Le deuxième', 'Le troisième', 'Le quatrième'],
+    votes: { [MOI]: 0, [COLLEGUES[1]]: 2 },
+    anonymous: false,
+    closedAt: null,
+    ilYaHeures: -24 * 4,
   },
 ];
 for (const s of SONDAGES) {
@@ -2127,19 +2343,32 @@ for (const s of SONDAGES) {
 }
 
 /*
-  ANNONCES — une que tout le monde n'a PAS lue.
+  ANNONCES — cinq portées différentes, et la moins lue qui n'est pas la dernière.
 
-  C'est la seule configuration qui rend l'écran lisible : une annonce lue par
-  tous est une archive, une annonce lue par personne vient d'être écrite. Celle
-  du milieu — trois sur cinq — est la seule qui pose une question à l'autrice,
-  et c'est donc elle qui doit dominer.
+  L'écran met en ambre L'ANNONCE LA MOINS LUE, pas la plus récente. Sans
+  données, cette distinction ne se voit pas — il faut qu'une annonce ANCIENNE
+  soit moins bien reçue qu'une annonce du jour pour que le tri prouve qu'il ne
+  trie pas par date.
+
+    · « Fermeture » (il y a 30 h)    → 2 lecteurs sur 5 ;
+    · « Code d'alarme » (5 j)         → 5 sur 5, donc réglée, hors course ;
+    · « Clés du dépôt » (3 j)         → 4 sur 5 ;
+    · « Rangement » (9 j), la plus longue → 2 sur 5, et la plus ANCIENNE des
+      deux à deux lecteurs : c'est elle qui prend l'ambre ;
+    · « Café » (1 j)                  → 3 sur 5.
+
+  Les longueurs de corps sont, elles aussi, composées : la moitié la plus
+  longue est nettement moins lue que la moitié la plus courte (2,0 contre
+  3,5 lecteurs), ce qui permet à la carte de droite de dire un constat MESURÉ
+  plutôt qu'une généralité. Si on égalisait les longueurs, la phrase
+  disparaîtrait de l'écran — et c'est exactement ce qu'on veut d'elle.
 */
 const ANNONCES = [
   [
     'essai-ann-1',
     'Fermeture exceptionnelle le 25 septembre',
     'L’atelier sera fermé toute la journée du jeudi 25 pour l’entretien annuel des machines. Les livraisons prévues ce jour-là sont décalées au vendredi 26. Prévenez vos clients cette semaine plutôt que la veille.',
-    [COLLEGUES[0], COLLEGUES[2]],
+    [COLLEGUES[0]],
     -30,
   ],
   [
@@ -2148,6 +2377,27 @@ const ANNONCES = [
     'Le code change lundi. Il vous sera donné de vive voix, jamais par message.',
     [COLLEGUES[0], COLLEGUES[1], COLLEGUES[2], COLLEGUES[3]],
     -24 * 5,
+  ],
+  [
+    'essai-ann-3',
+    'Les clés du dépôt changent de crochet',
+    'Elles sont désormais au tableau de gauche, deuxième rangée.',
+    [COLLEGUES[0], COLLEGUES[1], COLLEGUES[2]],
+    -24 * 3,
+  ],
+  [
+    'essai-ann-4',
+    'Rangement de l’atelier : ce qui change',
+    'Chaque poste se rend vide en fin de journée : établi dégagé, chutes au bac, outils au tableau. Les consommables partagés (visserie, colles, abrasifs) reviennent sur l’étagère du fond, étiquette vers l’avant, et ce qui est entamé se pose devant ce qui est neuf. Les palettes vides sortent le soir même, elles ne passent pas la nuit dans l’allée. Ce n’est pas une question d’ordre pour l’ordre : c’est ce qui fait qu’on retrouve une clé de 17 en trente secondes au lieu de dix minutes.',
+    [COLLEGUES[1]],
+    -24 * 9,
+  ],
+  [
+    'essai-ann-5',
+    'Café offert vendredi midi',
+    'On fête la fin du chantier Vermeil. Rendez-vous à l’atelier.',
+    [COLLEGUES[0], COLLEGUES[3]],
+    -24,
   ],
 ];
 for (const [cle, title, body, readBy, ilYaHeures] of ANNONCES) {
@@ -2166,10 +2416,21 @@ for (const [cle, title, body, readBy, ilYaHeures] of ANNONCES) {
   Un groupe sans message est un nom dans une liste. Ce qui se juge sur cet
   écran, c'est une CONVERSATION : il en faut une assez longue pour qu'on voie
   comment elle se lit quand elle défile.
+
+  LES APPARTENANCES SONT COMPOSÉES, et pas au hasard : le diagramme de l'écran
+  n'a de sens que si les cinq personnes tombent dans des régions DIFFÉRENTES.
+
+    · le compte qui regarde est dans les trois  → seul au centre, l'ambre ;
+    · Nadia tient Boutique et Bureau            → un recouvrement à deux ;
+    · Hugo tient Boutique et Livraisons         → un autre ;
+    · Inès ne tient que Bureau                  → seule au bord ;
+    · Marc n'est dans AUCUN groupe              → dessiné DEHORS, sous les
+      cercles, ce qui est la règle que l'écran doit prouver sur de vraies
+      données et pas seulement savoir écrire.
 */
 const GROUPES = [
   ['essai-grp-1', 'Boutique', [MOI, COLLEGUES[0], COLLEGUES[1]]],
-  ['essai-grp-2', 'Livraisons', [MOI, COLLEGUES[1], COLLEGUES[3]]],
+  ['essai-grp-2', 'Livraisons', [MOI, COLLEGUES[1]]],
   ['essai-grp-3', 'Bureau', [MOI, COLLEGUES[0], COLLEGUES[2]]],
 ];
 for (const [cle, name, members] of GROUPES) {
@@ -2183,7 +2444,9 @@ const MESSAGES = [
   ['essai-grpm-4', 'essai-grp-1', COLLEGUES[1], 'J’ai décalé la livraison Brasserie à jeudi, ils ferment demain.', -3],
   ['essai-grpm-5', 'essai-grp-1', MOI, 'Bien vu. Je préviens la cliente.', -2.6],
   ['essai-grpm-6', 'essai-grp-1', COLLEGUES[0], 'Le nouveau bandeau arrive lundi par transporteur.', -0.6],
-  ['essai-grpm-7', 'essai-grp-2', COLLEGUES[3], 'Camionnette au garage jusqu’à mercredi.', -28],
+  /* Livraisons : rien depuis quarante-cinq jours. C'est LE groupe muet que le
+     pied de page doit savoir nommer — « existe, mais ne vit pas ». */
+  ['essai-grpm-7', 'essai-grp-2', COLLEGUES[1], 'Camionnette au garage jusqu’à mercredi.', -24 * 45],
   ['essai-grpm-8', 'essai-grp-3', COLLEGUES[2], 'Les contrats de septembre sont signés, tous les trois.', -50],
 ];
 for (const [cle, groupId, authorEmail, body, ilYaHeures] of MESSAGES) {
