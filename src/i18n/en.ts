@@ -2888,7 +2888,7 @@ export const en = {
   'garde.chef.neFaitPas1': 'No language model inside the Guard',
   'garde.chef.neFaitPas2': 'No tool changes anything at all',
   'garde.chef.neFaitPas3': 'A figure absent from the tools is rejected',
-  'garde.chef.horsGarde': 'Outside the Guard, the same panel becomes the workstation Ajmani and speaks to the model.',
+  'garde.chef.horsGarde': 'Outside the Guard, the same panel becomes the workstation {chef} and speaks to the model.',
   'garde.chef.maintenant': 'now',
   'garde.chef.guideAide': 'Everything here, the Guard can do. Anything else, it will say it cannot.',
   'garde.chef.famille.savoir': 'Know',

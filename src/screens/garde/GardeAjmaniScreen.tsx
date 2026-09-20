@@ -334,7 +334,7 @@ export function GardeAjmaniScreen() {
               </li>
             ))}
           </ul>
-          <p className="mt-auto pt-[18px] text-[13px] leading-relaxed text-text-secondary [text-wrap:pretty]">{t('garde.chef.horsGarde')}</p>
+          <p className="mt-auto pt-[18px] text-[13px] leading-relaxed text-text-secondary [text-wrap:pretty]">{t('garde.chef.horsGarde', { chef: NOM_DU_CHEF })}</p>
         </section>
       </div>
 

@@ -85,6 +85,31 @@ if (!BUNDLE || !EMAIL || !MOT_DE_PASSE) {
   famille suffit à attraper la dérive qu'elle guette. En ajouter un est une
   ligne.
 */
+/*
+  L'ÉDITION INTERNE — vingt-trois modules que cette garde ne voyait PAS.
+
+  `ECRANS` ne couvre que l'édition cliente : la Garde, la Supervision, le Parc
+  et les Produits n'y sont pas, et la règle d'ambre y a exactement le même
+  poids. Une garde aveugle sur un quart du produit rassure à tort — c'est le
+  défaut qu'elle existe pour attraper.
+
+  Le bundle n'est pas le même (`npm run build:web`, sans `AMN_EDITION`), et le
+  compte doit appartenir à AMN DevSec. On choisit donc la liste par
+  l'environnement :
+
+    AMN_EDITION=interne AMN_E2E_EMAIL=… AMN_E2E_PASSWORD=… \
+      node scripts/check-signal.mjs <bundle-interne> [port]
+*/
+const ECRANS_INTERNE = [
+  /* La Garde — six instruments neufs, six régions ambre à mesurer. */
+  ['La Salle', '#/garde'],
+  ['À votre avis', '#/garde/pile'],
+  ['Ajmani', '#/garde/ajmani'],
+  ['Les bureaux', '#/garde/bureaux'],
+  ['Salle commune', '#/garde/commune'],
+  ['Calendrier', '#/garde/calendrier'],
+];
+
 const ECRANS = [
   /* La famille Pilotage, recomposée en septembre 2026 : chaque module y a
      reçu son instrument, donc chacun y a une région ambre neuve à mesurer. */
@@ -248,7 +273,7 @@ try {
     ouverturesDEssai(),
   ]);
 
-  for (const [nom, route] of ECRANS) {
+  for (const [nom, route] of (process.env.AMN_EDITION === 'interne' ? ECRANS_INTERNE : ECRANS)) {
     await page.goto(APP + route, { waitUntil: 'networkidle' }).catch(() => undefined);
     await page.waitForTimeout(900);
     const mesure = await page.evaluate(() => {

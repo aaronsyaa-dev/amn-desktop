@@ -2890,7 +2890,7 @@ export const fr: Dictionnaire = {
   'garde.chef.neFaitPas1': 'Aucun modèle de langage dans la Garde',
   'garde.chef.neFaitPas2': 'Aucun outil ne modifie quoi que ce soit',
   'garde.chef.neFaitPas3': 'Un chiffre absent des outils est rejeté',
-  'garde.chef.horsGarde': 'Hors de la Garde, le même panneau redevient l’Ajmani du poste et parle au modèle.',
+  'garde.chef.horsGarde': 'Hors de la Garde, le même panneau redevient le {chef} du poste et parle au modèle.',
   'garde.chef.maintenant': 'maintenant',
   'garde.chef.guideAide': 'Tout ce qui est ici, la Garde sait le faire. Le reste, elle dira qu’elle ne sait pas.',
   'garde.chef.famille.savoir': 'Savoir',
