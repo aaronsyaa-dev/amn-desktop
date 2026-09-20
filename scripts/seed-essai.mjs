@@ -1111,6 +1111,10 @@ for (const [cle, name, quantity, minQuantity] of STOCK) {
     unit: 'pièce',
     note: '',
     createdAt: instant(-24 * 90),
+    /* `movedAt` est ce que l'écran lit pour « derniers mouvements » — il n'y a
+       pas de journal de stock, seulement cette date. Les articles bougent à
+       des moments différents, sinon la carte affiche cinq fois le même jour. */
+    movedAt: instant(-24 * (2 + STOCK.findIndex((x) => x[0] === cle) * 5)),
   });
 }
 
@@ -1242,19 +1246,41 @@ await poser('projects', 'essai-prj-7', {
   Trois collections vides de plus. Un registre vide ne montre ni son ordre, ni
   ce qu'on y cherche, ni le défaut qu'il est censé faire remonter.
 
-  Les fournisseurs portent deux SILENCIEUX à dessein : le module dit en tête
+  Les fournisseurs portent trois SILENCIEUX à dessein : le module dit en tête
   que « les fournisseurs silencieux depuis trois mois remontent », et il faut
   de quoi vérifier que c'est vrai. Les nomenclatures portent une marge
   négative — vendre à perte sans le savoir est le seul vrai défaut de ce
   module.
+
+  LES HALTÈRES (`15d`) demandent, en plus, deux choses par fiche : un délai
+  PROMIS et une suite de délais CONSTATÉS. Les six fiches couvrent exprès les
+  cinq cas que la règle de dix jours doit savoir dessiner :
+
+    · Vidal         promis 3 j, constaté 3,0 j  → les deux points se touchent
+    · Poterie       promis 5 j, constaté 6,0 j  → un petit écart, en matière
+    · Métal         promis 4 j, constaté 9,5 j  → le plus gros écart : l'AMBRE
+    · Papeterie     rien du tout                → pas d'haltère, et c'est juste
+    · Bois          promis 7 j, constaté 6,0 j  → la barre PART À GAUCHE
+    · Éclairage Sud promis 8 j, constaté 13,0 j → SORT de la règle de dix jours
+
+  Le cas « Bois » est celui qui casse une implémentation naïve : un
+  fournisseur plus rapide que sa promesse donne un écart négatif, et une barre
+  écrite en `width: reel − promis` disparaîtrait. Le cas « Éclairage Sud »
+  est celui qui casse l'axe : son disque doit s'arrêter au bord de la règle
+  sans que l'écart chiffré, lui, soit tronqué.
+
+  `livreIlYaJours` est la date de la dernière RÉCEPTION. Quand elle est plus
+  ancienne que la commande, l'écran doit compter une commande en cours : c'est
+  le cas de Vidal (dans les temps) et de Bois (largement au-delà du délai
+  annoncé).
 */
 const FOURNISSEURS = [
-  { cle: 'sup-1', nom: 'Horticulture Vidal', fournit: 'Plants, terreau, engrais', contact: 'Marc Vidal', tel: '04 67 12 34 56', email: 'commandes@horti-vidal.exemple.test', derniereIlYaJours: 6 },
-  { cle: 'sup-2', nom: 'Poterie du Lez', fournit: 'Pots, jardinières, soucoupes', contact: 'Awa Diallo', tel: '04 67 98 76 54', email: 'awa@poterie-lez.exemple.test', derniereIlYaJours: 21 },
-  { cle: 'sup-3', nom: 'Métal & Structure', fournit: 'Supports, treillis, fixations', contact: 'Yannis Roche', tel: '04 67 55 44 33', email: 'contact@metal-structure.exemple.test', derniereIlYaJours: 128 },
-  { cle: 'sup-4', nom: 'Papeterie Sainte-Anne', fournit: 'Étiquettes, rubans, emballages', contact: '', tel: '04 67 22 11 00', email: '', derniereIlYaJours: null },
-  { cle: 'sup-5', nom: 'Bois de l’Hérault', fournit: 'Bacs sur mesure, planches', contact: 'Sophie Nguyen', tel: '04 67 77 88 99', email: 'sophie@bois-herault.exemple.test', derniereIlYaJours: 40 },
-  { cle: 'sup-6', nom: 'Éclairage Sud', fournit: 'Guirlandes, spots de vitrine', contact: '', tel: '', email: 'devis@eclairage-sud.exemple.test', derniereIlYaJours: 95 },
+  { cle: 'sup-1', nom: 'Horticulture Vidal', fournit: 'Plants, terreau, engrais', contact: 'Marc Vidal', tel: '04 67 12 34 56', email: 'commandes@horti-vidal.exemple.test', derniereIlYaJours: 2, livreIlYaJours: 9, promis: 3, constates: [3, 2, 4, 3] },
+  { cle: 'sup-2', nom: 'Poterie du Lez', fournit: 'Pots, jardinières, soucoupes', contact: 'Awa Diallo', tel: '04 67 98 76 54', email: 'awa@poterie-lez.exemple.test', derniereIlYaJours: 21, livreIlYaJours: 15, promis: 5, constates: [6, 5, 7, 6] },
+  { cle: 'sup-3', nom: 'Métal & Structure', fournit: 'Supports, treillis, fixations', contact: 'Yannis Roche', tel: '04 67 55 44 33', email: 'contact@metal-structure.exemple.test', derniereIlYaJours: 128, livreIlYaJours: 118, promis: 4, constates: [9, 11, 8, 10] },
+  { cle: 'sup-4', nom: 'Papeterie Sainte-Anne', fournit: 'Étiquettes, rubans, emballages', contact: '', tel: '04 67 22 11 00', email: '', derniereIlYaJours: null, livreIlYaJours: null, promis: null, constates: [] },
+  { cle: 'sup-5', nom: 'Bois de l’Hérault', fournit: 'Bacs sur mesure, planches', contact: 'Sophie Nguyen', tel: '04 67 77 88 99', email: 'sophie@bois-herault.exemple.test', derniereIlYaJours: 40, livreIlYaJours: 46, promis: 7, constates: [6, 7, 5] },
+  { cle: 'sup-6', nom: 'Éclairage Sud', fournit: 'Guirlandes, spots de vitrine', contact: '', tel: '', email: 'devis@eclairage-sud.exemple.test', derniereIlYaJours: 95, livreIlYaJours: 82, promis: 8, constates: [12, 14] },
 ];
 for (const f of FOURNISSEURS) {
   await poser('suppliers', `essai-${f.cle}`, {
@@ -1264,6 +1290,9 @@ for (const f of FOURNISSEURS) {
     phone: f.tel,
     email: f.email,
     lastOrderAt: f.derniereIlYaJours === null ? null : instant(-24 * f.derniereIlYaJours),
+    lastDeliveryAt: f.livreIlYaJours === null ? null : instant(-24 * f.livreIlYaJours),
+    leadTimeDays: f.promis,
+    deliveries: f.constates,
     createdAt: instant(-24 * 200),
   });
 }
@@ -1576,16 +1605,59 @@ const jourDeLaSemaine = (n) => {
 };
 
 /*
-  Un trou VOULU le jeudi : personne n'y est prévu. C'est le seul défaut qu'un
-  planning puisse avoir, et c'est lui que l'écran doit crier.
+  LA SEMAINE DESSINÉE POUR LE PLAN DES HEURES (`15e`).
+
+  Le besoin est de 12 h par jour ouvré. La semaine est posée pour que les six
+  formes que le plan doit savoir dessiner existent toutes :
+
+    lundi     20 h  → la pile DÉPASSE la ligne : excédent de 8 h, pas de hachure
+    mardi      8 h  → un petit déficit de 4 h, hachuré en matière
+    mercredi  12 h  → pile exactement à la ligne : ni hachure ni excédent
+    jeudi      4 h  → le plus gros déficit, 8 h : c'est lui qui porte l'AMBRE
+    vendredi  12 h  → à la ligne
+    samedi     8 h  → SOUS la ligne mais hors jours ouvrés : aucune hachure
+    dimanche   0 h  → rien de posé, rien à dessiner
+
+  Le total est de 64 h, et il doit se retrouver À L'IDENTIQUE dans la somme
+  des cartes de personnes (20 + 20 + 12 + 8 + 4). C'est la règle « les heures
+  affichées somment exactement ce que le graphique montre », et elle se
+  vérifie à la main sur ce jeu-là.
+
+  Les repos sont posés exprès sur des jours où la personne ne travaille pas :
+  un repos vaut zéro heure et ne doit produire AUCUN segment — pas même un de
+  zéro pixel.
 */
 const POSTES = [
-  [MOI, [0, 'journee'], [1, 'matin'], [2, 'journee'], [5, 'matin']],
-  [COLLEGUES[0], [0, 'matin'], [1, 'journee'], [2, 'repos'], [4, 'journee'], [5, 'apresmidi']],
-  [COLLEGUES[1], [0, 'apresmidi'], [2, 'apresmidi'], [4, 'matin']],
-  [COLLEGUES[2], [1, 'apresmidi'], [4, 'apresmidi'], [5, 'journee']],
-  [COLLEGUES[3], [0, 'repos'], [1, 'repos'], [2, 'matin'], [3, 'repos']],
+  [MOI, [0, 'journee'], [1, 'matin'], [4, 'journee'], [3, 'repos']],
+  [COLLEGUES[0], [0, 'journee'], [2, 'journee'], [5, 'matin'], [3, 'repos']],
+  [COLLEGUES[1], [0, 'matin'], [2, 'matin'], [5, 'matin']],
+  [COLLEGUES[2], [1, 'apresmidi'], [4, 'matin'], [6, 'repos']],
+  [COLLEGUES[3], [3, 'matin'], [0, 'repos'], [1, 'repos']],
 ];
+/*
+  ON EFFACE LA SEMAINE AVANT DE LA POSER, et c'est un correctif, pas un zèle.
+
+  La clé d'une case est `shift-<email>-<jour>`. Rejouer le script écrase les
+  cases qu'il pose — mais il ne touche pas à celles qu'une version PRÉCÉDENTE
+  avait posées sur d'autres jours. Le bac à sable gardait donc la somme de
+  toutes les semaines jamais semées : 108 h là où le jeu en décrit 64, un
+  mardi sans déficit, et la règle « les heures somment ce que le graphique
+  montre » vérifiable sur un total que personne n'a choisi.
+
+  Sept jours × les membres connus : on retire tout, puis on pose. Supprimer
+  une case qui n'existe pas est sans effet.
+*/
+const MEMBRES_CONNUS = [MOI, ...COLLEGUES];
+for (let n = 0; n < 7; n += 1) {
+  const day = jourDeLaSemaine(n);
+  for (const email of MEMBRES_CONNUS) {
+    await fetch(`${API}/v1/collections/shifts/${encodeURIComponent(`shift-${email}-${day}`)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${login.token}` },
+    }).catch(() => undefined);
+  }
+}
+
 for (const [email, ...cases] of POSTES) {
   for (const [n, kind] of cases) {
     const day = jourDeLaSemaine(n);
@@ -1852,9 +1924,10 @@ for (const [cle, trigger, action, enabled, assigneeEmail] of REGLES) {
 
 /*
   Quatre modèles, dont un jamais passé : la feuille doit savoir dire « aucun
-  passage » aussi bien que montrer une trace. Les passages portent des heures
-  réelles et des taux de conformité différents — un 4/6 au milieu de deux 6/6,
-  sinon la colonne de droite de la trace n'a rien à distinguer.
+  passage » aussi bien que montrer une trace. « Ouverture de boutique » porte
+  seul une vraie série (voir PASSAGES plus bas) parce que c'est le modèle sur
+  lequel la carte perforée se lit ; les autres n'ont qu'un passage, ce qui est
+  le cas courant d'un contrôle occasionnel.
 */
 const MODELES = [
   ['essai-chk-1', 'Ouverture de boutique', [
@@ -1892,16 +1965,35 @@ for (const [cle, title, items] of MODELES) {
   await poser('checklists', cle, { title, items, createdAt: instant(-24 * 120) });
 }
 
-const coches = (total, conformes) => Array.from({ length: total }, (_, i) => i < conformes);
+/*
+  Douze passages sur « Ouverture de boutique » : c'est ce que la carte perforée
+  demande pour dire quelque chose. Les points non conformes sont choisis un par
+  un, jamais par un préfixe — un helper qui coche « les N premiers » ferait
+  trouer toutes les colonnes au même endroit, et la carte ne dirait plus rien.
+  Ici la « Terrasse installée » (6e point) rate 7 fois sur 12, les « Étiquettes
+  de prix » 3 fois, le lavage du sol 1 fois, les trois autres jamais : une
+  colonne trouée nettement plus que les autres, ce que le module doit désigner.
+  Les deux autres modèles gardent un passage chacun, et « Réception livraison »
+  n'en a aucun — la feuille doit aussi savoir dire « aucun passage ».
+*/
 const PASSAGES = [
-  ['essai-run-1', 'essai-chk-1', aujourdHui(8, 5, -1), 'lea@exemple.test', coches(6, 6)],
-  ['essai-run-2', 'essai-chk-1', aujourdHui(8, 31, -2), 'samir@exemple.test', coches(6, 4)],
-  ['essai-run-3', 'essai-chk-1', aujourdHui(7, 58, -3), 'lea@exemple.test', coches(6, 6)],
-  ['essai-run-4', 'essai-chk-2', aujourdHui(19, 40, -1), 'lea@exemple.test', coches(7, 7)],
-  ['essai-run-5', 'essai-chk-3', aujourdHui(9, 15, 0), 'samir@exemple.test', coches(4, 4)],
+  ['essai-run-1', 'essai-chk-1', aujourdHui(8, 5, -1), 'lea@exemple.test', [true, true, true, true, true, false], 'Terrasse non sortie'],
+  ['essai-run-2', 'essai-chk-1', aujourdHui(8, 31, -2), 'samir@exemple.test', [true, true, true, false, true, false], 'Terrasse non sortie (pluie), étiquetage à reprendre'],
+  ['essai-run-3', 'essai-chk-1', aujourdHui(7, 58, -3), 'lea@exemple.test', [true, true, true, true, true, true], ''],
+  ['essai-run-4', 'essai-chk-1', aujourdHui(8, 12, -4), 'lea@exemple.test', [true, true, true, true, true, false], 'Terrasse non sortie'],
+  ['essai-run-5', 'essai-chk-1', aujourdHui(8, 40, -5), 'samir@exemple.test', [true, false, true, true, true, true], 'Autolaveuse en panne'],
+  ['essai-run-6', 'essai-chk-1', aujourdHui(8, 3, -7), 'lea@exemple.test', [true, true, true, true, true, false], 'Terrasse non sortie'],
+  ['essai-run-7', 'essai-chk-1', aujourdHui(8, 22, -8), 'samir@exemple.test', [true, true, true, false, true, true], 'Étiquetage à reprendre'],
+  ['essai-run-8', 'essai-chk-1', aujourdHui(7, 51, -9), 'lea@exemple.test', [true, true, true, true, true, true], ''],
+  ['essai-run-9', 'essai-chk-1', aujourdHui(8, 9, -10), 'lea@exemple.test', [true, true, true, true, true, false], 'Terrasse non sortie'],
+  ['essai-run-10', 'essai-chk-1', aujourdHui(8, 35, -11), 'samir@exemple.test', [true, true, true, false, true, false], 'Terrasse non sortie (pluie), étiquetage à reprendre'],
+  ['essai-run-11', 'essai-chk-1', aujourdHui(7, 47, -12), 'lea@exemple.test', [true, true, true, true, true, true], ''],
+  ['essai-run-12', 'essai-chk-1', aujourdHui(8, 18, -14), 'samir@exemple.test', [true, true, true, true, true, false], 'Terrasse non sortie'],
+  ['essai-run-13', 'essai-chk-2', aujourdHui(19, 40, -1), 'lea@exemple.test', [true, true, true, true, true, true, true], ''],
+  ['essai-run-14', 'essai-chk-3', aujourdHui(9, 15, 0), 'samir@exemple.test', [true, true, true, true], ''],
 ];
-for (const [cle, checklistId, doneAt, byEmail, checked] of PASSAGES) {
-  await poser('checkRuns', cle, { checklistId, doneAt, byEmail, checked, note: '' });
+for (const [cle, checklistId, doneAt, byEmail, checked, note] of PASSAGES) {
+  await poser('checkRuns', cle, { checklistId, doneAt, byEmail, checked, note });
 }
 
 /* ─── Matériel ─────────────────────────────────────────────────────────────── */
@@ -1933,7 +2025,46 @@ const RESERVATIONS = [
   ['essai-rsv-2', 'essai-res-1', ...creneau(13, 30, 15, 0), 'Tournée de l’après-midi', 'samir@exemple.test'],
   ['essai-rsv-3', 'essai-res-2', ...creneau(15, 0, 16, 0), 'Point de production', 'clara@exemple.test'],
   ['essai-rsv-4', 'essai-res-3', ...creneau(11, 0, 12, 30), 'Présentation cliente', 'lea@exemple.test'],
+  /*
+    UN CHEVAUCHEMENT VOLONTAIRE, ET IL EST RARE POUR DE BONNES RAISONS.
+
+    L'écran REFUSE un chevauchement à la création : il ne peut donc en exister
+    que par deux écritures hors ligne concurrentes, exactement comme les
+    numéros de facture en double que le bac à sable porte déjà. C'est le cas
+    que la carte de conflit (`15c`) sert à montrer — deux rangées qui ne
+    fusionnent pas — et sans lui, la règle « les rangées ne se fusionnent
+    jamais » ne se vérifie sur rien.
+  */
+  ['essai-rsv-5', 'essai-res-1', ...creneau(10, 30, 12, 0), 'Dépannage urgent — écrit hors ligne', 'clara@exemple.test'],
 ];
+/*
+  ON BALAIE LES RÉSERVATIONS PARASITES AVANT DE POSER LES NÔTRES.
+
+  `check-contraste.mjs` parcourt les écrans en CLIQUANT ce qu'il trouve, y
+  compris le bouton « Réserver » du formulaire de Matériel. Chaque passage du
+  garde laisse donc une réservation de plus dans le bac à sable, avec une clé
+  `rsv-…` que ce script ne connaît pas et n'écrase jamais. Après quelques
+  passages, la grille d'occupation porte des créneaux que personne n'a voulus,
+  et une capture d'écran prise ensuite montre un module qu'on n'a pas composé.
+
+  Tout ce qui ne porte pas le préfixe `essai-` part. C'est sans risque : ce
+  script n'est fait que pour un bac à sable, et il le dit en tête.
+*/
+const reponseRsv = await fetch(`${API}/v1/collections/resourceBookings`, {
+  headers: { Authorization: `Bearer ${login.token}` },
+}).catch(() => null);
+if (reponseRsv?.ok) {
+  const brut = await reponseRsv.json();
+  const liste = Array.isArray(brut) ? brut : (brut.items ?? brut.records ?? []);
+  for (const item of liste) {
+    if (typeof item?.id !== 'string' || item.id.startsWith('essai-')) continue;
+    await fetch(`${API}/v1/collections/resourceBookings/${encodeURIComponent(item.id)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${login.token}` },
+    }).catch(() => undefined);
+  }
+}
+
 for (const [cle, resourceId, startAt, endAt, purpose, byEmail] of RESERVATIONS) {
   await poser('resourceBookings', cle, { resourceId, startAt, endAt, purpose, byEmail, createdAt: instant(-48) });
 }
@@ -1945,17 +2076,30 @@ for (const [cle, resourceId, startAt, endAt, purpose, byEmail] of RESERVATIONS) 
   cours », l'unique ambre de l'écran Tournées. Une tournée entièrement livrée
   n'en a pas — elle est là aussi, pour que les deux cas se voient.
 */
-const arret = (id, label, address, doneAt = null) => ({ id, label, address, doneAt });
+/*
+  LES KILOMÈTRES FONT L'OBJET.
+
+  Le fil de `15a` espace ses nœuds à la proportion du trajet : « les longs
+  trajets se voient comme de longs vides ». Sans kilomètres, le fil retombe sur
+  un pas régulier — il le dit, mais il ne prouve rien. La tournée du matin en
+  porte donc, et ils sont CONTRASTÉS À DESSEIN : 0,4 km entre deux arrêts du
+  centre, 9,2 km pour aller à la zone artisanale. Un jeu d'essai où tous les
+  trajets feraient trois kilomètres donnerait un fil régulier, c'est-à-dire
+  une liste, c'est-à-dire rien.
+*/
+const arret = (id, label, address, doneAt = null, km = undefined, dureeMin = undefined) =>
+  ({ id, label, address, doneAt, km, dureeMin });
 await poser('deliveryRounds', 'essai-trn-1', {
   title: 'Tournée du matin',
   day: jour(0),
+  departAt: '08:00',
   stops: [
-    arret('stp-1', 'Boulangerie Martin', '12 rue des Lilas, Nantes', aujourdHui(8, 24)),
-    arret('stp-2', 'Café des Halles', '3 place du Bouffay, Nantes', aujourdHui(8, 51)),
-    arret('stp-3', 'Fleuriste Camélia', '48 boulevard Gabriel Lauriol, Nantes'),
-    arret('stp-4', 'Épicerie du Marché', '7 rue de Bel Air, Nantes'),
-    arret('stp-5', 'Restaurant Le Cèdre', '21 rue Paul Bellamy, Nantes'),
-    arret('stp-6', 'Atelier Vermeil', '12 rue Béranger, Nantes'),
+    arret('stp-1', 'Boulangerie Martin', '12 rue des Lilas, Nantes', aujourdHui(8, 24), 3.1, 12),
+    arret('stp-2', 'Café des Halles', '3 place du Bouffay, Nantes', aujourdHui(8, 51), 0.4, 9),
+    arret('stp-3', 'Fleuriste Camélia', '48 boulevard Gabriel Lauriol, Nantes', null, 2.6, 15),
+    arret('stp-4', 'Épicerie du Marché', '7 rue de Bel Air, Nantes', null, 0.8, 8),
+    arret('stp-5', 'Restaurant Le Cèdre', '21 rue Paul Bellamy, Nantes', null, 9.2, 20),
+    arret('stp-6', 'Atelier Vermeil', '12 rue Béranger, Nantes', null, 1.5, 10),
   ],
   createdAt: aujourdHui(7, 0),
 });

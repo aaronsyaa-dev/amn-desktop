@@ -8,6 +8,7 @@ import { useSync, useCollection, uid } from '../state/SyncContext';
 import { useAuth } from '../auth/AuthContext';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
+import { useHaloSignal } from '../components/EtatEcran';
 
 interface ResourceData {
   name: string;
@@ -137,16 +138,59 @@ export function EquipmentBookingScreen() {
 
   /** L'occupation du jour, ressource par ressource, bornée à la journée ouvrable. */
   const jourISO = maintenant.slice(0, 10);
+  /*
+    LA CARTE DE CONFLIT — l'objet dominant de Matériel (`15c`).
+
+    LA RÈGLE QUI LE TIENT : les rangées ne se fusionnent JAMAIS. Deux
+    réservations simultanées occupent deux lignes, sinon le chevauchement
+    disparaît derrière la barre du dessus et le conflit devient invisible —
+    ce qui est exactement le contraire de ce que la carte sert à montrer.
+
+    Le découpage en rangées est un partitionnement d'intervalles glouton : on
+    parcourt les réservations dans l'ordre du début, et chacune va dans la
+    première rangée dont la dernière barre est finie. Le nombre de rangées est
+    donc le nombre maximal de réservations simultanées — c'est-à-dire, à
+    l'œil, la hauteur du conflit.
+  */
   const occupation = useMemo(
     () =>
-      triees.map((r) => ({
-        ressource: r,
-        prises: reservations
+      triees.map((r) => {
+        const prises = reservations
           .filter((b) => b.resourceId === r.id && b.startAt.slice(0, 10) === jourISO)
-          .sort((a, b) => a.startAt.localeCompare(b.startAt)),
-      })),
+          .sort((a, b) => a.startAt.localeCompare(b.startAt));
+        const rangees: (BookingData & { id: string })[][] = [];
+        for (const b of prises) {
+          const place = rangees.find((rg) => rg[rg.length - 1].endAt <= b.startAt);
+          if (place) place.push(b);
+          else rangees.push([b]);
+        }
+        /* Les identifiants des barres qui en chevauchent une autre : ce sont
+           elles qui font le conflit, et elles seules. */
+        const enConflit = new Set<string>();
+        for (const a of prises)
+          for (const b of prises)
+            if (a.id !== b.id && chevauche(a.startAt, a.endAt, b.startAt, b.endAt)) enConflit.add(a.id);
+        return { ressource: r, prises, rangees, enConflit };
+      }),
     [triees, reservations, jourISO],
   );
+
+  /*
+    L'AMBRE. Le produit REFUSE un chevauchement à la création — un conflit
+    présent dans les données vient donc forcément de deux appareils qui ont
+    écrit hors ligne, exactement comme les numéros de facture en double. C'est
+    un fait rare et grave, et c'est lui qui prend l'ambre quand il existe. À
+    défaut, l'ambre va au refus en cours, qui est l'autre conflit de l'écran —
+    celui qu'on vient d'éviter.
+  */
+  const conflitReel = useMemo(() => {
+    for (const o of occupation) {
+      const barre = o.prises.find((b) => o.enConflit.has(b.id));
+      if (barre) return { ressource: o.ressource, barre };
+    }
+    return null;
+  }, [occupation]);
+  const halo = useHaloSignal(!!conflitReel || !!refus);
   const champ = 'input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none';
 
   return (
@@ -260,49 +304,89 @@ export function EquipmentBookingScreen() {
                           ))}
                         </span>
                       </div>
-                      {occupation.map(({ ressource, prises }) => (
-                        <div key={ressource.id} className="flex border-b border-[#161616] last:border-b-0">
+                      {occupation.map(({ ressource, rangees, enConflit }) => (
+                        <div key={ressource.id} className="flex border-b border-border-row last:border-b-0">
                           <span className="w-[160px] flex-shrink-0 px-3 py-4">
                             <span className="block truncate text-[14px] text-text-primary">{ressource.name}</span>
                             {ressource.kind && <span className="eyebrow mt-1 block truncate">{ressource.kind}</span>}
+                            {rangees.length > 1 && (
+                              <span className="eyebrow mt-1 block text-signal" data-signal-groupe="creneau-pris">
+                                {rangees.length} en même temps
+                              </span>
+                            )}
                           </span>
-                          <span className="relative min-h-[52px] flex-1">
-                            {prises.length === 0 ? (
-                              <span className="eyebrow absolute left-3 top-1/2 -translate-y-1/2">
+                          <span className="min-w-0 flex-1 py-2">
+                            {rangees.length === 0 ? (
+                              <span className="eyebrow block px-3 py-2.5">
                                 {t('materiel.libreToutLeJour')}
                               </span>
                             ) : (
-                              prises.map((b) => {
-                                const bloque = b.id === refus?.conflitId;
-                                const part = (iso: string) => {
-                                  const d = new Date(iso);
-                                  const h = d.getHours() + d.getMinutes() / 60;
-                                  return Math.min(100, Math.max(0, ((h - HEURE_DEBUT) / (HEURE_FIN - HEURE_DEBUT)) * 100));
-                                };
-                                const gauche = part(b.startAt);
-                                return (
-                                  <span
-                                    key={b.id}
-                                    data-signal-groupe={bloque ? 'creneau-pris' : undefined}
-                                    title={`${b.byEmail.split('@')[0]} · ${quand(b.startAt, b.endAt)}${b.purpose ? ` · ${b.purpose}` : ''}`}
-                                    className={`absolute top-1/2 flex -translate-y-1/2 items-center overflow-hidden whitespace-nowrap px-2 py-1.5 font-mono text-[10px] ${
-                                      bloque ? 'signal-plate' : 'bg-raised text-text-secondary'
-                                    }`}
-                                    style={{
-                                      left: `${gauche}%`,
-                                      width: `${Math.max(6, part(b.endAt) - gauche)}%`,
-                                    }}
-                                  >
-                                    {b.byEmail.split('@')[0]} · {heure(b.startAt)}
-                                  </span>
-                                );
-                              })
+                              /*
+                                UNE RANGÉE PAR PILE. Elles ne fusionnent jamais :
+                                c'est la superposition HORIZONTALE de deux barres
+                                sur la même plage qui fait voir le conflit, sans
+                                qu'on ait à lire le mot « conflit ».
+                              */
+                              rangees.map((rangee, ri) => (
+                                <span key={ri} className="relative block h-9">
+                                  {rangee.map((b) => {
+                                    const bloque =
+                                      b.id === refus?.conflitId || enConflit.has(b.id);
+                                    const part = (iso: string) => {
+                                      const d = new Date(iso);
+                                      const h = d.getHours() + d.getMinutes() / 60;
+                                      return Math.min(
+                                        100,
+                                        Math.max(0, ((h - HEURE_DEBUT) / (HEURE_FIN - HEURE_DEBUT)) * 100),
+                                      );
+                                    };
+                                    const gauche = part(b.startAt);
+                                    return (
+                                      <span
+                                        key={b.id}
+                                        data-signal-groupe={bloque ? 'creneau-pris' : undefined}
+                                        title={`${b.byEmail.split('@')[0]} · ${quand(b.startAt, b.endAt)}${b.purpose ? ` · ${b.purpose}` : ''}`}
+                                        className={`absolute top-1/2 flex -translate-y-1/2 items-center overflow-hidden whitespace-nowrap px-2 py-1.5 font-mono text-[10px] ${
+                                          bloque ? `signal-plate ${halo}` : 'bg-raised text-text-secondary'
+                                        }`}
+                                        style={{
+                                          left: `${gauche}%`,
+                                          width: `${Math.max(6, part(b.endAt) - gauche)}%`,
+                                        }}
+                                      >
+                                        {/* LE BLOC EST LARGE COMME SA DURÉE,
+                                            pas comme son texte : une heure
+                                            de camionnette fait quarante
+                                            pixels. Le nom passe donc en
+                                            troncature propre plutôt qu'en
+                                            coupure nette au bord, et la
+                                            bulle de survol porte l'heure,
+                                            la plage et le motif entiers. */}
+                                        <span className="min-w-0 truncate">
+                                          {b.byEmail.split('@')[0]} · {heure(b.startAt)}
+                                        </span>
+                                      </span>
+                                    );
+                                  })}
+                                </span>
+                              ))
                             )}
                           </span>
                         </div>
                       ))}
                     </div>
                   </div>
+                  {conflitReel && (
+                    <p className="mt-3 text-[12.5px] leading-relaxed text-text-secondary">
+                      <span className="font-semibold text-signal" data-signal-groupe="creneau-pris">
+                        {conflitReel.ressource.name} est réservé deux fois sur la même plage
+                      </span>{' '}
+                      ({quand(conflitReel.barre.startAt, conflitReel.barre.endAt)}). L’écran refuse
+                      un chevauchement à la création : celui-ci vient donc de deux appareils qui ont
+                      écrit hors ligne, comme un numéro de facture en double. Les deux rangées le
+                      montrent plutôt que de le cacher — il faut trancher à la main.
+                    </p>
+                  )}
                 </section>
               )}
               {aVenir.length === 0 ? (

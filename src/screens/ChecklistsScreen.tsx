@@ -8,6 +8,19 @@ import { useAuth } from '../auth/AuthContext';
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
+import { useHaloSignal } from '../components/EtatEcran';
+
+/**
+ * LA CARTE PERFORÉE — l'objet dominant de Contrôles qualité (`15b`).
+ *
+ * LA RÈGLE DU CHIFFRE GRAVÉ : le numéro d'une case suit la clarté de SON
+ * REMPLISSAGE, pas celle du fond de page. Sur `#3a3a3a`, l'encre est
+ * `#e4e4e1`. Un chiffre en encre sombre sur un gris de remplissage tombe sous
+ * 2,3:1 — c'est le défaut que `check:contraste` a trouvé sur la colonne
+ * d'Abonnements, et la même faute se répéterait ici case par case.
+ */
+const CARTE_PASSAGES = 12;
+const CASE_COTE = 26;
 
 interface ChecklistData {
   title: string;
@@ -54,11 +67,41 @@ export function ChecklistsScreen() {
     for (const l of m.values()) l.sort((a, b) => b.doneAt.localeCompare(a.doneAt));
     return m;
   }, [passages]);
-  /* Le modèle ouvert : celui qu'on a choisi, sinon celui qui TOURNE (on ne
-     quitte pas un passage en cours par accident), sinon le premier. */
+  /*
+    LE MODÈLE OUVERT PAR DÉFAUT — celui qui a QUELQUE CHOSE À DIRE.
+
+    Priorité au choix explicite, puis au passage en cours (on ne quitte pas
+    une liste qu'on est en train de cocher par accident). Ensuite, et c'est le
+    cas courant : le modèle le plus PASSÉ.
+
+    Ce dernier point est un correctif, pas une préférence. Le repli était
+    `tries[0]`, c'est-à-dire le premier par ordre alphabétique. Sur le bac à
+    sable, l'écran s'ouvrait donc sur « Contrôle frigo » et son passage unique
+    — une carte perforée d'UNE colonne, qui ne peut montrer ni colonne trouée,
+    ni point problématique, ni ambre. L'objet dominant existait et ne disait
+    rien. Une carte perforée se lit sur une série ; l'écran doit s'ouvrir sur
+    la série la plus longue, et à égalité sur la plus récente.
+  */
+  const leMieuxDocumente = useMemo(() => {
+    let choisi: (ChecklistData & { id: string }) | null = null;
+    let meilleur = -1;
+    let recent = '';
+    for (const m of tries) {
+      const l = parModele.get(m.id) ?? [];
+      const dernier = l[0]?.doneAt ?? '';
+      if (l.length > meilleur || (l.length === meilleur && dernier > recent)) {
+        choisi = m;
+        meilleur = l.length;
+        recent = dernier;
+      }
+    }
+    return choisi;
+  }, [tries, parModele]);
+
   const ouvertModele =
     tries.find((m) => m.id === ouvertId) ??
     tries.find((m) => m.id === enCours?.id) ??
+    leMieuxDocumente ??
     tries[0] ??
     null;
   const actif = ouvertModele && enCours?.id === ouvertModele.id ? enCours : null;
@@ -73,6 +116,70 @@ export function ChecklistsScreen() {
       hour: '2-digit',
       minute: '2-digit',
     });
+
+  /* ------------------------------------------ la carte perforée (`15b`) -- */
+
+  /*
+    LE MODÈLE DEVIENT UNE GRILLE DE CASES — une par point de contrôle et par
+    passage. La grille entière se lit d'un coup : les COLONNES QUI TROUENT sont
+    les points qui échouent régulièrement, et aucune liste de passages ne
+    montre ça — il faudrait comparer douze listes ligne à ligne.
+  */
+  const carte = useMemo(() => {
+    if (!ouvertModele) return null;
+    const runs = (parModele.get(ouvertModele.id) ?? []).slice(0, CARTE_PASSAGES);
+    const points = ouvertModele.items;
+    /* Les manques par point, sur les passages affichés — pas sur toute la
+       base : un chiffre qui ne correspond pas à ce qu'on voit n'est pas
+       vérifiable. */
+    const manques = points.map((_, i) => runs.filter((r) => !r.checked?.[i]).length);
+    const pire = manques.reduce((best, n, i) => (n > manques[best] ? i : best), 0);
+    return {
+      runs: [...runs].reverse(),
+      points,
+      manques,
+      /* Le point problématique n'existe que s'il échoue VRAIMENT : un point
+         qui n'a jamais manqué n'est pas « le pire », il n'y en a pas. */
+      pire: manques[pire] > 0 ? pire : null,
+    };
+  }, [ouvertModele, parModele]);
+
+  /*
+    L'ENTOURAGE DE LA CARTE — les passages du mois, et le détail du point qui
+    échoue. Ils vivent DANS la carte dominante, à droite de la grille : une
+    carte perforée de six colonnes occupe un quart de la largeur, et laisser
+    les trois quarts vides ferait d'un dominant une vignette.
+  */
+  const autourDeLaCarte = useMemo(() => {
+    if (!ouvertModele || !carte) return null;
+    const debutDuMois = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+    const duMois = (parModele.get(ouvertModele.id) ?? []).filter((r) => r.doneAt >= debutDuMois);
+    const parQui = new Map<string, number>();
+    for (const r of duMois) {
+      const qui = r.byEmail.split('@')[0] || '—';
+      parQui.set(qui, (parQui.get(qui) ?? 0) + 1);
+    }
+    return {
+      duMois: duMois.length,
+      parQui: [...parQui.entries()].sort((a, b) => b[1] - a[1]),
+    };
+  }, [ouvertModele, carte, parModele]);
+
+  /*
+    L'AMBRE, ET L'ARBITRAGE.
+
+    `MODULES.md` le met sur l'étiquette du point problématique. L'écran portait
+    déjà un ambre sur le modèle EN COURS de passage — une liste qu'on est en
+    train de cocher et qu'il faut valider ou fermer avant de partir. Les deux
+    ne peuvent pas coexister : un écran n'a qu'une région ambre.
+
+    Un passage en cours l'emporte quand il existe : c'est une décision VIVE,
+    là où le point problématique est une statistique, vraie mais sans urgence.
+    Sans passage en cours — le cas courant — l'ambre va où `MODULES.md` le
+    met, sur la colonne qui troue.
+  */
+  const pointAmbre = enCours ? null : (carte?.pire ?? null);
+  const halo = useHaloSignal(!!enCours || pointAmbre !== null);
 
   const ilYaSeptJours = new Date(Date.now() - 7 * 86_400_000).toISOString();
   const passagesSemaine = passages.filter((p) => p.doneAt >= ilYaSeptJours).length;
@@ -140,6 +247,166 @@ export function ChecklistsScreen() {
           cochables à 44 px, et la trace de ses trois derniers passages en
           dessous. Les autres tiennent dans un rail.
         */
+        <>
+        {/* ── LA CARTE PERFORÉE — l'objet dominant (`15b`) ──────────────── */}
+        {carte && carte.runs.length > 0 && (
+          <motion.section
+            variants={staggerItem}
+            className="panel-raised panel-raised-wide panel-ticks mb-5 px-6 py-6"
+          >
+            <div className="mb-5 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+              <p className="eyebrow">
+                {ouvertModele.title} · {carte.runs.length} passage{carte.runs.length > 1 ? 's' : ''}
+              </p>
+              <p className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
+                les colonnes qui trouent sont les points qui échouent
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-10">
+            <div className="overflow-x-auto">
+              <div className="inline-flex flex-col gap-1.5">
+                {carte.runs.map((r) => (
+                  <div key={r.id} className="flex items-center gap-1.5">
+                    <span className="tnum w-[88px] flex-shrink-0 font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-muted">
+                      {new Date(r.doneAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}
+                    </span>
+                    {carte.points.map((_, i) => {
+                      const conforme = !!r.checked?.[i];
+                      return (
+                        <span
+                          key={i}
+                          style={{ width: CASE_COTE, height: CASE_COTE }}
+                          className={`flex flex-shrink-0 items-center justify-center font-mono text-[10px] font-bold ${
+                            conforme
+                              ? /* LE CHIFFRE SUIT LA CLARTÉ DU REMPLISSAGE :
+                                   `#e4e4e1` sur `#3a3a3a`, pas l'encre de fond. */
+                                'bg-border-strong text-text-body'
+                              : 'border border-border-strong text-transparent'
+                          }`}
+                          title={`${carte.points[i]} · ${conforme ? 'conforme' : 'non conforme'}`}
+                        >
+                          {i + 1}
+                        </span>
+                      );
+                    })}
+                  </div>
+                ))}
+
+                {/* LA RANGÉE DES ÉTIQUETTES — même pas de colonnes que la grille. */}
+                <div className="mt-1 flex items-start gap-1.5">
+                  <span className="w-[88px] flex-shrink-0" aria-hidden />
+                  {carte.points.map((pt, i) => {
+                    const signal = pointAmbre === i;
+                    return (
+                      <span
+                        key={i}
+                        style={{ width: CASE_COTE }}
+                        className="flex flex-shrink-0 flex-col items-center gap-1"
+                      >
+                        <span
+                          className={`tnum font-mono text-[9.5px] ${
+                            signal ? 'font-bold text-signal' : 'text-text-muted'
+                          }`}
+                          data-signal-groupe={signal ? 'point-faible' : undefined}
+                        >
+                          {carte.manques[i] > 0 ? `−${carte.manques[i]}` : '·'}
+                        </span>
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* L'ENTOURAGE — en matière, toujours : la région ambre de
+                l'écran est la colonne qui troue, pas son commentaire. */}
+            {autourDeLaCarte && (
+              <div className="grid min-w-0 flex-1 gap-4 sm:grid-cols-2 lg:border-l lg:border-border-row lg:pl-10">
+                <div>
+                  <p className="eyebrow">Les passages du mois</p>
+                  <p className="tnum mt-2 text-[27px] font-semibold leading-none text-text-primary">
+                    {autourDeLaCarte.duMois}
+                  </p>
+                  {autourDeLaCarte.parQui.length === 0 ? (
+                    <p className="mt-3 text-[12.5px] leading-relaxed text-text-muted">
+                      Aucun passage sur ce modèle depuis le début du mois.
+                    </p>
+                  ) : (
+                    <ul className="mt-3 flex flex-col gap-1.5">
+                      {autourDeLaCarte.parQui.map(([qui, n]) => (
+                        <li key={qui} className="flex items-baseline justify-between gap-3">
+                          <span className="min-w-0 truncate text-[13px] capitalize text-text-secondary">
+                            {qui}
+                          </span>
+                          <span className="tnum flex-shrink-0 font-mono text-[11px] text-text-muted">
+                            {n} passage{n > 1 ? 's' : ''}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div>
+                  <p className="eyebrow">Le point qui échoue</p>
+                  {pointAmbre === null ? (
+                    <p className="mt-2 text-[13px] leading-relaxed text-text-secondary">
+                      Aucun point de ce modèle n’a manqué sur les {carte.runs.length} derniers
+                      passages : la carte n’a pas de colonne trouée.
+                    </p>
+                  ) : (
+                    <>
+                      <p className="mt-2 text-[15px] font-semibold leading-snug text-text-primary">
+                        {carte.points[pointAmbre]}
+                      </p>
+                      <p className="mt-2 text-[12.5px] leading-relaxed text-text-muted">
+                        Manqué les jours suivants :
+                      </p>
+                      <ul className="mt-2 flex flex-wrap gap-1.5">
+                        {carte.runs
+                          .filter((r) => !r.checked?.[pointAmbre])
+                          .map((r) => (
+                            <li
+                              key={r.id}
+                              className="tnum border border-border-strong px-2 py-1 font-mono text-[10px] text-text-secondary"
+                            >
+                              {new Date(r.doneAt).toLocaleDateString('fr-FR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                              })}
+                            </li>
+                          ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+            </div>
+
+            {pointAmbre !== null && (
+              <p className="mt-6 border-t border-border-row pt-3 text-[13px] leading-relaxed text-text-secondary">
+                <span
+                  className={`signal-plate px-2 py-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] ${halo}`}
+                  data-signal-groupe="point-faible"
+                >
+                  Point {pointAmbre + 1}
+                </span>{' '}
+                <span className="font-semibold text-text-primary">{carte.points[pointAmbre]}</span> a
+                manqué {carte.manques[pointAmbre]} fois sur {carte.runs.length} passages. C’est la
+                colonne qui troue, et elle ne se voit pas dans une liste de passages.
+              </p>
+            )}
+            {pointAmbre === null && enCours && (
+              <p className="mt-6 border-t border-border-row pt-3 text-[13px] leading-relaxed text-text-muted">
+                Un passage est en cours : il faut le valider ou le fermer. Le point le plus fragile
+                reprendra l’ambre ensuite — une statistique attend, une liste ouverte non.
+              </p>
+            )}
+          </motion.section>
+        )}
+
         <motion.div variants={staggerItem} className="grid gap-5 lg:grid-cols-[240px_1fr]">
           <div className="flex flex-col">
             {tries.map((m) => {
@@ -316,6 +583,7 @@ export function ChecklistsScreen() {
             )}
           </div>
         </motion.div>
+        </>
       ) : null}
 
     </motion.section>
