@@ -75,6 +75,8 @@ import { AssemblyScreen } from '../screens/AssemblyScreen';
 import { ChecklistsScreen } from '../screens/ChecklistsScreen';
 import { InterventionsScreen } from '../screens/InterventionsScreen';
 import { CalculatorProScreen } from '../screens/CalculatorProScreen';
+import { HealthScreen } from '../screens/HealthScreen';
+import { ShoppingScreen } from '../screens/ShoppingScreen';
 import { ShiftsScreen } from '../screens/ShiftsScreen';
 import { SuppliersScreen } from '../screens/SuppliersScreen';
 import { StockScreen } from '../screens/StockScreen';
@@ -219,16 +221,7 @@ function AmnRoutes() {
             listes de l'OPÉRATEUR sous la bannière de la cliente — le défaut
             qui vaut déjà au Coffre-fort d'en être exclu. */}
         <Route path="/personnel/budget" element={<PersonalBudgetScreen />} />
-        <Route
-          path="/personnel/courses"
-          element={
-            <PagesScreen
-              scope="personnel"
-              title="Personnel"
-              description="Vos listes et vos pages à vous. Elles se synchronisent entre vos appareils — pratique pour écrire la liste ici et la relire dans le magasin."
-            />
-          }
-        />
+        <Route path="/personnel/courses" element={<ShoppingScreen />} />
         <Route path="/clients" element={<ClientsScreen />} />
         <Route path="/facturation" element={<InvoicesScreen />} />
         <Route path="/facturation/devis" element={<QuotesScreen />} />
@@ -288,6 +281,7 @@ function AmnRoutes() {
         <Route path="/controles" element={<ChecklistsScreen />} />
         <Route path="/interventions" element={<InterventionsScreen />} />
         <Route path="/outils/calculatrice" element={<CalculatorProScreen />} />
+        <Route path="/personnel/sante" element={<HealthScreen />} />
         <Route path="/montage" element={<AssemblyScreen />} />
         <Route path="/sav" element={<AfterSalesScreen />} />
         <Route path="/nomenclatures" element={<BomScreen />} />
@@ -808,6 +802,14 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="pomodoro">
               <PomodoroScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/outils/calculatrice"
+          element={
+            <ModuleRoute module="calcPro">
+              <CalculatorProScreen />
             </ModuleRoute>
           }
         />

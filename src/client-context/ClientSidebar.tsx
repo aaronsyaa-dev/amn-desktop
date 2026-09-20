@@ -182,7 +182,7 @@ export const CLIENT_SECTIONS: Array<{ label: string; keys: string[] }> = [
   { label: 'Production', keys: ['time', 'expenses', 'calculators', 'board', 'stock', 'suppliers', 'shifts', 'checklists', 'interventions', 'assembly', 'aftersales', 'bom', 'rounds', 'equipment'] },
   { label: 'Documents', keys: ['notes', 'pages', 'reports', 'media'] },
   { label: 'Collectif', keys: ['dm', 'groups', 'announcements', 'polls', 'leaves', 'directory', 'calls'] },
-  { label: 'Outils', keys: ['qr', 'converters', 'templates', 'automations', 'dataPort'] },
+  { label: 'Outils', keys: ['qr', 'converters', 'templates', 'automations', 'calcPro', 'dataPort'] },
   { label: 'Personnel', keys: ['habits', 'personalGoals', 'diary', 'pomodoro'] },
   { label: 'Système', keys: ['settings'] },
 ];

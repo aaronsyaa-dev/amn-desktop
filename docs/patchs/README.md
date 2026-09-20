@@ -27,10 +27,18 @@ le poste, disparaît à la réinstallation et n'existe pas sur le téléphone.
   module créé pendant le chantier : `MODULES.md` le décrit, le produit n'avait
   que les Calculateurs, qui répondent à une autre question.
 
+Il porte aussi deux entrées de catalogue sans aucune collection :
+
+- **`calcPro`** et **`health`** (le Carnet de santé, `25e`) doivent exister
+  dans `MODULE_CATALOGUE`, sinon le serveur refuse la clé à la création d'une
+  organisation — même si le Carnet, lui, ne synchronise rien : ses dates
+  restent sur le poste, comme le Budget et les Courses.
+
 Le patch touche deux fichiers :
 
-- `src/db/tenancy.js` — l'entrée `interventions` dans `MODULE_CATALOGUE`, et
-  les lignes de `MODULE_COLLECTIONS` pour les trois modules ;
+- `src/db/tenancy.js` — les entrées `interventions`, `calcPro` et `health`
+  dans `MODULE_CATALOGUE`, et les lignes de `MODULE_COLLECTIONS` pour les
+  modules qui ont bien une collection ;
 - `src/routes/collections.js` — les trois noms dans la liste des collections
   synchronisables.
 

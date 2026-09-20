@@ -53,6 +53,24 @@
   --color-sheet: #111111;
   /* La carte dominante (voir `.panel-raised`). */
   --color-elevated: #121212;
+  /*
+    LE PAPIER — la seule surface CLAIRE du produit, et ses deux encres.
+
+    Deux objets en ont besoin, et pour la même raison : ils ne sont pas des
+    cartes, ce sont des IMPRESSIONS. Un QR code sur fond sombre n'est pas
+    décodable (un lecteur attend du sombre sur du clair) ; un ruban de caisse
+    sur fond sombre n'est plus un ruban de caisse, c'est une liste de plus.
+
+    Ces valeurs existent donc comme jetons plutôt qu'en dur dans deux écrans :
+    non pour qu'on les emploie ailleurs — elles n'ont de sens que sur un objet
+    imprimé — mais pour qu'il n'y ait QU'UN endroit où le papier est décrit.
+    `--color-papier-encre` n'est pas noir : une imprimante thermique ne l'est
+    jamais, et un noir pur sur blanc pur fatigue à la lecture d'un ticket.
+  */
+  --color-papier: #ffffff;
+  --color-papier-encre: #111111;
+  --color-papier-pale: #6a6a66;
+  --color-papier-grille: #e6e4de;
   --color-border: #1f1f1f;
   /* Le filet de section — entre la bordure de carte calme et celle d'une dominante. */
   /*

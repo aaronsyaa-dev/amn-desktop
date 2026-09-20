@@ -53,6 +53,7 @@ import {
   Sunrise,
   Target,
   Timer,
+  HeartPulse,
   Trophy,
   Truck,
   Users,
@@ -248,6 +249,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'personalGoals', label: 'Objectifs perso', to: '/personnel/objectifs', icon: Trophy, hint: 'Ce que vous visez, et les pas pour y aller' },
       { key: 'diary', label: 'Journal perso', to: '/personnel/journal', icon: NotebookPen, hint: 'Quelques lignes par jour, pour vous' },
       { key: 'pomodoro', label: 'Pomodoro', to: '/personnel/pomodoro', icon: Timer, hint: '25 minutes, puis une pause — et le temps compté' },
+      { key: 'health', label: 'Carnet de santé', to: '/personnel/sante', icon: HeartPulse, hint: 'Des dates et des échéances, rien de médical' },
     ],
   },
   {

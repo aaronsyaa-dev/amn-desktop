@@ -143,7 +143,8 @@ const MODULE_DATA = {
   // liste de courses s'écrit au bureau et se relit dans le magasin, donc elle
   // se synchronise. `budget` ne stocke RIEN sur le serveur, délibérément :
   // déclaré local ci-dessous.
-  courses: ['pages'],
+  courses: [],
+  health: [],
   budget: [],
   library: [], // La Bibliothèque lit les catalogues ; Découvrir lit le catalogue serveur. Rien d'écrit.
   discover: [],
@@ -283,6 +284,7 @@ const MODULE_FILES = {
   pomodoro: ['src/screens/PomodoroScreen.tsx'],
   qr: ['src/screens/QrScreen.tsx'],
   calcPro: ['src/screens/CalculatorProScreen.tsx'],
+  health: ['src/screens/HealthScreen.tsx'],
   converters: ['src/screens/ConvertersScreen.tsx'],
   templates: ['src/screens/TemplatesScreen.tsx'],
   automations: ['src/screens/AutomationsScreen.tsx'],

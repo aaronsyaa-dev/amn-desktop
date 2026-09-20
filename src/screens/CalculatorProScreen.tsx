@@ -53,6 +53,24 @@ interface IdentiteFacturation {
   pavé de caisse se tape SANS REGARDER : la position d'une touche doit être
   la même à chaque ouverture, donc leur nombre ne varie pas avec le contexte.
 */
+/*
+  LES TROIS ENCRES DU PAPIER, et pourquoi elles ne sont pas des jetons.
+
+  Tout le système de design est sombre ; ce ruban ne l'est pas, parce qu'un
+  ruban de caisse est du papier. Ses trois valeurs vivent donc ICI et nulle
+  part ailleurs — elles n'ont aucune raison de suivre les gris de l'interface,
+  et les nommer comme des jetons ferait croire le contraire.
+
+  Elles vivent donc comme jetons `--color-papier*` dans `src/index.css`, avec
+  le pourquoi, et cet écran ne fait que les nommer. L'encre du papier n'est
+  pas noire : une imprimante thermique ne l'est jamais, et un noir pur sur
+  blanc pur fatigue à la lecture d'un ticket.
+*/
+const PAPIER = 'var(--color-papier)';
+const ENCRE_PAPIER = 'var(--color-papier-encre)';
+const ENCRE_PALE = 'var(--color-papier-pale)';
+const GRILLE = 'var(--color-papier-grille)';
+
 const RUBAN_LIGNE_H = 22;
 const DENT_L = 12;
 const DENT_H = 7;
@@ -264,9 +282,10 @@ export function CalculatorProScreen() {
 
             {/* LE PAPIER — clair, avec ses lignes de grille et son bord déchiré. */}
             <div className="mt-4">
-              <div className="bg-white px-4 py-4 text-[#111111]">
+              <div className="px-4 py-4" style={{ backgroundColor: PAPIER, color: ENCRE_PAPIER }}>
                 {lignes.length === 0 ? (
-                  <p className="py-6 text-center font-mono text-[12px] uppercase tracking-wider text-[#8a8a86]">
+                  <p className="py-6 text-center font-mono text-[12px] uppercase tracking-wider"
+                    style={{ color: ENCRE_PALE }}>
                     {t('calculatrice.rubanVierge')}
                   </p>
                 ) : (
@@ -279,20 +298,20 @@ export function CalculatorProScreen() {
                           height: RUBAN_LIGNE_H,
                           /* Les lignes de grille du papier : un filet clair sous
                              chaque ligne, comme sur un vrai rouleau. */
-                          borderBottom: '1px solid #e6e4de',
+                          borderBottom: `1px solid ${GRILLE}`,
                         }}
                       >
                         <span className="min-w-0 flex-1 truncate">{l.libelle}</span>
-                        <span className="w-12 flex-shrink-0 text-right text-[#6a6a66]">{l.taux} %</span>
+                        <span className="w-12 flex-shrink-0 text-right" style={{ color: ENCRE_PALE }}>{l.taux} %</span>
                         <span className="w-24 flex-shrink-0 text-right">{formatCents(l.montantCents)}</span>
                       </li>
                     ))}
-                    <li className="flex items-baseline justify-between gap-4 pt-2 font-mono text-[12px] tabular-nums text-[#6a6a66]">
+                    <li className="flex items-baseline justify-between gap-4 pt-2 font-mono text-[12px] tabular-nums" style={{ color: ENCRE_PALE }}>
                       <span>{t('calculatrice.sousTotalHt')}</span>
                       <span className="w-24 text-right">{formatCents(pied.htCents)}</span>
                     </li>
                     {pied.parTaux.map(([tx, montant]) => (
-                      <li key={tx} className="flex items-baseline justify-between gap-4 font-mono text-[12px] tabular-nums text-[#6a6a66]">
+                      <li key={tx} className="flex items-baseline justify-between gap-4 font-mono text-[12px] tabular-nums" style={{ color: ENCRE_PALE }}>
                         <span>{t('calculatrice.tvaAu', { taux: tx })}</span>
                         <span className="w-24 text-right">{formatCents(montant)}</span>
                       </li>
@@ -326,7 +345,7 @@ export function CalculatorProScreen() {
               >
                 <path
                   d={`M0 0 ${Array.from({ length: 40 }, (_, i) => `L${i * DENT_L + DENT_L / 2} ${DENT_H} L${(i + 1) * DENT_L} 0`).join(' ')} Z`}
-                  fill="#ffffff"
+                  fill={PAPIER}
                 />
               </svg>
             </div>

@@ -1,5 +1,5 @@
 diff --git a/src/db/tenancy.js b/src/db/tenancy.js
-index 24888cb..32c3abd 100644
+index 24888cb..f0bfeae 100644
 --- a/src/db/tenancy.js
 +++ b/src/db/tenancy.js
 @@ -277,6 +277,16 @@ export const MODULE_CATALOGUE = [
@@ -19,7 +19,28 @@ index 24888cb..32c3abd 100644
    {
      key: 'assembly',
      label: 'Suivi de montage',
-@@ -554,7 +564,10 @@ export const MODULE_COLLECTIONS = {
+@@ -350,7 +360,7 @@ export const MODULE_CATALOGUE = [
+   {
+     key: 'habits',
+     label: 'Habitudes',
+-    summary: 'Vos habitudes personnelles, cochées chaque jour, avec la série : elles restent sur ce poste, comme le budget.',
++    summary: 'Vos habitudes personnelles, cochées chaque jour, posées sur une balance : elles restent sur ce poste, comme le budget.',
+   },
+   {
+     key: 'personalGoals',
+@@ -367,6 +377,11 @@ export const MODULE_CATALOGUE = [
+     label: 'Pomodoro',
+     summary: 'Un minuteur qui, à la fin, pose une vraie ligne dans Temps.',
+   },
++  {
++    key: 'health',
++    label: 'Carnet de santé',
++    summary: 'Des dates et des échéances, rien de médical : gardé sur ce poste, jamais partagé.',
++  },
+   {
+     key: 'qr',
+     label: 'QR codes',
+@@ -554,7 +569,10 @@ export const MODULE_COLLECTIONS = {
    groups: ['groups', 'groupMessages'],
    announcements: ['announcements'],
    polls: ['polls'],
@@ -31,7 +52,7 @@ index 24888cb..32c3abd 100644
    pipeline: ['prospects'],
    reminders: ['paymentReminders'],
    subscriptions: ['subscriptions'],
-@@ -567,6 +580,7 @@ export const MODULE_COLLECTIONS = {
+@@ -567,6 +585,7 @@ export const MODULE_COLLECTIONS = {
    suppliers: ['suppliers'],
    shifts: ['shifts'],
    checklists: ['checklists', 'checkRuns'],

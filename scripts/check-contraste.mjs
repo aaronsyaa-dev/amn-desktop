@@ -136,6 +136,14 @@ if ((await page.content()).includes('name="password"')) {
 }
 await attendre(2000);
 
+/* La famille « Personnel » lit `localStorage`, pas l'API : sans ce jeu
+   d'essai, ses six écrans sont mesurés vides — donc jamais mesurés. Même
+   source que `check:signal` et que la campagne de captures. */
+const { clesPersonnelles } = await import('./perso-essai.mjs');
+await page.evaluate((entrees) => {
+  for (const [cle, valeur] of Object.entries(entrees)) window.localStorage.setItem(cle, JSON.stringify(valeur));
+}, clesPersonnelles(EMAIL));
+
 const aVisiter = await page.evaluate(() => [
   ...new Set([...document.querySelectorAll('a[href^="#/"]')].map((a) => a.getAttribute('href'))),
 ]);

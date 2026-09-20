@@ -39,7 +39,7 @@ interface ProspectData {
   · 264 px est la taille à laquelle un téléphone accroche le code DEPUIS
     L'ÉCRAN, sans impression. C'est le geste réel de qui vérifie son code
     avant de l'envoyer à l'imprimeur, et un code de 120 px ne le permet pas.
-  · 18 px de blanc autour ne sont pas une marge de mise en page : un QR a
+  · 18 px de papier autour ne sont pas une marge de mise en page : un QR a
     besoin d'une zone de silence pour être décodé. L'encodeur en pose déjà
     quatre modules ; ce cadre-ci la prolonge et garantit qu'elle survit même
     quand le code est posé sur un fond sombre — c'est-à-dire ici, toujours.
@@ -245,7 +245,7 @@ export function QrScreen() {
                     <div
                       role="img"
                       aria-label={t('qr.image', { texte: contenu.slice(0, 60) })}
-                      className="bg-white"
+                      className="bg-papier"
                       style={{ padding: PAPIER_MARGE, width: CODE_PX + PAPIER_MARGE * 2 }}
                       dangerouslySetInnerHTML={{ __html: svg }}
                     />

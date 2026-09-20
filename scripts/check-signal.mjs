@@ -63,6 +63,7 @@
  */
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
+import { clesPersonnelles } from './perso-essai.mjs';
 
 const BUNDLE = process.argv[2];
 const PORT = Number(process.argv[3] ?? 4195);
@@ -159,6 +160,15 @@ const ECRANS = [
   ['Fournisseurs', '#/fournisseurs'],
   ['Interventions', '#/interventions'],
   ['Calculatrice pro', '#/outils/calculatrice'],
+  /* La famille « personnel » : le ton y change — pas de cible, pas de
+     rendement. Les objets y sont des objets (balance, ticket, cadran, marée,
+     cairn, carnet), et chacun n'a qu'un ambre, souvent aucun. */
+  ['Habitudes', '#/personnel/habitudes'],
+  ['Courses', '#/personnel/courses'],
+  ['Pomodoro', '#/personnel/pomodoro'],
+  ['Journal perso', '#/personnel/journal'],
+  ['Objectifs perso', '#/personnel/objectifs'],
+  ['Carnet de santé', '#/personnel/sante'],
   /* La famille « outils » : l'objet dominant d'un utilitaire est CE QU'IL
      PRODUIT. Import/export y figure bien qu'il n'ait aucun ambre au repos —
      son aiguillage ne s'allume qu'une fois un fichier lu, et la garde compte
@@ -202,6 +212,21 @@ try {
     throw new Error('connexion refusée — vérifiez le compte d’essai et l’API pointée par le bundle');
   }
   await page.waitForTimeout(1200);
+
+  /*
+    LA FAMILLE « PERSONNEL » NE PASSE PAS PAR L'API.
+
+    Ses six écrans lisent `localStorage`, par compte : ouverts tels quels, ils
+    sont VIDES, et cette garde — qui compte un MAXIMUM — les déclarait en
+    règle sans avoir rien mesuré. Un écran vide qui passe la garde ne prouve
+    rien du tout. On pose donc le même jeu d'essai que la campagne de
+    captures avant de mesurer.
+  */
+  await page.evaluate((entrees) => {
+    for (const [cle, valeur] of Object.entries(entrees)) {
+      window.localStorage.setItem(cle, JSON.stringify(valeur));
+    }
+  }, clesPersonnelles(EMAIL));
 
   for (const [nom, route] of ECRANS) {
     await page.goto(APP + route, { waitUntil: 'networkidle' }).catch(() => undefined);
