@@ -63,7 +63,7 @@
  */
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
-import { clesPersonnelles } from './perso-essai.mjs';
+import { clesPersonnelles, coffreFort, CLE_COFFRE, ouverturesDEssai, cleOuvertures } from './perso-essai.mjs';
 
 const BUNDLE = process.argv[2];
 const PORT = Number(process.argv[3] ?? 4195);
@@ -144,7 +144,15 @@ const ECRANS = [
   /* Rendez-vous en ligne : une VITRINE, pas une file — voir l'en-tête de
      `BookingScreen.tsx`. Aucun ambre quand la page est ouverte et pourvue. */
   ['RDV en ligne', '#/rdv-en-ligne'],
+  /* La famille « système » : le piège y était l'écran de réglages générique.
+     Chacun a un objet — le bloc de diagnostic, la carte du produit, la porte
+     fermée, le plan des rubriques, les places de la formule — et un seul
+     ambre, parfois aucun quand rien ne demande de décision. */
   ['Assistance', '#/assistance'],
+  ['Découvrir', '#/decouvrir'],
+  ['Coffre-fort', '#/vault'],
+  ['Paramètres', '#/settings'],
+  ['Membres', '#/membres'],
   ['Messages privés', '#/messages-prives'],
   /* La famille « plans » : des données à deux axes, et le piège de la
      deuxième matrice — voir l'en-tête de `ShiftsScreen.tsx`. */
@@ -227,6 +235,18 @@ try {
       window.localStorage.setItem(cle, JSON.stringify(valeur));
     }
   }, clesPersonnelles(EMAIL));
+  /* Le Coffre-fort non plus ne passe pas par l'API : sans secrets, sa porte
+     fermée annonce « 0 », et l'écran est jugé vide. */
+  await page.evaluate(([cle, secrets]) => window.localStorage.setItem(cle, JSON.stringify(secrets)), [
+    CLE_COFFRE,
+    coffreFort(),
+  ]);
+  /* La carte de Découvrir non plus : sans journal d'ouvertures, ses huit
+     familles lisent « 0 / n » et ses trois relevés valent zéro. */
+  await page.evaluate(([cle, journal]) => window.localStorage.setItem(cle, JSON.stringify(journal)), [
+    cleOuvertures(EMAIL),
+    ouverturesDEssai(),
+  ]);
 
   for (const [nom, route] of ECRANS) {
     await page.goto(APP + route, { waitUntil: 'networkidle' }).catch(() => undefined);

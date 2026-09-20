@@ -26,6 +26,7 @@
     "make:business": "cross-env AMN_EDITION=business npm run make",
     "build:web:business": "cross-env AMN_EDITION=business node scripts/build-web.mjs",
     "check:business": "node scripts/check-business-bundle.mjs",
+    "check:consequences": "node scripts/check-consequences.mjs",
     "check:modules": "node scripts/check-modules.mjs",
     "check:roles": "node scripts/check-roles.mjs",
     "check:naming": "node scripts/check-naming.mjs",

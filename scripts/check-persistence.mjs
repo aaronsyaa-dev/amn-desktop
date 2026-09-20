@@ -324,6 +324,26 @@ const ECRITURES_LOCALES_ADMISES = {
       'même. Une seconde écriture ici ferait échouer le contrôle — et elle le ' +
       'devrait : l’import, lui, écrit dans des collections synchronisées.',
   },
+  'src/screens/VaultScreen.tsx': {
+    nombre: 1,
+    raison:
+      'la DATE des ouvertures de la porte, et rien d’autre — jamais un secret, ' +
+      'jamais une valeur. Le contenu du coffre est déjà local par construction ' +
+      '(chiffré par le trousseau de la machine, qui ne voyage pas), donc mettre ' +
+      'ce journal-là sur le serveur ferait sortir de la machine la seule chose ' +
+      'qui n’en sortait pas encore : QUAND quelqu’un ouvre son coffre. L’écran ' +
+      'écrit « depuis ce poste » partout où il l’affiche. Une seconde écriture ' +
+      'ici ferait échouer le contrôle, et elle le devrait.',
+  },
+  'src/state/useModulesOuverts.ts': {
+    nombre: 1,
+    raison:
+      'le journal des modules déjà ouverts, dont Découvrir tire sa carte. Il est ' +
+      'local À DESSEIN : sur le serveur il deviendrait une donnée d’organisation, ' +
+      'donc lisible par les autres membres — une carte d’exploration personnelle ' +
+      'qu’un collègue peut lire n’est plus personnelle. L’écran dit « depuis ce ' +
+      'poste » et l’explique en toutes lettres.',
+  },
   'src/state/useNotes.ts': {
     nombre: 1,
     raison:

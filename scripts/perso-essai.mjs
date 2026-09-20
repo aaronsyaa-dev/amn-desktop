@@ -135,3 +135,71 @@ export function clesPersonnelles(email, maintenant = Date.now()) {
   const coffre = coffrePersonnel(maintenant);
   return Object.fromEntries(Object.entries(coffre).map(([nom, v]) => [`amn.perso.${nom}.${email}`, v]));
 }
+
+/*
+  LE COFFRE-FORT D'ESSAI.
+
+  Le Coffre-fort ne passe pas non plus par l'API : dans un navigateur il vit
+  dans `localStorage` sous `amn.vault.entries` (voir src/lib/bridge.ts), et
+  sans lui la porte fermée annonce « 0 secret » — un relevé à zéro sur un
+  écran qu'on prétend juger. Les mots de passe ci-dessous sont FICTIFS et
+  n'ouvrent rien : ce sont des chaînes de mesure, pas des identifiants.
+*/
+export const CLE_COFFRE = 'amn.vault.entries';
+
+export function coffreFort(maintenant = Date.now()) {
+  const JOUR = 86_400_000;
+  const q = (n) => new Date(maintenant - n * JOUR).toISOString();
+  const e = (id, label, username, category, n) => ({
+    id,
+    label,
+    username,
+    password: `essai-${id}-non-valide`,
+    url: '',
+    notes: '',
+    category,
+    createdAt: q(n),
+    updatedAt: q(Math.max(0, n - 3)),
+  });
+  return [
+    e('cf-1', 'Compte grossiste', 'atelier@exemple.test', 'accounts', 210),
+    e('cf-2', 'Banque en ligne', 'atelier@exemple.test', 'accounts', 180),
+    e('cf-3', 'Serveur de sauvegarde', 'sauvegarde', 'servers', 150),
+    e('cf-4', 'Routeur de l’atelier', 'admin', 'servers', 120),
+    e('cf-5', 'Clé du service d’envoi', 'api', 'api', 95),
+    e('cf-6', 'Clé de la carte en ligne', 'api', 'api', 60),
+    e('cf-7', 'Wi-Fi de l’atelier', '', 'other', 40),
+  ];
+}
+
+/*
+  LA CARTE D'EXPLORATION D'ESSAI.
+
+  Découvrir lit `amn.modules.ouverts.<email>` (voir src/state/useModulesOuverts.ts),
+  un journal local au poste. Une garde qui ouvre l'écran sans lui mesure une
+  carte entièrement vide — donc huit familles à « 0 / n » et trois relevés à
+  zéro, ce que le système de design interdit précisément.
+
+  Le jeu ci-dessous est celui d'un espace VÉCU : le Pilotage et l'argent sont
+  fréquentés, les Outils à peine, et la famille la moins explorée est donc
+  réellement la moins explorée — la recommandation s'en déduit au lieu d'être
+  choisie.
+*/
+const VISITES = {
+  quotidien: ['home', 'agenda', 'tasks', 'clients', 'invoices', 'time'],
+  courant: ['projects', 'quotes', 'expenses', 'notes', 'dm', 'directory', 'stock', 'priorities', 'settings'],
+  rare: ['reports', 'polls', 'leaves', 'shifts', 'pages', 'members'],
+};
+
+export function ouverturesDEssai(maintenant = Date.now()) {
+  const JOUR = 86_400_000;
+  const journal = {};
+  VISITES.quotidien.forEach((k, i) => { journal[k] = new Date(maintenant - (i % 2) * JOUR).toISOString(); });
+  VISITES.courant.forEach((k, i) => { journal[k] = new Date(maintenant - (3 + i) * JOUR).toISOString(); });
+  VISITES.rare.forEach((k, i) => { journal[k] = new Date(maintenant - (40 + i * 5) * JOUR).toISOString(); });
+  return journal;
+}
+
+export function cleOuvertures(email) {
+  return `amn.modules.ouverts.${email}`;
+}

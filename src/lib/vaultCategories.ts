@@ -14,7 +14,7 @@ import type { VaultCategory } from '../shared/api';
  * Business elles ne sont pas masquées, elles ne sont pas là.
  */
 export const VAULT_CATEGORIES: { value: VaultCategory; label: string }[] = [
-  { value: 'api', label: 'API Keys' },
+  { value: 'api', label: 'Clés d’API' },
   { value: 'accounts', label: 'Comptes' },
   { value: 'servers', label: 'Serveurs' },
   ...VAULT_PRODUCT_CATEGORIES,
