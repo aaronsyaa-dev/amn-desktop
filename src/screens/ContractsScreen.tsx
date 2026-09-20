@@ -4,7 +4,7 @@ import { Plus, Signature, Trash2 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FirstRun } from '../components/EmptyState';
 import { Champ, Case } from '../components/formulaire/Champ';
-import { FormulaireEnPlace } from '../components/formulaire/FormulaireEnPlace';
+import { AssistantLong, LigneAVenir } from '../components/etats/EtatsTransverses';
 import { formatCents } from '../lib/money';
 import { useHaloSignal } from '../components/EtatEcran';
 import { useCollection, useSync } from '../state/SyncContext';
@@ -65,6 +65,24 @@ export function ContractsScreen() {
   const [endsAt, setEndsAt] = useState(dansJours(365));
   const [amount, setAmount] = useState('');
   const [autoRenew, setAutoRenew] = useState(false);
+  /*
+    L'ASSISTANT (`27c`). Un contrat est le formulaire le plus long du produit
+    — six champs, trois natures différentes — et c'était une grille de six
+    cases où l'on ne savait jamais ce qui manquait encore.
+
+    Trois étapes, dans l'ordre du paquet de design : ce que c'est, ce que ça
+    vaut, jusqu'à quand ça engage. RIEN N'EST CRÉÉ AVANT LE DERNIER BOUTON :
+    tout vit dans l'état de l'écran, et fermer ne laisse rien derrière.
+  */
+  const [etape, setEtape] = useState(0);
+  const fermerAssistant = () => {
+    setOuvert(false);
+    setEtape(0);
+    setTitle('');
+    setParty('');
+    setAmount('');
+    setAutoRenew(false);
+  };
   const jour = isoDay();
   const bientot = dansJours(30);
   const locale = langue === 'en' ? 'en-GB' : 'fr-FR';
@@ -102,7 +120,11 @@ export function ContractsScreen() {
   );
   /* L'AMBRE va à la barre la plus courte — celle qui finit le plus tôt. Un
      tacite n'en est jamais : il ne finit pas. */
-  const barreAmbre = useMemo(() => barres.find((b) => !b.tacite) ?? null, [barres]);
+  /* L'ASSISTANT PREND L'AMBRE QUAND IL EST OUVERT. Deux régions ambre sur le
+     même écran — l'étape courante ET la barre la plus courte — feraient deux
+     signaux pour deux décisions différentes, et la règle du produit en veut
+     un seul. Tant qu'on remplit un contrat, c'est l'étape qui compte. */
+  const barreAmbre = useMemo(() => (ouvert ? null : barres.find((b) => !b.tacite) ?? null), [barres, ouvert]);
   const halo = useHaloSignal(!!barreAmbre);
 
   /*
@@ -177,38 +199,127 @@ export function ContractsScreen() {
       </motion.div>
 
       {ouvert && (
-        <FormulaireEnPlace
-          titre={t('contrats.ajouter')}
-          note={t('form.enPlace')}
-          empeche={title.trim() ? undefined : t('contrats.form.sansIntitule')}
-          onEnregistrer={() => void ajouter()}
-          onFermer={() => setOuvert(false)}
-          libelleEnregistrer={t('contrats.enregistrer')}
-          libelleFermer={t('chrome.fermer')}
-        >
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Champ intitule={t('contrats.champ.intitule')} aide={t('contrats.champ.intituleAide')}>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
-            </Champ>
-            <Champ intitule={t('contrats.champPartie')}>
-              <input value={party} onChange={(e) => setParty(e.target.value)} />
-            </Champ>
-            <Champ intitule={t('contrats.champDebut')}>
-              <input type="date" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
-            </Champ>
-            <Champ intitule={t('contrats.champFin')}>
-              <input type="date" value={endsAt} min={startsAt} onChange={(e) => setEndsAt(e.target.value)} />
-            </Champ>
-            <Champ intitule={t('contrats.champ.montant')} suffixe="€">
-              <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
-            </Champ>
-            <div className="flex items-end pb-1">
-              <Case coche={autoRenew} onChange={setAutoRenew}>
-                {t('contrats.reconduction')}
-              </Case>
-            </div>
-          </div>
-        </FormulaireEnPlace>
+        <motion.div variants={staggerItem}>
+          <AssistantLong
+            etapes={[t('contrats.etape.objet'), t('contrats.etape.montant'), t('contrats.etape.engagement')]}
+            courante={etape}
+            titreApercu={t('contrats.apercu')}
+            champs={
+              etape === 0 ? (
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Champ intitule={t('contrats.champ.intitule')} aide={t('contrats.champ.intituleAide')}>
+                    <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+                  </Champ>
+                  <Champ intitule={t('contrats.champPartie')}>
+                    <input value={party} onChange={(e) => setParty(e.target.value)} />
+                  </Champ>
+                </div>
+              ) : etape === 1 ? (
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Champ intitule={t('contrats.champ.montant')} suffixe="€">
+                    <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" autoFocus />
+                  </Champ>
+                </div>
+              ) : (
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Champ intitule={t('contrats.champDebut')}>
+                    <input type="date" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
+                  </Champ>
+                  <Champ intitule={t('contrats.champFin')}>
+                    <input type="date" value={endsAt} min={startsAt} onChange={(e) => setEndsAt(e.target.value)} />
+                  </Champ>
+                  <div className="flex items-end pb-1 sm:col-span-2">
+                    <Case coche={autoRenew} onChange={setAutoRenew}>
+                      {t('contrats.reconduction')}
+                    </Case>
+                  </div>
+                </div>
+              )
+            }
+            apercu={
+              /* CE QUE L'ASSISTANT FABRIQUE — le contrat réel, qui se remplit
+                 poste par poste. Ce qui manque n'est pas caché : il est
+                 dessiné en filet avec l'étape qui le remplira. */
+              <div className="flex flex-col">
+                <p className="text-[16px] font-semibold leading-tight text-text-primary">
+                  {title.trim() || <span className="text-text-muted">{t('contrats.apercu.sansIntitule')}</span>}
+                </p>
+                <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                  {party.trim() || t('contrats.apercu.sansPartie')}
+                </p>
+                <div className="mt-3 border-t border-border pt-1">
+                  {etape >= 1 && amount.trim() ? (
+                    <div className="flex items-baseline justify-between gap-3 border-b border-border py-2">
+                      <span className="text-[13px] text-text-secondary">{t('contrats.champ.montant')}</span>
+                      <span className="font-mono text-[14px] tabular-nums text-text-primary">
+                        {formatCents(Math.round((Number(amount.replace(',', '.')) || 0) * 100))}
+                      </span>
+                    </div>
+                  ) : (
+                    <LigneAVenir quoi={t('contrats.champ.montant')} etape={2} />
+                  )}
+                  {etape >= 2 ? (
+                    <div className="flex items-baseline justify-between gap-3 border-b border-border py-2 last:border-b-0">
+                      <span className="text-[13px] text-text-secondary">{t('contrats.apercu.duree')}</span>
+                      <span className="font-mono text-[12px] tabular-nums text-text-primary">
+                        {dateCourte(startsAt)} → {dateCourte(endsAt)}
+                      </span>
+                    </div>
+                  ) : (
+                    <LigneAVenir quoi={t('contrats.apercu.duree')} etape={3} />
+                  )}
+                </div>
+                <p className="mt-3 border-t border-border pt-3 text-[11px] leading-relaxed text-text-muted">
+                  {t('contrats.apercu.rienCree')}
+                </p>
+              </div>
+            }
+            pied={
+              <>
+                {etape > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setEtape((e) => e - 1)}
+                    className="min-h-11 border border-border px-3 font-mono text-[10px] uppercase tracking-[0.14em] text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:min-h-0 md:py-2"
+                  >
+                    {t('contrats.etape.precedent')}
+                  </button>
+                )}
+                {etape < 2 ? (
+                  /* L'ACTION PRIMAIRE INACTIVE TANT QUE L'INTITULÉ EST VIDE —
+                     sinon l'écran démontrerait le contraire de ce qu'il dit. */
+                  <button
+                    type="button"
+                    disabled={!title.trim()}
+                    onClick={() => setEtape((e) => e + 1)}
+                    className="ml-auto min-h-11 bg-accent px-4 text-[12.5px] font-semibold text-bg shadow-[0_12px_26px_-12px_rgba(0,0,0,.9)] transition-colors hover:bg-accent-hover md:min-h-0 md:py-2.5"
+                  >
+                    {t('contrats.etape.suivant')}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={!title.trim()}
+                    onClick={() => {
+                      void ajouter();
+                      fermerAssistant();
+                    }}
+                    className="ml-auto min-h-11 bg-accent px-4 text-[12.5px] font-semibold text-bg shadow-[0_12px_26px_-12px_rgba(0,0,0,.9)] transition-colors hover:bg-accent-hover md:min-h-0 md:py-2.5"
+                  >
+                    {t('contrats.enregistrer')}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={fermerAssistant}
+                  className="min-h-11 px-3 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted transition-colors hover:text-text-primary md:min-h-0 md:py-2"
+                >
+                  {t('chrome.fermer')}
+                </button>
+              </>
+            }
+          />
+        </motion.div>
       )}
 
       {contrats.length === 0 && !ouvert ? (

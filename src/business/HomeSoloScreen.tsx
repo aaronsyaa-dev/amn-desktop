@@ -14,7 +14,7 @@ import { useLangue } from '../i18n';
 import type { SharedTaskStatus } from '../shared/api';
 import { useInvoices, isOverdue, isoDay } from '../state/useInvoices';
 import { EcranVide } from '../components/EtatEcran';
-import { FirstRun } from '../components/EmptyState';
+import { PremierJour } from '../components/etats/EtatsTransverses';
 
 /**
  * ACCUEIL — L'AXE DE LA JOURNÉE (système de design, `12a`)
@@ -298,13 +298,65 @@ export function HomeSoloScreen() {
         </header>
 
         {rienDuTout ? (
-          <FirstRun
-            title="Votre journée se lira ici"
+          /*
+            LE PREMIER JOUR (`27b`) — le cas le plus difficile : tout est vide
+            à la fois. L'axe garde ses graduations ET son trait d'heure
+            courante, aux positions que `pctDe` donnera aux vrais rendez-vous ;
+            une seule invitation sous lui ; les deux cartes calmes disent ce
+            qu'elles contiendront, sans action et SANS AUCUN CHIFFRE À ZÉRO.
+          */
+          <PremierJour
+            hauteurAxe={104 + 26}
+            phraseAxe="La journée n’a rien encore. L’axe est déjà là : chaque rendez-vous s’y posera à sa vraie heure et à sa vraie durée, et le trait avancera dessus."
+            titre="Votre journée se lira ici"
+            phrase="Posez le premier rendez-vous : l’axe le montrera à sa place, et tout le reste de l’écran se remplira à partir de là."
             action={{ label: 'Poser un rendez-vous', onClick: () => { window.location.hash = '#/agenda'; } }}
-          >
-            L’axe de la journée montrera vos rendez-vous à leur vraie place et à leur vraie durée, et
-            le trait de l’heure avancera dessus. Il attend le premier.
-          </FirstRun>
+            calmes={[
+              {
+                titre: 'Ce qui appellera',
+                phrase:
+                  'Les devis sans réponse, les factures en retard et les stocks qui manquent viendront ici — un par ligne, avec ce qui les a déclenchés.',
+              },
+              {
+                titre: 'La semaine',
+                phrase:
+                  'Dès que des rendez-vous seront posés, la semaine se dessinera en dessous, jour par jour.',
+              },
+            ]}
+            axe={
+              <div className="relative h-full">
+                <div
+                  className="relative h-[104px] border border-dashed border-border-strong"
+                  style={{
+                    backgroundImage:
+                      'repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px calc(100% / 12))',
+                  }}
+                >
+                  {heureDansLAxe && (
+                    <div
+                      className="absolute -top-[9px] -bottom-[9px] w-[2px] bg-current"
+                      style={{ left: `${traitPct}%` }}
+                      aria-hidden
+                    />
+                  )}
+                </div>
+                {/* Les graduations, aux MÊMES positions calculées : quand le
+                    premier rendez-vous arrivera, il tombera là où l'écran
+                    l'avait annoncé. */}
+                <div className="relative mt-3 h-[14px] font-mono text-[9.5px] tracking-[0.08em]">
+                  {GRADUATIONS.map(({ heure, pct }, i) => (
+                    <span
+                      key={heure}
+                      className="absolute"
+                      style={{ left: `${pct}%`, transform: i === 0 ? 'none' : i === GRADUATIONS.length - 1 ? 'translateX(-100%)' : 'translateX(-50%)' }}
+                    >
+                      {String(heure).padStart(2, '0')}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            }
+          />
         ) : (
           <>
             {/* ── L'OBJET DOMINANT : l'axe de la journée ─────────────────── */}

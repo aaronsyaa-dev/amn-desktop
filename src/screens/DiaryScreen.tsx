@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Trash2 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { FirstRun } from '../components/EmptyState';
+import { InstrumentVide } from '../components/etats/EtatsTransverses';
 import { EcranVide, useHaloSignal } from '../components/EtatEcran';
 import { usePersonalStore } from '../state/usePersonalStore';
 import { staggerContainer, staggerItem } from '../lib/transitions';
@@ -156,8 +156,57 @@ export function DiaryScreen() {
         </motion.div>
 
         {vide ? (
+          /*
+            L'ÉTAT VIDE QUI INVITE (`27a`) — la marée, à vide, et à sa
+            géométrie EXACTE : même hauteur, même ligne d'eau au milieu de
+            l'échelle, même rangée de jours dessous. Quand la première humeur
+            sera notée, le point tombera là où l'écran l'avait annoncé.
+            Un instrument approximatif ne serait plus une promesse.
+          */
           <motion.div variants={staggerItem}>
-            <FirstRun title={t('journalPerso.vide.titre')}>{t('journalPerso.vide.texte')}</FirstRun>
+            <InstrumentVide
+              titre={t('journalPerso.vide.titre')}
+              phrase={t('journalPerso.vide.texte')}
+              hauteur={MAREE_H + TRAIT_H + 10}
+            >
+              <svg viewBox={`0 0 100 ${MAREE_H + TRAIT_H + 10}`} preserveAspectRatio="none" className="h-full w-full">
+                {/* Les deux bornes de l'échelle — 1 en bas, 5 en haut — et la
+                    ligne d'eau à mi-hauteur, là où elle tombera. */}
+                <line x1={0} y1={MAREE_MARGE} x2={100} y2={MAREE_MARGE} stroke="currentColor" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+                <line
+                  x1={0}
+                  y1={MAREE_H - MAREE_MARGE}
+                  x2={100}
+                  y2={MAREE_H - MAREE_MARGE}
+                  stroke="currentColor"
+                  strokeWidth={1}
+                  vectorEffect="non-scaling-stroke"
+                />
+                <line
+                  x1={0}
+                  y1={MAREE_H / 2}
+                  x2={100}
+                  y2={MAREE_H / 2}
+                  stroke="currentColor"
+                  strokeWidth={1}
+                  strokeDasharray="4 4"
+                  vectorEffect="non-scaling-stroke"
+                />
+                {/* La rangée des jours écrits, à son pas exact. */}
+                {Array.from({ length: MAREE_JOURS }, (_, i) => (
+                  <line
+                    key={i}
+                    x1={(i / MAREE_JOURS) * 100 + 0.6}
+                    y1={MAREE_H + 10}
+                    x2={((i + 1) / MAREE_JOURS) * 100 - 0.6}
+                    y2={MAREE_H + 10}
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                ))}
+              </svg>
+            </InstrumentVide>
           </motion.div>
         ) : (
           maree && (

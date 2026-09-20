@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Plus, Trash2 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FirstRun } from '../components/EmptyState';
-import { Refus } from '../components/messages/MessagesSysteme';
+import { FenetreRefus, type Creneau } from '../components/etats/EtatsTransverses';
 import { useSync, useCollection, uid } from '../state/SyncContext';
 import { useAuth } from '../auth/AuthContext';
 import { staggerContainer, staggerItem } from '../lib/transitions';
@@ -25,6 +25,9 @@ interface BookingData {
 }
 /* La journée ouvrable dessinée par la grille d'occupation. Au-delà, une
    réservation reste possible — elle n'est simplement pas sur la règle. */
+/** Les minutes depuis minuit d'un « 2026-09-20T14:30 » local. */
+const minutesDe = (iso: string) => Number(iso.slice(11, 13)) * 60 + Number(iso.slice(14, 16));
+
 const HEURE_DEBUT = 8;
 const HEURE_FIN = 20;
 const localISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -63,9 +66,13 @@ export function EquipmentBookingScreen() {
   */
   const [refus, setRefus] = useState<{
     quoi: string;
+    /** Qui occupe le créneau. Gravé dans SA barre, et jamais en ambre. */
     parQui?: string;
     /** L'identifiant de la réservation qui bloque — pour la teinter dans la grille. */
     conflitId?: string;
+    /** Le créneau demandé et celui qui bloque, en minutes depuis minuit. */
+    demande?: Creneau;
+    occupe?: Creneau;
     libres: { debut: string; fin: string }[];
   } | null>(null);
 
@@ -92,9 +99,11 @@ export function EquipmentBookingScreen() {
     if (conflit) {
       setRefus({
         quoi: t('materiel.conflit', { qui: conflit.byEmail.split('@')[0], quand: quand(conflit.startAt, conflit.endAt) }),
-        parQui: t('materiel.rienEnregistre'),
+        parQui: conflit.byEmail.split('@')[0],
         conflitId: conflit.id,
-        libres: creneauxLibres(cible, startAt.slice(0, 10)),
+        demande: { debut: minutesDe(startAt), fin: minutesDe(endAt) },
+        occupe: { debut: minutesDe(conflit.startAt), fin: minutesDe(conflit.endAt) },
+        libres: creneauxLibres(cible, startAt.slice(0, 10), startAt),
       });
       return;
     }
@@ -112,7 +121,7 @@ export function EquipmentBookingScreen() {
     reste au-delà d'une demi-heure est proposable. Moins d'une demi-heure n'est
     pas un créneau, c'est un interstice.
   */
-  const creneauxLibres = (ressourceId: string, jourISO: string) => {
+  const creneauxLibres = (ressourceId: string, jourISO: string, demande: string) => {
     const bornes = (h: number) => `${jourISO}T${String(h).padStart(2, '0')}:00`;
     const prises = reservations
       .filter((r) => r.resourceId === ressourceId && r.startAt.slice(0, 10) === jourISO)
@@ -125,16 +134,21 @@ export function EquipmentBookingScreen() {
     }
     if (curseur < bornes(HEURE_FIN)) libres.push({ debut: curseur, fin: bornes(HEURE_FIN) });
     const demiHeure = 30 * 60_000;
-    return libres
-      .filter((c) => new Date(c.fin).getTime() - new Date(c.debut).getTime() >= demiHeure)
-      .slice(0, 2);
+    const utilisables = libres.filter((c) => new Date(c.fin).getTime() - new Date(c.debut).getTime() >= demiHeure);
+    /*
+      UN CRÉNEAU AVANT, UN CRÉNEAU APRÈS — et pas les deux premiers de la
+      journée. Proposer « 08:00 » et « 12:00 » à quelqu'un qui demandait
+      14 heures, c'est lui proposer de tout déplacer : les deux sorties sont
+      « avant », et la plus proche de son besoin n'est même pas là. On prend
+      donc le DERNIER libre avant le créneau demandé et le PREMIER après.
+    */
+    const avant = [...utilisables].reverse().find((c) => c.fin <= demande);
+    const apres = utilisables.find((c) => c.debut >= demande);
+    const choisis = [avant, apres].filter((c): c is { debut: string; fin: string } => Boolean(c));
+    return choisis.length > 0 ? choisis : utilisables.slice(0, 2);
   };
 
   const heure = (iso: string) => new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
-  const dureeLibre = (c: { debut: string; fin: string }) => {
-    const min = Math.round((new Date(c.fin).getTime() - new Date(c.debut).getTime()) / 60_000);
-    return min % 60 === 0 ? `${min / 60} h` : `${Math.floor(min / 60)} h ${min % 60}`;
-  };
 
   /** L'occupation du jour, ressource par ressource, bornée à la journée ouvrable. */
   const jourISO = maintenant.slice(0, 10);
@@ -257,21 +271,36 @@ export function EquipmentBookingScreen() {
                 C'est aussi l'AMBRE de l'écran — son filet, et le créneau qui
                 bloque dans la grille en dessous, groupés pour n'en faire qu'un.
               */}
-              {refus && (
-                <div data-signal-groupe="creneau-pris">
-                  <Refus
-                    quoi={refus.quoi}
-                    parQui={refus.parQui}
-                    issues={refus.libres.map((c) => ({
-                      label: `${heure(c.debut)} → ${heure(c.fin)} · ${dureeLibre(c)} libres`,
-                      onClick: () => {
-                        setStartAt(c.debut);
-                        setEndAt(c.fin);
-                        setRefus(null);
-                      },
-                    }))}
-                  />
-                </div>
+              {refus && refus.demande && refus.occupe && (
+                <FenetreRefus
+                  titre={refus.quoi}
+                  demande={refus.demande}
+                  occupe={refus.occupe}
+                  parQui={refus.parQui ?? ''}
+                  borneBasse={HEURE_DEBUT * 60}
+                  borneHaute={HEURE_FIN * 60}
+                  libres={refus.libres.map((c) => ({ debut: minutesDe(c.debut), fin: minutesDe(c.fin) }))}
+                  formaterHeure={(m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`}
+                  surCreneau={(c) => {
+                    const jour = startAt.slice(0, 10);
+                    const iso = (m: number) =>
+                      `${jour}T${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+                    setStartAt(iso(c.debut));
+                    setEndAt(iso(c.fin));
+                    setRefus(null);
+                  }}
+                  onFermer={() => setRefus(null)}
+                  libelleFermer={t('chrome.fermer')}
+                  rienEnregistre={t('materiel.rienEnregistre')}
+                />
+              )}
+              {/* Le créneau invalide n'est pas un CONFLIT : il n'y a rien à
+                  dessiner, et une fenêtre pour dire « la fin est avant le
+                  début » serait disproportionnée. */}
+              {refus && !refus.demande && (
+                <p role="alert" className="border border-signal-line bg-signal-muted px-4 py-3 text-[14px] text-text-primary">
+                  {refus.quoi}
+                </p>
               )}
 
               {/*

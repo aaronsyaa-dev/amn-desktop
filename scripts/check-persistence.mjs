@@ -55,6 +55,34 @@ function findApiRoot() {
 const failures = [];
 const notes = [];
 
+/* ------- 0. Le pont collection → module, lu par l'état hors-ligne --------- */
+
+/**
+ * `src/data/collectionsModules.ts` nomme le module qui produit chaque
+ * collection : sans lui, la file d'attente de `27e` afficherait des wagons
+ * comme « resourceBookings ». Une clé inventée ici, ou renommée côté serveur,
+ * donnerait un wagon anonyme le jour d'une coupure — c'est-à-dire au pire
+ * moment. On croise donc la liste avec ce que le serveur accepte.
+ */
+function verifierPontCollections(autorisees) {
+  const src = read('src/data/collectionsModules.ts');
+  const cles = [...src.matchAll(/^  ([a-zA-Z]+): '([a-zA-Z]+)',$/gm)].map((m) => m[1]);
+  if (cles.length === 0) {
+    failures.push('src/data/collectionsModules.ts : aucune correspondance lue — l’état hors-ligne n’aurait plus de noms.');
+    return;
+  }
+  for (const c of cles) {
+    if (!autorisees.has(c)) {
+      failures.push(
+        `src/data/collectionsModules.ts nomme « ${c} », qu'amn-api n'accepte pas : ` +
+          'la file d’attente afficherait un wagon qui ne peut pas exister.',
+      );
+    }
+  }
+  notes.push(`· ${cles.length} collection(s) nommées pour la file d'attente hors-ligne, toutes acceptées par le serveur.`);
+}
+
+
 function read(rel, base = ROOT) {
   return fs.readFileSync(path.join(base, rel), 'utf-8');
 }
@@ -399,6 +427,7 @@ if (!API) {
 }
 
 const allowed = allowedCollections();
+verifierPontCollections(allowed);
 const modules = offerableModules();
 
 if (allowed.size === 0) failures.push('Impossible de lire la liste ALLOWED d’amn-api.');

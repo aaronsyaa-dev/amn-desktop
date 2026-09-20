@@ -9,6 +9,9 @@ import { useAuth } from '../auth/AuthContext';
 import { useSync } from '../state/SyncContext';
 import { useVault } from '../state/useVault';
 import { useMembers } from '../state/useMembers';
+import { FileHorsLigne } from '../components/etats/EtatsTransverses';
+import { navItemByKey } from '../data/navigation';
+import { COLLECTION_MODULE } from '../data/collectionsModules';
 import type { OrgMember, SupportRequest } from '../shared/api';
 
 /*
@@ -85,7 +88,7 @@ function occupeUnePlace(m: OrgMember): boolean {
  */
 export function AssistanceScreen() {
   const { org } = useAuth();
-  const { connectionStatus, pullFailed, enAttenteEnvoi, abandonsEnvoi, configured } = useSync();
+  const { connectionStatus, pullFailed, enAttenteEnvoi, abandonsEnvoi, configured, fileEnvoi } = useSync();
   const { entries: secrets, encrypted, loading: coffreEnLecture } = useVault();
   const { membres, prets: membresPrets } = useMembers();
 
@@ -228,10 +231,45 @@ export function AssistanceScreen() {
     encrypted,
   ]);
 
+  /*
+    L'ÉTAT HORS-LIGNE (`27e`) PREND LA TÊTE — et prend l'ambre avec lui.
+
+    Quand quelque chose attend d'être envoyé, c'est CELA qui demande une
+    décision (fermer l'application maintenant, ou attendre), pas une ligne de
+    diagnostic. La file devient donc l'objet dominant de l'écran, et le bloc
+    de diagnostic descend sans ambre : deux régions ambre pour un seul fait
+    seraient deux signaux pour une seule décision.
+  */
+  const coupure = useMemo(() => {
+    const heures = fileEnvoi.map((e) => e.pose).sort();
+    return heures[0] ?? null;
+  }, [fileEnvoi]);
+
+  const heureCourte = (iso: string) =>
+    new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+  /* Le nom d'un wagon vient du MODULE, jamais du nom technique de la
+     collection : « un client », pas « clients:cli-7 ». */
+  const nomDuGeste = (collection: string, geste: string) => {
+    const module = COLLECTION_MODULE[collection];
+    const libelle = module ? navItemByKey(module)?.label ?? collection : collection;
+    return geste === 'suppression' ? `${libelle} — une suppression` : libelle;
+  };
+
+  const file = useMemo(
+    () =>
+      [...fileEnvoi]
+        .sort((a, b) => a.pose.localeCompare(b.pose))
+        .map((e) => ({ id: `${e.collection}:${e.id}`, quoi: nomDuGeste(e.collection, e.geste), heure: heureCourte(e.pose) })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [fileEnvoi],
+  );
+
   /* UN SEUL AMBRE. Plusieurs points peuvent être non conformes ; un seul est
      signalé — le premier, celui qui empêche le plus de travailler. Poser
-     l'ambre sur trois lignes le rendrait décoratif. */
-  const aVerifier = points.find((p) => p.verdict === 'verifier') ?? null;
+     l'ambre sur trois lignes le rendrait décoratif. Et quand la file
+     d'attente est là, c'est elle qui l'a. */
+  const aVerifier = file.length > 0 ? null : points.find((p) => p.verdict === 'verifier') ?? null;
 
   const pret = objet.trim().length > 0 && texte.trim().length > 0 && !envoi;
 
@@ -286,7 +324,40 @@ export function AssistanceScreen() {
       />
 
       <StaggerGroup className="mt-6 flex flex-col gap-4">
-        {/* ═══ L'OBJET DOMINANT : le bloc de diagnostic ═══ */}
+        {/* ═══ L'ÉTAT HORS-LIGNE (27e) — l'objet dominant quand il survient ═══ */}
+        {file.length > 0 && coupure && (
+          <StaggerItem>
+            <FileHorsLigne
+              titre="Ce qui attend de repartir"
+              depuis={heureCourte(coupure)}
+              partis={[]}
+              attente={file.slice(0, 8)}
+              surtitreAttente="En attente"
+            />
+          </StaggerItem>
+        )}
+        {file.length > 0 && (
+          <StaggerItem>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <section className="panel p-4">
+                <p className="eyebrow mb-2">Ce qui continue</p>
+                <p className="text-[13.5px] leading-[1.7] text-text-secondary">
+                  Tout. Vous pouvez saisir, modifier, supprimer : le travail est écrit sur ce poste et repartira
+                  seul dès que la liaison revient. Rien n’est perdu, rien n’est à refaire.
+                </p>
+              </section>
+              <section className="panel p-4">
+                <p className="eyebrow mb-2">Ce qui attend vraiment</p>
+                <p className="text-[13.5px] leading-[1.7] text-text-secondary">
+                  Ce que les autres postes verront, et les envois qui passent par le serveur. Tant que la
+                  barrière tient, vos collègues ne voient pas encore ces {file.length} gestes.
+                </p>
+              </section>
+            </div>
+          </StaggerItem>
+        )}
+
+        {/* ═══ L'OBJET DOMINANT quand tout va bien : le bloc de diagnostic ═══ */}
         <StaggerItem>
           <section className="panel-raised p-5 sm:p-6">
             <p className="eyebrow mb-4">Ce que le poste mesure, maintenant</p>
