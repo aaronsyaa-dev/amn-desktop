@@ -127,6 +127,7 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'suppliers',
   'shifts',
   'checklists',
+  'interventions',
   'checkRuns',
   'assemblies',
   'tickets',

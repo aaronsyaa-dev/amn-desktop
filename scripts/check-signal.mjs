@@ -154,6 +154,7 @@ const ECRANS = [
   /* La famille « registres » : on y cherche une entrée, on n'y surveille pas
      un état. Trombinoscope n'a AUCUN ambre, et c'est la bonne réponse. */
   ['Fournisseurs', '#/fournisseurs'],
+  ['Interventions', '#/interventions'],
   ['Nomenclatures', '#/nomenclatures'],
   ['Modèles', '#/outils/modeles'],
   ['Trombinoscope', '#/trombinoscope'],

@@ -2062,6 +2062,146 @@ for (const [cle, checklistId, doneAt, byEmail, checked, note] of PASSAGES) {
   await poser('checkRuns', cle, { checklistId, doneAt, byEmail, checked, note });
 }
 
+/* ─── Interventions ────────────────────────────────────────────────────────── */
+
+/*
+  QUATRE FICHES, ET CHACUNE EXISTE POUR UN ÉTAT DE L'ÉCRAN.
+
+  · une fiche dont le volet « après » manque — c'est elle qui porte l'ambre,
+    et c'est le seul défaut que ce module sache signaler ;
+  · une fiche complète mais encore ouverte — l'ambre doit disparaître sans
+    que la fiche soit close ;
+  · une fiche à peine commencée — deux volets vides sur trois, pour que la
+    colonne « ce qui leur manque » ait de quoi énumérer ;
+  · une fiche CLOSE — la seule façon de vérifier qu'une fiche close ne reçoit
+    plus ni photo ni commentaire.
+
+  LES IMAGES SONT SYNTHÉTIQUES, et il faut le dire. Ce sont des SVG en `data:`
+  — des aplats, pas des photographies. Elles occupent l'emplacement 4/3 pour
+  qu'on juge la mise en page avec quelque chose dedans ; elles ne prétendent
+  pas montrer un chantier. Le produit, lui, stocke exactement de cette façon :
+  une image en `data:` posée sur l'enregistrement, comme les pièces jointes
+  des messages.
+*/
+const imageDEssai = (fond, trait, forme) =>
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">` +
+      `<rect width="400" height="300" fill="${fond}"/>` +
+      `<rect x="0" y="212" width="400" height="88" fill="${trait}" opacity="0.5"/>` +
+      forme +
+      `</svg>`,
+  );
+const PHOTO_AVANT = imageDEssai(
+  '#1b1d19',
+  '#2a2d27',
+  '<circle cx="150" cy="150" r="58" fill="#3a3f36"/><rect x="236" y="96" width="92" height="116" fill="#33372f"/>',
+);
+const PHOTO_PENDANT = imageDEssai(
+  '#1f201b',
+  '#2f322a',
+  '<circle cx="196" cy="128" r="44" fill="#4a5142"/><rect x="88" y="150" width="224" height="20" fill="#3c4136"/>',
+);
+const PHOTO_APRES = imageDEssai(
+  '#232419',
+  '#35382c',
+  '<circle cx="128" cy="126" r="48" fill="#5a6349"/><circle cx="236" cy="150" r="36" fill="#4d5540"/><rect x="60" y="196" width="280" height="14" fill="#41463a"/>',
+);
+
+const volet = (photo, note) => ({ photo, note });
+const conso = (label, quantity, unit, euros) => ({
+  id: `csm-${label.toLowerCase().replace(/[^a-z]+/g, '-')}`,
+  label,
+  quantity,
+  unit,
+  unitCostCents: Math.round(euros * 100),
+});
+
+const INTERVENTIONS = [
+  {
+    cle: 'essai-itv-1',
+    title: 'Habillage de vitrine — Brasserie du Port',
+    clientName: 'Hugo Marchand',
+    address: '8 quai Neuf, Sète',
+    at: aujourdHui(9, 15, 0),
+    /* LE VOLET « APRÈS » MANQUE : c'est cette fiche qui porte l'ambre. */
+    volets: {
+      avant: volet(PHOTO_AVANT, 'Vitrine vide, ancienne composition retirée la veille.'),
+      pendant: volet(PHOTO_PENDANT, 'Pose du socle et des trois jardinières, câblage de la guirlande.'),
+      apres: volet('', ''),
+    },
+    consommations: [
+      conso('Jardinière garnie', 3, 'pièce', 42),
+      conso('Mousse florale', 4, 'pièce', 3.2),
+      conso('Ruban de satin', 2, 'rouleau', 6.5),
+    ],
+    closedAt: '',
+    reportedAt: '',
+  },
+  {
+    cle: 'essai-itv-2',
+    title: 'Entretien plantes de bureau — Cabinet Vallon',
+    clientName: 'Salomé Vallon',
+    address: 'Cabinet Vallon, rue Foch',
+    at: aujourdHui(14, 30, -1),
+    /* COMPLÈTE MAIS OUVERTE : l'ambre doit avoir disparu sans clôture. */
+    volets: {
+      avant: volet(PHOTO_AVANT, 'Deux sujets jaunis côté fenêtre, substrat tassé.'),
+      pendant: volet(PHOTO_PENDANT, 'Rempotage des deux sujets, taille des feuilles sèches.'),
+      apres: volet(PHOTO_APRES, 'Les six bacs repris, arrosage réglé sur le lundi.'),
+    },
+    consommations: [conso('Composition de table', 2, 'pièce', 28)],
+    closedAt: '',
+    reportedAt: '',
+  },
+  {
+    cle: 'essai-itv-3',
+    title: 'Repérage terrasse — Maison Bertaux',
+    clientName: 'Maison Bertaux',
+    address: '18 rue Jean Jaurès, Nantes',
+    at: aujourdHui(11, 0, -2),
+    /* À PEINE COMMENCÉE : la colonne de droite doit savoir énumérer. */
+    volets: {
+      avant: volet(PHOTO_AVANT, ''),
+      pendant: volet('', ''),
+      apres: volet('', ''),
+    },
+    consommations: [],
+    closedAt: '',
+    reportedAt: '',
+  },
+  {
+    cle: 'essai-itv-4',
+    title: 'Composition de deuil — livraison sur place',
+    clientName: 'Marc Delaunay',
+    address: 'Chapelle Saint-Clair',
+    at: aujourdHui(8, 30, -6),
+    volets: {
+      avant: volet(PHOTO_AVANT, 'Emplacement nu, deux supports fournis par la famille.'),
+      pendant: volet(PHOTO_PENDANT, 'Montage de la couronne sur place, ajustement au support.'),
+      apres: volet(PHOTO_APRES, 'Couronne posée, photo remise à la famille.'),
+    },
+    consommations: [conso('Couronne de porte', 1, 'pièce', 95), conso('Mousse florale', 2, 'pièce', 3.2)],
+    /* LA SEULE FICHE CLOSE — et donc la seule où les volets sont verrouillés. */
+    closedAt: aujourdHui(12, 10, -6),
+    /* Déjà reportée : le bouton doit avoir cédé la place à la trace du report. */
+    reportedAt: aujourdHui(12, 15, -6),
+  },
+];
+for (const f of INTERVENTIONS) {
+  await poser('interventions', f.cle, {
+    title: f.title,
+    clientName: f.clientName,
+    address: f.address,
+    at: f.at,
+    volets: f.volets,
+    consommations: f.consommations,
+    closedAt: f.closedAt,
+    reportedAt: f.reportedAt,
+    createdAt: f.at,
+  });
+}
+
 /* ─── Matériel ─────────────────────────────────────────────────────────────── */
 
 /*

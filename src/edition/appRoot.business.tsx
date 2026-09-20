@@ -59,6 +59,7 @@ import { BomScreen } from '../screens/BomScreen';
 import { AfterSalesScreen } from '../screens/AfterSalesScreen';
 import { AssemblyScreen } from '../screens/AssemblyScreen';
 import { ChecklistsScreen } from '../screens/ChecklistsScreen';
+import { InterventionsScreen } from '../screens/InterventionsScreen';
 import { ShiftsScreen } from '../screens/ShiftsScreen';
 import { SuppliersScreen } from '../screens/SuppliersScreen';
 import { StockScreen } from '../screens/StockScreen';
@@ -433,6 +434,14 @@ export function AppRoot() {
           element={
             <ModuleRoute module="checklists">
               <ChecklistsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/interventions"
+          element={
+            <ModuleRoute module="interventions">
+              <InterventionsScreen />
             </ModuleRoute>
           }
         />

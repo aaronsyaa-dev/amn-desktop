@@ -2332,6 +2332,7 @@ export type SyncedCollection =
   | 'suppliers'
   | 'shifts'
   | 'checklists'
+  | 'interventions'
   | 'checkRuns'
   | 'assemblies'
   | 'tickets'

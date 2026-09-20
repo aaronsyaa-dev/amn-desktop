@@ -73,6 +73,7 @@ import { BomScreen } from '../screens/BomScreen';
 import { AfterSalesScreen } from '../screens/AfterSalesScreen';
 import { AssemblyScreen } from '../screens/AssemblyScreen';
 import { ChecklistsScreen } from '../screens/ChecklistsScreen';
+import { InterventionsScreen } from '../screens/InterventionsScreen';
 import { ShiftsScreen } from '../screens/ShiftsScreen';
 import { SuppliersScreen } from '../screens/SuppliersScreen';
 import { StockScreen } from '../screens/StockScreen';
@@ -284,6 +285,7 @@ function AmnRoutes() {
         <Route path="/fournisseurs" element={<SuppliersScreen />} />
         <Route path="/planning" element={<ShiftsScreen />} />
         <Route path="/controles" element={<ChecklistsScreen />} />
+        <Route path="/interventions" element={<InterventionsScreen />} />
         <Route path="/montage" element={<AssemblyScreen />} />
         <Route path="/sav" element={<AfterSalesScreen />} />
         <Route path="/nomenclatures" element={<BomScreen />} />
@@ -652,6 +654,14 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="checklists">
               <ChecklistsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/interventions"
+          element={
+            <ModuleRoute module="interventions">
+              <InterventionsScreen />
             </ModuleRoute>
           }
         />
