@@ -144,7 +144,13 @@ export function GardeCalendrierScreen() {
           <p className="text-[13.5px] leading-relaxed text-text-secondary">{t('garde.calendrier.videPortee')}</p>
         ) : (
           <>
-            <div className="relative mt-8 overflow-x-auto">
+            {/*
+              `overflow-x-auto` rogne AUSSI le haut : l'étiquette de la Relève, posée
+              à −30 px au-dessus de la portée, y disparaissait entièrement. La place
+              lui est donc réservée DANS le conteneur (`pt-9`), et le calque part de
+              la même hauteur que les rangées.
+            */}
+            <div className="relative overflow-x-auto pt-9">
               <div className="flex min-w-[560px] flex-col">
                 {portee.map((a) => {
                   const cran = a.everyMs >= SEUIL_CRAN;
@@ -175,7 +181,7 @@ export function GardeCalendrierScreen() {
               </div>
 
               {/* LE CALQUE DE LA RELÈVE : la même grille, les mêmes gouttières, cellules vides comprises. */}
-              <div className="pointer-events-none absolute inset-0 grid min-w-[560px]" style={{ gridTemplateColumns: GRILLE, gap: GOUTTIERE }} data-signal-groupe="releve">
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 top-9 grid min-w-[560px]" style={{ gridTemplateColumns: GRILLE, gap: GOUTTIERE }} data-signal-groupe="releve">
                 <span />
                 <span className="relative" data-signal-groupe="releve">
                   <span data-signal-groupe="releve" className={`absolute -top-1.5 -bottom-1.5 w-0.5 bg-signal ${halo}`} style={{ left: `${pct(heureTour * 3_600_000).toFixed(2)}%` }} />

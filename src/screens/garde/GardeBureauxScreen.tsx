@@ -4,7 +4,7 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { useHaloSignal } from '../../components/EtatEcran';
 import { Conversation, EtatPoint, GraviteChip, JournalLigne } from '../../components/garde/GardeUi';
 import { ComptesBureau } from '../../components/garde/ComptesBureau';
-import { garde } from '../../lib/garde';
+import { garde, domaineDEquipe, motDeParametre } from '../../lib/garde';
 import { useLangue } from '../../i18n';
 import { relativeTime } from '../../lib/time';
 import type { GardeBureau, GardeEquipe, GardeSalle } from '../../shared/garde';
@@ -13,6 +13,8 @@ import type { GardeBureau, GardeEquipe, GardeSalle } from '../../shared/garde';
    Le relevé fait 210 px de haut ; toute ordonnée s'en déduit. La fenêtre
    rejouée est celle du serveur : trente jours (`capitaine.js`, `etSi`). */
 const PLOT_H = 210;
+/** Une marge haute et basse : sans elle, une trace à zéro se confond avec la bordure du relevé et l'on croit qu'il n'y a pas de trace. */
+const PLOT_MARGE = 6;
 const FENETRE_JOURS = 30;
 
 /**
@@ -88,7 +90,7 @@ function Bureaux({ salle, erreur }: { salle: GardeSalle | null; erreur: string |
   };
 
   const ecart = calque ? calque.apres - calque.avant : 0;
-  const halo = useHaloSignal(calque !== null);
+  const halo = useHaloSignal(calque !== null && !(calque.avant === 0 && calque.apres === 0));
 
   return (
     <section className="flex flex-col gap-5">
@@ -99,7 +101,7 @@ function Bureaux({ salle, erreur }: { salle: GardeSalle | null; erreur: string |
       <article className="border border-border-raised bg-elevated px-6 py-[30px] sm:px-8">
         <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">
-            {calque ? t('garde.bureaux.etSiQuestion', { parametre: calque.parametre, valeur: calque.valeur }) : t('garde.bureaux.rejouer')}
+            {calque ? t('garde.bureaux.etSiQuestion', { parametre: motDeParametre(calque.parametre), valeur: calque.valeur }) : t('garde.bureaux.rejouer')}
           </h2>
           <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">{t('garde.bureaux.calqueLegende')}</span>
         </div>
@@ -108,7 +110,7 @@ function Bureaux({ salle, erreur }: { salle: GardeSalle | null; erreur: string |
           <label className="flex min-w-0 flex-1 flex-col gap-1 font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-muted">
             {t('garde.bureaux.laRegle')}
             <select value={choisie?.id ?? ''} onChange={(e) => { setChoix(e.target.value); setValeur(''); setCalque(null); setNote(null); }} className="input-focus min-h-9 w-full border border-border bg-bg px-2 text-[12.5px] normal-case tracking-normal text-text-primary outline-none">
-              {rejouables.map((r) => <option key={r.id} value={r.id}>{r.equipe} · {r.libelle}</option>)}
+              {rejouables.map((r) => <option key={r.id} value={r.id}>{domaineDEquipe(r.equipe)} · {r.libelle}</option>)}
             </select>
           </label>
           <label className="flex w-28 flex-col gap-1 font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-muted">
@@ -124,7 +126,10 @@ function Bureaux({ salle, erreur }: { salle: GardeSalle | null; erreur: string |
           /* L'échelle : un seul maximum pour les deux traces, sinon la superposition ne voudrait rien dire. */
           const toutes = [calque.avant, calque.apres, ...(calque.serieAvant ?? []), ...(calque.serieApres ?? [])];
           const max = Math.max(1, ...toutes);
-          const y = (v: number) => PLOT_H - (v / max) * PLOT_H;
+          const y = (v: number) => PLOT_H - PLOT_MARGE - (v / max) * (PLOT_H - 2 * PLOT_MARGE);
+          /* Les graduations se dédoublonnent : à max = 1, « 1 · 1 · 0 » poserait deux fois la même. */
+          const graduations = [...new Set([max, Math.round(max / 2), 0])];
+          const rien = calque.avant === 0 && calque.apres === 0;
           const chemin = (serie: number[]) => serie.map((v, i) => `${i === 0 ? 'M' : 'L'}${((i / Math.max(1, serie.length - 1)) * 1000).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
           const temporel = Boolean(calque.serieAvant?.length && calque.serieApres?.length);
           const debutFenetre = new Date(Date.now() - FENETRE_JOURS * 86_400_000);
@@ -134,8 +139,8 @@ function Bureaux({ salle, erreur }: { salle: GardeSalle | null; erreur: string |
               <div className="grid grid-cols-[44px_minmax(0,1fr)] gap-3">
                 {/* Les graduations d'ordonnée sont posées à leur hauteur réelle, jamais réparties à intervalles égaux. */}
                 <div className="relative font-mono text-[9.5px] text-text-muted" style={{ height: PLOT_H }}>
-                  {[max, Math.round(max / 2), 0].map((v) => (
-                    <span key={v} className="absolute right-0 tabular-nums" style={{ bottom: (v / max) * PLOT_H - 5 }}>{v}</span>
+                  {graduations.map((v) => (
+                    <span key={v} className="absolute right-0 tabular-nums" style={{ bottom: PLOT_MARGE + (v / max) * (PLOT_H - 2 * PLOT_MARGE) - 5 }}>{v}</span>
                   ))}
                 </div>
                 <div>
@@ -161,11 +166,11 @@ function Bureaux({ salle, erreur }: { salle: GardeSalle | null; erreur: string |
                     <span className="absolute left-3.5 top-3 flex flex-col gap-1.5">
                       <span className="flex items-center gap-[7px]">
                         <span aria-hidden className="h-[3px] w-3.5 bg-[#4a4a48]" />
-                        <span className="font-mono text-[9.5px] uppercase tracking-[0.06em] text-text-muted">{t('garde.bureaux.reel', { parametre: calque.parametre, valeur: calque.actuelle, n: calque.avant })}</span>
+                        <span className="font-mono text-[9.5px] uppercase tracking-[0.06em] text-text-muted">{t('garde.bureaux.reel', { parametre: motDeParametre(calque.parametre), valeur: calque.actuelle, n: calque.avant })}</span>
                       </span>
                       <span className="flex items-center gap-[7px]">
                         <span aria-hidden className="h-0.5 w-3.5 bg-text-body" />
-                        <span className="font-mono text-[9.5px] uppercase tracking-[0.06em] text-text-secondary">{t('garde.bureaux.calque', { parametre: calque.parametre, valeur: calque.valeur, n: calque.apres })}</span>
+                        <span className="font-mono text-[9.5px] uppercase tracking-[0.06em] text-text-secondary">{t('garde.bureaux.calque', { parametre: motDeParametre(calque.parametre), valeur: calque.valeur, n: calque.apres })}</span>
                       </span>
                     </span>
                   </div>
@@ -179,19 +184,22 @@ function Bureaux({ salle, erreur }: { salle: GardeSalle | null; erreur: string |
               </div>
 
               <div className="mt-6 flex flex-wrap items-stretch gap-[18px]">
-                <div data-signal-groupe="verdict" className={`signal-plate flex flex-none flex-col justify-center px-5 py-[15px] ${halo}`}>
-                  <span data-signal-groupe="verdict" className="font-mono text-[9.5px] font-bold uppercase tracking-[0.18em] opacity-80">
-                    {ecart === 0 ? t('garde.bureaux.aucunEcart') : ecart > 0 ? t('garde.bureaux.ecartPlus', { n: ecart }) : t('garde.bureaux.ecartMoins', { n: -ecart })}
-                  </span>
-                  <span data-signal-groupe="verdict" className="mt-[7px] font-mono text-[23px] font-bold tabular-nums tracking-[-0.03em]">{t('garde.bureaux.auLieuDe', { apres: calque.apres, avant: calque.avant })}</span>
-                </div>
+                {/* Un mois qui n'a rien produit n'a pas de verdict à rendre : pas de plaque, donc pas d'ambre. Un « 0 au lieu de 0 » en ambre crierait un résultat là où il n'y a eu aucune mesure. */}
+                {!rien && (
+                  <div data-signal-groupe="verdict" className={`signal-plate flex flex-none flex-col justify-center px-5 py-[15px] ${halo}`}>
+                    <span data-signal-groupe="verdict" className="font-mono text-[9.5px] font-bold uppercase tracking-[0.18em] opacity-80">
+                      {ecart === 0 ? t('garde.bureaux.aucunEcart') : ecart > 0 ? t('garde.bureaux.ecartPlus', { n: ecart }) : t('garde.bureaux.ecartMoins', { n: -ecart })}
+                    </span>
+                    <span data-signal-groupe="verdict" className="mt-[7px] font-mono text-[23px] font-bold tabular-nums tracking-[-0.03em]">{t('garde.bureaux.auLieuDe', { apres: calque.apres, avant: calque.avant })}</span>
+                  </div>
+                )}
                 <div className="flex min-w-[16rem] flex-1 flex-col justify-center gap-2.5">
                   <p className="text-[13.5px] leading-relaxed text-text-secondary [text-wrap:pretty]">
-                    {ecart === 0 ? t('garde.bureaux.verdictIdentique') : t('garde.bureaux.verdictEcart', { apres: calque.apres, avant: calque.avant })}
+                    {rien ? t('garde.bureaux.rienAJouer') : ecart === 0 ? t('garde.bureaux.verdictIdentique') : t('garde.bureaux.verdictEcart', { apres: calque.apres, avant: calque.avant })}
                   </p>
                   {!temporel && <p className="text-[12.5px] leading-relaxed text-text-muted [text-wrap:pretty]">{t('garde.bureaux.sansSerie')}</p>}
                   <button type="button" onClick={() => setCalque(null)} className="flex h-[30px] self-start items-center border border-border-strong px-[13px] text-[12.5px] font-semibold text-text-body hover:bg-surface-hover">
-                    {t('garde.bureaux.garder', { parametre: calque.parametre, valeur: calque.actuelle })}
+                    {t('garde.bureaux.garder', { parametre: motDeParametre(calque.parametre), valeur: calque.actuelle })}
                   </button>
                 </div>
               </div>
@@ -216,7 +224,7 @@ function Bureaux({ salle, erreur }: { salle: GardeSalle | null; erreur: string |
             </li>
             {(salle?.equipes ?? []).map((e) => (
               <li key={e.key} className="grid grid-cols-[104px_minmax(0,1fr)_56px] items-baseline gap-4 border-b border-border-row py-2.5 last:border-b-0">
-                <Link to={`/garde/bureaux/${e.key}`} className="truncate text-[13.5px] font-semibold text-text-primary hover:underline">{e.nom}</Link>
+                <Link to={`/garde/bureaux/${e.key}`} title={e.nom} className="truncate text-[13.5px] font-semibold text-text-primary hover:underline">{domaineDEquipe(e.nom)}</Link>
                 <span className="text-[12.5px] text-text-secondary [text-wrap:pretty]">{e.agents.map((a) => a.nom.toLowerCase()).join(', ')}</span>
                 <span className="text-right font-mono text-[12px] tabular-nums text-text-muted">{e.agents.reduce((n, a) => n + Object.values(a.regles).filter((r) => Object.keys(r.parametres).length > 0).length, 0)}</span>
               </li>

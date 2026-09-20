@@ -3,7 +3,7 @@ import { Maximize2, Minimize2 } from 'lucide-react';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { useHaloSignal } from '../../components/EtatEcran';
 import { AgentTuile, PoulsBadge, dureeCourte } from '../../components/garde/GardeUi';
-import { garde, retardDeRonde } from '../../lib/garde';
+import { garde, retardDeRonde, SILENCE_DEFAUT, domaineDEquipe } from '../../lib/garde';
 import { relativeTime, dansTemps } from '../../lib/time';
 import { serieFluxComptee } from '../../lib/serieVitale';
 import { useLangue } from '../../i18n';
@@ -127,6 +127,8 @@ export function GardeSalleScreen() {
   const halo = useHaloSignal(retards.ambre !== null);
 
   const heureDe = (iso: string) => new Date(iso).toLocaleTimeString(langue === 'fr' ? 'fr-FR' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
+  /* Le journal nomme les gardes par leur clé (`sites.disponibilite`) ; l'écran, lui, les nomme comme le mur les nomme. */
+  const nomDeGarde = (cle: string) => (salle?.agents ?? []).find((a) => a.key === cle)?.nom ?? cle;
   const agentRegarde = (salle?.agents ?? []).find((a) => a.key === regardee) ?? null;
   const equipeDe = (key: string) => salle?.equipes.find((e) => e.key === key) ?? null;
 
@@ -179,7 +181,15 @@ export function GardeSalleScreen() {
                 par garde.
               */
               const parle = (a: GardeAgent) => a.etat !== 'repos' || !a.actif || journal.some((j) => j.agent === a.key);
-              const hautes = tous.filter((a) => a.actif && (a.etat === 'ronde' || retardDeRonde(a, maintenant) !== null));
+              /*
+                UNE CASE HAUTE EST UNE GARDE QUI A QUELQUE CHOSE À DIRE MAINTENANT.
+                `etat === 'ronde'` ne dure que le temps d'une ronde — quelques
+                millisecondes toutes les vingt secondes : un mur qui ne grandirait
+                que là serait plat en permanence, et l'instrument ne dirait rien.
+                Les états qui PARLENT sont `ronde`, `trouve` et `echec` — plus le
+                retard, qui parle plus fort que tous.
+              */
+              const hautes = tous.filter((a) => a.actif && (a.etat !== 'repos' || retardDeRonde(a, maintenant) !== null));
               const fines = tous.filter((a) => !hautes.includes(a) && parle(a));
               const muettes = tous.filter((a) => !hautes.includes(a) && !parle(a));
               const prochaine = muettes.map((a) => a.prochaineRondeAt).filter((x): x is string => Boolean(x)).sort()[0];
@@ -187,10 +197,10 @@ export function GardeSalleScreen() {
                 ? t('garde.salle.equipeAuRepos', { n: muettes.length, quand: dansTemps(prochaine, maintenant) })
                 : t('garde.salle.equipeAuReposSansSuite', { n: muettes.length });
               return (
-                <div key={e.key} className="flex min-w-[132px] flex-1 flex-col gap-[5px]" data-equipe={e.key} data-hautes={hautes.length}>
+                <div key={e.key} className="flex min-w-[72px] flex-1 flex-col gap-[5px]" data-equipe={e.key} data-hautes={hautes.length}>
                   <span className="border-b border-border-raised pb-2">
-                    <span className="block truncate font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-text-secondary">{e.nom}</span>
-                    <span className="mt-[3px] block truncate font-mono text-[9px] text-text-muted">{e.chef.role}</span>
+                    <span className="block truncate font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-text-secondary" title={e.nom}>{domaineDEquipe(e.nom)}</span>
+                    <span className="mt-[3px] block truncate font-mono text-[9px] text-text-muted" title={e.chef.role}>{e.chef.nom}</span>
                   </span>
 
                   {hautes.map((a) => {
@@ -218,8 +228,9 @@ export function GardeSalleScreen() {
                             data-signal-groupe={groupe}
                             className={`h-[5px] w-[5px] flex-none rounded-full ${ambre ? 'bg-signal-ink anneau-courant-encre' : 'bg-accent anneau-courant'}`}
                           />
+                          {/* Le surtitre dit l'état RÉEL : « a trouvé » n'est pas « en ronde », et le confondre ferait mentir le mur. */}
                           <span className={`font-mono text-[9px] font-bold uppercase tracking-[0.14em] ${ambre ? 'opacity-75' : 'text-text-muted'}`}>
-                            {retardMs !== null ? t('garde.salle.rondeManquee') : t('garde.etat.ronde')}
+                            {retardMs !== null ? t('garde.salle.rondeManquee') : t(`garde.etat.${a.etat}` as const)}
                           </span>
                         </span>
                         <span data-signal-groupe={groupe} className={`mt-1.5 text-[12.5px] font-semibold leading-tight [text-wrap:pretty] ${ambre ? '' : 'text-text-primary'}`}>{a.nom}</span>
@@ -249,7 +260,7 @@ export function GardeSalleScreen() {
 
                   {muettes.length > 0 && (
                     <details data-repos={muettes.length}>
-                      <summary style={{ minHeight: REPOS_H }} className="flex cursor-pointer list-none items-center border border-border bg-sunken px-2.5 py-[7px] font-mono text-[9.5px] uppercase tracking-wider text-text-muted">
+                      <summary title={resume} style={{ minHeight: REPOS_H }} className="flex cursor-pointer list-none items-center border border-border bg-sunken px-2.5 py-[7px] font-mono text-[9.5px] uppercase tracking-wider text-text-muted">
                         <span className="min-w-0 truncate">{resume}</span>
                       </summary>
                       <div className="mt-[5px] flex flex-col gap-[5px]">
@@ -320,13 +331,16 @@ export function GardeSalleScreen() {
             ) : (
               <ol>
                 {collaborations.map((e) => (
-                  <li key={e.id} className="grid grid-cols-[78px_92px_1fr] items-baseline gap-3.5 border-b border-border-row py-2.5 last:border-b-0 sm:grid-cols-[78px_92px_152px_minmax(0,1fr)]">
-                    <span className={`font-mono text-[9.5px] font-semibold uppercase tracking-[0.1em] ${e.resultat === 'refuse' ? 'text-text-muted' : 'text-text-secondary'}`}>
-                      {e.resultat === 'refuse' ? t('garde.salle.refusee') : t('garde.salle.arbitree')}
+                  /* Deux rangs, pas quatre colonnes : un motif de collaboration est une phrase, et une colonne de 130 px la rendrait mot à mot. */
+                  <li key={e.id} className="border-b border-border-row py-2.5 last:border-b-0">
+                    <span className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
+                      <span className={`font-mono text-[9.5px] font-semibold uppercase tracking-[0.1em] ${e.resultat === 'refuse' ? 'text-text-muted' : 'text-text-secondary'}`}>
+                        {e.resultat === 'refuse' ? t('garde.salle.refusee') : t('garde.salle.arbitree')}
+                      </span>
+                      <span className="font-mono text-[11px] tabular-nums text-text-muted">{relativeTime(e.createdAt)}</span>
+                      <span className="text-[13px] text-text-primary">{nomDeGarde(e.agent)}</span>
                     </span>
-                    <span className="font-mono text-[11px] tabular-nums text-text-muted">{relativeTime(e.createdAt)}</span>
-                    <span className="truncate text-[13px] text-text-primary">{e.agent}</span>
-                    <span className="col-span-3 text-[12.5px] text-text-secondary [text-wrap:pretty] sm:col-span-1">{e.pourquoi}</span>
+                    <span className="mt-1 block text-[12.5px] leading-snug text-text-secondary [text-wrap:pretty]">{e.pourquoi}</span>
                   </li>
                 ))}
               </ol>
@@ -346,7 +360,7 @@ export function GardeSalleScreen() {
               <span>
                 <span className="block font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-muted">{t('garde.salle.silence')}</span>
                 <span className="mt-1.5 block font-mono text-[19px] font-semibold tabular-nums tracking-tight text-text-primary">
-                  {salle.reglages.silence ? `${salle.reglages.silence.de} h → ${salle.reglages.silence.a} h` : '—'}
+                  {`${(salle.reglages.silence ?? SILENCE_DEFAUT).de} h → ${(salle.reglages.silence ?? SILENCE_DEFAUT).a} h`}
                 </span>
               </span>
               <span>

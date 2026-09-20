@@ -6,7 +6,7 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { Depliable } from '../../components/Depliable';
 import { useHaloSignal } from '../../components/EtatEcran';
 import { GraviteChip } from '../../components/garde/GardeUi';
-import { garde } from '../../lib/garde';
+import { garde, nomDeCleDeGarde, deOrganisation } from '../../lib/garde';
 import { useLangue } from '../../i18n';
 import { NOM_DU_CHEF } from '@edition/ajmani';
 import { relativeTime } from '../../lib/time';
@@ -191,7 +191,7 @@ export function GardePileScreen() {
                     <div className="flex min-w-0 flex-1 flex-col">
                       <div className="flex flex-wrap items-center gap-2.5">
                         <span data-signal-groupe={groupe}><GraviteChip gravite={d.gravite} /></span>
-                        <span className="font-mono text-[10px] text-text-muted">{t('garde.pile.par', { agent: d.agent })}</span>
+                        <span className="font-mono text-[10px] text-text-muted">{t('garde.pile.par', { agent: nomDeCleDeGarde(d.agent) })}</span>
                         {d.n > 1 && <span className="font-mono text-[10px] text-text-muted">· {t('garde.pile.situations', { n: d.n })} · {t('garde.pile.vues', { n: d.vues })}</span>}
                         {d.n === 1 && d.vues > 1 && <span className="font-mono text-[10px] text-text-muted">· {t('garde.pile.compte', { n: d.vues })}</span>}
                         {!d.chefDeFile && <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-muted">· {t('garde.pile.derriere')}</span>}
@@ -232,7 +232,7 @@ export function GardePileScreen() {
                 </p>
                 {leplusLourd?.orgId && leplusLourd.orgNom && (
                   <Link to={`/tour/organisations?org=${encodeURIComponent(leplusLourd.orgId)}`} className="flex h-[30px] flex-none items-center border border-border-strong px-3.5 text-[12.5px] font-semibold text-text-body hover:bg-surface-hover">
-                    {t('garde.pile.ouvrirDossierOrg', { org: leplusLourd.orgNom })}
+                    {t('garde.pile.ouvrirDossierOrg', { org: deOrganisation(leplusLourd.orgNom) })}
                   </Link>
                 )}
               </div>
@@ -288,7 +288,7 @@ export function GardePileScreen() {
               <li key={r.id} className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <GraviteChip gravite={r.gravite} />
-                  <span className="font-mono text-[10px] text-text-muted">{t('garde.pile.par', { agent: r.agent })}</span>
+                  <span className="font-mono text-[10px] text-text-muted">{t('garde.pile.par', { agent: nomDeCleDeGarde(r.agent) })}</span>
                   {r.compte > 1 && <span className="font-mono text-[10px] text-text-muted">· {t('garde.pile.compte', { n: r.compte })}</span>}
                   <span className="ml-auto font-mono text-[10px] text-text-muted">{relativeTime(r.updatedAt)}</span>
                 </div>

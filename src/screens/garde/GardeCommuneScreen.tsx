@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { Conversation } from '../../components/garde/GardeUi';
 import { useHaloSignal } from '../../components/EtatEcran';
-import { garde } from '../../lib/garde';
+import { garde, domaineDEquipe } from '../../lib/garde';
 import { useLangue, type CleTraduction } from '../../i18n';
 import { relativeTime } from '../../lib/time';
 import type { GardeMessage, GardeSalle } from '../../shared/garde';
@@ -59,7 +59,14 @@ export function GardeCommuneScreen() {
   useEffect(() => garde.onGarde((trame) => { if (['garde:releve', 'garde:absence', 'garde:journal'].includes(trame.type)) void charger(); }), [charger]);
   const geste = async (f: () => Promise<unknown>) => { setBusy(true); try { await f(); await charger(); } finally { setBusy(false); } };
   const absence = salle?.absence ?? null;
-  const releve = messages.filter((m) => m.agent === 'capitaine').at(-1) ?? null;
+  /*
+    LA RELÈVE, ET NON LE DERNIER MOT DU CAPITAINE. Le Capitaine écrit aussi des
+    accusés de réception d'une ligne (« Reçu. Transmis à tous les chefs. ») ;
+    prendre son dernier message affichait cet accusé à la place de la Relève.
+    Le tour des bureaux écrit son texte PUIS la ligne de chaque chef, d'un
+    seul message : c'est le seul qui compte plusieurs lignes.
+  */
+  const releve = messages.filter((m) => m.agent === 'capitaine' && m.texte.includes('\n')).at(-1) ?? null;
 
   /*
     LES QUESTIONS ET LEURS GERBES. Le canal « commune » porte tout dans
@@ -167,7 +174,7 @@ export function GardeCommuneScreen() {
                       className={`flex min-w-0 items-baseline gap-3 ${ambre ? `bg-signal px-3.5 py-3 text-signal-ink ${halo}` : 'border border-border bg-raised px-3 py-[9px]'}`}
                     >
                       <span data-signal-groupe={ambre ? 'porte-un-fait' : undefined} className={`w-[76px] flex-none font-mono text-[9.5px] uppercase tracking-[0.1em] ${ambre ? 'font-bold opacity-80' : 'font-semibold text-text-muted'}`}>
-                        {chef?.nom ?? r.agent}
+                        {chef ? domaineDEquipe(chef.nom) : r.agent}
                       </span>
                       <span data-signal-groupe={ambre ? 'porte-un-fait' : undefined} className={`min-w-0 flex-1 leading-snug [text-wrap:pretty] ${ambre ? 'text-[13.5px] font-semibold' : 'text-[12.5px] text-text-secondary'}`}>
                         {r.texte}

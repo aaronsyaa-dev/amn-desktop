@@ -36,7 +36,7 @@ const pct = (heures: number) => (heures / 24) * 100;
 interface Bulle { de: 'moi' | 'chef'; texte: string; confirmation?: string; original?: string; at?: string }
 
 export function GardeAjmaniScreen() {
-  const { t } = useLangue();
+  const { t, langue } = useLangue();
   const [acc, setAcc] = useState<GardeAccueil | null>(null);
   const [guide, setGuide] = useState<GardeGuideEntree[]>([]);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -150,11 +150,13 @@ export function GardeAjmaniScreen() {
                   <p className="text-[15px] leading-relaxed text-text-secondary">{acc.salut}</p>
                   <p className="mt-2 text-[27px] font-bold leading-[1.28] tracking-[-0.025em] text-text-primary [text-wrap:pretty]" data-proposition={acc.proposition.cle}>{acc.proposition.texte}</p>
                   {acc.aveux.length > 0 && <p className="mt-2 text-[12px] text-text-muted">{acc.aveux.join(' ')}</p>}
-                  <div className="mt-5 flex flex-wrap gap-[9px]">
+                  {/* Un geste porte parfois la recommandation entière du Capitaine — trois lignes de texte.
+                      Une hauteur FIXE les faisait se chevaucher : la hauteur vient du libellé, pas l'inverse. */}
+                  <div className="mt-5 flex flex-wrap items-stretch gap-[9px]">
                     {acc.proposition.gestes.slice(0, 3).map((g) => g.vers
-                      ? <Link key={g.label} to={g.vers} className="flex h-[30px] items-center border border-border-strong px-[13px] text-[12.5px] font-semibold text-text-body hover:bg-surface-hover">{g.label}</Link>
-                      : <button key={g.label} type="button" disabled={busy} onClick={() => void geste(g)} className="flex h-[30px] items-center border border-border-strong px-[13px] text-[12.5px] font-semibold text-text-body hover:bg-surface-hover disabled:opacity-50">{g.label}</button>)}
-                    <button type="button" disabled={busy} onClick={() => void dire('je ferme pour ce soir')} data-cloture className="flex h-[30px] items-center border border-dashed border-border-strong px-[13px] text-[12.5px] font-semibold text-text-secondary hover:text-text-primary disabled:opacity-50">{t('garde.chef.cloture')}</button>
+                      ? <Link key={g.label} to={g.vers} className="flex min-h-[30px] max-w-full items-center border border-border-strong px-[13px] py-1.5 text-left text-[12.5px] font-semibold leading-snug text-text-body hover:bg-surface-hover">{g.label}</Link>
+                      : <button key={g.label} type="button" disabled={busy} onClick={() => void geste(g)} className="flex min-h-[30px] max-w-full items-center border border-border-strong px-[13px] py-1.5 text-left text-[12.5px] font-semibold leading-snug text-text-body hover:bg-surface-hover disabled:opacity-50">{g.label}</button>)}
+                    <button type="button" disabled={busy} onClick={() => void dire('je ferme pour ce soir')} data-cloture className="flex min-h-[30px] max-w-full items-center border border-dashed border-border-strong px-[13px] py-1.5 text-left text-[12.5px] font-semibold leading-snug text-text-secondary hover:text-text-primary disabled:opacity-50">{t('garde.chef.cloture')}</button>
                   </div>
                 </div>
 
@@ -178,14 +180,31 @@ export function GardeAjmaniScreen() {
                         : <span className="inline-flex font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-text-muted">{t('garde.chef.plusDeParole')}</span>}
                       {marques > 0 && (
                         <div className="mt-3 flex gap-1.5" role="img" aria-label={t('garde.chef.budgetJour', { dites: acc.budget.dites, max: acc.budget.max })}>
+                          {/*
+                            L'AMBRE NE PREND QU'UNE MARQUE : LA DERNIÈRE.
+
+                            Toutes les marques restantes en ambre, c'est six barres qui
+                            brillent le matin quand rien n'a encore été dit — l'ambre
+                            redevient la couleur de la marque, ce que tout le système
+                            existe pour éviter. La marque ambre est donc celle où sa
+                            parole S'ARRÊTE ; les autres restantes sont en encre de
+                            remplissage, les dépensées en gris de bordure. Sur le cas
+                            de la maquette (cinq dites sur six) les deux lectures
+                            coïncident exactement.
+                          */}
                           {Array.from({ length: marques }, (_, i) => {
                             const depensee = i < acc.budget.dites;
+                            const derniere = i === marques - 1 && !depensee;
                             return (
                               <span
                                 key={i}
-                                data-signal-groupe={depensee ? undefined : 'voix-comptee'}
+                                data-signal-groupe={derniere ? 'voix-comptee' : undefined}
                                 className="flex-1"
-                                style={{ height: MARQUE_H, background: depensee ? 'var(--color-border-strong)' : 'var(--color-signal)', boxShadow: depensee ? undefined : '0 0 22px -3px var(--color-signal-glow)' }}
+                                style={{
+                                  height: MARQUE_H,
+                                  background: derniere ? 'var(--color-signal)' : depensee ? 'var(--color-border-strong)' : '#4a4a48',
+                                  boxShadow: derniere ? '0 0 22px -3px var(--color-signal-glow)' : undefined,
+                                }}
                               />
                             );
                           })}
@@ -212,7 +231,13 @@ export function GardeAjmaniScreen() {
                     const heureCourante = d.getHours() + d.getMinutes() / 60;
                     const { de, a } = acc.silence;
                     const bandes = de === a ? [] : de > a ? [[0, a], [de, 24]] : [[de, a]];
-                    const reperes = [{ h: 0, texte: '00' }, ...(de === a ? [] : [{ h: a, texte: t('garde.commune.heures', { h: a }) }, { h: de, texte: t('garde.commune.heures', { h: de }) }]), { h: heureCourante, texte: d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) }].sort((x, y) => x.h - y.h);
+                    /* Un repère d'heure ronde que l'heure courante recouvre s'efface : deux étiquettes superposées n'en font aucune de lisible. */
+                    const maintenantTexte = d.toLocaleTimeString(langue === 'fr' ? 'fr-FR' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
+                    const bornes = de === a ? [] : [{ h: a, texte: t('garde.commune.heures', { h: a }) }, { h: de, texte: t('garde.commune.heures', { h: de }) }];
+                    /* Le seuil se mesure en POURCENTAGE de la règle, pas en heures : c'est la place
+                       qu'occupe une étiquette qui décide, et douze pour cent de 24 h font trois heures. */
+                    const colleAMaintenant = (h: number) => Math.abs(pct(h) - pct(heureCourante)) < 12;
+                    const reperes = [{ h: 0, texte: '00' }, ...bornes.filter((b) => !colleAMaintenant(b.h)), { h: heureCourante, texte: maintenantTexte }].sort((x, y) => x.h - y.h);
                     return (
                       <>
                         <div className="relative mt-3 overflow-hidden border border-border-raised bg-sunken" style={{ height: AXE_H }} role="img" aria-label={t('garde.chef.silencePhrase')}>
@@ -269,6 +294,7 @@ export function GardeAjmaniScreen() {
             <h2 className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">{t('garde.chef.echanges')}</h2>
             <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">{t('garde.chef.echangesLegende')}</span>
           </div>
+          {historique.length === 0 && fil.length === 0 && <p className="text-[13px] leading-relaxed text-text-secondary [text-wrap:pretty]">{t('garde.chef.aucunEchange')}</p>}
           <ol className="flex flex-col gap-3.5">
             {historique.slice(-8).map((m, i) => (
               <li key={`h${i}`} title={m.at ? relativeTime(m.at) : undefined}>
