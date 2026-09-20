@@ -116,6 +116,8 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'polls',
   'leaves',
   'calls',
+  'qrCodes',
+  'calcTapes',
   'leaveQuotas',
   'prospects',
   'paymentReminders',

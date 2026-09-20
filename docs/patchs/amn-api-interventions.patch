@@ -1,8 +1,8 @@
 diff --git a/src/db/tenancy.js b/src/db/tenancy.js
-index 24888cb..e8a43c8 100644
+index 24888cb..32c3abd 100644
 --- a/src/db/tenancy.js
 +++ b/src/db/tenancy.js
-@@ -277,6 +277,11 @@ export const MODULE_CATALOGUE = [
+@@ -277,6 +277,16 @@ export const MODULE_CATALOGUE = [
      label: 'Contrôles qualité',
      summary: 'Des modèles de contrôle, et chaque passage daté et signé.',
    },
@@ -11,20 +11,27 @@ index 24888cb..e8a43c8 100644
 +    label: 'Interventions',
 +    summary: 'Une fiche par déplacement : avant, pendant, après, et ce qui a été consommé.',
 +  },
++  {
++    key: 'calcPro',
++    label: 'Calculatrice pro',
++    summary: 'Un ruban de caisse : le calcul s’imprime ligne à ligne, et devient un devis.',
++  },
    {
      key: 'assembly',
      label: 'Suivi de montage',
-@@ -554,7 +559,8 @@ export const MODULE_COLLECTIONS = {
+@@ -554,7 +564,10 @@ export const MODULE_COLLECTIONS = {
    groups: ['groups', 'groupMessages'],
    announcements: ['announcements'],
    polls: ['polls'],
 -  leaves: ['leaves'],
 +  leaves: ['leaves', 'leaveQuotas'],
 +  calls: ['calls'],
++  qr: ['qrCodes'],
++  calcPro: ['calcTapes'],
    pipeline: ['prospects'],
    reminders: ['paymentReminders'],
    subscriptions: ['subscriptions'],
-@@ -567,6 +573,7 @@ export const MODULE_COLLECTIONS = {
+@@ -567,6 +580,7 @@ export const MODULE_COLLECTIONS = {
    suppliers: ['suppliers'],
    shifts: ['shifts'],
    checklists: ['checklists', 'checkRuns'],
@@ -33,19 +40,21 @@ index 24888cb..e8a43c8 100644
    aftersales: ['tickets'],
    bom: ['boms'],
 diff --git a/src/routes/collections.js b/src/routes/collections.js
-index 6586a14..4e10747 100644
+index 6586a14..42164e8 100644
 --- a/src/routes/collections.js
 +++ b/src/routes/collections.js
-@@ -107,6 +107,8 @@ export const ALLOWED = new Set([
+@@ -107,6 +107,10 @@ export const ALLOWED = new Set([
    'announcements',
    'polls',
    'leaves',
 +  'leaveQuotas',
 +  'calls',
++  'qrCodes',
++  'calcTapes',
    'prospects',
    'paymentReminders',
    'subscriptions',
-@@ -120,6 +122,7 @@ export const ALLOWED = new Set([
+@@ -120,6 +124,7 @@ export const ALLOWED = new Set([
    'shifts',
    'checklists',
    'checkRuns',
@@ -53,7 +62,7 @@ index 6586a14..4e10747 100644
    'assemblies',
    'tickets',
    'boms',
-@@ -166,6 +169,20 @@ export function collectionsRouter() {
+@@ -166,6 +171,20 @@ export function collectionsRouter() {
      res.json({ users: hub ? hub.presenceSnapshot(req.auth.orgId) : [] });
    });
  
@@ -74,7 +83,7 @@ index 6586a14..4e10747 100644
    /**
     * TOUT L'ESPACE EN UNE SEULE REQUÊTE.
     *
-@@ -274,9 +291,35 @@ export function collectionsRouter() {
+@@ -274,9 +293,35 @@ export function collectionsRouter() {
      if (data === undefined || data === null || typeof data !== 'object') {
        return res.status(400).json({ error: 'Body must be { data: {...} }' });
      }
@@ -112,7 +121,7 @@ index 6586a14..4e10747 100644
    });
  
    router.delete('/:collection/:id', async (req, res) => {
-@@ -284,7 +327,16 @@ export function collectionsRouter() {
+@@ -284,7 +329,16 @@ export function collectionsRouter() {
      if (module) return res.status(403).json({ error: 'La cliente a fermé ce module à son prestataire.', code: 'module_locked', module });
      const { collection, id } = req.params;
      if (!ALLOWED.has(collection)) return res.status(404).json({ error: 'Unknown collection' });

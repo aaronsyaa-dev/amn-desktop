@@ -2330,6 +2330,24 @@ export type SyncedCollection =
    */
   | 'calls'
   /**
+   * LES QR CODES ENREGISTRÉS — un par code fabriqué : son intitulé, sa
+   * destination, où il est collé, et son COMPTEUR DE SCANS.
+   *
+   * Le compteur n'est jamais écrit par le poste. Il est incrémenté par
+   * `POST /v1/qr/:orgId/:codeId/scan`, appelée par la page publique quand
+   * elle est ouverte avec `?qr=<id>` — c'est-à-dire par le téléphone du
+   * passant, seul endroit d'où un scan est observable. Voir
+   * `docs/patchs/README.md`.
+   */
+  | 'qrCodes'
+  /**
+   * LES RUBANS DE CAISSE de la Calculatrice pro (`21b`) : un enregistrement
+   * par ruban, avec toutes ses lignes — y compris les annulations, qui sont
+   * des lignes négatives et non des suppressions. Un ruban devenu devis garde
+   * `devisFaitLe` et ne se rouvre plus.
+   */
+  | 'calcTapes'
+  /**
    * LE DROIT À CONGÉS, un enregistrement par personne (`quota-<courriel>`).
    *
    * POURQUOI CETTE COLLECTION EXISTE, alors que l'écran Absences s'en était

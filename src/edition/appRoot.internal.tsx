@@ -74,6 +74,7 @@ import { AfterSalesScreen } from '../screens/AfterSalesScreen';
 import { AssemblyScreen } from '../screens/AssemblyScreen';
 import { ChecklistsScreen } from '../screens/ChecklistsScreen';
 import { InterventionsScreen } from '../screens/InterventionsScreen';
+import { CalculatorProScreen } from '../screens/CalculatorProScreen';
 import { ShiftsScreen } from '../screens/ShiftsScreen';
 import { SuppliersScreen } from '../screens/SuppliersScreen';
 import { StockScreen } from '../screens/StockScreen';
@@ -286,6 +287,7 @@ function AmnRoutes() {
         <Route path="/planning" element={<ShiftsScreen />} />
         <Route path="/controles" element={<ChecklistsScreen />} />
         <Route path="/interventions" element={<InterventionsScreen />} />
+        <Route path="/outils/calculatrice" element={<CalculatorProScreen />} />
         <Route path="/montage" element={<AssemblyScreen />} />
         <Route path="/sav" element={<AfterSalesScreen />} />
         <Route path="/nomenclatures" element={<BomScreen />} />

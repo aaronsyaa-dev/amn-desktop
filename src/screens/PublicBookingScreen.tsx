@@ -4,6 +4,7 @@ import { CalendarCheck, Check, Loader2 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { joursOuverts, type JourSemaine } from '../lib/creneaux';
 import { useLangue } from '../i18n';
+import { signalerLeScan } from '../lib/qrScan';
 
 const API_BASE = (import.meta.env.VITE_AMN_API_URL || '').replace(/\/$/, '');
 type Jour = JourSemaine;
@@ -35,6 +36,11 @@ export function PublicBookingScreen() {
     const query = hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : window.location.search.slice(1);
     return (new URLSearchParams(query).get('org') ?? '').trim();
   });
+
+  /* Le code qui a mené ici, s'il y en a un — voir lib/qrScan.ts. */
+  useEffect(() => {
+    signalerLeScan(orgId);
+  }, [orgId]);
   const [offre, setOffre] = useState<Offre | null | 'fermee' | 'erreur'>(null);
   const [jour, setJour] = useState<string | null>(null);
   const [creneau, setCreneau] = useState<string | null>(null);

@@ -158,6 +158,14 @@ const ECRANS = [
      l'arbitrage est écrit dans l'en-tête de `DirectoryScreen.tsx`. */
   ['Fournisseurs', '#/fournisseurs'],
   ['Interventions', '#/interventions'],
+  ['Calculatrice pro', '#/outils/calculatrice'],
+  /* La famille « outils » : l'objet dominant d'un utilitaire est CE QU'IL
+     PRODUIT. Import/export y figure bien qu'il n'ait aucun ambre au repos —
+     son aiguillage ne s'allume qu'une fois un fichier lu, et la garde compte
+     un maximum, que zéro satisfait. */
+  ['QR codes', '#/outils/qr'],
+  ['Convertisseurs', '#/outils/convertisseurs'],
+  ['Import / export', '#/outils/donnees'],
   ['Nomenclatures', '#/nomenclatures'],
   ['Modèles', '#/outils/modeles'],
   ['Trombinoscope', '#/trombinoscope'],

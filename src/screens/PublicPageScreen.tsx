@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { CalendarCheck, ExternalLink, Loader2, Mail, MapPin, Phone, Star } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { useLangue } from '../i18n';
+import { signalerLeScan } from '../lib/qrScan';
 
 const API_BASE = (import.meta.env.VITE_AMN_API_URL || '').replace(/\/$/, '');
 
@@ -35,6 +36,11 @@ export function PublicPageScreen() {
     const query = hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : window.location.search.slice(1);
     return (new URLSearchParams(query).get('org') ?? '').trim();
   });
+
+  /* Le code qui a mené ici, s'il y en a un — voir lib/qrScan.ts. */
+  useEffect(() => {
+    signalerLeScan(orgId);
+  }, [orgId]);
   const [page, setPage] = useState<Page | null | 'fermee' | 'erreur'>(null);
 
   useEffect(() => {

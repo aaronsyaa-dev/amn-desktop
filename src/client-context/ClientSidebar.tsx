@@ -124,6 +124,7 @@ const CLIENT_MODULES: NavItem[] = [
   { key: 'shifts', label: 'Planning d’équipe', to: '/planning', icon: CalendarRange, hint: 'Qui est là quel jour, semaine par semaine' },
   { key: 'checklists', label: 'Contrôles qualité', to: '/controles', icon: ClipboardCheck, hint: 'Des listes à cocher, et la trace de chaque passage' },
   { key: 'interventions', label: 'Interventions', to: '/interventions', icon: Camera, hint: 'Avant, pendant, après — le compte rendu d’un déplacement' },
+  { key: 'calcPro', label: 'Calculatrice pro', to: '/outils/calculatrice', icon: Calculator, hint: 'Un ruban de caisse qu’on relit avant de chiffrer' },
   { key: 'assembly', label: 'Suivi de montage', to: '/montage', icon: Wrench, hint: 'Chaque chantier, étape par étape' },
   { key: 'aftersales', label: 'SAV', to: '/sav', icon: LifeBuoy, hint: 'Les demandes après vente, de l’ouverture à la résolution' },
   { key: 'bom', label: 'Composition & coût de revient', to: '/nomenclatures', icon: ListTree, hint: 'Ce qui compose un produit, et ce qu’il coûte' },

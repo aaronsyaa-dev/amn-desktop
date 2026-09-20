@@ -1,0 +1,76 @@
+diff --git a/src/server.js b/src/server.js
+index 91d1ae9..04c8787 100644
+--- a/src/server.js
++++ b/src/server.js
+@@ -16,6 +16,7 @@ import { reportsRouter } from './routes/reports.js';
+ import { callLinksRouter } from './routes/callLinks.js';
+ import { supportRouter } from './routes/support.js';
+ import { bookingRouter } from './routes/booking.js';
++import { qrRouter } from './routes/qr.js';
+ import { publicRouter } from './routes/public.js';
+ import { inputSentinel } from './middleware/inputSentinel.js';
+ import { welcomeRouter } from './routes/welcome.js';
+@@ -128,6 +129,7 @@ export async function createApp({ db }) {
+   // La file des demandes (message, place, mot de passe oublié) — Blocs 1, 3, 4.
+   app.use('/v1/support', supportRouter());
+   app.use('/v1/booking', bookingRouter());
++  app.use('/v1/qr', qrRouter());
+   app.use('/v1', publicRouter());
+   // Le lien de bienvenue, page publique à usage unique — Bloc 2.
+   app.use('/v1/welcome', welcomeRouter());
+diff --git a/src/routes/qr.js b/src/routes/qr.js
+new file mode 100644
+index 0000000..0000001
+--- /dev/null
++++ b/src/routes/qr.js
+@@ -0,0 +1,50 @@
++import { Router } from 'express';
++import { rateLimit } from '../middleware/rateLimit.js';
++
++/**
++ * LE COMPTEUR DE SCANS D'UN QR CODE — public, et volontairement minuscule.
++ *
++ *   POST /v1/qr/:orgId/:codeId/scan  → +1 scan, et la date du dernier
++ *
++ * POURQUOI CETTE ROUTE EXISTE. Un module de QR codes qui ne compte pas les
++ * scans ne peut rien dire de ce qu'il fabrique : un code collé trop bas et un
++ * code qui marche ont exactement la même allure sur le poste. Or le poste ne
++ * PEUT PAS le savoir — c'est le téléphone d'un passant qui ouvre l'adresse, et
++ * il n'a pas de session. Le comptage doit donc vivre ici ou nulle part.
++ *
++ * TROIS RETENUES, parce que la route est ouverte à tout le monde :
++ *
++ *   · elle n'accepte que d'INCRÉMENTER. Aucun corps n'est lu, aucune valeur
++ *     ne peut être posée : le pire qu'un plaisantin puisse faire est gonfler
++ *     un compteur d'affichage, jamais écrire dans une fiche ;
++ *   · elle ne crée RIEN. Un `codeId` inconnu répond 404 et ne laisse aucune
++ *     trace, sinon la collection deviendrait un dépotoir ouvert ;
++ *   · elle est freinée par adresse, comme la page de rendez-vous.
++ *
++ * Elle ne retourne rien d'utile non plus (`{ ok: true }`) : la page publique
++ * n'a pas à apprendre combien de fois le code a été scanné.
++ */
++export function qrRouter() {
++  const router = Router();
++  const frein = rateLimit({ name: 'qr-scan', max: 60, windowMs: 15 * 60_000 });
++
++  router.post('/:orgId/:codeId/scan', frein, async (req, res) => {
++    const db = req.app.locals.db;
++    const org = await db.getOrganization(String(req.params.orgId)).catch(() => null);
++    if (!org || org.status === 'suspended') return res.status(404).json({ error: 'Unknown' });
++    const id = String(req.params.codeId);
++    const rows = await db.listRecords(org.id, 'qrCodes');
++    const courant = rows.find((r) => r.id === id && !r.deleted);
++    if (!courant) return res.status(404).json({ error: 'Unknown' });
++    const data = courant.data ?? {};
++    const record = await db.upsertRecord(org.id, 'qrCodes', id, {
++      ...data,
++      scans: Number(data.scans ?? 0) + 1,
++      lastScanAt: new Date().toISOString(),
++    });
++    req.app.locals.hub?.broadcast({ type: 'record', collection: 'qrCodes', record }, org.id);
++    res.json({ ok: true });
++  });
++
++  return router;
++}

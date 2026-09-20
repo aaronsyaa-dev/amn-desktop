@@ -217,6 +217,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'converters', label: 'Convertisseurs', to: '/outils/convertisseurs', icon: ArrowLeftRight, hint: 'Unités, TVA, devises : le bon chiffre tout de suite' },
       { key: 'templates', label: 'Modèles', to: '/outils/modeles', icon: LayoutTemplate, hint: 'Des textes prêts, à trous' },
       { key: 'automations', label: 'Automatisations', to: '/outils/automatisations', icon: Workflow, hint: 'Si ceci arrive, alors cela se fait' },
+      { key: 'calcPro', label: 'Calculatrice pro', to: '/outils/calculatrice', icon: Calculator, hint: 'Un ruban de caisse qu’on relit avant de chiffrer' },
       { key: 'dataPort', label: 'Import / export', to: '/outils/donnees', icon: Download, hint: 'Vos données, dans les deux sens' },
     ],
   },

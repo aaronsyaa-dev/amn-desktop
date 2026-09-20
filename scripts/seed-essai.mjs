@@ -1182,6 +1182,19 @@ const STOCK = [
   ['essai-stk-5', 'Couronne de porte', 0, 3],
   ['essai-stk-6', 'Mousse florale', 26, 10],
 ];
+/*
+  UN ARTICLE EN LITRES, et il n'est pas là pour faire joli.
+
+  Le module Convertisseurs (`21a`) dit, sous ses règles, ce que le chiffre
+  converti veut dire dans l'atelier : combien d'interventions un contenant
+  couvre, et ce qu'il en reste en stock. Ce rapprochement ne peut exister que
+  si un article du stock est compté dans une unité de VOLUME et consommé par
+  des interventions — tous les autres sont en « pièce », qu'aucune règle ne
+  gradue. L'engrais liquide est donc à zéro, avec un seuil à 2 : la phrase des
+  convertisseurs a de quoi être vraie, et le Stock a une rupture de plus à
+  montrer, ce qui ne dérange rien chez lui.
+*/
+const STOCK_LITRES = ['essai-stk-7', 'Engrais liquide', 0, 2];
 for (const [cle, name, quantity, minQuantity] of STOCK) {
   await poser('stockItems', cle, {
     name,
@@ -1196,6 +1209,15 @@ for (const [cle, name, quantity, minQuantity] of STOCK) {
     movedAt: instant(-24 * (2 + STOCK.findIndex((x) => x[0] === cle) * 5)),
   });
 }
+await poser('stockItems', STOCK_LITRES[0], {
+  name: STOCK_LITRES[1],
+  quantity: STOCK_LITRES[2],
+  minQuantity: STOCK_LITRES[3],
+  unit: 'L',
+  note: '',
+  createdAt: instant(-24 * 90),
+  movedAt: instant(-24 * 4),
+});
 
 /*
   Les commandes n'arrivent normalement PAS d'ici : elles viennent du site
@@ -2069,6 +2091,137 @@ for (const mort of ['essai-abs-2', 'essai-abs-3']) {
 }
 
 /*
+  L'HISTORIQUE D'UNE RÈGLE D'AUTOMATISATION.
+
+  Le module `20d` dessine, sous chaque règle, la trace de ses trente derniers
+  jours. La trace n'est pas une donnée à part : ce sont les enregistrements
+  que le moteur a écrits, reconnaissables à leur identifiant
+  `auto-<règle>-<source>`, regroupés par jour.
+
+  Dans un bac à sable, le moteur vient d'écrire : tout tombe aujourd'hui, et
+  la trace est un pic unique qui ne montre rien. On sème donc des tâches
+  PASSÉES portant le même préfixe — exactement ce que le moteur aurait écrit
+  au fil des semaines — pour que la trace ait une forme, et que la ligne plate
+  des règles muettes se compare à quelque chose.
+
+  Les identifiants `-hist-` ne correspondent à aucune source vivante : le
+  moteur ne les rejouera donc jamais et ne les dédoublera pas.
+*/
+const HISTORIQUE_AUTO = [
+  [0, 1], [1, 2], [3, 1], [4, 1], [6, 3], [8, 1], [9, 2],
+  [12, 1], [14, 2], [17, 1], [19, 1], [22, 3], [25, 1], [28, 2],
+];
+let nHist = 0;
+for (const [ilYaJours, combien] of HISTORIQUE_AUTO) {
+  for (let k = 0; k < combien; k += 1) {
+    nHist += 1;
+    await poser('tasks', `auto-essai-aut-2-hist-${nHist}`, {
+      title: `Réponse de formulaire à traiter (${nHist})`,
+      detail: '',
+      assigneeEmail: '',
+      status: ilYaJours > 3 ? 'done' : 'todo',
+      siteId: null,
+      clientId: null,
+      createdAt: instant(-24 * ilYaJours - k),
+    });
+  }
+}
+
+/*
+  LES RUBANS DE CAISSE — dont un qui porte une ANNULATION.
+
+  La règle que `21b` ne négocie pas : le ruban garde toutes les lignes, y
+  compris celle qu'on regrette. Une erreur ne s'efface pas, elle se corrige
+  par une ligne négative qui reste imprimée. Sans un ruban qui en contient
+  une, cette règle serait écrite dans le code et invisible à l'écran — donc
+  le ruban ouvert en porte une, au milieu, là où elle gêne le plus le regard
+  et où elle prouve le plus.
+
+  Le taux varie d'une ligne à l'autre (20 % sur la fourniture, 10 % sur la
+  pose) : c'est ce qui fait que le pied de ruban a DEUX lignes de TVA au lieu
+  d'une, et que la carte du relevé a quelque chose à dire.
+*/
+const RUBANS = [
+  {
+    cle: 'essai-tape-1',
+    ilYaHeures: -3,
+    devisFaitLe: '',
+    lignes: [
+      ['3 × 42,00', 12600, 20],
+      ['Mousse et accessoires', 1840, 20],
+      ['Pose sur place', 9000, 10],
+      ['Annulation Pose sur place', -9000, 10],
+      ['Pose sur place, 2 h', 12000, 10],
+      ['Déplacement', 3500, 20],
+    ],
+  },
+  {
+    cle: 'essai-tape-2',
+    ilYaHeures: -24 * 3,
+    devisFaitLe: -24 * 3 + 1,
+    lignes: [
+      ['Composition de table', 5600, 20],
+      ['2 × 28,00', 5600, 20],
+      ['Livraison', 2500, 20],
+    ],
+  },
+  {
+    cle: 'essai-tape-3',
+    ilYaHeures: -24 * 9,
+    devisFaitLe: '',
+    lignes: [
+      ['Entretien mensuel', 18000, 20],
+    ],
+  },
+];
+for (const r of RUBANS) {
+  await poser('calcTapes', r.cle, {
+    lines: r.lignes.map(([libelle, montantCents, taux], i) => ({
+      libelle,
+      montantCents,
+      taux,
+      at: instant(r.ilYaHeures + i * 0.02),
+    })),
+    createdAt: instant(r.ilYaHeures),
+    devisFaitLe: r.devisFaitLe === '' ? '' : instant(r.devisFaitLe),
+  });
+}
+
+/*
+  LES QR CODES — quatre codes, et un qui ne sert pas.
+
+  Le compteur de scans n'est JAMAIS écrit par le poste : en vrai il monte par
+  `POST /v1/qr/:orgId/:id/scan`, appelée par la page publique quand un passant
+  ouvre l'adresse. Ici on pose des compteurs de départ, parce qu'un bac à
+  sable n'a pas de passants — mais l'écran, lui, ne sait pas les distinguer de
+  vrais scans, et c'est précisément ce qu'on veut vérifier.
+
+  Les quatre codes sont composés pour que le diagnostic ait quelque chose à
+  dire : « Vitrine » est à 4 scans contre 47 pour le flyer, soit plus de trois
+  fois moins, et son emplacement noté explique pourquoi. Sans cet écart, la
+  phrase se tairait — ce qui est le comportement voulu, pas un oubli.
+
+  L'adresse de chaque code porte `?qr=<son identifiant>` : sans cette marque,
+  la page publique ne saurait pas quel compteur incrémenter.
+*/
+const QR_CODES = [
+  ['essai-qr-1', 'Flyer Brasserie', 'rdv', 'sur le comptoir de la Brasserie, à côté de la caisse', 47, -30],
+  ['essai-qr-2', 'Carte de visite', 'p', 'au dos de la carte, sous le téléphone', 23, -52],
+  ['essai-qr-3', 'Devanture du dépôt', 'p', 'sur la porte du dépôt, à hauteur d’yeux', 15, -96],
+  ['essai-qr-4', 'Vitrine', 'rdv', 'en vitrine, en bas à droite, sous la ligne des yeux', 4, -24 * 11],
+];
+for (const [cle, label, route, placement, scans, ilYaHeures] of QR_CODES) {
+  await poser('qrCodes', cle, {
+    label,
+    target: `https://amn-devsec.example/#/${route}?org=${login.org?.id ?? 'org'}&qr=${cle}`,
+    placement,
+    scans,
+    lastScanAt: instant(ilYaHeures),
+    createdAt: instant(-24 * 120),
+  });
+}
+
+/*
   LE JOURNAL DES APPELS — une journée qui a un RYTHME.
 
   Le module `20b` dessine un train d'impulsions : une par appel abouti, vers
@@ -2178,12 +2331,15 @@ const PROSPECTS = [
   ['pro-17', 'Bistrot Nord', 'Bistrot Nord', 1900, 'qualifie', 'Terrasse d’hiver.', -21, ''],
   ['pro-18', 'Cabinet Ferry', 'Cabinet Ferry', 4100, 'qualifie', 'Deux étages, besoin chiffré.', -8, 'site'],
   /* Premiers contacts — neuf. */
-  ['pro-5', 'Sophie Arnaud', '', 400, 'contact', '', -1, 'site'],
+  /* Trois fiches viennent du QR du flyer : c'est ce que le module QR codes
+     compte dans « devenus prospects », et il le compte en lisant `source`,
+     pas en le devinant. */
+  ['pro-5', 'Sophie Arnaud', '', 400, 'contact', '', -1, 'Flyer Brasserie'],
   ['pro-6', 'Garage Peyron', 'Garage Peyron', 2200, 'contact', 'Rencontré au salon.', -2, 'salon'],
-  ['pro-19', 'Épicerie Fine', 'Épicerie Fine', 800, 'contact', '', -2, 'site'],
+  ['pro-19', 'Épicerie Fine', 'Épicerie Fine', 800, 'contact', '', -2, 'Flyer Brasserie'],
   ['pro-20', 'Mairie annexe', 'Ville', 5600, 'contact', 'Appel d’offres possible.', -4, ''],
   ['pro-21', 'Coiffure Onde', 'Coiffure Onde', 700, 'contact', '', -4, 'bouche'],
-  ['pro-22', 'Librairie Sillon', 'Librairie Sillon', 1100, 'contact', 'Vitrine de Noël.', -6, 'site'],
+  ['pro-22', 'Librairie Sillon', 'Librairie Sillon', 1100, 'contact', 'Vitrine de Noël.', -6, 'Flyer Brasserie'],
   ['pro-23', 'Cave Tramontane', 'Cave Tramontane', 1300, 'contact', '', -7, 'salon'],
   ['pro-24', 'Institut Mira', 'Institut Mira', 2600, 'contact', 'A demandé une visite.', -9, 'bouche'],
   ['pro-25', 'Traiteur Pons', 'Traiteur Pons', 3400, 'contact', 'Événementiel, gros volumes.', -10, 'salon'],
@@ -2714,7 +2870,7 @@ const INTERVENTIONS = [
       pendant: volet(PHOTO_PENDANT, 'Rempotage des deux sujets, taille des feuilles sèches.'),
       apres: volet(PHOTO_APRES, 'Les six bacs repris, arrosage réglé sur le lundi.'),
     },
-    consommations: [conso('Composition de table', 2, 'pièce', 28)],
+    consommations: [conso('Composition de table', 2, 'pièce', 28), conso('Engrais liquide', 0.4, 'L', 12)],
     closedAt: '',
     reportedAt: '',
   },
@@ -2745,7 +2901,7 @@ const INTERVENTIONS = [
       pendant: volet(PHOTO_PENDANT, 'Montage de la couronne sur place, ajustement au support.'),
       apres: volet(PHOTO_APRES, 'Couronne posée, photo remise à la famille.'),
     },
-    consommations: [conso('Couronne de porte', 1, 'pièce', 95), conso('Mousse florale', 2, 'pièce', 3.2)],
+    consommations: [conso('Couronne de porte', 1, 'pièce', 95), conso('Mousse florale', 2, 'pièce', 3.2), conso('Engrais liquide', 0.6, 'L', 12)],
     /* LA SEULE FICHE CLOSE — et donc la seule où les volets sont verrouillés. */
     closedAt: aujourdHui(12, 10, -6),
     /* Déjà reportée : le bouton doit avoir cédé la place à la trace du report. */

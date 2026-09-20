@@ -60,6 +60,7 @@ import { AfterSalesScreen } from '../screens/AfterSalesScreen';
 import { AssemblyScreen } from '../screens/AssemblyScreen';
 import { ChecklistsScreen } from '../screens/ChecklistsScreen';
 import { InterventionsScreen } from '../screens/InterventionsScreen';
+import { CalculatorProScreen } from '../screens/CalculatorProScreen';
 import { ShiftsScreen } from '../screens/ShiftsScreen';
 import { SuppliersScreen } from '../screens/SuppliersScreen';
 import { StockScreen } from '../screens/StockScreen';
@@ -618,6 +619,14 @@ export function AppRoot() {
           element={
             <ModuleRoute module="automations">
               <AutomationsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/outils/calculatrice"
+          element={
+            <ModuleRoute module="calcPro">
+              <CalculatorProScreen />
             </ModuleRoute>
           }
         />

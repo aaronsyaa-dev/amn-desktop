@@ -186,7 +186,8 @@ const MODULE_DATA = {
   personalGoals: [],
   diary: [],
   pomodoro: [],
-  qr: [],
+  qr: ['qrCodes'],
+  calcPro: ['calcTapes'],
   converters: [],
   templates: ['templates'],
   automations: ['automations'],
@@ -281,6 +282,7 @@ const MODULE_FILES = {
   diary: ['src/screens/DiaryScreen.tsx'],
   pomodoro: ['src/screens/PomodoroScreen.tsx'],
   qr: ['src/screens/QrScreen.tsx'],
+  calcPro: ['src/screens/CalculatorProScreen.tsx'],
   converters: ['src/screens/ConvertersScreen.tsx'],
   templates: ['src/screens/TemplatesScreen.tsx'],
   automations: ['src/screens/AutomationsScreen.tsx'],
@@ -309,6 +311,16 @@ const ECRITURES_LOCALES_ADMISES = {
       'l’est. La déclarer ici plutôt que d’exempter le fichier : le nombre est compté, donc ' +
       'une seconde écriture — un jour où l’on voudrait y ranger autre chose — fera échouer ' +
       'le contrôle tant que personne n’aura dit pourquoi.',
+  },
+  'src/screens/DataPortScreen.tsx': {
+    nombre: 1,
+    raison:
+      'la liste des exports RÉCENTS, et rien d’autre. Il n’existe aucun journal ' +
+      'd’export dans le modèle, et en créer un côté serveur pour une carte de coin ' +
+      'd’écran serait disproportionné. L’écran dit lui-même que cette liste est ' +
+      'celle de ce poste, donc personne ne peut croire qu’un collègue verrait la ' +
+      'même. Une seconde écriture ici ferait échouer le contrôle — et elle le ' +
+      'devrait : l’import, lui, écrit dans des collections synchronisées.',
   },
   'src/state/useNotes.ts': {
     nombre: 1,

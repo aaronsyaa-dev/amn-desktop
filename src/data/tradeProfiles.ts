@@ -182,6 +182,7 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'shifts', label: 'Planning d’équipe', hint: 'Qui est là quel jour, semaine par semaine' },
   { key: 'checklists', label: 'Contrôles qualité', hint: 'Des listes à cocher, et la trace de chaque passage' },
   { key: 'interventions', label: 'Interventions', hint: 'Avant, pendant, après — le compte rendu d’un déplacement' },
+  { key: 'calcPro', label: 'Calculatrice pro', hint: 'Un ruban de caisse qu’on relit avant de chiffrer' },
   { key: 'assembly', label: 'Suivi de montage', hint: 'Chaque chantier, étape par étape' },
   { key: 'aftersales', label: 'SAV', hint: 'Les demandes après vente, de l’ouverture à la résolution' },
   { key: 'bom', label: 'Composition & coût de revient', hint: 'Ce qui compose un produit, et ce qu’il coûte' },
