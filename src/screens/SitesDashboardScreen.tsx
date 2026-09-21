@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { BandeDesSites } from '../components/tour/BandeDesSites';
 import {
   Check,
   ChevronDown,
@@ -160,6 +161,16 @@ export function SitesDashboardScreen() {
       />
 
       <ConnectionBanner status={connectionStatus} />
+
+      {/*
+        ═══ L'OBJET DOMINANT (module interne 30b) : le nuage en bande ═══
+
+        Une seule dimension — le temps depuis le dernier battement — parce que
+        c'est celle dont le produit DÉRIVE l'état d'un site. L'état cesse
+        d'être une étiquette collée au site : il devient une position par
+        rapport à un trait, et l'amas se voit d'un coup d'œil.
+      */}
+      <BandeDesSites />
 
       {sites.length > 0 && (
         <div className="flex flex-wrap items-center gap-2.5">

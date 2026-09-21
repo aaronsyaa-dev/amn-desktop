@@ -244,7 +244,7 @@ export function AxeDuSilence({ sitesMuets }: { sitesMuets: number }) {
               donc l'une contre l'autre, sur la même échelle.
             */}
             <span className={`ml-auto flex items-end gap-2.5 ${data.totals.records7d + data.totals.previous7d === 0 ? 'hidden' : ''}`} style={{ height: 61 }} role="img" aria-label={tendance?.sentence ?? ''}>
-              {([['precedente', data.totals.previous7d, '#3a3a3a'], ['courante', data.totals.records7d, 'var(--color-text-body)']] as const).map(([cle, valeur, encre]) => (
+              {([['precedente', data.totals.previous7d, 'var(--color-border-strong)'], ['courante', data.totals.records7d, 'var(--color-text-body)']] as const).map(([cle, valeur, encre]) => (
                 <span key={cle} className="flex flex-col items-center gap-1.5">
                   <span style={{ width: 22, height: Math.max(2, (valeur / maxFenetre) * 56), background: encre }} />
                   <span className="font-mono text-[8.5px] uppercase tracking-[0.06em] text-text-muted">{t(cle === 'precedente' ? 'tour.silence.fenetrePrecedente' : 'tour.silence.fenetreCourante')}</span>

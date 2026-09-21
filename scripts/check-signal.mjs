@@ -115,6 +115,7 @@ const ECRANS_INTERNE = [
   ['Atelier', '#/tour/generateur'],
   /* Parc — la famille la plus technique. */
   ['Parc · Supervision', '#/supervision'],
+  ['Sites', '#/sites'],
 ];
 
 const ECRANS = [
