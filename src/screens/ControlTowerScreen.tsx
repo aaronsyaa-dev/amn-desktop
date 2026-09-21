@@ -25,6 +25,7 @@ import { bridge } from '../lib/bridge';
 import { relativeTime } from '../lib/time';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { TourExceptions } from '../components/tour/TourExceptions';
+import { AxeDuSilence } from '../components/tour/AxeDuSilence';
 import { OrgBanner } from '../components/org-rail/OrgBanner';
 import { useParcInsights } from '../state/parcInsights';
 import { computeTrend } from '../lib/trend';
@@ -181,6 +182,16 @@ export function ControlTowerScreen() {
             </>
           }
         />
+      </StaggerItem>
+
+      {/*
+        L'AXE DU SILENCE (module interne 29a) — l'objet dominant de la Vue
+        d'ensemble. Les espaces clients posés sur la seule grandeur continue
+        que le produit mesure : le temps depuis leur dernière écriture. Une
+        liste triée donnerait le même ordre ; l'axe donne les distances.
+      */}
+      <StaggerItem>
+        <AxeDuSilence sitesMuets={parc.offline} />
       </StaggerItem>
 
       {/* LES EXCEPTIONS D'ABORD (Bloc 7) : ce qui attend une décision, en un geste chacun, avant le parc. */}
