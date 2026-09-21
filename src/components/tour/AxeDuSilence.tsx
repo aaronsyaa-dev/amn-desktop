@@ -38,6 +38,17 @@ const AXE_H = 206;
 /** Une étiquette au-dessus de la ligne, la suivante en dessous : neuf noms sur une seule rangée se recouvriraient. */
 const TIGE_HAUTE = 44;
 const TIGE_BASSE = 38;
+/**
+ * L'ÉCART MINIMAL ENTRE DEUX ÉTIQUETTES, en pour cent de la règle.
+ *
+ * L'amas de gauche est l'information même de cet axe : trois espaces qui
+ * écrivent à la minute tombent tous entre 0 et 0,5 %. Leurs POINTS y restent —
+ * c'est la vérité de la mesure — mais leurs étiquettes ne peuvent pas s'y
+ * empiler : elles se poussent vers la droite et une amorce les relie à leur
+ * point. Déplacer le point aurait menti ; déplacer l'étiquette ne ment pas,
+ * parce que l'amorce dit où le point est vraiment.
+ */
+const ECART_ETIQUETTES_MAX = 20;
 const JOUR_MS = 86_400_000;
 
 const joursDeSilence = (iso: string, now: number) => Math.max(0, (now - Date.parse(iso)) / JOUR_MS);
@@ -69,6 +80,27 @@ export function AxeDuSilence({ sitesMuets }: { sitesMuets: number }) {
   if (!data || !lecture) return null;
 
   const { surAxe, jamais, ambre } = lecture;
+  /*
+    LE PLACEMENT DES ÉTIQUETTES. Deux rangées (dessus / dessous), et dans
+    chacune un balayage de gauche à droite qui repousse une étiquette trop
+    proche de la précédente. Le POINT garde son abscisse ; seule l'étiquette
+    se décale, et l'amorce dit de combien.
+  */
+  const places = (() => {
+    /* L'écart se resserre quand il y a du monde : quatre étiquettes tiennent à vingt pour cent, huit non. */
+    const parRangee = Math.ceil(surAxe.length / 2);
+    const ecart = Math.min(ECART_ETIQUETTES_MAX, 96 / Math.max(1, parRangee));
+    const dernier = { dessus: -Infinity, dessous: -Infinity };
+    return surAxe.map((o, i) => {
+      const jours = joursDeSilence(o.lastActivityAt, now);
+      const xPoint = pct(jours);
+      const dessus = i % 2 === 0;
+      const cle = dessus ? 'dessus' : 'dessous';
+      const xEtiquette = Math.min(100, Math.max(xPoint, dernier[cle] + ecart));
+      dernier[cle] = xEtiquette;
+      return { org: o, jours, xPoint, xEtiquette, dessus, ambre: ambre?.id === o.id };
+    });
+  })();
   /* Les deux fenêtres se lisent l'une contre l'autre : une seule échelle, sinon la comparaison ne veut rien dire. */
   const maxFenetre = Math.max(1, data.totals.records7d, data.totals.previous7d);
 
@@ -92,36 +124,45 @@ export function AxeDuSilence({ sitesMuets }: { sitesMuets: number }) {
                 {t('tour.silence.seuilRepere', { n: SILENCE_JOURS })}
               </span>
 
-              {surAxe.map((o, i) => {
-                const jours = joursDeSilence(o.lastActivityAt, now);
-                const dessus = i % 2 === 0;
-                const estAmbre = ambre?.id === o.id;
-                const groupe = estAmbre ? 'la-plus-silencieuse' : undefined;
+              {/* LES AMORCES, d'abord : chaque étiquette déplacée rejoint son point à son abscisse réelle. */}
+              <svg viewBox={`0 0 100 ${AXE_H}`} preserveAspectRatio="none" className="absolute inset-0 block h-full w-full" aria-hidden>
+                {places.map((p) => (
+                  <path
+                    key={`amorce-${p.org.id}`}
+                    d={`M${p.xEtiquette} ${p.dessus ? AXE_H / 2 - TIGE_HAUTE : AXE_H / 2 + TIGE_BASSE} L${p.xEtiquette} ${p.dessus ? AXE_H / 2 - TIGE_HAUTE / 2 : AXE_H / 2 + TIGE_BASSE / 2} L${p.xPoint} ${AXE_H / 2}`}
+                    fill="none"
+                    stroke={p.ambre ? 'var(--color-signal)' : 'var(--color-border-strong)'}
+                    strokeWidth={1}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                ))}
+              </svg>
+
+              {places.map((p) => {
+                const groupe = p.ambre ? 'la-plus-silencieuse' : undefined;
+                /* Aux deux bords, l'étiquette s'aligne au lieu de se centrer : une boîte centrée à 0 % sort de la carte. */
+                const alignement = p.xEtiquette <= 6 ? 'none' : p.xEtiquette >= 94 ? 'translateX(-100%)' : 'translateX(-50%)';
                 return (
-                  <span
-                    key={o.id}
-                    data-signal-groupe={groupe}
-                    data-org={o.id}
-                    className={`absolute flex -translate-x-1/2 items-center ${dessus ? 'top-0 flex-col' : 'bottom-0 flex-col-reverse'}`}
-                    style={{ left: `${pct(jours)}%` }}
-                  >
+                  <React.Fragment key={p.org.id}>
                     <span
                       data-signal-groupe={groupe}
-                      className={`whitespace-nowrap ${estAmbre ? `bg-signal px-2.5 py-[7px] text-signal-ink ${halo}` : 'border border-border-sheet bg-surface-hover px-[9px] py-[5px]'}`}
+                      data-org={p.org.id}
+                      className={`absolute whitespace-nowrap ${p.ambre ? `bg-signal px-2.5 py-[7px] text-signal-ink ${halo}` : 'border border-border-sheet bg-surface-hover px-[9px] py-[5px]'}`}
+                      style={{ left: `${p.xEtiquette}%`, transform: alignement, [p.dessus ? 'top' : 'bottom']: 0 }}
                     >
-                      <span data-signal-groupe={groupe} className={`block font-semibold ${estAmbre ? 'text-[13px]' : 'text-[11.5px] text-text-body'}`}>{o.name}</span>
-                      <span data-signal-groupe={groupe} className={`mt-0.5 block font-mono text-[9px] uppercase tracking-[0.06em] ${estAmbre ? 'opacity-80' : 'text-text-muted'}`}>
-                        {jours >= AXE_JOURS ? t('tour.silence.plusDe', { n: AXE_JOURS }) : relativeTime(o.lastActivityAt)}
+                      <span data-signal-groupe={groupe} title={p.org.name} className={`block max-w-[15ch] truncate font-semibold ${p.ambre ? 'text-[13px]' : 'text-[11.5px] text-text-body'}`}>{p.org.name}</span>
+                      <span data-signal-groupe={groupe} className={`mt-0.5 block font-mono text-[9px] uppercase tracking-[0.06em] ${p.ambre ? 'opacity-80' : 'text-text-muted'}`}>
+                        {p.jours >= AXE_JOURS ? t('tour.silence.plusDe', { n: AXE_JOURS }) : relativeTime(p.org.lastActivityAt)}
                       </span>
                     </span>
-                    <span data-signal-groupe={groupe} className={`w-px ${estAmbre ? 'bg-signal' : 'bg-border-strong'}`} style={{ height: dessus ? TIGE_HAUTE : TIGE_BASSE }} aria-hidden />
+                    {/* Le point, lui, ne bouge pas : il est à son abscisse, et c'est la seule chose que l'axe promet. */}
                     <span
                       data-signal-groupe={groupe}
                       aria-hidden
-                      className={`rounded-full ${estAmbre ? 'bg-signal' : 'bg-[#4a4a48]'}`}
-                      style={{ width: estAmbre ? 11 : 8, height: estAmbre ? 11 : 8, marginBottom: dessus ? -5 : undefined, marginTop: dessus ? undefined : -5, boxShadow: estAmbre ? '0 0 22px -2px var(--color-signal-glow)' : undefined }}
+                      className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full ${p.ambre ? 'bg-signal' : 'bg-[#4a4a48]'}`}
+                      style={{ left: `${p.xPoint}%`, top: '50%', width: p.ambre ? 11 : 8, height: p.ambre ? 11 : 8, boxShadow: p.ambre ? '0 0 22px -2px var(--color-signal-glow)' : undefined }}
                     />
-                  </span>
+                  </React.Fragment>
                 );
               })}
             </div>

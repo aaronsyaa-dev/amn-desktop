@@ -118,7 +118,11 @@ export function OrganizationsScreen() {
   /* L'organisation du faisceau : celle du dossier ouvert, sinon la plus peuplée de la page. */
   const faisceau = useMemo(() => {
     if (parc.rows.length === 0) return null;
-    return parc.rows.find((r) => r.id === dossier?.organization.id) ?? [...parc.rows].sort((a, b) => b.userCount - a.userCount)[0];
+    /* Jamais AMN DevSec par défaut : cet écran parle des CLIENTES, et le faisceau d'une organisation interne n'apprend rien sur le parc. */
+    const clientes = parc.rows.filter((r) => r.plan !== 'internal');
+    return parc.rows.find((r) => r.id === dossier?.organization.id)
+      ?? [...clientes].sort((a, b) => b.userCount - a.userCount || a.name.localeCompare(b.name, 'fr'))[0]
+      ?? null;
   }, [parc.rows, dossier]);
 
   return (

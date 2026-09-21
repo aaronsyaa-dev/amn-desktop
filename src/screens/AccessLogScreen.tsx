@@ -116,7 +116,7 @@ export function AccessLogScreen() {
       */}
       {entries !== null && entries.length > 0 && (
         <StaggerItem>
-          <CouloirsDAcces entrees={rows} />
+          <CouloirsDAcces entrees={rows} organisations={orgFilter === 'all' ? organizations : organizations.filter((o) => o.id === orgFilter)} />
         </StaggerItem>
       )}
 

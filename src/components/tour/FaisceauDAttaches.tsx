@@ -41,6 +41,8 @@ interface Attache {
   n: number;
   titre: string;
   detail: string;
+  /** Vrai quand le compte n'est pas encore connu : on écrit un tiret, jamais un zéro. */
+  inconnu?: boolean;
 }
 
 export function FaisceauDAttaches({ org, onOuvrirDossier }: { org: ParcOrganization; onOuvrirDossier: (id: string) => void }) {
@@ -75,6 +77,7 @@ export function FaisceauDAttaches({ org, onOuvrirDossier }: { org: ParcOrganizat
     {
       cle: 'sessions',
       n: sessions ?? 0,
+      inconnu: sessions === null,
       titre: 'Sessions ouvertes',
       detail: sessions === null
         ? 'Le relevé du parc n’est pas encore arrivé.'
@@ -83,7 +86,7 @@ export function FaisceauDAttaches({ org, onOuvrirDossier }: { org: ParcOrganizat
           : 'Connectées à l’instant. La coupure est immédiate, et elle se voit côté cliente.',
     },
     { cle: 'comptes', n: pulse?.users.total ?? org.userCount, titre: 'Comptes de l’équipe', detail: 'Chacun perd l’accès à l’instant. Rien n’est supprimé : la suspension coupe, elle ne détruit pas.' },
-    { cle: 'sites', n: pulse?.sites.total ?? 0, titre: 'Sites supervisés', detail: 'Le battement de cœur s’arrête. Les incidents déjà ouverts, eux, restent ouverts.' },
+    { cle: 'sites', n: pulse?.sites.total ?? 0, inconnu: pulse === null, titre: 'Sites supervisés', detail: 'Le battement de cœur s’arrête. Les incidents déjà ouverts, eux, restent ouverts.' },
     { cle: 'rondes', n: rondes, titre: 'Rondes de la Garde', detail: 'Le Capitaine les met en pause sur cette organisation ; il ne les supprime pas.' },
   ];
 
@@ -105,15 +108,17 @@ export function FaisceauDAttaches({ org, onOuvrirDossier }: { org: ParcOrganizat
             const groupe = enAmbre ? 'sessions-ouvertes' : undefined;
             return (
               <li key={a.cle} data-signal-groupe={groupe} className="grid grid-cols-[46px_minmax(0,1fr)_72px] items-center gap-3.5 border-b border-border py-3 last:border-b-0" data-attache={a.cle}>
+                {/* Un compte inconnu se dit par un tiret : « 0 » affirmerait qu'on a compté. */}
                 <span data-signal-groupe={groupe} className={`font-mono text-[17px] tabular-nums tracking-[-0.02em] ${enAmbre ? `font-bold text-signal ${halo}` : 'font-semibold text-text-primary'}`}>
-                  {a.n}
+                  {a.inconnu ? '—' : a.n}
                 </span>
                 <span className="min-w-0">
                   <span data-signal-groupe={groupe} className={`block text-[13.5px] font-semibold ${enAmbre ? 'text-text-primary' : 'text-text-body'}`}>{a.titre}</span>
                   <span className="mt-[3px] block text-[12px] text-text-muted [text-wrap:pretty]">{a.detail}</span>
                 </span>
-                <span data-signal-groupe={groupe} className={`text-right font-mono text-[10px] uppercase tracking-[0.1em] ${enAmbre ? 'font-bold text-signal' : 'text-text-muted'}`}>
-                  {a.n > 0 ? 'coupé' : '—'}
+                {/* La hiérarchie de l'ambre passe aussi par la casse : seule la ligne qui décide crie. */}
+                <span data-signal-groupe={groupe} className={`text-right font-mono text-[10px] tracking-[0.1em] ${enAmbre ? 'font-bold uppercase text-signal' : 'text-text-muted'}`}>
+                  {a.inconnu ? '—' : a.n > 0 ? 'coupé' : '—'}
                 </span>
               </li>
             );

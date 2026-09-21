@@ -35,12 +35,19 @@ const COULOIR_H = 26;
 interface Sejour { id: number; debut: number; fin: number; acteur: string }
 interface Couloir { orgId: string; orgNom: string; sejours: Sejour[]; suspensions: { id: number; at: number; acteur: string }[] }
 
-export function CouloirsDAcces({ entrees }: { entrees: OrgAccessEntry[] }) {
+/*
+  LES COULOIRS VIENNENT DE LA LISTE DES ORGANISATIONS, PAS DU JOURNAL.
+
+  Un couloir par organisation : c'est le VIDE qui prouve quelque chose. Les
+  construire à partir des lignes du journal ne donnerait que les couloirs
+  pleins — c'est-à-dire exactement ceux qui ne démontrent rien.
+*/
+export function CouloirsDAcces({ entrees, organisations }: { entrees: OrgAccessEntry[]; organisations: { id: string; name: string }[] }) {
   const maintenant = Date.now();
   const debutFenetre = maintenant - FENETRE_JOURS * JOUR_MS;
 
   const couloirs = useMemo(() => {
-    const par = new Map<string, Couloir>();
+    const par = new Map<string, Couloir>(organisations.map((o) => [o.id, { orgId: o.id, orgNom: o.name, sejours: [], suspensions: [] }]));
     /* Du plus ancien au plus récent : un séjour se ferme par le `leave` qui le SUIT. */
     const chrono = [...entrees].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     const ouverts = new Map<string, Sejour>();
@@ -68,7 +75,7 @@ export function CouloirsDAcces({ entrees }: { entrees: OrgAccessEntry[] }) {
     }
     /* Les couloirs qui ont quelque chose d'abord : le vide est la règle, il se lit dessous. */
     return [...par.values()].sort((a, b) => (b.sejours.length + b.suspensions.length) - (a.sejours.length + a.suspensions.length) || a.orgNom.localeCompare(b.orgNom, 'fr'));
-  }, [entrees, maintenant, debutFenetre]);
+  }, [entrees, organisations, maintenant, debutFenetre]);
 
   /* L'ambre : la suspension la plus récente de la fenêtre. Aucune suspension, aucun ambre. */
   const suspensionAmbre = useMemo(() => {
@@ -138,7 +145,9 @@ export function CouloirsDAcces({ entrees }: { entrees: OrgAccessEntry[] }) {
         <p className="text-[13.5px] leading-relaxed text-text-secondary [text-wrap:pretty]">
           {vides === couloirs.length
             ? 'Aucun opérateur n’est entré dans un dossier client sur les sept derniers jours. C’est ce que cet écran doit pouvoir montrer : des couloirs vides.'
-            : <>{vides} couloir{vides > 1 ? 's' : ''} sur {couloirs.length} {vides > 1 ? 'sont restés vides' : 'est resté vide'} : personne n’est entré chez ces clientes cette semaine. C’est la règle, et c’est ce qu’on montre quand on nous demande qui a vu quoi.</>}
+            : vides === 0
+              ? <>Aucun couloir n’est resté vide cette semaine : un opérateur est entré chez chacune des {couloirs.length} clientes. C’est rare, et c’est justement ce qu’il faut pouvoir voir.</>
+              : <>{vides} couloir{vides > 1 ? 's' : ''} sur {couloirs.length} {vides > 1 ? 'sont restés vides' : 'est resté vide'} : personne n’est entré chez ces clientes cette semaine. C’est la règle, et c’est ce qu’on montre quand on nous demande qui a vu quoi.</>}
           {suspensionAmbre && <> La barre ambre chez {suspensionAmbre.orgNom} n’est pas une visite : c’est une suspension, un instant qui change un état.</>}
         </p>
         <p className="mt-2 text-[12.5px] leading-relaxed text-text-muted [text-wrap:pretty]">
