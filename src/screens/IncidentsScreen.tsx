@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { bridge } from '../lib/bridge';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { NappeDesIncidents } from '../components/tour/NappeDesIncidents';
 import { ParcSocPanel } from '../components/tour/ParcSocPanel';
 import { serieFlux } from '../lib/serieVitale';
 import { EmptyState } from '../components/EmptyState';
@@ -266,6 +267,18 @@ export function IncidentsScreen() {
           ))}
         </div>
       </ScreenHeader>
+
+      {/*
+        ═══ L'OBJET DOMINANT (module interne 30a) : la nappe ═══
+
+        Un compteur dit « 204 ouverts ». La nappe dit quand ça a gonflé, ce qui
+        a gonflé, et que ça n'est pas redescendu. La couche critique est posée
+        contre l'axe pour n'être jamais déformée par les couches au-dessus.
+      */}
+      <div className="mb-6">
+        <NappeDesIncidents />
+      </div>
+
       {/*
         La file du parc (Bloc 6) : toutes les organisations, avant la file de
         celle-ci. Elle vient APRÈS l'en-tête, dans le flux de la page : montée
