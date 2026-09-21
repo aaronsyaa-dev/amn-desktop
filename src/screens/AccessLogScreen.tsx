@@ -4,6 +4,7 @@ import { History, RefreshCw } from 'lucide-react';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { useOrgContext } from '../state/OrgContextContext';
 import { ACCESS_VERB } from './ControlTowerScreen';
+import { CouloirsDAcces } from '../components/tour/CouloirsDAcces';
 import { bridge } from '../lib/bridge';
 import { cleanErrorMessage } from '../lib/errorMessage';
 import { relativeTime } from '../lib/time';
@@ -104,6 +105,20 @@ export function AccessLogScreen() {
           }
         />
       </StaggerItem>
+
+      {/*
+        ═══ L'OBJET DOMINANT (module interne 29c) : les séjours ═══
+
+        Ce que cet écran doit pouvoir montrer à une cliente qui demande « qui a
+        vu mes données » n'est pas une liste de lignes : c'est un couloir vide.
+        Les couloirs pleins se comptent sur une main, les vides sont la règle,
+        et la démonstration se fait sans lire.
+      */}
+      {entries !== null && entries.length > 0 && (
+        <StaggerItem>
+          <CouloirsDAcces entrees={rows} />
+        </StaggerItem>
+      )}
 
       {error && (
         <StaggerItem>

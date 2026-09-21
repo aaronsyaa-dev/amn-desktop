@@ -110,6 +110,9 @@ const ECRANS_INTERNE = [
   ['Calendrier', '#/garde/calendrier'],
   /* Supervision — le parc vu d'en haut. */
   ['Vue d\'ensemble', '#/tour'],
+  ['Organisations', '#/tour/organisations'],
+  ['Journal d\'accès', '#/tour/journal'],
+  ['Atelier', '#/tour/generateur'],
 ];
 
 const ECRANS = [
