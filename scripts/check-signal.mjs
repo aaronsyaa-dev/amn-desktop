@@ -123,6 +123,7 @@ const ECRANS_INTERNE = [
   ['Rapport client enrichi', '#/rapport-client'],
   ['Scanner', '#/scanner'],
   ['Comply', '#/comply'],
+  ['SSL Monitor', '#/ssl'],
 ];
 
 const ECRANS = [

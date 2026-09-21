@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ChaineDesCertificats } from '../components/ssl/ChaineDesCertificats';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Lock, RefreshCw, ShieldCheck } from 'lucide-react';
@@ -134,6 +135,13 @@ export function SslScreen() {
           }
         />
       </StaggerItem>
+
+      {/* L'objet de l'écran : où la couverture s'arrête, et par quel maillon. */}
+      {sorted.length > 0 && (
+        <StaggerItem>
+          <ChaineDesCertificats statuses={sorted} />
+        </StaggerItem>
+      )}
 
       {error && (
         <StaggerItem>
