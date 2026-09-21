@@ -126,6 +126,7 @@ const ECRANS_INTERNE = [
   ['SSL Monitor', '#/ssl'],
   ['Décisions', '#/decisions'],
   ['Connaissances', '#/knowledge'],
+  ['Équipe', '#/team'],
 ];
 
 const ECRANS = [
