@@ -122,6 +122,7 @@ const ECRANS_INTERNE = [
   ['Alertes personnalisées', '#/alertes-personnalisees'],
   ['Rapport client enrichi', '#/rapport-client'],
   ['Scanner', '#/scanner'],
+  ['Comply', '#/comply'],
 ];
 
 const ECRANS = [

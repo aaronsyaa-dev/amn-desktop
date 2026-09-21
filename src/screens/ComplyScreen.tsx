@@ -5,6 +5,7 @@ import { AlertTriangle, BadgeCheck, Clock, Loader2 } from 'lucide-react';
 import { bridge } from '../lib/bridge';
 import { useSync } from '../state/SyncContext';
 import { ComplyDetail } from '../components/comply/ComplyDetail';
+import { SceauDeConformite } from '../components/comply/SceauDeConformite';
 import { ScheduleControl } from '../components/ScheduleControl';
 import { scoreColor } from '../lib/scanSeverity';
 import { relativeTime } from '../lib/time';
@@ -43,6 +44,18 @@ export function ComplyScreen() {
   useEffect(() => {
     if (configured) void refreshHistory();
   }, [configured, refreshHistory]);
+
+  /*
+    LE DERNIER CONTRÔLE S'OUVRE SEUL — même raison qu'au Scanner : l'objet de
+    l'écran est le sceau, et il n'était jamais là à l'ouverture. La sélection ne
+    se pose qu'une fois : le choix de l'opérateur n'est pas écrasé.
+  */
+  useEffect(() => {
+    if (selected || busy || history.length === 0) return;
+    const dernier = history.find((c) => c.status === 'done');
+    if (dernier) void openCheck(dernier);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history]);
 
   /*
     Le catalogue vient du SERVEUR, jamais d'une liste écrite ici. C'est lui qui
@@ -252,6 +265,9 @@ export function ComplyScreen() {
           </div>
         </section>
       )}
+
+      {/* L'objet de l'écran : une liste close, et ce qui l'empêche de se fermer. */}
+      <SceauDeConformite check={selected} />
 
       {selected && (
         <>
