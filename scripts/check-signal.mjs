@@ -116,6 +116,7 @@ const ECRANS_INTERNE = [
   /* Parc — la famille la plus technique. */
   ['Parc · Supervision', '#/supervision'],
   ['Sites', '#/sites'],
+  ['Trackers', '#/tracker'],
 ];
 
 const ECRANS = [
