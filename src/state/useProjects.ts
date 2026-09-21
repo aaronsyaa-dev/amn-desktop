@@ -72,6 +72,14 @@ export function useProjects() {
           priority: oneOf(row.priority, PROJECT_PRIORITIES, 'normal'),
           nextAction: row.nextAction ?? '',
           deadline: row.deadline ?? '',
+          /* L'estimation en journées. Un nombre ou rien : une chaîne vide
+             venue d'un champ de saisie ne doit pas devenir 0, sinon un
+             projet sans estimation se met à porter une courbe qui part de
+             zéro et n'a nulle part où descendre. */
+          budgetDays:
+            typeof row.budgetDays === 'number' && Number.isFinite(row.budgetDays) && row.budgetDays > 0
+              ? row.budgetDays
+              : undefined,
           link: row.link ?? '',
           notes: row.notes ?? '',
           extra: typeof row.extra === 'object' && row.extra ? row.extra : {},

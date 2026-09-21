@@ -115,6 +115,10 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'announcements',
   'polls',
   'leaves',
+  'calls',
+  'qrCodes',
+  'calcTapes',
+  'leaveQuotas',
   'prospects',
   'paymentReminders',
   'subscriptions',
@@ -127,6 +131,7 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'suppliers',
   'shifts',
   'checklists',
+  'interventions',
   'checkRuns',
   'assemblies',
   'tickets',
@@ -331,6 +336,15 @@ interface SyncContextValue {
   enAttenteEnvoi: number;
   /** La même chose en une phrase, ou `null` quand il n'y a rien à dire. */
   resumeEnvoi: string | null;
+  /**
+   * LA FILE ELLE-MÊME, en lecture seule et dans l'ordre où elle repartira.
+   *
+   * `enAttenteEnvoi` dit COMBIEN ; l'état transverse `27e` doit montrer QUOI,
+   * wagon par wagon, avec l'heure de chaque geste. Un compteur ne permet pas
+   * de reconnaître son propre travail dans une file — et c'est exactement ce
+   * qu'on cherche avant de fermer l'application pendant une coupure.
+   */
+  fileEnvoi: readonly { collection: string; id: string; geste: string; pose: string }[];
   /**
    * Les écritures qui ne partiront jamais — refusées par le serveur, ou
    * abandonnées après trop d'essais. C'est le seul cas où l'utilisateur DOIT
@@ -882,6 +896,14 @@ export function SyncProvider({
       upsert,
       enAttenteEnvoi: enAttente,
       resumeEnvoi: resumeFile(fileRef.current),
+      /* Une COPIE, et des champs choisis : un écran n'a aucune raison de voir
+         les données en attente, seulement leur nature et leur heure. */
+      fileEnvoi: fileRef.current.map((e) => ({
+        collection: e.collection,
+        id: e.id,
+        geste: e.geste,
+        pose: e.pose,
+      })),
       abandonsEnvoi: abandons,
       oublierAbandons,
       remove,

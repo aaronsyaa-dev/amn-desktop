@@ -21,7 +21,16 @@ export const SEVERITY_LABEL: Record<ScanSeverity, string> = {
 
 /** Tailwind classes for a severity chip (background + text + border). */
 export const SEVERITY_CHIP: Record<ScanSeverity, string> = {
-  critical: 'bg-danger text-white border-danger',
+  /*
+    ENCRE SOMBRE SUR LE ROUGE, PAS DU BLANC. Le blanc sur `--color-danger`
+    mesure 3,46:1 — sous le seuil WCAG AA de 4,5, et à 9 px en gras, c'est-à-dire
+    à la taille la moins lisible de l'écran. `check:contraste` l'a relevé sur
+    `#/scanner`, `#/comply` et le détail d'un rapport dès que le bac a porté une
+    vraie trouvaille critique : le défaut existait, il n'avait jamais eu de
+    donnée pour se montrer. L'encre du fond sur le même rouge mesure 5,86:1, et
+    le rouge reste réservé au critique.
+  */
+  critical: 'bg-danger text-bg border-danger',
   high: 'bg-warning/20 text-warning border-warning/40',
   medium: 'bg-warning/10 text-warning/90 border-warning/25',
   low: 'bg-success/10 text-success border-success/30',

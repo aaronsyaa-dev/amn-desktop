@@ -1,672 +1,673 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { isModuleEnabled } from '../data/spaces';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { CalendarDays, CheckSquare, Contact, FileText, Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useClients } from '../state/useClients';
 import { useCollection } from '../state/SyncContext';
 import { appointmentEnd, useAppointments, type Appointment } from '../state/useAppointments';
-import { capitaliserPhrase, dayKey, longDayLabel, relativeToNow, timeLabel } from '../lib/calendar';
-import { AttentionPanel } from '../components/AttentionPanel';
+import { capitaliserPhrase, longDayLabel, dayKey } from '../lib/calendar';
 import { useAttention } from '../state/useAttention';
+import type { AttentionItem } from '../lib/attention';
 import { Majordome } from './Majordome';
 import { homeWelcome, parcSerein } from '../lib/homeGreetings';
 import { useLangue } from '../i18n';
 import type { SharedTaskStatus } from '../shared/api';
-import { useInvoices, isOverdue, netDueCents, isoDay } from '../state/useInvoices';
-import { formatCentsCompact } from '../lib/money';
-import { serieFlux, type SerieVitale } from '../lib/serieVitale';
-import { useTimeTracking } from '../state/useTimeTracking';
-import { formatDuration } from '../state/timeEngine';
+import { useInvoices, isOverdue, isoDay } from '../state/useInvoices';
+import { EcranVide } from '../components/EtatEcran';
+import { PremierJour } from '../components/etats/EtatsTransverses';
 
 /**
- * Accueil de l'édition Business — direction « Le poste habité ».
+ * ACCUEIL — L'AXE DE LA JOURNÉE (système de design, `12a`)
+ * ═══════════════════════════════════════════════════════
  *
- * Un seul objet domine l'écran : le prochain rendez-vous, en ambre plein.
- * Tout le reste descend en contraste — deux registres en ombre longue, pas de
- * deuxième couleur qui viendrait disputer l'attention. Le rouge est réservé au
- * strictement critique (une échéance dépassée), jamais décoratif.
+ * L'objet dominant de cet écran est un AXE TEMPOREL PROPORTIONNEL, et c'est
+ * la seule chose qui compte dans sa composition : chaque rendez-vous y occupe
+ * sa vraie place et sa vraie durée, et l'heure qu'il est se lit à la position
+ * d'un trait, pas dans un libellé.
  *
- * Palette et tuilage sont propres à cet écran, en valeurs codées en dur ici :
- * les jetons globaux (`--color-*` dans `index.css`) restent ceux de toute
- * l'application, et cette direction n'a été validée que pour l'Accueil.
+ * Ce que l'instrument remplace. L'écran posait auparavant un cadran de
+ * progression (« 62 % de la journée ») à côté d'une carte « Maintenant ». Les
+ * deux disaient la même chose deux fois, et aucune des deux ne répondait à la
+ * question qu'on se pose en ouvrant l'Accueil : est-ce que mon après-midi est
+ * plein ou vide, et qu'est-ce qui reste. Un pourcentage ne montre pas un trou
+ * de deux heures entre 14 h et 16 h ; un axe le montre sans un mot.
+ *
+ * LES TROIS RÈGLES DE GÉOMÉTRIE, et pourquoi elles ne sont pas négociables :
+ *
+ *   1. L'axe se resserre sur la JOURNÉE OUVRÉE (08 → 20), pas sur 24 h. Sur
+ *      24 h, un créneau de 45 min fait 3 % de la largeur — illisible, donc
+ *      inutile.
+ *   2. Les positions se DÉDUISENT des horaires (voir `place()`), jamais
+ *      posées à la main. Un bloc dont la position est écrite en dur ment dès
+ *      que la donnée change, et c'est le défaut le plus grave qu'un
+ *      instrument puisse avoir.
+ *   3. Les graduations sont en POSITIONS ABSOLUES calculées (0 / 16,67 /
+ *      33,33 / 50 / 66,67 / 83,33 / 100 %), jamais en cellules `flex` : en
+ *      `flex`, l'erreur d'arrondi s'accumule d'une cellule à l'autre et la
+ *      graduation « 14 » finit décalée du trait de 14 h.
+ *
+ * L'AMBRE. Un seul bloc au maximum, et ce n'est PAS le prochain rendez-vous
+ * par défaut : c'est celui qui porte un enjeu non tranché — le rendez-vous
+ * d'un client dont un devis attend une réponse, ou dont une facture est en
+ * retard. Si aucun rendez-vous du jour ne porte d'enjeu, l'écran n'a pas
+ * d'ambre, et c'est normal. Le relevé du prochain rendez-vous, sous l'axe,
+ * reste en encre claire même quand il s'agit du même rendez-vous : c'est la
+ * même donnée rappelée, pas un deuxième signal.
  */
 
-/*
-  LES ENCRES VIENNENT DES JETONS, ELLES NE SONT PLUS RECOPIÉES ICI.
+/** L'axe couvre la journée ouvrée. Douze heures, douze colonnes égales. */
+const AXE_DEBUT = 8;
+const AXE_FIN = 20;
+const AXE_HEURES = AXE_FIN - AXE_DEBUT;
 
-  Les trois valeurs de texte étaient écrites en dur, en copie des jetons
-  globaux. Deux étaient exactes ; la troisième, `#6b6b68`, était la sourdine
-  du paquet de design — précisément la valeur que `index.css` REFUSE depuis
-  deux relevés, parce qu'elle passe sous 4,5:1 (voir l'écart assumé documenté
-  là-bas). L'Accueil rendait donc ses surtitres à 3,35–3,56:1 pendant que le
-  reste de l'application tenait 5,36 au pire : la copie avait dérivé sans que
-  rien ne puisse le dire, puisqu'une constante locale ne suit aucun jeton.
+/** Les graduations : toutes les deux heures, aux positions calculées. */
+const GRADUATIONS = Array.from({ length: AXE_HEURES / 2 + 1 }, (_, i) => {
+  const heure = AXE_DEBUT + i * 2;
+  return { heure, pct: ((heure - AXE_DEBUT) / AXE_HEURES) * 100 };
+});
 
-  Une copie de jeton n'est pas une décision de design, c'est une occasion de
-  dérive. Ce qui reste écrit en dur ci-dessous l'est pour une raison : ces
-  valeurs-là N'EXISTENT PAS ailleurs dans l'application, et cette direction
-  n'a été validée que pour l'Accueil.
-*/
-const TEXTE_PRIMAIRE = 'var(--color-text-primary)';
-const TEXTE_SECONDAIRE = 'var(--color-text-secondary)';
-const TEXTE_MUET = 'var(--color-text-muted)';
-const AMBRE = 'var(--color-signal)';
-
-const ENCRE = '#050505';
-const ROUGE = 'var(--color-danger)';
-const ROUGE_CLAIR = 'var(--color-danger-ink)';
-
-interface TaskData {
-  title: string;
-  status: SharedTaskStatus;
+/**
+ * L'heure décimale d'un instant, ramenée à l'axe. C'est la seule fonction qui
+ * convertit du temps en pourcentage, et tout l'instrument en dépend : le
+ * trait de l'heure courante, les blocs, les graduations.
+ */
+function pctDe(date: Date): number {
+  const heures = date.getHours() + date.getMinutes() / 60;
+  return ((heures - AXE_DEBUT) / AXE_HEURES) * 100;
 }
 
-/** Pas de configuration d'horaires de bureau dans l'application : une journée
- *  de référence 9 h – 18 h est posée par défaut pour le cadran, documentée
- *  comme telle plutôt que cachée dans un nombre magique. */
-const JOURNEE_DEBUT_HEURE = 9;
-const JOURNEE_FIN_HEURE = 18;
-
-function progressionJournee(now: Date): { pourcent: number; restanteMs: number } {
-  const debut = new Date(now);
-  debut.setHours(JOURNEE_DEBUT_HEURE, 0, 0, 0);
-  const fin = new Date(now);
-  fin.setHours(JOURNEE_FIN_HEURE, 0, 0, 0);
-  const total = fin.getTime() - debut.getTime();
-  if (total <= 0) return { pourcent: 0, restanteMs: 0 };
-  const ecoulee = Math.min(Math.max(now.getTime() - debut.getTime(), 0), total);
-  return { pourcent: Math.round((ecoulee / total) * 100), restanteMs: total - ecoulee };
+/**
+ * La place d'un rendez-vous sur l'axe : son bord gauche et sa largeur, en
+ * pourcentage. Un créneau de 45 min occupe 6,25 % (0,75 h / 12 h), une heure
+ * 8,33 % — c'est la proportion qui fait l'instrument, pas une catégorie de
+ * taille. Un rendez-vous qui déborde de l'axe est rogné à ses bords plutôt
+ * qu'écarté : une réunion de 19 h 30 à 21 h existe, et sa moitié visible dit
+ * qu'elle mord sur la soirée.
+ */
+function place(rdv: Appointment): { gauche: number; largeur: number } | null {
+  const debut = new Date(rdv.startAt);
+  const fin = new Date(appointmentEnd(rdv));
+  const g = pctDe(debut);
+  const d = pctDe(fin);
+  if (d <= 0 || g >= 100) return null;
+  const gauche = Math.max(0, g);
+  const largeur = Math.min(100, d) - gauche;
+  return largeur > 0 ? { gauche, largeur } : null;
 }
 
-/** « Votre journée tient en quatre rendez-vous et deux relances. » — jamais
- *  posée en dur (voir la direction validée) : composée sur les vrais comptes
- *  du jour. « rendez-vous » est invariable, comme partout ailleurs dans
- *  l'application ; seule « relance » s'accorde. */
-function journeeEnBref(nbRdv: number, nbRelances: number): string {
-  if (nbRdv === 0 && nbRelances === 0) return 'Rien de prévu pour l’instant — la journée est à vous.';
-  const parts: string[] = [];
-  if (nbRdv > 0) parts.push(`${nbRdv} rendez-vous`);
-  if (nbRelances > 0) parts.push(`${nbRelances} relance${nbRelances > 1 ? 's' : ''}`);
-  return `Votre journée tient en ${parts.join(' et ')}.`;
+function heureCourte(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/** « 1 H », « 45 MIN » — la durée gravée sur le bloc ambre, en mono. */
+function dureeGravee(min: number): string {
+  if (min >= 60 && min % 60 === 0) return `${min / 60} H`;
+  if (min >= 60) return `${Math.floor(min / 60)} H ${min % 60}`;
+  return `${min} MIN`;
+}
+
+function dansCombien(iso: string, maintenant: Date): string {
+  const delta = new Date(iso).getTime() - maintenant.getTime();
+  if (delta <= 0) return 'en cours';
+  const min = Math.round(delta / 60000);
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  return min % 60 === 0 ? `${h} h` : `${h} h ${String(min % 60).padStart(2, '0')}`;
+}
+
+interface TacheLigne {
+  status?: string;
+}
+
+/** Ce que l'Accueil lit du stock : juste de quoi reconnaître une rupture. */
+interface ArticleStock {
+  name: string;
+  quantity?: number;
+  minQuantity?: number | null;
 }
 
 export function HomeSoloScreen() {
   const { user, org } = useAuth();
   const { appointments } = useAppointments();
-  const { clients } = useClients();
-  const tasks = useCollection<TaskData>('tasks');
-
+  const { clients, quotes } = useClients();
+  const tasks = useCollection<TacheLigne>('tasks');
   const attention = useAttention();
   const { langue } = useLangue();
-  const serein = parcSerein({
-    attentions: attention.items.length,
-    regarde: Boolean(attention.checkedAt),
-  });
+  const serein = parcSerein({ attentions: attention.items.length, regarde: attention.checkedAt !== null });
 
-  const [now, setNow] = useState(() => new Date());
+  /* L'heure qu'il est bouge : le trait se déplace, le compte à rebours décroît. */
+  const [maintenant, setMaintenant] = useState(() => new Date());
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 60_000);
+    const t = setInterval(() => setMaintenant(new Date()), 30_000);
     return () => clearInterval(t);
   }, []);
-  const todayKey = dayKey(now);
 
-  const today = useMemo(
+  const cleDuJour = dayKey(maintenant);
+  const duJour = useMemo(
     () =>
-      appointments.filter(
-        (a) => dayKey(new Date(a.startAt)) === todayKey && a.status !== 'cancelled',
-      ),
-    [appointments, todayKey],
+      appointments
+        .filter((a) => dayKey(new Date(a.startAt)) === cleDuJour)
+        .sort((a, b) => a.startAt.localeCompare(b.startAt)),
+    [appointments, cleDuJour],
   );
 
-  const next =
-    appointments.find(
-      (a) => a.status === 'scheduled' && appointmentEnd(a).getTime() > now.getTime(),
-    ) ?? null;
+  const prochain = useMemo(
+    () => duJour.find((a) => new Date(appointmentEnd(a)).getTime() > maintenant.getTime()) ?? null,
+    [duJour, maintenant],
+  );
 
-  const suiteDuJour = useMemo(() => today.filter((a) => a.id !== next?.id), [today, next]);
+  const { invoices } = useInvoices();
+  const jourIso = isoDay(maintenant);
 
-  const openTasksCount = useMemo(() => tasks.filter((t) => t.status !== 'done').length, [tasks]);
+  /*
+    L'ENJEU NON TRANCHÉ — ce qui décide de l'ambre, et rien d'autre.
 
-  const semaineRdvCount = useMemo(() => {
-    const lundi = new Date(now);
-    const jourSemaine = (lundi.getDay() + 6) % 7;
-    lundi.setDate(lundi.getDate() - jourSemaine);
+    Le paquet de design est explicite : « pas le prochain par défaut, mais
+    celui qui porte un enjeu non tranché ». Traduit dans le vrai modèle de
+    données, un rendez-vous porte un enjeu quand son client a soit un devis
+    parti et sans réponse, soit une facture échue. Ce sont les deux seules
+    choses qui, dans ce produit, attendent une décision d'un tiers et que le
+    rendez-vous du jour permet justement de trancher en main propre.
+
+    S'il n'y en a aucun, `enJeu` vaut `null` et l'écran n'a pas d'ambre. C'est
+    prévu, pas un oubli : un après-midi sans enjeu ne doit rien signaler.
+  */
+  const enJeu = useMemo(() => {
+    const aVenir = duJour.filter((a) => new Date(a.startAt).getTime() > maintenant.getTime());
+    for (const rdv of aVenir) {
+      if (rdv.clientId === null) continue;
+      const devis = quotes.find((q) => q.clientId === rdv.clientId && q.status === 'sent');
+      if (devis) {
+        const depuis = devis.sentAt ? Math.floor((maintenant.getTime() - new Date(devis.sentAt).getTime()) / 86_400_000) : null;
+        return { rdv, motif: 'devis' as const, jours: depuis };
+      }
+      const facture = invoices.find((f) => f.clientId === rdv.clientId && isOverdue(f, jourIso));
+      if (facture) {
+        const depuis = facture.dueAt
+          ? Math.floor((maintenant.getTime() - new Date(facture.dueAt).getTime()) / 86_400_000)
+          : null;
+        return { rdv, motif: 'facture' as const, jours: depuis };
+      }
+    }
+    return null;
+  }, [duJour, quotes, invoices, jourIso, maintenant]);
+
+  /* La phrase du relevé : ce qui se joue au prochain rendez-vous, s'il se joue quelque chose. */
+  const phraseProchain = useMemo(() => {
+    if (!prochain) return '';
+    if (enJeu && enJeu.rdv.id === prochain.id) {
+      if (enJeu.motif === 'devis') {
+        return enJeu.jours !== null
+          ? `Un devis attend une réponse depuis ${enJeu.jours} jour${enJeu.jours > 1 ? 's' : ''}.`
+          : 'Un devis attend une réponse.';
+      }
+      return enJeu.jours !== null
+        ? `Une facture est échue depuis ${enJeu.jours} jour${enJeu.jours > 1 ? 's' : ''}.`
+        : 'Une facture est échue.';
+    }
+    return prochain.notes?.trim() || prochain.location?.trim() || '';
+  }, [prochain, enJeu]);
+
+  /*
+    LES TROIS CHOSES À TRAITER — la carte calme de gauche, sans ambre.
+
+    Deux sources, et c'est voulu. Le moteur d'attention (`lib/attention.ts`)
+    fournit les factures en retard, les devis sans réponse, les tâches
+    dormantes. Les RUPTURES DE STOCK viennent directement de la collection
+    parce que le moteur n'en produit pas : il n'a pas de règle `stock`. C'est
+    une lacune réelle du produit, pas un choix de composition — le système de
+    design réserve le rouge aux ruptures de stock (« ce n'est pas de la
+    signalisation, c'est un état de fait », `27e`), or cet écran n'avait aucun
+    moyen d'en montrer une. Elles sont donc lues ici, et signalées comme
+    telles. Les faire remonter dans le moteur serait le bon endroit à terme ;
+    ce serait une modification de son contrat, contrôlé par `check:attention`,
+    et donc un autre chantier que celui-ci.
+  */
+  const articlesStock = useCollection<ArticleStock>('stockItems');
+  const ruptures = useMemo<AttentionItem[]>(
+    () =>
+      articlesStock
+        .filter((a) => typeof a.minQuantity === 'number' && a.minQuantity !== null && (a.quantity ?? 0) <= 0)
+        .slice(0, 2)
+        .map((a) => ({
+          key: `stock-${a.name}`,
+          kind: 'invoice-overdue' as AttentionItem['kind'],
+          severity: 'critical' as const,
+          title: a.name,
+          evidence: `Stock épuisé · seuil ${a.minQuantity ?? 0}`,
+          action: 'rupture',
+          to: '/stock',
+          weight: 10_000,
+        })),
+    [articlesStock],
+  );
+  const aTraiter = useMemo(() => [...ruptures, ...attention.items].slice(0, 3), [ruptures, attention.items]);
+  const totalATraiter = ruptures.length + attention.items.length;
+  const plusLourd = useMemo(() => Math.max(1, ...aTraiter.map((i) => i.weight)), [aTraiter]);
+
+  /* La semaine en sept barres d'heures occupées, le jour courant en encre claire. */
+  const semaine = useMemo(() => {
+    const lundi = new Date(maintenant);
     lundi.setHours(0, 0, 0, 0);
-    const dimanche = new Date(lundi);
-    dimanche.setDate(dimanche.getDate() + 7);
-    return appointments.filter((a) => {
-      if (a.status === 'cancelled') return false;
-      const t = new Date(a.startAt).getTime();
-      return t >= lundi.getTime() && t < dimanche.getTime();
-    }).length;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appointments, todayKey]);
+    lundi.setDate(lundi.getDate() - ((lundi.getDay() + 6) % 7));
+    const jours = Array.from({ length: 7 }, (_, i) => {
+      const j = new Date(lundi);
+      j.setDate(lundi.getDate() + i);
+      const cle = dayKey(j);
+      const minutes = appointments
+        .filter((a) => dayKey(new Date(a.startAt)) === cle)
+        .reduce((s, a) => s + Math.max(0, a.durationMin), 0);
+      return { cle, lettre: ['L', 'M', 'M', 'J', 'V', 'S', 'D'][i], minutes, courant: cle === cleDuJour };
+    });
+    const plafond = Math.max(60, ...jours.map((j) => j.minutes));
+    return { jours, plafond, total: jours.reduce((s, j) => s + j.minutes, 0) };
+  }, [appointments, cleDuJour, maintenant]);
 
-  const facturationOuverte = isModuleEnabled('invoices');
-  const relancesOuvertes = isModuleEnabled('reminders');
-  const { invoices, summary } = useInvoices();
-  const todayIso = isoDay(now);
-
-  const facturesEnRetard = useMemo(
-    () =>
-      invoices.filter(
-        (f) =>
-          f.status === 'issued' &&
-          f.kind !== 'creditNote' &&
-          netDueCents(f, invoices) > 0 &&
-          isOverdue(f, todayIso, invoices),
-      ),
-    [invoices, todayIso],
-  );
-  const joursDeRetardMax = useMemo(
-    () =>
-      facturesEnRetard.reduce(
-        (max, f) => Math.max(max, Math.floor((Date.parse(todayIso) - Date.parse(f.dueAt)) / 86400000)),
-        0,
-      ),
-    [facturesEnRetard, todayIso],
-  );
-  // Le mini-graphe ne peut porter que ce que l'application connaît vraiment :
-  // l'activité de FACTURATION des 7 derniers jours (combien émises par jour),
-  // pas un historique du montant dû — cette valeur n'est jamais figée dans le
-  // temps, donc aucune vraie courbe de « à encaisser » n'existe à tracer.
-  const serieEmissions: SerieVitale = useMemo(
-    () =>
-      serieFlux(
-        invoices.filter((f) => f.status !== 'draft' && f.kind !== 'creditNote').map((f) => f.issuedAt),
-        7,
-        now,
-      ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [invoices, todayKey],
-  );
-
-  const tempsActif = isModuleEnabled('time');
-  const { summary: tempsSummary } = useTimeTracking();
-  const saisiAujourdHuiMs = tempsActif ? tempsSummary(now.getTime()).todayMs : 0;
-
-  const hasAnything = appointments.length > 0 || tasks.length > 0 || clients.length > 0;
-  const { pourcent: pourcentJournee, restanteMs } = progressionJournee(now);
-  const sousTitre = journeeEnBref(today.length, facturationOuverte ? summary.overdueCount : 0);
+  const minutesOccupees = duJour.reduce((s, a) => s + Math.max(0, a.durationMin), 0);
+  const traitPct = Math.min(100, Math.max(0, pctDe(maintenant)));
+  const heureDansLAxe = traitPct > 0 && traitPct < 100;
+  const rienDuTout = appointments.length === 0 && tasks.length === 0 && clients.length === 0;
 
   return (
-    <div
-      className="-mx-4 -my-6 flex flex-col gap-6 px-4 py-8 sm:-mx-8 sm:-my-8 sm:px-8 sm:py-10"
-      style={{ background: ENCRE }}
-    >
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
-            {org?.name ?? 'Votre activité'}
-          </p>
-          <h1
-            className="mt-1 text-3xl font-bold tracking-tight sm:text-[44px]"
-            style={{ color: TEXTE_PRIMAIRE, letterSpacing: '-0.03em' }}
-          >
-            {homeWelcome(user?.name?.split(' ')[0] ?? '', now, serein, langue)}
-          </h1>
-          <p className="mt-2 text-sm" style={{ color: TEXTE_SECONDAIRE }}>
-            {sousTitre}
-          </p>
-          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: TEXTE_MUET }}>
-            {capitaliserPhrase(longDayLabel(now))}
-          </p>
-        </div>
-        {isModuleEnabled('agenda') && (
-          <Link
-            to="/agenda"
-            className="inline-flex w-fit items-center gap-1.5 px-4 py-3 text-sm font-semibold transition-opacity hover:opacity-90"
-            style={{ background: TEXTE_PRIMAIRE, color: 'var(--color-signal-ink)' }}
-          >
-            <Plus size={14} strokeWidth={2.5} />
-            Rendez-vous
-          </Link>
-        )}
-      </header>
-
-      {!hasAnything && <FirstRunCard />}
-
-      <Majordome attentions={attention.items.length} />
-
-      {hasAnything && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_260px]" style={{ alignItems: 'stretch' }}>
-          <MaintenantBlock appointment={next} now={now} />
-          <CadranJournee pourcent={pourcentJournee} restanteMs={restanteMs} tempsActif={tempsActif} saisiMs={saisiAujourdHuiMs} />
-        </div>
-      )}
-
-      <AttentionPanel state={attention} />
-
-      {hasAnything && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.35fr_1fr]" style={{ alignItems: 'start' }}>
-          <SuiteDuJour appointments={suiteDuJour} />
-
-          <div className="flex flex-col gap-4">
-            {facturationOuverte && (
-              <AEncaisser
-                outstandingCents={summary.outstandingCents}
-                overdueCents={summary.overdueCents}
-                overdueCount={summary.overdueCount}
-                joursDeRetardMax={joursDeRetardMax}
-                serie={serieEmissions}
-                relancesOuvertes={relancesOuvertes}
-              />
-            )}
-            <div className="grid grid-cols-2 gap-3">
-              <MiniStat label="Tâches" value={openTasksCount} />
-              <MiniStat label="RDV / sem." value={semaineRdvCount} />
-            </div>
+    <EcranVide quand={rienDuTout} premierJour={rienDuTout}>
+      <div className="flex flex-col gap-6">
+        <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0">
+            <p className="eyebrow mb-2.5">{org?.name ?? 'Votre activité'}</p>
+            <h1 className="text-[26px] font-bold leading-none tracking-[-0.03em] text-text-primary sm:text-[33px]">
+              {homeWelcome(user?.name?.split(' ')[0] ?? '', maintenant, serein, langue)}
+            </h1>
+            <p className="mt-2.5 max-w-[70ch] text-[14.5px] leading-[1.65] text-text-secondary [text-wrap:pretty]">
+              {rienDuTout
+                ? 'Rien n’est encore entré : la journée se remplira au fur et à mesure.'
+                : phraseDuJour(duJour.length, minutesOccupees, totalATraiter)}
+            </p>
+            <p className="mt-1.5 font-mono text-[11px] tracking-[0.06em] text-text-muted">
+              {capitaliserPhrase(longDayLabel(maintenant))}
+            </p>
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function MaintenantBlock({
-  appointment,
-  now,
-}: {
-  appointment: Appointment | null;
-  now: Date;
-}) {
-  const navigate = useNavigate();
-
-  if (!appointment) {
-    return (
-      <div
-        className="flex flex-col justify-center gap-1 border p-6"
-        style={{ borderColor: 'var(--color-border-section)', background: 'var(--color-surface)' }}
-      >
-        <span
-          className="font-mono text-[10px] uppercase tracking-[0.22em]"
-          style={{ color: TEXTE_MUET }}
-        >
-          Maintenant
-        </span>
-        <p className="mt-2 text-sm" style={{ color: TEXTE_SECONDAIRE }}>
-          Rien de prévu pour l’instant.
-        </p>
-      </div>
-    );
-  }
-
-  const enCours = now.getTime() >= new Date(appointment.startAt).getTime();
-  const relatif = enCours ? 'En cours' : capitaliserPhrase(relativeToNow(appointment.startAt));
-  const duree = appointment.durationMin > 0 ? formatDuration(appointment.durationMin * 60000) : '';
-  const peutRejoindre = /^https?:\/\//i.test(appointment.location || '');
-  // Un lien de visio en clair est illisible en majuscules (et déborde sur
-  // téléphone) — le bouton « Rejoindre » juste en dessous porte déjà l'action.
-  const lieu = peutRejoindre ? 'Visio' : appointment.location;
-  const meta = [appointment.clientName, lieu, duree].filter(Boolean).join(' · ');
-  const peutVoirClient = isModuleEnabled('clients') && Boolean(appointment.clientId);
-
-  return (
-    <div
-      className="relative overflow-hidden p-6"
-      style={{
-        background: AMBRE,
-        color: 'var(--color-signal-ink)',
-        boxShadow: '0 30px 60px -24px rgba(208,154,74,.45), 0 6px 18px rgba(0,0,0,.5)',
-      }}
-    >
-      <span
-        className="absolute left-0 right-0 top-0 h-px"
-        style={{ background: 'rgba(255,255,255,.45)' }}
-      />
-      <div className="flex items-center gap-2.5">
-        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.22em]">Maintenant</span>
-        <span className="h-px flex-1" style={{ background: 'rgba(8,8,8,.28)' }} />
-        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]">{relatif}</span>
-      </div>
-      <p className="mt-4 text-5xl font-semibold leading-none tracking-tight tabular-nums sm:text-[52px]">
-        {timeLabel(appointment.startAt)}
-      </p>
-      <p className="mt-2.5 text-xl font-semibold leading-tight tracking-tight">
-        {appointment.title || 'Rendez-vous'}
-      </p>
-      {meta && (
-        <p className="mt-1.5 font-mono text-[11.5px] uppercase tracking-wide" style={{ opacity: 0.85 }}>
-          {meta}
-        </p>
-      )}
-      {(peutRejoindre || peutVoirClient) && (
-        <div className="mt-5 flex flex-wrap gap-2">
-          {peutRejoindre && (
-            <a
-              href={appointment.location}
-              target="_blank"
-              rel="noreferrer"
-              className="px-4 py-2.5 text-[12.5px] font-semibold"
-              style={{ background: 'var(--color-signal-ink)', color: TEXTE_PRIMAIRE }}
+          {isModuleEnabled('agenda') && !rienDuTout && (
+            <Link
+              to="/agenda"
+              className="inline-flex h-[38px] flex-none items-center bg-accent px-4 text-[12.5px] font-semibold text-bg shadow-[0_12px_26px_-12px_rgba(0,0,0,.9)] transition-colors hover:bg-accent-hover"
             >
-              Rejoindre
-            </a>
+              Ouvrir l’agenda
+            </Link>
           )}
-          {peutVoirClient && (
-            <button
-              type="button"
-              onClick={() => navigate('/clients', { state: { focusClientId: appointment.clientId } })}
-              className="border px-4 py-2.5 text-[12.5px] font-semibold"
-              style={{ borderColor: 'rgba(8,8,8,.5)', color: 'var(--color-signal-ink)', background: 'transparent' }}
-            >
-              Notes du client
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+        </header>
 
-function CadranJournee({
-  pourcent,
-  restanteMs,
-  tempsActif,
-  saisiMs,
-}: {
-  pourcent: number;
-  restanteMs: number;
-  tempsActif: boolean;
-  saisiMs: number;
-}) {
-  const deg = Math.round((pourcent / 100) * 360);
-  return (
-    <div
-      className="flex flex-col items-center border p-5"
-      style={{ background: 'var(--color-sheet)', borderColor: 'var(--color-border-raised)' }}
-    >
-      <span
-        className="self-start font-mono text-[10px] uppercase tracking-[0.18em]"
-        style={{ color: TEXTE_MUET }}
-      >
-        Journée
-      </span>
-      {/*
-        L'ANNEAU N'EST PLUS AMBRE — la règle « un seul objet ambre par écran »
-        appliquée à l'écran qui sert de référence à tous les autres.
-
-        Cet anneau et la plaque du rendez-vous étaient tous deux ambre : deux
-        signaux sur le même écran, donc plus de signal du tout. Et à la
-        relecture, l'anneau ne demande aucune décision — il dit qu'il est
-        15 h 30. La règle 3 du jeton tranche : l'ambre marque ce qui appelle un
-        geste, jamais un état. L'anneau passe donc en gris de remplissage, la
-        plaque du rendez-vous reste le seul ambre de l'Accueil.
-      */}
-      <div
-        className="mt-4 flex h-[132px] w-[132px] items-center justify-center rounded-full"
-        style={{
-          background: `conic-gradient(#4a4a48 0deg ${deg}deg, var(--color-border-sheet) ${deg}deg 360deg)`,
-        }}
-      >
-        <div
-          className="flex h-[104px] w-[104px] flex-col items-center justify-center rounded-full border"
-          style={{ background: 'var(--color-sheet)', borderColor: 'var(--color-border-raised)' }}
-        >
-          <span className="text-[27px] font-semibold tabular-nums" style={{ color: TEXTE_PRIMAIRE }}>
-            {pourcent} %
-          </span>
-          <span
-            className="mt-1 font-mono text-[9px] uppercase tracking-[0.16em]"
-            style={{ color: TEXTE_MUET }}
-          >
-            écoulée
-          </span>
-        </div>
-      </div>
-      <div className="mt-4 flex w-full flex-col gap-2">
-        <div className="flex justify-between font-mono text-[11px]">
-          <span style={{ color: TEXTE_MUET }}>RESTANT</span>
-          <span style={{ color: TEXTE_PRIMAIRE }}>{formatDuration(restanteMs)}</span>
-        </div>
-        {tempsActif && (
-          <div className="flex justify-between font-mono text-[11px]">
-            <span style={{ color: TEXTE_MUET }}>SAISI</span>
-            <span style={{ color: TEXTE_PRIMAIRE }}>{formatDuration(saisiMs)}</span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function SuiteDuJour({ appointments }: { appointments: Appointment[] }) {
-  return (
-    <section
-      className="border"
-      style={{ background: '#101010', borderColor: 'var(--color-border-section)' }}
-    >
-      <div
-        className="flex items-center gap-3 px-5 py-3.5"
-        style={{ background: '#171717', borderBottom: '1px solid var(--color-border-section)' }}
-      >
-        <span
-          className="font-mono text-[10px] font-bold uppercase tracking-[0.22em]"
-          style={{ color: TEXTE_PRIMAIRE }}
-        >
-          Suite du jour
-        </span>
-        <span className="flex-1" />
-        {appointments.length > 0 && (
-          <span className="font-mono text-[10px] uppercase tracking-wide" style={{ color: TEXTE_MUET }}>
-            {appointments.length} RDV
-          </span>
-        )}
-      </div>
-      <div className="px-5 py-2 pb-4">
-        {appointments.length === 0 ? (
-          <p className="py-3 text-sm" style={{ color: TEXTE_MUET }}>
-            Rien d’autre aujourd’hui.
-          </p>
-        ) : (
-          appointments.map((a, i) => {
-            const confirme = Boolean(a.location);
-            const couleur = confirme ? TEXTE_PRIMAIRE : TEXTE_SECONDAIRE;
-            return (
-              <div
-                key={a.id}
-                className="flex items-center gap-4 py-3.5"
-                style={i < appointments.length - 1 ? { borderBottom: '1px solid #1a1a1a' } : undefined}
-              >
-                <span className="w-[54px] flex-shrink-0 text-[15px] tabular-nums" style={{ color: couleur }}>
-                  {timeLabel(a.startAt)}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span
-                    className="block truncate text-[15px]"
-                    style={{ color: couleur, textDecoration: a.status === 'done' ? 'line-through' : undefined }}
-                  >
-                    {a.title || 'Rendez-vous'}
-                  </span>
-                  {confirme && (
-                    <span
-                      className="mt-0.5 block truncate font-mono text-[10.5px] uppercase tracking-wide"
-                      style={{ color: TEXTE_MUET }}
-                    >
-                      {[a.clientName, a.location].filter(Boolean).join(' · ')}
-                    </span>
+        {rienDuTout ? (
+          /*
+            LE PREMIER JOUR (`27b`) — le cas le plus difficile : tout est vide
+            à la fois. L'axe garde ses graduations ET son trait d'heure
+            courante, aux positions que `pctDe` donnera aux vrais rendez-vous ;
+            une seule invitation sous lui ; les deux cartes calmes disent ce
+            qu'elles contiendront, sans action et SANS AUCUN CHIFFRE À ZÉRO.
+          */
+          <PremierJour
+            hauteurAxe={104 + 26}
+            phraseAxe="La journée n’a rien encore. L’axe est déjà là : chaque rendez-vous s’y posera à sa vraie heure et à sa vraie durée, et le trait avancera dessus."
+            titre="Votre journée se lira ici"
+            phrase="Posez le premier rendez-vous : l’axe le montrera à sa place, et tout le reste de l’écran se remplira à partir de là."
+            action={{ label: 'Poser un rendez-vous', onClick: () => { window.location.hash = '#/agenda'; } }}
+            calmes={[
+              {
+                titre: 'Ce qui appellera',
+                phrase:
+                  'Les devis sans réponse, les factures en retard et les stocks qui manquent viendront ici — un par ligne, avec ce qui les a déclenchés.',
+              },
+              {
+                titre: 'La semaine',
+                phrase:
+                  'Dès que des rendez-vous seront posés, la semaine se dessinera en dessous, jour par jour.',
+              },
+            ]}
+            axe={
+              <div className="relative h-full">
+                <div
+                  className="relative h-[104px] border border-dashed border-border-strong"
+                  style={{
+                    backgroundImage:
+                      'repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px calc(100% / 12))',
+                  }}
+                >
+                  {heureDansLAxe && (
+                    <div
+                      className="absolute -top-[9px] -bottom-[9px] w-[2px] bg-current"
+                      style={{ left: `${traitPct}%` }}
+                      aria-hidden
+                    />
                   )}
-                </span>
-                <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: '#2e2e2e' }} />
+                </div>
+                {/* Les graduations, aux MÊMES positions calculées : quand le
+                    premier rendez-vous arrivera, il tombera là où l'écran
+                    l'avait annoncé. */}
+                <div className="relative mt-3 h-[14px] font-mono text-[9.5px] tracking-[0.08em]">
+                  {GRADUATIONS.map(({ heure, pct }, i) => (
+                    <span
+                      key={heure}
+                      className="absolute"
+                      style={{ left: `${pct}%`, transform: i === 0 ? 'none' : i === GRADUATIONS.length - 1 ? 'translateX(-100%)' : 'translateX(-50%)' }}
+                    >
+                      {String(heure).padStart(2, '0')}
+                    </span>
+                  ))}
+                </div>
               </div>
-            );
-          })
+            }
+          />
+        ) : (
+          <>
+            {/* ── L'OBJET DOMINANT : l'axe de la journée ─────────────────── */}
+            <section className="panel-raised panel-raised-wide px-[30px] pb-[26px] pt-[30px]">
+              <div className="mb-[22px] flex items-baseline justify-between">
+                <span className="eyebrow text-text-secondary">
+                  La journée · {String(AXE_DEBUT).padStart(2, '0')} → {AXE_FIN}
+                </span>
+                {/* Pas de « 0 ENTRÉE · 0 MIN » : un compteur à zéro se lit
+                    comme un échec là où une phrase se lit comme un fait. */}
+                <span className="font-mono text-[10px] tracking-[0.1em] text-text-muted">
+                  {duJour.length === 0
+                    ? 'RIEN DE POSÉ'
+                    : `${duJour.length} ENTRÉE${duJour.length > 1 ? 'S' : ''} · ${dureeGravee(minutesOccupees)} OCCUPÉE${minutesOccupees >= 120 ? 'S' : ''}`}
+                </span>
+              </div>
+
+              <div
+                className="relative h-[104px] border border-border-raised bg-sunken"
+                style={{
+                  /* Les douze colonnes de l'axe — une heure chacune, dessinées
+                     par le fond lui-même plutôt que par douze éléments vides. */
+                  backgroundImage:
+                    'repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 1px, transparent 1px calc(100% / 12))',
+                }}
+              >
+                {duJour.map((rdv) => {
+                  const pos = place(rdv);
+                  if (!pos) return null;
+                  const passe = new Date(appointmentEnd(rdv)).getTime() <= maintenant.getTime();
+                  const ambre = enJeu?.rdv.id === rdv.id;
+                  return (
+                    <div
+                      key={rdv.id}
+                      data-signal-groupe={ambre ? 'rdv-en-jeu' : undefined}
+                      className={`absolute overflow-hidden box-border ${
+                        ambre
+                          ? 'top-[6px] bottom-[6px] bg-signal px-2 py-2.5 shadow-[0_0_26px_-4px_var(--color-signal-glow)]'
+                          : passe
+                            ? 'top-3 bottom-3 border border-[#2b2b2b] bg-[#1a1a1a] px-2.5 py-[9px]'
+                            : 'top-3 bottom-3 border border-border-sheet bg-[#101010] px-2.5 py-[9px]'
+                      }`}
+                      style={{ left: `${pos.gauche}%`, width: `${pos.largeur}%` }}
+                      title={`${heureCourte(rdv.startAt)} · ${rdv.title || 'Rendez-vous'}`}
+                    >
+                      <span
+                        className={`tnum block font-mono ${
+                          ambre
+                            ? 'text-[11px] font-bold text-signal-ink'
+                            : passe
+                              ? 'text-[10px] font-medium text-text-muted'
+                              : 'text-[10px] font-medium text-text-secondary'
+                        }`}
+                      >
+                        {heureCourte(rdv.startAt)}
+                      </span>
+                      {ambre ? (
+                        <span className="mt-1 block font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-signal-ink">
+                          {dureeGravee(rdv.durationMin)}
+                        </span>
+                      ) : (
+                        pos.largeur >= 10 && (
+                          <span className="mt-1.5 block truncate text-[12.5px] font-semibold text-text-secondary">
+                            {rdv.clientName || rdv.title || 'Rendez-vous'}
+                          </span>
+                        )
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Le trait de l'heure qu'il est, à sa position réelle, et sa
+                    pastille qui bat. Absent hors de la journée ouvrée : à
+                    22 h, un trait collé au bord droit mentirait. */}
+                {heureDansLAxe && (
+                  <>
+                    <div
+                      className="absolute -top-[9px] -bottom-[9px] w-[2px] bg-text-primary"
+                      style={{ left: `${traitPct}%` }}
+                    />
+                    <div
+                      className="pouls-vivant absolute -top-[15px] h-[7px] w-[7px] -translate-x-1/2 bg-text-primary"
+                      style={{ left: `${traitPct}%` }}
+                      aria-hidden
+                    />
+                  </>
+                )}
+              </div>
+
+              {/* Les graduations : positions absolues calculées, jamais des
+                  cellules flex — l'erreur d'arrondi s'accumulerait. */}
+              <div className="relative mt-3 h-[14px] font-mono text-[9.5px] tracking-[0.08em] text-text-muted">
+                {GRADUATIONS.map(({ heure, pct }, i) => (
+                  <span
+                    key={heure}
+                    className="absolute"
+                    style={
+                      i === 0
+                        ? { left: 0 }
+                        : i === GRADUATIONS.length - 1
+                          ? { right: 0 }
+                          : { left: `${pct}%`, transform: 'translateX(-50%)' }
+                    }
+                  >
+                    {String(heure).padStart(2, '0')}
+                  </span>
+                ))}
+              </div>
+
+              {/* Le relevé du prochain rendez-vous — attaché à son bloc, dans
+                  la même carte, et en encre claire même si c'est le même que
+                  le bloc ambre : c'est un rappel, pas un deuxième signal. */}
+              {prochain ? (
+                <div className="mt-6 flex flex-wrap items-center gap-x-[26px] gap-y-4 border-t border-border-raised pt-[22px]">
+                  <span className="flex-none">
+                    <span className="eyebrow block text-text-muted">Prochain</span>
+                    <span className="tnum mt-[9px] block font-mono text-[40px] font-bold leading-[.95] tracking-[-0.045em] text-text-primary">
+                      {heureCourte(prochain.startAt)}
+                    </span>
+                  </span>
+                  <span className="hidden w-px self-stretch bg-border-raised sm:block" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[20px] font-bold tracking-[-0.02em] text-text-primary">
+                      {prochain.clientName || prochain.title || 'Rendez-vous'}
+                    </span>
+                    {phraseProchain && (
+                      <span className="mt-[7px] block text-[13.5px] leading-[1.55] text-text-secondary">
+                        {phraseProchain}
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex-none text-right">
+                    <span className="block font-mono text-[10px] tracking-[0.12em] text-text-muted">DANS</span>
+                    <span className="tnum mt-1.5 block font-mono text-[21px] font-semibold text-text-primary">
+                      {dansCombien(prochain.startAt, maintenant)}
+                    </span>
+                  </span>
+                  <Link
+                    to={enJeu?.rdv.id === prochain.id && enJeu.motif === 'devis' ? '/clients' : '/agenda'}
+                    className="flex h-[38px] flex-none items-center bg-accent px-4 text-[12.5px] font-semibold text-bg shadow-[0_12px_26px_-12px_rgba(0,0,0,.9)] transition-colors hover:bg-accent-hover"
+                  >
+                    {enJeu?.rdv.id === prochain.id && enJeu.motif === 'devis' ? 'Ouvrir le devis' : 'Ouvrir l’agenda'}
+                  </Link>
+                </div>
+              ) : (
+                <p className="mt-6 border-t border-border-raised pt-[22px] text-[13.5px] leading-[1.55] text-text-secondary">
+                  {duJour.length > 0
+                    ? 'Plus rien après celui-ci : la journée est derrière vous.'
+                    : 'Rien de posé aujourd’hui. L’axe reste ouvert.'}
+                </p>
+              )}
+            </section>
+
+            {/* ── AUTOUR : deux cartes calmes, sans ambre ────────────────── */}
+            <div className="grid grid-cols-1 items-stretch gap-[18px] lg:grid-cols-[1fr_340px]">
+              <section className="panel min-w-0 px-[22px] pb-[18px] pt-5">
+                <div className="mb-[18px] flex items-baseline justify-between">
+                  <span className="eyebrow text-text-secondary">À traiter</span>
+                  {/* « 3 SUR 6 » et non « 3 CHOSES » quand la liste est
+                      tronquée : le sous-titre de l'écran annonce le total, et
+                      deux comptes différents pour la même chose font douter
+                      des deux. */}
+                  <span className="font-mono text-[10px] tracking-[0.1em] text-text-muted">
+                    {aTraiter.length === 0
+                      ? 'RIEN'
+                      : totalATraiter > aTraiter.length
+                        ? `${aTraiter.length} SUR ${totalATraiter}`
+                        : `${aTraiter.length} CHOSE${aTraiter.length > 1 ? 'S' : ''}`}
+                  </span>
+                </div>
+                {aTraiter.length > 0 ? (
+                  <div className="flex flex-col gap-3.5">
+                    {aTraiter.map((item) => (
+                      <LigneATraiter key={item.key} item={item} plusLourd={plusLourd} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="py-3 text-[13.5px] leading-[1.7] text-text-secondary">
+                    Rien ne traîne : aucune facture en retard, aucun devis sans réponse.
+                  </p>
+                )}
+              </section>
+
+              <section className="panel flex flex-col px-5 pb-[18px] pt-5">
+                <div className="mb-5 flex items-baseline justify-between">
+                  <span className="eyebrow text-text-secondary">La semaine</span>
+                  <span className="font-mono text-[10px] tracking-[0.1em] text-text-muted">
+                    {Math.round(semaine.total / 60)} H
+                  </span>
+                </div>
+                <div className="flex h-[96px] items-end gap-[9px]">
+                  {semaine.jours.map((j, i) => (
+                    <span
+                      key={`${j.cle}-${i}`}
+                      className={`flex-1 ${j.courant ? 'bg-text-primary' : 'bg-border-strong'}`}
+                      style={{ height: `${Math.max(4, (j.minutes / semaine.plafond) * 96)}px` }}
+                      title={`${j.lettre} · ${Math.round(j.minutes / 60)} h`}
+                    />
+                  ))}
+                </div>
+                <div className="mt-2.5 flex gap-[9px] font-mono text-[9.5px] tracking-[0.08em]">
+                  {semaine.jours.map((j, i) => (
+                    <span
+                      key={`${j.cle}-l-${i}`}
+                      className={`flex-1 text-center ${j.courant ? 'text-text-primary' : 'text-text-muted'}`}
+                    >
+                      {j.lettre}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            <Majordome attentions={attention.items.length} />
+          </>
         )}
       </div>
-    </section>
+    </EcranVide>
   );
 }
 
-function AEncaisser({
-  outstandingCents,
-  overdueCents,
-  overdueCount,
-  joursDeRetardMax,
-  serie,
-  relancesOuvertes,
-}: {
-  outstandingCents: number;
-  overdueCents: number;
-  overdueCount: number;
-  joursDeRetardMax: number;
-  serie: SerieVitale;
-  relancesOuvertes: boolean;
-}) {
-  if (outstandingCents === 0) {
-    return (
-      <section className="border p-5" style={{ background: '#101010', borderColor: 'var(--color-border-section)' }}>
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: TEXTE_MUET }}>
-          À encaisser
-        </span>
-        <p className="mt-3 text-sm" style={{ color: TEXTE_SECONDAIRE }}>
-          Rien à encaisser.
-        </p>
-      </section>
-    );
-  }
-
-  const max = Math.max(1, ...serie.points.map((p) => p.valeur));
-
-  return (
-    <section className="relative border p-5" style={{ background: '#101010', borderColor: 'var(--color-border-section)' }}>
-      {/*
-        Les repères d'angle passent de l'ambre au gris : l'ambre n'est JAMAIS
-        décoratif (règle 3 du jeton), et deux repères de 5 px ne demandent
-        aucune décision. Le signal de cet encart, c'est le montant et le rouge
-        du retard en dessous — pas ses coins.
-      */}
-      <span className="absolute left-[-1px] top-[-1px] h-0.5 w-5" style={{ background: '#4a4a48' }} />
-      <span className="absolute left-[-1px] top-[-1px] h-5 w-0.5" style={{ background: '#4a4a48' }} />
-      <div className="flex items-baseline justify-between">
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: TEXTE_MUET }}>
-          À encaisser
-        </span>
-        {overdueCount > 0 && (
-          <span
-            className="px-1.5 py-1 font-mono text-[9px] font-semibold uppercase tracking-[0.16em]"
-            style={{ background: ROUGE, color: 'var(--color-signal-ink)' }}
-          >
-            {overdueCount} échue{overdueCount > 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
-      <p className="mt-4 text-[40px] font-semibold leading-none tracking-tight tabular-nums sm:text-[44px]" style={{ color: TEXTE_PRIMAIRE }}>
-        {formatCentsCompact(outstandingCents)}
-      </p>
-      {overdueCents > 0 && (
-        <p className="mt-2.5 text-[13px]" style={{ color: TEXTE_SECONDAIRE }}>
-          dont{' '}
-          <span className="tabular-nums" style={{ color: ROUGE_CLAIR }}>
-            {formatCentsCompact(overdueCents)}
-          </span>{' '}
-          depuis {joursDeRetardMax} jour{joursDeRetardMax > 1 ? 's' : ''}
-        </p>
-      )}
-      <div className="mt-4 flex h-[34px] items-end gap-1">
-        {serie.points.map((p, i) => {
-          const dernier = i === serie.points.length - 1;
-          const hauteur = Math.max(10, Math.round((p.valeur / max) * 100));
-          return (
-            <span
-              key={p.jour}
-              className="flex-1"
-              style={{
-                height: `${hauteur}%`,
-                /* Le dernier point est le plus clair, pas ambre : une barre de
-                   série dit où l'on en est, elle ne demande pas de décision. */
-                background: dernier ? '#4a4a48' : `rgba(255,255,255,${0.06 + (i / serie.points.length) * 0.16})`,
-              }}
-            />
-          );
-        })}
-      </div>
-      {overdueCount > 0 && relancesOuvertes && (
-        <Link
-          to="/relances"
-          className="mt-4 block w-full border py-2.5 text-center text-[12.5px] font-semibold transition-colors hover:bg-white/5"
-          style={{ borderColor: 'var(--color-border-strong)', color: TEXTE_PRIMAIRE }}
-        >
-          Envoyer les {overdueCount} relance{overdueCount > 1 ? 's' : ''}
-        </Link>
-      )}
-    </section>
-  );
-}
-
-function MiniStat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="border p-4" style={{ background: 'var(--color-surface)', borderColor: '#1e1e1e' }}>
-      <span className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: TEXTE_MUET }}>
-        {label}
-      </span>
-      <p className="mt-3 text-[27px] font-semibold tabular-nums" style={{ color: TEXTE_PRIMAIRE }}>
-        {value}
-      </p>
-    </div>
-  );
+/** La phrase de sous-titre, écrite sur ce que l'écran montre réellement. */
+function phraseDuJour(nbRdv: number, minutes: number, nbAttentions: number): string {
+  const morceaux: string[] = [];
+  if (nbRdv === 0) morceaux.push('Aucun rendez-vous aujourd’hui');
+  else if (nbRdv === 1) morceaux.push('Un rendez-vous aujourd’hui');
+  else morceaux.push(`${nbRdv} rendez-vous aujourd’hui`);
+  if (minutes >= 60) morceaux.push(`${Math.round(minutes / 60)} h d’occupé`);
+  if (nbAttentions === 1) morceaux.push('une chose à traiter');
+  else if (nbAttentions > 1) morceaux.push(`${nbAttentions} choses à traiter`);
+  return `${morceaux.join(', ')}.`;
 }
 
 /**
- * Première ouverture : l'espace est vide, et il doit le dire sans donner
- * l'impression que quelque chose a échoué.
+ * Une ligne d'« À traiter » : un nom, un sous-titre, une barre proportionnelle
+ * et un verdict. La barre est la seule chose qui compare : elle se déduit du
+ * poids que le moteur d'attention a déjà calculé, pas d'un jugement posé ici.
  *
- * Hors du champ de ce chantier — la direction validée ne dépeint pas cet
- * état — laissée dans le langage visuel partagé existant plutôt que
- * retravaillée sans mockup à suivre.
+ * Le rouge n'est pas une décoration de gravité : il est réservé aux ruptures
+ * de stock, qui sont un état de fait et non une signalisation (voir `27e`).
  */
-function FirstRunCard() {
-  const { org } = useAuth();
+/**
+ * LE VERDICT, EN TROIS MOTS — et pourquoi ce n'est pas `item.action`.
+ *
+ * La colonne de droite fait 96 px : elle tient « retard 68 j », pas
+ * « Relancer ou passer en perte ». Le moteur d'attention écrit deux choses
+ * différentes — `evidence` est le chiffre qui a déclenché l'alerte,
+ * `action` est la phrase qui dit quoi faire. C'est le chiffre qui va dans la
+ * colonne, parce que c'est lui qui se compare d'une ligne à l'autre ; la
+ * phrase d'action vit au bout du lien, dans le module concerné.
+ *
+ * Le nombre est relu depuis `evidence` plutôt que recalculé : deux calculs de
+ * la même ancienneté finissent toujours par diverger d'un jour.
+ */
+function verdictCourt(item: AttentionItem): string {
+  /* La rupture de stock ne vient pas du moteur : elle a son verdict à elle. */
+  if (item.key.startsWith('stock-')) return 'rupture';
+  const jours = item.evidence.match(/(\d+)\s*jour/i)?.[1];
+  switch (item.kind) {
+    case 'invoice-overdue':
+      return jours ? `retard ${jours} j` : 'en retard';
+    case 'invoice-due-soon':
+      return jours ? `dans ${jours} j` : 'à échoir';
+    case 'task-stale':
+    case 'client-silent':
+      return jours ? `${jours} j` : 'sans suite';
+    case 'certificate-expired':
+      return 'expiré';
+    case 'certificate-expiring':
+      return jours ? `dans ${jours} j` : 'à renouveler';
+    case 'certificate-unknown':
+      return 'inconnu';
+    case 'incident-critical':
+      return 'critique';
+    case 'incident-stale':
+      return jours ? `${jours} j` : 'sans suite';
+    case 'scan-regression':
+      return 'régression';
+    default:
+      return item.action || item.evidence;
+  }
+}
 
-  const ouverts = useMemo(() => {
-    const modules = org?.modules ?? null;
-    const ouvert = (m: string) => modules === null || modules.includes(m);
-    const gestes = [
-      { module: 'agenda', to: '/agenda', label: 'Poser un premier rendez-vous', fort: true, icone: CalendarDays },
-      { module: 'clients', to: '/clients', label: 'Créer une première fiche client', fort: false, icone: Contact },
-      { module: 'invoices', to: '/facturation', label: 'Écrire un premier devis', fort: false, icone: FileText },
-      { module: 'orders', to: '/commandes', label: 'Enregistrer une première commande', fort: false, icone: FileText },
-      { module: 'notes', to: '/notes', label: 'Prendre une première note', fort: false, icone: FileText },
-      { module: 'tasks', to: '/tasks', label: 'Poser une première tâche', fort: false, icone: CheckSquare },
-    ].filter((g) => ouvert(g.module));
-    return gestes.slice(0, 3).map((g, i) => ({ ...g, fort: i === 0 }));
-  }, [org?.modules]);
-
+function LigneATraiter({ item, plusLourd }: { item: AttentionItem; plusLourd: number }) {
+  const rupture = item.key.startsWith('stock-');
+  const part = Math.max(0.08, Math.min(1, item.weight / plusLourd));
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: 'easeOut' }}
-      className="panel-ticks border border-border-strong bg-surface p-5"
-    >
-      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
-        Bienvenue
-      </p>
-      <h2 className="mt-1.5 text-base font-semibold text-text-primary">
-        {org?.name
-          ? `L’espace ${/^[aeiouyàâéèêëîïôöûüh]/i.test(org.name) ? 'd’' : 'de '}${org.name} est prêt — et vide, c’est normal.`
-          : 'Votre espace est prêt, et vide — c’est normal.'}
-      </h2>
-      <p className="mt-1 max-w-prose text-sm text-text-secondary">
-        Commencez par le geste qui vous ressemble :
-      </p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {ouverts.map((g) => (
-          <Link
-            key={g.module}
-            to={g.to}
-            className={
-              g.fort
-                ? 'flex items-center gap-1.5 bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover'
-                : 'flex items-center gap-1.5 border border-border px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary'
-            }
-          >
-            {g.fort ? <Plus size={14} strokeWidth={2} /> : <g.icone size={14} strokeWidth={1.9} />}
-            {g.label}
-          </Link>
-        ))}
-      </div>
-    </motion.div>
+    <Link to={item.to} className="grid grid-cols-[1fr_132px_96px] items-center gap-4 transition-opacity hover:opacity-80">
+      <span className="min-w-0">
+        <span className="block truncate text-[14px] font-semibold text-text-primary">{item.title}</span>
+        <span className="mt-[3px] block truncate text-[12.5px] text-text-secondary">
+          {item.amountCents !== undefined
+            ? `${item.evidence} · ${(item.amountCents / 100).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`
+            : item.evidence}
+        </span>
+      </span>
+      <span className={`h-1.5 ${rupture ? 'bg-[#2a0f0c]' : 'bg-[#191919]'}`}>
+        <span
+          className={`block h-1.5 ${rupture ? 'bg-danger' : item.severity === 'critical' ? 'bg-text-primary' : 'bg-[#4a4a48]'}`}
+          style={{ width: `${part * 100}%` }}
+        />
+      </span>
+      <span
+        className={`tnum truncate text-right font-mono text-[13px] font-semibold ${
+          rupture ? 'text-danger-ink' : item.severity === 'critical' ? 'text-text-primary' : 'text-text-secondary'
+        }`}
+      >
+        {verdictCourt(item)}
+      </span>
+    </Link>
   );
 }
+
+export type { SharedTaskStatus };

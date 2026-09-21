@@ -28,12 +28,13 @@ import {
   normalizePage,
   normalizeRoles,
   removeColumn,
+  checklistTotals,
   templatesForScope,
 } from '../lib/pageBlocks';
-import { checklistTotals } from '../lib/pageBlocks';
 import { centsToInput, formatCents, parsePositiveAmount } from '../lib/money';
 import type { PageBlock, PageData, PageEditorRole } from '../shared/api';
 import { useLangue, t as tr } from '../i18n';
+import { useHaloSignal } from '../components/EtatEcran';
 
 /**
  * LES PAGES — UN MOTEUR, PLUSIEURS MODULES (BLOC 3)
@@ -65,6 +66,98 @@ import { useLangue, t as tr } from '../i18n';
  * production se remplit à quelques-uns, pas à vingt en simultané) et il vaut
  * mieux l'écrire que la laisser découvrir.
  */
+
+/* ─── LA PAGE DE PROFIL — l'objet dominant (`18a`) ────────────────────────── */
+
+/*
+  ON VOIT LA FORME D'UNE PAGE AVANT D'EN LIRE UN MOT.
+
+  La page est rendue DE PROFIL : un bloc horizontal par section, chacun à la
+  hauteur de ce qu'il contient RÉELLEMENT. Où elle est dense, où elle est
+  creuse, et où il manque quelque chose — tout ça se lit sans lire. Un
+  sommaire en liste dirait « 6 blocs » ; le profil dit lesquels portent
+  quelque chose.
+
+  DEUX RÈGLES, et la seconde est celle qu'on oublie.
+  · La hauteur d'un bloc est proportionnelle à SON CONTENU, pas à son
+    importance. Un pied de page de deux lignes fait 34 px même s'il est
+    obligatoire ; un bloc de prestations en fait 96 même s'il est facultatif.
+  · UN BLOC VIDE SE DESSINE À UNE HAUTEUR MINIMALE VISIBLE. Il ne disparaît
+    pas, et il ne se réduit pas à un trait : c'est précisément lui qu'on
+    cherche, et un manque qu'on ne voit pas n'est pas signalé.
+*/
+const PROFIL_H_MIN = 34;
+const PROFIL_H_MAX = 120;
+/** Ce qu'une unité de contenu (ligne, article, rangée) ajoute à la hauteur. */
+const PROFIL_PAS = 9;
+
+interface BlocDeProfil {
+  id: string;
+  type: PageBlock['type'];
+  typeLabel: string;
+  resume: string;
+  unites: number;
+  hauteur: number;
+  vide: boolean;
+}
+
+/** Le nombre d'unités de contenu d'un bloc — ce qui fait sa hauteur. */
+function unitesDuBloc(bloc: PageBlock): number {
+  switch (bloc.type) {
+    case 'text':
+      return bloc.text.trim() ? bloc.text.trim().split(/\n+/).length : 0;
+    case 'checklist':
+      return bloc.items.filter((i) => i.text.trim()).length;
+    case 'table':
+      return bloc.rows.filter((r) => r.some((c) => c.trim())).length;
+    case 'image':
+    case 'video':
+      return bloc.url.trim() ? 3 : 0;
+    default:
+      return 0;
+  }
+}
+
+/** Le contenu résumé, au centre du bloc. Jamais le contenu entier. */
+function resumeDuBloc(bloc: PageBlock): string {
+  switch (bloc.type) {
+    case 'text': {
+      const texte = bloc.text.trim().replace(/\s+/g, ' ');
+      return texte.length > 120 ? `${texte.slice(0, 117)}…` : texte;
+    }
+    case 'checklist': {
+      const faits = bloc.items.filter((i) => i.done).length;
+      const total = bloc.items.filter((i) => i.text.trim()).length;
+      return total === 0 ? '' : `${total} point${total > 1 ? 's' : ''}, ${faits} coché${faits > 1 ? 's' : ''}`;
+    }
+    case 'table': {
+      const lignes = bloc.rows.filter((r) => r.some((c) => c.trim())).length;
+      return lignes === 0
+        ? ''
+        : `${bloc.columns.length} colonne${bloc.columns.length > 1 ? 's' : ''} × ${lignes} ligne${lignes > 1 ? 's' : ''}`;
+    }
+    case 'image':
+    case 'video':
+      return bloc.url.trim() ? bloc.caption?.trim() || bloc.url.trim() : '';
+    default:
+      return '';
+  }
+}
+
+function profilDeLaPage(blocs: PageBlock[], nomDuType: (t: PageBlock['type']) => string): BlocDeProfil[] {
+  return blocs.map((bloc) => {
+    const unites = unitesDuBloc(bloc);
+    return {
+      id: bloc.id,
+      type: bloc.type,
+      typeLabel: nomDuType(bloc.type),
+      resume: resumeDuBloc(bloc),
+      unites,
+      hauteur: Math.min(PROFIL_H_MAX, PROFIL_H_MIN + unites * PROFIL_PAS),
+      vide: unites === 0,
+    };
+  });
+}
 
 const TYPES: { type: PageBlock['type']; label: string; icon: typeof Type }[] = [
   { type: 'text', label: tr('hist.pages.texte'), icon: Type },
@@ -109,6 +202,9 @@ export function PagesScreen({ scope, title, description }: {
   title?: string;
   description?: string;
 }) {
+  /* L'abonnement à la langue : `tr(...)` lit la langue ACTIVE à l'appel, donc
+     sans abonnement l'écran garde celle du montage. */
+  useLangue();
   const { role } = useAuth();
   const { upsert, remove, ready } = useSync();
   const brutes = useCollection<PageData>('pages');
@@ -124,8 +220,36 @@ export function PagesScreen({ scope, title, description }: {
     [brutes, scope],
   );
 
-  const courante = pages.find((p) => p.id === ouverte) ?? null;
+  /*
+    LA PAGE OUVERTE PAR DÉFAUT — celle qui a un bloc vide s'il en existe une.
+
+    Le profil n'a qu'un défaut à montrer : le bloc qui retient la page. S'ouvrir
+    sur une page complète, c'est s'ouvrir sur la démonstration la moins
+    parlante — et laisser le trou ailleurs, invisible.
+  */
+  const premiereIncomplete = useMemo(
+    () => pages.find((p) => p.data.blocks.some((b) => unitesDuBloc(b) === 0)) ?? null,
+    [pages],
+  );
+  const courante = pages.find((p) => p.id === ouverte) ?? premiereIncomplete ?? pages[0] ?? null;
   const modifiable = courante ? canEditPage(role, courante.data) : false;
+
+  /*
+    LE PROFIL DE LA PAGE OUVERTE, et le bloc qui retient la publication.
+
+    L'ambre va au PREMIER bloc vide dans l'ordre de la page : c'est celui
+    qu'on rencontrera en descendant, et désigner le dernier obligerait à
+    remonter. Une page dont tous les blocs portent quelque chose n'a pas
+    d'ambre — il n'y a rien à décider.
+  */
+  const nomDuType = (t: PageBlock['type']) =>
+    TYPES.find((entry) => entry.type === t)?.label ?? t;
+  const profil = useMemo(
+    () => (courante ? profilDeLaPage(courante.data.blocks, nomDuType) : []),
+    [courante],
+  );
+  const blocAmbre = profil.find((b) => b.vide) ?? null;
+  const halo = useHaloSignal(blocAmbre !== null);
 
   const enregistrer = (id: string, data: PageData) => void upsert('pages', id, { ...data });
 
@@ -178,6 +302,76 @@ export function PagesScreen({ scope, title, description }: {
           }
         />
       </StaggerItem>
+
+      {/* ── LA PAGE DE PROFIL — l'objet dominant (`18a`) ─────────────────── */}
+      {courante && profil.length > 0 && (
+        <StaggerItem>
+          <section className="panel-raised panel-raised-wide p-5 sm:p-6">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+              <p className="eyebrow">{courante.data.title || 'Page sans titre'} · de profil</p>
+              <p className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
+                la hauteur d’un bloc est ce qu’il contient
+              </p>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-1.5">
+              {profil.map((b) => {
+                const signal = blocAmbre?.id === b.id;
+                return (
+                  <div
+                    key={b.id}
+                    className={`flex items-center gap-4 border px-3 ${
+                      signal
+                        ? `border-signal-line bg-signal-muted ${halo}`
+                        : 'border-border bg-sunken'
+                    }`}
+                    style={{ height: b.hauteur }}
+                    data-signal-groupe={signal ? 'bloc-vide' : undefined}
+                  >
+                    <span
+                      className={`w-24 flex-shrink-0 truncate font-mono text-[10px] uppercase tracking-[0.14em] ${
+                        signal ? 'text-signal' : 'text-text-muted'
+                      }`}
+                      data-signal-groupe={signal ? 'bloc-vide' : undefined}
+                    >
+                      {b.typeLabel}
+                    </span>
+                    <span
+                      className={`min-w-0 flex-1 truncate text-[13px] ${
+                        b.vide ? (signal ? 'text-signal' : 'text-text-muted') : 'text-text-secondary'
+                      }`}
+                      data-signal-groupe={signal ? 'bloc-vide' : undefined}
+                    >
+                      {b.vide ? 'Aucun contenu' : b.resume}
+                    </span>
+                    <span className="tnum w-12 flex-shrink-0 text-right font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                      {b.hauteur} px
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="mt-4 border-t border-border-row pt-3 text-[12.5px] leading-relaxed text-text-muted">
+              {blocAmbre
+                ? `Le bloc « ${blocAmbre.typeLabel} » n’a aucun contenu : c’est lui qui retient la page. Un bloc vide garde sa place et sa hauteur minimale — un manque qu’on ne voit pas n’est pas signalé.`
+                : 'Tous les blocs de cette page portent quelque chose.'}
+            </p>
+            {/*
+              CE QUE LE PRODUIT NE MESURE PAS. La maquette place à droite « les
+              visites du mois et la page la plus vue ». Les pages de ce module
+              sont INTERNES : elles ne passent par aucune page publique, rien
+              ne compte de visite, et le module `22a Mini-page` est celui qui
+              porte la fréquentation. Afficher un compteur ici serait afficher
+              un zéro qui n'a jamais été mesuré.
+            */}
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-muted">
+              Ces pages sont internes : elles ne sont pas publiées, et aucune visite n’est comptée.
+              La fréquentation d’une page publique se lit dans Mini-page.
+            </p>
+          </section>
+        </StaggerItem>
+      )}
 
       <StaggerItem>
         <div className="grid gap-4 lg:grid-cols-[268px_1fr]">
@@ -397,7 +591,11 @@ export function PagesScreen({ scope, title, description }: {
                       className="mt-6 border border-border bg-sunken p-4"
                       data-signal-groupe="ajouter-un-bloc"
                     >
-                      <p className="eyebrow eyebrow-signal mb-3">{tr('hist.pages.ajouterUnBloc')}</p>
+                      {/* Ce surtitre portait l'ambre. Il le cède au bloc vide
+                          de la page de profil : ajouter un bloc est une
+                          possibilité permanente, pas une décision — et un
+                          écran n'a qu'une région ambre. */}
+                      <p className="eyebrow mb-3">{tr('hist.pages.ajouterUnBloc')}</p>
                       <div className="flex flex-wrap gap-2">
                         {TYPES.map(({ type, label, icon: Icone }) => (
                           <button

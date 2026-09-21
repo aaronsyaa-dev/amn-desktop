@@ -16,6 +16,19 @@ interface Suite {
 interface MeetingData {
   title: string;
   at: string;
+  /**
+   * LA DURÉE, EN MINUTES — absente sur les réunions écrites avant ce champ.
+   *
+   * ARBITRAGE. Le peigne de `17c` ne peut pas exister sans elle : une réunion
+   * sans durée n'est pas une dent, c'est un point, et « ce qu'il reste entre
+   * elles » n'a plus de définition. Le module gardait seulement une heure de
+   * début, ce qui suffisait à une liste et pas à un instrument.
+   *
+   * Absente, elle vaut une heure (`REUNION_DEFAUT_MIN`) : c'est la durée par
+   * défaut d'une réunion d'agenda, et supposer une heure est moins faux que
+   * supposer zéro — une réunion de durée nulle ne coupe rien.
+   */
+  durationMin?: number;
   attendees: string;
   agenda: string;
   decisions: string[];
@@ -24,6 +37,267 @@ interface MeetingData {
   createdAt: string;
 }
 const localISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+
+/**
+ * LE PEIGNE — l'objet dominant des Réunions (système de design, `17c`)
+ * ═══════════════════════════════════════════════════════════════════
+ *
+ * Chaque journée est une bande horizontale de 08 h à 20 h, et chaque réunion y
+ * est une DENT qui la coupe sur toute la hauteur. Ce qui se mesure n'est pas
+ * le temps passé en réunion — ce chiffre existe déjà partout — mais CE QU'IL
+ * RESTE ENTRE ELLES : le plus long bloc de travail resté entier est dessiné en
+ * encre claire dans la bande, et sa durée est la seule valeur de la colonne de
+ * droite.
+ *
+ * LA DIFFÉRENCE QUE ÇA FAIT. Deux journées avec trois heures de réunion
+ * chacune ne se valent pas : trois heures d'affilée laissent un après-midi
+ * entier, trois réunions d'une heure espacées ne laissent rien. Un total de
+ * temps ne distingue pas les deux ; un peigne, si.
+ *
+ * DEUX RÈGLES DE GÉOMÉTRIE :
+ *
+ *   1. La bande couvre LES MÊMES HEURES pour tous les jours, sinon les dents
+ *      ne se comparent pas — une bande qui se resserre sur les réunions du
+ *      jour ferait paraître une journée à deux réunions aussi coupée qu'une
+ *      journée à cinq.
+ *   2. Le chiffre de droite est LE PLUS LONG BLOC ININTERROMPU, jamais le
+ *      total de temps libre. Les deux sont très différents, et c'est le
+ *      premier qui dit si on peut travailler.
+ */
+
+/** La bande couvre la journée ouvrée, comme l'axe de l'Accueil. */
+const PEIGNE_DEBUT = 8;
+const PEIGNE_FIN = 20;
+const PEIGNE_HEURES = PEIGNE_FIN - PEIGNE_DEBUT;
+
+/** La durée par défaut d'une réunion, quand elle n'en porte pas. */
+const REUNION_DEFAUT_MIN = 60;
+
+interface JourPeigne {
+  cle: string;
+  libelle: string;
+  dents: { id: string; gauche: number; largeur: number; titre: string }[];
+  /** Le plus long bloc libre, en pourcentage de la bande et en minutes. */
+  bloc: { gauche: number; largeur: number; minutes: number } | null;
+  /** Nombre de coupures — ce qui fait la fragmentation, pas le temps passé. */
+  coupures: number;
+  minutesReunion: number;
+  personnesHeures: number;
+}
+
+/**
+ * Le calcul du peigne pour une semaine : cinq bandes, leurs dents, et le plus
+ * long bloc resté entier dans chacune.
+ */
+function calculerPeigne(
+  reunions: { id: string; at: string; attendees: string; durationMin?: number }[],
+  lundi: Date,
+): { jours: JourPeigne[]; plusFragmente: string | null; totalPersonnesHeures: number } {
+  const jours: JourPeigne[] = [];
+  for (let i = 0; i < 5; i += 1) {
+    const d = new Date(lundi);
+    d.setDate(lundi.getDate() + i);
+    const cle = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const duJour = reunions
+      .filter((r) => r.at.slice(0, 10) === cle)
+      .sort((a, b) => a.at.localeCompare(b.at));
+
+    const pct = (heures: number) => ((heures - PEIGNE_DEBUT) / PEIGNE_HEURES) * 100;
+    const dents = duJour
+      .map((r) => {
+        const debut = new Date(r.at);
+        const h = debut.getHours() + debut.getMinutes() / 60;
+        const duree = (r.durationMin ?? REUNION_DEFAUT_MIN) / 60;
+        const g = pct(h);
+        const f = pct(h + duree);
+        if (f <= 0 || g >= 100) return null;
+        return {
+          id: r.id,
+          gauche: Math.max(0, g),
+          largeur: Math.min(100, f) - Math.max(0, g),
+          titre: `${String(debut.getHours()).padStart(2, '0')}:${String(debut.getMinutes()).padStart(2, '0')}`,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
+
+    /* Le plus long intervalle LIBRE entre les dents, bornes de la bande
+       comprises. On fusionne d'abord les dents qui se chevauchent : deux
+       réunions superposées ne laissent pas de trou entre elles. */
+    const occupes = [...dents]
+      .sort((a, b) => a.gauche - b.gauche)
+      .reduce<{ g: number; d: number }[]>((acc, dent) => {
+        const dernier = acc[acc.length - 1];
+        if (dernier && dent.gauche <= dernier.d) {
+          dernier.d = Math.max(dernier.d, dent.gauche + dent.largeur);
+          return acc;
+        }
+        acc.push({ g: dent.gauche, d: dent.gauche + dent.largeur });
+        return acc;
+      }, []);
+    let bloc: JourPeigne['bloc'] = null;
+    let curseur = 0;
+    for (const o of [...occupes, { g: 100, d: 100 }]) {
+      const largeur = o.g - curseur;
+      if (largeur > (bloc?.largeur ?? 0)) {
+        bloc = { gauche: curseur, largeur, minutes: Math.round((largeur / 100) * PEIGNE_HEURES * 60) };
+      }
+      curseur = Math.max(curseur, o.d);
+    }
+
+    const minutesReunion = duJour.reduce((n, r) => n + (r.durationMin ?? REUNION_DEFAUT_MIN), 0);
+    /* Le nombre de personnes se lit dans le champ libre « présents » : c'est
+       ce que le module a, et le compter vaut mieux que de ne rien dire. Une
+       liste vide compte pour une personne — celle qui tient la réunion. */
+    const personnesHeures = duJour.reduce((n, r) => {
+      const gens = Math.max(1, r.attendees.split(/[,;]/).map((x) => x.trim()).filter(Boolean).length);
+      return n + (gens * (r.durationMin ?? REUNION_DEFAUT_MIN)) / 60;
+    }, 0);
+
+    jours.push({
+      cle,
+      libelle: d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', ''),
+      dents,
+      bloc,
+      coupures: occupes.length,
+      minutesReunion,
+      personnesHeures,
+    });
+  }
+
+  /*
+    LE JOUR LE PLUS FRAGMENTÉ — et c'est bien la FRAGMENTATION qu'on cherche,
+    pas le jour le plus chargé. Le critère est le plus long bloc restant : la
+    journée dont le meilleur créneau est le plus court est celle où l'on ne
+    peut rien faire, même si elle compte moins d'heures de réunion qu'une
+    autre. Une journée sans réunion garde sa bande entière et ne concourt pas.
+  */
+  const candidats = jours.filter((j) => j.dents.length > 0);
+  const plusFragmente =
+    candidats.length > 0
+      ? candidats.reduce((a, b) => ((b.bloc?.minutes ?? 0) < (a.bloc?.minutes ?? 0) ? b : a)).cle
+      : null;
+
+  return {
+    jours,
+    plusFragmente,
+    totalPersonnesHeures: jours.reduce((n, j) => n + j.personnesHeures, 0),
+  };
+}
+
+function Peigne({
+  peigne,
+  totalMinutes,
+}: {
+  peigne: ReturnType<typeof calculerPeigne>;
+  totalMinutes: number;
+}) {
+  const enHeures = (min: number) =>
+    min >= 60 ? `${Math.floor(min / 60)} h${min % 60 ? ` ${String(min % 60).padStart(2, '0')}` : ''}` : `${min} min`;
+  return (
+    <section className="panel-raised panel-raised-wide px-[30px] pb-[26px] pt-[30px]">
+      <div className="mb-[22px] flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+        <span className="eyebrow text-text-secondary">
+          La semaine · {String(PEIGNE_DEBUT).padStart(2, '0')} → {PEIGNE_FIN}
+        </span>
+        <span className="font-mono text-[10px] tracking-[0.1em] text-text-muted">
+          {enHeures(totalMinutes).toUpperCase()} DE RÉUNION ·{' '}
+          {peigne.totalPersonnesHeures.toFixed(1).replace('.', ',')} H D’ÉQUIPE
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-2.5">
+        {peigne.jours.map((j) => {
+          const ambre = peigne.plusFragmente === j.cle;
+          return (
+            <div key={j.cle} className="grid grid-cols-[44px_1fr_96px] items-center gap-4">
+              <span
+                className={`font-mono text-[10px] uppercase tracking-[0.1em] ${
+                  ambre ? 'text-signal' : 'text-text-muted'
+                }`}
+                data-signal-groupe={ambre ? 'jour-fragmente' : undefined}
+              >
+                {j.libelle}
+              </span>
+
+              <span className="relative block h-[34px] border border-border-raised bg-sunken">
+                {/* LE PLUS LONG BLOC RESTÉ ENTIER — dessiné DANS la bande, en
+                    encre claire. C'est lui le sujet, pas les dents. */}
+                {j.bloc && j.bloc.largeur > 0 && (
+                  <span
+                    className={`absolute inset-y-0 ${ambre ? 'bg-signal-muted' : 'bg-[#191919]'}`}
+                    style={{ left: `${j.bloc.gauche}%`, width: `${j.bloc.largeur}%` }}
+                  />
+                )}
+                {j.dents.map((d) => (
+                  <span
+                    key={d.id}
+                    data-signal-groupe={ambre ? 'jour-fragmente' : undefined}
+                    className={`absolute inset-y-0 ${ambre ? 'bg-signal' : 'bg-border-strong'}`}
+                    style={{ left: `${d.gauche}%`, width: `${Math.max(1.2, d.largeur)}%` }}
+                    title={d.titre}
+                  />
+                ))}
+              </span>
+
+              {/* LE PLUS LONG BLOC ININTERROMPU, jamais le total de temps
+                  libre : c'est le premier qui dit si on peut travailler. */}
+              <span
+                data-signal-groupe={ambre ? 'jour-fragmente' : undefined}
+                className={`tnum text-right font-mono text-[14px] font-semibold ${
+                  ambre ? 'text-signal' : j.dents.length === 0 ? 'text-text-muted' : 'text-text-primary'
+                }`}
+              >
+                {j.dents.length === 0 ? '—' : enHeures(j.bloc?.minutes ?? 0)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/*
+        LA RANGÉE DE GRADUATIONS PARTAGE LA GRILLE DES BANDES.
+
+        Première écriture : trois `absolute` posés à `left:44px`, `left:50%` et
+        `right:96px` sur toute la largeur de la carte. Les deux extrêmes
+        tombaient juste par hasard ; le « 14 » se trouvait au milieu de la
+        CARTE et non au milieu de la BANDE, décalé de la moitié des colonnes
+        latérales. C'est exactement ce que le système de design interdit :
+        une graduation ne se recalibre pas à coups de marges, elle reprend la
+        même `grid-template-columns` que ce qu'elle gradue.
+      */}
+      <div className="mt-3 grid grid-cols-[44px_1fr_96px] gap-4">
+        <span />
+        <span className="relative block h-[14px] font-mono text-[9.5px] tracking-[0.08em] text-text-muted">
+          {[8, 11, 14, 17, 20].map((h, i, tous) => (
+            <span
+              key={h}
+              className="absolute"
+              style={
+                i === 0
+                  ? { left: 0 }
+                  : i === tous.length - 1
+                    ? { right: 0 }
+                    : {
+                        left: `${((h - PEIGNE_DEBUT) / PEIGNE_HEURES) * 100}%`,
+                        transform: 'translateX(-50%)',
+                      }
+              }
+            >
+              {String(h).padStart(2, '0')}
+            </span>
+          ))}
+        </span>
+        <span />
+      </div>
+
+      <p className="mt-5 border-t border-border-raised pt-[22px] text-[13px] leading-[1.6] text-text-muted [text-wrap:pretty]">
+        Le chiffre de droite est le plus long créneau resté ENTIER, pas le temps libre total. Trois
+        heures d’affilée et trois heures en miettes ne laissent pas le même après-midi.
+      </p>
+    </section>
+  );
+}
 
 /**
  * LES RÉUNIONS — un ordre du jour, des décisions, des suites.
@@ -44,6 +318,7 @@ export function MeetingsScreen() {
   const [at, setAt] = useState(() => localISO(new Date()));
   const [attendees, setAttendees] = useState('');
   const [agenda, setAgenda] = useState('');
+  const [duree, setDuree] = useState('60');
   const [brouillons, setBrouillons] = useState<Record<string, { decision: string; action: string }>>({});
   const [ouverteId, setOuverteId] = useState<string | null>(null);
 
@@ -59,7 +334,7 @@ export function MeetingsScreen() {
 
   const ajouter = async () => {
     if (!title.trim()) return;
-    await upsert('meetings', uid('mtg'), { title: title.trim(), at, attendees: attendees.trim(), agenda: agenda.trim(), decisions: [], actions: [], byEmail: user?.email ?? '', createdAt: new Date().toISOString() });
+    await upsert('meetings', uid('mtg'), { title: title.trim(), at, attendees: attendees.trim(), agenda: agenda.trim(), durationMin: Math.max(5, Number(duree) || REUNION_DEFAUT_MIN), decisions: [], actions: [], byEmail: user?.email ?? '', createdAt: new Date().toISOString() });
     setTitle(''); setAttendees(''); setAgenda(''); setOuvert(false);
   };
   const brouillon = (id: string) => brouillons[id] ?? { decision: '', action: '' };
@@ -78,6 +353,25 @@ export function MeetingsScreen() {
   const basculer = (r: MeetingData & { id: string }, s: Suite) =>
     upsert('meetings', r.id, { ...r, actions: r.actions.map((a) => (a.id === s.id ? { ...a, doneAt: a.doneAt ? null : new Date().toISOString() } : a)) });
   const quand = (iso: string) => new Date(iso).toLocaleString(locale, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+  /* Le peigne porte sur la semaine en cours — c'est la seule période où
+     « qu'est-ce qu'il me reste » est une question qu'on se pose. */
+  const lundi = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d;
+  }, []);
+  const semaine = useMemo(
+    () =>
+      brutes.filter((r) => {
+        const t = new Date(r.at).getTime();
+        return t >= lundi.getTime() && t < lundi.getTime() + 5 * 86_400_000;
+      }),
+    [brutes, lundi],
+  );
+  const peigne = useMemo(() => calculerPeigne(semaine, lundi), [semaine, lundi]);
+  const minutesSemaine = semaine.reduce((n, r) => n + (r.durationMin ?? REUNION_DEFAUT_MIN), 0);
 
   return (
     <motion.section variants={staggerContainer} initial="hidden" animate="show" className="flex flex-col gap-5">
@@ -99,11 +393,32 @@ export function MeetingsScreen() {
         />
       </motion.div>
 
+      {/* ── L'OBJET DOMINANT : le peigne de la semaine ────────────────── */}
+      {semaine.length > 0 && (
+        <motion.div variants={staggerItem}>
+          <Peigne peigne={peigne} totalMinutes={minutesSemaine} />
+        </motion.div>
+      )}
+
       {ouvert && (
         <motion.form variants={staggerItem} onSubmit={(e) => { e.preventDefault(); void ajouter(); }} className="grid gap-3 rounded-xl border border-border bg-surface p-4 sm:grid-cols-2">
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('reunions.champTitre')} aria-label={t('reunions.champTitre')} autoFocus className="input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none" />
           <label className="flex flex-col gap-1 text-xs text-text-muted">{t('reunions.champQuand')}<input type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} className="input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none" /></label>
           <input value={attendees} onChange={(e) => setAttendees(e.target.value)} placeholder={t('reunions.champPresents')} aria-label={t('reunions.champPresents')} className="input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none" />
+          {/* La durée : sans elle, la réunion est un point sur la bande, et le
+              peigne ne peut pas dire ce qu'il reste entre deux. */}
+          <label className="flex flex-col gap-1 text-xs text-text-muted">
+            Combien de temps (minutes)
+            <input
+              type="number"
+              min={5}
+              step={5}
+              inputMode="numeric"
+              value={duree}
+              onChange={(e) => setDuree(e.target.value)}
+              className="input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none"
+            />
+          </label>
           <textarea value={agenda} onChange={(e) => setAgenda(e.target.value)} rows={3} placeholder={t('reunions.champOrdre')} aria-label={t('reunions.champOrdre')} className="input-focus border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none sm:col-span-2" />
           <div className="flex flex-wrap gap-2 sm:col-span-2">
             <button type="submit" disabled={!title.trim()} className="bg-accent px-4 py-2 text-sm font-semibold text-bg disabled:opacity-40">{t('reunions.enregistrer')}</button>

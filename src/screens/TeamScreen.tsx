@@ -35,6 +35,7 @@ import { deleteMessageLabel } from '../lib/messageRules';
 import { ConfirmDelete } from '../components/ConfirmDelete';
 import { UserAvatar } from '../components/UserAvatar';
 import { parseMentions, urlDisplayHost, type ClientRef, type TaskRef } from '../lib/mentions';
+import { RailDesEpingles } from '../components/collectif/RailDesEpingles';
 import { resizeImageToDataUrl } from '../lib/imageResize';
 import { relativeTime } from '../lib/time';
 import { useSitePanel } from '../components/site-panel/SitePanelContext';
@@ -95,6 +96,19 @@ function useMentionTasks(): TaskRef[] {
   );
 }
 
+/**
+ * LES TÂCHES ENCORE OUVERTES, en direct.
+ *
+ * Le rail des épingles (`32a`) doit pouvoir dire qu'une épingle cite une tâche
+ * qui n'est pas finie — et le montrer sans qu'on réécrive l'épingle le jour où
+ * elle se ferme. L'état vient donc de la collection, jamais du texte du
+ * message : c'est ce qui distingue une mention d'une chaîne de caractères.
+ */
+function useTachesOuvertes(): Set<string> {
+  const rows = useCollection<{ status?: string }>('tasks');
+  return React.useMemo(() => new Set(rows.filter((r) => (r.status ?? 'todo') !== 'done').map((r) => r.id)), [rows]);
+}
+
 export function TeamScreen() {
   const { user } = useAuth();
   const { sites, eventsBySite, ensureEventsLoaded } = useRemoteSites();
@@ -125,6 +139,8 @@ export function TeamScreen() {
 
   // Client roster for "@" mentions, read from the synced collection like every
   // other shared list — so a client created on any platform is mentionable here.
+  const mentionTasks = useMentionTasks();
+  const tachesOuvertes = useTachesOuvertes();
   const { clients: clientRoster } = useClients();
   const clients = useMemo<ClientRef[]>(
     () => clientRoster.map((c) => ({ id: c.id, name: c.name, company: c.company })),
@@ -209,9 +225,16 @@ export function TeamScreen() {
       </AnimatePresence>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-surface">
-        {pinned.length > 0 && (
-          <PinnedBar pinned={pinned} onJump={jumpToMessage} onUnpin={togglePin} />
-        )}
+        {/* L'objet de l'écran : la MÉMOIRE au-dessus, le flux en dessous. */}
+        <RailDesEpingles
+          pinned={pinned}
+          sites={sites}
+          clients={clients}
+          tasks={mentionTasks}
+          tachesOuvertes={tachesOuvertes}
+          onJump={jumpToMessage}
+          onUnpin={(m) => togglePin(m as SyncMessage)}
+        />
         <MessageList
           messages={messages}
           currentEmail={user?.email}
@@ -583,43 +606,6 @@ function MessageSearch({
         </div>
       )}
     </motion.div>
-  );
-}
-
-/* -------------------------------- Pinned -------------------------------- */
-
-function PinnedBar({
-  pinned,
-  onJump,
-  onUnpin,
-}: {
-  pinned: SyncMessage[];
-  onJump: (id: string) => void;
-  onUnpin: (message: SyncMessage) => void;
-}) {
-  const { profileFor } = useProfiles();
-  return (
-    <div className="flex items-center gap-2 overflow-x-auto border-b border-border bg-bg/60 px-3 py-2">
-      <Pin size={13} strokeWidth={2} className="flex-shrink-0 text-text-muted" />
-      {pinned.map((m) => (
-        <div
-          key={m.id}
-          className="group flex flex-shrink-0 items-center gap-1.5 rounded-md border border-border bg-surface py-1 pl-2.5 pr-1 text-xs"
-        >
-          <button type="button" onClick={() => onJump(m.id)} className="max-w-[220px] truncate text-text-secondary hover:text-text-primary">
-            <span className="font-medium text-text-primary">{profileFor(m.authorEmail).name}</span> · {m.body || '(pièce jointe)'}
-          </button>
-          <button
-            type="button"
-            onClick={() => onUnpin(m)}
-            aria-label="Désépingler"
-            className="rounded p-0.5 text-text-muted opacity-0 transition-opacity hover:text-text-primary group-hover:opacity-100"
-          >
-            <PinOff size={12} strokeWidth={2} />
-          </button>
-        </div>
-      ))}
-    </div>
   );
 }
 

@@ -2,11 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CalendarCheck, Check, Loader2 } from 'lucide-react';
 import { Logo } from '../components/Logo';
+import { joursOuverts, type JourSemaine } from '../lib/creneaux';
 import { useLangue } from '../i18n';
+import { signalerLeScan } from '../lib/qrScan';
 
 const API_BASE = (import.meta.env.VITE_AMN_API_URL || '').replace(/\/$/, '');
-type Jour = 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
-const CLES: Jour[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+type Jour = JourSemaine;
 
 interface Offre {
   status: 'open';
@@ -19,11 +20,6 @@ interface Offre {
   days: number;
   taken: { startAt: string; durationMin: number }[];
 }
-const minutesDe = (hhmm: string) => {
-  const m = /^(\d{2}):(\d{2})$/.exec(hhmm);
-  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
-};
-
 /**
  * LA PAGE PUBLIQUE DE RENDEZ-VOUS — sans compte, sans session.
  *
@@ -40,6 +36,11 @@ export function PublicBookingScreen() {
     const query = hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : window.location.search.slice(1);
     return (new URLSearchParams(query).get('org') ?? '').trim();
   });
+
+  /* Le code qui a mené ici, s'il y en a un — voir lib/qrScan.ts. */
+  useEffect(() => {
+    signalerLeScan(orgId);
+  }, [orgId]);
   const [offre, setOffre] = useState<Offre | null | 'fermee' | 'erreur'>(null);
   const [jour, setJour] = useState<string | null>(null);
   const [creneau, setCreneau] = useState<string | null>(null);
@@ -65,32 +66,14 @@ export function PublicBookingScreen() {
 
   const jours = useMemo(() => {
     if (!offre || typeof offre === 'string') return [];
-    const out: { iso: string; date: Date; creneaux: Date[] }[] = [];
-    const maintenant = Date.now();
-    for (let i = 0; i < offre.days; i += 1) {
-      const d = new Date();
-      d.setHours(0, 0, 0, 0);
-      d.setDate(d.getDate() + i);
-      const fenetres = offre.availability[CLES[d.getDay()]] ?? [];
-      const creneaux: Date[] = [];
-      for (const f of fenetres) {
-        const de = minutesDe(f.from);
-        const a = minutesDe(f.to);
-        if (de === null || a === null) continue;
-        for (let m = de; m + offre.durationMin <= a; m += offre.durationMin) {
-          const debut = new Date(d);
-          debut.setMinutes(m);
-          if (debut.getTime() <= maintenant) continue;
-          const pris = offre.taken.some((p) => {
-            const pd = Date.parse(p.startAt);
-            return debut.getTime() < pd + p.durationMin * 60_000 && pd < debut.getTime() + offre.durationMin * 60_000;
-          });
-          if (!pris) creneaux.push(debut);
-        }
-      }
-      if (creneaux.length > 0) out.push({ iso: d.toISOString().slice(0, 10), date: d, creneaux });
-    }
-    return out;
+    /* Le calcul vit dans `src/lib/creneaux.ts` : l'écran de réglage en montre
+       l'aperçu, et deux copies du même algorithme divergeraient. */
+    return joursOuverts({
+      availability: offre.availability,
+      durationMin: offre.durationMin,
+      jours: offre.days,
+      pris: offre.taken,
+    });
   }, [offre]);
 
   useEffect(() => {

@@ -10,8 +10,10 @@ import { formatCents } from '../lib/money';
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
-import { paliereDe, toneAMonte, cleMessagePalier, CLE_LIBELLE_PALIER, type PalierRelance } from '../lib/relances';
+import { paliereDe, toneAMonte, rangPalier, cleMessagePalier, CLE_LIBELLE_PALIER, ECHELLE, type PalierRelance } from '../lib/relances';
 import type { Invoice } from '../shared/api';
+import { useAppointments } from '../state/useAppointments';
+import { useHaloSignal } from '../components/EtatEcran';
 
 interface ReminderData {
   invoiceId: string;
@@ -31,6 +33,16 @@ const PALIER_TON: Record<PalierRelance, string> = {
 const isoDay = () => new Date().toISOString().slice(0, 10);
 
 /**
+ * LES QUATRE MARCHES DE L'ESCALADE (`14d`) — 70, 110, 150, 190 px.
+ *
+ * Des hauteurs CROISSANTES, et c'est tout l'objet : une échelle se monte, et
+ * quatre cases de même taille ne se montent pas, elles se cochent. L'écart
+ * entre marches est constant (40 px) pour que la montée se lise comme
+ * régulière — ce qu'elle est : le ton monte d'un cran à chaque seuil.
+ */
+const MARCHES: number[] = [70, 110, 150, 190];
+
+/**
  * LES RELANCES DE PAIEMENT — l'argent dû, et le mot qu'on envoie.
  *
  * Pour qui : quiconque facture et n'ose pas relancer, ou oublie. Ce que ça
@@ -39,6 +51,47 @@ const isoDay = () => new Date().toISOString().slice(0, 10);
  * le numéro et le montant. Rien n'est envoyé d'ici (il n'y a pas d'email) :
  * on copie, on colle où l'on parle au client, et on note « relancé ». Lit
  * la Facturation, n'écrit que la trace des relances.
+ *
+ * ## Ce qui domine : UNE lettre, posée comme une feuille
+ *
+ * L'écran empilait une lettre par facture échue, toutes de la même taille.
+ * Sur le bac à sable, six factures : deux lettres remplissaient la fenêtre,
+ * quatre continuaient dessous. Une mise en demeure à 45 jours et un rappel à
+ * 4 jours avaient exactement la même carte, la même encre, et leur palier
+ * s'écrivait en mono 9 px au bout du nom. Le module SAIT pourtant les
+ * distinguer — `src/lib/relances.ts` gradue le ton sur le retard, et écrit
+ * quatre lettres différentes — mais l'écran n'en disait rien.
+ *
+ * Une seule lettre passe donc en tête, en `panel-sheet` : c'est la classe du
+ * document posé, pas de la carte, et une relance EST un document — on la copie
+ * telle quelle pour l'envoyer. Les autres échues descendent en registre d'une
+ * ligne, sans leur texte : leur lettre s'affiche quand on les choisit.
+ *
+ * ## Laquelle passe en tête
+ *
+ * La plus dure à écrire : le palier le plus haut d'abord, puis, à palier égal,
+ * le montant le plus gros. Pas la plus ancienne — deux factures du même mois
+ * peuvent être à deux paliers, et c'est le palier qui dit ce qu'il faut oser
+ * écrire. Pas la plus grosse non plus : un gros rappel de trois jours ne passe
+ * pas devant une mise en demeure.
+ *
+ * ## L'échelle
+ *
+ * Les quatre paliers se montrent en barreaux, avec le seuil de chacun, le
+ * barreau atteint plein et les suivants éteints. C'est l'objet propre de ce
+ * module : nulle part ailleurs dans l'application une donnée ne monte par
+ * crans nommés. Elle répond à la question qu'on se pose vraiment devant une
+ * facture en retard — « je peux écrire ça, ou c'est trop tôt ? »
+ *
+ * ## L'ambre
+ *
+ * Sur « à écrire maintenant », c'est-à-dire sur la lettre de tête et son geste
+ * de copie. PAS sur la gravité : `PALIER_TON` garde le rouge pour la mise en
+ * demeure et le dernier avis, et le rouge dit la gravité depuis toujours dans
+ * cette application. L'ambre dit ce qui demande une décision — ici, envoyer
+ * celle-là, aujourd'hui. Les deux se lisent ensemble sans se disputer : la
+ * lettre de tête est ambre parce qu'elle est à écrire, et son chiffre de
+ * retard est rouge parce que 61 jours, c'est grave.
  */
 export function RemindersScreen() {
   const { t, langue } = useLangue();
@@ -47,6 +100,7 @@ export function RemindersScreen() {
   const { invoices } = useInvoices();
   const relances = useCollection<ReminderData>('paymentReminders');
   const [copiee, setCopiee] = useState<string | null>(null);
+  const [choisie, setChoisie] = useState<string | null>(null);
   const jour = isoDay();
   const moi = user?.email ?? '';
 
@@ -67,6 +121,29 @@ export function RemindersScreen() {
   const jours = (f: Invoice) => Math.max(1, Math.round((Date.parse(jour) - Date.parse(f.dueAt)) / 86_400_000));
   /** Le palier qu'un avoir partiel n'annule pas : il se calcule sur le retard, jamais sur le montant restant. */
   const palierDe = (f: Invoice) => paliereDe(jours(f));
+
+  /*
+    LA PLUS DURE À ÉCRIRE — palier d'abord, montant ensuite.
+
+    `echues` reste trié par échéance : c'est l'ordre du registre, et il se lit
+    bien. La tête, elle, se choisit autrement — voir l'en-tête du fichier.
+  */
+  const laPlusDure = useMemo(() => {
+    /* Le retard se recalcule ici plutôt que d'appeler `jours` : une fermeture
+       déclarée dans le corps du composant obligerait à museler la règle des
+       dépendances de hook, et une règle muselée finit par cacher un vrai
+       oubli. */
+    const retard = (f: Invoice) => Math.max(1, Math.round((Date.parse(jour) - Date.parse(f.dueAt)) / 86_400_000));
+    return (
+      [...echues].sort((a, b) => {
+        const ecart = rangPalier(paliereDe(retard(b))) - rangPalier(paliereDe(retard(a)));
+        if (ecart !== 0) return ecart;
+        return netDueCents(b, invoices) - netDueCents(a, invoices);
+      })[0] ?? null
+    );
+  }, [echues, invoices, jour]);
+  const tete = echues.find((f) => f.id === choisie) ?? laPlusDure;
+  const reste = echues.filter((f) => f.id !== tete?.id);
 
   const message = (f: Invoice) =>
     t(cleMessagePalier(palierDe(f)), {
@@ -94,6 +171,94 @@ export function RemindersScreen() {
       palier: palierDe(f),
     });
 
+  /* ------------------------------------- l'échelle d'escalade (`14d`) -- */
+
+  /*
+    LES CRÉANCES POSÉES SUR LEUR MARCHE. Ce n'est pas un tableau trié par
+    ancienneté : c'est une MONTÉE, et l'on voit ce qui approche du haut.
+  */
+  const parMarche = useMemo(() => {
+    const retard = (f: Invoice) =>
+      Math.max(1, Math.round((Date.parse(jour) - Date.parse(f.dueAt)) / 86_400_000));
+    return ECHELLE.map((cran) => ({
+      cran,
+      creances: echues.filter((f) => paliereDe(retard(f)) === cran.palier),
+    }));
+  }, [echues, jour]);
+
+  /*
+    L'AMBRE VA À LA MARCHE LA PLUS HAUTE QUI PORTE QUELQU'UN.
+
+    C'est ce qui approche du haut, donc ce qui demande une décision. La marche
+    du dernier avis reste DESSINÉE même vide — c'est elle qui donne son sens
+    aux trois autres, et une échelle dont on efface le dernier barreau cesse
+    d'être une échelle.
+  */
+  const marcheAmbre = useMemo(
+    () => [...parMarche].reverse().find((m) => m.creances.length > 0) ?? null,
+    [parMarche],
+  );
+  const halo = useHaloSignal(!!marcheAmbre);
+
+  /*
+    CE QUE L'ÉCHELLE A RÉCUPÉRÉ SUR L'ANNÉE, et jusqu'où elle est montée.
+    Les deux chiffres sont COMPTÉS : une facture encaissée après son échéance
+    est une créance rattrapée, et le palier le plus haut jamais noté se lit
+    dans la trace des relances. Rien n'est affirmé sans être comptable.
+  */
+  const bilan = useMemo(() => {
+    const annee = jour.slice(0, 4);
+    const enRetardUnJour = invoices.filter(
+      (f) =>
+        f.kind !== 'creditNote' &&
+        f.status !== 'draft' &&
+        f.status !== 'cancelled' &&
+        f.dueAt &&
+        f.dueAt.startsWith(annee) &&
+        (f.status === 'paid' ? f.paidAt > f.dueAt : f.dueAt < jour),
+    );
+    const rattrapees = enRetardUnJour.filter((f) => f.status === 'paid');
+    const plusHaut = relances.reduce(
+      (haut, r) => Math.max(haut, rangPalier(r.palier ?? 'rappel')),
+      -1,
+    );
+    return { total: enRetardUnJour.length, rattrapees: rattrapees.length, plusHaut };
+  }, [invoices, relances, jour]);
+
+  /*
+    LE RENDEZ-VOUS DU JOUR avec le client de la marche la plus haute : on
+    n'envoie pas une mise en demeure à quelqu'un qu'on voit dans trois heures.
+    Ce fait est LU dans l'agenda, jamais écrit en dur.
+  */
+  const { appointments } = useAppointments();
+  /*
+    LA CRÉANCE DONT ON PARLE EST CELLE DE LA LETTRE, pas la première de la
+    marche. Vu sur capture : la carte disait « un rendez-vous avec Hugo
+    Marchand » pendant que la lettre s'adressait à Salomé Vallon — l'écran
+    désignait deux personnes comme « celle qu'on relance ». `tete` est la plus
+    dure à écrire, et c'est elle que l'écran a choisie ; la carte la suit.
+  */
+  const clientDeLaMarche =
+    (tete && marcheAmbre?.creances.some((f) => f.id === tete.id) ? tete : marcheAmbre?.creances[0]) ??
+    null;
+  const rdvDuJour = useMemo(() => {
+    if (!clientDeLaMarche) return null;
+    const cible = clientDeLaMarche.billTo.name.trim().toLowerCase();
+    return (
+      appointments.find(
+        (a) =>
+          a.status === 'scheduled' &&
+          a.startAt.startsWith(jour) &&
+          (a.clientName || '').trim().toLowerCase() === cible,
+      ) ?? null
+    );
+  }, [appointments, clientDeLaMarche, jour]);
+
+  const palierTete = tete ? palierDe(tete) : null;
+  const dernierePourTete = tete ? derniere(tete) : null;
+  const dernierPalierTete = dernierePourTete?.palier ?? (dernierePourTete ? 'rappel' : null);
+  const monteTete = toneAMonte(dernierPalierTete, palierTete ?? 'rappel');
+
   return (
     <motion.section variants={staggerContainer} initial="hidden" animate="show" className="flex flex-col gap-5">
       <motion.div variants={staggerItem}>
@@ -109,57 +274,270 @@ export function RemindersScreen() {
         />
       </motion.div>
 
-      {echues.length === 0 ? (
+      {!tete || palierTete === null ? (
         <motion.div variants={staggerItem}>
           <FirstRun title={t('relances.vide.titre')}>{t('relances.vide.texte')}</FirstRun>
         </motion.div>
       ) : (
-        <motion.ul variants={staggerItem} className="flex flex-col gap-px overflow-hidden rounded-xl border border-border bg-border">
-          {echues.map((f) => {
-            const d = derniere(f);
-            const due = netDueCents(f, invoices);
-            const brut = invoiceTotals(f).grossCents;
-            const palier = palierDe(f);
-            const dernierPalier = d?.palier ?? (d ? 'rappel' : null);
-            const monte = toneAMonte(dernierPalier, palier);
-            return (
-              <li key={f.id} className="flex flex-col gap-3 bg-surface px-4 py-3">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-text-primary">
-                      {f.billTo.name} <span className="text-text-muted">· {f.number}</span>
-                      <span className={`ml-2 font-mono text-[9px] uppercase tracking-wider ${PALIER_TON[palier]}`}>
-                        {t(CLE_LIBELLE_PALIER[palier])}
+        <>
+          {/* ── L'ÉCHELLE D'ESCALADE — l'objet dominant (`14d`) ──────────── */}
+          <motion.section variants={staggerItem} className="panel-raised panel-raised-wide panel-ticks px-6 py-6">
+            <div className="mb-6 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+              <p className="eyebrow">{t('relances.echelle')}</p>
+              <p className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
+                on monte d’un cran à la main, jamais tout seul
+              </p>
+            </div>
+
+            <div className="flex items-end gap-3 sm:gap-5">
+              {parMarche.map(({ cran, creances }, i) => {
+                const signal = marcheAmbre?.cran.palier === cran.palier;
+                const vide = creances.length === 0;
+                return (
+                  <div key={cran.palier} className="flex min-w-0 flex-1 flex-col justify-end">
+                    {/* LES JETONS, POSÉS SUR LA MARCHE. Ils restent en ENCRE
+                        CLAIRE même sur la marche ambre : la marche est le
+                        sujet, la créance est ce qui s'y trouve. */}
+                    <div className="mb-2 flex flex-col gap-1">
+                      {creances.map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => setChoisie(f.id)}
+                          title={`${f.billTo.name} · ${formatCents(netDueCents(f, invoices))} · ${jours(f)} j`}
+                          className={`flex min-w-0 items-baseline justify-between gap-2 border px-2 py-1.5 text-left transition-colors ${
+                            tete?.id === f.id
+                              ? 'border-border-strong bg-raised'
+                              : 'border-border bg-surface hover:bg-surface-hover'
+                          }`}
+                        >
+                          <span className="min-w-0 flex-1 truncate text-[12px] text-text-primary">
+                            {f.billTo.name}
+                          </span>
+                          <span className="tnum flex-shrink-0 font-mono text-[10px] text-text-muted">
+                            {jours(f)} j
+                          </span>
+                        </button>
+                      ))}
+                      {vide && (
+                        <span className="border border-dashed border-border-strong px-2 py-1.5 text-center font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
+                          personne
+                        </span>
+                      )}
+                    </div>
+
+                    {/* LA MARCHE. Le degré est GRAVÉ dedans. */}
+                    <div
+                      className={`flex items-start justify-center pt-2 ${
+                        signal ? `bg-signal ${halo}` : 'bg-[#2b2b2b]'
+                      }`}
+                      style={{ height: MARCHES[i] }}
+                      data-signal-groupe={signal ? 'marche' : undefined}
+                    >
+                      <span
+                        className={`tnum font-mono text-[13px] font-bold tracking-[0.06em] ${
+                          signal ? 'text-signal-ink' : 'text-text-muted'
+                        }`}
+                        data-signal-groupe={signal ? 'marche' : undefined}
+                      >
+                        {cran.auDela === 0 ? 'J+1' : `J+${cran.auDela + 1}`}
                       </span>
+                    </div>
+
+                    <p
+                      className={`mt-2 truncate text-center font-mono text-[9.5px] font-bold uppercase tracking-[0.14em] ${
+                        signal ? 'text-signal' : 'text-text-muted'
+                      }`}
+                      data-signal-groupe={signal ? 'marche' : undefined}
+                    >
+                      {t(CLE_LIBELLE_PALIER[cran.palier])}
                     </p>
-                    <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                      <span className="text-warning">{t('relances.enRetard', { n: jours(f) })}</span> ·{' '}
-                      {formatCents(due)}
-                      {due !== brut && <span className="text-text-muted"> (sur {formatCents(brut)}, avoir déduit)</span>}
-                      {d && <span> · {t('relances.derniere', { quand: relativeTime(d.sentAt) })}</span>}
-                    </p>
-                    {!d && <p className="text-[10px] text-text-muted">{t('relances.premiereRelance')}</p>}
-                    {monte && dernierPalier && (
-                      <p className="mt-1 flex items-center gap-1.5 text-[10px] text-danger">
-                        <AlertTriangle size={11} strokeWidth={2} />
-                        {t('relances.tonAMonte', { dernier: t(CLE_LIBELLE_PALIER[dernierPalier]), actuel: t(CLE_LIBELLE_PALIER[palier]) })}
-                      </p>
-                    )}
                   </div>
-                  <div className="flex flex-shrink-0 flex-wrap gap-2">
-                    <button type="button" onClick={() => void copier(f)} className="flex min-h-11 items-center gap-1.5 border border-border-strong px-3 text-xs text-text-primary hover:bg-surface-hover md:min-h-0 md:py-1.5">
-                      {copiee === f.id ? <Check size={13} /> : <Copy size={13} />} {copiee === f.id ? t('relances.copie') : t('relances.copier')}
-                    </button>
-                    <button type="button" onClick={() => void noter(f)} className="flex min-h-11 items-center gap-1.5 border border-border px-3 text-xs text-text-secondary hover:text-text-primary md:min-h-0 md:py-1.5">
-                      <BellRing size={13} /> {t('relances.noter')}
-                    </button>
-                  </div>
-                </div>
-                <p className="whitespace-pre-wrap rounded-lg bg-bg px-3 py-2 text-xs leading-relaxed text-text-secondary">{message(f)}</p>
-              </li>
-            );
-          })}
-        </motion.ul>
+                );
+              })}
+            </div>
+
+            <div className="mt-7 grid items-start gap-6 border-t border-border-raised pt-5 lg:grid-cols-[1fr_300px]">
+              <div>
+                <p className="eyebrow mb-3">Ce qui se joue avant de monter d’un cran</p>
+                <p className="text-[14.5px] leading-[1.7] text-text-secondary [text-wrap:pretty]">
+                  {marcheAmbre ? (
+                    <>
+                      {marcheAmbre.creances.length}{' '}
+                      {marcheAmbre.creances.length > 1 ? 'créances sont' : 'créance est'} au palier{' '}
+                      <span className="font-semibold text-text-primary">
+                        {t(CLE_LIBELLE_PALIER[marcheAmbre.cran.palier])}
+                      </span>
+                      , pour{' '}
+                      <span className="tnum font-mono font-semibold text-text-primary">
+                        {formatCents(
+                          marcheAmbre.creances.reduce((n, f) => n + netDueCents(f, invoices), 0),
+                        )}
+                      </span>
+                      .{' '}
+                      {rdvDuJour ? (
+                        <>
+                          Un rendez-vous est prévu aujourd’hui avec{' '}
+                          {clientDeLaMarche?.billTo.name}
+                          {rdvDuJour.location ? ` (${rdvDuJour.location})` : ''} : on n’envoie pas
+                          une lettre à quelqu’un qu’on voit dans quelques heures.
+                        </>
+                      ) : (
+                        <>
+                          Rien n’est prévu avec {clientDeLaMarche?.billTo.name} aujourd’hui dans
+                          l’agenda : la marche suivante se franchit par écrit, ou pas du tout.
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <>Aucune créance sur l’échelle — personne n’a de retard à rattraper.</>
+                  )}
+                </p>
+                <p className="mt-3 text-[13px] leading-relaxed text-text-muted">
+                  Le passage au degré suivant est déclenché À LA MAIN, jamais automatiquement :
+                  rien ne part d’ici sans qu’on ait copié le texte et noté l’envoi.
+                </p>
+              </div>
+
+              <div>
+                <p className="eyebrow mb-2">Ce que l’échelle a récupéré</p>
+                <p className="tnum font-mono text-[27px] font-semibold leading-none tracking-[-0.03em] text-text-primary">
+                  {bilan.total > 0 ? `${bilan.rattrapees}/${bilan.total}` : '—'}
+                </p>
+                <p className="mt-2 text-[12.5px] leading-relaxed text-text-muted">
+                  {bilan.total > 0
+                    ? `créances en retard cette année, dont ${bilan.rattrapees} encaissées depuis.`
+                    : 'aucune créance en retard cette année.'}{' '}
+                  {bilan.plusHaut < 0
+                    ? 'Aucune relance notée pour l’instant.'
+                    : bilan.plusHaut < MARCHES.length - 1
+                      ? 'Aucune n’est jamais montée jusqu’en haut.'
+                      : 'Une au moins est montée jusqu’en haut.'}
+                </p>
+              </div>
+            </div>
+          </motion.section>
+
+          <motion.section variants={staggerItem} className="panel-sheet p-5 sm:p-6">
+            {/*
+              LA LETTRE N'EST PLUS AMBRE. Elle l'était (« à écrire »), et
+              c'était juste tant qu'elle était l'objet dominant. `MODULES.md`
+              donne l'ambre à la MARCHE la plus haute occupée, et un écran n'a
+              qu'une région ambre. La lettre garde sa matière de feuille —
+              `panel-sheet`, ombre basse — qui dit déjà que c'est un document
+              qu'on copie tel quel.
+            */}
+            <p className="eyebrow mb-3">{t('relances.aEcrire')}</p>
+
+            <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+              <div className="min-w-0">
+                <h2 className="text-[21px] font-semibold leading-tight text-text-primary sm:text-[27px]">{tete.billTo.name}</h2>
+                <p className="mt-1.5 text-sm text-text-secondary">
+                  {tete.number} · {formatCents(netDueCents(tete, invoices))}
+                  {netDueCents(tete, invoices) !== invoiceTotals(tete).grossCents && (
+                    <span className="text-text-muted"> ({t('relances.avoirDeduit', { brut: formatCents(invoiceTotals(tete).grossCents) })})</span>
+                  )}
+                </p>
+              </div>
+              {/* Le retard en grand, dans le ton de son palier : c'est le chiffre
+                  qui décide de tout le reste de l'écran. */}
+              <p className="flex items-baseline gap-2">
+                <span className={`text-[27px] font-semibold tabular-nums leading-none ${PALIER_TON[palierTete]}`}>{jours(tete)}</span>
+                <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                  {jours(tete) === 1 ? t('relances.jourDeRetard') : t('relances.joursDeRetard')}
+                </span>
+              </p>
+            </div>
+
+            {/* L'ÉCHELLE DES PALIERS — l'objet propre de ce module. */}
+            <p className="eyebrow mt-5 mb-2">{t('relances.echelle')}</p>
+            <ol className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
+              {ECHELLE.map((cran) => {
+                const atteint = rangPalier(cran.palier) <= rangPalier(palierTete);
+                const courant = cran.palier === palierTete;
+                return (
+                  <li
+                    key={cran.palier}
+                    aria-current={courant ? 'step' : undefined}
+                    className={`flex flex-col gap-1 px-3 py-2.5 ${courant ? 'bg-elevated' : 'bg-surface'}`}
+                  >
+                    <span className={`text-xs ${courant ? `font-semibold ${PALIER_TON[cran.palier]}` : atteint ? 'text-text-secondary' : 'text-text-muted'}`}>
+                      {t(CLE_LIBELLE_PALIER[cran.palier])}
+                    </span>
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-text-muted">
+                      {cran.auDela === 0 ? t('relances.seuilPremier') : t('relances.seuilApres', { n: cran.auDela })}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+
+            {monteTete && dernierPalierTete && (
+              <p className="mt-3 flex items-start gap-1.5 text-xs leading-relaxed text-danger">
+                <AlertTriangle size={13} strokeWidth={2} className="mt-0.5 flex-shrink-0" />
+                {t('relances.tonAMonte', { dernier: t(CLE_LIBELLE_PALIER[dernierPalierTete]), actuel: t(CLE_LIBELLE_PALIER[palierTete]) })}
+              </p>
+            )}
+            {dernierePourTete ? (
+              !monteTete && (
+                <p className="mt-3 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                  {t('relances.derniere', { quand: relativeTime(dernierePourTete.sentAt) })}
+                </p>
+              )
+            ) : (
+              <p className="mt-3 font-mono text-[10px] uppercase tracking-wider text-text-muted">{t('relances.premiereRelance')}</p>
+            )}
+
+            <p className="mt-4 whitespace-pre-wrap border border-border bg-bg px-4 py-3.5 text-sm leading-relaxed text-text-secondary">{message(tete)}</p>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button type="button" onClick={() => void copier(tete)} className="flex min-h-11 items-center gap-2 bg-accent px-4 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover md:min-h-0 md:py-2.5">
+                {copiee === tete.id ? <Check size={14} strokeWidth={2.5} /> : <Copy size={14} strokeWidth={2} />}
+                {copiee === tete.id ? t('relances.copie') : t('relances.copier')}
+              </button>
+              <button type="button" onClick={() => void noter(tete)} className="flex min-h-11 items-center gap-2 border border-border-strong px-4 text-sm text-text-primary hover:bg-surface-hover md:min-h-0 md:py-2.5">
+                <BellRing size={14} strokeWidth={2} /> {t('relances.noter')}
+              </button>
+            </div>
+          </motion.section>
+
+          {reste.length > 0 && (
+            <motion.section variants={staggerItem} className="panel">
+              <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border px-4 py-2.5">
+                <p className="eyebrow">{t('relances.autres')}</p>
+                <p className="text-[11px] text-text-muted">{t('relances.laPlusDure')}</p>
+              </div>
+              <ul className="flex flex-col gap-px bg-border">
+                {reste.map((f) => {
+                  const palier = palierDe(f);
+                  const d = derniere(f);
+                  return (
+                    <li key={f.id}>
+                      <button
+                        type="button"
+                        onClick={() => setChoisie(f.id)}
+                        aria-label={t('relances.voirLettre')}
+                        className="input-focus flex w-full flex-wrap items-baseline gap-x-3 gap-y-1 bg-surface px-4 py-2.5 text-left transition-colors hover:bg-surface-hover"
+                      >
+                        <span className={`w-32 flex-shrink-0 font-mono text-[9px] uppercase tracking-wider ${PALIER_TON[palier]}`}>
+                          {t(CLE_LIBELLE_PALIER[palier])}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-sm text-text-primary">
+                          {f.billTo.name} <span className="text-text-muted">· {f.number}</span>
+                        </span>
+                        <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                          {jours(f) === 1 ? t('relances.retardUn') : t('relances.enRetard', { n: jours(f) })}
+                          {d && <> · {t('relances.derniere', { quand: relativeTime(d.sentAt) })}</>}
+                        </span>
+                        <span className="w-24 flex-shrink-0 text-right text-sm tabular-nums text-text-secondary">{formatCents(netDueCents(f, invoices))}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </motion.section>
+          )}
+        </>
       )}
     </motion.section>
   );

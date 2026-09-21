@@ -12,12 +12,56 @@ interface Arret {
   label: string;
   address: string;
   doneAt: string | null;
+  /**
+   * LES KILOMÈTRES DEPUIS L'ARRÊT PRÉCÉDENT, et la durée sur place.
+   *
+   * `MODULES.md` (`15a`) fait de la DISTANCE ENTRE DEUX NŒUDS le sujet de
+   * l'objet : « les longs trajets se voient comme de longs vides ». Sans
+   * distance, l'espacement serait régulier, et un fil à espacement régulier
+   * n'est qu'une liste verticale — exactement ce que le module dit de ne pas
+   * faire. Le produit n'avait pas le champ ; il l'a.
+   *
+   * Absents sur les tournées écrites avant : le fil retombe alors sur un
+   * espacement régulier ET LE DIT, plutôt que d'inventer des kilomètres.
+   */
+  km?: number;
+  dureeMin?: number;
 }
 interface RoundData {
   title: string;
   day: string;
   stops: Arret[];
+  /** L'heure de départ, « 08:30 ». Les heures des arrêts s'en DÉDUISENT. */
+  departAt?: string;
   createdAt: string;
+}
+
+/**
+ * LE FIL DE LA ROUTE — l'objet dominant de Tournées (`15a`).
+ *
+ * Un itinéraire ne se lit pas en liste : il se lit comme une DESCENTE. La
+ * distance entre deux nœuds est proportionnelle au trajet réel, donc les longs
+ * trajets se voient comme de longs vides — et c'est la seule chose qu'on
+ * regarde en préparant une tournée.
+ *
+ * LE PLANCHER. L'espacement est une pure proportion (`km / kmMax × FIL_MAX`),
+ * bornée par le bas à `FIL_MIN` : un saut de trois cents mètres collerait
+ * sinon deux nœuds l'un sur l'autre et rendrait les deux illisibles. Le
+ * plancher ne joue QUE vers le bas — aucun trajet n'est raccourci, seulement
+ * les plus courts reçoivent de quoi respirer, et l'écran le dit.
+ */
+const FIL_MIN = 44;
+const FIL_MAX = 150;
+/** Vitesse de trajet en ville, pour déduire l'heure d'arrivée. Écrite ici. */
+const KMH_VILLE = 28;
+
+function heureApres(depart: string, minutes: number): string {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(depart.trim());
+  if (!m) return '';
+  const total = Number(m[1]) * 60 + Number(m[2]) + Math.round(minutes);
+  const h = Math.floor((total % 1440) / 60);
+  const mn = Math.round(total % 60);
+  return `${String(h).padStart(2, '0')}:${String(mn).padStart(2, '0')}`;
 }
 const isoJour = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 /** « Boulangerie Martin, 12 rue des Lilas, Nantes » → un arrêt : le premier morceau nomme, le reste adresse. */
@@ -51,11 +95,30 @@ export function DeliveryRoundsScreen() {
 
   const [ouverteId, setOuverteId] = useState<string | null>(null);
   const tournees = useMemo(() => [...brutes].sort((a, b) => b.day.localeCompare(a.day) || a.createdAt.localeCompare(b.createdAt)), [brutes]);
-  /* La tournée ouverte : celle qu'on a choisie, sinon la première du jour,
-     sinon la plus récente. On ouvre cet écran pour LIVRER, pas pour consulter. */
+  /*
+    LA TOURNÉE OUVERTE — celle qu'on est en train de faire.
+
+    On ouvre cet écran pour LIVRER, pas pour consulter : la tournée du jour
+    déjà COMMENCÉE et pas finie passe donc devant, puis celle qui n'est pas
+    commencée, puis la plus récente.
+
+    Le repli précédent — « la première du jour » — dépendait de l'ordre de
+    création, et deux tournées créées à la même minute le laissaient à
+    l'arbitraire du tableau. Sur le bac à sable, l'écran s'ouvrait donc sur la
+    tournée de l'après-midi, qui n'a pas de kilomètres notés : le fil
+    proportionnel, qui est l'objet dominant du module, ne se voyait jamais
+    alors que la tournée du matin, juste à côté, le porte.
+  */
+  const duJour = useMemo(() => tournees.filter((r) => r.day === aujourdhui), [tournees, aujourdhui]);
+  const enRoute = (r: RoundData & { id: string }) => {
+    const faits = r.stops.filter((s) => s.doneAt).length;
+    return faits > 0 && faits < r.stops.length;
+  };
   const ouverte =
     tournees.find((r) => r.id === ouverteId) ??
-    tournees.find((r) => r.day === aujourdhui) ??
+    duJour.find(enRoute) ??
+    duJour.find((r) => r.stops.every((s) => !s.doneAt)) ??
+    duJour[0] ??
     tournees[0] ??
     null;
   const autresTournees = useMemo(
@@ -70,7 +133,48 @@ export function DeliveryRoundsScreen() {
     il n'y a plus rien à décider, et l'écran n'a plus d'ambre du tout.
   */
   const arretEnCours = ouverte?.stops.find((s) => !s.doneAt) ?? null;
-  const duJour = tournees.filter((r) => r.day === aujourdhui);
+
+  /* ------------------------------------------------ le fil de la route -- */
+
+  /*
+    LE FIL. Chaque nœud reçoit son espacement — proportionnel au trajet qui
+    le précède — et son heure d'arrivée, DÉDUITE du départ, des kilomètres et
+    des durées sur place. Déduite plutôt que stockée : une heure écrite se
+    périme dès qu'un arrêt bouge, et personne ne pense à la corriger.
+  */
+  const fil = useMemo(() => {
+    const stops = ouverte?.stops ?? [];
+    const kms = stops.map((a) => (typeof a.km === 'number' && a.km >= 0 ? a.km : null));
+    const mesure = kms.some((k) => k !== null);
+    const kmMax = Math.max(1, ...kms.map((k) => k ?? 0));
+    let minutes = 0;
+    return stops.map((a, i) => {
+      const km = kms[i] ?? 0;
+      minutes += (km / KMH_VILLE) * 60;
+      const heure = ouverte?.departAt ? heureApres(ouverte.departAt, minutes) : '';
+      minutes += typeof a.dureeMin === 'number' ? a.dureeMin : 0;
+      return {
+        arret: a,
+        km: kms[i],
+        heure,
+        /*
+          Proportion pure, plancher vers le bas seulement : aucun trajet n'est
+          raccourci, les plus courts reçoivent de quoi respirer.
+
+          LE PREMIER TRAJET COMPTE AUSSI. Il était à zéro — le fil commençait
+          au premier arrêt comme si on y était né. Mais le kilométrage porté
+          par le premier arrêt est bien celui du dépôt jusqu'à lui, il entre
+          dans le total affiché en tête, et le masquer faisait dire au fil
+          14,5 km là où le compteur en annonçait 17,6. Il se dessine donc,
+          avec son étiquette, et le fil s'ouvre sur le trajet de sortie.
+        */
+        espace: mesure && km > 0 ? Math.max(FIL_MIN, (km / kmMax) * FIL_MAX) : i === 0 ? 0 : FIL_MIN,
+      };
+    });
+  }, [ouverte]);
+  const filMesure = fil.some((n) => n.km !== null);
+  const kmTotal = fil.reduce((n, x) => n + (x.km ?? 0), 0);
+  const minutesRoute = Math.round((kmTotal / KMH_VILLE) * 60);
   const restants = duJour.reduce((n, r) => n + r.stops.filter((s) => !s.doneAt).length, 0);
   const faits = duJour.reduce((n, r) => n + r.stops.filter((s) => s.doneAt).length, 0);
 
@@ -171,6 +275,45 @@ export function DeliveryRoundsScreen() {
               </button>
             </div>
 
+            {/* LES COMPTEURS — arrêts, kilomètres, temps de route. */}
+            <div className="mb-5 flex flex-wrap gap-x-8 gap-y-3 border-b border-border-raised pb-4">
+              <div>
+                <p className="eyebrow mb-1.5">Arrêts</p>
+                <p className="tnum font-mono text-[21px] font-semibold tracking-[-0.03em] text-text-primary">
+                  {ouverte.stops.length}
+                </p>
+              </div>
+              <div className="border-l border-border-section pl-8">
+                <p className="eyebrow mb-1.5">Kilomètres</p>
+                <p className="tnum font-mono text-[21px] font-semibold tracking-[-0.03em] text-text-primary">
+                  {filMesure ? String(Math.round(kmTotal * 10) / 10).replace('.', ',') : '—'}
+                </p>
+              </div>
+              <div className="border-l border-border-section pl-8">
+                <p className="eyebrow mb-1.5">Temps de route</p>
+                <p className="tnum font-mono text-[21px] font-semibold tracking-[-0.03em] text-text-primary">
+                  {filMesure ? `${Math.floor(minutesRoute / 60)} h ${String(minutesRoute % 60).padStart(2, '0')}` : '—'}
+                </p>
+              </div>
+              {ouverte.departAt && (
+                <div className="border-l border-border-section pl-8">
+                  <p className="eyebrow mb-1.5">Départ</p>
+                  <p className="tnum font-mono text-[21px] font-semibold tracking-[-0.03em] text-text-primary">
+                    {ouverte.departAt}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {!filMesure && (
+              <p className="mb-4 text-[12.5px] leading-relaxed text-text-muted">
+                Cette tournée n’a pas de kilomètres notés : le fil retombe sur un espacement
+                régulier. Il le dit plutôt que d’inventer des distances — un fil à pas constant
+                n’est qu’une liste verticale, et c’est exactement ce que cet objet évite quand il
+                a de quoi mesurer.
+              </p>
+            )}
+
             <ol className="relative flex flex-col">
               {/* Le trait qui relie les arrêts : c'est la route, et elle
                   s'arrête au dernier arrêt, pas au bord du cadre. */}
@@ -178,7 +321,7 @@ export function DeliveryRoundsScreen() {
                 className="absolute bottom-6 left-[15px] top-6 w-px bg-border"
                 aria-hidden
               />
-              {ouverte.stops.map((a, i) => {
+              {fil.map(({ arret: a, km, heure, espace }, i) => {
                 const livre = Boolean(a.doneAt);
                 const enCours = a.id === arretEnCours?.id;
                 return (
@@ -188,7 +331,24 @@ export function DeliveryRoundsScreen() {
                     className={`relative flex items-start gap-4 ${
                       enCours ? 'panel-raised my-2 px-4 py-4' : 'py-3.5'
                     }`}
+                    /*
+                      L'ESPACEMENT EST LE TRAJET. Posé en `marginTop` sur le
+                      nœud, et non en `gap` régulier : un fil à pas constant
+                      n'est qu'une liste verticale, et le module dit
+                      exactement de ne pas en faire une.
+                    */
+                    style={espace > 0 ? { marginTop: espace } : undefined}
                   >
+                    {/* LE SEGMENT ET SON KILOMÉTRAGE, posés DANS le vide que
+                        le trajet a creusé au-dessus du nœud. */}
+                    {espace > 0 && km !== null && km > 0 && (
+                      <span
+                        className="absolute left-[30px] -translate-y-1/2 font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted"
+                        style={{ top: -espace / 2 }}
+                      >
+                        {String(km).replace('.', ',')} km
+                      </span>
+                    )}
                     <button
                       type="button"
                       onClick={() => void basculer(ouverte, a)}
@@ -214,6 +374,18 @@ export function DeliveryRoundsScreen() {
                         {a.label}
                       </p>
                       {a.address && <p className="mt-1 truncate text-[13px] text-text-muted">{a.address}</p>}
+                      {(heure || typeof a.dureeMin === 'number') && (
+                        <p
+                          className={`tnum mt-1 font-mono text-[10px] uppercase tracking-[0.14em] ${
+                            enCours ? 'text-signal' : 'text-text-muted'
+                          }`}
+                          data-signal-groupe={enCours ? 'arret-en-cours' : undefined}
+                        >
+                          {[heure, typeof a.dureeMin === 'number' ? `${a.dureeMin} min sur place` : null]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </p>
+                      )}
                     </div>
 
                     {livre ? (

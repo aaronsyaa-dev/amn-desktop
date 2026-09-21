@@ -9,6 +9,7 @@ import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
 import type { AdminOrganization, InputAlert, ModuleRequestForOperator, OrgPulse, SupportRequestForOperator } from '../shared/api';
 import { echantillonParc } from '../lib/parcEchantillon';
+import { ToileDeMaturite } from '../components/parc/ToileDeMaturite';
 
 /**
  * LA MATURITÉ SOC — où en est chaque cliente, sur des signaux réels.
@@ -77,6 +78,8 @@ export function SocMaturityScreen() {
       )}
       {etat === 'pret' && maturites.length > 0 && (
         <>
+          {/* L'objet de l'écran : la FORME du déséquilibre du parc, avant la liste des fiches. */}
+          <motion.div variants={staggerItem}><ToileDeMaturite maturites={maturites} /></motion.div>
           <motion.p variants={staggerItem} className="text-xs text-text-muted">{t('maturite.methode')}{luA ? ` · ${t('parcSup.luA', { heure: luA.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) })}` : ''}</motion.p>
           <motion.div variants={staggerItem} className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(20rem,1fr))]">
             {maturites.map((m) => (

@@ -243,6 +243,26 @@ export interface ProjectData {
   nextAction: string;
   /** Jour ISO, ou chaîne vide. */
   deadline: string;
+  /**
+   * L'ESTIMATION, EN JOURNÉES DE TRAVAIL — et pourquoi ce champ existe.
+   *
+   * ARBITRAGE ENTRE LE PAQUET DE DESIGN ET LE MODÈLE. Le système de design
+   * donne à Projets une courbe de brûlage pour objet dominant : le
+   * reste-à-faire descend jour après jour, la diagonale du rythme idéal passe
+   * derrière, et « l'écart vertical entre les deux lignes EST l'avance ou le
+   * retard ». Cet écart n'existe que s'il y a un point de départ : sans
+   * estimation, il n'y a rien à faire descendre, et la courbe ne peut pas
+   * être dessinée — ni approchée, puisque l'approcher reviendrait à inventer
+   * le chiffre qui fait toute l'information.
+   *
+   * Le temps DÉJÀ passé, lui, est réel : les saisies de temps portent un
+   * `projectId` depuis le module Temps. Il ne manquait que le budget. Un seul
+   * nombre, saisi une fois à l'ouverture du chantier.
+   *
+   * Zéro ou absent = pas d'estimation, donc pas de courbe pour ce projet.
+   * L'écran le dit au lieu de dessiner une courbe vraisemblable.
+   */
+  budgetDays?: number;
   link: string;
   notes: string;
   /** Valeurs des champs libres, indexées par leur clé. */

@@ -40,7 +40,16 @@ export const garde = {
   tour: async () => (await appel<{ releve: GardeReleve }>('/tour', 'POST', {})).releve,
   propositions: async (etat = 'proposee') => (await appel<{ propositions: GardeProposition[] }>(`/propositions${q({ etat })}`)).propositions,
   deciderProposition: async (id: string, etat: 'acceptee' | 'refusee', couloir: { min: number; max: number } | null = null) => (await appel<{ proposition: GardeProposition }>(`/propositions/${encodeURIComponent(id)}`, 'POST', { etat, couloir })).proposition,
-  etSi: async (agent: string, regle: string, parametre: string, valeur: number) => (await appel<{ etsi: { avant: number | null; apres: number | null; phrase?: string; note?: string } }>(`/etsi${q({ agent, regle, parametre, valeur })}`)).etsi,
+  /**
+   * « ET SI ? » — le mois écoulé rejoué avec un paramètre changé.
+   *
+   * `avant` et `apres` sont deux TOTAUX sur la même fenêtre de trente jours :
+   * c'est tout ce que `regle.rejouer()` sait produire côté serveur aujourd'hui.
+   * `serieAvant` / `serieApres` — trente valeurs, un jour chacune — permettent
+   * de tracer le calque dans le temps ; elles n'arrivent que d'un serveur qui
+   * sait les compter. Facultatives, donc, et l'écran s'en passe sans mentir.
+   */
+  etSi: async (agent: string, regle: string, parametre: string, valeur: number) => (await appel<{ etsi: { avant: number | null; apres: number | null; actuelle?: number; phrase?: string; note?: string; serieAvant?: number[]; serieApres?: number[] } }>(`/etsi${q({ agent, regle, parametre, valeur })}`)).etsi,
   reglages: async (patch: { heureTour?: number; silence?: { de: number; a: number }; budgetParoles?: number }) => (await appel<{ reglages: { heureTour: number; silence?: { de: number; a: number }; budgetParoles?: number } }>('/reglages', 'PUT', patch)).reglages,
   // Bloc 4 — Ajmani, chef d'état-major.
   accueil: () => appel<GardeAccueil>('/ajmani'),
@@ -62,3 +71,61 @@ export const garde = {
 };
 
 export const EQUIPES_ORDRE = ['sites', 'securite', 'comptes', 'registre', 'clientes', 'produit', 'taches', 'memoire'] as const;
+
+/**
+ * LE RETARD TOLÉRÉ — la formule du Capitaine, recopiée à l'identique.
+ *
+ * `amn-api/src/garde/capitaine.js` décide ceci : `Math.max(3 * everyMs,
+ * 15 min)`. Au-delà, le Capitaine ouvre lui-même une remontée HAUTE
+ * `garde-retard:<clé>` — la Garde surveille la Garde.
+ *
+ * La Salle doit trancher EXACTEMENT comme lui. Une Salle qui dirait « en
+ * retard » là où le Capitaine n'a rien ouvert — ou l'inverse — ferait douter
+ * des deux, et c'est le mur qu'on regarde en premier la nuit. Si la règle
+ * change côté serveur, elle change ici, et les deux phrases restent la même.
+ */
+export const retardTolereMs = (everyMs: number) => Math.max(3 * everyMs, 15 * 60_000);
+
+/** Le retard d'une garde en millisecondes, ou `null` si sa ronde tient encore l'heure. */
+export function retardDeRonde(agent: GardeAgent, now: number = Date.now()): number | null {
+  if (!agent.actif || !agent.prochaineRondeAt) return null;
+  const retard = now - Date.parse(agent.prochaineRondeAt);
+  return retard > retardTolereMs(agent.everyMs) ? retard : null;
+}
+
+/**
+ * LE SILENCE DE NUIT, par défaut — la valeur du produit, pas une invention d'écran.
+ * `amn-api/src/garde/ajmani.js` : `SILENCE_DEFAUT = { de: 22, a: 7 }`. Tant que
+ * personne ne l'a réglé, `reglages.silence` est absent de `/salle` ; afficher un
+ * tiret laisserait croire qu'il n'y a pas de silence, ce qui est faux.
+ */
+export const SILENCE_DEFAUT = { de: 22, a: 7 } as const;
+
+/** « Garde des Sites » → « Sites ». La colonne d'un mur de sept n'a pas la place de répéter sept fois le mot « Garde ». */
+export const domaineDEquipe = (nom: string) => nom.replace(/^garde\s+(?:de\s+l[’']|de\s+la\s+|des\s+|du\s+|de\s+)/i, '');
+
+/**
+ * `securite.escalade` → « Escalade ». Le journal, la pile et les collaborations
+ * nomment les gardes par leur CLÉ ; une clé technique dans une phrase française
+ * ne dit rien à qui la lit, et l'écran a déjà le nom du mur juste à côté.
+ */
+export const nomDeCleDeGarde = (cle: string) => {
+  const dernier = cle.split('.').pop() ?? cle;
+  const mots = dernier.replace(/-/g, ' ');
+  return mots.charAt(0).toUpperCase() + mots.slice(1);
+};
+
+/**
+ * « de AMN DevSec » ne s'écrit pas : l'élision est obligatoire devant une
+ * voyelle ou un h muet. Le nom d'une organisation vient de la base, donc la
+ * phrase qui le porte ne peut pas figer sa préposition dans le dictionnaire.
+ */
+export const deOrganisation = (nom: string) => (/^[aeiouyàâäéèêëîïôöùûü]/i.test(nom.trim()) ? `d’${nom}` : `de ${nom}`);
+
+/**
+ * `seuilMinutes` → « seuil minutes ». Le nom d'un paramètre de règle vient du
+ * serveur, en une seule pièce ; imprimé tel quel dans une phrase française il
+ * se lit SEUILMINUTES, qui n'est pas un mot. On sépare les mots, sans rien
+ * traduire : inventer un libellé ferait diverger l'écran de la règle.
+ */
+export const motDeParametre = (nom: string) => nom.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();

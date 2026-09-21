@@ -99,6 +99,7 @@ const NOT_IN_SUPPORT = new Map([
   */
   ['budget', 'chiffres personnels, locaux au poste — jamais ceux de la cliente'],
   ['courses', 'liste personnelle : ne regarde pas le support'],
+  ['health', 'dates personnelles, locales au poste — jamais celles de la cliente'],
   /*
     « members » lit et modifie les comptes de l'organisation de la SESSION :
     en support, ce serait ceux d'AMN DevSec sous la bannière de la cliente —

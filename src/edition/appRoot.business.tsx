@@ -16,6 +16,7 @@ import { AgendaScreen } from '../business/AgendaScreen';
 import { MediaSoloScreen } from '../business/MediaSoloScreen';
 import { ClientsScreen } from '../screens/ClientsScreen';
 import { InvoicesScreen } from '../screens/InvoicesScreen';
+import { QuotesScreen } from '../screens/QuotesScreen';
 import { ProjectsScreen } from '../screens/ProjectsScreen';
 import { ExpensesScreen } from '../screens/ExpensesScreen';
 import { TimeScreen } from '../screens/TimeScreen';
@@ -58,6 +59,10 @@ import { BomScreen } from '../screens/BomScreen';
 import { AfterSalesScreen } from '../screens/AfterSalesScreen';
 import { AssemblyScreen } from '../screens/AssemblyScreen';
 import { ChecklistsScreen } from '../screens/ChecklistsScreen';
+import { InterventionsScreen } from '../screens/InterventionsScreen';
+import { CalculatorProScreen } from '../screens/CalculatorProScreen';
+import { ShoppingScreen } from '../screens/ShoppingScreen';
+import { HealthScreen } from '../screens/HealthScreen';
 import { ShiftsScreen } from '../screens/ShiftsScreen';
 import { SuppliersScreen } from '../screens/SuppliersScreen';
 import { StockScreen } from '../screens/StockScreen';
@@ -147,6 +152,14 @@ export function AppRoot() {
           element={
             <ModuleRoute module="invoices">
               <InvoicesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/facturation/devis"
+          element={
+            <ModuleRoute module="invoices">
+              <QuotesScreen />
             </ModuleRoute>
           }
         />
@@ -254,16 +267,8 @@ export function AppRoot() {
             écrans n'ont aucune clé serveur, donc rien à consulter pour savoir
             s'ils sont ouverts. Un bonus inclus n'a pas d'interrupteur. */}
         <Route path="/personnel/budget" element={<PersonalBudgetScreen />} />
-        <Route
-          path="/personnel/courses"
-          element={
-            <PagesScreen
-              scope="personnel"
-              title="Personnel"
-              description="Vos listes et vos pages à vous. Elles se synchronisent entre vos appareils — pratique pour écrire la liste ici et la relire dans le magasin."
-            />
-          }
-        />
+        <Route path="/personnel/sante" element={<ModuleRoute module="health"><HealthScreen /></ModuleRoute>} />
+        <Route path="/personnel/courses" element={<ShoppingScreen />} />
         <Route path="/settings" element={<SettingsScreen />} />
         <Route path="/membres" element={<MembersScreen />} />
         <Route path="/assistance" element={<AssistanceScreen />} />
@@ -424,6 +429,14 @@ export function AppRoot() {
           element={
             <ModuleRoute module="checklists">
               <ChecklistsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/interventions"
+          element={
+            <ModuleRoute module="interventions">
+              <InterventionsScreen />
             </ModuleRoute>
           }
         />
@@ -600,6 +613,14 @@ export function AppRoot() {
           element={
             <ModuleRoute module="automations">
               <AutomationsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/outils/calculatrice"
+          element={
+            <ModuleRoute module="calcPro">
+              <CalculatorProScreen />
             </ModuleRoute>
           }
         />

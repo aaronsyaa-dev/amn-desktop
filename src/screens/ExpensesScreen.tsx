@@ -14,6 +14,7 @@ import {
   type MonthKey,
 } from '../state/expenseEngine';
 import { formatCents } from '../lib/money';
+import { useHaloSignal } from '../components/EtatEcran';
 import { formatShortDay } from '../state/useInvoices';
 import { ExpenseForm } from '../components/expenses/ExpenseForm';
 import { BudgetPanel } from '../components/expenses/BudgetPanel';
@@ -100,6 +101,40 @@ export function ExpensesScreen() {
     setCategoryFilter(null);
   };
 
+  /* ---------------------------------------------- l'objet dominant (12b) -- */
+
+  const rails = useMemo(() => railsDeBudget(breakdown), [breakdown]);
+  const sansBudget = useMemo(() => breakdown.filter((s) => s.budget.state === 'none'), [breakdown]);
+
+  /*
+    L'AMBRE VA À UN SEUL RAIL — le plus gros dépassement. Les autres rails
+    dépassés gardent un segment hors rail, en gris clair : c'est le CRAN qui
+    dit qu'ils sont sortis, pas une seconde couleur, et l'écran garde une
+    seule région ambre.
+  */
+  const railAmbre = useMemo(
+    () =>
+      rails
+        .filter((r) => r.depasse)
+        .sort((a, b) => b.slice.budget.deltaCents - a.slice.budget.deltaCents)[0] ?? null,
+    [rails],
+  );
+  const halo = useHaloSignal(!!railAmbre);
+
+  const cuves = useMemo(
+    () => cuvesDeLAnnee(month, (m) => totalOf(ofMonth(m))),
+    [month, totalOf, ofMonth],
+  );
+  /* Le total de l'année SOMME les cuves affichées — pas la base entière : un
+     total qui ne correspond à rien de visible n'est pas vérifiable. */
+  const totalAnnee = useMemo(() => cuves.reduce((n, c) => n + c.totalCents, 0), [cuves]);
+  const hautCuve = useMemo(() => Math.max(1, ...cuves.map((c) => c.totalCents)), [cuves]);
+
+  const journal = useMemo(
+    () => [...monthExpenses].sort((a, b) => b.spentAt.localeCompare(a.spentAt)).slice(0, 4),
+    [monthExpenses],
+  );
+
   return (
     <section className="flex flex-col gap-4">
       <ScreenHeader
@@ -145,49 +180,245 @@ export function ExpensesScreen() {
         }
       />
 
-      {/* ------------------------------------------------------ le mois ----- */}
+      {/* ----------------------------------------- les rails de budget ----- */}
       {/*
-        LE RUBAN DE MOIS — l'objet dominant de l'écran Dépenses.
+        LES RAILS — l'objet dominant de l'écran Dépenses (`12b`).
 
-        Il y avait une flèche, un chiffre, une flèche. On voyait le mois en
-        cours, et RIEN d'autre : pour savoir si 1 964 € était beaucoup, il
-        fallait reculer, lire, avancer, se souvenir. Un ruban pose les cinq
-        derniers côte à côte, et la comparaison se fait sans cliquer — c'est
-        tout le propos de « le mois » comme objet dominant.
+        Le ruban de mois l'était ; il descend d'un cran et devient les CUVES,
+        juste en dessous. Ce qu'on vient vérifier ici n'est pas « combien ce
+        mois » — c'est « est-ce que ça tient ». Un rail dont la longueur
+        entière est le budget répond avant qu'on ait lu un chiffre, et un
+        débordement se voit sortir par la droite.
       */}
-      <RubanDeMois
-        mois={month}
-        totalDe={(m) => totalOf(ofMonth(m))}
-        peutReculer={canGoBack}
-        onChoisir={(m) => {
-          setMonth(m);
-          setCategoryFilter(null);
-        }}
-        onDecaler={goToMonth}
-      />
+      {rails.length > 0 && (
+        <section className="panel-raised panel-raised-wide panel-ticks px-6 py-6">
+          <div className="mb-5 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+            <p className="eyebrow">{tr('hist.expenses.budgetMensuel')} · {monthLabel(month)}</p>
+            <p className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
+              le cran de fin est au même endroit sur tous les rails
+            </p>
+          </div>
 
-      {/* -------------------------------------------------- répartition ----- */}
-      {breakdown.length > 0 && (
-        <section>
-          <div className="mb-3 flex items-center gap-4">
-            <p className="eyebrow flex-shrink-0">{tr('hist.expenses.parCategorie')}</p>
-            <span className="h-px flex-1 bg-border-section" aria-hidden />
-            <p className="eyebrow flex-shrink-0">{tr('hist.expenses.budgetMensuel')}</p>
+          <div className="flex flex-col gap-3">
+            {rails.map((rail) => {
+              const signal = rail === railAmbre;
+              return (
+                <button
+                  key={rail.slice.key}
+                  type="button"
+                  onClick={() =>
+                    setCategoryFilter((prev) => (prev === rail.slice.key ? null : rail.slice.key))
+                  }
+                  aria-pressed={categoryFilter === rail.slice.key}
+                  className={`grid items-center gap-x-4 text-left transition-colors ${RAIL_COLONNES} ${
+                    categoryFilter === rail.slice.key ? 'bg-surface-hover' : 'hover:bg-surface-hover'
+                  }`}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-[14.5px] font-semibold text-text-primary">
+                      {rail.slice.label}
+                    </span>
+                    <span className="tnum block truncate font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+                      {formatCents(rail.slice.budget.spentCents)} sur{' '}
+                      {formatCents(rail.slice.budget.budgetCents)}
+                    </span>
+                  </span>
+
+                  {/* LA PISTE. Le rail s'arrête au cran ; au-delà, c'est le
+                      dehors — et le fond y est plus sombre pour qu'on voie
+                      que le segment est SORTI, pas qu'il continue. */}
+                  <span className="relative block h-6 w-full">
+                    <span className="absolute inset-y-0 left-0 bg-sunken" style={{ width: `${RAIL_CRAN}%` }} aria-hidden />
+                    <span
+                      className="absolute inset-y-0 right-0 bg-bg"
+                      style={{ width: `${100 - RAIL_CRAN}%` }}
+                      aria-hidden
+                    />
+                    <span
+                      className="absolute inset-y-0 left-0 block bg-[#4a4a48]"
+                      style={{ width: `${rail.dedans}%` }}
+                    />
+                    {rail.dehors > 0 && (
+                      <span
+                        className={`absolute inset-y-0 block ${signal ? `bg-signal ${halo}` : 'bg-border-strong'}`}
+                        style={{ left: `${RAIL_CRAN}%`, width: `${rail.dehors}%` }}
+                        data-signal-groupe={signal ? 'depassement' : undefined}
+                      />
+                    )}
+                    {/* Le cran de fin : un filet clair, toujours au même x. */}
+                    <span
+                      aria-hidden
+                      className="absolute inset-y-0 w-px bg-text-secondary"
+                      style={{ left: `${RAIL_CRAN}%` }}
+                    />
+                    {rail.borne && (
+                      <span className="absolute inset-y-0 right-1 flex items-center font-mono text-[11px] text-text-primary">
+                        ›
+                      </span>
+                    )}
+                  </span>
+
+                  <span
+                    className={`tnum text-right font-mono text-[13px] font-semibold ${
+                      signal ? 'text-signal' : rail.depasse ? 'text-text-primary' : 'text-text-muted'
+                    }`}
+                    data-signal-groupe={signal ? 'depassement' : undefined}
+                  >
+                    {rail.depasse
+                      ? `+ ${formatCents(rail.slice.budget.deltaCents)}`
+                      : rail.auCran
+                        ? 'au cran'
+                        : `− ${formatCents(rail.slice.budget.deltaCents)}`}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-          <div className="flex flex-col">
-            {breakdown.map((slice) => (
-              <LigneDeCategorie
-                key={slice.key}
-                slice={slice}
-                active={categoryFilter === slice.key}
-                onToggle={() =>
-                  setCategoryFilter((prev) => (prev === slice.key ? null : slice.key))
-                }
-              />
-            ))}
+
+          {/* LA GRADUATION — même grille que les rails, cellules vides comprises. */}
+          <div className={`mt-2 grid gap-x-4 ${RAIL_COLONNES}`}>
+            <span aria-hidden />
+            <div className="relative h-4">
+              <span className="absolute left-0 top-0 font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
+                0
+              </span>
+              <span
+                className="absolute top-0 -translate-x-1/2 whitespace-nowrap font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-secondary"
+                style={{ left: `${RAIL_CRAN}%` }}
+              >
+                budget
+              </span>
+              <span className="absolute right-0 top-0 font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
+                hors rail
+              </span>
+            </div>
+            <span aria-hidden />
           </div>
+
+          {sansBudget.length > 0 && (
+            <p className="mt-5 border-t border-border-row pt-3 text-[12.5px] leading-relaxed text-text-muted">
+              {sansBudget.length} catégorie{sansBudget.length > 1 ? 's' : ''} sans budget —{' '}
+              {sansBudget.map((s) => s.label).join(', ')}. Pas de rail : un rail est une longueur,
+              et sans budget il n’y en a aucune. Leur montant se lit dans le journal.
+            </p>
+          )}
         </section>
       )}
+
+      {/* ------------------------------ les cuves et le journal du mois ----- */}
+      <div className="grid items-start gap-4 lg:grid-cols-[1fr_300px]">
+        {/*
+          LES CUVES DE L'ANNÉE. Chacune est cliquable : c'est aussi le
+          sélecteur de mois, et le ruban de flèches reste pour sortir de
+          l'année en cours.
+        */}
+        <section className="panel px-5 py-4">
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+            <p className="eyebrow">L’année, mois par mois</p>
+            <p className="tnum font-mono text-[13px] font-semibold text-text-primary">
+              {formatCents(totalAnnee)}
+              <span className="ml-2 text-[10px] font-normal uppercase tracking-[0.2em] text-text-muted">
+                somme des cuves
+              </span>
+            </p>
+          </div>
+          <div className="flex items-end gap-2">
+            <button
+              type="button"
+              onClick={() => goToMonth(-1)}
+              disabled={!canGoBack}
+              aria-label={tr('hist.expenses.moisPrecedent')}
+              className="flex h-11 w-7 flex-shrink-0 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:opacity-30"
+            >
+              <ChevronLeft size={15} strokeWidth={2} />
+            </button>
+            <div className="grid min-w-0 flex-1 gap-1.5" style={{ gridTemplateColumns: `repeat(${cuves.length}, minmax(0, 1fr))` }}>
+              {cuves.map((cuve) => (
+                <button
+                  key={cuve.mois}
+                  type="button"
+                  onClick={() => {
+                    setMonth(cuve.mois);
+                    setCategoryFilter(null);
+                  }}
+                  title={`${monthLabel(cuve.mois)} · ${formatCents(cuve.totalCents)}`}
+                  className="flex flex-col items-center gap-1.5"
+                >
+                  {/* LE CONTENANT, puis son contenu par le bas. C'est le cadre
+                      qui fait la cuve : sans lui, une colonne courte ne dit
+                      pas si elle est vide ou petite. */}
+                  <span
+                    className={`relative block w-full border ${
+                      cuve.courant
+                        ? 'border-border-strong bg-raised shadow-[inset_0_1px_0_rgba(255,255,255,.06)]'
+                        : 'border-border bg-sunken'
+                    }`}
+                    style={{ height: CUVE_H }}
+                  >
+                    <span
+                      className={`absolute inset-x-0 bottom-0 block ${cuve.courant ? 'bg-[#4a4a48]' : 'bg-[#2b2b2b]'}`}
+                      style={{
+                        height: `${hautCuve > 0 ? (cuve.totalCents / hautCuve) * 100 : 0}%`,
+                      }}
+                    />
+                  </span>
+                  <span
+                    className={`font-mono text-[9.5px] uppercase tracking-[0.1em] ${
+                      cuve.courant ? 'text-text-primary' : 'text-text-muted'
+                    }`}
+                  >
+                    {cuve.libelle}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => goToMonth(1)}
+              aria-label="Mois suivant"
+              className="flex h-11 w-7 flex-shrink-0 items-center justify-center border border-border text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
+            >
+              <ChevronRight size={15} strokeWidth={2} />
+            </button>
+          </div>
+        </section>
+
+        {/* LE JOURNAL — les quatre dernières lignes, catégorie en mono. */}
+        <section className="panel px-5 py-4">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <p className="eyebrow">Les dernières lignes</p>
+            <p className="tnum font-mono text-[13px] font-semibold text-text-primary">
+              {formatCents(totalOf(monthExpenses))}
+            </p>
+          </div>
+          {journal.length === 0 ? (
+            <p className="text-[13px] leading-relaxed text-text-secondary">
+              Rien de saisi sur ce mois.
+            </p>
+          ) : (
+            <div className="flex flex-col divide-y divide-border-row">
+              {journal.map((e) => (
+                <div key={e.id} className="flex items-baseline gap-3 py-2">
+                  <span className="tnum w-[46px] flex-shrink-0 font-mono text-[11px] tracking-[0.1em] text-text-muted">
+                    {formatShortDay(e.spentAt)}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13px] text-text-secondary">
+                      {e.note || 'Sans intitulé'}
+                    </span>
+                    <span className="block truncate font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted">
+                      {categoryLabel(config, e.category)}
+                    </span>
+                  </span>
+                  <span className="tnum flex-shrink-0 font-mono text-[12.5px] text-text-primary">
+                    {formatCents(e.amountCents)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
 
       {/* ------------------------------------------------------ les fiches -- */}
       {categoryFilter && (
@@ -336,176 +567,16 @@ function defaultDayFor(month: string): string {
 
 /* ------------------------------- La répartition ---------------------------- */
 
-/**
- * LE RUBAN DE MOIS.
- *
- * Cinq cellules : les quatre mois précédents, puis celui qu'on regarde, plus
- * large et levé. Chacune porte son total, donc la comparaison est immédiate —
- * c'est la seule chose que l'ancienne paire de flèches ne pouvait pas donner.
- *
- * Les flèches restent : elles servent à sortir de la fenêtre de cinq mois, pas
- * à se déplacer dedans.
- */
-function RubanDeMois({
-  mois,
-  totalDe,
-  peutReculer,
-  onChoisir,
-  onDecaler,
-}: {
-  mois: MonthKey;
-  totalDe: (m: MonthKey) => number;
-  peutReculer: boolean;
-  onChoisir: (m: MonthKey) => void;
-  onDecaler: (delta: number) => void;
-}) {
-  const cellules = useMemo(
-    () => [4, 3, 2, 1, 0].map((recul) => shiftMonth(mois, -recul)),
-    [mois],
-  );
-  /* « septembre 2026 » pour le mois courant, « septembre » pour les autres :
-     l'année ne se répète pas cinq fois quand elle ne change pas. */
-  const court = (m: MonthKey) => monthLabel(m).replace(/\s+\d{4}$/, '');
+/*
+  LE RUBAN DE MOIS ET LA LIGNE DE CATÉGORIE ONT ÉTÉ RETIRÉS.
 
-  return (
-    <div className="flex items-stretch border border-border bg-surface">
-      <button
-        type="button"
-        onClick={() => onDecaler(-1)}
-        disabled={!peutReculer}
-        aria-label={tr('hist.expenses.moisPrecedent')}
-        className="flex w-11 flex-shrink-0 items-center justify-center border-r border-border text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary disabled:opacity-30"
-      >
-        <ChevronLeft size={16} strokeWidth={2} />
-      </button>
-
-      <div className="grid min-w-0 flex-1 grid-cols-3 sm:grid-cols-5">
-        {cellules.map((m, i) => {
-          const courant = m === mois;
-          return (
-            <button
-              key={m}
-              type="button"
-              onClick={() => onChoisir(m)}
-              /* Sous 640 px il n'y a plus la place pour cinq mois : on garde
-                 les trois derniers, dont celui qu'on regarde. */
-              className={`flex flex-col items-start gap-2 border-r border-border px-4 py-4 text-left transition-colors last:border-r-0 ${
-                i < 2 ? 'hidden sm:flex' : 'flex'
-              } ${courant ? 'bg-elevated' : 'hover:bg-surface-hover'}`}
-            >
-              <span className={`eyebrow ${courant ? 'text-text-secondary' : ''}`}>
-                {courant ? monthLabel(m) : court(m)}
-              </span>
-              <span
-                className={`tnum truncate font-mono font-semibold leading-none tracking-[-0.03em] ${
-                  courant ? 'text-[27px] text-text-primary' : 'text-[17px] text-text-muted'
-                }`}
-              >
-                {formatCents(totalDe(m))}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      <button
-        type="button"
-        onClick={() => onDecaler(1)}
-        aria-label="Mois suivant"
-        className="flex w-11 flex-shrink-0 items-center justify-center border-l border-border text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
-      >
-        <ChevronRight size={16} strokeWidth={2} />
-      </button>
-    </div>
-  );
-}
-
-/**
- * UNE CATÉGORIE, SON BUDGET, SA BARRE.
- *
- * L'AMBRE DE L'ÉCRAN vit ici, et nulle part ailleurs : la catégorie dépassée.
- * Le badge « dépassé de … » et la portion de barre au-delà du budget disent la
- * même chose, d'où le `data-signal-groupe` qui les compte pour un. Une
- * catégorie DANS son budget est un état sain — elle n'a pas d'ambre, et c'est
- * la règle 3 du paquet de design.
- *
- * Les catégories sans budget n'ont pas de barre du tout : une barre suppose
- * une échelle, et sans budget il n'y en a aucune. Elles disent leur montant,
- * et le surtitre dit pourquoi elles n'ont rien de plus.
- */
-function LigneDeCategorie({
-  slice,
-  active,
-  onToggle,
-}: {
-  slice: CategorySlice;
-  active: boolean;
-  onToggle: () => void;
-}) {
-  const { budget } = slice;
-  const depasse = budget.state === 'over';
-  const sansBudget = budget.state === 'none';
-  /*
-    L'ÉCHELLE DE LA BARRE CHANGE QUAND LE BUDGET EST DÉPASSÉ, et c'est ce qui la
-    rend lisible.
-
-    Tant qu'on tient, l'échelle est le BUDGET : la barre dit quelle part en est
-    consommée, et le vide à droite dit ce qui reste. Une fois dépassé, cette
-    échelle ne peut plus rien dire — un dépassement de 5 % et un dépassement du
-    double donnent tous deux une barre pleine. L'échelle devient donc le
-    DÉPENSÉ : la portion pleine marque le budget, les rayures marquent ce qui
-    est passé au-delà, et leur longueur relative dit de combien.
-  */
-  const echelle = depasse ? Math.max(1, budget.spentCents) : Math.max(1, budget.budgetCents);
-  const partTenue = sansBudget ? 0 : (Math.min(budget.spentCents, budget.budgetCents) / echelle) * 100;
-  const partDepassement = depasse ? (budget.deltaCents / echelle) * 100 : 0;
-
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-pressed={active}
-      data-signal-groupe={depasse ? 'categorie-depassee' : undefined}
-      className={`flex flex-col gap-2.5 border-b border-[#161616] px-3 py-3.5 text-left transition-colors last:border-b-0 ${
-        active ? 'bg-surface-hover' : 'hover:bg-surface-hover'
-      }`}
-    >
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
-        <span className="text-[14.5px] font-semibold text-text-primary">{slice.label}</span>
-        {depasse && (
-          <span className="signal-plate px-2 py-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.2em]">
-            {tr('hist.expenses.depasseDe', { montant: formatCents(budget.deltaCents) })}
-          </span>
-        )}
-        {sansBudget && <span className="eyebrow">{tr('hist.expenses.sansBudget')}</span>}
-        <span className="tnum ml-auto font-mono text-[14.5px] font-semibold tracking-[-0.03em] text-text-primary">
-          {formatCents(slice.totalCents)}
-        </span>
-        {!sansBudget && (
-          <span className="tnum flex-shrink-0 font-mono text-[11px] tracking-[0.1em] text-text-muted">
-            / {formatCents(budget.budgetCents)}
-          </span>
-        )}
-      </div>
-
-      {!sansBudget && (
-        <span className="flex h-[5px] w-full overflow-hidden bg-[#1a1a1a]" aria-hidden>
-          <span className={depasse ? 'bg-signal' : 'bg-[#4a4a48]'} style={{ width: `${partTenue}%` }} />
-          {partDepassement > 0 && (
-            <span
-              className="bg-signal-muted"
-              style={{
-                width: `${partDepassement}%`,
-                backgroundImage:
-                  'repeating-linear-gradient(135deg, var(--color-signal) 0 2px, transparent 2px 5px)',
-              }}
-            />
-          )}
-        </span>
-      )}
-    </button>
-  );
-}
+  Le ruban est devenu les CUVES de l'année — un cadre par mois, rempli par le
+  bas — et la ligne de catégorie est devenue un RAIL, dont la longueur entière
+  est le budget. Les deux anciens composants ne sont pas gardés « au cas où » :
+  du code mort à côté de son remplaçant se fait rouvrir un jour par erreur, et
+  l'ancienne barre mettait son échelle sur le dépensé, ce qui est précisément
+  le défaut que les rails corrigent.
+*/
 
 /**
  * UNE LIGNE DE DÉPENSE — jour, justificatif, intitulé, catégorie, montant.
@@ -576,3 +647,106 @@ function LigneDeDepense({
   );
 }
 
+/* ------------------------------------------- les rails de budget (`12b`) -- */
+
+/**
+ * LES RAILS DE BUDGET — l'objet dominant de Dépenses (`12b`).
+ *
+ * LA LONGUEUR ENTIÈRE DU RAIL EST LE BUDGET. Le remplissage ne peut donc pas
+ * le dépasser : le dépassement SORT PAR LA DROITE, au-delà du cran de fin, et
+ * c'est exactement ce qu'il est. On lit un débordement comme une chose qui
+ * déborde, pas comme un nombre négatif.
+ *
+ * LA RÈGLE QUI FAIT MARCHER L'OBJET : le cran de fin est à la MÊME POSITION
+ * sur tous les rails — 72 % de la piste. Posé à la longueur de chaque budget,
+ * il se déplacerait d'une ligne à l'autre et deux budgets ne se compareraient
+ * plus ; l'ancienne barre faisait exactement ça, en mettant l'échelle sur le
+ * dépensé, et un dépassement de 10 € y ressemblait à un dépassement de 200 €.
+ *
+ * Il reste donc 28 % de piste pour le débordement, c'est-à-dire jusqu'à
+ * 28 / 72 = 38,9 % au-dessus du budget. Au-delà, le segment est borné et un
+ * chevron dit que c'est la piste qui s'arrête, pas la dépense.
+ */
+const RAIL_CRAN = 72;
+/**
+ * LA GRILLE PARTAGÉE — les rails ET leur graduation.
+ *
+ * Même règle que partout (§0.6) : une rangée de graduations partage la
+ * `grid-template-columns` de ce qu'elle gradue, cellules vides comprises.
+ * Recalibrée à la marge, la mention « budget » tomberait à côté du cran
+ * qu'elle nomme.
+ */
+const RAIL_COLONNES =
+  'grid-cols-[minmax(0,1fr)_minmax(0,3fr)_92px] md:grid-cols-[210px_minmax(0,1fr)_110px]';
+const RAIL_MARGE_MAX = (100 - RAIL_CRAN) / RAIL_CRAN;
+
+interface Rail {
+  slice: CategorySlice;
+  /** Part de piste tenue dans le budget, de 0 à RAIL_CRAN. */
+  dedans: number;
+  /** Part de piste au-delà du cran — 0 quand le budget tient. */
+  dehors: number;
+  depasse: boolean;
+  /** Le dépassement sort de la piste : le chevron le dit. */
+  borne: boolean;
+  /** Dépensé exactement le budget, à l'euro : « au cran », pas « 100 % ». */
+  auCran: boolean;
+}
+
+function railsDeBudget(slices: CategorySlice[]): Rail[] {
+  return slices
+    .filter((s) => s.budget.state !== 'none')
+    .map((slice) => {
+      const { budgetCents, spentCents } = slice.budget;
+      const part = budgetCents > 0 ? spentCents / budgetCents : 0;
+      const marge = Math.max(0, part - 1);
+      return {
+        slice,
+        dedans: Math.min(1, part) * RAIL_CRAN,
+        dehors: Math.min(marge, RAIL_MARGE_MAX) * RAIL_CRAN,
+        depasse: slice.budget.state === 'over',
+        borne: marge > RAIL_MARGE_MAX,
+        auCran: spentCents === budgetCents,
+      };
+    });
+}
+
+/**
+ * LES CUVES DE L'ANNÉE — un cadre par mois, rempli par le bas.
+ *
+ * Une cuve n'est pas une barre : elle a un CONTENANT visible, et c'est ce qui
+ * permet de lire « à moitié pleine » sans axe ni graduation. Le mois courant
+ * est en encre claire et en relief — c'est celui qu'on regarde, et il doit se
+ * distinguer d'un mois clos sans qu'on cherche.
+ *
+ * RÈGLE : le total de l'année somme EXACTEMENT les cuves affichées. Un total
+ * calculé sur toute la base au-dessus de neuf cuves serait un total qui ne
+ * correspond à rien de visible, et personne ne saurait d'où vient l'écart.
+ */
+const CUVE_H = 132;
+
+interface Cuve {
+  mois: MonthKey;
+  libelle: string;
+  totalCents: number;
+  courant: boolean;
+}
+
+function cuvesDeLAnnee(
+  moisCourant: MonthKey,
+  totalDe: (m: MonthKey) => number,
+): Cuve[] {
+  const annee = moisCourant.slice(0, 4);
+  const dernier = Number(moisCourant.slice(5, 7));
+  const cuves: Cuve[] = [];
+  for (let n = 1; n <= dernier; n += 1) {
+    const cle = `${annee}-${String(n).padStart(2, '0')}` as MonthKey;
+    cuves.push({
+      mois: cle,
+      libelle: monthLabel(cle).replace(/\s+\d{4}$/, '').slice(0, 3),
+      totalCents: totalDe(cle),
+      courant: cle === moisCourant,
+    });
+  }
+  return cuves;
+}

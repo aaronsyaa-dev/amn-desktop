@@ -7,6 +7,7 @@ import { useRemoteSites, type DerivedSite } from '../state/RemoteSitesContext';
 import { useTrackers } from '../state/useTrackers';
 import { TRACKER_MODULES, moduleByKey, modulesByKeys, type TrackerModule } from '../data/trackerModules';
 import { MaturityBadge } from '../components/tracker/MaturityBadge';
+import { EscalierDesPaliers } from '../components/tracker/EscalierDesPaliers';
 import { InstallWizard } from '../components/tracker/InstallWizard';
 import { ConfirmDelete } from '../components/ConfirmDelete';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
@@ -67,6 +68,11 @@ export function TrackerScreen() {
             </button>
           }
         />
+      </StaggerItem>
+
+      {/* L'objet de l'écran : où le parc monte, et où il s'arrête de monter. */}
+      <StaggerItem>
+        <EscalierDesPaliers />
       </StaggerItem>
 
       {/*

@@ -26,6 +26,203 @@ interface ReviewData {
  * peut publier, et copier un témoignage prêt pour le site. La note moyenne
  * se lit en haut ; aucun avis n'est inventé, ni importé de nulle part.
  */
+/**
+ * LE PESON — l'objet dominant des Avis (système de design, `23a`)
+ * ══════════════════════════════════════════════════════════════
+ *
+ * La note moyenne est suspendue à un ressort, et l'aiguille se lit sur une
+ * échelle verticale graduée de 5 en haut à 1 en bas.
+ *
+ * CE QUE L'INSTRUMENT MONTRE ET QU'UNE MOYENNE CACHE. Une moyenne de 4,6 sur
+ * cinq avis et une moyenne de 4,6 sur deux cents avis s'écrivent pareil et ne
+ * valent pas la même chose. Le peson le dit avec sa mécanique : quelques
+ * mesures font un ressort nerveux, et l'écran chiffre la nervosité — combien
+ * l'aiguille monterait si le seul avis à une étoile disparaissait, et combien
+ * d'avis excellents il faudrait pour obtenir le même déplacement.
+ *
+ * LA RÈGLE DE GÉOMÉTRIE : la position de l'aiguille se DÉDUIT de la moyenne
+ * réelle sur l'échelle 1–5, jamais posée. `pct = (5 − moyenne) / 4` donne sa
+ * descente depuis le haut ; une aiguille placée à la main sur une moyenne
+ * calculée est exactement le défaut que l'instrument existe pour interdire.
+ */
+const PESON_H = 260;
+const PESON_HAUT = 5;
+const PESON_BAS = 1;
+
+/** La descente de l'aiguille, en pourcentage de l'échelle. */
+function descenteAiguille(moyenne: number): number {
+  const borne = Math.max(PESON_BAS, Math.min(PESON_HAUT, moyenne));
+  return ((PESON_HAUT - borne) / (PESON_HAUT - PESON_BAS)) * 100;
+}
+
+/**
+ * Le ressort : sept boucles entre le crochet du haut et l'aiguille.
+ *
+ * Tracé dans un `viewBox` de 40 × 100 étiré à la hauteur réelle du ressort,
+ * avec `vector-effect="non-scaling-stroke"` pour que le fil garde son
+ * épaisseur quelle que soit l'extension — un ressort dont le fil s'épaissit
+ * en s'étirant ne ressemble à rien.
+ */
+function cheminRessort(boucles: number): string {
+  const pas = 100 / boucles;
+  let d = 'M20 0';
+  for (let i = 0; i < boucles; i += 1) {
+    const y = i * pas;
+    d += ` C2 ${(y + pas * 0.25).toFixed(2)} 2 ${(y + pas * 0.75).toFixed(2)} 20 ${(y + pas).toFixed(2)}`;
+    d += ` C38 ${(y + pas * 1.25).toFixed(2)} 38 ${(y + pas * 1.75).toFixed(2)} 20 ${(y + pas * 2).toFixed(2)}`;
+    i += 1;
+  }
+  return d;
+}
+
+function Peson({
+  moyenne,
+  distribution,
+  total,
+}: {
+  moyenne: number;
+  distribution: number[];
+  total: number;
+}) {
+  const descente = descenteAiguille(moyenne);
+  /* La longueur du ressort suit l'aiguille : il s'étire quand la note baisse. */
+  const ressortH = Math.max(28, (descente / 100) * (PESON_H - 46) + 24);
+
+  /*
+    LA NERVOSITÉ, CHIFFRÉE. Deux mesures, et elles se calculent toutes les deux
+    sur les vrais avis — c'est ce qui distingue une remarque d'une démonstration.
+  */
+  const nbUneEtoile = distribution[0] ?? 0;
+  const somme = distribution.reduce((n, c, i) => n + c * (i + 1), 0);
+  const sansUneEtoile =
+    total - nbUneEtoile > 0 ? (somme - nbUneEtoile * 1) / (total - nbUneEtoile) : null;
+  /* Combien d'avis à cinq étoiles pour atteindre la même moyenne, en gardant
+     l'avis à une étoile. On résout (somme + 5n) / (total + n) = cible. */
+  const combienDeCinq =
+    sansUneEtoile !== null && sansUneEtoile < 5
+      ? Math.ceil((sansUneEtoile * total - somme) / (5 - sansUneEtoile))
+      : null;
+
+  return (
+    <section className="panel-raised panel-raised-wide px-[30px] pb-[26px] pt-[30px]">
+      <div className="mb-[26px] flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+        <span className="eyebrow text-text-secondary">Ce que la moyenne cache</span>
+        <span className="font-mono text-[10px] tracking-[0.1em] text-text-muted">
+          {total} AVIS RECUEILLI{total > 1 ? 'S' : ''}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap items-start gap-x-10 gap-y-7">
+        {/* LE PESON. */}
+        <div className="flex flex-none gap-5">
+          {/* L'échelle, graduée de 5 en haut à 1 en bas. */}
+          <div className="relative w-[34px]" style={{ height: `${PESON_H}px` }}>
+            {[5, 4, 3, 2, 1].map((n) => (
+              <span
+                key={n}
+                className="absolute right-0 flex items-center gap-2"
+                style={{ top: `${descenteAiguille(n)}%`, transform: 'translateY(-50%)' }}
+              >
+                <span className="tnum font-mono text-[10px] text-text-muted">{n}</span>
+                <span className="block h-px w-2.5 bg-border-section" />
+              </span>
+            ))}
+          </div>
+
+          <div className="relative w-[120px]" style={{ height: `${PESON_H}px` }}>
+            {/* Le crochet de suspension. */}
+            <span className="absolute left-1/2 top-0 h-3 w-px -translate-x-1/2 bg-border-strong" />
+
+            {/* Le ressort, sept boucles. */}
+            <svg
+              viewBox="0 0 40 100"
+              preserveAspectRatio="none"
+              className="absolute left-1/2 top-3 w-[40px] -translate-x-1/2"
+              style={{ height: `${ressortH}px` }}
+              fill="none"
+              aria-hidden
+            >
+              <path
+                d={cheminRessort(7)}
+                stroke="var(--color-border-strong)"
+                strokeWidth={1.6}
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+
+            {/* L'AIGUILLE — le seul ambre de l'écran : sa barre et sa plaque
+                de valeur. Deux nœuds, une seule position. */}
+            <span
+              data-signal-groupe="aiguille"
+              className="absolute left-0 h-[3px] w-full bg-signal"
+              style={{ top: `${descente}%` }}
+            />
+            <span
+              data-signal-groupe="aiguille"
+              className="tnum absolute right-0 -translate-y-1/2 translate-x-[calc(100%+10px)] bg-signal px-2.5 py-1 font-mono text-[15px] font-bold text-signal-ink"
+              style={{ top: `${descente}%` }}
+            >
+              {moyenne.toFixed(1).replace('.', ',')}
+            </span>
+          </div>
+        </div>
+
+        {/* LA DISTRIBUTION, et l'effet chiffré. */}
+        <div className="min-w-[280px] flex-1">
+          <span className="eyebrow block text-text-secondary">La distribution</span>
+          <ul className="mt-4 flex flex-col gap-2">
+            {[5, 4, 3, 2, 1].map((n) => {
+              const compte = distribution[n - 1] ?? 0;
+              const plafond = Math.max(1, ...distribution);
+              return (
+                <li key={n} className="grid grid-cols-[18px_1fr_28px] items-center gap-3">
+                  <span className="tnum font-mono text-[11px] text-text-muted">{n}</span>
+                  <span className="h-2.5 bg-[#191919]">
+                    <span
+                      className="block h-2.5 bg-border-strong"
+                      style={{ width: `${(compte / plafond) * 100}%` }}
+                    />
+                  </span>
+                  <span className="tnum text-right font-mono text-[12px] text-text-secondary">{compte}</span>
+                </li>
+              );
+            })}
+          </ul>
+
+          {sansUneEtoile !== null && nbUneEtoile > 0 && (
+            <p className="mt-5 border-t border-border-raised pt-5 text-[13.5px] leading-[1.6] text-text-secondary [text-wrap:pretty]">
+              Sans {nbUneEtoile === 1 ? 'l’avis' : `les ${nbUneEtoile} avis`} à une étoile, la moyenne
+              serait de <strong className="font-semibold text-text-primary">
+                {sansUneEtoile.toFixed(1).replace('.', ',')}
+              </strong>
+              {combienDeCinq !== null && combienDeCinq > 0 && (
+                <>
+                  {' '}— il faudrait{' '}
+                  <strong className="font-semibold text-text-primary">{combienDeCinq} avis excellents</strong>{' '}
+                  pour obtenir le même déplacement. Une moyenne calculée sur peu d’avis bouge
+                  beaucoup&nbsp;; c’est ce que le ressort montre et qu’un chiffre seul tait.
+                </>
+              )}
+            </p>
+          )}
+          {nbUneEtoile === 0 && total > 0 && (
+            <p className="mt-5 border-t border-border-raised pt-5 text-[13.5px] leading-[1.6] text-text-secondary [text-wrap:pretty]">
+              Aucun avis sous deux étoiles. Le ressort est court&nbsp;: un seul avis sévère ferait
+              descendre l’aiguille de{' '}
+              <strong className="font-semibold text-text-primary">
+                {(moyenne - (distribution.reduce((n, c, i) => n + c * (i + 1), 0) + 1) / (total + 1))
+                  .toFixed(1)
+                  .replace('.', ',')}
+              </strong>{' '}
+              point.
+            </p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function ReviewsScreen() {
   const { t } = useLangue();
   const { upsert, remove } = useSync();
@@ -40,6 +237,15 @@ export function ReviewsScreen() {
   const avis = useMemo(() => [...brutes].sort((a, b) => b.receivedAt.localeCompare(a.receivedAt)), [brutes]);
   const moyenne = avis.length ? Math.round((avis.reduce((n, a) => n + a.rating, 0) / avis.length) * 10) / 10 : 0;
   const publiables = avis.filter((a) => a.publishable).length;
+  /* La distribution, index 0 = une étoile. C'est elle qui fait le ressort. */
+  const distribution = useMemo(() => {
+    const d = [0, 0, 0, 0, 0];
+    for (const a of avis) {
+      const n = Math.max(1, Math.min(5, Math.round(a.rating)));
+      d[n - 1] += 1;
+    }
+    return d;
+  }, [avis]);
 
   const ajouter = async () => {
     if (!text.trim()) return;
@@ -89,6 +295,13 @@ export function ReviewsScreen() {
           }
         />
       </motion.div>
+
+      {/* ── L'OBJET DOMINANT : le peson ────────────────────────────────── */}
+      {avis.length > 0 && (
+        <motion.div variants={staggerItem}>
+          <Peson moyenne={moyenne} distribution={distribution} total={avis.length} />
+        </motion.div>
+      )}
 
       {ouvert && (
         <motion.form variants={staggerItem} onSubmit={(e) => { e.preventDefault(); void ajouter(); }} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">

@@ -3,11 +3,12 @@ import { motion } from 'framer-motion';
 import { Plus, Trash2 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FirstRun } from '../components/EmptyState';
-import { Refus } from '../components/messages/MessagesSysteme';
+import { FenetreRefus, type Creneau } from '../components/etats/EtatsTransverses';
 import { useSync, useCollection, uid } from '../state/SyncContext';
 import { useAuth } from '../auth/AuthContext';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
+import { useHaloSignal } from '../components/EtatEcran';
 
 interface ResourceData {
   name: string;
@@ -24,6 +25,9 @@ interface BookingData {
 }
 /* La journée ouvrable dessinée par la grille d'occupation. Au-delà, une
    réservation reste possible — elle n'est simplement pas sur la règle. */
+/** Les minutes depuis minuit d'un « 2026-09-20T14:30 » local. */
+const minutesDe = (iso: string) => Number(iso.slice(11, 13)) * 60 + Number(iso.slice(14, 16));
+
 const HEURE_DEBUT = 8;
 const HEURE_FIN = 20;
 const localISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -62,9 +66,13 @@ export function EquipmentBookingScreen() {
   */
   const [refus, setRefus] = useState<{
     quoi: string;
+    /** Qui occupe le créneau. Gravé dans SA barre, et jamais en ambre. */
     parQui?: string;
     /** L'identifiant de la réservation qui bloque — pour la teinter dans la grille. */
     conflitId?: string;
+    /** Le créneau demandé et celui qui bloque, en minutes depuis minuit. */
+    demande?: Creneau;
+    occupe?: Creneau;
     libres: { debut: string; fin: string }[];
   } | null>(null);
 
@@ -91,9 +99,11 @@ export function EquipmentBookingScreen() {
     if (conflit) {
       setRefus({
         quoi: t('materiel.conflit', { qui: conflit.byEmail.split('@')[0], quand: quand(conflit.startAt, conflit.endAt) }),
-        parQui: t('materiel.rienEnregistre'),
+        parQui: conflit.byEmail.split('@')[0],
         conflitId: conflit.id,
-        libres: creneauxLibres(cible, startAt.slice(0, 10)),
+        demande: { debut: minutesDe(startAt), fin: minutesDe(endAt) },
+        occupe: { debut: minutesDe(conflit.startAt), fin: minutesDe(conflit.endAt) },
+        libres: creneauxLibres(cible, startAt.slice(0, 10), startAt),
       });
       return;
     }
@@ -111,7 +121,7 @@ export function EquipmentBookingScreen() {
     reste au-delà d'une demi-heure est proposable. Moins d'une demi-heure n'est
     pas un créneau, c'est un interstice.
   */
-  const creneauxLibres = (ressourceId: string, jourISO: string) => {
+  const creneauxLibres = (ressourceId: string, jourISO: string, demande: string) => {
     const bornes = (h: number) => `${jourISO}T${String(h).padStart(2, '0')}:00`;
     const prises = reservations
       .filter((r) => r.resourceId === ressourceId && r.startAt.slice(0, 10) === jourISO)
@@ -124,29 +134,77 @@ export function EquipmentBookingScreen() {
     }
     if (curseur < bornes(HEURE_FIN)) libres.push({ debut: curseur, fin: bornes(HEURE_FIN) });
     const demiHeure = 30 * 60_000;
-    return libres
-      .filter((c) => new Date(c.fin).getTime() - new Date(c.debut).getTime() >= demiHeure)
-      .slice(0, 2);
+    const utilisables = libres.filter((c) => new Date(c.fin).getTime() - new Date(c.debut).getTime() >= demiHeure);
+    /*
+      UN CRÉNEAU AVANT, UN CRÉNEAU APRÈS — et pas les deux premiers de la
+      journée. Proposer « 08:00 » et « 12:00 » à quelqu'un qui demandait
+      14 heures, c'est lui proposer de tout déplacer : les deux sorties sont
+      « avant », et la plus proche de son besoin n'est même pas là. On prend
+      donc le DERNIER libre avant le créneau demandé et le PREMIER après.
+    */
+    const avant = [...utilisables].reverse().find((c) => c.fin <= demande);
+    const apres = utilisables.find((c) => c.debut >= demande);
+    const choisis = [avant, apres].filter((c): c is { debut: string; fin: string } => Boolean(c));
+    return choisis.length > 0 ? choisis : utilisables.slice(0, 2);
   };
 
   const heure = (iso: string) => new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
-  const dureeLibre = (c: { debut: string; fin: string }) => {
-    const min = Math.round((new Date(c.fin).getTime() - new Date(c.debut).getTime()) / 60_000);
-    return min % 60 === 0 ? `${min / 60} h` : `${Math.floor(min / 60)} h ${min % 60}`;
-  };
 
   /** L'occupation du jour, ressource par ressource, bornée à la journée ouvrable. */
   const jourISO = maintenant.slice(0, 10);
+  /*
+    LA CARTE DE CONFLIT — l'objet dominant de Matériel (`15c`).
+
+    LA RÈGLE QUI LE TIENT : les rangées ne se fusionnent JAMAIS. Deux
+    réservations simultanées occupent deux lignes, sinon le chevauchement
+    disparaît derrière la barre du dessus et le conflit devient invisible —
+    ce qui est exactement le contraire de ce que la carte sert à montrer.
+
+    Le découpage en rangées est un partitionnement d'intervalles glouton : on
+    parcourt les réservations dans l'ordre du début, et chacune va dans la
+    première rangée dont la dernière barre est finie. Le nombre de rangées est
+    donc le nombre maximal de réservations simultanées — c'est-à-dire, à
+    l'œil, la hauteur du conflit.
+  */
   const occupation = useMemo(
     () =>
-      triees.map((r) => ({
-        ressource: r,
-        prises: reservations
+      triees.map((r) => {
+        const prises = reservations
           .filter((b) => b.resourceId === r.id && b.startAt.slice(0, 10) === jourISO)
-          .sort((a, b) => a.startAt.localeCompare(b.startAt)),
-      })),
+          .sort((a, b) => a.startAt.localeCompare(b.startAt));
+        const rangees: (BookingData & { id: string })[][] = [];
+        for (const b of prises) {
+          const place = rangees.find((rg) => rg[rg.length - 1].endAt <= b.startAt);
+          if (place) place.push(b);
+          else rangees.push([b]);
+        }
+        /* Les identifiants des barres qui en chevauchent une autre : ce sont
+           elles qui font le conflit, et elles seules. */
+        const enConflit = new Set<string>();
+        for (const a of prises)
+          for (const b of prises)
+            if (a.id !== b.id && chevauche(a.startAt, a.endAt, b.startAt, b.endAt)) enConflit.add(a.id);
+        return { ressource: r, prises, rangees, enConflit };
+      }),
     [triees, reservations, jourISO],
   );
+
+  /*
+    L'AMBRE. Le produit REFUSE un chevauchement à la création — un conflit
+    présent dans les données vient donc forcément de deux appareils qui ont
+    écrit hors ligne, exactement comme les numéros de facture en double. C'est
+    un fait rare et grave, et c'est lui qui prend l'ambre quand il existe. À
+    défaut, l'ambre va au refus en cours, qui est l'autre conflit de l'écran —
+    celui qu'on vient d'éviter.
+  */
+  const conflitReel = useMemo(() => {
+    for (const o of occupation) {
+      const barre = o.prises.find((b) => o.enConflit.has(b.id));
+      if (barre) return { ressource: o.ressource, barre };
+    }
+    return null;
+  }, [occupation]);
+  const halo = useHaloSignal(!!conflitReel || !!refus);
   const champ = 'input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none';
 
   return (
@@ -213,21 +271,36 @@ export function EquipmentBookingScreen() {
                 C'est aussi l'AMBRE de l'écran — son filet, et le créneau qui
                 bloque dans la grille en dessous, groupés pour n'en faire qu'un.
               */}
-              {refus && (
-                <div data-signal-groupe="creneau-pris">
-                  <Refus
-                    quoi={refus.quoi}
-                    parQui={refus.parQui}
-                    issues={refus.libres.map((c) => ({
-                      label: `${heure(c.debut)} → ${heure(c.fin)} · ${dureeLibre(c)} libres`,
-                      onClick: () => {
-                        setStartAt(c.debut);
-                        setEndAt(c.fin);
-                        setRefus(null);
-                      },
-                    }))}
-                  />
-                </div>
+              {refus && refus.demande && refus.occupe && (
+                <FenetreRefus
+                  titre={refus.quoi}
+                  demande={refus.demande}
+                  occupe={refus.occupe}
+                  parQui={refus.parQui ?? ''}
+                  borneBasse={HEURE_DEBUT * 60}
+                  borneHaute={HEURE_FIN * 60}
+                  libres={refus.libres.map((c) => ({ debut: minutesDe(c.debut), fin: minutesDe(c.fin) }))}
+                  formaterHeure={(m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`}
+                  surCreneau={(c) => {
+                    const jour = startAt.slice(0, 10);
+                    const iso = (m: number) =>
+                      `${jour}T${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+                    setStartAt(iso(c.debut));
+                    setEndAt(iso(c.fin));
+                    setRefus(null);
+                  }}
+                  onFermer={() => setRefus(null)}
+                  libelleFermer={t('chrome.fermer')}
+                  rienEnregistre={t('materiel.rienEnregistre')}
+                />
+              )}
+              {/* Le créneau invalide n'est pas un CONFLIT : il n'y a rien à
+                  dessiner, et une fenêtre pour dire « la fin est avant le
+                  début » serait disproportionnée. */}
+              {refus && !refus.demande && (
+                <p role="alert" className="border border-signal-line bg-signal-muted px-4 py-3 text-[14px] text-text-primary">
+                  {refus.quoi}
+                </p>
               )}
 
               {/*
@@ -260,49 +333,89 @@ export function EquipmentBookingScreen() {
                           ))}
                         </span>
                       </div>
-                      {occupation.map(({ ressource, prises }) => (
-                        <div key={ressource.id} className="flex border-b border-[#161616] last:border-b-0">
+                      {occupation.map(({ ressource, rangees, enConflit }) => (
+                        <div key={ressource.id} className="flex border-b border-border-row last:border-b-0">
                           <span className="w-[160px] flex-shrink-0 px-3 py-4">
                             <span className="block truncate text-[14px] text-text-primary">{ressource.name}</span>
                             {ressource.kind && <span className="eyebrow mt-1 block truncate">{ressource.kind}</span>}
+                            {rangees.length > 1 && (
+                              <span className="eyebrow mt-1 block text-signal" data-signal-groupe="creneau-pris">
+                                {rangees.length} en même temps
+                              </span>
+                            )}
                           </span>
-                          <span className="relative min-h-[52px] flex-1">
-                            {prises.length === 0 ? (
-                              <span className="eyebrow absolute left-3 top-1/2 -translate-y-1/2">
+                          <span className="min-w-0 flex-1 py-2">
+                            {rangees.length === 0 ? (
+                              <span className="eyebrow block px-3 py-2.5">
                                 {t('materiel.libreToutLeJour')}
                               </span>
                             ) : (
-                              prises.map((b) => {
-                                const bloque = b.id === refus?.conflitId;
-                                const part = (iso: string) => {
-                                  const d = new Date(iso);
-                                  const h = d.getHours() + d.getMinutes() / 60;
-                                  return Math.min(100, Math.max(0, ((h - HEURE_DEBUT) / (HEURE_FIN - HEURE_DEBUT)) * 100));
-                                };
-                                const gauche = part(b.startAt);
-                                return (
-                                  <span
-                                    key={b.id}
-                                    data-signal-groupe={bloque ? 'creneau-pris' : undefined}
-                                    title={`${b.byEmail.split('@')[0]} · ${quand(b.startAt, b.endAt)}${b.purpose ? ` · ${b.purpose}` : ''}`}
-                                    className={`absolute top-1/2 flex -translate-y-1/2 items-center overflow-hidden whitespace-nowrap px-2 py-1.5 font-mono text-[10px] ${
-                                      bloque ? 'signal-plate' : 'bg-raised text-text-secondary'
-                                    }`}
-                                    style={{
-                                      left: `${gauche}%`,
-                                      width: `${Math.max(6, part(b.endAt) - gauche)}%`,
-                                    }}
-                                  >
-                                    {b.byEmail.split('@')[0]} · {heure(b.startAt)}
-                                  </span>
-                                );
-                              })
+                              /*
+                                UNE RANGÉE PAR PILE. Elles ne fusionnent jamais :
+                                c'est la superposition HORIZONTALE de deux barres
+                                sur la même plage qui fait voir le conflit, sans
+                                qu'on ait à lire le mot « conflit ».
+                              */
+                              rangees.map((rangee, ri) => (
+                                <span key={ri} className="relative block h-9">
+                                  {rangee.map((b) => {
+                                    const bloque =
+                                      b.id === refus?.conflitId || enConflit.has(b.id);
+                                    const part = (iso: string) => {
+                                      const d = new Date(iso);
+                                      const h = d.getHours() + d.getMinutes() / 60;
+                                      return Math.min(
+                                        100,
+                                        Math.max(0, ((h - HEURE_DEBUT) / (HEURE_FIN - HEURE_DEBUT)) * 100),
+                                      );
+                                    };
+                                    const gauche = part(b.startAt);
+                                    return (
+                                      <span
+                                        key={b.id}
+                                        data-signal-groupe={bloque ? 'creneau-pris' : undefined}
+                                        title={`${b.byEmail.split('@')[0]} · ${quand(b.startAt, b.endAt)}${b.purpose ? ` · ${b.purpose}` : ''}`}
+                                        className={`absolute top-1/2 flex -translate-y-1/2 items-center overflow-hidden whitespace-nowrap px-2 py-1.5 font-mono text-[10px] ${
+                                          bloque ? `signal-plate ${halo}` : 'bg-raised text-text-secondary'
+                                        }`}
+                                        style={{
+                                          left: `${gauche}%`,
+                                          width: `${Math.max(6, part(b.endAt) - gauche)}%`,
+                                        }}
+                                      >
+                                        {/* LE BLOC EST LARGE COMME SA DURÉE,
+                                            pas comme son texte : une heure
+                                            de camionnette fait quarante
+                                            pixels. Le nom passe donc en
+                                            troncature propre plutôt qu'en
+                                            coupure nette au bord, et la
+                                            bulle de survol porte l'heure,
+                                            la plage et le motif entiers. */}
+                                        <span className="min-w-0 truncate">
+                                          {b.byEmail.split('@')[0]} · {heure(b.startAt)}
+                                        </span>
+                                      </span>
+                                    );
+                                  })}
+                                </span>
+                              ))
                             )}
                           </span>
                         </div>
                       ))}
                     </div>
                   </div>
+                  {conflitReel && (
+                    <p className="mt-3 text-[12.5px] leading-relaxed text-text-secondary">
+                      <span className="font-semibold text-signal" data-signal-groupe="creneau-pris">
+                        {conflitReel.ressource.name} est réservé deux fois sur la même plage
+                      </span>{' '}
+                      ({quand(conflitReel.barre.startAt, conflitReel.barre.endAt)}). L’écran refuse
+                      un chevauchement à la création : celui-ci vient donc de deux appareils qui ont
+                      écrit hors ligne, comme un numéro de facture en double. Les deux rangées le
+                      montrent plutôt que de le cacher — il faut trancher à la main.
+                    </p>
+                  )}
                 </section>
               )}
               {aVenir.length === 0 ? (

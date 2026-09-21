@@ -26,7 +26,6 @@ import {
 import {
   WEEKDAY_LABELS,
   addDays,
-  addMonths,
   capitaliserPhrase,
   dayKey,
   fromDateTimeLocalValue,
@@ -42,7 +41,6 @@ import {
 } from '../lib/calendar';
 import { ConfirmDelete } from '../components/ConfirmDelete';
 import { metaOf } from '../lib/records';
-import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
 
 /**
@@ -63,13 +61,16 @@ import { useFermetureEchap } from '../lib/useFermetureEchap';
  * `DayColumn` change.
  */
 
-type ViewMode = 'month' | 'week' | 'day';
+/*
+  LES TROIS VUES ONT FUSIONNÉ EN DEUX ÉCHELLES.
 
-const VIEW_LABELS: Record<ViewMode, string> = {
-  month: 'Mois',
-  week: 'Semaine',
-  day: 'Jour',
-};
+  `ViewMode` et son sélecteur mois / semaine / jour ont disparu : le plan à
+  deux échelles (`PlanDuMois`) porte le mois ET la semaine dans une seule
+  carte, et la journée est en dessous, toujours visible. Il n'y a plus de
+  mode à choisir, donc plus d'état à se rappeler ni de vue où l'on se perd.
+  Voir l'en-tête de `PlanDuMois` pour ce qui a été repris et ce qui ne l'a
+  pas été.
+*/
 
 const STATUS_META: Record<AppointmentStatus, { label: string; dot: string; text: string }> = {
   scheduled: { label: 'Prévu', dot: 'bg-accent', text: 'text-text-primary' },
@@ -100,7 +101,6 @@ export function AgendaScreen() {
     cet écran, et c'est elle qui porte désormais la colonne d'heures et le
     créneau en cours. La semaine reste à un clic.
   */
-  const [view, setView] = useState<ViewMode>('day');
   const [anchor, setAnchor] = useState(() => startOfDay(new Date()));
   const [editing, setEditing] = useState<{ appointment: Appointment | null; at: Date } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -142,11 +142,9 @@ export function AgendaScreen() {
     ];
   }, [appointments, byDay, anchor]);
 
-  const step = (direction: 1 | -1) => {
-    if (view === 'month') setAnchor(addMonths(anchor, direction));
-    else if (view === 'week') setAnchor(addDays(anchor, 7 * direction));
-    else setAnchor(addDays(anchor, direction));
-  };
+  /* Les flèches déplacent le JOUR ; le mois et la semaine du plan suivent
+     l'ancre, puisqu'ils sont deux échelles de la même date. */
+  const step = (direction: 1 | -1) => setAnchor(addDays(anchor, direction));
 
   /*
     La capitale se pose ICI, sur la première lettre, et pas par la classe CSS
@@ -157,12 +155,7 @@ export function AgendaScreen() {
     donc aucune ; les deux autres viennent de `toLocaleDateString`, tout en
     minuscules.
   */
-  const periodLabel =
-    view === 'month'
-      ? capitaliserPhrase(monthLabel(anchor))
-      : view === 'week'
-        ? `Semaine du ${weekDays(anchor)[0].toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`
-        : capitaliserPhrase(longDayLabel(anchor));
+  const periodLabel = capitaliserPhrase(longDayLabel(anchor));
 
   /*
     LA PHRASE SOUS LE TITRE, écrite avec les vrais rendez-vous du jour.
@@ -174,7 +167,6 @@ export function AgendaScreen() {
     « le prochain dans 48 minutes » ne veut rien dire.
   */
   const resumeDeLaPeriode = useMemo(() => {
-    if (view !== 'day') return 'Vos rendez-vous et vos disponibilités.';
     const duJour = (byDay.get(dayKey(anchor)) ?? []).filter((a) => a.status !== 'cancelled');
     if (duJour.length === 0) return 'Rien de prévu ce jour-là.';
     const minutes = duJour.reduce((n, a) => n + a.durationMin, 0);
@@ -190,7 +182,7 @@ export function AgendaScreen() {
       morceaux.push(dans <= 0 ? 'le prochain a commencé' : `le prochain dans ${dureeLisible(dans)}`);
     }
     return `${capitaliserPhrase(morceaux.join(', '))}.`;
-  }, [view, byDay, anchor]);
+  }, [byDay, anchor]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -276,53 +268,20 @@ export function AgendaScreen() {
             </span>
           </div>
 
-          <div className="flex items-center gap-1">
-            {(Object.keys(VIEW_LABELS) as ViewMode[]).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setView(mode)}
-                className={`rounded-lg px-2.5 py-3 font-mono text-[10px] uppercase tracking-wider transition-colors sm:py-1 ${
-                  view === mode
-                    ? 'bg-accent-muted text-text-primary'
-                    : 'text-text-secondary hover:text-text-primary'
-                }`}
-              >
-                {VIEW_LABELS[mode]}
-              </button>
-            ))}
-          </div>
         </div>
       </header>
 
-      {view === 'month' && (
-        <MonthView
-          anchor={anchor}
-          byDay={byDay}
-          onPickDay={(date) => {
-            setAnchor(date);
-            setView('day');
-          }}
-          onPick={setSelectedId}
-        />
-      )}
-      {view === 'week' && (
-        <WeekView
-          anchor={anchor}
-          byDay={byDay}
-          onPick={setSelectedId}
-          onCreate={(date) => setEditing({ appointment: null, at: defaultSlot(date) })}
-        />
-      )}
-      {view === 'day' && (
-        <DayView
-          anchor={anchor}
-          byDay={byDay}
-          onPick={setSelectedId}
-          onCreate={(date) => setEditing({ appointment: null, at: defaultSlot(date) })}
-          onPickDay={setAnchor}
-        />
-      )}
+      {/* L'OBJET DOMINANT (`24b`) : le mois en densité et la semaine
+          détachée, deux échelles dans une seule carte. */}
+      <PlanDuMois anchor={anchor} byDay={byDay} onPickDay={setAnchor} onPick={setSelectedId} />
+
+      {/* AUTOUR — à gauche la journée, à droite ce que le mois pèse. */}
+      <DayView
+        anchor={anchor}
+        byDay={byDay}
+        onPick={setSelectedId}
+        onCreate={(date) => setEditing({ appointment: null, at: defaultSlot(date) })}
+      />
 
       <AnimatePresence>
         {selected && (
@@ -375,7 +334,64 @@ function defaultSlot(date: Date): Date {
 /*                                    Vues                                    */
 /* -------------------------------------------------------------------------- */
 
-function MonthView({
+/* -------------------------------------------------------------------------- */
+/*          LE PLAN — deux échelles dans une seule carte (`24b`)               */
+/* -------------------------------------------------------------------------- */
+
+/*
+  DEUX MAILLES DU MÊME OBJET, ET C'EST POUR ÇA QU'ELLES NE SE SÉPARENT PAS.
+
+  En haut le MOIS EN DENSITÉ : sept colonnes, et la clarté de chaque case est
+  le nombre d'heures prises ce jour-là. On n'y lit pas des rendez-vous, on y
+  lit une CHARGE — où le mois est plein, où il est creux. En bas la SEMAINE
+  DÉTACHÉE, à l'échelle des heures, avec les blocs à leur vraie position sur
+  08 → 20.
+
+  `MODULES.md` insiste : les deux vivent dans la même carte dominante. Séparer
+  en deux cartes ferait deux objets qui se regardent, alors que la semaine est
+  un agrandissement du mois — on zoome, on ne change pas de sujet.
+
+  CE QUI A ÉTÉ REMPLACÉ, et pourquoi ce n'est pas une perte de fonction.
+  L'écran portait trois vues : mois, semaine, jour. La grille du mois listait
+  deux rendez-vous par case puis « +3 autres » — une liste tronquée qui ne
+  répond ni à « qu'est-ce que je fais » ni à « quand suis-je chargé ». La vue
+  semaine était sept listes côte à côte, qui ne disaient pas non plus à quelle
+  heure la semaine se remplit. Les deux sont ici, mieux : la densité répond à
+  la charge du mois, la semaine détachée à la forme des journées, et un clic
+  sur n'importe quelle case ou n'importe quel bloc mène au jour ou au
+  rendez-vous. Ce qui disparaît vraiment est la création d'un rendez-vous
+  depuis une case de semaine ; elle reste au bouton d'en-tête et dans la
+  colonne d'heures du jour, qui est l'endroit où l'on choisit une heure.
+*/
+
+/** Les quatre paliers de densité, du plus creux au plus chargé. */
+const PALIERS_DENSITE = ['var(--color-border)', '#2b2b2b', 'var(--color-border-strong)', '#4a4a48'];
+/** Bornes en HEURES prises dans la journée. Au-delà du dernier, dernier palier. */
+const BORNES_DENSITE = [2, 4, 6];
+const POINTS_DENSITE_MAX = 4;
+
+/** Hauteur d'une colonne de la semaine détachée, en pixels. */
+const SEMAINE_H = 118;
+const SEMAINE_DEBUT = 8;
+const SEMAINE_FIN = 20;
+
+/** Heures occupées un jour donné — les annulés ne prennent pas de place. */
+function heuresPrises(liste: Appointment[]): number {
+  return liste
+    .filter((a) => a.status !== 'cancelled')
+    .reduce((n, a) => n + a.durationMin, 0) / 60;
+}
+
+/** Le palier de densité d'une journée : 0 = rien de pris. */
+function palierDe(heures: number): number {
+  if (heures <= 0) return 0;
+  for (let i = 0; i < BORNES_DENSITE.length; i += 1) {
+    if (heures < BORNES_DENSITE[i]) return i + 1;
+  }
+  return PALIERS_DENSITE.length;
+}
+
+function PlanDuMois({
   anchor,
   byDay,
   onPickDay,
@@ -386,146 +402,234 @@ function MonthView({
   onPickDay: (date: Date) => void;
   onPick: (id: string) => void;
 }) {
-  const days = monthGrid(anchor);
+  const cases = monthGrid(anchor);
+  const semaine = weekDays(anchor);
+  const aujourdHuiDansLaSemaine = semaine.some((d) => isToday(d));
+
   return (
-    <div className="border border-border bg-surface">
-      <div className="grid grid-cols-7 border-b border-border">
+    <section className="panel-raised panel-raised-wide p-5 sm:p-6">
+      {/* ── LE MOIS EN DENSITÉ ─────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <p className="eyebrow">{capitaliserPhrase(monthLabel(anchor))} · la charge</p>
+        <p className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
+          plus la case est claire, plus la journée est prise
+        </p>
+      </div>
+
+      <div className="mt-4 grid grid-cols-7 gap-1">
         {WEEKDAY_LABELS.map((label) => (
           <span
             key={label}
-            className="px-2 py-2 text-center font-mono text-[9px] uppercase tracking-widest text-text-muted"
+            className="pb-1 text-center font-mono text-[9px] uppercase tracking-widest text-text-muted"
           >
             {label}
           </span>
         ))}
-      </div>
-      <div className="grid grid-cols-7">
-        {days.map((day) => {
-          const list = byDay.get(dayKey(day)) ?? [];
-          const outside = day.getMonth() !== anchor.getMonth();
+        {cases.map((jour) => {
+          const liste = byDay.get(dayKey(jour)) ?? [];
+          const vivants = liste.filter((a) => a.status !== 'cancelled');
+          const palier = palierDe(heuresPrises(liste));
+          const dehors = jour.getMonth() !== anchor.getMonth();
           return (
             <button
-              key={dayKey(day)}
+              key={dayKey(jour)}
               type="button"
-              onClick={() => onPickDay(day)}
-              className={`flex min-h-[4.5rem] flex-col items-stretch gap-1 border-b border-r border-border/60 p-1.5 text-left transition-colors last:border-r-0 hover:bg-surface-hover sm:min-h-[6rem] ${
-                outside ? 'opacity-40' : ''
-              }`}
+              onClick={() => onPickDay(jour)}
+              title={`${longDayLabel(jour)} · ${vivants.length} rendez-vous · ${dureeLisible(Math.round(heuresPrises(liste) * 60))}`}
+              className={`flex h-12 flex-col items-center justify-center gap-1 border transition-colors hover:border-border-strong ${
+                isSameDay(jour, anchor) ? 'border-text-secondary' : 'border-transparent'
+              } ${dehors ? 'opacity-35' : ''}`}
+              style={{ background: palier === 0 ? 'var(--color-sunken)' : PALIERS_DENSITE[palier - 1] }}
             >
               <span
-                className={`self-end font-mono text-[10px] ${
-                  isToday(day)
-                    ? 'flex h-5 w-5 items-center justify-center rounded-full bg-accent text-bg'
-                    : 'text-text-muted'
+                className={`tnum font-mono text-[10px] leading-none ${
+                  palier >= 3 ? 'text-text-body' : 'text-text-muted'
                 }`}
               >
-                {day.getDate()}
+                {jour.getDate()}
               </span>
-              {list.slice(0, 2).map((appointment) => (
-                <span
-                  key={appointment.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPick(appointment.id);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.stopPropagation();
-                      onPick(appointment.id);
-                    }
-                  }}
-                  className={`truncate rounded bg-bg px-1 py-0.5 text-[10px] ${metaOf(STATUS_META, appointment.status, STATUS_META.scheduled).text}`}
-                >
-                  {timeLabel(appointment.startAt)} {appointment.title || 'Rendez-vous'}
-                </span>
-              ))}
-              {list.length > 2 && (
-                <span className="px-1 font-mono text-[9px] text-text-muted">
-                  +{list.length - 2} autre{list.length - 2 > 1 ? 's' : ''}
-                </span>
-              )}
+              {/* LES PASTILLES — elles COMPTENT les rendez-vous, là où la
+                  clarté du fond pèse les heures. Deux informations
+                  différentes : trois quarts d'heure en trois fois ne
+                  remplissent pas une journée mais la hachent. */}
+              <span aria-hidden className="flex h-1 items-center gap-0.5">
+                {Array.from({ length: Math.min(POINTS_DENSITE_MAX, vivants.length) }, (_, i) => (
+                  <span
+                    key={i}
+                    className={`h-1 w-1 rounded-full ${palier >= 3 ? 'bg-bg' : 'bg-text-muted'}`}
+                  />
+                ))}
+              </span>
             </button>
           );
         })}
       </div>
-    </div>
-  );
-}
 
-function WeekView({
-  anchor,
-  byDay,
-  onPick,
-  onCreate,
-}: {
-  anchor: Date;
-  byDay: Map<string, Appointment[]>;
-  onPick: (id: string) => void;
-  onCreate: (date: Date) => void;
-}) {
-  const days = weekDays(anchor);
-  const lists = days.map((day) => byDay.get(dayKey(day)) ?? []);
-  const total = lists.reduce((sum, list) => sum + list.length, 0);
-  const freeDays = lists.filter((list) => list.length === 0).length;
-
-  /*
-    UNE LIGNE POUR LA SEMAINE, À LA PLACE DE SEPT ABSENCES.
-
-    « Rien de prévu » répété sept fois n'apprend rien et pèse beaucoup. Une
-    phrase à l'échelle de la SEMAINE apprend quelque chose : combien de
-    rendez-vous, et combien de jours restent libres. C'est la même information
-    que sept absences, dite une fois et de façon utilisable.
-
-    Elle est calculée sur les rendez-vous affichés, à chaque rendu — comme tous
-    les relevés de cette refonte.
-  */
-  const résumé =
-    total === 0
-      ? 'Semaine libre — sept jours ouverts.'
-      : `${total} rendez-vous cette semaine${freeDays > 0 ? ` · ${freeDays} jour${freeDays > 1 ? 's' : ''} libre${freeDays > 1 ? 's' : ''}` : ' · aucun jour libre'}`;
-
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="eyebrow">{résumé}</p>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-7">
-        {days.map((day, index) => (
-          <DayColumn
-            key={dayKey(day)}
-            day={day}
-            appointments={lists[index]}
-            onPick={onPick}
-            onCreate={onCreate}
-          />
-        ))}
+      {/* ── LA SEMAINE DÉTACHÉE ────────────────────────────────────────── */}
+      <div className="mt-6 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-t border-border-row pt-5">
+        <p className="eyebrow">
+          La semaine du {semaine[0].toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
+        </p>
+        <p className="tnum font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
+          {SEMAINE_DEBUT} h → {SEMAINE_FIN} h
+        </p>
       </div>
-    </div>
+
+      <div className="mt-3 grid grid-cols-7 gap-1.5">
+        {semaine.map((jour) => {
+          const liste = (byDay.get(dayKey(jour)) ?? []).filter((a) => a.status !== 'cancelled');
+          const courant = isToday(jour);
+          return (
+            <div key={dayKey(jour)} className="min-w-0">
+              {/*
+                LA COLONNE — les blocs sont posés en POURCENTAGE de sa
+                hauteur, jamais en pixels : la colonne est fluide en largeur
+                comme en hauteur, et un bloc calé au pixel serait juste à une
+                seule taille de fenêtre.
+              */}
+              <div
+                className={`relative w-full overflow-hidden border ${
+                  courant ? 'border-signal' : 'border-border'
+                }`}
+                style={{ height: SEMAINE_H, background: 'var(--color-sunken)' }}
+                data-signal-groupe={courant ? 'jour-courant' : undefined}
+              >
+                {liste.map((a) => {
+                  const d = new Date(a.startAt);
+                  const debutH = d.getHours() + d.getMinutes() / 60;
+                  const haut = ((debutH - SEMAINE_DEBUT) / (SEMAINE_FIN - SEMAINE_DEBUT)) * 100;
+                  const hauteur = (a.durationMin / 60 / (SEMAINE_FIN - SEMAINE_DEBUT)) * 100;
+                  /* Un rendez-vous hors de la plage dessinée est ramené à son
+                     bord, jamais coupé : il existe, et la colonne doit le
+                     dire. */
+                  const top = Math.max(0, Math.min(100, haut));
+                  const h = Math.max(2.5, Math.min(100 - top, hauteur));
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => onPick(a.id)}
+                      title={`${timeLabel(a.startAt)} · ${a.title || 'Rendez-vous'}`}
+                      className={`absolute inset-x-0.5 overflow-hidden px-1 text-left ${
+                        courant ? 'bg-signal' : 'bg-border-strong'
+                      }`}
+                      style={{ top: `${top}%`, height: `${h}%` }}
+                    >
+                      <span
+                        className={`block truncate font-mono text-[9px] leading-[1.4] ${
+                          courant ? 'text-signal-ink' : 'text-text-body'
+                        }`}
+                      >
+                        {timeLabel(a.startAt)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                onClick={() => onPickDay(jour)}
+                className={`mt-1.5 block w-full truncate text-center font-mono text-[9.5px] uppercase tracking-[0.12em] ${
+                  courant ? 'text-signal' : 'text-text-muted hover:text-text-primary'
+                }`}
+                data-signal-groupe={courant ? 'jour-courant' : undefined}
+              >
+                {WEEKDAY_LABELS[(jour.getDay() + 6) % 7]} {jour.getDate()}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {!aujourdHuiDansLaSemaine && (
+        <p className="mt-3 text-[12.5px] leading-relaxed text-text-muted">
+          Aujourd’hui n’est pas dans cette semaine : aucune colonne n’est désignée.
+        </p>
+      )}
+    </section>
   );
 }
 
+/*
+  CE QUI ENTOURE LE PLAN — à gauche la journée, à droite ce que le mois pèse.
+
+  Le mini-mois qui tenait cette colonne a disparu : la densité du plan est le
+  même mois, en mieux, et deux calendriers sur un écran obligent à vérifier
+  qu'ils disent la même chose.
+*/
 function DayView({
   anchor,
   byDay,
   onPick,
   onCreate,
-  onPickDay,
 }: {
   anchor: Date;
   byDay: Map<string, Appointment[]>;
   onPick: (id: string) => void;
   onCreate: (date: Date) => void;
-  onPickDay: (date: Date) => void;
 }) {
   const duJour = byDay.get(dayKey(anchor)) ?? [];
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
       <ColonneDHeures day={anchor} appointments={duJour} onPick={onPick} onCreate={onCreate} />
       <div className="flex flex-col gap-5">
-        <MiniMois anchor={anchor} byDay={byDay} onPickDay={onPickDay} />
+        <CarteDuMois anchor={anchor} byDay={byDay} />
         <CarteDeRappel appointments={duJour} />
       </div>
     </div>
+  );
+}
+
+/**
+ * Ce que le mois pèse : rendez-vous, jour le plus chargé, jours vides.
+ *
+ * Les trois chiffres sortent des MÊMES cases que la densité du plan — ils
+ * comptent ce qui est dessiné, et un jour annulé n'y pèse rien nulle part.
+ */
+function CarteDuMois({ anchor, byDay }: { anchor: Date; byDay: Map<string, Appointment[]> }) {
+  const bilan = useMemo(() => {
+    const jours = monthGrid(anchor).filter((d) => d.getMonth() === anchor.getMonth());
+    let total = 0;
+    let vides = 0;
+    let plusCharge: { jour: Date; heures: number } | null = null;
+    for (const jour of jours) {
+      const liste = (byDay.get(dayKey(jour)) ?? []).filter((a) => a.status !== 'cancelled');
+      total += liste.length;
+      if (liste.length === 0) vides += 1;
+      const heures = heuresPrises(liste);
+      if (!plusCharge || heures > plusCharge.heures) plusCharge = { jour, heures };
+    }
+    return { total, vides, plusCharge: plusCharge && plusCharge.heures > 0 ? plusCharge : null };
+  }, [anchor, byDay]);
+
+  return (
+    <section className="panel p-4 sm:p-5">
+      <p className="eyebrow">{capitaliserPhrase(monthLabel(anchor))}</p>
+      <p className="tnum mt-2 text-[27px] font-semibold leading-none text-text-primary">
+        {bilan.total}
+      </p>
+      <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+        rendez-vous dans le mois
+      </p>
+      <dl className="mt-4 flex flex-col gap-2 border-t border-border-row pt-3">
+        <div className="flex items-baseline justify-between gap-3">
+          <dt className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+            jour le plus chargé
+          </dt>
+          <dd className="tnum text-right font-mono text-[12px] text-text-primary">
+            {bilan.plusCharge
+              ? `${bilan.plusCharge.jour.getDate()} · ${dureeLisible(Math.round(bilan.plusCharge.heures * 60))}`
+              : '—'}
+          </dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-3">
+          <dt className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+            jours vides
+          </dt>
+          <dd className="tnum font-mono text-[12px] text-text-secondary">{bilan.vides}</dd>
+        </div>
+      </dl>
+    </section>
   );
 }
 
@@ -715,96 +819,16 @@ function dureeLisible(minutes: number): string {
  * jours portent quelque chose (un point sous le chiffre), pour qu'on saute au
  * 12 sans passer par « mois », cliquer, puis « jour ».
  */
-function MiniMois({
-  anchor,
-  byDay,
-  onPickDay,
-}: {
-  anchor: Date;
-  byDay: Map<string, Appointment[]>;
-  onPickDay: (date: Date) => void;
-}) {
-  const [moisVu, setMoisVu] = useState(() => startOfDay(anchor));
-  /* Changer de jour depuis l'extérieur ramène le mini-mois sur ce jour : sans
-     ça, cliquer « aujourd'hui » laissait le petit calendrier en novembre. */
-  useEffect(() => setMoisVu(startOfDay(anchor)), [anchor]);
-  const cases = useMemo(() => monthGrid(moisVu), [moisVu]);
+/*
+  `MiniMois` a été retiré ici, et non laissé « au cas où ».
 
-  return (
-    <div className="panel p-4">
-      <div className="mb-4 flex items-center gap-2">
-        <p className="eyebrow flex-1">{capitaliserPhrase(monthLabel(moisVu))}</p>
-        <button
-          type="button"
-          onClick={() => setMoisVu(addMonths(moisVu, -1))}
-          aria-label="Mois précédent"
-          className="flex h-7 w-7 items-center justify-center text-text-muted transition-colors hover:text-text-primary"
-        >
-          <ChevronLeft size={14} strokeWidth={2} />
-        </button>
-        <button
-          type="button"
-          onClick={() => setMoisVu(addMonths(moisVu, 1))}
-          aria-label="Mois suivant"
-          className="flex h-7 w-7 items-center justify-center text-text-muted transition-colors hover:text-text-primary"
-        >
-          <ChevronRight size={14} strokeWidth={2} />
-        </button>
-      </div>
+  Il rendait un calendrier réduit dans la colonne de droite. Le plan à deux
+  échelles porte le même mois, en densité, dans la carte dominante. Garder les
+  deux aurait laissé deux calendriers côte à côte qu'il faut comparer pour
+  savoir s'ils disent la même chose — et du code mort à côté de son
+  remplaçant finit toujours par être modifié par erreur.
+*/
 
-      <div className="grid grid-cols-7 gap-y-1">
-        {WEEKDAY_LABELS.map((j) => (
-          <span key={j} className="pb-2 text-center font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-muted">
-            {j[0]}
-          </span>
-        ))}
-        {cases.map((jour) => {
-          const combien = byDay.get(dayKey(jour))?.length ?? 0;
-          const choisi = isSameDay(jour, anchor);
-          const duMois = jour.getMonth() === moisVu.getMonth();
-          return (
-            <button
-              key={jour.toISOString()}
-              type="button"
-              onClick={() => onPickDay(startOfDay(jour))}
-              className={`flex h-8 flex-col items-center justify-center transition-colors ${
-                choisi ? 'border border-border-strong bg-raised' : 'hover:bg-surface-hover'
-              }`}
-            >
-              <span
-                className={`tnum font-mono text-[12px] leading-none ${
-                  choisi ? 'text-text-primary' : duMois ? 'text-text-secondary' : 'text-text-muted'
-                }`}
-              >
-                {jour.getDate()}
-              </span>
-              {/* Un point, pas un compte : on veut savoir s'il y a quelque
-                  chose, pas combien — le compte est dans la colonne d'heures. */}
-              <span
-                className={`mt-[3px] h-[3px] w-[3px] rounded-full ${combien > 0 ? 'bg-text-muted' : 'bg-transparent'}`}
-                aria-hidden
-              />
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/**
- * LA CARTE DE RAPPEL — ce que la notification dira, avant qu'elle sorte.
- *
- * Un préavis réglé dans un formulaire est une promesse invérifiable : on coche
- * « 30 min avant » et on ne sait pas ce qui apparaîtra, ni où, ni quand. La
- * carte montre le texte exact de la prochaine notification du jour, avec le
- * délai réellement enregistré sur ce rendez-vous-là.
- *
- * La dernière phrase n'est pas une précaution de style : `AppointmentReminders`
- * abandonne un rappel dont l'heure est passée de plus de cinq minutes, pour ne
- * pas déverser douze notifications au réveil d'un poste en veille. C'est un
- * comportement qu'il vaut mieux lire ici que découvrir un matin.
- */
 function CarteDeRappel({ appointments }: { appointments: Appointment[] }) {
   const maintenant = Date.now();
   const prochain = appointments
@@ -874,124 +898,14 @@ function CarteDeRappel({ appointments }: { appointments: Appointment[] }) {
  * La vue JOUR garde sa carte : il n'y a qu'une colonne, donc aucune répétition,
  * et le cadre y aide à situer la journée.
  */
-function DayColumn({
-  day,
-  appointments,
-  onPick,
-  onCreate,
-  expanded = false,
-}: {
-  day: Date;
-  appointments: Appointment[];
-  onPick: (id: string) => void;
-  onCreate: (date: Date) => void;
-  expanded?: boolean;
-}) {
-  const empty = appointments.length === 0;
-  // Un jour vide de la vue SEMAINE redevient du sol. Ailleurs (vue jour, ou
-  // jour rempli), la carte garde son rôle : délimiter un contenu.
-  const asGround = empty && !expanded;
+/*
+  `DayColumn` a été retiré pour la même raison.
 
-  return (
-    <div
-      className={`group/day flex flex-col ${
-        asGround
-          ? 'border border-transparent'
-          : `border bg-surface ${isToday(day) ? 'border-border-strong' : 'border-border'}`
-      }`}
-    >
-      <div
-        className={`flex items-center justify-between px-2.5 py-2 ${
-          asGround ? '' : 'border-b border-border'
-        }`}
-      >
-        <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-          {WEEKDAY_LABELS[(day.getDay() + 6) % 7]}
-        </span>
-        <span
-          className={`font-mono text-[11px] ${
-            isToday(day)
-              ? 'flex h-5 w-5 items-center justify-center rounded-full bg-accent text-bg'
-              : 'text-text-secondary'
-          }`}
-        >
-          {day.getDate()}
-        </span>
-      </div>
-
-      {!empty && (
-        <motion.div
-          variants={staggerContainer}
-          initial="initial"
-          animate="animate"
-          className="flex flex-col divide-y divide-border/60"
-        >
-          {appointments.map((appointment) => (
-            <motion.button
-              key={appointment.id}
-              variants={staggerItem}
-              type="button"
-              onClick={() => onPick(appointment.id)}
-              className="flex flex-col items-start gap-0.5 px-2.5 py-2 text-left transition-colors hover:bg-surface-hover"
-            >
-              <span className="flex items-center gap-1.5 font-mono text-[10px] text-text-muted">
-                <span className={`h-1.5 w-1.5 rounded-full ${metaOf(STATUS_META, appointment.status, STATUS_META.scheduled).dot}`} />
-                {timeLabel(appointment.startAt)} – {timeLabel(appointmentEnd(appointment).toISOString())}
-              </span>
-              <span className={`text-sm font-medium ${metaOf(STATUS_META, appointment.status, STATUS_META.scheduled).text}`}>
-                {appointment.title || 'Rendez-vous'}
-              </span>
-              {appointment.clientName && (
-                <span className="truncate font-mono text-[10px] text-text-secondary">
-                  {appointment.clientName}
-                </span>
-              )}
-            </motion.button>
-          ))}
-        </motion.div>
-      )}
-
-      <button
-        type="button"
-        onClick={() => onCreate(day)}
-        aria-label={`Ajouter un rendez-vous le ${day.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}`}
-        /*
-          `min-h-6` : en cachant le mot sur un jour vide, il ne reste que
-          l'icône de 11 px, et le bouton retombait à 23 px de haut — sous les
-          24 exigés. C'est `check:cibles` qui l'a dit, sur les deux éditions et
-          quinze occurrences : la correction de visibilité avait créé un défaut
-          de taille.
-        */
-        className={`flex min-h-6 items-center justify-center gap-1 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors hover:bg-surface-hover hover:text-text-primary ${
-          asGround ? 'text-text-muted' : 'border-t border-border text-text-muted'
-        }`}
-      >
-        <Plus size={11} strokeWidth={2} />
-        {/*
-          LE MOT SE CACHE, PAS LE BOUTON.
-
-          Le premier jet rendait le bouton entier `text-transparent` sur un jour
-          vide, et le révélait au survol. L'intention était bonne — il ne doit
-          pas réclamer l'attention sept fois de suite — mais l'icône hérite de
-          `currentColor` : elle disparaissait avec le mot.
-
-          MESURÉ à 390 px : cinq jours sur sept portaient un bouton de
-          356 × 27 px totalement INVISIBLE. Et sur un téléphone il n'y a pas de
-          survol, donc rien ne le révélait jamais. Le seul moyen d'ajouter un
-          rendez-vous à un jour vide était un rectangle qu'on ne voit pas.
-
-          Un « + » seul suffit à dire ce qu'il y a à faire, se lit sans survol,
-          et reste discret. Le mot vient en plus quand on approche.
-        */}
-        <span className={asGround ? 'hidden group-hover/day:inline' : undefined}>Ajouter</span>
-      </button>
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/*                                   Détail                                   */
-/* -------------------------------------------------------------------------- */
+  C'était la liste d'une journée, utilisée par les vues mois et semaine. Ces
+  vues n'existent plus (voir `PlanDuMois`), et la journée est rendue par
+  `ColonneDHeures`, à l'échelle des heures — ce que la liste ne savait pas
+  faire.
+*/
 
 function AppointmentDetail({
   appointment,

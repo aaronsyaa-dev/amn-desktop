@@ -61,6 +61,9 @@ import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { CHANGELOG } from '../data/changelog';
 import { DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs } from '../shared/api';
 import { AccentSection } from '../components/settings/AccentSection';
+import { CONSEQUENCES, consequenceDe } from '../data/consequencesReglages';
+import { navItemByKey } from '../data/navigation';
+import { useHaloSignal } from '../components/EtatEcran';
 import { LangueSection } from '../components/settings/LangueSection';
 import { useSupportContext } from '../state/OrgContextContext';
 import { useLangue, t as tr } from '../i18n';
@@ -84,14 +87,29 @@ export function SettingsScreen() {
         </div>
       </StaggerItem>
 
+      {/* ═══ L'OBJET DOMINANT : le plan, avant les interrupteurs ═══ */}
       <StaggerItem>
-        <ProfileSection email={user.email} />
+        <PlanDesReglages />
+      </StaggerItem>
+
+      <StaggerItem>
+        <FormuleEtPlaces />
+      </StaggerItem>
+
+      <StaggerItem>
+        <div id="reglages-profil">
+          <ProfileSection email={user.email} />
+        </div>
       </StaggerItem>
       <StaggerItem>
-        <PasswordSection email={user.email} remote={org !== null} />
+        <div id="reglages-securite">
+          <PasswordSection email={user.email} remote={org !== null} />
+        </div>
       </StaggerItem>
       <StaggerItem>
-        <NotificationsSection email={user.email} />
+        <div id="reglages-notifications">
+          <NotificationsSection email={user.email} />
+        </div>
       </StaggerItem>
       {/*
         LA COULEUR APPARTIENT À L'ORGANISATION QUI L'UTILISE (BLOC C).
@@ -111,7 +129,9 @@ export function SettingsScreen() {
           de deviner un rôle qu'il n'a pas. */}
       {!support && (
         <StaggerItem>
-          <AccentSection />
+          <div id="reglages-apparence">
+            <AccentSection />
+          </div>
         </StaggerItem>
       )}
       {/* La langue du POSTE — un choix de personne, en localStorage : il ne
@@ -139,7 +159,9 @@ export function SettingsScreen() {
         elle peut le constater plutôt que le supposer.
       */}
       <StaggerItem>
-        <UpdateSection />
+        <div id="reglages-poste">
+          <UpdateSection />
+        </div>
       </StaggerItem>
       {!bridge().env.isElectron && (
         <StaggerItem>
@@ -177,16 +199,191 @@ export function SettingsScreen() {
           la section vivait ici, au fond, et personne ne la trouvait. */}
       {!support && (
         <StaggerItem>
-          <ModulesSection />
+          <div id="reglages-modules">
+            <ModulesSection />
+          </div>
         </StaggerItem>
       )}
       <StaggerItem>
-        <DataSection />
+        <div id="reglages-donnees">
+          <DataSection />
+        </div>
       </StaggerItem>
       <StaggerItem>
         <AboutSection />
       </StaggerItem>
     </StaggerGroup>
+  );
+}
+
+
+/*
+  ══════════════════════════════════════════════════════════════════════
+  LE PLAN DE L'ESPACE DE TRAVAIL — et le piège qu'il évite
+  ══════════════════════════════════════════════════════════════════════
+
+  Le piège de la famille Système était l'écran de réglages générique : une
+  colonne d'interrupteurs, chacun disant ce qu'il EST, aucun ne disant ce
+  qu'il FAIT. On y entre pour changer une chose et on en ressort sans savoir
+  ce qui vient de bouger ailleurs.
+
+  MÊME UN MODULE DE PARAMÈTRES A UN OBJET DOMINANT, ET C'EST L'ÉTAT DU
+  SYSTÈME. Ici : sept rubriques posées à plat, chacune annonçant combien de
+  réglages elle contient ET lequel a une conséquence ailleurs dans le
+  produit. Les interrupteurs, eux, sont dessous — on descend quand on sait
+  où l'on va.
+
+  LE COMPTE « CITÉS N FOIS » EST RÉEL : il vient de
+  `src/data/consequencesReglages.ts`, où chaque lecteur est un fichier, et
+  `npm run check:consequences` ouvre ces fichiers pour refuser un lecteur qui
+  ne lit plus le réglage. Une rubrique sans conséquence ailleurs n'a pas de
+  compte de citations — elle n'affiche rien plutôt qu'un zéro.
+*/
+interface Rubrique {
+  cle: string;
+  titre: string;
+  /** Les réglages de la rubrique, comptés — pas une estimation. */
+  reglages: string[];
+  ancre: string;
+}
+
+const RUBRIQUES: Rubrique[] = [
+  { cle: 'profil', titre: 'Profil', reglages: ['Votre nom', 'Votre photo', 'Votre fonction'], ancre: 'reglages-profil' },
+  {
+    cle: 'securite',
+    titre: 'Sécurité du compte',
+    reglages: ['Mot de passe', 'Double facteur', 'Appareils connectés', 'Journal d’accès'],
+    ancre: 'reglages-securite',
+  },
+  { cle: 'notifications', titre: 'Notifications', reglages: ['Ce qui vous prévient', 'Sur ce navigateur'], ancre: 'reglages-notifications' },
+  { cle: 'apparence', titre: 'Apparence et langue', reglages: ['Couleur d’accent', 'Langue du poste'], ancre: 'reglages-apparence' },
+  { cle: 'poste', titre: 'Ce poste', reglages: ['Mises à jour', 'Démarrage', 'Modèles locaux'], ancre: 'reglages-poste' },
+  { cle: 'modules', titre: 'Modules', reglages: ['Les modules ouverts', 'Ce qui se demande'], ancre: 'reglages-modules' },
+  { cle: 'donnees', titre: 'Données', reglages: ['Export', 'Effacement', 'Version installée'], ancre: 'reglages-donnees' },
+];
+
+/** Le plan : sept rubriques en trois colonnes, et une seule en ambre. */
+function PlanDesReglages() {
+  /* LA RUBRIQUE AMBRE : celle dont le réglage est le PLUS cité ailleurs. Une
+     seule, même si deux rubriques ont une conséquence — l'ambre marque ce
+     qui porte le plus loin, pas tout ce qui porte. */
+  const laPlusCitee = [...CONSEQUENCES].sort((a, b) => b.lecteurs.length - a.lecteurs.length)[0] ?? null;
+  const halo = useHaloSignal(Boolean(laPlusCitee));
+  const citee = laPlusCitee ? RUBRIQUES.find((r) => r.cle === laPlusCitee.rubrique) ?? null : null;
+
+  return (
+    <section className={`panel-raised p-5 sm:p-6 ${halo}`}>
+      <p className="eyebrow mb-4">Ce que vous pouvez changer, et ce que ça change</p>
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {RUBRIQUES.map((r) => {
+          const c = consequenceDe(r.cle);
+          const ambre = citee?.cle === r.cle;
+          return (
+            <li
+              key={r.cle}
+              data-signal-groupe={ambre ? 'rubrique-citee' : undefined}
+              className={`p-4 ${ambre ? 'border border-signal-line bg-signal-muted' : 'panel'}`}
+            >
+              <a
+                href={`#${r.ancre}`}
+                data-signal-groupe={ambre ? 'rubrique-citee' : undefined}
+                className={`text-sm font-semibold leading-tight ${ambre ? 'text-signal' : 'text-text-primary'}`}
+              >
+                {r.titre}
+              </a>
+              <p
+                data-signal-groupe={ambre ? 'rubrique-citee' : undefined}
+                className={`mt-1 font-mono text-[10px] uppercase tracking-[0.16em] tabular-nums ${
+                  ambre ? 'text-signal' : 'text-text-muted'
+                }`}
+              >
+                {r.reglages.length} réglages
+                {c ? ` · cités ${c.lecteurs.length} fois` : ''}
+              </p>
+              <p className="mt-2 text-[12px] leading-relaxed text-text-secondary">
+                {c ? `« ${c.reglage} » est lu ailleurs dans le produit.` : 'Ne change rien hors de cette rubrique.'}
+              </p>
+            </li>
+          );
+        })}
+      </ul>
+
+      {/* SOUS LE PLAN — ce que change CE réglage, nommément. */}
+      {laPlusCitee && citee && (
+        <p className="mt-4 max-w-prose border-t border-border-strong pt-3 text-sm leading-relaxed text-text-body">
+          {`« ${laPlusCitee.reglage} » (${citee.titre}) est lu par ${laPlusCitee.lecteurs.length} modules : `}
+          {laPlusCitee.lecteurs
+            .map((l) => navItemByKey(l.module)?.label ?? l.module)
+            .join(', ')}
+          {'. Le changer les réécrit tous d’un coup.'}
+        </p>
+      )}
+    </section>
+  );
+}
+
+
+/*
+  LA FORMULE — et deux manques dits plutôt que meublés.
+
+  `MODULES.md` demande ici « les cinq derniers changements avec leur valeur
+  et leur date » et « le prochain prélèvement ». Ni l'un ni l'autre n'existe
+  dans ce produit :
+
+  · AUCUN CHANGEMENT DE RÉGLAGE N'EST JOURNALISÉ. Le journal d'organisation
+    enregistre des GESTES (connexion, changement de rôle, suspension), pas la
+    valeur d'un réglage avant et après. Afficher « cinq derniers
+    changements » en y mettant des connexions serait un panneau qui ment sur
+    son titre ; le remplir de valeurs inventées serait pire.
+
+  · IL N'Y A PAS DE PRÉLÈVEMENT AUTOMATIQUE. Une place de plus se DEMANDE, un
+    humain la lit dans la Tour de contrôle, et aucun robot ne facture quoi
+    que ce soit (voir Membres et routes/modules.js). Une date de prochain
+    prélèvement serait une promesse que rien ne tient.
+
+  Le panneau dit donc ce qui est vrai : la formule, les places, et les deux
+  absences nommées.
+*/
+function FormuleEtPlaces() {
+  const { org } = useAuth();
+  if (!org) return null;
+  return (
+    <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="panel p-4">
+        <p className="eyebrow mb-3">Ce que ce produit ne garde pas</p>
+        <ul className="flex flex-col gap-2">
+          <li className="flex items-baseline gap-2 text-[13px] leading-relaxed text-text-secondary">
+            <span aria-hidden className="text-text-muted">—</span>
+            <span>
+              L’historique de vos réglages. Le journal de l’organisation enregistre des gestes — une connexion,
+              un changement de rôle — pas la valeur d’un réglage avant et après.
+            </span>
+          </li>
+          <li className="flex items-baseline gap-2 text-[13px] leading-relaxed text-text-secondary">
+            <span aria-hidden className="text-text-muted">—</span>
+            <span>
+              Aucune date de prélèvement. Une place de plus se demande, un humain la lit ; rien n’est facturé
+              automatiquement.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <aside className="panel p-4">
+        <p className="eyebrow mb-3">La formule</p>
+        <dl className="flex flex-col gap-2.5">
+          <div>
+            <dt className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Organisation</dt>
+            <dd className="text-[15px] font-semibold leading-tight text-text-primary">{org.name}</dd>
+          </div>
+          {org.seats != null && (
+            <div>
+              <dt className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Places</dt>
+              <dd className="text-[19px] font-semibold tabular-nums leading-tight text-text-primary">{org.seats}</dd>
+            </div>
+          )}
+        </dl>
+      </aside>
+    </section>
   );
 }
 

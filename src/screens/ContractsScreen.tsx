@@ -4,8 +4,9 @@ import { Plus, Signature, Trash2 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FirstRun } from '../components/EmptyState';
 import { Champ, Case } from '../components/formulaire/Champ';
-import { FormulaireEnPlace } from '../components/formulaire/FormulaireEnPlace';
+import { AssistantLong, LigneAVenir } from '../components/etats/EtatsTransverses';
 import { formatCents } from '../lib/money';
+import { useHaloSignal } from '../components/EtatEcran';
 import { useCollection, useSync } from '../state/SyncContext';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
@@ -64,6 +65,24 @@ export function ContractsScreen() {
   const [endsAt, setEndsAt] = useState(dansJours(365));
   const [amount, setAmount] = useState('');
   const [autoRenew, setAutoRenew] = useState(false);
+  /*
+    L'ASSISTANT (`27c`). Un contrat est le formulaire le plus long du produit
+    — six champs, trois natures différentes — et c'était une grille de six
+    cases où l'on ne savait jamais ce qui manquait encore.
+
+    Trois étapes, dans l'ordre du paquet de design : ce que c'est, ce que ça
+    vaut, jusqu'à quand ça engage. RIEN N'EST CRÉÉ AVANT LE DERNIER BOUTON :
+    tout vit dans l'état de l'écran, et fermer ne laisse rien derrière.
+  */
+  const [etape, setEtape] = useState(0);
+  const fermerAssistant = () => {
+    setOuvert(false);
+    setEtape(0);
+    setTitle('');
+    setParty('');
+    setAmount('');
+    setAutoRenew(false);
+  };
   const jour = isoDay();
   const bientot = dansJours(30);
   const locale = langue === 'en' ? 'en-GB' : 'fr-FR';
@@ -82,29 +101,55 @@ export function ContractsScreen() {
   const suite = useMemo(() => actifs.filter((c) => c.endsAt >= jour && c.id !== tete?.id), [actifs, jour, tete]);
 
   /*
-    L'ÉCHÉANCIER — douze mois à partir de celui-ci, et ce qui y tombe.
-    Calculé sur les vraies dates de fin : jamais une série d'exemple, c'est la
-    règle que `check:vitaux` tient sur tout ce qui ressemble à une courbe.
+    L'ANCIEN ÉCHÉANCIER A ÉTÉ RETIRÉ.
+
+    Il comptait les fins PAR MOIS, en petits traits : un mois à trois
+    échéances se lisait comme trois traits. La frise (`14b`) dit la même chose
+    et davantage, parce qu'une barre porte SA durée : on ne voit plus quand
+    les fins tombent, on voit combien il reste à chacune. Garder les deux
+    aurait donné deux objets qui répondent à la même question sur le même
+    écran, et l'un des deux n'aurait servi qu'à occuper la place.
   */
-  const echeancier = useMemo(() => {
-    const debut = new Date();
-    debut.setDate(1);
-    debut.setHours(0, 0, 0, 0);
-    return Array.from({ length: 12 }, (_, i) => {
-      const mois = new Date(debut);
-      mois.setMonth(mois.getMonth() + i);
-      const cle = `${mois.getFullYear()}-${String(mois.getMonth() + 1).padStart(2, '0')}`;
-      const dedans = actifs.filter((c) => c.endsAt.startsWith(cle));
-      return {
-        cle,
-        label: mois.toLocaleDateString(locale, { month: 'short' }).replace('.', ''),
-        nombre: dedans.length,
-        montant: dedans.reduce((n, c) => n + (c.amountCents || 0), 0),
-        courant: i === 0,
-      };
-    });
-  }, [actifs, locale]);
-  const maxMois = Math.max(1, ...echeancier.map((m) => m.nombre));
+
+  /* ------------------------------------------------- la frise (14b) ----- */
+
+  const bornes = useMemo(() => bornesDeFrise(), []);
+  const barres = useMemo(
+    () => barresDeFrise(actifs.filter((c) => c.endsAt >= jour || c.autoRenew), bornes),
+    [actifs, bornes, jour],
+  );
+  /* L'AMBRE va à la barre la plus courte — celle qui finit le plus tôt. Un
+     tacite n'en est jamais : il ne finit pas. */
+  /* L'ASSISTANT PREND L'AMBRE QUAND IL EST OUVERT. Deux régions ambre sur le
+     même écran — l'étape courante ET la barre la plus courte — feraient deux
+     signaux pour deux décisions différentes, et la règle du produit en veut
+     un seul. Tant qu'on remplit un contrat, c'est l'étape qui compte. */
+  const barreAmbre = useMemo(() => (ouvert ? null : barres.find((b) => !b.tacite) ?? null), [barres, ouvert]);
+  const halo = useHaloSignal(!!barreAmbre);
+
+  /*
+    CE QUI TOMBE AVEC LE CONTRAT DE TÊTE. Le modèle ne lie PAS un abonnement à
+    un contrat — il n'y a pas de clé entre les deux collections. Le
+    rapprochement se fait donc par nom de partie, normalisé, et l'écran le dit
+    plutôt que de laisser croire à un lien qu'il n'a pas. C'est fragile par
+    construction, et c'est écrit ici pour que personne ne s'en étonne.
+  */
+  const abonnements = useCollection<{ label: string; customerName: string; amountCents: number; active: boolean }>(
+    'subscriptions',
+  );
+  const nomNet = (v: string) =>
+    v.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const tombentAvec = useMemo(() => {
+    if (!tete?.party) return [];
+    const cible = nomNet(tete.party);
+    return abonnements.filter((a) => a.active && nomNet(a.customerName) === cible);
+  }, [abonnements, tete]);
+
+  /* Les contrats qui portent le récurrent : les plus gros, jusqu'à six. */
+  const lourds = useMemo(
+    () => [...actifs].sort((a, b) => b.amountCents - a.amountCents).slice(0, 6),
+    [actifs],
+  );
 
   const ajouter = async () => {
     if (!title.trim()) return;
@@ -154,38 +199,127 @@ export function ContractsScreen() {
       </motion.div>
 
       {ouvert && (
-        <FormulaireEnPlace
-          titre={t('contrats.ajouter')}
-          note={t('form.enPlace')}
-          empeche={title.trim() ? undefined : t('contrats.form.sansIntitule')}
-          onEnregistrer={() => void ajouter()}
-          onFermer={() => setOuvert(false)}
-          libelleEnregistrer={t('contrats.enregistrer')}
-          libelleFermer={t('chrome.fermer')}
-        >
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Champ intitule={t('contrats.champ.intitule')} aide={t('contrats.champ.intituleAide')}>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
-            </Champ>
-            <Champ intitule={t('contrats.champPartie')}>
-              <input value={party} onChange={(e) => setParty(e.target.value)} />
-            </Champ>
-            <Champ intitule={t('contrats.champDebut')}>
-              <input type="date" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
-            </Champ>
-            <Champ intitule={t('contrats.champFin')}>
-              <input type="date" value={endsAt} min={startsAt} onChange={(e) => setEndsAt(e.target.value)} />
-            </Champ>
-            <Champ intitule={t('contrats.champ.montant')} suffixe="€">
-              <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
-            </Champ>
-            <div className="flex items-end pb-1">
-              <Case coche={autoRenew} onChange={setAutoRenew}>
-                {t('contrats.reconduction')}
-              </Case>
-            </div>
-          </div>
-        </FormulaireEnPlace>
+        <motion.div variants={staggerItem}>
+          <AssistantLong
+            etapes={[t('contrats.etape.objet'), t('contrats.etape.montant'), t('contrats.etape.engagement')]}
+            courante={etape}
+            titreApercu={t('contrats.apercu')}
+            champs={
+              etape === 0 ? (
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Champ intitule={t('contrats.champ.intitule')} aide={t('contrats.champ.intituleAide')}>
+                    <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+                  </Champ>
+                  <Champ intitule={t('contrats.champPartie')}>
+                    <input value={party} onChange={(e) => setParty(e.target.value)} />
+                  </Champ>
+                </div>
+              ) : etape === 1 ? (
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Champ intitule={t('contrats.champ.montant')} suffixe="€">
+                    <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" autoFocus />
+                  </Champ>
+                </div>
+              ) : (
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Champ intitule={t('contrats.champDebut')}>
+                    <input type="date" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
+                  </Champ>
+                  <Champ intitule={t('contrats.champFin')}>
+                    <input type="date" value={endsAt} min={startsAt} onChange={(e) => setEndsAt(e.target.value)} />
+                  </Champ>
+                  <div className="flex items-end pb-1 sm:col-span-2">
+                    <Case coche={autoRenew} onChange={setAutoRenew}>
+                      {t('contrats.reconduction')}
+                    </Case>
+                  </div>
+                </div>
+              )
+            }
+            apercu={
+              /* CE QUE L'ASSISTANT FABRIQUE — le contrat réel, qui se remplit
+                 poste par poste. Ce qui manque n'est pas caché : il est
+                 dessiné en filet avec l'étape qui le remplira. */
+              <div className="flex flex-col">
+                <p className="text-[16px] font-semibold leading-tight text-text-primary">
+                  {title.trim() || <span className="text-text-muted">{t('contrats.apercu.sansIntitule')}</span>}
+                </p>
+                <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                  {party.trim() || t('contrats.apercu.sansPartie')}
+                </p>
+                <div className="mt-3 border-t border-border pt-1">
+                  {etape >= 1 && amount.trim() ? (
+                    <div className="flex items-baseline justify-between gap-3 border-b border-border py-2">
+                      <span className="text-[13px] text-text-secondary">{t('contrats.champ.montant')}</span>
+                      <span className="font-mono text-[14px] tabular-nums text-text-primary">
+                        {formatCents(Math.round((Number(amount.replace(',', '.')) || 0) * 100))}
+                      </span>
+                    </div>
+                  ) : (
+                    <LigneAVenir quoi={t('contrats.champ.montant')} etape={2} />
+                  )}
+                  {etape >= 2 ? (
+                    <div className="flex items-baseline justify-between gap-3 border-b border-border py-2 last:border-b-0">
+                      <span className="text-[13px] text-text-secondary">{t('contrats.apercu.duree')}</span>
+                      <span className="font-mono text-[12px] tabular-nums text-text-primary">
+                        {dateCourte(startsAt)} → {dateCourte(endsAt)}
+                      </span>
+                    </div>
+                  ) : (
+                    <LigneAVenir quoi={t('contrats.apercu.duree')} etape={3} />
+                  )}
+                </div>
+                <p className="mt-3 border-t border-border pt-3 text-[11px] leading-relaxed text-text-muted">
+                  {t('contrats.apercu.rienCree')}
+                </p>
+              </div>
+            }
+            pied={
+              <>
+                {etape > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setEtape((e) => e - 1)}
+                    className="min-h-11 border border-border px-3 font-mono text-[10px] uppercase tracking-[0.14em] text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary md:min-h-0 md:py-2"
+                  >
+                    {t('contrats.etape.precedent')}
+                  </button>
+                )}
+                {etape < 2 ? (
+                  /* L'ACTION PRIMAIRE INACTIVE TANT QUE L'INTITULÉ EST VIDE —
+                     sinon l'écran démontrerait le contraire de ce qu'il dit. */
+                  <button
+                    type="button"
+                    disabled={!title.trim()}
+                    onClick={() => setEtape((e) => e + 1)}
+                    className="ml-auto min-h-11 bg-accent px-4 text-[12.5px] font-semibold text-bg shadow-[0_12px_26px_-12px_rgba(0,0,0,.9)] transition-colors hover:bg-accent-hover md:min-h-0 md:py-2.5"
+                  >
+                    {t('contrats.etape.suivant')}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={!title.trim()}
+                    onClick={() => {
+                      void ajouter();
+                      fermerAssistant();
+                    }}
+                    className="ml-auto min-h-11 bg-accent px-4 text-[12.5px] font-semibold text-bg shadow-[0_12px_26px_-12px_rgba(0,0,0,.9)] transition-colors hover:bg-accent-hover md:min-h-0 md:py-2.5"
+                  >
+                    {t('contrats.enregistrer')}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={fermerAssistant}
+                  className="min-h-11 px-3 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted transition-colors hover:text-text-primary md:min-h-0 md:py-2"
+                >
+                  {t('chrome.fermer')}
+                </button>
+              </>
+            }
+          />
+        </motion.div>
       )}
 
       {contrats.length === 0 && !ouvert ? (
@@ -200,43 +334,151 @@ export function ContractsScreen() {
         </motion.div>
       ) : (
         <>
-          {/* ── La carte de tête : l'échéance la plus proche ─────────────── */}
-          {tete && (
-            <motion.section variants={staggerItem} className="panel-raised panel-raised-wide grid grid-cols-1 md:grid-cols-[minmax(0,260px)_1fr]">
-              {/*
-                LA PLAQUE — le seul ambre de l'écran. Le compte à rebours est un
-                chiffre à l'échelle d'un titre : il tient le contraste (règle 2
-                du jeton), et c'est lui qui appelle la décision.
-              */}
-              <div className="signal-plate flex flex-col justify-between p-6">
-                <div>
-                  <p className="font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] opacity-70">
-                    {t('contrats.prochaineEcheance')}
-                  </p>
-                  <p className="tnum mt-3 font-mono text-[60px] font-bold leading-[0.92] tracking-[-0.04em]">
-                    J−{Math.max(0, joursAvant(tete.endsAt))}
-                  </p>
-                </div>
-                <p className="mt-6 font-mono text-[10px] font-bold uppercase leading-[1.7] tracking-[0.14em] opacity-80">
-                  {t('contrats.finLe', { date: date(tete.endsAt) })}
-                  {tete.autoRenew && <><br />{t('contrats.reconductionCourt')}</>}
+          {/* ── LA FRISE DES FINS — l'objet dominant (`14b`) ─────────────── */}
+          {barres.length > 0 && (
+            <motion.section variants={staggerItem} className="panel-raised panel-raised-wide panel-ticks px-6 py-6">
+              <div className="mb-5 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+                <p className="eyebrow">{t('contrats.echeancier')} · {t('contrats.douzeMois')}</p>
+                <p className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
+                  la longueur est le temps qu’il reste à courir
                 </p>
               </div>
 
-              <div className="flex flex-col gap-5 p-6">
-                <div>
-                  <p className="eyebrow">
-                    {statut(tete.status)} · {tete.title}
-                  </p>
-                  <p className="mt-2 text-[26px] font-bold leading-[1.1] tracking-[-0.028em] text-text-primary">
-                    {tete.party || t('contrats.sansPartie')}
-                  </p>
+              <div className="relative">
+                {/* Les repères de mois, DERRIÈRE les barres et dans la même
+                    boîte qu'elles : une graduation posée dans une autre boîte
+                    ne gradue plus rien. */}
+                <div className="pointer-events-none absolute inset-0" aria-hidden>
+                  {bornes.mois.map((m, i) => (
+                    <span
+                      key={m.cle}
+                      className={`absolute inset-y-0 w-px ${i === 0 ? 'bg-border-strong' : 'bg-border'}`}
+                      style={{ left: `${m.part}%` }}
+                    />
+                  ))}
                 </div>
 
-                <div className="flex flex-wrap gap-x-8 gap-y-4">
+                <div className="relative flex flex-col gap-1.5">
+                  {barres.map((b) => {
+                    const signal = b === barreAmbre;
+                    return (
+                      <div
+                        key={b.contrat.id}
+                        className="relative"
+                        style={{ height: FRISE_LIGNE_H }}
+                        title={`${b.contrat.title} · ${b.tacite ? 'tacite' : date(b.contrat.endsAt)}`}
+                      >
+                        <span
+                          className={`absolute inset-y-0 left-0 flex items-center overflow-hidden px-2 ${
+                            signal ? `bg-signal ${halo}` : b.tacite ? '' : 'bg-[#2b2b2b]'
+                          }`}
+                          style={{
+                            width: `${b.part}%`,
+                            /* LE FONDU DU TACITE : la barre court jusqu'au
+                               bord et s'y dissout, parce qu'elle ne finit pas.
+                               Un cap lui inventerait une échéance. */
+                            ...(b.tacite
+                              ? {
+                                  backgroundImage:
+                                    'linear-gradient(to right, #3a3a3a 0%, #2b2b2b 55%, transparent 100%)',
+                                }
+                              : {}),
+                          }}
+                          data-signal-groupe={signal ? 'echeance' : undefined}
+                        >
+                          {b.tacite ? (
+                            <span className="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-text-secondary">
+                              {b.contrat.title} · tacite · sans échéance
+                            </span>
+                          ) : (
+                            b.nomDedans && (
+                              <span
+                                className={`truncate text-[12.5px] font-semibold ${
+                                  signal ? 'text-signal-ink' : 'text-text-primary'
+                                }`}
+                                data-signal-groupe={signal ? 'echeance' : undefined}
+                              >
+                                {b.contrat.title}
+                              </span>
+                            )
+                          )}
+                        </span>
+
+                        {/* LE CAP — 2 px, à la fin exacte. Le tacite n'en a pas. */}
+                        {!b.tacite && (
+                          <span
+                            className={`absolute inset-y-0 w-0.5 ${signal ? 'bg-signal' : 'bg-text-secondary'}`}
+                            style={{ left: `calc(${b.part}% - 2px)` }}
+                            data-signal-groupe={signal ? 'echeance' : undefined}
+                            aria-hidden
+                          />
+                        )}
+
+                        {/* LE NOM ET LA DATE POSÉS APRÈS LE CAP, quand la barre
+                            est trop courte pour les porter. Ils restent DANS
+                            l'axe : au-delà des trois quarts, ils basculent
+                            avant le cap plutôt que de sortir de la boîte. */}
+                        {!b.tacite && !b.nomDedans && (
+                          <span
+                            className={`absolute top-1/2 flex -translate-y-1/2 items-baseline gap-2 whitespace-nowrap ${
+                              signal ? 'text-signal' : 'text-text-secondary'
+                            }`}
+                            style={
+                              b.part > 74
+                                ? { right: `calc(${100 - b.part}% + 8px)` }
+                                : { left: `calc(${b.part}% + 8px)` }
+                            }
+                            data-signal-groupe={signal ? 'echeance' : undefined}
+                          >
+                            <span className={`text-[12.5px] ${signal ? 'font-bold' : ''}`}>
+                              {b.contrat.title}
+                            </span>
+                            <span className="tnum font-mono text-[10px] uppercase tracking-[0.14em]">
+                              {dateCourte(b.contrat.endsAt)}
+                            </span>
+                          </span>
+                        )}
+
+                        {b.horsAxe && (
+                          <span className="absolute inset-y-0 right-1 flex items-center font-mono text-[11px] text-text-primary">
+                            ›
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* LA GRADUATION — même boîte que les barres, donc mêmes repères. */}
+              <div className="relative mt-2 h-4">
+                {bornes.mois.map((m) => (
+                  <span
+                    key={m.cle}
+                    className="absolute top-0 font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-muted"
+                    style={{ left: `${m.part}%` }}
+                  >
+                    {m.label}
+                  </span>
+                ))}
+              </div>
+            </motion.section>
+          )}
+
+          {/* ── Ce qui se décide sur ce contrat, et ce qui porte le récurrent ── */}
+          {tete && (
+            <motion.div variants={staggerItem} className="grid items-start gap-4 lg:grid-cols-[1fr_300px]">
+              <section className="panel px-5 py-5">
+                <p className="eyebrow mb-3">Ce qui se décide sur ce contrat</p>
+                <p className="text-[26px] font-bold leading-[1.1] tracking-[-0.028em] text-text-primary">
+                  {tete.party || t('contrats.sansPartie')}
+                </p>
+                <p className="mt-1.5 text-[14.5px] text-text-secondary">{tete.title}</p>
+
+                <div className="mt-5 flex flex-wrap gap-x-8 gap-y-4">
                   {[
+                    { label: t('contrats.prochaineEcheance'), valeur: `J−${Math.max(0, joursAvant(tete.endsAt))}` },
                     { label: t('contrats.champ.montant'), valeur: tete.amountCents > 0 ? formatCents(tete.amountCents) : '—' },
-                    { label: t('contrats.champDebut'), valeur: dateCourte(tete.startsAt) },
                     { label: t('contrats.champFin'), valeur: dateCourte(tete.endsAt) },
                     {
                       label: t('contrats.colonneReconduction'),
@@ -252,7 +494,28 @@ export function ContractsScreen() {
                   ))}
                 </div>
 
-                <div className="mt-auto flex flex-wrap items-center gap-3">
+                {/*
+                  CE QUI TOMBE AVEC LUI. Les abonnements du même client ne sont
+                  pas « liés » dans le modèle — il n'y a pas de clé étrangère
+                  entre un contrat et un forfait. Le rapprochement se fait par
+                  NOM de partie, et l'écran le dit plutôt que de laisser croire
+                  à un lien qui n'existe pas.
+                */}
+                {tombentAvec.length > 0 && (
+                  <p className="mt-5 border-t border-border-row pt-3 text-[13px] leading-relaxed text-text-secondary">
+                    {tombentAvec.length} abonnement{tombentAvec.length > 1 ? 's' : ''} au nom de{' '}
+                    {tete.party} {tombentAvec.length > 1 ? 'tombent' : 'tombe'} avec lui —{' '}
+                    {formatCents(tombentAvec.reduce((n, a) => n + a.amountCents, 0))} par échéance.
+                    Le rapprochement se fait par nom : le modèle ne lie pas un forfait à un contrat.
+                  </p>
+                )}
+                {!tete.autoRenew && (
+                  <p className="mt-3 text-[13px] leading-relaxed text-text-muted">
+                    Reconduction non tacite : sans geste d’ici là, il s’arrête tout seul.
+                  </p>
+                )}
+
+                <div className="mt-5 flex flex-wrap items-center gap-3">
                   <button
                     type="button"
                     onClick={() => reconduire(tete)}
@@ -267,59 +530,41 @@ export function ContractsScreen() {
                   >
                     {t('contrats.terminer')}
                   </button>
-                  {joursAvant(tete.endsAt) <= 30 && (
-                    <p className="eyebrow ml-auto text-text-muted">{t('contrats.echeantTrente')}</p>
-                  )}
                 </div>
-              </div>
-            </motion.section>
-          )}
+              </section>
 
-          {/* ── L'échéancier : douze mois, les creux et les grappes ───────── */}
-          {actifs.length > 0 && (
-            <motion.section variants={staggerItem}>
-              <div className="mb-3 flex items-baseline justify-between">
-                <p className="eyebrow">{t('contrats.echeancier')}</p>
-                <p className="eyebrow text-text-muted">{t('contrats.douzeMois')}</p>
-              </div>
-              {/*
-                UN TRAIT PAR CONTRAT, pas une barre par mois. La différence
-                n'est pas cosmétique : un mois à trois échéances se LIT comme
-                trois, sans qu'on ait à comparer des hauteurs. C'est ce qui fait
-                voir les grappes — et les creux, qui comptent autant quand on
-                place une nouvelle échéance.
-              */}
-              <div className="grid grid-cols-12 gap-px bg-border">
-                {echeancier.map((mois) => (
-                  <div
-                    key={mois.cle}
-                    title={
-                      mois.nombre > 0
-                        ? t('contrats.moisDetail', { n: mois.nombre, montant: formatCents(mois.montant) })
-                        : undefined
-                    }
-                    className="flex h-[104px] flex-col bg-bg px-2 pb-2 pt-2"
-                  >
-                    <span className="tnum font-mono text-[10px] text-text-secondary">
-                      {mois.nombre > 0 ? mois.nombre : ''}
-                    </span>
-                    <div className="mt-auto flex h-[58px] items-end gap-[3px]" aria-hidden>
-                      {Array.from({ length: Math.min(mois.nombre, 6) }).map((_, i) => (
-                        <span
-                          key={i}
-                          className={`w-[3px] ${mois.courant ? 'bg-[#4a4a48]' : 'bg-[#3a3a3a]'}`}
-                          style={{ height: `${28 + ((i * 7) % 24)}px` }}
-                        />
-                      ))}
-                      {mois.nombre === 0 && <span className="h-[2px] w-full bg-[#1f1f1f]" />}
+              {/* CE QUI PORTE LE RÉCURRENT — combien de contrats, quelle part. */}
+              <section className="panel flex flex-col px-5 py-5">
+                <p className="eyebrow mb-2">Ce qui porte le récurrent</p>
+                <p className="tnum font-mono text-[27px] font-semibold leading-none tracking-[-0.03em] text-text-primary">
+                  {formatCents(valeur)}
+                </p>
+                <p className="mt-2 text-[12.5px] leading-relaxed text-text-muted">
+                  sur {actifs.length} contrat{actifs.length > 1 ? 's' : ''} actif
+                  {actifs.length > 1 ? 's' : ''}, {contrats.length} fiche
+                  {contrats.length > 1 ? 's' : ''} au total.
+                </p>
+                <div className="mt-4 flex flex-col divide-y divide-border-row">
+                  {lourds.map((c) => (
+                    <div key={c.id} className="flex items-baseline justify-between gap-3 py-2">
+                      <span className="min-w-0 flex-1 truncate text-[13px] text-text-secondary">
+                        {c.party || c.title}
+                      </span>
+                      <span className="tnum flex-shrink-0 font-mono text-[12.5px] text-text-primary">
+                        {formatCents(c.amountCents)}
+                      </span>
                     </div>
-                    <span className="mt-2 font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted">
-                      {mois.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </motion.section>
+                  ))}
+                </div>
+                {lourds.length > 0 && valeur > 0 && (
+                  <p className="mt-3 text-[12.5px] leading-relaxed text-text-muted">
+                    Ces {lourds.length} contrats portent{' '}
+                    {Math.round((lourds.reduce((n, c) => n + c.amountCents, 0) / valeur) * 100)} % du
+                    récurrent.
+                  </p>
+                )}
+              </section>
+            </motion.div>
           )}
 
           {/* ── La suite : ce qui vient après la tête ─────────────────────── */}
@@ -425,4 +670,92 @@ export function ContractsScreen() {
       )}
     </motion.section>
   );
+}
+
+/* --------------------------------------------- la frise des fins (`14b`) -- */
+
+/**
+ * LA FRISE DES FINS — l'objet dominant de Contrats (`14b`).
+ *
+ * L'échéancier cesse d'être une colonne de dates triées : douze mois en
+ * abscisse, une barre par contrat, dont la LONGUEUR est le temps qu'il lui
+ * reste à courir. Les fins se voient arriver, et l'œil va d'abord à la barre
+ * la plus courte — ce qu'aucune liste triée ne fait, parce qu'une liste triée
+ * demande de lire avant de comprendre.
+ *
+ * TROIS RÈGLES, ET RIEN NE SORT JAMAIS DE L'AXE.
+ *
+ *   1. **Un contrat tacite n'a pas de fin.** Sa barre court jusqu'au bord en
+ *      FONDU (`linear-gradient` vers transparent), sans cap et sans date
+ *      posée hors axe, et porte « tacite · sans échéance » à l'intérieur.
+ *      Lui donner un cap à douze mois inventerait une échéance qui n'existe
+ *      pas, et quelqu'un finirait par la préparer.
+ *   2. **Une barre assez longue porte son nom dedans** ; une barre trop
+ *      courte le pose APRÈS son cap, avec sa date. Un nom gravé dans trois
+ *      pixels n'est pas un nom.
+ *   3. **Un contrat qui finit au-delà des douze mois** est borné au bord avec
+ *      un chevron : c'est l'axe qui s'arrête, pas le contrat.
+ */
+const FRISE_LIGNE_H = 30;
+/** En deçà, le nom ne tient pas dans la barre et se pose après le cap. */
+const FRISE_NOM_MIN = 26;
+
+interface BarreDeFrise {
+  contrat: ContractData & { id: string };
+  /** Part de l'axe occupée, de 0 à 100 — bornée, jamais au-delà. */
+  part: number;
+  jours: number;
+  tacite: boolean;
+  /** La fin tombe au-delà des douze mois de l'axe. */
+  horsAxe: boolean;
+  /** Le nom tient-il dans la barre ? */
+  nomDedans: boolean;
+}
+
+/** Les bornes de l'axe : du 1er du mois courant, sur douze mois pleins. */
+function bornesDeFrise(): { debut: Date; fin: Date; jours: number; mois: { cle: string; label: string; part: number }[] } {
+  const debut = new Date();
+  debut.setDate(1);
+  debut.setHours(0, 0, 0, 0);
+  const fin = new Date(debut);
+  fin.setMonth(fin.getMonth() + 12);
+  const jours = Math.round((fin.getTime() - debut.getTime()) / 86_400_000);
+  const mois = Array.from({ length: 12 }, (_, i) => {
+    const m = new Date(debut);
+    m.setMonth(m.getMonth() + i);
+    return {
+      cle: `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`,
+      label: m.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', ''),
+      part: (Math.round((m.getTime() - debut.getTime()) / 86_400_000) / jours) * 100,
+    };
+  });
+  return { debut, fin, jours, mois };
+}
+
+function barresDeFrise(
+  actifs: (ContractData & { id: string })[],
+  bornes: ReturnType<typeof bornesDeFrise>,
+): BarreDeFrise[] {
+  const aujourdHui = new Date();
+  aujourdHui.setHours(0, 0, 0, 0);
+  return actifs
+    .map((contrat) => {
+      const tacite = !!contrat.autoRenew;
+      const fin = new Date(`${contrat.endsAt}T00:00:00`);
+      const reste = Math.max(0, Math.round((fin.getTime() - aujourdHui.getTime()) / 86_400_000));
+      const depuisDebut = Math.round((fin.getTime() - bornes.debut.getTime()) / 86_400_000);
+      const brut = (depuisDebut / bornes.jours) * 100;
+      const part = tacite ? 100 : Math.max(1.5, Math.min(100, brut));
+      return {
+        contrat,
+        part,
+        jours: reste,
+        tacite,
+        horsAxe: !tacite && brut > 100,
+        nomDedans: part >= FRISE_NOM_MIN,
+      };
+    })
+    /* Les tacites en dernier : ils ne finissent pas, donc ils ne concourent
+       pas pour « la barre la plus courte », qui est le sujet de l'objet. */
+    .sort((a, b) => Number(a.tacite) - Number(b.tacite) || a.part - b.part);
 }

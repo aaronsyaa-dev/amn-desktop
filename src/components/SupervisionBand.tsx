@@ -43,8 +43,14 @@ import { relativeTime } from '../lib/time';
  */
 
 const ROTATION_MS = 8000;
-/** Au-delà, une organisation est « silencieuse » — deux semaines sans une ligne. */
-const SILENCE_JOURS = 14;
+/**
+ * Au-delà, une organisation est « silencieuse » — deux semaines sans une ligne.
+ *
+ * Exporté parce que l'axe du silence de la Vue d'ensemble trace ce MÊME seuil
+ * sur sa règle : deux constantes voisines finiraient par diverger, et la bande
+ * et la Tour annonceraient alors deux chiffres différents de la même chose.
+ */
+export const SILENCE_JOURS = 14;
 
 interface Fait {
   cle: string;

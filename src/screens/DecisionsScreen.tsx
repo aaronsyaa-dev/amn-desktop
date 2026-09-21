@@ -2,18 +2,15 @@ import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FileText, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { useSync, useCollection, uid } from '../state/SyncContext';
 import { useUndo } from '../state/UndoContext';
 import type { ReportDraft } from '../state/useReports';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
-import { UserAvatar } from '../components/UserAvatar';
+import { RegistreDesPourquoi } from '../components/collectif/RegistreDesPourquoi';
 import { SkeletonList } from '../components/Skeleton';
-import { ConfirmDelete } from '../components/ConfirmDelete';
-import { staggerContainer, staggerItem } from '../lib/transitions';
-import { relativeTime } from '../lib/time';
 
 interface DecisionData {
   title: string;
@@ -25,7 +22,7 @@ interface DecisionData {
 type SyncDecision = DecisionData & { id: string; updatedAt: string };
 
 /** Pre-fills a report draft from a decision (B1). */
-function decisionReportDraft(decision: SyncDecision, authorName: string): ReportDraft {
+function decisionReportDraft(decision: Omit<SyncDecision, 'updatedAt'>, authorName: string): ReportDraft {
   const date = decision.createdAt
     ? new Date(decision.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
     : '';
@@ -160,50 +157,13 @@ export function DecisionsScreen() {
             Aucune décision consignée pour l’instant.
           </p>
         ) : (
-          <motion.ol variants={staggerContainer} initial="initial" animate="animate" className="relative flex flex-col gap-0">
-            {decisions.map((decision, i) => (
-              <motion.li key={decision.id} variants={staggerItem} className="relative flex gap-4 pb-6 last:pb-0">
-                {i !== decisions.length - 1 && (
-                  <span className="absolute left-[5px] top-4 bottom-0 w-px bg-border" />
-                )}
-                <span className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full border-2 border-border-strong bg-surface" />
-                <div className="group/dec min-w-0 flex-1 border border-border bg-surface p-4">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <p className="text-sm font-medium text-text-primary">{decision.title}</p>
-                    <div className="flex flex-shrink-0 items-center gap-2">
-                      <time className="font-mono text-[10px] uppercase tracking-wide text-text-muted">
-                        {relativeTime(decision.createdAt)}
-                      </time>
-                      <span className="opacity-0 transition-opacity group-hover/dec:opacity-100">
-                        <ConfirmDelete onConfirm={() => removeDecision(decision.id, decision.title)} label="Supprimer la décision" />
-                      </span>
-                    </div>
-                  </div>
-                  {decision.detail && (
-                    <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">{decision.detail}</p>
-                  )}
-                  <div className="mt-2.5 flex items-center gap-2">
-                    <UserAvatar email={decision.authorEmail} size={20} />
-                    <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                      Décidé par {profileFor(decision.authorEmail).name}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        navigate('/reports', {
-                          state: { reportDraft: decisionReportDraft(decision, profileFor(decision.authorEmail).name) },
-                        })
-                      }
-                      className="ml-auto flex items-center gap-1.5 border border-accent/40 bg-accent/10 px-2 py-1 font-mono text-[9px] uppercase tracking-wider text-accent opacity-0 transition-opacity hover:bg-accent/20 group-hover/dec:opacity-100"
-                    >
-                      <FileText size={10} strokeWidth={2} />
-                      Faire un rapport
-                    </button>
-                  </div>
-                </div>
-              </motion.li>
-            ))}
-          </motion.ol>
+          /* L'objet de l'écran : la décision ET son motif, côte à côte, le manque dessiné. */
+          <RegistreDesPourquoi
+            decisions={decisions}
+            nomDe={(email) => profileFor(email).name}
+            onRapport={(d) => navigate('/reports', { state: { reportDraft: decisionReportDraft(d, profileFor(d.authorEmail).name) } })}
+            onSupprimer={(d) => removeDecision(d.id, d.title)}
+          />
         )}
       </StaggerItem>
     </StaggerGroup>

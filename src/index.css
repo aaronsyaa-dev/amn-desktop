@@ -53,8 +53,44 @@
   --color-sheet: #111111;
   /* La carte dominante (voir `.panel-raised`). */
   --color-elevated: #121212;
+  /*
+    LE PAPIER — la seule surface CLAIRE du produit, et ses deux encres.
+
+    Deux objets en ont besoin, et pour la même raison : ils ne sont pas des
+    cartes, ce sont des IMPRESSIONS. Un QR code sur fond sombre n'est pas
+    décodable (un lecteur attend du sombre sur du clair) ; un ruban de caisse
+    sur fond sombre n'est plus un ruban de caisse, c'est une liste de plus.
+
+    Ces valeurs existent donc comme jetons plutôt qu'en dur dans deux écrans :
+    non pour qu'on les emploie ailleurs — elles n'ont de sens que sur un objet
+    imprimé — mais pour qu'il n'y ait QU'UN endroit où le papier est décrit.
+    `--color-papier-encre` n'est pas noir : une imprimante thermique ne l'est
+    jamais, et un noir pur sur blanc pur fatigue à la lecture d'un ticket.
+  */
+  --color-papier: #ffffff;
+  --color-papier-encre: #111111;
+  --color-papier-pale: #6a6a66;
+  --color-papier-grille: #e6e4de;
   --color-border: #1f1f1f;
   /* Le filet de section — entre la bordure de carte calme et celle d'une dominante. */
+  /*
+    LA LIGNE DE TABLEAU — le filet le plus discret de la rampe.
+
+    Le système de design lui donne une valeur à lui (§3.4 : « ligne de
+    tableau : padding 13px 0 + border-bottom 1px solid #161616 »), et elle se
+    trouve être la même que `--color-surface-hover`. Ce sont pourtant deux
+    emplois sans rapport : l'un est un fond au survol, l'autre un filet de
+    séparation. Les confondre marchait tant que personne ne touchait à l'un
+    des deux — le jour où le survol s'éclaircit, tous les filets de tableau
+    s'éclaircissent avec lui, et personne ne sait pourquoi.
+
+    Le jeton existe donc pour que l'intention soit écrite. Les trente-trois
+    copies de `#161616` déjà en place dans les écrans restent des dettes
+    connues (voir `DETTE_CONNUE` dans scripts/check-encres.mjs) : les
+    convertir est un balayage à part, qui ne se mélange pas à un chantier de
+    composition.
+  */
+  --color-border-row: #161616;
   --color-border-section: #242424;
   /* La bordure d'une carte dominante, et celle d'une feuille. */
   --color-border-raised: #262626;
@@ -132,6 +168,41 @@
   --color-accent-muted: rgba(255, 255, 255, 0.08);
 
   /*
+    L'ACTION INACTIVE — le troisième état, qui manquait à la rampe
+    ═════════════════════════════════════════════════════════════
+
+    Le système de design (§3.2 bis) décrit trois états d'action et un seul
+    était outillé ici :
+
+      primaire active    fond #f7f7f5 · encre #0a0a0a · ombre portée
+      primaire INACTIVE  fond #242424 · encre atténuée · AUCUNE ombre
+      secondaire         transparent  · bordure #3a3a3a · encre #e4e4e1
+
+    Son absence a produit un défaut réel et mesurable : `disabled:opacity-40`
+    était le seul traitement (128 occurrences), c'est-à-dire un bouton clair
+    rendu translucide. Un bouton primaire à 40 % d'opacité GARDE son ombre
+    portée, donc garde son élévation, donc se lit encore comme cliquable — il
+    a juste l'air mal rendu. Ce qui rend une action inactive à l'œil, c'est la
+    PERTE D'ÉLÉVATION : le fond descend sous la carte au lieu de flotter
+    dessus, et l'ombre disparaît.
+
+    ARBITRAGE SUR L'ENCRE — le paquet dit #6b6b68, le dépôt refuse cette
+    valeur (voir REFUSEES dans scripts/check-encres.mjs : 3,79:1 sur le fond,
+    sous le seuil WCAG AA). Sur le fond #242424 d'un bouton inactif, #6b6b68
+    tombe à 2,90:1. WCAG 1.4.3 exempte bien les commandes inactives, mais
+    l'exemption dit « la loi ne l'interdit pas », pas « c'est lisible » : le
+    libellé d'un bouton grisé est précisément ce qu'on doit pouvoir lire pour
+    comprendre ce qui est bloqué. On garde donc la STRUCTURE du paquet — fond
+    #242424, ombre supprimée — et on remonte l'encre à la sourdine du dépôt,
+    #9a9a97, qui donne 5,50:1 sur ce fond. Le paquet a raison sur ce qui porte
+    l'état (l'élévation) ; le dépôt a raison sur l'encre. Les deux tiennent
+    ensemble sans compromis : l'écart entre les deux états reste énorme
+    (plaque claire + ombre contre plaque sombre + rien).
+  */
+  --color-action-inactive: #242424;
+  --color-action-inactive-ink: #9a9a97;
+
+  /*
     LE SIGNAL — l'ambre, et pourquoi il n'est PAS `--accent`
     ═══════════════════════════════════════════════════════
 
@@ -163,6 +234,14 @@
   --color-signal-line: rgba(208, 154, 74, 0.45);
   /* L'ambre en fond très dilué — bandes d'information, jamais un objet. */
   --color-signal-muted: rgba(208, 154, 74, 0.12);
+  /*
+    La teinte d'un SEGMENT ambre dans une bande de données — plus soutenue que
+    `signal-muted`, qui est faite pour une hachure ou un fond de plaque. À 12 %
+    sur un fond sombre, un segment large de trois centimètres ne se distingue
+    plus de la matière voisine : le module `24a` demande qu'on voie d'un coup
+    d'œil où en est la journée.
+  */
+  --color-signal-bande: rgba(208, 154, 74, 0.32);
 
   /* Status: monochrome, EXCEPT the single reserved signal red for critical */
   --color-success: #d8d8d5;
@@ -388,6 +467,42 @@ button:not(:disabled):not(.card-interactive):active,
   [role='button']:active {
     transform: none;
   }
+}
+
+/*
+ * L'ACTION PRIMAIRE INACTIVE (système de design §3.2 bis)
+ * ══════════════════════════════════════════════════════
+ *
+ * Écrit ici plutôt que dans 128 appels. `disabled:opacity-40` est le
+ * traitement que le dépôt appliquait : il affaiblit le bouton sans lui
+ * retirer son élévation, donc il reste une plaque claire qui flotte — un
+ * bouton qui a l'air mal rendu, pas un bouton qui a l'air inactif.
+ *
+ * Ce que fait la règle : elle remplace l'affaiblissement par un VRAI état.
+ * Le fond descend à #242424, l'encre passe à la sourdine, et l'ombre portée
+ * disparaît — c'est cette disparition qui fait le travail. Le `opacity: 1`
+ * est nécessaire : sans lui, `disabled:opacity-40` continuerait de
+ * s'appliquer par-dessus et diluerait le nouvel état.
+ *
+ * Le sélecteur vise le bouton primaire par sa signature (`bg-accent`), donc
+ * un bouton secondaire ou un bouton d'icône désactivé garde son propre
+ * traitement. La spécificité (0,2,1) passe devant celle de l'utilitaire
+ * Tailwind (0,2,0), et ces règles ne sont dans aucune couche, donc elles
+ * l'emportent de toute façon sur `@layer utilities`.
+ */
+button.bg-accent:disabled,
+button.bg-accent[aria-disabled='true'],
+[role='button'].bg-accent[aria-disabled='true'] {
+  background-color: var(--color-action-inactive);
+  color: var(--color-action-inactive-ink);
+  box-shadow: none;
+  opacity: 1;
+}
+
+/* Un bouton inactif ne réagit pas au survol : il n'irait nulle part. */
+button.bg-accent:disabled:hover,
+button.bg-accent[aria-disabled='true']:hover {
+  background-color: var(--color-action-inactive);
 }
 
 /* Slim scrollbars */
@@ -1113,4 +1228,144 @@ button:not(:disabled):not(.card-interactive):active,
 }
 .amn-range:focus-visible::-webkit-slider-thumb {
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.28);
+}
+
+/*
+ * LES QUATRE MOUVEMENTS DU SYSTÈME DE DESIGN
+ * ══════════════════════════════════════════
+ *
+ * Le paquet en décrit quatre, et un seul rôle chacun. Les noms sont ceux des
+ * maquettes (`dv…`) pour que la correspondance soit vérifiable ligne à ligne ;
+ * les classes qui les portent sont en français comme le reste du dépôt.
+ *
+ * La règle qui les rend acceptables : **aucun de ces mouvements ne décore.**
+ * Chacun encode un fait qui change — l'heure qu'il est, un objet qui attend
+ * une décision, la période courante, une attente en cours. Un mouvement qui
+ * n'encode rien est retiré, pas ralenti.
+ */
+
+/* Le pouls — un état VIVANT (heure courante, liaison ouverte). 2,6 s. */
+@keyframes dvpulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* Le halo de l'objet dominant ambre : la lueur enfle et retombe. 3,4–4 s. */
+@keyframes dvglow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 6px var(--color-signal-glow));
+  }
+  50% {
+    filter: drop-shadow(0 0 16px var(--color-signal-glow));
+  }
+}
+
+/* L'anneau blanc qui s'écarte — la pastille de la période courante. 2 s. */
+@keyframes dvhalo {
+  0% {
+    box-shadow: 0 0 0 0 rgba(247, 247, 245, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(247, 247, 245, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(247, 247, 245, 0);
+  }
+}
+
+/* La respiration discrète d'une plaque ambre qui attend. 2,8 s. */
+@keyframes dvamber {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.pouls-vivant {
+  animation: dvpulse 2.6s ease-in-out infinite;
+}
+
+.halo-signal {
+  animation: dvglow 3.6s ease-in-out infinite;
+}
+
+.anneau-courant {
+  animation: dvhalo 2s ease-out infinite;
+}
+
+/*
+  Le même anneau, mais en encre sombre : la pastille d'une garde posée sur une
+  plaque ambre. `dvhalo` écarte un anneau blanc — invisible sur l'ambre, donc
+  muet là où il doit justement dire « elle bat encore ».
+*/
+@keyframes dvhalo-encre {
+  0% {
+    box-shadow: 0 0 0 0 rgba(8, 8, 8, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(8, 8, 8, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(8, 8, 8, 0);
+  }
+}
+
+.anneau-courant-encre {
+  animation: dvhalo-encre 2s ease-out infinite;
+}
+
+.souffle-signal {
+  animation: dvamber 2.8s ease-in-out infinite;
+}
+
+/*
+  Le bord vif du segment en cours — l'extrémité de la bande EST maintenant.
+  1,4 s : plus rapide que le pouls, parce que ce bord avance vraiment pendant
+  qu'on le regarde, là où un pouls ne fait que dire « vivant ».
+*/
+@keyframes dvbord {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.bord-vivant {
+  animation: dvbord 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pouls-vivant,
+  .halo-signal,
+  .anneau-courant,
+  .anneau-courant-encre,
+  .souffle-signal,
+  .bord-vivant {
+    animation: none;
+  }
+  /*
+    Le mouvement retiré, il reste à porter l'information autrement : le halo
+    devient une lueur fixe à mi-course, le pouls une encre pleine. Couper
+    l'animation sans rien remettre effacerait le signal pour les personnes qui
+    ont justement demandé moins de mouvement.
+  */
+  .halo-signal {
+    filter: drop-shadow(0 0 11px var(--color-signal-glow));
+  }
+  /* Le bord vif reste vif : c'est lui qui dit où en est la journée. */
+  .bord-vivant {
+    opacity: 1;
+  }
 }

@@ -9,9 +9,10 @@ import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
 import type { AdminOrganization, ModuleRequestForOperator, OrgPulse, SupportRequestForOperator } from '../shared/api';
 import { echantillonParc } from '../lib/parcEchantillon';
+import { TamisDesRegles } from '../components/parc/TamisDesRegles';
 
-type Nature = 'silence' | 'critiques' | 'support' | 'sitesHorsLigne' | 'modules';
-interface AlertRuleData {
+export type Nature = 'silence' | 'critiques' | 'support' | 'sitesHorsLigne' | 'modules';
+export interface AlertRuleData {
   kind: Nature;
   threshold: number;
   enabled: boolean;
@@ -21,13 +22,13 @@ const NATURES: Nature[] = ['silence', 'critiques', 'support', 'sitesHorsLigne', 
 const SEUIL_DEFAUT: Record<Nature, number> = { silence: 14, critiques: 1, support: 3, sitesHorsLigne: 1, modules: 7 };
 const JOUR = 86_400_000;
 
-interface Parc {
+export interface Parc {
   orgs: AdminOrganization[];
   pouls: Map<string, OrgPulse | null>;
   support: SupportRequestForOperator[];
   modules: ModuleRequestForOperator[];
 }
-interface Declenchee {
+export interface Declenchee {
   regle: AlertRuleData & { id: string };
   org: AdminOrganization;
   valeur: string;
@@ -166,6 +167,11 @@ export function CustomAlertsScreen() {
 
       {echec && <motion.p variants={staggerItem} role="alert" className="text-sm text-danger">{t('parcSup.echec')}</motion.p>}
       {!parc && !echec && <motion.p variants={staggerItem} className="flex items-center gap-2 text-sm text-text-muted"><Loader2 size={14} className="animate-spin" /> {t('parcSup.lecture')}</motion.p>}
+
+      {/* L'objet de l'écran : le RAPPORT de chaque règle, en surface. Les deux listes restent dessous. */}
+      {parc && regles.length > 0 && (
+        <motion.div variants={staggerItem}><TamisDesRegles regles={regles} parc={parc} declenchees={declenchees} /></motion.div>
+      )}
 
       {regles.length === 0 && !ouvert ? (
         <motion.div variants={staggerItem}>

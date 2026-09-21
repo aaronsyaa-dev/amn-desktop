@@ -42,6 +42,7 @@ import { useLangue } from '../i18n';
 import { PremiereOuverture } from './PremiereOuverture';
 import { NavAllegesSync } from './NavAllegesSync';
 import { ongletMemorise, routeMemorisable } from '../lib/memoireOnglet';
+import { ModulesOuvertsTracker } from '../state/useModulesOuverts';
 
 const LAST_TAB_KEY = 'amn.lastTab';
 
@@ -218,6 +219,8 @@ export function AppLayout() {
               <SupportNotifier />
               <AutomationsRunner />
               <RouteSeenTracker />
+              {/* La carte d'exploration de Découvrir n'a pas d'autre source. */}
+              <ModulesOuvertsTracker />
               <BootHealthy />
               <IdleScreensaver />
               {showWelcome && <WelcomeOverlay onDone={() => setShowWelcome(false)} />}

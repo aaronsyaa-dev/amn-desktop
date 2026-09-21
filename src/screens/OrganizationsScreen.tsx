@@ -7,6 +7,7 @@ import { AnimatePresence } from 'framer-motion';
 import { Building2, ChevronDown, FolderLock, Loader2, Lock, Plus, Search, ShieldAlert, ShieldCheck, ShieldOff, Tag } from 'lucide-react';
 import { useOrgContext } from '../state/OrgContextContext';
 import { OrgDossierPanel } from '../components/org-rail/OrgDossierPanel';
+import { FaisceauDAttaches } from '../components/tour/FaisceauDAttaches';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
 import { bridge } from '../lib/bridge';
@@ -114,6 +115,15 @@ export function OrganizationsScreen() {
       return n;
     });
   const toutSelectionner = () => setSelection(new Set(parc.rows.map((r) => r.id)));
+  /* L'organisation du faisceau : celle du dossier ouvert, sinon la plus peuplée de la page. */
+  const faisceau = useMemo(() => {
+    if (parc.rows.length === 0) return null;
+    /* Jamais AMN DevSec par défaut : cet écran parle des CLIENTES, et le faisceau d'une organisation interne n'apprend rien sur le parc. */
+    const clientes = parc.rows.filter((r) => r.plan !== 'internal');
+    return parc.rows.find((r) => r.id === dossier?.organization.id)
+      ?? [...clientes].sort((a, b) => b.userCount - a.userCount || a.name.localeCompare(b.name, 'fr'))[0]
+      ?? null;
+  }, [parc.rows, dossier]);
 
   return (
     <StaggerGroup className="flex flex-col gap-6">
@@ -137,6 +147,21 @@ export function OrganizationsScreen() {
           }
         />
       </StaggerItem>
+
+      {/*
+        ═══ L'OBJET DOMINANT (module interne 29b) : le faisceau d'attaches ═══
+
+        Une organisation n'est pas une ligne dans un registre : c'est un
+        faisceau d'attaches vivantes. Le dossier montre CE QUE SA SUSPENSION
+        COUPERAIT avant qu'on demande le geste. Celle qu'on regarde est celle
+        du dossier ouvert, sinon la plus peuplée de la page — jamais une
+        organisation prise au hasard.
+      */}
+      {faisceau && (
+        <StaggerItem>
+          <FaisceauDAttaches org={faisceau} onOuvrirDossier={(id) => void ouvrirDossier(id)} />
+        </StaggerItem>
+      )}
 
       <StaggerItem><RequestsQueuePanel /></StaggerItem>
       <StaggerItem><InputAlertsPanel /></StaggerItem>

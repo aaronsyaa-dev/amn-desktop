@@ -162,10 +162,79 @@ for (const [id, siteId, acteur, severity, status, vuIlYaHeures, alertes, prisIlY
   ecrits += 1;
 }
 
+/*
+  LES DEMANDES D'ASSISTANCE — la file de la Tour, vue du côté de la cliente.
+
+  Même raison que le parc : `support_requests` est écrite par une route que
+  seule une cliente connectée peut appeler, et la RÉPONSE par un opérateur de
+  la Tour. Semer un échange complet depuis le client demanderait deux sessions
+  et un jeton d'opérateur ; on écrit donc la table.
+
+  Trois demandes, dont une répondue : c'est la seule qui prouve la composition
+  de l'écran, puisque c'est la réponse qui domine.
+*/
+const moi = comptes.find((c) => c.email === 'design@exemple.test');
+const idDeMoi = db.prepare('select id from users where email = ?').get('design@exemple.test');
+const DEMANDES = [
+  {
+    id: 'req-design-1',
+    kind: 'message',
+    subject: 'Changer le logo sur les devis',
+    body: 'Nous avons refait notre logo cet été. Pouvez-vous le remplacer sur les devis et les factures ? Je vous envoie le fichier dès que vous me dites où le déposer.',
+    status: 'answered',
+    reply: 'C’est fait — le nouveau logo est en place sur les devis, les factures et la page de rendez-vous. Déposez les prochains fichiers dans Médias, dossier « Identité » : je les reprends de là sans que vous ayez à écrire.',
+    ilYaHeures: 24 * 5,
+    reponduIlYaHeures: 24 * 4,
+  },
+  {
+    id: 'req-design-2',
+    kind: 'message',
+    subject: 'Ajouter un champ « étage » aux fiches clients',
+    body: 'Nos livreurs perdent du temps dans les immeubles sans numéro d’étage. Est-ce qu’on peut ajouter une ligne à la fiche ?',
+    status: 'pending',
+    reply: null,
+    ilYaHeures: 30,
+    reponduIlYaHeures: null,
+  },
+  {
+    id: 'req-design-3',
+    kind: 'message',
+    subject: 'Sauvegarde du mois d’août',
+    body: 'Simple vérification : la sauvegarde d’août est bien passée ?',
+    status: 'closed',
+    reply: 'Oui, sauvegarde d’août complète, vérifiée le 1er septembre. Rien à faire de votre côté.',
+    ilYaHeures: 24 * 26,
+    reponduIlYaHeures: 24 * 25,
+  },
+];
+if (moi && idDeMoi) {
+  for (const d of DEMANDES) {
+    db.prepare(
+      'insert or replace into support_requests (id,org_id,kind,subject,body,requested_by,requested_by_email,status,reply,handled_by_email,handled_at,created_at) ' +
+        'values (?,?,?,?,?,?,?,?,?,?,?,?)',
+    ).run(
+      d.id,
+      interne.id,
+      d.kind,
+      d.subject,
+      d.body,
+      idDeMoi.id,
+      'design@exemple.test',
+      d.status,
+      d.reply,
+      d.reply ? 'harun@exemple.test' : null,
+      d.reponduIlYaHeures === null ? null : iso(-d.reponduIlYaHeures),
+      iso(-d.ilYaHeures),
+    );
+    ecrits += 1;
+  }
+}
+
 console.log(
   `Parc de supervision écrit dans ${CHEMIN} :\n` +
     `  · ${SITES.length} sites sur 3 clientes — ${SITES.filter((s) => s[3] === 'online').length} en ligne, ` +
     `${SITES.filter((s) => s[3] === 'offline').length} hors ligne, ${SITES.filter((s) => s[3] === 'unknown').length} jamais vus\n` +
     `  · ${INCIDENTS.length} incidents ouverts, dont ${INCIDENTS.filter((i) => i[3] === 'critical' && i[7] === null).length} critique jamais pris\n` +
+    `  · ${DEMANDES.length} demandes d'assistance, dont une répondue\n` +
     `  · ${ecrits} lignes au total. Relancez les captures.`,
 );

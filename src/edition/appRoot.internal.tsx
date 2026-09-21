@@ -18,6 +18,7 @@ import { TeamScreen } from '../screens/TeamScreen';
 import { TasksScreen } from '../screens/TasksScreen';
 import { ClientsScreen } from '../screens/ClientsScreen';
 import { InvoicesScreen } from '../screens/InvoicesScreen';
+import { QuotesScreen } from '../screens/QuotesScreen';
 import { ProjectsScreen } from '../screens/ProjectsScreen';
 import { ExpensesScreen } from '../screens/ExpensesScreen';
 import { TimeScreen } from '../screens/TimeScreen';
@@ -72,6 +73,10 @@ import { BomScreen } from '../screens/BomScreen';
 import { AfterSalesScreen } from '../screens/AfterSalesScreen';
 import { AssemblyScreen } from '../screens/AssemblyScreen';
 import { ChecklistsScreen } from '../screens/ChecklistsScreen';
+import { InterventionsScreen } from '../screens/InterventionsScreen';
+import { CalculatorProScreen } from '../screens/CalculatorProScreen';
+import { HealthScreen } from '../screens/HealthScreen';
+import { ShoppingScreen } from '../screens/ShoppingScreen';
 import { ShiftsScreen } from '../screens/ShiftsScreen';
 import { SuppliersScreen } from '../screens/SuppliersScreen';
 import { StockScreen } from '../screens/StockScreen';
@@ -216,18 +221,10 @@ function AmnRoutes() {
             listes de l'OPÉRATEUR sous la bannière de la cliente — le défaut
             qui vaut déjà au Coffre-fort d'en être exclu. */}
         <Route path="/personnel/budget" element={<PersonalBudgetScreen />} />
-        <Route
-          path="/personnel/courses"
-          element={
-            <PagesScreen
-              scope="personnel"
-              title="Personnel"
-              description="Vos listes et vos pages à vous. Elles se synchronisent entre vos appareils — pratique pour écrire la liste ici et la relire dans le magasin."
-            />
-          }
-        />
+        <Route path="/personnel/courses" element={<ShoppingScreen />} />
         <Route path="/clients" element={<ClientsScreen />} />
         <Route path="/facturation" element={<InvoicesScreen />} />
+        <Route path="/facturation/devis" element={<QuotesScreen />} />
         <Route path="/projets" element={<ProjectsScreen />} />
         <Route path="/depenses" element={<ExpensesScreen />} />
         <Route path="/temps" element={<TimeScreen />} />
@@ -282,6 +279,9 @@ function AmnRoutes() {
         <Route path="/fournisseurs" element={<SuppliersScreen />} />
         <Route path="/planning" element={<ShiftsScreen />} />
         <Route path="/controles" element={<ChecklistsScreen />} />
+        <Route path="/interventions" element={<InterventionsScreen />} />
+        <Route path="/outils/calculatrice" element={<CalculatorProScreen />} />
+        <Route path="/personnel/sante" element={<HealthScreen />} />
         <Route path="/montage" element={<AssemblyScreen />} />
         <Route path="/sav" element={<AfterSalesScreen />} />
         <Route path="/nomenclatures" element={<BomScreen />} />
@@ -379,6 +379,14 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="invoices">
               <InvoicesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/facturation/devis"
+          element={
+            <ModuleRoute module="invoices">
+              <QuotesScreen />
             </ModuleRoute>
           }
         />
@@ -646,6 +654,14 @@ function ClientContextRoutes() {
           }
         />
         <Route
+          path="/interventions"
+          element={
+            <ModuleRoute module="interventions">
+              <InterventionsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
           path="/montage"
           element={
             <ModuleRoute module="assembly">
@@ -786,6 +802,14 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="pomodoro">
               <PomodoroScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/outils/calculatrice"
+          element={
+            <ModuleRoute module="calcPro">
+              <CalculatorProScreen />
             </ModuleRoute>
           }
         />

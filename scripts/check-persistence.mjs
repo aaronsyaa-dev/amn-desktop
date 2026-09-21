@@ -55,6 +55,34 @@ function findApiRoot() {
 const failures = [];
 const notes = [];
 
+/* ------- 0. Le pont collection → module, lu par l'état hors-ligne --------- */
+
+/**
+ * `src/data/collectionsModules.ts` nomme le module qui produit chaque
+ * collection : sans lui, la file d'attente de `27e` afficherait des wagons
+ * comme « resourceBookings ». Une clé inventée ici, ou renommée côté serveur,
+ * donnerait un wagon anonyme le jour d'une coupure — c'est-à-dire au pire
+ * moment. On croise donc la liste avec ce que le serveur accepte.
+ */
+function verifierPontCollections(autorisees) {
+  const src = read('src/data/collectionsModules.ts');
+  const cles = [...src.matchAll(/^  ([a-zA-Z]+): '([a-zA-Z]+)',$/gm)].map((m) => m[1]);
+  if (cles.length === 0) {
+    failures.push('src/data/collectionsModules.ts : aucune correspondance lue — l’état hors-ligne n’aurait plus de noms.');
+    return;
+  }
+  for (const c of cles) {
+    if (!autorisees.has(c)) {
+      failures.push(
+        `src/data/collectionsModules.ts nomme « ${c} », qu'amn-api n'accepte pas : ` +
+          'la file d’attente afficherait un wagon qui ne peut pas exister.',
+      );
+    }
+  }
+  notes.push(`· ${cles.length} collection(s) nommées pour la file d'attente hors-ligne, toutes acceptées par le serveur.`);
+}
+
+
 function read(rel, base = ROOT) {
   return fs.readFileSync(path.join(base, rel), 'utf-8');
 }
@@ -143,7 +171,8 @@ const MODULE_DATA = {
   // liste de courses s'écrit au bureau et se relit dans le magasin, donc elle
   // se synchronise. `budget` ne stocke RIEN sur le serveur, délibérément :
   // déclaré local ci-dessous.
-  courses: ['pages'],
+  courses: [],
+  health: [],
   budget: [],
   library: [], // La Bibliothèque lit les catalogues ; Découvrir lit le catalogue serveur. Rien d'écrit.
   discover: [],
@@ -151,9 +180,9 @@ const MODULE_DATA = {
   groups: ['groups', 'groupMessages'],
   announcements: ['announcements'],
   polls: ['polls'],
-  leaves: ['leaves'],
+  leaves: ['leaves', 'leaveQuotas'],
   directory: [],
-  calls: [],
+  calls: ['calls'],
   pipeline: ['prospects'],
   reminders: ['paymentReminders'],
   subscriptions: ['subscriptions'],
@@ -167,6 +196,7 @@ const MODULE_DATA = {
   suppliers: ['suppliers'],
   shifts: ['shifts'],
   checklists: ['checklists', 'checkRuns'],
+  interventions: ['interventions'],
   assembly: ['assemblies'],
   aftersales: ['tickets'],
   bom: ['boms'],
@@ -185,7 +215,8 @@ const MODULE_DATA = {
   personalGoals: [],
   diary: [],
   pomodoro: [],
-  qr: [],
+  qr: ['qrCodes'],
+  calcPro: ['calcTapes'],
   converters: [],
   templates: ['templates'],
   automations: ['automations'],
@@ -260,6 +291,7 @@ const MODULE_FILES = {
   suppliers: ['src/screens/SuppliersScreen.tsx'],
   shifts: ['src/screens/ShiftsScreen.tsx'],
   checklists: ['src/screens/ChecklistsScreen.tsx'],
+  interventions: ['src/screens/InterventionsScreen.tsx'],
   assembly: ['src/screens/AssemblyScreen.tsx'],
   aftersales: ['src/screens/AfterSalesScreen.tsx'],
   bom: ['src/screens/BomScreen.tsx'],
@@ -279,6 +311,8 @@ const MODULE_FILES = {
   diary: ['src/screens/DiaryScreen.tsx'],
   pomodoro: ['src/screens/PomodoroScreen.tsx'],
   qr: ['src/screens/QrScreen.tsx'],
+  calcPro: ['src/screens/CalculatorProScreen.tsx'],
+  health: ['src/screens/HealthScreen.tsx'],
   converters: ['src/screens/ConvertersScreen.tsx'],
   templates: ['src/screens/TemplatesScreen.tsx'],
   automations: ['src/screens/AutomationsScreen.tsx'],
@@ -307,6 +341,36 @@ const ECRITURES_LOCALES_ADMISES = {
       'l’est. La déclarer ici plutôt que d’exempter le fichier : le nombre est compté, donc ' +
       'une seconde écriture — un jour où l’on voudrait y ranger autre chose — fera échouer ' +
       'le contrôle tant que personne n’aura dit pourquoi.',
+  },
+  'src/screens/DataPortScreen.tsx': {
+    nombre: 1,
+    raison:
+      'la liste des exports RÉCENTS, et rien d’autre. Il n’existe aucun journal ' +
+      'd’export dans le modèle, et en créer un côté serveur pour une carte de coin ' +
+      'd’écran serait disproportionné. L’écran dit lui-même que cette liste est ' +
+      'celle de ce poste, donc personne ne peut croire qu’un collègue verrait la ' +
+      'même. Une seconde écriture ici ferait échouer le contrôle — et elle le ' +
+      'devrait : l’import, lui, écrit dans des collections synchronisées.',
+  },
+  'src/screens/VaultScreen.tsx': {
+    nombre: 1,
+    raison:
+      'la DATE des ouvertures de la porte, et rien d’autre — jamais un secret, ' +
+      'jamais une valeur. Le contenu du coffre est déjà local par construction ' +
+      '(chiffré par le trousseau de la machine, qui ne voyage pas), donc mettre ' +
+      'ce journal-là sur le serveur ferait sortir de la machine la seule chose ' +
+      'qui n’en sortait pas encore : QUAND quelqu’un ouvre son coffre. L’écran ' +
+      'écrit « depuis ce poste » partout où il l’affiche. Une seconde écriture ' +
+      'ici ferait échouer le contrôle, et elle le devrait.',
+  },
+  'src/state/useModulesOuverts.ts': {
+    nombre: 1,
+    raison:
+      'le journal des modules déjà ouverts, dont Découvrir tire sa carte. Il est ' +
+      'local À DESSEIN : sur le serveur il deviendrait une donnée d’organisation, ' +
+      'donc lisible par les autres membres — une carte d’exploration personnelle ' +
+      'qu’un collègue peut lire n’est plus personnelle. L’écran dit « depuis ce ' +
+      'poste » et l’explique en toutes lettres.',
   },
   'src/state/useNotes.ts': {
     nombre: 1,
@@ -363,6 +427,7 @@ if (!API) {
 }
 
 const allowed = allowedCollections();
+verifierPontCollections(allowed);
 const modules = offerableModules();
 
 if (allowed.size === 0) failures.push('Impossible de lire la liste ALLOWED d’amn-api.');

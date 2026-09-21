@@ -11,6 +11,8 @@ import { ACCENTS } from '../lib/accent';
 import { CONFIGURABLE_MODULES, TRADE_PROFILES, tradeProfileById } from '../data/tradeProfiles';
 import { calcProfileById } from '../state/calcProfiles';
 import { RangeControl } from '../components/generator/RangeControl';
+import { useHaloSignal } from '../components/EtatEcran';
+import { garde } from '../lib/garde';
 import { LivePreview } from '../components/generator/LivePreview';
 import { handoverMessage } from '../lib/handoverMessage';
 import { OrgAvatar } from '../components/org-rail/OrgAvatar';
@@ -122,6 +124,8 @@ export function GeneratorScreen() {
   } | null>(null);
 
   const profile = profileId ? tradeProfileById(profileId) : undefined;
+  /* Le halo ne bat que sur l'écran de remise : c'est là que vit le seul ambre de l'Atelier. */
+  const halo = useHaloSignal(step === 'remise' && result !== null);
   const plan: OrgPlan = seats >= PREMIUM_FROM_SEATS ? 'business_premium' : 'business_standard';
 
   /** Choisir un métier POSE les valeurs de départ, et fait entrer dans l'atelier. */
@@ -671,6 +675,7 @@ export function GeneratorScreen() {
                   et la couleur proposée. Le contenu reste muet — cette organisation n’a encore rien,
                   et inventer des chiffres ici ferait croire à des données.
                 </p>
+                <CeQueLaGardeEnFera />
               </div>
             </motion.div>
           )}
@@ -689,30 +694,40 @@ export function GeneratorScreen() {
                 </p>
               )}
 
-              <section className="panel panel-ticks p-5">
-                <p className="eyebrow mb-3">
+              {/*
+                ═══ L'AMBRE DE L'ATELIER (module interne 29d) ═══
+
+                Le lien d'installeur est LA SEULE CHOSE QU'ON EMPORTE de cet
+                écran : tout le reste est déjà posé côté serveur. Trois nœuds
+                dans une seule plaque — le surtitre, l'adresse, la mention de
+                validité. Et l'ambre ne s'allume qu'ici : l'établi lui-même ne
+                décide de rien, il montre la pièce.
+              */}
+              <section data-signal-groupe="lien-installeur" className={`signal-plate p-5 ${halo}`}>
+                <p data-signal-groupe="lien-installeur" className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.18em] opacity-75">
                   {result.kind === 'password' ? 'Mot de passe temporaire' : 'Lien d’activation'}
                 </p>
-                <p className="mb-4 text-[13px] text-text-secondary">
-                  Pour <span className="text-text-primary">{result.email}</span>, chez{' '}
-                  <span className="text-text-primary">{result.orgName}</span>.
+                <p data-signal-groupe="lien-installeur" className="mb-4 text-[13px] opacity-85">
+                  Pour <span className="font-semibold opacity-100">{result.email}</span>, chez{' '}
+                  <span className="font-semibold opacity-100">{result.orgName}</span>.
                   {result.expiresAt &&
                     ` Valable jusqu’au ${new Date(result.expiresAt).toLocaleDateString('fr-FR')}, une seule fois.`}
                 </p>
                 <div className="flex items-center gap-2">
-                  <code className="min-w-0 flex-1 overflow-x-auto border border-border bg-bg px-3 py-2.5 font-mono text-[12px] text-text-primary">
+                  <code data-signal-groupe="lien-installeur" className="min-w-0 flex-1 overflow-x-auto border border-[rgba(8,8,8,0.35)] bg-[rgba(8,8,8,0.14)] px-3 py-2.5 font-mono text-[12px] font-semibold">
                     {result.secret}
                   </code>
                   <button
                     type="button"
                     onClick={() => void navigator.clipboard?.writeText(result.secret)}
-                    className="flex flex-shrink-0 items-center gap-1.5 border border-border-strong px-3 py-2.5 font-mono text-[10px] uppercase tracking-wider text-text-primary transition-colors hover:bg-surface-hover"
+                    style={{ border: '1.5px solid var(--color-signal-ink)' }}
+                    className="flex flex-shrink-0 items-center gap-1.5 px-3 py-2.5 font-mono text-[10px] font-bold uppercase tracking-wider"
                   >
                     <Copy size={12} strokeWidth={2} />
                     Copier
                   </button>
                 </div>
-                <p className="mt-3 text-[11px] leading-snug text-text-muted">
+                <p className="mt-3 text-[11px] leading-snug opacity-75">
                   amn-api n’en garde que l’empreinte : quitter cet écran le perd définitivement.
                   Si c’est perdu, il faudra en réémettre un depuis le dossier de l’organisation.
                 </p>
@@ -955,5 +970,46 @@ function Choice({
         <span className="block text-[11px] leading-snug text-text-muted">{body}</span>
       </span>
     </button>
+  );
+}
+
+/**
+ * CE QUE LA GARDE FERA DE CETTE ORGANISATION — en pied de la pièce façonnée.
+ *
+ * Les deux nombres se DÉDUISENT de la Salle, ils ne sont pas annoncés : les
+ * gardes affectées sont celles qui tournent et qui ne gèlent personne (une
+ * organisation neuve n'est gelée par aucune), et les passages par jour sont la
+ * somme de leurs périodes ramenées à vingt-quatre heures. Une ronde regarde
+ * TOUTES les organisations d'un coup : le nombre de passages est donc bien
+ * celui que cette organisation recevra, pas une part d'un total.
+ */
+function CeQueLaGardeEnFera() {
+  const [agents, setAgents] = React.useState<{ actif: boolean; everyMs: number; geleOrgs: string[] }[] | null>(null);
+  React.useEffect(() => {
+    let vivant = true;
+    void garde.salle().then((s) => { if (vivant) setAgents(s.agents); }).catch(() => { if (vivant) setAgents([]); });
+    return () => { vivant = false; };
+  }, []);
+  if (agents === null) return null;
+  const affectees = agents.filter((a) => a.actif && a.everyMs > 0);
+  if (affectees.length === 0) return null;
+  const passages = affectees.reduce((n, a) => n + Math.round(86_400_000 / a.everyMs), 0);
+  return (
+    <div className="mt-4 border border-border bg-sunken px-4 py-3.5">
+      <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-muted">Ce que la Garde en fera</p>
+      <div className="mt-2.5 flex flex-wrap gap-6">
+        <span>
+          <span className="block font-mono text-[19px] font-semibold tabular-nums tracking-tight text-text-primary">{affectees.length}</span>
+          <span className="mt-0.5 block text-[11.5px] text-text-secondary">gardes affectées</span>
+        </span>
+        <span>
+          <span className="block font-mono text-[19px] font-semibold tabular-nums tracking-tight text-text-primary">{passages.toLocaleString('fr-FR')}</span>
+          <span className="mt-0.5 block text-[11.5px] text-text-secondary">passages par jour</span>
+        </span>
+      </div>
+      <p className="mt-2.5 text-[11px] leading-snug text-text-muted [text-wrap:pretty]">
+        Elles commencent à passer dès la création, sans réglage. Une garde se met en pause sur une organisation depuis son bureau, jamais depuis l’Atelier.
+      </p>
+    </div>
   );
 }

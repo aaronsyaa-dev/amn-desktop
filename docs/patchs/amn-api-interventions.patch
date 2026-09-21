@@ -1,0 +1,162 @@
+diff --git a/src/db/tenancy.js b/src/db/tenancy.js
+index 24888cb..f0bfeae 100644
+--- a/src/db/tenancy.js
++++ b/src/db/tenancy.js
+@@ -277,6 +277,16 @@ export const MODULE_CATALOGUE = [
+     label: 'Contrôles qualité',
+     summary: 'Des modèles de contrôle, et chaque passage daté et signé.',
+   },
++  {
++    key: 'interventions',
++    label: 'Interventions',
++    summary: 'Une fiche par déplacement : avant, pendant, après, et ce qui a été consommé.',
++  },
++  {
++    key: 'calcPro',
++    label: 'Calculatrice pro',
++    summary: 'Un ruban de caisse : le calcul s’imprime ligne à ligne, et devient un devis.',
++  },
+   {
+     key: 'assembly',
+     label: 'Suivi de montage',
+@@ -350,7 +360,7 @@ export const MODULE_CATALOGUE = [
+   {
+     key: 'habits',
+     label: 'Habitudes',
+-    summary: 'Vos habitudes personnelles, cochées chaque jour, avec la série : elles restent sur ce poste, comme le budget.',
++    summary: 'Vos habitudes personnelles, cochées chaque jour, posées sur une balance : elles restent sur ce poste, comme le budget.',
+   },
+   {
+     key: 'personalGoals',
+@@ -367,6 +377,11 @@ export const MODULE_CATALOGUE = [
+     label: 'Pomodoro',
+     summary: 'Un minuteur qui, à la fin, pose une vraie ligne dans Temps.',
+   },
++  {
++    key: 'health',
++    label: 'Carnet de santé',
++    summary: 'Des dates et des échéances, rien de médical : gardé sur ce poste, jamais partagé.',
++  },
+   {
+     key: 'qr',
+     label: 'QR codes',
+@@ -554,7 +569,10 @@ export const MODULE_COLLECTIONS = {
+   groups: ['groups', 'groupMessages'],
+   announcements: ['announcements'],
+   polls: ['polls'],
+-  leaves: ['leaves'],
++  leaves: ['leaves', 'leaveQuotas'],
++  calls: ['calls'],
++  qr: ['qrCodes'],
++  calcPro: ['calcTapes'],
+   pipeline: ['prospects'],
+   reminders: ['paymentReminders'],
+   subscriptions: ['subscriptions'],
+@@ -567,6 +585,7 @@ export const MODULE_COLLECTIONS = {
+   suppliers: ['suppliers'],
+   shifts: ['shifts'],
+   checklists: ['checklists', 'checkRuns'],
++  interventions: ['interventions'],
+   assembly: ['assemblies'],
+   aftersales: ['tickets'],
+   bom: ['boms'],
+diff --git a/src/routes/collections.js b/src/routes/collections.js
+index 6586a14..42164e8 100644
+--- a/src/routes/collections.js
++++ b/src/routes/collections.js
+@@ -107,6 +107,10 @@ export const ALLOWED = new Set([
+   'announcements',
+   'polls',
+   'leaves',
++  'leaveQuotas',
++  'calls',
++  'qrCodes',
++  'calcTapes',
+   'prospects',
+   'paymentReminders',
+   'subscriptions',
+@@ -120,6 +124,7 @@ export const ALLOWED = new Set([
+   'shifts',
+   'checklists',
+   'checkRuns',
++  'interventions',
+   'assemblies',
+   'tickets',
+   'boms',
+@@ -166,6 +171,20 @@ export function collectionsRouter() {
+     res.json({ users: hub ? hub.presenceSnapshot(req.auth.orgId) : [] });
+   });
+ 
++  /*
++    JOURNAL D'ACTIVITÉ (confort d'usage à deux) : qui a créé/modifié/supprimé
++    quoi, récemment, dans les collections partagées de CETTE organisation.
++    Ouvert à tout opérateur authentifié — comme la présence ci-dessus — parce
++    que c'est un outil de coordination entre collègues, pas une console
++    d'administration. Voir record_activity_log (schema.sql) et
++    listRecordActivity (sqlite.js / postgres.js).
++  */
++  router.get('/_activity', async (req, res) => {
++    const limit = req.query.limit ? Number(req.query.limit) : 100;
++    const entries = await req.app.locals.db.listRecordActivity(req.auth.orgId, { limit });
++    res.json({ entries });
++  });
++
+   /**
+    * TOUT L'ESPACE EN UNE SEULE REQUÊTE.
+    *
+@@ -274,9 +293,35 @@ export function collectionsRouter() {
+     if (data === undefined || data === null || typeof data !== 'object') {
+       return res.status(400).json({ error: 'Body must be { data: {...} }' });
+     }
+-    const record = await req.app.locals.db.upsertRecord(req.auth.orgId, collection, id, data);
++
++    /*
++      `base` et `patch` : d'où part ce poste, et ce qu'il a réellement changé.
++
++      Les deux sont FACULTATIFS, et c'est ce qui rend ce correctif déployable
++      dans n'importe quel ordre. Un poste d'avant ne les envoie pas et retrouve
++      exactement le comportement qu'il a toujours eu (l'enregistrement entier
++      remplace) ; un poste à jour parlant à un serveur d'avant voit les deux
++      champs ignorés, sans erreur. Ni l'un ni l'autre ne casse en attendant que
++      l'autre soit mis à jour — voir src/lib/fusion.js pour la règle elle-même.
++    */
++    const base = typeof req.body?.base === 'string' && req.body.base ? req.body.base : null;
++    const patch = req.body?.patch;
++    const patchValide = typeof patch === 'object' && patch !== null && !Array.isArray(patch);
++
++    const resultat =
++      base && patchValide
++        ? await req.app.locals.db.upsertRecordFusion(req.auth.orgId, collection, id, { data, base, patch })
++        : { record: await req.app.locals.db.upsertRecord(req.auth.orgId, collection, id, data), fusion: null };
++
++    const { record, fusion } = resultat;
+     req.app.locals.hub?.broadcast({ type: 'record', collection, record }, req.auth.orgId);
+-    res.status(200).json({ record });
++    /*
++      La fusion est DITE. Le poste n'a rien à en faire aujourd'hui — il adopte
++      l'enregistrement rendu, comme toujours — mais une fusion muette serait un
++      mensonge par omission : c'est le moment précis où deux personnes ont
++      travaillé sur la même fiche, et c'est ce qu'on veut pouvoir relire.
++    */
++    res.status(200).json(fusion ? { record, fusion } : { record });
+   });
+ 
+   router.delete('/:collection/:id', async (req, res) => {
+@@ -284,7 +329,16 @@ export function collectionsRouter() {
+     if (module) return res.status(403).json({ error: 'La cliente a fermé ce module à son prestataire.', code: 'module_locked', module });
+     const { collection, id } = req.params;
+     if (!ALLOWED.has(collection)) return res.status(404).json({ error: 'Unknown collection' });
+-    const record = await req.app.locals.db.deleteRecord(req.auth.orgId, collection, id);
++    /*
++      `by` : qui supprime, auto-déclaré par le poste — exactement le même
++      niveau de confiance que `_by` sur une écriture (le poste stampe déjà
++      cette identité sur chaque PUT, voir WRITER_KEY) ou que `?user=` sur la
++      WebSocket. FACULTATIF : un poste d'avant ce correctif ne l'envoie pas,
++      et la suppression reste journalisée avec un auteur `null` plutôt que
++      d'échouer.
++    */
++    const by = typeof req.body?.by === 'string' && req.body.by.trim() ? req.body.by.trim().toLowerCase() : null;
++    const record = await req.app.locals.db.deleteRecord(req.auth.orgId, collection, id, by);
+     req.app.locals.hub?.broadcast({ type: 'record', collection, record }, req.auth.orgId);
+     res.status(200).json({ record });
+   });

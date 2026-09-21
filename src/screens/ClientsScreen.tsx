@@ -39,7 +39,8 @@ import { ConfirmDelete } from '../components/ConfirmDelete';
 import type { ReportDraft } from '../state/useReports';
 import { QuotePrintPortal } from '../assistant/QuotePrintPortal';
 import { useInvoices, netDueCents, invoiceTotals, formatShortDay } from '../state/useInvoices';
-import { formatCents } from '../lib/money';
+import { formatCents, formatCentsCompact } from '../lib/money';
+import { useHaloSignal } from '../components/EtatEcran';
 import { metaOf } from '../lib/records';
 import type {
   Client,
@@ -362,13 +363,404 @@ function VueDuRepertoire({
       );
   }, [clients, sites, quotes, invoices]);
 
-  const tete = lignes[0];
+  /*
+    LE NUAGE. Chaque fiche reçoit deux coordonnées et un rayon, tous les trois
+    calculés sur de vraies factures et sur la date du dernier échange — jamais
+    sur un champ de synthèse, qui mentirait dès la facture suivante.
+
+    Une fiche sans chiffre d'affaires sur douze mois N'A PAS DE DISQUE : elle
+    n'a pas de position. La poser sur la ligne du bas lui inventerait une
+    place, et le nuage se lirait comme « beaucoup de monde sans valeur » là où
+    la vérité est « on ne sait pas encore ».
+  */
+  const { points, sansPosition } = useMemo(() => {
+    const maintenant = new Date();
+    const depuis = new Date(maintenant.getTime() - 365 * 86_400_000).toISOString().slice(0, 10);
+    const places: PointDuNuage[] = [];
+    let muettes = 0;
+    for (const ligne of lignes) {
+      const caCents = caDouzeMois(ligne.client.id, invoices, depuis);
+      if (caCents <= 0) {
+        muettes += 1;
+        continue;
+      }
+      const jours = Math.max(
+        0,
+        Math.round((maintenant.getTime() - new Date(ligne.dernierEchange).getTime()) / 86_400_000),
+      );
+      const partCa = Math.min(1, caCents / AXE_CA_CENTS);
+      places.push({
+        client: ligne.client,
+        jours,
+        caCents,
+        x: (Math.min(jours, AXE_JOURS) / AXE_JOURS) * 100,
+        y: 100 - partCa * 100,
+        rayon: RAYON_MIN + partCa * (RAYON_MAX - RAYON_MIN),
+        critique: jours >= SEUIL_SILENCE && caCents >= SEUIL_VALEUR,
+        plafonne: caCents > AXE_CA_CENTS,
+        etiquete: false,
+        etiquetteY: 0,
+      });
+    }
+
+    /*
+      QUI PORTE UN NOM. Le point du quadrant critique d'abord — c'est le sujet
+      de l'écran — puis les plus lourds, jusqu'à cinq en tout.
+    */
+    const parPoids = [...places].sort(
+      (a, b) => Number(b.critique) - Number(a.critique) || b.caCents - a.caCents,
+    );
+    for (const p of parPoids.slice(0, ETIQUETTES_MAX)) p.etiquete = true;
+
+    /*
+      LE DÉGAGEMENT VERTICAL. Deux étiquettes à quelques pixels l'une de
+      l'autre se recouvrent, et deux noms superposés valent moins que zéro. On
+      parcourt les étiquetées de haut en bas et on repousse celle qui serre
+      trop la précédente — le DISQUE, lui, ne bouge pas : c'est lui qui porte
+      la mesure, l'étiquette n'est que sa légende.
+    */
+    const etiquetees = places.filter((p) => p.etiquete).sort((a, b) => a.y - b.y);
+    let plancher = -Infinity;
+    for (const p of etiquetees) {
+      const voulue = (p.y / 100) * NUAGE_H;
+      p.etiquetteY = Math.max(voulue, plancher + ETIQUETTE_PAS);
+      plancher = p.etiquetteY;
+    }
+
+    return { points: places, sansPosition: muettes };
+  }, [lignes, invoices]);
+
+  /*
+    L'AMBRE. Le quadrant critique en contient normalement un seul point —
+    c'est ce qui en fait un signal. S'il y en avait plusieurs, c'est le plus
+    lourd qui le porte : entre deux silences, celui qui coûte le plus est
+    celui qu'on traite d'abord.
+  */
+  const critique = useMemo(
+    () => points.filter((p) => p.critique).sort((a, b) => b.caCents - a.caCents)[0] ?? null,
+    [points],
+  );
+
+  const silencieux = useMemo(
+    () => points.filter((p) => p.jours >= SEUIL_SILENCE).sort((a, b) => b.caCents - a.caCents),
+    [points],
+  );
+
+  /*
+    LA FICHE MONTRÉE EST CELLE DU CLIENT CONCERNÉ par le nuage — le point du
+    quadrant critique. À défaut (personne dans le quadrant), l'écran retombe
+    sur la fiche dont la santé calculée est la plus basse, qui est ce qu'il
+    montrait avant le nuage.
+  */
+  const tete =
+    (critique && lignes.find((l) => l.client.id === critique.client.id)) || lignes[0];
   if (!tete) return null;
 
   return (
     <div className="flex flex-col gap-6">
-      <FicheDominante ligne={tete} sites={sites} onOuvrir={onOuvrir} onAjouterEchange={onAjouterEchange} />
+      {points.length > 0 && (
+        <NuageDesRelations points={points} sansPosition={sansPosition} critique={critique} />
+      )}
+      <div className="grid items-start gap-4 lg:grid-cols-[1fr_300px]">
+        <FicheDominante ligne={tete} sites={sites} onOuvrir={onOuvrir} onAjouterEchange={onAjouterEchange} />
+        <LesSilencieux silencieux={silencieux} onOuvrir={onOuvrir} />
+      </div>
       <Repertoire lignes={lignes} onOuvrir={onOuvrir} />
+    </div>
+  );
+}
+
+/* --------------------------------------------- le nuage à deux axes (`14a`) -- */
+
+/**
+ * LE NUAGE DES RELATIONS — l'objet dominant de Clients (`14a`).
+ *
+ * La santé d'une relation cesse d'être un feu tricolore par ligne : elle
+ * devient une POSITION. Le temps écoulé depuis le dernier contact en abscisse,
+ * le chiffre d'affaires des douze derniers mois en ordonnée, et le DIAMÈTRE du
+ * disque qui reprend ce même chiffre d'affaires — pour que la valeur se lise
+ * deux fois, à la hauteur et à la taille, et qu'un point lourd ne puisse pas
+ * se cacher en bas de l'écran.
+ *
+ * Deux lignes de partage découpent le quadrant en haut à droite. C'est le seul
+ * des quatre qui demande quelque chose : beaucoup de valeur, beaucoup de
+ * silence. Les trois autres n'ont pas de nom, parce qu'ils n'ont rien à dire.
+ *
+ * LES SEUILS SONT EXPLICITES — 90 jours, 4 000 € — et pas « à l'œil » : un
+ * quadrant dessiné au jugé se déplace au premier client ajouté, et l'écran
+ * changerait d'avis sans que rien n'ait changé.
+ */
+const NUAGE_H = 320;
+const AXE_JOURS = 180;
+const AXE_CA_CENTS = 1_200_000;
+const SEUIL_SILENCE = 90;
+const SEUIL_VALEUR = 400_000;
+/* Les rayons vont jusqu'à 15 px ; l'étiquette se décale de 21 px pour les
+   dégager tous, y compris le plus gros disque du nuage. */
+const RAYON_MIN = 4;
+const RAYON_MAX = 15;
+const DECALAGE_ETIQUETTE = 21;
+
+/**
+ * COMBIEN D'ÉTIQUETTES — CINQ, PAS DIX.
+ *
+ * Le premier rendu sur données réelles a posé les dix noms, et cinq d'entre
+ * eux se sont empilés en un pâté illisible dans le coin bas à gauche, là où
+ * se serrent les fiches récentes et légères. Un nuage dont on ne peut pas
+ * lire les noms n'est plus un nuage : c'est une tache.
+ *
+ * `MODULES.md` décrit d'ailleurs exactement cinq étiquettes — « deux nœuds »
+ * pour l'ambre, « les quatre autres étiquettes du nuage ». Les points non
+ * étiquetés gardent leur position, leur taille et leur infobulle : ils
+ * comptent dans la forme du nuage, ils ne se disputent simplement pas le mot.
+ */
+const ETIQUETTES_MAX = 5;
+/** La hauteur d'une ligne d'étiquette, plus l'air qu'il lui faut. */
+const ETIQUETTE_PAS = 15;
+
+interface PointDuNuage {
+  client: Client;
+  jours: number;
+  caCents: number;
+  /** En pourcentage de la boîte — jamais en pixels : le nuage est fluide. */
+  x: number;
+  y: number;
+  rayon: number;
+  critique: boolean;
+  /** Le chiffre d'affaires dépasse le haut de l'axe : le disque y est bloqué. */
+  plafonne: boolean;
+  /** Portée par le point ? Voir `ETIQUETTES_MAX`. */
+  etiquete: boolean;
+  /** L'ordonnée de l'étiquette en px, après dégagement des chevauchements. */
+  etiquetteY: number;
+}
+
+/** Le chiffre d'affaires des douze derniers mois — net des avoirs. */
+function caDouzeMois(clientId: number, invoices: Invoice[], depuis: string): number {
+  return invoices
+    .filter(
+      (inv) =>
+        inv.clientId === clientId &&
+        inv.status !== 'draft' &&
+        inv.status !== 'cancelled' &&
+        inv.kind !== 'creditNote' &&
+        !!inv.issuedAt &&
+        inv.issuedAt >= depuis,
+    )
+    .reduce((somme, inv) => somme + netDueCents(inv, invoices) + (inv.status === 'paid' ? invoiceTotals(inv).grossCents - netDueCents(inv, invoices) : 0), 0);
+}
+
+function NuageDesRelations({
+  points,
+  sansPosition,
+  critique,
+}: {
+  points: PointDuNuage[];
+  sansPosition: number;
+  critique: PointDuNuage | null;
+}) {
+  const halo = useHaloSignal(!!critique);
+
+  return (
+    <div className="panel-raised panel-raised-wide panel-ticks px-6 py-6">
+      <div className="mb-5 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+        <p className="eyebrow">Silence et valeur · {points.length} fiches placées</p>
+        <p className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
+          le diamètre reprend le chiffre d’affaires
+        </p>
+      </div>
+
+      <div className="grid gap-x-3 grid-cols-[46px_minmax(0,1fr)]">
+        {/* L'ordonnée, graduée aux deux seuils qui comptent. */}
+        <div className="relative" style={{ height: NUAGE_H }}>
+          {[
+            { cents: AXE_CA_CENTS, texte: '12 k€' },
+            { cents: SEUIL_VALEUR, texte: '4 k€' },
+            { cents: 0, texte: '0' },
+          ].map((g) => (
+            <span
+              key={g.texte}
+              className="absolute right-0 -translate-y-1/2 font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted"
+              style={{ top: `${100 - (g.cents / AXE_CA_CENTS) * 100}%` }}
+            >
+              {g.texte}
+            </span>
+          ))}
+        </div>
+
+        <div className="relative bg-sunken" style={{ height: NUAGE_H }}>
+          {/* LE QUADRANT QUI DEMANDE QUELQUE CHOSE — en haut à droite. */}
+          <div
+            className="absolute border-l border-b border-dashed border-border-strong"
+            style={{
+              left: `${(SEUIL_SILENCE / AXE_JOURS) * 100}%`,
+              right: 0,
+              top: 0,
+              height: `${100 - (SEUIL_VALEUR / AXE_CA_CENTS) * 100}%`,
+            }}
+          >
+            <span className="absolute right-2 top-2 max-w-[13rem] text-right font-mono text-[9.5px] font-bold uppercase leading-[1.5] tracking-[0.14em] text-text-muted">
+              Beaucoup de valeur,
+              <br />
+              beaucoup de silence
+            </span>
+          </div>
+
+          {points.map((p) => {
+            const signal = p === critique;
+            /*
+              L'ÉTIQUETTE SE DÉCALE DU DISQUE, ET LE DÉCALAGE A DEUX VALEURS.
+
+              `translate(21px, -50%)` : la première dégage le rayon (jusqu'à
+              15 px), la seconde recentre l'étiquette sur le disque. Écrit à
+              une seule valeur, le navigateur lit la seconde comme 0 et toutes
+              les étiquettes remontent sur le bord haut de leur point.
+
+              Passé les deux tiers de l'axe, l'étiquette bascule à gauche du
+              disque — sinon elle sort de la boîte, et un nom qu'on ne lit pas
+              ne sert à rien.
+            */
+            const aGauche = p.x > 66;
+            return (
+              <React.Fragment key={p.client.id}>
+                <span
+                  className={`absolute block ${signal ? `bg-signal ${halo}` : p.caCents >= SEUIL_VALEUR ? 'bg-[#4a4a48]' : 'bg-border-strong'}`}
+                  style={{
+                    left: `${p.x}%`,
+                    top: `${p.y}%`,
+                    width: p.rayon * 2,
+                    height: p.rayon * 2,
+                    borderRadius: '50%',
+                    transform: 'translate(-50%, -50%)',
+                  }}
+                  title={`${p.client.company || p.client.name} · ${formatCentsCompact(p.caCents)} · ${p.jours} j`}
+                  data-signal-groupe={signal ? 'silence' : undefined}
+                />
+                {p.etiquete && (
+                  <span
+                    className={`absolute whitespace-nowrap font-mono text-[10px] tracking-[0.06em] ${
+                      signal
+                        ? 'font-bold text-signal'
+                        : p.caCents >= SEUIL_VALEUR
+                          ? 'text-text-body'
+                          : 'text-text-muted'
+                    }`}
+                    style={{
+                      left: `${p.x}%`,
+                      top: p.etiquetteY,
+                      transform: aGauche
+                        ? `translate(calc(-100% - ${DECALAGE_ETIQUETTE}px), -50%)`
+                        : `translate(${DECALAGE_ETIQUETTE}px, -50%)`,
+                    }}
+                    data-signal-groupe={signal ? 'silence' : undefined}
+                  >
+                    {p.plafonne && '↑ '}
+                    {p.client.company || p.client.name} · {formatCentsCompact(p.caCents)} ·{' '}
+                    {p.jours} j
+                  </span>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+
+        {/* L'abscisse : même colonne que le nuage, donc mêmes repères. */}
+        <span aria-hidden />
+        <div className="relative mt-2 h-4">
+          {[
+            { jours: 0, texte: '0 J', ancre: 'gauche' as const },
+            { jours: SEUIL_SILENCE, texte: '90 J · SILENCE', ancre: 'centre' as const },
+            { jours: AXE_JOURS, texte: '180 J', ancre: 'droite' as const },
+          ].map((g) => (
+            <span
+              key={g.texte}
+              className="absolute top-0 whitespace-nowrap font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted"
+              style={{
+                left: g.ancre === 'droite' ? undefined : `${(g.jours / AXE_JOURS) * 100}%`,
+                right: g.ancre === 'droite' ? 0 : undefined,
+                transform: g.ancre === 'centre' ? 'translateX(-50%)' : undefined,
+              }}
+            >
+              {g.texte}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <p className="mt-6 border-t border-border-row pt-3 text-[12.5px] leading-relaxed text-text-muted">
+        Cinq fiches portent leur nom : celle du quadrant critique et les quatre plus lourdes. Les
+        autres gardent leur disque et leur infobulle — dix noms sur cette surface se recouvrent, et
+        deux noms superposés valent moins que zéro. Une flèche devant un nom veut dire que le
+        chiffre d’affaires dépasse le haut de l’axe : le disque y est bloqué, pas la valeur.
+      </p>
+
+      {sansPosition > 0 && (
+        <p className="mt-3 text-[12.5px] leading-relaxed text-text-muted">
+          {sansPosition} fiche{sansPosition > 1 ? 's' : ''} sans chiffre d’affaires sur douze mois
+          {sansPosition > 1 ? ' ne figurent' : ' ne figure'} pas dans le nuage : sans valeur en
+          ordonnée, {sansPosition > 1 ? 'elles n’ont' : 'elle n’a'} pas de position — les poser sur
+          la ligne du bas leur inventerait une place qu’{sansPosition > 1 ? 'elles n’ont' : 'elle n’a'} pas.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Les silencieux : plus de 90 jours sans contact, du plus lourd au plus léger. */
+function LesSilencieux({
+  silencieux,
+  onOuvrir,
+}: {
+  silencieux: PointDuNuage[];
+  onOuvrir: (id: number) => void;
+}) {
+  const legers = silencieux.filter((p) => p.caCents < 160_000).length;
+  return (
+    <div className="panel flex flex-col px-5 py-4">
+      <p className="eyebrow mb-3">Les silencieux</p>
+      {silencieux.length === 0 ? (
+        <p className="text-[13px] leading-relaxed text-text-secondary">
+          Personne n’est resté plus de quatre-vingt-dix jours sans nouvelles.
+        </p>
+      ) : (
+        <>
+          <div className="flex flex-col divide-y divide-border-row">
+            {silencieux.map((p) => (
+              <button
+                key={p.client.id}
+                type="button"
+                onClick={() => onOuvrir(p.client.id)}
+                className="flex min-h-11 items-baseline justify-between gap-3 py-2 text-left transition-colors hover:text-text-primary md:min-h-0"
+              >
+                <span className="min-w-0 flex-1 truncate text-[13px] text-text-secondary">
+                  {p.client.company || p.client.name}
+                </span>
+                <span className="tnum flex-shrink-0 font-mono text-[12px] text-text-primary">
+                  {formatCentsCompact(p.caCents)}
+                </span>
+                <span className="tnum w-12 flex-shrink-0 text-right font-mono text-[12px] text-text-muted">
+                  {p.jours} j
+                </span>
+              </button>
+            ))}
+          </div>
+          {/*
+            LA PHRASE SE DÉDUIT DES COMPTES, elle n'est pas écrite d'avance.
+
+            La maquette montrait trois silencieux légers sur quatre, d'où sa
+            formule « c'est l'autre qui compte ». Sur les vraies données de ce
+            bac à sable, c'est l'inverse : un seul est léger. Une phrase figée
+            aurait dit le contraire de ce que l'écran affiche juste au-dessus.
+          */}
+          <p className="mt-3 text-[12.5px] leading-relaxed text-text-muted">
+            {legers === 0
+              ? `Aucun n’est léger : ${silencieux.length > 1 ? 'chacun de ces silences coûte' : 'ce silence coûte'} quelque chose.`
+              : legers === silencieux.length
+                ? `${legers > 1 ? 'Tous pèsent' : 'Il pèse'} moins de 1 600 € par an : le silence y coûte peu.`
+                : `${legers} sur ${silencieux.length} ${legers > 1 ? 'pèsent' : 'pèse'} moins de 1 600 € par an — le silence y coûte peu. ${silencieux.length - legers > 1 ? `Les ${silencieux.length - legers} autres sont` : 'L’autre est'} ce qu’il coûte vraiment.`}
+          </p>
+        </>
+      )}
     </div>
   );
 }
@@ -410,7 +802,16 @@ function FicheDominante({
   };
 
   return (
-    <div className="panel-raised panel-raised-wide grid grid-cols-1 lg:grid-cols-[1fr_320px]">
+    /*
+      LA FICHE N'EST PLUS L'OBJET DOMINANT DE L'ÉCRAN — LE NUAGE L'EST.
+
+      Elle garde tout ce qu'elle faisait (l'état, la chronologie, l'ajout d'un
+      échange) mais passe en carte calme : deux dominantes sur un écran, c'est
+      zéro dominante. `MODULES.md` la place « à gauche » du nuage, comme la
+      fiche DU CLIENT CONCERNÉ — celui du quadrant critique, pas celui dont la
+      santé calculée est la plus basse.
+    */
+    <div className="panel grid grid-cols-1 lg:grid-cols-[1fr_260px]">
       {/* Colonne de gauche : de qui il s'agit, et ce que la fiche pèse. */}
       <div className="flex flex-col gap-6 p-6 sm:p-8">
         <div className="flex items-center gap-4">
@@ -441,7 +842,13 @@ function FicheDominante({
         </div>
 
         <div className="grid grid-cols-2 gap-y-6 sm:grid-cols-4">
-          <Mesure label={tr('hist.clients.facture')} valeur={formatCents(factureCents)} />
+          {/*
+            EN FORME COMPACTE. La fiche a rétréci quand le nuage est devenu
+            l'objet dominant, et « 6 000,00 € » à 23 px débordait sur la
+            mesure voisine — vu sur capture, invisible à la relecture du JSX.
+            Les centimes d'un cumul de facturation ne renseignent personne.
+          */}
+          <Mesure label={tr('hist.clients.facture')} valeur={formatCentsCompact(factureCents)} />
           <Mesure label={tr('hist.clients.devisAcceptes')} valeur={String(devisAcceptes)} filet />
           {detail.factors.map((f) => (
             <Mesure
@@ -502,15 +909,19 @@ function FicheDominante({
           <p className="eyebrow mb-3.5">{tr('hist.clients.echanges')}</p>
           <ul className="flex flex-col gap-3.5">
             {/*
-              L'AMBRE DE L'ÉCRAN, et le seul : ce que ce client doit encore.
-              Le point et le montant disent la même chose au même endroit —
-              d'où le groupe, qui les compte pour un (voir check:signal).
+              CE QUI EST DÛ RESTE EN ENCRE CLAIRE.
+
+              C'était l'ambre de l'écran ; il ne peut plus l'être. `MODULES.md`
+              donne l'ambre au disque du quadrant critique et à son étiquette,
+              et un écran n'a qu'une région ambre. Le fait n'est pas perdu pour
+              autant : il garde son point, son intitulé et son montant — il
+              cesse seulement d'être le sujet de l'écran.
             */}
             {duCents > 0 && (
-              <li className="flex gap-3" data-signal-groupe="a-traiter">
-                <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-signal" aria-hidden />
+              <li className="flex gap-3">
+                <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-[#4a4a48]" aria-hidden />
                 <div className="min-w-0">
-                  <p className="text-[13.5px] font-semibold text-signal">{tr('hist.clients.factureEnAttente')}</p>
+                  <p className="text-[13.5px] font-semibold text-text-primary">{tr('hist.clients.factureEnAttente')}</p>
                   <p className="tnum mt-1 font-mono text-[11px] tracking-[0.1em] text-text-muted">
                     {[echeance ? formatShortDay(echeance) : null, formatCents(duCents)].filter(Boolean).join(' · ')}
                   </p>

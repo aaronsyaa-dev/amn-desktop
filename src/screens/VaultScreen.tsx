@@ -67,10 +67,243 @@ interface EditState {
  * localStorage in the browser — `encrypted` (from useVault) says which, and
  * the browser case is called out explicitly rather than glossed over.
  */
+
+/*
+  ══════════════════════════════════════════════════════════════════════
+  LA PORTE FERMÉE — l'objet qui REFUSE, et ce qu'il refuse vraiment
+  ══════════════════════════════════════════════════════════════════════
+
+  À l'état verrouillé, l'objet dominant n'est pas une liste grisée : c'est une
+  PLAQUE. Une liste grisée montre ce qu'elle protège — les intitulés, leur
+  nombre, leur ordre — et ne refuse que la valeur. Une porte ne montre rien,
+  et c'est la composition qui doit le dire avant le premier mot de texte.
+
+  CE QUE L'ON APPREND SANS OUVRIR : combien de secrets, quand la porte a été
+  ouverte pour la dernière fois, qui a la clé, et les CATÉGORIES en barres —
+  lisibles porte fermée, valeurs jamais.
+
+  CE QUE CETTE PORTE EST, ET L'ÉCRAN LE DIT SANS DÉTOUR. Elle ne chiffre
+  rien : le chiffrement, quand il existe, vient du trousseau du système
+  d'exploitation. Elle empêche un coffre ouvert de rester affiché sur un
+  écran que quelqu'un d'autre regarde, et elle se referme en quittant. La
+  faire passer pour une serrure serait exactement le genre de mensonge
+  qu'un module de secrets ne peut pas se permettre.
+
+  LA CLÉ NE SE RÉCUPÈRE PAS. Il n'y a pas de phrase de passe à perdre — il y
+  a un trousseau de machine, qui ne voyage pas. La conséquence est la même,
+  et l'écran l'écrit : si cette machine disparaît, les secrets aussi.
+*/
+const CADRAN = 160;
+const CADRAN_R = 68;
+const CRANS = 40;
+const CRAN_L = 2;
+const VIS = 7;
+
+/** Le moment de la dernière ouverture, gardé sur ce poste. */
+const CLE_OUVERTURES = 'amn.vault.ouvertures';
+
+function lireOuvertures(): string[] {
+  try {
+    return JSON.parse(window.localStorage.getItem(CLE_OUVERTURES) ?? '[]') as string[];
+  } catch {
+    return [];
+  }
+}
+
+function noterUneOuverture(): void {
+  try {
+    const suite = [new Date().toISOString(), ...lireOuvertures()].slice(0, 60);
+    window.localStorage.setItem(CLE_OUVERTURES, JSON.stringify(suite));
+  } catch {
+    /* Stockage refusé : la porte s'ouvre quand même, et le pied dit « aucune ». */
+  }
+}
+
+function PorteFermee({
+  entries,
+  encrypted,
+  onOuvrir,
+}: {
+  entries: VaultEntry[];
+  encrypted: boolean;
+  onOuvrir: () => void;
+}) {
+  const ouvertures = useMemo(() => lireOuvertures(), []);
+  const derniere = ouvertures[0] ?? null;
+  const QUATORZE = 14 * 86_400_000;
+  const recentes = ouvertures.filter((d) => Date.now() - Date.parse(d) < QUATORZE).length;
+
+  /* LES CATÉGORIES, PORTE FERMÉE. Un compte par catégorie — jamais un
+     intitulé, jamais une valeur. Savoir qu'il y a quatre accès de serveur
+     n'apprend rien sur eux. */
+  const parCategorie = useMemo(() => {
+    const m = new Map<VaultCategory, number>();
+    for (const e of entries) m.set(e.category, (m.get(e.category) ?? 0) + 1);
+    return CATEGORIES.map((c) => ({ ...c, n: m.get(c.value) ?? 0 })).filter((c) => c.n > 0);
+  }, [entries]);
+  const maxCat = Math.max(1, ...parCategorie.map((c) => c.n));
+
+  const centre = CADRAN / 2;
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      {/* ═══ L'OBJET DOMINANT : la plaque, ses vis, son cadran ═══ */}
+      <section
+        className="relative flex flex-col items-center justify-center overflow-hidden p-8 sm:p-10"
+        style={{
+          background: 'linear-gradient(145deg, var(--color-raised), var(--color-sunken))',
+          border: '1px solid var(--color-border-strong)',
+        }}
+      >
+        {/* LES QUATRE VIS — aux angles, comme sur une vraie plaque. */}
+        {[
+          { top: 12, left: 12 },
+          { top: 12, right: 12 },
+          { bottom: 12, left: 12 },
+          { bottom: 12, right: 12 },
+        ].map((coin, i) => (
+          <span
+            key={i}
+            aria-hidden
+            className="absolute rounded-full"
+            style={{
+              ...coin,
+              width: VIS,
+              height: VIS,
+              background: 'var(--color-border-strong)',
+              boxShadow: 'inset 0 1px 0 var(--color-sunken)',
+            }}
+          />
+        ))}
+
+        <p className="eyebrow mb-6 self-start">Le coffre est fermé</p>
+
+        <button
+          type="button"
+          onClick={() => {
+            noterUneOuverture();
+            onOuvrir();
+          }}
+          aria-label="Ouvrir le coffre-fort"
+          className="input-focus relative"
+          style={{ width: CADRAN, height: CADRAN }}
+        >
+          <svg
+            viewBox={`0 0 ${CADRAN} ${CADRAN}`}
+            className="halo-signal block h-full w-full"
+            role="img"
+            aria-label="Cadran de la serrure"
+          >
+            {/* L'ANNEAU À CRANS. La période vient du rayon : changer le rayon
+                garde les quarante crans, exactement comme le cadran du
+                Pomodoro. */}
+            <circle
+              data-signal-groupe="cadran"
+              cx={centre}
+              cy={centre}
+              r={CADRAN_R}
+              fill="none"
+              stroke="var(--color-signal)"
+              strokeWidth={9}
+              strokeDasharray={`${CRAN_L} ${(2 * Math.PI * CADRAN_R) / CRANS - CRAN_L}`}
+            />
+            {/* L'INDEX — le trait qui dit où en est la serrure. */}
+            <line
+              data-signal-groupe="cadran"
+              x1={centre}
+              y1={centre - CADRAN_R + 16}
+              x2={centre}
+              y2={centre - CADRAN_R - 4}
+              stroke="var(--color-signal)"
+              strokeWidth={3}
+            />
+            {/* LE MOYEU. */}
+            <circle data-signal-groupe="cadran" cx={centre} cy={centre} r={13} fill="var(--color-signal)" />
+          </svg>
+        </button>
+
+        <p className="mt-6 max-w-prose text-center text-sm leading-relaxed text-text-body">
+          Ce module refuse de montrer ce qu’il contient tant qu’on ne l’ouvre pas. Cliquez le cadran.
+        </p>
+      </section>
+
+      {/* CE QU'ON APPREND SANS OUVRIR. */}
+      <aside className="panel p-4">
+        <p className="eyebrow mb-3">Sans ouvrir</p>
+        <dl className="flex flex-col gap-2.5">
+          <div>
+            <dt className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Secrets rangés</dt>
+            <dd className="text-[23px] font-semibold tabular-nums leading-tight text-text-primary">{entries.length}</dd>
+          </div>
+          <div>
+            <dt className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Dernière ouverture</dt>
+            <dd className="text-[15px] font-semibold leading-tight text-text-primary">
+              {derniere ? new Date(derniere).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }) : 'Jamais depuis ce poste'}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Qui a la clé</dt>
+            <dd className="text-[13px] leading-relaxed text-text-secondary">
+              {encrypted
+                ? 'Le trousseau de cette machine, et lui seul. Il ne voyage pas.'
+                : 'Personne : ce navigateur n’a pas de trousseau, le contenu est en clair sur ce poste.'}
+            </dd>
+          </div>
+        </dl>
+        <p className="mt-3 border-t border-border pt-3 text-[12px] leading-relaxed text-text-body">
+          Il n’y a pas de phrase de passe à perdre — et rien à récupérer pour autant : si cette machine
+          disparaît, les secrets disparaissent avec elle. La copie de secours, une fois ouverte, est le seul
+          moyen de les sortir d’ici.
+        </p>
+        <p className="mt-3 border-t border-border pt-3 text-[11px] leading-relaxed text-text-muted">
+          Cette porte ne chiffre rien : elle évite qu’un coffre ouvert reste affiché. Elle se referme quand
+          vous quittez l’écran.
+        </p>
+      </aside>
+
+      {/* EN PIED — les catégories en barres, et les ouvertures récentes. */}
+      <section className="panel p-4 lg:col-span-2">
+        <p className="eyebrow mb-3">Ce qu’il y a dedans, en catégories</p>
+        {parCategorie.length === 0 ? (
+          <p className="text-sm leading-relaxed text-text-secondary">
+            Rien n’y est rangé pour l’instant. Ouvrez la porte pour y poser un premier secret.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {parCategorie.map((c) => (
+              <li key={c.value} className="flex items-center gap-3">
+                <span className="w-32 flex-shrink-0 truncate text-sm text-text-primary">{c.label}</span>
+                <span className="flex min-w-0 flex-1 items-center">
+                  <span
+                    className="h-2"
+                    style={{ width: `${(c.n / maxCat) * 100}%`, backgroundColor: 'var(--color-text-body)' }}
+                  />
+                </span>
+                <span className="w-8 flex-shrink-0 text-right font-mono text-[11px] tabular-nums text-text-muted">
+                  {c.n}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-3 border-t border-border pt-3 text-[12px] leading-relaxed text-text-muted">
+          Les catégories se lisent porte fermée ; aucun intitulé et aucune valeur ne s’y lisent.
+          {recentes > 0
+            ? ` Ouvert ${recentes} fois depuis ce poste ces quatorze derniers jours.`
+            : ' Aucune ouverture depuis ce poste ces quatorze derniers jours.'}
+        </p>
+      </section>
+    </div>
+  );
+}
+
 export function VaultScreen() {
   const { entries, encrypted, loading, saveEntry, deleteEntry } = useVault();
   const { scheduleDelete, isPending } = useUndo();
 
+  /* LA PORTE. Fermée à chaque arrivée sur l'écran — un état de session, pas
+     une préférence : une porte qu'on retrouve ouverte n'est pas une porte. */
+  const [ouvert, setOuvert] = useState(false);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -108,12 +341,33 @@ export function VaultScreen() {
     });
   };
 
+  if (!loading && !ouvert) {
+    return (
+      <section className="flex flex-col gap-4">
+        <ScreenHeader
+          eyebrow={tr('hist.surtitre', { module: tr('hist.vault.titre') })}
+          title={tr('hist.vault.titre')}
+          description="Une porte fermée : ce module ne montre pas ce qu’il contient tant qu’on ne l’ouvre pas."
+          stats={[{ label: tr('hist.vault.entrees'), value: entries.length, title: tr('hist.vault.leContenuNeQuitte') }]}
+        />
+        <PorteFermee entries={entries} encrypted={encrypted} onOuvrir={() => setOuvert(true)} />
+      </section>
+    );
+  }
+
   return (
     <section className={`flex flex-col gap-4 ${entries.length === 0 ? '' : 'screen-h'}`}>
       <ScreenHeader
         eyebrow={tr('hist.surtitre', { module: tr('hist.vault.titre') })}
         title={tr('hist.vault.titre')}
-        description={tr('hist.vault.chiffreSurCetteMachine')}
+        description={
+          /* La description DIT CE QUI EST MESURÉ : le bandeau juste en dessous
+             annonce déjà « sans chiffrement » dans un navigateur, et un titre
+             qui promettait le contraire se contredisait à trois lignes près. */
+          encrypted
+            ? tr('hist.vault.chiffreSurCetteMachine')
+            : 'Gardé sur ce poste, en clair : ce navigateur n’a pas de trousseau pour le chiffrer.'
+        }
         stats={[
           {
             label: tr('hist.vault.entrees'),

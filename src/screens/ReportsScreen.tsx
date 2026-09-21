@@ -30,6 +30,71 @@ import { relativeTime } from '../lib/time';
 import { useExclusive, useProductReports } from '@edition/exclusive';
 import { EmptyState } from '../components/EmptyState';
 import { useLangue, t as tr } from '../i18n';
+import { useHaloSignal } from '../components/EtatEcran';
+
+/* ─── LE FIL DE PROVENANCE — l'objet dominant des Rapports (`18b`) ────────── */
+
+/*
+  UN COMPTE RENDU N'EST PAS UN DOCUMENT FIGÉ — SAUF QU'IL L'EST.
+
+  À gauche, ce que le rapport RETIENT de chaque élément qu'il cite : le
+  libellé tel qu'il était le jour où on l'a lié. À droite, la source vivante,
+  telle qu'elle est maintenant. Entre les deux, un fil courbe. Le fil rend
+  visible une dépendance qu'un document ne montre jamais : ce qu'il raconte
+  continue de bouger derrière lui.
+
+  LE FIL SE TERNIT QUAND LA SOURCE VIEILLIT. Plein et clair quand le rapport
+  est du jour ; pointillé gris à mesure qu'il prend de l'âge. Le fil AMBRE est
+  le seul épais — c'est la règle, et c'est ce qui fait qu'on le voit d'abord.
+
+  CE QUE LE MODÈLE PERMET, ET L'ARBITRAGE.
+  `MODULES.md` parle des « chiffres du rapport ». Les rapports de ce produit
+  ne sont pas calculés : ce sont des comptes rendus ÉCRITS, dont les sources
+  sont les fiches qu'ils citent (`ReportLink`). Fabriquer des chiffres en
+  lisant le texte au hasard d'une expression régulière aurait donné une
+  provenance inventée. Le fil porte donc ce qui est vrai : chaque lien, son
+  libellé FIGÉ au moment de l'écriture, et la fiche vivante en face. La règle
+  du module — « un rapport ne se regénère pas tout seul, il garde ce qu'il
+  avait le jour où il a été fait » — est exactement ce que ce libellé figé
+  démontre, et l'écran l'écrit.
+*/
+const FIL_LIGNE_H = 44;
+const FIL_X_PLAQUE = 46;
+const FIL_X_SOURCE = 58;
+/** Au-delà, le fil est pointillé : la source a eu le temps de bouger. */
+const FIL_JOURS_FRAIS = 2;
+
+type EtatDeSource = 'vivante' | 'perdue';
+
+interface FilDeProvenance {
+  cle: string;
+  kind: ReportLink['kind'];
+  /** Ce que le rapport a retenu, le jour où il a été écrit. */
+  fige: string;
+  /** Ce que dit la source maintenant — ou l'absence, si elle a disparu. */
+  vivant: string;
+  etat: EtatDeSource;
+  /** Vrai quand le libellé figé ne correspond plus à la source. */
+  diverge: boolean;
+  jours: number;
+}
+
+const MODULE_DE_LA_SOURCE: Record<ReportLink['kind'], string> = {
+  task: 'Tâches',
+  client: 'Clients',
+  decision: 'Journal de décisions',
+};
+
+/** « 6 semaines », « 3 jours » — l'unité qui se lit, jamais un nombre nu. */
+function depuisCombien(jours: number): string {
+  if (jours <= 0) return 'aujourd’hui';
+  if (jours === 1) return '1 jour';
+  if (jours < 14) return `${jours} jours`;
+  const semaines = Math.round(jours / 7);
+  if (semaines < 9) return `${semaines} semaines`;
+  const mois = Math.round(jours / 30);
+  return `${mois} mois`;
+}
 
 const TYPES: { value: ReportType; label: string }[] = [
   { value: 'task', label: 'Tâche' },
@@ -87,6 +152,11 @@ export function ReportsScreen() {
   // langue active AU MONTAGE et ne suivait pas un changement en cours de route.
   useLangue();
   const { TEAM_ENABLED } = useExclusive();
+  /* Les sources vivantes du fil de provenance (`18b`) — lues ici parce que
+     c'est le dominant qui en a besoin, pas seulement le sélecteur de liens. */
+  const tachesDuFil = useCollection<{ title?: string }>('tasks');
+  const decisionsDuFil = useCollection<{ title?: string }>('decisions');
+  const { clients: clientsDuFil } = useClients();
   const { reports, createReport, updateReport, deleteReport } = useReports();
   const { isPending, scheduleDelete } = useUndo();
   const location = useLocation();
@@ -174,6 +244,77 @@ export function ReportsScreen() {
     [products.entries, selection],
   );
 
+  /*
+    LE RAPPORT LU PAR LE FIL — celui qui est sélectionné, sinon le plus récent
+    qui cite quelque chose. Un rapport sans lien n'a pas de provenance : le
+    fil ne s'invente pas une source pour avoir quelque chose à dessiner.
+  */
+  const rapportDuFil = useMemo(
+    () => selectedReport ?? reports.find((r) => r.links.length > 0) ?? null,
+    [selectedReport, reports],
+  );
+
+  const maintenant = Date.now();
+
+  /*
+    LES FILS. Un par lien : à gauche ce que le rapport a FIGÉ, à droite ce que
+    la source dit maintenant. Une source disparue est un fil qui ne mène plus
+    nulle part — et ça se dessine, plutôt que de se taire.
+  */
+  const fils = useMemo<FilDeProvenance[]>(() => {
+    if (!rapportDuFil) return [];
+    const jours = Math.max(
+      0,
+      Math.floor((maintenant - Date.parse(rapportDuFil.createdAt)) / 86_400_000),
+    );
+    return rapportDuFil.links.map((lien) => {
+      const source =
+        lien.kind === 'task'
+          ? tachesDuFil.find((t) => t.id === lien.id)?.title
+          : lien.kind === 'client'
+            ? clientsDuFil.find((c) => String(c.id) === lien.id)?.name
+            : decisionsDuFil.find((d) => d.id === lien.id)?.title;
+      const vivant = (source ?? '').trim();
+      return {
+        cle: `${lien.kind}:${lien.id}`,
+        kind: lien.kind,
+        fige: lien.label,
+        vivant: vivant || 'Fiche introuvable',
+        etat: vivant ? ('vivante' as const) : ('perdue' as const),
+        diverge: Boolean(vivant) && vivant !== lien.label,
+        jours,
+      };
+    });
+  }, [rapportDuFil, tachesDuFil, clientsDuFil, decisionsDuFil, maintenant]);
+
+  /*
+    LE FIL AMBRE — la source perdue d'abord, sinon celle qui a divergé, sinon
+    rien. C'est la seule chaîne épaisse de l'écran : cinq nœuds (la plaque, sa
+    valeur, son libellé, son fil et la mention sur la source) mais un seul
+    objet, parce que c'est une seule chaîne du chiffre à sa source.
+  */
+  /*
+    LES MODULES CITÉS, dans l'ordre où ils apparaissent. Leur ordonnée est
+    répartie régulièrement sur la hauteur du fil : c'est cette différence de
+    hauteur avec les plaques qui donne au fil sa courbe.
+  */
+  const modulesDuFil = useMemo(() => {
+    const compte = new Map<ReportLink['kind'], number>();
+    for (const f of fils) compte.set(f.kind, (compte.get(f.kind) ?? 0) + 1);
+    return [...compte.entries()].map(([kind, n]) => ({ kind, compte: n }));
+  }, [fils]);
+
+  const hauteurDuFil = Math.max(FIL_LIGNE_H, fils.length * FIL_LIGNE_H);
+  const ordonneeDuModule = (kind: ReportLink['kind']) => {
+    const i = modulesDuFil.findIndex((m) => m.kind === kind);
+    const n = Math.max(1, modulesDuFil.length);
+    return ((i < 0 ? 0 : i) + 0.5) * (hauteurDuFil / n);
+  };
+
+  const filAmbre =
+    fils.find((f) => f.etat === 'perdue') ?? fils.find((f) => f.diverge) ?? null;
+  const haloFil = useHaloSignal(filAmbre !== null);
+
   // Below lg the two panes don't fit side by side, so the screen behaves like a
   // master/detail: the list fills the width until something is picked, then the
   // detail takes over full-screen with a back control. lg+ keeps both columns.
@@ -224,6 +365,183 @@ export function ReportsScreen() {
           <Plus size={16} strokeWidth={2.25} />{tr('hist.reports.nouveauRapport')}</button>
         }
       />
+
+      {/* ── LE FIL DE PROVENANCE — l'objet dominant (`18b`) ──────────────── */}
+      {rapportDuFil && fils.length > 0 && (
+        <section className="panel-raised panel-raised-wide p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
+            <div className="min-w-0">
+              <p className="eyebrow">
+                {typeLabel(rapportDuFil.type)} · écrit {relativeTime(rapportDuFil.createdAt)}
+              </p>
+              <p className="mt-1 truncate text-[19px] font-semibold leading-tight text-text-primary sm:text-[23px]">
+                {rapportDuFil.title || 'Rapport sans titre'}
+              </p>
+            </div>
+            <p className="max-w-xs font-mono text-[9.5px] uppercase leading-[1.7] tracking-[0.18em] text-text-muted">
+              à gauche ce que le rapport a retenu, à droite ce que la source dit
+            </p>
+          </div>
+
+          <div className="relative mt-5 w-full" style={{ height: fils.length * FIL_LIGNE_H }}>
+            {/* LES FILS COURBES. `viewBox` en hauteur de pixels et
+                `preserveAspectRatio="none"` : l'ordonnée de vue est le pixel,
+                donc la courbe part et arrive exactement au centre des lignes
+                qu'elle relie. */}
+            <svg
+              aria-hidden
+              className={`absolute inset-0 h-full w-full ${filAmbre ? haloFil : ''}`}
+              viewBox={`0 0 100 ${fils.length * FIL_LIGNE_H}`}
+              preserveAspectRatio="none"
+            >
+              {fils.map((f, i) => {
+                const signal = filAmbre?.cle === f.cle;
+                const y = i * FIL_LIGNE_H + FIL_LIGNE_H / 2;
+                /*
+                  LE FIL EST COURBE PARCE QUE SES DEUX BOUTS NE SONT PAS À LA
+                  MÊME HAUTEUR : à gauche une ligne par citation, à droite un
+                  bloc par MODULE. Deux citations du même module convergent
+                  donc vers le même point, ce qu'une ligne droite ne saurait
+                  pas montrer. Les points de contrôle sont à mi-chemin en
+                  abscisse et gardent chacun l'ordonnée de son extrémité :
+                  la courbe part et arrive horizontalement.
+                */
+                const yModule = ordonneeDuModule(f.kind);
+                const milieu = (FIL_X_PLAQUE + FIL_X_SOURCE) / 2;
+                return (
+                  <path
+                    key={f.cle}
+                    d={`M ${FIL_X_PLAQUE} ${y} C ${milieu} ${y}, ${milieu} ${yModule}, ${FIL_X_SOURCE} ${yModule}`}
+                    fill="none"
+                    stroke={signal ? 'var(--color-signal)' : 'var(--color-border-strong)'}
+                    /* LE FIL AMBRE EST LE SEUL ÉPAIS : c'est la règle du
+                       module, et c'est ce qui le fait voir avant tout. */
+                    strokeWidth={signal ? 2.5 : 1}
+                    strokeDasharray={signal ? undefined : f.jours > FIL_JOURS_FRAIS ? '3 3' : undefined}
+                    vectorEffect="non-scaling-stroke"
+                    data-signal-groupe={signal ? 'source-perimee' : undefined}
+                  />
+                );
+              })}
+            </svg>
+
+            {fils.map((f, i) => {
+              const signal = filAmbre?.cle === f.cle;
+              return (
+                <React.Fragment key={f.cle}>
+                  {/* LA PLAQUE — ce que le rapport a figé. */}
+                  <div
+                    className={`absolute flex items-center gap-2 border px-3 ${
+                      signal ? `border-signal-line bg-signal-muted ${haloFil}` : 'border-border bg-sunken'
+                    }`}
+                    style={{
+                      top: i * FIL_LIGNE_H + 4,
+                      height: FIL_LIGNE_H - 8,
+                      left: 0,
+                      width: `${FIL_X_PLAQUE}%`,
+                    }}
+                    data-signal-groupe={signal ? 'source-perimee' : undefined}
+                  >
+                    <span
+                      className={`min-w-0 flex-1 truncate text-[13px] ${signal ? 'font-semibold text-signal' : 'text-text-primary'}`}
+                      data-signal-groupe={signal ? 'source-perimee' : undefined}
+                    >
+                      {f.fige}
+                    </span>
+                    <span
+                      className={`max-w-[45%] flex-shrink-0 truncate font-mono text-[9.5px] uppercase tracking-wider ${
+                        f.etat === 'perdue'
+                          ? 'text-danger'
+                          : signal
+                            ? 'text-signal'
+                            : 'text-text-muted'
+                      }`}
+                      data-signal-groupe={signal ? 'source-perimee' : undefined}
+                      title={f.vivant}
+                    >
+                      {f.etat === 'perdue' ? 'fiche effacée' : f.diverge ? `→ ${f.vivant}` : 'à jour'}
+                    </span>
+                  </div>
+
+                </React.Fragment>
+              );
+            })}
+
+            {/* LES SOURCES — un bloc par MODULE, et non par fiche : c'est le
+                module qui produit la donnée, et deux citations du même module
+                convergent vers lui. */}
+            {modulesDuFil.map((m) => {
+              const signal = filAmbre?.kind === m.kind;
+              return (
+                <div
+                  key={m.kind}
+                  className={`absolute flex items-center gap-2 border px-3 ${
+                    signal ? `border-signal-line bg-signal-muted ${haloFil}` : 'border-border bg-raised'
+                  }`}
+                  style={{
+                    top: ordonneeDuModule(m.kind) - (FIL_LIGNE_H - 8) / 2,
+                    height: FIL_LIGNE_H - 8,
+                    left: `${FIL_X_SOURCE}%`,
+                    right: 0,
+                  }}
+                  data-signal-groupe={signal ? 'source-perimee' : undefined}
+                >
+                  <span className="min-w-0 flex-1 truncate font-mono text-[10px] uppercase tracking-[0.12em] text-text-secondary">
+                    {MODULE_DE_LA_SOURCE[m.kind]}
+                  </span>
+                  <span className="tnum flex-shrink-0 font-mono text-[9.5px] uppercase tracking-wider text-text-muted">
+                    {m.compte} citation{m.compte > 1 ? 's' : ''}
+                  </span>
+                  {signal && filAmbre && (
+                    <span
+                      className="signal-plate flex-shrink-0 px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.14em]"
+                      data-signal-groupe="source-perimee"
+                    >
+                      figé depuis {depuisCombien(filAmbre.jours)}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/*
+            SOUS LE FIL — l'explication de l'écart, et la règle du module.
+            Un rapport ne se régénère pas tout seul : le dire est la seule
+            façon d'empêcher qu'on le lise comme un tableau de bord.
+          */}
+          <div className="mt-4 border-t border-border-row pt-3">
+            {filAmbre ? (
+              <p className="text-[12.5px] leading-relaxed text-text-secondary">
+                {filAmbre.etat === 'perdue' ? (
+                  <>
+                    Le rapport cite{' '}
+                    <span className="font-semibold text-text-primary">{filAmbre.fige}</span>, dont la
+                    fiche n’existe plus. Le rapport, lui, l’annoncera toujours : il garde ce qu’il
+                    avait le jour où il a été écrit.
+                  </>
+                ) : (
+                  <>
+                    Le rapport annonce{' '}
+                    <span className="font-semibold text-text-primary">{filAmbre.fige}</span> ; la
+                    source dit maintenant{' '}
+                    <span className="font-semibold text-text-primary">{filAmbre.vivant}</span>. Ce
+                    n’est pas une erreur du rapport : c’est la source qui a bougé depuis.
+                  </>
+                )}
+              </p>
+            ) : (
+              <p className="text-[12.5px] leading-relaxed text-text-secondary">
+                Chaque source dit encore ce que le rapport en a retenu.
+              </p>
+            )}
+            <p className="mt-2 text-[12.5px] leading-relaxed text-text-muted">
+              Un rapport ne se régénère pas tout seul. Il garde le texte et les libellés du jour où
+              il a été fait ; le fil montre ce qui a bougé derrière, il ne le corrige pas.
+            </p>
+          </div>
+        </section>
+      )}
 
       <div className="flex flex-wrap items-center gap-2.5">
         <Segmented
@@ -428,9 +746,11 @@ function ReportReader({
         {report.links.length > 0 && (
           <div className="border-b border-border bg-sunken px-6 py-4">
             <div className="mb-3 flex items-center gap-4">
-              <p className="eyebrow eyebrow-signal flex-shrink-0" data-signal-groupe="provenance">
-                {tr('hist.reports.tireDe')}
-              </p>
+              {/* Ce surtitre portait l'ambre quand la provenance n'était
+                  qu'une bande de jetons. Le fil de provenance est maintenant
+                  l'objet dominant et porte la seule région ambre de l'écran :
+                  ce rappel redescend en matière. */}
+              <p className="eyebrow flex-shrink-0">{tr('hist.reports.tireDe')}</p>
               <span className="h-px flex-1 bg-border-section" aria-hidden />
               {/* Pourquoi les libellés ne bougent plus : `ReportLink.label` est
                   une copie prise au moment du lien. Renommer la fiche d'origine

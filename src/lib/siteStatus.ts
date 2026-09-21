@@ -10,8 +10,14 @@ export type DerivedStatus = 'unknown' | 'online' | 'degraded' | 'offline';
  * the site probably isn't up; a recent critical/warning alert on an
  * otherwise-live site means "up, but something's wrong".
  */
-const OFFLINE_AFTER_MS = 90_000; // ~3x the tracker's default 30s heartbeat
-const DEGRADED_ALERT_WINDOW_MS = 15 * 60_000;
+/**
+ * Exportés parce que la bande des sites (module interne `30b`) TRACE ce seuil
+ * sur sa règle et en déduit toute son échelle. Une valeur recopiée dans
+ * l'écran et une autre ici finiraient par diverger, et l'axe annoncerait alors
+ * un seuil que la dérivation n'emploie pas.
+ */
+export const OFFLINE_AFTER_MS = 90_000; // ~3x the tracker's default 30s heartbeat
+export const DEGRADED_ALERT_WINDOW_MS = 15 * 60_000;
 
 export function deriveSiteStatus(
   state: RemoteSiteState | null | undefined,
