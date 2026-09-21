@@ -117,6 +117,7 @@ const ECRANS_INTERNE = [
   ['Parc · Supervision', '#/supervision'],
   ['Sites', '#/sites'],
   ['Trackers', '#/tracker'],
+  ['Maturité SOC', '#/maturite-soc'],
 ];
 
 const ECRANS = [
