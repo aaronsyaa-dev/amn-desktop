@@ -9,6 +9,7 @@ import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
 import type { AdminOrganization, OrgPulse, ParcInsights } from '../shared/api';
 import { echantillonParc } from '../lib/parcEchantillon';
+import { CarteDeChaleur } from '../components/parc/CarteDeChaleur';
 
 interface Ligne {
   org: AdminOrganization;
@@ -97,6 +98,10 @@ export function OrgCompareScreen() {
       {etat === 'chargement' && <motion.p variants={staggerItem} className="flex items-center gap-2 text-sm text-text-muted"><Loader2 size={14} className="animate-spin" /> {t('parcSup.lecture')}</motion.p>}
       {etat === 'echec' && <motion.p variants={staggerItem} role="alert" className="text-sm text-danger">{t('parcSup.echec')}</motion.p>}
       {etat === 'pret' && lignes.length === 0 && <motion.div variants={staggerItem}><FirstRun title={t('comparatif.vide.titre')}>{t('comparatif.vide.texte')}</FirstRun></motion.div>}
+      {/* L'objet de l'écran : les BANDES. Le tableau triable reste dessous, pour lire une valeur précise. */}
+      {etat === 'pret' && lignes.length > 0 && (
+        <motion.div variants={staggerItem}><CarteDeChaleur /></motion.div>
+      )}
       {etat === 'pret' && lignes.length > 0 && (
         <motion.div variants={staggerItem} className="overflow-x-auto rounded-xl border border-border bg-surface">
           <table className="w-full min-w-[56rem] border-collapse text-sm">

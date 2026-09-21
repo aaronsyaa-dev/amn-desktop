@@ -118,6 +118,7 @@ const ECRANS_INTERNE = [
   ['Sites', '#/sites'],
   ['Trackers', '#/tracker'],
   ['Maturité SOC', '#/maturite-soc'],
+  ['Comparatif clientes', '#/comparatif'],
 ];
 
 const ECRANS = [
