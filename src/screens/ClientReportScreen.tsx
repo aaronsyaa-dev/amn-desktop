@@ -1,25 +1,16 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Copy, Loader2, Printer } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FirstRun } from '../components/EmptyState';
 import { bridge } from '../lib/bridge';
-import { lireMaturite, SIGNAUX, type Maturite, type Signal } from '../lib/maturiteSoc';
-import { relativeTime } from '../lib/time';
+import { lireMaturite, type Signal } from '../lib/maturiteSoc';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
-import type { AdminOrganization, AdminOrgUser, InputAlert, ModuleRequestForOperator, OrgPulse, SupportRequestForOperator } from '../shared/api';
+import type { AdminOrganization, AdminOrgUser, InputAlert, ModuleRequestForOperator, OrgPulse, ParcInsights, SupportRequestForOperator } from '../shared/api';
 import { echantillonParc } from '../lib/parcEchantillon';
-
-interface Dossier {
-  org: AdminOrganization;
-  membres: AdminOrgUser[];
-  pouls: OrgPulse | null;
-  support: SupportRequestForOperator[];
-  maturite: Maturite;
-  entrees30: number;
-  catalogue: Map<string, string>;
-}
+import { DosDuRapport } from '../components/parc/DosDuRapport';
+import { markdownDuRapport, sectionsDuRapport, type Dossier } from '../lib/rapportClient';
 
 /**
  * LE RAPPORT CLIENT ENRICHI — tout ce qu'on sait d'une cliente, en une page.
@@ -39,6 +30,8 @@ export function ClientReportScreen() {
   const [dossier, setDossier] = useState<Dossier | null>(null);
   const [etat, setEtat] = useState<'chargement' | 'pret' | 'echec'>('chargement');
   const [copie, setCopie] = useState(false);
+  /* Les sections retenues. Le tableau décide de celles qui partent décochées ; l'opérateur décide ensuite. */
+  const [choisies, setChoisies] = useState<Set<string> | null>(null);
 
   useEffect(() => {
     echantillonParc().then((liste) => {
@@ -61,12 +54,15 @@ export function ClientReportScreen() {
       admin.inputAlerts({ orgId, limit: 500 }),
       admin.moduleRequests('pending'),
       bridge().remote.modules.catalogue().catch(() => []),
-    ]).then(([membres, pouls, support, entrees, modules, catalogue]) => {
+      admin.insights().catch(() => null),
+    ]).then(([membres, pouls, support, entrees, modules, catalogue, insights]) => {
       if (!vivant) return;
       const org = orgs.find((o) => o.id === orgId);
       if (!org) return;
       const trenteJours = new Date(Date.now() - 30 * 86_400_000).toISOString();
       const dOrg = (support as SupportRequestForOperator[]).filter((s) => s.orgId === orgId);
+      const parId = new Map(((insights as ParcInsights | null)?.orgs ?? []).map((o) => [o.id, o]));
+      const series = [...parId.values()].map((o) => o.records7d).sort((a, b) => a - b);
       setDossier({
         org,
         membres: membres as AdminOrgUser[],
@@ -75,43 +71,63 @@ export function ClientReportScreen() {
         maturite: lireMaturite(org, pouls as OrgPulse | null, entrees as InputAlert[], dOrg, modules as ModuleRequestForOperator[]),
         entrees30: (entrees as InputAlert[]).filter((e) => e.createdAt >= trenteJours).length,
         catalogue: new Map((catalogue as { key: string; label: string }[]).map((m) => [m.key, m.label])),
+        /*
+          LA POSITION DANS LE PARC, SANS NOMMER PERSONNE. `insights` rend les
+          écritures de sept jours de CHAQUE organisation en un appel : la
+          médiane se calcule donc sur des chiffres réels, et la section ne
+          publie que des positions, jamais un nom.
+        */
+        parc: {
+          clientes: series.length,
+          ecrituresMediane7j: series.length > 0 ? series[Math.floor(series.length / 2)] : 0,
+          ecritures7j: parId.get(orgId)?.records7d ?? 0,
+        },
       });
     }).catch(() => { if (vivant) setEtat('echec'); });
     return () => { vivant = false; };
   }, [orgId, orgs]);
 
-  const signal = (s: Signal) => t(`maturite.signal.${s}` as Parameters<typeof t>[0]);
-  const date = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }) : '—');
-  const modulesOuverts = useMemo(() => {
-    if (!dossier) return [];
-    if (!dossier.org.modules) return [t('rapportClient.tousModules')];
-    return dossier.org.modules.map((k) => dossier.catalogue.get(k) ?? k);
-  }, [dossier, t]);
+  const signal = useCallback((s: Signal) => t(`maturite.signal.${s}` as Parameters<typeof t>[0]), [t]);
+  const date = useCallback((iso: string | null) => (iso ? new Date(iso).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }) : '—'), [locale]);
 
-  const markdown = () => {
-    if (!dossier) return '';
-    const p = dossier.pouls;
-    const lignes = [
-      `# ${dossier.org.name}`,
-      '',
-      `- ${t('rapportClient.formule')} : ${t(`comparatif.formule.${dossier.org.plan}` as Parameters<typeof t>[0])}`,
-      `- ${t('rapportClient.depuis')} : ${date(dossier.org.createdAt)}`,
-      `- ${t('rapportClient.membres')} : ${dossier.membres.filter((m) => m.status === 'active').length}/${dossier.membres.length}${dossier.org.seats ? ` (${dossier.org.seats} ${t('rapportClient.places')})` : ''}`,
-      `- ${t('rapportClient.modules')} : ${modulesOuverts.join(', ')}`,
-      '',
-      `## ${t('rapportClient.activite')}`,
-      `- ${t('rapportClient.joursActifs')} : ${p?.activeDaysLast30 ?? 0}/30`,
-      `- ${t('rapportClient.enregistrements')} : ${p?.records.last7Days ?? 0} / ${p?.records.last30Days ?? 0}`,
-      `- ${t('rapportClient.sites')} : ${p?.sites.online ?? 0}/${p?.sites.total ?? 0}`,
-      `- ${t('rapportClient.critiques')} : ${p?.events.critical7Days ?? 0}`,
-      `- ${t('rapportClient.support')} : ${dossier.support.filter((s) => s.status === 'pending').length} ${t('rapportClient.enAttente')}, ${dossier.support.length} ${t('rapportClient.enTout')}`,
-      `- ${t('rapportClient.entrees')} : ${dossier.entrees30}`,
-      '',
-      `## ${t('maturite.titre')} — ${t(`maturite.niveau.${dossier.maturite.niveau}` as Parameters<typeof t>[0])} (${dossier.maturite.verts}/6)`,
-      ...dossier.maturite.lectures.map((l) => `- ${l.ok ? '✓' : '✗'} ${signal(l.signal)} (${l.valeur})`),
-    ];
-    return lignes.join('\n');
-  };
+  /*
+    UN SEUL TABLEAU. Le sommaire, le dos et le Markdown lisent `sections` :
+    c'est ce qui garantit que la hauteur d'un segment est bien le poids de ce
+    que la section écrit, et qu'aucune section ne puisse exister d'un côté sans
+    l'autre.
+  */
+  const sections = useMemo(() => (dossier ? sectionsDuRapport(dossier, {
+    identite: t('rapportClient.identite'),
+    formule: t('rapportClient.formule'),
+    depuis: t('rapportClient.depuis'),
+    membres: t('rapportClient.membres'),
+    places: t('rapportClient.places'),
+    derniereActivite: t('rapportClient.derniereActivite'),
+    modules: t('rapportClient.modules'),
+    tousModules: t('rapportClient.tousModules'),
+    activite: t('rapportClient.activite'),
+    joursActifs: t('rapportClient.joursActifs'),
+    enregistrements: t('rapportClient.enregistrements'),
+    sites: t('rapportClient.sites'),
+    critiques: t('rapportClient.critiques'),
+    support: t('rapportClient.support'),
+    enAttente: t('rapportClient.enAttente'),
+    enTout: t('rapportClient.enTout'),
+    entrees: t('rapportClient.entrees'),
+    maturite: t('maturite.titre'),
+    nomDuSignal: (x: string) => signal(x as Signal),
+    formuleDe: (plan: string) => t(`comparatif.formule.${plan}` as Parameters<typeof t>[0]),
+    date,
+  }) : []), [dossier, t, signal, date]);
+
+  /* Les décochées par défaut viennent du tableau, une seule fois par cliente ouverte. */
+  const retenues = useMemo(() => choisies ?? new Set(sections.filter((x) => !x.parDefautDecochee).map((x) => x.cle)), [choisies, sections]);
+  const basculer = (cle: string) => setChoisies(new Set(
+    retenues.has(cle) ? [...retenues].filter((c) => c !== cle) : [...retenues, cle],
+  ));
+
+  const markdown = () => (dossier ? markdownDuRapport(dossier.org.name, sections, retenues) : '');
+
   const copier = async () => {
     try {
       await navigator.clipboard.writeText(markdown());
@@ -153,40 +169,26 @@ export function ClientReportScreen() {
       {etat === 'pret' && orgs.length === 0 && <motion.div variants={staggerItem}><FirstRun title={t('rapportClient.vide.titre')}>{t('rapportClient.vide.texte')}</FirstRun></motion.div>}
       {orgId && !dossier && etat !== 'echec' && <motion.p variants={staggerItem} className="flex items-center gap-2 text-sm text-text-muted"><Loader2 size={14} className="animate-spin" /> {t('parcSup.lecture')}</motion.p>}
       {dossier && (
-        <motion.article variants={staggerItem} className="grid gap-4 rounded-xl border border-border bg-surface p-5 print:border-0 md:grid-cols-2">
-          <section className="md:col-span-2">
-            <p className="eyebrow">{t('rapportClient.identite')}</p>
-            <h2 className="mt-1 text-xl font-bold tracking-tight text-text-primary">{dossier.org.name}</h2>
-            <dl className="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-              <div className="flex justify-between gap-3"><dt className="text-text-muted">{t('rapportClient.formule')}</dt><dd className="text-text-primary">{t(`comparatif.formule.${dossier.org.plan}` as Parameters<typeof t>[0])}</dd></div>
-              <div className="flex justify-between gap-3"><dt className="text-text-muted">{t('rapportClient.depuis')}</dt><dd className="text-text-primary">{date(dossier.org.createdAt)}</dd></div>
-              <div className="flex justify-between gap-3"><dt className="text-text-muted">{t('rapportClient.membres')}</dt><dd className="tnum text-text-primary">{dossier.membres.filter((m) => m.status === 'active').length}/{dossier.membres.length}{dossier.org.seats ? ` · ${dossier.org.seats} ${t('rapportClient.places')}` : ''}</dd></div>
-              <div className="flex justify-between gap-3"><dt className="text-text-muted">{t('rapportClient.derniereActivite')}</dt><dd className="text-text-primary">{dossier.org.lastActivityAt ? relativeTime(dossier.org.lastActivityAt) : '—'}</dd></div>
-            </dl>
-            <p className="mt-2 text-xs text-text-muted">{t('rapportClient.modules')} : <span className="text-text-secondary">{modulesOuverts.join(', ')}</span></p>
-          </section>
-          <section>
-            <p className="eyebrow">{t('rapportClient.activite')}</p>
-            <dl className="mt-2 flex flex-col divide-y divide-border text-sm">
-              {[
-                [t('rapportClient.joursActifs'), `${dossier.pouls?.activeDaysLast30 ?? 0}/30`],
-                [t('rapportClient.enregistrements'), `${dossier.pouls?.records.last7Days ?? 0} / ${dossier.pouls?.records.last30Days ?? 0}`],
-                [t('rapportClient.sites'), `${dossier.pouls?.sites.online ?? 0}/${dossier.pouls?.sites.total ?? 0}`],
-                [t('rapportClient.critiques'), String(dossier.pouls?.events.critical7Days ?? 0)],
-                [t('rapportClient.support'), `${dossier.support.filter((s) => s.status === 'pending').length} ${t('rapportClient.enAttente')} · ${dossier.support.length} ${t('rapportClient.enTout')}`],
-                [t('rapportClient.entrees'), String(dossier.entrees30)],
-              ].map(([k, v]) => <div key={k} className="flex justify-between gap-3 py-1.5"><dt className="text-text-muted">{k}</dt><dd className="tnum text-text-primary">{v}</dd></div>)}
-            </dl>
-            {dossier.pouls && dossier.pouls.byCollection.length > 0 && (
-              <p className="mt-2 text-xs text-text-muted">{t('rapportClient.collections')} : {[...dossier.pouls.byCollection].sort((a, b) => b.count - a.count).slice(0, 5).map((c) => `${c.collection} (${c.count})`).join(', ')}</p>
-            )}
-          </section>
-          <section>
-            <p className="eyebrow">{t('maturite.titre')} · {t(`maturite.niveau.${dossier.maturite.niveau}` as Parameters<typeof t>[0])} · {dossier.maturite.verts}/6</p>
-            <ul className="mt-2 flex flex-col divide-y divide-border text-sm">
-              {SIGNAUX.map((s) => { const l = dossier.maturite.lectures.find((x) => x.signal === s); return l ? <li key={s} className="flex justify-between gap-3 py-1.5"><span className={l.ok ? 'text-text-primary' : 'text-warning'}>{l.ok ? '✓' : '✗'} {signal(s)}</span><span className="tnum text-text-secondary">{l.valeur}</span></li> : null; })}
-            </ul>
-          </section>
+        <motion.div variants={staggerItem} className="print:hidden">
+          <DosDuRapport sections={sections} choisies={retenues} onBasculer={basculer} />
+        </motion.div>
+      )}
+      {dossier && (
+        <motion.article variants={staggerItem} className="grid gap-5 rounded-xl border border-border bg-surface p-5 print:border-0 md:grid-cols-2">
+          <h2 className="text-xl font-bold tracking-tight text-text-primary md:col-span-2">{dossier.org.name}</h2>
+          {sections.filter((x) => x.obligatoire || retenues.has(x.cle)).map((x) => (
+            <section key={x.cle} className={x.lignes.length > 6 ? 'md:col-span-2' : undefined}>
+              <p className="eyebrow">{x.titre}</p>
+              <dl className="mt-2 flex flex-col divide-y divide-border text-sm">
+                {x.lignes.map((l) => (
+                  <div key={`${l.k}${l.v}`} className="flex justify-between gap-3 py-1.5">
+                    <dt className="min-w-0 truncate text-text-muted">{l.k}</dt>
+                    <dd className="tnum flex-none text-text-primary">{l.v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          ))}
         </motion.article>
       )}
     </motion.section>

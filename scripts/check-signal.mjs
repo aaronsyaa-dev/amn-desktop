@@ -120,6 +120,7 @@ const ECRANS_INTERNE = [
   ['Maturité SOC', '#/maturite-soc'],
   ['Comparatif clientes', '#/comparatif'],
   ['Alertes personnalisées', '#/alertes-personnalisees'],
+  ['Rapport client enrichi', '#/rapport-client'],
 ];
 
 const ECRANS = [
