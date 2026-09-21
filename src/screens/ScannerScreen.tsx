@@ -5,6 +5,7 @@ import { AlertTriangle, ChevronDown, Clock, Loader2, ScanLine } from 'lucide-rea
 import { bridge } from '../lib/bridge';
 import { useSync } from '../state/SyncContext';
 import { ScanDetail } from '../components/scanner/ScanDetail';
+import { BalayageDuScan } from '../components/scanner/BalayageDuScan';
 import { ScheduleControl } from '../components/ScheduleControl';
 import { TIER_BLURB, TIER_LABEL, scoreColor } from '../lib/scanSeverity';
 import { relativeTime } from '../lib/time';
@@ -46,6 +47,20 @@ export function ScannerScreen() {
   useEffect(() => {
     if (configured) void refreshHistory();
   }, [configured, refreshHistory]);
+
+  /*
+    LE DERNIER SCAN S'OUVRE SEUL. L'objet de cet écran est l'analyse au travail
+    et son verdict : arriver sur un formulaire vide obligeait à cliquer une
+    ligne d'historique pour voir quoi que ce soit, et le balayage n'était jamais
+    là quand on ouvrait l'écran. Le choix de l'opérateur, lui, n'est jamais
+    écrasé : la sélection ne se pose qu'une fois, tant qu'il n'a rien choisi.
+  */
+  useEffect(() => {
+    if (selected || busy || history.length === 0) return;
+    const dernier = history.find((s) => s.status === 'done');
+    if (dernier) void openScan(dernier);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history]);
 
   // Live progress. Subscribing unconditionally keeps the hook order stable;
   // frames for other scans are filtered by id below.
@@ -201,6 +216,9 @@ export function ScannerScreen() {
           </div>
         </section>
       )}
+
+      {/* L'objet de l'écran : l'analyse au travail, et son verdict. */}
+      <BalayageDuScan scan={selected} progress={progress} />
 
       {/* ------------------------------ Results ------------------------------ */}
       {selected && (
