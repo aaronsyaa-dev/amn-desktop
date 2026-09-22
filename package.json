@@ -79,6 +79,7 @@
     "icons": "node scripts/build-icons.mjs",
     "check:signal": "node scripts/check-signal.mjs",
     "check:coquille": "node scripts/check-coquille.mjs",
+    "check:appels": "node scripts/check-appels.mjs",
     "captures:design": "node scripts/captures-design.mjs"
   },
   "keywords": [],

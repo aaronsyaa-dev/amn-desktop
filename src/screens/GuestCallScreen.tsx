@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { serveursIce, phraseEchecConnexion } from '../lib/serveursIce';
 import { motion } from 'framer-motion';
 import { Loader2, Mic, MicOff, PhoneOff, Phone } from 'lucide-react';
 
@@ -33,10 +34,15 @@ import { Loader2, Mic, MicOff, PhoneOff, Phone } from 'lucide-react';
  * et décroche. L'inverse — l'hôte appelle une page qui n'est pas encore
  * ouverte — n'aurait personne à joindre.
  */
+/** Sans voie audio au bout de ce délai, on le dit au lieu de faire attendre. */
+const DELAI_CONNEXION_MS = 20_000;
 
-const STUN_SERVERS: RTCIceServer[] = [
-  { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
-];
+/*
+  Les serveurs ICE viennent de `lib/serveursIce.ts`, partagé avec l'appel entre
+  comptes. La liste était écrite ici une SECONDE fois : un TURN ajouté à l'autre
+  copie aurait donné un produit où l'appel entre collègues passe et l'appel avec
+  un visiteur non — or c'est ce chemin-ci que prend un téléphone.
+*/
 
 type Phase =
   | 'checking'
@@ -68,6 +74,7 @@ export function GuestCallScreen() {
 
   const socketRef = useRef<WebSocket | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
+  const delaiConnexionRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const callIdRef = useRef('');
@@ -79,6 +86,13 @@ export function GuestCallScreen() {
     if (tickRef.current) {
       clearInterval(tickRef.current);
       tickRef.current = null;
+    }
+    /* Le délai de connexion meurt avec l'appel : sans ça, il se déclencherait
+       après un raccrochage normal et réécrirait un message d'échec par-dessus
+       « Appel terminé ». */
+    if (delaiConnexionRef.current) {
+      clearTimeout(delaiConnexionRef.current);
+      delaiConnexionRef.current = null;
     }
     // Le micro est coupé explicitement : une piste laissée vivante garde la
     // pastille d'enregistrement allumée dans le navigateur, ce qui est au mieux
@@ -173,7 +187,7 @@ export function GuestCallScreen() {
       }
     };
 
-    const pc = new RTCPeerConnection({ iceServers: STUN_SERVERS });
+    const pc = new RTCPeerConnection({ iceServers: serveursIce() });
     pcRef.current = pc;
     for (const track of stream.getTracks()) pc.addTrack(track, stream);
 
@@ -189,23 +203,61 @@ export function GuestCallScreen() {
     };
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'connected') {
+        if (delaiConnexionRef.current) {
+          clearTimeout(delaiConnexionRef.current);
+          delaiConnexionRef.current = null;
+        }
         setPhase('active');
         if (!tickRef.current) {
           tickRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
         }
       }
+      /*
+        `disconnected` ET `closed` étaient ignorés ici, alors que l'appel entre
+        comptes les traite (voir CallContext). Un visiteur dont la voie retombe
+        restait donc sur « Connexion… » jusqu'à ce qu'il ferme l'onglet :
+        l'écran ne disait plus rien de vrai.
+      */
       if (pc.connectionState === 'failed') {
-        teardown('La connexion n’a pas pu s’établir. Votre réseau la bloque peut-être.');
+        teardown(phraseEchecConnexion());
+      } else if (pc.connectionState === 'disconnected' || pc.connectionState === 'closed') {
+        if (pcRef.current === pc) teardown('Appel interrompu.');
       }
     };
 
-    socket.onopen = async () => {
-      const offer = await pc.createOffer({ offerToReceiveAudio: true });
-      await pc.setLocalDescription(offer);
-      send('offer', offer);
+    /*
+      LE DÉLAI DE CONNEXION — il manquait, et c'est ce qui faisait « planter ».
+
+      L'appel entre comptes coupe après CONNECT_TIMEOUT_MS sans voie audio.
+      Ici, rien : ICE peut rester en `checking` indéfiniment sans jamais passer
+      par `failed`, et c'est précisément ce qui arrive entre deux réseaux quand
+      aucun candidat ne peut aboutir. Le visiteur voyait « Connexion… » sans fin
+      — un écran figé, qu'on décrit à raison comme un plantage.
+    */
+    delaiConnexionRef.current = setTimeout(() => {
+      if (pc.connectionState !== 'connected') teardown(phraseEchecConnexion());
+    }, DELAI_CONNEXION_MS);
+
+    /*
+      Un gestionnaire d'événement `async` dont la promesse rejette produit un
+      « unhandled rejection » que rien n'attrape — ni try/catch appelant, ni
+      ErrorBoundary React. On enferme donc le corps : si l'offre ne se fabrique
+      pas, l'écran le DIT au lieu de rester sur une phase qui n'avancera plus.
+    */
+    socket.onopen = () => {
+      void (async () => {
+        try {
+          const offer = await pc.createOffer({ offerToReceiveAudio: true });
+          await pc.setLocalDescription(offer);
+          send('offer', offer);
+        } catch {
+          teardown('L’appel n’a pas pu être établi.');
+        }
+      })();
     };
 
-    socket.onmessage = async (event) => {
+    socket.onmessage = (event) => {
+      void (async () => {
       let msg: { type?: string; kind?: string; callId?: string; payload?: unknown };
       try {
         msg = JSON.parse(String(event.data));
@@ -236,6 +288,7 @@ export function GuestCallScreen() {
         return;
       }
       if (msg.kind === 'hangup') teardown('Appel terminé.');
+      })();
     };
 
     socket.onclose = (event) => {

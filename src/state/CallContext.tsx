@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { serveursIce, phraseEchecConnexion } from '../lib/serveursIce';
 import { bridge } from '../lib/bridge';
 import { useAuth } from '../auth/AuthContext';
 import type { CallSignal, CallSignalKind, RemoteInputEvent } from '../shared/api';
@@ -19,15 +20,19 @@ import { useSync, uid } from './SyncContext';
  * answer / ICE) between two sockets of the same organization — it never sees
  * the audio, and the SDP it carries is opaque to it.
  *
- * V1 uses public STUN only, no TURN. That covers the common case (both peers
- * behind ordinary NAT) and fails honestly when it doesn't: after
- * CONNECT_TIMEOUT_MS without a connected ICE state the call ends with a clear
- * message rather than hanging on a silent line.
+ * Les serveurs ICE ne sont plus écrits ici : ils viennent de
+ * `lib/serveursIce.ts`, partagé avec l'appel visiteur (`GuestCallScreen`). La
+ * liste vivait en deux exemplaires, et un TURN ajouté à l'un des deux aurait
+ * donné un produit où l'appel entre collègues passe et l'appel avec un
+ * visiteur non.
+ *
+ * Tant qu'aucun TURN n'est configuré, on n'a que des STUN publics : deux pairs
+ * derrière un NAT ordinaire s'atteignent, un téléphone en données mobiles et
+ * un poste en wifi NON — le CGNAT de l'opérateur est un NAT symétrique, et
+ * STUN n'y peut rien. L'échec reste honnête (CONNECT_TIMEOUT_MS puis une
+ * phrase claire) et la phrase, elle, dit maintenant laquelle des deux
+ * situations on est en train de vivre.
  */
-
-const STUN_SERVERS: RTCIceServer[] = [
-  { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
-];
 
 /** How long an unanswered call rings before giving up. */
 const RING_TIMEOUT_MS = 35_000;
@@ -370,7 +375,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       localStreamRef.current = stream;
 
-      const pc = new RTCPeerConnection({ iceServers: STUN_SERVERS });
+      const pc = new RTCPeerConnection({ iceServers: serveursIce() });
       pcRef.current = pc;
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
@@ -444,8 +449,9 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
             );
           }
         } else if (s === 'failed') {
-          // No TURN in V1: a symmetric-NAT pair lands here. Say so plainly.
-          teardown('Connexion audio impossible entre les deux postes.');
+          /* Sans relais, une paire derrière un NAT symétrique atterrit ici.
+             La phrase le dit, plutôt que d'accuser le réseau d'en face. */
+          teardown(phraseEchecConnexion());
         } else if (s === 'disconnected' || s === 'closed') {
           if (pcRef.current === pc) teardown('Appel interrompu.');
         }
@@ -548,7 +554,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     }
 
     connectTimerRef.current = setTimeout(
-      () => teardown('Connexion audio impossible entre les deux postes.'),
+      () => teardown(phraseEchecConnexion()),
       CONNECT_TIMEOUT_MS,
     );
   }, [preparePeer, send, teardown]);
@@ -812,7 +818,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           })
           .catch(() => teardown("L'appel n'a pas pu être établi."));
         connectTimerRef.current = setTimeout(
-          () => teardown('Connexion audio impossible entre les deux postes.'),
+          () => teardown(phraseEchecConnexion()),
           CONNECT_TIMEOUT_MS,
         );
       } else if (signal.kind === 'ice') {
