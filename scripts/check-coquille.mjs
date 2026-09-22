@@ -289,6 +289,30 @@ async function mesurer(page) {
       surtitre: px(
         getComputedStyle(coquille.querySelector('[data-rail-surtitre]')).paddingBottom,
       ),
+      /*
+        LA FAMILLE OUVERTE CONTIENT-ELLE LE MODULE COURANT ?
+
+        C'est la règle « aucun cas ne retombe sur un défaut », rendue
+        mesurable : la ligne qui porte `aria-current="page"` doit être DANS le
+        panneau — c'est-à-dire que la famille ouverte est bien celle du module
+        où l'on est, et non la première de la liste faute de mieux. Une ligne
+        épinglée courante compte aussi : sa famille doit quand même être celle
+        qui s'ouvre.
+      */
+      familleOuverteEstLaBonne: (() => {
+        const courant = coquille.querySelector('[data-rail-ligne][aria-current="page"]');
+        if (courant) return true;
+        /* Le module courant est épinglé : sa ligne de panneau n'est pas
+           marquée `aria-current` (la plaque est en haut), on la retrouve par
+           son href. */
+        const epingle = coquille.querySelector('[data-rail-epingle][aria-current="page"]');
+        if (!epingle) return null; /* aucun module courant : hors catalogue */
+        const href = epingle.getAttribute('href');
+        return [...lignes.querySelectorAll('[data-rail-ligne]')].some(
+          (l) => l.getAttribute('href') === href,
+        );
+      })(),
+      famille: coquille.querySelector('[data-rail-tuile][data-ouverte]')?.dataset.famille ?? null,
       n: Number(lignes.dataset.modules),
       hauteurLignes: px(lignes.getBoundingClientRect().height),
       rangs,
@@ -347,6 +371,16 @@ function juger(nom, m) {
   }
   const ouvertes = m.tuiles.filter((t) => t.ouverte).length;
   if (ouvertes !== 1) dire('familles ouvertes', 1, ouvertes);
+  if (m.familleOuverteEstLaBonne === false) {
+    f.push(
+      `${nom} · la famille ouverte (« ${m.famille} ») ne contient pas le module courant : la colonne est retombée sur un défaut au lieu d'ouvrir la vraie famille.`,
+    );
+  }
+  if (m.familleOuverteEstLaBonne === null) {
+    f.push(
+      `${nom} · aucun module courant dans la colonne : cet écran n'est atteignable par aucune ligne, ou la règle du préfixe le plus long l'a manqué.`,
+    );
+  }
 
   /* 5 · 27n + 8, et ce qui la rend vraie. */
   const attendue = 27 * m.n + 8;

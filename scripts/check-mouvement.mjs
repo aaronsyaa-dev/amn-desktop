@@ -70,6 +70,7 @@ if (!EMAIL || !MOT_DE_PASSE) {
 }
 
 const { chromium } = await import('playwright-core');
+const { routesDeLaCoquille } = await import('./lib/routes-coquille.mjs');
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
 const nav = await chromium.launch({ executablePath: CHROMIUM, args: ['--no-sandbox'] });
 
@@ -92,9 +93,9 @@ async function mesurer(preference) {
   }
   await attendre(2000);
 
-  const routes = await page.evaluate(() => [
-    ...new Set([...document.querySelectorAll('a[href^="#/"]')].map((a) => a.getAttribute('href'))),
-  ]);
+  /* Par `routesDeLaCoquille` : les tuiles du rail sont des boutons, la page
+     telle quelle ne montre que la famille ouverte. */
+  const routes = await routesDeLaCoquille(page, attendre);
   if (routes.length === 0) {
     await ctx.close();
     throw new Error('aucune route trouvée dans la navigation');

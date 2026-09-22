@@ -159,6 +159,25 @@ export const HAUTEUR_LIGNE = 26;
 export const INTERLIGNE = 1;
 /** La respiration sous le surtitre. Le « 8 » de `27n + 8`, moins l'interligne. */
 export const RESPIRATION = 9;
+/**
+ * L'ÉCART ENTRE DEUX TUILES — 8 px, où le paquet de design en donne 5.
+ *
+ * Écart assumé, et mesuré. `check:cibles` a compté 88 occurrences : une tuile
+ * de 38 px est sous les 44 px d'une cible confortable, et sous 44 px la règle
+ * du dépôt (`docs/PRINCIPE-CONFORT.md`) demande 8 px de dégagement. À 5 px, on
+ * vise juste ou on ouvre la famille d'à côté — douze fois dans une colonne de
+ * 52 px de large, sur les 94 modules des deux éditions.
+ *
+ * Ce qui change est le seul nombre que le paquet ne donne pas comme mesurable :
+ * la gouttière VERTICALE du rail. Les quatre qu'il donne — rail 52,
+ * panneau 184, tuile 38 × 38, famille `27n + 8` — sont intacts, et
+ * `check:coquille` les mesure tous. Le rail passe de 535 à 568 px de haut pour
+ * douze familles ; il défile déjà, et rien d'autre ne bouge.
+ *
+ * Le paquet a raison sur la forme, le dépôt sur le geste. Les deux tiennent
+ * ensemble en ne touchant qu'à la gouttière.
+ */
+export const GOUTTIERE_TUILES = 8;
 
 const TRANSITION = { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const };
 
@@ -397,8 +416,8 @@ export function BarreRail({
               (bordure droite), soit 41 px utiles pour une tuile de 40 avec sa
               bordure.
             */
-            style={{ width: LARGEUR_RAIL, boxSizing: 'border-box', padding: '12px 5px' }}
-            className="flex flex-none flex-col items-center gap-[5px] overflow-y-auto border-r border-[#171717] bg-[#0a0a0a]"
+            style={{ width: LARGEUR_RAIL, boxSizing: 'border-box', padding: '12px 5px', gap: GOUTTIERE_TUILES }}
+            className="flex flex-none flex-col items-center overflow-y-auto border-r border-[#171717] bg-[#0a0a0a]"
           >
             {familles.map((f) => (
               <TuileFamille

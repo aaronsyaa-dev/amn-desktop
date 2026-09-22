@@ -113,6 +113,7 @@ if (!EMAIL || !MOT_DE_PASSE) {
 }
 
 const { chromium } = await import('playwright-core');
+const { routesDeLaCoquille } = await import('./lib/routes-coquille.mjs');
 const { parcourirVuesDetail, parcourirBascules, exigerDesVuesDetail } = await import('./lib/vues-detail.mjs');
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -144,9 +145,13 @@ await page.evaluate((entrees) => {
   for (const [cle, valeur] of Object.entries(entrees)) window.localStorage.setItem(cle, JSON.stringify(valeur));
 }, { ...clesPersonnelles(EMAIL), [CLE_COFFRE]: coffreFort(), [cleOuvertures(EMAIL)]: ouverturesDEssai() });
 
-const aVisiter = await page.evaluate(() => [
-  ...new Set([...document.querySelectorAll('a[href^="#/"]')].map((a) => a.getAttribute('href'))),
-]);
+/*
+  L'amorce passe par `routesDeLaCoquille` : elle ouvre chaque tuile du rail
+  avant de relever les liens. Lire la page telle quelle ne donnerait que la
+  famille ouverte — mesuré après la bascule vers le rail : 41 écrans au lieu
+  de 106, et un vert qui ne parlait que d'un tiers du produit.
+*/
+const aVisiter = await routesDeLaCoquille(page, attendre);
 if (aVisiter.length === 0) {
   console.error('ÉCHEC : aucune route trouvée dans la navigation. Rien n’a pu être mesuré.');
   await nav.close();
