@@ -87,9 +87,20 @@ import { auditPackage, REMEDE } from './package-rules.mjs';
   se fiant à une chaîne écrite un jour où elle était vraie.
 */
 process.env.AMN_EDITION = 'business';
-const configCliente = (await import('../electron-builder.config.mjs')).default;
+const { default: configCliente, IDENTIFIANT_INSTALLEUR } = await import('../electron-builder.config.mjs');
 const NOM_CLIENTE = configCliente.productName;
 const EXEC_LINUX = configCliente.linux?.executableName ?? NOM_CLIENTE;
+/*
+  LE NOM DE FICHIER DE L'INSTALLEUR N'EST PLUS `NOM_CLIENTE` (BLOC P).
+
+  `nsis.artifactName` ne s'appuie plus sur `${productName}` — un espace y
+  cassait l'auto-update interne (voir electron-builder.config.mjs). L'exe
+  produit par `make:business` s'appelle donc désormais
+  « AMN-Desktop-Setup-…exe », qui ne commence PLUS par « AMN Desktop »
+  (NOM_CLIENTE, espace compris). Chercher un fichier avec NOM_CLIENTE ne
+  trouverait plus rien : c'est IDENTIFIANT_INSTALLEUR, la même constante que
+  celle qui a nommé le fichier, qui sert à le retrouver.
+*/
 
 const args = process.argv.slice(2);
 const flag = (name) => {
@@ -176,12 +187,13 @@ function findInstaller() {
       // Filtrer sur le nom ne prouve rien (voir l'audit de l'artefact plus
       // bas), mais évite de partir sur le mauvais fichier quand les deux sont là.
       /*
-        Le nom du paquet CLIENT, et pas le mot « business » — qui désigne
-        désormais l'édition interne. Filtrer sur le nom ne prouve rien (voir
+        `IDENTIFIANT_INSTALLEUR`, pas `NOM_CLIENTE` : c'est le nom SANS ESPACE
+        que porte vraiment le fichier (« AMN-Desktop-Setup-…exe »), pas le nom
+        d'affichage (« AMN Desktop »). Filtrer sur le nom ne prouve rien (voir
         l'audit de l'artefact plus bas), mais il faut au moins partir sur le
-        bon fichier quand les deux sont là.
+        bon fichier quand les deux éditions sont là.
       */
-      .filter((e) => e.name.startsWith(NOM_CLIENTE))
+      .filter((e) => e.name.startsWith(IDENTIFIANT_INSTALLEUR))
       .map((e) => path.join(root, e.name));
     if (found.length > 0) return found[0];
   }

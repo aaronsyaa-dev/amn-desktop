@@ -64,6 +64,42 @@ const CERTIFICAT_FOURNI = Boolean(
   (process.env.WIN_CSC_LINK || process.env.CSC_LINK || '').trim(),
 );
 
+/*
+  L'IDENTIFIANT DE L'INSTALLEUR N'A PAS D'ESPACE (BLOC P) — et c'est le nom
+  du fichier, jamais `${productName}`, qui doit le garantir.
+
+  `productName` (« AMN Business », « AMN Desktop ») porte un espace depuis le
+  renommage du Bloc 1. `artifactName` l'expansait via `${productName}`, et
+  `electron-builder` (`expandMacro`, `isProductNameSanitized: true` par
+  défaut) lit `appInfo.sanitizedProductName` — qui NE FILTRE PAS l'espace
+  (`sanitize-filename` ne touche que `/ ? < > \ : * | "`). L'installeur
+  construit dans `dist-app` s'appelait donc littéralement
+  « AMN Business-Setup-1.2.48.exe », espace compris.
+
+  `gh release upload` envoie ce fichier tel quel, et GitHub renomme l'espace
+  en POINT côté serveur : l'asset publié devient
+  « AMN.Business-Setup-1.2.48.exe ». Mais `electron-builder` écrit lui-même
+  `latest.yml` — le flux qu'`electron-updater` interroge — à partir de sa
+  PROPRE prédiction du nom « sûr pour GitHub »
+  (`computeSafeArtifactNameIfNeeded`, app-builder-lib), qui remplace l'espace
+  par un TIRET : « AMN-Business-Setup-1.2.48.exe ». Point contre tiret : le
+  fichier que `latest.yml` réclame n'a jamais existé. Mesuré sur les Releases
+  `v1.2.47` et `v1.2.48` : dans les deux cas `latest.yml` a été lu des dizaines
+  de fois (la vérification réussit), l'installeur téléchargé une seule
+  (l'auto-update échoue à chaque tentative, en silence — voir
+  `src/main/updater.ts`, l'événement `'error'` n'est journalisé que sur la
+  console d'un processus principal que personne ne regarde).
+
+  Le correctif retire l'espace À LA SOURCE plutôt que de faire confiance à la
+  prédiction d'electron-builder ou à celle de GitHub : sans espace, il n'y a
+  rien à renommer nulle part, et les trois noms (fichier construit, asset
+  publié, `latest.yml`) sont mécaniquement le même.
+*/
+// Exporté — `scripts/publish-release.mjs` le lit pour retrouver l'installeur
+// Business sur le disque plutôt que de deviner un nom de fichier à partir de
+// `productName` une seconde fois. Un seul endroit décide du nom du fichier.
+export const IDENTIFIANT_INSTALLEUR = IS_BUSINESS ? 'AMN-Desktop' : 'AMN-Business';
+
 const config = {
   /*
     LES NOMS ONT ÉTÉ ÉCHANGÉS (BLOC 1).
@@ -159,7 +195,9 @@ const config = {
     oneClick: true,
     perMachine: false,
     deleteAppDataOnUninstall: false,
-    artifactName: '${productName}-Setup-${version}.${ext}',
+    // Jamais `${productName}` ici — voir IDENTIFIANT_INSTALLEUR ci-dessus :
+    // c'est l'espace qu'il contient qui a cassé l'auto-update interne.
+    artifactName: `${IDENTIFIANT_INSTALLEUR}-Setup-\${version}.\${ext}`,
   },
   linux: {
     // Cible `dir` uniquement : le paquet Linux ne se distribue pas, il sert
