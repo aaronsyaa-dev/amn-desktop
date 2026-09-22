@@ -78,6 +78,7 @@
     "check:installer": "node scripts/check-installer.mjs",
     "icons": "node scripts/build-icons.mjs",
     "check:signal": "node scripts/check-signal.mjs",
+    "check:coquille": "node scripts/check-coquille.mjs",
     "captures:design": "node scripts/captures-design.mjs"
   },
   "keywords": [],

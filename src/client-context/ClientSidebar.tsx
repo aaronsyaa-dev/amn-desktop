@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
 import {
+  ChevronsLeft,
+  ChevronsRight,
   ArrowLeftRight,
   Banknote,
   BellRing,
@@ -70,8 +71,9 @@ import { OrgSwitchButton } from '../components/org-rail/OrgSwitchButton';
 import { CLIENT_PRODUCT_NAME } from '../edition/edition';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
 import { libelleNav, libelleSection, useLangue } from '../i18n';
-
-const TRANSITION = { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const };
+import { BarreRail, type FamilleRail } from '../components/rail/BarreRail';
+import { CLE_CHOIX, deplierAuDemarrage, lireChoix } from '../lib/barreLaterale';
+import { cheminLePlusPrecis } from '../lib/cheminCourant';
 
 /**
  * La navigation d'un contexte client.
@@ -176,15 +178,15 @@ export const CLIENT_NAV_ITEMS = CLIENT_MODULES;
  * écran est exactement le défaut que `scripts/check-modules.mjs` a été écrit
  * pour attraper.
  */
-export const CLIENT_SECTIONS: Array<{ label: string; keys: string[] }> = [
-  { label: 'Pilotage', keys: ['home', 'agenda', 'projects', 'tasks', 'okr', 'weekly', 'meetings', 'priorities', 'routines', 'logbook', 'forms', 'minisite', 'newsletter', 'esign', 'portfolio'] },
-  { label: 'Clients & revenus', keys: ['clients', 'invoices', 'orders', 'evenements', 'pipeline', 'reminders', 'subscriptions', 'contracts', 'reviews', 'loyalty', 'referrals', 'booking', 'cashCount'] },
-  { label: 'Production', keys: ['time', 'expenses', 'calculators', 'board', 'stock', 'suppliers', 'shifts', 'checklists', 'interventions', 'assembly', 'aftersales', 'bom', 'rounds', 'equipment'] },
-  { label: 'Documents', keys: ['notes', 'pages', 'reports', 'media'] },
-  { label: 'Collectif', keys: ['dm', 'groups', 'announcements', 'polls', 'leaves', 'directory', 'calls'] },
-  { label: 'Outils', keys: ['qr', 'converters', 'templates', 'automations', 'calcPro', 'dataPort'] },
-  { label: 'Personnel', keys: ['habits', 'personalGoals', 'diary', 'pomodoro'] },
-  { label: 'Système', keys: ['settings'] },
+export const CLIENT_SECTIONS: Array<{ label: string; code: string; keys: string[] }> = [
+  { label: 'Pilotage', code: 'PI', keys: ['home', 'agenda', 'projects', 'tasks', 'okr', 'weekly', 'meetings', 'priorities', 'routines', 'logbook', 'forms', 'minisite', 'newsletter', 'esign', 'portfolio'] },
+  { label: 'Clients & revenus', code: 'CR', keys: ['clients', 'invoices', 'orders', 'evenements', 'pipeline', 'reminders', 'subscriptions', 'contracts', 'reviews', 'loyalty', 'referrals', 'booking', 'cashCount'] },
+  { label: 'Production', code: 'PR', keys: ['time', 'expenses', 'calculators', 'board', 'stock', 'suppliers', 'shifts', 'checklists', 'interventions', 'assembly', 'aftersales', 'bom', 'rounds', 'equipment'] },
+  { label: 'Documents', code: 'DO', keys: ['notes', 'pages', 'reports', 'media'] },
+  { label: 'Collectif', code: 'CO', keys: ['dm', 'groups', 'announcements', 'polls', 'leaves', 'directory', 'calls'] },
+  { label: 'Outils', code: 'OU', keys: ['qr', 'converters', 'templates', 'automations', 'calcPro', 'dataPort'] },
+  { label: 'Personnel', code: 'PE', keys: ['habits', 'personalGoals', 'diary', 'pomodoro'] },
+  { label: 'Système', code: 'SY', keys: ['settings'] },
 ];
 
 /**
@@ -205,7 +207,7 @@ function clientModules(): NavItem[] {
  * vous ». Ce qu'aucun groupe ne réclame atterrit dans le dernier plutôt que de
  * disparaître : perdre un écran en silence serait pire que le mal ranger.
  */
-function clientSections(): Array<{ label: string; items: NavItem[] }> {
+function clientSections(): Array<{ key: string; label: string; code: string; items: NavItem[] }> {
   const open = clientModules();
   const claimed = new Set(CLIENT_SECTIONS.flatMap((s) => s.keys));
   // L'ordre du GROUPE, pas celui du catalogue. `CLIENT_MODULES` liste les
@@ -215,7 +217,9 @@ function clientSections(): Array<{ label: string; items: NavItem[] }> {
   // deux fois la même liste, jamais dans le même ordre, ce qui est exactement
   // ce que ce contexte existe pour éviter.
   const sections = CLIENT_SECTIONS.map((section) => ({
+    key: section.code,
     label: libelleSection(section.label),
+    code: section.code,
     items: section.keys
       .map((key) => open.find((item) => item.key === key))
       .filter((item): item is NavItem => Boolean(item)),
@@ -236,159 +240,137 @@ export function ClientSidebar({
   onClose?: () => void;
 }) {
   useLangue();
-  /*
-    Le tiroir de navigation sur téléphone. Il couvre l'écran entier, et son
-    fond ne se referme qu'au doigt — Échap est le seul recours au clavier,
-    y compris sur un poste où la fenêtre est étroite.
-  */
   useFermetureEchap(mobileOpen, () => onClose?.());
 
   const location = useLocation();
   const { support, leaveOrganization } = useOrgContext();
+  const [deplie, setDeplie] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    let choix: boolean | null = null;
+    try {
+      choix = lireChoix(window.localStorage.getItem(CLE_CHOIX));
+    } catch {
+      /* stockage refusé (navigation privée) : la largeur décidera */
+    }
+    return deplierAuDemarrage(window.innerWidth, choix);
+  });
 
-  const touchStartX = useRef<number | null>(null);
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0]?.clientX ?? null;
-  };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    const start = touchStartX.current;
-    touchStartX.current = null;
-    if (start === null || !mobileOpen) return;
-    if ((e.changedTouches[0]?.clientX ?? start) - start < -45) onClose?.();
-  };
+  const sections = clientSections();
+  const familles: FamilleRail[] = sections.map((section) => ({
+    key: section.key,
+    label: section.label,
+    code: section.code,
+    items: section.items,
+  }));
+  const cheminCourant = cheminLePlusPrecis(
+    location.pathname,
+    sections.flatMap((section) => section.items),
+  );
 
-  const isActive = (to: string) =>
-    to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
-
-  /*
-    Même règle que les deux autres barres : la ligne courante doit être
-    visible, sinon on arrive sur un écran et la barre ne dit pas où l'on est.
-    `nearest` — une ligne déjà visible ne fait rien bouger.
-  */
-  const barre = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    const l = barre.current?.querySelector('a[aria-current="page"]');
-    if (l && l.getBoundingClientRect().height > 0) l.scrollIntoView({ block: 'nearest' });
-  }, [location.pathname]);
+  const expanded = deplie || mobileOpen;
 
   return (
-    <>
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            key="client-nav-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={onClose}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px] md:hidden"
-          />
-        )}
-      </AnimatePresence>
-
-      <aside
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-        className={`fixed inset-y-0 left-0 z-50 flex h-full w-56 flex-shrink-0 flex-col border-r border-border bg-[#0d0d0d] py-4 transition-transform duration-300 md:relative md:z-30 md:translate-x-0 ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        {/* Mobile : le rail est masqué, cette ligne le remplace. */}
-        <div className="px-3 md:hidden">
-          <OrgSwitchButton onNavigate={onClose} />
-        </div>
-
-        <div className="mb-3 hidden items-center gap-2.5 px-4 md:flex">
-          <OrgAvatar
-            name={support?.orgName ?? ''}
-            logoDataUrl={support?.logoDataUrl}
-            size={32}
-            rounded="rounded-xl"
-          />
-          <div className="min-w-0">
-            <p className="truncate text-[13px] font-semibold leading-tight text-text-primary">
-              {support?.orgName}
-            </p>
-            {/*
-              Le produit que la CLIENTE fait tourner, pas le nôtre.
-
-              La ligne disait « AMN Business » — notre application interne —
-              juste sous le nom de la cliente, comme si c'était la sienne. Elle
-              en fait tourner une autre, qui s'appelle « AMN Desktop », et c'est
-              cette information-là qui est utile ici : on regarde son
-              organisation, pas la nôtre.
-            */}
-            <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
-              {CLIENT_PRODUCT_NAME}
-            </p>
+    <BarreRail
+      familles={familles}
+      cheminCourant={cheminCourant}
+      deplie={deplie}
+      mobileOpen={mobileOpen}
+      onClose={onClose}
+      onNavigate={onClose}
+      libelle={libelleNav}
+      /*
+        Pas de palette ici non plus, et pour la même raison que l'édition
+        cliente : `CommandPalette` importe le parc de sites et la Garde. ⌘K
+        amène au champ de la coquille, qui filtre les modules de la CLIENTE —
+        c'est-à-dire exactement ce que ce contexte existe pour montrer.
+      */
+      enTete={
+        <div className="flex-none border-b border-border">
+          {/* Mobile : le rail est masqué, cette ligne le remplace. */}
+          <div className="px-3 pt-3 md:hidden">
+            <OrgSwitchButton onNavigate={onClose} />
+          </div>
+          <div className="flex h-14 items-center gap-2.5 px-3.5">
+            <OrgAvatar
+              name={support?.orgName ?? ''}
+              logoDataUrl={support?.logoDataUrl}
+              size={26}
+              rounded="rounded-lg"
+            />
+            {expanded && (
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[12.5px] font-semibold leading-tight text-text-primary">
+                  {support?.orgName}
+                </p>
+                {/*
+                  Le produit que la CLIENTE fait tourner, pas le nôtre. La ligne
+                  a déjà affiché « AMN Business » — notre application interne —
+                  juste sous le nom de la cliente, comme si c'était la sienne.
+                */}
+                <p className="truncate font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
+                  {CLIENT_PRODUCT_NAME}
+                </p>
+              </div>
+            )}
           </div>
         </div>
-
-        <nav ref={barre} className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3">
-          {clientSections().map((section) => (
-            <div key={section.label} className="flex flex-col gap-0.5">
-              <p className="eyebrow px-3 pb-1.5">{libelleSection(section.label)}</p>
-              {section.items.map((item) => {
-                const active = isActive(item.to);
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.key}
-                    to={item.to}
-                    onClick={onClose}
-                    // Laquelle des entrées est l'écran courant, pour un lecteur
-                    // d'écran comme pour le défilement ci-dessus.
-                    aria-current={active ? 'page' : undefined}
-                    className={`group relative flex min-h-11 items-center gap-3 overflow-hidden rounded-lg px-3 py-1.5 text-sm transition-colors duration-200 md:min-h-0 ${
-                      active
-                        ? 'text-text-primary'
-                        : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
-                    }`}
-                  >
-                    {active && (
-                      <motion.span
-                        layoutId="client-nav-active"
-                        className="absolute inset-0 rounded-lg bg-accent-muted"
-                        transition={TRANSITION}
-                        aria-hidden
-                      />
-                    )}
-                    <span className="relative">
-                      <Icon size={19} strokeWidth={1.9} />
-                    </span>
-                    <span className="relative select-none whitespace-nowrap">{libelleNav(item)}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
-
-        <div className="mt-auto flex flex-col gap-1 border-t border-border px-3 pt-2">
+      }
+      pied={
+        <div className="flex flex-none flex-col gap-0.5 border-t border-border bg-[#0a0a0a] p-2">
+          {/*
+            « Administration » reste DÉTACHÉE des familles, et c'est la même
+            décision qu'avant le rail : ce sont les gestes d'AMN DevSec SUR
+            l'organisation de la cliente, ils n'ont rien à faire au milieu de
+            ses écrans à elle. Une tuile de rail les rangerait parmi les siens.
+          */}
           <Link
             to="/administration"
             onClick={onClose}
-            aria-current={isActive('/administration') ? 'page' : undefined}
-            className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-200 md:min-h-0 ${
-              isActive('/administration')
+            aria-current={location.pathname.startsWith('/administration') ? 'page' : undefined}
+            title={!expanded ? 'Administration' : undefined}
+            className={`flex min-h-11 items-center gap-2.5 px-2.5 py-2 text-[13px] transition-colors md:min-h-0 ${
+              location.pathname.startsWith('/administration')
                 ? 'bg-accent-muted text-text-primary'
-                : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
+                : 'text-text-muted hover:bg-surface-hover hover:text-text-primary'
             }`}
           >
-            <ShieldCheck size={19} strokeWidth={1.9} />
-            <span className="select-none whitespace-nowrap">Administration</span>
+            <ShieldCheck size={16} strokeWidth={2.1} />
+            {expanded && <span className="truncate">Administration</span>}
           </Link>
           <button
             type="button"
-            onClick={() => void leaveOrganization()}
-            className="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary md:min-h-0"
+            onClick={() => {
+              setDeplie((v) => {
+                try {
+                  window.localStorage.setItem(CLE_CHOIX, String(!v));
+                } catch {
+                  /* stockage refusé : le choix ne vaut que pour cette session */
+                }
+                return !v;
+              });
+            }}
+            aria-label={deplie ? 'Replier la barre' : 'Déplier la barre'}
+            className="hidden items-center gap-2.5 px-2.5 py-2 text-[13px] text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary md:flex"
           >
-            <LogOut size={19} strokeWidth={1.9} />
-            <span className="select-none whitespace-nowrap">Quitter le contexte</span>
+            {deplie ? (
+              <ChevronsLeft size={16} strokeWidth={2.1} />
+            ) : (
+              <ChevronsRight size={16} strokeWidth={2.1} />
+            )}
+            {expanded && <span>Replier</span>}
+          </button>
+          <button
+            type="button"
+            onClick={() => void leaveOrganization()}
+            title={!expanded ? 'Quitter le contexte' : undefined}
+            aria-label="Quitter le contexte"
+            className="flex min-h-11 items-center gap-2.5 px-2.5 py-2 text-[13px] text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary md:min-h-0"
+          >
+            <LogOut size={16} strokeWidth={2.1} />
+            {expanded && <span>Quitter le contexte</span>}
           </button>
         </div>
-      </aside>
-    </>
+      }
+    />
   );
 }

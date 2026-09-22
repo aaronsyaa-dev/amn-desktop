@@ -1,48 +1,66 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import React, { useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import {
-  Check,
-  ChevronsLeft,
-  ChevronsRight,
-  ChevronDown,
-  LogOut,
-  Pin,
-  PinOff,
-} from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, LogOut } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useRemoteSites } from '../state/RemoteSitesContext';
 import { useActivity } from '../state/ActivityContext';
 import { useNavFavorites } from '../state/useNavFavorites';
 import { StatusBadge } from './StatusBadge';
 import { useSitePanel } from './site-panel/SitePanelContext';
-import { AppLauncher } from './AppLauncher';
-import { useLangue, libelleNav, libelleSection, libelleEspace } from '../i18n';
+import { useLangue, libelleNav, libelleSection } from '../i18n';
 import { OrgSwitchButton } from './org-rail/OrgSwitchButton';
 import { type NavItem } from '../data/navigation';
-import { SPACES, spaceByKey, spaceForPath, sectionsForSpace } from '../data/spaces';
+import { toutesLesSections } from '../data/spaces';
+import { EDITION_PRODUCT_NAME } from '../edition/edition';
 import { CLE_CHOIX, deplierAuDemarrage, lireChoix } from '../lib/barreLaterale';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
 import { useNavAlleges } from '../state/useNavAlleges';
-
-const COLLAPSED_WIDTH = 72;
-const EXPANDED_WIDTH = 236;
-const TRANSITION = { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const };
+import { useCommandPalette } from './command-palette/CommandPalette';
+import { BarreRail, LARGEUR_COQUILLE, LARGEUR_RAIL, type FamilleRail } from './rail/BarreRail';
+import { cheminLePlusPrecis } from '../lib/cheminCourant';
 
 /**
- * La navigation de l'espace courant.
+ * La navigation de l'édition interne — LE RAIL (Direction B).
  *
- * Elle ne liste plus tous les écrans (BLOC C) et, depuis la refonte, elle ne
- * liste plus non plus tous les ESPACES : le sélecteur en tête décide lequel des
- * deux — Poste de travail ou Tour de contrôle — occupe la colonne. C'est le
- * point de la refonte : le travail quotidien et la supervision transverse ne se
- * mélangent plus dans une même liste plate.
+ * ## Ce que ce fichier a cessé d'être
  *
- * Les deux espaces n'ont pas la même forme de navigation, et c'est délibéré :
- *   - le Poste de travail garde la bande épinglée + le lanceur, parce que sa
- *     liste est longue et personnelle ;
- *   - la Tour de contrôle affiche ses modules en entier, parce qu'ils sont peu
- *     nombreux, fixes, et qu'on veut les voir tous d'un coup d'œil.
+ * Il dessinait sa propre colonne : sélecteur d'espace, bande d'épingles,
+ * sections dépliées, marqueur ambre, deux largeurs. Huit cents lignes, pour une
+ * pièce que `BusinessSidebar.tsx` et `client-context/ClientSidebar.tsx`
+ * dessinaient CHACUN de leur côté, autrement. La géométrie vit désormais dans
+ * `components/rail/BarreRail.tsx`, une seule fois pour les trois.
+ *
+ * Ce fichier garde ce qui lui est propre, et rien d'autre : le catalogue
+ * interne, la liste rapide des sites, la palette de commandes, le compte.
+ *
+ * ## LE SÉLECTEUR D'ESPACE A DISPARU, ET C'EST LE RAIL QUI LE REMPLACE
+ *
+ * C'est l'arbitrage de cette refonte, et il mérite d'être écrit.
+ *
+ * Les trois espaces (Poste de travail, Tour de contrôle, La Garde) existaient
+ * pour une raison réelle : à trente-trois entrées dans une liste plate, l'œil
+ * ne reconnaît plus de forme, et le travail quotidien n'a rien à voir avec la
+ * supervision du parc. Le sélecteur était le remède — mais un remède qui CACHE
+ * deux tiers du produit derrière un menu. « L'étouffoir est introuvable » vient
+ * de là.
+ *
+ * Le rail résout le même problème sans rien cacher : les douze familles des
+ * trois espaces sont douze tuiles permanentes, et une seule est ouverte à la
+ * fois. On voit tout le produit et on n'en lit qu'un douzième. Un menu qui
+ * choisit entre trois listes n'a plus d'objet quand les trois sont à l'écran.
+ *
+ * La NOTION d'espace, elle, reste entière : `spaceForPath` continue de déduire
+ * l'espace du chemin pour le lanceur, la barre du pouce et la mémoire
+ * d'onglet. Ce qui disparaît est le sélecteur, pas le rangement.
+ *
+ * ## L'ambre a quitté la colonne
+ *
+ * Le filet de 3 px sur la ligne courante était `bg-signal`. Il ne l'est plus.
+ * L'ambre marque ce qui demande une décision, un par écran ; une colonne qui en
+ * porte un en permanence le consomme sur les 94 écrans à la fois. Et
+ * `check:signal` ne pouvait pas le voir — il ne regarde que `<main>`. C'est
+ * `check:coquille` qui tient désormais la règle dans la colonne.
  */
 export function Sidebar({
   mobileOpen = false,
@@ -56,28 +74,9 @@ export function Sidebar({
   // Les modules allégés par la personne : s'abonner, pour que la barre suive le geste sans rechargement.
   useNavAlleges();
   const { t } = useLangue();
-  /*
-    Le tiroir de navigation sur téléphone. Il couvre l'écran entier, et son
-    fond ne se referme qu'au doigt — Échap est le seul recours au clavier,
-    y compris sur un poste où la fenêtre est étroite.
-  */
   useFermetureEchap(mobileOpen, () => onClose?.());
 
-  /*
-    DÉPLIÉE PAR DÉFAUT QUAND L'ÉCRAN LE PERMET.
-
-    C'était `useState(false)` — replié en toutes circonstances, sans raison
-    écrite. Conséquence mesurée à 1 280, 1 400 et 1 920 px : le sélecteur
-    d'espace se réduisait à une icône de 47 × 44 px sans texte, et les mots
-    « Poste de travail » / « Tour de contrôle » n'apparaissaient nulle part.
-    Or c'est par là qu'on atteint la Supervision, les Sites, les Trackers, le
-    Scanner et Comply — tout le métier. D'où « l'étouffoir est introuvable » :
-    il ne manquait pas, il était derrière une icône muette.
-
-    La règle vit dans `src/lib/barreLaterale.ts`, avec ses deux entrées : un
-    choix explicite gagne toujours, la largeur décide sinon.
-  */
-  const [isExpandedDesktop, setIsExpanded] = useState(() => {
+  const [deplie, setDeplie] = useState(() => {
     if (typeof window === 'undefined') return false;
     let choix: boolean | null = null;
     try {
@@ -87,523 +86,192 @@ export function Sidebar({
     }
     return deplierAuDemarrage(window.innerWidth, choix);
   });
-  const [isSitesFlyoutOpen, setIsSitesFlyoutOpen] = useState(false);
+  const [voletSites, setVoletSites] = useState(false);
+  useFermetureEchap(voletSites, () => setVoletSites(false));
 
-  /* Le volet des sites se referme à Échap, comme tout ce qui s’ouvre par-dessus. */
-  useFermetureEchap(isSitesFlyoutOpen, () => setIsSitesFlyoutOpen(false));
-  const [isLauncherOpen, setLauncherOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, org } = useAuth();
   const { openSite } = useSitePanel();
   const { sites } = useRemoteSites();
   const { unseen } = useActivity();
   const { favorites, isFavorite, toggleFavorite } = useNavFavorites();
+  const { open: ouvrirPalette } = useCommandPalette();
 
-  // On mobile the drawer always shows the full (labelled) sidebar; on desktop
-  // the collapse toggle controls it. Deriving it here keeps every render site
-  // below working unchanged for both platforms.
-  const isExpanded = isExpandedDesktop || mobileOpen;
-
-
-  // Every nav item — Sites included — navigates to its screen. The Sites
-  // "registre" lives at /sites (with the "Nouveau site" button), so clicking
-  // Sites must land there; the quick site-list flyout is opened separately via
-  // the chevron, never by hijacking the main click.
-  const handleNavClick = () => {
-    setIsSitesFlyoutOpen(false);
-    setLauncherOpen(false);
-    onClose?.(); // close the mobile drawer after navigating
-  };
-
-  // Swipe-left on the open drawer closes it (mobile only).
-  const touchStartX = useRef<number | null>(null);
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0]?.clientX ?? null;
-  };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    const start = touchStartX.current;
-    touchStartX.current = null;
-    if (start === null || !mobileOpen) return;
-    const dx = (e.changedTouches[0]?.clientX ?? start) - start;
-    if (dx < -45) onClose?.();
-  };
-
-  // L'espace courant se lit dans l'URL : arriver sur `/scanner` par la palette
-  // de commandes ou par une notification doit basculer la colonne, sans que
-  // l'appelant ait à y penser.
-  const space = spaceForPath(location.pathname);
   /*
-    UNE SEULE LIGNE COURANTE, LA PLUS PRÉCISE.
+    LES DOUZE FAMILLES, TOUS ESPACES CONFONDUS.
 
-    Vu sur `#/tour/organisations` : « Vue d'ensemble » (`/tour`) ET
-    « Organisations » (`/tour/organisations`) s'allumaient toutes les deux,
-    parce que la première est un préfixe de la seconde. La ligne courante est
-    celle dont le chemin colle le plus long ; les autres, même préfixes,
-    restent éteintes.
+    `toutesLesSections()` et non `sectionsForSpace`, qui filtre par espace : le
+    rail les montre toutes. Les deux filtres qui comptent restent appliqués là
+    où ils vivent (`data/spaces.ts`) — un module fermé pour l'organisation ou
+    allégé par la personne n'apparaît pas, et une famille vidée de tous les
+    siens disparaît au lieu de laisser une tuile qui n'ouvre rien.
   */
-  const cheminCourant = useMemo(() => {
-    let meilleur = '';
-    // Par les sections, jamais par la liste à plat : c'est la règle que
-    // check:modules tient pour cette surface, et elle vaut ici aussi.
-    for (const item of sectionsForSpace(space).flatMap((section) => section.items)) {
-      if (item.to === '/') continue;
-      const colle = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
-      if (colle && item.to.length > meilleur.length) meilleur = item.to;
-    }
-    return meilleur;
-  }, [location.pathname, space]);
-  const isActive = (to: string) => (to === '/' ? location.pathname === '/' : to === cheminCourant);
-  /*
-    Les modules épinglés de l'ESPACE COURANT, dans l'ordre du catalogue.
+  const familles: FamilleRail[] = useMemo(
+    () =>
+      toutesLesSections().map((section) => ({
+        key: section.key,
+        label: libelleSection(section.label),
+        code: section.code,
+        items: section.items,
+      })),
+    /*
+      `location.pathname` en dépendance, bien qu'ESLint le croie inutile :
+      `isModuleEnabled` et `isModuleAllege` lisent un registre de module, pas
+      un état React. Ils changent sous nos pieds (bascule d'organisation,
+      geste d'allègement), et rien dans ce `useMemo` ne le signalerait. Le
+      chemin est ce qui bouge à coup sûr quand ces deux-là ont bougé.
+    */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [location.pathname],
+  );
 
-    Filtrés sur l'espace : une épingle posée sur « Trackers » (Tour de contrôle)
-    n'a rien à faire en tête du Poste de travail. Et l'ordre vient du catalogue
-    plutôt que de l'ordre d'épinglage — la barre doit se relire pareil d'un jour
-    à l'autre, pas se réorganiser selon l'ordre où l'on a cliqué.
+  const tousLesModules = useMemo(() => familles.flatMap((f) => f.items), [familles]);
+  const cheminCourant = useMemo(
+    () => cheminLePlusPrecis(location.pathname, tousLesModules),
+    [location.pathname, tousLesModules],
+  );
+
+  /*
+    Les épinglés, dans l'ordre du CATALOGUE et non d'épinglage : la barre doit
+    se relire pareil d'un jour à l'autre, pas se réorganiser selon l'ordre où
+    l'on a cliqué. Plus de filtre par espace — il n'y a plus d'espace courant
+    dans cette colonne.
   */
   const epingles = useMemo(
-    () =>
-      sectionsForSpace(space)
-        .flatMap((section) => section.items)
-        .filter((item) => favorites.includes(item.key)),
-    [favorites, space],
+    () => tousLesModules.filter((i) => favorites.includes(i.key)),
+    [tousLesModules, favorites],
   );
 
-
-  /*
-    Les clés RÉELLEMENT dessinées dans la bande. `epingles` ne suffit pas : la
-    bande ne s'affiche que barre dépliée, et repliée c'est la ligne de section
-    qui redevient l'unique occurrence.
-  */
-  const dansLaBande = useMemo(
-    () => new Set(isExpanded ? epingles.map((e) => e.key) : []),
-    [epingles, isExpanded],
-  );
-
-  // The pinned modules, in the catalogue's own order so the strip never
-  // reshuffles itself under the cursor. An unknown key (a module removed since
-  // the choice was made) is dropped rather than rendered as a dead row.
-  // Restreint à l'espace courant : une épingle posée dans un espace n'a pas à
-  // apparaître dans l'autre.
-  // One nav row. Shared by both sections (workspace + produits) so the badge,
-  // active indicator and collapsed/expanded behaviour stay identical.
-  /*
-    RAMENER L'ÉLÉMENT COURANT DANS LA VUE.
-
-    Mesuré : en arrivant sur `#/notes` côté interne, le lien actif de la barre
-    était visible à ZÉRO pour cent — entièrement défilé hors du cadre. La barre
-    porte trente-trois entrées ; tout ce qui vit sous la ligne de flottaison
-    laissait donc l'utilisateur sans repère, sur l'écran même où il venait
-    d'arriver. La barre disait « tu n'es nulle part ».
-
-    `block: 'nearest'` et pas `'center'` : quand l'élément est DÉJÀ visible, le
-    navigateur ne bouge rien. On ne recentre donc pas la barre à chaque
-    navigation — ce serait un mouvement gratuit, et la règle de confort
-    (`docs/PRINCIPE-CONFORT.md`) tient autant contre l'agitation que pour la
-    lisibilité. Le défilement est instantané, jamais animé : personne n'a
-    demandé à regarder une barre glisser avant de lire son écran.
-  */
-  const barre = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    /*
-      On cherche la ligne dans le DOM plutôt que de garder une `ref` dessus :
-      un même écran peut apparaître DEUX fois dans la barre (« Tâches » vit à
-      la fois dans le poste de travail et dans le pilotage), plus une troisième
-      dans le tiroir du téléphone, replié à zéro pixel. Une `ref` posée sur
-      « l'élément actif » recevait donc le dernier rendu — la copie invisible —
-      et faisait défiler vers rien du tout.
-
-      On prend la première ligne active qui a une hauteur : celle qu'on voit.
-    */
-    const lignes = barre.current?.querySelectorAll('a[aria-current="page"]') ?? [];
-    for (const l of lignes) {
-      if (l.getBoundingClientRect().height > 0) {
-        l.scrollIntoView({ block: 'nearest' });
-        return;
+  const basculer = () => {
+    setDeplie((v) => {
+      try {
+        window.localStorage.setItem(CLE_CHOIX, String(!v));
+      } catch {
+        /* stockage refusé : le choix ne vaut que pour cette session */
       }
-    }
-  }, [location.pathname]);
+      return !v;
+    });
+  };
+
+  const expanded = deplie || mobileOpen;
 
   /*
-    UN SEUL « VOUS ÊTES ICI ».
+    LA LISTE RAPIDE DES SITES — le seul ornement propre à cette édition.
 
-    Chaque écran n'apparaît plus qu'une fois dans la barre (voir la bande
-    d'épingles plus bas) : la ligne active est donc unique, et avec elle
-    `aria-current="page"` — l'attribut désigne LA page courante, au
-    singulier — et le `layoutId` de framer-motion, qui ne tolère qu'un
-    porteur. Le tiroir du téléphone rend la même barre une seconde fois,
-    repliée à zéro pixel ; c'est pourquoi le défilement ci-dessus cherche la
-    première ligne active qui a une hauteur.
+    Un chevron sur la ligne « Sites », qui ouvre le volet sans naviguer.
+    `<span role="button">` et non `<button>` : la ligne EST un lien, et un
+    bouton imbriqué dans un lien n'est pas du HTML valide.
   */
-  const renderNavItem = (item: NavItem) => {
-    const active = isActive(item.to);
-    const Icon = item.icon;
-    const count = unseen[item.to] ?? 0;
-    const badge = count > 99 ? '99+' : String(count);
-    return (
-      <Link
-        key={item.key}
-        to={item.to}
-        // `aria-current` dit à un lecteur d'écran laquelle des trente-trois
-        // entrées est l'écran courant — et sert de repère au défilement
-        // ci-dessus, qui n'a alors rien à deviner.
-        aria-current={active ? 'page' : undefined}
-        onClick={handleNavClick}
-        title={!isExpanded ? libelleNav(item) : undefined}
-        aria-label={libelleNav(item)}
-        // 44 px sous `md` : le tiroir est la navigation principale du
-        // téléphone, ses lignes ne peuvent pas être plus petites que les
-        // cibles de la barre basse. Au pointeur, la densité d'origine reste.
-        className={`group relative flex min-h-11 items-center gap-3 overflow-hidden rounded-lg py-1.5 text-sm transition-colors duration-200 md:min-h-0 ${
-          isExpanded ? 'px-3' : 'justify-center px-0'
-        } ${
-          active
-            ? 'text-text-primary'
-            : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
+  const rendreExtra = (item: NavItem) =>
+    item.key === 'sites' && expanded ? (
+      <span
+        role="button"
+        tabIndex={0}
+        aria-label="Voir la liste rapide des sites"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setVoletSites((o) => !o);
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          event.stopPropagation();
+          setVoletSites((o) => !o);
+        }}
+        className={`relative flex-none select-none px-1 text-xs text-text-muted transition-transform duration-200 hover:text-text-primary ${
+          voletSites ? 'rotate-90' : ''
         }`}
       >
-        {/* The active state is a single surface that *slides* from the previous
-            item rather than a flat background that blinks on. Two shared-layout
-            elements — the tint and the left bar — travel together, which is the
-            whole micro-interaction: the eye follows the selection instead of
-            re-finding it. */}
-        {active && (
-          <>
-            <motion.span
-              layoutId="sidebar-active-surface"
-              className="absolute inset-0 bg-[#191919]"
-              transition={TRANSITION}
-              aria-hidden
-            />
-            {/*
-              LE MARQUEUR AMBRE — le seul de cette barre, et la même pièce que
-              côté Business (`BusinessSidebar`). Un filet de 3 px au bord
-              gauche : il pointe la ligne courante sans colorer la barre. Le
-              compteur de nouveautés, juste à droite, reste en encre — un
-              compteur informe, il ne demande pas de décision.
-            */}
-            <motion.span
-              layoutId="sidebar-active-indicator"
-              className="absolute inset-y-0 left-0 w-[3px] bg-signal"
-              transition={TRANSITION}
-              aria-hidden
-            />
-          </>
-        )}
-        <span className={`icon-token relative ${active ? 'border-border-raised bg-[#1c1c1c]' : ''}`}>
-          <Icon size={14} strokeWidth={2.1} />
-        </span>
-        {isExpanded && (
-          <span className="relative select-none whitespace-nowrap">
-            {libelleNav(item)}
-          </span>
-        )}
-        {/* Unseen-activity badge (A3.3): additions/changes by the other
-            operator since this tab was last opened. */}
-        {count > 0 &&
-          (isExpanded ? (
-            <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-semibold leading-none text-bg">
-              {badge}
-            </span>
-          ) : (
-            <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[9px] font-semibold leading-none text-bg">
-              {badge}
-            </span>
-          ))}
-        {/*
-          L'ÉPINGLE, RENDUE À LA BARRE (BLOC 1)
-
-          L'épinglage n'avait pas disparu du code : il vivait dans le lanceur
-          « Tous les modules », et le rangement en sections a retiré le seul
-          bouton qui l'ouvrait sur ordinateur. La fonction est donc restée
-          entière et devenue inatteignable — le lanceur ne subsiste que dans la
-          barre du pouce, sous `md`.
-
-          Elle revient ici, sur la ligne elle-même : c'est l'endroit où l'on est
-          déjà quand on se dit « celui-là, je l'ouvre tous les jours », et ça
-          n'ajoute aucun écran. Au survol seulement — une colonne d'épingles
-          visible en permanence ferait dix-huit boutons devant dix-huit modules.
-
-          `<span role="button">` et non `<button>` : la ligne EST un lien, et un
-          bouton imbriqué dans un lien n'est pas du HTML valide (le même procédé
-          que la liste rapide des sites, juste en dessous).
-        */}
-        {isExpanded && (
-          <span
-            role="button"
-            tabIndex={0}
-            aria-label={
-              isFavorite(item.key) ? t('chrome.detacher', { nom: libelleNav(item) }) : t('chrome.epingler', { nom: libelleNav(item) })
-            }
-            title={isFavorite(item.key) ? 'Détacher des épinglés' : 'Épingler en haut'}
-            onClick={(event) => {
-              // La ligne est un lien : sans ça, épingler navigue.
-              event.preventDefault();
-              event.stopPropagation();
-              toggleFavorite(item.key);
-            }}
-            onKeyDown={(event) => {
-              if (event.key !== 'Enter' && event.key !== ' ') return;
-              event.preventDefault();
-              event.stopPropagation();
-              toggleFavorite(item.key);
-            }}
-            className={`relative ml-auto flex h-6 w-6 flex-shrink-0 items-center justify-center rounded transition-opacity hover:bg-surface-hover ${
-              isFavorite(item.key)
-                ? 'text-text-secondary opacity-100'
-                : 'text-text-muted opacity-0 focus:opacity-100 group-hover:opacity-100'
-            }`}
-          >
-            {isFavorite(item.key) ? (
-              <PinOff size={12} strokeWidth={2} />
-            ) : (
-              <Pin size={12} strokeWidth={2} />
-            )}
-          </span>
-        )}
-        {item.key === 'sites' && isExpanded && (
-          <span
-            role="button"
-            tabIndex={0}
-            aria-label="Voir la liste rapide des sites"
-            onClick={(event) => {
-              // Toggle the quick-list flyout without navigating away.
-              event.preventDefault();
-              event.stopPropagation();
-              setIsSitesFlyoutOpen((open) => !open);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                event.stopPropagation();
-                setIsSitesFlyoutOpen((open) => !open);
-              }
-            }}
-            className={`ml-auto -my-1 flex select-none items-center rounded px-1 py-1 text-xs text-text-muted transition-transform duration-200 hover:text-text-primary ${
-              isSitesFlyoutOpen ? 'rotate-90' : ''
-            }`}
-          >
-            ›
-          </span>
-        )}
-      </Link>
-    );
-  };
+        ›
+      </span>
+    ) : null;
 
   return (
     <>
-      {/* Mobile backdrop behind the drawer (< md only). */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            key="nav-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={onClose}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px] md:hidden"
-          />
-        )}
-      </AnimatePresence>
-
-      <motion.aside
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
+      <BarreRail
+        familles={familles}
+        epingles={epingles}
+        cheminCourant={cheminCourant}
+        compteurs={unseen}
+        deplie={deplie}
+        mobileOpen={mobileOpen}
+        onClose={onClose}
+        onNavigate={() => {
+          setVoletSites(false);
+          onClose?.();
+        }}
+        libelle={libelleNav}
+        estEpingle={isFavorite}
+        onEpingler={toggleFavorite}
+        rendreExtra={rendreExtra}
         /*
-          `initial` À LA LARGEUR RÉSOLUE : la barre ne s'ouvre pas en glissant
-          à chaque chargement.
-
-          Tant qu'elle démarrait toujours repliée, `animate` seul suffisait —
-          il n'y avait rien à parcourir au montage. Depuis qu'elle démarre
-          dépliée sur un grand écran, framer-motion animait la largeur de 72 à
-          224 px À CHAQUE OUVERTURE DE PAGE. Deux défauts d'un coup :
-          `check:mouvement` l'a signalé sur trois écrans (jusqu'à 289 px de
-          déplacement malgré « réduire les animations » — `reducedMotion` ne
-          couvre pas une largeur), et visuellement une navigation qui se
-          déplie sous les yeux à chaque page fait bon marché.
-
-          L'animation reste ce pour quoi elle est faite : le geste de replier
-          ou de déplier, qui vient de quelqu'un.
+          ⌘K ouvre la palette de commandes, qui cherche les modules MAIS AUSSI
+          les sites, les notes et les ordres de la Garde. C'est un surensemble
+          du champ de la coquille, et c'est le geste déjà appris ici.
         */
-        initial={{ width: isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
-        animate={{ width: isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
-        transition={TRANSITION}
-        className={`fixed inset-y-0 left-0 z-50 flex h-full flex-shrink-0 flex-col border-r border-[#1c1c1c] bg-[#0c0c0c] py-4 transition-transform duration-300 md:relative md:z-30 md:translate-x-0 ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:translate-x-0`}
-        style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
-      >
-        {/* Mobile uniquement : le rail est masqué sous `md`, cette ligne le
-            remplace pour que changer d'organisation reste possible. */}
-        <div className="px-3 md:hidden">
-          <OrgSwitchButton onNavigate={onClose} />
-        </div>
-
-        <SpaceSwitcher
-          expanded={isExpanded}
-          onNavigate={() => {
-            setIsSitesFlyoutOpen(false);
-            setLauncherOpen(false);
-            onClose?.();
-          }}
-        />
-
-        {/* The nav scrolls only when the window is genuinely too short. The
-            native scrollbar is hidden and replaced by a mask that fades the
-            first/last rows out, so a short window looks deliberate instead of
-            showing a grey gutter down the middle of the chrome. */}
-        {/* Pinned strip. Fixed by choice, not by catalogue size: adding a
-            module adds a tile to the launcher, never a row here. */}
-        <nav ref={barre} className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3">
-          {/*
-            LES DEUX ESPACES SONT GROUPÉS — ET LE POSTE DE TRAVAIL A ÉTÉ LE
-            DERNIER À L'ÊTRE.
-
-            Il montrait une bande d'épinglés : cinq écrans choisis, le reste
-            dans le lanceur. L'intention se défendait, mais elle ne survit pas à
-            l'usage — on épingle, on épingle encore, et la bande finit par
-            porter les dix-huit modules dans l'ordre du catalogue, sans un
-            intitulé. C'est exactement ce qu'Aaron avait sous les yeux : une
-            longue liste plate, pendant que sa cliente, elle, avait ses cinq
-            groupes.
-
-            Trois surfaces montraient déjà des sections — la Tour de contrôle
-            ici même, la barre de l'édition Business, et le contexte de support
-            qui reflète celle d'une cliente. Celle-ci était la quatrième, et la
-            seule à ne pas suivre.
-
-            Le catalogue déclarait pourtant ses six groupes depuis le début
-            (`modules.internal.ts` : Pilotage, Clients & revenus, Production,
-            Collectif, Livrables, Système). Rien à inventer : il suffisait de
-            les lire.
-          */}
-          {/*
-            LES ÉPINGLÉS, AU-DESSUS DES SECTIONS
-
-            Un RACCOURCI, pas une septième catégorie — et c'est une décision.
-            Les six sections sont le rangement ; les épingles sont un chemin
-            court vers ce qu'on ouvre tous les jours. Deux conséquences
-            assumées :
-
-              · un module épinglé quitte sa section tant que la bande est
-                visible. La première version le laissait aux deux endroits,
-                et Aaron lisait « Atelier » deux fois dans la même colonne ;
-                une barre qu'on relit n'est plus un repère. Barre repliée,
-                la bande n'existe pas et la section reprend sa ligne — rien
-                ne disparaît jamais, ça change seulement de place ;
-              · la bande n'a pas d'intitulé en majuscules et se ferme sur un
-                filet, pour qu'elle se lise comme une avance sur la liste et
-                non comme un groupe de plus.
-
-            Les mêmes épingles nourrissent la barre du pouce sur téléphone
-            (MobileBottomNav) : une seule notion, deux surfaces.
-          */}
-          {isExpanded && epingles.length > 0 && (
-            <div className="flex flex-col gap-1 border-b border-border pb-2">
-              {/* Un intitulé quand même, et petit : Aaron lisait « Atelier » en
-                  tête de barre sans savoir pourquoi il était là. Une bande sans
-                  nom se lit comme une erreur de rangement ; nommée, c'est un
-                  choix qu'on reconnaît — et l'épingle reste visible sur la
-                  ligne pour le défaire. */}
-              <p className="eyebrow flex items-center gap-1.5 px-3 pb-1 pt-1 text-text-muted">
-                <Pin size={10} strokeWidth={2} aria-hidden />
-                {t('chrome.epingles')}
-              </p>
-              {epingles.map((item) => renderNavItem(item))}
+        ouvrirRecherche={ouvrirPalette}
+        enTete={
+          <div className="flex-none border-b border-[#1c1c1c]">
+            {/* Mobile uniquement : le rail d'organisations est masqué sous `md`. */}
+            <div className="px-3 pt-3 md:hidden">
+              <OrgSwitchButton onNavigate={onClose} />
             </div>
-          )}
-
-          {/*
-            CHAQUE ÉCRAN UNE SEULE FOIS.
-
-            Vu sur le poste d'Aaron : « Atelier » deux fois dans la même barre
-            — une fois dans la bande d'épingles, une fois dans sa section — et
-            des sections qui semblaient dans le désordre parce que leurs
-            premières lignes étaient déjà montées plus haut. Une épingle est
-            un raccourci ; mais un raccourci qui laisse une copie derrière lui
-            fait lire la barre deux fois. La ligne épinglée est donc la seule
-            occurrence de son écran tant que la bande est visible ; barre
-            repliée, la bande disparaît et la section reprend sa ligne. Une
-            section vidée par ses épingles ne laisse pas d'intitulé orphelin.
-          */}
-          {sectionsForSpace(space)
-            .map((section) => ({ ...section, items: section.items.filter((item) => !dansLaBande.has(item.key)) }))
-            .filter((section) => section.items.length > 0)
-            .map((section) => (
-              <div key={section.key} className="flex flex-col gap-1">
-                {isExpanded ? (
-                  <p className="eyebrow px-3 pb-1 pt-1">{libelleSection(section.label)}</p>
-                ) : (
-                  // Barre repliée : l'intitulé ne tiendrait pas dans 72 px, le
-                  // filet garde la coupure sans prétendre la nommer.
-                  <span className="mx-auto my-1.5 h-px w-6 bg-border" aria-hidden />
-                )}
-                {section.items.map((item) => renderNavItem(item))}
-              </div>
-            ))}
-
-          {/*
-            Plus de bouton « Tous les modules » ici, dans aucun des deux
-            espaces : il ouvrirait la liste qu'on est en train de regarder. Le
-            lanceur reste monté dans `AppLayout` pour la barre du pouce, où il
-            garde son utilité propre — choisir les épingles qui la nourrissent
-            sur téléphone.
-          */}
-        </nav>
-
-        <div className="mt-auto flex flex-col gap-1 border-t border-border px-3 pt-2">
-          <button
-            type="button"
-            onClick={logout}
-            title={!isExpanded ? t('chrome.deconnexion') : undefined}
-            aria-label={t('chrome.deconnexion')}
-            className={`flex min-h-11 items-center gap-3 rounded-lg py-2 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary md:min-h-0 ${
-              isExpanded ? 'px-3' : 'justify-center px-0'
-            }`}
-          >
-            <LogOut size={20} strokeWidth={1.9} />
-            {isExpanded && (
-              <span className="select-none whitespace-nowrap">{t('chrome.deconnexion')}</span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              setIsExpanded((v) => {
-                /*
-                  Le geste est un CHOIX, et il se retient. Sans ça, replier la
-                  barre sur un grand écran ne durerait que jusqu'au prochain
-                  rechargement — un réglage qu'on doit refaire n'en est pas un.
-                */
-                try {
-                  window.localStorage.setItem(CLE_CHOIX, String(!v));
-                } catch {
-                  /* stockage refusé : le choix ne vaut que pour cette session */
-                }
-                return !v;
-              })
-            }
-            className={`hidden items-center gap-3 rounded-lg py-2 text-sm text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary md:flex ${
-              isExpanded ? 'px-3' : 'justify-center px-0'
-            }`}
-            aria-label={isExpanded ? t('chrome.replierBarre') : t('chrome.deplierBarre')}
-          >
-            {isExpanded ? (
-              <ChevronsLeft size={20} strokeWidth={1.9} />
-            ) : (
-              <ChevronsRight size={20} strokeWidth={1.9} />
-            )}
-          </button>
-        </div>
-      </motion.aside>
-
-      <AppLauncher open={isLauncherOpen} onClose={() => setLauncherOpen(false)} space={space} />
+            <div className="flex h-14 items-center gap-2.5 px-3.5">
+              <span className="flex h-[23px] w-[23px] flex-none items-center justify-center border border-border-section bg-[#1d1d1d] font-mono text-[10.5px] font-bold text-text-primary">
+                A
+              </span>
+              {expanded && (
+                <span className="min-w-0 flex-1 leading-tight">
+                  {/* Le nom de l'édition vient du jeton, jamais d'une chaîne
+                      figée : le renommage du Bloc 1 a déjà échangé les deux
+                      noms une fois. */}
+                  <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                    {EDITION_PRODUCT_NAME}
+                  </span>
+                  {/* L'organisation RÉELLE, jamais une chaîne en dur : en
+                      contexte client, ce sous-titre a déjà affiché « AMN
+                      DevSec » pendant qu'on travaillait chez une cliente. */}
+                  <span className="block truncate font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
+                    {org?.name ?? 'AMN DevSec'}
+                  </span>
+                </span>
+              )}
+            </div>
+          </div>
+        }
+        pied={
+          <div className="flex flex-none flex-col gap-0.5 border-t border-[#1c1c1c] bg-[#0a0a0a] p-2">
+            <button
+              type="button"
+              onClick={basculer}
+              aria-label={deplie ? t('chrome.replierBarre') : t('chrome.deplierBarre')}
+              className="hidden items-center gap-2.5 px-2.5 py-2 text-[13px] text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary md:flex"
+            >
+              {deplie ? (
+                <ChevronsLeft size={16} strokeWidth={2.1} />
+              ) : (
+                <ChevronsRight size={16} strokeWidth={2.1} />
+              )}
+              {expanded && <span>{t('chrome.replier')}</span>}
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              title={!expanded ? t('chrome.deconnexion') : undefined}
+              aria-label={t('chrome.deconnexion')}
+              className="flex min-h-11 items-center gap-2.5 px-2.5 py-2 text-[13px] text-text-muted transition-colors hover:bg-surface-hover hover:text-danger md:min-h-0"
+            >
+              <LogOut size={16} strokeWidth={2.1} />
+              {expanded && <span>{t('chrome.deconnexion')}</span>}
+            </button>
+          </div>
+        }
+      />
 
       <AnimatePresence>
-        {isSitesFlyoutOpen && (
+        {voletSites && (
           <React.Fragment>
             <motion.div
               key="sites-flyout-overlay"
@@ -612,16 +280,16 @@ export function Sidebar({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="fixed inset-0 z-20"
-              onClick={() => setIsSitesFlyoutOpen(false)}
+              onClick={() => setVoletSites(false)}
             />
             <motion.div
               key="sites-flyout"
               initial={{ x: -16, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -16, opacity: 0 }}
-              transition={TRANSITION}
-              className="fixed top-0 z-30 h-full w-64 border-r border-border bg-surface py-4 elev-2"
-              style={{ left: isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              className="elev-2 fixed top-0 z-30 h-full w-64 border-r border-border bg-surface py-4"
+              style={{ left: expanded ? LARGEUR_COQUILLE : LARGEUR_RAIL + 1 }}
             >
               <p className="px-4 pb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">
                 Sites surveillés
@@ -633,7 +301,7 @@ export function Sidebar({
                     <button
                       type="button"
                       onClick={() => {
-                        setIsSitesFlyoutOpen(false);
+                        setVoletSites(false);
                         navigate('/sites');
                       }}
                       className="mt-3 w-full bg-accent px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
@@ -647,7 +315,7 @@ export function Sidebar({
                       key={site.id}
                       type="button"
                       onClick={() => {
-                        setIsSitesFlyoutOpen(false);
+                        setVoletSites(false);
                         if (location.pathname !== '/sites') navigate('/sites');
                         openSite(site.id);
                       }}
@@ -664,153 +332,5 @@ export function Sidebar({
         )}
       </AnimatePresence>
     </>
-  );
-}
-
-/**
- * Le sélecteur d'espace, en tête de la colonne.
- *
- * Il occupe la place qu'occupait le logo AMN — lequel n'y avait plus sa place :
- * le rail, à gauche, dit déjà chez qui on est. Cette ligne-ci répond à l'autre
- * question, celle qui change tout le contenu de la colonne : dans quel espace
- * de travail suis-je ?
- *
- * Replié (barre étroite), il ne montre que l'icône de l'espace et bascule
- * directement sur l'autre au clic : à deux espaces, un menu déroulant pour
- * choisir entre deux entrées est une cérémonie inutile.
- */
-function SpaceSwitcher({
-  expanded,
-  onNavigate,
-}: {
-  expanded: boolean;
-  onNavigate: () => void;
-}) {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
-  const current = spaceByKey(spaceForPath(location.pathname));
-  const CurrentIcon = current.icon;
-  const { t } = useLangue();
-  const courant = libelleEspace(current);
-  const { org } = useAuth();
-  const orgName = org?.name ?? 'AMN DevSec';
-
-  const go = (home: string) => {
-    setOpen(false);
-    onNavigate();
-    navigate(home);
-  };
-
-  return (
-    <div className="relative mb-2 px-3">
-      <button
-        type="button"
-        onClick={() => {
-          if (expanded) {
-            setOpen((v) => !v);
-            return;
-          }
-          // Trois espaces désormais : replié, le clic passe au suivant, en boucle.
-          const other = SPACES[(SPACES.findIndex((s) => s.key === current.key) + 1) % SPACES.length];
-          if (other && other.key !== current.key) go(other.home);
-        }}
-        aria-haspopup={expanded ? 'menu' : undefined}
-        aria-expanded={expanded ? open : undefined}
-        title={expanded ? undefined : t('chrome.changerEspace', { espace: courant.label })}
-        className={`group flex h-11 w-full items-center gap-2.5 rounded-xl border border-border bg-surface transition-colors duration-200 hover:border-border-strong ${
-          expanded ? 'px-3' : 'justify-center px-0'
-        }`}
-      >
-        <span className="flex-shrink-0 text-text-primary transition-transform duration-200 group-hover:scale-105">
-          <CurrentIcon size={18} strokeWidth={1.9} />
-        </span>
-        {expanded && (
-          <>
-            <span className="min-w-0 flex-1 text-left">
-              <span className="block truncate text-[13px] font-semibold leading-tight text-text-primary">
-                {courant.label}
-              </span>
-              {/* L'organisation RÉELLE, pas une chaîne en dur.
-                  Elle l'était : en contexte client, ce sous-titre affichait
-                  « AMN DevSec » pendant qu'on travaillait dans le dossier
-                  d'une cliente — exactement l'erreur que toute la mécanique de
-                  contexte existe pour empêcher.
-                  Masqué sous `md` : le sélecteur d'organisation, juste
-                  au-dessus dans le tiroir mobile, dit déjà la même chose, et
-                  le voir deux fois à 60 px d'intervalle donne l'impression
-                  d'un montage bricolé. */}
-              <span className="hidden truncate font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted md:block">
-                {orgName}
-              </span>
-            </span>
-            <ChevronDown
-              size={14}
-              strokeWidth={2}
-              className={`flex-shrink-0 text-text-muted transition-transform duration-200 ${
-                open ? 'rotate-180' : ''
-              }`}
-            />
-          </>
-        )}
-      </button>
-
-      <AnimatePresence>
-        {open && expanded && (
-          <React.Fragment key="space-menu">
-            <motion.div
-              key="space-menu-overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              onClick={() => setOpen(false)}
-              className="fixed inset-0 z-40"
-            />
-            <motion.div
-              key="space-menu-panel"
-              role="menu"
-              initial={{ opacity: 0, y: -6, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -4, scale: 0.99 }}
-              transition={TRANSITION}
-              className="elev-2 absolute left-3 right-3 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-border bg-surface"
-            >
-              {SPACES.map((space) => {
-                const Icon = space.icon;
-                const active = space.key === current.key;
-                const libelles = libelleEspace(space);
-                return (
-                  <button
-                    key={space.key}
-                    type="button"
-                    role="menuitem"
-                    onClick={() => go(space.home)}
-                    className={`flex w-full items-start gap-2.5 px-3 py-2.5 text-left transition-colors ${
-                      active ? 'bg-accent-muted' : 'hover:bg-surface-hover'
-                    }`}
-                  >
-                    <span className="mt-0.5 flex-shrink-0 text-text-primary">
-                      <Icon size={16} strokeWidth={1.9} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[13px] font-medium text-text-primary">
-                        {libelles.label}
-                      </span>
-                      <span className="block text-[11px] leading-snug text-text-muted">
-                        {libelles.hint}
-                      </span>
-                    </span>
-                    {active && (
-                      <Check size={14} strokeWidth={2} className="mt-0.5 flex-shrink-0 text-text-secondary" />
-                    )}
-                  </button>
-                );
-              })}
-            </motion.div>
-          </React.Fragment>
-        )}
-      </AnimatePresence>
-    </div>
   );
 }

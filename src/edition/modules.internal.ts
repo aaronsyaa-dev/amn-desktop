@@ -127,6 +127,7 @@ export const NAV_SECTIONS: NavSection[] = [
   */
   {
     key: 'pilotage',
+    code: 'PI',
     label: 'Pilotage',
     space: 'workspace',
     items: [
@@ -149,6 +150,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'commerce',
+    code: 'CR',
     label: 'Clients & revenus',
     space: 'workspace',
     // La chaîne complète d'un euro, dans son ordre réel : une fiche, un devis
@@ -176,6 +178,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'production',
+    code: 'PR',
     label: 'Production',
     space: 'workspace',
     // Les deux faces de ce qu'une prestation coûte — ce qu'on sort et ce qu'on
@@ -201,6 +204,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'collectif',
+    code: 'CO',
     label: 'Collectif',
     space: 'workspace',
     // Ce qui se dit à deux, et ce qui doit s'en souvenir. L'ancienne section
@@ -226,6 +230,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'livrables',
+    code: 'LV',
     label: 'Livrables',
     space: 'workspace',
     items: [
@@ -235,6 +240,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'outils',
+    code: 'OU',
     label: 'Outils',
     space: 'workspace',
     items: [
@@ -255,6 +261,7 @@ export const NAV_SECTIONS: NavSection[] = [
       et un module qu'on n'utilise pas est un module qu'on ne corrige pas.
     */
     key: 'personnel',
+    code: 'PE',
     label: 'Personnel',
     space: 'workspace',
     items: [
@@ -269,6 +276,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'systeme',
+    code: 'SY',
     label: 'Système',
     space: 'workspace',
     items: [
@@ -287,6 +295,7 @@ export const NAV_SECTIONS: NavSection[] = [
   */
   {
     key: 'garde',
+    code: 'LG',
     label: 'La Garde',
     space: 'garde',
     items: [
@@ -300,6 +309,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'tour',
+    code: 'SU',
     label: 'Supervision',
     space: 'control',
     items: [
@@ -314,6 +324,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'parc',
+    code: 'PA',
     label: 'Parc',
     space: 'control',
     // Sites quitte le Poste de travail pour venir ici, à côté des trackers qui
@@ -337,6 +348,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'produits',
+    code: 'PD',
     label: 'Produits',
     space: 'control',
     items: [

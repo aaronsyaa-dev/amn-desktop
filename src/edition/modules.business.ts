@@ -118,6 +118,7 @@ export const NAV_SECTIONS: NavSection[] = [
   */
   {
     key: 'pilotage',
+    code: 'PI',
     label: 'Pilotage',
     items: [
       { key: 'home', label: 'Accueil', to: '/', icon: LayoutDashboard, hint: 'Votre journée' },
@@ -139,6 +140,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'commerce',
+    code: 'CR',
     label: 'Clients & revenus',
     // La chaîne complète d'un euro dans son ordre réel : une fiche, un devis
     // qui devient une facture, et les commandes qui arrivent du site sans que
@@ -164,6 +166,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'production',
+    code: 'PR',
     label: 'Production',
     // Les deux faces de ce qu'une prestation coûte — ce qu'on sort, ce qu'on y
     // passe — et l'outil qui en tire un prix. Les calculateurs agrègent
@@ -187,6 +190,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'documents',
+    code: 'DO',
     label: 'Documents',
     items: [
       { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen, hint: 'Bloc-notes' },
@@ -199,6 +203,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'collectif',
+    code: 'CO',
     label: 'Collectif',
     items: [
       { key: 'dm', label: 'Messages privés', to: '/messages-prives', icon: MessageCircle, hint: 'Écrire à une personne, sans le groupe' },
@@ -212,6 +217,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'outils',
+    code: 'OU',
     label: 'Outils',
     items: [
       { key: 'qr', label: 'QR codes', to: '/outils/qr', icon: QrCode, hint: 'Une adresse, un code à imprimer' },
@@ -241,6 +247,7 @@ export const NAV_SECTIONS: NavSection[] = [
       pas ce qu'on ouvre pour travailler.
     */
     key: 'personnel',
+    code: 'PE',
     label: 'Personnel',
     items: [
       { key: 'budget', label: 'Avant la paie', to: '/personnel/budget', icon: PiggyBank, hint: 'Ce qu’il reste à dépenser' },
@@ -254,6 +261,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'systeme',
+    code: 'SY',
     label: 'Système',
     items: [
       { key: 'settings', label: 'Paramètres', to: '/settings', icon: Settings, hint: 'Profil et notifications' },

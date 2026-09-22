@@ -34,6 +34,19 @@ export type SpaceKey = 'workspace' | 'control' | 'garde';
 export interface NavSection {
   key: string;
   label: string;
+  /**
+   * LE CODE DE RAIL — deux lettres, et le seul texte qui tienne dans 38 px.
+   *
+   * La tuile de rail montre le code et le nombre de modules ; le nom complet
+   * vit dans son `title`. Le code est déclaré ICI, dans le catalogue, et non
+   * dérivé du libellé : « Clients & revenus » et « Collectif » commencent tous
+   * deux par C, et deux familles qui affichent la même chose dans la même
+   * colonne sont exactement le défaut que le rail existe pour éviter.
+   *
+   * `scripts/check-coquille.mjs` refuse un code absent, mal formé ou employé
+   * deux fois dans la même édition.
+   */
+  code: string;
   /** Espace auquel appartient la section. Absent = Poste de travail. */
   space?: SpaceKey;
   items: NavItem[];

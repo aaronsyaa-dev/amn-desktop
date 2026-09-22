@@ -347,10 +347,15 @@ for (const key of clientKeys) {
 /** `{ key: 'x', label: 'Y', items: [ … ] }` → groupes, dans l'ordre du fichier. */
 function navGroups(source) {
   const groups = [];
-  // Une SECTION porte `key` puis `label` sur la ligne suivante ; un MODULE
-  // porte `key` … `to` sur une seule ligne. La borne `[^\n}]` est ce qui
-  // distingue les deux — voir `navEntries`.
-  const re = /key:\s*'([^']+)',\s*\n\s*label:\s*'([^']+)'|\{\s*key:\s*'([^']+)'[^\n}]*?to:\s*'([^']+)'/g;
+  // Une SECTION porte `key`, son `code` de rail, puis `label`, une ligne
+  // chacun ; un MODULE porte `key` … `to` sur une seule ligne. La borne
+  // `[^\n}]` est ce qui distingue les deux — voir `navEntries`.
+  //
+  // Le `code` est optionnel dans cette lecture, et c'est délibéré : un
+  // catalogue à qui il manquerait doit être refusé par le contrôle de la
+  // coquille, qui sait le dire, pas rendre ce lecteur-ci aveugle à toutes les
+  // sections — un lecteur cassé masque l'ensemble des autres règles.
+  const re = /key:\s*'([^']+)',\s*\n(?:\s*code:\s*'[^']*',\s*\n)?\s*label:\s*'([^']+)'|\{\s*key:\s*'([^']+)'[^\n}]*?to:\s*'([^']+)'/g;
   let match;
   while ((match = re.exec(source)) !== null) {
     if (match[2] !== undefined) groups.push({ label: match[2], keys: [] });
@@ -362,7 +367,8 @@ function navGroups(source) {
 /** `{ label: 'Pilotage', keys: ['home', …] }` → la même forme. */
 function keyGroups(source) {
   const groups = [];
-  const re = /label:\s*'([^']+)',\s*keys:\s*\[([^\]]*)\]/g;
+  // `code` est optionnel ici pour la même raison que dans `navGroups`.
+  const re = /label:\s*'([^']+)',\s*(?:code:\s*'[^']*',\s*)?keys:\s*\[([^\]]*)\]/g;
   let match;
   while ((match = re.exec(source)) !== null) {
     groups.push({ label: match[1], keys: [...match[2].matchAll(/'([^']+)'/g)].map((m) => m[1]) });
@@ -392,7 +398,13 @@ for (const [fichier, requis, interdits] of [
     Une règle qui ne couvre que les surfaces d'une édition laisse l'autre
     dériver.
   */
-  ['src/components/Sidebar.tsx', ['sectionsForSpace(', 'section.label'], [/\bNAV_ITEMS\b/, /itemsForSpace\(/]],
+  /*
+    La barre interne passe par `toutesLesSections()` depuis le rail : mêmes
+    filtres que `sectionsForSpace`, sans le filtre d'espace — le rail montre
+    les douze familles d'un coup. C'est toujours une lecture PAR SECTIONS,
+    ce que cette règle exige ; ce n'est plus la même fonction.
+  */
+  ['src/components/Sidebar.tsx', ['toutesLesSections(', 'section.label'], [/\bNAV_ITEMS\b/, /itemsForSpace\(/]],
   ['src/business/BusinessSidebar.tsx', ['sectionsForSpace(', 'section.label'], [/\bNAV_ITEMS\b/, /itemsForSpace\(/]],
   ['src/components/AppLauncher.tsx', ['sectionsForSpace(', 'section.label'], [/\bNAV_ITEMS\b/, /itemsForSpace\(/]],
   ['src/client-context/ClientSidebar.tsx', ['clientSections(', 'section.label'], [/\bNAV_ITEMS\b/, /itemsForSpace\(/]],

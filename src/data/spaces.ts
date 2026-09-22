@@ -160,6 +160,26 @@ export function sectionsForSpace(space: SpaceKey): NavSection[] {
     .filter((section) => section.items.length > 0);
 }
 
+/**
+ * TOUTES les sections, tous espaces confondus — ce que le rail affiche.
+ *
+ * Même filtrage que `sectionsForSpace` (modules fermés à l'organisation,
+ * modules allégés par la personne, sections vidées) MOINS le filtre d'espace :
+ * le rail montre les douze familles de l'édition interne d'un seul coup, et
+ * c'est ce qui a permis de retirer le sélecteur d'espace, qui en cachait deux
+ * tiers derrière un menu.
+ *
+ * Écrit ici plutôt que dans la barre latérale : les deux filtres qui comptent
+ * ne doivent exister qu'à un endroit. Recopiés dans une surface, ils en
+ * seraient absents de la suivante — c'est l'histoire de ce fichier.
+ */
+export function toutesLesSections(): NavSection[] {
+  return NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => isModuleEnabled(item.key) && !isModuleAllege(item.key)),
+  })).filter((section) => section.items.length > 0);
+}
+
 export function itemsForSpace(space: SpaceKey): NavItem[] {
   return sectionsForSpace(space).flatMap((section) => section.items);
 }
