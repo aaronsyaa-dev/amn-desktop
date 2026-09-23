@@ -255,4 +255,218 @@ export function dernierRecalcul(leads: Lead[], maintenant: Date): { le: Date; pa
   return dernier && dernier > nuit ? { le: dernier, parEvenement: true } : { le: nuit, parEvenement: false };
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   39c · ITINÉRAIRES — la carte des deux routes
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * « Positions des arrêts en pourcentage du plan, routes en `viewBox` de même
+ * proportion » : le plan fait 1000 × 360, un arrêt à (18 %, 62 %) est tracé
+ * en (180, 223,2).
+ */
+export const PLAN = { largeur: 1000, hauteur: 360 } as const;
+export const versPlan = (p: { xPct: number; yPct: number }) => ({
+  x: Math.round(p.xPct * (PLAN.largeur / 100) * 100) / 100,
+  y: Math.round(p.yPct * (PLAN.hauteur / 100) * 100) / 100,
+});
+
+export interface PointPlan {
+  id: string;
+  nom: string;
+  /** Le nom court posé sur le plan. */
+  court?: string;
+  xPct: number;
+  yPct: number;
+}
+
+export interface ArretItineraire extends PointPlan {
+  adresse?: string;
+  /** Le créneau imposé par le client, « HH:MM » ; l'un ou l'autre peut manquer. */
+  creneau?: { debut?: string; fin?: string };
+  dureeMin: number;
+}
+
+/** Un trajet réel, calculé par un routeur — jamais mesuré sur le tracé. */
+export interface Trajet {
+  de: string;
+  a: string;
+  km: number;
+  min: number;
+}
+
+export interface CoursDEau {
+  nom: string;
+  /** Les points de la rive médiane, en pourcentage du plan. */
+  points: Array<[number, number]>;
+  largeur: number;
+}
+
+export interface PlanItineraire {
+  kind: 'plan';
+  jour: string;
+  depart: string;
+  depot: PointPlan;
+  arrets: ArretItineraire[];
+  ordreHabituel: string[];
+  trajets: Trajet[];
+  envoyeLe?: string;
+  /** Les gains enregistrés au moment de l'envoi, pour le bilan du mois. */
+  gains?: { km: number; min: number };
+}
+
+export interface ReglageItineraire {
+  kind: 'reglage';
+  coursDEau: CoursDEau[];
+  consoL100: number;
+}
+
+export type EnregistrementItineraire = PlanItineraire | ReglageItineraire;
+
+const enMin = (hhmm: string) => {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + (m || 0);
+};
+
+export interface Evaluation {
+  km: number;
+  min: number;
+  /** Les minutes d'arrivée après la fin d'un créneau, cumulées. */
+  retardMin: number;
+  /** Les arrêts dont le créneau est tenu. */
+  tenus: string[];
+  complet: boolean;
+}
+
+/** Une boucle dépôt → arrêts → dépôt, avec les trajets réels. */
+export function evaluer(plan: Pick<PlanItineraire, 'depart' | 'depot' | 'arrets' | 'trajets'>, ordre: string[]): Evaluation {
+  const trajet = (de: string, a: string) => plan.trajets.find((t) => (t.de === de && t.a === a) || (t.de === a && t.a === de));
+  const parId = new Map(plan.arrets.map((a) => [a.id, a]));
+  let km = 0;
+  let route = 0;
+  let horloge = enMin(plan.depart);
+  let retardMin = 0;
+  let complet = true;
+  const tenus: string[] = [];
+  const etapes = [plan.depot.id, ...ordre, plan.depot.id];
+  for (let i = 1; i < etapes.length; i += 1) {
+    const t = trajet(etapes[i - 1], etapes[i]);
+    if (!t) {
+      complet = false;
+      continue;
+    }
+    km += t.km;
+    route += t.min;
+    horloge += t.min;
+    const a = parId.get(etapes[i]);
+    if (!a) continue;
+    if (a.creneau?.debut) horloge = Math.max(horloge, enMin(a.creneau.debut));
+    if (a.creneau?.fin && horloge > enMin(a.creneau.fin)) retardMin += horloge - enMin(a.creneau.fin);
+    else if (a.creneau) tenus.push(a.id);
+    horloge += a.dureeMin;
+  }
+  return { km: Math.round(km * 10) / 10, min: Math.round(route), retardMin, tenus, complet };
+}
+
+function* permutations<T>(xs: T[]): Generator<T[]> {
+  if (xs.length <= 1) {
+    yield xs;
+    return;
+  }
+  for (let i = 0; i < xs.length; i += 1) {
+    const reste = [...xs.slice(0, i), ...xs.slice(i + 1)];
+    for (const p of permutations(reste)) yield [xs[i], ...p];
+  }
+}
+
+/**
+ * « L'optimisation respecte d'abord les créneaux imposés par les clients, et
+ * seulement ensuite la distance » : on compare d'abord le retard sur les
+ * créneaux, puis les kilomètres. Toutes les permutations jusqu'à huit arrêts
+ * (40 320) ; au-delà, le plus proche voisin amélioré par 2-opt, au même ordre
+ * de comparaison.
+ */
+export function optimiser(plan: Pick<PlanItineraire, 'depart' | 'depot' | 'arrets' | 'trajets'>): string[] {
+  const ids = plan.arrets.map((a) => a.id);
+  const mieux = (a: Evaluation, b: Evaluation) => a.retardMin < b.retardMin || (a.retardMin === b.retardMin && a.km < b.km);
+  if (ids.length <= 8) {
+    let best = ids;
+    let e = evaluer(plan, ids);
+    for (const p of permutations(ids)) {
+      const x = evaluer(plan, p);
+      if (x.complet && mieux(x, e)) {
+        best = p;
+        e = x;
+      }
+    }
+    return best;
+  }
+  let ordre = [...ids];
+  let e = evaluer(plan, ordre);
+  for (let progres = true; progres; ) {
+    progres = false;
+    for (let i = 0; i < ordre.length - 1; i += 1) {
+      for (let j = i + 1; j < ordre.length; j += 1) {
+        const essai = [...ordre.slice(0, i), ...ordre.slice(i, j + 1).reverse(), ...ordre.slice(j + 1)];
+        const x = evaluer(plan, essai);
+        if (x.complet && mieux(x, e)) {
+          ordre = essai;
+          e = x;
+          progres = true;
+        }
+      }
+    }
+  }
+  return ordre;
+}
+
+/** La rive médiane d'un cours d'eau, lissée (Catmull-Rom) — la même courbe pour le dessin et pour les traversées. */
+export function courbeCoursDEau(c: Pick<CoursDEau, 'points'>, pas = 12): Array<{ x: number; y: number }> {
+  const pts = c.points.map(([xPct, yPct]) => versPlan({ xPct, yPct }));
+  if (pts.length < 2) return pts;
+  const r: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < pts.length - 1; i += 1) {
+    const p0 = pts[Math.max(0, i - 1)];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[Math.min(pts.length - 1, i + 2)];
+    for (let k = 0; k < pas; k += 1) {
+      const t = k / pas;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      r.push({
+        x: 0.5 * (2 * p1.x + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+        y: 0.5 * (2 * p1.y + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3),
+      });
+    }
+  }
+  r.push(pts[pts.length - 1]);
+  return r;
+}
+
+const coupe = (a: { x: number; y: number }, b: { x: number; y: number }, c: { x: number; y: number }, d: { x: number; y: number }) => {
+  const o = (p: typeof a, q: typeof a, r: typeof a) => Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
+  return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0;
+};
+
+/** Combien de fois une boucle traverse un cours d'eau. */
+export function traversees(plan: Pick<PlanItineraire, 'depot' | 'arrets'>, ordre: string[], c: Pick<CoursDEau, 'points'>): number {
+  const parId = new Map<string, PointPlan>([[plan.depot.id, plan.depot], ...plan.arrets.map((a) => [a.id, a] as [string, PointPlan])]);
+  const etapes = [plan.depot.id, ...ordre, plan.depot.id].map((id) => versPlan(parId.get(id) as PointPlan));
+  const rive = courbeCoursDEau(c);
+  let n = 0;
+  for (let i = 1; i < etapes.length; i += 1) for (let j = 1; j < rive.length; j += 1) if (coupe(etapes[i - 1], etapes[i], rive[j - 1], rive[j])) n += 1;
+  return n;
+}
+
+/** Le tracé d'une boucle dans la `viewBox` du plan. */
+export function traceBoucle(plan: Pick<PlanItineraire, 'depot' | 'arrets'>, ordre: string[]): string {
+  const parId = new Map<string, PointPlan>([[plan.depot.id, plan.depot], ...plan.arrets.map((a) => [a.id, a] as [string, PointPlan])]);
+  return [plan.depot.id, ...ordre, plan.depot.id]
+    .map((id, i) => {
+      const p = versPlan(parId.get(id) as PointPlan);
+      return `${i ? 'L' : 'M'}${Math.round(p.x * 10) / 10} ${Math.round(p.y * 10) / 10}`;
+    })
+    .join(' ');
+}
+
 export { JOUR_MS, borne };

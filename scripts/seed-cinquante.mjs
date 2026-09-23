@@ -934,6 +934,55 @@ async function ajouts() {
       faits: [f('entrant', 'appel entrant', 1, 80), f('zone', 'dans la zone', 1, 80), f('visites', '1 visite', 0.4, 80)],
     });
   }
+
+  // ── 39c Itinéraires ───────────────────────────────────────────────────────
+  // Le plan schématique (Lyon, la Saône à l'ouest, le Rhône à l'est) et les
+  // trajets « routiers » du bac à sable : la distance à vol d'oiseau, plus un
+  // détour par pont à chaque traversée — le module, lui, ne lit que ces
+  // trajets, jamais le tracé.
+  const coursDEau = [
+    { nom: 'la Saône', largeur: 34, points: [[42, 0], [42, 22], [46, 44], [44, 67], [43, 84], [44, 100]] },
+    { nom: 'le Rhône', largeur: 44, points: [[62, 0], [64, 22], [61, 47], [64, 69], [65, 86], [65, 100]] },
+  ];
+  await poser('routePlans', 'c50-itin-reglage', { kind: 'reglage', coursDEau, consoL100: 7.5 });
+  const depot = { id: 'depot', nom: 'Dépôt', xPct: 18, yPct: 62 };
+  const arrets = [
+    { id: 'bertaux', nom: 'Maison Bertaux', court: 'Bertaux', xPct: 30, yPct: 30, adresse: '12 rue Tronchet, Lyon 6e', creneau: { debut: '08:00', fin: '10:00' }, dureeMin: 40 },
+    { id: 'studio', nom: 'Studio Nord', xPct: 52, yPct: 18, adresse: '4 quai Saint-Vincent, Lyon 1er', dureeMin: 30 },
+    { id: 'halles', nom: 'Les Halles', xPct: 70, yPct: 34, adresse: '102 cours Lafayette, Lyon 3e', dureeMin: 35 },
+    { id: 'aubier', nom: 'Résidence Aubier', court: 'Aubier', xPct: 82, yPct: 66, adresse: '8 rue Paul-Bert, Lyon 3e', creneau: { debut: '11:00', fin: '11:00' }, dureeMin: 45 },
+    { id: 'mano', nom: 'Chez Mano', xPct: 60, yPct: 78, adresse: '31 rue de Marseille, Lyon 7e', dureeMin: 30 },
+    { id: 'dune', nom: 'Le Comptoir Dune', court: 'Comptoir Dune', xPct: 40, yPct: 72, adresse: '5 place Bellecour, Lyon 2e', creneau: { debut: '15:00' }, dureeMin: 30 },
+  ];
+  const pts = [depot, ...arrets];
+  const coupeSeg = (a, b, c, d) => {
+    const o = (p, q, r) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]));
+    return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0;
+  };
+  const trajets = [];
+  for (let i = 0; i < pts.length; i += 1) {
+    for (let j = i + 1; j < pts.length; j += 1) {
+      const a = [pts[i].xPct * 10, pts[i].yPct * 3.6];
+      const b = [pts[j].xPct * 10, pts[j].yPct * 3.6];
+      let ponts = 0;
+      for (const c of coursDEau) for (let k = 1; k < c.points.length; k += 1) {
+        if (coupeSeg(a, b, [c.points[k - 1][0] * 10, c.points[k - 1][1] * 3.6], [c.points[k][0] * 10, c.points[k][1] * 3.6])) ponts += 1;
+      }
+      const km = Math.round((Math.hypot(b[0] - a[0], b[1] - a[1]) * 0.012 + ponts * 1.6) * 10) / 10;
+      trajets.push({ de: pts[i].id, a: pts[j].id, km, min: Math.round(km * 2.6 + ponts * 4) });
+    }
+  }
+  const demainJ = new Date(MAINTENANT.getFullYear(), MAINTENANT.getMonth(), MAINTENANT.getDate() + 1);
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const plan = { kind: 'plan', depart: '08:00', depot, arrets, trajets, ordreHabituel: ['halles', 'bertaux', 'aubier', 'studio', 'dune', 'mano'] };
+  await poser('routePlans', 'c50-itin-demain', { ...plan, jour: iso(demainJ) });
+  // Les tournées déjà envoyées ce mois-ci : leurs gains nourrissent le bilan.
+  const gainsPasses = [[21.4, 44], [18.2, 39], [24.6, 52], [16.9, 35], [22.3, 47], [19.8, 41], [20.5, 43], [17.1, 36], [23.4, 50], [27.8, 83]];
+  for (let k = 0; k < gainsPasses.length; k += 1) {
+    const d = new Date(MAINTENANT.getFullYear(), MAINTENANT.getMonth(), 1 + k * 2);
+    if (d >= MAINTENANT) break;
+    await poser('routePlans', `c50-itin-passe-${k}`, { ...plan, jour: iso(d), envoyeLe: new Date(d.getTime() - JOUR).toISOString(), gains: { km: gainsPasses[k][0], min: gainsPasses[k][1] } });
+  }
 }
 
 const FAMILLES = { guichet, marketing, finance, rh, juridique, ajouts };

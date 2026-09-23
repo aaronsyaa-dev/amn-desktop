@@ -198,4 +198,9 @@ export const FR_50: Record<keyof typeof EN_50, string> = {
   'm50.leadScoring.description': 'Les leads sont distribués comme une main de cartes, triés par probabilité de signer. Chaque carte donne ses trois raisons, et une seule sort de la main.',
   'm50.leadScoring.descriptionVide': 'Aucun lead ouvert pour l’instant.',
   'm50.leadScoring.phraseVide': 'Aucun lead ouvert pour l’instant.',
+  'm50.itineraries.titre': 'Itinéraires',
+  'm50.itineraries.description': 'La tournée de demain, sur le plan. L’ordre habituel des arrêts est tracé en gris, l’ordre optimisé par-dessus. Le second évite des traversées {riviere}.',
+  'm50.itineraries.descriptionSansTraversee': 'La tournée de demain, sur le plan. L’ordre habituel des arrêts est tracé en gris, l’ordre optimisé par-dessus.',
+  'm50.itineraries.descriptionVide': 'Aucune tournée préparée pour l’instant.',
+  'm50.itineraries.phraseVide': 'Aucune tournée préparée pour l’instant.',
 };

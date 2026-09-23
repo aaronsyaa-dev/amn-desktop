@@ -734,6 +734,28 @@ const iso = (joursAvant: number, h = 10) => {
     const ev = new Date(matin); ev.setHours(10);
     assert.equal(A.dernierRecalcul([{ ...ld('x', []), faits: [{ critere: 'e', texte: '', force: 1, le: ev.toISOString() }] }], matin).parEvenement, true);
   });
+
+  // ── 39c Itinéraires ─────────────────────────────────────────────────────
+  regle('39c · positions en % du plan, routes en viewBox de même proportion : (18 %, 62 %) → (180, 223,2)', () =>
+    assert.deepEqual(A.versPlan({ xPct: 18, yPct: 62 }), { x: 180, y: 223.2 }));
+  const pl = {
+    depart: '08:00',
+    depot: { id: 'd', nom: 'D', xPct: 0, yPct: 50 },
+    arrets: [
+      { id: 'a', nom: 'A', xPct: 10, yPct: 50, dureeMin: 10 },
+      { id: 'b', nom: 'B', xPct: 90, yPct: 50, dureeMin: 10, creneau: { fin: '08:30' } },
+    ],
+    trajets: [{ de: 'd', a: 'a', km: 1, min: 5 }, { de: 'a', a: 'b', km: 8, min: 40 }, { de: 'd', a: 'b', km: 9, min: 20 }],
+  };
+  regle('39c · les créneaux d’abord : B (avant 8 h 30) passe en premier, même si c’est plus long', () => {
+    assert.deepEqual(A.optimiser(pl), ['b', 'a']);
+    assert.equal(A.evaluer(pl, ['a', 'b']).retardMin, 25);
+    assert.equal(A.evaluer(pl, ['b', 'a']).retardMin, 0);
+  });
+  regle('39c · puis la distance, à créneaux égaux', () => assert.deepEqual(A.optimiser({ ...pl, arrets: pl.arrets.map((a) => ({ ...a, creneau: undefined })) }).length, 2));
+  regle('39c · les distances sont celles des trajets, pas du tracé', () => assert.equal(A.evaluer(pl, ['b', 'a']).km, 18));
+  regle('39c · une traversée se compte là où la route coupe le cours d’eau', () =>
+    assert.equal(A.traversees({ ...pl, depot: { ...pl.depot, yPct: 30 }, arrets: pl.arrets.map((a) => ({ ...a, yPct: 47 })) }, ['a', 'b'], { points: [[50, 0], [50, 100]] }), 2));
 }
 
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);

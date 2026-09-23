@@ -127,6 +127,7 @@ const ECRANS = [
   ['Vérification d’identité', '#/verification-identite'],
   ['Tableau de bord', '#/tableau-de-bord'],
   ['Scoring des leads', '#/scoring-leads'],
+  ['Itinéraires', '#/itineraires'],
 ];
 
 const AMBRE = ['rgb(208, 154, 74)', '#d09a4a'];

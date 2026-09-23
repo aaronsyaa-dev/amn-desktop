@@ -277,6 +277,7 @@ const ECRANS = [
   ['Vérification d’identité', '#/verification-identite'],
   ['Tableau de bord', '#/tableau-de-bord'],
   ['Scoring des leads', '#/scoring-leads'],
+  ['Itinéraires', '#/itineraires'],
 ];
 
 const serveur = spawn('node', [new URL('./servir-bundle.mjs', import.meta.url).pathname, BUNDLE, String(PORT)], {

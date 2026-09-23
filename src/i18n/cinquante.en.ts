@@ -203,4 +203,9 @@ export const EN_50 = {
   'm50.leadScoring.description': 'Leads are dealt like a hand of cards, sorted by likelihood to sign. Each card gives its three reasons, and only one comes out of the hand.',
   'm50.leadScoring.descriptionVide': 'No open lead yet.',
   'm50.leadScoring.phraseVide': 'No open lead yet.',
+  'm50.itineraries.titre': 'Routes',
+  'm50.itineraries.description': 'Tomorrow\'s round, on the map. The usual order of stops is drawn in grey, the optimised order on top. The second avoids crossing the {riviere} for nothing.',
+  'm50.itineraries.descriptionSansTraversee': 'Tomorrow\'s round, on the map. The usual order of stops is drawn in grey, the optimised order on top.',
+  'm50.itineraries.descriptionVide': 'No round prepared yet.',
+  'm50.itineraries.phraseVide': 'No round prepared yet.',
 } as const;

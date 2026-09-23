@@ -119,6 +119,7 @@ import { ImpactRseScreen } from '../screens/ImpactRseScreen';
 import { VerificationIdentiteScreen } from '../screens/VerificationIdentiteScreen';
 import { TableauDeBordScreen } from '../screens/TableauDeBordScreen';
 import { ScoringLeadsScreen } from '../screens/ScoringLeadsScreen';
+import { ItinerairesScreen } from '../screens/ItinerairesScreen';
 
 /**
  * La racine de l'édition Business — la table de routes livrée aux
@@ -986,6 +987,14 @@ export function AppRoot() {
           element={
             <ModuleRoute module="leadScoring">
               <ScoringLeadsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/itineraires"
+          element={
+            <ModuleRoute module="itineraries">
+              <ItinerairesScreen />
             </ModuleRoute>
           }
         />

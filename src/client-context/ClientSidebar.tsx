@@ -55,6 +55,7 @@ import {
   ListChecks,
   ListTree,
   LogOut,
+  Map,
   Megaphone,
   MessageCircle,
   MessageSquareQuote,
@@ -224,6 +225,7 @@ const CLIENT_MODULES: NavItem[] = [
   { key: 'kyc', label: 'Vérification d’identité', to: '/verification-identite', icon: Fingerprint, hint: 'Les contrôles d’un dossier, et celui qui bloque' },
   { key: 'dashboard', label: 'Tableau de bord', to: '/tableau-de-bord', icon: LayoutPanelTop, hint: 'Un cadran au centre, choisi par vous' },
   { key: 'leadScoring', label: 'Scoring des leads', to: '/scoring-leads', icon: Layers, hint: 'Quelle carte jouer d’abord, et pourquoi' },
+  { key: 'itineraries', label: 'Itinéraires', to: '/itineraires', icon: Map, hint: 'L’ordre des arrêts de demain, optimisé la veille' },
 ];
 
 /**
@@ -254,7 +256,7 @@ export const CLIENT_SECTIONS: Array<{ label: string; code: string; keys: string[
   { label: 'Clients & revenus', code: 'CR', keys: ['clients', 'invoices', 'orders', 'evenements', 'pipeline', 'reminders', 'subscriptions', 'contracts', 'reviews', 'loyalty', 'referrals', 'booking', 'cashCount', 'leadScoring'] },
   { label: 'Guichet', code: 'GU', keys: ['shop', 'ticketing', 'donations', 'deposits', 'chatbot', 'switchboard'] },
   { label: 'Marketing', code: 'MK', keys: ['video', 'adVisuals', 'postPlanner', 'podcast', 'brand', 'productShots', 'sentiment', 'watch', 'nps'] },
-  { label: 'Production', code: 'PR', keys: ['time', 'expenses', 'calculators', 'board', 'stock', 'suppliers', 'shifts', 'checklists', 'interventions', 'assembly', 'aftersales', 'bom', 'rounds', 'equipment'] },
+  { label: 'Production', code: 'PR', keys: ['time', 'expenses', 'calculators', 'board', 'stock', 'suppliers', 'shifts', 'checklists', 'interventions', 'assembly', 'aftersales', 'bom', 'rounds', 'equipment', 'itineraries'] },
   { label: 'Finance', code: 'FI', keys: ['cashForecast', 'scenarios', 'loanSim', 'analytics', 'reconciliation', 'taxForecast', 'currencies', 'expenseClaims', 'incomingInvoices'] },
   { label: 'Documents', code: 'DO', keys: ['notes', 'pages', 'reports', 'media'] },
   { label: 'Juridique', code: 'JU', keys: ['clauses', 'remoteSign', 'gdpr', 'csr', 'kyc'] },

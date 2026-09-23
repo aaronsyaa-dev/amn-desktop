@@ -164,6 +164,7 @@ export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
   kyc: { label: 'Identity check', hint: 'A file’s checks, and the one that blocks' },
   dashboard: { label: 'Dashboard', hint: 'One dial in the centre, chosen by you' },
   leadScoring: { label: 'Lead scoring', hint: 'Which card to play first, and why' },
+  itineraries: { label: 'Routes', hint: 'Tomorrow’s stop order, optimised the day before' },
 };
 
 /**

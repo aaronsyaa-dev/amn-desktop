@@ -147,6 +147,7 @@ import { ImpactRseScreen } from '../screens/ImpactRseScreen';
 import { VerificationIdentiteScreen } from '../screens/VerificationIdentiteScreen';
 import { TableauDeBordScreen } from '../screens/TableauDeBordScreen';
 import { ScoringLeadsScreen } from '../screens/ScoringLeadsScreen';
+import { ItinerairesScreen } from '../screens/ItinerairesScreen';
 import { ClientAdminScreen } from '../client-context/ClientAdminScreen';
 import { ContextBoot } from '../client-context/ContextBoot';
 import { OrgContextProvider, useOrgContext } from '../state/OrgContextContext';
@@ -414,6 +415,7 @@ function AmnRoutes() {
         <Route path="/verification-identite" element={<VerificationIdentiteScreen />} />
         <Route path="/tableau-de-bord" element={<TableauDeBordScreen />} />
         <Route path="/scoring-leads" element={<ScoringLeadsScreen />} />
+        <Route path="/itineraires" element={<ItinerairesScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
@@ -1237,6 +1239,14 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="leadScoring">
               <ScoringLeadsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/itineraires"
+          element={
+            <ModuleRoute module="itineraries">
+              <ItinerairesScreen />
             </ModuleRoute>
           }
         />

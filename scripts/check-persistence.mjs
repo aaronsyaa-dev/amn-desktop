@@ -264,6 +264,7 @@ const MODULE_DATA = {
   kyc: ['kycChecks'],
   dashboard: ['dashboardDials'],
   leadScoring: ['leadScores'],
+  itineraries: ['routePlans'],
 };
 
 /**
@@ -396,6 +397,7 @@ const MODULE_FILES = {
   kyc: ['src/screens/VerificationIdentiteScreen.tsx'],
   dashboard: ['src/screens/TableauDeBordScreen.tsx'],
   leadScoring: ['src/screens/ScoringLeadsScreen.tsx'],
+  itineraries: ['src/screens/ItinerairesScreen.tsx'],
 };
 
 /**
