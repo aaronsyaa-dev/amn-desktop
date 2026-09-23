@@ -79,6 +79,7 @@
     "check:installer": "node scripts/check-installer.mjs",
     "icons": "node scripts/build-icons.mjs",
     "check:signal": "node scripts/check-signal.mjs",
+    "check:accueils": "node scripts/check-accueils.mjs",
     "check:coquille": "node scripts/check-coquille.mjs",
     "check:appels": "node scripts/check-appels.mjs",
     "check:mobile": "node scripts/check-mobile.mjs",

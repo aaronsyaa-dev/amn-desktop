@@ -147,6 +147,22 @@ export function maskAllowed(content, rule, budget) {
  * ou le mauvais dossier passé en argument, passerait au vert. Ces deux marqueurs
  * confirment qu'on a bien relu une édition Business construite.
  */
+/**
+ * LES ACCUEILS DE L'ÉDITION INTERNE (ACCUEILS.md, `42a` → `42j`). Chacun lit la
+ * Garde, le parc des organisations ou les certificats de tout le parc :
+ * aucun n'a sa place dans le paquet d'une cliente, pas même son nom dans la
+ * liste du réglage « Accueil ».
+ */
+export const FORBIDDEN_ACCUEILS_INTERNES = [
+  { pattern: 'La carte des neuf', why: 'Accueil interne 42b — le parc des organisations' },
+  { pattern: 'Le compteur de nuit', why: 'Accueil interne 42e — la Garde' },
+  { pattern: 'La météo des sites', why: 'Accueil interne 42g — la supervision des sites' },
+  { pattern: 'horizon des expirations', why: 'Accueil interne 42h — certificats du parc' },
+  { pattern: 'Les deux postes', why: 'Accueil interne 42i — l’équipe interne' },
+  { pattern: '/prise', why: 'la prise de dossier de la Garde (Accueil 42i)' },
+];
+FORBIDDEN.push(...FORBIDDEN_ACCUEILS_INTERNES);
+
 export const REQUIRED = [
   // Nom échangé au Bloc 1 : l'édition LIVRÉE aux clientes s'appelle désormais
   // « AMN Desktop ». Ce marqueur confirme qu'on a bien relu la bonne édition.

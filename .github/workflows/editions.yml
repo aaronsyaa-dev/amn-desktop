@@ -127,6 +127,8 @@ jobs:
         run: npm run check:langue
       - name: Les formules des nouveaux modules sont dans le code (cahiers 6 à 8)
         run: npm run check:cinquante
+      - name: Les Accueils ne traversent pas les éditions
+        run: npm run check:accueils
       - name: La parole de la Garde (ton, typographie, pluriels)
         run: npm run check:parole
       - name: On sort toujours de la veille (Salle jamais mémorisée, sortie sans historique)
