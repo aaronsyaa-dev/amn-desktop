@@ -276,6 +276,7 @@ const ECRANS = [
   ['Impact RSE', '#/impact-rse'],
   ['Vérification d’identité', '#/verification-identite'],
   ['Tableau de bord', '#/tableau-de-bord'],
+  ['Scoring des leads', '#/scoring-leads'],
 ];
 
 const serveur = spawn('node', [new URL('./servir-bundle.mjs', import.meta.url).pathname, BUNDLE, String(PORT)], {

@@ -899,6 +899,41 @@ async function ajouts() {
     centres: [{ cle: 'encaisse', le: le(40) }, { cle: 'nps', le: le(20) }, { cle: 'encaisse', le: le(3) }],
     objectifs: { encaisse: eur(16_000), heures: 21 },
   });
+
+  // ── 39b Scoring des leads ─────────────────────────────────────────────────
+  const criteres = [
+    ['entrant', 'Contact entrant (appel, formulaire)', 30],
+    ['recommandation', 'Recommandation d’un client', 25],
+    ['connu', 'Budget et surface connus', 20],
+    ['visites', 'Visites du site', 15],
+    ['zone', 'Dans la zone d’intervention', 10],
+  ];
+  for (const [cle, nom, poidsInitial] of criteres) await poser('leadScores', `c50-critere-${cle}`, { kind: 'critere', cle, nom, poidsInitial });
+  const f = (critere, texte, force, j = 2) => ({ critere, texte, force, le: le(j, 9) });
+  const leads = [
+    ['montgolfier', 'SCI Montgolfier', '04 78 00 00 01', [f('entrant', 'appel entrant', 1, 0), f('connu', '4 sites à entretenir', 1, 0), f('recommandation', 'contrat annuel demandé', 0.9, 0), f('zone', 'Lyon 6e', 1)]],
+    ['pauline', 'Chez Pauline', '', [f('recommandation', 'recommandée par Bertaux', 1), f('entrant', 'a demandé un rappel', 0.8), f('connu', 'surface connue', 0.6)]],
+    ['arnoux', 'Cabinet Arnoux', '', [f('visites', '2 visites', 0.7), f('entrant', 'ouvre les lettres', 0.8), f('zone', 'Villeurbanne', 1), f('connu', 'surface estimée', 0.5)]],
+    ['tanneurs', 'Les Tanneurs', '', [f('visites', '3 visites du site', 1), f('entrant', 'formulaire complet', 0.7), f('connu', 'budget indiqué', 0.8)]],
+    ['aubier', 'Résidence Aubier', '', [f('recommandation', 'devis déjà signé', 0.7), f('entrant', 'demande récente', 0.6), f('zone', 'même quartier', 1)]],
+    ['rey', 'Boulangerie Rey', '', [f('visites', '1 visite', 0.4), f('entrant', 'pas de budget', 0.6), f('zone', 'hors zone', 0.1)]],
+    ['petit', 'M. Petit', '', [f('entrant', 'question au chatbot', 0.5), f('connu', 'particulier', 0.2), f('visites', 'aucun suivi', 0.1)]],
+    ['lumen', 'Atelier Lumen', '', [f('visites', '2 visites', 0.6), f('entrant', 'formulaire incomplet', 0.4), f('zone', 'Caluire', 0.8)]],
+    ['brotteaux', 'Syndic des Brotteaux', '', [f('connu', '12 lots connus', 0.9), f('zone', 'Lyon 6e', 1), f('visites', '1 visite', 0.3)]],
+    ['vigneron', 'Maison Vigneron', '', [f('visites', '1 visite', 0.3), f('zone', 'Écully', 0.6)]],
+  ];
+  for (const [id, nom, telephone, faits] of leads) {
+    await poser('leadScores', `c50-lead-${id}`, { kind: 'lead', nom, ...(telephone ? { telephone } : {}), ouvertLe: le(12), faits });
+  }
+  const clos = [
+    ['olivier', 'Pharmacie Olivier', true, true], ['garnier', 'Garnier & fils', true, false], ['merle', 'Cabinet Merle', true, true], ['sauvage', 'Mme Sauvage', false, false],
+  ];
+  for (const [id, nom, joue, signe] of clos) {
+    await poser('leadScores', `c50-lead-${id}`, {
+      kind: 'lead', nom, ouvertLe: le(80), closLe: le(40), signe, ...(joue ? { joueEnPremierLe: le(70) } : {}),
+      faits: [f('entrant', 'appel entrant', 1, 80), f('zone', 'dans la zone', 1, 80), f('visites', '1 visite', 0.4, 80)],
+    });
+  }
 }
 
 const FAMILLES = { guichet, marketing, finance, rh, juridique, ajouts };

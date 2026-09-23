@@ -263,6 +263,7 @@ const MODULE_DATA = {
   csr: ['carbonSources'],
   kyc: ['kycChecks'],
   dashboard: ['dashboardDials'],
+  leadScoring: ['leadScores'],
 };
 
 /**
@@ -394,6 +395,7 @@ const MODULE_FILES = {
   csr: ['src/screens/ImpactRseScreen.tsx'],
   kyc: ['src/screens/VerificationIdentiteScreen.tsx'],
   dashboard: ['src/screens/TableauDeBordScreen.tsx'],
+  leadScoring: ['src/screens/ScoringLeadsScreen.tsx'],
 };
 
 /**

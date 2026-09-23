@@ -46,6 +46,7 @@ import {
   Inbox,
   KeyRound,
   Landmark,
+  Layers,
   LayoutDashboard,
   LayoutPanelTop,
   LayoutTemplate,
@@ -222,6 +223,7 @@ const CLIENT_MODULES: NavItem[] = [
   { key: 'csr', label: 'Impact RSE', to: '/impact-rse', icon: Leaf, hint: 'L’empreinte de l’année, en cubes de cent kilos' },
   { key: 'kyc', label: 'Vérification d’identité', to: '/verification-identite', icon: Fingerprint, hint: 'Les contrôles d’un dossier, et celui qui bloque' },
   { key: 'dashboard', label: 'Tableau de bord', to: '/tableau-de-bord', icon: LayoutPanelTop, hint: 'Un cadran au centre, choisi par vous' },
+  { key: 'leadScoring', label: 'Scoring des leads', to: '/scoring-leads', icon: Layers, hint: 'Quelle carte jouer d’abord, et pourquoi' },
 ];
 
 /**
@@ -249,7 +251,7 @@ export const CLIENT_NAV_ITEMS = CLIENT_MODULES;
  */
 export const CLIENT_SECTIONS: Array<{ label: string; code: string; keys: string[] }> = [
   { label: 'Pilotage', code: 'PI', keys: ['home', 'agenda', 'projects', 'tasks', 'okr', 'weekly', 'meetings', 'priorities', 'routines', 'logbook', 'forms', 'minisite', 'newsletter', 'esign', 'portfolio', 'dashboard'] },
-  { label: 'Clients & revenus', code: 'CR', keys: ['clients', 'invoices', 'orders', 'evenements', 'pipeline', 'reminders', 'subscriptions', 'contracts', 'reviews', 'loyalty', 'referrals', 'booking', 'cashCount'] },
+  { label: 'Clients & revenus', code: 'CR', keys: ['clients', 'invoices', 'orders', 'evenements', 'pipeline', 'reminders', 'subscriptions', 'contracts', 'reviews', 'loyalty', 'referrals', 'booking', 'cashCount', 'leadScoring'] },
   { label: 'Guichet', code: 'GU', keys: ['shop', 'ticketing', 'donations', 'deposits', 'chatbot', 'switchboard'] },
   { label: 'Marketing', code: 'MK', keys: ['video', 'adVisuals', 'postPlanner', 'podcast', 'brand', 'productShots', 'sentiment', 'watch', 'nps'] },
   { label: 'Production', code: 'PR', keys: ['time', 'expenses', 'calculators', 'board', 'stock', 'suppliers', 'shifts', 'checklists', 'interventions', 'assembly', 'aftersales', 'bom', 'rounds', 'equipment'] },

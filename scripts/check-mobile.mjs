@@ -126,6 +126,7 @@ const ECRANS = [
   ['Impact RSE', '#/impact-rse'],
   ['Vérification d’identité', '#/verification-identite'],
   ['Tableau de bord', '#/tableau-de-bord'],
+  ['Scoring des leads', '#/scoring-leads'],
 ];
 
 const AMBRE = ['rgb(208, 154, 74)', '#d09a4a'];

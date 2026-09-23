@@ -146,6 +146,7 @@ import { RgpdScreen } from '../screens/RgpdScreen';
 import { ImpactRseScreen } from '../screens/ImpactRseScreen';
 import { VerificationIdentiteScreen } from '../screens/VerificationIdentiteScreen';
 import { TableauDeBordScreen } from '../screens/TableauDeBordScreen';
+import { ScoringLeadsScreen } from '../screens/ScoringLeadsScreen';
 import { ClientAdminScreen } from '../client-context/ClientAdminScreen';
 import { ContextBoot } from '../client-context/ContextBoot';
 import { OrgContextProvider, useOrgContext } from '../state/OrgContextContext';
@@ -412,6 +413,7 @@ function AmnRoutes() {
         <Route path="/impact-rse" element={<ImpactRseScreen />} />
         <Route path="/verification-identite" element={<VerificationIdentiteScreen />} />
         <Route path="/tableau-de-bord" element={<TableauDeBordScreen />} />
+        <Route path="/scoring-leads" element={<ScoringLeadsScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
@@ -1227,6 +1229,14 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="dashboard">
               <TableauDeBordScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/scoring-leads"
+          element={
+            <ModuleRoute module="leadScoring">
+              <ScoringLeadsScreen />
             </ModuleRoute>
           }
         />

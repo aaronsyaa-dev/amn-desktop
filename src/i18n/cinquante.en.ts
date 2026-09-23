@@ -199,4 +199,8 @@ export const EN_50 = {
   'm50.dashboard.description': 'A dashboard you compose yourself, but with one rule: a single instrument in the centre, the others as small dials. You choose what dominates, never everything at once.',
   'm50.dashboard.descriptionVide': 'No module has anything to feed a dial yet.',
   'm50.dashboard.phraseVide': 'No module has anything to feed a dial yet.',
+  'm50.leadScoring.titre': 'Lead scoring',
+  'm50.leadScoring.description': 'Leads are dealt like a hand of cards, sorted by likelihood to sign. Each card gives its three reasons, and only one comes out of the hand.',
+  'm50.leadScoring.descriptionVide': 'No open lead yet.',
+  'm50.leadScoring.phraseVide': 'No open lead yet.',
 } as const;

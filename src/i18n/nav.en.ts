@@ -163,6 +163,7 @@ export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
   csr: { label: 'CSR impact', hint: 'The year’s footprint, in 100 kg cubes' },
   kyc: { label: 'Identity check', hint: 'A file’s checks, and the one that blocks' },
   dashboard: { label: 'Dashboard', hint: 'One dial in the centre, chosen by you' },
+  leadScoring: { label: 'Lead scoring', hint: 'Which card to play first, and why' },
 };
 
 /**

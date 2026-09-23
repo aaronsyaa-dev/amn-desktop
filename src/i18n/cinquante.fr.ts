@@ -194,4 +194,8 @@ export const FR_50: Record<keyof typeof EN_50, string> = {
   'm50.dashboard.description': 'Un tableau de bord qu’on compose soi-même, mais qui impose sa règle : un seul instrument au centre, les autres en petits cadrans. On choisit ce qui domine, jamais tout à la fois.',
   'm50.dashboard.descriptionVide': 'Aucun module n’a encore de quoi alimenter un cadran.',
   'm50.dashboard.phraseVide': 'Aucun module n’a encore de quoi alimenter un cadran.',
+  'm50.leadScoring.titre': 'Scoring des leads',
+  'm50.leadScoring.description': 'Les leads sont distribués comme une main de cartes, triés par probabilité de signer. Chaque carte donne ses trois raisons, et une seule sort de la main.',
+  'm50.leadScoring.descriptionVide': 'Aucun lead ouvert pour l’instant.',
+  'm50.leadScoring.phraseVide': 'Aucun lead ouvert pour l’instant.',
 };

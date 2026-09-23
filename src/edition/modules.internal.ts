@@ -48,6 +48,7 @@ import {
   Inbox,
   KeyRound,
   Landmark,
+  Layers,
   LayoutDashboard,
   LayoutPanelTop,
   LayoutTemplate,
@@ -207,6 +208,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'referrals', label: 'Parrainage', to: '/parrainage', icon: HeartHandshake, hint: 'Qui a amené qui, et ce qu’on lui doit' },
       { key: 'booking', label: 'Rendez-vous en ligne', to: '/rdv-en-ligne', icon: CalendarCheck, hint: 'Une page publique branchée sur l’Agenda' },
       { key: 'cashCount', label: 'Caisse du jour', to: '/caisse', icon: Banknote, hint: 'Le fond, les espèces comptées, l’écart' },
+      { key: 'leadScoring', label: 'Scoring des leads', to: '/scoring-leads', icon: Layers, hint: 'Quelle carte jouer d’abord, et pourquoi' },
     ],
   },
   {
@@ -530,6 +532,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/settings', 'reglages'],
   ['/membres', 'reglages'],
   ['/assistance', 'fil'],
+  ['/scoring-leads', 'fiches'],
   ['/tableau-de-bord', 'tableau'],
   ['/verification-identite', 'registre'],
   ['/impact-rse', 'registre'],

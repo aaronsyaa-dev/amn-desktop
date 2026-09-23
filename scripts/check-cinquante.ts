@@ -705,6 +705,35 @@ const iso = (joursAvant: number, h = 10) => {
   });
   regle('39a · le plus souvent au centre', () =>
     assert.equal(A.lePlusSouventAuCentre({ centre: 'z', centres: [{ cle: 'a', le: iso(9) }, { cle: 'b', le: iso(5) }, { cle: 'a', le: iso(1) }] }), 'a'));
+
+  // ── 39b Scoring des leads ───────────────────────────────────────────────
+  const crit = [{ kind: 'critere' as const, cle: 'e', nom: 'E', poidsInitial: 60 }, { kind: 'critere' as const, cle: 'z', nom: 'Z', poidsInitial: 40 }];
+  const po = A.poidsAppris(crit, [], MAINTENANT);
+  regle('39b · sans historique, les poids posés valent, ramenés à 100 %', () => assert.deepEqual([...po.values()], [60, 40]));
+  const ld = (id: string, faits: Array<[string, number]>) => ({ id, kind: 'lead' as const, nom: id, ouvertLe: iso(3), faits: faits.map(([critere, force], i) => ({ critere, texte: `${id}${i}`, force, le: iso(2) })) });
+  regle('39b · un score sans ses trois raisons n’est pas montré', () => assert.equal(A.carteDe(ld('a', [['e', 1], ['z', 1]]), po), null));
+  regle('39b · le score : Σ poids × force du fait le plus fort de chaque critère', () => assert.equal(doit(A.carteDe(ld('a', [['e', 1], ['e', 0.5], ['z', 0.5]]), po)).score, 80));
+  const cartes = [90, 80, 70, 60, 50, 40, 30, 20].map((sc, i) => ({ lead: ld(`l${i}`, []), score: sc, raisons: ['a', 'b', 'c'] }));
+  const dn = A.donne(cartes);
+  regle('39b · sept cartes au plus ; la suivante va à la pioche', () => { assert.equal(dn.main.length, 7); assert.equal(dn.pioche.length, 1); });
+  regle('39b · la plus forte sort au centre, relevée ; les plus faibles aux bords', () => {
+    const c = dn.main.find((m) => m.rang === 0);
+    assert.equal(doit(c).carte.score, 90);
+    assert.equal(doit(c).hautPx, 4);
+    assert.ok(dn.main.every((m) => Math.abs(m.rang) === Math.ceil(cartes.findIndex((x) => x === m.carte) / 2)));
+  });
+  regle('39b · 104 px posées tous les 112 px, 1° par rang : aucun recouvrement', () => {
+    assert.equal(A.recouvrement(), false);
+    assert.deepEqual(dn.main.map((m) => m.dxPx), [-336, -224, -112, 0, 112, 224, 336]);
+    assert.deepEqual(dn.main.map((m) => m.rotationDeg), [-3, -2, -1, 0, 1, 2, 3]);
+    assert.deepEqual(dn.main.map((m) => m.hautPx), [54, 44, 34, 4, 34, 44, 54]);
+  });
+  regle('39b · recalcul : la nuit à 6 h, ou le dernier événement s’il est plus récent', () => {
+    const matin = new Date(MAINTENANT); matin.setHours(12, 0, 0, 0);
+    assert.equal(A.dernierRecalcul([], matin).le.getHours(), 6);
+    const ev = new Date(matin); ev.setHours(10);
+    assert.equal(A.dernierRecalcul([{ ...ld('x', []), faits: [{ critere: 'e', texte: '', force: 1, le: ev.toISOString() }] }], matin).parEvenement, true);
+  });
 }
 
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);
