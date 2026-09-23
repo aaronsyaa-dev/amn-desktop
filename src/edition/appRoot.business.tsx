@@ -112,6 +112,11 @@ import { ProceduresScreen } from '../screens/ProceduresScreen';
 import { FormationScreen } from '../screens/FormationScreen';
 import { HabilitationsScreen } from '../screens/HabilitationsScreen';
 import { BulletinsScreen } from '../screens/BulletinsScreen';
+import { ClausierScreen } from '../screens/ClausierScreen';
+import { SignatureDistanceScreen } from '../screens/SignatureDistanceScreen';
+import { RgpdScreen } from '../screens/RgpdScreen';
+import { ImpactRseScreen } from '../screens/ImpactRseScreen';
+import { VerificationIdentiteScreen } from '../screens/VerificationIdentiteScreen';
 
 /**
  * La racine de l'édition Business — la table de routes livrée aux
@@ -923,6 +928,46 @@ export function AppRoot() {
           element={
             <ModuleRoute module="payslips">
               <BulletinsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/clausier"
+          element={
+            <ModuleRoute module="clauses">
+              <ClausierScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/signature-a-distance"
+          element={
+            <ModuleRoute module="remoteSign">
+              <SignatureDistanceScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/rgpd"
+          element={
+            <ModuleRoute module="gdpr">
+              <RgpdScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/impact-rse"
+          element={
+            <ModuleRoute module="csr">
+              <ImpactRseScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/verification-identite"
+          element={
+            <ModuleRoute module="kyc">
+              <VerificationIdentiteScreen />
             </ModuleRoute>
           }
         />

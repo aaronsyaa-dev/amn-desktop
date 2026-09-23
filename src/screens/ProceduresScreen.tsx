@@ -104,7 +104,7 @@ export function ProceduresScreen() {
             <div className="flex justify-center">
               <div className="w-full max-w-[470px] rounded-[14px] bg-[linear-gradient(135deg,rgba(255,255,255,.22),rgba(255,255,255,.06)_40%,rgba(255,255,255,.16))] p-2.5 shadow-[0_34px_68px_-28px_rgba(0,0,0,1)]">
                 <div className="rounded-md bg-[#e8e6e0] px-4 pb-[18px] pt-6 sm:px-6">
-                  <span className="block font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] text-[#6b6963]">Procédure · {fiche.categorie}</span>
+                  <span className="block font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] text-[#5c5a55]">Procédure · {fiche.categorie}</span>
                   <span className="mt-2 block text-[22px] font-bold tracking-[-0.02em] text-[#0a0a0a]">{fiche.titre}</span>
                   <div className="mt-4 flex flex-col gap-1">
                     {fiche.etapes.map((e, i) => {
@@ -133,7 +133,7 @@ export function ProceduresScreen() {
                   {fiche.securite && (
                     <div className="mt-3.5 border-2 border-[#0a0a0a] px-3 py-2.5 text-[13px] font-semibold leading-[1.4] text-[#0a0a0a]">{fiche.securite}</div>
                   )}
-                  <span className="mt-3.5 block font-mono text-[10px] uppercase text-[#6b6963]">
+                  <span className="mt-3.5 block font-mono text-[10px] uppercase text-[#5c5a55]">
                     Version {fiche.version} · relue le {new Date(fiche.relueLe).getDate()} {MOIS[new Date(fiche.relueLe).getMonth()]} · {fiche.relueePar}
                   </span>
                 </div>

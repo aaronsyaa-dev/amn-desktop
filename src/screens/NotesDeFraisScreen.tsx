@@ -39,7 +39,7 @@ function Ticket({ lignes, ambre }: { lignes: LigneTicket[]; ambre: number | null
     <div className="ml-[26px] flex w-[250px] max-w-[calc(100%-26px)] flex-col gap-[9px] bg-[#e8e6e0] px-[22px] pb-[26px] pt-[22px] shadow-[0_30px_60px_-26px_rgba(0,0,0,1)]">
       {lignes.map((l, i) => {
         if (l.style === 'filet') return <span key={i} className="my-1 h-px bg-[#c4c2bc]" />;
-        const corps = l.style === 'fort' ? 'text-[13px] font-bold' : l.style === 'petit' ? 'text-[10px] text-[#6b6963]' : 'text-[11px]';
+        const corps = l.style === 'fort' ? 'text-[13px] font-bold' : l.style === 'petit' ? 'text-[10px] text-[#5c5a55]' : 'text-[11px]';
         const contenu = l.droite ? (
           <span className="flex justify-between gap-2">
             <span>{l.texte}</span>

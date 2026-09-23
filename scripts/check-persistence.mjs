@@ -257,6 +257,11 @@ const MODULE_DATA = {
   training: ['trainings'],
   certifications: ['certifications'],
   payslips: ['payslips'],
+  clauses: ['clauseContracts'],
+  remoteSign: ['signatureCircuits'],
+  gdpr: ['gdprRegister'],
+  csr: ['carbonSources'],
+  kyc: ['kycChecks'],
 };
 
 /**
@@ -382,6 +387,11 @@ const MODULE_FILES = {
   training: ['src/screens/FormationScreen.tsx'],
   certifications: ['src/screens/HabilitationsScreen.tsx'],
   payslips: ['src/screens/BulletinsScreen.tsx'],
+  clauses: ['src/screens/ClausierScreen.tsx'],
+  remoteSign: ['src/screens/SignatureDistanceScreen.tsx'],
+  gdpr: ['src/screens/RgpdScreen.tsx'],
+  csr: ['src/screens/ImpactRseScreen.tsx'],
+  kyc: ['src/screens/VerificationIdentiteScreen.tsx'],
 };
 
 /**

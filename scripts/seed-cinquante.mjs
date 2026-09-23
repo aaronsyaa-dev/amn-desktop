@@ -774,7 +774,119 @@ async function rh() {
   await poser('payslips', `c50-paie-${mois}`, { kind: 'paie', mois, virementLe: finMois });
 }
 
-const FAMILLES = { guichet, marketing, finance, rh };
+/* ══════════════════════════════════════════════════════════════ JURIDIQUE ══ */
+
+async function juridique() {
+  // ── La fiche client réelle que lisent le Clausier et le RGPD ──────────────
+  await poser('clients', 'c50-client-aubry', {
+    name: 'M. Aubry', company: '', status: 'active', email: 'aubry@exemple.test', phone: '06 00 00 00 00',
+    notes: 'Villa Sereine', imageDataUrl: '', linkedSiteIds: [], createdAt: le(420), updatedAt: le(3), events: [],
+  });
+
+  // ── 38a Clausier ──────────────────────────────────────────────────────────
+  const clauses = [
+    [1, 'Objet', 'Remise en état d’un canapé et entretien des vitrages, au domicile du client.', {}, null, null],
+    [2, 'Prix', '144 € HT pour trois heures, déplacement compris.', {}, null, null],
+    [3, 'Reconduction', 'Le contrat se reconduit tacitement d’année en année.', { duree: 'annuelle' }, null, 'prestation ponctuelle'],
+    [4, 'Acompte', '30 % à la signature, payable en ligne ; le solde à la fin de l’intervention.', { paiement: 'acompte 30 %' }, null, 'paiement à la fin'],
+    [5, 'Sous-traitance', 'Le prestataire peut confier tout ou partie de l’intervention à un sous-traitant agréé.', { soustraitance: 'oui' }, null, 'aucune'],
+    [6, 'Responsabilité', 'Le prestataire est assuré pour les dommages causés lors de l’intervention.', {}, null, null],
+    [9, 'Droit de rétractation', 'Le client dispose de quatorze jours pour se rétracter, sans avoir à se justifier.', { client: 'particulier' }, { client: 'particulier' }, 'client professionnel'],
+    [10, 'Litiges', 'Tribunal compétent : Lyon.', {}, null, null],
+  ];
+  for (const [numero, titre, texte, siReponses, obligatoireSi, raisonRepli] of clauses) {
+    await poser('clauseContracts', `c50-cl-${numero}`, {
+      kind: 'clause', numero, titre, texte, source: 'Code de la consommation', siReponses,
+      ...(obligatoireSi ? { obligatoireSi } : {}), ...(raisonRepli ? { raisonRepli } : {}), majLe: le(100),
+    });
+  }
+  const reponses = { client: 'professionnel', duree: 'ponctuelle', lieu: 'chez le client', paiement: 'acompte 30 %', soustraitance: 'non' };
+  await poser('clauseContracts', 'c50-ct-aubry', { kind: 'contrat', titre: 'Contrat de prestation de nettoyage', client: 'M. Aubry', reponses, genereLe: le(0, 9) });
+  for (let i = 0; i < 6; i += 1) {
+    await poser('clauseContracts', `c50-ct-${i}`, { kind: 'contrat', titre: 'Contrat de prestation', client: `Client ${i + 1}`, reponses: { ...reponses, duree: i % 3 ? 'ponctuelle' : 'annuelle' }, genereLe: le(10 + i * 9) });
+  }
+
+  // ── 38b Signature à distance ──────────────────────────────────────────────
+  await poser('signatureCircuits', 'c50-sig-villa', {
+    kind: 'circuit', document: 'Entretien annuel · Villa Sereine', client: 'M. Aubry', envoyeLe: le(12, 9),
+    signataires: [
+      { role: 'Prestataire', nom: 'Léa Marchand', signeLe: le(11, 10) },
+      { role: 'Client', nom: 'M. Aubry', signeLe: le(4, 18) },
+      { role: 'Co-signataire', nom: 'Mme Aubry', ouvertures: 2 },
+      { role: 'Copie certifiée', nom: 'Cabinet Morel' },
+    ],
+    debutContratLe: new Date(MAINTENANT.getFullYear(), MAINTENANT.getMonth() + 1, 1, 9).toISOString(),
+  });
+  await poser('signatureCircuits', 'c50-sig-nord', {
+    kind: 'circuit', document: 'Avenant · Studio Nord', client: 'Studio Nord', envoyeLe: le(1, 9),
+    signataires: [{ role: 'Prestataire', nom: 'Léa Marchand', signeLe: le(1, 10) }, { role: 'Client', nom: 'Studio Nord' }],
+  });
+  for (let i = 0; i < 9; i += 1) {
+    await poser('signatureCircuits', `c50-sig-f${i}`, {
+      kind: 'circuit', document: `Devis signé ${i + 1}`, client: 'x', envoyeLe: le(3 + i * 2, 9),
+      signataires: [{ role: 'Prestataire', nom: 'Léa Marchand', signeLe: le(3 + i * 2, 11) }, { role: 'Client', nom: `Client ${i + 1}`, signeLe: le(Math.max(0, 2 + i * 2 - (i % 2)), 16) }],
+    });
+  }
+
+  // ── 38c RGPD : le registre, et ce que le Standard garde de M. Aubry ───────
+  const traitements = [
+    ['clients', 'Fiches clients', 'Clients', 'contrat', null, 'relation + 3 ans'],
+    ['contracts', 'Contrats', 'Contrats', 'contrat', null, 'contrat + 5 ans'],
+    ['switchboardCalls', 'Enregistrements d’appel', 'Standard', 'intérêt légitime', 30, '30 j'],
+    ['npsResponses', 'Sondages de satisfaction', 'NPS', 'intérêt légitime', 1095, '3 ans'],
+    ['depositQuotes', 'Devis et acomptes', 'Acompte en ligne', 'contrat', 3650, '10 ans', true],
+  ];
+  for (const [collection, nom, module, baseLegale, dureeJours, dureeLibelle, lieAFacture] of traitements) {
+    await poser('gdprRegister', `c50-rg-${collection}`, { kind: 'traitement', nom, module, collection, baseLegale, dureeJours, dureeLibelle, ...(lieAFacture ? { lieAFacture } : {}) });
+  }
+  await poser('gdprRegister', 'c50-rg-demande', { kind: 'demande', personne: 'M. Aubry', type: 'acces', le: le(1, 11) });
+  await poser('gdprRegister', 'c50-rg-demande2', { kind: 'demande', personne: 'Chez Mano', type: 'acces', le: le(120, 11) });
+  await poser('gdprRegister', 'c50-rg-purge', { kind: 'purge', collection: 'npsResponses', nombre: 41, le: le(60) });
+  await poser('gdprRegister', 'c50-rg-revue', { kind: 'revue', le: le(190) });
+  for (const [i, jours] of [94, 91].entries()) {
+    await poser('switchboardCalls', `c50-std-vieux-${i}`, {
+      kind: 'appel', debutLe: le(jours, 10), dureeS: 120, appelant: 'M. Aubry, Villa Sereine', issue: 'message pris', tours: [], engagements: [],
+    });
+  }
+  await poser('contracts', 'c50-contrat-aubry', { title: 'Entretien annuel', party: 'M. Aubry', startsAt: le(-8).slice(0, 10), endsAt: le(-373).slice(0, 10), amountCents: eur(1440), status: 'draft', autoRenew: false, note: '', createdAt: le(12) });
+
+  // ── 38d Impact RSE ────────────────────────────────────────────────────────
+  const an = MAINTENANT.getFullYear();
+  const sources = [
+    ['vehicules', 'Véhicules', 'Gazole · 2 véhicules', 'L', 2.66, 1540, 1280, 0],
+    ['achats', 'Achats de produits', 'Produits d’entretien', '€', 0.3774, 3180, 3180, 1],
+    ['energie', 'Énergie des locaux', 'Électricité des locaux', 'kWh', 0.052, 17300, 19200, 2],
+    ['deplacements', 'Déplacements', 'Trains et hôtels', 'déplacements', 100, 3, 4, 3],
+  ];
+  for (const [id, nom, poste, unite, facteurKg, v, v0, ordre] of sources) {
+    const ref = 'Base Empreinte (ADEME)';
+    await poser('carbonSources', `c50-rse-${id}-${an}`, { kind: 'source', nom, poste, volume: v, unite, facteurKg, referenceFacteur: ref, annee: an, ordre });
+    await poser('carbonSources', `c50-rse-${id}-${an - 1}`, { kind: 'source', nom, poste, volume: v0, unite, facteurKg, referenceFacteur: ref, annee: an - 1, ordre });
+  }
+  await poser('carbonSources', `c50-rse-act-${an}`, { kind: 'activite', annee: an, interventions: 360 });
+
+  // ── 38e Vérification d'identité ───────────────────────────────────────────
+  await poser('kycChecks', 'c50-kyc-reglage', { kind: 'reglage', conservationAns: 5, seuilCaAnnuelCents: eur(5000) });
+  const ok = (cle, nom, detail) => ({ cle, nom, ok: true, detail });
+  await poser('kycChecks', 'c50-kyc-brunel', {
+    kind: 'verification', client: 'SAS Brunel Immobilier', professionnel: true, demandeeLe: le(1, 10),
+    controles: [
+      ok('piece', 'Pièce d’identité', 'lue et valide'),
+      { cle: 'selfie', nom: 'Selfie', score: 96, detail: 'correspond à 96 %' },
+      { cle: 'adresse', nom: 'Adresse', dateJustificatif: le(145), detail: 'justificatif récent' },
+      ok('siren', 'SIREN', 'société active'),
+      ok('iban', 'IBAN', 'au nom de la société'),
+    ],
+  });
+  for (const [i, [client, jours]] of [['Harbor Studio', 11], ['Atelier Weber', 20]].entries()) {
+    await poser('kycChecks', `c50-kyc-ok-${i}`, {
+      kind: 'verification', client, professionnel: true, demandeeLe: le(jours, 10), valideeLe: le(jours - 1, 10),
+      controles: [ok('piece', 'Pièce d’identité', 'lue et valide'), { cle: 'selfie', nom: 'Selfie', score: 97, detail: 'correspond à 97 %' }, { cle: 'adresse', nom: 'Adresse', dateJustificatif: le(jours + 20), detail: 'justificatif récent' }, ok('siren', 'SIREN', 'société active'), ok('iban', 'IBAN', 'au nom de la société')],
+    });
+  }
+}
+
+const FAMILLES = { guichet, marketing, finance, rh, juridique };
 const demandees = process.argv.slice(2);
 for (const [nom, f] of Object.entries(FAMILLES)) {
   if (demandees.length && !demandees.includes(nom)) continue;

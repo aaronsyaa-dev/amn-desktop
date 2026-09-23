@@ -157,6 +157,11 @@ export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
   training: { label: 'Training', hint: 'What is known, and what fades' },
   certifications: { label: 'Certifications', hint: 'Who may work on what, and until when' },
   payslips: { label: 'Payslips', hint: 'From employer cost to net pay' },
+  clauses: { label: 'Clause builder', hint: 'The contract, and what it leaves out' },
+  remoteSign: { label: 'Remote signature', hint: 'Who holds the document, and since when' },
+  gdpr: { label: 'GDPR', hint: 'Everything the product keeps about one person' },
+  csr: { label: 'CSR impact', hint: 'The year’s footprint, in 100 kg cubes' },
+  kyc: { label: 'Identity check', hint: 'A file’s checks, and the one that blocks' },
 };
 
 /**
@@ -179,6 +184,7 @@ export const SECTIONS_EN_COMMUN: Record<string, string> = {
   Marketing: 'Marketing',
   Finance: 'Finance',
   RH: 'HR',
+  Juridique: 'Legal',
 };
 
 

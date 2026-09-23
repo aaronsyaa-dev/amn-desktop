@@ -140,6 +140,11 @@ import { ProceduresScreen } from '../screens/ProceduresScreen';
 import { FormationScreen } from '../screens/FormationScreen';
 import { HabilitationsScreen } from '../screens/HabilitationsScreen';
 import { BulletinsScreen } from '../screens/BulletinsScreen';
+import { ClausierScreen } from '../screens/ClausierScreen';
+import { SignatureDistanceScreen } from '../screens/SignatureDistanceScreen';
+import { RgpdScreen } from '../screens/RgpdScreen';
+import { ImpactRseScreen } from '../screens/ImpactRseScreen';
+import { VerificationIdentiteScreen } from '../screens/VerificationIdentiteScreen';
 import { ClientAdminScreen } from '../client-context/ClientAdminScreen';
 import { ContextBoot } from '../client-context/ContextBoot';
 import { OrgContextProvider, useOrgContext } from '../state/OrgContextContext';
@@ -400,6 +405,11 @@ function AmnRoutes() {
         <Route path="/formation" element={<FormationScreen />} />
         <Route path="/habilitations" element={<HabilitationsScreen />} />
         <Route path="/bulletins" element={<BulletinsScreen />} />
+        <Route path="/clausier" element={<ClausierScreen />} />
+        <Route path="/signature-a-distance" element={<SignatureDistanceScreen />} />
+        <Route path="/rgpd" element={<RgpdScreen />} />
+        <Route path="/impact-rse" element={<ImpactRseScreen />} />
+        <Route path="/verification-identite" element={<VerificationIdentiteScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
@@ -1167,6 +1177,46 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="payslips">
               <BulletinsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/clausier"
+          element={
+            <ModuleRoute module="clauses">
+              <ClausierScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/signature-a-distance"
+          element={
+            <ModuleRoute module="remoteSign">
+              <SignatureDistanceScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/rgpd"
+          element={
+            <ModuleRoute module="gdpr">
+              <RgpdScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/impact-rse"
+          element={
+            <ModuleRoute module="csr">
+              <ImpactRseScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/verification-identite"
+          element={
+            <ModuleRoute module="kyc">
+              <VerificationIdentiteScreen />
             </ModuleRoute>
           }
         />

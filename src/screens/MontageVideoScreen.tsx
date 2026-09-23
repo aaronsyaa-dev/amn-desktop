@@ -132,7 +132,7 @@ export function MontageVideoScreen() {
               {b.plans.map((p, i) => (
                 <span
                   key={`${p.nom}-${i}`}
-                  className={`absolute flex flex-col justify-end overflow-hidden border-r-2 border-[#0a0a0a] px-[7px] py-1.5 ${i % 2 ? 'bg-[#2b2b2b]' : 'bg-[#333]'}`}
+                  className={`absolute flex flex-col justify-end overflow-hidden border-r-2 border-[#0a0a0a] px-[7px] py-1.5 ${i % 2 ? 'bg-[#2b2b2b]' : 'bg-[#2e2e2e]'}`}
                   style={{ top: PELLICULE.perforations, bottom: PELLICULE.perforations, left: `${p.gauchePct}%`, width: `${p.largeurPct}%` }}
                   title={`${p.nom} · ${p.dureeS} s`}
                 >

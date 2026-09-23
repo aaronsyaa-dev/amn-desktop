@@ -238,4 +238,9 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'training', label: 'Formation', hint: 'Ce qui est su, et ce qui s’efface' },
   { key: 'certifications', label: 'Habilitations', hint: 'Qui peut intervenir sur quoi, et jusqu’à quand' },
   { key: 'payslips', label: 'Bulletins de paie', hint: 'Du coût employeur au net versé' },
+  { key: 'clauses', label: 'Clausier', hint: 'Le contrat, et ce qu’il ne contient pas' },
+  { key: 'remoteSign', label: 'Signature à distance', hint: 'Qui tient le document, et depuis quand' },
+  { key: 'gdpr', label: 'RGPD', hint: 'Tout ce que le produit garde sur une personne' },
+  { key: 'csr', label: 'Impact RSE', hint: 'L’empreinte de l’année, en cubes de cent kilos' },
+  { key: 'kyc', label: 'Vérification d’identité', hint: 'Les contrôles d’un dossier, et celui qui bloque' },
 ];

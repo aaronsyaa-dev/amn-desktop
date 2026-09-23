@@ -610,5 +610,77 @@ const iso = (joursAvant: number, h = 10) => {
     assert.equal(R.tuyau([{ ...b(100, 10, 10, 10), netCents: 75 }]).incoherents.length, 1));
 }
 
+/* ════════════════════════════════════════════════════════════ JURIDIQUE ══ */
+{
+  const J = await charger<typeof import('../src/lib/cinquante/juridique')>('src/lib/cinquante/juridique.ts');
+  console.log('Juridique');
+
+  // ── 38a Clausier ────────────────────────────────────────────────────────
+  const clauses = [
+    { kind: 'clause' as const, numero: 1, titre: 'Objet', texte: 'x', source: '' },
+    { kind: 'clause' as const, numero: 3, titre: 'Reconduction', texte: 'x', source: '', siReponses: { duree: 'annuelle' }, raisonRepli: 'prestation ponctuelle' },
+    { kind: 'clause' as const, numero: 9, titre: 'Rétractation', texte: 'x', source: '', siReponses: { client: 'particulier' }, obligatoireSi: { client: 'particulier' }, raisonRepli: 'client professionnel' },
+  ];
+  const reponses = { client: 'professionnel', duree: 'ponctuelle', lieu: 'chez le client', paiement: 'acompte', soustraitance: 'non' };
+  const contrat = { kind: 'contrat' as const, titre: 'C', client: 'V', reponses, genereLe: iso(1) };
+  const pl = J.plier(clauses, contrat, { company: '' });
+  regle('38a · une clause exclue est repliée, jamais supprimée', () => assert.equal(pl.paragraphes.length, 3));
+  regle('38a · un particulier, c’est une fiche sans société', () => assert.equal(J.typeSelonFiche({ company: '' }), 'particulier'));
+  regle('38a · une clause obligatoire repliée par une autre réponse est une contradiction signalée', () => assert.equal(doit(pl.ambre).clause.numero, 9));
+  regle('38a · la reconduction repliée n’est pas une contradiction', () => assert.equal(pl.paragraphes.find((p) => p.clause.numero === 3)?.contradiction, false));
+  regle('38a · réponse conforme à la fiche : pas d’ambre', () => assert.equal(J.plier(clauses, contrat, { company: 'SAS X' }).ambre, null));
+
+  // ── 38b Signature à distance ────────────────────────────────────────────
+  const circuit = { kind: 'circuit' as const, document: 'D', client: 'V', envoyeLe: iso(12),
+    signataires: [{ role: 'a', nom: 'A', signeLe: iso(11) }, { role: 'b', nom: 'B', signeLe: iso(9) }, { role: 'c', nom: 'C' }, { role: 'd', nom: 'D' }] };
+  regle('38b · le témoin est chez le premier qui n’a pas signé, depuis la signature précédente', () => {
+    const t = J.temoin(circuit, MAINTENANT);
+    assert.equal(doit(t.detenteur).nom, 'C');
+    assert.equal(t.depuisJ, 9);
+  });
+  regle('38b · une relance ne part qu’à celle ou celui qui tient le témoin', () => assert.equal(J.destinataireRelance(circuit, MAINTENANT), 'C'));
+
+  // ── 38c RGPD ────────────────────────────────────────────────────────────
+  regle('38c · couronne : 50 % + 34 % · cos θ, 190 + 140 · sin θ', () => {
+    const p = J.positionCouronne(1, 6);
+    assert.ok(proche(p.xPct, 50 + 34 * Math.cos(-Math.PI / 6)) && proche(p.y, 190 + 140 * Math.sin(-Math.PI / 6)));
+  });
+  const trt = (collection: string, dureeJours: number | null) => ({ kind: 'traitement' as const, nom: collection, module: collection, collection, baseLegale: '', dureeJours, dureeLibelle: '' });
+  const em = J.empreinte('M. Aubry', [trt('appels', 30), trt('clients', null), trt('vides', 10)], {
+    appels: [{ id: '1', texte: 'Appel de M. Aubry', date: iso(94) }],
+    clients: [{ id: 'c', texte: 'M. AUBRY Villa', date: iso(400) }],
+    vides: [{ id: 'z', texte: 'quelqu’un d’autre', date: iso(400) }],
+  }, MAINTENANT);
+  regle('38c · la requête est réelle : une collection sans la personne n’apparaît pas', () => assert.deepEqual(em.trouves.map((t) => t.traitement.collection), ['appels', 'clients']));
+  regle('38c · l’ambre : l’âge dépasse la durée du registre', () => assert.equal(doit(em.ambre).x.traitement.collection, 'appels'));
+  regle('38c · une durée « le temps de la relation » n’est jamais dépassée par l’âge seul', () => assert.ok(!em.ambre || em.ambre.x.traitement.collection !== 'clients'));
+
+  // ── 38d Impact RSE ──────────────────────────────────────────────────────
+  const src = (nom: string, annee: number, volume: number, facteurKg: number) => ({ kind: 'source' as const, nom, poste: '', volume, unite: '', facteurKg, referenceFacteur: '', annee, ordre: 0 });
+  const em2 = J.empilement([src('V', 2026, 1540, 2.66), src('V', 2025, 1280, 2.66), src('E', 2026, 5800, 0.052), src('E', 2025, 7800, 0.052)], 2026);
+  regle('38d · un cube = 100 kg, arrondi à l’unité', () => assert.equal(J.cubesDe({ volume: 1540, facteurKg: 2.66 }), 41));
+  regle('38d · le total est la somme des cubes', () => assert.equal(em2.totalCubes, em2.colonnes.reduce((s, c) => s + c.cubes, 0)));
+  regle('38d · l’ambre : les cubes apparus dans la source de plus forte hausse seulement', () => {
+    assert.equal(doit(em2.hausse).source.nom, 'V');
+    assert.equal(doit(em2.hausse).apparus, 41 - 34);
+  });
+
+  // ── 38e Vérification d'identité ─────────────────────────────────────────
+  const verif = { kind: 'verification' as const, client: 'S', professionnel: true, demandeeLe: iso(1), controles: [
+    { cle: 'piece' as const, nom: 'Pièce', ok: true, detail: '' },
+    { cle: 'selfie' as const, nom: 'Selfie', score: 96, detail: '' },
+    { cle: 'adresse' as const, nom: 'Adresse', dateJustificatif: iso(150), detail: '' },
+  ] };
+  const se = J.serrure(verif, MAINTENANT);
+  regle('38e · le décalage est proportionnel à l’écart', () => {
+    assert.equal(J.decalage({ cle: 'selfie', nom: '', score: 85, detail: '' }, MAINTENANT).px, 10);
+    assert.ok(se.goupilles[2].px > 0 && se.goupilles[1].px === 0);
+  });
+  regle('38e · jamais « vérifié » avec une goupille désalignée', () => {
+    assert.equal(se.ouverte, false);
+    assert.equal(doit(se.ambre).c.cle, 'adresse');
+  });
+}
+
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);
 if (echecs > 0) process.exit(1);

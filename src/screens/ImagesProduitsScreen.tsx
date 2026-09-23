@@ -159,7 +159,7 @@ export function ImagesProduitsScreen() {
                     }`}
                     style={{ left: `${p.xPct}%`, top: p.y, width: TOURNETTE.vignetteL, height: TOURNETTE.vignetteH }}
                   >
-                    <span className="flex flex-1 items-center justify-center bg-border font-mono text-[8px] uppercase tracking-[0.1em] text-[#4a4a48]">
+                    <span className="flex flex-1 items-center justify-center bg-border font-mono text-[8px] uppercase tracking-[0.1em] text-text-muted">
                       Scène {s.numero}
                     </span>
                     <span className="mt-[5px] truncate text-[11.5px] font-semibold text-text-primary">{s.decor}</span>
