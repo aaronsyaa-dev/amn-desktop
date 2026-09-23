@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Check } from 'lucide-react';
-import { ACCUEILS } from '@edition/accueils';
+import { useAccueilsDisponibles } from '@edition/accueils';
 import { useAccueil } from '../../accueils/useAccueil';
 import { Vignette } from '../../accueils/Vignette';
 
@@ -15,6 +15,7 @@ import { Vignette } from '../../accueils/Vignette';
  */
 export function AccueilSection() {
   const { courant, choisir } = useAccueil();
+  const ACCUEILS = useAccueilsDisponibles();
   const [refus, setRefus] = useState(false);
 
   const prendre = async (code: string) => {

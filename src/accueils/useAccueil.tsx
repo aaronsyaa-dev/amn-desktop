@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
-import { ACCUEILS } from '@edition/accueils';
+import { ACCUEILS, useAccueilsDisponibles } from '@edition/accueils';
 import { ACCUEIL_DEFAUT, type AccueilDef } from './types';
 
 /**
@@ -13,7 +13,9 @@ export function useAccueil(): { courant: AccueilDef; choisir: (code: string) => 
   const { user } = useAuth();
   const { accueilDe, updateSelf } = useProfiles();
   const code = user?.email ? accueilDe(user.email) : null;
-  const courant = ACCUEILS.find((a) => a.code === code) ?? (ACCUEILS.find((a) => a.code === ACCUEIL_DEFAUT) as AccueilDef);
+  /* Une variante retirée du choix (la carte des neuf au-delà de seize organisations) retombe aussi sur le défaut. */
+  const disponibles = useAccueilsDisponibles();
+  const courant = disponibles.find((a) => a.code === code) ?? (ACCUEILS.find((a) => a.code === ACCUEIL_DEFAUT) as AccueilDef);
   const choisir = useCallback(
     async (c: string) => (user?.email ? updateSelf(user.email, { accueil: c }) : false),
     [user?.email, updateSelf],

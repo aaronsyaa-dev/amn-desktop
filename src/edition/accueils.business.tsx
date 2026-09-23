@@ -95,3 +95,8 @@ export const ACCUEILS: AccueilDef[] = [
     composant: Seuil,
   },
 ];
+
+/** Les Accueils proposés au choix : les onze, toujours. */
+export function useAccueilsDisponibles(): AccueilDef[] {
+  return ACCUEILS;
+}

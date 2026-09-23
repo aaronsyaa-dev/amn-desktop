@@ -1,6 +1,10 @@
 import { HomeScreen } from '../screens/HomeScreen';
 import type { AccueilDef } from '../accueils/types';
+import { useEffect, useState } from 'react';
+import { bridge } from '../lib/bridge';
 import { Releve } from '../accueils/interne/Releve';
+import { CarteDesNeuf } from '../accueils/interne/CarteDesNeuf';
+import { colonnesCarte } from '../accueils/interne/parc';
 
 /**
  * LES ONZE ACCUEILS DE L'ÉDITION INTERNE — 2a et les dix variantes du cahier 10
@@ -21,4 +25,32 @@ export const ACCUEILS: AccueilDef[] = [
     vignette: [[6, 6, 88, 3, 'clair'], [6, 13, 60, 8, 'clair'], [6, 25, 88, 6, 'moyen'], [6, 35, 88, 6, 'ambre'], [6, 44, 88, 5, 'sombre'], [6, 52, 88, 5, 'sombre']],
     composant: Releve,
   },
+  {
+    code: '42b',
+    nom: 'La carte des neuf',
+    phrase: 'Le parc en grille, chaque organisation à sa place fixe.',
+    vignette: [[6, 6, 28, 15, 'ambre'], [36, 6, 28, 15, 'moyen'], [66, 6, 28, 15, 'moyen'], [6, 23, 28, 15, 'sombre'], [36, 23, 28, 15, 'sombre'], [66, 23, 28, 15, 'sombre'], [6, 40, 28, 15, 'sombre'], [36, 40, 28, 15, 'sombre'], [66, 40, 28, 15, 'sombre']],
+    composant: CarteDesNeuf,
+  },
 ];
+
+/**
+ * Les Accueils proposés au choix. « Au-delà de seize organisations, la carte
+ * des neuf ne convient plus et doit être retirée du choix » (ACCUEILS.md) :
+ * le compte du parc est lu une fois, et la variante disparaît de la liste —
+ * un compte qui l'avait choisie retombe sur l'Accueil par défaut.
+ */
+export function useAccueilsDisponibles(): AccueilDef[] {
+  const [nOrgs, setNOrgs] = useState<number | null>(null);
+  useEffect(() => {
+    let vivant = true;
+    bridge()
+      .remote.admin.listOrganizations()
+      .then((l) => vivant && setNOrgs(l.length))
+      .catch(() => undefined);
+    return () => {
+      vivant = false;
+    };
+  }, []);
+  return nOrgs !== null && colonnesCarte(nOrgs) === null ? ACCUEILS.filter((a) => a.code !== '42b') : ACCUEILS;
+}
