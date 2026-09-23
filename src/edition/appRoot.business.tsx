@@ -121,6 +121,7 @@ import { TableauDeBordScreen } from '../screens/TableauDeBordScreen';
 import { ScoringLeadsScreen } from '../screens/ScoringLeadsScreen';
 import { ItinerairesScreen } from '../screens/ItinerairesScreen';
 import { PrevisionStockScreen } from '../screens/PrevisionStockScreen';
+import { FlotteScreen } from '../screens/FlotteScreen';
 
 /**
  * La racine de l'édition Business — la table de routes livrée aux
@@ -1004,6 +1005,14 @@ export function AppRoot() {
           element={
             <ModuleRoute module="stockForecast">
               <PrevisionStockScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/flotte"
+          element={
+            <ModuleRoute module="fleet">
+              <FlotteScreen />
             </ModuleRoute>
           }
         />

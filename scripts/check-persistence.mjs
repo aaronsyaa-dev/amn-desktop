@@ -266,6 +266,7 @@ const MODULE_DATA = {
   leadScoring: ['leadScores'],
   itineraries: ['routePlans'],
   stockForecast: ['stockForecasts'],
+  fleet: ['vehicles'],
 };
 
 /**
@@ -400,6 +401,7 @@ const MODULE_FILES = {
   leadScoring: ['src/screens/ScoringLeadsScreen.tsx'],
   itineraries: ['src/screens/ItinerairesScreen.tsx'],
   stockForecast: ['src/screens/PrevisionStockScreen.tsx'],
+  fleet: ['src/screens/FlotteScreen.tsx'],
 };
 
 /**

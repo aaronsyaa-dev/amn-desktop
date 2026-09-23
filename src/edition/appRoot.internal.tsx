@@ -149,6 +149,7 @@ import { TableauDeBordScreen } from '../screens/TableauDeBordScreen';
 import { ScoringLeadsScreen } from '../screens/ScoringLeadsScreen';
 import { ItinerairesScreen } from '../screens/ItinerairesScreen';
 import { PrevisionStockScreen } from '../screens/PrevisionStockScreen';
+import { FlotteScreen } from '../screens/FlotteScreen';
 import { ClientAdminScreen } from '../client-context/ClientAdminScreen';
 import { ContextBoot } from '../client-context/ContextBoot';
 import { OrgContextProvider, useOrgContext } from '../state/OrgContextContext';
@@ -418,6 +419,7 @@ function AmnRoutes() {
         <Route path="/scoring-leads" element={<ScoringLeadsScreen />} />
         <Route path="/itineraires" element={<ItinerairesScreen />} />
         <Route path="/prevision-stock" element={<PrevisionStockScreen />} />
+        <Route path="/flotte" element={<FlotteScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
@@ -1257,6 +1259,14 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="stockForecast">
               <PrevisionStockScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/flotte"
+          element={
+            <ModuleRoute module="fleet">
+              <FlotteScreen />
             </ModuleRoute>
           }
         />

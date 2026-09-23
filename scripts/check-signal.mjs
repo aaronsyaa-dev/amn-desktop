@@ -279,6 +279,7 @@ const ECRANS = [
   ['Scoring des leads', '#/scoring-leads'],
   ['Itinéraires', '#/itineraires'],
   ['Prévision de stock', '#/prevision-stock'],
+  ['Flotte', '#/flotte'],
 ];
 
 const serveur = spawn('node', [new URL('./servir-bundle.mjs', import.meta.url).pathname, BUNDLE, String(PORT)], {

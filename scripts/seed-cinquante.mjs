@@ -1029,6 +1029,43 @@ async function ajouts() {
   for (const [article, fournisseur] of suivisStock) {
     await poser('stockForecasts', `c50-suivi-${article.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, { kind: 'suivi', article, fournisseur });
   }
+
+  // ── 39e Flotte ────────────────────────────────────────────────────────────
+  // Le kilométrage vient des tournées POINTÉES : on pose des tournées faites
+  // (arrêts cochés, avec leur distance) et des tournées planifiées.
+  const tournee = (id, vehiculeId, j, kms, faite) => poser('deliveryRounds', `c50-rnd-${id}`, {
+    title: `Tournée ${vehiculeId.replace('c50-veh-', '')}`, day: jour(j), departAt: '08:00', createdAt: le(Math.max(j, 0) + 2), vehiculeId,
+    stops: kms.map((km, k) => ({ id: `stp-${id}-${k}`, label: `Arrêt ${k + 1}`, address: 'Lyon', doneAt: faite ? le(j, 9 + k) : null, km, dureeMin: 30 })),
+  });
+  let kmKangoo = 0; let kmTrafic = 0; let kmVelo = 0;
+  for (let j = 60; j >= 1; j -= 1) {
+    const d = new Date(MAINTENANT.getTime() - j * JOUR).getDay();
+    if (d === 2 || d === 4) { await tournee(`kangoo-${j}`, 'c50-veh-kangoo', j, [12.4, 8.1, 14.6, 9.9], true); kmKangoo += 45; }
+    if (d === 1 || d === 3 || d === 5) { await tournee(`trafic-${j}`, 'c50-veh-trafic', j, [18.2, 11.5, 16.3], true); kmTrafic += 46; }
+    if (d >= 1 && d <= 5) { await tournee(`velo-${j}`, 'c50-veh-velo', j, [2.1, 1.8, 2.6], true); kmVelo += 6.5; }
+  }
+  for (let j = -1; j >= -21; j -= 1) {
+    const d = new Date(MAINTENANT.getTime() - j * JOUR).getDay();
+    if (d === 2) await tournee(`kangoo-plan${-j}`, 'c50-veh-kangoo', j, [12.4, 8.1, 14.6], false);
+  }
+  const kmK = 140_000 + kmKangoo; const kmT = 88_000 + kmTrafic; const kmV = 4_000 + kmVelo;
+  const cout = (le_, montantCents, nature) => ({ le: le_, montantCents, nature });
+  const vehicules = [
+    ['kangoo', 'Kangoo', 'GA-418-KX', 140_000, [
+      { nom: 'Vidange', feminin: true, nature: 'km', intervalle: 15_000, dernierKm: Math.round(kmK - 10_800) },
+      { nom: 'Contrôle technique', nature: 'jours', intervalle: 730, dernierLe: le(726) },
+    ], [cout(le(200), eur(2130), 'carburant'), cout(le(120), eur(1460), 'entretien'), cout(le(240), eur(800), 'assurance'), cout(le(40), eur(240), 'carburant'), cout(le(12), eur(230), 'carburant')]],
+    ['trafic', 'Trafic', 'FB-207-LM', 88_000, [
+      { nom: 'Vidange', feminin: true, nature: 'km', intervalle: 15_000, dernierKm: Math.round(kmT - 3_300) },
+      { nom: 'Contrôle technique', nature: 'jours', intervalle: 730, dernierLe: le(548) },
+    ], [cout(le(190), eur(1880), 'carburant'), cout(le(100), eur(820), 'entretien'), cout(le(240), eur(800), 'assurance'), cout(le(35), eur(210), 'carburant'), cout(le(8), eur(210), 'carburant')]],
+    ['velo', 'Vélo cargo', '', 4_000, [
+      { nom: 'Révision', feminin: true, nature: 'km', intervalle: 2_500, dernierKm: Math.round(kmV - 1_200) },
+    ], [cout(le(150), eur(170), 'entretien'), cout(le(240), eur(120), 'assurance'), cout(le(20), eur(20), 'entretien')]],
+  ];
+  for (const [id, nom, immatriculation, kmDepart, echeances, couts] of vehicules) {
+    await poser('vehicles', `c50-veh-${id}`, { kind: 'vehicule', nom, immatriculation, kmDepart, departLe: le(61), echeances, couts });
+  }
 }
 
 const FAMILLES = { guichet, marketing, finance, rh, juridique, ajouts };

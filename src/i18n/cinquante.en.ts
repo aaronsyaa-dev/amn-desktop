@@ -214,4 +214,9 @@ export const EN_50 = {
   'm50.stockForecast.descriptionATemps': 'Each item is a fuse burning towards its stock-out at the pace of planned use. A notch marks the last day an order still arrives in time. For all of them, there is still time.',
   'm50.stockForecast.descriptionVide': 'No item tracked yet.',
   'm50.stockForecast.phraseVide': 'No item tracked yet.',
+  'm50.fleet.titre': 'Vehicles',
+  'm50.fleet.description': '{n} vehicles, as many odometers. Under each, what remains before the next due date, in kilometres or in days. One falls due in {jours} days, before a planned round.',
+  'm50.fleet.descriptionSansAmbre': '{n} vehicles, as many odometers. Under each, what remains before the next due date, in kilometres or in days.',
+  'm50.fleet.descriptionVide': 'No vehicle tracked yet.',
+  'm50.fleet.phraseVide': 'No vehicle tracked yet.',
 } as const;

@@ -166,6 +166,7 @@ export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
   leadScoring: { label: 'Lead scoring', hint: 'Which card to play first, and why' },
   itineraries: { label: 'Routes', hint: 'Tomorrow’s stop order, optimised the day before' },
   stockForecast: { label: 'Stock forecast', hint: 'When each item runs out, and when to order' },
+  fleet: { label: 'Vehicles', hint: 'Each vehicle, its odometer and its due dates' },
 };
 
 /**

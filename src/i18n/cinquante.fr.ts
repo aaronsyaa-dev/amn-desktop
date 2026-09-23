@@ -209,4 +209,9 @@ export const FR_50: Record<keyof typeof EN_50, string> = {
   'm50.stockForecast.descriptionATemps': 'Chaque article est une mèche qui brûle vers sa rupture au rythme de la consommation prévue. Un cran marque le dernier jour où commander arrive encore à temps. Pour tous, il est encore temps.',
   'm50.stockForecast.descriptionVide': 'Aucun article suivi pour l’instant.',
   'm50.stockForecast.phraseVide': 'Aucun article suivi pour l’instant.',
+  'm50.fleet.titre': 'Flotte',
+  'm50.fleet.description': '{n} véhicules, autant de compteurs. Sous chacun, ce qu’il reste avant la prochaine échéance, en kilomètres ou en jours. L’une tombe dans {jours} jours, avant une tournée planifiée.',
+  'm50.fleet.descriptionSansAmbre': '{n} véhicules, autant de compteurs. Sous chacun, ce qu’il reste avant la prochaine échéance, en kilomètres ou en jours.',
+  'm50.fleet.descriptionVide': 'Aucun véhicule suivi pour l’instant.',
+  'm50.fleet.phraseVide': 'Aucun véhicule suivi pour l’instant.',
 };

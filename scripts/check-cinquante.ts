@@ -769,6 +769,24 @@ const iso = (joursAvant: number, h = 10) => {
   regle('39d · l’ambre : une mèche dont le cran est passé', () => assert.equal(A.mecheEnAmbre([mc, { ...mc, article: 'y', cranJ: 4 }])?.article, 'Filtre'));
   regle('39d · pas de moyenne historique seule : sans planning, la moyenne ne vaut qu’au-delà du dernier jour planifié', () =>
     assert.equal(A.meche('Filtre', 100, 3, [inter(10, true)], kits, MAINTENANT).ruptureJ, null));
+
+  // ── 39e Flotte ──────────────────────────────────────────────────────────
+  regle('39e · six tambours, zéros en tête', () => assert.deepEqual(A.tambours(4270.6), ['0', '0', '4', '2', '7', '0']));
+  const vh = { id: 'v', kind: 'vehicule' as const, nom: 'V', kmDepart: 1000, departLe: iso(30), echeances: [], couts: [] };
+  const rnd = (j: number, kms: number[], faite: boolean) => ({ day: iso(j).slice(0, 10), vehiculeId: 'v', stops: kms.map((km) => ({ km, doneAt: faite ? iso(j) : null })) });
+  regle('39e · le kilométrage vient des tournées pointées, jamais d’une saisie', () =>
+    assert.equal(A.compteur(vh, [rnd(5, [10, 5], true), rnd(3, [7], false)]).km, 1015));
+  regle('39e · une jauge se remplit sur l’intervalle : 15 000 km pour une vidange', () =>
+    assert.equal(A.etatEcheance({ nom: 'Vidange', nature: 'km', intervalle: 15_000, dernierKm: 0 }, 9_000, 0, MAINTENANT).part, 0.6));
+  regle('39e · deux ans pour un contrôle technique', () => {
+    const e = A.etatEcheance({ nom: 'CT', nature: 'jours', intervalle: 730, dernierLe: iso(721) }, 0, 0, MAINTENANT);
+    assert.equal(e.reste, 9);
+  });
+  regle('39e · l’ambre : la première échéance qui tombe avant un chantier planifié avec ce véhicule', () => {
+    const ct = A.etatEcheance({ nom: 'CT', nature: 'jours', intervalle: 730, dernierLe: iso(721) }, 0, 0, MAINTENANT);
+    assert.equal(A.echeanceEnAmbre([{ v: vh, etat: ct }], [rnd(-12, [5], false)], MAINTENANT)?.etat, ct);
+    assert.equal(A.echeanceEnAmbre([{ v: vh, etat: ct }], [rnd(-3, [5], false)], MAINTENANT), null);
+  });
 }
 
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);

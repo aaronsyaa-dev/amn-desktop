@@ -129,6 +129,7 @@ const ECRANS = [
   ['Scoring des leads', '#/scoring-leads'],
   ['Itinéraires', '#/itineraires'],
   ['Prévision de stock', '#/prevision-stock'],
+  ['Flotte', '#/flotte'],
 ];
 
 const AMBRE = ['rgb(208, 154, 74)', '#d09a4a'];

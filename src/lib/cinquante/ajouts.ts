@@ -589,4 +589,126 @@ export function mecheEnAmbre(meches: Meche[]): Meche | null {
   return meches.filter((m) => m.cranJ !== null && m.cranJ < 0 && m.stock > 0).sort((a, b) => (a.ruptureJ ?? 99) - (b.ruptureJ ?? 99))[0] ?? null;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   39e · FLOTTE — les odomètres
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Les tambours du compteur : six chiffres, le dernier en clair. */
+export const TAMBOURS = 6;
+const isoLocal = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+export const tambours = (km: number) => String(Math.max(0, Math.floor(km))).padStart(TAMBOURS, '0').slice(-TAMBOURS).split('');
+
+export interface Echeance {
+  nom: string;
+  /** Pour l'article : « la vidange », « le contrôle technique ». */
+  feminin?: boolean;
+  /** « en kilomètres ou en jours selon sa nature » */
+  nature: 'km' | 'jours';
+  /** 15 000 km pour une vidange, 730 jours (deux ans) pour un contrôle technique. */
+  intervalle: number;
+  /** Le compteur à la dernière échéance faite (nature km). */
+  dernierKm?: number;
+  /** La date de la dernière échéance faite (nature jours). */
+  dernierLe?: string;
+  rendezVous?: string;
+}
+
+export interface Vehicule {
+  kind: 'vehicule';
+  nom: string;
+  immatriculation?: string;
+  /** Le compteur au jour où le suivi a commencé ; les tournées pointées s'y ajoutent. */
+  kmDepart: number;
+  departLe: string;
+  echeances: Echeance[];
+  couts: Array<{ le: string; montantCents: number; nature: 'carburant' | 'entretien' | 'assurance' }>;
+}
+
+/** Une tournée telle que Tournées l'écrit, avec le véhicule qui la fait. */
+export interface TourneeFlotte {
+  day: string;
+  vehiculeId?: string;
+  stops: Array<{ km?: number; doneAt: string | null }>;
+}
+
+/** « Chaque tournée ajoute sa distance calculée » — seulement ses arrêts pointés. */
+export const kmPointes = (t: TourneeFlotte) => t.stops.reduce((s, a) => s + (a.doneAt && typeof a.km === 'number' ? a.km : 0), 0);
+
+export function compteur(v: Vehicule & { id: string }, tournees: TourneeFlotte[]) {
+  const siennes = tournees.filter((t) => t.vehiculeId === v.id && t.day >= v.departLe.slice(0, 10) && kmPointes(t) > 0);
+  const km = v.kmDepart + siennes.reduce((s, t) => s + kmPointes(t), 0);
+  const releve = siennes.map((t) => t.day).sort().pop() ?? v.departLe.slice(0, 10);
+  return { km: Math.round(km), releveLe: releve };
+}
+
+export interface EtatEcheance {
+  e: Echeance;
+  /** 0 → 1 : la jauge se remplit sur l'intervalle de l'échéance. */
+  part: number;
+  /** Ce qu'il reste, dans l'unité de l'échéance. */
+  reste: number;
+  /** La date où elle tombe (estimée au rythme des 30 derniers jours pour une échéance en km). */
+  tombeLe: Date | null;
+}
+
+export function etatEcheance(e: Echeance, km: number, kmParJour: number, maintenant: Date): EtatEcheance {
+  if (e.nature === 'km') {
+    const fait = km - (e.dernierKm ?? 0);
+    const reste = e.intervalle - fait;
+    return {
+      e,
+      part: borne(fait / e.intervalle, 0, 1),
+      reste,
+      tombeLe: kmParJour > 0 ? new Date(maintenant.getTime() + Math.max(0, reste / kmParJour) * JOUR_MS) : reste <= 0 ? maintenant : null,
+    };
+  }
+  const depuis = e.dernierLe ? (maintenant.getTime() - new Date(e.dernierLe).getTime()) / JOUR_MS : 0;
+  const tombe = e.dernierLe ? new Date(new Date(e.dernierLe).getTime() + e.intervalle * JOUR_MS) : null;
+  return { e, part: borne(depuis / e.intervalle, 0, 1), reste: Math.ceil(e.intervalle - depuis), tombeLe: tombe };
+}
+
+/** Le rythme du véhicule : les kilomètres pointés sur les 30 derniers jours, par jour. */
+export function kmParJour(v: { id: string }, tournees: TourneeFlotte[], maintenant: Date): number {
+  const depuis = isoLocal(new Date(maintenant.getTime() - 30 * JOUR_MS));
+  return tournees.filter((t) => t.vehiculeId === v.id && t.day >= depuis).reduce((s, t) => s + kmPointes(t), 0) / 30;
+}
+
+/**
+ * « L'ambre va à la première échéance qui tombe avant un chantier planifié
+ * avec ce véhicule » : une tournée prévue (non faite) ce jour-là ou après.
+ */
+export function echeanceEnAmbre(
+  etats: Array<{ v: { id: string }; etat: EtatEcheance }>,
+  tournees: TourneeFlotte[],
+  maintenant: Date,
+): { v: { id: string }; etat: EtatEcheance; chantiers: string[] } | null {
+  const aujourdhui = isoLocal(maintenant);
+  const candidats = etats
+    .filter((x) => x.etat.tombeLe && !x.etat.e.rendezVous)
+    .map((x) => {
+      const le = isoLocal(x.etat.tombeLe as Date);
+      const chantiers = tournees
+        .filter((t) => t.vehiculeId === x.v.id && t.day >= le && t.day >= aujourdhui && t.stops.some((a) => !a.doneAt))
+        .map((t) => t.day)
+        .sort();
+      return { ...x, chantiers };
+    })
+    .filter((x) => x.chantiers.length > 0)
+    .sort((a, b) => (a.etat.tombeLe as Date).getTime() - (b.etat.tombeLe as Date).getTime());
+  return candidats[0] ?? null;
+}
+
+/**
+ * Le jour du rendez-vous : le dernier jour ouvré avant l'échéance où le
+ * véhicule n'a pas de tournée — à partir de demain.
+ */
+export function jourDeRendezVous(v: { id: string }, tombeLe: Date, tournees: TourneeFlotte[], maintenant: Date): Date | null {
+  const occupes = new Set(tournees.filter((t) => t.vehiculeId === v.id).map((t) => t.day));
+  const demain = new Date(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate() + 1);
+  for (let d = new Date(tombeLe.getFullYear(), tombeLe.getMonth(), tombeLe.getDate() - 1); d >= demain; d.setDate(d.getDate() - 1)) {
+    if (d.getDay() !== 0 && d.getDay() !== 6 && !occupes.has(isoLocal(d))) return new Date(d);
+  }
+  return null;
+}
+
 export { JOUR_MS, borne };
