@@ -111,6 +111,12 @@ import { GardePileScreen } from '../screens/garde/GardePileScreen';
 import { GardeBureauxScreen } from '../screens/garde/GardeBureauxScreen';
 import { GardeCommuneScreen } from '../screens/garde/GardeCommuneScreen';
 import { GardeCalendrierScreen } from '../screens/garde/GardeCalendrierScreen';
+import { BoutiqueScreen } from '../screens/BoutiqueScreen';
+import { BilletterieScreen } from '../screens/BilletterieScreen';
+import { DonsScreen } from '../screens/DonsScreen';
+import { AcompteScreen } from '../screens/AcompteScreen';
+import { ChatbotScreen } from '../screens/ChatbotScreen';
+import { StandardScreen } from '../screens/StandardScreen';
 import { ClientAdminScreen } from '../client-context/ClientAdminScreen';
 import { ContextBoot } from '../client-context/ContextBoot';
 import { OrgContextProvider, useOrgContext } from '../state/OrgContextContext';
@@ -342,6 +348,12 @@ function AmnRoutes() {
 
         {/* Un chemin inconnu (onglet mémorisé d'une version antérieure, lien
             collé) atterrit sur l'accueil plutôt que sur une page blanche. */}
+        <Route path="/boutique" element={<BoutiqueScreen />} />
+        <Route path="/billetterie" element={<BilletterieScreen />} />
+        <Route path="/dons" element={<DonsScreen />} />
+        <Route path="/acompte" element={<AcompteScreen />} />
+        <Route path="/chatbot" element={<ChatbotScreen />} />
+        <Route path="/standard" element={<StandardScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
@@ -880,6 +892,54 @@ function ClientContextRoutes() {
         <Route path="/administration" element={<ClientAdminScreen />} />
         {/* Un écran qui n'existe pas chez elle (un `/tracker` mémorisé, par
             exemple) ramène à son accueil — jamais à un écran d'AMN DevSec. */}
+        <Route
+          path="/boutique"
+          element={
+            <ModuleRoute module="shop">
+              <BoutiqueScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/billetterie"
+          element={
+            <ModuleRoute module="ticketing">
+              <BilletterieScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/dons"
+          element={
+            <ModuleRoute module="donations">
+              <DonsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/acompte"
+          element={
+            <ModuleRoute module="deposits">
+              <AcompteScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/chatbot"
+          element={
+            <ModuleRoute module="chatbot">
+              <ChatbotScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/standard"
+          element={
+            <ModuleRoute module="switchboard">
+              <StandardScreen />
+            </ModuleRoute>
+          }
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

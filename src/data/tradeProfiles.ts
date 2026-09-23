@@ -183,7 +183,6 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'checklists', label: 'Contrôles qualité', hint: 'Des listes à cocher, et la trace de chaque passage' },
   { key: 'interventions', label: 'Interventions', hint: 'Avant, pendant, après — le compte rendu d’un déplacement' },
   { key: 'calcPro', label: 'Calculatrice pro', hint: 'Un ruban de caisse qu’on relit avant de chiffrer' },
-  { key: 'health', label: 'Carnet de santé', hint: 'Des dates et des échéances, rien de médical' },
   { key: 'assembly', label: 'Suivi de montage', hint: 'Chaque chantier, étape par étape' },
   { key: 'aftersales', label: 'SAV', hint: 'Les demandes après vente, de l’ouverture à la résolution' },
   { key: 'bom', label: 'Composition & coût de revient', hint: 'Ce qui compose un produit, et ce qu’il coûte' },
@@ -210,4 +209,10 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'cashCount', label: 'Caisse du jour', hint: 'Le fond, les espèces comptées, l’écart' },
   { key: 'rounds', label: 'Tournées', hint: 'Les livraisons du jour, arrêt par arrêt' },
   { key: 'equipment', label: 'Matériel', hint: 'Qui a quoi, quand — sans double réservation' },
+  { key: 'shop', label: 'Boutique', hint: 'Ce qu’on achète seul, et où les paniers restent' },
+  { key: 'ticketing', label: 'Billetterie', hint: 'Les places vendues, puis les entrées à la porte' },
+  { key: 'donations', label: 'Dons', hint: 'Une collecte, et ce qu’il reste à trouver' },
+  { key: 'deposits', label: 'Acompte en ligne', hint: 'Signé en ligne, payé en ligne — et ce qui attend entre les deux' },
+  { key: 'chatbot', label: 'Chatbot', hint: 'Les questions posées, et celles restées sans réponse' },
+  { key: 'switchboard', label: 'Standard', hint: 'Ce que l’assistant a promis en votre nom, au téléphone' },
 ];

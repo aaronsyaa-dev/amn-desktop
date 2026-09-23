@@ -237,6 +237,16 @@ const ECRANS = [
   ['Fidélité', '#/fidelite'],
   ['Avis', '#/avis'],
   ['Parrainage', '#/parrainage'],
+  /* Les quarante-cinq modules des cahiers 6 à 8, famille par famille. Chacun
+     a un objet dominant et une région ambre au plus — l'étape qui perd le
+     plus, les places à vendre, la plaque « pour l'autre rive », le devis qui
+     attend dans le sas, le creux de la FAQ, la promesse hors mandat. */
+  ['Boutique', '#/boutique'],
+  ['Billetterie', '#/billetterie'],
+  ['Dons', '#/dons'],
+  ['Acompte en ligne', '#/acompte'],
+  ['Chatbot', '#/chatbot'],
+  ['Standard', '#/standard'],
 ];
 
 const serveur = spawn('node', [new URL('./servir-bundle.mjs', import.meta.url).pathname, BUNDLE, String(PORT)], {
@@ -380,6 +390,10 @@ try {
         for (const el of contenu.querySelectorAll('.tnum, [class*="font-mono"]')) {
           const r = el.getBoundingClientRect();
           if (r.width < 2 || r.height < 2) continue;
+          /* Une TOUCHE n'est pas un relevé : la touche « 0 » du pavé de la
+             Calculatrice pro, le taux « 0 % » qu'on choisit, se lisent comme
+             des commandes, pas comme « rien n'est encore passé ». */
+          if (el.closest('button, [role="radio"], [role="button"]')) continue;
           const t = (el.textContent ?? '').trim();
           // « 0 », « 0 € », « 0,00 € », « 0 h », « 0 % » — un relevé nul écrit en clair.
           if (/^0([.,]0+)?\s*(€|%|h|j|min)?$/i.test(t)) zeros.push(nomme(el));

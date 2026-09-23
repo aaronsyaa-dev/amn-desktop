@@ -128,6 +128,12 @@ export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
   members: { label: 'Members', hint: 'Who works here, and the seats' },
   assistance: { label: 'Support', hint: 'Write to your provider' },
   vault: { label: 'Vault', hint: 'Keys & access', hintBusiness: 'Passwords & access' },
+  shop: { label: 'Shop', hint: 'What people buy on their own, and where baskets are left' },
+  ticketing: { label: 'Ticketing', hint: 'Seats sold, then entries at the door' },
+  donations: { label: 'Donations', hint: 'A fundraiser, and what is still missing' },
+  deposits: { label: 'Online deposit', hint: 'Signed online, paid online — and what waits in between' },
+  chatbot: { label: 'Chatbot', hint: 'Questions asked, and those left unanswered' },
+  switchboard: { label: 'Switchboard', hint: 'What the assistant promised on your behalf, on the phone' },
 };
 
 /**
@@ -146,6 +152,7 @@ export const SECTIONS_EN_COMMUN: Record<string, string> = {
   Documents: 'Documents',
   Personnel: 'Personal',
   Système: 'System',
+  Guichet: 'Self-service',
 };
 
 

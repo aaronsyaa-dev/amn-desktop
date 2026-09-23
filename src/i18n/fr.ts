@@ -1,3 +1,4 @@
+import { FR_50 } from './cinquante.fr';
 import type { Dictionnaire } from './en';
 
 /**
@@ -9,6 +10,8 @@ import type { Dictionnaire } from './en';
  * « français », apostrophes typographiques) — `check:langue` la vérifie.
  */
 export const fr: Dictionnaire = {
+  // Les quarante-cinq modules du chantier des cinquante (voir cinquante.fr.ts).
+  ...FR_50,
   /* ── Connexion ──────────────────────────────────────────────────────── */
   'connexion.console': 'Console d’accès',
   'connexion.espace': 'Votre espace',

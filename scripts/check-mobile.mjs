@@ -89,6 +89,14 @@ const ECRANS = [
   ['Clients', '#/clients'],
   ['Facturation', '#/facturation'],
   ['Tâches', '#/tasks'],
+  /* Les nouveaux modules des cahiers 6 à 8 : composés d'emblée pour le
+     téléphone, ils entrent dans la mesure dès leur arrivée. */
+  ['Boutique', '#/boutique'],
+  ['Billetterie', '#/billetterie'],
+  ['Dons', '#/dons'],
+  ['Acompte en ligne', '#/acompte'],
+  ['Chatbot', '#/chatbot'],
+  ['Standard', '#/standard'],
 ];
 
 const AMBRE = ['rgb(208, 154, 74)', '#d09a4a'];

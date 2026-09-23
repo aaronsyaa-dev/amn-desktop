@@ -25,6 +25,7 @@
  *     "section": "collectif",                 // clé de section (Business + interne)
  *     "sectionLabel": "Collectif",            // intitulé (créé s'il manque)
  *     "sectionLabelEn": "Team",
+ *     "sectionCode": "CO",                    // code de rail à deux lettres (requis pour une section nouvelle)
  *     "screen": "PollsScreen", "screenFile": "src/screens/PollsScreen.tsx",
  *     "files": ["src/screens/PollsScreen.tsx", "src/state/usePolls.ts"],
  *     "collections": ["polls"],
@@ -39,7 +40,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const API = [process.env.AMN_API_ROOT, path.join(ROOT, '..', 'amn-api')].filter(Boolean).find((c) => fs.existsSync(path.join(c, 'src/db/tenancy.js')));
 const spec = JSON.parse(fs.readFileSync(process.argv[2], 'utf-8'));
-const { key, label, labelEn, hint, hintEn, to, icon, room = 'fiches', section, sectionLabel, sectionLabelEn, screen, screenFile, files = [], collections = [], summary, internalOnly = false, hintBusiness } = spec;
+const { key, label, labelEn, hint, hintEn, to, icon, room = 'fiches', section, sectionLabel, sectionLabelEn, sectionCode, screen, screenFile, files = [], collections = [], summary, internalOnly = false, hintBusiness } = spec;
 if (!key || !label || !to || !icon || !section || !screen) throw new Error('spec incomplète : key, label, to, icon, section, screen sont requis');
 
 const read = (rel, base = ROOT) => fs.readFileSync(path.join(base, rel), 'utf-8');
@@ -62,7 +63,14 @@ function insererDansCatalogue(rel, ligne, { space } = {}) {
   if (i === -1) {
     // Nouvelle section, avant `Personnel` s'il existe, sinon avant `systeme`, sinon à la fin.
     const avant = ["key: 'personnel',", "key: 'systeme',"].map((m) => bloc.indexOf(m)).find((x) => x !== -1);
-    const objet = `  {\n    key: '${section}',\n    label: '${sectionLabel}',\n${space ? `    space: '${space}',\n` : ''}    items: [\n${ligne}\n    ],\n  },\n`;
+    /*
+      LE CODE DE RAIL. Depuis la barre latérale en rail, chaque section porte
+      un code à deux lettres (`PI`, `CR`…) : c'est ce que montre sa tuile, et
+      `check:coquille` refuse une tuile sans code. Ce script créait les
+      sections sans lui — une section nouvelle aurait eu une tuile muette.
+    */
+    if (!sectionCode) throw new Error(`section « ${section} » nouvelle : sectionCode (deux lettres) est requis`);
+    const objet = `  {\n    key: '${section}',\n    code: '${sectionCode}',\n    label: '${sectionLabel}',\n${space ? `    space: '${space}',\n` : ''}    items: [\n${ligne}\n    ],\n  },\n`;
     if (avant !== undefined) {
       const ouverture = bloc.lastIndexOf('  {', avant);
       bloc = bloc.slice(0, ouverture) + objet + bloc.slice(ouverture);
@@ -96,14 +104,18 @@ if (!internalOnly) {
     const debut = src.indexOf('const CLIENT_MODULES');
     const fin = src.indexOf('\n];', debut);
     src = src.slice(0, fin) + `\n  { key: '${key}', label: '${label}', to: '${to}', icon: ${icon}, hint: '${hintBusiness ?? hint}' },` + src.slice(fin);
-    const sec = src.indexOf(`{ label: '${sectionLabel}', keys: [`);
+    // Les groupes portent désormais leur code de rail : `{ label, code, keys }`.
+    // Chercher `{ label: 'X', keys: [` ne les trouvait plus, et chaque module
+    // ajouté aurait créé un groupe en double.
+    const trouve = new RegExp(`\\{ label: '${sectionLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}',(?: code: '[A-Z]+',)? keys: \\[`).exec(src);
+    const sec = trouve ? trouve.index : -1;
     if (sec === -1) {
       const fermeture = src.indexOf('\n];', src.indexOf('export const CLIENT_SECTIONS'));
       // Avant « Système », qui ferme toujours la liste.
       const systeme = src.lastIndexOf("  { label: 'Système'", fermeture);
-      src = src.slice(0, systeme) + `  { label: '${sectionLabel}', keys: ['${key}'] },\n` + src.slice(systeme);
+      src = src.slice(0, systeme) + `  { label: '${sectionLabel}', code: '${sectionCode}', keys: ['${key}'] },\n` + src.slice(systeme);
     } else {
-      const crochet = src.indexOf(']', sec);
+      const crochet = src.indexOf(']', src.indexOf('keys: [', sec));
       src = src.slice(0, crochet) + `, '${key}'` + src.slice(crochet);
     }
     src = ajouterIcone(src, icon);

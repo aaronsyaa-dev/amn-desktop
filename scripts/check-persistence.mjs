@@ -228,6 +228,12 @@ const MODULE_DATA = {
   cashCount: ['cashCounts'],
   rounds: ['deliveryRounds'],
   equipment: ['resources', 'resourceBookings'],
+  shop: ['shopCarts'],
+  ticketing: ['ticketSales'],
+  donations: ['donations'],
+  deposits: ['depositQuotes'],
+  chatbot: ['chatbotQuestions'],
+  switchboard: ['switchboardCalls'],
 };
 
 /**
@@ -324,6 +330,12 @@ const MODULE_FILES = {
   cashCount: ['src/screens/CashCountScreen.tsx'],
   rounds: ['src/screens/DeliveryRoundsScreen.tsx'],
   equipment: ['src/screens/EquipmentBookingScreen.tsx'],
+  shop: ['src/screens/BoutiqueScreen.tsx'],
+  ticketing: ['src/screens/BilletterieScreen.tsx'],
+  donations: ['src/screens/DonsScreen.tsx'],
+  deposits: ['src/screens/AcompteScreen.tsx'],
+  chatbot: ['src/screens/ChatbotScreen.tsx'],
+  switchboard: ['src/screens/StandardScreen.tsx'],
 };
 
 /**
@@ -335,7 +347,15 @@ const MODULE_FILES = {
  */
 const ECRITURES_LOCALES_ADMISES = {
   'src/state/usePersonalBudget.ts': {
-    nombre: 1,
+    /*
+      DEUX écritures depuis « Avant la paie (13c) » : les chiffres du mois
+      (`KEY`) et, depuis la cascade de soustraction, les ENGAGEMENTS — les
+      prélèvements qu'on soustrait du solde (`KEY_ENGAGEMENTS`). Même nature,
+      même module, même raison d'être local : ce sont des montants personnels.
+      Le compte était resté à 1 ; ce contrôle ne tournait pas en CI faute
+      d'amn-api à côté, donc personne ne l'a vu rougir.
+    */
+    nombre: 2,
     raison:
       'le module Personnel est déclaré LOCAL_ONLY, et cette écriture EST la façon dont il ' +
       'l’est. La déclarer ici plutôt que d’exempter le fichier : le nombre est compté, donc ' +

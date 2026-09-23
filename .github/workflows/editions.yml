@@ -125,6 +125,8 @@ jobs:
         run: npm run check:releve
       - name: Contrôle de la langue (dictionnaires + lexique de navigation)
         run: npm run check:langue
+      - name: Les formules des nouveaux modules sont dans le code (cahiers 6 à 8)
+        run: npm run check:cinquante
       - name: La parole de la Garde (ton, typographie, pluriels)
         run: npm run check:parole
       - name: On sort toujours de la veille (Salle jamais mémorisée, sortie sans historique)

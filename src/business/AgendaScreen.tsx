@@ -492,7 +492,7 @@ function PlanDuMois({
                   courant ? 'border-signal' : 'border-border'
                 }`}
                 style={{ height: SEMAINE_H, background: 'var(--color-sunken)' }}
-                data-signal-groupe={courant ? 'jour-courant' : undefined}
+                data-signal-groupe={courant ? 'maintenant' : undefined}
               >
                 {liste.map((a) => {
                   const d = new Date(a.startAt);
@@ -532,7 +532,7 @@ function PlanDuMois({
                 className={`mt-1.5 block w-full truncate text-center font-mono text-[9.5px] uppercase tracking-[0.12em] ${
                   courant ? 'text-signal' : 'text-text-muted hover:text-text-primary'
                 }`}
-                data-signal-groupe={courant ? 'jour-courant' : undefined}
+                data-signal-groupe={courant ? 'maintenant' : undefined}
               >
                 {WEEKDAY_LABELS[(jour.getDay() + 6) % 7]} {jour.getDate()}
               </button>
@@ -784,13 +784,15 @@ function ColonneDHeures({
           d'une frise de projets, qui n'est qu'un repère, l'heure qu'il est sur
           un agenda EST la décision : c'est elle qui dit si le prochain
           rendez-vous est dans quarante-huit minutes ou déjà commencé. Le trait
-          et la pastille disent la même chose, d'où le groupe.
+          et la pastille disent la même chose, d'où le groupe — et la colonne
+          du jour, dans la frise de la semaine au-dessus, le dit aussi : c'est
+          le même « maintenant » vu à deux échelles, un seul objet ambre.
         */}
         {aujourdhui && dansLaFenetre(minutesMaintenant) && (
           <span
             className="pointer-events-none absolute inset-x-0 z-10 flex items-center"
             style={{ top: (minutesMaintenant / 60) * HAUTEUR_HEURE }}
-            data-signal-groupe="creneau-en-cours"
+            data-signal-groupe="maintenant"
             aria-hidden
           >
             <span className="signal-plate -ml-[52px] w-[52px] flex-shrink-0 py-[3px] text-center font-mono text-[10px] font-bold tracking-[0.05em]">

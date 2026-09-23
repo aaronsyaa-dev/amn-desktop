@@ -104,7 +104,15 @@ export function setEnabledModules(modules: string[] | null | undefined): void {
   ne peut pas voir qui travaille chez elle ni combien de places il lui reste
   n'est pas dégradée, elle est aveugle. Ce n'est pas un module qu'on vend.
 */
-export const ALWAYS_ON_MODULES = ['home', 'settings', 'members', 'assistance', 'budget', 'courses', 'library', 'discover'];
+/*
+  `health` (Carnet de santé) rejoint `budget` et `courses` (chantier des cinquante
+  modules). C'est le troisième module Personnel tenu sur le POSTE (voir
+  NOT_IN_SUPPORT dans check-modules) : il n'avait aucune clé dans le catalogue
+  serveur, donc rien ne permettait de l'ouvrir à une organisation dont les
+  modules sont listés — il était compilé, rangé, et invisible chez elle. Comme
+  ses deux voisins, ce n'est pas un module qu'on vend : il est toujours ouvert.
+*/
+export const ALWAYS_ON_MODULES = ['home', 'settings', 'members', 'assistance', 'budget', 'courses', 'health', 'library', 'discover'];
 
 /*
   LES MODULES ALLÉGÉS (Bloc 3) — un affichage, jamais un accès.

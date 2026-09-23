@@ -17,7 +17,11 @@
  * dictionaries never carry Relève templates: word-for-word template
  * translation is exactly what the brief forbids).
  */
+import { EN_50 } from './cinquante.en';
+
 export const en = {
+  // Les quarante-cinq modules du chantier des cinquante (voir cinquante.en.ts).
+  ...EN_50,
   /* ── Login ──────────────────────────────────────────────────────────── */
   'connexion.console': 'Access console',
   'connexion.espace': 'Your space',

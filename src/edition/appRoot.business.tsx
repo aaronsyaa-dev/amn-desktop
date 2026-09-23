@@ -83,6 +83,12 @@ import { AnnouncementsScreen } from '../screens/AnnouncementsScreen';
 import { GroupsScreen } from '../screens/GroupsScreen';
 import { DirectMessagesScreen } from '../screens/DirectMessagesScreen';
 import { VaultScreen } from '../screens/VaultScreen';
+import { BoutiqueScreen } from '../screens/BoutiqueScreen';
+import { BilletterieScreen } from '../screens/BilletterieScreen';
+import { DonsScreen } from '../screens/DonsScreen';
+import { AcompteScreen } from '../screens/AcompteScreen';
+import { ChatbotScreen } from '../screens/ChatbotScreen';
+import { StandardScreen } from '../screens/StandardScreen';
 
 /**
  * La racine de l'édition Business — la table de routes livrée aux
@@ -662,6 +668,54 @@ export function AppRoot() {
           element={
             <ModuleRoute module="vault">
               <VaultScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/boutique"
+          element={
+            <ModuleRoute module="shop">
+              <BoutiqueScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/billetterie"
+          element={
+            <ModuleRoute module="ticketing">
+              <BilletterieScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/dons"
+          element={
+            <ModuleRoute module="donations">
+              <DonsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/acompte"
+          element={
+            <ModuleRoute module="deposits">
+              <AcompteScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/chatbot"
+          element={
+            <ModuleRoute module="chatbot">
+              <ChatbotScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/standard"
+          element={
+            <ModuleRoute module="switchboard">
+              <StandardScreen />
             </ModuleRoute>
           }
         />

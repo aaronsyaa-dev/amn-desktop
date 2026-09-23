@@ -2399,7 +2399,58 @@ export type SyncedCollection =
   | 'cashCounts'
   | 'deliveryRounds'
   | 'resources'
-  | 'resourceBookings';
+  | 'resourceBookings'
+  /**
+   * Le chantier des cinquante modules : une collection par module nouveau,
+   * jamais partagée — c'est ce qui rend chacune verrouillable séparément côté
+   * amn-api (`MODULE_COLLECTIONS`). Même liste, même ordre, dans
+   * `SYNCED_COLLECTIONS` (SyncContext) et dans `ALLOWED` d'amn-api.
+   */
+  | 'shopCarts'
+  | 'ticketSales'
+  | 'donations'
+  | 'depositQuotes'
+  | 'chatbotQuestions'
+  | 'switchboardCalls'
+  | 'videoEdits'
+  | 'adVisuals'
+  | 'scheduledPosts'
+  | 'podcastEpisodes'
+  | 'brandKit'
+  | 'productShots'
+  | 'sentimentTexts'
+  | 'competitorPrices'
+  | 'npsResponses'
+  | 'cashForecast'
+  | 'budgetScenarios'
+  | 'loanSimulations'
+  | 'projectMargins'
+  | 'bankLines'
+  | 'taxDeadlines'
+  | 'fxRates'
+  | 'expenseClaims'
+  | 'incomingInvoices'
+  | 'candidates'
+  | 'procedures'
+  | 'trainings'
+  | 'certifications'
+  | 'payslips'
+  | 'clauseContracts'
+  | 'signatureCircuits'
+  | 'gdprRegister'
+  | 'carbonSources'
+  | 'kycChecks'
+  | 'dashboardDials'
+  | 'leadScores'
+  | 'routePlans'
+  | 'stockForecasts'
+  | 'vehicles'
+  | 'documentVersions'
+  | 'sharedDocs'
+  | 'roomBookings'
+  | 'writingDrafts'
+  | 'translations'
+  | 'extensionGrants';
 
 export interface PresenceEntry {
   email: string;
