@@ -939,6 +939,45 @@ const iso = (joursAvant: number, h = 10) => {
   });
   regle('40h · l’ambre : le plus grand écart affiché', () => assert.equal(A.plusGrandEcart([{ ecart: 0.3 }, { ecart: -0.6 }, { ecart: 0.04 }])?.ecart, -0.6));
 
+
+  const PA = await charger<typeof import('../src/accueils/interne/parc')>('src/accueils/interne/parc.ts');
+  regle('42b · places fixes : l’ordre ne dépend que de l’ancienneté, jamais de l’état', () => {
+    const orgs = [{ id: 'b', createdAt: '2025-02-01' }, { id: 'a', createdAt: '2024-05-01' }, { id: 'c', createdAt: '2026-01-01' }];
+    assert.deepEqual(PA.ordreFixe(orgs).map((o) => o.id), ['a', 'b', 'c']);
+    assert.deepEqual(PA.ordreFixe([...orgs].reverse()).map((o) => o.id), ['a', 'b', 'c']);
+  });
+  regle('42b · trois colonnes jusqu’à neuf, quatre jusqu’à seize, retirée au-delà', () => {
+    assert.equal(PA.colonnesCarte(9), 3);
+    assert.equal(PA.colonnesCarte(10), 4);
+    assert.equal(PA.colonnesCarte(16), 4);
+    assert.equal(PA.colonnesCarte(17), null);
+  });
+  regle('42b · trois paliers : critique, à suivre, calme', () => {
+    assert.equal(PA.palierDe([{ gravite: 'normale' }, { gravite: 'critique' }]), 'critique');
+    assert.equal(PA.palierDe([{ gravite: 'haute' }]), 'suivre');
+    assert.equal(PA.palierDe([]), 'calme');
+  });
+  regle('42d · un point vaut un jour de dossier ouvert, pas une remontée', () => {
+    const now = Date.parse('2026-09-18T16:04:00');
+    assert.equal(PA.pointsDuDossier('2026-09-14T15:00:00', now), 4);
+    assert.equal(PA.pointsDuDossier('2026-09-18T15:00:00', now), 1);
+  });
+  regle('42d · plus près du centre, plus grave : les bandes ne se chevauchent pas', () => {
+    const [c0, c1] = PA.bandeRadar('critique');
+    const [h0, h1] = PA.bandeRadar('haute');
+    const [n0, n1] = PA.bandeRadar('normale');
+    assert.ok(c1 < PA.RADAR.rCritique && h0 > PA.RADAR.rCritique && h1 < PA.RADAR.rHaute && n0 > PA.RADAR.rHaute && n1 < PA.RADAR.rBord && c0 < c1 && h0 < h1 && n0 < n1);
+  });
+  regle('42d · chaque point reste dans son secteur', () => {
+    const pts = PA.pointsDuSecteur(2, 9, [{ gravite: 'haute', points: 3 }, { gravite: 'critique', points: 4 }]);
+    assert.equal(pts.length, 7);
+    for (const p of pts) {
+      const a = ((Math.atan2(p.x - PA.RADAR.c, PA.RADAR.c - p.y) * 180) / Math.PI + 360) % 360;
+      assert.ok(a > 80 && a < 120, `angle ${a}`);
+    }
+  });
+  regle('42d · les noms sont hors du cercle, dans la marge du viewBox', () => assert.ok(PA.RADAR.rNoms > PA.RADAR.rBord && PA.RADAR.c + PA.RADAR.marge >= PA.RADAR.rNoms));
+
 }
 
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);

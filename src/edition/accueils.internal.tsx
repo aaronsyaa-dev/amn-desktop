@@ -5,6 +5,7 @@ import { bridge } from '../lib/bridge';
 import { Releve } from '../accueils/interne/Releve';
 import { CarteDesNeuf } from '../accueils/interne/CarteDesNeuf';
 import { Fil } from '../accueils/interne/Fil';
+import { Radar } from '../accueils/interne/Radar';
 import { colonnesCarte } from '../accueils/interne/parc';
 
 /**
@@ -39,6 +40,13 @@ export const ACCUEILS: AccueilDef[] = [
     phrase: 'Les remontées en direct ; le critique reste épinglé en tête.',
     vignette: [[6, 6, 88, 8, 'ambre'], [6, 17, 88, 1, 'moyen'], [6, 22, 88, 4, 'clair'], [6, 30, 88, 4, 'moyen'], [6, 38, 88, 4, 'moyen'], [6, 46, 88, 4, 'sombre']],
     composant: Fil,
+  },
+  {
+    code: '42d',
+    nom: 'Le radar',
+    phrase: 'La gravité comme distance : plus un point est près du centre, plus il est grave.',
+    vignette: [[22, 4, 52, 52, 'sombre'], [34, 16, 28, 28, 'moyen'], [44, 22, 8, 8, 'ambre'], [70, 14, 24, 4, 'moyen'], [70, 24, 24, 4, 'moyen'], [70, 34, 24, 4, 'sombre']],
+    composant: Radar,
   },
 ];
 
