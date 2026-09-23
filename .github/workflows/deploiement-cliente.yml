@@ -150,15 +150,37 @@ jobs:
       # Pas de dépendances : le contrôle doit pouvoir tourner même le jour où
       # `npm ci` casse pour une raison qui n'a rien à voir avec la fuite.
       - name: Relire ce qui est servi
+        id: relecture
         if: steps.cible.outputs.relire == 'oui'
-        run: node scripts/check-deployed-bundle.mjs --url "${{ steps.cible.outputs.url }}"
+        run: |
+          set -o pipefail
+          if node scripts/check-deployed-bundle.mjs --url "${{ steps.cible.outputs.url }}" 2>&1 | tee /tmp/verdict.txt; then
+            echo "verdict=propre" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # TROIS ÉCHECS, TROIS PHRASES — et c'est la raison d'être de ce tri.
+          #
+          # La première version criait « fuite en production » sur n'importe quel
+          # échec. Constaté dès le premier passage réel : l'adresse ne répondait
+          # pas, rien n'avait été lu, et le résumé annonçait quand même que des
+          # traces internes étaient servies. Une alarme qui se trompe de sinistre
+          # est une alarme qu'on apprend à ignorer — exactement ce qui a laissé
+          # cette fuite vivre.
+          if grep -q 'Page inaccessible' /tmp/verdict.txt; then
+            echo "verdict=injoignable" >> "$GITHUB_OUTPUT"
+          elif grep -q "trace(s) d’AMN DevSec" /tmp/verdict.txt; then
+            echo "verdict=fuite" >> "$GITHUB_OUTPUT"
+          else
+            echo "verdict=mauvaise-edition" >> "$GITHUB_OUTPUT"
+          fi
+          exit 1
 
       # Un échec de ce contrôle n'est pas un test rouge : c'est une fuite EN
       # COURS, lisible par quiconque ouvre l'adresse. On le nomme comme tel dans
       # le résumé d'exécution, pour que la notification ne se lise pas comme un
       # énième job rouge de plus.
       - name: Le dire en toutes lettres
-        if: failure() && steps.cible.outputs.relire == 'oui'
+        if: failure() && steps.relecture.outputs.verdict == 'fuite'
         run: |
           {
             echo "## Fuite en production"
@@ -174,4 +196,34 @@ jobs:
             echo "qui sert cette adresse. Sans elle, le build retombe sur l'édition interne"
             echo "— et \`check:business\`, qui ne relit qu'une sortie Business, ne tourne pas"
             echo "pour le dire. Voir docs/BUSINESS.md."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: L'adresse des clientes ne répond pas
+        if: failure() && steps.relecture.outputs.verdict == 'injoignable'
+        run: |
+          {
+            echo "## L'adresse des clientes ne répond pas"
+            echo ""
+            echo "\`${{ steps.cible.outputs.url }}\` n'a pas répondu. **Rien n'a été relu**,"
+            echo "donc ceci ne dit RIEN sur le contenu servi : ni qu'il est propre, ni qu'il fuit."
+            echo ""
+            echo "Trois causes, par ordre de fréquence :"
+            echo ""
+            echo "1. le domaine n'est pas encore rattaché au projet Vercel des clientes ;"
+            echo "2. la variable de dépôt \`URL_CLIENTE\` désigne une adresse qui n'existe pas ;"
+            echo "3. l'application est réellement hors ligne — et c'est alors l'incident le plus"
+            echo "   grave des trois, puisque les clientes ne l'atteignent pas non plus."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Ce n'est pas l'édition attendue
+        if: failure() && steps.relecture.outputs.verdict == 'mauvaise-edition'
+        run: |
+          {
+            echo "## Ce n'est pas l'édition des clientes"
+            echo ""
+            echo "\`${{ steps.cible.outputs.url }}\` répond, et ne porte aucune trace interne —"
+            echo "mais les marqueurs de l'édition livrée aux clientes n'y sont pas non plus."
+            echo ""
+            echo "C'est le cas d'une page servie à moitié, d'une redirection vers autre chose,"
+            echo "ou d'un dossier de sortie vide. Voir l'étape « Relire ce qui est servi »."
           } >> "$GITHUB_STEP_SUMMARY"
