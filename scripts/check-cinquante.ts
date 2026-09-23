@@ -1003,6 +1003,17 @@ const iso = (joursAvant: number, h = 10) => {
     assert.equal(montres[0].id, 19);
     assert.equal(montres[1].id, 18);
   });
+  regle('42h · l’ambre : une pile d’au moins deux, à moins de sept jours', () => {
+    assert.equal(PA.pileEnAmbre([0, 1, 3, 0, 2, 0, 0, 5]), 2, 'la pile de cinq est à sept jours : hors de portée');
+    assert.equal(PA.pileEnAmbre([1, 1, 1, 0, 0, 0, 0, 4]), null, 'aucune pile de deux sous sept jours : pas d’ambre');
+    assert.equal(PA.pileEnAmbre([0, 2, 0, 2]), 1, 'à égalité, la plus proche');
+  });
+  regle('42h · trente jours, aujourd’hui compris', () => {
+    const now = new Date(2026, 8, 18, 16, 4);
+    assert.equal(PA.jourDHorizon(new Date(2026, 8, 18, 23, 0).getTime(), now), 0);
+    assert.equal(PA.jourDHorizon(new Date(2026, 9, 17, 12, 0).getTime(), now), 29);
+    assert.equal(PA.jourDHorizon(new Date(2026, 9, 18, 12, 0).getTime(), now), null);
+  });
   regle('42d · les noms sont hors du cercle, dans la marge du viewBox', () => assert.ok(PA.RADAR.rNoms > PA.RADAR.rBord && PA.RADAR.c + PA.RADAR.marge >= PA.RADAR.rNoms));
 
 }

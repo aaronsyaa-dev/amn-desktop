@@ -119,3 +119,25 @@ export function sitesAMontrer<T extends { incident: boolean; lenteur: number }>(
   const tri = [...sites].sort((a, b) => Number(b.incident) - Number(a.incident) || b.lenteur - a.lenteur);
   return { montres: tri.slice(0, METEO.maxSites), autres: Math.max(0, tri.length - METEO.maxSites) };
 }
+
+/* ═══ I8 · l'horizon des expirations (`42h`) ═══════════════════════════ */
+
+export const HORIZON = { jours: 30, procheJ: 7, minPile: 2, hauteurMarque: 12 } as const;
+
+/** Le jour (0 = aujourd'hui) d'une échéance dans l'horizon ; hors horizon : null. */
+export function jourDHorizon(echeanceMs: number, maintenant: Date): number | null {
+  const debut = new Date(maintenant);
+  debut.setHours(0, 0, 0, 0);
+  const j = Math.floor((echeanceMs - debut.getTime()) / 86_400_000);
+  return j >= 0 && j < HORIZON.jours ? j : null;
+}
+
+/**
+ * « Seule une pile d'au moins deux échéances à moins de sept jours peut porter
+ * l'ambre » : la plus chargée d'entre elles ; à égalité, la plus proche.
+ */
+export function pileEnAmbre(piles: number[]): number | null {
+  let m: number | null = null;
+  for (let j = 0; j < Math.min(HORIZON.procheJ, piles.length); j++) if (piles[j] >= HORIZON.minPile && (m === null || piles[j] > piles[m])) m = j;
+  return m;
+}

@@ -9,6 +9,7 @@ import { Radar } from '../accueils/interne/Radar';
 import { Compteur } from '../accueils/interne/Compteur';
 import { AjmaniDabord } from '../accueils/interne/AjmaniDabord';
 import { Meteo } from '../accueils/interne/Meteo';
+import { Horizon } from '../accueils/interne/Horizon';
 import { colonnesCarte } from '../accueils/interne/parc';
 
 /**
@@ -71,6 +72,13 @@ export const ACCUEILS: AccueilDef[] = [
     phrase: 'Le temps de réponse des sites, heure par heure, sur vingt-quatre heures.',
     vignette: [[6, 8, 16, 4, 'clair'], [26, 8, 62, 4, 'moyen'], [88, 8, 6, 4, 'ambre'], [6, 16, 16, 4, 'moyen'], [26, 16, 68, 4, 'sombre'], [6, 24, 16, 4, 'moyen'], [26, 24, 68, 4, 'sombre'], [6, 32, 16, 4, 'moyen'], [26, 32, 68, 4, 'moyen']],
     composant: Meteo,
+  },
+  {
+    code: '42h',
+    nom: 'L’horizon des expirations',
+    phrase: 'Trente jours d’échéances empilées : certificats, jetons, renouvellements.',
+    vignette: [[6, 40, 4, 4, 'clair'], [14, 32, 4, 12, 'ambre'], [26, 40, 4, 4, 'moyen'], [38, 36, 4, 8, 'clair'], [54, 40, 4, 4, 'sombre'], [70, 36, 4, 8, 'clair'], [86, 40, 4, 4, 'moyen'], [6, 46, 88, 1, 'moyen']],
+    composant: Horizon,
   },
 ];
 
