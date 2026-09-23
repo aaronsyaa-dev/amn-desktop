@@ -393,5 +393,135 @@ const iso = (joursAvant: number, h = 10) => {
   regle('35i · taux de réponse = réponses / sondages envoyés', () => assert.equal(co.tauxReponsePct, 50));
 }
 
+/* ══════════════════════════════════════════════════════════════ FINANCE ══ */
+{
+  const F = await charger<typeof import('../src/lib/cinquante/finance')>('src/lib/cinquante/finance.ts');
+  console.log('Finance');
+
+  // ── 36a Trésorerie prévue ───────────────────────────────────────────────
+  regle('36a · échelle commune 0 → 24 000 € : 0 € à y 210, 24 000 € à y 10', () => {
+    assert.ok(proche(F.yCone(0), 210));
+    assert.ok(proche(F.yCone(2_400_000), 10));
+  });
+  const histo = Array.from({ length: 52 }, (_, i) => ({ kind: 'historique' as const, debut: iso(7 * (52 - i)), entreesCents: i % 2 ? 300_000 : 100_000, sortiesCents: 150_000 }));
+  const flux = Array.from({ length: 12 }, (_, i) => ({ kind: 'flux' as const, libelle: '', le: iso(-(7 * i + 3)), montantCents: -150_000, nature: 'sortie-fixe' as const }));
+  const tr = [{ kind: 'solde' as const, soldeCents: 1_000_000, le: iso(0) }, ...histo, ...flux];
+  const co = doit(F.cone(tr, MAINTENANT));
+  regle('36a · l’écart vient de la variance réelle : σ × √k', () => {
+    assert.ok(proche(co.sigmaHebdoCents, F.ecartType(histo.map((h) => h.entreesCents))));
+    assert.ok(proche(co.ecart[4], co.sigmaHebdoCents * 2));
+  });
+  regle('36a · le point critique : la première semaine où central − écart < 0', () => {
+    const k = doit(co.critique);
+    assert.ok(co.central[k] - co.ecart[k] < 0);
+    assert.ok(co.central[k - 1] - co.ecart[k - 1] >= 0);
+  });
+  regle('36a · la mensualité supportable est lue dans l’historique, jamais saisie', () =>
+    assert.equal(F.mensualiteSupportable(tr, MAINTENANT), Math.round((((200_000 - 150_000) * 52) / 12) / 1000) * 1000));
+
+  // ── 36b Scénarios ───────────────────────────────────────────────────────
+  const hyp = (cle: 'prix' | 'volume' | 'embauche' | 'camionnette' | 'delai', min: number, max: number) => ({ cle, nom: cle, min, max, pas: 1 });
+  const modele = { kind: 'modele' as const, exercice: 2027, caBaseCents: 20_000_000, tauxVariable: 0.3, chargesFixesCents: 9_000_000,
+    salaireMensuelCents: 300_000, camionnetteMensuelleCents: 150_000, coutJourDelaiCents: 1_000,
+    hypotheses: [hyp('prix', -5, 10), hyp('volume', -20, 10), hyp('embauche', 1, 13), hyp('camionnette', 1, 13), hyp('delai', 20, 60)] };
+  const prudent = { prix: 2, volume: -12, embauche: 3, camionnette: 9, delai: 45 };
+  const ambitieux = { prix: 6, volume: 5, embauche: 3, camionnette: 13, delai: 38 };
+  regle('36b · top = 100 − (valeur − min) / (max − min) × 100 %', () => assert.ok(proche(F.topCurseur({ min: -5, max: 10 }, 4), 40)));
+  regle('36b · les poids se calculent une hypothèse à la fois et font 100 %', () => {
+    const p = F.poids(modele, prudent, ambitieux);
+    assert.ok(proche(p.reduce((s, x) => s + x.part, 0), 1));
+    const vol = doit(p.find((x) => x.cle === 'volume'));
+    assert.ok(proche(vol.effet, Math.abs(F.resultat(modele, { ...prudent, volume: 5 }) - F.resultat(modele, prudent)), 1));
+    assert.equal(doit(p.find((x) => x.cle === 'embauche')).part, 0);
+  });
+
+  // ── 36c Simulateur de prêt ──────────────────────────────────────────────
+  regle('36c · la mensualité d’un prêt amortissable', () => assert.ok(proche(F.mensualite(2_400_000, 0.042, 60), 44_416, 5)));
+  const du = F.durees({ capitalCents: 2_400_000, tauxAnnuel: 0.042, dureesAns: [7, 3, 5] }, 48_000);
+  regle('36c · une seule échelle : 24 000 € = 180 px', () => assert.ok(proche(du.lignes[0].coiffePx, (du.lignes[0].interetsCents / 2_400_000) * 180)));
+  regle('36c · l’ambre : la durée la plus courte sous le seuil', () => assert.equal(doit(du.ambre).ans, 5));
+  regle('36c · si aucune durée ne passe, pas d’ambre', () => assert.equal(F.durees({ capitalCents: 2_400_000, tauxAnnuel: 0.042, dureesAns: [3, 5, 7] }, 20_000).ambre, null));
+  regle('36c · sans prévision de trésorerie, pas de seuil inventé', () => assert.equal(F.durees({ capitalCents: 2_400_000, tauxAnnuel: 0.042, dureesAns: [3] }, null).ambre, null));
+
+  // ── 36d Analytique ──────────────────────────────────────────────────────
+  regle('36d · y = 300 − (marge + 10) × 5', () => {
+    assert.equal(F.yMarge(40), 50);
+    assert.equal(F.yMarge(-10), 300);
+    assert.equal(F.yMarge(0), 250);
+  });
+  regle('36d · deux étiquettes à moins de 14 px : la seconde se décale', () => {
+    const e = F.etiquettes([{ id: 'a', y: 100 }, { id: 'b', y: 106 }, { id: 'c', y: 200 }]);
+    assert.deepEqual(e.get('b'), { y: 114, decale: true });
+    assert.deepEqual(e.get('c'), { y: 200, decale: false });
+  });
+
+  // ── 36e Rapprochement ───────────────────────────────────────────────────
+  const rap = [
+    { id: 'b1', kind: 'banque' as const, le: iso(5), libelle: 'VIR X', montantCents: 54_000 },
+    { id: 'b2', kind: 'banque' as const, le: iso(4), libelle: 'FRAIS BANCAIRES', montantCents: -1_230 },
+    { id: 'b3', kind: 'banque' as const, le: iso(3), libelle: 'PRLV URSSAF', montantCents: -186_200 },
+    { id: 'b4', kind: 'banque' as const, le: iso(3), libelle: 'CB PRESQUE', montantCents: -1_000 },
+    { id: 'e1', kind: 'ecriture' as const, le: iso(5), libelle: 'Acompte', montantCents: 54_000 },
+    { id: 'e2', kind: 'ecriture' as const, le: iso(4), libelle: 'Frais', montantCents: -1_200 },
+    { id: 'e3', kind: 'ecriture' as const, le: iso(3), libelle: 'Achat', montantCents: -1_010 },
+    { id: 'r1', kind: 'regle' as const, libelle: 'Frais', cible: 'frais', toleranceCents: 50, fraisBancaires: true, motif: 'FRAIS BANCAIRES' },
+  ];
+  const fe = F.fermeture(rap);
+  regle('36e · une paire ne se ferme qu’au montant exact', () => assert.ok(!fe.paires.some((p) => p.banque.id === 'b4')));
+  regle('36e · la tolérance ne vaut que pour les frais bancaires', () => assert.ok(fe.paires.some((p) => p.banque.id === 'b2' && p.ecriture.id === 'e2')));
+  regle('36e · l’ambre : la ligne ouverte de plus gros montant absolu', () => assert.equal(doit(fe.ambre).id, 'b3'));
+
+  // ── 36f Prévision fiscale ───────────────────────────────────────────────
+  const fis = [
+    { kind: 'solde' as const, soldeCents: 1_840_000, le: iso(0) },
+    { kind: 'echeance' as const, impot: 'TVA', court: 'TVA', echeance: iso(-30), montantCents: 0,
+      tva: { collecteeCents: 400_000, deductibleCents: 88_000, projeteeCents: 385_000, clotureLe: iso(-10) } },
+    { kind: 'echeance' as const, impot: 'IS', court: 'IS', echeance: iso(-80), montantCents: 148_000 },
+    { kind: 'echeance' as const, impot: 'CFE', court: 'CFE', echeance: iso(3), montantCents: 39_000 },
+    { kind: 'echeance' as const, impot: 'TVA 4', court: 'TVA', echeance: iso(-120), montantCents: 340_000, estimation: true },
+  ];
+  const fi = F.filigrane(fis, MAINTENANT);
+  regle('36f · la somme des segments égale exactement la part fiscale', () => assert.equal(fi.segments.reduce((s, x) => s + x.montantCents, 0), fi.partFiscale));
+  regle('36f · la part libre = solde − part fiscale', () => assert.equal(fi.partLibre, 1_840_000 - fi.partFiscale));
+  regle('36f · la TVA en cours = collectée − déductible, à la date du jour', () => assert.equal(fi.segments.find((x) => x.e.impot === 'TVA')?.montantCents, 312_000));
+  regle('36f · une estimation reste hors du filigrane', () => assert.ok(!fi.segments.some((x) => x.e.estimation)));
+  regle('36f · une échéance passée sans paiement est en retard (le seul rouge)', () => assert.equal(fi.segments.find((x) => x.e.impot === 'CFE')?.enRetard, true));
+
+  // ── 36g Multi-devises ───────────────────────────────────────────────────
+  regle('36g · la SURFACE est proportionnelle : diamètre 60 × √(montant / 1000)', () => {
+    assert.ok(proche(F.diametreBulle(1000), 60));
+    assert.ok(proche(F.diametreBulle(4000), 120));
+  });
+  const dv = F.bulles([
+    { kind: 'taux' as const, devise: 'GBP', eur: 1.173, le: iso(0) },
+    { kind: 'taux' as const, devise: 'CHF', eur: 0.941, le: iso(0) },
+    { kind: 'facture' as const, client: 'A', ville: '', devise: 'GBP', montant: 190_000, tauxEmission: 1.198, emiseLe: iso(40), echeance: iso(-8) },
+    { kind: 'facture' as const, client: 'B', ville: '', devise: 'CHF', montant: 420_000, tauxEmission: 0.93, emiseLe: iso(20), echeance: iso(-20) },
+  ]);
+  regle('36g · l’ambre : la devise qui a le plus baissé depuis l’émission', () => assert.equal(doit(dv.ambre).devise, 'GBP'));
+  regle('36g · la perte latente au taux du jour', () => assert.equal(doit(dv.ambre).latentCents, Math.round(190_000 * 1.173) - Math.round(190_000 * 1.198)));
+
+  // ── 36h Notes de frais ──────────────────────────────────────────────────
+  const note = { kind: 'note' as const, personne: 'S', le: iso(1), montantCents: 6240, statut: 'a-verifier' as const,
+    ticket: [{ texte: 'A', zone: 1 }, { texte: 'B', zone: 4 }],
+    champs: [{ zone: 1, champ: 'c', valeur: 'x', confiance: 0.97 }, { zone: 4, champ: 'tva', valeur: '20 %', confiance: 0.58 }, { zone: 9, champ: 'orphelin', valeur: '?', confiance: 0.99 }] };
+  regle('36h · un champ sans zone n’est jamais pré-rempli', () => assert.ok(!F.champsLisibles(note).some((c) => c.zone === 9)));
+  regle('36h · sous 70 % de confiance, le champ est ambre et bloque', () => assert.equal(doit(F.champAmbre(note)).zone, 4));
+  regle('36h · confirmé, il ne bloque plus', () =>
+    assert.equal(F.champAmbre({ ...note, champs: note.champs.map((c) => ({ ...c, confirmeLe: iso(0) })) }), null));
+
+  // ── 36i Factures entrantes ──────────────────────────────────────────────
+  const conf = { fournisseur: 0.99, montant: 0.99, echeance: 0.99 };
+  const fac = (id: string, jours: number, montant: number | null, c = conf) =>
+    ({ id, kind: 'facture' as const, fournisseur: 'F', montantCents: montant, echeance: iso(-jours), confiance: c, recueLe: iso(3), fournisseurConnu: true });
+  const tr2 = F.tri([fac('a', 2, 100), fac('b', 1, 300), fac('c', 60, 50), fac('d', 3, 70, { ...conf, montant: 0.85 }), fac('e', 3, null)], MAINTENANT);
+  regle('36i · sous 90 % de confiance, la facture va à vérifier', () => assert.deepEqual(doit(tr2.find((c) => c.casier === 'verifier')).plis.map((p) => p.id).sort(), ['d', 'e']));
+  regle('36i · les casiers se classent par échéance, jamais par montant', () => assert.deepEqual(doit(tr2.find((c) => c.casier === 'semaine')).plis.map((p) => p.id), ['b', 'a']));
+  regle('36i · les totaux sont la somme exacte des plis, incomplets si un montant manque', () => {
+    assert.equal(doit(tr2.find((c) => c.casier === 'semaine')).totalCents, 400);
+    assert.equal(doit(tr2.find((c) => c.casier === 'verifier')).totalCents, null);
+  });
+}
+
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);
 if (echecs > 0) process.exit(1);
