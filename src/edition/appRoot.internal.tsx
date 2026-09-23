@@ -135,6 +135,11 @@ import { PrevisionFiscaleScreen } from '../screens/PrevisionFiscaleScreen';
 import { MultiDevisesScreen } from '../screens/MultiDevisesScreen';
 import { NotesDeFraisScreen } from '../screens/NotesDeFraisScreen';
 import { FacturesEntrantesScreen } from '../screens/FacturesEntrantesScreen';
+import { RecrutementScreen } from '../screens/RecrutementScreen';
+import { ProceduresScreen } from '../screens/ProceduresScreen';
+import { FormationScreen } from '../screens/FormationScreen';
+import { HabilitationsScreen } from '../screens/HabilitationsScreen';
+import { BulletinsScreen } from '../screens/BulletinsScreen';
 import { ClientAdminScreen } from '../client-context/ClientAdminScreen';
 import { ContextBoot } from '../client-context/ContextBoot';
 import { OrgContextProvider, useOrgContext } from '../state/OrgContextContext';
@@ -390,6 +395,11 @@ function AmnRoutes() {
         <Route path="/multi-devises" element={<MultiDevisesScreen />} />
         <Route path="/notes-de-frais" element={<NotesDeFraisScreen />} />
         <Route path="/factures-entrantes" element={<FacturesEntrantesScreen />} />
+        <Route path="/recrutement" element={<RecrutementScreen />} />
+        <Route path="/procedures" element={<ProceduresScreen />} />
+        <Route path="/formation" element={<FormationScreen />} />
+        <Route path="/habilitations" element={<HabilitationsScreen />} />
+        <Route path="/bulletins" element={<BulletinsScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
@@ -1117,6 +1127,46 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="incomingInvoices">
               <FacturesEntrantesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/recrutement"
+          element={
+            <ModuleRoute module="recruitment">
+              <RecrutementScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/procedures"
+          element={
+            <ModuleRoute module="procedures">
+              <ProceduresScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/formation"
+          element={
+            <ModuleRoute module="training">
+              <FormationScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/habilitations"
+          element={
+            <ModuleRoute module="certifications">
+              <HabilitationsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/bulletins"
+          element={
+            <ModuleRoute module="payslips">
+              <BulletinsScreen />
             </ModuleRoute>
           }
         />

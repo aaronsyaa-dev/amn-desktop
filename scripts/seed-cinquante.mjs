@@ -657,7 +657,124 @@ async function finance() {
   }
 }
 
-const FAMILLES = { guichet, marketing, finance };
+/* ═════════════════════════════════════════════════════════════════════ RH ══ */
+
+async function rh() {
+  const isoJ = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const lundi = new Date(MAINTENANT.getFullYear(), MAINTENANT.getMonth(), MAINTENANT.getDate() - ((MAINTENANT.getDay() + 6) % 7));
+  const jourDe = (semaine, j) => isoJ(new Date(lundi.getFullYear(), lundi.getMonth(), lundi.getDate() + semaine * 7 + j - 1));
+
+  // ── 37a Recrutement : le Planning (collection de Planning d'équipe) ────────
+  /* Quatre semaines passées : l'équipe tient 8 h → 12 h et 13 h → 17 h tous les jours. */
+  const equipe = ['lea@exemple.test', 'samir@exemple.test', 'nour@exemple.test'];
+  for (let s = -4; s <= -1; s += 1) {
+    for (let j = 1; j <= 5; j += 1) {
+      await poser('shifts', `shift-${equipe[0]}-${jourDe(s, j)}`, { email: equipe[0], day: jourDe(s, j), kind: 'matin' });
+      await poser('shifts', `shift-${equipe[1]}-${jourDe(s, j)}`, { email: equipe[1], day: jourDe(s, j), kind: 'apresmidi' });
+    }
+  }
+  /* Cette semaine : les matins sont tenus ; mardi, mercredi et jeudi après-midi, personne. */
+  for (let j = 1; j <= 5; j += 1) await poser('shifts', `shift-${equipe[0]}-${jourDe(0, j)}`, { email: equipe[0], day: jourDe(0, j), kind: 'matin' });
+  for (const j of [1, 5]) await poser('shifts', `shift-${equipe[1]}-${jourDe(0, j)}`, { email: equipe[1], day: jourDe(0, j), kind: 'apresmidi' });
+  await poser('candidates', 'c50-rec-poste', { kind: 'poste', intitule: 'Agent d’entretien, 20 h', publieLe: le(19), refusees: 4, refuseesDepuis: le(40), refuseesApresMidi: true });
+  const apm = (jours, heures) => jours.flatMap((j) => heures.map((h) => `${j}-${h}`));
+  const candidats = [
+    ['yanis', 'Yanis Ferrand', 'entretien', true, [...apm([2, 3, 4], [13, 14, 15, 16]).filter((k) => k !== '2-14' && k !== '4-13'), ...apm([1], [8, 9])]],
+    ['clara', 'Clara Mendès', 'entretien', true, [...apm([2, 3], [13, 14, 15]), ...apm([5], [9, 10, 11])]],
+    ['tom', 'Tom Rivière', 'entretien', true, [...apm([4], [13, 14, 15, 16]), ...apm([1, 2], [8, 9, 10])]],
+    ...Array.from({ length: 20 }, (_, i) => [`c${i}`, `Candidature ${i + 1}`, i < 3 ? 'entretien' : 'recu', false, []]),
+  ];
+  for (const [id, nom, etape, finaliste, dispo] of candidats) await poser('candidates', `c50-rec-${id}`, { kind: 'candidat', nom, etape, finaliste, dispo });
+
+  // ── 37b Procédures : le réel qu'elles citent (Stock, Matériel) ─────────────
+  await poser('stockItems', 'c50-stock-detartrant', { name: 'Détartrant pro', unit: 'L', quantity: 6, minQuantity: 2, createdAt: le(90), movedAt: le(10) });
+  await poser('stockItems', 'c50-stock-degraissant', { name: 'Dégraissant 5 L', unit: 'bidon', quantity: 4, minQuantity: 1, createdAt: le(90), movedAt: le(5) });
+  await poser('resources', 'c50-res-vapeur', { name: 'Nettoyeur vapeur', kind: 'matériel', createdAt: le(200) });
+  const procs = [
+    ['vapeur', 'Détartrer le nettoyeur vapeur', 'Matériel', 180, 'Léa', [
+      { texte: 'Débrancher et laisser refroidir 30 minutes.', cite: { type: 'materiel', nom: 'Nettoyeur vapeur' } },
+      { texte: 'Vider la cuve au-dessus de l’évier.' },
+      { texte: 'Verser 200 mL de détartrant Lyn dilué à 10 %.', cite: { type: 'stock', nom: 'Détartrant Lyn' } },
+      { texte: 'Chauffer 10 minutes sans vapeur, puis vider.' },
+      { texte: 'Rincer deux fois à l’eau claire.' },
+    ], 'Jamais de vinaigre : il attaque les joints de la chaudière.'],
+    ['chantier', 'Fermer un chantier', 'Chantier', 60, 'Samir', [{ texte: 'Photographier chaque pièce.' }, { texte: 'Faire signer le bon d’intervention.' }]],
+    ['intervention', 'Ouvrir une intervention', 'Chantier', 21, 'Léa', [{ texte: 'Relire la fiche du client.' }, { texte: 'Charger le dégraissant.', cite: { type: 'stock', nom: 'Dégraissant 5 L' } }]],
+    ['stocker', 'Stocker les produits', 'Atelier', 330, 'Nour', [{ texte: 'Ranger les acides en bas.' }, { texte: 'Étiqueter chaque flacon entamé.' }]],
+  ];
+  for (const [i, [id, titre, categorie, jours, par, etapes, securite]] of procs.entries()) {
+    await poser('procedures', `c50-proc-${id}`, { kind: 'procedure', titre, categorie, etapes, ...(securite ? { securite } : {}), version: 3 - (i % 2), relueLe: le(jours), relueePar: par });
+  }
+  for (let i = 0; i < 8; i += 1) {
+    await poser('procedures', `c50-proc-x${i}`, { kind: 'procedure', titre: ['Nettoyer une vitre haute', 'Traiter une tache de vin', 'Entretenir la camionnette', 'Accueillir un nouveau', 'Remplir un devis', 'Préparer une tournée', 'Trier les déchets', 'Ranger l’atelier'][i], categorie: 'Atelier', etapes: [{ texte: 'Suivre la fiche.' }], version: 1, relueLe: le(30 + i * 25), relueePar: 'Léa' });
+  }
+
+  // ── 37c Formation ─────────────────────────────────────────────────────────
+  await poser('trainings', 'c50-form-chimie', { kind: 'formation', nom: 'Produits chimiques et dilutions', tauDefautSem: 20 });
+  await poser('trainings', 'c50-form-gestes', { kind: 'formation', nom: 'Gestes et postures', tauDefautSem: 30 });
+  await poser('trainings', 'c50-form-hauteur', { kind: 'formation', nom: 'Travail en hauteur', tauDefautSem: 30 });
+  const debut = 70; // la formation a eu lieu il y a dix semaines
+  const quiz = [
+    ['ines', 'Inès', [[debut, 100, 'initial'], [debut - 35, 76, 'rappel']]],
+    ['samir', 'Samir', [[debut, 100, 'initial'], [debut - 42, 72, 'rappel']]],
+    ['lea', 'Léa', [[debut - 7, 100, 'initial'], [debut - 49, 70, 'rappel']]],
+    ['nour', 'Nour', [[debut, 100, 'initial'], [debut - 21, 83, 'rappel']]],
+    ['karim', 'Karim', [[debut, 100, 'initial']]],
+  ];
+  for (const [id, personne, qs] of quiz) {
+    for (const [k, [j, score, type]] of qs.entries()) {
+      await poser('trainings', `c50-quiz-${id}-${k}`, { kind: 'quiz', formationId: 'c50-form-chimie', personne, le: le(j, 9), score, type });
+    }
+  }
+  for (const [i, p] of ['Inès', 'Samir', 'Léa', 'Nour', 'Karim'].entries()) {
+    await poser('trainings', `c50-quiz-g-${i}`, { kind: 'quiz', formationId: 'c50-form-gestes', personne: p, le: le(30, 9), score: 100, type: 'initial' });
+  }
+  for (const [i, p] of ['Samir', 'Karim'].entries()) {
+    await poser('trainings', `c50-quiz-h-${i}`, { kind: 'quiz', formationId: 'c50-form-hauteur', personne: p, le: le(20, 9), score: 100, type: 'initial' });
+  }
+
+  // ── 37d Habilitations ─────────────────────────────────────────────────────
+  const an = (n, m, j = 15) => new Date(MAINTENANT.getFullYear() + n, m, j, 12).toISOString();
+  const personnes = [
+    ['lea', 'Léa', [['H0B0', an(2, 5)], ['SST', an(1, 2)]]],
+    ['samir', 'Samir', [['Travail en hauteur', le(-7, 12)], ['CACES R486', an(3, 11, 31)], ['H0B0', le(40, 12)]]],
+    ['nour', 'Nour', [['SST', an(1, 11, 31)]]],
+    ['karim', 'Karim', [['H0B0', an(1, 11, 31)], ['Travail en hauteur', an(2, 11, 31)]]],
+    ['ines', 'Inès', [['SST', le(70, 12)]]],
+  ];
+  for (const [id, nom, cles] of personnes) {
+    await poser('certifications', `c50-hab-${id}`, { kind: 'personne', nom, cles: cles.map(([habilitation, echeance]) => ({ habilitation, echeance })) });
+  }
+  await poser('certifications', 'c50-hab-ex-vitrage', { kind: 'exigence', motif: 'vitrages', habilitation: 'Travail en hauteur' });
+  await poser('certifications', 'c50-hab-ex-elec', { kind: 'exigence', motif: 'tableau électrique', habilitation: 'H0B0' });
+  await poser('certifications', 'c50-hab-ch-bertaux', { kind: 'chantier', nom: 'Maison Bertaux · tableau électrique', le: le(-1, 9), exige: ['H0B0'], affectes: ['Karim'] });
+  await poser('certifications', 'c50-hab-ch-aubier', { kind: 'chantier', nom: 'Résidence Aubier', le: le(-3, 9), exige: [], affectes: ['Nour'] });
+  await poser('interventions', 'c50-int-halles', {
+    title: 'Vitrages à 6 m', clientName: 'Les Halles', address: 'Lyon', at: le(-9, 8),
+    volets: { avant: { photo: '', note: '' }, pendant: { photo: '', note: '' }, apres: { photo: '', note: '' } },
+    consommations: [], closedAt: '', reportedAt: '', createdAt: le(3),
+  });
+
+  // ── 37e Bulletins de paie ─────────────────────────────────────────────────
+  const mois = `${MAINTENANT.getFullYear()}-${String(MAINTENANT.getMonth() + 1).padStart(2, '0')}`;
+  const bulletins = [
+    ['lea', 'Léa Marchand', 3620, 1055, 570, 105],
+    ['samir', 'Samir Benali', 2980, 868, 468, 114, { coutCents: eur(164), netCents: eur(86) }],
+    ['nour', 'Nour Haddad', 2610, 760, 410, 80],
+    ['karim', 'Karim Diallo', 1330, 387, 207, 56],
+    ['ines', 'Inès Rocher', 1300, 380, 205, 55],
+  ];
+  for (const [id, personne, cout, pat, sal, pas, heuresSup] of bulletins) {
+    await poser('payslips', `c50-bul-${id}-${mois}`, {
+      kind: 'bulletin', personne, mois, coutEmployeurCents: eur(cout), patronalesCents: eur(pat), salarialesCents: eur(sal), pasCents: eur(pas),
+      netCents: eur(cout - pat - sal - pas), ...(heuresSup ? { heuresSup } : {}),
+    });
+  }
+  const finMois = new Date(MAINTENANT.getFullYear(), MAINTENANT.getMonth() + 1, 0, 9).toISOString();
+  await poser('payslips', `c50-paie-${mois}`, { kind: 'paie', mois, virementLe: finMois });
+}
+
+const FAMILLES = { guichet, marketing, finance, rh };
 const demandees = process.argv.slice(2);
 for (const [nom, f] of Object.entries(FAMILLES)) {
   if (demandees.length && !demandees.includes(nom)) continue;

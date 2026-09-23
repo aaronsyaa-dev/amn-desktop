@@ -107,6 +107,11 @@ import { PrevisionFiscaleScreen } from '../screens/PrevisionFiscaleScreen';
 import { MultiDevisesScreen } from '../screens/MultiDevisesScreen';
 import { NotesDeFraisScreen } from '../screens/NotesDeFraisScreen';
 import { FacturesEntrantesScreen } from '../screens/FacturesEntrantesScreen';
+import { RecrutementScreen } from '../screens/RecrutementScreen';
+import { ProceduresScreen } from '../screens/ProceduresScreen';
+import { FormationScreen } from '../screens/FormationScreen';
+import { HabilitationsScreen } from '../screens/HabilitationsScreen';
+import { BulletinsScreen } from '../screens/BulletinsScreen';
 
 /**
  * La racine de l'édition Business — la table de routes livrée aux
@@ -878,6 +883,46 @@ export function AppRoot() {
           element={
             <ModuleRoute module="incomingInvoices">
               <FacturesEntrantesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/recrutement"
+          element={
+            <ModuleRoute module="recruitment">
+              <RecrutementScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/procedures"
+          element={
+            <ModuleRoute module="procedures">
+              <ProceduresScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/formation"
+          element={
+            <ModuleRoute module="training">
+              <FormationScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/habilitations"
+          element={
+            <ModuleRoute module="certifications">
+              <HabilitationsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/bulletins"
+          element={
+            <ModuleRoute module="payslips">
+              <BulletinsScreen />
             </ModuleRoute>
           }
         />

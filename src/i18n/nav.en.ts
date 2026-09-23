@@ -152,6 +152,11 @@ export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
   currencies: { label: 'Multi-currency', hint: 'What you are owed in foreign currencies, and what one point of rate costs' },
   expenseClaims: { label: 'Expense claims', hint: 'A receipt photographed, read, and checked against itself' },
   incomingInvoices: { label: 'Incoming invoices', hint: 'Supplier invoices, sorted by due date' },
+  recruitment: { label: 'Recruitment', hint: 'The gap in the week, and who fills it' },
+  procedures: { label: 'Procedures', hint: 'Procedures as they are pinned in the workshop' },
+  training: { label: 'Training', hint: 'What is known, and what fades' },
+  certifications: { label: 'Certifications', hint: 'Who may work on what, and until when' },
+  payslips: { label: 'Payslips', hint: 'From employer cost to net pay' },
 };
 
 /**
@@ -173,6 +178,7 @@ export const SECTIONS_EN_COMMUN: Record<string, string> = {
   Guichet: 'Self-service',
   Marketing: 'Marketing',
   Finance: 'Finance',
+  RH: 'HR',
 };
 
 

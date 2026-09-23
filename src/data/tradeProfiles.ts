@@ -233,4 +233,9 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'currencies', label: 'Multi-devises', hint: 'Ce qu’on vous doit en devises, et ce qu’un point de taux coûte' },
   { key: 'expenseClaims', label: 'Notes de frais', hint: 'Un ticket photographié, lu, et vérifié sur lui-même' },
   { key: 'incomingInvoices', label: 'Factures entrantes', hint: 'Les factures fournisseurs, triées par échéance' },
+  { key: 'recruitment', label: 'Recrutement', hint: 'Le trou dans la semaine, et qui le comble' },
+  { key: 'procedures', label: 'Procédures', hint: 'Les procédures telles qu’on les affiche à l’atelier' },
+  { key: 'training', label: 'Formation', hint: 'Ce qui est su, et ce qui s’efface' },
+  { key: 'certifications', label: 'Habilitations', hint: 'Qui peut intervenir sur quoi, et jusqu’à quand' },
+  { key: 'payslips', label: 'Bulletins de paie', hint: 'Du coût employeur au net versé' },
 ];

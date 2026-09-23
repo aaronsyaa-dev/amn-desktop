@@ -115,6 +115,11 @@ const ECRANS = [
   ['Multi-devises', '#/multi-devises'],
   ['Notes de frais', '#/notes-de-frais'],
   ['Factures entrantes', '#/factures-entrantes'],
+  ['Recrutement', '#/recrutement'],
+  ['Procédures', '#/procedures'],
+  ['Formation', '#/formation'],
+  ['Habilitations', '#/habilitations'],
+  ['Bulletins de paie', '#/bulletins'],
 ];
 
 const AMBRE = ['rgb(208, 154, 74)', '#d09a4a'];

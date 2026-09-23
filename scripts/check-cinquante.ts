@@ -523,5 +523,92 @@ const iso = (joursAvant: number, h = 10) => {
   });
 }
 
+/* ══════════════════════════════════════════════════════════════════ RH ══ */
+{
+  const R = await charger<typeof import('../src/lib/cinquante/rh')>('src/lib/cinquante/rh.ts');
+  console.log('RH');
+
+  // ── 37a Recrutement ─────────────────────────────────────────────────────
+  const lundi = R.lundiDe(MAINTENANT);
+  const jourIso = (semaines: number, j: number) => {
+    const d = new Date(lundi.getTime() + (semaines * 7 + j - 1) * 86_400_000);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const creneaux = [
+    ...[-1, -2].flatMap((s) => [1, 2, 3, 4, 5].map((j) => ({ email: 'a', day: jourIso(s, j), kind: 'journee' as const }))),
+    ...[1, 2, 3, 4, 5].map((j) => ({ email: 'a', day: jourIso(0, j), kind: j === 2 || j === 4 ? ('matin' as const) : ('journee' as const) })),
+  ];
+  const t = R.trouDeLaSemaine(creneaux, MAINTENANT);
+  regle('37a · le trou vient du Planning : heures ouvertes non tenues cette semaine', () => {
+    assert.equal(t.trou.size, 8);
+    assert.ok(t.trou.has(R.cle(2, 14)) && !t.trou.has(R.cle(2, 9)));
+  });
+  regle('37a · pourcentage = disponibles ∩ trou / heures du trou', () => {
+    const c = R.comble([R.cle(2, 13), R.cle(2, 14), R.cle(1, 9)], t.trou);
+    assert.equal(c.heures, 2);
+    assert.equal(c.pct, 25);
+  });
+
+  // ── 37b Procédures ──────────────────────────────────────────────────────
+  const reel = { stock: ['Détartrant pro'], materiel: ['Nettoyeur vapeur'], habilitations: ['H0B0'] };
+  regle('37b · une étape qui cite un article absent du stock est périmée', () =>
+    assert.ok(R.etapePerimee({ texte: '', cite: { type: 'stock', nom: 'Détartrant Lyn' } }, reel)));
+  regle('37b · le contrôle est mécanique : casse et accents ne comptent pas', () =>
+    assert.equal(R.etapePerimee({ texte: '', cite: { type: 'stock', nom: 'detartrant PRO' } }, reel), null));
+  regle('37b · une étape sans citation n’est jamais périmée', () => assert.equal(R.etapePerimee({ texte: 'x' }, reel), null));
+
+  // ── 37c Formation ───────────────────────────────────────────────────────
+  regle('37c · r(t) = 100 × e^(−t/τ)', () => assert.ok(proche(R.retention(10, 10), 100 / Math.E)));
+  regle('37c · τ mesuré sur les rappels : τ = −Δt / ln(score / 100)', () => {
+    const tau = doit(R.tauMesure([{ le: iso(70), score: 100, type: 'initial' }, { le: iso(28), score: 60, type: 'rappel' }]));
+    assert.ok(proche(tau, -6 / Math.log(0.6), 1e-6));
+  });
+  const form = [
+    { id: 'f', kind: 'formation' as const, nom: 'F', tauDefautSem: 20 },
+    { id: 'q1', kind: 'quiz' as const, formationId: 'f', personne: 'A', le: iso(70), score: 100, type: 'initial' as const },
+    { id: 'q2', kind: 'quiz' as const, formationId: 'f', personne: 'A', le: iso(21), score: 70, type: 'rappel' as const },
+    { id: 'q3', kind: 'quiz' as const, formationId: 'f', personne: 'B', le: iso(70), score: 100, type: 'initial' as const },
+  ];
+  const co = R.courbes(form, 'f', MAINTENANT);
+  regle('37c · sans rappel mesuré, τ est celui des autres (médiane)', () => {
+    const a = doit(co.courbes.find((c) => c.personne === 'A'));
+    const b = doit(co.courbes.find((c) => c.personne === 'B'));
+    assert.ok(proche(b.tau, a.tau));
+    assert.equal(b.tauMesure, false);
+  });
+  regle('37c · l’ambre : la courbe passée sous 60 % sans rappel', () => assert.equal(doit(co.ambre).personne, 'B'));
+  regle('37c · la courbe remonte à la verticale au rappel', () => {
+    const a = doit(co.courbes.find((c) => c.personne === 'A'));
+    assert.ok(a.points.some((p, i) => p.r === 100 && i > 0 && a.points[i - 1].r < 100));
+  });
+
+  // ── 37d Habilitations ───────────────────────────────────────────────────
+  const hab = [
+    { kind: 'personne' as const, nom: 'S', cles: [{ habilitation: 'Travail en hauteur', echeance: iso(-7) }, { habilitation: 'H0B0', echeance: iso(40) }] },
+    { kind: 'personne' as const, nom: 'K', cles: [{ habilitation: 'Travail en hauteur', echeance: iso(-400) }] },
+    { kind: 'exigence' as const, motif: 'vitrages', habilitation: 'Travail en hauteur' },
+  ];
+  const ch = R.chantiersAVenir(hab, [{ title: 'Vitrages', clientName: 'Les Halles', at: iso(-9) }, { title: 'Sols', at: iso(-3) }], MAINTENANT);
+  regle('37d · une intervention dont le titre appelle une exigence devient un chantier qui l’exige', () =>
+    assert.deepEqual(doit(ch.find((c) => c.nom.includes('Vitrages'))).exige, ['Travail en hauteur']));
+  regle('37d · l’ambre : la clé qui lâche avant un chantier qui l’exige', () => {
+    const q = doit(R.cleQuiLache(hab.filter((h) => h.kind === 'personne') as never, ch, MAINTENANT));
+    assert.equal(q.personne.nom, 'S');
+  });
+  regle('37d · une clé échue sans chantier concerné reste grise et cassée', () => {
+    assert.equal(R.cassee({ habilitation: 'H0B0', echeance: iso(3) }, MAINTENANT), true);
+    assert.equal(R.cleQuiLache([{ kind: 'personne', nom: 'X', cles: [{ habilitation: 'SST', echeance: iso(3) }] }], ch, MAINTENANT), null);
+  });
+
+  // ── 37e Bulletins de paie ───────────────────────────────────────────────
+  const b = (cout: number, pat: number, sal: number, pas: number) => ({ kind: 'bulletin' as const, personne: 'x', mois: '2026-09', coutEmployeurCents: cout, patronalesCents: pat, salarialesCents: sal, pasCents: pas, netCents: cout - pat - sal - pas });
+  const tu = R.tuyau([b(362_000, 105_000, 57_000, 11_000), b(298_000, 87_000, 47_000, 11_000)]);
+  regle('37e · la somme des largeurs de sortie égale la largeur d’entrée', () =>
+    assert.ok(proche(tu.largeurs.patronales + tu.largeurs.salariales + tu.largeurs.pas + tu.largeurs.net, R.TUYAU.entree)));
+  regle('37e · le net est ce qui arrive au bout : coût − cotisations − impôt', () => assert.equal(tu.net, 660_000 - 192_000 - 104_000 - 22_000));
+  regle('37e · un bulletin dont le net ne tombe pas juste est signalé', () =>
+    assert.equal(R.tuyau([{ ...b(100, 10, 10, 10), netCents: 75 }]).incoherents.length, 1));
+}
+
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);
 if (echecs > 0) process.exit(1);

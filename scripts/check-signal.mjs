@@ -265,6 +265,11 @@ const ECRANS = [
   ['Multi-devises', '#/multi-devises'],
   ['Notes de frais', '#/notes-de-frais'],
   ['Factures entrantes', '#/factures-entrantes'],
+  ['Recrutement', '#/recrutement'],
+  ['Procédures', '#/procedures'],
+  ['Formation', '#/formation'],
+  ['Habilitations', '#/habilitations'],
+  ['Bulletins de paie', '#/bulletins'],
 ];
 
 const serveur = spawn('node', [new URL('./servir-bundle.mjs', import.meta.url).pathname, BUNDLE, String(PORT)], {

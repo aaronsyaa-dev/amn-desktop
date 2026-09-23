@@ -252,6 +252,11 @@ const MODULE_DATA = {
   currencies: ['fxRates'],
   expenseClaims: ['expenseClaims'],
   incomingInvoices: ['incomingInvoices'],
+  recruitment: ['candidates'],
+  procedures: ['procedures'],
+  training: ['trainings'],
+  certifications: ['certifications'],
+  payslips: ['payslips'],
 };
 
 /**
@@ -372,6 +377,11 @@ const MODULE_FILES = {
   currencies: ['src/screens/MultiDevisesScreen.tsx'],
   expenseClaims: ['src/screens/NotesDeFraisScreen.tsx'],
   incomingInvoices: ['src/screens/FacturesEntrantesScreen.tsx'],
+  recruitment: ['src/screens/RecrutementScreen.tsx'],
+  procedures: ['src/screens/ProceduresScreen.tsx'],
+  training: ['src/screens/FormationScreen.tsx'],
+  certifications: ['src/screens/HabilitationsScreen.tsx'],
+  payslips: ['src/screens/BulletinsScreen.tsx'],
 };
 
 /**
