@@ -5,6 +5,7 @@ import { LaUne } from '../accueils/client/LaUne';
 import { MainCourante } from '../accueils/client/MainCourante';
 import { FileUnique } from '../accueils/client/FileUnique';
 import { SemaineDepliee } from '../accueils/client/SemaineDepliee';
+import { Cadran } from '../accueils/client/Cadran';
 
 /**
  * LES ONZE ACCUEILS DE L'ÉDITION CLIENTE — 2a et les dix variantes du cahier 9
@@ -53,5 +54,12 @@ export const ACCUEILS: AccueilDef[] = [
     phrase: 'Aujourd’hui en détail, les autres jours en jauge de charge.',
     vignette: [[6, 10, 10, 44, 'sombre'], [19, 10, 10, 44, 'sombre'], [32, 8, 36, 48, 'moyen'], [36, 26, 28, 6, 'ambre'], [71, 10, 10, 44, 'sombre'], [84, 10, 10, 44, 'sombre']],
     composant: SemaineDepliee,
+  },
+  {
+    code: '40f',
+    nom: 'Le cadran',
+    phrase: 'La journée comme une montre : un arc par rendez-vous.',
+    vignette: [[8, 10, 44, 44, 'moyen'], [22, 24, 16, 16, 'sombre'], [44, 8, 10, 6, 'ambre'], [62, 12, 32, 4, 'clair'], [62, 22, 32, 4, 'sombre'], [62, 32, 32, 4, 'sombre']],
+    composant: Cadran,
   },
 ];
