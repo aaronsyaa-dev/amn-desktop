@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MurDeControle } from './MurDeControle';
+import { useInactivite } from '../lib/useInactivite';
 
 /**
  * Cozy idle screensaver (Partie 4). After a few minutes without mouse/keyboard
@@ -15,54 +16,10 @@ import { MurDeControle } from './MurDeControle';
  * intervals exist only while the veil is actually shown.
  */
 const IDLE_MS = 4 * 60_000; // 4 minutes — restful, not twitchy.
-const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'wheel', 'touchstart'] as const;
-
-const PHRASES = [
-  'Tout est sous contrôle. Respire.',
-  'Le parc veille pendant que tu fais une pause.',
-  'Un café, peut-être ?',
-  'Rien d’urgent à l’horizon.',
-  'Le calme fait aussi partie du travail.',
-  'La supervision continue, tranquillement.',
-  'Prends un instant pour toi.',
-];
-
-function pickPhrase(): string {
-  return PHRASES[Math.floor(Math.random() * PHRASES.length)];
-}
 
 export function IdleScreensaver() {
-  const [active, setActive] = useState(false);
-  const activeRef = useRef(false);
-  activeRef.current = active;
-  const wake = useCallback(() => setActive(false), []);
-
-  // --- Idle detection (cheap: passive listeners + one debounced timer) ------
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-
-    const arm = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => setActive(true), IDLE_MS);
-    };
-
-    const onActivity = () => {
-      if (activeRef.current) setActive(false); // any input wakes the app
-      arm();
-    };
-
-    for (const evt of ACTIVITY_EVENTS) {
-      window.addEventListener(evt, onActivity, { passive: true });
-    }
-    arm();
-
-    return () => {
-      if (timer) clearTimeout(timer);
-      for (const evt of ACTIVITY_EVENTS) window.removeEventListener(evt, onActivity);
-    };
-  }, []);
-
-  return <AnimatePresence>{active && <Veil onWake={wake} />}</AnimatePresence>;
+  const { actif, reveiller } = useInactivite(IDLE_MS);
+  return <AnimatePresence>{actif && <Veil onWake={reveiller} />}</AnimatePresence>;
 }
 
 function Veil({ onWake }: { onWake: () => void }) {

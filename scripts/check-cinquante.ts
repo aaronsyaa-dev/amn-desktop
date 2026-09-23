@@ -1016,6 +1016,42 @@ const iso = (joursAvant: number, h = 10) => {
   });
   regle('42d · les noms sont hors du cercle, dans la marge du viewBox', () => assert.ok(PA.RADAR.rNoms > PA.RADAR.rBord && PA.RADAR.c + PA.RADAR.marge >= PA.RADAR.rNoms));
 
+
+  /* ═══ L'écran de veille, édition cliente (ACCUEILS.md, 41a) ═══ */
+  const V = await charger<typeof import('../src/lib/veille')>('src/lib/veille.ts');
+  regle('41a · déclenchement : 2, 5, 10 minutes ou jamais, 5 par défaut', () => {
+    assert.deepEqual(V.DELAIS_VEILLE, [2, 5, 10, 0]);
+    assert.equal(V.REGLAGES_VEILLE_DEFAUT.delaiMin, 5);
+  });
+  regle('41a · montants masqués par défaut quand le poste est en accueil du public', () => {
+    assert.equal(V.masqueEffectif({ ...V.REGLAGES_VEILLE_DEFAUT, accueilPublic: true }), true);
+    assert.equal(V.masqueEffectif({ ...V.REGLAGES_VEILLE_DEFAUT, accueilPublic: false }), false);
+    assert.equal(V.masqueEffectif({ ...V.REGLAGES_VEILLE_DEFAUT, accueilPublic: true, masque: false }), false, 'un choix explicite l’emporte');
+    assert.equal(V.MONTANT_MASQUE, '— €');
+  });
+  regle('41a · après la fermeture déclarée : mode nuit', () => {
+    assert.equal(V.enModeNuit(new Date(2026, 8, 18, 19, 59), 20), false);
+    assert.equal(V.enModeNuit(new Date(2026, 8, 18, 20, 0), 20), true);
+    assert.equal(V.enModeNuit(new Date(2026, 8, 18, 6, 30), 20), true);
+  });
+  regle('41a · la composition glisse toutes les dix minutes, dans ± 8 px', () => {
+    const t0 = Date.parse('2026-09-18T16:00:00Z');
+    const vus = new Set<string>();
+    for (let k = 0; k < 200; k++) {
+      const d = V.derive(t0 + k * 10 * 60_000);
+      assert.ok(Math.abs(d.x) <= 8 && Math.abs(d.y) <= 8, JSON.stringify(d));
+      vus.add(`${d.x},${d.y}`);
+    }
+    assert.ok(vus.size > 10, 'elle bouge vraiment');
+    assert.deepEqual(V.derive(t0 + 60_000), V.derive(t0 + 9 * 60_000), 'fixe pendant dix minutes');
+  });
+  regle('41a · la bande 08 h → 20 h : un rendez-vous de 16:30 à 17:30', () => {
+    const p = doit(V.surLaBande(16.5, 1), 'place');
+    assert.ok(Math.abs(p.gauche - 70.8333) < 0.01 && Math.abs(p.largeur - 8.3333) < 0.01);
+    assert.equal(V.surLaBande(6, 1), null);
+    assert.ok(Math.abs(V.traitMaintenant(16 + 4 / 60) - 67.22) < 0.01);
+  });
+
 }
 
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);

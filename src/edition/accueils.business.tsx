@@ -100,3 +100,6 @@ export const ACCUEILS: AccueilDef[] = [
 export function useAccueilsDisponibles(): AccueilDef[] {
   return ACCUEILS;
 }
+
+/** L'écran de veille de l'édition cliente (`41a`) : son réglage vit dans Paramètres. */
+export { VeilleSection } from '../business/VeilleSection';

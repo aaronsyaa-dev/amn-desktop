@@ -66,6 +66,7 @@ import { navItemByKey } from '../data/navigation';
 import { useHaloSignal } from '../components/EtatEcran';
 import { LangueSection } from '../components/settings/LangueSection';
 import { AccueilSection } from '../components/settings/AccueilSection';
+import { VeilleSection } from '@edition/accueils';
 import { useSupportContext } from '../state/OrgContextContext';
 import { useLangue, t as tr } from '../i18n';
 
@@ -103,8 +104,9 @@ export function SettingsScreen() {
         </div>
       </StaggerItem>
       <StaggerItem>
-        <div id="reglages-accueil">
+        <div id="reglages-accueil" className="flex flex-col gap-4">
           <AccueilSection />
+          <VeilleSection />
         </div>
       </StaggerItem>
       <StaggerItem>

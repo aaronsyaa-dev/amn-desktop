@@ -118,3 +118,8 @@ export function useAccueilsDisponibles(): AccueilDef[] {
   }, []);
   return nOrgs !== null && colonnesCarte(nOrgs) === null ? ACCUEILS.filter((a) => a.code !== '42b') : ACCUEILS;
 }
+
+/** L'écran de veille `41a` n'existe que dans l'édition cliente : l'interne a la Salle. */
+export function VeilleSection(): null {
+  return null;
+}

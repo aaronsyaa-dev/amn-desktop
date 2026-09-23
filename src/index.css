@@ -1389,3 +1389,14 @@ button.bg-accent[aria-disabled='true']:hover {
     animation: none;
   }
 }
+
+/* L'écran de veille client (`41a`) : le point d'état respire, 4 s. */
+.souffle-veille {
+  animation: dvhalo 4s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .souffle-veille {
+    animation: none;
+  }
+}

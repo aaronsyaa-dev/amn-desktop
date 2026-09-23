@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { BusinessSidebar } from './BusinessSidebar';
 import { BusinessTopBar } from './BusinessTopBar';
 import { AppointmentReminders } from './AppointmentReminders';
+import { VeilleCliente } from './VeilleCliente';
 import { useActivity } from '../state/ActivityContext';
 import { SpaceProviders } from '../state/SpaceProviders';
 import { BootHealthy } from '../components/BootHealthy';
@@ -46,7 +47,9 @@ const LAST_TAB_KEY = 'amn.lastTab';
  *   - `AssistantProvider` — l'assistant raisonne sur le parc, les décisions et
  *     la base de connaissances, qui n'existent pas ici ;
  *   - `RegressionNotifier`, `IdleScreensaver`, `NotificationsManager` — tous
- *     branchés sur des événements de supervision.
+ *     branchés sur des événements de supervision. L'écran de veille de
+ *     l'édition cliente est `VeilleCliente` (`41a`) : la vitrine du jour de
+ *     l'espace, pas la Salle.
  *
  * À la place, `AppointmentReminders` : la seule notification qui compte quand
  * on travaille seul, c'est le rendez-vous qui approche.
@@ -156,6 +159,7 @@ export function BusinessLayout() {
                   />
                 </div>
                 <AppointmentReminders />
+                <VeilleCliente />
                 <SyncActivityNotifier />
               <SupportNotifier />
               <AutomationsRunner />
