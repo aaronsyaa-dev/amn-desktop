@@ -1,6 +1,7 @@
 import { HomeSoloScreen } from '../business/HomeSoloScreen';
 import type { AccueilDef } from '../accueils/types';
 import { ProchaineHeure } from '../accueils/client/ProchaineHeure';
+import { LaUne } from '../accueils/client/LaUne';
 
 /**
  * LES ONZE ACCUEILS DE L'ÉDITION CLIENTE — 2a et les dix variantes du cahier 9
@@ -21,5 +22,12 @@ export const ACCUEILS: AccueilDef[] = [
     phrase: 'Le compte à rebours jusqu’au prochain rendez-vous qui demande une décision.',
     vignette: [[6, 8, 50, 34, 'ambre'], [62, 12, 32, 6, 'clair'], [62, 22, 26, 4, 'moyen'], [6, 48, 88, 6, 'sombre']],
     composant: ProchaineHeure,
+  },
+  {
+    code: '40b',
+    nom: 'La une',
+    phrase: 'La journée racontée comme une première page, titre et brèves.',
+    vignette: [[6, 6, 88, 3, 'clair'], [6, 13, 18, 5, 'ambre'], [6, 21, 60, 9, 'clair'], [6, 34, 70, 4, 'moyen'], [6, 44, 26, 12, 'sombre'], [37, 44, 26, 12, 'sombre'], [68, 44, 26, 12, 'sombre']],
+    composant: LaUne,
   },
 ];
