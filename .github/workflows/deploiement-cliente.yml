@@ -1,0 +1,161 @@
+# CE QUI EST SERVI À LA CLIENTE — relu automatiquement, pas quand on y pense.
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# `editions.yml` relit ce que le DÉPÔT construit. Ce fichier-ci relit ce qu'une
+# URL SERT. Ce sont deux questions différentes, et c'est la seconde qui a
+# lâché, deux fois :
+#
+#   · la fuite livrée à Syraagensy venait d'une configuration Vercel — le
+#     mauvais bundle n'a jamais existé sur nos machines, donc aucun contrôle
+#     local ne pouvait le voir ;
+#   · `amn-desktop.vercel.app` a servi l'édition interne en production, avec
+#     les empreintes bcrypt des comptes de départ et les routes
+#     inter-organisations dedans.
+#
+# `check:deployed` existait déjà pour ça, et c'est précisément le problème :
+# c'était une commande qu'il fallait PENSER à lancer. Entre deux fois où on y
+# pense, une variable de projet peut disparaître d'un tableau de bord sans
+# qu'aucun commit ne soit poussé — donc sans que rien ne se déclenche.
+#
+# D'où les trois déclencheurs, et aucun n'est redondant :
+#
+#   · `deployment_status` — dès que Vercel annonce un déploiement réussi.
+#     C'est le contrôle immédiat, sans course : l'URL vient de l'événement,
+#     donc on relit la mise en ligne qui vient d'avoir lieu, pas la précédente.
+#   · `schedule` — toutes les heures. C'EST LE FILET QUI COMPTE : il est le
+#     seul à attraper un changement fait dans le tableau de bord, qui ne
+#     produit ni commit ni, parfois, déploiement visible ici.
+#   · `workflow_dispatch` — pour vérifier sur commande, avec une URL au choix.
+#
+# Il n'y a PAS de déclencheur sur `push` : au moment où un push termine, Vercel
+# construit encore. Le contrôle relirait le déploiement PRÉCÉDENT et le
+# déclarerait vert. Un vert qui porte sur autre chose que ce qu'on croit est
+# exactement ce qu'on essaie de supprimer ici.
+name: Ce qui est servi à la cliente
+
+on:
+  deployment_status:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'URL à relire (défaut : la variable de dépôt URL_CLIENTE)'
+        required: false
+        type: string
+
+# Deux exécutions sur la même URL ne s'apprennent rien : la dernière suffit.
+concurrency:
+  group: servi-cliente
+  cancel-in-progress: false
+
+jobs:
+  relire:
+    name: Aucune trace interne dans ce qui est servi
+    runs-on: ubuntu-latest
+    steps:
+      # ── Quelle URL, et faut-il seulement travailler ? ──────────────────────
+      #
+      # Sur `deployment_status`, Vercel annonce les DEUX projets : l'interne
+      # comme la cliente. Relire l'interne avec ces règles le ferait échouer à
+      # bon droit — il EST interne. On ne relit donc que l'hôte déclaré comme
+      # celui de la cliente, et on le DIT quand on passe son tour.
+      - name: Quelle URL relire
+        id: cible
+        env:
+          URL_CLIENTE: ${{ vars.URL_CLIENTE }}
+          URL_DEMANDEE: ${{ inputs.url }}
+          ETAT: ${{ github.event.deployment_status.state }}
+          URL_EVENEMENT: ${{ github.event.deployment_status.environment_url }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${URL_CLIENTE}" ] && [ -z "${URL_DEMANDEE}" ]; then
+            echo "::error title=URL_CLIENTE n'est pas déclarée::Ce contrôle ne sait pas quelle adresse relire, donc il ne protège rien."
+            echo ""
+            echo "  Déclarez l'adresse servie aux organisations clientes :"
+            echo "    Settings → Secrets and variables → Actions → Variables"
+            echo "    URL_CLIENTE = https://…"
+            echo ""
+            echo "  Elle n'est pas un secret — c'est l'adresse que les clientes ouvrent."
+            echo "  Elle est ici pour qu'une seule ligne dise, en un endroit vérifiable,"
+            echo "  laquelle des deux adresses Vercel est celle des clientes. C'est"
+            echo "  exactement la confusion qui a fait servir l'édition interne en"
+            echo "  production : les deux projets sortent du même dépôt et leurs noms"
+            echo "  se ressemblent."
+            exit 1
+          fi
+
+          hote() { echo "$1" | sed -E 's#^[a-z]+://##; s#/.*$##' | tr 'A-Z' 'a-z'; }
+
+          if [ -n "${URL_DEMANDEE}" ]; then
+            echo "url=${URL_DEMANDEE}" >> "$GITHUB_OUTPUT"
+            echo "relire=oui" >> "$GITHUB_OUTPUT"
+            echo "URL demandée à la main : ${URL_DEMANDEE}"
+            exit 0
+          fi
+
+          if [ "${{ github.event_name }}" = "deployment_status" ]; then
+            if [ "${ETAT}" != "success" ]; then
+              echo "relire=non" >> "$GITHUB_OUTPUT"
+              echo "Déploiement en état « ${ETAT} » — rien à relire tant qu'il n'a pas abouti."
+              exit 0
+            fi
+            if [ -z "${URL_EVENEMENT}" ]; then
+              echo "relire=non" >> "$GITHUB_OUTPUT"
+              echo "Ce déploiement n'annonce aucune adresse — le contrôle horaire s'en chargera."
+              exit 0
+            fi
+            if [ "$(hote "${URL_EVENEMENT}")" != "$(hote "${URL_CLIENTE}")" ]; then
+              echo "relire=non" >> "$GITHUB_OUTPUT"
+              echo "Déploiement de $(hote "${URL_EVENEMENT}") — ce n'est pas l'adresse des clientes"
+              echo "($(hote "${URL_CLIENTE}")). Passé, délibérément : l'édition interne EST interne,"
+              echo "la relire avec ces règles la ferait échouer à bon droit."
+              exit 0
+            fi
+            echo "url=${URL_EVENEMENT}" >> "$GITHUB_OUTPUT"
+            echo "relire=oui" >> "$GITHUB_OUTPUT"
+            echo "Déploiement cliente annoncé : ${URL_EVENEMENT}"
+            exit 0
+          fi
+
+          echo "url=${URL_CLIENTE}" >> "$GITHUB_OUTPUT"
+          echo "relire=oui" >> "$GITHUB_OUTPUT"
+          echo "Contrôle périodique de ${URL_CLIENTE}"
+
+      - uses: actions/checkout@v4
+        if: steps.cible.outputs.relire == 'oui'
+      - uses: actions/setup-node@v4
+        if: steps.cible.outputs.relire == 'oui'
+        with:
+          node-version: 20
+          cache: npm
+      # `check:deployed` ne lit qu'un fichier de règles et se sert de `fetch`.
+      # Pas de dépendances : le contrôle doit pouvoir tourner même le jour où
+      # `npm ci` casse pour une raison qui n'a rien à voir avec la fuite.
+      - name: Relire ce qui est servi
+        if: steps.cible.outputs.relire == 'oui'
+        run: node scripts/check-deployed-bundle.mjs --url "${{ steps.cible.outputs.url }}"
+
+      # Un échec de ce contrôle n'est pas un test rouge : c'est une fuite EN
+      # COURS, lisible par quiconque ouvre l'adresse. On le nomme comme tel dans
+      # le résumé d'exécution, pour que la notification ne se lise pas comme un
+      # énième job rouge de plus.
+      - name: Le dire en toutes lettres
+        if: failure() && steps.cible.outputs.relire == 'oui'
+        run: |
+          {
+            echo "## Fuite en production"
+            echo ""
+            echo "\`${{ steps.cible.outputs.url }}\` sert des traces de l'édition interne."
+            echo "Ce n'est pas un contrôle qui casse : c'est ce que les clientes reçoivent"
+            echo "en ce moment, et que n'importe qui peut lire en ouvrant l'adresse."
+            echo ""
+            echo "Voir le détail dans l'étape « Relire ce qui est servi » : chaque trace y"
+            echo "est citée avec son voisinage."
+            echo ""
+            echo "Première chose à vérifier : la variable \`AMN_EDITION\` du projet Vercel"
+            echo "qui sert cette adresse. Sans elle, le build retombe sur l'édition interne"
+            echo "— et \`check:business\`, qui ne relit qu'une sortie Business, ne tourne pas"
+            echo "pour le dire. Voir docs/BUSINESS.md."
+          } >> "$GITHUB_STEP_SUMMARY"

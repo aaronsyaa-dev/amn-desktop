@@ -140,13 +140,56 @@ le seul réglage que Vercel ne partage pas entre deux projets du même dépôt.
 | Build Command | laissé au fichier `vercel.json` (override désactivé) |
 | Output Directory | laissé au fichier `vercel.json` (override désactivé) |
 
-Le projet interne ne définit **rien** : sans `AMN_EDITION`, `resolveEdition()`
-construit l'édition interne (voir `vite.edition.ts`).
+| Réglage du projet interne | Valeur |
+| --- | --- |
+| Environment Variables | `AMN_EDITION` = `internal` (Production **et** Preview) |
+
+**Les deux projets déclarent désormais leur édition.** Le projet interne ne
+définissait rien, et s'en remettait au défaut de `resolveEdition()`. Ça a tenu
+jusqu'au jour où c'est le projet CLIENT qui s'est retrouvé sans la variable :
+il est retombé sur le même défaut, a construit l'édition interne, et l'a servie
+en production. `scripts/build-web.mjs` refuse maintenant de construire chez un
+hébergeur sans `AMN_EDITION` explicite — donc le projet interne DOIT la poser,
+lui aussi. C'est le prix du refus, et il est petit : une ligne, une fois.
+
+Le raisonnement est dans le script, mais il tient en une phrase : la seule
+panne qui livre le mauvais bundle est aussi celle qui éteint l'alarme, puisque
+`check:business` ne relit qu'une sortie Business. En retombant sur l'interne,
+le build perd le bundle attendu ET le contrôle qui l'aurait dit.
+
+### Quel projet est quel — parce que les noms trompent
+
+Deux projets Vercel sortent de ce dépôt, sous l'équipe `amn-dev-sec` :
+
+| Projet Vercel | Domaine par défaut | Édition |
+| --- | --- | --- |
+| `amn-desktop` | `amn-desktop.vercel.app` | **interne** (AMN Business) |
+| `amn-desktop-8wgo` | `amn-desktop-8wgo.vercel.app` | **cliente** (AMN Desktop) |
+
+Le piège est dans les noms, et il a coûté cher. Le dépôt s'appelle
+`amn-desktop`, donc le PREMIER projet créé depuis lui a pris ce nom — c'était
+le web interne. Le second a reçu le suffixe que Vercel ajoute quand le nom est
+pris : `-8wgo`. Puis les noms commerciaux ont été échangés, et l'édition
+**cliente** s'est mise à s'appeler « AMN Desktop ». Depuis, `amn-desktop.vercel.app`
+se LIT comme l'adresse des clientes tout en étant celle de l'interne.
+
+C'est pour ça que la variable de dépôt `URL_CLIENTE` existe (voir plus bas) :
+pour qu'un seul endroit vérifiable dise laquelle des deux adresses est celle
+des clientes, plutôt que de s'en remettre à ce que le nom suggère.
 
 Un déploiement Business est relu automatiquement : `scripts/build-web.mjs`
 lance `check:business` sur la sortie dès que l'édition construite est Business,
 et fait échouer le build — chez Vercel comme en local. Après mise en ligne,
 `npm run check:deployed -- --url https://…` relit ce qui est RÉELLEMENT servi.
+
+Ce dernier ne se lance plus à la main : le workflow
+`.github/workflows/deploiement-cliente.yml` le passe automatiquement sur
+l'adresse déclarée dans la variable de dépôt `URL_CLIENTE`, à chaque
+déploiement annoncé par Vercel et, surtout, **toutes les heures**. L'horaire
+est le filet qui compte : un réglage changé dans un tableau de bord ne produit
+aucun commit, donc rien qui se déclenche sur `push`. Sans `URL_CLIENTE`, ce
+workflow échoue au lieu de passer son tour — un contrôle qui ne sait pas quoi
+relire ne protège rien, et doit le dire.
 
 Ce qui a précédé, et pourquoi c'est écrit ainsi : un `vercel.business.json`
 existait, censé configurer ce projet. Vercel ne lit que `vercel.json` à la
