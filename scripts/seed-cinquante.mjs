@@ -1066,6 +1066,40 @@ async function ajouts() {
   for (const [id, nom, immatriculation, kmDepart, echeances, couts] of vehicules) {
     await poser('vehicles', `c50-veh-${id}`, { kind: 'vehicule', nom, immatriculation, kmDepart, departLe: le(61), echeances, couts });
   }
+
+  // ── 39f Classeur ──────────────────────────────────────────────────────────
+  const art = (a1, a2, a4, a5) => [
+    { titre: 'Art. 1 · Objet', texte: `Entretien hebdomadaire des locaux, 180 m², ${a1}.` },
+    { titre: 'Art. 2 · Durée', texte: a2 },
+    { titre: 'Art. 4 · Prix', texte: `${a4} HT par an, payables par trimestre.` },
+    { titre: 'Art. 5 · Résiliation', texte: `Préavis de ${a5}, par écrit.` },
+  ];
+  const duree = 'Un an à compter du 1ᵉʳ octobre, reconductible par accord écrit.';
+  const contrat = [
+    [1, art('le lundi matin', duree, '1 800 €', 'un mois'), 'Léa Martin', le(33)],
+    [2, art('le lundi matin', duree, '1 800 €', 'deux mois'), 'Léa Martin', le(26)],
+    [3, art('le mardi matin', duree, '1 800 €', 'deux mois'), 'Léa Martin', le(21)],
+    [4, art('le mardi matin', duree, '1 800 €', 'deux mois'), 'Nour Haddad', le(14)],
+    [5, art('le mardi matin', duree, '1 950 €', 'deux mois'), 'Nour Haddad', le(6)],
+  ];
+  await poser('documentVersions', 'c50-doc-studio', { kind: 'document', titre: 'Contrat d’entretien · Studio Nord', signeeVersion: 4, signeeLe: le(13), signataire: 'Studio Nord' });
+  for (const [numero, paragraphes, auteur, deposeLe] of contrat) {
+    await poser('documentVersions', `c50-doc-studio-v${numero}`, { kind: 'version', documentId: 'c50-doc-studio', numero, paragraphes, auteur, deposeLe, octets: 184_000 + numero * 2_100 });
+  }
+  await poser('documentVersions', 'c50-doc-cg', { kind: 'document', titre: 'Conditions générales', etat: 'en vigueur' });
+  for (const numero of [1, 2, 3]) {
+    await poser('documentVersions', `c50-doc-cg-v${numero}`, {
+      kind: 'version', documentId: 'c50-doc-cg', numero, auteur: 'Léa Martin', deposeLe: le(200 - numero * 40), octets: 96_000_000,
+      paragraphes: [{ titre: 'Art. 1 · Champ', texte: `Les présentes conditions s’appliquent à toute prestation${numero > 1 ? ' réalisée en France' : ''}.` }],
+    });
+  }
+  await poser('documentVersions', 'c50-doc-pdp', { kind: 'document', titre: 'Plan de prévention · Halles', etat: 'brouillon' });
+  for (const numero of [1, 2]) {
+    await poser('documentVersions', `c50-doc-pdp-v${numero}`, {
+      kind: 'version', documentId: 'c50-doc-pdp', numero, auteur: 'Nour Haddad', deposeLe: le(10 - numero * 3), octets: 64_000_000,
+      paragraphes: [{ titre: 'Art. 1 · Risques', texte: `Travail en hauteur à ${numero === 1 ? '5' : '6'} m, nacelle obligatoire.` }],
+    });
+  }
 }
 
 const FAMILLES = { guichet, marketing, finance, rh, juridique, ajouts };

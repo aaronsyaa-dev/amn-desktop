@@ -711,4 +711,134 @@ export function jourDeRendezVous(v: { id: string }, tombeLe: Date, tournees: Tou
   return null;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   39f · CLASSEUR — le palimpseste
+   ══════════════════════════════════════════════════════════════════════════ */
+
+export interface DocumentClasseur {
+  kind: 'document';
+  titre: string;
+  /** Le numéro de la version signée — « une version signée est figée ». */
+  signeeVersion?: number;
+  signeeLe?: string;
+  signataire?: string;
+  /** Sans signature : « en vigueur » ou « brouillon ». */
+  etat?: 'en vigueur' | 'brouillon';
+  envoyeeASignerLe?: string;
+}
+
+export interface VersionClasseur {
+  kind: 'version';
+  documentId: string;
+  numero: number;
+  paragraphes: Array<{ titre: string; texte: string }>;
+  auteur: string;
+  deposeLe: string;
+  octets: number;
+}
+
+export type EnregistrementClasseur = DocumentClasseur | VersionClasseur;
+
+/** « La comparaison se fait par phrase. » */
+export function phrases(texte: string): string[] {
+  return texte
+    .split(/(?<=[.!?…])\s+(?=[A-ZÀ-ÖØ-Þ0-9«])/u)
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Les mots d'une phrase — un montant (« 1 800 € ») reste UN mot : barrer
+ * « 800 » seul dans « 1 800 € » ferait lire un autre nombre.
+ */
+export const mots = (phrase: string) => phrase.match(/\d{1,3}(?:[ \u00a0\u202f]\d{3})+(?:,\d+)?(?:[ \u00a0\u202f]?€)?|\d+(?:,\d+)?[ \u00a0\u202f]?€|\S+/gu) ?? [];
+
+/** Le passage qui diffère entre deux phrases : on retire les mots communs en tête et en queue. */
+export function ecart(a: string, b: string): { tete: string; avant: string; apres: string; queue: string } {
+  const x = mots(a);
+  const y = mots(b);
+  let i = 0;
+  while (i < x.length && i < y.length && x[i] === y[i]) i += 1;
+  let j = 0;
+  while (j < x.length - i && j < y.length - i && x[x.length - 1 - j] === y[y.length - 1 - j]) j += 1;
+  return {
+    tete: y.slice(0, i).join(' '),
+    avant: x.slice(i, x.length - j).join(' '),
+    apres: y.slice(i, y.length - j).join(' '),
+    queue: y.slice(y.length - j).join(' '),
+  };
+}
+
+export interface Couche {
+  /** Le texte antérieur, seulement le passage qui diffère. */
+  texte: string;
+  de: number;
+  vers: number;
+  auteur: string;
+  le: string;
+  /** Réécrite APRÈS la version signée. */
+  apresSignature: boolean;
+}
+
+export interface PhrasePalimpseste {
+  tete: string;
+  couches: Couche[];
+  actuel: string;
+  queue: string;
+}
+
+export interface ParagraphePalimpseste {
+  titre: string;
+  phrases: PhrasePalimpseste[];
+  reecritures: Couche[];
+  apresSignature: boolean;
+}
+
+/**
+ * Le document courant, avec sous lui ses versions antérieures — « là où le
+ * texte a changé », jamais le document entier en double. Une phrase
+ * identique d'une version à l'autre reste nette ; une phrase plusieurs fois
+ * réécrite porte ses couches successives, de la plus ancienne à la plus
+ * récente.
+ */
+export function palimpseste(versions: VersionClasseur[], signee: number | null): ParagraphePalimpseste[] {
+  const tri = [...versions].sort((a, b) => a.numero - b.numero);
+  const courante = tri[tri.length - 1];
+  if (!courante) return [];
+  return courante.paragraphes.map((p) => {
+    const parVersion = tri.map((v) => phrases(v.paragraphes.find((q) => q.titre === p.titre)?.texte ?? ''));
+    const actuelles = parVersion[parVersion.length - 1];
+    const reecritures: Couche[] = [];
+    const ph = actuelles.map((actuel, i) => {
+      const couches: Couche[] = [];
+      for (let k = 0; k < tri.length - 1; k += 1) {
+        const avant = parVersion[k][i];
+        const apres = parVersion[k + 1][i];
+        if (avant !== undefined && apres !== undefined && avant !== apres) {
+          const e = ecart(avant, actuel);
+          const c = { texte: e.avant, de: tri[k].numero, vers: tri[k + 1].numero, auteur: tri[k + 1].auteur, le: tri[k + 1].deposeLe, apresSignature: signee !== null && tri[k].numero >= signee };
+          couches.push(c);
+          reecritures.push(c);
+        }
+      }
+      if (!couches.length) return { tete: actuel, couches, actuel: '', queue: '' };
+      /* Le passage commun à TOUTES les couches reste net, une seule fois. */
+      const variantes = [...couches.map((c) => parVersion[tri.findIndex((v) => v.numero === c.de)][i]), actuel];
+      const decoupe = variantes.map((v) => mots(v));
+      let t = 0;
+      while (decoupe.every((m) => t < m.length && m[t] === decoupe[0][t])) t += 1;
+      let q = 0;
+      while (decoupe.every((m) => q < m.length - t && m[m.length - 1 - q] === decoupe[0][decoupe[0].length - 1 - q])) q += 1;
+      const milieu = (m: string[]) => m.slice(t, m.length - q).join(' ');
+      return {
+        tete: decoupe[decoupe.length - 1].slice(0, t).join(' '),
+        couches: couches.map((c, n) => ({ ...c, texte: milieu(decoupe[n]) })),
+        actuel: milieu(decoupe[decoupe.length - 1]),
+        queue: decoupe[decoupe.length - 1].slice(decoupe[decoupe.length - 1].length - q).join(' '),
+      };
+    });
+    return { titre: p.titre, phrases: ph, reecritures, apresSignature: reecritures.some((c) => c.apresSignature) };
+  });
+}
+
 export { JOUR_MS, borne };

@@ -787,6 +787,18 @@ const iso = (joursAvant: number, h = 10) => {
     assert.equal(A.echeanceEnAmbre([{ v: vh, etat: ct }], [rnd(-12, [5], false)], MAINTENANT)?.etat, ct);
     assert.equal(A.echeanceEnAmbre([{ v: vh, etat: ct }], [rnd(-3, [5], false)], MAINTENANT), null);
   });
+
+  // ── 39f Classeur ────────────────────────────────────────────────────────
+  regle('39f · la comparaison se fait par phrase', () => assert.deepEqual(A.phrases('Un an. Deux mois, par écrit. 1 800 € HT.'), ['Un an.', 'Deux mois, par écrit.', '1 800 € HT.']));
+  regle('39f · un montant reste un mot : on barre « 1 800 € », pas « 800 »', () => assert.equal(A.ecart('1 800 € HT par an.', '1 950 € HT par an.').avant, '1 800 €'));
+  const ver = (numero: number, a: string, b: string) => ({ kind: 'version' as const, documentId: 'd', numero, auteur: `A${numero}`, deposeLe: iso(10 - numero), octets: 1, paragraphes: [{ titre: 'P', texte: `${a} Rien ne change ici. ${b}` }] });
+  const pal = A.palimpseste([ver(1, 'Le lundi matin.', 'Prix 1 800 €.'), ver(2, 'Le mardi matin.', 'Prix 1 800 €.'), ver(3, 'Le mardi matin.', 'Prix 1 950 €.')], 2);
+  regle('39f · une phrase identique reste nette, sans couche', () => assert.equal(pal[0].phrases[1].couches.length, 0));
+  regle('39f · les couches ne montrent que le passage qui diffère', () => assert.deepEqual(pal[0].phrases[0].couches.map((c) => c.texte), ['lundi']));
+  regle('39f · l’ambre : l’écart entre la version signée et la courante', () => {
+    assert.equal(pal[0].phrases[2].couches[0].apresSignature, true);
+    assert.equal(pal[0].phrases[0].couches[0].apresSignature, false);
+  });
 }
 
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);

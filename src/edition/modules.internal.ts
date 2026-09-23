@@ -34,6 +34,7 @@ import {
   FileText,
   Fingerprint,
   Flame,
+  FolderArchive,
   FolderKanban,
   Frame,
   Gauge,
@@ -338,6 +339,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Livrables clients' },
       { key: 'media', label: 'Médias', to: '/media', icon: Images, hint: 'Bibliothèque' },
+      { key: 'binder', label: 'Classeur', to: '/classeur', icon: FolderArchive, hint: 'Les documents et leurs versions, signée comprise' },
     ],
   },
   {
@@ -538,6 +540,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/settings', 'reglages'],
   ['/membres', 'reglages'],
   ['/assistance', 'fil'],
+  ['/classeur', 'journal'],
   ['/flotte', 'registre'],
   ['/prevision-stock', 'registre'],
   ['/itineraires', 'registre'],

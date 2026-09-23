@@ -214,4 +214,9 @@ export const FR_50: Record<keyof typeof EN_50, string> = {
   'm50.fleet.descriptionSansAmbre': '{n} véhicules, autant de compteurs. Sous chacun, ce qu’il reste avant la prochaine échéance, en kilomètres ou en jours.',
   'm50.fleet.descriptionVide': 'Aucun véhicule suivi pour l’instant.',
   'm50.fleet.phraseVide': 'Aucun véhicule suivi pour l’instant.',
+  'm50.binder.titre': 'Classeur',
+  'm50.binder.description': 'Un document garde la trace de ses versions précédentes comme un parchemin gratté : sous le texte actuel, les versions antérieures transparaissent là où elles différaient. Une modification a été faite après signature.',
+  'm50.binder.descriptionSansEcart': 'Un document garde la trace de ses versions précédentes comme un parchemin gratté : sous le texte actuel, les versions antérieures transparaissent là où elles différaient.',
+  'm50.binder.descriptionVide': 'Aucun document déposé pour l’instant.',
+  'm50.binder.phraseVide': 'Aucun document déposé pour l’instant.',
 };

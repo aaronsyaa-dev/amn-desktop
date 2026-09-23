@@ -130,6 +130,7 @@ const ECRANS = [
   ['Itinéraires', '#/itineraires'],
   ['Prévision de stock', '#/prevision-stock'],
   ['Flotte', '#/flotte'],
+  ['Classeur', '#/classeur'],
 ];
 
 const AMBRE = ['rgb(208, 154, 74)', '#d09a4a'];

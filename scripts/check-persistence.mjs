@@ -267,6 +267,7 @@ const MODULE_DATA = {
   itineraries: ['routePlans'],
   stockForecast: ['stockForecasts'],
   fleet: ['vehicles'],
+  binder: ['documentVersions'],
 };
 
 /**
@@ -402,6 +403,7 @@ const MODULE_FILES = {
   itineraries: ['src/screens/ItinerairesScreen.tsx'],
   stockForecast: ['src/screens/PrevisionStockScreen.tsx'],
   fleet: ['src/screens/FlotteScreen.tsx'],
+  binder: ['src/screens/ClasseurScreen.tsx'],
 };
 
 /**

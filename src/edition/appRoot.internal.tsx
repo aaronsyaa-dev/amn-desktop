@@ -150,6 +150,7 @@ import { ScoringLeadsScreen } from '../screens/ScoringLeadsScreen';
 import { ItinerairesScreen } from '../screens/ItinerairesScreen';
 import { PrevisionStockScreen } from '../screens/PrevisionStockScreen';
 import { FlotteScreen } from '../screens/FlotteScreen';
+import { ClasseurScreen } from '../screens/ClasseurScreen';
 import { ClientAdminScreen } from '../client-context/ClientAdminScreen';
 import { ContextBoot } from '../client-context/ContextBoot';
 import { OrgContextProvider, useOrgContext } from '../state/OrgContextContext';
@@ -420,6 +421,7 @@ function AmnRoutes() {
         <Route path="/itineraires" element={<ItinerairesScreen />} />
         <Route path="/prevision-stock" element={<PrevisionStockScreen />} />
         <Route path="/flotte" element={<FlotteScreen />} />
+        <Route path="/classeur" element={<ClasseurScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
@@ -1267,6 +1269,14 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="fleet">
               <FlotteScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/classeur"
+          element={
+            <ModuleRoute module="binder">
+              <ClasseurScreen />
             </ModuleRoute>
           }
         />

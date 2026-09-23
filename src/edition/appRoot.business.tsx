@@ -122,6 +122,7 @@ import { ScoringLeadsScreen } from '../screens/ScoringLeadsScreen';
 import { ItinerairesScreen } from '../screens/ItinerairesScreen';
 import { PrevisionStockScreen } from '../screens/PrevisionStockScreen';
 import { FlotteScreen } from '../screens/FlotteScreen';
+import { ClasseurScreen } from '../screens/ClasseurScreen';
 
 /**
  * La racine de l'édition Business — la table de routes livrée aux
@@ -1013,6 +1014,14 @@ export function AppRoot() {
           element={
             <ModuleRoute module="fleet">
               <FlotteScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/classeur"
+          element={
+            <ModuleRoute module="binder">
+              <ClasseurScreen />
             </ModuleRoute>
           }
         />

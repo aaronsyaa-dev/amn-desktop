@@ -219,4 +219,9 @@ export const EN_50 = {
   'm50.fleet.descriptionSansAmbre': '{n} vehicles, as many odometers. Under each, what remains before the next due date, in kilometres or in days.',
   'm50.fleet.descriptionVide': 'No vehicle tracked yet.',
   'm50.fleet.phraseVide': 'No vehicle tracked yet.',
+  'm50.binder.titre': 'Binder',
+  'm50.binder.description': 'A document keeps the trace of its earlier versions like a scraped parchment: under the current text, earlier versions show through where they differed. A change was made after signature.',
+  'm50.binder.descriptionSansEcart': 'A document keeps the trace of its earlier versions like a scraped parchment: under the current text, earlier versions show through where they differed.',
+  'm50.binder.descriptionVide': 'No document filed yet.',
+  'm50.binder.phraseVide': 'No document filed yet.',
 } as const;

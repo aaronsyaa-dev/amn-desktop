@@ -34,6 +34,7 @@ import {
   FileText,
   Fingerprint,
   Flame,
+  FolderArchive,
   FolderKanban,
   Frame,
   Gauge,
@@ -230,6 +231,7 @@ const CLIENT_MODULES: NavItem[] = [
   { key: 'itineraries', label: 'Itinéraires', to: '/itineraires', icon: Map, hint: 'L’ordre des arrêts de demain, optimisé la veille' },
   { key: 'stockForecast', label: 'Prévision de stock', to: '/prevision-stock', icon: Hourglass, hint: 'Quand chaque article manquera, et quand commander' },
   { key: 'fleet', label: 'Flotte', to: '/flotte', icon: Car, hint: 'Chaque véhicule, son compteur et ses échéances' },
+  { key: 'binder', label: 'Classeur', to: '/classeur', icon: FolderArchive, hint: 'Les documents et leurs versions, signée comprise' },
 ];
 
 /**
@@ -262,7 +264,7 @@ export const CLIENT_SECTIONS: Array<{ label: string; code: string; keys: string[
   { label: 'Marketing', code: 'MK', keys: ['video', 'adVisuals', 'postPlanner', 'podcast', 'brand', 'productShots', 'sentiment', 'watch', 'nps'] },
   { label: 'Production', code: 'PR', keys: ['time', 'expenses', 'calculators', 'board', 'stock', 'suppliers', 'shifts', 'checklists', 'interventions', 'assembly', 'aftersales', 'bom', 'rounds', 'equipment', 'itineraries', 'stockForecast', 'fleet'] },
   { label: 'Finance', code: 'FI', keys: ['cashForecast', 'scenarios', 'loanSim', 'analytics', 'reconciliation', 'taxForecast', 'currencies', 'expenseClaims', 'incomingInvoices'] },
-  { label: 'Documents', code: 'DO', keys: ['notes', 'pages', 'reports', 'media'] },
+  { label: 'Documents', code: 'DO', keys: ['notes', 'pages', 'reports', 'media', 'binder'] },
   { label: 'Juridique', code: 'JU', keys: ['clauses', 'remoteSign', 'gdpr', 'csr', 'kyc'] },
   { label: 'Collectif', code: 'CO', keys: ['dm', 'groups', 'announcements', 'polls', 'leaves', 'directory', 'calls'] },
   { label: 'RH', code: 'RH', keys: ['recruitment', 'procedures', 'training', 'certifications', 'payslips'] },
