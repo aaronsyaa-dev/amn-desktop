@@ -7,6 +7,7 @@ import { CarteDesNeuf } from '../accueils/interne/CarteDesNeuf';
 import { Fil } from '../accueils/interne/Fil';
 import { Radar } from '../accueils/interne/Radar';
 import { Compteur } from '../accueils/interne/Compteur';
+import { AjmaniDabord } from '../accueils/interne/AjmaniDabord';
 import { colonnesCarte } from '../accueils/interne/parc';
 
 /**
@@ -55,6 +56,13 @@ export const ACCUEILS: AccueilDef[] = [
     phrase: 'Ce que la Garde a réglé seule, et ce qu’elle vous rend.',
     vignette: [[6, 16, 10, 20, 'moyen'], [18, 16, 10, 20, 'moyen'], [30, 16, 10, 20, 'moyen'], [42, 16, 10, 20, 'moyen'], [62, 10, 16, 28, 'ambre'], [6, 46, 60, 4, 'sombre']],
     composant: Compteur,
+  },
+  {
+    code: '42f',
+    nom: 'Ajmani d’abord',
+    phrase: 'La proposition d’Ajmani, seule : il a déjà trié la situation.',
+    vignette: [[8, 8, 10, 4, 'clair'], [8, 18, 12, 5, 'ambre'], [24, 17, 62, 7, 'clair'], [24, 27, 50, 7, 'clair'], [24, 38, 18, 4, 'moyen'], [8, 48, 26, 6, 'sombre'], [37, 48, 26, 6, 'sombre'], [66, 48, 26, 6, 'sombre']],
+    composant: AjmaniDabord,
   },
 ];
 
