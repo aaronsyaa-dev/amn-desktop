@@ -271,6 +271,7 @@ const MODULE_DATA = {
   sharedEditor: ['sharedDocs'],
   rooms: ['roomBookings'],
   writing: ['writingDrafts'],
+  translation: ['translations'],
 };
 
 /**
@@ -410,6 +411,7 @@ const MODULE_FILES = {
   sharedEditor: ['src/screens/EditeurPartageScreen.tsx'],
   rooms: ['src/screens/SallesScreen.tsx'],
   writing: ['src/screens/RedactionScreen.tsx'],
+  translation: ['src/screens/TraductionScreen.tsx'],
 };
 
 /**

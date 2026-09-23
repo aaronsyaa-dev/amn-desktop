@@ -284,6 +284,7 @@ const ECRANS = [
   ['Éditeur partagé', '#/editeur-partage'],
   ['Salles', '#/salles'],
   ['Rédaction', '#/outils/redaction'],
+  ['Traduction', '#/outils/traduction'],
 ];
 
 const serveur = spawn('node', [new URL('./servir-bundle.mjs', import.meta.url).pathname, BUNDLE, String(PORT)], {

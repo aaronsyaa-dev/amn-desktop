@@ -234,4 +234,9 @@ export const FR_50: Record<keyof typeof EN_50, string> = {
   'm50.writing.descriptionSansEngagement': 'Vous avez écrit la réponse, l’assistant l’a relue. Ses corrections restent visibles comme des ratures sur votre brouillon : on voit ce qu’il a changé.',
   'm50.writing.descriptionVide': 'Aucune réponse rédigée pour l’instant.',
   'm50.writing.phraseVide': 'Aucune réponse rédigée pour l’instant.',
+  'm50.translation.titre': 'Traduction',
+  'm50.translation.description': 'Le document en français, et la traduction glissée sous chaque ligne. On relit les deux ensemble, ligne à ligne, sans aller-retour. Une mention ne se traduit pas : elle se remplace.',
+  'm50.translation.descriptionSansMention': 'Le document en français, et la traduction glissée sous chaque ligne. On relit les deux ensemble, ligne à ligne, sans aller-retour.',
+  'm50.translation.descriptionVide': 'Aucun document traduit pour l’instant.',
+  'm50.translation.phraseVide': 'Aucun document traduit pour l’instant.',
 };

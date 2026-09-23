@@ -154,6 +154,7 @@ import { ClasseurScreen } from '../screens/ClasseurScreen';
 import { EditeurPartageScreen } from '../screens/EditeurPartageScreen';
 import { SallesScreen } from '../screens/SallesScreen';
 import { RedactionScreen } from '../screens/RedactionScreen';
+import { TraductionScreen } from '../screens/TraductionScreen';
 import { ClientAdminScreen } from '../client-context/ClientAdminScreen';
 import { ContextBoot } from '../client-context/ContextBoot';
 import { OrgContextProvider, useOrgContext } from '../state/OrgContextContext';
@@ -428,6 +429,7 @@ function AmnRoutes() {
         <Route path="/editeur-partage" element={<EditeurPartageScreen />} />
         <Route path="/salles" element={<SallesScreen />} />
         <Route path="/outils/redaction" element={<RedactionScreen />} />
+        <Route path="/outils/traduction" element={<TraductionScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
@@ -1307,6 +1309,14 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="writing">
               <RedactionScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/outils/traduction"
+          element={
+            <ModuleRoute module="translation">
+              <TraductionScreen />
             </ModuleRoute>
           }
         />

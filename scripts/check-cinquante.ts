@@ -836,6 +836,21 @@ const iso = (joursAvant: number, h = 10) => {
     assert.equal(A.engagementEnAttente([brouillon[0], { ...brouillon[1], decision: 'refusee' as const }, brouillon[2]]), 2);
   });
   regle('39i · chaque correction porte sa ligne', () => assert.deepEqual(A.lignesDesCorrections(brouillon), [2, 3]));
+
+  // ── 39j Traduction ──────────────────────────────────────────────────────
+  regle('39j · les mentions légales sont reconnues par une liste fermée', () => {
+    assert.equal(A.mentionDe('TVA non applicable, art. 293 B du CGI')?.cle, '293B');
+    assert.equal(A.mentionDe('Remise en état du canapé'), null);
+  });
+  regle('39j · une mention se remplace par l’équivalent du pays du client', () =>
+    assert.equal(A.equivalent('TVA non applicable, art. 293 B du CGI', 'CH', 'de')?.texte, 'Steuerschuldnerschaft des Leistungsempfängers'));
+  regle('39j · sans équivalent connu, elle est seulement signalée', () => assert.equal(A.equivalent('Indemnité forfaitaire de 40 €', 'CH', 'de'), null));
+  regle('39j · les montants et numéros ne passent pas par la traduction', () => {
+    assert.deepEqual(A.nombresAlteres('Acompte de 30 %, soit 1 800 €', 'Anzahlung von 30 %, also 1 800 €'), []);
+    assert.deepEqual(A.nombresAlteres('Acompte de 30 %', 'Anzahlung von 20 %'), ['30']);
+  });
+  regle('39j · l’ambre : la première mention non remplacée', () =>
+    assert.equal(A.mentionEnAttente([{ source: 'x', traduction: 'y' }, { source: 'art. 293 B', traduction: 'z' }]), 1));
 }
 
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);

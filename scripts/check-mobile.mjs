@@ -134,6 +134,7 @@ const ECRANS = [
   ['Éditeur partagé', '#/editeur-partage'],
   ['Salles', '#/salles'],
   ['Rédaction', '#/outils/redaction'],
+  ['Traduction', '#/outils/traduction'],
 ];
 
 const AMBRE = ['rgb(208, 154, 74)', '#d09a4a'];

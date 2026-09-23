@@ -1183,6 +1183,28 @@ async function ajouts() {
     source: { surtitre: 'L’avis · Chez Mano · 4 ★', texte: 'Très bien, un peu cher.', recuLe: le(12, 7) },
     morceaux: [tx('Merci ! '), co('C’est le prix de la qualité.', 'Nos tarifs sont affichés en ligne.', 'plus poli', 'ne pas contredire', { decision: 'acceptee' }), tx(' '), co('', 'Remise de 10 % au prochain passage.', 'plus poli', 'un geste', { decision: 'refusee' }), tx(' '), co('', 'À bientôt.', 'plus clair', 'une formule de fin', { decision: 'refusee' })],
   });
+
+  // ── 39j Traduction ────────────────────────────────────────────────────────
+  await poser('translations', 'c50-trad-weber', {
+    kind: 'document', titre: 'Devis D-2026-052 · Atelier Weber', langue: 'de', pays: 'CH', creeLe: le(1, 10),
+    lignes: [
+      { source: 'Entretien complet des vitrages, intérieur et extérieur', traduction: 'Vollständige Reinigung der Verglasung, innen und außen' },
+      { source: 'Remise en état du canapé en tissu', traduction: 'Wiederherstellung des Stoffsofas' },
+      { source: 'Déplacement Lyon – Bâle', traduction: 'Anfahrt Lyon – Basel' },
+      { source: 'Acompte de 30 % à la signature, payable en ligne', traduction: 'Anzahlung von 30 % bei Unterzeichnung, online zahlbar' },
+      { source: 'TVA non applicable, art. 293 B du CGI', traduction: 'MwSt. nicht anwendbar, Art. 293 B des CGI' },
+    ],
+  });
+  for (let k = 0; k < 10; k += 1) {
+    await poser('translations', `c50-trad-ancien-${k}`, {
+      kind: 'document', titre: `Devis D-2026-0${30 + k}`, langue: k % 3 ? 'de' : 'en', pays: k % 3 ? 'CH' : 'GB', creeLe: le(20 + k * 7, 10),
+      lignes: [{ source: 'Entretien des vitrages', traduction: k % 3 ? 'Reinigung der Verglasung' : 'Window cleaning' }],
+    });
+  }
+  const termes = [['Remise en état', 'Wiederherstellung', 'Léa Martin'], ['Passage', 'Einsatz', 'Léa Martin'], ['Kit microfibres', 'Mikrofaser-Set', 'Nour Haddad'], ['Vitrages', 'Verglasung', 'Nour Haddad']];
+  for (const [terme, traduction, validePar] of termes) {
+    await poser('translations', `c50-terme-${terme.toLowerCase().replace(/[^a-z]+/g, '-')}`, { kind: 'terme', terme, traduction, langue: 'de', validePar });
+  }
 }
 
 const FAMILLES = { guichet, marketing, finance, rh, juridique, ajouts };

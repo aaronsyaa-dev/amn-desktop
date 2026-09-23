@@ -1053,4 +1053,97 @@ export function correctionsGardees(morceaux: MorceauBrouillon[]) {
   return { gardees: c.filter((m) => m.decision !== 'refusee').length, total: c.length };
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   39j · TRADUCTION — l'interlinéaire
+   ══════════════════════════════════════════════════════════════════════════ */
+
+export type LangueCible = 'de' | 'en';
+
+export interface LigneTraduite {
+  source: string;
+  traduction: string;
+  /** La mention légale a été remplacée par son équivalent — jamais traduite. */
+  remplacee?: boolean;
+}
+
+export interface DocumentTraduit {
+  kind: 'document';
+  titre: string;
+  langue: LangueCible;
+  /** Le pays du client, dont le droit fournit l'équivalent d'une mention. */
+  pays: string;
+  lignes: LigneTraduite[];
+  creeLe: string;
+}
+
+export interface TermeGlossaire {
+  kind: 'terme';
+  terme: string;
+  traduction: string;
+  langue: LangueCible;
+  validePar: string;
+}
+
+export type EnregistrementTraduction = DocumentTraduit | TermeGlossaire;
+
+/**
+ * LES MENTIONS LÉGALES — une liste FERMÉE. « Elles ne sont jamais traduites :
+ * elles sont remplacées par leur équivalent dans le droit du pays du client,
+ * ou signalées. » Sans équivalent connu pour ce pays, la ligne est signalée
+ * et rien n'est proposé.
+ */
+export const MENTIONS_LEGALES: Array<{
+  cle: string;
+  motif: RegExp;
+  pourquoi: string;
+  equivalents: Record<string, Partial<Record<LangueCible, string>> & { explication: string }>;
+}> = [
+  {
+    cle: '293B',
+    motif: /art(?:icle|\.)?\s*293\s*B/i,
+    pourquoi: 'L’article 293 B est une règle française',
+    equivalents: {
+      CH: { de: 'Steuerschuldnerschaft des Leistungsempfängers', en: 'Reverse charge: VAT to be accounted for by the recipient', explication: 'Une prestation facturée en Suisse relève de l’autoliquidation, avec sa propre mention.' },
+      DE: { de: 'Steuerschuldnerschaft des Leistungsempfängers (Art. 196 MwStSystRL)', en: 'Reverse charge – Article 196 of Directive 2006/112/EC', explication: 'Entre entreprises de l’Union, c’est l’autoliquidation de la directive TVA qui s’applique.' },
+      BE: { en: 'Reverse charge – Article 196 of Directive 2006/112/EC', explication: 'Entre entreprises de l’Union, c’est l’autoliquidation de la directive TVA qui s’applique.' },
+    },
+  },
+  {
+    cle: '283-2',
+    motif: /autoliquidation|art(?:icle|\.)?\s*283[-\s]?2/i,
+    pourquoi: 'L’article 283-2 du CGI est une règle française',
+    equivalents: {
+      DE: { de: 'Steuerschuldnerschaft des Leistungsempfängers (Art. 196 MwStSystRL)', en: 'Reverse charge – Article 196 of Directive 2006/112/EC', explication: 'La directive TVA donne la mention européenne équivalente.' },
+      BE: { en: 'Reverse charge – Article 196 of Directive 2006/112/EC', explication: 'La directive TVA donne la mention européenne équivalente.' },
+    },
+  },
+  { cle: 'L441-10', motif: /L\.?\s*441-10|indemnité forfaitaire/i, pourquoi: 'Les pénalités de l’article L441-10 sont propres au Code de commerce', equivalents: {} },
+  { cle: 'L221-18', motif: /L\.?\s*221-18|droit de rétractation/i, pourquoi: 'Le délai de rétractation est celui du Code de la consommation', equivalents: {} },
+];
+
+export function mentionDe(source: string) {
+  return MENTIONS_LEGALES.find((m) => m.motif.test(source)) ?? null;
+}
+
+export function equivalent(source: string, pays: string, langue: LangueCible): { texte: string; explication: string } | null {
+  const m = mentionDe(source);
+  const e = m?.equivalents[pays];
+  const texte = e?.[langue];
+  return texte && e ? { texte, explication: e.explication } : null;
+}
+
+/** « Les montants, les dates et les numéros ne passent pas par la traduction » : ceux de la source doivent se retrouver tels quels. */
+export function nombresAlteres(source: string, traduction: string): string[] {
+  const jetons = source.match(/\d[\d\s\u00a0\u202f.,/-]*\d|\d/g) ?? [];
+  const norme = (x: string) => x.replace(/[\s\u00a0\u202f]/g, '');
+  const cible = norme(traduction);
+  return jetons.filter((j) => !cible.includes(norme(j)));
+}
+
+/** La ligne en ambre : la première mention légale qui n'a pas encore été remplacée. */
+export function mentionEnAttente(lignes: LigneTraduite[]): number | null {
+  const i = lignes.findIndex((l) => !l.remplacee && mentionDe(l.source) !== null);
+  return i >= 0 ? i : null;
+}
+
 export { JOUR_MS, borne };

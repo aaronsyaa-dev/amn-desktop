@@ -52,6 +52,7 @@ import {
   Inbox,
   KeyRound,
   Landmark,
+  Languages,
   Layers,
   LayoutDashboard,
   LayoutPanelTop,
@@ -372,6 +373,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'calcPro', label: 'Calculatrice pro', to: '/outils/calculatrice', icon: Calculator, hint: 'Un ruban de caisse qu’on relit avant de chiffrer' },
       { key: 'dataPort', label: 'Import / export', to: '/outils/donnees', icon: Download, hint: 'Vos données, dans les deux sens' },
       { key: 'writing', label: 'Rédaction', to: '/outils/redaction', icon: SquarePen, hint: 'Votre brouillon, et ce que l’assistant y corrige' },
+      { key: 'translation', label: 'Traduction', to: '/outils/traduction', icon: Languages, hint: 'Chaque ligne, et sa traduction juste dessous' },
     ],
   },
   {
@@ -545,6 +547,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/settings', 'reglages'],
   ['/membres', 'reglages'],
   ['/assistance', 'fil'],
+  ['/outils/traduction', 'registre'],
   ['/outils/redaction', 'registre'],
   ['/salles', 'fil'],
   ['/editeur-partage', 'journal'],

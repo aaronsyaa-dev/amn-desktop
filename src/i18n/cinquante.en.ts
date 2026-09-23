@@ -239,4 +239,9 @@ export const EN_50 = {
   'm50.writing.descriptionSansEngagement': 'You wrote the reply, the assistant proofread it. Its corrections stay visible as markings on your draft: you see what it changed.',
   'm50.writing.descriptionVide': 'No reply drafted yet.',
   'm50.writing.phraseVide': 'No reply drafted yet.',
+  'm50.translation.titre': 'Translation',
+  'm50.translation.description': 'The document in French, and the translation slipped under each line. You read both together, line by line, without going back and forth. One legal notice is not translated: it is replaced.',
+  'm50.translation.descriptionSansMention': 'The document in French, and the translation slipped under each line. You read both together, line by line, without going back and forth.',
+  'm50.translation.descriptionVide': 'No translated document yet.',
+  'm50.translation.phraseVide': 'No translated document yet.',
 } as const;

@@ -252,4 +252,5 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'sharedEditor', label: 'Éditeur partagé', hint: 'Un document, et ce que chacun propose d’y changer' },
   { key: 'rooms', label: 'Salles', hint: 'Les pièces, qui y est, jusqu’à quand' },
   { key: 'writing', label: 'Rédaction', hint: 'Votre brouillon, et ce que l’assistant y corrige' },
+  { key: 'translation', label: 'Traduction', hint: 'Chaque ligne, et sa traduction juste dessous' },
 ];
