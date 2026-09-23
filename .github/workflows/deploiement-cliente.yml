@@ -22,6 +22,9 @@
 #   · `deployment_status` — dès que Vercel annonce un déploiement réussi.
 #     C'est le contrôle immédiat, sans course : l'URL vient de l'événement,
 #     donc on relit la mise en ligne qui vient d'avoir lieu, pas la précédente.
+#     Il ne relit que l'hôte des clientes, et passe son tour — en le disant —
+#     tant que `URL_CLIENTE` n'est pas déclarée : une PR ne doit pas devenir
+#     rouge parce qu'une variable de surveillance de la PRODUCTION manque.
 #   · `schedule` — toutes les heures. C'EST LE FILET QUI COMPTE : il est le
 #     seul à attraper un changement fait dans le tableau de bord, qui ne
 #     produit ni commit ni, parfois, déploiement visible ici.
@@ -69,6 +72,19 @@ jobs:
           URL_EVENEMENT: ${{ github.event.deployment_status.environment_url }}
         run: |
           set -euo pipefail
+
+          # Un déploiement de PREVIEW n'est pas la production, et ce contrôle
+          # surveille la production. Tant que l'adresse n'est pas déclarée, un
+          # événement de déploiement passe son tour EN LE DISANT, au lieu de
+          # rendre rouge une PR qui n'y est pour rien. L'alarme, elle, reste
+          # entière : le contrôle HORAIRE ci-dessous échoue, lui, tant que
+          # `URL_CLIENTE` manque — et c'est lui qui surveille la production.
+          if [ -z "${URL_CLIENTE}" ] && [ -z "${URL_DEMANDEE}" ] \
+             && [ "${{ github.event_name }}" = "deployment_status" ]; then
+            echo "relire=non" >> "$GITHUB_OUTPUT"
+            echo "::warning title=URL_CLIENTE n'est pas déclarée::Déploiement non relu. Le contrôle horaire échouera tant que cette variable manque."
+            exit 0
+          fi
 
           if [ -z "${URL_CLIENTE}" ] && [ -z "${URL_DEMANDEE}" ]; then
             echo "::error title=URL_CLIENTE n'est pas déclarée::Ce contrôle ne sait pas quelle adresse relire, donc il ne protège rien."
