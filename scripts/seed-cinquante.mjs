@@ -1265,6 +1265,16 @@ async function fusions() {
   await lien('b', 'Maison Bertaux', 'Chez Mano', 'recompense', eur(30), 90);
   await lien('c', 'Studio Nord', 'Les Tanneurs', 'venu', eur(30), 20);
   await lien('d', 'Studio Nord', 'Atelier Lumen', 'invite', null, 5);
+
+  // ── SAV avec suivi de pièces → SAV ────────────────────────────────────────
+  const ticket = (id, subject, client, reason, heures, attentePiece) =>
+    poser('tickets', `c50-sav-${id}`, {
+      client, subject, reason, note: '', status: 'enCours', openedAt: new Date(MAINTENANT.getTime() - heures * 3_600_000).toISOString(),
+      takenBy: '', resolvedAt: null, ...(attentePiece ? { attentePiece } : {}),
+    });
+  await ticket('charniere', 'Porte de vitrine qui ne ferme plus', 'Les Halles', 'Pose à reprendre', 30, {
+    piece: 'charnière inox 90°', fournisseur: 'Dupré Pro', promiseLe: jour(-4), depuisLe: new Date(MAINTENANT.getTime() - 20 * 3_600_000).toISOString(),
+  });
 }
 
 const FAMILLES = { guichet, marketing, finance, rh, juridique, ajouts, fusions };

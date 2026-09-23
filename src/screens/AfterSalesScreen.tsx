@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Plus, RotateCcw, Trash2, UserCheck } from 'lucide-react';
+import { Check, Package, Plus, RotateCcw, Trash2, UserCheck } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FirstRun } from '../components/EmptyState';
 import { useSync, useCollection, uid } from '../state/SyncContext';
@@ -33,6 +33,15 @@ interface TicketData {
     plutôt que rangé d'office dans une catégorie qu'on lui aurait inventée.
   */
   reason?: string;
+  /*
+    L'ATTENTE D'UNE PIÈCE — fusion « SAV avec suivi de pièces détachées »
+    (chantier des cinquante). Tant qu'elle court, le sablier SE FIGE : le délai
+    qui ne dépend plus de vous se voit tel quel, avec la pièce, le fournisseur
+    et la date promise. À la réception, les heures d'attente s'ajoutent à
+    `pausesH` et ne sont jamais décomptées de l'engagement.
+  */
+  attentePiece?: { piece: string; fournisseur: string; promiseLe: string; depuisLe: string } | null;
+  pausesH?: number;
 }
 type Ticket = TicketData & { id: string };
 const jours = (depuis: string, jusqua: string | null) => Math.max(0, Math.round((Date.parse(jusqua ?? new Date().toISOString()) - Date.parse(depuis)) / 86_400_000));
@@ -91,17 +100,22 @@ const SABLIER_CONTOUR =
   `M ${SABLIER_X1} ${SABLIER_Y1} L ${SABLIER_X2} ${SABLIER_Y1} L ${SABLIER_COL_X} ${SABLIER_COL_Y} ` +
   `L ${SABLIER_X2} ${SABLIER_Y2} L ${SABLIER_X1} ${SABLIER_Y2} L ${SABLIER_COL_X} ${SABLIER_COL_Y} Z`;
 
-/** Heures écoulées depuis l'ouverture, en décimal. */
-const heuresDepuis = (iso: string, maintenant: number) =>
-  Math.max(0, (maintenant - Date.parse(iso)) / 3_600_000);
+/**
+ * Les heures d'engagement consommées : depuis l'ouverture, moins les attentes
+ * de pièce passées ; une attente en cours ARRÊTE l'horloge à son début.
+ */
+const heuresDepuis = (tk: Pick<TicketData, 'openedAt' | 'attentePiece' | 'pausesH'>, maintenant: number) => {
+  const fin = tk.attentePiece ? Date.parse(tk.attentePiece.depuisLe) : maintenant;
+  return Math.max(0, (fin - Date.parse(tk.openedAt)) / 3_600_000 - (tk.pausesH ?? 0));
+};
 
 /** La part d'engagement consommée, bornée à 1 : le sable ne déborde pas. */
-const partConsommee = (iso: string, maintenant: number) =>
-  Math.min(1, heuresDepuis(iso, maintenant) / ENGAGEMENT_H);
+const partConsommee = (tk: Pick<TicketData, 'openedAt' | 'attentePiece' | 'pausesH'>, maintenant: number) =>
+  Math.min(1, heuresDepuis(tk, maintenant) / ENGAGEMENT_H);
 
 /** « 12 h restantes », « dépassé de 3 j » — jamais un nombre nu. */
-function ditLeReste(iso: string, maintenant: number): string {
-  const reste = ENGAGEMENT_H - heuresDepuis(iso, maintenant);
+function ditLeReste(tk: Pick<TicketData, 'openedAt' | 'attentePiece' | 'pausesH'>, maintenant: number): string {
+  const reste = ENGAGEMENT_H - heuresDepuis(tk, maintenant);
   if (reste >= 1) return `${Math.floor(reste)} h restantes`;
   if (reste > 0) return 'moins d’une heure';
   const depassement = -reste;
@@ -110,8 +124,8 @@ function ditLeReste(iso: string, maintenant: number): string {
   return `dépassé de ${j} jour${j > 1 ? 's' : ''}`;
 }
 
-/** Le sablier lui-même. `part` va de 0 (plein) à 1 (écoulé). */
-function Sablier({ part, signal }: { part: number; signal: boolean }) {
+/** Le sablier lui-même. `part` va de 0 (plein) à 1 (écoulé) ; `fige` : en attente de pièce. */
+function Sablier({ part, signal, fige = false }: { part: number; signal: boolean; fige?: boolean }) {
   return (
     <svg
       viewBox={`0 0 ${SABLIER_L} ${SABLIER_H}`}
@@ -141,6 +155,8 @@ function Sablier({ part, signal }: { part: number; signal: boolean }) {
         strokeWidth="1.5"
         strokeLinejoin="round"
       />
+      {/* FIGÉ : une barre au col — le sable ne passe plus tant que la pièce n'est pas là. */}
+      {fige && <line x1={SABLIER_COL_X - 7} y1={SABLIER_COL_Y} x2={SABLIER_COL_X + 7} y2={SABLIER_COL_Y} stroke="var(--color-text-body)" strokeWidth="2.5" strokeLinecap="round" />}
     </svg>
   );
 }
@@ -221,6 +237,10 @@ export function AfterSalesScreen() {
   const [client, setClient] = useState('');
   const [subject, setSubject] = useState('');
   const [note, setNote] = useState('');
+  /* L'attente d'une pièce : le ticket dont on saisit la pièce, et la saisie. */
+  const [pieceDe, setPieceDe] = useState<string | null>(null);
+  const [piece, setPiece] = useState({ piece: '', fournisseur: '', promiseLe: '' });
+  const fournisseurs = useCollection<{ name: string }>('suppliers');
   const [reason, setReason] = useState('');
 
   /* Les non réglées, de la plus vieille à la plus fraîche : c'est l'ordre de
@@ -255,6 +275,18 @@ export function AfterSalesScreen() {
       takenBy: status === 'enCours' ? user?.email ?? tk.takenBy : tk.takenBy,
       resolvedAt: status === 'resolu' ? new Date().toISOString() : null,
     });
+  const attendre = async (tk: Ticket) => {
+    if (!piece.piece.trim() || !piece.fournisseur.trim() || !piece.promiseLe) return;
+    await upsert('tickets', tk.id, { ...tk, attentePiece: { piece: piece.piece.trim(), fournisseur: piece.fournisseur.trim(), promiseLe: piece.promiseLe, depuisLe: new Date().toISOString() } });
+    setPieceDe(null);
+    setPiece({ piece: '', fournisseur: '', promiseLe: '' });
+  };
+  /* La pièce arrive : l'attente passe dans `pausesH`, et le sable recommence à couler d'où il s'était arrêté. */
+  const recue = async (tk: Ticket) => {
+    if (!tk.attentePiece) return;
+    const attenteH = Math.max(0, (Date.now() - Date.parse(tk.attentePiece.depuisLe)) / 3_600_000);
+    await upsert('tickets', tk.id, { ...tk, attentePiece: null, pausesH: (tk.pausesH ?? 0) + attenteH });
+  };
   const etat = (s: Etat) => t(`sav.etat.${s}` as CleTraduction);
   const ditLeDelai = (n: number) => (n === 0 ? t('sav.resolueLeJourMeme') : n === 1 ? t('sav.resolueEnUn') : t('sav.resolueEn', { n }));
   const nomDe = (email: string) => (email ? profileFor(email).name : '');
@@ -276,8 +308,9 @@ export function AfterSalesScreen() {
   */
   const sablierAmbre = useMemo(() => {
     let pire: { tk: Ticket; part: number } | null = null;
-    for (const tk of enSouffrance) {
-      const part = partConsommee(tk.openedAt, maintenant);
+    /* Un sablier figé attend un fournisseur, pas vous : il ne porte jamais l'ambre. */
+    for (const tk of enSouffrance.filter((x) => !x.attentePiece)) {
+      const part = partConsommee(tk, maintenant);
       if (!pire || part > pire.part) pire = { tk, part };
     }
     return pire && pire.part >= SABLIER_SEUIL_AMBRE ? pire : null;
@@ -319,11 +352,11 @@ export function AfterSalesScreen() {
   const bilanEngagement = useMemo(() => {
     const tenues = reglees.filter((tk) => tk.resolvedAt);
     const heures = tenues.map(
-      (tk) => (Date.parse(tk.resolvedAt as string) - Date.parse(tk.openedAt)) / 3_600_000,
+      (tk) => (Date.parse(tk.resolvedAt as string) - Date.parse(tk.openedAt)) / 3_600_000 - (tk.pausesH ?? 0),
     );
     const depassements =
       heures.filter((h) => h > ENGAGEMENT_H).length +
-      enSouffrance.filter((tk) => heuresDepuis(tk.openedAt, maintenant) > ENGAGEMENT_H).length;
+      enSouffrance.filter((tk) => heuresDepuis(tk, maintenant) > ENGAGEMENT_H).length;
     return {
       compte: tenues.length,
       moyenneH: tenues.length === 0 ? 0 : Math.round(heures.reduce((n, h) => n + h, 0) / tenues.length),
@@ -398,21 +431,23 @@ export function AfterSalesScreen() {
 
               <p className="mt-2 max-w-2xl text-[19px] font-semibold leading-tight text-text-primary sm:text-[23px]">
                 {sablierAmbre
-                  ? `${sablierAmbre.tk.subject} — ${ditLeReste(sablierAmbre.tk.openedAt, maintenant)}.`
+                  ? `${sablierAmbre.tk.subject} — ${ditLeReste(sablierAmbre.tk, maintenant)}.`
                   : 'Aucune demande n’a consommé la moitié de son engagement.'}
               </p>
 
               <ul className="mt-5 flex flex-col gap-px bg-border">
                 {enSouffrance.map((tk) => {
-                  const part = partConsommee(tk.openedAt, maintenant);
+                  const part = partConsommee(tk, maintenant);
                   const signal = sablierAmbre?.tk.id === tk.id;
                   const pris = tk.takenBy !== '';
+                  const attente = tk.attentePiece ?? null;
+                  const promiseJ = attente ? Math.ceil((Date.parse(`${attente.promiseLe}T18:00:00`) - maintenant) / 86_400_000) : 0;
                   return (
+                    <React.Fragment key={tk.id}>
                     <li
-                      key={tk.id}
                       className="group flex flex-wrap items-center gap-x-4 gap-y-2 bg-surface px-3 py-3 sm:flex-nowrap"
                     >
-                      <Sablier part={part} signal={signal} />
+                      <Sablier part={part} signal={signal} fige={Boolean(attente)} />
 
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[14.5px] text-text-primary">
@@ -423,6 +458,12 @@ export function AfterSalesScreen() {
                             .filter(Boolean)
                             .join(' · ')}
                         </span>
+                        {attente && (
+                          <span className="mt-0.5 block truncate font-mono text-[10px] uppercase tracking-wider text-text-body">
+                            en attente de pièce : {attente.piece} · {attente.fournisseur} · promise le{' '}
+                            {new Date(`${attente.promiseLe}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                          </span>
+                        )}
                       </span>
 
                       {/* LE TEMPS RESTANT, à droite de sa ligne. */}
@@ -432,10 +473,33 @@ export function AfterSalesScreen() {
                         }`}
                         data-signal-groupe={signal ? 'sablier' : undefined}
                       >
-                        {ditLeReste(tk.openedAt, maintenant)}
+                        {attente
+                          ? promiseJ >= 0
+                            ? `pièce dans ${promiseJ} j`
+                            : `pièce en retard de ${-promiseJ} j`
+                          : ditLeReste(tk, maintenant)}
                       </span>
 
                       <span className="flex flex-shrink-0 gap-2">
+                        {attente ? (
+                          <button
+                            type="button"
+                            onClick={() => void recue(tk)}
+                            className="flex min-h-11 items-center gap-1.5 border border-border-strong px-2.5 text-[11px] text-text-primary hover:bg-surface-hover md:min-h-0 md:py-1.5"
+                          >
+                            <Check size={12} /> Pièce reçue
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setPieceDe(pieceDe === tk.id ? null : tk.id)}
+                            aria-label="Attend une pièce"
+                            title="Attend une pièce : figer le sablier"
+                            className="flex min-h-11 items-center border border-border px-2.5 text-text-secondary hover:text-text-primary md:min-h-0 md:py-1.5"
+                          >
+                            <Package size={12} />
+                          </button>
+                        )}
                         {tk.status === 'ouvert' && (
                           <button
                             type="button"
@@ -463,6 +527,28 @@ export function AfterSalesScreen() {
                         </button>
                       </span>
                     </li>
+                    {pieceDe === tk.id && !attente && (
+                      <li className="bg-surface px-3 pb-3">
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            void attendre(tk);
+                          }}
+                          className="grid gap-2 sm:grid-cols-[1fr_1fr_auto_auto]"
+                        >
+                          <input value={piece.piece} onChange={(e) => setPiece({ ...piece, piece: e.target.value })} placeholder="La pièce attendue" aria-label="La pièce attendue" autoFocus className="input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none md:min-h-9" />
+                          <input value={piece.fournisseur} onChange={(e) => setPiece({ ...piece, fournisseur: e.target.value })} list={`fournisseurs-${tk.id}`} placeholder="Le fournisseur" aria-label="Le fournisseur" className="input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none md:min-h-9" />
+                          <datalist id={`fournisseurs-${tk.id}`}>
+                            {fournisseurs.map((f) => <option key={f.id} value={f.name} />)}
+                          </datalist>
+                          <input type="date" value={piece.promiseLe} onChange={(e) => setPiece({ ...piece, promiseLe: e.target.value })} aria-label="Date promise" className="input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none md:min-h-9" />
+                          <button type="submit" disabled={!piece.piece.trim() || !piece.fournisseur.trim() || !piece.promiseLe} className="min-h-11 bg-accent px-3 text-[12px] font-semibold text-bg disabled:opacity-40 md:min-h-9">
+                            Figer le sablier
+                          </button>
+                        </form>
+                      </li>
+                    )}
+                    </React.Fragment>
                   );
                 })}
               </ul>
