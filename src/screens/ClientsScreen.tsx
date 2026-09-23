@@ -1011,7 +1011,73 @@ function Repertoire({
         <span className="h-px flex-1 bg-border-section" aria-hidden />
         <p className="eyebrow flex-shrink-0">{tr('hist.clients.trieParSante')}</p>
       </div>
-      <div className="overflow-x-auto">
+      {/*
+        SUR UN TÉLÉPHONE, LE RÉPERTOIRE N'EST PAS UN TABLEAU.
+
+        Le tableau fait 620 px au minimum, dans un `overflow-x-auto`. Sur un
+        écran de 360 px, ça veut dire qu'on voit la colonne « Client » et qu'il
+        faut BALAYER LATÉRALEMENT pour lire le montant d'une ligne — mesuré par
+        `check:mobile` : 276 px de dépassement, sur soixante-six éléments.
+        Cinq colonnes ne tiennent pas dans 360 px, et aucun réglage ne les y
+        fera tenir ; un tableau qui se balaie n'est pas un tableau, c'est une
+        liste qu'on lit une cellule à la fois.
+
+        On rend donc les MÊMES données autrement : une fiche par cliente, ce
+        que le nom et le montant méritent en premier, la santé et le statut en
+        dessous. Rien n'est retiré — le dernier échange et les deux mots d'état
+        sont là, rangés autrement.
+
+        Chaque fiche est un `<button>`, pas une ligne cliquable : la ligne de
+        tableau ci-dessous réagissait au clic sans exister pour le clavier ni
+        pour un lecteur d'écran (`check:clavier`, ClientsScreen.tsx). Un bouton
+        fait les trois tout seul.
+      */}
+      <div className="flex flex-col gap-2 md:hidden">
+        {lignes.map(({ client, sante, factureCents, dernierEchange }) => {
+          const meta = CLIENT_HEALTH_META[sante];
+          const statut = metaOf(STATUS_META, client.status, STATUS_META.prospect);
+          const jours = Math.floor((maintenant - new Date(dernierEchange).getTime()) / 86_400_000);
+          return (
+            <button
+              key={client.id}
+              type="button"
+              onClick={() => onOuvrir(client.id)}
+              aria-label={`Ouvrir la fiche de ${client.name}`}
+              className="flex w-full flex-col gap-2 border border-border bg-surface p-3 text-left"
+            >
+              <span className="flex items-start gap-3">
+                <Avatar client={client} size={32} />
+                {/* Le nom peut prendre DEUX lignes : « Boulangerie Estève » ne
+                    se laisse pas couper à six caractères pour tenir sur une. */}
+                <span className="min-w-0 flex-1 text-[15px] font-medium leading-snug text-text-primary">
+                  {client.name}
+                </span>
+                <span className="tnum flex-none font-mono text-[14px] font-semibold text-text-primary">
+                  {formatCents(factureCents)}
+                </span>
+              </span>
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="flex items-center gap-2">
+                  <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${meta.dot}`} />
+                  <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] text-text-secondary">
+                    {meta.label}
+                  </span>
+                </span>
+                <span className="tnum font-mono text-[11px] tracking-[0.1em] text-text-muted">
+                  {tr('hist.clients.ilYaNJours', { n: Math.max(0, jours) })}
+                </span>
+                <span className="ml-auto font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] text-text-secondary">
+                  {statut.label}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Le tableau reste, à partir de `md` : cinq colonnes y tiennent, et
+          c'est la lecture la plus rapide quand la place existe. */}
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[620px] border-collapse">
           <thead>
             <tr className="border-b border-border">
@@ -1030,8 +1096,16 @@ function Repertoire({
               return (
                 <tr
                   key={client.id}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`Ouvrir la fiche de ${client.name}`}
                   onClick={() => onOuvrir(client.id)}
-                  className="cursor-pointer border-b border-[#161616] transition-colors hover:bg-surface-hover"
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                    e.preventDefault();
+                    onOuvrir(client.id);
+                  }}
+                  className="cursor-pointer border-b border-[#161616] transition-colors hover:bg-surface-hover focus-visible:bg-surface-hover"
                 >
                   <td className="py-3.5">
                     <span className="flex items-center gap-3">

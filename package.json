@@ -80,6 +80,7 @@
     "check:signal": "node scripts/check-signal.mjs",
     "check:coquille": "node scripts/check-coquille.mjs",
     "check:appels": "node scripts/check-appels.mjs",
+    "check:mobile": "node scripts/check-mobile.mjs",
     "captures:design": "node scripts/captures-design.mjs"
   },
   "keywords": [],
