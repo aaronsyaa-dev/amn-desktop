@@ -9,7 +9,12 @@ import { useReprise } from '../lib/reprise';
  * connection so the operator always knows whether their changes are being
  * shared in real time or held locally until reconnection.
  */
-export function SyncStatusIndicator() {
+/**
+ * `libelleDes` : la largeur à partir de laquelle le libellé s'écrit. `sm` par
+ * défaut ; la barre de l'édition interne, qui porte deux insignes de plus et
+ * le sélecteur d'organisation, ne l'écrit qu'à partir de `lg`.
+ */
+export function SyncStatusIndicator({ libelleDes = 'sm' }: { libelleDes?: 'sm' | 'lg' } = {}) {
   const { connectionStatus } = useSync();
   const { t } = useLangue();
   const repriseBrute = useReprise();
@@ -61,7 +66,7 @@ export function SyncStatusIndicator() {
       <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${affiche.dot} ${affiche.pulse ? 'animate-pulse' : ''}`} />
       {/* Label hidden on the narrowest screens — the coloured dot alone carries
           the status there (full text returns at sm+). */}
-      <span className="hidden sm:inline">{affiche.label}</span>
+      <span className={libelleDes === 'lg' ? 'hidden lg:inline' : 'hidden sm:inline'}>{affiche.label}</span>
     </span>
   );
 }

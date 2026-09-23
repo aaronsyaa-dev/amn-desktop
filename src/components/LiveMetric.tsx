@@ -169,6 +169,8 @@ export function LiveMetric({
 
       {/*
         LA MÉMOIRE OUVERTE — le survol déploie les sept jours sur place.
+        Absente sous `sm` : un téléphone ne survole pas, et la bulle cachée
+        débordait de l’écran.
 
         En absolu sous le bloc : la mise en page ne bouge pas d'un pixel.
         `aria-hidden` : c'est un enrichissement visuel d'une donnée déjà
@@ -178,7 +180,7 @@ export function LiveMetric({
       {serie && trace.length > 1 && (
         <span
           aria-hidden
-          className="pointer-events-none absolute left-0 top-full z-20 mt-2 flex origin-top-left gap-2 border border-border bg-raised px-2.5 py-2 elev-2 transition-[opacity,transform] duration-200"
+          className="pointer-events-none absolute left-0 top-full z-20 mt-2 hidden origin-top-left gap-2 sm:flex border border-border bg-raised px-2.5 py-2 elev-2 transition-[opacity,transform] duration-200"
           style={{
             opacity: survole ? 1 : 0,
             transform: survole ? 'translateY(0) scale(1)' : 'translateY(-3px) scale(0.98)',

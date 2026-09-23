@@ -140,7 +140,7 @@ export function NotesDeFraisScreen() {
           </p>
         ) : (
           <>
-            <div className="grid items-start gap-8 md:grid-cols-[290px_minmax(0,1fr)] md:gap-12">
+            <div className="grid items-start gap-8 lg:grid-cols-[290px_minmax(0,1fr)] lg:gap-12">
               <Ticket lignes={note.ticket} ambre={ambre?.zone ?? null} />
               <div className="min-w-0">
                 {champs.map((c) => {

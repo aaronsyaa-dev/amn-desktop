@@ -1,3 +1,4 @@
+import { useEtroit } from '../lib/useEtroit';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -374,7 +375,7 @@ export function TasksScreen() {
                             aria-hidden
                           />
                           <span
-                            className={`min-w-0 truncate text-[13.5px] ${i < 2 ? 'text-text-primary' : 'text-text-muted'}`}
+                            className={`min-w-0 text-[13.5px] [overflow-wrap:anywhere] lg:truncate ${i < 2 ? 'text-text-primary' : 'text-text-muted'}`}
                           >
                             {t.title}
                           </span>
@@ -704,6 +705,53 @@ function ArbreDesBlocages({
 }) {
   const { racine, bloquees, suivantes, hauteur } = arbre;
   const centre = (haut: number) => haut + ARBRE_H_NOEUD / 2;
+  const etroit = useEtroit(1024);
+  /*
+    AU TÉLÉPHONE (et sur tablette, rail ouvert), L'ARBRE SE LIT DE HAUT EN BAS. Trois colonnes de 90 px ne
+    laissent à chaque nœud que trois lettres de son titre — un arbre dont on
+    ne lit aucun nom. La même chaîne, empilée : la racine (seule en ambre),
+    puis ce qu'elle bloque, chaque tâche suivie de ce qui l'attend, en retrait.
+  */
+  if (etroit) {
+    const noeud = (id: string, titre: string, mention: string, retrait: boolean) => (
+      <button
+        key={id}
+        type="button"
+        onClick={() => onOuvrir(id)}
+        className={`min-h-11 border border-[#2b2b2b] bg-[#171717] px-[11px] py-[9px] text-left ${retrait ? 'ml-6' : 'ml-3'}`}
+      >
+        <span className="block text-[13px] font-semibold text-text-primary [overflow-wrap:anywhere]">{titre}</span>
+        <span className="mt-1 block font-mono text-[9.5px] tracking-[0.1em] text-text-muted">{mention}</span>
+      </button>
+    );
+    return (
+      <section className="panel-raised panel-raised-wide px-4 pb-5 pt-6">
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <span className="eyebrow text-text-secondary">Ce qui attend quoi</span>
+          <span className="font-mono text-[10px] tracking-[0.1em] text-text-muted">
+            {arbre.total} TÂCHE{arbre.total > 1 ? 'S' : ''} BLOQUÉE{arbre.total > 1 ? 'S' : ''} · 1 RACINE
+          </span>
+        </div>
+        <div className="flex flex-col gap-2 border-l border-[#4a4a48]">
+          <button
+            type="button"
+            onClick={() => onOuvrir(racine.id)}
+            data-signal-groupe="racine-blocage"
+            className="min-h-11 border border-signal bg-signal px-[11px] py-[9px] text-left shadow-[0_0_30px_-6px_var(--color-signal-glow)]"
+          >
+            <span className="block text-[13px] font-semibold text-signal-ink [overflow-wrap:anywhere]">{racine.titre}</span>
+            <span className="mt-1 block font-mono text-[9.5px] tracking-[0.1em] text-[#3a2a0e]">{racine.mention}</span>
+          </button>
+          {bloquees.map((b) => (
+            <React.Fragment key={b.id}>
+              {noeud(b.id, b.titre, b.mention, false)}
+              {suivantes.filter((x) => x.parent === b.id).map((x) => noeud(x.id, x.titre, x.mention, true))}
+            </React.Fragment>
+          ))}
+        </div>
+      </section>
+    );
+  }
   return (
     <section className="panel-raised panel-raised-wide px-[30px] pb-[26px] pt-[30px]">
       <div className="mb-[22px] flex items-baseline justify-between">

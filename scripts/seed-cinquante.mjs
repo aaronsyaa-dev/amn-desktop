@@ -1311,14 +1311,14 @@ async function accueils() {
     await poser('appointments', `c50-acc-h${k}-a`, { title: 'Arrosage hebdomadaire', startAt: a(j, 9, 0), durationMin: 45, clientId: 103, clientName: 'Nadia Bouvier', location: '', notes: '', reminderMin: 30, status: 'scheduled', source: 'manual', createdAt: le(j + 2) });
     await poser('appointments', `c50-acc-h${k}-b`, { title: 'Livraison', startAt: a(j, 11, 0), durationMin: 60, clientId: 101, clientName: 'Camille Renaud', location: '', notes: '', reminderMin: 30, status: 'scheduled', source: 'manual', createdAt: le(j + 2) });
     for (const [h, n] of [[9, 1], [10, 2], [11, 3], [14, 4]])
-      await poser('switchboardCalls', `c50-acc-h${k}-appel-${n}`, { kind: 'appel', appelant: 'Client', objet: 'demande de rendez-vous', debutLe: a(j, h, 5) });
+      await poser('switchboardCalls', `c50-acc-h${k}-appel-${n}`, { kind: 'appel', appelant: 'Client', objet: 'demande de rendez-vous', debutLe: a(j, h, 5), dureeS: 90, issue: 'rendez-vous pris', tours: [], engagements: [] });
   }
   const jourMeme = new Date(MAINTENANT);
   for (let n = 0; n < 9; n++) {
     const d = new Date(jourMeme);
     d.setHours(8 + Math.floor(n / 2), (n % 2) * 30 + 5, 0, 0);
     if (d.getTime() > MAINTENANT.getTime()) d.setTime(MAINTENANT.getTime() - (n + 1) * 60_000);
-    await poser('switchboardCalls', `c50-acc-auj-appel-${n}`, { kind: 'appel', appelant: 'Client', objet: 'demande de devis', debutLe: d.toISOString() });
+    await poser('switchboardCalls', `c50-acc-auj-appel-${n}`, { kind: 'appel', appelant: 'Client', objet: 'demande de devis', debutLe: d.toISOString(), dureeS: 120, issue: 'devis à envoyer', tours: [], engagements: [] });
   }
 }
 

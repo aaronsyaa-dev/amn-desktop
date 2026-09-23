@@ -303,7 +303,8 @@ export function InvoicesScreen() {
         <MassesDeLAnnee summary={summary} invoices={invoices} today={today} onOuvrir={setSelectedId} />
       )}
 
-      <div className="flex flex-shrink-0 gap-1.5 overflow-x-auto pb-0.5">
+      {/* Au téléphone, les filtres passent à la ligne : un onglet caché hors du bord ne se découvre pas. */}
+      <div className="flex flex-shrink-0 flex-wrap gap-1.5 pb-0.5 md:flex-nowrap md:overflow-x-auto">
         {FILTERS.map((f) => (
           <button
             key={f.value}

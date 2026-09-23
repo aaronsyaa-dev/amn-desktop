@@ -72,11 +72,12 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
       */}
       <OrgSwitchButton className="hidden md:flex" />
 
-      {/* Desktop: full search field with Ctrl/⌘ K hint. */}
+      {/* Bureau large : le champ de recherche entier et son raccourci. Entre `md` et `lg`,
+          la barre (rail ouvert) n'a pas la place : la loupe suffit, le raccourci reste. */}
       <button
         type="button"
         onClick={open}
-        className="input-focus group hidden flex-1 items-center gap-2.5 border border-border bg-surface px-3 py-2 text-sm text-text-muted transition-colors duration-200 hover:border-border-strong md:flex md:max-w-xs"
+        className="input-focus group hidden flex-1 items-center gap-2.5 border border-border bg-surface px-3 py-2 text-sm text-text-muted transition-colors duration-200 hover:border-border-strong lg:flex lg:max-w-xs"
       >
         <Search size={15} strokeWidth={1.9} />
         <span className="flex-1 text-left">{t('chrome.rechercher')}</span>
@@ -90,13 +91,13 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
         type="button"
         onClick={open}
         aria-label={t('chrome.rechercher')}
-        className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary transition-colors hover:text-text-primary md:hidden"
+        className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary transition-colors hover:text-text-primary md:h-9 md:w-9 lg:hidden"
       >
         <Search size={17} strokeWidth={1.9} />
       </button>
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-        <SyncStatusIndicator />
+        <SyncStatusIndicator libelleDes="lg" />
         {/* L'insigne de la Garde (Bloc 9) : le pouls, qui est en ronde, chez qui — un clic vers la Salle. */}
         <GardeBadge />
         <button
@@ -105,9 +106,9 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
           className="flex h-11 items-center gap-2 border border-border-strong bg-surface px-3 text-sm font-medium text-text-primary transition-colors duration-200 hover:bg-surface-hover md:h-9"
         >
           <Sparkles size={16} strokeWidth={1.9} />
-          <span className="hidden sm:inline">Ajmani</span>
+          <span className="hidden lg:inline">Ajmani</span>
         </button>
-        <span className="hidden sm:flex">
+        <span className="hidden lg:flex">
           <HelpButton />
         </span>
         <NotificationCenter />
@@ -119,7 +120,7 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
             aria-label={t('chrome.monProfil')}
             // L'avatar reste à 32 px (c'est une image, pas une icône), mais sa
             // zone cliquable est portée à 44 px sur mobile par le padding.
-            className="ml-1 flex h-11 w-11 items-center justify-center rounded-full transition-opacity hover:opacity-80 md:h-8 md:w-8"
+            className="flex h-11 w-11 sm:ml-1 items-center justify-center rounded-full transition-opacity hover:opacity-80 md:h-8 md:w-8"
           >
             <UserAvatar email={user.email} size={32} ring />
           </button>
@@ -140,12 +141,25 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
 function MobileActiveOrg() {
   const { org } = useAuth();
   const name = org?.name ?? 'AMN DevSec';
+  /*
+    Sous 430 px, la barre porte déjà six commandes de 44 px : le nom entier
+    n'y garde que deux lettres visibles, ce qui ne nomme rien. On montre alors
+    les initiales de l'organisation — de quoi voir qu'on a changé de contexte
+    —, le nom complet restant dans l'infobulle et dans le sélecteur.
+  */
+  const initiales = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((m) => m[0])
+    .join('')
+    .toUpperCase();
   return (
-    <span
-      className="min-w-0 flex-1 truncate font-mono text-[11px] uppercase tracking-[0.15em] text-text-secondary md:hidden"
-      title={name}
-    >
-      {name}
+    <span className="flex min-w-0 flex-1 md:hidden" title={name}>
+      <span className="hidden min-w-0 truncate font-mono text-[11px] uppercase tracking-[0.15em] text-text-secondary min-[430px]:block">{name}</span>
+      <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary min-[430px]:hidden" aria-label={name}>
+        {initiales}
+      </span>
     </span>
   );
 }

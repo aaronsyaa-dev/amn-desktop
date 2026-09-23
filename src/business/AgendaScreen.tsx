@@ -239,7 +239,7 @@ export function AgendaScreen() {
             d'un vrai écart, et « précédent » et « suivant » se ressemblent
             assez pour qu'on se trompe de sens sans le voir.
           */}
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 max-w-full items-center gap-2">
             <button
               type="button"
               onClick={() => step(-1)}
@@ -263,7 +263,7 @@ export function AgendaScreen() {
             >
               <ChevronRight size={16} strokeWidth={2} />
             </button>
-            <span className="ml-1 truncate text-sm font-medium text-text-primary">
+            <span className="ml-1 min-w-0 truncate text-sm font-medium text-text-primary">
               {periodLabel}
             </span>
           </div>

@@ -186,7 +186,15 @@ export function StandardScreen() {
   const [maintenant] = useState(() => new Date());
 
   const appels = useMemo(
-    () => tout.filter((e): e is Id<AppelStandard> & { updatedAt: string } => e.kind === 'appel'),
+    /*
+      Un appel se lit TEL QU'IL EST ÉCRIT, et un enregistrement partiel (une
+      version antérieure, un autre poste, une saisie interrompue) ne doit pas
+      faire tomber l'écran : les listes absentes valent des listes vides.
+    */
+    () =>
+      tout
+        .filter((e): e is Id<AppelStandard> & { updatedAt: string } => e.kind === 'appel' && typeof (e as AppelStandard).debutLe === 'string')
+        .map((a) => ({ ...a, dureeS: a.dureeS ?? 0, issue: a.issue ?? '', appelant: a.appelant ?? '', tours: a.tours ?? [], engagements: a.engagements ?? [] })),
     [tout],
   );
   const duJour = appels.filter((a) => jourLocal(a.debutLe) === jourLocal(maintenant)).sort((a, b) => a.debutLe.localeCompare(b.debutLe));

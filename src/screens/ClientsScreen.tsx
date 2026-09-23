@@ -1,3 +1,4 @@
+import { useEtroit } from '../lib/useEtroit';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { serieStock } from '../lib/serieVitale';
@@ -560,6 +561,7 @@ function NuageDesRelations({
   critique: PointDuNuage | null;
 }) {
   const halo = useHaloSignal(!!critique);
+  const etroit = useEtroit();
 
   return (
     <div className="panel-raised panel-raised-wide panel-ticks px-6 py-6">
@@ -618,9 +620,12 @@ function NuageDesRelations({
 
               Passé les deux tiers de l'axe, l'étiquette bascule à gauche du
               disque — sinon elle sort de la boîte, et un nom qu'on ne lit pas
-              ne sert à rien.
+              ne sert à rien. Au téléphone, la boîte est trois fois plus
+              étroite : l'étiquette se réduit au nom (le chiffre et le silence
+              restent dans l'infobulle et dans la liste) et bascule dès la
+              moitié de l'axe.
             */
-            const aGauche = p.x > 66;
+            const aGauche = p.x > (etroit ? 50 : 66);
             return (
               <React.Fragment key={p.client.id}>
                 <span
@@ -655,8 +660,12 @@ function NuageDesRelations({
                     data-signal-groupe={signal ? 'silence' : undefined}
                   >
                     {p.plafonne && '↑ '}
-                    {p.client.company || p.client.name} · {formatCentsCompact(p.caCents)} ·{' '}
-                    {p.jours} j
+                    {p.client.company || p.client.name}
+                    {!etroit && (
+                      <>
+                        {' '}· {formatCentsCompact(p.caCents)} · {p.jours} j
+                      </>
+                    )}
                   </span>
                 )}
               </React.Fragment>

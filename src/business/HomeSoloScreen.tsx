@@ -627,23 +627,24 @@ function LigneATraiter({ item, plusLourd }: { item: AttentionItem; plusLourd: nu
   const rupture = item.key.startsWith('stock-');
   const part = Math.max(0.08, Math.min(1, item.weight / plusLourd));
   return (
-    <Link to={item.to} className="grid grid-cols-[1fr_132px_96px] items-center gap-4 transition-opacity hover:opacity-80">
+    <Link to={item.to} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 transition-opacity hover:opacity-80 sm:grid-cols-[1fr_132px_96px]">
       <span className="min-w-0">
-        <span className="block truncate text-[14px] font-semibold text-text-primary">{item.title}</span>
-        <span className="mt-[3px] block truncate text-[12.5px] text-text-secondary">
+        {/* Au téléphone, le nom va à la ligne plutôt que de se réduire à trois lettres. */}
+        <span className="block text-[14px] font-semibold text-text-primary [overflow-wrap:anywhere] sm:truncate">{item.title}</span>
+        <span className="mt-[3px] block text-[12.5px] text-text-secondary [overflow-wrap:anywhere] sm:truncate">
           {item.amountCents !== undefined
             ? `${item.evidence} · ${(item.amountCents / 100).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`
             : item.evidence}
         </span>
       </span>
-      <span className={`h-1.5 ${rupture ? 'bg-[#2a0f0c]' : 'bg-[#191919]'}`}>
+      <span className={`order-last col-span-2 h-1.5 sm:order-none sm:col-span-1 ${rupture ? 'bg-[#2a0f0c]' : 'bg-[#191919]'}`}>
         <span
           className={`block h-1.5 ${rupture ? 'bg-danger' : item.severity === 'critical' ? 'bg-text-primary' : 'bg-[#4a4a48]'}`}
           style={{ width: `${part * 100}%` }}
         />
       </span>
       <span
-        className={`tnum truncate text-right font-mono text-[13px] font-semibold ${
+        className={`tnum whitespace-nowrap text-right font-mono text-[13px] font-semibold sm:truncate ${
           rupture ? 'text-danger-ink' : item.severity === 'critical' ? 'text-text-primary' : 'text-text-secondary'
         }`}
       >
