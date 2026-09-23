@@ -10,6 +10,7 @@ import { Compteur } from '../accueils/interne/Compteur';
 import { AjmaniDabord } from '../accueils/interne/AjmaniDabord';
 import { Meteo } from '../accueils/interne/Meteo';
 import { Horizon } from '../accueils/interne/Horizon';
+import { DeuxPostes } from '../accueils/interne/DeuxPostes';
 import { colonnesCarte } from '../accueils/interne/parc';
 
 /**
@@ -79,6 +80,13 @@ export const ACCUEILS: AccueilDef[] = [
     phrase: 'Trente jours d’échéances empilées : certificats, jetons, renouvellements.',
     vignette: [[6, 40, 4, 4, 'clair'], [14, 32, 4, 12, 'ambre'], [26, 40, 4, 4, 'moyen'], [38, 36, 4, 8, 'clair'], [54, 40, 4, 4, 'sombre'], [70, 36, 4, 8, 'clair'], [86, 40, 4, 4, 'moyen'], [6, 46, 88, 1, 'moyen']],
     composant: Horizon,
+  },
+  {
+    code: '42i',
+    nom: 'Les deux postes',
+    phrase: 'Qui s’occupe de quoi, et ce que personne n’a pris.',
+    vignette: [[6, 8, 30, 6, 'clair'], [6, 18, 30, 6, 'sombre'], [6, 27, 30, 6, 'sombre'], [40, 8, 20, 46, 'sombre'], [42, 16, 16, 12, 'ambre'], [64, 8, 30, 6, 'clair'], [64, 18, 30, 6, 'sombre']],
+    composant: DeuxPostes,
   },
 ];
 
