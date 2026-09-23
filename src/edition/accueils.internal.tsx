@@ -11,6 +11,7 @@ import { AjmaniDabord } from '../accueils/interne/AjmaniDabord';
 import { Meteo } from '../accueils/interne/Meteo';
 import { Horizon } from '../accueils/interne/Horizon';
 import { DeuxPostes } from '../accueils/interne/DeuxPostes';
+import { Silence } from '../accueils/interne/Silence';
 import { colonnesCarte } from '../accueils/interne/parc';
 
 /**
@@ -87,6 +88,13 @@ export const ACCUEILS: AccueilDef[] = [
     phrase: 'Qui s’occupe de quoi, et ce que personne n’a pris.',
     vignette: [[6, 8, 30, 6, 'clair'], [6, 18, 30, 6, 'sombre'], [6, 27, 30, 6, 'sombre'], [40, 8, 20, 46, 'sombre'], [42, 16, 16, 12, 'ambre'], [64, 8, 30, 6, 'clair'], [64, 18, 30, 6, 'sombre']],
     composant: DeuxPostes,
+  },
+  {
+    code: '42j',
+    nom: 'Le silence',
+    phrase: 'La Garde veille : combien de dossiers attendent un humain, et rien d’autre.',
+    vignette: [[6, 6, 88, 48, 'sombre'], [20, 20, 12, 8, 'ambre'], [34, 20, 44, 8, 'clair'], [30, 32, 40, 3, 'moyen'], [22, 44, 56, 2, 'moyen']],
+    composant: Silence,
   },
 ];
 
