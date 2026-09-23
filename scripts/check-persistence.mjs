@@ -262,6 +262,7 @@ const MODULE_DATA = {
   gdpr: ['gdprRegister'],
   csr: ['carbonSources'],
   kyc: ['kycChecks'],
+  dashboard: ['dashboardDials'],
 };
 
 /**
@@ -392,6 +393,7 @@ const MODULE_FILES = {
   gdpr: ['src/screens/RgpdScreen.tsx'],
   csr: ['src/screens/ImpactRseScreen.tsx'],
   kyc: ['src/screens/VerificationIdentiteScreen.tsx'],
+  dashboard: ['src/screens/TableauDeBordScreen.tsx'],
 };
 
 /**

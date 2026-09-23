@@ -195,4 +195,8 @@ export const EN_50 = {
   'm50.kyc.descriptionOuverte': '{n} independent checks, like the pins of a lock: all line up on the same line, and the lock opens.',
   'm50.kyc.descriptionVide': 'No identity check yet.',
   'm50.kyc.phraseVide': 'No identity check yet.',
+  'm50.dashboard.titre': 'Dashboard',
+  'm50.dashboard.description': 'A dashboard you compose yourself, but with one rule: a single instrument in the centre, the others as small dials. You choose what dominates, never everything at once.',
+  'm50.dashboard.descriptionVide': 'No module has anything to feed a dial yet.',
+  'm50.dashboard.phraseVide': 'No module has anything to feed a dial yet.',
 } as const;

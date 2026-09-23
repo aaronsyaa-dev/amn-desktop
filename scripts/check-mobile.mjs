@@ -125,6 +125,7 @@ const ECRANS = [
   ['RGPD', '#/rgpd'],
   ['Impact RSE', '#/impact-rse'],
   ['Vérification d’identité', '#/verification-identite'],
+  ['Tableau de bord', '#/tableau-de-bord'],
 ];
 
 const AMBRE = ['rgb(208, 154, 74)', '#d09a4a'];

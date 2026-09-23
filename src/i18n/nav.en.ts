@@ -162,6 +162,7 @@ export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
   gdpr: { label: 'GDPR', hint: 'Everything the product keeps about one person' },
   csr: { label: 'CSR impact', hint: 'The year’s footprint, in 100 kg cubes' },
   kyc: { label: 'Identity check', hint: 'A file’s checks, and the one that blocks' },
+  dashboard: { label: 'Dashboard', hint: 'One dial in the centre, chosen by you' },
 };
 
 /**

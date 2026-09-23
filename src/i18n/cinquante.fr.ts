@@ -190,4 +190,8 @@ export const FR_50: Record<keyof typeof EN_50, string> = {
   'm50.kyc.descriptionOuverte': '{n} contrôles indépendants, comme les goupilles d’une serrure : toutes s’alignent sur la même ligne, et la serrure s’ouvre.',
   'm50.kyc.descriptionVide': 'Aucune vérification d’identité pour l’instant.',
   'm50.kyc.phraseVide': 'Aucune vérification d’identité pour l’instant.',
+  'm50.dashboard.titre': 'Tableau de bord',
+  'm50.dashboard.description': 'Un tableau de bord qu’on compose soi-même, mais qui impose sa règle : un seul instrument au centre, les autres en petits cadrans. On choisit ce qui domine, jamais tout à la fois.',
+  'm50.dashboard.descriptionVide': 'Aucun module n’a encore de quoi alimenter un cadran.',
+  'm50.dashboard.phraseVide': 'Aucun module n’a encore de quoi alimenter un cadran.',
 };

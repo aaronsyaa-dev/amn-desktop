@@ -45,6 +45,7 @@ import {
   KeyRound,
   Landmark,
   LayoutDashboard,
+  LayoutPanelTop,
   LayoutTemplate,
   Leaf,
   LifeBuoy,
@@ -170,6 +171,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'newsletter', label: 'Lettre d’information', to: '/lettre', icon: Send, hint: 'Un mot à tous vos clients, depuis votre messagerie' },
       { key: 'esign', label: 'Signature sur place', to: '/signature', icon: PenTool, hint: 'Faire signer un devis ou un bon sur l’écran' },
       { key: 'portfolio', label: 'Portfolio', to: '/portfolio', icon: Images, hint: 'Vos réalisations, montrées sur la mini-page' },
+      { key: 'dashboard', label: 'Tableau de bord', to: '/tableau-de-bord', icon: LayoutPanelTop, hint: 'Un cadran au centre, choisi par vous' },
     ],
   },
   {
@@ -430,6 +432,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/settings', 'reglages'],
   ['/membres', 'reglages'],
   ['/assistance', 'fil'],
+  ['/tableau-de-bord', 'tableau'],
   ['/verification-identite', 'registre'],
   ['/impact-rse', 'registre'],
   ['/rgpd', 'registre'],

@@ -117,6 +117,7 @@ import { SignatureDistanceScreen } from '../screens/SignatureDistanceScreen';
 import { RgpdScreen } from '../screens/RgpdScreen';
 import { ImpactRseScreen } from '../screens/ImpactRseScreen';
 import { VerificationIdentiteScreen } from '../screens/VerificationIdentiteScreen';
+import { TableauDeBordScreen } from '../screens/TableauDeBordScreen';
 
 /**
  * La racine de l'édition Business — la table de routes livrée aux
@@ -968,6 +969,14 @@ export function AppRoot() {
           element={
             <ModuleRoute module="kyc">
               <VerificationIdentiteScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/tableau-de-bord"
+          element={
+            <ModuleRoute module="dashboard">
+              <TableauDeBordScreen />
             </ModuleRoute>
           }
         />

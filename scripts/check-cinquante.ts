@@ -682,5 +682,30 @@ const iso = (joursAvant: number, h = 10) => {
   });
 }
 
+/* ══════════════════════════════════════════════════════════════ AJOUTS ══ */
+{
+  const A = await charger<typeof import('../src/lib/cinquante/ajouts')>('src/lib/cinquante/ajouts.ts');
+  console.log('Ajouts');
+
+  // ── 39a Tableau de bord ─────────────────────────────────────────────────
+  regle('39a · le cadran part à 135° et balaie 270° : 70,25 % tombe au point du cahier', () =>
+    assert.deepEqual(A.pointCadran(11_240 / 16_000, 120), { x: 97.9, y: -69.4 }));
+  regle('39a · l’aiguille du petit cadran (r 34) : 9 / 14 → (21,2 ; −26,6)', () => assert.deepEqual(A.pointCadran(9 / 14, 34), { x: 21.2, y: -26.6 }));
+  regle('39a · l’arc complet est celui du fond : M−84,9 84,9 → 84,9 84,9', () => assert.equal(A.arcCadran(1, 120), 'M-84.9 84.9 A120 120 0 1 1 84.9 84.9'));
+  regle('39a · à zéro, il n’y a pas d’arc', () => assert.equal(A.arcCadran(0, 40), null));
+  const pu = { kind: 'pupitre' as const, utilisateur: 'x', centre: 'a', bandeau: ['b', 'c', 'd', 'e', 'f', 'g'], modifieLe: '', centres: [] };
+  regle('39a · un seul centre : le nouveau prend la place, l’ancien rejoint le bandeau à la sienne', () => {
+    const p = A.mettreAuCentre(pu, 'c', MAINTENANT);
+    assert.equal(p.centre, 'c');
+    assert.deepEqual(p.bandeau, ['b', 'a', 'd', 'e', 'f', 'g']);
+  });
+  regle('39a · le bandeau ne dépasse jamais six cadrans', () => {
+    assert.equal(A.ajouterAuBandeau(pu, 'h', MAINTENANT), null);
+    assert.equal(A.mettreAuCentre(pu, 'h', MAINTENANT).bandeau.length, 6);
+  });
+  regle('39a · le plus souvent au centre', () =>
+    assert.equal(A.lePlusSouventAuCentre({ centre: 'z', centres: [{ cle: 'a', le: iso(9) }, { cle: 'b', le: iso(5) }, { cle: 'a', le: iso(1) }] }), 'a'));
+}
+
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);
 if (echecs > 0) process.exit(1);

@@ -44,7 +44,7 @@ if (!login.ok) {
   console.error(`Connexion refusée : ${login.status} ${await login.text()}`);
   process.exit(1);
 }
-const { token } = await login.json();
+const { token, user: compte } = await login.json();
 
 const MAINTENANT = new Date();
 const JOUR = 86_400_000;
@@ -886,7 +886,22 @@ async function juridique() {
   }
 }
 
-const FAMILLES = { guichet, marketing, finance, rh, juridique };
+/* ═══════════════════════════════════════════════════════════ LES AJOUTS ══ */
+
+async function ajouts() {
+  // ── 39a Tableau de bord — le pupitre de CE compte ─────────────────────────
+  // Les cadrans lisent les modules d'origine : on ne pose ici que la
+  // composition du pupitre et ses objectifs, jamais une valeur.
+  const moi = (compte?.email ?? EMAIL).trim().toLowerCase();
+  await poser('dashboardDials', `pupitre-${moi.replace(/[^a-z0-9]+/g, '-')}`, {
+    kind: 'pupitre', utilisateur: moi, centre: 'encaisse',
+    bandeau: ['devis', 'heures', 'paniers', 'nps', 'stock'], modifieLe: le(3),
+    centres: [{ cle: 'encaisse', le: le(40) }, { cle: 'nps', le: le(20) }, { cle: 'encaisse', le: le(3) }],
+    objectifs: { encaisse: eur(16_000), heures: 21 },
+  });
+}
+
+const FAMILLES = { guichet, marketing, finance, rh, juridique, ajouts };
 const demandees = process.argv.slice(2);
 for (const [nom, f] of Object.entries(FAMILLES)) {
   if (demandees.length && !demandees.includes(nom)) continue;

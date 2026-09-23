@@ -243,4 +243,5 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'gdpr', label: 'RGPD', hint: 'Tout ce que le produit garde sur une personne' },
   { key: 'csr', label: 'Impact RSE', hint: 'L’empreinte de l’année, en cubes de cent kilos' },
   { key: 'kyc', label: 'Vérification d’identité', hint: 'Les contrôles d’un dossier, et celui qui bloque' },
+  { key: 'dashboard', label: 'Tableau de bord', hint: 'Un cadran au centre, choisi par vous' },
 ];
