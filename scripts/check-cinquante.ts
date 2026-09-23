@@ -756,6 +756,19 @@ const iso = (joursAvant: number, h = 10) => {
   regle('39c · les distances sont celles des trajets, pas du tracé', () => assert.equal(A.evaluer(pl, ['b', 'a']).km, 18));
   regle('39c · une traversée se compte là où la route coupe le cours d’eau', () =>
     assert.equal(A.traversees({ ...pl, depot: { ...pl.depot, yPct: 30 }, arrets: pl.arrets.map((a) => ({ ...a, yPct: 47 })) }, ['a', 'b'], { points: [[50, 0], [50, 100]] }), 2));
+
+  // ── 39d Prévision de stock ──────────────────────────────────────────────
+  const kits = [{ product: 'Clim', components: [{ label: 'Filtre', quantity: 2 }, { label: 'Boîte', quantity: 2, components: [{ label: 'Filtre', quantity: 1 }] }] }];
+  regle('39d · la quantité d’une boîte multiplie son contenu', () => assert.equal(A.quantiteDansKit(kits[0].components, 'filtre'), 4));
+  const inter = (j: number, clos = false) => ({ title: 'Clim — X', at: iso(-j), closedAt: clos ? iso(-j) : '', consommations: [] });
+  const mc = A.meche('Filtre', 7, 8, [inter(1), inter(3)], kits, MAINTENANT);
+  regle('39d · la consommation vient des interventions planifiées et des kits', () => assert.equal(mc.ruptureJ, 3));
+  regle('39d · point de commande = rupture − délai ; négatif, il est passé', () => assert.equal(mc.cranJ, -5));
+  regle('39d · un cran négatif se dessine au bord gauche', () => assert.equal(A.surEchelle(-5), 0));
+  regle('39d · l’échelle de 40 jours est commune : 6 j → 15 %', () => assert.equal(A.surEchelle(6), 15));
+  regle('39d · l’ambre : une mèche dont le cran est passé', () => assert.equal(A.mecheEnAmbre([mc, { ...mc, article: 'y', cranJ: 4 }])?.article, 'Filtre'));
+  regle('39d · pas de moyenne historique seule : sans planning, la moyenne ne vaut qu’au-delà du dernier jour planifié', () =>
+    assert.equal(A.meche('Filtre', 100, 3, [inter(10, true)], kits, MAINTENANT).ruptureJ, null));
 }
 
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);

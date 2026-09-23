@@ -40,6 +40,7 @@ import {
   Headset,
   HeartHandshake,
   HeartPulse,
+  Hourglass,
   Images,
   Inbox,
   KeyRound,
@@ -255,6 +256,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'rounds', label: 'Tournées', to: '/tournees', icon: Route, hint: 'Les livraisons du jour, arrêt par arrêt' },
       { key: 'equipment', label: 'Matériel', to: '/materiel', icon: CalendarClock, hint: 'Qui a quoi, quand — sans double réservation' },
       { key: 'itineraries', label: 'Itinéraires', to: '/itineraires', icon: Map, hint: 'L’ordre des arrêts de demain, optimisé la veille' },
+      { key: 'stockForecast', label: 'Prévision de stock', to: '/prevision-stock', icon: Hourglass, hint: 'Quand chaque article manquera, et quand commander' },
     ],
   },
   {
@@ -436,6 +438,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/settings', 'reglages'],
   ['/membres', 'reglages'],
   ['/assistance', 'fil'],
+  ['/prevision-stock', 'registre'],
   ['/itineraires', 'registre'],
   ['/scoring-leads', 'fiches'],
   ['/tableau-de-bord', 'tableau'],

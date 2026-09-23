@@ -120,6 +120,7 @@ import { VerificationIdentiteScreen } from '../screens/VerificationIdentiteScree
 import { TableauDeBordScreen } from '../screens/TableauDeBordScreen';
 import { ScoringLeadsScreen } from '../screens/ScoringLeadsScreen';
 import { ItinerairesScreen } from '../screens/ItinerairesScreen';
+import { PrevisionStockScreen } from '../screens/PrevisionStockScreen';
 
 /**
  * La racine de l'édition Business — la table de routes livrée aux
@@ -995,6 +996,14 @@ export function AppRoot() {
           element={
             <ModuleRoute module="itineraries">
               <ItinerairesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/prevision-stock"
+          element={
+            <ModuleRoute module="stockForecast">
+              <PrevisionStockScreen />
             </ModuleRoute>
           }
         />

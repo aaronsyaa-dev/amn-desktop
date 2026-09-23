@@ -148,6 +148,7 @@ import { VerificationIdentiteScreen } from '../screens/VerificationIdentiteScree
 import { TableauDeBordScreen } from '../screens/TableauDeBordScreen';
 import { ScoringLeadsScreen } from '../screens/ScoringLeadsScreen';
 import { ItinerairesScreen } from '../screens/ItinerairesScreen';
+import { PrevisionStockScreen } from '../screens/PrevisionStockScreen';
 import { ClientAdminScreen } from '../client-context/ClientAdminScreen';
 import { ContextBoot } from '../client-context/ContextBoot';
 import { OrgContextProvider, useOrgContext } from '../state/OrgContextContext';
@@ -416,6 +417,7 @@ function AmnRoutes() {
         <Route path="/tableau-de-bord" element={<TableauDeBordScreen />} />
         <Route path="/scoring-leads" element={<ScoringLeadsScreen />} />
         <Route path="/itineraires" element={<ItinerairesScreen />} />
+        <Route path="/prevision-stock" element={<PrevisionStockScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
@@ -1247,6 +1249,14 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="itineraries">
               <ItinerairesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/prevision-stock"
+          element={
+            <ModuleRoute module="stockForecast">
+              <PrevisionStockScreen />
             </ModuleRoute>
           }
         />

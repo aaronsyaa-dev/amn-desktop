@@ -208,4 +208,10 @@ export const EN_50 = {
   'm50.itineraries.descriptionSansTraversee': 'Tomorrow\'s round, on the map. The usual order of stops is drawn in grey, the optimised order on top.',
   'm50.itineraries.descriptionVide': 'No round prepared yet.',
   'm50.itineraries.phraseVide': 'No round prepared yet.',
+  'm50.stockForecast.titre': 'Stock forecast',
+  'm50.stockForecast.description': 'Each item is a fuse burning towards its stock-out at the pace of planned use. A notch marks the last day an order still arrives in time. For one of them, the flame has passed the notch.',
+  'm50.stockForecast.descriptionPlusieurs': 'Each item is a fuse burning towards its stock-out at the pace of planned use. A notch marks the last day an order still arrives in time. For {n} of them, the flame has passed the notch.',
+  'm50.stockForecast.descriptionATemps': 'Each item is a fuse burning towards its stock-out at the pace of planned use. A notch marks the last day an order still arrives in time. For all of them, there is still time.',
+  'm50.stockForecast.descriptionVide': 'No item tracked yet.',
+  'm50.stockForecast.phraseVide': 'No item tracked yet.',
 } as const;

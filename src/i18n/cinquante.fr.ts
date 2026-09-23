@@ -203,4 +203,10 @@ export const FR_50: Record<keyof typeof EN_50, string> = {
   'm50.itineraries.descriptionSansTraversee': 'La tournée de demain, sur le plan. L’ordre habituel des arrêts est tracé en gris, l’ordre optimisé par-dessus.',
   'm50.itineraries.descriptionVide': 'Aucune tournée préparée pour l’instant.',
   'm50.itineraries.phraseVide': 'Aucune tournée préparée pour l’instant.',
+  'm50.stockForecast.titre': 'Prévision de stock',
+  'm50.stockForecast.description': 'Chaque article est une mèche qui brûle vers sa rupture au rythme de la consommation prévue. Un cran marque le dernier jour où commander arrive encore à temps. Pour l’un d’eux, la flamme a dépassé le cran.',
+  'm50.stockForecast.descriptionPlusieurs': 'Chaque article est une mèche qui brûle vers sa rupture au rythme de la consommation prévue. Un cran marque le dernier jour où commander arrive encore à temps. Pour {n} d’entre eux, la flamme a dépassé le cran.',
+  'm50.stockForecast.descriptionATemps': 'Chaque article est une mèche qui brûle vers sa rupture au rythme de la consommation prévue. Un cran marque le dernier jour où commander arrive encore à temps. Pour tous, il est encore temps.',
+  'm50.stockForecast.descriptionVide': 'Aucun article suivi pour l’instant.',
+  'm50.stockForecast.phraseVide': 'Aucun article suivi pour l’instant.',
 };

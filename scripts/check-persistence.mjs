@@ -265,6 +265,7 @@ const MODULE_DATA = {
   dashboard: ['dashboardDials'],
   leadScoring: ['leadScores'],
   itineraries: ['routePlans'],
+  stockForecast: ['stockForecasts'],
 };
 
 /**
@@ -398,6 +399,7 @@ const MODULE_FILES = {
   dashboard: ['src/screens/TableauDeBordScreen.tsx'],
   leadScoring: ['src/screens/ScoringLeadsScreen.tsx'],
   itineraries: ['src/screens/ItinerairesScreen.tsx'],
+  stockForecast: ['src/screens/PrevisionStockScreen.tsx'],
 };
 
 /**

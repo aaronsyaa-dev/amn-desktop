@@ -246,4 +246,5 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'dashboard', label: 'Tableau de bord', hint: 'Un cadran au centre, choisi par vous' },
   { key: 'leadScoring', label: 'Scoring des leads', hint: 'Quelle carte jouer d’abord, et pourquoi' },
   { key: 'itineraries', label: 'Itinéraires', hint: 'L’ordre des arrêts de demain, optimisé la veille' },
+  { key: 'stockForecast', label: 'Prévision de stock', hint: 'Quand chaque article manquera, et quand commander' },
 ];

@@ -469,4 +469,124 @@ export function traceBoucle(plan: Pick<PlanItineraire, 'depot' | 'arrets'>, ordr
     .join(' ');
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   39d · PRÉVISION DE STOCK — la mèche
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** « L'échelle de 40 jours est commune à toutes les mèches. » */
+export const ECHELLE_MECHE_J = 40;
+
+export interface SuiviStock {
+  kind: 'suivi';
+  /** Le nom de l'article dans Stock. */
+  article: string;
+  /** Le nom du fournisseur dans Fournisseurs. */
+  fournisseur: string;
+}
+
+export interface ComposantKit {
+  label: string;
+  quantity: number;
+  components?: ComposantKit[];
+}
+
+export interface InterventionPlanifiee {
+  title: string;
+  at: string;
+  closedAt: string;
+  consommations: Array<{ label: string; quantity: number }>;
+}
+
+const memeNom = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** La quantité d'un article dans un kit — la quantité d'une boîte multiplie son contenu. */
+export function quantiteDansKit(composants: ComposantKit[], article: string, facteur = 1): number {
+  return composants.reduce(
+    (s, c) => s + (memeNom(c.label, article) ? c.quantity * facteur : 0) + (c.components ? quantiteDansKit(c.components, article, c.quantity * facteur) : 0),
+    0,
+  );
+}
+
+/**
+ * Ce qu'une intervention planifiée consommera : ses consommations prévues si
+ * la fiche les porte, sinon la nomenclature du kit dont le produit figure
+ * dans son titre.
+ */
+export function consommationPrevue(
+  i: InterventionPlanifiee,
+  article: string,
+  kits: Array<{ product: string; components: ComposantKit[] }>,
+): number {
+  const prevue = i.consommations.filter((c) => memeNom(c.label, article)).reduce((s, c) => s + c.quantity, 0);
+  if (i.consommations.length) return prevue;
+  const kit = kits.find((k) => i.title.toLowerCase().includes(k.product.toLowerCase()));
+  return kit ? quantiteDansKit(kit.components, article) : 0;
+}
+
+export interface Meche {
+  article: string;
+  stock: number;
+  /** Le jour de la rupture prévue (0 = aujourd'hui) ; `null` au-delà de l'échelle. */
+  ruptureJ: number | null;
+  delaiJ: number | null;
+  /** « Point de commande = rupture − délai fournisseur ». Négatif : déjà passé. */
+  cranJ: number | null;
+  /** Consommation prévue, ramenée à la semaine. */
+  parSemaine: number;
+  /** Les interventions qui tomberont sans l'article, même en commandant aujourd'hui. */
+  interventionsSans: number;
+}
+
+/**
+ * La mèche d'un article. La consommation vient des interventions planifiées
+ * jour par jour ; au-delà du DERNIER jour planifié seulement, la moyenne des
+ * huit dernières semaines prend le relais — « pas d'une moyenne historique
+ * seule ».
+ */
+export function meche(
+  article: string,
+  stock: number,
+  delaiJ: number | null,
+  interventions: InterventionPlanifiee[],
+  kits: Array<{ product: string; components: ComposantKit[] }>,
+  maintenant: Date,
+): Meche {
+  const minuit = new Date(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate()).getTime();
+  const jourDe = (iso: string) => Math.floor((new Date(iso).getTime() - minuit) / JOUR_MS);
+  const planifiees = interventions.filter((i) => !i.closedAt && jourDe(i.at) >= 0 && jourDe(i.at) < ECHELLE_MECHE_J);
+  const parJour = Array.from({ length: ECHELLE_MECHE_J }, () => 0);
+  for (const i of planifiees) parJour[jourDe(i.at)] += consommationPrevue(i, article, kits);
+  const dernierPlanifie = planifiees.reduce((m, i) => Math.max(m, jourDe(i.at)), -1);
+  const passees = interventions.filter((i) => i.closedAt && jourDe(i.at) < 0 && jourDe(i.at) >= -56);
+  const moyenne = passees.reduce((s, i) => s + consommationPrevue(i, article, kits), 0) / 56;
+  for (let j = dernierPlanifie + 1; j < ECHELLE_MECHE_J; j += 1) parJour[j] += moyenne;
+
+  let reste = stock;
+  let ruptureJ: number | null = stock <= 0 ? 0 : null;
+  for (let j = 0; j < ECHELLE_MECHE_J && ruptureJ === null; j += 1) {
+    reste -= parJour[j];
+    if (reste < 0) ruptureJ = j;
+  }
+  const arrivee = delaiJ ?? 0;
+  const interventionsSans = ruptureJ === null ? 0 : planifiees.filter((i) => jourDe(i.at) >= (ruptureJ as number) && jourDe(i.at) < arrivee && consommationPrevue(i, article, kits) > 0).length;
+  const total = parJour.reduce((s, x) => s + x, 0);
+  return {
+    article,
+    stock,
+    ruptureJ,
+    delaiJ,
+    cranJ: ruptureJ === null || delaiJ === null ? null : ruptureJ - delaiJ,
+    parSemaine: Math.round((total / ECHELLE_MECHE_J) * 7 * 10) / 10,
+    interventionsSans,
+  };
+}
+
+/** Une position sur l'échelle commune, en % ; « un cran négatif se dessine au bord gauche ». */
+export const surEchelle = (j: number) => (borne(j, 0, ECHELLE_MECHE_J) / ECHELLE_MECHE_J) * 100;
+
+/** La mèche en ambre : la plus urgente de celles dont le cran est déjà passé. */
+export function mecheEnAmbre(meches: Meche[]): Meche | null {
+  return meches.filter((m) => m.cranJ !== null && m.cranJ < 0 && m.stock > 0).sort((a, b) => (a.ruptureJ ?? 99) - (b.ruptureJ ?? 99))[0] ?? null;
+}
+
 export { JOUR_MS, borne };

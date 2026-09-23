@@ -983,6 +983,52 @@ async function ajouts() {
     if (d >= MAINTENANT) break;
     await poser('routePlans', `c50-itin-passe-${k}`, { ...plan, jour: iso(d), envoyeLe: new Date(d.getTime() - JOUR).toISOString(), gains: { km: gainsPasses[k][0], min: gainsPasses[k][1] } });
   }
+
+  // ── 39d Prévision de stock ────────────────────────────────────────────────
+  // Les modules d'origine d'abord : Stock, Fournisseurs, kits, interventions.
+  const articlesStock = [
+    ['filtres', 'Filtres à air', 7, 'pièce'], ['microfibres', 'Microfibres', 58, 'pièce'], ['gants', 'Gants nitrile M', 64, 'paire'],
+    ['detartrant', 'Détartrant pro', 13, 'bidon'], ['sacs', 'Sacs 100 L', 70, 'pièce'], ['degraissant', 'Dégraissant', 0, 'bidon'],
+  ];
+  for (const [id, name, quantity, unit] of articlesStock) {
+    await poser('stockItems', `c50-stk-${id}`, { name, quantity, minQuantity: null, unit, note: '', createdAt: le(90), movedAt: le(2) });
+  }
+  const fournisseursStock = [['dupre', 'Dupré Pro', 'Filtres, pièces de climatisation', 8], ['direct', 'Nettoyage Direct', 'Microfibres, sacs', 3], ['hygiene', 'Hygiène Plus', 'Gants, produits', 4]];
+  for (const [id, name, supplies, leadTimeDays] of fournisseursStock) {
+    await poser('suppliers', `c50-sup-${id}`, { name, supplies, contact: '', phone: '', email: '', lastOrderAt: le(20), lastDeliveryAt: le(12), leadTimeDays, deliveries: [leadTimeDays, leadTimeDays + 1], createdAt: le(200) });
+  }
+  const kitsStock = [
+    ['clim', 'Entretien climatisation', [['Filtres à air', 2], ['Microfibres', 3], ['Gants nitrile M', 2]]],
+    ['detartrage', 'Détartrage', [['Détartrant pro', 1], ['Microfibres', 1], ['Gants nitrile M', 1]]],
+    ['remise', 'Remise en état', [['Sacs 100 L', 3], ['Microfibres', 2], ['Gants nitrile M', 2]]],
+  ];
+  for (const [id, product, comps] of kitsStock) {
+    await poser('boms', `c50-kit-${id}`, { product, components: comps.map(([label, quantity]) => ({ label, quantity, unit: 'pièce', unitCostCents: 0 })), sellPriceCents: null, createdAt: le(60) });
+  }
+  const volets = { avant: { photo: '', note: '' }, pendant: { photo: '', note: '' }, apres: { photo: '', note: '' } };
+  const planning = [
+    ...[1, 3, 5, 6, 8, 10, 13, 17, 20, 24, 27, 31, 34, 38].map((j) => ['Entretien climatisation', j]),
+    ...[2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35, 38].map((j) => ['Détartrage', j]),
+    ...[4, 9, 14, 19, 24, 29, 34, 39].map((j) => ['Remise en état', j]),
+  ];
+  const clientsPlan = ['Cabinet Arnoux', 'SCI Montgolfier', 'Les Tanneurs', 'Studio Nord', 'Chez Mano'];
+  for (let k = 0; k < planning.length; k += 1) {
+    const [titre, j] = planning[k];
+    await poser('interventions', `c50-int-plan-${k}`, {
+      title: `${titre} — ${clientsPlan[k % clientsPlan.length]}`, clientName: clientsPlan[k % clientsPlan.length], address: 'Lyon',
+      at: le(-j, 9), volets, consommations: [], closedAt: '', reportedAt: '', createdAt: le(5),
+    });
+  }
+  for (let k = 0; k < 6; k += 1) {
+    await poser('interventions', `c50-int-passe-${k}`, {
+      title: `${k % 2 ? 'Détartrage' : 'Entretien climatisation'} — ${clientsPlan[k % clientsPlan.length]}`, clientName: clientsPlan[k % clientsPlan.length], address: 'Lyon',
+      at: le(7 + k * 8, 9), volets, consommations: [], closedAt: le(7 + k * 8, 12), reportedAt: le(7 + k * 8, 12), createdAt: le(60),
+    });
+  }
+  const suivisStock = [['Filtres à air', 'Dupré Pro'], ['Microfibres', 'Nettoyage Direct'], ['Gants nitrile M', 'Hygiène Plus'], ['Détartrant pro', 'Hygiène Plus'], ['Sacs 100 L', 'Nettoyage Direct'], ['Dégraissant', 'Hygiène Plus']];
+  for (const [article, fournisseur] of suivisStock) {
+    await poser('stockForecasts', `c50-suivi-${article.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, { kind: 'suivi', article, fournisseur });
+  }
 }
 
 const FAMILLES = { guichet, marketing, finance, rh, juridique, ajouts };
