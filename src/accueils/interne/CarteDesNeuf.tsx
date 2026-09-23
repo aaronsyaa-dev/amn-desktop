@@ -55,12 +55,12 @@ export function CarteDesNeuf() {
                   }`}
                 >
                   <span className="flex items-center gap-2">
-                    <span className={`h-[7px] w-[7px] rounded-full ${ambre ? 'bg-[#080808]' : palier === 'calme' ? 'bg-border-strong' : 'bg-text-primary'}`} />
+                    <span className={`h-[7px] w-[7px] rounded-full ${ambre ? 'bg-signal-ink' : palier === 'calme' ? 'bg-border-strong' : 'bg-text-primary'}`} />
                     <span className={`font-mono text-[9.5px] font-semibold tracking-[0.12em] ${ambre ? 'text-[#3a2a0e]' : 'text-text-muted'}`}>
                       {palier === 'critique' ? 'CRITIQUE' : palier === 'suivre' ? 'À SUIVRE' : 'CALME'}
                     </span>
                   </span>
-                  <span className={`mt-2.5 truncate text-[15px] font-bold tracking-[-0.01em] ${ambre ? 'text-[#080808]' : 'text-text-primary'}`}>{o.name}</span>
+                  <span className={`mt-2.5 truncate text-[15px] font-bold tracking-[-0.01em] ${ambre ? 'text-signal-ink' : 'text-text-primary'}`}>{o.name}</span>
                   <span className={`mt-auto pt-2.5 text-[12.5px] leading-[1.45] [text-wrap:pretty] ${ambre ? 'text-[#3a2a0e]' : palier === 'calme' ? 'text-text-muted' : 'text-text-secondary'}`}>{phrase}</span>
                 </Link>
               );

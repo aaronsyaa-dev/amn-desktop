@@ -38,7 +38,7 @@ function Afficheur({ n, grand, ambre }: { n: number; grand?: boolean; ambre?: bo
             key={`${i}-${c}`}
             className={`relative inline-flex items-center justify-center font-mono font-bold ${bascule ? 'palette-bascule' : ''} ${
               grand ? 'h-[64px] w-[46px] text-[44px] sm:h-[88px] sm:w-16 sm:text-[60px]' : 'h-[88px] w-[66px] text-[62px] sm:h-[122px] sm:w-[92px] sm:text-[86px]'
-            } ${ambre ? 'border border-signal bg-signal text-[#080808] shadow-[0_0_34px_-8px_rgba(208,154,74,.85)]' : 'border border-[#2b2b2b] bg-border-row text-text-primary'}`}
+            } ${ambre ? 'border border-signal bg-signal text-signal-ink shadow-[0_0_34px_-8px_rgba(208,154,74,.85)]' : 'border border-[#2b2b2b] bg-border-row text-text-primary'}`}
           >
             <span className={`absolute inset-x-0 top-1/2 h-px ${ambre ? 'bg-[rgba(8,8,8,.35)]' : 'bg-bg'}`} />
             {c}

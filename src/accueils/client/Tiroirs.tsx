@@ -123,7 +123,7 @@ export function Tiroirs() {
                 <Link
                   key={s.key}
                   to={s.items[0]?.to ?? '/'}
-                  className="flex min-w-0 flex-col gap-[9px] border border-border-section bg-raised px-4 py-3.5 shadow-[inset_0_-3px_0_#0b0b0b] hover:border-border-strong"
+                  className="flex min-w-0 flex-col gap-[9px] border border-border-section bg-raised px-4 py-3.5 shadow-[inset_0_-3px_0_var(--color-sunken)] hover:border-border-strong"
                 >
                   <span className="h-[5px] w-11 self-center rounded-[3px] bg-[#2b2b2b]" />
                   <span className="flex items-baseline justify-between gap-2.5">

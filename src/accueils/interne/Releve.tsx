@@ -75,7 +75,7 @@ export function Releve() {
             {tete ? (
               <div data-signal-groupe="critique" className="flex items-baseline gap-3.5 bg-signal px-4 py-[13px] shadow-[0_0_30px_-7px_rgba(208,154,74,.85)]">
                 <span className="whitespace-nowrap font-mono text-[9.5px] font-bold tracking-[0.16em] text-[#3a2a0e]">CRITIQUE</span>
-                <span className="text-[15px] font-semibold text-[#080808]">{tete.titre}</span>
+                <span className="text-[15px] font-semibold text-signal-ink">{tete.titre}</span>
               </div>
             ) : (
               <div className="border border-border-strong bg-[#171717] px-4 py-[13px] text-[15px] font-semibold text-text-primary">Aucun dossier critique.</div>

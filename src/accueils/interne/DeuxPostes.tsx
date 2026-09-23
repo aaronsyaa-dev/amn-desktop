@@ -122,7 +122,7 @@ export function DeuxPostes() {
                   <span className="block font-mono text-[9.5px] font-bold tracking-[0.16em] text-[#3a2a0e]">
                     {premier.gravite.toUpperCase()} · {age(premier)} J
                   </span>
-                  <span className="mt-2 block text-[15px] font-bold leading-[1.3] text-[#080808]">{premier.titre.replace(/\.$/, '')}</span>
+                  <span className="mt-2 block text-[15px] font-bold leading-[1.3] text-signal-ink">{premier.titre.replace(/\.$/, '')}</span>
                 </div>
                 <button
                   type="button"

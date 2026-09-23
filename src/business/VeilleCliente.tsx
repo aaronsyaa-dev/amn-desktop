@@ -150,8 +150,8 @@ function Vitrine({ reglages }: { reglages: ReglagesVeille }) {
       <div className="absolute inset-0 transition-transform duration-[2000ms] ease-out" style={{ transform: `translate(${x}px, ${y}px)` }}>
         {nuit ? (
           <div className="flex h-full flex-col items-center justify-center gap-6">
-            <span className="tnum font-mono text-[clamp(96px,14vw,168px)] font-bold leading-[0.9] tracking-[-0.07em] text-[#3a3a3a]">{hhmm(maintenant)}</span>
-            <span className="tnum font-mono text-[13px] tracking-[0.18em] text-[#3a3a3a]">{date}</span>
+            <span className="tnum font-mono text-[clamp(96px,14vw,168px)] font-bold leading-[0.9] tracking-[-0.07em] text-border-strong">{hhmm(maintenant)}</span>
+            <span className="tnum font-mono text-[13px] tracking-[0.18em] text-border-strong">{date}</span>
           </div>
         ) : (
           <div className="mx-auto flex h-full max-w-[1400px] flex-col px-5 py-6 sm:px-16 sm:py-[52px]">
@@ -219,7 +219,7 @@ function Vitrine({ reglages }: { reglages: ReglagesVeille }) {
               <Releve surtitre="CAISSE" valeur={comptee ? 'comptée' : 'à compter'} detail={comptee ? `à ${hhmm(new Date(comptee.countedAt))}` : 'pas encore comptée aujourd’hui'} />
             </div>
 
-            <span className="mt-5 self-end font-mono sm:mt-8 text-[11px] tracking-[0.16em] text-[#3a3a3a]">TOUCHEZ L’ÉCRAN POUR REPRENDRE</span>
+            <span className="mt-5 self-end font-mono sm:mt-8 text-[11px] tracking-[0.16em] text-border-strong">TOUCHEZ L’ÉCRAN POUR REPRENDRE</span>
           </div>
         )}
       </div>

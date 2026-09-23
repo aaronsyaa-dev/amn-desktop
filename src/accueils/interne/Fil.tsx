@@ -66,7 +66,7 @@ export function Fil() {
             >
               <span className="hidden font-mono text-[9.5px] font-bold tracking-[0.14em] text-[#3a2a0e] md:inline">ÉPINGLÉ</span>
               <span className="hidden font-mono text-[9.5px] font-bold tracking-[0.12em] text-[#3a2a0e] md:inline">CRITIQUE</span>
-              <span className="text-[14.5px] font-semibold text-[#080808]">{(dossierEpingle?.titre ?? epingle.titre).replace(/\.$/, '')}</span>
+              <span className="text-[14.5px] font-semibold text-signal-ink">{(dossierEpingle?.titre ?? epingle.titre).replace(/\.$/, '')}</span>
               <span className="whitespace-nowrap text-[12.5px] text-[#3a2a0e]">
                 {nomOrg(q, epingle.orgId, dossierEpingle?.orgNom)} · {age(epingle.createdAt)}
               </span>

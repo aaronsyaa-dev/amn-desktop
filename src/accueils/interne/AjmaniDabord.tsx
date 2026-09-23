@@ -82,7 +82,7 @@ export function AjmaniDabord() {
             <span
               data-signal-groupe={ambre ? 'gravite' : undefined}
               className={`mt-2 flex-none px-2.5 py-[5px] font-mono text-[10px] font-bold tracking-[0.18em] ${
-                ambre ? 'bg-signal text-[#080808] shadow-[0_0_30px_-7px_rgba(208,154,74,.85)]' : 'border border-border-strong text-text-body'
+                ambre ? 'bg-signal text-signal-ink shadow-[0_0_30px_-7px_rgba(208,154,74,.85)]' : 'border border-border-strong text-text-body'
               }`}
             >
               {plaque}

@@ -63,7 +63,7 @@ export function Lettre() {
       Une seule chose ne peut pas attendre :{' '}
       <span
         data-signal-groupe="decision"
-        className="bg-signal px-1.5 py-0.5 font-semibold text-[#080808] shadow-[0_0_26px_-8px_rgba(208,154,74,.8)] [-webkit-box-decoration-break:clone] [box-decoration-break:clone]"
+        className="bg-signal px-1.5 py-0.5 font-semibold text-signal-ink shadow-[0_0_26px_-8px_rgba(208,154,74,.8)] [-webkit-box-decoration-break:clone] [box-decoration-break:clone]"
       >
         le rendez-vous de {hhmm(new Date(e.rdv.startAt))} avec {e.rdv.clientName}, où{' '}
         {e.motif === 'devis'
