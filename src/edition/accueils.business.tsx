@@ -9,6 +9,7 @@ import { Cadran } from '../accueils/client/Cadran';
 import { Lettre } from '../accueils/client/Lettre';
 import { Ecarts } from '../accueils/client/Ecarts';
 import { Tiroirs } from '../accueils/client/Tiroirs';
+import { Seuil } from '../accueils/client/Seuil';
 
 /**
  * LES ONZE ACCUEILS DE L'ÉDITION CLIENTE — 2a et les dix variantes du cahier 9
@@ -85,5 +86,12 @@ export const ACCUEILS: AccueilDef[] = [
     phrase: 'Les familles en façades ; seul s’ouvre le tiroir qui demande quelque chose.',
     vignette: [[6, 8, 36, 46, 'moyen'], [18, 11, 12, 3, 'ambre'], [46, 8, 22, 21, 'sombre'], [72, 8, 22, 21, 'sombre'], [46, 33, 22, 21, 'sombre'], [72, 33, 22, 21, 'sombre']],
     composant: Tiroirs,
+  },
+  {
+    code: '40j',
+    nom: 'Le seuil',
+    phrase: 'Une phrase : jusqu’à quand on peut ne rien faire.',
+    vignette: [[6, 6, 88, 48, 'sombre'], [20, 22, 42, 7, 'clair'], [64, 22, 14, 7, 'ambre'], [32, 33, 36, 3, 'moyen'], [24, 44, 52, 2, 'moyen']],
+    composant: Seuil,
   },
 ];
