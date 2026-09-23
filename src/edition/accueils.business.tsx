@@ -3,6 +3,7 @@ import type { AccueilDef } from '../accueils/types';
 import { ProchaineHeure } from '../accueils/client/ProchaineHeure';
 import { LaUne } from '../accueils/client/LaUne';
 import { MainCourante } from '../accueils/client/MainCourante';
+import { FileUnique } from '../accueils/client/FileUnique';
 
 /**
  * LES ONZE ACCUEILS DE L'ÉDITION CLIENTE — 2a et les dix variantes du cahier 9
@@ -37,5 +38,12 @@ export const ACCUEILS: AccueilDef[] = [
     phrase: 'La journée en registre, le passé éteint au-dessus du trait « maintenant ».',
     vignette: [[6, 6, 88, 3, 'moyen'], [6, 12, 70, 3, 'moyen'], [6, 18, 60, 3, 'moyen'], [6, 26, 88, 3, 'ambre'], [6, 34, 80, 3, 'clair'], [6, 40, 64, 3, 'clair'], [6, 46, 72, 3, 'clair']],
     composant: MainCourante,
+  },
+  {
+    code: '40d',
+    nom: 'La file unique',
+    phrase: 'Une seule liste des actions du jour, la taille suit le rang.',
+    vignette: [[6, 6, 14, 14, 'ambre'], [24, 8, 60, 6, 'clair'], [6, 26, 70, 4, 'clair'], [6, 34, 62, 3.5, 'moyen'], [6, 41, 54, 3, 'moyen'], [6, 47, 46, 2.5, 'moyen'], [6, 53, 40, 2, 'moyen']],
+    composant: FileUnique,
   },
 ];
