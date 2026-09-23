@@ -1030,8 +1030,16 @@ function Repertoire({
               return (
                 <tr
                   key={client.id}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`Ouvrir la fiche de ${client.name}`}
                   onClick={() => onOuvrir(client.id)}
-                  className="cursor-pointer border-b border-[#161616] transition-colors hover:bg-surface-hover"
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                    e.preventDefault();
+                    onOuvrir(client.id);
+                  }}
+                  className="cursor-pointer border-b border-[#161616] transition-colors hover:bg-surface-hover focus-visible:bg-surface-hover"
                 >
                   <td className="py-3.5">
                     <span className="flex items-center gap-3">

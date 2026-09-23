@@ -95,6 +95,31 @@ if (!apiRoot) {
       'les natures du changement d’organisation (created, updated, removed) poussées à la Tour — ' +
         'pas des alertes ; elles vivent dans OrgChange côté poste',
     ],
+    /*
+      `modules.js` est le PENDANT d'`admin.js`, et son absence ici est ce qui a
+      rendu ce contrôle rouge sur `main`.
+
+      La ligne en cause (routes/modules.js) :
+
+        hub?.tower?.({ type: 'module_request', kind: 'created', id, orgId })
+
+      C'est le cycle de vie d'une DEMANDE de module, poussée à la Tour quand
+      une cliente colle un jeton — exactement la même forme que
+      `{ type: 'org:changed', kind: 'created' }` juste au-dessus. Ce n'est pas
+      une alerte de supervision : rien ne veille, rien n'est à traiter, il n'y
+      a pas de sévérité. `AlertKind` n'a donc pas à la connaître.
+
+      Ce que l'exemption révèle au passage, et qui mérite d'être écrit : ce
+      contrôle exempte par FICHIER. Le jour où un fichier déjà exempté se
+      mettra à émettre une vraie alerte, elle passera sans être vue. On le
+      tolère ici parce que les deux fichiers exemptés n'émettent qu'un seul
+      `kind:` chacun — vérifié — mais c'est la limite de la forme actuelle.
+    */
+    [
+      'modules.js',
+      'la nature du cycle de vie d’une DEMANDE de module (created) poussée à la Tour — ' +
+        'pas une alerte ; c’est le pendant d’org:changed dans admin.js',
+    ],
   ]);
   for (const dossier of ['src/tracker', 'src/routes', 'src/scanner']) {
     const dir = path.join(apiRoot, dossier);
