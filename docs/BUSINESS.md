@@ -140,17 +140,30 @@ le seul réglage que Vercel ne partage pas entre deux projets du même dépôt.
 | Build Command | laissé au fichier `vercel.json` (override désactivé) |
 | Output Directory | laissé au fichier `vercel.json` (override désactivé) |
 
-| Réglage du projet interne | Valeur |
-| --- | --- |
-| Environment Variables | `AMN_EDITION` = `internal` (Production **et** Preview) |
+**L'édition se déclare désormais DANS LE DÉPÔT**, et la variable de projet
+n'est plus qu'un recours. `scripts/projets-vercel.mjs` associe chaque
+`VERCEL_PROJECT_ID` à son édition ; `scripts/build-web.mjs` lit cette table.
 
-**Les deux projets déclarent désormais leur édition.** Le projet interne ne
-définissait rien, et s'en remettait au défaut de `resolveEdition()`. Ça a tenu
-jusqu'au jour où c'est le projet CLIENT qui s'est retrouvé sans la variable :
-il est retombé sur le même défaut, a construit l'édition interne, et l'a servie
-en production. `scripts/build-web.mjs` refuse maintenant de construire chez un
-hébergeur sans `AMN_EDITION` explicite — donc le projet interne DOIT la poser,
-lui aussi. C'est le prix du refus, et il est petit : une ligne, une fois.
+C'est la leçon de l'incident. L'édition ne pouvait se déclarer que dans un
+tableau de bord — `vercel.json` est partagé et ne peut pas distinguer les deux
+projets — et une variable de tableau de bord se supprime, se renomme, ou se
+coche pour Production et pas pour Preview, sans commit, sans revue, sans trace.
+Mais si la CONFIGURATION de Vercel ne distingue pas les projets, le BUILD, lui,
+reçoit `VERCEL_PROJECT_ID` et sait parfaitement pour qui il travaille.
+
+Quatre refus, tous vérifiés :
+
+| Situation | Résultat |
+| --- | --- |
+| projet connu de la table, aucune variable | construit l'édition de la table |
+| la table et `AMN_EDITION` se contredisent | **refus** — l'une est fausse, rien ne dit laquelle |
+| projet inconnu de la table, aucune variable | **refus** — un nouveau projet n'hérite d'aucun défaut |
+| `AMN_EDITION` mal orthographiée (`Business`) | **refus**, hébergeur ou non |
+
+Hors hébergeur et sans rien de déclaré, on retombe sur l'interne : un
+`npm run build:web` lancé par réflexe sur un poste ne fabrique jamais par
+accident une app amputée. Ce défaut n'a jamais été dangereux QUE chez un
+hébergeur, où il décidait ce qu'une cliente reçoit.
 
 Le raisonnement est dans le script, mais il tient en une phrase : la seule
 panne qui livre le mauvais bundle est aussi celle qui éteint l'alarme, puisque
@@ -165,6 +178,10 @@ Deux projets Vercel sortent de ce dépôt, sous l'équipe `amn-dev-sec` :
 | --- | --- | --- |
 | `amn-desktop` | `amn-desktop.vercel.app` | **interne** (AMN Business) |
 | `amn-desktop-8wgo` | `amn-desktop-8wgo.vercel.app` | **cliente** (AMN Desktop) |
+
+Les identifiants de ces deux projets sont dans `scripts/projets-vercel.mjs`.
+Ils ne veulent rien dire, et c'est précisément leur mérite : ils ne peuvent
+pas mentir, là où les noms, eux, l'ont fait.
 
 Le piège est dans les noms, et il a coûté cher. Le dépôt s'appelle
 `amn-desktop`, donc le PREMIER projet créé depuis lui a pris ce nom — c'était

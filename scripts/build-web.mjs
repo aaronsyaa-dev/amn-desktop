@@ -20,6 +20,8 @@
 
 import { spawnSync } from 'node:child_process';
 
+import { editionDuProjet, NOM_PAR_PROJET } from './projets-vercel.mjs';
+
 /**
  * L'ÉDITION — et pourquoi son ABSENCE est refusée chez un hébergeur.
  * ═════════════════════════════════════════════════════════════════
@@ -60,32 +62,69 @@ const EDITIONS = ['internal', 'business'];
 /** Vercel pose `VERCEL=1` sur tous ses builds ; `VERCEL_ENV` vaut production/preview/development. */
 const chezUnHebergeur = Boolean(process.env.VERCEL || process.env.VERCEL_ENV);
 
+const REGLAGE = [
+  `  Deux façons de la déclarer, et la première est la bonne :`,
+  ``,
+  `    1. scripts/projets-vercel.mjs — une ligne par projet Vercel, dans le dépôt,`,
+  `       donc relue en revue et impossible à perdre d'un tableau de bord.`,
+  `       L'identifiant se lit dans Project Settings → General → Project ID.`,
+  `    2. AMN_EDITION = business | internal, en variable de projet`,
+  `       (Production ET Preview), pour un cas ponctuel.`,
+  ``,
+  `    business → AMN Desktop, l'édition livrée aux organisations clientes`,
+  `    internal → AMN Business, l'édition d'AMN DevSec`,
+  ``,
+  `  Voir docs/BUSINESS.md, « Sur Vercel ».`,
+].join('\n');
+
 function refuser(pourquoi) {
   // eslint-disable-next-line no-console
-  console.error(
-    `\n[amn] BUILD REFUSÉ — ${pourquoi}\n\n` +
-      `  L'édition à construire doit être écrite explicitement, parce que\n` +
-      `  \`vercel.json\` est partagé par les deux projets et ne peut pas la porter.\n\n` +
-      `  Dans les variables d'environnement DU PROJET (Production ET Preview) :\n\n` +
-      `    AMN_EDITION=business   → AMN Desktop, l'édition livrée aux organisations clientes\n` +
-      `    AMN_EDITION=internal   → AMN Business, l'édition d'AMN DevSec\n\n` +
-      `  Sans cette variable, le défaut serait l'édition INTERNE — et \`check:business\`,\n` +
-      `  qui ne relit qu'une sortie Business, ne tournerait pas pour le dire.\n` +
-      `  Voir docs/BUSINESS.md, « Sur Vercel ».\n`,
-  );
+  console.error(`\n[amn] BUILD REFUSÉ — ${pourquoi}\n\n${REGLAGE}\n`);
   process.exit(1);
 }
 
 const declaree = (process.env.AMN_EDITION ?? '').trim();
+const projet = process.env.VERCEL_PROJECT_ID ?? '';
+const duProjet = editionDuProjet(projet);
+const nomProjet = NOM_PAR_PROJET[projet] ?? projet;
 
 if (declaree !== '' && !EDITIONS.includes(declaree)) {
   refuser(`AMN_EDITION vaut « ${declaree} », qui n'est ni « business » ni « internal ».`);
 }
-if (declaree === '' && chezUnHebergeur) {
-  refuser('AMN_EDITION n’est pas définie, et ce build tourne chez un hébergeur.');
+
+/*
+  LE DÉSACCORD — le cas qu'aucune des deux sources ne peut attraper seule.
+
+  Si la table dit « ce projet est l'interne » et que la variable dit
+  « business », l'une des deux est fausse et nous ne savons pas laquelle.
+  Construire l'une ou l'autre reviendrait à parier ; dans un sens le pari
+  livre le bundle interne à une cliente. On ne parie pas.
+*/
+if (declaree !== '' && duProjet && declaree !== duProjet) {
+  refuser(
+    `désaccord sur l'édition du projet ${nomProjet} : la table de ` +
+      `scripts/projets-vercel.mjs dit « ${duProjet} », la variable AMN_EDITION dit ` +
+      `« ${declaree} ». L'une des deux est fausse, et rien ici ne peut dire laquelle.`,
+  );
 }
 
-const edition = declaree === 'business' ? 'business' : 'internal';
+if (declaree === '' && !duProjet && chezUnHebergeur) {
+  refuser(
+    projet
+      ? `le projet Vercel ${nomProjet} n'est pas dans scripts/projets-vercel.mjs, et ` +
+          `AMN_EDITION n'est pas définie.`
+      : 'AMN_EDITION n’est pas définie, et ce build tourne chez un hébergeur.',
+  );
+}
+
+/*
+  Hors hébergeur et sans rien de déclaré, on retombe sur l'interne : c'est
+  l'édition d'Aaron et Mohamed, donc un `npm run build:web` lancé par réflexe
+  sur un poste ne fabrique jamais par accident une app amputée. Ce défaut n'a
+  jamais été dangereux QUE chez un hébergeur, où il décidait ce qu'une cliente
+  reçoit — et les deux refus ci-dessus l'y ont supprimé.
+*/
+const edition = declaree || duProjet || 'internal';
 // `AMN_WEB_OUT` : construire ailleurs que dans dist/ (check:migration bâtit le candidat dans un dossier temporaire).
 const outDir = process.env.AMN_WEB_OUT || 'dist';
 
