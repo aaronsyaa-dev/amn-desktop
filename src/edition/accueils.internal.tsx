@@ -6,6 +6,7 @@ import { Releve } from '../accueils/interne/Releve';
 import { CarteDesNeuf } from '../accueils/interne/CarteDesNeuf';
 import { Fil } from '../accueils/interne/Fil';
 import { Radar } from '../accueils/interne/Radar';
+import { Compteur } from '../accueils/interne/Compteur';
 import { colonnesCarte } from '../accueils/interne/parc';
 
 /**
@@ -47,6 +48,13 @@ export const ACCUEILS: AccueilDef[] = [
     phrase: 'La gravité comme distance : plus un point est près du centre, plus il est grave.',
     vignette: [[22, 4, 52, 52, 'sombre'], [34, 16, 28, 28, 'moyen'], [44, 22, 8, 8, 'ambre'], [70, 14, 24, 4, 'moyen'], [70, 24, 24, 4, 'moyen'], [70, 34, 24, 4, 'sombre']],
     composant: Radar,
+  },
+  {
+    code: '42e',
+    nom: 'Le compteur de nuit',
+    phrase: 'Ce que la Garde a réglé seule, et ce qu’elle vous rend.',
+    vignette: [[6, 16, 10, 20, 'moyen'], [18, 16, 10, 20, 'moyen'], [30, 16, 10, 20, 'moyen'], [42, 16, 10, 20, 'moyen'], [62, 10, 16, 28, 'ambre'], [6, 46, 60, 4, 'sombre']],
+    composant: Compteur,
   },
 ];
 

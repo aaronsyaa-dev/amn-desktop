@@ -1369,3 +1369,23 @@ button.bg-accent[aria-disabled='true']:hover {
     opacity: 1;
   }
 }
+
+/* Le compteur de nuit (Accueil `42e`) : une palette qui change bascule UNE fois, 180 ms. */
+@keyframes palette-bascule {
+  0% {
+    transform: perspective(300px) rotateX(-90deg);
+  }
+  100% {
+    transform: perspective(300px) rotateX(0deg);
+  }
+}
+
+.palette-bascule {
+  animation: palette-bascule 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .palette-bascule {
+    animation: none;
+  }
+}

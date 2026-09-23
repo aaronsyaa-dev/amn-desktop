@@ -80,3 +80,8 @@ export function pointsDuSecteur(
   });
   return r;
 }
+
+/* ═══ I5 · le compteur de nuit (`42e`) ═════════════════════════════════ */
+
+/** « Autant de palettes que de chiffres, jamais de séparateur de milliers. » */
+export const palettes = (n: number) => String(Math.max(0, Math.round(n))).split('');

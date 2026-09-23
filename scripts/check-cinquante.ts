@@ -976,6 +976,10 @@ const iso = (joursAvant: number, h = 10) => {
       assert.ok(a > 80 && a < 120, `angle ${a}`);
     }
   });
+  regle('42e · autant de palettes que de chiffres, jamais de séparateur', () => {
+    assert.deepEqual(PA.palettes(45_003), ['4', '5', '0', '0', '3']);
+    assert.deepEqual(PA.palettes(0), ['0']);
+  });
   regle('42d · les noms sont hors du cercle, dans la marge du viewBox', () => assert.ok(PA.RADAR.rNoms > PA.RADAR.rBord && PA.RADAR.c + PA.RADAR.marge >= PA.RADAR.rNoms));
 
 }
