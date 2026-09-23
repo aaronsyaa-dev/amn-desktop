@@ -1277,7 +1277,28 @@ async function fusions() {
   });
 }
 
-const FAMILLES = { guichet, marketing, finance, rh, juridique, ajouts, fusions };
+/* ═══════════════════════════════════════════════════════════ LES ACCUEILS ══ */
+
+async function accueils() {
+  // Des rendez-vous d'AUJOURD'HUI, placés relativement à l'instant du dépôt :
+  // un rendez-vous passé, un de routine tout proche, un à enjeu (Brasserie du
+  // Port a un devis parti sans réponse) dans vingt-six minutes, puis un autre
+  // plus tard. Les Accueils lisent tous cette même journée.
+  const arrondi = (min) => {
+    const d = new Date(MAINTENANT.getTime() + min * 60_000);
+    d.setSeconds(0, 0);
+    d.setMinutes(Math.round(d.getMinutes() / 5) * 5);
+    return d.toISOString();
+  };
+  const rdv = (id, title, minutes, durationMin, clientId, clientName, location, notes = '') =>
+    poser('appointments', `c50-acc-${id}`, { title, startAt: arrondi(minutes), durationMin, clientId, clientName, location, notes, reminderMin: 30, status: 'scheduled', source: 'manual', createdAt: le(3) });
+  await rdv('matin', 'Livraison des compositions', -240, 60, 101, 'Camille Renaud', 'Le Jardin d’Élise');
+  await rdv('routine', 'Arrosage hebdomadaire', -60, 45, 103, 'Nadia Bouvier', '12 rue Foch, Montpellier', 'Passage de routine.');
+  await rdv('enjeu', 'Point sur les compositions de terrasse', 26, 60, 102, 'Brasserie du Port', 'Quai de la Fontaine, Montpellier');
+  await rdv('soir', 'Entretien des massifs — visite', 150, 45, 104, 'Villa Sereine', 'Route de Mende, Montpellier');
+}
+
+const FAMILLES = { guichet, marketing, finance, rh, juridique, ajouts, fusions, accueils };
 const demandees = process.argv.slice(2);
 for (const [nom, f] of Object.entries(FAMILLES)) {
   if (demandees.length && !demandees.includes(nom)) continue;

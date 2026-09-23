@@ -12,8 +12,9 @@ import { Majordome } from './Majordome';
 import { homeWelcome, parcSerein } from '../lib/homeGreetings';
 import { useLangue } from '../i18n';
 import type { SharedTaskStatus } from '../shared/api';
-import { useInvoices, isOverdue, isoDay } from '../state/useInvoices';
+import { useInvoices, isoDay } from '../state/useInvoices';
 import { EcranVide } from '../components/EtatEcran';
+import { enjeuDuJour } from '../lib/enjeu';
 import { PremierJour } from '../components/etats/EtatsTransverses';
 
 /**
@@ -173,25 +174,7 @@ export function HomeSoloScreen() {
     S'il n'y en a aucun, `enJeu` vaut `null` et l'écran n'a pas d'ambre. C'est
     prévu, pas un oubli : un après-midi sans enjeu ne doit rien signaler.
   */
-  const enJeu = useMemo(() => {
-    const aVenir = duJour.filter((a) => new Date(a.startAt).getTime() > maintenant.getTime());
-    for (const rdv of aVenir) {
-      if (rdv.clientId === null) continue;
-      const devis = quotes.find((q) => q.clientId === rdv.clientId && q.status === 'sent');
-      if (devis) {
-        const depuis = devis.sentAt ? Math.floor((maintenant.getTime() - new Date(devis.sentAt).getTime()) / 86_400_000) : null;
-        return { rdv, motif: 'devis' as const, jours: depuis };
-      }
-      const facture = invoices.find((f) => f.clientId === rdv.clientId && isOverdue(f, jourIso));
-      if (facture) {
-        const depuis = facture.dueAt
-          ? Math.floor((maintenant.getTime() - new Date(facture.dueAt).getTime()) / 86_400_000)
-          : null;
-        return { rdv, motif: 'facture' as const, jours: depuis };
-      }
-    }
-    return null;
-  }, [duJour, quotes, invoices, jourIso, maintenant]);
+  const enJeu = useMemo(() => enjeuDuJour(duJour, quotes, invoices, jourIso, maintenant), [duJour, quotes, invoices, jourIso, maintenant]);
 
   /* La phrase du relevé : ce qui se joue au prochain rendez-vous, s'il se joue quelque chose. */
   const phraseProchain = useMemo(() => {
