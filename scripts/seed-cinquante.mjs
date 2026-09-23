@@ -1246,6 +1246,16 @@ async function fusions() {
   await page('contact', 'Contact', [b('text', { text: '04 78 00 00 00 · du lundi au vendredi, 8 h – 18 h.' })], true, 100);
   await page('mentions', 'Mentions légales', [b('text', { text: 'Éditeur du site, hébergeur, SIRET.' })], true, 600);
   await page('avantapres', 'Avant / après', [b('image', { url: '', caption: '' })], false, 60);
+
+  // ── Factures récurrentes multi-devises → Abonnements ──────────────────────
+  // Deux forfaits en francs suisses et en livres, convertis au dernier taux
+  // relevé dans Multi-devises (CHF, GBP), et un en dollars canadiens sans
+  // taux : il sort du total, et l'écran le dit.
+  const abo = (id, label, customerName, amountCents, period, currency, jours) =>
+    poser('subscriptions', `c50-abo-${id}`, { label, customerName, customerEmail: '', amountCents, vatRate: 20, period, nextAt: jour(jours), active: true, createdAt: le(200), ...(currency ? { currency } : {}) });
+  await abo('weber', 'Maintenance vitrages', 'Atelier Weber (Bâle)', 32_000, 'monthly', 'CHF', -9);
+  await abo('london', 'Entretien bureaux', 'Harbour & Co (Londres)', 54_000, 'quarterly', 'GBP', -20);
+  await abo('montreal', 'Supervision', 'Studio Lune (Montréal)', 18_000, 'monthly', 'CAD', -14);
 }
 
 const FAMILLES = { guichet, marketing, finance, rh, juridique, ajouts, fusions };

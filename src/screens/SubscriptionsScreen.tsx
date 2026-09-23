@@ -9,6 +9,7 @@ import { useToast } from '../state/ToastContext';
 import { formatCents } from '../lib/money';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
+import { type EnregistrementDevises, derniersTaux, versEuros } from '../lib/cinquante/finance';
 
 type Period = 'monthly' | 'quarterly' | 'yearly';
 interface SubscriptionData {
@@ -21,9 +22,20 @@ interface SubscriptionData {
   nextAt: string;
   active: boolean;
   createdAt: string;
+  /**
+   * La devise du forfait (ISO 4217), `amountCents` étant en centimes de CETTE
+   * devise. Absente = euros. Fusion « Factures récurrentes multi-devises » :
+   * la conversion vient du module Multi-devises, jamais d'un taux écrit ici.
+   */
+  currency?: string;
 }
 const MOIS: Record<Period, number> = { monthly: 1, quarterly: 3, yearly: 12 };
 const isoDay = () => new Date().toISOString().slice(0, 10);
+/** Un montant dans la devise du forfait ; l'euro garde le format de toute l'application. */
+const formatDevise = (cents: number, devise?: string) =>
+  !devise || devise === 'EUR'
+    ? formatCents(cents)
+    : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: devise, maximumFractionDigits: cents % 100 ? 2 : 0 }).format(cents / 100);
 const plusMois = (jour: string, n: number) => {
   const d = new Date(`${jour}T00:00:00`);
   d.setMonth(d.getMonth() + n);
@@ -51,12 +63,22 @@ export function SubscriptionsScreen() {
   const [customerName, setCustomerName] = useState('');
   const [amount, setAmount] = useState('');
   const [period, setPeriod] = useState<Period>('monthly');
+  const [currency, setCurrency] = useState('EUR');
+  /* Les taux viennent de Multi-devises — le dernier relevé de chaque devise. */
+  const fx = useCollection<EnregistrementDevises>('fxRates');
+  const taux = useMemo(() => derniersTaux(fx), [fx]);
+  const devises = useMemo(() => ['EUR', ...[...taux.keys()].filter((d) => d !== 'EUR').sort()], [taux]);
   const jour = isoDay();
   const locale = langue === 'en' ? 'en-GB' : 'fr-FR';
 
   const abonnements = useMemo(() => [...brutes].sort((a, b) => Number(b.active) - Number(a.active) || a.nextAt.localeCompare(b.nextAt)), [brutes]);
   const actifs = abonnements.filter((s) => s.active);
-  const mrr = actifs.reduce((n, s) => n + Math.round(s.amountCents / MOIS[s.period]), 0);
+  /* Chaque forfait ramené au mois, PUIS en euros. Un forfait sans taux connu sort du total, et l'écran le dit. */
+  const enEuros = (s: SubscriptionData) => versEuros(Math.round(s.amountCents / MOIS[s.period]), s.currency, taux);
+  const convertibles = actifs.filter((s) => enEuros(s) !== null);
+  const sansTaux = actifs.filter((s) => enEuros(s) === null);
+  const multiDevises = actifs.some((s) => s.currency && s.currency !== 'EUR');
+  const mrr = convertibles.reduce((n, s) => n + (enEuros(s) as number), 0);
   const aFacturer = actifs.filter((s) => s.nextAt <= jour);
 
   /*
@@ -65,26 +87,48 @@ export function SubscriptionsScreen() {
     exactement le même mélange de forfaits — la règle que `MODULES.md` pose
     sur ce module.
   */
-  const auMois = (s: SubscriptionData) => Math.round(s.amountCents / MOIS[s.period]);
+  const auMois = (s: SubscriptionData) => enEuros(s) ?? 0;
   const parts = useMemo(
-    () => partsDeColonne(actifs, auMois, (n) => `${n} autres forfaits`),
-    [actifs],
+    () => partsDeColonne(convertibles, auMois, (n) => `${n} autres forfaits`, multiDevises),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [actifs, taux],
   );
-  const crans = useMemo(() => ruban(actifs, parts, (p) => MOIS[p], jour), [actifs, parts, jour]);
+  const crans = useMemo(() => ruban(convertibles, parts, (p) => MOIS[p], jour), [convertibles, parts, jour]);
 
   const ajouter = async () => {
     const cents = Math.round((Number(amount.replace(',', '.')) || 0) * 100);
     if (!label.trim() || cents <= 0) return;
-    await upsert('subscriptions', uid('abo'), { label: label.trim(), customerName: customerName.trim(), customerEmail: '', amountCents: cents, vatRate: 20, period, nextAt: jour, active: true, createdAt: new Date().toISOString() });
-    setLabel(''); setCustomerName(''); setAmount(''); setOuvert(false);
+    await upsert('subscriptions', uid('abo'), { label: label.trim(), customerName: customerName.trim(), customerEmail: '', amountCents: cents, vatRate: 20, period, nextAt: jour, active: true, createdAt: new Date().toISOString(), ...(currency !== 'EUR' ? { currency } : {}) });
+    setLabel(''); setCustomerName(''); setAmount(''); setCurrency('EUR'); setOuvert(false);
   };
   const facturer = async (s: SubscriptionData & { id: string }) => {
+    /*
+      UN FORFAIT EN DEVISE se facture en euros au taux du jour de Multi-devises,
+      le montant d'origine et le taux écrits sur la facture ; la créance en
+      devise part dans Multi-devises, qui en suit l'écart de change.
+    */
+    const devise = s.currency && s.currency !== 'EUR' ? s.currency : null;
+    const t0 = devise ? taux.get(devise) : null;
+    if (devise && !t0) {
+      notify({ title: 'Aucun taux pour cette devise', body: `Relevez le taux ${devise} dans Multi-devises avant de facturer ce forfait.` });
+      return;
+    }
+    const prixCents = devise && t0 ? Math.round(s.amountCents * t0.eur) : s.amountCents;
+    const noteDevise = devise && t0 ? ` — ${formatDevise(s.amountCents, devise)} au taux du ${new Date(t0.le).toLocaleDateString(locale)} (1 ${devise} = ${String(t0.eur).replace('.', ',')} €)` : '';
     const id = createDraft({
       clientId: 0,
       billTo: { name: s.customerName || s.label, company: '', email: s.customerEmail, address: '', vatNumber: '' },
-      notes: t('abonnements.noteFacture', { libelle: s.label, echeance: new Date(`${s.nextAt}T00:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }) }),
-      lines: [{ id: 'abo-1', label: s.label, quantity: 1, unitPriceCents: s.amountCents, vatRate: s.vatRate }],
+      notes: t('abonnements.noteFacture', { libelle: s.label, echeance: new Date(`${s.nextAt}T00:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }) }) + noteDevise,
+      lines: [{ id: 'abo-1', label: s.label, quantity: 1, unitPriceCents: prixCents, vatRate: s.vatRate }],
     });
+    if (devise && t0) {
+      const echeance = new Date();
+      echeance.setDate(echeance.getDate() + 30);
+      await upsert('fxRates', uid('fxf'), {
+        kind: 'facture', client: s.customerName || s.label, ville: '', devise, montant: s.amountCents,
+        tauxEmission: t0.eur, emiseLe: new Date().toISOString(), echeance: echeance.toISOString().slice(0, 10),
+      });
+    }
     await upsert('subscriptions', s.id, { ...s, nextAt: plusMois(s.nextAt, MOIS[s.period]) });
     notify({ title: t('abonnements.brouillonCree'), body: t('abonnements.brouillonCorps', { client: s.customerName || s.label }) });
     void id;
@@ -134,6 +178,11 @@ export function SubscriptionsScreen() {
           <select value={period} onChange={(e) => setPeriod(e.target.value as Period)} aria-label={t('abonnements.champPeriode')} className="input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none">
             {(['monthly', 'quarterly', 'yearly'] as Period[]).map((p) => <option key={p} value={p}>{periode(p)}</option>)}
           </select>
+          {devises.length > 1 && (
+            <select value={currency} onChange={(e) => setCurrency(e.target.value)} aria-label="Devise du forfait" className="input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none sm:col-span-2">
+              {devises.map((d) => <option key={d} value={d}>{d === 'EUR' ? 'Euros' : `${d} — converti au taux de Multi-devises`}</option>)}
+            </select>
+          )}
           <div className="flex flex-wrap gap-2 sm:col-span-2">
             <button type="submit" className="bg-accent px-4 py-2 text-sm font-semibold text-bg">{t('abonnements.enregistrer')}</button>
             <button type="button" onClick={() => setOuvert(false)} className="border border-border px-4 py-2 text-sm text-text-secondary hover:text-text-primary">{t('chrome.fermer')}</button>
@@ -239,6 +288,13 @@ export function SubscriptionsScreen() {
                     </div>
                   ))}
                 </div>
+                {multiDevises && (
+                  <p className="mt-3 text-[12.5px] leading-relaxed text-text-muted">
+                    Les forfaits en devise sont ramenés en euros au dernier taux de Multi-devises.
+                    {sansTaux.length > 0 &&
+                      ` Hors total, faute de taux : ${sansTaux.map((s) => `${s.label} (${s.currency})`).join(', ')}.`}
+                  </p>
+                )}
               </div>
             </div>
           </motion.section>
@@ -273,7 +329,7 @@ export function SubscriptionsScreen() {
                         left: `${(c.dansNJours / RUBAN_JOURS) * 100}%`,
                         background: c.teinte,
                       }}
-                      title={`${c.label} · ${formatCents(c.montantCents)} · dans ${c.dansNJours} j`}
+                      title={`${c.label} · ${formatDevise(c.montantCents, c.devise)} · dans ${c.dansNJours} j`}
                     />
                   ))}
                 </div>
@@ -328,7 +384,7 @@ export function SubscriptionsScreen() {
                       </p>
                     </div>
                     <p className="tnum flex-shrink-0 font-mono text-[20px] font-semibold tracking-[-0.03em] text-text-primary">
-                      {formatCents(s.amountCents)}
+                      {formatDevise(s.amountCents, s.currency)}
                     </p>
                     <div className="flex flex-shrink-0 gap-2">
                       <button
@@ -382,7 +438,7 @@ export function SubscriptionsScreen() {
                       s.active ? 'text-text-primary' : ''
                     }`}
                   >
-                    {formatCents(s.amountCents)}
+                    {formatDevise(s.amountCents, s.currency)}
                   </span>
                   <button
                     type="button"
@@ -467,10 +523,12 @@ function partsDeColonne(
   actifs: (SubscriptionData & { id: string })[],
   auMois: (s: SubscriptionData) => number,
   libelleAutres: (n: number) => string,
+  /** Plusieurs devises dans la colonne : chaque forfait affiche la sienne (fusion multi-devises). */
+  avecDevise = false,
 ): PartDeColonne[] {
   const parForfait = new Map<string, { mensuelCents: number; membres: string[] }>();
   for (const s of actifs) {
-    const cle = s.label.trim() || '—';
+    const cle = `${s.label.trim() || '—'}${avecDevise ? ` · ${s.currency ?? 'EUR'}` : ''}`;
     const entree = parForfait.get(cle) ?? { mensuelCents: 0, membres: [] };
     entree.mensuelCents += auMois(s);
     entree.membres.push(s.id);
@@ -529,6 +587,7 @@ interface CranDEcheance {
   teinte: string;
   label: string;
   montantCents: number;
+  devise?: string;
 }
 
 function ruban(
@@ -562,6 +621,7 @@ function ruban(
           teinte: teinteDe.get(s.id) ?? TEINTES[TEINTES.length - 1],
           label: s.label,
           montantCents: s.amountCents,
+          devise: s.currency,
         });
       }
       const d = new Date(`${jour}T00:00:00`);

@@ -867,5 +867,18 @@ const iso = (joursAvant: number, h = 10) => {
   regle('39k · l’ambre : le passage qui demande plus que nécessaire', () => assert.equal(A.passageEnAmbre(ext), 1));
 }
 
+/* ═══════════════════════════════════════════════════════════════ FUSIONS ══ */
+{
+  const F = await charger<typeof import('../src/lib/cinquante/finance')>('src/lib/cinquante/finance.ts');
+  console.log('Fusions');
+  const tx = F.derniersTaux([
+    { kind: 'taux', devise: 'CHF', eur: 0.9, le: iso(9) },
+    { kind: 'taux', devise: 'CHF', eur: 0.941, le: iso(2) },
+  ]);
+  regle('13b · un forfait en devise se ramène en euros au DERNIER taux de Multi-devises', () => assert.equal(F.versEuros(32_000, 'CHF', tx), 30_112));
+  regle('13b · sans taux connu, pas de conversion inventée', () => assert.equal(F.versEuros(18_000, 'CAD', tx), null));
+  regle('13b · l’euro ne se convertit pas', () => assert.equal(F.versEuros(500, undefined, tx), 500));
+}
+
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);
 if (echecs > 0) process.exit(1);

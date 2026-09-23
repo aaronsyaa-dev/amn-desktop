@@ -440,12 +440,29 @@ export const epaisseurAnneau = (euros: number) => Math.max(1, Math.round((euros 
 /** Sous ce diamètre, le libellé passe dessous. */
 export const PETITE_BULLE_PX = 70;
 
-export function bulles(enr: EnregistrementDevises[]) {
+/** Le taux le plus récent de chaque devise. */
+export function derniersTaux(enr: EnregistrementDevises[]): Map<string, TauxDevise> {
   const taux = new Map<string, TauxDevise>();
   for (const t of enr.filter((e): e is TauxDevise => e.kind === 'taux')) {
     const x = taux.get(t.devise);
     if (!x || t.le > x.le) taux.set(t.devise, t);
   }
+  return taux;
+}
+
+/**
+ * Un montant en devise, ramené en euros au dernier taux connu — `null` sans
+ * taux : une conversion inventée serait un chiffre faux présenté comme vrai.
+ * (Fusion « Factures récurrentes multi-devises » → Abonnements.)
+ */
+export function versEuros(cents: number, devise: string | undefined, taux: Map<string, TauxDevise>): number | null {
+  if (!devise || devise === 'EUR') return cents;
+  const t = taux.get(devise);
+  return t ? Math.round(cents * t.eur) : null;
+}
+
+export function bulles(enr: EnregistrementDevises[]) {
+  const taux = derniersTaux(enr);
   const ouvertes = enr.filter((e): e is FactureDevise => e.kind === 'facture' && !e.encaisseeLe);
   const devises = [...new Set(ouvertes.map((f) => f.devise))].map((devise) => {
     const fs = ouvertes.filter((f) => f.devise === devise);
