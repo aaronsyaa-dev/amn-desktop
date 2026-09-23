@@ -980,6 +980,29 @@ const iso = (joursAvant: number, h = 10) => {
     assert.deepEqual(PA.palettes(45_003), ['4', '5', '0', '0', '3']);
     assert.deepEqual(PA.palettes(0), ['0']);
   });
+  regle('42g · quatre paliers bornés au 95ᵉ centile du parc', () => {
+    const p95 = PA.centile95(Array.from({ length: 100 }, (_, i) => i + 1));
+    assert.equal(p95, 95);
+    assert.equal(PA.palierMeteo(10, 100), 0);
+    assert.equal(PA.palierMeteo(30, 100), 1);
+    assert.equal(PA.palierMeteo(60, 100), 2);
+    assert.equal(PA.palierMeteo(99, 100), 3);
+    assert.equal(PA.palierMeteo(5000, 100), 3);
+  });
+  regle('42g · vingt-quatre cases, la dernière est l’heure en cours', () => {
+    const now = Date.parse('2026-09-18T16:04:00Z');
+    assert.equal(PA.caseHoraire(now, now), 23);
+    assert.equal(PA.caseHoraire(now - 23 * 3_600_000, now), 0);
+    assert.equal(PA.caseHoraire(now - 24 * 3_600_000, now), null);
+  });
+  regle('42g · douze sites au plus : les incidents d’abord, puis les plus lents', () => {
+    const sites = Array.from({ length: 20 }, (_, i) => ({ id: i, incident: i === 19, lenteur: i }));
+    const { montres, autres } = PA.sitesAMontrer(sites);
+    assert.equal(montres.length, 12);
+    assert.equal(autres, 8);
+    assert.equal(montres[0].id, 19);
+    assert.equal(montres[1].id, 18);
+  });
   regle('42d · les noms sont hors du cercle, dans la marge du viewBox', () => assert.ok(PA.RADAR.rNoms > PA.RADAR.rBord && PA.RADAR.c + PA.RADAR.marge >= PA.RADAR.rNoms));
 
 }

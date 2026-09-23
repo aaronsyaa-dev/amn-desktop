@@ -85,3 +85,37 @@ export function pointsDuSecteur(
 
 /** « Autant de palettes que de chiffres, jamais de séparateur de milliers. » */
 export const palettes = (n: number) => String(Math.max(0, Math.round(n))).split('');
+
+/* ═══ I7 · la météo des sites (`42g`) ══════════════════════════════════ */
+
+export const METEO = { cases: 24, maxSites: 12, paliers: 4 } as const;
+
+/** Le 95ᵉ centile (rang le plus proche) d'un ensemble de mesures. */
+export function centile95(valeurs: number[]): number | null {
+  if (!valeurs.length) return null;
+  const v = [...valeurs].sort((a, b) => a - b);
+  return v[Math.min(v.length - 1, Math.ceil(0.95 * v.length) - 1)];
+}
+
+/**
+ * « Quatre paliers de clarté, bornés au 95ᵉ centile du parc » : 0 (sombre)
+ * → 3 (clair). Tout ce qui atteint le centile est au palier le plus clair ;
+ * en dessous, quatre parts égales.
+ */
+export function palierMeteo(latenceMs: number, p95: number): 0 | 1 | 2 | 3 {
+  if (p95 <= 0 || latenceMs >= p95) return 3;
+  return Math.min(3, Math.max(0, Math.floor((latenceMs / p95) * METEO.paliers))) as 0 | 1 | 2 | 3;
+}
+
+/** La case (0 → 23) d'une mesure : la dernière case est l'heure en cours. Hors fenêtre : null. */
+export function caseHoraire(atMs: number, maintenant: number): number | null {
+  const heureCourante = Math.floor(maintenant / 3_600_000);
+  const i = METEO.cases - 1 - (heureCourante - Math.floor(atMs / 3_600_000));
+  return i >= 0 && i < METEO.cases ? i : null;
+}
+
+/** L'ordre d'affichage : les sites en incident d'abord, puis les plus lents ; douze au plus. */
+export function sitesAMontrer<T extends { incident: boolean; lenteur: number }>(sites: T[]): { montres: T[]; autres: number } {
+  const tri = [...sites].sort((a, b) => Number(b.incident) - Number(a.incident) || b.lenteur - a.lenteur);
+  return { montres: tri.slice(0, METEO.maxSites), autres: Math.max(0, tri.length - METEO.maxSites) };
+}

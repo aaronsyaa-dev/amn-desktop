@@ -8,6 +8,7 @@ import { Fil } from '../accueils/interne/Fil';
 import { Radar } from '../accueils/interne/Radar';
 import { Compteur } from '../accueils/interne/Compteur';
 import { AjmaniDabord } from '../accueils/interne/AjmaniDabord';
+import { Meteo } from '../accueils/interne/Meteo';
 import { colonnesCarte } from '../accueils/interne/parc';
 
 /**
@@ -63,6 +64,13 @@ export const ACCUEILS: AccueilDef[] = [
     phrase: 'La proposition d’Ajmani, seule : il a déjà trié la situation.',
     vignette: [[8, 8, 10, 4, 'clair'], [8, 18, 12, 5, 'ambre'], [24, 17, 62, 7, 'clair'], [24, 27, 50, 7, 'clair'], [24, 38, 18, 4, 'moyen'], [8, 48, 26, 6, 'sombre'], [37, 48, 26, 6, 'sombre'], [66, 48, 26, 6, 'sombre']],
     composant: AjmaniDabord,
+  },
+  {
+    code: '42g',
+    nom: 'La météo des sites',
+    phrase: 'Le temps de réponse des sites, heure par heure, sur vingt-quatre heures.',
+    vignette: [[6, 8, 16, 4, 'clair'], [26, 8, 62, 4, 'moyen'], [88, 8, 6, 4, 'ambre'], [6, 16, 16, 4, 'moyen'], [26, 16, 68, 4, 'sombre'], [6, 24, 16, 4, 'moyen'], [26, 24, 68, 4, 'sombre'], [6, 32, 16, 4, 'moyen'], [26, 32, 68, 4, 'moyen']],
+    composant: Meteo,
   },
 ];
 
