@@ -841,4 +841,60 @@ export function palimpseste(versions: VersionClasseur[], signee: number | null):
   });
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   39g · ÉDITEUR PARTAGÉ — les papillons
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** « Au-delà de trois jours sans réponse, le plus ancien passe en ambre. » */
+export const SEUIL_PAPILLON_J = 3;
+
+export interface DocumentPartage {
+  kind: 'document';
+  titre: string;
+  paragraphes: Array<{ id: string; texte: string }>;
+}
+
+export interface Papillon {
+  kind: 'papillon';
+  documentId: string;
+  paragrapheId: string;
+  auteur: string;
+  /** Ce qu'on lit sur le papillon : « “entre 8 h et 10 h” ? ». */
+  note: string;
+  /** Le passage visé et son remplacement ; sans passage, on ajoute à la fin. */
+  cible?: string;
+  par: string;
+  poseLe: string;
+  statut: 'attente' | 'acceptee' | 'refusee' | 'caduque';
+  reponduLe?: string;
+}
+
+export type EnregistrementPartage = DocumentPartage | Papillon;
+
+/** « NO · Nour » : les deux premières lettres du prénom. */
+export const initiales = (nom: string) => nom.trim().slice(0, 2).toLocaleUpperCase('fr');
+
+export function agePapillon(poseLe: string, maintenant: Date): string {
+  const ms = maintenant.getTime() - new Date(poseLe).getTime();
+  const h = Math.floor(ms / 3_600_000);
+  if (h < 1) return 'à l’instant';
+  if (h < 24) return `il y a ${h} h`;
+  const j = Math.floor(ms / JOUR_MS);
+  return j === 1 ? 'hier' : `il y a ${j} j`;
+}
+
+/** Le papillon en ambre : le plus ancien en attente, s'il attend depuis plus de trois jours. */
+export function papillonEnAmbre<T extends Papillon>(papillons: T[], maintenant: Date): T | null {
+  const plusVieux = papillons.filter((p) => p.statut === 'attente').sort((a, b) => a.poseLe.localeCompare(b.poseLe))[0];
+  if (!plusVieux) return null;
+  return (maintenant.getTime() - new Date(plusVieux.poseLe).getTime()) / JOUR_MS > SEUIL_PAPILLON_J ? plusVieux : null;
+}
+
+/** « Le texte, lui, ne change qu'à l'acceptation. » */
+export function appliquer(texte: string, p: Pick<Papillon, 'cible' | 'par'>): string {
+  if (p.cible && texte.includes(p.cible)) return texte.replace(p.cible, p.par);
+  if (p.cible) return texte;
+  return `${texte.replace(/\s+$/, '')} ${p.par}`.trim();
+}
+
 export { JOUR_MS, borne };

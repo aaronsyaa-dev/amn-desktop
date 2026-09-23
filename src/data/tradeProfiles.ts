@@ -249,4 +249,5 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'stockForecast', label: 'Prévision de stock', hint: 'Quand chaque article manquera, et quand commander' },
   { key: 'fleet', label: 'Flotte', hint: 'Chaque véhicule, son compteur et ses échéances' },
   { key: 'binder', label: 'Classeur', hint: 'Les documents et leurs versions, signée comprise' },
+  { key: 'sharedEditor', label: 'Éditeur partagé', hint: 'Un document, et ce que chacun propose d’y changer' },
 ];

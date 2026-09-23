@@ -799,6 +799,17 @@ const iso = (joursAvant: number, h = 10) => {
     assert.equal(pal[0].phrases[2].couches[0].apresSignature, true);
     assert.equal(pal[0].phrases[0].couches[0].apresSignature, false);
   });
+
+  // ── 39g Éditeur partagé ─────────────────────────────────────────────────
+  const pap = (id: string, j: number, statut: 'attente' | 'acceptee' = 'attente') => ({ id, kind: 'papillon' as const, documentId: 'd', paragrapheId: 'p', auteur: 'Samir B', note: '', par: 'x', poseLe: iso(j), statut });
+  regle('39g · au-delà de trois jours sans réponse, le plus ancien passe en ambre', () => {
+    assert.equal(A.papillonEnAmbre([pap('a', 5), pap('b', 1)], MAINTENANT)?.id, 'a');
+    assert.equal(A.papillonEnAmbre([pap('a', 2), pap('b', 1)], MAINTENANT), null);
+    assert.equal(A.papillonEnAmbre([pap('a', 9, 'acceptee'), pap('b', 1)], MAINTENANT), null);
+  });
+  regle('39g · le texte ne change qu’à l’acceptation, là où le papillon vise', () =>
+    assert.equal(A.appliquer('accepté par écrit.', { cible: 'par écrit', par: 'en ligne' }), 'accepté en ligne.'));
+  regle('39g · « SA · Samir »', () => assert.equal(A.initiales('Samir Benali'), 'SA'));
 }
 
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);

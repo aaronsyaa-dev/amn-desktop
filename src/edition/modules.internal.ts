@@ -30,6 +30,7 @@ import {
   DoorOpen,
   Download,
   FileBarChart,
+  FilePen,
   FileSpreadsheet,
   FileText,
   Fingerprint,
@@ -340,6 +341,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'reports', label: 'Rapports', to: '/reports', icon: FileText, hint: 'Livrables clients' },
       { key: 'media', label: 'Médias', to: '/media', icon: Images, hint: 'Bibliothèque' },
       { key: 'binder', label: 'Classeur', to: '/classeur', icon: FolderArchive, hint: 'Les documents et leurs versions, signée comprise' },
+      { key: 'sharedEditor', label: 'Éditeur partagé', to: '/editeur-partage', icon: FilePen, hint: 'Un document, et ce que chacun propose d’y changer' },
     ],
   },
   {
@@ -540,6 +542,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/settings', 'reglages'],
   ['/membres', 'reglages'],
   ['/assistance', 'fil'],
+  ['/editeur-partage', 'journal'],
   ['/classeur', 'journal'],
   ['/flotte', 'registre'],
   ['/prevision-stock', 'registre'],

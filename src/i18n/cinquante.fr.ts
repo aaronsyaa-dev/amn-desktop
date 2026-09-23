@@ -219,4 +219,9 @@ export const FR_50: Record<keyof typeof EN_50, string> = {
   'm50.binder.descriptionSansEcart': 'Un document garde la trace de ses versions précédentes comme un parchemin gratté : sous le texte actuel, les versions antérieures transparaissent là où elles différaient.',
   'm50.binder.descriptionVide': 'Aucun document déposé pour l’instant.',
   'm50.binder.phraseVide': 'Aucun document déposé pour l’instant.',
+  'm50.sharedEditor.titre': 'Éditeur partagé',
+  'm50.sharedEditor.description': 'Un document que {n} personnes rédigent ensemble. Leurs propositions ne réécrivent pas le texte : elles sont collées dans la marge comme des papillons, en face de la phrase visée, en attente d’un oui ou d’un non.',
+  'm50.sharedEditor.descriptionSeul': 'Un document qu’on rédige à plusieurs. Les propositions ne réécrivent pas le texte : elles sont collées dans la marge comme des papillons, en face de la phrase visée, en attente d’un oui ou d’un non.',
+  'm50.sharedEditor.descriptionVide': 'Aucun document partagé pour l’instant.',
+  'm50.sharedEditor.phraseVide': 'Aucun document partagé pour l’instant.',
 };

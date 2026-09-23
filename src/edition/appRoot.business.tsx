@@ -123,6 +123,7 @@ import { ItinerairesScreen } from '../screens/ItinerairesScreen';
 import { PrevisionStockScreen } from '../screens/PrevisionStockScreen';
 import { FlotteScreen } from '../screens/FlotteScreen';
 import { ClasseurScreen } from '../screens/ClasseurScreen';
+import { EditeurPartageScreen } from '../screens/EditeurPartageScreen';
 
 /**
  * La racine de l'édition Business — la table de routes livrée aux
@@ -1022,6 +1023,14 @@ export function AppRoot() {
           element={
             <ModuleRoute module="binder">
               <ClasseurScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/editeur-partage"
+          element={
+            <ModuleRoute module="sharedEditor">
+              <EditeurPartageScreen />
             </ModuleRoute>
           }
         />

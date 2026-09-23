@@ -268,6 +268,7 @@ const MODULE_DATA = {
   stockForecast: ['stockForecasts'],
   fleet: ['vehicles'],
   binder: ['documentVersions'],
+  sharedEditor: ['sharedDocs'],
 };
 
 /**
@@ -404,6 +405,7 @@ const MODULE_FILES = {
   stockForecast: ['src/screens/PrevisionStockScreen.tsx'],
   fleet: ['src/screens/FlotteScreen.tsx'],
   binder: ['src/screens/ClasseurScreen.tsx'],
+  sharedEditor: ['src/screens/EditeurPartageScreen.tsx'],
 };
 
 /**

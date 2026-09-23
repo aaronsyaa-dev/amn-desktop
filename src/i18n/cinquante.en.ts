@@ -224,4 +224,9 @@ export const EN_50 = {
   'm50.binder.descriptionSansEcart': 'A document keeps the trace of its earlier versions like a scraped parchment: under the current text, earlier versions show through where they differed.',
   'm50.binder.descriptionVide': 'No document filed yet.',
   'm50.binder.phraseVide': 'No document filed yet.',
+  'm50.sharedEditor.titre': 'Shared editor',
+  'm50.sharedEditor.description': 'A document that {n} people write together. Their proposals do not rewrite the text: they are stuck in the margin like sticky notes, next to the sentence they target, waiting for a yes or a no.',
+  'm50.sharedEditor.descriptionSeul': 'A document written by several people. Proposals do not rewrite the text: they are stuck in the margin like sticky notes, next to the sentence they target, waiting for a yes or a no.',
+  'm50.sharedEditor.descriptionVide': 'No shared document yet.',
+  'm50.sharedEditor.phraseVide': 'No shared document yet.',
 } as const;

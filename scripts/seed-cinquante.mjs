@@ -1100,6 +1100,29 @@ async function ajouts() {
       paragraphes: [{ titre: 'Art. 1 · Risques', texte: `Travail en hauteur à ${numero === 1 ? '5' : '6'} m, nacelle obligatoire.` }],
     });
   }
+
+  // ── 39g Éditeur partagé ───────────────────────────────────────────────────
+  await poser('sharedDocs', 'c50-partage-conditions', {
+    kind: 'document', titre: 'Conditions d’intervention · Studio Nord',
+    paragraphes: [
+      { id: 'p1', texte: 'Nous intervenons chaque mardi matin, entre 8 h et 11 h, dans les locaux du rez-de-chaussée.' },
+      { id: 'p2', texte: 'Les produits utilisés sont fournis par le prestataire et conformes à la fiche de sécurité remise au client.' },
+      { id: 'p3', texte: 'Toute intervention supplémentaire fait l’objet d’un devis préalable, accepté par écrit.' },
+      { id: 'p4', texte: 'Le client prévient 48 heures à l’avance de toute fermeture exceptionnelle des locaux.' },
+    ],
+  });
+  const papillon = (id, paragrapheId, auteur, note, cible, par, poseLe, statut = 'attente', reponduLe) =>
+    poser('sharedDocs', `c50-papillon-${id}`, { kind: 'papillon', documentId: 'c50-partage-conditions', paragrapheId, auteur, note, ...(cible ? { cible } : {}), par, poseLe, statut, ...(reponduLe ? { reponduLe } : {}) });
+  await papillon('nour', 'p1', 'Nour Haddad', '« entre 8 h et 10 h » ?', 'entre 8 h et 11 h', 'entre 8 h et 10 h', new Date(MAINTENANT.getTime() - 2 * 3_600_000).toISOString());
+  await papillon('samir', 'p3', 'Samir Benali', 'ajouter « ou par message »', 'accepté par écrit', 'accepté par écrit ou par message', le(5, 9));
+  await papillon('lea', 'p3', 'Léa Martin', '« accepté en ligne »', 'accepté par écrit', 'accepté en ligne', le(1, 9));
+  await papillon('karim', 'p4', 'Karim Ould', '« 72 heures » ?', '48 heures', '72 heures', le(1, 16));
+  for (let k = 0; k < 6; k += 1) await papillon(`ancien-${k}`, 'p2', ['Léa Martin', 'Nour Haddad', 'Samir Benali'][k % 3], 'correction', '', '', le(20 - k * 2, 10), k === 5 ? 'refusee' : 'acceptee', le(19 - k * 2, 10));
+  await poser('sharedDocs', 'c50-partage-livret', { kind: 'document', titre: 'Livret d’accueil', paragraphes: [{ id: 'l1', texte: 'Bienvenue dans l’équipe.' }, { id: 'l2', texte: 'Les clés se retirent au bureau.' }] });
+  for (const [id, pg] of [['l-a', 'l1'], ['l-b', 'l2']]) {
+    await poser('sharedDocs', `c50-papillon-${id}`, { kind: 'papillon', documentId: 'c50-partage-livret', paragrapheId: pg, auteur: 'Léa Martin', note: 'à reformuler', par: '', poseLe: le(2, 11), statut: 'attente' });
+  }
+  await poser('sharedDocs', 'c50-partage-charte', { kind: 'document', titre: 'Charte de l’équipe', paragraphes: [{ id: 'c1', texte: 'On se dit bonjour.' }] });
 }
 
 const FAMILLES = { guichet, marketing, finance, rh, juridique, ajouts };

@@ -281,6 +281,7 @@ const ECRANS = [
   ['Prévision de stock', '#/prevision-stock'],
   ['Flotte', '#/flotte'],
   ['Classeur', '#/classeur'],
+  ['Éditeur partagé', '#/editeur-partage'],
 ];
 
 const serveur = spawn('node', [new URL('./servir-bundle.mjs', import.meta.url).pathname, BUNDLE, String(PORT)], {
