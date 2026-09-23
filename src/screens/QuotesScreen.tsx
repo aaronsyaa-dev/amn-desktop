@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, FileText } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { EcranVide, useHaloSignal } from '../components/EtatEcran';
 import { FirstRun } from '../components/EmptyState';
@@ -9,6 +9,11 @@ import { useAppointments } from '../state/useAppointments';
 import { formatCents } from '../lib/money';
 import { useLangue } from '../i18n';
 import type { Client, Quote } from '../shared/api';
+import { DevisDepuisBrief } from '../components/DevisDepuisBrief';
+import type { EntreeCatalogue } from '../lib/devisBrief';
+import { useInvoices } from '../state/useInvoices';
+import { useCollection } from '../state/SyncContext';
+import { useToast } from '../state/ToastContext';
 
 /**
  * DEVIS — Clients & revenus · `13a`
@@ -92,8 +97,30 @@ interface Reglette {
 export function QuotesScreen() {
   useLangue();
   const navigate = useNavigate();
-  const { clients, quotes } = useClients();
+  const { clients, quotes, createQuote } = useClients();
   const { appointments } = useAppointments();
+  const { invoices } = useInvoices();
+  const kits = useCollection<{ product: string; sellPriceCents: number | null; createdAt?: string }>('boms');
+  const forfaits = useCollection<{ label: string; amountCents: number; currency?: string; createdAt?: string }>('subscriptions');
+  const { notify } = useToast();
+  /* LA PORTE « DEPUIS UN BRIEF » (fusion « Devis générés à partir d'un brief ») : ouverte, elle porte l'ambre de l'écran. */
+  const [briefOuvert, setBriefOuvert] = useState(false);
+  /*
+    LE CATALOGUE RÉEL — ce que l'organisation a déjà chiffré ou facturé, le
+    plus récent d'abord : c'est là que le brief trouve ses prix, et nulle part
+    ailleurs. Un forfait en devise n'y entre pas (son prix n'est pas en euros).
+  */
+  const catalogue = useMemo<EntreeCatalogue[]>(() => {
+    const e: Array<EntreeCatalogue & { le: string }> = [];
+    for (const f of invoices) {
+      if (f.status === 'draft' || f.status === 'cancelled' || f.kind === 'creditNote') continue;
+      for (const l of f.lines ?? []) if (l.label && l.unitPriceCents > 0) e.push({ libelle: l.label, prixCents: l.unitPriceCents, source: 'facture', le: f.issuedAt || '' });
+    }
+    for (const q of quotes) if (q.title && q.priceEuro > 0) e.push({ libelle: q.title, prixCents: Math.round(q.priceEuro * 100), source: 'devis', le: q.sentAt ?? q.createdAt });
+    for (const k of kits) if (k.product && k.sellPriceCents) e.push({ libelle: k.product, prixCents: k.sellPriceCents, source: 'kit', le: k.createdAt ?? '' });
+    for (const a of forfaits) if (a.label && a.amountCents > 0 && (!a.currency || a.currency === 'EUR')) e.push({ libelle: a.label, prixCents: a.amountCents, source: 'forfait', le: a.createdAt ?? '' });
+    return e.sort((a, b) => b.le.localeCompare(a.le));
+  }, [invoices, quotes, kits, forfaits]);
 
   const maintenant = useMemo(() => new Date(), []);
 
@@ -136,7 +163,7 @@ export function QuotesScreen() {
     qu'elles sont dépassées, pas une seconde couleur, et l'écran garde donc
     une seule région ambre.
   */
-  const aRelancer = reglettes.find((r) => r.franchi) ?? null;
+  const aRelancer = briefOuvert ? null : (reglettes.find((r) => r.franchi) ?? null);
   const halo = useHaloSignal(!!aRelancer);
 
   /*
@@ -218,6 +245,16 @@ export function QuotesScreen() {
             },
           ]}
           actions={
+            <span className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setBriefOuvert((v) => !v)}
+              aria-expanded={briefOuvert}
+              className="flex h-11 items-center gap-2 bg-accent px-3 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover md:h-9"
+            >
+              <FileText size={16} strokeWidth={1.9} />
+              Depuis un brief
+            </button>
             <button
               type="button"
               onClick={() => navigate('/facturation')}
@@ -226,8 +263,22 @@ export function QuotesScreen() {
               <ArrowLeft size={16} strokeWidth={1.9} />
               Facturation
             </button>
+            </span>
           }
         />
+
+        {briefOuvert && (
+          <DevisDepuisBrief
+            clients={clients}
+            catalogue={catalogue}
+            onFermer={() => setBriefOuvert(false)}
+            onCreer={async (d) => {
+              await createQuote({ clientId: d.clientId, title: d.title, detail: d.detail, trackerTier: '', priceEuro: d.priceEuro });
+              setBriefOuvert(false);
+              notify({ title: 'Devis créé en brouillon', body: `${d.title} — sur la fiche du client, chaque ligne reliée à sa phrase du brief.` });
+            }}
+          />
+        )}
 
         {vide ? (
           <FirstRun title="Rien n’attend de réponse">

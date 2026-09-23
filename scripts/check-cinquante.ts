@@ -892,6 +892,16 @@ const iso = (joursAvant: number, h = 10) => {
       { referrer: 'Camille', status: 'invite' },
       { referrer: 'Nour', status: 'venu', primeCents: 3000 },
     ], 'Camille'), 3000));
+
+  const D = await charger<typeof import('../src/lib/devisBrief')>('src/lib/devisBrief.ts');
+  const cat = [
+    { libelle: 'Entretien des vitrages', prixCents: 14_400, source: 'facture' },
+    { libelle: 'Remise en état canapé tissu', prixCents: 9_600, source: 'devis' },
+  ];
+  const lb = D.lignesDepuisBrief('Nettoyer les vitrages du rez-de-chaussée, deux passages. Remettre en état le canapé en tissu. Arroser les plantes.', cat);
+  regle('13a · une ligne par phrase du brief, reliée à sa phrase', () => assert.deepEqual(lb.map((l) => l.phrase.slice(0, 9)), ['Nettoyer ', 'Remettre ', 'Arroser l']));
+  regle('13a · le prix vient du catalogue réel, quantité comprise', () => assert.equal(lb[0].prixCents, 28_800));
+  regle('13a · une phrase qui ne correspond à rien reste à chiffrer : aucun prix inventé', () => assert.equal(lb[2].prixCents, null));
 }
 
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);
