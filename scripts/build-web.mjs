@@ -71,8 +71,15 @@ const REGLAGE = [
   `    2. AMN_EDITION = business | internal, en variable de projet`,
   `       (Production ET Preview), pour un cas ponctuel.`,
   ``,
-  `    business → AMN Desktop, l'édition livrée aux organisations clientes`,
-  `    internal → AMN Business, l'édition d'AMN DevSec`,
+  /*
+    Les deux cibles se nomment par leur RÔLE, jamais par leur nom commercial.
+    `check:naming` refuse un nom de produit écrit en dur hors de ses deux
+    sources, et il a raison jusque dans un message d'erreur : les noms des
+    deux éditions ont déjà été échangés une fois, et une chaîne figée ici
+    aurait envoyé quelqu'un régler l'inverse de ce qu'il voulait.
+  */
+  `    business → l'édition livrée aux organisations clientes`,
+  `    internal → l'édition d'AMN DevSec`,
   ``,
   `  Voir docs/BUSINESS.md, « Sur Vercel ».`,
 ].join('\n');
