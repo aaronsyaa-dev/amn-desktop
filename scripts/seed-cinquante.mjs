@@ -1205,6 +1205,24 @@ async function ajouts() {
   for (const [terme, traduction, validePar] of termes) {
     await poser('translations', `c50-terme-${terme.toLowerCase().replace(/[^a-z]+/g, '-')}`, { kind: 'terme', terme, traduction, langue: 'de', validePar });
   }
+
+  // ── 39k Extensions ────────────────────────────────────────────────────────
+  const passage = (moduleCle, module, donnee, sens, declareNecessaire, extra = {}) => ({ moduleCle, module, donnee, sens, declareNecessaire, ...extra });
+  await poser('extensionGrants', 'c50-ext-avisplus', {
+    kind: 'extension', nom: 'AvisPlus', editeur: 'éditeur tiers', usage: 'extension d’avis', statut: 'demande',
+    passages: [
+      passage('clients', 'Clients', 'noms et courriels', 'lecture', true),
+      passage('reviews', 'Avis', 'notes et textes', 'lecture', true),
+      passage('invoices', 'Facturation', 'montants des factures', 'lecture', false),
+      passage('reviews', 'Avis', 'réponses publiées', 'ecriture', true),
+      // Demandé, mais le poste ne le montrera jamais : le Coffre-fort est hors douane.
+      passage('vault', 'Coffre-fort', 'mots de passe', 'lecture', false),
+    ],
+  });
+  const installee = (id, nom, passages) => poser('extensionGrants', `c50-ext-${id}`, { kind: 'extension', nom, editeur: 'éditeur tiers', usage: 'extension', statut: 'installee', installeeLe: le(120), revueLe: le(35), passages });
+  await installee('agenda', 'Agenda Sync', [passage('agenda', 'Agenda', 'rendez-vous', 'lecture', true, { usages30j: 212, decision: 'autorise' }), passage('agenda', 'Agenda', 'rendez-vous', 'ecriture', true, { usages30j: 40, decision: 'autorise' })]);
+  await installee('compta', 'Compta Export', [passage('invoices', 'Facturation', 'factures', 'lecture', true, { usages30j: 8, decision: 'autorise' }), passage('clients', 'Clients', 'adresses', 'lecture', false, { decision: 'refuse' })]);
+  await installee('meteo', 'Météo chantier', [passage('rounds', 'Tournées', 'adresses du jour', 'lecture', true, { usages30j: 30, decision: 'autorise' }), passage('clients', 'Clients', 'téléphones', 'lecture', false, { decision: 'refuse' })]);
 }
 
 const FAMILLES = { guichet, marketing, finance, rh, juridique, ajouts };

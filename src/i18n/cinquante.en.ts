@@ -244,4 +244,10 @@ export const EN_50 = {
   'm50.translation.descriptionSansMention': 'The document in French, and the translation slipped under each line. You read both together, line by line, without going back and forth.',
   'm50.translation.descriptionVide': 'No translated document yet.',
   'm50.translation.phraseVide': 'No translated document yet.',
+  'm50.extensions.titre': 'Extensions',
+  'm50.extensions.description': 'Before installing an extension, you see what crosses the border between the product and it, in each direction. {justifies} crossings are justified; another asks for data the extension does not need.',
+  'm50.extensions.descriptionUn': 'Before installing an extension, you see what crosses the border between the product and it, in each direction. {justifies} crossing is justified; another asks for data the extension does not need.',
+  'm50.extensions.descriptionSansExces': 'Before installing an extension, you see what crosses the border between the product and it, in each direction. Every crossing is justified.',
+  'm50.extensions.descriptionVide': 'No extension yet.',
+  'm50.extensions.phraseVide': 'No extension yet.',
 } as const;

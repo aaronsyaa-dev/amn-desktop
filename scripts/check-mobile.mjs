@@ -135,6 +135,7 @@ const ECRANS = [
   ['Salles', '#/salles'],
   ['Rédaction', '#/outils/redaction'],
   ['Traduction', '#/outils/traduction'],
+  ['Extensions', '#/extensions'],
 ];
 
 const AMBRE = ['rgb(208, 154, 74)', '#d09a4a'];

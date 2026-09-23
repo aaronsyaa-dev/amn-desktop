@@ -851,6 +851,20 @@ const iso = (joursAvant: number, h = 10) => {
   });
   regle('39j · l’ambre : la première mention non remplacée', () =>
     assert.equal(A.mentionEnAttente([{ source: 'x', traduction: 'y' }, { source: 'art. 293 B', traduction: 'z' }]), 1));
+
+  // ── 39k Extensions ──────────────────────────────────────────────────────
+  const ps = (moduleCle: string, declareNecessaire: boolean, extra = {}) => ({ moduleCle, module: moduleCle, donnee: 'd', sens: 'lecture' as const, declareNecessaire, ...extra });
+  const ext = { kind: 'extension' as const, nom: 'X', editeur: 'e', usage: 'extension d’avis', statut: 'demande' as const, passages: [ps('reviews', true), ps('invoices', false), ps('vault', true), ps('diary', true)] };
+  regle('39k · Personnel et Coffre-fort ne figurent jamais au poste de douane', () => assert.deepEqual(A.passagesAuPoste(ext).map((p) => p.moduleCle), ['reviews', 'invoices']));
+  regle('39k · le verdict vient de la déclaration', () => assert.equal(A.verdict(ext, ext.passages[1]).texte, 'inutile pour une extension d’avis'));
+  regle('39k · vérifiée contre l’usage réel dans les 30 jours', () =>
+    assert.equal(A.verdict({ ...ext, statut: 'installee' }, ps('reviews', true, { usages30j: 0 })).necessaire, false));
+  regle('39k · un accès refusé ferme sans casser : l’installation garde les passages nécessaires', () => {
+    const i = A.installerSansLesInutiles(ext, MAINTENANT);
+    assert.equal(i.statut, 'installee');
+    assert.deepEqual(i.passages.map((p) => p.decision), ['autorise', 'refuse', 'refuse', 'refuse']);
+  });
+  regle('39k · l’ambre : le passage qui demande plus que nécessaire', () => assert.equal(A.passageEnAmbre(ext), 1));
 }
 
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);

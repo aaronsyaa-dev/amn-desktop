@@ -272,6 +272,7 @@ const MODULE_DATA = {
   rooms: ['roomBookings'],
   writing: ['writingDrafts'],
   translation: ['translations'],
+  extensions: ['extensionGrants'],
 };
 
 /**
@@ -412,6 +413,7 @@ const MODULE_FILES = {
   rooms: ['src/screens/SallesScreen.tsx'],
   writing: ['src/screens/RedactionScreen.tsx'],
   translation: ['src/screens/TraductionScreen.tsx'],
+  extensions: ['src/screens/ExtensionsScreen.tsx'],
 };
 
 /**

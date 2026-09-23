@@ -72,6 +72,7 @@ import {
   PenLine,
   PenTool,
   PhoneCall,
+  Puzzle,
   QrCode,
   ReceiptEuro,
   Repeat,
@@ -240,6 +241,7 @@ const CLIENT_MODULES: NavItem[] = [
   { key: 'rooms', label: 'Salles', to: '/salles', icon: DoorOpen, hint: 'Les pièces, qui y est, jusqu’à quand' },
   { key: 'writing', label: 'Rédaction', to: '/outils/redaction', icon: SquarePen, hint: 'Votre brouillon, et ce que l’assistant y corrige' },
   { key: 'translation', label: 'Traduction', to: '/outils/traduction', icon: Languages, hint: 'Chaque ligne, et sa traduction juste dessous' },
+  { key: 'extensions', label: 'Extensions', to: '/extensions', icon: Puzzle, hint: 'Ce que chaque extension demande, passage par passage' },
 ];
 
 /**
@@ -278,7 +280,7 @@ export const CLIENT_SECTIONS: Array<{ label: string; code: string; keys: string[
   { label: 'RH', code: 'RH', keys: ['recruitment', 'procedures', 'training', 'certifications', 'payslips'] },
   { label: 'Outils', code: 'OU', keys: ['qr', 'converters', 'templates', 'automations', 'calcPro', 'dataPort', 'writing', 'translation'] },
   { label: 'Personnel', code: 'PE', keys: ['habits', 'personalGoals', 'diary', 'pomodoro'] },
-  { label: 'Système', code: 'SY', keys: ['settings'] },
+  { label: 'Système', code: 'SY', keys: ['settings', 'extensions'] },
 ];
 
 /**

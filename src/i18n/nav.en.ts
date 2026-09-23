@@ -172,6 +172,7 @@ export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
   rooms: { label: 'Rooms', hint: 'The rooms, who is in them, until when' },
   writing: { label: 'Writing', hint: 'Your draft, and what the assistant corrects' },
   translation: { label: 'Translation', hint: 'Each line, and its translation right below' },
+  extensions: { label: 'Extensions', hint: 'What each extension asks for, access by access' },
 };
 
 /**

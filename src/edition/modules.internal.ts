@@ -79,6 +79,7 @@ import {
   PenTool,
   PhoneCall,
   PiggyBank,
+  Puzzle,
   QrCode,
   Radar,
   ReceiptEuro,
@@ -409,6 +410,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'assistance', label: 'Assistance', to: '/assistance', icon: MessageSquareText, hint: 'Écrire au prestataire' },
       { key: 'library', label: 'Bibliothèque', to: '/bibliotheque', icon: LibraryBig, hint: 'Tous les modules, rangés par sections' },
       { key: 'vault', label: 'Coffre-fort', to: '/vault', icon: Lock, hint: 'Clés et accès' },
+      { key: 'extensions', label: 'Extensions', to: '/extensions', icon: Puzzle, hint: 'Ce que chaque extension demande, passage par passage' },
     ],
   },
   /*
@@ -547,6 +549,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/settings', 'reglages'],
   ['/membres', 'reglages'],
   ['/assistance', 'fil'],
+  ['/extensions', 'reglages'],
   ['/outils/traduction', 'registre'],
   ['/outils/redaction', 'registre'],
   ['/salles', 'fil'],

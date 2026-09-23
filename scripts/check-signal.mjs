@@ -285,6 +285,7 @@ const ECRANS = [
   ['Salles', '#/salles'],
   ['Rédaction', '#/outils/redaction'],
   ['Traduction', '#/outils/traduction'],
+  ['Extensions', '#/extensions'],
 ];
 
 const serveur = spawn('node', [new URL('./servir-bundle.mjs', import.meta.url).pathname, BUNDLE, String(PORT)], {

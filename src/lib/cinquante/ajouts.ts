@@ -1146,4 +1146,73 @@ export function mentionEnAttente(lignes: LigneTraduite[]): number | null {
   return i >= 0 ? i : null;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   39k · EXTENSIONS — la douane
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * « Aucun accès à Personnel ni au Coffre-fort ne peut être demandé ; ces
+ * modules ne figurent pas au poste de douane. » Les clés de la section
+ * Personnel et celle du Coffre-fort.
+ */
+export const HORS_DOUANE = new Set(['vault', 'budget', 'courses', 'habits', 'personalGoals', 'diary', 'pomodoro', 'health']);
+
+export interface Passage {
+  moduleCle: string;
+  module: string;
+  donnee: string;
+  /** Lecture : la donnée va vers l'extension (→). Écriture : l'extension écrit dans le produit (←). */
+  sens: 'lecture' | 'ecriture';
+  /** Ce que l'extension DÉCLARE nécessaire à son usage. */
+  declareNecessaire: boolean;
+  /** Les usages réels constatés sur les 30 derniers jours (extension installée). */
+  usages30j?: number;
+  decision?: 'autorise' | 'refuse';
+}
+
+export interface Extension {
+  kind: 'extension';
+  nom: string;
+  editeur: string;
+  /** Ce qu'elle fait, pour le verdict : « extension d'avis ». */
+  usage: string;
+  statut: 'demande' | 'installee';
+  passages: Passage[];
+  installeeLe?: string;
+  revueLe?: string;
+}
+
+/** Les passages qui passent au poste de douane — jamais Personnel ni le Coffre-fort. */
+export const passagesAuPoste = (e: Pick<Extension, 'passages'>) => e.passages.filter((p) => !HORS_DOUANE.has(p.moduleCle));
+
+/**
+ * « Le verdict “nécessaire” vient de la déclaration de l'extension, vérifiée
+ * contre son usage réel dans les 30 jours. » Avant l'installation, il n'y a
+ * que la déclaration ; une fois installée, un accès déclaré mais jamais servi
+ * en 30 jours n'est plus nécessaire.
+ */
+export function verdict(e: Pick<Extension, 'statut' | 'usage'>, p: Passage): { necessaire: boolean; texte: string } {
+  if (!p.declareNecessaire) return { necessaire: false, texte: `inutile pour une ${e.usage}` };
+  if (e.statut === 'installee' && (p.usages30j ?? 0) === 0) return { necessaire: false, texte: 'jamais servi en 30 jours' };
+  return { necessaire: true, texte: 'nécessaire' };
+}
+
+/** Le passage en ambre : le premier qui demande plus que nécessaire et n'est pas déjà refusé. */
+export function passageEnAmbre(e: Extension): number | null {
+  const au = passagesAuPoste(e);
+  const i = au.findIndex((p) => p.decision !== 'refuse' && !verdict(e, p).necessaire);
+  return i >= 0 ? e.passages.indexOf(au[i]) : null;
+}
+
+/** « Installer sans » : autoriser les passages nécessaires, refuser les autres. Un refus ne casse rien, il ferme. */
+export function installerSansLesInutiles(e: Extension, maintenant: Date): Extension {
+  return {
+    ...e,
+    statut: 'installee',
+    installeeLe: e.installeeLe ?? maintenant.toISOString(),
+    revueLe: maintenant.toISOString(),
+    passages: e.passages.map((p) => (HORS_DOUANE.has(p.moduleCle) ? { ...p, decision: 'refuse' } : { ...p, decision: verdict(e, p).necessaire ? 'autorise' : 'refuse' })),
+  };
+}
+
 export { JOUR_MS, borne };

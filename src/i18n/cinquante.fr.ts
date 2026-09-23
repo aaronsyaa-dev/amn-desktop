@@ -239,4 +239,10 @@ export const FR_50: Record<keyof typeof EN_50, string> = {
   'm50.translation.descriptionSansMention': 'Le document en français, et la traduction glissée sous chaque ligne. On relit les deux ensemble, ligne à ligne, sans aller-retour.',
   'm50.translation.descriptionVide': 'Aucun document traduit pour l’instant.',
   'm50.translation.phraseVide': 'Aucun document traduit pour l’instant.',
+  'm50.extensions.titre': 'Extensions',
+  'm50.extensions.description': 'Avant d’installer une extension, on voit ce qui passe la frontière entre le produit et elle, dans chaque sens. {justifies} passages sont justifiés ; un autre demande des données dont l’extension n’a pas besoin.',
+  'm50.extensions.descriptionUn': 'Avant d’installer une extension, on voit ce qui passe la frontière entre le produit et elle, dans chaque sens. {justifies} passage est justifié ; un autre demande des données dont l’extension n’a pas besoin.',
+  'm50.extensions.descriptionSansExces': 'Avant d’installer une extension, on voit ce qui passe la frontière entre le produit et elle, dans chaque sens. Tous les passages sont justifiés.',
+  'm50.extensions.descriptionVide': 'Aucune extension pour l’instant.',
+  'm50.extensions.phraseVide': 'Aucune extension pour l’instant.',
 };
