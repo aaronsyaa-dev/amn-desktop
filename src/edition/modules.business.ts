@@ -88,6 +88,7 @@ import {
   Signature,
   SlidersVertical,
   SquareKanban,
+  SquarePen,
   Stamp,
   Star,
   Sunrise,
@@ -345,6 +346,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'automations', label: 'Automatisations', to: '/outils/automatisations', icon: Workflow, hint: 'Si ceci arrive, alors cela se fait' },
       { key: 'calcPro', label: 'Calculatrice pro', to: '/outils/calculatrice', icon: Calculator, hint: 'Un ruban de caisse qu’on relit avant de chiffrer' },
       { key: 'dataPort', label: 'Import / export', to: '/outils/donnees', icon: Download, hint: 'Vos données, dans les deux sens' },
+      { key: 'writing', label: 'Rédaction', to: '/outils/redaction', icon: SquarePen, hint: 'Votre brouillon, et ce que l’assistant y corrige' },
     ],
   },
   {
@@ -446,6 +448,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/settings', 'reglages'],
   ['/membres', 'reglages'],
   ['/assistance', 'fil'],
+  ['/outils/redaction', 'registre'],
   ['/salles', 'fil'],
   ['/editeur-partage', 'journal'],
   ['/classeur', 'journal'],

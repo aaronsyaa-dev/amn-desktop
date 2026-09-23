@@ -979,4 +979,78 @@ export function estFantome(r: ReservationSalle, presences: PresenceSalle[], main
   return !presences.some((p) => p.piece === r.piece && chevauche(p, debut, debut + FANTOME.liberationMin * 60_000));
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   39i · RÉDACTION — les ratures
+   ══════════════════════════════════════════════════════════════════════════ */
+
+export type RaisonCorrection = 'plus court' | 'plus poli' | 'plus clair';
+export type NatureEngagement = 'geste' | 'date' | 'prix';
+
+export type MorceauBrouillon =
+  | { type: 'texte'; texte: string }
+  | {
+      type: 'correction';
+      /** Ce que l'assistant retire (barré), ce qu'il ajoute (souligné). */
+      retire?: string;
+      ajoute?: string;
+      raison: RaisonCorrection;
+      explication: string;
+      /** Ce que vaut l'engagement, quand l'assistant a pu l'estimer : « un passage offert vaut 96 € ». */
+      valeur?: string;
+      decision?: 'acceptee' | 'refusee';
+    };
+
+export interface BrouillonRedaction {
+  kind: 'brouillon';
+  titre: string;
+  /** Le texte auquel on répond, qui reste visible au-dessus. */
+  source: { surtitre: string; texte: string; recuLe: string };
+  morceaux: MorceauBrouillon[];
+  creeLe: string;
+  /** Publiée par VOUS — « l'assistant ne publie jamais ». */
+  publieeLe?: string;
+}
+
+/**
+ * « Toute correction qui ajoute un engagement (geste commercial, date, prix)
+ * passe en ambre. » La reconnaissance est une liste fermée, écrite ici.
+ */
+export const ENGAGEMENTS: Array<{ nature: NatureEngagement; motif: RegExp }> = [
+  { nature: 'geste', motif: /\b(offert|offerte|offerts|gratuit|gratuite|gracieu\w*|remise|réduction|rembours\w*|geste commercial|avoir)\b/iu },
+  { nature: 'prix', motif: /\d[\d\s\u00a0\u202f]*(?:,\d+)?\s?(?:€|euros?\b)|\b\d+\s?%/iu },
+  {
+    nature: 'date',
+    motif: /\b(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|demain|après-demain|d’ici|d'ici|avant le|sous \d+ (?:jours?|heures?)|\d{1,2}(?:er)? (?:janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre))\b/iu,
+  },
+];
+
+export function engagementDe(ajout: string | undefined): NatureEngagement | null {
+  if (!ajout) return null;
+  return ENGAGEMENTS.find((e) => e.motif.test(ajout))?.nature ?? null;
+}
+
+/** Le numéro de ligne (de phrase) où tombe chaque correction. */
+export function lignesDesCorrections(morceaux: MorceauBrouillon[]): number[] {
+  let fins = 0;
+  const r: number[] = [];
+  for (const m of morceaux) {
+    if (m.type === 'correction') r.push(fins + 1);
+    const lu = m.type === 'texte' ? m.texte : m.decision === 'refusee' ? m.retire ?? '' : m.ajoute ?? '';
+    fins += (lu.match(/[.!?](?=\s|$)/g) ?? []).length;
+  }
+  return r;
+}
+
+/** L'engagement en ambre : le premier qui n'a pas encore été accepté ou refusé. */
+export function engagementEnAttente(morceaux: MorceauBrouillon[]): number | null {
+  const i = morceaux.findIndex((m) => m.type === 'correction' && !m.decision && engagementDe(m.ajoute) !== null);
+  return i >= 0 ? i : null;
+}
+
+/** Les corrections GARDÉES : toutes celles qui n'ont pas été refusées. */
+export function correctionsGardees(morceaux: MorceauBrouillon[]) {
+  const c = morceaux.filter((m): m is Extract<MorceauBrouillon, { type: 'correction' }> => m.type === 'correction');
+  return { gardees: c.filter((m) => m.decision !== 'refusee').length, total: c.length };
+}
+
 export { JOUR_MS, borne };

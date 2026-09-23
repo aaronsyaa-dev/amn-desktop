@@ -229,4 +229,9 @@ export const FR_50: Record<keyof typeof EN_50, string> = {
   'm50.rooms.descriptionSansFantome': 'Les locaux vus de dessus, pièce par pièce, à l’instant. Chacune dit si elle est prise, par qui, et jusqu’à quand.',
   'm50.rooms.descriptionVide': 'Aucun plan des locaux pour l’instant.',
   'm50.rooms.phraseVide': 'Aucun plan des locaux pour l’instant.',
+  'm50.writing.titre': 'Rédaction',
+  'm50.writing.description': 'Vous avez écrit la réponse, l’assistant l’a relue. Ses corrections restent visibles comme des ratures sur votre brouillon : on voit ce qu’il a changé. L’une d’elles ajoute un engagement que vous n’aviez pas pris.',
+  'm50.writing.descriptionSansEngagement': 'Vous avez écrit la réponse, l’assistant l’a relue. Ses corrections restent visibles comme des ratures sur votre brouillon : on voit ce qu’il a changé.',
+  'm50.writing.descriptionVide': 'Aucune réponse rédigée pour l’instant.',
+  'm50.writing.phraseVide': 'Aucune réponse rédigée pour l’instant.',
 };

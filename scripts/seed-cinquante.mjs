@@ -1154,6 +1154,35 @@ async function ajouts() {
     if (k % 4 !== 0) await pres(`mois-${k}`, piece, 'Nour Haddad', new Date(d.getTime() + 5 * 60_000).toISOString(), fin);
     await pres(`bureau-${k}`, 'Bureau', 'Léa Martin', new Date(d.getTime() - 2 * 3_600_000).toISOString(), new Date(d.getTime() + 6 * 3_600_000).toISOString(), 'pointage');
   }
+
+  // ── 39i Rédaction ─────────────────────────────────────────────────────────
+  const tx = (texte) => ({ type: 'texte', texte });
+  const co = (retire, ajoute, raison, explication, extra = {}) => ({ type: 'correction', ...(retire ? { retire } : {}), ...(ajoute ? { ajoute } : {}), raison, explication, ...extra });
+  await poser('writingDrafts', 'c50-redac-lang', {
+    kind: 'brouillon', titre: 'Avis de Bureau Lang', creeLe: le(0, 8),
+    source: { surtitre: 'L’avis · Bureau Lang · 1 ★', texte: 'Intervention décalée deux fois sans prévenir. Le travail était correct mais je ne peux pas organiser mes journées comme ça.', recuLe: le(1, 18) },
+    morceaux: [
+      tx('Bonjour, '),
+      co('merci pour votre retour, même s’il n’est pas très sympa,', 'merci pour votre retour.', 'plus poli', 'retire un reproche au client'),
+      tx(' Vous avez raison : deux décalages sans prévenir, ce n’est pas acceptable. '),
+      co('On a eu une semaine compliquée.', '', 'plus court', 'une excuse n’explique rien'),
+      tx(' Nous vous appellerons désormais la veille de chaque passage. '),
+      co('', 'Le prochain passage vous est offert.', 'plus poli', 'un geste pour réparer', { valeur: 'un passage offert vaut 96 €' }),
+      tx(' '),
+      co('', 'Merci de votre confiance.', 'plus clair', 'une formule de fin'),
+      tx(' Léa'),
+    ],
+  });
+  await poser('writingDrafts', 'c50-redac-vermeil', {
+    kind: 'brouillon', titre: 'Relance Atelier Vermeil', creeLe: le(6, 9), publieeLe: le(6, 14),
+    source: { surtitre: 'Le message · Atelier Vermeil', texte: 'Pouvez-vous me renvoyer la facture ?', recuLe: le(6, 8) },
+    morceaux: [tx('Bonjour, '), co('voilà', 'voici', 'plus clair', 'le bon mot', { decision: 'acceptee' }), tx(' la facture. '), co('Cdlt', 'Bien cordialement,', 'plus poli', 'pas d’abréviation', { decision: 'acceptee' }), tx(' Léa')],
+  });
+  await poser('writingDrafts', 'c50-redac-mano', {
+    kind: 'brouillon', titre: 'Réponse à Chez Mano', creeLe: le(12, 9), publieeLe: le(12, 16),
+    source: { surtitre: 'L’avis · Chez Mano · 4 ★', texte: 'Très bien, un peu cher.', recuLe: le(12, 7) },
+    morceaux: [tx('Merci ! '), co('C’est le prix de la qualité.', 'Nos tarifs sont affichés en ligne.', 'plus poli', 'ne pas contredire', { decision: 'acceptee' }), tx(' '), co('', 'Remise de 10 % au prochain passage.', 'plus poli', 'un geste', { decision: 'refusee' }), tx(' '), co('', 'À bientôt.', 'plus clair', 'une formule de fin', { decision: 'refusee' })],
+  });
 }
 
 const FAMILLES = { guichet, marketing, finance, rh, juridique, ajouts };

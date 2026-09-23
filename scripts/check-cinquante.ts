@@ -820,6 +820,22 @@ const iso = (joursAvant: number, h = 10) => {
   regle('39h · une présence pointée occupe la pièce', () =>
     assert.equal(A.etatPiece('S', [rs(-40)], [{ kind: 'presence', piece: 'S', qui: 'Y', arriveeLe: dans(-35), source: 'badge' }], MAINTENANT).etat, 'occupee'));
   regle('39h · une réservation sans présence dans la première heure est fantôme', () => assert.equal(A.estFantome(rs(-70), [], MAINTENANT), true));
+
+  // ── 39i Rédaction ───────────────────────────────────────────────────────
+  regle('39i · un geste commercial ajouté est un engagement', () => assert.equal(A.engagementDe('Le prochain passage vous est offert.'), 'geste'));
+  regle('39i · un prix ajouté est un engagement', () => assert.equal(A.engagementDe('Comptez 96 € de plus.'), 'prix'));
+  regle('39i · une date ajoutée est un engagement', () => assert.equal(A.engagementDe('Nous passerons mardi.'), 'date'));
+  regle('39i · une formule de politesse n’en est pas un', () => assert.equal(A.engagementDe('Merci de votre confiance.'), null));
+  const brouillon = [
+    { type: 'texte' as const, texte: 'Bonjour. ' },
+    { type: 'correction' as const, ajoute: 'Remise de 10 %.', raison: 'plus poli' as const, explication: '' },
+    { type: 'correction' as const, ajoute: 'Nous viendrons lundi.', raison: 'plus clair' as const, explication: '' },
+  ];
+  regle('39i · les engagements s’acceptent un à un : le premier en attente porte l’ambre', () => {
+    assert.equal(A.engagementEnAttente(brouillon), 1);
+    assert.equal(A.engagementEnAttente([brouillon[0], { ...brouillon[1], decision: 'refusee' as const }, brouillon[2]]), 2);
+  });
+  regle('39i · chaque correction porte sa ligne', () => assert.deepEqual(A.lignesDesCorrections(brouillon), [2, 3]));
 }
 
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);

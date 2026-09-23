@@ -125,6 +125,7 @@ import { FlotteScreen } from '../screens/FlotteScreen';
 import { ClasseurScreen } from '../screens/ClasseurScreen';
 import { EditeurPartageScreen } from '../screens/EditeurPartageScreen';
 import { SallesScreen } from '../screens/SallesScreen';
+import { RedactionScreen } from '../screens/RedactionScreen';
 
 /**
  * La racine de l'édition Business — la table de routes livrée aux
@@ -1040,6 +1041,14 @@ export function AppRoot() {
           element={
             <ModuleRoute module="rooms">
               <SallesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/outils/redaction"
+          element={
+            <ModuleRoute module="writing">
+              <RedactionScreen />
             </ModuleRoute>
           }
         />

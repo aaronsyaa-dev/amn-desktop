@@ -234,4 +234,9 @@ export const EN_50 = {
   'm50.rooms.descriptionSansFantome': 'The premises seen from above, room by room, right now. Each says whether it is taken, by whom, and until when.',
   'm50.rooms.descriptionVide': 'No floor plan yet.',
   'm50.rooms.phraseVide': 'No floor plan yet.',
+  'm50.writing.titre': 'Writing',
+  'm50.writing.description': 'You wrote the reply, the assistant proofread it. Its corrections stay visible as markings on your draft: you see what it changed. One of them adds a commitment you had not made.',
+  'm50.writing.descriptionSansEngagement': 'You wrote the reply, the assistant proofread it. Its corrections stay visible as markings on your draft: you see what it changed.',
+  'm50.writing.descriptionVide': 'No reply drafted yet.',
+  'm50.writing.phraseVide': 'No reply drafted yet.',
 } as const;

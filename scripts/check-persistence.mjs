@@ -270,6 +270,7 @@ const MODULE_DATA = {
   binder: ['documentVersions'],
   sharedEditor: ['sharedDocs'],
   rooms: ['roomBookings'],
+  writing: ['writingDrafts'],
 };
 
 /**
@@ -408,6 +409,7 @@ const MODULE_FILES = {
   binder: ['src/screens/ClasseurScreen.tsx'],
   sharedEditor: ['src/screens/EditeurPartageScreen.tsx'],
   rooms: ['src/screens/SallesScreen.tsx'],
+  writing: ['src/screens/RedactionScreen.tsx'],
 };
 
 /**

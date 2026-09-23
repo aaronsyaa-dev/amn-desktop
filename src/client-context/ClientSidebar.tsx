@@ -87,6 +87,7 @@ import {
   Signature,
   SlidersVertical,
   SquareKanban,
+  SquarePen,
   Stamp,
   Star,
   Sunrise,
@@ -236,6 +237,7 @@ const CLIENT_MODULES: NavItem[] = [
   { key: 'binder', label: 'Classeur', to: '/classeur', icon: FolderArchive, hint: 'Les documents et leurs versions, signée comprise' },
   { key: 'sharedEditor', label: 'Éditeur partagé', to: '/editeur-partage', icon: FilePen, hint: 'Un document, et ce que chacun propose d’y changer' },
   { key: 'rooms', label: 'Salles', to: '/salles', icon: DoorOpen, hint: 'Les pièces, qui y est, jusqu’à quand' },
+  { key: 'writing', label: 'Rédaction', to: '/outils/redaction', icon: SquarePen, hint: 'Votre brouillon, et ce que l’assistant y corrige' },
 ];
 
 /**
@@ -272,7 +274,7 @@ export const CLIENT_SECTIONS: Array<{ label: string; code: string; keys: string[
   { label: 'Juridique', code: 'JU', keys: ['clauses', 'remoteSign', 'gdpr', 'csr', 'kyc'] },
   { label: 'Collectif', code: 'CO', keys: ['dm', 'groups', 'announcements', 'polls', 'leaves', 'directory', 'calls', 'rooms'] },
   { label: 'RH', code: 'RH', keys: ['recruitment', 'procedures', 'training', 'certifications', 'payslips'] },
-  { label: 'Outils', code: 'OU', keys: ['qr', 'converters', 'templates', 'automations', 'calcPro', 'dataPort'] },
+  { label: 'Outils', code: 'OU', keys: ['qr', 'converters', 'templates', 'automations', 'calcPro', 'dataPort', 'writing'] },
   { label: 'Personnel', code: 'PE', keys: ['habits', 'personalGoals', 'diary', 'pomodoro'] },
   { label: 'Système', code: 'SY', keys: ['settings'] },
 ];
