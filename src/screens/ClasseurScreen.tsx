@@ -155,7 +155,7 @@ export function ClasseurScreen() {
             */}
             <div className="relative grid gap-x-6 px-5 py-6 sm:px-[26px] md:grid-cols-[minmax(0,1fr)_200px] md:pr-0">
               <span className="absolute inset-y-0 left-0 right-0 bg-[#e8e6e0] shadow-[0_30px_60px_-26px_rgba(0,0,0,1)] md:right-[224px]" aria-hidden />
-              <span className="relative mb-3.5 block text-[16px] font-bold text-[#0a0a0a] md:col-span-1">{courant.d.titre}</span>
+              <span className="relative mb-3.5 block bg-[#e8e6e0] text-[16px] font-bold text-[#0a0a0a] md:col-span-1">{courant.d.titre}</span>
               <span className="max-md:hidden" />
               {courant.pal.map((p, i) => {
                 const a = p === ambreP;
@@ -163,7 +163,7 @@ export function ClasseurScreen() {
                 const bas = i === courant.pal.length - 1 ? '' : 'pb-3';
                 return (
                   <React.Fragment key={p.titre}>
-                    <div className={`relative ${bas}`} data-signal-groupe={a ? 'ecart' : undefined}>
+                    <div className={`relative bg-[#e8e6e0] ${bas}`} data-signal-groupe={a ? 'ecart' : undefined}>
                       <Paragraphe p={p} ambre={a} />
                     </div>
                     {derniereR ? (
@@ -177,7 +177,7 @@ export function ClasseurScreen() {
                           </span>
                         </span>
                       ) : (
-                        <span className={`relative mb-3 self-start md:mb-0 ${bas}`}>
+                        <span className={`relative mb-3 self-start max-md:bg-[#e8e6e0] md:mb-0 ${bas}`}>
                           <span className="block font-mono text-[9.5px] uppercase tracking-[0.1em] text-[#5c5a55] md:text-text-muted">
                             {article(p.titre)} · v{derniereR.de} → v{derniereR.vers}
                           </span>
