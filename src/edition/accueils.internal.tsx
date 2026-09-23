@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { bridge } from '../lib/bridge';
 import { Releve } from '../accueils/interne/Releve';
 import { CarteDesNeuf } from '../accueils/interne/CarteDesNeuf';
+import { Fil } from '../accueils/interne/Fil';
 import { colonnesCarte } from '../accueils/interne/parc';
 
 /**
@@ -31,6 +32,13 @@ export const ACCUEILS: AccueilDef[] = [
     phrase: 'Le parc en grille, chaque organisation à sa place fixe.',
     vignette: [[6, 6, 28, 15, 'ambre'], [36, 6, 28, 15, 'moyen'], [66, 6, 28, 15, 'moyen'], [6, 23, 28, 15, 'sombre'], [36, 23, 28, 15, 'sombre'], [66, 23, 28, 15, 'sombre'], [6, 40, 28, 15, 'sombre'], [36, 40, 28, 15, 'sombre'], [66, 40, 28, 15, 'sombre']],
     composant: CarteDesNeuf,
+  },
+  {
+    code: '42c',
+    nom: 'Le fil',
+    phrase: 'Les remontées en direct ; le critique reste épinglé en tête.',
+    vignette: [[6, 6, 88, 8, 'ambre'], [6, 17, 88, 1, 'moyen'], [6, 22, 88, 4, 'clair'], [6, 30, 88, 4, 'moyen'], [6, 38, 88, 4, 'moyen'], [6, 46, 88, 4, 'sombre']],
+    composant: Fil,
   },
 ];
 

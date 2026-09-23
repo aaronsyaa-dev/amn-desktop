@@ -41,7 +41,7 @@ export function useQG(tickMs = 30_000): QG {
     const [accueil, salle, remontees, organisations, ssl] = await Promise.allSettled([
       garde.accueil(),
       garde.salle(),
-      garde.remontees('toutes', { limit: 200 }),
+      garde.remontees('toutes', { limit: 1000 }),
       r.admin.listOrganizations(),
       r.listSslStatus(),
     ]);
