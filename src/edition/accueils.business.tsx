@@ -6,6 +6,7 @@ import { MainCourante } from '../accueils/client/MainCourante';
 import { FileUnique } from '../accueils/client/FileUnique';
 import { SemaineDepliee } from '../accueils/client/SemaineDepliee';
 import { Cadran } from '../accueils/client/Cadran';
+import { Lettre } from '../accueils/client/Lettre';
 
 /**
  * LES ONZE ACCUEILS DE L'ÉDITION CLIENTE — 2a et les dix variantes du cahier 9
@@ -61,5 +62,12 @@ export const ACCUEILS: AccueilDef[] = [
     phrase: 'La journée comme une montre : un arc par rendez-vous.',
     vignette: [[8, 10, 44, 44, 'moyen'], [22, 24, 16, 16, 'sombre'], [44, 8, 10, 6, 'ambre'], [62, 12, 32, 4, 'clair'], [62, 22, 32, 4, 'sombre'], [62, 32, 32, 4, 'sombre']],
     composant: Cadran,
+  },
+  {
+    code: '40g',
+    nom: 'La lettre',
+    phrase: 'Trois paragraphes : ce qui s’est passé, ce qui presse, ce qui peut attendre.',
+    vignette: [[10, 8, 60, 5, 'clair'], [10, 16, 56, 5, 'clair'], [10, 26, 30, 5, 'ambre'], [42, 26, 20, 5, 'clair'], [10, 36, 58, 5, 'moyen'], [10, 44, 40, 5, 'moyen'], [10, 52, 20, 3, 'sombre']],
+    composant: Lettre,
   },
 ];
