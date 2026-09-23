@@ -241,12 +241,12 @@ export function StandardScreen() {
           <Promesses appel={appel} />
           {aRappeler ? (
             <PiedDominante action={<BoutonSecondaire onClick={() => void rappeler()}>Rappeler {appel.appelant.split(',')[0]}</BoutonSecondaire>}>
-              {appel.explication ?? `« ${aRappeler.citation} » dépasse le mandat ${DE_LUI}. Un engagement hors mandat n’est jamais annulé en silence : la personne est rappelée.`}
+              {appel.explication ?? `« ${aRappeler.citation} » dépasse le mandat ${DE_LUI}. Un engagement hors mandat n’est jamais annulé en silence : la personne est rappelée.`}
             </PiedDominante>
           ) : (
             <PiedDominante>
               {appel.engagements.some((e) => !e.dansLeMandat)
-                ? 'L’engagement hors mandat de cet appel a été repris : la personne a été rappelée.'
+                ? 'L’engagement hors mandat de cet appel a été repris : la personne a été rappelée.'
                 : `Tous les engagements de cet appel restent dans le mandat ${DE_LUI}.`}
             </PiedDominante>
           )}
@@ -282,7 +282,7 @@ export function StandardScreen() {
             </div>
           ))}
           <p className="mt-auto pt-[18px] text-[13px] leading-[1.55] text-text-secondary">
-            Un engagement hors mandat n’est jamais annulé en silence : la personne est rappelée.
+            Un engagement hors mandat n’est jamais annulé en silence : la personne est rappelée.
           </p>
         </section>
       </Calmes>

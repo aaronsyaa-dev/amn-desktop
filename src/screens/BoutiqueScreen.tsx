@@ -208,7 +208,7 @@ export function BoutiqueScreen() {
         >
           {p.contenu.length === 0 ? (
             <p className="text-[13px] leading-[1.55] text-text-secondary">
-              Aucun panier laissé : tout ce qui a été mis au panier a été payé.
+              Aucun panier laissé : tout ce qui a été mis au panier a été payé.
             </p>
           ) : (
             p.contenu.slice(0, 6).map((c, i, arr) => (

@@ -169,13 +169,13 @@ export function BilletterieScreen() {
         <Dominante surtitre="Le tourniquet">
           <p className="max-w-[60ch] text-[14.5px] leading-[1.7] text-text-secondary">
             Un événement payant apparaîtra ici avec un cran par place autour de son tourniquet. Les places vendues se
-            remplissent ; le jour venu, les mêmes crans comptent les entrées à la porte.
+            remplissent ; le jour venu, les mêmes crans comptent les entrées à la porte.
           </p>
         </Dominante>
       ) : (
         <Dominante
           surtitre={`${evt.titre} · ${dateCourte(new Date(evt.date))}`}
-          note={tq.mode === 'entrees' ? 'Aujourd’hui : un cran par entrée scannée' : 'Un cran par place · plein = vendu'}
+          note={tq.mode === 'entrees' ? 'Aujourd’hui : un cran par entrée scannée' : 'Un cran par place · plein = vendu'}
         >
           <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,340px)_1fr]">
             <div className="flex justify-center">
@@ -234,10 +234,10 @@ export function BilletterieScreen() {
             {tq.mode === 'entrees'
               ? `${tq.entrees} entrée${tq.entrees > 1 ? 's' : ''} sur ${tq.vendus} billets. Le rotor tourne d’un tiers de tour à chaque billet scanné.`
               : tq.libres === 0
-                ? 'Le dernier cran est pris : la liste d’attente s’est ouverte d’elle-même.'
+                ? 'Le dernier cran est pris : la liste d’attente s’est ouverte d’elle-même.'
                 : prev.completLe
-                  ? `${prev.rythmeParJour.toFixed(1).replace('.', ',')} billet par jour en moyenne depuis l’ouverture : les ${L(tq.libres)} places restantes partent en ${L(prev.joursPourRemplir ?? 0)} jours, soit ${point(dateCourte(prev.completLe))}`
-                  : 'Aucune vente depuis l’ouverture : pas de rythme sur lequel prévoir le remplissage.'}
+                  ? `${prev.rythmeParJour.toFixed(1).replace('.', ',')} billet par jour en moyenne depuis l’ouverture : les ${L(tq.libres)} places restantes partent en ${L(prev.joursPourRemplir ?? 0)} jours, soit ${point(dateCourte(prev.completLe))}`
+                  : 'Aucune vente depuis l’ouverture : pas de rythme sur lequel prévoir le remplissage.'}
           </PiedDominante>
         </Dominante>
       )}

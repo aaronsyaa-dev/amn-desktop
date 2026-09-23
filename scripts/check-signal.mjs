@@ -256,6 +256,15 @@ const ECRANS = [
   ['Sentiment', '#/sentiment'],
   ['Veille', '#/veille-prix'],
   ['NPS', '#/nps'],
+  ['Trésorerie prévue', '#/tresorerie'],
+  ['Scénarios', '#/scenarios'],
+  ['Simulateur de prêt', '#/simulateur-pret'],
+  ['Analytique', '#/analytique'],
+  ['Rapprochement', '#/rapprochement'],
+  ['Prévision fiscale', '#/prevision-fiscale'],
+  ['Multi-devises', '#/multi-devises'],
+  ['Notes de frais', '#/notes-de-frais'],
+  ['Factures entrantes', '#/factures-entrantes'],
 ];
 
 const serveur = spawn('node', [new URL('./servir-bundle.mjs', import.meta.url).pathname, BUNDLE, String(PORT)], {

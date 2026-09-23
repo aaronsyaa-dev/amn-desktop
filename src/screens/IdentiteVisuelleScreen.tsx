@@ -122,7 +122,7 @@ export function IdentiteVisuelleScreen() {
         {vide || !logo ? (
           <p className="max-w-[60ch] text-[14.5px] leading-[1.7] text-text-secondary">
             Le logo sera posé ici à la vraie taille de chacun de ses usages, de l’enseigne au favicon, sur une même ligne
-            de base : on verra où il cesse d’être lisible.
+            de base : on verra où il cesse d’être lisible.
           </p>
         ) : (
           <>
@@ -171,10 +171,10 @@ export function IdentiteVisuelleScreen() {
             >
               {ambre && lAmbre
                 ? lAmbre.mentionIllisible && lAmbre.corpsMention !== null
-                  ? `À ${ambre.taillePx} px, la mention « ${logo.mention} » tombe à ${virgule(lAmbre.corpsMention)} px de corps : elle devient une ligne grise.${
+                  ? `À ${ambre.taillePx} px, la mention « ${logo.mention} » tombe à ${virgule(lAmbre.corpsMention)} px de corps : elle devient une ligne grise.${
                       lisibleJusqua ? ` Le monogramme seul reste lisible jusqu’à ${lisibleJusqua.taillePx} px.` : ''
                     }`
-                  : `À ${ambre.taillePx} px, le monogramme tombe à ${virgule(lAmbre.corpsMonogramme)} px de corps : sous ${CORPS_MIN_PX} px, il ne se lit plus.`
+                  : `À ${ambre.taillePx} px, le monogramme tombe à ${virgule(lAmbre.corpsMonogramme)} px de corps : sous ${CORPS_MIN_PX} px, il ne se lit plus.`
                 : `À toutes ses tailles d’usage, chaque élément du logo garde au moins ${CORPS_MIN_PX} px de corps.`}
             </PiedDominante>
           </>
@@ -211,7 +211,7 @@ export function IdentiteVisuelleScreen() {
         >
           {logo
             ? accents === 0
-              ? 'Le kit ne contient aucune couleur d’accent : la marque est en noir et blanc.'
+              ? 'Le kit ne contient aucune couleur d’accent : la marque est en noir et blanc.'
               : `Le kit contient ${L(accents)} couleur${accents > 1 ? 's' : ''} d’accent.`
             : undefined}
         </CarteReleves>

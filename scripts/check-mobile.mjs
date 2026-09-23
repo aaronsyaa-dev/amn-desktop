@@ -106,6 +106,15 @@ const ECRANS = [
   ['Sentiment', '#/sentiment'],
   ['Veille', '#/veille-prix'],
   ['NPS', '#/nps'],
+  ['Trésorerie prévue', '#/tresorerie'],
+  ['Scénarios', '#/scenarios'],
+  ['Simulateur de prêt', '#/simulateur-pret'],
+  ['Analytique', '#/analytique'],
+  ['Rapprochement', '#/rapprochement'],
+  ['Prévision fiscale', '#/prevision-fiscale'],
+  ['Multi-devises', '#/multi-devises'],
+  ['Notes de frais', '#/notes-de-frais'],
+  ['Factures entrantes', '#/factures-entrantes'],
 ];
 
 const AMBRE = ['rgb(208, 154, 74)', '#d09a4a'];

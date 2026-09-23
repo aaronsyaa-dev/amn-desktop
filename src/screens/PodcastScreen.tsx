@@ -102,7 +102,7 @@ export function PodcastScreen() {
       >
         {!ep ? (
           <p className="max-w-[60ch] text-[14.5px] leading-[1.7] text-text-secondary">
-            Chaque épisode tiendra ici sur une seule ligne : l’onde entière, ses chapitres au-dessus, un cran sous chaque
+            Chaque épisode tiendra ici sur une seule ligne : l’onde entière, ses chapitres au-dessus, un cran sous chaque
             hésitation. Une digression se repérera avant même d’être écoutée.
           </p>
         ) : (
@@ -175,7 +175,7 @@ export function PodcastScreen() {
               {coupeActive && eco
                 ? `Retirer la ${coupeActive.motif.toLowerCase()} et les ${ep.hesitations.length} hésitations raccourcit l’épisode ${dureeCourte(eco.totalS)}, sans toucher au propos.`
                 : ep.coupesValideesLe
-                  ? `Les coupes sont validées : le montage de l’épisode ${ep.numero} se refait sans elles.`
+                  ? `Les coupes sont validées : le montage de l’épisode ${ep.numero} se refait sans elles.`
                   : `${L(ep.hesitations.length, true)} hésitations relevées, aucune digression à couper.`}
             </PiedDominante>
           </>

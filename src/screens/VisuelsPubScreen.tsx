@@ -126,7 +126,7 @@ export function VisuelsPubScreen() {
         {!c ? (
           <p className="max-w-[60ch] text-[14.5px] leading-[1.7] text-text-secondary">
             Un visuel de campagne sera posé ici dans chacun de ses formats, côte à côte et à la même échelle, avec la zone
-            sûre de chaque plateforme en pointillé : ce qu’un format coupe se verra à l’œil.
+            sûre de chaque plateforme en pointillé : ce qu’un format coupe se verra à l’œil.
           </p>
         ) : (
           <>
@@ -149,7 +149,7 @@ export function VisuelsPubScreen() {
                 ? `Sur ${ARTICLE[fautif.cle] ?? fautif.nom}, le titre dépasse la zone sûre de ${pire.h.px} px ${COTE[pire.h.cote]} : les plateformes qui recadrent le couperont${
                     pire.h.cote === 'droite' ? ` au mot « ${dernierMot(c.titre)} »` : ''
                   }.`
-                : `Les ${L(c.formats.length)} formats gardent le titre dans leur zone sûre : le visuel peut partir.`}
+                : `Les ${L(c.formats.length)} formats gardent le titre dans leur zone sûre : le visuel peut partir.`}
             </PiedDominante>
           </>
         )}

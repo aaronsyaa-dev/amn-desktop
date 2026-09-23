@@ -243,6 +243,15 @@ const MODULE_DATA = {
   sentiment: ['sentimentTexts'],
   watch: ['competitorPrices'],
   nps: ['npsResponses'],
+  cashForecast: ['cashForecast'],
+  scenarios: ['budgetScenarios'],
+  loanSim: ['loanSimulations'],
+  analytics: ['projectMargins'],
+  reconciliation: ['bankLines'],
+  taxForecast: ['taxDeadlines'],
+  currencies: ['fxRates'],
+  expenseClaims: ['expenseClaims'],
+  incomingInvoices: ['incomingInvoices'],
 };
 
 /**
@@ -354,6 +363,15 @@ const MODULE_FILES = {
   sentiment: ['src/screens/SentimentScreen.tsx'],
   watch: ['src/screens/VeillePrixScreen.tsx'],
   nps: ['src/screens/NpsScreen.tsx'],
+  cashForecast: ['src/screens/TresorerieScreen.tsx'],
+  scenarios: ['src/screens/ScenariosScreen.tsx'],
+  loanSim: ['src/screens/SimulateurPretScreen.tsx'],
+  analytics: ['src/screens/AnalytiqueScreen.tsx'],
+  reconciliation: ['src/screens/RapprochementScreen.tsx'],
+  taxForecast: ['src/screens/PrevisionFiscaleScreen.tsx'],
+  currencies: ['src/screens/MultiDevisesScreen.tsx'],
+  expenseClaims: ['src/screens/NotesDeFraisScreen.tsx'],
+  incomingInvoices: ['src/screens/FacturesEntrantesScreen.tsx'],
 };
 
 /**

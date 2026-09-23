@@ -420,7 +420,7 @@ const iso = (joursAvant: number, h = 10) => {
     assert.equal(F.mensualiteSupportable(tr, MAINTENANT), Math.round((((200_000 - 150_000) * 52) / 12) / 1000) * 1000));
 
   // ── 36b Scénarios ───────────────────────────────────────────────────────
-  const hyp = (cle: 'prix' | 'volume' | 'embauche' | 'camionnette' | 'delai', min: number, max: number) => ({ cle, nom: cle, min, max, pas: 1 });
+  const hyp = (cle: 'prix' | 'volume' | 'embauche' | 'camionnette' | 'delai', min: number, max: number) => ({ cle, nom: cle, min, max, pas: 1, unite: 'pct' as const });
   const modele = { kind: 'modele' as const, exercice: 2027, caBaseCents: 20_000_000, tauxVariable: 0.3, chargesFixesCents: 9_000_000,
     salaireMensuelCents: 300_000, camionnetteMensuelleCents: 150_000, coutJourDelaiCents: 1_000,
     hypotheses: [hyp('prix', -5, 10), hyp('volume', -20, 10), hyp('embauche', 1, 13), hyp('camionnette', 1, 13), hyp('delai', 20, 60)] };

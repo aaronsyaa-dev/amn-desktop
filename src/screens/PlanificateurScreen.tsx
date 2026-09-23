@@ -154,7 +154,7 @@ export function PlanificateurScreen() {
       >
         {vide ? (
           <p className="max-w-[60ch] text-[14.5px] leading-[1.7] text-text-secondary">
-            Chaque réseau relié aura ici son cadran de vingt-quatre heures : la couronne s’épaissira aux heures où vos
+            Chaque réseau relié aura ici son cadran de vingt-quatre heures : la couronne s’épaissira aux heures où vos
             abonnés sont en ligne, et chaque post prévu y sera une aiguille.
           </p>
         ) : (

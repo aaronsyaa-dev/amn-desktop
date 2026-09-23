@@ -128,7 +128,7 @@ export function ChatbotScreen() {
                                 : 'border border-[#2b2b2b] bg-[#1a1a1a]'
                           }`}
                           style={{ height: q.hauteur }}
-                          title={q.reponse ? `Réponse : ${q.reponse}` : 'Sans réponse dans la FAQ'}
+                          title={q.reponse ? `Réponse : ${q.reponse}` : 'Sans réponse dans la FAQ'}
                         >
                           <span className={`text-[12px] leading-[1.3] [text-wrap:pretty] ${ambre ? 'text-text-primary' : q.creux ? 'text-text-secondary' : 'text-text-body'}`}>
                             {q.texte}
@@ -197,7 +197,7 @@ export function ChatbotScreen() {
         <CarteReleves surtitre="Il ne répond qu’avec la FAQ" releves={[{ label: 'Réponses dans la FAQ', valeur: reponses }]}>
           Aucune réponse inventée, aucun prix donné en dehors de la grille. Quand la FAQ ne sait pas, il le dit et propose
           de laisser un message.
-          {majLe && ` Dernière mise à jour de la FAQ : ${majLe.getDate()} ${MOIS[majLe.getMonth()]}.`}
+          {majLe && ` Dernière mise à jour de la FAQ : ${majLe.getDate()} ${MOIS[majLe.getMonth()]}.`}
         </CarteReleves>
       </Calmes>
     </Ecran50>

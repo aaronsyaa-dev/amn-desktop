@@ -224,4 +224,13 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'sentiment', label: 'Sentiment', hint: 'Ce qu’on vous dit, en une phrase' },
   { key: 'watch', label: 'Veille', hint: 'Vos prix, contre ceux du marché' },
   { key: 'nps', label: 'NPS', hint: 'Qui tire de quel côté, et où s’arrête le score' },
+  { key: 'cashForecast', label: 'Trésorerie prévue', hint: 'Le solde sur douze semaines, et quand le pire touche zéro' },
+  { key: 'scenarios', label: 'Scénarios', hint: 'Les hypothèses du budget, et laquelle pèse' },
+  { key: 'loanSim', label: 'Simulateur de prêt', hint: 'Même prêt, trois durées, et ce que la trésorerie peut porter' },
+  { key: 'analytics', label: 'Analytique', hint: 'La marge prévue au devis, contre la marge réelle' },
+  { key: 'reconciliation', label: 'Rapprochement', hint: 'Le relevé et les écritures, paire par paire' },
+  { key: 'taxForecast', label: 'Prévision fiscale', hint: 'Ce qui, dans le solde, est déjà au fisc' },
+  { key: 'currencies', label: 'Multi-devises', hint: 'Ce qu’on vous doit en devises, et ce qu’un point de taux coûte' },
+  { key: 'expenseClaims', label: 'Notes de frais', hint: 'Un ticket photographié, lu, et vérifié sur lui-même' },
+  { key: 'incomingInvoices', label: 'Factures entrantes', hint: 'Les factures fournisseurs, triées par échéance' },
 ];

@@ -95,11 +95,11 @@ export function AcompteScreen() {
 
       <Dominante
         surtitre={vide ? 'Le circuit des devis' : `Le circuit des ${s.envoyes.length + s.dansLeSas.length + s.lances.length} devis`}
-        note={vide ? undefined : 'Porte 1 : le client signe · porte 2 : il paie l’acompte'}
+        note={vide ? undefined : 'Porte 1 : le client signe · porte 2 : il paie l’acompte'}
       >
         {vide ? (
           <p className="max-w-[60ch] text-[14.5px] leading-[1.7] text-text-secondary">
-            Un devis envoyé passera deux portes : la signature, puis l’acompte payé en ligne. Ceux qui ont signé sans
+            Un devis envoyé passera deux portes : la signature, puis l’acompte payé en ligne. Ceux qui ont signé sans
             payer attendront ici, dans le sas — tant que l’acompte n’est pas arrivé, rien ne se planifie.
           </p>
         ) : (
@@ -229,7 +229,7 @@ export function AcompteScreen() {
             { label: 'Taux', valeur: `${tauxCourant} % du devis` },
           ]}
         >
-          Un devis ne passe la seconde porte que par un paiement réel : un acompte promis au téléphone ne compte pas.
+          Un devis ne passe la seconde porte que par un paiement réel : un acompte promis au téléphone ne compte pas.
         </CarteReleves>
       </Calmes>
     </Ecran50>

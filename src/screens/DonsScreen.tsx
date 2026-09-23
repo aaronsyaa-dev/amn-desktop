@@ -148,10 +148,10 @@ export function DonsScreen() {
   const phrasePrevision = !camp || !prev
     ? ''
     : prev.parJourCents === 0
-      ? 'Aucune contribution depuis sept jours : le tablier n’avance plus.'
+      ? 'Aucune contribution depuis sept jours : le tablier n’avance plus.'
       : `Au rythme des sept derniers jours, ${formatCentsCompact(prev.parJourCents)} par jour, le tablier ${
           prev.joursPourSeuil === 0 ? 'a déjà passé le seuil' : prev.seuilAvantCloture ? `atteint le seuil dans ${L(prev.joursPourSeuil ?? 0)} jours` : 'n’atteint pas le seuil avant la clôture'
-        } et ${prev.objectifAvantCloture ? 'touche l’autre rive avant la clôture' : 'n’atteint pas l’autre rive avant la clôture'}. Le seuil suffit à déclencher la campagne ; l’objectif, non.`;
+        } et ${prev.objectifAvantCloture ? 'touche l’autre rive avant la clôture' : 'n’atteint pas l’autre rive avant la clôture'}. Le seuil suffit à déclencher la campagne ; l’objectif, non.`;
 
   return (
     <Ecran50 vide={vide} premierJour={tout.length === 0}>
@@ -167,7 +167,7 @@ export function DonsScreen() {
       {!camp ? (
         <Dominante surtitre="Le pont · une planche par contribution">
           <p className="max-w-[60ch] text-[14.5px] leading-[1.7] text-text-secondary">
-            Une collecte en ligne se lira ici comme un pont : chaque contribution y pose une planche, et le trou qui
+            Une collecte en ligne se lira ici comme un pont : chaque contribution y pose une planche, et le trou qui
             reste jusqu’à l’autre rive est ce qu’il manque.
           </p>
         </Dominante>

@@ -490,7 +490,174 @@ async function marketing() {
   await poser('npsResponses', 'c50-nps-reglage', { kind: 'reglage', delaiEnvoiH: 2 });
 }
 
-const FAMILLES = { guichet, marketing };
+/* ════════════════════════════════════════════════════════════════ FINANCE ══ */
+
+async function finance() {
+  const dansJours = (j, h = 10) => le(-j, h);
+  const date = (mois, jourDuMois) => {
+    const d = new Date(MAINTENANT.getFullYear(), mois, jourDuMois, 10);
+    if (d < MAINTENANT) d.setFullYear(d.getFullYear() + 1);
+    return d.toISOString();
+  };
+
+  // ── 36a Trésorerie prévue ─────────────────────────────────────────────────
+  await poser('cashForecast', 'c50-tr-solde', { kind: 'solde', soldeCents: eur(18400), le: le(0, 8) });
+  /* 52 semaines relevées : des encaissements irréguliers (σ ≈ 3 300 €), un excédent moyen de 480 € par mois. */
+  for (let i = 0; i < 52; i += 1) {
+    const entrees = i % 2 ? 8000 : 1400;
+    await poser('cashForecast', `c50-tr-h${i}`, { kind: 'historique', debut: le(7 * (52 - i)), entreesCents: eur(entrees), sortiesCents: eur(4700 - 110.77) });
+  }
+  const deltas = [-1500, 900, -2600, -1100, 1500, -2700, -1100, -1400, -600, 1400, -2100, -900];
+  for (const [k, d] of deltas.entries()) {
+    const j = k * 7 + 3;
+    const certaine = 2600;
+    const probable = 1233;
+    const variable = 800;
+    const fixe = certaine + probable - variable - d;
+    await poser('cashForecast', `c50-tr-c${k}`, { kind: 'flux', libelle: 'Factures échues', le: dansJours(j), montantCents: eur(certaine), nature: 'certaine' });
+    await poser('cashForecast', `c50-tr-p${k}`, { kind: 'flux', libelle: 'Devis signés', le: dansJours(j), montantCents: eur(probable), nature: 'probable' });
+    await poser('cashForecast', `c50-tr-v${k}`, { kind: 'flux', libelle: 'Produits et carburant', le: dansJours(j), montantCents: -eur(variable), nature: 'sortie-variable' });
+    if (k === 8) {
+      await poser('cashForecast', `c50-tr-f${k}a`, { kind: 'flux', libelle: 'Échéance de TVA', le: dansJours(j), montantCents: -eur(3120), nature: 'sortie-fixe' });
+      await poser('cashForecast', `c50-tr-f${k}b`, { kind: 'flux', libelle: 'Deux salaires', le: dansJours(j), montantCents: -eur(fixe - 3120), nature: 'sortie-fixe' });
+    } else {
+      await poser('cashForecast', `c50-tr-f${k}`, { kind: 'flux', libelle: 'Charges fixes', le: dansJours(j), montantCents: -eur(fixe), nature: 'sortie-fixe' });
+    }
+  }
+
+  // ── 36b Scénarios ─────────────────────────────────────────────────────────
+  const annee = MAINTENANT.getFullYear() + 1;
+  await poser('budgetScenarios', 'c50-sc-modele', {
+    kind: 'modele', exercice: annee, caBaseCents: eur(180000), tauxVariable: 0.3, chargesFixesCents: eur(71500),
+    salaireMensuelCents: eur(3000), camionnetteMensuelleCents: eur(3800), coutJourDelaiCents: eur(106),
+    hypotheses: [
+      { cle: 'prix', nom: 'Prix', min: -5, max: 10, pas: 1, unite: 'pct', enPhrase: 'la hausse des prix' },
+      { cle: 'volume', nom: 'Volume', min: -20, max: 10, pas: 1, unite: 'pct', enPhrase: 'le volume de chantiers' },
+      { cle: 'embauche', nom: 'Embauche', min: 1, max: 13, pas: 1, unite: 'mois', enPhrase: 'la date d’embauche' },
+      { cle: 'camionnette', nom: 'Camionnette', min: 1, max: 13, pas: 1, unite: 'mois', enPhrase: 'la date d’achat de la camionnette' },
+      { cle: 'delai', nom: 'Délai client', min: 20, max: 60, pas: 1, unite: 'jours', enPhrase: 'le délai client' },
+    ],
+  });
+  const sc = [
+    ['prudent', 'Prudent', { prix: 2, volume: -3, embauche: 3, camionnette: 9, delai: 45 }],
+    ['central', 'Central', { prix: 3, volume: -1, embauche: 3, camionnette: 11, delai: 42 }],
+    ['ambitieux', 'Ambitieux', { prix: 4, volume: 1, embauche: 3, camionnette: 13, delai: 38 }],
+  ];
+  for (const [i, [id, nom, valeurs]] of sc.entries()) await poser('budgetScenarios', `c50-sc-${id}`, { kind: 'scenario', nom, valeurs, enregistreLe: le(20 - i), ordre: i });
+
+  // ── 36c Simulateur de prêt ────────────────────────────────────────────────
+  await poser('loanSimulations', 'c50-pret-camion', { kind: 'pret', objet: 'Camionnette électrique', capitalCents: eur(24000), tauxAnnuel: 0.042, dureesAns: [3, 5, 7], debut: le(0) });
+
+  // ── 36d Analytique ────────────────────────────────────────────────────────
+  const projets = [
+    ['aubier', 'Résidence Aubier', 40, 6, 8, 'dix-huit heures pointées au lieu de huit, pour un premier passage mal évalué', [
+      { poste: 'Main-d’œuvre', prevuCents: eur(384), reelCents: eur(864), detailPrevu: '8 h · 384 €', detailReel: '18 h · 864 €' },
+      { poste: 'Produits', prevuCents: eur(42), reelCents: eur(61) },
+      { poste: 'Déplacements', prevuCents: eur(36), reelCents: eur(72), detailPrevu: '2 · 36 €', detailReel: '4 · 72 €' },
+    ]],
+    ['bertaux', 'Maison Bertaux', 34, 38, 15], ['nord', 'Studio Nord', 29, 27, 22], ['dune', 'Le Comptoir Dune', 24, 18, 30],
+    ['halles', 'Les Halles', 19, 23, 40], ['mano', 'Chez Mano', 14, 12, 50],
+  ];
+  for (const [id, nom, margePrevue, margeReelle, jours, cause, postes] of projets) {
+    await poser('projectMargins', `c50-pm-${id}`, { kind: 'projet', nom, closLe: le(jours), margePrevue, margeReelle, postes: postes ?? [], ...(cause ? { cause } : {}) });
+  }
+
+  // ── 36e Rapprochement ─────────────────────────────────────────────────────
+  const paires = [
+    [11, 'VIR STUDIO NORD', 540, 'Acompte Studio Nord'], [10, 'CB DUPRE PRO', -148.6, 'BC-2026-014'], [10, 'VIR COMPTOIR DUNE', 234, 'Acompte Comptoir Dune'],
+    [9, 'PRLV EDF', -86.2, 'Énergie'], [8, 'CB STATION', -62.4, 'Carburant'], [7, 'VIR BERTAUX', 960, 'F-2026-032'],
+    [7, 'PRLV ASSURANCE', -118, 'Assurance pro'], [6, 'CB AMAZON', -23.9, 'Fournitures'], [6, 'VIR LE COMPTOIR', 2275, 'F-2026-031'],
+  ];
+  for (const [i, [j, lib, m, ecr]] of paires.entries()) {
+    await poser('bankLines', `c50-bk-${i}`, { kind: 'banque', le: le(j, 9), libelle: lib, montantCents: eur(m) });
+    await poser('bankLines', `c50-ec-${i}`, { kind: 'ecriture', le: le(j, 9), libelle: ecr, montantCents: eur(m) });
+  }
+  await poser('bankLines', 'c50-bk-urssaf', { kind: 'banque', le: le(5, 9), libelle: 'PRLV URSSAF', montantCents: -eur(1862) });
+  await poser('bankLines', 'c50-bk-boul', { kind: 'banque', le: le(5, 9), libelle: 'CB BOULANGERIE', montantCents: -eur(14.2) });
+  await poser('bankLines', 'c50-ec-samir', { kind: 'ecriture', le: le(5, 9), libelle: 'Note de frais Samir', montantCents: -eur(38.5) });
+  for (const [id, libelle, cible, tol, frais, motif] of [
+    ['vir', 'VIR + nom de client', 'facture ouverte', 0, false, 'VIR'],
+    ['dupre', 'CB DUPRE PRO', 'bon de commande', 0, false, 'CB DUPRE PRO'],
+    ['frais', 'FRAIS BANCAIRES', 'frais', 50, true, 'FRAIS BANCAIRES'],
+  ]) {
+    await poser('bankLines', `c50-rg-${id}`, { kind: 'regle', libelle, cible, toleranceCents: tol, fraisBancaires: frais, motif });
+  }
+
+  // ── 36f Prévision fiscale ─────────────────────────────────────────────────
+  await poser('taxDeadlines', 'c50-fi-solde', { kind: 'solde', soldeCents: eur(18400), le: le(0, 8) });
+  const finTrimestre = new Date(MAINTENANT.getFullYear(), Math.floor(MAINTENANT.getMonth() / 3) * 3 + 3, 0, 18).toISOString();
+  const tvaLe = new Date(MAINTENANT.getFullYear(), Math.floor(MAINTENANT.getMonth() / 3) * 3 + 3, 24, 10).toISOString();
+  await poser('taxDeadlines', 'c50-fi-tva', {
+    kind: 'echeance', impot: 'TVA du trimestre', court: 'TVA trim.', echeance: tvaLe, montantCents: 0,
+    tva: { collecteeCents: eur(4000), deductibleCents: eur(880), projeteeCents: eur(3850), clotureLe: finTrimestre },
+  });
+  await poser('taxDeadlines', 'c50-fi-is', { kind: 'echeance', impot: 'Acompte IS', court: 'Acompte IS', echeance: date(11, 15), montantCents: eur(1480) });
+  await poser('taxDeadlines', 'c50-fi-cfe', { kind: 'echeance', impot: 'CFE', court: 'CFE', echeance: date(11, 15), montantCents: eur(390) });
+  await poser('taxDeadlines', 'c50-fi-tva2', { kind: 'echeance', impot: 'TVA du trimestre suivant', court: 'TVA', echeance: new Date(new Date(tvaLe).getFullYear(), new Date(tvaLe).getMonth() + 3, 24, 10).toISOString(), montantCents: eur(3400), estimation: true });
+
+  // ── 36g Multi-devises ─────────────────────────────────────────────────────
+  for (const [devise, eurv] of [['CHF', 0.941], ['GBP', 1.173], ['USD', 0.919], ['CAD', 0.675]]) {
+    await poser('fxRates', `c50-fx-${devise}`, { kind: 'taux', devise, eur: eurv, le: le(2, 9) });
+  }
+  const fxf = [
+    ['weber', 'Atelier Weber', 'Bâle', 'CHF', 4200, 0.93, 30, -20], ['clean', 'The Clean Room', 'Londres', 'GBP', 1900, 1.198, 52, -8],
+    ['harbor', 'Harbor Studio', 'Boston', 'USD', 2600, 0.916, 25, -15], ['tremblay', 'Maison Tremblay', 'Québec', 'CAD', 800, 0.677, 18, -30],
+  ];
+  for (const [id, client, ville, devise, m, t, emis, ech] of fxf) {
+    await poser('fxRates', `c50-fxf-${id}`, { kind: 'facture', client, ville, devise, montant: m * 100, tauxEmission: t, emiseLe: le(emis), echeance: le(ech) });
+  }
+
+  // ── 36h Notes de frais ────────────────────────────────────────────────────
+  const dTicket = new Date(le(5, 7, 52));
+  const jjmm = `${String(dTicket.getDate()).padStart(2, '0')}/${String(dTicket.getMonth() + 1).padStart(2, '0')}/${dTicket.getFullYear()}`;
+  await poser('expenseClaims', 'c50-nf-samir', {
+    kind: 'note', personne: 'Samir', le: dTicket.toISOString(), montantCents: eur(62.4), statut: 'a-verifier',
+    ticket: [
+      { texte: 'STATION TOTAL · VILLEURBANNE', zone: 1, style: 'fort' }, { texte: '127 COURS ÉMILE-ZOLA', style: 'petit' },
+      { texte: `${jjmm} · 07:52`, zone: 2 }, { texte: '', style: 'filet' }, { texte: 'GAZOLE · 34,10 L', droite: '62,40' }, { texte: '', style: 'filet' },
+      { texte: 'TOTAL TTC', droite: '62,40 €', zone: 3, style: 'fort' }, { texte: 'DONT TVA 20 %', droite: '10,40', zone: 4 },
+      { texte: 'CB **** 4471 · MERCI', style: 'petit' },
+    ],
+    champs: [
+      { zone: 1, champ: 'Commerçant', valeur: 'Station Total', confiance: 0.97 },
+      { zone: 2, champ: 'Date', valeur: `${dTicket.getDate()} ${['janv.', 'févr.', 'mars', 'avril', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'][dTicket.getMonth()]} ${dTicket.getFullYear()}`, confiance: 0.99 },
+      { zone: 3, champ: 'Montant TTC', valeur: '62,40 €', confiance: 0.98 },
+      { zone: 4, champ: 'TVA', valeur: '20 % · 10,40 €', confiance: 0.58, note: 'La ligne de TVA est pliée sur la photo. Le 20 % est probable pour du gazole professionnel, mais pas certain.' },
+    ],
+  });
+  const autres = [
+    ['samir2', 'Samir', 12, 38.5, 'a-verifier'], ['samir3', 'Samir', 3, 25.1, 'a-verifier'],
+    ['lea1', 'Léa', 18, 64.2, 'remboursee'], ['lea2', 'Léa', 14, 32.4, 'remboursee'], ['lea3', 'Léa', 9, 41, 'validee'], ['lea4', 'Léa', 6, 52.7, 'validee'], ['lea5', 'Léa', 2, 24, 'a-verifier'],
+    ['karim', 'Karim', 4, 38.5, 'validee'],
+  ];
+  for (const [id, personne, j, m, statut] of autres) {
+    await poser('expenseClaims', `c50-nf-${id}`, {
+      kind: 'note', personne, le: le(j), montantCents: eur(m), statut, ticket: [{ texte: 'TICKET', zone: 1 }],
+      champs: [{ zone: 1, champ: 'Montant TTC', valeur: `${m.toFixed(2).replace('.', ',')} €`, confiance: 0.96 }],
+      ...(statut !== 'a-verifier' ? { valideeLe: le(j - 1) } : {}), ...(statut === 'remboursee' ? { rembourseeLe: le(Math.max(0, j - 8)) } : {}),
+    });
+  }
+
+  // ── 36i Factures entrantes ────────────────────────────────────────────────
+  const sur = { fournisseur: 0.98, montant: 0.97, echeance: 0.96 };
+  const fe = [
+    ['dupre1', 'Dupré Pro', 148.6, 2, 'BC-2026-014'], ['echaf', 'Échafaudages Rhône', 240, 4], ['orange', 'Orange Pro', 86.2, 5],
+    ['kangoo', 'Leasing Kangoo', 389, 12], ['morel', 'Cabinet Morel', 180, 12], ['assur', 'Assurance pro', 118, 10], ['bouygues', 'Bouygues', 49.99, 11],
+    ['dupre2', 'Dupré Pro', 412, 42], ['vapeur', 'Maintenance vapeur', 96, 58], ['flash', 'Imprimerie Flash', 74, 55], ['caisse', 'Logiciel caisse', 39, 44], ['stock', 'Location stockage', 88, 48],
+  ];
+  for (const [id, fournisseur, m, ech, reference] of fe) {
+    await poser('incomingInvoices', `c50-fe-${id}`, {
+      kind: 'facture', fournisseur, montantCents: eur(m), echeance: dansJours(ech), confiance: sur, recueLe: le(6), fournisseurConnu: true, ...(reference ? { reference } : {}),
+    });
+  }
+  await poser('incomingInvoices', 'c50-fe-brun', { kind: 'facture', fournisseur: 'Imprimerie Brun', montantCents: null, echeance: dansJours(20), confiance: { fournisseur: 0.95, montant: 0.2, echeance: 0.9 }, recueLe: le(2), fournisseurConnu: true, motif: 'montant illisible sur la photo' });
+  await poser('incomingInvoices', 'c50-fe-nt', { kind: 'facture', fournisseur: 'SAS NT-Lyon', montantCents: eur(212), echeance: dansJours(9), confiance: { fournisseur: 0.62, montant: 0.95, echeance: 0.93 }, recueLe: le(1), fournisseurConnu: false, motif: 'fournisseur inconnu' });
+  for (const [i, [f, m, j]] of [['Dupré Pro', 1279.4, 40], ['Leasing Kangoo', 778, 50], ['Cabinet Morel', 360, 45], ['Échafaudages Rhône', 240, 60]].entries()) {
+    await poser('incomingInvoices', `c50-fe-paye-${i}`, { kind: 'facture', fournisseur: f, montantCents: eur(m), echeance: le(j - 26), confiance: sur, recueLe: le(j), payeeLe: le(j - 26), fournisseurConnu: true });
+  }
+}
+
+const FAMILLES = { guichet, marketing, finance };
 const demandees = process.argv.slice(2);
 for (const [nom, f] of Object.entries(FAMILLES)) {
   if (demandees.length && !demandees.includes(nom)) continue;

@@ -136,6 +136,10 @@ export interface Hypothese {
   min: number;
   max: number;
   pas: number;
+  /** L'hypothèse dite dans une phrase (« la date d’achat de la camionnette »). */
+  enPhrase?: string;
+  /** L'unité de la valeur : % signé, mois de l'exercice (13 = l'an prochain) ou jours. */
+  unite: 'pct' | 'mois' | 'jours';
 }
 /** Le modèle de budget : ce que vaut chaque hypothèse en euros. */
 export interface ModeleBudget {
@@ -220,8 +224,9 @@ export function mensualite(capitalCents: number, tauxAnnuel: number, mois: numbe
 export function durees(p: Pick<DemandePret, 'capitalCents' | 'tauxAnnuel' | 'dureesAns'>, supportableCents: number | null) {
   const lignes = [...p.dureesAns].sort((a, b) => a - b).map((ans) => {
     const m = mensualite(p.capitalCents, p.tauxAnnuel, ans * 12);
-    const interets = Math.round(m * ans * 12 - p.capitalCents);
-    return { ans, mensualiteCents: Math.round(m), interetsCents: interets, coiffePx: (interets / p.capitalCents) * PRET.capitalPx };
+    /* À l'euro près : une simulation ne promet pas le centime. */
+    const interets = Math.round((m * ans * 12 - p.capitalCents) / 100) * 100;
+    return { ans, mensualiteCents: Math.round(m / 100) * 100, interetsCents: interets, coiffePx: (interets / p.capitalCents) * PRET.capitalPx };
   });
   /** L'ambre : « la durée la plus courte qui passe sous ce seuil ; si aucune ne passe, pas d'ambre. » */
   const ambre = supportableCents === null ? null : lignes.find((l) => l.mensualiteCents <= supportableCents) ?? null;
@@ -506,6 +511,7 @@ export interface NoteDeFrais {
   champs: ChampLu[];
   statut: 'a-verifier' | 'validee' | 'remboursee';
   valideeLe?: string;
+  rembourseeLe?: string;
 }
 export type EnregistrementNotes = NoteDeFrais;
 

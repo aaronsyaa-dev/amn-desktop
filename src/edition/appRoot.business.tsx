@@ -98,6 +98,15 @@ import { ImagesProduitsScreen } from '../screens/ImagesProduitsScreen';
 import { SentimentScreen } from '../screens/SentimentScreen';
 import { VeillePrixScreen } from '../screens/VeillePrixScreen';
 import { NpsScreen } from '../screens/NpsScreen';
+import { TresorerieScreen } from '../screens/TresorerieScreen';
+import { ScenariosScreen } from '../screens/ScenariosScreen';
+import { SimulateurPretScreen } from '../screens/SimulateurPretScreen';
+import { AnalytiqueScreen } from '../screens/AnalytiqueScreen';
+import { RapprochementScreen } from '../screens/RapprochementScreen';
+import { PrevisionFiscaleScreen } from '../screens/PrevisionFiscaleScreen';
+import { MultiDevisesScreen } from '../screens/MultiDevisesScreen';
+import { NotesDeFraisScreen } from '../screens/NotesDeFraisScreen';
+import { FacturesEntrantesScreen } from '../screens/FacturesEntrantesScreen';
 
 /**
  * La racine de l'édition Business — la table de routes livrée aux
@@ -797,6 +806,78 @@ export function AppRoot() {
           element={
             <ModuleRoute module="nps">
               <NpsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/tresorerie"
+          element={
+            <ModuleRoute module="cashForecast">
+              <TresorerieScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/scenarios"
+          element={
+            <ModuleRoute module="scenarios">
+              <ScenariosScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/simulateur-pret"
+          element={
+            <ModuleRoute module="loanSim">
+              <SimulateurPretScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/analytique"
+          element={
+            <ModuleRoute module="analytics">
+              <AnalytiqueScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/rapprochement"
+          element={
+            <ModuleRoute module="reconciliation">
+              <RapprochementScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/prevision-fiscale"
+          element={
+            <ModuleRoute module="taxForecast">
+              <PrevisionFiscaleScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/multi-devises"
+          element={
+            <ModuleRoute module="currencies">
+              <MultiDevisesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/notes-de-frais"
+          element={
+            <ModuleRoute module="expenseClaims">
+              <NotesDeFraisScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/factures-entrantes"
+          element={
+            <ModuleRoute module="incomingInvoices">
+              <FacturesEntrantesScreen />
             </ModuleRoute>
           }
         />

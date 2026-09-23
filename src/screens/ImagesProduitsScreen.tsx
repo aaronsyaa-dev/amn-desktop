@@ -203,8 +203,8 @@ export function ImagesProduitsScreen() {
               {ambre && altAmbre
                 ? `Sur la scène « ${ambre.decor} », ${ZONE_PHRASE[altAmbre.zone]} : « ${altAmbre.avant} » est devenu « ${altAmbre.apres} ». Une image qui change le produit n’est pas publiable, même si elle est belle.`
                 : siennes.some((s) => s.regenerationDemandeeLe)
-                  ? 'La régénération est demandée : la nouvelle scène sera comparée à la photo de référence avant d’être gardée.'
-                  : 'Aucune mise en scène ne touche au produit : l’étiquette, la forme et le bouchon sont ceux de la photo de référence.'}
+                  ? 'La régénération est demandée : la nouvelle scène sera comparée à la photo de référence avant d’être gardée.'
+                  : 'Aucune mise en scène ne touche au produit : l’étiquette, la forme et le bouchon sont ceux de la photo de référence.'}
             </PiedDominante>
           </>
         )}

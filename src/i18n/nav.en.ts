@@ -143,6 +143,15 @@ export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
   sentiment: { label: 'Sentiment', hint: 'What people tell you, in one sentence' },
   watch: { label: 'Market watch', hint: 'Your prices, against the market' },
   nps: { label: 'NPS', hint: 'Who pulls which way, and where the score lands' },
+  cashForecast: { label: 'Cash forecast', hint: 'The balance over twelve weeks, and when the worst case hits zero' },
+  scenarios: { label: 'Scenarios', hint: 'Budget assumptions, and which one weighs' },
+  loanSim: { label: 'Loan simulator', hint: 'Same loan, three terms, and what cash flow can carry' },
+  analytics: { label: 'Project analytics', hint: 'Quoted margin against actual margin' },
+  reconciliation: { label: 'Reconciliation', hint: 'The statement and the entries, pair by pair' },
+  taxForecast: { label: 'Tax forecast', hint: 'What part of the balance already belongs to the tax office' },
+  currencies: { label: 'Multi-currency', hint: 'What you are owed in foreign currencies, and what one point of rate costs' },
+  expenseClaims: { label: 'Expense claims', hint: 'A receipt photographed, read, and checked against itself' },
+  incomingInvoices: { label: 'Incoming invoices', hint: 'Supplier invoices, sorted by due date' },
 };
 
 /**
@@ -163,6 +172,7 @@ export const SECTIONS_EN_COMMUN: Record<string, string> = {
   Système: 'System',
   Guichet: 'Self-service',
   Marketing: 'Marketing',
+  Finance: 'Finance',
 };
 
 

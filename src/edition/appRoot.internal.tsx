@@ -126,6 +126,15 @@ import { ImagesProduitsScreen } from '../screens/ImagesProduitsScreen';
 import { SentimentScreen } from '../screens/SentimentScreen';
 import { VeillePrixScreen } from '../screens/VeillePrixScreen';
 import { NpsScreen } from '../screens/NpsScreen';
+import { TresorerieScreen } from '../screens/TresorerieScreen';
+import { ScenariosScreen } from '../screens/ScenariosScreen';
+import { SimulateurPretScreen } from '../screens/SimulateurPretScreen';
+import { AnalytiqueScreen } from '../screens/AnalytiqueScreen';
+import { RapprochementScreen } from '../screens/RapprochementScreen';
+import { PrevisionFiscaleScreen } from '../screens/PrevisionFiscaleScreen';
+import { MultiDevisesScreen } from '../screens/MultiDevisesScreen';
+import { NotesDeFraisScreen } from '../screens/NotesDeFraisScreen';
+import { FacturesEntrantesScreen } from '../screens/FacturesEntrantesScreen';
 import { ClientAdminScreen } from '../client-context/ClientAdminScreen';
 import { ContextBoot } from '../client-context/ContextBoot';
 import { OrgContextProvider, useOrgContext } from '../state/OrgContextContext';
@@ -372,6 +381,15 @@ function AmnRoutes() {
         <Route path="/sentiment" element={<SentimentScreen />} />
         <Route path="/veille-prix" element={<VeillePrixScreen />} />
         <Route path="/nps" element={<NpsScreen />} />
+        <Route path="/tresorerie" element={<TresorerieScreen />} />
+        <Route path="/scenarios" element={<ScenariosScreen />} />
+        <Route path="/simulateur-pret" element={<SimulateurPretScreen />} />
+        <Route path="/analytique" element={<AnalytiqueScreen />} />
+        <Route path="/rapprochement" element={<RapprochementScreen />} />
+        <Route path="/prevision-fiscale" element={<PrevisionFiscaleScreen />} />
+        <Route path="/multi-devises" element={<MultiDevisesScreen />} />
+        <Route path="/notes-de-frais" element={<NotesDeFraisScreen />} />
+        <Route path="/factures-entrantes" element={<FacturesEntrantesScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
@@ -1027,6 +1045,78 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="nps">
               <NpsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/tresorerie"
+          element={
+            <ModuleRoute module="cashForecast">
+              <TresorerieScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/scenarios"
+          element={
+            <ModuleRoute module="scenarios">
+              <ScenariosScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/simulateur-pret"
+          element={
+            <ModuleRoute module="loanSim">
+              <SimulateurPretScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/analytique"
+          element={
+            <ModuleRoute module="analytics">
+              <AnalytiqueScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/rapprochement"
+          element={
+            <ModuleRoute module="reconciliation">
+              <RapprochementScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/prevision-fiscale"
+          element={
+            <ModuleRoute module="taxForecast">
+              <PrevisionFiscaleScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/multi-devises"
+          element={
+            <ModuleRoute module="currencies">
+              <MultiDevisesScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/notes-de-frais"
+          element={
+            <ModuleRoute module="expenseClaims">
+              <NotesDeFraisScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/factures-entrantes"
+          element={
+            <ModuleRoute module="incomingInvoices">
+              <FacturesEntrantesScreen />
             </ModuleRoute>
           }
         />

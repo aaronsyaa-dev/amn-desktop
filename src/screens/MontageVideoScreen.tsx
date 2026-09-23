@@ -106,7 +106,7 @@ export function MontageVideoScreen() {
         {!courant || !b || !format ? (
           <p className="max-w-[60ch] text-[14.5px] leading-[1.7] text-text-secondary">
             Chaque montage sera posé ici sur la même pellicule de quarante-cinq secondes, un plan par segment, contre les
-            crans des formats visés : on verra d’un coup s’il tient dans sa Story ou son Reel.
+            crans des formats visés : on verra d’un coup s’il tient dans sa Story ou son Reel.
           </p>
         ) : (
           <>
@@ -183,7 +183,7 @@ export function MontageVideoScreen() {
               }
             >
               {b.depasseS === 0
-                ? `Le film dure ${b.totalS} s : il tient dans son ${format.nom} de ${format.maxS} s, sans rien couper.`
+                ? `Le film dure ${b.totalS} s : il tient dans son ${format.nom} de ${format.maxS} s, sans rien couper.`
                 : phraseCoupe ??
                   `Le film dépasse de ${b.depasseS} s, et aucune coupe ne le ramène à ${format.maxS} s sans toucher aux plans gardés.`}
             </PiedDominante>

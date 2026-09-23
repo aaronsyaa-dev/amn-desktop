@@ -122,9 +122,9 @@ export function SentimentScreen() {
                 ? `Les ${s.ambre.variantes.length} variantes disent la même chose avec d’autres mots. ${
                     s.ambre.tenue
                       ? 'La phrase-mère n’emploie que leurs mots.'
-                      : 'Aucune synthèse ne tient mot pour mot : la variante la plus récente est citée telle quelle.'
+                      : 'Aucune synthèse ne tient mot pour mot : la variante la plus récente est citée telle quelle.'
                   }`
-                : 'Aucune phrase négative sur la période : rien ne demande de réponse.'}
+                : 'Aucune phrase négative sur la période : rien ne demande de réponse.'}
             </PiedDominante>
           </>
         )}
@@ -148,7 +148,7 @@ export function SentimentScreen() {
             { label: 'Neutres', valeur: s.polarites.neutre },
           ]}
         >
-          Aucune phrase-mère n’est écrite par l’analyse : elle choisit parmi les mots des clients.
+          Aucune phrase-mère n’est écrite par l’analyse : elle choisit parmi les mots des clients.
         </CarteReleves>
       </Calmes>
     </Ecran50>

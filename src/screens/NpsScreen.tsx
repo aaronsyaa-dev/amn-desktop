@@ -71,7 +71,7 @@ export function NpsScreen() {
       >
         {vide ? (
           <p className="max-w-[60ch] text-[14.5px] leading-[1.7] text-text-secondary">
-            Après chaque intervention, un sondage part. Les réponses tendront ici une corde : les détracteurs tirent à
+            Après chaque intervention, un sondage part. Les réponses tendront ici une corde : les détracteurs tirent à
             gauche, les promoteurs à droite, et le nœud s’arrête sur le score.
           </p>
         ) : (
@@ -139,9 +139,9 @@ export function NpsScreen() {
               {c.detracteurs === 0
                 ? 'Aucun détracteur sur la période.'
                 : motifDetracteurs.length === 1 && motifDetracteurs[0].n === c.detracteurs
-                  ? `${c.detracteurs > 1 ? `Les ${L(c.detracteurs)} détracteurs citent tous` : 'Le détracteur cite'} le même motif : ${motifDetracteurs[0].motif.toLowerCase()}.`
+                  ? `${c.detracteurs > 1 ? `Les ${L(c.detracteurs)} détracteurs citent tous` : 'Le détracteur cite'} le même motif : ${motifDetracteurs[0].motif.toLowerCase()}.`
                   : motifDetracteurs.length > 0
-                    ? `Le motif le plus cité par les détracteurs : ${motifDetracteurs[0].motif.toLowerCase()} (${motifDetracteurs[0].n} sur ${c.detracteurs}).`
+                    ? `Le motif le plus cité par les détracteurs : ${motifDetracteurs[0].motif.toLowerCase()} (${motifDetracteurs[0].n} sur ${c.detracteurs}).`
                     : `${L(c.detracteurs, true)} détracteur${c.detracteurs > 1 ? 's' : ''}, sans motif donné.`}
             </PiedDominante>
           </>
