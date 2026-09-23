@@ -383,7 +383,7 @@ const exclusiveApi = {
  * donc oublier ce drapeau se verrait tout de suite : pas de dérive silencieuse.
  */
 /** Les trames que la Garde pousse à la Tour ; toutes arrivent au poste par un seul canal. */
-export const TRAMES_GARDE = ['garde:presence', 'garde:journal', 'garde:remontee', 'garde:remontee-resolue', 'garde:remontee-decidee', 'garde:ronde', 'garde:releve', 'garde:absence', 'garde:collaboration', 'garde:correction'];
+export const TRAMES_GARDE = ['garde:presence', 'garde:journal', 'garde:remontee', 'garde:remontee-resolue', 'garde:remontee-decidee', 'garde:ronde', 'garde:releve', 'garde:absence', 'garde:collaboration', 'garde:correction', 'garde:prise'];
 
 /** Un appel à la Garde, au nom d'AMN DevSec (jeton du propriétaire), quel que soit le contexte courant. */
 export async function gardeAppel<T = unknown>(req: GardeAppel): Promise<T> {

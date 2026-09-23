@@ -381,7 +381,7 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
       return ctx.apiFetch<T>(`/v1/garde${req.path.startsWith('/') ? req.path : `/${req.path}`}`, { owner: true, method: req.method ?? 'GET', ...(req.body !== undefined ? { body: JSON.stringify(req.body) } : {}) });
     },
     onGarde(callback: (t: GardeTrame) => void) {
-      const arrets = ['garde:presence', 'garde:journal', 'garde:remontee', 'garde:remontee-resolue', 'garde:remontee-decidee', 'garde:ronde', 'garde:releve', 'garde:absence', 'garde:collaboration', 'garde:correction'].map((type) => ctx.onFrame(type, (frame) => callback(frame as unknown as GardeTrame)));
+      const arrets = ['garde:presence', 'garde:journal', 'garde:remontee', 'garde:remontee-resolue', 'garde:remontee-decidee', 'garde:ronde', 'garde:releve', 'garde:absence', 'garde:collaboration', 'garde:correction', 'garde:prise'].map((type) => ctx.onFrame(type, (frame) => callback(frame as unknown as GardeTrame)));
       return () => { for (const a of arrets) a(); };
     },
   },

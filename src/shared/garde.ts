@@ -219,6 +219,9 @@ export interface GardeDossier {
   chefDeFile: boolean;
   derriere: string | null;
   memeOrg: number;
+  /** Le compte qui a dit « je le prends » (Accueil « Les deux postes ») ; absent d'un amn-api plus ancien. */
+  prisPar?: string | null;
+  prisLe?: string | null;
 }
 export interface GardePileDossiers {
   dossiers: GardeDossier[];

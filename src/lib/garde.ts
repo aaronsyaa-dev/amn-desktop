@@ -54,6 +54,7 @@ export const garde = {
   // Bloc 4 — Ajmani, chef d'état-major.
   accueil: () => appel<GardeAccueil>('/ajmani'),
   pile: (limit = 50) => appel<GardePileDossiers>(`/pile${q({ limit })}`),
+  prendre: (id: string, prendre = true) => appel<{ pris: boolean; prisPar: string | null }>(`/pile/${encodeURIComponent(id)}/prise`, 'POST', { prendre }),
   deciderDossier: (id: string, decision: string) => appel<{ n: number; decision: string }>(`/pile/${encodeURIComponent(id)}/decision`, 'POST', { decision }),
   guide: async () => (await appel<{ guide: GardeGuideEntree[]; version: string; familles: Record<string, { un: string; des: string }> }>('/lexique')),
   mandat: async () => (await appel<{ mandat: GardeMandat }>('/ajmani/mandat')).mandat,
