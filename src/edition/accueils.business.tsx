@@ -4,6 +4,7 @@ import { ProchaineHeure } from '../accueils/client/ProchaineHeure';
 import { LaUne } from '../accueils/client/LaUne';
 import { MainCourante } from '../accueils/client/MainCourante';
 import { FileUnique } from '../accueils/client/FileUnique';
+import { SemaineDepliee } from '../accueils/client/SemaineDepliee';
 
 /**
  * LES ONZE ACCUEILS DE L'ÉDITION CLIENTE — 2a et les dix variantes du cahier 9
@@ -45,5 +46,12 @@ export const ACCUEILS: AccueilDef[] = [
     phrase: 'Une seule liste des actions du jour, la taille suit le rang.',
     vignette: [[6, 6, 14, 14, 'ambre'], [24, 8, 60, 6, 'clair'], [6, 26, 70, 4, 'clair'], [6, 34, 62, 3.5, 'moyen'], [6, 41, 54, 3, 'moyen'], [6, 47, 46, 2.5, 'moyen'], [6, 53, 40, 2, 'moyen']],
     composant: FileUnique,
+  },
+  {
+    code: '40e',
+    nom: 'La semaine dépliée',
+    phrase: 'Aujourd’hui en détail, les autres jours en jauge de charge.',
+    vignette: [[6, 10, 10, 44, 'sombre'], [19, 10, 10, 44, 'sombre'], [32, 8, 36, 48, 'moyen'], [36, 26, 28, 6, 'ambre'], [71, 10, 10, 44, 'sombre'], [84, 10, 10, 44, 'sombre']],
+    composant: SemaineDepliee,
   },
 ];
