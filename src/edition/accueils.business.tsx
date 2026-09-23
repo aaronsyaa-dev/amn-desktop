@@ -7,6 +7,7 @@ import { FileUnique } from '../accueils/client/FileUnique';
 import { SemaineDepliee } from '../accueils/client/SemaineDepliee';
 import { Cadran } from '../accueils/client/Cadran';
 import { Lettre } from '../accueils/client/Lettre';
+import { Ecarts } from '../accueils/client/Ecarts';
 
 /**
  * LES ONZE ACCUEILS DE L'ÉDITION CLIENTE — 2a et les dix variantes du cahier 9
@@ -69,5 +70,12 @@ export const ACCUEILS: AccueilDef[] = [
     phrase: 'Trois paragraphes : ce qui s’est passé, ce qui presse, ce qui peut attendre.',
     vignette: [[10, 8, 60, 5, 'clair'], [10, 16, 56, 5, 'clair'], [10, 26, 30, 5, 'ambre'], [42, 26, 20, 5, 'clair'], [10, 36, 58, 5, 'moyen'], [10, 44, 40, 5, 'moyen'], [10, 52, 20, 3, 'sombre']],
     composant: Lettre,
+  },
+  {
+    code: '40h',
+    nom: 'Les écarts',
+    phrase: 'Seulement ce qui s’écarte d’une journée ordinaire.',
+    vignette: [[49, 6, 1, 50, 'moyen'], [50, 12, 38, 6, 'ambre'], [50, 24, 14, 6, 'moyen'], [36, 36, 14, 6, 'sombre'], [50, 48, 8, 6, 'moyen']],
+    composant: Ecarts,
   },
 ];

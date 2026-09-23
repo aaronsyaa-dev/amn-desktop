@@ -902,6 +902,43 @@ const iso = (joursAvant: number, h = 10) => {
   regle('13a · une ligne par phrase du brief, reliée à sa phrase', () => assert.deepEqual(lb.map((l) => l.phrase.slice(0, 9)), ['Nettoyer ', 'Remettre ', 'Arroser l']));
   regle('13a · le prix vient du catalogue réel, quantité comprise', () => assert.equal(lb[0].prixCents, 28_800));
   regle('13a · une phrase qui ne correspond à rien reste à chiffrer : aucun prix inventé', () => assert.equal(lb[2].prixCents, null));
+
+  /* ═══ Accueils (ACCUEILS.md) ═══ */
+  const A = await charger<typeof import('../src/accueils/formules')>('src/accueils/formules.ts');
+  const ph = (2 * Math.PI * 150) / 12;
+  regle('40f · longueur = durée × (2πr / 12)', () => assert.ok(Math.abs(A.arcCadran(16.5, 1).longueur - ph) < 1e-9));
+  regle('40f · décalage = −(début − 8) × (2πr / 12)', () => assert.ok(Math.abs(A.arcCadran(16.5, 1).decalage + 8.5 * ph) < 1e-9));
+  regle('40f · le viewBox laisse au moins 40 px autour du cercle', () => assert.ok(A.CADRAN.marge >= 40 && A.CADRAN.c - A.CADRAN.r - A.CADRAN.epaisseur / 2 + A.CADRAN.marge >= 40));
+  regle('40f · un rendez-vous hors de 08 h–20 h n’apparaît pas', () => {
+    assert.equal(A.surLeCadran(7.5, 1), false);
+    assert.equal(A.surLeCadran(19.5, 1), false);
+    assert.equal(A.surLeCadran(8, 12), true);
+  });
+  regle('40f · 08 h en haut, 14 h en bas, 17 h à gauche', () => {
+    const [x8, y8] = A.pointCadran(8, 100);
+    const [x14, y14] = A.pointCadran(14, 100);
+    const [x17] = A.pointCadran(17, 100);
+    assert.ok(Math.abs(x8 - 180) < 1e-9 && y8 < 180 && Math.abs(x14 - 180) < 1e-9 && y14 > 180 && x17 < 180);
+  });
+  regle('40h · l’habitude : médiane des vingt derniers mêmes jours de semaine', () => {
+    const jeudi = new Date(2026, 8, 17);
+    const ref = A.joursDeReference(jeudi, null);
+    assert.equal(ref.length, 20);
+    assert.ok(ref.every((d) => d.getDay() === 4));
+    assert.equal(A.mediane([3, 1, 2, 10]), 2.5);
+  });
+  regle('40h · pas d’habitude d’avant la première donnée', () => assert.equal(A.joursDeReference(new Date(2026, 8, 17), new Date(2026, 7, 25)).length, 3));
+  regle('40h · un indicateur ne s’affiche qu’au-delà de ± 5 %', () => {
+    assert.equal(A.hors(A.ecartRelatif(105, 100)), false);
+    assert.equal(A.hors(A.ecartRelatif(106, 100)), true);
+    assert.equal(A.hors(A.ecartRelatif(94, 100)), true);
+  });
+  regle('40h · barre = min(|écart|, 100 %) / 2, flèche au-delà du double', () => {
+    assert.deepEqual(A.barreEcart(-0.22), { cote: 'gauche', largeur: 0.11, fleche: false });
+    assert.deepEqual(A.barreEcart(3), { cote: 'droite', largeur: 0.5, fleche: true });
+  });
+  regle('40h · l’ambre : le plus grand écart affiché', () => assert.equal(A.plusGrandEcart([{ ecart: 0.3 }, { ecart: -0.6 }, { ecart: 0.04 }])?.ecart, -0.6));
+
 }
 
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);

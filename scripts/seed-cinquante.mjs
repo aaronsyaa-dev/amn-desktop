@@ -1296,6 +1296,30 @@ async function accueils() {
   await rdv('routine', 'Arrosage hebdomadaire', -60, 45, 103, 'Nadia Bouvier', '12 rue Foch, Montpellier', 'Passage de routine.');
   await rdv('enjeu', 'Point sur les compositions de terrasse', 26, 60, 102, 'Brasserie du Port', 'Quai de la Fontaine, Montpellier');
   await rdv('soir', 'Entretien des massifs — visite', 150, 45, 104, 'Villa Sereine', 'Route de Mende, Montpellier');
+
+  // L'HISTORIQUE des vingt mêmes jours de semaine passés — ce que « Les écarts »
+  // (40h) appellent l'habitude. Chaque jour : deux rendez-vous le matin et
+  // quatre appels. Aujourd'hui en porte neuf : l'écart le plus grand.
+  const a = (joursAvant, h, m) => {
+    const d = new Date(MAINTENANT);
+    d.setDate(d.getDate() - joursAvant);
+    d.setHours(h, m, 0, 0);
+    return d.toISOString();
+  };
+  for (let k = 1; k <= 20; k++) {
+    const j = 7 * k;
+    await poser('appointments', `c50-acc-h${k}-a`, { title: 'Arrosage hebdomadaire', startAt: a(j, 9, 0), durationMin: 45, clientId: 103, clientName: 'Nadia Bouvier', location: '', notes: '', reminderMin: 30, status: 'scheduled', source: 'manual', createdAt: le(j + 2) });
+    await poser('appointments', `c50-acc-h${k}-b`, { title: 'Livraison', startAt: a(j, 11, 0), durationMin: 60, clientId: 101, clientName: 'Camille Renaud', location: '', notes: '', reminderMin: 30, status: 'scheduled', source: 'manual', createdAt: le(j + 2) });
+    for (const [h, n] of [[9, 1], [10, 2], [11, 3], [14, 4]])
+      await poser('switchboardCalls', `c50-acc-h${k}-appel-${n}`, { kind: 'appel', appelant: 'Client', objet: 'demande de rendez-vous', debutLe: a(j, h, 5) });
+  }
+  const jourMeme = new Date(MAINTENANT);
+  for (let n = 0; n < 9; n++) {
+    const d = new Date(jourMeme);
+    d.setHours(8 + Math.floor(n / 2), (n % 2) * 30 + 5, 0, 0);
+    if (d.getTime() > MAINTENANT.getTime()) d.setTime(MAINTENANT.getTime() - (n + 1) * 60_000);
+    await poser('switchboardCalls', `c50-acc-auj-appel-${n}`, { kind: 'appel', appelant: 'Client', objet: 'demande de devis', debutLe: d.toISOString() });
+  }
 }
 
 const FAMILLES = { guichet, marketing, finance, rh, juridique, ajouts, fusions, accueils };

@@ -2,6 +2,7 @@ import React from 'react';
 import { appointmentEnd, type Appointment } from '../../state/useAppointments';
 import { EnTeteAccueil, SiPremierJour, enLettres } from './communs';
 import { OUVERTURE, hhmm, useJournee } from './journee';
+import { CADRAN, CIRCONFERENCE, arcCadran, pointCadran, surLeCadran as surCadran } from '../formules';
 
 /**
  * C6 · LE CADRAN (`40f`).
@@ -20,33 +21,12 @@ import { OUVERTURE, hhmm, useJournee } from './journee';
  *     signalé en légende.
  * L'ambre : l'arc du rendez-vous à enjeu et son heure dans la légende.
  */
-const R = 150;
-const C = 180;
-const MARGE = 40;
-const EPAISSEUR = 22;
-const CIRCONFERENCE = 2 * Math.PI * R;
-const PAR_HEURE = CIRCONFERENCE / 12;
+const { r: R, c: C, marge: MARGE, epaisseur: EPAISSEUR } = CADRAN;
 const HEURES = (d: Date) => d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
-
-/** Le point du cadran à l'heure `h` (08 h en haut, sens horaire), à la distance `r` du moyeu. */
-function point(h: number, r: number): [number, number] {
-  const a = ((h - OUVERTURE.debutH) / 12) * 2 * Math.PI;
-  return [C + Math.sin(a) * r, C - Math.cos(a) * r];
-}
-
+const point = pointCadran;
 const f = (n: number) => n.toFixed(1);
-
-/** Un rendez-vous est sur le cadran s'il tient tout entier dans 08 h–20 h. */
-export function surLeCadran(a: Appointment): boolean {
-  const debut = HEURES(new Date(a.startAt));
-  const fin = debut + a.durationMin / 60;
-  return debut >= OUVERTURE.debutH && fin <= OUVERTURE.finH;
-}
-
-export function arc(a: Appointment): { longueur: number; decalage: number } {
-  const debut = HEURES(new Date(a.startAt));
-  return { longueur: (a.durationMin / 60) * PAR_HEURE, decalage: -(debut - OUVERTURE.debutH) * PAR_HEURE };
-}
+const surLeCadran = (a: Appointment) => surCadran(HEURES(new Date(a.startAt)), a.durationMin / 60);
+const arc = (a: Appointment) => arcCadran(HEURES(new Date(a.startAt)), a.durationMin / 60);
 
 export function Cadran() {
   const j = useJournee(10_000);
