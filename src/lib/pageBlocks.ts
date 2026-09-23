@@ -42,6 +42,10 @@ export function normalizePage(raw: Partial<PageData> | null | undefined): PageDa
     scope: typeof raw?.scope === 'string' ? raw.scope : undefined,
     template: typeof raw?.template === 'string' ? raw.template : undefined,
     updatedBy: typeof raw?.updatedBy === 'string' ? raw.updatedBy : undefined,
+    site:
+      raw?.site && typeof raw.site === 'object'
+        ? { publiee: raw.site.publiee === true, publieeLe: typeof raw.site.publieeLe === 'string' ? raw.site.publieeLe : undefined }
+        : undefined,
   };
 }
 

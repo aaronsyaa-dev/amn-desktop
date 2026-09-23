@@ -2197,6 +2197,12 @@ export interface PageData {
   /** Le gabarit d'origine, gardé pour information. */
   template?: string;
   updatedBy?: string;
+  /**
+   * LE SITE PUBLIC (fusion « site vitrine » → Pages, chantier des cinquante).
+   * Une page libre publiée paraît sur `#/site` ; les autres restent internes.
+   * Absent = jamais publiée.
+   */
+  site?: { publiee: boolean; publieeLe?: string };
 }
 
 export type SyncedCollection =

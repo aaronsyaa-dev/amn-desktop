@@ -10,6 +10,7 @@ import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { GuestCallScreen } from '../screens/GuestCallScreen';
 import { PublicBookingScreen } from '../screens/PublicBookingScreen';
 import { PublicPageScreen } from '../screens/PublicPageScreen';
+import { PublicSiteScreen } from '../screens/PublicSiteScreen';
 import { PublicFormScreen } from '../screens/PublicFormScreen';
 import { HomeSoloScreen } from '../business/HomeSoloScreen';
 import { AgendaScreen } from '../business/AgendaScreen';
@@ -168,6 +169,8 @@ export function AppRoot() {
       {/* La mini-page et les formulaires publics : même doctrine, sans session. */}
       <Route path="/p" element={<PublicPageScreen />} />
       <Route path="/f" element={<PublicFormScreen />} />
+      {/* Le site public : les pages de Pages publiées (fusion « site vitrine »). */}
+      <Route path="/site" element={<PublicSiteScreen />} />
       <Route
         element={
           <ProtectedRoute>

@@ -1225,7 +1225,30 @@ async function ajouts() {
   await installee('meteo', 'Météo chantier', [passage('rounds', 'Tournées', 'adresses du jour', 'lecture', true, { usages30j: 30, decision: 'autorise' }), passage('clients', 'Clients', 'téléphones', 'lecture', false, { decision: 'refuse' })]);
 }
 
-const FAMILLES = { guichet, marketing, finance, rh, juridique, ajouts };
+/* ═════════════════════════════════════════════════════════════ LES FUSIONS ══ */
+
+async function fusions() {
+  // ── Site vitrine → Pages : six pages libres, dont quatre en ligne ─────────
+  const b = (type, extra) => ({ id: `b-${Math.random().toString(36).slice(2, 8)}`, type, ...extra });
+  const page = (id, title, blocks, publiee, jours) =>
+    poser('pages', `c50-site-${id}`, { title, blocks, editorRoles: ['owner', 'admin'], template: 'blank', site: publiee ? { publiee: true, publieeLe: le(jours) } : { publiee: false } });
+  await page('accueil', 'Accueil', [
+    b('text', { text: 'Nettoyage professionnel à Lyon — devis sous 24 h' }),
+    b('text', { text: 'Six clients réguliers, dont Maison Bertaux et Studio Nord.' }),
+    b('checklist', { items: ['Entretien courant', 'Remise en état', 'Interventions ponctuelles', 'Vitrages en hauteur', 'Fin de chantier'].map((text, i) => ({ id: `i${i}`, text, done: false })) }),
+    b('table', { columns: ['Prestation', 'Tarif'], rows: [['', '']] }),
+    b('image', { url: 'https://images.exemple.test/avant-apres.jpg', caption: 'Neuf photos avant/après, chargées depuis Médias' }),
+    b('text', { text: 'Demande de devis — sept champs : nom, adresse, surface, fréquence, budget, date souhaitée, message.' }),
+    b('text', { text: 'Mentions, horaires, téléphone.' }),
+  ], false, 21);
+  await page('prestations', 'Prestations', [b('text', { text: 'Entretien courant, remise en état, interventions ponctuelles.' }), b('checklist', { items: [{ id: 'a', text: 'Bureaux', done: false }, { id: 'b', text: 'Commerces', done: false }] })], true, 100);
+  await page('apropos', 'À propos', [b('text', { text: 'Une équipe de quatre personnes, à Lyon depuis 2019.' })], true, 200);
+  await page('contact', 'Contact', [b('text', { text: '04 78 00 00 00 · du lundi au vendredi, 8 h – 18 h.' })], true, 100);
+  await page('mentions', 'Mentions légales', [b('text', { text: 'Éditeur du site, hébergeur, SIRET.' })], true, 600);
+  await page('avantapres', 'Avant / après', [b('image', { url: '', caption: '' })], false, 60);
+}
+
+const FAMILLES = { guichet, marketing, finance, rh, juridique, ajouts, fusions };
 const demandees = process.argv.slice(2);
 for (const [nom, f] of Object.entries(FAMILLES)) {
   if (demandees.length && !demandees.includes(nom)) continue;

@@ -35,6 +35,7 @@ import { centsToInput, formatCents, parsePositiveAmount } from '../lib/money';
 import type { PageBlock, PageData, PageEditorRole } from '../shared/api';
 import { useLangue, t as tr } from '../i18n';
 import { useHaloSignal } from '../components/EtatEcran';
+import { IS_BUSINESS } from '../edition/edition';
 
 /**
  * LES PAGES — UN MOTEUR, PLUSIEURS MODULES (BLOC 3)
@@ -205,11 +206,13 @@ export function PagesScreen({ scope, title, description }: {
   /* L'abonnement à la langue : `tr(...)` lit la langue ACTIVE à l'appel, donc
      sans abonnement l'écran garde celle du montage. */
   useLangue();
-  const { role } = useAuth();
+  const { role, org } = useAuth();
   const { upsert, remove, ready } = useSync();
   const brutes = useCollection<PageData>('pages');
   const [ouverte, setOuverte] = useState<string | null>(null);
   const [creation, setCreation] = useState(false);
+  /* Le bloc du profil ouvert à l'édition : la pile de blocs s'édite directement (fusion « site vitrine »). */
+  const [editeProfil, setEditeProfil] = useState<string | null>(null);
 
   const pages = useMemo(
     () =>
@@ -277,6 +280,24 @@ export function PagesScreen({ scope, title, description }: {
     enregistrer(courante.id, { ...courante.data, blocks });
   };
 
+  /*
+    LE SITE PUBLIC — fusion « Mini-builder de site vitrine » → Pages.
+
+    Le site vitrine n'est pas un second module : ce sont les pages LIBRES de
+    Pages (sans module propriétaire) que la cliente publie. Seulement dans
+    l'édition cliente ; amn-api ne sert que les pages marquées publiées.
+  */
+  const publiable = IS_BUSINESS && Boolean(courante) && !courante?.data.scope && Boolean(org?.id);
+  const enLigne = Boolean(courante?.data.site?.publiee);
+  const lienPublic = courante && org?.id ? `#/site?org=${encodeURIComponent(org.id)}&page=${encodeURIComponent(courante.id)}` : '';
+  const basculerPublication = () => {
+    if (!courante || !modifiable) return;
+    enregistrer(courante.id, {
+      ...courante.data,
+      site: enLigne ? { publiee: false } : { publiee: true, publieeLe: new Date().toISOString() },
+    });
+  };
+
   return (
     <StaggerGroup className="flex flex-col gap-6">
       <StaggerItem>
@@ -317,37 +338,51 @@ export function PagesScreen({ scope, title, description }: {
             <div className="mt-4 flex flex-col gap-1.5">
               {profil.map((b) => {
                 const signal = blocAmbre?.id === b.id;
+                const index = courante.data.blocks.findIndex((x) => x.id === b.id);
+                const bloc = courante.data.blocks[index];
+                const ouvert = editeProfil === b.id && modifiable && bloc;
                 return (
-                  <div
-                    key={b.id}
-                    className={`flex items-center gap-4 border px-3 ${
-                      signal
-                        ? `border-signal-line bg-signal-muted ${halo}`
-                        : 'border-border bg-sunken'
-                    }`}
-                    style={{ height: b.hauteur }}
-                    data-signal-groupe={signal ? 'bloc-vide' : undefined}
-                  >
-                    <span
-                      className={`w-24 flex-shrink-0 truncate font-mono text-[10px] uppercase tracking-[0.14em] ${
-                        signal ? 'text-signal' : 'text-text-muted'
+                  <React.Fragment key={b.id}>
+                    <button
+                      type="button"
+                      disabled={!modifiable}
+                      onClick={() => setEditeProfil(ouvert ? null : b.id)}
+                      aria-expanded={Boolean(ouvert)}
+                      title={modifiable ? (ouvert ? 'Refermer' : 'Modifier ce bloc ici') : undefined}
+                      className={`flex items-center gap-4 border px-3 text-left transition-colors disabled:cursor-default ${
+                        signal
+                          ? `border-signal-line bg-signal-muted ${halo}`
+                          : 'border-border bg-sunken enabled:hover:border-border-strong'
                       }`}
+                      style={{ height: b.hauteur }}
                       data-signal-groupe={signal ? 'bloc-vide' : undefined}
                     >
-                      {b.typeLabel}
-                    </span>
-                    <span
-                      className={`min-w-0 flex-1 truncate text-[13px] ${
-                        b.vide ? (signal ? 'text-signal' : 'text-text-muted') : 'text-text-secondary'
-                      }`}
-                      data-signal-groupe={signal ? 'bloc-vide' : undefined}
-                    >
-                      {b.vide ? 'Aucun contenu' : b.resume}
-                    </span>
-                    <span className="tnum w-12 flex-shrink-0 text-right font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                      {b.hauteur} px
-                    </span>
-                  </div>
+                      <span
+                        className={`w-24 flex-shrink-0 truncate font-mono text-[10px] uppercase tracking-[0.14em] ${
+                          signal ? 'text-signal' : 'text-text-muted'
+                        }`}
+                        data-signal-groupe={signal ? 'bloc-vide' : undefined}
+                      >
+                        {b.typeLabel}
+                      </span>
+                      <span
+                        className={`min-w-0 flex-1 truncate text-[13px] ${
+                          b.vide ? (signal ? 'text-signal' : 'text-text-muted') : 'text-text-secondary'
+                        }`}
+                        data-signal-groupe={signal ? 'bloc-vide' : undefined}
+                      >
+                        {b.vide ? 'Aucun contenu' : b.resume}
+                      </span>
+                      <span className="tnum w-12 flex-shrink-0 text-right font-mono text-[10px] uppercase tracking-wider text-text-muted max-sm:hidden">
+                        {b.hauteur} px
+                      </span>
+                    </button>
+                    {ouvert && (
+                      <div className="border border-border-strong bg-surface p-3 sm:p-4">
+                        <Contenu bloc={bloc} modifiable onChange={(nb) => majBloc(index, nb)} />
+                      </div>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </div>
@@ -359,16 +394,48 @@ export function PagesScreen({ scope, title, description }: {
             </p>
             {/*
               CE QUE LE PRODUIT NE MESURE PAS. La maquette place à droite « les
-              visites du mois et la page la plus vue ». Les pages de ce module
-              sont INTERNES : elles ne passent par aucune page publique, rien
-              ne compte de visite, et le module `22a Mini-page` est celui qui
-              porte la fréquentation. Afficher un compteur ici serait afficher
-              un zéro qui n'a jamais été mesuré.
+              visites du mois et la page la plus vue ». Le site public sert les
+              pages publiées (fusion « site vitrine ») mais ne compte aucune
+              visite : afficher un compteur ici serait afficher un zéro qui n'a
+              jamais été mesuré.
             */}
-            <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-muted">
-              Ces pages sont internes : elles ne sont pas publiées, et aucune visite n’est comptée.
-              La fréquentation d’une page publique se lit dans Mini-page.
-            </p>
+            {publiable ? (
+              <div className="mt-1.5 flex flex-wrap items-center gap-3">
+                <p className="min-w-[14rem] flex-1 text-[12.5px] leading-relaxed text-text-muted">
+                  {enLigne
+                    ? `Cette page est en ligne sur le site public${
+                        courante.data.site?.publieeLe ? ` depuis le ${new Date(courante.data.site.publieeLe).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}` : ''
+                      }. Aucune visite n’est comptée.`
+                    : 'Brouillon : cette page n’est pas sur le site public. Les autres pages restent internes.'}
+                </p>
+                {enLigne && (
+                  <a
+                    href={lienPublic}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex min-h-11 items-center gap-1.5 border border-border-strong px-3 text-[12.5px] font-semibold text-text-body hover:bg-surface-hover sm:min-h-[30px]"
+                  >
+                    Voir en ligne <ExternalLink size={12} />
+                  </a>
+                )}
+                {modifiable && (
+                  <button
+                    type="button"
+                    onClick={basculerPublication}
+                    className={`flex min-h-11 items-center px-3 text-[12.5px] font-semibold sm:min-h-[30px] ${
+                      enLigne ? 'border border-border-strong text-text-body hover:bg-surface-hover' : 'bg-text-primary text-[#0a0a0a] hover:bg-accent-hover'
+                    }`}
+                  >
+                    {enLigne ? 'Retirer du site' : 'Publier'}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-muted">
+                Ces pages sont internes : elles ne sont pas publiées, et aucune visite n’est comptée.
+                La fréquentation d’une page publique se lit dans Mini-page.
+              </p>
+            )}
           </section>
         </StaggerItem>
       )}
@@ -435,6 +502,7 @@ export function PagesScreen({ scope, title, description }: {
                       </span>
                       <span className="mt-0.5 block font-mono text-[10px] uppercase tracking-wider text-text-muted">
                         {sousTitreDeLaPage(p.data.blocks.length, editable)}
+                        {IS_BUSINESS && !p.data.scope && p.data.site?.publiee ? ' · en ligne' : ''}
                       </span>
                     </span>
                   </button>
