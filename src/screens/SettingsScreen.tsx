@@ -65,6 +65,7 @@ import { CONSEQUENCES, consequenceDe } from '../data/consequencesReglages';
 import { navItemByKey } from '../data/navigation';
 import { useHaloSignal } from '../components/EtatEcran';
 import { LangueSection } from '../components/settings/LangueSection';
+import { AccueilSection } from '../components/settings/AccueilSection';
 import { useSupportContext } from '../state/OrgContextContext';
 import { useLangue, t as tr } from '../i18n';
 
@@ -99,6 +100,11 @@ export function SettingsScreen() {
       <StaggerItem>
         <div id="reglages-profil">
           <ProfileSection email={user.email} />
+        </div>
+      </StaggerItem>
+      <StaggerItem>
+        <div id="reglages-accueil">
+          <AccueilSection />
         </div>
       </StaggerItem>
       <StaggerItem>

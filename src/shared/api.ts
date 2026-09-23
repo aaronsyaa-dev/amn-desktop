@@ -828,6 +828,8 @@ export interface UpdateProfileInput {
   name?: string;
   photoDataUrl?: string;
   presenceText?: string;
+  /** L'Accueil choisi par ce compte (code de variante, `2a` par défaut) — ACCUEILS.md. */
+  accueil?: string;
 }
 
 export interface ChangePasswordInput {

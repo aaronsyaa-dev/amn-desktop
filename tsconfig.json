@@ -29,6 +29,7 @@
       "@edition/browserExclusive": ["src/edition/browserExclusive.internal.ts"],
       "@edition/exclusive": ["src/edition/exclusive.internal.tsx"],
       "@edition/appRoot": ["src/edition/appRoot.internal.tsx"],
+      "@edition/accueils": ["src/edition/accueils.internal.tsx"],
       "@edition/mainExclusive": ["src/main/exclusive.internal.ts"],
       "@edition/preloadExclusive": ["src/preload.exclusive.internal.ts"]
     }

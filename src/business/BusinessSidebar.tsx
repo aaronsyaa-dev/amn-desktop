@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { useAccueil } from '../accueils/useAccueil';
+import { avecAccueilEnTete } from '../accueils/epingle';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronsLeft, ChevronsRight, LogOut } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
@@ -107,9 +109,15 @@ export function BusinessSidebar({
     const map = new Map(sections.flatMap((s) => s.items).map((i) => [i.key, i]));
     return map;
   }, [sections]);
+  const { courant: accueil } = useAccueil();
   const epingles = useMemo(
-    () => favorites.map((k) => parCle.get(k)).filter((i): i is NonNullable<typeof i> => Boolean(i)),
-    [favorites, parCle],
+    () =>
+      avecAccueilEnTete(
+        favorites.map((k) => parCle.get(k)).filter((i): i is NonNullable<typeof i> => Boolean(i)),
+        parCle.get('home'),
+        accueil.nom,
+      ),
+    [favorites, parCle, accueil.nom],
   );
 
   const basculer = () => {

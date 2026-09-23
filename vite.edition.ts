@@ -37,6 +37,7 @@ export function editionAliases(edition: Edition): Record<string, string> {
     '@edition/browserExclusive': at(`src/edition/browserExclusive.${suffix}.ts`),
     '@edition/exclusive': at(`src/edition/exclusive.${suffix}.tsx`),
     '@edition/appRoot': at(`src/edition/appRoot.${suffix}.tsx`),
+    '@edition/accueils': at(`src/edition/accueils.${suffix}.tsx`),
     '@edition/mainExclusive': at(`src/main/exclusive.${suffix}.ts`),
     '@edition/preloadExclusive': at(`src/preload.exclusive.${suffix}.ts`),
   };

@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react';
+import { useAccueil } from '../accueils/useAccueil';
+import { avecAccueilEnTete } from '../accueils/epingle';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronsLeft, ChevronsRight, LogOut } from 'lucide-react';
@@ -138,9 +140,15 @@ export function Sidebar({
     l'on a cliqué. Plus de filtre par espace — il n'y a plus d'espace courant
     dans cette colonne.
   */
+  const { courant: accueil } = useAccueil();
   const epingles = useMemo(
-    () => tousLesModules.filter((i) => favorites.includes(i.key)),
-    [tousLesModules, favorites],
+    () =>
+      avecAccueilEnTete(
+        tousLesModules.filter((i) => favorites.includes(i.key)),
+        tousLesModules.find((i) => i.key === 'home'),
+        accueil.nom,
+      ),
+    [tousLesModules, favorites, accueil.nom],
   );
 
   const basculer = () => {

@@ -20,6 +20,11 @@ interface ProfileData {
    * whether their messages have been read — the read-receipt signal (A3.1).
    */
   teamSeenAt?: string;
+  /**
+   * L'ACCUEIL CHOISI par ce compte (ACCUEILS.md) : « le choix est par compte ».
+   * Sur le profil synchronisé, il suit la personne d'un poste à l'autre.
+   */
+  accueil?: string;
 }
 
 interface ProfilesContextValue {
@@ -35,6 +40,8 @@ interface ProfilesContextValue {
   markTeamSeen: (email: string) => void;
   /** When the given operator last opened the Équipe tab, or null if never. */
   teamSeenAt: (email: string) => string | null;
+  /** L'Accueil choisi par ce compte, ou `null` (l'Accueil par défaut). */
+  accueilDe: (email: string) => string | null;
 }
 
 const ProfilesContext = createContext<ProfilesContextValue | undefined>(undefined);
@@ -194,6 +201,7 @@ export function ProfilesProvider({ children }: { children: React.ReactNode }) {
           photoDataUrl: existing.photoDataUrl,
           presenceText: existing.presenceText,
           teamSeenAt: existing.teamSeenAt,
+          ...(existing.accueil ? { accueil: existing.accueil } : {}),
         };
       }
       if (!miroirFiable) return null;
@@ -239,9 +247,18 @@ export function ProfilesProvider({ children }: { children: React.ReactNode }) {
     [records],
   );
 
+  const accueilDe = useCallback(
+    (email: string): string | null => {
+      const key = normaliseEmail(email);
+      if (!key) return null;
+      return records.find((r) => r.id === key)?.accueil ?? null;
+    },
+    [records],
+  );
+
   const value = useMemo(
-    () => ({ profiles, profileFor, updateSelf, markTeamSeen, teamSeenAt }),
-    [profiles, profileFor, updateSelf, markTeamSeen, teamSeenAt],
+    () => ({ profiles, profileFor, updateSelf, markTeamSeen, teamSeenAt, accueilDe }),
+    [profiles, profileFor, updateSelf, markTeamSeen, teamSeenAt, accueilDe],
   );
 
   return <ProfilesContext.Provider value={value}>{children}</ProfilesContext.Provider>;

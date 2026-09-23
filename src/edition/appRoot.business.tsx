@@ -11,8 +11,8 @@ import { GuestCallScreen } from '../screens/GuestCallScreen';
 import { PublicBookingScreen } from '../screens/PublicBookingScreen';
 import { PublicPageScreen } from '../screens/PublicPageScreen';
 import { PublicSiteScreen } from '../screens/PublicSiteScreen';
+import { AccueilChoisi } from '../accueils/useAccueil';
 import { PublicFormScreen } from '../screens/PublicFormScreen';
-import { HomeSoloScreen } from '../business/HomeSoloScreen';
 import { AgendaScreen } from '../business/AgendaScreen';
 import { MediaSoloScreen } from '../business/MediaSoloScreen';
 import { ClientsScreen } from '../screens/ClientsScreen';
@@ -178,7 +178,7 @@ export function AppRoot() {
           </ProtectedRoute>
         }
       >
-        <Route path="/" element={<HomeSoloScreen />} />
+        <Route path="/" element={<AccueilChoisi />} />
         <Route
           path="/agenda"
           element={

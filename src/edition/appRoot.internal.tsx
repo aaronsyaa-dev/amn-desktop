@@ -1,4 +1,5 @@
 import React from 'react';
+import { AccueilChoisi } from '../accueils/useAccueil';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { SalleScreen } from '../screens/SalleScreen';
@@ -12,7 +13,6 @@ import { GuestCallScreen } from '../screens/GuestCallScreen';
 import { PublicBookingScreen } from '../screens/PublicBookingScreen';
 import { PublicPageScreen } from '../screens/PublicPageScreen';
 import { PublicFormScreen } from '../screens/PublicFormScreen';
-import { HomeScreen } from '../screens/HomeScreen';
 import { SitesDashboardScreen } from '../screens/SitesDashboardScreen';
 import { TeamScreen } from '../screens/TeamScreen';
 import { TasksScreen } from '../screens/TasksScreen';
@@ -257,7 +257,7 @@ function AmnRoutes() {
             fournisseurs — son `fixed inset-0` recouvre la coquille. */}
         <Route path="/salle" element={<SalleScreen />} />
         {/* Poste de travail */}
-        <Route path="/" element={<HomeScreen />} />
+        <Route path="/" element={<AccueilChoisi />} />
         <Route path="/tasks" element={<TasksScreen />} />
         <Route path="/notes" element={<NotesScreen />} />
         <Route path="/pages" element={<PagesScreen />} />
