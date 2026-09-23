@@ -132,6 +132,7 @@ const ECRANS = [
   ['Flotte', '#/flotte'],
   ['Classeur', '#/classeur'],
   ['Éditeur partagé', '#/editeur-partage'],
+  ['Salles', '#/salles'],
 ];
 
 const AMBRE = ['rgb(208, 154, 74)', '#d09a4a'];

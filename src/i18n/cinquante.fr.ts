@@ -224,4 +224,9 @@ export const FR_50: Record<keyof typeof EN_50, string> = {
   'm50.sharedEditor.descriptionSeul': 'Un document qu’on rédige à plusieurs. Les propositions ne réécrivent pas le texte : elles sont collées dans la marge comme des papillons, en face de la phrase visée, en attente d’un oui ou d’un non.',
   'm50.sharedEditor.descriptionVide': 'Aucun document partagé pour l’instant.',
   'm50.sharedEditor.phraseVide': 'Aucun document partagé pour l’instant.',
+  'm50.rooms.titre': 'Salles',
+  'm50.rooms.description': 'Les locaux vus de dessus, pièce par pièce, à l’instant. Chacune dit si elle est prise, par qui, et jusqu’à quand. L’une est réservée mais vide depuis {minutes} minutes.',
+  'm50.rooms.descriptionSansFantome': 'Les locaux vus de dessus, pièce par pièce, à l’instant. Chacune dit si elle est prise, par qui, et jusqu’à quand.',
+  'm50.rooms.descriptionVide': 'Aucun plan des locaux pour l’instant.',
+  'm50.rooms.phraseVide': 'Aucun plan des locaux pour l’instant.',
 };

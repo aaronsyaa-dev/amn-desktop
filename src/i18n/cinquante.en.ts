@@ -229,4 +229,9 @@ export const EN_50 = {
   'm50.sharedEditor.descriptionSeul': 'A document written by several people. Proposals do not rewrite the text: they are stuck in the margin like sticky notes, next to the sentence they target, waiting for a yes or a no.',
   'm50.sharedEditor.descriptionVide': 'No shared document yet.',
   'm50.sharedEditor.phraseVide': 'No shared document yet.',
+  'm50.rooms.titre': 'Rooms',
+  'm50.rooms.description': 'The premises seen from above, room by room, right now. Each says whether it is taken, by whom, and until when. One is booked but empty for {minutes} minutes.',
+  'm50.rooms.descriptionSansFantome': 'The premises seen from above, room by room, right now. Each says whether it is taken, by whom, and until when.',
+  'm50.rooms.descriptionVide': 'No floor plan yet.',
+  'm50.rooms.phraseVide': 'No floor plan yet.',
 } as const;

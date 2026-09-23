@@ -29,6 +29,7 @@ import {
   Contact,
   ContactRound,
   CreditCard,
+  DoorOpen,
   Download,
   FilePen,
   FileSpreadsheet,
@@ -234,6 +235,7 @@ const CLIENT_MODULES: NavItem[] = [
   { key: 'fleet', label: 'Flotte', to: '/flotte', icon: Car, hint: 'Chaque véhicule, son compteur et ses échéances' },
   { key: 'binder', label: 'Classeur', to: '/classeur', icon: FolderArchive, hint: 'Les documents et leurs versions, signée comprise' },
   { key: 'sharedEditor', label: 'Éditeur partagé', to: '/editeur-partage', icon: FilePen, hint: 'Un document, et ce que chacun propose d’y changer' },
+  { key: 'rooms', label: 'Salles', to: '/salles', icon: DoorOpen, hint: 'Les pièces, qui y est, jusqu’à quand' },
 ];
 
 /**
@@ -268,7 +270,7 @@ export const CLIENT_SECTIONS: Array<{ label: string; code: string; keys: string[
   { label: 'Finance', code: 'FI', keys: ['cashForecast', 'scenarios', 'loanSim', 'analytics', 'reconciliation', 'taxForecast', 'currencies', 'expenseClaims', 'incomingInvoices'] },
   { label: 'Documents', code: 'DO', keys: ['notes', 'pages', 'reports', 'media', 'binder', 'sharedEditor'] },
   { label: 'Juridique', code: 'JU', keys: ['clauses', 'remoteSign', 'gdpr', 'csr', 'kyc'] },
-  { label: 'Collectif', code: 'CO', keys: ['dm', 'groups', 'announcements', 'polls', 'leaves', 'directory', 'calls'] },
+  { label: 'Collectif', code: 'CO', keys: ['dm', 'groups', 'announcements', 'polls', 'leaves', 'directory', 'calls', 'rooms'] },
   { label: 'RH', code: 'RH', keys: ['recruitment', 'procedures', 'training', 'certifications', 'payslips'] },
   { label: 'Outils', code: 'OU', keys: ['qr', 'converters', 'templates', 'automations', 'calcPro', 'dataPort'] },
   { label: 'Personnel', code: 'PE', keys: ['habits', 'personalGoals', 'diary', 'pomodoro'] },

@@ -810,6 +810,16 @@ const iso = (joursAvant: number, h = 10) => {
   regle('39g · le texte ne change qu’à l’acceptation, là où le papillon vise', () =>
     assert.equal(A.appliquer('accepté par écrit.', { cible: 'par écrit', par: 'en ligne' }), 'accepté en ligne.'));
   regle('39g · « SA · Samir »', () => assert.equal(A.initiales('Samir Benali'), 'SA'));
+
+  // ── 39h Salles ──────────────────────────────────────────────────────────
+  const dans = (min: number) => new Date(MAINTENANT.getTime() + min * 60_000).toISOString();
+  const rs = (debutMin: number) => ({ kind: 'reservation' as const, piece: 'S', debut: dans(debutMin), fin: dans(debutMin + 90), motif: 'm', pour: 'Y' });
+  regle('39h · l’occupation vient d’une présence réelle, jamais de la seule réservation', () => assert.equal(A.etatPiece('S', [rs(-10)], [], MAINTENANT).etat, 'reservee'));
+  regle('39h · sans présence au bout de 30 minutes : ambre', () => assert.equal(A.etatPiece('S', [rs(-40)], [], MAINTENANT).etat, 'fantome'));
+  regle('39h · au bout d’une heure : libérée', () => assert.equal(A.etatPiece('S', [rs(-70)], [], MAINTENANT).etat, 'libre'));
+  regle('39h · une présence pointée occupe la pièce', () =>
+    assert.equal(A.etatPiece('S', [rs(-40)], [{ kind: 'presence', piece: 'S', qui: 'Y', arriveeLe: dans(-35), source: 'badge' }], MAINTENANT).etat, 'occupee'));
+  regle('39h · une réservation sans présence dans la première heure est fantôme', () => assert.equal(A.estFantome(rs(-70), [], MAINTENANT), true));
 }
 
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);

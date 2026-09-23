@@ -250,4 +250,5 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'fleet', label: 'Flotte', hint: 'Chaque véhicule, son compteur et ses échéances' },
   { key: 'binder', label: 'Classeur', hint: 'Les documents et leurs versions, signée comprise' },
   { key: 'sharedEditor', label: 'Éditeur partagé', hint: 'Un document, et ce que chacun propose d’y changer' },
+  { key: 'rooms', label: 'Salles', hint: 'Les pièces, qui y est, jusqu’à quand' },
 ];

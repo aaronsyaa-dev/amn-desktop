@@ -169,6 +169,7 @@ export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
   fleet: { label: 'Vehicles', hint: 'Each vehicle, its odometer and its due dates' },
   binder: { label: 'Binder', hint: 'Documents and their versions, the signed one included' },
   sharedEditor: { label: 'Shared editor', hint: 'A document, and what each person proposes to change' },
+  rooms: { label: 'Rooms', hint: 'The rooms, who is in them, until when' },
 };
 
 /**

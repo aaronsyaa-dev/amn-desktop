@@ -269,6 +269,7 @@ const MODULE_DATA = {
   fleet: ['vehicles'],
   binder: ['documentVersions'],
   sharedEditor: ['sharedDocs'],
+  rooms: ['roomBookings'],
 };
 
 /**
@@ -406,6 +407,7 @@ const MODULE_FILES = {
   fleet: ['src/screens/FlotteScreen.tsx'],
   binder: ['src/screens/ClasseurScreen.tsx'],
   sharedEditor: ['src/screens/EditeurPartageScreen.tsx'],
+  rooms: ['src/screens/SallesScreen.tsx'],
 };
 
 /**

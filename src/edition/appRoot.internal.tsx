@@ -152,6 +152,7 @@ import { PrevisionStockScreen } from '../screens/PrevisionStockScreen';
 import { FlotteScreen } from '../screens/FlotteScreen';
 import { ClasseurScreen } from '../screens/ClasseurScreen';
 import { EditeurPartageScreen } from '../screens/EditeurPartageScreen';
+import { SallesScreen } from '../screens/SallesScreen';
 import { ClientAdminScreen } from '../client-context/ClientAdminScreen';
 import { ContextBoot } from '../client-context/ContextBoot';
 import { OrgContextProvider, useOrgContext } from '../state/OrgContextContext';
@@ -424,6 +425,7 @@ function AmnRoutes() {
         <Route path="/flotte" element={<FlotteScreen />} />
         <Route path="/classeur" element={<ClasseurScreen />} />
         <Route path="/editeur-partage" element={<EditeurPartageScreen />} />
+        <Route path="/salles" element={<SallesScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
@@ -1287,6 +1289,14 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="sharedEditor">
               <EditeurPartageScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/salles"
+          element={
+            <ModuleRoute module="rooms">
+              <SallesScreen />
             </ModuleRoute>
           }
         />

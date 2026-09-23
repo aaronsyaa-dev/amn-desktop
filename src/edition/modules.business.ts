@@ -26,6 +26,7 @@ import {
   Contact,
   ContactRound,
   CreditCard,
+  DoorOpen,
   Download,
   FilePen,
   FileSpreadsheet,
@@ -318,6 +319,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'leaves', label: 'Absences', to: '/absences', icon: CalendarOff, hint: 'Congés, maladie, télétravail — qui est là' },
       { key: 'directory', label: 'Trombinoscope', to: '/trombinoscope', icon: ContactRound, hint: 'Les visages, les rôles, qui est là' },
       { key: 'calls', label: 'Appels', to: '/appels', icon: PhoneCall, hint: 'Appeler un membre, inviter un visiteur par lien' },
+      { key: 'rooms', label: 'Salles', to: '/salles', icon: DoorOpen, hint: 'Les pièces, qui y est, jusqu’à quand' },
     ],
   },
   {
@@ -444,6 +446,7 @@ export const PAGE_ROOMS: [string, string][] = [
   ['/settings', 'reglages'],
   ['/membres', 'reglages'],
   ['/assistance', 'fil'],
+  ['/salles', 'fil'],
   ['/editeur-partage', 'journal'],
   ['/classeur', 'journal'],
   ['/flotte', 'registre'],

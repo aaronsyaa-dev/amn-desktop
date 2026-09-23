@@ -1123,6 +1123,37 @@ async function ajouts() {
     await poser('sharedDocs', `c50-papillon-${id}`, { kind: 'papillon', documentId: 'c50-partage-livret', paragrapheId: pg, auteur: 'Léa Martin', note: 'à reformuler', par: '', poseLe: le(2, 11), statut: 'attente' });
   }
   await poser('sharedDocs', 'c50-partage-charte', { kind: 'document', titre: 'Charte de l’équipe', paragraphes: [{ id: 'c1', texte: 'On se dit bonjour.' }] });
+
+  // ── 39h Salles ────────────────────────────────────────────────────────────
+  // Relatif à l'instant du dépôt : la salle du fond est réservée depuis
+  // quarante minutes, et personne n'y est entré.
+  const dans = (min) => new Date(MAINTENANT.getTime() + min * 60_000).toISOString();
+  await poser('roomBookings', 'c50-salles-plan', {
+    kind: 'plan', colonnes: '1.3fr 1fr 1fr', rangees: [130, 110, 90], zones: ['a b d', 'c c d', 'f e d'],
+    pieces: [
+      { zone: 'a', nom: 'Bureau' }, { zone: 'b', nom: 'Salle de réunion', court: 'réunion' }, { zone: 'c', nom: 'Atelier' },
+      { zone: 'd', nom: 'Salle du fond' }, { zone: 'e', nom: 'Stock' }, { zone: 'f', nom: 'Accueil' },
+    ],
+  });
+  const resa = (id, piece, debut, fin, motif, pour, contact) => poser('roomBookings', `c50-resa-${id}`, { kind: 'reservation', piece, debut, fin, motif, pour, ...(contact ? { contact } : {}) });
+  const pres = (id, piece, qui, arriveeLe, departLe, source = 'badge') => poser('roomBookings', `c50-pres-${id}`, { kind: 'presence', piece, qui, arriveeLe, ...(departLe ? { departLe } : {}), source });
+  await resa('fond', 'Salle du fond', dans(-40), dans(20), 'l’entretien d’embauche de Yanis', 'Yanis Morel', 'yanis@exemple.test');
+  await resa('bureau', 'Bureau', dans(-100), dans(140), 'dossiers clients', 'Léa Martin');
+  await resa('reunion', 'Salle de réunion', dans(260), dans(320), 'Revue hebdo', 'Nour Haddad');
+  await resa('atelier', 'Atelier', dans(380), dans(500), 'préparation atelier', 'Samir Benali');
+  await pres('lea', 'Bureau', 'Léa Martin', dans(-95), null, 'pointage');
+  await pres('samir', 'Atelier', 'Samir Benali', dans(-60), null, 'intervention');
+  await pres('nour', 'Accueil', 'Nour Haddad', dans(-80), null, 'badge');
+  // Le mois : des réservations tenues, et trois fantômes.
+  for (let k = 1; k <= 12; k += 1) {
+    const d = new Date(MAINTENANT.getFullYear(), MAINTENANT.getMonth(), Math.min(k * 2, 28), 10);
+    if (d >= MAINTENANT) break;
+    const piece = k % 3 ? 'Salle de réunion' : 'Salle du fond';
+    const debut = d.toISOString(); const fin = new Date(d.getTime() + 3_600_000).toISOString();
+    await resa(`mois-${k}`, piece, debut, fin, 'réunion', 'Nour Haddad');
+    if (k % 4 !== 0) await pres(`mois-${k}`, piece, 'Nour Haddad', new Date(d.getTime() + 5 * 60_000).toISOString(), fin);
+    await pres(`bureau-${k}`, 'Bureau', 'Léa Martin', new Date(d.getTime() - 2 * 3_600_000).toISOString(), new Date(d.getTime() + 6 * 3_600_000).toISOString(), 'pointage');
+  }
 }
 
 const FAMILLES = { guichet, marketing, finance, rh, juridique, ajouts };

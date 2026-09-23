@@ -282,6 +282,7 @@ const ECRANS = [
   ['Flotte', '#/flotte'],
   ['Classeur', '#/classeur'],
   ['Éditeur partagé', '#/editeur-partage'],
+  ['Salles', '#/salles'],
 ];
 
 const serveur = spawn('node', [new URL('./servir-bundle.mjs', import.meta.url).pathname, BUNDLE, String(PORT)], {

@@ -897,4 +897,86 @@ export function appliquer(texte: string, p: Pick<Papillon, 'cible' | 'par'>): st
   return `${texte.replace(/\s+$/, '')} ${p.par}`.trim();
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   39h · SALLES — le plan d'étage
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** « Une réservation sans présence au bout de 30 minutes passe en ambre et se libère au bout d'une heure. » */
+export const FANTOME = { ambreMin: 30, liberationMin: 60 } as const;
+
+export interface PlanEtage {
+  kind: 'plan';
+  /** « Le plan se dessine en grille à zones nommées, sans position absolue. » */
+  colonnes: string;
+  rangees: number[];
+  zones: string[];
+  pieces: Array<{ zone: string; nom: string; court?: string }>;
+}
+
+export interface ReservationSalle {
+  kind: 'reservation';
+  piece: string;
+  debut: string;
+  fin: string;
+  motif: string;
+  pour: string;
+  contact?: string;
+  prevenuLe?: string;
+}
+
+/** Une présence RÉELLE : arrivée pointée, badge, ouverture d'une intervention. */
+export interface PresenceSalle {
+  kind: 'presence';
+  piece: string;
+  qui: string;
+  arriveeLe: string;
+  departLe?: string;
+  source: 'pointage' | 'badge' | 'intervention';
+}
+
+export type EnregistrementSalle = PlanEtage | ReservationSalle | PresenceSalle;
+
+const chevauche = (p: PresenceSalle, debut: number, fin: number) =>
+  new Date(p.arriveeLe).getTime() < fin && (!p.departLe || new Date(p.departLe).getTime() > debut);
+
+export type EtatPiece =
+  | { etat: 'occupee'; presence: PresenceSalle; jusqua: string | null }
+  | { etat: 'fantome'; reservation: ReservationSalle; videDepuisMin: number; liberationLe: Date }
+  | { etat: 'reservee'; reservation: ReservationSalle }
+  | { etat: 'libre'; prochaine: ReservationSalle | null };
+
+/**
+ * L'état d'une pièce À L'INSTANT. « L'occupation vient d'une présence réelle,
+ * jamais de la seule réservation » : une réservation sans présence n'occupe
+ * rien ; au bout de 30 minutes elle est fantôme (ambre), au bout d'une heure
+ * elle est libérée — la pièce redevient libre.
+ */
+export function etatPiece(piece: string, reservations: ReservationSalle[], presences: PresenceSalle[], maintenant: Date): EtatPiece {
+  const t = maintenant.getTime();
+  const ici = presences.filter((p) => p.piece === piece && chevauche(p, t, t + 1));
+  const courante = reservations.find((r) => r.piece === piece && new Date(r.debut).getTime() <= t && new Date(r.fin).getTime() > t);
+  if (ici.length) return { etat: 'occupee', presence: ici[0], jusqua: courante?.fin ?? null };
+  if (courante) {
+    const debut = new Date(courante.debut).getTime();
+    const venue = presences.some((p) => p.piece === piece && chevauche(p, debut, t));
+    const min = Math.floor((t - debut) / 60_000);
+    if (!venue && min >= FANTOME.liberationMin) {
+      /* Libérée : la pièce est libre, la réservation compte comme fantôme. */
+    } else if (!venue && min >= FANTOME.ambreMin) {
+      return { etat: 'fantome', reservation: courante, videDepuisMin: min, liberationLe: new Date(debut + FANTOME.liberationMin * 60_000) };
+    } else if (!venue) {
+      return { etat: 'reservee', reservation: courante };
+    }
+  }
+  const prochaine = reservations.filter((r) => r.piece === piece && new Date(r.debut).getTime() > t).sort((a, b) => a.debut.localeCompare(b.debut))[0] ?? null;
+  return { etat: 'libre', prochaine };
+}
+
+/** Une réservation fantôme : personne n'est venu dans la première heure. */
+export function estFantome(r: ReservationSalle, presences: PresenceSalle[], maintenant: Date): boolean {
+  const debut = new Date(r.debut).getTime();
+  if (maintenant.getTime() < debut + FANTOME.liberationMin * 60_000) return false;
+  return !presences.some((p) => p.piece === r.piece && chevauche(p, debut, debut + FANTOME.liberationMin * 60_000));
+}
+
 export { JOUR_MS, borne };
