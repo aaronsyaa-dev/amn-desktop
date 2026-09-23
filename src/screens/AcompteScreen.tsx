@@ -90,11 +90,6 @@ export function AcompteScreen() {
           title={t('m50.deposits.titre')}
           description={description}
           phraseVide={t('m50.deposits.phraseVide')}
-          stats={[
-            { label: t('m50.deposits.stat.circuit'), value: s.envoyes.length + s.dansLeSas.length + s.lances.length },
-            { label: t('m50.deposits.stat.sas'), value: s.dansLeSas.length, emphasis: s.dansLeSas.length > 0 },
-            { label: t('m50.deposits.stat.attendu'), value: formatCentsCompact(s.attenduCents) },
-          ]}
         />
       </Bloc>
 

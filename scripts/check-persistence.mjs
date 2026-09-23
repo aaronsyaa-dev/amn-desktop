@@ -234,6 +234,15 @@ const MODULE_DATA = {
   deposits: ['depositQuotes'],
   chatbot: ['chatbotQuestions'],
   switchboard: ['switchboardCalls'],
+  video: ['videoEdits'],
+  adVisuals: ['adVisuals'],
+  postPlanner: ['scheduledPosts'],
+  podcast: ['podcastEpisodes'],
+  brand: ['brandKit'],
+  productShots: ['productShots'],
+  sentiment: ['sentimentTexts'],
+  watch: ['competitorPrices'],
+  nps: ['npsResponses'],
 };
 
 /**
@@ -336,6 +345,15 @@ const MODULE_FILES = {
   deposits: ['src/screens/AcompteScreen.tsx'],
   chatbot: ['src/screens/ChatbotScreen.tsx'],
   switchboard: ['src/screens/StandardScreen.tsx'],
+  video: ['src/screens/MontageVideoScreen.tsx'],
+  adVisuals: ['src/screens/VisuelsPubScreen.tsx'],
+  postPlanner: ['src/screens/PlanificateurScreen.tsx'],
+  podcast: ['src/screens/PodcastScreen.tsx'],
+  brand: ['src/screens/IdentiteVisuelleScreen.tsx'],
+  productShots: ['src/screens/ImagesProduitsScreen.tsx'],
+  sentiment: ['src/screens/SentimentScreen.tsx'],
+  watch: ['src/screens/VeillePrixScreen.tsx'],
+  nps: ['src/screens/NpsScreen.tsx'],
 };
 
 /**

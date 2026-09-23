@@ -264,7 +264,233 @@ async function guichet() {
   });
 }
 
-const FAMILLES = { guichet };
+/* ══════════════════════════════════════════════════════════════ MARKETING ══ */
+
+async function marketing() {
+  // ── 35a Montage vidéo ─────────────────────────────────────────────────────
+  const plan = (nom, dureeS, garde = false) => (garde ? { nom, dureeS, garde } : { nom, dureeS });
+  await poser('videoEdits', 'c50-vid-hiver', {
+    kind: 'montage', titre: 'Vitres d’hiver', format: 'reel', etat: 'en-cours', creeLe: le(3),
+    plans: [plan('Plan large', 6), plan('Avant', 5, true), plan('Le geste', 9), plan('Détail', 4), plan('Après', 8, true), plan('Logo', 6)],
+  });
+  await poser('videoEdits', 'c50-vid-atelier', { kind: 'montage', titre: 'Atelier du 4 octobre', format: 'story', etat: 'a-monter', creeLe: le(1), plans: [] });
+  const publies = [
+    ['bertaux', 'Avant / après Bertaux', 'reel', [14, 15], 12, 1500],
+    ['kit', 'Le kit microfibres', 'story', [6, 8], 20, 980],
+    ['terrasse', 'La terrasse Vallon', 'reel', [12, 18], 60, 1100],
+    ['pivoines', 'Les pivoines de mai', 'reel', [14, 15], 110, 1380],
+    ['camion', 'Le camion en tournée', 'reel', [20, 16], 150, 1240],
+    ['devis', 'Un devis en 3 minutes', 'reel', [15, 15], 200, 1240],
+  ];
+  for (const [id, titre, format, d, jours, vues] of publies) {
+    await poser('videoEdits', `c50-vid-${id}`, {
+      kind: 'montage', titre, format, etat: 'publie', creeLe: le(jours + 2), publieLe: le(jours), vues,
+      plans: d.map((x, i) => plan(`Plan ${i + 1}`, x)),
+    });
+  }
+
+  // ── 35b Visuels pub ───────────────────────────────────────────────────────
+  const R = (x, y, l, h) => ({ x, y, l, h });
+  const formats = [
+    { cle: 'story', nom: 'Story', largeurPx: 1080, hauteurPx: 1920, titre: R(192, 320, 627, 211), produit: R(192, 1100, 365, 365) },
+    { cle: 'feed', nom: 'Feed 4:5', largeurPx: 1080, hauteurPx: 1350, titre: R(96, 96, 800, 211), produit: R(96, 889, 365, 365) },
+    { cle: 'carre', nom: 'Carré', largeurPx: 1080, hauteurPx: 1080, titre: R(96, 96, 800, 211), produit: R(96, 619, 365, 365) },
+    { cle: 'banniere', nom: 'Bannière', largeurPx: 1200, hauteurPx: 628, titre: R(102, 102, 1111, 154), produit: R(102, 315, 410, 211) },
+  ];
+  await poser('adVisuals', 'c50-vis-hiver', { kind: 'campagne', nom: 'Hiver', titre: 'Vitres nettes, tout l’hiver', formats, creeLe: le(4), visuels: 4 });
+  const sage = formats.map((f) => (f.cle === 'banniere' ? { ...f, titre: R(102, 102, 1000, 154) } : f));
+  for (const [i, nom] of ['Printemps', 'Fête des mères', 'Rentrée', 'Terrasses'].entries()) {
+    await poser('adVisuals', `c50-vis-${i}`, { kind: 'campagne', nom, titre: nom, formats: sage, creeLe: le(40 + i * 45), visuels: 4 });
+  }
+
+  // ── 35c Planificateur ─────────────────────────────────────────────────────
+  const courbe = (pic, largeur, haut, bas) =>
+    Array.from({ length: 24 }, (_, h) => {
+      const d = Math.min(Math.abs(h - pic), 24 - Math.abs(h - pic));
+      return Math.round((bas + (haut - bas) * Math.exp(-(d * d) / (2 * largeur * largeur))) * 10) / 10;
+    });
+  const insta = courbe(13, 4, 21, 3);
+  const reseaux = [
+    ['instagram', 'Instagram', insta, 0],
+    ['facebook', 'Facebook', courbe(19, 3.5, 17, 2), 1],
+    ['google', 'Google Business', courbe(9, 3, 15, 1), 2],
+  ];
+  for (const [id, nom, audience, ordre] of reseaux) await poser('scheduledPosts', `c50-res-${id}`, { kind: 'reseau', nom, audience, ordre });
+  const lundi = new Date(MAINTENANT.getFullYear(), MAINTENANT.getMonth(), MAINTENANT.getDate() - ((MAINTENANT.getDay() + 6) % 7));
+  const dansLaSemaine = (j, h, m) => new Date(lundi.getFullYear(), lundi.getMonth(), lundi.getDate() + j, h, m).toISOString();
+  const aDemain = (h, m) => {
+    const d = new Date(MAINTENANT.getFullYear(), MAINTENANT.getMonth(), MAINTENANT.getDate() + 1, h, m);
+    return d.toISOString();
+  };
+  await poser('scheduledPosts', 'c50-post-1', { kind: 'post', reseau: 'Instagram', le: dansLaSemaine(0, 12, 30), sujet: 'Avant / après Bertaux' });
+  await poser('scheduledPosts', 'c50-post-2', { kind: 'post', reseau: 'Instagram', le: dansLaSemaine(2, 19, 0), sujet: 'Le kit microfibres' });
+  /* Le post du creux : jeudi 06:00, ou demain si jeudi est déjà passé. */
+  const jeudi = new Date(dansLaSemaine(3, 6, 0));
+  await poser('scheduledPosts', 'c50-post-3', { kind: 'post', reseau: 'Instagram', le: jeudi > MAINTENANT ? jeudi.toISOString() : aDemain(6, 0), sujet: 'Vitres d’hiver' });
+  await poser('scheduledPosts', 'c50-post-4', { kind: 'post', reseau: 'Facebook', le: dansLaSemaine(3, 18, 30), sujet: 'Atelier du 4 octobre' });
+  const heures = [13, 13, 12, 19, 13, 18, 13, 20, 12, 13, 19];
+  const portees = [1320, 1180, 760, 640, 1090, 520, 980, 410, 700, 1040, 820];
+  for (let i = 0; i < 11; i += 1) {
+    const d = new Date(MAINTENANT.getFullYear(), MAINTENANT.getMonth(), Math.max(1, MAINTENANT.getDate() - 1 - i * 2), heures[i], 0);
+    await poser('scheduledPosts', `c50-post-pub-${i}`, {
+      kind: 'post', reseau: i % 4 === 3 ? 'Facebook' : 'Instagram', le: d.toISOString(), publieLe: d.toISOString(), sujet: `Publication ${i + 1}`, portee: portees[i],
+    });
+  }
+  const aout = new Date(MAINTENANT.getFullYear(), MAINTENANT.getMonth() - 1, 20, 9, 0).toISOString();
+  await poser('scheduledPosts', 'c50-post-gb', { kind: 'post', reseau: 'Google Business', le: aout, publieLe: aout, sujet: 'Horaires d’été', portee: 210 });
+
+  // ── 35d Podcast ───────────────────────────────────────────────────────────
+  const DUREE = 1450;
+  const chap = [0, 319, 740, 1131];
+  let graine = 7;
+  const hasard = () => ((graine = (graine * 16807) % 2147483647) / 2147483647);
+  const amplitudes = Array.from({ length: DUREE }, (_, s) => {
+    if (chap.slice(1).some((c) => s >= c - 7 && s < c + 6)) return 0.02; // les silences de chapitre
+    return Math.round((0.45 + 0.5 * hasard()) * 100) / 100;
+  });
+  const hesitations = Array.from({ length: 31 }, (_, i) => ({
+    s: Math.round(40 + i * 45.3 + (i % 3) * 4),
+    dureeS: Math.round((0.8 + ((i * 7) % 6) / 10) * 10) / 10,
+    genre: ['euh', 'reprise', 'faux-depart'][i % 3],
+  }));
+  await poser('podcastEpisodes', 'c50-pod-7', {
+    kind: 'episode', numero: 7, titre: 'L’hiver des vitres', dureeS: DUREE, amplitudes,
+    chapitres: [{ titre: 'Intro', debutS: 0 }, { titre: 'Le chantier Bertaux', debutS: 319 }, { titre: 'Les produits', debutS: 740 }, { titre: 'Vos questions', debutS: 1131 }],
+    hesitations, coupe: { debutS: 870, finS: 908, motif: 'Digression' },
+  });
+  for (const [n, titre, dureeS, ecoutes, jours] of [[6, 'Nettoyer sans abîmer', 1300, 412, 14], [5, 'Le vrai prix d’un devis', 1570, 388, 28], [4, 'Un jour de tournée', 1190, 301, 42]]) {
+    await poser('podcastEpisodes', `c50-pod-${n}`, { kind: 'episode', numero: n, titre, dureeS, amplitudes: [], chapitres: [], hesitations: [], coupe: null, publieLe: le(jours), ecoutes });
+  }
+  await poser('podcastEpisodes', 'c50-pod-reglage', { kind: 'podcast', abonnes: 186, ecouteMoyenneS: 1020, jusquAuBoutPct: 44 });
+
+  // ── 35e Identité visuelle ─────────────────────────────────────────────────
+  await poser('brandKit', 'c50-logo', {
+    kind: 'logo', monogramme: 'LM', mention: 'NETTOYAGE', ratioMonogramme: 0.42, ratioMention: 0.085,
+    couleurs: ['#0a0a0a', '#f7f7f5', '#8a8a87'], polices: ['Space Grotesk', 'JetBrains Mono'], declinaisons: ['complète', 'réduite', 'monochrome', 'négatif'],
+  });
+  const usages = [
+    ['Enseigne', 220, '3 m', 'l’enseigne'], ['Camion', 96, '60 cm'], ['Avatar', 64, '64 px'],
+    ['Signature mail', 40, '40 px'], ['Onglet', 24, '24 px'], ['Favicon', 16, '16 px', 'le favicon'],
+  ];
+  for (const [i, [nom, taillePx, reel, avecArticle]] of usages.entries()) {
+    await poser('brandKit', `c50-usage-${i}`, { kind: 'usage', nom, taillePx, reel, ...(avecArticle ? { avecArticle } : {}), declinaison: 'complete', ordre: i });
+  }
+
+  // ── 35f Images produits ───────────────────────────────────────────────────
+  const produits = [
+    ['deg', 'Dégraissant 5 L', { etiquette: '5 L', forme: 'bidon', bouchon: 'rouge' }],
+    ['kit', 'Kit microfibres', { etiquette: 'KIT 6', forme: 'sachet', bouchon: 'sans' }],
+    ['det', 'Détartrant', { etiquette: '1 L', forme: 'flacon', bouchon: 'bleu' }],
+  ];
+  for (const [i, [id, nom, reference]] of produits.entries()) await poser('productShots', `c50-prod-${id}`, { kind: 'produit', nom, reference, ordre: i });
+  const decors = ['Fond blanc', 'Plan de travail', 'Atelier', 'Cuisine pro', 'Étagère', 'Extérieur', 'Main', 'Camion'];
+  const deg = produits[0][2];
+  const verdicts = ['gardee', 'gardee', 'gardee', 'gardee', 'a-revoir', 'ecartee', 'gardee', 'ecartee'];
+  for (let i = 0; i < 8; i += 1) {
+    await poser('productShots', `c50-sc-deg-${i + 1}`, {
+      kind: 'scene', produitId: 'c50-prod-deg', numero: i + 1, decor: decors[i], verdict: verdicts[i], genereeLe: le(2 + i),
+      zones: i === 3 ? { ...deg, etiquette: '3 L' } : { ...deg }, ...(i === 4 ? { motif: 'reflet' } : {}),
+      ...(verdicts[i] === 'gardee' && i < 3 ? { publieeLe: le(1 + i) } : {}),
+    });
+  }
+  for (const [pid, ref, gardees] of [['kit', produits[1][2], 6], ['det', produits[2][2], 3]]) {
+    for (let i = 0; i < 8; i += 1) {
+      const altere = pid === 'det' && i === 7;
+      await poser('productShots', `c50-sc-${pid}-${i + 1}`, {
+        kind: 'scene', produitId: `c50-prod-${pid}`, numero: i + 1, decor: decors[i], genereeLe: le(3 + i),
+        verdict: altere ? 'ecartee' : i < gardees ? 'gardee' : 'ecartee',
+        zones: altere ? { ...ref, etiquette: '2 L' } : { ...ref },
+        ...(i < gardees && i < 5 ? { publieeLe: le(2 + i) } : {}),
+      });
+    }
+  }
+
+  // ── 35g Sentiment ─────────────────────────────────────────────────────────
+  const phrases = [
+    ['heure', 'Le travail est bien, mais on ne sait jamais quand ils arrivent.', 'negative'],
+    ['soigne', 'Travail soigné, on voit la différence.', 'positive'],
+    ['contact', 'Très bon contact au téléphone.', 'positive'],
+    ['cher', 'Un peu cher pour une petite surface.', 'negative'],
+    ['rapide', 'Intervention rapide.', 'positive'],
+    ['produits', 'Les produits sentent bon.', 'positive'],
+    ['devis', 'Le devis est clair.', 'positive'],
+    ['facture', 'La facture est arrivée par mail.', 'neutre'],
+    ['creneau', 'Pas de créneau le samedi.', 'negative'],
+    ['horaires', 'Quels sont vos horaires ?', 'neutre'],
+    ['zone', 'Vous venez à Villeurbanne ?', 'neutre'],
+  ];
+  for (const [id, phrase, polarite] of phrases) await poser('sentimentTexts', `c50-ph-${id}`, { kind: 'phrase', phrase, polarite });
+  const variantesHeure = [
+    ['Travail parfait, mais jamais à l’heure annoncée.', 'avis', 42], ['On attend sans savoir s’ils viennent.', 'nps', 20],
+    ['Pouvez-vous me prévenir avant de passer ?', 'message', 14], ['Deux fois décalé sans prévenir.', 'avis', 16],
+    ['Bien, mais l’heure est une loterie.', 'nps', 26], ['À quelle heure arrivez-vous ?', 'chatbot', 9],
+    ['On ne sait jamais quand ils arrivent.', 'nps', 30], ['Le travail est bien fait.', 'nps', 33],
+    ['Je ne sais pas quand ils arrivent demain.', 'message', 35], ['Ils arrivent quand ils veulent.', 'avis', 50],
+    ['Le matin ou l’après-midi, on ne sait jamais.', 'nps', 55], ['Quand arrivez-vous exactement ?', 'chatbot', 60],
+    ['Travail bien, horaire flou.', 'nps', 64], ['Ils arrivent en retard, mais le travail est bien.', 'message', 70],
+  ];
+  const sources = { nps: 92, chatbot: 61, message: 37, avis: 24 };
+  const restes = { ...sources };
+  let n = 0;
+  const texte = async (t, source, jours, phraseId) => {
+    restes[source] -= 1;
+    await poser('sentimentTexts', `c50-tx-${n++}`, { kind: 'texte', source, texte: t, le: le(jours, 9 + (n % 9)), phraseId });
+  };
+  for (const [t, source, jours] of variantesHeure) await texte(t, source, jours, 'c50-ph-heure');
+  const lots = [['soigne', 22], ['contact', 9], ['cher', 6], ['rapide', 5], ['produits', 4], ['devis', 4], ['facture', 3], ['creneau', 3], ['horaires', 3], ['zone', 3]];
+  const phraseDe = Object.fromEntries(phrases.map(([id, p]) => [id, p]));
+  for (const [id, k] of lots) {
+    for (let i = 0; i < k; i += 1) {
+      const source = Object.entries(restes).sort((a, b) => b[1] - a[1])[0][0];
+      await texte(phraseDe[id], source, 3 + ((i * 7 + k) % 80), `c50-ph-${id}`);
+    }
+  }
+  while (Object.values(restes).some((v) => v > 0)) {
+    const source = Object.entries(restes).find(([, v]) => v > 0)[0];
+    await texte('Merci.', source, 2 + (n % 85), null);
+  }
+
+  // ── 35h Veille ────────────────────────────────────────────────────────────
+  for (const [id, nom, initiale] of [['n', 'Net’Express', 'N'], ['p', 'ProClean', 'P'], ['l', 'Lyon Services', 'L']]) {
+    await poser('competitorPrices', `c50-conc-${id}`, { kind: 'concurrent', nom, initiale });
+  }
+  const prestations = [
+    ['vitres', 'Vitres 2 h', 96, 70, 130], ['canape', 'Remise en état canapé', 144, 100, 200],
+    ['bureau', 'Entretien bureau 100 m²', 95, 60, 140], ['chantier', 'Fin de chantier 50 m²', 210, 150, 300], ['vapeur', 'Nettoyage vapeur', 65, 40, 100],
+  ];
+  for (const [i, [id, nom, vous, bas, haut]] of prestations.entries()) {
+    await poser('competitorPrices', `c50-prest-${id}`, { kind: 'prestation', nom, votrePrixCents: eur(vous), marcheBasCents: eur(bas), marcheHautCents: eur(haut), ordre: i });
+  }
+  const releves = [
+    ['n', 'vitres', 85, 48], ['n', 'vitres', 89, 20], ['p', 'vitres', 105, 5], ['l', 'vitres', 92, 5],
+    ['n', 'canape', 129, 5], ['p', 'canape', 135, 12], ['p', 'canape', 120, 5], ['l', 'canape', 160, 5],
+    ['n', 'bureau', 82, 5], ['p', 'bureau', 110, 5], ['l', 'bureau', 99, 5],
+    ['n', 'chantier', 190, 5], ['p', 'chantier', 260, 5], ['l', 'chantier', 250, 40], ['l', 'chantier', 230, 12],
+    ['n', 'vapeur', 55, 5], ['l', 'vapeur', 72, 5],
+  ];
+  for (const [i, [c, pr, prix, jours]] of releves.entries()) {
+    await poser('competitorPrices', `c50-rel-${i}`, { kind: 'releve', concurrentId: `c50-conc-${c}`, prestationId: `c50-prest-${pr}`, prixCents: eur(prix), le: le(jours, 8) });
+  }
+
+  // ── 35i NPS ───────────────────────────────────────────────────────────────
+  let k = 0;
+  const rep = async (note, jours, motif) =>
+    poser('npsResponses', `c50-nps-${k++}`, { kind: 'reponse', note, le: le(jours, 16), client: `Client ${k}`, ...(motif ? { motif } : {}) });
+  for (let i = 0; i < 24; i += 1) await rep(i % 3 ? 10 : 9, 2 + ((i * 11) % 85), i < 17 ? 'Travail soigné' : 'Réactivité au téléphone');
+  for (let i = 0; i < 11; i += 1) await rep(i % 2 ? 8 : 7, 3 + ((i * 13) % 80), i < 4 ? 'Prix' : undefined);
+  for (let i = 0; i < 7; i += 1) await rep(i % 2 ? 4 : 6, 4 + ((i * 17) % 80), 'Heure d’arrivée incertaine');
+  /* Le trimestre civil précédent : 14 promoteurs, 10 passifs, 5 détracteurs → + 31. */
+  const tp = Math.floor(MAINTENANT.getMonth() / 3);
+  const debutTp = new Date(tp === 0 ? MAINTENANT.getFullYear() - 1 : MAINTENANT.getFullYear(), ((tp + 3) % 4) * 3, 2, 16);
+  const dansTp = (i) => new Date(debutTp.getTime() + (i % 60) * JOUR).toISOString();
+  for (let i = 0; i < 29; i += 1) {
+    await poser('npsResponses', `c50-nps-t-${i}`, { kind: 'reponse', note: i < 14 ? 10 : i < 24 ? 8 : 5, le: dansTp(i * 2), client: `Client T${i}` });
+  }
+  for (let i = 0; i < 120; i += 1) await poser('npsResponses', `c50-nps-env-${i}`, { kind: 'envoi', le: le(1 + (i % 88), 17) });
+  await poser('npsResponses', 'c50-nps-reglage', { kind: 'reglage', delaiEnvoiH: 2 });
+}
+
+const FAMILLES = { guichet, marketing };
 const demandees = process.argv.slice(2);
 for (const [nom, f] of Object.entries(FAMILLES)) {
   if (demandees.length && !demandees.includes(nom)) continue;

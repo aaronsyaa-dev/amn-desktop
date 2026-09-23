@@ -162,11 +162,6 @@ export function BilletterieScreen() {
           title={t('m50.ticketing.titre')}
           description={description}
           phraseVide={t('m50.ticketing.phraseVide')}
-          stats={evt && tq ? [
-            { label: t('m50.ticketing.stat.vendus'), value: tq.vendus },
-            { label: t('m50.ticketing.stat.libres'), value: tq.libres, emphasis: tq.libres > 0 },
-            { label: t('m50.ticketing.stat.encaisse'), value: formatCentsCompact(encaisse) },
-          ] : []}
         />
       </Bloc>
 

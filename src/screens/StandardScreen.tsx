@@ -224,11 +224,6 @@ export function StandardScreen() {
           title={t('m50.switchboard.titre')}
           description={description}
           phraseVide={t('m50.switchboard.phraseVide')}
-          stats={[
-            { label: t('m50.switchboard.stat.appels'), value: duJour.length },
-            { label: t('m50.switchboard.stat.engagements'), value: engagements.length },
-            { label: t('m50.switchboard.stat.hors'), value: hors, emphasis: hors > 0 },
-          ]}
         />
       </Bloc>
 

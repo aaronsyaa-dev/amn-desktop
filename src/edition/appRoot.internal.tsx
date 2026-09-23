@@ -117,6 +117,15 @@ import { DonsScreen } from '../screens/DonsScreen';
 import { AcompteScreen } from '../screens/AcompteScreen';
 import { ChatbotScreen } from '../screens/ChatbotScreen';
 import { StandardScreen } from '../screens/StandardScreen';
+import { MontageVideoScreen } from '../screens/MontageVideoScreen';
+import { VisuelsPubScreen } from '../screens/VisuelsPubScreen';
+import { PlanificateurScreen } from '../screens/PlanificateurScreen';
+import { PodcastScreen } from '../screens/PodcastScreen';
+import { IdentiteVisuelleScreen } from '../screens/IdentiteVisuelleScreen';
+import { ImagesProduitsScreen } from '../screens/ImagesProduitsScreen';
+import { SentimentScreen } from '../screens/SentimentScreen';
+import { VeillePrixScreen } from '../screens/VeillePrixScreen';
+import { NpsScreen } from '../screens/NpsScreen';
 import { ClientAdminScreen } from '../client-context/ClientAdminScreen';
 import { ContextBoot } from '../client-context/ContextBoot';
 import { OrgContextProvider, useOrgContext } from '../state/OrgContextContext';
@@ -354,6 +363,15 @@ function AmnRoutes() {
         <Route path="/acompte" element={<AcompteScreen />} />
         <Route path="/chatbot" element={<ChatbotScreen />} />
         <Route path="/standard" element={<StandardScreen />} />
+        <Route path="/montage-video" element={<MontageVideoScreen />} />
+        <Route path="/visuels-pub" element={<VisuelsPubScreen />} />
+        <Route path="/planificateur" element={<PlanificateurScreen />} />
+        <Route path="/podcast" element={<PodcastScreen />} />
+        <Route path="/identite-visuelle" element={<IdentiteVisuelleScreen />} />
+        <Route path="/images-produits" element={<ImagesProduitsScreen />} />
+        <Route path="/sentiment" element={<SentimentScreen />} />
+        <Route path="/veille-prix" element={<VeillePrixScreen />} />
+        <Route path="/nps" element={<NpsScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
@@ -937,6 +955,78 @@ function ClientContextRoutes() {
           element={
             <ModuleRoute module="switchboard">
               <StandardScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/montage-video"
+          element={
+            <ModuleRoute module="video">
+              <MontageVideoScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/visuels-pub"
+          element={
+            <ModuleRoute module="adVisuals">
+              <VisuelsPubScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/planificateur"
+          element={
+            <ModuleRoute module="postPlanner">
+              <PlanificateurScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/podcast"
+          element={
+            <ModuleRoute module="podcast">
+              <PodcastScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/identite-visuelle"
+          element={
+            <ModuleRoute module="brand">
+              <IdentiteVisuelleScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/images-produits"
+          element={
+            <ModuleRoute module="productShots">
+              <ImagesProduitsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/sentiment"
+          element={
+            <ModuleRoute module="sentiment">
+              <SentimentScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/veille-prix"
+          element={
+            <ModuleRoute module="watch">
+              <VeillePrixScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/nps"
+          element={
+            <ModuleRoute module="nps">
+              <NpsScreen />
             </ModuleRoute>
           }
         />

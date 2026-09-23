@@ -221,5 +221,177 @@ const iso = (joursAvant: number, h = 10) => {
   });
 }
 
+/* ════════════════════════════════════════════════════════════ MARKETING ══ */
+{
+  const M = await charger<typeof import('../src/lib/cinquante/marketing')>('src/lib/cinquante/marketing.ts');
+  console.log('Marketing');
+
+  // ── 35a Montage vidéo ───────────────────────────────────────────────────
+  const film = {
+    format: 'reel' as const,
+    plans: [
+      { nom: 'a', dureeS: 7 }, { nom: 'b', dureeS: 5, garde: true }, { nom: 'c', dureeS: 12 },
+      { nom: 'd', dureeS: 3 }, { nom: 'e', dureeS: 9, garde: true }, { nom: 'f', dureeS: 5 },
+    ],
+  };
+  const bo = M.bobine(film);
+  regle('35a · échelle fixe de 45 s : largeur = durée / 45', () => assert.ok(proche(bo.plans[2].largeurPct, (12 / 45) * 100)));
+  regle('35a · la zone ambre commence au cran du format et s’arrête à la fin du film', () => {
+    const z = doit(bo.zone);
+    assert.ok(proche(z.gauchePct, (30 / 45) * 100));
+    assert.ok(proche(z.gauchePct + z.largeurPct, (41 / 45) * 100));
+  });
+  regle('35a · un film qui tient dans son format n’a pas de zone', () =>
+    assert.equal(M.bobine({ format: 'reel', plans: [{ nom: 'x', dureeS: 30 }] }).zone, null));
+  regle('35a · la coupe ramène le film au format, à la seconde près, sans toucher aux plans gardés', () => {
+    const c = doit(M.coupeSuggeree(film));
+    const apres = film.plans.map((p, i) => c.find((x) => x.index === i)?.versS ?? p.dureeS);
+    assert.equal(apres.reduce((a, b) => a + b, 0), 30);
+    assert.ok(c.every((x) => !film.plans[x.index].garde));
+    assert.ok(apres.every((d) => d >= M.PLAN_MIN_S));
+  });
+  regle('35a · « Vitres d’hiver » : le logo à 2 s, « Le geste » à 5 s', () => {
+    const vh = { format: 'reel' as const, plans: [
+      { nom: 'Plan large', dureeS: 6 }, { nom: 'Avant', dureeS: 5, garde: true }, { nom: 'Le geste', dureeS: 9 },
+      { nom: 'Détail', dureeS: 4 }, { nom: 'Après', dureeS: 8, garde: true }, { nom: 'Logo', dureeS: 6 },
+    ] };
+    assert.deepEqual(doit(M.coupeSuggeree(vh)).map((x) => [x.index, x.versS]), [[2, 5], [5, 2]]);
+  });
+
+  // ── 35b Visuels pub ─────────────────────────────────────────────────────
+  const ban = { cle: 'banniere' as const, nom: 'Bannière', largeurPx: 1200, hauteurPx: 628,
+    titre: { x: 100, y: 100, l: 1100, h: 90 }, produit: { x: 100, y: 400, l: 400, h: 200 } };
+  regle('35b · échelle commune : 1 px pour 6,4 px', () => assert.ok(proche(M.aLEchelle(1920), 300)));
+  regle('35b · le verdict se calcule par intersection de rectangles', () => {
+    const h = M.horsZone(ban);
+    const z = M.rectZoneSure(ban);
+    assert.equal(h.dehors, true);
+    assert.equal(h.cote, 'droite');
+    assert.equal(h.px, Math.round(1200 - (z.x + z.l)));
+  });
+  regle('35b · la story garde 14 % en haut et 20 % en bas', () => {
+    const z = M.rectZoneSure({ cle: 'story', largeurPx: 1080, hauteurPx: 1920 });
+    assert.ok(proche(z.y, 1920 * 0.14));
+    assert.ok(proche(1920 - (z.y + z.h), 1920 * 0.2));
+  });
+  regle('35b · recomposer ramène le titre dans la zone sûre', () => assert.equal(M.horsZone(M.recomposer(ban)).dehors, false));
+
+  // ── 35c Planificateur ───────────────────────────────────────────────────
+  regle('35c · l’aiguille : (heure + minutes / 60) × 15°', () =>
+    assert.ok(proche(M.angleAiguille(new Date('2026-10-01T18:30:00')), 277.5)));
+  regle('35c · échelle commune : 21 % = 44 px au-delà du rayon 56, plafond 100', () => {
+    assert.ok(proche(M.rayonSecteur(21), 100));
+    assert.ok(proche(M.rayonSecteur(10.5), 78));
+    assert.ok(proche(M.rayonSecteur(40), 100));
+  });
+  const aud = Array.from({ length: 24 }, (_, h) => (h === 5 ? 2 : h === 14 ? 20 : 8));
+  const reseaux = [{ kind: 'reseau' as const, nom: 'R', audience: aud, ordre: 0 }];
+  const posts = [
+    { id: 'p1', kind: 'post' as const, reseau: 'R', le: '2026-10-05T05:10:00', sujet: 'creux' },
+    { id: 'p2', kind: 'post' as const, reseau: 'R', le: '2026-10-05T14:00:00', sujet: 'pic' },
+    { id: 'p3', kind: 'post' as const, reseau: 'R', le: '2026-10-01T05:00:00', sujet: 'passé' },
+  ];
+  regle('35c · l’ambre va à l’aiguille à venir qui tombe dans le creux', () =>
+    assert.equal(doit(M.aiguilleDansLeCreux(reseaux, posts, MAINTENANT)).post.id, 'p1'));
+  regle('35c · une aiguille dans un secteur clair (≥ 12 %) n’est pas dans le vide', () =>
+    assert.equal(M.aiguilleDansLeCreux(reseaux, [posts[1]], MAINTENANT), null));
+
+  // ── 35d Podcast ─────────────────────────────────────────────────────────
+  const amp = Array.from({ length: 1450 }, (_, s) => (s >= 600 && s < 613 ? 0 : 1 + (s % 7)));
+  const on = M.onde({ amplitudes: amp, dureeS: 1450 });
+  regle('35d · 240 barres, la plus haute à 100 %', () => {
+    assert.equal(on.length, 240);
+    assert.ok(proche(Math.max(...on), 100));
+  });
+  regle('35d · un silence qui couvre une tranche entière tombe presque à plat', () => assert.ok(Math.min(...on) < 30));
+  regle('35d · positions en secondes rapportées à la durée totale', () => assert.ok(proche(M.pctSeconde(870, 1450), 60)));
+  regle('35d · l’économie additionne la coupe et les hésitations', () =>
+    assert.equal(M.economiePodcast({ coupe: { debutS: 870, finS: 908, motif: '' },
+      hesitations: [{ s: 1, dureeS: 1.1, genre: 'euh' }, { s: 2, dureeS: 0.9, genre: 'euh' }] }).totalS, 40));
+
+  // ── 35e Identité visuelle ───────────────────────────────────────────────
+  const logo = { kind: 'logo' as const, monogramme: 'AB', mention: 'X', ratioMonogramme: 0.42, ratioMention: 0.085,
+    couleurs: [], polices: [], declinaisons: [] };
+  regle('35e · aucun élément sous 6 px de corps', () => {
+    assert.equal(M.lisibilite(logo, { taillePx: 16, declinaison: 'complete' }).mentionIllisible, true);
+    assert.equal(M.lisibilite(logo, { taillePx: 96, declinaison: 'complete' }).mentionIllisible, false);
+    assert.equal(M.lisibilite(logo, { taillePx: 16, declinaison: 'reduite' }).mentionIllisible, false);
+  });
+  const usages = [16, 220, 40].map((t, i) => ({ id: `u${i}`, kind: 'usage' as const, nom: `${t}`, taillePx: t, reel: '', declinaison: 'complete' as const, ordre: i }));
+  regle('35e · l’ambre va au plus petit usage illisible', () => assert.equal(doit(M.usageIllisible(logo, usages)).taillePx, 16));
+  regle('35e · la version réduite est proposée sous le seuil de la mention', () => assert.ok(proche(M.seuilVersionReduite(logo), 6 / 0.085)));
+
+  // ── 35f Images produits ─────────────────────────────────────────────────
+  regle('35f · couronne : 50 % + 38 % · cos θ, 200 + 148 · sin θ', () => {
+    const p0 = M.positionScene(0);
+    const p3 = M.positionScene(3);
+    assert.ok(proche(p0.xPct, 50) && proche(p0.y, 52));
+    assert.ok(proche(p3.xPct, 50 + 38 * Math.cos(Math.PI / 4), 1e-9) && proche(p3.y, 200 + 148 * Math.sin(Math.PI / 4), 1e-9));
+  });
+  const prod = { kind: 'produit' as const, nom: 'P', reference: { etiquette: '5 L', forme: 'bidon', bouchon: 'rouge' }, ordre: 0 };
+  regle('35f · un écart sur une zone fixe classe l’image « altérée », quelle que soit sa qualité', () => {
+    const sc = { kind: 'scene' as const, produitId: 'p', numero: 1, decor: '', verdict: 'gardee' as const, genereeLe: iso(1),
+      zones: { etiquette: '3 L', forme: 'bidon', bouchon: 'rouge' } };
+    assert.deepEqual(M.alteration(prod, sc), { zone: 'etiquette', avant: '5 L', apres: '3 L' });
+    assert.equal(M.alteration(prod, { ...sc, zones: { ...prod.reference } }), null);
+  });
+
+  // ── 35g Sentiment ───────────────────────────────────────────────────────
+  regle('35g · la phrase-mère n’emploie que des mots de ses variantes', () => {
+    assert.deepEqual(M.motsAbsents('On attend toujours', ['On attend', 'toujours pareil']), []);
+    assert.deepEqual(M.motsAbsents('On attend demain', ['On attend']), ['demain']);
+  });
+  const sent = [
+    { id: 'n', kind: 'phrase' as const, phrase: 'trop tard', polarite: 'negative' as const },
+    { id: 'p', kind: 'phrase' as const, phrase: 'très bien', polarite: 'positive' as const },
+    ...Array.from({ length: 3 }, (_, i) => ({ id: `tn${i}`, kind: 'texte' as const, source: 'nps' as const, texte: 'trop tard', le: iso(i + 1), phraseId: 'n' })),
+    ...Array.from({ length: 5 }, (_, i) => ({ id: `tp${i}`, kind: 'texte' as const, source: 'avis' as const, texte: 'très bien', le: iso(i + 1), phraseId: 'p' })),
+    { id: 'vieux', kind: 'texte' as const, source: 'avis' as const, texte: 'trop tard', le: iso(120), phraseId: 'n' },
+  ];
+  const ph = M.phrasesMeres(sent, MAINTENANT);
+  regle('35g · l’ambre va à la négative la plus fréquente, même si une positive l’est plus', () => assert.equal(doit(ph.ambre).phrase.id, 'n'));
+  regle('35g · quatre-vingt-dix jours glissants', () => assert.equal(doit(ph.ambre).variantes.length, 3));
+  regle('35g · sans phrase négative, pas d’ambre', () =>
+    assert.equal(M.phrasesMeres(sent.filter((e) => e.id !== 'n' && !e.id.startsWith('tn') && e.id !== 'vieux'), MAINTENANT).ambre, null));
+
+  // ── 35h Veille ──────────────────────────────────────────────────────────
+  const veille = [
+    { id: 'c1', kind: 'concurrent' as const, nom: 'Un', initiale: 'U' },
+    { id: 'c2', kind: 'concurrent' as const, nom: 'Deux', initiale: 'D' },
+    { id: 'pr', kind: 'prestation' as const, nom: 'X', votrePrixCents: 10000, marcheBasCents: 5000, marcheHautCents: 15000, ordre: 0 },
+    { id: 'r1', kind: 'releve' as const, concurrentId: 'c1', prestationId: 'pr', prixCents: 11000, le: iso(10) },
+    { id: 'r2', kind: 'releve' as const, concurrentId: 'c1', prestationId: 'pr', prixCents: 9000, le: iso(2) },
+  ];
+  const rv = M.releveDesPrix(veille);
+  regle('35h · chaque ligne a sa propre échelle : position = (prix − bas) / (haut − bas)', () => assert.ok(proche(rv.lignes[0].vousPct, 50)));
+  regle('35h · un prix non relevé n’a pas de jeton', () => assert.equal(rv.lignes[0].jetons.length, 1));
+  regle('35h · une hausse, même sous votre prix, n’est pas ambre', () => {
+    const hausse = M.releveDesPrix([...veille.slice(0, 3),
+      { id: 'h1', kind: 'releve' as const, concurrentId: 'c2', prestationId: 'pr', prixCents: 7000, le: iso(10) },
+      { id: 'h2', kind: 'releve' as const, concurrentId: 'c2', prestationId: 'pr', prixCents: 8000, le: iso(2) }]);
+    assert.equal(M.passeSousVous(hausse.lignes, MAINTENANT), null);
+  });
+  regle('35h · l’ambre : le mouvement de la semaine qui passe sous votre prix', () => {
+    const m = doit(M.passeSousVous(rv.lignes, MAINTENANT));
+    assert.equal(m.jeton.prixCents, 9000);
+    assert.equal(doit(m.jeton.avant).prixCents, 11000);
+  });
+
+  // ── 35i NPS ─────────────────────────────────────────────────────────────
+  const nps = [
+    ...Array.from({ length: 6 }, (_, i) => ({ kind: 'reponse' as const, note: 10, le: iso(i + 1), client: '' })),
+    ...Array.from({ length: 2 }, (_, i) => ({ kind: 'reponse' as const, note: 3, le: iso(i + 1), client: '' })),
+    ...Array.from({ length: 2 }, (_, i) => ({ kind: 'reponse' as const, note: 8, le: iso(i + 1), client: '' })),
+    { kind: 'reponse' as const, note: 0, le: iso(95), client: '' },
+    ...Array.from({ length: 20 }, (_, i) => ({ kind: 'envoi' as const, le: iso(i + 1) })),
+  ];
+  const co = M.corde(nps, MAINTENANT);
+  regle('35i · NPS = promoteurs − détracteurs, sur 90 jours glissants, arrondi à l’unité', () => assert.equal(co.score, 40));
+  regle('35i · autant de carrés que de répondants dans chaque groupe', () => assert.deepEqual([co.detracteurs, co.passifs, co.promoteurs], [2, 2, 6]));
+  regle('35i · position du nœud : 50 % + score / 2', () => assert.ok(proche(co.noeudPct, 70)));
+  regle('35i · le trimestre précédent est le trimestre civil (octobre → T3)', () => assert.equal(M.trimestrePrecedent(MAINTENANT).numero, 3));
+  regle('35i · taux de réponse = réponses / sondages envoyés', () => assert.equal(co.tauxReponsePct, 50));
+}
+
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);
 if (echecs > 0) process.exit(1);

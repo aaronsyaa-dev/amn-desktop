@@ -59,7 +59,6 @@ export function ChatbotScreen() {
   const vide = f.total === 0;
   const L = (n: number, maj = false) => enLettres(n, langue, maj);
   const creux = f.colonnes.flatMap((c) => c.tuiles).find((x) => x.id === f.creuxAmbre) ?? null;
-  const sansReponse = f.colonnes.reduce((s, c) => s + c.sansReponse, 0);
 
   const repondre = async () => {
     if (!creux || !reponse.trim()) return;
@@ -88,11 +87,6 @@ export function ChatbotScreen() {
           title={t('m50.chatbot.titre')}
           description={creux ? description : vide ? description : t('m50.chatbot.descriptionSansCreux', { total: L(f.total, true) })}
           phraseVide={t('m50.chatbot.phraseVide')}
-          stats={[
-            { label: t('m50.chatbot.stat.questions'), value: f.total },
-            { label: t('m50.chatbot.stat.reglees'), value: f.issues.faq },
-            { label: t('m50.chatbot.stat.sansReponse'), value: sansReponse, emphasis: sansReponse > 0 },
-          ]}
         />
       </Bloc>
 

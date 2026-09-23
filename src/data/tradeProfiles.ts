@@ -215,4 +215,13 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'deposits', label: 'Acompte en ligne', hint: 'Signé en ligne, payé en ligne — et ce qui attend entre les deux' },
   { key: 'chatbot', label: 'Chatbot', hint: 'Les questions posées, et celles restées sans réponse' },
   { key: 'switchboard', label: 'Standard', hint: 'Ce que l’assistant a promis en votre nom, au téléphone' },
+  { key: 'video', label: 'Montage vidéo', hint: 'Un film court, contre la durée du format visé' },
+  { key: 'adVisuals', label: 'Visuels pub', hint: 'Un visuel, décliné dans tous les formats' },
+  { key: 'postPlanner', label: 'Planificateur', hint: 'Les posts de la semaine, contre l’heure où l’audience est là' },
+  { key: 'podcast', label: 'Podcast', hint: 'L’épisode entier, ses chapitres et ce qui peut partir' },
+  { key: 'brand', label: 'Identité visuelle', hint: 'Le logo à la taille de chacun de ses usages' },
+  { key: 'productShots', label: 'Images produits', hint: 'Le produit fixe, le décor qui change' },
+  { key: 'sentiment', label: 'Sentiment', hint: 'Ce qu’on vous dit, en une phrase' },
+  { key: 'watch', label: 'Veille', hint: 'Vos prix, contre ceux du marché' },
+  { key: 'nps', label: 'NPS', hint: 'Qui tire de quel côté, et où s’arrête le score' },
 ];

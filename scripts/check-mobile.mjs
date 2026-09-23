@@ -97,6 +97,15 @@ const ECRANS = [
   ['Acompte en ligne', '#/acompte'],
   ['Chatbot', '#/chatbot'],
   ['Standard', '#/standard'],
+  ['Montage vidéo', '#/montage-video'],
+  ['Visuels pub', '#/visuels-pub'],
+  ['Planificateur', '#/planificateur'],
+  ['Podcast', '#/podcast'],
+  ['Identité visuelle', '#/identite-visuelle'],
+  ['Images produits', '#/images-produits'],
+  ['Sentiment', '#/sentiment'],
+  ['Veille', '#/veille-prix'],
+  ['NPS', '#/nps'],
 ];
 
 const AMBRE = ['rgb(208, 154, 74)', '#d09a4a'];

@@ -161,11 +161,6 @@ export function DonsScreen() {
           title={t('m50.donations.titre')}
           description={description}
           phraseVide={t('m50.donations.phraseVide')}
-          stats={camp && prev ? [
-            { label: t('m50.donations.stat.collecte'), value: formatCentsCompact(collecte) },
-            { label: t('m50.donations.stat.contributeurs'), value: contributions.length },
-            { label: t('m50.donations.stat.jours'), value: `J−${prev.joursRestants}` },
-          ] : []}
         />
       </Bloc>
 

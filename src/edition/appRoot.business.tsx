@@ -89,6 +89,15 @@ import { DonsScreen } from '../screens/DonsScreen';
 import { AcompteScreen } from '../screens/AcompteScreen';
 import { ChatbotScreen } from '../screens/ChatbotScreen';
 import { StandardScreen } from '../screens/StandardScreen';
+import { MontageVideoScreen } from '../screens/MontageVideoScreen';
+import { VisuelsPubScreen } from '../screens/VisuelsPubScreen';
+import { PlanificateurScreen } from '../screens/PlanificateurScreen';
+import { PodcastScreen } from '../screens/PodcastScreen';
+import { IdentiteVisuelleScreen } from '../screens/IdentiteVisuelleScreen';
+import { ImagesProduitsScreen } from '../screens/ImagesProduitsScreen';
+import { SentimentScreen } from '../screens/SentimentScreen';
+import { VeillePrixScreen } from '../screens/VeillePrixScreen';
+import { NpsScreen } from '../screens/NpsScreen';
 
 /**
  * La racine de l'édition Business — la table de routes livrée aux
@@ -716,6 +725,78 @@ export function AppRoot() {
           element={
             <ModuleRoute module="switchboard">
               <StandardScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/montage-video"
+          element={
+            <ModuleRoute module="video">
+              <MontageVideoScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/visuels-pub"
+          element={
+            <ModuleRoute module="adVisuals">
+              <VisuelsPubScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/planificateur"
+          element={
+            <ModuleRoute module="postPlanner">
+              <PlanificateurScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/podcast"
+          element={
+            <ModuleRoute module="podcast">
+              <PodcastScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/identite-visuelle"
+          element={
+            <ModuleRoute module="brand">
+              <IdentiteVisuelleScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/images-produits"
+          element={
+            <ModuleRoute module="productShots">
+              <ImagesProduitsScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/sentiment"
+          element={
+            <ModuleRoute module="sentiment">
+              <SentimentScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/veille-prix"
+          element={
+            <ModuleRoute module="watch">
+              <VeillePrixScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/nps"
+          element={
+            <ModuleRoute module="nps">
+              <NpsScreen />
             </ModuleRoute>
           }
         />

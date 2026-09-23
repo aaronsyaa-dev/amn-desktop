@@ -134,6 +134,15 @@ export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
   deposits: { label: 'Online deposit', hint: 'Signed online, paid online — and what waits in between' },
   chatbot: { label: 'Chatbot', hint: 'Questions asked, and those left unanswered' },
   switchboard: { label: 'Switchboard', hint: 'What the assistant promised on your behalf, on the phone' },
+  video: { label: 'Video editing', hint: 'A short film, against the target format length' },
+  adVisuals: { label: 'Ad visuals', hint: 'One visual, in every format' },
+  postPlanner: { label: 'Post planner', hint: 'This week’s posts, against when the audience is there' },
+  podcast: { label: 'Podcast', hint: 'The whole episode, its chapters and what can go' },
+  brand: { label: 'Brand identity', hint: 'The logo at the size of each use' },
+  productShots: { label: 'Product images', hint: 'The product fixed, the setting changing' },
+  sentiment: { label: 'Sentiment', hint: 'What people tell you, in one sentence' },
+  watch: { label: 'Market watch', hint: 'Your prices, against the market' },
+  nps: { label: 'NPS', hint: 'Who pulls which way, and where the score lands' },
 };
 
 /**
@@ -153,6 +162,7 @@ export const SECTIONS_EN_COMMUN: Record<string, string> = {
   Personnel: 'Personal',
   Système: 'System',
   Guichet: 'Self-service',
+  Marketing: 'Marketing',
 };
 
 

@@ -161,11 +161,6 @@ export function BoutiqueScreen() {
           title={t('m50.shop.titre')}
           description={description}
           phraseVide={t('m50.shop.phraseVide')}
-          stats={[
-            { label: t('m50.shop.stat.paniers'), value: ouverts },
-            { label: t('m50.shop.stat.payes'), value: p.payes.n },
-            { label: t('m50.shop.stat.laisses'), value: p.laisses.n, emphasis: p.laisses.n > 0 },
-          ]}
         />
       </Bloc>
 
