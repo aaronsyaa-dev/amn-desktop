@@ -8,6 +8,7 @@ import { SemaineDepliee } from '../accueils/client/SemaineDepliee';
 import { Cadran } from '../accueils/client/Cadran';
 import { Lettre } from '../accueils/client/Lettre';
 import { Ecarts } from '../accueils/client/Ecarts';
+import { Tiroirs } from '../accueils/client/Tiroirs';
 
 /**
  * LES ONZE ACCUEILS DE L'ÉDITION CLIENTE — 2a et les dix variantes du cahier 9
@@ -77,5 +78,12 @@ export const ACCUEILS: AccueilDef[] = [
     phrase: 'Seulement ce qui s’écarte d’une journée ordinaire.',
     vignette: [[49, 6, 1, 50, 'moyen'], [50, 12, 38, 6, 'ambre'], [50, 24, 14, 6, 'moyen'], [36, 36, 14, 6, 'sombre'], [50, 48, 8, 6, 'moyen']],
     composant: Ecarts,
+  },
+  {
+    code: '40i',
+    nom: 'Les tiroirs',
+    phrase: 'Les familles en façades ; seul s’ouvre le tiroir qui demande quelque chose.',
+    vignette: [[6, 8, 36, 46, 'moyen'], [18, 11, 12, 3, 'ambre'], [46, 8, 22, 21, 'sombre'], [72, 8, 22, 21, 'sombre'], [46, 33, 22, 21, 'sombre'], [72, 33, 22, 21, 'sombre']],
+    composant: Tiroirs,
   },
 ];
