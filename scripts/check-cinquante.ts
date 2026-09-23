@@ -878,6 +878,20 @@ const iso = (joursAvant: number, h = 10) => {
   regle('13b · un forfait en devise se ramène en euros au DERNIER taux de Multi-devises', () => assert.equal(F.versEuros(32_000, 'CHF', tx), 30_112));
   regle('13b · sans taux connu, pas de conversion inventée', () => assert.equal(F.versEuros(18_000, 'CAD', tx), null));
   regle('13b · l’euro ne se convertit pas', () => assert.equal(F.versEuros(500, undefined, tx), 500));
+
+  const P = await charger<typeof import('../src/lib/parrainage')>('src/lib/parrainage.ts');
+  regle('23c · un code par parrain, stable : le même nom donne le même code', () => {
+    assert.equal(P.codeParrain('Camille Roux'), P.codeParrain('  camille  roux '));
+    assert.match(P.codeParrain('Camille Roux'), /^CAMILLE-[0-9A-Z]{3}$/);
+    assert.notEqual(P.codeParrain('Camille Roux'), P.codeParrain('Camille Petit'));
+  });
+  regle('23c · la prime due : les filleuls venus, pas encore récompensés', () =>
+    assert.equal(P.primeDue([
+      { referrer: 'Camille', status: 'venu', primeCents: 3000 },
+      { referrer: 'camille', status: 'recompense', primeCents: 3000 },
+      { referrer: 'Camille', status: 'invite' },
+      { referrer: 'Nour', status: 'venu', primeCents: 3000 },
+    ], 'Camille'), 3000));
 }
 
 console.log(`\n${reussis} règle(s) tenue(s), ${echecs} en défaut.`);

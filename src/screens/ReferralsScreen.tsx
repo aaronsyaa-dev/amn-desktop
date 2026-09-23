@@ -9,6 +9,7 @@ import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
 import { useInvoices } from '../state/useInvoices';
 import { formatCents } from '../lib/money';
+import { codeParrain, primeDue } from '../lib/parrainage';
 
 type ReferralStatus = 'invite' | 'venu' | 'recompense';
 interface ReferralData {
@@ -18,7 +19,17 @@ interface ReferralData {
   reward: string;
   createdAt: string;
   updatedAt: string;
+  /** Le code du parrain utilisé par ce filleul (fusion « parrainage par code »). */
+  code?: string;
+  /** La prime promise pour ce filleul, figée le jour où il vient. */
+  primeCents?: number;
 }
+/** Le barème du programme : un enregistrement `programme` dans la même collection. */
+interface ProgrammeParrainage {
+  kind: 'programme';
+  primeCents: number;
+}
+const ID_PROGRAMME = 'programme';
 const SUITE: Record<ReferralStatus, ReferralStatus | null> = { invite: 'venu', venu: 'recompense', recompense: null };
 
 /**
@@ -52,8 +63,9 @@ const SUITE: Record<ReferralStatus, ReferralStatus | null> = { invite: 'venu', v
  * plutôt que de l'omettre — une branche amputée serait pire qu'une branche
  * incomplète visible.
  */
-const NOEUD_H = 46;
-const RANGEE = 62;
+/* Trois lignes par nœud depuis la fusion « parrainage par code » : le nom, la branche, puis le code et la prime due. */
+const NOEUD_H = 64;
+const RANGEE = 80;
 
 function cleNom(nom: string): string {
   return nom
@@ -121,9 +133,14 @@ function construireArbre(
 function ArbreDeFiliation({
   racines,
   formatCents,
+  dueDe,
+  pied,
 }: {
   racines: NoeudParrainage[];
   formatCents: (c: number) => string;
+  /** La prime due à ce parrain — 0 s'il n'en attend aucune. */
+  dueDe: (nom: string) => number;
+  pied?: React.ReactNode;
 }) {
   /* La racine la plus lourde porte l'ambre. `racines` arrive déjà triée. */
   const laPlusLourde = racines[0]?.branche > 0 ? racines[0].nom : null;
@@ -228,6 +245,15 @@ function ArbreDeFiliation({
                     ? `${formatCents(r.noeud.propre).toUpperCase()} EN PROPRE`
                     : 'PAS ENCORE CLIENT'}
               </span>
+              {r.noeud.enfants.length > 0 && (
+                <span
+                  className={`tnum mt-0.5 block truncate font-mono text-[9.5px] tracking-[0.1em] ${ambre ? 'text-[#3a2a0e]' : 'text-text-muted'}`}
+                  title="Le code du parrain, et la prime qu’on lui doit"
+                >
+                  {codeParrain(r.noeud.nom)}
+                  {dueDe(r.noeud.nom) > 0 ? ` · PRIME DUE ${formatCents(dueDe(r.noeud.nom)).toUpperCase()}` : ''}
+                </span>
+              )}
             </div>
           );
         })}
@@ -248,12 +274,13 @@ function ArbreDeFiliation({
       {racines[0] && racines[0].branche > 0 && (
         <p className="mt-5 border-t border-border-raised pt-[22px] text-[13.5px] leading-[1.6] text-text-secondary [text-wrap:pretty]">
           {racines[0].nom} facture{' '}
-          <strong className="font-semibold text-text-primary">{formatCents(racines[0].propre)}</strong> pour
-          {' '}{racines[0].propre > 0 ? 'elle-même' : 'elle-même — rien'}, et sa descendance en apporte{' '}
+          <strong className="font-semibold text-text-primary">{formatCents(racines[0].propre)}</strong> en propre
+          {racines[0].propre > 0 ? '' : ' (rien)'}, et sa descendance en apporte{' '}
           <strong className="font-semibold text-text-primary">{formatCents(racines[0].branche)}</strong>.
           La valeur d’un parrain ne se lit pas sur ses propres factures.
         </p>
       )}
+      {pied}
     </section>
   );
 }
@@ -266,8 +293,19 @@ export function ReferralsScreen() {
   const [referrer, setReferrer] = useState('');
   const [referred, setReferred] = useState('');
   const [reward, setReward] = useState('');
+  const [codeSaisi, setCodeSaisi] = useState('');
+  const [bareme, setBareme] = useState<string | null>(null);
 
-  const lignes = useMemo(() => [...brutes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [brutes]);
+  /* Le barème du programme vit à part ; tout le reste est un lien parrain → filleul. */
+  const programme = (brutes as Array<ReferralData | ProgrammeParrainage>).find((r): r is ProgrammeParrainage & { id: string } => (r as { id?: string }).id === ID_PROGRAMME) ?? null;
+  const liens = useMemo(() => brutes.filter((r) => (r as { id?: string }).id !== ID_PROGRAMME && typeof r.referrer === 'string'), [brutes]);
+  const lignes = useMemo(() => [...liens].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [liens]);
+  /* Un code saisi retrouve son parrain, même si le nom a été écrit autrement. */
+  const parrainDuCode = (code: string) => {
+    const c = code.trim().toUpperCase();
+    if (!c) return null;
+    return liens.map((l) => l.referrer).find((n) => codeParrain(n) === c) ?? null;
+  };
   const dues = lignes.filter((r) => r.status === 'venu').length;
   /*
     LE CA PAR NOM, rapproché depuis les factures émises. Voir l'en-tête de
@@ -287,21 +325,38 @@ export function ReferralsScreen() {
     return m;
   }, [invoices]);
 
-  const racines = useMemo(() => construireArbre(brutes, caParNom), [brutes, caParNom]);
+  const racines = useMemo(() => construireArbre(liens, caParNom), [liens, caParNom]);
 
   const meilleurs = useMemo(() => {
     const m = new Map<string, number>();
-    for (const r of brutes) if (r.status !== 'invite') m.set(r.referrer, (m.get(r.referrer) ?? 0) + 1);
+    for (const r of liens) if (r.status !== 'invite') m.set(r.referrer, (m.get(r.referrer) ?? 0) + 1);
     return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
-  }, [brutes]);
+  }, [liens]);
 
   const ajouter = async () => {
-    if (!referrer.trim() || !referred.trim()) return;
+    const parrain = referrer.trim() || parrainDuCode(codeSaisi) || '';
+    if (!parrain || !referred.trim()) return;
     const now = new Date().toISOString();
-    await upsert('referrals', uid('par'), { referrer: referrer.trim(), referred: referred.trim(), status: 'invite', reward: reward.trim(), createdAt: now, updatedAt: now });
-    setReferrer(''); setReferred(''); setReward(''); setOuvert(false);
+    await upsert('referrals', uid('par'), { referrer: parrain, referred: referred.trim(), status: 'invite', reward: reward.trim(), createdAt: now, updatedAt: now, code: codeParrain(parrain) });
+    setReferrer(''); setReferred(''); setReward(''); setCodeSaisi(''); setOuvert(false);
   };
-  const avancer = (r: ReferralData & { id: string }) => SUITE[r.status] && upsert('referrals', r.id, { ...r, status: SUITE[r.status] as ReferralStatus, updatedAt: new Date().toISOString() });
+  /* La prime se FIGE quand le filleul vient : c'est la promesse de ce jour-là. */
+  const avancer = (r: ReferralData & { id: string }) =>
+    SUITE[r.status] &&
+    upsert('referrals', r.id, {
+      ...r,
+      status: SUITE[r.status] as ReferralStatus,
+      updatedAt: new Date().toISOString(),
+      ...(SUITE[r.status] === 'venu' && r.primeCents === undefined && programme ? { primeCents: programme.primeCents } : {}),
+    });
+  const enregistrerBareme = async () => {
+    const cents = Math.round((Number((bareme ?? '').replace(',', '.')) || 0) * 100);
+    if (cents <= 0) return;
+    await upsert('referrals', ID_PROGRAMME, { kind: 'programme', primeCents: cents });
+    setBareme(null);
+  };
+  /* Un filleul venu AVANT que la prime soit définie doit la prime du barème : elle n'a pas encore été versée. */
+  const dueDe = (nom: string) => primeDue(liens.map((l) => ({ ...l, primeCents: l.primeCents ?? programme?.primeCents })), nom);
   const statut = (s: ReferralStatus) => t(`parrainage.statut.${s}` as Parameters<typeof t>[0]);
 
   return (
@@ -327,7 +382,37 @@ export function ReferralsScreen() {
       {/* ── L'OBJET DOMINANT : l'arbre de filiation ────────────────────── */}
       {racines.length > 0 && (
         <motion.div variants={staggerItem}>
-          <ArbreDeFiliation racines={racines} formatCents={formatCents} />
+          <ArbreDeFiliation
+            racines={racines}
+            formatCents={formatCents}
+            dueDe={dueDe}
+            pied={
+              <div className="mt-4 flex flex-wrap items-center gap-3 text-[12.5px] text-text-muted">
+                {bareme === null ? (
+                  <>
+                    <span>
+                      {programme
+                        ? `Prime : ${formatCents(programme.primeCents)} par filleul venu. Chaque parrain a son code ; un filleul qui le donne retrouve son parrain.`
+                        : 'Aucune prime définie : les codes tracent qui a amené qui, sans rien devoir.'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setBareme(programme ? String(programme.primeCents / 100).replace('.', ',') : '')}
+                      className="flex min-h-11 items-center border border-border-strong px-3 font-semibold text-text-body hover:bg-surface-hover md:min-h-[30px]"
+                    >
+                      {programme ? 'Modifier la prime' : 'Définir une prime'}
+                    </button>
+                  </>
+                ) : (
+                  <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); void enregistrerBareme(); }}>
+                    <input value={bareme} onChange={(e) => setBareme(e.target.value)} inputMode="decimal" autoFocus aria-label="Prime par filleul venu, en euros" placeholder="Prime en €" className="input-focus min-h-11 w-32 border border-border bg-bg px-3 text-sm text-text-primary outline-none md:min-h-[30px]" />
+                    <button type="submit" className="flex min-h-11 items-center bg-text-primary px-3 font-semibold text-[#0a0a0a] md:min-h-[30px]">Enregistrer</button>
+                    <button type="button" onClick={() => setBareme(null)} className="flex min-h-11 items-center px-2 text-text-secondary hover:text-text-primary md:min-h-[30px]">{t('chrome.fermer')}</button>
+                  </form>
+                )}
+              </div>
+            }
+          />
         </motion.div>
       )}
 
@@ -336,8 +421,19 @@ export function ReferralsScreen() {
           <input value={referrer} onChange={(e) => setReferrer(e.target.value)} placeholder={t('parrainage.champParrain')} aria-label={t('parrainage.champParrain')} autoFocus className="input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none" />
           <input value={referred} onChange={(e) => setReferred(e.target.value)} placeholder={t('parrainage.champFilleul')} aria-label={t('parrainage.champFilleul')} className="input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none" />
           <input value={reward} onChange={(e) => setReward(e.target.value)} placeholder={t('parrainage.champRecompense')} aria-label={t('parrainage.champRecompense')} className="input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none" />
+          <input
+            value={codeSaisi}
+            onChange={(e) => {
+              setCodeSaisi(e.target.value);
+              const p = parrainDuCode(e.target.value);
+              if (p) setReferrer(p);
+            }}
+            placeholder="Code donné par le filleul (facultatif)"
+            aria-label="Code donné par le filleul"
+            className="input-focus min-h-11 border border-border bg-bg px-3 font-mono text-sm uppercase text-text-primary outline-none sm:col-span-3"
+          />
           <div className="flex flex-wrap gap-2 sm:col-span-3">
-            <button type="submit" disabled={!referrer.trim() || !referred.trim()} className="bg-accent px-4 py-2 text-sm font-semibold text-bg disabled:opacity-40">{t('parrainage.enregistrer')}</button>
+            <button type="submit" disabled={!(referrer.trim() || parrainDuCode(codeSaisi)) || !referred.trim()} className="bg-accent px-4 py-2 text-sm font-semibold text-bg disabled:opacity-40">{t('parrainage.enregistrer')}</button>
             <button type="button" onClick={() => setOuvert(false)} className="border border-border px-4 py-2 text-sm text-text-secondary hover:text-text-primary">{t('chrome.fermer')}</button>
           </div>
         </motion.form>
@@ -356,7 +452,10 @@ export function ReferralsScreen() {
                   <HeartHandshake size={18} className="flex-shrink-0 text-text-muted" />
                   <div className="min-w-0">
                     <p className="text-sm text-text-primary">{r.referrer} <span className="text-text-muted">→</span> {r.referred}</p>
-                    <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">{r.reward || t('parrainage.sansRecompense')} · {relativeTime(r.updatedAt)}</p>
+                    <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                      {r.code ?? codeParrain(r.referrer)} · {r.reward || t('parrainage.sansRecompense')}
+                      {r.primeCents ? ` · prime ${formatCents(r.primeCents)}${r.status === 'recompense' ? ' versée' : ' due'}` : ''} · {relativeTime(r.updatedAt)}
+                    </p>
                   </div>
                 </div>
                 <div className="flex flex-shrink-0 items-center gap-2">

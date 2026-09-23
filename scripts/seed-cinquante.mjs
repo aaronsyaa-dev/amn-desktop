@@ -1256,6 +1256,15 @@ async function fusions() {
   await abo('weber', 'Maintenance vitrages', 'Atelier Weber (Bâle)', 32_000, 'monthly', 'CHF', -9);
   await abo('london', 'Entretien bureaux', 'Harbour & Co (Londres)', 54_000, 'quarterly', 'GBP', -20);
   await abo('montreal', 'Supervision', 'Studio Lune (Montréal)', 18_000, 'monthly', 'CAD', -14);
+
+  // ── Parrainage par code → Parrainage ──────────────────────────────────────
+  await poser('referrals', 'programme', { kind: 'programme', primeCents: eur(30) });
+  const lien = (id, referrer, referred, status, primeCents, jours) =>
+    poser('referrals', `c50-par-${id}`, { referrer, referred, status, reward: 'une intervention offerte', createdAt: le(jours), updatedAt: le(jours - 2), ...(primeCents ? { primeCents } : {}) });
+  await lien('a', 'Maison Bertaux', 'Studio Nord', 'venu', eur(30), 40);
+  await lien('b', 'Maison Bertaux', 'Chez Mano', 'recompense', eur(30), 90);
+  await lien('c', 'Studio Nord', 'Les Tanneurs', 'venu', eur(30), 20);
+  await lien('d', 'Studio Nord', 'Atelier Lumen', 'invite', null, 5);
 }
 
 const FAMILLES = { guichet, marketing, finance, rh, juridique, ajouts, fusions };
