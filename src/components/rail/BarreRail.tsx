@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Pin, PinOff, Search } from 'lucide-react';
 import type { NavItem } from '../../data/navigation';
+import { PanneauMobile } from './PanneauMobile';
 
 /**
  * LA COQUILLE EN RAIL — la colonne, et une seule fois dans tout le produit.
@@ -211,7 +212,12 @@ export function BarreRail({
   rendreExtra,
   libelle = (item) => item.label,
 }: BarreRailProps) {
-  const expanded = deplie || mobileOpen;
+  /*
+    `deplie` seul : la colonne est désormais une surface de BUREAU. Le tiroir
+    du téléphone est la feuille `PanneauMobile`, qui ne se plie pas — elle
+    couvre l'écran le temps qu'on choisit, puis s'en va.
+  */
+  const expanded = deplie;
   const total = useMemo(() => familles.reduce((n, f) => n + f.items.length, 0), [familles]);
 
   /*
@@ -301,6 +307,43 @@ export function BarreRail({
         )}
       </AnimatePresence>
 
+      {/*
+        LE TIROIR DU TÉLÉPHONE N'EST PAS LA COLONNE RÉTRÉCIE.
+
+        `mobileOpen` n'est vrai que sous `md` : les deux mises en page ne
+        montrent leur bouton de menu qu'à cette largeur. On rend donc une
+        FEUILLE, pleine largeur, à deux niveaux — voir `PanneauMobile`, qui
+        explique pourquoi le rail de 52 px n'a pas de sens sur 390 px.
+
+        La colonne de bureau reste montée en dessous (`md:` la révèle) : elle
+        n'est pas remplacée, elle est doublée d'une surface qui répond à la
+        même question autrement.
+      */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            key="nav-mobile"
+            data-coquille-mobile
+            initial={{ x: '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '-100%' }}
+            transition={TRANSITION}
+            className="fixed inset-y-0 left-0 z-50 w-full max-w-[420px] md:hidden"
+          >
+            <PanneauMobile
+              familles={familles}
+              epingles={epingles}
+              cheminCourant={cheminCourant}
+              compteurs={compteurs}
+              libelle={libelle}
+              onFermer={onClose}
+              onNavigate={onNavigate}
+              pied={pied}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <motion.aside
         data-coquille
         /*
@@ -319,9 +362,14 @@ export function BarreRail({
             'linear-gradient(180deg,#101010 0%,var(--color-sunken) 55%,#090909 100%)',
           boxShadow: 'inset -1px 0 0 rgba(255,255,255,.02)',
         }}
-        className={`fixed inset-y-0 left-0 z-50 flex h-full flex-shrink-0 flex-col overflow-hidden border-r border-[#1c1c1c] transition-transform duration-300 md:relative md:z-30 ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:translate-x-0`}
+        /*
+          `hidden md:flex` : sous `md`, la colonne n'existe pas. Elle glissait
+          jusqu'ici dans le tiroir, ce qui mettait un rail de 52 px et un
+          panneau de 184 sur un écran de 390. La feuille ci-dessus a pris ce
+          rôle ; laisser la colonne montée en plus ferait deux navigations
+          dans le DOM, dont une invisible que `check:coquille` compterait.
+        */
+        className="hidden h-full flex-shrink-0 flex-col overflow-hidden border-r border-[#1c1c1c] md:relative md:z-30 md:flex"
       >
         {enTete}
 

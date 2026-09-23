@@ -20,6 +20,18 @@ interface ImportMetaEnv {
    * Voir src/lib/publicUrl.ts.
    */
   readonly VITE_AMN_WEB_URL?: string;
+  /**
+   * LE RELAIS TURN — ce qui manque pour qu'un téléphone en données mobiles
+   * atteigne un poste en wifi. Voir src/lib/serveursIce.ts : sans lui, ICE
+   * n'a que des STUN, et un CGNAT d'opérateur (NAT symétrique) rend leur
+   * réponse inutilisable pour le pair d'en face.
+   *
+   * Les trois vont ensemble : une URL sans identifiants n'est pas annoncée au
+   * navigateur, parce qu'un TURN non authentifié refuse chaque allocation.
+   */
+  readonly VITE_AMN_TURN_URL?: string;
+  readonly VITE_AMN_TURN_USER?: string;
+  readonly VITE_AMN_TURN_PASS?: string;
   readonly VITE_AMN_API_OPERATOR_TOKEN?: string;
   readonly VITE_AMN_API_WEB_TOKEN?: string;
 }
