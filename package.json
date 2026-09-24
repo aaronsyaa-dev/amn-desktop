@@ -86,6 +86,7 @@
     "check:mobile": "node scripts/check-mobile.mjs",
     "check:xss": "node scripts/check-xss.mjs",
     "check:support": "node scripts/check-support.mjs",
+    "verite:garde": "node scripts/verite-garde.mjs",
     "captures:design": "node scripts/captures-design.mjs"
   },
   "keywords": [],

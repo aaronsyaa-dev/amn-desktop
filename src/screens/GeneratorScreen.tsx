@@ -905,41 +905,61 @@ function Choice({
 }
 
 /**
- * CE QUE LA GARDE FERA DE CETTE ORGANISATION — en pied de la pièce façonnée.
+ * CE QUE LA GARDE FERA DE CETTE ORGANISATION — la vérité, pas un compteur (24 septembre 2026).
  *
- * Les deux nombres se DÉDUISENT de la Salle, ils ne sont pas annoncés : les
- * gardes affectées sont celles qui tournent et qui ne gèlent personne (une
- * organisation neuve n'est gelée par aucune), et les passages par jour sont la
- * somme de leurs périodes ramenées à vingt-quatre heures. Une ronde regarde
- * TOUTES les organisations d'un coup : le nombre de passages est donc bien
- * celui que cette organisation recevra, pas une part d'un total.
+ * Avant : « 20 gardes affectées, 4 863 passages par jour, elles commencent à
+ * passer dès la création ». Les deux nombres étaient vrais au sens le plus
+ * étroit — 20 gardes tournent, et la somme de leurs fréquences fait 4 863 —
+ * et faux au sens où on les lit. Mesuré (scripts/verite-garde.mjs) : 46 % des
+ * rondes ne lisent rien, et sur 1 000 lignes de journal d'une journée, 987
+ * concernent AMN DevSec ; chaque cliente en reçoit une ou deux. Un passage
+ * n'est pas un travail.
+ *
+ * Ce bloc dit donc, par garde, ce qui regardera CETTE organisation dès sa
+ * création, et ce qui n'attend qu'un site enregistré dans le Parc. Les gardes
+ * de la plateforme (jetons, campagnes, erreurs du serveur, purge…) tournent
+ * pour tout le monde et ne sont pas comptées comme « la suivant ».
  */
+const LA_SUIVENT: Record<string, string> = {
+  'clientes.accueil': 'son arrivée (compte ouvert, espace prêt)',
+  'clientes.demandes': 'ses demandes et leurs délais',
+  'clientes.rapports': 'son rapport du mois',
+  'comptes.places': 'ses places au regard de sa formule',
+  'comptes.impayes': 'ses règlements en retard',
+  'produit.integrite': 'l’intégrité de ses comptes et de sa formule',
+  'registre.hygiene': 'l’hygiène de sa fiche (doublons, comptes jamais ouverts)',
+  'securite.escalade': 'les incidents de sécurité sur son compte que personne ne prend',
+};
 function CeQueLaGardeEnFera() {
-  const [agents, setAgents] = React.useState<{ actif: boolean; everyMs: number; geleOrgs: string[] }[] | null>(null);
+  const [agents, setAgents] = React.useState<{ key: string; actif: boolean; everyMs: number }[] | null>(null);
   React.useEffect(() => {
     let vivant = true;
-    void garde.salle().then((s) => { if (vivant) setAgents(s.agents); }).catch(() => { if (vivant) setAgents([]); });
+    void garde.salle().then((s) => { if (vivant) setAgents(s.agents as { key: string; actif: boolean; everyMs: number }[]); }).catch(() => { if (vivant) setAgents([]); });
     return () => { vivant = false; };
   }, []);
   if (agents === null) return null;
-  const affectees = agents.filter((a) => a.actif && a.everyMs > 0);
-  if (affectees.length === 0) return null;
-  const passages = affectees.reduce((n, a) => n + Math.round(86_400_000 / a.everyMs), 0);
+  const actifs = agents.filter((a) => a.actif && a.everyMs > 0);
+  if (actifs.length === 0) return null;
+  const suivent = actifs.filter((a) => a.key in LA_SUIVENT);
+  const sites = actifs.filter((a) => a.key.startsWith('sites.'));
   return (
-    <div className="mt-4 border border-border bg-sunken px-4 py-3.5">
-      <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-muted">Ce que la Garde en fera</p>
+    <div className="mt-4 border border-border bg-sunken px-4 py-3.5" data-garde-atelier>
+      <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-muted">Ce que la Garde regardera chez elle</p>
       <div className="mt-2.5 flex flex-wrap gap-6">
         <span>
-          <span className="block font-mono text-[19px] font-semibold tabular-nums tracking-tight text-text-primary">{affectees.length}</span>
-          <span className="mt-0.5 block text-[11.5px] text-text-secondary">gardes affectées</span>
+          <span className="block font-mono text-[19px] font-semibold tabular-nums tracking-tight text-text-primary">{suivent.length}</span>
+          <span className="mt-0.5 block text-[11.5px] text-text-secondary">gardes dès la création</span>
         </span>
         <span>
-          <span className="block font-mono text-[19px] font-semibold tabular-nums tracking-tight text-text-primary">{passages.toLocaleString('fr-FR')}</span>
-          <span className="mt-0.5 block text-[11.5px] text-text-secondary">passages par jour</span>
+          <span className="block font-mono text-[19px] font-semibold tabular-nums tracking-tight text-text-secondary">+ {sites.length}</span>
+          <span className="mt-0.5 block text-[11.5px] text-text-secondary">quand un site est enregistré</span>
         </span>
       </div>
+      <ul className="mt-2.5 flex flex-col gap-0.5 text-[11px] leading-snug text-text-secondary">
+        {suivent.map((a) => <li key={a.key}>· {LA_SUIVENT[a.key]}</li>)}
+      </ul>
       <p className="mt-2.5 text-[11px] leading-snug text-text-muted [text-wrap:pretty]">
-        Elles commencent à passer dès la création, sans réglage. Une garde se met en pause sur une organisation depuis son bureau, jamais depuis l’Atelier.
+        Ses sites web (disponibilité, certificats, battement) ne sont surveillés qu’une fois enregistrés dans le Parc. Ce qui est fait se lit dans son dossier, au fil du journal.
       </p>
     </div>
   );

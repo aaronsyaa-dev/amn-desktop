@@ -1,0 +1,50 @@
+
+LA GARDE, EN VÉRITÉ — 2026-09-24T21:13:16.225Z — http://127.0.0.1:8791, dernières 24 h
+
+Battement : actif · dernier il y a 13 s · 20 gardes · 0 en retard · serveur démarré il y a 18 min
+Dernière interruption : 2026-09-24T06:42:57.547Z → 2026-09-24T20:55:02.844Z (852 min)
+
+Passages promis par l'Atelier : 4 863 par jour (fréquences des gardes, toutes organisations confondues)
+Rondes réellement tenues : 818 en 24 h (plafond de 500 relevées par garde)
+  dont À VIDE (rien lu) : 378 (46 %)
+  éléments lus 8 951 · réglés seuls 58 · remontés à un humain 40
+
+garde                      rondes  à vide     lus  réglés  remontés
+securite.escalade             240       0    4212       0        27
+taches.emission               118       0    4032      12         0
+sites.disponibilite            48      10     342      38         0
+clientes.accueil               17       0     224       7         0
+comptes.places                  5       0      65       0         0
+produit.integrite               2       0      26       0         0
+registre.hygiene                2       0      26       0         9
+clientes.demandes              24       8      16       1         0
+sites.certificats               2       0       8       0         4
+clientes.rapports               5       5       0       0         0
+comptes.impayes                 5       5       0       0         0
+comptes.jetons                 48      48       0       0         0
+memoire.purge                   1       1       0       0         0
+produit.erreurs                17      17       0       0         0
+produit.mises-a-jour            1       1       0       0         0
+securite.campagnes             24      24       0       0         0
+sites.battement               236     236       0       0         0
+sites.dependances               1       1       0       0         0
+sites.rapports-hebdo            5       5       0       0         0
+sites.rondes-planifiees        17      17       0       0         0
+
+Journal : 1000+ (plafond) lignes en 24 h — POUR QUI :
+    987  AMN DevSec                     dont 945 simples mises à jour · securite.escalade:remontee-maj×846, securite.escalade:remontee×18, sites.disponibilite:remontee-maj×99, securite.escalade:collaboration×11
+      1  Fleurs de Lune                 dont 0 simples mises à jour · clientes.accueil:accueil×1
+      1  Fleurs de Lune                 dont 0 simples mises à jour · clientes.accueil:accueil×1
+      1  Fleurs de Lune                 dont 0 simples mises à jour · clientes.accueil:accueil×1
+      1  Syraagensy                     dont 1 simples mises à jour · registre.hygiene:remontee-maj×1
+      1  Syraagensy                     dont 1 simples mises à jour · registre.hygiene:remontee-maj×1
+      1  Studio Nord                    dont 1 simples mises à jour · registre.hygiene:remontee-maj×1
+      1  Maison Bertaux                 dont 1 simples mises à jour · registre.hygiene:remontee-maj×1
+      1  Les Halles                     dont 1 simples mises à jour · registre.hygiene:remontee-maj×1
+      1  Le Jardin d’Élise              dont 1 simples mises à jour · registre.hygiene:remontee-maj×1
+      1  Cabinet Arnoux                 dont 1 simples mises à jour · registre.hygiene:remontee-maj×1
+      1  Boulangerie Keller             dont 1 simples mises à jour · registre.hygiene:remontee-maj×1
+      1  Atelier Vermeil                dont 1 simples mises à jour · registre.hygiene:remontee-maj×1
+      1  (aucune organisation)          dont 0 simples mises à jour · capitaine:interruption×1
+
+Clientes sans AUCUNE ligne de journal en 24 h : 3 sur 15 — Lina — 4e B, Plomberie Marchetti, Groupe Vernet
