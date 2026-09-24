@@ -14,7 +14,7 @@ import {
   type TrackerTier,
   OrgChange,
 } from './shared/api';
-import type { SupportRequestForOperator, InputAlert, GardeAppel, GardeTrame } from './shared/api';
+import type { SupportRequestForOperator, InputAlert, GardeAppel, GardeTrame, SitePatch } from './shared/api';
 
 /**
  * La part exclusive du pont : les canaux IPC des produits d'AMN DevSec (parc
@@ -109,7 +109,7 @@ export const exclusivePreload: ExclusiveRemote = {
   registerSite: (name: string) => ipcRenderer.invoke(IPC.remoteRegisterSite, name),
   updateSite: (id: string, name: string) => ipcRenderer.invoke(IPC.remoteUpdateSite, { id, name }),
   deleteSite: (id: string) => ipcRenderer.invoke(IPC.remoteDeleteSite, id),
-  configureSite: (id: string, patch: { tier?: TrackerTier; url?: string | null }) =>
+  configureSite: (id: string, patch: SitePatch) =>
     ipcRenderer.invoke(IPC.remoteConfigureSite, { id, patch }),
   getSiteSummary: (id: string, hours?: number) =>
     ipcRenderer.invoke(IPC.remoteSiteSummary, { id, hours }),

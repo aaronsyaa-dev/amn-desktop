@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ScreenHeader } from '../components/ScreenHeader';
 import { BandeDesSites } from '../components/tour/BandeDesSites';
 import {
+  Building2,
   Check,
   ChevronDown,
   Copy,
@@ -27,6 +28,7 @@ import { useSiteRegistry, safeSiteHref, type SiteNote } from '../state/useSiteRe
 import { useProfiles } from '../state/ProfilesContext';
 import { bridge } from '../lib/bridge';
 import { ScanDetail } from '../components/scanner/ScanDetail';
+import { SiteCliente } from '../components/parc/SiteCliente';
 import { scoreColor } from '../lib/scanSeverity';
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
@@ -312,7 +314,7 @@ function EmptyRegistry({ onRegister }: { onRegister: () => void }) {
   );
 }
 
-type Panel = 'none' | 'discussion' | 'scan';
+type Panel = 'none' | 'discussion' | 'scan' | 'cliente';
 
 function SiteRow({
   site,
@@ -326,7 +328,7 @@ function SiteRow({
   onTogglePin: () => void;
 }) {
   const { openSite } = useSitePanel();
-  const { updateSite, deleteSite } = useRemoteSites();
+  const { updateSite, deleteSite, refresh } = useRemoteSites();
   const { scheduleDelete } = useUndo();
   const { notify } = useToast();
   const { setModules } = useTrackers();
@@ -437,6 +439,21 @@ function SiteRow({
 
           <button
             type="button"
+            onClick={() => toggle('cliente')}
+            aria-label="Cliente de ce site"
+            aria-pressed={panel === 'cliente'}
+            title={site.clientOrgId ? 'Cliente rattachée' : 'Rattacher à une cliente'}
+            data-rattache={site.clientOrgId ? 'oui' : 'non'}
+            className={`flex h-7 items-center gap-1 rounded px-1.5 transition-colors hover:bg-white/5 hover:text-text-primary ${
+              panel === 'cliente' ? 'bg-white/5 text-text-primary' : site.clientOrgId ? 'text-text-secondary' : 'text-text-muted'
+            }`}
+          >
+            <Building2 size={14} strokeWidth={1.9} />
+            {!site.clientOrgId && <span className="font-mono text-[10px]">?</span>}
+          </button>
+
+          <button
+            type="button"
             onClick={() => toggle('discussion')}
             aria-label="Discussion interne du site"
             title="Discussion"
@@ -489,6 +506,7 @@ function SiteRow({
       </div>
 
       {panel === 'discussion' && <SiteDiscussion siteId={site.id} />}
+      {panel === 'cliente' && <SiteCliente siteId={site.id} clientOrgId={site.clientOrgId ?? null} onChange={refresh} />}
       {panel === 'scan' && scan && (
         <div className="border-t border-border bg-bg/40 p-3 sm:p-4">
           <ScanDetail scan={scan} />

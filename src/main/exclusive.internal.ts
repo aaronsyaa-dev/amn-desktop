@@ -63,7 +63,7 @@ import { writeScanReportFile } from './scanReports';
 import { getWatch, warmWatch } from './watch';
 import { ollamaChat, ollamaStatus } from './ollama';
 import { whisperStatus, whisperTranscrire, WhisperError, lireUrlPersistee, ecrireUrlPersistee } from './whisper';
-import type { SupportRequestForOperator, WelcomeLinkIssued, AdminWelcomeLink, InputAlert, GardeAppel, GardeTrame, WhisperTranscrireResultat } from '../shared/api';
+import type { SitePatch, SupportRequestForOperator, WelcomeLinkIssued, AdminWelcomeLink, InputAlert, GardeAppel, GardeTrame, WhisperTranscrireResultat } from '../shared/api';
 
 /**
  * Tout ce qu'amn-api expose et qui n'appartient qu'à AMN DevSec : le parc de
@@ -297,7 +297,7 @@ const exclusiveApi = {
     return site;
   },
 
-  async configureSite(id: string, patch: { tier?: TrackerTier; url?: string | null }): Promise<RemoteSite> {
+  async configureSite(id: string, patch: SitePatch): Promise<RemoteSite> {
     const { site } = await apiFetch<{ site: RemoteSite }>(`/v1/sites/${id}`, {
       method: 'PUT',
       body: JSON.stringify(patch),
@@ -814,7 +814,7 @@ export function registerExclusiveIpc(
   ipcMain.handle(IPC.remoteDeleteSite, (_event, id: string) => exclusiveApi.deleteSite(id));
   ipcMain.handle(
     IPC.remoteConfigureSite,
-    (_event, payload: { id: string; patch: { tier?: TrackerTier; url?: string | null } }) =>
+    (_event, payload: { id: string; patch: SitePatch }) =>
       exclusiveApi.configureSite(payload.id, payload.patch),
   );
   ipcMain.handle(

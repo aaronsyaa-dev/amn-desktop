@@ -1451,6 +1451,20 @@ export interface RemoteSite {
   /** Public URL, used by the Suite tier's independent availability probe. */
   url?: string | null;
   blockOnRateLimit?: boolean;
+  /**
+   * La cliente dont c'est le site (édition interne). Le site reste à AMN
+   * DevSec — sa clé, ses événements, ses incidents — ; ce rattachement ne sert
+   * qu'à ranger le travail de la Garde chez la bonne cliente. `null` : pas
+   * encore rattaché. Absent d'un amn-api plus ancien.
+   */
+  clientOrgId?: string | null;
+}
+
+/** Ce qu'une modification de site peut changer sans toucher à son nom. `clientOrgId: null` détache. */
+export interface SitePatch {
+  tier?: TrackerTier;
+  url?: string | null;
+  clientOrgId?: string | null;
 }
 
 /** One hour of the traffic curve shown in a site's control desk. */
@@ -2970,7 +2984,7 @@ export interface AmnBridge {
     /** Renames a registered site. */
     updateSite(id: string, name: string): Promise<RemoteSite>;
     /** Changes a site's supervision tier / probe URL without touching its name. */
-    configureSite(id: string, patch: { tier?: TrackerTier; url?: string | null }): Promise<RemoteSite>;
+    configureSite(id: string, patch: SitePatch): Promise<RemoteSite>;
     /** Traffic curve + alert history + security score for a site's control desk. */
     getSiteSummary(id: string, hours?: number): Promise<SiteSummary>;
     /** Structured weekly digest, on demand (used to generate a report). */

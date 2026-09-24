@@ -1,4 +1,4 @@
-import type { Incident, IncidentEscalation, IncidentDetail, IncidentMetrics, MonthlyReport, AlertSuppression, MaintenanceWindow, IncidentResolution, IncidentStatus, AdminOrganization, AdminOrgUser, CreateOrganizationInput, CreateOrganizationResult, OrgAccessEntry, OrgIdentity, OrgInvitationResult, OrgStatus, SupportContext, SupportSession, TempPasswordResult, AmnBridge, ComplyProgress, ProductRegression, RemoteEventPush, ScanProgress, ComplyCheck, ComplyReferentialCatalog, CreateScheduleInput, OrgOverview, ProductSchedule, RegisterSiteResult, RemoteEvent, RemoteSite, Scan, ScanTier, SiteBadge, SiteStatusPage, SiteDigest, SiteSummary, SslStatus, TrackerTier, ModuleRequestForOperator, OrgPulse, DownloadLink, BusinessRelease, SupervisionState, ParcInsights, OrgPlan, SupportRequestForOperator, WelcomeLinkIssued, AdminWelcomeLink, InputAlert, OrgChange, ParcPageQuery, ParcPage, ParcSummary, ModuleLock, BulkInput, BulkResult, FleetIncidentsQuery, FleetIncidentsPage, SocSummary, GardeAppel, GardeTrame } from '../shared/api';
+import type { Incident, IncidentEscalation, IncidentDetail, IncidentMetrics, MonthlyReport, AlertSuppression, MaintenanceWindow, IncidentResolution, IncidentStatus, AdminOrganization, AdminOrgUser, CreateOrganizationInput, CreateOrganizationResult, OrgAccessEntry, OrgIdentity, OrgInvitationResult, OrgStatus, SupportContext, SupportSession, TempPasswordResult, AmnBridge, ComplyProgress, ProductRegression, RemoteEventPush, ScanProgress, ComplyCheck, ComplyReferentialCatalog, CreateScheduleInput, OrgOverview, ProductSchedule, RegisterSiteResult, RemoteEvent, RemoteSite, SitePatch, Scan, ScanTier, SiteBadge, SiteStatusPage, SiteDigest, SiteSummary, SslStatus, TrackerTier, ModuleRequestForOperator, OrgPulse, DownloadLink, BusinessRelease, SupervisionState, ParcInsights, OrgPlan, SupportRequestForOperator, WelcomeLinkIssued, AdminWelcomeLink, InputAlert, OrgChange, ParcPageQuery, ParcPage, ParcSummary, ModuleLock, BulkInput, BulkResult, FleetIncidentsQuery, FleetIncidentsPage, SocSummary, GardeAppel, GardeTrame } from '../shared/api';
 
 /**
  * Part exclusive du pont NAVIGATEUR — édition interne.
@@ -141,7 +141,7 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
   async deleteSite(id: string): Promise<void> {
     await ctx.apiFetch<{ ok: boolean }>(`/v1/sites/${id}`, { method: 'DELETE' });
   },
-  async configureSite(id: string, patch: { tier?: TrackerTier; url?: string | null }): Promise<RemoteSite> {
+  async configureSite(id: string, patch: SitePatch): Promise<RemoteSite> {
     // amn-api applies a partial patch, so omitting `name` leaves it untouched.
     const { site } = await ctx.apiFetch<{ site: RemoteSite }>(`/v1/sites/${id}`, {
       method: 'PUT',
