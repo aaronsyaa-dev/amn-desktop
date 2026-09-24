@@ -639,6 +639,48 @@ chantier. Le compte Vernet est riche mais **simulé par moi** : les vraies
 questions d'un groupe (la sous-traitance, les marchés publics, la paie de
 sept personnes) n'y sont pas — Harun doit faire jouer un vrai patron (§8).
 
+### 2.6 Casser pour corriger (chantier 7)
+
+**Côté serveur** (`amn-api/test/casser-vision.test.js`, six tests, suite
+complète 482/482) — ce que le mandat nomme, appliqué au Hall :
+
+| Coup porté | Ce qui s'est passé | Corrigé |
+|---|---|---|
+| Suspendre une organisation qui parle dans le Hall | ses messages restaient visibles pour les autres, elle comptait encore parmi les participantes | la lecture joint sur `organizations.status = 'active'` : suspendue, elle disparaît ; réactivée, elle revient |
+| Supprimer une organisation | rien ne reste (`ON DELETE CASCADE`), même pour la modération | — (déjà juste) |
+| Redémarrer le serveur sur le même fichier | ce qui a été dit reste dit | — |
+| Vingt messages et cinq consentements simultanés | jamais un 500, vingt acceptés, aucun doublon | — |
+| Deux cent soixante messages | les cent derniers en 156 ms, mais **dans un ordre instable** quand plusieurs partagent la même milliseconde | `ORDER BY created_at DESC, rowid DESC` |
+| Emoji, arabe, sauts de ligne, six cents caractères exacts, nom de soixante | stockés tels quels, coupés à la borne | — |
+
+**Côté poste** (`scratchpad/casser-vision.mjs`, sept scénarios dans le
+navigateur, captures `docs/captures/vision-2026-09-24/casser/`) :
+
+| Coup porté | Ce qui s'est passé | Corrigé |
+|---|---|---|
+| Couper le réseau au milieu d'un message du Hall | le refus est dit en français, le brouillon reste dans la zone ; le lien revenu, le même message part et la zone se vide | — |
+| Tuer le serveur, le Hall ouvert | **l'écran restait nu sous son titre** (relevés « … » et « — ») pendant les reprises du pont, puis revenait seul une fois le serveur relancé | pendant l'attente hors ligne, l'écran dit « Le Hall a besoin du lien. Il reviendra avec lui. » |
+| Retirer des cibles du guide pendant la visite | la visite passe les cibles absentes et va au bout, aucune erreur de page | — |
+| Refuser le stockage local (navigation privée stricte) | les interrupteurs des extensions s'appliquent sans erreur de page | — |
+| Refêter une première fois dans le même navigateur | une fois, pas deux | — |
+| Onze messages, rechargement | 3 s, la liste défile | — |
+
+**Un défaut trouvé par accident.** Le contrôle XSS interne et le contrôle
+mobile ont tourné en même temps : la tâche hostile de l'un (« `<img
+src=x…` », sans espace) a fait déborder l'autre de 17 px à 360 px dans le
+détail d'une tâche — une URL collée en titre ferait pareil. Le bouton
+coupe désormais son titre où il faut (`[overflow-wrap:anywhere]`).
+
+**Ce que je n'ai pas cassé, et pourquoi.** Le mode support, les liens
+publics, le Coffre-fort, les exports, la file hors ligne, les places et les
+formules ont déjà leurs suites (`casser.test.js`, `isolation`,
+`role-hardening`, `support`, `public`, `links`, `formules`,
+`guest-quota`, `check:reprise`, `check:resilience`, `check:persistence`),
+toutes vertes ; les rejouer sans les enrichir n'aurait rien prouvé de plus.
+J'ai enrichi là où j'avais ajouté. La concurrence sur les *collections* (deux
+postes qui écrivent la même fiche hors ligne) est couverte par la suite
+« fusion d'écriture concurrente » du 10 septembre — pas rejouée ici.
+
 ## 3. Les idées, classées par impact
 
 _(se remplit au fil du chantier)_

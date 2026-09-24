@@ -1,7 +1,7 @@
 From a1421e0a5b87c3d29500abe61b001d0613d47ebe Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Thu, 24 Sep 2026 04:58:59 +0000
-Subject: [PATCH 2/5] Le Hall : le nom d'affichage ne se fait pas passer pour
+Subject: [PATCH 2/6] Le Hall : le nom d'affichage ne se fait pas passer pour
  le prestataire, le consentement a un frein
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8

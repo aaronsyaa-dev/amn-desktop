@@ -1,7 +1,7 @@
 From ef17a9ac1bf13d88afb939b7a5bb42be641bfcfd Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Thu, 24 Sep 2026 05:02:37 +0000
-Subject: [PATCH 4/5] =?UTF-8?q?Freins=20:=20la=20remise=20=C3=A0=20z=C3=A9?=
+Subject: [PATCH 4/6] =?UTF-8?q?Freins=20:=20la=20remise=20=C3=A0=20z=C3=A9?=
  =?UTF-8?q?ro=20en=20test=20vide=20chaque=20registre,=20pas=20la=20carte?=
  =?UTF-8?q?=20qui=20les=20contient?=
 MIME-Version: 1.0

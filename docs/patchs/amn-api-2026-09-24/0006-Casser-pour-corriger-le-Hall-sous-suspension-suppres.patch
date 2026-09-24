@@ -1,0 +1,279 @@
+From 355cde76ba24be73f27c64306ee67cdaed619669 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 24 Sep 2026 05:39:03 +0000
+Subject: [PATCH 6/6] =?UTF-8?q?Casser=20pour=20corriger=20:=20le=20Hall=20?=
+ =?UTF-8?q?sous=20suspension,=20suppression,=20red=C3=A9marrage,=20salves?=
+ =?UTF-8?q?=20et=20volume?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Une organisation suspendue disparaît du Hall pour les autres (messages,
+compte de participantes) et revient réactivée ; une organisation supprimée
+n'y laisse rien ; l'ordre des cent derniers messages est stable dans la
+même milliseconde (created_at puis rowid). Six tests dans
+test/casser-vision.test.js : suspension, suppression, redémarrage sur le
+même fichier, vingt messages et cinq consentements simultanés, deux cent
+soixante messages lus en moins d'une seconde, emoji/arabe/sauts de ligne/
+six cents caractères/nom de soixante.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01BEf9qY21FAUuZ4ogxRY3s2
+---
+ src/db/postgres.js         |   5 +-
+ src/db/sqlite.js           |   7 +-
+ test/casser-vision.test.js | 181 +++++++++++++++++++++++++++++++++++++
+ 3 files changed, 188 insertions(+), 5 deletions(-)
+ create mode 100644 test/casser-vision.test.js
+
+diff --git a/src/db/postgres.js b/src/db/postgres.js
+index ed2a342..f8d3aa2 100644
+--- a/src/db/postgres.js
++++ b/src/db/postgres.js
+@@ -2057,14 +2057,14 @@ export function createPostgresDb(connectionString) {
+     },
+ 
+     async countHallParticipants() {
+-      const { rows } = await pool.query('SELECT count(*)::int AS n FROM hall_participation WHERE left_at IS NULL');
++      const { rows } = await pool.query("SELECT count(*)::int AS n FROM hall_participation p JOIN organizations o ON o.id = p.org_id AND o.status = 'active' WHERE p.left_at IS NULL");
+       return Number(rows[0]?.n ?? 0);
+     },
+ 
+     async listHallParticipants() {
+       const { rows } = await pool.query(
+         `SELECT p.*, o.name AS org_name FROM hall_participation p
+-           LEFT JOIN organizations o ON o.id = p.org_id
++           JOIN organizations o ON o.id = p.org_id AND o.status = 'active'
+           WHERE p.left_at IS NULL ORDER BY p.joined_at ASC`,
+       );
+       return rows.map((row) => ({ ...mapHallParticipation(row), orgName: row.org_name ?? null }));
+@@ -2083,6 +2083,7 @@ export function createPostgresDb(connectionString) {
+       const { rows } = await pool.query(
+         `SELECT m.*, p.display_name AS org_display_name FROM hall_messages m
+            JOIN hall_participation p ON p.org_id = m.org_id AND p.left_at IS NULL
++           JOIN organizations o ON o.id = m.org_id AND o.status = 'active'
+           WHERE m.hidden_at IS NULL
+           ORDER BY m.created_at DESC LIMIT $1`,
+         [limit],
+diff --git a/src/db/sqlite.js b/src/db/sqlite.js
+index 32eff0a..7b0c401 100644
+--- a/src/db/sqlite.js
++++ b/src/db/sqlite.js
+@@ -3075,14 +3075,14 @@ export function createSqliteDb(filePath) {
+     },
+ 
+     async countHallParticipants() {
+-      return Number(db.prepare('SELECT count(*) AS n FROM hall_participation WHERE left_at IS NULL').get().n);
++      return Number(db.prepare("SELECT count(*) AS n FROM hall_participation p JOIN organizations o ON o.id = p.org_id AND o.status = 'active' WHERE p.left_at IS NULL").get().n);
+     },
+ 
+     async listHallParticipants() {
+       return db
+         .prepare(
+           `SELECT p.*, o.name AS org_name FROM hall_participation p
+-             LEFT JOIN organizations o ON o.id = p.org_id
++             JOIN organizations o ON o.id = p.org_id AND o.status = 'active'
+             WHERE p.left_at IS NULL ORDER BY p.joined_at ASC`,
+         )
+         .all()
+@@ -3105,8 +3105,9 @@ export function createSqliteDb(filePath) {
+         .prepare(
+           `SELECT m.*, p.display_name AS org_display_name FROM hall_messages m
+              JOIN hall_participation p ON p.org_id = m.org_id AND p.left_at IS NULL
++             JOIN organizations o ON o.id = m.org_id AND o.status = 'active'
+             WHERE m.hidden_at IS NULL
+-            ORDER BY m.created_at DESC LIMIT ?`,
++            ORDER BY m.created_at DESC, m.rowid DESC LIMIT ?`,
+         )
+         .all(limit)
+         .map(mapHallMessage);
+diff --git a/test/casser-vision.test.js b/test/casser-vision.test.js
+new file mode 100644
+index 0000000..b1cc33b
+--- /dev/null
++++ b/test/casser-vision.test.js
+@@ -0,0 +1,181 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import http from 'node:http';
++import fs from 'node:fs';
++import os from 'node:os';
++import path from 'node:path';
++
++process.env.NODE_ENV = 'test';
++process.env.OPERATOR_TOKEN = 'test-operator-token';
++
++const { createApp } = await import('../src/server.js');
++const { createSqliteDb } = await import('../src/db/sqlite.js');
++const { AMN_ORG_ID } = await import('../src/db/tenancy.js');
++const { hashPassword } = await import('../src/lib/password.js');
++const { _resetRateLimits } = await import('../src/middleware/rateLimit.js');
++
++/**
++ * CASSER POUR CORRIGER — ce que la vision cliente a ajouté, sous les coups
++ * que la mandat nomme : suspension et suppression d'une organisation,
++ * redémarrage du serveur, écritures simultanées, volumes, cas limites.
++ */
++const MDP = 'motdepasse-solide';
++async function decor(t, { fichier = null } = {}) {
++  _resetRateLimits();
++  const db = createSqliteDb(fichier ?? ':memory:');
++  await db.init();
++  const app = await createApp({ db });
++  const server = http.createServer(app);
++  await new Promise((resolve) => server.listen(0, resolve));
++  const { port } = server.address();
++  const fermer = async () => {
++    server.closeAllConnections?.();
++    await new Promise((resolve) => server.close(resolve));
++    await db.close();
++  };
++  t.after(async () => { try { await fermer(); } catch { /* déjà fermé */ } });
++  const base = `http://127.0.0.1:${port}`;
++  const hash = await hashPassword(MDP);
++  const compte = (orgId, email, role) => db.createUser({ orgId, email, passwordHash: hash, role, status: 'active' });
++  await compte(AMN_ORG_ID, 'aaron@amn-test.local', 'owner');
++  const a = await db.createOrganization({ name: 'Cliente A', plan: 'business_standard' });
++  const b = await db.createOrganization({ name: 'Cliente B', plan: 'business_standard' });
++  await compte(a.id, 'nadia@a.test', 'owner');
++  await compte(b.id, 'lea@b.test', 'owner');
++  const login = async (email) => {
++    const r = await fetch(`${base}/v1/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: MDP }) });
++    assert.equal(r.status, 200, `connexion ${email}`);
++    return (await r.json()).token;
++  };
++  const api = (token) => async (p, init = {}) => {
++    const r = await fetch(`${base}${p}`, { ...init, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(init.headers ?? {}) } });
++    let body = null;
++    try { body = await r.json(); } catch { body = null; }
++    return { status: r.status, body };
++  };
++  return { db, api, login, a, b, base, fermer };
++}
++const json = (o) => ({ method: 'PUT', body: JSON.stringify(o) });
++const post = (o) => ({ method: 'POST', body: JSON.stringify(o) });
++
++test('une organisation suspendue disparaît du Hall pour les autres ; réactivée, elle revient', async (t) => {
++  const { api, login, a } = await decor(t);
++  const nadia = api(await login('nadia@a.test'));
++  const lea = api(await login('lea@b.test'));
++  const aaron = api(await login('aaron@amn-test.local'));
++  await nadia('/v1/hall/participation', json({ participe: true, displayName: 'Syraagensy' }));
++  await lea('/v1/hall/participation', json({ participe: true }));
++  await nadia('/v1/hall/messages', post({ body: 'Avant la suspension.' }));
++  assert.equal((await lea('/v1/hall/messages')).body.messages.length, 1);
++  assert.equal((await lea('/v1/hall/participation')).body.participants, 2);
++
++  assert.equal((await aaron(`/v1/admin/organizations/${a.id}/status`, json({ status: 'suspended' }))).status, 200);
++  assert.equal((await lea('/v1/hall/messages')).body.messages.length, 0, 'suspendue : plus rien d’elle');
++  assert.equal((await lea('/v1/hall/participation')).body.participants, 1);
++  const suspendue = await nadia('/v1/hall/messages');
++  assert.ok(suspendue.status === 401 || suspendue.status === 403, `sa session ne parle plus : ${suspendue.status}`);
++
++  assert.equal((await aaron(`/v1/admin/organizations/${a.id}/status`, json({ status: 'active' }))).status, 200);
++  assert.equal((await lea('/v1/hall/messages')).body.messages.length, 1, 'réactivée : ses messages reviennent');
++});
++
++test('une organisation supprimée ne laisse rien dans le Hall', async (t) => {
++  const { api, login, a } = await decor(t);
++  const nadia = api(await login('nadia@a.test'));
++  const lea = api(await login('lea@b.test'));
++  const aaron = api(await login('aaron@amn-test.local'));
++  await nadia('/v1/hall/participation', json({ participe: true, displayName: 'Syraagensy' }));
++  await lea('/v1/hall/participation', json({ participe: true }));
++  await nadia('/v1/hall/messages', post({ body: 'Je vais disparaître.' }));
++  const suppression = await aaron(`/v1/admin/organizations/${a.id}`, { method: 'DELETE', body: JSON.stringify({ confirm: 'Cliente A', confirmName: 'Cliente A', name: 'Cliente A' }) });
++  assert.ok([200, 204].includes(suppression.status), `suppression : ${suppression.status} ${JSON.stringify(suppression.body)}`);
++  assert.equal((await lea('/v1/hall/messages')).body.messages.length, 0);
++  assert.equal((await lea('/v1/hall/participation')).body.participants, 1);
++  const tout = await aaron('/v1/admin/hall/messages');
++  assert.equal(tout.body.messages.length, 0, 'même pour la modération : la ligne est partie avec l’organisation');
++});
++
++test('le Hall survit à un redémarrage du serveur : ce qui a été dit reste dit', async (t) => {
++  const dossier = fs.mkdtempSync(path.join(os.tmpdir(), 'amn-hall-'));
++  const fichier = path.join(dossier, 'hall.db');
++  const premier = await decor(t, { fichier });
++  const nadia = premier.api(await premier.login('nadia@a.test'));
++  await nadia('/v1/hall/participation', json({ participe: true, displayName: 'Syraagensy' }));
++  await nadia('/v1/hall/messages', post({ body: 'Écrit avant la coupure.' }));
++  await premier.fermer();
++
++  /* Le serveur repart sur le même fichier : mêmes comptes, même Hall. */
++  const db = createSqliteDb(fichier);
++  await db.init();
++  const app = await createApp({ db });
++  const server = http.createServer(app);
++  await new Promise((resolve) => server.listen(0, resolve));
++  t.after(async () => { server.closeAllConnections?.(); await new Promise((r) => server.close(r)); await db.close(); fs.rmSync(dossier, { recursive: true, force: true }); });
++  const base = `http://127.0.0.1:${server.address().port}`;
++  const r = await fetch(`${base}/v1/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'nadia@a.test', password: MDP }) });
++  assert.equal(r.status, 200);
++  const { token } = await r.json();
++  const relu = await fetch(`${base}/v1/hall/messages`, { headers: { Authorization: `Bearer ${token}` } });
++  assert.equal(relu.status, 200);
++  const corps = await relu.json();
++  assert.equal(corps.messages.length, 1);
++  assert.equal(corps.messages[0].body, 'Écrit avant la coupure.');
++});
++
++test('écritures simultanées : vingt messages d’un coup, deux consentements croisés — jamais un 500, jamais un doublon', async (t) => {
++  const { api, login } = await decor(t);
++  const nadia = api(await login('nadia@a.test'));
++  const lea = api(await login('lea@b.test'));
++  const croises = await Promise.all([
++    nadia('/v1/hall/participation', json({ participe: true, displayName: 'Syraagensy' })),
++    lea('/v1/hall/participation', json({ participe: true })),
++    nadia('/v1/hall/participation', json({ participe: true, displayName: 'Syraagensy' })),
++    lea('/v1/hall/participation', json({ participe: false })),
++    lea('/v1/hall/participation', json({ participe: true })),
++  ]);
++  for (const r of croises) assert.ok(r.status < 500, `consentement : ${r.status}`);
++  /* Dix par personne par dix minutes : on envoie dix de chaque côté, en même temps. */
++  const salve = await Promise.all([
++    ...Array.from({ length: 10 }, (_, i) => nadia('/v1/hall/messages', post({ body: `Nadia ${i}` }))),
++    ...Array.from({ length: 10 }, (_, i) => lea('/v1/hall/messages', post({ body: `Léa ${i}` }))),
++  ]);
++  for (const r of salve) assert.ok(r.status < 500, `message : ${r.status}`);
++  const acceptes = salve.filter((r) => r.status === 201).length;
++  assert.equal(acceptes, 20);
++  const lus = (await nadia('/v1/hall/messages')).body.messages;
++  assert.equal(lus.length, 20);
++  assert.equal(new Set(lus.map((m) => m.id)).size, 20, 'aucun doublon');
++});
++
++test('volume : au-delà de cent messages, on lit les cent derniers, dans l’ordre, en moins d’une seconde', async (t) => {
++  const { db, api, login, a, b } = await decor(t);
++  const nadia = api(await login('nadia@a.test'));
++  await nadia('/v1/hall/participation', json({ participe: true, displayName: 'Syraagensy' }));
++  await db.setHallParticipation(b.id, { participe: true, displayName: 'Cabinet B', byEmail: 'lea@b.test' });
++  /* Par la base, pour passer sous le frein : le frein protège le serveur, pas le test. */
++  for (let i = 0; i < 260; i++) await db.createHallMessage({ orgId: i % 2 ? a.id : b.id, authorUserId: null, signature: '', body: `n° ${i}` });
++  const debut = Date.now();
++  const lus = await nadia('/v1/hall/messages');
++  const duree = Date.now() - debut;
++  assert.equal(lus.status, 200);
++  assert.equal(lus.body.messages.length, 100);
++  assert.ok(duree < 1000, `lecture en ${duree} ms`);
++  const numeros = lus.body.messages.map((m) => Number(m.body.replace('n° ', '')));
++  assert.deepEqual(numeros, Array.from({ length: 100 }, (_, i) => 160 + i), 'les cent derniers, du plus ancien au plus récent');
++});
++
++test('cas limites : emoji, arabe, sauts de ligne, six cents caractères exacts, signature vide, nom d’affichage de soixante caractères', async (t) => {
++  const { api, login } = await decor(t);
++  const nadia = api(await login('nadia@a.test'));
++  const nom = 'A'.repeat(60);
++  const p = await nadia('/v1/hall/participation', json({ participe: true, displayName: nom + 'BBB' }));
++  assert.equal(p.body.participation.displayName, nom, 'coupé à soixante');
++  for (const body of ['🌸🌷 Bouquet 🍾', 'مرحبا بالجميع', 'ligne 1\nligne 2\n\nligne 4', 'x'.repeat(600)]) {
++    const m = await nadia('/v1/hall/messages', post({ body, signature: '' }));
++    assert.equal(m.status, 201, body.slice(0, 20));
++    assert.equal(m.body.message.body, body);
++    assert.equal(m.body.message.signature, '');
++  }
++  const lus = await nadia('/v1/hall/messages');
++  assert.equal(lus.body.messages.length, 4);
++});
+-- 
+2.43.0
+

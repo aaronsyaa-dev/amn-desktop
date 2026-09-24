@@ -440,9 +440,10 @@ export function TasksScreen() {
                 <ul className="mt-4 flex flex-wrap gap-2">
                   {sansPersonne.slice(0, 6).map((t) => (
                     <li key={t.id}>
-                      <button type="button" onClick={() => setOpenTaskId(t.id)} className="input-focus flex min-h-11 items-center gap-2 border border-border-strong px-3 text-sm text-text-primary hover:bg-surface-hover md:min-h-0 md:py-2">
+                      <button type="button" onClick={() => setOpenTaskId(t.id)} className="input-focus flex min-h-11 min-w-0 max-w-full items-center gap-2 border border-border-strong px-3 text-left text-sm text-text-primary hover:bg-surface-hover md:min-h-0 md:py-2">
                         <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${priorityMeta(t.priority).dot}`} aria-hidden />
-                        {t.title}
+                        {/* Un titre sans espace (une URL collée) ne pousse pas le bouton hors de l'écran à 360 px. */}
+                        <span className="min-w-0 [overflow-wrap:anywhere]">{t.title}</span>
                       </button>
                     </li>
                   ))}

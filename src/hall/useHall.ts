@@ -88,5 +88,5 @@ export function useHall() {
 
   const signaler = useCallback(async (id: string) => bridge().remote.hall.signaler(id), []);
 
-  return { etat, messages, erreur, chargement, recharger, participer, envoyer, signaler };
+  return { etat, messages, erreur, chargement, connectionStatus, recharger, participer, envoyer, signaler };
 }

@@ -25,7 +25,7 @@ const BODY_MAX = 600;
 export function HallScreen() {
   const { t } = useLangue();
   const { user, org, role } = useAuth();
-  const { etat, messages, erreur, chargement, participer, envoyer, signaler } = useHall();
+  const { etat, messages, erreur, chargement, connectionStatus, participer, envoyer, signaler } = useHall();
   const peutEngager = isAdminRole(role);
   const peutEcrire = isAdminRole(role) || role === 'member';
   const [nom, setNom] = useState('');
@@ -88,7 +88,13 @@ export function HallScreen() {
     <section className="flex flex-col">
       <ScreenHeader eyebrow={t('hall.eyebrow')} title={t('hall.titre')} description={t('hall.description')} stats={stats} />
 
-      {erreur && !etat && (
+      {/*
+        Sans lien, l'écran le DIT — pendant l'attente aussi. Le pont rejoue les
+        lectures quand le serveur redémarre (« reconnexion en cours »), et
+        pendant ces secondes-là un écran qui n'affiche que son en-tête a l'air
+        cassé. Mesuré serveur coupé (casser-vision) : rien sous le titre.
+      */}
+      {!etat && (erreur || (chargement && connectionStatus !== 'online')) && (
         <p className="panel mt-6 p-4 text-[13px] text-text-secondary">{t('hall.sansLien')}</p>
       )}
 
