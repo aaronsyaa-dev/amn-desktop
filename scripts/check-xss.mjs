@@ -89,7 +89,7 @@ try {
   if (role === 'owner' || role === 'admin') {
     const etat = await api(token, '/v1/hall/participation');
     hallEtaitDedans = Boolean(etat.body?.participation?.participe);
-    const p = await api(token, '/v1/hall/participation', { method: 'PUT', body: JSON.stringify({ participe: true, displayName: `Org ${HOSTILES.img}` }) });
+    const p = await api(token, '/v1/hall/participation', { method: 'PUT', body: JSON.stringify({ participe: true, displayName: `Org ${EMAIL.split('@')[0]} ${HOSTILES.img}` }) });
     if (p.status === 200) {
       const m = await api(token, '/v1/hall/messages', { method: 'POST', body: JSON.stringify({ body: TOUT, signature: HOSTILES.svg }) });
       if (m.status === 201) hallJoue = true;

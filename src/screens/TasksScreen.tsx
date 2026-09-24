@@ -1011,7 +1011,7 @@ function TaskCard({
             className={`mt-1 h-2 w-2 flex-shrink-0 rounded-full ${prio.dot}`}
             title={`Priorité ${prio.label.toLowerCase()}`}
           />
-          <span className="text-sm font-medium leading-snug text-text-primary hover:underline">{task.title}</span>
+          <span className="min-w-0 text-sm font-medium leading-snug text-text-primary [overflow-wrap:anywhere] hover:underline">{task.title}</span>
         </button>
         <button
           type="button"

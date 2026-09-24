@@ -681,26 +681,394 @@ J'ai enrichi là où j'avais ajouté. La concurrence sur les *collections* (deux
 postes qui écrivent la même fiche hors ligne) est couverte par la suite
 « fusion d'écriture concurrente » du 10 septembre — pas rejouée ici.
 
+### 2.7 Les cinq parcours — après
+
+Le même exercice qu'en §1, rejoué sur les bundles finaux (captures dans
+`docs/captures/vision-2026-09-24/apres/`, `vernet/`, `casser/`).
+
+**Lina, 14 ans.** À la première ouverture, une porte en quatre choix (« Je
+suis élève ou étudiant·e ») ; sa barre se range seule (Accueil, Tâches,
+Agenda, Projets, Notes épinglés ; devis, factures, commandes allégés), le
+panneau liste les familles par leur nom, l'Accueil « élève » se pose, la
+visite guidée montre huit endroits avec un curseur qui glisse, puis trois
+premiers pas concrets qui se cochent tout seuls (« Noter un premier devoir
+dans Tâches » — coché dès la première tâche). Quand elle termine sa première
+tâche : « Première tâche terminée. La liste a commencé à descendre. Ça se
+voit. » Elle est seule dans son organisation ; l'Accueil le dit et lui ouvre
+le Hall. **Reste :** le Hall est un lieu d'adultes qui parlent devis et
+fourreaux — une collégienne n'y a rien à faire, et rien ne l'en protège
+(§3, §7).
+
+**Marco, plombier seul.** « Je travaille seul·e » : Clients, Devis, Agenda,
+Interventions en tête, l'Accueil « artisan », les premiers pas « Entrer un
+premier client », « Faire un premier devis ». Sur son téléphone (390 px) la
+visite tient, la carte se pose en haut quand la cible est en bas, la barre
+du pouce est nommée. Il rejoint le Hall d'un geste, y lit la question d'une
+agence sur un modèle de devis, y répond ; il la signale s'il faut. Sans
+réseau, son message reste dans la zone et part au retour du lien. **Reste :**
+ses tâches n'ont pas de date, seulement une priorité — pour un homme seul
+qui jongle avec dix chantiers, c'est la question ouverte du produit (§3).
+
+**Nadia, Syraagensy.** « Une petite équipe » : Tâches, Agenda, Clients,
+Facturation, Équipe. La présence sur l'Accueil dit qui est là (le point vert
+sur l'avatar) ou combien sont dans l'équipe, et « 2 invitations en attente »
+tant que ses collègues n'ont pas ouvert le lien. Les teintes disent dans
+quelle famille elle est ; elle les éteint d'un interrupteur si elle les
+trouve inutiles. Le Hall répond à « on s'y sent seul, coupé des autres » :
+elle y parle sous le nom « Syraagensy », personne ne voit son adresse ni ses
+données, et elle en sort d'un geste. **Reste :** la « ludicité » qu'elle
+demandait est une affaire d'écrans vides et d'Accueils — le travail de
+Claude Design (§5) — pas de treize points de couleur.
+
+**Le Groupe Vernet.** Le patron ouvre l'Accueil : « 4 choses à traiter » —
+la nacelle réclamée deux fois samedi, le siège passé d'échéance de trois
+jours, la demande de congé de Yanis, le contrôle technique du Master dans
+dix jours — chacune avec son geste et son écran. Projets › GROUPE lui donne
+une ligne par chantier (responsable, échéance, retard, tâches, équipe) et
+lui dit que Moussa est réclamé par Lyon et Bordeaux. Karim, chef de projet,
+voit la demande de congé de son technicien ; Yanis, technicien, ne la voit
+pas. La Mairie, invitée, lit le chantier et ne lit plus les congés ni les
+paies de l'entreprise. **Reste :** les réservations de matériel ne savent
+pas pour quel chantier elles sont ; les salles ne signalent pas leurs
+conflits ; le Tableau de bord ne lit ni projets ni tâches (§3).
+
+**Mohamed et Riyad, AMN Business.** Le rail interne met la supervision en
+tête — quatre tuiles groupées, un filet, l'arête allumée — et le panneau
+peut lister « Supervision des clientes » puis « Quotidien » en toutes
+lettres. La visite guidée interne a un pas de plus (« la supervision ») qui
+pointe ce groupe. Le menu « ? » ouvre le lexique : vingt-deux mots (la
+Garde, la ronde, la pile « À votre avis », le mandat, la Relève…), chacun
+avec son écran. Le Hall est modérable par l'API d'administration ; les
+signalements arrivent dans la file d'assistance de la Tour. **Reste :** pas
+d'écran de modération du Hall dans la Tour, et « qui décide quoi » chez une
+cliente n'est lisible nulle part d'un seul regard (§3, §5).
+
 ## 3. Les idées, classées par impact
 
-_(se remplit au fil du chantier)_
+_Ce qui n'a pas été fait, classé par ce que ça changerait pour une cliente.
+Chaque ligne dit l'effort en jours de travail sérieux, pas en heures
+optimistes._
+
+**Impact fort — à faire avant le premier client, ou juste après.**
+
+1. **Les dates sur les tâches, sans casser la priorité.** Une échéance
+   facultative (`dueAt`), montrée seulement quand elle existe, comptée dans
+   « ce qui attend une décision » quand elle est passée. Marco et Yanis en
+   ont besoin ; le produit a choisi la priorité, il peut garder les deux.
+   *3 jours* (écran Tâches, Accueil, Projets, contrôle `check:cinquante`).
+2. **Le chantier sur les réservations et les interventions** (`projectId`
+   sur `resourceBookings` et `interventions`, rattachables au projet comme
+   les tâches). La vue du groupe dira « la nacelle est à Lyon jeudi ».
+   *2 jours*.
+3. **Un écran de modération du Hall dans la Tour** (liste, masquer avec
+   raison, participantes, signalements) : l'API existe, l'écran manque.
+   Indispensable avant dix organisations dans le Hall. *2 jours* (brief §5).
+4. **Le Tableau de bord qui lit les projets et les tâches.** Il dit « aucun
+   module n'a de quoi alimenter un cadran » à une organisation qui a tout.
+   *2 jours* (à cadrer : quels cadrans).
+5. **Les conflits de salles** (deux réservations de la même pièce qui se
+   recouvrent), comme pour le matériel, dans l'écran et dans « à traiter ».
+   *1 jour*.
+6. **Un Hall par public**, ou au moins une porte différente pour une élève :
+   aujourd'hui Lina et une agence parlent dans la même pièce. Le plus simple :
+   le profil de départ « élève » ne propose pas le Hall, et l'organisation
+   peut le fermer (`org_module_locks` existe). *1 jour* pour fermer, *5 jours*
+   pour des Halls par public.
+
+**Impact moyen — le confort de tous les jours.**
+
+7. « Qui décide quoi » : une page de l'organisation qui liste les
+   responsables (projets, absences, places, modules), dérivée des données,
+   jamais saisie deux fois. *2 jours*.
+8. Les célébrations au-delà des quatre premières fois : une par mois au plus
+   (« Cent tâches terminées ce mois »), jamais deux. *1 jour*.
+9. La présence sur le téléphone : la ligne dit « en ligne » sans distinguer
+   poste et téléphone ; un mot suffirait. *½ jour* (le serveur sait déjà d'où
+   vient la socket ?  à vérifier).
+10. Le tuto par module avec une phrase spécifique pour les vingt écrans les
+    plus ouverts, au lieu de l'anatomie générique. *3 jours* d'écriture, à
+    faire avec Claude Design (§5).
+11. Le contrôle `check:veille-cliente` dépend de l'heure de la machine (une
+    règle ne passe qu'entre midi et vingt heures locales) : lui donner une
+    horloge factice. *½ jour*.
+12. La bulle du rail sur téléphone : un appui long sur une tuile pourrait la
+    montrer. *½ jour*.
+
+**Impact faible, ou à décider d'abord.**
+
+13. Des fils dans le Hall (répondre à un message). Pas avant d'avoir vu
+    comment les premières organisations s'en servent.
+14. Une purge du Hall (au-delà de N mois) : à décider avec la politique de
+    conservation.
+15. Le lanceur du téléphone qui montrerait la supervision : contredit une
+    décision antérieure du dépôt ; ne pas y toucher sans une raison d'usage.
+16. Des teintes personnalisables par organisation : non — la légende n'a de
+    sens que si elle est la même partout.
+
 
 ## 4. Bugs et failles, par gravité
 
-_(se remplit au fil du chantier)_
+
+_Trouvés pendant le chantier, dans ce qui existait comme dans ce qui a été
+ajouté. « Corrigé » veut dire : corrigé, vérifié, et un garde-fou ou un test
+empêche le retour quand c'était possible._
+
+**Graves — une donnée qui sort, une décision qu'on ne peut plus prendre.**
+
+| # | Où | Quoi | État |
+|---|---|---|---|
+| G1 | serveur, rôle `guest` | Une cliente invitée sur son chantier lisait les congés de l'équipe, les carnets de droits, les candidatures, les formations, les paies, les messages privés, les groupes, les annonces, les réunions, les objectifs. Ni le serveur ni le poste ne restreignaient un invité en lecture. | **Corrigé** (patch `0005`, `test/invite.test.js`) : treize collections se lisent vides et ne s'écrivent pas pour un invité. Ce qui reste lisible est à confirmer comme décision produit (§6). |
+| G2 | Hall | Une organisation pouvait se nommer « AMN DevSec » ou « AMNDevSec » et signer des conseils à la place du prestataire ; deux organisations pouvaient porter le même nom. | **Corrigé** (patch `0002`) : nom réservé, nom déjà porté refusé. |
+| G3 | Hall | Une organisation suspendue par AMN continuait de figurer dans le Hall (messages, compte de participantes). | **Corrigé** (patch `0006`, test). |
+
+**Moyens — un écran qui ment, un geste qui casse.**
+
+| # | Où | Quoi | État |
+|---|---|---|---|
+| M1 | Accueil cliente | « Rien à signaler » à un patron dont un projet était en retard, une absence en attente, une nacelle promise deux fois, un contrôle technique à dix jours. | **Corrigé** (`useDecisions`). |
+| M2 | barre du haut interne (téléphone) | Depuis le bouton d'aide « ? » du chantier 2 : débordement de 50 px à 360 px, 20 px à 390 px ; à 430 px le nom de l'organisation réduit à une lettre. | **Corrigé** ; `check:mobile` interne vert. |
+| M3 | menu « ? » | Les fenêtres ouvertes depuis le menu (aide rapide, lexique) mouraient au premier clic dedans. | **Corrigé** (les entrées signalent, un hôte montre). |
+| M4 | Hall, hors ligne | L'écran restait nu sous son titre pendant les reprises du pont. | **Corrigé** (« a besoin du lien »). |
+| M5 | Hall, volume | L'ordre des cent derniers messages était instable dans la même milliseconde. | **Corrigé** (`rowid`). |
+| M6 | RDV en ligne | Deux ambres page fermée (la plaque « fermée » et le créneau bloqué). | **Corrigé**. |
+| M7 | Priorités, Recrutement | Des zéros sur un écran déclaré vide. | **Corrigé**. |
+| M8 | Agenda à 360 px | Le titre d'un rendez-vous réduit à la moitié de lui-même. | **Corrigé**. |
+| M9 | Tâches à 360 px | Un titre sans espace (URL collée) faisait déborder le bouton du détail. | **Corrigé**. |
+| M10 | teintes | Déclarées dans le `@theme` de Tailwind, jamais émises (point transparent). | **Corrigé**, raison en commentaire. |
+| M11 | Hall, départ d'une organisation | Les écrans ouverts gardaient ses messages jusqu'au rechargement. | **Corrigé** (trame `hall:rafraichir`). |
+
+**Ouverts — dits, pas corrigés.**
+
+| # | Où | Quoi | Pourquoi ouvert |
+|---|---|---|---|
+| O1 | `check:veille-cliente` | Une règle (« mode nuit ») dépend de l'heure de la machine : le contrôle n'est entièrement vert qu'entre midi et vingt heures locales. | Garde-fou, pas produit ; lui donner une horloge factice (§3, n° 11). |
+| O2 | veille, palette | Une fois, avec le compte Nadia, Ctrl+K pendant la veille a ouvert la palette (un dialogue) ; pas reproduit avec le compte design. | Non compris ; à reproduire avec un vrai poste. |
+| O3 | Salles | Deux réservations de la même pièce qui se recouvrent ne sont signalées nulle part. | §3, n° 5. |
+| O4 | Tableau de bord | « Aucun module n'a de quoi alimenter un cadran » à une organisation qui a tout. | §3, n° 4. |
+| O5 | Hall | Une élève de quatorze ans et une agence dans la même pièce. | Décision produit (§6), §3 n° 6. |
+| O6 | Matériel, Interventions | Pas d'identifiant de chantier : on sait qui réserve, pas pour quoi. | §3, n° 2. |
+| O7 | Hall | Pas de purge : `hall_messages` grandit sans fin (un index, aucune limite). | Décision de conservation (§6). |
+| O8 | appels | Aucun relais TURN configuré (`VITE_AMN_TURN_URL`) : un téléphone en données mobiles et un poste en wifi ne s'atteignent pas. Constat de `check:appels`, antérieur au chantier. | Infrastructure (§6). |
+
 
 ## 5. Les briefs pour Claude Design
 
-_(se remplit au fil du chantier)_
+
+_Un brief par écran. Chacun dit l'objet, l'état actuel (la capture), ce
+qu'on attend, et les règles qui ne bougent pas : un seul ambre par écran, la
+coquille (rail 52 px, tuiles 38 × 38, aucun ambre dans la colonne), les
+encres par jetons, 16 px de gouttière au téléphone. Claude Design travaille
+sur les bundles finaux ; les composants portent des ancres `data-guide` et
+`data-signal-groupe` qu'il ne doit pas retirer._
+
+**B1 — Le Hall, la porte.** `apres/vie/nadia-3-hall-porte.png`,
+`marco-5-hall-porte.png`. Objet dominant : le consentement. Aujourd'hui deux
+colonnes de texte (« ce qui se partage / ce qui ne se partage jamais »), un
+champ, un bouton. Attendu : la même honnêteté, plus chaleureuse — on doit
+avoir envie d'entrer *et* comprendre qu'on peut ressortir. Le nombre
+d'organisations présentes est la seule donnée vivante. Aucun ambre.
+
+**B2 — Le Hall, la conversation.** `nadia-7-hall-direct.png`. Une liste et
+un composeur, alignement gauche/droite (les miens à droite). Attendu : une
+salle, pas un chat — les organisations se reconnaissent par leur nom en
+capitales mono ; la signature est secondaire ; « Signaler » discret mais
+trouvable. Les messages sont du texte brut, jamais de HTML : ne pas
+proposer de mise en forme. Sur téléphone (`check:mobile` vert à 360/390/430)
+le composeur doit rester au pouce.
+
+**B3 — « À traiter » sur l'Accueil cliente.** `vernet/apres-vernet-1-accueil.png`.
+Quatre lignes : fait, preuve chiffrée, jauge, geste. Attendu : que le patron
+lise en deux secondes ce qui attend *sa* décision et ce qui attend un geste
+de routine — deux registres aujourd'hui mêlés dans une seule liste. La jauge
+grise n'explique pas son échelle. Un seul ambre possible sur l'écran : il est
+déjà pris par « la journée ».
+
+**B4 — Projets › GROUPE.** `apres-vernet-2-projets-groupe.png`. Une table à
+six colonnes et une liste « sur plusieurs projets ». Attendu : lisible sur
+téléphone sans défilement horizontal (aujourd'hui `min-w-[720px]`), le
+retard visible sans lire (le rouge critique est réservé ; il faut une autre
+matière), l'équipe comme visages et non comme chips de prénoms. La courbe
+de brûlage reste l'objet dominant au-dessus.
+
+**B5 — La porte « Qui êtes-vous ? ».** `apres/onboarding/*.png`. Quatre
+choix en feuille. Attendu : quatre cartes qui donnent envie, chacune avec
+l'image mentale de ce que la barre deviendra ; une cinquième porte « autre
+chose » qui ne retombe pas en silence sur « petite équipe ».
+
+**B6 — Les premiers pas.** Une carte de trois ou quatre cases à cocher qui se
+cochent seules. Attendu : la satisfaction de la case qui se coche (un
+mouvement, une matière), et la carte qui s'efface d'elle-même quand tout est
+fait, sans « Masquer ».
+
+**B7 — La bulle du rail et l'index des familles.** `apres/barre/*.png`. La
+bulle porte le nom, le compte, une phrase, quatre modules, un filet de
+teinte. L'index liste les familles en toutes lettres avec deux titres en
+interne. Attendu : que l'index ait l'air d'une table des matières et non
+d'une liste de réglages ; que la bulle ne recouvre pas le panneau quand il
+est déplié (aujourd'hui elle le chevauche à droite du rail).
+
+**B8 — Le lexique de la supervision.** `apres/barre/interne-5-lexique.png`.
+Vingt-deux définitions en quatre familles, dans une fenêtre longue.
+Attendu : une page que Mohamed lit comme un glossaire de bienvenue, avec
+les quatre familles comme chapitres et le « → écran » comme bouton, pas comme
+lien souligné.
+
+**B9 — Paramètres › Extensions.** `apres/vie/nadia-9-extensions.png`. Trois
+interrupteurs et deux boutons. Attendu : que chaque extension ait un
+aperçu de ce qu'elle change (un point de couleur, une liste de familles,
+une phrase de fête), pour qu'on choisisse en voyant.
+
+**B10 — La modération du Hall dans la Tour** (écran à créer, interne). Les
+données existent (`GET /v1/admin/hall/messages`, `/participants`, `PUT
+…/masquer`). Attendu : une liste des messages avec le vrai nom de
+l'organisation, les signalements en tête (compteur `flags`), le geste
+« masquer » avec sa raison, jamais « supprimer ». Un seul ambre : le
+signalement le plus ancien non traité.
+
+**B11 — Les écrans vides pour Lina.** La « ludicité » demandée par
+Syraagensy se joue là : Tâches, Agenda, Projets, Notes vides pour une
+collégienne. Attendu : un premier jour qui donne envie d'écrire la première
+ligne — sans mascotte, sans confettis, dans le système.
+
+**B12 — Le tuto par module, vingt textes.** Le tuto générique montre
+l'anatomie ; il faut, pour les vingt modules les plus ouverts, une phrase
+sur *l'objet dominant* de chacun (« la courbe descend quand vous cochez »,
+« le cadran, c'est votre journée »). Travail d'écriture avec les captures
+`docs/captures/`.
+
+**B13 — La présence et les célébrations.** Une ligne d'avatars, un toast.
+Attendu : que la ligne de présence ait une place stable sur l'Accueil (elle
+flotte aujourd'hui entre le titre et la journée) ; que la célébration soit
+une matière du système (une plaque, pas une notification système).
+
+**B14 — Le rail interne, la supervision groupée.** `interne-1-bulle.png`.
+Quatre tuiles en tête, un filet, l'arête haute allumée. Attendu : valider
+que l'arête suffit comme signature de la Tour, ou proposer mieux dans les
+contraintes de la coquille (aucune couleur, 38 × 38, 1 px de bord).
+
 
 ## 6. Les autres besoins
 
-_(se remplit au fil du chantier)_
+
+**Infrastructure.**
+
+- **amn-api déployé** doit recevoir la série `docs/patchs/amn-api-2026-09-24/`
+  (six patchs, aussi sur la branche `claude/cinquante-modules`) : `git am`,
+  `npm test` (482), redémarrage. Les tables du Hall naissent au démarrage
+  (`CREATE TABLE IF NOT EXISTS`, SQLite et Postgres) — aucune migration à la
+  main. Sans elles, l'écran du Hall dit « a besoin du lien » et
+  l'interrupteur des extensions ne sait pas si l'organisation y est.
+- **Un relais TURN** (`VITE_AMN_TURN_URL`) pour les appels entre un téléphone
+  en données mobiles et un poste en wifi (constat de `check:appels`,
+  antérieur au chantier).
+- **La conservation du Hall** : décider une durée (ou un nombre) et écrire la
+  purge. Rien ne se purge aujourd'hui.
+
+**Comptes.**
+
+- Les comptes d'essai du bac à sable (Lina, Marco, Nadia, Vernet et ses
+  sept collègues, la Mairie) sont locaux à ce conteneur ; leurs scripts
+  (`seed-vernet-*.mjs`) sont dans le bac à sable, pas dans le dépôt —
+  volontairement : ils écrivent des mots de passe.
+- Le compte `design@exemple.test` (interne, AMN DevSec) porte le jeu d'essai
+  que `check:contraste` et `check:veille-cliente` attendent
+  (`scripts/seed-essai.mjs`) ; les autres comptes ne l'ont pas.
+
+**Décisions produit à prendre — je les ai tranchées provisoirement, il faut
+les confirmer.**
+
+1. **Le périmètre d'un invité.** J'ai fermé treize collections (RH, paie,
+   messages privés, réunions, objectifs). Restent lisibles : projets, tâches,
+   clients, devis, factures, dépenses, matériel, flotte, notes, agenda —
+   parce que le rôle est fait pour « la comptable qui vient chercher les
+   factures ». Une cliente invitée sur son chantier lit donc les factures de
+   *tous* les clients. Est-ce voulu ? Sinon, il faut un rôle « cliente
+   invitée » distinct de « comptable invitée ».
+2. **Le Hall pour les élèves.** Fermer le Hall au profil « élève » (un
+   verrou de module), ou des Halls par public.
+3. **La modération du Hall** : qui la fait, en combien de temps, avec quelle
+   règle. Le signalement arrive dans la file d'assistance ; il n'y a pas
+   d'engagement de délai.
+4. **Les dates sur les tâches** (§3 n° 1) : le produit a choisi la priorité ;
+   Marco et Yanis demanderont la date.
+5. **Le nom d'affichage dans le Hall** est libre à 60 caractères ; faut-il
+   le valider à la main la première fois ?
+
 
 ## 7. Avis honnête
 
-_(se remplit au fil du chantier)_
+
+**Ce à quoi je me suis attaché.** À la règle d'un objet dominant par écran,
+qui m'a obligé à chaque fois à répondre « qu'est-ce qui attend une
+décision ici ? » — et c'est cette question qui a fait sortir le vrai manque
+du Groupe Vernet. À l'étanchéité entre organisations : le Hall est la
+première chose qui la traverse volontairement, et la prouver (six clés,
+pas une de plus ; une session de support qui ne parle pas ; une organisation
+partie qui disparaît à l'instant) a été le travail le plus satisfaisant du
+chantier. Aux garde-fous : `check:xss` qui joue huit charges hostiles sur de
+vrais écrans, `check:signal` qui a fait sortir trois défauts anciens dès
+qu'on lui a donné un compte riche.
+
+**Le plus gros frein.** Ce produit est encore celui de la personne qui l'a
+construit. Cent trente-neuf modules en interne, cent dix-sept côté cliente,
+cinquante ajoutés en un mois ; une collégienne en a besoin de huit. Le
+profil de départ et l'index des familles *cachent* cette densité, ils ne la
+réduisent pas ; la première fois que Lina ouvrira le lanceur « Tous les
+modules », elle verra la vérité. Le deuxième frein est que **tout ce que
+j'ai vu, je l'ai simulé** : Nadia n'a pas d'équipe réelle, le Groupe Vernet
+est né dans un script, et personne n'a encore ouvert le Hall sans que je le
+lui demande. Le troisième est le coût de vérification : chaque écran a des
+garde-fous, mais ils tournent en dix minutes sur un bundle, dépendent d'un
+jeu d'essai et, pour un, de l'heure de la machine. Un produit qu'on ne peut
+vérifier qu'avec un conteneur et un compte seedé n'est pas encore un produit
+qu'un client fait vivre.
+
+**Ce qui m'inquiète.** Le Hall. Pas sa technique — sa vie : un espace commun
+sans modératrice nommée ni règle affichée devient silencieux ou désagréable
+en quelques semaines. Il ne faut pas l'ouvrir avant d'avoir décidé qui le
+tient (§6). Et le rôle `guest`, dont j'ai fermé la moitié sans savoir à quoi
+il sert vraiment chez la première cliente.
+
+**Ce que je referais autrement.** J'aurais dû jouer le Groupe Vernet *avant*
+le chantier 4 : « ce qui attend une décision » aurait guidé la présence et
+les célébrations, au lieu d'arriver après. Et j'aurais dû lancer
+`check:signal` avec un compte Premium dès le premier jour.
+
 
 ## 8. Ce qu'Harun doit tester avant le premier client
 
-_(se remplit au fil du chantier)_
+
+_Dans l'ordre. Chaque étape dit ce qu'on doit voir ; si on ne le voit pas,
+c'est un défaut à me renvoyer._
+
+1. **Le serveur.** Sur `amn-api`, `git am docs/patchs/amn-api-2026-09-24/*.patch`
+   (ou `git merge claude/cinquante-modules`), `npm test` → 482 tests verts.
+   Démarrer ; `GET /v1/hall/participation` sans jeton → 401.
+2. **Le poste, compte neuf, ordinateur.** Se connecter avec un compte jamais
+   ouvert : la porte « Qui êtes-vous ? » ; choisir « petite équipe » ; la
+   barre se range ; la visite guidée (curseur qui glisse, ← → Échap) ; les
+   premiers pas ; Paramètres › Guide pour tout rejouer.
+3. **Le même, téléphone (390 px).** La visite tient ; la carte se pose en haut
+   quand la cible est en bas ; le tiroir liste les familles par leur nom.
+4. **Le Hall à deux.** Deux organisations, deux navigateurs : rejoindre sous
+   un nom, poster, voir arriver en direct, signaler, quitter — l'autre écran
+   se vide sans recharger. Essayer le nom « AMN DevSec » → refusé.
+5. **XSS à la main.** Coller `<img src=x onerror=alert(1)>` dans un titre de
+   tâche, un nom de client, un message du Hall : le texte s'affiche tel quel,
+   aucune alerte. (`npm run check:xss` le fait seul.)
+6. **Le Groupe Vernet, ou son équivalent réel.** Un compte propriétaire, un
+   admin, un membre, un invité. Sur l'Accueil du propriétaire : « à traiter »
+   avec une absence à décider ; le membre ne la voit pas ; l'invité ne voit
+   ni absences ni paies (écrans vides, pas d'erreur).
+7. **Hors ligne.** Dans le Hall, couper le wifi, poster : refus dit en
+   français, le brouillon reste ; rétablir : il part.
+8. **L'édition interne.** Le rail : la supervision en tête ; l'index ; le
+   menu « ? » → le lexique, cliquer « → À votre avis ».
+9. **Les garde-fous**, sur les deux bundles : `check:signal`, `check:contraste`
+   (compte design, `AMN_E2E_URL`), `check:mobile`, `check:coquille`,
+   `check:appels`, `check:cinquante`, `check:accueils`, `check:veille-cliente`
+   (entre midi et vingt heures — O1), `check:sync`, `check:business`,
+   `check:xss`, `tsc`, `lint`. La matrice mesurée est en §2.8.
+10. **Puis un vrai patron.** Lui donner le compte, ne rien expliquer, le
+    regarder pendant vingt minutes. C'est la seule mesure qui manque à ce
+    rapport.
