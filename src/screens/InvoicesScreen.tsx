@@ -43,7 +43,8 @@ import {
 import { InvoicePrintPortal } from '../assistant/InvoicePrintPortal';
 import { FecExportModal } from '../components/invoices/FecExportModal';
 import { ProjectPicker, ProjectTag } from '../components/projects/ProjectPicker';
-import { staggerContainer, staggerItem } from '../lib/transitions';
+import { LIGNES_PAR_PAGE, animationDeRang, staggerContainer } from '../lib/transitions';
+import { PlusDeLignes } from '../components/PlusDeLignes';
 import type { BillingIdentity, Client, Invoice, InvoiceLine, InvoiceStatus } from '../shared/api';
 import { metaOf } from '../lib/records';
 import { EmptyState, FirstRun } from '../components/EmptyState';
@@ -108,6 +109,9 @@ export function InvoicesScreen() {
   const navigate = useNavigate();
 
   const [filter, setFilter] = useState<Filter>('all');
+  /* Une page de lignes à la fois ; revient à une page quand le filtre change. */
+  const [plafond, setPlafond] = useState(LIGNES_PAR_PAGE);
+  useEffect(() => setPlafond(LIGNES_PAR_PAGE), [filter]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingIdentity, setEditingIdentity] = useState(false);
   const [exportingFec, setExportingFec] = useState(false);
@@ -373,9 +377,10 @@ export function InvoicesScreen() {
                 )}
               </div>
             ) : (
-              visible.map((invoice) => (
+              visible.slice(0, plafond).map((invoice, rang) => (
                 <InvoiceRow
                   key={invoice.id}
+                  rang={rang}
                   invoice={invoice}
                   today={today}
                   active={invoice.id === selectedId}
@@ -383,6 +388,7 @@ export function InvoicesScreen() {
                 />
               ))
             )}
+            {visible.length > 0 && <PlusDeLignes affichees={Math.min(plafond, visible.length)} total={visible.length} onPlus={() => setPlafond((p) => p + LIGNES_PAR_PAGE)} />}
           </motion.div>
         </div>
 
@@ -851,6 +857,7 @@ function MassesDeLAnnee({
 
 function InvoiceRow({
   invoice,
+  rang,
   today,
   active,
   onSelect,
@@ -859,13 +866,14 @@ function InvoiceRow({
   today: string;
   active: boolean;
   onSelect: () => void;
+  rang: number;
 }) {
   const totals = invoiceTotals(invoice);
   const late = isOverdue(invoice, today);
 
   return (
     <motion.button
-      variants={staggerItem}
+      {...animationDeRang(rang)}
       type="button"
       onClick={onSelect}
       className={`flex w-full min-h-11 items-center gap-3 px-4 py-3 text-left transition-colors ${

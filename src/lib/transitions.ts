@@ -100,3 +100,21 @@ export const staggerItem: Variants = {
   initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: EASE } },
 };
+
+/*
+  LES LISTES LONGUES NE S'ANIMENT QUE PAR LEUR TÊTE (simulation S2, un an d'historique).
+
+  Chaque élément animé en cascade s'inscrit auprès de son parent, qui retrie
+  ses enfants par position dans le document : un coût quadratique. Mesuré sur
+  1 745 factures : l'écran Facturation mettait 166 s à s'afficher, dont une
+  tâche bloquante de 146,7 s (compareDocumentPosition). Et la cascade elle-même
+  (0,06 s par ligne) aurait duré 104 s. Au-delà des trente premières lignes, un
+  élément de liste n'hérite plus de l'animation : il apparaît, c'est tout.
+*/
+export const RANGS_ANIMES = 30;
+export function animationDeRang(rang: number): { variants: Variants } | { inherit: false } {
+  return rang < RANGS_ANIMES ? { variants: staggerItem } : { inherit: false };
+}
+
+/** Combien de lignes une liste affiche d'un coup ; « Afficher plus » ajoute le même nombre. */
+export const LIGNES_PAR_PAGE = 200;

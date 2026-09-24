@@ -23,6 +23,7 @@ import {
 } from '../lib/fileEnvoi';
 import { statutErreur } from '../lib/errorMessage';
 import { useAuth } from '../auth/AuthContext';
+import { fusionnerLot } from '../lib/fusionSync';
 import type {
   PresenceEntry,
   RemoteConnectionStatus,
@@ -347,12 +348,6 @@ function toMap(records: RemoteRecord[]): CollectionMap {
   return map;
 }
 
-/** Keeps the record with the newer updatedAt. */
-function mergeRecord(map: CollectionMap, record: RemoteRecord): CollectionMap {
-  const existing = map[record.id];
-  if (existing && existing.updatedAt > record.updatedAt) return map;
-  return { ...map, [record.id]: record };
-}
 
 interface SyncContextValue {
   ready: boolean;
@@ -480,8 +475,8 @@ export function SyncProvider({
   const applyRecords = useCallback(
     (collection: string, incoming: RemoteRecord[]) => {
       setStore((prev) => {
-        let map = prev[collection] ?? {};
-        for (const r of incoming) map = mergeRecord(map, r);
+        /* Une copie par lot, pas une par fiche : voir lib/fusionSync.ts (gel de 145 s mesuré à un an d'historique). */
+        const map = fusionnerLot(prev[collection] ?? {}, incoming);
         const next = { ...prev, [collection]: map };
         writeMirror(scope, collection, Object.values(map));
         return next;

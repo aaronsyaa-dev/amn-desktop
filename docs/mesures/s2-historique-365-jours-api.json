@@ -1,0 +1,48 @@
+{
+ "date": "2026-09-24T21:29:06.195Z",
+ "jours": 365,
+ "personnes": 5,
+ "organisation": "Atelier Simulé 365 jours",
+ "patron": "s2.0.365j-mug1ntj5@sim.test",
+ "enregistrements": 41771,
+ "parCollection": {
+  "invoices": 1745,
+  "quotes": 861,
+  "tasks": 4166,
+  "appointments": 2302,
+  "notes": 585,
+  "expenses": 2077,
+  "groupMessages": 17285,
+  "dms": 6715,
+  "interventions": 865,
+  "timeEntries": 4764,
+  "clients": 347,
+  "projects": 59
+ },
+ "ecritureDuJeuMs": 9845,
+ "syncInitiale": {
+  "ms": 433,
+  "octets": 12121310,
+  "Mo": 12.1
+ },
+ "syncDifferentielle1min": {
+  "ms": 270,
+  "octets": 12121310,
+  "statut": 200
+ },
+ "octetsParCollection": {
+  "invoices": 1020260,
+  "quotes": 289423,
+  "tasks": 1209873,
+  "appointments": 711074,
+  "notes": 543766,
+  "expenses": 491914,
+  "groupMessages": 4350057,
+  "dms": 1632822,
+  "interventions": 382995,
+  "timeEntries": 1362216,
+  "clients": 108561,
+  "projects": 18329
+ },
+ "baseSqliteMo": 56.3
+}

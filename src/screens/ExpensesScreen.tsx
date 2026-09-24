@@ -19,7 +19,8 @@ import { formatShortDay } from '../state/useInvoices';
 import { ExpenseForm } from '../components/expenses/ExpenseForm';
 import { BudgetPanel } from '../components/expenses/BudgetPanel';
 import { ProjectTag } from '../components/projects/ProjectPicker';
-import { staggerContainer, staggerItem } from '../lib/transitions';
+import { LIGNES_PAR_PAGE, animationDeRang, staggerContainer } from '../lib/transitions';
+import { PlusDeLignes } from '../components/PlusDeLignes';
 import { EmptyState, FirstRun } from '../components/EmptyState';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
 import { useLangue, t as tr } from '../i18n';
@@ -50,6 +51,7 @@ import { useLangue, t as tr } from '../i18n';
  * cliente qui a choisi l'ambre.
  */
 export function ExpensesScreen() {
+  const [plafond, setPlafond] = useState(LIGNES_PAR_PAGE);
   // Abonnement à la langue : sans lui, l'écran gardait les libellés de la
   // langue active AU MONTAGE et ne suivait pas un changement en cours de route.
   useLangue();
@@ -474,9 +476,10 @@ export function ExpensesScreen() {
             </p>
           </div>
           <motion.ul variants={staggerContainer} initial="initial" animate="animate" className="flex flex-col">
-            {visible.map((expense) => (
+            {visible.slice(0, plafond).map((expense, rang) => (
               <LigneDeDepense
                 key={expense.id}
+                rang={rang}
                 expense={expense}
                 label={categoryLabel(config, expense.category)}
                 onOpenPhoto={() => setPreview(expense)}
@@ -487,6 +490,7 @@ export function ExpensesScreen() {
               />
             ))}
           </motion.ul>
+          <PlusDeLignes affichees={Math.min(plafond, visible.length)} total={visible.length} onPlus={() => setPlafond((p) => p + LIGNES_PAR_PAGE)} />
         </section>
       )}
 
@@ -588,18 +592,20 @@ function defaultDayFor(month: string): string {
  * déclaration.
  */
 function LigneDeDepense({
+  rang,
   expense,
   label,
   onOpenPhoto,
   onEdit,
 }: {
+  rang: number;
   expense: Expense;
   label: string;
   onOpenPhoto: () => void;
   onEdit: () => void;
 }) {
   return (
-    <motion.li variants={staggerItem} className="border-b border-[#161616] last:border-b-0">
+    <motion.li {...animationDeRang(rang)} className="border-b border-[#161616] last:border-b-0">
       <div className="flex items-center gap-4 py-3">
         <span className="tnum w-[52px] flex-shrink-0 font-mono text-[11px] tracking-[0.1em] text-text-muted">
           {formatShortDay(expense.spentAt)}
