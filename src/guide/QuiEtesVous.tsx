@@ -13,6 +13,7 @@ import { Logo } from '../components/Logo';
 import { useGuide } from './GuideContext';
 import { parcoursGeneral } from './parcours';
 import { marquerGuide } from './memoire';
+import { ecrireIndexFamilles } from '../lib/barreLaterale';
 import { texte, type ProfilDepart } from './profils';
 
 /**
@@ -43,6 +44,7 @@ export function QuiEtesVous({ onFerme, relance = false }: { onFerme: () => void;
       setFavorites(p.epingles.filter((k) => k === 'home' || isModuleEnabled(k)));
       remplacer((p.alleges ?? []).filter((k) => isModuleEnabled(k)));
       if (p.accueil) await choisir(p.accueil);
+      ecrireIndexFamilles(Boolean(p.indexFamilles));
       await updateSelf(email, { profil: p.id });
     } finally {
       marquerGuide('profil', email);

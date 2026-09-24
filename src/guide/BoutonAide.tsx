@@ -107,7 +107,14 @@ export function BoutonAide({ extra }: { extra?: React.ReactNode } = {}) {
           >
             {t('guide.demanderAide')}
           </button>
-          {extra}
+          {/*
+            Les entrées supplémentaires (lexique, aide rapide) ne portent
+            AUCUN état : elles signalent, et un hôte monté hors du menu
+            ouvre la fenêtre. Sinon le premier clic dans la fenêtre — un
+            `mousedown` hors du menu — fermerait le menu, démonterait
+            l'entrée, et la fenêtre avec elle. Constaté au premier essai.
+          */}
+          <span onClick={(e) => { if ((e.target as Element).closest('[role="menuitem"]')) setOuvert(false); }}>{extra}</span>
         </div>
       )}
     </div>

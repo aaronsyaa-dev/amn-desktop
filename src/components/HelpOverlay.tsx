@@ -20,9 +20,21 @@ interface HelpItem {
 }
 
 /** A discreet "?" button that opens a quick reference; also bound to the "?" key. */
-export function HelpButton({ enMenu = false }: { enMenu?: boolean } = {}) {
+/** Le signal « ouvrir l'aide rapide » — envoyé par l'entrée de menu, reçu par le bouton ou l'hôte masqué. */
+export const EVENEMENT_AIDE_RAPIDE = 'amn:aide-rapide';
+export const signalerAideRapide = () => window.dispatchEvent(new Event(EVENEMENT_AIDE_RAPIDE));
+
+export function HelpButton({ enMenu = false, masque = false }: { enMenu?: boolean; masque?: boolean } = {}) {
   const { t } = useLangue();
   const [open, setOpen] = useState(false);
+
+  /* L'entrée de menu ne fait que signaler : son état vivrait dans un menu qui se ferme au premier clic. */
+  useEffect(() => {
+    if (enMenu) return;
+    const ouvrir = () => setOpen(true);
+    window.addEventListener(EVENEMENT_AIDE_RAPIDE, ouvrir);
+    return () => window.removeEventListener(EVENEMENT_AIDE_RAPIDE, ouvrir);
+  }, [enMenu]);
 
   // Global "?" opens help — but never while typing in a field.
   useEffect(() => {
@@ -48,12 +60,12 @@ export function HelpButton({ enMenu = false }: { enMenu?: boolean } = {}) {
         <button
           type="button"
           role="menuitem"
-          onClick={() => setOpen(true)}
+          onClick={signalerAideRapide}
           className="flex min-h-11 w-full items-center px-3 text-left text-[13px] text-text-body hover:bg-surface-hover md:min-h-9"
         >
           {t('chrome.aideRapide')}
         </button>
-      ) : (
+      ) : masque ? null : (
             <button
               type="button"
               onClick={() => setOpen(true)}
@@ -64,7 +76,7 @@ export function HelpButton({ enMenu = false }: { enMenu?: boolean } = {}) {
               <HelpCircle size={16} strokeWidth={1.9} />
             </button>
       )}
-      <HelpOverlay open={open} onClose={() => setOpen(false)} />
+      {!enMenu && <HelpOverlay open={open} onClose={() => setOpen(false)} />}
     </>
   );
 }

@@ -210,6 +210,123 @@ brief pour Claude Design (§5) plus qu'un défaut de mécanique. La question
 n'en ont pas et retombent sur « petite équipe » — à surveiller avec les
 premiers retours.
 
+### 2.2 La barre latérale et la supervision (chantier 3)
+
+**Le constat, précisé.** Le rail à codes de deux lettres n'est pas un
+défaut en soi : c'est un raccourci de poste, et une fois lu il tient dans
+52 px sans rien cacher. Le défaut était double. (1) Personne ne dit ce que
+les lettres veulent dire avant qu'on les ait apprises : l'infobulle native
+arrive après une seconde, disparaît au moindre geste, et ne dit ni ce que
+la famille contient, ni à quoi elle sert. (2) Dans l'édition interne, les
+quatre familles qui ne sont pas « le quotidien d'un poste » — la Garde, la
+Tour, le Parc, les Produits — étaient quatre tuiles grises parmi dix-sept,
+placées en dernier ; Mohamed et Riyad ne pouvaient pas voir où commençait
+« ce qu'AMN Business fait pour ses clientes », et le vocabulaire (ronde,
+remontée, pile, Relève, mandat) n'était traduit nulle part.
+
+**Ce qui a été fait, dans le système de design, sans le remplacer.** Le
+rail garde exactement sa géométrie (52 px border-box, tuiles 38 × 38, codes
+de deux lettres, deux plaques, aucun ambre — `check:coquille` vert sur les
+deux éditions après le chantier : `9 écran(s)` cliente, `10 écran(s)`
+interne). Quatre choses s'y ajoutent :
+
+1. **La bulle du rail.** Au survol *ou au clavier* (focus), une bulle en
+   portail dit le nom de la famille en toutes lettres, son nombre de
+   modules, une phrase sur ce qu'elle sert (« Faire : stock,
+   interventions, planning, temps, tournées. ») et ses quatre premiers
+   modules. Tout de suite, sans délai. Preuve : `apres/barre/cliente-1-bulle.png`
+   (Lina, tuile PR : « Production · 1 module · Faire : … · TEMPS ») et
+   `interne-1-bulle.png` (tuile LG : « La Garde · 6 modules · Déléguer :
+   les équipes qui veillent côté serveur… · LA SALLE · AJMANI · À VOTRE
+   AVIS · LES BUREAUX … »). Au clavier : la bulle suit le focus (mesuré :
+   « Documents 3 modules » puis « Parc 7 modules »). Les phrases des
+   familles clientes vivent dans `rail/famillesHints.ts` (par code, donc
+   valables dans les deux éditions) ; celles des familles de supervision
+   vivent dans la barre interne uniquement, jamais dans le paquet cliente.
+2. **L'index des familles.** Un bouton dans le pied de la barre («
+   Index des familles », mémorisé par poste dans `amn.rail.index`) fait
+   lister au panneau les familles *par leur nom*, la famille ouverte
+   dépliée sous le sien avec ses modules. Le rail reste à gauche (même
+   chemin rapide) ; seul le contenu du panneau change. Les profils de
+   départ « élève » et « seul·e » l'allument d'office à l'arrivée (Lina
+   voit « Pilotage · Production · Documents · Personnel · Système » en
+   toutes lettres, `cliente-2-index.png`) ; on l'éteint d'un clic quand
+   on connaît les codes. Le mode ne casse rien de la coquille : ses lignes
+   de module sont les mêmes (`LigneModule`, marque, plaque, compteur).
+3. **La supervision à part (interne).** Les familles dont l'espace n'est
+   pas `workspace` viennent *en tête* du rail, groupées dans un nœud
+   `data-guide="supervision"` (celui que la visite guidée interne
+   pointait sans le trouver), séparées du quotidien par un filet, et
+   leur tuile porte l'arête haute allumée — la signature de la Tour, et
+   d'elle seule. Dans l'index et dans le tiroir du téléphone, deux titres :
+   « Supervision des clientes » puis « Quotidien »
+   (`interne-2-index.png`, `interne-7-mobile-familles.png`). Mesuré :
+   17 tuiles, `garde* tour* parc* produits*` puis les treize du quotidien,
+   4 tuiles dans le groupe.
+4. **Le lexique de la supervision (interne).** Dans le menu « ? », une
+   entrée « Lexique de la supervision » ouvre 22 termes en quatre
+   familles (La Garde — déléguer ; la Tour — décider ; le Parc —
+   surveiller ; les Produits — vendre), chacun avec sa définition en une
+   phrase *et le lien vers l'écran où l'on agit* — c'est la règle du
+   paquet appliquée au vocabulaire : rien n'est une boîte noire qu'on ne
+   peut qu'observer. Preuve : `interne-5-lexique.png`, et le lien
+   « → À votre avis » mène bien à `#/garde/pile`
+   (`interne-6-lexique-vers-pile.png`). `check:business` confirme
+   qu'aucun mot du lexique n'entre dans le paquet cliente (« aucune trace
+   d'AMN DevSec, des produits, des comptes ou des jetons »).
+
+**Un bug trouvé en chemin, et corrigé.** Les entrées du menu « ? » qui
+ouvraient une fenêtre (l'aide rapide du chantier 2, puis le lexique)
+portaient leur état *dans* le menu ; or le menu se ferme au premier
+`mousedown` hors de lui — donc au premier clic *dans la fenêtre*, qui
+démontait l'entrée et la fenêtre avec elle. Constaté au premier essai
+(« après lien lexique : `#/` », la navigation n'avait pas eu lieu).
+Corrigé par un motif simple : l'entrée *signale* (`amn:lexique`,
+`amn:aide-rapide`), un hôte monté hors du menu *montre*, et le menu se
+ferme sur tout clic d'une entrée. Vérifié : la fenêtre reste après un clic
+dedans (`lexique encore là : 1`, `aide rapide encore là : 1`), le menu
+est fermé, le lien navigue.
+
+**Ce qu'AMN Business voit et pilote à la main, aujourd'hui — l'inventaire
+honnête.** Vu de haut : `GET /organizations` (liste, résumé, page, logos),
+`GET /organizations/:id/dossier` et `/pulse` (le pouls par collection :
+dernière écriture, jours actifs sur 30, places, formule, ce que la cliente
+nous a fermé), `GET /access-log` (qui est entré chez qui, mode support
+compris), `GET /support-requests`. Piloté à la main, depuis le dossier
+d'organisation (`org-rail/OrgDossierPanel.tsx`) ou l'écran Organisations :
+créer, suspendre/réactiver (`PUT /status`), changer de formule (`PUT
+/plan`), ouvrir ou fermer un module (`PUT /modules/:key`, `DELETE
+/modules`), régler les places, poser des étiquettes (`PUT /tags`), gérer les
+comptes (`POST /users`, mot de passe temporaire, `DELETE /users/:userId`),
+invitations et liens de bienvenue, ouvrir une session de support
+(`POST /support-session`, fermée par `DELETE`), agir en masse (`POST
+/organizations/bulk`), supprimer (`DELETE /organizations/:id`), changer
+le logo. Côté Garde : la pile « À votre avis » avec décision par point
+(prévenir la cliente, renouveler avec elle, ouvrir le dossier, décision
+libre), les bureaux, la Salle commune, le calendrier. **Ce qui reste une
+boîte qu'on regarde sans y toucher** (à combler, §3) : la *ronde* elle-même
+(on voit ce qu'elle a trouvé, on ne règle ni sa fréquence ni son périmètre
+depuis l'interface) ; le *silence de nuit* et le *mandat* d'Ajmani (lus,
+pas édités depuis l'écran) ; les seuils des remontées « critique » (dans
+le code). Le lexique le dit tel quel — il ne promet pas un écran qui
+n'existe pas.
+
+**Déconstruction honnête.** L'index des familles est un *mode* de plus, et
+chaque mode est une chose à expliquer ; il se justifie parce que c'est
+celui qu'on quitte (on l'éteint quand on sait lire les codes), pas celui
+qu'on garde. La bulle du rail ne s'affiche pas sur téléphone (rien ne se
+survole) — le tiroir du téléphone donne déjà les noms en toutes lettres, ce
+qui est la bonne réponse, mais l'expérience n'est pas la même sur les deux
+supports. Le lanceur du téléphone (« Tous les modules ») montre un seul
+espace à la fois, par décision antérieure du dépôt (« ne jamais remettre
+dans une même surface ce que la séparation en espaces vient de démêler ») ;
+sur téléphone, la supervision se rejoint donc par le tiroir, pas par le
+lanceur — cohérent, mais à dire dans la visite guidée mobile. Le lexique est
+un texte de plus à maintenir : quand un écran de la Garde changera de nom,
+il faudra y penser (pas de garde-fou automatique aujourd'hui ; un contrôle
+qui vérifie que chaque `to` du lexique existe dans le catalogue serait
+trivial et manque — noté §3).
+
 ## 3. Les idées, classées par impact
 
 _(se remplit au fil du chantier)_

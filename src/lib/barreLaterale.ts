@@ -75,3 +75,33 @@ export function lireChoix(brut: string | null): boolean | null {
   if (brut === 'false') return false;
   return null;
 }
+
+/*
+  L'INDEX DES FAMILLES — le panneau liste les familles PAR LEUR NOM.
+
+  Le rail à deux lettres est lisible par qui le connaît. Pour qui arrive, le
+  panneau peut montrer l'index : chaque famille en toutes lettres, avec ses
+  modules dépliés sous celle qui est ouverte. Le rail reste (même géométrie,
+  même chemin rapide) ; seul le contenu du panneau change. Un choix du
+  poste, mémorisé ici ; les profils de départ « élève » et « seul·e »
+  l'allument.
+*/
+export const CLE_INDEX = 'amn.rail.index';
+export const EVENEMENT_INDEX = 'amn:rail-index';
+
+export function lireIndexFamilles(): boolean {
+  try {
+    return window.localStorage.getItem(CLE_INDEX) === 'oui';
+  } catch {
+    return false;
+  }
+}
+
+export function ecrireIndexFamilles(oui: boolean): void {
+  try {
+    window.localStorage.setItem(CLE_INDEX, oui ? 'oui' : 'non');
+  } catch {
+    /* stockage refusé : le choix ne vaut que pour cette session */
+  }
+  window.dispatchEvent(new Event(EVENEMENT_INDEX));
+}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
@@ -261,13 +261,18 @@ export function PanneauMobile({
                   <div className="my-3 h-px bg-border" aria-hidden />
                 </>
               )}
-              <p className="eyebrow px-2 pb-2 text-text-muted">Familles</p>
-              {familles.map((f) => {
+              {!familles.some((f) => f.supervision) && <p className="eyebrow px-2 pb-2 text-text-muted">Familles</p>}
+              {familles.map((f, i) => {
                 const signale = f.items.some((i) => (compteurs[i.to] ?? 0) > 0);
                 const ici = f.key === familleDuCourant;
+                /* Deux titres quand la supervision existe : elle d'abord, puis le quotidien. */
+                const premierSup = f.supervision && familles.findIndex((x) => x.supervision) === i;
+                const premierQuotidien = !f.supervision && familles.some((x) => x.supervision) && familles.findIndex((x) => !x.supervision) === i;
                 return (
+                  <React.Fragment key={f.key}>
+                  {premierSup && <p className="eyebrow px-2 pb-2 text-text-muted">Supervision des clientes</p>}
+                  {premierQuotidien && <p className="eyebrow px-2 pb-2 pt-4 text-text-muted">Quotidien</p>}
                   <button
-                    key={f.key}
                     type="button"
                     onClick={() => setOuverte(f.key)}
                     style={{ minHeight: LIGNE }}
@@ -284,6 +289,7 @@ export function PanneauMobile({
                     </span>
                     <ChevronRight size={16} strokeWidth={2} className="flex-none text-text-muted" aria-hidden />
                   </button>
+                  </React.Fragment>
                 );
               })}
             </motion.div>

@@ -47,6 +47,8 @@ export interface ProfilDepart {
   alleges?: string[];
   /** L'Accueil choisi (code de variante) ; absent = on ne touche pas. */
   accueil?: string;
+  /** Le panneau liste les familles par leur nom (pour qui ne lit pas encore les codes du rail). */
+  indexFamilles?: boolean;
   premiersPas: PremierPas[];
 }
 

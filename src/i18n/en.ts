@@ -3037,6 +3037,12 @@ export const en = {
   'guide.section.titre': 'Guide',
   'guide.section.texte': 'The guided tour and each module’s introduction can be replayed whenever you want. Your starting profile decides the pinned modules and your first steps.',
   'guide.section.profilActuel': 'Starting profile',
+  'chrome.indexFamilles': 'Family index',
+  'chrome.indexFamillesAide': 'The panel lists families by name, the open one expanded',
+  'guide.lexique': 'Supervision glossary',
+  'guide.lexique.titre': 'The words of supervision',
+  'guide.lexique.texte': 'What the words you will meet in the Guard, the Tower, the Fleet and the Products mean. Nothing here is a black box: every term points to a screen where you can act.',
+  'guide.lexique.fermer': 'Close the glossary',
 } as const;
 
 /*

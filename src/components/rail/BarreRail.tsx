@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Pin, PinOff, Search } from 'lucide-react';
 import type { NavItem } from '../../data/navigation';
+import { createPortal } from 'react-dom';
 import { PanneauMobile } from './PanneauMobile';
+import { HINT_FAMILLE } from './famillesHints';
 
 /**
  * LA COQUILLE EN RAIL — la colonne, et une seule fois dans tout le produit.
@@ -106,6 +108,10 @@ export interface FamilleRail {
   /** Deux lettres majuscules — le seul texte qui tienne dans 38 px. */
   code: string;
   items: NavItem[];
+  /** Une famille de supervision (édition interne) : groupée à part, tuile à l'arête allumée. */
+  supervision?: boolean;
+  /** Une phrase pour la bulle du rail ; à défaut, celle de `famillesHints` par code. */
+  hint?: string;
 }
 
 export interface BarreRailProps {
@@ -143,6 +149,8 @@ export interface BarreRailProps {
   rendreExtra?: (item: NavItem) => React.ReactNode;
   /** Libellés — passés pour que ce fichier n'importe pas l'i18n d'une édition. */
   libelle?: (item: NavItem) => string;
+  /** Le panneau liste les familles par leur nom (l'index), la famille ouverte dépliée. */
+  indexFamilles?: boolean;
 }
 
 /* ── La géométrie, en un seul endroit. Le contrôle relit ces nombres. ── */
@@ -211,7 +219,10 @@ export function BarreRail({
   onEpingler,
   rendreExtra,
   libelle = (item) => item.label,
+  indexFamilles = false,
 }: BarreRailProps) {
+  /* La bulle du rail : le nom de la famille survolée (ou au clavier), tout de suite, sans attendre l'infobulle native. */
+  const [bulle, setBulle] = useState<{ f: FamilleRail; top: number; left: number } | null>(null);
   /*
     `deplie` seul : la colonne est désormais une surface de BUREAU. Le tiroir
     du téléphone est la feuille `PanneauMobile`, qui ne se plie pas — elle
@@ -467,21 +478,44 @@ export function BarreRail({
             style={{ width: LARGEUR_RAIL, boxSizing: 'border-box', padding: '12px 5px', gap: GOUTTIERE_TUILES }}
             className="flex flex-none flex-col items-center overflow-y-auto border-r border-[#171717] bg-[#0a0a0a]"
           >
-            {familles.map((f) => (
-              <TuileFamille
-                key={f.key}
-                famille={f}
-                ouverte={f.key === ouverte?.key}
-                /*
-                  LA PASTILLE — quand la famille a quelque chose à signaler.
-                  Dérivée des compteurs réels de nouveautés, jamais d'un
-                  drapeau posé à la main : une pastille qui ne correspond à
-                  rien est pire qu'aucune pastille.
-                */
-                signale={f.items.some((i) => (compteurs[i.to] ?? 0) > 0)}
-                onOuvrir={() => setFamilleChoisie(f.key)}
-              />
-            ))}
+            {(() => {
+              /*
+                LA SUPERVISION À PART. Les familles marquées `supervision`
+                (édition interne : la Garde, la Tour, le Parc, les Produits)
+                viennent en tête, groupées, séparées du quotidien par un filet.
+                Elles ne sont plus quatre tuiles grises parmi dix-sept.
+              */
+              const tuile = (f: FamilleRail) => (
+                <TuileFamille
+                  key={f.key}
+                  famille={f}
+                  ouverte={f.key === ouverte?.key}
+                  /*
+                    LA PASTILLE — quand la famille a quelque chose à signaler.
+                    Dérivée des compteurs réels de nouveautés, jamais d'un
+                    drapeau posé à la main : une pastille qui ne correspond à
+                    rien est pire qu'aucune pastille.
+                  */
+                  signale={f.items.some((i) => (compteurs[i.to] ?? 0) > 0)}
+                  onOuvrir={() => setFamilleChoisie(f.key)}
+                  onSurvol={(rect) => setBulle({ f, top: rect.top, left: rect.right + 8 })}
+                  onQuitte={() => setBulle((b) => (b?.f.key === f.key ? null : b))}
+                />
+              );
+              const sup = familles.filter((f) => f.supervision);
+              const reste = familles.filter((f) => !f.supervision);
+              return (
+                <>
+                  {sup.length > 0 && (
+                    <div data-guide="supervision" className="flex flex-col items-center" style={{ gap: GOUTTIERE_TUILES }}>
+                      {sup.map(tuile)}
+                    </div>
+                  )}
+                  {sup.length > 0 && reste.length > 0 && <span className="h-px w-6 flex-none bg-border-strong" aria-hidden />}
+                  {reste.map(tuile)}
+                </>
+              );
+            })()}
           </div>
 
           {/*
@@ -517,13 +551,65 @@ export function BarreRail({
               style={{ paddingBottom: RESPIRATION }}
             >
               <span className="eyebrow min-w-0 truncate text-text-secondary">
-                {resultats ? 'Résultats' : (ouverte?.label ?? '')}
+                {resultats ? 'Résultats' : indexFamilles ? 'Familles' : (ouverte?.label ?? '')}
               </span>
               <span className="flex-none font-mono text-[9.5px] text-text-muted">
-                {resultats ? `${resultats.length} / ${total}` : `${ouverte?.items.length ?? 0} / ${total}`}
+                {resultats ? `${resultats.length} / ${total}` : indexFamilles ? `${familles.length}` : `${ouverte?.items.length ?? 0} / ${total}`}
               </span>
             </div>
 
+            {/*
+              L'INDEX — chaque famille en toutes lettres, la famille ouverte
+              dépliée sous son nom. Pour qui ne lit pas encore les codes du
+              rail. Les lignes de module gardent leur marque et leur plaque :
+              « deux plaques, jamais trois » tient aussi ici.
+            */}
+            {indexFamilles && !resultats && (
+              <div className="relative flex flex-col" data-rail-index>
+                {familles.map((f, i) => {
+                  const ici = f.key === ouverte?.key;
+                  const premierDuQuotidien = f.supervision === undefined || f.supervision === false ? familles.findIndex((x) => !x.supervision) === i : false;
+                  const premierDeSupervision = f.supervision ? familles.findIndex((x) => x.supervision) === i : false;
+                  return (
+                    <React.Fragment key={f.key}>
+                      {(premierDeSupervision || (premierDuQuotidien && familles.some((x) => x.supervision))) && (
+                        <span className="mb-1 mt-2 px-[9px] font-mono text-[9px] uppercase tracking-[0.14em] text-text-muted first:mt-0">
+                          {f.supervision ? 'Supervision des clientes' : 'Quotidien'}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setFamilleChoisie(ici ? null : f.key)}
+                        aria-expanded={ici}
+                        style={{ height: HAUTEUR_LIGNE }}
+                        className={`flex w-full items-center gap-2 px-[9px] text-left ${ici ? 'text-text-primary' : 'text-text-body hover:text-text-primary'}`}
+                      >
+                        <span className={`min-w-0 flex-1 truncate text-[12.5px] ${ici ? 'font-semibold' : ''}`}>{f.label}</span>
+                        <span className="flex-none font-mono text-[9px] text-text-muted">{f.items.length}</span>
+                      </button>
+                      {ici && (
+                        <div className="mb-1 ml-[9px] flex flex-col border-l border-border-strong pl-1.5" style={{ gap: INTERLIGNE }}>
+                          {f.items.map((item) => (
+                            <LigneModule
+                              key={item.key}
+                              item={item}
+                              libelle={libelle(item)}
+                              courant={item.to === cheminCourant}
+                              plaque={item.to === cheminCourant && !courantEstEpingle}
+                              epingle={clesEpinglees.has(item.key)}
+                              compteur={compteurs[item.to] ?? 0}
+                              onNavigate={() => onNavigate?.()}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            )}
+
+            {(!indexFamilles || resultats) && (
             <div
               data-rail-lignes
               data-modules={lignesAffichees.length}
@@ -550,12 +636,41 @@ export function BarreRail({
                 <p className="px-[9px] py-2 text-xs text-text-muted">Aucun module ne porte ce nom.</p>
               )}
             </div>
+            )}
           </div>
           )}
         </div>
 
         {pied}
       </motion.aside>
+
+      {/*
+        LA BULLE DU RAIL — le nom en toutes lettres, tout de suite. L'infobulle
+        native arrive après une seconde et disparaît au moindre geste ; celle-ci
+        suit le survol et le clavier. En portail : la colonne coupe ce qui la
+        déborde, et repliée elle ne fait que 53 px.
+      */}
+      {bulle &&
+        createPortal(
+          <div
+            role="tooltip"
+            className="pointer-events-none fixed z-[120] w-[220px] border border-border-raised bg-elevated px-3 py-2.5 shadow-[0_18px_40px_-18px_rgba(0,0,0,1)]"
+            style={{ top: bulle.top, left: bulle.left }}
+          >
+            <span className="flex items-baseline justify-between gap-2">
+              <span className="text-[13px] font-semibold text-text-primary">{bulle.f.label}</span>
+              <span className="font-mono text-[10px] text-text-muted">{bulle.f.items.length} module{bulle.f.items.length > 1 ? 's' : ''}</span>
+            </span>
+            {(bulle.f.hint ?? HINT_FAMILLE[bulle.f.code]) && (
+              <span className="mt-1 block text-[12px] leading-[1.45] text-text-secondary">{bulle.f.hint ?? HINT_FAMILLE[bulle.f.code]}</span>
+            )}
+            <span className="mt-1.5 block truncate font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-muted">
+              {bulle.f.items.slice(0, 4).map((i) => libelle(i)).join(' · ')}
+              {bulle.f.items.length > 4 ? ' …' : ''}
+            </span>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
@@ -573,21 +688,30 @@ function TuileFamille({
   ouverte,
   signale,
   onOuvrir,
+  onSurvol,
+  onQuitte,
 }: {
   famille: FamilleRail;
   ouverte: boolean;
   signale: boolean;
   onOuvrir: () => void;
+  onSurvol: (rect: DOMRect) => void;
+  onQuitte: () => void;
 }) {
+  const survoler = (e: React.SyntheticEvent<HTMLButtonElement>) => onSurvol(e.currentTarget.getBoundingClientRect());
   return (
     <button
       type="button"
       data-rail-tuile
       data-famille={famille.key}
+      data-supervision={famille.supervision ? '' : undefined}
       data-ouverte={ouverte ? '' : undefined}
       data-plaque={ouverte ? '' : undefined}
       onClick={onOuvrir}
-      title={`${famille.label} — ${famille.items.length} modules`}
+      onMouseEnter={survoler}
+      onFocus={survoler}
+      onMouseLeave={onQuitte}
+      onBlur={onQuitte}
       aria-label={`${famille.label} — ${famille.items.length} modules`}
       aria-pressed={ouverte}
       style={{
@@ -595,6 +719,8 @@ function TuileFamille({
         height: COTE_TUILE,
         boxSizing: 'border-box',
         ...(ouverte ? PLAQUE : { backgroundColor: '#131313' }),
+        /* La supervision porte l'arête haute allumée — la signature de la Tour de contrôle, et d'elle seule. */
+        ...(famille.supervision && !ouverte ? { boxShadow: 'inset 0 1px 0 rgba(255,255,255,.14)' } : {}),
       }}
       className={`relative flex flex-none flex-col items-center justify-center gap-0.5 border ${
         ouverte ? 'border-transparent' : 'border-border'

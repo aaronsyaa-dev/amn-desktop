@@ -3038,4 +3038,10 @@ export const fr: Dictionnaire = {
   'guide.section.titre': 'Guide',
   'guide.section.texte': 'La visite guidée et la présentation de chaque module se rejouent quand vous voulez. Votre profil de départ décide des modules épinglés et de vos premiers pas.',
   'guide.section.profilActuel': 'Profil de départ',
+  'chrome.indexFamilles': 'Index des familles',
+  'chrome.indexFamillesAide': 'Le panneau liste les familles par leur nom, la famille ouverte dépliée',
+  'guide.lexique': 'Lexique de la supervision',
+  'guide.lexique.titre': 'Les mots de la supervision',
+  'guide.lexique.texte': 'Ce que veulent dire les mots que vous croiserez dans la Garde, la Tour, le Parc et les Produits. Rien ici n’est une boîte noire\u202f: chaque terme renvoie à un écran où vous pouvez agir.',
+  'guide.lexique.fermer': 'Fermer le lexique',
 };

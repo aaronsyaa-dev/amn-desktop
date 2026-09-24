@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAccueil } from '../accueils/useAccueil';
 import { avecAccueilEnTete } from '../accueils/epingle';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronsLeft, ChevronsRight, LogOut } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, ListTree, LogOut } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useActivity } from '../state/ActivityContext';
 import { Logo, LogoMark } from '../components/Logo';
@@ -13,7 +13,7 @@ import { useLangue, libelleNav, libelleSection } from '../i18n';
 import { useNavAlleges } from '../state/useNavAlleges';
 import { UserAvatar } from '../components/UserAvatar';
 import { BarreRail, type FamilleRail } from '../components/rail/BarreRail';
-import { CLE_CHOIX, deplierAuDemarrage, lireChoix } from '../lib/barreLaterale';
+import { CLE_CHOIX, EVENEMENT_INDEX, deplierAuDemarrage, ecrireIndexFamilles, lireChoix, lireIndexFamilles } from '../lib/barreLaterale';
 import { cheminLePlusPrecis } from '../lib/cheminCourant';
 
 /**
@@ -133,9 +133,23 @@ export function BusinessSidebar({
 
   const expanded = deplie || mobileOpen;
 
+  /*
+    L'INDEX DES FAMILLES — le panneau liste les familles par leur nom.
+    Le rail à codes reste ; pour qui ne les lit pas encore, le panneau montre
+    « Pilotage, Clients & revenus, Guichet… » en toutes lettres. Le choix du
+    poste, mémorisé ; les profils « élève » et « seul·e » l'allument d'office.
+  */
+  const [indexFamilles, setIndexFamilles] = useState(lireIndexFamilles);
+  useEffect(() => {
+    const relire = () => setIndexFamilles(lireIndexFamilles());
+    window.addEventListener(EVENEMENT_INDEX, relire);
+    return () => window.removeEventListener(EVENEMENT_INDEX, relire);
+  }, []);
+
   return (
     <BarreRail
       familles={familles}
+      indexFamilles={indexFamilles}
       epingles={epingles}
       cheminCourant={cheminCourant}
       compteurs={unseen}
@@ -167,6 +181,18 @@ export function BusinessSidebar({
             </div>
           )}
           <div className="flex flex-col gap-0.5 p-2">
+            {expanded && (
+              <button
+                type="button"
+                onClick={() => ecrireIndexFamilles(!indexFamilles)}
+                aria-pressed={indexFamilles}
+                title={t('chrome.indexFamillesAide')}
+                className={`hidden items-center gap-2.5 px-2.5 py-2 text-[13px] transition-colors hover:bg-surface-hover hover:text-text-primary md:flex ${indexFamilles ? 'text-text-primary' : 'text-text-muted'}`}
+              >
+                <ListTree size={16} strokeWidth={2.1} />
+                <span>{t('chrome.indexFamilles')}</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={basculer}

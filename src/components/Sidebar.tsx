@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAccueil } from '../accueils/useAccueil';
 import { avecAccueilEnTete } from '../accueils/epingle';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronsLeft, ChevronsRight, LogOut } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, ListTree, LogOut } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useRemoteSites } from '../state/RemoteSitesContext';
 import { useActivity } from '../state/ActivityContext';
@@ -15,12 +15,20 @@ import { OrgSwitchButton } from './org-rail/OrgSwitchButton';
 import { type NavItem } from '../data/navigation';
 import { toutesLesSections } from '../data/spaces';
 import { EDITION_PRODUCT_NAME } from '../edition/edition';
-import { CLE_CHOIX, deplierAuDemarrage, lireChoix } from '../lib/barreLaterale';
+import { CLE_CHOIX, EVENEMENT_INDEX, deplierAuDemarrage, ecrireIndexFamilles, lireChoix, lireIndexFamilles } from '../lib/barreLaterale';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
 import { useNavAlleges } from '../state/useNavAlleges';
 import { useCommandPalette } from './command-palette/CommandPalette';
 import { BarreRail, LARGEUR_COQUILLE, LARGEUR_RAIL, type FamilleRail } from './rail/BarreRail';
 import { cheminLePlusPrecis } from '../lib/cheminCourant';
+
+/* La phrase de chaque famille de supervision, sous son nom dans la bulle du rail. Interne : ce fichier n'entre pas dans le paquet cliente. */
+const PHRASE_SUPERVISION: Record<string, string> = {
+  LG: 'Déléguer : les équipes qui veillent côté serveur, leurs bureaux, ce qui attend votre avis.',
+  SU: 'Décider : toutes les clientes, leurs dossiers, qui est entré chez qui.',
+  PA: 'Surveiller : incidents, sites, trackers, maturité, alertes à vos seuils.',
+  PD: 'Vendre : Scanner, Comply, SSL Monitor.',
+};
 
 /**
  * La navigation de l'édition interne — LE RAIL (Direction B).
@@ -110,13 +118,25 @@ export function Sidebar({
     siens disparaît au lieu de laisser une tuile qui n'ouvre rien.
   */
   const familles: FamilleRail[] = useMemo(
-    () =>
-      toutesLesSections().map((section) => ({
+    () => {
+      /*
+        LA SUPERVISION D'ABORD, ET À PART. Les quatre familles qui ne sont pas
+        le quotidien d'un poste (la Garde, la Tour, le Parc, les Produits)
+        viennent en tête du rail, marquées `supervision` : le rail les groupe
+        et les sépare d'un filet, le panneau mobile les titre. Avant, elles
+        étaient quatre tuiles grises parmi dix-sept, et Mohamed comme Riyad ne
+        voyaient pas où commençait « ce qu'AMN Business fait pour ses clientes ».
+      */
+      const toutes = toutesLesSections().map((section) => ({
         key: section.key,
         label: libelleSection(section.label),
         code: section.code,
         items: section.items,
-      })),
+        supervision: section.space !== undefined && section.space !== 'workspace',
+        hint: PHRASE_SUPERVISION[section.code],
+      }));
+      return [...toutes.filter((f) => f.supervision), ...toutes.filter((f) => !f.supervision)];
+    },
     /*
       `location.pathname` en dépendance, bien qu'ESLint le croie inutile :
       `isModuleEnabled` et `isModuleAllege` lisent un registre de module, pas
@@ -164,6 +184,14 @@ export function Sidebar({
 
   const expanded = deplie || mobileOpen;
 
+  /* L'index des familles : le choix du poste, et la bascule depuis le profil de départ. */
+  const [indexFamilles, setIndexFamilles] = useState(lireIndexFamilles);
+  useEffect(() => {
+    const relire = () => setIndexFamilles(lireIndexFamilles());
+    window.addEventListener(EVENEMENT_INDEX, relire);
+    return () => window.removeEventListener(EVENEMENT_INDEX, relire);
+  }, []);
+
   /*
     LA LISTE RAPIDE DES SITES — le seul ornement propre à cette édition.
 
@@ -200,6 +228,7 @@ export function Sidebar({
     <>
       <BarreRail
         familles={familles}
+        indexFamilles={indexFamilles}
         epingles={epingles}
         cheminCourant={cheminCourant}
         compteurs={unseen}
@@ -251,6 +280,18 @@ export function Sidebar({
         }
         pied={
           <div className="flex flex-none flex-col gap-0.5 border-t border-[#1c1c1c] bg-[#0a0a0a] p-2">
+            {expanded && (
+              <button
+                type="button"
+                onClick={() => ecrireIndexFamilles(!indexFamilles)}
+                aria-pressed={indexFamilles}
+                title={t('chrome.indexFamillesAide')}
+                className={`hidden items-center gap-2.5 px-2.5 py-2 text-[13px] transition-colors hover:bg-surface-hover hover:text-text-primary md:flex ${indexFamilles ? 'text-text-primary' : 'text-text-muted'}`}
+              >
+                <ListTree size={16} strokeWidth={2.1} />
+                <span>{t('chrome.indexFamilles')}</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={basculer}

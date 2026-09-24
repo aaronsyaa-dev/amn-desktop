@@ -5,6 +5,7 @@ import { useCommandPalette } from './command-palette/CommandPalette';
 import { NotificationCenter } from './NotificationCenter';
 import { HelpButton } from './HelpOverlay';
 import { BoutonAide } from '../guide/BoutonAide';
+import { EntreeLexique, LexiqueHote } from './garde/LexiqueSupervision';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
 import { OrgSwitchButton } from './org-rail/OrgSwitchButton';
 import { UserAvatar } from './UserAvatar';
@@ -111,7 +112,9 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
           <Sparkles size={16} strokeWidth={1.9} />
           <span className="hidden lg:inline">Ajmani</span>
         </button>
-        <BoutonAide extra={<HelpButton enMenu />} />
+        <BoutonAide extra={<><EntreeLexique /><HelpButton enMenu /></>} />
+        <LexiqueHote />
+        <HelpButton masque />
         <NotificationCenter />
         {user && (
           <button

@@ -8,6 +8,7 @@ import { PAS, type ProfilDepart } from '../guide/profils';
 export const PROFILS: ProfilDepart[] = [
   {
     id: 'etudes',
+    indexFamilles: true,
     label: { fr: 'Élève ou étudiant·e', en: 'Pupil or student' },
     phrase: { fr: 'Devoirs, cours, projets de classe, habitudes à tenir.', en: 'Homework, classes, school projects, habits to keep.' },
     epingles: ['home', 'tasks', 'agenda', 'projects', 'notes', 'habits', 'pomodoro'],
@@ -22,6 +23,7 @@ export const PROFILS: ProfilDepart[] = [
   },
   {
     id: 'solo',
+    indexFamilles: true,
     label: { fr: 'Je travaille seul·e', en: 'I work on my own' },
     phrase: { fr: 'Artisan, indépendant·e, profession libérale : clients, devis, rendez-vous.', en: 'Tradesperson, freelancer, practitioner: clients, quotes, appointments.' },
     epingles: ['home', 'agenda', 'clients', 'invoices', 'tasks', 'expenses'],
