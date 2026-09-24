@@ -213,7 +213,7 @@ voient la dernière écriture gagner **sans que personne soit prévenu**. Il
 faudrait au minimum un avis « Nadia a modifié cette fiche pendant que vous
 l'éditiez », avec comparaison. **Synchro : à valider.**
 
-### 2.7 Correctif de synchro déjà appliqué, **à valider par Harun**
+### 2.7 Correctif de synchro déjà appliqué — **validé par Harun le 24/09/2026**
 S2 a trouvé que la fusion des lots reçus (`mergeRecord`) recopiait toute la
 collection à chaque fiche. C'est un coût quadratique : 5 000 fiches mettaient
 4 205 ms, et le poste gelait 145 s avec un an d'historique. Elle a été remplacée
@@ -221,7 +221,8 @@ par `fusionnerLot` (`src/lib/fusionSync.ts`), qui copie une seule fois par lot.
 
 - **Règle inchangée :** la fiche la plus récente (`updatedAt`) gagne, et à égalité la fiche entrante gagne, exactement comme avant.
 - **Preuve :** `npm run check:fusion-sync` rejoue 10 000 lots aléatoires contre l'ancienne fonction, avec un résultat identique à chaque fois. 20 000 fiches passent en 7–8 ms.
-- **Pour revenir en arrière :** dans `src/state/SyncContext.tsx:479`, remplacer `fusionnerLot(prev[collection] ?? {}, incoming)` par l'ancienne boucle `mergeRecord`. `fusionnerFicheAncienne` est gardée dans `fusionSync.ts` pour cela. Sinon, `git revert 5783821`, qui annule aussi la pagination des longues listes.
+- **Validation :** Harun a validé le changement le 24/09/2026 : l'équivalence prouvée sur 10 000 cas suffit. `check:fusion-sync` reste dans les garde-fous pour la tenir.
+- **Pour revenir en arrière (si un jour nécessaire) :** dans `src/state/SyncContext.tsx:479`, remplacer `fusionnerLot(prev[collection] ?? {}, incoming)` par l'ancienne boucle `mergeRecord`. `fusionnerFicheAncienne` est gardée dans `fusionSync.ts` pour cela. Sinon, `git revert 5783821`, qui annule aussi la pagination des longues listes.
 
 ---
 
