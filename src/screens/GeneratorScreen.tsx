@@ -8,12 +8,13 @@ import { bridge } from '../lib/bridge';
 import { cleanErrorMessage } from '../lib/errorMessage';
 import { resizeImageToDataUrl } from '../lib/imageResize';
 import { ACCENTS } from '../lib/accent';
-import { CONFIGURABLE_MODULES, TRADE_PROFILES, tradeProfileById } from '../data/tradeProfiles';
+import { TRADE_PROFILES, tradeProfileById } from '../data/tradeProfiles';
 import { calcProfileById } from '../state/calcProfiles';
 import { RangeControl } from '../components/generator/RangeControl';
 import { useHaloSignal } from '../components/EtatEcran';
 import { garde } from '../lib/garde';
 import { LivePreview } from '../components/generator/LivePreview';
+import { ChoixModules } from '../components/generator/ChoixModules';
 import { handoverMessage } from '../lib/handoverMessage';
 import { OrgAvatar } from '../components/org-rail/OrgAvatar';
 import type { DownloadLink, OrgPlan } from '../shared/api';
@@ -138,11 +139,6 @@ export function GeneratorScreen() {
     setSeats(versFormule(chosen.seats));
     setStep('configuration');
   };
-
-  const toggleModule = (key: string) =>
-    setModules((current) =>
-      current.includes(key) ? current.filter((k) => k !== key) : [...current, key],
-    );
 
   const onLogo = async (file: File | null) => {
     setLogoError(null);
@@ -494,72 +490,7 @@ export function GeneratorScreen() {
                   </div>
                 </section>
 
-                <section className="panel p-4">
-                  <div className="mb-3 flex items-baseline justify-between gap-3">
-                    <p className="eyebrow">Modules ouverts</p>
-                    <span className="eyebrow">{modules.length} sur {CONFIGURABLE_MODULES.length}</span>
-                  </div>
-                  <p className="mb-4 text-[11px] leading-snug text-text-muted">
-                    Accueil et Paramètres sont toujours ouverts : une organisation sans eux n’est pas
-                    allégée, elle est cassée. Ce que vous fermez ici disparaît de sa barre — sans
-                    laisser d’écran vide qui dirait « il y a autre chose, mais pas pour vous ».
-                  </p>
-                  <div className="grid gap-1.5 sm:grid-cols-2">
-                    {CONFIGURABLE_MODULES.map((mod) => {
-                      const on = modules.includes(mod.key);
-                      const suggested = profile.modules.includes(mod.key);
-                      return (
-                        <button
-                          key={mod.key}
-                          type="button"
-                          onClick={() => toggleModule(mod.key)}
-                          className={`flex items-start gap-2.5 border px-2.5 py-2 text-left transition-colors ${
-                            on
-                              ? 'border-border-strong bg-surface-hover'
-                              : 'border-border bg-bg hover:border-border-strong'
-                          }`}
-                        >
-                          <span
-                            className={`mt-0.5 flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center border ${
-                              on ? 'border-text-primary bg-text-primary' : 'border-border-strong'
-                            }`}
-                          >
-                            {on && <Check size={9} strokeWidth={3} className="text-bg" />}
-                          </span>
-                          <span className="min-w-0">
-                            <span className="flex items-center gap-1.5">
-                              <span
-                                className={`text-[12px] ${on ? 'text-text-primary' : 'text-text-secondary'}`}
-                              >
-                                {mod.label}
-                              </span>
-                              {suggested && (
-                                /* Ce que le métier recommandait : visible même
-                                   quand on l'a décoché, pour qu'un écart soit un
-                                   choix et pas un oubli. */
-                                <span
-                                  /*
-                                    Mesuré à 8 px dans le gris le plus pâle :
-                                    ratio 4,32 contre 4,5 exigés, sept fois sur
-                                    l'écran. Une marque censée faire d'un écart
-                                    « un choix et pas un oubli » ne peut pas
-                                    être la chose la moins lisible de la page.
-                                  */
-                                  className="font-mono text-[10px] uppercase tracking-wider text-text-secondary"
-                                >
-                                  conseillé
-                                </span>
-                              )}
-                            </span>
-                            <span className="block text-[10px] leading-snug text-text-muted">
-                              {mod.hint}
-                            </span>
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
+                <ChoixModules modules={modules} conseilles={profile.modules} metier={profile.label} onChange={setModules} />
 
                 <section className="panel p-4">
                   <p className="eyebrow mb-2">Couleur proposée</p>
