@@ -9,6 +9,7 @@ import { capitaliserPhrase, longDayLabel, dayKey } from '../lib/calendar';
 import { useAttention } from '../state/useAttention';
 import type { AttentionItem } from '../lib/attention';
 import { Majordome } from './Majordome';
+import { PremiersPas } from '../guide/PremiersPas';
 import { homeWelcome, parcSerein } from '../lib/homeGreetings';
 import { useLangue } from '../i18n';
 import type { SharedTaskStatus } from '../shared/api';
@@ -279,6 +280,8 @@ export function HomeSoloScreen() {
             </Link>
           )}
         </header>
+
+        <PremiersPas />
 
         {rienDuTout ? (
           /*

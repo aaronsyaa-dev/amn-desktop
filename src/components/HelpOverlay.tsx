@@ -20,7 +20,7 @@ interface HelpItem {
 }
 
 /** A discreet "?" button that opens a quick reference; also bound to the "?" key. */
-export function HelpButton() {
+export function HelpButton({ enMenu = false }: { enMenu?: boolean } = {}) {
   const { t } = useLangue();
   const [open, setOpen] = useState(false);
 
@@ -44,15 +44,26 @@ export function HelpButton() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        title={`${t('chrome.aideRapide')} (?)`}
-        aria-label={t('chrome.aideRapide')}
-        className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-text-muted transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary"
-      >
-        <HelpCircle size={16} strokeWidth={1.9} />
-      </button>
+      {enMenu ? (
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => setOpen(true)}
+          className="flex min-h-11 w-full items-center px-3 text-left text-[13px] text-text-body hover:bg-surface-hover md:min-h-9"
+        >
+          {t('chrome.aideRapide')}
+        </button>
+      ) : (
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              title={`${t('chrome.aideRapide')} (?)`}
+              aria-label={t('chrome.aideRapide')}
+              className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-text-muted transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary"
+            >
+              <HelpCircle size={16} strokeWidth={1.9} />
+            </button>
+      )}
       <HelpOverlay open={open} onClose={() => setOpen(false)} />
     </>
   );

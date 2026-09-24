@@ -383,7 +383,7 @@ export function BarreRail({
           dépôt, #9a9a97, qui tient AA sur le #0b0b0b du champ.
         */}
         {expanded && (
-          <div className="flex-none px-3 pt-2.5">
+          <div className="flex-none px-3 pt-2.5" data-guide="recherche">
             <div className="flex h-[30px] items-center gap-2 border border-border-section bg-sunken px-2.5 focus-within:border-border-strong">
               <Search size={12} strokeWidth={2.2} className="flex-none text-text-muted" aria-hidden />
               {ouvrirRecherche ? (
@@ -422,7 +422,7 @@ export function BarreRail({
           rangement. Le plafond est un nombre de lignes, pas un pixel arbitraire.
         */}
         {expanded && epingles.length > 0 && (
-          <div className="flex-none px-2.5 pt-3">
+          <div className="flex-none px-2.5 pt-3" data-guide="epingles">
             <div className="flex items-center gap-2 px-2 pb-2">
               <span className="eyebrow text-text-muted">Épinglés</span>
               <span className="h-px flex-1 bg-border-row" aria-hidden />

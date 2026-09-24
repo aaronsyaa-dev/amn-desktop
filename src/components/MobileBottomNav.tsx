@@ -88,6 +88,7 @@ export function MobileBottomNav({
   return (
     <nav
       aria-label="Navigation principale"
+      data-guide="barre-pouce"
       className="flex flex-shrink-0 items-stretch border-t border-border bg-[#0d0d0d] md:hidden"
     >
       {items.map((item) => {
@@ -125,6 +126,7 @@ export function MobileBottomNav({
       <button
         type="button"
         onClick={onOpenLauncher}
+        data-guide="modules"
         aria-label={moreLabel === undefined ? t('chrome.tousModules') : moreLabel}
         aria-haspopup="dialog"
         className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2.5 text-text-muted transition-colors"

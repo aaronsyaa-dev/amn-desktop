@@ -6,6 +6,8 @@ import { BusinessSidebar } from './BusinessSidebar';
 import { BusinessTopBar } from './BusinessTopBar';
 import { AppointmentReminders } from './AppointmentReminders';
 import { VeilleCliente } from './VeilleCliente';
+import { GuideProvider } from '../guide/GuideContext';
+import { PremierLancement } from '../guide/PremierLancement';
 import { useActivity } from '../state/ActivityContext';
 import { SpaceProviders } from '../state/SpaceProviders';
 import { BootHealthy } from '../components/BootHealthy';
@@ -108,6 +110,7 @@ export function BusinessLayout() {
 
   return (
     <SpaceProviders>
+    <GuideProvider>
     <CallProvider>
                 <div
                   onTouchStart={onTouchStart}
@@ -160,6 +163,7 @@ export function BusinessLayout() {
                 </div>
                 <AppointmentReminders />
                 <VeilleCliente />
+                <PremierLancement />
                 <SyncActivityNotifier />
               <SupportNotifier />
               <AutomationsRunner />
@@ -170,6 +174,7 @@ export function BusinessLayout() {
                 <UpdateReady />
                 <PwaUpdateNotice />
     </CallProvider>
+    </GuideProvider>
     </SpaceProviders>
   );
 }

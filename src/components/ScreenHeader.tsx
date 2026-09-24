@@ -112,7 +112,7 @@ export function ScreenHeader({
             interlettrage serré (-.03em) fait un titre d'écran, pas un gros
             libellé. `sm:` garde une fenêtre étroite lisible.
           */}
-          <h1 className="truncate text-[26px] font-bold leading-none tracking-[-0.03em] text-text-primary sm:text-[32px]">
+          <h1 data-guide="titre" className="truncate text-[26px] font-bold leading-none tracking-[-0.03em] text-text-primary sm:text-[32px]">
             {title}
           </h1>
           {description && (
@@ -132,7 +132,7 @@ export function ScreenHeader({
           moitié de l'écran et repousseraient la liste sous la ligne de
           flottaison — or c'est la liste qu'on vient lire.
         */
-        <div className="mt-5 flex flex-wrap items-stretch gap-x-6 gap-y-3">
+        <div className="mt-5 flex flex-wrap items-stretch gap-x-6 gap-y-3" data-guide="releves">
           {shown.map((stat, index) => (
             <div
               key={stat.label}

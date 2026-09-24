@@ -37,6 +37,14 @@ for (const f of dossier('src/accueils/client')) for (const i of imports(lire(f))
 for (const f of dossier('src/accueils/interne')) for (const i of imports(lire(f))) if (/client\//.test(i) || /\/business\//.test(i) || /accueils\.business/.test(i)) fautes.push(`${f} importe ${i}`);
 for (const f of dossier('src/accueils')) for (const i of imports(lire(f))) if (/(^|\/)(client|interne)\//.test(i)) fautes.push(`${f} (partagé) importe ${i}`);
 
+/* Le guide : les profils de départ suivent la même règle que les Accueils. */
+for (const [f, interdit] of [['src/edition/guide.business.ts', /supervision|garde|tour|orgs/], ['src/edition/guide.internal.ts', /etudes|coll[ée]gien/]]) {
+  const src = lire(f);
+  for (const i of imports(src)) if (/interne\/|client\/|accueils\./.test(i)) fautes.push(`${f} importe ${i}`);
+  if (f.endsWith('business.ts') && /'(supervision|tour|gardeSalle|gardePile|orgs)'/.test(src)) fautes.push(`${f} cite un module interne`);
+  void interdit;
+}
+
 const codes = (src) => [...src.matchAll(/code:\s*'([^']+)'/g)].map((m) => m[1]);
 const business = lire('src/edition/accueils.business.tsx');
 const interne = lire('src/edition/accueils.internal.tsx');

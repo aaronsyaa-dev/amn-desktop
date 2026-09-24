@@ -1,3 +1,4 @@
+import { PremiersPas } from '../guide/PremiersPas';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -335,6 +336,10 @@ export function HomeScreen() {
           <span className="text-sm text-text-muted">{nudge}</span>
         )}
       </motion.div>
+
+      <div className="mt-6">
+        <PremiersPas />
+      </div>
 
       {/*
         L'OBJET DOMINANT — ce qui attend quelqu'un.

@@ -4,6 +4,7 @@ import { Menu, Search, Sparkles } from 'lucide-react';
 import { useCommandPalette } from './command-palette/CommandPalette';
 import { NotificationCenter } from './NotificationCenter';
 import { HelpButton } from './HelpOverlay';
+import { BoutonAide } from '../guide/BoutonAide';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
 import { OrgSwitchButton } from './org-rail/OrgSwitchButton';
 import { UserAvatar } from './UserAvatar';
@@ -97,7 +98,9 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
       </button>
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-        <SyncStatusIndicator libelleDes="lg" />
+        <span data-guide="lien" className="flex">
+          <SyncStatusIndicator libelleDes="lg" />
+        </span>
         {/* L'insigne de la Garde (Bloc 9) : le pouls, qui est en ronde, chez qui — un clic vers la Salle. */}
         <GardeBadge />
         <button
@@ -108,9 +111,7 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
           <Sparkles size={16} strokeWidth={1.9} />
           <span className="hidden lg:inline">Ajmani</span>
         </button>
-        <span className="hidden lg:flex">
-          <HelpButton />
-        </span>
+        <BoutonAide extra={<HelpButton enMenu />} />
         <NotificationCenter />
         {user && (
           <button

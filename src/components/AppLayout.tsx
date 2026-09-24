@@ -28,6 +28,8 @@ import { AutomationsRunner } from './AutomationsRunner';
 import { RegressionNotifier } from './RegressionNotifier';
 import { IdleScreensaver } from './IdleScreensaver';
 import { WelcomeOverlay, shouldShowWelcome } from './WelcomeOverlay';
+import { GuideProvider } from '../guide/GuideContext';
+import { PremierLancement } from '../guide/PremierLancement';
 import { LocalSessionBanner } from '../auth/LocalSessionBanner';
 import { MobileBottomNav } from './MobileBottomNav';
 import { spaceForPath } from '../data/spaces';
@@ -110,6 +112,7 @@ export function AppLayout() {
         <ActivityProvider>
         <RemoteSitesProvider>
           <ToastProvider>
+          <GuideProvider>
           <CallProvider>
           <SitePanelProvider>
             <AssistantProvider>
@@ -213,6 +216,7 @@ export function AppLayout() {
               <SiteDetailPanel />
               <AssistantPanel />
               <AjmaniBubble />
+              <PremierLancement />
               <NotificationsManager />
               <SyncActivityNotifier />
               <RegressionNotifier />
@@ -234,6 +238,7 @@ export function AppLayout() {
           </AssistantProvider>
         </SitePanelProvider>
           </CallProvider>
+          </GuideProvider>
           </ToastProvider>
         </RemoteSitesProvider>
         </ActivityProvider>

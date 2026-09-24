@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { UserAvatar } from '../components/UserAvatar';
 import { SyncStatusIndicator } from '../components/SyncStatusIndicator';
 import { useLangue } from '../i18n';
+import { BoutonAide } from '../guide/BoutonAide';
 
 /**
  * Barre haute de l'édition Business.
@@ -40,7 +41,10 @@ export function BusinessTopBar({ onMenu }: { onMenu: () => void }) {
       </span>
 
       <div className="ml-auto flex items-center gap-2">
-        <SyncStatusIndicator />
+        <span data-guide="lien" className="flex">
+          <SyncStatusIndicator />
+        </span>
+        <BoutonAide />
         <button
           type="button"
           onClick={() => navigate('/settings')}

@@ -830,6 +830,8 @@ export interface UpdateProfileInput {
   presenceText?: string;
   /** L'Accueil choisi par ce compte (code de variante, `2a` par défaut) — ACCUEILS.md. */
   accueil?: string;
+  /** Le profil de départ choisi (élève, seul·e, équipe, entreprise, supervision) — le guide. */
+  profil?: string;
 }
 
 export interface ChangePasswordInput {

@@ -25,6 +25,7 @@ interface ProfileData {
    * Sur le profil synchronisé, il suit la personne d'un poste à l'autre.
    */
   accueil?: string;
+  profil?: string;
 }
 
 interface ProfilesContextValue {
@@ -42,6 +43,7 @@ interface ProfilesContextValue {
   teamSeenAt: (email: string) => string | null;
   /** L'Accueil choisi par ce compte, ou `null` (l'Accueil par défaut). */
   accueilDe: (email: string) => string | null;
+  profilDe: (email: string) => string | null;
 }
 
 const ProfilesContext = createContext<ProfilesContextValue | undefined>(undefined);
@@ -202,6 +204,7 @@ export function ProfilesProvider({ children }: { children: React.ReactNode }) {
           presenceText: existing.presenceText,
           teamSeenAt: existing.teamSeenAt,
           ...(existing.accueil ? { accueil: existing.accueil } : {}),
+          ...(existing.profil ? { profil: existing.profil } : {}),
         };
       }
       if (!miroirFiable) return null;
@@ -256,9 +259,18 @@ export function ProfilesProvider({ children }: { children: React.ReactNode }) {
     [records],
   );
 
+  const profilDe = useCallback(
+    (email: string): string | null => {
+      const key = normaliseEmail(email);
+      if (!key) return null;
+      return records.find((r) => r.id === key)?.profil ?? null;
+    },
+    [records],
+  );
+
   const value = useMemo(
-    () => ({ profiles, profileFor, updateSelf, markTeamSeen, teamSeenAt, accueilDe }),
-    [profiles, profileFor, updateSelf, markTeamSeen, teamSeenAt, accueilDe],
+    () => ({ profiles, profileFor, updateSelf, markTeamSeen, teamSeenAt, accueilDe, profilDe }),
+    [profiles, profileFor, updateSelf, markTeamSeen, teamSeenAt, accueilDe, profilDe],
   );
 
   return <ProfilesContext.Provider value={value}>{children}</ProfilesContext.Provider>;

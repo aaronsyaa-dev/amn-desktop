@@ -147,7 +147,68 @@ une boîte noire.
 
 ## 2. Ce qui a été fait, chantier par chantier
 
-_(se remplit au fil du chantier)_
+### 2.1 L'onboarding (chantier 2)
+
+**Ce qui existe maintenant** (`src/guide/`, monté dans les deux coquilles) :
+
+- **« Qui êtes-vous ? »** au premier lancement d'un compte : quatre portes dans
+  l'édition cliente (élève ou étudiant·e, seul·e, petite équipe, plusieurs
+  équipes), deux dans l'édition interne (je supervise le parc, je travaille
+  dans mon poste). Choisir applique le profil : les modules épinglés, ceux
+  qu'on allège (Facturation n'a rien à faire dans la barre d'une collégienne),
+  l'Accueil (la semaine dépliée pour une élève, les tiroirs pour un chef
+  d'entreprise), et enregistre le profil SUR LE COMPTE (synchronisé) — il suit
+  la personne d'un poste à l'autre. « Plus tard » est toujours possible.
+- **La visite guidée générale** (8 étapes, 9 en interne) : un voile éteint
+  l'écran, un projecteur découpe la cible, un curseur simulé glisse jusqu'à
+  elle et « clique », une carte courte explique. On avance en cliquant à
+  droite de l'écran, on recule à gauche, ← → au clavier, Échap pour passer.
+  Sur téléphone, les étapes visent la barre du pouce et « Modules » au lieu
+  de la colonne. Une cible absente est sautée, jamais montrée dans le vide.
+- **La présentation de chaque module**, à sa première ouverture : le bandeau
+  existant gagne « Me montrer », qui joue un tuto de cinq étapes lu sur
+  l'écran lui-même (titre, relevés, geste principal, objet dominant, où
+  revoir). Il marche pour les 139 modules sans écrire 139 scénarios — et les
+  69 modules qui n'avaient pas de carte en ont une, tirée de leur ligne de
+  catalogue.
+- **« Vos premiers pas »** sur l'Accueil : trois ou quatre choses concrètes
+  selon le profil, cochées par les données réelles (une tâche existe, un
+  client existe, l'équipe compte deux personnes) — jamais à la main. Le
+  panneau s'efface quand tout est fait, ou d'un clic.
+- **Le point d'interrogation** dans la barre du haut des deux éditions
+  (l'édition cliente n'en avait pas) : revoir la visite, me montrer cet écran,
+  changer de profil, demander de l'aide. En interne, l'aide rapide existante
+  devient une ligne de ce menu.
+- **Paramètres → Guide** : tout se rejoue.
+
+**Preuve** : `scratchpad/guide.mjs` a joué le premier lancement dans un vrai
+navigateur pour Lina (profil élève, 1280 px), Marco (profil seul·e, 390 px)
+et le compte interne (profil supervision) — question posée, visite complète,
+premiers pas présents, tuto de module en cinq étapes, menu d'aide à quatre
+gestes, aucune erreur de page. Captures dans
+`docs/captures/vision-2026-09-24/apres/onboarding/`.
+
+**Ce que ça change pour les cinq profils.** Lina choisit « élève », voit
+Tâches, Agenda, Projets, Notes épinglés et Facturation disparaître de sa
+barre ; ses premiers pas parlent de devoirs et de cours. Marco choisit
+« seul·e » et lit : créer un client, faire un devis, poser un rendez-vous.
+Mohamed choisit « je supervise » : la Salle, À votre avis, la Vue d'ensemble
+et Organisations sont épinglés, et la visite lui montre les familles de
+supervision à part (voir chantier 3).
+
+**Règles tenues.** Aucun ambre dans le guide (le projecteur est en encre
+claire : le voile éteint l'écran, la cible est le seul objet allumé — c'est
+déjà le signal). `prefers-reduced-motion` : le curseur se pose sans glisser.
+`check:accueils` vérifie maintenant aussi que les profils de guide ne
+traversent pas les éditions.
+
+**Déconstruction honnête.** Le tuto par module est générique : il montre
+l'anatomie de l'écran, pas sa logique métier. Pour un écran comme le Cadran
+ou le Radar, « l'objet principal » mérite une phrase spécifique — c'est un
+brief pour Claude Design (§5) plus qu'un défaut de mécanique. La question
+« Qui êtes-vous ? » a quatre portes ; « une association », « une école »
+n'en ont pas et retombent sur « petite équipe » — à surveiller avec les
+premiers retours.
 
 ## 3. Les idées, classées par impact
 

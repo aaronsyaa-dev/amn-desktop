@@ -4,6 +4,8 @@ import { X } from 'lucide-react';
 import { sectionsForSpace, spaceForPath } from '../data/spaces';
 import { useLangue, libelleNav, carteModule } from '../i18n';
 import { useAuth } from '../auth/AuthContext';
+import { useGuide } from '../guide/GuideContext';
+import { parcoursModule } from '../guide/parcours';
 
 /**
  * LA PRÉSENTATION À LA PREMIÈRE OUVERTURE (Bloc 3).
@@ -41,6 +43,7 @@ export function PremiereOuverture() {
   const location = useLocation();
   const email = user?.email ?? '';
   const [vues, setVues] = useState<string[]>(() => lireVues(email));
+  const { lancer } = useGuide();
   /*
     LES TROIS GESTES PRINCIPAUX (Bloc 10) — lus sur l'écran, jamais inventés.
     Les boutons d'action de l'en-tête sont ce que l'écran sait faire ; on les
@@ -70,8 +73,13 @@ export function PremiereOuverture() {
     if (colle && (!item || candidat.to.length > item.to.length)) item = candidat;
   }
   if (!item) return null;
-  const carte = carteModule(item.key);
-  if (!carte || vues.includes(item.key)) return null;
+  /*
+    SOIXANTE-NEUF MODULES N'AVAIENT PAS DE CARTE, donc jamais de présentation.
+    La ligne du catalogue (`hint`) dit déjà ce que le module fait : elle
+    sert de carte de repli — une phrase vaut mieux que le silence.
+  */
+  const carte = carteModule(item.key) ?? { quoi: item.hint, pourQui: '', exemple: '' };
+  if (vues.includes(item.key)) return null;
 
   const fermer = () => {
     const suivant = [...vues, item!.key];
@@ -93,23 +101,34 @@ export function PremiereOuverture() {
           {t('presentation.surtitre')} · {libelleNav(item)}
         </p>
         <p className="mt-1 text-sm text-text-primary">{carte.quoi}</p>
-        <p className="mt-0.5 text-xs text-text-secondary">
-          <span className="text-text-muted">{t('carte.pourQui')} :</span> {carte.pourQui}
-        </p>
-        <p className="mt-0.5 text-xs italic text-text-secondary">{carte.exemple}</p>
+        {carte.pourQui && (
+          <p className="mt-0.5 text-xs text-text-secondary">
+            <span className="text-text-muted">{t('carte.pourQui')} :</span> {carte.pourQui}
+          </p>
+        )}
+        {carte.exemple && <p className="mt-0.5 text-xs italic text-text-secondary">{carte.exemple}</p>}
         {gestes.length > 0 && (
           <p className="mt-1 text-xs text-text-secondary" data-gestes={gestes.length}>
             <span className="text-text-muted">{t('carte.gestes')} :</span> {gestes.join(' · ')}
           </p>
         )}
       </div>
-      <button
-        type="button"
-        onClick={fermer}
-        className="flex min-h-11 flex-shrink-0 items-center gap-1.5 border border-border-strong bg-surface px-3 text-xs font-medium text-text-primary transition-colors hover:bg-surface-hover md:min-h-0 md:py-1.5"
-      >
-        <X size={13} /> {t('presentation.commencer')}
-      </button>
+      <div className="flex flex-shrink-0 flex-col gap-1.5 sm:flex-row">
+        <button
+          type="button"
+          onClick={() => lancer(parcoursModule(item.key, libelleNav(item), carte.quoi))}
+          className="flex min-h-11 items-center justify-center bg-accent px-3 text-xs font-semibold text-bg transition-colors hover:bg-accent-hover md:min-h-0 md:py-1.5"
+        >
+          {t('guide.montrer')}
+        </button>
+        <button
+          type="button"
+          onClick={fermer}
+          className="flex min-h-11 items-center justify-center gap-1.5 border border-border-strong bg-surface px-3 text-xs font-medium text-text-primary transition-colors hover:bg-surface-hover md:min-h-0 md:py-1.5"
+        >
+          <X size={13} /> {t('presentation.commencer')}
+        </button>
+      </div>
     </aside>
   );
 }
