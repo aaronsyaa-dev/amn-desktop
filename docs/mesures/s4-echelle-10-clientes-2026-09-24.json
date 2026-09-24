@@ -1,0 +1,109 @@
+{
+ "date": "2026-09-24T21:58:55.552Z",
+ "clientes": 10,
+ "profils": {
+  "dormante": 4,
+  "normale": 3,
+  "tresActive": 3
+ },
+ "comptesTotal": 41,
+ "fiches": 3170,
+ "fabricationMs": 539,
+ "baseMo": 2.9,
+ "harun": {
+  "listeComplete": {
+   "ms": 4,
+   "Ko": 12,
+   "statut": 200
+  },
+  "pageDe50": {
+   "ms": 4,
+   "Ko": 3,
+   "statut": 200
+  },
+  "pageTriActivite": {
+   "ms": 3,
+   "Ko": 3,
+   "statut": 200
+  },
+  "resume": {
+   "ms": 4,
+   "Ko": 0,
+   "statut": 200
+  },
+  "dossier": {
+   "ms": 4,
+   "Ko": 1,
+   "statut": 200
+  },
+  "pouls": {
+   "ms": 5,
+   "Ko": 1,
+   "statut": 200
+  },
+  "salleGarde": {
+   "ms": 6,
+   "Ko": 16,
+   "statut": 200
+  },
+  "pileGarde": {
+   "ms": 3,
+   "Ko": 0,
+   "statut": 200
+  },
+  "demandes": {
+   "ms": 3,
+   "Ko": 0,
+   "statut": 200
+  },
+  "journalAcces": {
+   "ms": 2,
+   "Ko": 0,
+   "statut": 200
+  }
+ },
+ "rondesGarde": {
+  "comptes.places": {
+   "ms": 17,
+   "resume": "11 organisations, tout tient."
+  },
+  "registre.hygiene": {
+   "ms": 11,
+   "resume": "l’hygiène du registre (cinq réparations) — réglé seul, cinq points au total."
+  },
+  "produit.integrite": {
+   "ms": 5,
+   "resume": "J’ai relu 11 organisations ; rien qui demande un avis."
+  },
+  "clientes.rapports": {
+   "ms": 38,
+   "resume": "Passage sur 11 organisations : en ordre."
+  },
+  "clientes.accueil": {
+   "ms": 15,
+   "resume": "Réglé sans vous déranger : l’accueil : collectif 9, agence 8, artisan 7, artisan 6, evenem"
+  },
+  "securite.campagnes": {
+   "ms": 3,
+   "resume": "Vu, vérifié, rien à remonter."
+  },
+  "taches.emission": {
+   "ms": 3,
+   "resume": "Ronde faite, rien à signaler."
+  }
+ },
+ "trafic": {
+  "postesConnectes": 6,
+  "operations": 83,
+  "p50": 4,
+  "p95": 7,
+  "p99": 24,
+  "max": 24,
+  "erreurs": 0,
+  "trames": 89
+ },
+ "serveur": {
+  "rssMo": 140,
+  "gardeEnRetard": 0
+ }
+}

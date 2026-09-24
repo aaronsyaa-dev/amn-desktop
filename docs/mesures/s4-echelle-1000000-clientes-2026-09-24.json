@@ -1,0 +1,69 @@
+{
+ "date": "2026-09-24T22:07:41.309Z",
+ "clientes": 1000000,
+ "fabricationMs": 54472,
+ "baseMo": 1175.9,
+ "demarrageServeurMs": 18605,
+ "harun": {
+  "pageDe50": {
+   "ms": 23,
+   "Mo": 0,
+   "statut": 200
+  },
+  "pageTriActivite": {
+   "ms": 157,
+   "Mo": 0,
+   "statut": 200
+  },
+  "recherche": {
+   "ms": 304,
+   "Mo": 0,
+   "statut": 200
+  },
+  "resume": {
+   "ms": 686,
+   "Mo": 0,
+   "statut": 200
+  },
+  "salleGarde": {
+   "ms": 4,
+   "Mo": 0,
+   "statut": 200
+  },
+  "listeComplete": {
+   "ms": 15321,
+   "erreur": "UND_ERR_SOCKET"
+  }
+ },
+ "rondesGarde": {
+  "comptes.places": {
+   "ms": 35,
+   "resume": "100 organisations, tout tient."
+  },
+  "registre.hygiene": {
+   "ms": 25,
+   "resume": "Rien à redire sur 100 organisations."
+  },
+  "produit.integrite": {
+   "ms": 18,
+   "resume": "J’ai relu 100 organisations ; rien qui demande un avis."
+  },
+  "clientes.rapports": {
+   "ms": 129,
+   "resume": "Passage sur 100 organisations : en ordre."
+  },
+  "clientes.accueil": {
+   "ms": 78,
+   "resume": "Réglé sans vous déranger : l’accueil : cliente 999000, cliente 998000, cliente 997000, cliente 99600"
+  }
+ },
+ "connexionUneCliente": {
+  "ms": 53,
+  "statut": 200
+ },
+ "serveur": {
+  "rssMo": 134,
+  "vivantApresListeComplete": false,
+  "vivantALaFin": false
+ }
+}

@@ -1,0 +1,109 @@
+{
+ "date": "2026-09-24T22:00:06.624Z",
+ "clientes": 100,
+ "profils": {
+  "dormante": 42,
+  "normale": 46,
+  "tresActive": 12
+ },
+ "comptesTotal": 292,
+ "fiches": 17910,
+ "fabricationMs": 3043,
+ "baseMo": 13.3,
+ "harun": {
+  "listeComplete": {
+   "ms": 7,
+   "Ko": 109,
+   "statut": 200
+  },
+  "pageDe50": {
+   "ms": 3,
+   "Ko": 15,
+   "statut": 200
+  },
+  "pageTriActivite": {
+   "ms": 4,
+   "Ko": 15,
+   "statut": 200
+  },
+  "resume": {
+   "ms": 4,
+   "Ko": 0,
+   "statut": 200
+  },
+  "dossier": {
+   "ms": 3,
+   "Ko": 2,
+   "statut": 200
+  },
+  "pouls": {
+   "ms": 4,
+   "Ko": 1,
+   "statut": 200
+  },
+  "salleGarde": {
+   "ms": 5,
+   "Ko": 16,
+   "statut": 200
+  },
+  "pileGarde": {
+   "ms": 4,
+   "Ko": 0,
+   "statut": 200
+  },
+  "demandes": {
+   "ms": 2,
+   "Ko": 0,
+   "statut": 200
+  },
+  "journalAcces": {
+   "ms": 2,
+   "Ko": 0,
+   "statut": 200
+  }
+ },
+ "rondesGarde": {
+  "comptes.places": {
+   "ms": 23,
+   "resume": "100 organisations, tout tient."
+  },
+  "registre.hygiene": {
+   "ms": 33,
+   "resume": "l’hygiène du registre (55 réparations) — réglé seul, 55 points au total."
+  },
+  "produit.integrite": {
+   "ms": 12,
+   "resume": "J’ai relu 100 organisations ; rien qui demande un avis."
+  },
+  "clientes.rapports": {
+   "ms": 130,
+   "resume": "Passage sur 100 organisations : en ordre."
+  },
+  "clientes.accueil": {
+   "ms": 71,
+   "resume": "Réglé sans vous déranger : l’accueil : etudes 99, artisan 98, boutique 97, restaurant 96, "
+  },
+  "securite.campagnes": {
+   "ms": 5,
+   "resume": "Vu, vérifié, rien à remonter."
+  },
+  "taches.emission": {
+   "ms": 4,
+   "resume": "Ronde faite, rien à signaler."
+  }
+ },
+ "trafic": {
+  "postesConnectes": 58,
+  "operations": 778,
+  "p50": 3,
+  "p95": 8,
+  "p99": 19,
+  "max": 35,
+  "erreurs": 0,
+  "trames": 836
+ },
+ "serveur": {
+  "rssMo": 206,
+  "gardeEnRetard": 0
+ }
+}
