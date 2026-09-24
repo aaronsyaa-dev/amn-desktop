@@ -19,6 +19,7 @@ import { useInvoices, isoDay } from '../state/useInvoices';
 import { EcranVide } from '../components/EtatEcran';
 import { enjeuDuJour } from '../lib/enjeu';
 import { PremierJour } from '../components/etats/EtatsTransverses';
+import { useEtroit } from '../lib/useEtroit';
 
 /**
  * ACCUEIL — L'AXE DE LA JOURNÉE (système de design, `12a`)
@@ -255,6 +256,11 @@ export function HomeSoloScreen() {
   const minutesOccupees = duJour.reduce((s, a) => s + Math.max(0, a.durationMin), 0);
   const traitPct = Math.min(100, Math.max(0, pctDe(maintenant)));
   const heureDansLAxe = traitPct > 0 && traitPct < 100;
+  /* Sur un téléphone, la frise fait ~270 px : un créneau d'une heure y tient
+     en 25 px, trop peu pour un nom. Le nom n'y paraît qu'à partir d'un
+     tiers d'axe (le titre du bloc le garde au survol et au lecteur d'écran). */
+  const etroit = useEtroit();
+  const largeurPourUnNom = etroit ? 30 : 10;
   const rienDuTout = appointments.length === 0 && tasks.length === 0 && clients.length === 0;
 
   return (
@@ -409,7 +415,7 @@ export function HomeSoloScreen() {
                           {dureeGravee(rdv.durationMin)}
                         </span>
                       ) : (
-                        pos.largeur >= 10 && (
+                        pos.largeur >= largeurPourUnNom && (
                           <span className="mt-1.5 block truncate text-[12.5px] font-semibold text-text-secondary">
                             {rdv.clientName || rdv.title || 'Rendez-vous'}
                           </span>
