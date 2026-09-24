@@ -10,6 +10,9 @@ produit tel qu'il était ce matin-là. Les captures sont dans
 
 ---
 
+
+_État au 24 septembre 2026 — branche `claude/first-pr-github-setup-ltpqqo` depuis le tag `avant-vision-client`, 8 commits (180 files changed, 6296 insertions(+), 96 deletions(-)) ; côté serveur, la série `docs/patchs/amn-api-2026-09-24/` (six patchs, aussi sur la branche `claude/cinquante-modules` d'amn-api)._
+
 ## 1. Le parcours des cinq profils — avant
 
 Cinq comptes réels ont été créés sur le bac à sable (`@exemple.test`), et
@@ -742,6 +745,38 @@ avec son écran. Le Hall est modérable par l'API d'administration ; les
 signalements arrivent dans la file d'assistance de la Tour. **Reste :** pas
 d'écran de modération du Hall dans la Tour, et « qui décide quoi » chez une
 cliente n'est lisible nulle part d'un seul regard (§3, §5).
+
+### 2.8 Les garde-fous, mesurés — sur les bundles finaux
+
+_Mesurés sur les deux bundles construits après la dernière modification
+(`AMN_EDITION=business` et `internal`, API locale sur 8791). Les contrôles
+navigateur ont tourné avec le compte indiqué ; ceux qui dépendent d'un jeu
+d'essai l'ont eu._
+
+| Contrôle | Cliente | Interne | Note |
+|---|---|---|---|
+| `tsc` (deux tsconfig) | vert | vert | |
+| `lint` (`eslint --ext .ts,.tsx .`) | vert (0 erreur, 7 avertissements antérieurs) | — | |
+| `check:langue` | vert — 8 contrôles, 3 284 clés | — | |
+| `check:encres` | vert — 582 fichiers, 28 jetons | — | |
+| `check:modules` | vert — 117 / 140 / 109 | — | |
+| `check:accueils` (+ lexique) | vert — 11 / 11, aucun import croisé | — | |
+| `check:roles` | vert | — | |
+| `check:sync` | vert | — | |
+| `check:cinquante` | vert — 222 règles | — | |
+| `check:appels` | vert (note TURN, O8) | — | |
+| `check:business` (pureté du bundle) | vert — 28 motifs interdits, 3 marqueurs | — | |
+| `check:coquille` | vert — 9 écrans (Nadia) | vert — 10 écrans (design) | rail 52, tuiles 38 × 38, 27n + 8, deux plaques, aucun ambre |
+| `check:signal` | vert — Nadia (Standard) **et** Vernet (Premium, tous modules) | vert — design | |
+| `check:mobile` | vert — 200 mesures (Vernet) | vert — 200 mesures (design) | 360 / 390 / 430 / 768 |
+| `check:contraste` | vert — 118 écrans, 24 vues de détail, 24 801 textes (design) | vert — 159 écrans, 34 340 textes (design) | seuil WCAG AA |
+| `check:xss` (nouveau) | vert — Marco, 8 charges, 3 collections + Hall | vert — design | |
+| `check:veille-cliente` | vert sous `TZ=Europe/Paris` sauf la règle « mode nuit », dépendante de l'heure (O1) | — | compte design ; avec Nadia, deux règles attendent le jeu d'essai |
+| amn-api `npm test` | 482 tests verts (dont hall 9, invite 1, casser-vision 6) | | |
+
+**Les captures** : `docs/captures/vision-2026-09-24/` — `avant/` (8),
+`apres/onboarding/` (8), `apres/barre/` (11), `apres/vie/` (16),
+`vernet/` (avant et après, 30), `casser/` (3).
 
 ## 3. Les idées, classées par impact
 
