@@ -82,7 +82,7 @@ Le patch ajoute `src/routes/qr.js` et son branchement dans `src/server.js`.
 Tant qu'il n'est pas appliqué, les compteurs de scans restent à leur valeur
 de départ et l'écran QR codes affiche un ambre qui ne bouge jamais.
 
-## `amn-api-2026-09-24/` — le Hall (vision cliente, chantiers 4 et 5)
+## `amn-api-2026-09-24/` — le Hall, et l'invité (vision cliente, chantiers 4 à 6)
 
 Le serveur du Hall, l'espace commun entre organisations volontaires. Sans
 lui, l'écran « Le Hall » du poste dit « Le Hall a besoin du lien » et
@@ -97,6 +97,10 @@ série ici est la copie qui survit au conteneur.
   pour une organisation présente ; le consentement a un frein ;
 - `0003`, `0004` — les tests du frein, et la correction du remise-à-zéro des
   freins dans les tests (chaque garde tient son registre par fermeture).
+- `0005` — l'invité ne lit pas la vie interne de l'entreprise : congés,
+  candidatures, formations, habilitations, paies, procédures, messages privés,
+  groupes, annonces, réunions, objectifs se lisent vides pour un `guest` et
+  ne s'écrivent pas (`test/invite.test.js`).
 
 Il touche sept fichiers :
 
@@ -114,6 +118,6 @@ Il touche sept fichiers :
   des freins en test.
 
 À appliquer sur `main` : `git am docs/patchs/amn-api-2026-09-24/*.patch`,
-puis `npm test` (la suite complète passe : 475 tests). Aucune migration à
+puis `npm test` (la suite complète passe : 476 tests). Aucune migration à
 la main : les deux tables naissent au démarrage (`CREATE TABLE IF NOT
 EXISTS`), sur SQLite comme sur Postgres.

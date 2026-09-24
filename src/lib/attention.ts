@@ -36,6 +36,12 @@
 /* --------------------------------- Domaine -------------------------------- */
 
 export type AttentionKind =
+  /* Ce qui attend une DÉCISION (vision cliente, chantier 6) : voir state/useDecisions.ts. */
+  | 'project-late'
+  | 'project-validation'
+  | 'leave-pending'
+  | 'booking-conflict'
+  | 'vehicle-due'
   | 'invoice-overdue'
   | 'invoice-due-soon'
   | 'task-stale'

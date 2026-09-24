@@ -527,6 +527,118 @@ du Hall sont par compte, pas par adresse, justement pour ça), et la tenue de
 `hall_messages` au-delà de quelques milliers de lignes (un index sur
 `created_at`, aucune purge — à décider, §6).
 
+### 2.5 L'organisation à plusieurs projets — la simulation du Groupe Vernet (chantier 6)
+
+**La simulation.** Le compte « Groupe Vernet » (formule Premium, dix places)
+a reçu une entreprise entière : huit comptes (le patron, Claire —
+directrice des opérations, admin —, Karim et Sonia — chefs de projet,
+admins —, Yanis, Léa et Moussa — techniciens, membres, Moussa partagé
+entre deux chantiers —, et la Mairie de Lyon invitée en `guest`) ; quatre
+projets (Lyon en cours, Bordeaux en cours, le siège en attente de validation
+et passé d'échéance, Villeurbanne terminé) ; douze tâches réparties ; quatre
+ressources partagées dont **la nacelle réclamée par Lyon et par Bordeaux le
+même jour** ; deux véhicules dont un contrôle technique dans dix jours ; le
+plan du siège et deux réservations qui se disputent la salle Rhône ; trois
+interventions ; une demande de congé de Yanis qui attend Karim ; deux
+clients ; des rendez-vous et des notes rattachés aux projets. Les scripts
+sont dans le bac à sable (`seed-vernet-*.mjs`) ; les captures avant/après
+dans `docs/captures/vision-2026-09-24/vernet/`.
+
+**Ce que le patron voyait avant.** « Bonsoir Vernet — rien à signaler.
+Aucun rendez-vous aujourd'hui. » Et, dans « À traiter » : « Rien ne traîne :
+aucune facture en retard, aucun devis sans réponse. » Pendant ce temps : un
+projet avait dépassé son échéance de trois jours, un autre attendait sa
+validation, la nacelle était promise deux fois samedi, Yanis attendait une
+réponse depuis la veille, le Master passait au contrôle technique dans dix
+jours. Chaque module le savait (Projets disait le retard, Absences comptait
+« À valider 1 », Matériel refuserait le chevauchement à la création mais ne
+le voyait pas dans ses données, Flotte connaissait l'échéance). Personne ne
+le disait à celui qui décide. C'est le manque principal d'une organisation
+à plusieurs projets : **la hiérarchie de décision existait (les admins
+approuvent les absences, les propriétaires règlent l'organisation) mais
+rien ne remontait vers elle.**
+
+**Ce qui a été fait.**
+
+1. **« Ce qui attend une décision »** (`state/useDecisions.ts`, dans
+   « À traiter » de l'Accueil cliente). Un seul hook rassemble, par
+   ordre de poids : les projets passés d'échéance (le lendemain, pas un
+   adjectif) ou en attente de validation ; les absences à décider — **visibles
+   seulement par qui peut décider** (owner/admin, `isAdminRole`) ; les
+   chevauchements réels de deux réservations de matériel, quel que soit le
+   jour ; les échéances de véhicules à trente jours ou mille kilomètres.
+   Chaque ligne dit le fait, la preuve chiffrée et le geste (« Arbitrer »,
+   « Redater ou fermer », « Accepter ou refuser », « Prendre rendez-vous »),
+   et mène à l'écran. Après : « 4 choses à traiter » chez le patron
+   (`apres-vernet-1-accueil.png`) ; Yanis, membre, n'y voit pas la demande de
+   congé de son collègue.
+2. **Le responsable d'un projet** (`ownerEmail`, facultatif, choisi parmi
+   les membres dans la fiche projet ; normalisé à la lecture). Un projet
+   répond à quelqu'un, sinon c'est le groupe entier qui le porte —
+   c'est-à-dire personne. Le prénom apparaît dans la liste et dans la vue du
+   groupe.
+3. **La vue du groupe** (Projets › GROUPE, à côté de FRISE et LISTE). Une
+   ligne par projet ouvert : responsable, statut, échéance (et le retard en
+   jours), tâches ouvertes / en cours, l'équipe (le responsable plus les
+   personnes assignées aux tâches du projet), la prochaine action. Sous la
+   table : **« Sur plusieurs projets »** — les personnes que deux projets ou
+   plus se disputent (Moussa : Lyon · Bordeaux), parce que c'est là que les
+   arbitrages se jouent. La courbe de brûlage reste l'objet dominant
+   au-dessus ; la table ne décide de rien, elle montre
+   (`apres-vernet-2-projets-groupe.png`).
+4. **« À arbitrer »** sur Matériel : tous les chevauchements à venir, quel
+   que soit le jour, avec qui réclame quoi et quand (« Nacelle 12 m · sam.
+   26 sept. · karim 8 h–14 h ↔ sonia 12 h–17 h »). L'écran ne montrait que le
+   jour affiché ; un patron ne feuillette pas les jours pour découvrir que la
+   nacelle est promise deux fois samedi (`apres-vernet-3-materiel.png`). La
+   fonction de chevauchement vit dans `lib/creneaux.ts`, partagée avec le
+   hook de décisions.
+5. **L'invité ne lit pas la vie interne de l'entreprise** — la découverte la
+   plus sérieuse de la simulation, corrigée côté serveur (patch `0005`,
+   `test/invite.test.js`). La Mairie, invitée en `guest` sur son chantier,
+   lisait les congés de l'équipe, les carnets de droits, les candidatures, les
+   paies, les messages privés. Le rôle `guest` est conçu pour « la comptable
+   qui vient chercher les factures, un sous-traitant » ; treize collections
+   (congés, droits, candidatures, formations, habilitations, paies,
+   procédures, messages privés, groupes, annonces, réunions, objectifs) se
+   lisent désormais **vides** pour un invité (la synchronisation ne casse
+   pas ; l'écran est simplement sans rien) et ne s'écrivent pas (403). Les
+   projets, tâches, factures et dépenses restent lisibles : c'est pour eux
+   qu'un invité existe. Détail en §4.
+
+**Trois défauts anciens que le compte riche a fait sortir** (`check:signal`
+ne tournait qu'avec un compte Standard à quinze modules) : Priorités et
+Recrutement affichaient des zéros sur un écran déclaré vide (« 0 € encaissé
+se lit comme un échec ») — la phrase remplace le chiffre ; RDV en ligne
+portait deux ambres quand la page est fermée (la plaque « fermée » et le
+créneau bloqué en interne) — page fermée, la plaque est la seule décision,
+le créneau reste dit en encre. `check:signal` vert sur Vernet (Premium,
+tous modules) comme sur Nadia (Standard).
+
+**Ce que la simulation n'a pas comblé, et pourquoi** (idées classées en
+§3). Les réservations de matériel et les interventions ne portent pas
+d'identifiant de projet : on sait qui réserve, pas pour quel chantier — la
+vue du groupe ne peut donc pas dire « la nacelle est à Lyon jeudi ». Les
+tâches n'ont pas de date : elles ont une priorité, un projet a une échéance —
+c'est un choix du produit, et il tient, mais un technicien avec douze tâches
+sur deux chantiers voudra savoir dans quel ordre. Les salles n'ont pas de
+conflit visible (deux réservations de la salle Rhône se recouvrent dans les
+données sans que l'écran le dise). Le Tableau de bord dit « aucun module n'a
+encore de quoi alimenter un cadran » à une organisation qui a tout : il ne
+lit pas les projets ni les tâches. Et « qui décide quoi » reste implicite :
+il n'y a pas d'écran qui dise, pour cette organisation, que Karim répond de
+Lyon, Claire des absences, Vernet des places — l'information est éparpillée
+entre les rôles, les responsables de projet et les décideurs d'absences.
+
+**Déconstruction honnête.** La vue du groupe est une table : elle rend
+lisible, elle ne rend pas beau, et c'est un brief pour Claude Design (§5).
+« Ce qui attend une décision » a quatre sources ; la cinquième (les salles)
+manque parce que la structure des réservations de salle est une union de
+trois genres d'enregistrement que je n'ai pas voulu modifier à la fin d'un
+chantier. Le compte Vernet est riche mais **simulé par moi** : les vraies
+questions d'un groupe (la sous-traitance, les marchés publics, la paie de
+sept personnes) n'y sont pas — Harun doit faire jouer un vrai patron (§8).
+
 ## 3. Les idées, classées par impact
 
 _(se remplit au fil du chantier)_

@@ -234,6 +234,8 @@ export type ProjectPriority = 'low' | 'normal' | 'high';
 
 export interface ProjectData {
   title: string;
+  /** Qui répond du projet (adresse d'un membre) ; absent = personne de désigné. Vision cliente, chantier 6. */
+  ownerEmail?: string;
   /** Clé d'un statut de la configuration. */
   status: string;
   structure: string;

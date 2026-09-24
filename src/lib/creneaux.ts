@@ -196,3 +196,6 @@ export function plateauDeCreneaux(params: {
   }
   return { colonnes, heures };
 }
+
+/** Deux créneaux `[début, fin[` en ISO local se chevauchent quand chacun commence avant la fin de l'autre. Partagé entre Matériel et « ce qui attend une décision ». */
+export const chevauche = (aDebut: string, aFin: string, bDebut: string, bFin: string) => aDebut < bFin && bDebut < aFin;

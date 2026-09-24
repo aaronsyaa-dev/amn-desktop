@@ -7,6 +7,7 @@ import { useCollection } from '../state/SyncContext';
 import { appointmentEnd, useAppointments, type Appointment } from '../state/useAppointments';
 import { capitaliserPhrase, longDayLabel, dayKey } from '../lib/calendar';
 import { useAttention } from '../state/useAttention';
+import { useDecisions } from '../state/useDecisions';
 import type { AttentionItem } from '../lib/attention';
 import { Majordome } from './Majordome';
 import { PremiersPas } from '../guide/PremiersPas';
@@ -227,8 +228,10 @@ export function HomeSoloScreen() {
         })),
     [articlesStock],
   );
-  const aTraiter = useMemo(() => [...ruptures, ...attention.items].slice(0, 3), [ruptures, attention.items]);
-  const totalATraiter = ruptures.length + attention.items.length;
+  /* Les ruptures d'abord (elles arrêtent le travail), puis ce qui attend une décision, puis ce qui attend un geste. */
+  const decisions = useDecisions();
+  const aTraiter = useMemo(() => [...ruptures, ...decisions.items, ...attention.items].slice(0, 4), [ruptures, decisions.items, attention.items]);
+  const totalATraiter = ruptures.length + decisions.total + attention.items.length;
   const plusLourd = useMemo(() => Math.max(1, ...aTraiter.map((i) => i.weight)), [aTraiter]);
 
   /* La semaine en sept barres d'heures occupées, le jour courant en encre claire. */
@@ -523,7 +526,7 @@ export function HomeSoloScreen() {
                   </div>
                 ) : (
                   <p className="py-3 text-[13.5px] leading-[1.7] text-text-secondary">
-                    Rien ne traîne : aucune facture en retard, aucun devis sans réponse.
+                    Rien ne traîne : aucune facture en retard, aucun devis sans réponse, rien à arbitrer.
                   </p>
                 )}
               </section>

@@ -187,9 +187,14 @@ export function RecrutementScreen() {
 
       <Calmes>
         <CarteCalme surtitre="Les candidatures" note={poste ? 'Depuis l’annonce' : undefined}>
-          {parcours.map(([nom, n], i) => (
-            <LigneBarre key={nom} nom={nom} part={n / Math.max(1, parcours[0][1])} valeur={n} derniere={i === parcours.length - 1} />
-          ))}
+          {/* Sur un écran vide, on écrit la phrase, pas trois zéros (check:signal, compte Groupe Vernet). */}
+          {vide ? (
+            <p className="mt-3 text-[13px] leading-relaxed text-text-secondary">L’annonce n’est pas encore posée : les candidatures se compteront ici, étape par étape.</p>
+          ) : (
+            parcours.map(([nom, n], i) => (
+              <LigneBarre key={nom} nom={nom} part={n / Math.max(1, parcours[0][1])} valeur={n} derniere={i === parcours.length - 1} />
+            ))
+          )}
         </CarteCalme>
         <CarteReleves
           surtitre="Le trou"

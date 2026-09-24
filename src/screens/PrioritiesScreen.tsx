@@ -154,7 +154,8 @@ export function PrioritiesScreen() {
                     : t('priorites.etatDuJour', { faites, restantes: MAX - items.length })
           }
           phraseVide="Trois fentes vous attendent chaque matin. Une fente vide est une fente gagnée."
-          stats={[
+          /* Sur un écran vide, on écrit la phrase, pas le chiffre (check:signal). */
+          stats={vide ? undefined : [
             { label: t('priorites.stat.aujourdhui'), value: ratioDuJour, emphasis: items.length > 0 && faites === items.length },
             { label: t('priorites.stat.journeesTenues'), value: tenues },
             { label: t('priorites.stat.serie'), value: serie },
@@ -354,7 +355,8 @@ export function PrioritiesScreen() {
         <section className="panel flex flex-col px-5 pb-[18px] pt-5">
           <span className="eyebrow mb-5 text-text-secondary">Fentes remplies</span>
           <span className="tnum block font-mono text-[40px] font-bold leading-[.92] tracking-[-0.04em] text-text-primary">
-            {moyenneOuvree === null ? '—' : moyenneOuvree.toFixed(1).replace('.', ',')}
+            {/* Écran vide : le tiret, pas « 0,0 » — un zéro se lit comme un échec (check:signal). */}
+            {vide || moyenneOuvree === null ? '—' : moyenneOuvree.toFixed(1).replace('.', ',')}
           </span>
           <span className="mt-2.5 block text-[13.5px] leading-[1.55] text-text-secondary">
             en moyenne par jour ouvré, sur les trente derniers jours.

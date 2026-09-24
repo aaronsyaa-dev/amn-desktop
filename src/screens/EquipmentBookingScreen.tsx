@@ -31,7 +31,8 @@ const minutesDe = (iso: string) => Number(iso.slice(11, 13)) * 60 + Number(iso.s
 const HEURE_DEBUT = 8;
 const HEURE_FIN = 20;
 const localISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-export const chevauche = (aDebut: string, aFin: string, bDebut: string, bFin: string) => aDebut < bFin && bDebut < aFin;
+import { chevauche } from '../lib/creneaux';
+export { chevauche };
 
 /**
  * LE MATÉRIEL — qui a quoi, quand, sans double réservation.
@@ -49,6 +50,28 @@ export function EquipmentBookingScreen() {
   const { upsert, remove } = useSync();
   const ressources = useCollection<ResourceData>('resources');
   const reservations = useCollection<BookingData>('resourceBookings');
+
+  /* Tous les chevauchements à venir, ressource par ressource — pas seulement ceux du jour affiché. */
+  const conflitsAVenir = useMemo(() => {
+    const aujourdhui = new Date().toISOString().slice(0, 10);
+    const nomDe = new Map(ressources.map((r) => [r.id, r.name]));
+    const aVenir = reservations.filter((r) => r.endAt.slice(0, 10) >= aujourdhui);
+    const out: { cle: string; ressource: string; jour: string; a: string; b: string }[] = [];
+    const heure = (iso: string) => `${Number(iso.slice(11, 13))} h${iso.slice(14, 16) !== '00' ? ` ${iso.slice(14, 16)}` : ''}`;
+    const qui = (email: string) => email.split('@')[0].split('.')[0];
+    for (const x of aVenir)
+      for (const y of aVenir) {
+        if (x.id >= y.id || x.resourceId !== y.resourceId || !chevauche(x.startAt, x.endAt, y.startAt, y.endAt)) continue;
+        out.push({
+          cle: `${x.id}-${y.id}`,
+          ressource: nomDe.get(x.resourceId) ?? 'Ressource',
+          jour: new Date(x.startAt).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }),
+          a: `${qui(x.byEmail)} ${heure(x.startAt)}–${heure(x.endAt)}`,
+          b: `${qui(y.byEmail)} ${heure(y.startAt)}–${heure(y.endAt)}`,
+        });
+      }
+    return out.sort((p, q) => p.cle.localeCompare(q.cle));
+  }, [reservations, ressources]);
   const [nom, setNom] = useState('');
   const [kind, setKind] = useState('');
   const [resourceId, setResourceId] = useState('');
@@ -220,6 +243,31 @@ export function EquipmentBookingScreen() {
             { label: t('materiel.stat.aVenir'), value: aVenir.length },
           ]}
         />
+
+      {/*
+        À ARBITRER — les chevauchements à venir, quel que soit le jour (vision
+        cliente, chantier 6). La règle du jour reste l'objet dominant ; ceci
+        est une liste courte, sans ambre (l'ambre de cet écran est le créneau
+        pris du jour), qui dit qui réclame quoi, quand — parce qu'un patron ne
+        va pas feuilleter les jours pour découvrir que la nacelle est promise
+        deux fois jeudi.
+      */}
+      {conflitsAVenir.length > 0 && (
+        <section className="panel mt-4 px-4 py-3">
+          <p className="eyebrow mb-2">À arbitrer · {conflitsAVenir.length}</p>
+          <ul className="flex flex-col gap-1.5">
+            {conflitsAVenir.map((c) => (
+              <li key={c.cle} className="flex flex-wrap items-baseline gap-x-2 text-[13px] text-text-body">
+                <span className="font-semibold text-text-primary">{c.ressource}</span>
+                <span className="font-mono text-[11px] text-text-muted">{c.jour}</span>
+                <span className="text-text-secondary">{c.a}</span>
+                <span aria-hidden className="text-text-muted">↔</span>
+                <span className="text-text-secondary">{c.b}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       </motion.div>
 
       <motion.div variants={staggerItem} className="grid gap-4 lg:grid-cols-[18rem_1fr]">

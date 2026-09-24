@@ -254,7 +254,8 @@ export function BookingScreen() {
           ) : (
             <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
               {plateau.colonnes.map((col) => {
-                const signal = col.iso === colonneInterne;
+                /* Page fermée : la plaque « fermée » est la seule décision de l'écran ; le créneau interne reste dit, en encre. */
+                const signal = config.enabled && col.iso === colonneInterne;
                 return (
                   <div key={col.iso} className="flex min-w-[88px] flex-1 flex-col gap-1.5">
                     {/* L'EN-TÊTE DE COLONNE passe en ambre avec son créneau
@@ -306,8 +307,8 @@ export function BookingScreen() {
                         return (
                           <span
                             key={c.debut.toISOString()}
-                            className={`bg-signal px-2 py-1.5 text-center font-mono text-[11px] font-bold text-signal-ink ${halo}`}
-                            data-signal-groupe="interne"
+                            className={config.enabled ? `bg-signal px-2 py-1.5 text-center font-mono text-[11px] font-bold text-signal-ink ${halo}` : 'bg-raised px-2 py-1.5 text-center font-mono text-[11px] font-bold text-text-secondary'}
+                            data-signal-groupe={config.enabled ? 'interne' : undefined}
                             title={c.intitule ?? 'bloqué dans l’agenda'}
                           >
                             {heure}
@@ -367,10 +368,10 @@ export function BookingScreen() {
               un.
             */
             <span
-              className="flex items-center gap-2 text-signal"
-              data-signal-groupe="interne"
+              className={`flex items-center gap-2 ${config.enabled ? 'text-signal' : 'text-text-secondary'}`}
+              data-signal-groupe={config.enabled ? 'interne' : undefined}
             >
-              <span className="h-3 w-5 bg-signal" aria-hidden /> bloqué en interne
+              <span className={`h-3 w-5 ${config.enabled ? 'bg-signal' : 'bg-raised'}`} aria-hidden /> bloqué en interne
             </span>
           )}
         </div>

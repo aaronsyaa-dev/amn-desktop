@@ -66,6 +66,7 @@ export function useProjects() {
         .map((row) => ({
           id: row.id,
           title: row.title ?? '',
+          ownerEmail: typeof row.ownerEmail === 'string' && row.ownerEmail ? row.ownerEmail : undefined,
           status: row.status ?? config.statuses[0]?.key ?? '',
           structure: row.structure ?? '',
           clientId: Number(row.clientId ?? 0),

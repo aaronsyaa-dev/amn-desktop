@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { useCollection } from '../state/SyncContext';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -18,6 +17,9 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useProjects } from '../state/useProjects';
+import { useMembers } from '../state/useMembers';
+import { useProfiles } from '../state/ProfilesContext';
+import { useCollection } from '../state/SyncContext';
 import { useExpenses } from '../state/useExpenses';
 import { useClients } from '../state/useClients';
 import { isModuleEnabled } from '../data/spaces';
@@ -69,6 +71,10 @@ export function ProjectsScreen() {
     attachmentsOf,
     attachmentCount,
   } = useProjects();
+  /* Le responsable d'un projet est un membre ; son prénom vient du profil. */
+  const { membres } = useMembers();
+  const { profileFor } = useProfiles();
+  const prenom = (email: string) => profileFor(email).name?.split(' ')[0] || email.split('@')[0];
   // Abonnement à la langue : sans lui, l'écran gardait les libellés de la
   // langue active AU MONTAGE et ne suivait pas un changement en cours de route.
   useLangue();
@@ -86,7 +92,7 @@ export function ProjectsScreen() {
     autres et jamais les uns EN FACE des autres. C'est l'objet dominant que le
     système de design donne à cet écran, donc la vue d'ouverture.
   */
-  const [vue, setVue] = useState<'frise' | 'liste'>('frise');
+  const [vue, setVue] = useState<'frise' | 'liste' | 'groupe'>('frise');
 
   const today = isoDay();
 
@@ -194,7 +200,7 @@ export function ProjectsScreen() {
         <div className="flex flex-shrink-0 items-center gap-2">
           {friseActive && (
             <div className="flex border border-border">
-              {(['frise', 'liste'] as const).map((v) => (
+              {(['frise', 'liste', 'groupe'] as const).map((v) => (
                 <button
                   key={v}
                   type="button"
@@ -206,7 +212,7 @@ export function ProjectsScreen() {
                     vue === v ? 'bg-raised text-text-primary' : 'text-text-muted hover:text-text-secondary'
                   }`}
                 >
-                  {v === 'frise' ? tr('hist.projects.vueFrise') : tr('hist.projects.vueListe')}
+                  {v === 'frise' ? tr('hist.projects.vueFrise') : v === 'liste' ? tr('hist.projects.vueListe') : tr('hist.projects.vueGroupe')}
                 </button>
               ))}
             </div>
@@ -276,7 +282,18 @@ export function ProjectsScreen() {
         />
       )}
 
-      {vue === 'frise' && frise ? (
+      {vue === 'groupe' ? (
+        <VueDuGroupe
+          projects={projects}
+          config={config}
+          today={today}
+          prenom={prenom}
+          onOuvrir={(id) => {
+            setSelectedId(id);
+            setVue('liste');
+          }}
+        />
+      ) : vue === 'frise' && frise ? (
         <div className="flex flex-col gap-6">
           <FriseDesEcheances
             ambreDisponible={brulage === null}
@@ -338,6 +355,7 @@ export function ProjectsScreen() {
                   done={isDone(config, project)}
                   late={Boolean(project.deadline) && project.deadline < today && !isDone(config, project)}
                   attachments={attachmentCount(project.id)}
+                  responsable={project.ownerEmail ? prenom(project.ownerEmail) : undefined}
                   showStructure={fieldEnabled(config, 'structure')}
                   showNextAction={fieldEnabled(config, 'nextAction')}
                   active={project.id === selectedId}
@@ -354,6 +372,8 @@ export function ProjectsScreen() {
             project={selected}
             clients={clients}
             attachments={attachmentsOf(selected.id)}
+            membres={membres}
+            prenom={prenom}
             today={today}
             onBack={() => setSelectedId(null)}
             onPatch={(patch) => updateProject(selected.id, patch)}
@@ -1019,6 +1039,7 @@ function ProjectRow({
   showNextAction,
   active,
   onSelect,
+  responsable,
 }: {
   project: Project;
   label: string;
@@ -1029,6 +1050,8 @@ function ProjectRow({
   showNextAction: boolean;
   active: boolean;
   onSelect: () => void;
+  /** Le prénom de qui répond du projet, quand quelqu'un est désigné. */
+  responsable?: string;
 }) {
   return (
     <motion.button
@@ -1055,6 +1078,11 @@ function ProjectRow({
         {attachments > 0 && (
           <span className="ml-auto flex-shrink-0 font-mono text-[9px] uppercase tracking-widest text-text-muted">
             {attachments} lié{attachments > 1 ? 's' : ''}
+          </span>
+        )}
+        {responsable && (
+          <span className={`${attachments > 0 ? '' : 'ml-auto '}flex-shrink-0 border border-border px-1.5 py-px font-mono text-[9px] uppercase tracking-widest text-text-secondary`} title={responsable}>
+            {responsable}
           </span>
         )}
       </div>
@@ -1101,6 +1129,8 @@ function ProjectDetail({
   project,
   clients,
   attachments,
+  membres,
+  prenom,
   today,
   onBack,
   onPatch,
@@ -1109,6 +1139,8 @@ function ProjectDetail({
   project: Project;
   clients: { id: number; name: string; company: string }[];
   attachments: Attachments;
+  membres: { email: string }[];
+  prenom: (email: string) => string;
   today: string;
   onBack: () => void;
   onPatch: (patch: Partial<Project>) => void;
@@ -1235,6 +1267,22 @@ function ProjectDetail({
             </select>
           </Field>
         )}
+
+        {/* LE RESPONSABLE (vision cliente, chantier 6) : un projet répond à quelqu'un, sinon c'est le groupe entier qui le porte — c'est-à-dire personne. */}
+        <Field label={tr('hist.projects.responsable')}>
+          <select
+            value={project.ownerEmail ?? ''}
+            onChange={(e) => onPatch({ ownerEmail: e.target.value || undefined })}
+            className="input-focus min-h-11 w-full border border-border bg-bg px-3 text-sm text-text-primary outline-none"
+          >
+            <option value="">{tr('hist.projects.responsable.personne')}</option>
+            {membres.map((m) => (
+              <option key={m.email} value={m.email}>
+                {prenom(m.email)} — {m.email}
+              </option>
+            ))}
+          </select>
+        </Field>
 
         <div className="grid grid-cols-2 gap-3">
           {show('deadline') && (
@@ -1456,5 +1504,130 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       </span>
       {children}
     </label>
+  );
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   LA VUE DU GROUPE (vision cliente, chantier 6)
+
+   Le patron de plusieurs projets ne veut ni la courbe d'un seul chantier ni
+   la liste : il veut savoir, projet par projet, qui répond, où ça en est,
+   combien de tâches sont ouvertes, qui est dessus — et qui est réclamé par
+   deux projets à la fois, parce que c'est là que les arbitrages se jouent.
+   Une table, une ligne par projet ouvert ; sous elle, les personnes
+   partagées. Rien d'ambre ici : l'objet dominant de l'écran (la courbe)
+   reste au-dessus, et la table ne décide de rien — elle montre.
+   ═══════════════════════════════════════════════════════════════════════ */
+function VueDuGroupe({
+  projects,
+  config,
+  today,
+  prenom,
+  onOuvrir,
+}: {
+  projects: Project[];
+  config: ProjectConfig;
+  today: string;
+  prenom: (email: string) => string;
+  onOuvrir: (id: string) => void;
+}) {
+  const taches = useCollection<{ projectId?: string; assigneeEmail?: string; status?: string }>('tasks');
+  const ouverts = projects.filter((p) => !isDone(config, p));
+  const lignes = ouverts.map((p) => {
+    const siennes = taches.filter((t) => t.projectId === p.id);
+    const equipe = [...new Set([...(p.ownerEmail ? [p.ownerEmail] : []), ...siennes.map((t) => t.assigneeEmail).filter((e): e is string => Boolean(e))])];
+    const retard = p.deadline && p.deadline < today ? Math.round((new Date(today).getTime() - new Date(p.deadline).getTime()) / 86_400_000) : 0;
+    return {
+      p,
+      ouvertes: siennes.filter((t) => t.status !== 'done').length,
+      enCours: siennes.filter((t) => t.status === 'doing').length,
+      equipe,
+      retard,
+    };
+  });
+  /* Les personnes que deux projets ou plus réclament. */
+  const parPersonne = new Map<string, string[]>();
+  for (const l of lignes) for (const e of l.equipe) parPersonne.set(e, [...(parPersonne.get(e) ?? []), l.p.title || 'Sans titre']);
+  const partagees = [...parPersonne.entries()].filter(([, ps]) => ps.length >= 2).sort((a, b) => b[1].length - a[1].length);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <section className="panel-raised panel-raised-wide px-[22px] pb-4 pt-5" data-guide="dominante">
+        <p className="eyebrow">{tr('hist.projects.groupe.titre')}</p>
+        <p className="mb-4 mt-1 text-[12.5px] text-text-secondary">{tr('hist.projects.groupe.aide')}</p>
+        {lignes.length === 0 ? (
+          <p className="py-3 text-[13.5px] text-text-secondary">{tr('hist.projects.groupe.vide')}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] border-collapse text-[13px]">
+              <thead>
+                <tr className="border-b border-border text-left">
+                  {(['projet', 'statut', 'echeance', 'taches', 'equipe', 'prochaine'] as const).map((c) => (
+                    <th key={c} className="eyebrow pb-2 pr-4 font-normal">
+                      {tr(`hist.projects.groupe.${c}`)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {lignes.map(({ p, ouvertes, enCours, equipe, retard }) => (
+                  <tr key={p.id} className="border-b border-border-row align-top last:border-b-0">
+                    <td className="py-2.5 pr-4">
+                      <button type="button" onClick={() => onOuvrir(p.id)} className="text-left font-semibold text-text-primary hover:underline">
+                        {p.title || 'Sans titre'}
+                      </button>
+                      <span className="mt-0.5 block font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">
+                        {p.ownerEmail ? prenom(p.ownerEmail) : tr('hist.projects.responsable.personne')}
+                      </span>
+                    </td>
+                    <td className="py-2.5 pr-4 text-text-body">{statusLabel(config, p.status)}</td>
+                    <td className="py-2.5 pr-4 tnum">
+                      {p.deadline ? (
+                        <span className={retard > 0 ? 'text-danger-ink' : 'text-text-body'}>
+                          {formatDay(p.deadline)}
+                          {retard > 0 && <span className="block text-[11px]">{tr('hist.projects.groupe.retard', { n: String(retard) })}</span>}
+                        </span>
+                      ) : (
+                        <span className="text-text-muted">—</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 pr-4 text-text-body">{tr('hist.projects.groupe.tachesDetail', { ouvertes: String(ouvertes), enCours: String(enCours) })}</td>
+                    <td className="py-2.5 pr-4">
+                      <span className="flex flex-wrap gap-1">
+                        {equipe.length === 0 && <span className="text-text-muted">—</span>}
+                        {equipe.map((e) => (
+                          <span key={e} className="border border-border px-1.5 py-px font-mono text-[10px] uppercase tracking-[0.1em] text-text-secondary" title={e}>
+                            {prenom(e)}
+                          </span>
+                        ))}
+                      </span>
+                    </td>
+                    <td className="max-w-[26ch] py-2.5 text-text-secondary">{p.nextAction || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="panel px-[22px] pb-4 pt-5">
+        <p className="eyebrow">{tr('hist.projects.groupe.partages')}</p>
+        <p className="mb-3 mt-1 text-[12.5px] text-text-secondary">{tr('hist.projects.groupe.partagesAide')}</p>
+        {partagees.length === 0 ? (
+          <p className="text-[13px] text-text-muted">{tr('hist.projects.groupe.personnePartagee')}</p>
+        ) : (
+          <ul className="flex flex-col gap-1.5">
+            {partagees.map(([e, ps]) => (
+              <li key={e} className="flex flex-wrap items-baseline gap-x-2 text-[13px]">
+                <span className="font-semibold text-text-primary">{prenom(e)}</span>
+                <span className="text-text-secondary">{ps.join(' · ')}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
   );
 }

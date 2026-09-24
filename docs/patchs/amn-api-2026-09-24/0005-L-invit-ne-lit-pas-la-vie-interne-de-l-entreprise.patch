@@ -1,0 +1,208 @@
+From 55a1e142cfd4e4a0ba540d0600e6ac125b30a32d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 24 Sep 2026 05:29:18 +0000
+Subject: [PATCH 5/5] =?UTF-8?q?L'invit=C3=A9=20ne=20lit=20pas=20la=20vie?=
+ =?UTF-8?q?=20interne=20de=20l'entreprise?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Le rôle guest existe pour un accès occasionnel et externe. La simulation
+du Groupe Vernet a montré qu'une cliente invitée lisait les congés de
+l'équipe, les candidatures, les formations, les bulletins de paie et les
+messages privés. Ces collections se lisent vides pour un invité (la
+synchronisation ne casse pas) et ne s'écrivent pas (403 guest_forbidden),
+en lecture directe comme en lecture groupée. Les projets, tâches,
+factures et dépenses restent lisibles : c'est pour eux qu'un invité
+existe. Un test (test/invite.test.js).
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01BEf9qY21FAUuZ4ogxRY3s2
+---
+ src/routes/collections.js | 41 +++++++++++++++++
+ test/invite.test.js       | 93 +++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 134 insertions(+)
+ create mode 100644 test/invite.test.js
+
+diff --git a/src/routes/collections.js b/src/routes/collections.js
+index 5a46b83..bdabc0e 100644
+--- a/src/routes/collections.js
++++ b/src/routes/collections.js
+@@ -228,6 +228,36 @@ export const ALLOWED = new Set([
+ */
+ const ID_MAX = 200;
+ 
++/*
++  CE QU'UN INVITÉ NE LIT PAS (vision cliente, chantier 6).
++
++  Le rôle `guest` existe pour un accès occasionnel et externe — la comptable
++  qui vient chercher les factures, un sous-traitant, une cliente invitée sur
++  son chantier. La simulation du Groupe Vernet a montré qu'une cliente invitée
++  lisait les congés de l'équipe, les candidatures, les formations, les
++  bulletins de paie et les messages privés : tout ce qui n'a aucune raison de
++  sortir de l'entreprise. Ces collections se LISENT VIDES pour un invité (la
++  synchronisation ne casse pas, l'écran est simplement sans rien) et ne
++  s'écrivent pas (403). Les factures, dépenses, projets et tâches restent
++  lisibles : c'est pour eux qu'un invité existe.
++*/
++const MASQUEES_AUX_INVITES = new Set([
++  'leaves',
++  'leaveQuotas',
++  'candidates',
++  'trainings',
++  'certifications',
++  'payslips',
++  'procedures',
++  'dms',
++  'groups',
++  'groupMessages',
++  'announcements',
++  'meetings',
++  'okrs',
++]);
++const estInvite = (req) => req.auth?.role === 'guest';
++
+ export function collectionsRouter() {
+   const router = Router();
+   // Un poste emballé ou un robot : 600 écritures par minute et par compte suffisent largement (Bloc 5).
+@@ -321,6 +351,10 @@ export function collectionsRouter() {
+       RÉSEAU supprimés, pas d'un parallélisme côté base.
+     */
+     for (const nom of demandees) {
++      if (estInvite(req) && MASQUEES_AUX_INVITES.has(nom)) {
++        collections[nom] = [];
++        continue;
++      }
+       if (collectionVerrouillee(verrous, nom)) {
+         collections[nom] = [];
+         locked.push(nom);
+@@ -336,6 +370,7 @@ export function collectionsRouter() {
+     if (module) return res.status(403).json({ error: 'La cliente a fermé ce module à son prestataire.', code: 'module_locked', module });
+     const { collection } = req.params;
+     if (!ALLOWED.has(collection)) return res.status(404).json({ error: 'Unknown collection' });
++    if (estInvite(req) && MASQUEES_AUX_INVITES.has(collection)) return res.json({ records: [], masquee: true });
+     const since = req.query.since ? String(req.query.since) : undefined;
+     const records = await req.app.locals.db.listRecords(req.auth.orgId, collection, { since });
+     res.json({ records });
+@@ -347,6 +382,9 @@ export function collectionsRouter() {
+     const { collection, id } = req.params;
+     if (!ALLOWED.has(collection)) return res.status(404).json({ error: 'Unknown collection' });
+     if (id.length > ID_MAX) return res.status(400).json({ error: `Identifiant d’enregistrement : ${ID_MAX} caractères au plus.` });
++    if (estInvite(req) && MASQUEES_AUX_INVITES.has(collection)) {
++      return res.status(403).json({ error: 'Un compte invité n’écrit pas dans cette collection.', code: 'guest_forbidden' });
++    }
+     const data = req.body?.data;
+     if (data === undefined || data === null || typeof data !== 'object') {
+       return res.status(400).json({ error: 'Body must be { data: {...} }' });
+@@ -361,6 +399,9 @@ export function collectionsRouter() {
+     if (module) return res.status(403).json({ error: 'La cliente a fermé ce module à son prestataire.', code: 'module_locked', module });
+     const { collection, id } = req.params;
+     if (!ALLOWED.has(collection)) return res.status(404).json({ error: 'Unknown collection' });
++    if (estInvite(req) && MASQUEES_AUX_INVITES.has(collection)) {
++      return res.status(403).json({ error: 'Un compte invité n’écrit pas dans cette collection.', code: 'guest_forbidden' });
++    }
+     const record = await req.app.locals.db.deleteRecord(req.auth.orgId, collection, id);
+     req.app.locals.hub?.broadcast({ type: 'record', collection, record }, req.auth.orgId);
+     res.status(200).json({ record });
+diff --git a/test/invite.test.js b/test/invite.test.js
+new file mode 100644
+index 0000000..ff35997
+--- /dev/null
++++ b/test/invite.test.js
+@@ -0,0 +1,93 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import http from 'node:http';
++
++process.env.NODE_ENV = 'test';
++process.env.OPERATOR_TOKEN = 'test-operator-token';
++
++const { createApp } = await import('../src/server.js');
++const { createSqliteDb } = await import('../src/db/sqlite.js');
++const { hashPassword } = await import('../src/lib/password.js');
++
++/**
++ * L'INVITÉ NE LIT PAS LA VIE INTERNE DE L'ENTREPRISE (vision cliente, chantier 6).
++ *
++ * Une cliente invitée sur son chantier lit les projets et les tâches ; elle
++ * ne lit ni les congés, ni les candidatures, ni les paies, ni les messages
++ * privés — ces collections se lisent vides pour elle, en lecture directe
++ * comme en lecture groupée, et ne s'écrivent pas. Un membre, lui, lit tout.
++ */
++const MDP = 'motdepasse-solide';
++async function decor(t) {
++  const db = createSqliteDb(':memory:');
++  await db.init();
++  const app = await createApp({ db });
++  const server = http.createServer(app);
++  await new Promise((resolve) => server.listen(0, resolve));
++  const { port } = server.address();
++  t.after(async () => {
++    server.closeAllConnections?.();
++    await new Promise((resolve) => server.close(resolve));
++    await db.close();
++  });
++  const base = `http://127.0.0.1:${port}`;
++  const org = await db.createOrganization({ name: 'Groupe Vernet', plan: 'business_premium' });
++  const hash = await hashPassword(MDP);
++  await db.createUser({ orgId: org.id, email: 'vernet@v.test', passwordHash: hash, role: 'owner', status: 'active' });
++  await db.createUser({ orgId: org.id, email: 'yanis@v.test', passwordHash: hash, role: 'member', status: 'active' });
++  await db.createUser({ orgId: org.id, email: 'mairie@v.test', passwordHash: hash, role: 'guest', status: 'active' });
++  const login = async (email) => {
++    const r = await fetch(`${base}/v1/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: MDP }) });
++    assert.equal(r.status, 200, `connexion ${email}`);
++    return (await r.json()).token;
++  };
++  const api = (token) => async (path, init = {}) => {
++    const r = await fetch(`${base}${path}`, { ...init, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(init.headers ?? {}) } });
++    let body = null;
++    try { body = await r.json(); } catch { body = null; }
++    return { status: r.status, body };
++  };
++  return { api, login };
++}
++const put = (data) => ({ method: 'PUT', body: JSON.stringify({ data }) });
++
++test('un invité lit les projets et les tâches, lit vide les congés, les candidatures, les paies et les messages privés, et n’y écrit pas', async (t) => {
++  const { api, login } = await decor(t);
++  const vernet = api(await login('vernet@v.test'));
++  const yanis = api(await login('yanis@v.test'));
++  const mairie = api(await login('mairie@v.test'));
++  assert.equal((await vernet('/v1/collections/leaves/lv-1', put({ email: 'yanis@v.test', from: '2026-10-01', to: '2026-10-03', kind: 'conge', status: 'pending' }))).status, 200);
++  assert.equal((await vernet('/v1/collections/payslips/p-1', put({ email: 'yanis@v.test', month: '2026-09', netCents: 210000 }))).status, 200);
++  assert.equal((await vernet('/v1/collections/projects/prj-1', put({ title: 'Lycée Ampère', status: 'en-cours' }))).status, 200);
++  assert.equal((await vernet('/v1/collections/tasks/t-1', put({ title: 'Dépose', status: 'todo', assigneeEmail: 'yanis@v.test' }))).status, 200);
++
++  /* Le membre lit tout. */
++  assert.equal((await yanis('/v1/collections/leaves')).body.records.length, 1);
++  assert.equal((await yanis('/v1/collections/payslips')).body.records.length, 1);
++
++  /* L'invité : les projets et les tâches, oui ; le reste, vide. */
++  assert.equal((await mairie('/v1/collections/projects')).body.records.length, 1);
++  assert.equal((await mairie('/v1/collections/tasks')).body.records.length, 1);
++  const conges = await mairie('/v1/collections/leaves');
++  assert.equal(conges.status, 200, 'vide, pas une erreur : la synchronisation ne casse pas');
++  assert.deepEqual(conges.body.records, []);
++  assert.equal(conges.body.masquee, true);
++  assert.deepEqual((await mairie('/v1/collections/payslips')).body.records, []);
++
++  /* En lecture groupée aussi. */
++  const groupe = await mairie('/v1/collections/_bulk?names=projects,leaves,payslips,tasks');
++  assert.equal(groupe.status, 200);
++  assert.equal(groupe.body.collections.projects.length, 1);
++  assert.equal(groupe.body.collections.tasks.length, 1);
++  assert.deepEqual(groupe.body.collections.leaves, []);
++  assert.deepEqual(groupe.body.collections.payslips, []);
++
++  /* Et rien ne s'écrit ni ne s'efface là-dedans. */
++  const ecrit = await mairie('/v1/collections/leaves/lv-2', put({ email: 'mairie@v.test', from: '2026-10-01', to: '2026-10-01', kind: 'conge', status: 'pending' }));
++  assert.equal(ecrit.status, 403);
++  assert.equal(ecrit.body.code, 'guest_forbidden');
++  assert.equal((await mairie('/v1/collections/leaves/lv-1', { method: 'DELETE' })).status, 403);
++  assert.equal((await yanis('/v1/collections/leaves')).body.records.length, 1, 'rien n’a bougé');
++  /* Ce qui lui est ouvert, il peut l'écrire — une remarque sur une tâche, par exemple. */
++  assert.equal((await mairie('/v1/collections/tasks/t-2', put({ title: 'Question de la mairie', status: 'todo', assigneeEmail: 'vernet@v.test' }))).status, 200);
++});
+-- 
+2.43.0
+

@@ -3096,6 +3096,23 @@ export const en = {
   'extensions.veille': 'The idle screen',
   'extensions.accueils': 'The Home screens',
   'presence.invites': 'Nobody else has come in yet: {n} pending invitation(s).',
+  'hist.projects.vueGroupe': 'Group',
+  'hist.projects.responsable': 'Owner',
+  'hist.projects.responsable.personne': 'Nobody assigned',
+  'hist.projects.groupe.titre': 'The group, project by project',
+  'hist.projects.groupe.aide': 'Who answers for what, where it stands, who is on it. One line per open project.',
+  'hist.projects.groupe.projet': 'Project',
+  'hist.projects.groupe.statut': 'Status',
+  'hist.projects.groupe.echeance': 'Deadline',
+  'hist.projects.groupe.taches': 'Tasks',
+  'hist.projects.groupe.tachesDetail': '{ouvertes} open · {enCours} in progress',
+  'hist.projects.groupe.equipe': 'Team',
+  'hist.projects.groupe.prochaine': 'Next action',
+  'hist.projects.groupe.retard': '{n} d late',
+  'hist.projects.groupe.vide': 'No open project: the group has nothing to spread.',
+  'hist.projects.groupe.partages': 'On several projects',
+  'hist.projects.groupe.partagesAide': 'The people two or more projects compete for — that is where the trade-offs happen.',
+  'hist.projects.groupe.personnePartagee': 'Nobody is on two projects at once.',
 } as const;
 
 /*
