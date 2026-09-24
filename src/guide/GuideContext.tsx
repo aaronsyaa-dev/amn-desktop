@@ -31,8 +31,22 @@ export function GuideProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+/*
+  SANS FOURNISSEUR, LE GUIDE SE TAIT — IL NE PLANTE JAMAIS L'APPLICATION.
+
+  Avant : une exception. Le contexte de support (ClientContextLayout) est un
+  arbre de routes à part ; son Accueil montait « Vos premiers pas », qui
+  appelait useGuide sans fournisseur — et Harun ne pouvait plus entrer chez
+  aucune cliente (écran « Une erreur inattendue s'est produite »). Un guide
+  est un confort : son absence doit coûter une visite, pas l'écran.
+*/
+const SANS_GUIDE: GuideValue = { enCours: null, lancer: () => undefined, arreter: () => undefined };
+
 export function useGuide(): GuideValue {
-  const v = useContext(GuideCtx);
-  if (!v) throw new Error('useGuide must be used within a GuideProvider');
-  return v;
+  return useContext(GuideCtx) ?? SANS_GUIDE;
+}
+
+/** Vrai quand un guide est réellement monté (les composants qui n'ont de sens qu'avec lui s'effacent sinon). */
+export function useGuideDisponible(): boolean {
+  return useContext(GuideCtx) !== null;
 }

@@ -7,6 +7,7 @@ import { useSync } from '../state/SyncContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { UserAvatar } from './UserAvatar';
 import { isModuleEnabled } from '../data/spaces';
+import { useSupportContext } from '../state/OrgContextContext';
 
 /**
  * LA PRÉSENCE — « on s'y sent seul » (retour Syraagensy).
@@ -25,11 +26,13 @@ export function Presence() {
   const { membres, prets } = useMembers();
   const { onlineEmails } = useSync();
   const { profileFor } = useProfiles();
+  const support = useSupportContext();
 
   const autres = useMemo(() => membres.filter((m) => m.email !== user?.email && m.status === 'active'), [membres, user?.email]);
   const invites = useMemo(() => membres.filter((m) => m.email !== user?.email && m.status === 'invited').length, [membres, user?.email]);
   const enLigne = useMemo(() => autres.filter((m) => onlineEmails.has(m.email)), [autres, onlineEmails]);
-  if (!prets || !user) return null;
+  /* En support, « vous êtes seul·e » parlerait de l'opérateur chez la cliente : on se tait. */
+  if (support || !prets || !user) return null;
 
   const prenom = (email: string) => profileFor(email).name?.split(' ')[0] || email.split('@')[0];
   const lien = 'underline decoration-border-strong underline-offset-2 hover:text-text-primary';

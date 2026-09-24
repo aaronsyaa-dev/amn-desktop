@@ -85,6 +85,7 @@
     "check:appels": "node scripts/check-appels.mjs",
     "check:mobile": "node scripts/check-mobile.mjs",
     "check:xss": "node scripts/check-xss.mjs",
+    "check:support": "node scripts/check-support.mjs",
     "captures:design": "node scripts/captures-design.mjs"
   },
   "keywords": [],

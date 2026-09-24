@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useLangue } from '../i18n';
-import { useGuide } from './GuideContext';
+import { useGuide, useGuideDisponible } from './GuideContext';
+import { useSupportContext } from '../state/OrgContextContext';
 import { parcoursGeneral } from './parcours';
 import { signalerGuide } from './memoire';
 import { texte } from './profils';
@@ -24,6 +25,9 @@ export function PremiersPas() {
   const { user } = useAuth();
   const { profil, pas } = usePremiersPas();
   const { lancer } = useGuide();
+  /* En support, l'Accueil est celui de la cliente : les premiers pas de l'opérateur n'y ont pas leur place. */
+  const support = useSupportContext();
+  const guide = useGuideDisponible();
   const email = user?.email ?? '';
   const [masque, setMasque] = useState(() => {
     try {
@@ -32,7 +36,7 @@ export function PremiersPas() {
       return false;
     }
   });
-  if (!profil || pas.length === 0 || masque) return null;
+  if (support || !guide || !profil || pas.length === 0 || masque) return null;
   const restants = pas.filter((p) => !p.fait);
   const cacher = () => {
     setMasque(true);
