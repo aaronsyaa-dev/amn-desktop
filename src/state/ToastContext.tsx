@@ -57,7 +57,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const notify = useCallback(
     (input: ToastInput) => {
       const id = `toast-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-      setToasts((prev) => [...prev.slice(-(MAX_VISIBLE - 1)), { ...input, id }]);
+      /* Un seul toast de synchronisation à la fois : le nouveau remplace l'ancien.
+         À 25 personnes actives (simulation S1), ils s'empilaient sans fin. */
+      setToasts((prev) => [...prev.filter((t) => input.tone !== 'sync' || t.tone !== 'sync').slice(-(MAX_VISIBLE - 1)), { ...input, id }]);
       const timer = setTimeout(() => dismiss(id), input.durationMs ?? 6000);
       timers.current.set(id, timer);
     },

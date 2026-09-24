@@ -1,0 +1,43 @@
+{
+ "date": "2026-09-24T21:22:42.506Z",
+ "personnes": 25,
+ "dureeS": 100,
+ "operations": 1315,
+ "debitParSeconde": 13.2,
+ "connexion": {
+  "p50": 320,
+  "p95": 520,
+  "max": 544
+ },
+ "syncInitiale20Collections": {
+  "p50": 7,
+  "p95": 15,
+  "max": 16
+ },
+ "ecriture": {
+  "n": 881,
+  "p50": 4,
+  "p95": 6,
+  "p99": 15,
+  "max": 45
+ },
+ "ecritureMemeFiche": {
+  "n": 262,
+  "p50": 4,
+  "p95": 8,
+  "max": 15
+ },
+ "lectureDifferentielle": {
+  "p50": 3,
+  "p95": 5
+ },
+ "diffusionEnDirect": {
+  "recues": 27169,
+  "p50": 3,
+  "p95": 5,
+  "max": 45
+ },
+ "tramesWsTotal": 29061,
+ "erreurs": {},
+ "coherenceFicheCommune": "les 25 lisent la même valeur finale"
+}

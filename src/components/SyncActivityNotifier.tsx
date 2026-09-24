@@ -25,6 +25,14 @@ const LABELS: Partial<Record<SyncedCollection, [string, string]>> = {
 };
 
 const COALESCE_MS = 2500;
+/*
+  Quand l'équipe est très active, la fenêtre s'allonge : au-delà de trois
+  résumés dans la minute, on n'en montre plus qu'un toutes les trente
+  secondes. Mesuré (simulation S1, 25 personnes) : un toast toutes les 2,5 s,
+  chacun visible 6 s — le coin de l'écran ne se vidait jamais.
+*/
+const COALESCE_CHARGE_MS = 30_000;
+const SEUIL_CHARGE = 3;
 
 export function SyncActivityNotifier() {
   const { onRemoteChange, onlineEmails } = useSync();
@@ -34,6 +42,7 @@ export function SyncActivityNotifier() {
 
   const buffer = useRef<RemoteChange[]>([]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resumes = useRef<number[]>([]);
 
   // Latest values in refs so the stable subscription always sees current data.
   const onlineRef = useRef(onlineEmails);
@@ -68,6 +77,7 @@ export function SyncActivityNotifier() {
       const others = [...onlineRef.current].filter((e) => e !== emailRef.current);
       const who = others.length === 1 ? profileForRef.current(others[0]).name : 'L’équipe';
 
+      resumes.current.push(Date.now());
       notify({
         tone: 'sync',
         title: `${who} · ${total > 1 ? `${total} mises à jour` : '1 mise à jour'}`,
@@ -78,7 +88,11 @@ export function SyncActivityNotifier() {
     const off = onRemoteChange((change) => {
       if (change.deleted && !LABELS[change.collection]) return;
       buffer.current.push(change);
-      if (!timer.current) timer.current = setTimeout(flush, COALESCE_MS);
+      if (!timer.current) {
+        const recents = resumes.current.filter((t) => Date.now() - t < 60_000);
+        resumes.current = recents;
+        timer.current = setTimeout(flush, recents.length >= SEUIL_CHARGE ? COALESCE_CHARGE_MS : COALESCE_MS);
+      }
     });
 
     return () => {
