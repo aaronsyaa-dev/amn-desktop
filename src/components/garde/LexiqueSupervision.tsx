@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { X } from 'lucide-react';
-import { useLangue } from '../../i18n';
+import { langueActive } from '../../i18n';
 import { useFermetureEchap } from '../../lib/useFermetureEchap';
 
 /**
@@ -71,8 +71,19 @@ const FAMILLES: { titre: string; termes: Terme[] }[] = [
   },
 ];
 
+/*
+  Les textes du lexique sont ICI, bilingues, et non dans le dictionnaire
+  `i18n/fr.ts` / `en.ts` : ce dictionnaire entre dans le paquet livré aux
+  clientes, et « la Garde, la Tour, le Parc et les Produits » n'ont rien à y
+  faire, même en clés jamais lues.
+*/
+const TEXTES = {
+  fr: { entree: 'Lexique de la supervision', titre: 'Les mots de la supervision', texte: 'Ce que veulent dire les mots que vous croiserez dans la Garde, la Tour, le Parc et les Produits. Rien ici n’est une boîte noire\u202f: chaque terme renvoie à un écran où vous pouvez agir.', fermer: 'Fermer le lexique' },
+  en: { entree: 'Supervision glossary', titre: 'The words of supervision', texte: 'What the words you will meet in the Guard, the Tower, the Fleet and the Products mean. Nothing here is a black box: every term points to a screen where you can act.', fermer: 'Close the glossary' },
+} as const;
+const t = (cle: keyof typeof TEXTES.fr): string => (langueActive() === 'en' ? TEXTES.en : TEXTES.fr)[cle];
+
 export function LexiqueSupervision({ onFerme }: { onFerme: () => void }) {
-  const { t } = useLangue();
   useFermetureEchap(true, onFerme);
   return createPortal(
     <div className="fixed inset-0 z-[280] flex items-end justify-center bg-bg/80 p-0 md:items-center md:p-6" onClick={onFerme}>
@@ -85,11 +96,11 @@ export function LexiqueSupervision({ onFerme }: { onFerme: () => void }) {
       >
         <div className="flex items-start justify-between gap-3 border-b border-border p-4">
           <div className="min-w-0">
-            <p className="eyebrow">{t('guide.lexique')}</p>
-            <h2 id="lexique-titre" className="mt-1 text-[17px] font-semibold text-text-primary">{t('guide.lexique.titre')}</h2>
-            <p className="mt-1 text-[12.5px] leading-relaxed text-text-secondary">{t('guide.lexique.texte')}</p>
+            <p className="eyebrow">{t('entree')}</p>
+            <h2 id="lexique-titre" className="mt-1 text-[17px] font-semibold text-text-primary">{t('titre')}</h2>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-text-secondary">{t('texte')}</p>
           </div>
-          <button type="button" onClick={onFerme} aria-label={t('guide.lexique.fermer')} className="flex h-11 w-11 flex-none items-center justify-center text-text-muted hover:text-text-primary md:h-9 md:w-9">
+          <button type="button" onClick={onFerme} aria-label={t('fermer')} className="flex h-11 w-11 flex-none items-center justify-center text-text-muted hover:text-text-primary md:h-9 md:w-9">
             <X size={18} strokeWidth={2} />
           </button>
         </div>
@@ -128,7 +139,6 @@ const EVENEMENT_LEXIQUE = 'amn:lexique';
 
 /** L'entrée du menu « ? » : elle signale, et c'est `LexiqueHote` (monté hors du menu) qui montre. */
 export function EntreeLexique() {
-  const { t } = useLangue();
   return (
     <button
       type="button"
@@ -136,7 +146,7 @@ export function EntreeLexique() {
       onClick={() => window.dispatchEvent(new Event(EVENEMENT_LEXIQUE))}
       className="flex min-h-11 w-full items-center px-3 text-left text-[13px] text-text-body hover:bg-surface-hover md:min-h-9"
     >
-      {t('guide.lexique')}
+      {t('entree')}
     </button>
   );
 }

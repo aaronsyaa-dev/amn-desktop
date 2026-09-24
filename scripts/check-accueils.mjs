@@ -37,6 +37,19 @@ for (const f of dossier('src/accueils/client')) for (const i of imports(lire(f))
 for (const f of dossier('src/accueils/interne')) for (const i of imports(lire(f))) if (/client\//.test(i) || /\/business\//.test(i) || /accueils\.business/.test(i)) fautes.push(`${f} importe ${i}`);
 for (const f of dossier('src/accueils')) for (const i of imports(lire(f))) if (/(^|\/)(client|interne)\//.test(i)) fautes.push(`${f} (partagé) importe ${i}`);
 
+/* Le lexique de la supervision : chaque « → écran » mène à un chemin du catalogue interne, et rien du lexique n'entre dans le dictionnaire livré. */
+{
+  const lexique = fs.readFileSync('src/components/garde/LexiqueSupervision.tsx', 'utf8');
+  const catalogue = fs.readFileSync('src/edition/modules.internal.ts', 'utf8');
+  const chemins = new Set([...catalogue.matchAll(/to: '(\/[^']*)'/g)].map((m) => m[1]));
+  for (const m of lexique.matchAll(/to: '(\/[^']*)'/g)) {
+    if (!chemins.has(m[1])) fautes.push(`Lexique : « ${m[1]} » ne mène à aucun écran du catalogue interne — le mot promettrait un écran qui n'existe pas.`);
+  }
+  for (const dico of ['src/i18n/fr.ts', 'src/i18n/en.ts']) {
+    if (/guide\.lexique/.test(fs.readFileSync(dico, 'utf8'))) fautes.push(`${dico} porte des clés du lexique de la supervision : elles entreraient dans le paquet cliente.`);
+  }
+}
+
 /* Le guide : les profils de départ suivent la même règle que les Accueils. */
 for (const [f, interdit] of [['src/edition/guide.business.ts', /supervision|garde|tour|orgs/], ['src/edition/guide.internal.ts', /etudes|coll[ée]gien/]]) {
   const src = lire(f);

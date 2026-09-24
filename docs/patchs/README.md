@@ -81,3 +81,39 @@ par ouverture de page.
 Le patch ajoute `src/routes/qr.js` et son branchement dans `src/server.js`.
 Tant qu'il n'est pas appliqué, les compteurs de scans restent à leur valeur
 de départ et l'écran QR codes affiche un ambre qui ne bouge jamais.
+
+## `amn-api-2026-09-24/` — le Hall (vision cliente, chantiers 4 et 5)
+
+Le serveur du Hall, l'espace commun entre organisations volontaires. Sans
+lui, l'écran « Le Hall » du poste dit « Le Hall a besoin du lien » et
+l'index des extensions ne peut pas dire si l'organisation y est. Cette
+série est le seul côté serveur du chantier « vision cliente » ; la
+référence d'isolation est `docs/le-hall-2026-09-24.md`. Les mêmes commits
+sont sur la branche `claude/cinquante-modules` du dépôt `amn-api` — la
+série ici est la copie qui survit au conteneur.
+
+- `0001` — les tables, les routes, la modération, sept tests ;
+- `0002` — le nom d'affichage ne se fait pas passer pour le prestataire ni
+  pour une organisation présente ; le consentement a un frein ;
+- `0003`, `0004` — les tests du frein, et la correction du remise-à-zéro des
+  freins dans les tests (chaque garde tient son registre par fermeture).
+
+Il touche sept fichiers :
+
+- `src/db/sqlite.js`, `src/db/postgres.js`, `src/db/schema.sql` — deux
+  tables (`hall_participation`, `hall_messages`) et leurs méthodes dans les
+  deux couches ;
+- `src/routes/hall.js` — `/v1/hall/participation` (GET, PUT owner/admin),
+  `/v1/hall/messages` (GET, POST), `/v1/hall/messages/:id/signaler` ;
+- `src/routes/admin.js` — `/v1/admin/hall/participants`,
+  `/v1/admin/hall/messages`, `PUT /v1/admin/hall/messages/:id/masquer` ;
+- `src/server.js` — le montage ;
+- `test/hall.test.js` — neuf tests (consentement, rôles, session de support,
+  fuite, retrait, bornes, frein, signalement, masquage, nom d'affichage,
+  frein de consentement) ; `src/middleware/rateLimit.js` — la remise à zéro
+  des freins en test.
+
+À appliquer sur `main` : `git am docs/patchs/amn-api-2026-09-24/*.patch`,
+puis `npm test` (la suite complète passe : 475 tests). Aucune migration à
+la main : les deux tables naissent au démarrage (`CREATE TABLE IF NOT
+EXISTS`), sur SQLite comme sur Postgres.

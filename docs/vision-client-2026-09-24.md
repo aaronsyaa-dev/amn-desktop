@@ -448,6 +448,85 @@ c'est volontaire — la cinquième serait déjà du bruit. (e) Les teintes sont
 une légende, pas de la joie ; la joie viendra des écrans vides et des
 Accueils, qui sont le travail de Claude Design.
 
+### 2.4 La sécurité de tout ce qui a été ajouté (chantier 5)
+
+**La méthode.** Tout ce que les chantiers 2 à 4 ont ajouté a été relu avec
+une seule question : *qu'est-ce qui entre, d'où, et qui le rend ?* Puis
+chaque réponse a reçu un garde-fou automatique quand c'était possible — un
+contrôle qu'on relance vaut mieux qu'une relecture qu'on oublie.
+
+**Ce qui entre, et comment c'est rendu.**
+
+| Surface ajoutée | Ce qui entre | Rendu | Verrou |
+|---|---|---|---|
+| Le Hall : message, signature, nom d'affichage | texte d'une autre organisation | texte (React), `whitespace-pre-wrap` | stocké tel quel, borné (600/30/60), caractères de contrôle retirés, freins ; `check:xss` |
+| La présence | prénoms et adresses de SA PROPRE organisation | texte | `useMembers` ne lit que l'organisation de la session |
+| Les teintes | un code de famille du catalogue | `style={{ backgroundColor: 'var(--famille-XX)' }}` | le code passe par `/^[A-Z]{2}$/` avant de devenir un nom de variable ; aucune valeur d'utilisateur n'atteint un `style` |
+| Le profil de départ | un identifiant écrit dans `profiles` | jamais rendu tel quel : `PROFILS.find(id)` ou rien | une valeur inconnue vaut « pas de profil » |
+| Le guide, les présentations, le lexique | textes du code | texte | statiques |
+| Les célébrations | compteurs de collections | texte statique | `localStorage` par compte |
+| Les extensions | trois booléens | — | `localStorage` |
+
+**Deux garde-fous automatiques de plus.**
+
+1. **`check:xss`** (`scripts/check-xss.mjs`, dans le navigateur, sur un
+   bundle). Il écrit par l'API, au nom du compte d'essai, huit charges
+   hostiles (image `onerror`, `<script>`, SVG `onload` + lien `javascript:`,
+   lien `javascript:` en HTML et en Markdown, `</style><style>` qui masque
+   le corps, `iframe srcdoc`, gabarit `{{constructor…}}`, entités HTML) là où
+   une cliente écrit — titre de tâche, nom de client, corps de note, message
+   et nom d'affichage du Hall — ouvre les écrans qui les rendent et vérifie :
+   aucun nœud né du texte (`img`, `script`, `svg[onload]`, `iframe`, `style`,
+   `a[href^=javascript:]`), aucun code exécuté (`window.__xss` reste nul),
+   aucun dialogue, page visible, **et le texte montré tel quel** — un
+   compte-rendu qui parle de `<script>` doit pouvoir le dire. Puis il efface
+   ce qu'il a écrit. Vert sur les deux éditions (Marco en cliente, le compte
+   design en interne) : « 8 charges hostiles dans 3 collections et le Hall,
+   5 écrans relus ».
+2. **`check:accueils`** vérifie maintenant que chaque « → écran » du lexique
+   mène à un chemin du catalogue interne (le mot ne promet pas un écran qui
+   n'existe pas), et que rien du lexique n'entre dans le dictionnaire
+   livré : ses textes ont été **déplacés** de `i18n/fr.ts`/`en.ts` (qui
+   entrent dans le paquet cliente) vers le composant interne. Vérifié sur le
+   bundle : « Lexique de la supervision » n'y apparaît plus.
+
+**Ce que la relecture a trouvé, et corrigé.**
+
+- *Usurpation du prestataire dans le Hall.* Une organisation pouvait se
+  nommer « AMN DevSec » ou « AMNDevSec » et signer des conseils à sa
+  place. Refusé (400 `hall_nom_reserve`) : un nom qui commence par AMN, ou
+  qui accole AMN à DevSec/Business/Support/Garde, sous toutes ses formes
+  (accents, tirets, casse). « Damn Good Coffee » passe.
+- *Usurpation d'une autre cliente.* Deux organisations pouvaient porter le
+  même nom d'affichage ; un message signé « Syraagensy » pouvait venir
+  d'une autre. Refusé (409 `hall_nom_pris`) tant que l'autre est présente ;
+  le nom légal d'une cliente n'est pas réservé pour autant — on ne le
+  connaît que d'elle, et le refuser à une autre révélerait qu'elle existe.
+- *Amplification par le consentement.* Chaque entrée ou sortie fait
+  relire les écrans de toutes les participantes ; un propriétaire qui
+  bascule en boucle aurait fait relire tout le monde en boucle. Dix gestes
+  par dix minutes et par organisation (429).
+- *Le lexique dans le paquet cliente* (ci-dessus).
+- *Le menu d'aide* (chantier 3) : les fenêtres ouvertes depuis le menu
+  mouraient au premier clic — pas une faille, un défaut, mais trouvé par le
+  même réflexe de « casser d'abord ».
+
+Neuf tests côté serveur (`hall.test.js`), suite complète verte ; le patch
+et la branche `claude/cinquante-modules` d'amn-api portent ces deux commits
+(voir §6).
+
+**Ce qui n'a pas été trouvé, et ce que ça vaut.** Aucun
+`dangerouslySetInnerHTML` dans ce qui a été ajouté (les deux du dépôt sont
+antérieurs, relus, et hors de portée d'un texte d'utilisateur). Aucune route
+nouvelle qui lise un `orgId` dans la requête — `tenantAuth` le dérive du
+justificatif, comme avant. Aucune donnée d'une organisation ne traverse vers
+une autre ailleurs que par le Hall, et le Hall ne livre que ce que §2.3
+énumère. Ce que je ne peux pas prouver d'ici : le comportement du
+`rateLimit` derrière un proxy qui ne pose pas `x-forwarded-for` (les freins
+du Hall sont par compte, pas par adresse, justement pour ça), et la tenue de
+`hall_messages` au-delà de quelques milliers de lignes (un index sur
+`created_at`, aucune purge — à décider, §6).
+
 ## 3. Les idées, classées par impact
 
 _(se remplit au fil du chantier)_

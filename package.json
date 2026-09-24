@@ -84,6 +84,7 @@
     "check:coquille": "node scripts/check-coquille.mjs",
     "check:appels": "node scripts/check-appels.mjs",
     "check:mobile": "node scripts/check-mobile.mjs",
+    "check:xss": "node scripts/check-xss.mjs",
     "captures:design": "node scripts/captures-design.mjs"
   },
   "keywords": [],

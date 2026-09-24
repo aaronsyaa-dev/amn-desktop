@@ -1,0 +1,121 @@
+From a1421e0a5b87c3d29500abe61b001d0613d47ebe Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 24 Sep 2026 04:58:59 +0000
+Subject: [PATCH 2/4] Le Hall : le nom d'affichage ne se fait pas passer pour
+ le prestataire, le consentement a un frein
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Un nom d'affichage qui commence par « AMN » ou qui accole AMN à DevSec,
+Business, Support, Garde est refusé (400 hall_nom_reserve) ; un nom déjà
+porté par une organisation présente est refusé (409 hall_nom_pris) — le
+nom légal d'une cliente n'est pas réservé pour autant, on ne le connaît
+que d'elle. Dix gestes de consentement par dix minutes et par
+organisation : chaque entrée ou sortie fait relire les écrans de toutes
+les participantes. Deux tests de plus (9 dans hall.test.js).
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01BEf9qY21FAUuZ4ogxRY3s2
+---
+ src/routes/hall.js | 31 +++++++++++++++++++++++++++++--
+ test/hall.test.js  | 33 +++++++++++++++++++++++++++++++++
+ 2 files changed, 62 insertions(+), 2 deletions(-)
+
+diff --git a/src/routes/hall.js b/src/routes/hall.js
+index f914c62..05d3c27 100644
+--- a/src/routes/hall.js
++++ b/src/routes/hall.js
+@@ -82,11 +82,37 @@ export function hallRouter() {
+   });
+ 
+   /* Le consentement — et son retrait. Un geste de propriétaire ou d'admin, journalisé par l'adresse qui l'a fait. */
+-  router.put('/participation', consentir, async (req, res) => {
++  router.put(
++    '/participation',
++    consentir,
++    /* Dix gestes par dix minutes : chaque entrée ou sortie fait relire les écrans de toutes les participantes. */
++    rateLimit({ name: 'hall-consent', max: 10, windowMs: 10 * 60_000, key: (req) => req.auth?.orgId ?? 'anonyme' }),
++    async (req, res) => {
+     const db = req.app.locals.db;
+     const participe = req.body?.participe === true;
+     const org = await db.getOrganization(req.auth.orgId);
+     const displayName = nettoyerLigne(req.body?.displayName, DISPLAY_NAME_MAX) || org?.name || 'Une organisation';
++    if (participe) {
++      /*
++        DEUX RÈGLES SUR LE NOM D'AFFICHAGE, parce qu'il est la seule chose qu'une
++        organisation montre aux autres : il ne se fait pas passer pour nous
++        (« AMN », sous toutes ses formes), et il ne double pas celui d'une
++        organisation déjà là — sinon un message signé « Syraagensy » pourrait
++        venir d'une autre. Le nom légal d'une cliente n'est pas réservé pour
++        autant : on ne le connaît que d'elle, et le lui refuser révélerait à
++        une autre qu'elle existe.
++      */
++      const plat = displayName.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
++      if (/\bamn/i.test(plat) || /amn\s*[-–_.]?\s*(devsec|business|support|garde|securite)/i.test(plat)) {
++        return res.status(400).json({ error: 'Ce nom est réservé au prestataire.', code: 'hall_nom_reserve' });
++      }
++      const pris = (await db.listHallParticipants()).some(
++        (p) => p.orgId !== req.auth.orgId && p.displayName.trim().toLowerCase() === displayName.toLowerCase(),
++      );
++      if (pris) {
++        return res.status(409).json({ error: 'Une organisation porte déjà ce nom dans le Hall. Choisissez-en un autre.', code: 'hall_nom_pris' });
++      }
++    }
+     const p = await db.setHallParticipation(req.auth.orgId, { participe, displayName, byEmail: req.user?.email ?? 'inconnue' });
+     const hub = req.app.locals.hub;
+     if (hub) {
+@@ -98,7 +124,8 @@ export function hallRouter() {
+       participation: p ? { participe: p.participe, displayName: p.displayName, joinedAt: p.joinedAt, leftAt: p.leftAt } : null,
+       participants: await db.countHallParticipants(),
+     });
+-  });
++  },
++  );
+ 
+   router.get('/messages', auth, async (req, res) => {
+     if (!(await participationActive(req, res))) return;
+diff --git a/test/hall.test.js b/test/hall.test.js
+index 1081dd5..1b8d91d 100644
+--- a/test/hall.test.js
++++ b/test/hall.test.js
+@@ -226,3 +226,36 @@ test('signaler prévient AMN par la file d’assistance ; masquer (AMN) efface p
+   assert.deepEqual(participants.body.participants.map((p) => p.orgName).sort(), ['Cliente A', 'Cliente B']);
+   assert.ok([401, 403, 404].includes((await lea('/v1/admin/hall/messages')).status), 'une cliente ne touche pas à la modération');
+ });
++
++test('le nom d’affichage ne se fait pas passer pour le prestataire et ne double pas une organisation déjà là', async (t) => {
++  const { api, login } = await decor(t);
++  const nadia = api(await login('nadia@a.test'));
++  const lea = api(await login('lea@b.test'));
++  for (const nom of ['AMN DevSec', 'amn', 'Équipe AMN', 'ÀMN Support', 'AMNDevSec', 'amn-business', 'Amnesty Local']) {
++    const r = await nadia('/v1/hall/participation', json({ participe: true, displayName: nom }));
++    assert.equal(r.status, 400, `« ${nom} » : ${r.status}`);
++    assert.equal(r.body.code, 'hall_nom_reserve');
++  }
++  assert.equal((await nadia('/v1/hall/participation', json({ participe: true, displayName: 'Damn Good Coffee' }))).status, 200, 'amn au milieu d’un mot passe');
++  assert.equal((await nadia('/v1/hall/participation', json({ participe: true, displayName: 'Syraagensy' }))).status, 200, 'renommer son propre nom passe');
++  const double = await lea('/v1/hall/participation', json({ participe: true, displayName: '  syraagensy ' }));
++  assert.equal(double.status, 409);
++  assert.equal(double.body.code, 'hall_nom_pris');
++  assert.equal((await lea('/v1/hall/participation', json({ participe: true, displayName: 'Cabinet Léa' }))).status, 200);
++  /* Partie, Syraagensy libère son nom ; revenue, elle le reprend si personne ne l'a pris entre-temps. */
++  await nadia('/v1/hall/participation', json({ participe: false }));
++  assert.equal((await lea('/v1/hall/participation', json({ participe: true, displayName: 'Syraagensy' }))).status, 200);
++  assert.equal((await nadia('/v1/hall/participation', json({ participe: true, displayName: 'Syraagensy' }))).status, 409);
++  /* Quitter ne regarde pas le nom : on sort toujours. */
++  assert.equal((await nadia('/v1/hall/participation', json({ participe: false, displayName: 'AMN' }))).status, 200);
++});
++
++test('le consentement a un frein : dix gestes par dix minutes et par organisation', async (t) => {
++  const { api, login } = await decor(t);
++  const nadia = api(await login('nadia@a.test'));
++  let dernier = 0;
++  for (let i = 0; i < 10; i++) dernier = (await nadia('/v1/hall/participation', json({ participe: i % 2 === 0 }))).status;
++  assert.equal(dernier, 200);
++  const freine = await nadia('/v1/hall/participation', json({ participe: true }));
++  assert.equal(freine.status, 429);
++});
+-- 
+2.43.0
+

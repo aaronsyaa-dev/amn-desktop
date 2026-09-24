@@ -1,0 +1,848 @@
+From d452a0cecee4cf8a2f39fddad4cde21d80f7a708 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 24 Sep 2026 04:52:47 +0000
+Subject: [PATCH 1/4] Le Hall : l'espace commun entre organisations volontaires
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Deux tables (hall_participation, hall_messages) dans les deux couches de
+base, les routes /v1/hall (participation, messages, signalement) et la
+modération /v1/admin/hall. Le consentement est un geste de propriétaire ou
+d'admin, révocable à l'instant ; sans lui ni lecture ni écriture ; la vue
+d'un message pour une autre organisation a exactement six clés (nom
+d'affichage, signature, texte, heure, id, mienne) — jamais une adresse ni
+un identifiant. Session de support exclue (403), invité en lecture seule,
+texte stocké tel quel, bornes et freins, diffusion sur la socket de chaque
+participante, trame de rafraîchissement aux entrées et sorties.
+
+Sept tests dans test/hall.test.js ; suite complète 473/473.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01BEf9qY21FAUuZ4ogxRY3s2
+---
+ src/db/postgres.js  | 120 +++++++++++++++++++++++
+ src/db/schema.sql   |  26 +++++
+ src/db/sqlite.js    | 155 ++++++++++++++++++++++++++++++
+ src/routes/admin.js |  23 +++++
+ src/routes/hall.js  | 162 +++++++++++++++++++++++++++++++
+ src/server.js       |   2 +
+ test/hall.test.js   | 228 ++++++++++++++++++++++++++++++++++++++++++++
+ 7 files changed, 716 insertions(+)
+ create mode 100644 src/routes/hall.js
+ create mode 100644 test/hall.test.js
+
+diff --git a/src/db/postgres.js b/src/db/postgres.js
+index 9fd4fdd..ed2a342 100644
+--- a/src/db/postgres.js
++++ b/src/db/postgres.js
+@@ -77,6 +77,33 @@ const iso = isoOuNull;
+   `npm run check:postgres` qui l'a vu, en jouant le même scénario sur les
+   deux pilotes et en comparant les réponses.
+ */
++function mapHallParticipation(row) {
++  return {
++    orgId: row.org_id,
++    displayName: row.display_name,
++    joinedAt: row.joined_at instanceof Date ? row.joined_at.toISOString() : row.joined_at,
++    joinedByEmail: row.joined_by_email,
++    leftAt: row.left_at ? (row.left_at instanceof Date ? row.left_at.toISOString() : row.left_at) : null,
++    participe: row.left_at == null,
++  };
++}
++
++function mapHallMessage(row) {
++  return {
++    id: row.id,
++    orgId: row.org_id,
++    orgDisplayName: row.org_display_name ?? '',
++    authorUserId: row.author_user_id ?? null,
++    signature: row.signature ?? '',
++    body: row.body,
++    createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
++    hiddenAt: row.hidden_at ? (row.hidden_at instanceof Date ? row.hidden_at.toISOString() : row.hidden_at) : null,
++    hiddenByEmail: row.hidden_by_email ?? null,
++    hiddenReason: row.hidden_reason ?? null,
++    flags: Number(row.flags ?? 0),
++  };
++}
++
+ function mapSupportRequest(row) {
+   return {
+     id: row.id,
+@@ -2005,6 +2032,99 @@ export function createPostgresDb(connectionString) {
+       return Number(rows[0]?.n ?? 0);
+     },
+ 
++    /* ------------------------------- Le Hall -------------------------------- */
++
++    async getHallParticipation(orgId) {
++      requireOrg(orgId);
++      const { rows } = await pool.query('SELECT * FROM hall_participation WHERE org_id = $1', [orgId]);
++      return rows.length > 0 ? mapHallParticipation(rows[0]) : null;
++    },
++
++    async setHallParticipation(orgId, { participe, displayName = '', byEmail }) {
++      requireOrg(orgId);
++      if (participe) {
++        await pool.query(
++          `INSERT INTO hall_participation (org_id, display_name, joined_at, joined_by_email, left_at)
++           VALUES ($1, $2, now(), $3, NULL)
++           ON CONFLICT (org_id) DO UPDATE SET display_name = EXCLUDED.display_name, joined_at = now(),
++             joined_by_email = EXCLUDED.joined_by_email, left_at = NULL`,
++          [orgId, displayName, byEmail],
++        );
++      } else {
++        await pool.query('UPDATE hall_participation SET left_at = now() WHERE org_id = $1 AND left_at IS NULL', [orgId]);
++      }
++      return this.getHallParticipation(orgId);
++    },
++
++    async countHallParticipants() {
++      const { rows } = await pool.query('SELECT count(*)::int AS n FROM hall_participation WHERE left_at IS NULL');
++      return Number(rows[0]?.n ?? 0);
++    },
++
++    async listHallParticipants() {
++      const { rows } = await pool.query(
++        `SELECT p.*, o.name AS org_name FROM hall_participation p
++           LEFT JOIN organizations o ON o.id = p.org_id
++          WHERE p.left_at IS NULL ORDER BY p.joined_at ASC`,
++      );
++      return rows.map((row) => ({ ...mapHallParticipation(row), orgName: row.org_name ?? null }));
++    },
++
++    async createHallMessage({ orgId, authorUserId = null, signature = '', body }) {
++      requireOrg(orgId);
++      const { rows } = await pool.query(
++        `INSERT INTO hall_messages (org_id, author_user_id, signature, body) VALUES ($1, $2, $3, $4) RETURNING id`,
++        [orgId, authorUserId, signature, body],
++      );
++      return this.getHallMessage(rows[0].id);
++    },
++
++    async listHallMessages({ limit = 100 } = {}) {
++      const { rows } = await pool.query(
++        `SELECT m.*, p.display_name AS org_display_name FROM hall_messages m
++           JOIN hall_participation p ON p.org_id = m.org_id AND p.left_at IS NULL
++          WHERE m.hidden_at IS NULL
++          ORDER BY m.created_at DESC LIMIT $1`,
++        [limit],
++      );
++      return rows.map(mapHallMessage);
++    },
++
++    async getHallMessage(id) {
++      const { rows } = await pool.query(
++        `SELECT m.*, p.display_name AS org_display_name FROM hall_messages m
++           LEFT JOIN hall_participation p ON p.org_id = m.org_id
++          WHERE m.id = $1`,
++        [id],
++      );
++      return rows.length > 0 ? mapHallMessage(rows[0]) : null;
++    },
++
++    async hideHallMessage(id, { byEmail, reason = '' }) {
++      await pool.query('UPDATE hall_messages SET hidden_at = now(), hidden_by_email = $1, hidden_reason = $2 WHERE id = $3', [
++        byEmail,
++        reason,
++        id,
++      ]);
++      return this.getHallMessage(id);
++    },
++
++    async flagHallMessage(id) {
++      await pool.query('UPDATE hall_messages SET flags = flags + 1 WHERE id = $1', [id]);
++      return this.getHallMessage(id);
++    },
++
++    async listAllHallMessages({ limit = 300 } = {}) {
++      const { rows } = await pool.query(
++        `SELECT m.*, p.display_name AS org_display_name, o.name AS org_name FROM hall_messages m
++           LEFT JOIN hall_participation p ON p.org_id = m.org_id
++           LEFT JOIN organizations o ON o.id = m.org_id
++          ORDER BY m.created_at DESC LIMIT $1`,
++        [limit],
++      );
++      return rows.map((row) => ({ ...mapHallMessage(row), orgName: row.org_name ?? null }));
++    },
++
+     /* ------------------------ Tentatives d'injection ------------------------ */
+ 
+     async createInputAlert({ orgId = null, userEmail = null, ip = null, route, field, family, sample = '', statusCode = null }) {
+diff --git a/src/db/schema.sql b/src/db/schema.sql
+index 6b439fe..8c5c969 100644
+--- a/src/db/schema.sql
++++ b/src/db/schema.sql
+@@ -802,6 +802,32 @@ CREATE TABLE IF NOT EXISTS support_requests (
+ CREATE INDEX IF NOT EXISTS support_requests_status_idx ON support_requests (status, created_at DESC);
+ CREATE INDEX IF NOT EXISTS support_requests_org_idx ON support_requests (org_id, created_at DESC);
+ 
++-- LE HALL (vision cliente, chantier 4) : l'espace commun entre organisations
++-- VOLONTAIRES. Une organisation n'y est que si un propriétaire ou un admin l'y
++-- a inscrite (left_at NULL) ; ses messages n'apparaissent à personne dès
++-- qu'elle le quitte. Aucune adresse ni identifiant d'organisation ne sort de
++-- ces tables vers une autre cliente.
++CREATE TABLE IF NOT EXISTS hall_participation (
++  org_id          UUID PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
++  display_name    TEXT NOT NULL,
++  joined_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
++  joined_by_email TEXT NOT NULL,
++  left_at         TIMESTAMPTZ
++);
++CREATE TABLE IF NOT EXISTS hall_messages (
++  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
++  org_id          UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
++  author_user_id  UUID REFERENCES users(id) ON DELETE SET NULL,
++  signature       TEXT NOT NULL DEFAULT '',
++  body            TEXT NOT NULL,
++  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
++  hidden_at       TIMESTAMPTZ,
++  hidden_by_email TEXT,
++  hidden_reason   TEXT,
++  flags           INTEGER NOT NULL DEFAULT 0
++);
++CREATE INDEX IF NOT EXISTS hall_messages_created_idx ON hall_messages (created_at DESC);
++
+ -- Les liens de bienvenue (Bloc 2) : usage unique, sept jours, journalisés.
+ CREATE TABLE IF NOT EXISTS welcome_links (
+   id               UUID PRIMARY KEY,
+diff --git a/src/db/sqlite.js b/src/db/sqlite.js
+index 96b7660..32eff0a 100644
+--- a/src/db/sqlite.js
++++ b/src/db/sqlite.js
+@@ -26,6 +26,33 @@ function rowToCallLink(row) {
+ }
+ 
+ /** Une ligne `support_requests` -> la forme rendue par l'API. */
++function mapHallParticipation(row) {
++  return {
++    orgId: row.org_id,
++    displayName: row.display_name,
++    joinedAt: row.joined_at,
++    joinedByEmail: row.joined_by_email,
++    leftAt: row.left_at ?? null,
++    participe: row.left_at == null,
++  };
++}
++
++function mapHallMessage(row) {
++  return {
++    id: row.id,
++    orgId: row.org_id,
++    orgDisplayName: row.org_display_name ?? '',
++    authorUserId: row.author_user_id ?? null,
++    signature: row.signature ?? '',
++    body: row.body,
++    createdAt: row.created_at,
++    hiddenAt: row.hidden_at ?? null,
++    hiddenByEmail: row.hidden_by_email ?? null,
++    hiddenReason: row.hidden_reason ?? null,
++    flags: Number(row.flags ?? 0),
++  };
++}
++
+ function mapSupportRequest(row) {
+   return {
+     id: row.id,
+@@ -507,6 +534,33 @@ export function createSqliteDb(filePath) {
+     CREATE INDEX IF NOT EXISTS support_requests_status_idx ON support_requests (status, created_at DESC);
+     CREATE INDEX IF NOT EXISTS support_requests_org_idx ON support_requests (org_id, created_at DESC);
+ 
++    -- LE HALL (vision cliente, chantier 4) : l'espace commun entre organisations
++    -- VOLONTAIRES. Une organisation n'y est que si un propriétaire ou un admin
++    -- l'y a inscrite (left_at NULL) ; ses messages n'apparaissent à personne
++    -- dès qu'elle le quitte. Aucune adresse, aucun identifiant d'organisation
++    -- ne sort de ces tables vers une autre cliente : seuls le nom d'affichage
++    -- choisi, la signature choisie et le texte.
++    CREATE TABLE IF NOT EXISTS hall_participation (
++      org_id          TEXT PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
++      display_name    TEXT NOT NULL,
++      joined_at       TEXT NOT NULL,
++      joined_by_email TEXT NOT NULL,
++      left_at         TEXT
++    );
++    CREATE TABLE IF NOT EXISTS hall_messages (
++      id              TEXT PRIMARY KEY,
++      org_id          TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
++      author_user_id  TEXT,
++      signature       TEXT NOT NULL DEFAULT '',
++      body            TEXT NOT NULL,
++      created_at      TEXT NOT NULL,
++      hidden_at       TEXT,
++      hidden_by_email TEXT,
++      hidden_reason   TEXT,
++      flags           INTEGER NOT NULL DEFAULT 0
++    );
++    CREATE INDEX IF NOT EXISTS hall_messages_created_idx ON hall_messages (created_at DESC);
++
+     -- Les liens de bienvenue (Bloc 2) : usage unique, sept jours, journalisés.
+     CREATE TABLE IF NOT EXISTS welcome_links (
+       id               TEXT PRIMARY KEY,
+@@ -2996,6 +3050,107 @@ export function createSqliteDb(filePath) {
+       return Number(db.prepare("SELECT count(*) AS n FROM support_requests WHERE status = 'pending'").get().n);
+     },
+ 
++    /* ------------------------------- Le Hall -------------------------------- */
++
++    async getHallParticipation(orgId) {
++      requireOrg(orgId);
++      const row = db.prepare('SELECT * FROM hall_participation WHERE org_id = ?').get(orgId);
++      return row ? mapHallParticipation(row) : null;
++    },
++
++    async setHallParticipation(orgId, { participe, displayName = '', byEmail }) {
++      requireOrg(orgId);
++      const now = new Date().toISOString();
++      if (participe) {
++        db.prepare(
++          `INSERT INTO hall_participation (org_id, display_name, joined_at, joined_by_email, left_at)
++           VALUES (?, ?, ?, ?, NULL)
++           ON CONFLICT(org_id) DO UPDATE SET display_name = excluded.display_name, joined_at = excluded.joined_at,
++             joined_by_email = excluded.joined_by_email, left_at = NULL`,
++        ).run(orgId, displayName, now, byEmail);
++      } else {
++        db.prepare('UPDATE hall_participation SET left_at = ? WHERE org_id = ? AND left_at IS NULL').run(now, orgId);
++      }
++      return this.getHallParticipation(orgId);
++    },
++
++    async countHallParticipants() {
++      return Number(db.prepare('SELECT count(*) AS n FROM hall_participation WHERE left_at IS NULL').get().n);
++    },
++
++    async listHallParticipants() {
++      return db
++        .prepare(
++          `SELECT p.*, o.name AS org_name FROM hall_participation p
++             LEFT JOIN organizations o ON o.id = p.org_id
++            WHERE p.left_at IS NULL ORDER BY p.joined_at ASC`,
++        )
++        .all()
++        .map((row) => ({ ...mapHallParticipation(row), orgName: row.org_name ?? null }));
++    },
++
++    async createHallMessage({ orgId, authorUserId = null, signature = '', body }) {
++      requireOrg(orgId);
++      const id = crypto.randomUUID();
++      db.prepare(
++        `INSERT INTO hall_messages (id, org_id, author_user_id, signature, body, created_at)
++         VALUES (?, ?, ?, ?, ?, ?)`,
++      ).run(id, orgId, authorUserId, signature, body, new Date().toISOString());
++      return this.getHallMessage(id);
++    },
++
++    /** Ce que voit une organisation qui participe : les messages des organisations qui participent ENCORE, non masqués. */
++    async listHallMessages({ limit = 100 } = {}) {
++      return db
++        .prepare(
++          `SELECT m.*, p.display_name AS org_display_name FROM hall_messages m
++             JOIN hall_participation p ON p.org_id = m.org_id AND p.left_at IS NULL
++            WHERE m.hidden_at IS NULL
++            ORDER BY m.created_at DESC LIMIT ?`,
++        )
++        .all(limit)
++        .map(mapHallMessage);
++    },
++
++    async getHallMessage(id) {
++      const row = db
++        .prepare(
++          `SELECT m.*, p.display_name AS org_display_name FROM hall_messages m
++             LEFT JOIN hall_participation p ON p.org_id = m.org_id
++            WHERE m.id = ?`,
++        )
++        .get(id);
++      return row ? mapHallMessage(row) : null;
++    },
++
++    async hideHallMessage(id, { byEmail, reason = '' }) {
++      db.prepare('UPDATE hall_messages SET hidden_at = ?, hidden_by_email = ?, hidden_reason = ? WHERE id = ?').run(
++        new Date().toISOString(),
++        byEmail,
++        reason,
++        id,
++      );
++      return this.getHallMessage(id);
++    },
++
++    async flagHallMessage(id) {
++      db.prepare('UPDATE hall_messages SET flags = flags + 1 WHERE id = ?').run(id);
++      return this.getHallMessage(id);
++    },
++
++    /** La modération d'AMN DevSec : tout, masqués compris, avec le vrai nom de l'organisation. */
++    async listAllHallMessages({ limit = 300 } = {}) {
++      return db
++        .prepare(
++          `SELECT m.*, p.display_name AS org_display_name, o.name AS org_name FROM hall_messages m
++             LEFT JOIN hall_participation p ON p.org_id = m.org_id
++             LEFT JOIN organizations o ON o.id = m.org_id
++            ORDER BY m.created_at DESC LIMIT ?`,
++        )
++        .all(limit)
++        .map((row) => ({ ...mapHallMessage(row), orgName: row.org_name ?? null }));
++    },
++
+     /* ------------------------ Tentatives d'injection ------------------------ */
+ 
+     async createInputAlert({ orgId = null, userEmail = null, ip = null, route, field, family, sample = '', statusCode = null }) {
+diff --git a/src/routes/admin.js b/src/routes/admin.js
+index d26615b..ee20501 100644
+--- a/src/routes/admin.js
++++ b/src/routes/admin.js
+@@ -1395,6 +1395,29 @@ export function adminRouter() {
+    * Ce que les clientes nous ont écrit (Blocs 1, 3, 4) : messages, places,
+    * mots de passe oubliés. Une seule file, filtrée par statut.
+    */
++  /* ------------------------------- Le Hall -------------------------------- */
++  /*
++    La modération d'AMN DevSec : tout voir (masqués compris, avec le vrai nom
++    de l'organisation), masquer un message, lire qui participe. Masquer ne
++    supprime pas : la ligne garde qui a masqué, quand, pourquoi.
++  */
++  router.get('/hall/participants', async (req, res) => {
++    res.json({ participants: await req.app.locals.db.listHallParticipants() });
++  });
++  router.get('/hall/messages', async (req, res) => {
++    res.json({ messages: await req.app.locals.db.listAllHallMessages({ limit: 300 }) });
++  });
++  router.put('/hall/messages/:id/masquer', async (req, res) => {
++    const db = req.app.locals.db;
++    const m = await db.getHallMessage(String(req.params.id));
++    if (!m) return res.status(404).json({ error: 'Message introuvable.' });
++    const reason = String(req.body?.reason ?? '').trim().slice(0, 300);
++    const masque = await db.hideHallMessage(m.id, { byEmail: req.user?.email ?? 'opérateur', reason });
++    const hub = req.app.locals.hub;
++    if (hub) for (const p of await db.listHallParticipants()) hub.broadcast({ type: 'hall:masque', id: m.id }, p.orgId);
++    res.json({ message: masque });
++  });
++
+   router.get('/support-requests', async (req, res) => {
+     const status = req.query.status ? String(req.query.status) : undefined;
+     if (status && !SUPPORT_STATUSES.includes(status)) {
+diff --git a/src/routes/hall.js b/src/routes/hall.js
+new file mode 100644
+index 0000000..f914c62
+--- /dev/null
++++ b/src/routes/hall.js
+@@ -0,0 +1,162 @@
++import { Router } from 'express';
++import { tenantAuth } from '../middleware/tenantAuth.js';
++import { rateLimit } from '../middleware/rateLimit.js';
++
++/**
++ * LE HALL — l'espace commun entre organisations VOLONTAIRES (vision cliente,
++ * chantier 4 : « on s'y sent seul, coupé des autres »).
++ *
++ * La règle qui commande tout ce fichier : aucune donnée d'une organisation
++ * n'est visible par une autre sans consentement explicite. Ici le consentement
++ * est un GESTE de propriétaire ou d'admin (`PUT /participation`), révocable
++ * d'un geste, et ce qu'il ouvre est borné et nommé :
++ *
++ *   · ce qui sort vers les autres organisations : le nom d'affichage choisi,
++ *     la signature choisie pour chaque message, le texte du message, l'heure ;
++ *   · ce qui ne sort JAMAIS : les adresses, les identifiants d'organisation ou
++ *     de compte, le nom légal si le nom d'affichage en diffère, et rien des
++ *     collections (tâches, clients, factures…) — le Hall n'a pas de porte
++ *     vers elles.
++ *
++ * Trois verrous, dans l'ordre :
++ *   1. `tenantAuth({ allowSupport: false })` — une session de support (un
++ *      opérateur d'AMN posé sur une cliente) ne parle pas au nom de la cliente
++ *      et ne consent pas à sa place ;
++ *   2. le consentement — sans participation active, ni lecture ni écriture
++ *      (403 `hall_non_rejoint`), et les messages d'une organisation partie
++ *      cessent d'exister pour les autres à l'instant (la requête de lecture
++ *      joint sur `left_at IS NULL`, il n'y a pas d'état à nettoyer) ;
++ *   3. les rôles — consentir : owner/admin ; écrire : owner/admin/member,
++ *      jamais guest ; lire : tout membre d'une organisation qui participe.
++ *
++ * Le texte est stocké tel quel et rendu comme TEXTE côté poste (React
++ * échappe ; aucun HTML n'est interprété). Bornes : 600 caractères, dix
++ * messages par personne par dix minutes, 30 caractères de signature.
++ */
++const BODY_MAX = 600;
++const SIGNATURE_MAX = 30;
++const DISPLAY_NAME_MAX = 60;
++
++/** Ce qu'une autre organisation a le droit de voir d'un message — et rien d'autre. */
++function vue(m, orgId) {
++  return {
++    id: m.id,
++    org: m.orgDisplayName,
++    signature: m.signature,
++    body: m.body,
++    createdAt: m.createdAt,
++    mienne: m.orgId === orgId,
++  };
++}
++
++function nettoyerLigne(v, max) {
++  return String(v ?? '')
++    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '')
++    .trim()
++    .slice(0, max);
++}
++
++export function hallRouter() {
++  const router = Router();
++  const auth = tenantAuth({ allowSupport: false });
++  const consentir = tenantAuth({ allowSupport: false, allowWeb: false, roles: ['owner', 'admin'] });
++  const ecrire = tenantAuth({ allowSupport: false, allowWeb: false, roles: ['owner', 'admin', 'member'] });
++
++  const participationActive = async (req, res) => {
++    const p = await req.app.locals.db.getHallParticipation(req.auth.orgId);
++    if (!p?.participe) {
++      res.status(403).json({ error: 'Votre organisation n’a pas rejoint le Hall.', code: 'hall_non_rejoint' });
++      return null;
++    }
++    return p;
++  };
++
++  /* Où en est MON organisation, et combien d'organisations y parlent (un nombre, pas des noms). */
++  router.get('/participation', auth, async (req, res) => {
++    const db = req.app.locals.db;
++    const p = await db.getHallParticipation(req.auth.orgId);
++    res.json({
++      participation: p ? { participe: p.participe, displayName: p.displayName, joinedAt: p.joinedAt, leftAt: p.leftAt } : null,
++      participants: await db.countHallParticipants(),
++    });
++  });
++
++  /* Le consentement — et son retrait. Un geste de propriétaire ou d'admin, journalisé par l'adresse qui l'a fait. */
++  router.put('/participation', consentir, async (req, res) => {
++    const db = req.app.locals.db;
++    const participe = req.body?.participe === true;
++    const org = await db.getOrganization(req.auth.orgId);
++    const displayName = nettoyerLigne(req.body?.displayName, DISPLAY_NAME_MAX) || org?.name || 'Une organisation';
++    const p = await db.setHallParticipation(req.auth.orgId, { participe, displayName, byEmail: req.user?.email ?? 'inconnue' });
++    const hub = req.app.locals.hub;
++    if (hub) {
++      hub.tower({ type: 'hall:participation', orgName: org?.name ?? null, displayName, participe });
++      /* Les écrans ouverts chez les participantes relisent : une organisation partie disparaît à l'instant, une arrivée compte. */
++      for (const autre of await db.listHallParticipants()) hub.broadcast({ type: 'hall:rafraichir' }, autre.orgId);
++    }
++    res.json({
++      participation: p ? { participe: p.participe, displayName: p.displayName, joinedAt: p.joinedAt, leftAt: p.leftAt } : null,
++      participants: await db.countHallParticipants(),
++    });
++  });
++
++  router.get('/messages', auth, async (req, res) => {
++    if (!(await participationActive(req, res))) return;
++    const messages = await req.app.locals.db.listHallMessages({ limit: 100 });
++    res.json({ messages: messages.map((m) => vue(m, req.auth.orgId)).reverse() });
++  });
++
++  router.post(
++    '/messages',
++    ecrire,
++    rateLimit({ name: 'hall-write', max: 10, windowMs: 10 * 60_000, key: (req) => req.auth?.userId ?? req.auth?.orgId ?? 'anonyme' }),
++    async (req, res) => {
++      const p = await participationActive(req, res);
++      if (!p) return;
++      const db = req.app.locals.db;
++      const brut = String(req.body?.body ?? '');
++      if (brut.length > BODY_MAX) {
++        return res.status(400).json({ error: `Un message tient en ${BODY_MAX} caractères.`, code: 'hall_trop_long' });
++      }
++      const body = brut.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').trim();
++      if (!body) return res.status(400).json({ error: 'Un message vide ne se poste pas.', code: 'hall_vide' });
++      const signature = nettoyerLigne(req.body?.signature, SIGNATURE_MAX);
++      const m = await db.createHallMessage({ orgId: req.auth.orgId, authorUserId: req.auth.userId ?? null, signature, body });
++      /* Chaque organisation qui participe reçoit la trame — chacune sur SA socket, jamais un envoi à tout le monde. */
++      const hub = req.app.locals.hub;
++      if (hub) {
++        for (const autre of await db.listHallParticipants()) {
++          hub.broadcast({ type: 'hall:message', message: vue(m, autre.orgId) }, autre.orgId);
++        }
++      }
++      res.status(201).json({ message: vue(m, req.auth.orgId) });
++    },
++  );
++
++  /* Signaler : le message reste, AMN DevSec est prévenue par la file d'assistance — un humain tranche. */
++  router.post(
++    '/messages/:id/signaler',
++    ecrire,
++    rateLimit({ name: 'hall-signal', max: 20, windowMs: 60 * 60_000, key: (req) => req.auth?.userId ?? req.auth?.orgId ?? 'anonyme' }),
++    async (req, res) => {
++      if (!(await participationActive(req, res))) return;
++      const db = req.app.locals.db;
++      const m = await db.getHallMessage(String(req.params.id));
++      if (!m || m.hiddenAt) return res.status(404).json({ error: 'Message introuvable.' });
++      await db.flagHallMessage(m.id);
++      const org = await db.getOrganization(req.auth.orgId);
++      const request = await db.createSupportRequest({
++        orgId: req.auth.orgId,
++        kind: 'message',
++        subject: 'Signalement dans le Hall',
++        body: `Message ${m.id} de « ${m.orgDisplayName} » signalé.\n\n« ${m.body.slice(0, 300)} »`,
++        requestedBy: req.auth.userId ?? null,
++        requestedByEmail: req.user?.email ?? `jeton partagé (${req.auth.scope})`,
++      });
++      req.app.locals.hub?.tower({ type: 'support:request', request: { ...request, orgName: org?.name ?? null } });
++      res.json({ ok: true });
++    },
++  );
++
++  return router;
++}
+diff --git a/src/server.js b/src/server.js
+index 91d1ae9..017ba6e 100644
+--- a/src/server.js
++++ b/src/server.js
+@@ -15,6 +15,7 @@ import { incidentsRouter } from './routes/incidents.js';
+ import { reportsRouter } from './routes/reports.js';
+ import { callLinksRouter } from './routes/callLinks.js';
+ import { supportRouter } from './routes/support.js';
++import { hallRouter } from './routes/hall.js';
+ import { bookingRouter } from './routes/booking.js';
+ import { publicRouter } from './routes/public.js';
+ import { inputSentinel } from './middleware/inputSentinel.js';
+@@ -127,6 +128,7 @@ export async function createApp({ db }) {
+   app.use('/v1/call-links', callLinksRouter());
+   // La file des demandes (message, place, mot de passe oublié) — Blocs 1, 3, 4.
+   app.use('/v1/support', supportRouter());
++  app.use('/v1/hall', hallRouter());
+   app.use('/v1/booking', bookingRouter());
+   app.use('/v1', publicRouter());
+   // Le lien de bienvenue, page publique à usage unique — Bloc 2.
+diff --git a/test/hall.test.js b/test/hall.test.js
+new file mode 100644
+index 0000000..1081dd5
+--- /dev/null
++++ b/test/hall.test.js
+@@ -0,0 +1,228 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import http from 'node:http';
++
++process.env.NODE_ENV = 'test';
++process.env.OPERATOR_TOKEN = 'test-operator-token';
++
++const { createApp } = await import('../src/server.js');
++const { createSqliteDb } = await import('../src/db/sqlite.js');
++const { AMN_ORG_ID } = await import('../src/db/tenancy.js');
++const { hashPassword } = await import('../src/lib/password.js');
++const { _resetRateLimits } = await import('../src/middleware/rateLimit.js');
++
++/**
++ * LE HALL — les verrous de consentement et d'isolation, cassés un par un.
++ *
++ * Ce que ces tests prouvent : sans consentement, rien ne se lit ni ne s'écrit ;
++ * un membre ne consent pas pour son organisation ; une session de support ne
++ * consent pas ni ne parle au nom d'une cliente ; ce qui sort vers les autres
++ * ne porte ni adresse ni identifiant ; quitter efface aux yeux des autres ;
++ * masquer (AMN) efface aussi ; le texte est stocké tel quel, borné ; le
++ * frein par personne tient.
++ */
++const MDP = 'motdepasse-solide';
++
++async function decor(t) {
++  _resetRateLimits();
++  const db = createSqliteDb(':memory:');
++  await db.init();
++  const app = await createApp({ db });
++  const server = http.createServer(app);
++  await new Promise((resolve) => server.listen(0, resolve));
++  const { port } = server.address();
++  t.after(async () => {
++    server.closeAllConnections?.();
++    await new Promise((resolve) => server.close(resolve));
++    await db.close();
++  });
++  const base = `http://127.0.0.1:${port}`;
++  const login = async (email) => {
++    const r = await fetch(`${base}/v1/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: MDP }) });
++    assert.equal(r.status, 200, `connexion ${email}`);
++    return (await r.json()).token;
++  };
++  const api = (token) => async (path, init = {}) => {
++    const r = await fetch(`${base}${path}`, { ...init, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(init.headers ?? {}) } });
++    let body = null;
++    try { body = await r.json(); } catch { body = null; }
++    return { status: r.status, body };
++  };
++  const compte = async (orgId, email, role) => db.createUser({ orgId, email, passwordHash: await hashPassword(MDP), role, status: 'active' });
++  await compte(AMN_ORG_ID, 'aaron@amn-test.local', 'owner');
++  const a = await db.createOrganization({ name: 'Cliente A', plan: 'business_standard' });
++  const b = await db.createOrganization({ name: 'Cliente B', plan: 'business_standard' });
++  const c = await db.createOrganization({ name: 'Cliente C', plan: 'business_standard' });
++  await compte(a.id, 'nadia@a.test', 'owner');
++  await compte(a.id, 'sofia@a.test', 'member');
++  await compte(a.id, 'invite@a.test', 'guest');
++  await compte(b.id, 'lea@b.test', 'owner');
++  await compte(c.id, 'marc@c.test', 'owner');
++  const operateur = api('test-operator-token');
++  return { db, api, login, a, b, c, base, operateur };
++}
++
++const json = (o) => ({ method: 'PUT', body: JSON.stringify(o) });
++const post = (o) => ({ method: 'POST', body: JSON.stringify(o) });
++
++test('sans consentement, ni lecture ni écriture ; un membre ne consent pas ; le propriétaire consent et le retire', async (t) => {
++  const { api, login } = await decor(t);
++  const nadia = api(await login('nadia@a.test'));
++  const sofia = api(await login('sofia@a.test'));
++
++  const etat = await nadia('/v1/hall/participation');
++  assert.equal(etat.status, 200);
++  assert.equal(etat.body.participation, null);
++  assert.equal(etat.body.participants, 0);
++
++  assert.equal((await nadia('/v1/hall/messages')).status, 403);
++  assert.equal((await nadia('/v1/hall/messages')).body.code, 'hall_non_rejoint');
++  assert.equal((await nadia('/v1/hall/messages', post({ body: 'Bonjour' }))).status, 403);
++
++  const refus = await sofia('/v1/hall/participation', json({ participe: true }));
++  assert.equal(refus.status, 403, 'une membre ne consent pas pour son organisation');
++
++  const oui = await nadia('/v1/hall/participation', json({ participe: true, displayName: '  Syraagensy  ' }));
++  assert.equal(oui.status, 200);
++  assert.equal(oui.body.participation.participe, true);
++  assert.equal(oui.body.participation.displayName, 'Syraagensy');
++  assert.equal(oui.body.participants, 1);
++
++  assert.equal((await sofia('/v1/hall/messages')).status, 200, 'une membre lit dès que son organisation participe');
++
++  const non = await nadia('/v1/hall/participation', json({ participe: false }));
++  assert.equal(non.body.participation.participe, false);
++  assert.equal(non.body.participants, 0);
++  assert.equal((await sofia('/v1/hall/messages')).status, 403, 'le retrait ferme la porte à l’instant');
++});
++
++test('ce qui sort vers une autre organisation : le nom choisi, la signature, le texte — jamais une adresse ni un identifiant', async (t) => {
++  const { api, login, a } = await decor(t);
++  const nadia = api(await login('nadia@a.test'));
++  const lea = api(await login('lea@b.test'));
++  await nadia('/v1/hall/participation', json({ participe: true, displayName: 'Syraagensy' }));
++  await lea('/v1/hall/participation', json({ participe: true }));
++
++  const envoye = await nadia('/v1/hall/messages', post({ body: 'Quelqu’un a un modèle de devis pour une agence ?', signature: 'Nadia' }));
++  assert.equal(envoye.status, 201);
++  const m = envoye.body.message;
++  assert.deepEqual(Object.keys(m).sort(), ['body', 'createdAt', 'id', 'mienne', 'org', 'signature'].sort());
++  assert.equal(m.org, 'Syraagensy');
++  assert.equal(m.mienne, true);
++
++  const vuParLea = await lea('/v1/hall/messages');
++  assert.equal(vuParLea.status, 200);
++  assert.equal(vuParLea.body.messages.length, 1);
++  const chezLea = vuParLea.body.messages[0];
++  assert.equal(chezLea.mienne, false);
++  assert.equal(chezLea.org, 'Syraagensy');
++  const texte = JSON.stringify(vuParLea.body);
++  assert.ok(!texte.includes('nadia@a.test'), 'aucune adresse');
++  assert.ok(!texte.includes(a.id), 'aucun identifiant d’organisation');
++  assert.ok(!texte.includes('Cliente A'), 'pas le nom légal quand le nom d’affichage en diffère');
++
++  /* Léa n'a pas choisi de nom : c'est le nom de son organisation, tel quel — son choix par défaut, pas une fuite. */
++  const deLea = await lea('/v1/hall/messages', post({ body: 'Oui, je vous envoie ça.' }));
++  assert.equal(deLea.body.message.org, 'Cliente B');
++});
++
++test('quitter le Hall efface ses messages aux yeux des autres ; y revenir les rend', async (t) => {
++  const { api, login } = await decor(t);
++  const nadia = api(await login('nadia@a.test'));
++  const lea = api(await login('lea@b.test'));
++  await nadia('/v1/hall/participation', json({ participe: true, displayName: 'Syraagensy' }));
++  await lea('/v1/hall/participation', json({ participe: true }));
++  await nadia('/v1/hall/messages', post({ body: 'Premier message.' }));
++  assert.equal((await lea('/v1/hall/messages')).body.messages.length, 1);
++
++  await nadia('/v1/hall/participation', json({ participe: false }));
++  assert.equal((await lea('/v1/hall/messages')).body.messages.length, 0, 'partie : plus rien d’elle');
++
++  await nadia('/v1/hall/participation', json({ participe: true, displayName: 'Syraagensy' }));
++  assert.equal((await lea('/v1/hall/messages')).body.messages.length, 1, 'revenue : ses messages reviennent');
++});
++
++test('une session de support ne consent pas et ne parle pas au nom d’une cliente', async (t) => {
++  const { api, login, a, operateur } = await decor(t);
++  const aaron = api(await login('aaron@amn-test.local'));
++  const ouverture = await aaron(`/v1/admin/organizations/${a.id}/support-session`, post({}));
++  assert.equal(ouverture.status, 201, JSON.stringify(ouverture.body));
++  const jeton = ouverture.body.token ?? ouverture.body.session?.token;
++  assert.ok(jeton, 'un jeton de support');
++  const support = api(jeton);
++  /* 403, pas 401 : le jeton est valide, c'est la ROUTE qui refuse une session de support — voulu. */
++  assert.equal((await support('/v1/hall/participation', json({ participe: true }))).status, 403);
++  assert.equal((await support('/v1/hall/messages', post({ body: 'coucou' }))).status, 403);
++  assert.equal((await support('/v1/hall/messages')).status, 403);
++  void operateur;
++});
++
++test('un invité (guest) lit mais n’écrit pas', async (t) => {
++  const { api, login } = await decor(t);
++  const nadia = api(await login('nadia@a.test'));
++  const invite = api(await login('invite@a.test'));
++  await nadia('/v1/hall/participation', json({ participe: true }));
++  assert.equal((await invite('/v1/hall/messages')).status, 200);
++  assert.equal((await invite('/v1/hall/messages', post({ body: 'Je passe par là.' }))).status, 403);
++});
++
++test('le texte est stocké tel quel (l’échappement est l’affaire de l’écran) et borné ; le vide est refusé ; le frein tient', async (t) => {
++  const { api, login } = await decor(t);
++  const nadia = api(await login('nadia@a.test'));
++  await nadia('/v1/hall/participation', json({ participe: true }));
++
++  const xss = '<img src=x onerror="alert(1)"><script>alert(2)</script> & "guillemets"';
++  const m = await nadia('/v1/hall/messages', post({ body: xss, signature: '<b>Nadia</b>' }));
++  assert.equal(m.status, 201);
++  assert.equal(m.body.message.body, xss);
++  assert.equal(m.body.message.signature, '<b>Nadia</b>');
++  const relu = await nadia('/v1/hall/messages');
++  assert.equal(relu.body.messages.at(-1).body, xss);
++
++  assert.equal((await nadia('/v1/hall/messages', post({ body: 'x'.repeat(601) }))).status, 400);
++  assert.equal((await nadia('/v1/hall/messages', post({ body: '   \n\t ' }))).status, 400);
++  assert.equal((await nadia('/v1/hall/messages', post({ body: 'ok\u0000\u0007' }))).body.message.body, 'ok');
++  const longueSignature = await nadia('/v1/hall/messages', post({ body: 'ok', signature: 's'.repeat(80) }));
++  assert.equal(longueSignature.body.message.signature.length, 30);
++
++  /* 10 passages par personne par dix minutes — les refus (trop long, vide) comptent aussi, c'est un frein
++     d'inondation : cinq passages faits, cinq passent encore, le onzième est freiné. */
++  for (let i = 0; i < 5; i++) assert.equal((await nadia('/v1/hall/messages', post({ body: `n° ${i}` }))).status, 201);
++  const freine = await nadia('/v1/hall/messages', post({ body: 'de trop' }));
++  assert.equal(freine.status, 429);
++  assert.equal(freine.body.code, 'too_many_requests');
++});
++
++test('signaler prévient AMN par la file d’assistance ; masquer (AMN) efface pour tout le monde', async (t) => {
++  const { api, login } = await decor(t);
++  const nadia = api(await login('nadia@a.test'));
++  const lea = api(await login('lea@b.test'));
++  const aaron = api(await login('aaron@amn-test.local'));
++  await nadia('/v1/hall/participation', json({ participe: true, displayName: 'Syraagensy' }));
++  await lea('/v1/hall/participation', json({ participe: true }));
++  const m = (await nadia('/v1/hall/messages', post({ body: 'Un message déplacé.' }))).body.message;
++
++  const signal = await lea(`/v1/hall/messages/${m.id}/signaler`, post({}));
++  assert.equal(signal.status, 200);
++  const file = await aaron('/v1/admin/support-requests?status=pending');
++  assert.equal(file.status, 200);
++  const demande = file.body.requests.find((r) => r.subject === 'Signalement dans le Hall');
++  assert.ok(demande, 'la Tour voit le signalement');
++  assert.ok(demande.body.includes('Un message déplacé.'));
++
++  const tout = await aaron('/v1/admin/hall/messages');
++  assert.equal(tout.status, 200);
++  assert.equal(tout.body.messages[0].flags, 1);
++  assert.equal(tout.body.messages[0].orgName, 'Cliente A', 'AMN voit le vrai nom');
++
++  const masque = await aaron(`/v1/admin/hall/messages/${m.id}/masquer`, json({ reason: 'Déplacé.' }));
++  assert.equal(masque.status, 200);
++  assert.ok(masque.body.message.hiddenAt);
++  assert.equal((await lea('/v1/hall/messages')).body.messages.length, 0);
++  assert.equal((await nadia('/v1/hall/messages')).body.messages.length, 0, 'masqué pour l’autrice aussi');
++  assert.equal((await lea(`/v1/hall/messages/${m.id}/signaler`, post({}))).status, 404);
++
++  const participants = await aaron('/v1/admin/hall/participants');
++  assert.deepEqual(participants.body.participants.map((p) => p.orgName).sort(), ['Cliente A', 'Cliente B']);
++  assert.ok([401, 403, 404].includes((await lea('/v1/admin/hall/messages')).status), 'une cliente ne touche pas à la modération');
++});
+-- 
+2.43.0
+
