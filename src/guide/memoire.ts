@@ -9,7 +9,7 @@
  */
 const CLE = (quoi: string, email: string) => `amn.guide.${quoi}.${email || 'anonyme'}`;
 
-export function guideVu(quoi: 'general' | 'profil', email: string): boolean {
+export function guideVu(quoi: 'general' | 'profil' | 'presentation', email: string): boolean {
   try {
     return window.localStorage.getItem(CLE(quoi, email)) === 'vu';
   } catch {
@@ -17,7 +17,7 @@ export function guideVu(quoi: 'general' | 'profil', email: string): boolean {
   }
 }
 
-export function marquerGuide(quoi: 'general' | 'profil', email: string, vu = true): void {
+export function marquerGuide(quoi: 'general' | 'profil' | 'presentation', email: string, vu = true): void {
   try {
     if (vu) window.localStorage.setItem(CLE(quoi, email), 'vu');
     else window.localStorage.removeItem(CLE(quoi, email));

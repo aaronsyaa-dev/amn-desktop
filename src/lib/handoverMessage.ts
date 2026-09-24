@@ -52,109 +52,62 @@ function megabytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} Mo`;
 }
 
+/*
+  LE MESSAGE D'ARRIVÉE, RÉÉCRIT (U4, 24 septembre 2026).
+
+  L'ancien message ressemblait à un ticket de support : trois sections
+  numérotées en capitales, l'identifiant ET le mot de passe collés en clair,
+  des consignes de sécurité à lire avant d'avoir vu le produit. Le principe
+  change :
+
+    · un lien, un geste. Le lien d'activation (mode par défaut) fait choisir
+      son mot de passe à la cliente ; le message ne contient AUCUN secret
+      réutilisable — un lien à usage unique qui périme n'en est pas un ;
+    · en mode « mot de passe provisoire », le mot de passe ne figure PLUS dans
+      le message : il se transmet à part (téléphone, SMS), l'Atelier le montre
+      seul avec son propre bouton de copie ;
+    · court : on donne envie d'ouvrir, la présentation du produit se fait
+      DANS le produit, à la première connexion (guide/Presentation.tsx) ;
+    · un objet de courriel, parce qu'un courriel sans objet finit en
+      indésirables.
+*/
+export function handoverSubject(parts: Pick<HandoverParts, 'orgName'>): string {
+  return `Votre espace ${parts.orgName} est prêt`;
+}
+
 export function handoverMessage(parts: HandoverParts): string {
-  const lines: string[] = [];
-
-  /*
-    LA NUMÉROTATION SUIT CE QUI EXISTE, ET RIEN D'AUTRE.
-
-    Trois sections possibles — installer, se connecter, le téléphone — mais
-    l'installeur n'existe que si une version est publiée, et l'adresse web que
-    si le serveur en connaît une. Un compteur plutôt que des numéros écrits en
-    dur : un message qui saute de « 1) » à « 3) » se lit comme un message dont
-    on a perdu un morceau, et c'est exactement l'impression à ne pas donner à
-    quelqu'un qui ouvre le produit pour la première fois.
-  */
-  const sections = (parts.download ? 1 : 0) + 1 + (parts.webUrl ? 1 : 0);
-  let n = 0;
-  const titre = (texte: string) => (sections > 1 ? `${++n}) ${texte}` : texte);
-
-  lines.push(`Bonjour,`);
-  lines.push('');
-  lines.push(
-    `Votre espace de travail ${parts.orgName} est prêt. Voici tout ce qu'il vous faut pour démarrer.`,
-  );
-  lines.push('');
-
-  // 1. L'installation d'abord : c'est le geste le plus long, et il peut se faire
-  //    pendant qu'on lit la suite.
-  if (parts.download) {
-    lines.push(titre(`INSTALLER L'APPLICATION (${megabytes(parts.download.byteSize)})`));
-    lines.push('');
-    lines.push(parts.download.url);
-    lines.push('');
-    lines.push(
-      "Cliquez sur ce lien pour télécharger l'installateur Windows, puis ouvrez le fichier téléchargé.",
-    );
-    lines.push('');
-  }
-
-  /*
-    L'ADRESSE WEB — la moitié du produit qui manquait à ce message.
-
-    Il ne portait que l'installeur Windows. Une cliente qui le reçoit sur son
-    téléphone, loin de son ordinateur, n'avait donc rien à ouvrir — alors que
-    l'application web existe et fonctionne, et que la console affirmait même
-    « la cliente pourra travailler depuis la version web » sans jamais donner
-    l'adresse. Une promesse sans son moyen.
-
-    Sa PLACE dépend de ce qu'il y a d'autre. Avec un installeur, elle vient
-    après la connexion : c'est un complément, on ne détourne pas quelqu'un de
-    l'application complète. Sans installeur, c'est le seul chemin qui existe,
-    donc elle passe en premier — proposer un mot de passe avant de dire où
-    l'utiliser est un ordre qu'on ne suit pas.
-  */
-  const blocWeb = () => {
-    lines.push(
-      titre(parts.download ? 'SUR VOTRE TÉLÉPHONE' : "OUVRIR L'APPLICATION"),
-    );
-    lines.push('');
-    lines.push(parts.webUrl as string);
-    lines.push('');
-    lines.push(
-      parts.download
-        ? "Ouvrez cette adresse depuis votre téléphone, avec les mêmes identifiants. Choisissez ensuite « Ajouter à l'écran d'accueil » dans le menu de votre navigateur : vous aurez une icône, comme une vraie application."
-        : "Ouvrez cette adresse dans votre navigateur, sur ordinateur comme sur téléphone. Sur téléphone, choisissez « Ajouter à l'écran d'accueil » dans le menu du navigateur : vous aurez une icône, comme une vraie application.",
-    );
-    lines.push('');
-    lines.push(
-      "C'est le même espace de travail des deux côtés — ce que vous écrivez ici apparaît là-bas.",
-    );
-    lines.push('');
-  };
-
-  if (parts.webUrl && !parts.download) blocWeb();
-
-  lines.push(titre('VOUS CONNECTER'));
-  lines.push('');
-  lines.push(`Identifiant : ${parts.email}`);
-
-  if (parts.kind === 'password') {
-    lines.push(`Mot de passe provisoire : ${parts.secret}`);
-    lines.push('');
-    lines.push(
-      'Changez-le dès votre première connexion, dans Paramètres. Ce mot de passe ne périme pas, mais il a été transmis par message : ne le gardez pas.',
-    );
+  const l: string[] = [];
+  l.push('Bonjour,');
+  l.push('');
+  if (parts.kind === 'invitation') {
+    l.push(`Votre espace ${parts.orgName} vous attend. Un clic pour choisir votre mot de passe et entrer :`);
+    l.push('');
+    l.push(parts.secret);
+    l.push('');
+    const date = parts.expiresAt ? new Date(parts.expiresAt) : null;
+    const jusqua = date ? ` jusqu’au ${date.getDate() === 1 ? '1er' : date.getDate()} ${date.toLocaleDateString('fr-FR', { month: 'long' })}` : '';
+    l.push(`Ce lien vous est personnel, fonctionne une seule fois et reste valable${jusqua}.`);
   } else {
-    lines.push('');
-    lines.push("Choisissez votre mot de passe avec ce lien d'activation :");
-    lines.push('');
-    lines.push(parts.secret);
-    lines.push('');
-    const when = parts.expiresAt
-      ? ` Il est valable jusqu'au ${new Date(parts.expiresAt).toLocaleDateString('fr-FR')}`
-      : ' Il est valable quelques jours';
-    lines.push(`${when.trim()} et ne fonctionne qu'une seule fois.`);
+    l.push(`Votre espace ${parts.orgName} vous attend.`);
+    l.push('');
+    l.push(`Votre identifiant : ${parts.email}`);
+    l.push('Votre mot de passe provisoire vous est communiqué à part. Remplacez-le par le vôtre dans Paramètres dès votre première connexion.');
   }
-  lines.push('');
-
-  if (parts.webUrl && parts.download) blocWeb();
-
-  lines.push(
-    "Une fois connecté, tout est en place : vos modules sont déjà activés, il n'y a rien à configurer.",
-  );
-  lines.push('');
-  lines.push('Bonne prise en main,');
-
-  return lines.join('\n');
+  if (parts.webUrl) {
+    l.push('');
+    l.push(parts.kind === 'invitation' ? 'Ensuite, votre espace s’ouvre ici, sur ordinateur comme sur téléphone :' : 'Votre espace s’ouvre ici, sur ordinateur comme sur téléphone :');
+    l.push('');
+    l.push(parts.webUrl);
+  }
+  if (parts.download) {
+    l.push('');
+    l.push(`Vous préférez l’application pour Windows (${megabytes(parts.download.byteSize)}) :`);
+    l.push('');
+    l.push(parts.download.url);
+  }
+  l.push('');
+  l.push('À la première ouverture, votre espace se présente en deux minutes. Tout y est déjà en place.');
+  l.push('');
+  l.push('À tout de suite,');
+  return l.join('\n');
 }

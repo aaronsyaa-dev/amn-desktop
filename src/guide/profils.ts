@@ -70,3 +70,12 @@ export const PAS = {
   tableau: { id: 'tableau', titre: { fr: 'Regarder le tableau de bord', en: 'Look at the dashboard' }, to: '/tableau-de-bord', module: 'dashboard', fait: { moduleOuvert: 'dashboard' } },
   accueils: { id: 'accueils', titre: { fr: 'Choisir votre Accueil dans Paramètres', en: 'Choose your Home in Settings' }, to: '/settings', module: 'settings', fait: { moduleOuvert: 'settings' } },
 } satisfies Record<string, PremierPas>;
+
+/** Une page de la présentation du produit, à la première connexion (U4). */
+export interface PagePresentation {
+  sur: Bilingue;
+  titre: Bilingue;
+  texte: Bilingue;
+  /** Le petit dessin de la page, construit avec les briques du système. */
+  dessin: 'coquille' | 'journee' | 'familles' | 'equipe' | 'coffre' | 'aide' | 'supervision';
+}

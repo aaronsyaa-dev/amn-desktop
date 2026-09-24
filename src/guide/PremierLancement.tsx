@@ -3,7 +3,8 @@ import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { useSync } from '../state/SyncContext';
 import { QuiEtesVous } from './QuiEtesVous';
-import { EVENEMENT_GUIDE, guideVu } from './memoire';
+import { Presentation } from './Presentation';
+import { EVENEMENT_GUIDE, guideVu, marquerGuide } from './memoire';
 
 /**
  * LE PREMIER LANCEMENT — quand poser la question, et quand ne pas la poser.
@@ -16,12 +17,14 @@ import { EVENEMENT_GUIDE, guideVu } from './memoire';
  * profil ») par l'événement `amn:guide`.
  */
 export function PremierLancement() {
-  const { user } = useAuth();
+  const { user, org } = useAuth();
   const { profilDe } = useProfiles();
   const { ready, pullFailed } = useSync();
   const email = user?.email ?? '';
   const [ouvert, setOuvert] = useState(false);
   const [relance, setRelance] = useState(false);
+  /* La présentation du produit passe avant la porte, une fois par compte et par poste. */
+  const [presenter, setPresenter] = useState(false);
 
   useEffect(() => {
     if (!email || !ready || pullFailed) return;
@@ -34,6 +37,7 @@ export function PremierLancement() {
         t = window.setTimeout(essayer, 600);
         return;
       }
+      setPresenter(!guideVu('presentation', email));
       setOuvert(true);
     };
     t = window.setTimeout(essayer, 900);
@@ -50,5 +54,15 @@ export function PremierLancement() {
   }, []);
 
   if (!ouvert) return null;
+  if (presenter && !relance)
+    return (
+      <Presentation
+        orgName={org?.name ?? ''}
+        onFin={() => {
+          marquerGuide('presentation', email);
+          setPresenter(false);
+        }}
+      />
+    );
   return <QuiEtesVous relance={relance} onFerme={() => setOuvert(false)} />;
 }

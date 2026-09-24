@@ -3113,6 +3113,11 @@ export const en = {
   'hist.projects.groupe.partages': 'On several projects',
   'hist.projects.groupe.partagesAide': 'The people two or more projects compete for — that is where the trade-offs happen.',
   'hist.projects.groupe.personnePartagee': 'Nobody is on two projects at once.',
+  'accueilProduit.titre': 'Your workspace, introduced',
+  'accueilProduit.passer': 'Skip the introduction',
+  'accueilProduit.suivant': 'Next',
+  'accueilProduit.precedent': 'Previous page',
+  'accueilProduit.commencer': 'Choose my starting point',
 } as const;
 
 /*

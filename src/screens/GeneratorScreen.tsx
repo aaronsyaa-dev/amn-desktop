@@ -15,7 +15,7 @@ import { useHaloSignal } from '../components/EtatEcran';
 import { garde } from '../lib/garde';
 import { LivePreview } from '../components/generator/LivePreview';
 import { ChoixModules } from '../components/generator/ChoixModules';
-import { handoverMessage } from '../lib/handoverMessage';
+import { handoverMessage, handoverSubject } from '../lib/handoverMessage';
 import { OrgAvatar } from '../components/org-rail/OrgAvatar';
 import type { DownloadLink, OrgPlan } from '../shared/api';
 
@@ -97,7 +97,7 @@ export function GeneratorScreen() {
   // ou choisir la sienne dans ses Réglages. 'fr' par défaut : le produit
   // actuel ne perd rien.
   const [langueOrg, setLangueOrg] = React.useState<'fr' | 'en'>('fr');
-  const [handover, setHandover] = React.useState<Handover>('password');
+  const [handover, setHandover] = React.useState<Handover>('invitation');
 
   const [busy, setBusy] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
@@ -561,16 +561,16 @@ export function GeneratorScreen() {
                   <p className="eyebrow mb-3">Remise de l’accès</p>
                   <div className="flex flex-col gap-2">
                     <Choice
-                      selected={handover === 'password'}
-                      onSelect={() => setHandover('password')}
-                      title="Mot de passe temporaire"
-                      body="Se dicte au téléphone et ne périme pas. La cliente le change dans ses paramètres."
-                    />
-                    <Choice
                       selected={handover === 'invitation'}
                       onSelect={() => setHandover('invitation')}
-                      title="Lien d’activation"
-                      body="Elle choisit son mot de passe elle-même. Valable 7 jours, à usage unique."
+                      title="Lien d’activation (conseillé)"
+                      body="Elle choisit son mot de passe elle-même. Aucun secret dans le message : valable 7 jours, à usage unique."
+                    />
+                    <Choice
+                      selected={handover === 'password'}
+                      onSelect={() => setHandover('password')}
+                      title="Mot de passe provisoire"
+                      body="À dicter au téléphone ou par SMS : il n’est jamais écrit dans le message."
                     />
                   </div>
                 </section>
@@ -677,9 +677,9 @@ export function GeneratorScreen() {
               <section className="panel panel-ticks p-5">
                 <p className="eyebrow mb-2">Ce qu’il reste à faire</p>
                 <p className="mb-4 max-w-xl text-[13px] leading-relaxed text-text-secondary">
-                  Copiez le message ci-dessous et envoyez-le à votre cliente, par courriel ou par
-                  message. Il contient l’installateur, son identifiant et son accès, dans l’ordre
-                  où elle doit s’en servir. Vous n’avez rien d’autre à préparer.
+                  Copiez le message et envoyez-le à votre cliente, avec l’objet « {handoverSubject({ orgName: result.orgName })} ».
+                  Il ne contient aucun mot de passe : {result.kind === 'invitation' ? 'le lien d’activation lui fait choisir le sien' : 'le mot de passe provisoire se transmet à part, par téléphone ou SMS'}.
+                  À sa première connexion, son espace se présente tout seul.
                 </p>
                 <button
                   type="button"

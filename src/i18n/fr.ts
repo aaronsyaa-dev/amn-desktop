@@ -3114,4 +3114,9 @@ export const fr: Dictionnaire = {
   'hist.projects.groupe.partages': 'Sur plusieurs projets',
   'hist.projects.groupe.partagesAide': 'Les personnes que deux projets ou plus se disputent — c’est là que les arbitrages se jouent.',
   'hist.projects.groupe.personnePartagee': 'Personne n’est sur deux projets à la fois.',
+  'accueilProduit.titre': 'Présentation de votre espace',
+  'accueilProduit.passer': 'Passer la présentation',
+  'accueilProduit.suivant': 'Suivant',
+  'accueilProduit.precedent': 'Page précédente',
+  'accueilProduit.commencer': 'Choisir mon point de départ',
 };

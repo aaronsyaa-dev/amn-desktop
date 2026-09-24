@@ -1,4 +1,4 @@
-import { PAS, type ProfilDepart } from '../guide/profils';
+import { PAS, type PagePresentation, type ProfilDepart } from '../guide/profils';
 
 /**
  * LES PROFILS DE DÉPART DE L'ÉDITION INTERNE — deux portes : superviser le
@@ -29,3 +29,31 @@ export const PROFILS: ProfilDepart[] = [
 ];
 
 export const PROFIL_AUTO: string | null = null;
+
+/* LA PRÉSENTATION DU PRODUIT — édition interne (U4). */
+export const PRESENTATION: PagePresentation[] = [
+  {
+    sur: { fr: 'Bienvenue', en: 'Welcome' },
+    titre: { fr: 'Le poste d’AMN DevSec : votre travail et celui de vos clientes.', en: 'The AMN DevSec workstation: your work and your clients’.' },
+    texte: { fr: 'À gauche, vos organisations. En tête du rail, la supervision ; en dessous, le quotidien — les mêmes modules que vos clientes.', en: 'On the left, your organisations. At the top of the rail, supervision; below, daily work — the same modules as your clients.' },
+    dessin: 'coquille',
+  },
+  {
+    sur: { fr: 'La supervision', en: 'Supervision' },
+    titre: { fr: 'La Garde veille, vous décidez.', en: 'The Guard watches, you decide.' },
+    texte: { fr: 'La Tour, le Parc, la Garde et les Produits : ce qui attend votre avis arrive dans une seule pile. Le lexique (« ? ») traduit chaque mot.', en: 'The Tower, the Fleet, the Guard and the Products: what awaits your call lands in one pile. The glossary (“?”) translates every word.' },
+    dessin: 'supervision',
+  },
+  {
+    sur: { fr: 'Le support', en: 'Support' },
+    titre: { fr: 'Entrer chez une cliente, c’est tracé et limité.', en: 'Entering a client is logged and time-boxed.' },
+    texte: { fr: 'Un clic sur son avatar ouvre une session d’une heure, inscrite à son journal. Elle voit que vous êtes passé.', en: 'A click on their avatar opens a one-hour session, written to their log. They see you came by.' },
+    dessin: 'equipe',
+  },
+  {
+    sur: { fr: 'L’aide', en: 'Help' },
+    titre: { fr: 'Le « ? » répond à tout, partout.', en: 'The “?” answers everything, everywhere.' },
+    texte: { fr: 'Revoir la visite, faire présenter l’écran ouvert, changer de profil, ouvrir le lexique.', en: 'Replay the tour, have the open screen explained, change profile, open the glossary.' },
+    dessin: 'aide',
+  },
+];
