@@ -28,6 +28,12 @@ if (!EMAIL || !MOT_DE_PASSE) {
 let echecs = 0;
 const nav = await chromium.launch({ executablePath: CHROMIUM, args: ['--no-sandbox'] });
 const page = await nav.newPage({ viewport: { width: 1280, height: 800 } });
+/* L'horloge du navigateur est fixée, sinon le contrôle dépend de l'heure où on
+   le lance : à 22 h il n'y a plus de « prochain rendez-vous » à mettre en ambre,
+   à 8 h la « nuit » n'est pas encore tombée. Par défaut, 08:00 aujourd'hui —
+   avant les rendez-vous du matin que pose la graine d'essai. */
+const HEURE = process.env.AMN_E2E_HEURE ? new Date(process.env.AMN_E2E_HEURE) : (() => { const d = new Date(); d.setHours(8, 0, 0, 0); return d; })();
+await page.clock.install({ time: HEURE });
 const ok = (c, m) => { if (!c) echecs += 1; console.log(`${c ? '✓' : '✗'} ${m}`); };
 const mesurer = () => page.evaluate(() => {
   const v = document.querySelector('[aria-label="Écran de veille"]');
@@ -87,7 +93,8 @@ try {
   ok(/— €/.test(m.texte) && /Rendez-vous de \d\d:\d\d/.test(m.texte) && !/Brasserie|Villa Sereine/.test(m.texte), `masquée : ${m.texte.slice(0, 160)}`);
   await page.keyboard.press('Shift'); await page.waitForTimeout(400);
 
-  // Mode nuit : fermeture avant maintenant.
+  // Mode nuit : fermeture à 12 h, l'horloge avancée à 22 h 30 le même jour.
+  await page.clock.setSystemTime(new Date(HEURE.getTime() + 14.5 * 3600_000));
   await reglages({ delaiMin: 5, accueilPublic: false, masque: null, fermetureH: 12 });
   await apercu(); m = await mesurer();
   ok(m.groupes.length === 0 && m.nAmbre === 0 && !/ENCAISSÉ/.test(m.texte), `mode nuit : l’heure et la date seules (${m.texte})`);
