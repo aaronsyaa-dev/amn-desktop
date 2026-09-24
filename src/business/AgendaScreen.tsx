@@ -766,7 +766,10 @@ function ColonneDHeures({
                 <span className={`min-w-0 flex-1 truncate text-[14.5px] font-semibold ${meta.text}`}>
                   {a.title || 'Rendez-vous'}
                 </span>
-                <span className="eyebrow flex-shrink-0">{dureeLisible(a.durationMin)}</span>
+                {/* Sous `sm`, la durée attend le détail : sur 360 px, l'heure, le titre et la
+                    durée sur une ligne ne laissaient au titre que la moitié de lui-même — et la
+                    hauteur du bloc dit déjà la durée (`check:mobile`, Agenda à 360 px). */}
+                <span className="eyebrow hidden flex-shrink-0 sm:inline">{dureeLisible(a.durationMin)}</span>
               </span>
               {(a.clientName || a.location) && hauteur > 34 && (
                 <span className="eyebrow mt-1.5 truncate">

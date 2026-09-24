@@ -170,6 +170,7 @@ export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
   binder: { label: 'Binder', hint: 'Documents and their versions, the signed one included' },
   sharedEditor: { label: 'Shared editor', hint: 'A document, and what each person proposes to change' },
   rooms: { label: 'Rooms', hint: 'The rooms, who is in them, until when' },
+  hall: { label: 'The Hall', hint: 'The common space for the organisations that want it' },
   writing: { label: 'Writing', hint: 'Your draft, and what the assistant corrects' },
   translation: { label: 'Translation', hint: 'Each line, and its translation right below' },
   extensions: { label: 'Extensions', hint: 'What each extension asks for, access by access' },

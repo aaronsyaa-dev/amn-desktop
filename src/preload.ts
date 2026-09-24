@@ -5,6 +5,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type {
   UserRole,
   SupportRequest,
+  HallMessage,
 } from './shared/api';
 import {
   IPC,
@@ -193,6 +194,28 @@ const bridge: AmnBridge = {
       const listener = (_event: Electron.IpcRendererEvent, request: SupportRequest) => callback(request);
       ipcRenderer.on(IPC.remoteSupportAnsweredPush, listener);
       return () => ipcRenderer.removeListener(IPC.remoteSupportAnsweredPush, listener);
+    },
+    hall: {
+      etat: () => ipcRenderer.invoke(IPC.remoteHallEtat),
+      participer: (input) => ipcRenderer.invoke(IPC.remoteHallParticiper, input),
+      messages: () => ipcRenderer.invoke(IPC.remoteHallMessages),
+      envoyer: (input) => ipcRenderer.invoke(IPC.remoteHallEnvoyer, input),
+      signaler: (id: string) => ipcRenderer.invoke(IPC.remoteHallSignaler, id),
+    },
+    onHallMessage: (callback: (message: HallMessage) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, message: HallMessage) => callback(message);
+      ipcRenderer.on(IPC.remoteHallMessagePush, listener);
+      return () => ipcRenderer.removeListener(IPC.remoteHallMessagePush, listener);
+    },
+    onHallMasque: (callback: (id: string) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, id: string) => callback(id);
+      ipcRenderer.on(IPC.remoteHallMasquePush, listener);
+      return () => ipcRenderer.removeListener(IPC.remoteHallMasquePush, listener);
+    },
+    onHallRafraichir: (callback: () => void) => {
+      const listener = () => callback();
+      ipcRenderer.on(IPC.remoteHallRafraichirPush, listener);
+      return () => ipcRenderer.removeListener(IPC.remoteHallRafraichirPush, listener);
     },
     sendCallSignal: (signal: OutgoingCallSignal) => ipcRenderer.invoke(IPC.remoteSendCallSignal, signal),
     onCallSignal: (callback: (signal: CallSignal) => void) => {

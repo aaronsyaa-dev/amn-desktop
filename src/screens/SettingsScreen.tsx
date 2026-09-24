@@ -68,6 +68,7 @@ import { LangueSection } from '../components/settings/LangueSection';
 import { AccueilSection } from '../components/settings/AccueilSection';
 import { VeilleSection } from '@edition/accueils';
 import { GuideSection } from '../guide/GuideSection';
+import { ExtensionsSection } from '../components/settings/ExtensionsSection';
 import { useSupportContext } from '../state/OrgContextContext';
 import { useLangue, t as tr } from '../i18n';
 
@@ -109,6 +110,7 @@ export function SettingsScreen() {
           <AccueilSection />
           <VeilleSection />
           <GuideSection />
+          <ExtensionsSection />
         </div>
       </StaggerItem>
       <StaggerItem>
@@ -260,6 +262,7 @@ interface Rubrique {
 const RUBRIQUES: Rubrique[] = [
   { cle: 'profil', titre: 'Profil', reglages: ['Votre nom', 'Votre photo', 'Votre fonction'], ancre: 'reglages-profil' },
   { cle: 'guide', titre: 'Guide', reglages: ['La visite guidée', 'Les présentations', 'Le profil de départ'], ancre: 'reglages-guide' },
+  { cle: 'extensions', titre: 'Extensions', reglages: ['Teintes de familles', 'Index des familles', 'Célébrations', 'Le Hall'], ancre: 'reglages-extensions' },
   {
     cle: 'securite',
     titre: 'Sécurité du compte',

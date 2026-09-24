@@ -323,6 +323,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'directory', label: 'Trombinoscope', to: '/trombinoscope', icon: ContactRound, hint: 'Les visages, les rôles, qui est là' },
       { key: 'calls', label: 'Appels', to: '/appels', icon: PhoneCall, hint: 'Appeler un membre, inviter un visiteur par lien' },
       { key: 'rooms', label: 'Salles', to: '/salles', icon: DoorOpen, hint: 'Les pièces, qui y est, jusqu’à quand' },
+      { key: 'hall', label: 'Le Hall', to: '/hall', icon: UsersRound, hint: 'L’espace commun des organisations qui le veulent' },
     ],
   },
   {

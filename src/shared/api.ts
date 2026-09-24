@@ -2084,6 +2084,29 @@ export type SupportRequestKind = 'message' | 'seat' | 'password_reset';
 export type SupportRequestStatus = 'pending' | 'answered' | 'closed';
 
 /** Une demande d'une cliente à son prestataire — et la réponse, quand elle vient. */
+/* --- Le Hall : l'espace commun entre organisations VOLONTAIRES (vision cliente, chantier 4) --- */
+export interface HallParticipation {
+  participe: boolean;
+  /** Le nom sous lequel l'organisation apparaît aux autres — choisi par elle, jamais son nom légal d'office. */
+  displayName: string;
+  joinedAt: string;
+  leftAt: string | null;
+}
+/** Ce qu'une autre organisation a le droit de voir d'un message — et rien d'autre (ni adresse, ni identifiant). */
+export interface HallMessage {
+  id: string;
+  org: string;
+  signature: string;
+  body: string;
+  createdAt: string;
+  mienne: boolean;
+}
+export interface HallEtat {
+  participation: HallParticipation | null;
+  /** Combien d'organisations y parlent — un nombre, jamais des noms. */
+  participants: number;
+}
+
 export interface SupportRequest {
   id: string;
   orgId: string | null;
@@ -3115,6 +3138,25 @@ export interface AmnBridge {
     /** La réponse du prestataire arrive sur la socket de l'organisation (Bloc 4). */
     onSupportAnswered(callback: (request: SupportRequest) => void): () => void;
 
+    /* --- Le Hall (vision cliente, chantier 4) --- */
+    hall: {
+      /** Où en est MON organisation, et combien d'organisations y parlent. */
+      etat(): Promise<HallEtat>;
+      /** Le consentement (owner/admin) : rejoindre sous un nom choisi, ou quitter. Le serveur tranche (403). */
+      participer(input: { participe: boolean; displayName?: string }): Promise<HallEtat>;
+      /** Les cent derniers messages des organisations qui participent encore. 403 `hall_non_rejoint` sinon. */
+      messages(): Promise<HallMessage[]>;
+      envoyer(input: { body: string; signature?: string }): Promise<HallMessage>;
+      /** Signaler à AMN DevSec : le message reste, un humain tranche. */
+      signaler(id: string): Promise<{ ok: boolean }>;
+    };
+    /** Un message arrive sur la socket de chaque organisation qui participe. */
+    onHallMessage(callback: (message: HallMessage) => void): () => void;
+    /** AMN DevSec a masqué un message : il disparaît pour tout le monde. */
+    onHallMasque(callback: (id: string) => void): () => void;
+    /** Une organisation est entrée ou sortie : les écrans ouverts relisent. */
+    onHallRafraichir(callback: () => void): () => void;
+
     /* --- Le catalogue des modules, et les demander (BLOC 4) --- */
     /**
      * MODULES : UNE IDENTITÉ, PAS UNE CLÉ NUE
@@ -3735,6 +3777,14 @@ export const IPC = {
   remoteMembersJournal: 'remote:membersJournal',
   remoteSupportList: 'remote:supportList',
   remoteSupportSend: 'remote:supportSend',
+  remoteHallEtat: 'remote:hallEtat',
+  remoteHallParticiper: 'remote:hallParticiper',
+  remoteHallMessages: 'remote:hallMessages',
+  remoteHallEnvoyer: 'remote:hallEnvoyer',
+  remoteHallSignaler: 'remote:hallSignaler',
+  remoteHallMessagePush: 'remote:hallMessagePush',
+  remoteHallMasquePush: 'remote:hallMasquePush',
+  remoteHallRafraichirPush: 'remote:hallRafraichirPush',
   remoteForgotPassword: 'remote:forgotPassword',
   remoteResetPassword: 'remote:resetPassword',
   remoteWelcomeInspect: 'remote:welcomeInspect',

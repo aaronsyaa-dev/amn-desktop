@@ -81,6 +81,8 @@ import type {
   SyncedCollection,
   RecordWatchers,
   RecordActivityEntry,
+  HallEtat,
+  HallMessage,
 } from '../shared/api';
 
 declare global {
@@ -795,6 +797,64 @@ function createBrowserRemote(): AmnBridge['remote'] {
         });
         return res.request;
       },
+    },
+    hall: {
+      async etat(): Promise<HallEtat> {
+        return apiFetch<HallEtat>('/v1/hall/participation');
+      },
+      async participer(input: { participe: boolean; displayName?: string }): Promise<HallEtat> {
+        return apiFetch<HallEtat>('/v1/hall/participation', { method: 'PUT', body: JSON.stringify(input) });
+      },
+      async messages(): Promise<HallMessage[]> {
+        const res = await apiFetch<{ messages: HallMessage[] }>('/v1/hall/messages');
+        return res.messages ?? [];
+      },
+      async envoyer(input: { body: string; signature?: string }): Promise<HallMessage> {
+        const res = await apiFetch<{ message: HallMessage }>('/v1/hall/messages', { method: 'POST', body: JSON.stringify(input) });
+        return res.message;
+      },
+      async signaler(id: string): Promise<{ ok: boolean }> {
+        return apiFetch<{ ok: boolean }>(`/v1/hall/messages/${encodeURIComponent(id)}/signaler`, { method: 'POST', body: '{}' });
+      },
+    },
+    onHallMessage(callback: (message: HallMessage) => void) {
+      ensureStarted();
+      let set = frameListeners.get('hall:message');
+      if (!set) {
+        set = new Set();
+        frameListeners.set('hall:message', set);
+      }
+      const listener = (frame: Record<string, unknown>) => callback(frame.message as HallMessage);
+      set.add(listener);
+      return () => {
+        set?.delete(listener);
+      };
+    },
+    onHallMasque(callback: (id: string) => void) {
+      ensureStarted();
+      let set = frameListeners.get('hall:masque');
+      if (!set) {
+        set = new Set();
+        frameListeners.set('hall:masque', set);
+      }
+      const listener = (frame: Record<string, unknown>) => callback(String(frame.id));
+      set.add(listener);
+      return () => {
+        set?.delete(listener);
+      };
+    },
+    onHallRafraichir(callback: () => void) {
+      ensureStarted();
+      let set = frameListeners.get('hall:rafraichir');
+      if (!set) {
+        set = new Set();
+        frameListeners.set('hall:rafraichir', set);
+      }
+      const listener = () => callback();
+      set.add(listener);
+      return () => {
+        set?.delete(listener);
+      };
     },
     onSupportAnswered(callback: (request: SupportRequest) => void) {
       ensureStarted();

@@ -8,6 +8,7 @@ import { AppointmentReminders } from './AppointmentReminders';
 import { VeilleCliente } from './VeilleCliente';
 import { GuideProvider } from '../guide/GuideContext';
 import { PremierLancement } from '../guide/PremierLancement';
+import { Celebrations } from '../components/Celebrations';
 import { useActivity } from '../state/ActivityContext';
 import { SpaceProviders } from '../state/SpaceProviders';
 import { BootHealthy } from '../components/BootHealthy';
@@ -164,6 +165,7 @@ export function BusinessLayout() {
                 <AppointmentReminders />
                 <VeilleCliente />
                 <PremierLancement />
+              <Celebrations />
                 <SyncActivityNotifier />
               <SupportNotifier />
               <AutomationsRunner />

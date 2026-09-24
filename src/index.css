@@ -283,6 +283,7 @@
   */
   --color-braise: #7d332b;
 
+
   /*
     L'ÉCHELLE TYPOGRAPHIQUE — six tailles, ratio ≈ 1,31, et rien entre elles.
 
@@ -318,6 +319,40 @@
 
 * {
   box-sizing: border-box;
+}
+
+/* Les teintes de familles vivent hors du @theme : Tailwind n'émet que les variables qu'un utilitaire emploie, et celles-ci sont lues par var() à l'exécution. */
+:root {
+  /*
+    LES TEINTES DE FAMILLES (vision cliente, chantier 4 — évolution documentée
+    dans docs/systeme-de-design-teintes-2026-09-24.md).
+
+    Le système reste monochrome, l'ambre reste le seul signal. Les teintes ne
+    sont PAS un signal : elles disent « où je suis » — la famille de l'écran
+    ouvert, dans son surtitre, dans la bulle du rail, dans les titres du
+    lanceur. Un point de 6 px, un filet de 2 px, jamais un fond, jamais un
+    bouton, jamais dans la coquille (le contrôle de coquille n'y verrait qu'une
+    couleur de plus). Aucune n'approche l'ambre (30–50°) ni le rouge critique.
+    Une par code de rail, stable dans les deux éditions ; Système reste gris.
+  */
+  --famille-PI: #5b8def;
+  --famille-CR: #3fb37f;
+  --famille-GU: #8b6ff0;
+  --famille-MK: #e06aa8;
+  --famille-PR: #2fb8c5;
+  --famille-FI: #7cc46a;
+  --famille-DO: #4aa3d8;
+  --famille-LV: #4aa3d8;
+  --famille-JU: #6f7ff0;
+  --famille-CO: #c76fe0;
+  --famille-RH: #3fb3a0;
+  --famille-OU: #7f8fb8;
+  --famille-PE: #e07a8a;
+  --famille-SY: #9a9a97;
+  --famille-LG: #d6c28a;
+  --famille-SU: #9ec7ff;
+  --famille-PA: #7fd0c0;
+  --famille-PD: #b39ddb;
 }
 
 html,

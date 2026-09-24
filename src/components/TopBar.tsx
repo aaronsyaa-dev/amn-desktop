@@ -35,7 +35,14 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
   const { t } = useLangue();
 
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-border bg-bg/80 px-4 py-3 backdrop-blur-md sm:gap-3 md:px-8">
+    <header className="sticky top-0 z-20 flex items-center gap-1.5 border-b border-border bg-bg/80 px-4 py-3 backdrop-blur-md sm:gap-3 md:px-8">
+      {/*
+        Sous `sm`, la barre porte huit boutons de 44 px (menu, organisation,
+        recherche, lien, Garde, Ajmani, aide, notifications) : la gouttière tombe
+        à 6 px et l'avatar attend `sm` — Paramètres reste à un geste par le
+        lanceur et la palette. Mesuré à 360 px : la barre débordait de 50 px
+        depuis que le bouton d'aide « ? » y vit (`check:mobile`).
+      */}
       {/* Mobile: hamburger opens the nav drawer (< md only). */}
       <button
         type="button"
@@ -124,7 +131,7 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
             aria-label={t('chrome.monProfil')}
             // L'avatar reste à 32 px (c'est une image, pas une icône), mais sa
             // zone cliquable est portée à 44 px sur mobile par le padding.
-            className="flex h-11 w-11 sm:ml-1 items-center justify-center rounded-full transition-opacity hover:opacity-80 md:h-8 md:w-8"
+            className="hidden h-11 w-11 items-center justify-center rounded-full transition-opacity hover:opacity-80 sm:ml-1 sm:flex md:h-8 md:w-8"
           >
             <UserAvatar email={user.email} size={32} ring />
           </button>
@@ -160,7 +167,14 @@ function MobileActiveOrg() {
     .toUpperCase();
   return (
     <span className="flex min-w-0 flex-1 md:hidden" title={name}>
-      <span className="hidden min-w-0 truncate font-mono text-[11px] uppercase tracking-[0.15em] text-text-secondary min-[430px]:block">{name}</span>
+      {/*
+        Le nom de l'organisation n'apparaît qu'à partir de 480 px : en dessous,
+        les boutons de la barre (menu, recherche, lien, Garde, Ajmani, aide,
+        notifications, compte) ne lui laissent qu'une lettre — et une lettre
+        coupée d'une ellipse ne nomme rien (`check:mobile` le refuse à 430 px
+        depuis que le bouton d'aide « ? » vit dans la barre).
+      */}
+      <span className="hidden min-w-0 truncate font-mono text-[11px] uppercase tracking-[0.15em] text-text-secondary min-[480px]:block">{name}</span>
       <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary min-[430px]:hidden" aria-label={name}>
         {initiales}
       </span>

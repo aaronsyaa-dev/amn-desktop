@@ -30,6 +30,7 @@ import { IdleScreensaver } from './IdleScreensaver';
 import { WelcomeOverlay, shouldShowWelcome } from './WelcomeOverlay';
 import { GuideProvider } from '../guide/GuideContext';
 import { PremierLancement } from '../guide/PremierLancement';
+import { Celebrations } from './Celebrations';
 import { LocalSessionBanner } from '../auth/LocalSessionBanner';
 import { MobileBottomNav } from './MobileBottomNav';
 import { spaceForPath } from '../data/spaces';
@@ -217,6 +218,7 @@ export function AppLayout() {
               <AssistantPanel />
               <AjmaniBubble />
               <PremierLancement />
+              <Celebrations />
               <NotificationsManager />
               <SyncActivityNotifier />
               <RegressionNotifier />

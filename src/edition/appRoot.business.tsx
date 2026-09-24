@@ -32,6 +32,7 @@ import { ReportsScreen } from '../screens/ReportsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { MembersScreen } from '../screens/MembersScreen';
 import { AssistanceScreen } from '../screens/AssistanceScreen';
+import { HallScreen } from '../hall/HallScreen';
 import { LibraryScreen } from '../screens/LibraryScreen';
 import { EquipmentBookingScreen } from '../screens/EquipmentBookingScreen';
 import { DeliveryRoundsScreen } from '../screens/DeliveryRoundsScreen';
@@ -320,6 +321,7 @@ export function AppRoot() {
         <Route path="/settings" element={<SettingsScreen />} />
         <Route path="/membres" element={<MembersScreen />} />
         <Route path="/assistance" element={<AssistanceScreen />} />
+        <Route path="/hall" element={<HallScreen />} />
         <Route
           path="/messages-prives"
           element={

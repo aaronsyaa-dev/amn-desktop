@@ -327,6 +327,127 @@ il faudra y penser (pas de garde-fou automatique aujourd'hui ; un contrôle
 qui vérifie que chaque `to` du lexique existe dans le catalogue serait
 trivial et manque — noté §3).
 
+### 2.3 La vie, la couleur, la dimension sociale (chantier 4)
+
+**Le constat, précisé.** « Il manque de ludicité et de couleur » et « on
+s'y sent seul, coupé d'internet et des autres » sont deux phrases
+différentes. La première parle de la matière de l'écran ; la seconde parle
+de ce que le poste ne contient pas : d'autres personnes. Répondre à la
+première par des couleurs partout aurait cassé la seule règle qui rend
+l'ambre lisible. Répondre à la seconde par un réseau social aurait cassé
+l'étanchéité qui fait le produit. Le chantier a fait cinq choses bornées,
+chacune réversible d'un geste.
+
+**1. Les teintes de familles** — une évolution du système de design,
+documentée (`docs/systeme-de-design-teintes-2026-09-24.md`). Une teinte par
+famille du rail (par code, stable dans les deux éditions), en jeton CSS
+(`--famille-PI`…), qui dit *où je suis* et jamais *ce qui attend* : un point
+de 6 px devant le surtitre de chaque écran, un filet de 2 px sur la bulle
+du rail, un point devant les titres du lanceur. Jamais un fond, jamais un
+bouton, jamais dans la coquille ; aucune n'approche l'ambre. Mesuré dans le
+navigateur : `rgb(91, 141, 239)` sur Tâches (PI), `rgb(63, 179, 127)` sur
+Clients (CR), le filet de la bulle PI de la même teinte que l'écran PI
+(`apres/vie/nadia-11-clients-teinte.png`, `nadia-12-bulle-teinte.png`).
+Éteintes dans Paramètres › Extensions, le point disparaît sans rechargement
+(mesuré : « parti »). Un piège trouvé : déclarées dans le bloc `@theme` de
+Tailwind, les variables n'étaient pas émises (le premier relevé donnait
+`rgba(0, 0, 0, 0)`) — elles vivent dans un `:root` à part, avec la raison en
+commentaire. `check:coquille` reste vert sur les deux éditions.
+
+**2. La présence** (`components/Presence.tsx`, sur l'Accueil des deux
+éditions). Qui de l'équipe est là maintenant (la présence réelle de la
+socket, `onlineEmails`), avec un point vert sur l'avatar ; sinon combien
+sont dans l'équipe ; et quand l'organisation n'a qu'une personne, la ligne
+ne ment pas : « Vous êtes seul·e ici pour l'instant. Inviter quelqu'un ·
+Passer au Hall · Écrire à votre prestataire »
+(`nadia-1-accueil-presence.png`). Les invitations en attente sont dites
+comme telles, pas comme « personne ». Aucune donnée d'une autre
+organisation n'y passe.
+
+**3. Le Hall** — l'espace commun entre organisations *volontaires*. C'est le
+morceau qui touche à l'isolation entre organisations ; il est documenté à
+part (`docs/le-hall-2026-09-24.md`) et testé à fond (7 tests dans
+`amn-api/test/hall.test.js`, suite complète 473/473). L'essentiel :
+- le consentement est un geste de propriétaire ou d'admin, révocable d'un
+  geste ; sans lui, ni lecture ni écriture (403 `hall_non_rejoint`) ;
+- ce qui sort vers les autres : le nom d'affichage choisi, la signature
+  choisie par message, le texte, l'heure, le nombre d'organisations. Ce qui
+  ne sort jamais : adresses, identifiants, nom légal si le nom d'affichage
+  en diffère, et rien des collections — la vue d'un message a exactement six
+  clés, vérifiées ;
+- une session de support ne parle ni ne consent au nom d'une cliente (403,
+  et le module est exclu du contexte de support côté poste) ; un invité lit
+  mais n'écrit pas ;
+- quitter efface ses messages pour les autres à l'instant (la lecture joint
+  sur `left_at IS NULL`) ; les écrans ouverts relisent sur la trame
+  `hall:rafraichir` — mesuré : le message de Marco disparaît chez Nadia
+  sans qu'elle recharge (`nadia-13-hall-apres-depart.png`) ;
+- le texte est stocké tel quel et rendu comme texte : `<img
+  src=x onerror>` et `<b>` s'affichent en caractères, zéro nœud `img`/`b`
+  dans le DOM (`nadia-4-hall-message.png`) ; 600 caractères, dix passages
+  par personne par dix minutes, vide refusé ;
+- signaler crée une demande d'assistance « Signalement dans le Hall » ;
+  AMN DevSec masque par l'API d'administration (la ligne garde qui, quand,
+  pourquoi), et le message disparaît pour tout le monde, autrice comprise ;
+- la diffusion en direct passe par la socket de chaque participante, jamais
+  un envoi à tous ; aucune copie locale hors ligne, exprès.
+Parcours joué entre Syraagensy et Plomberie Marchetti : porte → rejoindre →
+message → l'autre ne voit rien avant de rejoindre → voit après, sans
+adresse ni nom légal → réponse arrivée en direct → signalement → départ.
+Dans le catalogue des deux éditions, famille Collectif, toujours ouvert
+(`ALWAYS_ON_MODULES`) : c'est une extension gratuite, pas un module de
+formule.
+
+**4. Les célébrations** (`components/Celebrations.tsx`). Les premières fois,
+et rien d'autre : première tâche terminée, premier client, première facture
+encaissée, premier projet — une phrase chaleureuse en toast, une fois
+chacune, mémorisée par poste et par compte. Rien n'est coché à la main : la
+collection franchit le seuil pendant que le poste est ouvert, et ce qui
+existait à l'ouverture ne se fête pas (on ne félicite pas quelqu'un pour
+l'an dernier). Mesuré : une tâche `done` écrite par l'API pendant que Lina
+regarde son Accueil → « Première tâche terminée. La liste a commencé à
+descendre. Ça se voit. » (`lina-14-celebration.png`), mémoire `['tache']`.
+
+**5. Les extensions gratuites** (Paramètres › Extensions, rubrique dans le
+sommaire). Teintes de familles, index des familles, célébrations — trois
+interrupteurs qui s'appliquent à l'instant — puis l'écran de veille, les
+Accueils, et le Hall avec son état (« Votre organisation y est, sous le nom
+“Syraagensy” »). « Extension » veut dire ici ce qu'une personne qui n'a
+jamais installé un logiciel peut comprendre : une façon d'habiter le poste,
+gratuite, réversible (`nadia-9-extensions.png`).
+
+**Le contact avec AMN DevSec.** Il existait (Assistance) ; le chantier l'a
+rendu visible là où la solitude se ressent — la ligne de présence de
+l'Accueil — et l'a nommé comme le paquet l'exige dans le paquet cliente :
+« votre prestataire », jamais la raison sociale (le contrôle de pureté du
+bundle a refusé la première version du texte du Hall qui la citait ; corrigé).
+
+**Deux régressions trouvées par `check:mobile` en chemin, et corrigées.**
+(1) La barre du haut interne débordait de 50 px à 360 px et de 20 px à
+390 px depuis que le bouton d'aide « ? » (chantier 2) y vit : huit boutons
+de 44 px n'y tiennent pas. La gouttière tombe à 6 px sous `sm`, l'avatar
+attend `sm` (Paramètres reste à un geste par le lanceur et la palette), et
+le nom de l'organisation attend 480 px au lieu de 430 (à 430 il n'en restait
+qu'une lettre coupée d'une ellipse). (2) Dans l'Agenda à 360 px, le titre
+d'un rendez-vous n'avait que la moitié de lui-même : l'heure, le titre et
+la durée sur une ligne ; la durée attend `sm` (la hauteur du bloc la dit
+déjà). `check:mobile` : 200 mesures vertes sur chaque édition.
+
+**Déconstruction honnête.** (a) Le Hall n'a pas d'écran de modération dans
+la Tour : la modération passe par l'API d'administration et la file
+d'assistance ; c'est un brief pour Claude Design (§5) et un écran à faire
+avant que le Hall ait dix organisations. (b) Le Hall est une conversation
+unique, cent messages, sans fil ni réponse — voulu pour une première
+version, mais une agence et une collégienne dans la même pièce est une
+hypothèse à vérifier avec les premières inscrites. (c) La présence sur
+l'Accueil dit « seul·e » à Nadia parce que ses données de test n'ont qu'un
+compte ; la vraie Syraagensy verra ses trois membres — mais la ligne ne
+distingue pas « en ligne sur le poste » de « en ligne sur le téléphone ».
+(d) Les célébrations ne fêtent que quatre premières fois ; c'est peu, et
+c'est volontaire — la cinquième serait déjà du bruit. (e) Les teintes sont
+une légende, pas de la joie ; la joie viendra des écrans vides et des
+Accueils, qui sont le travail de Claude Design.
+
 ## 3. Les idées, classées par impact
 
 _(se remplit au fil du chantier)_

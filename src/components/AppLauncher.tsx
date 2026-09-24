@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Pin, X } from 'lucide-react';
 import type { SpaceKey } from '../data/navigation';
 import { sectionsForSpace } from '../data/spaces';
+import { teinteFamille } from '../lib/teintes';
 import { useNavFavorites } from '../state/useNavFavorites';
 import { useLangue, libelleNav, libelleSection, indiceNav } from '../i18n';
 import { IS_BUSINESS } from '../edition/edition';
@@ -152,7 +153,8 @@ export function AppLauncher({
             <motion.div variants={GRID} initial="hidden" animate="shown" className="flex flex-col gap-6">
               {sectionsForSpace(space).map((section) => (
                 <div key={section.key}>
-                  <p className="mb-2.5 font-mono text-[9px] uppercase tracking-[0.25em] text-text-muted">
+                  <p className="mb-2.5 flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.25em] text-text-muted">
+                    {teinteFamille(section.code) && <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: teinteFamille(section.code) }} />}
                     {libelleSection(section.label)}
                   </p>
                   <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">

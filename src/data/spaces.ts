@@ -112,7 +112,7 @@ export function setEnabledModules(modules: string[] | null | undefined): void {
   modules sont listés — il était compilé, rangé, et invisible chez elle. Comme
   ses deux voisins, ce n'est pas un module qu'on vend : il est toujours ouvert.
 */
-export const ALWAYS_ON_MODULES = ['home', 'settings', 'members', 'assistance', 'budget', 'courses', 'health', 'library', 'discover'];
+export const ALWAYS_ON_MODULES = ['home', 'settings', 'members', 'assistance', 'budget', 'courses', 'health', 'library', 'discover', 'hall'];
 
 /*
   LES MODULES ALLÉGÉS (Bloc 3) — un affichage, jamais un accès.

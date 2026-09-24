@@ -10,6 +10,7 @@ import { useAttention } from '../state/useAttention';
 import type { AttentionItem } from '../lib/attention';
 import { Majordome } from './Majordome';
 import { PremiersPas } from '../guide/PremiersPas';
+import { Presence } from '../components/Presence';
 import { homeWelcome, parcSerein } from '../lib/homeGreetings';
 import { useLangue } from '../i18n';
 import type { SharedTaskStatus } from '../shared/api';
@@ -281,6 +282,7 @@ export function HomeSoloScreen() {
           )}
         </header>
 
+        <Presence />
         <PremiersPas />
 
         {rienDuTout ? (

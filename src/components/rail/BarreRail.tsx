@@ -6,6 +6,7 @@ import type { NavItem } from '../../data/navigation';
 import { createPortal } from 'react-dom';
 import { PanneauMobile } from './PanneauMobile';
 import { HINT_FAMILLE } from './famillesHints';
+import { teinteFamille } from '../../lib/teintes';
 
 /**
  * LA COQUILLE EN RAIL — la colonne, et une seule fois dans tout le produit.
@@ -655,7 +656,7 @@ export function BarreRail({
           <div
             role="tooltip"
             className="pointer-events-none fixed z-[120] w-[220px] border border-border-raised bg-elevated px-3 py-2.5 shadow-[0_18px_40px_-18px_rgba(0,0,0,1)]"
-            style={{ top: bulle.top, left: bulle.left }}
+            style={{ top: bulle.top, left: bulle.left, borderLeftWidth: 2, borderLeftColor: teinteFamille(bulle.f.code) ?? 'var(--color-border-raised)' }}
           >
             <span className="flex items-baseline justify-between gap-2">
               <span className="text-[13px] font-semibold text-text-primary">{bulle.f.label}</span>

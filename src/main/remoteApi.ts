@@ -39,6 +39,8 @@ import type {
   WelcomeAccess,
   WelcomeLinkState,
   JetonDepose,
+  HallEtat,
+  HallMessage,
 } from '../shared/api';
 
 const RECONNECT_DELAYS_MS = [1000, 2000, 5000, 10000, 20000, 30000];
@@ -412,6 +414,29 @@ export class RemoteApiClient {
       body: JSON.stringify(input),
     });
     return res.request;
+  }
+
+  /* --- Le Hall (vision cliente, chantier 4) --- */
+  async hallEtat(): Promise<HallEtat> {
+    return apiFetch<HallEtat>('/v1/hall/participation');
+  }
+
+  async hallParticiper(input: { participe: boolean; displayName?: string }): Promise<HallEtat> {
+    return apiFetch<HallEtat>('/v1/hall/participation', { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  async hallMessages(): Promise<HallMessage[]> {
+    const res = await apiFetch<{ messages: HallMessage[] }>('/v1/hall/messages');
+    return res.messages ?? [];
+  }
+
+  async hallEnvoyer(input: { body: string; signature?: string }): Promise<HallMessage> {
+    const res = await apiFetch<{ message: HallMessage }>('/v1/hall/messages', { method: 'POST', body: JSON.stringify(input) });
+    return res.message;
+  }
+
+  async hallSignaler(id: string): Promise<{ ok: boolean }> {
+    return apiFetch<{ ok: boolean }>(`/v1/hall/messages/${encodeURIComponent(id)}/signaler`, { method: 'POST', body: '{}' });
   }
 
   async forgotPassword(email: string): Promise<{ ok: boolean; courrier: 'envoye' | 'manuel' }> {

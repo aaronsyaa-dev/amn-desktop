@@ -286,6 +286,11 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   ipcMain.handle(IPC.remoteSupportSend, (_event, input: { kind: 'message' | 'seat'; subject?: string; body?: string }) =>
     remote.sendSupportRequest(input),
   );
+  ipcMain.handle(IPC.remoteHallEtat, () => remote.hallEtat());
+  ipcMain.handle(IPC.remoteHallParticiper, (_event, input: { participe: boolean; displayName?: string }) => remote.hallParticiper(input));
+  ipcMain.handle(IPC.remoteHallMessages, () => remote.hallMessages());
+  ipcMain.handle(IPC.remoteHallEnvoyer, (_event, input: { body: string; signature?: string }) => remote.hallEnvoyer(input));
+  ipcMain.handle(IPC.remoteHallSignaler, (_event, id: string) => remote.hallSignaler(id));
   ipcMain.handle(IPC.remoteForgotPassword, (_event, email: string) => remote.forgotPassword(email));
   ipcMain.handle(IPC.remoteResetPassword, (_event, token: string, password: string) => remote.resetPassword(token, password));
   ipcMain.handle(IPC.remoteWelcomeInspect, (_event, token: string) => remote.welcomeInspect(token));
@@ -354,6 +359,9 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   remote.onPresence((users) => broadcastToAll(IPC.remotePresencePush, users));
   // La réponse du prestataire (Bloc 4) : une trame de l'organisation, relayée telle quelle.
   remote.onFrame('support:answered', (frame) => broadcastToAll(IPC.remoteSupportAnsweredPush, frame.request));
+  remote.onFrame('hall:message', (frame) => broadcastToAll(IPC.remoteHallMessagePush, frame.message));
+  remote.onFrame('hall:masque', (frame) => broadcastToAll(IPC.remoteHallMasquePush, String(frame.id)));
+  remote.onFrame('hall:rafraichir', () => broadcastToAll(IPC.remoteHallRafraichirPush, null));
   remote.onFrame('signal', (frame) => broadcastToAll(IPC.remoteCallSignalPush, frame as unknown as CallSignal));
   // « Personne n'écoutait » est sa propre nature de signal côté renderer : il
   // permet de terminer l'appel sur « hors ligne » plutôt que d'attendre le

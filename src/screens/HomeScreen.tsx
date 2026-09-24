@@ -1,4 +1,5 @@
 import { PremiersPas } from '../guide/PremiersPas';
+import { Presence } from '../components/Presence';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -337,7 +338,8 @@ export function HomeScreen() {
         )}
       </motion.div>
 
-      <div className="mt-6">
+      <div className="mt-6 flex flex-col gap-4">
+        <Presence />
         <PremiersPas />
       </div>
 

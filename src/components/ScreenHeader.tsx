@@ -1,4 +1,6 @@
 import React from 'react';
+import { useInRouterContext, useLocation } from 'react-router-dom';
+import { familleDuChemin, teinteFamille, useTeintes } from '../lib/teintes';
 import { LiveMetric } from './LiveMetric';
 import { useEtatEcran } from './EtatEcran';
 import { Depliable } from './Depliable';
@@ -81,6 +83,10 @@ export function ScreenHeader({
   /** Filtres, onglets : ce qui appartient à l'en-tête sans être un relevé. */
   children?: React.ReactNode;
 }) {
+  /* La famille de l'écran, par le chemin — hors routeur (aucun cas connu), pas de point. */
+  const dansRouteur = useInRouterContext();
+  const teintes = useTeintes();
+  const teinte = dansRouteur ? teinteFamille(familleDuChemin(useLocation().pathname)?.code, teintes) : undefined;
   /*
     AUCUN CHIFFRE À ZÉRO SUR UN ÉCRAN VIDE (système de design, `27b`)
     ════════════════════════════════════════════════════════════════
@@ -104,7 +110,13 @@ export function ScreenHeader({
     <header className="mb-7">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
-          {eyebrow && <p className="eyebrow mb-2.5">{eyebrow}</p>}
+          {eyebrow && (
+            <p className="eyebrow mb-2.5 flex items-center gap-2">
+              {/* Le point de famille : « où je suis », dans la teinte de la famille de l'écran. Jamais un signal. */}
+              {teinte && <span aria-hidden className="inline-block h-1.5 w-1.5 flex-none rounded-full" style={{ backgroundColor: teinte }} />}
+              {eyebrow}
+            </p>
+          )}
           {/*
             LE TITRE MONTE À 32 PX (système de design, §3.2).
             Il était à 22–24 : la même taille qu'un titre de carte, donc rien ne
