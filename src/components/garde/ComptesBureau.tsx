@@ -5,6 +5,7 @@ import { useLangue } from '../../i18n';
 import { relativeTime } from '../../lib/time';
 import type { GardeCompte, GardeJeton } from '../../shared/garde';
 import type { ParcOrganization } from '../../shared/api';
+import { PALIER_LABELS } from '../../lib/paliers';
 
 /**
  * LE PUPITRE DU CHEF DES COMPTES — les jetons et les règlements (Bloc 5).
@@ -16,7 +17,7 @@ import type { ParcOrganization } from '../../shared/api';
  * fait par la Garde des Comptes, et se lit dans son journal, en dessous.
  */
 type Type = 'module' | 'formule' | 'places';
-const FORMULES = ['business_standard', 'business_premium'] as const;
+const FORMULES = ['solo', 'equipe', 'business'] as const;
 
 export function ComptesBureau() {
   const { t } = useLangue();
@@ -87,7 +88,7 @@ export function ComptesBureau() {
       setDit(t('garde.erreur', { message: err instanceof Error ? err.message : String(err) }));
     } finally { setBusy(false); }
   };
-  const quoi = (j: GardeJeton) => (j.module ? j.module : j.formule ? t('garde.comptes.formuleDe', { formule: j.formule === 'business_premium' ? 'Premium' : 'Standard' }) : t('garde.comptes.placesDe', { n: j.places ?? 0 }));
+  const quoi = (j: GardeJeton) => (j.module ? j.module : j.formule ? t('garde.comptes.formuleDe', { formule: PALIER_LABELS[j.formule] ?? j.formule }) : t('garde.comptes.placesDe', { n: j.places ?? 0 }));
   const etatClasse = (etat: GardeCompte['etat'] | GardeJeton['etat']) => (etat === 'a_jour' || etat === 'utilise' ? 'text-success' : etat === 'grace' || etat === 'emis' ? 'text-warning' : etat === 'suspendu' || etat === 'impaye' ? 'text-danger' : 'text-text-muted');
 
   return (
@@ -106,7 +107,7 @@ export function ComptesBureau() {
           </label>
           <label className="flex min-w-0 flex-1 flex-col gap-0.5 text-[11px] text-text-muted">{type === 'module' ? t('garde.comptes.module') : type === 'formule' ? t('garde.comptes.formule') : t('garde.comptes.places')}
             {type === 'formule'
-              ? <select value={valeur || FORMULES[0]} onChange={(e) => setValeur(e.target.value)} aria-label={t('garde.comptes.formule')} className="input-focus bg-bg px-2 py-1 text-[12px] text-text-primary outline-none">{FORMULES.map((f) => <option key={f} value={f}>{f === 'business_premium' ? 'Premium' : 'Standard'}</option>)}</select>
+              ? <select value={valeur || FORMULES[0]} onChange={(e) => setValeur(e.target.value)} aria-label={t('garde.comptes.formule')} className="input-focus bg-bg px-2 py-1 text-[12px] text-text-primary outline-none">{FORMULES.map((f) => <option key={f} value={f}>{PALIER_LABELS[f]}</option>)}</select>
               : <input value={valeur} onChange={(e) => setValeur(e.target.value)} type={type === 'places' ? 'number' : 'text'} min={1} max={500} placeholder={type === 'module' ? 'stock' : '3'} aria-label={type === 'module' ? t('garde.comptes.module') : t('garde.comptes.places')} className="input-focus min-w-0 border border-border bg-bg px-2 py-1 text-[12px] text-text-primary outline-none" />}
           </label>
           <label className="flex flex-col gap-0.5 text-[11px] text-text-muted">{t('garde.comptes.jours')}

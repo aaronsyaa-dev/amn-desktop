@@ -25,6 +25,7 @@ import { MonthlyReportPanel } from '../components/MonthlyReportPanel';
 import { SiteStatusPageExport } from '../components/tracker/StatusPageExport';
 import { SiteBadgeExport } from '../components/tracker/SocDesk';
 import type { AdminOrgUser, OrgAccessEntry } from '../shared/api';
+import { nomPalier } from '../lib/paliers';
 
 /**
  * Le panneau d'administration d'une organisation cliente.
@@ -137,7 +138,7 @@ export function ClientAdminScreen() {
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-bold tracking-tight text-text-primary">Administration</h1>
             <p className="mt-0.5 font-mono text-xs uppercase tracking-widest text-text-muted">
-              {support.orgName} · {org?.plan === 'business_premium' ? 'Business premium' : 'Business standard'}
+              {support.orgName} · {nomPalier(org?.plan)}
             </p>
           </div>
         </div>

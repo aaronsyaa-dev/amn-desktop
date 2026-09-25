@@ -17,6 +17,7 @@ import { useParcPage } from '../state/useParcPage';
 import { CLIENT_NAV_ITEMS } from '../client-context/ClientSidebar';
 import { ALWAYS_ON_MODULES } from '../data/spaces';
 import type { AdminOrganization, BulkAction, ModuleLock, ParcOrganization, ParcPageQuery, ParcSummary } from '../shared/api';
+import { PALIER_LABELS } from '../lib/paliers';
 
 /**
  * LE REGISTRE DES ORGANISATIONS, À L'ÉCHELLE (Bloc 4).
@@ -35,7 +36,6 @@ import type { AdminOrganization, BulkAction, ModuleLock, ParcOrganization, ParcP
  *
  * Écran interne : les textes restent en français, comme toute la Tour.
  */
-const PLAN_LABELS: Record<string, string> = { business_standard: 'Standard', business_premium: 'Premium', internal: 'Interne' };
 const ACTIONS: Array<{ key: BulkAction; label: string }> = [
   { key: 'module_open', label: 'Ouvrir un module' },
   { key: 'module_close', label: 'Fermer un module' },
@@ -177,7 +177,7 @@ export function OrganizationsScreen() {
           </label>
           <div className="flex flex-wrap gap-2">
             <Filtre label="Statut" value={filtres.status ?? ''} onChange={(v) => poser({ status: (v || undefined) as ParcPageQuery['status'] })} options={[['', 'Toutes'], ['active', 'Actives'], ['suspended', 'Suspendues']]} />
-            <Filtre label="Formule" value={filtres.plan ?? ''} onChange={(v) => poser({ plan: (v || undefined) as ParcPageQuery['plan'] })} options={[['', 'Toutes'], ['business_standard', 'Standard'], ['business_premium', 'Premium']]} />
+            <Filtre label="Formule" value={filtres.plan ?? ''} onChange={(v) => poser({ plan: (v || undefined) as ParcPageQuery['plan'] })} options={[['', 'Toutes'], ['solo', PALIER_LABELS.solo], ['equipe', PALIER_LABELS.equipe], ['business', PALIER_LABELS.business], ['business_standard', PALIER_LABELS.business_standard], ['business_premium', PALIER_LABELS.business_premium]]} />
             <Filtre label="Activité" value={filtres.activity ?? ''} onChange={(v) => poser({ activity: (v || undefined) as ParcPageQuery['activity'] })} options={[['', 'Toutes'], ['7d', 'Actives 7 j'], ['30d', 'Actives 30 j'], ['silent30d', 'Muettes 30 j'], ['never', 'Jamais actives']]} />
             <Filtre label="Incidents" value={filtres.incidents ?? ''} onChange={(v) => poser({ incidents: (v || undefined) as ParcPageQuery['incidents'] })} options={[['', 'Tous'], ['open', 'Ouverts']]} />
             <Filtre label="Étiquette" value={filtres.tag ?? ''} onChange={(v) => poser({ tag: v || undefined })} options={[['', 'Toutes'], ...(resume?.tags ?? []).map((t) => [t.tag, `${t.tag} (${t.count})`] as [string, string])]} />
@@ -237,7 +237,7 @@ export function OrganizationsScreen() {
                       {org.tags.map((t) => <span key={t} className="flex items-center gap-0.5 rounded-sm border border-border px-1 normal-case tracking-normal"><Tag size={8} /> {t}</span>)}
                     </div>
                   </div>
-                  <span className="hidden w-20 text-xs text-text-secondary sm:block">{PLAN_LABELS[org.plan] ?? org.plan}</span>
+                  <span className="hidden w-20 text-xs text-text-secondary sm:block">{PALIER_LABELS[org.plan] ?? org.plan}</span>
                   <span className="tnum hidden w-16 text-xs text-text-secondary md:block">{org.userCount}{org.seats ? ` / ${org.seats}` : ''}</span>
                   <span className="hidden w-28 text-xs text-text-muted md:block">{org.lastActivityAt ? relativeTime(org.lastActivityAt) : '—'}</span>
                   <div className="flex w-32 flex-shrink-0 justify-end gap-1 sm:w-56">

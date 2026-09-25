@@ -197,6 +197,10 @@ const bridge: AmnBridge = {
     envoyerRelance: (invoiceId: string, texte: string) => ipcRenderer.invoke(IPC.remoteEnvoyerRelance, invoiceId, texte),
     abonnement: () => ipcRenderer.invoke(IPC.remoteAbonnement),
     ouvrirAbonnement: () => ipcRenderer.invoke(IPC.remoteOuvrirAbonnement),
+    abonnementModules: () => ipcRenderer.invoke(IPC.remoteAbonnementModules),
+    souscrireModule: (cle: string) => ipcRenderer.invoke(IPC.remoteSouscrireModule, cle),
+    retirerModule: (cle: string) => ipcRenderer.invoke(IPC.remoteRetirerModule, cle),
+    acheterPlaces: (quantite: number) => ipcRenderer.invoke(IPC.remoteAcheterPlaces, quantite),
     onSupportAnswered: (callback: (request: SupportRequest) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, request: SupportRequest) => callback(request);
       ipcRenderer.on(IPC.remoteSupportAnsweredPush, listener);

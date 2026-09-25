@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import {
   AlertTriangle, Bell, Camera, Check, Download, Info, KeyRound, Loader2, Power, UserCircle } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+import { nomPalier, PALIER_PRIX_EUR } from '../lib/paliers';
 import { useProfiles } from '../state/ProfilesContext';
 import { useAppointments } from '../state/useAppointments';
 import { relativeToNow, timeLabel } from '../lib/calendar';
@@ -383,7 +384,7 @@ function FormuleEtPlaces() {
             <span aria-hidden className="text-text-muted">—</span>
             <span>
               {preleve
-                ? 'Votre carte. Le prélèvement mensuel passe par Stripe, qui la garde ; ce produit ne la voit jamais. Une place de plus se demande, un humain la lit.'
+                ? 'Votre carte. Le prélèvement mensuel passe par Stripe, qui la garde ; ce produit ne la voit jamais. Une place de plus ou un module à l’unité s’ajoutent vous-même, dans Mon abonnement.'
                 : 'Aucune date de prélèvement. Une place de plus se demande, un humain la lit ; rien n’est facturé automatiquement.'}
             </span>
           </li>
@@ -395,6 +396,12 @@ function FormuleEtPlaces() {
           <div>
             <dt className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Organisation</dt>
             <dd className="text-[15px] font-semibold leading-tight text-text-primary">{org.name}</dd>
+          </div>
+          <div>
+            <dt className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Palier</dt>
+            <dd className="text-[15px] font-semibold leading-tight text-text-primary">
+              {nomPalier(org.plan)}{PALIER_PRIX_EUR[org.plan] != null ? ` · ${PALIER_PRIX_EUR[org.plan]} €/mois` : ''}
+            </dd>
           </div>
           {org.seats != null && (
             <div>

@@ -300,6 +300,10 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   ipcMain.handle(IPC.remoteEnvoyerRelance, (_event, invoiceId: string, texte: string) => remote.envoyerRelance(invoiceId, texte));
   ipcMain.handle(IPC.remoteAbonnement, () => remote.abonnement());
   ipcMain.handle(IPC.remoteOuvrirAbonnement, () => remote.ouvrirAbonnement());
+  ipcMain.handle(IPC.remoteAbonnementModules, () => remote.abonnementModules());
+  ipcMain.handle(IPC.remoteSouscrireModule, (_event, cle: string) => remote.souscrireModule(cle));
+  ipcMain.handle(IPC.remoteRetirerModule, (_event, cle: string) => remote.retirerModule(cle));
+  ipcMain.handle(IPC.remoteAcheterPlaces, (_event, quantite: number) => remote.acheterPlaces(quantite));
   ipcMain.handle(IPC.remoteWelcomeInspect, (_event, token: string) => remote.welcomeInspect(token));
   ipcMain.handle(IPC.remoteWelcomeReveal, (_event, token: string) => remote.welcomeReveal(token));
   ipcMain.handle(IPC.remoteWelcomeConfirm, (_event, token: string) => remote.welcomeConfirm(token));

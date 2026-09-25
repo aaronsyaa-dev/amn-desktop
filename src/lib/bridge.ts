@@ -27,6 +27,8 @@ import type {
   InvitationCarte,
   LectureInvitation,
   AbonnementEtat,
+  AbonnementModulesEtat,
+  ModuleTarif,
   ActiveSession,
   CallLink,
   CreatedCallLink,
@@ -928,6 +930,22 @@ function createBrowserRemote(): AmnBridge['remote'] {
     },
     async ouvrirAbonnement() {
       return apiFetch<{ url: string; nature: 'souscription' | 'portail' }>('/v1/paiements/abonnement', { method: 'POST', body: '{}' });
+    },
+    async abonnementModules() {
+      try {
+        return await apiFetch<AbonnementModulesEtat>('/v1/paiements/abonnement/modules');
+      } catch {
+        return { actif: false, modules: [] };
+      }
+    },
+    async souscrireModule(cle: string) {
+      return apiFetch<{ module: string; tarif: ModuleTarif; dejaSouscrit: boolean }>(`/v1/paiements/abonnement/modules/${encodeURIComponent(cle)}`, { method: 'POST', body: '{}' });
+    },
+    async retirerModule(cle: string) {
+      return apiFetch<{ fermes: string[] }>(`/v1/paiements/abonnement/modules/${encodeURIComponent(cle)}`, { method: 'DELETE' });
+    },
+    async acheterPlaces(quantite: number) {
+      return apiFetch<{ url: string; id: string }>('/v1/paiements/abonnement/places', { method: 'POST', body: JSON.stringify({ quantite }) });
     },
     // Appels audio : la signalisation vaut pour toute organisation à plusieurs,
     // donc elle vit dans le pont commun aux deux éditions.

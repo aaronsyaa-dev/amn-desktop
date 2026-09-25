@@ -18,6 +18,7 @@ import { ChoixModules } from '../components/generator/ChoixModules';
 import { handoverMessage, handoverSubject } from '../lib/handoverMessage';
 import { OrgAvatar } from '../components/org-rail/OrgAvatar';
 import type { CourrierEnvoi, DownloadLink, OrgPlan } from '../shared/api';
+import { PALIER_LABELS } from '../lib/paliers';
 
 /**
  * L'ATELIER — la création d'un espace de travail sur mesure (BLOC C)
@@ -87,7 +88,8 @@ const LOGO_MAX_CHARS = 44 * 1024;
  */
 /** Les formules de places — la même liste qu'amn-api (`ORG_SEAT_FORMULAS`). */
 const SEAT_FORMULAS = [1, 2, 5, 10, 25] as const;
-const PREMIUM_FROM_SEATS = 5;
+/** Le palier proposé par défaut, selon le nombre de places choisi — les places incluses de la grille (Solo 1, Équipe 5, Business 10). */
+const palierPourPlaces = (n: number): OrgPlan => (n <= 1 ? 'solo' : n <= 5 ? 'equipe' : 'business');
 /** Un profil métier propose un nombre de personnes ; la formule qui le contient est la sienne. */
 const versFormule = (n: number): number => SEAT_FORMULAS.find((f) => f >= n) ?? 25;
 
@@ -157,7 +159,7 @@ export function GeneratorScreen() {
   const profile = profileId ? tradeProfileById(profileId) : undefined;
   /* Le halo ne bat que sur l'écran de remise : c'est là que vit le seul ambre de l'Atelier. */
   const halo = useHaloSignal(step === 'remise' && result !== null);
-  const plan: OrgPlan = seats >= PREMIUM_FROM_SEATS ? 'business_premium' : 'business_standard';
+  const plan: OrgPlan = palierPourPlaces(seats);
 
   /** Choisir un métier POSE les valeurs de départ, et fait entrer dans l'atelier. */
   const chooseProfile = (id: string) => {
@@ -505,9 +507,11 @@ export function GeneratorScreen() {
                         ))}
                       </div>
                       <p className="mt-2 text-[11px] leading-snug text-text-muted">
-                        {seats >= PREMIUM_FROM_SEATS
-                          ? 'Business premium — à partir de cinq, la coordination devient le sujet et l’outil doit s’en souvenir.'
-                          : 'Business standard — à deux on se parle, l’outil n’a pas à arbitrer.'}
+                        {palierPourPlaces(seats) === 'business'
+                          ? `${PALIER_LABELS.business} — à partir de dix, la coordination devient le sujet et l’outil doit s’en souvenir.`
+                          : palierPourPlaces(seats) === 'equipe'
+                            ? `${PALIER_LABELS.equipe} — à plusieurs, on a besoin que l’outil se souvienne.`
+                            : `${PALIER_LABELS.solo} — seul·e, l’outil n’a personne d’autre à arbitrer.`}
                       </p>
                     </div>
 

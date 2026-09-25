@@ -18,6 +18,7 @@ import { relativeTime } from '../../lib/time';
 import { useFermetureEchap } from '../../lib/useFermetureEchap';
 import { useLangue, libelleNav } from '../../i18n';
 import { ALWAYS_ON_MODULES } from '../../data/spaces';
+import { PALIER_LABELS } from '../../lib/paliers';
 import { GardeChezElle } from '../garde/GardeChezElle';
 
 /**
@@ -102,16 +103,6 @@ const REGLABLES: NavItem[] = CLIENT_NAV_ITEMS.filter((item) => !ALWAYS_ON_MODULE
  * absence de la grille ne veut pas dire qu'ils sont fermés, et une fiche qui
  * les omettrait laisserait croire l'inverse.
  */
-/**
- * Les identifiants de forfait ne sont pas des mots — même raison que dans
- * OrgBanner, où `business_premium` s'affichait « BUSINESS_PREMIUM ».
- */
-const PLAN_LABELS: Record<string, string> = {
-  business_standard: 'Business standard',
-  business_premium: 'Business premium',
-  internal: 'Interne',
-};
-
 interface LigneFiche {
   section: string;
   ouverts: string[];
@@ -496,7 +487,7 @@ export function OrgDossierPanel({
               section attend plus bas, à côté des réglages qui le changent.
             */}
             <p className="mt-1 truncate font-mono text-[10px] text-text-secondary">
-              {PLAN_LABELS[org.plan] ?? org.plan} · {resume.ouverts}/{resume.total} modules ·{' '}
+              {PALIER_LABELS[org.plan] ?? org.plan} · {resume.ouverts}/{resume.total} modules ·{' '}
               {resume.sections} section{resume.sections > 1 ? 's' : ''}
             </p>
           </div>
@@ -852,8 +843,9 @@ export function OrgDossierPanel({
               onChange={(e) => setForfait(e.target.value as typeof forfait)}
               className="input-focus w-full cursor-pointer border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none"
             >
-              <option value="business_standard">Business standard</option>
-              <option value="business_premium">Business premium</option>
+              {Object.entries(PALIER_LABELS)
+                .filter(([plan]) => plan !== 'internal')
+                .map(([plan, label]) => <option key={plan} value={plan}>{label}</option>)}
             </select>
           </label>
 
@@ -912,12 +904,12 @@ export function OrgDossierPanel({
             <p className="mt-1 text-[11px] leading-relaxed text-text-secondary">
               {formule.modules === null
                 ? t('dossier.formule.inclutTout', {
-                    formule: PLAN_LABELS[org.plan] ?? org.plan,
+                    formule: PALIER_LABELS[org.plan] ?? org.plan,
                     modules: REGLABLES.length,
                     places: formule.seats ?? '—',
                   })
                 : t('dossier.formule.inclut', {
-                    formule: PLAN_LABELS[org.plan] ?? org.plan,
+                    formule: PALIER_LABELS[org.plan] ?? org.plan,
                     modules: formule.modules.length,
                     places: formule.seats ?? '—',
                   })}

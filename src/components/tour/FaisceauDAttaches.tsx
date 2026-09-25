@@ -4,6 +4,7 @@ import { useParcInsights, insightFor } from '../../state/parcInsights';
 import { garde } from '../../lib/garde';
 import { bridge } from '../../lib/bridge';
 import { relativeTime } from '../../lib/time';
+import { nomPalier } from '../../lib/paliers';
 import type { GardeAgent } from '../../shared/garde';
 import type { OrgPulse, ParcOrganization } from '../../shared/api';
 
@@ -93,7 +94,7 @@ export function FaisceauDAttaches({ org, onOuvrirDossier }: { org: ParcOrganizat
   /* L'ambre ne s'allume que s'il y a quelque chose de visible à couper. */
   const ambre = sessions !== null && sessions > 0;
   const halo = useHaloSignal(ambre);
-  const palier = org.plan === 'business_premium' ? 'Premium' : org.plan === 'internal' ? 'Interne' : 'Standard';
+  const palier = nomPalier(org.plan);
 
   return (
     <article className="grid items-start gap-8 border border-border-raised bg-elevated px-6 py-[30px] sm:px-8 lg:grid-cols-[minmax(0,1fr)_330px] lg:gap-[38px]" data-faisceau={org.id}>

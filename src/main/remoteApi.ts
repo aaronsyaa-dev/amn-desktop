@@ -15,6 +15,8 @@ import type {
   InvitationCarte,
   LectureInvitation,
   AbonnementEtat,
+  AbonnementModulesEtat,
+  ModuleTarif,
   ActiveSession,
   CallLink,
   CreatedCallLink,
@@ -502,6 +504,26 @@ export class RemoteApiClient {
 
   async ouvrirAbonnement(): Promise<{ url: string; nature: 'souscription' | 'portail' }> {
     return apiFetch<{ url: string; nature: 'souscription' | 'portail' }>('/v1/paiements/abonnement', { method: 'POST', body: '{}' });
+  }
+
+  async abonnementModules(): Promise<AbonnementModulesEtat> {
+    try {
+      return await apiFetch<AbonnementModulesEtat>('/v1/paiements/abonnement/modules');
+    } catch {
+      return { actif: false, modules: [] };
+    }
+  }
+
+  async souscrireModule(cle: string): Promise<{ module: string; tarif: ModuleTarif; dejaSouscrit: boolean }> {
+    return apiFetch<{ module: string; tarif: ModuleTarif; dejaSouscrit: boolean }>(`/v1/paiements/abonnement/modules/${encodeURIComponent(cle)}`, { method: 'POST', body: '{}' });
+  }
+
+  async retirerModule(cle: string): Promise<{ fermes: string[] }> {
+    return apiFetch<{ fermes: string[] }>(`/v1/paiements/abonnement/modules/${encodeURIComponent(cle)}`, { method: 'DELETE' });
+  }
+
+  async acheterPlaces(quantite: number): Promise<{ url: string; id: string }> {
+    return apiFetch<{ url: string; id: string }>('/v1/paiements/abonnement/places', { method: 'POST', body: JSON.stringify({ quantite }) });
   }
 
   async welcomeInspect(token: string): Promise<WelcomePreview> {

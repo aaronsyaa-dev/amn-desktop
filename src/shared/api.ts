@@ -33,7 +33,13 @@ export interface AuthResult {
  * de cybersécurité (Trackers, Scanner, Comply, SSL Monitor). Tous les autres
  * plans sont des organisations clientes : elles reçoivent l'édition Business.
  */
-export type OrgPlan = 'internal' | 'business_standard' | 'business_premium';
+/**
+ * `solo`/`equipe`/`business` sont la grille tarifaire actuelle (59/129/249 €,
+ * voir `src/lib/paliers.ts`). `business_standard`/`business_premium` restent
+ * lisibles pour une organisation qui les porte encore, mais ne sont plus
+ * proposées à la souscription.
+ */
+export type OrgPlan = 'internal' | 'solo' | 'equipe' | 'business' | 'business_standard' | 'business_premium';
 
 export interface OrgIdentity {
   id: string;
@@ -1186,6 +1192,25 @@ export interface AbonnementEtat {
   /** L'encaissement automatique est-il configuré sur le serveur ? */
   actif: boolean;
   abonnement: { relie: boolean; statut: string | null } | null;
+}
+
+/** Le tarif d'un module hors socle — voir MODULE_TARIFS côté serveur (db/tenancy.js). */
+export type ModuleTarif = 'simple' | 'standard' | 'premium';
+
+/** Un module à l'unité, tel que le voit la cliente : son tarif, s'il est ouvert, s'il est facturé par Stripe (par opposition à ajouté à la main). */
+export interface ModuleFacturable {
+  key: string;
+  label: string;
+  tarif: ModuleTarif;
+  /** Informatif — le montant réel facturé vient du prix Stripe posé côté serveur. */
+  prixEur: number | null;
+  actif: boolean;
+  facture: boolean;
+}
+
+export interface AbonnementModulesEtat {
+  actif: boolean;
+  modules: ModuleFacturable[];
 }
 
 export interface InvoiceParty {
@@ -3211,6 +3236,14 @@ export interface AmnBridge {
     abonnement(): Promise<AbonnementEtat>;
     /** Souscrire (page Stripe) ou gérer son abonnement (portail Stripe) : une adresse à ouvrir. */
     ouvrirAbonnement(): Promise<{ url: string; nature: 'souscription' | 'portail' }>;
+    /** Le catalogue des modules à l'unité, avec ce qui est déjà souscrit. */
+    abonnementModules(): Promise<AbonnementModulesEtat>;
+    /** Souscrire un module à l'unité : une ligne de plus sur l'abonnement existant, aucune page à ouvrir. */
+    souscrireModule(cle: string): Promise<{ module: string; tarif: ModuleTarif; dejaSouscrit: boolean }>;
+    /** Retirer un module à l'unité : la ligne Stripe disparaît, le module se ferme. */
+    retirerModule(cle: string): Promise<{ fermes: string[] }>;
+    /** Acheter N places au-delà de celles incluses dans le palier — 15 € chacune, une fois : une adresse Stripe à ouvrir. */
+    acheterPlaces(quantite: number): Promise<{ url: string; id: string }>;
     welcome: {
       inspect(token: string): Promise<WelcomePreview>;
       reveal(token: string): Promise<WelcomeAccess>;
@@ -3879,6 +3912,10 @@ export const IPC = {
   remoteEnvoyerRelance: 'remote:envoyerRelance',
   remoteAbonnement: 'remote:abonnement',
   remoteOuvrirAbonnement: 'remote:ouvrirAbonnement',
+  remoteAbonnementModules: 'remote:abonnementModules',
+  remoteSouscrireModule: 'remote:souscrireModule',
+  remoteRetirerModule: 'remote:retirerModule',
+  remoteAcheterPlaces: 'remote:acheterPlaces',
   remoteResetPassword: 'remote:resetPassword',
   remoteWelcomeInspect: 'remote:welcomeInspect',
   remoteWelcomeReveal: 'remote:welcomeReveal',
