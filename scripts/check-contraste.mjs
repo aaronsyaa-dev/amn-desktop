@@ -137,6 +137,16 @@ if ((await page.content()).includes('name="password"')) {
 }
 await attendre(2000);
 
+/* Un compte jamais connecté avant ouvre la présentation d'arrivée puis, juste
+   derrière, « Qui êtes-vous » (deux `role="dialog"` à la suite) par-dessus
+   tout l'écran : sans les fermer TOUS LES DEUX, aucun clic sur une ligne de
+   liste n'atteint sa cible, et les vues de détail ne s'ouvrent jamais — pas
+   une mesure faussée, aucune mesure du tout. */
+const passer = page.getByRole('button', { name: 'Passer' });
+if ((await passer.count()) > 0) { await passer.click(); await attendre(500); }
+const plusTard = page.getByRole('button', { name: 'Plus tard' });
+if ((await plusTard.count()) > 0) { await plusTard.click(); await attendre(500); }
+
 /* La famille « Personnel » lit `localStorage`, pas l'API : sans ce jeu
    d'essai, ses six écrans sont mesurés vides — donc jamais mesurés. Même
    source que `check:signal` et que la campagne de captures. */

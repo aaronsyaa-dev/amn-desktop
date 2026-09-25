@@ -45,7 +45,13 @@ const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.g
 const heures = (d: Date) => d.getHours() + d.getMinutes() / 60;
 const euros = (c: number) => `${(c / 100).toLocaleString('fr-FR', { minimumFractionDigits: c % 100 ? 2 : 0, maximumFractionDigits: 2 })} €`;
 const CONTACTS = ['pointerdown', 'mousedown', 'touchstart', 'keydown', 'wheel'] as const;
-const AVALES = ['click', 'mouseup', 'pointerup', 'touchend', 'keyup', 'contextmenu'] as const;
+/*
+  `keydown` figure aussi ici : un raccourci clavier (Ctrl+K, par exemple)
+  envoie DEUX `keydown` — un pour Ctrl, un pour K. Le premier réveille et
+  repasse `actif` à faux ; sans cette ligne, le second n'a plus de veille
+  active pour l'avaler et ouvre la palette de commandes par-dessus.
+*/
+const AVALES = ['click', 'mouseup', 'pointerup', 'touchend', 'keydown', 'keyup', 'contextmenu'] as const;
 
 interface Intervention {
   clientName: string;

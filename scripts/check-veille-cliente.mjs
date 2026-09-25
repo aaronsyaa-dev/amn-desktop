@@ -59,6 +59,15 @@ try {
   await page.locator('button[type="submit"]').click();
   for (let i = 0; i < 30 && (await page.content()).includes('name="password"'); i++) await page.waitForTimeout(500);
   await page.waitForTimeout(2500);
+  /* Un compte d'essai jamais connecté avant ouvre la présentation d'arrivée
+     puis, juste derrière, « Qui êtes-vous » (deux `role="dialog"` à la
+     suite) : sans les fermer TOUS LES DEUX, l'un reste dans le DOM tout le
+     test et fausse tout ce qui compte les dialogues (« la touche de réveil
+     n'ouvre rien »). */
+  const passer = page.getByRole('button', { name: 'Passer' });
+  if ((await passer.count()) > 0) { await passer.click(); await page.waitForTimeout(500); }
+  const plusTard = page.getByRole('button', { name: 'Plus tard' });
+  if ((await plusTard.count()) > 0) { await plusTard.click(); await page.waitForTimeout(500); }
   await page.goto(APP + '#/agenda', { waitUntil: 'networkidle' }); await page.waitForTimeout(1500);
 
   await reglages({ delaiMin: 5, accueilPublic: false, masque: null, fermetureH: 23 });

@@ -87,6 +87,10 @@ const ECRANS = [
   ['Accueil', '#/'],
   ['Agenda', '#/agenda'],
   ['Clients', '#/clients'],
+  /* La grille tarifaire à trois paliers (25/09) : trois cartes côte à côte
+     sur bureau, le premier endroit où un débordement horizontal apparaîtrait
+     au téléphone. */
+  ['Paramètres', '#/settings'],
   ['Facturation', '#/facturation'],
   ['Tâches', '#/tasks'],
   /* Les nouveaux modules des cahiers 6 à 8 : composés d'emblée pour le
