@@ -293,7 +293,9 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   ipcMain.handle(IPC.remoteHallSignaler, (_event, id: string) => remote.hallSignaler(id));
   ipcMain.handle(IPC.remoteForgotPassword, (_event, email: string) => remote.forgotPassword(email));
   ipcMain.handle(IPC.remoteResetPassword, (_event, token: string, password: string) => remote.resetPassword(token, password));
-  ipcMain.handle(IPC.remoteLireInvitation, (_event, token: string) => remote.lireInvitation(token));
+  ipcMain.handle(IPC.remoteLookupInvitation, (_event, token: string) => remote.lookupInvitation(token));
+  ipcMain.handle(IPC.remoteRelancerInvitation, (_event, token: string) => remote.relancerInvitation(token));
+  ipcMain.handle(IPC.remoteSignalerInvitation, (_event, token: string) => remote.signalerInvitation(token));
   ipcMain.handle(IPC.remoteCourrierDisponible, () => remote.courrierDisponible());
   ipcMain.handle(IPC.remoteEnvoyerRelance, (_event, invoiceId: string, texte: string) => remote.envoyerRelance(invoiceId, texte));
   ipcMain.handle(IPC.remoteAbonnement, () => remote.abonnement());

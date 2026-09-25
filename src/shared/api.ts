@@ -1154,19 +1154,33 @@ export interface InvoiceLine {
  * rétroactivement des documents déjà envoyés et déjà comptabilisés — donc on
  * fige une copie au moment de l'émission.
  */
-/** L'état d'une invitation, lu avant l'activation (`POST /v1/auth/invitations/lire`). */
-export type EtatInvitation = 'valable' | 'expire' | 'utilise' | 'suspendu' | 'incomplet';
-export interface InvitationLue {
-  etat: EtatInvitation;
-  nature?: 'activation' | 'appartenance';
-  organisation?: { nom: string; logo: string | null };
-  invitePar?: string | null;
-  /** L'adresse invitée, masquée (« m•••••@gmail.com »). */
-  destinataire?: string | null;
-  emiseLe?: string | null;
-  expireLe?: string;
-  motDePasseRequis?: boolean;
+/**
+ * L'invitation telle que la carte « laissez-passer » l'affiche (cahier 43,
+ * `POST /v1/auth/invitations/lookup`). Rien n'est rendu pour un jeton qui
+ * n'est pas réel : le serveur répond le même 404 à tout ce qui sonde.
+ */
+export type StatutInvitation = 'valide' | 'expiree' | 'utilisee' | 'suspendue';
+export interface InvitationCarte {
+  statut: StatutInvitation;
+  nature: 'activation' | 'appartenance';
+  organisation: string;
+  invitePar: { prenom: string | null; libelle: string | null };
+  email: string;
+  /** Le libellé du rôle (« Propriétaire de l’espace »). */
+  role: string;
+  roleCode: string;
+  emisLe: string | null;
+  expireLe: string;
+  utiliseLe: string | null;
+  motDePasseRequis: boolean;
 }
+/** Ce que la lecture rend : jamais une supposition. */
+export type LectureInvitation =
+  | { kind: 'carte'; carte: InvitationCarte }
+  | { kind: 'introuvable' }
+  | { kind: 'freinee'; secondes: number }
+  | { kind: 'injoignable' };
+
 /** L'abonnement Stripe d'une organisation cliente, vu par elle. */
 export interface AbonnementEtat {
   /** L'encaissement automatique est-il configuré sur le serveur ? */
@@ -3184,7 +3198,11 @@ export interface AmnBridge {
      * qui elle mène. Tout ce qui n'est pas un vrai jeton rend `incomplet`, et
      * le serveur freine qui sonde (chantier « arrivée cliente »).
      */
-    lireInvitation(token: string): Promise<InvitationLue>;
+    lookupInvitation(token: string): Promise<LectureInvitation>;
+    /** Lien expiré : prévenir qui a invité qu'un nouveau lien est demandé. Rend son prénom, jamais son adresse. */
+    relancerInvitation(token: string): Promise<{ ok: true; prenom: string; deja?: boolean }>;
+    /** Lien déjà utilisé par quelqu'un d'autre : prévenir qui a invité. */
+    signalerInvitation(token: string): Promise<{ ok: true; prenom: string; deja?: boolean }>;
     /** Le courrier du serveur part-il ? (oui/non) */
     courrierDisponible(): Promise<{ actif: boolean }>;
     /** Relancer par courriel le client d'une facture échue ; le destinataire est lu par le serveur dans la facture. */
@@ -3854,7 +3872,9 @@ export const IPC = {
   remoteHallMasquePush: 'remote:hallMasquePush',
   remoteHallRafraichirPush: 'remote:hallRafraichirPush',
   remoteForgotPassword: 'remote:forgotPassword',
-  remoteLireInvitation: 'remote:lireInvitation',
+  remoteLookupInvitation: 'remote:lookupInvitation',
+  remoteRelancerInvitation: 'remote:relancerInvitation',
+  remoteSignalerInvitation: 'remote:signalerInvitation',
   remoteCourrierDisponible: 'remote:courrierDisponible',
   remoteEnvoyerRelance: 'remote:envoyerRelance',
   remoteAbonnement: 'remote:abonnement',

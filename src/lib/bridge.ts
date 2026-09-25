@@ -24,7 +24,8 @@ import {
 } from '@edition/seeds';
 import { browserExclusiveBridge, createBrowserExclusive } from '@edition/browserExclusive';
 import type {
-  InvitationLue,
+  InvitationCarte,
+  LectureInvitation,
   AbonnementEtat,
   ActiveSession,
   CallLink,
@@ -889,8 +890,24 @@ function createBrowserRemote(): AmnBridge['remote'] {
     async resetPassword(token: string, password: string) {
       return publicPost<{ ok: boolean }>('/v1/courrier/mot-de-passe/reinitialiser', { token, password });
     },
-    async lireInvitation(token: string) {
-      return publicPost<InvitationLue>('/v1/auth/invitations/lire', { token });
+    async lookupInvitation(token: string): Promise<LectureInvitation> {
+      if (!apiUrl) return { kind: 'injoignable' };
+      let res: Response;
+      try {
+        res = await fetch(`${apiUrl}/v1/auth/invitations/lookup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
+      } catch {
+        return { kind: 'injoignable' };
+      }
+      if (res.status === 404) return { kind: 'introuvable' };
+      if (res.status === 429) return { kind: 'freinee', secondes: Number(res.headers.get('retry-after')) || 900 };
+      if (!res.ok) return { kind: 'injoignable' };
+      return { kind: 'carte', carte: (await res.json()) as InvitationCarte };
+    },
+    async relancerInvitation(token: string) {
+      return publicPost<{ ok: true; prenom: string; deja?: boolean }>('/v1/auth/invitations/relance', { token });
+    },
+    async signalerInvitation(token: string) {
+      return publicPost<{ ok: true; prenom: string; deja?: boolean }>('/v1/auth/invitations/signalement', { token });
     },
     async courrierDisponible() {
       try {
