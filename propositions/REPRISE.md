@@ -29,7 +29,7 @@ Voir le tableau d'état plus bas, tenu à jour après chaque étape.
 | 03-onze-mots | non | – | – | à construire |
 | 04-le-bureau-range | non | – | – | à construire |
 
-## Chaînes en cours (25/09, lancées vers 10 h 20 UTC)
+## Chaînes en cours (25/09, lancées vers 10 h 50 UTC)
 
 - Workflow `wf_9b806c26-364` : 01-usine-dans-la-masse, 02-le-carnet.
 - Workflow `wf_dc32cce5-39f` : 03-onze-mots, 04-le-bureau-range.
