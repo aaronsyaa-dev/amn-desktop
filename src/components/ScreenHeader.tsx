@@ -4,6 +4,8 @@ import { familleDuChemin, teinteFamille, useTeintes } from '../lib/teintes';
 import { LiveMetric } from './LiveMetric';
 import { useEtatEcran } from './EtatEcran';
 import { Depliable } from './Depliable';
+import { PastillePresence } from './PastillePresence';
+import { surtitreDansLaPiece, useEnTeteContexte } from './EnTeteContexte';
 import type { SerieVitale } from '../lib/serieVitale';
 
 /**
@@ -86,7 +88,16 @@ export function ScreenHeader({
   /* La famille de l'écran, par le chemin — hors routeur (aucun cas connu), pas de point. */
   const dansRouteur = useInRouterContext();
   const teintes = useTeintes();
-  const teinte = dansRouteur ? teinteFamille(familleDuChemin(useLocation().pathname)?.code, teintes) : undefined;
+  /*
+    DANS UN BUREAU (cahier 16), la pièce impose sa tête : son surtitre devant
+    celui de l'écran, sa typographie au titre — et pas de point de famille,
+    qui est une notion du poste de travail. Instruments, actions et relevés
+    ne bougent pas.
+  */
+  const piece = useEnTeteContexte();
+  const cheminCourant = dansRouteur ? useLocation().pathname : null;
+  const teinte = cheminCourant && !piece.sansTeinte ? teinteFamille(familleDuChemin(cheminCourant)?.code, teintes) : undefined;
+  const surtitre = surtitreDansLaPiece(eyebrow, piece);
   /*
     AUCUN CHIFFRE À ZÉRO SUR UN ÉCRAN VIDE (système de design, `27b`)
     ════════════════════════════════════════════════════════════════
@@ -110,11 +121,11 @@ export function ScreenHeader({
     <header className="mb-7">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
-          {eyebrow && (
+          {surtitre && (
             <p className="eyebrow mb-2.5 flex items-center gap-2">
               {/* Le point de famille : « où je suis », dans la teinte de la famille de l'écran. Jamais un signal. */}
               {teinte && <span aria-hidden className="inline-block h-1.5 w-1.5 flex-none rounded-full" style={{ backgroundColor: teinte }} />}
-              {eyebrow}
+              {surtitre}
             </p>
           )}
           {/*
@@ -124,7 +135,7 @@ export function ScreenHeader({
             interlettrage serré (-.03em) fait un titre d'écran, pas un gros
             libellé. `sm:` garde une fenêtre étroite lisible.
           */}
-          <h1 data-guide="titre" className="truncate text-[26px] font-bold leading-none tracking-[-0.03em] text-text-primary sm:text-[32px]">
+          <h1 data-guide="titre" className={piece.classeTitre ?? 'truncate text-[26px] font-bold leading-none tracking-[-0.03em] text-text-primary sm:text-[32px]'}>
             {title}
           </h1>
           {description && (
@@ -134,7 +145,11 @@ export function ScreenHeader({
             </Depliable>
           )}
         </div>
-        {actions && <div className="flex flex-shrink-0 items-center gap-2" data-screen-actions>{actions}</div>}
+        {/* La présence (cahier 15) : à droite de l'en-tête, avant les gestes. Rien quand personne d'autre n'est là. */}
+        <div className="flex flex-shrink-0 items-center gap-3">
+          <PastillePresence />
+          {actions && <div className="flex flex-shrink-0 items-center gap-2" data-screen-actions>{actions}</div>}
+        </div>
       </div>
 
       {shown.length > 0 && (

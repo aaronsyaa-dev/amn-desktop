@@ -14,6 +14,8 @@ import { GardeBadge } from './garde/GardeBadge';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { useLangue } from '../i18n';
+import { useNavigationEspacesOptionnelle } from '../bureaux/navigation';
+import { Glyphe } from '../bureaux/ui/Glyphe';
 
 /** Detects the platform once so we can show ⌘ on macOS and Ctrl elsewhere. */
 function useModifierKey(): string {
@@ -33,6 +35,7 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
   const navigate = useNavigate();
   const modKey = useModifierKey();
   const { t } = useLangue();
+  const espaces = useNavigationEspacesOptionnelle();
 
   return (
     <header className="sticky top-0 z-20 flex items-center gap-1.5 border-b border-border bg-bg/80 px-4 py-3 backdrop-blur-md sm:gap-3 md:px-8">
@@ -94,6 +97,25 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
           {modKey} K
         </kbd>
       </button>
+
+      {/*
+        LES BUREAUX (cahier 11) : Supervisor, Cyber, Studio, Stratégie et La
+        Garde ont quitté le rail. On y entre par la palette d'espaces — ⌘E ou
+        Ctrl E partout, G puis 1 à 5 hors d'un champ —, et ce bouton la rend
+        trouvable sans connaître la touche.
+      */}
+      {espaces && (
+        <button
+          type="button"
+          onClick={espaces.ouvrirPalette}
+          aria-haspopup="dialog"
+          className="input-focus hidden flex-none items-center gap-2.5 border border-border bg-surface px-3 py-2 text-sm text-text-muted transition-colors duration-200 hover:border-border-strong xl:flex"
+        >
+          <Glyphe espace="supervisor" taille={14} />
+          <span>Changer d’espace</span>
+          <kbd className="flex items-center gap-0.5 border border-border px-1.5 py-0.5 font-mono text-[10px] font-medium text-text-secondary">{modKey} E</kbd>
+        </button>
+      )}
 
       {/* Mobile: search collapses to a loupe icon that opens the full-screen palette. */}
       <button

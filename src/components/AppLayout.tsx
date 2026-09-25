@@ -46,6 +46,13 @@ import { PremiereOuverture } from './PremiereOuverture';
 import { NavAllegesSync } from './NavAllegesSync';
 import { ongletMemorise, routeMemorisable } from '../lib/memoireOnglet';
 import { ModulesOuvertsTracker } from '../state/useModulesOuverts';
+import { RegardsProvider } from '../state/RegardsContext';
+import { SourceBureauxProvider, useActiverSourceBureaux } from '../bureaux/donnees/source';
+import { NavigationEspacesProvider } from '../bureaux/navigation';
+import { bureauDuChemin } from '../bureaux/catalogue';
+import { CadreBureau } from '../bureaux/CadreBureau';
+import { PaletteEspaces } from '../bureaux/ui/PaletteEspaces';
+import { AideRaccourcis } from '../bureaux/ui/AideRaccourcis';
 
 const LAST_TAB_KEY = 'amn.lastTab';
 
@@ -58,6 +65,15 @@ export function AppLayout() {
   // onglet mémorisé arrivent donc toujours dans la bonne pièce, sans que
   // personne ait à penser à la régler.
   const isControl = spaceForPath(location.pathname) === 'control';
+  /*
+    LES BUREAUX DE SUPERVISION (cahiers 11 à 16). Supervisor, Cyber, Studio,
+    Stratégie et La Garde quittent le rail du poste de travail : un chemin qui
+    appartient à un bureau est posé dans SA coquille (barre haute commune,
+    navigation propre), le reste dans le poste. Les fournisseurs, eux, restent
+    les mêmes au-dessus des deux — un appel en cours ne tombe pas quand on
+    change de pièce.
+  */
+  const bureau = bureauDuChemin(location.pathname);
   const [showWelcome, setShowWelcome] = React.useState(shouldShowWelcome);
 
   // Mobile navigation drawer (< md). Closed on every route change.
@@ -110,6 +126,9 @@ export function AppLayout() {
   return (
     <SyncProvider>
       <ProfilesProvider>
+        <SourceBureauxProvider actif={Boolean(bureau)}>
+        <RegardsProvider>
+        <NavigationEspacesProvider>
         <ActivityProvider>
         <RemoteSitesProvider>
           <ToastProvider>
@@ -137,7 +156,12 @@ export function AppLayout() {
               {/* Réservé dans le flux, jamais superposé : recouvrir la barre du
                   haut rendrait le bouton du menu inatteignable sur téléphone. */}
               <LocalSessionBanner />
-              <div className="flex min-h-0 flex-1">
+              {bureau ? (
+                <CadreBureau bureau={bureau} />
+              ) : (
+              <>
+              <SourceEnAttente />
+              <div className="flex min-h-0 flex-1" data-espace-racine data-espace="poste">
               {/* Le rail des organisations, toujours à gauche de tout le reste.
                   Masqué sous `md` : sur un téléphone, la colonne d'icônes et le
                   tiroir de navigation ne tiennent pas côte à côte — le
@@ -212,7 +236,12 @@ export function AppLayout() {
                 onClose={() => setMobileLauncherOpen(false)}
                 space={spaceForPath(location.pathname)}
               />
+              </>
+              )}
             </div>
+              {/* ⌘E / Ctrl E partout : la palette d'espaces, et « ? » dans un bureau. */}
+              <PaletteEspaces />
+              <AideRaccourcis />
               <CallOverlay />
               <SiteDetailPanel />
               <AssistantPanel />
@@ -244,6 +273,9 @@ export function AppLayout() {
           </ToastProvider>
         </RemoteSitesProvider>
         </ActivityProvider>
+        </NavigationEspacesProvider>
+        </RegardsProvider>
+        </SourceBureauxProvider>
       </ProfilesProvider>
     </SyncProvider>
   );
@@ -259,5 +291,15 @@ function RouteSeenTracker() {
   React.useEffect(() => {
     markSeen(location.pathname);
   }, [location.pathname, markSeen]);
+  return null;
+}
+
+/**
+ * Au poste de travail, la source des bureaux s'engage après quelques secondes
+ * de calme : le carton du premier sas aura sa ligne ambre, sans rien coûter à
+ * l'ouverture de l'application.
+ */
+function SourceEnAttente() {
+  useActiverSourceBureaux(8_000);
   return null;
 }

@@ -281,3 +281,8 @@ export function useProfiles(): ProfilesContextValue {
   if (!ctx) throw new Error('useProfiles must be used within a ProfilesProvider');
   return ctx;
 }
+
+/** Les profils quand un fournisseur existe, `null` sinon (en-tête rendu hors coquille). */
+export function useProfilesOptionnel(): ProfilesContextValue | null {
+  return useContext(ProfilesContext) ?? null;
+}

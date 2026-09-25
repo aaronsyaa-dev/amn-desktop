@@ -1,0 +1,337 @@
+/*
+  LES BUREAUX DE SUPERVISION — la peau commune (cahier 11).
+
+  Importé par la seule coquille des bureaux : ce fichier n'entre que dans le
+  build interne. Chaque bureau pose ses cinq noirs en variables sur sa racine
+  (`[data-bureau]`) ; tout le reste — cartes, onglets, boutons — les lit. Un
+  écran recousu (cahier 16) n'a donc rien à savoir du bureau qui le porte.
+*/
+
+.bx {
+  --bx-fond: #060606;
+  --bx-surf: #121212;
+  --bx-rel: #181818;
+  --bx-filet: #1c1c1c;
+  --bx-barre: #0c0c0c;
+  background: var(--bx-fond);
+  color: #f7f7f5;
+}
+.bx[data-bureau='supervisor'] {
+  --bx-fond: #0b0b0b;
+  --bx-surf: #121212;
+  --bx-rel: #1a1a1a;
+  --bx-filet: #252525;
+  --bx-barre: #0e0e0e;
+}
+.bx[data-bureau='cyber'] {
+  --bx-fond: #090a0a;
+  --bx-surf: #0f1111;
+  --bx-rel: #161919;
+  --bx-filet: #212525;
+  --bx-barre: #0b0c0c;
+}
+.bx[data-bureau='studio'] {
+  --bx-fond: #0d0c0b;
+  --bx-surf: #141312;
+  --bx-rel: #1c1b19;
+  --bx-filet: #2a2826;
+  --bx-barre: #100f0e;
+}
+.bx[data-bureau='strategie'] {
+  --bx-fond: #0c0c0d;
+  --bx-surf: #141416;
+  --bx-rel: #1b1b1e;
+  --bx-filet: #28282c;
+  --bx-barre: #0f0f11;
+}
+.bx[data-bureau='garde'] {
+  --bx-fond: #080808;
+  --bx-surf: #101010;
+  --bx-rel: #171717;
+  --bx-filet: #202020;
+  --bx-barre: #0a0a0a;
+}
+
+/* ── Les cartes : la dominante (une ou deux par écran), la calme. ── */
+.bx-dom {
+  background: var(--bx-surf);
+  border: 1px solid var(--bx-filet);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 34px 62px -28px rgba(0, 0, 0, 1);
+}
+.bx-calme {
+  background: var(--bx-fond);
+  border: 1px solid var(--bx-filet);
+}
+.bx-rel {
+  background: var(--bx-rel);
+  border: 1px solid var(--bx-filet);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.bx-filet {
+  border-color: var(--bx-filet);
+}
+
+/* Surtitre des cartes : mono, espacé, encre sourde (plancher du produit). */
+.bx-sur {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #a3a3a0;
+}
+.bx-sur-d {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: #9a9a97;
+}
+.bx-mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Les deux boutons du paquet (`BTN`, `BTN2`), et l'inactif sans ombre. ── */
+.bx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 15px;
+  background: #f7f7f5;
+  color: #0a0a0a;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  box-shadow: 0 12px 26px -12px rgba(0, 0, 0, 0.9);
+}
+.bx-btn:hover {
+  background: #ffffff;
+}
+.bx-btn:disabled,
+.bx-btn[aria-disabled='true'] {
+  background: #242424;
+  color: #9a9a97;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.bx-btn2 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 15px;
+  border: 1px solid #3a3a3a;
+  color: #e4e4e1;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.bx-btn2:hover {
+  border-color: #6b6b68;
+  color: #f7f7f5;
+}
+.bx-btn:focus-visible,
+.bx-btn2:focus-visible,
+.bx-lien:focus-visible,
+.bx-nav:focus-visible {
+  outline: 2px solid #f7f7f5;
+  outline-offset: 2px;
+}
+.bx-lien {
+  font-weight: 600;
+  font-size: 12.5px;
+  color: #f7f7f5;
+  border-bottom: 1px solid #6b6b68;
+  padding-bottom: 2px;
+}
+.bx-lien:hover {
+  border-bottom-color: #f7f7f5;
+}
+
+/* Une ligne de liste des cartes calmes (`line()` du paquet). */
+.bx-ligne {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid #1a1a1a;
+  align-items: baseline;
+}
+
+/* La trame de points de Stratégie (pas de 24). */
+.bx-trame {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1.2px);
+  background-size: 24px 24px;
+}
+
+/* ── Le mouvement ambiant ─────────────────────────────────────────────
+   Tout ce qui bouge sans qu'on le demande porte `data-mv`. L'interrupteur
+   Ambiance pose `data-ambiance="coupee"` sur la racine des bureaux ; le
+   système qui demande moins de mouvement l'emporte toujours. */
+[data-ambiance='coupee'] [data-mv],
+[data-ambiance='coupee'] [data-mv]::before,
+[data-ambiance='coupee'] [data-mv]::after {
+  animation: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-mv],
+  [data-mv]::before,
+  [data-mv]::after {
+    animation: none !important;
+  }
+}
+
+/* Le balayage de l'horizon (Supervisor) : 9 s. */
+@keyframes bxBalayage {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(520%);
+  }
+}
+.bx-balayage {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 18%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.035), transparent);
+  animation: bxBalayage 9s linear infinite;
+  pointer-events: none;
+}
+
+/* La ligne de veille (Cyber) : 12 s. */
+@keyframes bxVeille {
+  0% {
+    transform: translateX(-4px);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(var(--bx-course, 900px));
+    opacity: 0;
+  }
+}
+.bx-veille {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(247, 247, 245, 0.18), transparent);
+  animation: bxVeille 12s linear infinite;
+  pointer-events: none;
+}
+
+/* Le mur respire (Stratégie) : 2 px, 14 s. */
+@keyframes bxRespire {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+.bx-respire {
+  animation: bxRespire 14s ease-in-out infinite;
+}
+
+/* Le pouls de la Garde : le point bat toutes les 4 s. */
+@keyframes bxPouls {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1.6);
+  }
+  30% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+}
+.bx-pouls {
+  animation: bxPouls 4s ease-in-out infinite;
+}
+
+/* Les fenêtres de la façade s'allument, une fois, à l'entrée (600 ms). */
+@keyframes bxAllume {
+  from {
+    opacity: 0.08;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.bx-allume {
+  animation: bxAllume 180ms ease-out both;
+}
+
+/* ── La palette et l'aide : l'écran assombri à 76 %. ── */
+.bx-voile {
+  background: rgba(4, 4, 4, 0.76);
+}
+
+/* Pendant un sas, le nouvel espace est posé sous le calque : rien ne doit
+   capter le pointeur d'ici à la fin (un clic ACHÈVE le sas, voir sas.ts). */
+.bx-sas {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+/* La fenêtre ambre de la façade respire (Studio, `dvamber`) : 2,8 s. */
+@keyframes bxAmbreRespire {
+  0%,
+  100% {
+    box-shadow: 0 0 26px -6px rgba(208, 154, 74, 0.75);
+  }
+  50% {
+    box-shadow: 0 0 34px -2px rgba(208, 154, 74, 0.95);
+  }
+}
+.bx-ambre-respire {
+  animation: bxAmbreRespire 2.8s ease-in-out infinite;
+}
+
+/* Une garde en ronde : le point blanc bat (`dvhalo`). */
+@keyframes bxHalo {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(247, 247, 245, 0.55);
+  }
+  60% {
+    box-shadow: 0 0 0 5px rgba(247, 247, 245, 0);
+  }
+}
+.bx-halo {
+  animation: bxHalo 1.8s ease-out infinite;
+}
+
+/* Le papier (fiches de campagne, rapport mensuel, message à la cliente). */
+.bx-papier {
+  background: #e8e6e0;
+  color: #111111;
+  box-shadow: 0 18px 30px -18px rgba(0, 0, 0, 0.9), 0 2px 0 rgba(0, 0, 0, 0.25);
+}
+/* La punaise : 12 px, un reflet. */
+.bx-punaise {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f0f0ee 0 18%, #a8a8a6 40%, #5a5a58 100%);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.6);
+}

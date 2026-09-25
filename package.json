@@ -20,6 +20,7 @@
     "check:justificatif": "node scripts/check-justificatif.mjs",
     "check:ecrans": "node scripts/check-ecrans.mjs",
     "check:encres": "node scripts/check-encres.mjs",
+    "check:chercheur": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-chercheur.ts",
     "typecheck:business": "tsc --noEmit -p tsconfig.business.json",
     "start:business": "cross-env AMN_EDITION=business npm run start",
     "package:business": "cross-env AMN_EDITION=business npm run package",

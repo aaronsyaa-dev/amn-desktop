@@ -82,6 +82,17 @@ function navCommandsFromCatalog(): Extract<Command, { kind: 'nav' }>[] {
   }));
 }
 
+/**
+ * Dans un bureau de supervision (édition interne), ⌘K ouvre la palette DU
+ * BUREAU, qui ne propose que ses outils : cette palette-ci liste les modules
+ * du poste de travail, et « on ne mélange pas » (cahier 11, `44d`). La
+ * coquille du bureau la fait céder le temps qu'elle est montée.
+ */
+let cedee = false;
+export function cederPaletteCommandes(v: boolean) {
+  cedee = v;
+}
+
 export function CommandPaletteProvider({
   children,
 }: {
@@ -95,6 +106,7 @@ export function CommandPaletteProvider({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        if (cedee) return;
         e.preventDefault();
         setIsOpen((v) => !v);
       }

@@ -19,6 +19,11 @@ const IDLE_MS = 4 * 60_000; // 4 minutes — restful, not twitchy.
 
 export function IdleScreensaver() {
   const { actif, reveiller } = useInactivite(IDLE_MS);
+  // La veille termine la session des bureaux : la prochaine entrée dans un
+  // bureau rejoue son sas complet (cahier 11 §3).
+  React.useEffect(() => {
+    if (actif) window.dispatchEvent(new Event('amn:veille-ouverte'));
+  }, [actif]);
   return <AnimatePresence>{actif && <Veil onWake={reveiller} />}</AnimatePresence>;
 }
 

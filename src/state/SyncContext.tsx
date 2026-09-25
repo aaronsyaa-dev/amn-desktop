@@ -203,6 +203,29 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'writingDrafts',
   'translations',
   'extensionGrants',
+  // Les bureaux de supervision (édition interne) : leurs collections vivent
+  // dans l'espace d'AMN DevSec. Une cliente ne les écrit jamais ; les lire
+  // chez elle rend des listes vides, rien de plus.
+  'suivis',
+  'parcReleves',
+  'parcRegles',
+  'parcDeclenchements',
+  'parcoursBugs',
+  'postureControles',
+  'inventaire',
+  'incidentsFiches',
+  'playbookRuns',
+  'playbooks',
+  'carnet',
+  'rapportsPosture',
+  'hameconnages',
+  'rotationsSecrets',
+  'exercicesCrise',
+  'studioPieces',
+  'campagnes',
+  'publications',
+  'strategieMur',
+  'temoignages',
 ];
 
 const MIRROR_PREFIX = 'amn.sync.';

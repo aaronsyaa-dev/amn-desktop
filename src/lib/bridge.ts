@@ -85,6 +85,7 @@ import type {
   JetonDepose,
   SyncedCollection,
   RecordWatchers,
+  RegardModule,
   RecordActivityEntry,
   HallEtat,
   HallMessage,
@@ -1010,6 +1011,24 @@ function createBrowserRemote(): AmnBridge['remote'] {
         frameListeners.set('watchers', set);
       }
       const listener = (frame: Record<string, unknown>) => callback(frame as unknown as RecordWatchers);
+      set.add(listener);
+      return () => {
+        set?.delete(listener);
+      };
+    },
+    annoncerRegard(module: string | null) {
+      ensureStarted();
+      if (!socket || socket.readyState !== WebSocket.OPEN) return;
+      socket.send(JSON.stringify({ type: 'regard', module: typeof module === 'string' ? module : null }));
+    },
+    onRegards(callback: (entries: RegardModule[]) => void) {
+      ensureStarted();
+      let set = frameListeners.get('regards');
+      if (!set) {
+        set = new Set();
+        frameListeners.set('regards', set);
+      }
+      const listener = (frame: Record<string, unknown>) => callback(Array.isArray(frame.entries) ? (frame.entries as RegardModule[]) : []);
       set.add(listener);
       return () => {
         set?.delete(listener);

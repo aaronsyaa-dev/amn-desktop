@@ -14,6 +14,7 @@ import {
   type CallSignal,
   type OutgoingCallSignal,
   type RecordWatchers,
+  type RegardModule,
   type CreateClientInput,
   type CreateDecisionInput,
   type CreateKnowledgeDocInput,
@@ -244,6 +245,14 @@ const bridge: AmnBridge = {
       const listener = (_event: Electron.IpcRendererEvent, info: RecordWatchers) => callback(info);
       ipcRenderer.on(IPC.remoteWatchersPush, listener);
       return () => ipcRenderer.removeListener(IPC.remoteWatchersPush, listener);
+    },
+    annoncerRegard: (module: string | null) => {
+      void ipcRenderer.invoke(IPC.remoteAnnoncerRegard, module);
+    },
+    onRegards: (callback: (entries: RegardModule[]) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, entries: RegardModule[]) => callback(entries);
+      ipcRenderer.on(IPC.remoteRegardsPush, listener);
+      return () => ipcRenderer.removeListener(IPC.remoteRegardsPush, listener);
     },
     welcome: {
       inspect: (token: string) => ipcRenderer.invoke(IPC.remoteWelcomeInspect, token),

@@ -1,3 +1,4 @@
+import { routesBureaux } from '../bureaux/routes';
 import React from 'react';
 import { AccueilChoisi } from '../accueils/useAccueil';
 import { Navigate, Route, Routes } from 'react-router-dom';
@@ -361,6 +362,12 @@ function AmnRoutes() {
         <Route path="/materiel" element={<EquipmentBookingScreen />} />
         <Route path="/bibliotheque" element={<LibraryScreen />} />
         <Route path="/vault" element={<VaultScreen />} />
+
+        {/* LES BUREAUX DE SUPERVISION (cahiers 11 à 16) : Supervisor, Cyber,
+            Studio, Stratégie, La Garde. Les vingt-trois modules ci-dessous
+            gardent leurs chemins ; AppLayout les recoud dans la coquille de
+            leur bureau (voir src/bureaux/catalogue.ts). */}
+        {routesBureaux()}
 
         {/* La Garde (Bloc 3) : le troisième espace — déléguer. */}
         <Route path="/garde" element={<GardeSalleScreen />} />

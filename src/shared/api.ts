@@ -2571,7 +2571,31 @@ export type SyncedCollection =
   | 'roomBookings'
   | 'writingDrafts'
   | 'translations'
-  | 'extensionGrants';
+  | 'extensionGrants'
+  /*
+    LES BUREAUX DE SUPERVISION (cahiers 11 à 16) — écrites dans l'espace
+    d'AMN DevSec, à propos du parc. Voir amn-api/src/routes/collections.js.
+  */
+  | 'suivis'
+  | 'parcReleves'
+  | 'parcRegles'
+  | 'parcDeclenchements'
+  | 'parcoursBugs'
+  | 'postureControles'
+  | 'inventaire'
+  | 'incidentsFiches'
+  | 'playbookRuns'
+  | 'playbooks'
+  | 'carnet'
+  | 'rapportsPosture'
+  | 'hameconnages'
+  | 'rotationsSecrets'
+  | 'exercicesCrise'
+  | 'studioPieces'
+  | 'campagnes'
+  | 'publications'
+  | 'strategieMur'
+  | 'temoignages';
 
 export interface PresenceEntry {
   email: string;
@@ -2589,6 +2613,20 @@ export interface RecordWatchers {
   id: string;
   /** Emails des opérateurs qui ont cette fiche ouverte, soi-même inclus. */
   emails: string[];
+}
+
+/**
+ * LA PRÉSENCE SUR UN MODULE (cahier 15, `51a`) — une entrée de la trame
+ * `regards` : tel membre de l'organisation a tel module ouvert depuis telle
+ * heure. Le serveur ne la diffuse qu'aux membres de l'organisation, jamais
+ * à une session d'assistance (amn-api/src/ws/hub.js, `regardsSnapshot`).
+ */
+export interface RegardModule {
+  email: string;
+  /** Le chemin du module ouvert (`/clients`, `/garde/pile`…). */
+  module: string;
+  /** ISO — l'heure d'ouverture, posée par le serveur. */
+  depuis: string;
 }
 
 /**
@@ -3162,6 +3200,14 @@ export interface AmnBridge {
     unwatchRecord(): void;
     /** Qui regarde la fiche annoncée par la dernière trame `watchers` reçue. */
     onWatchers(callback: (info: RecordWatchers) => void): () => void;
+    /**
+     * Annonce le module ouvert sur ce poste, `null` quand on n'en a plus
+     * (cahier 15). Fire-and-forget : un lien coupé prive la pastille, rien
+     * d'autre — et l'appelant la renvoie à la reconnexion.
+     */
+    annoncerRegard(module: string | null): void;
+    /** Qui a quel module ouvert dans l'organisation — la trame `regards`. */
+    onRegards(callback: (entries: RegardModule[]) => void): () => void;
     /**
      * Journal d'activité des collections partagées (Administration, confort
      * d'usage à deux) : qui a créé/modifié/supprimé quoi, récemment.
@@ -4033,6 +4079,8 @@ export const IPC = {
   remoteWatchRecord: 'remote:watchRecord',
   remoteUnwatchRecord: 'remote:unwatchRecord',
   remoteWatchersPush: 'remote:watchersPush',
+  remoteAnnoncerRegard: 'remote:annoncerRegard',
+  remoteRegardsPush: 'remote:regardsPush',
   remoteActivityLog: 'remote:activityLog',
   systemNotify: 'system:notify',
   systemCanRemoteControl: 'system:canRemoteControl',
