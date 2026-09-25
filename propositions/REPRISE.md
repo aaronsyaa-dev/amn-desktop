@@ -29,19 +29,6 @@ Voir le tableau d'état plus bas, tenu à jour après chaque étape.
 | 03-onze-mots | non | – | – | à construire |
 | 04-le-bureau-range | non | – | – | à construire |
 
-## Chaînes en cours (25/09, lancées vers 10 h 50 UTC)
-
-- Workflow `wf_9b806c26-364` : 01-usine-dans-la-masse, 02-le-carnet.
-- Workflow `wf_dc32cce5-39f` : 03-onze-mots, 04-le-bureau-range.
-- Même script pour les deux :
-  `~/.claude/projects/-home-user-amn-desktop/446d47c6-15bb-5f64-9ce8-fd15cfedcbc3/workflows/scripts/maquettes-amn-desktop-wf_9b806c26-364.js`,
-  arguments `{"slugs": [...]}`. Reprise : outil Workflow avec `scriptPath`,
-  `resumeFromRunId` et les mêmes arguments.
-- Chaque chaîne : construire → jusqu'à 5 critiques, chacune suivie d'une
-  correction tant que 3D < 9 ou téléphone < 8.
-- Sauvegarde automatique : `scratchpad/sauvegarde-maquettes.sh` pousse
-  `propositions/` toutes les 15 min (meurt avec le conteneur : le relancer).
-
 ## Relancer
 
 1. Vérifier l'état : `git log --oneline -5`, `ls propositions/`,
