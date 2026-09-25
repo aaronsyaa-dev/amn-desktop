@@ -24,6 +24,8 @@ import {
 } from '@edition/seeds';
 import { browserExclusiveBridge, createBrowserExclusive } from '@edition/browserExclusive';
 import type {
+  InvitationLue,
+  AbonnementEtat,
   ActiveSession,
   CallLink,
   CreatedCallLink,
@@ -886,6 +888,29 @@ function createBrowserRemote(): AmnBridge['remote'] {
     },
     async resetPassword(token: string, password: string) {
       return publicPost<{ ok: boolean }>('/v1/courrier/mot-de-passe/reinitialiser', { token, password });
+    },
+    async lireInvitation(token: string) {
+      return publicPost<InvitationLue>('/v1/auth/invitations/lire', { token });
+    },
+    async courrierDisponible() {
+      try {
+        return await apiFetch<{ actif: boolean }>('/v1/courrier/disponible');
+      } catch {
+        return { actif: false }; // serveur d'avant : pas de courrier, la copie reste
+      }
+    },
+    async envoyerRelance(invoiceId: string, texte: string) {
+      return apiFetch<{ envoye: true; a: string }>('/v1/courrier/relance', { method: 'POST', body: JSON.stringify({ invoiceId, texte }) });
+    },
+    async abonnement() {
+      try {
+        return await apiFetch<AbonnementEtat>('/v1/paiements/abonnement');
+      } catch {
+        return { actif: false, abonnement: null };
+      }
+    },
+    async ouvrirAbonnement() {
+      return apiFetch<{ url: string; nature: 'souscription' | 'portail' }>('/v1/paiements/abonnement', { method: 'POST', body: '{}' });
     },
     // Appels audio : la signalisation vaut pour toute organisation à plusieurs,
     // donc elle vit dans le pont commun aux deux éditions.

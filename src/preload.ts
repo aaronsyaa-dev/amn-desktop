@@ -190,6 +190,11 @@ const bridge: AmnBridge = {
     },
     forgotPassword: (email: string) => ipcRenderer.invoke(IPC.remoteForgotPassword, email),
     resetPassword: (token: string, password: string) => ipcRenderer.invoke(IPC.remoteResetPassword, token, password),
+    lireInvitation: (token: string) => ipcRenderer.invoke(IPC.remoteLireInvitation, token),
+    courrierDisponible: () => ipcRenderer.invoke(IPC.remoteCourrierDisponible),
+    envoyerRelance: (invoiceId: string, texte: string) => ipcRenderer.invoke(IPC.remoteEnvoyerRelance, invoiceId, texte),
+    abonnement: () => ipcRenderer.invoke(IPC.remoteAbonnement),
+    ouvrirAbonnement: () => ipcRenderer.invoke(IPC.remoteOuvrirAbonnement),
     onSupportAnswered: (callback: (request: SupportRequest) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, request: SupportRequest) => callback(request);
       ipcRenderer.on(IPC.remoteSupportAnsweredPush, listener);

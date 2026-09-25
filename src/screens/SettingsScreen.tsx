@@ -66,7 +66,7 @@ import { navItemByKey } from '../data/navigation';
 import { useHaloSignal } from '../components/EtatEcran';
 import { LangueSection } from '../components/settings/LangueSection';
 import { AccueilSection } from '../components/settings/AccueilSection';
-import { VeilleSection } from '@edition/accueils';
+import { VeilleSection, AbonnementSection, useAbonnement } from '@edition/accueils';
 import { GuideSection } from '../guide/GuideSection';
 import { ExtensionsSection } from '../components/settings/ExtensionsSection';
 import { useSupportContext } from '../state/OrgContextContext';
@@ -98,6 +98,9 @@ export function SettingsScreen() {
 
       <StaggerItem>
         <FormuleEtPlaces />
+        <div className="mt-4">
+          <AbonnementSection />
+        </div>
       </StaggerItem>
 
       <StaggerItem>
@@ -360,6 +363,9 @@ function PlanDesReglages() {
 */
 function FormuleEtPlaces() {
   const { org } = useAuth();
+  // Le prélèvement est-il automatique ? Tant que non, la phrase d'avant reste vraie ; dès que oui, elle mentirait.
+  const abonnement = useAbonnement();
+  const preleve = Boolean(abonnement?.actif && abonnement.abonnement?.relie);
   if (!org) return null;
   return (
     <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -376,8 +382,9 @@ function FormuleEtPlaces() {
           <li className="flex items-baseline gap-2 text-[13px] leading-relaxed text-text-secondary">
             <span aria-hidden className="text-text-muted">—</span>
             <span>
-              Aucune date de prélèvement. Une place de plus se demande, un humain la lit ; rien n’est facturé
-              automatiquement.
+              {preleve
+                ? 'Votre carte. Le prélèvement mensuel passe par Stripe, qui la garde ; ce produit ne la voit jamais. Une place de plus se demande, un humain la lit.'
+                : 'Aucune date de prélèvement. Une place de plus se demande, un humain la lit ; rien n’est facturé automatiquement.'}
             </span>
           </li>
         </ul>

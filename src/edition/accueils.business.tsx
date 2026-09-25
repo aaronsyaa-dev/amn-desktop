@@ -103,3 +103,4 @@ export function useAccueilsDisponibles(): AccueilDef[] {
 
 /** L'écran de veille de l'édition cliente (`41a`) : son réglage vit dans Paramètres. */
 export { VeilleSection } from '../business/VeilleSection';
+export { AbonnementSection, useAbonnement } from '../business/AbonnementSection';

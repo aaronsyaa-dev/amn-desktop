@@ -418,6 +418,10 @@ export interface CreateOrganizationInput {
   language?: string;
   /** Les places de la formule : 1, 2, 5, 10 ou 25. */
   seats?: number;
+  /** Qui invite, tel que la cliente le lira (« Harun ») : un nom court, jamais une adresse. */
+  invitePar?: string;
+  /** `false` : remise de la main à la main, le serveur n'envoie pas le courriel d'invitation. */
+  envoyer?: boolean;
 }
 
 /**
@@ -433,7 +437,7 @@ export interface CreateOrganizationResult {
    * le poste ne la fabrique jamais, il ne connaît que `file://` une fois
    * installé. Le jeton reste rendu à côté, pour qui saurait le coller ailleurs.
    */
-  invitation: { token: string; url: string | null; expiresAt: string } | null;
+  invitation: { token: string; url: string | null; expiresAt: string; courrier?: CourrierEnvoi } | null;
   /**
    * L'adresse de l'application web, telle que le SERVEUR la connaît.
    *
@@ -449,7 +453,18 @@ export interface CreateOrganizationResult {
 
 export interface OrgInvitationResult {
   user: AdminOrgUser;
-  invitation: { token: string; url: string | null; expiresAt: string };
+  invitation: { token: string; url: string | null; expiresAt: string; courrier?: CourrierEnvoi };
+}
+
+/**
+ * L'invitation est-elle partie par courriel ? `raison` quand non :
+ * `sans_cle` (pas de Resend), `sans_expediteur`, `sans_adresse_app` (pas
+ * d'APP_BUSINESS_PUBLIC_URL, donc pas de lien), `non_demande` (remise en main
+ * propre), `appartenance` (compte existant), `echec`. Absent d'un serveur d'avant.
+ */
+export interface CourrierEnvoi {
+  envoye: boolean;
+  raison?: string;
 }
 
 export interface TempPasswordResult {
@@ -1139,6 +1154,26 @@ export interface InvoiceLine {
  * rétroactivement des documents déjà envoyés et déjà comptabilisés — donc on
  * fige une copie au moment de l'émission.
  */
+/** L'état d'une invitation, lu avant l'activation (`POST /v1/auth/invitations/lire`). */
+export type EtatInvitation = 'valable' | 'expire' | 'utilise' | 'suspendu' | 'incomplet';
+export interface InvitationLue {
+  etat: EtatInvitation;
+  nature?: 'activation' | 'appartenance';
+  organisation?: { nom: string; logo: string | null };
+  invitePar?: string | null;
+  /** L'adresse invitée, masquée (« m•••••@gmail.com »). */
+  destinataire?: string | null;
+  emiseLe?: string | null;
+  expireLe?: string;
+  motDePasseRequis?: boolean;
+}
+/** L'abonnement Stripe d'une organisation cliente, vu par elle. */
+export interface AbonnementEtat {
+  /** L'encaissement automatique est-il configuré sur le serveur ? */
+  actif: boolean;
+  abonnement: { relie: boolean; statut: string | null } | null;
+}
+
 export interface InvoiceParty {
   name: string;
   company: string;
@@ -3144,6 +3179,20 @@ export interface AmnBridge {
     forgotPassword(email: string): Promise<{ ok: boolean; courrier: 'envoye' | 'manuel' }>;
     /** Le lien reçu par courriel : poser le nouveau mot de passe. */
     resetPassword(token: string, password: string): Promise<{ ok: boolean }>;
+    /**
+     * Lire une invitation AVANT de l'activer (sans session) : son état et chez
+     * qui elle mène. Tout ce qui n'est pas un vrai jeton rend `incomplet`, et
+     * le serveur freine qui sonde (chantier « arrivée cliente »).
+     */
+    lireInvitation(token: string): Promise<InvitationLue>;
+    /** Le courrier du serveur part-il ? (oui/non) */
+    courrierDisponible(): Promise<{ actif: boolean }>;
+    /** Relancer par courriel le client d'une facture échue ; le destinataire est lu par le serveur dans la facture. */
+    envoyerRelance(invoiceId: string, texte: string): Promise<{ envoye: true; a: string }>;
+    /** L'abonnement de l'organisation (propriétaire ou administratrice). */
+    abonnement(): Promise<AbonnementEtat>;
+    /** Souscrire (page Stripe) ou gérer son abonnement (portail Stripe) : une adresse à ouvrir. */
+    ouvrirAbonnement(): Promise<{ url: string; nature: 'souscription' | 'portail' }>;
     welcome: {
       inspect(token: string): Promise<WelcomePreview>;
       reveal(token: string): Promise<WelcomeAccess>;
@@ -3444,6 +3493,11 @@ export interface AmnBridge {
       setOrganizationModule(id: string, key: string, open: boolean): Promise<AdminOrganization>;
       /** Une page du parc, filtrée, triée et comptée par le serveur (Bloc 4). */
       organizationsPage(query: ParcPageQuery): Promise<ParcPage>;
+      /**
+       * Une page de paiement Stripe pour cette cliente (encaissement automatique).
+       * 503 `paiement_hors_ligne` tant que Stripe n'est pas configuré sur le serveur.
+       */
+      pageDePaiement(orgId: string): Promise<{ url: string }>;
       organizationsSummary(): Promise<ParcSummary>;
       /**
        * Les logos de quelques organisations (cent au plus par appel), `null`
@@ -3800,6 +3854,11 @@ export const IPC = {
   remoteHallMasquePush: 'remote:hallMasquePush',
   remoteHallRafraichirPush: 'remote:hallRafraichirPush',
   remoteForgotPassword: 'remote:forgotPassword',
+  remoteLireInvitation: 'remote:lireInvitation',
+  remoteCourrierDisponible: 'remote:courrierDisponible',
+  remoteEnvoyerRelance: 'remote:envoyerRelance',
+  remoteAbonnement: 'remote:abonnement',
+  remoteOuvrirAbonnement: 'remote:ouvrirAbonnement',
   remoteResetPassword: 'remote:resetPassword',
   remoteWelcomeInspect: 'remote:welcomeInspect',
   remoteWelcomeReveal: 'remote:welcomeReveal',
@@ -3872,6 +3931,7 @@ export const IPC = {
   remoteAdminSetOrgPlan: 'remote:adminSetOrgPlan',
   remoteAdminSetOrgModule: 'remote:adminSetOrgModule',
   remoteAdminOrgsPage: 'remote:adminOrgsPage',
+  remoteAdminPageDePaiement: 'remote:adminPageDePaiement',
   remoteAdminOrgLogos: 'remote:adminOrgLogos',
   remoteGardeAppel: 'remote:gardeAppel',
   remoteGardePush: 'remote:gardePush',

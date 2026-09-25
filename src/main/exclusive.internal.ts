@@ -417,6 +417,8 @@ const adminApi = {
         trade: input.trade || undefined,
         language: input.language || undefined,
         seats: input.seats || undefined,
+        invitePar: input.invitePar || undefined,
+        envoyer: input.envoyer,
       }),
     });
   },
@@ -486,6 +488,10 @@ const adminApi = {
       { owner: true, method: 'PUT', body: JSON.stringify({ open }) },
     );
     return organization;
+  },
+
+  async pageDePaiement(orgId: string): Promise<{ url: string }> {
+    return apiFetch<{ url: string }>(`/v1/paiements/organisations/${encodeURIComponent(orgId)}/page`, { owner: true, method: 'POST', body: '{}' });
   },
 
   async organizationsPage(query: ParcPageQuery): Promise<ParcPage> {
@@ -881,6 +887,7 @@ export function registerExclusiveIpc(
   );
   ipcMain.handle(IPC.remoteAdminResetOrgModules, (_event, id: string) => adminApi.resetOrganizationModules(id));
   ipcMain.handle(IPC.remoteAdminOrgsPage, (_event, query: ParcPageQuery) => adminApi.organizationsPage(query));
+  ipcMain.handle(IPC.remoteAdminPageDePaiement, (_event, orgId: string) => adminApi.pageDePaiement(orgId));
   ipcMain.handle(IPC.remoteAdminOrgLogos, (_event, ids: string[]) => adminApi.organizationLogos(ids));
   ipcMain.handle(IPC.remoteGardeAppel, (_event, req: GardeAppel) => gardeAppel(req));
   ipcMain.handle(IPC.remoteAdminOrgsSummary, () => adminApi.organizationsSummary());

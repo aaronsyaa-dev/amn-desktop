@@ -407,6 +407,8 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
           trade: input.trade || undefined,
           language: input.language || undefined,
           seats: input.seats || undefined,
+        invitePar: input.invitePar || undefined,
+        envoyer: input.envoyer,
         }),
       });
     },
@@ -470,6 +472,9 @@ export function createBrowserExclusive(ctx: BrowserExclusiveContext): ExclusiveR
         { owner: true, method: 'PUT', body: JSON.stringify({ open }) },
       );
       return organization;
+    },
+    async pageDePaiement(orgId: string) {
+      return ctx.apiFetch<{ url: string }>(`/v1/paiements/organisations/${encodeURIComponent(orgId)}/page`, { owner: true, method: 'POST', body: '{}' });
     },
     async organizationsPage(query: ParcPageQuery) {
       const params = new URLSearchParams();

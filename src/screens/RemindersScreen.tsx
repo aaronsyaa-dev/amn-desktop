@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, BellRing, Check, Copy } from 'lucide-react';
+import { AlertTriangle, BellRing, Check, Copy, Send } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { FirstRun } from '../components/EmptyState';
 import { useSync, useCollection, uid } from '../state/SyncContext';
@@ -14,6 +14,8 @@ import { paliereDe, toneAMonte, rangPalier, cleMessagePalier, CLE_LIBELLE_PALIER
 import type { Invoice } from '../shared/api';
 import { useAppointments } from '../state/useAppointments';
 import { useHaloSignal } from '../components/EtatEcran';
+import { bridge } from '../lib/bridge';
+import { cleanErrorMessage } from '../lib/errorMessage';
 
 interface ReminderData {
   invoiceId: string;
@@ -170,6 +172,35 @@ export function RemindersScreen() {
       note: '',
       palier: palierDe(f),
     });
+
+  /*
+    ENVOYER PAR COURRIEL (chantier « arrivée cliente », partie 2).
+
+    Quand le serveur a son courrier, la relance part d'ici, au nom de
+    l'organisation, réponse à la personne qui relance — et se note seule. Le
+    destinataire est celui de la facture : le serveur le relit dans la facture,
+    il n'est jamais pris dans l'écran. Sans courrier, ou sans adresse sur la
+    facture, rien ne change : on copie et on note, comme avant.
+  */
+  const [courrier, setCourrier] = useState(false);
+  useEffect(() => {
+    let vivant = true;
+    void bridge().remote.courrierDisponible().then((r) => { if (vivant) setCourrier(r.actif); }).catch(() => undefined);
+    return () => { vivant = false; };
+  }, []);
+  const [envoi, setEnvoi] = useState<{ id: string; etat: 'envoi' | 'envoye' | 'erreur'; texte: string } | null>(null);
+  const adresse = (f: Invoice) => (f.billTo?.email ?? '').trim();
+  const envoyer = async (f: Invoice) => {
+    if (envoi?.etat === 'envoi') return;
+    setEnvoi({ id: f.id, etat: 'envoi', texte: '' });
+    try {
+      const r = await bridge().remote.envoyerRelance(f.id, message(f));
+      noter(f);
+      setEnvoi({ id: f.id, etat: 'envoye', texte: t('relances.envoyee', { email: r.a }) });
+    } catch (err) {
+      setEnvoi({ id: f.id, etat: 'erreur', texte: t('relances.envoiImpossible', { raison: cleanErrorMessage(err, '') }) });
+    }
+  };
 
   /* ------------------------------------- l'échelle d'escalade (`14d`) -- */
 
@@ -491,7 +522,28 @@ export function RemindersScreen() {
             <p className="mt-4 whitespace-pre-wrap border border-border bg-bg px-4 py-3.5 text-sm leading-relaxed text-text-secondary">{message(tete)}</p>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              <button type="button" onClick={() => void copier(tete)} className="flex min-h-11 items-center gap-2 bg-accent px-4 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover md:min-h-0 md:py-2.5">
+              {/* L'ambre va à UNE action : l'envoi quand il est possible, sinon la copie. */}
+              {courrier && adresse(tete) && (
+                <button
+                  type="button"
+                  onClick={() => void envoyer(tete)}
+                  disabled={envoi?.id === tete.id && (envoi.etat === 'envoi' || envoi.etat === 'envoye')}
+                  data-relance-envoyer
+                  className="flex min-h-11 items-center gap-2 bg-accent px-4 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover disabled:opacity-60 md:min-h-0 md:py-2.5"
+                >
+                  {envoi?.id === tete.id && envoi.etat === 'envoye' ? <Check size={14} strokeWidth={2.5} /> : <Send size={14} strokeWidth={2} />}
+                  {t('relances.envoyer', { email: adresse(tete) })}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => void copier(tete)}
+                className={
+                  courrier && adresse(tete)
+                    ? 'flex min-h-11 items-center gap-2 border border-border-strong px-4 text-sm text-text-primary hover:bg-surface-hover md:min-h-0 md:py-2.5'
+                    : 'flex min-h-11 items-center gap-2 bg-accent px-4 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover md:min-h-0 md:py-2.5'
+                }
+              >
                 {copiee === tete.id ? <Check size={14} strokeWidth={2.5} /> : <Copy size={14} strokeWidth={2} />}
                 {copiee === tete.id ? t('relances.copie') : t('relances.copier')}
               </button>
@@ -499,6 +551,11 @@ export function RemindersScreen() {
                 <BellRing size={14} strokeWidth={2} /> {t('relances.noter')}
               </button>
             </div>
+            {envoi?.id === tete.id && envoi.texte && (
+              <p role={envoi.etat === 'erreur' ? 'alert' : 'status'} className={`mt-2 text-xs ${envoi.etat === 'erreur' ? 'text-danger' : 'text-text-secondary'}`} data-relance-etat={envoi.etat}>
+                {envoi.texte}
+              </p>
+            )}
           </motion.section>
 
           {reste.length > 0 && (

@@ -75,6 +75,18 @@ export function ComptesBureau() {
       await charger();
     } catch (err) { setDit(t('garde.erreur', { message: err instanceof Error ? err.message : String(err) })); } finally { setBusy(false); }
   };
+  /* La page de paiement Stripe d'une cliente (encaissement automatique) : copiée, à lui transmettre ; le règlement se note ensuite seul. */
+  const pageStripe = async (orgId: string) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const { url } = await bridge().remote.admin.pageDePaiement(orgId);
+      try { await navigator.clipboard.writeText(url); } catch { /* le lien reste affiché */ }
+      setDit(t('garde.comptes.pageStripeCopiee', { url }));
+    } catch (err) {
+      setDit(t('garde.erreur', { message: err instanceof Error ? err.message : String(err) }));
+    } finally { setBusy(false); }
+  };
   const quoi = (j: GardeJeton) => (j.module ? j.module : j.formule ? t('garde.comptes.formuleDe', { formule: j.formule === 'business_premium' ? 'Premium' : 'Standard' }) : t('garde.comptes.placesDe', { n: j.places ?? 0 }));
   const etatClasse = (etat: GardeCompte['etat'] | GardeJeton['etat']) => (etat === 'a_jour' || etat === 'utilise' ? 'text-success' : etat === 'grace' || etat === 'emis' ? 'text-warning' : etat === 'suspendu' || etat === 'impaye' ? 'text-danger' : 'text-text-muted');
 
@@ -138,6 +150,7 @@ export function ComptesBureau() {
                   <span className="min-w-0 flex-1 truncate text-text-primary">{o.name}</span>
                   <button type="button" disabled={busy} onClick={() => void paiement(o.id, 'impaye')} className="border border-border px-2 py-0.5 text-[11px] text-danger hover:border-border-strong">{t('garde.comptes.impaye')}</button>
                   <button type="button" disabled={busy} onClick={() => void paiement(o.id, 'paye')} className="border border-border px-2 py-0.5 text-[11px] text-success hover:border-border-strong">{t('garde.comptes.paye')}</button>
+                  <button type="button" disabled={busy} onClick={() => void pageStripe(o.id)} className="border border-border px-2 py-0.5 text-[11px] text-text-secondary hover:border-border-strong hover:text-text-primary" data-page-stripe>{t('garde.comptes.pageStripe')}</button>
                 </li>
               ))}
             </ul>

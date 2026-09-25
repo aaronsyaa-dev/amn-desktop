@@ -123,3 +123,11 @@ export function useAccueilsDisponibles(): AccueilDef[] {
 export function VeilleSection(): null {
   return null;
 }
+
+/** L'abonnement Stripe : une affaire de cliente, AMN DevSec n'en a pas. */
+export function AbonnementSection(): null {
+  return null;
+}
+export function useAbonnement(): import('../shared/api').AbonnementEtat | null {
+  return null;
+}

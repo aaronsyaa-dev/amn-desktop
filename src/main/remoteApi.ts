@@ -12,6 +12,8 @@ import { API_UNREACHABLE_PREFIX, GUEST_QUOTA_PREFIX, marquerStatut,
 } from '../shared/api';
 import { avecReprise, messageServeurAbsent, serveurAbsent } from '../shared/reprise';
 import type {
+  InvitationLue,
+  AbonnementEtat,
   ActiveSession,
   CallLink,
   CreatedCallLink,
@@ -453,6 +455,34 @@ export class RemoteApiClient {
 
   async resetPassword(token: string, password: string): Promise<{ ok: boolean }> {
     return this.publicPost<{ ok: boolean }>('/v1/courrier/mot-de-passe/reinitialiser', { token, password });
+  }
+
+  async lireInvitation(token: string): Promise<InvitationLue> {
+    return this.publicPost<InvitationLue>('/v1/auth/invitations/lire', { token });
+  }
+
+  async courrierDisponible(): Promise<{ actif: boolean }> {
+    try {
+      return await apiFetch<{ actif: boolean }>('/v1/courrier/disponible');
+    } catch {
+      return { actif: false };
+    }
+  }
+
+  async envoyerRelance(invoiceId: string, texte: string): Promise<{ envoye: true; a: string }> {
+    return apiFetch<{ envoye: true; a: string }>('/v1/courrier/relance', { method: 'POST', body: JSON.stringify({ invoiceId, texte }) });
+  }
+
+  async abonnement(): Promise<AbonnementEtat> {
+    try {
+      return await apiFetch<AbonnementEtat>('/v1/paiements/abonnement');
+    } catch {
+      return { actif: false, abonnement: null };
+    }
+  }
+
+  async ouvrirAbonnement(): Promise<{ url: string; nature: 'souscription' | 'portail' }> {
+    return apiFetch<{ url: string; nature: 'souscription' | 'portail' }>('/v1/paiements/abonnement', { method: 'POST', body: '{}' });
   }
 
   async welcomeInspect(token: string): Promise<WelcomePreview> {

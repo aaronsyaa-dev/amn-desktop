@@ -17,7 +17,7 @@ import { LivePreview } from '../components/generator/LivePreview';
 import { ChoixModules } from '../components/generator/ChoixModules';
 import { handoverMessage, handoverSubject } from '../lib/handoverMessage';
 import { OrgAvatar } from '../components/org-rail/OrgAvatar';
-import type { DownloadLink, OrgPlan } from '../shared/api';
+import type { CourrierEnvoi, DownloadLink, OrgPlan } from '../shared/api';
 
 /**
  * L'ATELIER — la création d'un espace de travail sur mesure (BLOC C)
@@ -56,6 +56,21 @@ import type { DownloadLink, OrgPlan } from '../shared/api';
  */
 
 type Step = 'metier' | 'configuration' | 'remise';
+
+/** Pourquoi l'invitation n'est pas partie par courriel, en une phrase pour l'Atelier. */
+function raisonCourrier(raison: string | undefined): string {
+  switch (raison) {
+    case 'sans_cle':
+    case 'sans_expediteur':
+      return 'Le courrier du serveur n’est pas encore configuré : l’invitation n’est pas partie d’elle-même.';
+    case 'sans_adresse_app':
+      return 'L’adresse de l’application n’est pas configurée sur le serveur : le lien n’a pas pu partir par courriel.';
+    case 'echec':
+      return 'Le courriel d’invitation n’est pas parti (le fournisseur a refusé l’envoi).';
+    default:
+      return '';
+  }
+}
 type Handover = 'password' | 'invitation';
 
 /** Icône du rail : petite par destination, donc petite à la source. */
@@ -98,6 +113,19 @@ export function GeneratorScreen() {
   // actuel ne perd rien.
   const [langueOrg, setLangueOrg] = React.useState<'fr' | 'en'>('fr');
   const [handover, setHandover] = React.useState<Handover>('invitation');
+  /*
+    QUI INVITE (chantier « arrivée cliente ») : le nom que la cliente lira dans
+    son courriel et sur sa page d'activation — « Harun vous a ouvert un
+    espace ». Retenu sur ce poste : c'est la même personne d'une création à
+    l'autre. Vide, le serveur écrit « AMN DevSec ».
+  */
+  const [invitePar, setInvitePar] = React.useState<string>(() => {
+    try { return window.localStorage.getItem('amn.atelier.invitePar') ?? ''; } catch { return ''; }
+  });
+  const poserInvitePar = (v: string) => {
+    setInvitePar(v);
+    try { window.localStorage.setItem('amn.atelier.invitePar', v); } catch { /* stockage refusé : le champ reste pour cette création */ }
+  };
 
   const [busy, setBusy] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
@@ -122,6 +150,8 @@ export function GeneratorScreen() {
      * savoir avant d'appuyer sur « envoyer », pas après.
      */
     webUrl: string | null;
+    /** L'invitation est-elle partie par courriel ? `null` : serveur d'avant, ou mode mot de passe. */
+    courrier: CourrierEnvoi | null;
   } | null>(null);
 
   const profile = profileId ? tradeProfileById(profileId) : undefined;
@@ -202,6 +232,9 @@ export function GeneratorScreen() {
         trade: profile?.id,
         language: langueOrg,
         seats,
+        invitePar: invitePar.trim() || undefined,
+        // Un mot de passe provisoire se dicte : le courriel d'activation en plus ferait deux accès par deux canaux.
+        envoyer: handover === 'invitation',
       });
       if (!created.owner) throw new Error('Organisation créée sans compte propriétaire.');
 
@@ -258,6 +291,7 @@ export function GeneratorScreen() {
           download,
           downloadProblem,
           webUrl: reset.appUrl ?? created.appUrl ?? null,
+          courrier: null,
         });
       } else {
         if (!created.invitation) throw new Error('Aucun lien d’activation n’a été émis.');
@@ -275,6 +309,7 @@ export function GeneratorScreen() {
           download,
           downloadProblem,
           webUrl: created.appUrl ?? null,
+          courrier: created.invitation.courrier ?? null,
         });
       }
       setStep('remise');
@@ -573,6 +608,18 @@ export function GeneratorScreen() {
                       body="À dicter au téléphone ou par SMS : il n’est jamais écrit dans le message."
                     />
                   </div>
+                  {handover === 'invitation' && (
+                    <label className="mt-3 block">
+                      <span className="mb-1 block text-[12px] text-text-secondary">Qui invite — la cliente le lira dans son courriel</span>
+                      <input
+                        value={invitePar}
+                        onChange={(e) => poserInvitePar(e.target.value.slice(0, 60))}
+                        placeholder="Votre prénom (sinon : AMN DevSec)"
+                        aria-label="Qui invite"
+                        className="input-focus w-full max-w-xs border border-border bg-bg px-2.5 py-2 text-[13px] text-text-primary outline-none"
+                      />
+                    </label>
+                  )}
                 </section>
 
                 {error && (
@@ -676,11 +723,21 @@ export function GeneratorScreen() {
               */}
               <section className="panel panel-ticks p-5">
                 <p className="eyebrow mb-2">Ce qu’il reste à faire</p>
-                <p className="mb-4 max-w-xl text-[13px] leading-relaxed text-text-secondary">
-                  Copiez le message et envoyez-le à votre cliente, avec l’objet « {handoverSubject({ orgName: result.orgName })} ».
-                  Il ne contient aucun mot de passe : {result.kind === 'invitation' ? 'le lien d’activation lui fait choisir le sien' : 'le mot de passe provisoire se transmet à part, par téléphone ou SMS'}.
-                  À sa première connexion, son espace se présente tout seul.
-                </p>
+                {result.courrier?.envoye ? (
+                  <p className="mb-4 max-w-xl text-[13px] leading-relaxed text-text-secondary" data-invitation-envoyee>
+                    <span className="font-semibold text-text-primary">L’invitation est partie à {result.email}</span>, avec l’objet
+                    « {handoverSubject({ orgName: result.orgName })} ». Rien d’autre à faire : à sa première connexion, son
+                    espace se présente tout seul. Si elle ne la trouve pas (courrier indésirable), envoyez-lui vous-même le
+                    message ci-dessous.
+                  </p>
+                ) : (
+                  <p className="mb-4 max-w-xl text-[13px] leading-relaxed text-text-secondary">
+                    {result.courrier && <>{raisonCourrier(result.courrier.raison)} </>}
+                    Copiez le message et envoyez-le à votre cliente, avec l’objet « {handoverSubject({ orgName: result.orgName })} ».
+                    Il ne contient aucun mot de passe : {result.kind === 'invitation' ? 'le lien d’activation lui fait choisir le sien' : 'le mot de passe provisoire se transmet à part, par téléphone ou SMS'}.
+                    À sa première connexion, son espace se présente tout seul.
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -707,7 +764,11 @@ export function GeneratorScreen() {
                         window.setTimeout(() => setCopied(false), 2400);
                       });
                   }}
-                  className="flex items-center gap-2 bg-accent px-4 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
+                  className={
+                    result.courrier?.envoye
+                      ? 'flex items-center gap-2 border border-border-strong px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover'
+                      : 'flex items-center gap-2 bg-accent px-4 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover'
+                  }
                 >
                   {copied ? <Check size={15} strokeWidth={2.5} /> : <Copy size={15} strokeWidth={2} />}
                   {copied ? 'Message copié' : 'Copier le message pour la cliente'}
