@@ -7,6 +7,8 @@ import { parcoursGeneral } from './parcours';
 import { signalerGuide } from './memoire';
 import { texte } from './profils';
 import { useProfilDepart } from './usePremiersPas';
+import { PresentationArrivee } from './PresentationArrivee';
+import { IS_BUSINESS } from '../edition/edition';
 
 /**
  * LE GUIDE, DANS PARAMÈTRES — tout se rejoue : la visite, les présentations
@@ -20,6 +22,7 @@ export function GuideSection() {
   const navigate = useNavigate();
   const profil = useProfilDepart();
   const [presentationsEffacees, setPresentationsEffacees] = useState(false);
+  const [revoirArrivee, setRevoirArrivee] = useState(false);
   const email = user?.email ?? '';
 
   const effacerPresentations = () => {
@@ -51,6 +54,11 @@ export function GuideSection() {
         >
           {t('guide.revoir')}
         </button>
+        {IS_BUSINESS && (
+          <button type="button" className={bouton} onClick={() => setRevoirArrivee(true)} data-revoir-presentation>
+            {t('guide.presentation.revoir')}
+          </button>
+        )}
         <button type="button" className={bouton} onClick={signalerGuide}>
           {t('guide.changerProfil')}
         </button>
@@ -58,6 +66,7 @@ export function GuideSection() {
           {t('guide.presentations')}
         </button>
       </div>
+      {revoirArrivee && <PresentationArrivee prenom={user?.name?.split(' ')[0] ?? ''} onFin={() => setRevoirArrivee(false)} />}
       {presentationsEffacees && <p className="mt-3 text-[12.5px] text-text-secondary">{t('guide.presentationsFaites')}</p>}
     </section>
   );

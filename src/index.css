@@ -1435,3 +1435,16 @@ button.bg-accent[aria-disabled='true']:hover {
     animation: none;
   }
 }
+
+/*
+  LES ILLUSTRATIONS DE LA PRÉSENTATION (cahier 43f) : les formes grises
+  apparaissent d'un coup, l'ambre arrive en dernier, 400 ms après, puis ne
+  bouge plus. Aucune boucle ; rien du tout sous « mouvement réduit ».
+*/
+.illustration .gris { animation: arrivee-gris 280ms ease-out both; }
+.illustration .ambre { animation: arrivee-ambre 360ms cubic-bezier(.16, 1, .3, 1) 400ms both; transform-origin: center; transform-box: fill-box; }
+@keyframes arrivee-gris { from { opacity: 0; } }
+@keyframes arrivee-ambre { from { opacity: 0; transform: scale(.9); } }
+@media (prefers-reduced-motion: reduce) {
+  .illustration .gris, .illustration .ambre { animation: none; }
+}

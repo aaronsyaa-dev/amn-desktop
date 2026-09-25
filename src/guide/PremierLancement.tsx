@@ -4,6 +4,8 @@ import { useProfiles } from '../state/ProfilesContext';
 import { useSync } from '../state/SyncContext';
 import { QuiEtesVous } from './QuiEtesVous';
 import { Presentation } from './Presentation';
+import { PresentationArrivee } from './PresentationArrivee';
+import { IS_BUSINESS } from '../edition/edition';
 import { EVENEMENT_GUIDE, guideVu, marquerGuide } from './memoire';
 
 /**
@@ -25,6 +27,8 @@ export function PremierLancement() {
   const [relance, setRelance] = useState(false);
   /* La présentation du produit passe avant la porte, une fois par compte et par poste. */
   const [presenter, setPresenter] = useState(false);
+  /* La présentation vient d'être vue : la porte s'ouvre dans sa feuille, et la visite ne redit pas « Bienvenue ». */
+  const [vuePresentation, setVuePresentation] = useState(false);
 
   useEffect(() => {
     if (!email || !ready || pullFailed) return;
@@ -54,15 +58,16 @@ export function PremierLancement() {
   }, []);
 
   if (!ouvert) return null;
-  if (presenter && !relance)
-    return (
-      <Presentation
-        orgName={org?.name ?? ''}
-        onFin={() => {
-          marquerGuide('presentation', email);
-          setPresenter(false);
-        }}
-      />
-    );
-  return <QuiEtesVous relance={relance} onFerme={() => setOuvert(false)} />;
+  const finPresentation = () => {
+    marquerGuide('presentation', email);
+    setPresenter(false);
+    setVuePresentation(true);
+  };
+  if (presenter && !relance) {
+    // Édition cliente : la présentation du cahier 43f (trois pages, puis la porte dans la même feuille).
+    return IS_BUSINESS
+      ? <PresentationArrivee prenom={user?.name?.split(' ')[0] ?? ''} onFin={finPresentation} />
+      : <Presentation orgName={org?.name ?? ''} onFin={finPresentation} />;
+  }
+  return <QuiEtesVous relance={relance} apresPresentation={IS_BUSINESS && vuePresentation && !relance} onFerme={() => setOuvert(false)} />;
 }

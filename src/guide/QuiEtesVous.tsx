@@ -15,6 +15,8 @@ import { parcoursGeneral } from './parcours';
 import { marquerGuide } from './memoire';
 import { ecrireIndexFamilles } from '../lib/barreLaterale';
 import { texte, type ProfilDepart } from './profils';
+import { CadreIllustration, EnTeteFeuille } from './PresentationArrivee';
+import { IllustrationPointDeDepart } from './illustrations/Illustrations';
 
 /**
  * « QUI ÊTES-VOUS ? » — la question du premier lancement.
@@ -26,7 +28,12 @@ import { texte, type ProfilDepart } from './profils';
  * n'existe pas dans l'organisation : un module que la formule n'ouvre pas
  * n'est ni épinglé ni allégé.
  */
-export function QuiEtesVous({ onFerme, relance = false }: { onFerme: () => void; relance?: boolean }) {
+/*
+  `apresPresentation` (édition cliente, cahier 43f) : la porte s'ouvre dans la
+  feuille de la présentation, avec son illustration — le point de départ et
+  ses quatre branches — et la visite qui suit ne redit pas « Bienvenue ».
+*/
+export function QuiEtesVous({ onFerme, relance = false, apresPresentation = false }: { onFerme: () => void; relance?: boolean; apresPresentation?: boolean }) {
   const { t } = useLangue();
   const { user } = useAuth();
   const { updateSelf } = useProfiles();
@@ -51,7 +58,7 @@ export function QuiEtesVous({ onFerme, relance = false }: { onFerme: () => void;
       onFerme();
       if (!relance) {
         navigate('/');
-        window.setTimeout(() => lancer(parcoursGeneral(user?.name?.split(' ')[0] || '')), 400);
+        window.setTimeout(() => lancer(parcoursGeneral(user?.name?.split(' ')[0] || '', { sansBienvenue: apresPresentation })), 400);
         marquerGuide('general', email);
       }
     }
@@ -65,7 +72,16 @@ export function QuiEtesVous({ onFerme, relance = false }: { onFerme: () => void;
   return createPortal(
     <div className="fixed inset-0 z-[290] flex items-center justify-center overflow-y-auto bg-bg/90 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={t('guide.qui.titre')}>
       <div className="w-full max-w-[720px] border border-border-raised bg-elevated p-6 shadow-[0_34px_62px_-28px_rgba(0,0,0,1)] sm:p-9">
-        <Logo height={18} />
+        {apresPresentation ? (
+          <>
+            <EnTeteFeuille />
+            <CadreIllustration>
+              <IllustrationPointDeDepart />
+            </CadreIllustration>
+          </>
+        ) : (
+          <Logo height={18} />
+        )}
         <h1 className="mt-6 text-[26px] font-bold leading-none tracking-[-0.03em] text-text-primary sm:text-[32px]">{t('guide.qui.titre')}</h1>
         <p className="mt-3 max-w-[60ch] text-[14.5px] leading-[1.65] text-text-secondary [text-wrap:pretty]">{t('guide.qui.texte')}</p>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">

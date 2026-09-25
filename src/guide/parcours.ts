@@ -12,9 +12,13 @@ import type { Etape, Parcours } from './types';
  * renommé. Les cibles sont les ancrages `data-guide` de la coquille et les
  * marques que les écrans portent déjà (`data-screen-actions`).
  */
-export function parcoursGeneral(prenom: string): Parcours {
+/**
+ * `sansBienvenue` : après la présentation de première connexion (cahier 43f),
+ * qui a déjà dit « Bienvenue, {prénom} » — la visite ne le redit pas.
+ */
+export function parcoursGeneral(prenom: string, { sansBienvenue = false }: { sansBienvenue?: boolean } = {}): Parcours {
   const etapes: Etape[] = [
-    { cible: null, titre: t('guide.general.bienvenue.titre', { nom: prenom }), texte: t('guide.general.bienvenue.texte') },
+    ...(sansBienvenue ? [] : [{ cible: null, titre: t('guide.general.bienvenue.titre', { nom: prenom }), texte: t('guide.general.bienvenue.texte') } as Etape]),
     { cible: 'main h1', titre: t('guide.general.accueil.titre'), texte: t('guide.general.accueil.texte'), cote: 'bas' },
     { cible: '[data-guide="epingles"]', cibleMobile: '[data-guide="barre-pouce"]', titre: t('guide.general.epingles.titre'), texte: IS_BUSINESS ? t('guide.general.epingles.texte') : t('guide.general.epingles.texte') },
     { cible: '[data-rail]', cibleMobile: '[data-guide="modules"]', titre: t('guide.general.rail.titre'), texte: t('guide.general.rail.texte') },
