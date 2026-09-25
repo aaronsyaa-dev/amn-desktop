@@ -31,6 +31,10 @@
  *   node scripts/verifier-propositions.js                  # toutes
  *   node scripts/verifier-propositions.js --only=07-neon   # une seule
  *   node scripts/verifier-propositions.js --only=07-neon --pleine   # + capture pleine page
+ *   node scripts/verifier-propositions.js --only=07-neon --etapes --pleine-dans=/tmp/x
+ *       # + un écran tous les 20 % de la hauteur (le canvas fixe n'apparaît
+ *       #   qu'en haut d'une capture pleine page : c'est ainsi qu'on juge la 3D
+ *       #   de chaque section)
  */
 'use strict';
 
@@ -58,7 +62,8 @@ const args = process.argv.slice(2);
 const opt = (n) => { const a = args.find((x) => x.startsWith(`--${n}=`)); return a ? a.slice(n.length + 3) : null; };
 const SEULE = opt('only');
 const JSON_OUT = args.includes('--json');
-const PLEINE = args.includes('--pleine');
+const PLEINE = args.includes('--pleine') || args.includes('--etapes');
+const ETAPES = args.includes('--etapes');
 const DOSSIER_PLEINE = opt('pleine-dans') || path.join('/tmp', 'captures-propositions');
 
 /* Budget de premier affichage, en octets NON compressés (Vercel compresse en
@@ -228,6 +233,14 @@ async function inspecter(nav, base, nom, format) {
       }).catch(() => {});
       await page.waitForTimeout(600);
       await page.screenshot({ path: path.join(DOSSIER_PLEINE, `${nom}-${format}-pleine.jpg`), type: 'jpeg', quality: 70, fullPage: true }).catch(() => {});
+      if (ETAPES) {
+        for (let i = 0; i <= 5; i += 1) {
+          await page.evaluate((f) => scrollTo(0, f * (document.documentElement.scrollHeight - innerHeight)), i / 5).catch(() => {});
+          await page.waitForTimeout(2600);
+          await page.screenshot({ path: path.join(DOSSIER_PLEINE, `${nom}-${format}-etape-${i}.jpg`), type: 'jpeg', quality: 72 }).catch(() => {});
+        }
+        await page.evaluate(() => scrollTo(0, 0)).catch(() => {});
+      }
     }
   }
   await ctx.close();

@@ -216,14 +216,15 @@ l'accessibilité, le mouvement réduit ni les vérifications.
 
 ```bash
 PLAYWRIGHT_CORE=/tmp/claude-0/-home-user-amn-desktop/446d47c6-15bb-5f64-9ce8-fd15cfedcbc3/scratchpad/node_modules/playwright-core \
-  node scripts/verifier-propositions.js --only=NN-nom --pleine --pleine-dans=<ton dossier>/pleine
+  node scripts/verifier-propositions.js --only=NN-nom --etapes --pleine-dans=<ton dossier>/captures
 ```
 
 Il sert la page avec la CSP, l'ouvre sur bureau, téléphone et en mouvement
 réduit, et refuse : erreur de page ou de console, violation de CSP, 404,
 **canvas vide à l'écran**, débordement horizontal, poids excessif, absence de
-`noindex`, formule refusée. Captures : `propositions/_captures/`, et pleine
-page avec `--pleine`. **Regarde-les** (outil Read) à plusieurs hauteurs de
+`noindex`, formule refusée. Captures : `propositions/_captures/` ; avec `--etapes`, une capture pleine
+page et six écrans à 0, 20, 40, 60, 80 et 100 % de la hauteur, bureau et
+téléphone, dans le dossier donné. **Regarde-les** (outil Read) à plusieurs hauteurs de
 défilement : c'est à l'œil qu'on voit une section vide, un texte illisible
 sur la 3D, une mise en page cassée à 390 px.
 
