@@ -1,0 +1,19 @@
+
+Visite guidée : 7 défaut(s) sur 7 geste(s) observé(s).
+
+  ✗ B · cible en retard (écran en chargement, 4 s) : depuis l'étape 2, un seul geste a montré 3 puis 4 (attendu : 3, et rien d'autre). Journal : 3/8 « Vos modules de tous les jours »@3ms  ∅@7ms  4/8 « Les familles de modules »@2533ms
+
+  ✗ B · cible en retard (écran en chargement, 4 s) : la carte s'est affichée puis effacée sans geste — une étape entrevue n'est pas une étape montrée. Journal : 3/8 « Vos modules de tous les jours »@3ms  ∅@7ms  4/8 « Les familles de modules »@2533ms
+
+  ✗ B · la visite a sauté « Vos modules de tous les jours », dont la cible arrivait après 4 s de chargement : elle a montré « Les familles de modules ». Journal : 3/8 « Vos modules de tous les jours »@3ms  ∅@7ms  4/8 « Les familles de modules »@2533ms
+
+  ✗ C · cible absente de l’écran : depuis l'étape 5, un seul geste a montré 6 puis 7 (attendu : 6, et rien d'autre). Journal : 6/8 « Le lien avec vos données »@3ms  ∅@36ms  7/8 « L’aide, à portée de main »@2533ms
+
+  ✗ C · cible absente de l’écran : la carte s'est affichée puis effacée sans geste — une étape entrevue n'est pas une étape montrée. Journal : 6/8 « Le lien avec vos données »@3ms  ∅@36ms  7/8 « L’aide, à portée de main »@2533ms
+
+  ✗ C · une étape absente doit sortir du compte : total 8 → 8 (attendu 7).
+
+  ✗ C · la carte a changé 5 ms après le geste, alors que la cible suivante est absente : l'étape doit être attendue un court instant (≥ 1,5 s) avant d'être sautée, sans rien montrer entre-temps.
+
+Un geste, une étape — toujours. Voir l’en-tête de scripts/check-visite.mjs.
+

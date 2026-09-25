@@ -19,7 +19,7 @@ import type { Etape, Parcours } from './types';
 export function parcoursGeneral(prenom: string, { sansBienvenue = false }: { sansBienvenue?: boolean } = {}): Parcours {
   const etapes: Etape[] = [
     ...(sansBienvenue ? [] : [{ cible: null, titre: t('guide.general.bienvenue.titre', { nom: prenom }), texte: t('guide.general.bienvenue.texte') } as Etape]),
-    { cible: 'main h1', titre: t('guide.general.accueil.titre'), texte: t('guide.general.accueil.texte'), cote: 'bas' },
+    { cible: 'main [data-guide="titre"], main h1', titre: t('guide.general.accueil.titre'), texte: t('guide.general.accueil.texte'), cote: 'bas' },
     { cible: '[data-guide="epingles"]', cibleMobile: '[data-guide="barre-pouce"]', titre: t('guide.general.epingles.titre'), texte: IS_BUSINESS ? t('guide.general.epingles.texte') : t('guide.general.epingles.texte') },
     { cible: '[data-rail]', cibleMobile: '[data-guide="modules"]', titre: t('guide.general.rail.titre'), texte: t('guide.general.rail.texte') },
     ...(IS_BUSINESS

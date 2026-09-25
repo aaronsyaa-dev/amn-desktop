@@ -83,10 +83,11 @@
     "check:signal": "node scripts/check-signal.mjs",
     "check:accueils": "node scripts/check-accueils.mjs",
     "check:coquille": "node scripts/check-coquille.mjs",
-    "check:appels": "node scripts/check-appels.mjs",
+    "check:appels": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-appels.mjs",
     "check:mobile": "node scripts/check-mobile.mjs",
     "check:xss": "node scripts/check-xss.mjs",
     "check:support": "node scripts/check-support.mjs",
+    "check:visite": "node scripts/check-visite.mjs",
     "verite:garde": "node scripts/verite-garde.mjs",
     "captures:design": "node scripts/captures-design.mjs"
   },

@@ -38,7 +38,7 @@
  * Tant qu'elles sont vides, on retombe sur les STUN publics — le comportement
  * d'avant, à l'identique.
  *
- *     VITE_AMN_TURN_URL=turns:turn.exemple.net:5349
+ *     VITE_AMN_TURN_URL=turns:turn.exemple.net:5349   (plusieurs : séparées par des virgules)
  *     VITE_AMN_TURN_USER=…
  *     VITE_AMN_TURN_PASS=…
  *
@@ -63,20 +63,93 @@ const STUN_PUBLICS: RTCIceServer[] = [
   { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
 ];
 
-/** Le TURN configuré à la construction, ou `null` s'il n'y en a pas. */
-function turnConfigure(): RTCIceServer | null {
-  const url = (import.meta.env.VITE_AMN_TURN_URL || '').trim();
-  if (!url) return null;
-  const username = (import.meta.env.VITE_AMN_TURN_USER || '').trim();
-  const credential = (import.meta.env.VITE_AMN_TURN_PASS || '').trim();
+/** Les trois variables de build qui décrivent le relais. */
+export interface EnvTurn {
+  VITE_AMN_TURN_URL?: string;
+  VITE_AMN_TURN_USER?: string;
+  VITE_AMN_TURN_PASS?: string;
+}
+
+/**
+ * Ce que la configuration donne, et pourquoi. `raison` ne sert qu'au journal
+ * de développement : l'écran, lui, ne connaît que `relaisDisponible()`.
+ */
+export type EtatTurn =
+  | { actif: true; serveur: RTCIceServer }
+  | { actif: false; raison: 'absent' | 'identifiants-manquants' | 'url-invalide'; urlsRejetees?: string[] };
+
+/*
+  Une URL que le navigateur accepte : `turn:` ou `turns:`, un hôte, un port
+  facultatif, un `?transport=` facultatif. `new RTCPeerConnection` LÈVE une
+  SyntaxError sur une URL qu'il ne comprend pas — « turn.amn.fr:3478 », sans
+  schéma, suffit : l'appel planterait au lieu de retomber sur les STUN. On
+  filtre donc ici, avant le navigateur.
+*/
+const URL_TURN = /^turns?:[^\s:?/]+(?::\d{1,5})?(?:\?transport=(?:udp|tcp))?$/i;
+
+/**
+ * LA DÉCISION, sans `import.meta` : une fonction pure de trois chaînes, pour
+ * que `check:appels` l'exécute dans Node avec les cas qui comptent (rien de
+ * posé, URL seule, URL mal écrite, tout posé) au lieu de la croire sur parole.
+ *
+ * Plusieurs URL se séparent par des virgules — l'usage courant est
+ * `turn:hôte:3478?transport=udp,turns:hôte:5349`. Les URL mal écrites sont
+ * écartées une par une ; s'il n'en reste aucune, pas de relais.
+ */
+export function etatTurn(env: EnvTurn): EtatTurn {
+  const brut = (env.VITE_AMN_TURN_URL || '').trim();
+  if (!brut) return { actif: false, raison: 'absent' };
+  const username = (env.VITE_AMN_TURN_USER || '').trim();
+  const credential = (env.VITE_AMN_TURN_PASS || '').trim();
   /*
     Un TURN sans identifiants n'existe pas : la RFC 5766 exige
     l'authentification. Une URL posée seule serait un serveur que le navigateur
     essaierait et qui refuserait chaque allocation — c'est-à-dire trois
     secondes perdues à chaque appel, pour rien. On préfère ne pas l'annoncer.
   */
-  if (!username || !credential) return null;
-  return { urls: [url], username, credential };
+  if (!username || !credential) return { actif: false, raison: 'identifiants-manquants' };
+  const candidates = brut.split(',').map((u) => u.trim()).filter(Boolean);
+  const urls = candidates.filter((u) => URL_TURN.test(u));
+  if (urls.length === 0) return { actif: false, raison: 'url-invalide', urlsRejetees: candidates };
+  return { actif: true, serveur: { urls, username, credential } };
+}
+
+/** Les serveurs ICE pour une configuration donnée — STUN d'abord, le relais en dernier recours. */
+export function serveursIcePour(env: EnvTurn): RTCIceServer[] {
+  const etat = etatTurn(env);
+  return etat.actif ? [...STUN_PUBLICS, etat.serveur] : STUN_PUBLICS;
+}
+
+/*
+  LE JOURNAL DE DÉVELOPPEMENT — une ligne, une fois par session, au premier
+  appel. C'est ce qu'on regarde le jour où le serveur est monté : « le build
+  a-t-il bien reçu les trois variables ? ». Jamais en production (Vite retire
+  la branche), et jamais l'identifiant ni le mot de passe, même en dev.
+*/
+let dejaDit = false;
+function direEnDev(etat: EtatTurn): void {
+  if (!import.meta.env.DEV || dejaDit) return;
+  dejaDit = true;
+  if (etat.actif) {
+    const urls = ([] as string[]).concat(etat.serveur.urls);
+    console.info(`[appels] relais TURN actif : ${urls.join(', ')} (identifiants posés). Les STUN publics restent essayés d'abord.`);
+    return;
+  }
+  const pourquoi = {
+    absent: 'VITE_AMN_TURN_URL est vide',
+    'identifiants-manquants': 'VITE_AMN_TURN_URL est posée, mais VITE_AMN_TURN_USER ou VITE_AMN_TURN_PASS manque',
+    'url-invalide': `aucune URL valable dans VITE_AMN_TURN_URL (lu : ${(etat.urlsRejetees ?? []).join(', ')}) — il faut « turn: » ou « turns: »`,
+  }[etat.raison];
+  console.info(`[appels] relais TURN inactif : ${pourquoi}. STUN publics seuls.`);
+}
+
+/** L'environnement de ce build — lu en accès statiques, que Vite remplace à la construction. */
+function envDuBuild(): EnvTurn {
+  return {
+    VITE_AMN_TURN_URL: import.meta.env.VITE_AMN_TURN_URL,
+    VITE_AMN_TURN_USER: import.meta.env.VITE_AMN_TURN_USER,
+    VITE_AMN_TURN_PASS: import.meta.env.VITE_AMN_TURN_PASS,
+  };
 }
 
 /**
@@ -86,8 +159,9 @@ function turnConfigure(): RTCIceServer | null {
  * liste est ce qui lui dit quoi préférer à coût égal.
  */
 export function serveursIce(): RTCIceServer[] {
-  const turn = turnConfigure();
-  return turn ? [...STUN_PUBLICS, turn] : STUN_PUBLICS;
+  const env = envDuBuild();
+  direEnDev(etatTurn(env));
+  return serveursIcePour(env);
 }
 
 /**
@@ -100,7 +174,7 @@ export function serveursIce(): RTCIceServer[] {
  * juste. Une garde-fou d'honnêteté, pas une chaîne de plus.
  */
 export function relaisDisponible(): boolean {
-  return turnConfigure() !== null;
+  return etatTurn(envDuBuild()).actif;
 }
 
 /**

@@ -149,6 +149,13 @@ jobs:
           # doit égaler l'OPERATOR_TOKEN configuré sur amn-api (Render).
           AMN_API_URL: ${{ secrets.AMN_API_URL }}
           AMN_API_OPERATOR_TOKEN: ${{ secrets.AMN_API_OPERATOR_TOKEN }}
+          # Le relais TURN des appels (src/lib/serveursIce.ts). Tant que ces
+          # secrets n'existent pas, ils arrivent vides et le poste garde les
+          # STUN publics seuls — le comportement d'aujourd'hui. Le jour où le
+          # serveur coturn est monté, créer les trois secrets suffit.
+          VITE_AMN_TURN_URL: ${{ secrets.VITE_AMN_TURN_URL }}
+          VITE_AMN_TURN_USER: ${{ secrets.VITE_AMN_TURN_USER }}
+          VITE_AMN_TURN_PASS: ${{ secrets.VITE_AMN_TURN_PASS }}
 
       # ─────────────────────── Signature de code (BLOC 2) ────────────────────
       # Le certificat est OPTIONNEL aujourd'hui — Aaron ne l'a pas encore —

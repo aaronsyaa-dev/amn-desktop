@@ -313,6 +313,8 @@ export function HomeScreen() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         className="flex flex-wrap items-baseline gap-x-3 gap-y-1"
+        /* L'ancre de « Votre Accueil » dans la visite guidée : cet Accueil n'a pas de h1 à viser. */
+        data-guide="titre"
       >
         <p className="eyebrow">{dateLabel}</p>
         <p className="text-sm text-text-secondary">{welcome}</p>

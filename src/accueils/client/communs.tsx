@@ -17,7 +17,7 @@ export const dateCourte = (d: Date) => `${JOURS[d.getDay()]} ${d.getDate()} ${MO
 
 export function EnTeteAccueil({ j, nom }: { j: Journee; nom: string }) {
   return (
-    <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+    <header data-guide="titre" className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
       <h1 className="sr-only">Accueil — {nom}</h1>
       <span className="eyebrow text-text-secondary">{j.org?.name ?? 'Accueil'}</span>
       <span className="h-3 w-px bg-border-raised" aria-hidden />

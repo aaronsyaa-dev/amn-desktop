@@ -1,0 +1,27 @@
+
+Visite guidée : 11 défaut(s) sur 5 geste(s) observé(s).
+
+  ✗ A · clic sur « Suivant » : depuis l'étape 1, un seul geste a montré 2 puis 3 (attendu : 2, et rien d'autre). Journal : 2/9 « Votre Accueil »@66ms  ∅@96ms  3/9 « Vos modules de tous les jours »@2596ms
+
+  ✗ A · clic sur « Suivant » : la carte s'est affichée puis effacée sans geste — une étape entrevue n'est pas une étape montrée. Journal : 2/9 « Votre Accueil »@66ms  ∅@96ms  3/9 « Vos modules de tous les jours »@2596ms
+
+  ✗ A · touche → : depuis l'étape 1, un seul geste a montré 2 puis 3 (attendu : 2, et rien d'autre). Journal : 2/9 « Votre Accueil »@4ms  ∅@44ms  3/9 « Vos modules de tous les jours »@2534ms
+
+  ✗ A · touche → : la carte s'est affichée puis effacée sans geste — une étape entrevue n'est pas une étape montrée. Journal : 2/9 « Votre Accueil »@4ms  ∅@44ms  3/9 « Vos modules de tous les jours »@2534ms
+
+  ✗ A · Entrée sur « Suivant » : depuis l'étape 1, un seul geste a montré 2 puis 3 (attendu : 2, et rien d'autre). Journal : 2/9 « Votre Accueil »@12ms  ∅@14ms  3/9 « Vos modules de tous les jours »@2557ms
+
+  ✗ A · Entrée sur « Suivant » : la carte s'est affichée puis effacée sans geste — une étape entrevue n'est pas une étape montrée. Journal : 2/9 « Votre Accueil »@12ms  ∅@14ms  3/9 « Vos modules de tous les jours »@2557ms
+
+  ✗ A · clic à droite du voile : depuis l'étape 1, un seul geste a montré 2 puis 3 (attendu : 2, et rien d'autre). Journal : 2/9 « Votre Accueil »@6ms  ∅@45ms  3/9 « Vos modules de tous les jours »@2535ms
+
+  ✗ A · clic à droite du voile : la carte s'est affichée puis effacée sans geste — une étape entrevue n'est pas une étape montrée. Journal : 2/9 « Votre Accueil »@6ms  ∅@45ms  3/9 « Vos modules de tous les jours »@2535ms
+
+  ✗ A · deux → dans la même image : depuis l'étape 1, un seul geste a montré 2 puis 3 (attendu : 2, et rien d'autre). Journal : 2/9 « Votre Accueil »@4ms  ∅@5ms  3/9 « Vos modules de tous les jours »@2531ms
+
+  ✗ A · deux → dans la même image : la carte s'est affichée puis effacée sans geste — une étape entrevue n'est pas une étape montrée. Journal : 2/9 « Votre Accueil »@4ms  ∅@5ms  3/9 « Vos modules de tous les jours »@2531ms
+
+  ✗ le contrôle n'a pas pu aller au bout : la visite n'a jamais montré « Votre Accueil » (vues : Bienvenue, Design. · Vos modules de tous les jours · Les familles de modules · La supervision, à part · Aller droit à un module · Le lien avec vos données · L’aide, à portée de main · Vos premiers pas)
+
+Un geste, une étape — toujours. Voir l’en-tête de scripts/check-visite.mjs.
+

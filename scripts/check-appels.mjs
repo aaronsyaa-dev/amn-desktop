@@ -122,6 +122,59 @@ for (const [fichier, quoi] of CHEMINS) {
   }
 }
 
+/*
+  5 · LA DÉCISION TURN, EXÉCUTÉE — pas lue. Les quatre règles ci-dessus
+  prouvent que les deux chemins passent par `serveursIce()` ; celle-ci prouve
+  ce que `serveursIce()` rend, pour chaque configuration qu'un build peut
+  recevoir. C'est le contrat du jour où le serveur coturn sera monté : poser
+  les trois variables suffit, et une variable oubliée ou mal écrite retombe
+  sur les STUN au lieu de faire planter l'appel.
+*/
+const { serveursIcePour, etatTurn } = await import('../src/lib/serveursIce.ts');
+const STUN_SEUL = JSON.stringify(serveursIcePour({}));
+const CAS_TURN = [
+  ['rien de posé', {}, 'stun'],
+  ['URL vide (espaces)', { VITE_AMN_TURN_URL: '   ', VITE_AMN_TURN_USER: 'u', VITE_AMN_TURN_PASS: 'p' }, 'stun'],
+  ['URL seule, sans identifiants', { VITE_AMN_TURN_URL: 'turns:turn.exemple.net:5349' }, 'stun'],
+  ['URL et identifiant, sans mot de passe', { VITE_AMN_TURN_URL: 'turns:turn.exemple.net:5349', VITE_AMN_TURN_USER: 'u' }, 'stun'],
+  ['URL sans schéma (« turn.exemple.net:3478 »)', { VITE_AMN_TURN_URL: 'turn.exemple.net:3478', VITE_AMN_TURN_USER: 'u', VITE_AMN_TURN_PASS: 'p' }, 'stun'],
+  ['URL en https://', { VITE_AMN_TURN_URL: 'https://turn.exemple.net', VITE_AMN_TURN_USER: 'u', VITE_AMN_TURN_PASS: 'p' }, 'stun'],
+  ['les trois posées (turns:)', { VITE_AMN_TURN_URL: 'turns:turn.exemple.net:5349', VITE_AMN_TURN_USER: 'u', VITE_AMN_TURN_PASS: 'p' }, ['turns:turn.exemple.net:5349']],
+  ['les trois posées, deux URL', { VITE_AMN_TURN_URL: 'turn:turn.exemple.net:3478?transport=udp, turns:turn.exemple.net:5349', VITE_AMN_TURN_USER: 'u', VITE_AMN_TURN_PASS: 'p' }, ['turn:turn.exemple.net:3478?transport=udp', 'turns:turn.exemple.net:5349']],
+  ['une URL valable, une mal écrite', { VITE_AMN_TURN_URL: 'turns:turn.exemple.net:5349,turn.exemple.net', VITE_AMN_TURN_USER: 'u', VITE_AMN_TURN_PASS: 'p' }, ['turns:turn.exemple.net:5349']],
+];
+if (!STUN_SEUL.includes('stun:') || STUN_SEUL.includes('turn')) {
+  fautes.push(`serveursIcePour({}) ne rend pas les STUN seuls : ${STUN_SEUL}`);
+}
+for (const [nom, env, attendu] of CAS_TURN) {
+  let rendu;
+  try {
+    rendu = serveursIcePour(env);
+  } catch (err) {
+    fautes.push(`TURN · ${nom} : serveursIcePour lève (${err?.message ?? err}) — l'appel planterait au lieu de retomber sur les STUN.`);
+    continue;
+  }
+  if (attendu === 'stun') {
+    if (JSON.stringify(rendu) !== STUN_SEUL) fautes.push(`TURN · ${nom} : attendu STUN seuls, rendu ${JSON.stringify(rendu)}.`);
+    if (etatTurn(env).actif) fautes.push(`TURN · ${nom} : relaisDisponible() dirait oui sans relais utilisable.`);
+    continue;
+  }
+  const dernier = rendu[rendu.length - 1];
+  const ok =
+    rendu.length === 2 &&
+    JSON.stringify(rendu[0]) === JSON.stringify(serveursIcePour({})[0]) &&
+    JSON.stringify(dernier.urls) === JSON.stringify(attendu) &&
+    dernier.username === 'u' &&
+    dernier.credential === 'p';
+  if (!ok) fautes.push(`TURN · ${nom} : attendu STUN puis TURN ${JSON.stringify(attendu)}, rendu ${JSON.stringify(rendu)}.`);
+}
+/* Le seul lecteur de l'environnement de build est serveursIce.ts : aucun des deux chemins ne lit les variables lui-même. */
+for (const [fichier, quoi] of CHEMINS) {
+  if (/VITE_AMN_TURN_/.test(lire(fichier))) {
+    fautes.push(`${fichier} (${quoi}) lit une variable VITE_AMN_TURN_* lui-même : seule src/lib/serveursIce.ts doit la lire.`);
+  }
+}
+
 if (fautes.length > 0) {
   console.error('\nAppels : les deux chemins ont divergé.\n');
   for (const f of fautes) console.error(`  ✗ ${f}`);
@@ -135,7 +188,7 @@ if (fautes.length > 0) {
 const { VITE_AMN_TURN_URL } = process.env;
 console.log(
   `\nAppels : les ${CHEMINS.length} chemins partagent leur liste ICE, leur délai de connexion\n` +
-    `et leurs trois états de fin.`,
+    `et leurs trois états de fin ; la décision TURN tient ses ${CAS_TURN.length} cas (repli STUN sans erreur).`,
 );
 if (!VITE_AMN_TURN_URL) {
   console.log(

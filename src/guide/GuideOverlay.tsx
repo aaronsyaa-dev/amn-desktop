@@ -22,6 +22,27 @@ import type { Etape, Parcours } from './types';
  * colonne latérale n'existe pas sous `md`, et une visite qui s'arrêterait sur
  * un rectangle vide aurait l'air cassée.
  *
+ * UN GESTE, UNE ÉTAPE — TOUJOURS. Mesuré le 25/09 (édition interne, visite
+ * générale) : un seul clic menait de l'étape 1 à l'étape 3, et le suivant à
+ * la 4. Trois défauts s'additionnaient :
+ *
+ *   · la cible de « Votre Accueil » (`main h1`) n'existe pas tant que
+ *     l'Accueil lit ses données (`SiGardeLue` rend un bloc `aria-busy`) ; la
+ *     visite l'attendait 2,5 s d'horloge, quel que soit l'état de l'écran, puis
+ *     la sautait d'office — d'où l'irrégularité : tout dépendait du temps de
+ *     réponse de la Garde ;
+ *   · pendant une image, la carte montrait le NOUVEAU numéro à l'ANCIENNE
+ *     place avant de s'effacer (« 2 » entrevu, puis « 3 ») ;
+ *   · le compteur numérotait les étapes du parcours, sautées comprises : un
+ *     saut se lisait « 1 → 3 ».
+ *
+ * Désormais : une étape n'est sautée qu'après un court instant ET une fois
+ * l'écran calme (plus rien d'`aria-busy`, plus de roue qui tourne, plus de
+ * changement dans la page depuis un moment) ; un geste reçu pendant qu'une
+ * étape se cherche est ignoré ; la carte ne paraît que pour son étape ; et le
+ * compteur ne compte que les étapes montrables — une étape absente de cet
+ * écran retire une unité au total au lieu de laisser un trou.
+ *
  * PAS D'AMBRE. Le projecteur est en encre claire : pendant la visite, le voile
  * éteint l'écran et la cible est le seul objet allumé — c'est déjà le signal.
  * Un liseré ambre ici, par-dessus un écran qui a déjà son objet ambre, ferait
@@ -30,7 +51,17 @@ import type { Etape, Parcours } from './types';
  */
 const MARGE = 8;
 const LARGEUR_CARTE = 328;
-const DELAI_CIBLE_MS = 2500;
+/* Une cible absente n'est jamais sautée avant ce délai… */
+const ATTENTE_MIN_MS = 1500;
+/* …ni tant que la page bouge : il faut ce calme, sans aucun changement… */
+const CALME_MS = 600;
+/* …et au-delà de ce plafond, on saute quoi qu'il arrive (un écran qui s'anime sans fin). */
+const ATTENTE_MAX_MS = 10_000;
+
+/** L'écran se charge-t-il encore ? Un bloc `aria-busy`, ou une roue qui tourne. */
+function ecranOccupe(): boolean {
+  return document.querySelector('main [aria-busy="true"], main .animate-spin') !== null;
+}
 
 interface Rect {
   x: number;
@@ -59,48 +90,78 @@ export function GuideOverlay({ parcours, onFin }: { parcours: Parcours; onFin: (
   const [cible, setCible] = useState<Element | null>(null);
   const [rect, setRect] = useState<Rect | null>(null);
   const [arrive, setArrive] = useState(false);
-  /* Tant que la cible se cherche, rien ne s'affiche : une carte centrée sur du vide dirait « regardez là » sans rien montrer. */
-  const [pret, setPret] = useState(false);
+  /*
+    L'ÉTAPE PRÊTE — un numéro, pas un booléen. Tant que la cible se cherche,
+    rien ne s'affiche : une carte centrée sur du vide dirait « regardez là »
+    sans rien montrer. Un booléen restait vrai pendant l'image qui suit un
+    changement d'étape : la carte y montrait le nouveau numéro à l'ancienne
+    place. Comparer le numéro prêt au numéro courant ferme cette fenêtre.
+  */
+  const [pretPour, setPretPour] = useState<number | null>(null);
+  const pret = pretPour === index;
+  /* Les étapes sautées parce que leur cible n'est pas sur cet écran : elles sortent du compte. */
+  const [sautees, setSautees] = useState<ReadonlySet<number>>(() => new Set());
   const sens = useRef<1 | -1>(1);
   const carte = useRef<HTMLDivElement | null>(null);
   const etape = parcours.etapes[index];
   const total = parcours.etapes.length;
+  /* Ce que la carte affiche : le rang parmi les étapes montrables, sur leur nombre. */
+  const rangAffiche = index + 1 - [...sautees].filter((i) => i < index).length;
+  const totalAffiche = total - sautees.size;
 
-  /* ── Trouver la cible (en attendant un peu qu'elle apparaisse), ou sauter ── */
+  /* ── Trouver la cible (en attendant qu'elle apparaisse), ou sauter ── */
   useEffect(() => {
     if (!etape) return;
     const sel = selecteurDe(etape);
     setArrive(false);
-    setPret(false);
     if (sel === null) {
       setCible(null);
       setRect(null);
-      setPret(true);
+      setPretPour(index);
       return;
     }
     let vivant = true;
+    let minuterie = 0;
     const debut = Date.now();
+    /* Le dernier changement de la page : tant qu'elle bouge, elle se charge peut-être encore. */
+    let dernierChangement = Date.now();
+    const observateur = new MutationObserver(() => {
+      dernierChangement = Date.now();
+    });
+    observateur.observe(document.querySelector('main') ?? document.body, { subtree: true, childList: true, attributes: true, characterData: true });
     const chercher = () => {
       if (!vivant) return;
       const el = document.querySelector(sel);
       if (el && (el as HTMLElement).getBoundingClientRect().width > 0) {
         el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: reduit ? 'auto' : 'smooth' });
         setCible(el);
-        setPret(true);
+        setPretPour(index);
+        /* Revenue (retour en arrière, écran enfin chargé) : elle rentre dans le compte. */
+        setSautees((prec) => {
+          if (!prec.has(index)) return prec;
+          const n = new Set(prec);
+          n.delete(index);
+          return n;
+        });
         return;
       }
-      if (Date.now() - debut > DELAI_CIBLE_MS) {
-        /* Introuvable : on saute dans le sens du déplacement, sans s'arrêter sur du vide. */
+      const ecoule = Date.now() - debut;
+      const calme = !ecranOccupe() && Date.now() - dernierChangement >= CALME_MS;
+      if ((ecoule >= ATTENTE_MIN_MS && calme) || ecoule >= ATTENTE_MAX_MS) {
+        /* Absente de cet écran : on la sort du compte et on passe, dans le sens du déplacement. */
+        setSautees((prec) => new Set(prec).add(index));
         const suivant = index + sens.current;
         if (suivant < 0 || suivant >= total) onFin();
         else setIndex(suivant);
         return;
       }
-      window.setTimeout(chercher, 120);
+      minuterie = window.setTimeout(chercher, 120);
     };
     chercher();
     return () => {
       vivant = false;
+      window.clearTimeout(minuterie);
+      observateur.disconnect();
     };
   }, [etape, index, total, onFin, reduit]);
 
@@ -128,12 +189,27 @@ export function GuideOverlay({ parcours, onFin }: { parcours: Parcours; onFin: (
   }, [cible]);
 
   /* ── Les gestes ── */
+  /*
+    UN GESTE, UNE ÉTAPE. Un geste reçu pendant que l'étape demandée se
+    cherche encore est ignoré : sinon deux clics rapides — ou un clic et une
+    touche — enjambaient une étape que personne n'avait vue. Le verrou est une
+    `ref`, lue au moment du geste : deux évènements dans la même image voient
+    la même valeur, quel que soit l'ordre des rendus.
+  */
+  const pretRef = useRef(false);
+  pretRef.current = pret;
   const aller = useCallback(
     (d: 1 | -1) => {
-      sens.current = d;
+      if (!pretRef.current) return;
       const suivant = index + d;
-      if (suivant >= total) onFin();
-      else if (suivant >= 0) setIndex(suivant);
+      if (suivant >= total) {
+        onFin();
+        return;
+      }
+      if (suivant < 0) return;
+      pretRef.current = false;
+      sens.current = d;
+      setIndex(suivant);
     },
     [index, total, onFin],
   );
@@ -142,18 +218,19 @@ export function GuideOverlay({ parcours, onFin }: { parcours: Parcours; onFin: (
       if (e.key === 'Escape') onFin();
       else if (e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        aller(1);
+        /* Une touche maintenue répète : c'est un seul geste, pas dix. */
+        if (!e.repeat) aller(1);
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        aller(-1);
+        if (!e.repeat) aller(-1);
       }
     };
     window.addEventListener('keydown', surTouche, true);
     return () => window.removeEventListener('keydown', surTouche, true);
   }, [aller, onFin]);
   useEffect(() => {
-    carte.current?.focus();
-  }, [index]);
+    if (pret) carte.current?.focus();
+  }, [index, pret]);
 
   /* ── Où poser la carte ── */
   const position = useMemo((): React.CSSProperties => {
@@ -256,14 +333,14 @@ export function GuideOverlay({ parcours, onFin }: { parcours: Parcours; onFin: (
         style={position}
       >
         <span className="tnum block font-mono text-[10px] tracking-[0.16em] text-text-muted">
-          {t('guide.etape', { n: index + 1, total })}
+          {t('guide.etape', { n: rangAffiche, total: totalAffiche })}
         </span>
         <p className="mt-2 text-[15px] font-bold leading-snug text-text-primary [text-wrap:balance]">{etape.titre}</p>
         <p className="mt-1.5 text-[13.5px] leading-[1.6] text-text-secondary [text-wrap:pretty]">{etape.texte}</p>
         <div className="mt-3.5 flex items-center gap-1.5" aria-hidden>
-          {parcours.etapes.map((_, i) => (
-            <span key={i} className={`h-1 flex-1 ${i <= index ? 'bg-text-primary' : 'bg-border-strong'}`} />
-          ))}
+          {parcours.etapes.map((_, i) =>
+            sautees.has(i) ? null : <span key={i} className={`h-1 flex-1 ${i <= index ? 'bg-text-primary' : 'bg-border-strong'}`} />,
+          )}
         </div>
         <div className="mt-3.5 flex flex-wrap items-center gap-2">
           <button type="button" onClick={onFin} className="min-h-11 px-2 text-[12.5px] text-text-muted hover:text-text-primary md:min-h-8">

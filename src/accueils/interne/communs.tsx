@@ -15,7 +15,7 @@ const MOIS = ['janv.', 'févr.', 'mars', 'avril', 'mai', 'juin', 'juil.', 'août
 export function EnTeteQG({ q, nom }: { q: QG; nom: string }) {
   const d = q.maintenant;
   return (
-    <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+    <header data-guide="titre" className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
       <h1 className="sr-only">Accueil — {nom}</h1>
       <span className="eyebrow text-text-secondary">Accueil</span>
       <span className="h-3 w-px bg-border-raised" aria-hidden />
