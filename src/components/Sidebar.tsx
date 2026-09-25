@@ -25,9 +25,9 @@ import { cheminLePlusPrecis } from '../lib/cheminCourant';
 /* La phrase de chaque famille de supervision, sous son nom dans la bulle du rail. Interne : ce fichier n'entre pas dans le paquet cliente. */
 const PHRASE_SUPERVISION: Record<string, string> = {
   LG: 'Déléguer : les équipes qui veillent côté serveur, leurs bureaux, ce qui attend votre avis.',
-  SU: 'Décider : toutes les clientes, leurs dossiers, qui est entré chez qui.',
-  PA: 'Surveiller : incidents, sites, trackers, maturité, alertes à vos seuils.',
-  PD: 'Vendre : Scanner, Comply, SSL Monitor.',
+  SU: 'Décider : toutes les clientes, leurs dossiers, et l’équipe qui les suit.',
+  PA: 'Surveiller : incidents, sites, trackers, maturité, alertes, qui est entré chez qui.',
+  PD: 'Les produits de Cyber : Scanner, Comply, SSL Monitor.',
 };
 
 /**

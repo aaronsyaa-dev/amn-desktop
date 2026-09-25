@@ -8,6 +8,10 @@ import { useProfilesOptionnel } from '../../state/ProfilesContext';
 import { UserAvatar } from '../../components/UserAvatar';
 import { Glyphe, MarqueAmn } from './Glyphe';
 import { hhmm } from '../format';
+import { EDITION_PRODUCT_NAME } from '../../edition/edition';
+
+/* Le mot qui suit la marque (« Business ») : il vient de l'édition, pas d'une chaîne figée. */
+const MOT_EDITION = EDITION_PRODUCT_NAME.replace(/^AMN\s+/, '');
 
 /**
  * LA BARRE HAUTE COMMUNE — cahier 11, `44d`. La seule chose qui ne change pas
@@ -30,9 +34,9 @@ export function BarreHaute({ bureau }: { bureau: BureauKey }) {
       style={{ background: e.barre, borderBottom: `1px solid ${e.filet}`, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.04)' }}
       data-barre-haute
     >
-      <span className="flex items-center gap-2" aria-label="AMN Business">
+      <span className="flex items-center gap-2" aria-label={EDITION_PRODUCT_NAME}>
         <MarqueAmn hauteur={14} />
-        <span className="hidden text-[12px] text-[#9a9a97] sm:inline">Business</span>
+        <span className="hidden text-[12px] text-[#9a9a97] sm:inline">{MOT_EDITION}</span>
       </span>
       <span aria-hidden className="h-[18px] w-px" style={{ background: e.filet }} />
       <span

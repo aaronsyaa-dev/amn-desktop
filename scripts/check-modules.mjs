@@ -206,7 +206,10 @@ const businessRoutes = read('src/edition/appRoot.business.tsx');
 const internalSrc = withoutComments(read('src/edition/modules.internal.ts'));
 const internalNav = navEntries(slice(internalSrc, 'export const NAV_SECTIONS', 'export const AJMANI_EMAIL'));
 const internalRoutes = read('src/edition/appRoot.internal.tsx');
-const amnRouteTable = slice(internalRoutes, 'function AmnRoutes', 'function ClientContextRoutes');
+// Les bureaux de supervision montent leurs routes par `{routesBureaux()}`, au
+// milieu de la table : on ne les compte que si la table les appelle vraiment.
+const amnRouteTableSeule = slice(internalRoutes, 'function AmnRoutes', 'function ClientContextRoutes');
+const amnRouteTable = amnRouteTableSeule.includes('{routesBureaux()}') ? `${amnRouteTableSeule}\n${read('src/bureaux/routes.tsx')}` : amnRouteTableSeule;
 const clientRouteTable = slice(internalRoutes, 'function ClientContextRoutes', null);
 
 const sidebarSrc = withoutComments(read('src/client-context/ClientSidebar.tsx'));

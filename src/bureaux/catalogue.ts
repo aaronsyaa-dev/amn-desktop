@@ -233,10 +233,15 @@ export const CATALOGUE: Record<BureauKey, Bureau> = {
 
 /** Tous les écrans d'un bureau, avec l'onglet qui les porte. */
 export function ecransDuBureau(b: BureauKey): { nom: string; route: string; onglet: Ecran; motifs: string[] }[] {
-  return CATALOGUE[b].onglets.flatMap((o) => [
-    { nom: o.nom, route: o.route, onglet: o, motifs: o.motifs ?? [] },
-    ...(o.aussi ?? []).map((a) => ({ nom: a.nom, route: a.route, onglet: o, motifs: a.motifs ?? [] })),
-  ]);
+  return [
+    ...CATALOGUE[b].onglets.flatMap((o) => [
+      { nom: o.nom, route: o.route, onglet: o, motifs: o.motifs ?? [] },
+      ...(o.aussi ?? []).map((a) => ({ nom: a.nom, route: a.route, onglet: o, motifs: a.motifs ?? [] })),
+    ]),
+    // Les Produits de la console Cyber (Scanner, Comply, SSL Monitor) sont recousus dans le bureau
+    // sans être un onglet : chacun est son propre écran, atteint par la console ou la palette.
+    ...CATALOGUE[b].outils.filter((o) => o.groupe === 'PRODUITS').map((o) => ({ nom: o.nom, route: o.route, onglet: { nom: o.nom, route: o.route } as Ecran, motifs: [] })),
+  ];
 }
 
 const colle = (chemin: string, route: string) => chemin === route || chemin.startsWith(`${route}/`);

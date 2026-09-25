@@ -305,14 +305,11 @@ export const NAV_SECTIONS: NavSection[] = [
     // « Mémoire » disait la même chose de Décisions et Connaissances, mais les
     // séparait de la messagerie qui les alimente.
     items: [
-      { key: 'team', label: 'Équipe', to: '/team', icon: Users, hint: 'Messagerie et présence' },
       { key: 'notes', label: 'Notes', to: '/notes', icon: NotebookPen, hint: 'Bloc-notes' },
       // Une note est un jet personnel ; une page est un support commun qu'on
       // tient à jour et que d'autres relisent. D'où sa place ici, dans le
       // collectif, et non à côté des livrables.
       { key: 'pages', label: 'Pages', to: '/pages', icon: LayoutTemplate, hint: 'Fiches et supports partagés' },
-      { key: 'decisions', label: 'Décisions', to: '/decisions', icon: Scale, hint: 'Journal des arbitrages' },
-      { key: 'knowledge', label: 'Connaissances', to: '/knowledge', icon: BookOpen, hint: 'Base interne' },
       { key: 'dm', label: 'Messages privés', to: '/messages-prives', icon: MessageCircle, hint: 'Écrire à une personne, sans le groupe' },
       { key: 'groups', label: 'Groupes', to: '/groupes', icon: UsersRound, hint: 'Des fils à plusieurs, par sujet ou par équipe' },
       { key: 'announcements', label: 'Annonces', to: '/annonces', icon: Megaphone, hint: 'Ce que tout le monde doit avoir lu' },
@@ -426,6 +423,8 @@ export const NAV_SECTIONS: NavSection[] = [
     label: 'La Garde',
     space: 'garde',
     items: [
+      // Le Capitaine, ses chefs et leurs gardes : l'accueil du bureau de la Garde (cahier 11, `45e`).
+      { key: 'gardeOrganigramme', label: 'Organigramme', to: '/garde/organigramme', icon: Workflow, hint: 'Le Capitaine, ses sept chefs, et qui est en ronde' },
       { key: 'gardeSalle', label: 'La Salle', to: '/garde', icon: Shield, hint: 'Le mur des gardes : qui fait quoi, maintenant' },
       { key: 'gardeAjmani', label: 'Ajmani', to: '/garde/ajmani', icon: Sparkles, hint: 'Le chef d’état-major : il parle en premier, d’une seule proposition' },
       { key: 'gardePile', label: 'À votre avis', to: '/garde/pile', icon: Inbox, hint: 'Ce qui attend une décision humaine' },
@@ -437,22 +436,26 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     key: 'tour',
     code: 'SU',
-    label: 'Supervision',
+    label: 'Supervisor',
     space: 'control',
+    // Les écrans du cahier 4, recousus dans le bureau Supervisor (cahier 16) :
+    // Équipe, Décisions et Connaissances y forment l'onglet « Équipe ».
     items: [
       { key: 'tour', label: 'Vue d’ensemble', to: '/tour', icon: MonitorDot, hint: 'Le mur du SOC' },
-      { key: 'orgs', label: 'Organisations', to: '/tour/organisations', icon: Building2, hint: 'Toutes les clientes gérées' },
-      { key: 'access', label: 'Journal d’accès', to: '/tour/journal', icon: History, hint: 'Qui est entré chez qui' },
+      { key: 'orgs', label: 'Dossiers clients', to: '/tour/organisations', icon: Building2, hint: 'Toutes les clientes gérées' },
       // L'atelier de création d'un espace client (BLOC C). Dans la Tour de
       // contrôle et non au Poste de travail : créer une cliente est un geste
       // qu'on fait EN supervisant le parc, pas au milieu de sa journée.
       { key: 'generator', label: 'Atelier', to: '/tour/generateur', icon: Sparkles, hint: 'Créer un espace de travail sur mesure' },
+      { key: 'team', label: 'Équipe', to: '/team', icon: Users, hint: 'Messagerie et présence' },
+      { key: 'decisions', label: 'Décisions', to: '/decisions', icon: Scale, hint: 'Journal des arbitrages' },
+      { key: 'knowledge', label: 'Connaissances', to: '/knowledge', icon: BookOpen, hint: 'Base interne' },
     ],
   },
   {
     key: 'parc',
     code: 'PA',
-    label: 'Parc',
+    label: 'Cyber',
     space: 'control',
     // Sites quitte le Poste de travail pour venir ici, à côté des trackers qui
     // le surveillent. Le registre des sites n'a jamais servi au travail
@@ -471,6 +474,8 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'orgCompare', label: 'Comparatif clientes', to: '/comparatif', icon: Scale, hint: 'Toutes les organisations côte à côte' },
       { key: 'customAlerts', label: 'Alertes personnalisées', to: '/alertes-personnalisees', icon: BellRing, hint: 'Vos propres seuils sur le parc' },
       { key: 'clientReport', label: 'Rapport client enrichi', to: '/rapport-client', icon: FileBarChart, hint: 'Tout ce qu’on sait d’une cliente, en une page imprimable' },
+      // Recousu dans le Journal d'audit de Cyber (cahier 16, `29c`).
+      { key: 'access', label: 'Journal d’accès', to: '/tour/journal', icon: History, hint: 'Qui est entré chez qui' },
     ],
   },
   {
