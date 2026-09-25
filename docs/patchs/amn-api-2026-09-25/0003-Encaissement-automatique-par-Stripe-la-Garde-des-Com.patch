@@ -1,0 +1,744 @@
+From db042f37554a47f178ce53f95f61f0e72852f0db Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 24 Sep 2026 23:59:25 +0000
+Subject: [PATCH 3/5] Encaissement automatique par Stripe : la Garde des
+ Comptes agit sur le vrai statut de paiement
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Un webhook signé (HMAC-SHA256 sur le corps brut, tolérance 5 min, comparaison
+à temps constant), monté avant le parseur JSON, traduit invoice.paid en « à
+jour » et invoice.payment_failed en « impayé » : préavis, grâce de 7 jours et
+pause des modules souscrits se déclenchent sans saisie humaine, la
+réouverture aussi au paiement.
+
+Tenu et testé : idempotence (chaque événement réservé atomiquement avant
+traitement, rendu en cas d'échec pour la relance de Stripe), ordre (un
+événement plus ancien que la dernière bascule est sans effet), grâce (un
+nouvel échec pendant le cycle ne la remet pas à zéro), résiliation remontée à
+Harun sans rien fermer. Sans clé : 503 « hors ligne », le flux manuel reste.
+
+Pages Stripe : Harun ouvre une page de paiement pour une cliente ; une
+propriétaire souscrit elle-même, puis gère sa carte par le portail Stripe.
+Pas de SDK : l'API Stripe en formulaire HTTP, fetch injectable.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01BEf9qY21FAUuZ4ogxRY3s2
+---
+ src/config.js           |  13 ++
+ src/lib/paiements.js    | 280 ++++++++++++++++++++++++++++++++++++++++
+ src/routes/paiements.js | 108 ++++++++++++++++
+ src/server.js           |  17 +++
+ test/paiements.test.js  | 229 ++++++++++++++++++++++++++++++++
+ 5 files changed, 647 insertions(+)
+ create mode 100644 src/lib/paiements.js
+ create mode 100644 src/routes/paiements.js
+ create mode 100644 test/paiements.test.js
+
+diff --git a/src/config.js b/src/config.js
+index 40e6d95..eaa0090 100644
+--- a/src/config.js
++++ b/src/config.js
+@@ -71,6 +71,19 @@ export const config = {
+   resendKey: process.env.RESEND_API_KEY || null,
+   emailFrom: process.env.EMAIL_FROM || null,
+   courrierSecret: process.env.COURRIER_SECRET || null,
++  /*
++    L'ENCAISSEMENT (src/lib/paiements.js). La clé secrète Stripe, le secret de
++    signature du webhook, un prix Stripe par formule. Sans eux, rien ne change :
++    les règlements se notent à la main, comme avant. `STRIPE_QUANTITE=places`
++    facture une unité par place de la formule ; par défaut, un forfait.
++  */
++  stripeCle: process.env.STRIPE_SECRET_KEY || null,
++  stripeSecretWebhook: process.env.STRIPE_WEBHOOK_SECRET || null,
++  stripePrix: {
++    business_standard: process.env.STRIPE_PRIX_STANDARD || null,
++    business_premium: process.env.STRIPE_PRIX_PREMIUM || null,
++  },
++  stripeQuantite: process.env.STRIPE_QUANTITE === 'places' ? 'places' : 'forfait',
+ };
+ 
+ if (!config.operatorToken && process.env.NODE_ENV !== 'test') {
+diff --git a/src/lib/paiements.js b/src/lib/paiements.js
+new file mode 100644
+index 0000000..9c68cda
+--- /dev/null
++++ b/src/lib/paiements.js
+@@ -0,0 +1,280 @@
++/**
++ * L'ENCAISSEMENT AUTOMATIQUE — Stripe (chantier « arrivée cliente », partie 3).
++ *
++ * Avant : un règlement se notait à la main (`POST /v1/garde/comptes/:orgId/paiement`,
++ * « paye » ou « impaye »). Tout le reste — préavis, sept jours de grâce, mise
++ * en pause des modules souscrits, réouverture — était déjà automatique, mais
++ * attendait qu'un humain dise ce qui avait été payé.
++ *
++ * Maintenant : Stripe dit ce qui a été payé. Une cliente souscrit par une page
++ * de paiement Stripe (Checkout) ; chaque facture réglée ou échouée arrive ici
++ * en événement SIGNÉ, et la Garde des Comptes agit sur ce vrai statut :
++ *
++ *   invoice.paid                 → à jour (et, si elle était en impayé, réouverture)
++ *   invoice.payment_failed       → impayé (préavis à la prochaine ronde, grâce, pause)
++ *   checkout.session.completed   → la cliente est reliée à son client Stripe
++ *   customer.subscription.deleted→ remonté à Harun : on ne suspend pas sur une résiliation
++ *
++ * Ce qui est tenu, et testé (test/paiements.test.js) :
++ *   - la SIGNATURE : HMAC-SHA256 sur le corps brut, tolérance de 5 minutes,
++ *     comparaison à temps constant — un événement non signé ne fait rien ;
++ *   - l'IDEMPOTENCE : un événement ne se traite qu'une fois (Stripe en rejoue) ;
++ *   - l'ORDRE : Stripe ne garantit pas l'ordre ; un événement plus ancien que
++ *     le dernier qui a changé l'état d'une cliente est noté, sans effet ;
++ *   - la GRÂCE : un nouvel échec pendant le préavis ou la grâce ne remet pas le
++ *     compteur à zéro ;
++ *   - SANS CLÉ : rien ne change, le flux manuel reste, et l'interface le dit.
++ *
++ * Pas de SDK : l'API Stripe se parle en formulaire HTTP, comme Resend en JSON
++ * (src/lib/courrier.js). `fetchImpl` s'injecte pour les tests.
++ */
++import crypto from 'node:crypto';
++import { AMN_ORG_ID } from '../db/tenancy.js';
++
++const API = 'https://api.stripe.com/v1';
++const TOLERANCE_S = 300;
++
++let etat = {
++  cle: null,
++  secretWebhook: null,
++  prix: {},
++  quantite: 'forfait',
++  fetchImpl: globalThis.fetch,
++  horloge: () => Date.now(),
++};
++
++/**
++ * `prix` : l'identifiant de prix Stripe par formule (`business_standard`,
++ * `business_premium`). `quantite` : « forfait » (une unité par abonnement) ou
++ * « places » (une unité par place de la formule).
++ */
++export function configurerPaiements({ cle = null, secretWebhook = null, prix = {}, quantite = 'forfait', fetchImpl = globalThis.fetch, horloge = () => Date.now() } = {}) {
++  etat = { cle: cle || null, secretWebhook: secretWebhook || null, prix: Object.fromEntries(Object.entries(prix ?? {}).filter(([, v]) => v)), quantite: quantite === 'places' ? 'places' : 'forfait', fetchImpl, horloge };
++  return paiementsActifs();
++}
++export const paiementsActifs = () => Boolean(etat.cle && etat.secretWebhook && Object.keys(etat.prix).length > 0);
++export const raisonInactive = () => (!etat.cle ? 'sans_cle' : !etat.secretWebhook ? 'sans_secret_webhook' : Object.keys(etat.prix).length === 0 ? 'sans_prix' : null);
++export function etatPaiements() {
++  return { actif: paiementsActifs(), raison: raisonInactive(), fournisseur: 'stripe', formules: Object.keys(etat.prix), quantite: etat.quantite, modeTest: Boolean(etat.cle?.startsWith('sk_test_')) };
++}
++
++export async function ensurePaiementsSchema(db) {
++  // La cliente et son client Stripe. `derniere_bascule_at` : l'horodatage Stripe du dernier événement qui a changé son état.
++  await db.run(`CREATE TABLE IF NOT EXISTS paiements_clients (
++    org_id TEXT PRIMARY KEY, customer_id TEXT UNIQUE, subscription_id TEXT, statut TEXT,
++    derniere_bascule_at INTEGER, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`);
++  // Chaque événement reçu, une fois : l'idempotence et la trace (sans carte, sans adresse).
++  await db.run(`CREATE TABLE IF NOT EXISTS paiements_evenements (
++    id TEXT PRIMARY KEY, type TEXT NOT NULL, org_id TEXT, objet_id TEXT, montant INTEGER, devise TEXT,
++    cree_stripe INTEGER, effet TEXT, recu_at TEXT NOT NULL)`);
++  await db.run('CREATE INDEX IF NOT EXISTS paiements_evenements_org_idx ON paiements_evenements (org_id, recu_at)');
++}
++
++const nowIso = () => new Date(etat.horloge()).toISOString();
++
++/* ─────────────────────────── La signature ─────────────────────────── */
++
++/**
++ * Vérifie l'en-tête `Stripe-Signature` (`t=…,v1=…[,v1=…]`) sur le corps BRUT.
++ * Rend `{ ok: true }` ou `{ ok: false, raison }`. Aucune exception.
++ */
++export function verifierSignature(corpsBrut, entete, secret = etat.secretWebhook, maintenantMs = etat.horloge(), toleranceS = TOLERANCE_S) {
++  if (!secret) return { ok: false, raison: 'sans_secret' };
++  if (!entete || typeof entete !== 'string') return { ok: false, raison: 'sans_signature' };
++  const morceaux = entete.split(',').map((p) => p.trim().split('='));
++  const t = Number(morceaux.find(([k]) => k === 't')?.[1]);
++  const signatures = morceaux.filter(([k]) => k === 'v1').map(([, v]) => v).filter(Boolean);
++  if (!Number.isFinite(t) || signatures.length === 0) return { ok: false, raison: 'signature_illisible' };
++  if (Math.abs(maintenantMs / 1000 - t) > toleranceS) return { ok: false, raison: 'hors_delai' };
++  const attendue = crypto.createHmac('sha256', secret).update(`${t}.`).update(Buffer.isBuffer(corpsBrut) ? corpsBrut : Buffer.from(String(corpsBrut ?? ''))).digest();
++  for (const s of signatures) {
++    const recue = Buffer.from(s, 'hex');
++    if (recue.length === attendue.length && crypto.timingSafeEqual(recue, attendue)) return { ok: true, t };
++  }
++  return { ok: false, raison: 'signature_fausse' };
++}
++
++/** Pour les tests et le contrôle : l'en-tête que Stripe poserait sur ce corps. */
++export function signer(corpsBrut, secret, tSecondes) {
++  const sig = crypto.createHmac('sha256', secret).update(`${tSecondes}.${corpsBrut}`).digest('hex');
++  return `t=${tSecondes},v1=${sig}`;
++}
++
++/* ─────────────────────────── L'API Stripe ─────────────────────────── */
++
++/** `{ a: { b: [ { c: 1 } ] } }` → `a[b][0][c]=1` : le format de formulaire de Stripe. */
++function formulaire(obj, prefixe = '', sortie = new URLSearchParams()) {
++  for (const [k, v] of Object.entries(obj)) {
++    if (v === undefined || v === null) continue;
++    const cle = prefixe ? `${prefixe}[${k}]` : k;
++    if (typeof v === 'object') formulaire(v, cle, sortie);
++    else sortie.append(cle, String(v));
++  }
++  return sortie;
++}
++
++async function stripe(chemin, params, { idempotence = null } = {}) {
++  if (!etat.cle) throw Object.assign(new Error('Paiement hors ligne : STRIPE_SECRET_KEY absente.'), { status: 503, code: 'paiement_hors_ligne' });
++  const r = await etat.fetchImpl(`${API}${chemin}`, {
++    method: 'POST',
++    headers: { authorization: `Bearer ${etat.cle}`, 'content-type': 'application/x-www-form-urlencoded', ...(idempotence ? { 'idempotency-key': idempotence } : {}) },
++    body: formulaire(params).toString(),
++  });
++  const json = await r.json().catch(() => ({}));
++  if (!r.ok) throw Object.assign(new Error(json?.error?.message ?? `Stripe HTTP ${r.status}`), { status: 502, code: 'stripe' });
++  return json;
++}
++
++export async function clientDe(db, orgId) {
++  return (await db.all('SELECT * FROM paiements_clients WHERE org_id = ?', [orgId]))[0] ?? null;
++}
++async function orgDuClient(db, customerId) {
++  if (!customerId) return null;
++  return (await db.all('SELECT org_id FROM paiements_clients WHERE customer_id = ?', [customerId]))[0]?.org_id ?? null;
++}
++async function relier(db, orgId, { customerId = null, subscriptionId = null, statut = null } = {}) {
++  const existant = await clientDe(db, orgId);
++  const at = nowIso();
++  if (!existant) {
++    await db.run('INSERT INTO paiements_clients (org_id, customer_id, subscription_id, statut, derniere_bascule_at, created_at, updated_at) VALUES (?, ?, ?, ?, NULL, ?, ?)', [orgId, customerId, subscriptionId, statut, at, at]);
++  } else {
++    await db.run('UPDATE paiements_clients SET customer_id = COALESCE(?, customer_id), subscription_id = COALESCE(?, subscription_id), statut = COALESCE(?, statut), updated_at = ? WHERE org_id = ?', [customerId, subscriptionId, statut, at, orgId]);
++  }
++}
++
++/**
++ * La page de paiement Stripe pour une organisation cliente : un abonnement à
++ * sa formule. Rend `{ url }`. La cliente paie chez Stripe — la carte ou le
++ * mandat SEPA ne passent jamais par nos serveurs.
++ */
++export async function creerPageDePaiement(db, org, { email = null, retour }) {
++  if (!org || org.id === AMN_ORG_ID || org.plan === 'internal') throw Object.assign(new Error('Organisation cliente attendue.'), { status: 400 });
++  const prix = etat.prix[org.plan];
++  if (!prix) throw Object.assign(new Error(`Aucun prix Stripe configuré pour la formule ${org.plan}.`), { status: 503, code: 'sans_prix' });
++  const deja = await clientDe(db, org.id);
++  const quantite = etat.quantite === 'places' ? Math.max(1, Number(org.seats) || 1) : 1;
++  const session = await stripe('/checkout/sessions', {
++    mode: 'subscription',
++    line_items: [{ price: prix, quantity: quantite }],
++    success_url: `${retour}?paiement=ok`,
++    cancel_url: `${retour}?paiement=annule`,
++    client_reference_id: org.id,
++    ...(deja?.customer_id ? { customer: deja.customer_id } : email ? { customer_email: email } : {}),
++    metadata: { org_id: org.id },
++    subscription_data: { metadata: { org_id: org.id } },
++    locale: 'fr',
++  }, { idempotence: `checkout-${org.id}-${crypto.randomUUID()}` });
++  return { url: session.url, id: session.id };
++}
++
++/** Le portail Stripe de la cliente : changer de carte, lire ses factures, résilier. */
++export async function creerPortail(db, orgId, { retour }) {
++  const c = await clientDe(db, orgId);
++  if (!c?.customer_id) throw Object.assign(new Error('Aucun abonnement pour cette organisation : souscrivez d’abord.'), { status: 404, code: 'sans_abonnement' });
++  const session = await stripe('/billing_portal/sessions', { customer: c.customer_id, return_url: retour });
++  return { url: session.url };
++}
++
++/* ─────────────────────────── Les événements ─────────────────────────── */
++
++const orgDesMetadonnees = (o) => o?.metadata?.org_id
++  ?? o?.subscription_details?.metadata?.org_id
++  ?? o?.parent?.subscription_details?.metadata?.org_id
++  ?? o?.lines?.data?.[0]?.metadata?.org_id
++  ?? null;
++
++/**
++ * Traite un événement Stripe DÉJÀ VÉRIFIÉ. `garde` porte le store et les gestes
++ * de la Garde des Comptes. Rend `{ effet }` — ce qui a été fait, en un mot.
++ */
++export async function traiterEvenement(db, garde, ev) {
++  if (!ev?.id || !ev?.type) return { effet: 'illisible' };
++  const o = ev.data?.object ?? {};
++  /*
++    RÉSERVER AVANT DE TRAITER. Stripe rejoue un événement tant qu'il n'a pas
++    reçu 2xx — et peut le faire pendant que le premier envoi est encore en
++    cours. L'insertion est atomique : une seule livraison obtient la ligne, les
++    autres voient « déjà traité » et ne touchent à rien.
++  */
++  const montantBrut = o.amount_paid ?? o.amount_due ?? o.amount_total;
++  const reserve = await db.run('INSERT INTO paiements_evenements (id, type, org_id, objet_id, montant, devise, cree_stripe, effet, recu_at) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING', [ev.id, ev.type, o.id ?? null, Number.isFinite(montantBrut) ? montantBrut : null, o.currency ?? null, Number(ev.created) || null, 'en_cours', nowIso()]);
++  if (!reserve?.changes) {
++    const precedent = (await db.all('SELECT effet FROM paiements_evenements WHERE id = ?', [ev.id]))[0]?.effet ?? null;
++    return { effet: 'deja_traite', precedent };
++  }
++  const noter = async (effet, orgId = null) => {
++    await db.run('UPDATE paiements_evenements SET effet = ?, org_id = ? WHERE id = ?', [effet, orgId, ev.id]);
++    return { effet, orgId };
++  };
++  try {
++    return await appliquer(db, garde, ev, o, noter);
++  } catch (err) {
++    // Échec en cours de route : la réservation est rendue, pour que la relance de Stripe refasse le travail.
++    await db.run("DELETE FROM paiements_evenements WHERE id = ? AND effet = 'en_cours'", [ev.id]).catch(() => undefined);
++    throw err;
++  }
++}
++
++async function appliquer(db, garde, ev, o, noter) {
++
++  let orgId = null;
++  if (ev.type === 'checkout.session.completed') orgId = o.client_reference_id ?? orgDesMetadonnees(o);
++  else orgId = (await orgDuClient(db, o.customer)) ?? orgDesMetadonnees(o);
++  const org = orgId ? await db.getOrganization(orgId) : null;
++  if (!org || org.id === AMN_ORG_ID) return noter('organisation_inconnue', null);
++
++  // L'ordre : un événement plus ancien que la dernière bascule de cette cliente ne rebascule rien.
++  const client = await clientDe(db, org.id);
++  const cree = Number(ev.created) || 0;
++  const bascule = ['invoice.paid', 'invoice.payment_succeeded', 'invoice.payment_failed'].includes(ev.type);
++  if (bascule && client?.derniere_bascule_at && cree < Number(client.derniere_bascule_at)) return noter('ancien_ignore', org.id);
++  const poserBascule = () => db.run('UPDATE paiements_clients SET derniere_bascule_at = ?, updated_at = ? WHERE org_id = ?', [cree, nowIso(), org.id]);
++
++  const { store, reactiverCompte } = garde;
++  const journal = (action, pourquoi, detail = null) => store.ecrireJournal({ agent: 'comptes.impayes', equipe: 'comptes', orgId: org.id, action, pourquoi, resultat: 'regle', detail: { stripe: ev.id, ...(detail ?? {}) } });
++  const montant = (n, devise) => (Number.isFinite(n) ? `${(n / 100).toFixed(2).replace('.', ',')} ${String(devise ?? 'eur').toUpperCase()}` : '');
++
++  switch (ev.type) {
++    case 'checkout.session.completed': {
++      await relier(db, org.id, { customerId: o.customer ?? null, subscriptionId: o.subscription ?? null, statut: 'actif' });
++      await journal('abonnement', `${org.name} a souscrit son abonnement par Stripe`);
++      return noter('relie', org.id);
++    }
++    case 'invoice.paid':
++    case 'invoice.payment_succeeded': {
++      await relier(db, org.id, { customerId: o.customer ?? null, statut: 'actif' });
++      await poserBascule();
++      const compte = await store.getCompte(org.id);
++      if (compte && compte.etat !== 'a_jour') {
++        await reactiverCompte({ db, hub: null, store }, org.id, { par: 'Stripe' });
++        return noter('reactive', org.id);
++      }
++      await store.upsertCompte(org.id, { etat: 'a_jour' });
++      await journal('paiement-recu', `paiement reçu de ${org.name}${o.amount_paid ? ` : ${montant(o.amount_paid, o.currency)}` : ''}${o.number ? ` (facture ${o.number})` : ''}`, { facture: o.id ?? null });
++      return noter('paye', org.id);
++    }
++    case 'invoice.payment_failed': {
++      await relier(db, org.id, { customerId: o.customer ?? null, statut: 'en_retard' });
++      await poserBascule();
++      const compte = await store.getCompte(org.id);
++      if (compte && ['impaye', 'grace', 'suspendu'].includes(compte.etat)) {
++        // Déjà dans le cycle : un nouvel échec (Stripe retente) ne remet pas la grâce à zéro.
++        await journal('paiement-echoue', `nouvel échec de prélèvement pour ${org.name} ; cycle en cours (${compte.etat}) inchangé`, { tentative: o.attempt_count ?? null });
++        return noter('echec_deja_en_cycle', org.id);
++      }
++      const echeance = o.due_date ? new Date(o.due_date * 1000).toISOString() : o.period_end ? new Date(o.period_end * 1000).toISOString() : nowIso();
++      await store.upsertCompte(org.id, { etat: 'impaye', echeanceAt: echeance, impayeDepuis: nowIso(), note: `Stripe : échec de paiement${o.number ? ` (facture ${o.number})` : ''}` });
++      await journal('impaye', `Stripe signale un paiement échoué pour ${org.name}${o.amount_due ? ` : ${montant(o.amount_due, o.currency)}` : ''} ; préavis à la prochaine ronde`, { tentative: o.attempt_count ?? null });
++      return noter('impaye', org.id);
++    }
++    case 'customer.subscription.deleted': {
++      await relier(db, org.id, { statut: 'resilie' });
++      // Une résiliation n'est pas un impayé : une personne décide.
++      await store.upsertRemontee({ cle: `resiliation:${org.id}`, agent: 'comptes.impayes', equipe: 'comptes', orgId: org.id, gravite: 'haute', titre: `${org.name} a résilié son abonnement Stripe.`, contexte: 'Aucun module n’a été fermé : une résiliation se traite avec la cliente, pas par la Garde.', options: ['appeler la cliente', 'fermer les modules souscrits', 'laisser ouvert'], recommandation: 'Appeler la cliente avant toute fermeture.' });
++      await journal('resiliation', `${org.name} a résilié son abonnement ; remonté à Harun, rien n’est fermé`);
++      return noter('resiliation_remontee', org.id);
++    }
++    default:
++      return noter('ignore', org.id);
++  }
++}
+diff --git a/src/routes/paiements.js b/src/routes/paiements.js
+new file mode 100644
+index 0000000..6afcb63
+--- /dev/null
++++ b/src/routes/paiements.js
+@@ -0,0 +1,108 @@
++/**
++ * L'ENCAISSEMENT, côté routes (chantier « arrivée cliente », partie 3). Voir src/lib/paiements.js.
++ *
++ *   POST /v1/paiements/stripe/webhook            — public, SIGNÉ : Stripe dit ce qui a été payé
++ *                                                   (monté dans server.js AVANT le parseur JSON : la
++ *                                                   signature se vérifie sur les octets reçus)
++ *   GET  /v1/paiements                           — l'état (actif, pourquoi) : équipe AMN DevSec
++ *   GET  /v1/paiements/organisations/:id         — le lien Stripe d'une cliente et ses derniers événements : AMN DevSec
++ *   POST /v1/paiements/organisations/:id/page    — une page de paiement Stripe pour cette cliente : AMN DevSec
++ *   GET  /v1/paiements/abonnement                — mon abonnement : propriétaire ou administratrice cliente
++ *   POST /v1/paiements/abonnement                — souscrire (page Stripe) ou gérer (portail Stripe) : idem
++ */
++import { Router } from 'express';
++import { tenantAuth } from '../middleware/tenantAuth.js';
++import { rateLimit } from '../middleware/rateLimit.js';
++import { AMN_ORG_ID } from '../db/tenancy.js';
++import { appOriginForOrg } from '../lib/links.js';
++import { publicOrigin } from '../lib/origin.js';
++import { creerStore } from '../garde/store.js';
++import { reactiverCompte } from '../garde/gestes.js';
++import { verifierSignature, traiterEvenement, etatPaiements, paiementsActifs, raisonInactive, creerPageDePaiement, creerPortail, clientDe } from '../lib/paiements.js';
++
++/** La Garde des Comptes, qu'elle tourne ou non : un paiement s'enregistre même Garde éteinte (le préavis suivra quand elle battra). */
++const comptes = (req) => ({ store: req.app.locals.garde?.store ?? creerStore(req.app.locals.db), reactiverCompte });
++
++function fondatrice() {
++  const base = tenantAuth({ allowWeb: false, allowSupport: false });
++  return (req, res, next) => base(req, res, (err) => {
++    if (err) return next(err);
++    if (!req.auth?.isFoundingOrg) return res.status(404).json({ error: 'Not found' });
++    return next();
++  });
++}
++
++const horsLigne = (res) => res.status(503).json({ error: 'L’encaissement automatique n’est pas configuré sur ce serveur : les règlements se notent encore à la main.', code: 'paiement_hors_ligne', raison: raisonInactive() });
++
++/** Le webhook : à monter AVANT `express.json`, avec `express.raw`. */
++export function webhookStripe() {
++  return async (req, res) => {
++    const brut = Buffer.isBuffer(req.body) ? req.body : Buffer.from('');
++    const v = verifierSignature(brut, req.get('stripe-signature'));
++    // Sans secret, on ne peut rien vérifier : 503, et Stripe réessaiera une fois la configuration faite.
++    if (v.raison === 'sans_secret') return res.status(503).json({ error: 'webhook non configuré' });
++    // 400 sans détail : on ne dit pas à un inconnu POURQUOI sa signature ne vaut pas.
++    if (!v.ok) return res.status(400).json({ error: 'signature invalide' });
++    let ev;
++    try { ev = JSON.parse(brut.toString('utf8')); } catch { return res.status(400).json({ error: 'corps illisible' }); }
++    try {
++      const r = await traiterEvenement(req.app.locals.db, comptes(req), ev);
++      req.app.locals.hub?.tower?.({ type: 'paiement', effet: r.effet, orgId: r.orgId ?? null });
++      return res.json({ recu: true, effet: r.effet });
++    } catch (err) {
++      // 500 : Stripe réessaiera, et la réservation de l'événement a été rendue.
++      console.error('[paiements] événement non traité', ev?.id, err?.message); // eslint-disable-line no-console
++      return res.status(500).json({ error: 'traitement impossible, réessayez' });
++    }
++  };
++}
++
++export function paiementsRouter() {
++  const router = Router();
++  const db = (req) => req.app.locals.db;
++  const frein = rateLimit({ name: 'paiements', max: 20, windowMs: 15 * 60_000 });
++
++  router.get('/', fondatrice(), (req, res) => res.json({ paiements: etatPaiements() }));
++
++  router.get('/organisations/:id', fondatrice(), async (req, res) => {
++    const org = await db(req).getOrganization(req.params.id);
++    if (!org || org.id === AMN_ORG_ID) return res.status(404).json({ error: 'Organisation introuvable.' });
++    const client = await clientDe(db(req), org.id);
++    const evenements = await db(req).all('SELECT id, type, effet, montant, devise, recu_at FROM paiements_evenements WHERE org_id = ? ORDER BY recu_at DESC LIMIT 20', [org.id]);
++    res.json({ abonnement: client ? { relie: Boolean(client.customer_id), statut: client.statut, depuis: client.created_at } : null, evenements });
++  });
++
++  router.post('/organisations/:id/page', fondatrice(), async (req, res) => {
++    if (!paiementsActifs()) return horsLigne(res);
++    const org = await db(req).getOrganization(req.params.id);
++    if (!org || org.id === AMN_ORG_ID) return res.status(404).json({ error: 'Organisation introuvable.' });
++    const proprietaire = (await db(req).listUsers(org.id)).find((u) => u.role === 'owner');
++    try {
++      const page = await creerPageDePaiement(db(req), org, { email: proprietaire?.email ?? null, retour: `${appOriginForOrg(org.id) ?? publicOrigin(req)}/#/parametres` });
++      res.status(201).json(page);
++    } catch (err) { res.status(err.status ?? 500).json({ error: err.message, code: err.code ?? null }); }
++  });
++
++  const cliente = tenantAuth({ allowWeb: false, allowSupport: false, roles: ['owner', 'admin'] });
++
++  router.get('/abonnement', cliente, async (req, res) => {
++    if (req.auth.isFoundingOrg) return res.status(404).json({ error: 'Not found' });
++    const client = await clientDe(db(req), req.auth.orgId);
++    res.json({ actif: paiementsActifs(), abonnement: client ? { relie: Boolean(client.customer_id), statut: client.statut } : null });
++  });
++
++  router.post('/abonnement', frein, cliente, async (req, res) => {
++    if (req.auth.isFoundingOrg) return res.status(404).json({ error: 'Not found' });
++    if (!paiementsActifs()) return horsLigne(res);
++    const org = await db(req).getOrganization(req.auth.orgId);
++    const retour = `${appOriginForOrg(org.id) ?? publicOrigin(req)}/#/parametres`;
++    try {
++      const client = await clientDe(db(req), org.id);
++      if (client?.customer_id) return res.json({ ...(await creerPortail(db(req), org.id, { retour })), nature: 'portail' });
++      const user = await db(req).getUser(req.auth.userId);
++      return res.status(201).json({ ...(await creerPageDePaiement(db(req), org, { email: user?.email ?? null, retour })), nature: 'souscription' });
++    } catch (err) { return res.status(err.status ?? 500).json({ error: err.message, code: err.code ?? null }); }
++  });
++
++  return router;
++}
+diff --git a/src/server.js b/src/server.js
+index 017ba6e..ff55272 100644
+--- a/src/server.js
++++ b/src/server.js
+@@ -37,6 +37,9 @@ import { startGarde } from './garde/index.js';
+ import { startKeepAlive } from './lib/keepalive.js';
+ import { courrierRouter } from './routes/courrier.js';
+ import { configurerCourrier, ensureCourrierSchema } from './lib/courrier.js';
++import { configurerPaiements, ensurePaiementsSchema } from './lib/paiements.js';
++import { paiementsRouter, webhookStripe } from './routes/paiements.js';
++import { ensureGardeSchema } from './garde/store.js';
+ 
+ export async function createApp({ db }) {
+   // Le courrier : sa table de journal et ses jetons existent dès le démarrage ; la clé, elle, vient de l'environnement.
+@@ -45,8 +48,21 @@ export async function createApp({ db }) {
+     const actif = configurerCourrier({ apiKey: config.resendKey, expediteur: config.emailFrom, secret: config.courrierSecret });
+     console.log(actif ? `[courrier] en ligne, expéditeur ${config.emailFrom}` : '[courrier] hors ligne : RESEND_API_KEY ou EMAIL_FROM absent — les flux manuels restent'); // eslint-disable-line no-console
+   }
++  // L'encaissement : ses tables dès le démarrage (et celles de la Garde des Comptes, qu'il alimente même Garde éteinte).
++  await ensureGardeSchema(db);
++  await ensurePaiementsSchema(db);
++  if (!process.env.NODE_ENV?.startsWith('test')) {
++    const actif = configurerPaiements({ cle: config.stripeCle, secretWebhook: config.stripeSecretWebhook, prix: config.stripePrix, quantite: config.stripeQuantite });
++    console.log(actif ? `[paiements] Stripe en ligne${config.stripeCle?.startsWith('sk_test_') ? ' (mode test)' : ''}` : '[paiements] hors ligne : STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET ou un prix absent — les règlements se notent à la main'); // eslint-disable-line no-console
++  }
+   const app = express();
+   app.use(cors({ origin: config.corsOrigin }));
++  /*
++    LE WEBHOOK STRIPE, AVANT le parseur JSON : sa signature se vérifie sur les
++    octets EXACTS reçus. Relus après `express.json`, ils seraient re-sérialisés
++    et la signature ne correspondrait plus. 1 Mo suffit à tout événement Stripe.
++  */
++  app.post('/v1/paiements/stripe/webhook', express.raw({ type: '*/*', limit: '1mb' }), webhookStripe());
+   // Records can carry inline data-URL images (chat attachments, profile
+   // photos), so allow a larger JSON body than the ingestion default.
+   app.use(express.json({ limit: '12mb' }));
+@@ -75,6 +91,7 @@ export async function createApp({ db }) {
+   app.use('/v1/admin', adminRouter());
+   app.use('/v1/garde/site', gardeSiteRouter());
+   app.use('/v1/garde', gardeRouter());
++  app.use('/v1/paiements', paiementsRouter());
+   // Le catalogue des modules et les demandes d'une cliente (BLOC 4).
+   app.use('/v1/modules', modulesRouter());
+   app.use('/v1/events', eventsRouter());
+diff --git a/test/paiements.test.js b/test/paiements.test.js
+new file mode 100644
+index 0000000..1695dc5
+--- /dev/null
++++ b/test/paiements.test.js
+@@ -0,0 +1,229 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import http from 'node:http';
++
++process.env.NODE_ENV = 'test';
++process.env.OPERATOR_TOKEN = 'test-operator-token';
++
++const { createApp } = await import('../src/server.js');
++const { createSqliteDb } = await import('../src/db/sqlite.js');
++const { AMN_ORG_ID, ORG_MODULES, formulaModules, effectiveModules } = await import('../src/db/tenancy.js');
++const { hashPassword } = await import('../src/lib/password.js');
++const { creerGarde } = await import('../src/garde/index.js');
++const { configurerPaiements, signer, verifierSignature } = await import('../src/lib/paiements.js');
++
++/**
++ * L'ENCAISSEMENT AUTOMATIQUE (chantier « arrivée cliente », partie 3).
++ *
++ * Stripe dit ce qui a été payé ; la Garde des Comptes agit sur ce vrai statut —
++ * préavis, grâce, pause, réouverture — sans qu'un humain note le règlement.
++ * Stripe est simulé (fetchImpl) ; les SIGNATURES, elles, sont réelles.
++ */
++const OPERATOR = 'test-operator-token';
++const SECRET = 'whsec_test_secret_de_signature';
++const MDP = 'motdepasse-solide';
++const jour = 86_400_000;
++
++function fauxStripe() {
++  const appels = [];
++  const fetchImpl = async (url, init) => {
++    const corps = new URLSearchParams(init.body);
++    appels.push({ url, corps, entetes: init.headers });
++    if (url.endsWith('/checkout/sessions')) return new Response(JSON.stringify({ id: 'cs_test_1', url: 'https://checkout.stripe.com/c/pay/cs_test_1' }), { status: 200 });
++    if (url.endsWith('/billing_portal/sessions')) return new Response(JSON.stringify({ id: 'bps_1', url: 'https://billing.stripe.com/p/session/bps_1' }), { status: 200 });
++    return new Response(JSON.stringify({ error: { message: 'inconnu' } }), { status: 404 });
++  };
++  return { appels, fetchImpl };
++}
++
++async function decor(t, { configurer = true } = {}) {
++  const stripe = fauxStripe();
++  if (configurer) configurerPaiements({ cle: 'sk_test_cle', secretWebhook: SECRET, prix: { business_standard: 'price_standard', business_premium: 'price_premium' }, fetchImpl: stripe.fetchImpl });
++  else configurerPaiements({});
++  const db = createSqliteDb(':memory:');
++  await db.init();
++  const hash = await hashPassword(MDP);
++  await db.createUser({ orgId: AMN_ORG_ID, email: 'aaron@amn-test.local', passwordHash: hash, role: 'owner', status: 'active' });
++  const org = await db.createOrganization({ name: 'Fleurs de Lune', plan: 'business_standard' });
++  // Un module SOUSCRIT en plus de la formule : c'est lui que l'impayé met en pause.
++  const souscrit = ORG_MODULES.find((k) => !formulaModules('business_standard').includes(k));
++  await db.updateOrganization(org.id, { modules: effectiveModules('business_standard', { added: [souscrit], removed: [] }), modulesAdded: [souscrit], modulesRemoved: [] });
++  await db.createUser({ orgId: org.id, email: 'medina@fleurs.test', passwordHash: hash, role: 'owner', status: 'active' });
++  await db.createUser({ orgId: org.id, email: 'yanis@fleurs.test', passwordHash: hash, role: 'member', status: 'active' });
++  const app = await createApp({ db });
++  const garde = creerGarde({ db, hub: null });
++  await garde.demarrer();
++  garde.arreter();
++  app.locals.garde = garde;
++  const server = http.createServer(app);
++  await new Promise((r) => server.listen(0, r));
++  const base = `http://127.0.0.1:${server.address().port}`;
++  t.after(async () => { configurerPaiements({}); server.closeAllConnections?.(); await new Promise((r) => server.close(r)); await db.close(); });
++  const api = async (path, { token, method = 'GET', body } = {}) => {
++    const r = await fetch(`${base}${path}`, { method, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: body === undefined ? undefined : JSON.stringify(body) });
++    return { status: r.status, body: await r.json().catch(() => null) };
++  };
++  const login = async (email) => (await api('/v1/auth/login', { method: 'POST', body: { email, password: MDP } })).body.token;
++  let n = 0;
++  /** Livre un événement comme Stripe : corps brut, en-tête signé. */
++  const livrer = async (type, objet, { created = Math.floor(Date.now() / 1000), id = `evt_${(n += 1)}`, secret = SECRET, t: tSig = Math.floor(Date.now() / 1000), alterer = null, entete } = {}) => {
++    const corps = JSON.stringify({ id, type, created, data: { object: objet } });
++    const envoye = alterer ? alterer(corps) : corps;
++    const r = await fetch(`${base}/v1/paiements/stripe/webhook`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Stripe-Signature': entete ?? signer(corps, secret, tSig) }, body: envoye });
++    return { status: r.status, body: await r.json().catch(() => null), id };
++  };
++  return { db, garde, org, souscrit, api, login, livrer, stripe };
++}
++
++const facture = (org, extra = {}) => ({ id: 'in_1', object: 'invoice', customer: 'cus_fleurs', amount_paid: 4900, amount_due: 4900, currency: 'eur', number: 'FL-0001', subscription_details: { metadata: { org_id: org.id } }, ...extra });
++
++test('la signature : juste, elle passe ; fausse, périmée, absente ou sur un corps modifié, rien ne se passe', async (t) => {
++  const { db, org, livrer } = await decor(t);
++  const vieux = Math.floor(Date.now() / 1000) - 600;
++  assert.equal((await livrer('invoice.payment_failed', facture(org), { secret: 'whsec_autre' })).status, 400);
++  assert.equal((await livrer('invoice.payment_failed', facture(org), { t: vieux, created: vieux })).status, 400, 'rejouée plus de 5 minutes après');
++  assert.equal((await livrer('invoice.payment_failed', facture(org), { entete: '' })).status, 400);
++  assert.equal((await livrer('invoice.payment_failed', facture(org), { alterer: (c) => c.replace('4900', '1') })).status, 400);
++  assert.equal((await db.all('SELECT * FROM garde_comptes')).length, 0, 'aucun compte touché');
++  assert.equal((await db.all('SELECT * FROM paiements_evenements')).length, 0, 'aucun événement retenu');
++  assert.equal((await livrer('invoice.payment_failed', facture(org))).status, 200);
++});
++
++test('vérification seule : deux signatures v1 (rotation du secret), l’une bonne, suffit ; le temps se compare en secondes', () => {
++  const corps = '{"id":"evt_x"}';
++  const t0 = 1_800_000_000;
++  const bonne = signer(corps, SECRET, t0).split(',')[1];
++  assert.equal(verifierSignature(corps, `t=${t0},v1=${'0'.repeat(64)},${bonne}`, SECRET, t0 * 1000).ok, true);
++  assert.equal(verifierSignature(corps, `t=${t0},v1=${'0'.repeat(64)}`, SECRET, t0 * 1000).raison, 'signature_fausse');
++  assert.equal(verifierSignature(corps, `t=${t0},${bonne}`, SECRET, (t0 + 301) * 1000).raison, 'hors_delai');
++  assert.equal(verifierSignature(corps, 'n’importe quoi', SECRET, t0 * 1000).raison, 'signature_illisible');
++});
++
++test('sans configuration : le webhook répond 503 (Stripe réessaiera) et les pages de paiement disent « hors ligne »', async (t) => {
++  const { org, livrer, api, login } = await decor(t, { configurer: false });
++  assert.equal((await livrer('invoice.paid', facture(org))).status, 503);
++  const r = await api(`/v1/paiements/organisations/${org.id}/page`, { token: OPERATOR, method: 'POST' });
++  assert.equal(r.status, 503);
++  assert.equal(r.body.code, 'paiement_hors_ligne');
++  const medina = await login('medina@fleurs.test');
++  assert.equal((await api('/v1/paiements/abonnement', { token: medina, method: 'POST' })).body.code, 'paiement_hors_ligne');
++});
++
++test('le cycle complet sur le VRAI statut : échec → préavis → grâce → pause ; paiement → réouverture, sans saisie humaine', async (t) => {
++  const { db, garde, org, souscrit, livrer } = await decor(t);
++  assert.equal((await livrer('invoice.payment_failed', facture(org), { created: 1000 })).body.effet, 'impaye');
++  assert.equal((await garde.store.getCompte(org.id)).etat, 'impaye');
++
++  await garde.lancerRonde('comptes.impayes', Date.now(), { force: true });
++  const enGrace = await garde.store.getCompte(org.id);
++  assert.equal(enGrace.etat, 'grace');
++  const annonces = await db.listRecords(org.id, 'announcements');
++  assert.ok(annonces.some((a) => a.data.title === 'Règlement en attente'), 'le préavis est déposé chez la cliente');
++
++  // Stripe retente et échoue encore : la grâce NE repart PAS de zéro.
++  assert.equal((await livrer('invoice.payment_failed', facture(org, { attempt_count: 2 }), { created: 2000 })).body.effet, 'echec_deja_en_cycle');
++  assert.equal((await garde.store.getCompte(org.id)).graceJusqua, enGrace.graceJusqua);
++
++  // Grâce échue : pause des modules souscrits, données intactes.
++  await garde.lancerRonde('comptes.impayes', Date.now() + 8 * jour, { force: true });
++  assert.equal((await garde.store.getCompte(org.id)).etat, 'suspendu');
++  assert.ok(!(await db.getOrganization(org.id)).modulesAdded.includes(souscrit), 'module souscrit en pause');
++
++  // Stripe encaisse : tout rouvre, sans personne.
++  assert.equal((await livrer('invoice.paid', facture(org), { created: 3000 })).body.effet, 'reactive');
++  assert.equal((await garde.store.getCompte(org.id)).etat, 'a_jour');
++  assert.ok((await db.getOrganization(org.id)).modulesAdded.includes(souscrit), 'module rouvert');
++  assert.ok((await db.listRecords(org.id, 'announcements')).some((a) => a.data.title === 'Règlement reçu'));
++});
++
++test('un paiement mensuel sur un compte à jour : une ligne « paiement reçu », ni annonce ni réactivation', async (t) => {
++  const { db, garde, org, livrer } = await decor(t);
++  assert.equal((await livrer('invoice.paid', facture(org))).body.effet, 'paye');
++  assert.equal((await garde.store.getCompte(org.id)).etat, 'a_jour');
++  const lignes = await db.all("SELECT action, pourquoi FROM garde_journal WHERE org_id = ? AND agent = 'comptes.impayes'", [org.id]);
++  assert.deepEqual(lignes.map((l) => l.action), ['paiement-recu']);
++  assert.match(lignes[0].pourquoi, /49,00 EUR/);
++  assert.equal((await db.listRecords(org.id, 'announcements')).length, 0);
++});
++
++test('idempotence : le même événement livré deux fois — et même en même temps — ne compte qu’une fois', async (t) => {
++  const { db, org, livrer } = await decor(t);
++  const a = await livrer('invoice.payment_failed', facture(org), { id: 'evt_double' });
++  const b = await livrer('invoice.payment_failed', facture(org), { id: 'evt_double' });
++  assert.equal(a.body.effet, 'impaye');
++  assert.equal(b.body.effet, 'deja_traite');
++  const simultanes = await Promise.all(Array.from({ length: 5 }, () => livrer('invoice.paid', facture(org), { id: 'evt_rafale', created: Math.floor(Date.now() / 1000) + 10 })));
++  assert.equal(simultanes.filter((r) => r.body.effet !== 'deja_traite').length, 1, simultanes.map((r) => r.body.effet).join(', '));
++  assert.equal((await db.all("SELECT COUNT(*) AS n FROM paiements_evenements WHERE id = 'evt_rafale'"))[0].n, 1);
++});
++
++test('l’ordre : un échec plus ancien que le dernier paiement, arrivé en retard, ne remet pas la cliente en impayé', async (t) => {
++  const { garde, org, livrer } = await decor(t);
++  await livrer('invoice.paid', facture(org), { created: 5000 });
++  const tardif = await livrer('invoice.payment_failed', facture(org), { created: 4000 });
++  assert.equal(tardif.body.effet, 'ancien_ignore');
++  assert.equal((await garde.store.getCompte(org.id)).etat, 'a_jour');
++});
++
++test('une erreur en cours de traitement rend l’événement : la relance de Stripe le traite pour de bon', async (t) => {
++  const { org, livrer, garde } = await decor(t);
++  const original = garde.store.upsertCompte.bind(garde.store);
++  let panne = true;
++  garde.store.upsertCompte = async (...a) => { if (panne) { panne = false; throw new Error('base indisponible'); } return original(...a); };
++  const premier = await livrer('invoice.payment_failed', facture(org), { id: 'evt_panne' });
++  assert.equal(premier.status, 500);
++  const relance = await livrer('invoice.payment_failed', facture(org), { id: 'evt_panne' });
++  assert.equal(relance.status, 200);
++  assert.equal(relance.body.effet, 'impaye');
++});
++
++test('une organisation inconnue, ou AMN DevSec elle-même : rien ne bouge', async (t) => {
++  const { db, livrer } = await decor(t);
++  assert.equal((await livrer('invoice.payment_failed', { id: 'in_x', customer: 'cus_inconnu', subscription_details: { metadata: { org_id: 'n-existe-pas' } } })).body.effet, 'organisation_inconnue');
++  assert.equal((await livrer('invoice.payment_failed', { id: 'in_y', customer: 'cus_amn', subscription_details: { metadata: { org_id: AMN_ORG_ID } } })).body.effet, 'organisation_inconnue');
++  assert.equal((await db.all('SELECT * FROM garde_comptes')).length, 0);
++});
++
++test('une résiliation est remontée à Harun ; aucun module n’est fermé', async (t) => {
++  const { db, garde, org, souscrit, livrer } = await decor(t);
++  await livrer('checkout.session.completed', { id: 'cs_1', client_reference_id: org.id, customer: 'cus_fleurs', subscription: 'sub_1' });
++  assert.equal((await livrer('customer.subscription.deleted', { id: 'sub_1', customer: 'cus_fleurs' })).body.effet, 'resiliation_remontee');
++  assert.ok((await garde.store.listRemontees({ equipe: 'comptes' })).some((r) => r.cle === `resiliation:${org.id}`));
++  assert.ok((await db.getOrganization(org.id)).modulesAdded.includes(souscrit));
++});
++
++test('la page de paiement : Harun l’ouvre pour une cliente — prix de sa formule, cliente référencée, métadonnées posées', async (t) => {
++  const { org, api, stripe, livrer, login } = await decor(t);
++  const r = await api(`/v1/paiements/organisations/${org.id}/page`, { token: OPERATOR, method: 'POST' });
++  assert.equal(r.status, 201, JSON.stringify(r.body));
++  assert.match(r.body.url, /^https:\/\/checkout\.stripe\.com\//);
++  const { corps, entetes } = stripe.appels.at(-1);
++  assert.equal(corps.get('mode'), 'subscription');
++  assert.equal(corps.get('line_items[0][price]'), 'price_standard');
++  assert.equal(corps.get('client_reference_id'), org.id);
++  assert.equal(corps.get('subscription_data[metadata][org_id]'), org.id);
++  assert.equal(corps.get('customer_email'), 'medina@fleurs.test');
++  assert.equal(entetes.authorization, 'Bearer sk_test_cle');
++  assert.ok(entetes['idempotency-key']);
++
++  // Une cliente ne peut pas ouvrir la page d'une autre.
++  const medina = await login('medina@fleurs.test');
++  assert.equal((await api(`/v1/paiements/organisations/${org.id}/page`, { token: medina, method: 'POST' })).status, 404);
++
++  // Une fois reliée, la cliente gère elle-même : le portail Stripe, pas une nouvelle souscription.
++  await livrer('checkout.session.completed', { id: 'cs_1', client_reference_id: org.id, customer: 'cus_fleurs', subscription: 'sub_1' });
++  const portail = await api('/v1/paiements/abonnement', { token: medina, method: 'POST' });
++  assert.equal(portail.body.nature, 'portail');
++  assert.equal(stripe.appels.at(-1).corps.get('customer'), 'cus_fleurs');
++});
++
++test('libre-service : la propriétaire souscrit elle-même ; un membre ne peut pas ; AMN DevSec n’a pas d’abonnement', async (t) => {
++  const { api, login, stripe } = await decor(t);
++  const medina = await login('medina@fleurs.test');
++  const r = await api('/v1/paiements/abonnement', { token: medina, method: 'POST' });
++  assert.equal(r.status, 201);
++  assert.equal(r.body.nature, 'souscription');
++  assert.equal(stripe.appels.at(-1).corps.get('customer_email'), 'medina@fleurs.test');
++  assert.equal((await api('/v1/paiements/abonnement', { token: await login('yanis@fleurs.test'), method: 'POST' })).status, 403);
++  assert.equal((await api('/v1/paiements/abonnement', { token: OPERATOR, method: 'POST' })).status, 404);
++});
+-- 
+2.43.0
+

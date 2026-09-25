@@ -1,0 +1,567 @@
+From d59637899a3b17e7470becea95ab5e4f79ab68d1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 25 Sep 2026 00:04:51 +0000
+Subject: [PATCH 4/5] =?UTF-8?q?Le=20courrier=20part=20seul=20:=20l'invitat?=
+ =?UTF-8?q?ion=20d'une=20nouvelle=20cliente,=20et=20la=20relance=20d'une?=
+ =?UTF-8?q?=20facture=20=C3=A9chue?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Invitation : à la création d'une organisation (et à la réémission, et quand une
+propriétaire invite une collègue), le courriel d'activation part par Resend —
+lien, date limite en toutes lettres, qui invite, jamais de mot de passe. La
+réponse dit à l'Atelier s'il est parti ou pourquoi pas (sans clé, sans adresse
+d'application, remise de la main à la main) ; le message à copier reste le
+chemin de repli. Une appartenance (compte existant) ne reçoit pas le texte
+d'activation.
+
+Relance : POST /v1/courrier/relance envoie au client d'une facture échue le
+texte préparé par le module Relances, « au nom de la cliente via AMN »,
+réponse à la personne qui relance. Le destinataire n'est jamais libre (lu dans
+la facture de l'organisation) ; une facture par 20 h, 40 par jour ; jamais en
+mode support.
+
+Mot de passe oublié : déjà branché de bout en bout ; il n'attend que la clé.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01BEf9qY21FAUuZ4ogxRY3s2
+---
+ src/lib/courrier.js           |  17 +++-
+ src/lib/courrierModeles.js    |  42 ++++++--
+ src/lib/invitations.js        |  29 ++++++
+ src/routes/admin.js           |  21 +++-
+ src/routes/auth.js            |  16 ++-
+ src/routes/courrier.js        |  54 +++++++++-
+ test/courrier-arrivee.test.js | 179 ++++++++++++++++++++++++++++++++++
+ 7 files changed, 340 insertions(+), 18 deletions(-)
+ create mode 100644 test/courrier-arrivee.test.js
+
+diff --git a/src/lib/courrier.js b/src/lib/courrier.js
+index 607a1d3..92a5091 100644
+--- a/src/lib/courrier.js
++++ b/src/lib/courrier.js
+@@ -85,7 +85,20 @@ export async function reglerPreferences(db, email, { lettre, critique } = {}) {
+  * rend { envoye: false, raison } — l'appelant garde son flux manuel. Une nature opt-in
+  * sans accord est refusée, journalisée « refuse », jamais envoyée.
+  */
+-export async function envoyer(db, { orgId = null, a, nature, langue = 'fr', params = {}, par = null }) {
++/**
++ * L'adresse d'expédition, sous un autre nom : « Fleurs de Lune via AMN <factures@amn-devsec.com> ».
++ * L'ADRESSE reste celle d'AMN — seul un domaine qu'AMN a vérifié chez Resend peut
++ * envoyer, et une cliente ne doit jamais pouvoir expédier sous un domaine qui
++ * n'est pas le sien ; seul le NOM affiché change, et la réponse va à la cliente.
++ */
++export function expediteurAuNomDe(nom) {
++  const brut = String(etat.expediteur ?? '');
++  const adresse = brut.match(/<([^>]+)>/)?.[1] ?? brut.trim();
++  const propre = String(nom ?? '').replace(/["<>\r\n]/g, '').trim().slice(0, 60);
++  return propre ? `"${propre} via AMN" <${adresse}>` : brut;
++}
++
++export async function envoyer(db, { orgId = null, a, nature, langue = 'fr', params = {}, par = null, repondreA = null, auNomDe = null }) {
+   if (!NATURES.includes(nature)) throw new Error(`nature de courrier inconnue : ${nature}`);
+   const destinataire = String(a ?? '').trim().toLowerCase();
+   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destinataire)) throw new Error('destinataire invalide');
+@@ -101,7 +114,7 @@ export async function envoyer(db, { orgId = null, a, nature, langue = 'fr', para
+     return { envoye: false, raison: raisonInactif(), sujet: rendu.sujet, texte: rendu.texte };
+   }
+   try {
+-    const r = await etat.fetchImpl(API, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${etat.apiKey}` }, body: JSON.stringify({ from: etat.expediteur, to: [destinataire], subject: rendu.sujet, text: rendu.texte, html: rendu.html }) });
++    const r = await etat.fetchImpl(API, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${etat.apiKey}` }, body: JSON.stringify({ from: auNomDe ? expediteurAuNomDe(auNomDe) : etat.expediteur, to: [destinataire], subject: rendu.sujet, text: rendu.texte, html: rendu.html, ...(repondreA ? { reply_to: [repondreA] } : {}) }) });
+     const json = await r.json().catch(() => ({}));
+     if (!r.ok) throw new Error(json?.message ?? json?.error?.message ?? `HTTP ${r.status}`);
+     await journaliser(db, { orgId, a: destinataire, nature, sujet: rendu.sujet, etatEnvoi: 'envoye', fournisseurId: json?.id ?? null, par });
+diff --git a/src/lib/courrierModeles.js b/src/lib/courrierModeles.js
+index 57abe13..1709c36 100644
+--- a/src/lib/courrierModeles.js
++++ b/src/lib/courrierModeles.js
+@@ -10,7 +10,7 @@
+  * que le lien. Vérifié par scripts/check-emails.mjs.
+  */
+ 
+-export const NATURES = ['bienvenue', 'reinitialisation', 'rapport_mensuel', 'preavis_impaye', 'reactivation', 'notification_critique', 'lettre'];
++export const NATURES = ['invitation', 'relance_facture', 'bienvenue', 'reinitialisation', 'rapport_mensuel', 'preavis_impaye', 'reactivation', 'notification_critique', 'lettre'];
+ /** Ce qui ne part qu'avec l'accord explicite de la personne (préférences `courrier.*`). */
+ export const NATURES_OPT_IN = { notification_critique: 'courrier.critique', lettre: 'courrier.lettre' };
+ 
+@@ -23,14 +23,15 @@ const echapper = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&l
+  * L'enveloppe commune : un titre, des paragraphes, un lien au plus, un pied.
+  * `desabonnement` n'apparaît que sur la lettre (obligatoire là, absent ailleurs).
+  */
+-export function enveloppe({ langue = 'fr', titre: titreBrut, paragraphes: paragraphesBruts = [], lien: lienBrut = null, pied: piedBrut = null, desabonnement = null }) {
++export function enveloppe({ langue = 'fr', titre: titreBrut, paragraphes: paragraphesBruts = [], lien: lienBrut = null, pied: piedBrut = null, desabonnement = null, marque = 'AMN DevSec', signature: signatureBrute }) {
+   const fr = langue !== 'en';
+   const typo = fr ? typographieFr : (s) => String(s ?? '');
+   const titre = typo(titreBrut);
+   const paragraphes = paragraphesBruts.map(typo);
+   const pied = piedBrut ? typo(piedBrut) : null;
+   const lien = lienBrut ? { libelle: typo(lienBrut.libelle), url: lienBrut.url } : null;
+-  const signature = langue === 'en' ? 'AMN DevSec, the Watch' : 'AMN DevSec, la Garde';
++  // `signature: null` : pas de signature d'AMN (une relance porte celle de la cliente, dans son texte).
++  const signature = signatureBrute === undefined ? (langue === 'en' ? 'AMN DevSec, the Watch' : 'AMN DevSec, la Garde') : signatureBrute;
+   // Le lien sur sa propre ligne, sous son libellé : rien ne ressemble à « libellé : secret ».
+   const texte = [
+     titre,
+@@ -38,23 +39,42 @@ export function enveloppe({ langue = 'fr', titre: titreBrut, paragraphes: paragr
+     ...paragraphes.flatMap((p) => [p, '']),
+     ...(lien ? [lien.libelle, lien.url, ''] : []),
+     ...(pied ? [pied, ''] : []),
+-    signature,
++    ...(signature ? [signature] : []),
+     ...(desabonnement ? ['', langue === 'en' ? 'To stop receiving this letter' : 'Pour ne plus recevoir cette lettre', desabonnement] : []),
+   ].join('\n');
+   const html = `<!doctype html><html lang="${langue}"><body style="margin:0;padding:32px 16px;background:#ffffff;color:#111111;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.55">
+ <div style="max-width:560px;margin:0 auto">
+-<p style="margin:0 0 24px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#666666">AMN DevSec</p>
++<p style="margin:0 0 24px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#666666">${echapper(marque)}</p>
+ <h1 style="margin:0 0 16px;font-size:20px;font-weight:600;line-height:1.3">${echapper(titre)}</h1>
+ ${paragraphes.map((p) => `<p style="margin:0 0 14px">${echapper(p)}</p>`).join('\n')}
+ ${lien ? `<p style="margin:20px 0"><a href="${echapper(lien.url)}" style="display:inline-block;padding:10px 16px;border:1px solid #111111;color:#111111;text-decoration:none;font-weight:600">${echapper(lien.libelle)}</a></p>\n<p style="margin:0 0 14px;font-size:12px;color:#666666">${echapper(lien.url)}</p>` : ''}
+ ${pied ? `<p style="margin:20px 0 0;font-size:13px;color:#666666">${echapper(pied)}</p>` : ''}
+-<p style="margin:28px 0 0;font-size:13px;color:#666666">${echapper(signature)}</p>
++${signature ? `<p style="margin:28px 0 0;font-size:13px;color:#666666">${echapper(signature)}</p>` : ''}
+ ${desabonnement ? `<p style="margin:20px 0 0;font-size:12px;color:#666666"><a href="${echapper(desabonnement)}" style="color:#666666">${langue === 'en' ? 'Stop receiving this letter' : 'Ne plus recevoir cette lettre'}</a></p>` : ''}
+ </div></body></html>`;
+   return { texte, html };
+ }
+ 
+ const fr = {
++  /*
++    L'INVITATION D'UNE NOUVELLE CLIENTE (chantier « arrivée cliente »). Le lien
++    mène à la page d'activation, où elle choisit SON mot de passe : le courriel
++    n'en porte jamais. Mise en page provisoire, sobre ; la version de marque
++    (cahier 43a) la remplacera sans changer ce qu'elle dit.
++  */
++  invitation: ({ org, lien, invitePar = null, jusquau }) => ({
++    sujet: `Votre espace ${org} est prêt`,
++    ...enveloppe({ titre: `Votre espace ${org} est prêt.`, paragraphes: [`${invitePar ? `${invitePar} vous a ouvert` : 'Nous vous avons ouvert'} un espace AMN pour ${org}. Il ne manque que votre mot de passe, que vous choisissez vous-même en suivant le lien ci-dessous.`, `Le lien vaut jusqu’au ${jusquau} et ne sert qu’une fois. À la première ouverture, votre espace se présente en deux minutes.`], lien: { libelle: 'Activer mon espace', url: lien }, pied: 'Si vous n’attendiez pas ce message, ignorez-le : rien ne s’ouvre sans ce lien.' }),
++  }),
++  /*
++    UNE RELANCE DE FACTURE, écrite par la cliente à SON client. Le texte est le
++    sien (préparé par le module Relances, gradué selon le retard) ; AMN ne fait
++    que le porter. En-tête et objet à son nom, aucune signature d'AMN.
++  */
++  relance_facture: ({ org, numero, texte }) => ({
++    sujet: `Facture ${numero} — ${org}`,
++    ...enveloppe({ titre: `Facture ${numero}`, paragraphes: String(texte ?? '').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean), marque: org, signature: null }),
++  }),
+   bienvenue: ({ org, lien, jours = 7 }) => ({
+     sujet: `Votre espace ${org} est prêt`,
+     ...enveloppe({ titre: `Votre espace ${org} est prêt.`, paragraphes: ['Le lien ci-dessous ouvre une page qui vous remet vos accès, une seule fois, puis se détruit. Gardez ce courriel fermé si vous n’êtes pas devant votre écran.', `Le lien vaut ${jours} jours. Passé ce délai, demandez-en un nouveau : rien ne se perd.`], lien: { libelle: 'Recevoir mes accès', url: lien }, pied: 'Si vous n’attendiez pas ce message, ignorez-le : le lien ne fait rien tant qu’il n’est pas ouvert.' }),
+@@ -86,6 +106,14 @@ const fr = {
+ };
+ 
+ const en = {
++  invitation: ({ org, lien, invitePar = null, jusquau }) => ({
++    sujet: `Your ${org} workspace is ready`,
++    ...enveloppe({ langue: 'en', titre: `Your ${org} workspace is ready.`, paragraphes: [`${invitePar ? `${invitePar} has opened` : 'We have opened'} an AMN workspace for ${org}. All it needs is your password, which you choose yourself by following the link below.`, `The link is valid until ${jusquau} and works once. The first time you open it, your workspace introduces itself in two minutes.`], lien: { libelle: 'Activate my workspace', url: lien }, pied: 'If you were not expecting this message, ignore it: nothing opens without this link.' }),
++  }),
++  relance_facture: ({ org, numero, texte }) => ({
++    sujet: `Invoice ${numero} — ${org}`,
++    ...enveloppe({ langue: 'en', titre: `Invoice ${numero}`, paragraphes: String(texte ?? '').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean), marque: org, signature: null }),
++  }),
+   bienvenue: ({ org, lien, jours = 7 }) => ({
+     sujet: `Your ${org} workspace is ready`,
+     ...enveloppe({ langue: 'en', titre: `Your ${org} workspace is ready.`, paragraphes: ['The link below opens a page that hands you your access details once, then destroys itself. Keep this message closed until you are at your screen.', `The link is valid for ${jours} days. After that, ask for a new one: nothing is lost.`], lien: { libelle: 'Receive my access', url: lien }, pied: 'If you were not expecting this message, ignore it: the link does nothing until it is opened.' }),
+@@ -130,6 +158,8 @@ export function rendre(nature, params = {}, langue = 'fr') {
+ 
+ /** Des paramètres d'exemple par nature — pour check:emails et les tests. */
+ export const EXEMPLES = {
++  invitation: { org: 'Le Jardin d’Élise', lien: 'https://exemple.test/#/invitation?token=jeton', invitePar: 'Harun', jusquau: '1er octobre' },
++  relance_facture: { org: 'Le Jardin d’Élise', numero: 'F-2026-014', texte: 'Bonjour Madame Roux,\n\nLa facture F-2026-014 de 480,00 € était due le 12 septembre. Pouvez-vous me dire où en est son règlement ?\n\nÉlise Roux' },
+   bienvenue: { org: 'Le Jardin d’Élise', lien: 'https://exemple.test/#/bienvenue/jeton', jours: 7 },
+   reinitialisation: { lien: 'https://exemple.test/#/reinitialiser?token=jeton', minutes: 60 },
+   rapport_mensuel: { org: 'Le Jardin d’Élise', mois: 'août 2026', ouverture: 'Aucun incident ce mois-ci.', sites: 3, incidents: 0, lien: 'https://exemple.test/#/rapports' },
+diff --git a/src/lib/invitations.js b/src/lib/invitations.js
+index 3a8959c..0231e17 100644
+--- a/src/lib/invitations.js
++++ b/src/lib/invitations.js
+@@ -21,3 +21,32 @@ export function nomInvitant(brut, repli = null) {
+   if (nom && !nom.includes('@')) return nom;
+   return repli ? String(repli).slice(0, 60) : null;
+ }
++
++/** « 2026-10-01T… » → « 1er octobre » (heure de Paris), comme l'écrit une personne. */
++export function dateDInvitation(iso, langue = 'fr') {
++  const d = new Date(iso);
++  if (Number.isNaN(d.getTime())) return '';
++  if (langue === 'en') return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
++  const jour = Number(d.toLocaleDateString('fr-FR', { day: 'numeric', timeZone: 'Europe/Paris' }));
++  const mois = d.toLocaleDateString('fr-FR', { month: 'long', timeZone: 'Europe/Paris' });
++  return `${jour === 1 ? '1er' : jour} ${mois}`;
++}
++
++/**
++ * ENVOIE L'INVITATION PAR COURRIEL, si le courrier est en ligne et que le lien
++ * existe (il faut `APP_PUBLIC_URL`). Rend ce que l'Atelier doit savoir :
++ * `{ envoye: true }`, ou `{ envoye: false, raison }` — et alors le message à
++ * copier reste le chemin. Jamais d'exception : une invitation créée ne doit
++ * pas échouer parce qu'un courriel n'est pas parti.
++ */
++export async function envoyerInvitation(db, { org, email, url, expiresAt, invitePar = null, par = null }) {
++  if (!url) return { envoye: false, raison: 'sans_adresse_app' };
++  try {
++    const { envoyer } = await import('./courrier.js');
++    const langue = org?.language === 'en' ? 'en' : 'fr';
++    const r = await envoyer(db, { orgId: org?.id ?? null, a: email, nature: 'invitation', langue, params: { org: org?.name ?? '', lien: url, invitePar, jusquau: dateDInvitation(expiresAt, langue) }, par });
++    return r.envoye ? { envoye: true } : { envoye: false, raison: r.raison ?? 'echec' };
++  } catch (err) {
++    return { envoye: false, raison: 'echec', erreur: String(err?.message ?? err).slice(0, 120) };
++  }
++}
+diff --git a/src/routes/admin.js b/src/routes/admin.js
+index 6c33140..5ebe1a0 100644
+--- a/src/routes/admin.js
++++ b/src/routes/admin.js
+@@ -29,7 +29,7 @@ import {
+ import { generateTempPassword, hashPassword, hashToken, mintToken } from '../lib/password.js';
+ import { config } from '../config.js';
+ import { invitationUrl, appOriginForOrg } from '../lib/links.js';
+-import { nomInvitant } from '../lib/invitations.js';
++import { nomInvitant, envoyerInvitation } from '../lib/invitations.js';
+ import { parOrganisation } from '../lib/verrou.js';
+ 
+ const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+@@ -459,8 +459,18 @@ export function adminRouter() {
+       owner = await db.createUser({ orgId: org.id, email: ownerEmail, role: 'owner', status: 'invited' });
+       const { plaintext, hash } = mintToken();
+       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+-      await db.createInvitation({ tokenHash: hash, userId: owner.id, expiresAt, invitedByName: nomInvitant(req.body?.invitePar, 'AMN DevSec') });
++      const invitedByName = nomInvitant(req.body?.invitePar, 'AMN DevSec');
++      await db.createInvitation({ tokenHash: hash, userId: owner.id, expiresAt, invitedByName });
+       invitation = { token: plaintext, url: invitationUrl(plaintext, org.id), expiresAt };
++      /*
++        L'INVITATION PART PAR COURRIEL (chantier « arrivée cliente », partie 2),
++        sauf si l'Atelier dit `envoyer: false` (remise de la main à la main).
++        Le résultat revient à l'Atelier : envoyé, ou pourquoi pas — et alors le
++        message à copier reste le chemin, comme avant.
++      */
++      invitation.courrier = req.body?.envoyer === false
++        ? { envoye: false, raison: 'non_demande' }
++        : await envoyerInvitation(db, { org, email: ownerEmail, url: invitation.url, expiresAt, invitePar: invitedByName, par: 'atelier' });
+     }
+ 
+     /*
+@@ -1276,12 +1286,15 @@ export function adminRouter() {
+     const user = await db.createUser({ orgId: org.id, email, role, status: 'invited' });
+     const { plaintext, hash } = mintToken();
+     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+-    await db.createInvitation({ tokenHash: hash, userId: user.id, expiresAt, invitedByName: nomInvitant(req.body?.invitePar, 'AMN DevSec') });
++    const invitedByName = nomInvitant(req.body?.invitePar, 'AMN DevSec');
++    await db.createInvitation({ tokenHash: hash, userId: user.id, expiresAt, invitedByName });
+     await journal(req, org.id, 'invite', email);
++    const url = invitationUrl(plaintext, org.id);
++    const courrier = req.body?.envoyer === false ? { envoye: false, raison: 'non_demande' } : await envoyerInvitation(db, { org, email, url, expiresAt, invitePar: invitedByName, par: 'atelier' });
+ 
+     res.status(201).json({
+       user: { id: user.id, email: user.email, role: user.role, status: user.status },
+-      invitation: { token: plaintext, url: invitationUrl(plaintext, org.id), expiresAt },
++      invitation: { token: plaintext, url, expiresAt, courrier },
+     });
+   }));
+ 
+diff --git a/src/routes/auth.js b/src/routes/auth.js
+index 2e7947e..9c46205 100644
+--- a/src/routes/auth.js
++++ b/src/routes/auth.js
+@@ -18,7 +18,7 @@ import {
+   seatsForOrg,
+ } from '../db/tenancy.js';
+ import { appOriginForOrg, invitationUrl } from '../lib/links.js';
+-import { masquerAdresse, nomInvitant } from '../lib/invitations.js';
++import { masquerAdresse, nomInvitant, envoyerInvitation } from '../lib/invitations.js';
+ import { parOrganisation } from '../lib/verrou.js';
+ 
+ /**
+@@ -881,14 +881,22 @@ export function authRouter() {
+       role: crossOrg ? role : null,
+       invitedByName: nomInvitant(req.body?.invitePar, org?.name),
+     });
++    const url = invitationUrl(plaintext, req.auth.orgId);
++    // Une appartenance s'annonce dans l'organisation qui invite ; une activation, par courriel si le courrier est en ligne.
++    const courrier = req.body?.envoyer === false
++      ? { envoye: false, raison: 'non_demande' }
++      : crossOrg
++        // Le compte existe déjà : le courriel d'activation (« choisissez votre mot de passe ») serait faux.
++        ? { envoye: false, raison: 'appartenance' }
++        : await envoyerInvitation(db, { org, email, url, expiresAt, invitePar: nomInvitant(req.body?.invitePar, org?.name), par: 'invitation' });
+ 
+     // The plaintext token is returned ONCE, like a site API key: it is not
+     // stored, so it cannot be retrieved or re-sent later — issue a new
+-    // invitation instead. Delivery (email) is the caller's responsibility;
+-    // amn-api has no mail transport and inventing one here would be worse.
++    // invitation instead. Delivery: by email when the mail service is on
++    // (`courrier` above says whether it left), otherwise the caller's.
+     res.status(201).json({
+       user: publicUser(user),
+-      invitation: { token: plaintext, url: invitationUrl(plaintext, req.auth.orgId), expiresAt },
++      invitation: { token: plaintext, url, expiresAt, courrier },
+     });
+   }));
+ 
+diff --git a/src/routes/courrier.js b/src/routes/courrier.js
+index 69cefab..4fac505 100644
+--- a/src/routes/courrier.js
++++ b/src/routes/courrier.js
+@@ -8,13 +8,17 @@
+  *   POST /v1/courrier/mot-de-passe/oublie      — public, freiné : { email } → toujours { ok: true }
+  *   POST /v1/courrier/mot-de-passe/reinitialiser — public : { token, password }
+  *   GET  /v1/courrier/desabonner/:jeton?a=…     — public : ne plus recevoir la lettre (une page, un mot)
++ *   GET  /v1/courrier/disponible                — tout compte : le courrier part-il ? (oui/non, rien d'autre)
++ *   POST /v1/courrier/relance                   — relancer par courriel le client d'une facture échue (voir plus bas)
+  */
+ import { Router } from 'express';
+ import { tenantAuth } from '../middleware/tenantAuth.js';
+ import { rateLimit } from '../middleware/rateLimit.js';
+ import { publicOrigin } from '../lib/origin.js';
+-import { envoyer, etatCourrier, journal, preferences, reglerPreferences, demanderReinitialisation, reinitialiser, jetonDesabonnement, desabonnementUrl } from '../lib/courrier.js';
+-import { NATURES } from '../lib/courrierModeles.js';
++import { envoyer, etatCourrier, courrierActif, journal, preferences, reglerPreferences, demanderReinitialisation, reinitialiser, jetonDesabonnement, desabonnementUrl } from '../lib/courrier.js';
++import { NATURES, rendre } from '../lib/courrierModeles.js';
++
++const rendreSujet = (nature, params, langue) => rendre(nature, params, langue).sujet;
+ 
+ function membreFondateur() {
+   const base = tenantAuth({ allowWeb: false, allowSupport: false });
+@@ -63,6 +67,52 @@ export function courrierRouter() {
+     try { res.json(await reinitialiser(db(req), { jeton: req.body?.token, motDePasse: req.body?.password })); } catch (err) { res.status(err.status ?? 400).json({ error: err.message }); }
+   });
+ 
++  router.get('/disponible', tenantAuth({ allowWeb: false }), (req, res) => res.json({ actif: courrierActif() }));
++
++  /*
++    LA RELANCE D'UNE FACTURE, PAR COURRIEL (chantier « arrivée cliente », partie 2).
++
++    Avant : le module Relances préparait un texte gradué, qu'on copiait dans sa
++    propre messagerie. Maintenant il part d'ici, au nom de la cliente
++    (« Fleurs de Lune via AMN »), et la réponse va directement à la personne
++    qui relance.
++
++    Ce qui empêche d'en faire un outil d'envoi en masse :
++      - le DESTINATAIRE n'est jamais libre : c'est l'adresse de la facture, lue
++        ici dans les données de l'organisation — une cliente ne peut écrire
++        qu'au client d'une de SES factures, échue et non réglée ;
++      - une facture ne se relance qu'une fois par vingt heures, et une
++        organisation pas plus de 40 fois par jour ;
++      - jamais en mode support : AMN ne relance pas les clients d'une cliente.
++  */
++  router.post('/relance', frein, tenantAuth({ allowWeb: false, allowSupport: false, roles: ['owner', 'admin', 'member'] }), async (req, res) => {
++    if (!courrierActif()) return res.status(503).json({ error: 'Le courrier n’est pas en ligne : copiez la relance dans votre messagerie.', code: 'courrier_hors_ligne' });
++    const orgId = req.auth.orgId;
++    const id = String(req.body?.invoiceId ?? '');
++    const texte = String(req.body?.texte ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').trim();
++    if (!id || !texte) return res.status(400).json({ error: 'Une facture et un texte sont attendus.' });
++    if (texte.length > 5000) return res.status(400).json({ error: 'Texte trop long : 5 000 caractères au plus.' });
++    const fiche = (await db(req).listRecords(orgId, 'invoices')).find((r) => r.id === id && !r.deleted);
++    const f = fiche?.data;
++    if (!f) return res.status(404).json({ error: 'Facture introuvable.' });
++    const jour = new Date().toISOString().slice(0, 10);
++    if (f.status !== 'issued' || f.kind === 'creditNote' || !f.dueAt || f.dueAt >= jour) return res.status(409).json({ error: 'Seule une facture émise et échue se relance.', code: 'pas_echue' });
++    const a = String(f.billTo?.email ?? '').trim().toLowerCase();
++    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a)) return res.status(409).json({ error: 'Cette facture ne porte pas d’adresse e-mail valable : ajoutez-la sur la facture, ou copiez la relance.', code: 'sans_adresse' });
++    const org = await db(req).getOrganization(orgId);
++    const langue = org?.language === 'en' ? 'en' : 'fr';
++    const numero = String(f.number || id).slice(0, 40);
++    const vingtHeures = new Date(Date.now() - 20 * 3_600_000).toISOString();
++    const recentes = await db(req).all("SELECT sujet, created_at FROM courriers WHERE org_id = ? AND nature = 'relance_facture' AND etat = 'envoye' AND created_at > ?", [orgId, new Date(Date.now() - 24 * 3_600_000).toISOString()]);
++    if (recentes.length >= 40) return res.status(429).json({ error: 'Quarante relances aujourd’hui : la suite demain.', code: 'plafond_jour' });
++    const sujetAttendu = rendreSujet('relance_facture', { org: org?.name ?? '', numero }, langue);
++    if (recentes.some((r) => r.sujet === sujetAttendu && r.created_at > vingtHeures)) return res.status(429).json({ error: 'Cette facture a déjà été relancée aujourd’hui.', code: 'deja_relancee' });
++    const user = await db(req).getUser(req.auth.userId);
++    const r = await envoyer(db(req), { orgId, a, nature: 'relance_facture', langue, params: { org: org?.name ?? '', numero, texte }, par: user?.email ?? null, repondreA: user?.email ?? null, auNomDe: org?.name ?? null });
++    if (!r.envoye) return res.status(502).json({ error: 'Le courriel n’est pas parti : copiez la relance dans votre messagerie.', code: 'echec' });
++    return res.json({ envoye: true, a, sujet: r.sujet });
++  });
++
+   router.get('/desabonner/:jeton', async (req, res) => {
+     const a = String(req.query.a ?? '').trim().toLowerCase();
+     const ok = a && req.params.jeton === jetonDesabonnement(a);
+diff --git a/test/courrier-arrivee.test.js b/test/courrier-arrivee.test.js
+new file mode 100644
+index 0000000..f94190a
+--- /dev/null
++++ b/test/courrier-arrivee.test.js
+@@ -0,0 +1,179 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import http from 'node:http';
++
++process.env.NODE_ENV = 'test';
++process.env.OPERATOR_TOKEN = 'test-operator-token';
++
++const { createApp } = await import('../src/server.js');
++const { createSqliteDb } = await import('../src/db/sqlite.js');
++const { AMN_ORG_ID } = await import('../src/db/tenancy.js');
++const { hashPassword } = await import('../src/lib/password.js');
++const { configurerCourrier } = await import('../src/lib/courrier.js');
++const { config } = await import('../src/config.js');
++const { dateDInvitation } = await import('../src/lib/invitations.js');
++
++/**
++ * LE COURRIER QUI PART SEUL (chantier « arrivée cliente », partie 2) :
++ * l'invitation d'une nouvelle cliente, et la relance d'une facture échue.
++ * Resend est simulé ; tout le reste — routes, garde-fous, journal — est réel.
++ */
++const OPERATOR = 'test-operator-token';
++const MDP = 'motdepasse-solide';
++
++function fauxResend() {
++  const envois = [];
++  const fetchImpl = async (url, init) => {
++    envois.push(JSON.parse(init.body));
++    return new Response(JSON.stringify({ id: `re_${envois.length}` }), { status: 200 });
++  };
++  return { envois, fetchImpl };
++}
++
++async function decor(t, { courrier = true, adresseApp = 'https://app.exemple.test' } = {}) {
++  const resend = fauxResend();
++  const db = createSqliteDb(':memory:');
++  await db.init();
++  const app = await createApp({ db });
++  configurerCourrier(courrier ? { apiKey: 're_test', expediteur: 'AMN <bonjour@amn.test>', fetchImpl: resend.fetchImpl } : {});
++  const avant = config.businessPublicUrl;
++  config.businessPublicUrl = adresseApp;
++  const server = http.createServer(app);
++  await new Promise((r) => server.listen(0, r));
++  const base = `http://127.0.0.1:${server.address().port}`;
++  t.after(async () => { config.businessPublicUrl = avant; configurerCourrier({}); server.closeAllConnections?.(); await new Promise((r) => server.close(r)); await db.close(); });
++  const api = async (path, { token, method = 'GET', body } = {}) => {
++    const r = await fetch(`${base}${path}`, { method, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: body === undefined ? undefined : JSON.stringify(body) });
++    return { status: r.status, body: await r.json().catch(() => null) };
++  };
++  const login = async (email) => (await api('/v1/auth/login', { method: 'POST', body: { email, password: MDP } })).body.token;
++  return { db, api, login, resend };
++}
++
++test('créer une cliente envoie son invitation : son lien, la date en toutes lettres, qui invite — et jamais de mot de passe', async (t) => {
++  const { db, api, resend } = await decor(t);
++  const r = await api('/v1/admin/organizations', { token: OPERATOR, method: 'POST', body: { name: 'Fleurs de Lune', plan: 'business_standard', ownerEmail: 'medina@exemple.test', invitePar: 'Harun' } });
++  assert.equal(r.status, 201);
++  assert.deepEqual(r.body.invitation.courrier, { envoye: true });
++  assert.equal(resend.envois.length, 1);
++  const m = resend.envois[0];
++  assert.deepEqual(m.to, ['medina@exemple.test']);
++  assert.equal(m.subject, 'Votre espace Fleurs de Lune est prêt');
++  assert.ok(m.text.includes(r.body.invitation.url), 'le lien d’activation');
++  assert.ok(m.text.includes(`jusqu’au ${dateDInvitation(r.body.invitation.expiresAt)}`));
++  assert.ok(m.text.includes('Harun vous a ouvert'));
++  assert.ok(!/mot de passe\s*[:=]/i.test(m.text) && !m.html.includes('password'), 'aucun mot de passe');
++  assert.equal(m.reply_to, undefined);
++  const journal = await db.all("SELECT nature, etat, destinataire FROM courriers WHERE nature = 'invitation'");
++  assert.deepEqual(journal, [{ nature: 'invitation', etat: 'envoye', destinataire: 'medina@exemple.test' }]);
++});
++
++test('l’Atelier peut garder la remise en main propre ; sans courrier ou sans adresse d’app, la création réussit et dit pourquoi', async (t) => {
++  const { api, resend } = await decor(t);
++  const main = await api('/v1/admin/organizations', { token: OPERATOR, method: 'POST', body: { name: 'Atelier A', plan: 'business_standard', ownerEmail: 'a@exemple.test', envoyer: false } });
++  assert.deepEqual(main.body.invitation.courrier, { envoye: false, raison: 'non_demande' });
++  assert.equal(resend.envois.length, 0);
++});
++
++test('sans clé Resend : invitation créée, courrier « sans_cle » — le message à copier reste le chemin', async (t) => {
++  const { api } = await decor(t, { courrier: false });
++  const r = await api('/v1/admin/organizations', { token: OPERATOR, method: 'POST', body: { name: 'Atelier B', plan: 'business_standard', ownerEmail: 'b@exemple.test' } });
++  assert.equal(r.status, 201);
++  assert.equal(r.body.invitation.courrier.envoye, false);
++  assert.equal(r.body.invitation.courrier.raison, 'sans_cle');
++  assert.ok(r.body.invitation.token);
++});
++
++test('sans APP_BUSINESS_PUBLIC_URL, pas de lien : rien ne part, et la raison le dit', async (t) => {
++  const { api, resend } = await decor(t, { adresseApp: null });
++  const r = await api('/v1/admin/organizations', { token: OPERATOR, method: 'POST', body: { name: 'Atelier C', plan: 'business_standard', ownerEmail: 'c@exemple.test' } });
++  assert.deepEqual(r.body.invitation.courrier, { envoye: false, raison: 'sans_adresse_app' });
++  assert.equal(resend.envois.length, 0);
++});
++
++test('une propriétaire invite une collègue : le courriel part ; une appartenance (compte existant) n’envoie pas le texte d’activation', async (t) => {
++  const { db, api, login, resend } = await decor(t);
++  const org = await db.createOrganization({ name: 'Groupe Vernet', plan: 'business_premium' });
++  const hash = await hashPassword(MDP);
++  await db.createUser({ orgId: org.id, email: 'vernet@v.test', passwordHash: hash, role: 'owner', status: 'active' });
++  const autre = await db.createOrganization({ name: 'Ailleurs', plan: 'business_standard' });
++  await db.createUser({ orgId: autre.id, email: 'deja@ailleurs.test', passwordHash: hash, role: 'owner', status: 'active' });
++  const vernet = await login('vernet@v.test');
++  const col = await api('/v1/auth/invitations', { token: vernet, method: 'POST', body: { email: 'yanis@v.test', role: 'member', invitePar: 'Claire' } });
++  assert.deepEqual(col.body.invitation.courrier, { envoye: true });
++  assert.ok(resend.envois.at(-1).text.includes('Claire vous a ouvert'));
++  const app = await api('/v1/auth/invitations', { token: vernet, method: 'POST', body: { email: 'deja@ailleurs.test', role: 'member' } });
++  assert.deepEqual(app.body.invitation.courrier, { envoye: false, raison: 'appartenance' });
++  assert.equal(resend.envois.length, 1);
++});
++
++/* ─────────────────────────── La relance d'une facture ─────────────────────────── */
++
++async function decorFactures(t, opts) {
++  const d = await decor(t, opts);
++  const hash = await hashPassword(MDP);
++  const org = await d.db.createOrganization({ name: 'Fleurs de Lune', plan: 'business_standard' });
++  const voisine = await d.db.createOrganization({ name: 'Voisine', plan: 'business_standard' });
++  await d.db.createUser({ orgId: org.id, email: 'medina@fleurs.test', passwordHash: hash, role: 'owner', status: 'active' });
++  await d.db.createUser({ orgId: org.id, email: 'invite@fleurs.test', passwordHash: hash, role: 'guest', status: 'active' });
++  await d.db.createUser({ orgId: voisine.id, email: 'v@voisine.test', passwordHash: hash, role: 'owner', status: 'active' });
++  const facture = (id, extra = {}) => d.db.upsertRecord(org.id, 'invoices', id, { number: `F-${id}`, status: 'issued', kind: 'invoice', dueAt: '2026-09-01', billTo: { name: 'Mme Roux', company: '', email: 'roux@client.test', address: '', vatNumber: '' }, ...extra });
++  await facture('014');
++  await facture('015', { dueAt: '2099-01-01' });
++  await facture('016', { billTo: { name: 'Sans adresse', company: '', email: '', address: '', vatNumber: '' } });
++  await d.db.upsertRecord(voisine.id, 'invoices', '900', { number: 'V-900', status: 'issued', kind: 'invoice', dueAt: '2026-09-01', billTo: { name: 'X', company: '', email: 'x@client.test', address: '', vatNumber: '' } });
++  return { ...d, org };
++}
++const TEXTE = 'Bonjour Madame Roux,\n\nLa facture F-014 de 480,00 € était due le 1er septembre. Pouvez-vous me dire où en est son règlement ?\n\nMedina';
++
++test('la relance part au client de la facture, au nom de la cliente, réponse à la personne qui relance', async (t) => {
++  const { api, login, resend } = await decorFactures(t);
++  const medina = await login('medina@fleurs.test');
++  assert.deepEqual((await api('/v1/courrier/disponible', { token: medina })).body, { actif: true });
++  const r = await api('/v1/courrier/relance', { token: medina, method: 'POST', body: { invoiceId: '014', texte: TEXTE } });
++  assert.equal(r.status, 200, JSON.stringify(r.body));
++  assert.equal(r.body.a, 'roux@client.test');
++  const m = resend.envois.at(-1);
++  assert.deepEqual(m.to, ['roux@client.test']);
++  assert.equal(m.from, '"Fleurs de Lune via AMN" <bonjour@amn.test>', 'le domaine reste celui d’AMN, seul le nom change');
++  assert.deepEqual(m.reply_to, ['medina@fleurs.test']);
++  assert.equal(m.subject, 'Facture F-014 — Fleurs de Lune');
++  assert.ok(m.text.includes('Pouvez-vous me dire'));
++  assert.ok(!m.text.includes('AMN DevSec, la Garde'), 'aucune signature d’AMN');
++});
++
++test('le destinataire n’est jamais libre : une adresse glissée dans la requête est ignorée', async (t) => {
++  const { api, login, resend } = await decorFactures(t);
++  const medina = await login('medina@fleurs.test');
++  await api('/v1/courrier/relance', { token: medina, method: 'POST', body: { invoiceId: '014', texte: TEXTE, a: 'cible@spam.test', to: 'cible@spam.test' } });
++  assert.deepEqual(resend.envois.at(-1).to, ['roux@client.test']);
++});
++
++test('garde-fous : pas échue (409), sans adresse (409), facture d’une autre organisation (404), deux fois le même jour (429)', async (t) => {
++  const { api, login, resend } = await decorFactures(t);
++  const medina = await login('medina@fleurs.test');
++  assert.equal((await api('/v1/courrier/relance', { token: medina, method: 'POST', body: { invoiceId: '015', texte: TEXTE } })).body.code, 'pas_echue');
++  assert.equal((await api('/v1/courrier/relance', { token: medina, method: 'POST', body: { invoiceId: '016', texte: TEXTE } })).body.code, 'sans_adresse');
++  assert.equal((await api('/v1/courrier/relance', { token: medina, method: 'POST', body: { invoiceId: '900', texte: TEXTE } })).status, 404);
++  assert.equal((await api('/v1/courrier/relance', { token: medina, method: 'POST', body: { invoiceId: '014', texte: TEXTE } })).status, 200);
++  const encore = await api('/v1/courrier/relance', { token: medina, method: 'POST', body: { invoiceId: '014', texte: TEXTE } });
++  assert.equal(encore.status, 429);
++  assert.equal(encore.body.code, 'deja_relancee');
++  assert.equal(resend.envois.length, 1);
++});
++
++test('un invité ne relance pas ; le support d’AMN non plus ; sans courrier, 503 et le texte reste à copier', async (t) => {
++  const { db, api, login, org } = await decorFactures(t);
++  assert.equal((await api('/v1/courrier/relance', { token: await login('invite@fleurs.test'), method: 'POST', body: { invoiceId: '014', texte: TEXTE } })).status, 403);
++  const hash = await hashPassword(MDP);
++  await db.createUser({ orgId: AMN_ORG_ID, email: 'aaron@amn.test', passwordHash: hash, role: 'owner', status: 'active' });
++  const aaron = await login('aaron@amn.test');
++  const support = await api(`/v1/admin/organizations/${org.id}/support-session`, { token: aaron, method: 'POST', body: { reason: 'vérification' } });
++  assert.equal(support.status, 201, JSON.stringify(support.body));
++  const parSupport = await api('/v1/courrier/relance', { token: support.body.token, method: 'POST', body: { invoiceId: '014', texte: TEXTE } });
++  assert.ok([401, 403].includes(parSupport.status), `le support ne relance pas (${parSupport.status})`);
++  configurerCourrier({});
++  const hors = await api('/v1/courrier/relance', { token: await login('medina@fleurs.test'), method: 'POST', body: { invoiceId: '014', texte: TEXTE } });
++  assert.equal(hors.status, 503);
++  assert.equal(hors.body.code, 'courrier_hors_ligne');
++});
+-- 
+2.43.0
+

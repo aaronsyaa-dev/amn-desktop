@@ -1,0 +1,489 @@
+From df1955ac60ac785d1b00dd4014c97c9680443e62 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 24 Sep 2026 23:45:17 +0000
+Subject: [PATCH 1/5] Lire une invitation avant de l'activer, sans ouvrir
+ d'oracle
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+POST /v1/auth/invitations/lire rend l'état (valable, expiré, déjà utilisé,
+suspendu), l'organisation, qui invite et une adresse masquée — au seul
+porteur d'un vrai jeton. Tout le reste (mal formé, inconnu, vide) reçoit la
+même réponse « incomplet », compte comme un échec, et le freinage coupe avant
+toute lecture, dans le même seau que l'acceptation. Le jeton voyage dans le
+corps, jamais dans une URL ; la réponse n'est pas mise en cache.
+
+Les invitations retiennent qui invite (invited_by_name, un nom court, jamais
+une adresse), en SQLite comme en Postgres.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01BEf9qY21FAUuZ4ogxRY3s2
+---
+ src/db/postgres.js           |  11 ++-
+ src/db/schema.sql            |   3 +
+ src/db/sqlite.js             |  12 ++-
+ src/lib/invitations.js       |  23 +++++
+ src/routes/admin.js          |   5 +-
+ src/routes/auth.js           |  91 ++++++++++++++++++
+ test/invitation-lire.test.js | 180 +++++++++++++++++++++++++++++++++++
+ 7 files changed, 313 insertions(+), 12 deletions(-)
+ create mode 100644 src/lib/invitations.js
+ create mode 100644 test/invitation-lire.test.js
+
+diff --git a/src/db/postgres.js b/src/db/postgres.js
+index f8d3aa2..06836af 100644
+--- a/src/db/postgres.js
++++ b/src/db/postgres.js
+@@ -1821,15 +1821,15 @@ export function createPostgresDb(connectionString) {
+ 
+     /* ------------------------------- Invitations ------------------------------ */
+ 
+-    async createInvitation({ tokenHash, userId, expiresAt, orgId = null, role = null }) {
++    async createInvitation({ tokenHash, userId, expiresAt, orgId = null, role = null, invitedByName = null }) {
+       await pool.query(
+-        `INSERT INTO invitations (token_hash, user_id, expires_at, org_id, role) VALUES ($1, $2, $3, $4, $5)
++        `INSERT INTO invitations (token_hash, user_id, expires_at, org_id, role, invited_by_name) VALUES ($1, $2, $3, $4, $5, $6)
+          ON CONFLICT (token_hash) DO UPDATE SET user_id = excluded.user_id,
+            expires_at = excluded.expires_at, accepted_at = NULL,
+-           org_id = excluded.org_id, role = excluded.role`,
+-        [tokenHash, userId, expiresAt, orgId, role],
++           org_id = excluded.org_id, role = excluded.role, invited_by_name = excluded.invited_by_name`,
++        [tokenHash, userId, expiresAt, orgId, role, invitedByName],
+       );
+-      return { tokenHash, userId, expiresAt, orgId, role };
++      return { tokenHash, userId, expiresAt, orgId, role, invitedByName };
+     },
+ 
+     async findInvitation(tokenHash) {
+@@ -1845,6 +1845,7 @@ export function createPostgresDb(connectionString) {
+         // Renseigné = invitation d'APPARTENANCE (voir schema.sql).
+         orgId: row.org_id ?? null,
+         role: row.role ?? null,
++        invitedByName: row.invited_by_name ?? null,
+       };
+     },
+ 
+diff --git a/src/db/schema.sql b/src/db/schema.sql
+index 8c5c969..f7d8098 100644
+--- a/src/db/schema.sql
++++ b/src/db/schema.sql
+@@ -248,6 +248,9 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS password_from_support BOOLEAN NOT NUL
+ 
+ ALTER TABLE invitations ADD COLUMN IF NOT EXISTS org_id UUID REFERENCES organizations(id) ON DELETE CASCADE;
+ ALTER TABLE invitations ADD COLUMN IF NOT EXISTS role TEXT;
++-- QUI INVITE, en clair et en court (« Harun », « AMN DevSec ») : la page
++-- d'activation le montre à la personne invitée. Jamais une adresse.
++ALTER TABLE invitations ADD COLUMN IF NOT EXISTS invited_by_name TEXT;
+ 
+ -- Opaque session tokens rather than JWTs: suspending a user must revoke access
+ -- immediately, which a self-contained signed token cannot do.
+diff --git a/src/db/sqlite.js b/src/db/sqlite.js
+index 7b0c401..0e0979b 100644
+--- a/src/db/sqlite.js
++++ b/src/db/sqlite.js
+@@ -836,6 +836,7 @@ export function createSqliteDb(filePath) {
+   // pour un mot de passe qu'ils ont deja choisi eux-memes.
+   ensureColumn('users', 'password_from_support', 'INTEGER NOT NULL DEFAULT 0');
+   ensureColumn('invitations', 'role', 'TEXT');
++  ensureColumn('invitations', 'invited_by_name', 'TEXT');
+ 
+   // Rattrapage : chaque compte existant recoit l'appartenance a son
+   // organisation d'origine. Idempotent — rejouer ne cree rien en double.
+@@ -2826,12 +2827,12 @@ export function createSqliteDb(filePath) {
+ 
+     /* ------------------------------- Invitations ------------------------------ */
+ 
+-    async createInvitation({ tokenHash, userId, expiresAt, orgId = null, role = null }) {
++    async createInvitation({ tokenHash, userId, expiresAt, orgId = null, role = null, invitedByName = null }) {
+       db.prepare(
+-        `INSERT OR REPLACE INTO invitations (token_hash, user_id, created_at, expires_at, accepted_at, org_id, role)
+-         VALUES (?, ?, ?, ?, NULL, ?, ?)`,
+-      ).run(tokenHash, userId, new Date().toISOString(), expiresAt, orgId, role);
+-      return { tokenHash, userId, expiresAt, orgId, role };
++        `INSERT OR REPLACE INTO invitations (token_hash, user_id, created_at, expires_at, accepted_at, org_id, role, invited_by_name)
++         VALUES (?, ?, ?, ?, NULL, ?, ?, ?)`,
++      ).run(tokenHash, userId, new Date().toISOString(), expiresAt, orgId, role, invitedByName);
++      return { tokenHash, userId, expiresAt, orgId, role, invitedByName };
+     },
+ 
+     async findInvitation(tokenHash) {
+@@ -2847,6 +2848,7 @@ export function createSqliteDb(filePath) {
+         // ouvre une organisation de plus. Voir schema.sql.
+         orgId: row.org_id ?? null,
+         role: row.role ?? null,
++        invitedByName: row.invited_by_name ?? null,
+       };
+     },
+ 
+diff --git a/src/lib/invitations.js b/src/lib/invitations.js
+new file mode 100644
+index 0000000..3a8959c
+--- /dev/null
++++ b/src/lib/invitations.js
+@@ -0,0 +1,23 @@
++/**
++ * L'INVITATION, telle que la personne invitée la voit avant de l'activer.
++ * Utilitaires partagés par les routes qui émettent une invitation
++ * (auth, admin) et celle qui la lit (`POST /v1/auth/invitations/lire`).
++ */
++
++/** « medina@gmail.com » → « m•••••@gmail.com » : assez pour se reconnaître, pas pour être lu par-dessus l'épaule. */
++export function masquerAdresse(email) {
++  const [local, domaine] = String(email ?? '').split('@');
++  if (!local || !domaine) return null;
++  return `${local[0]}${'•'.repeat(Math.max(3, Math.min(local.length - 1, 8)))}@${domaine}`;
++}
++
++/**
++ * Qui invite, tel que la page d'activation le montrera : un nom court, en
++ * clair, sans balise ni caractère de contrôle. Faute de nom fourni, le repli
++ * (le nom de l'organisation qui invite). Jamais une adresse.
++ */
++export function nomInvitant(brut, repli = null) {
++  const nom = String(brut ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
++  if (nom && !nom.includes('@')) return nom;
++  return repli ? String(repli).slice(0, 60) : null;
++}
+diff --git a/src/routes/admin.js b/src/routes/admin.js
+index ee20501..6c33140 100644
+--- a/src/routes/admin.js
++++ b/src/routes/admin.js
+@@ -29,6 +29,7 @@ import {
+ import { generateTempPassword, hashPassword, hashToken, mintToken } from '../lib/password.js';
+ import { config } from '../config.js';
+ import { invitationUrl, appOriginForOrg } from '../lib/links.js';
++import { nomInvitant } from '../lib/invitations.js';
+ import { parOrganisation } from '../lib/verrou.js';
+ 
+ const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+@@ -458,7 +459,7 @@ export function adminRouter() {
+       owner = await db.createUser({ orgId: org.id, email: ownerEmail, role: 'owner', status: 'invited' });
+       const { plaintext, hash } = mintToken();
+       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+-      await db.createInvitation({ tokenHash: hash, userId: owner.id, expiresAt });
++      await db.createInvitation({ tokenHash: hash, userId: owner.id, expiresAt, invitedByName: nomInvitant(req.body?.invitePar, 'AMN DevSec') });
+       invitation = { token: plaintext, url: invitationUrl(plaintext, org.id), expiresAt };
+     }
+ 
+@@ -1275,7 +1276,7 @@ export function adminRouter() {
+     const user = await db.createUser({ orgId: org.id, email, role, status: 'invited' });
+     const { plaintext, hash } = mintToken();
+     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+-    await db.createInvitation({ tokenHash: hash, userId: user.id, expiresAt });
++    await db.createInvitation({ tokenHash: hash, userId: user.id, expiresAt, invitedByName: nomInvitant(req.body?.invitePar, 'AMN DevSec') });
+     await journal(req, org.id, 'invite', email);
+ 
+     res.status(201).json({
+diff --git a/src/routes/auth.js b/src/routes/auth.js
+index e945059..2e7947e 100644
+--- a/src/routes/auth.js
++++ b/src/routes/auth.js
+@@ -18,6 +18,7 @@ import {
+   seatsForOrg,
+ } from '../db/tenancy.js';
+ import { appOriginForOrg, invitationUrl } from '../lib/links.js';
++import { masquerAdresse, nomInvitant } from '../lib/invitations.js';
+ import { parOrganisation } from '../lib/verrou.js';
+ 
+ /**
+@@ -189,6 +190,9 @@ function loginBuckets(req, email) {
+  * Le préfixe `invit:` sépare ces seaux de ceux de la connexion : rater son
+  * mot de passe ne doit pas empêcher d'accepter une invitation, ni l'inverse.
+  */
++/** Un jeton d'invitation : 32 octets en base64url, soit 43 caractères. Tout autre chose est un lien abîmé. */
++const FORME_JETON = /^[A-Za-z0-9_-]{43}$/;
++
+ function invitationBuckets(req) {
+   return [{ key: `invit:ip:${callerIp(req)}`, threshold: MAX_FAILURES_PER_IP }];
+ }
+@@ -875,6 +879,7 @@ export function authRouter() {
+       expiresAt,
+       orgId: crossOrg ? req.auth.orgId : null,
+       role: crossOrg ? role : null,
++      invitedByName: nomInvitant(req.body?.invitePar, org?.name),
+     });
+ 
+     // The plaintext token is returned ONCE, like a site API key: it is not
+@@ -887,6 +892,92 @@ export function authRouter() {
+     });
+   }));
+ 
++  /**
++   * LIRE UNE INVITATION AVANT DE L'ACTIVER (arrivée cliente, tour 43).
++   *
++   * La page d'activation a besoin de savoir, AVANT que la personne tape quoi
++   * que ce soit, chez qui elle arrive et si son lien vaut encore. Sans cette
++   * lecture, elle ne pouvait qu'essayer, échouer, et dire « invalide ou
++   * expirée » — sans distinguer un lien périmé (on en redemande un) d'un lien
++   * déjà servi (on se connecte).
++   *
++   * ## Ce qui NE s'affaiblit PAS : la protection contre le sondage
++   *
++   * Sonder, c'est essayer des jetons au hasard pour apprendre quelque chose.
++   * Trois verrous, les mêmes qu'à l'acceptation :
++   *
++   *   1. Le FREINAGE AVANT toute lecture — mêmes seaux par adresse que
++   *      `/invitations/accept` (20 échecs par 15 min, puis 429). Lire et
++   *      accepter puisent dans le MÊME seau : on ne double pas le budget
++   *      d'essais en alternant les deux routes.
++   *   2. UNE SEULE RÉPONSE pour tout ce qui n'est pas un vrai jeton — mal
++   *      formé (lien tronqué par une messagerie) ou inconnu : `{ etat:
++   *      'incomplet' }`, toujours 200, toujours compté comme un échec. Qui
++   *      tape au hasard ne voit jamais que cela, et se fait freiner.
++   *   3. L'ENTROPIE : un jeton fait 256 bits. Les états distincts (valable,
++   *      expiré, déjà utilisé) ne se voient qu'avec un vrai jeton — c'est-à-
++   *      dire en tenant déjà le lien reçu. Ce que ce porteur apprend (le nom
++   *      de l'organisation, qui invite, une adresse MASQUÉE) est ce que le
++   *      courriel lui a déjà dit.
++   *
++   * Le jeton voyage dans le CORPS d'un POST, jamais dans une URL : une URL
++   * finit dans les journaux d'accès, les en-têtes Referer et l'historique.
++   * La réponse n'est jamais mise en cache.
++   */
++  router.post('/invitations/lire', async (req, res) => {
++    const db = req.app.locals.db;
++    const token = String(req.body?.token ?? '').trim();
++    res.set('Cache-Control', 'no-store');
++
++    const seaux = invitationBuckets(req);
++    for (const b of seaux) {
++      const etat = await db.readLoginBucket(b.key);
++      if (etat?.blockedUntil && Date.parse(etat.blockedUntil) > Date.now()) {
++        const secondes = Math.ceil((Date.parse(etat.blockedUntil) - Date.now()) / 1000);
++        res.set('Retry-After', String(secondes));
++        return res.status(429).json({
++          error: 'Trop de tentatives. Réessayez dans quelques minutes.',
++          code: 'too_many_attempts',
++          retryAfterSeconds: secondes,
++        });
++      }
++    }
++    const incomplet = async () => {
++      for (const b of seaux) {
++        await db.bumpLoginBucket({ bucket: b.key, windowMs: LOGIN_WINDOW_MS, threshold: b.threshold, blockMs: LOGIN_BLOCK_MS });
++      }
++      return res.json({ etat: 'incomplet' });
++    };
++
++    if (!FORME_JETON.test(token)) return incomplet();
++    const invitation = await db.findInvitation(hashToken(token));
++    if (!invitation) return incomplet();
++    const user = await db.getUser(invitation.userId);
++    if (!user) return incomplet();
++    const org = await db.getOrganization(invitation.orgId ?? user.orgId);
++    if (!org) return incomplet();
++
++    const etat = invitation.acceptedAt
++      ? 'utilise'
++      : Date.parse(invitation.expiresAt) <= Date.now()
++        ? 'expire'
++        : user.status === 'suspended' || org.status === 'suspended'
++          ? 'suspendu'
++          : 'valable';
++
++    return res.json({
++      etat,
++      nature: invitation.orgId ? 'appartenance' : 'activation',
++      organisation: { nom: org.name, logo: org.logoDataUrl ?? null },
++      invitePar: invitation.invitedByName ?? null,
++      destinataire: masquerAdresse(user.email),
++      emiseLe: invitation.createdAt ?? null,
++      expireLe: invitation.expiresAt,
++      // Une appartenance n'a pas de mot de passe à choisir : le compte en a déjà un.
++      motDePasseRequis: !invitation.orgId,
++    });
++  });
++
+   /**
+    * Accepts an invitation: sets the password and activates the account.
+    * Unauthenticated by design — the invitee has no session yet; the token is
+diff --git a/test/invitation-lire.test.js b/test/invitation-lire.test.js
+new file mode 100644
+index 0000000..73e745b
+--- /dev/null
++++ b/test/invitation-lire.test.js
+@@ -0,0 +1,180 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import http from 'node:http';
++
++process.env.NODE_ENV = 'test';
++process.env.OPERATOR_TOKEN = 'test-operator-token';
++
++const { createApp } = await import('../src/server.js');
++const { createSqliteDb } = await import('../src/db/sqlite.js');
++const { hashPassword, mintToken } = await import('../src/lib/password.js');
++
++/**
++ * LIRE UNE INVITATION AVANT DE L'ACTIVER (arrivée cliente, tour 43).
++ *
++ * La page d'activation distingue quatre états — valable, expiré, déjà
++ * utilisé, lien incomplet — sans que la route devienne un oracle : tout ce
++ * qui n'est pas un vrai jeton reçoit LA MÊME réponse, compte comme un échec,
++ * et le freinage coupe avant toute lecture, dans le même seau que
++ * l'acceptation.
++ */
++const OPERATOR = 'test-operator-token';
++
++async function decor(t) {
++  const db = createSqliteDb(':memory:');
++  await db.init();
++  const app = await createApp({ db });
++  const server = http.createServer(app);
++  await new Promise((resolve) => server.listen(0, resolve));
++  const { port } = server.address();
++  t.after(async () => {
++    server.closeAllConnections?.();
++    await new Promise((resolve) => server.close(resolve));
++    await db.close();
++  });
++  const base = `http://127.0.0.1:${port}`;
++  const api = async (path, { token, method = 'GET', body, ip } = {}) => {
++    const headers = { 'Content-Type': 'application/json' };
++    if (token) headers.Authorization = `Bearer ${token}`;
++    if (ip) headers['X-Forwarded-For'] = ip;
++    const r = await fetch(`${base}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
++    let json = null;
++    try { json = await r.json(); } catch { json = null; }
++    return { status: r.status, body: json, headers: r.headers };
++  };
++  const lire = (token, ip) => api('/v1/auth/invitations/lire', { method: 'POST', body: { token }, ip });
++  return { db, api, lire };
++}
++
++async function nouvelleCliente(api, { invitePar } = {}) {
++  const r = await api('/v1/admin/organizations', {
++    token: OPERATOR,
++    method: 'POST',
++    body: { name: 'Fleurs de Lune', plan: 'business_standard', ownerEmail: 'medina@exemple.test', ...(invitePar === undefined ? {} : { invitePar }) },
++  });
++  assert.equal(r.status, 201, JSON.stringify(r.body));
++  return r.body;
++}
++
++test('valable : l’organisation, qui invite, une adresse masquée — et rien de plus', async (t) => {
++  const { api, lire } = await decor(t);
++  const cree = await nouvelleCliente(api, { invitePar: 'Harun' });
++  const r = await lire(cree.invitation.token);
++  assert.equal(r.status, 200);
++  assert.equal(r.headers.get('cache-control'), 'no-store');
++  assert.equal(r.body.etat, 'valable');
++  assert.equal(r.body.nature, 'activation');
++  assert.equal(r.body.organisation.nom, 'Fleurs de Lune');
++  assert.equal(r.body.invitePar, 'Harun');
++  assert.equal(r.body.destinataire, 'm•••••@exemple.test');
++  assert.equal(r.body.motDePasseRequis, true);
++  assert.equal(r.body.expireLe, cree.invitation.expiresAt);
++  const brut = JSON.stringify(r.body);
++  assert.ok(!brut.includes('medina@'), 'l’adresse n’apparaît jamais en clair');
++  assert.ok(!brut.includes(cree.owner.id), 'aucun identifiant de compte');
++  assert.ok(!brut.includes(cree.organization.id), 'aucun identifiant d’organisation');
++  assert.ok(!/token|hash/i.test(Object.keys(r.body).join(' ')), 'ni jeton ni empreinte');
++});
++
++test('sans nom d’invitant fourni, c’est AMN DevSec ; une adresse glissée à la place est refusée', async (t) => {
++  const { api, lire } = await decor(t);
++  const cree = await nouvelleCliente(api, { invitePar: 'harun@amn.test' });
++  assert.equal((await lire(cree.invitation.token)).body.invitePar, 'AMN DevSec');
++});
++
++test('déjà utilisé, puis expiré : deux états distincts, pour le seul porteur d’un vrai jeton', async (t) => {
++  const { db, api, lire } = await decor(t);
++  const cree = await nouvelleCliente(api);
++  const ok = await api('/v1/auth/invitations/accept', { method: 'POST', body: { token: cree.invitation.token, password: 'un-mot-de-passe-solide' } });
++  assert.equal(ok.status, 200);
++  const utilise = await lire(cree.invitation.token);
++  assert.equal(utilise.body.etat, 'utilise');
++  assert.equal(utilise.body.organisation.nom, 'Fleurs de Lune');
++
++  const { plaintext, hash } = mintToken();
++  await db.createInvitation({ tokenHash: hash, userId: cree.owner.id, expiresAt: new Date(Date.now() - 60_000).toISOString(), invitedByName: 'Harun' });
++  const expire = await lire(plaintext);
++  assert.equal(expire.body.etat, 'expire');
++  assert.equal(expire.body.invitePar, 'Harun');
++});
++
++test('lien incomplet : un jeton tronqué, un jeton inconnu et un corps vide rendent EXACTEMENT la même réponse', async (t) => {
++  const { api, lire } = await decor(t);
++  const cree = await nouvelleCliente(api);
++  const tronque = await lire(cree.invitation.token.slice(0, 30), '10.0.0.1');
++  const inconnu = await lire(mintToken().plaintext, '10.0.0.2');
++  const vide = await api('/v1/auth/invitations/lire', { method: 'POST', body: {}, ip: '10.0.0.3' });
++  for (const r of [tronque, inconnu, vide]) {
++    assert.equal(r.status, 200);
++    assert.deepEqual(r.body, { etat: 'incomplet' });
++  }
++});
++
++test('le jeton ne passe jamais par une URL : pas de lecture en GET', async (t) => {
++  const { api } = await decor(t);
++  const r = await api(`/v1/auth/invitations/lire?token=${mintToken().plaintext}`);
++  assert.ok([401, 404].includes(r.status), `refusé (${r.status})`);
++  assert.equal(r.body?.etat, undefined, 'aucune lecture');
++});
++
++test('sonder freine : après 20 jetons au hasard, même un VRAI jeton est refusé (429) — le freinage passe avant la lecture', async (t) => {
++  const { api, lire } = await decor(t);
++  const cree = await nouvelleCliente(api);
++  const ip = '203.0.113.7';
++  for (let i = 0; i < 20; i += 1) assert.deepEqual((await lire(mintToken().plaintext, ip)).body, { etat: 'incomplet' });
++  const bloque = await lire(cree.invitation.token, ip);
++  assert.equal(bloque.status, 429);
++  assert.equal(bloque.body.code, 'too_many_attempts');
++  assert.ok(Number(bloque.headers.get('retry-after')) > 0);
++  assert.equal(bloque.body.organisation, undefined, 'bloqué : rien n’est lu, rien n’est dit');
++  // Une autre adresse n'est pas pénalisée.
++  assert.equal((await lire(cree.invitation.token, '198.51.100.9')).body.etat, 'valable');
++});
++
++test('lire et accepter puisent dans le MÊME seau : alterner les deux routes ne double pas le budget d’essais', async (t) => {
++  const { api, lire } = await decor(t);
++  const cree = await nouvelleCliente(api);
++  const ip = '203.0.113.8';
++  for (let i = 0; i < 10; i += 1) await lire(mintToken().plaintext, ip);
++  for (let i = 0; i < 10; i += 1) {
++    await api('/v1/auth/invitations/accept', { method: 'POST', body: { token: mintToken().plaintext, password: 'peu-importe-ici' }, ip });
++  }
++  assert.equal((await lire(cree.invitation.token, ip)).status, 429);
++  const accepte = await api('/v1/auth/invitations/accept', { method: 'POST', body: { token: cree.invitation.token, password: 'un-mot-de-passe-solide' }, ip });
++  assert.equal(accepte.status, 429);
++});
++
++test('lire ne consomme pas : après lecture, l’invitation s’accepte toujours', async (t) => {
++  const { api, lire } = await decor(t);
++  const cree = await nouvelleCliente(api);
++  for (let i = 0; i < 3; i += 1) assert.equal((await lire(cree.invitation.token)).body.etat, 'valable');
++  const ok = await api('/v1/auth/invitations/accept', { method: 'POST', body: { token: cree.invitation.token, password: 'un-mot-de-passe-solide' } });
++  assert.equal(ok.status, 200);
++});
++
++test('organisation suspendue : l’état le dit, et l’acceptation reste refusée', async (t) => {
++  const { db, api, lire } = await decor(t);
++  const cree = await nouvelleCliente(api);
++  await db.updateOrganization(cree.organization.id, { status: 'suspended' });
++  assert.equal((await lire(cree.invitation.token)).body.etat, 'suspendu');
++  const refus = await api('/v1/auth/invitations/accept', { method: 'POST', body: { token: cree.invitation.token, password: 'un-mot-de-passe-solide' } });
++  assert.equal(refus.status, 403);
++});
++
++test('appartenance : un compte existant invité ailleurs — nature « appartenance », pas de mot de passe à choisir', async (t) => {
++  const { db, api, lire } = await decor(t);
++  const hote = await db.createOrganization({ name: 'AllStore', plan: 'business_premium' });
++  const hash = await hashPassword('mot-de-passe-hote');
++  await db.createUser({ orgId: hote.id, email: 'riyad@allstore.test', passwordHash: hash, role: 'owner', status: 'active' });
++  const autre = await db.createOrganization({ name: 'Atelier Vermeil', plan: 'business_standard' });
++  await db.createUser({ orgId: autre.id, email: 'aaron@vermeil.test', passwordHash: hash, role: 'owner', status: 'active' });
++  const login = await api('/v1/auth/login', { method: 'POST', body: { email: 'riyad@allstore.test', password: 'mot-de-passe-hote' } });
++  const inv = await api('/v1/auth/invitations', { token: login.body.token, method: 'POST', body: { email: 'aaron@vermeil.test', role: 'member', invitePar: 'Riyad' } });
++  assert.equal(inv.status, 201);
++  const r = await lire(inv.body.invitation.token);
++  assert.equal(r.body.etat, 'valable');
++  assert.equal(r.body.nature, 'appartenance');
++  assert.equal(r.body.organisation.nom, 'AllStore', 'l’organisation qui invite, pas celle du compte');
++  assert.equal(r.body.invitePar, 'Riyad');
++  assert.equal(r.body.motDePasseRequis, false);
++});
+-- 
+2.43.0
+

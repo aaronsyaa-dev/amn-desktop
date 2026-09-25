@@ -1,0 +1,102 @@
+From 8f856079c9e0a8b96b7575680a45bc83dd48f0e7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 25 Sep 2026 00:14:56 +0000
+Subject: [PATCH 5/5] =?UTF-8?q?Courrier=20:=20la=20mention=20l=C3=A9gale?=
+ =?UTF-8?q?=20du=20pied=20vient=20de=20COURRIER=5FMENTION=5FLEGALE,=20jama?=
+ =?UTF-8?q?is=20invent=C3=A9e?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01BEf9qY21FAUuZ4ogxRY3s2
+---
+ src/config.js                 |  1 +
+ src/lib/courrier.js           | 17 +++++++++++++----
+ src/server.js                 |  2 +-
+ test/courrier-arrivee.test.js | 11 +++++++++++
+ 4 files changed, 26 insertions(+), 5 deletions(-)
+
+diff --git a/src/config.js b/src/config.js
+index eaa0090..a4bea7e 100644
+--- a/src/config.js
++++ b/src/config.js
+@@ -71,6 +71,7 @@ export const config = {
+   resendKey: process.env.RESEND_API_KEY || null,
+   emailFrom: process.env.EMAIL_FROM || null,
+   courrierSecret: process.env.COURRIER_SECRET || null,
++  courrierMentionLegale: process.env.COURRIER_MENTION_LEGALE || null,
+   /*
+     L'ENCAISSEMENT (src/lib/paiements.js). La clé secrète Stripe, le secret de
+     signature du webhook, un prix Stripe par formule. Sans eux, rien ne change :
+diff --git a/src/lib/courrier.js b/src/lib/courrier.js
+index 92a5091..ee1dd22 100644
+--- a/src/lib/courrier.js
++++ b/src/lib/courrier.js
+@@ -25,10 +25,15 @@ import { hashPassword } from './password.js';
+ const API = 'https://api.resend.com/emails';
+ const REINIT_TTL_MS = 60 * 60_000;
+ 
+-let etat = { apiKey: null, expediteur: null, secret: null, fetchImpl: globalThis.fetch, horloge: () => Date.now() };
++let etat = { apiKey: null, expediteur: null, secret: null, mentionLegale: null, fetchImpl: globalThis.fetch, horloge: () => Date.now() };
+ 
+-export function configurerCourrier({ apiKey = null, expediteur = null, secret = null, fetchImpl = globalThis.fetch, horloge = () => Date.now() } = {}) {
+-  etat = { apiKey: apiKey || null, expediteur: expediteur || null, secret: secret || apiKey || 'sans-secret', fetchImpl, horloge };
++/*
++  LA MENTION LÉGALE du pied de courriel (raison sociale, forme, SIREN, adresse)
++  vient de l'environnement (`COURRIER_MENTION_LEGALE`) et de nulle part
++  ailleurs : aucune n'est inventée. Absente, le pied n'en porte pas.
++*/
++export function configurerCourrier({ apiKey = null, expediteur = null, secret = null, mentionLegale = null, fetchImpl = globalThis.fetch, horloge = () => Date.now() } = {}) {
++  etat = { apiKey: apiKey || null, expediteur: expediteur || null, secret: secret || apiKey || 'sans-secret', mentionLegale: String(mentionLegale ?? '').trim().slice(0, 300) || null, fetchImpl, horloge };
+   return courrierActif();
+ }
+ export const courrierActif = () => Boolean(etat.apiKey && etat.expediteur);
+@@ -102,7 +107,11 @@ export async function envoyer(db, { orgId = null, a, nature, langue = 'fr', para
+   if (!NATURES.includes(nature)) throw new Error(`nature de courrier inconnue : ${nature}`);
+   const destinataire = String(a ?? '').trim().toLowerCase();
+   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destinataire)) throw new Error('destinataire invalide');
+-  const rendu = rendre(nature, params, langue);
++  const brut = rendre(nature, params, langue);
++  const echapperHtml = (x) => x.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
++  const rendu = etat.mentionLegale
++    ? { ...brut, texte: `${brut.texte}\n\n—\n${etat.mentionLegale}`, html: brut.html.replace('</div></body></html>', `<p style="margin:28px 0 0;font-size:11px;color:#888888">${echapperHtml(etat.mentionLegale)}</p>\n</div></body></html>`) }
++    : brut;
+   const clePref = NATURES_OPT_IN[nature];
+   if (clePref) {
+     const p = await preferences(db, destinataire);
+diff --git a/src/server.js b/src/server.js
+index ff55272..04b2e08 100644
+--- a/src/server.js
++++ b/src/server.js
+@@ -45,7 +45,7 @@ export async function createApp({ db }) {
+   // Le courrier : sa table de journal et ses jetons existent dès le démarrage ; la clé, elle, vient de l'environnement.
+   await ensureCourrierSchema(db);
+   if (!process.env.NODE_ENV?.startsWith('test')) {
+-    const actif = configurerCourrier({ apiKey: config.resendKey, expediteur: config.emailFrom, secret: config.courrierSecret });
++    const actif = configurerCourrier({ apiKey: config.resendKey, expediteur: config.emailFrom, secret: config.courrierSecret, mentionLegale: config.courrierMentionLegale });
+     console.log(actif ? `[courrier] en ligne, expéditeur ${config.emailFrom}` : '[courrier] hors ligne : RESEND_API_KEY ou EMAIL_FROM absent — les flux manuels restent'); // eslint-disable-line no-console
+   }
+   // L'encaissement : ses tables dès le démarrage (et celles de la Garde des Comptes, qu'il alimente même Garde éteinte).
+diff --git a/test/courrier-arrivee.test.js b/test/courrier-arrivee.test.js
+index f94190a..39c6d3c 100644
+--- a/test/courrier-arrivee.test.js
++++ b/test/courrier-arrivee.test.js
+@@ -177,3 +177,14 @@ test('un invité ne relance pas ; le support d’AMN non plus ; sans courrier, 5
+   assert.equal(hors.status, 503);
+   assert.equal(hors.body.code, 'courrier_hors_ligne');
+ });
++
++test('la mention légale : absente tant qu’elle n’est pas configurée, puis au pied de chaque courriel — jamais inventée', async (t) => {
++  const { api, resend } = await decor(t);
++  await api('/v1/admin/organizations', { token: OPERATOR, method: 'POST', body: { name: 'Sans Mention', plan: 'business_standard', ownerEmail: 'sm@exemple.test' } });
++  assert.ok(!resend.envois.at(-1).text.includes('SIREN'));
++  configurerCourrier({ apiKey: 're_test', expediteur: 'AMN <bonjour@amn.test>', mentionLegale: 'AMN DevSec — SIREN 000 000 000 — adresse de test', fetchImpl: resend.fetchImpl });
++  await api('/v1/admin/organizations', { token: OPERATOR, method: 'POST', body: { name: 'Avec Mention', plan: 'business_standard', ownerEmail: 'am@exemple.test' } });
++  const m = resend.envois.at(-1);
++  assert.ok(m.text.endsWith('AMN DevSec — SIREN 000 000 000 — adresse de test'));
++  assert.ok(m.html.includes('SIREN 000 000 000'));
++});
+-- 
+2.43.0
+

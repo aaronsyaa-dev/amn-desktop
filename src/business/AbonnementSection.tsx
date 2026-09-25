@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CreditCard, ExternalLink, Loader2 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+import { isAdminRole } from '../auth/roles';
 import { bridge } from '../lib/bridge';
 import { cleanErrorMessage } from '../lib/errorMessage';
 import type { AbonnementEtat } from '../shared/api';
@@ -31,7 +32,7 @@ export function AbonnementSection() {
   const etat = useAbonnement();
   const [busy, setBusy] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
-  const peutGerer = role === 'owner' || role === 'admin';
+  const peutGerer = isAdminRole(role);
   if (!etat?.actif || !peutGerer) return null;
 
   const relie = Boolean(etat.abonnement?.relie);

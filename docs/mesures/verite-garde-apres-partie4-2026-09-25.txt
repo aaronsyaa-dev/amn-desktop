@@ -1,0 +1,39 @@
+
+LA GARDE, EN VÉRITÉ — 2026-09-25T00:17:00.554Z — http://127.0.0.1:8791, dernières 1 h
+
+Battement : actif · dernier il y a 3 s · 20 gardes · 0 en retard · serveur démarré il y a 1 min
+Dernière interruption : 2026-09-24T22:38:45.177Z → 2026-09-24T23:49:54.919Z (71 min)
+
+Passages promis par l'Atelier : 4 863 par jour (fréquences des gardes, toutes organisations confondues)
+Rondes réellement tenues : 98 en 1 h (plafond de 500 relevées par garde)
+  dont À VIDE (rien lu) : 43 (44 %)
+  éléments lus 1 224 · réglés seuls 6 · remontés à un humain 0
+
+garde                      rondes  à vide     lus  réglés  remontés
+securite.escalade              29       0     783       0         0
+taches.emission                14       0     336       0         0
+sites.disponibilite             6       0      54       6         0
+clientes.accueil                2       0      32       0         0
+comptes.places                  1       0      16       0         0
+clientes.demandes               3       0       3       0         0
+clientes.rapports               1       1       0       0         0
+comptes.impayes                 1       1       0       0         0
+comptes.jetons                  6       6       0       0         0
+memoire.purge                   0       0       0       0         0
+produit.erreurs                 2       2       0       0         0
+produit.integrite               0       0       0       0         0
+produit.mises-a-jour            0       0       0       0         0
+registre.hygiene                0       0       0       0         0
+securite.campagnes              3       3       0       0         0
+sites.battement                27      27       0       0         0
+sites.certificats               0       0       0       0         0
+sites.dependances               0       0       0       0         0
+sites.rapports-hebdo            1       1       0       0         0
+sites.rondes-planifiees         2       2       0       0         0
+
+Journal : 13 lignes en 1 h — POUR QUI :
+     10  Cabinet Arnoux                 dont 0 simples mises à jour · securite.escalade:collaboration×5, sites.disponibilite:collaboration×5
+      2  AMN DevSec                     dont 0 simples mises à jour · securite.escalade:collaboration×1, sites.disponibilite:collaboration×1
+      1  (aucune organisation)          dont 0 simples mises à jour · capitaine:interruption×1
+
+Clientes sans AUCUNE ligne de journal en 1 h : 17 sur 18 — Le Jardin d’Élise, Syraagensy, Atelier Vermeil, Studio Nord, Boulangerie Keller, Maison Bertaux, Les Halles, Lina — 4e B

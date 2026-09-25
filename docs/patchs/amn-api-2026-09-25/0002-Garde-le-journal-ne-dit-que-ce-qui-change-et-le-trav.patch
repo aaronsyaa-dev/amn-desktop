@@ -1,0 +1,617 @@
+From 7a8d4f9073bc6e0325fd0385260bfbd2d7dd1a2c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 24 Sep 2026 23:53:00 +0000
+Subject: [PATCH 2/5] Garde : le journal ne dit que ce qui change, et le
+ travail sur un site va chez sa cliente
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Journal : une situation déjà remontée, retrouvée telle quelle, n'écrit plus
+de ligne « remontee-maj » à chaque passage (945 lignes sur ~1 000 en 24 h).
+Elle ne s'écrit que si sa gravité change ; le compte de la remontée continue
+d'avancer.
+
+Attribution : sites.client_org_id (SQLite et Postgres) dit de quelle cliente
+un site surveillé par AMN DevSec est le site. Il n'ouvre aucun accès — le
+site, sa clé, ses événements et ses incidents restent à AMN. La Garde y range
+son travail : panne, certificat (par l'hôte), incident non pris ; la
+détection de campagnes compte enfin les clientes touchées. Seule AMN DevSec
+pose le rattachement (403 sinon), jamais vers elle-même.
+
+scripts/rattacher-sites.mjs propose les rattachements par le nom et
+n'applique que les correspondances uniques, avec --appliquer.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01BEf9qY21FAUuZ4ogxRY3s2
+---
+ scripts/rattacher-sites.mjs    |  76 ++++++++++++++++
+ src/db/postgres.js             |   3 +
+ src/db/schema.sql              |   2 +
+ src/db/sqlite.js               |  13 +++
+ src/garde/attribution.js       |  48 ++++++++++
+ src/garde/capitaine.js         |  18 +++-
+ src/garde/equipes/securite.js  |  11 ++-
+ src/garde/equipes/sites.js     |   8 +-
+ src/garde/store.js             |   3 +-
+ src/routes/sites.js            |  32 +++++++
+ test/garde-attribution.test.js | 159 +++++++++++++++++++++++++++++++++
+ 11 files changed, 365 insertions(+), 8 deletions(-)
+ create mode 100644 scripts/rattacher-sites.mjs
+ create mode 100644 src/garde/attribution.js
+ create mode 100644 test/garde-attribution.test.js
+
+diff --git a/scripts/rattacher-sites.mjs b/scripts/rattacher-sites.mjs
+new file mode 100644
+index 0000000..08d5849
+--- /dev/null
++++ b/scripts/rattacher-sites.mjs
+@@ -0,0 +1,76 @@
++#!/usr/bin/env node
++/**
++ * RATTACHER LES SITES DÉJÀ ENREGISTRÉS À LEUR CLIENTE (chantier « arrivée cliente », partie 4).
++ *
++ * Les sites que surveille AMN DevSec ont été enregistrés avant que
++ * `client_org_id` existe : aucun ne sait de quelle cliente il est le site, et
++ * la Garde range donc encore leur travail sous AMN DevSec. Ce script propose
++ * un rattachement par le NOM : « jardin-elise.fr » ↔ « Le Jardin d’Élise »,
++ * « arnoux-avocats.fr » ↔ « Cabinet Arnoux ».
++ *
++ *   AMN_API_URL=https://… AMN_OPERATEUR=… node scripts/rattacher-sites.mjs            # ne touche à rien : liste les propositions
++ *   AMN_API_URL=https://… AMN_OPERATEUR=… node scripts/rattacher-sites.mjs --appliquer # rattache les propositions SÛRES
++ *
++ * Sûre = une seule cliente correspond. Deux ou plus, ou aucune : le site est
++ * listé « à rattacher à la main » (depuis le Parc) et le script n'y touche pas.
++ * Un site déjà rattaché n'est jamais modifié. Tout passe par l'API
++ * (`PUT /v1/sites/:id`), jamais par la base : les mêmes contrôles qu'à la main.
++ */
++const API = (process.env.AMN_API_URL ?? '').replace(/\/$/, '');
++const JETON = process.env.AMN_OPERATEUR ?? '';
++const APPLIQUER = process.argv.includes('--appliquer');
++if (!API || !JETON) {
++  console.error('AMN_API_URL et AMN_OPERATEUR sont attendus.');
++  process.exit(2);
++}
++
++const appel = async (chemin, init = {}) => {
++  const r = await fetch(`${API}${chemin}`, { ...init, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${JETON}`, ...(init.headers ?? {}) } });
++  const corps = await r.json().catch(() => null);
++  if (!r.ok) throw new Error(`${chemin} → ${r.status} ${corps?.error ?? ''}`);
++  return corps;
++};
++
++/** Les mots qui ne désignent personne : articles, formes juridiques, métiers trop communs. */
++const VIDES = new Set(['le', 'la', 'les', 'l', 'd', 'de', 'du', 'des', 'et', 'the', 'sarl', 'sas', 'sasu', 'eurl', 'sa', 'sci', 'cabinet', 'atelier', 'maison', 'studio', 'groupe', 'agence', 'societe', 'boutique', 'shop', 'www', 'fr', 'com', 'net', 'org', 'eu', 'io', 'rdv', 'app']);
++const sansAccent = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
++const mots = (s) => sansAccent(s).split(/[^a-z0-9]+/).filter((m) => m.length >= 3 && !VIDES.has(m));
++const hote = (site) => { try { return new URL(site.url).hostname; } catch { return site.name; } };
++
++export function proposer(site, clientes) {
++  const cote = new Set(mots(hote(site)));
++  const colle = sansAccent(hote(site)).replace(/[^a-z0-9]/g, '');
++  const candidates = clientes.filter((o) => {
++    const m = mots(o.name);
++    if (m.length === 0) return false;
++    // Tous les mots distinctifs du nom de la cliente se retrouvent dans l'hôte (séparés ou collés : « leshalles »).
++    return m.every((x) => cote.has(x) || colle.includes(x));
++  });
++  return candidates;
++}
++
++async function toutesLesClientes() {
++  const clientes = [];
++  let cursor = null;
++  do {
++    const page = await appel(`/v1/admin/organizations/page?limit=200${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
++    clientes.push(...page.organizations.filter((o) => o.plan !== 'internal'));
++    cursor = page.nextCursor ?? null;
++  } while (cursor);
++  return clientes;
++}
++
++if (import.meta.url === `file://${process.argv[1]}`) {
++  const { sites } = await appel('/v1/sites');
++  const clientes = await toutesLesClientes();
++  const bilan = { rattaches: 0, deja: 0, main: [] };
++  for (const site of sites) {
++    if (site.clientOrgId) { bilan.deja += 1; continue; }
++    const c = proposer(site, clientes);
++    if (c.length !== 1) { bilan.main.push(`${site.name} — ${c.length ? `ambigu : ${c.map((o) => o.name).join(', ')}` : 'aucune cliente ne correspond'}`); continue; }
++    console.log(`${APPLIQUER ? 'rattaché' : 'proposé '}  ${site.name}  →  ${c[0].name}`);
++    if (APPLIQUER) { await appel(`/v1/sites/${site.id}`, { method: 'PUT', body: JSON.stringify({ clientOrgId: c[0].id }) }); bilan.rattaches += 1; }
++  }
++  for (const l of bilan.main) console.log(`à la main  ${l}`);
++  console.log(`\n${sites.length} site(s) : ${bilan.deja} déjà rattaché(s), ${APPLIQUER ? `${bilan.rattaches} rattaché(s) maintenant` : 'rien modifié (relancer avec --appliquer)'}, ${bilan.main.length} à rattacher à la main depuis le Parc.`);
++}
+diff --git a/src/db/postgres.js b/src/db/postgres.js
+index 06836af..3ca60a3 100644
+--- a/src/db/postgres.js
++++ b/src/db/postgres.js
+@@ -199,6 +199,7 @@ export function createPostgresDb(connectionString) {
+       dependencies: row.dependencies ?? null, // jsonb comes back already parsed
+       badgeToken: row.badge_token ?? null,
+       statusToken: row.status_token ?? null,
++      clientOrgId: row.client_org_id || null,
+     };
+   }
+ 
+@@ -471,6 +472,8 @@ export function createPostgresDb(connectionString) {
+         badge_token: patch.badgeToken,
+         // `null` est une valeur VOULUE : c'est la révocation de la page.
+         status_token: patch.statusToken,
++        // `null` aussi : c'est détacher le site de sa cliente.
++        client_org_id: patch.clientOrgId,
+       };
+       const fields = [];
+       const values = [];
+diff --git a/src/db/schema.sql b/src/db/schema.sql
+index f7d8098..846472b 100644
+--- a/src/db/schema.sql
++++ b/src/db/schema.sql
+@@ -333,6 +333,8 @@ CREATE INDEX IF NOT EXISTS org_access_log_org_idx ON org_access_log (org_id, cre
+ -- never fails on a table that already holds rows; the backfill below fills
+ -- them, and the query layer always filters on it.
+ ALTER TABLE sites         ADD COLUMN IF NOT EXISTS org_id UUID REFERENCES organizations(id) ON DELETE CASCADE;
++-- La cliente dont c'est le site : n'ouvre aucun accès, sert à attribuer le travail de la Garde.
++ALTER TABLE sites         ADD COLUMN IF NOT EXISTS client_org_id UUID REFERENCES organizations(id) ON DELETE SET NULL;
+ ALTER TABLE site_state    ADD COLUMN IF NOT EXISTS org_id UUID REFERENCES organizations(id) ON DELETE CASCADE;
+ ALTER TABLE events        ADD COLUMN IF NOT EXISTS org_id UUID REFERENCES organizations(id) ON DELETE CASCADE;
+ ALTER TABLE shared_records ADD COLUMN IF NOT EXISTS org_id UUID REFERENCES organizations(id) ON DELETE CASCADE;
+diff --git a/src/db/sqlite.js b/src/db/sqlite.js
+index 0e0979b..7025b9a 100644
+--- a/src/db/sqlite.js
++++ b/src/db/sqlite.js
+@@ -346,6 +346,16 @@ export function createSqliteDb(filePath) {
+     statut ne doit pas casser le badge d'à côté.
+   */
+   ensureColumn('sites', 'status_token', 'TEXT');
++  /*
++    LA CLIENTE DONT C'EST LE SITE (chantier « arrivée cliente », partie 4).
++
++    Un site surveillé par AMN DevSec lui APPARTIENT (sa clé de traceur, ses
++    événements, ses incidents restent chez nous : c'est notre produit, et
++    l'isolation ne change pas). Mais il est le site D'UNE CLIENTE, et le
++    travail de la Garde sur lui doit être rangé chez elle. `client_org_id`
++    ne donne aucun accès : il ne sert qu'à attribuer.
++  */
++  ensureColumn('sites', 'client_org_id', 'TEXT');
+   // Le lien alerte -> incident. Sur `events` plutot que dans une table de
+   // liaison : une alerte n'appartient qu'a un incident, et l'ecran d'un site
+   // veut lire les deux d'une seule requete.
+@@ -1144,6 +1154,7 @@ export function createSqliteDb(filePath) {
+       dependencies,
+       badgeToken: row.badge_token || null,
+       statusToken: row.status_token || null,
++      clientOrgId: row.client_org_id || null,
+     };
+   }
+ 
+@@ -1269,6 +1280,8 @@ export function createSqliteDb(filePath) {
+         badge_token: patch.badgeToken,
+         // `null` est une valeur VOULUE ici : c'est la révocation de la page.
+         status_token: patch.statusToken,
++        // `null` aussi : c'est détacher le site de sa cliente.
++        client_org_id: patch.clientOrgId,
+       };
+       const fields = [];
+       const values = [];
+diff --git a/src/garde/attribution.js b/src/garde/attribution.js
+new file mode 100644
+index 0000000..cc61b01
+--- /dev/null
++++ b/src/garde/attribution.js
+@@ -0,0 +1,48 @@
++/**
++ * À QUI RANGER LE TRAVAIL DE LA GARDE SUR UN SITE (chantier « arrivée cliente », partie 4).
++ *
++ * Les sites que surveille AMN DevSec lui appartiennent en base — sa clé de
++ * traceur, ses événements, ses incidents restent chez elle, c'est son produit.
++ * Mais chacun est le site D'UNE CLIENTE (`sites.client_org_id`) : ce que la
++ * Garde y fait — une panne remontée, un certificat qui expire, un incident
++ * non pris — se range chez cette cliente. Sans rattachement connu, le travail
++ * reste chez le propriétaire du site, comme avant.
++ *
++ * Mesuré avant : les 9 sites clientes du bac à sable étaient tous sous AMN
++ * DevSec, et le dossier d'aucune cliente ne montrait le travail fait sur son
++ * site (docs/mesures/verite-garde-bac-a-sable-2026-09-24.txt, amn-desktop).
++ *
++ * Un cache par ronde : une ronde lit le même site plusieurs fois.
++ */
++const hoteDe = (url) => {
++  try { return new URL(url).hostname.toLowerCase(); } catch { return null; }
++};
++
++export function creerAttribution(db) {
++  const parSite = new Map();
++  const parProprietaire = new Map();
++  const sitesRattaches = async (orgId) => {
++    if (!parProprietaire.has(orgId)) {
++      parProprietaire.set(orgId, await db.all('SELECT id, name, url, client_org_id FROM sites WHERE org_id = ? AND client_org_id IS NOT NULL', [orgId]));
++    }
++    return parProprietaire.get(orgId);
++  };
++  return {
++    /** L'organisation du travail fait sur ce site : sa cliente, sinon `repli` (le propriétaire). */
++    async duSite(siteId, repli) {
++      if (!siteId) return repli;
++      if (!parSite.has(siteId)) {
++        const r = await db.all('SELECT client_org_id FROM sites WHERE id = ?', [siteId]);
++        parSite.set(siteId, r[0]?.client_org_id ?? null);
++      }
++      return parSite.get(siteId) ?? repli;
++    },
++    /** L'organisation d'un hôte (un certificat) : la cliente du site de ce propriétaire qui porte cet hôte. */
++    async deLHote(proprietaire, hote, repli) {
++      const h = String(hote ?? '').toLowerCase();
++      if (!h) return repli;
++      const trouve = (await sitesRattaches(proprietaire)).find((s) => hoteDe(s.url) === h || String(s.name ?? '').toLowerCase() === h);
++      return trouve?.client_org_id ?? repli;
++    },
++  };
++}
+diff --git a/src/garde/capitaine.js b/src/garde/capitaine.js
+index 9984a1c..9148560 100644
+--- a/src/garde/capitaine.js
++++ b/src/garde/capitaine.js
+@@ -201,11 +201,25 @@ export function creerCapitaine({ db, hub = null, equipes, tickMs = 20_000, horlo
+         }
+         const abs = await ctx.absence();
+         const differee = Boolean(abs) && gravite !== 'critique';
+-        const { remontee, creee, dejaDecidee } = await store.upsertRemontee({ cle, agent: def.key, equipe: def.equipe, orgId, gravite, titre, contexte, options, recommandation, preuves, differee });
++        const { remontee, creee, dejaDecidee, graviteChangee, graviteAvant } = await store.upsertRemontee({ cle, agent: def.key, equipe: def.equipe, orgId, gravite, titre, contexte, options, recommandation, preuves, differee });
+         // Décidée il y a moins d'un jour : la situation est comptée sur la décision prise, sans nouvelle remontée ni nouveau journal.
+         if (dejaDecidee) return remontee;
++        /*
++          LE JOURNAL NE DIT QUE CE QUI CHANGE (chantier « arrivée cliente », partie 4).
++
++          Une situation déjà remontée, retrouvée telle quelle au passage suivant,
++          écrivait une ligne « remontee-maj » à chaque ronde : 945 lignes sur
++          ~1 000 en 24 h, pour 36 situations, qui noyaient les 13 lignes utiles
++          sur les clientes (docs/mesures/verite-garde-bac-a-sable-2026-09-24.txt).
++          Désormais, une situation retrouvée ne s'écrit que si sa GRAVITÉ change.
++          Le titre ne compte pas : il porte souvent une durée (« depuis 3 h ») qui
++          bouge à chaque passage sans rien apprendre à personne. La trace du
++          passage reste, sans bruit : `compte` et `updated_at` de la remontée
++          avancent à chaque fois.
++        */
++        if (!creee && !graviteChangee) return remontee;
+         if (creee) compteurs.remontes += 1;
+-        const entree = await ctx.journal({ orgId, ressource, action: creee ? 'remontee' : 'remontee-maj', pourquoi: titre, regle, resultat: 'remonte', detail: { remonteeId: remontee.id, gravite, compte: remontee.compte } });
++        const entree = await ctx.journal({ orgId, ressource, action: creee ? 'remontee' : 'remontee-maj', pourquoi: creee ? titre : `${titre} — gravité ${graviteAvant} → ${gravite}`, regle, resultat: 'remonte', detail: { remonteeId: remontee.id, gravite, compte: remontee.compte, ...(creee ? {} : { graviteAvant }) } });
+         if (creee) {
+           // Un mandat d'Aaron couvre cette famille ? Ajmani décide seul, journalise, et la pile ne s'en alourdit pas.
+           const parMandat = await ajmani.appliquerMandat(remontee);
+diff --git a/src/garde/equipes/securite.js b/src/garde/equipes/securite.js
+index 82bd56e..aeb799e 100644
+--- a/src/garde/equipes/securite.js
++++ b/src/garde/equipes/securite.js
+@@ -7,6 +7,7 @@
+  * organisations en vingt-quatre heures — une campagne, pas un site.
+  */
+ import { MONITOR_PLAN, sweepEscalations } from '../../tracker/monitors.js';
++import { creerAttribution } from '../attribution.js';
+ 
+ const min = 60_000;
+ const jour = 86_400_000;
+@@ -39,10 +40,13 @@ export const agents = [
+       const nonPris = await ctx.db.all("SELECT id, org_id, site_id, actor, kinds, first_seen_at FROM incidents WHERE status = 'new' AND severity = 'critical' AND first_seen_at < ? ORDER BY first_seen_at LIMIT 200", [limite]);
+       const noms = new Map();
+       const vus = new Set();
++      const attribution = creerAttribution(ctx.db);
+       for (const i of nonPris) {
+         vus.add(i.id);
+-        const org = await nomOrganisation(ctx, noms, i.org_id);
+-        await ctx.remonter({ cle: `incident:${i.id}`, gravite: 'critique', orgId: i.org_id, ressource: i.id, regle: 'securite.escalade:nonpris', titre: ctx.lexique.phrase('incident.nonpris', { org, duree: ctx.lexique.duree(ctx.now - Date.parse(i.first_seen_at)), titre: `${i.actor} · ${kinds(i.kinds) || 'incident'}` }), contexte: `Escalade déjà lancée par la ronde ; personne n’a pris en charge.`, options: ['prendre en charge', 'résoudre', 'marquer faux positif'], recommandation: 'Ouvrir le bureau de supervision et prendre en charge ; un faux positif se dit tel quel pour que la détection apprenne.' });
++        // L'incident reste chez le propriétaire du site ; la remontée se range chez sa cliente.
++        const orgId = await attribution.duSite(i.site_id, i.org_id);
++        const org = await nomOrganisation(ctx, noms, orgId);
++        await ctx.remonter({ cle: `incident:${i.id}`, gravite: 'critique', orgId, ressource: i.id, regle: 'securite.escalade:nonpris', titre: ctx.lexique.phrase('incident.nonpris', { org, duree: ctx.lexique.duree(ctx.now - Date.parse(i.first_seen_at)), titre: `${i.actor} · ${kinds(i.kinds) || 'incident'}` }), contexte: `Escalade déjà lancée par la ronde ; personne n’a pris en charge.`, options: ['prendre en charge', 'résoudre', 'marquer faux positif'], recommandation: 'Ouvrir le bureau de supervision et prendre en charge ; un faux positif se dit tel quel pour que la détection apprenne.' });
+       }
+       for (const rem of await ctx.store.listRemontees({ etat: 'ouverte', equipe: 'securite', limit: 500 })) {
+         if (!rem.cle.startsWith('incident:') || vus.has(rem.cle.slice(9))) continue;
+@@ -59,7 +63,8 @@ export const agents = [
+     async ronde(ctx) {
+       const seuil = ctx.parametre('campagne', 'seuilOrgs');
+       const since = new Date(ctx.now - jour).toISOString();
+-      const rows = await ctx.db.all("SELECT actor, COUNT(DISTINCT org_id) AS n, COUNT(*) AS incidents FROM incidents WHERE first_seen_at >= ? AND actor_kind = 'ip' GROUP BY actor HAVING COUNT(DISTINCT org_id) >= ? LIMIT 50", [since, seuil]);
++      // Une organisation touchée = la cliente du site quand il en a une : tous les sites surveillés par AMN DevSec lui appartiennent, et compter leur propriétaire ne verrait jamais qu'une organisation.
++      const rows = await ctx.db.all("SELECT i.actor, COUNT(DISTINCT COALESCE(s.client_org_id, i.org_id)) AS n, COUNT(*) AS incidents FROM incidents i LEFT JOIN sites s ON s.id = i.site_id WHERE i.first_seen_at >= ? AND i.actor_kind = 'ip' GROUP BY i.actor HAVING COUNT(DISTINCT COALESCE(s.client_org_id, i.org_id)) >= ? LIMIT 50", [since, seuil]);
+       const vus = new Set();
+       let demandee = false;
+       for (const r of rows) {
+diff --git a/src/garde/equipes/sites.js b/src/garde/equipes/sites.js
+index 2facd47..2b17e69 100644
+--- a/src/garde/equipes/sites.js
++++ b/src/garde/equipes/sites.js
+@@ -8,6 +8,7 @@
+  * elle le règle seule, comme avant.
+  */
+ import { MONITOR_PLAN, _internals } from '../../tracker/monitors.js';
++import { creerAttribution } from '../attribution.js';
+ 
+ const periode = (nom, defaut) => MONITOR_PLAN.find((p) => p.name === nom)?.everyMs ?? defaut;
+ const min = 60_000;
+@@ -51,7 +52,8 @@ export const agents = [
+       const r = await _internals.sweepAvailability({ db: ctx.db, hub: ctx.hub, now: ctx.now });
+       const seuil = ctx.parametre('tombe', 'seuilMinutes');
+       const limite = new Date(ctx.now - seuil * min).toISOString();
+-      const tombes = await ctx.db.all('SELECT s.id, s.org_id, s.name, st.updated_at, st.last_seen_at FROM site_state st JOIN sites s ON s.id = st.site_id WHERE st.status = ? AND st.updated_at < ? LIMIT 500', ['offline', limite]);
++      // Le travail sur un site se range chez sa cliente (`client_org_id`), sinon chez son propriétaire : voir ../attribution.js.
++      const tombes = await ctx.db.all('SELECT s.id, COALESCE(s.client_org_id, s.org_id) AS org_id, s.name, st.updated_at, st.last_seen_at FROM site_state st JOIN sites s ON s.id = st.site_id WHERE st.status = ? AND st.updated_at < ? LIMIT 500', ['offline', limite]);
+       const noms = new Map();
+       const vus = new Set();
+       let demandee = false;
+@@ -87,10 +89,12 @@ export const agents = [
+       const proches = await ctx.db.all('SELECT org_id, host, days_left FROM ssl_status WHERE days_left IS NOT NULL AND days_left <= ? LIMIT 500', [seuil]);
+       const noms = new Map();
+       const vus = new Set();
++      const attribution = creerAttribution(ctx.db);
+       for (const c of proches) {
+         const cle = `cert:${c.org_id}:${c.host}`;
+         vus.add(cle);
+-        await ctx.remonter({ cle, gravite: Number(c.days_left) <= 2 ? 'critique' : 'haute', orgId: c.org_id, ressource: c.host, regle: 'sites.certificats:expire', titre: ctx.lexique.phrase('cert.expire', { host: c.host, org: await nomOrganisation(ctx, noms, c.org_id), jours: ctx.lexique.pluriel(Math.max(0, Number(c.days_left)), 'jour') }), contexte: 'Passé l’expiration, le site affichera un avertissement de sécurité à chaque visiteur.', options: ['prévenir la cliente', 'renouveler avec elle'], recommandation: 'Prévenir la cliente aujourd’hui ; le renouvellement prend une heure quand on s’y prend à temps.' });
++        const orgId = await attribution.deLHote(c.org_id, c.host, c.org_id);
++        await ctx.remonter({ cle, gravite: Number(c.days_left) <= 2 ? 'critique' : 'haute', orgId, ressource: c.host, regle: 'sites.certificats:expire', titre: ctx.lexique.phrase('cert.expire', { host: c.host, org: await nomOrganisation(ctx, noms, orgId), jours: ctx.lexique.pluriel(Math.max(0, Number(c.days_left)), 'jour') }), contexte: 'Passé l’expiration, le site affichera un avertissement de sécurité à chaque visiteur.', options: ['prévenir la cliente', 'renouveler avec elle'], recommandation: 'Prévenir la cliente aujourd’hui ; le renouvellement prend une heure quand on s’y prend à temps.' });
+       }
+       for (const rem of await ctx.store.listRemontees({ etat: 'ouverte', equipe: 'sites', limit: 500 })) if (rem.cle.startsWith('cert:') && !vus.has(rem.cle)) await ctx.resoudre(rem.cle, { orgId: rem.orgId, ressource: rem.cle.split(':')[2], pourquoi: 'le certificat a été renouvelé', regle: 'sites.certificats:expire' });
+       return { lus: proches.length, quoi: 'les certificats' };
+diff --git a/src/garde/store.js b/src/garde/store.js
+index cb864e4..85ba4c9 100644
+--- a/src/garde/store.js
++++ b/src/garde/store.js
+@@ -196,7 +196,8 @@ export function creerStore(db, { horloge = null } = {}) {
+       const existante = await un("SELECT * FROM garde_remontees WHERE cle = ? AND etat = 'ouverte'", [cle]);
+       if (existante) {
+         await db.run('UPDATE garde_remontees SET compte = compte + 1, contexte = ?, preuves = ?, gravite = ?, updated_at = ? WHERE id = ?', [contexte, j(preuves), gravite, now(), existante.id]);
+-        return { remontee: remonteeDeLigne(await un('SELECT * FROM garde_remontees WHERE id = ?', [existante.id])), creee: false };
++        // `graviteChangee` : la seule mise à jour qui mérite une ligne de journal (voir capitaine.js, `remonter`).
++        return { remontee: remonteeDeLigne(await un('SELECT * FROM garde_remontees WHERE id = ?', [existante.id])), creee: false, graviteChangee: existante.gravite !== gravite, graviteAvant: existante.gravite };
+       }
+       // Décidée il y a moins d'un jour (par Aaron, un mandat, la régence) : la même situation ne revient pas à chaque ronde — elle est comptée sur la décision prise.
+       const decidee = await un("SELECT * FROM garde_remontees WHERE cle = ? AND etat = 'decidee' AND decidee_at >= ? ORDER BY decidee_at DESC LIMIT 1", [cle, new Date(Date.parse(now()) - 86_400_000).toISOString()]);
+diff --git a/src/routes/sites.js b/src/routes/sites.js
+index 325d3fd..e0a56f3 100644
+--- a/src/routes/sites.js
++++ b/src/routes/sites.js
+@@ -4,6 +4,7 @@ import { operatorAuth } from '../middleware/operatorAuth.js';
+ import { generateApiKey } from '../lib/apiKey.js';
+ import { siteSecurityScore } from '../tracker/score.js';
+ import { buildWeeklyDigest } from '../tracker/monitors.js';
++import { AMN_ORG_ID } from '../db/tenancy.js';
+ 
+ /**
+  * Absolute base URL of this deployment, used to build the badge's embed
+@@ -41,6 +42,30 @@ function normaliseUrl(raw) {
+   }
+ }
+ 
++
++/**
++ * LE RATTACHEMENT D'UN SITE À SA CLIENTE (`clientOrgId`).
++ *
++ * Réservé à AMN DevSec : c'est elle qui surveille les sites de ses clientes,
++ * et elle seule sait à qui chacun appartient. Une autre organisation qui
++ * l'enverrait reçoit 403 — sinon elle pourrait faire ranger son propre
++ * travail chez une organisation qu'elle ne connaît pas.
++ *
++ * Rend `{ valeur }` (un identifiant d'organisation cliente, ou `null` pour
++ * détacher), `{ absent: true }` si le champ n'est pas envoyé, ou `{ erreur }`.
++ */
++async function lireRattachement(req) {
++  if (!Object.prototype.hasOwnProperty.call(req.body ?? {}, 'clientOrgId')) return { absent: true };
++  if (!req.auth?.isFoundingOrg) return { erreur: { status: 403, message: 'Seule AMN DevSec rattache un site à une cliente.' } };
++  const brut = req.body.clientOrgId;
++  if (brut === null || brut === '') return { valeur: null };
++  const id = String(brut);
++  if (id === AMN_ORG_ID) return { erreur: { status: 400, message: 'Un site se rattache à une cliente, pas à AMN DevSec.' } };
++  const org = await req.app.locals.db.getOrganization(id);
++  if (!org) return { erreur: { status: 404, message: 'Organisation cliente introuvable.' } };
++  return { valeur: org.id };
++}
++
+ export function sitesRouter() {
+   const router = Router();
+   // Site registration mints tracker API keys — desktop operator token only,
+@@ -80,6 +105,8 @@ export function sitesRouter() {
+     }
+ 
+     const db = req.app.locals.db;
++    const rattachement = await lireRattachement(req);
++    if (rattachement.erreur) return res.status(rattachement.erreur.status).json({ error: rattachement.erreur.message });
+     const { plaintext, hash } = generateApiKey();
+     const site = await db.createSite({ orgId: req.auth.orgId, name, apiKeyHash: hash });
+ 
+@@ -89,6 +116,7 @@ export function sitesRouter() {
+     if (TIERS.has(req.body?.tier)) patch.tier = req.body.tier;
+     const url = normaliseUrl(req.body?.url);
+     if (url) patch.url = url;
++    if (rattachement.valeur) patch.clientOrgId = rattachement.valeur;
+     const configured = Object.keys(patch).length > 0 ? await db.updateSite(req.auth.orgId, site.id, patch) : null;
+ 
+     // Always echo tier/url so the response shape is the same whether or not
+@@ -113,6 +141,7 @@ export function sitesRouter() {
+         tier: site.tier ?? 'sentinel',
+         url: site.url ?? null,
+         blockOnRateLimit: Boolean(site.blockOnRateLimit),
++        clientOrgId: site.clientOrgId ?? null,
+         state: await db.getSiteState(req.auth.orgId, site.id),
+       })),
+     );
+@@ -145,6 +174,9 @@ export function sitesRouter() {
+     if (req.body?.blockOnRateLimit !== undefined) {
+       patch.blockOnRateLimit = Boolean(req.body.blockOnRateLimit);
+     }
++    const rattachement = await lireRattachement(req);
++    if (rattachement.erreur) return res.status(rattachement.erreur.status).json({ error: rattachement.erreur.message });
++    if (!rattachement.absent) patch.clientOrgId = rattachement.valeur;
+ 
+     if (Object.keys(patch).length === 0) {
+       return res.status(400).json({ error: 'nothing to update' });
+diff --git a/test/garde-attribution.test.js b/test/garde-attribution.test.js
+new file mode 100644
+index 0000000..271423e
+--- /dev/null
++++ b/test/garde-attribution.test.js
+@@ -0,0 +1,159 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import http from 'node:http';
++import crypto from 'node:crypto';
++
++process.env.NODE_ENV = 'test';
++process.env.OPERATOR_TOKEN = 'test-operator-token';
++
++const { createApp } = await import('../src/server.js');
++const { createSqliteDb } = await import('../src/db/sqlite.js');
++const { AMN_ORG_ID } = await import('../src/db/tenancy.js');
++const { hashPassword } = await import('../src/lib/password.js');
++const { creerGarde } = await import('../src/garde/index.js');
++
++/**
++ * LA GARDE RANGE SON TRAVAIL CHEZ LA BONNE CLIENTE, ET SON JOURNAL NE DIT QUE
++ * CE QUI CHANGE (chantier « arrivée cliente », partie 4).
++ *
++ * Avant : les sites des clientes appartiennent à AMN DevSec en base, et tout
++ * le travail de la Garde sur eux était rangé sous AMN DevSec ; une situation
++ * retrouvée telle quelle écrivait une ligne de journal à chaque passage.
++ */
++const MDP = 'motdepasse-solide';
++const heure = 3_600_000;
++
++async function decor(t) {
++  const db = createSqliteDb(':memory:');
++  await db.init();
++  const compte = async (orgId, email, role) => db.createUser({ orgId, email, passwordHash: await hashPassword(MDP), role, status: 'active' });
++  await compte(AMN_ORG_ID, 'aaron@amn-test.local', 'owner');
++  const jardin = await db.createOrganization({ name: 'Le Jardin d’Élise', plan: 'business_standard' });
++  const vermeil = await db.createOrganization({ name: 'Atelier Vermeil', plan: 'business_standard' });
++  const halles = await db.createOrganization({ name: 'Les Halles', plan: 'business_standard' });
++  await compte(jardin.id, 'elise@jardin.test', 'owner');
++  const garde = creerGarde({ db, hub: null });
++  await garde.demarrer();
++  garde.arreter();
++  const app = await createApp({ db });
++  app.locals.garde = garde;
++  const server = http.createServer(app);
++  await new Promise((r) => server.listen(0, r));
++  const base = `http://127.0.0.1:${server.address().port}`;
++  t.after(async () => { server.closeAllConnections?.(); await new Promise((r) => server.close(r)); await db.close(); });
++  const login = async (email) => (await (await fetch(`${base}/v1/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: MDP }) })).json()).token;
++  const api = (token) => async (path, init = {}) => { const r = await fetch(`${base}${path}`, { ...init, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(init.headers ?? {}) } }); return { status: r.status, body: await r.json().catch(() => null) }; };
++  /** Un site surveillé par AMN DevSec, comme le Parc l'enregistre : il appartient à AMN. */
++  const siteAmn = async (name, { url = null, clientOrgId = null } = {}) => {
++    const site = await db.createSite({ orgId: AMN_ORG_ID, name, apiKeyHash: crypto.randomUUID() });
++    if (url || clientOrgId) await db.updateSite(AMN_ORG_ID, site.id, { ...(url ? { url } : {}), ...(clientOrgId ? { clientOrgId } : {}) });
++    return site;
++  };
++  return { db, garde, jardin, vermeil, halles, login, api, siteAmn };
++}
++
++const lignes = (db, where = '', v = []) => db.all(`SELECT agent, org_id, action, pourquoi FROM garde_journal ${where}`, v);
++
++test('rattachement : seule AMN DevSec rattache un site à une cliente, et jamais à elle-même', async (t) => {
++  const { jardin, login, api, siteAmn } = await decor(t);
++  const aaron = api(await login('aaron@amn-test.local'));
++  const elise = api(await login('elise@jardin.test'));
++  const site = await siteAmn('jardin-elise.fr');
++
++  const ok = await aaron(`/v1/sites/${site.id}`, { method: 'PUT', body: JSON.stringify({ clientOrgId: jardin.id }) });
++  assert.equal(ok.status, 200, JSON.stringify(ok.body));
++  assert.equal(ok.body.site.clientOrgId, jardin.id);
++  assert.equal((await aaron('/v1/sites')).body.sites.find((s) => s.id === site.id).clientOrgId, jardin.id);
++
++  assert.equal((await aaron(`/v1/sites/${site.id}`, { method: 'PUT', body: JSON.stringify({ clientOrgId: AMN_ORG_ID }) })).status, 400);
++  assert.equal((await aaron(`/v1/sites/${site.id}`, { method: 'PUT', body: JSON.stringify({ clientOrgId: crypto.randomUUID() }) })).status, 404);
++
++  // Une cliente, sur SON propre site, ne peut pas ranger son travail ailleurs.
++  const sienne = await elise('/v1/sites', { method: 'POST', body: JSON.stringify({ name: 'boutique', clientOrgId: AMN_ORG_ID }) });
++  assert.equal(sienne.status, 403);
++  const cree = await elise('/v1/sites', { method: 'POST', body: JSON.stringify({ name: 'boutique' }) });
++  assert.equal(cree.status, 201);
++  assert.equal((await elise(`/v1/sites/${cree.body.id}`, { method: 'PUT', body: JSON.stringify({ clientOrgId: jardin.id }) })).status, 403);
++
++  // Le rattachement n'ouvre AUCUN accès : la cliente ne voit pas le site d'AMN.
++  assert.equal((await elise(`/v1/sites/${site.id}/state`)).status, 404);
++  assert.ok(!(await elise('/v1/sites')).body.sites.some((s) => s.id === site.id));
++
++  // `null` détache.
++  const detache = await aaron(`/v1/sites/${site.id}`, { method: 'PUT', body: JSON.stringify({ clientOrgId: null }) });
++  assert.equal(detache.body.site.clientOrgId, null);
++});
++
++test('un site tombé se range chez SA cliente — le nom de la cliente dans le titre, la ligne dans son dossier', async (t) => {
++  const { db, garde, jardin, siteAmn } = await decor(t);
++  const rattache = await siteAmn('jardin-elise.fr', { clientOrgId: jardin.id });
++  const orphelin = await siteAmn('site-sans-cliente.fr');
++  const il_y_a = new Date(Date.now() - 2 * heure).toISOString();
++  for (const s of [rattache, orphelin]) await db.run('UPDATE site_state SET status = ?, updated_at = ?, last_seen_at = ? WHERE site_id = ?', ['offline', il_y_a, il_y_a, s.id]);
++
++  await garde.lancerRonde('sites.disponibilite', Date.now(), { force: true });
++  const rem = await garde.store.listRemontees({ equipe: 'sites' });
++  const chezJardin = rem.find((r) => r.cle === `site-tombe:${rattache.id}`);
++  const chezAmn = rem.find((r) => r.cle === `site-tombe:${orphelin.id}`);
++  assert.equal(chezJardin.orgId, jardin.id, 'rattaché : chez la cliente');
++  assert.match(chezJardin.titre, /Jardin/);
++  assert.equal(chezAmn.orgId, AMN_ORG_ID, 'sans rattachement : chez le propriétaire, comme avant');
++  assert.equal((await lignes(db, 'WHERE org_id = ? AND action = ?', [jardin.id, 'remontee'])).length, 1);
++});
++
++test('le journal ne répète pas : cinq passages sur la même panne, une seule ligne — et le compte de la remontée avance', async (t) => {
++  const { db, garde, jardin, siteAmn } = await decor(t);
++  const site = await siteAmn('jardin-elise.fr', { clientOrgId: jardin.id });
++  const il_y_a = new Date(Date.now() - 2 * heure).toISOString();
++  await db.run('UPDATE site_state SET status = ?, updated_at = ?, last_seen_at = ? WHERE site_id = ?', ['offline', il_y_a, il_y_a, site.id]);
++  for (let i = 0; i < 5; i += 1) await garde.lancerRonde('sites.disponibilite', Date.now() + i * 60_000, { force: true });
++  const remontees = await lignes(db, "WHERE agent = 'sites.disponibilite' AND action IN ('remontee', 'remontee-maj')");
++  assert.equal(remontees.length, 1, remontees.map((l) => l.action).join(', '));
++  const rem = (await garde.store.listRemontees({ equipe: 'sites' })).find((r) => r.cle === `site-tombe:${site.id}`);
++  assert.equal(rem.compte, 5, 'la trace du passage reste, sans bruit');
++});
++
++test('un certificat : la cliente par l’hôte du site ; une gravité qui monte s’écrit, une qui ne bouge pas se tait', async (t) => {
++  const { db, garde, vermeil, siteAmn } = await decor(t);
++  await siteAmn('Atelier Vermeil — vitrine', { url: 'https://atelier-vermeil.fr', clientOrgId: vermeil.id });
++  const poser = (jours) => db.run(
++    `INSERT INTO ssl_status (org_id, host, days_left, last_checked_at, alerted_stage) VALUES (?, ?, ?, ?, -1)
++     ON CONFLICT (org_id, host) DO UPDATE SET days_left = excluded.days_left, last_checked_at = excluded.last_checked_at`,
++    [AMN_ORG_ID, 'atelier-vermeil.fr', jours, new Date().toISOString()],
++  );
++  await poser(5);
++  await garde.lancerRonde('sites.certificats', Date.now(), { force: true });
++  await garde.lancerRonde('sites.certificats', Date.now(), { force: true });
++  let journal = await lignes(db, "WHERE agent = 'sites.certificats' AND action IN ('remontee', 'remontee-maj')");
++  assert.deepEqual(journal.map((l) => [l.action, l.org_id]), [['remontee', vermeil.id]], 'chez Vermeil, une ligne pour deux passages');
++
++  await poser(1); // à deux jours ou moins : critique
++  await garde.lancerRonde('sites.certificats', Date.now(), { force: true });
++  journal = await lignes(db, "WHERE agent = 'sites.certificats' AND action = 'remontee-maj'");
++  assert.equal(journal.length, 1);
++  assert.match(journal[0].pourquoi, /haute → critique/);
++});
++
++test('un incident critique non pris : il reste chez AMN, la remontée va chez la cliente du site', async (t) => {
++  const { db, garde, halles, siteAmn } = await decor(t);
++  const site = await siteAmn('leshalles.shop', { clientOrgId: halles.id });
++  const il_y_a = new Date(Date.now() - heure).toISOString();
++  await db.run("INSERT INTO incidents (id, org_id, site_id, actor, actor_kind, status, severity, kinds, first_seen_at, last_seen_at, created_at) VALUES (?, ?, ?, ?, 'ip', 'new', 'critical', '[\"sqli\"]', ?, ?, ?)", [crypto.randomUUID(), AMN_ORG_ID, site.id, '203.0.113.50', il_y_a, il_y_a, il_y_a]);
++  await garde.lancerRonde('securite.escalade', Date.now(), { force: true });
++  const rem = (await garde.store.listRemontees({ equipe: 'securite' })).find((r) => r.cle.startsWith('incident:'));
++  assert.equal(rem.orgId, halles.id);
++  assert.match(rem.titre, /Halles/);
++  assert.equal((await db.all('SELECT org_id FROM incidents'))[0].org_id, AMN_ORG_ID, 'l’incident, lui, ne change pas de propriétaire');
++});
++
++test('une campagne sur trois sites de trois clientes est enfin vue — sous AMN seule, elle ne comptait qu’une organisation', async (t) => {
++  const { db, garde, jardin, vermeil, halles, siteAmn } = await decor(t);
++  const il_y_a = new Date(Date.now() - heure).toISOString();
++  for (const [nom, org] of [['jardin-elise.fr', jardin], ['atelier-vermeil.fr', vermeil], ['leshalles.shop', halles]]) {
++    const site = await siteAmn(nom, { clientOrgId: org.id });
++    await db.run("INSERT INTO incidents (id, org_id, site_id, actor, actor_kind, status, severity, kinds, first_seen_at, last_seen_at, created_at) VALUES (?, ?, ?, ?, 'ip', 'new', 'warning', '[]', ?, ?, ?)", [crypto.randomUUID(), AMN_ORG_ID, site.id, '198.51.100.23', il_y_a, il_y_a, il_y_a]);
++  }
++  await garde.lancerRonde('securite.campagnes', Date.now(), { force: true });
++  const rem = (await garde.store.listRemontees({ equipe: 'securite' })).find((r) => r.cle === 'campagne:198.51.100.23');
++  assert.ok(rem, 'la campagne est remontée');
++});
+-- 
+2.43.0
+
