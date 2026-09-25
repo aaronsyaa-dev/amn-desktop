@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
 import { bridge } from '../lib/bridge';
-import { cleanErrorMessage } from '../lib/errorMessage';
+import { useCursorPage } from './useCursorPage';
 import type { ParcOrganization, ParcPageQuery } from '../shared/api';
 
 /**
@@ -15,46 +14,21 @@ import type { ParcOrganization, ParcPageQuery } from '../shared/api';
  *
  * La recherche attend 250 ms après la dernière touche : frapper « fleur »
  * ne doit pas faire cinq requêtes.
+ *
+ * La mécanique qui empêche une réponse périmée de mélanger deux questions —
+ * un filtre changé pendant un « Charger plus », deux clics rapides sur le
+ * même bouton — vit dans `useCursorPage`, partagée avec la file d'incidents
+ * du parc (`ParcSocPanel`). Voir son en-tête pour la course du 25/09.
  */
 export function useParcPage(query: ParcPageQuery) {
-  const [rows, setRows] = useState<ParcOrganization[]>([]);
-  const [total, setTotal] = useState<number | null>(null);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const cle = JSON.stringify({ ...query, cursor: undefined });
-  const generation = useRef(0);
-
-  const charger = useCallback(
-    async (cursor: string | null, remplacer: boolean) => {
-      const mienne = ++generation.current;
-      setLoading(true);
-      setError(null);
-      try {
-        const page = await bridge().remote.admin.organizationsPage({ ...(JSON.parse(cle) as ParcPageQuery), cursor, limit: 50 });
-        if (mienne !== generation.current) return;
-        setRows((prev) => (remplacer ? page.organizations : [...prev, ...page.organizations]));
-        setTotal(page.total);
-        setNextCursor(page.nextCursor);
-      } catch (err) {
-        if (mienne !== generation.current) return;
-        setError(cleanErrorMessage(err, 'Le parc n’a pas pu être lu.'));
-      } finally {
-        if (mienne === generation.current) setLoading(false);
-      }
+  const { rows, total, loading, error, hasMore, loadMore, reload } = useCursorPage<ParcOrganization>(
+    cle,
+    async (cursor) => {
+      const page = await bridge().remote.admin.organizationsPage({ ...(JSON.parse(cle) as ParcPageQuery), cursor, limit: 50 });
+      return { items: page.organizations, total: page.total, nextCursor: page.nextCursor };
     },
-    [cle],
+    { debounceMs: 250, messageErreur: 'Le parc n’a pas pu être lu.' },
   );
-
-  useEffect(() => {
-    const minuterie = window.setTimeout(() => void charger(null, true), 250);
-    return () => window.clearTimeout(minuterie);
-  }, [charger]);
-
-  const loadMore = useCallback(() => {
-    if (nextCursor && !loading) void charger(nextCursor, false);
-  }, [charger, nextCursor, loading]);
-  const reload = useCallback(() => void charger(null, true), [charger]);
-
-  return { rows, total, loading, error, hasMore: nextCursor !== null, loadMore, reload };
+  return { rows, total, loading, error, hasMore, loadMore, reload };
 }

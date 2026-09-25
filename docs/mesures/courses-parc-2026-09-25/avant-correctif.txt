@@ -1,0 +1,17 @@
+
+Courses du parc : 6 défaut(s).
+
+  ✗ Organisations · A : « SONDE-A-PERIMEE » (la réponse périmée de « Charger plus », de l’ancienne question) s’est affichée après le changement de filtre.
+
+  ✗ Organisations · B : deux clics synchrones sur « /Cinquante de plus/ » ont déclenché 2 requête(s) pour la même page (curseur curs-d1), attendu exactement 1.
+
+  ✗ Organisations · B : la ligne du second appel (« SONDE-D-SUITE-APPEL2 ») est affichée — la page a été chargée deux fois.
+
+  ✗ File d’incidents · A : « SONDE-A-PERIMEE » (la réponse périmée de « Charger plus », de l’ancienne question) s’est affichée après le changement de filtre.
+
+  ✗ File d’incidents · B : deux clics synchrones sur « /Cinquante de plus/ » ont déclenché 2 requête(s) pour la même page (curseur curs-d1), attendu exactement 1.
+
+  ✗ File d’incidents · B : la ligne du second appel (« SONDE-D-SUITE-APPEL2 ») est affichée — la page a été chargée deux fois.
+
+Une réponse périmée ne s’affiche jamais, et un seul clic charge une seule page. Voir l’en-tête de scripts/check-courses-parc.mjs.
+

@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronDown, Loader2, ShieldAlert } from 'lucide-react';
 import { bridge } from '../../lib/bridge';
-import { cleanErrorMessage } from '../../lib/errorMessage';
 import { relativeTime } from '../../lib/time';
 import { useOrgContext } from '../../state/OrgContextContext';
+import { useCursorPage } from '../../state/useCursorPage';
 import type { FleetIncident, SocSummary } from '../../shared/api';
 
 /**
@@ -24,33 +24,31 @@ export function ParcSocPanel() {
   const { enterOrganization, entering, support } = useOrgContext();
   const [resume, setResume] = useState<SocSummary | null>(null);
   const [gravite, setGravite] = useState<'' | 'critical' | 'warning' | 'info'>('');
-  const [lignes, setLignes] = useState<FleetIncident[]>([]);
-  const [total, setTotal] = useState<number | null>(null);
-  const [curseur, setCurseur] = useState<string | null>(null);
-  const [chargement, setChargement] = useState(false);
-  const [erreur, setErreur] = useState<string | null>(null);
-
-  const charger = useCallback(
-    async (suite: string | null) => {
-      setChargement(true);
-      setErreur(null);
-      try {
-        const page = await bridge().remote.admin.incidentsQueue({ status: 'open', severity: gravite || undefined, cursor: suite, limit: 50 });
-        setLignes((prev) => (suite ? [...prev, ...page.incidents] : page.incidents));
-        setTotal(page.total);
-        setCurseur(page.nextCursor);
-      } catch (err) {
-        setErreur(cleanErrorMessage(err, 'La file du parc n’a pas pu être lue.'));
-      } finally {
-        setChargement(false);
-      }
+  /*
+    Le chargement par curseur (générations, verrou du double clic, remise à
+    zéro à chaque changement de gravité) vit dans `useCursorPage`, partagée
+    avec le registre des organisations (`useParcPage`) : c'est la même course
+    qui a été trouvée aux deux endroits le 25/09. Voir l'en-tête de
+    `useCursorPage` pour le détail.
+  */
+  const {
+    rows: lignes,
+    total,
+    loading: chargement,
+    error: erreur,
+    hasMore,
+    loadMore,
+  } = useCursorPage<FleetIncident>(
+    gravite,
+    async (cursor) => {
+      const page = await bridge().remote.admin.incidentsQueue({ status: 'open', severity: gravite || undefined, cursor, limit: 50 });
+      return { items: page.incidents, total: page.total, nextCursor: page.nextCursor };
     },
-    [gravite],
+    { messageErreur: 'La file du parc n’a pas pu être lue.', actif: !support },
   );
 
   useEffect(() => {
     if (support) return;
-    void charger(null);
     let vivant = true;
     const lireResume = () =>
       bridge()
@@ -65,7 +63,7 @@ export function ParcSocPanel() {
       vivant = false;
       window.clearInterval(minuterie);
     };
-  }, [charger, support]);
+  }, [support]);
 
   // En session d'assistance, l'écran tient la file de LA cliente : le parc n'a rien à faire ici.
   if (support) return null;
@@ -134,8 +132,8 @@ export function ParcSocPanel() {
         <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
           {total === null ? '…' : `${total} ouvert${total > 1 ? 's' : ''} · ${lignes.length} affiché${lignes.length > 1 ? 's' : ''}`}
         </p>
-        {curseur && (
-          <button type="button" onClick={() => void charger(curseur)} disabled={chargement} className="flex min-h-11 items-center gap-1.5 border border-border px-3 font-mono text-[10px] uppercase tracking-widest text-text-secondary transition-colors hover:bg-surface-hover disabled:opacity-50 md:min-h-0 md:py-1.5">
+        {hasMore && (
+          <button type="button" onClick={loadMore} disabled={chargement} className="flex min-h-11 items-center gap-1.5 border border-border px-3 font-mono text-[10px] uppercase tracking-widest text-text-secondary transition-colors hover:bg-surface-hover disabled:opacity-50 md:min-h-0 md:py-1.5">
             {chargement ? <Loader2 size={12} className="animate-spin" /> : <ChevronDown size={12} />} Cinquante de plus
           </button>
         )}

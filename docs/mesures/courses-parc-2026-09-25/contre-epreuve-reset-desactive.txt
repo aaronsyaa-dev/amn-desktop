@@ -1,0 +1,7 @@
+
+Courses du parc : 1 défaut(s).
+
+  ✗ Organisations · A : « SONDE-A-PERIMEE » (la réponse périmée de « Charger plus », de l’ancienne question) s’est affichée après le changement de filtre.
+
+Une réponse périmée ne s’affiche jamais, et un seul clic charge une seule page. Voir l’en-tête de scripts/check-courses-parc.mjs.
+

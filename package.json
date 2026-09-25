@@ -88,6 +88,7 @@
     "check:xss": "node scripts/check-xss.mjs",
     "check:support": "node scripts/check-support.mjs",
     "check:visite": "node scripts/check-visite.mjs",
+    "check:courses-parc": "node scripts/check-courses-parc.mjs",
     "verite:garde": "node scripts/verite-garde.mjs",
     "captures:design": "node scripts/captures-design.mjs"
   },

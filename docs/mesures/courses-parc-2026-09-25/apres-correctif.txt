@@ -1,0 +1,2 @@
+
+Courses du parc : OK — organisations et incidents partagent un seul utilitaire ; une réponse périmée après un changement de filtre ne s’affiche jamais, et deux clics synchrones ne chargent la même page qu’une fois.
