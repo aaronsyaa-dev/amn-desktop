@@ -26,6 +26,15 @@ const SupervisorDossier = l(() => import('./supervisor/Dossier'), 'SupervisorDos
 const SupervisorChercheur = l(() => import('./supervisor/Chercheur'), 'SupervisorChercheur');
 const SupervisorBug = l(() => import('./supervisor/Bug'), 'SupervisorBug');
 const SupervisorGroupes = l(() => import('./supervisor/Groupes'), 'SupervisorGroupes');
+const CyberMatrice = l(() => import('./cyber/Matrice'), 'CyberMatrice');
+const CyberAlertes = l(() => import('./cyber/Alertes'), 'CyberAlertes');
+const CyberFicheIncident = l(() => import('./cyber/FicheIncident'), 'CyberFicheIncident');
+const CyberInventaire = l(() => import('./cyber/Inventaire'), 'CyberInventaire');
+const CyberEcheances = l(() => import('./cyber/Echeances'), 'CyberEcheances');
+const CyberJournalAudit = l(() => import('./cyber/JournalAudit'), 'CyberJournalAudit');
+const CyberPlaybooks = l(() => import('./cyber/Playbooks'), 'CyberPlaybooks');
+const CyberRapports = l(() => import('./cyber/Rapports'), 'CyberRapports');
+const CyberCarnet = l(() => import('./cyber/Carnet'), 'CyberCarnet');
 
 const calme = <div className="min-h-[40vh]" aria-busy="true" />;
 const s = (C: React.ComponentType) => (
@@ -46,6 +55,16 @@ export function routesBureaux() {
       <Route path="/supervisor/bug/:id" element={s(SupervisorBug)} />
       <Route path="/supervisor/groupes" element={s(SupervisorGroupes)} />
       <Route path="/cyber" element={s(CyberAccueil)} />
+      <Route path="/cyber/posture" element={s(CyberMatrice)} />
+      <Route path="/cyber/alertes" element={s(CyberAlertes)} />
+      <Route path="/cyber/incidents/:id" element={s(CyberFicheIncident)} />
+      <Route path="/cyber/inventaire" element={s(CyberInventaire)} />
+      <Route path="/cyber/inventaire/:orgId" element={s(CyberInventaire)} />
+      <Route path="/cyber/echeances" element={s(CyberEcheances)} />
+      <Route path="/cyber/journal" element={s(CyberJournalAudit)} />
+      <Route path="/cyber/playbooks" element={s(CyberPlaybooks)} />
+      <Route path="/cyber/rapports" element={s(CyberRapports)} />
+      <Route path="/cyber/carnet" element={s(CyberCarnet)} />
       <Route path="/studio" element={s(StudioAccueil)} />
       <Route path="/strategie" element={s(StrategieAccueil)} />
       <Route path="/garde/organigramme" element={s(GardeAccueil)} />

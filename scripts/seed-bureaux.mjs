@@ -191,7 +191,7 @@ await poser('playbookRuns', 'bx-run-0', { playbookId: 'bx-pb-0', orgId: JARDIN.i
 await poser('playbookRuns', 'bx-run-1', { playbookId: 'bx-pb-1', orgId: ARNOUX.id, incidentId: null, lancePar: EQUIPE.harun, lanceLe: le(12, 16, 2), faites: { e0: le(12, 16, 4), e1: le(12, 16, 10), e3: le(12, 16, 20), e4: le(12, 16, 50) }, closLe: le(12, 16, 55) });
 
 const carnet = [
-  ['Le certificat de jardin-elise.fr est renouvelé à la main par leur ancien prestataire. Qui a encore l’accès ?', [['cliente', JARDIN.id, JARDIN.name], ['actif', 'bx-actif-2', 'jardin-elise.fr']], true, false, 1],
+  ['Le certificat de jardin-elise.fr est renouvelé à la main par leur ancien prestataire. Qui a encore l’accès ?', [['cliente', JARDIN.id, JARDIN.name], ['actif', 'bx-actif-2', 'jardin-elise.fr']], false, false, 1],
   ['Les tentatives de connexion viennent toutes du même hébergeur. Bloqué au niveau du pare-feu.', [['cliente', ARNOUX.id, ARNOUX.name]], false, false, 3],
   ['DMARC ajouté chez Studio Nord en mode surveillance. Passer en rejet dans deux semaines.', [['cliente', NORD.id, NORD.name], ['campagne', 'bx-camp-rentree', 'Rentrée cyber']], false, false, 6],
   ['La double authentification est refusée par la caissière de Boulangerie Keller : prévoir une clé physique.', [['cliente', KELLER.id, KELLER.name]], false, false, 9],
@@ -199,10 +199,10 @@ const carnet = [
 n = 0;
 for (const [texte, liens, question, resolue, age] of carnet) await poser('carnet', `bx-note-${n++}`, { texte, liens: liens.map(([type, id, label]) => ({ type, id, label })), question, resolue, par: EQUIPE.harun, at: le(age, 11) });
 
-const moisPasse = jour(20).slice(0, 7);
+const moisPasse = (() => { const d = new Date(MAINTENANT); d.setDate(1); d.setMonth(d.getMonth() - 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })();
 for (const o of [JARDIN, SYRA, ARNOUX, VERMEIL, NORD]) {
   const c = posture[o.id];
-  await poser('rapportsPosture', `bx-rapport-${o.id}-${moisPasse}`, { orgId: o.id, mois: moisPasse, score: c ? scoreDe(c) : null, courbe: [], aFaire: [], envoyeLe: le(24, 8), par: EQUIPE.harun });
+  await poser('rapportsPosture', `bx-rapport-${o.id}-${moisPasse}`, { orgId: o.id, mois: moisPasse, score: c ? scoreDe(c) : null, courbe: [], aFaire: [], envoyeLe: `${moisPasse}-01T08:00:00.000Z`, par: EQUIPE.harun });
 }
 await poser('hameconnages', 'bx-hame-0', { orgId: BERTAUX.id, titre: 'Sensibilisation de l’équipe de Maison Bertaux', date: jour(-9), accordPar: 'la gérante, par courriel', cibles: 6, cliques: null, signales: null, notes: 'Exercice mené par le prestataire de sensibilisation choisi par la cliente ; AMN en suit les chiffres.', par: EQUIPE.harun });
 await poser('hameconnages', 'bx-hame-1', { orgId: ARNOUX.id, titre: 'Rappel après la fuite de deux adresses', date: jour(30), accordPar: 'Maître Arnoux', cibles: 4, cliques: 1, signales: 3, par: EQUIPE.harun });
@@ -388,5 +388,35 @@ await poser('temoignages', 'bx-temo-arnoux', { orgId: ARNOUX.id, auteur: ARNOUX.
 await poser('temoignages', 'bx-temo-keller', { orgId: KELLER.id, auteur: KELLER.name, texte: 'Les commandes du samedi ont doublé.', accord: 'en_attente', campagnes: [], at: le(5) });
 await poser('strategieMur', 'bx-chiffre-ouverture', { type: 'chiffre', valeur: '38 %', libelle: 'd’ouverture pour la lettre de septembre', campagneId: 'bx-camp-temoignages', x: 62, y: 250, rot: 1.5 });
 await poser('strategieMur', 'bx-chiffre-objectifs', { type: 'chiffre', valeur: '4 / 12', libelle: 'objectifs du trimestre atteints', campagneId: 'bx-camp-rentree', x: 80, y: 238, rot: -1 });
+
+/* ── Cyber : la fiche d'enquête du critique ouvert, s'il y en a un ───── */
+const q = await fetch(`${API}/v1/admin/incidents/queue?status=open&severity=critical&limit=5`, { headers: H });
+if (q.ok) {
+  const { incidents } = await q.json();
+  const inc = incidents?.[0];
+  if (inc) {
+    const t0 = Date.parse(inc.firstSeenAt);
+    const a = (min) => new Date(t0 + min * 60_000).toISOString();
+    await poser('incidentsFiches', inc.id, {
+      orgId: inc.orgId,
+      actions: [
+        { id: 'a1', at: a(18), quoi: 'Accès bloqué par pare-feu', par: EQUIPE.harun },
+        { id: 'a2', at: a(95), quoi: 'Mots de passe administrateurs changés', par: EQUIPE.harun },
+        { id: 'a3', at: a(210), quoi: 'Cliente prévenue par téléphone', par: EQUIPE.harun },
+        { id: 'a4', at: a(360), quoi: 'Journaux exportés pour l’enquête', par: EQUIPE.harun },
+      ],
+      prochaine: { quoi: 'Faire tourner les clés d’API exposées, puis rouvrir l’accès par réseau privé', avant: new Date(new Date().setHours(18, 0, 0, 0)).toISOString(), par: EQUIPE.harun },
+      elements: ['SITE|' + (inc.siteName ?? 'le site') + '|exposé', 'COMPTE|3 comptes administrateurs|changés', 'CLÉS|2 clés d’API|à tourner', 'JOURNAUX|journal d’accès, 7 j|exporté'],
+      notes: [{ id: 'n1', texte: 'Les tentatives viennent de 3 adresses, même préfixe. Aucune n’a réussi d’après le journal.', par: EQUIPE.harun, at: a(100) }],
+      cloture: [
+        { id: 'c0', texte: 'Accès bloqué', fait: true },
+        { id: 'c1', texte: 'Mots de passe changés', fait: true },
+        { id: 'c2', texte: 'Clés d’API tournées', fait: false },
+        { id: 'c3', texte: 'Rapport envoyé à la cliente', fait: false },
+      ],
+    });
+    await poser('carnet', 'bx-note-inc', { texte: 'Les tentatives viennent de 3 adresses. Même préfixe réseau pour les trois. Qui a publié l’interface d’administration ? À demander avant de clore l’incident.', liens: [{ type: 'incident', id: inc.id, label: `INC-${inc.id.replace(/[^a-z0-9]/gi, '').slice(0, 4).toUpperCase()}` }, { type: 'cliente', id: inc.orgId, label: inc.orgName }], question: true, resolue: false, par: EQUIPE.harun, at: le(0, 10, 48) });
+  }
+}
 
 console.log(`${ecrits} enregistrements écrits.`);
