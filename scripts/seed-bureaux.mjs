@@ -137,13 +137,21 @@ for (let j = 1; j <= 56; j += 1) {
     const silence = o.id === SYRA.id ? 21 - j : o.id === HALLES.id ? (j >= 12 && j <= 24 ? 24 - j : 0) : derniere ? Math.max(0, Math.floor((MAINTENANT - j * JOUR - derniere) / JOUR)) : null;
     orgs[o.id] = { poids: o.id === JARDIN.id ? 8 : 0, points: o.id === JARDIN.id && j <= 3 ? { jeton: 1, demande: 2 } : {}, score, suivi: o.id === JARDIN.id ? 'personne' : 'rien', enPanne: (o.id === ARNOUX.id && (j === 3 || j === 17)) || (o.id === KELLER.id && j === 11), silenceJ: silence === null ? null : Math.max(0, silence), actif: true };
   }
-  await poser('parcReleves', jour(j), { jour: jour(j), at: le(j, 7), orgs });
+  // Les objectifs atteints ce jour-là (trackers de l'équipe, `51b`) : un sur cinq il y a un mois, aucun depuis ; deux au trimestre d'avant.
+  await poser('parcReleves', jour(j), { jour: jour(j), at: le(j, 7), orgs, equipe: { objectifs: { atteints: j > 28 ? 1 : 0, total: 5 } } });
 }
+// Le trimestre d'avant, pour le pointillé : un relevé par semaine, sans le détail du parc.
+for (let j = 63; j <= 150; j += 7) await poser('parcReleves', jour(j), { jour: jour(j), at: le(j, 7), orgs: {}, equipe: { objectifs: { atteints: 2, total: 5 } } });
 
 /* ── Cyber : l'inventaire, les secrets, les playbooks, le carnet ──────── */
 const actifs = [
   [JARDIN, 'domaine', 'jardin-elise.fr', 'releve', { echeance: jour(-160), echeanceType: 'domaine', renouvelleSeul: true }],
-  [JARDIN, 'site', 'Boutique jardin-elise.fr', 'releve'],
+  [JARDIN, 'site', 'Boutique jardin-elise.fr', 'releve', { logiciel: 'WordPress 6.4.1' }],
+  [JARDIN, 'domaine', 'admin.jardin-elise.fr', 'releve', { expose: { port: 8443, service: 'Panneau d’administration de la boutique', risque: 'haut', decouvertLe: le(9), fermeLe: null } }],
+  [KELLER, 'site', 'commande.boulangerie-keller.fr', 'releve', { logiciel: 'WooCommerce 8.2.1' }],
+  [HALLES, 'domaine', 'ftp.leshalles-epicerie.fr', 'releve', { expose: { port: 21, service: 'Serveur FTP sans chiffrement', risque: 'moyen', decouvertLe: le(22), fermeLe: null } }],
+  [HALLES, 'site', 'leshalles-epicerie.fr', 'releve', { logiciel: 'PrestaShop 8.1.2' }],
+  [NORD, 'site', 'studio-nord.fr', 'releve', { logiciel: 'WordPress 6.5.2' }],
   [JARDIN, 'certificat', 'jardin-elise.fr', 'releve', { echeance: jour(-2), echeanceType: 'certificat', renouvelleSeul: false }],
   [JARDIN, 'compte', 'elise@jardin-elise.fr', 'desktop', { defaut: 'sans double authentification' }],
   [JARDIN, 'compte', 'boutique@jardin-elise.fr', 'desktop', { defaut: 'sans double authentification' }],
@@ -165,9 +173,20 @@ const secrets = [
   [JARDIN, 'Clé API de la boutique', 'API', 170, 180],
   [ARNOUX, 'Mot de passe du compte de service', 'compte technique', 92, 90],
   [NORD, 'Jeton de déploiement', 'jeton', 20, 90],
+  [KELLER, 'Clé du terminal de paiement', 'Clé d’API', 400, 365],
+  [HALLES, 'Mot de passe du logiciel de caisse', 'Mot de passe technique', 30, 180],
 ];
 n = 0;
 for (const [o, nom, type, age, periode] of secrets) await poser('rotationsSecrets', `bx-secret-${n++}`, { orgId: o.id, nom, type, derniereRotation: le(age), periodeJours: periode, par: EQUIPE.harun });
+// La veille : des failles FICTIVES, marquées « EX- » pour ne jamais passer pour de vraies références.
+const veille = [
+  ['EX-2026-0114', 'WordPress', '< 6.4.3', 'critique', 'Un envoi de fichier non authentifié permet d’exécuter du code sur le serveur.', 'mettre à jour vers 6.4.3', 1],
+  ['EX-2026-0107', 'WooCommerce', '8.0 – 8.2.2', 'haute', 'Un paramètre du panier laisse lire les commandes d’autres clients.', 'mettre à jour vers 8.2.3', 4],
+  ['EX-2026-0098', 'PrestaShop', '< 8.1.0', 'moyenne', 'Un formulaire de contact accepte un script dans le champ du nom.', 'mettre à jour vers 8.1.0', 9],
+  ['EX-2026-0091', 'Joomla', '< 5.0.3', 'haute', 'Contournement de l’authentification de l’administration.', 'mettre à jour vers 5.0.3', 12],
+];
+n = 0;
+for (const [ref, logiciel, versions, gravite, resume, correctif, age] of veille) await poser('veilleVulns', `bx-vuln-${n++}`, { ref, logiciel, versions, gravite, resume, correctif, publieeLe: le(age, 8), traiteeLe: null, par: EQUIPE.harun });
 
 const playbooks = [
   ['Compte compromis', 'Quand un compte d’une cliente se connecte d’où il ne devrait pas.', ['Fermer les sessions ouvertes', 'Réinitialiser le mot de passe', ['Si un export est suspect : bloquer les exports et prévenir la cliente', true], 'Activer la double authentification', 'Relire le journal des 7 derniers jours', 'Rédiger le compte rendu']],
@@ -219,8 +238,18 @@ const dossiers = [
   [BERTAUX, 'Annecy', 'Maison d’hôtes', null, { nom: 'Claire Bertaux', role: 'gérante' }],
   [HALLES, 'Lyon', 'Épicerie fine', null, { nom: 'Sami Haddad', role: 'gérant' }],
 ];
+const CONTRATS = new Map([
+  [JARDIN.id, { echeance: jour(-21), montantAnnuel: 1548, reconduction: 'a_confirmer' }],
+  [SYRA.id, { echeance: jour(-64), montantAnnuel: 2988, reconduction: 'tacite' }],
+  [ARNOUX.id, { echeance: jour(-12), montantAnnuel: 3588, reconduction: 'a_confirmer' }],
+  [VERMEIL.id, { echeance: jour(-95), montantAnnuel: 1188, reconduction: 'tacite' }],
+  [NORD.id, { echeance: jour(-40), montantAnnuel: 2388, reconduction: 'a_confirmer' }],
+  [KELLER.id, { echeance: jour(-150), montantAnnuel: 1548, reconduction: 'tacite' }],
+  [BERTAUX.id, { echeance: jour(-8), montantAnnuel: 708, reconduction: 'tacite' }],
+  [HALLES.id, { echeance: jour(-33), montantAnnuel: 1788, reconduction: 'a_confirmer' }],
+]);
 for (const [o, ville, metier, groupe, contact] of dossiers) {
-  const base = { ville, metier, ...(groupe ? { groupe } : {}), ...(contact ? { contact } : {}), updatedBy: EQUIPE.harun };
+  const base = { ville, metier, ...(groupe ? { groupe } : {}), ...(contact ? { contact } : {}), ...(CONTRATS.has(o.id) ? { contrat: CONTRATS.get(o.id) } : {}), updatedBy: EQUIPE.harun };
   if (o.id === JARDIN.id) {
     Object.assign(base, {
       notes: [
@@ -371,6 +400,7 @@ const prospects = [
   ['bx-prospect-cave', 'La Cave du Parc', 'Louis Faure', 'qualifie', 31000, 'bouche', { prochaine: { quoi: 'relancer', at: le(0, 14) }, echanges: [{ id: 'e1', type: 'appel', texte: 'Premier appel : il veut une boutique de vins', at: le(10), par: EQUIPE.riyad }] }],
   ['bx-prospect-nove', 'Brasserie Nove', 'Léa Nove', 'gagne', 24000, 'bouche', { echanges: [{ id: 'e1', type: 'rdv', texte: 'Devis signé', at: le(6), par: EQUIPE.riyad }] }],
   ['bx-prospect-pressing', 'Pressing Lumière', 'Omar Haddad', 'gagne', 9500, 'site', {}],
+  ['bx-prospect-fournil', 'Le Fournil de Lucie', 'Lucie Blanc', 'gagne', 14000, undefined, {}],
 ];
 for (const [id, company, name, stage, valueCents, source, extra] of prospects) {
   await poser('prospects', id, { name, company, valueCents, stage, note: '', source, createdAt: le(30), movedAt: stage === 'gagne' ? le(Math.min(3, new Date(MAINTENANT).getDate() - 1)) : le(4), campagneId: id === 'bx-prospect-ore' || id === 'bx-prospect-nord' ? 'bx-camp-automne' : null, ...extra });
@@ -435,7 +465,8 @@ for (const [dans, canal, titre, etat, heure, note, campagneId] of aVenir) {
   await poser('publications', `bx-pub-${n++}`, { jour: jour(-dans), canal, titre, etat, heure, note, campagneId, par: EQUIPE.riyad });
 }
 await poser('temoignages', 'bx-temo-arnoux', { orgId: ARNOUX.id, auteur: ARNOUX.name, texte: 'On a enfin un site qui nous ressemble, et quelqu’un qui répond.', accord: 'oui', campagnes: ['bx-camp-temoignages'], at: le(30) });
-await poser('temoignages', 'bx-temo-keller', { orgId: KELLER.id, auteur: KELLER.name, texte: 'Les commandes du samedi ont doublé.', accord: 'en_attente', campagnes: [], at: le(5) });
+await poser('temoignages', 'bx-temo-keller', { orgId: KELLER.id, auteur: KELLER.name, texte: 'Les commandes du samedi ont doublé.', accord: 'en_attente', campagnes: ['bx-camp-automne'], at: le(5) });
+await poser('temoignages', 'bx-temo-nord', { orgId: NORD.id, auteur: NORD.name, texte: 'Le site ressemble enfin à nos photos.', accord: 'oui', campagnes: [], at: le(18) });
 await poser('strategieMur', 'bx-chiffre-ouverture', { type: 'chiffre', valeur: '38 %', libelle: 'd’ouverture pour la lettre de septembre', campagneId: 'bx-camp-temoignages', x: 62, y: 250, rot: 1.5 });
 await poser('strategieMur', 'bx-chiffre-objectifs', { type: 'chiffre', valeur: '4 / 12', libelle: 'objectifs du trimestre atteints', campagneId: 'bx-camp-rentree', x: 80, y: 238, rot: -1 });
 await poser('strategieMur', 'bx-q-commande', { type: 'question', texte: 'Les commerces de quartier veulent-ils commander en ligne, ou seulement être trouvés ?', echeance: jour(0), verdict: null, x: 0, y: 0, rot: 0, par: EQUIPE.riyad, at: le(20) });
@@ -453,6 +484,34 @@ await poser('strategieMur', 'bx-note-3', { type: 'note', texte: 'Vérifier : les
   await poser('objectives', 'obj-revenue', { label: 'Chiffre d’affaires visé', unit: '€', targetValue: 6000, currentValue: Math.round((6000 * quantieme) / 30 / 100) * 100 + 400, periodLabel: periode });
   await poser('objectives', 'obj-clients', { label: 'Nouveaux clients visés', unit: 'clients', targetValue: 4, currentValue: Math.max(0, Math.floor((4 * quantieme) / 30) - 2), periodLabel: periode });
   await poser('objectives', 'bx-obj-rdv', { label: 'Rendez-vous pris', unit: 'rendez-vous', targetValue: 12, currentValue: Math.round((12 * quantieme) / 30), periodLabel: periode });
+}
+
+/* ── Les trackers de l'équipe (`51b`) : heures pointées, relève lue ──── */
+// Les heures : quatre à six journées pointées par semaine, sur vingt-deux semaines (le trimestre d'avant compris).
+for (let semaine = 0; semaine < 22; semaine += 1) {
+  const jours = 4 + ((semaine * 7) % 3);
+  for (let k = 0; k < jours; k += 1) {
+    const d = semaine * 7 + k + 1;
+    const heures = 6 + ((semaine + k) % 3) + (semaine < 8 ? 1 : 0);
+    const debut = new Date(le(d, 9));
+    await poser('timeEntries', `bx-temps-${semaine}-${k}`, { label: ['Supervision du parc', 'Rondes Cyber', 'Studio', 'Rendez-vous clientes'][k % 4], startedAt: debut.toISOString(), endedAt: new Date(debut.getTime() + heures * 3_600_000).toISOString(), invoicedAt: '', createdAt: debut.toISOString() });
+  }
+}
+// La relève lue avant 9 h : quatre jours sur cinq ces dernières semaines, trois au trimestre d'avant.
+for (let d = 1; d <= 150; d += 1) {
+  const jd = new Date(MAINTENANT - d * JOUR);
+  if (jd.getDay() === 0 || jd.getDay() === 6) continue;
+  const avant9 = d <= 56 ? jd.getDay() !== 3 : jd.getDay() % 2 === 1;
+  await poser('suivis', `releve-lue:${jour(d)}`, { par: EQUIPE.harun, at: le(d, avant9 ? 8 : 10, avant9 ? 12 : 5) });
+}
+await poser('suivis', 'charge:capacite', { heures: 24, par: EQUIPE.harun, at: le(10) });
+
+/* ── Les places : quelques comptes ouverts chez les clientes (sans courrier) ── */
+for (const [o, comptes] of [[KELLER, ['marc', 'lea']], [ARNOUX, ['secretariat', 'associe']], [JARDIN, ['elise']], [SYRA, ['nadia']]]) {
+  for (const c of comptes) {
+    const r = await fetch(`${API}/v1/admin/organizations/${o.id}/users`, { method: 'POST', headers: H, body: JSON.stringify({ email: `${c}@${o.name.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '')}.exemple.test`, role: 'member', envoyer: false }) });
+    if (r.status === 201) ecrits += 1;
+  }
 }
 
 /* ── Cyber : la fiche d'enquête du critique ouvert, s'il y en a un ───── */

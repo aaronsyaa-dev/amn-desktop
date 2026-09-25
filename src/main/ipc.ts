@@ -358,8 +358,8 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   );
   ipcMain.handle(IPC.remoteUnwatchRecord, () => remote.sendFrame({ type: 'unwatch' }));
   // La présence sur un module (cahier 15) : même transport, une trame `regard`.
-  ipcMain.handle(IPC.remoteAnnoncerRegard, (_event, module: string | null) =>
-    remote.sendFrame({ type: 'regard', module: typeof module === 'string' ? module : null }),
+  ipcMain.handle(IPC.remoteAnnoncerRegard, (_event, module: string | null, vue?: string | null) =>
+    remote.sendFrame({ type: 'regard', module: typeof module === 'string' ? module : null, vue: typeof vue === 'string' ? vue : null }),
   );
 
   // Push channels: broadcast to every open window rather than replying to a
@@ -392,6 +392,7 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
   );
   remote.onFrame('watchers', (frame) => broadcastToAll(IPC.remoteWatchersPush, frame as unknown as RecordWatchers));
   remote.onFrame('regards', (frame) => broadcastToAll(IPC.remoteRegardsPush, Array.isArray(frame.entries) ? frame.entries : []));
+  remote.onFrame('assistance', (frame) => broadcastToAll(IPC.remoteAssistancePush, Array.isArray(frame.sessions) ? frame.sessions : []));
 
   // Produits exclusifs d'AMN DevSec (parc de sites, Scanner, Comply, SSL
   // Monitor, analyses récurrentes, bureau SOC, appels audio). Dans l'édition

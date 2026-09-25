@@ -95,7 +95,6 @@ const SUPERVISOR: Bureau = {
       aussi: [
         { nom: 'Décisions', route: '/decisions' },
         { nom: 'Connaissances', route: '/knowledge' },
-        { nom: 'Trackers de l’équipe', route: '/supervisor/trackers' },
         { nom: 'Prévision de charge', route: '/supervisor/charge' },
       ],
     },
@@ -178,7 +177,7 @@ const STRATEGIE: Bureau = {
     { nom: 'Calendrier', route: '/strategie/calendrier' },
     { nom: 'Pipeline', route: '/strategie/pipeline', aussi: [{ nom: 'Attribution', route: '/strategie/attribution' }] },
     { nom: 'Enquête', route: '/strategie/enquete' },
-    { nom: 'Objectifs', route: '/strategie/objectifs' },
+    { nom: 'Objectifs', route: '/strategie/objectifs', aussi: [{ nom: 'Trackers de l’équipe', route: '/strategie/trackers' }] },
     { nom: 'Liège', route: '/strategie/liege' },
   ],
   outils: [],

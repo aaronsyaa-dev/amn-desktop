@@ -221,6 +221,7 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'hameconnages',
   'rotationsSecrets',
   'exercicesCrise',
+  'veilleVulns',
   'studioPieces',
   'campagnes',
   'publications',

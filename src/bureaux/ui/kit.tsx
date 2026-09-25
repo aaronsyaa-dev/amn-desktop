@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { BureauKey } from '../jetons';
 import { AMBRE } from '../jetons';
 import { hhmm, jourMois } from '../format';
+import { PastillePresence } from '../../components/PastillePresence';
 
 /**
  * LE PETIT KIT DES ÉCRANS DE BUREAU — la tête (`shell().head`), les deux
@@ -53,11 +54,11 @@ export function EnTete({
         </h1>
         {lede && <p className="mt-3.5 max-w-[74ch] text-pretty text-[14.5px] leading-[1.65] text-[#a3a3a0]">{lede}</p>}
       </div>
-      {actions && (
-        <div className="flex flex-none flex-wrap gap-2.5" data-screen-actions>
-          {actions}
-        </div>
-      )}
+      {/* La présence des collègues sur ce même écran (cahier 15) : à droite de l'en-tête, jamais dans le contenu. */}
+      <div className="flex flex-none flex-wrap items-center gap-2.5" data-screen-actions>
+        <PastillePresence />
+        {actions}
+      </div>
     </div>
   );
 }

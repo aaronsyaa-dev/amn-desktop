@@ -1,6 +1,6 @@
 import React, { useId, useState } from 'react';
 import { useInRouterContext, useLocation } from 'react-router-dom';
-import { useRegardsSurModule, type Regard } from '../state/RegardsContext';
+import { useRegardsSurModule, vueDuChemin, type Regard } from '../state/RegardsContext';
 import { useProfilesOptionnel } from '../state/ProfilesContext';
 import { UserAvatar } from './UserAvatar';
 
@@ -22,6 +22,13 @@ export function PastillePresence() {
   return <Pile />;
 }
 
+/** « page Devis » : le dernier segment de la vue, dit comme un nom d'écran. */
+const libelleVue = (vue: string) => {
+  const dernier = vue.split('/').filter(Boolean).pop() ?? '';
+  const mot = dernier.replace(/-/g, ' ');
+  return mot ? `page ${mot.charAt(0).toUpperCase()}${mot.slice(1)}` : '';
+};
+
 const hhmm = (iso: string) => {
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -30,6 +37,7 @@ const hhmm = (iso: string) => {
 function Pile() {
   const chemin = useLocation().pathname;
   const regards = useRegardsSurModule(chemin);
+  const maVue = vueDuChemin(chemin);
   const profils = useProfilesOptionnel();
   const [ouverte, setOuverte] = useState<string | null>(null);
   const id = useId();
@@ -62,10 +70,12 @@ function Pile() {
               className="absolute right-0 top-[calc(100%+8px)] z-30 w-max max-w-[260px] border border-[#2a2a2a] bg-[#111] px-3 py-2 text-left shadow-[0_18px_40px_-16px_rgba(0,0,0,1)]"
             >
               <span className="block text-[12.5px] font-semibold text-[#f7f7f5]">
-                {r.parti ? `${nom(r)} vient de partir` : `${nom(r)} utilise ce module aussi`}
+                {r.parti ? `${nom(r)} a quitté le module à ${hhmm(r.partiA ?? r.depuis)}` : `${nom(r)} utilise ce module aussi`}
               </span>
               <span className="mt-1 block font-mono text-[10.5px] tracking-[0.06em] text-[#a3a3a0]">
-                {r.parti ? `parti à ${hhmm(r.partiA ?? r.depuis)}` : `depuis ${hhmm(r.depuis)}`} · {r.module}
+                {r.parti ? 'vient de partir' : `depuis ${hhmm(r.depuis)}`}
+                {/* La vue ouverte, seulement si elle diffère de la vôtre. */}
+                {!r.parti && r.vue && r.vue !== maVue && libelleVue(r.vue) ? ` · ${libelleVue(r.vue)}` : ''}
               </span>
             </span>
           )}

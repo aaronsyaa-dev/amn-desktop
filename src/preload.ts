@@ -15,6 +15,7 @@ import {
   type OutgoingCallSignal,
   type RecordWatchers,
   type RegardModule,
+  type SessionAssistance,
   type CreateClientInput,
   type CreateDecisionInput,
   type CreateKnowledgeDocInput,
@@ -246,13 +247,18 @@ const bridge: AmnBridge = {
       ipcRenderer.on(IPC.remoteWatchersPush, listener);
       return () => ipcRenderer.removeListener(IPC.remoteWatchersPush, listener);
     },
-    annoncerRegard: (module: string | null) => {
-      void ipcRenderer.invoke(IPC.remoteAnnoncerRegard, module);
+    annoncerRegard: (module: string | null, vue?: string | null) => {
+      void ipcRenderer.invoke(IPC.remoteAnnoncerRegard, module, vue ?? null);
     },
     onRegards: (callback: (entries: RegardModule[]) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, entries: RegardModule[]) => callback(entries);
       ipcRenderer.on(IPC.remoteRegardsPush, listener);
       return () => ipcRenderer.removeListener(IPC.remoteRegardsPush, listener);
+    },
+    onAssistance: (callback: (sessions: SessionAssistance[]) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, sessions: SessionAssistance[]) => callback(sessions);
+      ipcRenderer.on(IPC.remoteAssistancePush, listener);
+      return () => ipcRenderer.removeListener(IPC.remoteAssistancePush, listener);
     },
     welcome: {
       inspect: (token: string) => ipcRenderer.invoke(IPC.remoteWelcomeInspect, token),

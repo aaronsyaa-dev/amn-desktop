@@ -27,7 +27,7 @@ export function useReleves(): Releves {
 }
 
 /** Écrit le relevé du jour s'il manque — une fois, quand les modèles sont prêts. */
-export function useEcrireReleveDuJour(pret: boolean, construire: () => ReleveParc['orgs']) {
+export function useEcrireReleveDuJour(pret: boolean, construire: () => ReleveParc['orgs'], equipe?: () => ReleveParc['equipe']) {
   const releves = useReleves();
   const { upsert } = useSync();
   const jour = jourDe(Date.now());
@@ -36,7 +36,8 @@ export function useEcrireReleveDuJour(pret: boolean, construire: () => RelevePar
     if (!pret || existe) return;
     const orgs = construire();
     if (!Object.keys(orgs).length) return;
-    void upsert('parcReleves', jour, { jour, at: new Date().toISOString(), orgs });
+    const e = equipe?.();
+    void upsert('parcReleves', jour, { jour, at: new Date().toISOString(), orgs, ...(e ? { equipe: e } : {}) });
     // `construire` change à chaque rendu ; seul le passage à « prêt » compte.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pret, existe, jour, upsert]);

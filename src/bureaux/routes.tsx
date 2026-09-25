@@ -46,6 +46,22 @@ const StrategieLiege = l(() => import('./strategie/Liege'), 'StrategieLiege');
 const GardeCompteRendu = l(() => import('./garde/CompteRendu'), 'GardeCompteRendu');
 const GardeHistorique = l(() => import('./garde/Historique'), 'GardeHistorique');
 const GardeNuit = l(() => import('./garde/Nuit'), 'GardeNuit');
+const SupervisorCarte = l(() => import('./supervisor/Carte'), 'SupervisorCarte');
+const SupervisorCharge = l(() => import('./supervisor/Charge'), 'SupervisorCharge');
+const SupervisorPlaces = l(() => import('./supervisor/Places'), 'SupervisorPlaces');
+const SupervisorRenouvellements = l(() => import('./supervisor/Renouvellements'), 'SupervisorRenouvellements');
+const CyberHameconnage = l(() => import('./cyber/Hameconnage'), 'CyberHameconnage');
+const CyberSurface = l(() => import('./cyber/Surface'), 'CyberSurface');
+const CyberSecrets = l(() => import('./cyber/Secrets'), 'CyberSecrets');
+const CyberVulnerabilites = l(() => import('./cyber/Vulnerabilites'), 'CyberVulnerabilites');
+const CyberCrise = l(() => import('./cyber/Crise'), 'CyberCrise');
+const StudioPerformance = l(() => import('./studio/Performance'), 'StudioPerformance');
+const StudioRecette = l(() => import('./studio/Recette'), 'StudioRecette');
+const StudioAccessibilite = l(() => import('./studio/Accessibilite'), 'StudioAccessibilite');
+const StrategieAttribution = l(() => import('./strategie/Attribution'), 'StrategieAttribution');
+const StrategieTemoignages = l(() => import('./strategie/Temoignages'), 'StrategieTemoignages');
+const StrategieTrackers = l(() => import('./strategie/Trackers'), 'StrategieTrackers');
+const GardeSimulateur = l(() => import('./garde/Simulateur'), 'GardeSimulateur');
 
 const calme = <div className="min-h-[40vh]" aria-busy="true" />;
 const s = (C: React.ComponentType) => (
@@ -65,6 +81,10 @@ export function routesBureaux() {
       <Route path="/supervisor/chercheur" element={s(SupervisorChercheur)} />
       <Route path="/supervisor/bug/:id" element={s(SupervisorBug)} />
       <Route path="/supervisor/groupes" element={s(SupervisorGroupes)} />
+      <Route path="/supervisor/carte" element={s(SupervisorCarte)} />
+      <Route path="/supervisor/charge" element={s(SupervisorCharge)} />
+      <Route path="/supervisor/places" element={s(SupervisorPlaces)} />
+      <Route path="/supervisor/renouvellements" element={s(SupervisorRenouvellements)} />
       <Route path="/cyber" element={s(CyberAccueil)} />
       <Route path="/cyber/posture" element={s(CyberMatrice)} />
       <Route path="/cyber/alertes" element={s(CyberAlertes)} />
@@ -76,9 +96,17 @@ export function routesBureaux() {
       <Route path="/cyber/playbooks" element={s(CyberPlaybooks)} />
       <Route path="/cyber/rapports" element={s(CyberRapports)} />
       <Route path="/cyber/carnet" element={s(CyberCarnet)} />
+      <Route path="/cyber/hameconnage" element={s(CyberHameconnage)} />
+      <Route path="/cyber/surface" element={s(CyberSurface)} />
+      <Route path="/cyber/secrets" element={s(CyberSecrets)} />
+      <Route path="/cyber/vulnerabilites" element={s(CyberVulnerabilites)} />
+      <Route path="/cyber/crise" element={s(CyberCrise)} />
       <Route path="/studio" element={s(StudioAccueil)} />
       <Route path="/studio/pieces/:id" element={s(StudioPiece)} />
       <Route path="/studio/pieces/:id/:onglet" element={s(StudioPiece)} />
+      <Route path="/studio/performance" element={s(StudioPerformance)} />
+      <Route path="/studio/recette" element={s(StudioRecette)} />
+      <Route path="/studio/accessibilite" element={s(StudioAccessibilite)} />
       <Route path="/strategie" element={s(StrategieAccueil)} />
       <Route path="/strategie/campagnes" element={s(StrategieCampagnes)} />
       <Route path="/strategie/storyboards" element={s(StrategieStoryboards)} />
@@ -88,10 +116,14 @@ export function routesBureaux() {
       <Route path="/strategie/enquete" element={s(StrategieEnquete)} />
       <Route path="/strategie/objectifs" element={s(StrategieObjectifs)} />
       <Route path="/strategie/liege" element={s(StrategieLiege)} />
+      <Route path="/strategie/attribution" element={s(StrategieAttribution)} />
+      <Route path="/strategie/temoignages" element={s(StrategieTemoignages)} />
+      <Route path="/strategie/trackers" element={s(StrategieTrackers)} />
       <Route path="/garde/organigramme" element={s(GardeAccueil)} />
       <Route path="/garde/compte-rendu/:id" element={s(GardeCompteRendu)} />
       <Route path="/garde/bureaux/:equipe/historique" element={s(GardeHistorique)} />
       <Route path="/garde/nuit" element={s(GardeNuit)} />
+      <Route path="/garde/simulateur" element={s(GardeSimulateur)} />
     </>
   );
 }

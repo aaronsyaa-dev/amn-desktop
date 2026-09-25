@@ -66,6 +66,17 @@ export function moduleDuChemin(chemin: string): string {
   return `/${parts.slice(0, 2).join('/')}`;
 }
 
+/**
+ * La vue ouverte, telle qu'on peut la dire à un collègue : le chemin sans ce
+ * qui désigne une fiche (un segment qui porte un chiffre, ou trop long pour
+ * être un nom d'écran). `/facturation/devis` reste ; `/clients/8f3a…` devient
+ * `/clients`.
+ */
+export function vueDuChemin(chemin: string): string {
+  const parts = chemin.split('?')[0].split('/').filter(Boolean).filter((s) => !/\d/.test(s) && s.length <= 24);
+  return `/${parts.slice(0, 4).join('/')}`;
+}
+
 interface RegardsValue {
   montree: boolean;
   setMontree: (v: boolean) => void;
@@ -102,10 +113,11 @@ export function RegardsProvider({ children }: { children: React.ReactNode }) {
   /* L'annonce : le module courant, ou rien. Renvoyée à chaque reconnexion —
      le serveur oublie une socket fermée, et c'est voulu. */
   const module = moduleDuChemin(location.pathname);
+  const vue = vueDuChemin(location.pathname);
   useEffect(() => {
     if (connectionStatus !== 'online') return;
-    bridge().remote.annoncerRegard?.(montree ? module : null);
-  }, [module, montree, connectionStatus]);
+    bridge().remote.annoncerRegard?.(montree ? module : null, montree ? vue : null);
+  }, [module, vue, montree, connectionStatus]);
   useEffect(() => () => bridge().remote.annoncerRegard?.(null), []);
 
   /* La réception, et la minute de grâce de ceux qui viennent de partir. */

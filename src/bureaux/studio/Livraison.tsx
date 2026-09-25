@@ -8,6 +8,8 @@ import { Carte, Invitation } from '../ui/kit';
 import { enLettres } from '../format';
 import { jjmm, TetePiece, useEcrirePiece, usePieceCourante, versionSuivante } from './commun';
 import { PageEpinglee } from './Retours';
+import { depassements } from './Performance';
+import { Link } from 'react-router-dom';
 
 /**
  * STUDIO · LA LIVRAISON (cahier 14, `48d`).
@@ -49,7 +51,10 @@ function Livraison({ p }: { p: Piece }) {
   const [quoi, setQuoi] = useState('');
   const l = p.livraison ?? null;
   const points = l?.points ?? [];
-  const bloquants = points.filter((x) => x.bloquant && !x.coche);
+  const bloquantsListe = points.filter((x) => x.bloquant && !x.coche);
+  // Une page au-dessus de son budget de performance bloque aussi (`51c` · 10).
+  const lourdes = depassements(p);
+  const bloquants = [...bloquantsListe, ...lourdes.map((x) => ({ id: `budget:${x.page}`, texte: `Page ${x.page} au-dessus de son budget`, bloquant: true, coche: false }))];
   const ambre = bloquants[0] ?? null;
   const coches = points.filter((x) => x.coche).length;
   const rail = [...(l?.misesEnLigne ?? [])].sort((a, b) => b.at.localeCompare(a.at));
@@ -143,6 +148,27 @@ function Livraison({ p }: { p: Piece }) {
                   );
                 })}
               </ul>
+              {lourdes.length > 0 && (
+                <ul className="mt-2 flex flex-col gap-2">
+                  {lourdes.map((x) => {
+                    const estAmbre = ambre?.id === `budget:${x.page}`;
+                    return (
+                      <li key={x.page} className="flex items-center gap-3.5 border px-3.5 py-3" style={{ borderColor: estAmbre ? AMBRE : '#2a2826', background: estAmbre ? 'rgba(208,154,74,.07)' : 'transparent' }} data-signal-groupe={estAmbre ? 'livraison-bloquant' : undefined}>
+                        <span aria-hidden className="h-[18px] w-[18px] flex-none border border-dashed" style={{ borderColor: estAmbre ? AMBRE : '#6b6b68' }} />
+                        <span className="min-w-0 flex-1 text-[13.5px] font-semibold text-[#f7f7f5]">
+                          Page {x.page} : {Math.round(x.ko / 100) / 10} Mo pour {Math.round(p.budget!.plafondKo / 100) / 10} Mo de budget{' '}
+                          <Link to="/studio/performance" className="ml-1 text-[12px] font-normal text-[#a3a3a0] underline decoration-[#6b6b68] underline-offset-4">
+                            le budget
+                          </Link>
+                        </span>
+                        <span className="font-mono text-[9.5px] font-bold tracking-[0.12em]" style={{ color: estAmbre ? AMBRE : '#a3a3a0' }}>
+                          {estAmbre ? 'BLOQUE LA MISE EN LIGNE' : 'BLOQUE AUSSI'}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
               {ajout ? (
                 <form
                   className="mt-3 flex flex-wrap items-center gap-2"

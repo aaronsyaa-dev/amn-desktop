@@ -86,6 +86,7 @@ import type {
   SyncedCollection,
   RecordWatchers,
   RegardModule,
+  SessionAssistance,
   RecordActivityEntry,
   HallEtat,
   HallMessage,
@@ -1016,10 +1017,10 @@ function createBrowserRemote(): AmnBridge['remote'] {
         set?.delete(listener);
       };
     },
-    annoncerRegard(module: string | null) {
+    annoncerRegard(module: string | null, vue?: string | null) {
       ensureStarted();
       if (!socket || socket.readyState !== WebSocket.OPEN) return;
-      socket.send(JSON.stringify({ type: 'regard', module: typeof module === 'string' ? module : null }));
+      socket.send(JSON.stringify({ type: 'regard', module: typeof module === 'string' ? module : null, vue: typeof vue === 'string' ? vue : null }));
     },
     onRegards(callback: (entries: RegardModule[]) => void) {
       ensureStarted();
@@ -1029,6 +1030,19 @@ function createBrowserRemote(): AmnBridge['remote'] {
         frameListeners.set('regards', set);
       }
       const listener = (frame: Record<string, unknown>) => callback(Array.isArray(frame.entries) ? (frame.entries as RegardModule[]) : []);
+      set.add(listener);
+      return () => {
+        set?.delete(listener);
+      };
+    },
+    onAssistance(callback: (sessions: SessionAssistance[]) => void) {
+      ensureStarted();
+      let set = frameListeners.get('assistance');
+      if (!set) {
+        set = new Set();
+        frameListeners.set('assistance', set);
+      }
+      const listener = (frame: Record<string, unknown>) => callback(Array.isArray(frame.sessions) ? (frame.sessions as SessionAssistance[]) : []);
       set.add(listener);
       return () => {
         set?.delete(listener);

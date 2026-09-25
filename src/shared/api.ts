@@ -2591,6 +2591,7 @@ export type SyncedCollection =
   | 'hameconnages'
   | 'rotationsSecrets'
   | 'exercicesCrise'
+  | 'veilleVulns'
   | 'studioPieces'
   | 'campagnes'
   | 'publications'
@@ -2626,6 +2627,21 @@ export interface RegardModule {
   /** Le chemin du module ouvert (`/clients`, `/garde/pile`…). */
   module: string;
   /** ISO — l'heure d'ouverture, posée par le serveur. */
+  depuis: string;
+  /**
+   * La vue ouverte dans le module (`/facturation/devis`), sans identifiant de
+   * fiche : l'infobulle la dit quand elle diffère de la vôtre.
+   */
+  vue?: string | null;
+}
+
+/**
+ * UNE SESSION D'ASSISTANCE EN COURS CHEZ L'ORGANISATION (cahier 15) — la
+ * trame `assistance`, reçue par ses seuls membres : qui, de l'équipe AMN, est
+ * dans l'espace, et depuis quand. C'est le bandeau, jamais une pastille.
+ */
+export interface SessionAssistance {
+  email: string;
   depuis: string;
 }
 
@@ -3205,9 +3221,11 @@ export interface AmnBridge {
      * (cahier 15). Fire-and-forget : un lien coupé prive la pastille, rien
      * d'autre — et l'appelant la renvoie à la reconnexion.
      */
-    annoncerRegard(module: string | null): void;
+    annoncerRegard(module: string | null, vue?: string | null): void;
     /** Qui a quel module ouvert dans l'organisation — la trame `regards`. */
     onRegards(callback: (entries: RegardModule[]) => void): () => void;
+    /** Les sessions d'assistance ouvertes chez l'organisation — la trame `assistance`. */
+    onAssistance(callback: (sessions: SessionAssistance[]) => void): () => void;
     /**
      * Journal d'activité des collections partagées (Administration, confort
      * d'usage à deux) : qui a créé/modifié/supprimé quoi, récemment.
@@ -4081,6 +4099,7 @@ export const IPC = {
   remoteWatchersPush: 'remote:watchersPush',
   remoteAnnoncerRegard: 'remote:annoncerRegard',
   remoteRegardsPush: 'remote:regardsPush',
+  remoteAssistancePush: 'remote:assistancePush',
   remoteActivityLog: 'remote:activityLog',
   systemNotify: 'system:notify',
   systemCanRemoteControl: 'system:canRemoteControl',

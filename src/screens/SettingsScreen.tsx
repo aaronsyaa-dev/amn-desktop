@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  AlertTriangle, Bell, Camera, Check, Download, Info, KeyRound, Loader2, Power, UserCircle } from 'lucide-react';
+  AlertTriangle, Bell, Camera, Check, Download, Eye, Info, KeyRound, Loader2, Power, UserCircle } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { nomPalier, PALIER_PRIX_EUR } from '../lib/paliers';
 import { useProfiles } from '../state/ProfilesContext';
@@ -71,6 +71,7 @@ import { VeilleSection, AbonnementSection, useAbonnement } from '@edition/accuei
 import { GuideSection } from '../guide/GuideSection';
 import { ExtensionsSection } from '../components/settings/ExtensionsSection';
 import { useSupportContext } from '../state/OrgContextContext';
+import { useRegards } from '../state/RegardsContext';
 import { useLangue, t as tr } from '../i18n';
 
 export function SettingsScreen() {
@@ -105,8 +106,9 @@ export function SettingsScreen() {
       </StaggerItem>
 
       <StaggerItem>
-        <div id="reglages-profil">
+        <div id="reglages-profil" className="flex flex-col gap-4">
           <ProfileSection email={user.email} />
+          <PresenceSection />
         </div>
       </StaggerItem>
       <StaggerItem>
@@ -476,6 +478,29 @@ function AboutSection() {
             ))}
           </div>
         </div>
+      </div>
+    </Panel>
+  );
+}
+
+/**
+ * LA PRÉSENCE SUR LES MODULES (cahier 15, `51a`) — le seul réglage qu'elle a.
+ *
+ * Réciproque : coupée, ce poste ne se montre plus ET ne montre plus les
+ * autres. Dans l'édition cliente, seuls les membres de la même organisation
+ * se voient — jamais l'équipe AMN, dont une session d'assistance s'annonce
+ * par son bandeau. Le réglage vit sur ce poste, pour ce compte.
+ */
+function PresenceSection() {
+  const { montree, setMontree } = useRegards();
+  return (
+    <Panel icon={Eye} title="Présence sur les modules" subtitle={IS_BUSINESS ? 'Les membres de votre organisation voient qui a le même module ouvert. Jamais l’équipe AMN.' : 'L’équipe voit qui a le même module ouvert, à droite de son en-tête.'}>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-text-primary">Montrer ma présence aux autres</p>
+          <p className="text-xs text-text-muted">Coupée, on ne se montre plus et on ne voit plus les autres : la présence est réciproque.</p>
+        </div>
+        <Toggle on={montree} onClick={() => setMontree(!montree)} label="Montrer ma présence aux autres" />
       </div>
     </Panel>
   );

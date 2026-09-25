@@ -19,6 +19,11 @@ export interface DossierOrg {
   echanges?: { id: string; sens: 'recu' | 'envoye'; resume: string; par: string; at: string }[];
   /** L'état d'un module POUR ELLE SEULE (cahier 12, `46e`). */
   modules?: Record<string, EtatModuleSeule>;
+  /**
+   * Le contrat qui la lie à AMN (renouvellements du parc, `51c`) : son
+   * échéance, ce qu'il rapporte par an, et s'il se reconduit seul.
+   */
+  contrat?: { echeance: string; montantAnnuel: number; reconduction: 'tacite' | 'a_confirmer'; reconduitLe?: string | null } | null;
 }
 
 export interface EtatModuleSeule {
@@ -42,6 +47,8 @@ export interface Suivi {
 export interface ReleveParc {
   jour: string;
   at: string;
+  /** Les trackers de l'équipe (`51b`) qui n'ont pas d'historique ailleurs : les objectifs atteints ce jour-là. */
+  equipe?: { objectifs?: { atteints: number; total: number } };
   orgs: Record<string, { poids: number; points: Record<string, number>; score?: number | null; actif?: boolean; suivi?: string; silenceJ?: number | null; enPanne?: boolean }>;
 }
 
@@ -128,7 +135,36 @@ export interface Actif {
   renouvelleSeul?: boolean;
   /** Un défaut connu, écrit tel quel (« DMARC absent »). */
   defaut?: string | null;
+  /** Le logiciel et sa version (« WordPress 6.4.1 ») : ce que la veille croise avec les failles publiées. */
+  logiciel?: string | null;
+  /**
+   * Ce que l'actif expose sur Internet, découvert sans la cliente (surface
+   * d'attaque) : un port, un service, et ce que ça risque. `fermeLe` quand
+   * c'est refermé — la ligne reste, datée.
+   */
+  expose?: { port?: number | null; service: string; risque: 'haut' | 'moyen' | 'bas'; decouvertLe: string; fermeLe?: string | null } | null;
   at: string;
+  par?: string;
+}
+
+/**
+ * `veilleVulns` : une faille publiée (`51c`, veille des vulnérabilités), telle
+ * qu'on la note le jour où elle sort — le logiciel, les versions touchées, la
+ * gravité. L'écran la croise avec l'inventaire ; il n'invente aucune faille.
+ */
+export interface VeilleVuln {
+  /** « CVE-2026-1234 », ou un titre quand il n'y a pas encore d'identifiant. */
+  ref: string;
+  logiciel: string;
+  /** Les versions touchées : « < 6.4.3 », « 2.0 – 2.3 », « toutes ». */
+  versions: string;
+  gravite: 'critique' | 'haute' | 'moyenne' | 'basse';
+  resume: string;
+  publieeLe: string;
+  /** Ce qui corrige (« mettre à jour vers 6.4.3 »). */
+  correctif?: string | null;
+  /** Traitée : toutes les clientes concernées sont prévenues ou corrigées. */
+  traiteeLe?: string | null;
   par?: string;
 }
 

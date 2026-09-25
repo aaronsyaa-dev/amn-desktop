@@ -8,8 +8,10 @@ import { BarreHaute } from './ui/BarreHaute';
 import { BarreEtatCyber, ConsoleColonne, Dock, OrganigrammeNav, Portes, Pupitre, SousOnglets } from './coquilles';
 import { EnTeteCtx, type EnTeteContexte } from '../components/EnTeteContexte';
 import { cederPaletteCommandes } from '../components/command-palette/CommandPalette';
-import { useActiverSourceBureaux } from './donnees/source';
-import { useEcrireReleveDuJour } from './donnees/releves';
+import { useActiverSourceBureaux, useSourceBureaux } from './donnees/source';
+import { jourDe, useEcrireReleveDuJour } from './donnees/releves';
+import { useAuth } from '../auth/AuthContext';
+import { useCollection, useSync } from '../state/SyncContext';
 import { useSupervisor } from './donnees/useSupervisor';
 import { useCyber } from './donnees/cyber';
 import { useExecuterRegles } from './donnees/executerRegles';
@@ -47,6 +49,7 @@ export function CadreBureau({ bureau }: { bureau: BureauKey }) {
   useActiverSourceBureaux();
   useReleveDuJour();
   useExecuterRegles();
+  useReleveLue(bureau);
 
   useEffect(() => {
     cederPaletteCommandes(true);
@@ -106,9 +109,31 @@ export function CadreBureau({ bureau }: { bureau: BureauKey }) {
  * Le relevé du jour : poids, points et score de chaque organisation, écrit
  * une fois par jour par le premier bureau ouvert — la mémoire des tendances.
  */
+/**
+ * L'habitude « relève lue avant 9 h » (tracker de l'équipe, `51b`) : la
+ * première ouverture d'un écran de la Garde, un jour de semaine, après
+ * l'heure de la relève, est notée une fois (`suivis`, `releve-lue:<jour>`).
+ */
+function useReleveLue(bureau: BureauKey) {
+  const { user } = useAuth();
+  const { upsert, ready } = useSync();
+  const suivis = useCollection<{ at?: string }>('suivis');
+  const src = useSourceBureaux();
+  const heureReleve = src.salle?.reglages?.heureTour ?? 7;
+  const jour = jourDe(Date.now());
+  const deja = suivis.some((s) => s.id === `releve-lue:${jour}`);
+  useEffect(() => {
+    if (bureau !== 'garde' || !ready || deja || !user?.email) return;
+    const d = new Date();
+    if (d.getDay() === 0 || d.getDay() === 6 || d.getHours() < heureReleve) return;
+    void upsert('suivis', `releve-lue:${jour}`, { par: user.email, at: d.toISOString() });
+  }, [bureau, ready, deja, user?.email, heureReleve, jour, upsert]);
+}
+
 function useReleveDuJour() {
   const sup = useSupervisor();
   const cyber = useCyber();
+  const objectifs = useCollection<{ currentValue?: number; targetValue?: number }>('objectives');
   const pret = sup.pret && cyber.pret && sup.orgs.length > 0;
   useEcrireReleveDuJour(pret, () => {
     const scores = new Map(cyber.orgs.map((o) => [o.id, o.score]));
@@ -128,5 +153,5 @@ function useReleveDuJour() {
       };
     }
     return orgs;
-  });
+  }, () => (objectifs.length ? { objectifs: { atteints: objectifs.filter((o) => (o.currentValue ?? 0) >= (o.targetValue ?? Infinity)).length, total: objectifs.length } } : undefined));
 }

@@ -27,6 +27,8 @@ import { variantsForPath } from '../lib/transitions';
 import { useAuth } from '../auth/AuthContext';
 import { useLangue } from '../i18n';
 import { CallProvider } from '../state/CallContext';
+import { RegardsProvider } from '../state/RegardsContext';
+import { BandeauAssistance } from '../components/BandeauAssistance';
 import { CallOverlay } from '../components/call/CallOverlay';
 
 const LAST_TAB_KEY = 'amn.lastTab';
@@ -113,6 +115,7 @@ export function BusinessLayout() {
     <SpaceProviders>
     <GuideProvider>
     <CallProvider>
+    <RegardsProvider>
                 <div
                   onTouchStart={onTouchStart}
                   onTouchEnd={onTouchEnd}
@@ -126,6 +129,7 @@ export function BusinessLayout() {
                     <BusinessSidebar mobileOpen={navOpen} onClose={() => setNavOpen(false)} />
                     <main className="relative flex-1 overflow-y-auto overflow-x-hidden overscroll-none">
                       <BusinessTopBar onMenu={() => setNavOpen(true)} />
+                      <BandeauAssistance />
                       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8">
                         <motion.div
                           key={location.pathname}
@@ -175,6 +179,7 @@ export function BusinessLayout() {
                 <UpdateNotice />
                 <UpdateReady />
                 <PwaUpdateNotice />
+    </RegardsProvider>
     </CallProvider>
     </GuideProvider>
     </SpaceProviders>
