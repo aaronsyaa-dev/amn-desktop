@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="110 338 804 299" width="108" height="40">
+  <!-- ================================================================
+       Le logo AMN — tracé vectoriel du fichier de marque.
+
+       Origine : le PNG « AMN » fourni par Mohamed (1024 × 1024, lettres
+       claires sur fond noir). Chaque sommet ci-dessous a été RELEVÉ dans
+       ses pixels — bords de chaque trait ligne par ligne, puis droites
+       ajustées — et non redessiné à l'œil. Les coordonnées sont celles
+       de l'image d'origine (d'où le viewBox qui ne part pas de zéro).
+
+       Ce que le relevé a appris, et que l'on ne devinerait pas :
+         · les lettres sont des POLYGONES à sommets coupés à plat, pas
+           des traits — le sommet du A est plat sur 23 px, le pied du V
+           du M sur 20 px ;
+         · le V du M n'est pas centré entre ses montants (142 px à
+           gauche, 157 à droite) ;
+         · le M et le N partagent leur montant du milieu ;
+         · le dégradé va de #fbfbfb en haut à #676767 en bas, par
+           #b3b3b3 à mi-hauteur, mesuré sur les traits eux-mêmes.
+
+       Rapport largeur/hauteur : 804 / 299 = 2,69. Les balises
+       <img class="logo-mark"> réservent 108 × 40 pour cette raison.
+       ================================================================ -->
+  <defs>
+    <linearGradient id="amn-degrade" gradientUnits="userSpaceOnUse" x1="0" y1="338" x2="0" y2="636">
+      <stop offset="0" stop-color="#fbfbfb"/>
+      <stop offset=".5" stop-color="#b3b3b3"/>
+      <stop offset="1" stop-color="#676767"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#amn-degrade)">
+    <!-- A : contour extérieur, puis le contre-poinçon au-dessus de la barre -->
+    <path fill-rule="evenodd" d="M110.5 636 225.5 338h23L365.5 636H343l-28.4-72.5H160.9L133 636Z
+      M167.4 546.5 237 365.5l70.9 181Z"/>
+    <!-- M et N d'un seul tenant : ils partagent le montant du milieu -->
+    <path d="M377 636V338h23.5l128 272.5L675.5 338h20v1.9l198 260.5V338h20v298h-20v-3.4L695.5 375.5V636h-20V382.3L538.4 636h-20.1L396.5 376.3V636Z"/>
+  </g>
+</svg>

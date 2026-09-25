@@ -19,6 +19,8 @@
  */
 
 import { spawnSync } from 'node:child_process';
+import { cpSync, existsSync } from 'node:fs';
+import { relative, sep } from 'node:path';
 
 /**
  * Même règle que `resolveEdition()` dans vite.edition.ts — recopiée ici parce
@@ -38,6 +40,25 @@ const build = spawnSync(
   { stdio: 'inherit', env: { ...process.env, AMN_EDITION: edition } },
 );
 if (build.status !== 0) process.exit(build.status ?? 1);
+
+/*
+ * Maquettes de la page d'accueil (propositions/) : copiées dans le site web
+ * interne seulement, pour être regardées sur l'aperçu Vercel d'une branche.
+ * Jamais dans l'édition Business ni dans l'application installée (Electron ne
+ * lit que public/). Les fichiers de travail du dossier (_BRIEF.md,
+ * _directions.json, REPRISE.md…) restent dehors ; _lib/ et _captures/ passent.
+ */
+if (edition !== 'business' && existsSync('propositions')) {
+  cpSync('propositions', `${outDir}/propositions`, {
+    recursive: true,
+    filter: (src) => {
+      const haut = relative('propositions', src).split(sep)[0];
+      if (!haut) return true;
+      if (haut.endsWith('.md')) return false;
+      return !haut.startsWith('_') || haut === '_lib' || haut === '_captures';
+    },
+  });
+}
 
 if (edition !== 'business') process.exit(0);
 
