@@ -29,6 +29,16 @@ export function etatPiece(p: PieceStudio): EtatPiece {
   return 'chantier';
 }
 
+type Punaise = NonNullable<NonNullable<PieceStudio['croquis']>[number]['punaises']>[number];
+
+/** Les punaises du mur qui attendent que la cliente tranche, dans l'ordre de leur numéro. */
+export function decisionsEnAttente(p: PieceStudio): (Punaise & { croquisId: string })[] {
+  return (p.croquis ?? [])
+    .flatMap((c) => (c.punaises ?? []).map((x) => ({ ...x, croquisId: c.id })))
+    .filter((x) => x.decision && !x.trancheeLe)
+    .sort((a, b) => a.n - b.n);
+}
+
 export interface ModeleStudio {
   pieces: Piece[];
   /** La pièce où l'on attend Mohamed — l'ambre du bureau. */
@@ -68,6 +78,10 @@ export function modeleStudio(liste: (PieceStudio & { id: string })[], maintenant
     ...pieces
       .filter((p) => p.etat === 'attente')
       .map((piece) => ({ piece, qui: 'elle' as const, texte: `${piece.orgNom} doit ${piece.validation?.question ?? 'valider'}`, depuis: piece.validation?.ouverteLe ?? '' })),
+    // Une punaise « décision » du mur attend, elle aussi, la cliente (`48a`).
+    ...pieces.flatMap((piece) =>
+      decisionsEnAttente(piece).map((x) => ({ piece, qui: 'elle' as const, texte: `${piece.orgNom} doit trancher : ${x.texte.replace(/[.?!]+$/, '')}`, depuis: '' })),
+    ),
   ];
   const bloquants = pieces.flatMap((piece) => (piece.livraison?.points ?? []).filter((x) => x.bloquant && !x.coche).map((point) => ({ piece, point })));
   return { pieces, ambre: retoursOuverts[0] ?? null, retoursOuverts, compte, misesEnLigne, quiAttend, bloquants };

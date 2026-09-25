@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useStrategie, numeroDeSemaine, type ModeleStrategie } from '../donnees/strategie';
-import { Carte, EnTete, Invitation, Paire, Stat } from '../ui/kit';
+import { useSync } from '../../state/SyncContext';
+import { useStrategie, numeroDeSemaine, EN_COURS, type ModeleStrategie } from '../donnees/strategie';
+import { Carte, Chargement, EnTete, Erreur, Invitation, Paire, Stat } from '../ui/kit';
 import { Mur, disposer } from './Mur';
 import { enLettres, enLettresF, jourCourt } from '../format';
 import { EcranVide } from '../../components/EtatEcran';
@@ -12,18 +13,59 @@ import { EcranVide } from '../../components/EtatEcran';
  * L'ambre : la punaise et le bandeau de la seule pièce qui attend Riyad
  * aujourd'hui. Une campagne programmée n'attend personne : elle reste au
  * papier. Le mur respire de 2 px en 14 s.
+ *
+ * Les états (`49e`) : vide — le mur et sa trame, trois emplacements en
+ * pointillé ; chargement — rien de punaisé tant que les pièces n'ont pas
+ * répondu (un fil n'apparaît qu'avec ses deux bouts) ; chargé — au-delà de
+ * 40 pièces, le mur se range par zones et replie les zones inactives ;
+ * erreur — le dernier mur connu, atténué, daté, et la relance.
  */
+const PIECES_MAX = 40;
 export function StrategieAccueil() {
   const m = useStrategie();
+  const { ready, pullFailed } = useSync();
   const pieces = useMemo(() => disposer(m), [m]);
   const vide = pieces.epingles.length === 0;
+  const chargement = !ready && vide;
+  // Toutes les pièces que le mur pourrait porter, zone par zone.
+  const zones = [
+    { nom: 'Campagnes', n: m.campagnes.filter((c) => c.etape !== 'close').length, lien: '/strategie/campagnes', active: Boolean(m.bloquee) },
+    { nom: 'Pipeline', n: m.prospects.filter((p) => EN_COURS.includes(p.stage)).length, lien: '/strategie/pipeline', active: Boolean(m.ambre) },
+    { nom: 'Enquête', n: m.mur.filter((p) => p.type === 'question' || p.type === 'indice').length, lien: '/strategie/enquete', active: false },
+    { nom: 'Liège', n: m.mur.filter((p) => p.type === 'note').length, lien: '/strategie/liege', active: false },
+  ];
+  const charge = zones.reduce((s, z) => s + z.n, 0) > PIECES_MAX;
+  const derniere = [...m.campagnes, ...m.prospects, ...m.mur].map((x) => (x as { updatedAt?: string }).updatedAt ?? '').sort().pop() || null;
   const { titre, lede } = phrases(m, pieces.epingles.map((e) => e.genre));
 
   return (
-    <EcranVide quand={vide} premierJour={vide}>
+    <EcranVide quand={vide && !chargement} premierJour={vide && !chargement}>
       <EnTete accueil surtitre={`Stratégie · semaine ${numeroDeSemaine(Date.now())}`} titre={titre} lede={lede} />
+      {charge && (
+        <div className="mb-3 flex flex-wrap gap-1.5" aria-label="Le mur, rangé par zones">
+          {zones.map((z) => (
+            <Link key={z.nom} to={z.lien} className="border border-[#28282c] bg-[#101012] px-3 py-1.5 text-[12.5px] text-[#e4e4e1] hover:border-[#4a4a50]">
+              › {z.nom} · {z.n}
+              {z.active ? '' : ', repliée'}
+            </Link>
+          ))}
+        </div>
+      )}
       <section className="bx-dom p-0" aria-label="Le mur">
-        {vide ? (
+        {chargement ? (
+          <div className="p-7">
+            <div className="grid grid-cols-3 gap-8" aria-hidden>
+              {[0, 1, 2].map((i) => (
+                <span key={i} className="border border-dashed border-[#2f2f34]" style={{ height: 120, transform: `rotate(${i - 1}deg)` }} />
+              ))}
+            </div>
+            <Chargement texte="Les pièces arrivent" />
+          </div>
+        ) : ready && pullFailed && !vide ? (
+          <Erreur pannes={['le mur']} at={derniere} relancer={() => window.dispatchEvent(new Event('online'))}>
+            <Mur m={m} pieces={pieces} />
+          </Erreur>
+        ) : vide ? (
           <div className="p-7">
             <div className="grid grid-cols-3 gap-8" aria-hidden>
               {[0, 1, 2].map((i) => (

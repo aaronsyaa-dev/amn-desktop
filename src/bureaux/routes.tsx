@@ -35,6 +35,17 @@ const CyberJournalAudit = l(() => import('./cyber/JournalAudit'), 'CyberJournalA
 const CyberPlaybooks = l(() => import('./cyber/Playbooks'), 'CyberPlaybooks');
 const CyberRapports = l(() => import('./cyber/Rapports'), 'CyberRapports');
 const CyberCarnet = l(() => import('./cyber/Carnet'), 'CyberCarnet');
+const StudioPiece = l(() => import('./studio/Piece'), 'StudioPiece');
+const StrategieCampagnes = l(() => import('./strategie/Campagnes'), 'StrategieCampagnes');
+const StrategieStoryboards = l(() => import('./strategie/Storyboards'), 'StrategieStoryboards');
+const StrategieCalendrier = l(() => import('./strategie/Calendrier'), 'StrategieCalendrier');
+const StrategiePipeline = l(() => import('./strategie/Pipeline'), 'StrategiePipeline');
+const StrategieEnquete = l(() => import('./strategie/Enquete'), 'StrategieEnquete');
+const StrategieObjectifs = l(() => import('./strategie/Objectifs'), 'StrategieObjectifs');
+const StrategieLiege = l(() => import('./strategie/Liege'), 'StrategieLiege');
+const GardeCompteRendu = l(() => import('./garde/CompteRendu'), 'GardeCompteRendu');
+const GardeHistorique = l(() => import('./garde/Historique'), 'GardeHistorique');
+const GardeNuit = l(() => import('./garde/Nuit'), 'GardeNuit');
 
 const calme = <div className="min-h-[40vh]" aria-busy="true" />;
 const s = (C: React.ComponentType) => (
@@ -66,8 +77,21 @@ export function routesBureaux() {
       <Route path="/cyber/rapports" element={s(CyberRapports)} />
       <Route path="/cyber/carnet" element={s(CyberCarnet)} />
       <Route path="/studio" element={s(StudioAccueil)} />
+      <Route path="/studio/pieces/:id" element={s(StudioPiece)} />
+      <Route path="/studio/pieces/:id/:onglet" element={s(StudioPiece)} />
       <Route path="/strategie" element={s(StrategieAccueil)} />
+      <Route path="/strategie/campagnes" element={s(StrategieCampagnes)} />
+      <Route path="/strategie/storyboards" element={s(StrategieStoryboards)} />
+      <Route path="/strategie/calendrier" element={s(StrategieCalendrier)} />
+      <Route path="/strategie/pipeline" element={s(StrategiePipeline)} />
+      <Route path="/strategie/pipeline/:id" element={s(StrategiePipeline)} />
+      <Route path="/strategie/enquete" element={s(StrategieEnquete)} />
+      <Route path="/strategie/objectifs" element={s(StrategieObjectifs)} />
+      <Route path="/strategie/liege" element={s(StrategieLiege)} />
       <Route path="/garde/organigramme" element={s(GardeAccueil)} />
+      <Route path="/garde/compte-rendu/:id" element={s(GardeCompteRendu)} />
+      <Route path="/garde/bureaux/:equipe/historique" element={s(GardeHistorique)} />
+      <Route path="/garde/nuit" element={s(GardeNuit)} />
     </>
   );
 }

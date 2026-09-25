@@ -23,6 +23,12 @@ export interface SourceBureaux {
   /** Les sources qui n'ont pas répondu au dernier relevé — dites, jamais tues. */
   pannes: string[];
   at: string | null;
+  /**
+   * L'heure du dernier relevé réussi de chaque source. Une source qui ne
+   * répond plus garde ses dernières données (l'écran les montre atténuées) ;
+   * c'est cette heure-là qu'il date, pas celle du relevé manqué.
+   */
+  reussites: Record<string, string>;
   organisations: AdminOrganization[];
   accueil: GardeAccueil | null;
   salle: GardeSalle | null;
@@ -42,6 +48,7 @@ const vide: Omit<SourceBureaux, 'recharger' | 'activer'> = {
   pret: false,
   pannes: [],
   at: null,
+  reussites: {},
   organisations: [],
   accueil: null,
   salle: null,
@@ -71,6 +78,7 @@ async function tousLesIncidentsOuverts(): Promise<FleetIncident[]> {
 
 export function SourceBureauxProvider({ actif, children }: { actif: boolean; children: React.ReactNode }) {
   const [etat, setEtat] = useState(vide);
+  const dernier = useRef(vide);
   const [demande, setDemande] = useState(false);
   const enCours = useRef(false);
   const engage = actif || demande;
@@ -91,32 +99,44 @@ export function SourceBureauxProvider({ actif, children }: { actif: boolean; chi
         r.listSites(),
       ]);
       const pannes: string[] = [];
+      const maintenant = new Date().toISOString();
+      const reussites: Record<string, string> = { ...dernier.current.reussites };
+      // Une source muette garde ses dernières données : le dernier état connu, que l'écran date.
       const val = <T,>(p: PromiseSettledResult<T>, d: T, nom: string): T => {
-        if (p.status === 'fulfilled') return p.value;
+        if (p.status === 'fulfilled') {
+          reussites[nom] = maintenant;
+          return p.value;
+        }
         pannes.push(nom);
         return d;
       };
-      const orgs = val(organisations, [] as AdminOrganization[], 'organisations');
-      const lesSites = val(sites, [] as RemoteSite[], 'les sites');
+      const avant = dernier.current;
+      const orgs = val(organisations, avant.organisations, 'organisations');
+      const lesSites = val(sites, avant.sites, 'les sites');
       const parSite = sitesParId(lesSites);
       const noms = new Map(orgs.map((o) => [o.id, o.name]));
-      setEtat({
+      const suivant = {
         pret: true,
         pannes,
-        at: new Date().toISOString(),
+        at: maintenant,
+        reussites,
         organisations: orgs,
-        accueil: val(accueil, null, 'la Garde'),
-        salle: val(salle, null, 'la Salle'),
-        supports: val(supports, [] as SupportRequestForOperator[], 'les demandes'),
-        modulesDemandes: val(modules, [] as ModuleRequestForOperator[], 'les demandes de modules'),
+        accueil: val(accueil, avant.accueil, 'la Garde'),
+        salle: val(salle, avant.salle, 'la Salle'),
+        supports: val(supports, avant.supports, 'les demandes'),
+        modulesDemandes: val(modules, avant.modulesDemandes, 'les demandes de modules'),
         // Rangés chez la cliente du site, une fois pour toutes les pièces.
-        incidents: val(incidents, [] as FleetIncident[], 'les incidents').map((i) => {
-          const c = cliente(i, parSite);
-          return c === i.orgId ? i : { ...i, orgId: c, orgName: noms.get(c) ?? i.orgName };
-        }),
-        ssl: val(ssl, [] as SslStatus[], 'les certificats'),
+        incidents: incidents.status === 'fulfilled'
+          ? val(incidents, [] as FleetIncident[], 'les incidents').map((i) => {
+              const c = cliente(i, parSite);
+              return c === i.orgId ? i : { ...i, orgId: c, orgName: noms.get(c) ?? i.orgName };
+            })
+          : val(incidents, avant.incidents, 'les incidents'),
+        ssl: val(ssl, avant.ssl, 'les certificats'),
         sites: lesSites,
-      });
+      };
+      dernier.current = suivant;
+      setEtat(suivant);
     } finally {
       enCours.current = false;
     }

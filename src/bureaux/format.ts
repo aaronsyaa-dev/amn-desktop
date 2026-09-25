@@ -79,8 +79,9 @@ export const pluriel = (n: number, un: string, des: string) => `${n} ${n > 1 ? d
 
 const NOMBRES = ['zéro', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf', 'vingt'];
 /** « Douze », « Trois » en tête de phrase ; au-delà de vingt, le chiffre. */
+const DIZAINES: Record<number, string> = { 30: 'trente', 40: 'quarante', 50: 'cinquante', 60: 'soixante' };
 export function enLettres(n: number, majuscule = false): string {
-  const m = n >= 0 && n <= 20 ? NOMBRES[n] : String(n);
+  const m = n >= 0 && n <= 20 ? NOMBRES[n] : DIZAINES[n] ?? String(n);
   return majuscule ? m.charAt(0).toUpperCase() + m.slice(1) : m;
 }
 /** Féminin : « une », pour les pièces, les organisations. */

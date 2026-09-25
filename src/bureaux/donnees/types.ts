@@ -239,18 +239,24 @@ export interface PieceStudio {
   chantier?: boolean;
   /** Une demande de validation ouverte côté cliente : la pièce est « attente client ». */
   validation?: { question: string; ouverteLe: string; fermeeLe?: string | null } | null;
-  retours?: { id: string; texte: string; page?: string | null; at: string; par?: string | null; traiteLe?: string | null }[];
-  croquis?: { id: string; titre: string; genre: 'maquette' | 'croquis' | 'capture' | 'inspiration'; image?: string | null; legende?: string; rot?: number; punaises?: { n: number; x: number; y: number; texte: string; decision?: boolean; trancheeLe?: string | null }[] }[];
-  prompts?: { id: string; nom: string; versions: { v: number; texte: string; resultat?: string; enLigne?: boolean; at: string; par?: string }[] }[];
+  /** Un retour de la cliente, épinglé sur sa page (`x`, `y` en % de la page). */
+  retours?: { id: string; texte: string; page?: string | null; at: string; par?: string | null; traiteLe?: string | null; x?: number; y?: number; reponse?: string | null }[];
+  /**
+   * Le mur (`48a`) : `x`, `y` et `largeur` en unités de mur (1000 = toute la
+   * largeur), pour qu'une pièce reste où on l'a déposée quelle que soit la
+   * taille de la fenêtre. Sans position, le mur les range lui-même.
+   */
+  croquis?: { id: string; titre: string; genre: 'maquette' | 'croquis' | 'capture' | 'inspiration'; image?: string | null; legende?: string; rot?: number; x?: number; y?: number; largeur?: number; ratio?: number; punaises?: { n: number; x: number; y: number; texte: string; decision?: boolean; trancheeLe?: string | null }[] }[];
+  prompts?: { id: string; nom: string; categorie?: string; versions: { v: number; texte: string; resultat?: string; enLigne?: boolean; at: string; par?: string }[] }[];
   notes?: { id: string; texte: string; par: string; at: string }[];
-  /** Les relevés hebdomadaires (lundi AAAA-MM-JJ) de l'analytique (`48c`). */
-  mesures?: { semaine: string; visites: number; conversions: number; p75: number; dispo: number; erreurs: number; jours?: number[] }[];
+  /** Les relevés hebdomadaires de l'analytique (`48c`) : `semaine` = le dernier des 7 jours couverts (AAAA-MM-JJ), `jours` = ces 7 jours. */
+  mesures?: { semaine: string; visites: number; conversions: number; p75: number; dispo: number; erreurs: number; jours?: number[]; p75Mobile?: number; p75Bureau?: number; sources?: { nom: string; part: number }[] }[];
   /** La cause d'une dégradation, quand on l'a trouvée. */
   causes?: Record<string, string>;
   livraison?: {
     version: string;
     points: { id: string; texte: string; bloquant: boolean; coche: boolean }[];
-    misesEnLigne?: { version: string; at: string; par: string }[];
+    misesEnLigne?: { version: string; at: string; par: string; quoi?: string }[];
   };
   /** Budget de performance : poids par page, en Ko, contre un plafond. */
   budget?: { plafondKo: number; pages: { page: string; ko: number }[] };
@@ -283,15 +289,26 @@ export interface Campagne {
 /** `publications` : le calendrier éditorial (`49c`). */
 export interface Publication {
   jour: string;
-  canal: 'LI' | 'IG' | 'FB' | 'YT' | 'TT';
+  /** LinkedIn, Instagram, Facebook, YouTube, TikTok, et la lettre d'information (`NL`). */
+  canal: 'LI' | 'IG' | 'FB' | 'YT' | 'TT' | 'NL';
   titre: string;
   etat: 'publiee' | 'programmee' | 'a_valider';
+  /** L'heure de sortie prévue (« 18:00 »). */
+  heure?: string | null;
+  /** Ce qui manque, ou ce qu'il faut savoir avant de valider. */
+  note?: string | null;
+  /** Une fois publiée : l'engagement (réseaux) ou l'ouverture (lettre), en %. */
+  engagement?: number | null;
   campagneId?: string | null;
   par?: string;
 }
 /** `strategieMur` : une pièce punaisée sur le mur (`45d`), et les chiffres en notes. */
 export interface PieceMur {
-  type: 'campagne' | 'prospect' | 'chiffre';
+  /**
+   * `campagne`, `prospect`, `chiffre` : les pièces de l'accueil (`45d`).
+   * `question`, `indice` : la zone Enquête ; `note` : le Liège.
+   */
+  type: 'campagne' | 'prospect' | 'chiffre' | 'question' | 'indice' | 'note';
   refId?: string | null;
   x: number;
   y: number;
@@ -299,6 +316,19 @@ export interface PieceMur {
   valeur?: string;
   libelle?: string;
   campagneId?: string | null;
+  /** Le texte d'une question, d'un indice, d'une note. */
+  texte?: string;
+  /** Un indice répond à une question. */
+  questionId?: string | null;
+  /** Ce que dit l'indice : pour, contre, ou à côté. */
+  sens?: 'pour' | 'contre' | 'neutre';
+  /** D'où vient l'indice (« entretien, Maison Oré »). */
+  source?: string | null;
+  /** Une question se tranche avant une date ; son verdict la ferme. */
+  echeance?: string | null;
+  verdict?: string | null;
+  par?: string;
+  at?: string;
 }
 /** `temoignages` : la banque de témoignages. */
 export interface Temoignage {
@@ -324,7 +354,14 @@ export interface ProspectStrategie {
   createdAt: string;
   movedAt: string;
   ville?: string | null;
-  prochaine?: { quoi: string; at: string; appel?: boolean } | null;
-  echanges?: { id: string; type: 'envoi' | 'ouverture' | 'page' | 'appel' | 'rdv' | 'note'; texte: string; at: string }[];
+  /** « Décoration », « Boulangerie ». */
+  secteur?: string | null;
+  /** Le rôle de la personne (« gérante »). */
+  role?: string | null;
+  telephone?: string | null;
+  /** Qui l'a recommandé (« Atelier Nord ») — un fil sur le mur. */
+  venuPar?: string | null;
+  prochaine?: { quoi: string; at: string; appel?: boolean; detail?: string | null } | null;
+  echanges?: { id: string; type: 'envoi' | 'ouverture' | 'page' | 'appel' | 'rdv' | 'note'; texte: string; at: string; par?: string | null }[];
   campagneId?: string | null;
 }

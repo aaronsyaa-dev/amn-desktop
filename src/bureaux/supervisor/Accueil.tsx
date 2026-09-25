@@ -111,8 +111,11 @@ export function SupervisorAccueil() {
             <Invitation titre="Aucune organisation n’est encore suivie." texte="L’horizon se dresse dès la première organisation créée : une tour par cliente, haute de ce qui demande un humain." action={<Link to="/tour/generateur" className="bx-btn2">Créer une organisation</Link>} />
           </div>
         </Carte>
-      ) : src.pannes.length && !src.organisations.length ? (
-        <Erreur pannes={src.pannes} at={src.at} relancer={() => void src.recharger()} />
+      ) : src.pannes.includes('organisations') ? (
+        // Le parc ne répond plus : le dernier horizon connu, atténué, daté de sa dernière pesée (`46i`).
+        <Erreur pannes={src.pannes} at={src.reussites.organisations ?? null} relancer={() => void src.recharger()}>
+          {src.organisations.length ? contenu : null}
+        </Erreur>
       ) : (
         <>
           {src.pannes.length > 0 && <Erreur pannes={src.pannes} at={src.at} relancer={() => void src.recharger()} />}

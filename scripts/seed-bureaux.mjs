@@ -277,14 +277,15 @@ for (const [numero, o, quoi, etat, question] of pieces) {
     p.chantier = numero !== 3;
     p.validation = { question, ouverteLe: le(3 + numero / 3) };
   }
-  if (numero === 4) p.livraison = { version: '2.4', points: [], misesEnLigne: [{ version: '2.3', at: le(3, 11), par: EQUIPE.mohamed }] };
-  if (numero === 8) p.livraison = { version: '1.3', points: [], misesEnLigne: [{ version: 'correctif du formulaire', at: le(2, 15), par: EQUIPE.mohamed }] };
-  if (numero === 1) p.livraison = { version: '1.2', points: [], misesEnLigne: [{ version: 'page Tarifs', at: le(1, 10), par: EQUIPE.mohamed }] };
-  if (numero === 9) p.livraison = { version: '1.1', points: [], misesEnLigne: [{ version: 'version 1.0', at: le(0, 9), par: EQUIPE.mohamed }] };
+  if (numero === 4) p.livraison = { version: '2.4', points: [], misesEnLigne: [{ version: '2.2', at: le(19, 10), par: EQUIPE.mohamed, quoi: 'Galerie' }, { version: '2.3', at: le(3, 11), par: EQUIPE.mohamed, quoi: 'Formulaire de réservation' }] };
+  if (numero === 8) p.livraison = { version: '1.4', points: [], misesEnLigne: [{ version: '1.3', at: le(2, 15), par: EQUIPE.mohamed, quoi: 'Correctif du formulaire' }] };
+  if (numero === 1) p.livraison = { version: '1.3', points: [], misesEnLigne: [{ version: '1.2', at: le(1, 10), par: EQUIPE.mohamed, quoi: 'Page Tarifs' }] };
+  if (numero === 9) p.livraison = { version: '1.1', points: [], misesEnLigne: [{ version: '1.0', at: le(0, 9), par: EQUIPE.mohamed, quoi: 'Première mise en ligne' }] };
   if (etat === 'retour') {
     p.retours = [
-      { id: 'r1', texte: 'le créneau du samedi n’apparaît pas', page: 'Commande', at: new Date(MAINTENANT - 2 * 3_600_000).toISOString(), par: 'marc@keller.test' },
-      { id: 'r0', texte: 'mettre le pain au levain en premier', page: 'Accueil', at: le(9), par: 'marc@keller.test', traiteLe: le(8) },
+      { id: 'r1', texte: 'le créneau du samedi n’apparaît pas', page: 'Commande', at: new Date(MAINTENANT - 2 * 3_600_000).toISOString(), par: 'marc@keller.test', x: 62, y: 34 },
+      { id: 'r2', texte: 'mettre la photo de la vitrine plus haut', page: 'Commande', at: new Date(MAINTENANT - 40 * 60_000).toISOString(), par: 'marc@keller.test', x: 30, y: 72 },
+      { id: 'r0', texte: 'mettre le pain au levain en premier', page: 'Accueil', at: le(9), par: 'marc@keller.test', traiteLe: le(8), reponse: 'C’est fait : le levain ouvre la page.' },
     ];
     p.croquis = [
       { id: 'c1', titre: 'Maquette · page Commande', genre: 'maquette', legende: 'v3, validée le 12', rot: -1, punaises: [{ n: 1, x: 62, y: 38, texte: 'Le créneau du samedi : afficher 7 h – 12 h ou fermer la journée ?', decision: true }, { n: 2, x: 24, y: 70, texte: 'Le bouton passe sous la liste sur téléphone.' }] },
@@ -293,17 +294,37 @@ for (const [numero, o, quoi, etat, question] of pieces) {
       { id: 'c4', titre: 'Inspiration · boulangerie de quartier', genre: 'inspiration', legende: 'les photos en pleine largeur', rot: 0.8 },
     ];
     p.prompts = [
-      { id: 'pr1', nom: 'Fiche produit', versions: [
-        { v: 1, texte: 'Écris une fiche produit pour {produit}.', resultat: 'trop générique', at: le(30), par: EQUIPE.mohamed },
-        { v: 2, texte: 'Écris une fiche produit de 40 mots pour {produit}, ton chaleureux, sans superlatif.', resultat: 'bien, mais oublie les allergènes', at: le(24), par: EQUIPE.mohamed },
-        { v: 3, texte: 'Écris une fiche produit de 40 mots pour {produit}, ton chaleureux, sans superlatif. Termine par les allergènes, en une ligne.', resultat: 'retenue : c’est celle en ligne', enLigne: true, at: le(18), par: EQUIPE.mohamed },
-        { v: 4, texte: 'Écris une fiche produit de 40 mots pour {produit}, ton chaleureux, sans superlatif. Termine par les allergènes et le prix au kilo.', resultat: 'en essai', at: le(2), par: EQUIPE.mohamed },
+      { id: 'pr1', nom: 'Fiche produit', categorie: 'Produits', versions: [
+        { v: 1, texte: 'Écris une fiche produit pour {produit}.', resultat: 'Un bon pain, fait avec amour.', at: le(30), par: EQUIPE.mohamed },
+        { v: 2, texte: 'Écris une fiche produit de 40 mots pour {produit}, ton chaleureux, sans superlatif.', resultat: 'Pain de campagne au levain, croûte épaisse, mie ouverte. Il se garde quatre jours.', at: le(24), par: EQUIPE.mohamed },
+        { v: 3, texte: 'Écris une fiche produit de 40 mots pour {produit}, ton chaleureux, sans superlatif. Termine par les allergènes, en une ligne.', resultat: 'Pain de campagne au levain, croûte épaisse, mie ouverte. Il se garde quatre jours. Allergènes : gluten.', enLigne: true, at: le(18), par: EQUIPE.mohamed },
+        { v: 4, texte: 'Écris une fiche produit de 40 mots pour {produit}, ton chaleureux, sans superlatif. Termine par les allergènes et le prix au kilo.', resultat: 'Pain de campagne au levain, croûte épaisse. Allergènes : gluten. 6,80 € le kilo.', at: le(2), par: EQUIPE.mohamed },
       ] },
-      { id: 'pr2', nom: 'Message de confirmation', versions: [{ v: 1, texte: 'Confirme la commande {numero} pour {date}, retrait en boutique.', resultat: 'en ligne', enLigne: true, at: le(20), par: EQUIPE.mohamed }] },
+      { id: 'pr2', nom: 'Message de confirmation', categorie: 'Courriel', versions: [{ v: 1, texte: 'Confirme la commande {numero} pour {date}, retrait en boutique.', resultat: 'Votre commande n° 1042 vous attend samedi, dès 7 h, au comptoir.', enLigne: true, at: le(20), par: EQUIPE.mohamed }] },
+      { id: 'pr3', nom: 'Textes alternatifs des photos', categorie: 'Accessibilité', versions: [
+        { v: 1, texte: 'Décris cette photo.', resultat: 'trop vague', at: le(16), par: EQUIPE.mohamed },
+        { v: 2, texte: 'Décris cette photo de boulangerie en 12 mots au plus, sans « image de ».', resultat: 'Pains au levain alignés sur une grille, croûte dorée, farine au bord.', enLigne: true, at: le(14), par: EQUIPE.mohamed },
+      ] },
     ];
     p.notes = [{ id: 'nt1', texte: 'Le client préfère être appelé plutôt qu’écrit.', par: EQUIPE.mohamed, at: le(15) }];
+    // Huit relevés, du plus récent au plus ancien : plus de visites, mais le chargement a pris 50 %.
     const semaines = [0, 7, 14, 21, 28, 35, 42, 49].map((j) => jour(j));
-    p.mesures = semaines.map((s, i) => ({ semaine: s, visites: 1320 - i * 40 + (i % 2) * 90, conversions: 61 - i * 2, p75: i === 0 ? 3.9 : 2.1 + (i % 3) * 0.1, dispo: i === 0 ? 99.2 : 99.9, erreurs: i === 0 ? 14 : 3 + (i % 2), jours: [180, 176, 210, 190, 205, 240, 119].map((v) => v - i * 3) }));
+    const VISITES = [1482, 1361, 1402, 1290, 1335, 1254, 1301, 1188];
+    const CONVERSIONS = [64, 58, 60, 55, 57, 52, 54, 49];
+    const P75 = [3.3, 2.2, 2.1, 2.3, 2.2, 2.1, 2.2, 2.3];
+    const DISPO = [99.94, 99.97, 99.98, 99.95, 99.99, 99.97, 99.96, 99.98];
+    const ERREURS = [5, 4, 3, 4, 2, 3, 4, 3];
+    const FORME = [0.13, 0.12, 0.15, 0.14, 0.15, 0.19, 0.12];
+    p.mesures = semaines.map((s, i) => ({
+      semaine: s,
+      visites: VISITES[i],
+      conversions: CONVERSIONS[i],
+      p75: P75[i],
+      dispo: DISPO[i],
+      erreurs: ERREURS[i],
+      jours: FORME.map((f, k) => Math.round(VISITES[i] * f * (1 + ((k + i) % 3) * 0.03))),
+      ...(i === 0 ? { p75Mobile: 4.1, p75Bureau: 1.7, sources: [{ nom: 'Recherche', part: 44 }, { nom: 'Direct', part: 24 }, { nom: 'Instagram', part: 19 }, { nom: 'Lettre', part: 8 }, { nom: 'Autres', part: 5 }] } : {}),
+    }));
     p.causes = { p75: 'Les photos de la nouvelle page Commande ne sont pas compressées : 4,2 Mo au lieu de 600 Ko.' };
     p.livraison = {
       version: '3.2',
@@ -314,8 +335,9 @@ for (const [numero, o, quoi, etat, question] of pieces) {
         { id: 'l4', texte: 'Vérifier le panier sur téléphone', bloquant: false, coche: false },
       ],
       misesEnLigne: [
-        { version: '3.0', at: le(40), par: EQUIPE.mohamed },
-        { version: '3.1', at: le(12), par: EQUIPE.mohamed },
+        { version: '2.9', at: le(61), par: EQUIPE.mohamed, quoi: 'Mentions légales' },
+        { version: '3.0', at: le(40), par: EQUIPE.mohamed, quoi: 'Refonte de l’accueil' },
+        { version: '3.1', at: le(5), par: EQUIPE.mohamed, quoi: 'Page Commande' },
       ],
     };
     p.budget = { plafondKo: 1500, pages: [{ page: 'Accueil', ko: 820 }, { page: 'Commande', ko: 4200 }, { page: 'Panier', ko: 640 }, { page: 'Contact', ko: 310 }] };
@@ -331,19 +353,27 @@ for (const [numero, o, quoi, etat, question] of pieces) {
 
 /* ── Stratégie : prospects, campagnes, calendrier, mur, témoignages ───── */
 const prospects = [
-  ['bx-prospect-ore', 'Maison Oré', 'Anne Oré', 'proposition', 480000, 'site', { prochaine: { quoi: 'appeler', at: le(0, 9), appel: true }, echanges: [
-    { id: 'e1', type: 'envoi', texte: 'Devis envoyé : refonte et boutique', at: le(4, 16) },
-    { id: 'e2', type: 'ouverture', texte: 'Devis ouvert', at: le(3, 9, 12) },
-    { id: 'e3', type: 'page', texte: 'Page « Tarifs » consultée', at: le(3, 9, 14) },
-    { id: 'e4', type: 'ouverture', texte: 'Devis ouvert', at: le(1, 21, 40) },
-    { id: 'e5', type: 'ouverture', texte: 'Devis ouvert', at: le(0, 7, 55) },
-  ], source: 'bouche' }],
-  ['bx-prospect-nord', 'Atelier Nord', 'Hugo Lambert', 'qualifie', 260000, 'salon', { prochaine: { quoi: 'rendez-vous', at: le(-5, 10) }, echanges: [{ id: 'e1', type: 'rdv', texte: 'Rencontré au salon des artisans', at: le(12) }], source: 'salon' }],
-  ['bx-prospect-lumiere', 'Lumière & Bois', 'Julie Rey', 'contact', 120000, 'site', { prochaine: { quoi: 'relancer', at: le(1, 9) }, echanges: [{ id: 'e1', type: 'envoi', texte: 'Présentation envoyée', at: le(8) }] }],
-  ['bx-prospect-cave', 'La Cave du Parc', 'Louis Faure', 'proposition', 310000, 'bouche', { prochaine: { quoi: 'relancer', at: le(0, 14) }, echanges: [{ id: 'e1', type: 'envoi', texte: 'Devis envoyé', at: le(10) }] }],
+  ['bx-prospect-ore', 'Maison Oré', 'Nadia Oré', 'proposition', 18000, 'bouche', { secteur: 'Décoration', ville: 'Lyon 2ᵉ', role: 'gérante', telephone: '06 12 88 40 71', venuPar: 'Atelier Nord', prochaine: { quoi: 'appeler', at: le(0, 9), appel: true, detail: 'Elle a regardé la page Tarifs ce matin. Proposer un premier passage d’essai.' }, echanges: [
+    { id: 'e1', type: 'envoi', texte: 'Devis envoyé · entretien mensuel de la vitrine, 180 € HT', at: le(3, 9, 10), par: EQUIPE.riyad },
+    { id: 'e2', type: 'ouverture', texte: 'Devis ouvert', at: le(3, 18, 42) },
+    { id: 'e3', type: 'ouverture', texte: 'Devis ouvert', at: le(1, 7, 55) },
+    { id: 'e4', type: 'page', texte: 'Devis ouvert, page Tarifs consultée', at: le(0, 7, 30) },
+    { id: 'e5', type: 'ouverture', texte: 'Devis ouvert', at: le(0, 7, 29) },
+  ] }],
+  ['bx-prospect-nord', 'Atelier Nord', 'Hugo Lambert', 'proposition', 26000, 'salon', { secteur: 'Menuiserie', ville: 'Lyon 7ᵉ', prochaine: { quoi: 'rendez-vous', at: le(-5, 10) }, echanges: [{ id: 'e1', type: 'rdv', texte: 'Rencontré au salon des artisans', at: le(12), par: EQUIPE.riyad }, { id: 'e2', type: 'envoi', texte: 'Devis envoyé · site et commande en ligne', at: le(6, 11), par: EQUIPE.riyad }] }],
+  ['bx-prospect-voss', 'Galerie Voss', 'Ines Voss', 'proposition', 42000, 'site', { prochaine: { quoi: 'relancer', at: le(5, 9) }, echanges: [{ id: 'e1', type: 'envoi', texte: 'Devis envoyé', at: le(14), par: EQUIPE.riyad }, { id: 'e2', type: 'envoi', texte: 'Relance envoyée', at: le(5, 9), par: EQUIPE.riyad }] }],
+  ['bx-prospect-luce', 'Café Luce', 'Paul Luce', 'proposition', 9000, 'bouche', { echanges: [{ id: 'e1', type: 'envoi', texte: 'Devis envoyé', at: le(4), par: EQUIPE.riyad }, { id: 'e2', type: 'ouverture', texte: 'Devis ouvert', at: le(3, 20) }] }],
+  ['bx-prospect-lumiere', 'Lumière & Bois', 'Julie Rey', 'contact', 12000, 'site', { prochaine: { quoi: 'relancer', at: le(-1, 9) }, echanges: [{ id: 'e1', type: 'envoi', texte: 'Présentation envoyée', at: le(8), par: EQUIPE.riyad }] }],
+  ['bx-prospect-sol', 'Épicerie Sol', 'Sami Sol', 'contact', 8000, 'salon', {}],
+  ['bx-prospect-arnaud', 'Menuiserie Arnaud', 'Luc Arnaud', 'contact', 15000, 'bouche', {}],
+  ['bx-prospect-quais', 'Librairie des Quais', 'Eva Martin', 'qualifie', 11000, 'site', { prochaine: { quoi: 'envoyer le devis', at: le(-2, 9) } }],
+  ['bx-prospect-petit', 'Garage Petit', 'Marc Petit', 'qualifie', 16000, 'bouche', {}],
+  ['bx-prospect-cave', 'La Cave du Parc', 'Louis Faure', 'qualifie', 31000, 'bouche', { prochaine: { quoi: 'relancer', at: le(0, 14) }, echanges: [{ id: 'e1', type: 'appel', texte: 'Premier appel : il veut une boutique de vins', at: le(10), par: EQUIPE.riyad }] }],
+  ['bx-prospect-nove', 'Brasserie Nove', 'Léa Nove', 'gagne', 24000, 'bouche', { echanges: [{ id: 'e1', type: 'rdv', texte: 'Devis signé', at: le(6), par: EQUIPE.riyad }] }],
+  ['bx-prospect-pressing', 'Pressing Lumière', 'Omar Haddad', 'gagne', 9500, 'site', {}],
 ];
 for (const [id, company, name, stage, valueCents, source, extra] of prospects) {
-  await poser('prospects', id, { name, company, valueCents, stage, note: '', source, createdAt: le(30), movedAt: le(4), campagneId: id === 'bx-prospect-ore' || id === 'bx-prospect-nord' ? 'bx-camp-automne' : null, ...extra });
+  await poser('prospects', id, { name, company, valueCents, stage, note: '', source, createdAt: le(30), movedAt: stage === 'gagne' ? le(Math.min(3, new Date(MAINTENANT).getDate() - 1)) : le(4), campagneId: id === 'bx-prospect-ore' || id === 'bx-prospect-nord' ? 'bx-camp-automne' : null, ...extra });
 }
 await poser('campagnes', 'bx-camp-automne', {
   titre: 'Automne · commerces de proximité',
@@ -367,27 +397,63 @@ await poser('campagnes', 'bx-camp-temoignages', { titre: 'Témoignages clients',
 await poser('campagnes', 'bx-camp-rentree', { titre: 'Rentrée cyber', etape: 'idee', resultat: 'À scénariser avec Harun', creePar: EQUIPE.riyad, at: le(3) });
 await poser('campagnes', 'bx-camp-lettre', { titre: 'Lettre de septembre', etape: 'close', rapporte: '2 rendez-vous, 1 devis signé', publieeLe: le(25), courbe: [0, 310, 420, 455], creePar: EQUIPE.riyad, at: le(35) });
 await poser('campagnes', 'bx-camp-scenario', { titre: 'Portraits d’artisans', etape: 'scenario', resultat: 'trois portraits, 45 s chacun', creePar: EQUIPE.riyad, at: le(8) });
-// Le calendrier : la semaine en cours, et la publication du jour qui attend une validation.
+await poser('campagnes', 'bx-camp-portes', { titre: 'Portes ouvertes du printemps', etape: 'idee', creePar: EQUIPE.riyad, at: le(23) });
+await poser('campagnes', 'bx-camp-rentree-passee', { titre: 'Rentrée de l’an dernier', etape: 'close', rapporte: '4 devis issus', publieeLe: le(380), creePar: EQUIPE.riyad, at: le(400) });
+// Le calendrier : le mois en cours, et la publication du jour qui attend une validation.
 const aujourdHui = new Date(MAINTENANT);
-const lundi = (aujourdHui.getDay() + 6) % 7;
+const quantieme = aujourdHui.getDate();
+const dansLeMois = (q) => q >= 1 && q <= new Date(aujourdHui.getFullYear(), aujourdHui.getMonth() + 1, 0).getDate();
 const pubs = [
-  [-lundi + 0, 'LI', 'Portrait : Cabinet Arnoux', 'publiee'],
-  [-lundi + 1, 'IG', 'Coulisses du tournage', 'publiee'],
-  [-lundi + 1, 'FB', 'Coulisses du tournage', 'publiee'],
-  [0, 'LI', 'Automne : le quartier se prépare', 'a_valider'],
-  [0, 'IG', 'Le four du matin', 'programmee'],
-  [-lundi + 4, 'FB', 'Témoignage : Cabinet Arnoux', 'programmee'],
-  [-lundi + 5, 'IG', 'Le marché du samedi', 'programmee'],
+  [1, 'LI', 'Rentrée : ce qui change pour les commerces', 4.2],
+  [2, 'IG', 'Coulisses du tournage', 3.4],
+  [3, 'FB', 'Le marché du samedi', 1.1],
+  [6, 'IG', 'Portrait : Cabinet Arnoux', 2.9],
+  [8, 'LI', 'Cinq questions à une fleuriste', 5.3],
+  [10, 'IG', 'Le four du matin', 3.1],
+  [11, 'FB', 'Témoignage : Cabinet Arnoux', 1.3],
+  [13, 'IG', 'Avant, après : la vitrine', 2.6],
+  [15, 'LI', 'Pourquoi un site de quartier', 4.9],
+  [16, 'NL', 'Lettre de septembre', 38],
+  [17, 'IG', 'Trois commerces, une rue', 3.3],
+  [20, 'IG', 'La commande du samedi', 3.0],
+  [22, 'LI', 'Ce que disent nos clientes', 4.6],
+  [24, 'IG', 'Les mains du boulanger', 3.2],
 ];
 n = 0;
-for (const [decalage, canal, titre, etat] of pubs) {
-  const j = jour(-decalage);
-  await poser('publications', `bx-pub-${n++}`, { jour: j, canal, titre, etat: decalage < 0 ? 'publiee' : etat, campagneId: titre.startsWith('Automne') ? 'bx-camp-automne' : titre.startsWith('Témoignage') ? 'bx-camp-temoignages' : null, par: EQUIPE.riyad });
+for (const [q, canal, titre, engagement] of pubs) {
+  if (!dansLeMois(q) || q >= quantieme) continue;
+  await poser('publications', `bx-pub-${n++}`, { jour: jour(quantieme - q), canal, titre, etat: 'publiee', engagement, par: EQUIPE.riyad });
+}
+const aVenir = [
+  [0, 'LI', 'Trois commerces du quartier nous racontent leur rentrée', 'a_valider', '18:00', 'Le texte est prêt, l’image attend votre accord.', 'bx-camp-automne'],
+  [0, 'IG', 'Le four du matin, en vidéo', 'programmee', '12:00', null, null],
+  [1, 'FB', 'Automne : le quartier se prépare', 'programmee', '09:00', null, 'bx-camp-automne'],
+  [2, 'IG', 'Le marché du samedi', 'programmee', '10:00', null, null],
+];
+for (const [dans, canal, titre, etat, heure, note, campagneId] of aVenir) {
+  if (!dansLeMois(quantieme + dans)) continue;
+  await poser('publications', `bx-pub-${n++}`, { jour: jour(-dans), canal, titre, etat, heure, note, campagneId, par: EQUIPE.riyad });
 }
 await poser('temoignages', 'bx-temo-arnoux', { orgId: ARNOUX.id, auteur: ARNOUX.name, texte: 'On a enfin un site qui nous ressemble, et quelqu’un qui répond.', accord: 'oui', campagnes: ['bx-camp-temoignages'], at: le(30) });
 await poser('temoignages', 'bx-temo-keller', { orgId: KELLER.id, auteur: KELLER.name, texte: 'Les commandes du samedi ont doublé.', accord: 'en_attente', campagnes: [], at: le(5) });
 await poser('strategieMur', 'bx-chiffre-ouverture', { type: 'chiffre', valeur: '38 %', libelle: 'd’ouverture pour la lettre de septembre', campagneId: 'bx-camp-temoignages', x: 62, y: 250, rot: 1.5 });
 await poser('strategieMur', 'bx-chiffre-objectifs', { type: 'chiffre', valeur: '4 / 12', libelle: 'objectifs du trimestre atteints', campagneId: 'bx-camp-rentree', x: 80, y: 238, rot: -1 });
+await poser('strategieMur', 'bx-q-commande', { type: 'question', texte: 'Les commerces de quartier veulent-ils commander en ligne, ou seulement être trouvés ?', echeance: jour(0), verdict: null, x: 0, y: 0, rot: 0, par: EQUIPE.riyad, at: le(20) });
+await poser('strategieMur', 'bx-i-keller', { type: 'indice', questionId: 'bx-q-commande', sens: 'pour', texte: 'Les commandes du samedi ont doublé chez Keller depuis la commande en ligne.', source: 'Boulangerie Keller, relevé de septembre', x: 0, y: 0, rot: 0, par: EQUIPE.riyad, at: le(6) });
+await poser('strategieMur', 'bx-i-ore', { type: 'indice', questionId: 'bx-q-commande', sens: 'contre', texte: 'Maison Oré veut d’abord qu’on la trouve sur une carte ; la commande viendra après.', source: 'entretien, Maison Oré', x: 0, y: 0, rot: 0, par: EQUIPE.riyad, at: le(3) });
+await poser('strategieMur', 'bx-i-salon', { type: 'indice', questionId: 'bx-q-commande', sens: 'neutre', texte: 'Au salon, sur 14 artisans, 9 ont demandé « combien ça coûte » avant « qu’est-ce que ça fait ».', source: 'salon des artisans', x: 0, y: 0, rot: 0, par: EQUIPE.riyad, at: le(12) });
+await poser('strategieMur', 'bx-q-lettre', { type: 'question', texte: 'Une lettre par mois suffit-elle, ou faut-il passer à deux ?', echeance: jour(-20), verdict: null, x: 0, y: 0, rot: 0, par: EQUIPE.riyad, at: le(8) });
+await poser('strategieMur', 'bx-i-ouverture', { type: 'indice', questionId: 'bx-q-lettre', sens: 'pour', texte: '38 % d’ouverture pour la lettre de septembre, contre 31 % en août.', source: 'Lettre de septembre', x: 0, y: 0, rot: 0, par: EQUIPE.riyad, at: le(8) });
+await poser('strategieMur', 'bx-q-prix', { type: 'question', texte: 'Afficher les prix sur le site public ?', echeance: jour(30), verdict: 'Oui, une fourchette par formule : les devis ouverts trois fois sans réponse le demandaient.', x: 0, y: 0, rot: 0, par: EQUIPE.riyad, at: le(40) });
+await poser('strategieMur', 'bx-note-1', { type: 'note', texte: 'Les fleuristes demandent toutes la même chose : le retrait en boutique, avec un créneau.', x: 0, y: 0, rot: -1.2, par: EQUIPE.riyad, at: le(4) });
+await poser('strategieMur', 'bx-note-2', { type: 'note', texte: '« Je ne veux pas un site, je veux qu’on me trouve. » — une cliente au salon.', x: 0, y: 0, rot: 0.8, par: EQUIPE.riyad, at: le(9) });
+await poser('strategieMur', 'bx-note-3', { type: 'note', texte: 'Vérifier : les avis Google comptent-ils plus que le site pour un commerce de quartier ?', x: 0, y: 0, rot: 1.4, par: EQUIPE.mohamed, at: le(2) });
+{
+  const periode = new Date(MAINTENANT).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  await poser('objectives', 'obj-revenue', { label: 'Chiffre d’affaires visé', unit: '€', targetValue: 6000, currentValue: Math.round((6000 * quantieme) / 30 / 100) * 100 + 400, periodLabel: periode });
+  await poser('objectives', 'obj-clients', { label: 'Nouveaux clients visés', unit: 'clients', targetValue: 4, currentValue: Math.max(0, Math.floor((4 * quantieme) / 30) - 2), periodLabel: periode });
+  await poser('objectives', 'bx-obj-rdv', { label: 'Rendez-vous pris', unit: 'rendez-vous', targetValue: 12, currentValue: Math.round((12 * quantieme) / 30), periodLabel: periode });
+}
 
 /* ── Cyber : la fiche d'enquête du critique ouvert, s'il y en a un ───── */
 const q = await fetch(`${API}/v1/admin/incidents/queue?status=open&severity=critical&limit=5`, { headers: H });

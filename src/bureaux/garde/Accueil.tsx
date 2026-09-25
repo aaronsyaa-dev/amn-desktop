@@ -178,6 +178,9 @@ function Organigramme({ chefs, chefAmbre, agentAmbre, comptes }: { chefs: Chef[]
                   })}
                   {c.agents.length > REPLI && <li className="py-[5px] font-mono text-[10px] tracking-[0.1em] text-[#9a9a97]">+ {c.agents.length - REPLI + 1} GARDES</li>}
                 </ul>
+                <Link to={`/garde/bureaux/${encodeURIComponent(c.key)}/historique`} className="ml-3 mt-1.5 inline-block font-mono text-[9.5px] tracking-[0.1em] text-[#9a9a97] hover:text-[#f7f7f5]" aria-label={`Les trente derniers jours de ${c.titre}`}>
+                  30 JOURS →
+                </Link>
               </li>
             );
           })}

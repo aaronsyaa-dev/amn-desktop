@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useSync } from '../../state/SyncContext';
 import { AMBRE } from '../jetons';
 import { useStudio, LIBELLE_ETAT, type ModeleStudio, type Piece } from '../donnees/studio';
-import { Carte, EnTete, Invitation, Ligne, Paire } from '../ui/kit';
+import { Carte, Chargement, EnTete, Erreur, Invitation, Ligne, Paire } from '../ui/kit';
 import { enLettres, enLettresF, ilYA, jourCourt } from '../format';
 import { EcranVide } from '../../components/EtatEcran';
 
@@ -14,6 +15,11 @@ import { EcranVide } from '../../components/EtatEcran';
  * client. À l'entrée, les fenêtres s'allument une à une en 600 ms, puis plus
  * rien ne bouge, sauf la fenêtre ambre qui respire : la seule pièce où c'est
  * Mohamed qu'on attend.
+ *
+ * Les états (`48e`) : vide — la façade dessinée, une invitation, pas d'ambre ;
+ * chargement — la façade éteinte tant que les pièces n'ont pas répondu ;
+ * chargé — au-delà de trois étages ouverts, le haut se replie étage par
+ * étage ; erreur — la dernière façade connue, atténuée, datée, et la relance.
  */
 
 const PAR_ETAGE = 4;
@@ -21,36 +27,62 @@ const ETAGES_OUVERTS = 3;
 
 export function StudioAccueil() {
   const s = useStudio();
-  const [tout, setTout] = useState(false);
+  const { ready, pullFailed } = useSync();
+  const [ouverts, setOuverts] = useState(ETAGES_OUVERTS);
   const vide = s.pieces.length === 0;
   const n = s.pieces.length;
-  const ouvertes = tout ? s.pieces : s.pieces.slice(0, PAR_ETAGE * ETAGES_OUVERTS);
-  const repliees = n - ouvertes.length;
-  const titre = vide
-    ? 'La façade attend sa première pièce.'
-    : `${enLettresF(n, true)} pièce${n > 1 ? 's' : ''}. ${s.ambre ? `${s.retoursOuverts.length > 1 ? `${enLettresF(s.retoursOuverts.length, true)} attendent` : 'Une attend'} votre réponse.` : 'Aucune ne vous attend.'}`;
-  const lede = vide ? 'Chaque site ou application devient une pièce : une porte dans la barre, une fenêtre dans la façade.' : phrase(s);
+  const chargement = !ready && vide;
+  const etages = Math.ceil(n / PAR_ETAGE);
+  const montrees = s.pieces.slice(0, PAR_ETAGE * ouverts);
+  const ambreRepliee = s.ambre && !montrees.includes(s.ambre) ? s.ambre : null;
+  const derniere = s.pieces.map((p) => (p as { updatedAt?: string }).updatedAt ?? '').sort().pop() || null;
+  const titre = chargement
+    ? 'La façade s’allume.'
+    : vide
+      ? 'La façade attend sa première pièce.'
+      : `${enLettresF(n, true)} pièce${n > 1 ? 's' : ''}. ${s.ambre ? `${s.retoursOuverts.length > 1 ? `${enLettresF(s.retoursOuverts.length, true)} attendent` : 'Une attend'} votre réponse.` : 'Aucune ne vous attend.'}`;
+  const lede = chargement ? undefined : vide ? 'Chaque site ou application devient une pièce : une porte dans la barre, une fenêtre dans la façade.' : phrase(s);
+
+  const facade = (
+    <>
+      {etages > ouverts && (
+        <div className="mb-3 flex flex-col gap-1.5">
+          {etages - ouverts >= 2 && (
+            <Repli
+              texte={`${ouverts + 2}ᵉ → ${etages}ᵉ étage · ${n - PAR_ETAGE * (ouverts + 1)} pièces`}
+              ambre={Boolean(ambreRepliee && s.pieces.indexOf(ambreRepliee) >= PAR_ETAGE * (ouverts + 1))}
+              onClick={() => setOuverts(etages)}
+            />
+          )}
+          <Repli texte={`${ouverts + 1}ᵉ étage`} ambre={Boolean(ambreRepliee && s.pieces.indexOf(ambreRepliee) < PAR_ETAGE * (ouverts + 1))} onClick={() => setOuverts(ouverts + 1)} />
+        </div>
+      )}
+      <Facade pieces={montrees} ambre={s.ambre} />
+    </>
+  );
 
   return (
-    <EcranVide quand={vide} premierJour={vide}>
-      <EnTete accueil surtitre={`Studio · ${n} pièce${n > 1 ? 's' : ''}`} titre={titre} lede={lede} />
+    <EcranVide quand={vide && !chargement} premierJour={vide && !chargement}>
+      <EnTete accueil surtitre={`Studio · ${chargement ? 'lecture des pièces' : `${n} pièce${n > 1 ? 's' : ''}`}`} titre={titre} lede={lede} />
       <Carte dominante pad="p-7" titre="La façade · une fenêtre par pièce" droite="allumée = en ligne · échafaudage = chantier · store baissé = attente client">
-        {vide ? (
+        {chargement ? (
+          <>
+            <Facade pieces={[]} ambre={null} />
+            <Chargement texte="Lecture des pièces" />
+          </>
+        ) : vide ? (
           <>
             <Facade pieces={[]} ambre={null} />
             <div className="mt-6">
               <Invitation titre="Aucune pièce n’est encore ouverte." texte="Une pièce se crée pour chaque site ou application confié : son organisation, ce qu’on y construit, puis ses croquis, ses prompts et sa livraison." />
             </div>
           </>
+        ) : ready && pullFailed ? (
+          <Erreur pannes={['l’état des pièces']} at={derniere} relancer={() => window.dispatchEvent(new Event('online'))}>
+            {facade}
+          </Erreur>
         ) : (
-          <>
-            {repliees > 0 && (
-              <button type="button" onClick={() => setTout(true)} className="mb-3 w-full border border-dashed border-[#3a3834] py-2 font-mono text-[10px] tracking-[0.14em] text-[#a3a3a0] hover:text-[#f7f7f5]">
-                {repliees} PIÈCE{repliees > 1 ? 'S' : ''} DANS LES ÉTAGES DU HAUT · DÉPLIER
-              </button>
-            )}
-            <Facade pieces={ouvertes} ambre={s.ambre} />
-          </>
+          facade
         )}
       </Carte>
       <div className="mt-[18px]">
@@ -59,19 +91,31 @@ export function StudioAccueil() {
             {s.misesEnLigne.length === 0 ? (
               <p className="text-[13px] text-[#a3a3a0]">Rien n’est parti en ligne cette semaine.</p>
             ) : (
-              s.misesEnLigne.slice(-5).map((m) => <Ligne key={`${m.piece.id}-${m.version}-${m.at}`} a={jourCourt(m.at).split(' ')[0]} b={`${m.piece.plaque} · ${m.piece.orgNom} · ${m.version}`} c="EN LIGNE" lien={`/studio/pieces/${m.piece.id}/livraison`} />)
+              s.misesEnLigne.slice(-5).map((m) => <Ligne key={`${m.piece.id}-${m.version}-${m.at}`} a={jourCourt(m.at).split(' ')[0]} b={`${m.piece.plaque} · ${m.piece.orgNom} · ${/^\d/.test(m.version) ? `v${m.version}` : m.version}`} c="EN LIGNE" lien={`/studio/pieces/${m.piece.id}/livraison`} />)
             )}
           </Carte>
           <Carte titre="Qui attend qui">
             {s.quiAttend.length === 0 ? (
               <p className="text-[13px] text-[#a3a3a0]">Personne n’attend personne.</p>
             ) : (
-              s.quiAttend.slice(0, 5).map((q) => <Ligne key={`${q.piece.id}-${q.qui}`} a={q.piece.plaque} b={q.texte} c={q.qui === 'vous' ? 'VOUS' : 'ELLE'} lien={`/studio/pieces/${q.piece.id}/${q.qui === 'vous' ? 'retours' : 'livraison'}`} />)
+              s.quiAttend.slice(0, 5).map((q, i) => <Ligne key={`${q.piece.id}-${q.qui}-${i}`} a={q.piece.plaque} b={q.texte} c={q.qui === 'vous' ? 'VOUS' : 'ELLE'} lien={`/studio/pieces/${q.piece.id}/${q.qui === 'vous' ? 'retours' : q.texte.includes('trancher') ? 'croquis' : 'livraison'}`} />)
             )}
           </Carte>
         </Paire>
       </div>
     </EcranVide>
+  );
+}
+
+/** Un étage replié, en haut de la façade (`48e`, chargé). */
+function Repli({ texte, ambre, onClick }: { texte: string; ambre: boolean; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="flex items-center justify-between border border-[#2a2826] bg-[#100f0e] px-3.5 py-2 text-left hover:border-[#3a3834]" data-signal-groupe={ambre ? 'facade-ambre' : undefined}>
+      <span className="text-[12.5px] font-semibold text-[#e4e4e1]">› {texte}</span>
+      <span className="font-mono text-[10px] tracking-[0.12em]" style={{ color: ambre ? AMBRE : '#9a9a97' }}>
+        {ambre ? 'UNE PIÈCE VOUS ATTEND · REPLIÉ' : 'REPLIÉ'}
+      </span>
+    </button>
   );
 }
 
@@ -146,7 +190,7 @@ function Vitre({ etat, ambre }: { etat: Piece['etat'] | 'vide'; ambre: boolean }
 function Fenetre({ p, ambre, rang }: { p: Piece; ambre: boolean; rang: number }) {
   return (
     <li className="min-w-0" data-signal-groupe={ambre ? 'facade-ambre' : undefined}>
-      <Link to={`/studio/pieces/${p.id}`} className="bx-nav group block" aria-label={`${p.plaque}, ${p.orgNom} : ${p.quoi}. ${ambre ? 'Retour à traiter' : LIBELLE_ETAT[p.etat].toLowerCase()}.`}>
+      <Link to={`/studio/pieces/${p.id}${ambre ? '/retours' : ''}`} className="bx-nav group block" aria-label={`${p.plaque}, ${p.orgNom} : ${p.quoi}. ${ambre ? 'Retour à traiter' : LIBELLE_ETAT[p.etat].toLowerCase()}.`}>
         <span
           data-mv
           className={`block h-[96px] ${ambre ? 'bx-ambre-respire' : 'bx-allume'}`}
