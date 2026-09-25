@@ -1,7 +1,7 @@
 From db042f37554a47f178ce53f95f61f0e72852f0db Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Thu, 24 Sep 2026 23:59:25 +0000
-Subject: [PATCH 3/5] Encaissement automatique par Stripe : la Garde des
+Subject: [PATCH 3/9] Encaissement automatique par Stripe : la Garde des
  Comptes agit sur le vrai statut de paiement
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8

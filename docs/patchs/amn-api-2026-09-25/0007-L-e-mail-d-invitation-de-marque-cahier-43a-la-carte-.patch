@@ -1,0 +1,447 @@
+From 5ae1de57724d2d1d97f39548972bb22c580b3ba5 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 25 Sep 2026 01:15:43 +0000
+Subject: [PATCH 7/9] L'e-mail d'invitation de marque (cahier 43a) : la carte,
+ le talon ambre, deux cas
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Le gabarit du paquet Claude Design, tel quel, rempli des vraies valeurs de
+l'invitation — organisation, qui invite (prénom et libellé), pour qui, quel
+rôle, date d'envoi, expiration à l'heure exacte de Paris — chacune échappée.
+Deux cas : AMN ouvre l'espace (« Votre espace X est prêt ») ou une personne de
+l'équipe invite (« Karim vous invite dans l'espace X »). Expéditeur affiché
+« {prénom} via AMN Desktop », domaine d'AMN. Logos servis en https par
+l'application (APP_BUSINESS_PUBLIC_URL/email/…) ; sans elle, le texte « AMN »
+remplace l'image. La mention légale va dans le pied du gabarit.
+
+Écart au paquet, corrigé : sous 620 px, seuls les libellés passaient en bloc
+et les valeurs restaient décalées ; elles passent dessous, comme le cahier le
+demande. check:emails n'admet d'images que les deux logos https de l'invitation.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01BEf9qY21FAUuZ4ogxRY3s2
+---
+ scripts/check-emails.mjs                 | 10 ++-
+ src/lib/courrier.js                      | 14 ++--
+ src/lib/courrierModeles.js               | 90 +++++++++++++++++++++---
+ src/lib/invitations.js                   | 11 +--
+ src/lib/modeles/invitation.template.html | 70 ++++++++++++++++++
+ src/lib/modeles/invitation.template.txt  | 15 ++++
+ src/routes/admin.js                      |  4 +-
+ src/routes/auth.js                       |  2 +-
+ test/courrier-arrivee.test.js            | 20 ++++--
+ 9 files changed, 204 insertions(+), 32 deletions(-)
+ create mode 100644 src/lib/modeles/invitation.template.html
+ create mode 100644 src/lib/modeles/invitation.template.txt
+
+diff --git a/scripts/check-emails.mjs b/scripts/check-emails.mjs
+index 6397b71..7165464 100644
+--- a/scripts/check-emails.mjs
++++ b/scripts/check-emails.mjs
+@@ -3,7 +3,8 @@
+  * check:emails — chaque modèle de courriel, rendu en FR et en EN avec ses exemples, doit :
+  *   - avoir un objet court (≤ 78 caractères), un texte et un HTML non vides ;
+  *   - ne porter aucun point d'exclamation, aucun mot de passe en clair, aucune servilité ;
+- *   - être noir sur blanc : aucun rouge, aucune image, aucun script, aucune feuille externe ;
++ *   - être noir sur blanc : aucun rouge, aucun script, aucune feuille externe ; aucune image, sauf les
++ *     deux logos https de l'invitation de marque (cahier 43a) ;
+  *   - respecter la typographie française (espace fine avant ? ! ;, insécable avant :) en FR ;
+  *   - porter un lien de désabonnement quand c'est une lettre, et aucun sinon ;
+  *   - refuser une lettre sans désabonnement.
+@@ -32,7 +33,12 @@ for (const langue of ['fr', 'en']) {
+       if (langue === 'fr' && /[^  ] :(?!\/\/)/.test(t.replace(/https?:\/\/\S+/g, ''))) faute(ou, `espace simple avant : dans ${nom}`, t.match(/.{0,30}[^  ] :.{0,10}/)?.[0]);
+     }
+     if (ROUGE.test(r.html)) faute(ou, 'du rouge dans le HTML');
+-    if (/<img|<script|<link|url\(/i.test(r.html)) faute(ou, 'image, script ou ressource externe dans le HTML');
++    // L'invitation de marque (cahier 43a) porte le logo, et lui seul : en https, avec son texte de remplacement.
++    const images = r.html.match(/<img\b[^>]*>/gi) ?? [];
++    if (nature !== 'invitation' && images.length) faute(ou, 'une image dans le HTML');
++    for (const img of images) if (!/src="https:\/\//.test(img) || !/alt="[^"]+"/.test(img)) faute(ou, 'une image hors https ou sans texte de remplacement', img);
++    if (nature === 'invitation' && images.length > 2) faute(ou, 'plus que les deux logos');
++    if (/<script|<link|url\(/i.test(r.html)) faute(ou, 'script ou ressource externe dans le HTML');
+     if (!/^<!doctype html>/i.test(r.html)) faute(ou, 'HTML sans doctype');
+     const desabonne = /desabonner|unsubscribe|ne plus recevoir|stop receiving/i.test(r.texte);
+     if (nature === 'lettre' && !desabonne) faute(ou, 'une lettre sans lien de désabonnement');
+diff --git a/src/lib/courrier.js b/src/lib/courrier.js
+index ee1dd22..32e0dfe 100644
+--- a/src/lib/courrier.js
++++ b/src/lib/courrier.js
+@@ -96,20 +96,22 @@ export async function reglerPreferences(db, email, { lettre, critique } = {}) {
+  * envoyer, et une cliente ne doit jamais pouvoir expédier sous un domaine qui
+  * n'est pas le sien ; seul le NOM affiché change, et la réponse va à la cliente.
+  */
+-export function expediteurAuNomDe(nom) {
++export function expediteurAuNomDe(nom, via = 'AMN') {
+   const brut = String(etat.expediteur ?? '');
+   const adresse = brut.match(/<([^>]+)>/)?.[1] ?? brut.trim();
+   const propre = String(nom ?? '').replace(/["<>\r\n]/g, '').trim().slice(0, 60);
+-  return propre ? `"${propre} via AMN" <${adresse}>` : brut;
++  return propre ? `"${propre} via ${via}" <${adresse}>` : brut;
+ }
+ 
+-export async function envoyer(db, { orgId = null, a, nature, langue = 'fr', params = {}, par = null, repondreA = null, auNomDe = null }) {
++export async function envoyer(db, { orgId = null, a, nature, langue = 'fr', params = {}, par = null, repondreA = null, auNomDe = null, via = 'AMN' }) {
+   if (!NATURES.includes(nature)) throw new Error(`nature de courrier inconnue : ${nature}`);
+   const destinataire = String(a ?? '').trim().toLowerCase();
+   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destinataire)) throw new Error('destinataire invalide');
+-  const brut = rendre(nature, params, langue);
++  // L'invitation de marque porte la mention légale dans son propre pied (cahier 43a) : on la lui donne au lieu de l'ajouter dessous.
++  const avecMention = nature === 'invitation';
++  const brut = rendre(nature, avecMention ? { ...params, mentionLegale: etat.mentionLegale } : params, langue);
+   const echapperHtml = (x) => x.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+-  const rendu = etat.mentionLegale
++  const rendu = etat.mentionLegale && !avecMention
+     ? { ...brut, texte: `${brut.texte}\n\n—\n${etat.mentionLegale}`, html: brut.html.replace('</div></body></html>', `<p style="margin:28px 0 0;font-size:11px;color:#888888">${echapperHtml(etat.mentionLegale)}</p>\n</div></body></html>`) }
+     : brut;
+   const clePref = NATURES_OPT_IN[nature];
+@@ -123,7 +125,7 @@ export async function envoyer(db, { orgId = null, a, nature, langue = 'fr', para
+     return { envoye: false, raison: raisonInactif(), sujet: rendu.sujet, texte: rendu.texte };
+   }
+   try {
+-    const r = await etat.fetchImpl(API, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${etat.apiKey}` }, body: JSON.stringify({ from: auNomDe ? expediteurAuNomDe(auNomDe) : etat.expediteur, to: [destinataire], subject: rendu.sujet, text: rendu.texte, html: rendu.html, ...(repondreA ? { reply_to: [repondreA] } : {}) }) });
++    const r = await etat.fetchImpl(API, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${etat.apiKey}` }, body: JSON.stringify({ from: auNomDe ? expediteurAuNomDe(auNomDe, via) : etat.expediteur, to: [destinataire], subject: rendu.sujet, text: rendu.texte, html: rendu.html, ...(repondreA ? { reply_to: [repondreA] } : {}) }) });
+     const json = await r.json().catch(() => ({}));
+     if (!r.ok) throw new Error(json?.message ?? json?.error?.message ?? `HTTP ${r.status}`);
+     await journaliser(db, { orgId, a: destinataire, nature, sujet: rendu.sujet, etatEnvoi: 'envoye', fournisseurId: json?.id ?? null, par });
+diff --git a/src/lib/courrierModeles.js b/src/lib/courrierModeles.js
+index 040eced..a3ea0fe 100644
+--- a/src/lib/courrierModeles.js
++++ b/src/lib/courrierModeles.js
+@@ -10,6 +10,76 @@
+  * que le lien. Vérifié par scripts/check-emails.mjs.
+  */
+ 
++import { readFileSync } from 'node:fs';
++
++/*
++  L'E-MAIL D'INVITATION DE MARQUE (cahier 43a, paquet Claude Design) : le
++  gabarit du paquet, tel quel, dans src/lib/modeles/. Tables pour Outlook,
++  variante sombre pour Apple Mail, texte réel partout sauf le logo ; le seul
++  ambre est le talon. On n'y remplace que les variables {{…}}, chacune échappée.
++*/
++const GABARIT_INVITATION = {
++  html: readFileSync(new URL('./modeles/invitation.template.html', import.meta.url), 'utf8'),
++  texte: readFileSync(new URL('./modeles/invitation.template.txt', import.meta.url), 'utf8'),
++};
++const PARIS = 'Europe/Paris';
++const jourDuMois = (d) => Number(d.toLocaleDateString('fr-FR', { day: 'numeric', timeZone: PARIS }));
++const heureParis = (d) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: PARIS });
++/** « 25 SEPT. 2026 » */
++export const dateEnvoi = (d) => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: PARIS }).toUpperCase();
++/** « VENDREDI 2 OCTOBRE · 16:04 » — l'heure exacte : le lien dure 7 × 24 h depuis l'émission, pas jusqu'à minuit. */
++export const dateTalon = (d) => `${d.toLocaleDateString('fr-FR', { weekday: 'long', timeZone: PARIS })} ${jourDuMois(d) === 1 ? '1er' : jourDuMois(d)} ${d.toLocaleDateString('fr-FR', { month: 'long', timeZone: PARIS })} · ${heureParis(d)}`.toUpperCase();
++/** « 2 octobre » */
++export const dateCourte = (d) => `${jourDuMois(d) === 1 ? '1er' : jourDuMois(d)} ${d.toLocaleDateString('fr-FR', { month: 'long', timeZone: PARIS })}`;
++/** « vendredi 2 octobre à 16:04 » */
++export const dateTexte = (d) => `${d.toLocaleDateString('fr-FR', { weekday: 'long', timeZone: PARIS })} ${dateCourte(d)} à ${heureParis(d)}`;
++
++/**
++ * Les deux cas du cahier : AMN ouvre l'espace d'une cliente (`cas: 'amn'`),
++ * ou une personne de l'équipe invite (`cas: 'equipe'`). Tout vient de
++ * l'invitation réelle ; aucune donnée d'exemple.
++ */
++export function variablesInvitation({ cas = 'amn', org, prenom, libelle, email, role, lien, emisLe, expireLe, logoBase = null, mentionLegale = null }) {
++  const qui = prenom || (cas === 'amn' ? 'AMN' : org);
++  const emis = new Date(emisLe ?? Date.now());
++  const expire = new Date(expireLe);
++  const equipe = cas === 'equipe';
++  return {
++    objet: equipe ? `${qui} vous invite dans l’espace ${org}` : `Votre espace ${org} est prêt`,
++    apercu: 'Un lien pour l’activer, valable sept jours. Aucun mot de passe dans ce message : c’est vous qui le choisirez.',
++    organisation: org,
++    phrase: equipe ? `${qui} vous invite à rejoindre l’espace de votre équipe.` : 'Votre espace de travail est prêt. Il ne reste qu’à l’activer.',
++    invite_par: `${qui}${libelle ? ` · ${libelle}` : ''}`,
++    invite_par_long: equipe ? `${qui}${libelle ? `, ${libelle}` : ''}` : `${qui}, de l’équipe AMN`,
++    email,
++    role,
++    envoye_le: dateEnvoi(emis),
++    expire_le: dateTalon(expire),
++    expire_court: dateCourte(expire),
++    expire_texte: dateTexte(expire),
++    intro: equipe ? `${qui} vous invite à rejoindre l’espace de travail de ${org} sur AMN Desktop.` : `${qui}, de l’équipe AMN, vous invite à activer l’espace de travail de ${org} sur AMN Desktop.`,
++    lien,
++    logo_encre: logoBase ? `${logoBase}/email/logo-amn-encre-2x.png` : '',
++    logo_blanc: logoBase ? `${logoBase}/email/logo-amn-blanc-2x.png` : '',
++    mention_legale: mentionLegale ?? '',
++  };
++}
++
++const remplir = (gabarit, v, echappe) => gabarit.replace(/\{\{(\w+)\}\}/g, (_, k) => (echappe ? echapper(v[k] ?? '') : String(v[k] ?? '')));
++
++export function rendreInvitationDeMarque(params) {
++  const v = variablesInvitation(params);
++  let html = remplir(GABARIT_INVITATION.html, v, true);
++  // Sans adresse d'hébergement, pas d'image : le texte de remplacement « AMN » suffit, jamais une URL relative qui casserait.
++  if (!v.logo_encre) html = html.replace(/<img class="l-light"[^>]*>/, '<span style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;font-weight:bold;letter-spacing:3px;color:#0a0a0a">AMN</span>').replace(/<!--\[if !mso\]><!--><img class="l-dark"[^>]*><!--<!\[endif\]-->/, '');
++  if (!v.mention_legale) html = html.replace('.<br></td>', '.</td>');
++  // La typographie française sur le corps seulement (jamais la feuille de style).
++  const i = html.indexOf('<body');
++  html = html.slice(0, i) + typographieFr(html.slice(i));
++  const texte = typographieFr(remplir(GABARIT_INVITATION.texte, v, false)).replace(/\n+$/, '\n');
++  return { sujet: typographieFr(v.objet), texte, html };
++}
++
+ export const NATURES = ['invitation', 'demande_invitation', 'relance_facture', 'bienvenue', 'reinitialisation', 'rapport_mensuel', 'preavis_impaye', 'reactivation', 'notification_critique', 'lettre'];
+ /** Ce qui ne part qu'avec l'accord explicite de la personne (préférences `courrier.*`). */
+ export const NATURES_OPT_IN = { notification_critique: 'courrier.critique', lettre: 'courrier.lettre' };
+@@ -62,15 +132,12 @@ const fr = {
+     ...enveloppe({ titre: sujet, paragraphes: [texte], signature: 'AMN Desktop' }),
+   }),
+   /*
+-    L'INVITATION D'UNE NOUVELLE CLIENTE (chantier « arrivée cliente »). Le lien
+-    mène à la page d'activation, où elle choisit SON mot de passe : le courriel
+-    n'en porte jamais. Mise en page provisoire, sobre ; la version de marque
+-    (cahier 43a) la remplacera sans changer ce qu'elle dit.
++    L'INVITATION (cahier 43a) : le gabarit de marque du paquet — la carte au nom
++    de l'organisation, le talon ambre, un seul bouton. Le lien mène à la page
++    d'activation, où la personne choisit SON mot de passe : le courriel n'en
++    porte jamais. Deux cas : AMN ouvre l'espace, ou une collègue invite.
+   */
+-  invitation: ({ org, lien, invitePar = null, jusquau }) => ({
+-    sujet: `Votre espace ${org} est prêt`,
+-    ...enveloppe({ titre: `Votre espace ${org} est prêt.`, paragraphes: [`${invitePar ? `${invitePar} vous a ouvert` : 'Nous vous avons ouvert'} un espace AMN pour ${org}. Il ne manque que votre mot de passe, que vous choisissez vous-même en suivant le lien ci-dessous.`, `Le lien vaut jusqu’au ${jusquau} et ne sert qu’une fois. À la première ouverture, votre espace se présente en deux minutes.`], lien: { libelle: 'Activer mon espace', url: lien }, pied: 'Si vous n’attendiez pas ce message, ignorez-le : rien ne s’ouvre sans ce lien.' }),
+-  }),
++  invitation: (p) => rendreInvitationDeMarque(p),
+   /*
+     UNE RELANCE DE FACTURE, écrite par la cliente à SON client. Le texte est le
+     sien (préparé par le module Relances, gradué selon le retard) ; AMN ne fait
+@@ -115,9 +182,10 @@ const en = {
+     sujet,
+     ...enveloppe({ langue: 'en', titre: sujet, paragraphes: [texte], signature: 'AMN Desktop' }),
+   }),
+-  invitation: ({ org, lien, invitePar = null, jusquau }) => ({
++  // Le cahier ne dessine l'e-mail qu'en français : l'anglais garde la mise en page sobre, même contenu.
++  invitation: ({ org, lien, prenom = null, expireLe }) => ({
+     sujet: `Your ${org} workspace is ready`,
+-    ...enveloppe({ langue: 'en', titre: `Your ${org} workspace is ready.`, paragraphes: [`${invitePar ? `${invitePar} has opened` : 'We have opened'} an AMN workspace for ${org}. All it needs is your password, which you choose yourself by following the link below.`, `The link is valid until ${jusquau} and works once. The first time you open it, your workspace introduces itself in two minutes.`], lien: { libelle: 'Activate my workspace', url: lien }, pied: 'If you were not expecting this message, ignore it: nothing opens without this link.' }),
++    ...enveloppe({ langue: 'en', titre: `Your ${org} workspace is ready.`, paragraphes: [`${prenom ? `${prenom} has opened` : 'We have opened'} an AMN workspace for ${org}. All it needs is your password, which you choose yourself by following the link below.`, `The link is valid until ${new Date(expireLe).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })} and works once. The first time you open it, your workspace introduces itself in two minutes.`], lien: { libelle: 'Activate my workspace', url: lien }, pied: 'If you were not expecting this message, ignore it: nothing opens without this link.' }),
+   }),
+   relance_facture: ({ org, numero, texte }) => ({
+     sujet: `Invoice ${numero} — ${org}`,
+@@ -168,7 +236,7 @@ export function rendre(nature, params = {}, langue = 'fr') {
+ /** Des paramètres d'exemple par nature — pour check:emails et les tests. */
+ export const EXEMPLES = {
+   demande_invitation: { sujet: 'Nouveau lien d’activation demandé — Le Jardin d’Élise', texte: 'elise@jardin.test demande un nouveau lien d’activation : le précédent a expiré. Réémettez-le depuis le dossier de l’organisation.' },
+-  invitation: { org: 'Le Jardin d’Élise', lien: 'https://exemple.test/#/invitation?token=jeton', invitePar: 'Harun', jusquau: '1er octobre' },
++  invitation: { cas: 'amn', org: 'Le Jardin d’Élise', prenom: 'Harun', libelle: 'équipe AMN', email: 'elise@exemple.test', role: 'Propriétaire de l’espace', lien: 'https://exemple.test/#/invitation?token=jeton', emisLe: '2026-09-25T14:04:00.000Z', expireLe: '2026-10-02T14:04:00.000Z', logoBase: 'https://exemple.test' },
+   relance_facture: { org: 'Le Jardin d’Élise', numero: 'F-2026-014', texte: 'Bonjour Madame Roux,\n\nLa facture F-2026-014 de 480,00 € était due le 12 septembre. Pouvez-vous me dire où en est son règlement ?\n\nÉlise Roux' },
+   bienvenue: { org: 'Le Jardin d’Élise', lien: 'https://exemple.test/#/bienvenue/jeton', jours: 7 },
+   reinitialisation: { lien: 'https://exemple.test/#/reinitialiser?token=jeton', minutes: 60 },
+diff --git a/src/lib/invitations.js b/src/lib/invitations.js
+index d2ad1d2..597b9bc 100644
+--- a/src/lib/invitations.js
++++ b/src/lib/invitations.js
+@@ -26,18 +26,21 @@ export function dateDInvitation(iso, langue = 'fr') {
+ }
+ 
+ /**
+- * ENVOIE L'INVITATION PAR COURRIEL, si le courrier est en ligne et que le lien
+- * existe (il faut `APP_PUBLIC_URL`). Rend ce que l'Atelier doit savoir :
++ * ENVOIE L'INVITATION PAR COURRIEL — l'e-mail de marque du cahier 43a — si le
++ * courrier est en ligne et que le lien existe (il faut `APP_BUSINESS_PUBLIC_URL`,
++ * qui sert aussi les deux logos). Rend ce que l'Atelier doit savoir :
+  * `{ envoye: true }`, ou `{ envoye: false, raison }` — et alors le message à
+  * copier reste le chemin. Jamais d'exception : une invitation créée ne doit
+  * pas échouer parce qu'un courriel n'est pas parti.
+  */
+-export async function envoyerInvitation(db, { org, email, url, expiresAt, invitePar = null, par = null }) {
++export async function envoyerInvitation(db, { org, email, url, expiresAt, emisLe = null, cas = 'amn', prenom = null, libelle = null, role = 'owner', par = null }) {
+   if (!url) return { envoye: false, raison: 'sans_adresse_app' };
+   try {
+     const { envoyer } = await import('./courrier.js');
+     const langue = org?.language === 'en' ? 'en' : 'fr';
+-    const r = await envoyer(db, { orgId: org?.id ?? null, a: email, nature: 'invitation', langue, params: { org: org?.name ?? '', lien: url, invitePar, jusquau: dateDInvitation(expiresAt, langue) }, par });
++    const logoBase = (() => { try { return new URL(url).origin; } catch { return null; } })();
++    const params = { cas, org: org?.name ?? '', prenom, libelle, email, role: libelleRoleInvite(role), lien: url, emisLe: emisLe ?? new Date().toISOString(), expireLe: expiresAt, logoBase };
++    const r = await envoyer(db, { orgId: org?.id ?? null, a: email, nature: 'invitation', langue, params, par, auNomDe: prenom, via: 'AMN Desktop' });
+     return r.envoye ? { envoye: true } : { envoye: false, raison: r.raison ?? 'echec' };
+   } catch (err) {
+     return { envoye: false, raison: 'echec', erreur: String(err?.message ?? err).slice(0, 120) };
+diff --git a/src/lib/modeles/invitation.template.html b/src/lib/modeles/invitation.template.html
+new file mode 100644
+index 0000000..9d4cad1
+--- /dev/null
++++ b/src/lib/modeles/invitation.template.html
+@@ -0,0 +1,70 @@
++<!DOCTYPE html>
++<html lang="fr" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width,initial-scale=1">
++<meta http-equiv="X-UA-Compatible" content="IE=edge">
++<meta name="x-apple-disable-message-reformatting">
++<meta name="color-scheme" content="light dark">
++<meta name="supported-color-schemes" content="light dark">
++<title>{{objet}}</title>
++<!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
++<style>
++:root{color-scheme:light dark;supported-color-schemes:light dark}
++body{margin:0;padding:0;width:100%;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}
++table{border-collapse:collapse}
++img{border:0;outline:none;text-decoration:none}
++.l-dark{display:none}
++@media (prefers-color-scheme:dark){
++ .bg{background:#0f0f0f!important}
++ .card{background:#171717!important;border-color:#2b2b2b!important}
++ .ink{color:#f4f3ee!important}
++ .sec{color:#b4b4b1!important}
++ .mut{color:#8a8a87!important}
++ .rule{background:#2b2b2b!important}
++ .btn{background:#f4f3ee!important}
++ .btn a{color:#0a0a0a!important}
++ .url{background:#171717!important;border-color:#2b2b2b!important;color:#e4e4e1!important}
++ .l-light{display:none!important}
++ .l-dark{display:block!important}
++}
++@media only screen and (max-width:620px){
++ .wrap,.cardw{width:100%!important}
++ .px{padding-left:20px!important;padding-right:20px!important}
++ .cpx{padding-left:20px!important;padding-right:20px!important}
++ .org{font-size:27px!important;line-height:30px!important}
++ .lab{display:block!important;width:auto!important;padding-bottom:2px!important}
++ .val{display:block!important;width:auto!important}
++}
++</style>
++</head>
++<body class="bg" style="margin:0;padding:0;background:#e8e6e0">
++<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all">{{apercu}}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
++<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" class="bg" style="background:#e8e6e0"><tr><td align="center" style="padding:0">
++<!--[if mso]><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600"><tr><td><![endif]-->
++<table role="presentation" cellpadding="0" cellspacing="0" border="0" class="wrap" width="600" style="width:600px;max-width:600px">
++<tr><td class="px" style="padding:34px 40px 20px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
++ <td valign="middle" style="padding:0"><img class="l-light" src="{{logo_encre}}" width="57" height="20" alt="AMN" style="display:block;width:57px;height:20px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;font-weight:bold;letter-spacing:3px;color:#0a0a0a"><!--[if !mso]><!--><img class="l-dark" src="{{logo_blanc}}" width="57" height="20" alt="AMN" style="display:none;width:57px;height:20px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;font-weight:bold;letter-spacing:3px;color:#f4f3ee"><!--<![endif]--></td>
++ <td class="sec" valign="middle" style="padding:0 0 0 10px;font-family:'Space Grotesk',Helvetica,Arial,sans-serif;font-size:15px;line-height:20px;mso-line-height-rule:exactly;font-weight:400;color:#4a4a48;">Desktop</td>
++</tr></table></td></tr>
++<tr><td class="px" style="padding:0 40px">
++ <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="card cardw" width="520" style="width:520px;background:#f4f3ee;border:1px solid #cfccc4;border-collapse:separate">
++ <tr><td class="cpx" style="padding:24px 28px 0"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td class="mut" style="padding:0;font-family:'JetBrains Mono',Menlo,Consolas,'Courier New',monospace;font-size:10px;line-height:16px;mso-line-height-rule:exactly;font-weight:700;letter-spacing:.14em;color:#5f5d58;letter-spacing:.2em">INVITATION</td><td class="mut" align="right" style="padding:0;font-family:'JetBrains Mono',Menlo,Consolas,'Courier New',monospace;font-size:10px;line-height:16px;mso-line-height-rule:exactly;font-weight:700;letter-spacing:.14em;color:#5f5d58;">{{envoye_le}}</td></tr></table></td></tr>
++ <tr><td class="cpx ink org" style="padding:18px 28px 0;font-family:'Space Grotesk',Helvetica,Arial,sans-serif;font-size:32px;line-height:34px;mso-line-height-rule:exactly;font-weight:700;color:#0a0a0a;letter-spacing:-.03em">{{organisation}}</td></tr>
++ <tr><td class="cpx sec" style="padding:10px 28px 0;font-family:'Space Grotesk',Helvetica,Arial,sans-serif;font-size:15px;line-height:23px;mso-line-height-rule:exactly;font-weight:400;color:#4a4a48;">{{phrase}}</td></tr>
++ <tr><td class="cpx" style="padding:20px 28px 4px"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td class="rule" height="1" style="height:1px;line-height:1px;font-size:1px;background:#d8d5cd">&nbsp;</td></tr></table></td></tr>
++ <tr><td class="cpx" style="padding:10px 28px 0"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td class="lab mut" width="132" valign="top" style="width:132px;padding:2px 0 0;font-family:'JetBrains Mono',Menlo,Consolas,'Courier New',monospace;font-size:10px;line-height:16px;mso-line-height-rule:exactly;font-weight:700;letter-spacing:.14em;color:#5f5d58;">DE LA PART DE</td><td class="ink val" valign="top" style="padding:0;font-family:'Space Grotesk',Helvetica,Arial,sans-serif;font-size:14px;line-height:21px;mso-line-height-rule:exactly;font-weight:400;color:#0a0a0a;">{{invite_par}}</td></tr></table></td></tr><tr><td class="cpx" style="padding:10px 28px 0"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td class="lab mut" width="132" valign="top" style="width:132px;padding:2px 0 0;font-family:'JetBrains Mono',Menlo,Consolas,'Courier New',monospace;font-size:10px;line-height:16px;mso-line-height-rule:exactly;font-weight:700;letter-spacing:.14em;color:#5f5d58;">POUR</td><td class="ink val" valign="top" style="padding:0;font-family:'Space Grotesk',Helvetica,Arial,sans-serif;font-size:14px;line-height:21px;mso-line-height-rule:exactly;font-weight:400;color:#0a0a0a;">{{email}}</td></tr></table></td></tr><tr><td class="cpx" style="padding:10px 28px 0"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td class="lab mut" width="132" valign="top" style="width:132px;padding:2px 0 0;font-family:'JetBrains Mono',Menlo,Consolas,'Courier New',monospace;font-size:10px;line-height:16px;mso-line-height-rule:exactly;font-weight:700;letter-spacing:.14em;color:#5f5d58;">VOTRE RÔLE</td><td class="ink val" valign="top" style="padding:0;font-family:'Space Grotesk',Helvetica,Arial,sans-serif;font-size:14px;line-height:21px;mso-line-height-rule:exactly;font-weight:400;color:#0a0a0a;">{{role}}</td></tr></table></td></tr>
++ <tr><td class="cpx" style="padding:24px 28px 26px"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td class="btn" align="center" bgcolor="#121212" style="background:#121212;padding:17px 20px"><a href="{{lien}}" target="_blank" style="display:block;font-family:'Space Grotesk',Helvetica,Arial,sans-serif;font-size:15px;line-height:16px;mso-line-height-rule:exactly;font-weight:600;color:#f4f3ee;text-decoration:none">Activer mon espace</a></td></tr></table></td></tr>
++ <tr><td class="cpx" bgcolor="#d09a4a" style="background:#d09a4a;padding:12px 28px"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td style="padding:0;font-family:'JetBrains Mono',Menlo,Consolas,'Courier New',monospace;font-size:10px;line-height:16px;mso-line-height-rule:exactly;font-weight:700;letter-spacing:.14em;color:#080808;letter-spacing:.12em">VALABLE JUSQU’AU {{expire_le}}</td><td align="right" style="padding:0 0 0 12px;white-space:nowrap;font-family:'JetBrains Mono',Menlo,Consolas,'Courier New',monospace;font-size:10px;line-height:16px;mso-line-height-rule:exactly;font-weight:700;letter-spacing:.14em;color:#080808;letter-spacing:.12em">USAGE UNIQUE</td></tr></table></td></tr>
++ </table>
++</td></tr>
++<tr><td class="px ink" style="padding:26px 40px 0;font-family:'Space Grotesk',Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;mso-line-height-rule:exactly;font-weight:400;color:#2b2b2b;">À l’ouverture du lien, vous choisirez vous-même votre mot de passe. Il n’est écrit nulle part — ni dans ce message, ni chez nous.</td></tr>
++<tr><td class="px sec" style="padding:18px 40px 0;font-family:'Space Grotesk',Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;mso-line-height-rule:exactly;font-weight:400;color:#4a4a48;">Le bouton ne s’ouvre pas ? Copiez cette adresse dans votre navigateur :</td></tr>
++<tr><td class="px" style="padding:8px 40px 0"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td class="url ink" style="padding:10px 12px;background:#f4f3ee;border:1px solid #d8d5cd;font-family:'JetBrains Mono',Menlo,Consolas,'Courier New',monospace;font-size:12px;line-height:18px;mso-line-height-rule:exactly;color:#0a0a0a;word-break:break-all"><a href="{{lien}}" target="_blank" style="color:inherit;text-decoration:none">{{lien}}</a></td></tr></table></td></tr>
++<tr><td class="px mut" style="padding:18px 40px 0;font-family:'Space Grotesk',Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;mso-line-height-rule:exactly;font-weight:400;color:#5f5d58;">Vous n’attendiez pas cette invitation ? Ne faites rien : sans activation, aucun compte ne s’ouvre, et le lien s’éteint seul le {{expire_court}}.</td></tr>
++<tr><td class="px" style="padding:28px 40px 34px"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td class="rule" height="1" style="height:1px;line-height:1px;font-size:1px;background:#d8d5cd">&nbsp;</td></tr><tr><td class="mut" style="padding:14px 0 0;font-family:'Space Grotesk',Helvetica,Arial,sans-serif;font-size:11px;line-height:18px;mso-line-height-rule:exactly;font-weight:400;color:#5f5d58;">AMN Desktop · message envoyé à {{email}} à la demande de {{invite_par_long}}.<br>{{mention_legale}}</td></tr></table></td></tr>
++</table>
++<!--[if mso]></td></tr></table><![endif]-->
++</td></tr></table>
++</body>
++</html>
+diff --git a/src/lib/modeles/invitation.template.txt b/src/lib/modeles/invitation.template.txt
+new file mode 100644
+index 0000000..0aaf396
+--- /dev/null
++++ b/src/lib/modeles/invitation.template.txt
+@@ -0,0 +1,15 @@
++{{objet}}
++
++{{intro}}
++
++Activer mon espace :
++{{lien}}
++
++Ce lien est valable jusqu’au {{expire_texte}}, et ne sert qu’une fois.
++Vous choisirez votre mot de passe à l’ouverture. Il n’est écrit nulle part : ni dans ce message, ni chez nous.
++
++Vous n’attendiez pas cette invitation ? Ne faites rien : sans activation, aucun compte ne s’ouvre.
++
++—
++AMN Desktop · envoyé à {{email}} à la demande de {{invite_par_long}}
++{{mention_legale}}
+diff --git a/src/routes/admin.js b/src/routes/admin.js
+index 8a95c00..a2544d5 100644
+--- a/src/routes/admin.js
++++ b/src/routes/admin.js
+@@ -470,7 +470,7 @@ export function adminRouter() {
+       */
+       invitation.courrier = req.body?.envoyer === false
+         ? { envoye: false, raison: 'non_demande' }
+-        : await envoyerInvitation(db, { org, email: ownerEmail, url: invitation.url, expiresAt, invitePar: invitedByName, par: 'atelier' });
++        : await envoyerInvitation(db, { org, email: ownerEmail, url: invitation.url, expiresAt, cas: 'amn', prenom: invitedByName, libelle: 'équipe AMN', role: 'owner', par: 'atelier' });
+     }
+ 
+     /*
+@@ -1290,7 +1290,7 @@ export function adminRouter() {
+     await db.createInvitation({ tokenHash: hash, userId: user.id, expiresAt, invitedByName, invitedByLabel: 'équipe AMN', invitedByUserId: req.user?.id ?? null, invitedByOrgId: AMN_ORG_ID });
+     await journal(req, org.id, 'invite', email);
+     const url = invitationUrl(plaintext, org.id);
+-    const courrier = req.body?.envoyer === false ? { envoye: false, raison: 'non_demande' } : await envoyerInvitation(db, { org, email, url, expiresAt, invitePar: invitedByName, par: 'atelier' });
++    const courrier = req.body?.envoyer === false ? { envoye: false, raison: 'non_demande' } : await envoyerInvitation(db, { org, email, url, expiresAt, cas: 'amn', prenom: invitedByName, libelle: 'équipe AMN', role: user.role, par: 'atelier' });
+ 
+     res.status(201).json({
+       user: { id: user.id, email: user.email, role: user.role, status: user.status },
+diff --git a/src/routes/auth.js b/src/routes/auth.js
+index b9bfed9..d048de7 100644
+--- a/src/routes/auth.js
++++ b/src/routes/auth.js
+@@ -893,7 +893,7 @@ export function authRouter() {
+       : crossOrg
+         // Le compte existe déjà : le courriel d'activation (« choisissez votre mot de passe ») serait faux.
+         ? { envoye: false, raison: 'appartenance' }
+-        : await envoyerInvitation(db, { org, email, url, expiresAt, invitePar: nomInvitant(req.body?.invitePar, org?.name), par: 'invitation' });
++        : await envoyerInvitation(db, { org, email, url, expiresAt, cas: 'equipe', prenom: nomInvitant(req.body?.invitePar, org?.name), libelle: libelleInvitant(req.auth.role), role, par: 'invitation' });
+ 
+     // The plaintext token is returned ONCE, like a site API key: it is not
+     // stored, so it cannot be retrieved or re-sent later — issue a new
+diff --git a/test/courrier-arrivee.test.js b/test/courrier-arrivee.test.js
+index 39c6d3c..455b6a0 100644
+--- a/test/courrier-arrivee.test.js
++++ b/test/courrier-arrivee.test.js
+@@ -11,7 +11,7 @@ const { AMN_ORG_ID } = await import('../src/db/tenancy.js');
+ const { hashPassword } = await import('../src/lib/password.js');
+ const { configurerCourrier } = await import('../src/lib/courrier.js');
+ const { config } = await import('../src/config.js');
+-const { dateDInvitation } = await import('../src/lib/invitations.js');
++const { dateTexte } = await import('../src/lib/courrierModeles.js');
+ 
+ /**
+  * LE COURRIER QUI PART SEUL (chantier « arrivée cliente », partie 2) :
+@@ -60,9 +60,15 @@ test('créer une cliente envoie son invitation : son lien, la date en toutes let
+   assert.deepEqual(m.to, ['medina@exemple.test']);
+   assert.equal(m.subject, 'Votre espace Fleurs de Lune est prêt');
+   assert.ok(m.text.includes(r.body.invitation.url), 'le lien d’activation');
+-  assert.ok(m.text.includes(`jusqu’au ${dateDInvitation(r.body.invitation.expiresAt)}`));
+-  assert.ok(m.text.includes('Harun vous a ouvert'));
++  assert.ok(m.text.includes(`jusqu’au ${dateTexte(new Date(r.body.invitation.expiresAt))}`), 'l’heure exacte, en toutes lettres');
++  assert.ok(m.text.includes('Harun, de l’équipe AMN'));
++  assert.equal(m.from, '"Harun via AMN Desktop" <bonjour@amn.test>', 'l’expéditeur du cahier : le prénom via AMN Desktop');
++  assert.ok(m.html.includes('VALABLE JUSQU’AU'), 'le talon');
++  assert.ok(m.html.includes('medina@exemple.test') && m.html.includes('Propriétaire de l’espace'), 'la carte : pour qui, quel rôle');
++  assert.ok(m.html.includes('https://app.exemple.test/email/logo-amn-encre-2x.png'), 'le logo, hébergé en https par l’application');
++  assert.ok(!/\{\{/.test(m.html + m.text), 'aucune variable oubliée');
+   assert.ok(!/mot de passe\s*[:=]/i.test(m.text) && !m.html.includes('password'), 'aucun mot de passe');
++  assert.ok(m.html.length < 100_000, 'sous le seuil où Gmail coupe');
+   assert.equal(m.reply_to, undefined);
+   const journal = await db.all("SELECT nature, etat, destinataire FROM courriers WHERE nature = 'invitation'");
+   assert.deepEqual(journal, [{ nature: 'invitation', etat: 'envoye', destinataire: 'medina@exemple.test' }]);
+@@ -101,7 +107,9 @@ test('une propriétaire invite une collègue : le courriel part ; une appartenan
+   const vernet = await login('vernet@v.test');
+   const col = await api('/v1/auth/invitations', { token: vernet, method: 'POST', body: { email: 'yanis@v.test', role: 'member', invitePar: 'Claire' } });
+   assert.deepEqual(col.body.invitation.courrier, { envoye: true });
+-  assert.ok(resend.envois.at(-1).text.includes('Claire vous a ouvert'));
++  assert.equal(resend.envois.at(-1).subject, 'Claire vous invite dans l’espace Groupe Vernet', 'le second cas du cahier');
++  assert.ok(resend.envois.at(-1).text.includes('Claire vous invite à rejoindre'));
++  assert.ok(resend.envois.at(-1).html.includes('Claire · propriétaire'));
+   const app = await api('/v1/auth/invitations', { token: vernet, method: 'POST', body: { email: 'deja@ailleurs.test', role: 'member' } });
+   assert.deepEqual(app.body.invitation.courrier, { envoye: false, raison: 'appartenance' });
+   assert.equal(resend.envois.length, 1);
+@@ -185,6 +193,6 @@ test('la mention légale : absente tant qu’elle n’est pas configurée, puis
+   configurerCourrier({ apiKey: 're_test', expediteur: 'AMN <bonjour@amn.test>', mentionLegale: 'AMN DevSec — SIREN 000 000 000 — adresse de test', fetchImpl: resend.fetchImpl });
+   await api('/v1/admin/organizations', { token: OPERATOR, method: 'POST', body: { name: 'Avec Mention', plan: 'business_standard', ownerEmail: 'am@exemple.test' } });
+   const m = resend.envois.at(-1);
+-  assert.ok(m.text.endsWith('AMN DevSec — SIREN 000 000 000 — adresse de test'));
+-  assert.ok(m.html.includes('SIREN 000 000 000'));
++  assert.ok(m.text.trimEnd().endsWith('AMN DevSec — SIREN 000 000 000 — adresse de test'), 'au pied, une seule fois');
++  assert.equal(m.html.split('SIREN 000 000 000').length, 2, 'dans le pied du gabarit, une seule fois');
+ });
+-- 
+2.43.0
+

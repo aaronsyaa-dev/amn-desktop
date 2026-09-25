@@ -161,7 +161,7 @@ export function InvitationScreen() {
                     onLogin={() => navigate('/login', { replace: true })}
                   />
                 ) : (
-                  <Panneau surtitre="Rejoindre l’espace" titre={`Rejoindre ${lecture.carte.organisation}`} texte="Vous avez déjà un compte AMN Desktop. Connectez-vous : l’espace de cette invitation vous sera proposé.">
+                  <Panneau surtitre="Rejoindre l’espace" titre={`Rejoindre ${lecture.carte.organisation}`} texte={`Vous avez déjà un compte ${EDITION_PRODUCT_NAME}. Connectez-vous : l’espace de cette invitation vous sera proposé.`}>
                     <BoutonPrincipal onClick={() => navigate('/login', { replace: true })}>Me connecter</BoutonPrincipal>
                   </Panneau>
                 )

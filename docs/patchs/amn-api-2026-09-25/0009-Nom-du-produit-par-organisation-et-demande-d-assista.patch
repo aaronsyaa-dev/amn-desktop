@@ -1,0 +1,225 @@
+From 34fb1934d130a845e267768b3004e20e9b5ec6c4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 25 Sep 2026 01:58:41 +0000
+Subject: [PATCH 9/9] =?UTF-8?q?Nom=20du=20produit=20par=20organisation=20e?=
+ =?UTF-8?q?t=20demande=20d'assistance=20nomm=C3=A9e?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- L'invitation (gabarit de marque, expéditeur « via »), la demande de
+  relance/signalement et son annonce tirent le nom du produit de
+  productNameForOrg(orgId) au lieu d'une constante « AMN Desktop » : le
+  serveur sert les deux éditions (check:naming).
+- auth.js et hall.js créent leurs demandes d'assistance avec DEMANDE_MESSAGE,
+  exporté de support.js, plutôt qu'un kind: 'message' littéral qui se lisait
+  comme une alerte de supervision (check:supervision). hall.js datait d'un
+  chantier antérieur.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01BEf9qY21FAUuZ4ogxRY3s2
+---
+ src/lib/courrierModeles.js               | 20 ++++++++++++--------
+ src/lib/invitations.js                   |  6 ++++--
+ src/lib/modeles/invitation.template.html |  4 ++--
+ src/lib/modeles/invitation.template.txt  |  2 +-
+ src/routes/auth.js                       | 10 +++++-----
+ src/routes/hall.js                       |  3 ++-
+ src/routes/support.js                    |  2 ++
+ 7 files changed, 28 insertions(+), 19 deletions(-)
+
+diff --git a/src/lib/courrierModeles.js b/src/lib/courrierModeles.js
+index a3ea0fe..a4d1ff0 100644
+--- a/src/lib/courrierModeles.js
++++ b/src/lib/courrierModeles.js
+@@ -11,6 +11,7 @@
+  */
+ 
+ import { readFileSync } from 'node:fs';
++import { productNameForOrg } from './links.js';
+ 
+ /*
+   L'E-MAIL D'INVITATION DE MARQUE (cahier 43a, paquet Claude Design) : le
+@@ -39,7 +40,7 @@ export const dateTexte = (d) => `${d.toLocaleDateString('fr-FR', { weekday: 'lon
+  * ou une personne de l'équipe invite (`cas: 'equipe'`). Tout vient de
+  * l'invitation réelle ; aucune donnée d'exemple.
+  */
+-export function variablesInvitation({ cas = 'amn', org, prenom, libelle, email, role, lien, emisLe, expireLe, logoBase = null, mentionLegale = null }) {
++export function variablesInvitation({ cas = 'amn', org, produit, prenom, libelle, email, role, lien, emisLe, expireLe, logoBase = null, mentionLegale = null }) {
+   const qui = prenom || (cas === 'amn' ? 'AMN' : org);
+   const emis = new Date(emisLe ?? Date.now());
+   const expire = new Date(expireLe);
+@@ -57,7 +58,10 @@ export function variablesInvitation({ cas = 'amn', org, prenom, libelle, email,
+     expire_le: dateTalon(expire),
+     expire_court: dateCourte(expire),
+     expire_texte: dateTexte(expire),
+-    intro: equipe ? `${qui} vous invite à rejoindre l’espace de travail de ${org} sur AMN Desktop.` : `${qui}, de l’équipe AMN, vous invite à activer l’espace de travail de ${org} sur AMN Desktop.`,
++    intro: equipe ? `${qui} vous invite à rejoindre l’espace de travail de ${org} sur ${produit}.` : `${qui}, de l’équipe AMN, vous invite à activer l’espace de travail de ${org} sur ${produit}.`,
++    // Le nom du produit vient de `productNameForOrg` (links.js) : le serveur sert les deux éditions.
++    produit,
++    produit_court: String(produit ?? '').replace(/^AMN\s+/, ''),
+     lien,
+     logo_encre: logoBase ? `${logoBase}/email/logo-amn-encre-2x.png` : '',
+     logo_blanc: logoBase ? `${logoBase}/email/logo-amn-blanc-2x.png` : '',
+@@ -127,9 +131,9 @@ ${desabonnement ? `<p style="margin:20px 0 0;font-size:12px;color:#666666"><a hr
+ 
+ const fr = {
+   /* Une relance ou un signalement depuis la page d'activation, à la personne qui a invité. */
+-  demande_invitation: ({ sujet, texte }) => ({
++  demande_invitation: ({ sujet, texte, produit }) => ({
+     sujet,
+-    ...enveloppe({ titre: sujet, paragraphes: [texte], signature: 'AMN Desktop' }),
++    ...enveloppe({ titre: sujet, paragraphes: [texte], signature: produit }),
+   }),
+   /*
+     L'INVITATION (cahier 43a) : le gabarit de marque du paquet — la carte au nom
+@@ -178,9 +182,9 @@ const fr = {
+ };
+ 
+ const en = {
+-  demande_invitation: ({ sujet, texte }) => ({
++  demande_invitation: ({ sujet, texte, produit }) => ({
+     sujet,
+-    ...enveloppe({ langue: 'en', titre: sujet, paragraphes: [texte], signature: 'AMN Desktop' }),
++    ...enveloppe({ langue: 'en', titre: sujet, paragraphes: [texte], signature: produit }),
+   }),
+   // Le cahier ne dessine l'e-mail qu'en français : l'anglais garde la mise en page sobre, même contenu.
+   invitation: ({ org, lien, prenom = null, expireLe }) => ({
+@@ -235,8 +239,8 @@ export function rendre(nature, params = {}, langue = 'fr') {
+ 
+ /** Des paramètres d'exemple par nature — pour check:emails et les tests. */
+ export const EXEMPLES = {
+-  demande_invitation: { sujet: 'Nouveau lien d’activation demandé — Le Jardin d’Élise', texte: 'elise@jardin.test demande un nouveau lien d’activation : le précédent a expiré. Réémettez-le depuis le dossier de l’organisation.' },
+-  invitation: { cas: 'amn', org: 'Le Jardin d’Élise', prenom: 'Harun', libelle: 'équipe AMN', email: 'elise@exemple.test', role: 'Propriétaire de l’espace', lien: 'https://exemple.test/#/invitation?token=jeton', emisLe: '2026-09-25T14:04:00.000Z', expireLe: '2026-10-02T14:04:00.000Z', logoBase: 'https://exemple.test' },
++  demande_invitation: { sujet: 'Nouveau lien d’activation demandé — Le Jardin d’Élise', texte: 'elise@jardin.test demande un nouveau lien d’activation : le précédent a expiré. Réémettez-le depuis le dossier de l’organisation.', produit: productNameForOrg('exemple') },
++  invitation: { cas: 'amn', org: 'Le Jardin d’Élise', produit: productNameForOrg('exemple'), prenom: 'Harun', libelle: 'équipe AMN', email: 'elise@exemple.test', role: 'Propriétaire de l’espace', lien: 'https://exemple.test/#/invitation?token=jeton', emisLe: '2026-09-25T14:04:00.000Z', expireLe: '2026-10-02T14:04:00.000Z', logoBase: 'https://exemple.test' },
+   relance_facture: { org: 'Le Jardin d’Élise', numero: 'F-2026-014', texte: 'Bonjour Madame Roux,\n\nLa facture F-2026-014 de 480,00 € était due le 12 septembre. Pouvez-vous me dire où en est son règlement ?\n\nÉlise Roux' },
+   bienvenue: { org: 'Le Jardin d’Élise', lien: 'https://exemple.test/#/bienvenue/jeton', jours: 7 },
+   reinitialisation: { lien: 'https://exemple.test/#/reinitialiser?token=jeton', minutes: 60 },
+diff --git a/src/lib/invitations.js b/src/lib/invitations.js
+index 597b9bc..0f967ab 100644
+--- a/src/lib/invitations.js
++++ b/src/lib/invitations.js
+@@ -1,3 +1,4 @@
++import { productNameForOrg } from './links.js';
+ /**
+  * L'INVITATION, telle que la personne invitée la voit avant de l'activer.
+  * Utilitaires partagés par les routes qui émettent une invitation
+@@ -39,8 +40,9 @@ export async function envoyerInvitation(db, { org, email, url, expiresAt, emisLe
+     const { envoyer } = await import('./courrier.js');
+     const langue = org?.language === 'en' ? 'en' : 'fr';
+     const logoBase = (() => { try { return new URL(url).origin; } catch { return null; } })();
+-    const params = { cas, org: org?.name ?? '', prenom, libelle, email, role: libelleRoleInvite(role), lien: url, emisLe: emisLe ?? new Date().toISOString(), expireLe: expiresAt, logoBase };
+-    const r = await envoyer(db, { orgId: org?.id ?? null, a: email, nature: 'invitation', langue, params, par, auNomDe: prenom, via: 'AMN Desktop' });
++    const produit = productNameForOrg(org?.id ?? null);
++    const params = { cas, org: org?.name ?? '', produit, prenom, libelle, email, role: libelleRoleInvite(role), lien: url, emisLe: emisLe ?? new Date().toISOString(), expireLe: expiresAt, logoBase };
++    const r = await envoyer(db, { orgId: org?.id ?? null, a: email, nature: 'invitation', langue, params, par, auNomDe: prenom, via: produit });
+     return r.envoye ? { envoye: true } : { envoye: false, raison: r.raison ?? 'echec' };
+   } catch (err) {
+     return { envoye: false, raison: 'echec', erreur: String(err?.message ?? err).slice(0, 120) };
+diff --git a/src/lib/modeles/invitation.template.html b/src/lib/modeles/invitation.template.html
+index 9d4cad1..0271110 100644
+--- a/src/lib/modeles/invitation.template.html
++++ b/src/lib/modeles/invitation.template.html
+@@ -45,7 +45,7 @@ img{border:0;outline:none;text-decoration:none}
+ <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="wrap" width="600" style="width:600px;max-width:600px">
+ <tr><td class="px" style="padding:34px 40px 20px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+  <td valign="middle" style="padding:0"><img class="l-light" src="{{logo_encre}}" width="57" height="20" alt="AMN" style="display:block;width:57px;height:20px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;font-weight:bold;letter-spacing:3px;color:#0a0a0a"><!--[if !mso]><!--><img class="l-dark" src="{{logo_blanc}}" width="57" height="20" alt="AMN" style="display:none;width:57px;height:20px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;font-weight:bold;letter-spacing:3px;color:#f4f3ee"><!--<![endif]--></td>
+- <td class="sec" valign="middle" style="padding:0 0 0 10px;font-family:'Space Grotesk',Helvetica,Arial,sans-serif;font-size:15px;line-height:20px;mso-line-height-rule:exactly;font-weight:400;color:#4a4a48;">Desktop</td>
++ <td class="sec" valign="middle" style="padding:0 0 0 10px;font-family:'Space Grotesk',Helvetica,Arial,sans-serif;font-size:15px;line-height:20px;mso-line-height-rule:exactly;font-weight:400;color:#4a4a48;">{{produit_court}}</td>
+ </tr></table></td></tr>
+ <tr><td class="px" style="padding:0 40px">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="card cardw" width="520" style="width:520px;background:#f4f3ee;border:1px solid #cfccc4;border-collapse:separate">
+@@ -62,7 +62,7 @@ img{border:0;outline:none;text-decoration:none}
+ <tr><td class="px sec" style="padding:18px 40px 0;font-family:'Space Grotesk',Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;mso-line-height-rule:exactly;font-weight:400;color:#4a4a48;">Le bouton ne s’ouvre pas ? Copiez cette adresse dans votre navigateur :</td></tr>
+ <tr><td class="px" style="padding:8px 40px 0"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td class="url ink" style="padding:10px 12px;background:#f4f3ee;border:1px solid #d8d5cd;font-family:'JetBrains Mono',Menlo,Consolas,'Courier New',monospace;font-size:12px;line-height:18px;mso-line-height-rule:exactly;color:#0a0a0a;word-break:break-all"><a href="{{lien}}" target="_blank" style="color:inherit;text-decoration:none">{{lien}}</a></td></tr></table></td></tr>
+ <tr><td class="px mut" style="padding:18px 40px 0;font-family:'Space Grotesk',Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;mso-line-height-rule:exactly;font-weight:400;color:#5f5d58;">Vous n’attendiez pas cette invitation ? Ne faites rien : sans activation, aucun compte ne s’ouvre, et le lien s’éteint seul le {{expire_court}}.</td></tr>
+-<tr><td class="px" style="padding:28px 40px 34px"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td class="rule" height="1" style="height:1px;line-height:1px;font-size:1px;background:#d8d5cd">&nbsp;</td></tr><tr><td class="mut" style="padding:14px 0 0;font-family:'Space Grotesk',Helvetica,Arial,sans-serif;font-size:11px;line-height:18px;mso-line-height-rule:exactly;font-weight:400;color:#5f5d58;">AMN Desktop · message envoyé à {{email}} à la demande de {{invite_par_long}}.<br>{{mention_legale}}</td></tr></table></td></tr>
++<tr><td class="px" style="padding:28px 40px 34px"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td class="rule" height="1" style="height:1px;line-height:1px;font-size:1px;background:#d8d5cd">&nbsp;</td></tr><tr><td class="mut" style="padding:14px 0 0;font-family:'Space Grotesk',Helvetica,Arial,sans-serif;font-size:11px;line-height:18px;mso-line-height-rule:exactly;font-weight:400;color:#5f5d58;">{{produit}} · message envoyé à {{email}} à la demande de {{invite_par_long}}.<br>{{mention_legale}}</td></tr></table></td></tr>
+ </table>
+ <!--[if mso]></td></tr></table><![endif]-->
+ </td></tr></table>
+diff --git a/src/lib/modeles/invitation.template.txt b/src/lib/modeles/invitation.template.txt
+index 0aaf396..ebbc194 100644
+--- a/src/lib/modeles/invitation.template.txt
++++ b/src/lib/modeles/invitation.template.txt
+@@ -11,5 +11,5 @@ Vous choisirez votre mot de passe à l’ouverture. Il n’est écrit nulle part
+ Vous n’attendiez pas cette invitation ? Ne faites rien : sans activation, aucun compte ne s’ouvre.
+ 
+ —
+-AMN Desktop · envoyé à {{email}} à la demande de {{invite_par_long}}
++{{produit}} · envoyé à {{email}} à la demande de {{invite_par_long}}
+ {{mention_legale}}
+diff --git a/src/routes/auth.js b/src/routes/auth.js
+index d048de7..643c7bc 100644
+--- a/src/routes/auth.js
++++ b/src/routes/auth.js
+@@ -18,9 +18,9 @@ import {
+   countsAsSeat,
+   seatsForOrg,
+ } from '../db/tenancy.js';
+-import { appOriginForOrg, invitationUrl } from '../lib/links.js';
++import { appOriginForOrg, invitationUrl, productNameForOrg } from '../lib/links.js';
+ import { nomInvitant, envoyerInvitation, libelleRoleInvite, libelleInvitant } from '../lib/invitations.js';
+-import { prevenirAmn } from './support.js';
++import { DEMANDE_MESSAGE, prevenirAmn } from './support.js';
+ import { parOrganisation } from '../lib/verrou.js';
+ 
+ /**
+@@ -1008,16 +1008,16 @@ export function authRouter() {
+       : `${user.email} dit ne pas avoir activé ${org.name} avec son lien, utilisé le ${new Date(invitation.acceptedAt).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })}. Suspendez l’accès ouvert avec ce lien, puis réémettez-en un.`;
+     const parAmn = !invitation.invitedByOrgId || invitation.invitedByOrgId === AMN_ORG_ID;
+     if (parAmn) {
+-      const demande = await db.createSupportRequest({ orgId: org.id, kind: 'message', subject: sujet, body: corps, requestedBy: user.id, requestedByEmail: user.email });
++      const demande = await db.createSupportRequest({ orgId: org.id, kind: DEMANDE_MESSAGE, subject: sujet, body: corps, requestedBy: user.id, requestedByEmail: user.email });
+       prevenirAmn(req, demande, org.name);
+     } else {
+-      const record = await db.upsertRecord(invitation.invitedByOrgId, 'announcements', `invitation-${nature}-${hash.slice(0, 16)}`, { title: sujet, body: corps, authorEmail: 'AMN Desktop', createdAt: new Date().toISOString(), readBy: [], fromProvider: true });
++      const record = await db.upsertRecord(invitation.invitedByOrgId, 'announcements', `invitation-${nature}-${hash.slice(0, 16)}`, { title: sujet, body: corps, authorEmail: productNameForOrg(invitation.invitedByOrgId), createdAt: new Date().toISOString(), readBy: [], fromProvider: true });
+       req.app.locals.hub?.broadcast?.({ type: 'record', collection: 'announcements', record }, invitation.invitedByOrgId);
+       const invitant = invitation.invitedByUserId ? await db.getUser(invitation.invitedByUserId).catch(() => null) : null;
+       if (invitant?.email) {
+         try {
+           const { envoyer } = await import('../lib/courrier.js');
+-          await envoyer(db, { orgId: invitation.invitedByOrgId, a: invitant.email, nature: 'demande_invitation', params: { sujet, texte: corps }, par: 'invitation' });
++          await envoyer(db, { orgId: invitation.invitedByOrgId, a: invitant.email, nature: 'demande_invitation', params: { sujet, texte: corps, produit: productNameForOrg(invitation.invitedByOrgId) }, par: 'invitation' });
+         } catch { /* le courrier n'arrête pas une demande : l'annonce est posée */ }
+       }
+     }
+diff --git a/src/routes/hall.js b/src/routes/hall.js
+index 05d3c27..cd65e93 100644
+--- a/src/routes/hall.js
++++ b/src/routes/hall.js
+@@ -1,6 +1,7 @@
+ import { Router } from 'express';
+ import { tenantAuth } from '../middleware/tenantAuth.js';
+ import { rateLimit } from '../middleware/rateLimit.js';
++import { DEMANDE_MESSAGE } from './support.js';
+ 
+ /**
+  * LE HALL — l'espace commun entre organisations VOLONTAIRES (vision cliente,
+@@ -174,7 +175,7 @@ export function hallRouter() {
+       const org = await db.getOrganization(req.auth.orgId);
+       const request = await db.createSupportRequest({
+         orgId: req.auth.orgId,
+-        kind: 'message',
++        kind: DEMANDE_MESSAGE,
+         subject: 'Signalement dans le Hall',
+         body: `Message ${m.id} de « ${m.orgDisplayName} » signalé.\n\n« ${m.body.slice(0, 300)} »`,
+         requestedBy: req.auth.userId ?? null,
+diff --git a/src/routes/support.js b/src/routes/support.js
+index 73166bc..7345ff8 100644
+--- a/src/routes/support.js
++++ b/src/routes/support.js
+@@ -23,6 +23,8 @@ import { AMN_ORG_ID, countsAsSeat, seatsForOrg } from '../db/tenancy.js';
+  */
+ 
+ export const SUPPORT_KINDS = ['message', 'seat', 'password_reset'];
++/** La demande écrite — nommée pour les routes hors de ce fichier (auth.js : relance et signalement d'invitation), où `kind: '…'` serait lu comme une alerte de supervision. */
++export const DEMANDE_MESSAGE = SUPPORT_KINDS[0];
+ export const SUPPORT_STATUSES = ['pending', 'answered', 'closed'];
+ 
+ const SUBJECT_MAX = 120;
+-- 
+2.43.0
+

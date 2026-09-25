@@ -1,0 +1,38 @@
+From 8674ea1e7b458ad370376c4346063dd4084d6232 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 25 Sep 2026 01:16:58 +0000
+Subject: [PATCH 8/9] =?UTF-8?q?Test=20des=20mod=C3=A8les=20:=20n'admettre?=
+ =?UTF-8?q?=20d'images=20que=20les=20logos=20https=20de=20l'invitation=20d?=
+ =?UTF-8?q?e=20marque?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Le commit précédent laissait ce test rouge ; 523 tests sur 523 de nouveau.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01BEf9qY21FAUuZ4ogxRY3s2
+---
+ test/courrier.test.js | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/test/courrier.test.js b/test/courrier.test.js
+index fe37b6b..e4c02c8 100644
+--- a/test/courrier.test.js
++++ b/test/courrier.test.js
+@@ -46,7 +46,11 @@ test('les modèles : chaque nature se rend en FR et en EN, texte et HTML, sans m
+   for (const langue of ['fr', 'en']) for (const nature of NATURES) {
+     const r = rendre(nature, EXEMPLES[nature], langue);
+     assert.ok(r.sujet && r.texte && r.html, `${langue}/${nature}`);
+-    assert.doesNotMatch(r.texte, /!/); assert.doesNotMatch(r.html, /#f00|#ff0000|<img|<script/i);
++    assert.doesNotMatch(r.texte, /!/); assert.doesNotMatch(r.html, /#f00|#ff0000|<script/i);
++    // Aucune image, sauf les logos https (avec texte de remplacement) de l'invitation de marque, cahier 43a.
++    const images = r.html.match(/<img\b[^>]*>/gi) ?? [];
++    if (nature === 'invitation') for (const img of images) assert.match(img, /src="https:\/\/[^"]+" [^>]*alt="AMN"/, `${langue}/${nature}`);
++    else assert.equal(images.length, 0, `${langue}/${nature}`);
+   }
+   assert.throws(() => rendre('lettre', { titre: 'x' }), /désabonnement/);
+ });
+-- 
+2.43.0
+

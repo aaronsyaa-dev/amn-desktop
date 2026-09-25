@@ -1,0 +1,679 @@
+From 98bc63c321c7be150ef157e9b85fc47fc890c58e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 25 Sep 2026 01:11:29 +0000
+Subject: [PATCH 6/9] =?UTF-8?q?Invitation=20:=20le=20contrat=20du=20cahier?=
+ =?UTF-8?q?=2043=20=E2=80=94=20lookup,=20relance,=20signalement?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+POST /v1/auth/invitations/lookup remplace /lire et rend ce que la carte
+affiche : statut (valide, expiree, utilisee, suspendue), organisation, qui
+invite (prénom et libellé), l'adresse et le rôle, les dates d'émission,
+d'expiration et d'utilisation. Tout jeton qui n'est pas réel : le même 404,
+compté. Même seau de freinage que l'acceptation.
+
+relance (lien expiré) et signalement (lien déjà utilisé) préviennent qui a
+invité — la file d'assistance d'AMN, ou une annonce dans l'espace de
+l'organisation et un courriel — une fois par lien et par jour, sans jamais
+rendre son adresse. Les invitations retiennent le libellé, le compte et
+l'organisation de qui invite (SQLite et Postgres).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01BEf9qY21FAUuZ4ogxRY3s2
+---
+ src/db/postgres.js                            |  14 +-
+ src/db/schema.sql                             |   7 +
+ src/db/sqlite.js                              |  19 ++-
+ src/lib/courrierModeles.js                    |  12 +-
+ src/lib/invitations.js                        |  17 +-
+ src/routes/admin.js                           |   4 +-
+ src/routes/auth.js                            | 148 +++++++++++-------
+ src/routes/support.js                         |   2 +-
+ ...lire.test.js => invitation-lookup.test.js} | 114 ++++++++++----
+ 9 files changed, 233 insertions(+), 104 deletions(-)
+ rename test/{invitation-lire.test.js => invitation-lookup.test.js} (54%)
+
+diff --git a/src/db/postgres.js b/src/db/postgres.js
+index 3ca60a3..9eb980e 100644
+--- a/src/db/postgres.js
++++ b/src/db/postgres.js
+@@ -1824,15 +1824,16 @@ export function createPostgresDb(connectionString) {
+ 
+     /* ------------------------------- Invitations ------------------------------ */
+ 
+-    async createInvitation({ tokenHash, userId, expiresAt, orgId = null, role = null, invitedByName = null }) {
++    async createInvitation({ tokenHash, userId, expiresAt, orgId = null, role = null, invitedByName = null, invitedByLabel = null, invitedByUserId = null, invitedByOrgId = null }) {
+       await pool.query(
+-        `INSERT INTO invitations (token_hash, user_id, expires_at, org_id, role, invited_by_name) VALUES ($1, $2, $3, $4, $5, $6)
++        `INSERT INTO invitations (token_hash, user_id, expires_at, org_id, role, invited_by_name, invited_by_label, invited_by_user_id, invited_by_org_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          ON CONFLICT (token_hash) DO UPDATE SET user_id = excluded.user_id,
+            expires_at = excluded.expires_at, accepted_at = NULL,
+-           org_id = excluded.org_id, role = excluded.role, invited_by_name = excluded.invited_by_name`,
+-        [tokenHash, userId, expiresAt, orgId, role, invitedByName],
++           org_id = excluded.org_id, role = excluded.role, invited_by_name = excluded.invited_by_name,
++           invited_by_label = excluded.invited_by_label, invited_by_user_id = excluded.invited_by_user_id, invited_by_org_id = excluded.invited_by_org_id`,
++        [tokenHash, userId, expiresAt, orgId, role, invitedByName, invitedByLabel, invitedByUserId, invitedByOrgId],
+       );
+-      return { tokenHash, userId, expiresAt, orgId, role, invitedByName };
++      return { tokenHash, userId, expiresAt, orgId, role, invitedByName, invitedByLabel, invitedByUserId, invitedByOrgId };
+     },
+ 
+     async findInvitation(tokenHash) {
+@@ -1849,6 +1850,9 @@ export function createPostgresDb(connectionString) {
+         orgId: row.org_id ?? null,
+         role: row.role ?? null,
+         invitedByName: row.invited_by_name ?? null,
++        invitedByLabel: row.invited_by_label ?? null,
++        invitedByUserId: row.invited_by_user_id ?? null,
++        invitedByOrgId: row.invited_by_org_id ?? null,
+       };
+     },
+ 
+diff --git a/src/db/schema.sql b/src/db/schema.sql
+index 846472b..ada32f9 100644
+--- a/src/db/schema.sql
++++ b/src/db/schema.sql
+@@ -251,6 +251,13 @@ ALTER TABLE invitations ADD COLUMN IF NOT EXISTS role TEXT;
+ -- QUI INVITE, en clair et en court (« Harun », « AMN DevSec ») : la page
+ -- d'activation le montre à la personne invitée. Jamais une adresse.
+ ALTER TABLE invitations ADD COLUMN IF NOT EXISTS invited_by_name TEXT;
++-- Son libellé (« équipe AMN », « propriétaire »), son compte et son organisation :
++-- la page d'activation prévient CETTE personne d'une relance ou d'un signalement.
++ALTER TABLE invitations ADD COLUMN IF NOT EXISTS invited_by_label TEXT;
++ALTER TABLE invitations ADD COLUMN IF NOT EXISTS invited_by_user_id UUID;
++ALTER TABLE invitations ADD COLUMN IF NOT EXISTS invited_by_org_id UUID;
++CREATE TABLE IF NOT EXISTS invitation_demandes (token_hash TEXT NOT NULL, nature TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL);
++CREATE INDEX IF NOT EXISTS invitation_demandes_idx ON invitation_demandes (token_hash, nature, created_at);
+ 
+ -- Opaque session tokens rather than JWTs: suspending a user must revoke access
+ -- immediately, which a self-contained signed token cannot do.
+diff --git a/src/db/sqlite.js b/src/db/sqlite.js
+index 7025b9a..b5200b7 100644
+--- a/src/db/sqlite.js
++++ b/src/db/sqlite.js
+@@ -847,6 +847,12 @@ export function createSqliteDb(filePath) {
+   ensureColumn('users', 'password_from_support', 'INTEGER NOT NULL DEFAULT 0');
+   ensureColumn('invitations', 'role', 'TEXT');
+   ensureColumn('invitations', 'invited_by_name', 'TEXT');
++  ensureColumn('invitations', 'invited_by_label', 'TEXT');
++  ensureColumn('invitations', 'invited_by_user_id', 'TEXT');
++  ensureColumn('invitations', 'invited_by_org_id', 'TEXT');
++  // Relance et signalement depuis la page d'activation : un geste par lien et par jour.
++  db.exec(`CREATE TABLE IF NOT EXISTS invitation_demandes (token_hash TEXT NOT NULL, nature TEXT NOT NULL, created_at TEXT NOT NULL)`);
++  db.exec('CREATE INDEX IF NOT EXISTS invitation_demandes_idx ON invitation_demandes (token_hash, nature, created_at)');
+ 
+   // Rattrapage : chaque compte existant recoit l'appartenance a son
+   // organisation d'origine. Idempotent — rejouer ne cree rien en double.
+@@ -2840,12 +2846,12 @@ export function createSqliteDb(filePath) {
+ 
+     /* ------------------------------- Invitations ------------------------------ */
+ 
+-    async createInvitation({ tokenHash, userId, expiresAt, orgId = null, role = null, invitedByName = null }) {
++    async createInvitation({ tokenHash, userId, expiresAt, orgId = null, role = null, invitedByName = null, invitedByLabel = null, invitedByUserId = null, invitedByOrgId = null }) {
+       db.prepare(
+-        `INSERT OR REPLACE INTO invitations (token_hash, user_id, created_at, expires_at, accepted_at, org_id, role, invited_by_name)
+-         VALUES (?, ?, ?, ?, NULL, ?, ?, ?)`,
+-      ).run(tokenHash, userId, new Date().toISOString(), expiresAt, orgId, role, invitedByName);
+-      return { tokenHash, userId, expiresAt, orgId, role, invitedByName };
++        `INSERT OR REPLACE INTO invitations (token_hash, user_id, created_at, expires_at, accepted_at, org_id, role, invited_by_name, invited_by_label, invited_by_user_id, invited_by_org_id)
++         VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)`,
++      ).run(tokenHash, userId, new Date().toISOString(), expiresAt, orgId, role, invitedByName, invitedByLabel, invitedByUserId, invitedByOrgId);
++      return { tokenHash, userId, expiresAt, orgId, role, invitedByName, invitedByLabel, invitedByUserId, invitedByOrgId };
+     },
+ 
+     async findInvitation(tokenHash) {
+@@ -2862,6 +2868,9 @@ export function createSqliteDb(filePath) {
+         orgId: row.org_id ?? null,
+         role: row.role ?? null,
+         invitedByName: row.invited_by_name ?? null,
++        invitedByLabel: row.invited_by_label ?? null,
++        invitedByUserId: row.invited_by_user_id ?? null,
++        invitedByOrgId: row.invited_by_org_id ?? null,
+       };
+     },
+ 
+diff --git a/src/lib/courrierModeles.js b/src/lib/courrierModeles.js
+index 1709c36..040eced 100644
+--- a/src/lib/courrierModeles.js
++++ b/src/lib/courrierModeles.js
+@@ -10,7 +10,7 @@
+  * que le lien. Vérifié par scripts/check-emails.mjs.
+  */
+ 
+-export const NATURES = ['invitation', 'relance_facture', 'bienvenue', 'reinitialisation', 'rapport_mensuel', 'preavis_impaye', 'reactivation', 'notification_critique', 'lettre'];
++export const NATURES = ['invitation', 'demande_invitation', 'relance_facture', 'bienvenue', 'reinitialisation', 'rapport_mensuel', 'preavis_impaye', 'reactivation', 'notification_critique', 'lettre'];
+ /** Ce qui ne part qu'avec l'accord explicite de la personne (préférences `courrier.*`). */
+ export const NATURES_OPT_IN = { notification_critique: 'courrier.critique', lettre: 'courrier.lettre' };
+ 
+@@ -56,6 +56,11 @@ ${desabonnement ? `<p style="margin:20px 0 0;font-size:12px;color:#666666"><a hr
+ }
+ 
+ const fr = {
++  /* Une relance ou un signalement depuis la page d'activation, à la personne qui a invité. */
++  demande_invitation: ({ sujet, texte }) => ({
++    sujet,
++    ...enveloppe({ titre: sujet, paragraphes: [texte], signature: 'AMN Desktop' }),
++  }),
+   /*
+     L'INVITATION D'UNE NOUVELLE CLIENTE (chantier « arrivée cliente »). Le lien
+     mène à la page d'activation, où elle choisit SON mot de passe : le courriel
+@@ -106,6 +111,10 @@ const fr = {
+ };
+ 
+ const en = {
++  demande_invitation: ({ sujet, texte }) => ({
++    sujet,
++    ...enveloppe({ langue: 'en', titre: sujet, paragraphes: [texte], signature: 'AMN Desktop' }),
++  }),
+   invitation: ({ org, lien, invitePar = null, jusquau }) => ({
+     sujet: `Your ${org} workspace is ready`,
+     ...enveloppe({ langue: 'en', titre: `Your ${org} workspace is ready.`, paragraphes: [`${invitePar ? `${invitePar} has opened` : 'We have opened'} an AMN workspace for ${org}. All it needs is your password, which you choose yourself by following the link below.`, `The link is valid until ${jusquau} and works once. The first time you open it, your workspace introduces itself in two minutes.`], lien: { libelle: 'Activate my workspace', url: lien }, pied: 'If you were not expecting this message, ignore it: nothing opens without this link.' }),
+@@ -158,6 +167,7 @@ export function rendre(nature, params = {}, langue = 'fr') {
+ 
+ /** Des paramètres d'exemple par nature — pour check:emails et les tests. */
+ export const EXEMPLES = {
++  demande_invitation: { sujet: 'Nouveau lien d’activation demandé — Le Jardin d’Élise', texte: 'elise@jardin.test demande un nouveau lien d’activation : le précédent a expiré. Réémettez-le depuis le dossier de l’organisation.' },
+   invitation: { org: 'Le Jardin d’Élise', lien: 'https://exemple.test/#/invitation?token=jeton', invitePar: 'Harun', jusquau: '1er octobre' },
+   relance_facture: { org: 'Le Jardin d’Élise', numero: 'F-2026-014', texte: 'Bonjour Madame Roux,\n\nLa facture F-2026-014 de 480,00 € était due le 12 septembre. Pouvez-vous me dire où en est son règlement ?\n\nÉlise Roux' },
+   bienvenue: { org: 'Le Jardin d’Élise', lien: 'https://exemple.test/#/bienvenue/jeton', jours: 7 },
+diff --git a/src/lib/invitations.js b/src/lib/invitations.js
+index 0231e17..d2ad1d2 100644
+--- a/src/lib/invitations.js
++++ b/src/lib/invitations.js
+@@ -4,13 +4,6 @@
+  * (auth, admin) et celle qui la lit (`POST /v1/auth/invitations/lire`).
+  */
+ 
+-/** « medina@gmail.com » → « m•••••@gmail.com » : assez pour se reconnaître, pas pour être lu par-dessus l'épaule. */
+-export function masquerAdresse(email) {
+-  const [local, domaine] = String(email ?? '').split('@');
+-  if (!local || !domaine) return null;
+-  return `${local[0]}${'•'.repeat(Math.max(3, Math.min(local.length - 1, 8)))}@${domaine}`;
+-}
+-
+ /**
+  * Qui invite, tel que la page d'activation le montrera : un nom court, en
+  * clair, sans balise ni caractère de contrôle. Faute de nom fourni, le repli
+@@ -50,3 +43,13 @@ export async function envoyerInvitation(db, { org, email, url, expiresAt, invite
+     return { envoye: false, raison: 'echec', erreur: String(err?.message ?? err).slice(0, 120) };
+   }
+ }
++
++/** Le rôle tel que la carte d'invitation le dit (« Votre rôle »). */
++export function libelleRoleInvite(role) {
++  return { owner: 'Propriétaire de l’espace', admin: 'Administration de l’espace', member: 'Membre de l’équipe', guest: 'Invité·e' }[role] ?? 'Membre de l’équipe';
++}
++
++/** Qui invite, en quelques mots, après son prénom (« Karim · propriétaire »). */
++export function libelleInvitant(role) {
++  return { owner: 'propriétaire', admin: 'administration' }[role] ?? 'équipe';
++}
+diff --git a/src/routes/admin.js b/src/routes/admin.js
+index 5ebe1a0..8a95c00 100644
+--- a/src/routes/admin.js
++++ b/src/routes/admin.js
+@@ -460,7 +460,7 @@ export function adminRouter() {
+       const { plaintext, hash } = mintToken();
+       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+       const invitedByName = nomInvitant(req.body?.invitePar, 'AMN DevSec');
+-      await db.createInvitation({ tokenHash: hash, userId: owner.id, expiresAt, invitedByName });
++      await db.createInvitation({ tokenHash: hash, userId: owner.id, expiresAt, invitedByName, invitedByLabel: 'équipe AMN', invitedByUserId: req.user?.id ?? null, invitedByOrgId: AMN_ORG_ID });
+       invitation = { token: plaintext, url: invitationUrl(plaintext, org.id), expiresAt };
+       /*
+         L'INVITATION PART PAR COURRIEL (chantier « arrivée cliente », partie 2),
+@@ -1287,7 +1287,7 @@ export function adminRouter() {
+     const { plaintext, hash } = mintToken();
+     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+     const invitedByName = nomInvitant(req.body?.invitePar, 'AMN DevSec');
+-    await db.createInvitation({ tokenHash: hash, userId: user.id, expiresAt, invitedByName });
++    await db.createInvitation({ tokenHash: hash, userId: user.id, expiresAt, invitedByName, invitedByLabel: 'équipe AMN', invitedByUserId: req.user?.id ?? null, invitedByOrgId: AMN_ORG_ID });
+     await journal(req, org.id, 'invite', email);
+     const url = invitationUrl(plaintext, org.id);
+     const courrier = req.body?.envoyer === false ? { envoye: false, raison: 'non_demande' } : await envoyerInvitation(db, { org, email, url, expiresAt, invitePar: invitedByName, par: 'atelier' });
+diff --git a/src/routes/auth.js b/src/routes/auth.js
+index 9c46205..b9bfed9 100644
+--- a/src/routes/auth.js
++++ b/src/routes/auth.js
+@@ -10,6 +10,7 @@ import {
+ import { encryptionKey } from '../lib/totp.js';
+ import { tenantAuth } from '../middleware/tenantAuth.js';
+ import {
++  AMN_ORG_ID,
+   ORG_ACCENTS,
+   SUSPENDED_ORG_MESSAGE,
+   SUSPENDED_USER_MESSAGE,
+@@ -18,7 +19,8 @@ import {
+   seatsForOrg,
+ } from '../db/tenancy.js';
+ import { appOriginForOrg, invitationUrl } from '../lib/links.js';
+-import { masquerAdresse, nomInvitant, envoyerInvitation } from '../lib/invitations.js';
++import { nomInvitant, envoyerInvitation, libelleRoleInvite, libelleInvitant } from '../lib/invitations.js';
++import { prevenirAmn } from './support.js';
+ import { parOrganisation } from '../lib/verrou.js';
+ 
+ /**
+@@ -880,6 +882,9 @@ export function authRouter() {
+       orgId: crossOrg ? req.auth.orgId : null,
+       role: crossOrg ? role : null,
+       invitedByName: nomInvitant(req.body?.invitePar, org?.name),
++      invitedByLabel: libelleInvitant(req.auth.role),
++      invitedByUserId: req.auth.userId ?? null,
++      invitedByOrgId: req.auth.orgId,
+     });
+     const url = invitationUrl(plaintext, req.auth.orgId);
+     // Une appartenance s'annonce dans l'organisation qui invite ; une activation, par courriel si le courrier est en ligne.
+@@ -901,91 +906,126 @@ export function authRouter() {
+   }));
+ 
+   /**
+-   * LIRE UNE INVITATION AVANT DE L'ACTIVER (arrivée cliente, tour 43).
++   * LIRE UNE INVITATION AVANT DE L'ACTIVER — contrat du cahier 43 (ARRIVEE.md §2).
+    *
+-   * La page d'activation a besoin de savoir, AVANT que la personne tape quoi
+-   * que ce soit, chez qui elle arrive et si son lien vaut encore. Sans cette
+-   * lecture, elle ne pouvait qu'essayer, échouer, et dire « invalide ou
+-   * expirée » — sans distinguer un lien périmé (on en redemande un) d'un lien
+-   * déjà servi (on se connecte).
++   *   POST /v1/auth/invitations/lookup       { token } → l'invitation, pour la page d'activation
++   *   POST /v1/auth/invitations/relance      { token } → prévient qui a invité : un nouveau lien est demandé
++   *   POST /v1/auth/invitations/signalement  { token } → prévient qui a invité : le lien a servi à quelqu'un d'autre
+    *
+    * ## Ce qui NE s'affaiblit PAS : la protection contre le sondage
+    *
+-   * Sonder, c'est essayer des jetons au hasard pour apprendre quelque chose.
+-   * Trois verrous, les mêmes qu'à l'acceptation :
+-   *
+-   *   1. Le FREINAGE AVANT toute lecture — mêmes seaux par adresse que
+-   *      `/invitations/accept` (20 échecs par 15 min, puis 429). Lire et
+-   *      accepter puisent dans le MÊME seau : on ne double pas le budget
+-   *      d'essais en alternant les deux routes.
++   *   1. Le FREINAGE AVANT toute lecture, dans le MÊME seau par adresse que
++   *      `/invitations/accept` (20 échecs par 15 min, puis 429) : alterner les
++   *      routes ne multiplie pas le budget d'essais.
+    *   2. UNE SEULE RÉPONSE pour tout ce qui n'est pas un vrai jeton — mal
+-   *      formé (lien tronqué par une messagerie) ou inconnu : `{ etat:
+-   *      'incomplet' }`, toujours 200, toujours compté comme un échec. Qui
+-   *      tape au hasard ne voit jamais que cela, et se fait freiner.
+-   *   3. L'ENTROPIE : un jeton fait 256 bits. Les états distincts (valable,
+-   *      expiré, déjà utilisé) ne se voient qu'avec un vrai jeton — c'est-à-
+-   *      dire en tenant déjà le lien reçu. Ce que ce porteur apprend (le nom
+-   *      de l'organisation, qui invite, une adresse MASQUÉE) est ce que le
+-   *      courriel lui a déjà dit.
++   *      formé, inconnu, absent : 404 `invitation_introuvable`, identique
++   *      octet pour octet, et compté comme un échec.
++   *   3. L'ENTROPIE : 256 bits. L'état, l'organisation et l'adresse ne se
++   *      lisent qu'avec le lien reçu — ce que le courriel a déjà dit à son
++   *      porteur, et rien de plus : ni identifiant, ni adresse de qui invite.
+    *
+-   * Le jeton voyage dans le CORPS d'un POST, jamais dans une URL : une URL
+-   * finit dans les journaux d'accès, les en-têtes Referer et l'historique.
+-   * La réponse n'est jamais mise en cache.
++   * Le jeton voyage dans le CORPS, jamais dans l'URL ; rien n'est mis en cache.
+    */
+-  router.post('/invitations/lire', async (req, res) => {
++  const lireInvitation = async (req, res) => {
+     const db = req.app.locals.db;
+     const token = String(req.body?.token ?? '').trim();
+     res.set('Cache-Control', 'no-store');
+-
+     const seaux = invitationBuckets(req);
+     for (const b of seaux) {
+       const etat = await db.readLoginBucket(b.key);
+       if (etat?.blockedUntil && Date.parse(etat.blockedUntil) > Date.now()) {
+         const secondes = Math.ceil((Date.parse(etat.blockedUntil) - Date.now()) / 1000);
+         res.set('Retry-After', String(secondes));
+-        return res.status(429).json({
+-          error: 'Trop de tentatives. Réessayez dans quelques minutes.',
+-          code: 'too_many_attempts',
+-          retryAfterSeconds: secondes,
+-        });
++        res.status(429).json({ error: 'Trop de tentatives. Réessayez dans quelques minutes.', code: 'too_many_attempts', retryAfterSeconds: secondes });
++        return null;
+       }
+     }
+-    const incomplet = async () => {
+-      for (const b of seaux) {
+-        await db.bumpLoginBucket({ bucket: b.key, windowMs: LOGIN_WINDOW_MS, threshold: b.threshold, blockMs: LOGIN_BLOCK_MS });
+-      }
+-      return res.json({ etat: 'incomplet' });
++    const introuvable = async () => {
++      for (const b of seaux) await db.bumpLoginBucket({ bucket: b.key, windowMs: LOGIN_WINDOW_MS, threshold: b.threshold, blockMs: LOGIN_BLOCK_MS });
++      res.status(404).json({ error: 'Invitation introuvable.', code: 'invitation_introuvable' });
++      return null;
+     };
+-
+-    if (!FORME_JETON.test(token)) return incomplet();
++    if (!FORME_JETON.test(token)) return introuvable();
+     const invitation = await db.findInvitation(hashToken(token));
+-    if (!invitation) return incomplet();
++    if (!invitation) return introuvable();
+     const user = await db.getUser(invitation.userId);
+-    if (!user) return incomplet();
++    if (!user) return introuvable();
+     const org = await db.getOrganization(invitation.orgId ?? user.orgId);
+-    if (!org) return incomplet();
+-
+-    const etat = invitation.acceptedAt
+-      ? 'utilise'
++    if (!org) return introuvable();
++    const statut = invitation.acceptedAt
++      ? 'utilisee'
+       : Date.parse(invitation.expiresAt) <= Date.now()
+-        ? 'expire'
++        ? 'expiree'
+         : user.status === 'suspended' || org.status === 'suspended'
+-          ? 'suspendu'
+-          : 'valable';
++          ? 'suspendue'
++          : 'valide';
++    return { invitation, user, org, statut, hash: hashToken(token) };
++  };
+ 
++  router.post('/invitations/lookup', async (req, res) => {
++    const lu = await lireInvitation(req, res);
++    if (!lu) return undefined;
++    const { invitation, user, org, statut } = lu;
++    const roleCode = invitation.orgId ? invitation.role || 'member' : user.role;
+     return res.json({
+-      etat,
++      statut,
+       nature: invitation.orgId ? 'appartenance' : 'activation',
+-      organisation: { nom: org.name, logo: org.logoDataUrl ?? null },
+-      invitePar: invitation.invitedByName ?? null,
+-      destinataire: masquerAdresse(user.email),
+-      emiseLe: invitation.createdAt ?? null,
++      organisation: org.name,
++      invitePar: { prenom: invitation.invitedByName ?? null, libelle: invitation.invitedByLabel ?? null },
++      // En clair, comme sur la carte : le porteur du lien est la personne à qui il a été envoyé.
++      email: user.email,
++      role: libelleRoleInvite(roleCode),
++      roleCode,
++      emisLe: invitation.createdAt ?? null,
+       expireLe: invitation.expiresAt,
+-      // Une appartenance n'a pas de mot de passe à choisir : le compte en a déjà un.
++      utiliseLe: invitation.acceptedAt ?? null,
+       motDePasseRequis: !invitation.orgId,
+     });
+   });
+ 
++  /**
++   * Relance et signalement : un geste par lien et par vingt-quatre heures. La
++   * personne qui a invité est prévenue par le canal qui la joint — la file
++   * d'assistance d'AMN pour une invitation ouverte par AMN, une annonce dans
++   * l'espace (et un courriel si le courrier est en ligne) pour une collègue.
++   * La réponse ne rend que son prénom, jamais son adresse.
++   */
++  const prevenirInvitant = (nature) => async (req, res) => {
++    const lu = await lireInvitation(req, res);
++    if (!lu) return undefined;
++    const db = req.app.locals.db;
++    const { invitation, user, org, statut, hash } = lu;
++    const attendu = nature === 'relance' ? ['expiree'] : ['utilisee'];
++    if (!attendu.includes(statut)) return res.status(409).json({ error: nature === 'relance' ? 'Ce lien est encore valable : il n’a pas besoin d’être renouvelé.' : 'Ce lien n’a pas encore servi.', code: 'etat_inattendu' });
++    const prenom = invitation.invitedByName ?? org.name;
++    const deja = await db.all('SELECT created_at FROM invitation_demandes WHERE token_hash = ? AND nature = ? AND created_at > ?', [hash, nature, new Date(Date.now() - 24 * 3_600_000).toISOString()]);
++    if (deja.length) return res.json({ ok: true, prenom, deja: true, depuis: deja[0].created_at });
++    await db.run('INSERT INTO invitation_demandes (token_hash, nature, created_at) VALUES (?, ?, ?)', [hash, nature, new Date().toISOString()]);
++
++    const sujet = nature === 'relance' ? `Nouveau lien d’activation demandé — ${org.name}` : `Signalement : un lien d’activation a servi à quelqu’un d’autre — ${org.name}`;
++    const corps = nature === 'relance'
++      ? `${user.email} demande un nouveau lien d’activation pour ${org.name} : le précédent a expiré le ${new Date(invitation.expiresAt).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })}. Réémettez-le depuis le dossier de l’organisation.`
++      : `${user.email} dit ne pas avoir activé ${org.name} avec son lien, utilisé le ${new Date(invitation.acceptedAt).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })}. Suspendez l’accès ouvert avec ce lien, puis réémettez-en un.`;
++    const parAmn = !invitation.invitedByOrgId || invitation.invitedByOrgId === AMN_ORG_ID;
++    if (parAmn) {
++      const demande = await db.createSupportRequest({ orgId: org.id, kind: 'message', subject: sujet, body: corps, requestedBy: user.id, requestedByEmail: user.email });
++      prevenirAmn(req, demande, org.name);
++    } else {
++      const record = await db.upsertRecord(invitation.invitedByOrgId, 'announcements', `invitation-${nature}-${hash.slice(0, 16)}`, { title: sujet, body: corps, authorEmail: 'AMN Desktop', createdAt: new Date().toISOString(), readBy: [], fromProvider: true });
++      req.app.locals.hub?.broadcast?.({ type: 'record', collection: 'announcements', record }, invitation.invitedByOrgId);
++      const invitant = invitation.invitedByUserId ? await db.getUser(invitation.invitedByUserId).catch(() => null) : null;
++      if (invitant?.email) {
++        try {
++          const { envoyer } = await import('../lib/courrier.js');
++          await envoyer(db, { orgId: invitation.invitedByOrgId, a: invitant.email, nature: 'demande_invitation', params: { sujet, texte: corps }, par: 'invitation' });
++        } catch { /* le courrier n'arrête pas une demande : l'annonce est posée */ }
++      }
++    }
++    return res.json({ ok: true, prenom });
++  };
++  router.post('/invitations/relance', prevenirInvitant('relance'));
++  router.post('/invitations/signalement', prevenirInvitant('signalement'));
++
+   /**
+    * Accepts an invitation: sets the password and activates the account.
+    * Unauthenticated by design — the invitee has no session yet; the token is
+diff --git a/src/routes/support.js b/src/routes/support.js
+index 609dc4e..73166bc 100644
+--- a/src/routes/support.js
++++ b/src/routes/support.js
+@@ -29,7 +29,7 @@ const SUBJECT_MAX = 120;
+ const BODY_MAX = 2000;
+ 
+ /** Le prestataire est prévenu à l'instant, sur sa propre socket — jamais sur une autre. */
+-function prevenirAmn(req, request, orgName) {
++export function prevenirAmn(req, request, orgName) {
+   // `tower`, pas `broadcast(…, AMN_ORG_ID)` : Aaron lit la Tour depuis une
+   // session souvent posée sur une cliente, et sa socket n'écoute alors pas
+   // AMN DevSec. La Tour, elle, atteint tout membre d'AMN où qu'il regarde.
+diff --git a/test/invitation-lire.test.js b/test/invitation-lookup.test.js
+similarity index 54%
+rename from test/invitation-lire.test.js
+rename to test/invitation-lookup.test.js
+index 73e745b..6c7d939 100644
+--- a/test/invitation-lire.test.js
++++ b/test/invitation-lookup.test.js
+@@ -10,13 +10,13 @@ const { createSqliteDb } = await import('../src/db/sqlite.js');
+ const { hashPassword, mintToken } = await import('../src/lib/password.js');
+ 
+ /**
+- * LIRE UNE INVITATION AVANT DE L'ACTIVER (arrivée cliente, tour 43).
++ * LIRE UNE INVITATION AVANT DE L'ACTIVER — contrat du cahier 43 (ARRIVEE.md §2).
+  *
+  * La page d'activation distingue quatre états — valable, expiré, déjà
+  * utilisé, lien incomplet — sans que la route devienne un oracle : tout ce
+- * qui n'est pas un vrai jeton reçoit LA MÊME réponse, compte comme un échec,
+- * et le freinage coupe avant toute lecture, dans le même seau que
+- * l'acceptation.
++ * qui n'est pas un vrai jeton reçoit LE MÊME 404, compte comme un échec, et
++ * le freinage coupe avant toute lecture, dans le même seau que l'acceptation.
++ * Relance et signalement préviennent qui a invité, sans jamais rendre son adresse.
+  */
+ const OPERATOR = 'test-operator-token';
+ 
+@@ -42,7 +42,7 @@ async function decor(t) {
+     try { json = await r.json(); } catch { json = null; }
+     return { status: r.status, body: json, headers: r.headers };
+   };
+-  const lire = (token, ip) => api('/v1/auth/invitations/lire', { method: 'POST', body: { token }, ip });
++  const lire = (token, ip) => api('/v1/auth/invitations/lookup', { method: 'POST', body: { token }, ip });
+   return { db, api, lire };
+ }
+ 
+@@ -56,21 +56,23 @@ async function nouvelleCliente(api, { invitePar } = {}) {
+   return r.body;
+ }
+ 
+-test('valable : l’organisation, qui invite, une adresse masquée — et rien de plus', async (t) => {
++test('valable : l’organisation, qui invite, l’adresse et le rôle de la carte — et rien de plus', async (t) => {
+   const { api, lire } = await decor(t);
+   const cree = await nouvelleCliente(api, { invitePar: 'Harun' });
+   const r = await lire(cree.invitation.token);
+   assert.equal(r.status, 200);
+   assert.equal(r.headers.get('cache-control'), 'no-store');
+-  assert.equal(r.body.etat, 'valable');
++  assert.equal(r.body.statut, 'valide');
+   assert.equal(r.body.nature, 'activation');
+-  assert.equal(r.body.organisation.nom, 'Fleurs de Lune');
+-  assert.equal(r.body.invitePar, 'Harun');
+-  assert.equal(r.body.destinataire, 'm•••••@exemple.test');
++  assert.equal(r.body.organisation, 'Fleurs de Lune');
++  assert.deepEqual(r.body.invitePar, { prenom: 'Harun', libelle: 'équipe AMN' });
++  assert.equal(r.body.email, 'medina@exemple.test', 'en clair, comme sur la carte : le porteur est la destinataire');
++  assert.equal(r.body.role, 'Propriétaire de l’espace');
+   assert.equal(r.body.motDePasseRequis, true);
+   assert.equal(r.body.expireLe, cree.invitation.expiresAt);
++  assert.ok(r.body.emisLe);
++  assert.equal(r.body.utiliseLe, null);
+   const brut = JSON.stringify(r.body);
+-  assert.ok(!brut.includes('medina@'), 'l’adresse n’apparaît jamais en clair');
+   assert.ok(!brut.includes(cree.owner.id), 'aucun identifiant de compte');
+   assert.ok(!brut.includes(cree.organization.id), 'aucun identifiant d’organisation');
+   assert.ok(!/token|hash/i.test(Object.keys(r.body).join(' ')), 'ni jeton ni empreinte');
+@@ -79,7 +81,7 @@ test('valable : l’organisation, qui invite, une adresse masquée — et rien d
+ test('sans nom d’invitant fourni, c’est AMN DevSec ; une adresse glissée à la place est refusée', async (t) => {
+   const { api, lire } = await decor(t);
+   const cree = await nouvelleCliente(api, { invitePar: 'harun@amn.test' });
+-  assert.equal((await lire(cree.invitation.token)).body.invitePar, 'AMN DevSec');
++  assert.equal((await lire(cree.invitation.token)).body.invitePar.prenom, 'AMN DevSec');
+ });
+ 
+ test('déjà utilisé, puis expiré : deux états distincts, pour le seul porteur d’un vrai jeton', async (t) => {
+@@ -88,47 +90,48 @@ test('déjà utilisé, puis expiré : deux états distincts, pour le seul porteu
+   const ok = await api('/v1/auth/invitations/accept', { method: 'POST', body: { token: cree.invitation.token, password: 'un-mot-de-passe-solide' } });
+   assert.equal(ok.status, 200);
+   const utilise = await lire(cree.invitation.token);
+-  assert.equal(utilise.body.etat, 'utilise');
+-  assert.equal(utilise.body.organisation.nom, 'Fleurs de Lune');
++  assert.equal(utilise.body.statut, 'utilisee');
++  assert.equal(utilise.body.organisation, 'Fleurs de Lune');
++  assert.ok(utilise.body.utiliseLe, 'la date d’activation, pour le talon');
+ 
+   const { plaintext, hash } = mintToken();
+   await db.createInvitation({ tokenHash: hash, userId: cree.owner.id, expiresAt: new Date(Date.now() - 60_000).toISOString(), invitedByName: 'Harun' });
+   const expire = await lire(plaintext);
+-  assert.equal(expire.body.etat, 'expire');
+-  assert.equal(expire.body.invitePar, 'Harun');
++  assert.equal(expire.body.statut, 'expiree');
++  assert.equal(expire.body.invitePar.prenom, 'Harun');
+ });
+ 
+-test('lien incomplet : un jeton tronqué, un jeton inconnu et un corps vide rendent EXACTEMENT la même réponse', async (t) => {
++test('lien incomplet : un jeton tronqué, un jeton inconnu et un corps vide rendent EXACTEMENT le même 404', async (t) => {
+   const { api, lire } = await decor(t);
+   const cree = await nouvelleCliente(api);
+   const tronque = await lire(cree.invitation.token.slice(0, 30), '10.0.0.1');
+   const inconnu = await lire(mintToken().plaintext, '10.0.0.2');
+-  const vide = await api('/v1/auth/invitations/lire', { method: 'POST', body: {}, ip: '10.0.0.3' });
++  const vide = await api('/v1/auth/invitations/lookup', { method: 'POST', body: {}, ip: '10.0.0.3' });
+   for (const r of [tronque, inconnu, vide]) {
+-    assert.equal(r.status, 200);
+-    assert.deepEqual(r.body, { etat: 'incomplet' });
++    assert.equal(r.status, 404);
++    assert.deepEqual(r.body, { error: 'Invitation introuvable.', code: 'invitation_introuvable' });
+   }
+ });
+ 
+ test('le jeton ne passe jamais par une URL : pas de lecture en GET', async (t) => {
+   const { api } = await decor(t);
+-  const r = await api(`/v1/auth/invitations/lire?token=${mintToken().plaintext}`);
++  const r = await api(`/v1/auth/invitations/lookup?token=${mintToken().plaintext}`);
+   assert.ok([401, 404].includes(r.status), `refusé (${r.status})`);
+-  assert.equal(r.body?.etat, undefined, 'aucune lecture');
++  assert.equal(r.body?.statut, undefined, 'aucune lecture');
+ });
+ 
+ test('sonder freine : après 20 jetons au hasard, même un VRAI jeton est refusé (429) — le freinage passe avant la lecture', async (t) => {
+   const { api, lire } = await decor(t);
+   const cree = await nouvelleCliente(api);
+   const ip = '203.0.113.7';
+-  for (let i = 0; i < 20; i += 1) assert.deepEqual((await lire(mintToken().plaintext, ip)).body, { etat: 'incomplet' });
++  for (let i = 0; i < 20; i += 1) assert.equal((await lire(mintToken().plaintext, ip)).status, 404);
+   const bloque = await lire(cree.invitation.token, ip);
+   assert.equal(bloque.status, 429);
+   assert.equal(bloque.body.code, 'too_many_attempts');
+   assert.ok(Number(bloque.headers.get('retry-after')) > 0);
+   assert.equal(bloque.body.organisation, undefined, 'bloqué : rien n’est lu, rien n’est dit');
+   // Une autre adresse n'est pas pénalisée.
+-  assert.equal((await lire(cree.invitation.token, '198.51.100.9')).body.etat, 'valable');
++  assert.equal((await lire(cree.invitation.token, '198.51.100.9')).body.statut, 'valide');
+ });
+ 
+ test('lire et accepter puisent dans le MÊME seau : alterner les deux routes ne double pas le budget d’essais', async (t) => {
+@@ -147,7 +150,7 @@ test('lire et accepter puisent dans le MÊME seau : alterner les deux routes ne
+ test('lire ne consomme pas : après lecture, l’invitation s’accepte toujours', async (t) => {
+   const { api, lire } = await decor(t);
+   const cree = await nouvelleCliente(api);
+-  for (let i = 0; i < 3; i += 1) assert.equal((await lire(cree.invitation.token)).body.etat, 'valable');
++  for (let i = 0; i < 3; i += 1) assert.equal((await lire(cree.invitation.token)).body.statut, 'valide');
+   const ok = await api('/v1/auth/invitations/accept', { method: 'POST', body: { token: cree.invitation.token, password: 'un-mot-de-passe-solide' } });
+   assert.equal(ok.status, 200);
+ });
+@@ -156,7 +159,7 @@ test('organisation suspendue : l’état le dit, et l’acceptation reste refus
+   const { db, api, lire } = await decor(t);
+   const cree = await nouvelleCliente(api);
+   await db.updateOrganization(cree.organization.id, { status: 'suspended' });
+-  assert.equal((await lire(cree.invitation.token)).body.etat, 'suspendu');
++  assert.equal((await lire(cree.invitation.token)).body.statut, 'suspendue');
+   const refus = await api('/v1/auth/invitations/accept', { method: 'POST', body: { token: cree.invitation.token, password: 'un-mot-de-passe-solide' } });
+   assert.equal(refus.status, 403);
+ });
+@@ -172,9 +175,62 @@ test('appartenance : un compte existant invité ailleurs — nature « appartena
+   const inv = await api('/v1/auth/invitations', { token: login.body.token, method: 'POST', body: { email: 'aaron@vermeil.test', role: 'member', invitePar: 'Riyad' } });
+   assert.equal(inv.status, 201);
+   const r = await lire(inv.body.invitation.token);
+-  assert.equal(r.body.etat, 'valable');
++  assert.equal(r.body.statut, 'valide');
+   assert.equal(r.body.nature, 'appartenance');
+-  assert.equal(r.body.organisation.nom, 'AllStore', 'l’organisation qui invite, pas celle du compte');
+-  assert.equal(r.body.invitePar, 'Riyad');
++  assert.equal(r.body.organisation, 'AllStore', 'l’organisation qui invite, pas celle du compte');
++  assert.deepEqual(r.body.invitePar, { prenom: 'Riyad', libelle: 'propriétaire' });
++  assert.equal(r.body.role, 'Membre de l’équipe');
+   assert.equal(r.body.motDePasseRequis, false);
+ });
++
++/* ─────────────── Relance et signalement ─────────────── */
++
++async function expirer(db, userId) {
++  await db.run("UPDATE invitations SET expires_at = '2026-01-01T00:00:00.000Z' WHERE user_id = ?", [userId]);
++}
++
++test('relance d’un lien expiré ouvert par AMN : une demande dans la file d’assistance, le prénom seul en retour, une fois par jour', async (t) => {
++  const { db, api } = await decor(t);
++  const cree = await nouvelleCliente(api, { invitePar: 'Harun' });
++  const encoreValable = await api('/v1/auth/invitations/relance', { method: 'POST', body: { token: cree.invitation.token } });
++  assert.equal(encoreValable.status, 409, 'un lien valable n’a pas à être renouvelé');
++  await expirer(db, cree.owner.id);
++  const r = await api('/v1/auth/invitations/relance', { method: 'POST', body: { token: cree.invitation.token } });
++  assert.equal(r.status, 200);
++  assert.deepEqual(r.body, { ok: true, prenom: 'Harun' });
++  const file = await api('/v1/admin/support-requests', { token: OPERATOR });
++  const demandes = (file.body.requests ?? file.body.demandes ?? file.body).filter?.((d) => /Nouveau lien d’activation/.test(d.subject)) ?? [];
++  assert.equal(demandes.length, 1, JSON.stringify(file.body).slice(0, 300));
++  const encore = await api('/v1/auth/invitations/relance', { method: 'POST', body: { token: cree.invitation.token } });
++  assert.equal(encore.body.deja, true, 'pas deux demandes le même jour');
++  assert.equal(((await api('/v1/admin/support-requests', { token: OPERATOR })).body.requests ?? []).filter((d) => /Nouveau lien/.test(d.subject)).length, 1);
++});
++
++test('signalement d’un lien déjà utilisé, invitation d’une collègue : une annonce chez l’organisation qui invite, jamais son adresse', async (t) => {
++  const { db, api } = await decor(t);
++  const org = await db.createOrganization({ name: 'Groupe Vernet', plan: 'business_premium' });
++  const hash = await hashPassword('mot-de-passe-hote');
++  await db.createUser({ orgId: org.id, email: 'karim@vernet.test', passwordHash: hash, role: 'owner', status: 'active' });
++  const login = await api('/v1/auth/login', { method: 'POST', body: { email: 'karim@vernet.test', password: 'mot-de-passe-hote' } });
++  const inv = await api('/v1/auth/invitations', { token: login.body.token, method: 'POST', body: { email: 'yanis@vernet.test', role: 'member', invitePar: 'Karim Diallo' } });
++  const lu = await api('/v1/auth/invitations/lookup', { method: 'POST', body: { token: inv.body.invitation.token } });
++  assert.deepEqual(lu.body.invitePar, { prenom: 'Karim Diallo', libelle: 'propriétaire' });
++  assert.equal((await api('/v1/auth/invitations/signalement', { method: 'POST', body: { token: inv.body.invitation.token } })).status, 409, 'pas encore utilisé');
++  await api('/v1/auth/invitations/accept', { method: 'POST', body: { token: inv.body.invitation.token, password: 'un-mot-de-passe-solide' } });
++  const r = await api('/v1/auth/invitations/signalement', { method: 'POST', body: { token: inv.body.invitation.token } });
++  assert.deepEqual(r.body, { ok: true, prenom: 'Karim Diallo' });
++  assert.ok(!JSON.stringify(r.body).includes('karim@'), 'jamais l’adresse de qui invite');
++  const annonces = await db.listRecords(org.id, 'announcements');
++  assert.equal(annonces.length, 1);
++  assert.match(annonces[0].data.title, /Signalement/);
++  assert.match(annonces[0].data.body, /yanis@vernet\.test/);
++});
++
++test('relance et signalement sont freinés comme la lecture : un jeton inconnu rend le même 404 et compte', async (t) => {
++  const { api, lire } = await decor(t);
++  const cree = await nouvelleCliente(api);
++  const ip = '203.0.113.9';
++  for (let i = 0; i < 10; i += 1) assert.equal((await api('/v1/auth/invitations/relance', { method: 'POST', body: { token: mintToken().plaintext }, ip })).status, 404);
++  for (let i = 0; i < 10; i += 1) assert.equal((await api('/v1/auth/invitations/signalement', { method: 'POST', body: { token: mintToken().plaintext }, ip })).status, 404);
++  assert.equal((await lire(cree.invitation.token, ip)).status, 429);
++});
+-- 
+2.43.0
+

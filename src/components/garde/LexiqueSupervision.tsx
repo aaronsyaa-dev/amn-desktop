@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { langueActive } from '../../i18n';
 import { useFermetureEchap } from '../../lib/useFermetureEchap';
+import { EDITION_PRODUCT_NAME } from '../../edition/edition';
 
 /**
  * LE LEXIQUE DE LA SUPERVISION — édition interne seulement.
@@ -45,7 +46,7 @@ const FAMILLES: { titre: string; termes: Terme[] }[] = [
   {
     titre: 'La Tour — décider',
     termes: [
-      { mot: 'La Tour de contrôle', sens: 'Le mur d’AMN Business : toutes les clientes, ce qui attend, les demandes. C’est ici qu’on pilote à la main.', ecran: { label: 'Vue d’ensemble', to: '/tour' } },
+      { mot: 'La Tour de contrôle', sens: `Le mur d’${EDITION_PRODUCT_NAME} : toutes les clientes, ce qui attend, les demandes. C’est ici qu’on pilote à la main.`, ecran: { label: 'Vue d’ensemble', to: '/tour' } },
       { mot: 'Une organisation', sens: 'Une cliente (ou AMN elle-même) : ses membres, ses modules, ses places, sa formule, ses données — étanches à toute autre.', ecran: { label: 'Organisations', to: '/tour/organisations' } },
       { mot: 'Le dossier', sens: 'Tout ce qu’on sait d’une organisation, et tout ce qu’on peut y faire : suspendre, changer de formule, ouvrir ou fermer un module, ajouter des places.', ecran: { label: 'Organisations', to: '/tour/organisations' } },
       { mot: 'Le journal d’accès', sens: 'Qui est entré chez qui, quand, et par quel chemin (mode support compris). Rien ne s’y efface.', ecran: { label: 'Journal d’accès', to: '/tour/journal' } },

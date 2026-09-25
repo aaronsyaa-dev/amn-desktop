@@ -1,3 +1,4 @@
+import { CLIENT_PRODUCT_NAME } from '../edition/edition';
 /**
  * LE MESSAGE À ENVOYER À UNE NOUVELLE CLIENTE (BLOC F)
  * ════════════════════════════════════════════════════
@@ -101,7 +102,7 @@ function messageInvitation(parts: HandoverParts): string {
   return [
     handoverSubject(parts),
     '',
-    `${qui}, de l’équipe AMN, vous invite à activer l’espace de travail de ${parts.orgName} sur AMN Desktop.`,
+    `${qui}, de l’équipe AMN, vous invite à activer l’espace de travail de ${parts.orgName} sur ${CLIENT_PRODUCT_NAME}.`,
     '',
     'Activer mon espace\u00a0:',
     parts.secret,
@@ -114,7 +115,7 @@ function messageInvitation(parts: HandoverParts): string {
     'Vous n’attendiez pas cette invitation\u202f? Ne faites rien\u00a0: sans activation, aucun compte ne s’ouvre.',
     '',
     '—',
-    `AMN Desktop · envoyé à ${parts.email} à la demande de ${qui}, de l’équipe AMN`,
+    `${CLIENT_PRODUCT_NAME} · envoyé à ${parts.email} à la demande de ${qui}, de l’équipe AMN`,
   ].join('\n');
 }
 

@@ -1,7 +1,7 @@
 From df1955ac60ac785d1b00dd4014c97c9680443e62 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Thu, 24 Sep 2026 23:45:17 +0000
-Subject: [PATCH 1/5] Lire une invitation avant de l'activer, sans ouvrir
+Subject: [PATCH 1/9] Lire une invitation avant de l'activer, sans ouvrir
  d'oracle
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8

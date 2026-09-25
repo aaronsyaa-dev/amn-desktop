@@ -1,7 +1,7 @@
 From 7a8d4f9073bc6e0325fd0385260bfbd2d7dd1a2c Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Thu, 24 Sep 2026 23:53:00 +0000
-Subject: [PATCH 2/5] Garde : le journal ne dit que ce qui change, et le
+Subject: [PATCH 2/9] Garde : le journal ne dit que ce qui change, et le
  travail sur un site va chez sa cliente
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
