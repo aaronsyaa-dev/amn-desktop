@@ -757,6 +757,7 @@ export function GeneratorScreen() {
                               }
                             : null,
                           webUrl: result.webUrl,
+                          invitePar: invitePar.trim() || null,
                         }),
                       )
                       .then(() => {

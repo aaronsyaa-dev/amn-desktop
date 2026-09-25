@@ -46,6 +46,8 @@ export interface HandoverParts {
    * portait donc l'adresse de l'application interne.
    */
   webUrl?: string | null;
+  /** Qui invite (le champ de l'Atelier) : « Harun » → « Harun, de l’équipe AMN ». */
+  invitePar?: string | null;
 }
 
 function megabytes(bytes: number): string {
@@ -75,27 +77,59 @@ export function handoverSubject(parts: Pick<HandoverParts, 'orgName'>): string {
   return `Votre espace ${parts.orgName} est prêt`;
 }
 
+/*
+  LE MESSAGE D'INVITATION = LA PARTIE TEXTE DE L'E-MAIL DE MARQUE (cahier 43a).
+
+  « Tant qu'amn-api n'envoie pas, c'est la partie texte qui se copie à la main,
+  à la place du message brut actuel » (ARRIVEE.md, Envoi). Elle est reprise mot
+  pour mot de `arrivee/email/invitation.template.txt` : le même texte, que le
+  courriel parte seul ou qu'on le colle soi-même. L'expiration est dite à
+  l'heure exacte de Paris — le lien dure 7 × 24 h depuis l'émission.
+*/
+const PARIS = 'Europe/Paris';
+function expirationEnToutesLettres(iso: string): string {
+  const d = new Date(iso);
+  const jour = Number(d.toLocaleDateString('fr-FR', { day: 'numeric', timeZone: PARIS }));
+  const semaine = d.toLocaleDateString('fr-FR', { weekday: 'long', timeZone: PARIS });
+  const mois = d.toLocaleDateString('fr-FR', { month: 'long', timeZone: PARIS });
+  const heure = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: PARIS });
+  return `${semaine} ${jour === 1 ? '1er' : jour} ${mois} à ${heure}`;
+}
+
+function messageInvitation(parts: HandoverParts): string {
+  const qui = parts.invitePar?.trim() || 'AMN';
+  return [
+    handoverSubject(parts),
+    '',
+    `${qui}, de l’équipe AMN, vous invite à activer l’espace de travail de ${parts.orgName} sur AMN Desktop.`,
+    '',
+    'Activer mon espace\u00a0:',
+    parts.secret,
+    '',
+    parts.expiresAt
+      ? `Ce lien est valable jusqu’au ${expirationEnToutesLettres(parts.expiresAt)}, et ne sert qu’une fois.`
+      : 'Ce lien ne sert qu’une fois.',
+    'Vous choisirez votre mot de passe à l’ouverture. Il n’est écrit nulle part\u00a0: ni dans ce message, ni chez nous.',
+    '',
+    'Vous n’attendiez pas cette invitation\u202f? Ne faites rien\u00a0: sans activation, aucun compte ne s’ouvre.',
+    '',
+    '—',
+    `AMN Desktop · envoyé à ${parts.email} à la demande de ${qui}, de l’équipe AMN`,
+  ].join('\n');
+}
+
 export function handoverMessage(parts: HandoverParts): string {
+  if (parts.kind === 'invitation') return messageInvitation(parts);
   const l: string[] = [];
   l.push('Bonjour,');
   l.push('');
-  if (parts.kind === 'invitation') {
-    l.push(`Votre espace ${parts.orgName} vous attend. Un clic pour choisir votre mot de passe et entrer :`);
-    l.push('');
-    l.push(parts.secret);
-    l.push('');
-    const date = parts.expiresAt ? new Date(parts.expiresAt) : null;
-    const jusqua = date ? ` jusqu’au ${date.getDate() === 1 ? '1er' : date.getDate()} ${date.toLocaleDateString('fr-FR', { month: 'long' })}` : '';
-    l.push(`Ce lien vous est personnel, fonctionne une seule fois et reste valable${jusqua}.`);
-  } else {
-    l.push(`Votre espace ${parts.orgName} vous attend.`);
-    l.push('');
-    l.push(`Votre identifiant : ${parts.email}`);
-    l.push('Votre mot de passe provisoire vous est communiqué à part. Remplacez-le par le vôtre dans Paramètres dès votre première connexion.');
-  }
+  l.push(`Votre espace ${parts.orgName} vous attend.`);
+  l.push('');
+  l.push(`Votre identifiant : ${parts.email}`);
+  l.push('Votre mot de passe provisoire vous est communiqué à part. Remplacez-le par le vôtre dans Paramètres dès votre première connexion.');
   if (parts.webUrl) {
     l.push('');
-    l.push(parts.kind === 'invitation' ? 'Ensuite, votre espace s’ouvre ici, sur ordinateur comme sur téléphone :' : 'Votre espace s’ouvre ici, sur ordinateur comme sur téléphone :');
+    l.push('Votre espace s’ouvre ici, sur ordinateur comme sur téléphone :');
     l.push('');
     l.push(parts.webUrl);
   }
