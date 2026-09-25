@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Check, Eye, EyeOff, KeyRound, Loader2, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+import { bridge } from '../lib/bridge';
+import type { InvitationLue } from '../shared/api';
 import { cleanErrorMessage } from '../lib/errorMessage';
 import { Logo } from '../components/Logo';
 
@@ -27,17 +29,44 @@ import { Logo } from '../components/Logo';
  * l'historique du navigateur, dans une capture d'écran, ni dans un lien
  * recollé à quelqu'un d'autre.
  *
- * ## Ce que l'écran refuse de faire
+ * ## Lire avant d'activer (chantier « arrivée cliente »)
  *
- * Deviner. Un jeton absent, inconnu, expiré ou déjà utilisé produit la même
- * réponse côté serveur — volontairement, pour qu'on n'apprenne rien à sonder
- * des jetons au hasard. L'écran ne cherche donc pas à distinguer ces cas : il
- * dit ce qui est vrai (« ce lien n'est plus valable ») et propose la seule
- * suite utile, redemander une invitation.
+ * L'écran lit d'abord l'invitation (`POST /v1/auth/invitations/lire`) : chez
+ * qui elle mène, qui l'a envoyée, et dans quel état elle est — valable,
+ * expirée, déjà utilisée, ou lien incomplet. Chaque état a sa suite : choisir
+ * son mot de passe, en redemander une, se connecter, recoller le lien.
+ *
+ * Ce que l'écran ne peut toujours PAS faire : sonder. Un jeton inconnu reçoit
+ * la même réponse qu'un lien tronqué (« incomplet »), et le serveur freine qui
+ * insiste. Seul le porteur d'un vrai lien voit les autres états.
+ *
+ * Mise en page provisoire, avec les briques du système : le laissez-passer du
+ * cahier (43b–43e) la remplacera sans changer ce qu'elle dit.
  */
 
 /** Le minimum exigé par amn-api. Répété ici pour le dire AVANT d'envoyer. */
 const MIN_LENGTH = 8;
+
+/** Un état d'invitation qui ne se termine pas par un formulaire : ce qui se passe, et la suite. */
+function EtatInvitation({ titre, texte, onLogin, principal = false }: { titre: string; texte: string; onLogin: () => void; principal?: boolean }) {
+  return (
+    <div className="mt-8">
+      <h1 className="text-2xl font-bold tracking-tight text-text-primary">{titre}</h1>
+      <p className="mt-2 text-sm leading-relaxed text-text-secondary">{texte}</p>
+      <button
+        type="button"
+        onClick={onLogin}
+        className={
+          principal
+            ? 'mt-6 flex min-h-12 w-full items-center justify-center bg-accent text-sm font-semibold text-bg hover:bg-accent-hover'
+            : 'mt-6 flex min-h-11 w-full items-center justify-center border border-border-strong text-sm text-text-primary hover:bg-surface-hover'
+        }
+      >
+        Me connecter
+      </button>
+    </div>
+  );
+}
 
 export function InvitationScreen() {
   const { acceptInvitation } = useAuth();
@@ -50,6 +79,24 @@ export function InvitationScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [lue, setLue] = useState<InvitationLue | null>(null);
+  const [lecture, setLecture] = useState<'attente' | 'lue' | 'freinee' | 'erreur'>('attente');
+
+  /* La lecture, une fois le jeton connu. Rien à lire sans jeton : l'écran demande le code. */
+  useEffect(() => {
+    if (!token) return;
+    let vivant = true;
+    setLecture('attente');
+    bridge().remote.lireInvitation(token.trim())
+      .then((r) => { if (vivant) { setLue(r); setLecture('lue'); } })
+      .catch((err: unknown) => {
+        if (!vivant) return;
+        setLecture(/429|trop de tentatives/i.test(String(err instanceof Error ? err.message : err)) ? 'freinee' : 'erreur');
+      });
+    return () => { vivant = false; };
+  }, [token]);
+  const dateLongue = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
+  const qui = lue?.invitePar ?? lue?.organisation?.nom ?? 'la personne qui vous a invitée';
 
   /*
     Le jeton est lu une fois, puis effacé de l'adresse.
@@ -102,7 +149,41 @@ export function InvitationScreen() {
       >
         <Logo className="h-7 w-auto" />
 
-        {done ? (
+        {lue?.organisation && lue.etat !== 'incomplet' && (
+          <div className="mt-6 border-l-2 border-border-strong pl-3" data-invitation-etat={lue.etat}>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">Votre espace</p>
+            <p className="text-lg font-semibold text-text-primary">{lue.organisation.nom}</p>
+            <p className="text-xs text-text-secondary">
+              {lue.invitePar ? `Invitée par ${lue.invitePar}` : 'Invitation'}
+              {lue.destinataire ? ` · pour ${lue.destinataire}` : ''}
+              {lue.etat === 'valable' && lue.expireLe ? ` · valable jusqu’au ${dateLongue(lue.expireLe)}` : ''}
+            </p>
+          </div>
+        )}
+
+        {lecture === 'freinee' ? (
+          <EtatInvitation titre="Trop de tentatives" texte="Ce poste a essayé trop de liens d’invitation. Réessayez dans quelques minutes, depuis le lien reçu par courriel." onLogin={() => navigate('/login', { replace: true })} />
+        ) : lue?.etat === 'utilise' ? (
+          <EtatInvitation titre="Ce lien a déjà servi" texte={`Votre espace ${lue.organisation?.nom ?? ''} est activé. Connectez-vous avec l’adresse invitée et le mot de passe choisi.`} onLogin={() => navigate('/login', { replace: true })} principal />
+        ) : lue?.etat === 'expire' ? (
+          <EtatInvitation titre="Ce lien a expiré" texte={`Il valait jusqu’au ${dateLongue(lue.expireLe)}. Rien n’est perdu : demandez-en un nouveau à ${qui}.`} onLogin={() => navigate('/login', { replace: true })} />
+        ) : lue?.etat === 'suspendu' ? (
+          <EtatInvitation titre="Cet espace est en pause" texte={`L’activation reprendra quand ${qui} l’aura rouvert.`} onLogin={() => navigate('/login', { replace: true })} />
+        ) : lue?.etat === 'incomplet' ? (
+          <div data-invitation-etat="incomplet">
+            <EtatInvitation titre="Ce lien est incomplet" texte="Il a sans doute été coupé en chemin. Rouvrez-le depuis le courriel reçu, en entier — ou collez ci-dessous le lien complet." onLogin={() => navigate('/login', { replace: true })} />
+            <input
+              onChange={(e) => {
+                const v = e.target.value.trim();
+                const t = v.includes('token=') ? decodeURIComponent(v.slice(v.indexOf('token=') + 6).split('&')[0]) : v;
+                if (t.length >= 43) { setLue(null); setToken(t); }
+              }}
+              placeholder="Collez le lien reçu"
+              aria-label="Lien d’invitation"
+              className="input-focus mt-3 min-h-12 w-full border border-border bg-bg px-3 text-sm text-text-primary outline-none"
+            />
+          </div>
+        ) : done ? (
           <div className="mt-8 flex flex-col items-center text-center">
             <span className="flex h-12 w-12 items-center justify-center border border-accent text-accent">
               <Check size={24} strokeWidth={2.25} />
