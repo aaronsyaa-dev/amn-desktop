@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAccueil } from '../accueils/useAccueil';
 import { avecAccueilEnTete } from '../accueils/epingle';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronsLeft, ChevronsRight, ListTree, LogOut } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ChevronsLeft, ChevronsRight, Compass, ListTree, LogOut } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useActivity } from '../state/ActivityContext';
 import { Logo, LogoMark } from '../components/Logo';
@@ -181,6 +181,22 @@ export function BusinessSidebar({
             </div>
           )}
           <div className="flex flex-col gap-0.5 p-2">
+            {/*
+              DÉCOUVRIR, TOUJOURS À PORTÉE. Le module est ouvert quoi qu'il
+              arrive (ALWAYS_ON_MODULES) et ne s'allège pas ; ici il ne dépend
+              pas non plus de la famille ouverte ni des épinglés : une entrée
+              fixe au pied de la barre, repliée comme dépliée.
+            */}
+            <Link
+              to="/decouvrir"
+              onClick={onClose}
+              title="Découvrir : trouver le module qui fait ce dont vous avez besoin"
+              aria-label="Découvrir : trouver un module"
+              className="flex items-center gap-2.5 px-2.5 py-2 text-[13px] text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
+            >
+              <Compass size={16} strokeWidth={2.1} />
+              {expanded && <span>Découvrir un module</span>}
+            </Link>
             {expanded && (
               <button
                 type="button"

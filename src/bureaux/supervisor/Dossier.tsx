@@ -112,7 +112,8 @@ export function SupervisorDossier() {
   const etats = dossier.modules ?? {};
   // Son espace : les modules ouverts chez elle, et ceux qu'on a mis en pause POUR ELLE (fermés, donc absents de sa liste).
   const ouverts = o.org.modules ?? o.org.formula?.modules ?? null;
-  const cles = [...new Set([...(ouverts ?? []), ...Object.keys(etats)])].filter((k) => catalogue.has(k));
+  // Une formule qui ouvre tout : tout le catalogue est listé (la liste se cherche et se replie, voir ListeModules).
+  const cles = [...new Set([...(ouverts ?? [...catalogue.keys()]), ...Object.keys(etats)])].filter((k) => catalogue.has(k));
   const familles = new Map<string, string[]>();
   for (const k of cles) {
     const f = catalogue.get(k)!.famille;
@@ -211,19 +212,14 @@ export function SupervisorDossier() {
       <div className="mt-[18px] grid grid-cols-1 gap-[18px] lg:grid-cols-[minmax(0,1fr)_440px]">
         <div className="flex flex-col gap-[18px]">
           <Carte titre={`Son espace · ${cles.length} module${cles.length > 1 ? 's' : ''}${ouverts ? ' installés' : ''}`} droite="groupés par famille, avec leur état pour elle">
-            {ouverts === null && <p className="mb-4 text-[12.5px] text-text-secondary">Sa formule ouvre tout le catalogue : seuls les modules qui ont un état pour elle sont listés.</p>}
-            <div className="flex flex-col gap-3.5">
-              {ordreFamilles.map(([famille, liste]) => (
-                <div key={famille} className="grid grid-cols-[132px_minmax(0,1fr)] gap-3">
-                  <span className="pt-2 font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted">{famille}</span>
-                  <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-                    {liste.map((k) => (
-                      <TuileModule key={k} nom={catalogue.get(k)!.nom} etat={etats[k] ?? null} alt={etats[k]?.alternative ? catalogue.get(etats[k].alternative!)?.nom ?? etats[k].alternative! : null} onReactiver={() => void poserEtat(k, null, etats[k]?.etat === 'pause' ? true : null)} />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+            {ouverts === null && <p className="mb-4 text-[12.5px] text-text-secondary">Sa formule ouvre tout le catalogue : chaque module est listé, avec son état pour elle.</p>}
+            <ListeModules
+              cles={cles}
+              ordreFamilles={ordreFamilles}
+              etats={etats}
+              nomDe={(k) => catalogue.get(k)!.nom}
+              tuile={(k) => <TuileModule key={k} nom={catalogue.get(k)!.nom} etat={etats[k] ?? null} alt={etats[k]?.alternative ? catalogue.get(etats[k].alternative!)?.nom ?? etats[k].alternative! : null} onReactiver={() => void poserEtat(k, null, etats[k]?.etat === 'pause' ? true : null)} />}
+            />
             <div className="mt-5 flex flex-wrap gap-2 border-t border-border pt-4">
               <GesteDossier titre="Ajouter un module" sous="le chercheur, pour elle" onClick={() => navigate(`/supervisor/chercheur?org=${o.id}`)} />
               <GesteDossier titre="Mettre un module en pause" sous="pour elle seule" actif={geste === 'pause'} onClick={() => setGeste(geste === 'pause' ? null : 'pause')} />
@@ -343,6 +339,102 @@ const stripId = (d: DossierOrg) => {
   const { id: _id, updatedAt: _u, ...reste } = d as DossierOrg & { id?: string; updatedAt?: string };
   return reste;
 };
+
+/*
+  LA LISTE DES MODULES, CHERCHABLE ET REPLIABLE.
+
+  Une cliente peut avoir tout le catalogue ouvert : cent vingt tuiles à faire
+  défiler pour trouver celle qui est en pause, c'était plusieurs secondes de
+  molette. On cherche par le nom, on filtre par état, et les familles se
+  replient : repliées d'office quand la liste est longue, SAUF celles où un
+  module a un état pour elle — c'est ce qu'on vient voir dans un dossier.
+*/
+type FiltreModules = 'tous' | 'etat' | 'pause' | 'actifs';
+const REPLIER_AU_DELA = 24;
+
+function ListeModules({ cles, ordreFamilles, etats, nomDe, tuile }: { cles: string[]; ordreFamilles: [string, string[]][]; etats: Record<string, EtatModuleSeule>; nomDe: (k: string) => string; tuile: (k: string) => React.ReactNode }) {
+  const [recherche, setRecherche] = useState('');
+  const [filtre, setFiltre] = useState<FiltreModules>('tous');
+  const [ouvertes, setOuvertes] = useState<Set<string> | null>(null);
+  const plier = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const q = plier(recherche.trim());
+  const garde = (k: string) =>
+    (!q || plier(nomDe(k)).includes(q)) &&
+    (filtre === 'tous' || (filtre === 'etat' && Boolean(etats[k])) || (filtre === 'pause' && etats[k]?.etat === 'pause') || (filtre === 'actifs' && !etats[k]));
+  const familles = ordreFamilles.map(([f, liste]) => [f, liste.filter(garde)] as [string, string[]]).filter(([, l]) => l.length > 0);
+  const visibles = familles.reduce((n, [, l]) => n + l.length, 0);
+  const longue = cles.length > REPLIER_AU_DELA;
+  // Par défaut : tout déplié si la liste est courte ; sinon seules les familles qui ont un module avec un état.
+  const ouverteParDefaut = (liste: string[]) => !longue || liste.some((k) => etats[k]);
+  const estOuverte = (f: string, liste: string[]) => Boolean(q) || filtre !== 'tous' || (ouvertes ? ouvertes.has(f) : ouverteParDefaut(liste));
+  const basculer = (f: string) =>
+    setOuvertes((prec) => {
+      const suiv = new Set(prec ?? ordreFamilles.filter(([, l]) => ouverteParDefaut(l)).map(([ff]) => ff));
+      if (suiv.has(f)) suiv.delete(f);
+      else suiv.add(f);
+      return suiv;
+    });
+  const compte = (f: FiltreModules) => cles.filter((k) => f === 'tous' || (f === 'etat' && etats[k]) || (f === 'pause' && etats[k]?.etat === 'pause') || (f === 'actifs' && !etats[k])).length;
+  const FILTRES: [FiltreModules, string][] = [['tous', 'Tous'], ['etat', 'Avec un état pour elle'], ['pause', 'En pause'], ['actifs', 'Actifs']];
+  return (
+    <div>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <input
+          type="search"
+          value={recherche}
+          onChange={(e) => setRecherche(e.target.value)}
+          placeholder="Chercher un module (« stock », « factures »…)"
+          aria-label="Chercher un module de son espace"
+          className="h-9 min-w-[220px] flex-1 border border-[#2b2b2b] bg-transparent px-3 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]"
+        />
+        <div className="flex flex-wrap gap-1" role="group" aria-label="Filtrer par état">
+          {FILTRES.map(([f, nom]) => {
+            const n = compte(f);
+            if (f !== 'tous' && (n === 0 || n === cles.length)) return null;
+            return (
+              <button key={f} type="button" aria-pressed={filtre === f} onClick={() => setFiltre(f)} className="h-9 border px-2.5 text-[12px]" style={{ borderColor: filtre === f ? '#8a8a87' : '#2b2b2b', color: filtre === f ? 'var(--color-text-primary)' : 'var(--color-text-secondary)', background: filtre === f ? '#1a1a1a' : 'transparent' }}>
+                {nom} <span className="font-mono text-[10.5px] text-text-muted">{n}</span>
+              </button>
+            );
+          })}
+        </div>
+        {longue && !q && filtre === 'tous' && (
+          <span className="flex gap-3 text-[12px]">
+            <button type="button" className="text-text-secondary underline decoration-trait-sourd underline-offset-4 hover:text-text-primary" onClick={() => setOuvertes(new Set(ordreFamilles.map(([f]) => f)))}>
+              Tout déplier
+            </button>
+            <button type="button" className="text-text-secondary underline decoration-trait-sourd underline-offset-4 hover:text-text-primary" onClick={() => setOuvertes(new Set())}>
+              Tout replier
+            </button>
+          </span>
+        )}
+      </div>
+      {visibles === 0 ? (
+        <p className="py-4 text-[13px] text-text-secondary">Aucun module de son espace ne correspond{q ? ` à « ${recherche.trim()} »` : ''}.</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {familles.map(([famille, liste]) => {
+            const ouverte = estOuverte(famille, ordreFamilles.find(([f]) => f === famille)![1]);
+            const avecEtat = liste.filter((k) => etats[k]).length;
+            return (
+              <div key={famille} className="border-t border-[#1f1f1f] pt-2">
+                <button type="button" aria-expanded={ouverte} onClick={() => basculer(famille)} className="flex w-full items-baseline gap-3 py-1 text-left" disabled={Boolean(q) || filtre !== 'tous'}>
+                  <span className="w-3 font-mono text-[10px] text-text-muted" aria-hidden>
+                    {ouverte ? '▾' : '▸'}
+                  </span>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-secondary">{famille}</span>
+                  <span className="font-mono text-[10px] text-text-muted">{liste.length}</span>
+                  {avecEtat > 0 && <span className="font-mono text-[10px] text-text-body">· {avecEtat} avec un état</span>}
+                </button>
+                {ouverte && <div className="mt-2 grid grid-cols-2 gap-1.5 pb-2 sm:grid-cols-4">{liste.map((k) => tuile(k))}</div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function TuileModule({ nom, etat, alt, onReactiver }: { nom: string; etat: EtatModuleSeule | null; alt: string | null; onReactiver: () => void }) {
   const pause = etat?.etat === 'pause';

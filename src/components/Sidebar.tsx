@@ -82,7 +82,7 @@ export function Sidebar({
   onClose?: () => void;
 }) {
   // Les modules allégés par la personne : s'abonner, pour que la barre suive le geste sans rechargement.
-  useNavAlleges();
+  const { alleges } = useNavAlleges();
   const { t } = useLangue();
   useFermetureEchap(mobileOpen, () => onClose?.());
 
@@ -144,8 +144,13 @@ export function Sidebar({
       geste d'allègement), et rien dans ce `useMemo` ne le signalerait. Le
       chemin est ce qui bouge à coup sûr quand ces deux-là ont bougé.
     */
+    /*
+      … et la liste des modules allégés : sans elle, alléger « Tâches » depuis
+      la Bibliothèque estompait la tuile mais laissait la ligne dans la barre
+      et dans les épinglés jusqu'au prochain changement d'écran.
+    */
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [location.pathname],
+    [location.pathname, alleges],
   );
 
   const tousLesModules = useMemo(() => familles.flatMap((f) => f.items), [familles]);

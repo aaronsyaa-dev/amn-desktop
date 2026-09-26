@@ -2,6 +2,8 @@ import React from 'react';
 import { HomeSoloScreen } from '../../business/HomeSoloScreen';
 import type { Journee } from './journee';
 import { hhmm } from './journee';
+import { CarteDecouvrir } from '../../components/CarteDecouvrir';
+import { IS_BUSINESS } from '../../edition/edition';
 
 /**
  * CE QUI EST COMMUN AUX DIX ACCUEILS CLIENTS — l'en-tête discret (le nom de
@@ -17,14 +19,22 @@ export const dateCourte = (d: Date) => `${JOURS[d.getDay()]} ${d.getDate()} ${MO
 
 export function EnTeteAccueil({ j, nom }: { j: Journee; nom: string }) {
   return (
-    <header data-guide="titre" className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-      <h1 className="sr-only">Accueil — {nom}</h1>
-      <span className="eyebrow text-text-secondary">{j.org?.name ?? 'Accueil'}</span>
-      <span className="h-3 w-px bg-border-raised" aria-hidden />
-      <span className="tnum font-mono text-[11px] text-text-muted">
-        {dateCourte(j.maintenant)} · {hhmm(j.maintenant)}
-      </span>
-    </header>
+    <>
+      <header data-guide="titre" className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h1 className="sr-only">Accueil — {nom}</h1>
+        <span className="eyebrow text-text-secondary">{j.org?.name ?? 'Accueil'}</span>
+        <span className="h-3 w-px bg-border-raised" aria-hidden />
+        <span className="tnum font-mono text-[11px] text-text-muted">
+          {dateCourte(j.maintenant)} · {hhmm(j.maintenant)}
+        </span>
+      </header>
+      {/* Découvrir, sous l'en-tête de chacune des dix variantes : l'entrée vers tout ce qui manque encore. */}
+      {IS_BUSINESS && (
+        <div className="mt-4">
+          <CarteDecouvrir />
+        </div>
+      )}
+    </>
   );
 }
 

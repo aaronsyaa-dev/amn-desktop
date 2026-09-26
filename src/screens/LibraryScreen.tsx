@@ -13,7 +13,7 @@ import { useNavAlleges } from '../state/useNavAlleges';
 import { useNavFavorites } from '../state/useNavFavorites';
 import { useModulesOuverts } from '../state/useModulesOuverts';
 import { useHaloSignal } from '../components/EtatEcran';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { bridge } from '../lib/bridge';
 import { useLangue, libelleSection } from '../i18n';
 import { IS_BUSINESS } from '../edition/edition';
@@ -67,7 +67,9 @@ const BOUTON_ALLEGER = 'min-h-9 border border-border bg-bg px-2.5 py-1 text-xs t
 
 export function LibraryScreen() {
   const { t } = useLangue();
-  const [recherche, setRecherche] = useState('');
+  /* « ?q=… » : le besoin tapé sur l'Accueil (CarteDecouvrir) arrive déjà dans la recherche. */
+  const [params] = useSearchParams();
+  const [recherche, setRecherche] = useState(() => params.get('q') ?? '');
   const [offres, setOffres] = useState<ModuleOffer[] | null>(null);
   const [enCours, setEnCours] = useState<string | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -168,9 +170,12 @@ export function LibraryScreen() {
      le premier module ouvert et jamais visité. Rien à recommander quand tout
      a été vu — et l'écran n'a alors aucun ambre. */
   const recommandation = useMemo(() => {
-    const famille = moinsExplorees[0];
-    const module = famille?.jamais[0];
-    return famille && module ? { famille, module } : null;
+    /* Un module toujours là (l'Accueil, les Paramètres…) ne se « découvre » pas : on le saute. */
+    for (const famille of moinsExplorees) {
+      const module = famille.jamais.find((i) => !ALWAYS_ON_MODULES.includes(i.key));
+      if (module) return { famille, module };
+    }
+    return null;
   }, [moinsExplorees]);
   const haloCarte = useHaloSignal(Boolean(recommandation));
 
@@ -280,7 +285,7 @@ export function LibraryScreen() {
               <p data-signal-groupe="recommandation" className="mt-1 max-w-prose text-[13px] leading-relaxed">
                 {t('biblio.carte.recommandationPhrase', {
                   famille: libelleSection(recommandation.famille.label),
-                  jamais: recommandation.famille.jamais.length,
+                  jamais: t(recommandation.famille.jamais.length > 1 ? 'biblio.carte.jamaisN' : 'biblio.carte.jamais1', { n: recommandation.famille.jamais.length }),
                 })}
               </p>
             </div>
@@ -375,7 +380,7 @@ export function LibraryScreen() {
           {allegement
             ? t('biblio.alleger.aide')
             : alleges.length > 0
-              ? t('biblio.alleger.compte', { n: alleges.length })
+              ? t(alleges.length > 1 ? 'biblio.alleger.compte' : 'biblio.alleger.compte1', { n: alleges.length })
               : t('biblio.alleger.aucun')}
         </p>
       </motion.div>

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Check, Loader2, Lock, Send } from 'lucide-react';
 import type { NavItem } from '../data/navigation';
 import { useLangue, libelleNav, libelleSection, indiceNav, carteModule, type SurfaceNav } from '../i18n';
+import { scoreBesoin } from '../lib/rechercheBesoin';
 
 /**
  * LA GRILLE DES MODULES — un seul rangement, trois lectures.
@@ -69,18 +70,20 @@ export function ModuleGrid({
   onBasculer?: (key: string) => void;
 }) {
   const { t } = useLangue();
-  const normaliser = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-  const filtre = normaliser(recherche.trim());
+  const filtre = recherche.trim();
+  /* Chercher en décrivant son besoin (« relancer mes factures impayées ») : voir lib/rechercheBesoin. Les meilleurs d'abord. */
+  const score = (item: NavItem) => {
+    const carte = carteModule(item.key);
+    return scoreBesoin(filtre, `${libelleNav(item)} ${indiceNav(item, surface)} ${carte ? `${carte.quoi} ${carte.pourQui} ${carte.exemple}` : ''}`);
+  };
   const visibles = sections
-    .map((section) => ({
-      ...section,
-      items: section.items.filter((item) => {
-        if (!filtre) return true;
-        const carte = carteModule(item.key);
-        return normaliser(`${libelleNav(item)} ${indiceNav(item, surface)} ${carte ? `${carte.quoi} ${carte.pourQui} ${carte.exemple}` : ''}`).includes(filtre);
-      }),
-    }))
-    .filter((section) => section.items.length > 0);
+    .map((section) => {
+      const notes = section.items.map((item) => ({ item, s: filtre ? score(item) : 0 })).filter((x) => x.s !== null);
+      if (filtre) notes.sort((a, b) => (b.s ?? 0) - (a.s ?? 0));
+      return { ...section, items: notes.map((x) => x.item), meilleur: Math.max(0, ...notes.map((x) => x.s ?? 0)) };
+    })
+    .filter((section) => section.items.length > 0)
+    .sort((a, b) => (filtre ? b.meilleur - a.meilleur : 0));
 
   if (visibles.length === 0) {
     return <p className="py-6 text-sm text-text-secondary">{t('biblio.rienTrouve', { recherche: recherche.trim() })}</p>;
