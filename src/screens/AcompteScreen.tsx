@@ -12,7 +12,8 @@ import {
   PiedDominante,
   donnees,
 } from '../components/cinquante-kit';
-import { useCollection, useSync } from '../state/SyncContext';
+import { SaisieModule, depuisCents, versCents, versIso, versJour, versNombre } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { formatCentsCompact } from '../lib/money';
 import { enLettres } from '../lib/cinquante/lettres';
 import { type DevisAcompte, acompteDe, delaisSignatureAcompte, sas } from '../lib/cinquante/guichet';
@@ -50,7 +51,7 @@ function Porte({ nom }: { nom: string }) {
 
 export function AcompteScreen() {
   const { t, langue } = useLangue();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const devis = useCollection<DevisAcompte>('depositQuotes');
   const [maintenant] = useState(() => new Date());
   const [renvoye, setRenvoye] = useState<string | null>(null);
@@ -73,7 +74,23 @@ export function AcompteScreen() {
     const brut = devis.find((d) => d.id === plusAncien.id);
     if (!brut) return;
     await upsert('depositQuotes', brut.id, { ...donnees(brut), lienRenvoyeLe: new Date().toISOString() });
-    setRenvoye(`Lien de paiement renvoyé à ${brut.client}.`);
+    /* Rien ne part tout seul : le paiement en ligne n'est pas branché. La relance est NOTÉE, et l'écran le dit. */
+    setRenvoye(`Relance notée pour ${brut.client}. Le lien de paiement ne part pas encore tout seul : écrivez-lui directement.`);
+  };
+
+  /* SAISIE — un devis envoyé, puis ses deux portes à la main : signé, acompte reçu (et le chantier planifié). */
+  const enregistrer = async (v: Record<string, string>, id?: string) => {
+    const avant = devis.find((d) => d.id === id);
+    await upsert('depositQuotes', id ?? uid(), {
+      ...(avant ? donnees(avant) : {}),
+      client: v.client.trim(),
+      montantCents: versCents(v.montant) ?? 0,
+      tauxAcompte: (versNombre(v.taux) ?? 30) / 100,
+      envoyeLe: versIso(v.envoye),
+      signeLe: v.signe ? versIso(v.signe) : undefined,
+      acompteRecuLe: v.recu ? versIso(v.recu) : undefined,
+      planifieLe: v.planifie ? versIso(v.planifie) : undefined,
+    });
   };
 
   const description = vide
@@ -92,6 +109,42 @@ export function AcompteScreen() {
           phraseVide={t('m50.deposits.phraseVide')}
         />
       </Bloc>
+
+      <SaisieModule
+        ajouter="Ajouter un devis"
+        ouvertParDefaut={vide}
+        note="Signature et paiement en ligne pas encore branchés : cochez chaque étape à la main"
+        surtitreListe="Les devis"
+        champs={[
+          { cle: 'client', intitule: 'Client', type: 'texte', requis: true },
+          { cle: 'montant', intitule: 'Montant du devis', type: 'montant', requis: true },
+          { cle: 'taux', intitule: 'Acompte demandé', type: 'pourcent', requis: true, defaut: String(tauxCourant) },
+          { cle: 'envoye', intitule: 'Envoyé le', type: 'date', requis: true, defaut: versJour(maintenant.toISOString()) },
+          { cle: 'signe', intitule: 'Signé le', type: 'date' },
+          { cle: 'recu', intitule: 'Acompte reçu le', type: 'date' },
+          { cle: 'planifie', intitule: 'Chantier planifié le', type: 'date' },
+        ]}
+        enregistrer={enregistrer}
+        elements={[...devis]
+          .filter((d) => !d.annuleLe)
+          .sort((a, b) => b.envoyeLe.localeCompare(a.envoyeLe))
+          .slice(0, 80)
+          .map((d) => ({
+            id: d.id,
+            libelle: `${d.client} · ${formatCentsCompact(d.montantCents)}`,
+            detail: d.acompteRecuLe ? 'acompte reçu' : d.signeLe ? 'signé, acompte attendu' : 'envoyé, pas encore signé',
+            valeurs: {
+              client: d.client,
+              montant: depuisCents(d.montantCents),
+              taux: String(Math.round(d.tauxAcompte * 100)),
+              envoye: versJour(d.envoyeLe),
+              signe: versJour(d.signeLe),
+              recu: versJour(d.acompteRecuLe),
+              planifie: versJour(d.planifieLe),
+            },
+          }))}
+        supprimer={(id) => remove('depositQuotes', id)}
+      />
 
       <Dominante
         surtitre={vide ? 'Le circuit des devis' : `Le circuit des ${s.envoyes.length + s.dansLeSas.length + s.lances.length} devis`}
@@ -185,13 +238,13 @@ export function AcompteScreen() {
               <PiedDominante
                 action={
                   <BoutonSecondaire onClick={() => void renvoyer()} disabled={!!renvoye}>
-                    Renvoyer le lien
+                    Noter une relance
                   </BoutonSecondaire>
                 }
               >
                 {renvoye ??
                   `Le plus ancien attend depuis ${L(plusAncien.attenteJours)} jour${plusAncien.attenteJours > 1 ? 's' : ''} : ${plusAncien.client} a signé ${ilYa(plusAncien.signeLe as string, maintenant)}${
-                    plusAncien.lienRenvoyeLe ? `, et le lien lui a été renvoyé ${ilYa(plusAncien.lienRenvoyeLe, maintenant)}` : ', et le lien de paiement ne lui a jamais été renvoyé'
+                    plusAncien.lienRenvoyeLe ? `, et une relance a été notée ${ilYa(plusAncien.lienRenvoyeLe, maintenant)}` : ', et aucune relance n’a été notée'
                   }.`}
               </PiedDominante>
             )}

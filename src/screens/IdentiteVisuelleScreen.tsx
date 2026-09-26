@@ -12,7 +12,8 @@ import {
   PiedDominante,
   donnees,
 } from '../components/cinquante-kit';
-import { useCollection, useSync } from '../state/SyncContext';
+import { SaisieModule, Saisies, versNombre } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { enLettres } from '../lib/cinquante/lettres';
 import {
   CORPS_MIN_PX,
@@ -67,7 +68,7 @@ function Tuile({ logo, taille, reduite, ambre = false }: { logo: LogoKit; taille
 
 export function IdentiteVisuelleScreen() {
   const { t, langue } = useLangue();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const tout = useCollection<EnregistrementIdentite>('brandKit');
   const L = (n: number, maj = false) => enLettres(n, langue, maj);
 
@@ -87,6 +88,50 @@ export function IdentiteVisuelleScreen() {
 
   const adopter = async () => {
     for (const u of aReduire) await upsert('brandKit', u.id, { ...donnees(u), declinaison: 'reduite' });
+  };
+
+  /*
+    SAISIE — le logo en mots (le monogramme, la mention, les couleurs, les
+    polices) et les endroits où il s'imprime, à leur taille réelle. À la
+    première pose, les six usages courants sont proposés d'office ; chacun se
+    corrige ou se retire.
+  */
+  const enregistrerLogo = async (v: Record<string, string>, id?: string) => {
+    const liste = (x: string) => x.split(/[,;\n]/).map((y) => y.trim()).filter(Boolean);
+    await upsert('brandKit', id ?? logo?.id ?? uid(), {
+      kind: 'logo',
+      monogramme: v.monogramme.trim(),
+      mention: v.mention.trim(),
+      ratioMonogramme: logo?.ratioMonogramme ?? 0.42,
+      ratioMention: logo?.ratioMention ?? 0.085,
+      couleurs: liste(v.couleurs),
+      polices: liste(v.polices),
+      declinaisons: logo?.declinaisons ?? ['complète', 'réduite', 'monochrome', 'négatif'],
+    });
+    if (usages.length === 0) {
+      const courants: Array<[string, number, string, string?]> = [
+        ['Enseigne', 220, '3 m', 'l’enseigne'],
+        ['Véhicule', 96, '60 cm', 'le véhicule'],
+        ['Avatar', 64, '64 px', 'l’avatar'],
+        ['Signature mail', 40, '40 px', 'la signature mail'],
+        ['Onglet', 24, '24 px', 'l’onglet'],
+        ['Favicon', 16, '16 px', 'le favicon'],
+      ];
+      for (const [i, [nom, taillePx, reel, avecArticle]] of courants.entries()) {
+        await upsert('brandKit', uid(), { kind: 'usage', nom, taillePx, reel, ...(avecArticle ? { avecArticle } : {}), declinaison: 'complete', ordre: i });
+      }
+    }
+  };
+  const enregistrerUsage = async (v: Record<string, string>, id?: string) => {
+    const avant = usages.find((u) => u.id === id);
+    await upsert('brandKit', id ?? uid(), {
+      kind: 'usage',
+      nom: v.nom.trim(),
+      taillePx: Math.max(8, Math.round(versNombre(v.taille) ?? 16)),
+      reel: v.reel.trim() || `${v.taille} px`,
+      declinaison: avant?.declinaison ?? 'complete',
+      ordre: avant?.ordre ?? usages.length,
+    });
   };
 
   const premier = usages[0];
@@ -117,6 +162,37 @@ export function IdentiteVisuelleScreen() {
           phraseVide={t('m50.brand.phraseVide')}
         />
       </Bloc>
+
+      <Saisies>
+        <SaisieModule
+          ajouter={logo ? 'Modifier le logo' : 'Décrire le logo'}
+          ouvertParDefaut={!logo}
+          surtitreListe="Le logo"
+          champs={[
+            { cle: 'monogramme', intitule: 'Monogramme', type: 'texte', requis: true, aide: 'Les lettres ou le signe du logo : « LM ».' },
+            { cle: 'mention', intitule: 'Mention', type: 'texte', requis: true, aide: 'Le texte posé sous le monogramme : « NETTOYAGE ».' },
+            { cle: 'couleurs', intitule: 'Couleurs', type: 'texte', aide: 'Codes séparés par des virgules : « #0a0a0a, #f7f7f5 ».' },
+            { cle: 'polices', intitule: 'Polices', type: 'texte', aide: 'Séparées par des virgules.' },
+          ]}
+          enregistrer={(v) => enregistrerLogo(v, logo?.id)}
+          elements={logo ? [{ id: logo.id, libelle: `${logo.monogramme} · ${logo.mention}`, detail: logo.couleurs.join(', '), valeurs: { monogramme: logo.monogramme, mention: logo.mention, couleurs: logo.couleurs.join(', '), polices: logo.polices.join(', ') } }] : []}
+          supprimer={(id) => remove('brandKit', id)}
+        />
+        {logo && (
+          <SaisieModule
+            ajouter="Ajouter un usage"
+            surtitreListe="Les usages"
+            champs={[
+              { cle: 'nom', intitule: 'Usage', type: 'texte', requis: true, aide: '« Tampon », « Étiquette de pot ».' },
+              { cle: 'taille', intitule: 'Hauteur à l’écran', type: 'nombre', requis: true, suffixe: 'px', aide: 'La taille à laquelle le logo y est vu.' },
+              { cle: 'reel', intitule: 'Taille réelle', type: 'texte', aide: '« 3 cm », « 2 m ».' },
+            ]}
+            enregistrer={enregistrerUsage}
+            elements={usages.map((u) => ({ id: u.id, libelle: u.nom, detail: `${u.taillePx} px · ${u.reel}`, valeurs: { nom: u.nom, taille: String(u.taillePx), reel: u.reel } }))}
+            supprimer={(id) => remove('brandKit', id)}
+          />
+        )}
+      </Saisies>
 
       <Dominante surtitre="Le logo à toutes ses tailles" note={vide ? undefined : 'Taille réelle de chaque usage'}>
         {vide || !logo ? (

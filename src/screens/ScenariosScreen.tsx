@@ -12,6 +12,7 @@ import {
   LigneRegistre,
   PiedDominante,
 } from '../components/cinquante-kit';
+import { SaisieModule, depuisCents, versCents, versNombre } from '../components/SaisieModule';
 import { useCollection, useSync } from '../state/SyncContext';
 import { formatCentsCompact } from '../lib/money';
 import { enLettres } from '../lib/cinquante/lettres';
@@ -123,7 +124,7 @@ function Potentiometre({
 
 export function ScenariosScreen() {
   const { t, langue } = useLangue();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const tout = useCollection<EnregistrementScenarios>('budgetScenarios');
   const L = (n: number, maj = false) => enLettres(n, langue, maj);
   const refLourde = useRef<HTMLInputElement>(null);
@@ -165,6 +166,44 @@ export function ScenariosScreen() {
     setChoisi(id);
   };
 
+  /*
+    SAISIE — le budget de l'année, en sept chiffres. À la première pose, trois
+    positions de départ (prudent, central, ambitieux) sont enregistrées pour
+    que la console ait quelque chose à comparer ; elles se règlent ensuite aux
+    potentiomètres comme les autres.
+  */
+  const HYPOTHESES: ModeleBudget['hypotheses'] = [
+    { cle: 'prix', nom: 'Prix', min: -5, max: 10, pas: 1, unite: 'pct', enPhrase: 'la hausse des prix' },
+    { cle: 'volume', nom: 'Volume', min: -20, max: 10, pas: 1, unite: 'pct', enPhrase: 'le volume d’activité' },
+    { cle: 'embauche', nom: 'Embauche', min: 1, max: 13, pas: 1, unite: 'mois', enPhrase: 'la date d’embauche' },
+    { cle: 'camionnette', nom: 'Gros achat', min: 1, max: 13, pas: 1, unite: 'mois', enPhrase: 'la date du gros achat' },
+    { cle: 'delai', nom: 'Délai client', min: 20, max: 60, pas: 1, unite: 'jours', enPhrase: 'le délai de paiement des clients' },
+  ];
+  const poserBudget = async (v: Record<string, string>, id?: string) => {
+    /* Un seul budget à la fois : le reposer remplace celui qui existe. */
+    await upsert('budgetScenarios', id ?? modele?.id ?? 'modele', {
+      hypotheses: modele?.hypotheses ?? HYPOTHESES,
+      kind: 'modele',
+      exercice: Math.round(versNombre(v.exercice) ?? new Date().getFullYear()),
+      caBaseCents: versCents(v.ca) ?? 0,
+      tauxVariable: (versNombre(v.variable) ?? 0) / 100,
+      chargesFixesCents: versCents(v.fixes) ?? 0,
+      salaireMensuelCents: versCents(v.salaire) ?? 0,
+      camionnetteMensuelleCents: versCents(v.achat) ?? 0,
+      coutJourDelaiCents: versCents(v.delai) ?? 0,
+    });
+    if (scenarios.length === 0) {
+      const depart: Array<[string, string, Valeurs]> = [
+        ['prudent', 'Prudent', { prix: 0, volume: -5, embauche: 13, camionnette: 13, delai: 45 }],
+        ['central', 'Central', { prix: 2, volume: 0, embauche: 9, camionnette: 13, delai: 40 }],
+        ['ambitieux', 'Ambitieux', { prix: 4, volume: 8, embauche: 9, camionnette: 13, delai: 35 }],
+      ];
+      for (const [i, [cle, nom, valeurs]] of depart.entries()) {
+        await upsert('budgetScenarios', `sc-${cle}`, { kind: 'scenario', nom, valeurs, enregistreLe: new Date().toISOString(), ordre: i } satisfies ScenarioBudget);
+      }
+    }
+  };
+
   const description = vide
     ? t('m50.scenarios.descriptionVide')
     : t('m50.scenarios.description', { n: L(modele?.hypotheses.length ?? 0, true), p: L(modele?.hypotheses.length ?? 0), s: L(scenarios.length) });
@@ -182,6 +221,45 @@ export function ScenariosScreen() {
           phraseVide={t('m50.scenarios.phraseVide')}
         />
       </Bloc>
+
+      <SaisieModule
+        ajouter={modele ? 'Reposer le budget' : 'Poser le budget de l’année'}
+        ouvertParDefaut={!modele}
+        surtitreListe="Le budget et les scénarios"
+        note="Hors taxes, sur l’année"
+        champs={[
+          { cle: 'exercice', intitule: 'Année', type: 'nombre', requis: true, defaut: String(new Date().getFullYear()) },
+          { cle: 'ca', intitule: 'Chiffre d’affaires attendu', type: 'montant', requis: true },
+          { cle: 'variable', intitule: 'Part qui part en achats', type: 'pourcent', requis: true, defaut: '30', aide: 'Produits, matières, sous-traitance : ce qui grossit avec les ventes.' },
+          { cle: 'fixes', intitule: 'Charges fixes de l’année', type: 'montant', requis: true, aide: 'Loyer, assurances, salaires actuels, abonnements.' },
+          { cle: 'salaire', intitule: 'Coût mensuel d’une embauche', type: 'montant', aide: 'Salaire chargé. Vide : pas d’embauche envisagée.' },
+          { cle: 'achat', intitule: 'Coût mensuel d’un gros achat', type: 'montant', aide: 'Un véhicule, une machine : son loyer ou son crédit par mois.' },
+          { cle: 'delai', intitule: 'Coût d’un jour de délai client', type: 'montant', aide: 'Ce que coûte, sur l’année, un jour de plus avant d’être payé (découvert, agios).' },
+        ]}
+        enregistrer={poserBudget}
+        elements={[
+          ...(modele
+            ? [
+                {
+                  id: modele.id,
+                  libelle: `Budget ${modele.exercice}`,
+                  detail: `${formatCentsCompact(modele.caBaseCents)} de chiffre d’affaires`,
+                  valeurs: {
+                    exercice: String(modele.exercice),
+                    ca: depuisCents(modele.caBaseCents),
+                    variable: String(Math.round(modele.tauxVariable * 100)),
+                    fixes: depuisCents(modele.chargesFixesCents),
+                    salaire: depuisCents(modele.salaireMensuelCents),
+                    achat: depuisCents(modele.camionnetteMensuelleCents),
+                    delai: depuisCents(modele.coutJourDelaiCents),
+                  },
+                },
+              ]
+            : []),
+          ...scenarios.map((x) => ({ id: x.id, libelle: `Scénario « ${x.nom} »`, detail: 'se règle aux potentiomètres' })),
+        ]}
+        supprimer={(id) => remove('budgetScenarios', id)}
+      />
 
       <Dominante
         surtitre={courant ? `La console · ${essai ? 'essai en cours' : `scénario « ${courant.nom} »`}` : 'La console'}

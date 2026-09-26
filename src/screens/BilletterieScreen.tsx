@@ -12,6 +12,7 @@ import {
   PiedDominante,
   donnees,
 } from '../components/cinquante-kit';
+import { SaisieModule, depuisCents, versCents, versLignes, versNombre } from '../components/SaisieModule';
 import { uid, useCollection, useSync } from '../state/SyncContext';
 import { formatCents, formatCentsCompact } from '../lib/money';
 import { enLettres } from '../lib/cinquante/lettres';
@@ -96,7 +97,7 @@ function Tourniquet({ evt, billets, maintenant }: { evt: EvenementBilletterie; b
 
 export function BilletterieScreen() {
   const { t, langue } = useLangue();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const tout = useCollection<EnregistrementBilletterie>('ticketSales');
   const [maintenant, setMaintenant] = useState(() => new Date());
 
@@ -120,6 +121,36 @@ export function BilletterieScreen() {
   const prev = evt ? previsionRemplissage(evt, billets, maintenant) : null;
   const parJour = evt ? ventesParJour(evt, billets, maintenant) : [];
   const L = (n: number, maj = false) => enLettres(n, langue, maj);
+
+  /*
+    SAISIE — l'événement, sa jauge et ses tarifs (« Plein : 15 € × 80 »).
+    La vente en ligne n'est pas branchée : les billets se vendent ici, au
+    guichet, un clic par billet.
+  */
+  const lireTarifs = (texte: string, jauge: number) => {
+    const lus = versLignes(texte)
+      .map((l) => {
+        const m = l.match(/^(.+?)\s*[:—–-]\s*(\d+(?:[.,]\d+)?)\s*€?\s*(?:[x×*]\s*(\d+))?\s*$/i);
+        return m ? { nom: m[1].trim(), prixCents: versCents(m[2]) ?? 0, quota: m[3] ? Number(m[3]) : 0 } : null;
+      })
+      .filter((x): x is { nom: string; prixCents: number; quota: number } => x !== null);
+    const sansQuota = lus.filter((x) => !x.quota).length;
+    const reste = Math.max(0, jauge - lus.reduce((n, x) => n + x.quota, 0));
+    return lus.map((x) => (x.quota ? x : { ...x, quota: sansQuota ? Math.floor(reste / sansQuota) : 0 }));
+  };
+  const enregistrerEvenement = async (v: Record<string, string>, id?: string) => {
+    const avant = evenements.find((e) => e.id === id);
+    const jauge = Math.max(1, Math.round(versNombre(v.jauge) ?? 1));
+    await upsert('ticketSales', id ?? uid('evt'), {
+      kind: 'evenement',
+      titre: v.titre.trim(),
+      date: new Date(`${v.jour}T${v.heure || '20:00'}:00`).toISOString(),
+      jauge,
+      tarifs: lireTarifs(v.tarifs, jauge),
+      ouvertureLe: avant?.ouvertureLe ?? new Date().toISOString(),
+    });
+  };
+  const deuxChiffres = (n: number) => String(n).padStart(2, '0');
 
   const vendreAuGuichet = async () => {
     if (!evt || !tq || tq.libres <= 0) return;
@@ -164,6 +195,39 @@ export function BilletterieScreen() {
           phraseVide={t('m50.ticketing.phraseVide')}
         />
       </Bloc>
+
+      <SaisieModule
+        ajouter="Créer un événement"
+        ouvertParDefaut={vide}
+        note="Vente en ligne pas encore branchée : les billets se vendent au guichet, ici"
+        surtitreListe="Les événements"
+        champs={[
+          { cle: 'titre', intitule: 'Événement', type: 'texte', requis: true },
+          { cle: 'jour', intitule: 'Date', type: 'date', requis: true },
+          { cle: 'heure', intitule: 'Heure', type: 'heure', requis: true, defaut: '20:00' },
+          { cle: 'jauge', intitule: 'Places', type: 'nombre', requis: true },
+          { cle: 'tarifs', intitule: 'Tarifs', type: 'lignes', requis: true, aide: 'Un par ligne : « Plein : 15 € × 80 », « Réduit : 10 € ». Sans quantité, le reste de la jauge est partagé.' },
+        ]}
+        enregistrer={enregistrerEvenement}
+        elements={[...evenements]
+          .sort((a, b) => b.date.localeCompare(a.date))
+          .map((e) => {
+            const d = new Date(e.date);
+            return {
+              id: e.id,
+              libelle: e.titre,
+              detail: `${d.toLocaleDateString('fr-FR')} · ${e.jauge} places`,
+              valeurs: {
+                titre: e.titre,
+                jour: `${d.getFullYear()}-${deuxChiffres(d.getMonth() + 1)}-${deuxChiffres(d.getDate())}`,
+                heure: `${deuxChiffres(d.getHours())}:${deuxChiffres(d.getMinutes())}`,
+                jauge: String(e.jauge),
+                tarifs: e.tarifs.map((x) => `${x.nom} : ${depuisCents(x.prixCents)} € × ${x.quota}`).join('\n'),
+              },
+            };
+          })}
+        supprimer={(id) => remove('ticketSales', id)}
+      />
 
       {!evt || !tq || !prev ? (
         <Dominante surtitre="Le tourniquet">

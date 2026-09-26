@@ -13,7 +13,8 @@ import {
   PiedDominante,
   donnees,
 } from '../components/cinquante-kit';
-import { useCollection, useSync } from '../state/SyncContext';
+import { SaisieModule, Saisies, depuisCents, versCents, versIso, versJour } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { formatCentsCompact } from '../lib/money';
 import { enLettres } from '../lib/cinquante/lettres';
 import { type EnregistrementVeille, mouvements, passeSousVous, positionMoyenne, releveDesPrix } from '../lib/cinquante/marketing';
@@ -38,7 +39,7 @@ const euros = (c: number) => formatCentsCompact(c).replace(/\s?€$/, '');
 
 export function VeillePrixScreen() {
   const { t, langue } = useLangue();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const tout = useCollection<EnregistrementVeille>('competitorPrices');
   const [maintenant] = useState(() => new Date());
   const [edition, setEdition] = useState<string | null>(null);
@@ -61,6 +62,31 @@ export function VeillePrixScreen() {
     setEdition(null);
   };
 
+  /*
+    SAISIE — ce que vous vendez et à quel prix, les concurrents suivis, puis
+    chaque prix relevé chez eux. Rien n'est lu automatiquement sur leurs sites :
+    un relevé est un prix vu et noté.
+  */
+  const enregistrerPrestation = async (v: Record<string, string>, id?: string) => {
+    const avant = r.prestations.find((x) => x.id === id);
+    await upsert('competitorPrices', id ?? uid(), {
+      kind: 'prestation',
+      nom: v.nom.trim(),
+      votrePrixCents: versCents(v.prix) ?? 0,
+      ordre: avant?.ordre ?? r.prestations.length,
+      ...(avant?.marcheBasCents !== undefined ? { marcheBasCents: avant.marcheBasCents } : {}),
+      ...(avant?.marcheHautCents !== undefined ? { marcheHautCents: avant.marcheHautCents } : {}),
+    });
+  };
+  const enregistrerConcurrent = async (v: Record<string, string>, id?: string) => {
+    const nom = v.nom.trim();
+    await upsert('competitorPrices', id ?? uid(), { kind: 'concurrent', nom, initiale: nom.charAt(0).toUpperCase() });
+  };
+  const enregistrerReleve = async (v: Record<string, string>, id?: string) => {
+    await upsert('competitorPrices', id ?? uid(), { kind: 'releve', concurrentId: v.concurrent, prestationId: v.prestation, prixCents: versCents(v.prix) ?? 0, le: versIso(v.le) });
+  };
+  const nomDe = (id: string) => [...r.concurrents, ...r.prestations].find((x) => x.id === id)?.nom ?? '—';
+
   const description = vide
     ? t('m50.watch.descriptionVide')
     : ambre
@@ -81,6 +107,54 @@ export function VeillePrixScreen() {
           phraseVide={t('m50.watch.phraseVide')}
         />
       </Bloc>
+
+      <Saisies>
+        <SaisieModule
+          ajouter="Ajouter une prestation"
+          ouvertParDefaut={vide}
+          surtitreListe="Vos prestations"
+          champs={[
+            { cle: 'nom', intitule: 'Prestation', type: 'texte', requis: true, aide: '« Vidange », « Coupe femme », « Menu du midi ».' },
+            { cle: 'prix', intitule: 'Votre prix', type: 'montant', requis: true },
+          ]}
+          enregistrer={enregistrerPrestation}
+          elements={r.prestations.map((x) => ({ id: x.id, libelle: x.nom, detail: formatCentsCompact(x.votrePrixCents), valeurs: { nom: x.nom, prix: depuisCents(x.votrePrixCents) } }))}
+          supprimer={(id) => remove('competitorPrices', id)}
+        />
+        {r.prestations.length > 0 && (
+          <SaisieModule
+            ajouter="Suivre un concurrent"
+            surtitreListe="Les concurrents"
+            champs={[{ cle: 'nom', intitule: 'Concurrent', type: 'texte', requis: true }]}
+            enregistrer={enregistrerConcurrent}
+            elements={r.concurrents.map((c) => ({ id: c.id, libelle: c.nom, valeurs: { nom: c.nom } }))}
+            supprimer={(id) => remove('competitorPrices', id)}
+          />
+        )}
+        {r.prestations.length > 0 && r.concurrents.length > 0 && (
+          <SaisieModule
+            ajouter="Noter un prix relevé"
+            surtitreListe="Les relevés"
+            champs={[
+              { cle: 'concurrent', intitule: 'Chez', type: 'choix', requis: true, options: r.concurrents.map((c) => ({ valeur: c.id, libelle: c.nom })) },
+              { cle: 'prestation', intitule: 'Pour', type: 'choix', requis: true, options: r.prestations.map((x) => ({ valeur: x.id, libelle: x.nom })) },
+              { cle: 'prix', intitule: 'Prix vu', type: 'montant', requis: true },
+              { cle: 'le', intitule: 'Relevé le', type: 'date', requis: true, defaut: versJour(maintenant.toISOString()) },
+            ]}
+            enregistrer={enregistrerReleve}
+            elements={[...r.releves]
+              .sort((a, b) => b.le.localeCompare(a.le))
+              .slice(0, 60)
+              .map((x) => ({
+                id: x.id,
+                libelle: `${nomDe(x.concurrentId)} · ${nomDe(x.prestationId)}`,
+                detail: `${formatCentsCompact(x.prixCents)} · ${versJour(x.le)}`,
+                valeurs: { concurrent: x.concurrentId, prestation: x.prestationId, prix: depuisCents(x.prixCents), le: versJour(x.le) },
+              }))}
+            supprimer={(id) => remove('competitorPrices', id)}
+          />
+        )}
+      </Saisies>
 
       <Dominante
         surtitre={dernierReleve ? `Vos prix face au marché · relevé du ${dateReleve}` : 'Vos prix face au marché'}

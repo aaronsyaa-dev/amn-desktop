@@ -13,7 +13,8 @@ import {
   PiedDominante,
   donnees,
 } from '../components/cinquante-kit';
-import { useCollection, useSync } from '../state/SyncContext';
+import { SaisieModule, Saisies, depuisCents, versCents, versIso, versJour } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { formatCentsCompact } from '../lib/money';
 import { enLettres } from '../lib/cinquante/lettres';
 import { type Bulletin, type EnregistrementPaie, type Paie, TUYAU, cheminBranche, tuyau } from '../lib/cinquante/rh';
@@ -38,7 +39,7 @@ const moisDe = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padSt
 
 export function BulletinsScreen() {
   const { t, langue } = useLangue();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const tout = useCollection<EnregistrementPaie>('payslips');
   const [maintenant] = useState(() => new Date());
   const L = (n: number, maj = false) => enLettres(n, langue, maj);
@@ -54,6 +55,35 @@ export function BulletinsScreen() {
   const nomMois = MOIS[maintenant.getMonth()];
   const hs = bulletins.find((b) => b.heuresSup);
   const virement = paie ? new Date(paie.virementLe) : null;
+
+  /*
+    SAISIE — les chiffres du bulletin tels que le cabinet les donne : brut,
+    cotisations des deux côtés, prélèvement à la source. Le coût employeur et
+    le net se calculent, donc le bulletin est toujours cohérent. Puis la date
+    du virement du mois, qui ouvre la validation.
+  */
+  const tousBulletins = tout.filter((e): e is Id<Bulletin> & { updatedAt: string } => e.kind === 'bulletin');
+  const paies = tout.filter((e): e is Id<Paie> & { updatedAt: string } => e.kind === 'paie');
+  const enregistrerBulletin = async (v: Record<string, string>, id?: string) => {
+    const brut = versCents(v.brut) ?? 0;
+    const patronales = versCents(v.patronales) ?? 0;
+    const salariales = versCents(v.salariales) ?? 0;
+    const pasCents = versCents(v.pas) ?? 0;
+    await upsert('payslips', id ?? uid(), {
+      kind: 'bulletin',
+      personne: v.personne.trim(),
+      mois: v.mois.slice(0, 7),
+      coutEmployeurCents: brut + patronales,
+      patronalesCents: patronales,
+      salarialesCents: salariales,
+      pasCents,
+      netCents: brut - salariales - pasCents,
+    });
+  };
+  const enregistrerPaie = async (v: Record<string, string>, id?: string) => {
+    const avant = paies.find((p) => p.id === id);
+    await upsert('payslips', id ?? uid(), { kind: 'paie', mois: v.mois.slice(0, 7), virementLe: versIso(v.virement), ...(avant?.valideeLe ? { valideeLe: avant.valideeLe } : {}) });
+  };
 
   const valider = async () => {
     if (!paie || tu.incoherents.length) return;
@@ -78,6 +108,54 @@ export function BulletinsScreen() {
           phraseVide={t('m50.payslips.phraseVide')}
         />
       </Bloc>
+
+      <Saisies>
+        <SaisieModule
+          ajouter="Saisir un bulletin"
+          ouvertParDefaut={tousBulletins.length === 0}
+          note="Les bulletins se recopient depuis ceux du cabinet : rien n’est calculé à sa place"
+          surtitreListe="Les bulletins"
+          champs={[
+            { cle: 'personne', intitule: 'Salarié·e', type: 'texte', requis: true },
+            { cle: 'mois', intitule: 'Mois', type: 'texte', requis: true, defaut: mois, aide: 'Année-mois : « 2026-09 ».' },
+            { cle: 'brut', intitule: 'Salaire brut', type: 'montant', requis: true },
+            { cle: 'patronales', intitule: 'Cotisations patronales', type: 'montant', requis: true },
+            { cle: 'salariales', intitule: 'Cotisations salariales', type: 'montant', requis: true },
+            { cle: 'pas', intitule: 'Prélèvement à la source', type: 'montant', requis: true },
+          ]}
+          enregistrer={enregistrerBulletin}
+          elements={[...tousBulletins]
+            .sort((a, b) => b.mois.localeCompare(a.mois) || a.personne.localeCompare(b.personne))
+            .slice(0, 80)
+            .map((b) => ({
+              id: b.id,
+              libelle: `${b.personne} · ${b.mois}`,
+              detail: `net ${formatCentsCompact(b.netCents)} · coût ${formatCentsCompact(b.coutEmployeurCents)}`,
+              valeurs: {
+                personne: b.personne,
+                mois: b.mois,
+                brut: depuisCents(b.coutEmployeurCents - b.patronalesCents),
+                patronales: depuisCents(b.patronalesCents),
+                salariales: depuisCents(b.salarialesCents),
+                pas: depuisCents(b.pasCents),
+              },
+            }))}
+          supprimer={(id) => remove('payslips', id)}
+        />
+        {tousBulletins.length > 0 && (
+          <SaisieModule
+            ajouter="Poser la date du virement"
+            surtitreListe="Les virements"
+            champs={[
+              { cle: 'mois', intitule: 'Mois', type: 'texte', requis: true, defaut: mois },
+              { cle: 'virement', intitule: 'Virement le', type: 'date', requis: true },
+            ]}
+            enregistrer={enregistrerPaie}
+            elements={paies.map((p) => ({ id: p.id, libelle: `Paie de ${p.mois}`, detail: `virement le ${versJour(p.virementLe)}${p.valideeLe ? ' · validée' : ''}`, valeurs: { mois: p.mois, virement: versJour(p.virementLe) } }))}
+            supprimer={(id) => remove('payslips', id)}
+          />
+        )}
+      </Saisies>
 
       <Dominante
         surtitre={`La paie de ${nomMois} · du coût à la poche`}

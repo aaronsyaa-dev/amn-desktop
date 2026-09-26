@@ -12,7 +12,8 @@ import {
   LigneRegistre,
   PiedDominante,
 } from '../components/cinquante-kit';
-import { useCollection, useSync } from '../state/SyncContext';
+import { SaisieModule, Saisies, versIso, versJour, versNombre } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { enLettres } from '../lib/cinquante/lettres';
 import { COURONNE, type DemandeRgpd, type EnregistrementRgpd, type Purge, type Revue, type Traitement, empreinte, positionCouronne } from '../lib/cinquante/juridique';
 import type { Id } from '../lib/cinquante/guichet';
@@ -89,6 +90,37 @@ export function RgpdScreen() {
     setAConfirmer(false);
   };
 
+  /*
+    SAISIE — le registre se tient à la main : chaque traitement nomme les
+    données du produit qu'il couvre (ce que l'empreinte ira lire), sa base
+    légale et sa durée. Puis chaque demande reçue d'une personne.
+  */
+  const DONNEES: Array<{ valeur: string; libelle: string; module: string; nom: string }> = [
+    { valeur: 'clients', libelle: 'Fiches clients', module: 'Clients', nom: 'Gestion de la clientèle' },
+    { valeur: 'invoices', libelle: 'Factures', module: 'Facturation', nom: 'Facturation et comptabilité' },
+    { valeur: 'contracts', libelle: 'Contrats', module: 'Contrats', nom: 'Gestion des contrats' },
+    { valeur: 'depositQuotes', libelle: 'Devis et acomptes', module: 'Acompte', nom: 'Devis signés' },
+    { valeur: 'switchboardCalls', libelle: 'Appels du standard', module: 'Standard', nom: 'Enregistrement des appels' },
+    { valeur: 'npsResponses', libelle: 'Réponses au sondage', module: 'NPS', nom: 'Mesure de la satisfaction' },
+  ];
+  const enregistrerTraitement = async (v: Record<string, string>, id?: string) => {
+    const d = DONNEES.find((x) => x.valeur === v.collection) ?? DONNEES[0];
+    const ans = versNombre(v.duree);
+    await upsert('gdprRegister', id ?? uid(), {
+      kind: 'traitement',
+      nom: v.nom.trim() || d.nom,
+      module: d.module,
+      collection: d.valeur,
+      baseLegale: v.baseLegale,
+      dureeJours: ans && ans > 0 ? Math.round(ans * 365) : null,
+      dureeLibelle: ans && ans > 0 ? `${String(ans).replace('.', ',')} an${ans > 1 ? 's' : ''}` : 'le temps de la relation',
+      ...(d.valeur === 'invoices' ? { lieAFacture: true } : {}),
+    });
+  };
+  const enregistrerDemande = async (v: Record<string, string>, id?: string) => {
+    await upsert('gdprRegister', id ?? uid(), { kind: 'demande', personne: v.personne.trim(), type: v.type, le: versIso(v.le) });
+  };
+
   const description = vide
     ? t('m50.gdpr.descriptionVide')
     : a
@@ -105,6 +137,61 @@ export function RgpdScreen() {
           phraseVide={t('m50.gdpr.phraseVide')}
         />
       </Bloc>
+
+      <Saisies>
+        <SaisieModule
+          ajouter="Ajouter un traitement au registre"
+          ouvertParDefaut={vide}
+          surtitreListe="Le registre"
+          champs={[
+            { cle: 'collection', intitule: 'Données concernées', type: 'choix', requis: true, options: DONNEES.map((d) => ({ valeur: d.valeur, libelle: d.libelle })) },
+            { cle: 'nom', intitule: 'Nom du traitement', type: 'texte', aide: 'Vide : « Gestion de la clientèle », « Facturation »… selon les données.' },
+            {
+              cle: 'baseLegale',
+              intitule: 'Base légale',
+              type: 'choix',
+              requis: true,
+              options: ['Exécution du contrat', 'Obligation légale', 'Intérêt légitime', 'Consentement'].map((b) => ({ valeur: b, libelle: b })),
+            },
+            { cle: 'duree', intitule: 'Conservation', type: 'nombre', suffixe: 'ans', aide: 'Vide : le temps de la relation. Factures : 10 ans.' },
+          ]}
+          enregistrer={enregistrerTraitement}
+          elements={traitements.map((x) => ({
+            id: x.id,
+            libelle: x.nom,
+            detail: `${x.baseLegale} · ${x.dureeLibelle}`,
+            valeurs: { collection: x.collection, nom: x.nom, baseLegale: x.baseLegale, duree: x.dureeJours ? String(Math.round((x.dureeJours / 365) * 10) / 10).replace('.', ',') : '' },
+          }))}
+          supprimer={(id) => remove('gdprRegister', id)}
+        />
+        {traitements.length > 0 && (
+          <SaisieModule
+            ajouter="Noter une demande reçue"
+            surtitreListe="Les demandes"
+            champs={[
+              { cle: 'personne', intitule: 'Personne', type: 'texte', requis: true, aide: 'Son nom tel qu’il figure dans vos fiches : l’empreinte le cherche partout.' },
+              {
+                cle: 'type',
+                intitule: 'Elle demande',
+                type: 'choix',
+                options: [
+                  { valeur: 'acces', libelle: 'L’accès à ses données' },
+                  { valeur: 'effacement', libelle: 'L’effacement de ses données' },
+                ],
+              },
+              { cle: 'le', intitule: 'Reçue le', type: 'date', requis: true, defaut: versJour(maintenant.toISOString()) },
+            ]}
+            enregistrer={enregistrerDemande}
+            elements={demandes.map((d) => ({
+              id: d.id,
+              libelle: d.personne,
+              detail: `${d.type === 'acces' ? 'accès' : 'effacement'} · ${versJour(d.le)}`,
+              valeurs: { personne: d.personne, type: d.type, le: versJour(d.le) },
+            }))}
+            supprimer={(id) => remove('gdprRegister', id)}
+          />
+        )}
+      </Saisies>
 
       <Dominante surtitre={personne ? `${personne} · demande d’accès` : 'L’empreinte d’une personne'} note={personne ? 'Ce que le produit garde, et combien de temps' : undefined}>
         {!personne || !e ? (

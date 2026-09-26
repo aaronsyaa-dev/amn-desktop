@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Bloc, Calmes, CarteCalme, CarteReleves, Dominante, Ecran50, LigneRegistre, PiedDominante } from '../components/cinquante-kit';
-import { useCollection } from '../state/SyncContext';
+import { SaisieModule, depuisCents, versCents, versIso, versJour, versLignes, versNombre } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { formatCentsCompact } from '../lib/money';
 import { enLettres } from '../lib/cinquante/lettres';
 import { PENTE, type ProjetClos, etiquettes, trimestreDe, yMarge } from '../lib/cinquante/finance';
@@ -24,6 +25,7 @@ const H = PENTE.viewBoxH;
 export function AnalytiqueScreen() {
   const { t, langue } = useLangue();
   const tous = useCollection<ProjetClos>('projectMargins');
+  const { upsert, remove } = useSync();
   const [maintenant] = useState(() => new Date());
   const L = (n: number, maj = false) => enLettres(n, langue, maj);
 
@@ -33,6 +35,30 @@ export function AnalytiqueScreen() {
     [tous, trim.debut, trim.fin],
   );
   const vide = projets.length === 0;
+  /*
+    SAISIE — un projet clos : la marge prévue au devis, la marge réelle, et
+    si on veut, poste par poste ce qui était prévu et ce qui a été dépensé
+    (« Main-d’œuvre : 384 → 864 »). Seuls les projets clos ce trimestre
+    s'affichent sur la pente.
+  */
+  const lirePostes = (texte: string) =>
+    versLignes(texte)
+      .map((l) => {
+        const m = l.match(/^(.+?)\s*:\s*(\d+(?:[.,]\d+)?)\s*€?\s*(?:→|->|>)\s*(\d+(?:[.,]\d+)?)\s*€?\s*$/);
+        return m ? { poste: m[1].trim(), prevuCents: versCents(m[2]) ?? 0, reelCents: versCents(m[3]) ?? 0 } : null;
+      })
+      .filter((x): x is { poste: string; prevuCents: number; reelCents: number } => x !== null);
+  const enregistrer = async (v: Record<string, string>, id?: string) => {
+    await upsert('projectMargins', id ?? uid(), {
+      kind: 'projet',
+      nom: v.nom.trim(),
+      closLe: versIso(v.clos),
+      margePrevue: versNombre(v.prevue) ?? 0,
+      margeReelle: versNombre(v.reelle) ?? 0,
+      postes: lirePostes(v.postes),
+      ...(v.cause.trim() ? { cause: v.cause.trim() } : {}),
+    });
+  };
   const plongeon = [...projets].sort((a, b) => a.margeReelle - a.margePrevue - (b.margeReelle - b.margePrevue))[0] ?? null;
   const ambre = plongeon && plongeon.margeReelle < plongeon.margePrevue ? plongeon : null;
   const aPlat = projets.filter((p) => Math.abs(p.margeReelle - p.margePrevue) <= 6).length;
@@ -60,6 +86,38 @@ export function AnalytiqueScreen() {
           phraseVide={t('m50.analytics.phraseVide')}
         />
       </Bloc>
+
+      <SaisieModule
+        ajouter="Clore un projet"
+        ouvertParDefaut={tous.length === 0}
+        surtitreListe="Les projets clos"
+        champs={[
+          { cle: 'nom', intitule: 'Projet', type: 'texte', requis: true },
+          { cle: 'clos', intitule: 'Clos le', type: 'date', requis: true, defaut: versJour(maintenant.toISOString()) },
+          { cle: 'prevue', intitule: 'Marge prévue', type: 'pourcent', requis: true, aide: 'Celle du devis.' },
+          { cle: 'reelle', intitule: 'Marge réelle', type: 'pourcent', requis: true, aide: 'Celle constatée une fois tout payé.' },
+          { cle: 'postes', intitule: 'Poste par poste', type: 'lignes', aide: 'Facultatif, un par ligne, prévu → réel : « Main-d’œuvre : 384 → 864 ».' },
+          { cle: 'cause', intitule: 'Ce qui a fait l’écart', type: 'texte', large: true },
+        ]}
+        enregistrer={enregistrer}
+        elements={[...tous]
+          .sort((a, b) => b.closLe.localeCompare(a.closLe))
+          .slice(0, 80)
+          .map((p) => ({
+            id: p.id,
+            libelle: p.nom,
+            detail: `clos le ${versJour(p.closLe)} · ${p.margePrevue} % prévus, ${p.margeReelle} % réels`,
+            valeurs: {
+              nom: p.nom,
+              clos: versJour(p.closLe),
+              prevue: String(p.margePrevue).replace('.', ','),
+              reelle: String(p.margeReelle).replace('.', ','),
+              postes: p.postes.map((x) => `${x.poste} : ${depuisCents(x.prevuCents)} → ${depuisCents(x.reelCents)}`).join('\n'),
+              cause: p.cause ?? '',
+            },
+          }))}
+        supprimer={(id) => remove('projectMargins', id)}
+      />
 
       <Dominante surtitre="De la marge prévue à la marge réelle" note={vide ? undefined : 'Même échelle à gauche et à droite · −10 % → 50 %'}>
         {vide ? (

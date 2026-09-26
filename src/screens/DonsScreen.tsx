@@ -11,7 +11,8 @@ import {
   PiedDominante,
   hachure,
 } from '../components/cinquante-kit';
-import { useCollection } from '../state/SyncContext';
+import { SaisieModule, Saisies, depuisCents, versCents, versIso, versJour, versLignes } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { formatCentsCompact } from '../lib/money';
 import { enLettres } from '../lib/cinquante/lettres';
 import {
@@ -120,6 +121,7 @@ function Pont({ camp, contributions }: { camp: CampagneDons; contributions: Id<C
 export function DonsScreen() {
   const { t, langue } = useLangue();
   const tout = useCollection<EnregistrementDons>('donations');
+  const { upsert, remove } = useSync();
   const [maintenant] = useState(() => new Date());
 
   // La campagne montrée : celle qui n'est pas close, sinon la plus récente.
@@ -132,6 +134,34 @@ export function DonsScreen() {
     [tout, camp],
   );
   const vide = !camp;
+  /*
+    SAISIE — la collecte (objectif, seuil, clôture, paliers de contrepartie),
+    puis chaque don reçu : chèque, virement, espèces. Le paiement en ligne des
+    dons n'est pas branché.
+  */
+  const campagnes = tout.filter((e): e is Id<CampagneDons> & { updatedAt: string } => e.kind === 'campagne');
+  const lirePaliers = (texte: string) =>
+    versLignes(texte)
+      .map((l) => {
+        const m = l.match(/^\s*(\d+(?:[.,]\d+)?)\s*€?\s*[:—–-]\s*(.+)$/);
+        return m ? { desCents: versCents(m[1]) ?? 0, contrepartie: m[2].trim() } : null;
+      })
+      .filter((x): x is { desCents: number; contrepartie: string } => x !== null)
+      .sort((a, b) => a.desCents - b.desCents);
+  const enregistrerCampagne = async (v: Record<string, string>, id?: string) => {
+    await upsert('donations', id ?? uid(), {
+      kind: 'campagne',
+      titre: v.titre.trim(),
+      objectifCents: versCents(v.objectif) ?? 0,
+      seuilCents: versCents(v.seuil) ?? versCents(v.objectif) ?? 0,
+      clotureLe: versIso(v.cloture),
+      paliers: lirePaliers(v.paliers),
+    });
+  };
+  const enregistrerDon = async (v: Record<string, string>, id?: string) => {
+    await upsert('donations', id ?? uid(), { kind: 'contribution', campagneId: v.campagne, nom: v.nom.trim(), montantCents: versCents(v.montant) ?? 0, recuLe: versIso(v.le) });
+  };
+  const tousDons = tout.filter((e): e is Id<Contribution> & { updatedAt: string } => e.kind === 'contribution');
   const L = (n: number, maj = false) => enLettres(n, langue, maj);
   const collecte = contributions.reduce((s, c) => s + c.montantCents, 0);
   const prev = camp ? previsionDons(camp, contributions, maintenant) : null;
@@ -163,6 +193,58 @@ export function DonsScreen() {
           phraseVide={t('m50.donations.phraseVide')}
         />
       </Bloc>
+
+      <Saisies>
+        <SaisieModule
+          ajouter="Ouvrir une collecte"
+          ouvertParDefaut={vide}
+          surtitreListe="Les collectes"
+          champs={[
+            { cle: 'titre', intitule: 'Collecte', type: 'texte', requis: true, aide: '« Un four pour l’atelier », « Voyage de fin d’année ».' },
+            { cle: 'objectif', intitule: 'Objectif', type: 'montant', requis: true },
+            { cle: 'seuil', intitule: 'Seuil minimal', type: 'montant', aide: 'Sous ce montant, le projet ne se fait pas. Vide : l’objectif.' },
+            { cle: 'cloture', intitule: 'Clôture le', type: 'date', requis: true },
+            { cle: 'paliers', intitule: 'Contreparties', type: 'lignes', aide: 'Une par ligne : « 20 € : une carte postale », « 50 € : votre nom sur le mur ».' },
+          ]}
+          enregistrer={enregistrerCampagne}
+          elements={campagnes.map((c) => ({
+            id: c.id,
+            libelle: c.titre,
+            detail: `${depuisCents(c.objectifCents)} € · clôture ${versJour(c.clotureLe)}`,
+            valeurs: {
+              titre: c.titre,
+              objectif: depuisCents(c.objectifCents),
+              seuil: depuisCents(c.seuilCents),
+              cloture: versJour(c.clotureLe),
+              paliers: c.paliers.map((x) => `${depuisCents(x.desCents)} € : ${x.contrepartie}`).join('\n'),
+            },
+          }))}
+          supprimer={(id) => remove('donations', id)}
+        />
+        {campagnes.length > 0 && (
+          <SaisieModule
+            ajouter="Noter un don reçu"
+            surtitreListe="Les dons"
+            champs={[
+              { cle: 'campagne', intitule: 'Collecte', type: 'choix', requis: true, defaut: camp?.id, options: campagnes.map((c) => ({ valeur: c.id, libelle: c.titre })) },
+              { cle: 'nom', intitule: 'Donateur ou donatrice', type: 'texte', requis: true },
+              { cle: 'montant', intitule: 'Montant', type: 'montant', requis: true },
+              { cle: 'le', intitule: 'Reçu le', type: 'date', requis: true, defaut: versJour(maintenant.toISOString()) },
+            ]}
+            enregistrer={enregistrerDon}
+            elements={[...tousDons]
+              .sort((a, b) => b.recuLe.localeCompare(a.recuLe))
+              .slice(0, 80)
+              .map((d) => ({
+                id: d.id,
+                libelle: `${d.nom} · ${depuisCents(d.montantCents)} €`,
+                detail: `${campagnes.find((c) => c.id === d.campagneId)?.titre ?? 'collecte retirée'} · ${versJour(d.recuLe)}`,
+                valeurs: { campagne: d.campagneId, nom: d.nom, montant: depuisCents(d.montantCents), le: versJour(d.recuLe) },
+              }))}
+            supprimer={(id) => remove('donations', id)}
+          />
+        )}
+      </Saisies>
 
       {!camp ? (
         <Dominante surtitre="Le pont · une planche par contribution">

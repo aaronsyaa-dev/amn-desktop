@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Bloc, Calmes, CarteCalme, CarteReleves, Dominante, Ecran50, LigneRegistre, PiedDominante } from '../components/cinquante-kit';
-import { useCollection } from '../state/SyncContext';
+import { SaisieModule, versIso, versJour, versNombre } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { enLettres } from '../lib/cinquante/lettres';
-import { type EnregistrementNps, FENETRE_NPS_J, type ReglageNps, corde } from '../lib/cinquante/marketing';
+import { type EnregistrementNps, FENETRE_NPS_J, type ReglageNps, type ReponseNps, corde } from '../lib/cinquante/marketing';
 import { useLangue } from '../i18n';
 
 /**
@@ -38,6 +39,7 @@ function Carres({ n, couleur, colonnes }: { n: number; couleur: string; colonnes
 export function NpsScreen() {
   const { t, langue } = useLangue();
   const tout = useCollection<EnregistrementNps>('npsResponses');
+  const { upsert, remove } = useSync();
   const [maintenant] = useState(() => new Date());
   const L = (n: number, maj = false) => enLettres(n, langue, maj);
 
@@ -45,6 +47,18 @@ export function NpsScreen() {
   const reglage = tout.find((e): e is ReglageNps & { id: string; updatedAt: string } => e.kind === 'reglage') ?? null;
   const vide = c.n === 0;
   const motifDetracteurs = c.motifs.filter((m) => m.groupe === 'detracteur');
+
+  /* SAISIE — une réponse recueillie au comptoir, au téléphone ou sur papier. L'envoi automatique du sondage n'est pas branché. */
+  const reponses = tout.filter((e): e is ReponseNps & { id: string; updatedAt: string } => e.kind === 'reponse').sort((a, b) => b.le.localeCompare(a.le));
+  const enregistrerReponse = async (v: Record<string, string>, id?: string) => {
+    await upsert('npsResponses', id ?? uid(), {
+      kind: 'reponse',
+      note: Math.min(10, Math.max(0, Math.round(versNombre(v.note) ?? 0))),
+      le: versIso(v.le),
+      client: v.client.trim(),
+      ...(v.motif.trim() ? { motif: v.motif.trim() } : {}),
+    });
+  };
 
   const description = vide
     ? t('m50.nps.descriptionVide')
@@ -64,6 +78,27 @@ export function NpsScreen() {
           phraseVide={t('m50.nps.phraseVide')}
         />
       </Bloc>
+
+      <SaisieModule
+        ajouter="Noter une réponse"
+        ouvertParDefaut={vide}
+        note="L’envoi automatique du sondage n’est pas encore branché"
+        surtitreListe="Les réponses"
+        champs={[
+          { cle: 'client', intitule: 'Client', type: 'texte', requis: true },
+          { cle: 'note', intitule: 'Note de 0 à 10', type: 'nombre', requis: true, aide: '« Recommanderiez-vous… ? » 9 ou 10 : promoteur ; 0 à 6 : détracteur.' },
+          { cle: 'motif', intitule: 'Ce qu’il ou elle a dit', type: 'texte', large: true },
+          { cle: 'le', intitule: 'Le', type: 'date', requis: true, defaut: versJour(maintenant.toISOString()) },
+        ]}
+        enregistrer={enregistrerReponse}
+        elements={reponses.slice(0, 80).map((r) => ({
+          id: r.id,
+          libelle: `${r.client} · ${r.note} / 10`,
+          detail: [versJour(r.le), r.motif].filter(Boolean).join(' · '),
+          valeurs: { client: r.client, note: String(r.note), motif: r.motif ?? '', le: versJour(r.le) },
+        }))}
+        supprimer={(id) => remove('npsResponses', id)}
+      />
 
       <Dominante
         surtitre={`La corde · ${FENETRE_NPS_J} derniers jours`}

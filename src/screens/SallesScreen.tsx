@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Bloc, BoutonSecondaire, Calmes, CarteCalme, CarteReleves, Dominante, Ecran50, LigneRegistre, PiedDominante, donnees } from '../components/cinquante-kit';
-import { useCollection, useSync } from '../state/SyncContext';
+import { SaisieModule, Saisies, versLignes } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { enLettres } from '../lib/cinquante/lettres';
 import {
   type EnregistrementSalle,
@@ -70,7 +71,7 @@ function Piece({ nom, zone, e }: { nom: string; zone: string; e: EtatPiece }) {
 
 export function SallesScreen() {
   const { t, langue } = useLangue();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const tout = useCollection<EnregistrementSalle>('roomBookings');
   const [maintenant] = useState(() => new Date());
   const L = (n: number, maj = false) => enLettres(n, langue, maj);
@@ -119,6 +120,63 @@ export function SallesScreen() {
     if (resAmbre.contact) window.location.href = `mailto:${resAmbre.contact}?subject=${encodeURIComponent(`${resAmbre.motif} — ${resAmbre.piece}`)}`;
   };
 
+  /*
+    SAISIE — les pièces se nomment une par ligne ; le plan se dessine seul,
+    trois pièces par rangée, la dernière s'étirant jusqu'au mur. Puis les
+    réservations, et les présences qui disent qu'une pièce réservée est bien
+    occupée (sans elles, une réservation passe pour fantôme).
+  */
+  const dessinerPlan = (noms: string[], avant: PlanEtage | null): Omit<PlanEtage, never> => {
+    const n = noms.length;
+    const cols = Math.min(3, Math.max(1, n));
+    const rangs = Math.ceil(n / cols);
+    const lettre = (i: number) => String.fromCharCode(97 + i);
+    const zones = Array.from({ length: rangs }, (_, r) =>
+      Array.from({ length: cols }, (_, c) => lettre(Math.min(n - 1, r * cols + c))).join(' '),
+    );
+    return {
+      kind: 'plan',
+      colonnes: Array.from({ length: cols }, () => '1fr').join(' '),
+      rangees: Array.from({ length: rangs }, () => 110),
+      zones,
+      pieces: noms.map((nom, i) => ({ zone: lettre(i), nom, ...(avant?.pieces.find((p) => p.nom === nom)?.court ? { court: avant.pieces.find((p) => p.nom === nom)?.court } : {}) })),
+    };
+  };
+  const enregistrerPlan = async (v: Record<string, string>, id?: string) => {
+    const noms = [...new Set(versLignes(v.pieces))].slice(0, 26);
+    await upsert('roomBookings', id ?? plan?.id ?? uid(), { ...dessinerPlan(noms, plan) });
+  };
+  const aHeure = (jourSaisi: string, h: string) => new Date(`${jourSaisi}T${h || '09:00'}:00`).toISOString();
+  const enregistrerReservation = async (v: Record<string, string>, id?: string) => {
+    const avant = reservations.find((r) => r.id === id);
+    await upsert('roomBookings', id ?? uid(), {
+      kind: 'reservation',
+      piece: v.piece,
+      debut: aHeure(v.jour, v.debut),
+      fin: aHeure(v.jour, v.fin),
+      motif: v.motif.trim(),
+      pour: v.pour.trim(),
+      ...(v.contact.trim() ? { contact: v.contact.trim() } : {}),
+      ...(avant?.prevenuLe ? { prevenuLe: avant.prevenuLe } : {}),
+    });
+  };
+  const enregistrerPresence = async (v: Record<string, string>, id?: string) => {
+    await upsert('roomBookings', id ?? uid(), {
+      kind: 'presence',
+      piece: v.piece,
+      qui: v.qui.trim(),
+      arriveeLe: aHeure(v.jour, v.arrivee),
+      ...(v.depart ? { departLe: aHeure(v.jour, v.depart) } : {}),
+      source: 'pointage',
+    });
+  };
+  const hLocale = (iso: string) => hhmm(new Date(iso));
+  const jourDe = (iso: string) => {
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const optionsPieces = (plan?.pieces ?? []).map((p) => ({ valeur: p.nom, libelle: p.nom }));
+
   const description = vide
     ? t('m50.rooms.descriptionVide')
     : ambre && ambre.e.etat === 'fantome'
@@ -146,6 +204,68 @@ export function SallesScreen() {
           phraseVide={t('m50.rooms.phraseVide')}
         />
       </Bloc>
+
+      <Saisies>
+        <SaisieModule
+          ajouter={plan ? 'Changer les pièces' : 'Nommer les pièces'}
+          ouvertParDefaut={!plan}
+          surtitreListe="Le plan"
+          champs={[{ cle: 'pieces', intitule: 'Pièces', type: 'lignes', requis: true, aide: 'Une par ligne : « Bureau », « Salle de réunion », « Atelier ». Le plan se dessine seul.' }]}
+          enregistrer={(v) => enregistrerPlan(v, plan?.id)}
+          elements={plan ? [{ id: plan.id, libelle: `${plan.pieces.length} pièce${plan.pieces.length > 1 ? 's' : ''}`, detail: plan.pieces.map((p) => p.nom).join(', '), valeurs: { pieces: plan.pieces.map((p) => p.nom).join('\n') } }] : []}
+          supprimer={(id) => remove('roomBookings', id)}
+        />
+        {plan && plan.pieces.length > 0 && (
+          <SaisieModule
+            ajouter="Réserver une pièce"
+            surtitreListe="Les réservations"
+            champs={[
+              { cle: 'piece', intitule: 'Pièce', type: 'choix', requis: true, options: optionsPieces },
+              { cle: 'jour', intitule: 'Jour', type: 'date', requis: true, defaut: jour },
+              { cle: 'debut', intitule: 'De', type: 'heure', requis: true, defaut: '09:00' },
+              { cle: 'fin', intitule: 'À', type: 'heure', requis: true, defaut: '10:00' },
+              { cle: 'motif', intitule: 'Pour quoi', type: 'texte', requis: true, aide: '« l’entretien d’embauche de Yanis », « le point hebdo ».' },
+              { cle: 'pour', intitule: 'Au nom de', type: 'texte', requis: true },
+              { cle: 'contact', intitule: 'Courriel à prévenir', type: 'texte', aide: 'Si la pièce reste vide, on peut lui écrire d’un clic.' },
+            ]}
+            enregistrer={enregistrerReservation}
+            elements={[...reservations]
+              .sort((a, b) => b.debut.localeCompare(a.debut))
+              .slice(0, 40)
+              .map((r) => ({
+                id: r.id,
+                libelle: `${r.piece} · ${r.motif}`,
+                detail: `${jourDe(r.debut)} · ${heure(r.debut)} → ${heure(r.fin)} · ${r.pour}`,
+                valeurs: { piece: r.piece, jour: jourDe(r.debut), debut: hLocale(r.debut), fin: hLocale(r.fin), motif: r.motif, pour: r.pour, contact: r.contact ?? '' },
+              }))}
+            supprimer={(id) => remove('roomBookings', id)}
+          />
+        )}
+        {plan && plan.pieces.length > 0 && (
+          <SaisieModule
+            ajouter="Noter une présence"
+            surtitreListe="Les présences"
+            champs={[
+              { cle: 'piece', intitule: 'Pièce', type: 'choix', requis: true, options: optionsPieces },
+              { cle: 'qui', intitule: 'Qui', type: 'texte', requis: true },
+              { cle: 'jour', intitule: 'Jour', type: 'date', requis: true, defaut: jour },
+              { cle: 'arrivee', intitule: 'Arrivée', type: 'heure', requis: true },
+              { cle: 'depart', intitule: 'Départ', type: 'heure', aide: 'Vide : encore dans la pièce.' },
+            ]}
+            enregistrer={enregistrerPresence}
+            elements={[...presences]
+              .sort((a, b) => b.arriveeLe.localeCompare(a.arriveeLe))
+              .slice(0, 40)
+              .map((p) => ({
+                id: p.id,
+                libelle: `${p.qui} · ${p.piece}`,
+                detail: `${jourDe(p.arriveeLe)} · ${heure(p.arriveeLe)}${p.departLe ? ` → ${heure(p.departLe)}` : ' · encore là'}`,
+                valeurs: { piece: p.piece, qui: p.qui, jour: jourDe(p.arriveeLe), arrivee: hLocale(p.arriveeLe), depart: p.departLe ? hLocale(p.departLe) : '' },
+              }))}
+            supprimer={(id) => remove('roomBookings', id)}
+          />
+        )}
+      </Saisies>
 
       <Dominante surtitre={`Les locaux · maintenant, ${hhmm(maintenant)}`} note={vide ? undefined : 'Pleine = quelqu’un y est · pointillé = réservée mais vide'}>
         {!plan || vide ? (

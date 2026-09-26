@@ -13,7 +13,8 @@ import {
   PiedDominante,
   donnees,
 } from '../components/cinquante-kit';
-import { useCollection, useSync } from '../state/SyncContext';
+import { SaisieModule, depuisCents, versCents, versIso, versJour } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { formatCents } from '../lib/money';
 import { enLettres } from '../lib/cinquante/lettres';
 import { CONFIANCE_MIN, type LigneTicket, type NoteDeFrais, bloquant, champAmbre, champsLisibles } from '../lib/cinquante/finance';
@@ -81,7 +82,7 @@ function Ticket({ lignes, ambre }: { lignes: LigneTicket[]; ambre: number | null
 
 export function NotesDeFraisScreen() {
   const { t, langue } = useLangue();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const notes = useCollection<NoteDeFrais>('expenseClaims');
   const [maintenant] = useState(() => new Date());
   const [choisie, setChoisie] = useState<string | null>(null);
@@ -97,6 +98,39 @@ export function NotesDeFraisScreen() {
     .map((p) => ({ p, n: duMois.filter((x) => x.personne === p) }))
     .map((x) => ({ ...x, total: x.n.reduce((s, n) => s + n.montantCents, 0) }))
     .sort((a, b) => b.total - a.total);
+  /*
+    SAISIE — une note tapée à la main, sans photo : le ticket affiché est
+    celui de la saisie (marchand, date, total), chaque champ sûr puisqu'il a
+    été tapé. La lecture automatique des photos n'est pas branchée.
+  */
+  const enregistrer = async (v: Record<string, string>, id?: string) => {
+    const avant = notes.find((n) => n.id === id);
+    const montantCents = versCents(v.montant) ?? 0;
+    const le = versIso(v.le);
+    const statut = v.statut as NoteDeFrais['statut'];
+    const maintenantIso = new Date().toISOString();
+    await upsert('expenseClaims', id ?? uid(), {
+      kind: 'note',
+      personne: v.personne.trim(),
+      le,
+      montantCents,
+      ticket: [
+        { texte: 'Saisie à la main', style: 'petit' },
+        { texte: v.marchand.trim() || 'Marchand', style: 'fort', zone: 1 },
+        { texte: v.le.split('-').reverse().join('/'), zone: 2 },
+        { texte: '', style: 'filet' },
+        { texte: 'TOTAL TTC', droite: formatCents(montantCents), style: 'fort', zone: 3 },
+      ],
+      champs: [
+        { zone: 1, champ: 'Marchand', valeur: v.marchand.trim() || '—', confiance: 1 },
+        { zone: 2, champ: 'Date', valeur: v.le.split('-').reverse().join('/'), confiance: 1 },
+        { zone: 3, champ: 'Montant', valeur: formatCents(montantCents), confiance: 1 },
+      ],
+      statut,
+      ...(statut !== 'a-verifier' ? { valideeLe: avant?.valideeLe ?? maintenantIso } : {}),
+      ...(statut === 'remboursee' ? { rembourseeLe: avant?.rembourseeLe ?? maintenantIso } : {}),
+    });
+  };
   const rembourses = notes.filter((n) => n.rembourseeLe && n.valideeLe);
   const delai = rembourses.length
     ? Math.round(rembourses.reduce((s, n) => s + (new Date(n.rembourseeLe as string).getTime() - new Date(n.valideeLe as string).getTime()) / 86_400_000, 0) / rembourses.length)
@@ -128,6 +162,45 @@ export function NotesDeFraisScreen() {
           phraseVide={t('m50.expenseClaims.phraseVide')}
         />
       </Bloc>
+
+      <SaisieModule
+        ajouter="Saisir une note de frais"
+        ouvertParDefaut={vide}
+        note="La lecture des photos de tickets n’est pas encore branchée"
+        champs={[
+          { cle: 'personne', intitule: 'Qui a payé', type: 'texte', requis: true },
+          { cle: 'marchand', intitule: 'Chez qui', type: 'texte', requis: true, aide: '« Total Énergies », « Brasserie du Port ».' },
+          { cle: 'montant', intitule: 'Montant TTC', type: 'montant', requis: true },
+          { cle: 'le', intitule: 'Date du ticket', type: 'date', requis: true, defaut: versJour(maintenant.toISOString()) },
+          {
+            cle: 'statut',
+            intitule: 'Où en est-elle',
+            type: 'choix',
+            options: [
+              { valeur: 'a-verifier', libelle: 'À vérifier' },
+              { valeur: 'validee', libelle: 'Validée' },
+              { valeur: 'remboursee', libelle: 'Remboursée' },
+            ],
+          },
+        ]}
+        enregistrer={enregistrer}
+        elements={[...notes]
+          .sort((a, b) => b.le.localeCompare(a.le))
+          .slice(0, 60)
+          .map((n) => ({
+            id: n.id,
+            libelle: `${n.personne} · ${formatCents(n.montantCents)}`,
+            detail: `${versJour(n.le)} · ${{ 'a-verifier': 'à vérifier', validee: 'validée', remboursee: 'remboursée' }[n.statut]}`,
+            valeurs: {
+              personne: n.personne,
+              marchand: n.champs.find((c) => c.champ === 'Marchand')?.valeur ?? '',
+              montant: depuisCents(n.montantCents),
+              le: versJour(n.le),
+              statut: n.statut,
+            },
+          }))}
+        supprimer={(id) => remove('expenseClaims', id)}
+      />
 
       <Dominante
         surtitre={note ? `Le ticket de ${note.personne} et ce qu’on y a lu` : 'Le ticket et ce qu’on y a lu'}

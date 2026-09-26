@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Bloc, Calmes, CarteCalme, CarteReleves, Dominante, Ecran50, LigneRegistre, PiedDominante } from '../components/cinquante-kit';
-import { useCollection } from '../state/SyncContext';
+import { SaisieModule, versNombre } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { enLettres } from '../lib/cinquante/lettres';
-import { CUBES_PAR_RANGEE, type EnregistrementRse, KG_PAR_CUBE, cubesDe, empilement } from '../lib/cinquante/juridique';
+import { CUBES_PAR_RANGEE, type EnregistrementRse, type SourceEmission, KG_PAR_CUBE, cubesDe, empilement } from '../lib/cinquante/juridique';
 import { useLangue } from '../i18n';
 
 /**
@@ -23,6 +24,7 @@ const tonnes = (cubes: number) => `${((cubes * KG_PAR_CUBE) / 1000).toFixed(1).r
 export function ImpactRseScreen() {
   const { t, langue } = useLangue();
   const tout = useCollection<EnregistrementRse>('carbonSources');
+  const { upsert, remove } = useSync();
   const [maintenant] = useState(() => new Date());
   const L = (n: number, maj = false) => enLettres(n, langue, maj);
 
@@ -34,6 +36,28 @@ export function ImpactRseScreen() {
   const hauteur = e.rangees * CUBE + (e.rangees - 1) * ECART;
   const largeur = CUBES_PAR_RANGEE * CUBE + (CUBES_PAR_RANGEE - 1) * ECART;
   const seulesHausses = e.colonnes.filter((c) => c.apparus > 0).length;
+
+  /*
+    SAISIE — une source, son volume de l'année et son facteur d'émission. Le
+    facteur n'est pas deviné : il se lit dans la Base Empreinte de l'ADEME,
+    et l'aide en donne les ordres de grandeur les plus courants.
+  */
+  const sources = tout.filter((x): x is SourceEmission & { id: string; updatedAt: string } => x.kind === 'source').sort((a, b) => b.annee - a.annee || a.ordre - b.ordre);
+  const enregistrerSource = async (v: Record<string, string>, id?: string) => {
+    const avant = sources.find((x) => x.id === id);
+    const an = Math.round(versNombre(v.annee) ?? maintenant.getFullYear());
+    await upsert('carbonSources', id ?? uid(), {
+      kind: 'source',
+      nom: v.nom.trim(),
+      poste: v.poste,
+      volume: versNombre(v.volume) ?? 0,
+      unite: v.unite.trim() || 'unité',
+      facteurKg: versNombre(v.facteur) ?? 0,
+      referenceFacteur: v.reference.trim() || 'Base Empreinte ADEME',
+      annee: an,
+      ordre: avant?.ordre ?? sources.filter((x) => x.annee === an).length,
+    });
+  };
 
   const description = vide
     ? t('m50.csr.descriptionVide')
@@ -51,6 +75,50 @@ export function ImpactRseScreen() {
           phraseVide={t('m50.csr.phraseVide')}
         />
       </Bloc>
+
+      <SaisieModule
+        ajouter="Ajouter une source d’émission"
+        ouvertParDefaut={sources.length === 0}
+        surtitreListe="Les sources"
+        champs={[
+          { cle: 'nom', intitule: 'Source', type: 'texte', requis: true, aide: '« Gazole des camionnettes », « Électricité de l’atelier ».' },
+          {
+            cle: 'poste',
+            intitule: 'Poste',
+            type: 'choix',
+            options: ['Carburant', 'Électricité', 'Chauffage', 'Achats', 'Déplacements', 'Déchets', 'Autre'].map((x) => ({ valeur: x, libelle: x })),
+          },
+          { cle: 'volume', intitule: 'Quantité sur l’année', type: 'nombre', requis: true },
+          { cle: 'unite', intitule: 'Unité', type: 'texte', requis: true, aide: '« litre », « kWh », « km », « € ».' },
+          {
+            cle: 'facteur',
+            intitule: 'Facteur d’émission',
+            type: 'nombre',
+            requis: true,
+            suffixe: 'kg / unité',
+            aide: 'En kg CO₂e par unité, lu dans la Base Empreinte de l’ADEME. Ordres de grandeur : gazole ≈ 3,1 par litre, électricité en France ≈ 0,05 par kWh, gaz naturel ≈ 0,2 par kWh.',
+            large: true,
+          },
+          { cle: 'reference', intitule: 'Référence du facteur', type: 'texte', aide: 'Vide : « Base Empreinte ADEME ».' },
+          { cle: 'annee', intitule: 'Année', type: 'nombre', requis: true, defaut: String(maintenant.getFullYear()) },
+        ]}
+        enregistrer={enregistrerSource}
+        elements={sources.map((x) => ({
+          id: x.id,
+          libelle: `${x.nom} · ${x.annee}`,
+          detail: `${String(x.volume).replace('.', ',')} ${x.unite} × ${String(x.facteurKg).replace('.', ',')} kg`,
+          valeurs: {
+            nom: x.nom,
+            poste: x.poste,
+            volume: String(x.volume).replace('.', ','),
+            unite: x.unite,
+            facteur: String(x.facteurKg).replace('.', ','),
+            reference: x.referenceFacteur,
+            annee: String(x.annee),
+          },
+        }))}
+        supprimer={(id) => remove('carbonSources', id)}
+      />
 
       <Dominante surtitre={`L’empreinte de ${annee} · un cube = ${KG_PAR_CUBE} kg CO₂e`} note={vide ? undefined : `Pointillé = cube disparu depuis ${annee - 1}`}>
         {vide ? (

@@ -2,7 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Bloc, BoutonSecondaire, Calmes, CarteCalme, CarteReleves, Dominante, Ecran50, LigneRegistre, PiedDominante } from '../components/cinquante-kit';
-import { useCollection } from '../state/SyncContext';
+import { SaisieModule } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { enLettres } from '../lib/cinquante/lettres';
 import {
   type ComposantKit,
@@ -92,6 +93,7 @@ export function PrevisionStockScreen() {
   const fournisseurs = useCollection<Fournisseur>('suppliers');
   const interventions = useCollection<InterventionPlanifiee>('interventions');
   const kits = useCollection<Kit>('boms');
+  const { upsert, remove } = useSync();
   const [maintenant] = useState(() => new Date());
   const L = (n: number, maj = false) => enLettres(n, langue, maj);
 
@@ -113,6 +115,16 @@ export function PrevisionStockScreen() {
   const ambre = mecheEnAmbre(meches.map((x) => x.m));
   const ligneAmbre = meches.find((x) => x.m === ambre) ?? null;
   const vide = lignes.length === 0;
+
+  /*
+    SAISIE — choisir un article du Stock et son fournisseur. La mèche se
+    calcule ensuite seule : quantité en stock, consommation des chantiers
+    planifiés, délai du fournisseur.
+  */
+  const enregistrerSuivi = async (v: Record<string, string>, id?: string) => {
+    await upsert('stockForecasts', id ?? uid(), { kind: 'suivi', article: v.article, fournisseur: v.fournisseur });
+  };
+  const suivisSaisis = suivis.filter((x) => x.kind === 'suivi');
 
   const aCommander = meches.filter((x) => x.m.cranJ !== null && x.m.cranJ <= 7).length;
   const delais = lignes.map((x) => x.m.delaiJ).filter((d): d is number => d !== null);
@@ -151,6 +163,36 @@ export function PrevisionStockScreen() {
           phraseVide={t('m50.stockForecast.phraseVide')}
         />
       </Bloc>
+
+      {articles.length === 0 || fournisseurs.length === 0 ? (
+        <Bloc>
+          <p className="panel max-w-[70ch] px-5 py-4 text-[13.5px] leading-[1.6] text-text-secondary">
+            Pour suivre un article, il faut d’abord {articles.length === 0 ? 'l’avoir dans Stock' : ''}
+            {articles.length === 0 && fournisseurs.length === 0 ? ', et ' : ''}
+            {fournisseurs.length === 0 ? 'avoir son fournisseur dans Fournisseurs, avec son délai de livraison' : ''}.{' '}
+            <button
+              type="button"
+              onClick={() => navigate(articles.length === 0 ? '/stock' : '/fournisseurs')}
+              className="font-semibold text-text-primary underline decoration-trait-sourd underline-offset-4"
+            >
+              Ouvrir {articles.length === 0 ? 'Stock' : 'Fournisseurs'}
+            </button>
+          </p>
+        </Bloc>
+      ) : (
+        <SaisieModule
+          ajouter="Suivre un article"
+          ouvertParDefaut={suivisSaisis.length === 0}
+          surtitreListe="Les articles suivis"
+          champs={[
+            { cle: 'article', intitule: 'Article', type: 'choix', requis: true, options: articles.map((a) => ({ valeur: a.name, libelle: a.name })) },
+            { cle: 'fournisseur', intitule: 'Fournisseur', type: 'choix', requis: true, options: fournisseurs.map((f) => ({ valeur: f.name, libelle: f.name })) },
+          ]}
+          enregistrer={enregistrerSuivi}
+          elements={suivisSaisis.map((x) => ({ id: x.id, libelle: x.article, detail: `chez ${x.fournisseur}`, valeurs: { article: x.article, fournisseur: x.fournisseur } }))}
+          supprimer={(id) => remove('stockForecasts', id)}
+        />
+      )}
 
       <Dominante surtitre={`Les mèches · ${ECHELLE_MECHE_J} jours`} note={meches.length ? 'Flamme = aujourd’hui · cran = dernier jour pour commander' : undefined}>
         {meches.length === 0 ? (
