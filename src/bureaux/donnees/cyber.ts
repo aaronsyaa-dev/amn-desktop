@@ -290,7 +290,8 @@ export function modeleCyber(e: EntreesCyber): Omit<ModeleCyber, 'pret' | 'pannes
         orgNom: premier.orgName || noms.get(orgId) || '—',
         critique,
         n: l.length,
-        titre: l.length > 1 ? `${l.length} incidents ${critique ? 'critiques' : ''} regroupés`.replace('  ', ' ') : premier.title,
+        /* Repli : un serveur plus ancien ne renvoie pas le titre dans la file — jamais « undefined » à l'écran. */
+        titre: l.length > 1 ? `${l.length} incidents ${critique ? 'critiques' : ''} regroupés`.replace('  ', ' ') : premier.title || `Incident${premier.siteName ? ` sur ${premier.siteName}` : ''}`,
         depuis: premier.firstSeenAt,
         prisPar: pris?.acknowledgedBy ?? null,
         prisLe: pris?.acknowledgedAt ?? null,

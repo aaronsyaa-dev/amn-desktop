@@ -31,6 +31,55 @@ const TYPES: { cle: Echange['type']; nom: string }[] = [
   { cle: 'note', nom: 'Note' },
 ];
 
+/**
+ * NOUVEAU PROSPECT — Riyad le note ici, sans repasser par le poste de
+ * travail : même enregistrement que le module Prospects (`prospects`), au
+ * stade « contact ». La fiche s'ouvre aussitôt.
+ */
+function NouveauProspect({ onFermer }: { onFermer: (id: string | null) => void }) {
+  const { upsert } = useSync();
+  const [f, setF] = useState({ name: '', company: '', telephone: '', valeur: '', venuPar: '' });
+  const manque = !f.name.trim() && !f.company.trim() ? 'Un nom de personne ou d’entreprise.' : null;
+  const creer = () => {
+    if (manque) return;
+    const id = uid('pro');
+    const maintenant = new Date().toISOString();
+    const euros = Number(f.valeur.replace(/\s/g, '').replace(',', '.'));
+    void upsert('prospects', id, {
+      name: f.name.trim(),
+      company: f.company.trim(),
+      valueCents: Number.isFinite(euros) && euros > 0 ? Math.round(euros * 100) : 0,
+      stage: 'contact',
+      note: '',
+      createdAt: maintenant,
+      movedAt: maintenant,
+      telephone: f.telephone.trim() || null,
+      venuPar: f.venuPar.trim() || null,
+    });
+    onFermer(id);
+  };
+  return (
+    <Carte pad="p-5" className="mb-[18px]" titre="Nouveau prospect" droite="il entre au stade « contact »">
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        <input autoFocus value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="La personne (« Nadia Oré »)" aria-label="La personne" className={`${champ} h-9`} />
+        <input value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} placeholder="L’entreprise (« Maison Oré »)" aria-label="L’entreprise" className={`${champ} h-9`} />
+        <input value={f.telephone} onChange={(e) => setF({ ...f, telephone: e.target.value })} placeholder="Téléphone" aria-label="Téléphone" className={`${champ} h-9`} />
+        <input value={f.valeur} onChange={(e) => setF({ ...f, valeur: e.target.value })} inputMode="decimal" placeholder="Valeur estimée, en euros" aria-label="Valeur estimée, en euros" className={`${champ} h-9`} />
+        <input value={f.venuPar} onChange={(e) => setF({ ...f, venuPar: e.target.value })} placeholder="Venu par (« Atelier Nord »)" aria-label="Venu par" className={`${champ} h-9 md:col-span-2`} />
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2.5">
+        <button type="button" className="bx-btn" disabled={Boolean(manque)} onClick={creer}>
+          Noter le prospect
+        </button>
+        <button type="button" className="bx-btn2" onClick={() => onFermer(null)}>
+          Annuler
+        </button>
+        {manque && <span className="text-[12px] text-text-muted">{manque}</span>}
+      </div>
+    </Carte>
+  );
+}
+
 export function StrategiePipeline() {
   const m = useStrategie();
   const { id } = useParams();
@@ -40,6 +89,16 @@ export function StrategiePipeline() {
   const { remove } = useSync();
   const [echange, setEchange] = useState<{ type: Echange['type']; texte: string } | null>(null);
   const [prochaine, setProchaine] = useState<{ quoi: string; jour: string; appel: boolean } | null>(null);
+  const [nouveau, setNouveau] = useState(false);
+  const fermerNouveau = (id: string | null) => {
+    setNouveau(false);
+    if (id) navigate(`/strategie/pipeline/${id}`);
+  };
+  const boutonNouveau = nouveau ? undefined : (
+    <button type="button" className="bx-btn2" onClick={() => setNouveau(true)}>
+      Nouveau prospect
+    </button>
+  );
   const auj = aujourdHui();
   const moisCourant = auj.slice(0, 7);
   const vivants = m.prospects.filter((p) => p.name || p.company);
@@ -54,8 +113,9 @@ export function StrategiePipeline() {
   if (!p) {
     return (
       <>
-        <EnTete surtitre="Stratégie · Pipeline" titre="Aucun prospect en cours." />
-        <Invitation titre="Le pipeline est vide." texte="Les prospects se notent dans le module Prospects du poste ; ils apparaissent ici avec leur prochaine étape et l’historique des échanges." action={<Link to="/pipeline" className="bx-btn2">Ouvrir Prospects</Link>} />
+        <EnTete surtitre="Stratégie · Pipeline" titre="Aucun prospect en cours." actions={boutonNouveau} />
+        {nouveau && <NouveauProspect onFermer={fermerNouveau} />}
+        <Invitation titre="Le pipeline est vide." texte="Un prospect se note ici ou dans le module Prospects du poste ; il apparaît avec sa prochaine étape et l’historique des échanges." action={<Link to="/pipeline" className="bx-btn2">Ouvrir Prospects</Link>} />
       </>
     );
   }
@@ -94,7 +154,8 @@ export function StrategiePipeline() {
 
   return (
     <>
-      <EnTete surtitre={`Stratégie · Pipeline · ${enCours.length} en cours`} titre={titre} />
+      <EnTete surtitre={`Stratégie · Pipeline · ${enCours.length} en cours`} titre={titre} actions={boutonNouveau} />
+      {nouveau && <NouveauProspect onFermer={fermerNouveau} />}
       <div className="mb-[18px] flex gap-2" role="list" aria-label="Les étapes">
         {colonnes.map((c) => {
           const on = c.cle === p.stage;
