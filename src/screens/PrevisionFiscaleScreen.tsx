@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Bloc, Calmes, CarteCalme, CarteReleves, Dominante, Ecran50, LigneRegistre, PiedDominante } from '../components/cinquante-kit';
-import { useCollection } from '../state/SyncContext';
+import { SaisieModule, Saisies, depuisCents, versCents, versIso, versJour } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { formatCentsCompact } from '../lib/money';
 import { enLettres } from '../lib/cinquante/lettres';
-import { type EcheanceFiscale, type EnregistrementFiscal, filigrane, montantEcheance, semaineIso } from '../lib/cinquante/finance';
+import { type EcheanceFiscale, type EnregistrementFiscal, type SoldeFiscal, filigrane, montantEcheance, semaineIso } from '../lib/cinquante/finance';
 import { useLangue } from '../i18n';
 
 /**
@@ -28,6 +29,7 @@ const HACHURE_GRISE = 'repeating-linear-gradient(135deg,rgba(255,255,255,.07) 0 
 export function PrevisionFiscaleScreen() {
   const { t, langue } = useLangue();
   const tout = useCollection<EnregistrementFiscal>('taxDeadlines');
+  const { upsert, remove } = useSync();
   const [maintenant] = useState(() => new Date());
   const L = (n: number, maj = false) => enLettres(n, langue, maj);
 
@@ -56,6 +58,27 @@ export function PrevisionFiscaleScreen() {
         })
       : t('m50.taxForecast.descriptionSansEcheance', { solde: formatCentsCompact(f.soldeCents) });
 
+  /* SAISIE — le solde du compte, puis chaque impôt à venir. Une échéance cochée « payée » sort du filigrane. */
+  const soldes = tout.filter((e): e is SoldeFiscal & { id: string; updatedAt: string } => e.kind === 'solde').sort((a, b) => b.le.localeCompare(a.le));
+  const echeances = tout.filter((e): e is EcheanceFiscale & { id: string; updatedAt: string } => e.kind === 'echeance').sort((a, b) => a.echeance.localeCompare(b.echeance));
+  const enregistrerSolde = async (v: Record<string, string>, id?: string) => {
+    await upsert('taxDeadlines', id ?? uid(), { kind: 'solde', soldeCents: versCents(v.solde) ?? 0, le: versIso(v.le) });
+  };
+  const enregistrerEcheance = async (v: Record<string, string>, id?: string) => {
+    const avant = echeances.find((e) => e.id === id);
+    const impot = v.impot.trim();
+    await upsert('taxDeadlines', id ?? uid(), {
+      ...(avant?.tva ? { tva: avant.tva } : {}),
+      kind: 'echeance',
+      impot,
+      court: v.court.trim() || impot.split(/\s+/)[0].slice(0, 12),
+      echeance: versIso(v.echeance),
+      montantCents: versCents(v.montant) ?? 0,
+      ...(v.estimation === 'oui' ? { estimation: true } : {}),
+      ...(v.payee ? { payeeLe: versIso(v.payee) } : {}),
+    });
+  };
+
   return (
     <Ecran50 vide={vide} premierJour={tout.length === 0}>
       <Bloc>
@@ -66,6 +89,49 @@ export function PrevisionFiscaleScreen() {
           phraseVide={t('m50.taxForecast.phraseVide')}
         />
       </Bloc>
+
+      <Saisies>
+        <SaisieModule
+          ajouter="Relever le solde du compte"
+          ouvertParDefaut={soldes.length === 0}
+          surtitreListe="Les soldes relevés"
+          champs={[
+            { cle: 'solde', intitule: 'Solde du compte', type: 'montant', requis: true },
+            { cle: 'le', intitule: 'Relevé le', type: 'date', requis: true, defaut: versJour(maintenant.toISOString()) },
+          ]}
+          enregistrer={enregistrerSolde}
+          elements={soldes.map((x) => ({ id: x.id, libelle: formatCentsCompact(x.soldeCents), detail: `relevé le ${versJour(x.le)}`, valeurs: { solde: depuisCents(x.soldeCents), le: versJour(x.le) } }))}
+          supprimer={(id) => remove('taxDeadlines', id)}
+        />
+        <SaisieModule
+          ajouter="Ajouter un impôt à venir"
+          surtitreListe="Les échéances"
+          champs={[
+            { cle: 'impot', intitule: 'Impôt', type: 'texte', requis: true, aide: '« TVA du trimestre », « Acompte d’impôt sur les sociétés », « CFE ».' },
+            { cle: 'court', intitule: 'Nom court', type: 'texte', aide: 'Posé sous la barre : « TVA », « IS », « CFE ».' },
+            { cle: 'montant', intitule: 'Montant', type: 'montant', requis: true },
+            { cle: 'echeance', intitule: 'À payer avant le', type: 'date', requis: true },
+            {
+              cle: 'estimation',
+              intitule: 'Ce montant est',
+              type: 'choix',
+              options: [
+                { valeur: 'non', libelle: 'Connu' },
+                { valeur: 'oui', libelle: 'Estimé' },
+              ],
+            },
+            { cle: 'payee', intitule: 'Payé le', type: 'date' },
+          ]}
+          enregistrer={enregistrerEcheance}
+          elements={echeances.map((e) => ({
+            id: e.id,
+            libelle: e.impot,
+            detail: `${formatCentsCompact(e.montantCents)} · avant le ${versJour(e.echeance)}${e.payeeLe ? ' · payé' : ''}`,
+            valeurs: { impot: e.impot, court: e.court, montant: depuisCents(e.montantCents), echeance: versJour(e.echeance), estimation: e.estimation ? 'oui' : 'non', payee: versJour(e.payeeLe) },
+          }))}
+          supprimer={(id) => remove('taxDeadlines', id)}
+        />
+      </Saisies>
 
       <Dominante surtitre="Le solde, et ce qui n’est pas à vous" note={vide ? undefined : 'Plein = à vous · filigrane = dû au fisc'}>
         {vide ? (

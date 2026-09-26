@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Bloc, Calmes, CarteCalme, CarteReleves, Dominante, Ecran50, LigneBarre, PiedDominante } from '../components/cinquante-kit';
-import { useCollection } from '../state/SyncContext';
+import { SaisieModule, depuisCents, versCents, versIso, versJour } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { formatCents, formatCentsCompact } from '../lib/money';
 import { enLettres } from '../lib/cinquante/lettres';
 import { type Casier, type FactureEntrante, delaiMoyenPaiement, tri, trimestreDe } from '../lib/cinquante/finance';
@@ -30,6 +31,7 @@ const jjmm = (iso: string) => {
 export function FacturesEntrantesScreen() {
   const { t, langue } = useLangue();
   const factures = useCollection<FactureEntrante>('incomingInvoices');
+  const { upsert, remove } = useSync();
   const [maintenant] = useState(() => new Date());
   const L = (n: number, maj = false) => enLettres(n, langue, maj);
 
@@ -52,8 +54,28 @@ export function FacturesEntrantesScreen() {
   const description = vide
     ? t('m50.incomingInvoices.descriptionVide')
     : ambre
-      ? t('m50.incomingInvoices.description', { n: L(recues, true), verifier: L(aVerifier.plis.length) })
-      : t('m50.incomingInvoices.descriptionRangee', { n: L(recues, true) });
+      ? t(recues === 1 ? 'm50.incomingInvoices.description1' : 'm50.incomingInvoices.description', { n: L(recues, true), verifier: L(aVerifier.plis.length) })
+      : t(recues === 1 ? 'm50.incomingInvoices.descriptionRangee1' : 'm50.incomingInvoices.descriptionRangee', { n: L(recues, true) });
+
+  /* Saisie à la main : ce qui est tapé est sûr, la confiance est entière ; un champ laissé vide envoie la facture « À vérifier ». */
+  const enregistrer = async (v: Record<string, string>, id?: string) => {
+    const avant = id ? factures.find((f) => f.id === id) : undefined;
+    const fournisseur = v.fournisseur.trim() || null;
+    const autres = factures.filter((f) => f.id !== id && f.fournisseur && fournisseur && f.fournisseur.toLowerCase() === fournisseur.toLowerCase());
+    const fiche: FactureEntrante = {
+      kind: 'facture',
+      fournisseur,
+      montantCents: versCents(v.montant),
+      echeance: v.echeance ? versIso(v.echeance) : null,
+      confiance: { fournisseur: 1, montant: 1, echeance: 1 },
+      recueLe: avant?.recueLe ?? new Date().toISOString(),
+      fournisseurConnu: avant?.fournisseurConnu ?? autres.length > 0,
+      ...(v.reference.trim() ? { reference: v.reference.trim() } : {}),
+      ...(v.motif.trim() ? { motif: v.motif.trim() } : {}),
+      ...(v.payee ? { payeeLe: versIso(v.payee) } : {}),
+    };
+    await upsert('incomingInvoices', id ?? uid(), { ...fiche });
+  };
 
   return (
     <Ecran50 vide={vide} premierJour={factures.length === 0}>
@@ -66,14 +88,44 @@ export function FacturesEntrantesScreen() {
         />
       </Bloc>
 
+      <SaisieModule
+        ajouter="Saisir une facture reçue"
+        ouvertParDefaut={factures.length === 0}
+        champs={[
+          { cle: 'fournisseur', intitule: 'Fournisseur', type: 'texte', requis: true },
+          { cle: 'montant', intitule: 'Montant TTC', type: 'montant', requis: true },
+          { cle: 'echeance', intitule: 'À payer avant le', type: 'date', aide: 'Sans date, la facture reste dans « À vérifier ».' },
+          { cle: 'reference', intitule: 'Numéro de facture', type: 'texte' },
+          { cle: 'motif', intitule: 'Pour quoi', type: 'texte', large: true, aide: 'En quelques mots : « loyer d’octobre », « farine ».' },
+          { cle: 'payee', intitule: 'Payée le', type: 'date', aide: 'Une facture payée sort des casiers.' },
+        ]}
+        enregistrer={enregistrer}
+        elements={[...factures]
+          .sort((a, b) => b.recueLe.localeCompare(a.recueLe))
+          .map((f) => ({
+            id: f.id,
+            libelle: `${f.fournisseur ?? 'Fournisseur non lu'}${f.reference ? ` · ${f.reference}` : ''}`,
+            detail: [f.montantCents === null ? 'montant non lu' : formatCents(f.montantCents), f.echeance ? `échéance ${jjmm(f.echeance)}` : 'sans échéance', f.payeeLe ? 'payée' : ''].filter(Boolean).join(' · '),
+            valeurs: {
+              fournisseur: f.fournisseur ?? '',
+              montant: depuisCents(f.montantCents),
+              echeance: versJour(f.echeance ?? undefined),
+              reference: f.reference ?? '',
+              motif: f.motif ?? '',
+              payee: versJour(f.payeeLe),
+            },
+          }))}
+        supprimer={(id) => remove('incomingInvoices', id)}
+      />
+
       <Dominante
         surtitre={`Le tri · au ${maintenant.getDate()} ${MOIS[maintenant.getMonth()]}`}
         note={vide ? undefined : 'Un casier par échéance · le dernier pour ce qui reste à lire'}
       >
         {vide ? (
           <p className="max-w-[60ch] text-[14.5px] leading-[1.7] text-text-secondary">
-            Les factures fournisseurs reçues par courriel ou photographiées se rangeront ici d’elles-mêmes, par échéance.
-            Ce que la lecture n’aura pas su trancher restera dans le dernier casier, à vérifier.
+            Chaque facture fournisseur saisie se range ici par échéance : cette semaine, ce mois, plus tard. Une facture
+            sans fournisseur, sans montant ou sans échéance reste dans le dernier casier, à vérifier.
           </p>
         ) : (
           <>

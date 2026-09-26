@@ -115,6 +115,18 @@ export function ScreenHeader({
     n'a qu'à déclarer son état avec `<EcranVide>`.
   */
   const { vide } = useEtatEcran();
+  /*
+    Écran vide : la description vide et la phrase vide disent souvent la même
+    chose (« Aucun prêt simulé. » deux fois l'une sous l'autre). Quand l'une
+    commence comme l'autre, on n'en garde qu'une — la plus longue, à la place
+    de la description.
+  */
+  const sansPoint = (x: string) => x.trim().replace(/[.\s]+$/, '');
+  const redite =
+    vide && Boolean(description) && Boolean(phraseVide) &&
+    (sansPoint(description as string).startsWith(sansPoint(phraseVide as string)) || sansPoint(phraseVide as string).startsWith(sansPoint(description as string)));
+  const texteDescription = redite && (phraseVide as string).length > (description as string).length ? phraseVide : description;
+  const textePhraseVide = redite ? undefined : phraseVide;
   const shown = vide ? [] : (stats ?? []).filter((s) => s.value !== null && s.value !== undefined);
 
   return (
@@ -138,10 +150,10 @@ export function ScreenHeader({
           <h1 data-guide="titre" className={piece.classeTitre ?? 'truncate text-[26px] font-bold leading-none tracking-[-0.03em] text-text-primary sm:text-[32px]'}>
             {title}
           </h1>
-          {description && (
+          {texteDescription && (
             /* Deux lignes au plus, dépliables : l'écran se lit d'abord par son titre et son relevé, pas par sa notice. */
             <Depliable lignes={2} className="mt-2.5 max-w-2xl">
-              <p className="text-[14.5px] leading-[1.7] text-text-secondary [text-wrap:pretty]">{description}</p>
+              <p className="text-[14.5px] leading-[1.7] text-text-secondary [text-wrap:pretty]">{texteDescription}</p>
             </Depliable>
           )}
         </div>
@@ -193,14 +205,14 @@ export function ScreenHeader({
         </div>
       )}
 
-      {vide && phraseVide && (
+      {vide && textePhraseVide && (
         /*
           La phrase prend la place exacte de la rangée de relevés — même
           gouttière, même filet en dessous. L'en-tête garde sa forme : ce n'est
           pas un écran amputé, c'est un écran qui n'a pas encore de chiffres.
         */
         <p className="mt-5 max-w-2xl text-[14.5px] leading-[1.7] text-text-secondary [text-wrap:pretty]">
-          {phraseVide}
+          {textePhraseVide}
         </p>
       )}
 

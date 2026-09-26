@@ -12,7 +12,8 @@ import {
   PiedDominante,
   donnees,
 } from '../components/cinquante-kit';
-import { useCollection, useSync } from '../state/SyncContext';
+import { SaisieModule, Saisies, versIso, versJour } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { enLettres } from '../lib/cinquante/lettres';
 import {
   type Candidat,
@@ -62,7 +63,7 @@ function Petite({ dispo, trou, ambre }: { dispo: Set<string>; trou: Set<string>;
 
 export function RecrutementScreen() {
   const { t, langue } = useLangue();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const tout = useCollection<EnregistrementRecrutement>('candidates');
   const creneaux = useCollection<CreneauPlanning>('shifts');
   const [maintenant] = useState(() => new Date());
@@ -87,6 +88,46 @@ export function RecrutementScreen() {
     await upsert('candidates', meilleur.c.id, { ...donnees(meilleur.c), etape: 'essai', essaiProposeLe: new Date().toISOString() });
   };
 
+  /*
+    SAISIE — le poste ouvert, puis chaque candidature. Les disponibilités se
+    disent comme on les dit au téléphone (« lundi, mardi, jeudi » et un
+    moment de la journée) ; elles deviennent les cases de la semaine type.
+  */
+  const JOURS_SAISIE = ['lun', 'mar', 'mer', 'jeu', 'ven'];
+  const HEURES_SAISIE: Record<string, number[]> = { matin: [8, 9, 10, 11], apresmidi: [13, 14, 15, 16], journee: [8, 9, 10, 11, 13, 14, 15, 16] };
+  const versDispo = (jours: string, moment: string) => {
+    const lus = JOURS_SAISIE.map((j, i) => (jours.toLowerCase().includes(j) ? i + 1 : 0)).filter(Boolean);
+    return (lus.length ? lus : [1, 2, 3, 4, 5]).flatMap((j) => (HEURES_SAISIE[moment] ?? HEURES_SAISIE.journee).map((h) => `${j}-${h}`));
+  };
+  const depuisDispo = (dispo: string[]) => {
+    const jours = [...new Set(dispo.map((k) => Number(k.split('-')[0])))].sort();
+    const heures = new Set(dispo.map((k) => Number(k.split('-')[1])));
+    const moment = heures.has(8) && heures.has(13) ? 'journee' : heures.has(13) ? 'apresmidi' : 'matin';
+    return { jours: jours.map((j) => ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'][j - 1]).join(', '), moment };
+  };
+  const enregistrerPoste = async (v: Record<string, string>, id?: string) => {
+    const avant = id ? (tout.find((e) => e.id === id) as Id<PosteOuvert> | undefined) : undefined;
+    await upsert('candidates', id ?? uid(), {
+      kind: 'poste',
+      intitule: v.intitule.trim(),
+      publieLe: versIso(v.publieLe),
+      refusees: avant?.refusees ?? 0,
+      refuseesDepuis: avant?.refuseesDepuis ?? versIso(v.publieLe),
+    });
+  };
+  const enregistrerCandidat = async (v: Record<string, string>, id?: string) => {
+    const avant = id ? (tout.find((e) => e.id === id) as Id<Candidat> | undefined) : undefined;
+    await upsert('candidates', id ?? uid(), {
+      kind: 'candidat',
+      nom: v.nom.trim(),
+      etape: v.etape as Candidat['etape'],
+      finaliste: v.finaliste === 'oui',
+      dispo: versDispo(v.jours, v.moment),
+      ...(avant?.essaiProposeLe ? { essaiProposeLe: avant.essaiProposeLe } : {}),
+    });
+  };
+  const postes = tout.filter((e): e is Id<PosteOuvert> & { updatedAt: string } => e.kind === 'poste');
+
   const parcours: Array<[string, number]> = [
     ['Reçues', candidats.length],
     ['Entretiens', candidats.filter((c) => c.etape === 'entretien' || c.etape === 'essai').length],
@@ -97,7 +138,7 @@ export function RecrutementScreen() {
     ? t('m50.recruitment.descriptionVide')
     : semaine.trou.size === 0
       ? t('m50.recruitment.descriptionSansTrou')
-      : t('m50.recruitment.description', { n: L(apresMidis), f: L(finalistes.length) });
+      : t(finalistes.length === 0 ? 'm50.recruitment.description0' : finalistes.length === 1 ? 'm50.recruitment.description1' : 'm50.recruitment.description', { n: L(apresMidis), f: L(finalistes.length) });
 
   return (
     <Ecran50 vide={vide} premierJour={tout.length === 0}>
@@ -109,6 +150,71 @@ export function RecrutementScreen() {
           phraseVide={t('m50.recruitment.phraseVide')}
         />
       </Bloc>
+
+      <Saisies>
+        <SaisieModule
+          ajouter={postes.length ? 'Ouvrir un autre poste' : 'Ouvrir un poste'}
+          ouvertParDefaut={postes.length === 0}
+          surtitreListe="Les postes ouverts"
+          champs={[
+            { cle: 'intitule', intitule: 'Intitulé du poste', type: 'texte', requis: true, aide: '« Technicien·ne d’intervention », « Vendeur·se à mi-temps ».' },
+            { cle: 'publieLe', intitule: 'Annonce publiée le', type: 'date', requis: true, defaut: versJour(maintenant.toISOString()) },
+          ]}
+          enregistrer={enregistrerPoste}
+          elements={postes.map((x) => ({ id: x.id, libelle: x.intitule, detail: `publié le ${versJour(x.publieLe)}`, valeurs: { intitule: x.intitule, publieLe: versJour(x.publieLe) } }))}
+          supprimer={(id) => remove('candidates', id)}
+        />
+        {postes.length > 0 && (
+          <SaisieModule
+            ajouter="Ajouter une candidature"
+            surtitreListe="Les candidatures"
+            champs={[
+              { cle: 'nom', intitule: 'Nom', type: 'texte', requis: true },
+              {
+                cle: 'etape',
+                intitule: 'Où en est-elle',
+                type: 'choix',
+                options: [
+                  { valeur: 'recu', libelle: 'Candidature reçue' },
+                  { valeur: 'entretien', libelle: 'Entretien passé' },
+                  { valeur: 'essai', libelle: 'Essai proposé' },
+                ],
+              },
+              {
+                cle: 'finaliste',
+                intitule: 'Retenue pour la fin',
+                type: 'choix',
+                options: [
+                  { valeur: 'non', libelle: 'Pas encore' },
+                  { valeur: 'oui', libelle: 'Oui, finaliste' },
+                ],
+              },
+              { cle: 'jours', intitule: 'Jours disponibles', type: 'texte', aide: '« lundi, mardi, jeudi ». Vide : toute la semaine.' },
+              {
+                cle: 'moment',
+                intitule: 'Moment de la journée',
+                type: 'choix',
+                options: [
+                  { valeur: 'journee', libelle: 'Journée entière' },
+                  { valeur: 'matin', libelle: 'Matins' },
+                  { valeur: 'apresmidi', libelle: 'Après-midis' },
+                ],
+              },
+            ]}
+            enregistrer={enregistrerCandidat}
+            elements={candidats.map((c) => {
+              const d = depuisDispo(c.dispo);
+              return {
+                id: c.id,
+                libelle: c.nom,
+                detail: [{ recu: 'reçue', entretien: 'entretien', essai: 'essai proposé' }[c.etape], c.finaliste ? 'finaliste' : '', d.jours].filter(Boolean).join(' · '),
+                valeurs: { nom: c.nom, etape: c.etape, finaliste: c.finaliste ? 'oui' : 'non', jours: d.jours, moment: d.moment },
+              };
+            })}
+            supprimer={(id) => remove('candidates', id)}
+          />
+        )}
+      </Saisies>
 
       <Dominante surtitre="La semaine de l’équipe" note={vide ? undefined : 'Plein = tenu · hachuré = personne'}>
         {vide ? (

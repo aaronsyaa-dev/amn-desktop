@@ -34,6 +34,8 @@ interface RoundData {
   /** L'heure de départ, « 08:30 ». Les heures des arrêts s'en DÉDUISENT. */
   departAt?: string;
   createdAt: string;
+  /** Le véhicule qui fait la tournée : ses arrêts pointés font avancer son compteur dans Flotte. */
+  vehiculeId?: string;
 }
 
 /**
@@ -91,6 +93,8 @@ export function DeliveryRoundsScreen() {
   const [title, setTitle] = useState('');
   const [day, setDay] = useState(isoJour(new Date()));
   const [stops, setStops] = useState('');
+  const vehicules = useCollection<{ kind?: string; nom: string }>('vehicles').filter((v) => v.kind === 'vehicule');
+  const [vehiculeId, setVehiculeId] = useState('');
   const aujourdhui = isoJour(new Date());
 
   const [ouverteId, setOuverteId] = useState<string | null>(null);
@@ -181,8 +185,8 @@ export function DeliveryRoundsScreen() {
   const ajouter = async () => {
     const arrets = stops.split('\n').map(lireArret).filter((a): a is Arret => Boolean(a));
     if (!title.trim() || arrets.length === 0) return;
-    await upsert('deliveryRounds', uid('rnd'), { title: title.trim(), day, stops: arrets, createdAt: new Date().toISOString() });
-    setTitle(''); setStops(''); setOuvert(false);
+    await upsert('deliveryRounds', uid('rnd'), { title: title.trim(), day, stops: arrets, createdAt: new Date().toISOString(), ...(vehiculeId ? { vehiculeId } : {}) });
+    setTitle(''); setStops(''); setVehiculeId(''); setOuvert(false);
   };
   const basculer = (r: RoundData & { id: string }, a: Arret) => upsert('deliveryRounds', r.id, { ...r, stops: r.stops.map((s) => (s.id === a.id ? { ...s, doneAt: s.doneAt ? null : new Date().toISOString() } : s)) });
   const deplacer = (r: RoundData & { id: string }, index: number, delta: number) => {
@@ -221,6 +225,19 @@ export function DeliveryRoundsScreen() {
         <motion.form variants={staggerItem} onSubmit={(e) => { e.preventDefault(); void ajouter(); }} className="grid gap-3 rounded-xl border border-border bg-surface p-4 sm:grid-cols-2">
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('tournees.champTitre')} aria-label={t('tournees.champTitre')} autoFocus className="input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none" />
           <label className="flex flex-col gap-1 text-xs text-text-muted">{t('tournees.champJour')}<input type="date" value={day} onChange={(e) => setDay(e.target.value)} className="input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none" /></label>
+          {vehicules.length > 0 && (
+            <label className="flex flex-col gap-1 text-xs text-text-muted sm:col-span-2">
+              Véhicule (son compteur avance dans Flotte)
+              <select value={vehiculeId} onChange={(e) => setVehiculeId(e.target.value)} className="input-focus min-h-11 border border-border bg-bg px-3 text-sm text-text-primary outline-none">
+                <option value="">Aucun véhicule suivi</option>
+                {vehicules.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.nom}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <textarea value={stops} onChange={(e) => setStops(e.target.value)} rows={5} placeholder={t('tournees.champArrets')} aria-label={t('tournees.champArrets')} className="input-focus border border-border bg-bg px-3 py-2 text-sm text-text-primary outline-none sm:col-span-2" />
           <div className="flex flex-wrap gap-2 sm:col-span-2">
             <button type="submit" disabled={!title.trim() || !stops.trim()} className="bg-accent px-4 py-2 text-sm font-semibold text-bg disabled:opacity-40">{t('tournees.enregistrer')}</button>

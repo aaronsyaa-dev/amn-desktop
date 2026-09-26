@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Bloc, Calmes, CarteCalme, CarteReleves, Dominante, Ecran50, LigneRegistre, PiedDominante } from '../components/cinquante-kit';
-import { useCollection } from '../state/SyncContext';
+import { SaisieModule, Saisies, versIso, versJour, versNombre } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { enLettres } from '../lib/cinquante/lettres';
 import { type EnregistrementFormation, type Formation, HORIZON_SEMAINES, type Quiz, SEUIL_RETENTION, courbes } from '../lib/cinquante/rh';
 import type { Id } from '../lib/cinquante/guichet';
@@ -29,6 +30,7 @@ const x = (t: number) => (t / HORIZON_SEMAINES) * 1000;
 export function FormationScreen() {
   const { t, langue } = useLangue();
   const tout = useCollection<EnregistrementFormation>('trainings');
+  const { upsert, remove } = useSync();
   const [maintenant] = useState(() => new Date());
   const [choisie, setChoisie] = useState<string | null>(null);
   const L = (n: number, maj = false) => enLettres(n, langue, maj);
@@ -50,6 +52,22 @@ export function FormationScreen() {
       ? t('m50.training.description')
       : t('m50.training.descriptionSansFranchissement');
 
+  /* SAISIE — une formation, puis les résultats de quiz qui tracent les courbes d'oubli. */
+  const enregistrerFormation = async (v: Record<string, string>, id?: string) => {
+    await upsert('trainings', id ?? uid(), { kind: 'formation', nom: v.nom.trim(), tauDefautSem: Math.max(1, versNombre(v.tau) ?? 12) });
+  };
+  const enregistrerQuiz = async (v: Record<string, string>, id?: string) => {
+    await upsert('trainings', id ?? uid(), {
+      kind: 'quiz',
+      formationId: v.formation,
+      personne: v.personne.trim(),
+      le: versIso(v.le),
+      score: Math.min(100, Math.max(0, versNombre(v.score) ?? 0)),
+      type: v.type as Quiz['type'],
+    });
+  };
+  const nomFormation = (id: string) => formations.find((f) => f.id === id)?.nom ?? 'formation retirée';
+
   /* Le chemin d'une courbe, coupé au point d'ambre s'il y en a un. */
   const chemin = (pts: Array<{ t: number; r: number }>) => pts.filter((p) => p.t <= HORIZON_SEMAINES).map((p, i) => `${i ? 'L' : 'M'}${x(p.t).toFixed(1)} ${y(p.r).toFixed(1)}`).join(' ');
 
@@ -63,6 +81,52 @@ export function FormationScreen() {
           phraseVide={t('m50.training.phraseVide')}
         />
       </Bloc>
+
+      <Saisies>
+        <SaisieModule
+          ajouter="Ajouter une formation"
+          ouvertParDefaut={formations.length === 0}
+          surtitreListe="Les formations"
+          champs={[
+            { cle: 'nom', intitule: 'Formation', type: 'texte', requis: true, aide: '« Hygiène alimentaire », « Gestes et postures ».' },
+            { cle: 'tau', intitule: 'Mémoire moyenne', type: 'nombre', suffixe: 'sem.', defaut: '12', aide: 'En semaines, le temps au bout duquel on n’en retient plus qu’un bon tiers. Laissez 12 si vous ne savez pas : les quiz l’affineront.' },
+          ]}
+          enregistrer={enregistrerFormation}
+          elements={formations.map((f) => ({ id: f.id, libelle: f.nom, detail: (() => { const n = quiz.filter((q) => q.formationId === f.id).length; return n > 1 ? `${n} quiz notés` : n === 1 ? '1 quiz noté' : 'aucun quiz noté'; })(), valeurs: { nom: f.nom, tau: String(f.tauDefautSem) } }))}
+          supprimer={(id) => remove('trainings', id)}
+        />
+        {formations.length > 0 && (
+          <SaisieModule
+            ajouter="Noter un résultat de quiz"
+            surtitreListe="Les quiz notés"
+            champs={[
+              { cle: 'formation', intitule: 'Formation', type: 'choix', requis: true, options: formations.map((f) => ({ valeur: f.id, libelle: f.nom })) },
+              { cle: 'personne', intitule: 'Personne', type: 'texte', requis: true },
+              { cle: 'score', intitule: 'Score', type: 'nombre', requis: true, suffixe: '/ 100' },
+              { cle: 'le', intitule: 'Passé le', type: 'date', requis: true, defaut: versJour(maintenant.toISOString()) },
+              {
+                cle: 'type',
+                intitule: 'Quiz',
+                type: 'choix',
+                options: [
+                  { valeur: 'initial', libelle: 'À la fin de la formation' },
+                  { valeur: 'rappel', libelle: 'Rappel' },
+                ],
+              },
+            ]}
+            enregistrer={enregistrerQuiz}
+            elements={[...quiz]
+              .sort((a, b) => b.le.localeCompare(a.le))
+              .map((q) => ({
+                id: q.id,
+                libelle: `${q.personne} · ${nomFormation(q.formationId)}`,
+                detail: `${q.score} / 100 · ${versJour(q.le)}`,
+                valeurs: { formation: q.formationId, personne: q.personne, score: String(q.score), le: versJour(q.le), type: q.type },
+              }))}
+            supprimer={(id) => remove('trainings', id)}
+          />
+        )}
+      </Saisies>
 
       <Dominante
         surtitre={courante ? `Ce qui reste de « ${courante.f.nom} » · ${L(HORIZON_SEMAINES)} semaines` : 'Ce qui reste de la formation'}

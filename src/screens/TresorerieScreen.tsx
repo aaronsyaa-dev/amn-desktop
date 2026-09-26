@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Bloc, Calmes, CarteCalme, CarteReleves, Dominante, Ecran50, LigneBarre, PiedDominante } from '../components/cinquante-kit';
-import { useCollection } from '../state/SyncContext';
+import { SaisieModule, Saisies, depuisCents, versCents, versIso, versJour } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { formatCentsCompact } from '../lib/money';
 import { enLettres } from '../lib/cinquante/lettres';
-import { CONE, type EnregistrementTresorerie, type FluxPrevu, compositionCone, cone, yCone } from '../lib/cinquante/finance';
+import { CONE, type EnregistrementTresorerie, type FluxPrevu, type NatureFlux, type SoldeTresorerie, compositionCone, cone, yCone } from '../lib/cinquante/finance';
 import { useLangue } from '../i18n';
 
 /**
@@ -22,6 +23,7 @@ const { l: VBL, h: VBH } = CONE.viewBox;
 export function TresorerieScreen() {
   const { t, langue } = useLangue();
   const tout = useCollection<EnregistrementTresorerie>('cashForecast');
+  const { upsert, remove } = useSync();
   const [maintenant] = useState(() => new Date());
   const L = (n: number, maj = false) => enLettres(n, langue, maj);
 
@@ -48,6 +50,20 @@ export function TresorerieScreen() {
       ? t('m50.cashForecast.description', { semaine: String(c.semaines[c.critique]) })
       : t('m50.cashForecast.descriptionTient');
 
+  /* SAISIE — le solde relevé (le point de départ du cône), puis ce qui est prévu d'entrer et de sortir. */
+  const soldes = tout.filter((e): e is SoldeTresorerie & { id: string; updatedAt: string } => e.kind === 'solde').sort((a, b) => b.le.localeCompare(a.le));
+  const flux = tout.filter((e): e is FluxPrevu & { id: string; updatedAt: string } => e.kind === 'flux').sort((a, b) => a.le.localeCompare(b.le));
+  const enregistrerSolde = async (v: Record<string, string>, id?: string) => {
+    await upsert('cashForecast', id ?? uid(), { kind: 'solde', soldeCents: versCents(v.solde) ?? 0, le: versIso(v.le) });
+  };
+  const SORTIES: NatureFlux[] = ['sortie-fixe', 'sortie-variable'];
+  const enregistrerFlux = async (v: Record<string, string>, id?: string) => {
+    const nature = v.nature as NatureFlux;
+    const montant = Math.abs(versCents(v.montant) ?? 0);
+    await upsert('cashForecast', id ?? uid(), { kind: 'flux', libelle: v.libelle.trim(), le: versIso(v.le), montantCents: SORTIES.includes(nature) ? -montant : montant, nature });
+  };
+  const aujourdhui = versJour(maintenant.toISOString());
+
   return (
     <Ecran50 vide={vide} premierJour={tout.length === 0}>
       <Bloc>
@@ -58,6 +74,52 @@ export function TresorerieScreen() {
           phraseVide={t('m50.cashForecast.phraseVide')}
         />
       </Bloc>
+
+      <Saisies>
+        <SaisieModule
+          ajouter="Relever le solde du compte"
+          ouvertParDefaut={soldes.length === 0}
+          surtitreListe="Les soldes relevés"
+          champs={[
+            { cle: 'solde', intitule: 'Solde du compte', type: 'montant', requis: true, aide: 'Ce que la banque affiche ce jour-là, découvert en négatif.' },
+            { cle: 'le', intitule: 'Relevé le', type: 'date', requis: true, defaut: aujourdhui },
+          ]}
+          enregistrer={enregistrerSolde}
+          elements={soldes.map((x) => ({ id: x.id, libelle: formatCentsCompact(x.soldeCents), detail: `relevé le ${versJour(x.le)}`, valeurs: { solde: depuisCents(x.soldeCents), le: versJour(x.le) } }))}
+          supprimer={(id) => remove('cashForecast', id)}
+        />
+        {soldes.length > 0 && (
+          <SaisieModule
+            ajouter="Prévoir une entrée ou une sortie"
+            surtitreListe="Ce qui est prévu"
+            champs={[
+              { cle: 'libelle', intitule: 'Quoi', type: 'texte', requis: true, aide: '« Loyer », « Paiement Maison Bertaux », « URSSAF ».' },
+              {
+                cle: 'nature',
+                intitule: 'Nature',
+                type: 'choix',
+                requis: true,
+                options: [
+                  { valeur: 'certaine', libelle: 'Entrée certaine' },
+                  { valeur: 'probable', libelle: 'Entrée probable' },
+                  { valeur: 'sortie-fixe', libelle: 'Sortie fixe' },
+                  { valeur: 'sortie-variable', libelle: 'Sortie variable' },
+                ],
+              },
+              { cle: 'montant', intitule: 'Montant', type: 'montant', requis: true },
+              { cle: 'le', intitule: 'Date prévue', type: 'date', requis: true },
+            ]}
+            enregistrer={enregistrerFlux}
+            elements={flux.map((f) => ({
+              id: f.id,
+              libelle: f.libelle,
+              detail: `${f.montantCents < 0 ? '−' : '+'} ${formatCentsCompact(Math.abs(f.montantCents))} · ${versJour(f.le)}`,
+              valeurs: { libelle: f.libelle, nature: f.nature, montant: depuisCents(Math.abs(f.montantCents)), le: versJour(f.le) },
+            }))}
+            supprimer={(id) => remove('cashForecast', id)}
+          />
+        )}
+      </Saisies>
 
       <Dominante surtitre={`Le solde projeté · ${L(CONE.semaines)} semaines`} note={c ? 'Cône = incertitude cumulée · ligne = zéro' : undefined}>
         {!c ? (

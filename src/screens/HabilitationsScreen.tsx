@@ -12,12 +12,14 @@ import {
   PiedDominante,
   donnees,
 } from '../components/cinquante-kit';
-import { useCollection, useSync } from '../state/SyncContext';
+import { SaisieModule, Saisies, versLignes } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { enLettres } from '../lib/cinquante/lettres';
 import {
   type Cle,
   type Detenteur,
   type EnregistrementHabilitations,
+  type Exigence,
   type InterventionPlanifiee,
   cassee,
   chantiersAVenir,
@@ -61,7 +63,7 @@ function Clef({ couleur, cassee: c }: { couleur: string; cassee: boolean }) {
 
 export function HabilitationsScreen() {
   const { t, langue } = useLangue();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const tout = useCollection<EnregistrementHabilitations>('certifications');
   const interventions = useCollection<InterventionPlanifiee>('interventions');
   const [maintenant] = useState(() => new Date());
@@ -90,6 +92,40 @@ export function HabilitationsScreen() {
     await upsert('certifications', p.id, { ...donnees(p), cles: nouvelles });
   };
 
+  /*
+    SAISIE — une personne et ses habilitations, une par ligne avec sa date de
+    fin (« CACES R489 — 31/03/2027 ») ; puis les règles qui relient une
+    intervention à l'habilitation qu'elle exige.
+  */
+  const lireCle = (ligne: string, avant?: Cle[]): Cle | null => {
+    const m = ligne.match(/^(.*?)[\s—–:;,-]+(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})\s*$/) ?? null;
+    const iso = ligne.match(/^(.*?)[\s—–:;,-]+(\d{4})-(\d{2})-(\d{2})\s*$/) ?? null;
+    let nom = ligne.trim();
+    let echeance = '';
+    if (m) {
+      nom = m[1].trim();
+      echeance = `${m[4]}-${m[3].padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+    } else if (iso) {
+      nom = iso[1].trim();
+      echeance = `${iso[2]}-${iso[3]}-${iso[4]}`;
+    }
+    if (!nom || !echeance) return null;
+    const ancienne = avant?.find((k) => k.habilitation === nom && k.echeance.slice(0, 10) === echeance);
+    return ancienne ?? { habilitation: nom, echeance };
+  };
+  const jjmmaaaa = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+  const enregistrerPersonne = async (v: Record<string, string>, id?: string) => {
+    const avant = personnes.find((p) => p.id === id);
+    const cles = versLignes(v.cles)
+      .map((l) => lireCle(l, avant?.cles))
+      .filter((k): k is Cle => k !== null);
+    await upsert('certifications', id ?? uid(), { kind: 'personne', nom: v.nom.trim(), cles });
+  };
+  const exigences = tout.filter((e): e is Id<Exigence> & { updatedAt: string } => e.kind === 'exigence');
+  const enregistrerExigence = async (v: Record<string, string>, id?: string) => {
+    await upsert('certifications', id ?? uid(), { kind: 'exigence', motif: v.motif.trim(), habilitation: v.habilitation.trim() });
+  };
+
   const description = vide
     ? t('m50.certifications.descriptionVide')
     : ambre
@@ -106,6 +142,45 @@ export function HabilitationsScreen() {
           phraseVide={t('m50.certifications.phraseVide')}
         />
       </Bloc>
+
+      <Saisies>
+        <SaisieModule
+          ajouter="Ajouter une personne et ses habilitations"
+          ouvertParDefaut={vide}
+          surtitreListe="Les personnes"
+          champs={[
+            { cle: 'nom', intitule: 'Nom', type: 'texte', requis: true },
+            {
+              cle: 'cles',
+              intitule: 'Habilitations',
+              type: 'lignes',
+              requis: true,
+              aide: 'Une par ligne, suivie de sa date de fin : « CACES R489 — 31/03/2027 », « H0B0 — 15/11/2026 ».',
+            },
+          ]}
+          enregistrer={enregistrerPersonne}
+          elements={personnes.map((p) => ({
+            id: p.id,
+            libelle: p.nom,
+            detail: p.cles.map((k) => k.habilitation).join(', '),
+            valeurs: { nom: p.nom, cles: p.cles.map((k) => `${k.habilitation} — ${jjmmaaaa(k.echeance)}`).join('\n') },
+          }))}
+          supprimer={(id) => remove('certifications', id)}
+        />
+        {personnes.length > 0 && (
+          <SaisieModule
+            ajouter="Relier une intervention à une habilitation"
+            surtitreListe="Les règles"
+            champs={[
+              { cle: 'motif', intitule: 'Mot dans le titre de l’intervention', type: 'texte', requis: true, aide: '« nacelle », « tableau électrique ».' },
+              { cle: 'habilitation', intitule: 'Habilitation exigée', type: 'texte', requis: true, aide: 'Écrite comme sur les fiches : « CACES R486 ».' },
+            ]}
+            enregistrer={enregistrerExigence}
+            elements={exigences.map((e) => ({ id: e.id, libelle: `« ${e.motif} » exige ${e.habilitation}`, valeurs: { motif: e.motif, habilitation: e.habilitation } }))}
+            supprimer={(id) => remove('certifications', id)}
+          />
+        )}
+      </Saisies>
 
       <Dominante surtitre="Les trousseaux" note={vide ? undefined : 'Clé = habilitation · clé cassée = échue'}>
         {vide ? (

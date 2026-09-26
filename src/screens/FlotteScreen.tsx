@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Bloc, BoutonSecondaire, Calmes, CarteCalme, CarteReleves, Dominante, Ecran50, LigneBarre, PiedDominante, donnees } from '../components/cinquante-kit';
-import { useCollection, useSync } from '../state/SyncContext';
+import { type ChampSaisie, SaisieModule, Saisies, depuisCents, versCents, versIso, versJour, versNombre } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { formatCentsCompact } from '../lib/money';
 import { enLettres } from '../lib/cinquante/lettres';
 import {
@@ -49,7 +50,7 @@ function reste(x: EtatEcheance, maintenant: Date) {
 
 export function FlotteScreen() {
   const { t, langue } = useLangue();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const vehicules = useCollection<Vehicule>('vehicles');
   const tournees = useCollection<TourneeFlotte>('deliveryRounds');
   const [maintenant] = useState(() => new Date());
@@ -117,8 +118,11 @@ export function FlotteScreen() {
   const description = vide
     ? t('m50.fleet.descriptionVide')
     : ambre && joursAmbre !== null
-      ? t('m50.fleet.description', { n: L(flotte.length, true), jours: L(Math.max(0, joursAmbre)) })
-      : t('m50.fleet.descriptionSansAmbre', { n: L(flotte.length, true) });
+      ? t(flotte.length === 1 ? 'm50.fleet.description1' : 'm50.fleet.description', {
+          n: L(flotte.length, true),
+          jours: Math.max(0, joursAmbre) <= 1 ? (joursAmbre <= 0 ? 'la journée' : 'un jour') : `${L(joursAmbre)} jours`,
+        })
+      : t(flotte.length === 1 ? 'm50.fleet.descriptionSansAmbre1' : 'm50.fleet.descriptionSansAmbre', { n: L(flotte.length, true) });
 
   const pied = (() => {
     if (!ambre || !vAmbre || !ambre.etat.tombeLe) return 'Aucune échéance ne tombe avant une tournée planifiée : la flotte peut rouler.';
@@ -128,6 +132,69 @@ export function FlotteScreen() {
       jours.length === 1 ? `les tournées du ${jours[0]}` : `${L(ambre.chantiers.length)} tournée${ambre.chantiers.length > 1 ? 's' : ''} planifiée${ambre.chantiers.length > 1 ? 's' : ''} après cette date`
     }${rdv ? ` : un rendez-vous le ${JOURS[rdv.getDay()]} ${rdv.getDate()} évite d’en perdre une.` : '.'}`;
   })();
+
+  /*
+    SAISIE — un véhicule, ses deux échéances courantes, ses dépenses.
+    Le compteur de départ se tape une fois ; ensuite ce sont les tournées
+    pointées qui le font avancer (voir plus haut). Les autres échéances, et un
+    rendez-vous déjà pris, sont gardés tels quels quand on modifie la fiche.
+  */
+  const VIDANGE = 'Vidange';
+  const CT = 'Contrôle technique';
+  const enregistrerVehicule = async (v: Record<string, string>, id?: string) => {
+    const avant = id ? vehicules.find((x) => x.id === id) : undefined;
+    const gardees = (avant?.echeances ?? []).filter((e) => e.nom !== VIDANGE && e.nom !== CT);
+    const ancienne = (nom: string) => avant?.echeances.find((e) => e.nom === nom);
+    const echeances: Vehicule['echeances'] = [...gardees];
+    const intervalle = versNombre(v.vidangeTous);
+    if (intervalle && intervalle > 0) {
+      echeances.push({ ...ancienne(VIDANGE), nom: VIDANGE, feminin: true, nature: 'km', intervalle, dernierKm: versNombre(v.vidangeA) ?? versNombre(v.km) ?? 0 });
+    }
+    if (v.ctLe) echeances.push({ ...ancienne(CT), nom: CT, nature: 'jours', intervalle: 730, dernierLe: v.ctLe });
+    const fiche: Vehicule = {
+      kind: 'vehicule',
+      nom: v.nom.trim(),
+      ...(v.immat.trim() ? { immatriculation: v.immat.trim().toUpperCase() } : {}),
+      kmDepart: versNombre(v.km) ?? 0,
+      departLe: avant?.departLe ?? jourIso(new Date()),
+      echeances,
+      couts: avant?.couts ?? [],
+    };
+    await upsert('vehicles', id ?? uid(), { ...fiche });
+  };
+  const flotteSaisie = vehicules.filter((v) => v.kind === 'vehicule');
+  const champsCout: ChampSaisie[] = [
+    { cle: 'vehicule', intitule: 'Véhicule', type: 'choix', requis: true, options: flotteSaisie.map((v) => ({ valeur: v.id, libelle: v.nom })) },
+    {
+      cle: 'nature',
+      intitule: 'Nature',
+      type: 'choix',
+      requis: true,
+      options: [
+        { valeur: 'carburant', libelle: 'Carburant' },
+        { valeur: 'entretien', libelle: 'Entretien' },
+        { valeur: 'assurance', libelle: 'Assurance' },
+      ],
+    },
+    { cle: 'montant', intitule: 'Montant', type: 'montant', requis: true },
+    { cle: 'le', intitule: 'Date', type: 'date', requis: true, defaut: jourIso(maintenant) },
+  ];
+  /* Une dépense n'a pas d'identifiant à elle : elle vit dans la fiche du véhicule, à sa place dans la liste. */
+  const enregistrerCout = async (v: Record<string, string>, id?: string) => {
+    const [ancienV, rang] = id ? id.split('::') : [];
+    const cout = { le: versIso(v.le), montantCents: versCents(v.montant) ?? 0, nature: v.nature as Vehicule['couts'][number]['nature'] };
+    for (const x of flotteSaisie) {
+      let couts = x.couts;
+      if (x.id === ancienV) couts = couts.filter((_, i) => String(i) !== rang);
+      if (x.id === v.vehicule) couts = [...couts, cout];
+      if (couts !== x.couts) await upsert('vehicles', x.id, { ...donnees(x), couts });
+    }
+  };
+  const supprimerCout = async (id: string) => {
+    const [vid, rang] = id.split('::');
+    const x = flotteSaisie.find((f) => f.id === vid);
+    if (x) await upsert('vehicles', x.id, { ...donnees(x), couts: x.couts.filter((_, i) => String(i) !== rang) });
+  };
 
   return (
     <Ecran50 vide={vide} premierJour={vehicules.length === 0}>
@@ -139,6 +206,58 @@ export function FlotteScreen() {
           phraseVide={t('m50.fleet.phraseVide')}
         />
       </Bloc>
+
+      <Saisies>
+        <SaisieModule
+          ajouter="Ajouter un véhicule"
+          ouvertParDefaut={flotteSaisie.length === 0}
+          champs={[
+            { cle: 'nom', intitule: 'Nom du véhicule', type: 'texte', requis: true, aide: 'Comme l’équipe l’appelle : « le Kangoo », « Master blanc ».' },
+            { cle: 'immat', intitule: 'Immatriculation', type: 'texte' },
+            { cle: 'km', intitule: 'Compteur aujourd’hui', type: 'nombre', requis: true, suffixe: 'km', aide: 'Ensuite, chaque tournée pointée l’avance toute seule.' },
+            { cle: 'vidangeTous', intitule: 'Vidange tous les', type: 'nombre', suffixe: 'km', defaut: '15000' },
+            { cle: 'vidangeA', intitule: 'Dernière vidange à', type: 'nombre', suffixe: 'km', aide: 'Vide : on compte à partir du compteur d’aujourd’hui.' },
+            { cle: 'ctLe', intitule: 'Dernier contrôle technique', type: 'date', aide: 'Le prochain est compté deux ans plus tard.' },
+          ]}
+          enregistrer={enregistrerVehicule}
+          elements={flotteSaisie.map((v) => {
+            const vid = v.echeances.find((e) => e.nom === VIDANGE);
+            return {
+              id: v.id,
+              libelle: v.nom,
+              detail: [v.immatriculation, km(v.kmDepart)].filter(Boolean).join(' · '),
+              valeurs: {
+                nom: v.nom,
+                immat: v.immatriculation ?? '',
+                km: String(v.kmDepart),
+                vidangeTous: vid ? String(vid.intervalle) : '',
+                vidangeA: vid?.dernierKm !== undefined ? String(vid.dernierKm) : '',
+                ctLe: versJour(v.echeances.find((e) => e.nom === CT)?.dernierLe),
+              },
+            };
+          })}
+          supprimer={(id) => remove('vehicles', id)}
+        />
+        {flotteSaisie.length > 0 && (
+          <SaisieModule
+            ajouter="Noter une dépense"
+            champs={champsCout}
+            surtitreListe="Les dépenses notées"
+            enregistrer={enregistrerCout}
+            elements={flotteSaisie
+              .flatMap((v) => v.couts.map((c, i) => ({ v, c, i })))
+              .sort((a, b) => b.c.le.localeCompare(a.c.le))
+              .slice(0, 40)
+              .map(({ v, c, i }) => ({
+                id: `${v.id}::${i}`,
+                libelle: `${v.nom} · ${c.nature}`,
+                detail: `${formatCentsCompact(c.montantCents)} · ${versJour(c.le)}`,
+                valeurs: { vehicule: v.id, nature: c.nature, montant: depuisCents(c.montantCents), le: versJour(c.le) },
+              }))}
+            supprimer={supprimerCout}
+          />
+        )}
+      </Saisies>
 
       <Dominante
         surtitre={releve ? `La flotte · relevé du ${date(new Date(`${releve}T12:00:00`))}` : 'La flotte'}

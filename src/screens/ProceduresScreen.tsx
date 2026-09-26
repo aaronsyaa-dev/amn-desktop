@@ -14,7 +14,9 @@ import {
   PiedDominante,
   donnees,
 } from '../components/cinquante-kit';
-import { useCollection, useSync } from '../state/SyncContext';
+import { SaisieModule, versLignes } from '../components/SaisieModule';
+import { useAuth } from '../auth/AuthContext';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { enLettres } from '../lib/cinquante/lettres';
 import { CORPS_ETAPE_PX, type Detenteur, type Procedure, etapePerimee } from '../lib/cinquante/rh';
 import { useLangue } from '../i18n';
@@ -42,7 +44,8 @@ const age = (iso: string, maintenant: Date) => {
 
 export function ProceduresScreen() {
   const { t, langue } = useLangue();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
+  const { user } = useAuth();
   const procedures = useCollection<Procedure>('procedures');
   const stock = useCollection<{ name: string }>('stockItems');
   const materiel = useCollection<{ name: string }>('resources');
@@ -82,6 +85,28 @@ export function ProceduresScreen() {
       ? t('m50.procedures.description')
       : t('m50.procedures.descriptionAJour');
 
+  /*
+    SAISIE — une fiche, une étape par ligne. Modifier une fiche la relit :
+    version + 1, relue aujourd'hui, par la personne connectée. Les renvois au
+    stock déjà posés sur une étape inchangée sont gardés.
+  */
+  const enregistrer = async (v: Record<string, string>, id?: string) => {
+    const avant = id ? procedures.find((p) => p.id === id) : undefined;
+    const etapes = versLignes(v.etapes).map((texte) => avant?.etapes.find((e) => e.texte === texte) ?? { texte });
+    const fiche: Procedure = {
+      kind: 'procedure',
+      titre: v.titre.trim(),
+      categorie: v.categorie.trim() || 'Atelier',
+      etapes,
+      ...(v.securite.trim() ? { securite: v.securite.trim() } : {}),
+      version: avant ? avant.version + 1 : 1,
+      relueLe: new Date().toISOString(),
+      relueePar: user?.name ?? user?.email ?? 'vous',
+    };
+    await upsert('procedures', id ?? uid(), { ...fiche });
+    setChoisie(id ?? null);
+  };
+
   return (
     <Ecran50 vide={vide} premierJour={vide}>
       <Bloc>
@@ -92,6 +117,28 @@ export function ProceduresScreen() {
           phraseVide={t('m50.procedures.phraseVide')}
         />
       </Bloc>
+
+      <SaisieModule
+        ajouter="Écrire une procédure"
+        ouvertParDefaut={vide}
+        champs={[
+          { cle: 'titre', intitule: 'Titre', type: 'texte', requis: true, aide: '« Nettoyage du four », « Ouverture de la boutique ».' },
+          { cle: 'categorie', intitule: 'Catégorie', type: 'texte', aide: 'Où elle se punaise : « Cuisine », « Atelier », « Accueil ».' },
+          { cle: 'etapes', intitule: 'Étapes', type: 'lignes', requis: true, aide: 'Une étape par ligne, dans l’ordre.' },
+          { cle: 'securite', intitule: 'Consigne de sécurité', type: 'texte', large: true },
+        ]}
+        enregistrer={enregistrer}
+        elements={triees
+          .slice()
+          .reverse()
+          .map((p) => ({
+            id: p.id,
+            libelle: p.titre,
+            detail: `${p.categorie} · ${p.etapes.length} étape${p.etapes.length > 1 ? 's' : ''} · version ${p.version}`,
+            valeurs: { titre: p.titre, categorie: p.categorie, etapes: p.etapes.map((e) => e.texte).join('\n'), securite: p.securite ?? '' },
+          }))}
+        supprimer={(id) => remove('procedures', id)}
+      />
 
       <Dominante surtitre="La fiche, telle qu’elle est punaisée" note={fiche ? 'A5 · lue à un mètre' : undefined}>
         {!fiche ? (

@@ -12,7 +12,8 @@ import {
   PiedDominante,
   donnees,
 } from '../components/cinquante-kit';
-import { useCollection, useSync } from '../state/SyncContext';
+import { SaisieModule, depuisCents, versCents, versIso, versJour, versNombre } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { formatCentsCompact } from '../lib/money';
 import { enLettres } from '../lib/cinquante/lettres';
 import { type DemandePret, type EnregistrementTresorerie, PRET, durees, mensualiteSupportable } from '../lib/cinquante/finance';
@@ -36,7 +37,7 @@ const pourcent = (x: number) => `${(x * 100).toFixed(1).replace('.', ',').replac
 
 export function SimulateurPretScreen() {
   const { t, langue } = useLangue();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const prets = useCollection<DemandePret>('loanSimulations');
   const tresorerie = useCollection<EnregistrementTresorerie>('cashForecast');
   const [maintenant] = useState(() => new Date());
@@ -63,6 +64,20 @@ export function SimulateurPretScreen() {
     ? t('m50.loanSim.descriptionVide')
     : t('m50.loanSim.description', { capital: formatCentsCompact(pret.capitalCents), n: L(pret.dureesAns.length) });
 
+  const enregistrer = async (v: Record<string, string>, id?: string) => {
+    const avant = id ? prets.find((p) => p.id === id) : undefined;
+    const fiche: DemandePret = {
+      kind: 'pret',
+      objet: v.objet.trim(),
+      capitalCents: versCents(v.capital) ?? 0,
+      tauxAnnuel: (versNombre(v.taux) ?? 0) / 100,
+      dureesAns: [...new Set(v.durees.split(/[^0-9]+/).map(Number).filter((n) => n > 0 && n <= 40))].sort((a, b) => a - b),
+      debut: v.debut ? versIso(v.debut) : new Date().toISOString(),
+      ...(avant?.demandeLe ? { demandeLe: avant.demandeLe, dureeDemandeeAns: avant.dureeDemandeeAns } : {}),
+    };
+    await upsert('loanSimulations', id ?? uid(), { ...fiche });
+  };
+
   return (
     <Ecran50 vide={vide} premierJour={prets.length === 0}>
       <Bloc>
@@ -73,6 +88,29 @@ export function SimulateurPretScreen() {
           phraseVide={t('m50.loanSim.phraseVide')}
         />
       </Bloc>
+
+      <SaisieModule
+        ajouter="Simuler un prêt"
+        ouvertParDefaut={vide}
+        note="Une simulation : rien n’est envoyé à une banque"
+        champs={[
+          { cle: 'objet', intitule: 'Objet du prêt', type: 'texte', requis: true, aide: 'Ce que le prêt finance : « camion frigorifique », « travaux de la boutique ».' },
+          { cle: 'capital', intitule: 'Montant emprunté', type: 'montant', requis: true },
+          { cle: 'taux', intitule: 'Taux annuel', type: 'pourcent', requis: true, aide: 'Le taux proposé par la banque, par exemple 4,2.' },
+          { cle: 'durees', intitule: 'Durées à comparer', type: 'texte', requis: true, defaut: '5, 7, 10', suffixe: 'ans', aide: 'Deux à quatre durées en années, séparées par des virgules.' },
+          { cle: 'debut', intitule: 'Premier remboursement', type: 'date' },
+        ]}
+        enregistrer={enregistrer}
+        elements={[...prets]
+          .sort((a, b) => b.debut.localeCompare(a.debut))
+          .map((p) => ({
+            id: p.id,
+            libelle: p.objet || 'Prêt sans objet',
+            detail: `${formatCentsCompact(p.capitalCents)} · ${pourcent(p.tauxAnnuel)} · ${p.dureesAns.join(', ')} ans`,
+            valeurs: { objet: p.objet, capital: depuisCents(p.capitalCents), taux: String(+(p.tauxAnnuel * 100).toFixed(3)).replace('.', ','), durees: p.dureesAns.join(', '), debut: versJour(p.debut) },
+          }))}
+        supprimer={(id) => remove('loanSimulations', id)}
+      />
 
       <Dominante
         surtitre={pret ? `Le même prêt, ${L(pret.dureesAns.length)} durées` : 'Le même prêt, plusieurs durées'}
