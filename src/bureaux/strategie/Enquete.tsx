@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
-import { uid } from '../../state/SyncContext';
+import { uid, useSync } from '../../state/SyncContext';
 import { AMBRE } from '../jetons';
 import { useStrategie } from '../donnees/strategie';
 import type { PieceMur } from '../donnees/types';
-import { Carte, EnTete, Invitation } from '../ui/kit';
-import { enLettresF } from '../format';
+import { Carte, EnTete, Invitation, Supprimer } from '../ui/kit';
+import { court, enLettresF } from '../format';
 import { aujourdHui, champ, jjmm, useEcrire } from './commun';
 
 /**
@@ -34,6 +34,7 @@ export function StrategieEnquete() {
   const m = useStrategie();
   const { user } = useAuth();
   const ecrire = useEcrire<PieceMur>('strategieMur');
+  const { remove } = useSync();
   const [question, setQuestion] = useState<{ texte: string; echeance: string } | null>(null);
   const [indice, setIndice] = useState<{ questionId: string; texte: string; source: string; sens: NonNullable<PieceMur['sens']> } | null>(null);
   const [verdict, setVerdict] = useState<{ id: string; texte: string } | null>(null);
@@ -116,6 +117,9 @@ export function StrategieEnquete() {
                       <span className="block font-mono text-[9.5px] font-semibold uppercase tracking-[0.12em] text-[#55554f]">{SENS.find((s) => s.cle === (i.sens ?? 'neutre'))?.nom}</span>
                       <span className="mt-1.5 block text-[13px] leading-snug text-[#111]">{i.texte}</span>
                       {i.source && <span className="mt-2 block border-t border-[#cfcdc7] pt-1.5 text-[11px] text-[#3a3a38]">{i.source}</span>}
+                      <span className="mt-2 block">
+                        <Supprimer papier libelle="Retirer" quoi={`l’indice « ${court(i.texte ?? '', 40)} »`} onConfirmer={() => void remove('strategieMur', i.id)} />
+                      </span>
                     </article>
                   ))}
                   {ind.length === 0 && <p className="text-[13px] text-text-secondary md:col-span-3">Aucun indice encore.</p>}
@@ -172,6 +176,15 @@ export function StrategieEnquete() {
                     <button type="button" className={estAmbre ? 'bx-btn' : 'bx-btn2'} onClick={() => setVerdict({ id: q.id, texte: '' })}>
                       Trancher
                     </button>
+                    <span className="ml-auto self-center">
+                      <Supprimer
+                        quoi={`la question « ${court(q.texte ?? '', 50)} » et ses ${ind.length} indice${ind.length > 1 ? 's' : ''}`}
+                        onConfirmer={() => {
+                          for (const x of ind) void remove('strategieMur', x.id);
+                          void remove('strategieMur', q.id);
+                        }}
+                      />
+                    </span>
                   </div>
                 )}
               </section>

@@ -4,7 +4,7 @@ import { uid, useCollection, useSync } from '../../state/SyncContext';
 import { AMBRE } from '../jetons';
 import { useCyber } from '../donnees/cyber';
 import type { Secret } from '../donnees/types';
-import { Carte, EnTete, Invitation } from '../ui/kit';
+import { Carte, EnTete, Invitation, Supprimer } from '../ui/kit';
 import { jourMois } from '../format';
 
 /**
@@ -24,7 +24,7 @@ const GENRES = ['Clé d’API', 'Mot de passe technique', 'Jeton de déploiement
 export function CyberSecrets() {
   const c = useCyber();
   const { user } = useAuth();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const secrets = useCollection<Secret>('rotationsSecrets') as S[];
   const [nouveau, setNouveau] = useState<{ orgId: string; nom: string; type: string; periodeJours: string; derniere: string } | null>(null);
   const maintenant = Date.now();
@@ -121,6 +121,7 @@ export function CyberSecrets() {
                   <button type="button" className="bx-lien" onClick={() => tourne(s)}>
                     Tourné aujourd’hui
                   </button>
+                  <Supprimer libelle="Retirer" quoi={`le suivi de « ${s.nom} »`} onConfirmer={() => void remove('rotationsSecrets', s.id)} />
                 </span>
               </div>
             );

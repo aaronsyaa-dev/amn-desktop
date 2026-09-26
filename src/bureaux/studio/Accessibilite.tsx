@@ -3,9 +3,9 @@ import { uid } from '../../state/SyncContext';
 import { AMBRE } from '../jetons';
 import { useStudio } from '../donnees/studio';
 import type { PieceStudio } from '../donnees/types';
-import { Carte, EnTete, Invitation } from '../ui/kit';
+import { Carte, EnTete, Invitation, Supprimer } from '../ui/kit';
 import { useEcrirePiece } from './commun';
-import { enLettres } from '../format';
+import { court, enLettres } from '../format';
 
 /**
  * STUDIO · L'ACCESSIBILITÉ (cahier 15, `51c` · 12).
@@ -136,9 +136,12 @@ export function StudioAccessibilite() {
                     {p.plaque} · {a.page} · {CRITERES.find((c) => c.cle === a.critere)?.nom}
                   </span>
                   <span className="mt-1 block text-[13px] leading-snug text-text-body">{a.texte}</span>
-                  <button type="button" className="bx-lien mt-1.5" onClick={() => ecrire(p.id, (b) => ({ accessibilite: (b.accessibilite ?? []).map((x) => (x.id === a.id ? { ...x, corrige: true } : x)) }))}>
-                    Corrigé
-                  </button>
+                  <span className="mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                    <button type="button" className="bx-lien" onClick={() => ecrire(p.id, (b) => ({ accessibilite: (b.accessibilite ?? []).map((x) => (x.id === a.id ? { ...x, corrige: true } : x)) }))}>
+                      Corrigé
+                    </button>
+                    <Supprimer quoi={`le manque « ${court(a.texte, 40)} »`} libelle="Retirer" onConfirmer={() => ecrire(p.id, (b) => ({ accessibilite: (b.accessibilite ?? []).filter((x) => x.id !== a.id) }))} />
+                  </span>
                 </div>
               );
             })}

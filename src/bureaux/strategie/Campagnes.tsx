@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
-import { uid } from '../../state/SyncContext';
+import { uid, useSync } from '../../state/SyncContext';
 import { AMBRE } from '../jetons';
 import { ETAPES_CAMPAGNE, useStrategie, type CampagneId } from '../donnees/strategie';
 import type { Campagne } from '../donnees/types';
-import { Carte, EnTete, Invitation } from '../ui/kit';
+import { Carte, EnTete, Invitation, Supprimer } from '../ui/kit';
 import { enLettresF } from '../format';
 import { champ, jjmm, jourMoisAbrege, useEcrire } from './commun';
 
@@ -160,6 +160,7 @@ function Detail({ c, ecrire, prospects, onFermer }: { c: CampagneId; ecrire: Ret
   const avant = ETAPES_CAMPAGNE[i - 1] ?? null;
   const apres = ETAPES_CAMPAGNE[i + 1] ?? null;
   const maj = (patch: Partial<Campagne>) => ecrire(c.id, () => patch);
+  const { remove } = useSync();
   const passer = (etape: Campagne['etape']) =>
     maj({ etape, ...(etape === 'publiee' && !c.publieeLe ? { publieeLe: new Date().toISOString() } : {}), ...(etape === 'close' || etape === 'publiee' ? { bloquee: null } : {}) });
 
@@ -183,6 +184,15 @@ function Detail({ c, ecrire, prospects, onFermer }: { c: CampagneId; ecrire: Ret
                 Le storyboard
               </Link>
             )}
+            <span className="ml-auto self-center">
+              <Supprimer
+                quoi={`la campagne « ${c.titre} »${c.plans?.length ? ' et son storyboard' : ''}`}
+                onConfirmer={() => {
+                  void remove('campagnes', c.id);
+                  onFermer();
+                }}
+              />
+            </span>
           </div>
           <label className="block">
             <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-muted">{c.etape === 'close' ? 'Ce qu’elle a rapporté' : 'Sa ligne sur la fiche'}</span>

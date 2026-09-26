@@ -4,7 +4,7 @@ import { uid } from '../../state/SyncContext';
 import { AMBRE } from '../jetons';
 import type { Piece } from '../donnees/studio';
 import type { PieceStudio } from '../donnees/types';
-import { Carte, Invitation } from '../ui/kit';
+import { Carte, Invitation, Supprimer } from '../ui/kit';
 import { enLettres } from '../format';
 import { ecartMots, jjmm, segmentsMots, TetePiece, useEcrirePiece, usePieceCourante } from './commun';
 
@@ -185,6 +185,15 @@ function Bibliotheque({ p }: { p: Piece }) {
                 <button type="button" className="bx-btn2" onClick={() => setRedaction({ mode: 'version', nom: pr.nom, categorie: pr.categorie ?? '', texte: version.texte, resultat: '' })}>
                   Nouvelle version
                 </button>
+                <span className="ml-auto self-center">
+                  <Supprimer
+                    quoi={`le prompt « ${pr.nom} » et ses ${pr.versions.length} version${pr.versions.length > 1 ? 's' : ''}`}
+                    onConfirmer={() => {
+                      ecrire(p.id, (b) => ({ prompts: (b.prompts ?? []).filter((x) => x.id !== pr.id) }));
+                      setOuvert(null);
+                    }}
+                  />
+                </span>
               </div>
               <span className="mt-6 block font-mono text-[9.5px] uppercase tracking-[0.16em] text-text-muted">{version.enLigne ? 'Résultat retenu' : 'Ce qu’elle a donné'}</span>
               {version.resultat ? (

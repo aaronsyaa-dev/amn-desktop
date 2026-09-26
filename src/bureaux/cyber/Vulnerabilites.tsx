@@ -5,7 +5,7 @@ import { AMBRE, ROUGE } from '../jetons';
 import { useCyber } from '../donnees/cyber';
 import { useSupervisor } from '../donnees/useSupervisor';
 import type { VeilleVuln } from '../donnees/types';
-import { Carte, EnTete, Invitation } from '../ui/kit';
+import { Carte, EnTete, Invitation, Supprimer } from '../ui/kit';
 import { enLettresF, jourMois } from '../format';
 
 /**
@@ -53,7 +53,7 @@ export function CyberVulnerabilites() {
   const c = useCyber();
   const sup = useSupervisor();
   const { user } = useAuth();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const vulns = (useCollection<VeilleVuln>('veilleVulns') as V[]).slice().sort((a, b) => b.publieeLe.localeCompare(a.publieeLe));
   const [choisie, setChoisie] = useState<string | null>(null);
   const [nouvelle, setNouvelle] = useState<{ ref: string; logiciel: string; versions: string; gravite: VeilleVuln['gravite']; resume: string; correctif: string } | null>(null);
@@ -187,6 +187,15 @@ export function CyberVulnerabilites() {
                 </button>
               )}
               {vue.traiteeLe && <p className="mt-3 text-[12.5px] text-text-secondary">Traitée le {jourMois(vue.traiteeLe)} : une tâche par cliente, chez qui la suit.</p>}
+              <div className="mt-5 border-t border-[#1d2121] pt-3">
+                <Supprimer
+                  quoi={`la faille ${vue.ref} de la veille`}
+                  onConfirmer={() => {
+                    void remove('veilleVulns', vue.id);
+                    setChoisie(null);
+                  }}
+                />
+              </div>
             </Carte>
           )}
         </div>

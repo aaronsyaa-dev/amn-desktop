@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { uid } from '../../state/SyncContext';
+import { uid, useSync } from '../../state/SyncContext';
 import { AMBRE } from '../jetons';
 import { useStrategie } from '../donnees/strategie';
 import type { Temoignage } from '../donnees/types';
-import { Carte, EnTete, Invitation } from '../ui/kit';
-import { jourMois } from '../format';
+import { Carte, EnTete, Invitation, Supprimer } from '../ui/kit';
+import { court, jourMois } from '../format';
 import { champ, useEcrire } from './commun';
 
 /**
@@ -24,6 +24,7 @@ const ACCORD: Record<Temoignage['accord'], string> = { oui: 'accord écrit', non
 export function StrategieTemoignages() {
   const m = useStrategie();
   const ecrire = useEcrire<Temoignage>('temoignages');
+  const { remove } = useSync();
   const [nouveau, setNouveau] = useState<{ auteur: string; texte: string } | null>(null);
   const temoignages = m.temoignages as T[];
   const titres = new Map(m.campagnes.map((c) => [c.id, c.titre]));
@@ -110,6 +111,7 @@ export function StrategieTemoignages() {
                         ))}
                       </select>
                     )}
+                    <Supprimer papier quoi={`le témoignage de ${t.auteur}`} onConfirmer={() => void remove('temoignages', t.id)} />
                   </span>
                 </div>
                 {estAmbre && t.accord !== 'oui' && (t.campagnes ?? []).length > 0 && <p className="mt-2 text-[12px] font-semibold text-[#111]">Employé sans accord : à retirer de la campagne, ou à faire signer avant sa sortie.</p>}

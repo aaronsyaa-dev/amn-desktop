@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
-import { uid } from '../../state/SyncContext';
+import { uid, useSync } from '../../state/SyncContext';
 import { AMBRE } from '../jetons';
 import { ETAPES_PIPELINE, EN_COURS, initiales, useStrategie, type Prospect } from '../donnees/strategie';
 import type { ProspectStrategie } from '../donnees/types';
-import { Carte, EnTete, Invitation } from '../ui/kit';
+import { Carte, EnTete, Invitation, Supprimer } from '../ui/kit';
 import { enLettres, hhmm, jourCourt, prenomDe } from '../format';
 import { aujourdHui, champ, useEcrire } from './commun';
 
@@ -37,6 +37,7 @@ export function StrategiePipeline() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const ecrire = useEcrire<ProspectStrategie>('prospects');
+  const { remove } = useSync();
   const [echange, setEchange] = useState<{ type: Echange['type']; texte: string } | null>(null);
   const [prochaine, setProchaine] = useState<{ quoi: string; jour: string; appel: boolean } | null>(null);
   const auj = aujourdHui();
@@ -188,6 +189,15 @@ export function StrategiePipeline() {
                 Perdu
               </button>
             )}
+            <span className="ml-auto self-center">
+              <Supprimer
+                quoi={`le prospect ${p.name || p.company} et ses échanges`}
+                onConfirmer={() => {
+                  void remove('prospects', p.id);
+                  navigate('/strategie/pipeline');
+                }}
+              />
+            </span>
           </div>
           {echange && (
             <form

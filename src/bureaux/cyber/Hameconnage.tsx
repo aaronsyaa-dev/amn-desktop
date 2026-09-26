@@ -4,7 +4,7 @@ import { uid, useCollection, useSync } from '../../state/SyncContext';
 import { AMBRE } from '../jetons';
 import { useCyber } from '../donnees/cyber';
 import type { Hameconnage } from '../donnees/types';
-import { Carte, EnTete, Invitation } from '../ui/kit';
+import { Carte, EnTete, Invitation, Supprimer } from '../ui/kit';
 import { jourMois } from '../format';
 
 /**
@@ -25,7 +25,7 @@ const SEUIL_CLIC = 0.1;
 export function CyberHameconnage() {
   const c = useCyber();
   const { user } = useAuth();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const exos = (useCollection<Hameconnage>('hameconnages') as Exo[]).slice().sort((a, b) => b.date.localeCompare(a.date));
   const [plan, setPlan] = useState<{ orgId: string; titre: string; date: string; accordPar: string; cibles: string } | null>(null);
   const [chiffres, setChiffres] = useState<{ id: string; cliques: string; signales: string; notes: string } | null>(null);
@@ -131,12 +131,13 @@ export function CyberHameconnage() {
                     </div>
                   )}
                   {e.notes && <p className="mt-2 text-[12.5px] leading-relaxed text-text-secondary">{e.notes}</p>}
-                  <div className="mt-2 flex gap-4">
+                  <div className="mt-2 flex flex-wrap gap-4">
                     {e.date < aujourdHui && (
                       <button type="button" className="bx-lien" onClick={() => setChiffres({ id: e.id, cliques: String(e.cliques ?? ''), signales: String(e.signales ?? ''), notes: e.notes ?? '' })}>
                         {e.cliques === null ? 'Noter les chiffres' : 'Écrire le bilan'}
                       </button>
                     )}
+                    <Supprimer quoi={`la campagne « ${e.titre} »`} onConfirmer={() => void remove('hameconnages', e.id)} />
                   </div>
                   {chiffres?.id === e.id && (
                     <form

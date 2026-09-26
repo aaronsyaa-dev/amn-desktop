@@ -7,7 +7,7 @@ import type { Scan } from '../../shared/api';
 import { AMBRE } from '../jetons';
 import { useCyber } from '../donnees/cyber';
 import type { Actif } from '../donnees/types';
-import { Carte, EnTete, Invitation } from '../ui/kit';
+import { Carte, EnTete, Invitation, Supprimer } from '../ui/kit';
 import { jourMois } from '../format';
 
 /**
@@ -29,7 +29,7 @@ const RANG = { haut: 0, moyen: 1, bas: 2 } as const;
 export function CyberSurface() {
   const c = useCyber();
   const { user } = useAuth();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const [params, setParams] = useSearchParams();
   const [scans, setScans] = useState<Scan[]>([]);
   const [declare, setDeclare] = useState<{ hote: string; port: string; service: string; risque: 'haut' | 'moyen' | 'bas' } | null>(null);
@@ -152,6 +152,7 @@ export function CyberSurface() {
                             Refermé
                           </button>
                         )}
+                        {e.actif && <Supprimer libelle="Retirer" quoi={`${e.service} sur ${e.hote}`} onConfirmer={() => void remove('inventaire', e.actif!.id)} />}
                       </span>
                     </div>
                   );

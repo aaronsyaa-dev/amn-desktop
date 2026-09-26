@@ -4,8 +4,8 @@ import { uid } from '../../state/SyncContext';
 import { AMBRE } from '../jetons';
 import type { Piece } from '../donnees/studio';
 import type { PieceStudio } from '../donnees/types';
-import { Carte, Invitation } from '../ui/kit';
-import { enLettres } from '../format';
+import { Carte, Invitation, Supprimer } from '../ui/kit';
+import { court, enLettres } from '../format';
 import { jjmm, TetePiece, useEcrirePiece, usePieceCourante, versionSuivante } from './commun';
 import { PageEpinglee } from './Retours';
 import { depassements } from './Performance';
@@ -144,6 +144,9 @@ function Livraison({ p }: { p: Piece }) {
                           </span>
                         )}
                       </label>
+                      <span className="mt-1 flex justify-end">
+                        <Supprimer quoi={`le point « ${court(x.texte, 40)} »`} libelle="Retirer" onConfirmer={() => majPoints((xs) => xs.filter((y) => y.id !== x.id))} />
+                      </span>
                     </li>
                   );
                 })}

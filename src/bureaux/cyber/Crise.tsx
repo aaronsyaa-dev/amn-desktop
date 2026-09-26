@@ -5,7 +5,7 @@ import { useProfilesOptionnel } from '../../state/ProfilesContext';
 import { AMBRE } from '../jetons';
 import { useCyber } from '../donnees/cyber';
 import type { ExerciceCrise } from '../donnees/types';
-import { Carte, EnTete, Invitation } from '../ui/kit';
+import { Carte, EnTete, Invitation, Supprimer } from '../ui/kit';
 import { hhmm, jourMois, prenomDe } from '../format';
 
 /**
@@ -29,7 +29,7 @@ const SCENARIOS: { scenario: string; etapes: string[] }[] = [
 export function CyberCrise() {
   const c = useCyber();
   const { user } = useAuth();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const profils = useProfilesOptionnel();
   const exos = (useCollection<ExerciceCrise>('exercicesCrise') as Exo[]).slice().sort((a, b) => b.date.localeCompare(a.date));
   const [lancer, setLancer] = useState<{ orgId: string; modele: number; date: string } | null>(null);
@@ -137,6 +137,9 @@ export function CyberCrise() {
               <p key={e.id} className="border-b border-[#1d2121] py-2 text-[13px] text-text-body">
                 {jourMois(e.date)} · {nom(e.orgId)}
                 <span className="block text-[12px] text-text-secondary">{e.bilan ? 'bilan écrit' : e.etapes.every((x) => x.faiteLe) ? 'bilan à écrire' : `${e.etapes.filter((x) => x.faiteLe).length} étape${e.etapes.filter((x) => x.faiteLe).length > 1 ? 's' : ''} sur ${e.etapes.length}`}</span>
+                <span className="mt-1 block">
+                  <Supprimer quoi={`l’exercice du ${jourMois(e.date)}`} onConfirmer={() => void remove('exercicesCrise', e.id)} />
+                </span>
               </p>
             ))}
           </Carte>

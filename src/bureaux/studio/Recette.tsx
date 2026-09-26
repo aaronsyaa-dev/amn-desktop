@@ -4,7 +4,7 @@ import { uid } from '../../state/SyncContext';
 import { AMBRE } from '../jetons';
 import { useStudio } from '../donnees/studio';
 import type { PieceStudio } from '../donnees/types';
-import { Carte, EnTete, Invitation } from '../ui/kit';
+import { Carte, EnTete, Invitation, Supprimer } from '../ui/kit';
 import { deNom, enLettres, jourMois } from '../format';
 import { useEcrirePiece } from './commun';
 
@@ -146,6 +146,9 @@ export function StudioRecette() {
                   Valider la recette
                 </button>
               )}
+              <span className="ml-auto self-center">
+                <Supprimer quoi={`la recette de la page ${vue.r.page}`} onConfirmer={() => ecrire(vue.p.id, (b) => ({ recettes: (b.recettes ?? []).filter((x) => x.id !== vue.r.id) }))} />
+              </span>
             </div>
           </Carte>
           <Carte className="self-start" titre="Les recettes" droite={toutes.length}>

@@ -6,6 +6,7 @@ import { useStudio, LIBELLE_ETAT, type ModeleStudio, type Piece } from '../donne
 import { Carte, Chargement, EnTete, Erreur, Invitation, Ligne, Paire } from '../ui/kit';
 import { enLettres, enLettresF, ilYA, jourCourt } from '../format';
 import { EcranVide } from '../../components/EtatEcran';
+import { type Brouillon, NouvellePiece, VIERGE } from './NouvellePiece';
 
 /**
  * STUDIO · L'ACCUEIL — la façade (cahier 11 `45c`, planche `48e`).
@@ -29,6 +30,7 @@ export function StudioAccueil() {
   const s = useStudio();
   const { ready, pullFailed } = useSync();
   const [ouverts, setOuverts] = useState(ETAGES_OUVERTS);
+  const [brouillon, setBrouillon] = useState<Brouillon | null>(null);
   const vide = s.pieces.length === 0;
   const n = s.pieces.length;
   const chargement = !ready && vide;
@@ -63,7 +65,20 @@ export function StudioAccueil() {
 
   return (
     <EcranVide quand={vide && !chargement} premierJour={vide && !chargement}>
-      <EnTete accueil surtitre={`Studio · ${chargement ? 'lecture des pièces' : `${n} pièce${n > 1 ? 's' : ''}`}`} titre={titre} lede={lede} />
+      <EnTete
+        accueil
+        surtitre={`Studio · ${chargement ? 'lecture des pièces' : `${n} pièce${n > 1 ? 's' : ''}`}`}
+        titre={titre}
+        lede={lede}
+        actions={
+          brouillon ? undefined : (
+            <button type="button" className="bx-btn2" onClick={() => setBrouillon(VIERGE)}>
+              Ouvrir une pièce
+            </button>
+          )
+        }
+      />
+      <NouvellePiece pieces={s.pieces} b={brouillon} setB={setBrouillon} />
       <Carte dominante pad="p-7" titre="La façade · une fenêtre par pièce" droite="allumée = en ligne · échafaudage = chantier · store baissé = attente client">
         {chargement ? (
           <>
@@ -74,7 +89,15 @@ export function StudioAccueil() {
           <>
             <Facade pieces={[]} ambre={null} />
             <div className="mt-6">
-              <Invitation titre="Aucune pièce n’est encore ouverte." texte="Une pièce se crée pour chaque site ou application confié : son organisation, ce qu’on y construit, puis ses croquis, ses prompts et sa livraison." />
+              <Invitation
+                titre="Aucune pièce n’est encore ouverte."
+                texte="Une pièce se crée pour chaque site ou application confié : son organisation, ce qu’on y construit, puis ses croquis, ses prompts et sa livraison."
+                action={
+                  <button type="button" className="bx-btn" onClick={() => setBrouillon(VIERGE)}>
+                    Ouvrir la première pièce
+                  </button>
+                }
+              />
             </div>
           </>
         ) : ready && pullFailed ? (

@@ -105,3 +105,9 @@ export function deNom(nom: string): string {
   }
   return /^[aeiouyàâéèêëîïôöùû]/i.test(nom.trim()) ? `d’${nom.trim()}` : `de ${nom.trim()}`;
 }
+
+/** Un texte coupé à `n` caractères, avec « … » s'il dépasse — pour nommer un objet dans une question ou un libellé. */
+export function court(texte: string, n: number): string {
+  const t = texte.trim();
+  return t.length > n ? `${t.slice(0, n).trimEnd()}…` : t;
+}

@@ -5,8 +5,8 @@ import { useProfilesOptionnel } from '../../state/ProfilesContext';
 import { AMBRE } from '../jetons';
 import { useCyber } from '../donnees/cyber';
 import type { Campagne, NoteCarnet, RapportPosture } from '../donnees/types';
-import { Carte, EnTete, Invitation } from '../ui/kit';
-import { hhmm, jourLong, jourMois, prenomDe } from '../format';
+import { Carte, EnTete, Invitation, Supprimer } from '../ui/kit';
+import { court, hhmm, jourLong, jourMois, prenomDe } from '../format';
 import { numeroIncident } from './FicheIncident';
 
 /**
@@ -26,7 +26,7 @@ type Lien = NoteCarnet['liens'][number];
 export function CyberCarnet() {
   const c = useCyber();
   const { user } = useAuth();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const profils = useProfilesOptionnel();
   const notes = (useCollection<NoteCarnet>('carnet') as Note[]).slice().sort((a, b) => b.at.localeCompare(a.at));
   const campagnes = useCollection<Campagne>('campagnes');
@@ -173,6 +173,15 @@ export function CyberCarnet() {
                   ))}
                 </div>
               )}
+              <div className="mt-6 border-t border-[#1d2121] pt-3">
+                <Supprimer
+                  quoi={`l’entrée « ${court(titreDe(note.texte), 50)} »`}
+                  onConfirmer={() => {
+                    void remove('carnet', note.id);
+                    setChoisie(null);
+                  }}
+                />
+              </div>
             </Carte>
           )}
         </div>

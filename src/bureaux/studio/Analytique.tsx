@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { AMBRE } from '../jetons';
 import type { Piece } from '../donnees/studio';
 import type { PieceStudio } from '../donnees/types';
-import { Carte, Invitation } from '../ui/kit';
+import { Carte, Invitation, Supprimer } from '../ui/kit';
 import { jourCourt } from '../format';
 import { jjmm, TetePiece, useEcrirePiece, usePieceCourante } from './commun';
 
@@ -87,9 +87,14 @@ function Analytique({ p }: { p: Piece }) {
         onglet="analytique"
         titre={titre}
         actions={
-          <button type="button" className="bx-btn2" onClick={() => setNoter(!noter)} aria-expanded={noter}>
-            Noter un relevé
-          </button>
+          <>
+            {cur && (
+              <Supprimer quoi={`le relevé de la semaine du ${jjmm(cur.semaine)}`} libelle="Retirer" onConfirmer={() => ecrire(p.id, (b) => ({ mesures: (b.mesures ?? []).filter((x) => x.semaine !== cur.semaine) }))} />
+            )}
+            <button type="button" className="bx-btn2" onClick={() => setNoter(!noter)} aria-expanded={noter}>
+              Noter un relevé
+            </button>
+          </>
         }
       />
       {noter && <FormReleve dernier={cur} onNoter={noterReleve} onAnnuler={() => setNoter(false)} />}

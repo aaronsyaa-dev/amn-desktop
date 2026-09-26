@@ -6,7 +6,7 @@ import { useProfilesOptionnel } from '../../state/ProfilesContext';
 import { AMBRE } from '../jetons';
 import { CONTROLES, useCyber } from '../donnees/cyber';
 import type { Playbook, PlaybookRun } from '../donnees/types';
-import { Carte, EnTete, Invitation } from '../ui/kit';
+import { Carte, EnTete, Invitation, Supprimer } from '../ui/kit';
 import { hhmm, prenomDe } from '../format';
 
 /**
@@ -25,7 +25,7 @@ type Run = PlaybookRun & { id: string };
 export function CyberPlaybooks() {
   const c = useCyber();
   const { user } = useAuth();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const profils = useProfilesOptionnel();
   const [params, setParams] = useSearchParams();
   const playbooks = useCollection<Playbook>('playbooks') as Pb[];
@@ -181,6 +181,15 @@ export function CyberPlaybooks() {
                   Copier pour elle
                 </button>
               </div>
+              {lancer.playbookId && (
+                <Supprimer
+                  quoi={`le playbook « ${playbooks.find((p) => p.id === lancer.playbookId)?.nom ?? ''} »`}
+                  onConfirmer={() => {
+                    void remove('playbooks', lancer.playbookId);
+                    setLancer(null);
+                  }}
+                />
+              )}
             </div>
           )}
         </Carte>

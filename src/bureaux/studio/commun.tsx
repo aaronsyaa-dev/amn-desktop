@@ -1,10 +1,10 @@
 import React, { useCallback } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { stripMeta, useCollection, useSync } from '../../state/SyncContext';
 import { AMBRE } from '../jetons';
 import { useStudio, type Piece } from '../donnees/studio';
 import type { PieceStudio } from '../donnees/types';
-import { Chargement, EnTete, LienFort } from '../ui/kit';
+import { Chargement, EnTete, LienFort, Supprimer } from '../ui/kit';
 
 /**
  * STUDIO · LA PIÈCE PROJET — ce que ses six onglets partagent (cahier 14,
@@ -69,6 +69,13 @@ export function useEcrirePiece() {
 
 export function TetePiece({ p, onglet, titre, actions }: { p: Piece; onglet: OngletPiece; titre: React.ReactNode; actions?: React.ReactNode }) {
   const nom = ONGLETS_PIECE.find((o) => o.cle === onglet)?.nom ?? '';
+  const { remove } = useSync();
+  const navigate = useNavigate();
+  /* Fermer la pièce : elle quitte la façade et la barre. Ses croquis, prompts et notes partent avec elle. */
+  const fermer = () => {
+    void remove('studioPieces', p.id);
+    navigate('/studio');
+  };
   return (
     <>
       <EnTete surtitre={`Studio · ${p.plaque} · ${p.orgNom} · ${onglet === 'croquis' ? p.quoi : nom}`} titre={titre} actions={actions} marge={22} />
@@ -88,6 +95,9 @@ export function TetePiece({ p, onglet, titre, actions }: { p: Piece; onglet: Ong
             </Link>
           );
         })}
+        <span className="ml-auto flex-none self-center pb-3 pl-4">
+          <Supprimer quoi={p.plaque} libelle="Fermer la pièce" onConfirmer={fermer} />
+        </span>
       </nav>
     </>
   );

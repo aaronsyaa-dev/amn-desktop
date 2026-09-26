@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
-import { uid } from '../../state/SyncContext';
+import { uid, useSync } from '../../state/SyncContext';
 import { AMBRE } from '../jetons';
 import { useStrategie } from '../donnees/strategie';
 import type { Publication } from '../donnees/types';
-import { Carte, EnTete } from '../ui/kit';
+import { Carte, EnTete, Supprimer } from '../ui/kit';
 import { enLettresF, moisLong } from '../format';
-import { aujourdHui, champ, useEcrire } from './commun';
+import { aujourdHui, champ, jjmm, useEcrire } from './commun';
 
 /**
  * STRATÉGIE · LE CALENDRIER ÉDITORIAL (cahier 14, `49c`).
@@ -39,6 +39,7 @@ export function StrategieCalendrier() {
   const m = useStrategie();
   const { user } = useAuth();
   const ecrire = useEcrire<Publication>('publications');
+  const { remove } = useSync();
   const [params, setParams] = useSearchParams();
   const [nouvelle, setNouvelle] = useState<{ jour: string; canal: Canal; titre: string; heure: string; etat: Publication['etat'] } | null>(null);
   const auj = aujourdHui();
@@ -232,6 +233,25 @@ export function StrategieCalendrier() {
           )}
         </Carte>
       </div>
+
+      {pubs.length > 0 && (
+        <div className="mt-[18px]">
+          <Carte titre="Les publications du mois" droite={pubs.length}>
+            {[...pubs]
+              .sort((a, b) => a.jour.localeCompare(b.jour))
+              .map((x) => (
+                <div key={x.id} className="grid grid-cols-[56px_minmax(0,1fr)_auto] items-baseline gap-3.5 border-b border-[#222226] py-2.5">
+                  <span className="font-mono text-[11px] tabular-nums text-text-muted">{jjmm(x.jour)}</span>
+                  <span className="min-w-0 text-[13px] leading-[1.5] text-text-body">
+                    {nomCanal(x.canal)} · {x.titre}
+                    <span className="ml-2 font-mono text-[10px] uppercase text-text-muted">{x.etat === 'publiee' ? 'publiée' : x.etat === 'programmee' ? 'programmée' : 'à valider'}</span>
+                  </span>
+                  <Supprimer quoi={`« ${x.titre} »`} onConfirmer={() => void remove('publications', x.id)} />
+                </div>
+              ))}
+          </Carte>
+        </div>
+      )}
     </>
   );
 }

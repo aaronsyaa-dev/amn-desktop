@@ -4,8 +4,8 @@ import { uid } from '../../state/SyncContext';
 import { AMBRE } from '../jetons';
 import type { Piece } from '../donnees/studio';
 import type { PieceStudio } from '../donnees/types';
-import { Carte, Invitation } from '../ui/kit';
-import { enLettres, ilYA, prenomDe } from '../format';
+import { Carte, Invitation, Supprimer } from '../ui/kit';
+import { court, enLettres, ilYA, prenomDe } from '../format';
 import { jjmm, Punaise, TetePiece, useEcrirePiece, usePieceCourante } from './commun';
 
 /**
@@ -238,6 +238,14 @@ function Retours({ p }: { p: Piece }) {
                             <button type="button" className="bx-lien" onClick={() => traiter(r)}>
                               Traité sans réponse
                             </button>
+                            <Supprimer
+                              quoi={`le retour « ${court(r.texte, 40)} »`}
+                              libelle="Retirer"
+                              onConfirmer={() => {
+                                ecrire(p.id, (b) => ({ retours: (b.retours ?? []).filter((x) => x.id !== r.id) }));
+                                setChoisi(null);
+                              }}
+                            />
                           </div>
                         </div>
                       )}
@@ -256,6 +264,9 @@ function Retours({ p }: { p: Piece }) {
                       {r.par ? ` · de ${prenomDe(r.par)}` : ''}
                     </span>
                     {r.reponse && <span className="mt-1.5 block text-[12.5px] text-text-body">↳ {r.reponse}</span>}
+                    <span className="mt-1.5 block">
+                      <Supprimer quoi={`le retour « ${court(r.texte, 40)} »`} libelle="Retirer" onConfirmer={() => ecrire(p.id, (b) => ({ retours: (b.retours ?? []).filter((x) => x.id !== r.id) }))} />
+                    </span>
                   </div>
                 ))}
               </Carte>

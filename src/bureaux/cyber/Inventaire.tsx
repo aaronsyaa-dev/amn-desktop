@@ -8,7 +8,7 @@ import { AMBRE } from '../jetons';
 import { CONTROLES, useCyber } from '../donnees/cyber';
 import { useSourceBureaux } from '../donnees/source';
 import type { Actif, FamilleActif } from '../donnees/types';
-import { Carte, Chargement, EnTete, Invitation, Ligne } from '../ui/kit';
+import { Carte, Chargement, EnTete, Invitation, Ligne, Supprimer } from '../ui/kit';
 import { enLettres, jourCourt, jourLong, jourMois, signe } from '../format';
 
 /**
@@ -63,7 +63,7 @@ function Trousseau({ orgId }: { orgId: string }) {
   const c = useCyber();
   const src = useSourceBureaux();
   const { user } = useAuth();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const navigate = useNavigate();
   const [comptes, setComptes] = useState<AdminOrgUser[]>([]);
   const [ajout, setAjout] = useState<{ famille: FamilleActif; nom: string; echeance: string; seul: boolean; defaut: string } | null>(null);
@@ -158,7 +158,7 @@ function Trousseau({ orgId }: { orgId: string }) {
                   </span>
                   <div className="mt-2.5 flex flex-col gap-2">
                     {liste.map((x) => (
-                      <JetonActif key={x.id} x={x} ambre={ambre?.id === x.id} />
+                      <JetonActif key={x.id} x={x} ambre={ambre?.id === x.id} onRetirer={x.source === 'declare' ? () => void remove('inventaire', x.id) : undefined} />
                     ))}
                   </div>
                 </div>
@@ -215,7 +215,8 @@ function Trousseau({ orgId }: { orgId: string }) {
   );
 }
 
-function JetonActif({ x, ambre }: { x: Jeton; ambre: boolean }) {
+/* Seul un actif DÉCLARÉ se retire ici : ceux qui sont relevés (sites, certificats) ou remontés par le desktop reviendraient d'eux-mêmes. */
+function JetonActif({ x, ambre, onRetirer }: { x: Jeton; ambre: boolean; onRetirer?: () => void }) {
   const remplissage = x.jours === null ? null : Math.max(0.04, Math.min(1, 1 - x.jours / 90));
   return (
     <div className="px-3 py-2.5" style={{ background: ambre ? 'rgba(208,154,74,.08)' : '#161919', border: `1px solid ${ambre ? AMBRE : '#212525'}` }} data-signal-groupe={ambre ? 'trousseau-ambre' : undefined} title={`${x.nom} · ${x.source === 'declare' ? 'déclaré' : x.source === 'desktop' ? 'remonté par son desktop' : 'relevé'}`}>
@@ -227,6 +228,11 @@ function JetonActif({ x, ambre }: { x: Jeton; ambre: boolean }) {
       {remplissage !== null && (
         <span className="mt-2 block h-[3px] bg-[#2b3030]" aria-hidden>
           <span className="block h-full" style={{ width: `${remplissage * 100}%`, background: ambre ? AMBRE : '#6b7070' }} />
+        </span>
+      )}
+      {onRetirer && (
+        <span className="mt-2 block">
+          <Supprimer libelle="Retirer" quoi={x.nom} onConfirmer={onRetirer} />
         </span>
       )}
     </div>

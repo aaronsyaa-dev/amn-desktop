@@ -1,4 +1,4 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { BureauKey } from '../jetons';
 import { AMBRE } from '../jetons';
@@ -202,4 +202,58 @@ export function Invitation({ titre, texte, action }: { titre: string; texte: str
 /** Deux cartes calmes côte à côte, sous l'objet dominant. */
 export function Paire({ children }: { children: React.ReactNode }) {
   return <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-2">{children}</div>;
+}
+
+/**
+ * SUPPRIMER, EN DEUX TEMPS — ce que les bureaux créent, ils doivent pouvoir
+ * le retirer (audit avant vente : une pièce, une campagne, une entrée de
+ * carnet créées par erreur restaient pour toujours).
+ *
+ * Le premier clic ne supprime rien : il pose la question en clair à la place
+ * du lien (« Supprimer ce prompt ? Oui · Non »). Pas de fenêtre : la question
+ * reste là où on a cliqué. Le rouge ne vient qu'au « Oui ».
+ */
+export function Supprimer({
+  onConfirmer,
+  quoi,
+  libelle = 'Supprimer',
+  className = '',
+  papier = false,
+}: {
+  onConfirmer: () => void;
+  quoi: string;
+  libelle?: string;
+  className?: string;
+  /** Posé sur une fiche papier claire (`bx-papier`) : encre sombre, jamais le blanc des liens. */
+  papier?: boolean;
+}) {
+  const [question, setQuestion] = useState(false);
+  const lien = papier ? 'text-[11.5px] font-semibold text-[#111] underline decoration-[#8a8a87] underline-offset-2' : 'bx-lien';
+  if (!question) {
+    return (
+      <button type="button" className={`${lien} ${className}`} onClick={() => setQuestion(true)} aria-label={`${libelle} ${quoi}`}>
+        {libelle}
+      </button>
+    );
+  }
+  return (
+    <span className={`inline-flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-[12px] ${className}`} role="group" aria-label={`${libelle} ${quoi} ?`}>
+      <span className={papier ? 'text-[#3a3a38]' : 'text-text-secondary'}>
+        {libelle} {quoi} ?
+      </span>
+      <button
+        type="button"
+        className={papier ? 'font-semibold text-[#8f1d12] underline underline-offset-2' : 'font-semibold text-danger underline underline-offset-4'}
+        onClick={() => {
+          setQuestion(false);
+          onConfirmer();
+        }}
+      >
+        Oui, {libelle.toLowerCase()}
+      </button>
+      <button type="button" className={lien} onClick={() => setQuestion(false)}>
+        Non
+      </button>
+    </span>
+  );
 }
