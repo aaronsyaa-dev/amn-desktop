@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { BranchementManquant } from '../components/BranchementManquant';
 import {
   Bloc,
   BoutonSecondaire,
@@ -88,6 +89,8 @@ export function SignatureDistanceScreen() {
           phraseVide={t('m50.remoteSign.phraseVide')}
         />
       </Bloc>
+
+      {vide && <BranchementManquant module="Signature à distance" source="un service de signature électronique qui envoie vos documents et suit chaque signataire" enAttendant="En attendant, un devis signé se note à la main dans Acompte." />}
 
       <Dominante surtitre={courant ? `Le circuit · ${courant.c.document}` : 'Le circuit · dans l’ordre imposé'} note={courant ? 'Le témoin = le document' : undefined}>
         {!courant ? (

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { BranchementManquant } from '../components/BranchementManquant';
 import { Bloc, BoutonSecondaire, Calmes, CarteCalme, CarteReleves, Dominante, Ecran50, LigneRegistre, PiedDominante, donnees } from '../components/cinquante-kit';
 import { useCollection, useSync } from '../state/SyncContext';
 import { enLettres } from '../lib/cinquante/lettres';
@@ -86,6 +87,8 @@ export function ExtensionsScreen() {
           phraseVide={t('m50.extensions.phraseVide')}
         />
       </Bloc>
+
+      {vide && <BranchementManquant module="Extensions" source="les extensions installées sur votre espace et les accès qu’elles demandent" />}
 
       <Dominante surtitre={courante ? `Le poste de douane · ${courante.nom}` : 'Le poste de douane'} note={courante ? '→ = l’extension lit · ← = l’extension écrit' : undefined}>
         {!courante ? (

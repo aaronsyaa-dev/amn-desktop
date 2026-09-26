@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { BranchementManquant } from '../components/BranchementManquant';
 import { Bloc, Calmes, CarteCalme, CarteReleves, Dominante, Ecran50, LigneBarre, PiedDominante } from '../components/cinquante-kit';
 import { useCollection } from '../state/SyncContext';
 import { enLettres } from '../lib/cinquante/lettres';
@@ -60,6 +61,8 @@ export function SentimentScreen() {
           phraseVide={t('m50.sentiment.phraseVide')}
         />
       </Bloc>
+
+      {vide && <BranchementManquant module="Sentiment" source="les avis, réponses au sondage et messages de vos clients, regroupés par ce qu’ils disent" enAttendant="En attendant, les réponses au sondage se notent dans NPS." />}
 
       <Dominante
         surtitre={`Ce que disent vos clients · ${FENETRE_SENTIMENT_J} jours`}

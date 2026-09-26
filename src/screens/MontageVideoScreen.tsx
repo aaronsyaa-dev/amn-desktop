@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { BranchementManquant } from '../components/BranchementManquant';
 import {
   Bloc,
   BoutonSecondaire,
@@ -98,6 +99,8 @@ export function MontageVideoScreen() {
           phraseVide={t('m50.video.phraseVide')}
         />
       </Bloc>
+
+      {vide && <BranchementManquant module="Montage vidéo" source="vos rushs envoyés à l’outil de montage" />}
 
       <Dominante
         surtitre={`La pellicule · échelle ${ECHELLE_BOBINE_S} s`}

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { BranchementManquant } from '../components/BranchementManquant';
 import {
   Bloc,
   BoutonSecondaire,
@@ -162,6 +163,8 @@ export function ItinerairesScreen() {
           phraseVide={t('m50.itineraries.phraseVide')}
         />
       </Bloc>
+
+      {vide && <BranchementManquant module="Itinéraires" source="vos tournées, une fois les adresses placées sur une carte et les distances calculées" enAttendant="En attendant, les tournées se préparent à la main dans Tournées." />}
 
       <Dominante
         surtitre={plan ? `${libelleJour} · ${plan.arrets.length} arrêt${plan.arrets.length > 1 ? 's' : ''}` : 'Demain'}

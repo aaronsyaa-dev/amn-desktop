@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { BranchementManquant } from '../components/BranchementManquant';
 import {
   Bloc,
   BoutonSecondaire,
@@ -118,6 +119,8 @@ export function VisuelsPubScreen() {
           phraseVide={t('m50.adVisuals.phraseVide')}
         />
       </Bloc>
+
+      {vide && <BranchementManquant module="Visuels pub" source="vos campagnes publicitaires, dont les visuels sont déclinés dans chaque format" />}
 
       <Dominante
         surtitre={c ? `La planche · même échelle pour les ${L(c.formats.length)} formats` : 'La planche'}

@@ -417,7 +417,7 @@ function ListeModules({ cles, ordreFamilles, etats, nomDe, tuile }: { cles: stri
             const ouverte = estOuverte(famille, ordreFamilles.find(([f]) => f === famille)![1]);
             const avecEtat = liste.filter((k) => etats[k]).length;
             return (
-              <div key={famille} className="border-t border-[#1f1f1f] pt-2">
+              <div key={famille} className="border-t border-border pt-2">
                 <button type="button" aria-expanded={ouverte} onClick={() => basculer(famille)} className="flex w-full items-baseline gap-3 py-1 text-left" disabled={Boolean(q) || filtre !== 'tous'}>
                   <span className="w-3 font-mono text-[10px] text-text-muted" aria-hidden>
                     {ouverte ? '▾' : '▸'}

@@ -171,7 +171,7 @@ export function IdentiteVisuelleScreen() {
           champs={[
             { cle: 'monogramme', intitule: 'Monogramme', type: 'texte', requis: true, aide: 'Les lettres ou le signe du logo : « LM ».' },
             { cle: 'mention', intitule: 'Mention', type: 'texte', requis: true, aide: 'Le texte posé sous le monogramme : « NETTOYAGE ».' },
-            { cle: 'couleurs', intitule: 'Couleurs', type: 'texte', aide: 'Codes séparés par des virgules : « #0a0a0a, #f7f7f5 ».' },
+            { cle: 'couleurs', intitule: 'Couleurs', type: 'texte', aide: 'Codes séparés par des virgules : « #1d3557, #e63946 ».' },
             { cle: 'polices', intitule: 'Polices', type: 'texte', aide: 'Séparées par des virgules.' },
           ]}
           enregistrer={(v) => enregistrerLogo(v, logo?.id)}

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { BranchementManquant } from '../components/BranchementManquant';
 import {
   Bloc,
   BoutonSecondaire,
@@ -113,6 +114,8 @@ export function TraductionScreen() {
           phraseVide={t('m50.translation.phraseVide')}
         />
       </Bloc>
+
+      {vide && <BranchementManquant module="Traduction" source="un moteur de traduction qui traduit vos documents en gardant votre glossaire" />}
 
       <Dominante surtitre="Le document, ligne à ligne" note={courant ? `En clair = français · en italique = ${LANGUES[courant.langue].adjectif}` : undefined}>
         {!courant ? (

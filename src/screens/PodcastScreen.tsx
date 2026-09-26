@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { BranchementManquant } from '../components/BranchementManquant';
 import {
   Bloc,
   BoutonSecondaire,
@@ -95,6 +96,8 @@ export function PodcastScreen() {
           phraseVide={t('m50.podcast.phraseVide')}
         />
       </Bloc>
+
+      {vide && <BranchementManquant module="Podcast" source="vos enregistrements audio envoyés pour être découpés et publiés" />}
 
       <Dominante
         surtitre={ep ? `L’épisode ${ep.numero} · « ${ep.titre} »` : 'L’épisode'}

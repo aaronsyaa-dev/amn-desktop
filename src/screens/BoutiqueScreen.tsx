@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ShoppingBasket } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { BranchementManquant } from '../components/BranchementManquant';
 import {
   Bloc,
   BoutonSecondaire,
@@ -163,6 +164,8 @@ export function BoutiqueScreen() {
           phraseVide={t('m50.shop.phraseVide')}
         />
       </Bloc>
+
+      {vide && <BranchementManquant module="Boutique" source="votre boutique en ligne (chaque panier ouvert par un acheteur)" />}
 
       <Dominante
         surtitre="Le parcours d’achat · 30 derniers jours"

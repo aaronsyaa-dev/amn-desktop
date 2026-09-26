@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { BranchementManquant } from '../components/BranchementManquant';
 import {
   Bloc,
   BoutonPrimaire,
@@ -82,6 +83,8 @@ export function VerificationIdentiteScreen() {
           phraseVide={t('m50.kyc.phraseVide')}
         />
       </Bloc>
+
+      {vide && <BranchementManquant module="Vérification d’identité" source="un service qui contrôle les pièces d’identité de vos clients" />}
 
       <Dominante surtitre={v ? `La serrure · ${v.client}` : 'La serrure'} note={v ? 'Coupure sur la ligne = contrôle réussi' : undefined}>
         {!v || !s ? (

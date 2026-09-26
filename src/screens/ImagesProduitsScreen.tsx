@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { BranchementManquant } from '../components/BranchementManquant';
 import {
   Bloc,
   BoutonSecondaire,
@@ -109,6 +110,8 @@ export function ImagesProduitsScreen() {
           phraseVide={t('m50.productShots.phraseVide')}
         />
       </Bloc>
+
+      {vide && <BranchementManquant module="Images produits" source="les photos de vos produits, détourées et mises en scène" />}
 
       <Dominante
         surtitre={produit ? `La tournette · une photo, ${L(siennes.length)} décors` : 'La tournette'}

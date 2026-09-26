@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Bloc, BoutonSecondaire, Calmes, CarteCalme, CarteReleves, Dominante, Ecran50, LigneRegistre, PiedDominante, donnees } from '../components/cinquante-kit';
-import { useCollection, useSync } from '../state/SyncContext';
+import { SaisieModule, versIso, versJour } from '../components/SaisieModule';
+import { useAuth } from '../auth/AuthContext';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import {
   type DocumentClasseur,
   type EnregistrementClasseur,
@@ -60,7 +62,8 @@ function Paragraphe({ p, ambre }: { p: ParagraphePalimpseste; ambre: boolean }) 
 
 export function ClasseurScreen() {
   const { t } = useLangue();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
+  const { user } = useAuth();
   const tout = useCollection<EnregistrementClasseur>('documentVersions');
   const [maintenant] = useState(() => new Date());
 
@@ -76,6 +79,52 @@ export function ClasseurScreen() {
   /* Le document montré : celui dont la version courante s'écarte de la signée ; sinon le plus récent. */
   const courant = lus.find((x) => x.apresSignature) ?? [...lus].sort((a, b) => b.dernier.localeCompare(a.dernier))[0] ?? null;
   const vide = documents.length === 0;
+  /*
+    SAISIE — un document se dépose en texte, un paragraphe par bloc (une
+    ligne vide entre deux). Modifier le texte dépose une NOUVELLE version :
+    le palimpseste garde les précédentes. Noter la signature fige la version
+    signée ; ce qui change après se voit en ambre.
+  */
+  const versParagraphes = (texte: string) =>
+    texte
+      .split(/\n\s*\n/)
+      .map((b) => b.trim())
+      .filter(Boolean)
+      .map((b, i) => {
+        const [premiere, ...reste] = b.split('\n');
+        return reste.length > 0 && premiere.length <= 80 ? { titre: premiere.trim(), texte: reste.join(' ').trim() } : { titre: `Paragraphe ${i + 1}`, texte: b.replace(/\n/g, ' ') };
+      });
+  const versTexte = (v: VersionClasseur | undefined) => (v ? v.paragraphes.map((x) => (x.titre.startsWith('Paragraphe ') ? x.texte : `${x.titre}\n${x.texte}`)).join('\n\n') : '');
+  const enregistrer = async (v: Record<string, string>, id?: string) => {
+    const docId = id ?? uid();
+    const avant = documents.find((d) => d.id === docId);
+    const vs = versionsDe(docId);
+    const derniereV = vs[vs.length - 1];
+    let numero = derniereV?.numero ?? 0;
+    if (!derniereV || versTexte(derniereV).trim() !== v.texte.trim()) {
+      numero += 1;
+      await upsert('documentVersions', uid(), {
+        kind: 'version',
+        documentId: docId,
+        numero,
+        paragraphes: versParagraphes(v.texte),
+        auteur: user?.name ?? user?.email ?? 'vous',
+        deposeLe: new Date().toISOString(),
+        octets: new Blob([v.texte]).size,
+      });
+    }
+    const signeeVersion = v.signeLe ? (avant?.signeeVersion ?? derniereV?.numero ?? numero) : undefined;
+    await upsert('documentVersions', docId, {
+      kind: 'document',
+      titre: v.titre.trim(),
+      ...(signeeVersion ? { signeeVersion, signeeLe: versIso(v.signeLe), signataire: v.signataire.trim() || undefined, etat: 'en vigueur' } : { etat: 'brouillon' }),
+      ...(avant?.envoyeeASignerLe ? { envoyeeASignerLe: avant.envoyeeASignerLe } : {}),
+    });
+  };
+  const supprimerDocument = async (id: string) => {
+    for (const x of versionsDe(id)) await remove('documentVersions', x.id);
+    await remove('documentVersions', id);
+  };
   const derniere = courant?.vs[courant.vs.length - 1] ?? null;
   const ambreP = courant?.pal.find((p) => p.apresSignature) ?? null;
 
@@ -92,14 +141,14 @@ export function ClasseurScreen() {
 
   const pied = (() => {
     if (!courant || !derniere) return '';
-    if (!courant.d.signeeVersion) return `Version ${derniere.numero}, déposée par ${prenom(derniere.auteur)} le ${date(derniere.deposeLe)}. Aucune version n’est signée.`;
+    if (!courant.d.signeeVersion) return `Version ${derniere.numero}, déposée par ${prenom(derniere.auteur)} le ${date(derniere.deposeLe).replace(/\.$/, '')}. Aucune version n’est signée.`;
     const s = courant.d.signeeVersion;
     if (!ambreP) return `${courant.d.signataire ?? 'Le client'} a signé la version ${s}, qui est la version courante.`;
     const changees = ambreP.phrases.flatMap((ph) => ph.couches.filter((c) => c.apresSignature).map((c) => ({ avant: c.texte, apres: ph.actuel })));
     const ch = changees[changees.length - 1];
     return `${courant.d.signataire ?? 'Le client'} a signé la version ${s}${ch ? `, à « ${ch.avant} »` : ''}. La version ${derniere.numero} porte ${
       ch ? `« ${ch.apres} »` : 'un autre texte'
-    } : ce changement n’engage le client que s’il signe à nouveau.${courant.d.envoyeeASignerLe ? ` La v${derniere.numero} est partie à signer le ${date(courant.d.envoyeeASignerLe)}.` : ''}`;
+    } : ce changement n’engage le client que s’il signe à nouveau.${courant.d.envoyeeASignerLe ? ` La v${derniere.numero} est partie à signer le ${date(courant.d.envoyeeASignerLe).replace(/\.$/, '')}.` : ''}`;
   })();
 
   const description = vide
@@ -118,6 +167,26 @@ export function ClasseurScreen() {
           phraseVide={t('m50.binder.phraseVide')}
         />
       </Bloc>
+
+      <SaisieModule
+        ajouter="Déposer un document"
+        ouvertParDefaut={vide}
+        surtitreListe="Les documents"
+        champs={[
+          { cle: 'titre', intitule: 'Titre', type: 'texte', requis: true, aide: '« Contrat de maintenance Bertaux », « Règlement intérieur ».' },
+          { cle: 'texte', intitule: 'Texte', type: 'long', requis: true, aide: 'Un paragraphe par bloc, une ligne vide entre deux. Une première ligne courte devient le titre du paragraphe. Modifier le texte dépose une nouvelle version.' },
+          { cle: 'signeLe', intitule: 'Signé le', type: 'date', aide: 'Fige la version signée : ce qui changera après se verra.' },
+          { cle: 'signataire', intitule: 'Signé par', type: 'texte' },
+        ]}
+        enregistrer={enregistrer}
+        elements={lus.map((x) => ({
+          id: x.d.id,
+          libelle: x.d.titre,
+          detail: `${x.vs.length} version${x.vs.length > 1 ? 's' : ''}${x.d.signeeLe ? ` · signée le ${versJour(x.d.signeeLe)}` : ''}`,
+          valeurs: { titre: x.d.titre, texte: versTexte(x.vs[x.vs.length - 1]), signeLe: versJour(x.d.signeeLe), signataire: x.d.signataire ?? '' },
+        }))}
+        supprimer={supprimerDocument}
+      />
 
       <Dominante surtitre="Le document et ses couches" note={courant ? 'Pâle et barré = texte d’une version antérieure' : undefined}>
         {!courant || !derniere ? (

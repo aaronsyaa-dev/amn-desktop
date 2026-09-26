@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Check, Loader2, MessageSquareText, Send } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { StaggerGroup, StaggerItem } from '../components/Stagger';
@@ -93,8 +94,10 @@ export function AssistanceScreen() {
   const { membres, prets: membresPrets } = useMembers();
 
   const [demandes, setDemandes] = useState<SupportRequest[] | null>(null);
-  const [objet, setObjet] = useState('');
-  const [texte, setTexte] = useState('');
+  /* Un module peut ouvrir ce formulaire déjà rempli (« Demander le branchement ») : `?objet=…&texte=…`. */
+  const [params] = useSearchParams();
+  const [objet, setObjet] = useState(() => (params.get('objet') ?? '').slice(0, SUBJECT_MAX));
+  const [texte, setTexte] = useState(() => params.get('texte') ?? '');
   const [envoi, setEnvoi] = useState(false);
   const [envoye, setEnvoye] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);

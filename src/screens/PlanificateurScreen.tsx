@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { BranchementManquant } from '../components/BranchementManquant';
 import {
   Bloc,
   BoutonSecondaire,
@@ -147,6 +148,8 @@ export function PlanificateurScreen() {
           phraseVide={t('m50.postPlanner.phraseVide')}
         />
       </Bloc>
+
+      {vide && <BranchementManquant module="Planificateur" source="vos comptes de réseaux sociaux (Instagram, Facebook, LinkedIn…) une fois reliés" />}
 
       <Dominante
         surtitre="L’audience, heure par heure · 28 derniers jours"

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { BranchementManquant } from '../components/BranchementManquant';
 import {
   Bloc,
   BoutonSecondaire,
@@ -234,6 +235,8 @@ export function StandardScreen() {
           phraseVide={t('m50.switchboard.phraseVide')}
         />
       </Bloc>
+
+      {vide && <BranchementManquant module="Standard" source="votre ligne téléphonique, décrochée par l’assistant vocal" />}
 
       {!appel ? (
         <Dominante surtitre="Les promesses">

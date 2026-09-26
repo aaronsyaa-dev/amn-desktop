@@ -13,7 +13,8 @@ import {
   PiedDominante,
   donnees,
 } from '../components/cinquante-kit';
-import { useCollection, useSync } from '../state/SyncContext';
+import { type ChampSaisie, SaisieModule } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { enLettres } from '../lib/cinquante/lettres';
 import {
   type Carte,
@@ -65,7 +66,7 @@ function CarteLead({ c, sortie }: { c: Carte; sortie: boolean }) {
 
 export function ScoringLeadsScreen() {
   const { t, langue } = useLangue();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const tout = useCollection<EnregistrementLead>('leadScores');
   const [maintenant] = useState(() => new Date());
   const criteresRef = useRef<HTMLDivElement>(null);
@@ -91,6 +92,60 @@ export function ScoringLeadsScreen() {
     if (recalcul.parEvenement) return memeJour ? `à ${h}` : `hier, ${h}`;
     return memeJour ? `ce matin, ${h}` : `hier, ${h}`;
   })();
+
+  /*
+    SAISIE — un lead et ce qu'on sait de lui, critère par critère : une
+    ligne remplie est un fait qui compte (« a appelé lundi », « 4 sites »).
+    Il faut trois faits pour qu'une carte soit montrée — un score sans ses
+    trois raisons ne l'est jamais. Les critères de départ sont posés au
+    premier lead ; leur poids s'apprend ensuite des leads signés ou perdus.
+  */
+  const CRITERES_DEPART: Array<[string, string, number]> = [
+    ['entrant', 'Contact entrant (appel, formulaire)', 30],
+    ['recommandation', 'Recommandation d’un client', 25],
+    ['connu', 'Budget et besoin connus', 20],
+    ['visites', 'Visites du site', 15],
+    ['zone', 'Dans la zone d’intervention', 10],
+  ];
+  const listeCriteres = criteres.length ? criteres.map((c) => ({ cle: c.cle, nom: c.nom })) : CRITERES_DEPART.map(([cle, nom]) => ({ cle, nom }));
+  const champsLead: ChampSaisie[] = [
+    { cle: 'nom', intitule: 'Lead', type: 'texte', requis: true, aide: 'La personne ou l’entreprise.' },
+    { cle: 'telephone', intitule: 'Téléphone', type: 'texte' },
+    ...listeCriteres.map((c) => ({ cle: `f-${c.cle}`, intitule: c.nom, type: 'texte' as const, aide: 'Ce qui le montre, en quelques mots. Vide : non.' })),
+    {
+      cle: 'issue',
+      intitule: 'Issue',
+      type: 'choix',
+      options: [
+        { valeur: 'ouvert', libelle: 'Encore ouvert' },
+        { valeur: 'signe', libelle: 'Signé' },
+        { valeur: 'perdu', libelle: 'Perdu' },
+      ],
+    },
+  ];
+  const enregistrerLead = async (v: Record<string, string>, id?: string) => {
+    if (criteres.length === 0) {
+      for (const [cle, nom, poidsInitial] of CRITERES_DEPART) await upsert('leadScores', `critere-${cle}`, { kind: 'critere', cle, nom, poidsInitial });
+    }
+    const avant = leads.find((l) => l.id === id);
+    const le = new Date().toISOString();
+    const faits = listeCriteres
+      .filter((c) => (v[`f-${c.cle}`] ?? '').trim())
+      .map((c) => {
+        const texte = v[`f-${c.cle}`].trim();
+        return avant?.faits.find((f) => f.critere === c.cle && f.texte === texte) ?? { critere: c.cle, texte, force: 1, le };
+      });
+    const clos = v.issue !== 'ouvert';
+    await upsert('leadScores', id ?? uid(), {
+      kind: 'lead',
+      nom: v.nom.trim(),
+      ...(v.telephone.trim() ? { telephone: v.telephone.trim() } : {}),
+      ouvertLe: avant?.ouvertLe ?? le,
+      faits,
+      ...(clos ? { closLe: avant?.closLe ?? le, signe: v.issue === 'signe' } : {}),
+      ...(avant?.joueEnPremierLe ? { joueEnPremierLe: avant.joueEnPremierLe } : {}),
+    });
+  };
 
   const jouer = async () => {
     if (!sortie) return;
@@ -122,6 +177,30 @@ export function ScoringLeadsScreen() {
           }
         />
       </Bloc>
+
+      <SaisieModule
+        ajouter="Ajouter un lead"
+        ouvertParDefaut={leads.length === 0}
+        note="Trois faits au moins pour qu’un score soit montré"
+        surtitreListe="Les leads"
+        champs={champsLead}
+        enregistrer={enregistrerLead}
+        elements={[...leads]
+          .sort((a, b) => b.ouvertLe.localeCompare(a.ouvertLe))
+          .slice(0, 80)
+          .map((l) => ({
+            id: l.id,
+            libelle: l.nom,
+            detail: `${l.faits.length} fait${l.faits.length > 1 ? 's' : ''} · ${l.closLe ? (l.signe ? 'signé' : 'perdu') : 'ouvert'}`,
+            valeurs: {
+              nom: l.nom,
+              telephone: l.telephone ?? '',
+              issue: l.closLe ? (l.signe ? 'signe' : 'perdu') : 'ouvert',
+              ...Object.fromEntries(listeCriteres.map((c) => [`f-${c.cle}`, l.faits.find((f) => f.critere === c.cle)?.texte ?? ''])),
+            },
+          }))}
+        supprimer={(id) => remove('leadScores', id)}
+      />
 
       <Dominante surtitre="La main du jour" note={sortie ? 'La carte qui sort est celle à jouer' : undefined}>
         {!sortie ? (

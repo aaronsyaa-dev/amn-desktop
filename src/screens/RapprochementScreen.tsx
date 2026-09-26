@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { BranchementManquant } from '../components/BranchementManquant';
 import { Bloc, BoutonSecondaire, Calmes, CarteCalme, CarteReleves, Dominante, Ecran50, LigneRegistre, PiedDominante } from '../components/cinquante-kit';
 import { useCollection, useSync } from '../state/SyncContext';
 import { formatCents, formatCentsCompact } from '../lib/money';
@@ -83,6 +84,8 @@ export function RapprochementScreen() {
           phraseVide={t('m50.reconciliation.phraseVide')}
         />
       </Bloc>
+
+      {vide && <BranchementManquant module="Rapprochement" source="le relevé de votre compte bancaire, importé ou relié à votre banque" />}
 
       <Dominante
         surtitre={debut ? `Relevé ↔ écritures · depuis le ${new Date(debut).getDate()} ${['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'][new Date(debut).getMonth()]}` : 'Relevé ↔ écritures'}

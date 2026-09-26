@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { BranchementManquant } from '../components/BranchementManquant';
 import {
   Bloc,
   BoutonPrimaire,
@@ -89,6 +90,8 @@ export function ChatbotScreen() {
           phraseVide={t('m50.chatbot.phraseVide')}
         />
       </Bloc>
+
+      {vide && <BranchementManquant module="Chatbot" source="un assistant posé sur votre site, qui répond aux visiteurs avec votre FAQ" />}
 
       <Dominante
         surtitre={`La FAQ, vue par ses questions · ${MOIS[maintenant.getMonth()]}`}

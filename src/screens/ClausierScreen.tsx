@@ -13,9 +13,10 @@ import {
   PiedDominante,
   donnees,
 } from '../components/cinquante-kit';
-import { useCollection, useSync } from '../state/SyncContext';
+import { SaisieModule, Saisies } from '../components/SaisieModule';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { enLettres } from '../lib/cinquante/lettres';
-import { type Clause, type ContratGenere, type EnregistrementClausier, PLI_PX, plier } from '../lib/cinquante/juridique';
+import { type Clause, type ContratGenere, type EnregistrementClausier, PLI_PX, type Reponses, plier } from '../lib/cinquante/juridique';
 import type { Id } from '../lib/cinquante/guichet';
 import { useLangue } from '../i18n';
 
@@ -44,7 +45,7 @@ const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 
 
 export function ClausierScreen() {
   const { t, langue } = useLangue();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const tout = useCollection<EnregistrementClausier>('clauseContracts');
   const fiches = useCollection<{ name: string; company: string }>('clients');
   const L = (n: number, maj = false) => enLettres(n, langue, maj);
@@ -59,6 +60,48 @@ export function ClausierScreen() {
   const p = contrat ? plier(clauses, contrat, fiche) : null;
   const vide = !contrat;
   const majDerniere = clauses.map((c) => c.majLe).filter((x): x is string => !!x).sort().pop();
+
+  /*
+    SAISIE — la bibliothèque de clauses, chacune avec la réponse qui la fait
+    entrer dans un contrat ; puis un contrat : cinq réponses, et le pliage se
+    fait seul. Les réponses possibles sont celles que le pliage sait lire.
+  */
+  const CONDITIONS: Array<{ valeur: string; libelle: string; si?: Partial<Reponses> }> = [
+    { valeur: 'toujours', libelle: 'Toujours' },
+    { valeur: 'particulier', libelle: 'Client particulier', si: { client: 'particulier' } },
+    { valeur: 'professionnel', libelle: 'Client professionnel', si: { client: 'professionnel' } },
+    { valeur: 'annuelle', libelle: 'Contrat annuel', si: { duree: 'annuelle' } },
+    { valeur: 'acompte', libelle: 'Paiement avec acompte', si: { paiement: 'acompte 30 %' } },
+    { valeur: 'soustraitance', libelle: 'Sous-traitance autorisée', si: { soustraitance: 'oui' } },
+  ];
+  const conditionDe = (c: Clause) => CONDITIONS.find((x) => x.si && c.siReponses && JSON.stringify(x.si) === JSON.stringify(c.siReponses))?.valeur ?? 'toujours';
+  const enregistrerClause = async (v: Record<string, string>, id?: string) => {
+    const avant = clauses.find((c) => c.id === id);
+    const cond = CONDITIONS.find((x) => x.valeur === v.condition);
+    await upsert('clauseContracts', id ?? uid(), {
+      kind: 'clause',
+      numero: avant?.numero ?? Math.max(0, ...clauses.map((c) => c.numero)) + 1,
+      titre: v.titre.trim(),
+      texte: v.texte.trim(),
+      source: v.source.trim() || 'Rédaction interne',
+      siReponses: cond?.si ?? {},
+      ...(v.obligatoire === 'oui' && cond?.si ? { obligatoireSi: cond.si } : {}),
+      ...(v.raison.trim() ? { raisonRepli: v.raison.trim() } : {}),
+      majLe: new Date().toISOString(),
+    });
+  };
+  const enregistrerContrat = async (v: Record<string, string>, id?: string) => {
+    const avant = contrats.find((c) => c.id === id);
+    await upsert('clauseContracts', id ?? uid(), {
+      kind: 'contrat',
+      titre: v.titre.trim(),
+      client: v.client.trim(),
+      reponses: { client: v.typeClient, duree: v.duree, lieu: v.lieu.trim() || 'chez le client', paiement: v.paiement, soustraitance: v.soustraitance },
+      genereLe: avant?.genereLe ?? new Date().toISOString(),
+      ...(avant?.depliees ? { depliees: avant.depliees } : {}),
+    });
+  };
+  const choix = (valeurs: string[]) => valeurs.map((x) => ({ valeur: x, libelle: x.charAt(0).toUpperCase() + x.slice(1) }));
 
   const deplier = async () => {
     if (!contrat || !p?.ambre) return;
@@ -81,6 +124,63 @@ export function ClausierScreen() {
           phraseVide={t('m50.clauses.phraseVide')}
         />
       </Bloc>
+
+      <Saisies>
+        <SaisieModule
+          ajouter="Ajouter une clause"
+          ouvertParDefaut={clauses.length === 0}
+          surtitreListe="Les clauses"
+          champs={[
+            { cle: 'titre', intitule: 'Titre', type: 'texte', requis: true, aide: '« Prix », « Droit de rétractation ».' },
+            { cle: 'texte', intitule: 'Texte de la clause', type: 'long', requis: true },
+            { cle: 'condition', intitule: 'Entre dans le contrat', type: 'choix', options: CONDITIONS.map(({ valeur, libelle }) => ({ valeur, libelle })) },
+            {
+              cle: 'obligatoire',
+              intitule: 'Dans ce cas, elle est',
+              type: 'choix',
+              options: [
+                { valeur: 'non', libelle: 'Conseillée' },
+                { valeur: 'oui', libelle: 'Obligatoire (la loi l’exige)' },
+              ],
+            },
+            { cle: 'raison', intitule: 'Raison écrite quand elle est repliée', type: 'texte', aide: '« client professionnel », « prestation ponctuelle ».' },
+            { cle: 'source', intitule: 'Source', type: 'texte', aide: '« Code de la consommation ». Vide : rédaction interne.' },
+          ]}
+          enregistrer={enregistrerClause}
+          elements={[...clauses]
+            .sort((a, b) => a.numero - b.numero)
+            .map((c) => ({
+              id: c.id,
+              libelle: `${c.numero}. ${c.titre}`,
+              detail: CONDITIONS.find((x) => x.valeur === conditionDe(c))?.libelle,
+              valeurs: { titre: c.titre, texte: c.texte, condition: conditionDe(c), obligatoire: c.obligatoireSi ? 'oui' : 'non', raison: c.raisonRepli ?? '', source: c.source },
+            }))}
+          supprimer={(id) => remove('clauseContracts', id)}
+        />
+        {clauses.length > 0 && (
+          <SaisieModule
+            ajouter="Générer un contrat"
+            surtitreListe="Les contrats"
+            champs={[
+              { cle: 'titre', intitule: 'Titre', type: 'texte', requis: true, defaut: 'Contrat de prestation' },
+              { cle: 'client', intitule: 'Client', type: 'texte', requis: true, aide: 'Comme sur sa fiche : le type de client y est vérifié.' },
+              { cle: 'typeClient', intitule: 'Le client est', type: 'choix', options: choix(['particulier', 'professionnel']) },
+              { cle: 'duree', intitule: 'Durée', type: 'choix', options: choix(['ponctuelle', 'annuelle']) },
+              { cle: 'paiement', intitule: 'Paiement', type: 'choix', options: [{ valeur: 'acompte 30 %', libelle: 'Acompte à la signature' }, { valeur: 'à la fin', libelle: 'À la fin' }] },
+              { cle: 'soustraitance', intitule: 'Sous-traitance', type: 'choix', options: choix(['non', 'oui']) },
+              { cle: 'lieu', intitule: 'Lieu', type: 'texte', defaut: 'chez le client' },
+            ]}
+            enregistrer={enregistrerContrat}
+            elements={contrats.map((c) => ({
+              id: c.id,
+              libelle: `${c.titre} · ${c.client}`,
+              detail: Object.values(c.reponses).join(' · '),
+              valeurs: { titre: c.titre, client: c.client, typeClient: c.reponses.client, duree: c.reponses.duree, paiement: c.reponses.paiement, soustraitance: c.reponses.soustraitance, lieu: c.reponses.lieu },
+            }))}
+            supprimer={(id) => remove('clauseContracts', id)}
+          />
+        )}
+      </Saisies>
 
       <Dominante surtitre="Le contrat, tel qu’il sera signé" note={vide ? undefined : 'Clause exclue = repliée, jamais supprimée'}>
         {!contrat || !p ? (

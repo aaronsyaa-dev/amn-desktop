@@ -14,7 +14,9 @@ import {
   PiedDominante,
   donnees,
 } from '../components/cinquante-kit';
-import { useCollection, useSync } from '../state/SyncContext';
+import { SaisieModule, Saisies } from '../components/SaisieModule';
+import { useAuth } from '../auth/AuthContext';
+import { uid, useCollection, useSync } from '../state/SyncContext';
 import { enLettres } from '../lib/cinquante/lettres';
 import { medianeNombres } from '../lib/cinquante/marketing';
 import {
@@ -64,7 +66,8 @@ function PapillonColle({ p, ambre, rang, maintenant }: { p: P; ambre: boolean; r
 
 export function EditeurPartageScreen() {
   const { t, langue } = useLangue();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
+  const { user } = useAuth();
   const tout = useCollection<EnregistrementPartage>('sharedDocs');
   const [maintenant] = useState(() => new Date());
   const [reponse, setReponse] = useState(false);
@@ -80,6 +83,38 @@ export function EditeurPartageScreen() {
     [...documents].sort((a, b) => enAttente.filter((p) => p.documentId === b.id).length - enAttente.filter((p) => p.documentId === a.id).length)[0] ??
     null;
   const vide = documents.length === 0;
+  /*
+    SAISIE — le document, un paragraphe par bloc ; puis les papillons : une
+    proposition posée sur un paragraphe (remplacer tel passage par tel autre,
+    ou ajouter une phrase). Le texte ne change qu'à l'acceptation.
+  */
+  const enregistrerDocument = async (v: Record<string, string>, id?: string) => {
+    const avant = documents.find((d) => d.id === id);
+    const blocs = v.texte.split(/\n\s*\n/).map((b) => b.replace(/\n/g, ' ').trim()).filter(Boolean);
+    await upsert('sharedDocs', id ?? uid(), {
+      kind: 'document',
+      titre: v.titre.trim(),
+      /* Un paragraphe inchangé garde son identifiant : ses papillons restent accrochés. */
+      paragraphes: blocs.map((texte, i) => ({ id: avant?.paragraphes.find((q) => q.texte === texte)?.id ?? avant?.paragraphes[i]?.id ?? uid(), texte })),
+    });
+  };
+  const enregistrerPapillon = async (v: Record<string, string>, id?: string) => {
+    const [documentId, paragrapheId] = v.ou.split('::');
+    const avant = papillons.find((x) => x.id === id);
+    const qui = user?.name ?? user?.email ?? 'vous';
+    await upsert('sharedDocs', id ?? uid(), {
+      kind: 'papillon',
+      documentId,
+      paragrapheId,
+      auteur: avant?.auteur ?? qui,
+      note: v.note.trim(),
+      ...(v.cible.trim() ? { cible: v.cible.trim() } : {}),
+      par: v.par.trim(),
+      poseLe: avant?.poseLe ?? new Date().toISOString(),
+      statut: avant?.statut ?? 'attente',
+    });
+  };
+  const ouPoser = documents.flatMap((d) => d.paragraphes.map((q, i) => ({ valeur: `${d.id}::${q.id}`, libelle: `${d.titre} · § ${i + 1} · ${q.texte.slice(0, 40)}${q.texte.length > 40 ? '…' : ''}` })));
 
   const voisins = ambre ? enAttente.filter((p) => p.id !== ambre.id && p.paragrapheId === ambre.paragrapheId && p.documentId === ambre.documentId) : [];
 
@@ -137,6 +172,44 @@ export function EditeurPartageScreen() {
           phraseVide={t('m50.sharedEditor.phraseVide')}
         />
       </Bloc>
+
+      <Saisies>
+        <SaisieModule
+          ajouter="Partager un document"
+          ouvertParDefaut={vide}
+          surtitreListe="Les documents"
+          champs={[
+            { cle: 'titre', intitule: 'Titre', type: 'texte', requis: true },
+            { cle: 'texte', intitule: 'Texte', type: 'long', requis: true, aide: 'Un paragraphe par bloc, une ligne vide entre deux.' },
+          ]}
+          enregistrer={enregistrerDocument}
+          elements={documents.map((d) => ({ id: d.id, libelle: d.titre, detail: `${d.paragraphes.length} paragraphe${d.paragraphes.length > 1 ? 's' : ''}`, valeurs: { titre: d.titre, texte: d.paragraphes.map((q) => q.texte).join('\n\n') } }))}
+          supprimer={async (id) => {
+            for (const x of papillons.filter((y) => y.documentId === id)) await remove('sharedDocs', x.id);
+            await remove('sharedDocs', id);
+          }}
+        />
+        {documents.length > 0 && (
+          <SaisieModule
+            ajouter="Poser un papillon"
+            surtitreListe="Les papillons"
+            champs={[
+              { cle: 'ou', intitule: 'Sur', type: 'choix', requis: true, options: ouPoser, large: true },
+              { cle: 'cible', intitule: 'Passage à remplacer', type: 'texte', aide: 'Recopié tel quel. Vide : la proposition s’ajoute à la fin du paragraphe.' },
+              { cle: 'par', intitule: 'Proposition', type: 'texte', requis: true },
+              { cle: 'note', intitule: 'Pourquoi', type: 'texte', large: true },
+            ]}
+            enregistrer={enregistrerPapillon}
+            elements={papillons.map((x) => ({
+              id: x.id,
+              libelle: `${x.auteur} · « ${x.par.slice(0, 50)} »`,
+              detail: { attente: 'en attente', acceptee: 'acceptée', refusee: 'refusée', caduque: 'caduque' }[x.statut],
+              valeurs: { ou: `${x.documentId}::${x.paragrapheId}`, cible: x.cible ?? '', par: x.par, note: x.note },
+            }))}
+            supprimer={(id) => remove('sharedDocs', id)}
+          />
+        )}
+      </Saisies>
 
       <Dominante surtitre="Le document et sa marge" note={doc ? 'Papillon = proposition en attente' : undefined}>
         {!doc ? (

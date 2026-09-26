@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { BranchementManquant } from '../components/BranchementManquant';
 import { Bloc, BoutonPrimaire, BoutonSecondaire, Calmes, CarteCalme, CarteReleves, Dominante, Ecran50, LigneBarre, PiedDominante, donnees } from '../components/cinquante-kit';
 import { useCollection, useSync } from '../state/SyncContext';
 import { medianeNombres } from '../lib/cinquante/marketing';
@@ -97,6 +98,8 @@ export function RedactionScreen() {
           phraseVide={t('m50.writing.phraseVide')}
         />
       </Bloc>
+
+      {vide && <BranchementManquant module="Rédaction" source="les messages reçus de vos clients, auxquels un assistant propose une réponse" />}
 
       <Dominante surtitre="La réponse, avec les corrections de l’assistant" note={courant ? 'Barré = retiré · souligné = ajouté' : undefined}>
         {!courant ? (
