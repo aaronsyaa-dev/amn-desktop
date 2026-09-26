@@ -62,10 +62,10 @@ export function CyberAccueil() {
         ) : (
           <>
             <Mur pans={pans} c={c} />
-            {reste > 0 && <p className="mt-3 font-mono text-[10px] tracking-[0.12em] text-[#9a9a97]">{reste} ORGANISATIONS PLUS SOLIDES, DANS LA MATRICE</p>}
+            {reste > 0 && <p className="mt-3 font-mono text-[10px] tracking-[0.12em] text-text-muted">{reste} ORGANISATIONS PLUS SOLIDES, DANS LA MATRICE</p>}
             {c.ambre && (
               <div className="mt-6 flex flex-wrap items-center gap-5 border-t border-[#1d2121] pt-5">
-                <p className="min-w-0 flex-1 text-[13.5px] leading-[1.6] text-[#a3a3a0]">
+                <p className="min-w-0 flex-1 text-[13.5px] leading-[1.6] text-text-secondary">
                   {c.ambre.nom} a perdu {Math.abs(c.ambre.tendance ?? 0)} point{Math.abs(c.ambre.tendance ?? 0) > 1 ? 's' : ''} en une semaine
                   {c.ambre.points.length ? ` : ${c.ambre.points.slice(0, 3).join(', ').toLowerCase()}.` : '.'}
                 </p>
@@ -81,7 +81,7 @@ export function CyberAccueil() {
         <Paire>
           <Carte titre="Échéances · 14 jours" droite={c.echeancesProches.length || ''}>
             {c.echeancesProches.length === 0 ? (
-              <p className="text-[13px] text-[#a3a3a0]">Aucune échéance dans les quatorze jours.</p>
+              <p className="text-[13px] text-text-secondary">Aucune échéance dans les quatorze jours.</p>
             ) : (
               c.echeancesProches.slice(0, 5).map((x) => <Ligne key={x.id} a={jourCourt(x.date)} b={x.quoi} c={x.type === 'certificat' ? 'SSL' : x.type.toUpperCase()} />)
             )}
@@ -93,7 +93,7 @@ export function CyberAccueil() {
           </Carte>
           <Carte titre={`Incidents ouverts · ${c.incidents.length}`}>
             {c.incidents.length === 0 ? (
-              <p className="text-[13px] text-[#a3a3a0]">Aucun incident ouvert.</p>
+              <p className="text-[13px] text-text-secondary">Aucun incident ouvert.</p>
             ) : (
               c.incidents.slice(0, 4).map((g) => (
                 <Ligne
@@ -134,7 +134,7 @@ function Mur({ pans, c }: { pans: PostureOrg[]; c: ModeleCyber }) {
     <div className="flex gap-3">
       <div className="relative w-7 flex-none" style={{ height: PISTE }} aria-hidden>
         {[100, 75, 50, 25].map((v) => (
-          <span key={v} className="absolute right-0 -translate-y-1/2 font-mono text-[9.5px] text-[#9a9a97]" style={{ top: PISTE - (v / 100) * PISTE }}>
+          <span key={v} className="absolute right-0 -translate-y-1/2 font-mono text-[9.5px] text-text-muted" style={{ top: PISTE - (v / 100) * PISTE }}>
             {v}
           </span>
         ))}
@@ -156,12 +156,12 @@ function Mur({ pans, c }: { pans: PostureOrg[]; c: ModeleCyber }) {
             const ambre = c.ambre?.id === o.id;
             return (
               <li key={o.id} className="min-w-0" data-signal-groupe={ambre ? 'rempart-ambre' : undefined}>
-                <span className="block text-[12.5px] font-semibold leading-tight text-[#f7f7f5]">{o.nom}</span>
-                <span className="mt-2 block font-mono text-[19px] font-semibold tabular-nums tracking-[-0.03em] text-[#f7f7f5]">{o.score}</span>
-                <span className="mt-1 block font-mono text-[9.5px] font-semibold tracking-[0.1em]" style={{ color: ambre ? AMBRE : '#a3a3a0' }}>
+                <span className="block text-[12.5px] font-semibold leading-tight text-text-primary">{o.nom}</span>
+                <span className="mt-2 block font-mono text-[19px] font-semibold tabular-nums tracking-[-0.03em] text-text-primary">{o.score}</span>
+                <span className="mt-1 block font-mono text-[9.5px] font-semibold tracking-[0.1em]" style={{ color: ambre ? AMBRE : 'var(--color-text-secondary)' }}>
                   {o.nouvelle || o.tendance === null ? 'NOUVELLE' : `${signe(o.tendance)} EN 7 J`}
                 </span>
-                <span className="mt-1 block font-mono text-[9.5px] leading-[1.4] tracking-[0.06em] text-[#9a9a97]">
+                <span className="mt-1 block font-mono text-[9.5px] leading-[1.4] tracking-[0.06em] text-text-muted">
                   {o.points.length === 0 ? 'RIEN D’OUVERT' : o.points.length > 8 ? `${o.points.length} POINTS OUVERTS · 8 MONTRÉS` : `${o.points.length} POINT${o.points.length > 1 ? 'S' : ''} OUVERT${o.points.length > 1 ? 'S' : ''}`}
                 </span>
               </li>

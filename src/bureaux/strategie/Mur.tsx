@@ -160,7 +160,7 @@ function Piece({ e }: { e: Epingle }) {
     return (
       <Link to={e.lien} className="bx-nav absolute block bg-[#26262a] px-4 pb-4 pt-5 shadow-[0_18px_30px_-18px_rgba(0,0,0,1)]" style={style}>
         {epingle}
-        <span className="block font-mono text-[28px] font-semibold leading-none tracking-[-0.02em] text-[#f7f7f5]">{e.valeur}</span>
+        <span className="block font-mono text-[28px] font-semibold leading-none tracking-[-0.02em] text-text-primary">{e.valeur}</span>
         <span className="mt-2.5 block text-[12px] leading-snug text-[#c9c9c6]">{e.titre}</span>
       </Link>
     );
@@ -173,11 +173,11 @@ function Piece({ e }: { e: Epingle }) {
       data-signal-groupe={e.ambre ? 'mur-ambre' : undefined}
     >
       {epingle}
-      <span className="flex h-[72px] items-center justify-center bg-[#232326] font-mono text-[24px] font-semibold tracking-[0.04em] text-[#9a9a97]">{initiales(e.titre)}</span>
-      <span className="mt-2.5 block truncate text-[13px] font-semibold text-[#f7f7f5]">{e.titre}</span>
-      <span className="mt-1 block text-[11.5px] leading-snug text-[#a3a3a0]">{e.ligne}</span>
+      <span className="flex h-[72px] items-center justify-center bg-[#232326] font-mono text-[24px] font-semibold tracking-[0.04em] text-text-muted">{initiales(e.titre)}</span>
+      <span className="mt-2.5 block truncate text-[13px] font-semibold text-text-primary">{e.titre}</span>
+      <span className="mt-1 block text-[11.5px] leading-snug text-text-secondary">{e.ligne}</span>
       {e.ambre && (
-        <span className="-mx-2.5 -mb-2.5 mt-2.5 block px-2.5 py-1.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.12em]" style={{ background: AMBRE, color: '#080808' }}>
+        <span className="-mx-2.5 -mb-2.5 mt-2.5 block px-2.5 py-1.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.12em]" style={{ background: AMBRE, color: 'var(--color-signal-ink)' }}>
           À appeler aujourd’hui
         </span>
       )}

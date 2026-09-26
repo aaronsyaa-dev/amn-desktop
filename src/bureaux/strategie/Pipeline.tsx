@@ -103,12 +103,12 @@ export function StrategiePipeline() {
               type="button"
               role="listitem"
               onClick={() => c.liste[0] && navigate(`/strategie/pipeline/${c.liste[0].id}`)}
-              className="min-w-[112px] px-3 pb-3 pt-2.5 text-left"
+              className="min-w-[124px] px-3 pb-3 pt-2.5 text-left"
               style={{ flexGrow: Math.max(1, c.liste.length), flexBasis: 0, background: on ? '#1b1b1e' : '#141416', border: `1px solid ${on ? '#4a4a50' : '#28282c'}` }}
               aria-current={on ? 'true' : undefined}
             >
-              <span className="block truncate font-mono text-[9.5px] uppercase tracking-[0.12em] text-[#a3a3a0]">{c.nom}</span>
-              <span className="mt-1.5 block font-mono text-[18px] font-semibold tabular-nums text-[#f7f7f5]">{c.liste.length || '—'}</span>
+              <span className="block truncate font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-secondary">{c.nom}</span>
+              <span className="mt-1.5 block font-mono text-[18px] font-semibold tabular-nums text-text-primary">{c.liste.length || '—'}</span>
             </button>
           );
         })}
@@ -117,25 +117,25 @@ export function StrategiePipeline() {
       <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-[minmax(0,1fr)_340px]">
         <Carte dominante pad="p-6" className="self-start" titre={`${nom} · prospect`} droite={`${etape?.nom ?? ''}${p.venuPar ? ` · venu par ${p.venuPar}` : p.source ? ` · ${libelleSource(p.source)}` : ''}`}>
           <div className="flex items-center gap-4">
-            <span className="flex h-[50px] w-[50px] flex-none items-center justify-center border border-[#3a3a40] bg-[#1b1b1e] font-mono text-[15px] font-semibold text-[#a3a3a0]">{initiales(nom)}</span>
+            <span className="flex h-[50px] w-[50px] flex-none items-center justify-center border border-[#3a3a40] bg-[#1b1b1e] font-mono text-[15px] font-semibold text-text-secondary">{initiales(nom)}</span>
             <span className="min-w-0">
-              <span className="block text-[21px] font-bold tracking-[-0.02em] text-[#f7f7f5]">{nom}</span>
-              <span className="mt-1 block text-[12.5px] text-[#a3a3a0]">{[p.secteur, p.ville, p.name && p.name !== nom ? `${p.name}${p.role ? `, ${p.role}` : ''}` : null, p.telephone].filter(Boolean).join(' · ') || '—'}</span>
+              <span className="block text-[21px] font-bold tracking-[-0.02em] text-text-primary">{nom}</span>
+              <span className="mt-1 block text-[12.5px] text-text-secondary">{[p.secteur, p.ville, p.name && p.name !== nom ? `${p.name}${p.role ? `, ${p.role}` : ''}` : null, p.telephone].filter(Boolean).join(' · ') || '—'}</span>
             </span>
           </div>
 
-          <span className="mt-6 block font-mono text-[9.5px] uppercase tracking-[0.16em] text-[#9a9a97]">L’historique des échanges</span>
+          <span className="mt-6 block font-mono text-[9.5px] uppercase tracking-[0.16em] text-text-muted">L’historique des échanges</span>
           {echanges.length === 0 ? (
-            <p className="mt-2 text-[13px] text-[#a3a3a0]">Aucun échange noté.</p>
+            <p className="mt-2 text-[13px] text-text-secondary">Aucun échange noté.</p>
           ) : (
             <ol className="mt-2">
               {echanges.slice(-8).map((e) => (
                 <li key={e.id} className="grid grid-cols-[112px_minmax(0,1fr)_auto] items-baseline gap-3 border-b border-[#222226] py-2.5">
-                  <span className="font-mono text-[10.5px] uppercase tabular-nums text-[#9a9a97]">
+                  <span className="font-mono text-[10.5px] uppercase tabular-nums text-text-muted">
                     {jourCourt(e.at)} · {hhmm(e.at)}
                   </span>
-                  <span className="text-[13.5px] text-[#e4e4e1]">{e.texte}</span>
-                  <span className="font-mono text-[10px] text-[#9a9a97]">{e.type === 'ouverture' || e.type === 'page' ? '—' : e.par ? prenomDe(e.par).slice(0, 2).toUpperCase() : ''}</span>
+                  <span className="text-[13.5px] text-text-body">{e.texte}</span>
+                  <span className="font-mono text-[10px] text-text-muted">{e.type === 'ouverture' || e.type === 'page' ? '—' : e.par ? prenomDe(e.par).slice(0, 2).toUpperCase() : ''}</span>
                 </li>
               ))}
             </ol>
@@ -147,11 +147,11 @@ export function StrategiePipeline() {
                 <span className="block font-mono text-[9.5px] font-bold uppercase tracking-[0.14em]" style={{ color: AMBRE }}>
                   La prochaine étape · {due.at.slice(0, 10) === auj ? 'aujourd’hui' : `depuis le ${Number(due.at.slice(8, 10))}`}
                 </span>
-                <span className="mt-1.5 block text-[14.5px] font-semibold text-[#f7f7f5]">
+                <span className="mt-1.5 block text-[14.5px] font-semibold text-text-primary">
                   {due.quoi.charAt(0).toUpperCase() + due.quoi.slice(1)} {p.name && !due.quoi.includes(p.name) ? p.name : ''}
                   {ouvertures >= 2 ? ` : ${p.name ? 'elle' : 'il'} a ouvert le devis ${ouvertures === 2 ? 'deux' : enLettres(ouvertures)} fois sans répondre` : ''}
                 </span>
-                <span className="mt-1 block text-[12.5px] text-[#a3a3a0]">{due.detail ?? (pageDuJour ? `${pageDuJour.texte} à ${hhmm(pageDuJour.at)}.` : 'Rien de neuf depuis le dernier échange.')}</span>
+                <span className="mt-1 block text-[12.5px] text-text-secondary">{due.detail ?? (pageDuJour ? `${pageDuJour.texte} à ${hhmm(pageDuJour.at)}.` : 'Rien de neuf depuis le dernier échange.')}</span>
               </div>
               <div className="flex flex-none gap-2">
                 {due.appel && p.telephone ? (
@@ -166,8 +166,8 @@ export function StrategiePipeline() {
             </div>
           ) : p.prochaine ? (
             <div className="mt-5 border border-[#28282c] px-4 py-3.5">
-              <span className="block font-mono text-[9.5px] uppercase tracking-[0.14em] text-[#9a9a97]">La prochaine étape · le {Number(p.prochaine.at.slice(8, 10))}</span>
-              <span className="mt-1 block text-[13.5px] text-[#f7f7f5]">{p.prochaine.quoi.charAt(0).toUpperCase() + p.prochaine.quoi.slice(1)}</span>
+              <span className="block font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted">La prochaine étape · le {Number(p.prochaine.at.slice(8, 10))}</span>
+              <span className="mt-1 block text-[13.5px] text-text-primary">{p.prochaine.quoi.charAt(0).toUpperCase() + p.prochaine.quoi.slice(1)}</span>
             </div>
           ) : null}
 
@@ -227,7 +227,7 @@ export function StrategiePipeline() {
             >
               <input autoFocus value={prochaine.quoi} onChange={(e) => setProchaine({ ...prochaine, quoi: e.target.value })} aria-label="La prochaine étape" className={`${champ} h-9 min-w-0 flex-1`} />
               <input type="date" value={prochaine.jour} onChange={(e) => setProchaine({ ...prochaine, jour: e.target.value })} aria-label="Le jour" className={`${champ} h-9 [color-scheme:dark]`} />
-              <label className="flex items-center gap-2 text-[12.5px] text-[#a3a3a0]">
+              <label className="flex items-center gap-2 text-[12.5px] text-text-secondary">
                 <input type="checkbox" checked={prochaine.appel} onChange={(e) => setProchaine({ ...prochaine, appel: e.target.checked })} className="accent-[#8a8a87]" />
                 un appel
               </label>
@@ -243,15 +243,15 @@ export function StrategiePipeline() {
 
         <Carte className="self-start" titre={`Les autres · ${etape?.nom.toLowerCase() ?? ''}`} droite={autres.length || ''}>
           {autres.length === 0 ? (
-            <p className="text-[13px] text-[#a3a3a0]">Aucun autre prospect à cette étape.</p>
+            <p className="text-[13px] text-text-secondary">Aucun autre prospect à cette étape.</p>
           ) : (
             autres.slice(0, 8).map((x) => {
               const l = ligneAutre(x);
               return (
                 <Link key={x.id} to={`/strategie/pipeline/${x.id}`} className="grid grid-cols-[110px_minmax(0,1fr)_auto] items-baseline gap-3 border-b border-[#222226] py-3 hover:bg-white/[0.02]">
-                  <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.06em] text-[#a3a3a0]">{x.company || x.name}</span>
-                  <span className="text-[13px] leading-snug text-[#e4e4e1]">{l.texte}</span>
-                  <span className="font-mono text-[10px] uppercase text-[#9a9a97]">{l.tag}</span>
+                  <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.06em] text-text-secondary">{x.company || x.name}</span>
+                  <span className="text-[13px] leading-snug text-text-body">{l.texte}</span>
+                  <span className="font-mono text-[10px] uppercase text-text-muted">{l.tag}</span>
                 </Link>
               );
             })

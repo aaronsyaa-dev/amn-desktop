@@ -122,7 +122,7 @@ export function GardeNuit() {
               const marques = remontees.filter((r) => r.equipe === c.key);
               return (
                 <div key={c.key} className="grid grid-cols-[110px_minmax(0,1fr)_78px] items-center gap-4 border-b border-[#1a1a1a] py-2">
-                  <span className="text-[13px] font-semibold text-[#e4e4e1]">{c.nom}</span>
+                  <span className="text-[13px] font-semibold text-text-body">{c.nom}</span>
                   <span className="relative block h-[26px]">
                     <svg viewBox="0 0 1000 26" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden>
                       {passages.map((r) => (
@@ -144,7 +144,7 @@ export function GardeNuit() {
                       );
                     })}
                   </span>
-                  <span className="text-right font-mono text-[10.5px] leading-tight tabular-nums text-[#a3a3a0]">
+                  <span className="text-right font-mono text-[10.5px] leading-tight tabular-nums text-text-secondary">
                     {passages.length} passage{passages.length > 1 ? 's' : ''}
                   </span>
                 </div>
@@ -152,7 +152,7 @@ export function GardeNuit() {
             })}
             <div className="grid grid-cols-[110px_minmax(0,1fr)_78px] gap-4 pt-2">
               <span />
-              <span className="relative block h-4 font-mono text-[9.5px] tabular-nums text-[#9a9a97]">
+              <span className="relative block h-4 font-mono text-[9.5px] tabular-nums text-text-muted">
                 {ticks.map((t, i) => (
                   <span key={t.h} className="absolute" style={{ left: `${t.p}%`, transform: i === 0 ? 'none' : 'translateX(-50%)' }}>
                     {deuxChiffres(t.h)}:00
@@ -164,15 +164,15 @@ export function GardeNuit() {
             </div>
           </div>
         )}
-        {tronquee && <p className="mt-3 text-[12px] text-[#a3a3a0]">Le serveur n’a rendu que les 500 derniers passages : le début de la nuit manque sur les voies.</p>}
+        {tronquee && <p className="mt-3 text-[12px] text-text-secondary">Le serveur n’a rendu que les 500 derniers passages : le début de la nuit manque sur les voies.</p>}
         {ambre && (
           <div className="mt-5 flex flex-wrap items-center gap-5 px-4 py-4" style={{ border: `1px solid ${AMBRE}`, background: 'rgba(208,154,74,.07)', boxShadow: '0 0 30px -14px rgba(208,154,74,.6)' }} data-signal-groupe="nuit-ambre">
             <div className="min-w-0 flex-1">
               <span className="block font-mono text-[9.5px] font-bold uppercase tracking-[0.14em]" style={{ color: AMBRE }}>
                 {hhmm(ambre.createdAt)} · {nomChef(ambre.equipe)} · la remontée qui attend encore
               </span>
-              <span className="mt-1.5 block text-[14.5px] font-semibold text-[#f7f7f5]">{ambre.titre}</span>
-              <span className="mt-1 block text-[12.5px] text-[#a3a3a0]">
+              <span className="mt-1.5 block text-[14.5px] font-semibold text-text-primary">{ambre.titre}</span>
+              <span className="mt-1 block text-[12.5px] text-text-secondary">
                 {critique ? 'Le silence a été levé une fois cette nuit, pour le critique. ' : 'Rien de critique cette nuit : le silence n’a pas été levé. '}
                 {remontees.length > 1 ? `Les ${enLettres(remontees.length)} remontées ont attendu la Relève${lues ? `, et ${enLettres(lues)} ${lues > 1 ? 'sont' : 'est'} déjà lue${lues > 1 ? 's' : ''}` : ''}.` : ''}
               </span>
@@ -186,15 +186,15 @@ export function GardeNuit() {
       <div className="mt-[18px] grid grid-cols-1 gap-[18px] lg:grid-cols-2">
         <Carte titre={remontees.length ? `Les ${remontees.length > 20 ? remontees.length : enLettres(remontees.length)} remontée${remontees.length > 1 ? 's' : ''}` : 'Les remontées'} droite={remontees.length && !critique ? `toutes ont attendu ${deuxChiffres(silence.a)}:00` : ''}>
           {remontees.length === 0 ? (
-            <p className="text-[13px] text-[#a3a3a0]">Aucune remontée cette nuit.</p>
+            <p className="text-[13px] text-text-secondary">Aucune remontée cette nuit.</p>
           ) : (
             remontees.slice(0, 12).map((r) => (
               <div key={r.id} className="grid grid-cols-[52px_minmax(0,1fr)_auto] items-baseline gap-3.5 border-b border-[#1a1a1a] py-2.5">
-                <span className="font-mono text-[11px] tabular-nums text-[#9a9a97]">{hhmm(r.createdAt)}</span>
-                <span className="text-[13px] leading-snug text-[#e4e4e1]">
+                <span className="font-mono text-[11px] tabular-nums text-text-muted">{hhmm(r.createdAt)}</span>
+                <span className="text-[13px] leading-snug text-text-body">
                   {nomChef(r.equipe)} · {r.titre}
                 </span>
-                <span className="font-mono text-[10px] uppercase" style={{ color: critique?.id === r.id ? ROUGE.texte : '#9a9a97' }}>
+                <span className="font-mono text-[10px] uppercase" style={{ color: critique?.id === r.id ? ROUGE.texte : 'var(--color-text-muted)' }}>
                   {critique?.id === r.id ? 'critique' : lue(r) ? 'lu' : 'à lire'}
                 </span>
               </div>
@@ -202,7 +202,7 @@ export function GardeNuit() {
           )}
         </Carte>
         <Carte titre="Le silence de nuit" droite={`${deuxChiffres(silence.de)}:00 → ${deuxChiffres(silence.a)}:00`}>
-          <p className="text-[13.5px] leading-relaxed text-[#e4e4e1]">
+          <p className="text-[13.5px] leading-relaxed text-text-body">
             Rien ne réveille personne, sauf le critique. {critique ? `Levé une fois, à ${hhmm(critique.createdAt)} : ${critique.titre}` : 'Aucune exception cette nuit.'}
           </p>
         </Carte>

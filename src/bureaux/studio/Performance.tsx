@@ -44,10 +44,10 @@ export function StudioPerformance() {
                 const max = Math.max(1.6, ...p.budget!.pages.map((y) => y.ko / p.budget!.plafondKo));
                 return (
                   <div key={x.page} className="grid grid-cols-[140px_minmax(0,1fr)_150px] items-center gap-4 py-2" data-signal-groupe={estAmbre ? 'budget-ambre' : undefined}>
-                    <span className="truncate text-[13px] font-semibold text-[#f7f7f5]">{x.page}</span>
+                    <span className="truncate text-[13px] font-semibold text-text-primary">{x.page}</span>
                     <span className="relative h-[10px] bg-[#1c1b19]" aria-hidden>
-                      <span className="block h-full" style={{ width: `${Math.min(100, (part / max) * 100)}%`, background: estAmbre ? AMBRE : part > 1 ? '#bdbdb9' : '#6b6b68' }} />
-                      <span className="absolute -bottom-1.5 -top-1.5 w-[2px] bg-[#f7f7f5]" style={{ left: `${(1 / max) * 100}%` }} />
+                      <span className="block h-full" style={{ width: `${Math.min(100, (part / max) * 100)}%`, background: estAmbre ? AMBRE : part > 1 ? '#bdbdb9' : 'var(--color-trait-sourd)' }} />
+                      <span className="absolute -bottom-1.5 -top-1.5 w-[2px] bg-text-primary" style={{ left: `${(1 / max) * 100}%` }} />
                     </span>
                     <span className="flex items-center justify-end gap-3">
                       {edition?.pieceId === p.id && edition.page === x.page ? (
@@ -59,10 +59,10 @@ export function StudioPerformance() {
                             setEdition(null);
                           }}
                         >
-                          <input autoFocus value={edition.ko} onChange={(e) => setEdition({ ...edition, ko: e.target.value })} onBlur={() => setEdition(null)} inputMode="numeric" aria-label={`Poids de ${x.page}, en Ko`} className="h-7 w-[80px] border border-[#3a3834] bg-transparent px-1.5 text-right font-mono text-[12px] text-[#f7f7f5] outline-none" />
+                          <input autoFocus value={edition.ko} onChange={(e) => setEdition({ ...edition, ko: e.target.value })} onBlur={() => setEdition(null)} inputMode="numeric" aria-label={`Poids de ${x.page}, en Ko`} className="h-7 w-[80px] border border-[#3a3834] bg-transparent px-1.5 text-right font-mono text-[12px] text-text-primary outline-none" />
                         </form>
                       ) : (
-                        <button type="button" onClick={() => setEdition({ pieceId: p.id, page: x.page, ko: String(x.ko) })} className="font-mono text-[11.5px] tabular-nums underline decoration-[#4a4845] underline-offset-4" style={{ color: estAmbre ? AMBRE : part > 1 ? '#f7f7f5' : '#a3a3a0' }} title="Mettre à jour le poids relevé">
+                        <button type="button" onClick={() => setEdition({ pieceId: p.id, page: x.page, ko: String(x.ko) })} className="font-mono text-[11.5px] tabular-nums underline decoration-[#4a4845] underline-offset-4" style={{ color: estAmbre ? AMBRE : part > 1 ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }} title="Mettre à jour le poids relevé">
                           {ko(x.ko)}
                         </button>
                       )}
@@ -71,7 +71,7 @@ export function StudioPerformance() {
                 );
               })}
               {depassements(p).length > 0 && (
-                <p className="mt-3 text-[12.5px] text-[#a3a3a0]">
+                <p className="mt-3 text-[12.5px] text-text-secondary">
                   {depassements(p).length} page{depassements(p).length > 1 ? 's bloquent' : ' bloque'} la mise en ligne.{' '}
                   <Link to={`/studio/pieces/${p.id}/livraison`} className="bx-lien">
                     La livraison

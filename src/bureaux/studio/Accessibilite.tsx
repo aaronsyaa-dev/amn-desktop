@@ -60,22 +60,22 @@ export function StudioAccessibilite() {
               setNouveau(null);
             }}
           >
-            <select value={nouveau.pieceId} onChange={(e) => setNouveau({ ...nouveau, pieceId: e.target.value })} aria-label="La pièce" className="h-9 border border-[#2a2826] bg-[#141312] px-2.5 text-[13px] text-[#f7f7f5]">
+            <select value={nouveau.pieceId} onChange={(e) => setNouveau({ ...nouveau, pieceId: e.target.value })} aria-label="La pièce" className="h-9 border border-[#2a2826] bg-[#141312] px-2.5 text-[13px] text-text-primary">
               {s.pieces.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.plaque} · {p.orgNom}
                 </option>
               ))}
             </select>
-            <select value={nouveau.critere} onChange={(e) => setNouveau({ ...nouveau, critere: e.target.value as Critere })} aria-label="Le critère" className="h-9 border border-[#2a2826] bg-[#141312] px-2.5 text-[13px] text-[#f7f7f5]">
+            <select value={nouveau.critere} onChange={(e) => setNouveau({ ...nouveau, critere: e.target.value as Critere })} aria-label="Le critère" className="h-9 border border-[#2a2826] bg-[#141312] px-2.5 text-[13px] text-text-primary">
               {CRITERES.map((c) => (
                 <option key={c.cle} value={c.cle}>
                   {c.nom}
                 </option>
               ))}
             </select>
-            <input value={nouveau.page} onChange={(e) => setNouveau({ ...nouveau, page: e.target.value })} placeholder="La page" aria-label="La page" className="h-9 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97]" />
-            <input value={nouveau.texte} onChange={(e) => setNouveau({ ...nouveau, texte: e.target.value })} placeholder="Ce qui manque, précisément" aria-label="Le manque" className="h-9 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97]" />
+            <input value={nouveau.page} onChange={(e) => setNouveau({ ...nouveau, page: e.target.value })} placeholder="La page" aria-label="La page" className="h-9 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted" />
+            <input value={nouveau.texte} onChange={(e) => setNouveau({ ...nouveau, texte: e.target.value })} placeholder="Ce qui manque, précisément" aria-label="Le manque" className="h-9 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted" />
             <button type="submit" className="bx-btn">
               Noter
             </button>
@@ -92,7 +92,7 @@ export function StudioAccessibilite() {
                 <tr>
                   <th className="w-[200px]" />
                   {CRITERES.map((c) => (
-                    <th key={c.cle} scope="col" className="text-center font-mono text-[9.5px] font-medium uppercase tracking-[0.1em] text-[#9a9a97]">
+                    <th key={c.cle} scope="col" className="text-center font-mono text-[9.5px] font-medium uppercase tracking-[0.1em] text-text-muted">
                       {c.nom}
                     </th>
                   ))}
@@ -101,7 +101,7 @@ export function StudioAccessibilite() {
               <tbody>
                 {pieces.map((p) => (
                   <tr key={p.id}>
-                    <th scope="row" className="pr-3 text-left text-[13px] font-semibold text-[#f7f7f5]">
+                    <th scope="row" className="pr-3 text-left text-[13px] font-semibold text-text-primary">
                       {p.plaque} · {p.orgNom}
                     </th>
                     {CRITERES.map((c) => {
@@ -112,7 +112,7 @@ export function StudioAccessibilite() {
                         <td key={c.cle} className="text-center">
                           <span
                             className="mx-auto flex h-[26px] w-[44px] items-center justify-center font-mono text-[10.5px]"
-                            style={estAmbre ? { background: AMBRE, color: '#0b0a09' } : ouvert.length ? { background: '#8a8a87', color: '#0b0a09' } : ici.length ? { border: '1px solid #6b6b68', color: '#a3a3a0' } : { border: '1px dashed #2a2826' }}
+                            style={estAmbre ? { background: AMBRE, color: '#0b0a09' } : ouvert.length ? { background: '#8a8a87', color: '#0b0a09' } : ici.length ? { border: '1px solid var(--color-trait-sourd)', color: 'var(--color-text-secondary)' } : { border: '1px dashed #2a2826' }}
                             data-signal-groupe={estAmbre ? 'a11y-ambre' : undefined}
                             title={ici.map((a) => `${a.page} : ${a.texte}${a.corrige ? ' (corrigé)' : ''}`).join('\n') || undefined}
                           >
@@ -127,15 +127,15 @@ export function StudioAccessibilite() {
             </table>
           </Carte>
           <Carte className="self-start" titre="Les manques ouverts" droite={ouverts.length}>
-            {ouverts.length === 0 && <p className="text-[13px] text-[#a3a3a0]">Rien d’ouvert.</p>}
+            {ouverts.length === 0 && <p className="text-[13px] text-text-secondary">Rien d’ouvert.</p>}
             {ouverts.map(({ p, a }) => {
               const estAmbre = ambre?.a.id === a.id;
               return (
                 <div key={a.id} className="border-b border-[#1f1e1c] py-2.5" style={estAmbre ? { boxShadow: `inset 2px 0 0 ${AMBRE}`, paddingLeft: 10 } : undefined} data-signal-groupe={estAmbre ? 'a11y-ambre' : undefined}>
-                  <span className="block font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: estAmbre ? AMBRE : '#9a9a97' }}>
+                  <span className="block font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: estAmbre ? AMBRE : 'var(--color-text-muted)' }}>
                     {p.plaque} · {a.page} · {CRITERES.find((c) => c.cle === a.critere)?.nom}
                   </span>
-                  <span className="mt-1 block text-[13px] leading-snug text-[#e4e4e1]">{a.texte}</span>
+                  <span className="mt-1 block text-[13px] leading-snug text-text-body">{a.texte}</span>
                   <button type="button" className="bx-lien mt-1.5" onClick={() => ecrire(p.id, (b) => ({ accessibilite: (b.accessibilite ?? []).map((x) => (x.id === a.id ? { ...x, corrige: true } : x)) }))}>
                     Corrigé
                   </button>

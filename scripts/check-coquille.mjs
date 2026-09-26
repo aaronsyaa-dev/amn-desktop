@@ -51,6 +51,17 @@
  *     les trois barres ont porté un filet ambre permanent sans que rien ne le
  *     signale. C'est le trou que ce fichier bouche.
  *
+ * ## Les coquilles des cinq bureaux (édition interne)
+ *
+ * La Garde, la Supervision, le Parc et les Produits ne s'ouvrent plus sous le
+ * rail mais dans un bureau (cahier 11 §4, cahier 16). Chaque bureau a sa
+ * signature, mesurée de la même façon : une barre haute de 48 px avec son
+ * indicateur d'espace (28 px), son sélecteur (236 × 28) et sa sortie vers le
+ * poste ; puis le pupitre (42 + horizon 22), la console (200 de large + barre
+ * d'état 28), les portes (58), le dock en pied (52), l'organigramme (42 +
+ * pouls 16). Une entrée courante et une seule ; aucun rail du poste rendu en
+ * même temps ; ni ambre ni rouge dans les murs — le signal vit dans la pièce.
+ *
  * ## Ce qu'il vérifie en plus, sans navigateur
  *
  * Le code de rail de chaque famille : deux lettres majuscules, et aucun doublon
@@ -158,16 +169,172 @@ const ECRANS_INTERNE = [
   ['Accueil (épinglé)', '#/'],
   ['Objectifs & résultats (Pilotage, 15)', '#/objectifs-resultats'],
   ['Composition & coût de revient', '#/nomenclatures'],
-  /* Les quatre familles que l'édition cliente n'a pas — celles qui vivaient
-     derrière le sélecteur d'espace, et qui sont désormais des tuiles. */
-  ['La Salle (La Garde)', '#/garde'],
-  ['Vue d\'ensemble (Supervision)', '#/tour'],
-  ['Sites (Parc)', '#/sites'],
-  ['Scanner (Produits)', '#/scanner'],
-  ['Connaissances (Collectif, 12)', '#/knowledge'],
+  /* Le Collectif interne a rendu Équipe, Décisions et Connaissances au
+     bureau Supervisor (cahier 16) : ses onze autres modules restent au poste. */
+  ['Notes (Collectif, 11)', '#/notes'],
   ['Rapports (Livrables)', '#/reports'],
   ['Membres (Système)', '#/membres'],
 ];
+
+/*
+  LES CINQ BUREAUX — l'autre coquille de l'édition interne.
+
+  La Garde, la Supervision, le Parc et les Produits ne s'ouvrent plus sous le
+  rail : leurs écrans se posent dans un bureau (cahier 11 §4, cahier 16), dont
+  la coquille a sa propre signature. Chaque bureau est mesuré sur son accueil,
+  sur un écran à lui et sur un module recousu — c'est là qu'une coquille
+  copiée à la main ou oubliée se verrait. Une route peut se résoudre en
+  suivant le premier lien d'une page (`[page, sélecteur]`) : une pièce du
+  Studio n'a pas d'adresse fixe.
+*/
+const ECRANS_BUREAUX = [
+  ['Supervisor · l’horizon', '#/supervisor', 'supervisor'],
+  ['Supervisor · Vue d’ensemble (recousue)', '#/tour', 'supervisor'],
+  ['Supervisor · Équipe (recousue)', '#/team', 'supervisor'],
+  ['Supervisor · prévision de charge', '#/supervisor/charge', 'supervisor'],
+  ['Cyber · le rempart', '#/cyber', 'cyber'],
+  ['Cyber · Sites (recousu)', '#/sites', 'cyber'],
+  ['Cyber · Scanner (Produits)', '#/scanner', 'cyber'],
+  ['Cyber · Journal d’accès (recousu)', '#/tour/journal', 'cyber'],
+  ['Studio · la façade', '#/studio', 'studio'],
+  ['Studio · budget de performance', '#/studio/performance', 'studio'],
+  ['Studio · une pièce', ['#/studio', 'a[href*="#/studio/pieces/"]'], 'studio'],
+  ['Stratégie · le mur', '#/strategie', 'strategie'],
+  ['Stratégie · pipeline', '#/strategie/pipeline', 'strategie'],
+  ['Stratégie · trackers', '#/strategie/trackers', 'strategie'],
+  ['La Garde · l’organigramme', '#/garde/organigramme', 'garde'],
+  ['La Garde · la Salle (recousue)', '#/garde', 'garde'],
+  ['La Garde · la nuit écoulée', '#/garde/nuit', 'garde'],
+];
+
+/*
+  La signature de chaque coquille (cahier 11 §4) : sa navigation principale,
+  et les pièces fixes qui l'accompagnent. Les hauteurs sont celles du paquet ;
+  la console de Cyber se mesure en largeur.
+*/
+const SIGNATURES = {
+  supervisor: { nav: 'onglets', pieces: { onglets: { h: 42 }, horizon: { h: 22 } } },
+  cyber: { nav: 'console', pieces: { console: { l: 200 }, etat: { h: 28 } } },
+  studio: { nav: 'portes', pieces: { portes: { h: 58 } } },
+  strategie: { nav: 'dock', pieces: { dock: { h: 52 } }, enPied: 'dock' },
+  garde: { nav: 'onglets', pieces: { onglets: { h: 42 }, pouls: { h: 16 } } },
+};
+
+/** Les rouges du critique, sous leurs écritures rendues (trait, texte, remplissage). */
+const ROUGES = ['rgb(255, 66, 48)', 'rgb(255, 88, 71)', 'rgb(221, 47, 38)'];
+
+async function mesurerBureau(page) {
+  return page.evaluate(([AMBRE, ROUGES]) => {
+    const px = (v) => Math.round(parseFloat(v) * 100) / 100;
+    const vu = (el) => {
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    };
+    const racine = document.querySelector('[data-bureau]');
+    if (!racine) return { absent: true };
+    const boite = (el) => {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { l: px(r.width), h: px(r.height), haut: px(r.top), bas: px(r.bottom) };
+    };
+    const main = racine.querySelector('main');
+    const pieces = {};
+    for (const el of racine.querySelectorAll('[data-coquille-bureau]')) {
+      if (vu(el)) pieces[el.dataset.coquilleBureau] = boite(el);
+    }
+    /* Le module courant a-t-il son entrée marquée, et une seule ? */
+    const courants = {};
+    for (const el of racine.querySelectorAll('[data-coquille-bureau]')) {
+      courants[el.dataset.coquilleBureau] = el.querySelectorAll('[aria-current="page"]').length;
+    }
+    /* Une seconde colonne de navigation à côté de la console : une barre écrite à la main. */
+    const colonnes = [...document.querySelectorAll('div,nav,aside')].filter((el) => {
+      const r = el.getBoundingClientRect();
+      if (r.height < window.innerHeight * 0.6) return false;
+      if (r.left > 300 || r.width < 40 || r.width > 320) return false;
+      if (el.closest('[data-coquille-bureau="console"]') || el.querySelector('[data-coquille-bureau="console"]')) return false;
+      return el.querySelectorAll('a[href^="#/"], a[href^="/"]').length >= 8;
+    });
+    /* La coquille du poste ne doit pas être rendue en même temps que celle d'un bureau. */
+    const rails = [...document.querySelectorAll('[data-coquille]')].filter(vu).length;
+    /* Ni ambre ni rouge dans la coquille : le signal vit dans la pièce, pas dans ses murs. */
+    const porte = (v, teintes) => teintes.some((a) => (v ?? '').toLowerCase().includes(a));
+    const signaux = { ambre: [], rouge: [] };
+    for (const el of racine.querySelectorAll('*')) {
+      if (main && main.contains(el)) continue;
+      if (el.closest('[data-palette-espaces], [data-palette-espaces-voile], [data-aide-bureaux]')) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) continue;
+      const s = getComputedStyle(el);
+      if (s.visibility === 'hidden' || s.display === 'none' || Number(s.opacity) === 0) continue;
+      const valeurs = [s.backgroundColor, s.backgroundImage, s.color, s.fill, s.stroke, s.borderTopColor, s.borderLeftColor, s.boxShadow];
+      const nom = `${el.tagName.toLowerCase()}${(el.textContent ?? '').trim() ? ` « ${(el.textContent ?? '').trim().slice(0, 30)} »` : ''}`;
+      if (valeurs.some((v) => porte(v, AMBRE))) signaux.ambre.push(nom);
+      if (valeurs.some((v) => porte(v, ROUGES))) signaux.rouge.push(nom);
+    }
+    return {
+      bureau: racine.getAttribute('data-bureau'),
+      barres: [...document.querySelectorAll('[data-barre-haute]')].filter(vu).map((b) => px(b.getBoundingClientRect().height)),
+      indicateur: boite(racine.querySelector('[data-indicateur-espace]')),
+      selecteur: boite(racine.querySelector('[data-selecteur-espace]')),
+      sortie: Boolean(racine.querySelector('[data-sortie-poste]')),
+      main: boite(main),
+      pieces,
+      courants,
+      colonnes: colonnes.length,
+      rails,
+      signaux,
+    };
+  }, [AMBRE, ROUGES]);
+}
+
+function jugerBureau(nom, attendu, m) {
+  const f = [];
+  const dire = (quoi, a, lu) => f.push(`${nom} · ${quoi} : attendu ${a}, lu ${lu}`);
+  if (m.absent) {
+    f.push(`${nom} · aucun bureau rendu : l'écran s'est ouvert hors de sa coquille.`);
+    return f;
+  }
+  if (m.bureau !== attendu) dire('bureau', attendu, m.bureau);
+  const sig = SIGNATURES[attendu];
+  /* La barre haute commune : une seule, 48 px, l'indicateur d'espace, le sélecteur, la sortie. */
+  if (m.barres.length !== 1) dire('barres hautes visibles', 1, m.barres.length);
+  else if (m.barres[0] !== 48) dire('hauteur de la barre haute', '48 px', `${m.barres[0]} px`);
+  if (!m.indicateur || m.indicateur.h !== 28) dire('indicateur d’espace', 'une plaque de 28 px, toujours visible', m.indicateur ? `${m.indicateur.h} px` : 'absent');
+  if (!m.selecteur || m.selecteur.l !== 236 || m.selecteur.h !== 28) dire('sélecteur d’espace', '236 × 28', m.selecteur ? `${m.selecteur.l} × ${m.selecteur.h}` : 'absent');
+  if (!m.sortie) f.push(`${nom} · aucun bouton « Poste de travail » : le bureau n'a pas de sortie.`);
+  /* La signature de la coquille du bureau. */
+  for (const [piece, dims] of Object.entries(sig.pieces)) {
+    const b = m.pieces[piece];
+    if (!b) {
+      f.push(`${nom} · la coquille de ${attendu} n'a pas sa pièce « ${piece} ».`);
+      continue;
+    }
+    if (dims.h !== undefined && b.h !== dims.h) dire(`hauteur de « ${piece} »`, `${dims.h} px`, `${b.h} px`);
+    if (dims.l !== undefined && b.l !== dims.l) dire(`largeur de « ${piece} »`, `${dims.l} px`, `${b.l} px`);
+  }
+  if (sig.enPied && m.pieces[sig.enPied] && m.main && m.pieces[sig.enPied].haut < m.main.bas - 1) {
+    f.push(`${nom} · « ${sig.enPied} » doit être en pied, sous le contenu (haut ${m.pieces[sig.enPied].haut} px, contenu jusqu'à ${m.main.bas} px).`);
+  }
+  /* Une entrée courante, une seule, dans la navigation principale — et dans les sous-onglets s'il y en a. */
+  if ((m.courants[sig.nav] ?? 0) !== 1) dire(`entrée courante dans « ${sig.nav} »`, 1, m.courants[sig.nav] ?? 0);
+  if (m.pieces['sous-onglets'] && m.courants['sous-onglets'] !== 1) dire('écran courant dans les sous-onglets', 1, m.courants['sous-onglets']);
+  if (m.rails > 0) f.push(`${nom} · le rail du poste est rendu en même temps que la coquille du bureau.`);
+  if (m.colonnes > 0) f.push(`${nom} · ${m.colonnes} colonne(s) de navigation à côté de la coquille du bureau : une barre écrite à la main.`);
+  if (m.signaux.ambre.length) f.push(`${nom} · ambre dans la coquille (${m.signaux.ambre.slice(0, 3).join(', ')}) : le signal vit dans la pièce, pas dans ses murs.`);
+  if (m.signaux.rouge.length) f.push(`${nom} · rouge dans la coquille (${m.signaux.rouge.slice(0, 3).join(', ')}) : le critique est dit une fois, par l'écran, jamais par la barre.`);
+  return f;
+}
+
+/** Une route fixe, ou la cible du premier lien trouvé sur une page. */
+async function resoudre(page, route) {
+  if (typeof route === 'string') return route;
+  const [depuis, lien] = route;
+  await page.goto(APP + depuis, { waitUntil: 'networkidle' }).catch(() => undefined);
+  await page.waitForTimeout(900);
+  const href = await page.locator(lien).first().getAttribute('href').catch(() => null);
+  return href ?? depuis;
+}
 
 /** La teinte du signal, sous ses deux écritures possibles une fois rendue. */
 const AMBRE = ['rgb(208, 154, 74)', '#d09a4a'];
@@ -495,6 +662,16 @@ try {
     mesures += 1;
     fautes.push(...juger(nom, m));
   }
+  if (INTERNE) {
+    for (const [nom, route, bureau] of ECRANS_BUREAUX) {
+      const cible = await resoudre(page, route);
+      await page.goto(APP + cible, { waitUntil: 'networkidle' }).catch(() => undefined);
+      await page.waitForTimeout(900);
+      const m = await mesurerBureau(page);
+      mesures += 1;
+      fautes.push(...jugerBureau(nom, bureau, m));
+    }
+  }
 } finally {
   await navigateur.close();
   serveur.kill();
@@ -510,5 +687,8 @@ if (fautes.length > 0) {
 }
 
 console.log(
-  `\nCoquille : OK — ${mesures} écran(s), rail 52 px en border-box, panneau 184, tuiles 38 × 38,\nhauteur de famille 27n + 8, deux plaques, aucun ambre.`,
+  `\nCoquille : OK — ${mesures} écran(s), rail 52 px en border-box, panneau 184, tuiles 38 × 38,\nhauteur de famille 27n + 8, deux plaques, aucun ambre.` +
+    (INTERNE
+      ? `\nBureaux : ${ECRANS_BUREAUX.length} écran(s) dans leur coquille — barre haute 48, pupitre 42 + horizon 22, console 200 + état 28,\nportes 58, dock 52 en pied, organigramme 42 + pouls 16, une entrée courante, ni ambre ni rouge dans les murs.`
+      : ''),
 );

@@ -48,11 +48,11 @@ export function EnTete({
   return (
     <div className="flex flex-wrap items-end gap-6" style={{ marginBottom: marge }}>
       <div className="min-w-0 flex-1">
-        {surtitre && <span className="block font-mono text-[10px] uppercase tracking-[0.2em] text-[#a3a3a0]">{surtitre}</span>}
-        <h1 className={`${classe} text-balance leading-[1.08] text-[#f7f7f5] ${surtitre ? 'mt-3' : ''}`} style={{ maxWidth: largeurTitre, fontSize: taille }}>
+        {surtitre && <span className="block font-mono text-[10px] uppercase tracking-[0.2em] text-text-secondary">{surtitre}</span>}
+        <h1 className={`${classe} text-balance leading-[1.08] text-text-primary ${surtitre ? 'mt-3' : ''}`} style={{ maxWidth: largeurTitre, fontSize: taille }}>
           {titre}
         </h1>
-        {lede && <p className="mt-3.5 max-w-[74ch] text-pretty text-[14.5px] leading-[1.65] text-[#a3a3a0]">{lede}</p>}
+        {lede && <p className="mt-3.5 max-w-[74ch] text-pretty text-[14.5px] leading-[1.65] text-text-secondary">{lede}</p>}
       </div>
       {/* La présence des collègues sur ce même écran (cahier 15) : à droite de l'en-tête, jamais dans le contenu. */}
       <div className="flex flex-none flex-wrap items-center gap-2.5" data-screen-actions>
@@ -67,8 +67,8 @@ export function EnTete({
 export function TeteCarte({ titre, droite, className = '' }: { titre: React.ReactNode; droite?: React.ReactNode; className?: string }) {
   return (
     <div className={`mb-[22px] flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1.5 ${className}`}>
-      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#a3a3a0]">{titre}</span>
-      {droite !== undefined && droite !== null && droite !== '' && <span className="ml-auto text-right font-mono text-[10px] uppercase tracking-[0.1em] text-[#9a9a97]">{droite}</span>}
+      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-secondary">{titre}</span>
+      {droite !== undefined && droite !== null && droite !== '' && <span className="ml-auto text-right font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">{droite}</span>}
     </div>
   );
 }
@@ -101,9 +101,9 @@ export function Carte({
 export function Ligne({ a, b, c, colonnes, ambre = false, groupe, lien }: { a: React.ReactNode; b: React.ReactNode; c?: React.ReactNode; colonnes?: string; ambre?: boolean; groupe?: string; lien?: string }) {
   const contenu = (
     <>
-      <span className="whitespace-nowrap font-mono text-[11px] font-medium tabular-nums" style={{ color: ambre ? AMBRE : '#9a9a97' }}>{a}</span>
-      <span className="text-pretty text-[13px] leading-[1.5] text-[#e4e4e1]">{b}</span>
-      <span className="whitespace-nowrap font-mono text-[10.5px] font-medium uppercase" style={{ color: ambre ? AMBRE : '#9a9a97' }}>{c ?? ''}</span>
+      <span className="whitespace-nowrap font-mono text-[11px] font-medium tabular-nums" style={{ color: ambre ? AMBRE : 'var(--color-text-muted)' }}>{a}</span>
+      <span className="text-pretty text-[13px] leading-[1.5] text-text-body">{b}</span>
+      <span className="whitespace-nowrap font-mono text-[10.5px] font-medium uppercase" style={{ color: ambre ? AMBRE : 'var(--color-text-muted)' }}>{c ?? ''}</span>
     </>
   );
   const style = { gridTemplateColumns: colonnes ?? '64px minmax(0,1fr) auto' };
@@ -121,8 +121,8 @@ export function Ligne({ a, b, c, colonnes, ambre = false, groupe, lien }: { a: R
 export function Stat({ l, v, couleur }: { l: React.ReactNode; v: React.ReactNode; couleur?: string }) {
   return (
     <span>
-      <span className="block font-mono text-[9.5px] uppercase tracking-[0.12em] text-[#9a9a97]">{l}</span>
-      <span className="mt-1.5 block font-mono text-[19px] font-semibold tabular-nums tracking-[-0.03em]" style={{ color: couleur ?? '#f7f7f5' }}>
+      <span className="block font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-muted">{l}</span>
+      <span className="mt-1.5 block font-mono text-[19px] font-semibold tabular-nums tracking-[-0.03em]" style={{ color: couleur ?? 'var(--color-text-primary)' }}>
         {v}
       </span>
     </span>
@@ -155,11 +155,11 @@ export function LienFort({ to, children, onClick }: { to?: string; children: Rea
  */
 export function Chargement({ texte = 'Relevé en cours', compte }: { texte?: string; compte?: { n: number; sur: number } | null }) {
   return (
-    <div className="flex items-center gap-3 py-10 font-mono text-[11px] tracking-[0.12em] text-[#a3a3a0]" role="status" aria-live="polite">
-      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#a3a3a0]" data-mv />
+    <div className="flex items-center gap-3 py-10 font-mono text-[11px] tracking-[0.12em] text-text-secondary" role="status" aria-live="polite">
+      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-text-secondary" data-mv />
       {texte.toUpperCase()}
       {compte && (
-        <span className="tabular-nums text-[#e4e4e1]">
+        <span className="tabular-nums text-text-body">
           {compte.n} / {compte.sur}
         </span>
       )}
@@ -170,11 +170,11 @@ export function Chargement({ texte = 'Relevé en cours', compte }: { texte?: str
 export function Erreur({ pannes, at, relancer, children }: { pannes: string[]; at: string | null; relancer: () => void; children?: React.ReactNode }) {
   return (
     <div className="relative">
-      <div className="mb-4 flex flex-wrap items-center gap-4 border border-[#2a2a2a] bg-[#0d0d0d] px-4 py-3" role="alert">
-        <span className="text-[13px] text-[#e4e4e1]">
+      <div className="mb-4 flex flex-wrap items-center gap-4 border border-border-sheet bg-surface px-4 py-3" role="alert">
+        <span className="text-[13px] text-text-body">
           {pannes.length ? `Sans réponse : ${pannes.join(', ')}.` : 'Le relevé n’a pas abouti.'} {at ? `Dernier état connu : ${jourMois(at)}, ${hhmm(at)}.` : 'Aucun état antérieur.'}
         </span>
-        <button type="button" onClick={relancer} className="ml-auto inline-flex h-8 items-center px-3.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.14em]" style={{ background: AMBRE, color: '#080808' }}>
+        <button type="button" onClick={relancer} className="ml-auto inline-flex h-8 items-center px-3.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.14em]" style={{ background: AMBRE, color: 'var(--color-signal-ink)' }}>
           Relancer
         </button>
       </div>
@@ -192,8 +192,8 @@ export function Erreur({ pannes, at, relancer, children }: { pannes: string[]; a
 export function Invitation({ titre, texte, action }: { titre: string; texte: string; action?: React.ReactNode }) {
   return (
     <div className="flex flex-col items-start gap-3 border border-dashed border-[#2f2f2f] px-6 py-8">
-      <span className="text-[15px] font-semibold text-[#f7f7f5]">{titre}</span>
-      <span className="max-w-[62ch] text-[13.5px] leading-relaxed text-[#a3a3a0]">{texte}</span>
+      <span className="text-[15px] font-semibold text-text-primary">{titre}</span>
+      <span className="max-w-[62ch] text-[13.5px] leading-relaxed text-text-secondary">{texte}</span>
       {action}
     </div>
   );

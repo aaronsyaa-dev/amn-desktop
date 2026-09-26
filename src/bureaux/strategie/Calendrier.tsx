@@ -138,7 +138,7 @@ export function StrategieCalendrier() {
               <tr>
                 <th className="w-[92px]" />
                 {jours.map((j) => (
-                  <th key={j} scope="col" className="text-center font-mono text-[9.5px] font-medium tabular-nums" style={{ color: j === auj ? '#f7f7f5' : '#9a9a97', fontWeight: j === auj ? 700 : 400 }}>
+                  <th key={j} scope="col" className="text-center font-mono text-[9.5px] font-medium tabular-nums" style={{ color: j === auj ? 'var(--color-text-primary)' : 'var(--color-text-muted)', fontWeight: j === auj ? 700 : 400 }}>
                     {Number(j.slice(8))}
                   </th>
                 ))}
@@ -147,7 +147,7 @@ export function StrategieCalendrier() {
             <tbody>
               {canaux.map((c) => (
                 <tr key={c.cle}>
-                  <th scope="row" className="pr-2 text-left font-mono text-[9.5px] font-medium uppercase tracking-[0.12em] text-[#a3a3a0]">
+                  <th scope="row" className="pr-2 text-left font-mono text-[9.5px] font-medium uppercase tracking-[0.12em] text-text-secondary">
                     {c.nom}
                   </th>
                   {jours.map((j) => {
@@ -160,7 +160,7 @@ export function StrategieCalendrier() {
                         ? { background: j === auj ? '#1b1b1e' : 'transparent', border: j === auj ? '1px solid #3a3a40' : undefined }
                         : p.etat === 'publiee'
                           ? { background: '#44444a' }
-                          : { border: `1px ${p.etat === 'a_valider' ? 'dashed' : 'solid'} #a3a3a0` };
+                          : { border: `1px ${p.etat === 'a_valider' ? 'dashed' : 'solid'} var(--color-text-secondary)` };
                     return (
                       <td key={j} className="p-0">
                         <span
@@ -170,7 +170,7 @@ export function StrategieCalendrier() {
                           aria-label={ici.length ? `${nomCanal(c.cle)}, le ${Number(j.slice(8))} : ${ici.map((x) => x.titre).join(', ')}` : undefined}
                           data-signal-groupe={estAmbre ? 'calendrier-ambre' : undefined}
                         >
-                          {ici.length > 1 && <span className="absolute -right-1 -top-1 font-mono text-[8.5px] font-bold text-[#f7f7f5]">{ici.length}</span>}
+                          {ici.length > 1 && <span className="absolute -right-1 -top-1 font-mono text-[8.5px] font-bold text-text-primary">{ici.length}</span>}
                         </span>
                       </td>
                     );
@@ -186,8 +186,8 @@ export function StrategieCalendrier() {
               <span className="block font-mono text-[9.5px] font-bold uppercase tracking-[0.14em]" style={{ color: AMBRE }}>
                 {ambre.jour === auj ? 'Aujourd’hui' : `Depuis le ${Number(ambre.jour.slice(8))}`} · {nomCanal(ambre.canal)} · à valider
               </span>
-              <span className="mt-1.5 block text-[15px] font-semibold text-[#f7f7f5]">« {ambre.titre} »</span>
-              <span className="mt-1 block text-[12.5px] text-[#a3a3a0]">
+              <span className="mt-1.5 block text-[15px] font-semibold text-text-primary">« {ambre.titre} »</span>
+              <span className="mt-1 block text-[12.5px] text-text-secondary">
                 {ambre.heure ? `Programmée à ${ambre.heure}. ` : ''}
                 {ambre.note ?? 'Le texte et l’image attendent votre accord.'}
               </span>
@@ -202,31 +202,31 @@ export function StrategieCalendrier() {
       <div className="mt-[18px] grid grid-cols-1 gap-[18px] lg:grid-cols-2">
         <Carte titre="Ce qui marche, par canal" droite={`engagement moyen · ${moisLong(`${mois}-01`).split(' ')[0]}`}>
           {marche.length === 0 ? (
-            <p className="text-[13px] leading-relaxed text-[#a3a3a0]">Aucune publication du mois n’a encore son chiffre d’engagement.</p>
+            <p className="text-[13px] leading-relaxed text-text-secondary">Aucune publication du mois n’a encore son chiffre d’engagement.</p>
           ) : (
             <>
               {marche.map(({ c, moyenne }) => (
                 <div key={c.cle} className="grid grid-cols-[100px_minmax(0,1fr)_56px] items-center gap-3 py-2">
-                  <span className="text-[13px] font-semibold text-[#e4e4e1]">{c.nom}</span>
+                  <span className="text-[13px] font-semibold text-text-body">{c.nom}</span>
                   <span className="h-[6px] bg-[#1f1f23]" aria-hidden>
                     <span className="block h-full bg-[#8a8a8f]" style={{ width: `${c.cle === 'NL' ? 100 : (moyenne! / maxMarcheReseaux(marche)) * 100}%` }} />
                   </span>
-                  <span className="text-right font-mono text-[11px] tabular-nums text-[#a3a3a0]">{moyenne!.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %</span>
+                  <span className="text-right font-mono text-[11px] tabular-nums text-text-secondary">{moyenne!.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %</span>
                 </div>
               ))}
-              <p className="mt-3 text-[12px] leading-relaxed text-[#9a9a97]">La lettre se mesure en ouverture, les réseaux en engagement : les barres ne se comparent pas d’un canal à l’autre.</p>
+              <p className="mt-3 text-[12px] leading-relaxed text-text-muted">La lettre se mesure en ouverture, les réseaux en engagement : les barres ne se comparent pas d’un canal à l’autre.</p>
             </>
           )}
         </Carte>
         <Carte titre="Les trous" droite={trous[0]?.resume ?? ''}>
           {trous.length === 0 ? (
-            <p className="text-[13px] leading-relaxed text-[#a3a3a0]">Pas de trou : chaque canal publie au moins tous les dix jours.</p>
+            <p className="text-[13px] leading-relaxed text-text-secondary">Pas de trou : chaque canal publie au moins tous les dix jours.</p>
           ) : (
             trous.map((t, i) => (
               <div key={i} className="grid grid-cols-[72px_minmax(0,1fr)_auto] items-baseline gap-3.5 border-b border-[#222226] py-3">
-                <span className="font-mono text-[11px] tabular-nums text-[#9a9a97]">{t.quand}</span>
-                <span className="text-[13px] leading-[1.5] text-[#e4e4e1]">{t.texte}</span>
-                <span className="font-mono text-[10.5px] uppercase text-[#9a9a97]">{t.canal}</span>
+                <span className="font-mono text-[11px] tabular-nums text-text-muted">{t.quand}</span>
+                <span className="text-[13px] leading-[1.5] text-text-body">{t.texte}</span>
+                <span className="font-mono text-[10.5px] uppercase text-text-muted">{t.canal}</span>
               </div>
             ))
           )}

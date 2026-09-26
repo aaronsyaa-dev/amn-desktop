@@ -99,12 +99,12 @@ export function StrategieEnquete() {
               <section key={q.id} className="bx-dom p-6" style={estAmbre ? { borderColor: AMBRE } : undefined} aria-label={q.texte} data-signal-groupe={estAmbre ? 'enquete-ambre' : undefined}>
                 <div className="flex flex-wrap items-start gap-4">
                   <div className="min-w-0 flex-1">
-                    <span className="block font-mono text-[9.5px] uppercase tracking-[0.16em]" style={{ color: estAmbre ? AMBRE : '#a3a3a0' }} data-signal-groupe={estAmbre ? 'enquete-ambre' : undefined}>
+                    <span className="block font-mono text-[9.5px] uppercase tracking-[0.16em]" style={{ color: estAmbre ? AMBRE : 'var(--color-text-secondary)' }} data-signal-groupe={estAmbre ? 'enquete-ambre' : undefined}>
                       {q.echeance ? (estAmbre ? `À trancher ${q.echeance.slice(0, 10) === auj ? 'aujourd’hui' : `depuis le ${jjmm(q.echeance)}`}` : `À trancher avant le ${jjmm(q.echeance)}`) : 'Question ouverte'} · {ind.length} indice{ind.length > 1 ? 's' : ''}
                     </span>
-                    <h2 className="mt-2 text-[20px] font-semibold leading-snug tracking-[-0.02em] text-[#f7f7f5]">{q.texte}</h2>
+                    <h2 className="mt-2 text-[20px] font-semibold leading-snug tracking-[-0.02em] text-text-primary">{q.texte}</h2>
                   </div>
-                  <span className="flex gap-3 font-mono text-[10.5px] tabular-nums text-[#a3a3a0]">
+                  <span className="flex gap-3 font-mono text-[10.5px] tabular-nums text-text-secondary">
                     <span>{compte('pour')} pour</span>
                     <span>{compte('contre')} contre</span>
                   </span>
@@ -118,7 +118,7 @@ export function StrategieEnquete() {
                       {i.source && <span className="mt-2 block border-t border-[#cfcdc7] pt-1.5 text-[11px] text-[#3a3a38]">{i.source}</span>}
                     </article>
                   ))}
-                  {ind.length === 0 && <p className="text-[13px] text-[#a3a3a0] md:col-span-3">Aucun indice encore.</p>}
+                  {ind.length === 0 && <p className="text-[13px] text-text-secondary md:col-span-3">Aucun indice encore.</p>}
                 </div>
                 {indice?.questionId === q.id ? (
                   <form
@@ -181,8 +181,8 @@ export function StrategieEnquete() {
             <Carte titre="Tranchées" droite={closes.length}>
               {closes.map((q) => (
                 <div key={q.id} className="border-b border-[#222226] py-3">
-                  <span className="block text-[13px] text-[#a3a3a0]">{q.texte}</span>
-                  <span className="mt-1 block text-[13.5px] font-semibold text-[#f7f7f5]">→ {q.verdict}</span>
+                  <span className="block text-[13px] text-text-secondary">{q.texte}</span>
+                  <span className="mt-1 block text-[13.5px] font-semibold text-text-primary">→ {q.verdict}</span>
                 </div>
               ))}
             </Carte>

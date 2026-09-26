@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { AMBRE, ROUGE } from '../jetons';
 import { CAUSES, HORIZON, LIBELLE_CAUSE, POIDS, horizon as calculer, type Cause, type OrgPoints } from '../donnees/parc';
 import { UserAvatar } from '../../components/UserAvatar';
@@ -23,8 +23,8 @@ import { enLettres } from '../format';
 /** Les gris des causes : l'ambre et le rouge sont pris, les causes se lisent en valeurs. */
 export const TEINTE_CAUSE: Record<Cause, string> = {
   critique: '#d9d9d6',
-  incident: '#6b6b68',
-  jeton: '#a3a3a0',
+  incident: 'var(--color-trait-sourd)',
+  jeton: 'var(--color-text-secondary)',
   arrivee: '#4a4a48',
   demande: '#8a8a87',
   alerte: '#333333',
@@ -35,17 +35,16 @@ export const libelleSuivi = (o: OrgPoints) => (o.suivi.type === 'humain' ? 'SUIV
 export function Horizon({ orgs, ambre, rouge, pret }: { orgs: OrgPoints[]; ambre: OrgPoints | null; rouge: OrgPoints | null; pret: boolean }) {
   const h = calculer(orgs);
   const px = h.pxParPoint;
-  const navigate = useNavigate();
   const tours = h.tours ?? [];
   const serrees = tours.length > HORIZON.toursMax;
   return (
     <div>
       {h.tours === null ? (
         <div className="flex h-[264px] flex-col items-start justify-end gap-3 border-b border-[#252525] pb-6">
-          <span className="font-sans text-[28px] font-bold tracking-[-0.03em] text-[#f7f7f5]">
+          <span className="font-sans text-[28px] font-bold tracking-[-0.03em] text-text-primary">
             {h.debordement} organisations demandent un humain.
           </span>
-          <span className="max-w-[60ch] text-[13.5px] text-[#a3a3a0]">Trop pour un horizon : elles sont dans la file, triées par le temps qu’il leur reste.</span>
+          <span className="max-w-[60ch] text-[13.5px] text-text-secondary">Trop pour un horizon : elles sont dans la file, triées par le temps qu’il leur reste.</span>
           <Link to="/supervisor/a-traiter" className="bx-lien">
             Ouvrir la file À traiter
           </Link>
@@ -53,7 +52,8 @@ export function Horizon({ orgs, ambre, rouge, pret }: { orgs: OrgPoints[]; ambre
       ) : (
         <div className="relative overflow-hidden">
           <div data-mv className="bx-balayage" aria-hidden />
-          <ol className="relative grid items-start gap-3" style={{ gridTemplateColumns: `repeat(${Math.max(tours.length, 1)}, minmax(${serrees ? 56 : 0}px, 1fr))` }} aria-label="Les tours de l’horizon">
+          {/* Neuf colonnes au moins : une tour garde la largeur du paquet (45a) quand peu d'organisations en ont une — quatre tours ne s'étalent pas en quatre pans, et le seul segment critique reste un segment. */}
+          <ol className="relative grid items-start gap-3" style={{ gridTemplateColumns: `repeat(${Math.max(tours.length, 9)}, minmax(${serrees ? 56 : 0}px, 1fr))` }} aria-label="Les tours de l’horizon">
             {tours.map((o) => (
               <Tour key={o.id} o={o} px={px} ambre={ambre?.id === o.id} rouge={rouge?.id === o.id} />
             ))}
@@ -62,7 +62,7 @@ export function Horizon({ orgs, ambre, rouge, pret }: { orgs: OrgPoints[]; ambre
       )}
       {!pret && <span className="sr-only">Pesée en cours</span>}
       {(h.plateau.length > 0 || h.ligne.length > 0) && (
-        <div className="mt-6 flex flex-wrap items-end gap-x-8 gap-y-5 border-t border-[#1f1f1f] pt-6">
+        <div className="mt-6 flex flex-wrap items-end gap-x-8 gap-y-5 border-t border-border pt-6">
           {h.plateau.length > 0 && (
             <div className="min-w-0">
               {h.histogramme ? (
@@ -74,20 +74,22 @@ export function Horizon({ orgs, ambre, rouge, pret }: { orgs: OrgPoints[]; ambre
               ) : (
                 <div className="flex items-end gap-[2px]" aria-hidden>
                   {h.plateau.map((o) => (
-                    <span
+                    /* Un raccourci pour la souris sur une marque de 5 px : hors tabulation, le chemin au clavier est « Tout voir dans la grille ». */
+                    <Link
                       key={o.id}
+                      to={`/supervisor/dossiers/${o.id}`}
+                      tabIndex={-1}
                       title={`${o.nom} · poids ${o.poids} · ${o.raison}`}
-                      onClick={() => navigate(`/supervisor/dossiers/${o.id}`)}
-                      className="w-[5px] cursor-pointer bg-[#4a4a48] hover:bg-[#8a8a87]"
+                      className="block w-[5px] bg-[#4a4a48] hover:bg-[#8a8a87]"
                       style={{ height: Math.max(1, Math.round(o.poids * px)) }}
                     />
                   ))}
                 </div>
               )}
-              <span className="mt-2 block font-mono text-[9.5px] uppercase tracking-[0.14em] text-[#a3a3a0]">
+              <span className="mt-2 block font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-secondary">
                 Le plateau · {h.plateau.length} organisation{h.plateau.length > 1 ? 's' : ''}, {Math.min(...h.plateau.map((o) => o.poids))} à {Math.max(...h.plateau.map((o) => o.poids))} points
               </span>
-              <span className="mt-0.5 block text-[12px] text-[#9a9a97]">Même échelle que les tours · survol : nom, poids, raison</span>
+              <span className="mt-0.5 block text-[12px] text-text-muted">Même échelle que les tours · survol : nom, poids, raison</span>
             </div>
           )}
           {h.ligne.length > 0 && (
@@ -97,14 +99,14 @@ export function Horizon({ orgs, ambre, rouge, pret }: { orgs: OrgPoints[]; ambre
               ) : (
                 <div className="flex items-end gap-[3px]" aria-hidden>
                   {h.ligne.map((o) => (
-                    <span key={o.id} title={`${o.nom} · rien d’ouvert`} onClick={() => navigate(`/supervisor/dossiers/${o.id}`)} className="h-[6px] w-px cursor-pointer bg-[#4a4a48] hover:bg-[#a3a3a0]" />
+                    <Link key={o.id} to={`/supervisor/dossiers/${o.id}`} tabIndex={-1} title={`${o.nom} · rien d’ouvert`} className="block h-[6px] w-px bg-[#4a4a48] hover:bg-text-secondary" />
                   ))}
                 </div>
               )}
-              <span className="mt-2 block font-mono text-[9.5px] uppercase tracking-[0.14em] text-[#a3a3a0]">
+              <span className="mt-2 block font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-secondary">
                 La ligne d’horizon · {h.ligne.length} sans rien à traiter
               </span>
-              <span className="mt-0.5 block text-[12px] text-[#9a9a97]">Un cran par organisation · la Garde les tient</span>
+              <span className="mt-0.5 block text-[12px] text-text-muted">Un cran par organisation · la Garde les tient</span>
             </div>
           )}
           <Link to="/supervisor/grille" className="bx-lien ml-auto self-center">
@@ -126,7 +128,7 @@ function Tour({ o, px, ambre, rouge }: { o: OrgPoints; px: number; ambre: boolea
     <li className="min-w-0" data-signal-groupe={ambre ? 'horizon-ambre' : undefined}>
       <Link to={`/supervisor/dossiers/${o.id}`} className="bx-nav group block" title={`${o.nom} · poids ${o.poids} · ${o.raison}`} aria-label={`${o.nom}, poids ${o.poids} : ${o.raison}. Suivi : ${libelleSuivi(o).toLowerCase()}.`}>
         <div className="flex h-[264px] flex-col justify-end">
-          <span className="mb-2 font-mono text-[11px] font-semibold tabular-nums" style={{ color: ambre ? AMBRE : '#a3a3a0' }}>
+          <span className="mb-2 font-mono text-[11px] font-semibold tabular-nums" style={{ color: ambre ? AMBRE : 'var(--color-text-secondary)' }}>
             {o.poids}
           </span>
           {o.poids === 0 ? (
@@ -151,11 +153,11 @@ function Tour({ o, px, ambre, rouge }: { o: OrgPoints; px: number; ambre: boolea
             </span>
           )}
         </div>
-        <span className="mt-3 block text-[13px] font-semibold leading-tight text-[#f7f7f5] group-hover:underline">{o.nom}</span>
-        <span className="mt-1.5 line-clamp-4 block text-[12px] leading-[1.4] text-[#9a9a97]">{o.raison}</span>
+        <span className="mt-3 block text-[13px] font-semibold leading-tight text-text-primary group-hover:underline">{o.nom}</span>
+        <span className="mt-1.5 line-clamp-4 block text-[12px] leading-[1.4] text-text-muted">{o.raison}</span>
         <span className="mt-2.5 flex items-center gap-2">
           {qui && <UserAvatar email={qui} size={18} />}
-          <span className="font-mono text-[9.5px] font-semibold tracking-[0.14em]" style={{ color: ambre ? AMBRE : '#a3a3a0' }}>
+          <span className="font-mono text-[9.5px] font-semibold tracking-[0.14em]" style={{ color: ambre ? AMBRE : 'var(--color-text-secondary)' }}>
             {libelleSuivi(o)}
           </span>
         </span>
@@ -166,9 +168,9 @@ function Tour({ o, px, ambre, rouge }: { o: OrgPoints; px: number; ambre: boolea
 
 export function Legende({ rouge = true }: { rouge?: boolean }) {
   return (
-    <ul className="flex flex-wrap items-center gap-x-4 gap-y-2" aria-label="Les poids des causes">
+    <ul className="flex flex-wrap items-center gap-x-4 gap-y-2" aria-label="Les poids des causes" data-legende>
       {CAUSES.map((c) => (
-        <li key={c} className="flex items-center gap-1.5 font-mono text-[9.5px] tracking-[0.06em] text-[#a3a3a0]">
+        <li key={c} className="flex items-center gap-1.5 font-mono text-[9.5px] tracking-[0.06em] text-text-secondary">
           <span className="h-2 w-2" style={{ background: c === 'critique' && rouge ? ROUGE.trait : TEINTE_CAUSE[c], outline: c === 'alerte' ? '1px solid #4a4a48' : undefined }} aria-hidden />
           {LIBELLE_CAUSE[c]} ×{POIDS[c]}
         </li>

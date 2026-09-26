@@ -79,20 +79,20 @@ export function SupervisorATraiter() {
             {ONGLETS.map(([cle, nom, types]) => {
               const n = cle === 'tout' ? m.file.length : m.file.filter((x) => types.includes(x.type)).length;
               return (
-                <button key={cle} type="button" aria-pressed={onglet === cle} onClick={() => setOnglet(cle)} className="flex h-8 items-center gap-2 border px-3 text-[12.5px] font-semibold" style={{ borderColor: onglet === cle ? '#8a8a87' : '#2b2b2b', color: onglet === cle ? '#f7f7f5' : '#a3a3a0' }}>
+                <button key={cle} type="button" aria-pressed={onglet === cle} onClick={() => setOnglet(cle)} className="flex h-8 items-center gap-2 border px-3 text-[12.5px] font-semibold" style={{ borderColor: onglet === cle ? '#8a8a87' : '#2b2b2b', color: onglet === cle ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}>
                   {nom}
-                  {n > 0 && <span className="font-mono text-[10.5px] font-medium text-[#a3a3a0]">{n}</span>}
+                  {n > 0 && <span className="font-mono text-[10.5px] font-medium text-text-secondary">{n}</span>}
                 </button>
               );
             })}
-            <span className="ml-2 max-w-[140px] font-mono text-[9.5px] uppercase leading-snug tracking-[0.14em] text-[#9a9a97]">Triée par temps restant</span>
+            <span className="ml-2 max-w-[140px] font-mono text-[9.5px] uppercase leading-snug tracking-[0.14em] text-text-muted">Triée par temps restant</span>
           </div>
           {liste.length === 0 ? (
-            <p className="py-8 text-[13px] text-[#a3a3a0]">Rien de ce type n’attend.</p>
+            <p className="py-8 text-[13px] text-text-secondary">Rien de ce type n’attend.</p>
           ) : (
             <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="border-b border-[#252525] font-mono text-[9.5px] uppercase tracking-[0.14em] text-[#9a9a97]">
+                <tr className="border-b border-[#252525] font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted">
                   <th className="py-2.5 pl-3 font-normal">Type</th>
                   <th className="py-2.5 font-normal">Organisation</th>
                   <th className="py-2.5 font-normal">La mèche</th>
@@ -107,7 +107,7 @@ export function SupervisorATraiter() {
             </table>
           )}
           {reste.length > 0 && (
-            <button type="button" onClick={() => setTout(true)} className="mt-3 text-[12px] text-[#a3a3a0] hover:text-[#f7f7f5]">
+            <button type="button" onClick={() => setTout(true)} className="mt-3 text-[12px] text-text-secondary hover:text-text-primary">
               + {reste.length} élément{reste.length > 1 ? 's' : ''} plus loin dans la file · {resume(reste)}
             </button>
           )}
@@ -137,7 +137,7 @@ function resume(liste: ElementFile[]): string {
 function Meche({ x, ambre }: { x: ElementFile; ambre: boolean }) {
   const pris = Boolean(x.qui);
   const pos = Math.min(1, Math.max(0, x.brule)) * MECHE;
-  const couleur = ambre ? AMBRE : x.type === 'critique' && pris ? '#6b6b68' : '#e4e4e1';
+  const couleur = ambre ? AMBRE : x.type === 'critique' && pris ? 'var(--color-trait-sourd)' : 'var(--color-text-body)';
   return (
     <span className="relative inline-block h-3 align-middle" style={{ width: MECHE }} aria-hidden>
       <span className="absolute left-0 top-1/2 border-t border-dotted" style={{ width: pos, borderColor: '#4a4a48' }} />
@@ -150,7 +150,7 @@ function Meche({ x, ambre }: { x: ElementFile; ambre: boolean }) {
 function Etiquette({ type }: { type: TypeFile }) {
   const critique = type === 'critique';
   return (
-    <span className="inline-block border px-1.5 py-[3px] font-mono text-[9.5px] font-semibold tracking-[0.12em]" style={{ borderColor: critique ? ROUGE.bordure : '#2b2b2b', color: critique ? ROUGE.texte : '#a3a3a0', background: critique ? ROUGE.fond : 'transparent' }}>
+    <span className="inline-block border px-1.5 py-[3px] font-mono text-[9.5px] font-semibold tracking-[0.12em]" style={{ borderColor: critique ? ROUGE.bordure : '#2b2b2b', color: critique ? ROUGE.texte : 'var(--color-text-secondary)', background: critique ? ROUGE.fond : 'transparent' }}>
       {LIBELLE_TYPE[type]}
     </span>
   );
@@ -159,22 +159,21 @@ function Etiquette({ type }: { type: TypeFile }) {
 function LigneFile({ x, ambre, choisi, onChoisir }: { x: ElementFile; ambre: boolean; choisi: boolean; onChoisir: () => void }) {
   return (
     <tr
-      onClick={onChoisir}
-      className="cursor-pointer border-b border-[#1a1a1a] hover:bg-white/[0.02]"
-      style={{ background: choisi ? '#161616' : undefined, boxShadow: choisi ? 'inset 2px 0 0 #f7f7f5' : undefined }}
+      className="border-b border-[#1a1a1a] hover:bg-white/[0.02]"
+      style={{ background: choisi ? 'var(--color-surface-hover)' : undefined, boxShadow: choisi ? 'inset 2px 0 0 var(--color-text-primary)' : undefined }}
     >
       <td className="py-3.5 pl-3">
         <Etiquette type={x.type} />
       </td>
       <td className="max-w-[200px] py-3.5">
-        <button type="button" onClick={onChoisir} className="block text-left text-[13.5px] font-semibold text-[#f7f7f5]" aria-pressed={choisi}>
+        <button type="button" onClick={onChoisir} className="block text-left text-[13.5px] font-semibold text-text-primary" aria-pressed={choisi}>
           {x.orgNom}
         </button>
-        <span className="block truncate text-[12px] text-[#9a9a97]">{x.phrase}</span>
+        <span className="block truncate text-[12px] text-text-muted">{x.phrase}</span>
       </td>
       <td className="whitespace-nowrap py-3.5" data-signal-groupe={ambre ? 'file-ambre' : undefined}>
         <Meche x={x} ambre={ambre} />
-        <span className="ml-3 font-mono text-[11px] font-semibold tabular-nums" style={{ color: ambre ? AMBRE : '#e4e4e1' }}>
+        <span className="ml-3 font-mono text-[11px] font-semibold tabular-nums" style={{ color: ambre ? AMBRE : 'var(--color-text-body)' }}>
           {texteReste(x.resteMs)}
         </span>
       </td>
@@ -182,10 +181,10 @@ function LigneFile({ x, ambre, choisi, onChoisir }: { x: ElementFile; ambre: boo
         {x.qui ? (
           <span className="flex items-center gap-2">
             <UserAvatar email={x.qui} size={18} />
-            <span className="font-mono text-[9.5px] font-semibold tracking-[0.14em] text-[#a3a3a0]">SUIVI</span>
+            <span className="font-mono text-[9.5px] font-semibold tracking-[0.14em] text-text-secondary">SUIVI</span>
           </span>
         ) : (
-          <span className="font-mono text-[9.5px] font-semibold tracking-[0.14em]" style={{ color: ambre ? AMBRE : '#e4e4e1' }}>
+          <span className="font-mono text-[9.5px] font-semibold tracking-[0.14em]" style={{ color: ambre ? AMBRE : 'var(--color-text-body)' }}>
             PERSONNE
           </span>
         )}
@@ -202,11 +201,11 @@ function Detail({ x, ambre, relire }: { x: ElementFile; ambre: boolean; relire: 
   const apres = placesApres(org?.userCount ?? 0, places);
   return (
     <Carte pad="p-6" className="self-start">
-      <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-[#a3a3a0]">
+      <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-text-secondary">
         {x.type === 'jeton' ? 'Jeton de places' : LIBELLE_TYPE[x.type].toLowerCase()} · {x.orgNom}
       </span>
-      <h2 className="mt-3 text-[19px] font-semibold leading-snug text-[#f7f7f5]">{x.phrase}</h2>
-      <p className="mt-2.5 text-[13.5px] leading-relaxed text-[#a3a3a0]">
+      <h2 className="mt-3 text-[19px] font-semibold leading-snug text-text-primary">{x.phrase}</h2>
+      <p className="mt-2.5 text-[13.5px] leading-relaxed text-text-secondary">
         {x.detail ? `${x.detail.slice(0, 280)}${x.detail.length > 280 ? '…' : ''} ` : ''}Arrivé {ilYA(x.depuis)}.
       </p>
       <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4">
@@ -217,7 +216,10 @@ function Detail({ x, ambre, relire }: { x: ElementFile; ambre: boolean; relire: 
           </>
         )}
         <Stat l="Délai" v={duree(DELAI_PROMIS_MS[x.type])} />
-        <Stat l={x.resteMs >= 0 ? 'Reste' : 'Dépassé de'} v={duree(x.resteMs)} couleur={ambre ? AMBRE : undefined} />
+        {/* Le « reste » de l'élément choisi : quand c'est lui qui tombera le premier, c'est le même signal que sa mèche. */}
+        <div className="contents" data-signal-groupe={ambre ? 'file-ambre' : undefined}>
+          <Stat l={x.resteMs >= 0 ? 'Reste' : 'Dépassé de'} v={duree(x.resteMs)} couleur={ambre ? AMBRE : undefined} />
+        </div>
       </div>
       <div className="mt-5">
         <GestesElement x={x} relire={relire} />
@@ -324,7 +326,7 @@ export function GestesElement({ x, relire, compact = false }: { x: ElementFile; 
     <>
       <div className={compact ? 'flex flex-wrap gap-2' : 'flex flex-col gap-2'}>{gestes}</div>
       {etat && (
-        <p className="mt-3 text-[12.5px] text-[#e4e4e1]" role="status">
+        <p className="mt-3 text-[12.5px] text-text-body" role="status">
           {etat}
         </p>
       )}
@@ -336,7 +338,7 @@ function Reponse({ onRepondre, onAttribuer, pris, enCours }: { onRepondre: (t: s
   const [t, setT] = useState('');
   return (
     <>
-      <textarea value={t} onChange={(e) => setT(e.target.value)} rows={3} placeholder="Votre réponse à la cliente…" aria-label="Votre réponse à la cliente" className="w-full resize-none border border-[#2b2b2b] bg-transparent p-2.5 text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]" />
+      <textarea value={t} onChange={(e) => setT(e.target.value)} rows={3} placeholder="Votre réponse à la cliente…" aria-label="Votre réponse à la cliente" className="w-full resize-none border border-[#2b2b2b] bg-transparent p-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]" />
       <button type="button" disabled={enCours || !t.trim()} className="bx-btn w-full" onClick={() => onRepondre(t.trim())}>
         Répondre
       </button>

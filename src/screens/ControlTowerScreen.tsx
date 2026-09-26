@@ -218,7 +218,7 @@ export function ControlTowerScreen() {
         consulter ».
       */}
       <StaggerItem>
-        <AttentionPanel state={attention} />
+        <AttentionPanel state={attention} rouge={false} />
       </StaggerItem>
 
       {/* Le mur : incidents inter-sites, origine des visiteurs, activité horaire. */}

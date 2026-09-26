@@ -44,7 +44,7 @@ export function StrategieAccueil() {
       {charge && (
         <div className="mb-3 flex flex-wrap gap-1.5" aria-label="Le mur, rangé par zones">
           {zones.map((z) => (
-            <Link key={z.nom} to={z.lien} className="border border-[#28282c] bg-[#101012] px-3 py-1.5 text-[12.5px] text-[#e4e4e1] hover:border-[#4a4a50]">
+            <Link key={z.nom} to={z.lien} className="border border-[#28282c] bg-[#101012] px-3 py-1.5 text-[12.5px] text-text-body hover:border-[#4a4a50]">
               › {z.nom} · {z.n}
               {z.active ? '' : ', repliée'}
             </Link>
@@ -89,12 +89,12 @@ export function StrategieAccueil() {
                 const auj = jour === m.aujourdHui;
                 return (
                   <li key={jour} className="min-h-[92px] border px-2 py-2" style={{ borderColor: auj ? '#3a3a40' : '#222226', background: auj ? '#1b1b1e' : 'transparent' }}>
-                    <span className="block font-mono text-[9.5px] tracking-[0.08em]" style={{ color: auj ? '#f7f7f5' : '#a3a3a0', fontWeight: auj ? 600 : 400 }}>
+                    <span className="block font-mono text-[9.5px] tracking-[0.08em]" style={{ color: auj ? 'var(--color-text-primary)' : 'var(--color-text-secondary)', fontWeight: auj ? 600 : 400 }}>
                       {jourCourt(jour)}
                     </span>
                     <span className="mt-2 flex flex-col items-start gap-1">
                       {pubs.map((p) => (
-                        <span key={p.id} title={`${p.titre} · ${p.etat === 'publiee' ? 'publiée' : p.etat === 'programmee' ? 'programmée' : 'à valider'}`} className="border px-1 font-mono text-[9.5px] font-semibold" style={{ borderColor: '#3a3a40', color: '#e4e4e1', borderStyle: p.etat === 'programmee' ? 'dashed' : 'solid' }}>
+                        <span key={p.id} title={`${p.titre} · ${p.etat === 'publiee' ? 'publiée' : p.etat === 'programmee' ? 'programmée' : 'à valider'}`} className="border px-1 font-mono text-[9.5px] font-semibold" style={{ borderColor: '#3a3a40', color: 'var(--color-text-body)', borderStyle: p.etat === 'programmee' ? 'dashed' : 'solid' }}>
                           {p.canal}
                         </span>
                       ))}
@@ -110,7 +110,7 @@ export function StrategieAccueil() {
               <Stat l="Devis envoyés" v={m.pipeline.devis || '—'} />
               <Stat l="À relancer" v={m.pipeline.aRelancer || '—'} />
             </div>
-            {m.ambre && <p className="mt-5 border-t border-[#222226] pt-4 text-[13px] leading-relaxed text-[#e4e4e1]">{phraseProspect(m)}</p>}
+            {m.ambre && <p className="mt-5 border-t border-[#222226] pt-4 text-[13px] leading-relaxed text-text-body">{phraseProspect(m)}</p>}
             <div className="mt-4">
               <Link to="/strategie/pipeline" className="bx-lien">
                 5 · Pipeline

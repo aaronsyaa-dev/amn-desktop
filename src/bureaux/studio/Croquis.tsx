@@ -265,7 +265,7 @@ function Mur({ p }: { p: Piece }) {
                   <div
                     data-image
                     className="relative"
-                    style={{ height: pos.h * k, background: '#1c1b19', border: `1px solid ${piece === c.id ? '#6b6b68' : '#2e2c29'}`, boxShadow: enMain ? '0 30px 40px -18px rgba(0,0,0,1)' : '0 16px 24px -16px rgba(0,0,0,.9)' }}
+                    style={{ height: pos.h * k, background: '#1c1b19', border: `1px solid ${piece === c.id ? 'var(--color-trait-sourd)' : '#2e2c29'}`, boxShadow: enMain ? '0 30px 40px -18px rgba(0,0,0,1)' : '0 16px 24px -16px rgba(0,0,0,.9)' }}
                     tabIndex={0}
                     role="button"
                     aria-label={`${c.titre} : Entrée pose une punaise au centre`}
@@ -279,7 +279,7 @@ function Mur({ p }: { p: Piece }) {
                     {c.image ? (
                       <img src={c.image} alt={c.titre} draggable={false} className="h-full w-full object-cover" />
                     ) : (
-                      <span className="absolute inset-0 flex items-center justify-center font-mono text-[10px] uppercase tracking-[0.2em] text-[#9a9a97]" aria-hidden>
+                      <span className="absolute inset-0 flex items-center justify-center font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted" aria-hidden>
                         {c.genre}
                       </span>
                     )}
@@ -292,7 +292,7 @@ function Mur({ p }: { p: Piece }) {
                           data-punaise
                           onClick={() => setChoisie(x.n)}
                           className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full"
-                          style={{ left: `${x.x}%`, top: `${x.y}%`, outline: choisie === x.n ? '2px solid #f7f7f5' : undefined, outlineOffset: 3 }}
+                          style={{ left: `${x.x}%`, top: `${x.y}%`, outline: choisie === x.n ? '2px solid var(--color-text-primary)' : undefined, outlineOffset: 3 }}
                           aria-label={`Punaise ${x.n} : ${x.texte}`}
                           data-signal-groupe={estAmbre ? 'mur-decision' : undefined}
                         >
@@ -306,7 +306,7 @@ function Mur({ p }: { p: Piece }) {
                       </span>
                     )}
                   </div>
-                  <figcaption className="mt-2.5 line-clamp-2 font-mono text-[10px] font-semibold uppercase leading-[1.5] tracking-[0.14em] text-[#a3a3a0]" title={c.legende}>
+                  <figcaption className="mt-2.5 line-clamp-2 font-mono text-[10px] font-semibold uppercase leading-[1.5] tracking-[0.14em] text-text-secondary" title={c.legende}>
                     {c.genre} · {c.titre.replace(new RegExp(`^${c.genre}\\s*·\\s*`, 'i'), '')}
                   </figcaption>
                 </figure>

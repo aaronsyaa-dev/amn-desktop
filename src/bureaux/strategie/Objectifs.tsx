@@ -129,23 +129,23 @@ export function StrategieObjectifs() {
             return (
               <div key={o.id} className="border-b border-[#222226] py-5" data-signal-groupe={estAmbre ? 'objectif-ambre' : undefined}>
                 <div className="flex flex-wrap items-baseline justify-between gap-3">
-                  <span className="text-[15px] font-semibold text-[#f7f7f5]">{o.label}</span>
-                  <span className="font-mono text-[12px] tabular-nums text-[#e4e4e1]">
-                    <Valeur o={o} onChanger={(v) => void upsert('objectives', o.id, { ...stripMeta(o), currentValue: v })} /> <span className="text-[#9a9a97]">/ {nf(o.targetValue, o.unit)}</span>
+                  <span className="text-[15px] font-semibold text-text-primary">{o.label}</span>
+                  <span className="font-mono text-[12px] tabular-nums text-text-body">
+                    <Valeur o={o} onChanger={(v) => void upsert('objectives', o.id, { ...stripMeta(o), currentValue: v })} /> <span className="text-text-muted">/ {nf(o.targetValue, o.unit)}</span>
                   </span>
                 </div>
                 <div className="relative mt-3 h-[10px] bg-[#1f1f23]">
                   <span className="absolute inset-y-0 left-0" style={{ width: `${part * 100}%`, background: estAmbre ? AMBRE : '#8a8a8f' }} />
-                  <span aria-hidden className="absolute -bottom-1.5 -top-1.5 w-[2px] bg-[#f7f7f5]" style={{ left: `calc(${ecoule * 100}% - 1px)` }} />
+                  <span aria-hidden className="absolute -bottom-1.5 -top-1.5 w-[2px] bg-text-primary" style={{ left: `calc(${ecoule * 100}% - 1px)` }} />
                 </div>
-                <div className="mt-2 flex flex-wrap justify-between gap-3 font-mono text-[10.5px] text-[#a3a3a0]">
+                <div className="mt-2 flex flex-wrap justify-between gap-3 font-mono text-[10.5px] text-text-secondary">
                   <span style={estAmbre ? { color: AMBRE } : undefined}>
                     {atteint ? 'atteint' : retard > 0.1 ? `en retard : ${nf(Math.round(attendu - o.currentValue), o.unit)} derrière l’allure` : retard > 0 ? 'à l’heure, de peu' : 'en avance sur l’allure'}
                   </span>
                   <span>
                     {o.periodLabel ? `${o.periodLabel} · ` : ''}
                     {Math.round(ecoule * 100)} % écoulé
-                    <button type="button" className="ml-3 text-[#9a9a97] underline decoration-[#4a4a48] underline-offset-2 hover:text-[#f7f7f5]" onClick={() => void remove('objectives', o.id)}>
+                    <button type="button" className="ml-3 text-text-muted underline decoration-[#4a4a48] underline-offset-2 hover:text-text-primary" onClick={() => void remove('objectives', o.id)}>
                       retirer
                     </button>
                   </span>
@@ -178,12 +178,12 @@ function Valeur({ o, onChanger }: { o: Obj; onChanger: (v: number) => void }) {
         }}
         inputMode="decimal"
         aria-label={`Où en est « ${o.label} »`}
-        className="h-7 w-[90px] border border-[#3a3a40] bg-transparent px-1.5 text-right font-mono text-[12px] text-[#f7f7f5] outline-none"
+        className="h-7 w-[90px] border border-[#3a3a40] bg-transparent px-1.5 text-right font-mono text-[12px] text-text-primary outline-none"
       />
     );
   }
   return (
-    <button type="button" onClick={() => setEdition(String(o.currentValue))} className="underline decoration-[#4a4a48] underline-offset-4 hover:decoration-[#f7f7f5]" title="Mettre à jour">
+    <button type="button" onClick={() => setEdition(String(o.currentValue))} className="underline decoration-[#4a4a48] underline-offset-4 hover:decoration-text-primary" title="Mettre à jour">
       {nf(o.currentValue, o.unit)}
     </button>
   );

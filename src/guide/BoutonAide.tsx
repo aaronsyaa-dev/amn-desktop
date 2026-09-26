@@ -114,7 +114,8 @@ export function BoutonAide({ extra }: { extra?: React.ReactNode } = {}) {
             `mousedown` hors du menu — fermerait le menu, démonterait
             l'entrée, et la fenêtre avec elle. Constaté au premier essai.
           */}
-          <span onClick={(e) => { if ((e.target as Element).closest('[role="menuitem"]')) setOuvert(false); }}>{extra}</span>
+          {/* Une délégation, pas une commande (`role="none"`) : Entrée sur une entrée du menu produit le même clic, qui remonte ici. */}
+          <span role="none" onClick={(e) => { if ((e.target as Element).closest('[role="menuitem"]')) setOuvert(false); }}>{extra}</span>
         </div>
       )}
     </div>

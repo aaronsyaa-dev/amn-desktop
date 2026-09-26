@@ -89,14 +89,14 @@ export function StudioAccueil() {
         <Paire>
           <Carte titre="Mises en ligne · 7 jours" droite={s.misesEnLigne.length || ''}>
             {s.misesEnLigne.length === 0 ? (
-              <p className="text-[13px] text-[#a3a3a0]">Rien n’est parti en ligne cette semaine.</p>
+              <p className="text-[13px] text-text-secondary">Rien n’est parti en ligne cette semaine.</p>
             ) : (
               s.misesEnLigne.slice(-5).map((m) => <Ligne key={`${m.piece.id}-${m.version}-${m.at}`} a={jourCourt(m.at).split(' ')[0]} b={`${m.piece.plaque} · ${m.piece.orgNom} · ${/^\d/.test(m.version) ? `v${m.version}` : m.version}`} c="EN LIGNE" lien={`/studio/pieces/${m.piece.id}/livraison`} />)
             )}
           </Carte>
           <Carte titre="Qui attend qui">
             {s.quiAttend.length === 0 ? (
-              <p className="text-[13px] text-[#a3a3a0]">Personne n’attend personne.</p>
+              <p className="text-[13px] text-text-secondary">Personne n’attend personne.</p>
             ) : (
               s.quiAttend.slice(0, 5).map((q, i) => <Ligne key={`${q.piece.id}-${q.qui}-${i}`} a={q.piece.plaque} b={q.texte} c={q.qui === 'vous' ? 'VOUS' : 'ELLE'} lien={`/studio/pieces/${q.piece.id}/${q.qui === 'vous' ? 'retours' : q.texte.includes('trancher') ? 'croquis' : 'livraison'}`} />)
             )}
@@ -111,8 +111,8 @@ export function StudioAccueil() {
 function Repli({ texte, ambre, onClick }: { texte: string; ambre: boolean; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className="flex items-center justify-between border border-[#2a2826] bg-[#100f0e] px-3.5 py-2 text-left hover:border-[#3a3834]" data-signal-groupe={ambre ? 'facade-ambre' : undefined}>
-      <span className="text-[12.5px] font-semibold text-[#e4e4e1]">› {texte}</span>
-      <span className="font-mono text-[10px] tracking-[0.12em]" style={{ color: ambre ? AMBRE : '#9a9a97' }}>
+      <span className="text-[12.5px] font-semibold text-text-body">› {texte}</span>
+      <span className="font-mono text-[10px] tracking-[0.12em]" style={{ color: ambre ? AMBRE : 'var(--color-text-muted)' }}>
         {ambre ? 'UNE PIÈCE VOUS ATTEND · REPLIÉ' : 'REPLIÉ'}
       </span>
     </button>
@@ -199,12 +199,12 @@ function Fenetre({ p, ambre, rang }: { p: Piece; ambre: boolean; rang: number })
           <Vitre etat={p.etat} ambre={ambre} />
         </span>
         <span className="mt-3 flex items-center gap-2">
-          <span className="border border-[#2a2826] px-[5px] py-[2px] font-mono text-[9.5px] font-semibold tracking-[0.1em] text-[#9a9a97]">{p.plaque}</span>
-          <span className="truncate text-[13px] font-semibold text-[#f7f7f5] group-hover:underline">{p.orgNom}</span>
+          <span className="border border-[#2a2826] px-[5px] py-[2px] font-mono text-[9.5px] font-semibold tracking-[0.1em] text-text-muted">{p.plaque}</span>
+          <span className="truncate text-[13px] font-semibold text-text-primary group-hover:underline">{p.orgNom}</span>
         </span>
         <span className="mt-1.5 flex items-baseline justify-between gap-2">
-          <span className="truncate text-[12px] text-[#9a9a97]">{p.quoi}</span>
-          <span className="flex-none font-mono text-[9.5px] font-semibold tracking-[0.12em]" style={{ color: ambre ? AMBRE : '#9a9a97' }}>
+          <span className="truncate text-[12px] text-text-muted">{p.quoi}</span>
+          <span className="flex-none font-mono text-[9.5px] font-semibold tracking-[0.12em]" style={{ color: ambre ? AMBRE : 'var(--color-text-muted)' }}>
             {ambre ? 'RETOUR À TRAITER' : LIBELLE_ETAT[p.etat]}
           </span>
         </span>

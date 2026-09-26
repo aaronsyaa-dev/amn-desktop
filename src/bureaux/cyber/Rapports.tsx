@@ -53,7 +53,7 @@ export function CyberRapports() {
         surtitre={`Cyber · Rapports · ${nomMois}`}
         titre={`Le rapport de ${nomMois} ${deNom(o.nom)}`}
         actions={
-          <select value={o.id} onChange={(e) => setOrgId(e.target.value)} aria-label="La cliente" className="h-9 border border-[#2b3030] bg-[#111414] px-2.5 text-[13px] text-[#f7f7f5]">
+          <select value={o.id} onChange={(e) => setOrgId(e.target.value)} aria-label="La cliente" className="h-9 border border-[#2b3030] bg-[#111414] px-2.5 text-[13px] text-text-primary">
             {notes.map((x) => (
               <option key={x.id} value={x.id}>
                 {x.nom}
@@ -98,7 +98,7 @@ export function CyberRapports() {
           </div>
           {mot && <p className="mt-3 text-[12px] italic leading-snug text-[#3a3a38]">{mot}</p>}
           {echeance && (
-            <div className="absolute inset-x-0 bottom-0 flex justify-between px-8 py-3 font-mono text-[10px] font-bold uppercase tracking-[0.14em]" style={{ background: AMBRE, color: '#080808' }} data-signal-groupe="rapport-talon">
+            <div className="absolute inset-x-0 bottom-0 flex justify-between px-8 py-3 font-mono text-[10px] font-bold uppercase tracking-[0.14em]" style={{ background: AMBRE, color: 'var(--color-signal-ink)' }} data-signal-groupe="rapport-talon">
               <span>
                 À faire avant le {echeance.jours <= 6 ? `${jourLong(echeance.date)} ${new Date(`${echeance.date}T12:00:00`).getDate()}` : echeance.date.split('-').reverse().slice(0, 2).join('/')}
               </span>
@@ -107,8 +107,8 @@ export function CyberRapports() {
           )}
         </div>
         <div>
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#a3a3a0]">Ce que la cliente reçoit</span>
-          <p className="mt-3 text-[14px] leading-relaxed text-[#e4e4e1]">Quatre pages, le 1ᵉʳ du mois, en PDF. La première tient seule : le score, sa courbe sur huit semaines, et trois choses à faire, dans l’ordre. Les trois autres détaillent les contrôles, les incidents du mois et l’inventaire.</p>
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-secondary">Ce que la cliente reçoit</span>
+          <p className="mt-3 text-[14px] leading-relaxed text-text-body">Quatre pages, le 1ᵉʳ du mois, en PDF. La première tient seule : le score, sa courbe sur huit semaines, et trois choses à faire, dans l’ordre. Les trois autres détaillent les contrôles, les incidents du mois et l’inventaire.</p>
           <div className="mt-4">
             <Ligne colonnes="70px minmax(0,1fr)" a="Page 2" b="les 8 contrôles, ligne par ligne" />
             <Ligne colonnes="70px minmax(0,1fr)" a="Page 3" b="les incidents du mois et ce qui a été fait" />
@@ -130,7 +130,7 @@ export function CyberRapports() {
               Imprimer
             </button>
           </div>
-          {envoye && <p className="mt-3 text-[12.5px] text-[#a3a3a0]">Noté comme envoyé le {envoye.envoyeLe?.slice(8, 10)}/{envoye.envoyeLe?.slice(5, 7)} : ce qu’elle a reçu reste tel qu’il est parti.</p>}
+          {envoye && <p className="mt-3 text-[12.5px] text-text-secondary">Noté comme envoyé le {envoye.envoyeLe?.slice(8, 10)}/{envoye.envoyeLe?.slice(5, 7)} : ce qu’elle a reçu reste tel qu’il est parti.</p>}
         </div>
       </section>
       <div className="mt-[18px]">

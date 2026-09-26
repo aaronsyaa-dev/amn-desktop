@@ -46,7 +46,7 @@ export function CyberSecrets() {
     : secrets.length
       ? 'Chaque secret a tourné à temps.'
       : 'Aucun secret suivi.';
-  const champ = 'h-9 border border-[#212525] bg-transparent px-2.5 text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]';
+  const champ = 'h-9 border border-[#212525] bg-transparent px-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]';
 
   return (
     <>
@@ -104,20 +104,20 @@ export function CyberSecrets() {
             return (
               <div key={s.id} className="grid grid-cols-[minmax(0,1fr)_200px_150px_auto] items-center gap-4 border-b border-[#1d2121] py-3" style={estAmbre ? { boxShadow: `inset 2px 0 0 ${AMBRE}`, paddingLeft: 10, background: 'rgba(208,154,74,.05)' } : undefined} data-signal-groupe={estAmbre ? 'secret-ambre' : undefined}>
                 <span className="min-w-0">
-                  <span className="block truncate text-[13.5px] font-semibold text-[#f7f7f5]">{s.nom}</span>
-                  <span className="block truncate text-[12px] text-[#a3a3a0]">
+                  <span className="block truncate text-[13.5px] font-semibold text-text-primary">{s.nom}</span>
+                  <span className="block truncate text-[12px] text-text-secondary">
                     {nom(s.orgId)} · {s.type} · tous les {s.periodeJours} jours
                   </span>
                 </span>
                 <span className="relative h-[8px] bg-[#1d2121]" aria-hidden>
                   <span className="block h-full" style={{ width: `${Math.min(100, (ecoule / 1.2) * 100)}%`, background: estAmbre ? AMBRE : ecoule >= 1 ? '#bdbdb9' : '#6b7070' }} />
-                  <span className="absolute -bottom-1 -top-1 w-px bg-[#f7f7f5]" style={{ left: `${(1 / 1.2) * 100}%` }} />
+                  <span className="absolute -bottom-1 -top-1 w-px bg-text-primary" style={{ left: `${(1 / 1.2) * 100}%` }} />
                 </span>
-                <span className="font-mono text-[11px] tabular-nums" style={{ color: estAmbre ? AMBRE : '#a3a3a0' }}>
+                <span className="font-mono text-[11px] tabular-nums" style={{ color: estAmbre ? AMBRE : 'var(--color-text-secondary)' }}>
                   {j === null ? 'jamais tourné' : j < 0 ? `en retard de ${-j} j` : `dans ${j} j`}
                 </span>
                 <span className="flex items-center gap-3">
-                  <span className="font-mono text-[10px] text-[#9a9a97]">{s.derniereRotation ? `le ${jourMois(s.derniereRotation)}` : ''}</span>
+                  <span className="font-mono text-[10px] text-text-muted">{s.derniereRotation ? `le ${jourMois(s.derniereRotation)}` : ''}</span>
                   <button type="button" className="bx-lien" onClick={() => tourne(s)}>
                     Tourné aujourd’hui
                   </button>

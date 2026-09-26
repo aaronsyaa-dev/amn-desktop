@@ -19,7 +19,9 @@
  *     pouvoir le dire.
  *
  * Puis il efface ce qu'il a écrit. Il vaut pour les deux éditions ; le Hall
- * n'est joué que si le compte peut y consentir (owner/admin).
+ * n'est joué que si le compte peut y consentir (owner/admin). Avec
+ * `AMN_EDITION=interne`, il joue aussi les champs libres des bureaux : carnet
+ * de bord (Cyber), liège et fiche prospect (Stratégie), pièce du Studio.
  *
  *   AMN_E2E_EMAIL=… AMN_E2E_PASSWORD=… AMN_API_URL=http://127.0.0.1:8791 node scripts/check-xss.mjs <bundle> [port]
  */
@@ -78,6 +80,24 @@ try {
     { collection: 'clients', id: 'xss-client', data: { name: TOUT, email: 'x@x.test' }, route: '/clients' },
     { collection: 'notes', id: 'xss-note', data: { title: `Note ${HOSTILES.img}`, body: TOUT }, route: '/notes' },
   ];
+  /*
+    LES BUREAUX DE L'ÉDITION INTERNE — leurs champs libres aussi.
+
+    Le carnet de bord de Cyber, le liège et le pipeline de Stratégie, la pièce
+    du Studio : quatre endroits où l'équipe tape du texte qu'une autre
+    personne relira. Ils n'existent que dans l'édition interne
+    (`AMN_EDITION=interne`) : sur le bundle client, leurs routes ramèneraient
+    à l'accueil et le contrôle mesurerait l'accueil à leur place.
+  */
+  if (process.env.AMN_EDITION === 'interne') {
+    const maintenant = new Date().toISOString();
+    cibles.push(
+      { collection: 'carnet', id: 'xss-carnet', data: { texte: TOUT, liens: [], par: EMAIL, at: maintenant }, route: '/cyber/carnet' },
+      { collection: 'strategieMur', id: 'xss-liege', data: { type: 'note', texte: TOUT, x: 30, y: 30, rot: 0 }, route: '/strategie/liege' },
+      { collection: 'prospects', id: 'xss-prospect', data: { name: TOUT, company: `Maison ${HOSTILES.img}`, valueCents: 100, stage: 'contact', note: TOUT, createdAt: maintenant, movedAt: maintenant }, route: '/strategie/pipeline/xss-prospect' },
+      { collection: 'studioPieces', id: 'xss-piece', data: { numero: 98, orgNom: `Cliente ${HOSTILES.img}`, quoi: TOUT }, route: '/studio/pieces/xss-piece' },
+    );
+  }
   for (const c of cibles) {
     const r = await api(token, `/v1/collections/${c.collection}/${c.id}`, { method: 'PUT', body: JSON.stringify({ data: c.data }) });
     if (r.status === 200) ecrits.push(c);
@@ -122,7 +142,8 @@ try {
     const mesure = await page.evaluate(() => {
       const main = document.querySelector('main') ?? document.body;
       const nes = [...main.querySelectorAll('img[src="x"], script, svg[onload], iframe, style, a[href^="javascript:"]')].map((e) => e.tagName.toLowerCase());
-      const texte = main.innerText;
+      /* En minuscules : un surtitre en capitales (`text-transform`) montre le texte tel quel, `innerText` le rend en capitales. */
+      const texte = main.innerText.toLowerCase();
       return {
         nes,
         xss: window.__xss ?? null,

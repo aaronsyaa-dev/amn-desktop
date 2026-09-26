@@ -57,22 +57,22 @@ function Pile() {
           onMouseLeave={() => setOuverte(null)}
           onFocus={() => setOuverte(r.email)}
           onBlur={() => setOuverte(null)}
-          className="relative flex h-[26px] w-[26px] items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f7f7f5]"
+          className="relative flex h-[26px] w-[26px] items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text-primary"
           style={{ marginLeft: i === 0 ? 0 : -7, zIndex: 10 - i, opacity: r.parti ? 0.4 : 1 }}
         >
-          <span className="rounded-full" style={{ boxShadow: r.parti ? '0 0 0 1.5px #6b6b68' : '0 0 0 1.5px var(--color-bg, #060606)' }}>
+          <span className="rounded-full" style={{ boxShadow: r.parti ? '0 0 0 1.5px var(--color-trait-sourd)' : '0 0 0 1.5px var(--color-bg, var(--color-bg))' }}>
             <UserAvatar email={r.email} size={24} />
           </span>
           {ouverte === r.email && (
             <span
               id={`${id}-bulle`}
               role="tooltip"
-              className="absolute right-0 top-[calc(100%+8px)] z-30 w-max max-w-[260px] border border-[#2a2a2a] bg-[#111] px-3 py-2 text-left shadow-[0_18px_40px_-16px_rgba(0,0,0,1)]"
+              className="absolute right-0 top-[calc(100%+8px)] z-30 w-max max-w-[260px] border border-border-sheet bg-[#111] px-3 py-2 text-left shadow-[0_18px_40px_-16px_rgba(0,0,0,1)]"
             >
-              <span className="block text-[12.5px] font-semibold text-[#f7f7f5]">
+              <span className="block text-[12.5px] font-semibold text-text-primary">
                 {r.parti ? `${nom(r)} a quitté le module à ${hhmm(r.partiA ?? r.depuis)}` : `${nom(r)} utilise ce module aussi`}
               </span>
-              <span className="mt-1 block font-mono text-[10.5px] tracking-[0.06em] text-[#a3a3a0]">
+              <span className="mt-1 block font-mono text-[10.5px] tracking-[0.06em] text-text-secondary">
                 {r.parti ? 'vient de partir' : `depuis ${hhmm(r.depuis)}`}
                 {/* La vue ouverte, seulement si elle diffère de la vôtre. */}
                 {!r.parti && r.vue && r.vue !== maVue && libelleVue(r.vue) ? ` · ${libelleVue(r.vue)}` : ''}
@@ -81,7 +81,7 @@ function Pile() {
           )}
         </button>
       ))}
-      {reste > 0 && <span className="ml-1.5 font-mono text-[11px] text-[#a3a3a0]">+{reste}</span>}
+      {reste > 0 && <span className="ml-1.5 font-mono text-[11px] text-text-secondary">+{reste}</span>}
     </div>
   );
 }

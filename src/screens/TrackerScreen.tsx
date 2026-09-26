@@ -27,9 +27,15 @@ function dataFlow(site: DerivedSite): Flow {
   return { tone: 'live', label: 'Remonte des données en temps réel' };
 }
 
+/*
+  Un site qui ne remonte plus s'écrit à l'encre pleine, et bat : l'écran est
+  recousu dans Cyber, où le rouge ne se dit qu'une fois, sur l'objet critique
+  lui-même (BUREAUX.md, « Le signal »). Neuf sites muets ne sont pas neuf
+  critiques — c'est ce que disait le rouge répété.
+*/
 const FLOW_DOT: Record<Flow['tone'], string> = {
   live: 'bg-success',
-  stale: 'bg-danger animate-pulse',
+  stale: 'bg-text-primary animate-pulse',
   never: 'border border-text-muted bg-transparent',
 };
 
@@ -243,10 +249,11 @@ function ModuleCatalogCard({ mod, installCount }: { mod: TrackerModule; installC
   );
 }
 
+/* « À risque » à l'encre pleine : le classement, pire d'abord, dit déjà où regarder (voir FLOW_DOT). */
 const SCORE_TONE: Record<PostureScore['tone'], { bar: string; text: string }> = {
   good: { bar: 'bg-success', text: 'text-success' },
   watch: { bar: 'bg-warning', text: 'text-warning' },
-  risk: { bar: 'bg-danger', text: 'text-danger' },
+  risk: { bar: 'bg-text-primary', text: 'text-text-primary' },
 };
 
 /**

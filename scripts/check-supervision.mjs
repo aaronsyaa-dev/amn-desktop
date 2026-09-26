@@ -120,6 +120,17 @@ if (!apiRoot) {
       'la nature du cycle de vie d’une DEMANDE de module (created) poussée à la Tour — ' +
         'pas une alerte ; c’est le pendant d’org:changed dans admin.js',
     ],
+    /*
+      `paiements.js` pousse le MÊME `org:changed` qu'admin.js quand un
+      paiement change le statut d'une organisation (payée, en grâce,
+      suspendue) : la Tour relit la ligne. Rien n'y veille, rien n'est à
+      traiter — la Garde des Comptes, elle, émet ses propres remontées.
+    */
+    [
+      'paiements.js',
+      'la nature du changement d’organisation (updated) poussée à la Tour après un paiement — ' +
+        'pas une alerte ; elle vit dans OrgChange côté poste, comme celles d’admin.js',
+    ],
   ]);
   for (const dossier of ['src/tracker', 'src/routes', 'src/scanner']) {
     const dir = path.join(apiRoot, dossier);

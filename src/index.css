@@ -282,6 +282,17 @@
     synthèse, qui garde le seul rouge vif de l'écran.
   */
   --color-braise: #7d332b;
+  /*
+    LE TRAIT SOURD — le #6b6b68 du paquet, rendu à ce qu'il sait faire.
+
+    Les maquettes écrivent leurs petites mentions dans ce gris ; le produit l'a
+    refusé comme ENCRE (3,79:1 sur le fond, sous le seuil AA du texte — voir
+    la rampe plus haut, et `check:encres`). Comme TRAIT il est juste : une
+    barre, un segment, un filet de soulignement, la bordure d'une case. Un
+    objet graphique demande 3:1 (WCAG 1.4.11), et il les tient. Jamais pour du
+    texte : `check:encres` refuse `text-trait-sourd` et `color: var(--color-trait-sourd)`.
+  */
+  --color-trait-sourd: #6b6b68;
 
 
   /*

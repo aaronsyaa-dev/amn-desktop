@@ -50,7 +50,8 @@ export function TourExceptions() {
         <ol className="flex flex-col divide-y divide-border">
           {lignes.map((l) => (
             <li key={l.cle} className="flex flex-wrap items-center gap-3 py-2" data-exception={l.cle}>
-              <span className={`h-2 w-2 flex-shrink-0 rounded-full ${l.grave ? 'bg-danger' : 'bg-warning'}`} aria-hidden />
+              {/* Le rouge, une fois : la première ligne grave seulement ; une seconde s'écrit à l'encre pleine. */}
+              <span className={`h-2 w-2 flex-shrink-0 rounded-full ${l.grave ? (l === lignes.find((x) => x.grave) ? 'bg-danger' : 'bg-text-primary') : 'bg-warning'}`} aria-hidden />
               <span className="min-w-0 flex-1 text-[14px] leading-snug text-text-primary">{l.texte}</span>
               <Link to={l.vers} className={LIEN}>{l.geste}</Link>
             </li>

@@ -78,19 +78,19 @@ export function SupervisorRenouvellements() {
               const estAmbre = ambre?.o.id === x.o.id;
               const largeur = Math.max(4, (x.c.montantAnnuel / aVenir[0].c.montantAnnuel) * 100);
               return (
-                <div key={x.o.id} className="grid grid-cols-[170px_minmax(0,1fr)_120px] items-center gap-4 border-b border-[#1f1f1f] py-3" style={estAmbre ? { boxShadow: `inset 2px 0 0 ${AMBRE}`, paddingLeft: 10, background: 'rgba(208,154,74,.05)' } : undefined} data-signal-groupe={estAmbre ? 'renouvellement-ambre' : undefined}>
+                <div key={x.o.id} className="grid grid-cols-[170px_minmax(0,1fr)_120px] items-center gap-4 border-b border-border py-3" style={estAmbre ? { boxShadow: `inset 2px 0 0 ${AMBRE}`, paddingLeft: 10, background: 'rgba(208,154,74,.05)' } : undefined} data-signal-groupe={estAmbre ? 'renouvellement-ambre' : undefined}>
                   <Link to={`/supervisor/dossiers/${x.o.id}`} className="min-w-0 hover:underline">
-                    <span className="block truncate text-[13.5px] font-semibold text-[#f7f7f5]">{x.o.nom}</span>
-                    <span className="block font-mono text-[10px] uppercase tracking-[0.08em]" style={{ color: estAmbre ? AMBRE : '#9a9a97' }}>
+                    <span className="block truncate text-[13.5px] font-semibold text-text-primary">{x.o.nom}</span>
+                    <span className="block font-mono text-[10px] uppercase tracking-[0.08em]" style={{ color: estAmbre ? AMBRE : 'var(--color-text-muted)' }}>
                       {x.c.reconduction === 'tacite' ? 'reconduction tacite' : 'à confirmer'}
                     </span>
                   </Link>
                   <span className="h-[8px] bg-[#1c1c1c]" aria-hidden>
-                    <span className="block h-full" style={{ width: `${largeur}%`, background: estAmbre ? AMBRE : '#6b6b68' }} />
+                    <span className="block h-full" style={{ width: `${largeur}%`, background: estAmbre ? AMBRE : 'var(--color-trait-sourd)' }} />
                   </span>
                   <span className="text-right">
-                    <span className="block font-mono text-[12px] tabular-nums text-[#f7f7f5]">{eur(x.c.montantAnnuel)}</span>
-                    <span className="block font-mono text-[10px] tabular-nums text-[#9a9a97]">{x.j < 0 ? `échu depuis ${-x.j} j` : x.j === 0 ? 'aujourd’hui' : `le ${jourMois(x.c.echeance)}`}</span>
+                    <span className="block font-mono text-[12px] tabular-nums text-text-primary">{eur(x.c.montantAnnuel)}</span>
+                    <span className="block font-mono text-[10px] tabular-nums text-text-muted">{x.j < 0 ? `échu depuis ${-x.j} j` : x.j === 0 ? 'aujourd’hui' : `le ${jourMois(x.c.echeance)}`}</span>
                   </span>
                 </div>
               );
@@ -100,7 +100,7 @@ export function SupervisorRenouvellements() {
         <div className="flex flex-col gap-[18px] self-start">
           {ambre && (
             <Carte titre={ambre.o.nom} droite={`${eur(ambre.c.montantAnnuel)} par an`}>
-              <p className="text-[13.5px] leading-relaxed text-[#e4e4e1]">Le contrat s’arrête le {jourMois(ambre.c.echeance)} s’il n’est pas confirmé. {m.dossiers.get(ambre.o.id)?.contact?.nom ? `Le contact : ${m.dossiers.get(ambre.o.id)!.contact!.nom}.` : ''}</p>
+              <p className="text-[13.5px] leading-relaxed text-text-body">Le contrat s’arrête le {jourMois(ambre.c.echeance)} s’il n’est pas confirmé. {m.dossiers.get(ambre.o.id)?.contact?.nom ? `Le contact : ${m.dossiers.get(ambre.o.id)!.contact!.nom}.` : ''}</p>
               <div className="mt-4 flex flex-wrap gap-2.5">
                 <button type="button" className="bx-btn2" onClick={() => reconduire(ambre.o.id, ambre.c)}>
                   Confirmé, reconduit un an
@@ -123,7 +123,7 @@ export function SupervisorRenouvellements() {
                   setPose(null);
                 }}
               >
-                <select value={pose.orgId} onChange={(e) => setPose({ ...pose, orgId: e.target.value })} aria-label="La cliente" className="h-9 border border-[#2b2b2b] bg-[#111] px-2 text-[13px] text-[#f7f7f5]">
+                <select value={pose.orgId} onChange={(e) => setPose({ ...pose, orgId: e.target.value })} aria-label="La cliente" className="h-9 border border-[#2b2b2b] bg-[#111] px-2 text-[13px] text-text-primary">
                   <option value="">La cliente…</option>
                   {m.orgs.filter((o) => o.org.plan !== 'internal').map((o) => (
                     <option key={o.id} value={o.id}>
@@ -131,9 +131,9 @@ export function SupervisorRenouvellements() {
                     </option>
                   ))}
                 </select>
-                <input type="date" value={pose.echeance} onChange={(e) => setPose({ ...pose, echeance: e.target.value })} aria-label="Échéance" className="h-9 border border-[#2b2b2b] bg-transparent px-2 text-[13px] text-[#f7f7f5] [color-scheme:dark]" />
-                <input value={pose.montant} onChange={(e) => setPose({ ...pose, montant: e.target.value })} inputMode="decimal" placeholder="montant annuel (€)" aria-label="Montant annuel" className="h-9 border border-[#2b2b2b] bg-transparent px-2 font-mono text-[13px] text-[#f7f7f5] placeholder:text-[#9a9a97]" />
-                <select value={pose.reconduction} onChange={(e) => setPose({ ...pose, reconduction: e.target.value as 'tacite' | 'a_confirmer' })} aria-label="Reconduction" className="h-9 border border-[#2b2b2b] bg-[#111] px-2 text-[13px] text-[#f7f7f5]">
+                <input type="date" value={pose.echeance} onChange={(e) => setPose({ ...pose, echeance: e.target.value })} aria-label="Échéance" className="h-9 border border-[#2b2b2b] bg-transparent px-2 text-[13px] text-text-primary [color-scheme:dark]" />
+                <input value={pose.montant} onChange={(e) => setPose({ ...pose, montant: e.target.value })} inputMode="decimal" placeholder="montant annuel (€)" aria-label="Montant annuel" className="h-9 border border-[#2b2b2b] bg-transparent px-2 font-mono text-[13px] text-text-primary placeholder:text-text-muted" />
+                <select value={pose.reconduction} onChange={(e) => setPose({ ...pose, reconduction: e.target.value as 'tacite' | 'a_confirmer' })} aria-label="Reconduction" className="h-9 border border-[#2b2b2b] bg-[#111] px-2 text-[13px] text-text-primary">
                   <option value="a_confirmer">à confirmer</option>
                   <option value="tacite">tacite</option>
                 </select>

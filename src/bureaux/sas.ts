@@ -136,7 +136,7 @@ export function jouerSas(o: OptionsSas) {
     // A · La porte : retrait 0→180, couture 120→360, installation 300→600.
     anime(copie, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(-7%)' }], { duration: 180, easing: SORTIE });
     const couture = document.createElement('div');
-    couture.style.cssText = 'position:absolute;top:0;bottom:0;left:0;width:2px;background:#f7f7f5;box-shadow:0 0 22px 6px rgba(247,247,245,.28)';
+    couture.style.cssText = 'position:absolute;top:0;bottom:0;left:0;width:2px;background:var(--color-text-primary);box-shadow:0 0 22px 6px rgba(247,247,245,.28)';
     calque.appendChild(couture);
     anime(couture, [{ transform: 'translateX(0)', opacity: 1 }, { transform: `translateX(${window.innerWidth}px)`, opacity: 1 }], { delay: 120, duration: 240, easing: 'linear' });
     anime(couture, [{ opacity: 0 }, { opacity: 1, offset: 0.01 }, { opacity: 1, offset: 0.99 }, { opacity: 0 }], { delay: 120, duration: 240, easing: 'linear', composite: 'replace' });
@@ -171,18 +171,18 @@ function construireCarton(c: Carton): HTMLElement {
   const e = espace(c.espace);
   const el = document.createElement('div');
   el.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;will-change:transform,opacity';
-  el.appendChild(svgGlyphe(c.espace, 34, '#f7f7f5'));
+  el.appendChild(svgGlyphe(c.espace, 34, 'var(--color-text-primary)'));
   const nom = document.createElement('div');
   nom.textContent = c.nom;
-  nom.style.cssText = "font:700 34px 'Space Grotesk',sans-serif;letter-spacing:-.03em;color:#f7f7f5;line-height:1";
+  nom.style.cssText = "font:700 34px 'Space Grotesk',sans-serif;letter-spacing:-.03em;color:var(--color-text-primary);line-height:1";
   const role = document.createElement('div');
   role.textContent = c.role.toUpperCase();
-  role.style.cssText = "font:400 10px 'JetBrains Mono',monospace;letter-spacing:.2em;color:#a3a3a0";
+  role.style.cssText = "font:400 10px 'JetBrains Mono',monospace;letter-spacing:.2em;color:var(--color-text-secondary)";
   el.append(nom, role);
   if (c.ligne) {
     const ligne = document.createElement('div');
     ligne.textContent = c.ligne;
-    ligne.style.cssText = `margin-top:6px;padding:5px 10px;background:#d09a4a;color:#080808;font:700 10px 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;box-shadow:0 0 22px -6px rgba(208,154,74,.85)`;
+    ligne.style.cssText = `margin-top:6px;padding:5px 10px;background:var(--color-signal);color:var(--color-signal-ink);font:700 10px 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;box-shadow:0 0 22px -6px rgba(208,154,74,.85)`;
     el.appendChild(ligne);
   }
   el.style.background = 'transparent';

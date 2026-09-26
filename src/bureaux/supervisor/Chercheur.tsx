@@ -85,30 +85,30 @@ export function SupervisorChercheur() {
           }}
           className="flex items-center gap-4 border border-[#2b2b2b] bg-[#0f0f0f] px-5 py-4"
         >
-          <Search size={16} className="flex-none text-[#a3a3a0]" aria-hidden />
+          <Search size={16} className="flex-none text-text-secondary" aria-hidden />
           <input
             value={saisie}
             onChange={(e) => setSaisie(e.target.value)}
             aria-label="La phrase de la cliente, telle quelle"
-            className="min-w-0 flex-1 bg-transparent text-[19px] font-semibold text-[#f7f7f5] outline-none placeholder:text-[#9a9a97]"
+            className="min-w-0 flex-1 bg-transparent text-[19px] font-semibold text-text-primary outline-none placeholder:text-text-muted"
             placeholder="La phrase de la cliente, telle quelle…"
           />
-          <span className="flex-none font-mono text-[10px] tracking-[0.12em] text-[#9a9a97]">{Object.keys(CAS_D_USAGE).length} MODULES DÉCRITS</span>
+          <span className="flex-none font-mono text-[10px] tracking-[0.12em] text-text-muted">{Object.keys(CAS_D_USAGE).length} MODULES DÉCRITS</span>
         </form>
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-[#9a9a97]">Ce que la phrase demande</span>
+          <span className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-text-muted">Ce que la phrase demande</span>
           {r.idees.map((i) => (
-            <span key={i.cle} className="border border-[#3a3a3a] px-2.5 py-1 text-[12.5px] font-semibold text-[#f7f7f5]">
+            <span key={i.cle} className="border border-border-strong px-2.5 py-1 text-[12.5px] font-semibold text-text-primary">
               {i.mot}
             </span>
           ))}
           {r.ambigu && (
-            <span className="border border-dashed border-[#8a8a87] px-2.5 py-1 text-[12.5px] font-semibold text-[#f7f7f5]">
-              {r.ambigu.mot} <span className="ml-1 font-mono text-[9.5px] tracking-[0.1em] text-[#a3a3a0]">2 LECTURES</span>
+            <span className="border border-dashed border-[#8a8a87] px-2.5 py-1 text-[12.5px] font-semibold text-text-primary">
+              {r.ambigu.mot} <span className="ml-1 font-mono text-[9.5px] tracking-[0.1em] text-text-secondary">2 LECTURES</span>
             </span>
           )}
-          {r.ignores.length > 0 && <span className="text-[12px] text-[#9a9a97]">{r.ignores.map((x) => `« ${x} »`).join(', ')} : ignorés</span>}
-          {r.inconnus.length > 0 && <span className="text-[12px] text-[#9a9a97]">· je ne sais pas relier {r.inconnus.map((x) => `« ${x} »`).join(', ')}</span>}
+          {r.ignores.length > 0 && <span className="text-[12px] text-text-muted">{r.ignores.map((x) => `« ${x} »`).join(', ')} : ignorés</span>}
+          {r.inconnus.length > 0 && <span className="text-[12px] text-text-muted">· je ne sais pas relier {r.inconnus.map((x) => `« ${x} »`).join(', ')}</span>}
         </div>
         {ambigu && r.ambigu && (
           <div className="mt-5 flex flex-wrap items-center gap-5 p-5" style={{ border: `1px solid ${AMBRE}`, background: 'rgba(208,154,74,.06)', boxShadow: '0 0 30px -14px rgba(208,154,74,.7)' }} data-signal-groupe="chercheur-question">
@@ -116,8 +116,8 @@ export function SupervisorChercheur() {
               <span className="block font-mono text-[9.5px] font-bold uppercase tracking-[0.18em]" style={{ color: AMBRE }}>
                 À demander à la cliente
               </span>
-              <span className="mt-2.5 block text-[16.5px] font-semibold text-[#f7f7f5]">« {r.ambigu.mot.split(' ')[0].replace(/^./, (c) => c.toUpperCase())} », pour elle, c’est lequel ?</span>
-              <span className="mt-1.5 block text-[12.5px] leading-relaxed text-[#a3a3a0]">Le mot a deux sens, et ils mènent à des modules différents. Le chercheur ne choisit pas à sa place : il montre les deux lectures, la plus probable d’abord.</span>
+              <span className="mt-2.5 block text-[16.5px] font-semibold text-text-primary">« {r.ambigu.mot.split(' ')[0].replace(/^./, (c) => c.toUpperCase())} », pour elle, c’est lequel ?</span>
+              <span className="mt-1.5 block text-[12.5px] leading-relaxed text-text-secondary">Le mot a deux sens, et ils mènent à des modules différents. Le chercheur ne choisit pas à sa place : il montre les deux lectures, la plus probable d’abord.</span>
             </div>
             <div className="flex flex-col gap-2">
               {r.lectures.map((l) => (
@@ -129,9 +129,9 @@ export function SupervisorChercheur() {
           </div>
         )}
         {lecture && r.ambigu && (
-          <p className="mt-4 text-[12.5px] text-[#a3a3a0]">
+          <p className="mt-4 text-[12.5px] text-text-secondary">
             Lecture {lecture} retenue.{' '}
-            <button type="button" className="font-semibold text-[#e4e4e1] underline decoration-[#6b6b68] underline-offset-4" onClick={() => setLecture(null)}>
+            <button type="button" className="font-semibold text-text-body underline decoration-trait-sourd underline-offset-4" onClick={() => setLecture(null)}>
               Revoir les deux lectures
             </button>
           </p>
@@ -143,7 +143,7 @@ export function SupervisorChercheur() {
       <div className="mt-[18px] grid grid-cols-1 gap-[18px] lg:grid-cols-2">
         {ecartes.length > 0 || lectures.some((l) => !l.complet) ? (
           <Carte titre="Écartés, et pourquoi" droite="une seule idée couverte">
-            {ecartes.length === 0 && <p className="text-[13px] text-[#a3a3a0]">Aucun module écarté.</p>}
+            {ecartes.length === 0 && <p className="text-[13px] text-text-secondary">Aucun module écarté.</p>}
             {ecartes.map((x) => {
               const idees = lectures[0]?.idees ?? [];
               const k = x.cases.findIndex(Boolean);
@@ -157,8 +157,8 @@ export function SupervisorChercheur() {
         {ecartes.length > 0 || lectures.some((l) => !l.complet) ? (
           <Carte titre="Le verdict" droite="à dire à la cliente">
             {lectures.map((l) => (
-              <p key={l.lettre} className="mb-3 text-[13.5px] leading-relaxed text-[#e4e4e1]">
-                {lectures.length > 1 && <b className="text-[#f7f7f5]">Lecture {l.lettre} : </b>}
+              <p key={l.lettre} className="mb-3 text-[13.5px] leading-relaxed text-text-body">
+                {lectures.length > 1 && <b className="text-text-primary">Lecture {l.lettre} : </b>}
                 {verdict(l)}
               </p>
             ))}
@@ -167,7 +167,7 @@ export function SupervisorChercheur() {
           <PourElle orgId={org.id} orgNom={org.name} module={courant} dossier={m.dossiers.get(org.id) ?? {}} />
         ) : (
           <Carte titre="Pour une cliente">
-            <p className="text-[13px] leading-relaxed text-[#a3a3a0]">Ouvert depuis le dossier d’une cliente, le chercheur dit ce que l’installation suppose pour elle : sa formule, ses modules liés, ses places.</p>
+            <p className="text-[13px] leading-relaxed text-text-secondary">Ouvert depuis le dossier d’une cliente, le chercheur dit ce que l’installation suppose pour elle : sa formule, ses modules liés, ses places.</p>
           </Carte>
         )}
       </div>
@@ -200,14 +200,14 @@ function GrilleLecture({ l, titre, ambre, choisi, onChoisir }: { l: Lecture; tit
   return (
     <div className="mt-6">
       {titre && (
-        <p className="mb-2 text-[13px] text-[#a3a3a0]">
-          <b className="font-mono text-[11px] tracking-[0.12em] text-[#f7f7f5]">LECTURE {l.lettre}</b> &nbsp;{l.libelle}
+        <p className="mb-2 text-[13px] text-text-secondary">
+          <b className="font-mono text-[11px] tracking-[0.12em] text-text-primary">LECTURE {l.lettre}</b> &nbsp;{l.libelle}
           {l.pourquoi ? ` — ${l.pourquoi}` : ''}
         </p>
       )}
       <div className="overflow-x-auto">
         <div style={{ minWidth: 160 + n * 100 + 70 }}>
-          <div className="grid gap-2 border-b border-[#252525] px-3 pb-2.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[#9a9a97]" style={{ gridTemplateColumns: colonnes }}>
+          <div className="grid gap-2 border-b border-[#252525] px-3 pb-2.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted" style={{ gridTemplateColumns: colonnes }}>
             <span>Module</span>
             {l.idees.map((i) => (
               <span key={i.cle} className="truncate">
@@ -216,11 +216,11 @@ function GrilleLecture({ l, titre, ambre, choisi, onChoisir }: { l: Lecture; tit
             ))}
             <span className="text-right">Couvre</span>
           </div>
-          {l.lignes.length === 0 && <p className="px-3 py-5 text-[13px] text-[#a3a3a0]">Aucun module ne couvre deux de ces idées.</p>}
+          {l.lignes.length === 0 && <p className="px-3 py-5 text-[13px] text-text-secondary">Aucun module ne couvre deux de ces idées.</p>}
           {l.lignes.slice(0, 6).map((x) => (
             <LigneModule key={x.cle} x={x} n={n} colonnes={colonnes} ambre={ambre === x.cle} choisi={choisi === x.cle} onChoisir={() => onChoisir(x.cle)} />
           ))}
-          {!l.complet && l.lignes.length > 0 && n >= 2 && <p className="px-3 pt-3 text-[13px] font-semibold text-[#f7f7f5]">Aucun module ne fait tout : {l.idees.map((i) => i.mot).join(', ')}.</p>}
+          {!l.complet && l.lignes.length > 0 && n >= 2 && <p className="px-3 pt-3 text-[13px] font-semibold text-text-primary">Aucun module ne fait tout : {l.idees.map((i) => i.mot).join(', ')}.</p>}
         </div>
       </div>
     </div>
@@ -235,32 +235,32 @@ function LigneModule({ x, n, colonnes, ambre, choisi, onChoisir }: { x: LigneGri
       onClick={onChoisir}
       onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onChoisir()}
       className="grid cursor-pointer items-stretch gap-2 border-b border-[#1a1a1a] px-3 py-2.5 hover:bg-white/[0.02]"
-      style={{ gridTemplateColumns: colonnes, background: ambre ? 'rgba(208,154,74,.06)' : choisi ? '#161616' : undefined, boxShadow: ambre ? `inset 2px 0 0 ${AMBRE}` : choisi ? 'inset 2px 0 0 #f7f7f5' : undefined }}
+      style={{ gridTemplateColumns: colonnes, background: ambre ? 'rgba(208,154,74,.06)' : choisi ? 'var(--color-surface-hover)' : undefined, boxShadow: ambre ? `inset 2px 0 0 ${AMBRE}` : choisi ? 'inset 2px 0 0 var(--color-text-primary)' : undefined }}
       data-signal-groupe={ambre ? 'chercheur-ligne' : undefined}
     >
       <span className="self-center">
-        <span className="block text-[13.5px] font-semibold text-[#f7f7f5]">{x.nom}</span>
-        <span className="block font-mono text-[9.5px] uppercase tracking-[0.12em] text-[#9a9a97]">{x.famille}</span>
+        <span className="block text-[13.5px] font-semibold text-text-primary">{x.nom}</span>
+        <span className="block font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-muted">{x.famille}</span>
       </span>
       {x.cases.map((c, k) =>
         c ? (
           <span key={k} className="min-h-[44px] px-2.5 py-2" style={{ background: '#1a1a1a', border: c.reserve ? '1px dashed #8a8a87' : '1px solid #2b2b2b' }}>
             <span className="flex items-center gap-1.5">
-              <span className="h-[7px] w-[7px]" style={{ background: c.reserve ? 'transparent' : '#e4e4e1', border: c.reserve ? '1px solid #e4e4e1' : undefined }} aria-hidden />
-              {c.reserve && <span className="font-mono text-[9px] font-semibold tracking-[0.12em] text-[#e4e4e1]">RÉSERVE</span>}
+              <span className="h-[7px] w-[7px]" style={{ background: c.reserve ? 'transparent' : 'var(--color-text-body)', border: c.reserve ? '1px solid var(--color-text-body)' : undefined }} aria-hidden />
+              {c.reserve && <span className="font-mono text-[9px] font-semibold tracking-[0.12em] text-text-body">RÉSERVE</span>}
             </span>
-            <span className="mt-1 block text-[11.5px] leading-snug text-[#e4e4e1]">{c.raison}</span>
-            {c.reserve && <span className="block text-[11px] leading-snug text-[#a3a3a0]">{c.reserve}</span>}
+            <span className="mt-1 block text-[11.5px] leading-snug text-text-body">{c.raison}</span>
+            {c.reserve && <span className="block text-[11px] leading-snug text-text-secondary">{c.reserve}</span>}
           </span>
         ) : (
           <span key={k} className="min-h-[44px] border border-dashed border-[#2b2b2b]" aria-label="ne le fait pas" />
         ),
       )}
       <span className="self-center text-right">
-        <span className="block font-mono text-[17px] font-semibold tabular-nums" style={{ color: ambre ? AMBRE : '#e4e4e1' }}>
+        <span className="block font-mono text-[17px] font-semibold tabular-nums" style={{ color: ambre ? AMBRE : 'var(--color-text-body)' }}>
           {x.couvre} / {n}
         </span>
-        {x.reserves > 0 && <span className="block font-mono text-[9.5px] tracking-[0.1em] text-[#a3a3a0]">{x.reserves} RÉSERVE{x.reserves > 1 ? 'S' : ''}</span>}
+        {x.reserves > 0 && <span className="block font-mono text-[9.5px] tracking-[0.1em] text-text-secondary">{x.reserves} RÉSERVE{x.reserves > 1 ? 'S' : ''}</span>}
       </span>
     </div>
   );
@@ -270,10 +270,10 @@ function Apercu({ m, hint }: { m: LigneGrille; hint: string }) {
   const cas = CAS_D_USAGE[m.cle] ?? {};
   return (
     <Carte titre={`Aperçu · ${m.nom}`} droite={`${m.famille} · ${m.organisations} organisation${m.organisations > 1 ? 's' : ''}`}>
-      <p className="text-[14px] leading-relaxed text-[#e4e4e1]">{hint}.</p>
+      <p className="text-[14px] leading-relaxed text-text-body">{hint}.</p>
       <ul className="mt-3 flex flex-wrap gap-1.5">
         {Object.values(cas).map((r, i) => (
-          <li key={i} className="border border-[#2b2b2b] px-2 py-1 text-[11.5px] text-[#a3a3a0]">
+          <li key={i} className="border border-[#2b2b2b] px-2 py-1 text-[11.5px] text-text-secondary">
             {typeof r === 'string' ? r : r.raison}
           </li>
         ))}
@@ -330,7 +330,7 @@ function PourElle({ orgId, orgNom, module, dossier }: { orgId: string; orgNom: s
         </button>
       </div>
       {etat && (
-        <p className="mt-3 text-[12.5px] text-[#e4e4e1]" role="status">
+        <p className="mt-3 text-[12.5px] text-text-body" role="status">
           {etat}
         </p>
       )}

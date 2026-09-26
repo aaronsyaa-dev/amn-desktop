@@ -36,7 +36,7 @@ export function BarreHaute({ bureau }: { bureau: BureauKey }) {
     >
       <span className="flex items-center gap-2" aria-label={EDITION_PRODUCT_NAME}>
         <MarqueAmn hauteur={14} />
-        <span className="hidden text-[12px] text-[#9a9a97] sm:inline">{MOT_EDITION}</span>
+        <span className="hidden text-[12px] text-text-muted sm:inline">{MOT_EDITION}</span>
       </span>
       <span aria-hidden className="h-[18px] w-px" style={{ background: e.filet }} />
       <span
@@ -44,24 +44,25 @@ export function BarreHaute({ bureau }: { bureau: BureauKey }) {
         className="flex h-7 flex-none items-center gap-2 pl-[9px] pr-[11px]"
         style={{ background: e.rel, border: `1px solid ${e.filet}`, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.05)' }}
       >
-        <Glyphe espace={bureau} couleur="#f7f7f5" />
-        <span className="whitespace-nowrap text-[12.5px] font-semibold text-[#f7f7f5]">{e.nom}</span>
+        <Glyphe espace={bureau} couleur="var(--color-text-primary)" />
+        <span className="whitespace-nowrap text-[12.5px] font-semibold text-text-primary">{e.nom}</span>
       </span>
       <button
         type="button"
         onClick={() => (nav.palette ? nav.fermerPalette() : nav.ouvrirPalette())}
         aria-haspopup="dialog"
         aria-expanded={nav.palette}
+        data-selecteur-espace
         className="hidden h-7 w-[236px] flex-none items-center gap-2.5 pl-[11px] pr-[7px] text-left md:flex"
         style={{ border: `1px solid ${nav.palette ? '#8a8a87' : e.filet}` }}
       >
-        <span className={`flex-1 whitespace-nowrap text-[12.5px] ${nav.palette ? 'text-[#e4e4e1]' : 'text-[#9a9a97]'}`}>Changer d’espace</span>
-        <kbd className="px-1.5 py-0.5 font-mono text-[10px] font-medium text-[#a3a3a0]" style={{ border: `1px solid ${e.filet}`, background: e.surf }}>
+        <span className={`flex-1 whitespace-nowrap text-[12.5px] ${nav.palette ? 'text-text-body' : 'text-text-muted'}`}>Changer d’espace</span>
+        <kbd className="px-1.5 py-0.5 font-mono text-[10px] font-medium text-text-secondary" style={{ border: `1px solid ${e.filet}`, background: e.surf }}>
           {touche === '⌘' ? '⌘ E' : 'Ctrl E'}
         </kbd>
       </button>
       {nav.attenteG && (
-        <span className="hidden font-mono text-[10px] tracking-[0.14em] text-[#a3a3a0] lg:inline" aria-live="polite">
+        <span className="hidden font-mono text-[10px] tracking-[0.14em] text-text-secondary lg:inline" aria-live="polite">
           G · 0 À 5
         </span>
       )}
@@ -75,19 +76,20 @@ export function BarreHaute({ bureau }: { bureau: BureauKey }) {
         title={reduit ? 'Le système demande moins de mouvement : l’Ambiance est coupée d’office.' : ambiance ? 'Couper le mouvement ambiant et les sas' : 'Rendre le mouvement ambiant et les sas'}
         className="hidden items-center gap-[7px] disabled:cursor-not-allowed sm:flex"
       >
-        <span className="font-mono text-[9.5px] tracking-[0.14em] text-[#9a9a97]">AMBIANCE</span>
-        <span className={`flex h-[14px] w-[26px] rounded-[7px] p-[2px] ${ambiance && !reduit ? 'justify-end bg-[#3a3a3a]' : 'justify-start bg-[#242424]'}`}>
-          <span className={`h-[10px] w-[10px] rounded-full ${ambiance && !reduit ? 'bg-[#e4e4e1]' : 'bg-[#8a8a87]'}`} />
+        <span className="font-mono text-[9.5px] tracking-[0.14em] text-text-muted">AMBIANCE</span>
+        <span className={`flex h-[14px] w-[26px] rounded-[7px] p-[2px] ${ambiance && !reduit ? 'justify-end bg-border-strong' : 'justify-start bg-action-inactive'}`}>
+          <span className={`h-[10px] w-[10px] rounded-full ${ambiance && !reduit ? 'bg-text-body' : 'bg-[#8a8a87]'}`} />
         </span>
       </button>
-      <span className="hidden font-mono text-[11px] font-medium tabular-nums text-[#a3a3a0] sm:inline">{heure}</span>
+      <span className="hidden font-mono text-[11px] font-medium tabular-nums text-text-secondary sm:inline">{heure}</span>
       <button
         type="button"
         onClick={() => nav.allerEspace('poste')}
         title="Poste de travail (G puis 0)"
-        className="flex h-7 flex-none items-center gap-[7px] whitespace-nowrap border border-[#3a3a3a] px-[11px] text-[12px] font-semibold text-[#e4e4e1] hover:border-[#8a8a87] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f7f7f5]"
+        data-sortie-poste
+        className="flex h-7 flex-none items-center gap-[7px] whitespace-nowrap border border-border-strong px-[11px] text-[12px] font-semibold text-text-body hover:border-[#8a8a87] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text-primary"
       >
-        <Glyphe espace="poste" taille={12} couleur="#a3a3a0" />
+        <Glyphe espace="poste" taille={12} couleur="var(--color-text-secondary)" />
         <span className="hidden sm:inline">Poste de travail</span>
       </button>
     </header>
@@ -117,7 +119,7 @@ function Presence({ bureau, bord }: { bureau: BureauKey; bord: string }) {
           <UserAvatar email={r.email} size={22} />
         </span>
       ))}
-      {ici.length > 4 && <span className="ml-1.5 font-mono text-[10px] text-[#a3a3a0]">+{ici.length - 4}</span>}
+      {ici.length > 4 && <span className="ml-1.5 font-mono text-[10px] text-text-secondary">+{ici.length - 4}</span>}
     </span>
   );
 }

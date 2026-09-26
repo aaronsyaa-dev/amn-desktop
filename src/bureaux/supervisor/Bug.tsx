@@ -10,7 +10,7 @@ import { useSupervisor } from '../donnees/useSupervisor';
 import { useSourceBureaux } from '../donnees/source';
 import { STATIONS_BUG, type DossierOrg, type ParcoursBug, type StationBug } from '../donnees/types';
 import { Carte, EnTete, Stat } from '../ui/kit';
-import { hhmm, prenomDe } from '../format';
+import { enLettres, hhmm, prenomDe } from '../format';
 
 /**
  * SUPERVISOR · UN BUG CHEZ UN SEUL CLIENT — la voie isolée (cahier 12, `46g`).
@@ -38,7 +38,7 @@ const DESCRIPTIONS: Record<StationBug, (p: Parcours, nomModule: string, orgNom: 
   reactivation: (_p, m) => `${m} rouvert chez elle`,
   cloture: () => 'après 48 h sans rechute',
 };
-const NOMS: Record<StationBug, string> = { signalement: 'Signalement', fiche: 'Fiche incident', protection: 'Pause pour elle', message: 'Message', correction: 'Correction', reactivation: 'Réactivation', cloture: 'Clôture' };
+export const NOMS: Record<StationBug, string> = { signalement: 'Signalement', fiche: 'Fiche incident', protection: 'Pause pour elle', message: 'Message', correction: 'Correction', reactivation: 'Réactivation', cloture: 'Clôture' };
 
 const nomModule = (cle: string) => NAV_SECTIONS.flatMap((s) => s.items).find((i) => i.key === cle)?.label ?? cle;
 
@@ -80,13 +80,13 @@ function NouveauParcours() {
     } satisfies ParcoursBug);
     navigate(`/supervisor/bug/${pid}`);
   };
-  const champ = 'h-10 border border-[#2b2b2b] bg-[#141414] px-3 text-[13.5px] text-[#f7f7f5] outline-none focus:border-[#8a8a87]';
+  const champ = 'h-10 border border-[#2b2b2b] bg-raised px-3 text-[13.5px] text-text-primary outline-none focus:border-[#8a8a87]';
   return (
     <>
       <EnTete surtitre={`Supervisor · Dossiers clients · ${org.name}`} titre={`Un bug chez ${org.name} seule`} lede="Le module continue pour toutes les autres organisations. Chez elle seule, il passe par sept stations : de la fiche à la clôture." />
       <Carte dominante pad="p-7">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <label className="flex flex-col gap-1.5 text-[12px] text-[#a3a3a0]">
+          <label className="flex flex-col gap-1.5 text-[12px] text-text-secondary">
             Le module
             <select value={module} onChange={(e) => setModule(e.target.value)} className={champ}>
               {modules.map((k) => (
@@ -96,7 +96,7 @@ function NouveauParcours() {
               ))}
             </select>
           </label>
-          <label className="flex flex-col gap-1.5 text-[12px] text-[#a3a3a0]">
+          <label className="flex flex-col gap-1.5 text-[12px] text-text-secondary">
             La gravité
             <select value={gravite} onChange={(e) => setGravite(e.target.value as ParcoursBug['gravite'])} className={champ}>
               {(['faible', 'moyenne', 'haute', 'critique'] as const).map((g) => (
@@ -106,11 +106,11 @@ function NouveauParcours() {
               ))}
             </select>
           </label>
-          <label className="flex flex-col gap-1.5 text-[12px] text-[#a3a3a0] md:col-span-2">
+          <label className="flex flex-col gap-1.5 text-[12px] text-text-secondary md:col-span-2">
             Ce qui se passe, chez elle
             <input value={titre} onChange={(e) => setTitre(e.target.value)} placeholder="Stock refuse l’import du fichier de la cliente" className={champ} />
           </label>
-          <label className="flex flex-col gap-1.5 text-[12px] text-[#a3a3a0] md:col-span-2">
+          <label className="flex flex-col gap-1.5 text-[12px] text-text-secondary md:col-span-2">
             La cause, si on la connaît
             <input value={cause} onChange={(e) => setCause(e.target.value)} placeholder="Une colonne avec des décimales à la virgule…" className={champ} />
           </label>
@@ -175,7 +175,7 @@ function Parcours({ id }: { id: string }) {
     : p.stations.reactivation
       ? `${nomMod} est rouvert chez elle ; clôture après 48 h sans rechute.`
       : p.stations.protection
-        ? `${nomMod} est ${p.protection === 'epinglee' ? 'épinglé' : 'en pause'} chez elle seule, depuis ${depuis && depuis > 1 ? `${depuis === 2 ? 'deux' : depuis} jours` : 'aujourd’hui'}`
+        ? `${nomMod} est ${p.protection === 'epinglee' ? 'épinglé' : 'en pause'} chez elle seule, depuis ${depuis && depuis > 1 ? `${enLettres(depuis)} jours` : 'aujourd’hui'}.`
         : `${nomMod} ne va pas chez ${orgNom}. Les autres ne voient rien.`;
 
   return (
@@ -189,16 +189,16 @@ function Parcours({ id }: { id: string }) {
             const enCours = courante === s.cle;
             return (
               <li key={s.cle} className="px-1.5 text-center" data-signal-groupe={enCours ? 'bug-station' : undefined}>
-                <span className="block text-[13px] font-semibold" style={{ color: enCours ? AMBRE : fait ? '#f7f7f5' : '#a3a3a0' }}>{NOMS[s.cle]}</span>
-                <span className="mt-1 block font-mono text-[10px] tabular-nums text-[#a3a3a0]">{fait ? `${fait.slice(8, 10)}/${fait.slice(5, 7)} · ${hhmm(fait)}` : s.cle === 'cloture' ? 'après 48 h' : 'à venir'}</span>
-                <span className="mt-1 block text-[11.5px] leading-snug text-[#9a9a97]">{DESCRIPTIONS[s.cle](p, nomMod, orgNom)}</span>
+                <span className="block text-[13px] font-semibold" style={{ color: enCours ? AMBRE : fait ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}>{NOMS[s.cle]}</span>
+                <span className="mt-1 block font-mono text-[10px] tabular-nums text-text-secondary">{fait ? `${fait.slice(8, 10)}/${fait.slice(5, 7)} · ${hhmm(fait)}` : s.cle === 'cloture' ? 'après 48 h' : 'à venir'}</span>
+                <span className="mt-1 block text-[11.5px] leading-snug text-text-muted">{DESCRIPTIONS[s.cle](p, nomMod, orgNom)}</span>
               </li>
             );
           })}
         </ol>
         {courante && (
-          <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[#1f1f1f] pt-5">
-            <span className="text-[13px] text-[#e4e4e1]">Station en cours : {NOMS[courante]}.</span>
+          <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-5">
+            <span className="text-[13px] text-text-body">Station en cours : {NOMS[courante]}.</span>
             {courante === 'protection' && (
               <>
                 <button type="button" className="bx-btn" onClick={() => void faire('protection', { protection: 'pause' }, async () => { await bridge().remote.admin.setOrganizationModule(p.orgId, p.module, false); await poserDossier('pause'); })}>
@@ -216,7 +216,7 @@ function Parcours({ id }: { id: string }) {
             )}
             {courante === 'correction' && (
               <>
-                <input value={version} onChange={(e) => setVersion(e.target.value)} placeholder="v4.2.1" aria-label="La version corrigée" className="h-9 w-28 border border-[#2b2b2b] bg-[#141414] px-3 text-[13px] text-[#f7f7f5] outline-none focus:border-[#8a8a87]" />
+                <input value={version} onChange={(e) => setVersion(e.target.value)} placeholder="v4.2.1" aria-label="La version corrigée" className="h-9 w-28 border border-[#2b2b2b] bg-raised px-3 text-[13px] text-text-primary outline-none focus:border-[#8a8a87]" />
                 <button type="button" className="bx-btn" disabled={!version.trim()} onClick={() => void faire('correction', { version: version.trim() })}>
                   Correction livrée pour toutes
                 </button>
@@ -233,7 +233,7 @@ function Parcours({ id }: { id: string }) {
               </button>
             )}
             {etat && (
-              <span className="text-[12.5px] text-[#e4e4e1]" role="alert">
+              <span className="text-[12.5px] text-text-body" role="alert">
                 {etat}
               </span>
             )}
@@ -244,12 +244,12 @@ function Parcours({ id }: { id: string }) {
         <Carte titre="La carte d’incident" droite="composant réutilisable">
           <div className="border border-[#2b2b2b] bg-[#151515] p-5">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="border border-[#3a3a3a] px-1.5 py-[3px] font-mono text-[10px] font-semibold tracking-[0.1em] text-[#e4e4e1]">{p.incidentId}</span>
-              <span className="border border-[#3a3a3a] px-1.5 py-[3px] font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[#e4e4e1]">{p.gravite}</span>
-              <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.1em] text-[#9a9a97]">ouvert {anciennete(p.ouvertLe)}</span>
+              <span className="border border-border-strong px-1.5 py-[3px] font-mono text-[10px] font-semibold tracking-[0.1em] text-text-body">{p.incidentId}</span>
+              <span className="border border-border-strong px-1.5 py-[3px] font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-text-body">{p.gravite}</span>
+              <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">ouvert {anciennete(p.ouvertLe)}</span>
             </div>
-            <p className="mt-3 text-[15px] font-semibold text-[#f7f7f5]">{p.titre}</p>
-            {p.cause && <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#a3a3a0]">{p.cause}</p>}
+            <p className="mt-3 text-[15px] font-semibold text-text-primary">{p.titre}</p>
+            {p.cause && <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-secondary">{p.cause}</p>}
             <div className="mt-4 grid grid-cols-3 gap-4">
               <Stat l="Organisation" v={`${p.touchees ?? 1} / ${src.organisations.length || '—'}`} />
               <Stat l="Pour elle" v={p.stations.reactivation ? 'rouvert' : p.stations.protection ? (p.protection === 'epinglee' ? 'épinglé' : 'en pause') : 'actif'} />
@@ -287,36 +287,36 @@ function Voie({ p, courante, nomModule, autres, orgNom }: { p: Parcours; courant
   const faite = (i: number) => Boolean(p.stations[STATIONS_BUG[i].cle]);
   return (
     <div className="relative">
-      <div className="mb-1 flex justify-between font-mono text-[9.5px] uppercase tracking-[0.14em] text-[#9a9a97]">
+      <div className="mb-1 flex justify-between font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted">
         <span>
           {nomModule} · pour les {autres} autres organisations, sans interruption
         </span>
         {p.stations.correction && p.version && <span>correction {p.version} pour toutes</span>}
       </div>
-      <svg viewBox={`0 0 1000 ${H}`} preserveAspectRatio="none" className="block h-[150px] w-full" role="img" aria-label={`La voie commune continue ; ${orgNom} suit la voie isolée, station en cours : ${courante ?? 'aucune, parcours clos'}.`}>
+      <svg viewBox={`0 0 1000 ${H}`} preserveAspectRatio="none" className="block h-[150px] w-full" data-signal-groupe="bug-station" role="img" aria-label={`La voie commune continue ; ${orgNom} suit la voie isolée, station en cours : ${courante ?? 'aucune, parcours clos'}.`}>
         <line x1={0} y1={haut} x2={1000} y2={haut} stroke="#4a4a48" strokeWidth={2} vectorEffect="non-scaling-stroke" />
         {/* La sortie de la voie commune, au signalement. */}
-        <path d={`M${X(0)} ${haut} C ${X(0) + 60} ${haut}, ${X(0) + 60} ${bas}, ${X(1) - 40} ${bas}`} fill="none" stroke="#e4e4e1" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+        <path d={`M${X(0)} ${haut} C ${X(0) + 60} ${haut}, ${X(0) + 60} ${bas}, ${X(1) - 40} ${bas}`} fill="none" stroke="var(--color-text-body)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
         {STATIONS_BUG.slice(1, 6).map((_, k) => {
           const i = k + 1;
           const suivant = i + 1;
           const plein = faite(i) && (suivant < 7 ? faite(suivant) || suivant === iCour : true);
           const ambre = suivant === iCour;
-          return <line key={i} x1={X(i)} y1={bas} x2={X(suivant)} y2={bas} stroke={ambre ? AMBRE : plein ? '#e4e4e1' : '#4a4a48'} strokeWidth={ambre ? 3 : 2} strokeDasharray={plein || ambre ? undefined : '6 6'} vectorEffect="non-scaling-stroke" />;
+          return <line key={i} x1={X(i)} y1={bas} x2={X(suivant)} y2={bas} stroke={ambre ? AMBRE : plein ? 'var(--color-text-body)' : '#4a4a48'} strokeWidth={ambre ? 3 : 2} strokeDasharray={plein || ambre ? undefined : '6 6'} vectorEffect="non-scaling-stroke" />;
         })}
-        <line x1={X(1) - 40} y1={bas} x2={X(1)} y2={bas} stroke="#e4e4e1" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+        <line x1={X(1) - 40} y1={bas} x2={X(1)} y2={bas} stroke="var(--color-text-body)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
         {/* Le retour sur la voie commune, à la clôture. */}
-        <path d={`M${X(5)} ${bas} C ${X(6) - 30} ${bas}, ${X(6) - 30} ${haut}, ${X(6)} ${haut}`} fill="none" stroke={p.stations.cloture ? '#e4e4e1' : '#4a4a48'} strokeWidth={2} strokeDasharray={p.stations.cloture ? undefined : '6 6'} vectorEffect="non-scaling-stroke" />
+        <path d={`M${X(5)} ${bas} C ${X(6) - 30} ${bas}, ${X(6) - 30} ${haut}, ${X(6)} ${haut}`} fill="none" stroke={p.stations.cloture ? 'var(--color-text-body)' : '#4a4a48'} strokeWidth={2} strokeDasharray={p.stations.cloture ? undefined : '6 6'} vectorEffect="non-scaling-stroke" />
         {/* La correction part pour toutes. */}
-        <line x1={X(4)} y1={bas} x2={X(4)} y2={haut} stroke="#6b6b68" strokeWidth={1} strokeDasharray="3 4" vectorEffect="non-scaling-stroke" />
+        <line x1={X(4)} y1={bas} x2={X(4)} y2={haut} stroke="var(--color-trait-sourd)" strokeWidth={1} strokeDasharray="3 4" vectorEffect="non-scaling-stroke" />
         {STATIONS_BUG.map((s, i) => {
           const y = i === 0 || i === 6 ? haut : bas;
           const fait = faite(i);
           const enCours = i === iCour;
-          return <circle key={s.cle} cx={X(i)} cy={y} r={enCours ? 7 : 6} fill={enCours ? AMBRE : fait ? '#f7f7f5' : '#0f0f0f'} stroke={enCours ? AMBRE : fait ? '#f7f7f5' : '#8a8a87'} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />;
+          return <circle key={s.cle} cx={X(i)} cy={y} r={enCours ? 7 : 6} fill={enCours ? AMBRE : fait ? 'var(--color-text-primary)' : '#0f0f0f'} stroke={enCours ? AMBRE : fait ? 'var(--color-text-primary)' : '#8a8a87'} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />;
         })}
       </svg>
-      <div className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-[#9a9a97]" style={{ paddingLeft: `${(1.5 / 7) * 100}%` }}>
+      <div className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted" style={{ paddingLeft: `${(1.5 / 7) * 100}%` }}>
         La voie isolée · {orgNom} seule
       </div>
     </div>

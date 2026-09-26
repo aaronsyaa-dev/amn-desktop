@@ -8,17 +8,17 @@
 */
 
 .bx {
-  --bx-fond: #060606;
-  --bx-surf: #121212;
+  --bx-fond: var(--color-bg);
+  --bx-surf: var(--color-elevated);
   --bx-rel: #181818;
   --bx-filet: #1c1c1c;
   --bx-barre: #0c0c0c;
   background: var(--bx-fond);
-  color: #f7f7f5;
+  color: var(--color-text-primary);
 }
 .bx[data-bureau='supervisor'] {
-  --bx-fond: #0b0b0b;
-  --bx-surf: #121212;
+  --bx-fond: var(--color-sunken);
+  --bx-surf: var(--color-elevated);
   --bx-rel: #1a1a1a;
   --bx-filet: #252525;
   --bx-barre: #0e0e0e;
@@ -45,6 +45,7 @@
   --bx-barre: #0f0f11;
 }
 .bx[data-bureau='garde'] {
+  /* Le sol de la Garde : la valeur de --color-signal-ink, pas son rôle (voir COINCIDENCES dans check-encres). */
   --bx-fond: #080808;
   --bx-surf: #101010;
   --bx-rel: #171717;
@@ -77,13 +78,13 @@
   font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #a3a3a0;
+  color: var(--color-text-secondary);
 }
 .bx-sur-d {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 10px;
   letter-spacing: 0.1em;
-  color: #9a9a97;
+  color: var(--color-text-muted);
 }
 .bx-mono {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
@@ -98,7 +99,7 @@
   gap: 8px;
   height: 34px;
   padding: 0 15px;
-  background: #f7f7f5;
+  background: var(--color-text-primary);
   color: #0a0a0a;
   font-weight: 600;
   font-size: 13px;
@@ -110,8 +111,8 @@
 }
 .bx-btn:disabled,
 .bx-btn[aria-disabled='true'] {
-  background: #242424;
-  color: #9a9a97;
+  background: var(--color-action-inactive);
+  color: var(--color-action-inactive-ink);
   box-shadow: none;
   cursor: not-allowed;
 }
@@ -122,32 +123,32 @@
   gap: 8px;
   height: 34px;
   padding: 0 15px;
-  border: 1px solid #3a3a3a;
-  color: #e4e4e1;
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-body);
   font-weight: 600;
   font-size: 13px;
   white-space: nowrap;
 }
 .bx-btn2:hover {
-  border-color: #6b6b68;
-  color: #f7f7f5;
+  border-color: var(--color-trait-sourd);
+  color: var(--color-text-primary);
 }
 .bx-btn:focus-visible,
 .bx-btn2:focus-visible,
 .bx-lien:focus-visible,
 .bx-nav:focus-visible {
-  outline: 2px solid #f7f7f5;
+  outline: 2px solid var(--color-text-primary);
   outline-offset: 2px;
 }
 .bx-lien {
   font-weight: 600;
   font-size: 12.5px;
-  color: #f7f7f5;
-  border-bottom: 1px solid #6b6b68;
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-trait-sourd);
   padding-bottom: 2px;
 }
 .bx-lien:hover {
-  border-bottom-color: #f7f7f5;
+  border-bottom-color: var(--color-text-primary);
 }
 
 /* Une ligne de liste des cartes calmes (`line()` du paquet). */
@@ -324,7 +325,7 @@
 /* Le papier (fiches de campagne, rapport mensuel, message à la cliente). */
 .bx-papier {
   background: #e8e6e0;
-  color: #111111;
+  color: var(--color-sheet);
   box-shadow: 0 18px 30px -18px rgba(0, 0, 0, 0.9), 0 2px 0 rgba(0, 0, 0, 0.25);
 }
 /* La punaise : 12 px, un reflet. */

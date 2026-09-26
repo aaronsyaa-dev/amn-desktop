@@ -37,12 +37,12 @@ function Notes({ p }: { p: Piece }) {
           ) : (
             notes.map((n) => (
               <article key={n.id} className="border-b border-[#1f1e1c] py-4">
-                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#9a9a97]">
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
                   {jourMois(n.at)} · {nom(n.par)}
                 </span>
-                <p className="mt-1.5 whitespace-pre-wrap text-[14px] leading-relaxed text-[#e4e4e1]">{n.texte}</p>
+                <p className="mt-1.5 whitespace-pre-wrap text-[14px] leading-relaxed text-text-body">{n.texte}</p>
                 {n.par === user?.email && (
-                  <button type="button" className="mt-2 text-[11.5px] font-semibold text-[#a3a3a0] underline decoration-[#6b6b68] underline-offset-4 hover:text-[#f7f7f5]" onClick={() => ecrire(p.id, (b) => ({ notes: (b.notes ?? []).filter((x) => x.id !== n.id) }))}>
+                  <button type="button" className="mt-2 text-[11.5px] font-semibold text-text-secondary underline decoration-trait-sourd underline-offset-4 hover:text-text-primary" onClick={() => ecrire(p.id, (b) => ({ notes: (b.notes ?? []).filter((x) => x.id !== n.id) }))}>
                     Retirer ma note
                   </button>
                 )}
@@ -59,7 +59,7 @@ function Notes({ p }: { p: Piece }) {
               setTexte('');
             }}
           >
-            <textarea value={texte} onChange={(e) => setTexte(e.target.value)} rows={4} placeholder="Ce qu’il faut savoir…" aria-label="La note" className="w-full resize-none border border-[#2a2826] bg-transparent p-3 text-[13.5px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]" />
+            <textarea value={texte} onChange={(e) => setTexte(e.target.value)} rows={4} placeholder="Ce qu’il faut savoir…" aria-label="La note" className="w-full resize-none border border-[#2a2826] bg-transparent p-3 text-[13.5px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]" />
             <button type="submit" className="bx-btn mt-2" disabled={!texte.trim()}>
               Noter
             </button>

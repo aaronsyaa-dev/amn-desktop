@@ -30,16 +30,23 @@ export function toneFor(status: Pick<SslStatus, 'daysLeft' | 'error'>): SslTone 
   return 'ok';
 }
 
-/** Red is reserved for the two states that are genuinely critical. */
+/*
+  LE ROUGE, UNE FOIS. L'écran est recousu dans Cyber, où le rouge ne se dit
+  qu'une fois par écran, sur l'objet critique lui-même (BUREAUX.md, « Le
+  signal ») : le PREMIER certificat expiré. « Urgent » s'écrit à l'encre
+  pleine — le maillon qui tombe le premier est déjà l'ambre de la chaîne —,
+  et un deuxième expiré aussi (voir `TON_CRITIQUE_A_L_ENCRE`).
+*/
 const TONE_STYLE: Record<SslTone, string> = {
   ok: 'border-border text-text-secondary',
   warn: 'border-border-strong text-text-primary',
   // Un porteur rouge par puce (docs/ROUGE.md, F8) : le mot suffit, la
   // teinte de fond et la bordure rouge par-dessus étaient l'ambiance.
-  urgent: 'border-border text-danger',
+  urgent: 'border-border-strong font-bold text-text-primary',
   expired: 'border-danger/40 text-danger',
   unknown: 'border-border text-text-muted',
 };
+const TON_CRITIQUE_A_L_ENCRE = 'border-border-strong font-bold text-text-primary';
 
 const TONE_LABEL: Record<SslTone, string> = {
   ok: 'Valide',
@@ -103,6 +110,8 @@ export function SslScreen() {
       }),
     [statuses],
   );
+  /* Le seul certificat dit en rouge : le premier expiré de la liste (voir TONE_STYLE). */
+  const premierExpire = sorted.find((st) => toneFor(st) === 'expired')?.host ?? null;
 
   const atRisk = sorted.filter((s) => ['expired', 'urgent', 'warn'].includes(toneFor(s))).length;
 
@@ -145,8 +154,8 @@ export function SslScreen() {
 
       {error && (
         <StaggerItem>
-          <div className="flex items-start gap-2 border border-border border-l-2 border-l-danger bg-surface px-4 py-3 text-sm text-text-secondary">
-            <AlertTriangle size={15} className="mt-0.5 flex-shrink-0 text-danger" strokeWidth={2} />
+          <div className="flex items-start gap-2 border border-border border-l-2 border-l-text-primary bg-surface px-4 py-3 text-sm text-text-secondary">
+            <AlertTriangle size={15} className="mt-0.5 flex-shrink-0 text-text-primary" strokeWidth={2} />
             <span>{error}</span>
           </div>
         </StaggerItem>
@@ -170,10 +179,11 @@ export function SslScreen() {
           <ul className="elev-1 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
             {sorted.map((status) => {
               const tone = toneFor(status);
+              const style = tone === 'expired' && status.host !== premierExpire ? TON_CRITIQUE_A_L_ENCRE : TONE_STYLE[tone];
               return (
                 <li key={status.host} className="flex flex-wrap items-center gap-3 px-4 py-3.5">
                   <span
-                    className={`flex-shrink-0 rounded-md border px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider ${TONE_STYLE[tone]}`}
+                    className={`flex-shrink-0 rounded-md border px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider ${style}`}
                   >
                     {TONE_LABEL[tone]}
                   </span>

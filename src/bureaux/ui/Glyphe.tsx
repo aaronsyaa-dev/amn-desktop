@@ -25,7 +25,7 @@ export function Glyphe({ espace, taille = 14, couleur = 'currentColor', classNam
 }
 
 /** La marque AMN, monochrome — celle de la barre haute (14 px). */
-export function MarqueAmn({ hauteur = 14, couleur = '#f7f7f5' }: { hauteur?: number; couleur?: string }) {
+export function MarqueAmn({ hauteur = 14, couleur = 'var(--color-text-primary)' }: { hauteur?: number; couleur?: string }) {
   // Même géométrie que src/components/Logo.tsx : repère de 274 de large, capitale 80 (y 10 → 90).
   const traits = ['M0 90 L42 10 L84 90', 'M11.6 68 L72.4 68', 'M98 90 L98 10 L140 90 L182 10 L182 90', 'M190 90 L190 10 L274 90 L274 10'];
   const largeur = (274 / 80) * hauteur;

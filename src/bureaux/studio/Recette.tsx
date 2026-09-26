@@ -59,14 +59,14 @@ export function StudioRecette() {
               setChoisie(id);
             }}
           >
-            <select value={nouvelle.pieceId} onChange={(e) => setNouvelle({ ...nouvelle, pieceId: e.target.value })} aria-label="La pièce" className="h-9 border border-[#2a2826] bg-[#141312] px-2.5 text-[13px] text-[#f7f7f5]">
+            <select value={nouvelle.pieceId} onChange={(e) => setNouvelle({ ...nouvelle, pieceId: e.target.value })} aria-label="La pièce" className="h-9 border border-[#2a2826] bg-[#141312] px-2.5 text-[13px] text-text-primary">
               {s.pieces.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.plaque} · {p.orgNom}
                 </option>
               ))}
             </select>
-            <input value={nouvelle.page} onChange={(e) => setNouvelle({ ...nouvelle, page: e.target.value })} placeholder="La page (« Commande »)" aria-label="La page" className="h-9 min-w-0 flex-1 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]" />
+            <input value={nouvelle.page} onChange={(e) => setNouvelle({ ...nouvelle, page: e.target.value })} placeholder="La page (« Commande »)" aria-label="La page" className="h-9 min-w-0 flex-1 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]" />
             <button type="submit" className="bx-btn">
               Ouvrir
             </button>
@@ -94,9 +94,9 @@ export function StudioRecette() {
                       data-signal-groupe={c === 'apres' && vue.r.id === ambre?.r.id ? 'recette-ambre' : undefined}
                       aria-label={img ? `Changer la capture ${c === 'avant' ? 'd’avant' : 'd’après'}` : `Déposer la capture ${c === 'avant' ? 'd’avant' : 'd’après'}`}
                     >
-                      {img ? <img src={img} alt={`Page ${vue.r.page}, ${c === 'avant' ? 'avant' : 'après'}`} className="h-full w-full object-cover object-top" /> : <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#9a9a97]">{c === 'avant' ? 'avant' : 'après'} · déposer</span>}
+                      {img ? <img src={img} alt={`Page ${vue.r.page}, ${c === 'avant' ? 'avant' : 'après'}`} className="h-full w-full object-cover object-top" /> : <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">{c === 'avant' ? 'avant' : 'après'} · déposer</span>}
                     </button>
-                    <figcaption className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[#a3a3a0]">{c === 'avant' ? 'Avant la livraison' : 'Après'}</figcaption>
+                    <figcaption className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-text-secondary">{c === 'avant' ? 'Avant la livraison' : 'Après'}</figcaption>
                   </figure>
                 );
               })}

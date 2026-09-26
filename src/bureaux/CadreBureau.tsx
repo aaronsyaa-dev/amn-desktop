@@ -32,11 +32,11 @@ import { NAV_ITEMS } from '../data/navigation';
 
 /** La tête de chaque bureau (cahier 11 §1) et ses marges de contenu (`shell()`). */
 const TETES: Record<BureauKey, { titre: string; marges: string }> = {
-  supervisor: { titre: 'font-sans text-[36px] font-bold leading-[1.08] tracking-[-0.03em] text-[#f7f7f5] text-balance', marges: '28px 28px 32px' },
-  cyber: { titre: 'font-mono text-[24px] font-semibold leading-[1.08] tracking-[-0.01em] text-[#f7f7f5] text-balance', marges: '24px 24px 28px' },
-  studio: { titre: 'font-sans text-[38px] font-bold leading-[1.08] tracking-[-0.03em] text-[#f7f7f5] text-balance', marges: '32px 32px 36px' },
-  strategie: { titre: 'font-sans text-[34px] font-semibold leading-[1.08] tracking-[-0.03em] text-[#f7f7f5] text-balance', marges: '28px 28px 32px' },
-  garde: { titre: 'font-sans text-[36px] font-bold leading-[1.08] tracking-[-0.03em] text-[#f7f7f5] text-balance', marges: '28px 28px 32px' },
+  supervisor: { titre: 'font-sans text-[36px] font-bold leading-[1.08] tracking-[-0.03em] text-text-primary text-balance', marges: '28px 28px 32px' },
+  cyber: { titre: 'font-mono text-[24px] font-semibold leading-[1.08] tracking-[-0.01em] text-text-primary text-balance', marges: '24px 24px 28px' },
+  studio: { titre: 'font-sans text-[38px] font-bold leading-[1.08] tracking-[-0.03em] text-text-primary text-balance', marges: '32px 32px 36px' },
+  strategie: { titre: 'font-sans text-[34px] font-semibold leading-[1.08] tracking-[-0.03em] text-text-primary text-balance', marges: '28px 28px 32px' },
+  garde: { titre: 'font-sans text-[36px] font-bold leading-[1.08] tracking-[-0.03em] text-text-primary text-balance', marges: '28px 28px 32px' },
 };
 
 /** Les anciens noms de pièce (cahier 4) que le surtitre d'un écran recousu ne doit plus dire. */

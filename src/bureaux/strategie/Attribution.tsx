@@ -62,11 +62,11 @@ export function StrategieAttribution() {
           <Carte dominante pad="p-6" className="self-start" titre={`D’où viennent les ${gagnees.length} clientes gagnées`} droite="barre = ce qu’elles rapportent">
             {barres.map((b) => (
               <div key={b.nom} className="grid grid-cols-[210px_minmax(0,1fr)_120px] items-center gap-4 py-2.5">
-                <span className="truncate text-[13px] font-semibold text-[#f7f7f5]">{b.nom}</span>
+                <span className="truncate text-[13px] font-semibold text-text-primary">{b.nom}</span>
                 <span className="h-[12px] bg-[#1f1f23]" aria-hidden>
                   <span className="block h-full bg-[#8a8a8f]" style={{ width: `${(b.valeur / max) * 100}%` }} />
                 </span>
-                <span className="text-right font-mono text-[11px] tabular-nums text-[#a3a3a0]">
+                <span className="text-right font-mono text-[11px] tabular-nums text-text-secondary">
                   {b.n} · {eur(b.valeur)}
                 </span>
               </div>
@@ -90,20 +90,20 @@ export function StrategieAttribution() {
               return (
                 <div key={p.id} className="border-b border-[#222226] py-2.5">
                   <span className="flex items-baseline justify-between gap-3">
-                    <Link to={`/strategie/pipeline/${p.id}`} className="truncate text-[13.5px] font-semibold text-[#f7f7f5] hover:underline">
+                    <Link to={`/strategie/pipeline/${p.id}`} className="truncate text-[13.5px] font-semibold text-text-primary hover:underline">
                       {p.company || p.name}
                     </Link>
-                    <span className="font-mono text-[10.5px] tabular-nums text-[#9a9a97]">{eur(p.valueCents || 0)}</span>
+                    <span className="font-mono text-[10.5px] tabular-nums text-text-muted">{eur(p.valueCents || 0)}</span>
                   </span>
                   {o ? (
-                    <span className="mt-0.5 block text-[12px] text-[#a3a3a0]">
+                    <span className="mt-0.5 block text-[12px] text-text-secondary">
                       {o.nom}
                       {p.venuPar ? ` · par ${p.venuPar}` : ''}
                     </span>
                   ) : (
-                    <label className="mt-1 flex items-center gap-2 text-[12px]" style={{ color: estAmbre ? AMBRE : '#a3a3a0' }} data-signal-groupe={estAmbre ? 'attribution-ambre' : undefined}>
+                    <label className="mt-1 flex items-center gap-2 text-[12px]" style={{ color: estAmbre ? AMBRE : 'var(--color-text-secondary)' }} data-signal-groupe={estAmbre ? 'attribution-ambre' : undefined}>
                       d’où vient-elle ?
-                      <select value="" onChange={(e) => e.target.value && ecrire(p.id, () => (e.target.value.startsWith('campagne:') ? { campagneId: e.target.value.slice(9) } : { source: e.target.value }))} className="h-7 border border-[#28282c] bg-[#141416] px-1.5 text-[12px] text-[#e4e4e1]" aria-label={`L’origine de ${p.company || p.name}`}>
+                      <select value="" onChange={(e) => e.target.value && ecrire(p.id, () => (e.target.value.startsWith('campagne:') ? { campagneId: e.target.value.slice(9) } : { source: e.target.value }))} className="h-7 border border-[#28282c] bg-[#141416] px-1.5 text-[12px] text-text-body" aria-label={`L’origine de ${p.company || p.name}`}>
                         <option value="">choisir…</option>
                         <option value="bouche">Bouche à oreille</option>
                         <option value="site">Recherche, site public</option>

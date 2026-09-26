@@ -99,9 +99,24 @@ export function SupervisorCarte() {
                 const r = 9 + 7 * Math.sqrt(v.orgs.length);
                 const estAmbre = villeAmbre?.cle === v.cle;
                 return (
-                  <g key={v.cle} onClick={() => setChoisie(v.cle)} style={{ cursor: 'pointer' }} data-signal-groupe={estAmbre ? 'carte-ambre' : undefined}>
-                    <circle cx={x(lo)} cy={y(la)} r={r} fill={estAmbre ? AMBRE : vue?.cle === v.cle ? '#bdbdb9' : '#6b6b68'} opacity={estAmbre ? 1 : 0.85} />
-                    <text x={x(lo) + r + 8} y={y(la) + 6} fill={estAmbre ? AMBRE : '#e4e4e1'} fontSize={22} fontFamily="Space Grotesk, sans-serif" fontWeight={600}>
+                  <g
+                    key={v.cle}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${v.nom} : ${v.orgs.length} organisation${v.orgs.length > 1 ? 's' : ''}`}
+                    aria-pressed={vue?.cle === v.cle}
+                    onClick={() => setChoisie(v.cle)}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter' && e.key !== ' ') return;
+                      e.preventDefault();
+                      setChoisie(v.cle);
+                    }}
+                    className="outline-none focus-visible:[&>circle]:stroke-text-primary focus-visible:[&>circle]:[stroke-width:3]"
+                    style={{ cursor: 'pointer' }}
+                    data-signal-groupe={estAmbre ? 'carte-ambre' : undefined}
+                  >
+                    <circle cx={x(lo)} cy={y(la)} r={r} fill={estAmbre ? AMBRE : vue?.cle === v.cle ? '#bdbdb9' : 'var(--color-trait-sourd)'} opacity={estAmbre ? 1 : 0.85} />
+                    <text x={x(lo) + r + 8} y={y(la) + 6} fill={estAmbre ? AMBRE : 'var(--color-text-body)'} fontSize={22} fontFamily="Space Grotesk, sans-serif" fontWeight={600}>
                       {v.nom} · {v.orgs.length}
                     </text>
                   </g>
@@ -117,15 +132,15 @@ export function SupervisorCarte() {
                   .map((o) => {
                     const estAmbre = m.ambre?.id === o.id;
                     return (
-                      <Link key={o.id} to={`/supervisor/dossiers/${o.id}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3 border-b border-[#1f1f1f] py-2.5 hover:bg-white/[0.02]" style={estAmbre ? { boxShadow: `inset 2px 0 0 ${AMBRE}`, paddingLeft: 10 } : undefined} data-signal-groupe={estAmbre ? 'carte-ambre' : undefined}>
+                      <Link key={o.id} to={`/supervisor/dossiers/${o.id}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3 border-b border-border py-2.5 hover:bg-white/[0.02]" style={estAmbre ? { boxShadow: `inset 2px 0 0 ${AMBRE}`, paddingLeft: 10 } : undefined} data-signal-groupe={estAmbre ? 'carte-ambre' : undefined}>
                         <span className="min-w-0">
-                          <span className="block truncate text-[13.5px] font-semibold text-[#f7f7f5]">{o.nom}</span>
-                          <span className="block truncate text-[12px] text-[#a3a3a0]">
+                          <span className="block truncate text-[13.5px] font-semibold text-text-primary">{o.nom}</span>
+                          <span className="block truncate text-[12px] text-text-secondary">
                             {m.dossiers.get(o.id)?.ville && brut(m.dossiers.get(o.id)!.ville!) !== vue.cle ? `${m.dossiers.get(o.id)!.ville} · ` : ''}
                             {o.poids ? o.raison : 'rien n’attend'}
                           </span>
                         </span>
-                        <span className="font-mono text-[10.5px] uppercase" style={{ color: estAmbre ? AMBRE : '#9a9a97' }}>
+                        <span className="font-mono text-[10.5px] uppercase" style={{ color: estAmbre ? AMBRE : 'var(--color-text-muted)' }}>
                           {estAmbre ? 'à voir' : o.poids ? `poids ${o.poids}` : ''}
                         </span>
                       </Link>
@@ -135,15 +150,15 @@ export function SupervisorCarte() {
             )}
             <Carte titre="Les villes" droite={villes.length}>
               {villes.map((v) => (
-                <button key={v.cle} type="button" onClick={() => setChoisie(v.cle)} className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3 border-b border-[#1f1f1f] py-2 text-left" aria-pressed={vue?.cle === v.cle}>
-                  <span className="text-[13px] text-[#e4e4e1]">
+                <button key={v.cle} type="button" onClick={() => setChoisie(v.cle)} className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3 border-b border-border py-2 text-left" aria-pressed={vue?.cle === v.cle}>
+                  <span className="text-[13px] text-text-body">
                     {v.nom}
-                    {!v.pos && <span className="ml-2 font-mono text-[10px] text-[#9a9a97]">NON PLACÉE</span>}
+                    {!v.pos && <span className="ml-2 font-mono text-[10px] text-text-muted">NON PLACÉE</span>}
                   </span>
-                  <span className="font-mono text-[11px] tabular-nums text-[#a3a3a0]">{v.orgs.length}</span>
+                  <span className="font-mono text-[11px] tabular-nums text-text-secondary">{v.orgs.length}</span>
                 </button>
               ))}
-              {sansVille.length > 0 && <p className="mt-3 text-[12.5px] text-[#a3a3a0]">{sansVille.length} cliente{sansVille.length > 1 ? 's' : ''} sans ville au dossier.</p>}
+              {sansVille.length > 0 && <p className="mt-3 text-[12.5px] text-text-secondary">{sansVille.length} cliente{sansVille.length > 1 ? 's' : ''} sans ville au dossier.</p>}
             </Carte>
           </div>
         </div>

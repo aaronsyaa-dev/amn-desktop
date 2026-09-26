@@ -273,6 +273,21 @@ for (const o of [SYRA, ARNOUX, VERMEIL, NORD, KELLER, BERTAUX, HALLES, MARCHETTI
 }
 await poser('suivis', `org:${JARDIN.id}`, { par: EQUIPE.harun, at: le(30), relache: true });
 
+/* ── Le bug chez une seule cliente (`46g`) : le Stock de Jardin d'Élise, en pause chez elle depuis deux jours ── */
+await poser('parcoursBugs', 'bx-bug-1', {
+  orgId: JARDIN.id,
+  module: 'stock',
+  titre: 'L’export du stock plante chez elle',
+  cause: 'Une colonne de prix saisie avec une virgule casse le fichier',
+  gravite: 'moyenne',
+  protection: 'pause',
+  stations: { signalement: le(2, 9, 40), fiche: le(2, 9, 52), protection: le(2, 10, 5) },
+  touchees: 1,
+  suiviPar: EQUIPE.harun,
+  ouvertLe: le(2, 9, 40),
+  incidentId: 'INC-4127',
+});
+
 await poser('parcRegles', 'bx-regle-0', { nom: 'Desktop fermé 10 jours', sujet: 'organisation', condition: 'silence', duree: 10, action: 'tache_relance', pourQui: 'suivi', sauf: 'arrivee', active: false, creePar: EQUIPE.riyad, creeLe: le(1) });
 await poser('parcRegles', 'bx-regle-1', { nom: 'Jeton de places demandé', sujet: 'jeton', condition: 'attend', duree: 1, action: 'prevenir', pourQui: 'suivi', sauf: 'rien', active: true, creePar: EQUIPE.harun, creeLe: le(30) });
 await poser('parcRegles', 'bx-regle-2', { nom: 'Posture −5 en 7 jours', sujet: 'posture', condition: 'baisse', duree: 7, action: 'carnet', pourQui: 'suivi', sauf: 'incident', active: true, creePar: EQUIPE.harun, creeLe: le(20) });

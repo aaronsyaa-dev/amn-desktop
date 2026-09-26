@@ -54,12 +54,12 @@ export function SupervisorPlaces() {
               const estAmbre = ambre?.o.id === l.o.id;
               const part = Math.min(1, l.utilisees / l.total);
               return (
-                <Link key={l.o.id} to={`/supervisor/dossiers/${l.o.id}`} className="grid grid-cols-[180px_minmax(0,1fr)_64px] items-center gap-4 border-b border-[#1f1f1f] py-2.5 hover:bg-white/[0.02]" data-signal-groupe={estAmbre ? 'places-ambre' : undefined}>
-                  <span className="truncate text-[13px] font-semibold text-[#f7f7f5]">{l.o.nom}</span>
+                <Link key={l.o.id} to={`/supervisor/dossiers/${l.o.id}`} className="grid grid-cols-[180px_minmax(0,1fr)_64px] items-center gap-4 border-b border-border py-2.5 hover:bg-white/[0.02]" data-signal-groupe={estAmbre ? 'places-ambre' : undefined}>
+                  <span className="truncate text-[13px] font-semibold text-text-primary">{l.o.nom}</span>
                   <span className="h-[10px] bg-[#1c1c1c]" aria-hidden>
-                    <span className="block h-full" style={{ width: `${part * 100}%`, background: estAmbre ? AMBRE : part >= 1 ? '#bdbdb9' : '#6b6b68' }} />
+                    <span className="block h-full" style={{ width: `${part * 100}%`, background: estAmbre ? AMBRE : part >= 1 ? '#bdbdb9' : 'var(--color-trait-sourd)' }} />
                   </span>
-                  <span className="text-right font-mono text-[11px] tabular-nums" style={{ color: estAmbre ? AMBRE : '#a3a3a0' }}>
+                  <span className="text-right font-mono text-[11px] tabular-nums" style={{ color: estAmbre ? AMBRE : 'var(--color-text-secondary)' }}>
                     {l.utilisees} / {l.total}
                   </span>
                 </Link>
@@ -69,7 +69,7 @@ export function SupervisorPlaces() {
           <Carte className="self-start" titre={ambre ? ambre.o.nom : 'Rien ne presse'} droite={ambre ? nomPalier(ambre.o.org.plan) : ''}>
             {ambre ? (
               <>
-                <p className="text-[13.5px] leading-relaxed text-[#e4e4e1]">
+                <p className="text-[13.5px] leading-relaxed text-text-body">
                   {ambre.utilisees} compte{ambre.utilisees > 1 ? 's' : ''} pour {ambre.total} place{ambre.total > 1 ? 's' : ''} : la prochaine invitation sera refusée. Une place de plus, ou la formule au-dessus.
                 </p>
                 <div className="mt-4 flex gap-2.5">
@@ -79,7 +79,7 @@ export function SupervisorPlaces() {
                 </div>
               </>
             ) : (
-              <p className="text-[13px] text-[#a3a3a0]">La cliente la plus pleine utilise {lignes[0].utilisees} place{lignes[0].utilisees > 1 ? 's' : ''} sur {lignes[0].total}.</p>
+              <p className="text-[13px] text-text-secondary">La cliente la plus pleine utilise {lignes[0].utilisees} place{lignes[0].utilisees > 1 ? 's' : ''} sur {lignes[0].total}.</p>
             )}
           </Carte>
         </div>

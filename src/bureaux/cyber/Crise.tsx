@@ -69,7 +69,7 @@ export function CyberCrise() {
               setLancer(null);
             }}
           >
-            <select value={lancer.orgId} onChange={(e) => setLancer({ ...lancer, orgId: e.target.value })} aria-label="Avec quelle cliente" className="h-9 border border-[#212525] bg-[#0f1111] px-2.5 text-[13px] text-[#f7f7f5]">
+            <select value={lancer.orgId} onChange={(e) => setLancer({ ...lancer, orgId: e.target.value })} aria-label="Avec quelle cliente" className="h-9 border border-[#212525] bg-[#0f1111] px-2.5 text-[13px] text-text-primary">
               <option value="">L’équipe seule</option>
               {c.orgs.map((o) => (
                 <option key={o.id} value={o.id}>
@@ -77,14 +77,14 @@ export function CyberCrise() {
                 </option>
               ))}
             </select>
-            <select value={lancer.modele} onChange={(e) => setLancer({ ...lancer, modele: Number(e.target.value) })} aria-label="Le scénario" className="h-9 border border-[#212525] bg-[#0f1111] px-2.5 text-[13px] text-[#f7f7f5]">
+            <select value={lancer.modele} onChange={(e) => setLancer({ ...lancer, modele: Number(e.target.value) })} aria-label="Le scénario" className="h-9 border border-[#212525] bg-[#0f1111] px-2.5 text-[13px] text-text-primary">
               {SCENARIOS.map((s, i) => (
                 <option key={i} value={i}>
                   {s.scenario}
                 </option>
               ))}
             </select>
-            <input type="date" value={lancer.date} onChange={(e) => setLancer({ ...lancer, date: e.target.value })} aria-label="Le jour" className="h-9 border border-[#212525] bg-transparent px-2.5 text-[13px] text-[#f7f7f5] [color-scheme:dark]" />
+            <input type="date" value={lancer.date} onChange={(e) => setLancer({ ...lancer, date: e.target.value })} aria-label="Le jour" className="h-9 border border-[#212525] bg-transparent px-2.5 text-[13px] text-text-primary [color-scheme:dark]" />
             <button type="submit" className="bx-btn">
               Préparer
             </button>
@@ -96,25 +96,25 @@ export function CyberCrise() {
       ) : (
         <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-[minmax(0,1fr)_320px]">
           <Carte dominante pad="p-6" className="self-start" titre={`${nom(exo.orgId)} · ${jourMois(exo.date)}`} droite={`${exo.etapes.filter((x) => x.faiteLe).length} sur ${exo.etapes.length}`}>
-            <p className="mb-4 text-[16px] font-semibold leading-snug text-[#f7f7f5]">{exo.scenario}</p>
+            <p className="mb-4 text-[16px] font-semibold leading-snug text-text-primary">{exo.scenario}</p>
             <ol className="flex flex-col">
               {exo.etapes.map((x, i) => {
                 const estAmbre = exo === ouvert && courante?.id === x.id;
                 return (
                   <li key={x.id} className="flex items-start gap-4 border-b border-[#171a1a] px-3 py-3.5" style={estAmbre ? { border: `1px solid ${AMBRE}`, background: 'rgba(208,154,74,.06)' } : undefined} data-signal-groupe={estAmbre ? 'crise-etape' : undefined}>
-                    <button type="button" onClick={() => cocher(exo, x.id)} aria-label={x.faiteLe ? `Décocher : ${x.texte}` : `Cocher : ${x.texte}`} className="mt-0.5 flex h-[22px] w-[22px] flex-none items-center justify-center border font-mono text-[10px]" style={{ borderColor: estAmbre ? AMBRE : x.faiteLe ? '#8a8a87' : '#3a3f3f', background: x.faiteLe ? '#8a8a87' : 'transparent', color: x.faiteLe ? '#0b0c0c' : estAmbre ? AMBRE : '#a3a3a0' }}>
+                    <button type="button" onClick={() => cocher(exo, x.id)} aria-label={x.faiteLe ? `Décocher : ${x.texte}` : `Cocher : ${x.texte}`} className="mt-0.5 flex h-[22px] w-[22px] flex-none items-center justify-center border font-mono text-[10px]" style={{ borderColor: estAmbre ? AMBRE : x.faiteLe ? '#8a8a87' : '#3a3f3f', background: x.faiteLe ? '#8a8a87' : 'transparent', color: x.faiteLe ? '#0b0c0c' : estAmbre ? AMBRE : 'var(--color-text-secondary)' }}>
                       {x.faiteLe ? '✓' : i + 1}
                     </button>
-                    <span className="min-w-0 flex-1 text-[14px]" style={{ color: x.faiteLe ? '#9a9a97' : '#f7f7f5', fontWeight: x.faiteLe ? 400 : 600 }}>
+                    <span className="min-w-0 flex-1 text-[14px]" style={{ color: x.faiteLe ? 'var(--color-text-muted)' : 'var(--color-text-primary)', fontWeight: x.faiteLe ? 400 : 600 }}>
                       {x.texte}
                     </span>
-                    <span className="font-mono text-[10px] text-[#9a9a97]">{x.faiteLe ? `${hhmm(x.faiteLe)} · ${qui(x.qui)}` : estAmbre ? <span style={{ color: AMBRE }}>EN COURS</span> : ''}</span>
+                    <span className="font-mono text-[10px] text-text-muted">{x.faiteLe ? `${hhmm(x.faiteLe)} · ${qui(x.qui)}` : estAmbre ? <span style={{ color: AMBRE }}>EN COURS</span> : ''}</span>
                   </li>
                 );
               })}
             </ol>
             {exo.bilan ? (
-              <p className="mt-4 text-[13.5px] leading-relaxed text-[#e4e4e1]">Bilan : {exo.bilan}</p>
+              <p className="mt-4 text-[13.5px] leading-relaxed text-text-body">Bilan : {exo.bilan}</p>
             ) : exo.etapes.every((x) => x.faiteLe) ? (
               <form
                 className="mt-4 flex gap-2"
@@ -125,7 +125,7 @@ export function CyberCrise() {
                   setBilan('');
                 }}
               >
-                <input value={bilan} onChange={(e) => setBilan(e.target.value)} placeholder="Ce qu’on a appris, ce qu’on change…" aria-label="Le bilan" className="h-9 min-w-0 flex-1 border border-[#212525] bg-transparent px-2.5 text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]" />
+                <input value={bilan} onChange={(e) => setBilan(e.target.value)} placeholder="Ce qu’on a appris, ce qu’on change…" aria-label="Le bilan" className="h-9 min-w-0 flex-1 border border-[#212525] bg-transparent px-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]" />
                 <button type="submit" className="bx-btn" disabled={!bilan.trim()}>
                   Écrire le bilan
                 </button>
@@ -134,9 +134,9 @@ export function CyberCrise() {
           </Carte>
           <Carte className="self-start" titre="Les exercices" droite={exos.length}>
             {exos.map((e) => (
-              <p key={e.id} className="border-b border-[#1d2121] py-2 text-[13px] text-[#e4e4e1]">
+              <p key={e.id} className="border-b border-[#1d2121] py-2 text-[13px] text-text-body">
                 {jourMois(e.date)} · {nom(e.orgId)}
-                <span className="block text-[12px] text-[#a3a3a0]">{e.bilan ? 'bilan écrit' : e.etapes.every((x) => x.faiteLe) ? 'bilan à écrire' : `${e.etapes.filter((x) => x.faiteLe).length} étape${e.etapes.filter((x) => x.faiteLe).length > 1 ? 's' : ''} sur ${e.etapes.length}`}</span>
+                <span className="block text-[12px] text-text-secondary">{e.bilan ? 'bilan écrit' : e.etapes.every((x) => x.faiteLe) ? 'bilan à écrire' : `${e.etapes.filter((x) => x.faiteLe).length} étape${e.etapes.filter((x) => x.faiteLe).length > 1 ? 's' : ''} sur ${e.etapes.length}`}</span>
               </p>
             ))}
           </Carte>

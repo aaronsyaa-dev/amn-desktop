@@ -53,8 +53,8 @@ export function CyberEcheances() {
       <Carte dominante pad="p-6" titre={`La frise · 90 jours · ${frise.length} échéance${frise.length > 1 ? 's' : ''}`} droite={`hauteur à l’échelle du jour le plus chargé (${max}) · clair = sous 14 jours`}>
         <div className="grid grid-cols-[170px_minmax(0,1fr)_70px] gap-x-4">
           <span />
-          <div className="relative mb-1.5 h-4 font-mono text-[9.5px] text-[#9a9a97]">
-            <span className="absolute left-0 font-semibold text-[#e4e4e1]">AUJ. {String(aujourdHui.getDate()).padStart(2, '0')}/{String(aujourdHui.getMonth() + 1).padStart(2, '0')}</span>
+          <div className="relative mb-1.5 h-4 font-mono text-[9.5px] text-text-muted">
+            <span className="absolute left-0 font-semibold text-text-body">AUJ. {String(aujourdHui.getDate()).padStart(2, '0')}/{String(aujourdHui.getMonth() + 1).padStart(2, '0')}</span>
             <span className="absolute" style={{ left: `${(14 / JOURS) * 100}%` }}>
               | 14 J
             </span>
@@ -74,8 +74,8 @@ export function CyberEcheances() {
             return (
               <React.Fragment key={l.cle}>
                 <div className="border-b border-[#171a1a] py-3">
-                  <span className="block font-mono text-[9.5px] uppercase tracking-[0.14em] text-[#a3a3a0]">{l.nom}</span>
-                  <span className="mt-1 block font-mono text-[11px] text-[#e4e4e1]">{de.length ? `${de.length} · ${de.filter((e) => !e.renouvelleSeul).length} à la main` : '—'}</span>
+                  <span className="block font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-secondary">{l.nom}</span>
+                  <span className="mt-1 block font-mono text-[11px] text-text-body">{de.length ? `${de.length} · ${de.filter((e) => !e.renouvelleSeul).length} à la main` : '—'}</span>
                 </div>
                 <div className="flex items-end gap-px border-b border-[#171a1a] py-3" style={{ height: 52 }} role="img" aria-label={`${l.nom} : ${de.length} échéances sur 90 jours`}>
                   {Array.from({ length: JOURS }, (_, j) => {
@@ -86,13 +86,13 @@ export function CyberEcheances() {
                         key={j}
                         title={ce.length ? `${jourCourt(ce[0].date)} · ${ce.map((e) => e.quoi).join(', ')}` : undefined}
                         className="flex-1"
-                        style={{ height: ce.length ? Math.max(4, (ce.length / max) * 26) : 1, background: estAmbre ? AMBRE : ce.length ? (j < 14 ? '#a3a3a0' : '#4a5050') : '#1d2121' }}
+                        style={{ height: ce.length ? Math.max(4, (ce.length / max) * 26) : 1, background: estAmbre ? AMBRE : ce.length ? (j < 14 ? 'var(--color-text-secondary)' : '#4a5050') : '#1d2121' }}
                         data-signal-groupe={estAmbre ? 'echeance-ambre' : undefined}
                       />
                     );
                   })}
                 </div>
-                <div className="flex items-end justify-end border-b border-[#171a1a] py-3 font-mono text-[11px] text-[#a3a3a0]">{auto === null ? '' : `${auto} % auto`}</div>
+                <div className="flex items-end justify-end border-b border-[#171a1a] py-3 font-mono text-[11px] text-text-secondary">{auto === null ? '' : `${auto} % auto`}</div>
               </React.Fragment>
             );
           })}
@@ -103,7 +103,7 @@ export function CyberEcheances() {
               <span className="block font-mono text-[9.5px] font-bold uppercase tracking-[0.18em]" style={{ color: AMBRE }}>
                 La première qui ne se renouvelle pas seule
               </span>
-              <span className="mt-1.5 block text-[14.5px] font-semibold text-[#f7f7f5]">
+              <span className="mt-1.5 block text-[14.5px] font-semibold text-text-primary">
                 {premiere.quoi} · {premiere.orgNom} · {premiere.jours <= 6 ? jourLong(premiere.date) : jourCourt(premiere.date).toLowerCase()} {premiere.jours <= 6 ? new Date(`${premiere.date}T12:00:00`).getDate() : ''}
               </span>
             </div>
@@ -115,12 +115,12 @@ export function CyberEcheances() {
       </Carte>
       <div className="mt-[18px]">
         <Carte titre={`Sous 14 jours · ${proches.length}`} droite="triées par date">
-          {proches.length === 0 && <p className="text-[13px] text-[#a3a3a0]">Rien dans les quatorze jours.</p>}
+          {proches.length === 0 && <p className="text-[13px] text-text-secondary">Rien dans les quatorze jours.</p>}
           {proches.slice(0, 8).map((e) => (
             <Ligne key={e.id} a={jourCourt(e.date)} b={`${e.quoi} · ${e.orgNom} · ${e.renouvelleSeul ? 'auto' : 'manuelle'}`} c={e.type === 'certificat' ? 'CERT.' : e.type.toUpperCase()} />
           ))}
           {proches.length > 8 && (
-            <p className="mt-3 text-[12px] text-[#9a9a97]">
+            <p className="mt-3 text-[12px] text-text-muted">
               + {proches.length - 8} échéance{proches.length - 8 > 1 ? 's' : ''}, dont {proches.slice(8).filter((e) => e.renouvelleSeul).length} se renouvellent seules
             </p>
           )}

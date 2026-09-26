@@ -2864,7 +2864,7 @@ export const fr: Dictionnaire = {
   'garde.comptes.impaye': 'Impayé',
   'garde.comptes.paye': 'Payé',
   'garde.comptes.pageStripe': 'Page Stripe',
-  'garde.comptes.pageStripeCopiee': 'Page de paiement copiée, à transmettre à la cliente : {url}. Son règlement se notera seul.',
+  'garde.comptes.pageStripeCopiee': 'Page de paiement copiée, à transmettre à la cliente : {url}. Son règlement se notera seul.',
   'garde.comptes.comptesSuivis': 'Comptes suivis',
   'garde.comptes.tousAJour': 'Tout le monde est à jour.',
   'garde.comptes.etat.a_jour': 'à jour',

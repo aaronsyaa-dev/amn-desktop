@@ -93,7 +93,7 @@ export function CyberSurface() {
     void upsert('inventaire', id, { ...reste, expose: { ...e.actif.expose!, fermeLe: new Date().toISOString() } });
   };
   const titre = ambre ? `${ambre.service}, ouvert sur ${ambre.hote}${ambre.port ? ` (port ${ambre.port})` : ''}, chez ${nomOrg(ambre.orgId)}.` : toutes.length ? 'Rien de haut risque n’est exposé.' : 'Aucune exposition relevée.';
-  const champ = 'h-9 border border-[#212525] bg-transparent px-2.5 text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]';
+  const champ = 'h-9 border border-[#212525] bg-transparent px-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]';
 
   return (
     <>
@@ -101,7 +101,7 @@ export function CyberSurface() {
         surtitre="Cyber · Posture · Surface d’attaque"
         titre={titre}
         actions={
-          <select value={orgId ?? ''} onChange={(e) => setParams({ org: e.target.value }, { replace: true })} aria-label="La cliente" className="h-9 border border-[#212525] bg-[#0f1111] px-2.5 text-[13px] text-[#f7f7f5]">
+          <select value={orgId ?? ''} onChange={(e) => setParams({ org: e.target.value }, { replace: true })} aria-label="La cliente" className="h-9 border border-[#212525] bg-[#0f1111] px-2.5 text-[13px] text-text-primary">
             {c.orgs.map((x) => (
               <option key={x.id} value={x.id}>
                 {x.nom}
@@ -121,7 +121,7 @@ export function CyberSurface() {
                 const expos = ici.expos.filter((e) => e.hote === h);
                 const estAmbre = expos.some((e) => e.cle === ambre?.cle);
                 return (
-                  <span key={h} className="border px-3 py-2 font-mono text-[11.5px]" style={{ borderColor: estAmbre ? AMBRE : expos.length ? '#6b6b68' : '#212525', color: estAmbre ? AMBRE : '#e4e4e1' }} data-signal-groupe={estAmbre ? 'surface-ambre' : undefined}>
+                  <span key={h} className="border px-3 py-2 font-mono text-[11.5px]" style={{ borderColor: estAmbre ? AMBRE : expos.length ? 'var(--color-trait-sourd)' : '#212525', color: estAmbre ? AMBRE : 'var(--color-text-body)' }} data-signal-groupe={estAmbre ? 'surface-ambre' : undefined}>
                     {h}
                     {expos.length > 0 && <span className="ml-2 text-[10px]">· {expos.length}</span>}
                   </span>
@@ -129,22 +129,22 @@ export function CyberSurface() {
               })}
             </div>
             <div className="mt-5">
-              {ici.expos.length === 0 && <p className="text-[13px] text-[#a3a3a0]">Aucun port ni service exposé relevé.</p>}
+              {ici.expos.length === 0 && <p className="text-[13px] text-text-secondary">Aucun port ni service exposé relevé.</p>}
               {[...ici.expos]
                 .sort((a, b) => RANG[a.risque] - RANG[b.risque])
                 .map((e) => {
                   const estAmbre = e.cle === ambre?.cle;
                   return (
                     <div key={e.cle} className="grid grid-cols-[70px_minmax(0,1fr)_auto] items-baseline gap-3.5 border-b border-[#1d2121] py-3" style={estAmbre ? { boxShadow: `inset 2px 0 0 ${AMBRE}`, paddingLeft: 10 } : undefined} data-signal-groupe={estAmbre ? 'surface-ambre' : undefined}>
-                      <span className="font-mono text-[11px] tabular-nums text-[#a3a3a0]">{e.port ? `:${e.port}` : '—'}</span>
+                      <span className="font-mono text-[11px] tabular-nums text-text-secondary">{e.port ? `:${e.port}` : '—'}</span>
                       <span className="min-w-0">
-                        <span className="block text-[13.5px] text-[#f7f7f5]">{e.service}</span>
-                        <span className="block font-mono text-[10px] text-[#9a9a97]">
+                        <span className="block text-[13.5px] text-text-primary">{e.service}</span>
+                        <span className="block font-mono text-[10px] text-text-muted">
                           {e.hote} · {e.source === 'scanner' ? 'relevé par le scanner' : 'inventaire'} · depuis le {jourMois(e.depuis)}
                         </span>
                       </span>
                       <span className="flex items-center gap-3">
-                        <span className="font-mono text-[10px] uppercase" style={{ color: estAmbre ? AMBRE : '#9a9a97' }}>
+                        <span className="font-mono text-[10px] uppercase" style={{ color: estAmbre ? AMBRE : 'var(--color-text-muted)' }}>
                           risque {e.risque}
                         </span>
                         {e.actif && (
@@ -194,8 +194,8 @@ export function CyberSurface() {
             <Carte titre="Tout le parc" droite={`${toutes.length} ouverte${toutes.length > 1 ? 's' : ''}`}>
               {orgs.slice(0, 10).map((x) => (
                 <button key={x.id} type="button" onClick={() => setParams({ org: x.id }, { replace: true })} className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-[#1d2121] py-2 text-left" aria-pressed={x.id === orgId}>
-                  <span className="truncate text-[13px] text-[#e4e4e1]">{x.nom}</span>
-                  <span className="font-mono text-[11px] tabular-nums text-[#a3a3a0]">{parOrg.get(x.id)?.expos.length ?? 0}</span>
+                  <span className="truncate text-[13px] text-text-body">{x.nom}</span>
+                  <span className="font-mono text-[11px] tabular-nums text-text-secondary">{parOrg.get(x.id)?.expos.length ?? 0}</span>
                 </button>
               ))}
             </Carte>

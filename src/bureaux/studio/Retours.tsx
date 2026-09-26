@@ -63,28 +63,36 @@ export function PageEpinglee({
   const surPage = ouverts.filter((r) => pageDe(r) === page);
 
   if (!ouverts.length) {
-    return <p className="text-[13px] leading-relaxed text-[#a3a3a0]">Aucun retour en attente : tout ce que la cliente a signalé est traité.</p>;
+    return <p className="text-[13px] leading-relaxed text-text-secondary">Aucun retour en attente : tout ce que la cliente a signalé est traité.</p>;
   }
   return (
     <div>
       {pages.length > 1 && (
         <div className="mb-3 flex flex-wrap gap-1.5" role="group" aria-label="Les pages">
           {pages.map((x) => (
-            <button key={x} type="button" aria-pressed={x === page} onClick={() => setPageVue(x)} className="h-7 border px-2 font-mono text-[10px] uppercase tracking-[0.1em]" style={{ borderColor: x === page ? '#8a8a87' : '#2a2826', color: x === page ? '#f7f7f5' : '#a3a3a0' }}>
+            <button key={x} type="button" aria-pressed={x === page} onClick={() => setPageVue(x)} className="h-7 border px-2 font-mono text-[10px] uppercase tracking-[0.1em]" style={{ borderColor: x === page ? '#8a8a87' : '#2a2826', color: x === page ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}>
               {x} · {ouverts.filter((r) => pageDe(r) === x).length}
             </button>
           ))}
         </div>
       )}
       <div
-        className="relative border border-[#2a2826] bg-[#1c1b19]"
+        className="relative border border-[#2a2826] bg-[#1c1b19] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text-primary"
         style={{ aspectRatio: compacte ? '4 / 3' : '16 / 10', cursor: onPoser ? 'crosshair' : undefined }}
+        role={onPoser ? 'button' : undefined}
+        tabIndex={onPoser ? 0 : undefined}
         onClick={(e) => {
           if (!onPoser || (e.target as HTMLElement).closest('button')) return;
           const r = e.currentTarget.getBoundingClientRect();
           onPoser(Math.round(((e.clientX - r.left) / r.width) * 100), Math.round(((e.clientY - r.top) / r.height) * 100));
         }}
-        aria-label={`La page ${page}`}
+        /* Au clavier, Entrée pose la punaise au centre de la page ; on la déplace ensuite en la rouvrant. */
+        onKeyDown={(e) => {
+          if (!onPoser || e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return;
+          e.preventDefault();
+          onPoser(50, 50);
+        }}
+        aria-label={onPoser ? `La page ${page} — Entrée pose un retour au centre` : `La page ${page}`}
       >
         {!compacte && (
           <>
@@ -94,7 +102,7 @@ export function PageEpinglee({
             <span aria-hidden className="absolute bottom-[10%] left-[6%] right-[6%] top-[52%] bg-[#1f1d1a]" />
           </>
         )}
-        <span className="absolute inset-0 flex items-center justify-center font-mono text-[10px] uppercase tracking-[0.2em] text-[#9a9a97]" aria-hidden>
+        <span className="absolute inset-0 flex items-center justify-center font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted" aria-hidden>
           page {page}
         </span>
         {surPage.map((r) => {
@@ -106,7 +114,7 @@ export function PageEpinglee({
               type="button"
               onClick={() => onChoisir?.(r.id)}
               className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full"
-              style={{ left: `${pos.x}%`, top: `${pos.y}%`, outline: choisi === r.id ? '2px solid #f7f7f5' : undefined, outlineOffset: 3 }}
+              style={{ left: `${pos.x}%`, top: `${pos.y}%`, outline: choisi === r.id ? '2px solid var(--color-text-primary)' : undefined, outlineOffset: 3 }}
               aria-label={`Retour ${numero.get(r.id)} : ${r.texte}`}
               data-signal-groupe={estAmbre ? 'retour-ambre' : undefined}
             >
@@ -119,10 +127,10 @@ export function PageEpinglee({
         <ol className="mt-3">
           {ouverts.map((r) => (
             <li key={r.id} className="grid grid-cols-[20px_minmax(0,1fr)] items-baseline gap-3 border-b border-[#1f1e1c] py-2.5">
-              <span className="font-mono text-[11px] text-[#9a9a97]">{numero.get(r.id)}</span>
+              <span className="font-mono text-[11px] text-text-muted">{numero.get(r.id)}</span>
               <span className="min-w-0">
-                <span className="block text-[13px] leading-snug text-[#f7f7f5]">« {r.texte} »</span>
-                {r.page && <span className="mt-1 block font-mono text-[9.5px] uppercase tracking-[0.1em] text-[#9a9a97]">page {r.page}</span>}
+                <span className="block text-[13px] leading-snug text-text-primary">« {r.texte} »</span>
+                {r.page && <span className="mt-1 block font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-muted">page {r.page}</span>}
               </span>
             </li>
           ))}
@@ -182,8 +190,8 @@ function Retours({ p }: { p: Piece }) {
               setChoisi(id);
             }}
           >
-            <input autoFocus value={nouveau.texte} onChange={(e) => setNouveau({ ...nouveau, texte: e.target.value })} placeholder="Ce qu’elle a dit…" aria-label="Le retour" className="h-9 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]" />
-            <input value={nouveau.page} onChange={(e) => setNouveau({ ...nouveau, page: e.target.value })} placeholder="La page (« Tarifs »)" aria-label="La page" className="h-9 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]" />
+            <input autoFocus value={nouveau.texte} onChange={(e) => setNouveau({ ...nouveau, texte: e.target.value })} placeholder="Ce qu’elle a dit…" aria-label="Le retour" className="h-9 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]" />
+            <input value={nouveau.page} onChange={(e) => setNouveau({ ...nouveau, page: e.target.value })} placeholder="La page (« Tarifs »)" aria-label="La page" className="h-9 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]" />
             <button type="submit" className="bx-btn" disabled={!nouveau.texte.trim()}>
               Épingler
             </button>
@@ -202,7 +210,7 @@ function Retours({ p }: { p: Piece }) {
           </Carte>
           <div className="flex flex-col gap-[18px] self-start">
             <Carte titre="À traiter" droite={ouverts.length || ''}>
-              {ouverts.length === 0 && <p className="text-[13px] text-[#a3a3a0]">Rien n’attend.</p>}
+              {ouverts.length === 0 && <p className="text-[13px] text-text-secondary">Rien n’attend.</p>}
               <ol>
                 {ouverts.map((r) => {
                   const estAmbre = r.id === ambre?.id;
@@ -212,8 +220,8 @@ function Retours({ p }: { p: Piece }) {
                       <button type="button" onClick={() => setChoisi(on ? null : r.id)} className="grid w-full grid-cols-[22px_minmax(0,1fr)] gap-3 px-2.5 py-3 text-left" aria-expanded={on}>
                         <Punaise n={numero.get(r.id) ?? 0} taille={18} creuse={!estAmbre} ambre={false} className="mt-px" />
                         <span className="min-w-0">
-                          <span className="block text-[13.5px] leading-snug text-[#f7f7f5]">« {r.texte} »</span>
-                          <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.08em]" style={{ color: estAmbre ? AMBRE : '#9a9a97' }}>
+                          <span className="block text-[13.5px] leading-snug text-text-primary">« {r.texte} »</span>
+                          <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.08em]" style={{ color: estAmbre ? AMBRE : 'var(--color-text-muted)' }}>
                             {r.page ? `page ${r.page} · ` : ''}
                             {ilYA(r.at)}
                             {estAmbre ? ' · attend votre réponse' : ''}
@@ -222,7 +230,7 @@ function Retours({ p }: { p: Piece }) {
                       </button>
                       {on && (
                         <div className="px-2.5 pb-3 pl-[46px]">
-                          <textarea value={reponse} onChange={(e) => setReponse(e.target.value)} rows={2} placeholder="Ce qu’on lui répond (gardé avec le retour)…" aria-label="La réponse" className="w-full resize-none border border-[#2a2826] bg-transparent p-2.5 text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]" />
+                          <textarea value={reponse} onChange={(e) => setReponse(e.target.value)} rows={2} placeholder="Ce qu’on lui répond (gardé avec le retour)…" aria-label="La réponse" className="w-full resize-none border border-[#2a2826] bg-transparent p-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]" />
                           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
                             <button type="button" className="bx-btn2" disabled={!reponse.trim()} onClick={() => traiter(r, reponse.trim())}>
                               Répondu, traité
@@ -242,12 +250,12 @@ function Retours({ p }: { p: Piece }) {
               <Carte titre="Traités" droite={traites.length}>
                 {traites.slice(0, 8).map((r) => (
                   <div key={r.id} className="border-b border-[#1f1e1c] py-2.5">
-                    <span className="block text-[13px] leading-snug text-[#a3a3a0]">« {r.texte} »</span>
-                    <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.08em] text-[#9a9a97]">
+                    <span className="block text-[13px] leading-snug text-text-secondary">« {r.texte} »</span>
+                    <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                       {r.page ? `page ${r.page} · ` : ''}traité le {jjmm(r.traiteLe ?? r.at)}
                       {r.par ? ` · de ${prenomDe(r.par)}` : ''}
                     </span>
-                    {r.reponse && <span className="mt-1.5 block text-[12.5px] text-[#e4e4e1]">↳ {r.reponse}</span>}
+                    {r.reponse && <span className="mt-1.5 block text-[12.5px] text-text-body">↳ {r.reponse}</span>}
                   </div>
                 ))}
               </Carte>

@@ -61,6 +61,19 @@ const SEVERITY: Record<
   info: { icon: Info, icone: 'text-text-muted', border: 'border-border', bg: 'bg-surface' },
 };
 
+/*
+  LE CRITIQUE À L'ENCRE, DANS UN BUREAU. Posé dans le Mur de situation
+  (Supervisor), le panneau n'est pas l'objet critique de l'écran : le rouge y
+  est déjà dit une fois, par les exceptions de la Garde (BUREAUX.md, « Le
+  signal »). Ses points critiques gardent l'arête et l'icône, à l'encre pleine.
+*/
+const CRITIQUE_A_L_ENCRE = {
+  icon: CircleAlert,
+  icone: 'text-text-primary',
+  border: 'border-border border-l-2 border-l-text-primary',
+  bg: 'bg-surface',
+};
+
 const VISIBLE = 3;
 
 /**
@@ -78,9 +91,12 @@ const VISIBLE = 3;
 export function AttentionPanel({
   state,
   className = '',
+  rouge = true,
 }: {
   state: AttentionState;
   className?: string;
+  /** `false` dans un bureau : le critique s'y écrit à l'encre, le rouge appartient à l'écran. */
+  rouge?: boolean;
 }) {
   const { items, checkedAt } = state;
   const [expanded, setExpanded] = useState(false);
@@ -121,7 +137,7 @@ export function AttentionPanel({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.25 }}
             >
-              <Row item={entry} onGo={() => navigate(entry.to)} />
+              <Row item={entry} onGo={() => navigate(entry.to)} rouge={rouge} />
             </motion.li>
           ))}
         </AnimatePresence>
@@ -171,8 +187,8 @@ function NothingToReport({ checkedAt, className = '' }: { checkedAt: string; cla
   );
 }
 
-function Row({ item, onGo }: { item: AttentionItem; onGo: () => void }) {
-  const tone = SEVERITY[item.severity];
+function Row({ item, onGo, rouge }: { item: AttentionItem; onGo: () => void; rouge: boolean }) {
+  const tone = !rouge && item.severity === 'critical' ? CRITIQUE_A_L_ENCRE : SEVERITY[item.severity];
   const Icon = tone.icon;
 
   return (

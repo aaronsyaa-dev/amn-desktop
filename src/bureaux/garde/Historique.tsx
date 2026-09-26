@@ -139,7 +139,7 @@ export function GardeHistorique() {
       <EnTete surtitre={`La Garde · ${chef?.titre ?? ''} · historique`} titre={titre} />
       <nav className="mb-[18px] flex flex-wrap gap-1.5" aria-label="Les chefs">
         {g.chefs.map((c) => (
-          <Link key={c.key} to={`/garde/bureaux/${encodeURIComponent(c.key)}/historique`} aria-current={c.key === equipe ? 'page' : undefined} className="h-8 border px-3 pt-[6px] text-[12.5px]" style={{ borderColor: c.key === equipe ? '#8a8a87' : '#262626', color: c.key === equipe ? '#f7f7f5' : '#a3a3a0' }}>
+          <Link key={c.key} to={`/garde/bureaux/${encodeURIComponent(c.key)}/historique`} aria-current={c.key === equipe ? 'page' : undefined} className="h-8 border px-3 pt-[6px] text-[12.5px]" style={{ borderColor: c.key === equipe ? '#8a8a87' : 'var(--color-border-raised)', color: c.key === equipe ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}>
             {c.nom}
           </Link>
         ))}
@@ -147,10 +147,10 @@ export function GardeHistorique() {
       <section className="bx-dom">
         <div className="p-6">
           <div className="mb-[22px] flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1.5">
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#a3a3a0]">
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-secondary">
               {chef?.titre} · {JOURS} jours · {total} décision{total > 1 ? 's' : ''}
             </span>
-            <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.1em] text-[#9a9a97]">un bâton par jour · sa hauteur dit ce qui s’est passé</span>
+            <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">un bâton par jour · sa hauteur dit ce qui s’est passé</span>
           </div>
           <div className="flex h-[64px] items-end gap-[4px]" role="img" aria-label={`Trente jours : ${total} décisions, dont ${totaux.renverse} renversée${totaux.renverse > 1 ? 's' : ''}`}>
             {jours.map((j) => {
@@ -169,7 +169,7 @@ export function GardeHistorique() {
               );
             })}
           </div>
-          <div className="mt-2 flex gap-[4px] font-mono text-[9.5px] tabular-nums text-[#9a9a97]">
+          <div className="mt-2 flex gap-[4px] font-mono text-[9.5px] tabular-nums text-text-muted">
             {jours.map((j, i) => (
               <span key={j.cle} className="min-w-0 flex-1 text-center">
                 {i % 5 === 0 || i === jours.length - 1 ? j.date.getDate() : ''}
@@ -178,42 +178,42 @@ export function GardeHistorique() {
           </div>
           <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
             {CATEGORIES.map((c) => (
-              <span key={c.cle} className="flex items-center gap-2 font-mono text-[9.5px] uppercase tracking-[0.1em] text-[#a3a3a0]">
-                <span aria-hidden className="h-[9px] w-[9px]" style={{ background: c.cle === 'renverse' ? 'transparent' : c.ton, border: c.cle === 'renverse' ? `1px solid ${'#a3a3a0'}` : undefined }} />
+              <span key={c.cle} className="flex items-center gap-2 font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-secondary">
+                <span aria-hidden className="h-[9px] w-[9px]" style={{ background: c.cle === 'renverse' ? 'transparent' : c.ton, border: c.cle === 'renverse' ? `1px solid ${'var(--color-text-secondary)'}` : undefined }} />
                 {c.nom}
               </span>
             ))}
           </div>
-          {tronque && <p className="mt-3 text-[12px] text-[#a3a3a0]">Le journal rendu s’arrête au {tronque.slice(8, 10)}/{tronque.slice(5, 7)} (mille lignes) : les jours d’avant sont comptés en partie.</p>}
+          {tronque && <p className="mt-3 text-[12px] text-text-secondary">Le journal rendu s’arrête au {tronque.slice(8, 10)}/{tronque.slice(5, 7)} (mille lignes) : les jours d’avant sont comptés en partie.</p>}
           {dernierRenverse ? (
             <div className="mt-5 flex flex-wrap items-center gap-5 px-4 py-4" style={{ border: `1px solid ${AMBRE}`, background: 'rgba(208,154,74,.07)' }} data-signal-groupe="historique-renverse">
               <div className="min-w-0 flex-1">
                 <span className="block font-mono text-[9.5px] font-bold uppercase tracking-[0.14em]" style={{ color: AMBRE }}>
                   Renversée {quand} par {nom(dernierRenverse.mauvaisPar)}
                 </span>
-                <span className="mt-1.5 block text-[14.5px] font-semibold text-[#f7f7f5]">
+                <span className="mt-1.5 block text-[14.5px] font-semibold text-text-primary">
                   « {dernierRenverse.pourquoi || dernierRenverse.action} »{dernierRenverse.mauvaisNote ? ` : ${dernierRenverse.mauvaisNote}` : ''}
                 </span>
-                <span className="mt-1 block text-[12.5px] text-[#a3a3a0]">{dernierRenverse.correction ? `Le chef en a tiré une règle proposée : ${dernierRenverse.correction.texte}` : 'Le chef n’en a pas encore tiré de règle.'}</span>
+                <span className="mt-1 block text-[12.5px] text-text-secondary">{dernierRenverse.correction ? `Le chef en a tiré une règle proposée : ${dernierRenverse.correction.texte}` : 'Le chef n’en a pas encore tiré de règle.'}</span>
               </div>
               <Link to={`/garde/bureaux/${encodeURIComponent(equipe ?? '')}`} className="bx-btn2">
                 Voir la règle proposée
               </Link>
             </div>
           ) : (
-            <p className="mt-5 border-t border-[#1d1d1d] pt-4 text-[13px] text-[#a3a3a0]">Aucun humain n’a renversé une décision de ce chef sur la période.</p>
+            <p className="mt-5 border-t border-[#1d1d1d] pt-4 text-[13px] text-text-secondary">Aucun humain n’a renversé une décision de ce chef sur la période.</p>
           )}
         </div>
         <div className="grid grid-cols-2 gap-px border-t border-[#1d1d1d] bg-[#1d1d1d] md:grid-cols-5">
           {CATEGORIES.map((c) => (
-            <span key={c.cle} className="bg-[#101010] px-4 py-4 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-[#e4e4e1]">
+            <span key={c.cle} className="bg-[#101010] px-4 py-4 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-text-body">
               {c.court} · {totaux[c.cle]}
             </span>
           ))}
         </div>
       </section>
       <Carte className="mt-[18px]" titre="Comment on lit" droite="chaque décision compte une fois">
-        <p className="text-[13px] leading-relaxed text-[#a3a3a0]">
+        <p className="text-[13px] leading-relaxed text-text-secondary">
           Réglé seul : le chef a appliqué sa règle. Arbitré : deux chefs se sont sollicités, le Capitaine a tranché. Remonté : le chef a écrit à un humain. Question : il attend encore la réponse. Renversé : un humain a marqué la décision « mauvaise » — et le chef en tire une règle proposée, qu’il n’applique pas sans accord.
         </p>
       </Carte>

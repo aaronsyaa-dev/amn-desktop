@@ -87,12 +87,12 @@ export function GardeSimulateur() {
       <EnTete surtitre="La Garde · Les bureaux · Simulateur de nuit" titre={titre} />
       <nav className="mb-[18px] flex flex-wrap gap-1.5" aria-label="Les chefs">
         {g.chefs.map((c) => (
-          <button key={c.key} type="button" aria-pressed={c.key === chef?.key} onClick={() => { setEquipe(c.key); setEssai(null); }} className="h-8 border px-3 text-[12.5px]" style={{ borderColor: c.key === chef?.key ? '#8a8a87' : '#262626', color: c.key === chef?.key ? '#f7f7f5' : '#a3a3a0' }}>
+          <button key={c.key} type="button" aria-pressed={c.key === chef?.key} onClick={() => { setEquipe(c.key); setEssai(null); }} className="h-8 border px-3 text-[12.5px]" style={{ borderColor: c.key === chef?.key ? '#8a8a87' : 'var(--color-border-raised)', color: c.key === chef?.key ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}>
             {c.nom}
           </button>
         ))}
       </nav>
-      {applique && <p className="mb-4 border border-[#262626] px-4 py-3 text-[13px] text-[#e4e4e1]">Appliqué : {applique}. La prochaine ronde s’en sert ; le journal le garde.</p>}
+      {applique && <p className="mb-4 border border-border-raised px-4 py-3 text-[13px] text-text-body">Appliqué : {applique}. La prochaine ronde s’en sert ; le journal le garde.</p>}
       <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-[minmax(0,1fr)_360px]">
         <Carte dominante pad="p-6" className="self-start" titre={`Les règles · ${chef?.titre ?? ''}`} droite="glissière = la valeur rejouée · trait = la valeur actuelle">
           {fiches === null ? (
@@ -105,8 +105,8 @@ export function GardeSimulateur() {
               if (!regles.length) return null;
               return (
                 <div key={f.agent.key} className="border-b border-[#1d1d1d] py-4">
-                  <span className="block text-[14px] font-semibold text-[#f7f7f5]">{f.agent.nom}</span>
-                  <span className="block text-[12px] text-[#a3a3a0]">{f.agent.role}</span>
+                  <span className="block text-[14px] font-semibold text-text-primary">{f.agent.nom}</span>
+                  <span className="block text-[12px] text-text-secondary">{f.agent.role}</span>
                   {regles.map(([cle, r]) => {
                     const valeurs = { ...(r.parametres as Record<string, unknown>), ...((f.agent.parametres?.[cle] as Record<string, unknown> | undefined) ?? {}) };
                     return Object.entries(valeurs)
@@ -121,10 +121,10 @@ export function GardeSimulateur() {
                         return (
                           <div key={`${cle}:${p}`} className="mt-3" data-signal-groupe={estAmbre ? 'simulateur-ambre' : undefined}>
                             <span className="flex flex-wrap items-baseline justify-between gap-2">
-                              <span className="text-[12.5px] text-[#e4e4e1]">{r.description}</span>
-                              <span className="font-mono text-[10.5px] text-[#9a9a97]">
+                              <span className="text-[12.5px] text-text-body">{r.description}</span>
+                              <span className="font-mono text-[10.5px] text-text-muted">
                                 {p} : {actuelle}
-                                {ici && valeur !== actuelle ? <span style={{ color: estAmbre ? AMBRE : '#f7f7f5' }}> → {valeur}</span> : null}
+                                {ici && valeur !== actuelle ? <span style={{ color: estAmbre ? AMBRE : 'var(--color-text-primary)' }}> → {valeur}</span> : null}
                               </span>
                             </span>
                             <span className="relative mt-2 block">
@@ -139,7 +139,7 @@ export function GardeSimulateur() {
                                 className="w-full"
                                 style={{ accentColor: estAmbre ? AMBRE : '#8a8a87' }}
                               />
-                              <span aria-hidden className="pointer-events-none absolute top-0 h-full w-px bg-[#f7f7f5]" style={{ left: `${pos(actuelle)}%` }} />
+                              <span aria-hidden className="pointer-events-none absolute top-0 h-full w-px bg-text-primary" style={{ left: `${pos(actuelle)}%` }} />
                             </span>
                           </div>
                         );
@@ -152,18 +152,18 @@ export function GardeSimulateur() {
         </Carte>
         <Carte className="self-start" titre="Le rejeu" droite="le mois écoulé, nuit par nuit">
           {!essai ? (
-            <p className="text-[13px] leading-relaxed text-[#a3a3a0]">Déplacez une glissière, puis rejouez : la Garde relit ses traces du mois avec cette valeur. Rien ne change tant qu’on n’applique pas.</p>
+            <p className="text-[13px] leading-relaxed text-text-secondary">Déplacez une glissière, puis rejouez : la Garde relit ses traces du mois avec cette valeur. Rien ne change tant qu’on n’applique pas.</p>
           ) : (
             <div data-signal-groupe={essai.resultat && essai.valeur !== essai.actuelle ? 'simulateur-ambre' : undefined} style={essai.resultat && essai.valeur !== essai.actuelle ? { borderLeft: `2px solid ${AMBRE}`, paddingLeft: 12 } : undefined}>
-              <span className="block font-mono text-[10px] uppercase tracking-[0.12em] text-[#9a9a97]">
+              <span className="block font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">
                 {essai.regle} · {essai.parametre} : {essai.actuelle} → {essai.valeur}
               </span>
               {essai.resultat ? (
                 <>
-                  <p className="mt-2 text-[15px] font-semibold text-[#f7f7f5]">
+                  <p className="mt-2 text-[15px] font-semibold text-text-primary">
                     {essai.resultat.avant ?? '—'} → {essai.resultat.apres ?? '—'}
                   </p>
-                  {(essai.resultat.phrase || essai.resultat.note) && <p className="mt-1 text-[12.5px] leading-relaxed text-[#a3a3a0]">{essai.resultat.phrase ?? essai.resultat.note}</p>}
+                  {(essai.resultat.phrase || essai.resultat.note) && <p className="mt-1 text-[12.5px] leading-relaxed text-text-secondary">{essai.resultat.phrase ?? essai.resultat.note}</p>}
                   {essai.resultat.serieAvant && essai.resultat.serieApres && (
                     <div className="mt-3 flex h-[60px] items-end gap-[2px]" aria-hidden>
                       {essai.resultat.serieAvant.map((v, i) => {
@@ -172,7 +172,7 @@ export function GardeSimulateur() {
                         return (
                           <span key={i} className="flex h-full min-w-0 flex-1 items-end gap-px">
                             <span className="min-w-0 flex-1 bg-[#4a4a48]" style={{ height: `${(v / max) * 100}%` }} />
-                            <span className="min-w-0 flex-1 bg-[#e4e4e1]" style={{ height: `${(w / max) * 100}%` }} />
+                            <span className="min-w-0 flex-1 bg-text-body" style={{ height: `${(w / max) * 100}%` }} />
                           </span>
                         );
                       })}
@@ -194,7 +194,7 @@ export function GardeSimulateur() {
                   Rejouer le mois
                 </button>
               )}
-              {essai.erreur && <p className="mt-2 text-[12.5px] text-[#e4e4e1]">{essai.erreur}</p>}
+              {essai.erreur && <p className="mt-2 text-[12.5px] text-text-body">{essai.erreur}</p>}
             </div>
           )}
         </Carte>

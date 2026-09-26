@@ -91,7 +91,7 @@ export function CyberVulnerabilites() {
   };
   const nAmbre = ambre ? new Set((concernes.get(ambre.id) ?? []).map((x) => x.orgId)).size : 0;
   const titre = ambre ? `${ambre.ref}, ${ambre.gravite}, touche ${enLettresF(nAmbre)} cliente${nAmbre > 1 ? 's' : ''} du parc.` : vulns.length ? 'Aucune faille notée ne touche le parc aujourd’hui.' : 'La veille n’a encore rien noté.';
-  const champ = 'h-9 border border-[#212525] bg-transparent px-2.5 text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]';
+  const champ = 'h-9 border border-[#212525] bg-transparent px-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]';
 
   return (
     <>
@@ -142,18 +142,18 @@ export function CyberVulnerabilites() {
               const estRouge = rouge?.id === v.id;
               return (
                 <button key={v.id} type="button" onClick={() => setChoisie(v.id)} aria-pressed={vue?.id === v.id} className="grid w-full grid-cols-[150px_minmax(0,1fr)_auto] items-baseline gap-3.5 border-b border-[#1d2121] py-3 text-left" style={estAmbre ? { boxShadow: `inset 2px 0 0 ${AMBRE}`, paddingLeft: 10, background: 'rgba(208,154,74,.05)' } : vue?.id === v.id ? { background: '#161919' } : undefined} data-signal-groupe={estAmbre ? 'veille-ambre' : undefined}>
-                  <span className="font-mono text-[11.5px] text-[#e4e4e1]">{v.ref}</span>
+                  <span className="font-mono text-[11.5px] text-text-body">{v.ref}</span>
                   <span className="min-w-0">
-                    <span className="block truncate text-[13.5px] text-[#f7f7f5]">
+                    <span className="block truncate text-[13.5px] text-text-primary">
                       {v.logiciel} {v.versions}
                     </span>
-                    <span className="block truncate text-[12px] text-[#a3a3a0]">{v.resume}</span>
+                    <span className="block truncate text-[12px] text-text-secondary">{v.resume}</span>
                   </span>
                   <span className="text-right font-mono text-[10px] uppercase">
-                    <span className="block" style={{ color: estRouge ? ROUGE.texte : '#9a9a97' }}>
+                    <span className="block" style={{ color: estRouge ? ROUGE.texte : 'var(--color-text-muted)' }}>
                       {v.gravite}
                     </span>
-                    <span className="block" style={{ color: estAmbre ? AMBRE : '#9a9a97' }}>
+                    <span className="block" style={{ color: estAmbre ? AMBRE : 'var(--color-text-muted)' }}>
                       {v.traiteeLe ? 'traitée' : n ? `${n} concernée${n > 1 ? 's' : ''}` : 'personne'}
                     </span>
                   </span>
@@ -163,21 +163,21 @@ export function CyberVulnerabilites() {
           </Carte>
           {vue && (
             <Carte className="self-start" titre={vue.ref} droite={`publiée le ${jourMois(vue.publieeLe)}`}>
-              <p className="text-[14px] font-semibold leading-snug text-[#f7f7f5]">{vue.resume}</p>
-              <p className="mt-2 font-mono text-[11.5px] text-[#a3a3a0]">
+              <p className="text-[14px] font-semibold leading-snug text-text-primary">{vue.resume}</p>
+              <p className="mt-2 font-mono text-[11.5px] text-text-secondary">
                 {vue.logiciel} · versions {vue.versions}
                 {vue.correctif ? ` · ${vue.correctif}` : ''}
               </p>
-              <span className="mt-5 block font-mono text-[9.5px] uppercase tracking-[0.14em] text-[#9a9a97]">Qui est concerné</span>
+              <span className="mt-5 block font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted">Qui est concerné</span>
               {(concernes.get(vue.id) ?? []).length === 0 ? (
-                <p className="mt-2 text-[13px] text-[#a3a3a0]">Aucun actif du parc ne porte une version touchée — ou sa version n’est pas au dossier.</p>
+                <p className="mt-2 text-[13px] text-text-secondary">Aucun actif du parc ne porte une version touchée — ou sa version n’est pas au dossier.</p>
               ) : (
                 (concernes.get(vue.id) ?? []).map((x, i) => (
                   <div key={i} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-[#1d2121] py-2">
-                    <span className="text-[13px] text-[#e4e4e1]">
+                    <span className="text-[13px] text-text-body">
                       {nom(x.orgId)} · {x.actif}
                     </span>
-                    <span className="font-mono text-[11px] text-[#a3a3a0]">{x.version}</span>
+                    <span className="font-mono text-[11px] text-text-secondary">{x.version}</span>
                   </div>
                 ))
               )}
@@ -186,7 +186,7 @@ export function CyberVulnerabilites() {
                   Prévenir les clientes concernées
                 </button>
               )}
-              {vue.traiteeLe && <p className="mt-3 text-[12.5px] text-[#a3a3a0]">Traitée le {jourMois(vue.traiteeLe)} : une tâche par cliente, chez qui la suit.</p>}
+              {vue.traiteeLe && <p className="mt-3 text-[12.5px] text-text-secondary">Traitée le {jourMois(vue.traiteeLe)} : une tâche par cliente, chez qui la suit.</p>}
             </Carte>
           )}
         </div>

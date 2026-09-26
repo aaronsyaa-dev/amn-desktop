@@ -94,18 +94,18 @@ function Livraison({ p }: { p: Piece }) {
       <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-[260px_minmax(0,1fr)_300px]">
         <Carte pad="p-6" className="self-start" titre="Les mises en ligne">
           {rail.length === 0 ? (
-            <p className="text-[13px] leading-relaxed text-[#a3a3a0]">Rien n’est encore parti en ligne.</p>
+            <p className="text-[13px] leading-relaxed text-text-secondary">Rien n’est encore parti en ligne.</p>
           ) : (
             <ol className="relative">
               <span aria-hidden className="absolute bottom-3 left-[4.5px] top-3 w-px bg-[#2a2826]" />
               {rail.slice(0, 8).map((m, i) => (
                 <li key={`${m.version}-${m.at}`} className="relative flex gap-4 pb-4">
-                  <span className="relative mt-[5px] h-[10px] w-[10px] flex-none rounded-full" style={{ background: i === 0 ? '#f7f7f5' : '#4a4845' }} aria-hidden />
+                  <span className="relative mt-[5px] h-[10px] w-[10px] flex-none rounded-full" style={{ background: i === 0 ? 'var(--color-text-primary)' : '#4a4845' }} aria-hidden />
                   <span className="min-w-0">
-                    <span className="block font-mono text-[12.5px] font-semibold text-[#f7f7f5]">
+                    <span className="block font-mono text-[12.5px] font-semibold text-text-primary">
                       {libelleVersion(m.version)} · {jjmm(m.at)}
                     </span>
-                    {m.quoi && <span className="mt-0.5 block text-[12.5px] text-[#a3a3a0]">{m.quoi}</span>}
+                    {m.quoi && <span className="mt-0.5 block text-[12.5px] text-text-secondary">{m.quoi}</span>}
                   </span>
                 </li>
               ))}
@@ -134,12 +134,12 @@ function Livraison({ p }: { p: Piece }) {
                     <li key={x.id}>
                       <label className="flex cursor-pointer items-center gap-3.5 border px-3.5 py-3" style={{ borderColor: estAmbre ? AMBRE : '#2a2826', background: estAmbre ? 'rgba(208,154,74,.07)' : x.coche ? '#141312' : 'transparent' }} data-signal-groupe={estAmbre ? 'livraison-bloquant' : undefined}>
                         <input type="checkbox" checked={x.coche} onChange={() => cocher(x.id)} className="peer sr-only" />
-                        <span aria-hidden className="flex h-[18px] w-[18px] flex-none items-center justify-center border peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#f7f7f5]" style={{ borderColor: estAmbre ? AMBRE : x.coche ? '#8a8a87' : '#6b6b68', background: x.coche ? '#8a8a87' : 'transparent' }} />
-                        <span className="min-w-0 flex-1 text-[13.5px]" style={{ fontWeight: x.coche ? 400 : 600, color: x.coche ? '#9a9a97' : '#f7f7f5', textDecoration: x.coche ? 'line-through' : undefined }}>
+                        <span aria-hidden className="flex h-[18px] w-[18px] flex-none items-center justify-center border peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-text-primary" style={{ borderColor: estAmbre ? AMBRE : x.coche ? '#8a8a87' : 'var(--color-trait-sourd)', background: x.coche ? '#8a8a87' : 'transparent' }} />
+                        <span className="min-w-0 flex-1 text-[13.5px]" style={{ fontWeight: x.coche ? 400 : 600, color: x.coche ? 'var(--color-text-muted)' : 'var(--color-text-primary)', textDecoration: x.coche ? 'line-through' : undefined }}>
                           {x.texte}
                         </span>
                         {bloque && (
-                          <span className="font-mono text-[9.5px] font-bold tracking-[0.12em]" style={{ color: estAmbre ? AMBRE : '#a3a3a0' }}>
+                          <span className="font-mono text-[9.5px] font-bold tracking-[0.12em]" style={{ color: estAmbre ? AMBRE : 'var(--color-text-secondary)' }}>
                             {estAmbre ? 'BLOQUE LA MISE EN LIGNE' : 'BLOQUE AUSSI'}
                           </span>
                         )}
@@ -154,14 +154,14 @@ function Livraison({ p }: { p: Piece }) {
                     const estAmbre = ambre?.id === `budget:${x.page}`;
                     return (
                       <li key={x.page} className="flex items-center gap-3.5 border px-3.5 py-3" style={{ borderColor: estAmbre ? AMBRE : '#2a2826', background: estAmbre ? 'rgba(208,154,74,.07)' : 'transparent' }} data-signal-groupe={estAmbre ? 'livraison-bloquant' : undefined}>
-                        <span aria-hidden className="h-[18px] w-[18px] flex-none border border-dashed" style={{ borderColor: estAmbre ? AMBRE : '#6b6b68' }} />
-                        <span className="min-w-0 flex-1 text-[13.5px] font-semibold text-[#f7f7f5]">
+                        <span aria-hidden className="h-[18px] w-[18px] flex-none border border-dashed" style={{ borderColor: estAmbre ? AMBRE : 'var(--color-trait-sourd)' }} />
+                        <span className="min-w-0 flex-1 text-[13.5px] font-semibold text-text-primary">
                           Page {x.page} : {Math.round(x.ko / 100) / 10} Mo pour {Math.round(p.budget!.plafondKo / 100) / 10} Mo de budget{' '}
-                          <Link to="/studio/performance" className="ml-1 text-[12px] font-normal text-[#a3a3a0] underline decoration-[#6b6b68] underline-offset-4">
+                          <Link to="/studio/performance" className="ml-1 text-[12px] font-normal text-text-secondary underline decoration-trait-sourd underline-offset-4">
                             le budget
                           </Link>
                         </span>
-                        <span className="font-mono text-[9.5px] font-bold tracking-[0.12em]" style={{ color: estAmbre ? AMBRE : '#a3a3a0' }}>
+                        <span className="font-mono text-[9.5px] font-bold tracking-[0.12em]" style={{ color: estAmbre ? AMBRE : 'var(--color-text-secondary)' }}>
                           {estAmbre ? 'BLOQUE LA MISE EN LIGNE' : 'BLOQUE AUSSI'}
                         </span>
                       </li>
@@ -179,8 +179,8 @@ function Livraison({ p }: { p: Piece }) {
                     setAjout(null);
                   }}
                 >
-                  <input autoFocus value={ajout.texte} onChange={(e) => setAjout({ ...ajout, texte: e.target.value })} placeholder="Le point à vérifier…" aria-label="Le point à vérifier" className="h-9 min-w-0 flex-1 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]" />
-                  <label className="flex items-center gap-2 text-[12.5px] text-[#a3a3a0]">
+                  <input autoFocus value={ajout.texte} onChange={(e) => setAjout({ ...ajout, texte: e.target.value })} placeholder="Le point à vérifier…" aria-label="Le point à vérifier" className="h-9 min-w-0 flex-1 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]" />
+                  <label className="flex items-center gap-2 text-[12.5px] text-text-secondary">
                     <input type="checkbox" checked={ajout.bloquant} onChange={(e) => setAjout({ ...ajout, bloquant: e.target.checked })} className="accent-[#8a8a87]" />
                     bloquant
                   </label>
@@ -194,7 +194,7 @@ function Livraison({ p }: { p: Piece }) {
                 </button>
               )}
               <div className="mt-5 flex flex-wrap items-center gap-2.5 border-t border-[#2a2826] pt-4">
-                <input value={quoi} onChange={(e) => setQuoi(e.target.value)} placeholder="Ce qui part (« page Tarifs »)" aria-label="Ce qui part en ligne" className="h-[34px] min-w-0 flex-1 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]" />
+                <input value={quoi} onChange={(e) => setQuoi(e.target.value)} placeholder="Ce qui part (« page Tarifs »)" aria-label="Ce qui part en ligne" className="h-[34px] min-w-0 flex-1 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]" />
                 <button type="button" className="bx-btn" disabled={bloquants.length > 0} onClick={mettreEnLigne} title={bloquants.length ? `Encore bloqué : ${bloquants.map((x) => x.texte).join(', ')}` : undefined}>
                   Mettre en ligne {libelleVersion(version)}
                 </button>

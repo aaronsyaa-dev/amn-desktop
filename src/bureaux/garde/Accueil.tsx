@@ -45,7 +45,7 @@ export function GardeAccueil() {
       <EnTete accueil surtitre={`La Garde · relève de ${deuxChiffres(g.heureReleve)}:00`} titre={titre} lede={lede} />
       {g.muette && (
         <Erreur pannes={src.pannes} at={src.at} relancer={() => void src.recharger()}>
-          <p className="p-6 text-[13px] text-[#e4e4e1]">La Garde ne répond plus : c’est en soi une remontée haute, pour Harun.</p>
+          <p className="p-6 text-[13px] text-text-body">La Garde ne répond plus : c’est en soi une remontée haute, pour Harun.</p>
         </Erreur>
       )}
       <Carte
@@ -73,7 +73,7 @@ export function GardeAccueil() {
           </Carte>
           <Carte titre={`Ce qui attend un humain · ${g.attend.length}`}>
             {g.attend.length === 0 ? (
-              <p className="text-[13px] text-[#a3a3a0]">Rien n’attend votre lecture.</p>
+              <p className="text-[13px] text-text-secondary">Rien n’attend votre lecture.</p>
             ) : (
               <ul>
                 {g.attend.slice(0, 5).map((d) => {
@@ -83,11 +83,11 @@ export function GardeAccueil() {
                   return (
                     <li key={d.id}>
                       <Link to={critique ? '/garde/pile' : `/garde/compte-rendu/${d.id}`} className="grid grid-cols-[14px_minmax(0,1fr)_auto] items-baseline gap-3 border-b border-[#1a1a1a] py-3 hover:bg-white/[0.02]">
-                        <span aria-hidden className="h-[7px] w-[7px] translate-y-[-1px] rounded-full" style={{ background: rouge ? ROUGE.trait : '#6b6b68', boxShadow: rouge ? '0 0 10px rgba(255,66,48,.6)' : undefined }} />
-                        <span className="text-[13px] leading-snug text-[#e4e4e1]">
+                        <span aria-hidden className="h-[7px] w-[7px] translate-y-[-1px] rounded-full" style={{ background: rouge ? ROUGE.trait : 'var(--color-trait-sourd)', boxShadow: rouge ? '0 0 10px rgba(255,66,48,.6)' : undefined }} />
+                        <span className="text-[13px] leading-snug text-text-body">
                           {critique ? `Dossier critique · ${d.orgNom ?? 'AMN DevSec'}, ${d.n} incidents regroupés${d.prisPar ? ` · pris par ${nom(d.prisPar)}${d.prisLe ? ` à ${hhmm(d.prisLe)}` : ''}` : ' · personne ne l’a pris'}` : `Compte rendu du ${chef?.titre ?? d.equipe} · ${d.titre}`}
                         </span>
-                        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#9a9a97]">{chef?.nom ?? d.equipe}</span>
+                        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">{chef?.nom ?? d.equipe}</span>
                       </Link>
                     </li>
                   );
@@ -125,17 +125,17 @@ function Organigramme({ chefs, chefAmbre, agentAmbre, comptes }: { chefs: Chef[]
   return (
     <div className="overflow-x-auto">
       <div style={{ minWidth: Math.max(640, n * 120) }}>
-        <div className="mx-auto w-[300px] max-w-full border border-[#2a2a2a] bg-[#171717] px-5 py-3.5 text-center" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.05)' }}>
-          <span className="block font-mono text-[9.5px] tracking-[0.2em] text-[#9a9a97]">LE CAPITAINE</span>
-          <span className="mt-1.5 block text-[14px] font-semibold text-[#f7f7f5]">Arbitre des collaborations</span>
-          <span className="mt-1 block text-[11.5px] text-[#a3a3a0]">ne dort jamais · déterministe</span>
+        <div className="mx-auto w-[300px] max-w-full border border-border-sheet bg-[#171717] px-5 py-3.5 text-center" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.05)' }}>
+          <span className="block font-mono text-[9.5px] tracking-[0.2em] text-text-muted">LE CAPITAINE</span>
+          <span className="mt-1.5 block text-[14px] font-semibold text-text-primary">Arbitre des collaborations</span>
+          <span className="mt-1 block text-[11.5px] text-text-secondary">ne dort jamais · déterministe</span>
         </div>
         {/* Le bus : du Capitaine au rang des chefs ; chaque trait tombe à (i + 0,5) / n. */}
         <svg viewBox="0 0 1000 36" preserveAspectRatio="none" className="block h-9 w-full" aria-hidden>
-          <path d="M500 0 V18" stroke="#3a3a3a" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-          {chefs.length > 1 && <path d={`M${(0.5 / n) * 1000} 18 H${((n - 0.5) / n) * 1000}`} stroke="#3a3a3a" strokeWidth={1} vectorEffect="non-scaling-stroke" />}
+          <path d="M500 0 V18" stroke="var(--color-border-strong)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          {chefs.length > 1 && <path d={`M${(0.5 / n) * 1000} 18 H${((n - 0.5) / n) * 1000}`} stroke="var(--color-border-strong)" strokeWidth={1} vectorEffect="non-scaling-stroke" />}
           {chefs.map((c, i) => (
-            <path key={c.key} d={`M${((i + 0.5) / n) * 1000} 18 V36`} stroke={i === iAmbre ? AMBRE : '#3a3a3a'} strokeWidth={i === iAmbre ? 1.6 : 1} vectorEffect="non-scaling-stroke" data-signal-groupe={i === iAmbre ? 'organigramme-ambre' : undefined} />
+            <path key={c.key} d={`M${((i + 0.5) / n) * 1000} 18 V36`} stroke={i === iAmbre ? AMBRE : 'var(--color-border-strong)'} strokeWidth={i === iAmbre ? 1.6 : 1} vectorEffect="non-scaling-stroke" data-signal-groupe={i === iAmbre ? 'organigramme-ambre' : undefined} />
           ))}
         </svg>
         {/* Deux rangs de la même grille : les plaques ont toutes la même hauteur, les listes pendent dessous. */}
@@ -148,11 +148,11 @@ function Organigramme({ chefs, chefAmbre, agentAmbre, comptes }: { chefs: Chef[]
                 <Link
                   to={`/garde/bureaux/${c.key}`}
                   className="bx-nav flex w-full flex-col px-3 py-2.5"
-                  style={{ background: ambre ? AMBRE : '#171717', border: `1px solid ${ambre ? AMBRE : '#2a2a2a'}`, boxShadow: ambre ? '0 0 26px -8px rgba(208,154,74,.8)' : 'inset 0 1px 0 rgba(255,255,255,.05)' }}
+                  style={{ background: ambre ? AMBRE : '#171717', border: `1px solid ${ambre ? AMBRE : 'var(--color-border-sheet)'}`, boxShadow: ambre ? '0 0 26px -8px rgba(208,154,74,.8)' : 'inset 0 1px 0 rgba(255,255,255,.05)' }}
                 >
-                  <span className="block truncate text-[14px] font-semibold" style={{ color: ambre ? '#080808' : '#f7f7f5' }}>{c.nom}</span>
-                  <span className="mt-0.5 block text-[11.5px] leading-snug" style={{ color: ambre ? '#2a1d08' : '#a3a3a0' }}>{c.titre}</span>
-                  <span className="mt-auto block whitespace-nowrap pt-2.5 font-mono text-[9.5px] font-semibold tracking-[0.12em]" style={{ color: ambre ? '#080808' : '#9a9a97' }}>
+                  <span className="block truncate text-[14px] font-semibold" style={{ color: ambre ? 'var(--color-signal-ink)' : 'var(--color-text-primary)' }}>{c.nom}</span>
+                  <span className="mt-0.5 block text-[11.5px] leading-snug" style={{ color: ambre ? '#2a1d08' : 'var(--color-text-secondary)' }}>{c.titre}</span>
+                  <span className="mt-auto block whitespace-nowrap pt-2.5 font-mono text-[9.5px] font-semibold tracking-[0.12em]" style={{ color: ambre ? 'var(--color-signal-ink)' : 'var(--color-text-muted)' }}>
                     {ambre && cr ? `${cr} COMPTE${cr > 1 ? 'S' : ''} RENDU${cr > 1 ? 'S' : ''}` : `${c.agents.length} GARDE${c.agents.length > 1 ? 'S' : ''}`}
                   </span>
                 </Link>
@@ -171,14 +171,14 @@ function Organigramme({ chefs, chefAmbre, agentAmbre, comptes }: { chefs: Chef[]
                     const produit = ambre && a.key === agentAmbre;
                     return (
                       <li key={a.key} className="flex items-baseline gap-2 py-[5px]" data-signal-groupe={produit ? 'organigramme-ambre' : undefined}>
-                        <span data-mv={ronde ? '' : undefined} className={`h-[6px] w-[6px] flex-none translate-y-[-1px] rounded-full ${ronde ? 'bx-halo bg-[#f7f7f5]' : 'bg-[#4a4a48]'}`} aria-label={ronde ? 'en ronde' : undefined} />
-                        <span className="text-[12.5px] leading-tight" style={{ color: produit ? AMBRE : ronde ? '#f7f7f5' : '#a3a3a0' }}>{a.nom}</span>
+                        <span data-mv={ronde ? '' : undefined} className={`h-[6px] w-[6px] flex-none translate-y-[-1px] rounded-full ${ronde ? 'bx-halo bg-text-primary' : 'bg-[#4a4a48]'}`} aria-label={ronde ? 'en ronde' : undefined} />
+                        <span className="text-[12.5px] leading-tight" style={{ color: produit ? AMBRE : ronde ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}>{a.nom}</span>
                       </li>
                     );
                   })}
-                  {c.agents.length > REPLI && <li className="py-[5px] font-mono text-[10px] tracking-[0.1em] text-[#9a9a97]">+ {c.agents.length - REPLI + 1} GARDES</li>}
+                  {c.agents.length > REPLI && <li className="py-[5px] font-mono text-[10px] tracking-[0.1em] text-text-muted">+ {c.agents.length - REPLI + 1} GARDES</li>}
                 </ul>
-                <Link to={`/garde/bureaux/${encodeURIComponent(c.key)}/historique`} className="ml-3 mt-1.5 inline-block font-mono text-[9.5px] tracking-[0.1em] text-[#9a9a97] hover:text-[#f7f7f5]" aria-label={`Les trente derniers jours de ${c.titre}`}>
+                <Link to={`/garde/bureaux/${encodeURIComponent(c.key)}/historique`} className="ml-3 mt-1.5 inline-block font-mono text-[9.5px] tracking-[0.1em] text-text-muted hover:text-text-primary" aria-label={`Les trente derniers jours de ${c.titre}`}>
                   30 JOURS →
                 </Link>
               </li>

@@ -77,7 +77,9 @@ export function PresentationArrivee({ prenom: prenomBrut, onFin }: { prenom: str
 
   return createPortal(
     <div className="fixed inset-0 z-[290] flex items-center justify-center overflow-y-auto bg-bg/90 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={t(`guide.presentation.${cle}.titre`)} data-presentation-arrivee={cle}>
+      {/* La feuille n'est pas une commande (`role="none"`) : le clic à droite est un raccourci de souris ; au clavier, → et le bouton « Suivant » font la même chose. */}
       <div
+        role="none"
         className="w-full max-w-[720px] border border-border-sheet bg-elevated px-6 pb-6 pt-[30px] shadow-[0_34px_62px_-28px_rgba(0,0,0,1)] sm:px-9"
         onClick={(e) => {
           // Un clic dans la moitié droite avance — jamais sur un bouton, qui a son propre geste.

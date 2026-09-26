@@ -114,18 +114,18 @@ export function SupervisorAutomatisations() {
           <Mot>Sauf</Mot>
           <Menu valeur={courante.sauf} options={EXCEPTIONS.map((x) => [x.cle, x.nom])} onChange={(v) => poser({ sauf: v })} />
         </div>
-        <div className="mt-7 grid grid-cols-1 gap-6 border-t border-[#1f1f1f] pt-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="mt-7 grid grid-cols-1 gap-6 border-t border-border pt-6 lg:grid-cols-[minmax(0,1fr)_300px]">
           <div>
-            <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-[#a3a3a0]">
+            <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-text-secondary">
               Le rejeu · du {jourMois(debut)} à aujourd’hui, 30 jours
             </span>
-            <p className="mt-2.5 text-[13.5px] leading-relaxed text-[#e4e4e1]">{phraseRejeu}</p>
+            <p className="mt-2.5 text-[13.5px] leading-relaxed text-text-body">{phraseRejeu}</p>
             <div className="mt-5 flex h-[34px] items-end gap-[3px]" role="img" aria-label="Le rejeu, un bâton par jour">
               {rejeu.jours.map((j) => (
-                <span key={j.jour} title={`${jourCourt(j.jour)}${j.orgs.length ? ` · ${j.orgs.map((id) => noms.get(id) ?? id).join(', ')}` : releves.has(j.jour) ? ' · rien' : ' · pas de relevé'}`} className="flex-1" style={{ height: j.orgs.length ? 30 : 6, background: j.orgs.length ? '#6b6b68' : releves.has(j.jour) ? '#252525' : 'transparent', border: releves.has(j.jour) ? undefined : '1px dashed #252525' }} />
+                <span key={j.jour} title={`${jourCourt(j.jour)}${j.orgs.length ? ` · ${j.orgs.map((id) => noms.get(id) ?? id).join(', ')}` : releves.has(j.jour) ? ' · rien' : ' · pas de relevé'}`} className="flex-1" style={{ height: j.orgs.length ? 30 : 6, background: j.orgs.length ? 'var(--color-trait-sourd)' : releves.has(j.jour) ? '#252525' : 'transparent', border: releves.has(j.jour) ? undefined : '1px dashed #252525' }} />
               ))}
             </div>
-            <div className="mt-1.5 flex justify-between font-mono text-[9.5px] text-[#9a9a97]">
+            <div className="mt-1.5 flex justify-between font-mono text-[9.5px] text-text-muted">
               {rejeu.jours.filter((_, i) => i % 5 === 0 || i === 29).map((j) => (
                 <span key={j.jour}>{Number(j.jour.slice(8))}</span>
               ))}
@@ -137,17 +137,17 @@ export function SupervisorAutomatisations() {
                 <span className="block font-mono text-[9.5px] font-bold uppercase tracking-[0.18em]" style={{ color: AMBRE }}>
                   À l’activation
                 </span>
-                <span className="mt-2.5 block text-[15px] font-semibold leading-snug text-[#f7f7f5]">
+                <span className="mt-2.5 block text-[15px] font-semibold leading-snug text-text-primary">
                   {premieres[0].nom}
                   {cond ? `, ${cond.constat(premieres[0], etat)}` : ''}
                 </span>
-                <span className="mt-2 block text-[12px] leading-relaxed text-[#a3a3a0]">
+                <span className="mt-2 block text-[12px] leading-relaxed text-text-secondary">
                   Elle remplit déjà la condition : {courante.action === 'carnet' ? 'une note partira au carnet de Cyber' : `une tâche partira pour ${nomPour(courante.pourQui === 'suivi' ? (premieres[0].suivi.type === 'humain' ? premieres[0].suivi.email : user?.email ?? '') : courante.pourQui)}`} dès que la règle sera active.
                   {premieres.length > 1 ? ` ${premieres.length - 1} autre${premieres.length > 2 ? 's' : ''} ensuite.` : ''}
                 </span>
               </div>
             ) : (
-              <p className="border border-[#252525] p-4 text-[12.5px] leading-relaxed text-[#a3a3a0]">Aucune organisation ne remplit la condition aujourd’hui : rien ne partira à l’activation.</p>
+              <p className="border border-[#252525] p-4 text-[12.5px] leading-relaxed text-text-secondary">Aucune organisation ne remplit la condition aujourd’hui : rien ne partira à l’activation.</p>
             )}
             <div className="flex flex-wrap justify-end gap-2.5">
               <button type="button" className="bx-btn2" onClick={() => enregistrer(false)}>
@@ -162,19 +162,19 @@ export function SupervisorAutomatisations() {
       </Carte>
       <div className="mt-[18px] grid grid-cols-1 gap-[18px] lg:grid-cols-2">
         <Carte titre={`Les règles${toutes.length ? ` · ${toutes.length}` : ''}`} droite={actives ? 'trace des 30 derniers jours' : ''}>
-          {toutes.length === 0 && <p className="text-[13px] text-[#a3a3a0]">Aucune règle encore. La première s’écrit au-dessus.</p>}
+          {toutes.length === 0 && <p className="text-[13px] text-text-secondary">Aucune règle encore. La première s’écrit au-dessus.</p>}
           {(tout ? toutes : toutes.slice(0, 6)).map((r) => {
             const trace = rejouer(r, releves, orgIds, m.maintenant);
             return (
               <div key={r.id} className="flex items-center gap-3.5 border-b border-[#1a1a1a] py-3">
-                <button type="button" role="switch" aria-checked={r.active} aria-label={`${r.nom ?? 'Règle'} : ${r.active ? 'active' : 'coupée'}`} onClick={() => basculer(r)} className={`flex h-[14px] w-[26px] flex-none rounded-[7px] p-[2px] ${r.active ? 'justify-end bg-[#3a3a3a]' : 'justify-start bg-[#242424]'}`}>
-                  <span className={`h-[10px] w-[10px] rounded-full ${r.active ? 'bg-[#e4e4e1]' : 'bg-[#8a8a87]'}`} />
+                <button type="button" role="switch" aria-checked={r.active} aria-label={`${r.nom ?? 'Règle'} : ${r.active ? 'active' : 'coupée'}`} onClick={() => basculer(r)} className={`flex h-[14px] w-[26px] flex-none rounded-[7px] p-[2px] ${r.active ? 'justify-end bg-border-strong' : 'justify-start bg-action-inactive'}`}>
+                  <span className={`h-[10px] w-[10px] rounded-full ${r.active ? 'bg-text-body' : 'bg-[#8a8a87]'}`} />
                 </button>
                 <button type="button" onClick={() => ouvrir(r)} className="min-w-0 flex-1 text-left">
-                  <span className="block text-[13.5px] font-semibold text-[#f7f7f5]">
-                    {r.nom || titreDe(r)} {!r.active && <span className="font-mono text-[9.5px] tracking-[0.12em] text-[#9a9a97]">· BROUILLON</span>}
+                  <span className="block text-[13.5px] font-semibold text-text-primary">
+                    {r.nom || titreDe(r)} {!r.active && <span className="font-mono text-[9.5px] tracking-[0.12em] text-text-muted">· BROUILLON</span>}
                   </span>
-                  <span className="block truncate text-[12px] text-[#9a9a97]">{phraseRegle(r, nomPour)}</span>
+                  <span className="block truncate text-[12px] text-text-muted">{phraseRegle(r, nomPour)}</span>
                 </button>
                 <span className="flex h-[16px] w-[120px] flex-none items-end gap-px" aria-hidden>
                   {trace.jours.map((j) => (
@@ -185,14 +185,14 @@ export function SupervisorAutomatisations() {
             );
           })}
           {!tout && toutes.length > 6 && (
-            <button type="button" onClick={() => setTout(true)} className="mt-3 text-[12px] text-[#a3a3a0] hover:text-[#f7f7f5]">
+            <button type="button" onClick={() => setTout(true)} className="mt-3 text-[12px] text-text-secondary hover:text-text-primary">
               + {toutes.length - 6} règles
             </button>
           )}
         </Carte>
         <Carte titre="Ce qu’elles ont déclenché" droite="7 derniers jours">
           {recents.length === 0 ? (
-            <p className="text-[13px] text-[#a3a3a0]">Rien ne s’est déclenché cette semaine.</p>
+            <p className="text-[13px] text-text-secondary">Rien ne s’est déclenché cette semaine.</p>
           ) : (
             recents.map((d) => {
               const r = toutes.find((x) => x.id === d.regleId);
@@ -217,20 +217,20 @@ function titreDe(r: Pick<RegleParc, 'sujet' | 'condition' | 'action'>): string {
 }
 
 function Mot({ children }: { children: React.ReactNode }) {
-  return <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-[#a3a3a0]">{children}</span>;
+  return <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-text-secondary">{children}</span>;
 }
 
 function Menu({ valeur, options, onChange }: { valeur: string; options: [string, string][]; onChange: (v: string) => void }) {
   return (
     <span className="relative inline-flex">
-      <select value={valeur} onChange={(e) => onChange(e.target.value)} className="h-10 appearance-none border border-[#2b2b2b] bg-[#141414] pl-3.5 pr-9 text-[14.5px] font-semibold text-[#f7f7f5] outline-none focus:border-[#8a8a87]">
+      <select value={valeur} onChange={(e) => onChange(e.target.value)} className="h-10 appearance-none border border-[#2b2b2b] bg-raised pl-3.5 pr-9 text-[14.5px] font-semibold text-text-primary outline-none focus:border-[#8a8a87]">
         {options.map(([v, l]) => (
           <option key={v} value={v}>
             {l}
           </option>
         ))}
       </select>
-      <ChevronDown size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#a3a3a0]" aria-hidden />
+      <ChevronDown size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary" aria-hidden />
     </span>
   );
 }

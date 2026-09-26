@@ -51,6 +51,19 @@
  * peut être parfait, et poser trois zéros en mono au premier jour de sa
  * cliente. C'est ce cas-là qui est contrôlé.
  *
+ * ## La troisième règle : le rouge dit le critique, une fois
+ *
+ * Les bureaux (BUREAUX.md §1) posent la règle sœur de l'ambre : le rouge ne
+ * s'emploie que pour LE critique, à un seul endroit par écran — l'objet
+ * critique lui-même ; ailleurs, « CRITIQUE » s'écrit à l'encre. Et jamais un
+ * écran baigné de rouge. Les deux se comptent comme l'ambre : racines
+ * rouges (trait, texte, remplissage), réunies par `data-critique-groupe`
+ * quand deux marques désignent le même objet ; puis la part du contenu sous
+ * un fond rouge, fond sombre du critique et rouge dilué compris. Une légende
+ * (`data-legende`) est la clé d'une couleur, pas un objet : elle ne compte pas.
+ * Le compte « une fois » fait échouer l'édition interne ; sur l'édition
+ * cliente, qui suit la règle du README, il est relevé pour mémoire.
+ *
  * ## Mode d'emploi
  *
  *   1. npm run build:web:business   (AMN_WEB_OUT=… pour un dossier à part)
@@ -127,7 +140,98 @@ const ECRANS_INTERNE = [
   ['Décisions', '#/decisions'],
   ['Connaissances', '#/knowledge'],
   ['Équipe', '#/team'],
+  /*
+    LES CINQ BUREAUX (cahiers 11 à 15) — chaque écran a son objet dominant,
+    un ambre au plus, et un rouge au plus : l'objet critique lui-même. Une
+    route entre crochets se résout en suivant le premier lien d'une page : un
+    dossier, une pièce ou un compte rendu n'ont pas d'adresse fixe.
+  */
+  ['Supervisor · horizon', '#/supervisor'],
+  ['Supervisor · grille', '#/supervisor/grille'],
+  ['Supervisor · carte du parc', '#/supervisor/carte'],
+  ['Supervisor · à traiter', '#/supervisor/a-traiter'],
+  ['Supervisor · dossier client', ['#/supervisor/places', 'a[href*="#/supervisor/dossiers/"]']],
+  ['Supervisor · santé des places', '#/supervisor/places'],
+  ['Supervisor · renouvellements', '#/supervisor/renouvellements'],
+  ['Supervisor · chercheur', '#/supervisor/chercheur'],
+  ['Supervisor · automatisations', '#/supervisor/automatisations'],
+  ['Supervisor · groupes', '#/supervisor/groupes'],
+  ['Supervisor · prévision de charge', '#/supervisor/charge'],
+  ['Supervisor · bug chez une cliente', '#/supervisor/bug/bx-bug-1'],
+  ['Cyber · rempart', '#/cyber'],
+  ['Cyber · posture', '#/cyber/posture'],
+  ['Cyber · surface d’attaque', '#/cyber/surface'],
+  ['Cyber · alertes', '#/cyber/alertes'],
+  ['Cyber · fiche incident', ['#/cyber', 'a[href*="#/cyber/incidents/"]']],
+  ['Cyber · vulnérabilités', '#/cyber/vulnerabilites'],
+  ['Cyber · inventaire', '#/cyber/inventaire'],
+  ['Cyber · inventaire d’une cliente', ['#/cyber/inventaire', 'a[href*="#/cyber/inventaire/"]']],
+  ['Cyber · échéances', '#/cyber/echeances'],
+  ['Cyber · journal d’audit', '#/cyber/journal'],
+  ['Cyber · playbooks', '#/cyber/playbooks'],
+  ['Cyber · crise', '#/cyber/crise'],
+  ['Cyber · hameçonnage', '#/cyber/hameconnage'],
+  ['Cyber · secrets', '#/cyber/secrets'],
+  ['Cyber · rapports', '#/cyber/rapports'],
+  ['Cyber · carnet de bord', '#/cyber/carnet'],
+  ['Studio · façade', '#/studio'],
+  ['Studio · pièce, croquis', ['#/studio', 'a[href*="#/studio/pieces/"]', '/croquis']],
+  ['Studio · pièce, prompts', ['#/studio', 'a[href*="#/studio/pieces/"]', '/prompts']],
+  ['Studio · pièce, notes', ['#/studio', 'a[href*="#/studio/pieces/"]', '/notes']],
+  ['Studio · pièce, analytique', ['#/studio', 'a[href*="#/studio/pieces/"]', '/analytique']],
+  ['Studio · pièce, livraison', ['#/studio', 'a[href*="#/studio/pieces/"]', '/livraison']],
+  ['Studio · pièce, retours', ['#/studio', 'a[href*="#/studio/pieces/"]', '/retours']],
+  ['Studio · budget de performance', '#/studio/performance'],
+  ['Studio · recette visuelle', '#/studio/recette'],
+  ['Studio · accessibilité', '#/studio/accessibilite'],
+  ['Stratégie · mur', '#/strategie'],
+  ['Stratégie · campagnes', '#/strategie/campagnes'],
+  ['Stratégie · storyboards', '#/strategie/storyboards'],
+  ['Stratégie · calendrier', '#/strategie/calendrier'],
+  ['Stratégie · pipeline', '#/strategie/pipeline'],
+  ['Stratégie · fiche prospect', ['#/strategie/pipeline', 'a[href*="#/strategie/pipeline/"]']],
+  ['Stratégie · enquête', '#/strategie/enquete'],
+  ['Stratégie · objectifs', '#/strategie/objectifs'],
+  ['Stratégie · trackers', '#/strategie/trackers'],
+  ['Stratégie · liège', '#/strategie/liege'],
+  ['Stratégie · attribution', '#/strategie/attribution'],
+  ['Stratégie · témoignages', '#/strategie/temoignages'],
+  ['La Garde · organigramme', '#/garde/organigramme'],
+  ['La Garde · compte rendu', ['#/garde/organigramme', 'a[href*="#/garde/compte-rendu/"]']],
+  ['La Garde · historique 30 jours', ['#/garde/organigramme', 'a[href*="/historique"]']],
+  ['La Garde · nuit écoulée', '#/garde/nuit'],
+  ['La Garde · simulateur', '#/garde/simulateur'],
 ];
+
+/** Les rouges du critique, sous leurs écritures rendues : trait, texte, remplissage. */
+const ROUGES = ['rgb(255, 66, 48)', 'rgb(255, 88, 71)', 'rgb(221, 47, 38)'];
+/*
+  « Jamais un écran baigné de rouge » (BUREAUX.md §1) : au-delà de cette
+  part du contenu couverte de fonds rouges — y compris le fond sombre du
+  critique et le rouge dilué —, l'écran n'a plus un objet critique, il est
+  critique partout, ce qui revient à ne plus rien dire.
+*/
+const PART_ROUGE_MAX = 0.12;
+/*
+  « Rouge une fois par écran » est la règle des BUREAUX (BUREAUX.md, « Le
+  signal ») : elle tient sur toute l'édition interne, écrans recousus compris.
+  L'édition cliente suit la règle du README — le rouge réservé au critique
+  (rupture de stock, devis refusé, contrôle non conforme) — sans compte par
+  écran : ses répétitions sont relevées ici, pour mémoire, sans faire échouer
+  la garde. « Jamais baigné de rouge » vaut pour les deux éditions.
+*/
+const ROUGE_UNE_FOIS = process.env.AMN_EDITION === 'interne';
+
+/** Une route fixe, ou la cible du premier lien d'une page (et un suffixe à lui ajouter). */
+async function resoudre(page, route) {
+  if (typeof route === 'string') return route;
+  const [depuis, lien, suffixe = ''] = route;
+  await page.goto(APP + depuis, { waitUntil: 'networkidle' }).catch(() => undefined);
+  await page.waitForTimeout(900);
+  const href = await page.locator(lien).first().getAttribute('href').catch(() => null);
+  if (!href) return depuis;
+  return suffixe ? `${/^#\/[^?]*?\/(pieces|dossiers|incidents)\/[^/?]+/.exec(href)?.[0] ?? href}${suffixe}` : href;
+}
 
 const ECRANS = [
   /* La famille Pilotage, recomposée en septembre 2026 : chaque module y a
@@ -299,6 +403,10 @@ const fautifs = [];
 /* Les deux règles de l'écran vide — comptées à part, parce qu'elles se corrigent autrement. */
 const videAmbre = [];
 const videZeros = [];
+/* La règle rouge : un critique par écran, jamais un écran baigné de rouge. */
+const rougesMultiples = [];
+const rougesPourMemoire = [];
+const baignes = [];
 let mesures = 0;
 
 try {
@@ -341,10 +449,11 @@ try {
     ouverturesDEssai(),
   ]);
 
-  for (const [nom, route] of (process.env.AMN_EDITION === 'interne' ? ECRANS_INTERNE : ECRANS)) {
+  for (const [nom, adresse] of (process.env.AMN_EDITION === 'interne' ? ECRANS_INTERNE : ECRANS)) {
+    const route = await resoudre(page, adresse);
     await page.goto(APP + route, { waitUntil: 'networkidle' }).catch(() => undefined);
     await page.waitForTimeout(900);
-    const mesure = await page.evaluate(() => {
+    const mesure = await page.evaluate((ROUGES) => {
       // La teinte du signal, sous ses deux écritures possibles une fois rendue.
       const AMBRE = ['rgb(208, 154, 74)', '#d09a4a'];
       const porte = (valeur) => AMBRE.some((a) => (valeur ?? '').toLowerCase().includes(a));
@@ -439,15 +548,65 @@ try {
         }
       }
 
-      return { objets: uniques.map(nomme), vide, zeros };
-    });
+      /*
+        LE ROUGE — le critique seul, et à un seul endroit par écran.
+
+        Même mesure que l'ambre (racines, groupes), avec son propre attribut
+        de parenté, `data-critique-groupe` : le repère rouge d'une jauge et
+        l'étiquette qu'il désigne sont UN objet critique. Ailleurs sur le même
+        écran, le critique s'écrit à l'encre (« CRITIQUE »).
+      */
+      const porteRouge = (valeur) => ROUGES.some((a) => (valeur ?? '').toLowerCase().includes(a));
+      const rouges = [];
+      for (const el of (contenu ? contenu.querySelectorAll('*') : [])) {
+        const r = el.getBoundingClientRect();
+        if (r.width < 2 || r.height < 2) continue;
+        const s = getComputedStyle(el);
+        if (s.visibility === 'hidden' || s.display === 'none' || Number(s.opacity) === 0) continue;
+        /* Une LÉGENDE n'est pas un objet : c'est la clé de la couleur, telle que
+           le paquet la dessine (45a, « Critique ×10 » à côté de sa pastille). */
+        if (el.closest('[data-legende]')) continue;
+        if ([s.backgroundColor, s.backgroundImage, s.color, s.fill, s.stroke, s.borderTopColor, s.borderLeftColor, s.boxShadow].some(porteRouge)) rouges.push(el);
+      }
+      const racinesRouges = rouges.filter((el) => !rouges.some((autre) => autre !== el && autre.contains(el)));
+      const vusRouges = new Set();
+      const critiques = racinesRouges.filter((el) => {
+        const groupe = el.closest('[data-critique-groupe]')?.getAttribute('data-critique-groupe');
+        if (!groupe) return true;
+        if (vusRouges.has(groupe)) return false;
+        vusRouges.add(groupe);
+        return true;
+      });
+      /* La part du contenu sous un fond rouge — trait, texte, remplissage, fond sombre du critique, rouge dilué. */
+      const FONDS = [...ROUGES, 'rgb(20, 9, 8)', 'rgba(255, 66, 48, 0.14)'];
+      const fonds = [];
+      for (const el of (contenu ? contenu.querySelectorAll('*') : [])) {
+        const r = el.getBoundingClientRect();
+        if (r.width < 2 || r.height < 2) continue;
+        const s = getComputedStyle(el);
+        if (s.display === 'none' || s.visibility === 'hidden') continue;
+        if (FONDS.some((f) => (s.backgroundColor ?? '').toLowerCase().includes(f))) fonds.push(el);
+      }
+      const racinesFonds = fonds.filter((el) => !fonds.some((autre) => autre !== el && autre.contains(el)));
+      const cadre = contenu?.getBoundingClientRect();
+      const aireContenu = cadre ? cadre.width * Math.max(contenu.scrollHeight, cadre.height) : 1;
+      const aireRouge = racinesFonds.reduce((t, el) => {
+        const r = el.getBoundingClientRect();
+        return t + r.width * r.height;
+      }, 0);
+
+      return { objets: uniques.map(nomme), vide, zeros, critiques: critiques.map(nomme), partRouge: aireRouge / Math.max(1, aireContenu) };
+    }, ROUGES);
     mesures += 1;
-    const { objets, vide, zeros } = mesure;
+    const { objets, vide, zeros, critiques, partRouge } = mesure;
     if (objets.length > 1) fautifs.push({ nom, route, objets });
     if (vide && objets.length > 0) videAmbre.push({ nom, route, objets });
     if (zeros.length > 0) videZeros.push({ nom, route, zeros });
-    const etat = objets.length > 1 || (vide && objets.length > 0) || zeros.length ? '✗' : objets.length === 1 ? '·' : ' ';
-    const suffixe = vide ? ' · écran vide' : '';
+    if (critiques.length > 1) (ROUGE_UNE_FOIS ? rougesMultiples : rougesPourMemoire).push({ nom, route, critiques });
+    if (partRouge > PART_ROUGE_MAX) baignes.push({ nom, route, partRouge });
+    const faute = objets.length > 1 || (vide && objets.length > 0) || zeros.length || (ROUGE_UNE_FOIS && critiques.length > 1) || partRouge > PART_ROUGE_MAX;
+    const etat = faute ? '✗' : objets.length === 1 || critiques.length === 1 ? '·' : ' ';
+    const suffixe = `${critiques.length ? ` · ${critiques.length} rouge` : ''}${partRouge > 0.005 ? ` (${Math.round(partRouge * 100)} % du contenu)` : ''}${vide ? ' · écran vide' : ''}`;
     console.log(`  ${etat} ${nom.padEnd(24)} ${objets.length} objet(s) ambre${suffixe}`);
   }
 } finally {
@@ -456,10 +615,35 @@ try {
 }
 
 console.log('');
-if (fautifs.length === 0 && videAmbre.length === 0 && videZeros.length === 0) {
+if (rougesPourMemoire.length > 0) {
+  console.log(`Pour mémoire (édition cliente, règle du README) — ${rougesPourMemoire.length} écran(s) répètent le rouge du critique :`);
+  for (const f of rougesPourMemoire) console.log(`  · ${f.nom} (${f.route || '/'}) — ${f.critiques.length} marques`);
+  console.log('');
+}
+if (fautifs.length === 0 && videAmbre.length === 0 && videZeros.length === 0 && rougesMultiples.length === 0 && baignes.length === 0) {
   console.log(`OK — ${mesures} écran(s) mesuré(s), aucun n’a plus d’un objet ambre.`);
   console.log('Les écrans déclarés vides n’en portent aucun, et n’affichent aucun relevé à zéro.');
+  console.log(
+    ROUGE_UNE_FOIS
+      ? `Le rouge : un objet critique au plus par écran, et aucun écran à plus de ${Math.round(PART_ROUGE_MAX * 100)} % de fonds rouges.`
+      : `Le rouge : aucun écran à plus de ${Math.round(PART_ROUGE_MAX * 100)} % de fonds rouges.`,
+  );
   process.exit(0);
+}
+
+if (rougesMultiples.length > 0) {
+  console.error(`${rougesMultiples.length} écran(s) disent le critique en rouge plus d’une fois :\n`);
+  for (const f of rougesMultiples) {
+    console.error(`  ✗ ${f.nom} (${f.route || '/'}) — ${f.critiques.length} objets :`);
+    for (const o of f.critiques) console.error(`      · ${o}`);
+  }
+  console.error('\nLe rouge marque l’objet critique lui-même, une fois ; ailleurs, « CRITIQUE » s’écrit à l’encre.\n');
+}
+
+if (baignes.length > 0) {
+  console.error(`${baignes.length} écran(s) baignés de rouge :\n`);
+  for (const f of baignes) console.error(`  ✗ ${f.nom} (${f.route || '/'}) — ${Math.round(f.partRouge * 100)} % du contenu sous un fond rouge`);
+  console.error('');
 }
 
 if (fautifs.length > 0) {

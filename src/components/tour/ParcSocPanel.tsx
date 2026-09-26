@@ -18,7 +18,13 @@ import type { FleetIncident, SocSummary } from '../../shared/api';
  *
  * Écran interne : les textes restent en français, comme toute la Tour.
  */
-const GRAVITE: Record<string, string> = { critical: 'bg-danger', warning: 'bg-warning', info: 'bg-text-muted' };
+/*
+  LE CRITIQUE À L'ENCRE. La file est recousue dans un bureau (Mur de
+  situation, Cyber · Incidents) où le rouge ne se dit qu'une fois par écran,
+  sur l'objet critique lui-même — l'exception du Mur, la couche de la nappe.
+  Ici, une ligne critique porte une pastille d'encre pleine et son mot.
+*/
+const GRAVITE: Record<string, string> = { critical: 'bg-text-primary', warning: 'bg-warning', info: 'bg-text-muted' };
 
 export function ParcSocPanel() {
   const { enterOrganization, entering, support } = useOrgContext();
@@ -71,7 +77,7 @@ export function ParcSocPanel() {
   const compteur = (label: string, valeur: number | string | null | undefined, accent = false) => (
     <div className="flex flex-col gap-0.5 border-l border-border pl-3 first:border-0 first:pl-0">
       <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{label}</span>
-      <span className={`tnum text-lg font-medium ${accent ? 'text-danger' : 'text-text-primary'}`}>{valeur ?? '—'}</span>
+      <span className={`tnum text-lg text-text-primary ${accent ? 'font-semibold' : 'font-medium'}`}>{valeur ?? '—'}</span>
     </div>
   );
 
@@ -101,7 +107,7 @@ export function ParcSocPanel() {
         {compteur('Sites hors ligne', resume?.sitesOffline, Boolean(resume && resume.sitesOffline > 0))}
         {compteur('Organisations touchées', resume?.organizationsAffected)}
       </div>
-      {erreur && <p role="alert" className="text-xs text-danger">{erreur}</p>}
+      {erreur && <p role="alert" className="text-xs text-text-primary">{erreur}</p>}
       {lignes.length === 0 && !chargement ? (
         <p className="text-sm text-text-secondary">Rien d’ouvert dans le parc{gravite ? ' à cette gravité' : ''}.</p>
       ) : (
@@ -117,8 +123,9 @@ export function ParcSocPanel() {
                   {i.kinds.length > 0 && <span className="text-text-secondary"> · {i.kinds.slice(0, 2).join(', ')}</span>}
                 </p>
                 <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                  {i.severity === 'critical' && <span className="font-semibold text-text-primary">critique · </span>}
                   {i.status === 'new' ? 'nouveau' : 'pris en charge'} · {i.alertCount} alerte{i.alertCount > 1 ? 's' : ''} · vu {relativeTime(i.lastSeenAt)}
-                  {i.escalationLevel > 0 && <span className="text-danger"> · escaladé niveau {i.escalationLevel}</span>}
+                  {i.escalationLevel > 0 && <span className="font-semibold text-text-primary"> · escaladé niveau {i.escalationLevel}</span>}
                 </p>
               </div>
               <button type="button" onClick={() => void enterOrganization(i.orgId)} disabled={entering === i.orgId} className="min-h-11 flex-shrink-0 border border-border-strong px-2.5 font-mono text-[10px] uppercase tracking-wider text-text-primary transition-colors hover:bg-surface-hover disabled:opacity-50 md:min-h-0 md:py-1.5">
@@ -139,7 +146,7 @@ export function ParcSocPanel() {
         )}
       </div>
       {resume && resume.escalated > 0 && (
-        <p className="flex items-center gap-2 text-xs text-danger"><ShieldAlert size={13} /> {resume.escalated} incident{resume.escalated > 1 ? 's' : ''} critique{resume.escalated > 1 ? 's' : ''} escaladé{resume.escalated > 1 ? 's' : ''} sans prise en charge.</p>
+        <p className="flex items-center gap-2 text-xs font-semibold text-text-primary"><ShieldAlert size={13} /> {resume.escalated} incident{resume.escalated > 1 ? 's' : ''} critique{resume.escalated > 1 ? 's' : ''} escaladé{resume.escalated > 1 ? 's' : ''} sans prise en charge.</p>
       )}
     </section>
   );

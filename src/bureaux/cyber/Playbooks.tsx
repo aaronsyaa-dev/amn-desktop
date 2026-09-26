@@ -93,7 +93,7 @@ export function CyberPlaybooks() {
   const emplois = (p: Pb) => runs.filter((r) => r.playbookId === p.id && new Date(r.lanceLe).getFullYear() === annee).length;
   const maxEmplois = Math.max(1, ...playbooks.map(emplois));
   const indexCourant = pb && run ? pb.etapes.findIndex((e) => !run.faites[e.id]) : -1;
-  const champ = 'h-9 border border-[#2b3030] bg-[#111414] px-2.5 text-[13px] text-[#f7f7f5] outline-none focus:border-[#8a8a87]';
+  const champ = 'h-9 border border-[#2b3030] bg-[#111414] px-2.5 text-[13px] text-text-primary outline-none focus:border-[#8a8a87]';
 
   return (
     <>
@@ -113,17 +113,17 @@ export function CyberPlaybooks() {
                 return (
                   <li key={e.id} className={e.si ? 'ml-12 border-l border-dashed border-[#3a3f3f] pl-4' : ''}>
                     <div className="flex items-start gap-4 border-b border-[#171a1a] px-3 py-3.5" style={courante ? { border: `1px solid ${AMBRE}`, background: 'rgba(208,154,74,.06)', boxShadow: '0 0 26px -12px rgba(208,154,74,.6)' } : undefined} data-signal-groupe={courante ? 'playbook-etape' : undefined}>
-                      <button type="button" onClick={() => cocher(run, e.id)} aria-label={fait ? `Décocher : ${e.texte}` : `Cocher : ${e.texte}`} className="mt-0.5 flex h-[22px] w-[22px] flex-none items-center justify-center border font-mono text-[10px]" style={{ borderColor: courante ? AMBRE : fait ? '#8a8a87' : '#3a3f3f', background: fait ? '#8a8a87' : 'transparent', color: fait ? '#0b0c0c' : courante ? AMBRE : '#a3a3a0' }}>
+                      <button type="button" onClick={() => cocher(run, e.id)} aria-label={fait ? `Décocher : ${e.texte}` : `Cocher : ${e.texte}`} className="mt-0.5 flex h-[22px] w-[22px] flex-none items-center justify-center border font-mono text-[10px]" style={{ borderColor: courante ? AMBRE : fait ? '#8a8a87' : '#3a3f3f', background: fait ? '#8a8a87' : 'transparent', color: fait ? '#0b0c0c' : courante ? AMBRE : 'var(--color-text-secondary)' }}>
                         {fait ? '✓' : i + 1}
                       </button>
                       <div className="min-w-0 flex-1">
-                        <span className="block text-[14px] font-semibold" style={{ color: fait ? '#9a9a97' : '#f7f7f5' }}>
-                          {e.si && <span className="mr-2 font-mono text-[10px] tracking-[0.12em] text-[#a3a3a0]">SI ·</span>}
+                        <span className="block text-[14px] font-semibold" style={{ color: fait ? 'var(--color-text-muted)' : 'var(--color-text-primary)' }}>
+                          {e.si && <span className="mr-2 font-mono text-[10px] tracking-[0.12em] text-text-secondary">SI ·</span>}
                           {e.si ? `${e.si.replace(/^Si\s+/i, '').replace(/^./, (x) => x.toUpperCase())}` : e.texte}
                         </span>
-                        {e.si && <span className="block text-[12px] text-[#9a9a97]">{e.texte}</span>}
+                        {e.si && <span className="block text-[12px] text-text-muted">{e.texte}</span>}
                       </div>
-                      <span className="font-mono text-[9.5px] font-semibold tracking-[0.12em]" style={{ color: courante ? AMBRE : '#9a9a97' }}>
+                      <span className="font-mono text-[9.5px] font-semibold tracking-[0.12em]" style={{ color: courante ? AMBRE : 'var(--color-text-muted)' }}>
                         {fait ? 'FAIT' : courante ? 'EN COURS' : ''}
                       </span>
                     </div>
@@ -135,7 +135,7 @@ export function CyberPlaybooks() {
           {enCours.length > 1 && (
             <div className="mt-4 flex flex-wrap gap-2">
               {enCours.map((r) => (
-                <button key={r.id} type="button" onClick={() => setChoisi(r.id)} className="border border-[#2b3030] px-2.5 py-1 text-[12px] text-[#a3a3a0] hover:text-[#f7f7f5]" aria-pressed={run?.id === r.id}>
+                <button key={r.id} type="button" onClick={() => setChoisi(r.id)} className="border border-[#2b3030] px-2.5 py-1 text-[12px] text-text-secondary hover:text-text-primary" aria-pressed={run?.id === r.id}>
                   {playbooks.find((p) => p.id === r.playbookId)?.nom ?? 'Playbook'}
                   {r.orgId ? ` · ${noms.get(r.orgId) ?? ''}` : ''}
                 </button>
@@ -146,16 +146,16 @@ export function CyberPlaybooks() {
         <Carte pad="p-6" className="self-start" titre={`Les playbooks · ${playbooks.length}`} droite="emplois cette année">
           {playbooks.map((p) => (
             <div key={p.id} className="flex items-center gap-3 border-b border-[#171a1a] py-2.5">
-              <button type="button" onClick={() => setLancer({ playbookId: p.id, orgId: lancer?.orgId ?? '' })} className="min-w-0 flex-1 truncate text-left text-[13.5px] font-semibold text-[#f7f7f5] hover:underline" title={p.description}>
+              <button type="button" onClick={() => setLancer({ playbookId: p.id, orgId: lancer?.orgId ?? '' })} className="min-w-0 flex-1 truncate text-left text-[13.5px] font-semibold text-text-primary hover:underline" title={p.description}>
                 {p.nom}
               </button>
               <span className="h-[3px] w-[90px] bg-[#1d2121]" aria-hidden>
                 <span className="block h-full bg-[#6b7070]" style={{ width: `${(emplois(p) / maxEmplois) * 100}%` }} />
               </span>
-              <span className="w-6 text-right font-mono text-[11px] text-[#a3a3a0]">{emplois(p) || ''}</span>
+              <span className="w-6 text-right font-mono text-[11px] text-text-secondary">{emplois(p) || ''}</span>
             </div>
           ))}
-          <p className="mt-3 text-[12.5px] leading-relaxed text-[#a3a3a0]">Un playbook se copie pour une cliente et s’adapte ; l’original ne change pas.</p>
+          <p className="mt-3 text-[12.5px] leading-relaxed text-text-secondary">Un playbook se copie pour une cliente et s’adapte ; l’original ne change pas.</p>
           {lancer && (
             <div className="mt-4 flex flex-col gap-2 border border-[#2b3030] p-3">
               <select value={lancer.playbookId} onChange={(e) => setLancer({ ...lancer, playbookId: e.target.value })} className={champ} aria-label="Le playbook">

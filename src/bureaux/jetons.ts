@@ -41,8 +41,8 @@ export interface Espace extends Palier {
 
 /** Les six espaces, dans l'ordre des raccourcis `G 0` à `G 5`. */
 export const ESPACES: Espace[] = [
-  { key: 'poste', nom: 'Poste de travail', role: 'Les modules du quotidien', qui: '—', chiffre: 0, accueil: '/', fond: '#060606', surf: '#121212', rel: '#181818', filet: '#1c1c1c', barre: '#0c0c0c' },
-  { key: 'supervisor', nom: 'Supervisor', role: 'La tour de contrôle', qui: 'Toute l’équipe', chiffre: 1, accueil: '/supervisor', fond: '#0b0b0b', surf: '#121212', rel: '#1a1a1a', filet: '#252525', barre: '#0e0e0e' },
+  { key: 'poste', nom: 'Poste de travail', role: 'Les modules du quotidien', qui: '—', chiffre: 0, accueil: '/', fond: 'var(--color-bg)', surf: 'var(--color-elevated)', rel: '#181818', filet: '#1c1c1c', barre: '#0c0c0c' },
+  { key: 'supervisor', nom: 'Supervisor', role: 'La tour de contrôle', qui: 'Toute l’équipe', chiffre: 1, accueil: '/supervisor', fond: 'var(--color-sunken)', surf: 'var(--color-elevated)', rel: '#1a1a1a', filet: '#252525', barre: '#0e0e0e' },
   { key: 'cyber', nom: 'Cyber', role: 'Le centre de sécurité', qui: 'Harun', chiffre: 2, accueil: '/cyber', fond: '#090a0a', surf: '#0f1111', rel: '#161919', filet: '#212525', barre: '#0b0c0c' },
   { key: 'studio', nom: 'Studio', role: 'Le bureau web', qui: 'Mohamed', chiffre: 3, accueil: '/studio', fond: '#0d0c0b', surf: '#141312', rel: '#1c1b19', filet: '#2a2826', barre: '#100f0e' },
   { key: 'strategie', nom: 'Stratégie', role: 'La salle de stratégie', qui: 'Riyad', chiffre: 4, accueil: '/strategie', fond: '#0c0c0d', surf: '#141416', rel: '#1b1b1e', filet: '#28282c', barre: '#0f0f11' },
@@ -57,17 +57,17 @@ export function espace(key: EspaceKey): Espace {
 
 /** Les encres partagées. `sourdine` est le plancher de texte du produit. */
 export const ENCRE = {
-  titre: '#f7f7f5',
-  corps: '#e4e4e1',
-  second: '#a3a3a0',
-  sourdine: '#9a9a97',
+  titre: 'var(--color-text-primary)',
+  corps: 'var(--color-text-body)',
+  second: 'var(--color-text-secondary)',
+  sourdine: 'var(--color-text-muted)',
   /** Gris de remplissage — barres, segments, jauges. Jamais du texte. */
-  remplissage: ['#2b2b2b', '#3a3a3a', '#4a4a48'],
+  remplissage: ['#2b2b2b', 'var(--color-border-strong)', '#4a4a48'],
 } as const;
 
-export const AMBRE = '#d09a4a';
+export const AMBRE = 'var(--color-signal)';
 /** Le rouge critique : trait, texte, fond, bordure. Un endroit par écran. */
-export const ROUGE = { trait: '#ff4230', texte: '#ff5847', fond: '#140908', bordure: '#3a1815' } as const;
+export const ROUGE = { trait: 'var(--color-danger)', texte: 'var(--color-danger-ink)', fond: '#140908', bordure: '#3a1815' } as const;
 
 /**
  * Les glyphes (24 × 24, trait 1,9) — tracés exacts du paquet (`G`).

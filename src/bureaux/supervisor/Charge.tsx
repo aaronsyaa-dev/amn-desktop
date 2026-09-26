@@ -26,7 +26,7 @@ import { jourMois } from '../format';
 const POIDS = { arrivee: 4, devis: 2, renouvellement: 1, incident: 1.5, demande: 0.5, exercice: 2 } as const;
 type Nature = keyof typeof POIDS;
 const NOMS: Record<Nature, string> = { arrivee: 'Arrivées', devis: 'Devis qui se jouent', renouvellement: 'Renouvellements', incident: 'Incidents attendus', demande: 'Demandes ouvertes', exercice: 'Exercices' };
-const TONS: Record<Nature, string> = { arrivee: '#e4e4e1', devis: '#a3a3a0', renouvellement: '#8a8a87', incident: '#6b6b68', demande: '#4d4d4b', exercice: '#3a3a38' };
+const TONS: Record<Nature, string> = { arrivee: 'var(--color-text-body)', devis: 'var(--color-text-secondary)', renouvellement: '#8a8a87', incident: 'var(--color-trait-sourd)', demande: '#4d4d4b', exercice: '#3a3a38' };
 const SEMAINE = 7 * 86_400_000;
 
 function lundi(t: number): number {
@@ -114,14 +114,14 @@ export function SupervisorCharge() {
         <Carte dominante pad="p-6" titre="Quatre semaines · heures prévues" droite={`capacité : ${capacite} h par semaine`}>
           <div className="relative flex h-[240px] items-end gap-6 border-b border-[#2b2b2b] px-2">
             <span aria-hidden className="absolute left-0 right-0 border-t border-dashed border-[#8a8a87]" style={{ bottom: `${(capacite / max) * 100}%` }} />
-            <span className="absolute right-0 font-mono text-[9.5px] text-[#a3a3a0]" style={{ bottom: `calc(${(capacite / max) * 100}% + 4px)` }}>
+            <span className="absolute right-0 font-mono text-[9.5px] text-text-secondary" style={{ bottom: `calc(${(capacite / max) * 100}% + 4px)` }}>
               {capacite} h
             </span>
             {semaines.map((w) => {
               const estAmbre = depasse?.debut === w.debut;
               return (
                 <div key={w.debut} className="flex h-full min-w-0 flex-1 flex-col justify-end" data-signal-groupe={estAmbre ? 'charge-ambre' : undefined}>
-                  <span className="mb-1.5 text-center font-mono text-[11px] tabular-nums" style={{ color: estAmbre ? AMBRE : '#e4e4e1' }}>
+                  <span className="mb-1.5 text-center font-mono text-[11px] tabular-nums" style={{ color: estAmbre ? AMBRE : 'var(--color-text-body)' }}>
                     {w.total} h
                   </span>
                   <div className="flex flex-col-reverse" style={{ height: `${(w.total / max) * 100}%`, boxShadow: estAmbre ? `0 0 0 1.5px ${AMBRE}` : undefined }}>
@@ -134,7 +134,7 @@ export function SupervisorCharge() {
               );
             })}
           </div>
-          <div className="mt-2 flex gap-6 px-2 font-mono text-[10px] uppercase tracking-[0.08em] text-[#9a9a97]">
+          <div className="mt-2 flex gap-6 px-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
             {semaines.map((w, i) => (
               <span key={w.debut} className="min-w-0 flex-1 text-center">
                 {i === 0 ? 'cette semaine' : `sem. du ${jourMois(w.debut)}`}
@@ -143,7 +143,7 @@ export function SupervisorCharge() {
           </div>
           <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2">
             {(Object.keys(POIDS) as Nature[]).map((n) => (
-              <span key={n} className="flex items-center gap-2 font-mono text-[9.5px] uppercase tracking-[0.08em] text-[#a3a3a0]">
+              <span key={n} className="flex items-center gap-2 font-mono text-[9.5px] uppercase tracking-[0.08em] text-text-secondary">
                 <span aria-hidden className="h-[9px] w-[9px]" style={{ background: TONS[n] }} />
                 {NOMS[n]} · {POIDS[n]} h
               </span>
@@ -153,22 +153,22 @@ export function SupervisorCharge() {
         <div className="flex flex-col gap-[18px] self-start">
           <Carte titre={depasse && depasse.debut !== semaines[0].debut ? `La semaine du ${jourMois(depasse.debut)}` : 'Cette semaine'} droite={`${(depasse ?? semaines[0]).total} h`}>
             {(depasse ?? semaines[0]).items.length === 0 ? (
-              <p className="text-[13px] text-[#a3a3a0]">Rien de prévu.</p>
+              <p className="text-[13px] text-text-secondary">Rien de prévu.</p>
             ) : (
               (depasse ?? semaines[0]).items
                 .sort((a, b) => b.heures - a.heures)
                 .slice(0, 8)
                 .map((i, k) => (
-                  <div key={k} className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3 border-b border-[#1f1f1f] py-2">
-                    <span className="text-[13px] leading-snug text-[#e4e4e1]">{i.quoi}</span>
-                    <span className="font-mono text-[10.5px] tabular-nums text-[#9a9a97]">{Math.round(i.heures * 10) / 10} h</span>
+                  <div key={k} className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3 border-b border-border py-2">
+                    <span className="text-[13px] leading-snug text-text-body">{i.quoi}</span>
+                    <span className="font-mono text-[10.5px] tabular-nums text-text-muted">{Math.round(i.heures * 10) / 10} h</span>
                   </div>
                 ))
             )}
           </Carte>
           <Carte titre="La capacité de l’équipe">
             {edition === null ? (
-              <p className="text-[13px] leading-relaxed text-[#a3a3a0]">
+              <p className="text-[13px] leading-relaxed text-text-secondary">
                 {capacite} heures par semaine pour la supervision.{' '}
                 <button type="button" className="bx-lien" onClick={() => setEdition(String(capacite))}>
                   Changer
@@ -184,7 +184,7 @@ export function SupervisorCharge() {
                   setEdition(null);
                 }}
               >
-                <input autoFocus value={edition} onChange={(e) => setEdition(e.target.value)} inputMode="numeric" aria-label="Heures par semaine" className="h-9 w-[100px] border border-[#2b2b2b] bg-transparent px-2.5 font-mono text-[13px] text-[#f7f7f5] outline-none focus:border-[#8a8a87]" />
+                <input autoFocus value={edition} onChange={(e) => setEdition(e.target.value)} inputMode="numeric" aria-label="Heures par semaine" className="h-9 w-[100px] border border-[#2b2b2b] bg-transparent px-2.5 font-mono text-[13px] text-text-primary outline-none focus:border-[#8a8a87]" />
                 <button type="submit" className="bx-btn2">
                   Poser
                 </button>

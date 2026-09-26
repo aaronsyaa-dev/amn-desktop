@@ -147,7 +147,7 @@ export function NappeDesIncidents() {
                 style={{ left: `${(marche.jour / Math.max(1, NAPPE_JOURS - 1)) * 100}%` }}
               />
             )}
-            <span className="absolute left-3.5 top-3 flex flex-col gap-1.5">
+            <span className="absolute left-3.5 top-3 flex flex-col gap-1.5" data-legende>
               {COUCHES.map((c) => (
                 <span key={c.cle} className="flex items-center gap-[7px]">
                   <span aria-hidden className="h-[3px] w-3.5" style={{ background: c.encre }} />

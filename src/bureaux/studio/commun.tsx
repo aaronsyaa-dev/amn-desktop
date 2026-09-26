@@ -81,10 +81,10 @@ export function TetePiece({ p, onglet, titre, actions }: { p: Piece; onglet: Ong
               to={`/studio/pieces/${p.id}/${o.cle}`}
               aria-current={on ? 'page' : undefined}
               className="bx-nav relative flex-none px-3.5 pb-3 pt-1 text-[13.5px]"
-              style={{ fontWeight: on ? 600 : 500, color: on ? '#f7f7f5' : '#a3a3a0' }}
+              style={{ fontWeight: on ? 600 : 500, color: on ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}
             >
               {o.nom}
-              {on && <span aria-hidden className="absolute bottom-[-1px] left-1.5 right-1.5 h-[2px] bg-[#f7f7f5]" />}
+              {on && <span aria-hidden className="absolute bottom-[-1px] left-1.5 right-1.5 h-[2px] bg-text-primary" />}
             </Link>
           );
         })}
@@ -105,9 +105,9 @@ export function Punaise({ n, ambre = false, creuse = false, taille = 22, classNa
         width: taille,
         height: taille,
         fontSize: taille <= 18 ? 9.5 : 10.5,
-        background: ambre ? AMBRE : creuse ? 'transparent' : '#f7f7f5',
-        color: ambre || !creuse ? '#0b0a09' : '#f7f7f5',
-        border: creuse ? '1.5px solid #f7f7f5' : undefined,
+        background: ambre ? AMBRE : creuse ? 'transparent' : 'var(--color-text-primary)',
+        color: ambre || !creuse ? '#0b0a09' : 'var(--color-text-primary)',
+        border: creuse ? '1.5px solid var(--color-text-primary)' : undefined,
         boxShadow: ambre ? '0 0 0 4px rgba(208,154,74,.18), 0 0 22px rgba(208,154,74,.55)' : creuse ? undefined : '0 2px 6px rgba(0,0,0,.55)',
         ...style,
       }}

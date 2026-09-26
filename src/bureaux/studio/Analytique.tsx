@@ -99,8 +99,8 @@ function Analytique({ p }: { p: Piece }) {
         <>
           <section className="bx-dom p-6">
             <div className="mb-[22px] flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1.5">
-              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#a3a3a0]">Les visites · 7 derniers jours</span>
-              <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.1em] text-[#9a9a97]">{prev ? 'trait plein = cette semaine · pointillé = la précédente' : 'trait plein = cette semaine'}</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-secondary">Les visites · 7 derniers jours</span>
+              <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">{prev ? 'trait plein = cette semaine · pointillé = la précédente' : 'trait plein = cette semaine'}</span>
             </div>
             <Courbe cur={cur} prev={prev} />
             <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
@@ -109,11 +109,11 @@ function Analytique({ p }: { p: Piece }) {
                 const v = r.lire(cur);
                 return (
                   <div key={r.cle} className="border px-4 py-4" style={{ borderColor: estAmbre ? AMBRE : '#2a2826', background: estAmbre ? 'rgba(208,154,74,.07)' : '#141312' }} data-signal-groupe={estAmbre ? 'analytique-ambre' : undefined}>
-                    <span className="block font-mono text-[9.5px] uppercase tracking-[0.14em]" style={{ color: estAmbre ? AMBRE : '#9a9a97' }}>
+                    <span className="block font-mono text-[9.5px] uppercase tracking-[0.14em]" style={{ color: estAmbre ? AMBRE : 'var(--color-text-muted)' }}>
                       {r.nom}
                     </span>
-                    <span className="mt-2.5 block font-mono text-[21px] font-semibold tabular-nums tracking-[-0.02em] text-[#f7f7f5]">{r.ecrire(v)}</span>
-                    <span className="mt-1.5 block font-mono text-[10.5px] tabular-nums" style={{ color: estAmbre ? AMBRE : '#a3a3a0' }}>
+                    <span className="mt-2.5 block font-mono text-[21px] font-semibold tabular-nums tracking-[-0.02em] text-text-primary">{r.ecrire(v)}</span>
+                    <span className="mt-1.5 block font-mono text-[10.5px] tabular-nums" style={{ color: estAmbre ? AMBRE : 'var(--color-text-secondary)' }}>
                       {prev ? `${r.ecart(r.lire(prev), v)} · avant ${r.ecrire(r.lire(prev))}` : 'premier relevé'}
                     </span>
                   </div>
@@ -126,35 +126,35 @@ function Analytique({ p }: { p: Piece }) {
               <Carte titre="Les sources" droite="cette semaine">
                 {cur.sources.map((s) => (
                   <div key={s.nom} className="grid grid-cols-[110px_minmax(0,1fr)_44px] items-center gap-3 py-2">
-                    <span className="text-[13px] font-semibold text-[#e4e4e1]">{s.nom}</span>
+                    <span className="text-[13px] font-semibold text-text-body">{s.nom}</span>
                     <span className="h-[6px] bg-[#1f1e1c]" aria-hidden>
                       <span className="block h-full bg-[#8a8a87]" style={{ width: `${Math.min(100, s.part)}%` }} />
                     </span>
-                    <span className="text-right font-mono text-[11px] tabular-nums text-[#a3a3a0]">{s.part} %</span>
+                    <span className="text-right font-mono text-[11px] tabular-nums text-text-secondary">{s.part} %</span>
                   </div>
                 ))}
               </Carte>
             ) : (
               <Carte titre="Les sources">
-                <p className="text-[13px] leading-relaxed text-[#a3a3a0]">D’où viennent les visites se lira ici quand le relevé le dira (recherche, direct, réseaux, lettre).</p>
+                <p className="text-[13px] leading-relaxed text-text-secondary">D’où viennent les visites se lira ici quand le relevé le dira (recherche, direct, réseaux, lettre).</p>
               </Carte>
             )}
             {ambre ? (
               <Carte titre={ambre.titre}>
                 {avantReleve && (
                   <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-baseline gap-3.5 border-b border-[#1f1e1c] py-3">
-                    <span className="font-mono text-[11px] text-[#9a9a97]">{jourCourt(avantReleve.at)}</span>
-                    <span className="text-[13px] leading-[1.5] text-[#e4e4e1]">
+                    <span className="font-mono text-[11px] text-text-muted">{jourCourt(avantReleve.at)}</span>
+                    <span className="text-[13px] leading-[1.5] text-text-body">
                       {/^\d/.test(avantReleve.version) ? `v${avantReleve.version}` : avantReleve.version} mise en ligne{avantReleve.quoi ? ` : ${avantReleve.quoi}` : ''}
                     </span>
-                    <span className="font-mono text-[10.5px] uppercase text-[#9a9a97]">avant</span>
+                    <span className="font-mono text-[10.5px] uppercase text-text-muted">avant</span>
                   </div>
                 )}
                 {causeEcrite ? (
                   <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-baseline gap-3.5 border-b border-[#1f1e1c] py-3">
-                    <span className="font-mono text-[11px] text-[#9a9a97]">{ambre.cle === 'p75' ? 'P75' : ambre.nom.toUpperCase().slice(0, 6)}</span>
-                    <span className="text-[13px] leading-[1.5] text-[#e4e4e1]">{causeEcrite}</span>
-                    <span className="font-mono text-[10.5px] uppercase text-[#9a9a97]">cause</span>
+                    <span className="font-mono text-[11px] text-text-muted">{ambre.cle === 'p75' ? 'P75' : ambre.nom.toUpperCase().slice(0, 6)}</span>
+                    <span className="text-[13px] leading-[1.5] text-text-body">{causeEcrite}</span>
+                    <span className="font-mono text-[10.5px] uppercase text-text-muted">cause</span>
                   </div>
                 ) : (
                   <form
@@ -165,7 +165,7 @@ function Analytique({ p }: { p: Piece }) {
                       setCause('');
                     }}
                   >
-                    <input value={cause} onChange={(e) => setCause(e.target.value)} placeholder="La cause n’est pas encore écrite…" aria-label="La cause" className="h-9 min-w-0 flex-1 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]" />
+                    <input value={cause} onChange={(e) => setCause(e.target.value)} placeholder="La cause n’est pas encore écrite…" aria-label="La cause" className="h-9 min-w-0 flex-1 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]" />
                     <button type="submit" className="bx-btn2" disabled={!cause.trim()}>
                       Écrire
                     </button>
@@ -173,11 +173,11 @@ function Analytique({ p }: { p: Piece }) {
                 )}
                 {ambre.cle === 'p75' && cur.p75Mobile && cur.p75Bureau && (
                   <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-baseline gap-3.5 border-b border-[#1f1e1c] py-3">
-                    <span className="font-mono text-[11px] text-[#9a9a97]">P75</span>
-                    <span className="text-[13px] leading-[1.5] text-[#e4e4e1]">
+                    <span className="font-mono text-[11px] text-text-muted">P75</span>
+                    <span className="text-[13px] leading-[1.5] text-text-body">
                       Mobile {nf(cur.p75Mobile, 1)} s · bureau {nf(cur.p75Bureau, 1)} s
                     </span>
-                    <span className="font-mono text-[10.5px] uppercase text-[#9a9a97]">détail</span>
+                    <span className="font-mono text-[10.5px] uppercase text-text-muted">détail</span>
                   </div>
                 )}
                 {avantReleve && (
@@ -188,7 +188,7 @@ function Analytique({ p }: { p: Piece }) {
               </Carte>
             ) : (
               <Carte titre="Ce qui a bougé">
-                <p className="text-[13px] leading-relaxed text-[#a3a3a0]">{prev ? 'Aucun relevé ne s’est nettement dégradé depuis la semaine d’avant.' : 'Le prochain relevé dira ce qui a bougé.'}</p>
+                <p className="text-[13px] leading-relaxed text-text-secondary">{prev ? 'Aucun relevé ne s’est nettement dégradé depuis la semaine d’avant.' : 'Le prochain relevé dira ce qui a bougé.'}</p>
               </Carte>
             )}
           </div>
@@ -202,7 +202,7 @@ function Analytique({ p }: { p: Piece }) {
 function Courbe({ cur, prev }: { cur: Mesure; prev: Mesure | null }) {
   const a = cur.jours?.length ? cur.jours : null;
   const b = prev?.jours?.length ? prev.jours : null;
-  if (!a) return <p className="py-8 text-[13px] text-[#a3a3a0]">Le relevé de la semaine n’a pas le détail jour par jour : seuls les totaux sont comparés.</p>;
+  if (!a) return <p className="py-8 text-[13px] text-text-secondary">Le relevé de la semaine n’a pas le détail jour par jour : seuls les totaux sont comparés.</p>;
   const max = Math.max(...a, ...(b ?? [])) * 1.25 || 1;
   const W = 1000;
   const H = 200;
@@ -213,11 +213,11 @@ function Courbe({ cur, prev }: { cur: Mesure; prev: Mesure | null }) {
     <div>
       <div className="border border-[#2a2826] bg-[#0b0a09]">
         <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="block h-[200px] w-full" role="img" aria-label={`Visites jour par jour : ${a.join(', ')}${b ? ` ; la semaine d’avant : ${b.join(', ')}` : ''}`}>
-          {b && <path d={chemin(b)} fill="none" stroke="#6b6b68" strokeWidth={1.4} strokeDasharray="5 5" vectorEffect="non-scaling-stroke" />}
-          <path d={chemin(a)} fill="none" stroke="#e4e4e1" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+          {b && <path d={chemin(b)} fill="none" stroke="var(--color-trait-sourd)" strokeWidth={1.4} strokeDasharray="5 5" vectorEffect="non-scaling-stroke" />}
+          <path d={chemin(a)} fill="none" stroke="var(--color-text-body)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
         </svg>
       </div>
-      <div className="mt-2 flex justify-between font-mono text-[9.5px] tracking-[0.1em] text-[#9a9a97]">
+      <div className="mt-2 flex justify-between font-mono text-[9.5px] tracking-[0.1em] text-text-muted">
         {jours.map((j, i) => (
           <span key={i}>{j}</span>
         ))}
@@ -247,8 +247,8 @@ function FormReleve({ dernier, onNoter, onAnnuler }: { dernier: Mesure | null; o
       <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
         {champs.map(([k, l, ph]) => (
           <label key={k} className="block">
-            <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-[#9a9a97]">{l}</span>
-            <input value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} inputMode="decimal" placeholder={ph} className="mt-1.5 h-9 w-full border border-[#2a2826] bg-transparent px-2.5 font-mono text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]" />
+            <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-muted">{l}</span>
+            <input value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} inputMode="decimal" placeholder={ph} className="mt-1.5 h-9 w-full border border-[#2a2826] bg-transparent px-2.5 font-mono text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]" />
           </label>
         ))}
       </div>

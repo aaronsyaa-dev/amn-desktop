@@ -30,9 +30,13 @@ const SEVERITY_LABEL: Record<Severity, string> = {
   info: 'Information',
 };
 
-/** Red is reserved for critical — everything else stays in the grey scale. */
+/*
+  Le critique à l'encre pleine : le bureau SOC vit dans le Mur de situation
+  (Supervisor), où le rouge n'est dit qu'une fois par écran, sur l'objet
+  critique lui-même — l'exception de la Garde (BUREAUX.md, « Le signal »).
+*/
 const SEVERITY_DOT: Record<Severity, string> = {
-  critical: 'bg-danger',
+  critical: 'bg-text-primary',
   warning: 'bg-text-secondary',
   info: 'bg-text-muted',
 };
@@ -237,8 +241,8 @@ export function SocDesk({
       </div>
 
       {error && (
-        <div className="flex items-start gap-2 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-text-secondary">
-          <AlertTriangle size={15} className="mt-0.5 flex-shrink-0 text-danger" strokeWidth={2} />
+        <div className="flex items-start gap-2 rounded-xl border border-border-strong bg-surface px-4 py-3 text-sm text-text-secondary">
+          <AlertTriangle size={15} className="mt-0.5 flex-shrink-0 text-text-primary" strokeWidth={2} />
           <span>{error}</span>
         </div>
       )}

@@ -127,7 +127,7 @@ function Trousseau({ orgId }: { orgId: string }) {
     void upsert('inventaire', `actif-${uid()}`, { ...a });
     setAjout(null);
   };
-  const champ = 'h-9 border border-[#2b3030] bg-[#111414] px-2.5 text-[13px] text-[#f7f7f5] outline-none focus:border-[#8a8a87]';
+  const champ = 'h-9 border border-[#2b3030] bg-[#111414] px-2.5 text-[13px] text-text-primary outline-none focus:border-[#8a8a87]';
 
   return (
     <>
@@ -153,7 +153,7 @@ function Trousseau({ orgId }: { orgId: string }) {
               const liste = jetons.filter((x) => x.famille === f.cle);
               return (
                 <div key={f.cle} className="min-w-0">
-                  <span className="block border-b border-[#212525] pb-2 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[#a3a3a0]">
+                  <span className="block border-b border-[#212525] pb-2 font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-secondary">
                     {f.nom} {liste.length > 0 && liste.length}
                   </span>
                   <div className="mt-2.5 flex flex-col gap-2">
@@ -178,7 +178,7 @@ function Trousseau({ orgId }: { orgId: string }) {
               </select>
               <input value={ajout.nom} onChange={(e) => setAjout({ ...ajout, nom: e.target.value })} placeholder="jardin-elise.fr" aria-label="L’actif" className={`${champ} w-[200px]`} />
               <input type="date" value={ajout.echeance} onChange={(e) => setAjout({ ...ajout, echeance: e.target.value })} aria-label="Son échéance" className={champ} />
-              <label className="flex items-center gap-1.5 text-[12.5px] text-[#a3a3a0]">
+              <label className="flex items-center gap-1.5 text-[12.5px] text-text-secondary">
                 <input type="checkbox" checked={ajout.seul} onChange={(e) => setAjout({ ...ajout, seul: e.target.checked })} className="accent-[#8a8a87]" /> se renouvelle seul
               </label>
               <input value={ajout.defaut} onChange={(e) => setAjout({ ...ajout, defaut: e.target.value })} placeholder="un défaut connu" aria-label="Un défaut connu" className={`${champ} w-[180px]`} />
@@ -198,10 +198,10 @@ function Trousseau({ orgId }: { orgId: string }) {
       </Carte>
       <div className="mt-[18px] grid grid-cols-1 gap-[18px] lg:grid-cols-2">
         <Carte titre="Ce qui fait baisser sa posture" droite={posture?.tendance !== null && posture?.tendance !== undefined ? `${signe(posture.tendance)} en 7 j` : ''}>
-          {pertes.length === 0 ? <p className="text-[13px] text-[#a3a3a0]">{posture?.score === null ? 'Posture non relevée : moins de trois contrôles connus.' : 'Rien : chaque contrôle relevé est conforme.'}</p> : pertes.map((p) => <Ligne key={p.k.cle} colonnes="44px minmax(0,1fr) auto" a={`−${p.perte}`} b={p.pourquoi} c={p.k.court} />)}
+          {pertes.length === 0 ? <p className="text-[13px] text-text-secondary">{posture?.score === null ? 'Posture non relevée : moins de trois contrôles connus.' : 'Rien : chaque contrôle relevé est conforme.'}</p> : pertes.map((p) => <Ligne key={p.k.cle} colonnes="44px minmax(0,1fr) auto" a={`−${p.perte}`} b={p.pourquoi} c={p.k.court} />)}
         </Carte>
         <Carte titre="Sources" droite="comment l’inventaire se tient">
-          <p className="text-[13px] leading-relaxed text-[#a3a3a0]">
+          <p className="text-[13px] leading-relaxed text-text-secondary">
             Sites et certificats : relevés — le registre des sites et SSL Monitor, pour les sites rattachés à la cliente. Comptes : ceux de son desktop. Domaines, postes et sauvegardes : déclarés ici, et le jeton le porte (« DÉCLARÉ »). Rien n’est relevé sur ses postes sans le desktop.
           </p>
           <div className="mt-4">
@@ -219,8 +219,8 @@ function JetonActif({ x, ambre }: { x: Jeton; ambre: boolean }) {
   const remplissage = x.jours === null ? null : Math.max(0.04, Math.min(1, 1 - x.jours / 90));
   return (
     <div className="px-3 py-2.5" style={{ background: ambre ? 'rgba(208,154,74,.08)' : '#161919', border: `1px solid ${ambre ? AMBRE : '#212525'}` }} data-signal-groupe={ambre ? 'trousseau-ambre' : undefined} title={`${x.nom} · ${x.source === 'declare' ? 'déclaré' : x.source === 'desktop' ? 'remonté par son desktop' : 'relevé'}`}>
-      <span className="block truncate font-mono text-[12.5px] font-semibold text-[#f7f7f5]">{x.nom}</span>
-      <span className="mt-1 block truncate font-mono text-[10.5px]" style={{ color: ambre ? AMBRE : x.defaut ? '#e4e4e1' : '#9a9a97' }}>
+      <span className="block truncate font-mono text-[12.5px] font-semibold text-text-primary">{x.nom}</span>
+      <span className="mt-1 block truncate font-mono text-[10.5px]" style={{ color: ambre ? AMBRE : x.defaut ? 'var(--color-text-body)' : 'var(--color-text-muted)' }}>
         {x.jours !== null && x.jours >= 0 && x.jours <= 6 ? jourCourt(x.echeance!).toLowerCase() : x.ligne}
         {x.source === 'declare' && !x.defaut ? ' · déclaré' : ''}
       </span>

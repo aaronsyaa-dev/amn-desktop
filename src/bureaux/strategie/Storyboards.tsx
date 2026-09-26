@@ -72,7 +72,7 @@ export function StrategieStoryboards() {
         titre={titre}
         actions={
           avecPlans.length > 1 ? (
-            <select value={c.id} onChange={(e) => setParams({ c: e.target.value }, { replace: true })} aria-label="La campagne" className="h-9 border border-[#28282c] bg-[#141416] px-2.5 text-[13px] text-[#f7f7f5]">
+            <select value={c.id} onChange={(e) => setParams({ c: e.target.value }, { replace: true })} aria-label="La campagne" className="h-9 border border-[#28282c] bg-[#141416] px-2.5 text-[13px] text-text-primary">
               {avecPlans.map((x) => (
                 <option key={x.id} value={x.id}>
                   {x.titre}
@@ -88,7 +88,7 @@ export function StrategieStoryboards() {
             {plans.map((p, i) => {
               const estAmbre = ambre?.id === p.id;
               return (
-                <span key={p.id} className="flex min-w-0 items-center justify-center border-r border-[#28282c] font-mono text-[10px] tabular-nums last:border-r-0" style={{ flexGrow: p.duree, flexBasis: 0, background: estAmbre ? 'rgba(208,154,74,.14)' : choisi === p.id ? '#222226' : '#17171a', color: estAmbre ? AMBRE : '#a3a3a0' }} data-signal-groupe={estAmbre ? 'plan-manquant' : undefined}>
+                <span key={p.id} className="flex min-w-0 items-center justify-center border-r border-[#28282c] font-mono text-[10px] tabular-nums last:border-r-0" style={{ flexGrow: p.duree, flexBasis: 0, background: estAmbre ? 'rgba(208,154,74,.14)' : choisi === p.id ? '#222226' : '#17171a', color: estAmbre ? AMBRE : 'var(--color-text-secondary)' }} data-signal-groupe={estAmbre ? 'plan-manquant' : undefined}>
                   <span className="truncate px-1">
                     {i + 1} · {p.duree} s
                   </span>
@@ -115,15 +115,15 @@ export function StrategieStoryboards() {
                   {image ? (
                     <img src={image} alt={`Visuel du plan ${i + 1}`} className="absolute inset-0 h-full w-full object-cover" />
                   ) : (
-                    <span className="font-mono text-[9.5px] font-semibold uppercase leading-[1.5] tracking-[0.12em]" style={{ color: estAmbre ? AMBRE : '#9a9a97' }}>
+                    <span className="font-mono text-[9.5px] font-semibold uppercase leading-[1.5] tracking-[0.12em]" style={{ color: estAmbre ? AMBRE : 'var(--color-text-muted)' }}>
                       {p.visuel ? p.visuel : estAmbre ? 'Visuel à fournir' : 'Sans visuel'}
                     </span>
                   )}
                 </span>
-                <span className="mt-2.5 block font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[#a3a3a0]">
+                <span className="mt-2.5 block font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-text-secondary">
                   Plan {i + 1} · {p.duree} s
                 </span>
-                <span className="mt-1 block text-[12.5px] leading-snug text-[#e4e4e1]">{p.quoi}</span>
+                <span className="mt-1 block text-[12.5px] leading-snug text-text-body">{p.quoi}</span>
               </button>
             );
           })}
@@ -163,7 +163,7 @@ export function StrategieStoryboards() {
       </Carte>
 
       {plan && (
-        <Carte pad="p-6" className="mt-[18px]" titre={`Plan ${plans.indexOf(plan) + 1} · ${plan.duree} s`} droite={<button type="button" onClick={() => setChoisi(null)} className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#a3a3a0] hover:text-[#f7f7f5]">Fermer</button>}>
+        <Carte pad="p-6" className="mt-[18px]" titre={`Plan ${plans.indexOf(plan) + 1} · ${plan.duree} s`} droite={<button type="button" onClick={() => setChoisi(null)} className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-secondary hover:text-text-primary">Fermer</button>}>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_120px]">
             <input key={`${plan.id}-q`} defaultValue={plan.quoi} onBlur={(e) => e.target.value.trim() && majPlans((ps) => ps.map((x) => (x.id === plan.id ? { ...x, quoi: e.target.value.trim() } : x)))} aria-label="Ce qu’on voit" className={`${champ} h-9`} />
             <input key={`${plan.id}-d`} defaultValue={String(plan.duree)} inputMode="decimal" onBlur={(e) => {

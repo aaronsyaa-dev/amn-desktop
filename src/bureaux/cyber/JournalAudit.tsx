@@ -138,8 +138,8 @@ export function CyberJournalAudit() {
         <div className="flex flex-col gap-2">
           {[...personnes.map((p) => ({ cle: p, nom: profils?.profileFor(p).name?.split(' ')[0] || prenomDe(p), liste: entrees.filter((e) => e.qui === p) })), { cle: 'garde', nom: 'La Garde', liste: entrees.filter((e) => e.garde) }].map((b) => (
             <div key={b.cle} className="grid grid-cols-[130px_minmax(0,1fr)] items-center gap-3">
-              <span className="flex items-center gap-2 text-[12.5px] font-semibold text-[#e4e4e1]">
-                <span className="flex h-[20px] w-[20px] items-center justify-center border border-[#2b3030] font-mono text-[8.5px] text-[#a3a3a0]">{b.cle === 'garde' ? 'G' : b.nom.slice(0, 2).toUpperCase()}</span>
+              <span className="flex items-center gap-2 text-[12.5px] font-semibold text-text-body">
+                <span className="flex h-[20px] w-[20px] items-center justify-center border border-[#2b3030] font-mono text-[8.5px] text-text-secondary">{b.cle === 'garde' ? 'G' : b.nom.slice(0, 2).toUpperCase()}</span>
                 {b.nom}
               </span>
               <span className="grid grid-cols-[repeat(24,minmax(0,1fr))] gap-[3px]">
@@ -150,7 +150,7 @@ export function CyberJournalAudit() {
               </span>
             </div>
           ))}
-          <div className="grid grid-cols-[130px_minmax(0,1fr)] gap-3 font-mono text-[9.5px] text-[#9a9a97]">
+          <div className="grid grid-cols-[130px_minmax(0,1fr)] gap-3 font-mono text-[9.5px] text-text-muted">
             <span />
             <span className="flex justify-between">
               {[0, 6, 12, 18, 23].map((h) => (
@@ -169,7 +169,7 @@ export function CyberJournalAudit() {
               ['assistance', 'Sessions d’assistance'],
             ] as [Filtre, string][]
           ).map(([f, l]) => (
-            <button key={f} type="button" aria-pressed={filtre === f} onClick={() => setFiltre(f)} className="h-8 border px-3 font-mono text-[12px] font-semibold" style={{ borderColor: filtre === f ? '#8a8a87' : '#2b3030', color: filtre === f ? '#f7f7f5' : '#a3a3a0' }}>
+            <button key={f} type="button" aria-pressed={filtre === f} onClick={() => setFiltre(f)} className="h-8 border px-3 font-mono text-[12px] font-semibold" style={{ borderColor: filtre === f ? '#8a8a87' : '#2b3030', color: filtre === f ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}>
               {l} · {entrees.filter(filtres[f]).length}
             </button>
           ))}
@@ -178,27 +178,27 @@ export function CyberJournalAudit() {
           </button>
         </div>
         <div className="mt-3">
-          {liste.length === 0 && <p className="py-6 text-[13px] text-[#a3a3a0]">Rien dans ce filtre.</p>}
+          {liste.length === 0 && <p className="py-6 text-[13px] text-text-secondary">Rien dans ce filtre.</p>}
           {liste.map((e) => {
             const estAmbre = ambre?.id === e.id;
             return (
               <div key={e.id} className="grid grid-cols-[64px_34px_minmax(0,1fr)_auto] items-center gap-3 border-b border-[#171a1a] px-2 py-2.5" style={estAmbre ? { background: 'rgba(208,154,74,.06)', boxShadow: `inset 2px 0 0 ${AMBRE}` } : undefined} data-signal-groupe={estAmbre ? 'journal-ambre' : undefined}>
-                <span className="font-mono text-[11px] tabular-nums text-[#a3a3a0]">{hhmm(e.at)}</span>
-                <span className="flex h-[20px] w-[20px] items-center justify-center rounded-full bg-[#1d2121] font-mono text-[8.5px] text-[#e4e4e1]">{e.garde ? 'G' : nom(e).slice(0, 2).toUpperCase()}</span>
-                <span className="min-w-0 truncate text-[13px] text-[#e4e4e1]">
+                <span className="font-mono text-[11px] tabular-nums text-text-secondary">{hhmm(e.at)}</span>
+                <span className="flex h-[20px] w-[20px] items-center justify-center rounded-full bg-[#1d2121] font-mono text-[8.5px] text-text-body">{e.garde ? 'G' : nom(e).slice(0, 2).toUpperCase()}</span>
+                <span className="min-w-0 truncate text-[13px] text-text-body">
                   {e.quoi}
                   {estAmbre && (
                     <>
                       <span className="ml-2 font-mono text-[9.5px] font-bold tracking-[0.12em]" style={{ color: AMBRE }}>
                         · HORS HORAIRES, À RELIRE
                       </span>
-                      <button type="button" onClick={() => relire(e)} className="ml-3 text-[11.5px] font-semibold text-[#f7f7f5] underline decoration-[#6b6b68] underline-offset-2">
+                      <button type="button" onClick={() => relire(e)} className="ml-3 text-[11.5px] font-semibold text-text-primary underline decoration-trait-sourd underline-offset-2">
                         Relu
                       </button>
                     </>
                   )}
                 </span>
-                <span className="font-mono text-[9.5px] tracking-[0.12em] text-[#9a9a97]">{e.objet}</span>
+                <span className="font-mono text-[9.5px] tracking-[0.12em] text-text-muted">{e.objet}</span>
               </div>
             );
           })}

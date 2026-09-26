@@ -100,7 +100,7 @@ export function CyberMatrice() {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[860px] border-collapse text-left">
           <thead>
-            <tr className="border-b border-[#212525] align-bottom font-mono text-[9.5px] uppercase tracking-[0.14em] text-[#9a9a97]">
+            <tr className="border-b border-[#212525] align-bottom font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted">
               <th className="py-2.5 pl-2.5 font-normal">Organisation</th>
               <th className="py-2.5 font-normal">Score</th>
               <th className="py-2.5 font-normal">8 sem.</th>
@@ -133,8 +133,8 @@ export function CyberMatrice() {
             {nonReleves.slice(0, 3).map((o) => (
               <tr key={o.id} className="h-[34px] border-b border-[#171a1a] bg-[#0c0e0e]">
                 <td colSpan={11} className="pl-2.5 text-[12.5px]">
-                  <span className="font-semibold text-[#f7f7f5]">{o.nom}</span>
-                  <span className="ml-3 text-[#9a9a97]">{o.org.lastActivityAt ? 'non relevée · déclarez un premier contrôle depuis son inventaire' : 'en arrivée · évaluée à l’activation de l’espace'}</span>
+                  <span className="font-semibold text-text-primary">{o.nom}</span>
+                  <span className="ml-3 text-text-muted">{o.org.lastActivityAt ? 'non relevée · déclarez un premier contrôle depuis son inventaire' : 'en arrivée · évaluée à l’activation de l’espace'}</span>
                 </td>
               </tr>
             ))}
@@ -142,9 +142,9 @@ export function CyberMatrice() {
               <tr className="bg-[#0c0e0e]">
                 <td colSpan={11}>
                   <button type="button" onClick={() => setTout(true)} className="flex h-10 w-full items-center gap-3 px-2.5 text-left hover:bg-white/[0.02]">
-                    <ChevronRight size={14} className="text-[#a3a3a0]" aria-hidden />
-                    <span className="text-[13px] font-semibold text-[#f7f7f5]">{repliees} autre{repliees > 1 ? 's' : ''} organisation{repliees > 1 ? 's' : ''}</span>
-                    <span className="text-[12px] text-[#9a9a97]">
+                    <ChevronRight size={14} className="text-text-secondary" aria-hidden />
+                    <span className="text-[13px] font-semibold text-text-primary">{repliees} autre{repliees > 1 ? 's' : ''} organisation{repliees > 1 ? 's' : ''}</span>
+                    <span className="text-[12px] text-text-muted">
                       de {notes[lignes.length]?.score} à {notes[notes.length - 1]?.score} · triées par score{notes.length > REPLI ? ` · ${REPLI} au plus, le reste par tranche` : ''}
                     </span>
                   </button>
@@ -154,8 +154,8 @@ export function CyberMatrice() {
           </tbody>
           {!vide && (
             <tfoot>
-              <tr className="font-mono text-[10.5px] text-[#a3a3a0]">
-                <td colSpan={3} className="py-3 pl-2.5 text-[9.5px] uppercase tracking-[0.14em] text-[#9a9a97]">
+              <tr className="font-mono text-[10.5px] text-text-secondary">
+                <td colSpan={3} className="py-3 pl-2.5 text-[9.5px] uppercase tracking-[0.14em] text-text-muted">
                   Conformes sur les {notes.length}
                 </td>
                 {CONTROLES.map((k) => {
@@ -179,7 +179,7 @@ export function CyberMatrice() {
       ) : (
         colonneAmbre && (
           <div className="mt-5 flex flex-wrap items-center gap-5 border-t border-[#1d2121] pt-5">
-            <p className="min-w-0 flex-1 text-[13.5px] leading-[1.6] text-[#a3a3a0]">
+            <p className="min-w-0 flex-1 text-[13.5px] leading-[1.6] text-text-secondary">
               {nomAmbre} est le contrôle le moins tenu du parc : {manque} organisation{manque > 1 ? 's' : ''} n’y {manque > 1 ? 'sont' : 'est'} pas. {manque > 1 ? 'Le corriger partout' : 'Le corriger'} ferait gagner {Math.max(1, Math.round(g[colonneAmbre]))} point{Math.round(g[colonneAmbre]) > 1 ? 's' : ''} à la posture moyenne, plus que tout autre contrôle.
             </p>
             <button type="button" className="bx-btn2" onClick={() => navigate(`/cyber/playbooks?campagne=${colonneAmbre}`)}>
@@ -211,13 +211,13 @@ export function CyberMatrice() {
           {critique?.breche ? (
             <>
               <Ligne a={hhmm(critique.breche.prisLe ?? critique.breche.depuis)} b={`${critique.nom} · exposition : ${critique.breche.titre}`} c="CRITIQUE" />
-              <p className="mt-4 text-[13px] leading-relaxed text-[#a3a3a0]">
+              <p className="mt-4 text-[13px] leading-relaxed text-text-secondary">
                 {critique.breche.prisPar ? `Suivi, pris à ${hhmm(critique.breche.prisLe ?? critique.breche.depuis)}.` : 'Personne ne l’a encore pris.'} La case est rouge dans la matrice ; ici, à l’encre.
                 {c.orgs.filter((o) => o.breche).length > 1 ? ` ${enLettres(c.orgs.filter((o) => o.breche).length - 1, true)} autre${c.orgs.filter((o) => o.breche).length > 2 ? 's' : ''} organisation${c.orgs.filter((o) => o.breche).length > 2 ? 's' : ''} au critique, écrite${c.orgs.filter((o) => o.breche).length > 2 ? 's' : ''} à l’encre dans leur ligne.` : ''}
               </p>
             </>
           ) : (
-            <p className="text-[13px] text-[#a3a3a0]">Aucun critique ouvert au parc.</p>
+            <p className="text-[13px] text-text-secondary">Aucun critique ouvert au parc.</p>
           )}
         </Carte>
       </div>
@@ -227,7 +227,7 @@ export function CyberMatrice() {
 
 function Sparkline({ valeurs }: { valeurs: (number | null)[] }) {
   const pts = valeurs.map((v, i) => (v === null ? null : [i, v] as [number, number])).filter(Boolean) as [number, number][];
-  if (pts.length < 2) return <span className="font-mono text-[10px] text-[#9a9a97]">—</span>;
+  if (pts.length < 2) return <span className="font-mono text-[10px] text-text-muted">—</span>;
   const min = Math.min(...pts.map((p) => p[1]));
   const max = Math.max(...pts.map((p) => p[1]));
   const y = (v: number) => (max === min ? 8 : 14 - ((v - min) / (max - min)) * 12);
@@ -244,7 +244,7 @@ function Case({ e, rouge }: { e: EtatReleve | null; rouge: boolean }) {
     return rouge ? (
       <span className="mx-auto block h-[18px] w-[26px]" style={{ background: ROUGE.trait, boxShadow: '0 0 12px rgba(255,66,48,.5)' }} title="critique" />
     ) : (
-      <span className="mx-auto flex h-[18px] w-[26px] items-center justify-center border border-[#e4e4e1] font-mono text-[8px] font-bold text-[#e4e4e1]" title="critique">
+      <span className="mx-auto flex h-[18px] w-[26px] items-center justify-center border border-text-body font-mono text-[8px] font-bold text-text-body" title="critique">
         CR
       </span>
     );
@@ -268,8 +268,8 @@ function LigneMatrice({ o, colonneAmbre, rouge, onEditer, edition, onFermer }: {
   };
   return (
     <tr className="h-[39px] border-b border-[#171a1a] hover:bg-white/[0.015]">
-      <td className="max-w-[220px] truncate pl-2.5 text-[13px] font-semibold text-[#f7f7f5]">{o.nom}</td>
-      <td className="font-mono text-[13px] font-semibold tabular-nums text-[#f7f7f5]">{o.score}</td>
+      <td className="max-w-[220px] truncate pl-2.5 text-[13px] font-semibold text-text-primary">{o.nom}</td>
+      <td className="font-mono text-[13px] font-semibold tabular-nums text-text-primary">{o.score}</td>
       <td>
         <Sparkline valeurs={o.courbe} />
       </td>
@@ -284,14 +284,14 @@ function LigneMatrice({ o, colonneAmbre, rouge, onEditer, edition, onFermer }: {
             {edition === k.cle && (
               <div className="absolute right-0 top-full z-20 w-[170px] border border-[#2b3030] bg-[#111414] p-1.5 text-left shadow-[0_18px_40px_-16px_rgba(0,0,0,1)]" role="menu">
                 {(['conforme', 'partiel', 'non_conforme'] as EtatControle[]).map((x) => (
-                  <button key={x} type="button" role="menuitem" onClick={() => declarer(k.cle, x)} className="block w-full px-2.5 py-1.5 text-left text-[12.5px] text-[#e4e4e1] hover:bg-[#1a1f1f]">
+                  <button key={x} type="button" role="menuitem" onClick={() => declarer(k.cle, x)} className="block w-full px-2.5 py-1.5 text-left text-[12.5px] text-text-body hover:bg-[#1a1f1f]">
                     {x === 'non_conforme' ? 'Non conforme' : x.charAt(0).toUpperCase() + x.slice(1)}
                   </button>
                 ))}
-                <button type="button" role="menuitem" onClick={() => declarer(k.cle, null)} className="block w-full px-2.5 py-1.5 text-left text-[12.5px] text-[#a3a3a0] hover:bg-[#1a1f1f]">
+                <button type="button" role="menuitem" onClick={() => declarer(k.cle, null)} className="block w-full px-2.5 py-1.5 text-left text-[12.5px] text-text-secondary hover:bg-[#1a1f1f]">
                   Effacer la déclaration
                 </button>
-                <button type="button" role="menuitem" onClick={onFermer} className="block w-full px-2.5 py-1.5 text-left text-[12px] text-[#9a9a97] hover:bg-[#1a1f1f]">
+                <button type="button" role="menuitem" onClick={onFermer} className="block w-full px-2.5 py-1.5 text-left text-[12px] text-text-muted hover:bg-[#1a1f1f]">
                   Fermer
                 </button>
               </div>

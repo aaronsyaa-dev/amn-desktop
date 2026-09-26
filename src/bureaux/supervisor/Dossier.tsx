@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
-import { useSync } from '../../state/SyncContext';
+import { useCollection, useSync } from '../../state/SyncContext';
 import { useProfilesOptionnel } from '../../state/ProfilesContext';
 import { useOrgContext } from '../../state/OrgContextContext';
 import { bridge } from '../../lib/bridge';
@@ -13,9 +13,10 @@ import { useSupervisor } from '../donnees/useSupervisor';
 import { useCyber } from '../donnees/cyber';
 import { useSourceBureaux } from '../donnees/source';
 import { LIBELLE_TYPE, texteReste } from '../donnees/file';
-import type { DossierOrg, EtatModuleSeule } from '../donnees/types';
+import { STATIONS_BUG, type DossierOrg, type EtatModuleSeule, type ParcoursBug } from '../donnees/types';
 import { Carte, Chargement, EnTete, Ligne, Stat } from '../ui/kit';
 import { GestesElement } from './ATraiter';
+import { NOMS as NOMS_STATIONS } from './Bug';
 import { deNom, hhmm, ilYA, moisLong, prenomDe, signe } from '../format';
 import { initiales } from '../donnees/strategie';
 
@@ -64,6 +65,15 @@ export function SupervisorDossier() {
   const [message, setMessage] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const catalogue = useMemo(catalogueModules, []);
+  /* Les parcours de bug de cette cliente : on doit pouvoir y revenir une fois la page quittée. Les ouverts d'abord. */
+  const tousParcours = useCollection<ParcoursBug>('parcoursBugs');
+  const parcours = useMemo(
+    () =>
+      tousParcours
+        .filter((p) => p.orgId === orgId)
+        .sort((a, b) => Number(Boolean(a.stations.cloture)) - Number(Boolean(b.stations.cloture)) || b.ouvertLe.localeCompare(a.ouvertLe)),
+    [tousParcours, orgId],
+  );
 
   useEffect(() => {
     if (!orgId) return;
@@ -143,10 +153,10 @@ export function SupervisorDossier() {
       <section className="bx-dom grid grid-cols-1 gap-6 p-7 lg:grid-cols-[minmax(0,1fr)_330px]">
         <div className="min-w-0">
           <div className="flex items-center gap-4">
-            <span className="flex h-11 w-11 flex-none items-center justify-center border border-[#2b2b2b] bg-[#1a1a1a] font-mono text-[14px] font-semibold text-[#e4e4e1]">{initiales(o.nom)}</span>
+            <span className="flex h-11 w-11 flex-none items-center justify-center border border-[#2b2b2b] bg-[#1a1a1a] font-mono text-[14px] font-semibold text-text-body">{initiales(o.nom)}</span>
             <div className="min-w-0">
-              <h2 className="truncate text-[30px] font-bold leading-tight tracking-[-0.03em] text-[#f7f7f5]">{o.nom}</h2>
-              <p className="text-[12.5px] text-[#a3a3a0]">
+              <h2 className="truncate text-[30px] font-bold leading-tight tracking-[-0.03em] text-text-primary">{o.nom}</h2>
+              <p className="text-[12.5px] text-text-secondary">
                 {[dossier.metier, dossier.ville, `cliente depuis ${moisLong(o.org.createdAt)}`, dossier.groupe ? `groupe ${dossier.groupe}` : 'seule, sans groupe'].filter(Boolean).join(' · ')}
               </p>
             </div>
@@ -158,17 +168,17 @@ export function SupervisorDossier() {
             <span>
               <Stat l="Suivi" v={suiviTexte} />
               {o.suivi.type !== 'humain' && (
-                <button type="button" onClick={suivre} className="mt-1.5 text-[12px] font-semibold text-[#e4e4e1] underline decoration-[#6b6b68] underline-offset-4">
+                <button type="button" onClick={suivre} className="mt-1.5 text-[12px] font-semibold text-text-body underline decoration-trait-sourd underline-offset-4">
                   La suivre
                 </button>
               )}
             </span>
           </div>
-          <div className="mt-6 flex flex-wrap items-center gap-2.5 border-t border-[#1f1f1f] pt-4 text-[12.5px] text-[#a3a3a0]">
+          <div className="mt-6 flex flex-wrap items-center gap-2.5 border-t border-border pt-4 text-[12.5px] text-text-secondary">
             {contact?.nom ? (
               <>
-                <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[#2b2b2b] font-mono text-[9px] font-semibold text-[#e4e4e1]">{initiales(contact.nom)}</span>
-                <span className="font-semibold text-[#f7f7f5]">{contact.nom}</span>
+                <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[#2b2b2b] font-mono text-[9px] font-semibold text-text-body">{initiales(contact.nom)}</span>
+                <span className="font-semibold text-text-primary">{contact.nom}</span>
                 {[contact.role, contact.tel, contact.email].filter(Boolean).join(' · ')}
               </>
             ) : (
@@ -181,11 +191,11 @@ export function SupervisorDossier() {
             <span className="block font-mono text-[9.5px] font-bold uppercase tracking-[0.18em]" style={{ color: AMBRE }}>
               Ce qui l’attend
             </span>
-            <span className="mt-3 block text-[16.5px] font-semibold leading-snug text-[#f7f7f5]">
+            <span className="mt-3 block text-[16.5px] font-semibold leading-snug text-text-primary">
               {premier.phrase.replace(/[.\s]+$/, '')}
               {premier.qui ? '.' : `, ${ilYA(premier.depuis, m.maintenant)}.`}
             </span>
-            <span className="mt-2 block text-[12px] leading-relaxed text-[#a3a3a0]">
+            <span className="mt-2 block text-[12px] leading-relaxed text-text-secondary">
               {LIBELLE_TYPE[premier.type].toLowerCase()} · {texteReste(premier.resteMs)}
               {attend.length > 1 ? ` · et ${attend.length - 1} autre${attend.length > 2 ? 's' : ''}` : ''}
             </span>
@@ -194,18 +204,18 @@ export function SupervisorDossier() {
             </div>
           </div>
         ) : (
-          <div className="border border-[#252525] p-5 text-[13px] leading-relaxed text-[#a3a3a0]">Rien ne l’attend en ce moment.</div>
+          <div className="border border-[#252525] p-5 text-[13px] leading-relaxed text-text-secondary">Rien ne l’attend en ce moment.</div>
         )}
       </section>
 
       <div className="mt-[18px] grid grid-cols-1 gap-[18px] lg:grid-cols-[minmax(0,1fr)_440px]">
         <div className="flex flex-col gap-[18px]">
           <Carte titre={`Son espace · ${cles.length} module${cles.length > 1 ? 's' : ''}${ouverts ? ' installés' : ''}`} droite="groupés par famille, avec leur état pour elle">
-            {ouverts === null && <p className="mb-4 text-[12.5px] text-[#a3a3a0]">Sa formule ouvre tout le catalogue : seuls les modules qui ont un état pour elle sont listés.</p>}
+            {ouverts === null && <p className="mb-4 text-[12.5px] text-text-secondary">Sa formule ouvre tout le catalogue : seuls les modules qui ont un état pour elle sont listés.</p>}
             <div className="flex flex-col gap-3.5">
               {ordreFamilles.map(([famille, liste]) => (
                 <div key={famille} className="grid grid-cols-[132px_minmax(0,1fr)] gap-3">
-                  <span className="pt-2 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[#9a9a97]">{famille}</span>
+                  <span className="pt-2 font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted">{famille}</span>
                   <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
                     {liste.map((k) => (
                       <TuileModule key={k} nom={catalogue.get(k)!.nom} etat={etats[k] ?? null} alt={etats[k]?.alternative ? catalogue.get(etats[k].alternative!)?.nom ?? etats[k].alternative! : null} onReactiver={() => void poserEtat(k, null, etats[k]?.etat === 'pause' ? true : null)} />
@@ -214,7 +224,7 @@ export function SupervisorDossier() {
                 </div>
               ))}
             </div>
-            <div className="mt-5 flex flex-wrap gap-2 border-t border-[#1f1f1f] pt-4">
+            <div className="mt-5 flex flex-wrap gap-2 border-t border-border pt-4">
               <GesteDossier titre="Ajouter un module" sous="le chercheur, pour elle" onClick={() => navigate(`/supervisor/chercheur?org=${o.id}`)} />
               <GesteDossier titre="Mettre un module en pause" sous="pour elle seule" actif={geste === 'pause'} onClick={() => setGeste(geste === 'pause' ? null : 'pause')} />
               <GesteDossier titre="Épingler une version" sous="pour elle seule" actif={geste === 'epingler'} onClick={() => setGeste(geste === 'epingler' ? null : 'epingler')} />
@@ -240,16 +250,34 @@ export function SupervisorDossier() {
               />
             )}
             {message && (
-              <p className="mt-3 text-[12.5px] text-[#e4e4e1]" role="alert">
+              <p className="mt-3 text-[12.5px] text-text-body" role="alert">
                 {message}
               </p>
             )}
           </Carte>
           <Carte titre={`Demandes et incidents${attend.length ? ` · ${attend.length}` : ''}`}>
             {attend.length === 0 ? (
-              <p className="text-[13px] text-[#a3a3a0]">Aucune demande ni incident ouvert.</p>
+              <p className="text-[13px] text-text-secondary">Aucune demande ni incident ouvert.</p>
             ) : (
               attend.map((x) => <Ligne key={x.cle} colonnes="78px minmax(0,1fr) auto" a={LIBELLE_TYPE[x.type]} b={x.phrase} c={ilYA(x.depuis, m.maintenant).replace('il y a ', '')} lien="/supervisor/a-traiter" />)
+            )}
+            {parcours.length > 0 && (
+              <div className="mt-4">
+                <span className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-text-muted">Bugs chez elle seule</span>
+                {parcours.map((p) => {
+                  const station = STATIONS_BUG.find((s) => !p.stations[s.cle]);
+                  return (
+                    <Ligne
+                      key={p.id}
+                      colonnes="78px minmax(0,1fr) auto"
+                      a={p.incidentId ?? 'bug'}
+                      b={`${catalogue.get(p.module)?.nom ?? p.module} · ${p.titre}`}
+                      c={station ? NOMS_STATIONS[station.cle] : 'clos'}
+                      lien={`/supervisor/bug/${p.id}`}
+                    />
+                  );
+                })}
+              </div>
             )}
             <div className="mt-4">
               <Link to={`/supervisor/bug/nouveau?org=${o.id}`} className="bx-lien">
@@ -263,33 +291,33 @@ export function SupervisorDossier() {
             {personnes === null ? (
               <Chargement texte="Les comptes" />
             ) : personnes.length === 0 ? (
-              <p className="text-[13px] text-[#a3a3a0]">Aucun compte encore.</p>
+              <p className="text-[13px] text-text-secondary">Aucun compte encore.</p>
             ) : (
               personnes.map((p) => (
                 <div key={p.id} className="flex items-center gap-3 border-b border-[#1a1a1a] py-2.5">
-                  <span className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full bg-[#2b2b2b] font-mono text-[9px] font-semibold text-[#e4e4e1]">{initiales(prenomDe(p.email))}</span>
+                  <span className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full bg-[#2b2b2b] font-mono text-[9px] font-semibold text-text-body">{initiales(prenomDe(p.email))}</span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-semibold text-[#f7f7f5]">{p.email}</span>
-                    <span className="block text-[11.5px] text-[#9a9a97]">{ROLES[p.role] ?? p.role}</span>
+                    <span className="block truncate text-[13px] font-semibold text-text-primary">{p.email}</span>
+                    <span className="block text-[11.5px] text-text-muted">{ROLES[p.role] ?? p.role}</span>
                   </span>
-                  <span className="font-mono text-[10.5px] text-[#9a9a97]">{p.status === 'invited' ? 'invitée' : p.status === 'suspended' ? 'suspendue' : p.joinedAt ? ilYA(p.joinedAt, m.maintenant).replace('il y a ', '') : ''}</span>
+                  <span className="font-mono text-[10.5px] text-text-muted">{p.status === 'invited' ? 'invitée' : p.status === 'suspended' ? 'suspendue' : p.joinedAt ? ilYA(p.joinedAt, m.maintenant).replace('il y a ', '') : ''}</span>
                 </div>
               ))
             )}
           </Carte>
           <Carte titre="Notes internes" droite="visibles de l’équipe seule">
-            {(dossier.notes ?? []).length === 0 && <p className="text-[13px] text-[#a3a3a0]">Pas encore de note.</p>}
+            {(dossier.notes ?? []).length === 0 && <p className="text-[13px] text-text-secondary">Pas encore de note.</p>}
             {[...(dossier.notes ?? [])].reverse().slice(0, 4).map((n) => (
               <div key={n.id} className="mb-3">
-                <p className="border-l border-[#3a3a3a] bg-[#141414] px-3.5 py-2.5 text-[13px] leading-relaxed text-[#e4e4e1]">{n.texte}</p>
-                <span className="mt-1.5 block font-mono text-[9.5px] uppercase tracking-[0.1em] text-[#9a9a97]">
+                <p className="border-l border-border-strong bg-raised px-3.5 py-2.5 text-[13px] leading-relaxed text-text-body">{n.texte}</p>
+                <span className="mt-1.5 block font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-muted">
                   {nomDe(n.par)} · {moisLong(n.at).split(' ')[0] === moisLong(new Date()).split(' ')[0] ? hhmm(n.at) : moisLong(n.at)}
                 </span>
               </div>
             ))}
-            {dossier.body && <p className="mb-3 whitespace-pre-line text-[12.5px] text-[#a3a3a0]">{dossier.body}</p>}
+            {dossier.body && <p className="mb-3 whitespace-pre-line text-[12.5px] text-text-secondary">{dossier.body}</p>}
             <div className="mt-2 flex gap-2">
-              <input value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && ajouterNote()} placeholder="Une note pour l’équipe…" aria-label="Une note pour l’équipe" className="h-9 min-w-0 flex-1 border border-[#2b2b2b] bg-transparent px-3 text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]" />
+              <input value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && ajouterNote()} placeholder="Une note pour l’équipe…" aria-label="Une note pour l’équipe" className="h-9 min-w-0 flex-1 border border-[#2b2b2b] bg-transparent px-3 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]" />
               <button type="button" className="bx-btn2" disabled={!note.trim()} onClick={ajouterNote}>
                 Noter
               </button>
@@ -297,7 +325,7 @@ export function SupervisorDossier() {
           </Carte>
           <Carte titre="Les échanges" droite={(dossier.echanges ?? []).length > 4 ? 'les 4 derniers' : ''}>
             {(dossier.echanges ?? []).length === 0 ? (
-              <p className="text-[13px] text-[#a3a3a0]">Aucun échange noté.</p>
+              <p className="text-[13px] text-text-secondary">Aucun échange noté.</p>
             ) : (
               [...(dossier.echanges ?? [])]
                 .sort((a, b) => b.at.localeCompare(a.at))
@@ -323,20 +351,20 @@ function TuileModule({ nom, etat, alt, onReactiver }: { nom: string; etat: EtatM
       className="min-h-[58px] px-3 py-2.5"
       title={etat?.raison ? `Pour elle : ${etat.raison}` : undefined}
       style={{
-        background: pause ? '#111' : '#161616',
+        background: pause ? '#111' : 'var(--color-surface-hover)',
         border: pause ? '1px dashed #4a4a48' : '1px solid #252525',
         backgroundImage: pause ? 'repeating-linear-gradient(135deg, rgba(255,255,255,.05) 0 1px, transparent 1px 7px)' : undefined,
       }}
     >
-      <span className="block truncate text-[12.5px] font-semibold" style={{ color: pause ? '#a3a3a0' : '#f7f7f5' }}>{nom}</span>
-      <span className="mt-1.5 block font-mono text-[9.5px] uppercase leading-snug tracking-[0.12em] text-[#9a9a97]">
+      <span className="block truncate text-[12.5px] font-semibold" style={{ color: pause ? 'var(--color-text-secondary)' : 'var(--color-text-primary)' }}>{nom}</span>
+      <span className="mt-1.5 block font-mono text-[9.5px] uppercase leading-snug tracking-[0.12em] text-text-muted">
         {!etat && 'actif'}
         {pause && '‖ en pause pour elle'}
         {etat?.etat === 'epinglee' && `⌖ ${etat.version} épinglée`}
         {etat?.etat === 'alternative' && `⇄ ${alt ?? 'alternative'}, temporaire`}
       </span>
       {etat && (
-        <button type="button" onClick={onReactiver} className="mt-1 text-[11px] font-semibold text-[#e4e4e1] underline decoration-[#6b6b68] underline-offset-2">
+        <button type="button" onClick={onReactiver} className="mt-1 text-[11px] font-semibold text-text-body underline decoration-trait-sourd underline-offset-2">
           {pause ? 'Réactiver pour elle' : 'Retirer'}
         </button>
       )}
@@ -346,9 +374,9 @@ function TuileModule({ nom, etat, alt, onReactiver }: { nom: string; etat: EtatM
 
 function GesteDossier({ titre, sous, onClick, actif = false }: { titre: string; sous: string; onClick: () => void; actif?: boolean }) {
   return (
-    <button type="button" onClick={onClick} aria-pressed={actif} className="border px-3.5 py-2 text-left hover:border-[#6b6b68]" style={{ borderColor: actif ? '#8a8a87' : '#2b2b2b', background: actif ? '#1a1a1a' : 'transparent' }}>
-      <span className="block text-[12.5px] font-semibold text-[#f7f7f5]">{titre}</span>
-      <span className="block text-[11.5px] text-[#9a9a97]">{sous}</span>
+    <button type="button" onClick={onClick} aria-pressed={actif} className="border px-3.5 py-2 text-left hover:border-trait-sourd" style={{ borderColor: actif ? '#8a8a87' : '#2b2b2b', background: actif ? '#1a1a1a' : 'transparent' }}>
+      <span className="block text-[12.5px] font-semibold text-text-primary">{titre}</span>
+      <span className="block text-[11.5px] text-text-muted">{sous}</span>
     </button>
   );
 }
@@ -358,7 +386,7 @@ function FormGeste({ geste, modules, tous, onValider, onAnnuler }: { geste: Excl
   const [raison, setRaison] = useState('');
   const [version, setVersion] = useState('');
   const [alternative, setAlternative] = useState(tous[0]?.[0] ?? '');
-  const champ = 'h-9 border border-[#2b2b2b] bg-[#141414] px-2.5 text-[13px] text-[#f7f7f5] outline-none focus:border-[#8a8a87]';
+  const champ = 'h-9 border border-[#2b2b2b] bg-raised px-2.5 text-[13px] text-text-primary outline-none focus:border-[#8a8a87]';
   return (
     <div className="mt-4 border border-[#2b2b2b] bg-[#0f0f0f] p-4">
       <div className="flex flex-wrap items-center gap-2.5">
@@ -381,7 +409,7 @@ function FormGeste({ geste, modules, tous, onValider, onAnnuler }: { geste: Excl
         )}
         <input value={raison} onChange={(e) => setRaison(e.target.value)} placeholder="Pourquoi, pour elle" aria-label="La raison" className={`${champ} min-w-0 flex-1`} />
       </div>
-      <p className="mt-2.5 text-[12px] leading-relaxed text-[#9a9a97]">
+      <p className="mt-2.5 text-[12px] leading-relaxed text-text-muted">
         {geste === 'pause' && 'Le module se ferme chez elle seule ; ses données restent. Il se rouvre d’un geste, ici.'}
         {geste === 'epingler' && 'La version est notée au dossier et suivie par l’équipe produit ; le serveur ne sert pas encore une version ancienne d’un module automatiquement.'}
         {geste === 'alternative' && 'Le module proposé s’ouvre chez elle seule, le temps que l’autre soit réparé.'}

@@ -48,7 +48,7 @@ export function CyberHameconnage() {
       : exos.length
         ? 'Les exercices passés ont leur bilan.'
         : 'Aucun exercice planifié.';
-  const champ = 'h-9 border border-[#212525] bg-transparent px-2.5 text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]';
+  const champ = 'h-9 border border-[#212525] bg-transparent px-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]';
 
   return (
     <>
@@ -103,34 +103,34 @@ export function CyberHameconnage() {
                 <div key={e.id} className="border-b border-[#1d2121] py-3.5" style={estAmbre ? { boxShadow: `inset 2px 0 0 ${AMBRE}`, paddingLeft: 12, background: 'rgba(208,154,74,.05)' } : undefined} data-signal-groupe={estAmbre ? 'hame-ambre' : undefined}>
                   <div className="flex flex-wrap items-baseline justify-between gap-3">
                     <span className="min-w-0">
-                      <span className="block text-[14px] font-semibold text-[#f7f7f5]">{e.titre}</span>
-                      <span className="block text-[12px] text-[#a3a3a0]">
+                      <span className="block text-[14px] font-semibold text-text-primary">{e.titre}</span>
+                      <span className="block text-[12px] text-text-secondary">
                         {nom(e.orgId)} · {jourMois(e.date)} · accord : {e.accordPar} · {e.cibles} personne{e.cibles > 1 ? 's' : ''}
                       </span>
                     </span>
-                    <span className="font-mono text-[10.5px] uppercase" style={{ color: estAmbre ? AMBRE : '#9a9a97' }}>
+                    <span className="font-mono text-[10.5px] uppercase" style={{ color: estAmbre ? AMBRE : 'var(--color-text-muted)' }}>
                       {e.cliques === null ? (e.date >= aujourdHui ? 'à venir' : 'chiffres à noter') : estAmbre ? 'bilan à faire' : 'fait'}
                     </span>
                   </div>
                   {e.cliques !== null && (
                     <div className="mt-3 grid grid-cols-[70px_minmax(0,1fr)_60px] items-center gap-x-3 gap-y-1.5">
-                      <span className="font-mono text-[10px] uppercase text-[#9a9a97]">cliqué</span>
+                      <span className="font-mono text-[10px] uppercase text-text-muted">cliqué</span>
                       <span className="h-[8px] bg-[#1d2121]" aria-hidden>
                         <span className="block h-full" style={{ width: `${(t ?? 0) * 100}%`, background: estAmbre ? AMBRE : '#8a8a87' }} />
                       </span>
-                      <span className="text-right font-mono text-[11px] tabular-nums text-[#e4e4e1]">
+                      <span className="text-right font-mono text-[11px] tabular-nums text-text-body">
                         {e.cliques} / {e.cibles}
                       </span>
-                      <span className="font-mono text-[10px] uppercase text-[#9a9a97]">signalé</span>
+                      <span className="font-mono text-[10px] uppercase text-text-muted">signalé</span>
                       <span className="h-[8px] bg-[#1d2121]" aria-hidden>
-                        <span className="block h-full bg-[#e4e4e1]" style={{ width: `${((e.signales ?? 0) / e.cibles) * 100}%` }} />
+                        <span className="block h-full bg-text-body" style={{ width: `${((e.signales ?? 0) / e.cibles) * 100}%` }} />
                       </span>
-                      <span className="text-right font-mono text-[11px] tabular-nums text-[#e4e4e1]">
+                      <span className="text-right font-mono text-[11px] tabular-nums text-text-body">
                         {e.signales ?? 0} / {e.cibles}
                       </span>
                     </div>
                   )}
-                  {e.notes && <p className="mt-2 text-[12.5px] leading-relaxed text-[#a3a3a0]">{e.notes}</p>}
+                  {e.notes && <p className="mt-2 text-[12.5px] leading-relaxed text-text-secondary">{e.notes}</p>}
                   <div className="mt-2 flex gap-4">
                     {e.date < aujourdHui && (
                       <button type="button" className="bx-lien" onClick={() => setChiffres({ id: e.id, cliques: String(e.cliques ?? ''), signales: String(e.signales ?? ''), notes: e.notes ?? '' })}>
@@ -165,10 +165,10 @@ export function CyberHameconnage() {
           </Carte>
           <div className="flex flex-col gap-[18px] self-start">
             <Carte titre="À venir" droite={aVenir.length || ''}>
-              {aVenir.length === 0 ? <p className="text-[13px] text-[#a3a3a0]">Rien de planifié.</p> : aVenir.map((e) => <p key={e.id} className="border-b border-[#1d2121] py-2 text-[13px] text-[#e4e4e1]">{jourMois(e.date)} · {nom(e.orgId)}</p>)}
+              {aVenir.length === 0 ? <p className="text-[13px] text-text-secondary">Rien de planifié.</p> : aVenir.map((e) => <p key={e.id} className="border-b border-[#1d2121] py-2 text-[13px] text-text-body">{jourMois(e.date)} · {nom(e.orgId)}</p>)}
             </Carte>
             <Carte titre="La règle">
-              <p className="text-[13px] leading-relaxed text-[#a3a3a0]">Au-delà de {Math.round(SEUIL_CLIC * 100)} % de clics, un bilan s’écrit avec la cliente : ce qu’on a appris, et ce qu’on change. Un exercice ne sert qu’avec son bilan.</p>
+              <p className="text-[13px] leading-relaxed text-text-secondary">Au-delà de {Math.round(SEUIL_CLIC * 100)} % de clics, un bilan s’écrit avec la cliente : ce qu’on a appris, et ce qu’on change. Un exercice ne sert qu’avec son bilan.</p>
             </Carte>
           </div>
         </div>

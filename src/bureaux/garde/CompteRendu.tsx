@@ -158,20 +158,20 @@ export function GardeCompteRendu() {
           <div data-signal-groupe={tranche ? undefined : 'compte-rendu'}>
             {etapes.map((e) => (
               <div key={e.cle} className="grid grid-cols-[120px_minmax(0,1fr)] gap-5 border-b border-[#1d1d1d] py-4">
-                <span className="font-mono text-[9.5px] font-medium uppercase leading-[1.8] tracking-[0.14em]" style={{ color: e.ambre && !tranche ? AMBRE : '#9a9a97' }}>
+                <span className="font-mono text-[9.5px] font-medium uppercase leading-[1.8] tracking-[0.14em]" style={{ color: e.ambre && !tranche ? AMBRE : 'var(--color-text-muted)' }}>
                   {e.cle}
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-[14.5px] font-semibold leading-snug text-[#f7f7f5]">{e.titre}</span>
-                  <span className="mt-1 block text-[12.5px] leading-relaxed text-[#a3a3a0]">{e.detail}</span>
+                  <span className="block text-[14.5px] font-semibold leading-snug text-text-primary">{e.titre}</span>
+                  <span className="mt-1 block text-[12.5px] leading-relaxed text-text-secondary">{e.detail}</span>
                 </span>
               </div>
             ))}
           </div>
-          <span className="mt-5 block font-mono text-[9.5px] uppercase tracking-[0.16em] text-[#9a9a97]">Les preuves</span>
-          <div className="mt-2 border border-[#262626] bg-[#0b0b0b] px-4 py-3 font-mono text-[11.5px] leading-[1.9] text-[#e4e4e1]">
+          <span className="mt-5 block font-mono text-[9.5px] uppercase tracking-[0.16em] text-text-muted">Les preuves</span>
+          <div className="mt-2 border border-border-raised bg-sunken px-4 py-3 font-mono text-[11.5px] leading-[1.9] text-text-body">
             {preuves.length === 0 ? (
-              <span className="text-[#a3a3a0]">Aucune ligne de journal pour ce dossier : la remontée seule en garde la trace.</span>
+              <span className="text-text-secondary">Aucune ligne de journal pour ce dossier : la remontée seule en garde la trace.</span>
             ) : (
               preuves.map((e) => (
                 <span key={e.id} className="block truncate">
@@ -182,9 +182,9 @@ export function GardeCompteRendu() {
             )}
           </div>
           {tranche ? (
-            <div className="mt-5 border border-[#262626] px-4 py-3.5">
-              <span className="block text-[14px] font-semibold text-[#f7f7f5]">Décision transmise au chef : {tranche}.</span>
-              <span className="mt-1 block text-[12.5px] text-[#a3a3a0]">Elle est au journal, et le dossier quitte la pile.</span>
+            <div className="mt-5 border border-border-raised px-4 py-3.5">
+              <span className="block text-[14px] font-semibold text-text-primary">Décision transmise au chef : {tranche}.</span>
+              <span className="mt-1 block text-[12.5px] text-text-secondary">Elle est au journal, et le dossier quitte la pile.</span>
             </div>
           ) : (
             <>
@@ -192,7 +192,7 @@ export function GardeCompteRendu() {
                 <span className="block font-mono text-[9.5px] font-bold uppercase tracking-[0.14em]" style={{ color: AMBRE }}>
                   La question à l’humain
                 </span>
-                <span className="mt-1.5 block text-[15px] font-semibold text-[#f7f7f5]">{question}</span>
+                <span className="mt-1.5 block text-[15px] font-semibold text-text-primary">{question}</span>
               </div>
               <div className="mt-3 flex flex-wrap gap-2.5">
                 {d.options.map((o, i) => (
@@ -210,15 +210,15 @@ export function GardeCompteRendu() {
 
         <Carte className="self-start" titre="Les autres comptes rendus" droite="en attente">
           {autres.length === 0 ? (
-            <p className="text-[13px] text-[#a3a3a0]">Aucun autre compte rendu n’attend.</p>
+            <p className="text-[13px] text-text-secondary">Aucun autre compte rendu n’attend.</p>
           ) : (
             autres.map((x) => (
               <Link key={x.id} to={`/garde/compte-rendu/${encodeURIComponent(x.id)}`} className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-baseline gap-3 border-b border-[#1d1d1d] py-3 hover:bg-white/[0.02]">
-                <span className="font-mono text-[10.5px] uppercase text-[#9a9a97]">{jourCourt(x.depuis).split(' ')[0]}</span>
-                <span className="text-[13px] leading-snug text-[#e4e4e1]">
+                <span className="font-mono text-[10.5px] uppercase text-text-muted">{jourCourt(x.depuis).split(' ')[0]}</span>
+                <span className="text-[13px] leading-snug text-text-body">
                   {g.chefs.find((c) => c.key === x.equipe)?.nom ?? x.equipe} · {sansPoint(x.titre)}
                 </span>
-                <span className="font-mono text-[10px] uppercase text-[#9a9a97]">{lu(x) ? 'lu' : 'à lire'}</span>
+                <span className="font-mono text-[10px] uppercase text-text-muted">{lu(x) ? 'lu' : 'à lire'}</span>
               </Link>
             ))
           )}

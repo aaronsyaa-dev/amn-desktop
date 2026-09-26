@@ -75,7 +75,7 @@ function Bibliotheque({ p }: { p: Piece }) {
   };
 
   const titre = n === 0 ? 'Aucun prompt encore.' : `${enLettres(n, true)} prompt${n > 1 ? 's' : ''}, et ce qu’il${n > 1 ? 's ont' : ' a'} donné.`;
-  const champ = 'w-full border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]';
+  const champ = 'w-full border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]';
 
   return (
     <>
@@ -119,10 +119,10 @@ function Bibliotheque({ p }: { p: Piece }) {
                 const on = x.id === pr?.id;
                 const vs = [...x.versions].sort((a, b) => a.v - b.v);
                 return (
-                  <li key={x.id} className="flex items-center gap-4 border-b border-[#1f1e1c] px-3 py-3.5" style={on ? { background: '#1c1b19', boxShadow: 'inset 2px 0 0 #f7f7f5' } : undefined}>
+                  <li key={x.id} className="flex items-center gap-4 border-b border-[#1f1e1c] px-3 py-3.5" style={on ? { background: '#1c1b19', boxShadow: 'inset 2px 0 0 var(--color-text-primary)' } : undefined}>
                     <button type="button" onClick={() => { setOuvert({ id: x.id, v: null }); setComparer(false); }} className="min-w-0 flex-1 text-left" aria-pressed={on}>
-                      <span className="block truncate text-[14px] font-semibold text-[#f7f7f5]">{x.nom}</span>
-                      {x.categorie && <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.14em] text-[#9a9a97]">{x.categorie}</span>}
+                      <span className="block truncate text-[14px] font-semibold text-text-primary">{x.nom}</span>
+                      {x.categorie && <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">{x.categorie}</span>}
                     </button>
                     <span className="flex flex-none items-center" aria-label={`Les versions de ${x.nom}`}>
                       {vs.map((v, i) => {
@@ -136,8 +136,8 @@ function Bibliotheque({ p }: { p: Piece }) {
                               onClick={() => { setOuvert({ id: x.id, v: v.v }); setComparer(false); }}
                               className="flex h-[22px] min-w-[26px] items-center justify-center px-1 font-mono text-[10.5px] font-semibold"
                               style={{
-                                border: `1px solid ${ambre ? AMBRE : v.enLigne ? '#f7f7f5' : '#3a3834'}`,
-                                color: ambre ? AMBRE : v.enLigne || vue ? '#f7f7f5' : '#9a9a97',
+                                border: `1px solid ${ambre ? AMBRE : v.enLigne ? 'var(--color-text-primary)' : '#3a3834'}`,
+                                color: ambre ? AMBRE : v.enLigne || vue ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
                                 background: vue && !v.enLigne ? '#26241f' : ambre ? 'rgba(208,154,74,.08)' : 'transparent',
                               }}
                               aria-label={`${x.nom}, version ${v.v}${v.enLigne ? ', en ligne' : ''}`}
@@ -158,12 +158,12 @@ function Bibliotheque({ p }: { p: Piece }) {
 
           {pr && version && (
             <Carte pad="p-6" className="self-start" titre={`${pr.nom} · v${version.v}`} droite={version.enLigne ? `en ligne depuis le ${jjmm(version.at)}` : `écrite le ${jjmm(version.at)}`}>
-              <div className="whitespace-pre-wrap border border-[#2a2826] bg-[#0b0a09] p-4 font-mono text-[12.5px] leading-[1.7] text-[#e4e4e1]">
+              <div className="whitespace-pre-wrap border border-[#2a2826] bg-[#0b0a09] p-4 font-mono text-[12.5px] leading-[1.7] text-text-body">
                 {comparer && precedente
                   ? segmentsMots(precedente.texte, version.texte).map((s, i) => (
                       <React.Fragment key={i}>
                         {i > 0 && ' '}
-                        {s.genre === 'meme' ? s.texte : s.genre === 'retire' ? <del className="text-[#9a9a97]">{s.texte}</del> : <ins className="text-[#f7f7f5] no-underline" style={{ boxShadow: 'inset 0 -1px 0 #f7f7f5' }}>{s.texte}</ins>}
+                        {s.genre === 'meme' ? s.texte : s.genre === 'retire' ? <del className="text-text-muted">{s.texte}</del> : <ins className="text-text-primary no-underline" style={{ boxShadow: 'inset 0 -1px 0 var(--color-text-primary)' }}>{s.texte}</ins>}
                       </React.Fragment>
                     ))
                   : version.texte}
@@ -186,22 +186,22 @@ function Bibliotheque({ p }: { p: Piece }) {
                   Nouvelle version
                 </button>
               </div>
-              <span className="mt-6 block font-mono text-[9.5px] uppercase tracking-[0.16em] text-[#9a9a97]">{version.enLigne ? 'Résultat retenu' : 'Ce qu’elle a donné'}</span>
+              <span className="mt-6 block font-mono text-[9.5px] uppercase tracking-[0.16em] text-text-muted">{version.enLigne ? 'Résultat retenu' : 'Ce qu’elle a donné'}</span>
               {version.resultat ? (
-                <p className="mt-2 text-[17px] font-semibold leading-snug text-[#f7f7f5]">{version.resultat}</p>
+                <p className="mt-2 text-[17px] font-semibold leading-snug text-text-primary">{version.resultat}</p>
               ) : (
                 <ResultatANoter onNoter={(r) => majPrompt(pr.id, (x) => ({ ...x, versions: x.versions.map((y) => (y.v === version.v ? { ...y, resultat: r } : y)) }))} />
               )}
               {precedente && (
                 <div className="mt-5 border-t border-[#2a2826] pt-4">
-                  <span className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-[#9a9a97]">
+                  <span className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-text-muted">
                     De v{precedente.v} à v{version.v}
                   </span>
-                  <p className="mt-2 font-mono text-[12px] leading-relaxed text-[#e4e4e1]">
+                  <p className="mt-2 font-mono text-[12px] leading-relaxed text-text-body">
                     {resume(precedente.texte, version.texte).map((c, i) => (
                       <React.Fragment key={i}>
-                        {i > 0 && <span className="text-[#9a9a97]"> · </span>}
-                        {c.retire && <del className="text-[#9a9a97]">{c.retire}</del>}
+                        {i > 0 && <span className="text-text-muted"> · </span>}
+                        {c.retire && <del className="text-text-muted">{c.retire}</del>}
                         {c.retire && c.ajoute && ' → '}
                         {!c.retire && '+ '}
                         {c.ajoute}
@@ -237,7 +237,7 @@ function ResultatANoter({ onNoter }: { onNoter: (r: string) => void }) {
         if (t.trim()) onNoter(t.trim());
       }}
     >
-      <input value={t} onChange={(e) => setT(e.target.value)} placeholder="Pas encore noté : ce qu’elle a donné…" aria-label="Le résultat de cette version" className="h-9 min-w-0 flex-1 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]" />
+      <input value={t} onChange={(e) => setT(e.target.value)} placeholder="Pas encore noté : ce qu’elle a donné…" aria-label="Le résultat de cette version" className="h-9 min-w-0 flex-1 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]" />
       <button type="submit" className="bx-btn2" disabled={!t.trim()}>
         Noter
       </button>

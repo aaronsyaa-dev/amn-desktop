@@ -137,6 +137,44 @@ const DETTE_CONNUE = new Set([
   'src/screens/SubscriptionsScreen.tsx:#161616',
 ]);
 
+/*
+  LES COÏNCIDENCES — une valeur égale à un jeton, mais pas son rôle.
+
+  La table des bureaux (`src/bureaux/jetons.ts`, cahier 11 `44a`) est la
+  seule source de leurs paliers de noirs, et ses encres y renvoient aux
+  jetons. Un palier peut pourtant TOMBER sur la valeur d'un jeton sans en
+  partager le sens : le sol de la Garde vaut #080808, comme l'encre posée sur
+  l'ambre. L'écrire `var(--color-signal-ink)` lierait le sol d'un bureau à une
+  encre de texte — la dérive que ce contrôle combat, dans l'autre sens. Chaque
+  coïncidence est nommée, avec sa raison ; une nouvelle échoue.
+*/
+const COINCIDENCES = new Map([
+  ['src/bureaux/jetons.ts:#080808', 'le sol de la Garde (palier `fond`), pas l’encre posée sur l’ambre'],
+]);
+for (let i = fautes.length - 1; i >= 0; i -= 1) {
+  if (COINCIDENCES.has(`${fautes[i].fichier}:${fautes[i].valeur.toLowerCase()}`)) fautes.splice(i, 1);
+}
+
+/*
+  LE TRAIT SOURD N'EST PAS UNE ENCRE. `--color-trait-sourd` porte le #6b6b68
+  refusé comme texte (3,79:1) et accepté comme trait (voir src/index.css) :
+  l'écrire en couleur de texte, c'est rouvrir par le nom ce que la valeur a
+  fermé.
+*/
+for (const fichier of fichiers) {
+  fs.readFileSync(fichier, 'utf8').split('\n').forEach((ligne, i) => {
+    if (/(?<![\w-])text-trait-sourd\b|\bcolor:\s*['"`]?var\(--color-trait-sourd\)/.test(ligne)) {
+      fautes.push({
+        fichier: path.relative(RACINE, fichier),
+        ligne: i + 1,
+        valeur: 'trait-sourd',
+        refuse: true,
+        raison: 'le trait sourd (#6b6b68) employé comme encre de texte — 3,79:1, sous le seuil WCAG AA',
+      });
+    }
+  });
+}
+
 const defauts = fautes.filter((f) => f.refuse);
 const dettes = fautes.filter((f) => !f.refuse);
 const dettesNouvelles = dettes.filter((f) => !DETTE_CONNUE.has(`${f.fichier}:${f.valeur.toLowerCase()}`));

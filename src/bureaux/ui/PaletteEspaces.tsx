@@ -35,7 +35,6 @@ function Palette() {
   useActiverSourceBureaux();
   const nav = useNavigationEspaces();
   const ici = nav.espace;
-  const eIci = espaceDe(ici);
   const compteurs = useCompteurs(nav.bureau);
   const [q, setQ] = useState('');
   const [choix, setChoix] = useState(0);
@@ -118,11 +117,11 @@ function Palette() {
         aria-label="Changer d’espace"
         data-palette-espaces
         onKeyDown={surTouche}
-        className="absolute left-1/2 top-16 flex w-[580px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col overflow-hidden border border-[#2a2a2a] bg-[#111] shadow-[0_40px_80px_-30px_rgba(0,0,0,1)]"
+        className="absolute left-1/2 top-16 flex w-[580px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col overflow-hidden border border-border-sheet bg-[#111] shadow-[0_40px_80px_-30px_rgba(0,0,0,1)]"
         style={{ maxHeight: 'calc(100vh - 160px)' }}
       >
         <div className="flex h-[54px] flex-none items-center gap-3 border-b border-[#222] px-4">
-          <Search size={15} strokeWidth={1.9} className="text-[#a3a3a0]" aria-hidden />
+          <Search size={15} strokeWidth={1.9} className="text-text-secondary" aria-hidden />
           <input
             ref={champ}
             value={q}
@@ -131,9 +130,9 @@ function Palette() {
             aria-label={`Aller à un espace ou à un outil de ${nomIci}`}
             aria-controls="palette-espaces-liste"
             aria-activedescendant={lignes[choix] ? `palette-ligne-${choix}` : undefined}
-            className="min-w-0 flex-1 bg-transparent text-[15px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97]"
+            className="min-w-0 flex-1 bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-muted"
           />
-          <kbd className="border border-[#2a2a2a] bg-[#161616] px-1.5 py-0.5 font-mono text-[10px] text-[#a3a3a0]">{touche === '⌘' ? '⌘ E' : 'Ctrl E'}</kbd>
+          <kbd className="border border-border-sheet bg-surface-hover px-1.5 py-0.5 font-mono text-[10px] text-text-secondary">{touche === '⌘' ? '⌘ E' : 'Ctrl E'}</kbd>
         </div>
         <div ref={liste} id="palette-espaces-liste" role="listbox" aria-label="Espaces et outils" className="min-h-0 flex-1 overflow-y-auto">
           {espaces.length > 0 && <Titre>ESPACES</Titre>}
@@ -158,23 +157,23 @@ function Palette() {
                 className="relative flex h-[50px] w-full items-center gap-3.5 px-4 text-left"
                 style={{ background: choix === i ? '#1c1c1c' : undefined }}
               >
-                {choix === i && <span aria-hidden className="absolute bottom-0 left-0 top-0 w-[2px] bg-[#f7f7f5]" />}
+                {choix === i && <span aria-hidden className="absolute bottom-0 left-0 top-0 w-[2px] bg-text-primary" />}
                 <span className="flex h-[30px] w-[30px] flex-none items-center justify-center" style={{ background: e.rel, border: `1px solid ${e.filet}` }}>
-                  <Glyphe espace={l.espace} couleur="#e4e4e1" />
+                  <Glyphe espace={l.espace} couleur="var(--color-text-body)" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[14px] font-semibold text-[#f7f7f5]">{e.nom}</span>
-                  <span className="block truncate text-[11.5px] text-[#a3a3a0]">
+                  <span className="block truncate text-[14px] font-semibold text-text-primary">{e.nom}</span>
+                  <span className="block truncate text-[11.5px] text-text-secondary">
                     {e.role} · {e.qui}
                   </span>
                 </span>
                 <span
                   className={`flex-none whitespace-nowrap font-mono text-[11.5px] ${enAmbre || rouge ? 'font-bold tracking-[0.08em]' : ''}`}
-                  style={{ color: estIci ? '#a3a3a0' : rouge ? ROUGE.texte : enAmbre ? AMBRE : '#a3a3a0' }}
+                  style={{ color: estIci ? 'var(--color-text-secondary)' : rouge ? ROUGE.texte : enAmbre ? AMBRE : 'var(--color-text-secondary)' }}
                 >
                   {estIci ? 'ICI' : a.texte ? (enAmbre || rouge ? a.texte.toUpperCase() : a.texte) : ''}
                 </span>
-                <kbd className="flex-none border border-[#2a2a2a] px-1.5 py-0.5 font-mono text-[10px] text-[#a3a3a0]">G {e.chiffre}</kbd>
+                <kbd className="flex-none border border-border-sheet px-1.5 py-0.5 font-mono text-[10px] text-text-secondary">G {e.chiffre}</kbd>
               </button>
             );
           })}
@@ -195,17 +194,17 @@ function Palette() {
                 className="relative flex h-9 w-full items-center gap-3.5 px-4 text-left"
                 style={{ background: choix === i ? '#1c1c1c' : undefined }}
               >
-                {choix === i && <span aria-hidden className="absolute bottom-0 left-0 top-0 w-[2px] bg-[#f7f7f5]" />}
-                <span className="w-[28px] flex-none font-mono text-[10.5px] text-[#9a9a97]">{l.chiffre ?? (l.groupe ? '·' : '')}</span>
-                <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-[#e4e4e1]">{l.nom}</span>
-                {l.groupe && <span className="font-mono text-[9.5px] tracking-[0.14em] text-[#9a9a97]">{l.groupe}</span>}
-                {(l.compte ?? 0) > 0 && <span className="font-mono text-[11px] tabular-nums text-[#a3a3a0]">{l.compte}</span>}
+                {choix === i && <span aria-hidden className="absolute bottom-0 left-0 top-0 w-[2px] bg-text-primary" />}
+                <span className="w-[28px] flex-none font-mono text-[10.5px] text-text-muted">{l.chiffre ?? (l.groupe ? '·' : '')}</span>
+                <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-text-body">{l.nom}</span>
+                {l.groupe && <span className="font-mono text-[9.5px] tracking-[0.14em] text-text-muted">{l.groupe}</span>}
+                {(l.compte ?? 0) > 0 && <span className="font-mono text-[11px] tabular-nums text-text-secondary">{l.compte}</span>}
               </button>
             );
           })}
-          {!lignes.length && <p className="px-4 py-6 text-[13px] text-[#a3a3a0]">Rien de ce nom ici. Pour l’outil d’un autre bureau, changez d’abord d’espace.</p>}
+          {!lignes.length && <p className="px-4 py-6 text-[13px] text-text-secondary">Rien de ce nom ici. Pour l’outil d’un autre bureau, changez d’abord d’espace.</p>}
         </div>
-        <div className="flex h-9 flex-none items-center gap-4 overflow-hidden whitespace-nowrap border-t border-[#222] px-4 font-mono text-[9.5px] tracking-[0.12em] text-[#9a9a97]">
+        <div className="flex h-9 flex-none items-center gap-4 overflow-hidden whitespace-nowrap border-t border-[#222] px-4 font-mono text-[9.5px] tracking-[0.12em] text-text-muted">
           <span>↑↓ CHOISIR</span>
           <span>↵ ENTRER</span>
           <span>G 0 POSTE</span>
@@ -220,7 +219,7 @@ function Palette() {
 
 function Titre({ children, filet = false }: { children: React.ReactNode; filet?: boolean }) {
   return (
-    <div className={`px-4 pb-2 pt-4 font-mono text-[9.5px] tracking-[0.2em] text-[#9a9a97] ${filet ? 'mt-1 border-t border-[#222]' : ''}`} role="presentation">
+    <div className={`px-4 pb-2 pt-4 font-mono text-[9.5px] tracking-[0.2em] text-text-muted ${filet ? 'mt-1 border-t border-[#222]' : ''}`} role="presentation">
       {children}
     </div>
   );

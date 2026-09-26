@@ -42,32 +42,32 @@ function Aide({ onClose }: { onClose: () => void }) {
         aria-modal="true"
         aria-labelledby="aide-bureaux-titre"
         data-aide-bureaux
-        className="absolute left-1/2 top-16 w-[540px] max-w-[calc(100vw-32px)] -translate-x-1/2 overflow-y-auto border border-[#2a2a2a] bg-[#111] shadow-[0_40px_80px_-30px_rgba(0,0,0,1)]"
+        className="absolute left-1/2 top-16 w-[540px] max-w-[calc(100vw-32px)] -translate-x-1/2 overflow-y-auto border border-border-sheet bg-[#111] shadow-[0_40px_80px_-30px_rgba(0,0,0,1)]"
         style={{ maxHeight: 'calc(100vh - 160px)' }}
       >
         <div className="flex items-center justify-between border-b border-[#222] px-5 py-4">
-          <h2 id="aide-bureaux-titre" className="font-mono text-[10px] tracking-[0.2em] text-[#a3a3a0]">
+          <h2 id="aide-bureaux-titre" className="font-mono text-[10px] tracking-[0.2em] text-text-secondary">
             RACCOURCIS DES BUREAUX
           </h2>
-          <button ref={fermer} type="button" onClick={onClose} aria-label="Fermer" className="p-1 text-[#a3a3a0] hover:text-[#f7f7f5]">
+          <button ref={fermer} type="button" onClick={onClose} aria-label="Fermer" className="p-1 text-text-secondary hover:text-text-primary">
             <X size={15} />
           </button>
         </div>
         <dl className="px-5 py-2">
           {lignes.map(([k, v]) => (
             <div key={k} className="grid grid-cols-[130px_1fr] items-baseline gap-4 border-b border-[#1c1c1c] py-2.5 last:border-0">
-              <dt className="font-mono text-[12px] font-medium text-[#f7f7f5]">{k}</dt>
-              <dd className="text-[13px] text-[#a3a3a0]">{v}</dd>
+              <dt className="font-mono text-[12px] font-medium text-text-primary">{k}</dt>
+              <dd className="text-[13px] text-text-secondary">{v}</dd>
             </div>
           ))}
         </dl>
         {!isElectron() && (
-          <p className="px-5 pb-3 text-[12px] leading-relaxed text-[#9a9a97]">
+          <p className="px-5 pb-3 text-[12px] leading-relaxed text-text-muted">
             Dans un navigateur, F1 ouvre son aide et F5 recharge la page : les touches de fonction ne sont prises que par l’application installée.
           </p>
         )}
         <div className="border-t border-[#222] px-5 py-4">
-          <div className="font-mono text-[9.5px] tracking-[0.2em] text-[#9a9a97]">LE SAS DE CE POSTE</div>
+          <div className="font-mono text-[9.5px] tracking-[0.2em] text-text-muted">LE SAS DE CE POSTE</div>
           <div className="mt-3 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Le sas joué à la première entrée dans un bureau">
             {choix.map((c) => (
               <button
@@ -77,15 +77,15 @@ function Aide({ onClose }: { onClose: () => void }) {
                 aria-checked={sas === c.v}
                 onClick={() => poserVarianteSas(c.v)}
                 className="border px-3 py-2.5 text-left"
-                style={{ borderColor: sas === c.v ? '#8a8a87' : '#2a2a2a', background: sas === c.v ? '#1c1c1c' : 'transparent' }}
+                style={{ borderColor: sas === c.v ? '#8a8a87' : 'var(--color-border-sheet)', background: sas === c.v ? '#1c1c1c' : 'transparent' }}
               >
-                <span className="block text-[13px] font-semibold text-[#f7f7f5]">{c.nom}</span>
-                <span className="mt-0.5 block text-[11.5px] leading-snug text-[#a3a3a0]">{c.dit}</span>
+                <span className="block text-[13px] font-semibold text-text-primary">{c.nom}</span>
+                <span className="mt-0.5 block text-[11.5px] leading-snug text-text-secondary">{c.dit}</span>
               </button>
             ))}
           </div>
-          <label className="mt-3 flex items-center gap-2.5 text-[12.5px] text-[#a3a3a0]">
-            <input type="checkbox" checked={ambiance && !reduit} disabled={reduit} onChange={(e) => poserAmbiance(e.target.checked)} className="accent-[#e4e4e1]" />
+          <label className="mt-3 flex items-center gap-2.5 text-[12.5px] text-text-secondary">
+            <input type="checkbox" checked={ambiance && !reduit} disabled={reduit} onChange={(e) => poserAmbiance(e.target.checked)} className="accent-text-body" />
             Ambiance : mouvement ambiant et sas{reduit ? ' — coupés d’office, le système demande moins de mouvement' : ''}
           </label>
         </div>

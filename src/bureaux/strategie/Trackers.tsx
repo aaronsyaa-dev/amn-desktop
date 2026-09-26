@@ -213,8 +213,8 @@ export function StrategieTrackers() {
       <EnTete surtitre="Stratégie · Objectifs · Trackers" titre={titre} />
       <section className="bx-dom p-6">
         <div className="mb-[22px] flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1.5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#a3a3a0]">Les quatre trackers de l’équipe · 8 semaines</span>
-          <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.1em] text-[#9a9a97]">plein = ces semaines · pointillé = {comparaison === 'an-dernier' ? 'les mêmes l’an dernier' : 'le trimestre d’avant, à la même semaine'}</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-secondary">Les quatre trackers de l’équipe · 8 semaines</span>
+          <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">plein = ces semaines · pointillé = {comparaison === 'an-dernier' ? 'les mêmes l’an dernier' : 'le trimestre d’avant, à la même semaine'}</span>
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
           {trackers.map((t) => (
@@ -223,11 +223,11 @@ export function StrategieTrackers() {
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           {(['semaine', 'mois', 'trimestre'] as Periode[]).map((p) => (
-            <button key={p} type="button" aria-pressed={periode === p} onClick={() => setPeriode(p)} className="h-8 border px-3 text-[12.5px] font-semibold" style={{ borderColor: periode === p ? '#8a8a8f' : '#28282c', color: periode === p ? '#f7f7f5' : '#a3a3a0' }}>
+            <button key={p} type="button" aria-pressed={periode === p} onClick={() => setPeriode(p)} className="h-8 border px-3 text-[12.5px] font-semibold" style={{ borderColor: periode === p ? '#8a8a8f' : '#28282c', color: periode === p ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}>
               {p.charAt(0).toUpperCase() + p.slice(1)}
             </button>
           ))}
-          <button type="button" aria-pressed={comparaison === 'an-dernier'} onClick={() => setComparaison(comparaison === 'an-dernier' ? 'precedente' : 'an-dernier')} className="h-8 border px-3 text-[12.5px] font-semibold" style={{ borderColor: '#28282c', color: '#e4e4e1' }}>
+          <button type="button" aria-pressed={comparaison === 'an-dernier'} onClick={() => setComparaison(comparaison === 'an-dernier' ? 'precedente' : 'an-dernier')} className="h-8 border px-3 text-[12.5px] font-semibold" style={{ borderColor: '#28282c', color: 'var(--color-text-body)' }}>
             Comparer à : {comparaison === 'an-dernier' ? 'même période l’an dernier' : 'la période précédente'}
           </button>
         </div>
@@ -235,14 +235,14 @@ export function StrategieTrackers() {
       <div className="mt-[18px] grid grid-cols-1 gap-[18px] lg:grid-cols-2">
         <Carte titre="Objectifs · ce qui manque" droite={objectifs.length ? `${manquent.length} sur ${objectifs.length}` : ''}>
           {objectifs.length === 0 ? (
-            <p className="text-[13px] text-[#a3a3a0]">Aucun objectif posé : ils se posent dans l’onglet Objectifs.</p>
+            <p className="text-[13px] text-text-secondary">Aucun objectif posé : ils se posent dans l’onglet Objectifs.</p>
           ) : manquent.length === 0 ? (
-            <p className="text-[13px] text-[#a3a3a0]">Tous les objectifs sont atteints.</p>
+            <p className="text-[13px] text-text-secondary">Tous les objectifs sont atteints.</p>
           ) : (
             manquent.slice(0, 6).map((o) => (
               <div key={o.id} className="grid grid-cols-[70px_minmax(0,1fr)] items-baseline gap-3.5 border-b border-[#222226] py-3">
-                <span className="font-mono text-[10.5px] uppercase text-[#9a9a97]">{o.periodLabel.split(' ')[0]}</span>
-                <span className="text-[13px] text-[#e4e4e1]">
+                <span className="font-mono text-[10.5px] uppercase text-text-muted">{o.periodLabel.split(' ')[0]}</span>
+                <span className="text-[13px] text-text-body">
                   {o.label} · {o.currentValue.toLocaleString('fr-FR')} sur {o.targetValue.toLocaleString('fr-FR')} {o.unit === '€' ? '€' : o.unit}
                 </span>
               </div>
@@ -250,8 +250,8 @@ export function StrategieTrackers() {
           )}
         </Carte>
         <Carte titre="L’historique">
-          <p className="text-[13.5px] leading-relaxed text-[#e4e4e1]">Chaque tracker garde toutes ses semaines ; on compare une période à la précédente, ou à la même l’an dernier, jamais à une moyenne qui mélange tout.</p>
-          <p className="mt-3 text-[12.5px] leading-relaxed text-[#a3a3a0]">Heures : le module Temps. Objectifs : relevés chaque jour. Relève : la première ouverture de la Garde, un jour de semaine. Retours : Studio, traités sous 48 h.</p>
+          <p className="text-[13.5px] leading-relaxed text-text-body">Chaque tracker garde toutes ses semaines ; on compare une période à la précédente, ou à la même l’an dernier, jamais à une moyenne qui mélange tout.</p>
+          <p className="mt-3 text-[12.5px] leading-relaxed text-text-secondary">Heures : le module Temps. Objectifs : relevés chaque jour. Relève : la première ouverture de la Garde, un jour de semaine. Retours : Studio, traités sous 48 h.</p>
         </Carte>
       </div>
     </>
@@ -276,16 +276,16 @@ function TrackerCarte({ t, ambre }: { t: Tracker; ambre: boolean }) {
   };
   return (
     <div className="px-4 pb-4 pt-4" style={{ border: `1px solid ${ambre ? AMBRE : '#28282c'}`, background: ambre ? 'rgba(208,154,74,.07)' : '#141416' }} data-signal-groupe={ambre ? 'tracker-ambre' : undefined}>
-      <span className="block font-mono text-[9.5px] uppercase tracking-[0.14em]" style={{ color: ambre ? AMBRE : '#9a9a97' }}>
+      <span className="block font-mono text-[9.5px] uppercase tracking-[0.14em]" style={{ color: ambre ? AMBRE : 'var(--color-text-muted)' }}>
         {t.famille}
       </span>
-      <span className="mt-1.5 block text-[14px] font-semibold text-[#f7f7f5]">{t.titre}</span>
+      <span className="mt-1.5 block text-[14px] font-semibold text-text-primary">{t.titre}</span>
       <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="mt-4 block h-[52px] w-full" role="img" aria-label={`${t.titre}, huit semaines : ${t.serie.map((v) => (v === null ? 'rien' : v)).join(', ')}`}>
         <path d={chemin(t.fantome)} fill="none" stroke="#6b6b70" strokeWidth={1.2} strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
-        <path d={chemin(t.serie)} fill="none" stroke={ambre ? AMBRE : '#e4e4e1'} strokeWidth={1.8} vectorEffect="non-scaling-stroke" />
+        <path d={chemin(t.serie)} fill="none" stroke={ambre ? AMBRE : 'var(--color-text-body)'} strokeWidth={1.8} vectorEffect="non-scaling-stroke" />
       </svg>
-      <span className="mt-4 block whitespace-nowrap font-mono text-[20px] font-semibold tabular-nums text-[#f7f7f5]">{t.valeur}</span>
-      <span className="mt-1 block font-mono text-[10.5px] tabular-nums" style={{ color: ambre ? AMBRE : '#a3a3a0' }}>
+      <span className="mt-4 block whitespace-nowrap font-mono text-[20px] font-semibold tabular-nums text-text-primary">{t.valeur}</span>
+      <span className="mt-1 block font-mono text-[10.5px] tabular-nums" style={{ color: ambre ? AMBRE : 'var(--color-text-secondary)' }}>
         {t.ecart ?? 'rien à comparer'}
       </span>
     </div>

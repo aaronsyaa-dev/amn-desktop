@@ -60,7 +60,7 @@ export function SupervisorAccueil() {
         droite={<BasculeVue vue="horizon" />}
       >
         <Horizon orgs={m.orgs} ambre={m.ambre} rouge={m.rouge} pret={m.pret} />
-        <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-[#1f1f1f] pt-5">
+        <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-border pt-5">
           <Legende rouge={Boolean(m.rouge)} />
           {m.ambre && (
             <span className="ml-auto flex gap-2.5">
@@ -79,7 +79,7 @@ export function SupervisorAccueil() {
           <DepuisVotreVenue m={m} nom={nom} />
           <Carte titre={`À traiter · ${m.file.length}`} droite={m.file.length > 3 ? 'les trois premiers' : ''}>
             {m.file.length === 0 ? (
-              <p className="text-[13px] text-[#a3a3a0]">Rien n’attend un humain. La Garde tient le reste.</p>
+              <p className="text-[13px] text-text-secondary">Rien n’attend un humain. La Garde tient le reste.</p>
             ) : (
               m.file.slice(0, 3).map((x) => (
                 <Ligne
@@ -129,10 +129,10 @@ export function SupervisorAccueil() {
 export function BasculeVue({ vue }: { vue: 'horizon' | 'grille' }) {
   return (
     <span className="inline-flex border border-[#2b2b2b] normal-case tracking-normal" role="group" aria-label="Vue du mur de situation">
-      <Link to="/supervisor" aria-current={vue === 'horizon' ? 'page' : undefined} className="px-3 py-1.5 font-sans text-[12px] font-semibold" style={vue === 'horizon' ? { background: '#f7f7f5', color: '#0a0a0a' } : { color: '#a3a3a0' }}>
+      <Link to="/supervisor" aria-current={vue === 'horizon' ? 'page' : undefined} className="px-3 py-1.5 font-sans text-[12px] font-semibold" style={vue === 'horizon' ? { background: 'var(--color-text-primary)', color: '#0a0a0a' } : { color: 'var(--color-text-secondary)' }}>
         Horizon
       </Link>
-      <Link to="/supervisor/grille" aria-current={vue === 'grille' ? 'page' : undefined} className="px-3 py-1.5 font-sans text-[12px] font-semibold" style={vue === 'grille' ? { background: '#f7f7f5', color: '#0a0a0a' } : { color: '#a3a3a0' }}>
+      <Link to="/supervisor/grille" aria-current={vue === 'grille' ? 'page' : undefined} className="px-3 py-1.5 font-sans text-[12px] font-semibold" style={vue === 'grille' ? { background: 'var(--color-text-primary)', color: '#0a0a0a' } : { color: 'var(--color-text-secondary)' }}>
         Grille
       </Link>
     </span>
@@ -235,7 +235,7 @@ function DepuisVotreVenue({ m, nom }: { m: ModeleSupervisor; nom: (e: string | n
   return (
     <Carte titre="Depuis votre dernière venue" droite={`${new Date().getDate() !== hier.getDate() ? 'hier ' : ''}${hhmm(hier)}`}>
       {faits.length === 0 ? (
-        <p className="text-[13px] text-[#a3a3a0]">Rien n’a bougé depuis {hhmm(hier)}.</p>
+        <p className="text-[13px] text-text-secondary">Rien n’a bougé depuis {hhmm(hier)}.</p>
       ) : (
         faits.map((x, i) => <Ligne key={i} a={hhmm(x.at)} b={x.texte} c={x.qui === 'GARDE' ? 'GARDE' : x.qui ? prenomDe(x.qui).slice(0, 2).toUpperCase() : ''} />)
       )}

@@ -84,12 +84,12 @@ export function CyberCarnet() {
       />
       {redaction && (
         <Carte pad="p-5" className="mb-[18px]" titre="Nouvelle note" droite="une note sans lien n’existe pas">
-          <textarea value={redaction.texte} onChange={(e) => setRedaction({ ...redaction, texte: e.target.value })} rows={3} placeholder="Ce qu’on a appris…" aria-label="La note" className="w-full resize-none border border-[#2b3030] bg-transparent p-3 text-[13.5px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]" />
+          <textarea value={redaction.texte} onChange={(e) => setRedaction({ ...redaction, texte: e.target.value })} rows={3} placeholder="Ce qu’on a appris…" aria-label="La note" className="w-full resize-none border border-[#2b3030] bg-transparent p-3 text-[13.5px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]" />
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <select value="" onChange={(e) => {
               const l = liensPossibles.find((x) => `${x.type}:${x.id}` === e.target.value);
               if (l && !redaction.liens.some((x) => x.id === l.id)) setRedaction({ ...redaction, liens: [...redaction.liens, l] });
-            }} aria-label="Attacher à" className="h-9 border border-[#2b3030] bg-[#111414] px-2.5 text-[13px] text-[#f7f7f5]">
+            }} aria-label="Attacher à" className="h-9 border border-[#2b3030] bg-[#111414] px-2.5 text-[13px] text-text-primary">
               <option value="">Attacher à…</option>
               {(['incident', 'cliente', 'actif', 'campagne'] as const).map((t) => (
                 <optgroup key={t} label={t === 'incident' ? 'Incidents' : t === 'cliente' ? 'Clientes' : t === 'actif' ? 'Actifs' : 'Campagnes'}>
@@ -102,11 +102,11 @@ export function CyberCarnet() {
               ))}
             </select>
             {redaction.liens.map((l) => (
-              <button key={l.id} type="button" onClick={() => setRedaction({ ...redaction, liens: redaction.liens.filter((x) => x.id !== l.id) })} className="border border-[#3a3f3f] px-2 py-1 font-mono text-[11px] text-[#e4e4e1]" title="Retirer ce lien">
+              <button key={l.id} type="button" onClick={() => setRedaction({ ...redaction, liens: redaction.liens.filter((x) => x.id !== l.id) })} className="border border-[#3a3f3f] px-2 py-1 font-mono text-[11px] text-text-body" title="Retirer ce lien">
                 {l.label} ×
               </button>
             ))}
-            <label className="ml-auto flex items-center gap-2 text-[12.5px] text-[#a3a3a0]">
+            <label className="ml-auto flex items-center gap-2 text-[12.5px] text-text-secondary">
               <input type="checkbox" checked={redaction.question} onChange={(e) => setRedaction({ ...redaction, question: e.target.checked })} className="accent-[#8a8a87]" />
               c’est une question ouverte
             </label>
@@ -122,15 +122,15 @@ export function CyberCarnet() {
         <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-[340px_minmax(0,1fr)]">
           <Carte pad="p-2" className="self-start">
             {notes.slice(0, 30).map((n) => (
-              <button key={n.id} type="button" onClick={() => setChoisie(n.id)} className="block w-full border-b border-[#171a1a] px-3 py-3 text-left hover:bg-white/[0.02]" style={note?.id === n.id ? { background: '#161919', boxShadow: 'inset 2px 0 0 #f7f7f5' } : undefined} aria-pressed={note?.id === n.id}>
-                <span className="block font-mono text-[10px] text-[#9a9a97]">
+              <button key={n.id} type="button" onClick={() => setChoisie(n.id)} className="block w-full border-b border-[#171a1a] px-3 py-3 text-left hover:bg-white/[0.02]" style={note?.id === n.id ? { background: '#161919', boxShadow: 'inset 2px 0 0 var(--color-text-primary)' } : undefined} aria-pressed={note?.id === n.id}>
+                <span className="block font-mono text-[10px] text-text-muted">
                   {n.at.slice(8, 10)}/{n.at.slice(5, 7)}
                   {note?.id === n.id ? ` · ${hhmm(n.at)}` : ''}
                 </span>
-                <span className="mt-1 block text-[13px] font-semibold leading-snug text-[#f7f7f5]">{titreDe(n.texte)}</span>
+                <span className="mt-1 block text-[13px] font-semibold leading-snug text-text-primary">{titreDe(n.texte)}</span>
                 <span className="mt-2 flex flex-wrap gap-1.5">
                   {n.liens.map((l) => (
-                    <span key={l.id} className="border border-[#2b3030] px-1.5 py-0.5 font-mono text-[10px] text-[#a3a3a0]">
+                    <span key={l.id} className="border border-[#2b3030] px-1.5 py-0.5 font-mono text-[10px] text-text-secondary">
                       {l.label}
                     </span>
                   ))}
@@ -140,35 +140,35 @@ export function CyberCarnet() {
           </Carte>
           {note && (
             <Carte dominante pad="p-7" className="self-start">
-              <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#a3a3a0]">
+              <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-secondary">
                 {jourLong(note.at)} {jourMois(note.at)} · {hhmm(note.at)} · {nom(note.par)}
               </span>
-              <h2 className="mt-3 font-mono text-[21px] font-semibold leading-snug tracking-[-0.01em] text-[#f7f7f5]">{titreDe(note.texte)}</h2>
+              <h2 className="mt-3 font-mono text-[21px] font-semibold leading-snug tracking-[-0.01em] text-text-primary">{titreDe(note.texte)}</h2>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {note.liens.map((l) => (
-                  <span key={l.id} className="border border-[#3a3f3f] px-2 py-1 font-mono text-[11px] text-[#e4e4e1]">
+                  <span key={l.id} className="border border-[#3a3f3f] px-2 py-1 font-mono text-[11px] text-text-body">
                     {l.label}
                   </span>
                 ))}
               </div>
-              {corps(note.texte) && <p className="mt-4 text-[14px] leading-relaxed text-[#e4e4e1]">{corps(note.texte)}</p>}
+              {corps(note.texte) && <p className="mt-4 text-[14px] leading-relaxed text-text-body">{corps(note.texte)}</p>}
               {note.question && !note.resolue && (
                 <div className="mt-5 p-4" style={{ border: `1px solid ${AMBRE}`, background: 'rgba(208,154,74,.06)' }} data-signal-groupe="carnet-question">
                   <span className="block font-mono text-[9.5px] font-bold uppercase tracking-[0.18em]" style={{ color: AMBRE }}>
                     Question ouverte
                   </span>
-                  <span className="mt-2 block text-[14px] font-semibold leading-snug text-[#f7f7f5]">{note.texte.split(/(?<=[.!])\s/).find((x) => x.includes('?')) ?? titreDe(note.texte)}</span>
-                  <button type="button" onClick={() => resoudre(note)} className="mt-3 text-[12px] font-semibold text-[#f7f7f5] underline decoration-[#6b6b68] underline-offset-4">
+                  <span className="mt-2 block text-[14px] font-semibold leading-snug text-text-primary">{note.texte.split(/(?<=[.!])\s/).find((x) => x.includes('?')) ?? titreDe(note.texte)}</span>
+                  <button type="button" onClick={() => resoudre(note)} className="mt-3 text-[12px] font-semibold text-text-primary underline decoration-trait-sourd underline-offset-4">
                     Elle a sa réponse
                   </button>
                 </div>
               )}
               {citations(note).length > 0 && (
                 <div className="mt-6 border-t border-[#1d2121] pt-4">
-                  <span className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-[#9a9a97]">Citée par</span>
+                  <span className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-text-muted">Citée par</span>
                   {citations(note).map((x, i) => (
-                    <p key={i} className="mt-2 text-[12.5px] text-[#a3a3a0]">
-                      <b className="font-mono text-[#f7f7f5]">{x.ou}</b> &nbsp;{x.quoi}
+                    <p key={i} className="mt-2 text-[12.5px] text-text-secondary">
+                      <b className="font-mono text-text-primary">{x.ou}</b> &nbsp;{x.quoi}
                     </p>
                   ))}
                 </div>

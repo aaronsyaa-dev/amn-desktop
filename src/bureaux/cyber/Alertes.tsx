@@ -62,6 +62,7 @@ export function CyberAlertes() {
   };
   const liste = c.alertes.filter(filtres[filtre]);
   const montrees = tout ? liste : liste.slice(0, MONTREES);
+  const idRouge = montrees.find((a) => a.gravite === 'critique' && c.rouge?.id === a.orgId)?.id ?? null;
   const ambre = c.alerteAmbre;
   const incidents24 = src.incidents.filter((i) => Date.now() - Date.parse(i.firstSeenAt) < 86_400_000).length;
   const vide = c.alertes.length === 0;
@@ -92,7 +93,7 @@ export function CyberAlertes() {
               ['Devenues incidents', incidents24],
             ]}
           />
-          <p className="mt-4 border-t border-[#1d2121] pt-3 text-[12px] leading-relaxed text-[#a3a3a0]">
+          <p className="mt-4 border-t border-[#1d2121] pt-3 text-[12px] leading-relaxed text-text-secondary">
             La largeur est à l’échelle logarithmique : sinon les petits nombres seraient invisibles sous les grands.{tamis?.plafond ? ' Le journal compte au moins ce nombre d’événements.' : ''}
           </p>
         </Carte>
@@ -108,20 +109,20 @@ export function CyberAlertes() {
             ).map(([f, l]) => {
               const n = c.alertes.filter(filtres[f]).length;
               return (
-                <button key={f} type="button" aria-pressed={filtre === f} onClick={() => setFiltre(f)} className="flex h-8 items-center gap-2 border px-3 font-mono text-[12px] font-semibold" style={{ borderColor: filtre === f ? '#8a8a87' : '#2b3030', color: filtre === f ? '#f7f7f5' : '#a3a3a0' }}>
+                <button key={f} type="button" aria-pressed={filtre === f} onClick={() => setFiltre(f)} className="flex h-8 items-center gap-2 border px-3 font-mono text-[12px] font-semibold" style={{ borderColor: filtre === f ? '#8a8a87' : '#2b3030', color: filtre === f ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}>
                   {l}
-                  {n > 0 && <span className="text-[10.5px] font-medium text-[#a3a3a0]">{n}</span>}
+                  {n > 0 && <span className="text-[10.5px] font-medium text-text-secondary">{n}</span>}
                 </button>
               );
             })}
-            <span className="ml-auto font-mono text-[9.5px] uppercase tracking-[0.14em] text-[#9a9a97]">Tri : gravité, puis délai</span>
+            <span className="ml-auto font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted">Tri : gravité, puis délai</span>
           </div>
           {liste.length === 0 ? (
-            <p className="py-8 text-[13px] text-[#a3a3a0]">{vide ? 'Rien d’ouvert : tout ce que la Garde a vu, elle l’a réglé.' : 'Aucune alerte dans ce filtre.'}</p>
+            <p className="py-8 text-[13px] text-text-secondary">{vide ? 'Rien d’ouvert : tout ce que la Garde a vu, elle l’a réglé.' : 'Aucune alerte dans ce filtre.'}</p>
           ) : (
             <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="border-b border-[#212525] font-mono text-[9.5px] uppercase tracking-[0.14em] text-[#9a9a97]">
+                <tr className="border-b border-[#212525] font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted">
                   <th className="py-2.5 pl-3 font-normal">Gravité</th>
                   <th className="py-2.5 font-normal">Organisation · alerte</th>
                   <th className="py-2.5 font-normal">Qui</th>
@@ -132,23 +133,24 @@ export function CyberAlertes() {
               <tbody>
                 {montrees.map((a) => {
                   const estAmbre = ambre?.id === a.id;
-                  const rouge = a.gravite === 'critique' && c.rouge?.id === a.orgId;
+                  // Le rouge, une fois : la première alerte critique de l'organisation au critique — sa jauge et son étiquette.
+                  const rouge = a.id === idRouge;
                   return (
-                    <tr key={a.id} className="border-b border-[#171a1a]" style={estAmbre ? { background: 'rgba(208,154,74,.06)', boxShadow: `inset 2px 0 0 ${AMBRE}` } : undefined} data-signal-groupe={estAmbre ? 'alerte-ambre' : undefined}>
+                    <tr key={a.id} className="border-b border-[#171a1a]" style={estAmbre ? { background: 'rgba(208,154,74,.06)', boxShadow: `inset 2px 0 0 ${AMBRE}` } : undefined} data-signal-groupe={estAmbre ? 'alerte-ambre' : undefined} data-critique-groupe={rouge ? 'alerte-critique' : undefined}>
                       <td className="py-3.5 pl-3">
                         <Jauge gravite={a.gravite} rouge={rouge} />
                       </td>
                       <td className="max-w-[260px] py-3.5">
-                        <Link to="/garde/pile" className="block truncate text-[13.5px] font-semibold text-[#f7f7f5] hover:underline">
+                        <Link to="/garde/pile" className="block truncate text-[13.5px] font-semibold text-text-primary hover:underline">
                           {a.orgNom}
                         </Link>
-                        <span className="block truncate text-[12px] text-[#9a9a97]">{a.titre}</span>
+                        <span className="block truncate text-[12px] text-text-muted">{a.titre}</span>
                       </td>
                       <td className="py-3.5">
                         {a.qui ? (
                           <UserAvatar email={a.qui} size={20} />
                         ) : (
-                          <button type="button" disabled={enCours === a.id} onClick={() => void prendre(a)} className="font-mono text-[9.5px] font-semibold tracking-[0.14em] underline decoration-dotted underline-offset-4" style={{ color: estAmbre ? AMBRE : '#e4e4e1' }} title="Me l’attribuer">
+                          <button type="button" disabled={enCours === a.id} onClick={() => void prendre(a)} className="font-mono text-[9.5px] font-semibold tracking-[0.14em] underline decoration-dotted underline-offset-4" style={{ color: estAmbre ? AMBRE : 'var(--color-text-body)' }} title="Me l’attribuer">
                             PERSONNE
                           </button>
                         )}
@@ -156,7 +158,7 @@ export function CyberAlertes() {
                       <td className="py-3.5">
                         <Statut a={a} rouge={rouge} />
                       </td>
-                      <td className="whitespace-nowrap py-3.5 pr-3 font-mono text-[11.5px] font-semibold tabular-nums" style={{ color: estAmbre ? AMBRE : '#e4e4e1' }}>
+                      <td className="whitespace-nowrap py-3.5 pr-3 font-mono text-[11.5px] font-semibold tabular-nums" style={{ color: estAmbre ? AMBRE : 'var(--color-text-body)' }}>
                         {a.qui && a.dossier.prisLe ? `pris à ${hhmm(a.dossier.prisLe)}` : a.resteMs >= 0 ? `reste ${duree(a.resteMs)}` : `dépassé de ${duree(a.resteMs)}`}
                       </td>
                     </tr>
@@ -166,7 +168,7 @@ export function CyberAlertes() {
             </table>
           )}
           {!tout && liste.length > MONTREES && (
-            <button type="button" onClick={() => setTout(true)} className="mt-3 text-[12px] text-[#a3a3a0] hover:text-[#f7f7f5]">
+            <button type="button" onClick={() => setTout(true)} className="mt-3 text-[12px] text-text-secondary hover:text-text-primary">
               + {liste.length - MONTREES} alerte{liste.length - MONTREES > 1 ? 's' : ''} plus loin
             </button>
           )}
@@ -196,8 +198,8 @@ function Tamis({ etages }: { etages: [string, number | null][] }) {
             <span className="block h-full bg-[#2b3131]" style={{ width: `${n === null ? 0 : largeur(n)}%` }} />
           </div>
           <div className="mt-1.5 flex items-baseline justify-between">
-            <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-[#a3a3a0]">{nom}</span>
-            <span className="font-mono text-[14px] font-semibold tabular-nums text-[#f7f7f5]">{n === null ? '—' : n.toLocaleString('fr-FR')}</span>
+            <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-secondary">{nom}</span>
+            <span className="font-mono text-[14px] font-semibold tabular-nums text-text-primary">{n === null ? '—' : n.toLocaleString('fr-FR')}</span>
           </div>
         </div>
       ))}
@@ -219,7 +221,7 @@ function Jauge({ gravite, rouge }: { gravite: GraviteAlerte; rouge: boolean }) {
 function Statut({ a, rouge }: { a: AlerteCyber; rouge: boolean }) {
   const texte = a.gravite === 'critique' ? 'INCIDENT' : a.qui ? 'EN COURS' : 'NOUVELLE';
   return (
-    <span className="inline-block border px-1.5 py-[3px] font-mono text-[9.5px] font-semibold tracking-[0.1em]" style={rouge ? { borderColor: ROUGE.bordure, color: ROUGE.texte, background: ROUGE.fond } : { borderColor: '#2b3030', color: '#a3a3a0' }}>
+    <span className="inline-block border px-1.5 py-[3px] font-mono text-[9.5px] font-semibold tracking-[0.1em]" style={rouge ? { borderColor: ROUGE.bordure, color: ROUGE.texte, background: ROUGE.fond } : { borderColor: '#2b3030', color: 'var(--color-text-secondary)' }}>
       {texte}
     </span>
   );

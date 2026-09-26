@@ -111,10 +111,10 @@ export function SupervisorGrille() {
               aria-pressed={filtre === f}
               onClick={() => setFiltre(f)}
               className="flex h-8 items-center gap-2 border px-3 text-[12.5px] font-semibold"
-              style={{ borderColor: filtre === f ? '#8a8a87' : '#2b2b2b', color: filtre === f ? '#f7f7f5' : '#a3a3a0', background: filtre === f ? '#1a1a1a' : 'transparent' }}
+              style={{ borderColor: filtre === f ? '#8a8a87' : '#2b2b2b', color: filtre === f ? 'var(--color-text-primary)' : 'var(--color-text-secondary)', background: filtre === f ? '#1a1a1a' : 'transparent' }}
             >
               {l}
-              {compte(f) > 0 && <span className="font-mono text-[10.5px] font-medium text-[#a3a3a0]">{compte(f)}</span>}
+              {compte(f) > 0 && <span className="font-mono text-[10.5px] font-medium text-text-secondary">{compte(f)}</span>}
             </button>
           ))}
           <input
@@ -122,13 +122,13 @@ export function SupervisorGrille() {
             onChange={(e) => setQ(e.target.value)}
             placeholder="Chercher une organisation…"
             aria-label="Chercher une organisation"
-            className="ml-auto h-8 w-[240px] border border-[#2b2b2b] bg-transparent px-3 text-[12.5px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]"
+            className="ml-auto h-8 w-[240px] border border-[#2b2b2b] bg-transparent px-3 text-[12.5px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]"
           />
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[960px] border-collapse text-left">
             <thead>
-              <tr className="border-b border-[#252525] font-mono text-[9.5px] uppercase tracking-[0.14em] text-[#9a9a97]">
+              <tr className="border-b border-[#252525] font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted">
                 <th className="py-3 pl-2.5 font-normal">Poids</th>
                 <th className="py-3 font-normal">Organisation</th>
                 <th className="py-3 font-normal">Suivi</th>
@@ -143,7 +143,7 @@ export function SupervisorGrille() {
             <tbody>
               {liste.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-[13px] text-[#a3a3a0]">
+                  <td colSpan={9} className="py-8 text-center text-[13px] text-text-secondary">
                     {q ? 'Aucune organisation de ce nom dans ce filtre.' : 'Aucune organisation dans ce filtre.'}
                   </td>
                 </tr>
@@ -151,7 +151,7 @@ export function SupervisorGrille() {
               {tours.map(ligneOrg)}
               {plateau.length > 0 && (
                 <tr>
-                  <td colSpan={9} className="pb-1 pl-2.5 pt-4 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[#9a9a97]">
+                  <td colSpan={9} className="pb-1 pl-2.5 pt-4 font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted">
                     Le plateau · {plateau.length}
                   </td>
                 </tr>
@@ -172,13 +172,13 @@ export function SupervisorGrille() {
 
 function Repli({ onClick, titre, n, note }: { onClick: () => void; titre: string; n: number; note: string }) {
   return (
-    <tr className="border-t border-[#1f1f1f] bg-[#0f0f0f]">
+    <tr className="border-t border-border bg-[#0f0f0f]">
       <td colSpan={9}>
         <button type="button" onClick={onClick} className="flex h-11 w-full items-center gap-3 px-2.5 text-left hover:bg-white/[0.02]">
-          <ChevronRight size={14} className="text-[#a3a3a0]" aria-hidden />
-          <span className="text-[13.5px] font-semibold text-[#f7f7f5]">{titre}</span>
-          <span className="font-mono text-[11px] text-[#a3a3a0]">{n}</span>
-          <span className="text-[12px] text-[#9a9a97]">{note}</span>
+          <ChevronRight size={14} className="text-text-secondary" aria-hidden />
+          <span className="text-[13.5px] font-semibold text-text-primary">{titre}</span>
+          <span className="font-mono text-[11px] text-text-secondary">{n}</span>
+          <span className="text-[12px] text-text-muted">{note}</span>
         </button>
       </td>
     </tr>
@@ -230,27 +230,27 @@ function LigneOrg({
           <span className="relative h-[3px] w-[34px] bg-[#2b2b2b]" aria-hidden>
             <span className="absolute inset-y-0 left-0" style={{ width: `${Math.max(o.poids ? 6 : 0, (o.poids / max) * 100)}%`, background: ambre ? AMBRE : '#8a8a87' }} />
           </span>
-          <span className="w-6 font-mono text-[12px] font-semibold tabular-nums" style={{ color: ambre ? AMBRE : '#e4e4e1' }}>{o.poids}</span>
+          <span className="w-6 font-mono text-[12px] font-semibold tabular-nums" style={{ color: ambre ? AMBRE : 'var(--color-text-body)' }}>{o.poids}</span>
         </span>
       </td>
       <td className="max-w-[220px] py-1.5">
-        <Link to={`/supervisor/dossiers/${o.id}`} className="block truncate text-[13.5px] font-semibold text-[#f7f7f5] hover:underline">
+        <Link to={`/supervisor/dossiers/${o.id}`} className="block truncate text-[13.5px] font-semibold text-text-primary hover:underline">
           {o.nom}
         </Link>
-        {groupe && <span className="block truncate font-mono text-[9.5px] uppercase tracking-[0.12em] text-[#9a9a97]">Groupe {groupe}</span>}
+        {groupe && <span className="block truncate font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-muted">Groupe {groupe}</span>}
       </td>
       <td>
         <span className="flex items-center gap-2">
           {qui && <UserAvatar email={qui} size={18} />}
-          <span className="font-mono text-[9.5px] font-semibold tracking-[0.14em]" style={{ color: ambre ? AMBRE : '#a3a3a0' }}>{libelleSuivi(o)}</span>
+          <span className="font-mono text-[9.5px] font-semibold tracking-[0.14em]" style={{ color: ambre ? AMBRE : 'var(--color-text-secondary)' }}>{libelleSuivi(o)}</span>
         </span>
       </td>
       <td>
         {score === null ? (
-          <span className="text-[#9a9a97]">—</span>
+          <span className="text-text-muted">—</span>
         ) : (
           <span className="flex items-center gap-2.5">
-            <span className="w-6 font-mono text-[12px] font-semibold tabular-nums text-[#f7f7f5]">{score}</span>
+            <span className="w-6 font-mono text-[12px] font-semibold tabular-nums text-text-primary">{score}</span>
             <span className="relative h-[3px] w-[60px] bg-[#2b2b2b]" aria-hidden>
               <span className="absolute inset-y-0 left-0 bg-[#8a8a87]" style={{ width: `${score}%` }} />
               {rouge && <span className="absolute -top-[5px] h-[13px] w-[3px] -translate-x-1/2" style={{ left: `${score}%`, background: ROUGE.trait }} />}
@@ -260,22 +260,22 @@ function LigneOrg({
       </td>
       <td>
         {dispo.every((d) => d === null) ? (
-          <span className="text-[#9a9a97]">—</span>
+          <span className="text-text-muted">—</span>
         ) : (
           <span className="flex h-[14px] items-end gap-px" aria-label={`${dispo.filter((d) => d === false).length} jour(s) de panne sur 30`}>
             {dispo.map((d, i) => (
-              <span key={i} className="w-[2px]" style={{ height: d === false ? 4 : 14, background: d === null ? '#1f1f1f' : d ? '#6b6b68' : '#3a3a3a' }} />
+              <span key={i} className="w-[2px]" style={{ height: d === false ? 4 : 14, background: d === null ? 'var(--color-border)' : d ? 'var(--color-trait-sourd)' : 'var(--color-border-strong)' }} />
             ))}
           </span>
         )}
       </td>
-      <td className="font-mono text-[12px] tabular-nums" style={{ color: demandes ? '#e4e4e1' : '#9a9a97' }}>{demandes || '—'}</td>
-      <td className="whitespace-nowrap font-mono text-[12px] tabular-nums text-[#e4e4e1]">
+      <td className="font-mono text-[12px] tabular-nums" style={{ color: demandes ? 'var(--color-text-body)' : 'var(--color-text-muted)' }}>{demandes || '—'}</td>
+      <td className="whitespace-nowrap font-mono text-[12px] tabular-nums text-text-body">
         {o.org.userCount} / {places ?? '∞'}
-        {placesDemandees > 0 && <span className="text-[#a3a3a0]"> · +{placesDemandees} demande{placesDemandees > 1 ? 's' : ''}</span>}
+        {placesDemandees > 0 && <span className="text-text-secondary"> · +{placesDemandees} demande{placesDemandees > 1 ? 's' : ''}</span>}
       </td>
-      <td className="max-w-[170px] truncate text-[12px] text-[#a3a3a0]">{desktop}</td>
-      <td className="pr-2.5 font-mono text-[12px] text-[#a3a3a0]">{garde ? `${garde} ouv.` : '—'}</td>
+      <td className="max-w-[170px] truncate text-[12px] text-text-secondary">{desktop}</td>
+      <td className="pr-2.5 font-mono text-[12px] text-text-secondary">{garde ? `${garde} ouv.` : '—'}</td>
     </tr>
   );
 }

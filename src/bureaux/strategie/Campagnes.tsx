@@ -90,8 +90,8 @@ export function StrategieCampagnes() {
               return (
                 <section key={e.cle} aria-label={e.nom} className="min-w-0">
                   <div className="mb-3 flex items-baseline justify-between border-b border-[#28282c] pb-2">
-                    <span className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-[#a3a3a0]">{e.nom}</span>
-                    <span className="font-mono text-[10px] tabular-nums text-[#9a9a97]">{liste.length || ''}</span>
+                    <span className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-text-secondary">{e.nom}</span>
+                    <span className="font-mono text-[10px] tabular-nums text-text-muted">{liste.length || ''}</span>
                   </div>
                   <div className="flex flex-col gap-2.5">
                     {liste.map((x) => (
@@ -129,10 +129,10 @@ function Fiche({ c, ambre, choisie, onChoisir }: { c: CampagneId; ambre: boolean
         onClick={onChoisir}
         aria-pressed={choisie}
         className="block w-full px-3.5 pb-3.5 pt-3 text-left"
-        style={{ background: '#1d1810', border: `1px solid ${AMBRE}`, boxShadow: '0 0 30px -10px rgba(208,154,74,.55)', outline: choisie ? '2px solid #f7f7f5' : undefined, outlineOffset: 2 }}
+        style={{ background: '#1d1810', border: `1px solid ${AMBRE}`, boxShadow: '0 0 30px -10px rgba(208,154,74,.55)', outline: choisie ? '2px solid var(--color-text-primary)' : undefined, outlineOffset: 2 }}
         data-signal-groupe="campagne-bloquee"
       >
-        <span className="block text-[13.5px] font-semibold leading-snug text-[#f7f7f5]">{c.titre}</span>
+        <span className="block text-[13.5px] font-semibold leading-snug text-text-primary">{c.titre}</span>
         <span className="mt-2.5 block font-mono text-[10px] font-bold uppercase leading-[1.5] tracking-[0.1em]" style={{ color: AMBRE }}>
           {c.bloquee.raison}
           {c.programmeeLe ? ` · sortie le ${jourMoisAbrege(c.programmeeLe)}` : ''}
@@ -141,7 +141,7 @@ function Fiche({ c, ambre, choisie, onChoisir }: { c: CampagneId; ambre: boolean
     );
   }
   return (
-    <button id={`campagne-${c.id}`} type="button" onClick={onChoisir} aria-pressed={choisie} className="bx-papier block w-full px-3.5 pb-3.5 pt-3 text-left" style={{ outline: choisie ? '2px solid #f7f7f5' : undefined, outlineOffset: 2 }}>
+    <button id={`campagne-${c.id}`} type="button" onClick={onChoisir} aria-pressed={choisie} className="bx-papier block w-full px-3.5 pb-3.5 pt-3 text-left" style={{ outline: choisie ? '2px solid var(--color-text-primary)' : undefined, outlineOffset: 2 }}>
       <span className="block text-[13.5px] font-semibold leading-snug text-[#111]">{c.titre}</span>
       <span className="mt-1.5 block text-[11.5px] leading-snug text-[#3a3a38]">{ligne(c)}</span>
       {c.bloquee && <span className="mt-1.5 block font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] text-[#3a3a38]">bloquée : {c.bloquee.raison}</span>}
@@ -164,7 +164,7 @@ function Detail({ c, ecrire, prospects, onFermer }: { c: CampagneId; ecrire: Ret
     maj({ etape, ...(etape === 'publiee' && !c.publieeLe ? { publieeLe: new Date().toISOString() } : {}), ...(etape === 'close' || etape === 'publiee' ? { bloquee: null } : {}) });
 
   return (
-    <Carte pad="p-6" className="mt-[18px]" titre={`La campagne · ${c.titre}`} droite={<button type="button" onClick={onFermer} className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#a3a3a0] hover:text-[#f7f7f5]">Fermer</button>}>
+    <Carte pad="p-6" className="mt-[18px]" titre={`La campagne · ${c.titre}`} droite={<button type="button" onClick={onFermer} className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-secondary hover:text-text-primary">Fermer</button>}>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-2">
@@ -185,7 +185,7 @@ function Detail({ c, ecrire, prospects, onFermer }: { c: CampagneId; ecrire: Ret
             )}
           </div>
           <label className="block">
-            <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-[#9a9a97]">{c.etape === 'close' ? 'Ce qu’elle a rapporté' : 'Sa ligne sur la fiche'}</span>
+            <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-muted">{c.etape === 'close' ? 'Ce qu’elle a rapporté' : 'Sa ligne sur la fiche'}</span>
             <input
               key={`${c.id}-${c.etape}`}
               defaultValue={(c.etape === 'close' ? c.rapporte : c.resultat) ?? ''}
@@ -195,15 +195,15 @@ function Detail({ c, ecrire, prospects, onFermer }: { c: CampagneId; ecrire: Ret
             />
           </label>
           <label className="block">
-            <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-[#9a9a97]">Sortie prévue</span>
+            <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-muted">Sortie prévue</span>
             <input type="date" key={`${c.id}-sortie`} defaultValue={c.programmeeLe?.slice(0, 10) ?? ''} onBlur={(e) => maj({ programmeeLe: e.target.value ? `${e.target.value}T09:00:00` : null })} className={`${champ} mt-1.5 h-9 w-[200px] [color-scheme:dark]`} />
           </label>
         </div>
         <div className="flex flex-col gap-3">
           {c.bloquee ? (
             <div className="border border-[#28282c] p-3.5">
-              <span className="block font-mono text-[9.5px] uppercase tracking-[0.12em] text-[#9a9a97]">Bloquée depuis le {jjmm(c.bloquee.depuis)}</span>
-              <span className="mt-1.5 block text-[13.5px] text-[#f7f7f5]">{c.bloquee.raison}</span>
+              <span className="block font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-muted">Bloquée depuis le {jjmm(c.bloquee.depuis)}</span>
+              <span className="mt-1.5 block text-[13.5px] text-text-primary">{c.bloquee.raison}</span>
               <button type="button" className="bx-lien mt-2.5" onClick={() => maj({ bloquee: null })}>
                 Ce n’est plus bloqué
               </button>
@@ -227,14 +227,14 @@ function Detail({ c, ecrire, prospects, onFermer }: { c: CampagneId; ecrire: Ret
             )
           )}
           <div>
-            <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-[#9a9a97]">Les prospects qu’elle vise · un fil sur le mur</span>
+            <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-muted">Les prospects qu’elle vise · un fil sur le mur</span>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {(c.prospects ?? []).map((id) => (
-                <button key={id} type="button" onClick={() => maj({ prospects: (c.prospects ?? []).filter((x) => x !== id) })} className="border border-[#3a3a40] px-2 py-1 text-[12px] text-[#e4e4e1]" title="Retirer ce fil">
+                <button key={id} type="button" onClick={() => maj({ prospects: (c.prospects ?? []).filter((x) => x !== id) })} className="border border-[#3a3a40] px-2 py-1 text-[12px] text-text-body" title="Retirer ce fil">
                   {prospects.find((p) => p.id === id)?.nom ?? id} ×
                 </button>
               ))}
-              <select value="" onChange={(e) => e.target.value && maj({ prospects: [...(c.prospects ?? []), e.target.value] })} aria-label="Viser un prospect" className="h-8 border border-[#28282c] bg-[#141416] px-2 text-[12px] text-[#e4e4e1]">
+              <select value="" onChange={(e) => e.target.value && maj({ prospects: [...(c.prospects ?? []), e.target.value] })} aria-label="Viser un prospect" className="h-8 border border-[#28282c] bg-[#141416] px-2 text-[12px] text-text-body">
                 <option value="">+ viser…</option>
                 {prospects
                   .filter((p) => !(c.prospects ?? []).includes(p.id))

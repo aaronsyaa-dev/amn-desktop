@@ -50,7 +50,7 @@ export function SupervisorGroupes() {
     void upsert('orgDossier', id, { ...reste, updatedBy: user?.email ?? '' });
   };
   const vide = m.pret && groupes.length === 0;
-  const champ = 'h-9 border border-[#2b2b2b] bg-[#141414] px-2.5 text-[13px] text-[#f7f7f5] outline-none focus:border-[#8a8a87]';
+  const champ = 'h-9 border border-[#2b2b2b] bg-raised px-2.5 text-[13px] text-text-primary outline-none focus:border-[#8a8a87]';
   return (
     <EcranVide quand={vide} premierJour={vide}>
       <EnTete
@@ -88,12 +88,12 @@ export function SupervisorGroupes() {
               const ambre = m.ambre?.id === o.id;
               return (
                 <div key={o.id} className="flex items-center gap-3 border-b border-[#1a1a1a] py-2.5" style={ambre ? { background: 'rgba(208,154,74,.06)', boxShadow: `inset 2px 0 0 ${AMBRE}`, paddingLeft: 8 } : undefined} data-signal-groupe={ambre ? 'groupes-ambre' : undefined}>
-                  <span className="w-7 font-mono text-[12px] font-semibold tabular-nums" style={{ color: ambre ? AMBRE : '#e4e4e1' }}>{o.poids}</span>
-                  <Link to={`/supervisor/dossiers/${o.id}`} className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-[#f7f7f5] hover:underline">
+                  <span className="w-7 font-mono text-[12px] font-semibold tabular-nums" style={{ color: ambre ? AMBRE : 'var(--color-text-body)' }}>{o.poids}</span>
+                  <Link to={`/supervisor/dossiers/${o.id}`} className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-text-primary hover:underline">
                     {o.nom}
                   </Link>
-                  <span className="font-mono text-[9.5px] font-semibold tracking-[0.14em]" style={{ color: ambre ? AMBRE : '#a3a3a0' }}>{libelleSuivi(o)}</span>
-                  <button type="button" onClick={() => sortir(o.id)} className="text-[11.5px] text-[#9a9a97] underline decoration-[#4a4a48] underline-offset-2 hover:text-[#e4e4e1]">
+                  <span className="font-mono text-[9.5px] font-semibold tracking-[0.14em]" style={{ color: ambre ? AMBRE : 'var(--color-text-secondary)' }}>{libelleSuivi(o)}</span>
+                  <button type="button" onClick={() => sortir(o.id)} className="text-[11.5px] text-text-muted underline decoration-[#4a4a48] underline-offset-2 hover:text-text-body">
                     Sortir du groupe
                   </button>
                 </div>
