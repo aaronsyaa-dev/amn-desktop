@@ -98,7 +98,7 @@ const MARCHES: number[] = [70, 110, 150, 190];
 export function RemindersScreen() {
   const { t, langue } = useLangue();
   const { user } = useAuth();
-  const { upsert } = useSync();
+  const { upsert, remove } = useSync();
   const { invoices } = useInvoices();
   const relances = useCollection<ReminderData>('paymentReminders');
   const [copiee, setCopiee] = useState<string | null>(null);
@@ -517,6 +517,16 @@ export function RemindersScreen() {
               )
             ) : (
               <p className="mt-3 font-mono text-[10px] uppercase tracking-wider text-text-muted">{t('relances.premiereRelance')}</p>
+            )}
+            {/* Une relance notée par erreur se reprend — dans les dix minutes, et seulement la sienne : au-delà, c'est l'historique. */}
+            {dernierePourTete && dernierePourTete.byEmail === moi && Date.now() - Date.parse(dernierePourTete.sentAt) < 10 * 60_000 && (
+              <button
+                type="button"
+                onClick={() => void remove('paymentReminders', dernierePourTete.id)}
+                className="mt-2 text-[12px] font-semibold text-text-secondary underline decoration-trait-sourd underline-offset-4 hover:text-text-primary"
+              >
+                {t('relances.annulerNote')}
+              </button>
             )}
 
             <p className="mt-4 whitespace-pre-wrap border border-border bg-bg px-4 py-3.5 text-sm leading-relaxed text-text-secondary">{message(tete)}</p>

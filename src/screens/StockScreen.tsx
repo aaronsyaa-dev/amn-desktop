@@ -2,8 +2,9 @@ import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { SaisieModule, versNombre } from '../components/SaisieModule';
 import { FirstRun } from '../components/EmptyState';
-import { useSync, useCollection, uid } from '../state/SyncContext';
+import { stripMeta, useSync, useCollection, uid } from '../state/SyncContext';
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
@@ -111,6 +112,33 @@ export function StockScreen() {
             <button type="button" onClick={() => setOuvert(false)} className="border border-border px-4 py-2 text-sm text-text-secondary hover:text-text-primary">{t('chrome.fermer')}</button>
           </div>
         </motion.form>
+      )}
+
+      {/* Corriger un article : son nom, son unité, son seuil d'alerte. La quantité, elle, bouge aux boutons + et −. */}
+      {articles.length > 0 && (
+        <SaisieModule
+          sansAjout
+          ajouter="Modifier un article"
+          surtitreListe="Les articles"
+          champs={[
+            { cle: 'name', intitule: 'Article', type: 'texte', requis: true },
+            { cle: 'unit', intitule: 'Unité', type: 'texte', aide: '« kg », « boîte », « litre ».' },
+            { cle: 'min', intitule: 'Seuil d’alerte', type: 'nombre', aide: 'En dessous, l’article passe « à commander ».' },
+          ]}
+          enregistrer={async (v, id) => {
+            const a = articles.find((x) => x.id === id);
+            if (!a) return;
+            const seuil = versNombre(v.min);
+            await upsert('stockItems', a.id, { ...stripMeta(a), name: v.name.trim(), unit: v.unit.trim(), minQuantity: seuil === null ? null : Math.max(0, seuil) });
+          }}
+          elements={articles.map((a) => ({
+            id: a.id,
+            libelle: a.name,
+            detail: `${a.quantity} ${a.unit}${a.minQuantity !== null ? ` · seuil ${a.minQuantity}` : ''}`,
+            valeurs: { name: a.name, unit: a.unit, min: a.minQuantity === null ? '' : String(a.minQuantity) },
+          }))}
+          supprimer={(id) => remove('stockItems', id)}
+        />
       )}
 
       {articles.length === 0 && !ouvert ? (

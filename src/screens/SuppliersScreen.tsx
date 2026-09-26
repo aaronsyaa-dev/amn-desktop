@@ -2,8 +2,9 @@ import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, PackageCheck, Phone, Plus, ShoppingCart, Trash2 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { SaisieModule, versNombre } from '../components/SaisieModule';
 import { FirstRun } from '../components/EmptyState';
-import { useSync, useCollection, uid } from '../state/SyncContext';
+import { stripMeta, useSync, useCollection, uid } from '../state/SyncContext';
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
@@ -274,6 +275,36 @@ export function SuppliersScreen() {
             <button type="button" onClick={() => setOuvert(false)} className="border border-border px-4 py-2 text-sm text-text-secondary hover:text-text-primary">{t('chrome.fermer')}</button>
           </div>
         </motion.form>
+      )}
+
+      {/* Corriger une fiche — et poser le délai annoncé, que rien d'autre ne permettait de saisir (Prévision de stock en dépend). */}
+      {fournisseurs.length > 0 && (
+        <SaisieModule
+          sansAjout
+          ajouter="Modifier un fournisseur"
+          surtitreListe="Les fournisseurs"
+          champs={[
+            { cle: 'name', intitule: 'Nom', type: 'texte', requis: true },
+            { cle: 'supplies', intitule: 'Ce qu’il fournit', type: 'texte' },
+            { cle: 'contact', intitule: 'Contact', type: 'texte' },
+            { cle: 'phone', intitule: 'Téléphone', type: 'texte' },
+            { cle: 'email', intitule: 'Courriel', type: 'texte' },
+            { cle: 'delai', intitule: 'Délai de livraison annoncé', type: 'nombre', suffixe: 'jours', aide: 'Ce qu’il promet entre la commande et la livraison.' },
+          ]}
+          enregistrer={async (v, id) => {
+            const f = fournisseurs.find((x) => x.id === id);
+            if (!f) return;
+            const delai = versNombre(v.delai);
+            await upsert('suppliers', f.id, { ...stripMeta(f), name: v.name.trim(), supplies: v.supplies.trim(), contact: v.contact.trim(), phone: v.phone.trim(), email: v.email.trim(), leadTimeDays: delai && delai > 0 ? Math.round(delai) : null });
+          }}
+          elements={fournisseurs.map((f) => ({
+            id: f.id,
+            libelle: f.name,
+            detail: [f.supplies, typeof f.leadTimeDays === 'number' ? `livre en ${f.leadTimeDays} j` : 'délai non renseigné'].filter(Boolean).join(' · '),
+            valeurs: { name: f.name, supplies: f.supplies, contact: f.contact, phone: f.phone, email: f.email, delai: typeof f.leadTimeDays === 'number' ? String(f.leadTimeDays) : '' },
+          }))}
+          supprimer={(id) => remove('suppliers', id)}
+        />
       )}
 
       {fournisseurs.length === 0 && !ouvert ? (

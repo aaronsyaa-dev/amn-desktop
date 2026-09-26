@@ -2,12 +2,13 @@ import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Signature, Trash2 } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { SaisieModule, depuisCents, versCents } from '../components/SaisieModule';
 import { FirstRun } from '../components/EmptyState';
 import { Champ, Case } from '../components/formulaire/Champ';
 import { AssistantLong, LigneAVenir } from '../components/etats/EtatsTransverses';
 import { formatCents } from '../lib/money';
 import { useHaloSignal } from '../components/EtatEcran';
-import { useCollection, useSync } from '../state/SyncContext';
+import { stripMeta, useCollection, useSync } from '../state/SyncContext';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
 
@@ -320,6 +321,35 @@ export function ContractsScreen() {
             }
           />
         </motion.div>
+      )}
+
+      {/* Corriger un contrat : une faute dans le titre ou une date se reprenait en supprimant et en recréant. */}
+      {contrats.length > 0 && (
+        <SaisieModule
+          sansAjout
+          ajouter="Modifier un contrat"
+          surtitreListe="Les contrats"
+          champs={[
+            { cle: 'title', intitule: 'Contrat', type: 'texte', requis: true },
+            { cle: 'party', intitule: 'Avec', type: 'texte', requis: true },
+            { cle: 'amount', intitule: 'Montant', type: 'montant' },
+            { cle: 'startsAt', intitule: 'Début', type: 'date', requis: true },
+            { cle: 'endsAt', intitule: 'Fin', type: 'date', requis: true },
+            { cle: 'note', intitule: 'Note', type: 'texte', large: true },
+          ]}
+          enregistrer={async (v, id) => {
+            const c = contrats.find((x) => x.id === id);
+            if (!c) return;
+            await upsert('contracts', c.id, { ...stripMeta(c), title: v.title.trim(), party: v.party.trim(), amountCents: versCents(v.amount) ?? 0, startsAt: v.startsAt, endsAt: v.endsAt, note: v.note.trim() });
+          }}
+          elements={contrats.map((c) => ({
+            id: c.id,
+            libelle: `${c.title} · ${c.party}`,
+            detail: `${c.startsAt.slice(0, 10)} → ${c.endsAt.slice(0, 10)}${c.amountCents ? ` · ${formatCents(c.amountCents)}` : ''}`,
+            valeurs: { title: c.title, party: c.party, amount: depuisCents(c.amountCents), startsAt: c.startsAt.slice(0, 10), endsAt: c.endsAt.slice(0, 10), note: c.note ?? '' },
+          }))}
+          supprimer={(id) => remove('contracts', id)}
+        />
       )}
 
       {contrats.length === 0 && !ouvert ? (

@@ -566,6 +566,7 @@ export const fr: Dictionnaire = {
   'relances.palier.dernierAvis': 'Dernier avis',
   'relances.tonAMonte': 'Le ton doit monter : la dernière relance était « {dernier} », cette facture est maintenant au palier « {actuel} ».',
   'relances.premiereRelance': 'Jamais encore relancée.',
+  'relances.annulerNote': 'Annuler cette relance notée',
   'relances.aEcrire': 'À écrire maintenant',
   'relances.retardUn': 'En retard d’un jour',
   'relances.jourDeRetard': 'jour de retard',

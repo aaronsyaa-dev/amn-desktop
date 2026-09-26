@@ -588,6 +588,7 @@ export const en = {
   'relances.palier.dernierAvis': 'Final notice',
   'relances.tonAMonte': 'The tone needs to rise: the last reminder was “{dernier}”, this invoice is now at the “{actuel}” stage.',
   'relances.premiereRelance': 'Never reminded yet.',
+  'relances.annulerNote': 'Undo this noted reminder',
   'abonnements.titre': 'Subscriptions',
   'abonnements.description': 'What recurs every month, and the invoice in one move.',
   'abonnements.aFacturer': '{n} subscription(s) to invoice today.',

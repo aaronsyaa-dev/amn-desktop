@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useState } from "react";
-import { Pencil, Plus } from "lucide-react";
-import { Bloc, BoutonSecondaire } from "./cinquante-kit";
-import { Champ } from "./formulaire/Champ";
-import { FormulaireEnPlace } from "./formulaire/FormulaireEnPlace";
-import { ConfirmDelete } from "./ConfirmDelete";
+import React, { createContext, useContext, useState } from 'react';
+import { Pencil, Plus } from 'lucide-react';
+import { Bloc, BoutonSecondaire } from './cinquante-kit';
+import { Champ } from './formulaire/Champ';
+import { FormulaireEnPlace } from './formulaire/FormulaireEnPlace';
+import { ConfirmDelete } from './ConfirmDelete';
 
 /**
  * SAISIR À LA MAIN — la première fiche d'un module, et les suivantes.
@@ -25,16 +25,7 @@ import { ConfirmDelete } from "./ConfirmDelete";
  * replié en un bouton ensuite.
  */
 
-export type TypeChamp =
-  | "texte"
-  | "long"
-  | "nombre"
-  | "montant"
-  | "pourcent"
-  | "date"
-  | "heure"
-  | "choix"
-  | "lignes";
+export type TypeChamp = 'texte' | 'long' | 'nombre' | 'montant' | 'pourcent' | 'date' | 'heure' | 'choix' | 'lignes';
 
 export interface ChampSaisie {
   cle: string;
@@ -69,7 +60,7 @@ export function versCents(s: string | undefined): number | null {
 
 /** « 12,5 » → 12.5. `null` si vide ou illisible. */
 export function versNombre(s: string | undefined): number | null {
-  const propre = (s ?? "").replace(/\s| /g, "").replace(",", ".");
+  const propre = (s ?? '').replace(/\s| /g, '').replace(',', '.');
   if (!propre) return null;
   const n = Number(propre);
   return Number.isFinite(n) ? n : null;
@@ -77,15 +68,15 @@ export function versNombre(s: string | undefined): number | null {
 
 /** Une ligne par entrée, lignes vides retirées. */
 export function versLignes(s: string | undefined): string[] {
-  return (s ?? "")
-    .split("\n")
+  return (s ?? '')
+    .split('\n')
     .map((l) => l.trim())
     .filter(Boolean);
 }
 
 /** 125050 → « 1250,5 » : la valeur d'un champ montant, pour « Modifier ». */
 export function depuisCents(c: number | null | undefined): string {
-  return c === null || c === undefined ? "" : String(c / 100).replace(".", ",");
+  return c === null || c === undefined ? '' : String(c / 100).replace('.', ',');
 }
 
 /** Une date du formulaire (AAAA-MM-JJ) en ISO à midi, pour ne pas glisser d'un jour selon le fuseau. */
@@ -95,29 +86,19 @@ export function versIso(jour: string): string {
 
 /** L'inverse : un ISO (ou un AAAA-MM-JJ) → AAAA-MM-JJ. */
 export function versJour(iso: string | undefined): string {
-  return iso ? iso.slice(0, 10) : "";
+  return iso ? iso.slice(0, 10) : '';
 }
 
 function initiales(champs: ChampSaisie[]): Valeurs {
-  return Object.fromEntries(
-    champs.map((c) => [
-      c.cle,
-      c.defaut ?? (c.type === "choix" ? (c.options?.[0]?.valeur ?? "") : ""),
-    ]),
-  );
+  return Object.fromEntries(champs.map((c) => [c.cle, c.defaut ?? (c.type === 'choix' ? (c.options?.[0]?.valeur ?? '') : '')]));
 }
 
 /** Ce qui manque pour enregistrer, en clair — ou `undefined` quand tout va. */
 function manque(champs: ChampSaisie[], v: Valeurs): string | undefined {
-  const vides = champs
-    .filter((c) => c.requis && !(v[c.cle] ?? "").trim())
-    .map((c) => c.intitule);
-  if (vides.length > 0) return `À remplir : ${vides.join(", ")}`;
+  const vides = champs.filter((c) => c.requis && !(v[c.cle] ?? '').trim()).map((c) => c.intitule);
+  if (vides.length > 0) return `À remplir : ${vides.join(', ')}`;
   const illisible = champs.find(
-    (c) =>
-      (c.type === "nombre" || c.type === "montant" || c.type === "pourcent") &&
-      (v[c.cle] ?? "").trim() &&
-      versNombre(v[c.cle]) === null,
+    (c) => (c.type === 'nombre' || c.type === 'montant' || c.type === 'pourcent') && (v[c.cle] ?? '').trim() && versNombre(v[c.cle]) === null,
   );
   if (illisible) return `« ${illisible.intitule} » attend un nombre`;
   return undefined;
@@ -129,7 +110,7 @@ function Controle({
   valeur,
   onChange,
   id,
-  className = "",
+  className = '',
 }: {
   champ: ChampSaisie;
   valeur: string;
@@ -141,23 +122,13 @@ function Controle({
     id,
     className,
     value: valeur,
-    onChange: (
-      e: React.ChangeEvent<
-        HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-      >,
-    ) => onChange(e.target.value),
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => onChange(e.target.value),
   };
   switch (champ.type) {
-    case "long":
-    case "lignes":
-      return (
-        <textarea
-          {...commun}
-          rows={champ.type === "lignes" ? 4 : 3}
-          className={`${className} resize-y`}
-        />
-      );
-    case "choix":
+    case 'long':
+    case 'lignes':
+      return <textarea {...commun} rows={champ.type === 'lignes' ? 4 : 3} className={`${className} resize-y`} />;
+    case 'choix':
       return (
         <select {...commun}>
           {(champ.options ?? []).map((o) => (
@@ -167,13 +138,13 @@ function Controle({
           ))}
         </select>
       );
-    case "date":
+    case 'date':
       return <input type="date" {...commun} />;
-    case "heure":
+    case 'heure':
       return <input type="time" {...commun} />;
-    case "nombre":
-    case "montant":
-    case "pourcent":
+    case 'nombre':
+    case 'montant':
+    case 'pourcent':
       return <input type="text" inputMode="decimal" {...commun} />;
     default:
       return <input type="text" {...commun} />;
@@ -197,8 +168,8 @@ export function Saisies({ children }: { children: React.ReactNode }) {
 }
 
 const SUFFIXES: Partial<Record<TypeChamp, string>> = {
-  montant: "€",
-  pourcent: "%",
+  montant: '€',
+  pourcent: '%',
 };
 
 export function SaisieModule({
@@ -208,8 +179,9 @@ export function SaisieModule({
   elements = [],
   supprimer,
   ouvertParDefaut = false,
-  surtitreListe = "Ce que vous avez saisi",
+  surtitreListe = 'Ce que vous avez saisi',
   note,
+  sansAjout = false,
 }: {
   /** Le libellé du bouton et le titre du formulaire : « Ajouter un véhicule ». */
   ajouter: string;
@@ -222,6 +194,8 @@ export function SaisieModule({
   surtitreListe?: string;
   /** Une précision à droite du titre du formulaire (« rien n'est envoyé »). */
   note?: string;
+  /** L'écran a déjà son propre formulaire de création : ne proposer que « Modifier ou supprimer ». */
+  sansAjout?: boolean;
 }) {
   const [ouvert, setOuvert] = useState(ouvertParDefaut);
   const [enCours, setEnCours] = useState<string | undefined>(undefined);
@@ -240,7 +214,7 @@ export function SaisieModule({
     setValeurs({ ...initiales(champs), ...(e.valeurs ?? {}) });
     setOuvert(true);
   };
-  const empeche = occupe ? "Enregistrement…" : manque(champs, valeurs);
+  const empeche = occupe ? 'Enregistrement…' : manque(champs, valeurs);
   const valider = async () => {
     if (empeche) return;
     setOccupe(true);
@@ -253,24 +227,9 @@ export function SaisieModule({
   };
 
   const corps = (
-    <div
-      data-saisie-module
-      className={
-        enRangee
-          ? ouvert || liste
-            ? "flex basis-full flex-col gap-3"
-            : "contents"
-          : "flex flex-col gap-3"
-      }
-    >
+    <div data-saisie-module className={enRangee ? (ouvert || liste ? 'flex basis-full flex-col gap-3' : 'contents') : 'flex flex-col gap-3'}>
       {ouvert ? (
-        <FormulaireEnPlace
-          titre={enCours ? "Modifier la fiche" : ajouter}
-          note={note}
-          empeche={empeche}
-          onEnregistrer={() => void valider()}
-          onFermer={fermer}
-        >
+        <FormulaireEnPlace titre={enCours ? 'Modifier la fiche' : ajouter} note={note} empeche={empeche} onEnregistrer={() => void valider()} onFermer={fermer}>
           <form
             className="grid gap-4 sm:grid-cols-2"
             onSubmit={(e) => {
@@ -279,26 +238,9 @@ export function SaisieModule({
             }}
           >
             {champs.map((c) => (
-              <div
-                key={c.cle}
-                className={
-                  c.large || c.type === "long" || c.type === "lignes"
-                    ? "sm:col-span-2"
-                    : ""
-                }
-              >
-                <Champ
-                  intitule={
-                    c.requis ? c.intitule : `${c.intitule} (facultatif)`
-                  }
-                  aide={c.aide}
-                  suffixe={c.suffixe ?? SUFFIXES[c.type]}
-                >
-                  <Controle
-                    champ={c}
-                    valeur={valeurs[c.cle] ?? ""}
-                    onChange={(v) => setValeurs((p) => ({ ...p, [c.cle]: v }))}
-                  />
+              <div key={c.cle} className={c.large || c.type === 'long' || c.type === 'lignes' ? 'sm:col-span-2' : ''}>
+                <Champ intitule={c.requis ? c.intitule : `${c.intitule} (facultatif)`} aide={c.aide} suffixe={c.suffixe ?? SUFFIXES[c.type]}>
+                  <Controle champ={c} valeur={valeurs[c.cle] ?? ''} onChange={(v) => setValeurs((p) => ({ ...p, [c.cle]: v }))} />
                 </Champ>
               </div>
             ))}
@@ -306,16 +248,16 @@ export function SaisieModule({
         </FormulaireEnPlace>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          <BoutonSecondaire onClick={() => setOuvert(true)}>
-            <Plus size={14} strokeWidth={2} aria-hidden />
-            {ajouter}
-          </BoutonSecondaire>
+          {!sansAjout && (
+            <BoutonSecondaire onClick={() => setOuvert(true)}>
+              <Plus size={14} strokeWidth={2} aria-hidden />
+              {ajouter}
+            </BoutonSecondaire>
+          )}
           {elements.length > 0 && (
             <BoutonSecondaire onClick={() => setListe((l) => !l)}>
               <Pencil size={13} strokeWidth={2} aria-hidden />
-              {liste
-                ? "Masquer la liste"
-                : `Modifier ou supprimer (${elements.length})`}
+              {liste ? 'Masquer la liste' : `Modifier ou supprimer (${elements.length})`}
             </BoutonSecondaire>
           )}
         </div>
@@ -326,19 +268,10 @@ export function SaisieModule({
           <p className="eyebrow mb-3 text-text-secondary">{surtitreListe}</p>
           <ul className="flex flex-col">
             {elements.map((e) => (
-              <li
-                key={e.id}
-                className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border py-2.5 first:border-t-0"
-              >
+              <li key={e.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border py-2.5 first:border-t-0">
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13.5px] text-text-primary">
-                    {e.libelle}
-                  </span>
-                  {e.detail && (
-                    <span className="block truncate text-[12px] text-text-muted">
-                      {e.detail}
-                    </span>
-                  )}
+                  <span className="block truncate text-[13.5px] text-text-primary">{e.libelle}</span>
+                  {e.detail && <span className="block truncate text-[12px] text-text-muted">{e.detail}</span>}
                 </span>
                 {e.valeurs && (
                   <button
@@ -349,12 +282,7 @@ export function SaisieModule({
                     Modifier
                   </button>
                 )}
-                {supprimer && (
-                  <ConfirmDelete
-                    onConfirm={() => void supprimer(e.id)}
-                    label={`Supprimer « ${e.libelle} »`}
-                  />
-                )}
+                {supprimer && <ConfirmDelete onConfirm={() => void supprimer(e.id)} label={`Supprimer « ${e.libelle} »`} />}
               </li>
             ))}
           </ul>
