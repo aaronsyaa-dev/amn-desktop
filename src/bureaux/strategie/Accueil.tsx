@@ -73,7 +73,13 @@ export function StrategieAccueil() {
               ))}
             </div>
             <div className="mt-7">
-              <Invitation titre="Le mur est vide." texte="Une campagne, un prospect ou un chiffre punaisés ici se relient d’eux-mêmes dès qu’un lien existe entre eux." action={<Link to="/strategie/campagnes" className="bx-btn2">Ouvrir les campagnes</Link>} />
+              <Invitation titre="Le mur est vide." texte="Une campagne, un prospect ou un chiffre punaisés ici se relient d’eux-mêmes dès qu’un lien existe entre eux." action={
+                  <span className="flex flex-wrap gap-2">
+                    <Link to="/strategie/campagnes?idee=1" className="bx-btn2">Noter une idée de campagne</Link>
+                    <Link to="/strategie/pipeline?nouveau=1" className="bx-btn2">Nouveau prospect</Link>
+                    <Link to="/strategie/calendrier?programmer=1" className="bx-btn2">Programmer une publication</Link>
+                  </span>
+                } />
             </div>
           </div>
         ) : (

@@ -23,11 +23,12 @@ import { useEcrire } from './commun';
 type Origine = { cle: string; nom: string };
 function origineDe(p: Prospect, campagnes: Map<string, string>): Origine | null {
   if (p.campagneId && campagnes.has(p.campagneId)) return { cle: `campagne:${p.campagneId}`, nom: `Campagne · ${campagnes.get(p.campagneId)}` };
-  if (p.venuPar) return { cle: 'parrainage', nom: 'Parrainage' };
+  // Une origine choisie à la main l'emporte sur « venu par » : c'est ainsi qu'on la corrige.
   if (p.source === 'bouche') return { cle: 'bouche', nom: 'Bouche à oreille' };
   if (p.source === 'site') return { cle: 'site', nom: 'Recherche, site public' };
   if (p.source === 'salon') return { cle: 'salon', nom: 'Salon, marché' };
   if (p.source) return { cle: p.source, nom: p.source };
+  if (p.venuPar) return { cle: 'parrainage', nom: 'Parrainage' };
   return null;
 }
 const eur = (cents: number) => `${Math.round(cents / 100).toLocaleString('fr-FR')} €`;
@@ -96,9 +97,23 @@ export function StrategieAttribution() {
                     <span className="font-mono text-[10.5px] tabular-nums text-text-muted">{eur(p.valueCents || 0)}</span>
                   </span>
                   {o ? (
-                    <span className="mt-0.5 block text-[12px] text-text-secondary">
-                      {o.nom}
-                      {p.venuPar ? ` · par ${p.venuPar}` : ''}
+                    <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px] text-text-secondary">
+                      <span>
+                        {o.nom}
+                        {p.venuPar ? ` · par ${p.venuPar}` : ''}
+                      </span>
+                      {/* Une origine se corrige : on l'apprend souvent après coup. */}
+                      <select value="" onChange={(e) => e.target.value && ecrire(p.id, () => (e.target.value.startsWith('campagne:') ? { campagneId: e.target.value.slice(9), source: undefined } : { source: e.target.value, campagneId: undefined }))} className="h-6 border border-[#28282c] bg-[#141416] px-1 text-[11.5px] text-text-muted" aria-label={`Corriger l’origine de ${p.company || p.name}`}>
+                        <option value="">corriger…</option>
+                        <option value="bouche">Bouche à oreille</option>
+                        <option value="site">Recherche, site public</option>
+                        <option value="salon">Salon, marché</option>
+                        {m.campagnes.map((c) => (
+                          <option key={c.id} value={`campagne:${c.id}`}>
+                            Campagne · {c.titre}
+                          </option>
+                        ))}
+                      </select>
                     </span>
                   ) : (
                     <label className="mt-1 flex items-center gap-2 text-[12px]" style={{ color: estAmbre ? AMBRE : 'var(--color-text-secondary)' }} data-signal-groupe={estAmbre ? 'attribution-ambre' : undefined}>

@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useAuth } from '../../auth/AuthContext';
 import { uid } from '../../state/SyncContext';
 import { resizeImageToDataUrl } from '../../lib/imageResize';
 import { AMBRE } from '../jetons';
@@ -29,16 +30,72 @@ export function StrategieStoryboards() {
   const [params, setParams] = useSearchParams();
   const [choisi, setChoisi] = useState<string | null>(null);
   const [ajout, setAjout] = useState<{ duree: string; quoi: string } | null>(null);
+  const [nouveau, setNouveau] = useState<string | null>(null);
+  const { user } = useAuth();
   const fichier = useRef<HTMLInputElement>(null);
   const avecPlans = m.campagnes.filter((c) => (c.plans?.length ?? 0) > 0 || c.etape === 'scenario' || c.etape === 'production');
   const manque = (c: CampagneId) => (c.plans ?? []).some((p) => !p.visuel);
   const c = avecPlans.find((x) => x.id === params.get('c')) ?? avecPlans.find((x) => x.bloquee && manque(x)) ?? avecPlans.find((x) => (x.plans?.length ?? 0) > 0) ?? avecPlans[0] ?? null;
 
+  /*
+    L'ENTRÉE. Un storyboard n'existait que pour une campagne déjà passée « au scénario » — et rien, ici,
+    ne permettait d'en faire passer une ni d'en commencer une : l'écran vide était une impasse. On peut
+    maintenant commencer un storyboard (il crée la campagne, au scénario), ou scénariser une idée.
+  */
+  const idees = m.campagnes.filter((x) => x.etape === 'idee');
+  const commencer = (titreFilm: string) => {
+    const t = titreFilm.trim();
+    if (!t) return;
+    const id = `camp-${uid()}`;
+    ecrire(id, () => ({ titre: t, etape: 'scenario', creePar: user?.email ?? '', at: new Date().toISOString(), plans: [] }));
+    setNouveau(null);
+    setParams({ c: id }, { replace: true });
+  };
+  const scenariser = (id: string) => {
+    ecrire(id, () => ({ etape: 'scenario' }));
+    setParams({ c: id }, { replace: true });
+  };
+  const entree = (
+    <Carte pad="p-5" className="mb-[18px]" titre="Commencer un storyboard" droite="il ouvre une campagne à l’étape Scénario">
+      <form
+        className="flex flex-wrap gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          commencer(nouveau ?? '');
+        }}
+      >
+        <input autoFocus value={nouveau ?? ''} onChange={(e) => setNouveau(e.target.value)} placeholder="« Film des portes ouvertes, 30 s »" aria-label="Le nom du film" className={`${champ} h-9 min-w-0 flex-1`} />
+        <button type="submit" className="bx-btn" disabled={!(nouveau ?? '').trim()}>
+          Commencer
+        </button>
+        {c && (
+          <button type="button" className="bx-btn2" onClick={() => setNouveau(null)}>
+            Annuler
+          </button>
+        )}
+      </form>
+      {idees.length > 0 && (
+        <div className="mt-4">
+          <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted">Ou scénariser une idée de campagne</p>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {idees.slice(0, 8).map((x) => (
+              <li key={x.id}>
+                <button type="button" className="bx-btn2" onClick={() => scenariser(x.id)}>
+                  {x.titre}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Carte>
+  );
+
   if (!c) {
     return (
       <>
-        <EnTete surtitre="Stratégie · Storyboards" titre="Aucun film en préparation." />
-        <Invitation titre="Pas de storyboard." texte="Un storyboard naît avec une campagne au scénario : ses plans, leur durée, ce qu’on y voit, et le visuel de chacun." />
+        <EnTete surtitre="Stratégie · Storyboards" titre="Aucun film en préparation." lede="Un storyboard découpe une vidéo en plans : leur durée, ce qu’on y voit, et le visuel de chacun." />
+        {entree}
       </>
     );
   }
@@ -71,7 +128,13 @@ export function StrategieStoryboards() {
         surtitre="Stratégie · Storyboards"
         titre={titre}
         actions={
-          avecPlans.length > 1 ? (
+          <span className="flex flex-wrap items-center gap-2">
+          {nouveau === null && (
+            <button type="button" className="bx-btn2" onClick={() => setNouveau('')}>
+              Nouveau storyboard
+            </button>
+          )}
+          {avecPlans.length > 1 ? (
             <select value={c.id} onChange={(e) => setParams({ c: e.target.value }, { replace: true })} aria-label="La campagne" className="h-9 border border-[#28282c] bg-[#141416] px-2.5 text-[13px] text-text-primary">
               {avecPlans.map((x) => (
                 <option key={x.id} value={x.id}>
@@ -79,9 +142,11 @@ export function StrategieStoryboards() {
                 </option>
               ))}
             </select>
-          ) : undefined
+          ) : null}
+          </span>
         }
       />
+      {nouveau !== null && entree}
       <Carte dominante pad="p-6" titre={`${c.titre} · ${plans.length} plan${plans.length > 1 ? 's' : ''}`} droite={total ? `${total} s au total` : ''}>
         {plans.length > 0 && (
           <div className="mb-5 flex h-[26px] border border-[#28282c]" role="img" aria-label={`La règle du temps : ${plans.map((p, i) => `plan ${i + 1}, ${p.duree} s`).join(' ; ')}`}>

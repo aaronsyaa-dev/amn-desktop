@@ -89,7 +89,7 @@ export function StrategiePipeline() {
   const { remove } = useSync();
   const [echange, setEchange] = useState<{ type: Echange['type']; texte: string } | null>(null);
   const [prochaine, setProchaine] = useState<{ quoi: string; jour: string; appel: boolean } | null>(null);
-  const [nouveau, setNouveau] = useState(false);
+  const [nouveau, setNouveau] = useState(() => new URLSearchParams(window.location.hash.split('?')[1] ?? '').has('nouveau'));
   const fermerNouveau = (id: string | null) => {
     setNouveau(false);
     if (id) navigate(`/strategie/pipeline/${id}`);
@@ -135,7 +135,11 @@ export function StrategiePipeline() {
       ? `${nom} a ouvert son devis ${ouvertures === 2 ? 'deux' : enLettres(ouvertures)} fois.`
       : due
         ? `${nom} attend votre ${due.appel ? 'appel' : 'relance'}.`
-        : `${enLettres(enCours.length, true)} prospect${enCours.length > 1 ? 's' : ''} en cours.`;
+        : enCours.length === 0
+          ? p.stage === 'gagne'
+            ? `${nom} est gagnée. Plus aucun prospect en cours.`
+            : 'Plus aucun prospect en cours.'
+          : `${enLettres(enCours.length, true)} prospect${enCours.length > 1 ? 's' : ''} en cours.`;
 
   const noter = (type: Echange['type'], texte: string, clore = false) =>
     ecrire(p.id, (b) => ({
@@ -243,6 +247,12 @@ export function StrategiePipeline() {
             {suivante && EN_COURS.includes(p.stage) && (
               <button type="button" className="bx-btn2" onClick={() => avancer(suivante.cle)}>
                 Passer à « {suivante.nom} »
+              </button>
+            )}
+            {/* Une affaire se signe parfois dès le premier appel : « Gagné » à toute étape, pas seulement après le devis — sinon l'Attribution ne se remplit jamais. */}
+            {EN_COURS.includes(p.stage) && suivante?.cle !== 'gagne' && (
+              <button type="button" className="bx-lien self-center" onClick={() => avancer('gagne')}>
+                Gagné
               </button>
             )}
             {EN_COURS.includes(p.stage) && (

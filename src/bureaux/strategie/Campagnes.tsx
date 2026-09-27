@@ -23,11 +23,11 @@ import { champ, jjmm, jourMoisAbrege, useEcrire } from './commun';
 
 export function StrategieCampagnes() {
   const m = useStrategie();
-  const { hash } = useLocation();
+  const { hash, search } = useLocation();
   const { user } = useAuth();
   const ecrire = useEcrire<Campagne>('campagnes');
   const [choisie, setChoisie] = useState<string | null>(() => hash.replace(/^#/, '') || null);
-  const [idee, setIdee] = useState<string | null>(null);
+  const [idee, setIdee] = useState<string | null>(() => (new URLSearchParams(search).get('idee') ? '' : null));
   const campagnes = [...m.campagnes].sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''));
   const bloquees = campagnes.filter((c) => c.bloquee && c.etape !== 'close');
   const n = campagnes.length;

@@ -41,7 +41,9 @@ export function StrategieCalendrier() {
   const ecrire = useEcrire<Publication>('publications');
   const { remove } = useSync();
   const [params, setParams] = useSearchParams();
-  const [nouvelle, setNouvelle] = useState<{ jour: string; canal: Canal; titre: string; heure: string; etat: Publication['etat'] } | null>(null);
+  const [nouvelle, setNouvelle] = useState<{ jour: string; canal: Canal; titre: string; heure: string; etat: Publication['etat'] } | null>(() =>
+    new URLSearchParams(window.location.hash.split('?')[1] ?? '').has('programmer') ? { jour: new Date().toISOString().slice(0, 10), canal: 'LI', titre: '', heure: '18:00', etat: 'a_valider' } : null,
+  );
   const auj = aujourdHui();
   const mois = /^\d{4}-\d{2}$/.test(params.get('m') ?? '') ? params.get('m')! : auj.slice(0, 7);
   const [a, mo] = mois.split('-').map(Number);
@@ -220,7 +222,9 @@ export function StrategieCalendrier() {
           )}
         </Carte>
         <Carte titre="Les trous" droite={trous[0]?.resume ?? ''}>
-          {trous.length === 0 ? (
+          {pubs.length === 0 ? (
+            <p className="text-[13px] leading-relaxed text-text-secondary">Rien de programmé ce mois-ci : « Programmer une publication », en haut, pose la première.</p>
+          ) : trous.length === 0 ? (
             <p className="text-[13px] leading-relaxed text-text-secondary">Pas de trou : chaque canal publie au moins tous les dix jours.</p>
           ) : (
             trous.map((t, i) => (
