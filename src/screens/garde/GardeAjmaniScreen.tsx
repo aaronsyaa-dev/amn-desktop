@@ -10,6 +10,7 @@ import { useLangue } from '../../i18n';
 import { NOM_DU_CHEF } from '@edition/ajmani';
 import { relativeTime } from '../../lib/time';
 import type { GardeAccueil, GardeGeste, GardeGuideEntree } from '../../shared/garde';
+import { contexteActuel } from '../../assistant/ecranContexte';
 
 /**
  * AJMANI, CHEF D'ÉTAT-MAJOR — une conversation, pas un pupitre (Bloc 3 de l'Automatique).
@@ -74,7 +75,7 @@ export function GardeAjmaniScreen() {
     setFil((f) => [...f, { de: 'moi', texte: quoi }]);
     setTexte('');
     try {
-      const r = await garde.ordre(quoi, confirmer);
+      const r = await garde.ordre(quoi, confirmer, 'capitaine', contexteActuel());
       setFil((f) => [...f, { de: 'chef', texte: r.question ?? r.reponse, ...(r.confirmation ? { confirmation: r.confirmation, original: quoi } : {}) }]);
       setSuites(r.suites ?? []);
       if (r.ordre?.etat === 'fait') void charger();

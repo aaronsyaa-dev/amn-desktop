@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Sparkles } from 'lucide-react';
+import { useAssistant } from '../../assistant/AssistantContext';
 import { Link } from 'react-router-dom';
 import { AMBRE, ROUGE } from '../jetons';
 import { useGardeBureau, type Chef, type ModeleGarde } from '../donnees/gardeBureau';
@@ -21,6 +23,55 @@ import { useProfilesOptionnel } from '../../state/ProfilesContext';
  */
 
 const REPLI = 12;
+
+/*
+  AJMANI, EN TÊTE DE LA GARDE. L'organigramme montrait le Capitaine et ses chefs, jamais Ajmani —
+  pourtant chef d'état-major de la Garde. On ne lui parlait qu'en retournant au Poste de travail.
+  Ici : ce qu'il est, un champ pour lui poser une question (la réponse s'ouvre dans son panneau,
+  avec le contexte de l'écran), et le chemin vers sa proposition et ses réglages.
+*/
+function AjmaniEnTete() {
+  const { sendMessage, open } = useAssistant();
+  const [q, setQ] = useState('');
+  const envoyer = () => {
+    const t = q.trim();
+    if (!t) return;
+    open('chat');
+    sendMessage(t);
+    setQ('');
+  };
+  return (
+    <Carte pad="p-5" className="mb-[18px]" titre="Ajmani · chef d’état-major" droite="il comprend les questions en français courant">
+      <div className="flex flex-wrap items-center gap-3">
+        <Sparkles size={16} strokeWidth={1.9} aria-hidden className="text-text-secondary" />
+        <form
+          className="flex min-w-[240px] flex-1 gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            envoyer();
+          }}
+        >
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Demandez-lui : qu’est-ce qui m’attend ? qui n’a pas payé ?"
+            aria-label="Poser une question à Ajmani"
+            className="h-9 min-w-0 flex-1 border border-[#202020] bg-transparent px-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]"
+          />
+          <button type="submit" className="bx-btn" disabled={!q.trim()}>
+            Demander
+          </button>
+        </form>
+        <button type="button" className="bx-btn2" onClick={() => open('chat')}>
+          Ouvrir la conversation
+        </button>
+        <Link to="/garde/ajmani" className="bx-lien">
+          Sa proposition et ses réglages
+        </Link>
+      </div>
+    </Carte>
+  );
+}
 
 export function GardeAccueil() {
   const g = useGardeBureau();
@@ -48,6 +99,7 @@ export function GardeAccueil() {
           <p className="p-6 text-[13px] text-text-body">La Garde ne répond plus : c’est en soi une remontée haute, pour Harun.</p>
         </Erreur>
       )}
+      <AjmaniEnTete />
       <Carte
         dominante
         pad="p-7"

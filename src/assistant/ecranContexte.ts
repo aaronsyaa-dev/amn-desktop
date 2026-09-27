@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import type { GardeContexte } from '../shared/garde';
+import { bureauDuChemin, ongletDuChemin } from '../bureaux/catalogue';
+import { ESPACES } from '../bureaux/jetons';
 
 /**
  * LE CONTEXTE DE L'ÉCRAN — ce qu'Ajmani sait sans qu'on le lui dise (Ajmani partout, Bloc 1).
@@ -26,9 +28,26 @@ export function lireFocus(): FocusEcran | null {
   return pile.length ? pile[pile.length - 1] : null;
 }
 
+/*
+  L'ÉCRAN, toujours — pas seulement quand une fiche est ouverte. Sans lui, « sur quel écran je
+  suis ? », « à quoi sert cette page ? » ou « comment j'ajoute un site ici ? » n'avaient aucun
+  sens pour Ajmani. Le bureau et l'onglet viennent du catalogue des bureaux ; le titre de la page
+  (son premier h1) précise l'écran exact. Rien d'autre : pas de contenu, pas de saisie.
+*/
+function ecranActuel(): string | null {
+  if (typeof window === 'undefined') return null;
+  const chemin = window.location.hash.replace(/^#/, '').split('?')[0] || '/';
+  const bureau = bureauDuChemin(chemin);
+  const espace = ESPACES.find((e) => e.key === (bureau ?? 'poste'))?.nom ?? 'Poste de travail';
+  const onglet = bureau ? ongletDuChemin(bureau, chemin)?.ecran.nom : null;
+  const titre = (typeof document !== 'undefined' ? document.querySelector('main h1, h1')?.textContent : null)?.replace(/\s+/g, ' ').trim().slice(0, 70) || null;
+  return [espace, onglet, titre && titre !== onglet ? titre : null].filter(Boolean).join(' · ') + ` (${chemin})`;
+}
+
 export function contexteActuel(): GardeContexte | undefined {
   const focus = lireFocus();
-  return focus ? { focus } : undefined;
+  const ecran = ecranActuel();
+  return focus || ecran ? { focus, ecran } : undefined;
 }
 
 /** Une fiche à l'écran annonce son focus tant qu'elle est montée ; il disparaît avec elle. */

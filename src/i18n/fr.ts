@@ -2981,7 +2981,7 @@ export const fr: Dictionnaire = {
   'garde.chef.cerveauRejets': '{n} réponses rejetées par la garde des faits ce mois-ci.',
   'garde.chef.cloture': 'Clôturer la soirée',
   'garde.chef.clotureAide': 'Ce qui vous attend encore, et ce que la Garde fera cette nuit.',
-  'garde.chef.voixCapitaine': '{chef} de la Garde · la voix du Capitaine, sans modèle de langage',
+  'garde.chef.voixCapitaine': '{chef} · il comprend le français courant, et agit par la Garde',
   'garde.chef.repondezOui': 'Répondez « oui » et je m’en charge.',
   'garde.chef.saisFaire': 'Ce que je sais faire\u00a0:',
   'garde.chef.bienvenue': 'Vous êtes dans la Garde\u00a0: ici je ne formule rien, je rapporte ce que les règles ont produit, avec leurs preuves.',

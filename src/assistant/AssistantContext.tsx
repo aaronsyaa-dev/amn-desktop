@@ -543,7 +543,8 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
             const dite = generate && !r.confirmation && !r.question ? await reformulerSansInventer(reponse, generate) : reponse;
             const lignes = [dite];
             if (r.confirmation) lignes.push('', t('garde.chef.repondezOui'));
-            if (r.guide?.length) lignes.push('', t('garde.chef.saisFaire'), ...r.guide.map((g) => `- ${g.libelle} — « ${g.exemple} »`));
+            // Cinq exemples, pas trente : la liste entière noyait la réponse. « ? » dans La Garde la montre toute.
+            if (r.guide?.length) lignes.push('', t('garde.chef.saisFaire'), ...r.guide.filter((g) => !g.modifie).slice(0, 5).map((g) => `- ${g.libelle} — « ${g.exemple} »`));
             appendAnswer({ kind: 'answer', blocks: textToBlocks(lignes.join('\n')) });
           })
           .catch((err) => appendAnswer({ kind: 'answer', blocks: [{ type: 'paragraph', text: t('garde.erreur', { message: err instanceof Error ? err.message : String(err) }) }] }))
@@ -566,7 +567,14 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           // Sans Ollama, un mot-clé précis (hors ligne, alertes, visiteurs, le contenu d'un module)
           // répond exactement comme avant, sans coût, sans réseau.
           const local = reponseLocaleSpecifique(trimmed, sites, freshEvents, workspaceRef.current, Boolean(contexteActuel()?.focus));
-          if (local) return { kind: 'answer' as const, blocks: local };
+          /*
+            Un mot-clé ne suffit pas à comprendre une phrase : « comment je crée une note ? » rendait la
+            liste des notes, « quel client me doit le plus ? » le répertoire entier. La réponse locale ne
+            vaut que pour une demande courte qui EST le mot-clé (« mes tâches », « sites hors ligne ») ;
+            une vraie question part au cerveau, et la réponse locale ne sert qu'en repli s'il ne peut pas.
+          */
+          const courte = trimmed.split(/\s+/).filter(Boolean).length <= 4;
+          if (local && courte) return { kind: 'answer' as const, blocks: local };
           // AJMANI PARTOUT (L'Automatique) : ce qu'aucun mot-clé ne reconnaît n'est plus une phrase
           // en boîte — c'est confié au même cerveau que dans la Garde, avec le contexte de l'écran
           // (la fiche ouverte, par exemple), et la même garde des faits, le même budget, la même
@@ -576,7 +584,13 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           const contexte = contexteActuel();
           const r = await (attente && oui
             ? garde.ordre(attente, true, 'capitaine', contexte)
-            : garde.ordre(trimmed, false, 'capitaine', contexte));
+            : garde.ordre(trimmed, false, 'capitaine', contexte)
+          ).catch((err) => {
+            if (local) return null;
+            throw err;
+          });
+          // Le cerveau n'a pas pu (serveur injoignable, pas de clé, budget) : la réponse locale, s'il y en a une.
+          if (!r || (local && r.ordre?.etat === 'incompris')) return { kind: 'answer' as const, blocks: local ?? [] };
           gardeConfirmationRef.current = r.confirmation ? trimmed : null;
           // `r.reponse` porte toujours au moins ce que `r.question` porte (et, sans clé ou budget
           // épuisé, l'explication en plus) : jamais l'inverse, donc jamais de raison de préférer le second ici.

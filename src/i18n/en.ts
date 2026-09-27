@@ -2980,7 +2980,7 @@ export const en = {
   'garde.chef.cerveauRejets': '{n} answers rejected by the fact guard this month.',
   'garde.chef.cloture': 'Close the evening',
   'garde.chef.clotureAide': 'What still awaits you, and what the Guard will do tonight.',
-  'garde.chef.voixCapitaine': '{chef} of the Guard · the Captain’s voice, no language model',
+  'garde.chef.voixCapitaine': '{chef} · understands plain language, and acts through the Guard',
   'garde.chef.repondezOui': 'Answer “yes” and I will take care of it.',
   'garde.chef.saisFaire': 'What I can do:',
   'garde.chef.bienvenue': 'You are in the Guard: here I phrase nothing, I report what the rules produced, with their proof.',

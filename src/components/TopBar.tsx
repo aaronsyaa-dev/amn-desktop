@@ -11,6 +11,7 @@ import { OrgSwitchButton } from './org-rail/OrgSwitchButton';
 import { UserAvatar } from './UserAvatar';
 import { useAssistant } from '../assistant/AssistantContext';
 import { GardeBadge } from './garde/GardeBadge';
+import { BoutonMessagesPrives } from './messages/BoutonMessagesPrives';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { useLangue } from '../i18n';
@@ -144,6 +145,7 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
         <BoutonAide extra={<><EntreeLexique /><HelpButton enMenu /></>} />
         <LexiqueHote />
         <HelpButton masque />
+        <BoutonMessagesPrives />
         <NotificationCenter />
         {user && (
           <button

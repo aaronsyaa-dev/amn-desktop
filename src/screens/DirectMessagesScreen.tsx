@@ -12,7 +12,8 @@ import { useMembers } from '../state/useMembers';
 import { relativeTime } from '../lib/time';
 import { staggerContainer, staggerItem } from '../lib/transitions';
 import { useLangue } from '../i18n';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { marquerFilLu } from '../state/messagesPrives';
 
 interface DmData {
   from: string;
@@ -178,7 +179,13 @@ export function DirectMessagesScreen() {
   const { profileFor } = useProfiles();
   const { membres, prets } = useMembers();
   const brutes = useCollection<DmData>('dms');
-  const [avec, setAvec] = useState<string | null>(null);
+  // `?avec=` : le toast ou la pastille d'un message reçu ouvre directement son fil.
+  const [params] = useSearchParams();
+  const [avec, setAvec] = useState<string | null>(() => params.get('avec'));
+  useEffect(() => {
+    const p = params.get('avec');
+    if (p) setAvec(p);
+  }, [params]);
   const [texte, setTexte] = useState('');
   const fin = useRef<HTMLDivElement | null>(null);
   const moi = user?.email ?? '';
@@ -247,6 +254,12 @@ export function DirectMessagesScreen() {
   const regarde = avec ?? dominant?.membre.email ?? null;
   const fil = useMemo(() => (regarde ? filsPar.get(regarde) ?? [] : []), [filsPar, regarde]);
   const paliers = useMemo(() => paliersDe(fil, maintenant), [fil, maintenant]);
+
+  /* Le fil sous les yeux est lu : la pastille des barres s'éteint pour lui. */
+  const dernierRecu = useMemo(() => [...fil].reverse().find((m) => m.from === regarde)?.createdAt ?? null, [fil, regarde]);
+  useEffect(() => {
+    if (regarde && dernierRecu) marquerFilLu(moi, regarde, dernierRecu);
+  }, [moi, regarde, dernierRecu]);
 
   /*
     LA BULLE AMBRE — le dernier message envoyé resté sans réponse.

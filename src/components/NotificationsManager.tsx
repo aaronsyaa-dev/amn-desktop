@@ -8,6 +8,9 @@ import { useMessages } from '../state/useMessages';
 import { useProfiles } from '../state/ProfilesContext';
 import { DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs } from '../shared/api';
 import { useParcInsights } from '../state/parcInsights';
+import { useToast } from '../state/ToastContext';
+import { useNavigate } from 'react-router-dom';
+import { jouerCarillon } from '../state/messagesPrives';
 
 interface TaskLike {
   id: string;
@@ -37,6 +40,8 @@ export function NotificationsManager() {
   const { messages } = useMessages();
   const tasks = useCollection<TaskLike>('tasks');
   const dms = useCollection<DmLike>('dms');
+  const toast = useToast();
+  const navigate = useNavigate();
 
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_NOTIFICATION_PREFS);
 
@@ -193,9 +198,26 @@ export function NotificationsManager() {
     for (const m of dms) {
       if (seenDms.current.has(m.id)) continue;
       seenDms.current.add(m.id);
-      if (prefs.mention && m.to === user.email && m.from !== user.email) {
-        notify(`Message privé de ${profileFor(m.from).name}`, m.body || 'Message privé');
+      if (m.to !== user.email || m.from === user.email) continue;
+      /*
+        La notification du système seule ne suffisait pas (voir state/messagesPrives.ts) : Windows la
+        range sans bruit en mode Concentration, un navigateur la refuse sans permission. Le message se
+        voit donc DANS l'application, toujours — un toast cliquable qui ouvre le fil, un carillon, la
+        pastille des barres —, sauf quand ce fil est déjà sous les yeux.
+      */
+      const nom = profileFor(m.from).name;
+      const hash = window.location.hash;
+      const dejaSousLesYeux = document.hasFocus() && hash.startsWith('#/messages-prives');
+      if (!dejaSousLesYeux) {
+        toast.notify({
+          title: `Message privé de ${nom}`,
+          body: (m.body || '').slice(0, 140) || 'Nouveau message',
+          durationMs: 12_000,
+          onClick: () => navigate(`/messages-prives?avec=${encodeURIComponent(m.from)}`),
+        });
+        if (prefs.mention) jouerCarillon();
       }
+      if (prefs.mention && !document.hasFocus()) notify(`Message privé de ${nom}`, m.body || 'Message privé');
     }
   }, [dms, prefs.mention, user?.email]);
 

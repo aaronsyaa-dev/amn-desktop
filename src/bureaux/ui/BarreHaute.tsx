@@ -9,6 +9,9 @@ import { UserAvatar } from '../../components/UserAvatar';
 import { Glyphe, MarqueAmn } from './Glyphe';
 import { hhmm } from '../format';
 import { EDITION_PRODUCT_NAME } from '../../edition/edition';
+import { Sparkles } from 'lucide-react';
+import { useAssistant } from '../../assistant/AssistantContext';
+import { BoutonMessagesPrives } from '../../components/messages/BoutonMessagesPrives';
 
 /* Le mot qui suit la marque (« Business ») : il vient de l'édition, pas d'une chaîne figée. */
 const MOT_EDITION = EDITION_PRODUCT_NAME.replace(/^AMN\s+/, '');
@@ -27,6 +30,7 @@ export function BarreHaute({ bureau }: { bureau: BureauKey }) {
   const { ambiance, reduit } = useReglagesBureaux();
   const heure = useHeure();
   const touche = touchePrincipale();
+  const { open: ouvrirAjmani } = useAssistant();
 
   return (
     <header
@@ -82,6 +86,22 @@ export function BarreHaute({ bureau }: { bureau: BureauKey }) {
         </span>
       </button>
       <span className="hidden font-mono text-[11px] font-medium tabular-nums text-text-secondary sm:inline">{heure}</span>
+      {/*
+        AJMANI ET LES MESSAGES, DANS CHAQUE BUREAU. La barre haute des bureaux n'avait ni l'un ni
+        l'autre : dans La Garde, dont Ajmani est pourtant le chef d'état-major, on ne pouvait lui parler
+        qu'en retournant au Poste de travail, et un message privé reçu dans Studio ne se voyait pas.
+      */}
+      <BoutonMessagesPrives variante="bureau" />
+      <button
+        type="button"
+        onClick={() => ouvrirAjmani()}
+        title="Parler à Ajmani (F9 pour la bulle)"
+        data-ajmani-bureau
+        className="flex h-7 flex-none items-center gap-[7px] whitespace-nowrap border border-border-strong px-[11px] text-[12px] font-semibold text-text-body hover:border-[#8a8a87] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text-primary"
+      >
+        <Sparkles size={13} strokeWidth={1.9} aria-hidden />
+        <span className="hidden sm:inline">Ajmani</span>
+      </button>
       <button
         type="button"
         onClick={() => nav.allerEspace('poste')}
