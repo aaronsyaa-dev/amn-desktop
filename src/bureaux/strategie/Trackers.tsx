@@ -210,7 +210,7 @@ export function StrategieTrackers() {
 
   return (
     <>
-      <EnTete surtitre="Stratégie · Objectifs · Trackers" titre={titre} />
+      <EnTete surtitre="Stratégie · Tendances de l’équipe" titre={titre} />
       <section className="bx-dom p-6">
         <div className="mb-[22px] flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1.5">
           <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-secondary">Les quatre trackers de l’équipe · 8 semaines</span>

@@ -80,7 +80,7 @@ export function StrategieCalendrier() {
   return (
     <>
       <EnTete
-        surtitre="Stratégie · Calendrier éditorial"
+        surtitre="Stratégie · Calendrier des publications"
         titre={titre}
         actions={
           <>

@@ -32,7 +32,7 @@ export function StrategieAccueil() {
     { nom: 'Campagnes', n: m.campagnes.filter((c) => c.etape !== 'close').length, lien: '/strategie/campagnes', active: Boolean(m.bloquee) },
     { nom: 'Pipeline', n: m.prospects.filter((p) => EN_COURS.includes(p.stage)).length, lien: '/strategie/pipeline', active: Boolean(m.ambre) },
     { nom: 'Enquête', n: m.mur.filter((p) => p.type === 'question' || p.type === 'indice').length, lien: '/strategie/enquete', active: false },
-    { nom: 'Liège', n: m.mur.filter((p) => p.type === 'note').length, lien: '/strategie/liege', active: false },
+    { nom: 'Tableau d’idées', n: m.mur.filter((p) => p.type === 'note').length, lien: '/strategie/liege', active: false },
   ];
   const charge = zones.reduce((s, z) => s + z.n, 0) > PIECES_MAX;
   const derniere = [...m.campagnes, ...m.prospects, ...m.mur].map((x) => (x as { updatedAt?: string }).updatedAt ?? '').sort().pop() || null;

@@ -31,7 +31,7 @@ export function StrategieLiege() {
 
   return (
     <>
-      <EnTete surtitre="Stratégie · Liège" titre={titre} lede="Une idée pas encore mûre, une phrase entendue, un chiffre à vérifier. Une note qui devient une campagne passe dans la colonne Idée." />
+      <EnTete surtitre="Stratégie · Tableau d’idées" titre={titre} lede="Une idée pas encore mûre, une phrase entendue, un chiffre à vérifier. Une note qui devient une campagne passe dans la colonne Idée." />
       <Carte pad="p-5" className="mb-[18px]" titre="Punaiser une note">
         <form
           className="flex gap-2"

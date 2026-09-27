@@ -55,7 +55,7 @@ export function StrategieAttribution() {
 
   return (
     <>
-      <EnTete surtitre="Stratégie · Pipeline · Attribution" titre={titre} />
+      <EnTete surtitre="Stratégie · D’où viennent les clientes" titre={titre} />
       {gagnees.length === 0 ? (
         <Invitation titre="Rien à attribuer." texte="Chaque cliente gagnée garde d’où elle vient : une campagne, un parrainage, la recherche, le bouche à oreille. L’attribution les compte." action={<Link to="/strategie/pipeline" className="bx-btn2">Le pipeline</Link>} />
       ) : (

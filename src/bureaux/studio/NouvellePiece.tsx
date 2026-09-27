@@ -21,7 +21,7 @@ import { useEcrirePiece } from './commun';
  *   · le formulaire — la cliente (parmi les organisations, ou un nom libre),
  *     ce qu'on y construit, et le site suivi s'il existe déjà dans le Parc ;
  *   · la liste des sites suivis qui n'ont pas encore de pièce, chacun avec
- *     « Ouvrir sa pièce » qui pré-remplit le formulaire.
+ *     « L’ajouter au Studio » qui pré-remplit le formulaire.
  * La pièce créée s'ouvre sur son mur (onglet Croquis).
  */
 
@@ -96,7 +96,7 @@ export function NouvellePiece({ pieces, b, setB, sansListe = false }: { pieces: 
   return (
     <>
       {b ? (
-        <Carte pad="p-5" className="mb-[18px]" titre={b.id ? 'Modifier la pièce' : 'Ouvrir une pièce'} droite="un site par pièce : une porte dans la barre, une fenêtre dans la façade">
+        <Carte pad="p-5" className="mb-[18px]" titre={b.id ? 'Modifier ce site' : 'Ajouter un site'} droite="il prend sa fenêtre sur la façade">
           <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
             <label className="flex flex-col gap-1 text-[11.5px] text-text-secondary">
               Cliente (fiche de l’onglet Clients)
@@ -163,7 +163,7 @@ export function NouvellePiece({ pieces, b, setB, sansListe = false }: { pieces: 
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2.5">
             <button type="button" className="bx-btn" disabled={Boolean(manque)} onClick={creer}>
-              {b.id ? 'Enregistrer' : 'Ouvrir la pièce'}
+              {b.id ? 'Enregistrer' : 'Ajouter le site'}
             </button>
             <button type="button" className="bx-btn2" onClick={() => setB(null)}>
               Annuler
@@ -174,7 +174,7 @@ export function NouvellePiece({ pieces, b, setB, sansListe = false }: { pieces: 
       ) : null}
       {!sansListe && sansPiece.length > 0 && (
         <div className="mt-[18px]">
-          <Carte titre="Sites suivis sans pièce" droite={sansPiece.length}>
+          <Carte titre="Sites surveillés, pas encore au Studio" droite={sansPiece.length}>
             {sansPiece.slice(0, 8).map((s) => (
               <Ligne
                 key={s.id}
@@ -182,7 +182,7 @@ export function NouvellePiece({ pieces, b, setB, sansListe = false }: { pieces: 
                 b={`${s.name}${s.clientOrgId ? ` · ${nomOrg(s.clientOrgId)}` : ' · cliente non rattachée'}`}
                 c={
                   <button type="button" className="bx-lien" onClick={() => ouvrirPour(s.id)}>
-                    Ouvrir sa pièce
+                    L’ajouter au Studio
                   </button>
                 }
               />

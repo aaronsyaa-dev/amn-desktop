@@ -42,7 +42,7 @@ export function StrategieTemoignages() {
   return (
     <>
       <EnTete
-        surtitre="Stratégie · Campagnes · Témoignages"
+        surtitre="Stratégie · Témoignages clients"
         titre={titre}
         actions={
           <button type="button" className="bx-btn2" onClick={() => setNouveau({ auteur: '', texte: '' })}>

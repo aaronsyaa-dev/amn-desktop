@@ -9,6 +9,8 @@ import { useCyber } from './donnees/cyber';
 import { useStudio, type Piece } from './donnees/studio';
 import { hhmmss } from './format';
 import { Glyphe } from './ui/Glyphe';
+import { descriptionEcran, nomEcran } from './libelles';
+import { useLangue } from '../i18n';
 
 /**
  * LES CINQ COQUILLES — cahier 11 §4, engendrées dans le paquet par
@@ -29,6 +31,7 @@ function Onglet({ to, nom, compte, actif, rel }: { to: string; nom: string; comp
   return (
     <Link
       to={to}
+      title={descriptionEcran(to) ?? undefined}
       aria-current={actif ? 'page' : undefined}
       className="bx-nav relative flex flex-none items-center gap-2 whitespace-nowrap px-3.5 text-[13px]"
       style={{ background: actif ? rel : undefined, boxShadow: actif ? 'inset 0 1px 0 rgba(255,255,255,.05)' : undefined, fontWeight: actif ? 600 : 500, color: actif ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}
@@ -45,10 +48,11 @@ function BarreOnglets({ bureau }: { bureau: BureauKey }) {
   const { pathname } = useLocation();
   const compteurs = useCompteurs(bureau);
   const actif = ongletDuChemin(bureau, pathname)?.onglet.route;
+  useLangue();
   return (
     <nav aria-label={e.nom} data-coquille-bureau="onglets" className="flex h-[42px] flex-none items-stretch gap-[2px] overflow-x-auto px-[18px]" style={{ background: e.fond, borderBottom: `1px solid ${e.filet}` }}>
       {CATALOGUE[bureau].onglets.map((o) => (
-        <Onglet key={o.route} to={o.route} nom={o.nom} compte={NB(o.compteur ? compteurs[o.compteur] : null)} actif={actif === o.route} rel={e.rel} />
+        <Onglet key={o.route} to={o.route} nom={nomEcran(o.route, o.nom)} compte={NB(o.compteur ? compteurs[o.compteur] : null)} actif={actif === o.route} rel={e.rel} />
       ))}
     </nav>
   );
@@ -157,6 +161,7 @@ export function Portes() {
   const courante = /^\/studio\/pieces\/([^/]+)/.exec(pathname)?.[1] ?? null;
   // « Toutes les pièces » reste la porte courante sous ses outils (budget, recette, accessibilité) : ils y sont rangés.
   const toutes = !courante && ongletDuChemin('studio', pathname)?.onglet.route === '/studio';
+  useLangue();
   const ordre: Piece[] = [];
   const ajoute = (p: Piece | null | undefined) => {
     if (p && !ordre.includes(p)) ordre.push(p);
@@ -178,12 +183,12 @@ export function Portes() {
     </Link>
   );
   return (
-    <nav aria-label="Les pièces du Studio" data-coquille-bureau="portes" className="flex h-[58px] flex-none items-stretch gap-1.5 overflow-x-auto px-[18px] py-[9px]" style={{ background: e.fond, borderBottom: `1px solid ${e.filet}` }}>
+    <nav aria-label="Les sites du Studio" data-coquille-bureau="portes" className="flex h-[58px] flex-none items-stretch gap-1.5 overflow-x-auto px-[18px] py-[9px]" style={{ background: e.fond, borderBottom: `1px solid ${e.filet}` }}>
       {porte(
         '/studio',
         <>
           <Glyphe espace="studio" taille={13} couleur="var(--color-text-secondary)" />
-          <span className="whitespace-nowrap text-[13px]" style={{ fontWeight: toutes ? 600 : 500, color: toutes ? 'var(--color-text-primary)' : '#c9c7c1' }}>Toutes les pièces</span>
+          <span className="whitespace-nowrap text-[13px]" style={{ fontWeight: toutes ? 600 : 500, color: toutes ? 'var(--color-text-primary)' : '#c9c7c1' }} title={descriptionEcran('/studio') ?? undefined}>{nomEcran('/studio', 'Tous les sites')}</span>
           {studio.pieces.length > 0 && <span className="font-mono text-[10.5px] tabular-nums text-text-muted">{studio.pieces.length}</span>}
         </>,
         toutes,
@@ -203,7 +208,7 @@ export function Portes() {
       )}
       {reste > 0 && (
         <Link to="/studio" className="bx-nav flex flex-none items-center whitespace-nowrap px-3 text-[12.5px] font-medium text-text-muted hover:text-text-body">
-          + {reste} pièce{reste > 1 ? 's' : ''}
+          + {reste} site{reste > 1 ? 's' : ''}
         </Link>
       )}
     </nav>
@@ -217,6 +222,7 @@ export function Dock() {
   const e = espaceDe('strategie');
   const { pathname } = useLocation();
   const actif = ongletDuChemin('strategie', pathname)?.onglet.route;
+  useLangue();
   return (
     <nav aria-label="Le plan du mur" data-coquille-bureau="dock" className="flex h-[52px] flex-none items-center gap-3.5 px-[18px]" style={{ background: e.barre, borderTop: `1px solid ${e.filet}` }}>
       <span className="hidden flex-none font-mono text-[9px] tracking-[0.2em] text-text-muted lg:inline">LE PLAN DU MUR</span>
@@ -228,10 +234,11 @@ export function Dock() {
               key={o.route}
               to={o.route}
               aria-current={on ? 'page' : undefined}
+              title={descriptionEcran(o.route) ?? undefined}
               className="bx-nav relative flex min-w-[76px] items-center overflow-hidden whitespace-nowrap px-2.5 text-[12px]"
               style={{ flex: PLACES_MUR[o.route] ?? 1, background: on ? e.rel : e.surf, border: `1px solid ${on ? '#44444a' : e.filet}`, fontWeight: on ? 600 : 500, color: on ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}
             >
-              {o.nom}
+              {nomEcran(o.route, o.nom)}
               {on && <span aria-hidden className="absolute left-0 right-0 top-[-1px] h-[2px] bg-text-primary" />}
             </Link>
           );
@@ -262,6 +269,7 @@ export function SousOnglets({ bureau }: { bureau: BureauKey }) {
   const e = espaceDe(bureau);
   const { pathname } = useLocation();
   const o = ongletDuChemin(bureau, pathname);
+  useLangue();
   if (!o?.onglet.aussi?.length) return null;
   const ecrans: { nom: string; route: string }[] = [{ nom: o.onglet.nom, route: o.onglet.route }, ...(o.onglet.aussi as NonNullable<Ecran['aussi']>)];
   return (
@@ -269,8 +277,8 @@ export function SousOnglets({ bureau }: { bureau: BureauKey }) {
       {ecrans.map((x) => {
         const on = o.ecran.route === x.route;
         return (
-          <Link key={x.route} to={x.route} aria-current={on ? 'page' : undefined} className="bx-nav relative flex flex-none items-center whitespace-nowrap px-2.5 text-[12px]" style={{ fontWeight: on ? 600 : 500, color: on ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}>
-            {x.nom}
+          <Link key={x.route} to={x.route} aria-current={on ? 'page' : undefined} title={descriptionEcran(x.route) ?? undefined} className="bx-nav relative flex flex-none items-center whitespace-nowrap px-2.5 text-[12px]" style={{ fontWeight: on ? 600 : 500, color: on ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}>
+            {nomEcran(x.route, x.nom)}
             {on && <span aria-hidden className="absolute bottom-0 left-2 right-2 h-px bg-text-body" />}
           </Link>
         );

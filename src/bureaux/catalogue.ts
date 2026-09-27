@@ -154,14 +154,14 @@ const STUDIO: Bureau = {
   key: 'studio',
   onglets: [
     {
-      nom: 'Toutes les pièces',
+      nom: 'Tous les sites',
       route: '/studio',
       compteur: 'pieces',
       motifs: ['/studio/pieces'],
       aussi: [
         { nom: 'Sites par cliente', route: '/studio/clientes' },
-        { nom: 'Budget de performance', route: '/studio/performance' },
-        { nom: 'Recette visuelle', route: '/studio/recette' },
+        { nom: 'Poids des pages', route: '/studio/performance' },
+        { nom: 'Avant / après', route: '/studio/recette' },
         { nom: 'Accessibilité', route: '/studio/accessibilite' },
       ],
     },
@@ -173,13 +173,13 @@ const STRATEGIE: Bureau = {
   key: 'strategie',
   onglets: [
     { nom: 'Vue d’ensemble', route: '/strategie' },
-    { nom: 'Campagnes', route: '/strategie/campagnes', aussi: [{ nom: 'Banque de témoignages', route: '/strategie/temoignages' }] },
-    { nom: 'Storyboards', route: '/strategie/storyboards' },
-    { nom: 'Calendrier', route: '/strategie/calendrier' },
-    { nom: 'Pipeline', route: '/strategie/pipeline', aussi: [{ nom: 'Attribution', route: '/strategie/attribution' }] },
-    { nom: 'Enquête', route: '/strategie/enquete' },
-    { nom: 'Objectifs', route: '/strategie/objectifs', aussi: [{ nom: 'Trackers de l’équipe', route: '/strategie/trackers' }] },
-    { nom: 'Liège', route: '/strategie/liege' },
+    { nom: 'Campagnes', route: '/strategie/campagnes', aussi: [{ nom: 'Témoignages clients', route: '/strategie/temoignages' }] },
+    { nom: 'Découpage vidéo', route: '/strategie/storyboards' },
+    { nom: 'Calendrier des publications', route: '/strategie/calendrier' },
+    { nom: 'Suivi des prospects', route: '/strategie/pipeline', aussi: [{ nom: 'D’où viennent les clientes', route: '/strategie/attribution' }] },
+    { nom: 'Questions de marché', route: '/strategie/enquete' },
+    { nom: 'Objectifs chiffrés', route: '/strategie/objectifs', aussi: [{ nom: 'Tendances de l’équipe', route: '/strategie/trackers' }] },
+    { nom: 'Tableau d’idées', route: '/strategie/liege' },
   ],
   outils: [],
 };
@@ -218,10 +218,11 @@ CYBER.outils.push(
   { chiffre: null, nom: 'SSL Monitor', route: '/ssl', compteur: 'ssl', groupe: 'PRODUITS' },
 );
 STUDIO.outils = [
-  { chiffre: 1, nom: 'Toutes les pièces', route: '/studio', compteur: 'pieces' },
-  { chiffre: 2, nom: 'Budget de performance', route: '/studio/performance' },
-  { chiffre: 3, nom: 'Recette visuelle', route: '/studio/recette' },
-  { chiffre: 4, nom: 'Accessibilité', route: '/studio/accessibilite' },
+  { chiffre: 1, nom: 'Tous les sites', route: '/studio', compteur: 'pieces' },
+  { chiffre: 2, nom: 'Sites par cliente', route: '/studio/clientes' },
+  { chiffre: 3, nom: 'Poids des pages', route: '/studio/performance' },
+  { chiffre: 4, nom: 'Avant / après', route: '/studio/recette' },
+  { chiffre: 5, nom: 'Accessibilité', route: '/studio/accessibilite' },
 ];
 
 export const CATALOGUE: Record<BureauKey, Bureau> = {

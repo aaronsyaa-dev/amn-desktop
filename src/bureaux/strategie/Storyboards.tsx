@@ -94,7 +94,7 @@ export function StrategieStoryboards() {
   if (!c) {
     return (
       <>
-        <EnTete surtitre="Stratégie · Storyboards" titre="Aucun film en préparation." lede="Un storyboard découpe une vidéo en plans : leur durée, ce qu’on y voit, et le visuel de chacun." />
+        <EnTete surtitre="Stratégie · Découpage vidéo" titre="Aucun film en préparation." lede="Un storyboard découpe une vidéo en plans : leur durée, ce qu’on y voit, et le visuel de chacun." />
         {entree}
       </>
     );
@@ -125,7 +125,7 @@ export function StrategieStoryboards() {
   return (
     <>
       <EnTete
-        surtitre="Stratégie · Storyboards"
+        surtitre="Stratégie · Découpage vidéo"
         titre={titre}
         actions={
           <span className="flex flex-wrap items-center gap-2">

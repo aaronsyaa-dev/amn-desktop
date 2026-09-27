@@ -87,7 +87,7 @@ export function StrategieObjectifs() {
   return (
     <>
       <EnTete
-        surtitre="Stratégie · Objectifs"
+        surtitre="Stratégie · Objectifs chiffrés"
         titre={titre}
         actions={
           <button type="button" className="bx-btn2" onClick={() => setNouvel({ label: '', unit: 'clients', cible: '' })}>

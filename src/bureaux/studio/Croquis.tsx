@@ -218,14 +218,14 @@ function Mur({ p }: { p: Piece }) {
 
   const titre = !croquis.length
     ? 'Le mur est vide.'
-    : `${enLettresF(croquis.length, true)} pièce${croquis.length > 1 ? 's' : ''} au mur${attente.length ? `, et ${attente.length > 1 ? `${enLettresF(attente.length)} décisions qui attendent` : 'une décision qui attend'} la cliente` : ''}.`;
+    : `${enLettresF(croquis.length, true)} maquette${croquis.length > 1 ? 's' : ''} au mur${attente.length ? `, et ${attente.length > 1 ? `${enLettresF(attente.length)} décisions qui attendent` : 'une décision qui attend'} la cliente` : ''}.`;
   const choisieC = croquis.find((c) => c.id === piece) ?? null;
 
   return (
     <>
       <TetePiece p={p} onglet="croquis" titre={titre} />
       <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-[minmax(0,1fr)_300px]">
-        <Carte dominante pad="p-6" titre={`Le mur · ${p.plaque} ${p.orgNom}`} droite={croquis.length ? `${croquis.length} pièce${croquis.length > 1 ? 's' : ''} déposée${croquis.length > 1 ? 's' : ''}` : ''}>
+        <Carte dominante pad="p-6" titre={`Le mur · ${p.plaque} ${p.orgNom}`} droite={croquis.length ? `${croquis.length} déposée${croquis.length > 1 ? 's' : ''}` : ''}>
           <div
             ref={mur}
             className="relative overflow-hidden border"
@@ -477,7 +477,7 @@ function Mur({ p }: { p: Piece }) {
           </Carte>
 
           {choisieC && (
-            <Carte titre="La pièce choisie" droite={choisieC.legende ?? ''}>
+            <Carte titre="La maquette choisie" droite={choisieC.legende ?? ''}>
               <label className="block">
                 <span className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-[#9a9a97]">Légende</span>
                 <input

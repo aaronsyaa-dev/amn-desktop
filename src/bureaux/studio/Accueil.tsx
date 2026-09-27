@@ -42,9 +42,9 @@ export function StudioAccueil() {
   const titre = chargement
     ? 'La façade s’allume.'
     : vide
-      ? 'La façade attend sa première pièce.'
-      : `${enLettresF(n, true)} pièce${n > 1 ? 's' : ''}. ${s.ambre ? `${s.retoursOuverts.length > 1 ? `${enLettresF(s.retoursOuverts.length, true)} attendent` : 'Une attend'} votre réponse.` : 'Aucune ne vous attend.'}`;
-  const lede = chargement ? undefined : vide ? 'Chaque site ou application devient une pièce : une porte dans la barre, une fenêtre dans la façade.' : phrase(s);
+      ? 'La façade attend son premier site.'
+      : `${enLettres(n, true)} site${n > 1 ? 's' : ''}. ${s.ambre ? `${s.retoursOuverts.length > 1 ? `${enLettres(s.retoursOuverts.length, true)} attendent` : 'Un attend'} votre réponse.` : 'Aucun ne vous attend.'}`;
+  const lede = chargement ? undefined : vide ? 'Chaque site ou application d’une cliente a sa fenêtre ici, avec sa maquette en ligne, et son espace de travail (maquettes, idées, mise en ligne, retours).' : phrase(s);
 
   const facade = (
     <>
@@ -52,7 +52,7 @@ export function StudioAccueil() {
         <div className="mb-3 flex flex-col gap-1.5">
           {etages - ouverts >= 2 && (
             <Repli
-              texte={`${ouverts + 2}ᵉ → ${etages}ᵉ étage · ${n - PAR_ETAGE * (ouverts + 1)} pièces`}
+              texte={`${ouverts + 2}ᵉ → ${etages}ᵉ étage · ${n - PAR_ETAGE * (ouverts + 1)} sites`}
               ambre={Boolean(ambreRepliee && s.pieces.indexOf(ambreRepliee) >= PAR_ETAGE * (ouverts + 1))}
               onClick={() => setOuverts(etages)}
             />
@@ -68,41 +68,41 @@ export function StudioAccueil() {
     <EcranVide quand={vide && !chargement} premierJour={vide && !chargement}>
       <EnTete
         accueil
-        surtitre={`Studio · ${chargement ? 'lecture des pièces' : `${n} pièce${n > 1 ? 's' : ''}`}`}
+        surtitre={`Studio · ${chargement ? 'lecture des sites' : `${n} site${n > 1 ? 's' : ''}`}`}
         titre={titre}
         lede={lede}
         actions={
           brouillon ? undefined : (
             <button type="button" className="bx-btn2" onClick={() => setBrouillon(VIERGE)}>
-              Ouvrir une pièce
+              Ajouter un site
             </button>
           )
         }
       />
       <NouvellePiece pieces={s.pieces} b={brouillon} setB={setBrouillon} />
-      <Carte dominante pad="p-7" titre="La façade · une fenêtre par site" droite="un clic sur une maquette ouvre le site en ligne · le nom ouvre la pièce">
+      <Carte dominante pad="p-7" titre="La façade · une fenêtre par site" droite="un clic sur une maquette ouvre le site en ligne · le nom ouvre son espace de travail">
         {chargement ? (
           <>
             <Facade pieces={[]} ambre={null} />
-            <Chargement texte="Lecture des pièces" />
+            <Chargement texte="Lecture des sites" />
           </>
         ) : vide ? (
           <>
             <Facade pieces={[]} ambre={null} />
             <div className="mt-6">
               <Invitation
-                titre="Aucune pièce n’est encore ouverte."
+                titre="Aucun site pour l’instant."
                 texte="Une pièce se crée pour chaque site ou application confié : son organisation, ce qu’on y construit, puis ses croquis, ses prompts et sa livraison."
                 action={
                   <button type="button" className="bx-btn" onClick={() => setBrouillon(VIERGE)}>
-                    Ouvrir la première pièce
+                    Ajouter le premier site
                   </button>
                 }
               />
             </div>
           </>
         ) : ready && pullFailed ? (
-          <Erreur pannes={['l’état des pièces']} at={derniere} relancer={() => window.dispatchEvent(new Event('online'))}>
+          <Erreur pannes={['l’état des sites']} at={derniere} relancer={() => window.dispatchEvent(new Event('online'))}>
             {facade}
           </Erreur>
         ) : (

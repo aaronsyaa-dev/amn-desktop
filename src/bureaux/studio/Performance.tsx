@@ -31,7 +31,7 @@ export function StudioPerformance() {
 
   return (
     <>
-      <EnTete surtitre="Studio · Budget de performance" titre={titre} lede={avecBudget.length ? 'Une page au-dessus de son plafond bloque la mise en ligne de sa pièce.' : undefined} />
+      <EnTete surtitre="Studio · Poids des pages" titre={titre} lede={avecBudget.length ? 'Une page au-dessus de son plafond bloque la mise en ligne de sa pièce.' : undefined} />
       {avecBudget.length === 0 ? (
         <Invitation titre="Pas de budget." texte="Chaque pièce peut fixer un plafond de poids par page. La page qui le dépasse ne part pas en ligne : la livraison la compte comme un point bloquant." />
       ) : (

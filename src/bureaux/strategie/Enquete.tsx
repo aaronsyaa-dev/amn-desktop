@@ -57,7 +57,7 @@ export function StrategieEnquete() {
   return (
     <>
       <EnTete
-        surtitre="Stratégie · Enquête"
+        surtitre="Stratégie · Questions de marché"
         titre={titre}
         lede={questions.length ? undefined : 'Une question qu’on se pose sur le marché, les indices qui y répondent, et un verdict quand on en sait assez.'}
         actions={

@@ -19,6 +19,8 @@ import { NavAllegesSync } from '../components/NavAllegesSync';
 import { PremiereOuverture } from '../components/PremiereOuverture';
 import { BureauCtx } from './ui/kit';
 import { NAV_ITEMS } from '../data/navigation';
+import { nomEcran } from './libelles';
+import { DescriptionEcran } from './ui/DescriptionEcran';
 
 /**
  * LE CADRE D'UN BUREAU — la barre haute commune, la coquille du bureau, et
@@ -59,10 +61,10 @@ export function CadreBureau({ bureau }: { bureau: BureauKey }) {
   const onglet = ongletDuChemin(bureau, pathname);
   const tete = TETES[bureau];
   const ctx = useMemo<EnTeteContexte>(() => {
-    const nomOnglet = onglet?.onglet.nom ?? '';
+    const nomOnglet = onglet ? nomEcran(onglet.onglet.route, onglet.onglet.nom) : '';
     return {
       prefixe: [e.nom.toUpperCase(), nomOnglet.toUpperCase()].filter(Boolean).join(' · '),
-      redites: [e.nom, nomOnglet, onglet?.ecran.nom ?? '', ...ANCIENS_LIEUX].filter(Boolean),
+      redites: [e.nom, nomOnglet, onglet ? nomEcran(onglet.ecran.route, onglet.ecran.nom) : '', onglet?.onglet.nom ?? '', onglet?.ecran.nom ?? '', ...ANCIENS_LIEUX].filter(Boolean),
       classeTitre: tete.titre,
       sansTeinte: true,
     };
@@ -93,6 +95,7 @@ export function CadreBureau({ bureau }: { bureau: BureauKey }) {
                 <NavAllegesSync />
                 {/* La présentation d'un module recousu, jamais celle d'un écran de bureau qui partage son préfixe. */}
                 {NAV_ITEMS.some((i) => i.to === pathname) && <PremiereOuverture />}
+                {(bureau === 'studio' || bureau === 'strategie') && <DescriptionEcran />}
                 <Outlet />
               </EnTeteCtx.Provider>
             </BureauCtx.Provider>

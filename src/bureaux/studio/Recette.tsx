@@ -38,7 +38,7 @@ export function StudioRecette() {
   return (
     <>
       <EnTete
-        surtitre="Studio · Recette visuelle"
+        surtitre="Studio · Avant / après"
         titre={titre}
         actions={
           <button type="button" className="bx-btn2" onClick={() => setNouvelle({ pieceId: s.pieces[0]?.id ?? '', page: '' })}>

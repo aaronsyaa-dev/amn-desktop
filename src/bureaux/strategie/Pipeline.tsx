@@ -113,7 +113,7 @@ export function StrategiePipeline() {
   if (!p) {
     return (
       <>
-        <EnTete surtitre="Stratégie · Pipeline" titre="Aucun prospect en cours." actions={boutonNouveau} />
+        <EnTete surtitre="Stratégie · Suivi des prospects" titre="Aucun prospect en cours." actions={boutonNouveau} />
         {nouveau && <NouveauProspect onFermer={fermerNouveau} />}
         <Invitation titre="Le pipeline est vide." texte="Un prospect se note ici ou dans le module Prospects du poste ; il apparaît avec sa prochaine étape et l’historique des échanges." action={<Link to="/pipeline" className="bx-btn2">Ouvrir Prospects</Link>} />
       </>
@@ -158,7 +158,7 @@ export function StrategiePipeline() {
 
   return (
     <>
-      <EnTete surtitre={`Stratégie · Pipeline · ${enCours.length} en cours`} titre={titre} actions={boutonNouveau} />
+      <EnTete surtitre={`Stratégie · Suivi des prospects · ${enCours.length} en cours`} titre={titre} actions={boutonNouveau} />
       {nouveau && <NouveauProspect onFermer={fermerNouveau} />}
       <div className="mb-[18px] flex gap-2" role="list" aria-label="Les étapes">
         {colonnes.map((c) => {

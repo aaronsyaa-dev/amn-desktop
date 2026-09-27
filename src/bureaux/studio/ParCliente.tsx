@@ -57,7 +57,7 @@ export function StudioParCliente() {
             ? `${n} cliente${n > 1 ? 's' : ''} avec des sites${groupes.libres.length ? `, ${groupes.libres.length} site${groupes.libres.length > 1 ? 's' : ''} à relier` : ''}.`
             : 'Aucun site n’est encore relié à une fiche client.'
         }
-        lede="Chaque site (une pièce du Studio) se relie à une fiche de l’onglet Clients. La fiche montre ensuite ses sites, et le Studio les range ici."
+        lede="Chaque site du Studio se relie à une fiche de l’onglet Clients. La fiche montre ensuite ses sites, et le Studio les range ici."
         actions={
           brouillon ? undefined : (
             <button type="button" className="bx-btn2" onClick={() => setBrouillon(VIERGE)}>

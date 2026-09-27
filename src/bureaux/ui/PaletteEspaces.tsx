@@ -7,6 +7,7 @@ import { useActiverSourceBureaux } from '../donnees/source';
 import { useCompteurs } from '../compteurs';
 import { itemsForSpace } from '../../data/spaces';
 import { Glyphe } from './Glyphe';
+import { descriptionEcran, nomEcran } from '../libelles';
 
 /**
  * LA PALETTE D'ESPACES — cahier 11, `44d`.
@@ -54,14 +55,14 @@ function Palette() {
       const tous = cherchablesDuBureau(nav.bureau).map((o) => ({
         cle: `o:${o.route}`,
         kind: 'outil' as const,
-        nom: o.nom,
+        nom: nomEcran(o.route, o.nom),
         route: o.route,
         chiffre: o.chiffre,
         compte: o.compteur ? compteurs[o.compteur] ?? null : null,
         groupe: o.groupe,
       }));
       outils = f
-        ? tous.filter((o) => plier(o.nom).includes(f))
+        ? tous.filter((o) => plier(`${o.nom} ${descriptionEcran(o.route) ?? ''}`).includes(f))
         : (() => {
             // Sans recherche : ce qui porte un compte ; à défaut, les outils numérotés.
             const comptes = tous.filter((o) => o.chiffre !== null && (o.compte ?? 0) > 0);

@@ -7,6 +7,8 @@ import type { PieceStudio } from '../donnees/types';
 import { Chargement, EnTete, LienFort, Supprimer } from '../ui/kit';
 import { type Brouillon, NouvellePiece } from './NouvellePiece';
 import { hoteDe, maquetteDe } from './maquette';
+import { descriptionEcran, nomEcran } from '../libelles';
+import { useLangue } from '../../i18n';
 import { useClients } from '../../state/useClients';
 
 /**
@@ -17,12 +19,12 @@ import { useClients } from '../../state/useClients';
  */
 
 export const ONGLETS_PIECE = [
-  { cle: 'croquis', nom: 'Croquis' },
-  { cle: 'prompts', nom: 'Prompts' },
+  { cle: 'croquis', nom: 'Maquettes et idées' },
+  { cle: 'prompts', nom: 'Textes pour l’IA' },
   { cle: 'notes', nom: 'Notes' },
-  { cle: 'analytique', nom: 'Analytique' },
-  { cle: 'livraison', nom: 'Livraison' },
-  { cle: 'retours', nom: 'Retours' },
+  { cle: 'analytique', nom: 'Statistiques' },
+  { cle: 'livraison', nom: 'Mise en ligne' },
+  { cle: 'retours', nom: 'Retours de la cliente' },
 ] as const;
 export type OngletPiece = (typeof ONGLETS_PIECE)[number]['cle'];
 
@@ -38,8 +40,8 @@ export function usePieceCourante(): { p: Piece | null; absente: React.ReactNode 
       p: null,
       absente: (
         <>
-          <EnTete surtitre="Studio · pièce" titre="La pièce s’ouvre." />
-          <Chargement texte="Lecture de la pièce" />
+          <EnTete surtitre="Studio · site" titre="Le site s’ouvre." />
+          <Chargement texte="Lecture du site" />
         </>
       ),
     };
@@ -48,7 +50,7 @@ export function usePieceCourante(): { p: Piece | null; absente: React.ReactNode 
     p: null,
     absente: (
       <>
-        <EnTete surtitre="Studio · pièce" titre="Cette pièce n’existe plus." lede="Elle a peut-être été fermée, ou l’adresse est ancienne. Toutes les pièces sont sur la façade." />
+        <EnTete surtitre="Studio · pièce" titre="Ce site n’est plus au Studio." lede="Il a peut-être été retiré, ou l’adresse est ancienne. Tous les sites sont sur la façade." />
         <LienFort to="/studio">Revenir à la façade</LienFort>
       </>
     ),
@@ -71,7 +73,9 @@ export function useEcrirePiece() {
 }
 
 export function TetePiece({ p, onglet, titre, actions }: { p: Piece; onglet: OngletPiece; titre: React.ReactNode; actions?: React.ReactNode }) {
-  const nom = ONGLETS_PIECE.find((o) => o.cle === onglet)?.nom ?? '';
+  useLangue();
+  const nomDe = (cle: string, repli: string) => nomEcran(`piece:${cle}`, repli);
+  const nom = nomDe(onglet, ONGLETS_PIECE.find((o) => o.cle === onglet)?.nom ?? '');
   const { remove } = useSync();
   const navigate = useNavigate();
   /* Fermer la pièce : elle quitte la façade et la barre. Ses croquis, prompts et notes partent avec elle. */
@@ -106,7 +110,7 @@ export function TetePiece({ p, onglet, titre, actions }: { p: Piece; onglet: Ong
         )}
         {!modif && (
           <button type="button" className="bx-lien" onClick={() => setModif({ id: p.id, clientId: p.clientId ?? '', orgId: p.clientId ? '' : (p.orgId ?? ''), orgNom: p.orgNom, quoi: p.quoi, siteId: p.siteId ?? '', url: p.url ?? '' })}>
-            Modifier la pièce
+            Modifier ce site
           </button>
         )}
       </p>
@@ -119,16 +123,17 @@ export function TetePiece({ p, onglet, titre, actions }: { p: Piece; onglet: Ong
               key={o.cle}
               to={`/studio/pieces/${p.id}/${o.cle}`}
               aria-current={on ? 'page' : undefined}
+              title={descriptionEcran(`piece:${o.cle}`) ?? undefined}
               className="bx-nav relative flex-none px-3.5 pb-3 pt-1 text-[13.5px]"
               style={{ fontWeight: on ? 600 : 500, color: on ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}
             >
-              {o.nom}
+              {nomDe(o.cle, o.nom)}
               {on && <span aria-hidden className="absolute bottom-[-1px] left-1.5 right-1.5 h-[2px] bg-text-primary" />}
             </Link>
           );
         })}
         <span className="ml-auto flex-none self-center pb-3 pl-4">
-          <Supprimer quoi={p.plaque} libelle="Fermer la pièce" onConfirmer={fermer} />
+          <Supprimer quoi={`${p.plaque} (${p.orgNom})`} libelle="Retirer ce site du Studio" onConfirmer={fermer} />
         </span>
       </nav>
     </>
