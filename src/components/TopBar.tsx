@@ -12,6 +12,7 @@ import { UserAvatar } from './UserAvatar';
 import { useAssistant } from '../assistant/AssistantContext';
 import { GardeBadge } from './garde/GardeBadge';
 import { BoutonMessagesPrives } from './messages/BoutonMessagesPrives';
+import { useMessagesPrivesNonLus } from '../state/messagesPrives';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { useLangue } from '../i18n';
@@ -30,6 +31,7 @@ function useModifierKey(): string {
 
 export function TopBar({ onMenu }: { onMenu?: () => void }) {
   const { open } = useCommandPalette();
+  const { total: nonLus } = useMessagesPrivesNonLus();
   const { open: openAssistant } = useAssistant();
   const { user } = useAuth();
   const { profileFor } = useProfiles();
@@ -133,7 +135,10 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
           <SyncStatusIndicator libelleDes="lg" />
         </span>
         {/* L'insigne de la Garde (Bloc 9) : le pouls, qui est en ronde, chez qui — un clic vers la Salle. */}
-        <GardeBadge />
+        {/* Sur téléphone, la place manque : un message privé non lu prend celle de l'insigne de la Garde. */}
+        <span className={nonLus > 0 ? 'hidden sm:flex' : 'flex'}>
+          <GardeBadge />
+        </span>
         <button
           type="button"
           onClick={() => openAssistant()}
@@ -145,7 +150,7 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
         <BoutonAide extra={<><EntreeLexique /><HelpButton enMenu /></>} />
         <LexiqueHote />
         <HelpButton masque />
-        <BoutonMessagesPrives />
+        <BoutonMessagesPrives masquerSiVideSurTelephone />
         <NotificationCenter />
         {user && (
           <button

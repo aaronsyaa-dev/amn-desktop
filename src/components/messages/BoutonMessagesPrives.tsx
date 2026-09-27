@@ -9,7 +9,7 @@ import { useProfilesOptionnel } from '../../state/ProfilesContext';
  * bureau : un message reçu se voit où qu'on soit. Un clic ouvre le fil du dernier message reçu.
  * Le nombre de non-lus passe aussi dans le titre de la fenêtre (onglet du navigateur, barre des tâches).
  */
-export function BoutonMessagesPrives({ variante = 'poste' }: { variante?: 'poste' | 'bureau' }) {
+export function BoutonMessagesPrives({ variante = 'poste', masquerSiVideSurTelephone = false }: { variante?: 'poste' | 'bureau'; masquerSiVideSurTelephone?: boolean }) {
   const navigate = useNavigate();
   const { total, dernier } = useMessagesPrivesNonLus();
   const profils = useProfilesOptionnel();
@@ -25,7 +25,7 @@ export function BoutonMessagesPrives({ variante = 'poste' }: { variante?: 'poste
   const classe =
     variante === 'bureau'
       ? 'relative flex h-7 w-7 flex-none items-center justify-center border border-border-strong text-text-secondary hover:border-[#8a8a87] hover:text-text-primary'
-      : 'relative flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary transition-colors duration-200 hover:text-text-primary md:h-9 md:w-9';
+      : `${masquerSiVideSurTelephone && total === 0 ? 'hidden sm:flex' : 'flex'} relative h-11 w-11 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary transition-colors duration-200 hover:text-text-primary md:h-9 md:w-9`;
   return (
     <button type="button" onClick={ouvrir} aria-label={libelle} title={libelle} data-messages-prives={total} className={classe}>
       <MessageCircle size={variante === 'bureau' ? 14 : 17} strokeWidth={1.9} aria-hidden />
