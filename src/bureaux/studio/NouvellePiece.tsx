@@ -88,7 +88,7 @@ export function NouvellePiece({ pieces, b, setB, sansListe = false }: { pieces: 
       void upsert('studioPieces', id, piece as unknown as Record<string, unknown>);
     }
     // Le site suivi rejoint aussi la fiche dans l'onglet Clients (ses sites liés), s'il n'y est pas déjà.
-    if (fiche && b.siteId && !fiche.linkedSiteIds.includes(b.siteId)) void updateClient(fiche.id, { linkedSiteIds: [...fiche.linkedSiteIds, b.siteId] }).catch(() => {});
+    if (fiche && b.siteId && !fiche.linkedSiteIds.includes(b.siteId)) void updateClient(fiche.id, { linkedSiteIds: [...fiche.linkedSiteIds, b.siteId] }).catch(() => undefined);
     setB(null);
     if (!existante) navigate(`/studio/pieces/${id}/croquis`);
   };

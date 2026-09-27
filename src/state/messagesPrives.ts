@@ -122,7 +122,7 @@ export function jouerCarillon() {
       osc.start(debut);
       osc.stop(debut + 0.35);
     }
-    window.setTimeout(() => void ctx.close().catch(() => {}), 800);
+    window.setTimeout(() => void ctx.close().catch(() => undefined), 800);
   } catch {
     /* pas de son possible : le reste du signal suffit */
   }
