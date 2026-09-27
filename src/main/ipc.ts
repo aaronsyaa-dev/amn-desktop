@@ -282,6 +282,9 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
     remote.switchOrganization(payload.orgId),
   );
   ipcMain.handle(IPC.remoteMembersList, () => remote.listMembers());
+  ipcMain.handle(IPC.remoteFichiersEnvoyer, (_e, input: { nom: string; type: string; base64: string }) => remote.envoyerFichier(input));
+  ipcMain.handle(IPC.remoteFichiersLire, (_e, id: string) => remote.lireFichier(String(id)));
+  ipcMain.handle(IPC.remoteFichiersSupprimer, (_e, id: string) => remote.supprimerFichier(String(id)));
   ipcMain.handle(IPC.remoteSupportList, () => remote.listSupportRequests());
   ipcMain.handle(IPC.remoteSupportSend, (_event, input: { kind: 'message' | 'seat'; subject?: string; body?: string }) =>
     remote.sendSupportRequest(input),

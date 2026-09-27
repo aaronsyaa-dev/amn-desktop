@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { PieceStudio } from '../donnees/types';
 
 /**
@@ -44,25 +44,83 @@ export function maquetteDe(p: PieceStudio): { lien: string | null; image: string
 export const ideesDe = (p: PieceStudio) => (p.croquis ?? []).reduce((n, c) => n + (c.punaises?.length ?? 0), 0);
 
 /**
- * L'aperçu : l'image, ou la page vivante réduite. `largeur` : la largeur affichée en px (la page est
- * rendue à 1280 px de large puis réduite, pour qu'elle ressemble à ce qu'une visiteuse voit).
+ * L'aperçu : l'image, ou la page vivante réduite. La page est rendue à 1280 px de large (ce qu'une
+ * visiteuse voit sur un ordinateur) puis réduite à la largeur RÉELLE du cadre, mesurée — plus une
+ * largeur supposée qui la rendait minuscule dans un grand cadre. `interactif` : la page se manipule
+ * (l'aperçu en grand) ; sinon un clic la traverse (fenêtre de la façade, punaise du mur).
  */
-export function Apercu({ lien, image, titre, largeur }: { lien: string | null; image: string | null; titre: string; largeur: number }) {
+export function Apercu({
+  lien,
+  image,
+  titre,
+  interactif = false,
+}: {
+  lien: string | null;
+  image: string | null;
+  titre: string;
+  largeur?: number;
+  interactif?: boolean;
+}) {
+  const cadre = useRef<HTMLSpanElement>(null);
+  const [l, setL] = useState(0);
+  useLayoutEffect(() => {
+    const el = cadre.current;
+    if (!el) return undefined;
+    const mesurer = () => setL(el.clientWidth);
+    mesurer();
+    const ro = new ResizeObserver(mesurer);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   if (image) return <img src={image} alt={titre} draggable={false} className="h-full w-full object-cover object-top" />;
   if (!lien) return null;
-  const echelle = Math.max(0.05, largeur / 1280);
+  const echelle = Math.max(0.05, (l || 190) / 1280);
   return (
-    <span className="absolute inset-0 overflow-hidden bg-[#f4f3f0]" aria-hidden>
+    <span ref={cadre} className="absolute inset-0 overflow-hidden bg-[#f4f3f0]" aria-hidden={!interactif}>
       <iframe
         src={lien}
         title={titre}
         loading="lazy"
-        tabIndex={-1}
-        sandbox="allow-scripts allow-same-origin"
+        tabIndex={interactif ? 0 : -1}
+        sandbox="allow-scripts allow-same-origin allow-forms"
         referrerPolicy="no-referrer"
-        className="pointer-events-none origin-top-left border-0"
-        style={{ width: 1280, height: 1280 * 1.2, transform: `scale(${echelle})` }}
+        className={`${interactif ? '' : 'pointer-events-none'} origin-top-left border-0`}
+        style={{ width: 1280, height: Math.ceil((cadre.current?.clientHeight || 800) / echelle), transform: `scale(${echelle})` }}
       />
     </span>
+  );
+}
+
+/** « Voir en grand » : la maquette à la taille de la fenêtre, et manipulable. Échap ou un clic dehors la ferme. */
+export function MaquetteEnGrand({ lien, image, titre, onFermer }: { lien: string | null; image: string | null; titre: string; onFermer: () => void }) {
+  useEffect(() => {
+    const touche = (e: KeyboardEvent) => e.key === 'Escape' && onFermer();
+    window.addEventListener('keydown', touche);
+    return () => window.removeEventListener('keydown', touche);
+  }, [onFermer]);
+  return (
+    <div
+      className="fixed inset-0 z-[300] flex flex-col bg-black/80 p-4 md:p-8"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Maquette en grand : ${titre}`}
+      onMouseDown={(e) => e.target === e.currentTarget && onFermer()}
+      data-maquette-en-grand
+    >
+      <div className="mb-3 flex items-center gap-3">
+        <p className="min-w-0 flex-1 truncate text-[14px] font-semibold text-white">{titre}</p>
+        {lien && (
+          <a href={lien} target="_blank" rel="noopener noreferrer" className="bx-btn2">
+            Ouvrir {hoteDe(lien)} ↗
+          </a>
+        )}
+        <button type="button" className="bx-btn" onClick={onFermer} autoFocus>
+          Fermer
+        </button>
+      </div>
+      <div className="relative min-h-0 flex-1 border border-[#3a3834] bg-[#f4f3f0]">
+        <Apercu lien={lien} image={image} titre={titre} interactif />
+      </div>
+    </div>
   );
 }

@@ -2225,6 +2225,16 @@ export interface SupportRequestForOperator extends SupportRequest {
 export type InputAlertFamily = 'sql_injection' | 'xss' | 'path_traversal' | 'command_injection';
 
 /** Une tentative d'injection détectée dans un champ — un événement de sécurité, pas un blocage. */
+/** Une pièce jointe : la référence d'un fichier stocké côté serveur (`/v1/fichiers`). */
+export interface PieceJointe {
+  id: string;
+  name: string;
+  mime: string;
+  size: number;
+  createdAt?: string;
+  createdBy?: string | null;
+}
+
 export interface InputAlert {
   id: string;
   orgId: string | null;
@@ -3248,6 +3258,15 @@ export interface AmnBridge {
      * les appelle : une organisation cliente devait donc nous écrire pour
      * ajouter quelqu'un chez elle.
      */
+    /**
+     * Les fichiers de l'organisation (PDF, images, courtes vidéos), stockés côté serveur — jamais dans
+     * un enregistrement synchronisé. L'enregistrement ne garde que la `PieceJointe` (la référence).
+     */
+    fichiers: {
+      envoyer(input: { nom: string; type: string; base64: string }): Promise<PieceJointe>;
+      lire(id: string): Promise<{ fichier: PieceJointe; base64: string }>;
+      supprimer(id: string): Promise<void>;
+    };
     members: {
       /** Tous les comptes de l'organisation. Lisible par n'importe quel membre. */
       list(): Promise<OrgMember[]>;
@@ -3961,6 +3980,9 @@ export const IPC = {
   remoteMembersSetStatus: 'remote:membersSetStatus',
   remoteMembersRemove: 'remote:membersRemove',
   remoteMembersJournal: 'remote:membersJournal',
+  remoteFichiersEnvoyer: 'remote:fichiersEnvoyer',
+  remoteFichiersLire: 'remote:fichiersLire',
+  remoteFichiersSupprimer: 'remote:fichiersSupprimer',
   remoteSupportList: 'remote:supportList',
   remoteSupportSend: 'remote:supportSend',
   remoteHallEtat: 'remote:hallEtat',

@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Bloc, BoutonSecondaire, Calmes, CarteCalme, CarteReleves, Dominante, Ecran50, LigneRegistre, PiedDominante, donnees } from '../components/cinquante-kit';
 import { SaisieModule, versIso, versJour } from '../components/SaisieModule';
+import { ACCEPTE_PDF, PiecesJointes, deposer } from '../components/PiecesJointes';
+import type { PieceJointe } from '../shared/api';
 import { useAuth } from '../auth/AuthContext';
 import { uid, useCollection, useSync } from '../state/SyncContext';
 import {
@@ -188,6 +190,29 @@ export function ClasseurScreen() {
         supprimer={supprimerDocument}
       />
 
+      <PdfDuClasseur
+        documents={lus.map((x) => x.d)}
+        courantId={courant?.d.id ?? null}
+        joindre={async (docId, pieces) => {
+          const d = documents.find((x) => x.id === docId);
+          if (d) await upsert('documentVersions', docId, { ...donnees(d), pieces });
+        }}
+        nouveauDepuisPdf={async (piece) => {
+          const docId = uid();
+          await upsert('documentVersions', uid(), {
+            kind: 'version',
+            documentId: docId,
+            numero: 1,
+            paragraphes: [{ titre: 'Document PDF', texte: `Le texte de ce document est dans le PDF joint : « ${piece.name} ».` }],
+            auteur: user?.name ?? user?.email ?? 'vous',
+            deposeLe: new Date().toISOString(),
+            octets: piece.size,
+          });
+          await upsert('documentVersions', docId, { kind: 'document', titre: piece.name.replace(/\.pdf$/i, ''), etat: 'brouillon', pieces: [piece] });
+          return docId;
+        }}
+      />
+
       <Dominante surtitre="Le document et ses couches" note={courant ? 'Pâle et barré = texte d’une version antérieure' : undefined}>
         {!courant || !derniere ? (
           <p className="max-w-[60ch] text-[14.5px] leading-[1.7] text-text-secondary">
@@ -300,5 +325,65 @@ export function ClasseurScreen() {
         </CarteReleves>
       </Calmes>
     </Ecran50>
+  );
+}
+
+/*
+  LES PDF DU CLASSEUR. Le Classeur ne gardait que du texte : l'original signé, un scan, un contrat
+  reçu en PDF n'avaient nulle part où aller. Chaque document peut porter ses PDF ; un PDF peut aussi
+  ouvrir un document à lui seul. Le fichier vit côté serveur (/v1/fichiers), le document garde sa référence.
+*/
+function PdfDuClasseur({
+  documents,
+  courantId,
+  joindre,
+  nouveauDepuisPdf,
+}: {
+  documents: Array<{ id: string; titre: string; pieces?: PieceJointe[] }>;
+  courantId: string | null;
+  joindre: (docId: string, pieces: PieceJointe[]) => Promise<void>;
+  nouveauDepuisPdf: (piece: PieceJointe) => Promise<string>;
+}) {
+  const [choisi, setChoisi] = useState<string | null>(null);
+  const [envoi, setEnvoi] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+  const docId = choisi ?? courantId ?? documents[0]?.id ?? null;
+  const doc = documents.find((d) => d.id === docId) ?? null;
+  const depuisPdf = async (fichiers: File[]) => {
+    setEnvoi(true);
+    setErreur(null);
+    const { pieces, erreurs } = await deposer(fichiers);
+    // Le document créé devient celui qu'on regarde : son PDF est là, sous les yeux.
+    for (const p of pieces) setChoisi(await nouveauDepuisPdf(p));
+    setEnvoi(false);
+    if (erreurs.length) setErreur(erreurs.join(' '));
+  };
+  return (
+    <Bloc>
+      <section className="panel px-5 py-4" aria-label="Les PDF du Classeur" data-classeur-pdf>
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <p className="eyebrow text-text-secondary">Les PDF</p>
+          {documents.length > 0 && (
+            <select value={docId ?? ''} onChange={(e) => setChoisi(e.target.value)} aria-label="Le document" className="input-focus min-h-9 max-w-[320px] border border-border bg-bg px-2 text-[13px] text-text-primary">
+              {documents.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.titre}
+                </option>
+              ))}
+            </select>
+          )}
+          <label className="ml-auto inline-flex min-h-9 cursor-pointer items-center gap-2 border border-border px-3 text-[12.5px] text-text-secondary hover:border-border-strong hover:text-text-primary">
+            {envoi ? 'Envoi…' : 'Nouveau document depuis un PDF'}
+            <input type="file" accept={ACCEPTE_PDF} multiple hidden disabled={envoi} onChange={(e) => { void depuisPdf([...(e.target.files ?? [])]); e.target.value = ''; }} />
+          </label>
+        </div>
+        {doc ? (
+          <PiecesJointes pieces={doc.pieces ?? []} onChange={(pieces) => void joindre(doc.id, pieces)} accepte={ACCEPTE_PDF} libelle={`Joindre un PDF à « ${doc.titre} »`} />
+        ) : (
+          <p className="text-[13px] text-text-secondary">Déposez un PDF : il ouvre un document dans le Classeur.</p>
+        )}
+        {erreur && <p className="mt-1.5 text-[12px] text-danger-ink" role="alert">{erreur}</p>}
+      </section>
+    </Bloc>
   );
 }

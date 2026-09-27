@@ -2,10 +2,12 @@ import { useEtroit } from '../lib/useEtroit';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Contact, FileText, Globe, MapPin, MessageSquare, Pencil, Plus, Send, Trash2, X } from 'lucide-react';
+import { Contact, FileText, Globe, MapPin, MessageSquare, Paperclip, Pencil, Plus, Send, Trash2, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
 import { useMembers } from '../state/useMembers';
+import { ACCEPTE_MEDIA, PiecesJointes } from '../components/PiecesJointes';
+import type { PieceJointe } from '../shared/api';
 import { useExclusive, useLinkedSites, useSitePanelLink } from '@edition/exclusive';
 import { useSync, useCollection, uid, stripMeta } from '../state/SyncContext';
 import { useUndo } from '../state/UndoContext';
@@ -90,6 +92,8 @@ interface TaskData {
   markers?: TaskMarker[];
   /** Discussion thread scoped to this task (A5.1). */
   comments?: TaskComment[];
+  /** Les PDF (et images) joints à la tâche : des références, le fichier vit côté serveur (`/v1/fichiers`). */
+  pieces?: PieceJointe[];
   /** Posée par la Garde (Bloc 6) : qui, pourquoi, avec quelle preuve, quelle action. Absente sur une tâche humaine. */
   garde?: TacheDeLaGarde;
   /**
@@ -1590,6 +1594,14 @@ function TaskDetailModal({
                   >
                     <MapPin size={10} strokeWidth={2} />{tr('hist.tasks.ajouterUnRepere')}</button>
                 </div>
+              </div>
+
+              {/* Pièces jointes : un PDF (devis signé, cahier des charges…) se joint à la tâche. */}
+              <div className="mt-5 border-t border-border pt-4">
+                <p className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                  <Paperclip size={11} strokeWidth={2} /> Pièces jointes · {(task.pieces ?? []).length}
+                </p>
+                <PiecesJointes pieces={task.pieces ?? []} onChange={(pieces) => onPatch(task, { pieces })} accepte={ACCEPTE_MEDIA} libelle="Joindre un PDF ou une image" />
               </div>
 
               {/* Comments (A5.1) */}

@@ -24,6 +24,7 @@ import type {
   ModuleRequest,
   MemberInvitation,
   OrgMember,
+  PieceJointe,
   UserRole,
   OrgAccessRecord,
   OrgIdentity,
@@ -368,6 +369,19 @@ export class RemoteApiClient {
   }
 
   /* -------------- Les membres de MON organisation (BLOCS 6 et 7) ------------ */
+
+  async envoyerFichier(input: { nom: string; type: string; base64: string }): Promise<PieceJointe> {
+    const res = await apiFetch<{ fichier: PieceJointe }>('/v1/fichiers', { method: 'POST', body: JSON.stringify(input) });
+    return res.fichier;
+  }
+
+  async lireFichier(id: string): Promise<{ fichier: PieceJointe; base64: string }> {
+    return apiFetch<{ fichier: PieceJointe; base64: string }>(`/v1/fichiers/${encodeURIComponent(id)}`);
+  }
+
+  async supprimerFichier(id: string): Promise<void> {
+    await apiFetch<unknown>(`/v1/fichiers/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
 
   async listMembers(): Promise<OrgMember[]> {
     const res = await apiFetch<{ users: OrgMember[] }>('/v1/auth/users');

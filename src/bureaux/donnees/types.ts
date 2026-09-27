@@ -320,7 +320,9 @@ export interface Campagne {
   /** Semaine après semaine, depuis sa publication. */
   courbe?: number[];
   rapporte?: string | null;
-  plans?: { id: string; duree: number; visuel?: string | null; quoi: string }[];
+  plans?: { id: string; duree: number; visuel?: string | null; quoi: string; /** Le rush ou le montage du plan : une courte vidéo stockée côté serveur. */ video?: import('../../shared/api').PieceJointe | null }[];
+  /** Les médias de la campagne (courtes vidéos, images, PDF) : des références, les fichiers vivent côté serveur. */
+  medias?: import('../../shared/api').PieceJointe[];
   creePar?: string;
   at?: string;
 }

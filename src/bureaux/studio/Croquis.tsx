@@ -6,7 +6,7 @@ import type { PieceStudio } from '../donnees/types';
 import { Carte, Invitation } from '../ui/kit';
 import { enLettresF } from '../format';
 import { jjmm, Punaise, TetePiece, useEcrirePiece, usePieceCourante } from './commun';
-import { Apercu, hoteDe, lienPropre } from './maquette';
+import { Apercu, MaquetteEnGrand, hoteDe, lienPropre } from './maquette';
 
 /**
  * STUDIO · LE MUR DE CROQUIS (cahier 14, `48a`).
@@ -28,7 +28,7 @@ type Pos = { x: number; y: number; l: number; h: number };
 const GENRES: Genre[] = ['maquette', 'croquis', 'capture', 'inspiration'];
 /** Largeur (unités de mur, 1000 = tout le mur) et rapport largeur/hauteur par genre. */
 const TAILLES: Record<Genre, { l: number; r: number }> = {
-  maquette: { l: 400, r: 1.42 },
+  maquette: { l: 620, r: 1.42 },
   croquis: { l: 250, r: 1.27 },
   capture: { l: 290, r: 1.5 },
   inspiration: { l: 225, r: 0.8 },
@@ -83,6 +83,7 @@ function Mur({ p }: { p: Piece }) {
   const [depot, setDepot] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [enLigne, setEnLigne] = useState<{ titre: string; lien: string } | null>(null);
+  const [grand, setGrand] = useState<string | null>(null);
   const geste = useRef<{ id: string; px: number; py: number; x0: number; y0: number; bouge: boolean; cible: HTMLElement } | null>(null);
   const annule = useRef(false);
 
@@ -352,6 +353,10 @@ function Mur({ p }: { p: Piece }) {
             }}
           />
           {erreur && <p className="mt-3 text-[12.5px] text-[#e4e4e1]">{erreur}</p>}
+          {(() => {
+            const g = croquis.find((c) => c.id === grand);
+            return g ? <MaquetteEnGrand lien={lienPropre(g.lien)} image={g.image ?? null} titre={g.titre} onFermer={() => setGrand(null)} /> : null;
+          })()}
         </Carte>
 
         <div className="flex flex-col gap-[18px] self-start">
@@ -478,6 +483,11 @@ function Mur({ p }: { p: Piece }) {
 
           {choisieC && (
             <Carte titre="La maquette choisie" droite={choisieC.legende ?? ''}>
+              {(choisieC.image || lienPropre(choisieC.lien)) && (
+                <button type="button" className="bx-btn2 mb-3 w-full" onClick={() => setGrand(choisieC.id)}>
+                  Voir en grand
+                </button>
+              )}
               <label className="block">
                 <span className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-[#9a9a97]">Légende</span>
                 <input
