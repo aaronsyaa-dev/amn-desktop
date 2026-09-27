@@ -255,6 +255,8 @@ export const fr: Dictionnaire = {
   'biblio.demander': 'Demander',
   'biblio.demande.faite': 'Demandé',
   'biblio.demande.echec': 'La demande n’est pas partie. Réessayez dans un instant.',
+  'biblio.composer.compte': '{ouverts}/{total} ouverts',
+  'dossier.modules.chercher': 'Chercher un module…',
   'biblio.composer.inclus': 'Inclus',
   'biblio.composer.retirer': 'Ouvert · cliquer pour fermer',
   'biblio.composer.ouvrir': 'Fermé · cliquer pour ouvrir',

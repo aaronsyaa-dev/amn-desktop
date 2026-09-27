@@ -341,6 +341,7 @@ export function OrgDossierPanel({
   const [savingNotes, setSavingNotes] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingModule, setPendingModule] = useState<string | null>(null);
+  const [rechercheModule, setRechercheModule] = useState('');
 
   // `null` en base = tous les modules. On matérialise la liste pour l'affichage
   // seulement : enregistrer « tout coché » écrirait une liste explicite, ce qui
@@ -662,10 +663,20 @@ export function OrgDossierPanel({
             voit chez elle (CLIENT_SECTIONS), avec ce qui est inclus quoi qu'il
             arrive marqué comme tel — on ne coche pas l'accueil.
           */}
+          <input
+            type="search"
+            value={rechercheModule}
+            onChange={(e) => setRechercheModule(e.target.value)}
+            placeholder={t('dossier.modules.chercher')}
+            aria-label={t('dossier.modules.chercher')}
+            data-recherche-modules
+            className="mt-3 w-full border border-border bg-bg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-border-strong focus:outline-none"
+          />
           <div className="mt-3">
             <ModuleGrid
               mode="composer"
               surface="support"
+              recherche={rechercheModule}
               sections={CLIENT_SECTIONS.map((section) => ({
                 key: section.label,
                 label: section.label,
