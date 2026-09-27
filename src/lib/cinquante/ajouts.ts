@@ -725,6 +725,8 @@ export interface DocumentClasseur {
   /** Sans signature : « en vigueur » ou « brouillon ». */
   etat?: 'en vigueur' | 'brouillon';
   envoyeeASignerLe?: string;
+  /** Les PDF du document (l'original signé, un scan…) : des références, le fichier vit côté serveur. */
+  pieces?: import('../../shared/api').PieceJointe[];
 }
 
 export interface VersionClasseur {

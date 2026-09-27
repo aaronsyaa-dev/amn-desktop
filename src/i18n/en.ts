@@ -264,6 +264,8 @@ export const en = {
   'biblio.demander': 'Ask for it',
   'biblio.demande.faite': 'Requested',
   'biblio.demande.echec': 'The request did not leave. Try again in a moment.',
+  'biblio.composer.compte': '{ouverts}/{total} open',
+  'dossier.modules.chercher': 'Find a module…',
   'biblio.composer.inclus': 'Always open',
   'biblio.composer.retirer': 'Open · click to close',
   'biblio.composer.ouvrir': 'Closed · click to open',

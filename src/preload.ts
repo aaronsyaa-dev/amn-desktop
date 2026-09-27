@@ -175,6 +175,11 @@ const bridge: AmnBridge = {
     accessLog: () => ipcRenderer.invoke(IPC.remoteAccessLog),
     exportOrganization: () => ipcRenderer.invoke(IPC.remoteExportOrganization),
     setOrganizationAccent: (accent) => ipcRenderer.invoke(IPC.remoteSetOrgAccent, accent),
+    fichiers: {
+      envoyer: (input: { nom: string; type: string; base64: string }) => ipcRenderer.invoke(IPC.remoteFichiersEnvoyer, input),
+      lire: (id: string) => ipcRenderer.invoke(IPC.remoteFichiersLire, id),
+      supprimer: (id: string) => ipcRenderer.invoke(IPC.remoteFichiersSupprimer, id),
+    },
     members: {
       list: () => ipcRenderer.invoke(IPC.remoteMembersList),
       invite: (input: { email: string; role: UserRole }) =>

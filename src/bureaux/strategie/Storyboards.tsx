@@ -9,6 +9,8 @@ import type { Campagne } from '../donnees/types';
 import { Carte, EnTete, Invitation } from '../ui/kit';
 import { enLettres } from '../format';
 import { champ, useEcrire } from './commun';
+import { PiecesJointes } from '../../components/PiecesJointes';
+import { bridge } from '../../lib/bridge';
 
 /**
  * STRATÉGIE · LE STORYBOARD, PLAN PAR PLAN (cahier 14, `49b`).
@@ -253,6 +255,20 @@ export function StrategieStoryboards() {
             </button>
           </div>
           {c.bloquee && /visuel/i.test(c.bloquee.raison) && <p className="mt-3 text-[12.5px] text-[#a3a3a0]">Quand le dernier visuel manquant est fourni, la campagne n’est plus bloquée.</p>}
+          {/* La vidéo du plan (le rush, le montage) : une courte vidéo, lue ici même. */}
+          <div className="mt-4 border-t border-[#28282c] pt-3" data-video-plan>
+            <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted">La vidéo du plan · MP4, WebM ou MOV, 8 Mo au plus</p>
+            <PiecesJointes
+              pieces={plan.video ? [plan.video] : []}
+              onChange={(ps) => {
+                // Une seule vidéo par plan : la précédente est retirée du serveur quand une nouvelle la remplace.
+                for (const vieille of ps.slice(0, -1)) void bridge().remote.fichiers.supprimer(vieille.id).catch(() => undefined);
+                majPlans((liste) => liste.map((x) => (x.id === plan.id ? { ...x, video: ps[ps.length - 1] ?? null } : x)));
+              }}
+              accepte="video/mp4,video/webm,video/quicktime"
+              libelle={plan.video ? 'Remplacer la vidéo' : 'Ajouter la vidéo du plan'}
+            />
+          </div>
         </Carte>
       )}
     </>

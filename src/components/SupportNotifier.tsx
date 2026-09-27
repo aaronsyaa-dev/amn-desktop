@@ -48,6 +48,9 @@ export function SupportNotifier() {
     if (!IS_BUSINESS && surInjection) {
       desabonnements.push(
         surInjection((alerte) => {
+          // Un test contrôlé de l'équipe (garde-fous, audit, session de support) reste au journal de la
+          // Tour, sans sonner : chaque essai de faille XSS alertait comme une vraie attaque.
+          if (alerte.controle) return;
           dire(`inj:${alerte.id}`, `Tentative d’injection — ${alerte.orgName ?? 'hors organisation'}`, `${alerte.family} · ${alerte.userEmail ?? alerte.ip ?? ''}`, '/tour/organisations');
         }),
       );

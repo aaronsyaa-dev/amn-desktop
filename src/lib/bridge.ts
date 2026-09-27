@@ -36,6 +36,7 @@ import type {
   ModuleRequest,
   MemberInvitation,
   OrgMember,
+  PieceJointe,
   UserRole,
   OrgAccessRecord,
   AddClientEventInput,
@@ -757,6 +758,18 @@ function createBrowserRemote(): AmnBridge['remote'] {
           body: JSON.stringify(input),
         });
         return res.mfa;
+      },
+    },
+    fichiers: {
+      async envoyer(input: { nom: string; type: string; base64: string }): Promise<PieceJointe> {
+        const res = await apiFetch<{ fichier: PieceJointe }>('/v1/fichiers', { method: 'POST', body: JSON.stringify(input) });
+        return res.fichier;
+      },
+      async lire(id: string): Promise<{ fichier: PieceJointe; base64: string }> {
+        return apiFetch<{ fichier: PieceJointe; base64: string }>(`/v1/fichiers/${encodeURIComponent(id)}`);
+      },
+      async supprimer(id: string): Promise<void> {
+        await apiFetch<unknown>(`/v1/fichiers/${encodeURIComponent(id)}`, { method: 'DELETE' });
       },
     },
     members: {

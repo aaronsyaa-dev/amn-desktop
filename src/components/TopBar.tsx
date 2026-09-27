@@ -112,7 +112,7 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
           type="button"
           onClick={espaces.ouvrirPalette}
           aria-haspopup="dialog"
-          className="input-focus hidden flex-none items-center gap-2.5 border border-border bg-surface px-3 py-2 text-sm text-text-muted transition-colors duration-200 hover:border-border-strong xl:flex"
+          className="input-focus hidden flex-none items-center gap-2.5 border border-border bg-surface px-3 py-2 text-sm text-text-muted transition-colors duration-200 hover:border-border-strong 2xl:flex"
         >
           <Glyphe espace="supervisor" taille={14} />
           <span>Changer d’espace</span>

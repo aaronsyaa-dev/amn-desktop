@@ -2,9 +2,12 @@ import { useEtroit } from '../lib/useEtroit';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Contact, FileText, Globe, MapPin, MessageSquare, Pencil, Plus, Send, Trash2, X } from 'lucide-react';
+import { Contact, FileText, Globe, MapPin, MessageSquare, Paperclip, Pencil, Plus, Send, Trash2, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
+import { useMembers } from '../state/useMembers';
+import { ACCEPTE_MEDIA, PiecesJointes } from '../components/PiecesJointes';
+import type { PieceJointe } from '../shared/api';
 import { useExclusive, useLinkedSites, useSitePanelLink } from '@edition/exclusive';
 import { useSync, useCollection, uid, stripMeta } from '../state/SyncContext';
 import { useUndo } from '../state/UndoContext';
@@ -89,6 +92,8 @@ interface TaskData {
   markers?: TaskMarker[];
   /** Discussion thread scoped to this task (A5.1). */
   comments?: TaskComment[];
+  /** Les PDF (et images) joints à la tâche : des références, le fichier vit côté serveur (`/v1/fichiers`). */
+  pieces?: PieceJointe[];
   /** Posée par la Garde (Bloc 6) : qui, pourquoi, avec quelle preuve, quelle action. Absente sur une tâche humaine. */
   garde?: TacheDeLaGarde;
   /**
@@ -1156,7 +1161,8 @@ function NewTaskModal({
   }) => void;
 }) {
   const { user } = useAuth();
-  const { TEAM_ENABLED, TEAM_MEMBERS, SITES_ENABLED } = useExclusive();
+  const { TEAM_ENABLED, SITES_ENABLED } = useExclusive();
+  const TEAM_MEMBERS = useAssignables();
   // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
   useFermetureEchap(true, onClose);
 
@@ -1336,7 +1342,8 @@ function TaskDetailModal({
   // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
   useFermetureEchap(true, onClose);
 
-  const { TEAM_ENABLED, TEAM_MEMBERS } = useExclusive();
+  const { TEAM_ENABLED } = useExclusive();
+  const TEAM_MEMBERS = useAssignables();
   const { profileFor } = useProfiles();
   const { beginCapture, showMarker } = useTags();
 
@@ -1589,6 +1596,14 @@ function TaskDetailModal({
                 </div>
               </div>
 
+              {/* Pièces jointes : un PDF (devis signé, cahier des charges…) se joint à la tâche. */}
+              <div className="mt-5 border-t border-border pt-4">
+                <p className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                  <Paperclip size={11} strokeWidth={2} /> Pièces jointes · {(task.pieces ?? []).length}
+                </p>
+                <PiecesJointes pieces={task.pieces ?? []} onChange={(pieces) => onPatch(task, { pieces })} accepte={ACCEPTE_MEDIA} libelle="Joindre un PDF ou une image" />
+              </div>
+
               {/* Comments (A5.1) */}
               <div className="mt-5 border-t border-border pt-4">
                 <p className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-text-muted">
@@ -1654,4 +1669,22 @@ function TaskDetailModal({
       </motion.div>
     </div>
   );
+}
+
+/*
+  QUI PEUT RECEVOIR UNE TÂCHE. La liste venait d'une constante de l'édition (Aaron et Mohamed, écrits
+  en dur) : Riyad, arrivé ensuite, n'y était pas — ni personne d'autre après lui. Elle vient maintenant
+  des vrais comptes de l'organisation (les mêmes que Système → Membres), nommés par leur profil ; la
+  constante ne sert plus qu'en repli, quand la liste des comptes est illisible (hors ligne).
+*/
+function useAssignables(): { email: string; name: string }[] {
+  const { TEAM_MEMBERS } = useExclusive();
+  const { membres } = useMembers();
+  const { profileFor } = useProfiles();
+  return useMemo(() => {
+    const vus = new Map<string, { email: string; name: string }>();
+    for (const m of membres) if (m.id !== 'moi' && m.email) vus.set(m.email, { email: m.email, name: profileFor(m.email).name || m.email.split('@')[0] });
+    for (const m of TEAM_MEMBERS) if (!vus.has(m.email)) vus.set(m.email, m);
+    return [...vus.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  }, [membres, TEAM_MEMBERS, profileFor]);
 }

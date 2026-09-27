@@ -850,7 +850,12 @@ function FicheDominante({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-y-6 sm:grid-cols-4">
+        {/*
+          DEUX COLONNES, TOUJOURS. La carte ne fait que la moitié de la fiche : en quatre colonnes de
+          75 px, « 5 710 € » butait sur le chiffre voisin et « Il y a 101 jours » s'empilait mot par mot
+          en 23 px (constat du chantier « bugs et design »). Deux colonnes laissent la place à chaque mesure.
+        */}
+        <div className="grid grid-cols-2 gap-x-2 gap-y-6">
           {/*
             EN FORME COMPACTE. La fiche a rétréci quand le nuage est devenu
             l'objet dominant, et « 6 000,00 € » à 23 px débordait sur la
@@ -859,14 +864,14 @@ function FicheDominante({
           */}
           <Mesure label={tr('hist.clients.facture')} valeur={formatCentsCompact(factureCents)} />
           <Mesure label={tr('hist.clients.devisAcceptes')} valeur={String(devisAcceptes)} filet />
-          {detail.factors.map((f) => (
+          {detail.factors.map((f, i) => (
             <Mesure
               key={f.label}
               label={f.label}
               valeur={f.value}
-              petit={f.value.length > 12}
+              petit={f.value.length > 8}
               attenue={f.tone !== 'good'}
-              filet
+              filet={i % 2 === 1}
             />
           ))}
         </div>
@@ -992,8 +997,8 @@ function Mesure({
   attenue?: boolean;
 }) {
   return (
-    <div className={filet ? 'border-l border-border-section pl-5 sm:pl-6' : ''}>
-      <p className="eyebrow mb-2.5">{label}</p>
+    <div className={`min-w-0 ${filet ? 'border-l border-border-section pl-5 sm:pl-6' : ''}`}>
+      <p className="eyebrow mb-2.5 break-words">{label}</p>
       <p
         className={`tnum font-mono font-semibold leading-[1.15] tracking-[-0.03em] ${
           petit ? 'text-[15px]' : 'text-[23px]'

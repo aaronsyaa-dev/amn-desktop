@@ -154,15 +154,19 @@ export function RequestsQueuePanel() {
                     value={reponse}
                     onChange={(e) => setReponse(e.target.value)}
                     rows={3}
-                    maxLength={2000}
                     autoFocus
                     placeholder="Votre réponse — elle s’affiche chez elle, sous sa demande."
                     className="input-focus w-full resize-y border border-border bg-bg px-3 py-2 text-sm leading-relaxed text-text-primary outline-none placeholder:text-text-muted"
                   />
+                  {reponse.length > 10_000 && (
+                    <p className="mt-1 text-[12px] text-danger-ink" aria-live="polite">
+                      {reponse.length - 10_000} caractères de trop (limite : 10 000).
+                    </p>
+                  )}
                   <div className="mt-2 flex gap-2">
                     <button
                       type="button"
-                      disabled={enCours === d.id || reponse.trim().length === 0}
+                      disabled={enCours === d.id || reponse.trim().length === 0 || reponse.length > 10_000}
                       onClick={() => void agir(d.id, 'answered')}
                       className="flex min-h-11 items-center gap-1.5 bg-accent px-3 text-xs font-semibold text-bg transition-colors hover:bg-accent-hover disabled:opacity-40 md:min-h-0 md:py-2"
                     >

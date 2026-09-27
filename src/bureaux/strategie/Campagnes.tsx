@@ -8,6 +8,7 @@ import type { Campagne } from '../donnees/types';
 import { Carte, EnTete, Invitation, Supprimer } from '../ui/kit';
 import { enLettresF } from '../format';
 import { champ, jjmm, jourMoisAbrege, useEcrire } from './commun';
+import { ACCEPTE_MEDIA, PiecesJointes } from '../../components/PiecesJointes';
 
 /**
  * STRATÉGIE · LES CAMPAGNES, DE L'IDÉE AUX RÉSULTATS (cahier 14, `49a`).
@@ -257,6 +258,11 @@ function Detail({ c, ecrire, prospects, onFermer }: { c: CampagneId; ecrire: Ret
             </div>
           </div>
         </div>
+      </div>
+      {/* Les médias : une courte vidéo (teaser, réel), des images, un PDF — lus ici même. */}
+      <div className="mt-6 border-t border-[#28282c] pt-4" data-medias-campagne>
+        <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted">Médias · vidéo courte, images, PDF · 8 Mo par fichier</p>
+        <PiecesJointes pieces={c.medias ?? []} onChange={(medias) => maj({ medias })} accepte={ACCEPTE_MEDIA} libelle="Ajouter une vidéo, une image ou un PDF" />
       </div>
     </Carte>
   );

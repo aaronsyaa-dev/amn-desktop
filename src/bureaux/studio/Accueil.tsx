@@ -7,7 +7,7 @@ import { Carte, Chargement, EnTete, Erreur, Invitation, Ligne, Paire } from '../
 import { enLettres, enLettresF, ilYA, jourCourt } from '../format';
 import { EcranVide } from '../../components/EtatEcran';
 import { type Brouillon, NouvellePiece, VIERGE } from './NouvellePiece';
-import { Apercu, hoteDe, ideesDe, maquetteDe } from './maquette';
+import { Apercu, MaquetteEnGrand, hoteDe, ideesDe, maquetteDe } from './maquette';
 
 /**
  * STUDIO · L'ACCUEIL — la façade (cahier 11 `45c`, planche `48e`).
@@ -24,7 +24,8 @@ import { Apercu, hoteDe, ideesDe, maquetteDe } from './maquette';
  * étage ; erreur — la dernière façade connue, atténuée, datée, et la relance.
  */
 
-const PAR_ETAGE = 4;
+/* Trois fenêtres par étage, et plus hautes : à quatre sur 96 px, une maquette ne se jugeait pas (chantier « bugs et design », D2). */
+const PAR_ETAGE = 3;
 const ETAGES_OUVERTS = 3;
 
 export function StudioAccueil() {
@@ -165,7 +166,7 @@ function Facade({ pieces, ambre }: { pieces: Piece[]; ambre: Piece | null }) {
       <div className="h-2" style={{ background: '#22211e', margin: '0 -10px' }} aria-hidden />
       {etages.map((etage, e) => (
         <div key={e}>
-          <ol className="grid grid-cols-2 gap-x-5 gap-y-4 px-4 pb-4 pt-5 md:grid-cols-4" aria-label={`Étage ${e + 1}`}>
+          <ol className="grid grid-cols-1 gap-x-5 gap-y-4 px-4 pb-4 pt-5 sm:grid-cols-2 lg:grid-cols-3" aria-label={`Étage ${e + 1}`}>
             {etage.map((p, i) => {
               const r = rang;
               if (p) rang += 1;
@@ -214,12 +215,13 @@ function Vitre({ etat, ambre }: { etat: Piece['etat'] | 'vide'; ambre: boolean }
 function Fenetre({ p, ambre, rang }: { p: Piece; ambre: boolean; rang: number }) {
   const m = maquetteDe(p);
   const idees = ideesDe(p);
+  const [grand, setGrand] = useState(false);
   const vers = `/studio/pieces/${p.id}${ambre ? '/retours' : ''}`;
   const vitre = (
-    <span data-mv className={`relative block h-[96px] overflow-hidden ${ambre ? 'bx-ambre-respire' : 'bx-allume'}`} style={{ animationDelay: ambre ? undefined : `${rang * 50}ms` }}>
+    <span data-mv className={`relative block h-[200px] overflow-hidden ${ambre ? 'bx-ambre-respire' : 'bx-allume'}`} style={{ animationDelay: ambre ? undefined : `${rang * 50}ms` }}>
       {m.lien || m.image ? (
         <>
-          <Apercu lien={m.lien} image={m.image} titre={`${p.orgNom} · ${p.quoi}`} largeur={190} />
+          <Apercu lien={m.lien} image={m.image} titre={`${p.orgNom} · ${p.quoi}`} />
           <span aria-hidden className="absolute inset-0" style={{ boxShadow: `inset 0 0 0 ${ambre ? 3 : 1}px ${ambre ? AMBRE : '#2a2826'}` }} />
           {m.lien && (
             <span className="absolute bottom-1 left-1 max-w-[calc(100%-8px)] truncate bg-[#0d0c0b]/85 px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.06em] text-text-body">
@@ -233,7 +235,13 @@ function Fenetre({ p, ambre, rang }: { p: Piece; ambre: boolean; rang: number })
     </span>
   );
   return (
-    <li className="min-w-0" data-signal-groupe={ambre ? 'facade-ambre' : undefined}>
+    <li className="relative min-w-0" data-signal-groupe={ambre ? 'facade-ambre' : undefined}>
+      {(m.lien || m.image) && (
+        <button type="button" onClick={() => setGrand(true)} className="absolute right-1.5 top-1.5 z-[2] flex h-8 items-center gap-1 bg-[#0d0c0b]/85 px-2 font-mono text-[10px] tracking-[0.06em] text-text-body hover:text-text-primary" aria-label={`Voir en grand la maquette de ${p.orgNom}`}>
+          ⤢ en grand
+        </button>
+      )}
+      {grand && <MaquetteEnGrand lien={m.lien} image={m.image} titre={`${p.plaque} · ${p.orgNom} · ${p.quoi}`} onFermer={() => setGrand(false)} />}
       {/* Une maquette en ligne : un clic sur la fenêtre ouvre le VRAI site (nouvel onglet, ou le navigateur depuis l'application). Sinon, la fenêtre ouvre la pièce. */}
       {m.lien ? (
         <a href={m.lien} target="_blank" rel="noopener noreferrer" className="bx-nav block" title={`Ouvrir ${hoteDe(m.lien)}`} aria-label={`Ouvrir le site en ligne de ${p.orgNom} : ${hoteDe(m.lien)}`} data-maquette-lien>
@@ -266,7 +274,7 @@ function Fenetre({ p, ambre, rang }: { p: Piece; ambre: boolean; rang: number })
 function FenetreVide() {
   return (
     <li className="min-w-0" aria-hidden>
-      <span className="block h-[96px]">
+      <span className="block h-[200px]">
         <Vitre etat="vide" ambre={false} />
       </span>
       <span className="mt-3 block h-[34px]" />
