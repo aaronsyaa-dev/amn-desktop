@@ -60,6 +60,11 @@ export function InputAlertsPanel() {
               <p className="text-sm text-text-primary">
                 <span className="mr-2 font-mono text-[10px] uppercase tracking-wider text-text-secondary">{FAMILLE[a.family] ?? a.family}</span>
                 {a.orgName ?? 'Hors organisation'}
+                {a.controle && (
+                  <span className="ml-2 border border-border px-1.5 py-px font-mono text-[9.5px] uppercase tracking-wider text-text-muted" title={a.raison ?? undefined}>
+                    Test contrôlé{a.raison ? ` · ${a.raison}` : ''}
+                  </span>
+                )}
               </p>
               <p className="text-[11px] text-text-muted">
                 {a.userEmail ?? 'sans compte'} · {a.ip ?? 'ip inconnue'} · {a.route} · champ {a.field}

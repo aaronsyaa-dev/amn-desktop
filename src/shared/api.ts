@@ -2237,6 +2237,9 @@ export interface InputAlert {
   sample: string;
   statusCode: number | null;
   createdAt: string;
+  /** Un test contrôlé de l'équipe (compte AMN DevSec ou de test) : journalisé, jamais sonné. Voir qualifierAlerte côté serveur. */
+  controle?: boolean;
+  raison?: string | null;
 }
 
 /* ───────────── Le lien de bienvenue (Bloc 2) ───────────── */

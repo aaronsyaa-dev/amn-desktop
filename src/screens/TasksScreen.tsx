@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Contact, FileText, Globe, MapPin, MessageSquare, Pencil, Plus, Send, Trash2, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useProfiles } from '../state/ProfilesContext';
+import { useMembers } from '../state/useMembers';
 import { useExclusive, useLinkedSites, useSitePanelLink } from '@edition/exclusive';
 import { useSync, useCollection, uid, stripMeta } from '../state/SyncContext';
 import { useUndo } from '../state/UndoContext';
@@ -1156,7 +1157,8 @@ function NewTaskModal({
   }) => void;
 }) {
   const { user } = useAuth();
-  const { TEAM_ENABLED, TEAM_MEMBERS, SITES_ENABLED } = useExclusive();
+  const { TEAM_ENABLED, SITES_ENABLED } = useExclusive();
+  const TEAM_MEMBERS = useAssignables();
   // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
   useFermetureEchap(true, onClose);
 
@@ -1336,7 +1338,8 @@ function TaskDetailModal({
   // Échap ferme, comme partout ailleurs. Voir lib/useFermetureEchap.
   useFermetureEchap(true, onClose);
 
-  const { TEAM_ENABLED, TEAM_MEMBERS } = useExclusive();
+  const { TEAM_ENABLED } = useExclusive();
+  const TEAM_MEMBERS = useAssignables();
   const { profileFor } = useProfiles();
   const { beginCapture, showMarker } = useTags();
 
@@ -1654,4 +1657,22 @@ function TaskDetailModal({
       </motion.div>
     </div>
   );
+}
+
+/*
+  QUI PEUT RECEVOIR UNE TÂCHE. La liste venait d'une constante de l'édition (Aaron et Mohamed, écrits
+  en dur) : Riyad, arrivé ensuite, n'y était pas — ni personne d'autre après lui. Elle vient maintenant
+  des vrais comptes de l'organisation (les mêmes que Système → Membres), nommés par leur profil ; la
+  constante ne sert plus qu'en repli, quand la liste des comptes est illisible (hors ligne).
+*/
+function useAssignables(): { email: string; name: string }[] {
+  const { TEAM_MEMBERS } = useExclusive();
+  const { membres } = useMembers();
+  const { profileFor } = useProfiles();
+  return useMemo(() => {
+    const vus = new Map<string, { email: string; name: string }>();
+    for (const m of membres) if (m.id !== 'moi' && m.email) vus.set(m.email, { email: m.email, name: profileFor(m.email).name || m.email.split('@')[0] });
+    for (const m of TEAM_MEMBERS) if (!vus.has(m.email)) vus.set(m.email, m);
+    return [...vus.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  }, [membres, TEAM_MEMBERS, profileFor]);
 }

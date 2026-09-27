@@ -65,7 +65,8 @@ const NATURE: Record<SupportRequest['kind'], string> = {
 };
 
 const SUBJECT_MAX = 120;
-const BODY_MAX = 2000;
+/* Dix mille caractères (même limite que le serveur). Au-delà, l'envoi est refusé en le disant : plus de champ qui cesse d'écrire, ni de collage coupé sans prévenir. */
+const BODY_MAX = 10_000;
 const CLE_EXPORTS = 'amn.exports.recents';
 /** Au-delà, une sauvegarde n'est plus une sauvegarde. */
 const EXPORT_VIEUX_JOURS = 90;
@@ -274,7 +275,7 @@ export function AssistanceScreen() {
      d'attente est là, c'est elle qui l'a. */
   const aVerifier = file.length > 0 ? null : points.find((p) => p.verdict === 'verifier') ?? null;
 
-  const pret = objet.trim().length > 0 && texte.trim().length > 0 && !envoi;
+  const pret = objet.trim().length > 0 && texte.trim().length > 0 && texte.length <= BODY_MAX && !envoi;
 
   const envoyer = async () => {
     if (!pret) return;
@@ -525,14 +526,15 @@ export function AssistanceScreen() {
                 </span>
                 <textarea
                   value={texte}
-                  maxLength={BODY_MAX}
                   onChange={(e) => setTexte(e.target.value)}
                   rows={5}
                   placeholder="Dites ce qu’il vous faut, en quelques lignes."
                   className="input-focus w-full resize-y border border-border bg-bg px-3 py-2 text-sm leading-relaxed text-text-primary outline-none placeholder:text-text-muted"
                 />
-                <span className="mt-1 block text-right font-mono text-[10px] tabular-nums text-text-muted">
-                  {texte.length} / {BODY_MAX}
+                <span className={`mt-1 block text-right font-mono text-[10px] tabular-nums ${texte.length > BODY_MAX ? 'text-danger-ink' : 'text-text-muted'}`} aria-live="polite">
+                  {texte.length > BODY_MAX
+                    ? `${texte.length} / ${BODY_MAX} — ${texte.length - BODY_MAX} caractères de trop : raccourcissez, ou envoyez la suite dans une seconde demande`
+                    : `${texte.length} / ${BODY_MAX}`}
                 </span>
               </label>
             </div>

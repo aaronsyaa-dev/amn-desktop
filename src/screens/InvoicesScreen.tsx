@@ -935,9 +935,10 @@ function InvoiceRow({
         rappel d'un fait dont la carte du haut est le sujet, et deux zones de
         l'écran se disputeraient la même urgence.
       */}
-      <span className="flex-shrink-0 text-sm font-semibold tabular-nums text-text-primary">
-        {invoice.kind === 'creditNote' ? '−' : ''}
+      <span className={`flex-shrink-0 text-sm font-semibold tabular-nums ${totals.grossCents < 0 && invoice.kind !== 'creditNote' ? 'text-danger-ink' : 'text-text-primary'}`} title={totals.grossCents < 0 && invoice.kind !== 'creditNote' ? 'Total négatif : à corriger (une remise ne dépasse pas le montant ; pour rembourser, un avoir)' : undefined}>
+        {invoice.kind === 'creditNote' ? 'Avoir −' : ''}
         {formatCentsCompact(totals.grossCents)}
+        {totals.grossCents < 0 && invoice.kind !== 'creditNote' && <span className="ml-1 font-mono text-[9px] uppercase tracking-widest">· à corriger</span>}
       </span>
     </motion.button>
   );
@@ -1204,6 +1205,12 @@ function InvoiceDetail({
             value={formatCents(identity.vatExempt ? totals.netCents : totals.grossCents)}
             strong
           />
+          {totals.grossCents < 0 && (
+            <p className="mt-2 border border-danger/40 px-3 py-2 text-xs leading-relaxed text-danger-ink" role="alert" data-total-negatif>
+              Total négatif : les remises dépassent le montant facturé. Une facture ne peut pas être émise ainsi. Pour rendre de l’argent à la cliente,
+              émettez un avoir sur la facture d’origine.
+            </p>
+          )}
           {identity.vatExempt && (
             <p className="mt-1 text-right font-mono text-[9px] uppercase tracking-widest text-text-muted">
               TVA non applicable · art. 293 B du CGI
@@ -1272,6 +1279,10 @@ function InvoiceDetail({
                 }
                 if (invoice.lines.every((l) => !l.label.trim())) {
                   setIssueError('Chaque ligne doit porter une désignation.');
+                  return;
+                }
+                if (totals.grossCents < 0) {
+                  setIssueError('Total négatif : réduisez la remise, ou émettez plutôt un avoir sur la facture d’origine.');
                   return;
                 }
                 setIssueError('');
@@ -1532,7 +1543,7 @@ function LineEditor({
             min={0}
             step="0.5"
             value={line.quantity}
-            onChange={(e) => onChange({ quantity: Number(e.target.value) })}
+            onChange={(e) => onChange({ quantity: Math.max(0, Number(e.target.value) || 0) })}
             className="input-focus min-h-11 w-full border border-border bg-bg px-2 text-sm tabular-nums text-text-primary outline-none"
           />
         </label>

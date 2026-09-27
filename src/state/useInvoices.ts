@@ -392,6 +392,12 @@ export function useInvoices() {
       if (!identityComplete) return null;
       const lines = Array.isArray(current.lines) ? current.lines : [];
       if (lines.length === 0) return null;
+      /*
+        Un total négatif ne s'émet pas (constat : une facture à -600 € sortait telle quelle). Une ligne
+        négative reste permise — c'est une remise —, mais une remise ne dépasse pas ce qu'elle réduit.
+        Rendre de l'argent, c'est un avoir : un document distinct, numéroté AV-, relié à la facture.
+      */
+      if (documentTotals(lines).grossCents < 0) return null;
 
       const today = isoDay();
       const number = nextNumber(invoices, new Date().getFullYear(), current.kind ?? 'invoice');
