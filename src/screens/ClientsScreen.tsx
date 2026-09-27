@@ -26,7 +26,7 @@ import { useRecordWatchers } from '../state/useRecordWatchers';
 import { useAjmaniFocus } from '../assistant/ecranContexte';
 import { relativeTime } from '../lib/time';
 import type { DerivedSite } from '../state/RemoteSitesContext';
-import { useExclusive, useLinkedSites, useSitePanelLink } from '@edition/exclusive';
+import { SitesStudioFiche, useExclusive, useLinkedSites, useSitePanelLink } from '@edition/exclusive';
 import { StatusBadge } from '../components/StatusBadge';
 import {
   computeClientHealth,
@@ -55,7 +55,6 @@ import type {
   UpdateClientInput,
 } from '../shared/api';
 import { FirstRun } from '../components/EmptyState';
-import { SitesStudioFiche } from '../components/clients/SitesStudioFiche';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
 import { useLangue, t as tr } from '../i18n';
 

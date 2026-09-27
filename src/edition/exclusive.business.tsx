@@ -144,3 +144,12 @@ export function OllamaSection(): null {
 export function WhisperSection(): null {
   return null;
 }
+
+/* Les bureaux (Studio…) n'existent que dans l'édition interne : ni nom d'écran de bureau, ni sites du Studio sur une fiche client. */
+export function nommerEcranBureau(_chemin: string): [string, string | null] | null {
+  return null;
+}
+
+export function SitesStudioFiche(_props: { recordId: string }): null {
+  return null;
+}

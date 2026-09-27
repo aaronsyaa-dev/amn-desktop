@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import type { GardeContexte } from '../shared/garde';
-import { bureauDuChemin, ongletDuChemin } from '../bureaux/catalogue';
-import { ESPACES } from '../bureaux/jetons';
+import { nommerEcranBureau } from '@edition/exclusive';
 
 /**
  * LE CONTEXTE DE L'ÉCRAN — ce qu'Ajmani sait sans qu'on le lui dise (Ajmani partout, Bloc 1).
@@ -37,9 +36,8 @@ export function lireFocus(): FocusEcran | null {
 function ecranActuel(): string | null {
   if (typeof window === 'undefined') return null;
   const chemin = window.location.hash.replace(/^#/, '').split('?')[0] || '/';
-  const bureau = bureauDuChemin(chemin);
-  const espace = ESPACES.find((e) => e.key === (bureau ?? 'poste'))?.nom ?? 'Poste de travail';
-  const onglet = bureau ? ongletDuChemin(bureau, chemin)?.ecran.nom : null;
+  // Le bureau et l'onglet (édition interne) ; l'édition cliente n'a pas de bureaux, seulement son espace.
+  const [espace, onglet] = nommerEcranBureau(chemin) ?? ['Poste de travail', null];
   const titre = (typeof document !== 'undefined' ? document.querySelector('main h1, h1')?.textContent : null)?.replace(/\s+/g, ' ').trim().slice(0, 70) || null;
   return [espace, onglet, titre && titre !== onglet ? titre : null].filter(Boolean).join(' · ') + ` (${chemin})`;
 }

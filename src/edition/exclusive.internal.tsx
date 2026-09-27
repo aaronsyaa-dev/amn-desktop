@@ -13,6 +13,9 @@ import { WhisperSection as WhisperSettingsSection } from '../components/settings
 import { bridge } from '../lib/bridge';
 import { scoreColor } from '../lib/scanSeverity';
 import { relativeTime } from '../lib/time';
+import { bureauDuChemin, ongletDuChemin } from '../bureaux/catalogue';
+import { ESPACES } from '../bureaux/jetons';
+import { nomEcran } from '../bureaux/libelles';
 import type { ComplyCheck, NotificationPrefs, Scan, VaultCategory } from '../shared/api';
 
 /**
@@ -370,3 +373,15 @@ export function WhisperSection() {
   if (useClientView()) return null;
   return <WhisperSettingsSection />;
 }
+
+/* ------------------ Les bureaux, vus des écrans partagés ----------------- */
+
+/** Le nom du bureau et de l'onglet d'un chemin — pour le contexte d'écran d'Ajmani. `null` hors bureau. */
+export function nommerEcranBureau(chemin: string): [string, string | null] | null {
+  const bureau = bureauDuChemin(chemin);
+  if (!bureau) return null;
+  const onglet = ongletDuChemin(bureau, chemin)?.ecran;
+  return [ESPACES.find((e) => e.key === bureau)?.nom ?? bureau, onglet ? nomEcran(onglet.route, onglet.nom) : null];
+}
+
+export { SitesStudioFiche } from '../components/clients/SitesStudioFiche';
