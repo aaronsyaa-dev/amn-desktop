@@ -159,6 +159,7 @@ const STUDIO: Bureau = {
       compteur: 'pieces',
       motifs: ['/studio/pieces'],
       aussi: [
+        { nom: 'Sites par cliente', route: '/studio/clientes' },
         { nom: 'Budget de performance', route: '/studio/performance' },
         { nom: 'Recette visuelle', route: '/studio/recette' },
         { nom: 'Accessibilité', route: '/studio/accessibilite' },

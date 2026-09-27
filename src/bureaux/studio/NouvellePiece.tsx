@@ -5,6 +5,9 @@ import { useSourceBureaux } from '../donnees/source';
 import type { Piece } from '../donnees/studio';
 import type { PieceStudio } from '../donnees/types';
 import { Carte, Ligne } from '../ui/kit';
+import { useClients } from '../../state/useClients';
+import { lienPropre } from './maquette';
+import { useEcrirePiece } from './commun';
 
 /**
  * STUDIO · OUVRIR UNE PIÈCE — et voir les sites qui n'en ont pas.
@@ -25,19 +28,30 @@ import { Carte, Ligne } from '../ui/kit';
 const champ = 'h-9 w-full border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]';
 
 export interface Brouillon {
+  /** Présent : on modifie cette pièce au lieu d'en ouvrir une. */
+  id?: string;
+  /** La fiche de l'onglet Clients (son identifiant d'enregistrement). */
+  clientId: string;
   orgId: string;
   orgNom: string;
   quoi: string;
   siteId: string;
   url: string;
 }
-export const VIERGE: Brouillon = { orgId: '', orgNom: '', quoi: '', siteId: '', url: '' };
+export const VIERGE: Brouillon = { clientId: '', orgId: '', orgNom: '', quoi: '', siteId: '', url: '' };
+
+const plat = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+/** Le nom qu'une fiche client donne à ses sites : sa société, sinon son nom. */
+export const nomFiche = (c: { name: string; company: string }) => c.company.trim() || c.name.trim();
 
 /** `b` : le brouillon ouvert (null = formulaire fermé). L'accueil le tient, pour que son en-tête puisse l'ouvrir. */
-export function NouvellePiece({ pieces, b, setB }: { pieces: Piece[]; b: Brouillon | null; setB: (b: Brouillon | null) => void }) {
+export function NouvellePiece({ pieces, b, setB, sansListe = false }: { pieces: Piece[]; b: Brouillon | null; setB: (b: Brouillon | null) => void; sansListe?: boolean }) {
   const src = useSourceBureaux();
   const { upsert } = useSync();
   const navigate = useNavigate();
+  const { clients, updateClient } = useClients();
+  const ecrire = useEcrirePiece();
+  const fiches = useMemo(() => [...clients].sort((x, y) => nomFiche(x).localeCompare(nomFiche(y), 'fr')), [clients]);
 
   const organisations = useMemo(() => [...src.organisations].sort((x, y) => x.name.localeCompare(y.name, 'fr')), [src.organisations]);
   /* Un site a déjà sa pièce quand elle le nomme (siteId), ou quand l'adresse de la pièce est la sienne. */
@@ -55,44 +69,63 @@ export function NouvellePiece({ pieces, b, setB }: { pieces: Piece[]; b: Brouill
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const nom = b ? (b.orgId ? nomOrg(b.orgId) : b.orgNom.trim()) : '';
-  const manque = !b ? null : !nom ? 'Choisissez la cliente, ou écrivez son nom.' : !b.quoi.trim() ? 'Dites ce qu’on y construit.' : null;
+  const fiche = b?.clientId ? fiches.find((c) => c.recordId === b.clientId) ?? null : null;
+  const nom = b ? (fiche ? nomFiche(fiche) : b.orgId ? nomOrg(b.orgId) : b.orgNom.trim()) : '';
+  const lien = b?.url.trim() ? lienPropre(b.url) : null;
+  const manque = !b ? null : !nom ? 'Choisissez la cliente, ou écrivez son nom.' : !b.quoi.trim() ? 'Dites ce qu’on y construit.' : b.url.trim() && !lien ? 'Le lien n’est pas une adresse web complète.' : null;
 
   const creer = () => {
     if (!b || manque) return;
-    const id = uid('piece');
-    const numero = Math.max(0, ...pieces.map((p) => p.numero)) + 1;
-    const piece: PieceStudio = {
-      numero,
-      orgId: b.orgId || null,
-      orgNom: nom,
-      quoi: b.quoi.trim(),
-      siteId: b.siteId || null,
-      url: b.url.trim() || null,
-      enLigneLe: null,
-    };
-    void upsert('studioPieces', id, piece as unknown as Record<string, unknown>);
+    const existante = b.id ? pieces.find((p) => p.id === b.id) : null;
+    const id = existante?.id ?? uid('piece');
+    // L'organisation suit la fiche client quand une organisation porte le même nom : les deux vues restent d'accord.
+    const orgId = b.orgId || (fiche ? (organisations.find((o) => plat(o.name) === plat(nomFiche(fiche)))?.id ?? '') : '') || src.sites.find((s) => s.id === b.siteId)?.clientOrgId || null;
+    const champs = { clientId: fiche?.recordId ?? null, orgId: orgId || null, orgNom: nom, quoi: b.quoi.trim(), siteId: b.siteId || null, url: lien };
+    if (existante) {
+      ecrire(id, () => champs);
+    } else {
+      const piece: PieceStudio = { numero: Math.max(0, ...pieces.map((p) => p.numero)) + 1, ...champs, enLigneLe: null };
+      void upsert('studioPieces', id, piece as unknown as Record<string, unknown>);
+    }
+    // Le site suivi rejoint aussi la fiche dans l'onglet Clients (ses sites liés), s'il n'y est pas déjà.
+    if (fiche && b.siteId && !fiche.linkedSiteIds.includes(b.siteId)) void updateClient(fiche.id, { linkedSiteIds: [...fiche.linkedSiteIds, b.siteId] }).catch(() => {});
     setB(null);
-    navigate(`/studio/pieces/${id}/croquis`);
+    if (!existante) navigate(`/studio/pieces/${id}/croquis`);
   };
 
   return (
     <>
       {b ? (
-        <Carte pad="p-5" className="mb-[18px]" titre="Ouvrir une pièce" droite="une porte dans la barre, une fenêtre dans la façade">
+        <Carte pad="p-5" className="mb-[18px]" titre={b.id ? 'Modifier la pièce' : 'Ouvrir une pièce'} droite="un site par pièce : une porte dans la barre, une fenêtre dans la façade">
           <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
             <label className="flex flex-col gap-1 text-[11.5px] text-text-secondary">
-              Cliente
-              <select value={b.orgId} onChange={(e) => setB({ ...b, orgId: e.target.value })} className={champ}>
+              Cliente (fiche de l’onglet Clients)
+              <select value={b.clientId ? `c:${b.clientId}` : b.orgId ? `o:${b.orgId}` : ''} onChange={(e) => {
+                const v = e.target.value;
+                setB({ ...b, clientId: v.startsWith('c:') ? v.slice(2) : '', orgId: v.startsWith('o:') ? v.slice(2) : '' });
+              }} className={champ}>
                 <option value="">Autre (nom libre)</option>
-                {organisations.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
+                {fiches.length > 0 && (
+                  <optgroup label="Fiches clients">
+                    {fiches.map((c) => (
+                      <option key={c.recordId} value={`c:${c.recordId}`}>
+                        {c.company.trim() ? `${c.company} · ${c.name}` : c.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {organisations.length > 0 && (
+                  <optgroup label="Organisations clientes">
+                    {organisations.map((o) => (
+                      <option key={o.id} value={`o:${o.id}`}>
+                        {o.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </label>
-            {!b.orgId && (
+            {!b.orgId && !b.clientId && (
               <label className="flex flex-col gap-1 text-[11.5px] text-text-secondary">
                 Son nom
                 <input value={b.orgNom} onChange={(e) => setB({ ...b, orgNom: e.target.value })} placeholder="Boulangerie Keller" className={champ} />
@@ -124,13 +157,13 @@ export function NouvellePiece({ pieces, b, setB }: { pieces: Piece[]; b: Brouill
               </select>
             </label>
             <label className="flex flex-col gap-1 text-[11.5px] text-text-secondary">
-              Adresse en ligne (facultatif)
-              <input value={b.url} onChange={(e) => setB({ ...b, url: e.target.value })} placeholder="https://…" className={champ} />
+              Lien du site ou de la maquette en ligne (facultatif)
+              <input value={b.url} onChange={(e) => setB({ ...b, url: e.target.value })} placeholder="https://keller.vercel.app" inputMode="url" className={champ} />
             </label>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2.5">
             <button type="button" className="bx-btn" disabled={Boolean(manque)} onClick={creer}>
-              Ouvrir la pièce
+              {b.id ? 'Enregistrer' : 'Ouvrir la pièce'}
             </button>
             <button type="button" className="bx-btn2" onClick={() => setB(null)}>
               Annuler
@@ -139,7 +172,7 @@ export function NouvellePiece({ pieces, b, setB }: { pieces: Piece[]; b: Brouill
           </div>
         </Carte>
       ) : null}
-      {sansPiece.length > 0 && (
+      {!sansListe && sansPiece.length > 0 && (
         <div className="mt-[18px]">
           <Carte titre="Sites suivis sans pièce" droite={sansPiece.length}>
             {sansPiece.slice(0, 8).map((s) => (

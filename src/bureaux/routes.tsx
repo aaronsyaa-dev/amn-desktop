@@ -58,6 +58,7 @@ const CyberCrise = l(() => import('./cyber/Crise'), 'CyberCrise');
 const StudioPerformance = l(() => import('./studio/Performance'), 'StudioPerformance');
 const StudioRecette = l(() => import('./studio/Recette'), 'StudioRecette');
 const StudioAccessibilite = l(() => import('./studio/Accessibilite'), 'StudioAccessibilite');
+const StudioParCliente = l(() => import('./studio/ParCliente'), 'StudioParCliente');
 const StrategieAttribution = l(() => import('./strategie/Attribution'), 'StrategieAttribution');
 const StrategieTemoignages = l(() => import('./strategie/Temoignages'), 'StrategieTemoignages');
 const StrategieTrackers = l(() => import('./strategie/Trackers'), 'StrategieTrackers');
@@ -107,6 +108,7 @@ export function routesBureaux() {
       <Route path="/studio/performance" element={s(StudioPerformance)} />
       <Route path="/studio/recette" element={s(StudioRecette)} />
       <Route path="/studio/accessibilite" element={s(StudioAccessibilite)} />
+      <Route path="/studio/clientes" element={s(StudioParCliente)} />
       <Route path="/strategie" element={s(StrategieAccueil)} />
       <Route path="/strategie/campagnes" element={s(StrategieCampagnes)} />
       <Route path="/strategie/storyboards" element={s(StrategieStoryboards)} />

@@ -7,6 +7,7 @@ import { Carte, Chargement, EnTete, Erreur, Invitation, Ligne, Paire } from '../
 import { enLettres, enLettresF, ilYA, jourCourt } from '../format';
 import { EcranVide } from '../../components/EtatEcran';
 import { type Brouillon, NouvellePiece, VIERGE } from './NouvellePiece';
+import { Apercu, hoteDe, ideesDe, maquetteDe } from './maquette';
 
 /**
  * STUDIO · L'ACCUEIL — la façade (cahier 11 `45c`, planche `48e`).
@@ -79,7 +80,7 @@ export function StudioAccueil() {
         }
       />
       <NouvellePiece pieces={s.pieces} b={brouillon} setB={setBrouillon} />
-      <Carte dominante pad="p-7" titre="La façade · une fenêtre par pièce" droite="allumée = en ligne · échafaudage = chantier · store baissé = attente client">
+      <Carte dominante pad="p-7" titre="La façade · une fenêtre par site" droite="un clic sur une maquette ouvre le site en ligne · le nom ouvre la pièce">
         {chargement ? (
           <>
             <Facade pieces={[]} ambre={null} />
@@ -211,22 +212,48 @@ function Vitre({ etat, ambre }: { etat: Piece['etat'] | 'vide'; ambre: boolean }
 }
 
 function Fenetre({ p, ambre, rang }: { p: Piece; ambre: boolean; rang: number }) {
+  const m = maquetteDe(p);
+  const idees = ideesDe(p);
+  const vers = `/studio/pieces/${p.id}${ambre ? '/retours' : ''}`;
+  const vitre = (
+    <span data-mv className={`relative block h-[96px] overflow-hidden ${ambre ? 'bx-ambre-respire' : 'bx-allume'}`} style={{ animationDelay: ambre ? undefined : `${rang * 50}ms` }}>
+      {m.lien || m.image ? (
+        <>
+          <Apercu lien={m.lien} image={m.image} titre={`${p.orgNom} · ${p.quoi}`} largeur={190} />
+          <span aria-hidden className="absolute inset-0" style={{ boxShadow: `inset 0 0 0 ${ambre ? 3 : 1}px ${ambre ? AMBRE : '#2a2826'}` }} />
+          {m.lien && (
+            <span className="absolute bottom-1 left-1 max-w-[calc(100%-8px)] truncate bg-[#0d0c0b]/85 px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.06em] text-text-body">
+              ↗ {hoteDe(m.lien)}
+            </span>
+          )}
+        </>
+      ) : (
+        <Vitre etat={p.etat} ambre={ambre} />
+      )}
+    </span>
+  );
   return (
     <li className="min-w-0" data-signal-groupe={ambre ? 'facade-ambre' : undefined}>
-      <Link to={`/studio/pieces/${p.id}${ambre ? '/retours' : ''}`} className="bx-nav group block" aria-label={`${p.plaque}, ${p.orgNom} : ${p.quoi}. ${ambre ? 'Retour à traiter' : LIBELLE_ETAT[p.etat].toLowerCase()}.`}>
-        <span
-          data-mv
-          className={`block h-[96px] ${ambre ? 'bx-ambre-respire' : 'bx-allume'}`}
-          style={{ animationDelay: ambre ? undefined : `${rang * 50}ms` }}
-        >
-          <Vitre etat={p.etat} ambre={ambre} />
-        </span>
+      {/* Une maquette en ligne : un clic sur la fenêtre ouvre le VRAI site (nouvel onglet, ou le navigateur depuis l'application). Sinon, la fenêtre ouvre la pièce. */}
+      {m.lien ? (
+        <a href={m.lien} target="_blank" rel="noopener noreferrer" className="bx-nav block" title={`Ouvrir ${hoteDe(m.lien)}`} aria-label={`Ouvrir le site en ligne de ${p.orgNom} : ${hoteDe(m.lien)}`} data-maquette-lien>
+          {vitre}
+        </a>
+      ) : (
+        <Link to={vers} className="bx-nav block" tabIndex={-1} aria-hidden>
+          {vitre}
+        </Link>
+      )}
+      <Link to={vers} className="bx-nav group block" aria-label={`${p.plaque}, ${p.orgNom} : ${p.quoi}. ${ambre ? 'Retour à traiter' : LIBELLE_ETAT[p.etat].toLowerCase()}.`}>
         <span className="mt-3 flex items-center gap-2">
           <span className="border border-[#2a2826] px-[5px] py-[2px] font-mono text-[9.5px] font-semibold tracking-[0.1em] text-text-muted">{p.plaque}</span>
           <span className="truncate text-[13px] font-semibold text-text-primary group-hover:underline">{p.orgNom}</span>
         </span>
         <span className="mt-1.5 flex items-baseline justify-between gap-2">
-          <span className="truncate text-[12px] text-text-muted">{p.quoi}</span>
+          <span className="truncate text-[12px] text-text-muted">
+            {p.quoi}
+            {idees ? ` · ${idees} idée${idees > 1 ? 's' : ''}` : ''}
+          </span>
           <span className="flex-none font-mono text-[9.5px] font-semibold tracking-[0.12em]" style={{ color: ambre ? AMBRE : 'var(--color-text-muted)' }}>
             {ambre ? 'RETOUR À TRAITER' : LIBELLE_ETAT[p.etat]}
           </span>

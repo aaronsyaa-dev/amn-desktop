@@ -6,6 +6,7 @@ import type { PieceStudio } from '../donnees/types';
 import { Carte, Invitation } from '../ui/kit';
 import { enLettresF } from '../format';
 import { jjmm, Punaise, TetePiece, useEcrirePiece, usePieceCourante } from './commun';
+import { Apercu, hoteDe, lienPropre } from './maquette';
 
 /**
  * STUDIO · LE MUR DE CROQUIS (cahier 14, `48a`).
@@ -81,6 +82,7 @@ function Mur({ p }: { p: Piece }) {
   const [piece, setPiece] = useState<string | null>(null);
   const [depot, setDepot] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
+  const [enLigne, setEnLigne] = useState<{ titre: string; lien: string } | null>(null);
   const geste = useRef<{ id: string; px: number; py: number; x0: number; y0: number; bouge: boolean; cible: HTMLElement } | null>(null);
   const annule = useRef(false);
 
@@ -200,6 +202,16 @@ function Mur({ p }: { p: Piece }) {
     setPiece(nouveaux[0].id);
   };
 
+  /* ── Poser une maquette par son lien de déploiement (Vercel ou autre) : elle s'affiche vivante, et reçoit des punaises comme une image. ── */
+  const lienEnLigne = enLigne ? lienPropre(enLigne.lien) : null;
+  const poserEnLigne = () => {
+    if (!enLigne || !lienEnLigne) return;
+    const c: Croquis = { id: uid('cq'), titre: enLigne.titre.trim() || hoteDe(lienEnLigne), genre: 'maquette', image: null, lien: lienEnLigne, ratio: TAILLES.maquette.r, legende: `posée le ${jjmm(new Date().toISOString())}`, punaises: [] };
+    ecrire(p.id, (b) => ({ croquis: [...(b.croquis ?? []), c] }));
+    setEnLigne(null);
+    setPiece(c.id);
+  };
+
   useEffect(() => {
     if (choisie !== null && !brouillon && !punaises.some((x) => x.n === choisie)) setChoisie(null);
   }, [choisie, brouillon, punaises]);
@@ -237,7 +249,7 @@ function Mur({ p }: { p: Piece }) {
               <div className="absolute inset-6">
                 <Invitation
                   titre="Rien n’est encore au mur."
-                  texte="Glissez ici une maquette, un croquis, une capture du site actuel ou une inspiration. Un clic sur une image y pose une punaise numérotée."
+                  texte="Glissez ici une maquette, un croquis, une capture du site actuel ou une inspiration — ou collez à droite le lien d’un déploiement. Un clic sur une maquette y pose une punaise : une idée numérotée."
                   action={
                     <button type="button" className="bx-btn2" onClick={() => fichier.current?.click()}>
                       Choisir une image
@@ -276,8 +288,8 @@ function Mur({ p }: { p: Piece }) {
                       }
                     }}
                   >
-                    {c.image ? (
-                      <img src={c.image} alt={c.titre} draggable={false} className="h-full w-full object-cover" />
+                    {c.image || lienPropre(c.lien) ? (
+                      <Apercu lien={lienPropre(c.lien)} image={c.image ?? null} titre={c.titre} largeur={pos.l * k} />
                     ) : (
                       <span className="absolute inset-0 flex items-center justify-center font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted" aria-hidden>
                         {c.genre}
@@ -308,6 +320,21 @@ function Mur({ p }: { p: Piece }) {
                   </div>
                   <figcaption className="mt-2.5 line-clamp-2 font-mono text-[10px] font-semibold uppercase leading-[1.5] tracking-[0.14em] text-text-secondary" title={c.legende}>
                     {c.genre} · {c.titre.replace(new RegExp(`^${c.genre}\\s*·\\s*`, 'i'), '')}
+                    {lienPropre(c.lien) && (
+                      <>
+                        {' · '}
+                        <a
+                          href={lienPropre(c.lien)!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="normal-case tracking-normal text-text-primary underline decoration-trait-sourd underline-offset-2"
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onPointerUp={(e) => e.stopPropagation()}
+                        >
+                          ouvrir {hoteDe(lienPropre(c.lien))} ↗
+                        </a>
+                      </>
+                    )}
                   </figcaption>
                 </figure>
               );
@@ -328,6 +355,54 @@ function Mur({ p }: { p: Piece }) {
         </Carte>
 
         <div className="flex flex-col gap-[18px] self-start">
+          <Carte titre="Une maquette en ligne" droite="Vercel ou autre">
+            {enLigne ? (
+              <form
+                className="flex flex-col gap-2.5"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  poserEnLigne();
+                }}
+              >
+                <label className="flex flex-col gap-1 text-[11.5px] text-text-secondary">
+                  Lien du déploiement
+                  <input
+                    autoFocus
+                    value={enLigne.lien}
+                    onChange={(e) => setEnLigne({ ...enLigne, lien: e.target.value })}
+                    placeholder="https://keller-v2.vercel.app"
+                    inputMode="url"
+                    className="h-9 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-[11.5px] text-text-secondary">
+                  Son nom (facultatif)
+                  <input
+                    value={enLigne.titre}
+                    onChange={(e) => setEnLigne({ ...enLigne, titre: e.target.value })}
+                    placeholder="Accueil, version 2"
+                    className="h-9 border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-text-primary outline-none placeholder:text-text-muted focus:border-[#8a8a87]"
+                  />
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="submit" className="bx-btn" disabled={!lienEnLigne}>
+                    Poser au mur
+                  </button>
+                  <button type="button" className="bx-btn2" onClick={() => setEnLigne(null)}>
+                    Annuler
+                  </button>
+                </div>
+                {enLigne.lien.trim() && !lienEnLigne && <p className="text-[12px] text-text-muted">Ce n’est pas encore une adresse web complète.</p>}
+              </form>
+            ) : (
+              <>
+                <p className="text-[12.5px] leading-relaxed text-[#a3a3a0]">Collez le lien d’un déploiement : la maquette s’affiche vivante sur le mur et sur la façade, un clic ouvre le vrai site, et vos idées s’y épinglent.</p>
+                <button type="button" className="bx-btn2 mt-3 w-full" onClick={() => setEnLigne({ titre: '', lien: '' })}>
+                  Poser une maquette en ligne
+                </button>
+              </>
+            )}
+          </Carte>
           <Carte titre="Les annotations" droite={punaises.length || ''}>
             {punaises.length === 0 && !brouillon && <p className="text-[13px] leading-relaxed text-[#a3a3a0]">{croquis.length ? 'Aucune punaise encore : un clic sur une image en pose une.' : 'Les punaises se posent sur les images du mur.'}</p>}
             <ol>
@@ -410,6 +485,21 @@ function Mur({ p }: { p: Piece }) {
                   defaultValue={choisieC.titre}
                   onBlur={(e) => e.target.value.trim() && e.target.value !== choisieC.titre && majCroquis(choisieC.id, (c) => ({ ...c, titre: e.target.value.trim() }))}
                   className="mt-1.5 h-9 w-full border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-[#f7f7f5] outline-none focus:border-[#8a8a87]"
+                />
+              </label>
+              <label className="mt-3 block">
+                <span className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-[#9a9a97]">Lien du déploiement</span>
+                <input
+                  key={`${choisieC.id}-lien`}
+                  defaultValue={choisieC.lien ?? ''}
+                  placeholder="https://…vercel.app"
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    const propre = v ? lienPropre(v) : null;
+                    if ((v && !propre) || (propre ?? null) === (choisieC.lien ?? null)) return;
+                    majCroquis(choisieC.id, (c) => ({ ...c, lien: propre }));
+                  }}
+                  className="mt-1.5 h-9 w-full border border-[#2a2826] bg-transparent px-2.5 text-[13px] text-[#f7f7f5] outline-none placeholder:text-[#9a9a97] focus:border-[#8a8a87]"
                 />
               </label>
               <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Genre">

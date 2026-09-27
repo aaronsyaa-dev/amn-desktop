@@ -1,10 +1,13 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { stripMeta, useCollection, useSync } from '../../state/SyncContext';
 import { AMBRE } from '../jetons';
 import { useStudio, type Piece } from '../donnees/studio';
 import type { PieceStudio } from '../donnees/types';
 import { Chargement, EnTete, LienFort, Supprimer } from '../ui/kit';
+import { type Brouillon, NouvellePiece } from './NouvellePiece';
+import { hoteDe, maquetteDe } from './maquette';
+import { useClients } from '../../state/useClients';
 
 /**
  * STUDIO · LA PIÈCE PROJET — ce que ses six onglets partagent (cahier 14,
@@ -76,9 +79,38 @@ export function TetePiece({ p, onglet, titre, actions }: { p: Piece; onglet: Ong
     void remove('studioPieces', p.id);
     navigate('/studio');
   };
+  const s = useStudio();
+  const { clients } = useClients();
+  const fiche = p.clientId ? clients.find((c) => c.recordId === p.clientId) ?? null : null;
+  const lien = maquetteDe(p).lien;
+  const [modif, setModif] = useState<Brouillon | null>(null);
   return (
     <>
-      <EnTete surtitre={`Studio · ${p.plaque} · ${p.orgNom} · ${onglet === 'croquis' ? p.quoi : nom}`} titre={titre} actions={actions} marge={22} />
+      <EnTete surtitre={`Studio · ${p.plaque} · ${p.orgNom} · ${onglet === 'croquis' ? p.quoi : nom}`} titre={titre} actions={actions} marge={14} />
+      {/* La carte d'identité de la pièce : sa cliente (la fiche de l'onglet Clients), son site en ligne, et de quoi la modifier. */}
+      <p className="mb-[18px] flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px] text-text-secondary" data-identite-piece>
+        <span>
+          Cliente :{' '}
+          {fiche ? (
+            <Link to="/clients" state={{ focusClientId: fiche.id }} className="bx-lien">
+              {fiche.company.trim() ? `${fiche.company} · ${fiche.name}` : fiche.name}
+            </Link>
+          ) : (
+            <span className="text-text-body">{p.orgNom} <span className="text-text-muted">(pas encore reliée à une fiche client)</span></span>
+          )}
+        </span>
+        {lien && (
+          <a href={lien} target="_blank" rel="noopener noreferrer" className="bx-lien">
+            Ouvrir {hoteDe(lien)} ↗
+          </a>
+        )}
+        {!modif && (
+          <button type="button" className="bx-lien" onClick={() => setModif({ id: p.id, clientId: p.clientId ?? '', orgId: p.clientId ? '' : (p.orgId ?? ''), orgNom: p.orgNom, quoi: p.quoi, siteId: p.siteId ?? '', url: p.url ?? '' })}>
+            Modifier la pièce
+          </button>
+        )}
+      </p>
+      {modif && <NouvellePiece pieces={s.pieces} b={modif} setB={setModif} sansListe />}
       <nav aria-label={`Les onglets de ${p.plaque}`} className="mb-[22px] flex gap-1 overflow-x-auto border-b border-[#2a2826]">
         {ONGLETS_PIECE.map((o) => {
           const on = o.cle === onglet;

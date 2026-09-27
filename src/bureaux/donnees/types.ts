@@ -266,6 +266,8 @@ export interface PieceStudio {
   numero: number;
   orgId?: string | null;
   orgNom: string;
+  /** La fiche de l'onglet Clients (collection `clients`, son identifiant d'enregistrement) à qui ce site appartient. */
+  clientId?: string | null;
   /** Ce qu'on y construit (« site vitrine, 6 pages »). */
   quoi: string;
   siteId?: string | null;
@@ -282,7 +284,7 @@ export interface PieceStudio {
    * largeur), pour qu'une pièce reste où on l'a déposée quelle que soit la
    * taille de la fenêtre. Sans position, le mur les range lui-même.
    */
-  croquis?: { id: string; titre: string; genre: 'maquette' | 'croquis' | 'capture' | 'inspiration'; image?: string | null; legende?: string; rot?: number; x?: number; y?: number; largeur?: number; ratio?: number; punaises?: { n: number; x: number; y: number; texte: string; decision?: boolean; trancheeLe?: string | null }[] }[];
+  croquis?: { id: string; titre: string; genre: 'maquette' | 'croquis' | 'capture' | 'inspiration'; image?: string | null; /** Le déploiement en ligne de la maquette (Vercel ou autre) : un clic l'ouvre. */ lien?: string | null; legende?: string; rot?: number; x?: number; y?: number; largeur?: number; ratio?: number; punaises?: { n: number; x: number; y: number; texte: string; decision?: boolean; trancheeLe?: string | null }[] }[];
   prompts?: { id: string; nom: string; categorie?: string; versions: { v: number; texte: string; resultat?: string; enLigne?: boolean; at: string; par?: string }[] }[];
   notes?: { id: string; texte: string; par: string; at: string }[];
   /** Les relevés hebdomadaires de l'analytique (`48c`) : `semaine` = le dernier des 7 jours couverts (AAAA-MM-JJ), `jours` = ces 7 jours. */

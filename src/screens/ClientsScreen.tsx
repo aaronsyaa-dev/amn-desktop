@@ -55,6 +55,7 @@ import type {
   UpdateClientInput,
 } from '../shared/api';
 import { FirstRun } from '../components/EmptyState';
+import { SitesStudioFiche } from '../components/clients/SitesStudioFiche';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
 import { useLangue, t as tr } from '../i18n';
 
@@ -1238,6 +1239,7 @@ function ClientDetail({
         <div className="flex flex-col gap-6">
           <ContactBlock client={client} onPatch={onPatch} />
           {SITES_ENABLED && <LinkedSitesBlock client={client} sites={sites} onPatch={onPatch} />}
+          {SITES_ENABLED && 'recordId' in client && typeof client.recordId === 'string' && <SitesStudioFiche recordId={client.recordId} />}
           <NotesBlock client={client} onPatch={onPatch} />
         </div>
         <div className="flex flex-col gap-6">
