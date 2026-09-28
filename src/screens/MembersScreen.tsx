@@ -1,18 +1,18 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2, MailQuestion, UserPlus } from "lucide-react";
-import { ScreenHeader } from "../components/ScreenHeader";
-import { MembersSection } from "../components/settings/MembersSection";
-import { StaggerGroup, StaggerItem } from "../components/Stagger";
-import { UserAvatar } from "../components/UserAvatar";
-import { EcranVide, useHaloSignal } from "../components/EtatEcran";
-import { bridge } from "../lib/bridge";
-import { useAuth } from "../auth/AuthContext";
-import { isAdminRole } from "../auth/roles";
-import { roleLabel } from "../lib/roleLabels";
-import { cleanErrorMessage } from "../lib/errorMessage";
-import { useProfiles } from "../state/ProfilesContext";
-import { NAV_SECTIONS } from "../data/navigation";
-import type { OrgMember, SupportRequest } from "../shared/api";
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Loader2, MailQuestion, UserPlus } from 'lucide-react';
+import { ScreenHeader } from '../components/ScreenHeader';
+import { MembersSection } from '../components/settings/MembersSection';
+import { StaggerGroup, StaggerItem } from '../components/Stagger';
+import { UserAvatar } from '../components/UserAvatar';
+import { EcranVide, useHaloSignal } from '../components/EtatEcran';
+import { bridge } from '../lib/bridge';
+import { useAuth } from '../auth/AuthContext';
+import { isAdminRole } from '../auth/roles';
+import { roleLabel } from '../lib/roleLabels';
+import { cleanErrorMessage } from '../lib/errorMessage';
+import { useProfiles } from '../state/ProfilesContext';
+import { NAV_SECTIONS } from '../data/navigation';
+import type { OrgMember, SupportRequest } from '../shared/api';
 
 /*
   ═══════════════════════════════════════════════════════════════════════
@@ -37,18 +37,11 @@ const MEDAILLON = 44;
 
 /** Une place = un compte qui travaille. Même règle qu'amn-api (`countsAsSeat`). */
 function occupeUnePlace(m: OrgMember): boolean {
-  return (
-    m.role !== "guest" && (m.status === "active" || m.status === "invited")
-  );
+  return m.role !== 'guest' && (m.status === 'active' || m.status === 'invited');
 }
 
 /** La propriétaire d'abord, puis les administrateurs, puis le reste. */
-const RANG: Record<string, number> = {
-  owner: 0,
-  admin: 1,
-  member: 2,
-  guest: 3,
-};
+const RANG: Record<string, number> = { owner: 0, admin: 1, member: 2, guest: 3 };
 
 /**
  * MEMBRES — les places de la formule, la vide comprise (`26e`)
@@ -96,18 +89,12 @@ export function MembersScreen() {
     try {
       const [liste, dem] = await Promise.all([
         bridge().remote.members.list(),
-        peutGerer
-          ? bridge()
-              .remote.assistance.list()
-              .catch(() => [] as SupportRequest[])
-          : Promise.resolve([] as SupportRequest[]),
+        peutGerer ? bridge().remote.assistance.list().catch(() => [] as SupportRequest[]) : Promise.resolve([] as SupportRequest[]),
       ]);
       setMembres(liste);
       setDemandes(dem);
     } catch (err) {
-      setErreur(
-        cleanErrorMessage(err, "La liste des membres n’a pas pu être lue."),
-      );
+      setErreur(cleanErrorMessage(err, 'La liste des membres n’a pas pu être lue.'));
     }
   }, [peutGerer]);
 
@@ -116,18 +103,13 @@ export function MembersScreen() {
   }, [charger]);
 
   const occupants = useMemo(
-    () =>
-      (membres ?? [])
-        .filter(occupeUnePlace)
-        .sort((a, b) => (RANG[a.role] ?? 9) - (RANG[b.role] ?? 9)),
+    () => (membres ?? []).filter(occupeUnePlace).sort((a, b) => (RANG[a.role] ?? 9) - (RANG[b.role] ?? 9)),
     [membres],
   );
   const occupees = occupants.length;
   const libres = total === null ? 0 : Math.max(0, total - occupees);
   const pleines = total !== null && libres === 0;
-  const demandeEnCours = demandes.find(
-    (d) => d.kind === "seat" && d.status === "pending",
-  );
+  const demandeEnCours = demandes.find((d) => d.kind === 'seat' && d.status === 'pending');
 
   /*
     DEPUIS QUAND LA PLACE EST-ELLE LIBRE ?
@@ -138,42 +120,32 @@ export function MembersScreen() {
     une ancienneté.
   */
   const derniereArrivee = useMemo(() => {
-    const dates = occupants
-      .map((m) => m.joinedAt ?? m.invitedAt)
-      .filter((d): d is string => Boolean(d))
-      .sort();
+    const dates = occupants.map((m) => m.joinedAt ?? m.invitedAt).filter((d): d is string => Boolean(d)).sort();
     return dates.length > 0 ? dates[dates.length - 1] : null;
   }, [occupants]);
 
   const moisDepuis = (iso: string) => {
     const d = new Date(iso);
     const maintenant = new Date();
-    return Math.max(
-      0,
-      (maintenant.getFullYear() - d.getFullYear()) * 12 +
-        (maintenant.getMonth() - d.getMonth()),
-    );
+    return Math.max(0, (maintenant.getFullYear() - d.getFullYear()) * 12 + (maintenant.getMonth() - d.getMonth()));
   };
 
   /* Les familles réellement ouvertes à cette organisation — la MÊME source
      que la barre latérale, jamais une liste recopiée ici. */
   const familles = useMemo(() => NAV_SECTIONS.map((s) => s.label), []);
-  const partagees = useMemo(
-    () => familles.filter((f) => f !== "Personnel" && f !== "Système"),
-    [familles],
-  );
+  const partagees = useMemo(() => familles.filter((f) => f !== 'Personnel' && f !== 'Système'), [familles]);
 
   const vide = membres !== null && occupants.length === 0;
-  const halo = useHaloSignal(occupants.some((m) => m.role === "owner"));
+  const halo = useHaloSignal(occupants.some((m) => m.role === 'owner'));
 
   const demanderUnePlace = async () => {
     setEnvoi(true);
     setErreur(null);
     try {
-      await bridge().remote.assistance.send({ kind: "seat" });
+      await bridge().remote.assistance.send({ kind: 'seat' });
       await charger();
     } catch (err) {
-      setErreur(cleanErrorMessage(err, "La demande n’a pas pu partir."));
+      setErreur(cleanErrorMessage(err, 'La demande n’a pas pu partir.'));
     } finally {
       setEnvoi(false);
     }
@@ -181,24 +153,22 @@ export function MembersScreen() {
 
   /** Une place prise. L'ambre n'appartient qu'à la propriétaire. */
   const PlacePrise = ({ m }: { m: OrgMember }) => {
-    const ambre = m.role === "owner";
+    const ambre = m.role === 'owner';
     const nom = profileFor(m.email).name || m.email;
     return (
       <li
-        data-signal-groupe={ambre ? "place-proprietaire" : undefined}
-        className={`flex flex-col gap-3 p-4 ${ambre ? "border border-signal-line bg-signal-muted" : "panel"}`}
+        data-signal-groupe={ambre ? 'place-proprietaire' : undefined}
+        className={`flex flex-col gap-3 p-4 ${ambre ? 'border border-signal-line bg-signal-muted' : 'panel'}`}
       >
         <div className="flex items-center gap-3">
-          <span data-signal-groupe={ambre ? "place-proprietaire" : undefined}>
+          <span data-signal-groupe={ambre ? 'place-proprietaire' : undefined}>
             <UserAvatar email={m.email} size={MEDAILLON} surAmbre={ambre} />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-[16px] font-semibold leading-tight text-text-primary">
-              {nom}
-            </p>
+            <p className="truncate text-[16px] font-semibold leading-tight text-text-primary">{nom}</p>
             <p
-              data-signal-groupe={ambre ? "place-proprietaire" : undefined}
-              className={`mt-0.5 font-mono text-[10px] uppercase tracking-[0.18em] ${ambre ? "text-signal" : "text-text-muted"}`}
+              data-signal-groupe={ambre ? 'place-proprietaire' : undefined}
+              className={`mt-0.5 font-mono text-[10px] uppercase tracking-[0.18em] ${ambre ? 'text-signal' : 'text-text-muted'}`}
             >
               {roleLabel(m.role, null)}
             </p>
@@ -223,9 +193,7 @@ export function MembersScreen() {
           style={{ width: MEDAILLON, height: MEDAILLON }}
         />
         <div className="min-w-0">
-          <p className="truncate text-[16px] font-semibold leading-tight text-text-muted">
-            Place libre
-          </p>
+          <p className="truncate text-[16px] font-semibold leading-tight text-text-muted">Place libre</p>
           <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
             Comprise dans l’abonnement
           </p>
@@ -236,8 +204,8 @@ export function MembersScreen() {
         {rang === 0 && derniereArrivee
           ? moisDepuis(derniereArrivee) >= 1
             ? `Libre depuis la dernière arrivée, il y a ${moisDepuis(derniereArrivee)} mois. Elle est payée avec la formule.`
-            : "Libre depuis la dernière arrivée, ce mois-ci. Elle est payée avec la formule."
-          : "Payée avec la formule, qu’elle serve ou non."}
+            : 'Libre depuis la dernière arrivée, ce mois-ci. Elle est payée avec la formule.'
+          : 'Payée avec la formule, qu’elle serve ou non.'}
       </p>
     </li>
   );
@@ -251,24 +219,12 @@ export function MembersScreen() {
           description="Les places de votre formule, la vide comprise — et ce que chacune ouvre."
           stats={[
             {
-              label: "Places prises",
-              value:
-                membres === null
-                  ? "…"
-                  : total === null
-                    ? occupees
-                    : `${occupees} / ${total}`,
-              title:
-                "Une place = un compte actif ou invité. Un compte suspendu libère la sienne.",
+              label: 'Places prises',
+              value: membres === null ? '…' : total === null ? occupees : `${occupees} / ${total}`,
+              title: 'Une place = un compte actif ou invité. Un compte suspendu libère la sienne.',
             },
             ...(total !== null && libres > 0
-              ? [
-                  {
-                    label: "Place(s) libre(s)",
-                    value: libres,
-                    title: "Payées avec la formule, qu’elles servent ou non.",
-                  },
-                ]
+              ? [{ label: 'Place(s) libre(s)', value: libres, title: 'Payées avec la formule, qu’elles servent ou non.' }]
               : []),
           ]}
           actions={
@@ -303,9 +259,7 @@ export function MembersScreen() {
             <StaggerItem>
               <section className={`panel-raised p-5 sm:p-6 ${halo}`}>
                 <p className="eyebrow mb-4">
-                  {total === null
-                    ? "Les comptes de votre organisation"
-                    : "Les places de votre formule"}
+                  {total === null ? 'Les comptes de votre organisation' : 'Les places de votre formule'}
                 </p>
                 <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {occupants.map((m) => (
@@ -319,15 +273,14 @@ export function MembersScreen() {
                 {/* SOUS LES PLACES — la clarification, et rien d'autre. */}
                 <p className="mt-4 max-w-prose border-t border-border-strong pt-3 text-sm leading-relaxed text-text-body">
                   {total === null
-                    ? `Cette organisation n’a pas de plafond de places : ${occupees} compte${occupees > 1 ? "s" : ""} y travaillent, et rien ne les limite. Le Trombinoscope montre exactement les mêmes — dans ce produit, il n’existe pas de fiche de personne sans compte.`
-                    : `Ces ${occupees} place${occupees > 1 ? "s" : ""} sont ${occupees} compte${occupees > 1 ? "s" : ""}. Le Trombinoscope montre exactement les mêmes : dans ce produit, il n’existe pas de fiche de personne sans compte.`}
+                    ? `Cette organisation n’a pas de plafond de places : ${occupees} compte${occupees > 1 ? 's' : ''} y travaillent, et rien ne les limite. Le Trombinoscope montre exactement les mêmes — dans ce produit, il n’existe pas de fiche de personne sans compte.`
+                    : `Ces ${occupees} place${occupees > 1 ? 's' : ''} sont ${occupees} compte${occupees > 1 ? 's' : ''}. Le Trombinoscope montre exactement les mêmes : dans ce produit, il n’existe pas de fiche de personne sans compte.`}
                 </p>
 
                 {peutGerer && demandeEnCours && (
                   <p className="mt-3 max-w-prose text-[12px] leading-relaxed text-text-secondary">
-                    Une place de plus est déjà demandée. Votre prestataire a été
-                    prévenu — quelqu’un la lit, aucun robot ne facture quoi que
-                    ce soit.
+                    Une place de plus est déjà demandée. Votre prestataire a été prévenu — quelqu’un la lit,
+                    aucun robot ne facture quoi que ce soit.
                   </p>
                 )}
                 {peutGerer && !demandeEnCours && pleines && (
@@ -338,11 +291,7 @@ export function MembersScreen() {
                       onClick={() => void demanderUnePlace()}
                       className="flex min-h-11 items-center gap-2 border border-border-strong bg-surface px-3 text-xs font-medium text-text-primary transition-colors hover:bg-surface-hover disabled:opacity-40 md:min-h-0 md:py-2"
                     >
-                      {envoi ? (
-                        <Loader2 size={13} className="animate-spin" />
-                      ) : (
-                        <MailQuestion size={13} />
-                      )}
+                      {envoi ? <Loader2 size={13} className="animate-spin" /> : <MailQuestion size={13} />}
                       Demander une place de plus
                     </button>
                   </div>
@@ -363,21 +312,16 @@ export function MembersScreen() {
                 <p className="eyebrow mb-3">Ce que voit une place</p>
                 <ul className="flex flex-col gap-px bg-border">
                   {NAV_SECTIONS.map((s) => {
-                    const jamaisPartagee = s.label === "Personnel";
-                    const gestesReserves = s.label === "Système";
+                    const jamaisPartagee = s.label === 'Personnel';
+                    const gestesReserves = s.label === 'Système';
                     return (
-                      <li
-                        key={s.key}
-                        className="flex items-baseline justify-between gap-3 bg-surface px-3 py-2"
-                      >
-                        <span className="min-w-0 truncate text-sm text-text-primary">
-                          {s.label}
-                        </span>
+                      <li key={s.key} className="flex items-baseline justify-between gap-3 bg-surface px-3 py-2">
+                        <span className="min-w-0 truncate text-sm text-text-primary">{s.label}</span>
                         <span className="flex-shrink-0 font-mono text-[10px] uppercase tracking-wider text-text-muted">
                           {jamaisPartagee
-                            ? "Jamais partagée"
+                            ? 'Jamais partagée'
                             : gestesReserves
-                              ? "Gestes réservés"
+                              ? 'Gestes réservés'
                               : `${s.items.length} modules, pour tous`}
                         </span>
                       </li>
@@ -385,11 +329,9 @@ export function MembersScreen() {
                   })}
                 </ul>
                 <p className="mt-3 max-w-prose text-[12px] leading-relaxed text-text-muted">
-                  Les modules sont ouverts par organisation, pas par place :
-                  toutes les places voient les mêmes familles. Ce qui diffère
-                  est ici — Personnel reste sur le poste de chacun, et les
-                  gestes de Système demandent le rôle de propriétaire ou
-                  d’administrateur.
+                  Les modules sont ouverts par organisation, pas par place : toutes les places voient les mêmes
+                  familles. Ce qui diffère est ici — Personnel reste sur le poste de chacun, et les gestes de
+                  Système demandent le rôle de propriétaire ou d’administrateur.
                 </p>
               </section>
 
@@ -399,10 +341,10 @@ export function MembersScreen() {
                 <dl className="flex flex-col gap-2.5">
                   <div>
                     <dt className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                      {total === null ? "Plafond de places" : "Places payées"}
+                      {total === null ? 'Plafond de places' : 'Places payées'}
                     </dt>
                     <dd className="text-[19px] font-semibold tabular-nums leading-tight text-text-primary">
-                      {total ?? "Aucun"}
+                      {total ?? 'Aucun'}
                     </dd>
                   </div>
                   {libres > 0 && (
@@ -410,18 +352,16 @@ export function MembersScreen() {
                       <dt className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
                         Payée(s) et inutilisée(s)
                       </dt>
-                      <dd className="text-[19px] font-semibold tabular-nums leading-tight text-text-primary">
-                        {libres}
-                      </dd>
+                      <dd className="text-[19px] font-semibold tabular-nums leading-tight text-text-primary">{libres}</dd>
                     </div>
                   )}
                 </dl>
                 <p className="mt-3 border-t border-border pt-3 text-[12px] leading-relaxed text-text-secondary">
                   {total === null
-                    ? "Cette organisation n’est pas facturée à la place : il n’y a ni siège payé d’avance, ni siège à libérer."
+                    ? 'Cette organisation n’est pas facturée à la place : il n’y a ni siège payé d’avance, ni siège à libérer.'
                     : libres > 0
-                      ? "Il n’existe pas de formule à la place près : une place libre n’est pas une erreur de facturation, c’est de la marge d’embauche. Elle se garde ou se change en changeant de formule."
-                      : "Toutes les places servent. Une place se libère en suspendant un compte, ou s’ajoute en changeant de formule."}
+                    ? 'Il n’existe pas de formule à la place près : une place libre n’est pas une erreur de facturation, c’est de la marge d’embauche. Elle se garde ou se change en changeant de formule.'
+                    : 'Toutes les places servent. Une place se libère en suspendant un compte, ou s’ajoute en changeant de formule.'}
                 </p>
               </aside>
             </div>
@@ -430,18 +370,13 @@ export function MembersScreen() {
           {/* LA GESTION — la liste réelle, les invitations, les rôles. */}
           <StaggerItem>
             <div id="membres-gestion">
-              <MembersSection
-                onChange={charger}
-                demandeInvitation={demandeInvitation}
-              />
+              <MembersSection onChange={charger} demandeInvitation={demandeInvitation} />
             </div>
           </StaggerItem>
 
           <StaggerItem>
             <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-              {user
-                ? "Tout le monde lit cette liste ; seuls la propriétaire et les administrateurs la modifient."
-                : ""}
+              {user ? 'Tout le monde lit cette liste ; seuls la propriétaire et les administrateurs la modifient.' : ''}
             </p>
           </StaggerItem>
         </StaggerGroup>
