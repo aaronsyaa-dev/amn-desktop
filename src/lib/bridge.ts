@@ -37,6 +37,8 @@ import type {
   MemberInvitation,
   OrgMember,
   PieceJointe,
+  GoogleAgendaEtat,
+  GoogleAgendaBilan,
   UserRole,
   OrgAccessRecord,
   AddClientEventInput,
@@ -758,6 +760,20 @@ function createBrowserRemote(): AmnBridge['remote'] {
           body: JSON.stringify(input),
         });
         return res.mfa;
+      },
+    },
+    agendaGoogle: {
+      async etat(): Promise<GoogleAgendaEtat> {
+        return apiFetch<GoogleAgendaEtat>('/v1/agenda/google');
+      },
+      async connecter(retour: 'web' | 'desktop'): Promise<{ url: string }> {
+        return apiFetch<{ url: string }>('/v1/agenda/google/connexion', { method: 'POST', body: JSON.stringify({ retour }) });
+      },
+      async synchroniser(): Promise<GoogleAgendaEtat & { bilan: GoogleAgendaBilan }> {
+        return apiFetch<GoogleAgendaEtat & { bilan: GoogleAgendaBilan }>('/v1/agenda/google/synchroniser', { method: 'POST', body: '{}' });
+      },
+      async deconnecter(): Promise<void> {
+        await apiFetch<unknown>('/v1/agenda/google/deconnexion', { method: 'POST', body: '{}' });
       },
     },
     fichiers: {

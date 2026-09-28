@@ -175,6 +175,12 @@ const bridge: AmnBridge = {
     accessLog: () => ipcRenderer.invoke(IPC.remoteAccessLog),
     exportOrganization: () => ipcRenderer.invoke(IPC.remoteExportOrganization),
     setOrganizationAccent: (accent) => ipcRenderer.invoke(IPC.remoteSetOrgAccent, accent),
+    agendaGoogle: {
+      etat: () => ipcRenderer.invoke(IPC.remoteAgendaGoogleEtat),
+      connecter: (retour: 'web' | 'desktop') => ipcRenderer.invoke(IPC.remoteAgendaGoogleConnecter, retour),
+      synchroniser: () => ipcRenderer.invoke(IPC.remoteAgendaGoogleSynchroniser),
+      deconnecter: () => ipcRenderer.invoke(IPC.remoteAgendaGoogleDeconnecter),
+    },
     fichiers: {
       envoyer: (input: { nom: string; type: string; base64: string }) => ipcRenderer.invoke(IPC.remoteFichiersEnvoyer, input),
       lire: (id: string) => ipcRenderer.invoke(IPC.remoteFichiersLire, id),

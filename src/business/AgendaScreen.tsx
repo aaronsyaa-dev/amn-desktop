@@ -42,6 +42,7 @@ import {
 import { ConfirmDelete } from '../components/ConfirmDelete';
 import { metaOf } from '../lib/records';
 import { useFermetureEchap } from '../lib/useFermetureEchap';
+import { EtatGoogleDuRdv, MarqueGoogle, PanneauGoogleAgenda, enErreurGoogle } from '../components/agenda/GoogleAgenda';
 
 /**
  * Agenda — le module que la cliente ouvre en premier chaque matin.
@@ -89,7 +90,7 @@ function reminderLabel(minutes: number): string {
 }
 
 export function AgendaScreen() {
-  const { appointments, createAppointment, updateAppointment, setStatus, deleteAppointment } =
+  const { appointments, createAppointment, updateAppointment, setStatus, deleteAppointment, accuserConflit } =
     useAppointments();
   /*
     LA JOURNÉE EST LA VUE D'OUVERTURE.
@@ -222,6 +223,9 @@ export function AgendaScreen() {
           }
         />
 
+        {/* Google Agenda : connexion et état de la synchronisation (jetons côté serveur seulement). */}
+        <PanneauGoogleAgenda nbErreurs={appointments.filter(enErreurGoogle).length} />
+
         <div className="flex flex-wrap items-center justify-between gap-3 border border-border bg-surface px-3 py-2">
           {/*
             LES CIBLES DE CETTE BARRE SONT DIMENSIONNÉES POUR UN POUCE.
@@ -294,6 +298,7 @@ export function AgendaScreen() {
               setSelectedId(null);
             }}
             onStatus={(status) => setStatus(selected.id, status)}
+            onCompris={() => accuserConflit(selected.id)}
             onDelete={() => {
               deleteAppointment(selected.id);
               setSelectedId(null);
@@ -509,7 +514,7 @@ function PlanDuMois({
                       key={a.id}
                       type="button"
                       onClick={() => onPick(a.id)}
-                      title={`${timeLabel(a.startAt)} · ${a.title || 'Rendez-vous'}`}
+                      title={`${timeLabel(a.startAt)} · ${a.title || 'Rendez-vous'}${a.google?.id && !a.google.annule ? ' · Google Agenda' : ''}${a.google?.statut === 'erreur' ? ' · non synchronisé' : ''}`}
                       className={`absolute inset-x-0.5 overflow-hidden px-1 text-left ${
                         courant ? 'bg-signal' : 'bg-border-strong'
                       }`}
@@ -766,6 +771,7 @@ function ColonneDHeures({
                 <span className={`min-w-0 flex-1 truncate text-[14.5px] font-semibold ${meta.text}`}>
                   {a.title || 'Rendez-vous'}
                 </span>
+                <MarqueGoogle appointment={a} />
                 {/* Sous `sm`, la durée attend le détail : sur 360 px, l'heure, le titre et la
                     durée sur une ligne ne laissaient au titre que la moitié de lui-même — et la
                     hauteur du bloc dit déjà la durée (`check:mobile`, Agenda à 360 px). */}
@@ -917,12 +923,14 @@ function AppointmentDetail({
   onClose,
   onEdit,
   onStatus,
+  onCompris,
   onDelete,
 }: {
   appointment: Appointment;
   onClose: () => void;
   onEdit: () => void;
   onStatus: (status: AppointmentStatus) => void;
+  onCompris: () => void;
   onDelete: () => void;
 }) {
   const start = new Date(appointment.startAt);
@@ -980,6 +988,8 @@ function AppointmentDetail({
             {appointment.notes}
           </p>
         )}
+
+        <EtatGoogleDuRdv appointment={appointment} onCompris={onCompris} />
 
         <div className="mt-1 flex flex-wrap items-center gap-2">
           {appointment.status !== 'done' && (

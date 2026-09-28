@@ -55,6 +55,25 @@ export interface Appointment {
   status: AppointmentStatus;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Le lien avec Google Agenda, posé par le SERVEUR (le poste ne peut pas
+   * l'écrire, voir amn-api src/google/synchro.js) : absent pour un rendez-vous
+   * propre à AMN.
+   */
+  google?: AppointmentGoogle;
+  /** Un conflit tranché par la synchronisation ; le poste peut l'effacer (`null`), pas l'écrire. */
+  googleConflit?: { gagnant: 'amn' | 'google'; a: string; detail: string } | null;
+}
+
+export interface AppointmentGoogle {
+  id?: string;
+  statut?: 'ok' | 'erreur';
+  erreur?: string;
+  /** Supprimé chez Google (annulé dans AMN). */
+  annule?: boolean;
+  /** Né dans Google puis importé, ou né dans AMN. */
+  origine?: 'amn' | 'google';
+  synchroA?: string;
 }
 
 type AppointmentData = Omit<Appointment, 'id' | 'updatedAt'>;
@@ -104,6 +123,8 @@ export function useAppointments() {
         status: oneOf(row.status, APPOINTMENT_STATUSES, 'scheduled'),
         createdAt: row.createdAt ?? row.updatedAt,
         updatedAt: row.updatedAt,
+        google: row.google && typeof row.google === 'object' ? row.google : undefined,
+        googleConflit: row.googleConflit && typeof row.googleConflit === 'object' ? row.googleConflit : undefined,
       }))
       .sort((a, b) => a.startAt.localeCompare(b.startAt));
   }, [raw]);
@@ -137,5 +158,11 @@ export function useAppointments() {
 
   const deleteAppointment = useCallback((id: string) => remove('appointments', id), [remove]);
 
-  return { appointments, createAppointment, updateAppointment, setStatus, deleteAppointment };
+  /** « Compris » sur un conflit tranché par la synchronisation Google. */
+  const accuserConflit = useCallback(
+    (id: string) => updateAppointment(id, { googleConflit: null }),
+    [updateAppointment],
+  );
+
+  return { appointments, createAppointment, updateAppointment, setStatus, deleteAppointment, accuserConflit };
 }
