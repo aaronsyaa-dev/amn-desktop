@@ -1,13 +1,21 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Check, Copy, Loader2, ShieldCheck, UserMinus, UserPlus, Users } from 'lucide-react';
-import { bridge } from '../../lib/bridge';
-import { isAdminRole } from '../../auth/roles';
-import { useAuth } from '../../auth/AuthContext';
-import { roleLabel, assignableRoles } from '../../lib/roleLabels';
-import { cleanErrorMessage } from '../../lib/errorMessage';
-import type { MemberInvitation, OrgMember, UserRole } from '../../shared/api';
-import { SettingsPanel as Panel } from '../SettingsPanel';
-import { useLangue } from '../../i18n';
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  Check,
+  Copy,
+  Loader2,
+  ShieldCheck,
+  UserMinus,
+  UserPlus,
+  Users,
+} from "lucide-react";
+import { bridge } from "../../lib/bridge";
+import { isAdminRole } from "../../auth/roles";
+import { useAuth } from "../../auth/AuthContext";
+import { roleLabel, assignableRoles } from "../../lib/roleLabels";
+import { cleanErrorMessage } from "../../lib/errorMessage";
+import type { MemberInvitation, OrgMember, UserRole } from "../../shared/api";
+import { SettingsPanel as Panel } from "../SettingsPanel";
+import { useLangue } from "../../i18n";
 
 /**
  * QUI TRAVAILLE ICI, ET AVEC QUELS DROITS (BLOCS 6 ET 7)
@@ -46,7 +54,13 @@ import { useLangue } from '../../i18n';
  * propriétaire ; le suspendre suffit à lui couper l'accès à l'instant, et se
  * défait.
  */
-export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
+export function MembersSection({
+  onChange,
+  demandeInvitation = 0,
+}: {
+  onChange?: () => void;
+  /** Incrémenté par le bouton « Inviter » de l'en-tête : ouvre le formulaire et y place le curseur. */ demandeInvitation?: number;
+} = {}) {
   const { role, user } = useAuth();
   const [membres, setMembres] = useState<OrgMember[] | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -58,8 +72,21 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
   const { t } = useLangue();
 
   const [ouvrirInvitation, setOuvrirInvitation] = useState(false);
-  const [email, setEmail] = useState('');
-  const [roleInvite, setRoleInvite] = useState<UserRole>('member');
+  const champInvitation = React.useRef<HTMLInputElement>(null);
+  React.useEffect(() => {
+    if (demandeInvitation > 0) setOuvrirInvitation(true);
+  }, [demandeInvitation]);
+  React.useEffect(() => {
+    if (ouvrirInvitation && demandeInvitation > 0) {
+      champInvitation.current?.scrollIntoView({
+        block: "center",
+        behavior: "smooth",
+      });
+      champInvitation.current?.focus({ preventScroll: true });
+    }
+  }, [ouvrirInvitation, demandeInvitation]);
+  const [email, setEmail] = useState("");
+  const [roleInvite, setRoleInvite] = useState<UserRole>("member");
   const [invitation, setInvitation] = useState<MemberInvitation | null>(null);
   const [copie, setCopie] = useState(false);
 
@@ -72,7 +99,9 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
     try {
       setMembres(await bridge().remote.members.list());
     } catch (err) {
-      setErreur(cleanErrorMessage(err, 'La liste des membres n’a pas pu être lue.'));
+      setErreur(
+        cleanErrorMessage(err, "La liste des membres n’a pas pu être lue."),
+      );
     }
   }, []);
 
@@ -85,11 +114,13 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
     setErreur(null);
     try {
       const maj = await bridge().remote.members.setRole(membre.id, suivant);
-      setMembres((prev) => (prev ? prev.map((m) => (m.id === maj.id ? maj : m)) : prev));
+      setMembres((prev) =>
+        prev ? prev.map((m) => (m.id === maj.id ? maj : m)) : prev,
+      );
     } catch (err) {
       // Le message du serveur est la réponse — « Seul un propriétaire peut
       // nommer ou retirer un propriétaire. » dit exactement ce qu'il faut.
-      setErreur(cleanErrorMessage(err, 'Changement de rôle refusé.'));
+      setErreur(cleanErrorMessage(err, "Changement de rôle refusé."));
     } finally {
       setEnCours(null);
     }
@@ -105,22 +136,24 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
       await charger();
       onChange?.();
     } catch (err) {
-      setErreur(cleanErrorMessage(err, 'Le compte n’a pas pu être retiré.'));
+      setErreur(cleanErrorMessage(err, "Le compte n’a pas pu être retiré."));
     } finally {
       setEnCours(null);
     }
   };
 
   const changerStatut = async (membre: OrgMember) => {
-    const suivant = membre.status === 'suspended' ? 'active' : 'suspended';
+    const suivant = membre.status === "suspended" ? "active" : "suspended";
     setEnCours(membre.id);
     setErreur(null);
     try {
       const maj = await bridge().remote.members.setStatus(membre.id, suivant);
-      setMembres((prev) => (prev ? prev.map((m) => (m.id === maj.id ? maj : m)) : prev));
+      setMembres((prev) =>
+        prev ? prev.map((m) => (m.id === maj.id ? maj : m)) : prev,
+      );
       onChange?.();
     } catch (err) {
-      setErreur(cleanErrorMessage(err, 'Changement de statut refusé.'));
+      setErreur(cleanErrorMessage(err, "Changement de statut refusé."));
     } finally {
       setEnCours(null);
     }
@@ -128,17 +161,20 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
 
   const inviter = async () => {
     const adresse = email.trim().toLowerCase();
-    setEnCours('invitation');
+    setEnCours("invitation");
     setErreur(null);
     try {
-      const res = await bridge().remote.members.invite({ email: adresse, role: roleInvite });
+      const res = await bridge().remote.members.invite({
+        email: adresse,
+        role: roleInvite,
+      });
       setInvitation(res);
-      setEmail('');
+      setEmail("");
       setOuvrirInvitation(false);
       void charger();
       onChange?.();
     } catch (err) {
-      setErreur(cleanErrorMessage(err, 'L’invitation n’a pas pu être émise.'));
+      setErreur(cleanErrorMessage(err, "L’invitation n’a pas pu être émise."));
     } finally {
       setEnCours(null);
     }
@@ -208,26 +244,39 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
               <tbody>
                 {membres.map((m) => {
                   const moi = m.email === user?.email;
-                  const suspendu = m.status === 'suspended';
+                  const suspendu = m.status === "suspended";
                   /* Même règle que le serveur : un invité occasionnel ne prend
                      pas de place, un compte suspendu rend la sienne. */
-                  const prendUnePlace = m.role !== 'guest' && (m.status === 'active' || m.status === 'invited');
+                  const prendUnePlace =
+                    m.role !== "guest" &&
+                    (m.status === "active" || m.status === "invited");
                   return (
-                    <tr key={m.id} className="border-b border-border last:border-b-0">
+                    <tr
+                      key={m.id}
+                      className="border-b border-border last:border-b-0"
+                    >
                       <td className="py-3 pr-3 align-middle">
                         <span className="block truncate text-sm text-text-primary">
                           {m.email}
-                          {moi && <span className="ml-2 text-[11px] text-text-muted">(vous)</span>}
+                          {moi && (
+                            <span className="ml-2 text-[11px] text-text-muted">
+                              (vous)
+                            </span>
+                          )}
                         </span>
                       </td>
                       <td className="py-3 pr-3 align-middle font-mono text-[10px] uppercase tracking-wider text-text-secondary">
                         {roleLabel(m.role, trade)}
                       </td>
                       <td className="py-3 pr-3 align-middle font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                        {suspendu ? 'Suspendu' : m.status === 'invited' ? 'Invité' : 'Active'}
+                        {suspendu
+                          ? "Suspendu"
+                          : m.status === "invited"
+                            ? "Invité"
+                            : "Active"}
                       </td>
                       <td className="py-3 pr-3 align-middle font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                        {prendUnePlace ? 'Occupée' : 'Aucune'}
+                        {prendUnePlace ? "Occupée" : "Aucune"}
                       </td>
                       <td className="py-3 align-middle">
                         {/* Ni son propre rôle ni celui d'un invité qui n'est
@@ -241,8 +290,10 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
                             <select
                               id={`role-${m.id}`}
                               value={m.role}
-                              disabled={enCours !== null || m.role === 'guest'}
-                              onChange={(e) => void changerRole(m, e.target.value as UserRole)}
+                              disabled={enCours !== null || m.role === "guest"}
+                              onChange={(e) =>
+                                void changerRole(m, e.target.value as UserRole)
+                              }
                               className="input-focus min-h-11 border border-border bg-bg px-2 text-xs text-text-primary outline-none disabled:opacity-40 md:min-h-0 md:py-1.5"
                             >
                               {assignableRoles(trade).map((r) => (
@@ -250,32 +301,42 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
                                   {r.label}
                                 </option>
                               ))}
-                              {m.role === 'guest' && <option value="guest">Invité</option>}
+                              {m.role === "guest" && (
+                                <option value="guest">Invité</option>
+                              )}
                             </select>
                             <button
                               type="button"
                               disabled={enCours !== null}
                               onClick={() => void changerStatut(m)}
-                              title={suspendu ? 'Réactiver ce compte' : 'Suspendre ce compte'}
+                              title={
+                                suspendu
+                                  ? "Réactiver ce compte"
+                                  : "Suspendre ce compte"
+                              }
                               className="flex min-h-11 items-center border border-border px-2.5 font-mono text-[10px] uppercase tracking-wider text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:opacity-40 md:min-h-0 md:py-2"
                             >
-                              {enCours === m.id ? '…' : suspendu ? 'Réactiver' : 'Suspendre'}
+                              {enCours === m.id
+                                ? "…"
+                                : suspendu
+                                  ? "Réactiver"
+                                  : "Suspendre"}
                             </button>
                             <button
                               type="button"
                               disabled={enCours !== null}
                               onClick={() => setARetirer(m)}
-                              title={t('membres.retirerTitre')}
+                              title={t("membres.retirerTitre")}
                               className="flex min-h-11 items-center gap-1 border border-border px-2.5 font-mono text-[10px] uppercase tracking-wider text-text-secondary transition-colors hover:border-danger/60 hover:text-danger disabled:opacity-40 md:min-h-0 md:py-2"
                             >
                               <UserMinus size={12} strokeWidth={2} />
-                              {t('membres.retirer')}
+                              {t("membres.retirer")}
                             </button>
                           </div>
                         ) : (
                           <span className="flex flex-shrink-0 items-center justify-end gap-1.5 text-[11px] text-text-muted">
                             {!peutGerer && <ShieldCheck size={12} />}
-                            {!peutGerer ? 'lecture seule' : ''}
+                            {!peutGerer ? "lecture seule" : ""}
                           </span>
                         )}
                       </td>
@@ -287,11 +348,20 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
           </div>
 
           {aRetirer && (
-            <div role="alertdialog" aria-labelledby="retirer-titre" className="border border-border-strong bg-bg px-4 py-3">
-              <p id="retirer-titre" className="text-sm font-medium text-text-primary">
-                {t('membres.retirerQuestion', { email: aRetirer.email })}
+            <div
+              role="alertdialog"
+              aria-labelledby="retirer-titre"
+              className="border border-border-strong bg-bg px-4 py-3"
+            >
+              <p
+                id="retirer-titre"
+                className="text-sm font-medium text-text-primary"
+              >
+                {t("membres.retirerQuestion", { email: aRetirer.email })}
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-text-secondary">{t('membres.retirerConsequence')}</p>
+              <p className="mt-1 text-xs leading-relaxed text-text-secondary">
+                {t("membres.retirerConsequence")}
+              </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -299,8 +369,12 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
                   onClick={() => void retirer(aRetirer)}
                   className="flex min-h-11 items-center gap-1.5 border border-danger/60 px-3 text-xs text-danger transition-colors hover:bg-danger-muted disabled:opacity-40 md:min-h-0 md:py-2"
                 >
-                  {enCours === aRetirer.id ? <Loader2 size={13} className="animate-spin" /> : <UserMinus size={13} />}
-                  {t('membres.retirerConfirmer')}
+                  {enCours === aRetirer.id ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <UserMinus size={13} />
+                  )}
+                  {t("membres.retirerConfirmer")}
                 </button>
                 <button
                   type="button"
@@ -308,14 +382,14 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
                   onClick={() => setARetirer(null)}
                   className="flex min-h-11 items-center border border-border px-3 text-xs text-text-secondary transition-colors hover:text-text-primary md:min-h-0 md:py-2"
                 >
-                  {t('membres.retirerGarder')}
+                  {t("membres.retirerGarder")}
                 </button>
               </div>
             </div>
           )}
           {retire && !aRetirer && (
             <p role="status" className="text-xs text-text-secondary">
-              {t('membres.retirerFait', { email: retire })}
+              {t("membres.retirerFait", { email: retire })}
             </p>
           )}
 
@@ -335,6 +409,7 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
                   <p className="eyebrow mb-2">Inviter un membre</p>
                   <div className="flex flex-wrap gap-2">
                     <input
+                      ref={champInvitation}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       inputMode="email"
@@ -348,7 +423,9 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
                     <select
                       id="role-invitation"
                       value={roleInvite}
-                      onChange={(e) => setRoleInvite(e.target.value as UserRole)}
+                      onChange={(e) =>
+                        setRoleInvite(e.target.value as UserRole)
+                      }
                       className="input-focus min-h-11 border border-border bg-surface px-2 text-xs text-text-primary outline-none md:min-h-0 md:py-2"
                     >
                       {assignableRoles(trade).map((r) => (
@@ -363,20 +440,28 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
                       onClick={() => void inviter()}
                       className="flex min-h-11 items-center gap-2 border border-border-strong bg-surface px-3 text-xs font-medium text-text-primary transition-colors hover:bg-surface-hover disabled:opacity-40 md:min-h-0 md:py-2"
                     >
-                      {enCours === 'invitation' ? <Loader2 size={13} className="animate-spin" /> : <UserPlus size={13} />}
+                      {enCours === "invitation" ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <UserPlus size={13} />
+                      )}
                       Émettre le lien
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setOuvrirInvitation(false); setEmail(''); }}
+                      onClick={() => {
+                        setOuvrirInvitation(false);
+                        setEmail("");
+                      }}
                       className="min-h-11 px-2 text-xs text-text-muted transition-colors hover:text-text-primary md:min-h-0"
                     >
                       Annuler
                     </button>
                   </div>
                   <p className="mt-2 text-[11px] leading-relaxed text-text-muted">
-                    Un lien d’activation est créé&nbsp;: transmettez-le vous-même. La personne
-                    choisit son propre mot de passe — vous n’en fabriquez jamais un à sa place.
+                    Un lien d’activation est créé&nbsp;: transmettez-le
+                    vous-même. La personne choisit son propre mot de passe —
+                    vous n’en fabriquez jamais un à sa place.
                   </p>
                 </div>
               )}
@@ -386,10 +471,14 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
           {invitation && (
             <div className="mt-3 border border-border bg-surface px-3 py-2.5">
               <p className="text-xs leading-relaxed text-text-primary">
-                Invitation émise pour{' '}
-                <span className="font-mono text-[11px]">{invitation.user.email}</span>.{' '}
-                Envoyez-lui ce lien —{' '}
-                <span className="text-text-muted">il ne sera plus affiché.</span>
+                Invitation émise pour{" "}
+                <span className="font-mono text-[11px]">
+                  {invitation.user.email}
+                </span>
+                . Envoyez-lui ce lien —{" "}
+                <span className="text-text-muted">
+                  il ne sera plus affiché.
+                </span>
               </p>
               <div className="mt-2 flex items-center gap-2">
                 <code className="min-w-0 flex-1 overflow-x-auto border border-border bg-bg px-2 py-1.5 font-mono text-[11px] text-text-primary">
@@ -397,11 +486,15 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
                 </code>
                 <button
                   type="button"
-                  onClick={() => void copier(invitation.invitation.url ?? invitation.invitation.token)}
+                  onClick={() =>
+                    void copier(
+                      invitation.invitation.url ?? invitation.invitation.token,
+                    )
+                  }
                   className="flex min-h-11 flex-shrink-0 items-center gap-1.5 border border-border-strong px-2.5 font-mono text-[10px] uppercase tracking-wider text-text-primary transition-colors hover:bg-surface-hover md:min-h-0 md:py-1.5"
                 >
                   {copie ? <Check size={12} /> : <Copy size={12} />}
-                  {copie ? 'Copié' : 'Copier'}
+                  {copie ? "Copié" : "Copier"}
                 </button>
               </div>
               {/* Sans adresse publique configurée, le serveur ne rend qu'un
@@ -409,8 +502,9 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
                   mieux que laisser copier quelque chose d'inutilisable. */}
               {!invitation.invitation.url && (
                 <p className="mt-2 text-[11px] leading-relaxed text-warning">
-                  Aucune adresse publique n’est configurée sur le serveur : seul le jeton est
-                  disponible, et il ne s’ouvre pas tel quel dans un navigateur.
+                  Aucune adresse publique n’est configurée sur le serveur : seul
+                  le jeton est disponible, et il ne s’ouvre pas tel quel dans un
+                  navigateur.
                 </p>
               )}
             </div>
