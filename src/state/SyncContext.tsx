@@ -165,6 +165,7 @@ const SYNCED_COLLECTIONS: SyncedCollection[] = [
   'chatbotQuestions',
   'switchboardCalls',
   'videoEdits',
+  'videoProductions',
   'adVisuals',
   'scheduledPosts',
   'podcastEpisodes',

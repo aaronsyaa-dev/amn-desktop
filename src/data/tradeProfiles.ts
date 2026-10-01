@@ -216,6 +216,7 @@ export const CONFIGURABLE_MODULES: Array<{ key: string; label: string; hint: str
   { key: 'chatbot', label: 'Chatbot', hint: 'Les questions posées, et celles restées sans réponse' },
   { key: 'switchboard', label: 'Standard', hint: 'Ce que l’assistant a promis en votre nom, au téléphone' },
   { key: 'video', label: 'Montage vidéo', hint: 'Un film court, contre la durée du format visé' },
+  { key: 'videoProductions', label: 'Production vidéo', hint: 'Une fiche par vidéo, de l’idée à la publication' },
   { key: 'adVisuals', label: 'Visuels pub', hint: 'Un visuel, décliné dans tous les formats' },
   { key: 'postPlanner', label: 'Planificateur', hint: 'Les posts de la semaine, contre l’heure où l’audience est là' },
   { key: 'podcast', label: 'Podcast', hint: 'L’épisode entier, ses chapitres et ce qui peut partir' },
