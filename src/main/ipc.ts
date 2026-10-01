@@ -282,6 +282,10 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
     remote.switchOrganization(payload.orgId),
   );
   ipcMain.handle(IPC.remoteMembersList, () => remote.listMembers());
+  ipcMain.handle(IPC.remoteAgendaGoogleEtat, () => remote.agendaGoogleEtat());
+  ipcMain.handle(IPC.remoteAgendaGoogleConnecter, (_e, retour: string) => remote.agendaGoogleConnecter(retour === 'web' ? 'web' : 'desktop'));
+  ipcMain.handle(IPC.remoteAgendaGoogleSynchroniser, () => remote.agendaGoogleSynchroniser());
+  ipcMain.handle(IPC.remoteAgendaGoogleDeconnecter, () => remote.agendaGoogleDeconnecter());
   ipcMain.handle(IPC.remoteFichiersEnvoyer, (_e, input: { nom: string; type: string; base64: string }) => remote.envoyerFichier(input));
   ipcMain.handle(IPC.remoteFichiersLire, (_e, id: string) => remote.lireFichier(String(id)));
   ipcMain.handle(IPC.remoteFichiersSupprimer, (_e, id: string) => remote.supprimerFichier(String(id)));

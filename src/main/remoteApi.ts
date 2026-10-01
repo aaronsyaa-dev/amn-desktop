@@ -25,6 +25,8 @@ import type {
   MemberInvitation,
   OrgMember,
   PieceJointe,
+  GoogleAgendaEtat,
+  GoogleAgendaBilan,
   UserRole,
   OrgAccessRecord,
   OrgIdentity,
@@ -369,6 +371,24 @@ export class RemoteApiClient {
   }
 
   /* -------------- Les membres de MON organisation (BLOCS 6 et 7) ------------ */
+
+  /* ------------------ Google Agenda (jetons côté serveur seulement) ------------------ */
+
+  async agendaGoogleEtat(): Promise<GoogleAgendaEtat> {
+    return apiFetch<GoogleAgendaEtat>('/v1/agenda/google');
+  }
+
+  async agendaGoogleConnecter(retour: 'web' | 'desktop'): Promise<{ url: string }> {
+    return apiFetch<{ url: string }>('/v1/agenda/google/connexion', { method: 'POST', body: JSON.stringify({ retour }) });
+  }
+
+  async agendaGoogleSynchroniser(): Promise<GoogleAgendaEtat & { bilan: GoogleAgendaBilan }> {
+    return apiFetch<GoogleAgendaEtat & { bilan: GoogleAgendaBilan }>('/v1/agenda/google/synchroniser', { method: 'POST', body: '{}' });
+  }
+
+  async agendaGoogleDeconnecter(): Promise<void> {
+    await apiFetch<unknown>('/v1/agenda/google/deconnexion', { method: 'POST', body: '{}' });
+  }
 
   async envoyerFichier(input: { nom: string; type: string; base64: string }): Promise<PieceJointe> {
     const res = await apiFetch<{ fichier: PieceJointe }>('/v1/fichiers', { method: 'POST', body: JSON.stringify(input) });

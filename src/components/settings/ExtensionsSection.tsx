@@ -5,6 +5,8 @@ import { ecrireTeintes, useTeintes } from '../../lib/teintes';
 import { celebrationsActives, ecrireCelebrations } from '../Celebrations';
 import { HallSection } from '../../hall/HallSection';
 
+const defiler = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
 /**
  * LES EXTENSIONS GRATUITES — ce qui s'allume et s'éteint d'un geste.
  *
@@ -64,9 +66,10 @@ export function ExtensionsSection() {
             setFetes(v);
           }}
         />
+        {/* Des boutons, pas des ancres « #… » : sous HashRouter, une ancre change la route et renvoie à l'Accueil. */}
         <div className="mt-3 flex flex-wrap gap-2">
-          <a href="#reglages-veille" className={lien}>{t('extensions.veille')}</a>
-          <a href="#reglages-accueil" className={lien}>{t('extensions.accueils')}</a>
+          <button type="button" onClick={() => defiler('reglages-veille')} className={lien}>{t('extensions.veille')}</button>
+          <button type="button" onClick={() => defiler('reglages-accueil')} className={lien}>{t('extensions.accueils')}</button>
         </div>
       </section>
       <HallSection />

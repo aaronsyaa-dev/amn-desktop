@@ -1,16 +1,9 @@
-import React from "react";
-import { Link } from "react-router-dom";
-import { Check, ChevronRight, Loader2, Lock, Send } from "lucide-react";
-import type { NavItem } from "../data/navigation";
-import {
-  useLangue,
-  libelleNav,
-  libelleSection,
-  indiceNav,
-  carteModule,
-  type SurfaceNav,
-} from "../i18n";
-import { scoreBesoin } from "../lib/rechercheBesoin";
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { Check, ChevronRight, Loader2, Lock, Send } from 'lucide-react';
+import type { NavItem } from '../data/navigation';
+import { useLangue, libelleNav, libelleSection, indiceNav, carteModule, type SurfaceNav } from '../i18n';
+import { scoreBesoin } from '../lib/rechercheBesoin';
 
 /**
  * LA GRILLE DES MODULES — un seul rangement, trois lectures.
@@ -32,7 +25,7 @@ import { scoreBesoin } from "../lib/rechercheBesoin";
  * arrive — accueil, paramètres, membres, assistance, personnel), disponible
  * (existe, pas chez vous), demandé (vous l'avez demandé, quelqu'un répond).
  */
-export type EtatModule = "ouvert" | "inclus" | "disponible" | "demande";
+export type EtatModule = 'ouvert' | 'inclus' | 'disponible' | 'demande';
 
 export interface SectionGrille {
   key: string;
@@ -44,9 +37,9 @@ export function ModuleGrid({
   sections,
   etat,
   mode,
-  surface = "interne",
+  surface = 'interne',
   prises,
-  recherche = "",
+  recherche = '',
   enCours = null,
   onToggle,
   onDemander,
@@ -56,7 +49,7 @@ export function ModuleGrid({
 }: {
   sections: SectionGrille[];
   etat: (key: string) => EtatModule;
-  mode: "lire" | "composer" | "demander" | "alleger";
+  mode: 'lire' | 'composer' | 'demander' | 'alleger';
   surface?: SurfaceNav;
   /** Les prises de la Garde sur ce module (Bloc 10) : quelles équipes le lisent, lesquelles le modifient. Interne seulement. */
   prises?: Record<string, { lit: string[]; modifie: string[] }>;
@@ -95,283 +88,209 @@ export function ModuleGrid({
   /* Chercher en décrivant son besoin (« relancer mes factures impayées ») : voir lib/rechercheBesoin. Les meilleurs d'abord. */
   const score = (item: NavItem) => {
     const carte = carteModule(item.key);
-    return scoreBesoin(
-      filtre,
-      `${libelleNav(item)} ${indiceNav(item, surface)} ${carte ? `${carte.quoi} ${carte.pourQui} ${carte.exemple}` : ""}`,
-    );
+    return scoreBesoin(filtre, `${libelleNav(item)} ${indiceNav(item, surface)} ${carte ? `${carte.quoi} ${carte.pourQui} ${carte.exemple}` : ''}`);
   };
   const visibles = sections
     .map((section) => {
-      const notes = section.items
-        .map((item) => ({ item, s: filtre ? score(item) : 0 }))
-        .filter((x) => x.s !== null);
+      const notes = section.items.map((item) => ({ item, s: filtre ? score(item) : 0 })).filter((x) => x.s !== null);
       if (filtre) notes.sort((a, b) => (b.s ?? 0) - (a.s ?? 0));
-      return {
-        ...section,
-        items: notes.map((x) => x.item),
-        meilleur: Math.max(0, ...notes.map((x) => x.s ?? 0)),
-      };
+      return { ...section, items: notes.map((x) => x.item), meilleur: Math.max(0, ...notes.map((x) => x.s ?? 0)) };
     })
     .filter((section) => section.items.length > 0)
     .sort((a, b) => (filtre ? b.meilleur - a.meilleur : 0));
 
   if (visibles.length === 0) {
-    return (
-      <p className="py-6 text-sm text-text-secondary">
-        {t("biblio.rienTrouve", { recherche: recherche.trim() })}
-      </p>
-    );
+    return <p className="py-6 text-sm text-text-secondary">{t('biblio.rienTrouve', { recherche: recherche.trim() })}</p>;
   }
 
   const ETAT_LIBELLE: Record<EtatModule, string> = {
-    ouvert: t("biblio.etat.ouvert"),
-    inclus: t("biblio.etat.inclus"),
-    disponible: t("biblio.etat.disponible"),
-    demande: t("biblio.etat.demande"),
+    ouvert: t('biblio.etat.ouvert'),
+    inclus: t('biblio.etat.inclus'),
+    disponible: t('biblio.etat.disponible'),
+    demande: t('biblio.etat.demande'),
   };
 
   return (
     <div className={`flex flex-col ${mode === 'composer' ? 'gap-3' : 'gap-6'}`}>
       {visibles.map((section) => {
-        const repliable = mode === "composer";
-        const deplie = !repliable || filtre !== "" || deplies.has(section.key);
-        const ouvertsSection = section.items.filter(
-          (item) => etat(item.key) !== "disponible",
-        ).length;
+        const repliable = mode === 'composer';
+        const deplie = !repliable || filtre !== '' || deplies.has(section.key);
+        const ouvertsSection = section.items.filter((item) => etat(item.key) !== 'disponible').length;
         return (
-          <section
-            key={section.key}
-            aria-label={libelleSection(section.label)}
-            data-section-modules={section.key}
-          >
-            {repliable ? (
-              <button
-                type="button"
-                aria-expanded={deplie}
-                onClick={() => basculerSection(section.key)}
-                disabled={filtre !== ""}
-                className="mb-2.5 flex w-full items-center gap-2 border-b border-border pb-1.5 text-left disabled:cursor-default"
-              >
-                <ChevronRight
-                  size={13}
-                  className={`text-text-muted transition-transform ${deplie ? "rotate-90" : ""}`}
-                />
-                <span className="eyebrow">{libelleSection(section.label)}</span>
-                <span
-                  className="ml-auto font-mono text-[10px] text-text-muted"
-                  data-compte-section
-                >
-                  {t("biblio.composer.compte", {
-                    ouverts: ouvertsSection,
-                    total: section.items.length,
-                  })}
-                </span>
-              </button>
-            ) : (
-              <p className="eyebrow mb-2.5">{libelleSection(section.label)}</p>
-            )}
-            {deplie && (
-              <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(11.5rem,1fr))]">
-                {section.items.map((item) => {
-                  const Icon = item.icon;
-                  const e = etat(item.key);
-                  const ouvert = e === "ouvert" || e === "inclus";
-                  const attente = enCours === item.key;
-                  /*
+        <section key={section.key} aria-label={libelleSection(section.label)} data-section-modules={section.key}>
+          {repliable ? (
+            <button
+              type="button"
+              aria-expanded={deplie}
+              onClick={() => basculerSection(section.key)}
+              disabled={filtre !== ''}
+              className="mb-2.5 flex w-full items-center gap-2 border-b border-border pb-1.5 text-left disabled:cursor-default"
+            >
+              <ChevronRight size={13} className={`text-text-muted transition-transform ${deplie ? 'rotate-90' : ''}`} />
+              <span className="eyebrow">{libelleSection(section.label)}</span>
+              <span className="ml-auto font-mono text-[10px] text-text-muted" data-compte-section>
+                {t('biblio.composer.compte', { ouverts: ouvertsSection, total: section.items.length })}
+              </span>
+            </button>
+          ) : (
+            <p className="eyebrow mb-2.5">{libelleSection(section.label)}</p>
+          )}
+          {deplie && (
+          <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(11.5rem,1fr))]">
+            {section.items.map((item) => {
+              const Icon = item.icon;
+              const e = etat(item.key);
+              const ouvert = e === 'ouvert' || e === 'inclus';
+              const attente = enCours === item.key;
+              /*
                 LA CARTE (Bloc 3) : ce que ça fait, pour qui, un exemple —
                 trois lignes qu'on lit en cinq secondes. La phrase d'aide de
                 la navigation reste le repli d'un module sans carte.
               */
-                  const carte = carteModule(item.key);
-                  const corps = (
-                    <>
-                      <span className="flex items-start justify-between gap-2">
-                        <span
-                          className={`transition-transform duration-200 ${ouvert ? "text-text-primary group-hover:-translate-y-0.5" : "text-text-muted"}`}
-                        >
-                          <Icon size={22} strokeWidth={1.9} />
-                        </span>
-                        <span
-                          className={`rounded-sm border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider ${
-                            e === "ouvert"
-                              ? "border-success/40 text-success"
-                              : e === "inclus"
-                                ? "border-border text-text-muted"
-                                : e === "demande"
-                                  ? "border-warning/40 text-warning"
-                                  : "border-border text-text-muted"
-                          }`}
-                        >
-                          {ETAT_LIBELLE[e]}
-                        </span>
+              const carte = carteModule(item.key);
+              const corps = (
+                <>
+                  <span className="flex items-start justify-between gap-2">
+                    <span className={`transition-transform duration-200 ${ouvert ? 'text-text-primary group-hover:-translate-y-0.5' : 'text-text-muted'}`}>
+                      <Icon size={22} strokeWidth={1.9} />
+                    </span>
+                    <span
+                      className={`rounded-sm border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider ${
+                        e === 'ouvert'
+                          ? 'border-success/40 text-success'
+                          : e === 'inclus'
+                            ? 'border-border text-text-muted'
+                            : e === 'demande'
+                              ? 'border-warning/40 text-warning'
+                              : 'border-border text-text-muted'
+                      }`}
+                    >
+                      {ETAT_LIBELLE[e]}
+                    </span>
+                  </span>
+                  <span className={`text-sm font-medium leading-tight ${ouvert ? 'text-text-primary' : 'text-text-secondary'}`}>
+                    {libelleNav(item)}
+                  </span>
+                  <span className="line-clamp-2 text-[11px] leading-snug text-text-muted">{carte?.quoi ?? indiceNav(item, surface)}</span>
+                  {/* « Pour qui » et l'exemple ne s'affichent qu'au survol ou au clavier (Bloc 1 de l'Automatique) : une carte, une ligne ; le détail quand on s'y arrête. Sur téléphone, la présentation de première ouverture les dit. */}
+                  {carte && mode !== 'composer' && (
+                    <span className="hidden flex-col gap-1 group-hover:flex group-focus-within:flex" data-carte-detail>
+                      <span className="text-[11px] leading-snug text-text-muted">
+                        <span className="text-text-secondary">{t('carte.pourQui')} :</span> {carte.pourQui}
                       </span>
-                      <span
-                        className={`text-sm font-medium leading-tight ${ouvert ? "text-text-primary" : "text-text-secondary"}`}
-                      >
-                        {libelleNav(item)}
-                      </span>
-                      <span className="line-clamp-2 text-[11px] leading-snug text-text-muted">
-                        {carte?.quoi ?? indiceNav(item, surface)}
-                      </span>
-                      {/* « Pour qui » et l'exemple ne s'affichent qu'au survol ou au clavier (Bloc 1 de l'Automatique) : une carte, une ligne ; le détail quand on s'y arrête. Sur téléphone, la présentation de première ouverture les dit. */}
-                      {carte && mode !== "composer" && (
-                        <span
-                          className="hidden flex-col gap-1 group-hover:flex group-focus-within:flex"
-                          data-carte-detail
-                        >
-                          <span className="text-[11px] leading-snug text-text-muted">
-                            <span className="text-text-secondary">
-                              {t("carte.pourQui")} :
-                            </span>{" "}
-                            {carte.pourQui}
-                          </span>
-                          <span className="text-[11px] italic leading-snug text-text-secondary">
-                            {carte.exemple}
-                          </span>
-                        </span>
+                      <span className="text-[11px] italic leading-snug text-text-secondary">{carte.exemple}</span>
+                    </span>
+                  )}
+                  {prises?.[item.key] && (prises[item.key].lit.length > 0 || prises[item.key].modifie.length > 0) && (
+                    <span className="hidden text-[10px] leading-snug text-text-muted group-hover:inline group-focus-within:inline" data-prises={item.key}>
+                      <span className="font-mono uppercase tracking-wider">{t('biblio.prises.titre')}</span>
+                      {prises[item.key].lit.length > 0 ? ` · ${t('biblio.prises.lu', { equipes: prises[item.key].lit.join(', ') })}` : ''}
+                      {prises[item.key].modifie.length > 0 ? ` · ${t('biblio.prises.modifie', { equipes: prises[item.key].modifie.join(', ') })}` : ''}
+                    </span>
+                  )}
+                </>
+              );
+              const cadre = `group flex h-full flex-col gap-2 rounded-xl border p-3 text-left transition-colors duration-200 ${
+                ouvert ? 'border-border bg-bg hover:border-border-strong hover:bg-surface-hover' : 'border-dashed border-border bg-transparent'
+              }`;
+
+              if (mode === 'composer') {
+                const verrou = e === 'inclus';
+                const origine = verrou ? null : annotation?.(item.key) ?? null;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    disabled={verrou || enCours !== null}
+                    aria-pressed={ouvert}
+                    onClick={() => onToggle?.(item.key)}
+                    className={`${cadre} disabled:cursor-default ${enCours !== null && !verrou ? 'opacity-60' : ''}`}
+                  >
+                    {corps}
+                    {origine && <span className="text-[10px] leading-snug text-text-secondary">{origine}</span>}
+                    <span className="mt-auto flex items-center gap-1.5 pt-1 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                      {verrou ? (
+                        <>
+                          <Lock size={11} /> {t('biblio.composer.inclus')}
+                        </>
+                      ) : attente ? (
+                        <>
+                          <Loader2 size={11} className="animate-spin" /> …
+                        </>
+                      ) : ouvert ? (
+                        <>
+                          <Check size={11} strokeWidth={3} className="text-success" /> {t('biblio.composer.retirer')}
+                        </>
+                      ) : (
+                        t('biblio.composer.ouvrir')
                       )}
-                      {prises?.[item.key] &&
-                        (prises[item.key].lit.length > 0 ||
-                          prises[item.key].modifie.length > 0) && (
-                          <span
-                            className="hidden text-[10px] leading-snug text-text-muted group-hover:inline group-focus-within:inline"
-                            data-prises={item.key}
-                          >
-                            <span className="font-mono uppercase tracking-wider">
-                              {t("biblio.prises.titre")}
-                            </span>
-                            {prises[item.key].lit.length > 0
-                              ? ` · ${t("biblio.prises.lu", { equipes: prises[item.key].lit.join(", ") })}`
-                              : ""}
-                            {prises[item.key].modifie.length > 0
-                              ? ` · ${t("biblio.prises.modifie", { equipes: prises[item.key].modifie.join(", ") })}`
-                              : ""}
-                          </span>
-                        )}
-                    </>
-                  );
-                  const cadre = `group flex h-full flex-col gap-2 rounded-xl border p-3 text-left transition-colors duration-200 ${
-                    ouvert
-                      ? "border-border bg-bg hover:border-border-strong hover:bg-surface-hover"
-                      : "border-dashed border-border bg-transparent"
-                  }`;
+                    </span>
+                  </button>
+                );
+              }
 
-                  if (mode === "composer") {
-                    const verrou = e === "inclus";
-                    const origine = verrou
-                      ? null
-                      : (annotation?.(item.key) ?? null);
-                    return (
-                      <button
-                        key={item.key}
-                        type="button"
-                        disabled={verrou || enCours !== null}
-                        aria-pressed={ouvert}
-                        onClick={() => onToggle?.(item.key)}
-                        className={`${cadre} disabled:cursor-default ${enCours !== null && !verrou ? "opacity-60" : ""}`}
-                      >
-                        {corps}
-                        {origine && (
-                          <span className="text-[10px] leading-snug text-text-secondary">
-                            {origine}
-                          </span>
-                        )}
-                        <span className="mt-auto flex items-center gap-1.5 pt-1 font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                          {verrou ? (
-                            <>
-                              <Lock size={11} /> {t("biblio.composer.inclus")}
-                            </>
-                          ) : attente ? (
-                            <>
-                              <Loader2 size={11} className="animate-spin" /> …
-                            </>
-                          ) : ouvert ? (
-                            <>
-                              <Check
-                                size={11}
-                                strokeWidth={3}
-                                className="text-success"
-                              />{" "}
-                              {t("biblio.composer.retirer")}
-                            </>
-                          ) : (
-                            t("biblio.composer.ouvrir")
-                          )}
-                        </span>
-                      </button>
-                    );
-                  }
-
-                  if (mode === "alleger") {
-                    /*
+              if (mode === 'alleger') {
+                /*
                   ALLÉGER / RAJOUTER (Bloc 3). La tuile ne mène nulle part ici :
                   un clic la retire de ma barre (elle s'estompe) ou l'y remet.
                   Ce qui est ouvert quoi qu'il arrive ne s'allège pas. Rien
                   d'autre ne bouge : ni l'accès, ni les données.
                 */
-                    const allege = estAllege?.(item.key) ?? false;
-                    const fixe = e === "inclus" || !ouvert;
-                    return (
-                      <button
-                        key={item.key}
-                        type="button"
-                        disabled={fixe}
-                        aria-pressed={!allege}
-                        onClick={() => onBasculer?.(item.key)}
-                        className={`${cadre} disabled:cursor-default ${allege ? "opacity-40" : ""}`}
-                      >
-                        {corps}
-                        <span className="mt-auto flex items-center gap-1.5 pt-1 font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                          {fixe
-                            ? t("biblio.alleger.fixe")
-                            : allege
-                              ? t("biblio.alleger.rajouter")
-                              : t("biblio.alleger.retirer")}
-                        </span>
-                      </button>
-                    );
-                  }
+                const allege = estAllege?.(item.key) ?? false;
+                const fixe = e === 'inclus' || !ouvert;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    disabled={fixe}
+                    aria-pressed={!allege}
+                    onClick={() => onBasculer?.(item.key)}
+                    className={`${cadre} disabled:cursor-default ${allege ? 'opacity-40' : ''}`}
+                  >
+                    {corps}
+                    <span className="mt-auto flex items-center gap-1.5 pt-1 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                      {fixe ? t('biblio.alleger.fixe') : allege ? t('biblio.alleger.rajouter') : t('biblio.alleger.retirer')}
+                    </span>
+                  </button>
+                );
+              }
 
-                  if (ouvert) {
-                    return (
-                      <Link key={item.key} to={item.to} className={cadre}>
-                        {corps}
-                      </Link>
-                    );
-                  }
+              if (ouvert) {
+                return (
+                  <Link key={item.key} to={item.to} className={cadre}>
+                    {corps}
+                  </Link>
+                );
+              }
 
-                  return (
-                    <div key={item.key} className={cadre}>
-                      {corps}
-                      {mode === "demander" && (
-                        <span className="mt-auto pt-1">
-                          {e === "demande" ? (
-                            <span className="flex items-center gap-1.5 text-xs text-text-muted">
-                              <Check size={13} /> {t("biblio.demande.faite")}
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => onDemander?.(item.key)}
-                              disabled={attente}
-                              className="flex min-h-11 items-center gap-2 border border-border-strong bg-surface px-3 text-xs font-medium text-text-primary transition-colors hover:bg-surface-hover disabled:opacity-40 md:min-h-0 md:py-1.5"
-                            >
-                              {attente ? (
-                                <Loader2 size={13} className="animate-spin" />
-                              ) : (
-                                <Send size={13} />
-                              )}
-                              {t("biblio.demander")}
-                            </button>
-                          )}
+              return (
+                <div key={item.key} className={cadre}>
+                  {corps}
+                  {mode === 'demander' && (
+                    <span className="mt-auto pt-1">
+                      {e === 'demande' ? (
+                        <span className="flex items-center gap-1.5 text-xs text-text-muted">
+                          <Check size={13} /> {t('biblio.demande.faite')}
                         </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => onDemander?.(item.key)}
+                          disabled={attente}
+                          className="flex min-h-11 items-center gap-2 border border-border-strong bg-surface px-3 text-xs font-medium text-text-primary transition-colors hover:bg-surface-hover disabled:opacity-40 md:min-h-0 md:py-1.5"
+                        >
+                          {attente ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                          {t('biblio.demander')}
+                        </button>
                       )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          )}
+        </section>
         );
       })}
     </div>

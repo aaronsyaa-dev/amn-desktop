@@ -46,7 +46,14 @@ import { useLangue } from '../../i18n';
  * propriétaire ; le suspendre suffit à lui couper l'accès à l'instant, et se
  * défait.
  */
-export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
+export function MembersSection({
+  onChange,
+  demandeInvitation = 0,
+}: {
+  onChange?: () => void;
+  /** Incrémenté par le bouton « Inviter » de l'en-tête : ouvre le formulaire et y place le curseur. */
+  demandeInvitation?: number;
+} = {}) {
   const { role, user } = useAuth();
   const [membres, setMembres] = useState<OrgMember[] | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -58,6 +65,16 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
   const { t } = useLangue();
 
   const [ouvrirInvitation, setOuvrirInvitation] = useState(false);
+  const champInvitation = React.useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (demandeInvitation > 0) setOuvrirInvitation(true);
+  }, [demandeInvitation]);
+  useEffect(() => {
+    if (ouvrirInvitation && demandeInvitation > 0) {
+      champInvitation.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      champInvitation.current?.focus({ preventScroll: true });
+    }
+  }, [ouvrirInvitation, demandeInvitation]);
   const [email, setEmail] = useState('');
   const [roleInvite, setRoleInvite] = useState<UserRole>('member');
   const [invitation, setInvitation] = useState<MemberInvitation | null>(null);
@@ -335,6 +352,7 @@ export function MembersSection({ onChange }: { onChange?: () => void } = {}) {
                   <p className="eyebrow mb-2">Inviter un membre</p>
                   <div className="flex flex-wrap gap-2">
                     <input
+                      ref={champInvitation}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       inputMode="email"

@@ -82,6 +82,7 @@ export function MembersScreen() {
   const [membres, setMembres] = useState<OrgMember[] | null>(null);
   const [demandes, setDemandes] = useState<SupportRequest[]>([]);
   const [envoi, setEnvoi] = useState(false);
+  const [demandeInvitation, setDemandeInvitation] = useState(0);
   const [erreur, setErreur] = useState<string | null>(null);
 
   const charger = useCallback(async () => {
@@ -228,12 +229,14 @@ export function MembersScreen() {
           ]}
           actions={
             peutGerer && !pleines ? (
-              <a
-                href="#membres-gestion"
+              /* Un bouton, pas un lien « #membres-gestion » : sous HashRouter, cette ancre devenait la route « membres-gestion », inconnue, donc renvoyait à l'Accueil. */
+              <button
+                type="button"
+                onClick={() => setDemandeInvitation((n) => n + 1)}
                 className="flex min-h-11 items-center gap-2 border border-border-strong bg-surface px-4 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover md:min-h-0 md:py-2"
               >
                 <UserPlus size={15} strokeWidth={1.9} /> Inviter
-              </a>
+              </button>
             ) : undefined
           }
         />
@@ -367,7 +370,7 @@ export function MembersScreen() {
           {/* LA GESTION — la liste réelle, les invitations, les rôles. */}
           <StaggerItem>
             <div id="membres-gestion">
-              <MembersSection onChange={charger} />
+              <MembersSection onChange={charger} demandeInvitation={demandeInvitation} />
             </div>
           </StaggerItem>
 

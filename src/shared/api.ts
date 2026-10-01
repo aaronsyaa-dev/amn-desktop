@@ -2225,6 +2225,34 @@ export interface SupportRequestForOperator extends SupportRequest {
 export type InputAlertFamily = 'sql_injection' | 'xss' | 'path_traversal' | 'command_injection';
 
 /** Une tentative d'injection détectée dans un champ — un événement de sécurité, pas un blocage. */
+/**
+ * La connexion Google Agenda de l'organisation, telle que le poste la voit :
+ * un état, l'adresse du compte, des dates. JAMAIS un jeton — ils restent sur le serveur.
+ */
+export interface GoogleAgendaEtat {
+  /** Le serveur a ses identifiants Google (sinon, pas de bouton utile). */
+  configure: boolean;
+  etat: 'non_connecte' | 'connecte' | 'expire' | 'erreur';
+  compte?: string | null;
+  connecteLe?: string | null;
+  derniereSynchro?: string | null;
+  erreur?: string | null;
+  /** Propriétaire ou administrateur, en personne : peut connecter / déconnecter. */
+  peutGerer?: boolean;
+}
+export interface GoogleAgendaBilan {
+  importes: number;
+  modifies: number;
+  annules: number;
+  retires: number;
+  pousses: number;
+  conflits: number;
+  erreurs: number;
+  enCours?: boolean;
+  erreur?: string;
+  expire?: boolean;
+}
+
 /** Une pièce jointe : la référence d'un fichier stocké côté serveur (`/v1/fichiers`). */
 export interface PieceJointe {
   id: string;
@@ -3262,6 +3290,14 @@ export interface AmnBridge {
      * Les fichiers de l'organisation (PDF, images, courtes vidéos), stockés côté serveur — jamais dans
      * un enregistrement synchronisé. L'enregistrement ne garde que la `PieceJointe` (la référence).
      */
+    /** Google Agenda de l'organisation : connexion OAuth et synchronisation, entièrement côté serveur. */
+    agendaGoogle: {
+      etat(): Promise<GoogleAgendaEtat>;
+      /** L'adresse de consentement Google (le `state` y est, les jetons jamais). */
+      connecter(retour: 'web' | 'desktop'): Promise<{ url: string }>;
+      synchroniser(): Promise<GoogleAgendaEtat & { bilan: GoogleAgendaBilan }>;
+      deconnecter(): Promise<void>;
+    };
     fichiers: {
       envoyer(input: { nom: string; type: string; base64: string }): Promise<PieceJointe>;
       lire(id: string): Promise<{ fichier: PieceJointe; base64: string }>;
@@ -3980,6 +4016,10 @@ export const IPC = {
   remoteMembersSetStatus: 'remote:membersSetStatus',
   remoteMembersRemove: 'remote:membersRemove',
   remoteMembersJournal: 'remote:membersJournal',
+  remoteAgendaGoogleEtat: 'remote:agendaGoogleEtat',
+  remoteAgendaGoogleConnecter: 'remote:agendaGoogleConnecter',
+  remoteAgendaGoogleSynchroniser: 'remote:agendaGoogleSynchroniser',
+  remoteAgendaGoogleDeconnecter: 'remote:agendaGoogleDeconnecter',
   remoteFichiersEnvoyer: 'remote:fichiersEnvoyer',
   remoteFichiersLire: 'remote:fichiersLire',
   remoteFichiersSupprimer: 'remote:fichiersSupprimer',

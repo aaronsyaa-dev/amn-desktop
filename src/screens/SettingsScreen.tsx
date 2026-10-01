@@ -304,13 +304,15 @@ function PlanDesReglages() {
               data-signal-groupe={ambre ? 'rubrique-citee' : undefined}
               className={`p-4 ${ambre ? 'border border-signal-line bg-signal-muted' : 'panel'}`}
             >
-              <a
-                href={`#${r.ancre}`}
+              {/* Un bouton, pas une ancre « #… » : sous HashRouter elle changeait la route (voir check:ancres). */}
+              <button
+                type="button"
+                onClick={() => document.getElementById(r.ancre)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                 data-signal-groupe={ambre ? 'rubrique-citee' : undefined}
-                className={`text-sm font-semibold leading-tight ${ambre ? 'text-signal' : 'text-text-primary'}`}
+                className={`text-left text-sm font-semibold leading-tight ${ambre ? 'text-signal' : 'text-text-primary'}`}
               >
                 {r.titre}
-              </a>
+              </button>
               <p
                 data-signal-groupe={ambre ? 'rubrique-citee' : undefined}
                 className={`mt-1 font-mono text-[10px] uppercase tracking-[0.16em] tabular-nums ${
