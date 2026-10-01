@@ -107,6 +107,7 @@ export function ClientsScreen() {
   useLangue();
   const { sites } = useLinkedSites();
   const location = useLocation();
+  const navigate = useNavigate();
   // A @client mention (or any navigation) can request a specific client be
   // opened via router state: navigate('/clients', { state: { focusClientId } }).
   const focusClientId = (location.state as { focusClientId?: number } | null)?.focusClientId ?? null;
@@ -141,13 +142,25 @@ export function ClientsScreen() {
     d'accompagnement n'apparaît qu'une fois une fiche ouverte.
   */
 
-  // Honour a requested client focus once the list is loaded (and again if the
-  // navigation target changes while the screen stays mounted).
+  /*
+    Honour a requested client focus once the list is loaded (and again if the
+    navigation target changes while the screen stays mounted) — then CLEAR the
+    router state, as InvoicesScreen already does for `openInvoiceId`.
+
+    Sans ce nettoyage, `focusClientId` restait dans `location.state` pour toute
+    la durée de vie de cette entrée d'historique, et `clients` (une collection
+    synchronisée) rend un nouveau tableau à chaque rendu — même sans rien
+    d'écrit — donc cet effet se redéclenchait à chaque re-rendu tant que
+    `focusClientId` tenait encore. Le clic sur « ← Répertoire » fermait bien
+    la fiche (`setSelectedId(null)`), mais le re-rendu qui suivait la rouvrait
+    aussitôt : aucun moyen de revenir au répertoire sans quitter le module.
+  */
   useEffect(() => {
     if (focusClientId != null && clients.some((c) => c.id === focusClientId)) {
       setSelectedId(focusClientId);
+      navigate(location.pathname, { replace: true, state: null });
     }
-  }, [focusClientId, clients]);
+  }, [focusClientId, clients, location.pathname, navigate]);
 
   const selected = useMemo(
     () => clients.find((c) => c.id === selectedId) ?? null,
