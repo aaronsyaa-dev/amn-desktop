@@ -127,18 +127,19 @@ const bridge: AmnBridge = {
       ipcRenderer.on(IPC.remoteConnectionStatusPush, listener);
       return () => ipcRenderer.removeListener(IPC.remoteConnectionStatusPush, listener);
     },
-    listRecords: (collection: SyncedCollection) =>
-      ipcRenderer.invoke(IPC.remoteListRecords, collection),
-    listRecordsBulk: (collections: SyncedCollection[]) =>
-      ipcRenderer.invoke(IPC.remoteListRecordsBulk, collections),
+    listRecords: (collection: SyncedCollection, org?: string | null) =>
+      ipcRenderer.invoke(IPC.remoteListRecords, collection, org ?? null),
+    listRecordsBulk: (collections: SyncedCollection[], org?: string | null) =>
+      ipcRenderer.invoke(IPC.remoteListRecordsBulk, collections, org ?? null),
     upsertRecord: (
       collection: SyncedCollection,
       id: string,
       data: Record<string, unknown>,
       fusion?: { base: string; patch: Record<string, unknown> },
-    ) => ipcRenderer.invoke(IPC.remoteUpsertRecord, { collection, id, data, fusion }),
-    deleteRecord: (collection: SyncedCollection, id: string, by?: string | null) =>
-      ipcRenderer.invoke(IPC.remoteDeleteRecord, { collection, id, by }),
+      org?: string | null,
+    ) => ipcRenderer.invoke(IPC.remoteUpsertRecord, { collection, id, data, fusion, org: org ?? null }),
+    deleteRecord: (collection: SyncedCollection, id: string, by?: string | null, org?: string | null) =>
+      ipcRenderer.invoke(IPC.remoteDeleteRecord, { collection, id, by, org: org ?? null }),
     activityLog: (limit?: number) => ipcRenderer.invoke(IPC.remoteActivityLog, limit),
     onRecord: (callback: (record: RemoteRecord) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, record: RemoteRecord) => callback(record);

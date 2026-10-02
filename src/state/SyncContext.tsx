@@ -243,12 +243,50 @@ const MIRROR_PREFIX = 'amn.sync.';
  * première synchro les remplace. C'est exactement la fuite que le contexte
  * client doit rendre impossible.
  *
- * Le contexte par défaut garde les clés historiques : une mise à jour ne doit
- * pas repartir d'un miroir vide sur les postes existants (visible tout de suite
- * si amn-api est injoignable au premier lancement).
+ * L'organisation PROPRE est indexée elle aussi (`org-<id>`). Elle gardait les
+ * clés historiques `amn.sync.<collection>`, partagées par toutes les
+ * organisations d'un même poste. Or un compte membre de plusieurs
+ * organisations passe de l'une à l'autre SANS contexte client (le rail) : la
+ * bascule recharge l'app, mais le miroir restait, et le rattrapage FUSIONNE —
+ * il n'efface jamais ce que le serveur ne renvoie pas. Les clients d'une
+ * organisation restaient donc affichés dans l'autre, indéfiniment, et la file
+ * d'envoi pouvait les y écrire. Voir `retirerMiroirHerite`.
  */
-function mirrorKey(scope: string | undefined, collection: string): string {
-  return scope ? `${MIRROR_PREFIX}ctx-${scope}.${collection}` : MIRROR_PREFIX + collection;
+function cleDeContexte(scope: string | undefined, orgId: string | null | undefined): string {
+  if (scope) return `ctx-${scope}`;
+  return orgId ? `org-${orgId}` : 'sans-organisation';
+}
+
+function mirrorKey(contexte: string, collection: string): string {
+  return `${MIRROR_PREFIX}${contexte}.${collection}`;
+}
+
+const FILE_HERITEE_EN_QUARANTAINE = `${MIRROR_PREFIX}quarantaine.__envoi`;
+
+/**
+ * Retire les clés d'avant l'indexation par organisation.
+ *
+ * Le miroir hérité n'est qu'un cache : le rattrapage le reconstruit depuis le
+ * serveur. Personne ne peut dire de quelle organisation il vient, donc il ne
+ * peut être rattaché à aucune. La file d'envoi héritée, elle, porte des
+ * écritures jamais parties : l'envoyer sous la session courante pourrait les
+ * écrire dans la mauvaise organisation. Elle est mise de côté, jamais envoyée,
+ * jamais effacée.
+ */
+function retirerMiroirHerite(): void {
+  try {
+    for (const collection of SYNCED_COLLECTIONS) window.localStorage.removeItem(MIRROR_PREFIX + collection);
+    const file = window.localStorage.getItem(`${MIRROR_PREFIX}__envoi`);
+    if (file !== null) {
+      const entrees = JSON.parse(file) as unknown;
+      if (Array.isArray(entrees) && entrees.length > 0 && window.localStorage.getItem(FILE_HERITEE_EN_QUARANTAINE) === null) {
+        window.localStorage.setItem(FILE_HERITEE_EN_QUARANTAINE, file);
+      }
+      window.localStorage.removeItem(`${MIRROR_PREFIX}__envoi`);
+    }
+  } catch {
+    /* stockage indisponible : rien d'hérité à lire non plus */
+  }
 }
 
 /**
@@ -260,13 +298,13 @@ function mirrorKey(scope: string | undefined, collection: string): string {
  * est là pour sauver — et c'est un redémarrage qu'on fait volontiers quand
  * « ça ne marche pas ».
  */
-function fileKey(scope: string | undefined): string {
-  return scope ? `${MIRROR_PREFIX}ctx-${scope}.__envoi` : `${MIRROR_PREFIX}__envoi`;
+function fileKey(contexte: string): string {
+  return `${MIRROR_PREFIX}${contexte}.__envoi`;
 }
 
-function readFile(scope: string | undefined): EntreeEnvoi[] {
+function readFile(contexte: string): EntreeEnvoi[] {
   try {
-    const raw = window.localStorage.getItem(fileKey(scope));
+    const raw = window.localStorage.getItem(fileKey(contexte));
     const parsed = raw ? (JSON.parse(raw) as EntreeEnvoi[]) : [];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
@@ -274,9 +312,9 @@ function readFile(scope: string | undefined): EntreeEnvoi[] {
   }
 }
 
-function writeFile(scope: string | undefined, file: readonly EntreeEnvoi[]): void {
+function writeFile(contexte: string, file: readonly EntreeEnvoi[]): void {
   try {
-    window.localStorage.setItem(fileKey(scope), JSON.stringify(file));
+    window.localStorage.setItem(fileKey(contexte), JSON.stringify(file));
   } catch {
     /* quota — l'état en mémoire reste la référence pour cette session */
   }
@@ -305,8 +343,9 @@ export function purgeContextMirror(scope: string): number {
       session de support qui EXPIRE toute seule, sans que personne n'ait
       décidé de partir. On compte donc, et l'appelant le dit.
     */
-    perdues = readFile(scope).length;
-    const prefix = `${MIRROR_PREFIX}ctx-${scope}.`;
+    const contexte = cleDeContexte(scope, null);
+    perdues = readFile(contexte).length;
+    const prefix = `${MIRROR_PREFIX}${contexte}.`;
     for (const key of Object.keys(window.localStorage)) {
       if (key.startsWith(prefix)) window.localStorage.removeItem(key);
     }
@@ -350,18 +389,18 @@ export function stripMeta<T extends { id: string; updatedAt: string }>(
   return rest;
 }
 
-function readMirror(scope: string | undefined, collection: string): RemoteRecord[] {
+function readMirror(contexte: string, collection: string): RemoteRecord[] {
   try {
-    const raw = window.localStorage.getItem(mirrorKey(scope, collection));
+    const raw = window.localStorage.getItem(mirrorKey(contexte, collection));
     return raw ? (JSON.parse(raw) as RemoteRecord[]) : [];
   } catch {
     return [];
   }
 }
 
-function writeMirror(scope: string | undefined, collection: string, records: RemoteRecord[]): void {
+function writeMirror(contexte: string, collection: string, records: RemoteRecord[]): void {
   try {
-    window.localStorage.setItem(mirrorKey(scope, collection), JSON.stringify(records));
+    window.localStorage.setItem(mirrorKey(contexte, collection), JSON.stringify(records));
   } catch {
     /* quota — ignore, memory state stays authoritative for this session */
   }
@@ -456,10 +495,17 @@ export function SyncProvider({
    */
   scope?: string;
 }) {
-  const { user } = useAuth();
+  const { user, org } = useAuth();
+  const contexte = cleDeContexte(scope, org?.id);
+  // L'organisation pour laquelle ce fournisseur parle, annoncée au serveur à
+  // chaque requête de données (`X-AMN-Org`) : il refuse si le jeton du moment
+  // désigne une autre organisation. Voir amn-api, verifierOrganisationAttendue.
+  const orgAttendueRef = useRef<string | null>(scope ?? org?.id ?? null);
+  orgAttendueRef.current = scope ?? org?.id ?? null;
   const [store, setStore] = useState<Store>(() => {
+    if (!scope) retirerMiroirHerite();
     const initial: Store = {};
-    for (const c of SYNCED_COLLECTIONS) initial[c] = toMap(readMirror(scope, c));
+    for (const c of SYNCED_COLLECTIONS) initial[c] = toMap(readMirror(contexte, c));
     return initial;
   });
   const storeRef = useRef(store);
@@ -503,11 +549,11 @@ export function SyncProvider({
         /* Une copie par lot, pas une par fiche : voir lib/fusionSync.ts (gel de 145 s mesuré à un an d'historique). */
         const map = fusionnerLot(prev[collection] ?? {}, incoming);
         const next = { ...prev, [collection]: map };
-        writeMirror(scope, collection, Object.values(map));
+        writeMirror(contexte, collection, Object.values(map));
         return next;
       });
     },
-    [scope],
+    [contexte],
   );
 
   // Tell the main process / remote client who is signed in (presence + attribution).
@@ -563,7 +609,7 @@ export function SyncProvider({
         const LOT = 50;
         const groupe: Record<string, RemoteRecord[]> = {};
         for (let i = 0; i < SYNCED_COLLECTIONS.length; i += LOT) {
-          Object.assign(groupe, await remote.listRecordsBulk(SYNCED_COLLECTIONS.slice(i, i + LOT)));
+          Object.assign(groupe, await remote.listRecordsBulk(SYNCED_COLLECTIONS.slice(i, i + LOT), orgAttendueRef.current));
         }
         const manquantes = SYNCED_COLLECTIONS.filter((c) => !Array.isArray(groupe[c]));
         if (manquantes.length === 0) {
@@ -586,7 +632,7 @@ export function SyncProvider({
       await Promise.all(
         SYNCED_COLLECTIONS.map(async (collection) => {
           try {
-            const records = await remote.listRecords(collection);
+            const records = await remote.listRecords(collection, orgAttendueRef.current);
             if (active) applyRecords(collection, records);
           } catch (err) {
             // Un quota d'invité épuisé n'est pas une panne de réseau : c'est
@@ -693,11 +739,11 @@ export function SyncProvider({
   const rangerFile = useCallback(
     (suite: EntreeEnvoi[], nouveauxAbandons: Abandon[]) => {
       fileRef.current = suite;
-      writeFile(scope, suite);
+      writeFile(contexte, suite);
       setEnAttente(suite.length);
       if (nouveauxAbandons.length > 0) setAbandons((prev) => [...prev, ...nouveauxAbandons]);
     },
-    [scope],
+    [contexte],
   );
 
   /**
@@ -729,7 +775,7 @@ export function SyncProvider({
         if (!pretALEnvoi(entree, Date.now())) continue;
         try {
           if (entree.geste === 'suppression') {
-            await remote.deleteRecord(entree.collection as SyncedCollection, entree.id, emailRef.current);
+            await remote.deleteRecord(entree.collection as SyncedCollection, entree.id, emailRef.current, orgAttendueRef.current);
           } else {
             const saved = await remote.upsertRecord(
               entree.collection as SyncedCollection,
@@ -739,6 +785,7 @@ export function SyncProvider({
               // écriture a pu attendre des heures, et l'autre poste a très bien
               // pu toucher la même fiche entre-temps.
               entree.base && entree.patch ? { base: entree.base, patch: entree.patch } : undefined,
+              orgAttendueRef.current,
             );
             applyRecords(entree.collection, [saved]); // adopter l'horodatage serveur
           }
@@ -747,6 +794,10 @@ export function SyncProvider({
         } catch (err) {
           reportGuestQuotaError(err);
           const statut = statutErreur(err);
+          // 421 : le jeton du moment sert une autre organisation que celle de
+          // cette file (bascule en cours). L'écriture n'est ni partie ni
+          // refusée : elle reste ici, dans la file de SON organisation.
+          if (statut === 421) break;
           const r = appliquerVerdict(fileRef.current, entree, {
             parti: false,
             statut,
@@ -828,7 +879,7 @@ export function SyncProvider({
       applyRecords(collection, [optimistic]); // instant local update
       if (configured) {
         try {
-          const saved = await bridge().remote.upsertRecord(collection, id, stamped, fusion);
+          const saved = await bridge().remote.upsertRecord(collection, id, stamped, fusion, orgAttendueRef.current);
           applyRecords(collection, [saved]); // adopt server timestamp
         } catch (err) {
           /*
@@ -875,7 +926,7 @@ export function SyncProvider({
       applyRecords(collection, [tombstone]);
       if (configured) {
         try {
-          await bridge().remote.deleteRecord(collection, id, emailRef.current);
+          await bridge().remote.deleteRecord(collection, id, emailRef.current, orgAttendueRef.current);
         } catch (err) {
           /*
             Une suppression perdue est PIRE qu'une écriture perdue : ce qu'on a
@@ -909,7 +960,7 @@ export function SyncProvider({
     qu'on fait quand « ça ne marche pas ».
   */
   useEffect(() => {
-    const dejaLa = readFile(scope);
+    const dejaLa = readFile(contexte);
     fileRef.current = dejaLa;
     setEnAttente(dejaLa.length);
 
@@ -926,7 +977,7 @@ export function SyncProvider({
       window.removeEventListener('visibilitychange', relancer);
       if (relanceRef.current) clearTimeout(relanceRef.current);
     };
-  }, [scope, viderFile]);
+  }, [contexte, viderFile]);
 
   // Une écriture qui vient d'échouer ne doit pas attendre le prochain signal.
   useEffect(() => {

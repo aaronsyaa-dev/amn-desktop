@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext';
 import { construireGraphe, portee, renommerDansLes } from '../lib/notesLiens';
 import { useSync, useCollection, uid, stripMeta } from './SyncContext';
 import { IS_BUSINESS } from '../edition/edition';
+import { organisationDOrigineActive } from './organisationDOrigine';
 
 /**
  * Notes (Bloc 2). Deux portées — mais une seule dans l'édition Business.
@@ -144,17 +145,22 @@ export function useNotes() {
   useEffect(() => {
     if (!IS_BUSINESS || migrated.current || personal.length === 0) return;
     migrated.current = true;
-    for (const note of personal) {
-      upsert('notes', note.id, {
-        title: note.title ?? '',
-        body: note.body ?? '',
-        authorEmail: note.authorEmail || email,
-        pinned: Boolean(note.pinned),
-        projectId: note.projectId,
-        createdAt: note.createdAt ?? note.updatedAt,
-      } satisfies TeamNoteData);
-    }
-    persistPersonal([]);
+    void (async () => {
+      // Ces notes sont celles du compte, écrites chez lui : jamais dans une
+      // organisation qu'il a seulement rejointe. Elles restent sur le poste.
+      if (!(await organisationDOrigineActive())) return;
+      for (const note of personal) {
+        upsert('notes', note.id, {
+          title: note.title ?? '',
+          body: note.body ?? '',
+          authorEmail: note.authorEmail || email,
+          pinned: Boolean(note.pinned),
+          projectId: note.projectId,
+          createdAt: note.createdAt ?? note.updatedAt,
+        } satisfies TeamNoteData);
+      }
+      persistPersonal([]);
+    })();
   }, [personal, upsert, email, persistPersonal]);
 
   const createNote = useCallback(
