@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { NAV_ITEMS } from '../data/navigation';
+import { useClientView } from './ClientViewContext';
 
 /**
  * CE QUI A DÉJÀ ÉTÉ OUVERT — la mémoire dont Découvrir a besoin (`26b`)
@@ -27,8 +28,20 @@ const PREFIXE = 'amn.modules.ouverts';
 
 export type JournalOuvertures = Record<string, string>;
 
-function cleDe(email: string | undefined): string {
-  return `${PREFIXE}.${email ?? 'anonyme'}`;
+/*
+  Dans le dossier d'une cliente (Supervisor), le journal est celui de CE
+  dossier : ouvrir un module chez l'une ne le marque pas vu chez les autres,
+  ni dans notre propre espace, dont la clé reste celle d'origine.
+*/
+function cleDe(email: string | undefined, dossier: string | null): string {
+  const base = `${PREFIXE}.${email ?? 'anonyme'}`;
+  return dossier ? `${base}.dossier-${dossier}` : base;
+}
+
+function useCle(): string {
+  const { user, org } = useAuth();
+  const clientView = useClientView();
+  return cleDe(user?.email, clientView ? (org?.id ?? null) : null);
 }
 
 function lire(cle: string): JournalOuvertures {
@@ -42,8 +55,7 @@ function lire(cle: string): JournalOuvertures {
 
 /** Le journal, en lecture. Les écrans ne l'écrivent jamais eux-mêmes. */
 export function useModulesOuverts(): JournalOuvertures {
-  const { user } = useAuth();
-  const cle = cleDe(user?.email);
+  const cle = useCle();
   const [journal, setJournal] = useState<JournalOuvertures>(() => lire(cle));
   useEffect(() => setJournal(lire(cle)), [cle]);
   return journal;
@@ -57,9 +69,8 @@ export function useModulesOuverts(): JournalOuvertures {
  * n'appartient à aucun module n'écrit rien du tout.
  */
 export function useNoterLOuverture(): void {
-  const { user } = useAuth();
   const location = useLocation();
-  const cle = cleDe(user?.email);
+  const cle = useCle();
 
   const noter = useCallback(
     (chemin: string) => {

@@ -13,6 +13,7 @@ import { Majordome } from './Majordome';
 import { PremiersPas } from '../guide/PremiersPas';
 import { CarteDecouvrir } from '../components/CarteDecouvrir';
 import { CarteNouveauModuleVideo } from '../components/CarteNouveauModuleVideo';
+import { useClientView } from '../state/ClientViewContext';
 import { IS_BUSINESS } from '../edition/edition';
 import { Presence } from '../components/Presence';
 import { homeWelcome, parcSerein } from '../lib/homeGreetings';
@@ -137,6 +138,7 @@ interface ArticleStock {
 
 export function HomeSoloScreen() {
   const { user, org } = useAuth();
+  const clientView = useClientView();
   const { appointments } = useAppointments();
   const { clients, quotes } = useClients();
   const tasks = useCollection<TacheLigne>('tasks');
@@ -296,7 +298,8 @@ export function HomeSoloScreen() {
 
         <Presence />
         <PremiersPas />
-        {IS_BUSINESS && <CarteNouveauModuleVideo />}
+        {/* Dans le dossier d'une cliente (Supervisor), l'Accueil doit montrer ce qu'elle voit. */}
+        {(IS_BUSINESS || clientView) && <CarteNouveauModuleVideo />}
         {IS_BUSINESS && <CarteDecouvrir />}
 
         {rienDuTout ? (

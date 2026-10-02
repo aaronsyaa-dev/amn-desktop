@@ -11,6 +11,7 @@ import { PremierLancement } from '../guide/PremierLancement';
 import { Celebrations } from '../components/Celebrations';
 import { useActivity } from '../state/ActivityContext';
 import { SpaceProviders } from '../state/SpaceProviders';
+import { ModulesOuvertsTracker } from '../state/useModulesOuverts';
 import { BootHealthy } from '../components/BootHealthy';
 import { SyncActivityNotifier } from '../components/SyncActivityNotifier';
 import { SupportNotifier } from '../components/SupportNotifier';
@@ -113,6 +114,8 @@ export function BusinessLayout() {
 
   return (
     <SpaceProviders>
+    {/* « Déjà ouvert » : sans lui, l'encart Nouveau module et la carte de Découvrir ne savaient jamais rien. */}
+    <ModulesOuvertsTracker />
     <GuideProvider>
     <CallProvider>
     <RegardsProvider>
