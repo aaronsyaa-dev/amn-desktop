@@ -10,6 +10,7 @@ import { isModuleEnabled, isModuleLocked } from '../data/spaces';
 import { useOrgContext } from '../state/OrgContextContext';
 import { ClientViewProvider } from '../state/ClientViewContext';
 import { SpaceProviders } from '../state/SpaceProviders';
+import { ModulesOuvertsTracker } from '../state/useModulesOuverts';
 import { BootHealthy } from '../components/BootHealthy';
 import { SyncStatusIndicator } from '../components/SyncStatusIndicator';
 import { variantsForPath } from '../lib/transitions';
@@ -69,6 +70,8 @@ export function ClientContextLayout() {
         état React d'une cliente ne survit à la bascule vers une autre.
       */}
       <SpaceProviders key={scope} scope={scope}>
+        {/* Le journal « déjà ouvert » de CE dossier — l'encart Nouveau module de l'Accueil s'en sert. */}
+        <ModulesOuvertsTracker />
               <ClientBanner />
               <div
                 className="app-ground flex flex-col overflow-hidden text-text-primary"

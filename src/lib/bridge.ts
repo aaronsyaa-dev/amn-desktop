@@ -9,6 +9,7 @@ import {
   ModuleLock,
 } from '../shared/api';
 import { avecReprise, messageServeurAbsent, serveurAbsent } from '../shared/reprise';
+import { enteteOrganisation } from '../shared/enteteOrganisation';
 import { signalerReprise } from './reprise';
 import { APP_VERSION, EDITION_PRODUCT_NAME, IS_BUSINESS } from '../edition/edition';
 import { showLocalNotification } from './webPush';
@@ -671,28 +672,36 @@ function createBrowserRemote(): AmnBridge['remote'] {
       ensureStarted();
       return () => statusListeners.delete(callback);
     },
-    async listRecords(collection) {
-      const { records } = await apiFetch<{ records: RemoteRecord[] }>(`/v1/collections/${collection}`);
+    async listRecords(collection, org) {
+      const { records } = await apiFetch<{ records: RemoteRecord[] }>(`/v1/collections/${collection}`, {
+        headers: enteteOrganisation(org),
+      });
       return records;
     },
-    async listRecordsBulk(collections) {
+    async listRecordsBulk(collections, org) {
       if (collections.length === 0) return {};
       const { collections: rendues } = await apiFetch<{
         collections: Record<string, RemoteRecord[]>;
-      }>(`/v1/collections/_bulk?names=${collections.map(encodeURIComponent).join(',')}`);
+      }>(`/v1/collections/_bulk?names=${collections.map(encodeURIComponent).join(',')}`, {
+        headers: enteteOrganisation(org),
+      });
       return rendues ?? {};
     },
-    async upsertRecord(collection, id, data, fusion) {
+    async upsertRecord(collection, id, data, fusion, org) {
       const { record } = await apiFetch<{ record: RemoteRecord }>(
         `/v1/collections/${collection}/${encodeURIComponent(id)}`,
-        { method: 'PUT', body: JSON.stringify(fusion ? { data, ...fusion } : { data }) },
+        {
+          method: 'PUT',
+          body: JSON.stringify(fusion ? { data, ...fusion } : { data }),
+          headers: enteteOrganisation(org),
+        },
       );
       return record;
     },
-    async deleteRecord(collection, id, by) {
+    async deleteRecord(collection, id, by, org) {
       const { record } = await apiFetch<{ record: RemoteRecord }>(
         `/v1/collections/${collection}/${encodeURIComponent(id)}`,
-        { method: 'DELETE', body: by ? JSON.stringify({ by }) : undefined },
+        { method: 'DELETE', body: by ? JSON.stringify({ by }) : undefined, headers: enteteOrganisation(org) },
       );
       return record;
     },

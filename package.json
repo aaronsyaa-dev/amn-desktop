@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit",
     "build:web": "node scripts/build-web.mjs",
     "check:sync": "node scripts/check-sync-parity.mjs",
+    "check:isolation": "node scripts/check-isolation.mjs",
     "check:supervision": "node scripts/check-supervision.mjs",
     "check:journal": "node scripts/check-journal.mjs",
     "check:justificatif": "node scripts/check-justificatif.mjs",

@@ -11,6 +11,7 @@ import { API_UNREACHABLE_PREFIX, GUEST_QUOTA_PREFIX, marquerStatut,
   ModuleLock,
 } from '../shared/api';
 import { avecReprise, messageServeurAbsent, serveurAbsent } from '../shared/reprise';
+import { enteteOrganisation } from '../shared/enteteOrganisation';
 import type {
   InvitationCarte,
   LectureInvitation,
@@ -177,16 +178,19 @@ export class RemoteApiClient {
 
   /* ------------------------ Shared collections ------------------------ */
 
-  async listRecords(collection: SyncedCollection): Promise<RemoteRecord[]> {
-    const { records } = await apiFetch<{ records: RemoteRecord[] }>(`/v1/collections/${collection}`);
+  async listRecords(collection: SyncedCollection, org?: string | null): Promise<RemoteRecord[]> {
+    const { records } = await apiFetch<{ records: RemoteRecord[] }>(`/v1/collections/${collection}`, {
+      headers: enteteOrganisation(org),
+    });
     return records;
   }
 
   /** Voir `AmnBridge.remote.listRecordsBulk` : un aller-retour au lieu de vingt-huit. */
-  async listRecordsBulk(collections: SyncedCollection[]): Promise<Record<string, RemoteRecord[]>> {
+  async listRecordsBulk(collections: SyncedCollection[], org?: string | null): Promise<Record<string, RemoteRecord[]>> {
     if (collections.length === 0) return {};
     const res = await apiFetch<{ collections: Record<string, RemoteRecord[]> }>(
       `/v1/collections/_bulk?names=${collections.map(encodeURIComponent).join(',')}`,
+      { headers: enteteOrganisation(org) },
     );
     return res.collections ?? {};
   }
@@ -196,18 +200,28 @@ export class RemoteApiClient {
     id: string,
     data: Record<string, unknown>,
     fusion?: { base: string; patch: Record<string, unknown> },
+    org?: string | null,
   ): Promise<RemoteRecord> {
     const { record } = await apiFetch<{ record: RemoteRecord }>(
       `/v1/collections/${collection}/${encodeURIComponent(id)}`,
-      { method: 'PUT', body: JSON.stringify(fusion ? { data, ...fusion } : { data }) },
+      {
+        method: 'PUT',
+        body: JSON.stringify(fusion ? { data, ...fusion } : { data }),
+        headers: enteteOrganisation(org),
+      },
     );
     return record;
   }
 
-  async deleteRecord(collection: SyncedCollection, id: string, by?: string | null): Promise<RemoteRecord> {
+  async deleteRecord(
+    collection: SyncedCollection,
+    id: string,
+    by?: string | null,
+    org?: string | null,
+  ): Promise<RemoteRecord> {
     const { record } = await apiFetch<{ record: RemoteRecord }>(
       `/v1/collections/${collection}/${encodeURIComponent(id)}`,
-      { method: 'DELETE', body: by ? JSON.stringify({ by }) : undefined },
+      { method: 'DELETE', body: by ? JSON.stringify({ by }) : undefined, headers: enteteOrganisation(org) },
     );
     return record;
   }

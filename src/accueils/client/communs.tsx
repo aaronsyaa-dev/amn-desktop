@@ -4,6 +4,7 @@ import type { Journee } from './journee';
 import { hhmm } from './journee';
 import { CarteDecouvrir } from '../../components/CarteDecouvrir';
 import { CarteNouveauModuleVideo } from '../../components/CarteNouveauModuleVideo';
+import { useClientView } from '../../state/ClientViewContext';
 import { IS_BUSINESS } from '../../edition/edition';
 
 /**
@@ -19,6 +20,7 @@ const MOIS = ['janv.', 'févr.', 'mars', 'avril', 'mai', 'juin', 'juil.', 'août
 export const dateCourte = (d: Date) => `${JOURS[d.getDay()]} ${d.getDate()} ${MOIS[d.getMonth()]}`;
 
 export function EnTeteAccueil({ j, nom }: { j: Journee; nom: string }) {
+  const clientView = useClientView();
   return (
     <>
       <header data-guide="titre" className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -30,10 +32,10 @@ export function EnTeteAccueil({ j, nom }: { j: Journee; nom: string }) {
         </span>
       </header>
       {/* Découvrir, sous l'en-tête de chacune des dix variantes : l'entrée vers tout ce qui manque encore. */}
-      {IS_BUSINESS && (
+      {(IS_BUSINESS || clientView) && (
         <div className="mt-4 flex flex-col gap-3">
           <CarteNouveauModuleVideo />
-          <CarteDecouvrir />
+          {IS_BUSINESS && <CarteDecouvrir />}
         </div>
       )}
     </>

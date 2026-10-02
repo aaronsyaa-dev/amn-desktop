@@ -3170,7 +3170,8 @@ export interface AmnBridge {
     onConnectionStatusChange(callback: (status: RemoteConnectionStatus) => void): () => void;
 
     /* --- Shared collections (tasks/decisions/… synced between operators) --- */
-    listRecords(collection: SyncedCollection): Promise<RemoteRecord[]>;
+    /** `org` : l'organisation attendue, envoyée en `X-AMN-Org` — amn-api refuse (421) si elle diffère de celle du jeton. */
+    listRecords(collection: SyncedCollection, org?: string | null): Promise<RemoteRecord[]>;
     /**
      * TOUT L'ESPACE EN UN ALLER-RETOUR.
      *
@@ -3184,7 +3185,7 @@ export interface AmnBridge {
      * vide est PRÉSENTE et vide : l'absence d'une clé signifie que le serveur
      * ne l'a pas traitée, ce qui n'est pas la même chose.
      */
-    listRecordsBulk(collections: SyncedCollection[]): Promise<Record<string, RemoteRecord[]>>;
+    listRecordsBulk(collections: SyncedCollection[], org?: string | null): Promise<Record<string, RemoteRecord[]>>;
     upsertRecord(
       collection: SyncedCollection,
       id: string,
@@ -3199,6 +3200,7 @@ export interface AmnBridge {
        * `champsModifies` (lib/fileEnvoi) et amn-api/src/lib/fusion.js.
        */
       fusion?: { base: string; patch: Record<string, unknown> },
+      org?: string | null,
     ): Promise<RemoteRecord>;
     /**
      * `by` : qui supprime, auto-déclaré comme `WRITER_KEY` sur une écriture —
@@ -3206,7 +3208,7 @@ export interface AmnBridge {
      * part. Facultatif : sans lui, la suppression est journalisée (voir
      * record_activity_log) sans auteur plutôt que refusée.
      */
-    deleteRecord(collection: SyncedCollection, id: string, by?: string | null): Promise<RemoteRecord>;
+    deleteRecord(collection: SyncedCollection, id: string, by?: string | null, org?: string | null): Promise<RemoteRecord>;
     /** Live record changes pushed from amn-api. Returns an unsubscribe function. */
     onRecord(callback: (record: RemoteRecord) => void): () => void;
 

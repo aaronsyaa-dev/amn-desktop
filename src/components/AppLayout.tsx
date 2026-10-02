@@ -124,7 +124,7 @@ export function AppLayout() {
   }, [location.pathname]);
 
   return (
-    <SyncProvider>
+    <SyncProvider key={org?.id ?? 'sans-organisation'}>
       <ProfilesProvider>
         <SourceBureauxProvider actif={Boolean(bureau)}>
         <RegardsProvider>

@@ -213,11 +213,11 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
 
   ipcMain.handle(IPC.remoteConnectionStatus, () => remote.getConnectionStatus());
 
-  ipcMain.handle(IPC.remoteListRecords, (_event, collection: SyncedCollection) =>
-    remote.listRecords(collection),
+  ipcMain.handle(IPC.remoteListRecords, (_event, collection: SyncedCollection, org?: string | null) =>
+    remote.listRecords(collection, org),
   );
-  ipcMain.handle(IPC.remoteListRecordsBulk, (_event, collections: SyncedCollection[]) =>
-    remote.listRecordsBulk(collections),
+  ipcMain.handle(IPC.remoteListRecordsBulk, (_event, collections: SyncedCollection[], org?: string | null) =>
+    remote.listRecordsBulk(collections, org),
   );
   ipcMain.handle(
     IPC.remoteUpsertRecord,
@@ -228,13 +228,14 @@ export function registerIpcHandlers(remote: RemoteApiClient, options: IpcOptions
         id: string;
         data: Record<string, unknown>;
         fusion?: { base: string; patch: Record<string, unknown> };
+        org?: string | null;
       },
-    ) => remote.upsertRecord(payload.collection, payload.id, payload.data, payload.fusion),
+    ) => remote.upsertRecord(payload.collection, payload.id, payload.data, payload.fusion, payload.org),
   );
   ipcMain.handle(
     IPC.remoteDeleteRecord,
-    (_event, payload: { collection: SyncedCollection; id: string; by?: string | null }) =>
-      remote.deleteRecord(payload.collection, payload.id, payload.by),
+    (_event, payload: { collection: SyncedCollection; id: string; by?: string | null; org?: string | null }) =>
+      remote.deleteRecord(payload.collection, payload.id, payload.by, payload.org),
   );
   ipcMain.handle(IPC.remoteActivityLog, (_event, limit?: number) => remote.activityLog(limit));
   ipcMain.handle(IPC.remoteGetPresence, () => remote.getPresence());

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { bridge } from '../lib/bridge';
 import { useSync, useCollection } from './SyncContext';
 import { useClientView } from './ClientViewContext';
+import { organisationDOrigineActive } from './organisationDOrigine';
 import { assignUniqueIds, oneOf } from '../lib/records';
 import type {
   AddClientEventInput,
@@ -193,6 +194,11 @@ export function useClients() {
     importedRef.current = true;
 
     void (async () => {
+      // Pas de contexte client ne suffit pas : un compte membre de plusieurs
+      // organisations y entre par le rail, sans contexte. Le magasin hérité
+      // appartient à l'organisation d'ORIGINE du compte ; l'importer ailleurs
+      // téléversait nos fiches locales chez une cliente.
+      if (configured && !(await organisationDOrigineActive())) return;
       const [legacyClients, legacyQuotes] = await Promise.all([
         bridge().clients.list().catch(() => [] as Client[]),
         bridge().quotes.list().catch(() => [] as Quote[]),
