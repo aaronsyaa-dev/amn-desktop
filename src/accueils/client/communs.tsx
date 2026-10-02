@@ -3,6 +3,7 @@ import { HomeSoloScreen } from '../../business/HomeSoloScreen';
 import type { Journee } from './journee';
 import { hhmm } from './journee';
 import { CarteDecouvrir } from '../../components/CarteDecouvrir';
+import { CarteNouveauModuleVideo } from '../../components/CarteNouveauModuleVideo';
 import { IS_BUSINESS } from '../../edition/edition';
 
 /**
@@ -30,7 +31,8 @@ export function EnTeteAccueil({ j, nom }: { j: Journee; nom: string }) {
       </header>
       {/* Découvrir, sous l'en-tête de chacune des dix variantes : l'entrée vers tout ce qui manque encore. */}
       {IS_BUSINESS && (
-        <div className="mt-4">
+        <div className="mt-4 flex flex-col gap-3">
+          <CarteNouveauModuleVideo />
           <CarteDecouvrir />
         </div>
       )}

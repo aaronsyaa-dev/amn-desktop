@@ -2575,6 +2575,8 @@ export type SyncedCollection =
   | 'chatbotQuestions'
   | 'switchboardCalls'
   | 'videoEdits'
+  /** Production vidéo (chantier « nouveau module », 01/10/2026) : une fiche par vidéo, de l'idée à la publication. */
+  | 'videoProductions'
   | 'adVisuals'
   | 'scheduledPosts'
   | 'podcastEpisodes'

@@ -135,6 +135,7 @@ export const NAV_EN_COMMUN: Record<string, TraductionNav> = {
   chatbot: { label: 'Chatbot', hint: 'Questions asked, and those left unanswered' },
   switchboard: { label: 'Switchboard', hint: 'What the assistant promised on your behalf, on the phone' },
   video: { label: 'Video editing', hint: 'A short film, against the target format length' },
+  videoProductions: { label: 'Video production', hint: 'One fact sheet per video, from idea to publication' },
   adVisuals: { label: 'Ad visuals', hint: 'One visual, in every format' },
   postPlanner: { label: 'Post planner', hint: 'This week’s posts, against when the audience is there' },
   podcast: { label: 'Podcast', hint: 'The whole episode, its chapters and what can go' },

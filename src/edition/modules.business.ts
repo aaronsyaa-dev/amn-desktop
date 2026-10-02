@@ -32,6 +32,7 @@ import {
   FileSpreadsheet,
   FileText,
   Fingerprint,
+  Film,
   Flame,
   FolderArchive,
   FolderKanban,
@@ -230,6 +231,7 @@ export const NAV_SECTIONS: NavSection[] = [
     label: 'Marketing',
     items: [
       { key: 'video', label: 'Montage vidéo', to: '/montage-video', icon: Clapperboard, hint: 'Un film court, contre la durée du format visé' },
+      { key: 'videoProductions', label: 'Production vidéo', to: '/productions-video', icon: Film, hint: 'Une fiche par vidéo, de l’idée à la publication' },
       { key: 'adVisuals', label: 'Visuels pub', to: '/visuels-pub', icon: Frame, hint: 'Un visuel, décliné dans tous les formats' },
       { key: 'postPlanner', label: 'Planificateur', to: '/planificateur', icon: Clock, hint: 'Les posts de la semaine, contre l’heure où l’audience est là' },
       { key: 'podcast', label: 'Podcast', to: '/podcast', icon: Mic, hint: 'L’épisode entier, ses chapitres et ce qui peut partir' },

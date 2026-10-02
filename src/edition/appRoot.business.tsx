@@ -92,6 +92,7 @@ import { AcompteScreen } from '../screens/AcompteScreen';
 import { ChatbotScreen } from '../screens/ChatbotScreen';
 import { StandardScreen } from '../screens/StandardScreen';
 import { MontageVideoScreen } from '../screens/MontageVideoScreen';
+import { VideoProductionsScreen } from '../screens/VideoProductionsScreen';
 import { VisuelsPubScreen } from '../screens/VisuelsPubScreen';
 import { PlanificateurScreen } from '../screens/PlanificateurScreen';
 import { PodcastScreen } from '../screens/PodcastScreen';
@@ -768,6 +769,14 @@ export function AppRoot() {
           element={
             <ModuleRoute module="video">
               <MontageVideoScreen />
+            </ModuleRoute>
+          }
+        />
+        <Route
+          path="/productions-video"
+          element={
+            <ModuleRoute module="videoProductions">
+              <VideoProductionsScreen />
             </ModuleRoute>
           }
         />

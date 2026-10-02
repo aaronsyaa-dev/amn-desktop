@@ -12,6 +12,7 @@ import type { AttentionItem } from '../lib/attention';
 import { Majordome } from './Majordome';
 import { PremiersPas } from '../guide/PremiersPas';
 import { CarteDecouvrir } from '../components/CarteDecouvrir';
+import { CarteNouveauModuleVideo } from '../components/CarteNouveauModuleVideo';
 import { IS_BUSINESS } from '../edition/edition';
 import { Presence } from '../components/Presence';
 import { homeWelcome, parcSerein } from '../lib/homeGreetings';
@@ -295,6 +296,7 @@ export function HomeSoloScreen() {
 
         <Presence />
         <PremiersPas />
+        {IS_BUSINESS && <CarteNouveauModuleVideo />}
         {IS_BUSINESS && <CarteDecouvrir />}
 
         {rienDuTout ? (
