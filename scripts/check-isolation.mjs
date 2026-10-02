@@ -215,8 +215,11 @@ try {
   vu = await ecranClients(page);
   verifier(vu.A && !vu.B, 'retour dans A : Clients montre A et pas B');
 
-  const ecritsAilleurs = (await db.listRecords(orgB.id, 'clients')).filter((r) => !r.deleted && !r.id.startsWith('B-'));
-  const etrangersChezA = (await db.listRecords(orgA.id, 'clients')).filter((r) => !r.deleted && !r.id.startsWith('A-'));
+  // Le critère est l'ORIGINE, pas l'exhaustivité : l'édition interne téléverse
+  // aussi, chez elle, son magasin local hérité (fiches de démonstration).
+  const venuDe = (r, ...prefixes) => prefixes.some((p) => r.id.startsWith(p));
+  const ecritsAilleurs = (await db.listRecords(orgB.id, 'clients')).filter((r) => !r.deleted && venuDe(r, 'A-', 'ETRANGER'));
+  const etrangersChezA = (await db.listRecords(orgA.id, 'clients')).filter((r) => !r.deleted && venuDe(r, 'B-', 'ETRANGER'));
   verifier(ecritsAilleurs.length === 0 && etrangersChezA.length === 0, 'côté serveur, aucune fiche écrite dans la mauvaise organisation (file héritée comprise)');
   await contexte.close();
 
@@ -224,7 +227,13 @@ try {
   const b = await session('iso-b@exemple.test');
   vu = await ecranClients(b.page);
   m = await miroirs(b.page);
-  verifier(vu.B && !vu.A, 'Clients montre B et rien de A');
+  if (FONDATRICE) {
+    // L'édition interne n'ouvre pas à un compte de cliente : il reste à la
+    // porte. Ce qui compte, c'est qu'il ne voie rien de A.
+    verifier(!vu.A, 'rien de A n’est visible (l’édition interne ne s’ouvre pas à ce compte)');
+  } else {
+    verifier(vu.B && !vu.A, 'Clients montre B et rien de A');
+  }
   verifier(Object.values(m.parOrg).every((p) => !p.includes('A')), 'aucun miroir ne contient un enregistrement de A');
   await b.contexte.close();
 } finally {
