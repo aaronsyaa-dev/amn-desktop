@@ -111,6 +111,9 @@ jobs:
       - name: Contrôle de la file d'envoi
         run: npm run check:envoi
 
+      - name: Migration de la file d'envoi — aucune écriture perdue au changement de version
+        run: npm run check:file-heritee
+
       - name: Contrôle de la barre latérale
         run: npm run check:barre
 
@@ -254,6 +257,36 @@ jobs:
       - name: Parité des collections synchronisées
         if: env.JETON_API != ''
         run: npm run check:sync
+        env:
+          AMN_API_ROOT: ${{ github.workspace }}/serveur
+
+      # LES MODULES DE BASE ET L'ISOLATION, DANS UN VRAI NAVIGATEUR.
+      #
+      # Né du signalement « le module Clients a disparu » (octobre 2026) : rien
+      # ne vérifiait qu'un module ouvert reste dans le menu ET montre ses fiches
+      # après un changement, ni qu'une écriture en attente survit à une mise à
+      # jour. Les deux contrôles démarrent LEUR amn-api, en mémoire, depuis le
+      # dépôt voisin récupéré plus haut : rien de réel n'est touché.
+      - name: Dépendances d'amn-api et du navigateur
+        if: env.JETON_API != ''
+        run: |
+          (cd serveur && npm ci)
+          npx playwright-core install --with-deps chromium
+      - name: Build web (business) pour les contrôles navigateur
+        if: env.JETON_API != ''
+        run: npm run build:web
+        env:
+          AMN_EDITION: business
+          AMN_WEB_OUT: dist-controles
+          VITE_AMN_API_URL: http://127.0.0.1:8791
+      - name: Modules de base — visibles et remplis, par rôle, configuration et mise à jour
+        if: env.JETON_API != ''
+        run: npm run check:modules-de-base -- dist-controles 4610
+        env:
+          AMN_API_ROOT: ${{ github.workspace }}/serveur
+      - name: Isolation entre organisations — dans le navigateur
+        if: env.JETON_API != ''
+        run: npm run check:isolation -- dist-controles 4611
         env:
           AMN_API_ROOT: ${{ github.workspace }}/serveur
 

@@ -227,3 +227,42 @@ jobs:
             echo "C'est le cas d'une page servie à moitié, d'une redirection vers autre chose,"
             echo "ou d'un dossier de sortie vide. Voir l'étape « Relire ce qui est servi »."
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # ── Les modules de base, pour une vraie session ──────────────────────────
+      #
+      # La relecture ci-dessus dit ce que le BUNDLE contient. Elle ne dit pas si
+      # une organisation voit encore ses modules : c'est exactement ce qui a
+      # manqué au signalement « le module Clients a disparu » (octobre 2026).
+      # On ouvre donc l'adresse avec le compte d'une organisation de RÉFÉRENCE
+      # (de test, jamais une cliente) et on exige Clients, Agenda, Tâches,
+      # Facturation dans le menu, ouvrables, et remplis.
+      #
+      # Après la relecture, et seulement si elle est propre : inutile de se
+      # connecter à une adresse qui sert la mauvaise édition. `npm ci` vient
+      # ICI, après — la relecture du bundle doit pouvoir tourner sans lui.
+      - name: Dépendances du navigateur
+        if: steps.cible.outputs.relire == 'oui' && success()
+        run: |
+          npm ci --ignore-scripts
+          npx playwright-core install --with-deps chromium
+
+      - name: Modules de base visibles pour l'organisation de référence
+        id: modules
+        if: steps.cible.outputs.relire == 'oui' && success()
+        env:
+          AMN_REF_EMAIL: ${{ secrets.AMN_REF_EMAIL }}
+          AMN_REF_MDP: ${{ secrets.AMN_REF_MDP }}
+        run: node scripts/check-modules-servis.mjs --url "${{ steps.cible.outputs.url }}"
+
+      - name: Un module de base a disparu
+        if: failure() && steps.modules.outcome == 'failure'
+        run: |
+          {
+            echo "## Un module de base a disparu chez l'organisation de référence"
+            echo ""
+            echo "\`${{ steps.cible.outputs.url }}\` sert la bonne édition, mais Clients, Agenda,"
+            echo "Tâches ou Facturation n'est plus visible, ne s'ouvre plus, ou n'affiche plus"
+            echo "ses fiches. Si c'est vrai pour la référence, c'est probablement vrai chez"
+            echo "les clientes. Voir l'étape « Modules de base visibles… » pour le détail,"
+            echo "et docs/MISE-EN-LIGNE.md pour la marche à suivre."
+          } >> "$GITHUB_STEP_SUMMARY"
