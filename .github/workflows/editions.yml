@@ -111,6 +111,9 @@ jobs:
       - name: Contrôle de la file d'envoi
         run: npm run check:envoi
 
+      - name: Migration de la file d'envoi — aucune écriture perdue au changement de version
+        run: npm run check:file-heritee
+
       - name: Contrôle de la barre latérale
         run: npm run check:barre
 

@@ -24,6 +24,7 @@ import {
 import { statutErreur } from '../lib/errorMessage';
 import { useAuth } from '../auth/AuthContext';
 import { fusionnerLot } from '../lib/fusionSync';
+import { conserverSeulement, lireFileHeritee, mettreDeCote, partager } from '../lib/fileHeritee';
 import type {
   PresenceEntry,
   RemoteConnectionStatus,
@@ -261,29 +262,20 @@ function mirrorKey(contexte: string, collection: string): string {
   return `${MIRROR_PREFIX}${contexte}.${collection}`;
 }
 
-const FILE_HERITEE_EN_QUARANTAINE = `${MIRROR_PREFIX}quarantaine.__envoi`;
-
 /**
- * Retire les clés d'avant l'indexation par organisation.
+ * Retire le miroir d'avant l'indexation par organisation, et met de côté sa
+ * file d'envoi.
  *
  * Le miroir hérité n'est qu'un cache : le rattrapage le reconstruit depuis le
- * serveur. Personne ne peut dire de quelle organisation il vient, donc il ne
- * peut être rattaché à aucune. La file d'envoi héritée, elle, porte des
- * écritures jamais parties : l'envoyer sous la session courante pourrait les
- * écrire dans la mauvaise organisation. Elle est mise de côté, jamais envoyée,
- * jamais effacée.
+ * serveur. La file héritée, elle, porte des écritures jamais parties : elle
+ * n'est ni effacée ni envoyée à l'aveugle, mais mise de côté puis rejouée
+ * dans la bonne organisation quand c'est sans ambiguïté — voir
+ * lib/fileHeritee.ts et `reprendreFileHeritee` plus bas.
  */
-function retirerMiroirHerite(): void {
+function retirerMiroirHerite(email: string | null): void {
   try {
     for (const collection of SYNCED_COLLECTIONS) window.localStorage.removeItem(MIRROR_PREFIX + collection);
-    const file = window.localStorage.getItem(`${MIRROR_PREFIX}__envoi`);
-    if (file !== null) {
-      const entrees = JSON.parse(file) as unknown;
-      if (Array.isArray(entrees) && entrees.length > 0 && window.localStorage.getItem(FILE_HERITEE_EN_QUARANTAINE) === null) {
-        window.localStorage.setItem(FILE_HERITEE_EN_QUARANTAINE, file);
-      }
-      window.localStorage.removeItem(`${MIRROR_PREFIX}__envoi`);
-    }
+    mettreDeCote(window.localStorage, email);
   } catch {
     /* stockage indisponible : rien d'hérité à lire non plus */
   }
@@ -503,7 +495,7 @@ export function SyncProvider({
   const orgAttendueRef = useRef<string | null>(scope ?? org?.id ?? null);
   orgAttendueRef.current = scope ?? org?.id ?? null;
   const [store, setStore] = useState<Store>(() => {
-    if (!scope) retirerMiroirHerite();
+    if (!scope) retirerMiroirHerite(user?.email ?? null);
     const initial: Store = {};
     for (const c of SYNCED_COLLECTIONS) initial[c] = toMap(readMirror(contexte, c));
     return initial;
@@ -978,6 +970,57 @@ export function SyncProvider({
       if (relanceRef.current) clearTimeout(relanceRef.current);
     };
   }, [contexte, viderFile]);
+
+  /*
+    LA FILE HÉRITÉE REPART — dans la bonne organisation, ou pas du tout.
+
+    Ce que les versions d'avant l'indexation par organisation n'avaient pas
+    encore envoyé (voir lib/fileHeritee.ts) est rejoué ici, une fois la
+    synchronisation prête, et seulement quand rien n'est ambigu : même compte,
+    même auteur, un compte qui n'appartient qu'à une organisation, et une
+    session qui regarde bien celle de ce fournisseur. Chaque envoi porte
+    `X-AMN-Org` : le serveur refuserait encore une erreur de destination.
+
+    Les anciennes écritures passent AVANT celles faites depuis la mise à jour,
+    qui s'y superposent : c'est l'ordre dans lequel la personne a agi.
+  */
+  const repriseFaite = useRef(false);
+  useEffect(() => {
+    if (scope || !ready || !configured || repriseFaite.current) return;
+    const email = user?.email ?? null;
+    const heritee = lireFileHeritee(window.localStorage);
+    if (heritee.entrees.length === 0) return;
+    repriseFaite.current = true;
+    void (async () => {
+      let mine: Awaited<ReturnType<ReturnType<typeof bridge>['remote']['session']['listMyOrganizations']>>;
+      try {
+        mine = await bridge().remote.session.listMyOrganizations();
+      } catch {
+        repriseFaite.current = false; // réessayé au prochain passage, rien n'est perdu
+        return;
+      }
+      if (orgAttendueRef.current && mine.activeOrgId && mine.activeOrgId !== orgAttendueRef.current) return;
+      const { aRejouer, aGarder, raison } = partager(heritee, { email, nombreOrganisations: mine.organizations.length });
+      if (raison) console.warn(`[sync] ${aGarder.length} écriture(s) d'avant la mise à jour gardée(s) de côté (${raison}).`);
+      if (aRejouer.length === 0) return;
+      let suite: EntreeEnvoi[] = [];
+      const abandons: Abandon[] = [];
+      for (const e of aRejouer) {
+        const r = poserEnFile(suite, { ...e, essais: 0 });
+        suite = r.file;
+        abandons.push(...r.abandons);
+      }
+      for (const e of fileRef.current) {
+        const r = poserEnFile(suite, e);
+        suite = r.file;
+        abandons.push(...r.abandons);
+      }
+      // La file de l'organisation d'abord, la file héritée ensuite : jamais un instant sans copie.
+      rangerFile(suite, abandons);
+      conserverSeulement(window.localStorage, heritee, aGarder);
+      void viderFile();
+    })();
+  }, [scope, ready, configured, user?.email, rangerFile, viderFile]);
 
   // Une écriture qui vient d'échouer ne doit pas attendre le prochain signal.
   useEffect(() => {
