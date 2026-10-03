@@ -16,6 +16,8 @@
     "build:web": "node scripts/build-web.mjs",
     "check:sync": "node scripts/check-sync-parity.mjs",
     "check:isolation": "node scripts/check-isolation.mjs",
+    "check:modules-de-base": "node scripts/check-modules-de-base.mjs",
+    "check:modules-servis": "node scripts/check-modules-servis.mjs",
     "check:supervision": "node scripts/check-supervision.mjs",
     "check:journal": "node scripts/check-journal.mjs",
     "check:justificatif": "node scripts/check-justificatif.mjs",

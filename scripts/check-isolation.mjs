@@ -26,6 +26,7 @@
  * amn-api est trouvé comme pour les contrôles croisés (AMN_API_ROOT, voir
  * scripts/api-root.mjs). Sans lui, le contrôle passe en le disant.
  */
+import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -93,7 +94,9 @@ const verifier = (ok, message) => {
   if (!ok) echecs.push(message);
 };
 
-const navigateur = await chromium.launch({ executablePath: process.env.AMN_CHROMIUM ?? '/opt/pw-browsers/chromium' });
+const cheminChromium = process.env.AMN_CHROMIUM ?? '/opt/pw-browsers/chromium';
+// En CI, `playwright-core install chromium` le range ailleurs : on le laisse le trouver.
+const navigateur = await chromium.launch(fs.existsSync(cheminChromium) ? { executablePath: cheminChromium } : {});
 
 async function session(email, { miroirHerite = false } = {}) {
   const contexte = await navigateur.newContext({ viewport: { width: 1360, height: 900 } });
