@@ -31,6 +31,7 @@
       "@edition/appRoot": ["src/edition/appRoot.internal.tsx"],
       "@edition/accueils": ["src/edition/accueils.internal.tsx"],
       "@edition/guide": ["src/edition/guide.internal.ts"],
+      "@edition/socle": ["src/edition/socle.internal.tsx"],
       "@edition/mainExclusive": ["src/main/exclusive.internal.ts"],
       "@edition/preloadExclusive": ["src/preload.exclusive.internal.ts"]
     }

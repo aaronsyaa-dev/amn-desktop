@@ -5,6 +5,7 @@ import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { isWeb } from './lib/platform';
 import { beginBoot } from './lib/safeBoot';
+import { RacineSocle } from '@edition/socle';
 import './index.css';
 
 const container = document.getElementById('root');
@@ -57,12 +58,19 @@ beginBoot();
   Posé ICI, au-dessus de tout, parce qu'un contexte oublié dans un sous-arbre
   est un sous-arbre qui continue de bouger — et personne ne le remarquerait
   sans cocher la case et relire les vingt écrans.
+
+  `RacineSocle` (refonte, src/edition/socle.*.tsx) : dans l'édition interne,
+  un second `MotionConfig` imbriqué y applique le réglage Mouvement des
+  Réglages ; dans l'édition cliente, elle rend ses enfants tels quels et
+  celui-ci reste seul en vigueur.
 */
 createRoot(container).render(
   <React.StrictMode>
     <ErrorBoundary>
       <MotionConfig reducedMotion="user">
-        <App />
+        <RacineSocle>
+          <App />
+        </RacineSocle>
       </MotionConfig>
     </ErrorBoundary>
   </React.StrictMode>,

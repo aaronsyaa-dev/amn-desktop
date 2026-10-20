@@ -18,6 +18,7 @@
       "@edition/appRoot": ["src/edition/appRoot.business.tsx"],
       "@edition/accueils": ["src/edition/accueils.business.tsx"],
       "@edition/guide": ["src/edition/guide.business.ts"],
+      "@edition/socle": ["src/edition/socle.business.tsx"],
       "@edition/mainExclusive": ["src/main/exclusive.business.ts"],
       "@edition/preloadExclusive": ["src/preload.exclusive.business.ts"]
     }
