@@ -111,6 +111,8 @@ jobs:
         run: npm run check:socle
       - name: Bus de moments — abonnés, isolement, catalogue
         run: npm run check:moments
+      - name: Ajmani et l'Accueil vivant — parole, scènes, fil du jour, éditions
+        run: npm run check:ajmani
 
       - name: Contrôle de la file d'envoi
         run: npm run check:envoi

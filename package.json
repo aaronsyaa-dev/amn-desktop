@@ -65,6 +65,8 @@
     "check:calques": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-calques.ts",
     "check:socle": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-socle.ts",
     "check:moments": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-moments.ts",
+    "apercu:ajmani": "node scripts/apercu-ajmani.mjs",
+    "check:ajmani": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ajmani.ts",
     "check:clavier": "node scripts/check-clavier.mjs",
     "gardes": "node scripts/gardes-navigateur.mjs",
     "seed:essai": "node scripts/seed-essai.mjs",
