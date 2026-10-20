@@ -65,6 +65,7 @@
     "check:calques": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-calques.ts",
     "check:socle": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-socle.ts",
     "check:moments": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-moments.ts",
+    "check:navigation": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-navigation.ts",
     "check:clavier": "node scripts/check-clavier.mjs",
     "gardes": "node scripts/gardes-navigateur.mjs",
     "seed:essai": "node scripts/seed-essai.mjs",

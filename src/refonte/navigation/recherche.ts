@@ -8,9 +8,10 @@ import { entreeDuRegistre } from './registre';
  * libellé du module, à ses verbes et à ses mots-clés (`registre.ts`), sans
  * accent ni casse, mot à mot : « facture envoyer » trouve aussi.
  *
- * Le score n'est qu'un ordre : le nom exact d'abord, puis un verbe qui
- * contient la phrase, puis un verbe dont chaque mot tapé est le début d'un mot,
- * puis les mots-clés, puis l'indice. À égalité, l'ordre du catalogue.
+ * Le score n'est qu'un ordre : le nom exact d'abord, puis un mot-clé exact,
+ * puis un nom qui commence par ce qu'on tape, puis un verbe qui contient la
+ * phrase, puis un verbe dont chaque mot tapé est le début d'un mot, puis les
+ * autres mots-clés, puis l'indice. À égalité, l'ordre du catalogue.
  */
 
 export interface Cherchable {
@@ -88,9 +89,12 @@ export function chercher<T extends Cherchable>(requete: string, items: readonly 
       else if (tousLesMotsCollent(tapes, v.split(' '))) garder(70, verbe);
     }
 
+    // Un mot-clé exact passe devant un libellé qui commence pareil : « facture » est le mot de
+    // Facturation, même si « Factures entrantes » commence par lui.
+    const singulier = q.length > 3 && /[sx]$/.test(q) ? q.slice(0, -1) : q;
     for (const cle of entree?.motsCles ?? []) {
       const k = aplatir(cle);
-      if (k === q) garder(75);
+      if (k === q || k === singulier) garder(105);
       else if (k.startsWith(q) || tousLesMotsCollent(tapes, k.split(' '))) garder(55);
     }
 
