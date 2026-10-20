@@ -12,6 +12,9 @@ import { Carte, Chargement, EnTete, Erreur, Invitation, Ligne, LienFort, Paire }
 import { Horizon, Legende, nombreOrgs } from './Horizon';
 import { enLettres, hhmm, ilYA, jourLong, jourMois, prenomDe } from '../format';
 import { EcranVide } from '../../components/EtatEcran';
+import { ResumeDeNuit } from '../../refonte/garde/ResumeDeNuit';
+import { FilDActivite } from '../../refonte/garde/FilDActivite';
+import { useGardeLangue } from '../../refonte/garde/i18n';
 
 /**
  * SUPERVISOR · L'ACCUEIL — l'horizon (cahier 11 `45a`, cahier 12 `46a`, `46i`).
@@ -28,6 +31,9 @@ export function SupervisorAccueil() {
   const { upsert } = useSync();
   const profils = useProfilesOptionnel();
   const nom = (email: string | null | undefined) => (email ? profils?.profileFor(email).name?.split(' ')[0] || prenomDe(email) : '—');
+  const { tg } = useGardeLangue();
+  // Le résumé couvre la même absence que « Depuis votre dernière venue » (refonte S3).
+  const [venue] = useState(lireVenue);
 
   const vide = m.pret && m.orgs.length === 0;
   const prendre = (orgId: string) => {
@@ -95,6 +101,17 @@ export function SupervisorAccueil() {
             <div className="mt-4">
               <LienFort to="/supervisor/a-traiter">Ouvrir la file</LienFort>
             </div>
+          </Carte>
+        </Paire>
+      </div>
+      {/* Refonte S3 : ce que la Garde a fait sans vous, et ce qu'elle fait maintenant. */}
+      <div className="mt-[18px]">
+        <Paire>
+          <Carte titre={tg('resume.titre')}>
+            <ResumeDeNuit depuis={new Date(venue)} titre={false} />
+          </Carte>
+          <Carte titre={tg('fil.titre')} droite={<Link to="/supervisor/situation" className="normal-case tracking-normal underline-offset-4 hover:underline">{tg('salle.ouvrir')}</Link>}>
+            <FilDActivite titre={false} />
           </Carte>
         </Paire>
       </div>
@@ -181,16 +198,19 @@ function phrases(m: ModeleSupervisor, nom: (e: string | null | undefined) => str
 
 const CLE_VENUE = 'amn.supervisor.venue';
 
+/** La dernière venue au Supervisor ; à défaut, il y a vingt-quatre heures. */
+function lireVenue(): number {
+  try {
+    const v = Number(window.localStorage.getItem(CLE_VENUE));
+    return Number.isFinite(v) && v > 0 ? v : Date.now() - 86_400_000;
+  } catch {
+    return Date.now() - 86_400_000;
+  }
+}
+
 function DepuisVotreVenue({ m, nom }: { m: ModeleSupervisor; nom: (e: string | null | undefined) => string }) {
   const src = useSourceBureaux();
-  const [venue] = useState<number>(() => {
-    try {
-      const v = Number(window.localStorage.getItem(CLE_VENUE));
-      return Number.isFinite(v) && v > 0 ? v : Date.now() - 86_400_000;
-    } catch {
-      return Date.now() - 86_400_000;
-    }
-  });
+  const [venue] = useState<number>(lireVenue);
   // La venue d'aujourd'hui devient la « dernière venue » de la prochaine fois.
   useEffect(() => () => {
     try {
