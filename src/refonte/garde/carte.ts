@@ -78,16 +78,29 @@ export function placesDesSites<T extends { id: string; name?: string }>(sites: T
   });
 }
 
-/** Une ligne discrète du quartier d'une équipe vers un site : une courbe qui ne passe pas par le centre. */
-export function cheminLien(depuis: Point, vers: Point): string {
-  const mx = (depuis.x + vers.x) / 2;
-  const my = (depuis.y + vers.y) / 2;
-  // Le point de contrôle s'écarte du centre : la ligne s'arrondit vers l'extérieur.
-  const dx = mx - CX;
-  const dy = my - CY;
-  const d = Math.hypot(dx, dy) || 1;
-  const c = { x: mx + (dx / d) * 40, y: my + (dy / d) * 40 };
-  return `M${depuis.x.toFixed(1)} ${depuis.y.toFixed(1)} Q${c.x.toFixed(1)} ${c.y.toFixed(1)} ${vers.x.toFixed(1)} ${vers.y.toFixed(1)}`;
+/** L'angle (en degrés) d'un point de la carte, en défaisant l'étirement horizontal. */
+export function angleDe(p: Point): number {
+  return (Math.atan2(p.y - CY, (p.x - CX) / ETIREMENT) * 180) / Math.PI;
+}
+
+/** L'anneau de circulation des lignes, entre les étiquettes et les sites ; un rail par équipe. */
+export const R_RAIL = 210;
+
+/**
+ * Une ligne discrète d'une équipe vers un site, à la manière d'un plan de
+ * métro : elle sort de son quartier tout droit, suit l'anneau par le plus
+ * court chemin, puis rejoint le site. Jamais à travers le centre : les
+ * quartiers et le Capitaine restent lisibles quel que soit le nombre de lignes.
+ */
+export function cheminLien(angleEquipe: number, rail: number, vers: Point): string {
+  const r = R_RAIL + rail * 1.6;
+  const b = angleDe(vers);
+  const delta = ((((b - angleEquipe) % 360) + 540) % 360) - 180;
+  const p0 = polaire(R_QUARTIER_EXT + 2, angleEquipe);
+  const p1 = polaire(r, angleEquipe);
+  const p2 = polaire(r, angleEquipe + delta);
+  const f = (n: number) => n.toFixed(1);
+  return `M${f(p0.x)} ${f(p0.y)} L${f(p1.x)} ${f(p1.y)} A${f(r * ETIREMENT)} ${f(r)} 0 0 ${delta >= 0 ? 1 : 0} ${f(p2.x)} ${f(p2.y)} L${f(vers.x)} ${f(vers.y)}`;
 }
 
 /** Une phase stable par identifiant : les points respirent sans clignoter d'un bloc. */

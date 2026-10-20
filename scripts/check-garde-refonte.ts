@@ -109,7 +109,7 @@ function surfaces(selecteur: string): Rvb[] {
 }
 const SOMBRE = [...surfaces('@theme'), rvb('#060606')];
 const CLAIR = surfaces(":root[data-theme='clair']");
-const ordre = [...lire('src/lib/garde.ts').matchAll(/EQUIPES_ORDRE = \[([^\]]+)\]/g)][0][1].match(/'([a-z]+)'/g)!.map((x) => x.slice(1, -1));
+const ordre = [...lire('src/lib/garde.ts').matchAll(/EQUIPES_ORDRE = \[([^\]]+)\]/g)][0][1].match(/'([a-z]+)'/g)?.map((x) => x.slice(1, -1)) ?? [];
 
 await dit('une couleur par équipe de EQUIPES_ORDRE, ni plus ni moins', () => {
   assert.deepEqual(Object.keys(M.ACCENTS_EQUIPE).sort(), [...ordre].sort());
@@ -301,6 +301,8 @@ await dit('les quartiers et les gardes : sans NaN, pour 1 à 12 équipes et 0 à
       const q = C.quartier(i, n);
       assert.ok(!/NaN/.test(C.cheminQuartier(q.debut, q.fin)));
       for (let g = 0; g <= 6; g += 1) for (const p of C.pointsDAgents(g, q.debut, q.fin)) assert.ok(Number.isFinite(p.x + p.y));
+      const lien = C.cheminLien(q.milieu, i, C.polaire(300, q.milieu + 170));
+      assert.ok(!/NaN/.test(lien), lien);
     }
   }
 });

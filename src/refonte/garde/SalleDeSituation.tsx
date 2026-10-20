@@ -105,7 +105,7 @@ export function SalleDeSituation({ enVeille = false }: { enVeille?: boolean }) {
       const cle = `${j.equipe}>${cible.site.id}`;
       if (vus.has(cle)) continue;
       vus.add(cle);
-      out.push({ cle, d: cheminLien(polaire(R_QUARTIER_EXT, q.q.milieu), cible.p), couleur: q.accent.base });
+      out.push({ cle, d: cheminLien(q.q.milieu, quartiers.indexOf(q), cible.p), couleur: q.accent.base });
       if (out.length >= LIENS_MAX) break;
     }
     return out;
