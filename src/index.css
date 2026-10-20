@@ -1459,3 +1459,211 @@ button.bg-accent[aria-disabled='true']:hover {
 @media (prefers-reduced-motion: reduce) {
   .illustration .gris, .illustration .ambre { animation: none; }
 }
+
+/*
+  ═══════════════════════════════════════════════════════════════════════════
+  LE SOCLE DE LA REFONTE (S0) — graphite chaud, sept familles, états colorés
+  ═══════════════════════════════════════════════════════════════════════════
+
+  Mode d'emploi : docs/refonte-socle.md. Contrôle : `npm run check:socle`
+  (contrastes calculés depuis CETTE feuille, sans navigateur).
+
+  Pourquoi un espace de noms à part (`socle-`, `fam-`, `etat-`) plutôt que de
+  retoucher la rampe au-dessus : la rampe porte les deux éditions et les
+  soixante-dix écrans actuels, dont une trentaine de gris recopiés en dur
+  (voir `check:encres`). Changer `--color-bg` ici changerait l'édition cliente
+  et tous les écrans d'un coup, sans que personne les ait revus. Ces jetons-ci
+  ne sont lus que par les briques de `src/socle/ui/` ; un écran les adopte en
+  migrant, un par un. Côté cliente, aucun élément ne les emploie : ils sont
+  inertes.
+
+  Les règles qui tiennent toujours :
+    · l'ambre (`--color-signal`) reste LA décision à prendre, une par écran —
+      aucune famille ni aucun état n'approche sa teinte (30–50°) ;
+    · le rouge reste le critique. `etat-danger` en est la version sobre, pour
+      une action destructrice ou une erreur de saisie, pas une alarme ;
+    · une famille dit « où je suis », jamais « ce qui attend ».
+
+  Chaque couleur a quatre emplois, et un seul chacun :
+    base   — le point, le filet, le trait (≥ 3:1 sur toutes les surfaces) ;
+    texte  — l'encre lisible (≥ 4,5:1 sur toutes les surfaces ET sur son fond) ;
+    fond   — le fond léger d'une pastille ou d'un encart, dérivé de la base ;
+    bord   — la bordure qui l'accompagne, dérivée de la base.
+*/
+@theme {
+  /* Les surfaces graphite — chaudes, jamais noires. */
+  --color-socle-fond: #1b1915;
+  --color-socle-creux: #171512;
+  --color-socle-surface: #22201c;
+  --color-socle-eleve: #29261f;
+  --color-socle-survol: #302c26;
+  --color-socle-bord: #3b3730;
+  /* La bordure d'un champ ou d'un bouton secondaire : ≥ 3:1, WCAG 1.4.11. */
+  --color-socle-bord-fort: #7d7569;
+  --color-socle-texte: #f4f0e8;
+  --color-socle-texte-doux: #cfc8bc;
+  --color-socle-texte-discret: #ada699;
+  --color-socle-focus: #f4f0e8;
+  --color-socle-primaire: #f1ebe0;
+  --color-socle-primaire-survol: #fbf7ef;
+  --color-socle-primaire-encre: #1b1915;
+  --color-socle-voile: rgba(12, 11, 9, 0.66);
+
+  /* Les sept familles provisoires (noms affichés : src/socle/i18n.ts). */
+  --color-fam-jour: #82b1e8;
+  --color-fam-jour-texte: #9cc2ef;
+  --color-fam-jour-fond: color-mix(in srgb, var(--color-fam-jour) 14%, transparent);
+  --color-fam-jour-bord: color-mix(in srgb, var(--color-fam-jour) 40%, transparent);
+  --color-fam-contacts: #5fc4b5;
+  --color-fam-contacts-texte: #82d4c8;
+  --color-fam-contacts-fond: color-mix(in srgb, var(--color-fam-contacts) 14%, transparent);
+  --color-fam-contacts-bord: color-mix(in srgb, var(--color-fam-contacts) 40%, transparent);
+  --color-fam-ecrire: #a99af0;
+  --color-fam-ecrire-texte: #bdb1f5;
+  --color-fam-ecrire-fond: color-mix(in srgb, var(--color-fam-ecrire) 14%, transparent);
+  --color-fam-ecrire-bord: color-mix(in srgb, var(--color-fam-ecrire) 40%, transparent);
+  --color-fam-argent: #a6c672;
+  --color-fam-argent-texte: #bcd58f;
+  --color-fam-argent-fond: color-mix(in srgb, var(--color-fam-argent) 14%, transparent);
+  --color-fam-argent-bord: color-mix(in srgb, var(--color-fam-argent) 40%, transparent);
+  --color-fam-echanger: #d196e4;
+  --color-fam-echanger-texte: #dfb0ee;
+  --color-fam-echanger-fond: color-mix(in srgb, var(--color-fam-echanger) 14%, transparent);
+  --color-fam-echanger-bord: color-mix(in srgb, var(--color-fam-echanger) 40%, transparent);
+  --color-fam-creer: #ea8fbe;
+  --color-fam-creer-texte: #f2abd0;
+  --color-fam-creer-fond: color-mix(in srgb, var(--color-fam-creer) 14%, transparent);
+  --color-fam-creer-bord: color-mix(in srgb, var(--color-fam-creer) 40%, transparent);
+  --color-fam-outils: #a2acbc;
+  --color-fam-outils-texte: #bcc4d1;
+  --color-fam-outils-fond: color-mix(in srgb, var(--color-fam-outils) 14%, transparent);
+  --color-fam-outils-bord: color-mix(in srgb, var(--color-fam-outils) 40%, transparent);
+
+  /* Les états — colorés, sobres. L'avertissement est un jaune paille (58°),
+     loin de l'ambre (36°) : il prévient, il ne demande pas de décision. */
+  --color-etat-succes: #73c48f;
+  --color-etat-succes-texte: #93d4a9;
+  --color-etat-succes-fond: color-mix(in srgb, var(--color-etat-succes) 14%, transparent);
+  --color-etat-succes-bord: color-mix(in srgb, var(--color-etat-succes) 40%, transparent);
+  --color-etat-attention: #d2cf86;
+  --color-etat-attention-texte: #e0dea3;
+  --color-etat-attention-fond: color-mix(in srgb, var(--color-etat-attention) 14%, transparent);
+  --color-etat-attention-bord: color-mix(in srgb, var(--color-etat-attention) 40%, transparent);
+  --color-etat-danger: #ec7a6b;
+  --color-etat-danger-texte: #f39a8e;
+  --color-etat-danger-fond: color-mix(in srgb, var(--color-etat-danger) 14%, transparent);
+  --color-etat-danger-bord: color-mix(in srgb, var(--color-etat-danger) 40%, transparent);
+  /* Le plein d'un bouton destructeur, et son encre. */
+  --color-etat-danger-plein: #b9473b;
+  --color-etat-danger-plein-survol: #a83f34;
+  --color-etat-danger-encre: #fffaf2;
+}
+
+/*
+  LE THÈME CLAIR DOUX — prêt, PAS activé.
+
+  Il s'allume en posant `data-theme="clair"` sur <html> ; rien ne le fait
+  aujourd'hui. Papier crème plutôt que blanc pur, encres foncées : les mêmes
+  règles de contraste, vérifiées par le même contrôle. Les fonds et bordures
+  dérivés suivent seuls, parce qu'ils sont calculés depuis la base.
+*/
+:root[data-theme='clair'] {
+  --color-socle-fond: #f5f2ec;
+  --color-socle-creux: #ece8e0;
+  --color-socle-surface: #fbf9f5;
+  --color-socle-eleve: #fffefb;
+  --color-socle-survol: #efebe3;
+  --color-socle-bord: #ddd6ca;
+  --color-socle-bord-fort: #887e6f;
+  --color-socle-texte: #23201b;
+  --color-socle-texte-doux: #48443d;
+  --color-socle-texte-discret: #615c53;
+  --color-socle-focus: #23201b;
+  --color-socle-primaire: #2a2620;
+  --color-socle-primaire-survol: #3a352d;
+  --color-socle-primaire-encre: #f7f4ee;
+  --color-socle-voile: rgba(60, 52, 40, 0.32);
+
+  --color-fam-jour: #467cbf;
+  --color-fam-jour-texte: #2c5f9e;
+  --color-fam-contacts: #278c7e;
+  --color-fam-contacts-texte: #15645a;
+  --color-fam-ecrire: #7b68d4;
+  --color-fam-ecrire-texte: #5444ae;
+  --color-fam-argent: #62852b;
+  --color-fam-argent-texte: #46621c;
+  --color-fam-echanger: #a35bbd;
+  --color-fam-echanger-texte: #7f3a98;
+  --color-fam-creer: #c0558c;
+  --color-fam-creer-texte: #9c2f68;
+  --color-fam-outils: #6e7a8d;
+  --color-fam-outils-texte: #4c5667;
+
+  --color-etat-succes: #338c55;
+  --color-etat-succes-texte: #1a6336;
+  --color-etat-attention: #857d18;
+  --color-etat-attention-texte: #5c560b;
+  --color-etat-danger: #cf4a3c;
+  --color-etat-danger-texte: #a8281d;
+  --color-etat-danger-plein: #b3362b;
+  --color-etat-danger-plein-survol: #9f2e24;
+  --color-etat-danger-encre: #fffaf2;
+}
+/* L'anneau de focus global est blanc : sur papier crème, il disparaîtrait. */
+:root[data-theme='clair'] button:focus-visible,
+:root[data-theme='clair'] a:focus-visible,
+:root[data-theme='clair'] [role='button']:focus-visible {
+  outline-color: var(--color-socle-focus);
+}
+
+/*
+  LA FAMILLE D'UN BLOC — `data-famille="argent"` pose quatre variables
+  courtes que les briques lisent (`var(--fam)`, `--fam-texte`, `--fam-fond`,
+  `--fam-bord`). Une seule écriture pour sept familles, et aucun nom de
+  classe fabriqué à l'exécution (Tailwind ne les verrait pas).
+*/
+[data-famille='jour'] { --fam: var(--color-fam-jour); --fam-texte: var(--color-fam-jour-texte); --fam-fond: var(--color-fam-jour-fond); --fam-bord: var(--color-fam-jour-bord); }
+[data-famille='contacts'] { --fam: var(--color-fam-contacts); --fam-texte: var(--color-fam-contacts-texte); --fam-fond: var(--color-fam-contacts-fond); --fam-bord: var(--color-fam-contacts-bord); }
+[data-famille='ecrire'] { --fam: var(--color-fam-ecrire); --fam-texte: var(--color-fam-ecrire-texte); --fam-fond: var(--color-fam-ecrire-fond); --fam-bord: var(--color-fam-ecrire-bord); }
+[data-famille='argent'] { --fam: var(--color-fam-argent); --fam-texte: var(--color-fam-argent-texte); --fam-fond: var(--color-fam-argent-fond); --fam-bord: var(--color-fam-argent-bord); }
+[data-famille='echanger'] { --fam: var(--color-fam-echanger); --fam-texte: var(--color-fam-echanger-texte); --fam-fond: var(--color-fam-echanger-fond); --fam-bord: var(--color-fam-echanger-bord); }
+[data-famille='creer'] { --fam: var(--color-fam-creer); --fam-texte: var(--color-fam-creer-texte); --fam-fond: var(--color-fam-creer-fond); --fam-bord: var(--color-fam-creer-bord); }
+[data-famille='outils'] { --fam: var(--color-fam-outils); --fam-texte: var(--color-fam-outils-texte); --fam-fond: var(--color-fam-outils-fond); --fam-bord: var(--color-fam-outils-bord); }
+
+/*
+  LE RÉGLAGE MOUVEMENT, CÔTÉ CSS (src/socle/mouvement.ts).
+
+  framer-motion obéit au `MotionConfig` de la racine ; les animations CSS,
+  elles, n'écoutent que `prefers-reduced-motion`. L'attribut `data-mouvement`
+  — posé sur <html> par l'édition interne seulement — leur transmet le choix
+  fait dans les Réglages :
+    · reduit : plus aucune boucle, plus d'enfoncement des boutons ;
+    · aucun  : plus rien ne bouge — chaque animation saute à son état final.
+  Limite connue : « complet » ne rallume pas ce que les blocs
+  `@media (prefers-reduced-motion: reduce)` ci-dessus coupent quand le
+  système le demande.
+*/
+:root[data-mouvement='reduit'] *,
+:root[data-mouvement='reduit'] *::before,
+:root[data-mouvement='reduit'] *::after {
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+}
+:root[data-mouvement='reduit'] button:active,
+:root[data-mouvement='reduit'] [role='button']:active {
+  transform: none;
+}
+:root[data-mouvement='aucun'] *,
+:root[data-mouvement='aucun'] *::before,
+:root[data-mouvement='aucun'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  transition-delay: 0s !important;
+  scroll-behavior: auto !important;
+}
+:root[data-mouvement='aucun'] button:active,
+:root[data-mouvement='aucun'] [role='button']:active {
+  transform: none;
+}
