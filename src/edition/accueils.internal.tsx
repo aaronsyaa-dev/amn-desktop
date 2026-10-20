@@ -13,10 +13,12 @@ import { Horizon } from '../accueils/interne/Horizon';
 import { DeuxPostes } from '../accueils/interne/DeuxPostes';
 import { Silence } from '../accueils/interne/Silence';
 import { colonnesCarte } from '../accueils/interne/parc';
+import { AccueilVivant } from '../refonte/accueil/AccueilVivant';
 
 /**
- * LES ONZE ACCUEILS DE L'ÉDITION INTERNE — 2a et les dix variantes du cahier 10
- * (`42a` → `42j`, ACCUEILS.md). Aucune variante cliente n'est importée ici.
+ * LES ACCUEILS DE L'ÉDITION INTERNE — 2a, les dix variantes du cahier 10
+ * (`42a` → `42j`, ACCUEILS.md), et `42k`, l'Accueil vivant de la refonte (S2).
+ * Aucune variante cliente n'est importée ici.
  */
 export const ACCUEILS: AccueilDef[] = [
   {
@@ -95,6 +97,14 @@ export const ACCUEILS: AccueilDef[] = [
     phrase: 'La Garde veille : combien de dossiers attendent un humain, et rien d’autre.',
     vignette: [[6, 6, 88, 48, 'sombre'], [20, 20, 12, 8, 'ambre'], [34, 20, 44, 8, 'clair'], [30, 32, 40, 3, 'moyen'], [22, 44, 56, 2, 'moyen']],
     composant: Silence,
+  },
+  {
+    // Refonte S2 : à côté des autres, pas à leur place. Il passera par défaut après validation.
+    code: '42k',
+    nom: 'Le poste vivant',
+    phrase: 'Ajmani, le fil du jour, et les modules toujours à leur place.',
+    vignette: [[6, 8, 18, 22, 'clair'], [28, 10, 58, 8, 'moyen'], [28, 21, 40, 6, 'sombre'], [6, 36, 88, 4, 'sombre'], [6, 43, 88, 4, 'sombre'], [6, 52, 9, 5, 'moyen'], [17, 52, 9, 5, 'moyen'], [28, 52, 9, 5, 'moyen'], [39, 52, 9, 5, 'moyen'], [50, 52, 9, 5, 'moyen']],
+    composant: AccueilVivant,
   },
 ];
 

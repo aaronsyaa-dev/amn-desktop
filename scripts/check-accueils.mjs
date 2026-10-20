@@ -64,7 +64,8 @@ const interne = lire('src/edition/accueils.internal.tsx');
 for (const i of imports(business)) if (/interne\//.test(i)) fautes.push(`registre Business importe ${i}`);
 for (const i of imports(interne)) if (/accueils\/client\//.test(i) || /\/business\//.test(i)) fautes.push(`registre interne importe ${i}`);
 const attenduB = ['2a', ...'abcdefghij'.split('').map((l) => `40${l}`)];
-const attenduI = ['2a', ...'abcdefghij'.split('').map((l) => `42${l}`)];
+// `42k` : l'Accueil vivant de la refonte (S2), ajouté à côté des dix autres.
+const attenduI = ['2a', ...'abcdefghijk'.split('').map((l) => `42${l}`)];
 const cb = codes(business);
 const ci = codes(interne);
 if (JSON.stringify(cb) !== JSON.stringify(attenduB)) fautes.push(`registre Business : ${cb.join(', ')} — attendu ${attenduB.join(', ')}`);
