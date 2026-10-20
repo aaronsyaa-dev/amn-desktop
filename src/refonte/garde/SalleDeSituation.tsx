@@ -11,6 +11,7 @@ import { accentEquipe } from './equipes';
 import { nomDEquipe } from './fil';
 import { ResumeDeNuit } from './ResumeDeNuit';
 import { FilDActivite } from './FilDActivite';
+import { CLASSE_SOUFFLE, StyleSouffle } from './souffle';
 import {
   CX,
   CY,
@@ -165,6 +166,7 @@ export function SalleDeSituation({ enVeille = false }: { enVeille?: boolean }) {
         {/* La carte. */}
         <div className="relative min-h-0 px-2 lg:px-6">
           <svg viewBox={`0 0 ${LARGEUR} ${HAUTEUR}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full" role="img" aria-label={tg('salle.carte')}>
+            {anime && <StyleSouffle />}
             {/* Le fond de carte : anneaux et rayons, à peine visibles. */}
             <g fill="none" stroke="var(--color-socle-bord)" strokeWidth={1}>
               {[R_SITES_MIN - 14, (R_SITES_MIN + R_SITES_MAX) / 2, R_SITES_MAX + 14].map((r) => (
@@ -233,7 +235,7 @@ export function SalleDeSituation({ enVeille = false }: { enVeille?: boolean }) {
                         r={ronde ? 5.5 : 4}
                         fill={accent.base}
                         opacity={ronde || a.etat === 'trouve' ? 1 : 0.45}
-                        className={ronde && anime ? 'sv-souffle-calme' : undefined}
+                        className={ronde && anime ? CLASSE_SOUFFLE : undefined}
                         style={ronde && anime ? { animationDelay: `-${phaseDe(a.key)}ms` } : undefined}
                       />
                     );

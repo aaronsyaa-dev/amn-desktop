@@ -4,6 +4,7 @@ import { useGardeLangue } from './i18n';
 import { useFilDActivite } from './donnees';
 import { depuisQuand } from './fil';
 import { styleEquipe } from './equipes';
+import { CLASSE_SOUFFLE, StyleSouffle } from './souffle';
 
 /**
  * LE FIL D'ACTIVITÉ DE LA GARDE (S3) — une ligne par équipe.
@@ -29,6 +30,7 @@ export function FilDActivite({ titre = true, compact = false }: { titre?: boolea
 
   return (
     <section aria-labelledby={titre ? id : undefined} aria-label={titre ? undefined : tg('fil.aria')} className="min-w-0">
+      {anime && <StyleSouffle />}
       {titre && (
         <h2 id={id} className="mb-3 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-socle-texte-discret">
           {tg('fil.titre')}
@@ -42,7 +44,7 @@ export function FilDActivite({ titre = true, compact = false }: { titre?: boolea
             <li key={l.equipe} style={styleEquipe(l.equipe)} className={`grid grid-cols-[10px_minmax(0,1fr)_auto] items-baseline gap-x-3 ${compact ? '' : 'py-2.5'}`}>
               <span
                 aria-hidden
-                className={`inline-block h-2 w-2 rounded-full ${l.etat === 'ronde' && anime ? 'sv-souffle-calme' : ''}`}
+                className={`inline-block h-2 w-2 rounded-full ${l.etat === 'ronde' && anime ? CLASSE_SOUFFLE : ''}`}
                 style={{
                   background: l.etat === 'echec' ? 'var(--color-etat-attention)' : l.etat === 'repos' ? 'transparent' : 'var(--equipe)',
                   border: l.etat === 'repos' ? '1px solid var(--equipe)' : undefined,

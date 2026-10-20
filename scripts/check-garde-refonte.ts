@@ -337,7 +337,7 @@ await dit('la salle respecte le réglage Mouvement : elle ne respire qu’en « 
   for (const f of ['src/refonte/garde/SalleDeSituation.tsx', 'src/refonte/garde/FilDActivite.tsx']) {
     const s = lire(f);
     assert.ok(/useMouvement\(\) === 'complet'/.test(s), `${f} ne lit pas useMouvement`);
-    for (const m of s.matchAll(/sv-souffle-(calme|tendu)/g)) {
+    for (const m of s.matchAll(/sv-souffle-(calme|tendu)|CLASSE_SOUFFLE :/g)) {
       const avant = s.slice(Math.max(0, (m.index ?? 0) - 120), m.index);
       assert.ok(/anime/.test(avant), `${f} : une respiration hors de la condition « anime »`);
     }
