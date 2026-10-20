@@ -107,6 +107,10 @@ jobs:
         run: npm run check:clavier
       - name: Pile des calques — un appui d'Échap, un calque
         run: npm run check:calques
+      - name: Socle de la refonte — contrastes, briques, réglage Mouvement
+        run: npm run check:socle
+      - name: Bus de moments — abonnés, isolement, catalogue
+        run: npm run check:moments
 
       - name: Contrôle de la file d'envoi
         run: npm run check:envoi
