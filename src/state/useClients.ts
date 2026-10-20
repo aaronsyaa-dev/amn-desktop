@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { emettreMoment } from '@edition/socle';
 import { bridge } from '../lib/bridge';
 import { useSync, useCollection } from './SyncContext';
 import { useClientView } from './ClientViewContext';
@@ -253,6 +254,8 @@ export function useClients() {
       // sera désormais la seule voie d'écriture pour cette fiche.
       const recordId = String(id);
       await upsert('clients', recordId, data as unknown as Record<string, unknown>);
+      // Le bus de moments (refonte) : vide côté cliente, via la couture. Jamais pour l'import historique.
+      emettreMoment('client.cree', { clientId: recordId });
       return { ...data, id, recordId };
     },
     [upsert],

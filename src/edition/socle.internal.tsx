@@ -96,3 +96,10 @@ export function MouvementSection() {
     </section>
   );
 }
+
+/**
+ * `emit` pour le code PARTAGÉ (ajout S2) : un fichier commun aux deux éditions
+ * n'importe jamais `src/socle/**` ; il passe par `@edition/socle`. Ici, c'est
+ * le vrai bus ; côté cliente, une fonction qui ne fait rien.
+ */
+export { emit as emettreMoment } from '../socle/moments';

@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react';
+import { emettreMoment } from '@edition/socle';
 import { useSync, useCollection, uid, stripMeta } from './SyncContext';
 import { documentTotals, eurosToCents } from '../lib/money';
 import { oneOf } from '../lib/records';
@@ -426,6 +427,8 @@ export function useInvoices() {
         paidAt: paidAt || isoDay(),
         paymentMethod,
       });
+      // Le bus de moments (refonte) : vide côté cliente, via la couture.
+      emettreMoment('facture.payee', { factureId: id });
     },
     [rawInvoices, upsert],
   );
