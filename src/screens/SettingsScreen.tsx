@@ -71,6 +71,7 @@ import { VeilleSection, AbonnementSection, useAbonnement } from '@edition/accuei
 import { GuideSection } from '../guide/GuideSection';
 import { ExtensionsSection } from '../components/settings/ExtensionsSection';
 import { MouvementSection } from '@edition/socle';
+import { RegistreSection } from '@edition/vivant';
 import { useSupportContext } from '../state/OrgContextContext';
 import { useRegards } from '../state/RegardsContext';
 import { useLangue, t as tr } from '../i18n';
@@ -120,6 +121,8 @@ export function SettingsScreen() {
           <ExtensionsSection />
           {/* Le réglage Mouvement de la refonte : édition interne seulement (rend null côté cliente). */}
           <MouvementSection />
+          {/* Le ton du guide (refonte S2) : édition interne seulement (rend null côté cliente). */}
+          <RegistreSection />
         </div>
       </StaggerItem>
       <StaggerItem>
