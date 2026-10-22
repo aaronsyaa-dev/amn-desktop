@@ -13,10 +13,12 @@ import { Horizon } from '../accueils/interne/Horizon';
 import { DeuxPostes } from '../accueils/interne/DeuxPostes';
 import { Silence } from '../accueils/interne/Silence';
 import { colonnesCarte } from '../accueils/interne/parc';
+import { AccueilVivant } from '../refonte/accueil/AccueilVivant';
 
 /**
- * LES ONZE ACCUEILS DE L'ÉDITION INTERNE — 2a et les dix variantes du cahier 10
- * (`42a` → `42j`, ACCUEILS.md). Aucune variante cliente n'est importée ici.
+ * LES ACCUEILS DE L'ÉDITION INTERNE — 2a, les dix variantes du cahier 10
+ * (`42a` → `42j`, ACCUEILS.md), et `42k`, l'Accueil noir et gris de la refonte (S2).
+ * Aucune variante cliente n'est importée ici.
  */
 export const ACCUEILS: AccueilDef[] = [
   {
@@ -95,6 +97,14 @@ export const ACCUEILS: AccueilDef[] = [
     phrase: 'La Garde veille : combien de dossiers attendent un humain, et rien d’autre.',
     vignette: [[6, 6, 88, 48, 'sombre'], [20, 20, 12, 8, 'ambre'], [34, 20, 44, 8, 'clair'], [30, 32, 40, 3, 'moyen'], [22, 44, 56, 2, 'moyen']],
     composant: Silence,
+  },
+  {
+    // Refonte S2 : à côté des autres, pas à leur place. Il passera par défaut après validation.
+    code: '42k',
+    nom: 'La journée rangée',
+    phrase: 'Ta journée à cocher, les chiffres qui existent, l’équipe en ligne.',
+    vignette: [[4, 6, 18, 48, 'sombre'], [26, 6, 40, 6, 'clair'], [26, 16, 15, 10, 'moyen'], [43, 16, 15, 10, 'moyen'], [60, 16, 15, 10, 'moyen'], [77, 16, 15, 10, 'moyen'], [26, 30, 40, 18, 'sombre'], [68, 30, 24, 18, 'sombre'], [56, 32, 8, 3, 'clair'], [26, 51, 66, 4, 'moyen']],
+    composant: AccueilVivant,
   },
 ];
 

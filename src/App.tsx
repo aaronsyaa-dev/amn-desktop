@@ -3,7 +3,9 @@ import { HashRouter } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext';
 import { AppRoot } from '@edition/appRoot';
 import { GrainOverlay } from './components/GrainOverlay';
-import { SplashScreen, hasSplashPlayed } from './components/SplashScreen';
+// Le rideau de lancement passe par la couture `@edition/vivant` (refonte S2) :
+// l'édition cliente y retrouve `SplashScreen` à l'identique, l'interne le lancement court de la refonte.
+import { Ambiance, Lancement, lancementJoue, ReactionsGuide } from '@edition/vivant';
 
 /**
  * Coquille commune aux deux éditions : le splash, la session, le routeur.
@@ -14,13 +16,16 @@ import { SplashScreen, hasSplashPlayed } from './components/SplashScreen';
  * cette racine-là et ne trouve simplement aucun chemin vers eux.
  */
 export default function App() {
-  const [showSplash, setShowSplash] = useState(() => !hasSplashPlayed());
+  const [showSplash, setShowSplash] = useState(() => !lancementJoue());
 
   return (
     <>
-      {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
+      {showSplash && <Lancement onDone={() => setShowSplash(false)} />}
       <AuthProvider>
         <GrainOverlay />
+        {/* Refonte (interne) : fond noir et gris, petits toasts des moments fêtés. Rien côté cliente. */}
+        <Ambiance />
+        <ReactionsGuide />
         <HashRouter>
           <AppRoot />
         </HashRouter>

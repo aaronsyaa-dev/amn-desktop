@@ -16,3 +16,6 @@ export function RacineSocle({ children }: { children: React.ReactNode }) {
 export function MouvementSection(): null {
   return null;
 }
+
+/** Le bus de moments n'existe pas côté cliente : un `emit` partagé y est inerte (ajout S2). */
+export const emettreMoment: (type: string, charge: unknown) => void = () => undefined;
