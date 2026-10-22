@@ -62,9 +62,11 @@ export function choisir(
   langue: 'fr' | 'en',
   situation: Situation,
   reglage: Registre,
-  params: Record<string, string | number> = {},
+  paramsDonnes: Record<string, string | number> = {},
   hasard: () => number = Math.random,
 ): { replique: Replique; etat: EtatParole } {
+  // `{raccourci}` : l'appelant donne le vrai (⌘J ou Ctrl+J) ; à défaut, celui qui marche partout.
+  const params = { raccourci: 'Ctrl+J', ...paramsDonnes };
   const variantes = BIBLIOTHEQUE[langue][situation];
   let registre = registreEffectif(reglage, situation, variantes);
   // Taquin est un plafond : une fois sur deux, il reste simplement chill.
@@ -77,7 +79,7 @@ export function choisir(
   const candidats = libres.length ? libres : liste.map((_, i) => i).filter((i) => i !== recents[recents.length - 1]);
   const pool = candidats.length ? candidats : [0];
   const indice = pool[Math.min(pool.length - 1, Math.floor(Math.max(0, hasard()) * pool.length))];
-  const texte = liste.length ? remplir(liste[indice], params) : '';
+  const texte = liste.length ? remplir(liste[indice], params, langue) : '';
   const suivant: EtatParole = { ...etat, dites: { ...etat.dites, [cle]: [...recents, indice].slice(-8) } };
   return { replique: { situation, registre, texte }, etat: suivant };
 }

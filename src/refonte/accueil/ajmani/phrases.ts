@@ -1,4 +1,7 @@
 import type { Registre } from './registre';
+import { remplir } from '../modele';
+
+export { remplir };
 
 /**
  * CE QUE DIT AJMANI — la bibliothèque, par situation et par registre.
@@ -10,14 +13,16 @@ import type { Registre } from './registre';
  *   · plusieurs variantes pour chaque situation, dans chaque registre écrit,
  *     en français ET en anglais (l'anglais est le schéma, le français est
  *     typé contre lui : une situation oubliée ne compile pas) ;
- *   · jamais de morale ni de culpabilisation : il est de ton côté ;
+ *   · jamais de morale ni de culpabilisation : il est de votre côté ;
+ *   · le français VOUVOIE, partout (décision de Harun, 2026-10-22) ;
  *   · toujours sérieux face à une alerte, une facture très en retard ou un
  *     problème de sécurité — ces situations n'ont QUE le registre sérieux.
  *
  * Chaque situation porte au moins le registre sérieux : c'est le repli
  * quand le registre demandé n'est pas écrit. Les paramètres s'écrivent
  * `{nom}` et sont remplacés tels quels (jamais un montant, jamais un secret :
- * un prénom, un nombre, un nom de module).
+ * un prénom, un nombre, un nom de module) ; `{n#facture|factures}` accorde le
+ * pluriel (voir `../modele.ts`) ; `{raccourci}` vaut ⌘J ou Ctrl+J selon le poste.
  */
 
 export type Variantes = { serieux: readonly string[]; chill?: readonly string[]; taquin?: readonly string[] };
@@ -52,7 +57,7 @@ const EN = {
     serieux: ['A site is no longer responding. I’ll open the case.', 'A site is down. The details are below.'],
   },
   'alerte.facture': {
-    serieux: ['An invoice is {jours} days late. Reminders are ready.', 'A payment is {jours} days overdue. Let’s handle it now.'],
+    serieux: ['An invoice is {jours#day|days} late. Reminders are ready.', 'A payment is {jours#day|days} overdue. Let’s handle it now.'],
   },
   'alerte.securite': {
     serieux: ['A security issue needs your attention. Details below.', 'Something suspicious happened. Let’s check it together.'],
@@ -61,14 +66,14 @@ const EN = {
     serieux: ['Something needs your decision. Details below.', 'One item needs you now. I’ve put it first.'],
   },
   relance: {
-    serieux: ['{nom} has been waiting for a reminder for {jours} days.', 'An invoice for {nom} is {jours} days past due.'],
-    chill: ['{nom} could use a little reminder. {jours} days already.', 'A gentle nudge to {nom}, maybe? It’s been {jours} days.'],
-    taquin: ['{jours} days since you last chased {nom}. Just saying.', '{nom} still owes you. I’m not saying anything, but.'],
+    serieux: ['{nom} has been waiting for a reminder for {jours#day|days}.', 'An invoice for {nom} is {jours#day|days} past due.'],
+    chill: ['{nom} could use a little reminder. {jours#day|days} already.', 'A gentle nudge to {nom}, maybe? It’s been {jours#day|days}.'],
+    taquin: ['{jours#day|days} since you last chased {nom}. Just saying.', '{nom} still owes you. I’m not saying anything, but.'],
   },
   'soir.recap': {
-    serieux: ['Day done: {faits} things finished. {restants} left for tomorrow.', '{faits} things done today. {restants} carry over.'],
-    chill: ['Nice day: {faits} things done. {restants} can wait.', '{faits} done today. Tomorrow picks up {restants}.'],
-    taquin: ['{faits} things done. Not bad at all.', '{faits} done, {restants} left. Tomorrow-you will handle it.'],
+    serieux: ['Day done: {faits#thing|things} finished. {restants} left for tomorrow.', '{faits#thing|things} done today. {restants} carry over.'],
+    chill: ['Nice day: {faits#thing|things} done. {restants} can wait.', '{faits} done today. Tomorrow picks up {restants}.'],
+    taquin: ['{faits#thing|things} done. Not bad at all.', '{faits} done, {restants} left. Tomorrow-you will handle it.'],
   },
   'soir.leger': {
     serieux: ['Quiet day. Nothing was left hanging.', 'The day is closing. Nothing urgent remains.'],
@@ -96,9 +101,9 @@ const EN = {
     taquin: ['New client! The family grows.', 'A new client. I’ll be on my best behaviour.'],
   },
   'astuce.panneau': {
-    serieux: ['Ctrl+J or ⌘J opens our conversation, anywhere.', 'Press ⌘J to talk to me from any screen.'],
-    chill: ['Tip: ⌘J opens our chat from anywhere.', 'Need me? ⌘J, wherever you are.'],
-    taquin: ['⌘J and I appear. Like magic, but cheaper.', 'Psst, ⌘J. I’ll be right there.'],
+    serieux: ['{raccourci} opens our conversation, anywhere.', 'Press {raccourci} to talk to me from any screen.'],
+    chill: ['Tip: {raccourci} opens our chat from anywhere.', 'Need me? {raccourci}, wherever you are.'],
+    taquin: ['{raccourci} and I appear. Like magic, but cheaper.', 'Psst, {raccourci}. I’ll be right there.'],
   },
   'astuce.voix': {
     serieux: ['Hold F9 to speak to me instead of typing.', 'Hold F9, speak, release. I’ll take it from there.'],
@@ -106,8 +111,8 @@ const EN = {
     taquin: ['Hold F9 and talk. I promise to listen.', 'F9 held down means I’m all ears.'],
   },
   'astuce.fil': {
-    serieux: ['You can tick, hide or add lines to the day’s list.', 'The day’s list is yours. Edit it freely.'],
-    chill: ['The day’s list is editable. Add your own lines.', 'Tick things off the list. It feels good.'],
+    serieux: ['You can tick, hide or add lines to today’s list.', 'Today’s list is yours. Edit it freely.'],
+    chill: ['Today’s list is editable. Add your own lines.', 'Tick things off the list. It feels good.'],
     taquin: ['Ticking things off is allowed. Encouraged, even.', 'Add a line to the list. I won’t judge.'],
   },
   'astuce.registre': {
@@ -124,69 +129,69 @@ const FR: Record<Situation, Variantes> = {
   'matin.rdv': {
     serieux: ['{n} rendez-vous aujourd’hui. Le premier est avec {nom}.', '{n} rendez-vous au programme. {nom} ouvre la journée.'],
     chill: ['{n} rendez-vous aujourd’hui. On commence par {nom} ?', '{n} rendez-vous aujourd’hui. {nom} passe en premier.', 'Journée remplie : {n} rendez-vous. D’abord {nom}.'],
-    taquin: ['{n} rendez-vous aujourd’hui. {nom} d’abord, le café ensuite.', '{n} rendez-vous. Je garde le fort, tu gardes l’agenda.'],
+    taquin: ['{n} rendez-vous aujourd’hui. {nom} d’abord, le café ensuite.', '{n} rendez-vous. Je garde le fort, vous gardez l’agenda.'],
   },
   'matin.rdv1': {
-    serieux: ['Un rendez-vous aujourd’hui, avec {nom}.', 'Ton seul rendez-vous du jour est avec {nom}.'],
+    serieux: ['Un rendez-vous aujourd’hui, avec {nom}.', 'Votre seul rendez-vous du jour est avec {nom}.'],
     chill: ['Un seul rendez-vous aujourd’hui : {nom}. Tranquille.', 'Un rendez-vous aujourd’hui, avec {nom}. De la marge.'],
-    taquin: ['Un rendez-vous aujourd’hui. {nom} aura toute ton attention.', 'Seulement {nom} aujourd’hui. Veinard.'],
+    taquin: ['Un rendez-vous aujourd’hui. {nom} aura toute votre attention.', 'Seulement {nom} aujourd’hui. Veinard.'],
   },
   'matin.libre': {
     serieux: ['Aucun rendez-vous aujourd’hui. Voici ce qui compte.', 'Agenda libre aujourd’hui. Trois choses à regarder.'],
     chill: ['Pas de rendez-vous aujourd’hui. Bon jour pour avancer.', 'Agenda libre. On choisit trois choses ?'],
-    taquin: ['Personne ne t’a réservé aujourd’hui. Louche, mais pratique.', 'Agenda vide. Promis, je n’ai rien annulé.'],
+    taquin: ['Personne ne vous a réservé aujourd’hui. Louche, mais pratique.', 'Agenda vide. Promis, je n’ai rien annulé.'],
   },
   'calme.module': {
     serieux: ['Journée calme. {module} mérite peut-être un coup d’œil.', 'Rien d’urgent. Un moment pour {module} ?'],
     chill: ['Journée calme. On passe par {module} ?', 'Tout est calme. Et si on ouvrait {module} ?'],
-    taquin: ['Si calme que j’entends les ventilateurs. {module}, peut-être ?', 'Je crois que {module} s’ennuie de toi. Je transmets.'],
+    taquin: ['Si calme que j’entends les ventilateurs. {module}, peut-être ?', 'Je crois que {module} s’ennuie de vous. Je transmets.'],
   },
   'calme.rien': {
-    serieux: ['Rien ne te réclame pour l’instant.', 'Tout est en ordre pour le moment.'],
-    chill: ['Tout est calme. Profite.', 'Rien de pressé. La journée est à toi.'],
+    serieux: ['Rien ne vous réclame pour l’instant.', 'Tout est en ordre pour le moment.'],
+    chill: ['Tout est calme. Profitez-en.', 'Rien de pressé. La journée est à vous.'],
     taquin: ['Rien à faire. Je vais faire semblant d’être occupé.', 'Tout est calme. Presque trop calme.'],
   },
   'alerte.site': {
-    serieux: ['Un site ne répond plus. Je t’ouvre le dossier.', 'Un site est tombé. Le détail est juste en dessous.'],
+    serieux: ['Un site ne répond plus. Je vous ouvre le dossier.', 'Un site est tombé. Le détail est juste en dessous.'],
   },
   'alerte.facture': {
-    serieux: ['Une facture a {jours} jours de retard. Les relances sont prêtes.', 'Un paiement a {jours} jours de retard. On s’en occupe maintenant.'],
+    serieux: ['Une facture a {jours#jour|jours} de retard. Les relances sont prêtes.', 'Un paiement a {jours#jour|jours} de retard. On s’en occupe maintenant.'],
   },
   'alerte.securite': {
-    serieux: ['Un problème de sécurité demande ton attention. Détail ci-dessous.', 'Quelque chose de suspect est arrivé. On regarde ensemble.'],
+    serieux: ['Un problème de sécurité demande votre attention. Détail ci-dessous.', 'Quelque chose de suspect est arrivé. On regarde ensemble.'],
   },
   'alerte.autre': {
-    serieux: ['Une décision t’attend. Le détail est ci-dessous.', 'Un point a besoin de toi. Je l’ai mis en tête.'],
+    serieux: ['Une décision vous attend. Le détail est ci-dessous.', 'Un point a besoin de vous. Je l’ai mis en tête.'],
   },
   relance: {
-    serieux: ['{nom} attend une relance depuis {jours} jours.', 'Une facture de {nom} a {jours} jours de retard.'],
-    chill: ['{nom} mériterait une petite relance. Déjà {jours} jours.', 'Un petit mot à {nom}, peut-être ? Ça fait {jours} jours.'],
-    taquin: ['Ça fait {jours} jours que tu n’as pas relancé {nom}. Je dis ça, je dis rien.', '{nom} te doit toujours. Je ne dis rien, mais bon.'],
+    serieux: ['{nom} attend une relance depuis {jours#jour|jours}.', 'Une facture de {nom} a {jours#jour|jours} de retard.'],
+    chill: ['{nom} mériterait une petite relance. Déjà {jours#jour|jours}.', 'Un petit mot à {nom}, peut-être ? Cela fait {jours#jour|jours}.'],
+    taquin: ['Cela fait {jours#jour|jours} que vous n’avez pas relancé {nom}. Je dis ça, je dis rien.', '{nom} vous doit toujours. Je ne dis rien, mais bon.'],
   },
   'soir.recap': {
-    serieux: ['Journée bouclée : {faits} choses faites. {restants} pour demain.', '{faits} choses faites aujourd’hui. {restants} passent à demain.'],
-    chill: ['Belle journée : {faits} choses faites. {restants} peuvent attendre.', '{faits} choses faites. Demain reprend les {restants} autres.'],
-    taquin: ['{faits} choses faites. Pas mal du tout.', '{faits} faites, {restants} restantes. Le toi de demain gérera.'],
+    serieux: ['Journée bouclée : {faits#chose faite|choses faites}. {restants} pour demain.', '{faits#chose faite|choses faites} aujourd’hui. {restants} passent à demain.'],
+    chill: ['Belle journée : {faits#chose faite|choses faites}. {restants} peuvent attendre.', '{faits#chose faite|choses faites}. Demain reprend les {restants} autres.'],
+    taquin: ['{faits#chose faite|choses faites}. Pas mal du tout.', '{faits} faites, {restants} restantes. Demain s’en chargera.'],
   },
   'soir.leger': {
     serieux: ['Journée calme. Rien n’est resté en suspens.', 'La journée se termine. Rien d’urgent ne reste.'],
-    chill: ['Journée tranquille. Tu peux décrocher.', 'Journée calme dans l’ensemble. À demain.'],
+    chill: ['Journée tranquille. Vous pouvez décrocher.', 'Journée calme dans l’ensemble. À demain.'],
     taquin: ['Journée calme. Je surveille cette nuit.', 'Pas grand-chose aujourd’hui. Demain se rattrapera.'],
   },
   tard: {
     serieux: ['Il est tard. Le reste peut attendre demain.', 'Il est tard. Je garde un œil sur tout.'],
-    chill: ['Il est tard. Le reste attendra.', 'Déjà tard. Va te reposer.'],
+    chill: ['Il est tard. Le reste attendra.', 'Déjà tard. Allez vous reposer.'],
     taquin: ['Il est tard. Le reste sera encore là demain.', 'Encore tard. On décroche, peut-être ?'],
   },
   'neuf.bienvenue': {
-    serieux: ['Bonjour, je suis Ajmani. On installe ton espace.', 'Bienvenue. Trois étapes pour bien démarrer.'],
-    chill: ['Salut, moi c’est Ajmani. On installe ton coin ?', 'Bienvenue à bord. Trois petites étapes et c’est parti.'],
-    taquin: ['Salut, moi c’est Ajmani. Trois étapes et c’est réglé.', 'Nouveau ici ? On fait ça vite.'],
+    serieux: ['Bonjour, je suis Ajmani. Installons votre espace.', 'Bienvenue. Trois étapes pour bien démarrer.'],
+    chill: ['Bonjour, moi c’est Ajmani. On installe votre coin ?', 'Bienvenue à bord. Trois petites étapes et c’est parti.'],
+    taquin: ['Bonjour, moi c’est Ajmani. Trois étapes et c’est réglé.', 'Nouveau ici ? On fait ça vite.'],
   },
   'fete.facture': {
     serieux: ['Facture encaissée. Bonne nouvelle.', 'Paiement reçu. Une relance de moins.'],
-    chill: ['Facture encaissée. Belle journée.', 'L’argent est arrivé. Ça fait plaisir.'],
-    taquin: ['Facture encaissée. Celle-là fait plaisir.', 'Payée ! Je te l’avais dit.'],
+    chill: ['Facture encaissée. Belle journée.', 'L’argent est arrivé. Cela fait plaisir.'],
+    taquin: ['Facture encaissée. Celle-là fait plaisir.', 'Payée ! Je vous l’avais dit.'],
   },
   'fete.client': {
     serieux: ['Nouveau client enregistré. Sa fiche est prête.', 'Un nouveau client arrive. Bienvenue à lui.'],
@@ -194,23 +199,23 @@ const FR: Record<Situation, Variantes> = {
     taquin: ['Nouveau client ! La famille s’agrandit.', 'Un nouveau client. Je vais bien me tenir.'],
   },
   'astuce.panneau': {
-    serieux: ['Ctrl+J ou ⌘J ouvre notre conversation, partout.', 'Appuie sur ⌘J pour me parler depuis n’importe quel écran.'],
-    chill: ['Astuce : ⌘J ouvre notre discussion, où que tu sois.', 'Besoin de moi ? ⌘J, de n’importe où.'],
-    taquin: ['⌘J et j’apparais. Comme par magie, en moins cher.', 'Psst, ⌘J. J’arrive tout de suite.'],
+    serieux: ['{raccourci} ouvre notre conversation, partout.', 'Appuyez sur {raccourci} pour me parler depuis n’importe quel écran.'],
+    chill: ['Astuce : {raccourci} ouvre notre discussion, où que vous soyez.', 'Besoin de moi ? {raccourci}, de n’importe où.'],
+    taquin: ['{raccourci} et j’apparais. Comme par magie, en moins cher.', 'Psst, {raccourci}. J’arrive tout de suite.'],
   },
   'astuce.voix': {
-    serieux: ['Maintiens F9 pour me parler au lieu d’écrire.', 'Maintiens F9, parle, relâche. Je m’occupe du reste.'],
-    chill: ['Marre de taper ? Maintiens F9 et parle.', 'Maintiens F9 pour parler. Presque les mains libres.'],
-    taquin: ['Maintiens F9 et parle. Promis, j’écoute.', 'F9 enfoncé, je suis tout ouïe.'],
+    serieux: ['Maintenez F9 pour me parler au lieu d’écrire.', 'Maintenez F9, parlez, relâchez. Je m’occupe du reste.'],
+    chill: ['Marre de taper ? Maintenez F9 et parlez.', 'Maintenez F9 pour parler. Presque les mains libres.'],
+    taquin: ['Maintenez F9 et parlez. Promis, j’écoute.', 'F9 enfoncé, je suis tout ouïe.'],
   },
   'astuce.fil': {
-    serieux: ['Tu peux cocher, masquer ou ajouter des lignes au fil.', 'Le fil du jour est à toi. Modifie-le librement.'],
-    chill: ['Le fil du jour se modifie. Ajoute tes propres lignes.', 'Coche ce qui est fait. Ça fait du bien.'],
-    taquin: ['Cocher est autorisé. Encouragé, même.', 'Ajoute une ligne au fil. Je ne juge pas.'],
+    serieux: ['Vous pouvez cocher, masquer ou ajouter des lignes à votre journée.', 'Votre journée est à vous. Modifiez-la librement.'],
+    chill: ['Votre journée se modifie. Ajoutez vos propres lignes.', 'Cochez ce qui est fait. Cela fait du bien.'],
+    taquin: ['Cocher est autorisé. Encouragé, même.', 'Ajoutez une ligne à la liste. Je ne juge pas.'],
   },
   'astuce.registre': {
-    serieux: ['Tu peux régler mon ton dans les Réglages.', 'Trop bavard ? Mon ton se règle dans les Réglages.'],
-    chill: ['Mon ton se change dans les Réglages.', 'Sérieux, chill ou taquin : à toi de voir, dans les Réglages.'],
+    serieux: ['Vous pouvez régler mon ton dans les Réglages.', 'Trop bavard ? Mon ton se règle dans les Réglages.'],
+    chill: ['Mon ton se change dans les Réglages.', 'Sérieux, chill ou taquin : à vous de voir, dans les Réglages.'],
     taquin: ['Trop taquin ? Les Réglages peuvent me calmer.', 'Mon ton a un bouton. Il est dans les Réglages.'],
   },
 };
@@ -235,11 +240,6 @@ export function phrasesDe(replique: string): string[] {
     .split(/(?<=[.!?…])\s+(?=\S)/u)
     .map((p) => p.trim())
     .filter((p) => compterMots(p) > 0);
-}
-
-/** Remplace `{x}` par sa valeur ; un paramètre manquant reste visible pour être attrapé par les contrôles. */
-export function remplir(modele: string, params: Record<string, string | number> = {}): string {
-  return modele.replace(/\{(\w+)\}/g, (tout, cle: string) => (cle in params ? String(params[cle]) : tout));
 }
 
 /**
