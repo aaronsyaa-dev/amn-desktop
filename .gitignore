@@ -98,3 +98,7 @@ dist/
 dist-business/
 dist-internal/
 dist-app/
+
+# Sécurité : rien qui décrive une faille ne part sur ce dépôt (PUBLIC).
+# docs/securite/ reste local ou dans un dépôt privé. Voir docs/refonte/REGLES.md.
+docs/securite/

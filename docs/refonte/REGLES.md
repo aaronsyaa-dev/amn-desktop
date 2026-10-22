@@ -17,6 +17,26 @@ cliente ne doit **jamais** changer pendant ce chantier.
 - Ne lance pas l'app (ni `npm start`, ni `start:business`, ni `build:web`), ni
   aucun serveur. Aucune donnée réelle (Syraagensy, NWSY), aucun secret.
 
+## Sécurité : le dépôt est public
+
+`aaronsyaa-dev/amn-desktop` est **public**. **Rien qui décrive une faille de
+sécurité n'y est poussé.** Cela couvre :
+
+- les documents (rapports, constats, tickets) ;
+- les commentaires de code ;
+- les messages de commit ;
+- les noms de branche.
+
+Concrètement :
+
+- `docs/securite/**` reste **local ou dans un dépôt privé**. Le dossier est
+  ignoré par `.gitignore` : ne le force pas avec `git add -f`.
+- Dans `src/securite/**` et partout ailleurs, le code peut corriger, mais ses
+  commentaires et ses commits ne décrivent ni la faille ni comment l'exploiter.
+  Écris par exemple « durcit la validation de X », sans le scénario.
+- Un constat de sécurité trouvé par une autre session va à S6, par un canal
+  privé. Jamais dans `docs/qualite/` ni dans un rapport poussé.
+
 ## Où écrire
 
 - Ton code va dans `src/refonte/<ta-zone>/`, ou dans les fichiers de ta zone
