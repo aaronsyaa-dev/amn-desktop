@@ -76,25 +76,21 @@ function normaliser(f) {
   return lignes;
 }
 
-/** Diff minimal par plus longue sous-suite commune, sur des lignes hachées. */
+/**
+ * Diff par multiensemble de lignes : l'ordre est ignoré. Le bundler range les
+ * modules autrement dès qu'un import change, et un diff ordonné verrait alors
+ * des milliers de lignes « déplacées » qui n'ont pas changé.
+ */
 function diffLignes(a, b) {
-  // Les lignes communes en tête et en queue sortent d'abord : le reste est petit.
-  let debut = 0;
-  while (debut < a.length && debut < b.length && a[debut] === b[debut]) debut++;
-  let fa = a.length, fb = b.length;
-  while (fa > debut && fb > debut && a[fa - 1] === b[fb - 1]) { fa--; fb--; }
-  const A = a.slice(debut, fa), B = b.slice(debut, fb);
-  if (A.length * B.length > 4e7) return { ajout: B, retrait: A };
-  const n = A.length, m = B.length;
-  const L = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1));
-  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
-  const ajout = [], retrait = [];
-  let i = 0, j = 0;
-  while (i < n && j < m) {
-    if (A[i] === B[j]) { i++; j++; } else if (L[i + 1][j] >= L[i][j + 1]) retrait.push(A[i++]); else ajout.push(B[j++]);
+  const compte = new Map();
+  for (const l of a) compte.set(l, (compte.get(l) ?? 0) + 1);
+  const ajout = [];
+  for (const l of b) {
+    const n = compte.get(l) ?? 0;
+    if (n > 0) compte.set(l, n - 1); else ajout.push(l);
   }
-  while (i < n) retrait.push(A[i++]);
-  while (j < m) ajout.push(B[j++]);
+  const retrait = [];
+  for (const [l, n] of compte) for (let i = 0; i < n; i++) retrait.push(l);
   return { ajout, retrait };
 }
 
