@@ -24,3 +24,4 @@
 | `echeancier` Paiement en plusieurs fois | argent · facturer · courant | | | | | | | en cours | |
 | `comparateurDevis` Comparateur de devis fournisseurs | argent · depenser · courant | | | | | | | en cours | |
 | `retroplanning` Rétroplanning | jour · organiser · essentiel | | | | | | | en cours | |
+| `registrePersonnel` Registre unique du personnel | outils · conformite · courant | | | | | | | en cours | |

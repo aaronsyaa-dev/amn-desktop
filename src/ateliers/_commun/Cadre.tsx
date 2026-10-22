@@ -17,7 +17,7 @@ export function CadreAtelier({ famille, nom, intro, children }: { famille: Famil
   const { ts } = useSocleLangue();
   const { tx } = useTextesCommuns();
   return (
-    <div data-famille={famille} data-atelier className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8 font-[Inter,system-ui,sans-serif] text-socle-texte">
+    <div data-famille={famille} data-atelier className="mx-auto flex max-w-5xl min-w-0 flex-col gap-6 [&_fieldset]:min-w-0 px-6 py-8 font-[Inter,system-ui,sans-serif] text-socle-texte">
       <header className="flex flex-col gap-1.5">
         <p className="flex items-center gap-2 text-[12px] font-medium text-socle-texte-discret">
           <span aria-hidden className="inline-block h-2 w-2 rounded-full bg-[var(--fam)]" />
