@@ -7,6 +7,7 @@ import { SalleScreen } from '../screens/SalleScreen';
 import { ModuleRoute } from '../components/ModuleRoute';
 import { AppLayout } from '../components/AppLayout';
 import { ROUTE_TOUS_LES_MODULES, TousLesModules } from '@edition/navigation';
+import { routesDuRegistre } from '../refonte/modules/routes';
 import { LoginScreen } from '../screens/LoginScreen';
 import { InvitationScreen } from '../screens/InvitationScreen';
 import { ReinitialisationScreen } from '../screens/ReinitialisationScreen';
@@ -365,6 +366,9 @@ function AmnRoutes() {
         <Route path="/bibliotheque" element={<LibraryScreen />} />
         {/* Refonte (S1) : tous les modules, rangés par famille puis par action. Pas un module du catalogue. */}
         <Route path={ROUTE_TOUS_LES_MODULES} element={<TousLesModules />} />
+        {/* Refonte S5 : les écrans neufs déclarés au registre (`src/refonte/modules/declarations/`)
+            montent ici leur route, sans qu'on ait à l'écrire. Aucun aujourd'hui. */}
+        {routesDuRegistre()}
         <Route path="/vault" element={<VaultScreen />} />
 
         {/* LES BUREAUX DE SUPERVISION (cahiers 11 à 16) : Supervisor, Cyber,
