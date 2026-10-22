@@ -146,16 +146,24 @@ export function ajouter(r: RetouchesFil, jour: string, titre: string, cle: strin
 /**
  * LE SEUL BOUTON BLANC DE L'ÉCRAN — l'action qui compte maintenant.
  *
- *   1. une facture en retard → la relancer (la plus en retard) ;
- *   2. sinon la première ligne non faite qui mène quelque part → y aller ;
- *   3. sinon choisir ses priorités du jour.
+ *   1. un point critique → l'ouvrir ;
+ *   2. une facture en retard → relancer la plus en retard ;
+ *   3. un compte vide → l'étape suivante (« Commencer ») ;
+ *   4. sinon la première ligne non faite qui mène quelque part → y aller ;
+ *   5. sinon choisir ses priorités du jour.
  */
-export type ActionPrincipale = { cle: 'relancer'; nom: string; vers: string } | { cle: 'ouvrir'; titre: string; vers: string } | { cle: 'priorites'; vers: string };
+export type ActionPrincipale =
+  | { cle: 'alerte'; titre: string; vers: string }
+  | { cle: 'relancer'; nom: string; vers: string }
+  | { cle: 'commencer'; titre: string; vers: string }
+  | { cle: 'ouvrir'; titre: string; vers: string }
+  | { cle: 'priorites'; vers: string };
 
-export function actionPrincipale(enRetard: { nom: string; jours: number }[], visibles: LigneFil[]): ActionPrincipale {
+export function actionPrincipale(alerte: { titre: string; vers: string } | null, enRetard: { nom: string; jours: number }[], visibles: LigneFil[]): ActionPrincipale {
+  if (alerte) return { cle: 'alerte', titre: alerte.titre, vers: alerte.vers };
   const pire = [...enRetard].sort((a, b) => b.jours - a.jours)[0];
   if (pire) return { cle: 'relancer', nom: pire.nom, vers: '/relances' };
   const suivante = visibles.find((l) => !l.fait && l.vers);
-  if (suivante?.vers) return { cle: 'ouvrir', titre: suivante.titre, vers: suivante.vers };
+  if (suivante?.vers) return { cle: suivante.type === 'etape' ? 'commencer' : 'ouvrir', titre: suivante.titre, vers: suivante.vers };
   return { cle: 'priorites', vers: '/priorites' };
 }

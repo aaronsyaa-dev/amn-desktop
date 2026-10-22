@@ -1,23 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
-import { useLangue, libelleNav } from '../../i18n';
+import { useLangue } from '../../i18n';
 import { useCollection, useSync, stripMeta } from '../../state/SyncContext';
 import { useClients } from '../../state/useClients';
 import { useInvoices, isOverdue, isoDay, invoiceTotals, netDueCents } from '../../state/useInvoices';
 import { useAppointments, appointmentEnd } from '../../state/useAppointments';
 import { useAttention } from '../../state/useAttention';
 import { useActivity } from '../../state/ActivityContext';
-import { moduleDuChemin, useRegards } from '../../state/RegardsContext';
 import { useProfilesOptionnel } from '../../state/ProfilesContext';
 import { toutesLesSections } from '../../data/spaces';
-import type { NavItem } from '../../data/navigation';
 import { daysBetween, type AttentionKind } from '../../lib/attention';
 import { emit } from '../../socle/moments';
-import { FAMILLES, type Famille } from '../../socle/familles';
+import type { Famille } from '../../socle/familles';
 import { guideVu } from '../../guide/memoire';
 import { familleDe } from '../navigation/registre';
 import { jourDe } from './ajmani/parole';
 import { traduireAccueil, type CleAccueil } from './i18n';
+import { etatDeLAccueil, type EtatAccueil } from './etat';
 import { appliquerRetouches, actionPrincipale, basculerFait, construireFil, retouchesVides, type ActionPrincipale, type LigneFil, type RetouchesFil } from './filDuJour';
 import { calculerTuiles, lundiDe, meilleureSerie, type Tuile } from './tuiles';
 import { filDActivite, type LigneActivite } from './activite';
@@ -29,10 +28,12 @@ import type { Journee, TypeAlerte } from './scenes';
  *
  * Aucune requête nouvelle : les collections synchronisées (rendez-vous,
  * factures, tâches, priorités du jour, routines, revues hebdo, journal de
- * bord, clients), le journal d'activité de l'équipe (`useActivity`), la
- * présence sur les modules (`useRegards`) et le moteur d'attention. Les
- * seules écritures sont celles que les écrans d'origine font déjà : cocher
- * sa priorité du jour, cocher une tâche.
+ * bord, clients), le journal d'activité de l'équipe (`useActivity`) et le
+ * moteur d'attention. Les seules écritures sont celles que les écrans
+ * d'origine font déjà : cocher sa priorité du jour, cocher une tâche.
+ *
+ * La navigation (familles, compteurs, qui est en ligne) n'est PAS ici : il n'y
+ * a qu'une navigation, celle de S1 (décision de Harun, 2026-10-22).
  */
 
 interface LigneTache {
@@ -77,19 +78,11 @@ function lireRetouches(email: string, jour: string): RetouchesFil {
   return retouchesVides(jour);
 }
 
-export interface ModuleBarre {
-  item: NavItem;
-  libelle: string;
-  badge: number;
-}
-export interface FamilleBarre {
-  famille: Famille;
-  modules: ModuleBarre[];
-  badge: number;
-}
-
 export interface Accueil {
-  pret: boolean;
+  /** `chargement` : la synchronisation n'a pas répondu — rien ne s'affirme encore. */
+  etat: EtatAccueil;
+  /** La synchronisation a répondu ET le moteur d'attention a tout relu : on peut parler d'alerte. */
+  complet: boolean;
   email: string;
   prenom: string;
   maintenant: Date;
@@ -103,10 +96,10 @@ export interface Accueil {
   masquees: number;
   action: ActionPrincipale;
   activite: LigneActivite[];
-  familles: FamilleBarre[];
-  garde: ModuleBarre[];
-  enLigne: { email: string; nom: string; module: string }[];
-  presenceMontree: boolean;
+  /** Le premier point critique, tel que le moteur d'attention le dit. */
+  alerte: { titre: string; detail: string; vers: string } | null;
+  /** Le module suggéré en journée calme. */
+  moduleRoute: string;
   nomDe: (email: string) => string;
   cocher: (ligne: LigneFil) => void;
   retoucher: (fn: (r: RetouchesFil, jour: string) => RetouchesFil) => void;
@@ -117,7 +110,7 @@ export function useAccueil(): Accueil {
   const email = user?.email ?? '';
   const moi = email.toLowerCase();
   const { langue } = useLangue();
-  const { upsert, ready } = useSync();
+  const { upsert, ready, pullFailed } = useSync();
   const { clients } = useClients();
   const { invoices } = useInvoices();
   const { appointments } = useAppointments();
@@ -126,9 +119,8 @@ export function useAccueil(): Accueil {
   const routines = useCollection<{ ticks: string[] }>('routines');
   const revues = useCollection<{ week: string; prochaine?: string }>('weeklyReviews');
   const journal = useCollection<{ text: string; kind: string; byEmail: string; at: string }>('logbook');
-  const { items } = useAttention();
-  const { events, totalUnseen, unseen } = useActivity();
-  const { autres, montree } = useRegards();
+  const { items, checkedAt } = useAttention();
+  const { events, totalUnseen } = useActivity();
   const profils = useProfilesOptionnel();
 
   // L'horloge de l'Accueil : la minute suffit.
@@ -195,21 +187,22 @@ export function useAccueil(): Accueil {
     const ta = (cle: CleAccueil, params?: Record<string, string | number>) => traduireAccueil(langue, cle, params);
     const aujourdhui = isoDay(maintenant);
     const heure = (iso: string) => new Date(iso).toLocaleTimeString(langue === 'en' ? 'en-GB' : 'fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const etat = etatDeLAccueil({ ready, pullFailed });
 
-    /* ── Factures ── */
-    const enRetard = invoices
-      .filter((f) => isOverdue(f, aujourdhui, invoices))
-      .map((f) => ({ id: f.id, nom: f.billTo?.company || f.billTo?.name || f.number, jours: daysBetween(f.dueAt, aujourdhui) ?? 0 }));
+    /* ── Factures : chaque retard n'est calculé qu'une fois ── */
+    const factures = invoices.map((f) => ({ f, enRetard: isOverdue(f, aujourdhui, invoices) }));
+    const enRetard = factures.filter((x) => x.enRetard).map(({ f }) => ({ id: f.id, nom: f.billTo?.company || f.billTo?.name || f.number, jours: daysBetween(f.dueAt, aujourdhui) ?? 0 }));
     const tuiles = calculerTuiles({
-      pret: ready,
+      // Hors ligne, un chiffre calculé sur un miroir peut-être incomplet serait faux : pas de tuile.
+      pret: etat === 'pret',
       maintenant,
-      factures: invoices.map((f) => ({
+      factures: factures.map(({ f, enRetard: r }) => ({
         kind: f.kind,
         status: f.status,
         paidAt: f.paidAt || '',
         brutCents: invoiceTotals(f).grossCents,
         duCents: netDueCents(f, invoices),
-        enRetard: isOverdue(f, aujourdhui, invoices),
+        enRetard: r,
       })),
       taches: taches.map((t) => ({ status: t.status ?? '', updatedAt: t.updatedAt })),
       // L'objectif de cette semaine : le « semaine prochaine » de la revue de la semaine passée.
@@ -225,7 +218,7 @@ export function useAccueil(): Accueil {
     const rdvDuJour = appointments.filter((a) => a.status !== 'cancelled' && isoDay(new Date(a.startAt)) === aujourdhui);
     const ouvertes = taches.filter((t) => t.status === 'todo' || t.status === 'doing');
     const faitesAujourdhui = taches.filter((t) => t.status === 'done' && (t.updatedAt ?? '').slice(0, 10) === aujourdhui);
-    const compteVide = ready && clients.length === 0 && invoices.length === 0 && appointments.length === 0 && taches.length === 0;
+    const compteVide = etat === 'pret' && clients.length === 0 && invoices.length === 0 && appointments.length === 0 && taches.length === 0;
     const lignes = construireFil(
       {
         moi: email,
@@ -244,17 +237,16 @@ export function useAccueil(): Accueil {
     );
     const { visibles, masquees, faits } = appliquerRetouches(lignes, retouches, jour, email);
 
-    /* ── Activité de l'équipe ── */
+    /* ── Activité de l'équipe : la famille d'une route, lue une fois ── */
+    const familleParRoute = new Map<string, Famille>();
+    for (const section of toutesLesSections()) for (const item of section.items) familleParRoute.set(item.to, familleDe(item.key));
     const activite = filDActivite(
       {
         evenements: events,
         journal,
         encaissements: invoices.filter((f) => f.status === 'paid' && f.paidAt).map((f) => ({ id: f.id, numero: f.number, paidAt: f.paidAt })),
         clients: clients.map((c) => ({ id: c.recordId, nom: c.company || c.name, createdAt: c.createdAt })),
-        familleDeRoute: (route) => {
-          const item = toutesLesSections().flatMap((s) => s.items).find((i) => i.to === route);
-          return item ? familleDe(item.key) : 'jour';
-        },
+        familleDeRoute: (route) => familleParRoute.get(route) ?? 'jour',
       },
       {
         modif: (nom, texte) => ta('activite.modif', { nom, texte }),
@@ -263,33 +255,9 @@ export function useAccueil(): Accueil {
       },
     );
 
-    /* ── La barre : sept familles, la Garde à part ── */
-    const catalogue = toutesLesSections().flatMap((s) => s.items);
-    const compteurs: Record<string, number> = {
-      ...unseen,
-      '/agenda': rdvDuJour.filter((a) => a.status === 'scheduled' && appointmentEnd(a) > maintenant).length,
-      '/tasks': ouvertes.filter((t) => (t.assigneeEmail ?? '').toLowerCase() === moi).length,
-      '/relances': enRetard.length,
-      '/priorites': priorites.filter((d) => d.day === aujourdhui && d.email.toLowerCase() === moi).flatMap((d) => d.items ?? []).filter((p) => !p.doneAt).length,
-    };
-    const versModule = (item: NavItem): ModuleBarre => ({ item, libelle: libelleNav(item), badge: compteurs[item.to] ?? 0 });
-    const estGarde = (item: NavItem) => item.to === '/garde' || item.to.startsWith('/garde/');
-    const familles: FamilleBarre[] = FAMILLES.map((famille) => {
-      const modules = catalogue.filter((i) => !estGarde(i) && familleDe(i.key) === famille).map(versModule);
-      return { famille, modules, badge: modules.reduce((n, m) => n + m.badge, 0) };
-    });
-    const garde = catalogue.filter(estGarde).map(versModule);
-
-    /* ── En ligne ── */
-    const libelleDuChemin = (chemin: string) => {
-      const m = moduleDuChemin(chemin);
-      const item = catalogue.find((i) => i.to === m) ?? catalogue.find((i) => i.to !== '/' && m.startsWith(i.to));
-      return item ? libelleNav(item) : m;
-    };
-    const enLigne = autres.filter((r) => !r.parti).map((r) => ({ email: r.email, nom: nomDe(r.email), module: libelleDuChemin(r.module) }));
-
-    /* ── Le message d'Ajmani ── */
-    const critique = items.find((i) => i.severity === 'critical') ?? null;
+    /* ── Le message d'Ajmani : jamais avant que les données aient répondu ── */
+    const complet = etat === 'pret' && checkedAt !== null;
+    const critique = complet ? (items.find((i) => i.severity === 'critical') ?? null) : null;
     const factureCritique = critique?.kind === 'invoice-overdue' ? enRetard.find((f) => critique.key === `invoice-overdue:${f.id}`) : undefined;
     const relance = enRetard.filter((f) => f.jours < 30).sort((x, y) => y.jours - x.jours)[0] ?? null;
     const oublie = MODULES_OUBLIES[[...jour].reduce((s, c) => s + c.charCodeAt(0), 0) % MODULES_OUBLIES.length];
@@ -305,9 +273,11 @@ export function useAccueil(): Accueil {
       restants: visibles.length - faits,
       module: oublie.nom[langue],
     };
+    const alerte = critique ? { titre: critique.title, detail: critique.evidence, vers: critique.to } : null;
 
     return {
-      pret: ready,
+      etat,
+      complet,
       email,
       prenom: (user?.name ?? '').trim().split(/\s+/)[0] ?? '',
       maintenant,
@@ -315,19 +285,17 @@ export function useAccueil(): Accueil {
       journee,
       tuiles,
       serie: meilleureSerie(routines, maintenant),
-      boiteAZero: ready && totalUnseen === 0,
+      boiteAZero: etat === 'pret' && totalUnseen === 0,
       fil: visibles,
       faits,
       masquees,
-      action: actionPrincipale(enRetard, visibles),
+      action: actionPrincipale(alerte, enRetard, visibles),
       activite,
-      familles,
-      garde,
-      enLigne,
-      presenceMontree: montree,
+      alerte,
+      moduleRoute: oublie.route,
       nomDe,
       cocher,
       retoucher,
     };
-  }, [langue, maintenant, invoices, ready, taches, revues, appointments, clients, priorites, email, retouches, jour, events, journal, unseen, moi, autres, nomDe, items, routines, user, totalUnseen, montree, cocher, retoucher]);
+  }, [langue, maintenant, invoices, ready, pullFailed, taches, revues, appointments, clients, priorites, email, retouches, jour, events, journal, items, checkedAt, routines, user, totalUnseen, nomDe, cocher, retoucher]);
 }

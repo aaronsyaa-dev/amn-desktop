@@ -23,6 +23,7 @@ export function ToastsAjmani() {
   const { langue } = useLangue();
   const registre = useRegistre();
   const [toast, setToast] = useState<{ texte: string; type: MomentFete; cle: number } | null>(null);
+  const [retenu, setRetenu] = useState(false);
 
   useEffect(() => {
     if (!email) return undefined;
@@ -33,15 +34,17 @@ export function ToastsAjmani() {
       if (!peutReagir(etat, maintenant, jour) || quelquUnEstOccupe(maintenant)) return;
       const { replique, etat: apres } = choisir(etat, langue, MOMENTS_FETES[m.type], registre);
       ecrireParole(email, noterReaction(apres, maintenant, jour));
+      setRetenu(false);
       setToast({ texte: replique.texte, type: m.type, cle: maintenant });
     });
   }, [email, langue, registre]);
 
+  // Cinq secondes — et il ne s'efface pas tant qu'on le survole ou qu'il a le focus (WCAG 2.2.1).
   useEffect(() => {
-    if (!toast) return undefined;
+    if (!toast || retenu) return undefined;
     const t = setTimeout(() => setToast(null), 5000);
     return () => clearTimeout(t);
-  }, [toast]);
+  }, [toast, retenu]);
 
   return (
     <div className="pointer-events-none fixed bottom-4 right-4 z-[90] flex max-w-[min(360px,calc(100vw-2rem))] justify-end" role="status" aria-live="polite">
@@ -54,13 +57,20 @@ export function ToastsAjmani() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             data-famille={CATALOGUE_DES_MOMENTS[toast.type].famille}
+            onMouseEnter={() => setRetenu(true)}
+            onMouseLeave={() => setRetenu(false)}
+            onFocus={() => setRetenu(true)}
+            onBlur={() => setRetenu(false)}
             className="pointer-events-auto flex items-center gap-3 rounded-lg border border-socle-bord bg-socle-eleve py-2.5 pl-3.5 pr-1.5 text-[13px] text-socle-texte shadow-[0_12px_32px_-16px_rgba(0,0,0,.9)]"
           >
             <span aria-hidden className="h-1.5 w-1.5 flex-none rounded-full bg-[var(--fam)]" />
             <span className="min-w-0">{toast.texte}</span>
             <button
               type="button"
-              onClick={() => setToast(null)}
+              onClick={() => {
+                setToast(null);
+                setRetenu(false);
+              }}
               aria-label={traduireAccueil(langue, 'astuce.fermer')}
               className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-socle-texte-doux hover:bg-socle-survol focus-visible:outline-2 focus-visible:outline-socle-focus"
             >

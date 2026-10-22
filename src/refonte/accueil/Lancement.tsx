@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { lireMouvement } from '../../socle/mouvement';
 import { useLangue } from '../../i18n';
+import { useFermetureEchap } from '../../lib/useFermetureEchap';
 import { Logo } from '../../components/Logo';
 import { appareilModeste, dureeLancement } from './dureeLancement';
 import { traduireAccueil } from './i18n';
@@ -54,9 +55,10 @@ export function Lancement({ onDone }: { onDone: () => void }) {
     return () => clearTimeout(t);
   }, [reglages]);
 
-  // Passer : un clic (sur le rideau) ou une touche. Aucun focus n'est pris.
+  // Passer : un clic (sur le rideau), Échap (la pile des calques, comme partout) ou une autre touche. Aucun focus n'est pris.
+  useFermetureEchap(visible, () => setVisible(false));
   useEffect(() => {
-    const passer = () => setVisible(false);
+    const passer = (e: KeyboardEvent) => e.key !== 'Escape' && setVisible(false);
     window.addEventListener('keydown', passer);
     return () => window.removeEventListener('keydown', passer);
   }, []);
