@@ -34,9 +34,17 @@
   --color-socle-voile: rgba(0, 0, 0, 0.66);
 }
 
-/* La police de la refonte : Inter, chiffres tabulaires, sur les écrans qui ont migré. */
-[data-refonte-police='inter'] {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+/*
+  INTER, SUR TOUTE L'ÉDITION INTERNE (décision de Harun, 2026-10-22) — chiffres
+  tabulaires partout. `--font-sans` est la variable que lit le `body` de
+  `src/index.css` et l'utilitaire `font-sans` : la redéfinir ici suffit, sans
+  toucher un seul écran. La police mono (JetBrains Mono) ne change pas.
+*/
+:root[data-ambiance='noir'] {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color-scheme: dark;
+}
+:root[data-ambiance='noir'] body {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'cv11', 'ss01';
 }
