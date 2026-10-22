@@ -33,6 +33,7 @@
       "@edition/guide": ["src/edition/guide.internal.ts"],
       "@edition/socle": ["src/edition/socle.internal.tsx"],
       "@edition/vivant": ["src/edition/vivant.internal.tsx"],
+      "@edition/navigation": ["src/edition/navigation.internal.tsx"],
       "@edition/mainExclusive": ["src/main/exclusive.internal.ts"],
       "@edition/preloadExclusive": ["src/preload.exclusive.internal.ts"]
     }

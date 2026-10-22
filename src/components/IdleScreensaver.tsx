@@ -1,6 +1,8 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { MurDeControle } from './MurDeControle';
+// Interne seulement : ce fichier n'est monté que par `AppLayout` (appRoot.internal) —
+// le paquet client ne l'atteint pas, d'où l'import direct de la refonte (S3).
+import { SalleDeSituation } from '../refonte/garde/SalleDeSituation';
 import { useInactivite } from '../lib/useInactivite';
 
 /**
@@ -29,9 +31,11 @@ export function IdleScreensaver() {
 
 function Veil({ onWake }: { onWake: () => void }) {
   /*
-    Le voile de veille EST la Salle de contrôle : même mur, même vérité —
-    voir MurDeControle pour tout ce qu'il dit et s'interdit de dire. Ici il
-    n'ajoute que deux choses : l'entrée en fondu, et le réveil au geste.
+    Le voile de veille EST la salle de situation (refonte S3) : la Garde au
+    centre, ses équipes, ses rondes, ses remontées, les sites et les incidents
+    autour — voir SalleDeSituation pour tout ce qu'elle dit. Ici il n'ajoute
+    que deux choses : l'entrée en fondu, et le réveil au geste. L'ancien mur
+    (MurDeControle) reste celui de la route /salle.
   */
   return (
     <motion.div
@@ -42,7 +46,7 @@ function Veil({ onWake }: { onWake: () => void }) {
       className="fixed inset-0 z-[200]"
       onMouseDown={onWake}
     >
-      <MurDeControle enVeille />
+      <SalleDeSituation enVeille />
     </motion.div>
   );
 }

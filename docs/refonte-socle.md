@@ -134,7 +134,10 @@ off();
 - **Types** (`ChargesDeMoments`) : `facture.payee`, `facture.envoyee`,
   `facture.en-retard`, `devis.accepte`, `client.cree`, `rdv.proche`,
   `tache.terminee`, `projet.cree`, `message.recu`, `tentative.suspecte`,
-  `sauvegarde.terminee`, `synchro.retablie`, `premiere.fois`.
+  `sauvegarde.terminee`, `synchro.retablie`, `premiere.fois`, et pour la Garde
+  (ajoutés par le CO d'après S3) `garde.escalade` (critique), `site.muet`
+  (decision) et `garde.remontee-critique` (critique). Rien ne les émet encore :
+  les endroits sont listés dans `docs/refonte/rapports/S3.md`.
 - `CATALOGUE_DES_MOMENTS[type]` donne la **famille** et le **ton** de chaque type :
   `fete` | `info` | `decision` (seul ton à droit à l'ambre) | `critique`.
 - **Comportement** : émission synchrone. Les abonnés du type passent d'abord,

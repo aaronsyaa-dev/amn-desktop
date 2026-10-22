@@ -50,6 +50,8 @@ const SupervisorCarte = l(() => import('./supervisor/Carte'), 'SupervisorCarte')
 const SupervisorCharge = l(() => import('./supervisor/Charge'), 'SupervisorCharge');
 const SupervisorPlaces = l(() => import('./supervisor/Places'), 'SupervisorPlaces');
 const SupervisorRenouvellements = l(() => import('./supervisor/Renouvellements'), 'SupervisorRenouvellements');
+// Refonte S3 : la salle de situation, route ajoutée.
+const SupervisorSituation = l(() => import('./supervisor/Situation'), 'SupervisorSituation');
 const CyberHameconnage = l(() => import('./cyber/Hameconnage'), 'CyberHameconnage');
 const CyberSurface = l(() => import('./cyber/Surface'), 'CyberSurface');
 const CyberSecrets = l(() => import('./cyber/Secrets'), 'CyberSecrets');
@@ -86,6 +88,7 @@ export function routesBureaux() {
       <Route path="/supervisor/charge" element={s(SupervisorCharge)} />
       <Route path="/supervisor/places" element={s(SupervisorPlaces)} />
       <Route path="/supervisor/renouvellements" element={s(SupervisorRenouvellements)} />
+      <Route path="/supervisor/situation" element={s(SupervisorSituation)} />
       <Route path="/cyber" element={s(CyberAccueil)} />
       <Route path="/cyber/posture" element={s(CyberMatrice)} />
       <Route path="/cyber/alertes" element={s(CyberAlertes)} />
