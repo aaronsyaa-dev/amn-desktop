@@ -12,11 +12,11 @@ export type ProfilInterne = 'supervision' | 'commercial' | 'support';
 
 export const PROFILS_INTERNES: Record<ProfilInterne, readonly string[]> = {
   // Veiller et décider : le mur, les incidents, les sites, la Garde entière.
-  supervision: ['home', 'tasks', 'notes', 'tour', 'supervision', 'sites', 'tracker', 'access', 'ssl', 'scanner', 'customAlerts', 'gardeSalle', 'gardeAjmani', 'gardePile', 'gardeBureaux', 'gardeCommune', 'gardeCalendrier'],
+  supervision: ['home', 'tasks', 'notes', 'tour', 'supervision', 'sites', 'tracker', 'access', 'ssl', 'scanner', 'customAlerts', 'gardeSalle', 'gardePile', 'gardeBureaux', 'gardeCommune', 'gardeCalendrier'],
   // Les organisations, ce qu'elles achètent, ce qu'on leur propose.
-  commercial: ['home', 'agenda', 'clients', 'pipeline', 'invoices', 'reminders', 'tasks', 'notes', 'orgs', 'orgCompare', 'clientReport', 'generator', 'socMaturity', 'gardeAjmani', 'gardePile', 'gardeBureaux'],
+  commercial: ['home', 'agenda', 'clients', 'pipeline', 'invoices', 'reminders', 'tasks', 'notes', 'orgs', 'orgCompare', 'clientReport', 'generator', 'socMaturity', 'gardePile', 'gardeBureaux'],
   // Répondre et accompagner : les demandes, les organisations, la parole.
-  support: ['home', 'tasks', 'notes', 'agenda', 'orgs', 'access', 'dm', 'groups', 'announcements', 'calls', 'gardeSalle', 'gardeAjmani', 'gardePile', 'gardeBureaux', 'gardeCommune'],
+  support: ['home', 'tasks', 'notes', 'agenda', 'orgs', 'access', 'dm', 'groups', 'announcements', 'calls', 'gardeSalle', 'gardePile', 'gardeBureaux', 'gardeCommune'],
 };
 
 export const PROFILS_INTERNES_ORDRE: readonly ProfilInterne[] = ['supervision', 'commercial', 'support'];

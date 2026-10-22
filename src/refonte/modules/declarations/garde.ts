@@ -6,7 +6,7 @@ import { declarerFamille, vue } from '../declarer';
  * Décisions validées : Supervisor et Cyber (parc, produits) sont rangés ici ;
  * `/tour` et `/supervisor` restent tous les deux. Le module Ajmani de la Garde
  * n’est plus une entrée : il devient le panneau assistant ⌘J, sans personnage.
- * Sa route reste (`remplacees`). Studio et Stratégie restent cachés : ils n’ont
+ * Sa route reste et ouvre le panneau (`remplacees`). Studio et Stratégie restent cachés : ils n’ont
  * pas d’entrée au catalogue. Regroupés : Supervision et alertes ; Sites et
  * trackers ; Maturité et comparatif ; Produits cyber (Scanner, Comply, SSL).
  *
@@ -75,6 +75,6 @@ export default declarerFamille({
     },
   ],
   remplacees: [
-    { id: 'gardeAjmani', route: '/garde/ajmani', par: { fr: 'le panneau assistant, ouvert par ⌘J', en: 'the assistant panel, opened with ⌘J' } },
+    { id: 'gardeAjmani', route: '/garde/ajmani', par: { fr: 'le panneau assistant, ouvert par ⌘J', en: 'the assistant panel, opened with ⌘J' }, redirection: { vers: '/garde', assistant: true } },
   ],
 });

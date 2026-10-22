@@ -138,7 +138,7 @@ interface Registre {
   familles: readonly FamilleR[];
   entrees: readonly EntreeR[];
   vues: readonly Vue[];
-  remplacees: readonly { id: string; route: string }[];
+  remplacees: readonly { id: string; route: string; redirection: { vers: string; assistant?: true } }[];
   fautes: readonly string[];
 }
 interface Fichier {
@@ -171,6 +171,7 @@ const m = await charger<{
   declarerFamille: (f: Record<string, unknown>) => unknown;
   declarerModule: (f: Record<string, unknown>) => unknown;
   vue: (id: string, route: string, verbes: string[], motsCles: string[], plus?: Record<string, unknown>) => unknown;
+  redirections: (r: Registre) => { id: string; route: string; vers: string; assistant: boolean }[];
   essentielsDe: (r: Registre) => { courants: string[]; garde: string[] };
   sectionsDuRegistre: (r: Registre) => Section[];
   ecransNeufs: (r: Registre) => { id: string; route: string }[];
@@ -194,7 +195,7 @@ const m = await charger<{
     "export { declarerFamille, declarerModule, vue } from '../src/refonte/modules/declarer';",
     "export { essentielsDe } from '../src/refonte/navigation/moment';",
     "export { sectionsDuRegistre } from '../src/refonte/modules/catalogue';",
-    "export { ecransNeufs } from '../src/refonte/modules/routes';",
+    "export { ecransNeufs, redirections } from '../src/refonte/modules/routes';",
     ...fichiersDeclares.map((f, i) => `import __d${i} from '../${DOSSIER_DECLARATIONS}/${f}';`),
     `export const FICHIERS = [${fichiersDeclares.map((f, i) => `{ chemin: 'declarations/${f}', declaration: __d${i} }`).join(', ')}];`,
     "export { FAMILLES } from '../src/socle/familles';",
@@ -218,22 +219,35 @@ await dit('le registre se lit sans faute (aucun module écarté)', () => {
   assert.deepEqual(R.fautes, [], R.fautes.join('\n'));
 });
 
-await dit(`chaque module du catalogue interne est une vue du registre (ou remplacée), avec la même route (${catalogue.length})`, () => {
-  const manquants = catalogue.filter((i) => !parId.has(i.key) && !remplacees.has(i.key)).map((i) => i.key);
+await dit(`chaque module du catalogue interne est une vue du registre, avec la même route (${catalogue.length})`, () => {
+  const manquants = catalogue.filter((i) => !parId.has(i.key)).map((i) => i.key);
   assert.deepEqual(manquants, [], `absents du registre : ${manquants.join(', ')}`);
-  const routes = catalogue
-    .filter((i) => (parId.get(i.key)?.route ?? remplacees.get(i.key)?.route) !== i.to)
-    .map((i) => `${i.key} : catalogue ${i.to}, registre ${parId.get(i.key)?.route ?? remplacees.get(i.key)?.route}`);
+  const routes = catalogue.filter((i) => parId.get(i.key)?.route !== i.to).map((i) => `${i.key} : catalogue ${i.to}, registre ${parId.get(i.key)?.route}`);
   assert.deepEqual(routes, [], routes.join('\n'));
 });
 
 await dit('le registre ne contient rien que le catalogue n’ait pas, et chaque vue une seule fois', () => {
   const cles = new Set(catalogue.map((i) => i.key));
-  const enTrop = [...m.REGISTRE, ...R.remplacees].filter((e) => !cles.has(e.id)).map((e) => e.id);
+  const enTrop = m.REGISTRE.filter((e) => !cles.has(e.id)).map((e) => e.id);
   assert.deepEqual(enTrop, [], `inconnus du catalogue : ${enTrop.join(', ')}`);
   assert.equal(parId.size, m.REGISTRE.length, 'une vue revient deux fois');
   const neufsAuCatalogue = m.REGISTRE.filter((v) => v.nouveau && !cles.has(v.id)).map((v) => v.id);
   assert.deepEqual(neufsAuCatalogue, [], `écran neuf absent du catalogue : ${neufsAuCatalogue.join(', ')}`);
+});
+
+await dit('une vue remplacée n’est plus au catalogue, et sa route renvoie ailleurs', () => {
+  const cles = new Set(catalogue.map((i) => i.key));
+  const fautes: string[] = [];
+  const routesPrises = new Set([...m.REGISTRE.map((v) => v.route), ...catalogue.map((i) => i.to)]);
+  for (const r of R.remplacees) {
+    if (cles.has(r.id)) fautes.push(`${r.id} : remplacée, mais encore au catalogue`);
+    if (routesPrises.has(r.route)) fautes.push(`${r.id} : sa route ${r.route} est prise par un autre module`);
+  }
+  assert.deepEqual(fautes, [], fautes.join('\n'));
+  assert.deepEqual(
+    m.redirections(R).map((x) => `${x.route} → ${x.vers}${x.assistant ? ' + ⌘J' : ''}`),
+    R.remplacees.map((r) => `${r.route} → ${r.redirection.vers}${r.redirection.assistant ? ' + ⌘J' : ''}`),
+  );
 });
 
 await dit('chaque vue : une famille déclarée, une teinte du socle, une action de sa famille, un niveau, un verbe, un mot-clé', () => {
@@ -276,8 +290,12 @@ await dit('chaque route du registre mène à une <Route> de l’édition interne
   const declarees = new Set([...tables.matchAll(/path="([^"]+)"/g)].map((x) => x[1]));
   // Les écrans neufs montent la leur par `routesDuRegistre()` (vérifié plus bas).
   assert.match(lire('src/edition/appRoot.internal.tsx'), /\{routesDuRegistre\(\)\}/, 'appRoot.internal.tsx ne monte plus les routes du registre');
-  const sansRoute = [...m.REGISTRE.filter((v) => !v.nouveau), ...R.remplacees].filter((e) => !declarees.has(e.route)).map((e) => `${e.id} (${e.route})`);
+  const sansRoute = m.REGISTRE.filter((v) => !v.nouveau).filter((e) => !declarees.has(e.route)).map((e) => `${e.id} (${e.route})`);
   assert.deepEqual(sansRoute, [], `sans route : ${sansRoute.join(', ')}`);
+  const doubles = R.remplacees.filter((r) => declarees.has(r.route)).map((r) => r.route);
+  assert.deepEqual(doubles, [], `route écrite deux fois (à la main et par le registre) : ${doubles.join(', ')}`);
+  const versRoutes = R.remplacees.filter((r) => !declarees.has(r.redirection.vers) && !m.REGISTRE.some((v) => v.route === r.redirection.vers)).map((r) => `${r.id} → ${r.redirection.vers}`);
+  assert.deepEqual(versRoutes, [], `redirection vers une route inconnue : ${versRoutes.join(', ')}`);
 });
 
 await dit('les dictionnaires fr et en ont les mêmes clés, aucune vide', () => {
@@ -360,11 +378,17 @@ await dit('décisions : RH dans Échanger, Événements dans Créer, Équipe dan
   for (const id of ['tour', 'orgs', 'generator', 'supervision', 'sites', 'tracker', 'scanner', 'ssl', 'access']) assert.equal(famille(id), 'garde', id);
 });
 
-await dit('Ajmani n’est plus une entrée : sa route reste, ⌘J le remplace', () => {
-  assert.ok(catalogue.some((i) => i.key === 'gardeAjmani' && i.to === '/garde/ajmani'), 'la route /garde/ajmani a disparu du catalogue');
+await dit('Ajmani : plus au catalogue ni aux entrées, sa route ouvre le panneau ⌘J', () => {
+  assert.ok(!catalogue.some((i) => i.key === 'gardeAjmani'), 'gardeAjmani est encore au catalogue');
   assert.ok(!entreeDe('gardeAjmani'), 'gardeAjmani est encore rangé');
-  assert.ok(remplacees.has('gardeAjmani'));
+  assert.deepEqual(m.redirections(R).filter((x) => x.route === '/garde/ajmani').map((x) => [x.vers, x.assistant]), [['/garde', true]]);
   assert.ok(!m.ESSENTIELS_GARDE.includes('gardeAjmani'));
+});
+
+await dit('Contrats et abonnements : une entrée d’Argent', () => {
+  const e = entreeDe('contracts');
+  assert.equal(e?.famille, 'argent');
+  assert.deepEqual(e?.vues.map((v) => v.id), ['contracts', 'subscriptions']);
 });
 
 await dit('la Garde et la supervision : réservée à l’équipe AMN (jamais au catalogue client, jamais au Poste de travail)', () => {
@@ -374,7 +398,7 @@ await dit('la Garde et la supervision : réservée à l’équipe AMN (jamais au
   const espace = new Map(m.NAV_SECTIONS.flatMap((s) => s.items.map((i) => [i.key, s.space ?? 'workspace'] as const)));
   const fautes: string[] = [];
   for (const f of garde) {
-    for (const v of [...f.entrees.flatMap((e) => e.vues), ...f.remplacees]) {
+    for (const v of f.entrees.flatMap((e) => e.vues)) {
       if (business.has(v.id)) fautes.push(`${v.id} : au catalogue client`);
       if (espace.get(v.id) === 'workspace') fautes.push(`${v.id} : au Poste de travail`);
     }

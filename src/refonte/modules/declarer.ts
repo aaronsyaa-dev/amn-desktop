@@ -71,12 +71,21 @@ export interface ModuleDeclare<A extends string = string> {
   vues: readonly VueDeclaree[];
 }
 
-/** Une vue du catalogue qui n'est plus une entrée : elle garde sa route, et quelque chose la remplace. */
+/**
+ * Une vue qui n'est plus une entrée ni un module du catalogue : sa route reste
+ * (un lien, un signet, un onglet mémorisé y arrivent encore), et quelque chose
+ * la remplace.
+ */
 export interface VueRemplacee {
   id: string;
   route: string;
   /** Ce qui la remplace, à lire après « est devenu » : « le panneau assistant, ouvert par ⌘J ». */
   par: Libelle;
+  /**
+   * Où la route mène maintenant, montée par le registre (`routesDuRegistre`) :
+   * on arrive sur `vers`, et le panneau assistant (⌘J) s'ouvre si `assistant`.
+   */
+  redirection: { vers: string; assistant?: true };
 }
 
 export interface FamilleDeclaree<A extends string = string> {

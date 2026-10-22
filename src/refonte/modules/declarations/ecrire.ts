@@ -6,7 +6,7 @@ import { declarerFamille, vue } from '../declarer';
  * Le Journal est un module à deux types : Pro (l’ancien Journal de bord) et
  * Perso (l’ancien Journal perso), chacun avec sa route et ses données.
  * Regroupés aussi : Notes et pages ; Rédaction et traduction ; Documents
- * (Classeur, Médias) ; Signatures (sur place, à distance) ; Contrats et abonnements.
+ * (Classeur, Médias) ; Signatures (sur place, à distance).
  */
 
 export default declarerFamille({
@@ -69,15 +69,6 @@ export default declarerFamille({
       vues: [
         vue('esign', '/signature', ['faire signer un devis', 'signer sur l’écran', 'faire signer un bon'], ['signature', 'signer', 'tablette']),
         vue('remoteSign', '/signature-a-distance', ['faire signer à distance', 'envoyer un document à signer'], ['signature électronique', 'signer', 'distance']),
-      ],
-    },
-    {
-      nom: { fr: 'Contrats et abonnements', en: 'Contracts and subscriptions' },
-      action: 'signer',
-      niveau: 'courant',
-      vues: [
-        vue('contracts', '/contrats', ['suivre un contrat', 'voir quand un contrat se termine'], ['contrat', 'échéance', 'engagement']),
-        vue('subscriptions', '/abonnements', ['facturer un abonnement', 'facturer chaque mois'], ['abonnement', 'mensuel', 'récurrent']),
       ],
     },
     { action: 'signer', niveau: 'avance', vues: [vue('clauses', '/clausier', ['rédiger un contrat', 'assembler des clauses'], ['clause', 'clausier', 'contrat type'])] },

@@ -145,6 +145,10 @@ function fauteDeFamille(f: Record<string, unknown>, ou: string): string | null {
     if (!Array.isArray(f.remplacees)) return `${ou} : « remplacees » n'est pas une liste`;
     for (const r of f.remplacees as unknown[]) {
       if (!estObjet(r) || !estTexte(r.id) || !estTexte(r.route) || !estLibelle(r.par)) return `${ou} : vue remplacée sans id, route ou « par »`;
+      const rd = r.redirection;
+      if (!estObjet(rd) || !estTexte(rd.vers) || !rd.vers.startsWith('/') || rd.vers === r.route) {
+        return `${ou} : vue remplacée « ${String(r.id)} » sans redirection ({ vers: '/…' } vers une autre route)`;
+      }
     }
   }
   return null;

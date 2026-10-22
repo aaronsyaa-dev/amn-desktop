@@ -3,9 +3,9 @@ import { declarerFamille, vue } from '../declarer';
 /**
  * ARGENT — facturer, vendre, dépenser, prévoir, tenir les comptes.
  *
- * Regroupés : Facturation (Relances, Acompte) ; Dépenses et achats (Notes de
- * frais, Factures entrantes) ; Prévisions (Trésorerie, Scénarios, Simulateur de
- * prêt, Prévision fiscale).
+ * Regroupés : Facturation (Relances, Acompte) ; Contrats et abonnements ;
+ * Dépenses et achats (Notes de frais, Factures entrantes) ; Prévisions
+ * (Trésorerie, Scénarios, Simulateur de prêt, Prévision fiscale).
  */
 
 export default declarerFamille({
@@ -29,6 +29,15 @@ export default declarerFamille({
         vue('invoices', '/facturation', ['envoyer une facture', 'créer une facture', 'facturer un client', 'marquer une facture payée'], ['facture', 'facturation', 'paiement', 'encaissement', 'tva']),
         vue('reminders', '/relances', ['relancer un impayé', 'relancer une facture', 'réclamer un paiement'], ['relance', 'impayé', 'retard', 'échue']),
         vue('deposits', '/acompte', ['demander un acompte', 'faire payer en ligne'], ['acompte', 'paiement en ligne', 'arrhes']),
+      ],
+    },
+    {
+      nom: { fr: 'Contrats et abonnements', en: 'Contracts and subscriptions' },
+      action: 'facturer',
+      niveau: 'courant',
+      vues: [
+        vue('contracts', '/contrats', ['suivre un contrat', 'voir quand un contrat se termine'], ['contrat', 'échéance', 'engagement']),
+        vue('subscriptions', '/abonnements', ['facturer un abonnement', 'facturer chaque mois'], ['abonnement', 'mensuel', 'récurrent']),
       ],
     },
     { action: 'vendre', niveau: 'courant', vues: [vue('orders', '/commandes', ['voir les commandes', 'traiter une commande'], ['commande', 'vente', 'site'])] },
