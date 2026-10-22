@@ -1,0 +1,4 @@
+# Le rapport est LOCAL (règle SIM : ne pas pousser). Régénéré par `npm run sim`.
+RAPPORT.md
+# Mesures d'une passe : éphémères et dépendantes de la machine.
+mesures/derniere-passe.json
