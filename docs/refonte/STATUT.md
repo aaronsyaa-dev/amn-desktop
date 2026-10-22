@@ -4,7 +4,7 @@
 > ce fichier. Règles : [`REGLES.md`](REGLES.md).
 
 - Branche d'intégration : `claude/refonte-vivante` @ `c808dae` + ce statut (base `main` @ `630ef45`)
-- Dernière mise à jour : 2026-10-22 (point 1)
+- Dernière mise à jour : 2026-10-22 (point 1, puis mise à jour du plan : S6, G0, S4 annulée, direction design)
 - Gardes locales sur `c808dae` : `typecheck`, `typecheck:business`, `lint` et les 47 `check:*` de `editions.yml` sans navigateur, toutes vertes.
 - CI `editions.yml` : sur `9a6ffe7`, les builds et les garde-fous ont réussi. « Garde-fous croisés » échoue à « Récupérer amn-api » (secret `AMN_API_TOKEN` refusé : *Bad credentials*), ce qui ne dépend pas du code. Sur ce point, résultat à relire au point suivant.
 
@@ -15,12 +15,16 @@
 | 00 Lancement sûr | aucune (lecture seule) | inconnu, aucun rapport reçu | — | — | — |
 | S0 Socle | `claude/refonte-s0-socle` | **fusionnée** | `b7453e3` | [`docs/refonte-socle.md`](../refonte-socle.md) (avant le modèle) | `data-famille="outils"` partagé avec le rail ; `emit` en fichier partagé à faire via `@edition/socle` |
 | S1 Navigation | `claude/refonte-s1-navigation` | **fusionnée** | `e788af8` | [`rapports/S1.md`](rapports/S1.md) | 8e famille « supervision » (et terrain) ou Outils, pour 40 modules `aValider` ; fusionner `/tour` et `/supervisor` ? ; essentiels du rail ; étape « rail » du guide ; `check:coquille` à adapter ; tiroir mobile (accord `BarreRail` ou `MobileBottomNav`) ; recherche dans les contenus |
-| S2 Accueil et Ajmani | `claude/refonte-s2-accueil` | **non fusionnée, à recadrer** (décision de Harun) | `8c048ca` | `rapports/S2.md` (sur sa branche) | recadrage ; sa branche devra intégrer `refonte-vivante` (bus de moments modifié) avant la prochaine relecture |
+| S2 Accueil | `claude/refonte-s2-accueil` | **non fusionnée, à recadrer** (décision de Harun) : ne pas fusionner en l'état | `8c048ca` | `rapports/S2.md` (sur sa branche) | Accueil à refaire sur le design noir et gris, **sans personnage**. La mascotte Ajmani, ses réactions et l'animation de lancement sortent du périmètre. Sa branche devra intégrer `refonte-vivante` (bus de moments modifié) avant la prochaine relecture. |
 | S3 Supervisor et Garde | `claude/refonte-s3-supervisor` | **fusionnée** | `e7f4f25` | [`rapports/S3.md`](rapports/S3.md) | 8 accents d'équipe à valider ; fond graphite de la veille au lieu du noir ; format de `journal.ressource` côté serveur ; alertes app fermée (travail amn-api, `docs/refonte-alertes.md`) |
-| S4 Robots métiers | `claude/refonte-s4-robots` | en attente de S2 | — | — | — |
-| S5 Modules par catégorie | `claude/refonte-s5-<categorie>` | en attente de S1 | — | — | stratégie pour les écrans partagés (`IS_BUSINESS` ou enveloppes internes) |
+| S4 Robots métiers | — | **annulée** (décision de Harun) : plus de personnages ni de robots dans le desktop | — | — | — |
+| S5 Modules par catégorie | `claude/refonte-s5-<categorie>` | à lancer (S1 fusionnée) | — | — | stratégie pour les écrans partagés (`IS_BUSINESS` ou enveloppes internes) |
+| S6 Sécurité et SOC | `claude/refonte-sec-*` | à lancer. Phase 1 en lecture seule. **Ne pas fusionner sans décision de Harun.** Ne bloque aucune autre tranche. | — | `docs/securite/phase1.md` (phase 1) | — |
+| G0 Garde diagnostic | aucune (lecture seule) | à lancer : chercher pourquoi la Garde échoue. **Aucune fusion.** | — | `docs/refonte/rapports/G0.md` | Sans branche, le rapport ne peut pas être poussé par G0 : il est remis au CO, qui l'ajoute sur `refonte-vivante`. |
 
-États possibles : à lancer · en cours · prête (rapport poussé) · relue · fusionnée · bloquée.
+États possibles : à lancer · en cours · prête (rapport poussé) · relue · fusionnée · bloquée · annulée.
+
+Modèles conseillés : S6 Opus 5.5, effort élevé.
 
 ## Zones
 
@@ -29,15 +33,32 @@
 | S1 | `src/refonte/navigation/**`, `src/components/AppLayout.tsx`, `Sidebar.tsx`, `TopBar.tsx`, `src/edition/navLexique.internal.ts`, routes de `src/edition/appRoot.internal.tsx`. `BarreRail.tsx` seulement avec accord du CO. |
 | S2 | `src/refonte/accueil/**`, `src/accueils/interne/**`, `src/edition/accueils.internal.tsx`, `src/edition/ajmani.internal.ts`. Peut ajouter `emettreMoment` au couple `src/edition/socle.*.tsx` (vide côté cliente), en le signalant. |
 | S3 | `src/bureaux/**`, `src/screens/garde/**`, `src/components/garde/**` |
-| S4 | `src/refonte/robots/**` |
+| S4 | annulée |
 | S5 | `src/refonte/couverture.ts` et les écrans de sa catégorie, avec du code ajouté réservé à l'interne |
+| S6 | `docs/securite/**` et `src/securite/**`. Pour tout le reste, elle **propose** des tickets dans `docs/securite/tickets/`, sans rien modifier. |
+| G0 | aucune : lecture seule, rien n'est modifié |
 
 ## Ordre de fusion
 
 1. S0 (fait)
 2. S3, puis S1 (faits). S2 viendra après son recadrage.
-3. S4, après S2.
-4. S5, une catégorie à la fois, après S1.
+3. S5, une catégorie à la fois.
+4. S6 : seulement sur décision de Harun, indépendamment des autres.
+5. G0 : rien à fusionner. Son rapport est ajouté par le CO.
+
+## Direction design (validée par Harun, 2026-10-22)
+
+- **Noir et gris**, structure très rangée.
+- **Ludique premium** : une journée avec des cases à cocher, une progression, l'équipe en ligne.
+- **Aucun personnage ni robot** dans le desktop.
+- **Ajmani** devient une simple barre de texte, ouverte par ⌘J.
+
+Ce que cela remet en question dans ce qui est déjà fusionné (à trancher, rien n'est modifié pour l'instant) :
+
+- **Couleurs de S0** : les 7 familles colorées (`data-famille`, `--fam*`) et le thème clair. Faut-il les garder comme accents discrets sur le noir et gris, ou les ramener au gris ?
+- **Couleurs de S3 et S1** : les 8 accents d'équipe (`src/refonte/garde/equipes.ts`) et les couleurs de famille du rail du moment. Même question.
+- **Ajmani dans S3** : `ResumeDeNuit` garde un emplacement prévu pour lui (`ajmani={…}`). Il reste vide, et il faudra le retirer ou le brancher sur la barre ⌘J.
+- **⌘J** : vérifier, avant de l'attribuer, que le raccourci n'est pas déjà pris (palette ⌘K, bureaux ⌘E, guide).
 
 ## Gardes qui ne tournent nulle part
 
