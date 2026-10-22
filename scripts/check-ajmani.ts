@@ -1,20 +1,23 @@
 /**
- * Contrôle d'AJMANI ET DE L'ACCUEIL VIVANT (refonte S2) — sans navigateur, sans réseau.
+ * Contrôle d'AJMANI ET DE L'ACCUEIL DE LA REFONTE (S2 recadrée) — sans navigateur, sans réseau.
  *
  *   1. LA PAROLE : chaque situation existe en fr et en en, avec au moins deux
  *      variantes par registre écrit ; 12 mots au plus par phrase, deux phrases
  *      au plus ; les mêmes paramètres dans les deux langues ; les alertes
- *      n'ont que le registre sérieux ; pas de morale.
+ *      n'ont que le registre sérieux ; pas de morale ; pas de corps (Ajmani
+ *      n'est plus un personnage : ni antenne, ni écran-visage, ni bras).
  *   2. LE CHOIX : le registre est un plafond ; jamais deux fois de suite la
- *      même variante ; astuces 2 par jour, jamais une masquée ; réactions
- *      bornées ; la réplique de l'Accueil tient la journée ; un stockage
- *      abîmé ne casse rien.
- *   3. LES SCÈNES ET LE FIL : priorités, retouches du jour, ajouts refusés.
- *   4. LE DESSIN : chaque émotion a sa pose, des tracés interpolables, l'ambre
- *      réservé à l'alerte ; le regard borné, le clignement entre 3 et 6 s ;
- *      chaque émotion se rend hors navigateur, en mouvement « aucun ».
- *   5. LES ÉDITIONS : aucun fichier partagé n'importe `src/refonte/**`, le
- *      jumeau cliente de la couture n'importe rien d'Ajmani.
+ *      même variante ; astuces 2 par jour, jamais une masquée ; toasts
+ *      bornés ; le message de l'Accueil tient la journée ; un stockage abîmé
+ *      ne casse rien.
+ *   3. L'ACCUEIL : les tuiles n'existent que si leur donnée existe ; le fil
+ *      « Aujourd'hui » (cases réelles, retouches du poste, responsables) ;
+ *      le seul bouton blanc ; l'activité de l'équipe et ses jalons ; la série.
+ *   4. LE NOIR ET GRIS : les jetons du socle redéfinis par `ambiance.css`
+ *      gardent les contrastes du socle ; le lancement reste court.
+ *   5. PLUS DE PERSONNAGE : aucune brique de dessin ne revient dans la zone.
+ *   6. LES ÉDITIONS : aucun fichier partagé n'importe `src/refonte/accueil/**`, le
+ *      jumeau cliente de la couture n'importe rien de la refonte.
  *
  *   npm run check:ajmani
  */
@@ -85,9 +88,9 @@ const S = await charger<any>('src/refonte/accueil/scenes.ts');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const F = await charger<any>('src/refonte/accueil/filDuJour.ts');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const E = await charger<any>('src/refonte/accueil/ajmani/expressions.ts');
+const T = await charger<any>('src/refonte/accueil/tuiles.ts');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const R = await charger<any>('src/refonte/accueil/ajmani/regard.ts');
+const A = await charger<any>('src/refonte/accueil/activite.ts');
 const { dureeLancement } = await charger<{ dureeLancement: (p: boolean, m: boolean, n: string) => number }>('src/refonte/accueil/dureeLancement.ts');
 
 /* ── 1. La parole ─────────────────────────────────────────────────────────── */
@@ -146,6 +149,15 @@ await dit('les alertes n’ont que le registre sérieux', () => {
     for (const s of P.SITUATIONS_SERIEUSES) {
       const v = P.BIBLIOTHEQUE[langue][s];
       assert.ok(!v.chill && !v.taquin, `${langue}/${s} porte un registre non sérieux`);
+    }
+  }
+});
+
+await dit('pas de corps : Ajmani n’est plus un personnage', () => {
+  const corps = /\b(antenne|antenna|télé|TV|pixels?|bras|arms|danse|dance|ma tête|my head|mon visage|my face)\b/i;
+  for (const langue of ['fr', 'en'] as const) {
+    for (const s of P.SITUATIONS) {
+      for (const r of REGISTRES) for (const replique of P.BIBLIOTHEQUE[langue][s][r] ?? []) assert.ok(!corps.test(replique), `${langue}/${s} : « ${replique} »`);
     }
   }
 });
@@ -213,7 +225,7 @@ await dit('astuces : deux par jour au plus, jamais une masquée, le compte repar
   assert.equal(Q.astuceDuMoment(etat, '2026-11-01'), null);
 });
 
-await dit('réactions : 90 s au moins entre deux, 4 par jour au plus', () => {
+await dit('toasts : 90 s au moins entre deux, 4 par jour au plus', () => {
   let etat = Q.etatVide();
   const t0 = Date.UTC(2026, 9, 20, 9);
   assert.equal(Q.peutReagir(etat, t0, 'j'), true);
@@ -229,7 +241,7 @@ await dit('réactions : 90 s au moins entre deux, 4 par jour au plus', () => {
   assert.equal(Q.peutReagir(etat, t + 200_000, 'j2'), true);
 });
 
-await dit('la réplique de l’Accueil tient la journée et la scène', () => {
+await dit('le message de l’Accueil tient la journée et la scène', () => {
   let etat = Q.etatVide();
   const a = Q.repliqueDuJour(etat, '2026-10-20', 'matin', 'fr', 'matin.libre', 'chill', {}, hasardFixe(5));
   etat = a.etat;
@@ -250,173 +262,259 @@ await dit('un stockage abîmé redevient un état vide', () => {
   }
 });
 
-/* ── 3. Les scènes et le fil ──────────────────────────────────────────────── */
-console.log('\nAccueil — scènes et fil du jour\n');
+/* ── 3. L'Accueil ─────────────────────────────────────────────────────────── */
+console.log('\nAccueil — scènes, tuiles, Aujourd’hui, activité\n');
 
 const base = { heure: 10, compteVide: false, alerte: null, rdvAVenir: 0, premierRdv: null, relance: null, faitsAujourdhui: 0, restants: 0, module: 'les routines' };
 
-await dit('l’ordre des scènes : neuf, alerte, soir, matin, calme', () => {
+await dit('le message suit le moment : neuf, alerte, soir, matin, calme', () => {
   assert.equal(S.choisirScene({ ...base, compteVide: true, alerte: { type: 'site' } }).scene, 'neuf');
   const alerte = S.choisirScene({ ...base, heure: 20, alerte: { type: 'facture', jours: 40 } });
   assert.equal(alerte.scene, 'alerte');
-  assert.equal(alerte.emotion, 'alerte');
   assert.equal(alerte.situation, 'alerte.facture');
-  assert.equal(S.choisirScene({ ...base, heure: 18, faitsAujourdhui: 3 }).scene, 'soir');
+  assert.equal(S.choisirScene({ ...base, heure: 18, faitsAujourdhui: 3 }).situation, 'soir.recap');
+  assert.equal(S.choisirScene({ ...base, heure: 23 }).situation, 'tard');
   assert.equal(S.choisirScene({ ...base, heure: 9, rdvAVenir: 2, premierRdv: 'Claire' }).situation, 'matin.rdv');
   assert.equal(S.choisirScene({ ...base, heure: 9, rdvAVenir: 1, premierRdv: 'Claire' }).situation, 'matin.rdv1');
   assert.equal(S.choisirScene({ ...base, heure: 14 }).situation, 'calme.module');
   assert.equal(S.choisirScene({ ...base, heure: 14, relance: { nom: 'Dupont', jours: 12 } }).situation, 'relance');
   assert.equal(S.choisirScene({ ...base, heure: 14, module: null }).situation, 'calme.rien');
+  assert.ok(!('emotion' in alerte) && !('geste' in alerte), 'plus d’émotion ni de geste : il n’y a plus de personnage');
 });
 
-await dit('tard le soir il est fatigué, sauf en alerte', () => {
-  assert.equal(S.choisirScene({ ...base, heure: 22, faitsAujourdhui: 2 }).emotion, 'fatigue');
-  assert.equal(S.choisirScene({ ...base, heure: 23 }).situation, 'tard');
-  assert.equal(S.choisirScene({ ...base, heure: 23, alerte: { type: 'site' } }).emotion, 'alerte');
-});
+const maintenant = new Date(2026, 9, 22, 10, 0, 0);
+const facture = (o: Record<string, unknown>) => ({ kind: 'invoice', status: 'issued', paidAt: '', brutCents: 0, duCents: 0, enRetard: false, ...o });
 
-const lib = { relancer: (n: string) => `Relancer ${n}`, retard: (j: number) => `${j} j`, enCours: 'en cours', aFaire: 'à faire' };
-const sources = {
-  alertes: [{ cle: 'incident:1', titre: 'Site tombé', detail: '5 min', vers: '/sites' }],
-  rdv: [
-    { id: 'b', titre: 'Point', quand: '2026-10-20T14:00:00Z', heure: '14:00' },
-    { id: 'a', titre: 'Café', quand: '2026-10-20T09:00:00Z', heure: '09:00' },
-  ],
-  factures: [
-    { id: 'f1', nom: 'Dupont', jours: 3 },
-    { id: 'f2', nom: 'Martin', jours: 12 },
-  ],
-  taches: [
-    { id: 1, titre: 'Écrire', enCours: false },
-    { id: 2, titre: 'Relire', enCours: true },
-  ],
-};
-
-await dit('le fil automatique : alertes, rendez-vous par heure, relances par retard, tâches en cours d’abord', () => {
-  const fil = F.construireFil(sources, lib);
+await dit('pas de donnée, pas de tuile : jamais un zéro inventé', () => {
+  assert.deepEqual(T.calculerTuiles({ pret: false, maintenant, factures: [facture({ status: 'paid', paidAt: '2026-10-02', brutCents: 100 })], taches: [{ status: 'todo' }], objectif: 'X' }), [], 'avant la synchronisation, rien');
+  assert.deepEqual(T.calculerTuiles({ pret: true, maintenant, factures: [], taches: [], objectif: null }), [], 'compte vide, aucune tuile');
   assert.deepEqual(
-    fil.map((l: { cle: string }) => l.cle),
-    ['alerte:incident:1', 'rdv:a', 'rdv:b', 'facture:f2', 'facture:f1', 'tache:2', 'tache:1'],
+    T.calculerTuiles({ pret: true, maintenant, factures: [facture({ status: 'draft' }), facture({ kind: 'creditNote', status: 'issued' })], taches: [], objectif: '   ' }),
+    [],
+    'un brouillon, un avoir ou un objectif vide ne font pas une tuile',
   );
 });
 
-await dit('les retouches : fait en bas, masqué compté, ajout à soi, et celles d’hier ignorées', () => {
-  const fil = F.construireFil(sources, lib);
-  let r = F.retouchesVides('2026-10-20');
-  r = F.basculerFait(r, '2026-10-20', 'rdv:a');
-  r = F.masquer(r, '2026-10-20', 'tache:1');
-  r = F.ajouter(r, '2026-10-20', '  Appeler   le comptable ', 'x');
-  const { visibles, masquees } = F.appliquerRetouches(fil, r, '2026-10-20');
-  assert.equal(masquees, 1);
-  assert.equal(visibles[visibles.length - 1].cle, 'rdv:a');
-  assert.equal(visibles[visibles.length - 1].fait, true);
-  assert.ok(visibles.some((l: { titre: string }) => l.titre === 'Appeler le comptable'));
-  assert.equal(F.troisChoses(visibles).length, 3);
-  const demain = F.appliquerRetouches(fil, r, '2026-10-21');
-  assert.equal(demain.masquees, 0);
-  assert.ok(demain.visibles.every((l: { fait: boolean }) => !l.fait));
-  assert.equal(F.ajouter(r, '2026-10-20', '   ', 'y').ajouts.length, 1, 'un ajout vide est refusé');
-  assert.equal(F.ajouter(r, '2026-10-20', 'x'.repeat(141), 'z').ajouts.length, 1, 'un ajout trop long est refusé');
-});
-
-/* ── 4. Le dessin ─────────────────────────────────────────────────────────── */
-console.log('\nAjmani — le dessin\n');
-
-const forme = (d: string) => d.replace(/-?\d+(\.\d+)?/g, '#');
-
-await dit('dix émotions, chacune une pose ; l’ambre réservé à l’alerte', () => {
-  assert.equal(E.EMOTIONS.length, 10);
-  for (const e of E.EMOTIONS) {
-    assert.ok(E.POSES[e], `pose « ${e} » absente`);
-    assert.equal(E.POSES[e].lumiere === 'ambre', e === 'alerte', `${e} : lumière ${E.POSES[e].lumiere}`);
-  }
-});
-
-await dit('les tracés des yeux et de la bouche gardent la même forme d’une pose à l’autre (interpolables)', () => {
-  const formes = new Set<string>();
-  const bouches = new Set<string>();
-  for (const e of E.EMOTIONS) {
-    const p = E.POSES[e];
-    for (const pp of [p, E.poseCligne(p)]) {
-      formes.add(forme(E.decoupeOeil(E.OEIL.gaucheX, pp.oeilG, pp.pente, -1, pp.echelleYeux)));
-      formes.add(forme(E.decoupeOeil(E.OEIL.droitX, pp.oeilD, pp.pente, 1, pp.echelleYeux)));
-    }
-    bouches.add(forme(E.traceBouche(p.bouche)));
-  }
-  assert.equal(formes.size, 1, [...formes].join('\n'));
-  assert.equal(bouches.size, 1, [...bouches].join('\n'));
-});
-
-await dit('l’ambre du visage est celui du signal (src/index.css)', async () => {
-  const { TEINTES_AJMANI } = await charger<{ TEINTES_AJMANI: { visageAlerte: string } }>('src/refonte/accueil/ajmani/briques/commun.ts');
-  const m = fs.readFileSync(path.join(racine, 'src/index.css'), 'utf8').match(/--color-signal:\s*(#[0-9a-fA-F]{6})/);
-  assert.ok(m, '--color-signal introuvable');
-  assert.equal(TEINTES_AJMANI.visageAlerte.toLowerCase(), m[1].toLowerCase());
-});
-
-await dit('un œil fermé ne laisse rien voir', () => {
-  const d: string = E.decoupeOeil(80, { haut: 0.5, bas: 0.5 }, 0, -1, 1);
-  const ys = [...d.matchAll(/(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g)].map((m) => Number(m[2]));
-  assert.ok(Math.max(...ys) - Math.min(...ys) < 0.5, d);
-});
-
-await dit('le regard reste dans l’écran, le clignement tombe entre 3 et 6 s', () => {
-  for (const [sx, sy] of [[0, 0], [5000, 0], [-5000, 9000], [100, 101], [Number.NaN, 3]]) {
-    const d = R.decalageRegard({ x: 100, y: 100 }, { x: sx, y: sy });
-    assert.ok(Math.abs(d.x) <= R.REGARD_MAX.x && Math.abs(d.y) <= R.REGARD_MAX.y, JSON.stringify(d));
-  }
-  for (const h of [0, 0.5, 0.9999, 1, -1]) {
-    const ms = R.delaiClignement(() => h);
-    assert.ok(ms >= 3000 && ms < 6000, String(ms));
-  }
-});
-
-await dit('le lancement : ~2 s la première fois, moins d’1 s ensuite, plus court si modeste ou réduit', () => {
-  assert.ok(dureeLancement(true, false, 'complet') >= 1800 && dureeLancement(true, false, 'complet') <= 2200);
-  assert.ok(dureeLancement(false, false, 'complet') < 1000);
-  assert.ok(dureeLancement(true, true, 'complet') < dureeLancement(true, false, 'complet'));
-  assert.ok(dureeLancement(true, false, 'reduit') <= 1000);
-  assert.ok(dureeLancement(true, false, 'aucun') <= 500);
-});
-
-await dit('chaque émotion se rend hors navigateur ; décoratif sans titre, image avec', async () => {
-  const { rendre } = await charger<{ rendre: (props: Record<string, unknown>) => string }>({
-    code: [
-      "import { createElement as h } from 'react';",
-      "import { renderToStaticMarkup } from 'react-dom/server.browser';",
-      "import { Ajmani } from '../src/refonte/accueil/ajmani/Ajmani';",
-      'export const rendre = (props) => renderToStaticMarkup(h(Ajmani, props));',
-    ].join('\n'),
+await dit('les tuiles disent les vrais chiffres', () => {
+  const tuiles = T.calculerTuiles({
+    pret: true,
+    maintenant,
+    factures: [
+      facture({ status: 'paid', paidAt: '2026-10-03', brutCents: 120000 }),
+      facture({ status: 'paid', paidAt: '2026-09-20', brutCents: 100000 }),
+      facture({ status: 'issued', brutCents: 50000, duCents: 50000, enRetard: true }),
+      facture({ status: 'issued', brutCents: 30000, duCents: 30000 }),
+      facture({ status: 'issued', brutCents: 9000, duCents: 0 }),
+    ],
+    taches: [{ status: 'todo' }, { status: 'doing' }, { status: 'done', updatedAt: '2026-10-20T09:00:00Z' }, { status: 'done', updatedAt: '2026-10-10T09:00:00Z' }],
+    objectif: 'Signer deux devis',
   });
-  for (const e of E.EMOTIONS) {
-    const html = rendre({ emotion: e, mouvement: 'aucun' });
-    assert.ok(html.startsWith('<svg') && html.includes('aria-hidden="true"'), `${e} : ${html.slice(0, 80)}`);
-    assert.ok(!html.includes('tabindex'), `${e} : le dessin ne doit pas être focalisable`);
-  }
-  const titre = rendre({ emotion: 'content', titre: 'Ajmani', mouvement: 'aucun', cadrage: 'tete' });
-  assert.ok(titre.includes('role="img"') && titre.includes('aria-label="Ajmani"'));
+  const par = Object.fromEntries(tuiles.map((t: { cle: string }) => [t.cle, t]));
+  assert.deepEqual(Object.keys(par), ['ca', 'attente', 'equipe', 'objectif']);
+  assert.equal(par.ca.cents, 120000);
+  assert.equal(par.ca.moisPrecedentCents, 100000);
+  assert.equal(T.evolution(120000, 100000), 20);
+  assert.equal(T.evolution(120000, null), null);
+  assert.deepEqual([par.attente.nombre, par.attente.cents, par.attente.enRetard], [2, 80000, 1]);
+  assert.deepEqual([par.equipe.ouvertes, par.equipe.enCours, par.equipe.faitesSemaine], [2, 1, 1]);
+  assert.equal(par.objectif.texte, 'Signer deux devis');
+  assert.equal(T.lundiDe(maintenant), '2026-10-19');
 });
 
-/* ── 5. Les éditions ──────────────────────────────────────────────────────── */
-console.log('\nAccueil vivant — séparation des éditions\n');
+await dit('la série : jours consécutifs, depuis aujourd’hui ou hier ; moins de 2, pas de pastille', () => {
+  assert.equal(T.meilleureSerie([{ ticks: ['2026-10-22', '2026-10-21', '2026-10-20'] }, { ticks: ['2026-10-21'] }], maintenant), 3);
+  assert.equal(T.meilleureSerie([{ ticks: ['2026-10-21', '2026-10-20'] }], maintenant), 2, 'aujourd’hui pas encore coché');
+  assert.equal(T.meilleureSerie([{ ticks: ['2026-10-22'] }], maintenant), 0);
+  assert.equal(T.meilleureSerie([], maintenant), 0);
+});
+
+const lib = { enCours: 'en cours', aFaire: 'à faire', faite: 'faite', etapeClient: 'Client', etapeRdv: 'Rdv', etapeVisite: 'Visite' };
+const sources = {
+  moi: 'aaron@exemple.test',
+  priorites: [
+    { email: 'mohamed@exemple.test', id: 'p2', label: 'Appeler le notaire', fait: false },
+    { email: 'aaron@exemple.test', id: 'p1', label: 'Finir le devis', fait: true },
+  ],
+  rdv: [
+    { id: 'b', titre: 'Point', quand: '2026-10-22T14:00:00Z', heure: '14:00', fait: false },
+    { id: 'a', titre: 'Café', quand: '2026-10-22T09:00:00Z', heure: '09:00', fait: true },
+  ],
+  taches: [
+    { id: 't1', titre: 'Écrire', statut: 'todo', responsable: null },
+    { id: 't2', titre: 'Relire', statut: 'doing', responsable: 'riyad@exemple.test' },
+  ],
+  etapes: null,
+};
+
+await dit('Aujourd’hui : priorités (les miennes d’abord), rendez-vous par heure, tâches en cours d’abord', () => {
+  const fil = F.construireFil(sources, lib);
+  assert.deepEqual(
+    fil.map((l: { cle: string }) => l.cle),
+    ['priorite:aaron@exemple.test:p1', 'priorite:mohamed@exemple.test:p2', 'rdv:a', 'rdv:b', 'tache:t2', 'tache:t1'],
+  );
+  const parCle = Object.fromEntries(fil.map((l: { cle: string }) => [l.cle, l]));
+  assert.equal(parCle['priorite:aaron@exemple.test:p1'].case, 'donnee', 'ma priorité se coche dans la donnée');
+  assert.equal(parCle['priorite:mohamed@exemple.test:p2'].case, 'lecture', 'celle d’un autre se lit');
+  assert.equal(parCle['tache:t2'].case, 'donnee');
+  assert.equal(parCle['tache:t2'].responsable, 'riyad@exemple.test');
+  assert.equal(parCle['rdv:a'].responsable, null, 'un rendez-vous n’a pas de responsable enregistré : on n’en invente pas');
+});
+
+await dit('Aujourd’hui : « x sur y », fait en bas, masqué compté, ajout à soi, retouches d’hier ignorées', () => {
+  const fil = F.construireFil(sources, lib);
+  let r = F.retouchesVides('2026-10-22');
+  r = F.masquer(r, '2026-10-22', 'tache:t1');
+  r = F.ajouter(r, '2026-10-22', '  Appeler   le comptable ', 'x');
+  r = F.basculerFait(r, '2026-10-22', 'perso:x');
+  const { visibles, masquees, faits } = F.appliquerRetouches(fil, r, '2026-10-22', 'aaron@exemple.test');
+  assert.equal(masquees, 1);
+  assert.equal(visibles.length, 6);
+  assert.equal(faits, 3, 'ma priorité faite, le café passé, ma ligne cochée');
+  assert.ok(visibles.slice(-faits).every((l: { fait: boolean }) => l.fait), 'ce qui est fait descend en bas');
+  const perso = visibles.find((l: { cle: string }) => l.cle === 'perso:x');
+  assert.equal(perso.titre, 'Appeler le comptable');
+  assert.equal(perso.case, 'poste');
+  const demain = F.appliquerRetouches(fil, r, '2026-10-23', 'aaron@exemple.test');
+  assert.equal(demain.masquees, 0);
+  assert.equal(F.ajouter(r, '2026-10-22', '   ', 'y').ajouts.length, 1, 'un ajout vide est refusé');
+  assert.equal(F.ajouter(r, '2026-10-22', 'x'.repeat(141), 'z').ajouts.length, 1, 'un ajout trop long est refusé');
+});
+
+await dit('compte vide : les trois étapes, avec leur état réel', () => {
+  const fil = F.construireFil({ moi: 'a@b.c', priorites: [], rdv: [], taches: [], etapes: { client: true, rdv: false, visite: false } }, lib);
+  assert.deepEqual(fil.map((l: { cle: string; fait: boolean }) => [l.cle, l.fait]), [['etape:client', true], ['etape:rdv', false], ['etape:visite', false]]);
+});
+
+await dit('le seul bouton blanc : relancer la pire facture, sinon la prochaine chose à faire, sinon les priorités', () => {
+  const fil = F.appliquerRetouches(F.construireFil(sources, lib), F.retouchesVides('j'), 'j', 'aaron@exemple.test').visibles;
+  assert.deepEqual(F.actionPrincipale([{ nom: 'Dupont', jours: 3 }, { nom: 'Martin', jours: 40 }], fil), { cle: 'relancer', nom: 'Martin', vers: '/relances' });
+  assert.deepEqual(F.actionPrincipale([], fil), { cle: 'ouvrir', titre: 'Appeler le notaire', vers: '/priorites' });
+  assert.deepEqual(F.actionPrincipale([], []), { cle: 'priorites', vers: '/priorites' });
+});
+
+await dit('un seul bouton primaire (blanc plein) dans tout l’Accueil', () => {
+  const src = fs.readFileSync(path.join(racine, 'src/refonte/accueil/AccueilVivant.tsx'), 'utf8');
+  assert.equal((src.match(/variante="primaire"/g) ?? []).length, 1);
+});
+
+await dit('l’activité de l’équipe : journal, modifications et jalons, du plus récent au plus ancien', () => {
+  const fil = A.filDActivite(
+    {
+      evenements: [{ key: 'e1', routeKey: '/tasks', noun: 'Tâche', text: 'Relire le devis', actorEmail: 'riyad@exemple.test', at: '2026-10-22T08:00:00Z' }],
+      journal: [
+        { id: 'j1', text: 'On ferme le lundi', kind: 'decision', byEmail: 'aaron@exemple.test', at: '2026-10-21T17:00:00Z' },
+        { id: 'j2', text: '   ', kind: 'note', byEmail: 'x', at: '2026-10-22T09:00:00Z' },
+      ],
+      encaissements: [{ id: 'f1', numero: 'F-2026-012', paidAt: '2026-10-22' }],
+      clients: [{ id: 'c1', nom: 'Atelier Moreau', createdAt: '2026-10-20T10:00:00Z' }],
+      familleDeRoute: () => 'jour',
+    },
+    { modif: (n: string, t: string) => `${n} : ${t}`, encaissee: (n: string) => `Facture ${n} encaissée`, client: (n: string) => `Nouveau client : ${n}` },
+  );
+  assert.deepEqual(
+    fil.map((l: { cle: string; type: string }) => [l.cle, l.type]),
+    [['evt:e1', 'modif'], ['paye:f1', 'jalon'], ['journal:j1', 'jalon'], ['client:c1', 'jalon']],
+  );
+  assert.equal(A.filDActivite({ evenements: [], journal: [], encaissements: [], clients: [], familleDeRoute: () => 'jour' }, { modif: () => '', encaissee: () => '', client: () => '' }).length, 0, 'rien de réel, rien affiché');
+});
+
+/* ── 4. Le noir et gris ───────────────────────────────────────────────────── */
+console.log('\nAccueil — fond noir et gris, lancement\n');
+
+function lum(hex: string): number {
+  const v = hex.replace('#', '');
+  const c = [0, 2, 4].map((i) => parseInt(v.slice(i, i + 2), 16) / 255).map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+const ratio = (a: string, b: string) => {
+  const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m);
+  return (x + 0.05) / (y + 0.05);
+};
+const ambiance = fs.readFileSync(path.join(racine, 'src/refonte/accueil/ambiance.css'), 'utf8');
+const jeton = (nom: string) => {
+  const m = ambiance.match(new RegExp(`--color-${nom}:\\s*(#[0-9a-fA-F]{6})`));
+  assert.ok(m, `--color-${nom} absent de ambiance.css`);
+  return m[1];
+};
+
+await dit('les valeurs validées par Harun', () => {
+  assert.equal(jeton('socle-fond').toLowerCase(), '#0c0c0d');
+  assert.equal(jeton('bg').toLowerCase(), '#0c0c0d');
+  assert.equal(jeton('socle-surface').toLowerCase(), '#131314');
+  assert.equal(jeton('socle-eleve').toLowerCase(), '#161617');
+  assert.equal(jeton('socle-bord').toLowerCase(), '#232325');
+  assert.equal(jeton('socle-texte').toLowerCase(), '#ededed');
+  assert.equal(jeton('socle-texte-doux').toLowerCase(), '#8a8a8e');
+});
+
+await dit('les contrastes du socle tiennent sur le noir et gris', () => {
+  const surfaces = ['socle-fond', 'socle-creux', 'socle-surface', 'socle-eleve', 'socle-survol'].map(jeton);
+  for (const s of surfaces) {
+    for (const encre of ['socle-texte', 'socle-texte-doux', 'socle-texte-discret']) assert.ok(ratio(jeton(encre), s) >= 4.5, `${encre} sur ${s} : ${ratio(jeton(encre), s).toFixed(2)}`);
+    assert.ok(ratio(jeton('socle-bord-fort'), s) >= 3, `bord-fort sur ${s}`);
+    assert.ok(ratio(jeton('socle-focus'), s) >= 3, `focus sur ${s}`);
+  }
+  assert.ok(ratio(jeton('socle-primaire-encre'), jeton('socle-primaire')) >= 4.5, 'encre du bouton blanc');
+  assert.ok(ratio(jeton('socle-primaire-encre'), jeton('socle-primaire-survol')) >= 4.5, 'encre du bouton blanc au survol');
+  // Les points de famille, sur ces surfaces : ≥ 3:1 (un trait, WCAG 1.4.11).
+  const feuille = fs.readFileSync(path.join(racine, 'src/index.css'), 'utf8');
+  for (const f of ['jour', 'contacts', 'ecrire', 'argent', 'echanger', 'creer', 'outils']) {
+    const m = feuille.match(new RegExp(`--color-fam-${f}:\\s*(#[0-9a-fA-F]{6})`));
+    assert.ok(m, `famille ${f}`);
+    for (const s of surfaces) assert.ok(ratio(m[1], s) >= 3, `point ${f} sur ${s}`);
+  }
+});
+
+await dit('l’ambiance ne vit que côté interne : ni index.css ni le jumeau cliente ne la chargent', () => {
+  assert.ok(!fs.readFileSync(path.join(racine, 'src/index.css'), 'utf8').includes("data-ambiance"), 'index.css (partagé) ne doit pas porter l’ambiance');
+  const business = fs.readFileSync(path.join(racine, 'src/edition/vivant.business.tsx'), 'utf8');
+  assert.ok(!/ambiance\.css|@fontsource\/inter/.test(business));
+});
+
+await dit('le lancement : environ 1 s la première fois, plus court ensuite, passable', () => {
+  assert.ok(dureeLancement(true, false, 'complet') >= 800 && dureeLancement(true, false, 'complet') <= 1200);
+  assert.ok(dureeLancement(false, false, 'complet') < dureeLancement(true, false, 'complet'));
+  assert.ok(dureeLancement(true, true, 'complet') <= dureeLancement(true, false, 'complet'));
+  assert.ok(dureeLancement(true, false, 'aucun') <= 400);
+  const src = fs.readFileSync(path.join(racine, 'src/refonte/accueil/Lancement.tsx'), 'utf8');
+  assert.ok(/onClick=\{\(\) => setVisible\(false\)\}/.test(src) && /'keydown'/.test(src), 'un clic ou une touche le passe');
+});
+
+/* ── 5. Plus de personnage ────────────────────────────────────────────────── */
+console.log('\nAccueil — aucun personnage\n');
 
 function fichiers(dir: string): string[] {
   const out: string[] = [];
   for (const e of fs.readdirSync(path.join(racine, dir), { withFileTypes: true })) {
     const rel = path.join(dir, e.name);
     if (e.isDirectory()) out.push(...fichiers(rel));
-    else if (/\.tsx?$/.test(e.name)) out.push(rel);
+    else if (/\.(tsx?|css)$/.test(e.name)) out.push(rel);
   }
   return out;
 }
-const importsDe = (src: string) => [...src.matchAll(/(?:import|export)[^'"]*?from\s+['"]([^'"]+)['"]/g)].map((m) => m[1]);
 
-await dit('aucun fichier partagé n’importe src/refonte/** (seuls les fichiers .internal le peuvent)', () => {
+await dit('aucune brique de personnage dans la zone de l’Accueil', () => {
+  const zone = fichiers('src/refonte/accueil').map((f) => f.split(path.sep).join('/'));
+  for (const interdit of ['briques/', 'Ajmani.tsx', 'expressions.ts', 'regard.ts', 'useVie.ts']) assert.ok(!zone.some((f) => f.includes(interdit)), `${interdit} est revenu`);
+  for (const f of zone) {
+    const src = fs.readFileSync(path.join(racine, f), 'utf8');
+    assert.ok(!/AjmaniPetit|TeteTele|<svg/.test(src), `${f} dessine encore un personnage`);
+  }
+});
+
+/* ── 6. Les éditions ──────────────────────────────────────────────────────── */
+console.log('\nAccueil — séparation des éditions\n');
+
+const importsDe = (src: string) => [...src.matchAll(/(?:import|export)[^'"]*?from\s+['"]([^'"]+)['"]|import\s+['"]([^'"]+)['"]/g)].map((m) => m[1] ?? m[2]);
+
+// Restreint à la zone S2 : `src/bureaux/**` et `IdleScreensaver.tsx` sont internes sans suffixe
+// (STATUT.md, « Isolement des éditions ») ; `check:navigation` et `check:garde-refonte` les tiennent.
+await dit('aucun fichier partagé n’importe src/refonte/accueil/** (seuls les fichiers .internal le peuvent)', () => {
   const fautes: string[] = [];
   for (const f of fichiers('src')) {
     const n = f.split(path.sep).join('/');
-    if (n.startsWith('src/refonte/') || /\.internal\.tsx?$/.test(n)) continue;
-    for (const i of importsDe(fs.readFileSync(path.join(racine, f), 'utf8'))) if (/(^|\/)refonte\//.test(i)) fautes.push(`${n} importe ${i}`);
+    if (n.startsWith('src/refonte/') || /\.internal\.tsx?$/.test(n) || n.endsWith('.css')) continue;
+    for (const i of importsDe(fs.readFileSync(path.join(racine, f), 'utf8'))) if (/(^|\/)refonte\/accueil(\/|$)/.test(i)) fautes.push(`${n} importe ${i}`);
   }
   assert.deepEqual(fautes, []);
 });
