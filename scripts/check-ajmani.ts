@@ -1,6 +1,8 @@
 /**
  * Contrôle d'AJMANI ET DE L'ACCUEIL DE LA REFONTE (S2 recadrée) — sans navigateur, sans réseau.
  *
+ *   0. LE VOUVOIEMENT : aucun « tu », « ton », « ta », « tes », « toi », « t’ » dans
+ *      les textes français de la zone (décision de Harun, 2026-10-22).
  *   1. LA PAROLE : chaque situation existe en fr et en en, avec au moins deux
  *      variantes par registre écrit ; 12 mots au plus par phrase, deux phrases
  *      au plus ; les mêmes paramètres dans les deux langues ; les alertes
@@ -15,7 +17,7 @@
  *      le seul bouton blanc ; l'activité de l'équipe et ses jalons ; la série.
  *   4. LE NOIR ET GRIS : les jetons du socle redéfinis par `ambiance.css`
  *      gardent les contrastes du socle ; le lancement reste court.
- *   5. PLUS DE PERSONNAGE : aucune brique de dessin ne revient dans la zone.
+ *   5. PLUS DE PERSONNAGE NI DE BARRE LATÉRALE (une seule navigation, celle de S1) : aucune brique de dessin ne revient dans la zone.
  *   6. LES ÉDITIONS : aucun fichier partagé n'importe `src/refonte/accueil/**`, le
  *      jumeau cliente de la couture n'importe rien de la refonte.
  *
@@ -91,13 +93,25 @@ const F = await charger<any>('src/refonte/accueil/filDuJour.ts');
 const T = await charger<any>('src/refonte/accueil/tuiles.ts');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const A = await charger<any>('src/refonte/accueil/activite.ts');
+const { remplir, nomsDeParametres } = await charger<{
+  remplir: (m: string, p?: Record<string, string | number>, l?: 'fr' | 'en') => string;
+  nomsDeParametres: (m: string) => string[];
+}>('src/refonte/accueil/modele.ts');
+const { etatDeLAccueil, raccourciAssistant } = await charger<{
+  etatDeLAccueil: (s: { ready: boolean; pullFailed: boolean }) => string;
+  raccourciAssistant: (p: string) => string;
+}>('src/refonte/accueil/etat.ts');
+const { DICTIONNAIRES_ACCUEIL } = await charger<{ DICTIONNAIRES_ACCUEIL: Record<'fr' | 'en', Record<string, string>> }>('src/refonte/accueil/i18n.ts');
 const { dureeLancement } = await charger<{ dureeLancement: (p: boolean, m: boolean, n: string) => number }>('src/refonte/accueil/dureeLancement.ts');
 
 /* ── 1. La parole ─────────────────────────────────────────────────────────── */
 console.log('\nAjmani — la parole\n');
 
 const REGISTRES: Registre[] = ['serieux', 'chill', 'taquin'];
-const params = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+const params = nomsDeParametres;
+/* Le pire cas d'un paramètre : un nom composé, un module de quatre mots, des nombres à deux chiffres. */
+const PIRE = { n: 12, nom: 'Claire Dupuis', jours: 40, faits: 12, restants: 12, raccourci: 'Ctrl+J' };
+const pire = (langue: 'fr' | 'en') => ({ ...PIRE, module: langue === 'fr' ? 'le journal de bord' : 'the weekly review' });
 
 await dit('chaque situation existe en fr et en en, avec 2 variantes au moins par registre écrit', () => {
   for (const langue of ['fr', 'en'] as const) {
@@ -121,7 +135,7 @@ await dit('12 mots au plus par phrase, deux phrases au plus, et pas deux variant
         const liste = P.BIBLIOTHEQUE[langue][s][r] ?? [];
         if (new Set(liste).size !== liste.length) fautes.push(`${langue}/${s}/${r} : deux variantes identiques`);
         for (const replique of liste) {
-          const phrases = P.phrasesDe(replique);
+          const phrases = P.phrasesDe(remplir(replique, pire(langue), langue));
           if (phrases.length > 2) fautes.push(`${langue}/${s}/${r} : « ${replique} » a ${phrases.length} phrases`);
           for (const p of phrases) if (P.compterMots(p) > 12) fautes.push(`${langue}/${s}/${r} : « ${p} » a ${P.compterMots(p)} mots`);
         }
@@ -151,6 +165,49 @@ await dit('les alertes n’ont que le registre sérieux', () => {
       assert.ok(!v.chill && !v.taquin, `${langue}/${s} porte un registre non sérieux`);
     }
   }
+});
+
+await dit('le français vouvoie : aucun tu, ton, ta, tes, toi, t’ dans la bibliothèque ni dans les mots de l’Accueil', () => {
+  const tutoiement = /(?<![\p{L}])(tu|toi|ton|ta|tes|te)(?![\p{L}])|(?<![\p{L}])t['’](?=\p{L})/iu;
+  const impératifs = /(?<![\p{L}])(Ajoute|Prévois|Fais|Choisis|Coche|Appuie|Maintiens|Profite|Modifie|Pose|Dis|Viens|Regarde|Pense|Va|Marre de taper)(?![\p{L}])/u;
+  // « mon ton », « le ton d’Ajmani » : la tonalité, pas le pronom.
+  const sansTonalite = (t: string) => t.replace(/(mon|le|du|son|ce|au) ton(?![\p{L}])/giu, '$1 TONALITE').replace('Marre de taper ?', '');
+  const fautes: string[] = [];
+  for (const s of P.SITUATIONS) {
+    for (const r of REGISTRES) {
+      for (const replique of P.BIBLIOTHEQUE.fr[s][r] ?? []) {
+        if (tutoiement.test(sansTonalite(replique)) || impératifs.test(sansTonalite(replique))) fautes.push(`phrases fr/${s}/${r} : « ${replique} »`);
+      }
+    }
+  }
+  for (const [cle, texte] of Object.entries(DICTIONNAIRES_ACCUEIL.fr)) if (tutoiement.test(sansTonalite(texte)) || impératifs.test(sansTonalite(texte))) fautes.push(`i18n fr/${cle} : « ${texte} »`);
+  assert.deepEqual(fautes, []);
+});
+
+await dit('les mots de l’Accueil : mêmes paramètres en français et en anglais, aucune clé orpheline', () => {
+  const { fr, en } = DICTIONNAIRES_ACCUEIL;
+  assert.deepEqual(Object.keys(fr).sort(), Object.keys(en).sort());
+  for (const cle of Object.keys(en)) assert.deepEqual(nomsDeParametres(fr[cle]), nomsDeParametres(en[cle]), cle);
+});
+
+await dit('le pluriel s’accorde : « 1 jour », « 2 jours » ; 0 est singulier en français, pluriel en anglais', () => {
+  assert.equal(remplir('{n#jour|jours}', { n: 1 }), '1 jour');
+  assert.equal(remplir('{n#jour|jours}', { n: 0 }), '0 jour');
+  assert.equal(remplir('{n#jour|jours}', { n: 2 }), '2 jours');
+  assert.equal(remplir('{n#day|days}', { n: 0 }, 'en'), '0 days');
+  assert.equal(remplir('{n#day|days}', { n: 1 }, 'en'), '1 day');
+  assert.equal(remplir('Il reste {n#chose faite|choses faites}', { n: 3 }), 'Il reste 3 choses faites');
+  assert.equal(remplir('{inconnu#a|b}', {}), '{inconnu#a|b}', 'un paramètre manquant reste visible');
+  const relance = P.BIBLIOTHEQUE.fr.relance.serieux.map((m: string) => remplir(m, { nom: 'Dupont', jours: 1 }));
+  assert.ok(relance.every((t: string) => /\b1 jour\b/.test(t) && !/1 jours/.test(t)), relance.join(' | '));
+});
+
+await dit('le raccourci suit la plateforme : ⌘J sur Mac, Ctrl+J ailleurs', () => {
+  assert.equal(raccourciAssistant('MacIntel'), '⌘J');
+  assert.equal(raccourciAssistant('iPhone'), '⌘J');
+  assert.equal(raccourciAssistant('Win32'), 'Ctrl+J');
+  assert.equal(raccourciAssistant('Linux x86_64'), 'Ctrl+J');
+  assert.equal(raccourciAssistant(''), 'Ctrl+J');
 });
 
 await dit('pas de corps : Ajmani n’est plus un personnage', () => {
@@ -385,11 +442,28 @@ await dit('compte vide : les trois étapes, avec leur état réel', () => {
   assert.deepEqual(fil.map((l: { cle: string; fait: boolean }) => [l.cle, l.fait]), [['etape:client', true], ['etape:rdv', false], ['etape:visite', false]]);
 });
 
-await dit('le seul bouton blanc : relancer la pire facture, sinon la prochaine chose à faire, sinon les priorités', () => {
+await dit('le seul bouton blanc : le point critique, sinon la pire facture, sinon la prochaine chose à faire, sinon les priorités', () => {
   const fil = F.appliquerRetouches(F.construireFil(sources, lib), F.retouchesVides('j'), 'j', 'aaron@exemple.test').visibles;
-  assert.deepEqual(F.actionPrincipale([{ nom: 'Dupont', jours: 3 }, { nom: 'Martin', jours: 40 }], fil), { cle: 'relancer', nom: 'Martin', vers: '/relances' });
-  assert.deepEqual(F.actionPrincipale([], fil), { cle: 'ouvrir', titre: 'Appeler le notaire', vers: '/priorites' });
-  assert.deepEqual(F.actionPrincipale([], []), { cle: 'priorites', vers: '/priorites' });
+  const retard = [{ nom: 'Dupont', jours: 3 }, { nom: 'Martin', jours: 40 }];
+  assert.deepEqual(F.actionPrincipale({ titre: 'Site tombé', vers: '/sites' }, retard, fil), { cle: 'alerte', titre: 'Site tombé', vers: '/sites' });
+  assert.deepEqual(F.actionPrincipale(null, retard, fil), { cle: 'relancer', nom: 'Martin', vers: '/relances' });
+  assert.deepEqual(F.actionPrincipale(null, [], fil), { cle: 'ouvrir', titre: 'Appeler le notaire', vers: '/priorites' });
+  assert.deepEqual(F.actionPrincipale(null, [], []), { cle: 'priorites', vers: '/priorites' });
+  const premierJour = F.construireFil({ moi: 'a@b.c', priorites: [], rdv: [], taches: [], etapes: { client: false, rdv: false, visite: false } }, lib);
+  assert.deepEqual(F.actionPrincipale(null, [], premierJour), { cle: 'commencer', titre: 'Client', vers: '/clients' }, 'le premier jour : on commence par l’étape suivante');
+});
+
+await dit('l’Accueil ne dit rien avant que les données aient répondu : chargement, hors ligne, prêt', () => {
+  assert.equal(etatDeLAccueil({ ready: false, pullFailed: false }), 'chargement');
+  assert.equal(etatDeLAccueil({ ready: false, pullFailed: true }), 'chargement');
+  assert.equal(etatDeLAccueil({ ready: true, pullFailed: true }), 'hors-ligne');
+  assert.equal(etatDeLAccueil({ ready: true, pullFailed: false }), 'pret');
+  const src = fs.readFileSync(path.join(racine, 'src/refonte/accueil/AccueilVivant.tsx'), 'utf8');
+  assert.ok(/a\.complet \? repliqueDuJour/.test(src), 'le message n’est choisi que lorsque tout a répondu');
+  assert.ok(/!a\.complet \|\|/.test(src), 'aucune astuce avant');
+  const hook = fs.readFileSync(path.join(racine, 'src/refonte/accueil/useAccueil.ts'), 'utf8');
+  assert.ok(/pret: etat === 'pret'/.test(hook), 'pas de tuile calculée hors ligne');
+  assert.ok(/compteVide = etat === 'pret'/.test(hook), 'un compte n’est « vide » que si la synchronisation a répondu');
 });
 
 await dit('un seul bouton primaire (blanc plein) dans tout l’Accueil', () => {
@@ -471,6 +545,15 @@ await dit('l’ambiance ne vit que côté interne : ni index.css ni le jumeau cl
   assert.ok(!/ambiance\.css|@fontsource\/inter/.test(business));
 });
 
+await dit('Inter sur toute l’édition interne, chiffres tabulaires ; JetBrains Mono ne bouge pas ; rien dans la feuille partagée', () => {
+  assert.ok(/--font-sans:\s*'Inter'/.test(ambiance), '--font-sans doit valoir Inter sous data-ambiance');
+  assert.ok(/body\s*\{[^}]*font-variant-numeric:\s*tabular-nums/.test(ambiance));
+  assert.ok(!/--font-mono/.test(ambiance));
+  const composant = fs.readFileSync(path.join(racine, 'src/refonte/accueil/Ambiance.tsx'), 'utf8');
+  for (const poids of ['400', '500', '600', '700']) assert.ok(composant.includes(`@fontsource/inter/${poids}.css`), `Inter ${poids} manquant`);
+  assert.ok(!/fontsource\/inter/.test(fs.readFileSync(path.join(racine, 'src/index.css'), 'utf8')), 'index.css (partagé) ne charge pas Inter');
+});
+
 await dit('le lancement : environ 1 s la première fois, plus court ensuite, passable', () => {
   assert.ok(dureeLancement(true, false, 'complet') >= 800 && dureeLancement(true, false, 'complet') <= 1200);
   assert.ok(dureeLancement(false, false, 'complet') < dureeLancement(true, false, 'complet'));
@@ -478,6 +561,7 @@ await dit('le lancement : environ 1 s la première fois, plus court ensuite, pas
   assert.ok(dureeLancement(true, false, 'aucun') <= 400);
   const src = fs.readFileSync(path.join(racine, 'src/refonte/accueil/Lancement.tsx'), 'utf8');
   assert.ok(/onClick=\{\(\) => setVisible\(false\)\}/.test(src) && /'keydown'/.test(src), 'un clic ou une touche le passe');
+  assert.ok(/useFermetureEchap\(visible,/.test(src), 'Échap le ferme par la pile des calques');
 });
 
 /* ── 5. Plus de personnage ────────────────────────────────────────────────── */
@@ -500,6 +584,13 @@ await dit('aucune brique de personnage dans la zone de l’Accueil', () => {
     const src = fs.readFileSync(path.join(racine, f), 'utf8');
     assert.ok(!/AjmaniPetit|TeteTele|<svg/.test(src), `${f} dessine encore un personnage`);
   }
+});
+
+await dit('une seule navigation : plus de barre latérale dans l’Accueil', () => {
+  const src = fs.readFileSync(path.join(racine, 'src/refonte/accueil/AccueilVivant.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!/<aside|BarreFamilles|ROUTE_TOUS_LES_MODULES|useRegards/.test(src), 'la barre latérale est revenue');
+  const hook = fs.readFileSync(path.join(racine, 'src/refonte/accueil/useAccueil.ts'), 'utf8');
+  assert.ok(!/useRegards|FAMILLES|enLigne/.test(hook), 'le hook calcule encore ce que la navigation de S1 doit porter');
 });
 
 /* ── 6. Les éditions ──────────────────────────────────────────────────────── */
