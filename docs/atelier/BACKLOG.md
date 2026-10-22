@@ -26,6 +26,7 @@ seul, sans serveur ni intégration.
 | 10 | Tableau d'amortissement (`amortissements`) | indépendants et sociétés au réel | dotation par exercice, prorata, valeur nette | `loanSim` amortit un prêt, pas une immobilisation |
 | 11 | Paiement en plusieurs fois (`echeancier`) | artisans, commerces | découper une facture en échéances datées, suivre ce qui est payé | `deposits` : un acompte, pas un échéancier |
 | 12 | Comparateur de devis fournisseurs (`comparateurDevis`) | PME qui achète | comparer 2 à 5 offres sur prix, délai, garantie, critères pondérés | `suppliers` : un annuaire |
+| 13 | Rétroplanning (`retroplanning`) | tous les métiers à date de livraison | partir de la date due et remonter les étapes | `projects`, `board` : planifient vers l'avant |
 
 ## À prendre ensuite
 
@@ -34,7 +35,6 @@ seul, sans serveur ni intégration.
 | 13 | Seuils micro et TVA (`seuils`) | micro-entrepreneurs | voir venir le dépassement des plafonds sur le chiffre d'affaires cumulé | `taxForecast` prévoit l'impôt, pas les plafonds |
 | 14 | Compteur de congés payés (`congesPayes`) | employeurs de 1 à 20 salariés | jours acquis, pris, restants sur la période de référence | `leaves` pose des absences, ne compte pas les droits |
 | 15 | Registre unique du personnel (`registrePersonnel`) | employeurs dès un salarié | le registre obligatoire des entrées et sorties | `directory` : un trombinoscope |
-| 16 | Rétroplanning (`retroplanning`) | tous les métiers à date de livraison | partir de la date due et remonter les étapes | `projects`, `board` : planifient vers l'avant |
 
 Points d'attention pour les suivants :
 
