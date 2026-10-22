@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { lireMouvement } from '../../socle/mouvement';
 import { useLangue } from '../../i18n';
 import { Logo } from '../../components/Logo';
+import { useFermetureEchap } from '../../lib/useFermetureEchap';
 import { appareilModeste, dureeLancement } from './dureeLancement';
 import { traduireAccueil } from './i18n';
 
@@ -60,6 +61,8 @@ export function Lancement({ onDone }: { onDone: () => void }) {
     window.addEventListener('keydown', passer);
     return () => window.removeEventListener('keydown', passer);
   }, []);
+  // Échap passe déjà par l'écouteur ci-dessus ; le crochet inscrit en plus le rideau dans la pile des calques.
+  useFermetureEchap(visible, () => setVisible(false));
 
   const terminer = () => {
     if (fini.current) return;
