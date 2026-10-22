@@ -161,10 +161,10 @@ dit('le catalogue : chaque type a une famille et un ton connus', () => {
   for (const attendu of ['facture.payee', 'client.cree', 'rdv.proche', 'tentative.suspecte', 'message.recu']) {
     assert.ok(bus.TYPES_DE_MOMENTS.includes(attendu), `type attendu absent : ${attendu}`);
   }
-  // Le critique est rare par construction : un seul type, aujourd'hui.
+  // Le critique est rare par construction : la liste est fermée, et l'allonger est une décision du CO.
   assert.deepEqual(
     bus.TYPES_DE_MOMENTS.filter((t) => bus.CATALOGUE_DES_MOMENTS[t].ton === 'critique'),
-    ['tentative.suspecte'],
+    ['tentative.suspecte', 'garde.escalade', 'garde.remontee-critique'],
   );
 });
 

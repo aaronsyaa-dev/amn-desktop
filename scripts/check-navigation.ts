@@ -295,9 +295,13 @@ await dit('le jumeau cliente de la couture n’importe que React, et rien de la 
 
 await dit('aucun code partagé n’importe src/refonte/** en direct (seules les coutures .internal le peuvent)', () => {
   const fautes: string[] = [];
+  // Internes par construction, sans suffixe .internal : `check:garde-refonte` (S3) vérifie que seuls
+  // `appRoot.internal.tsx` et `AppLayout` (lui-même interne) les atteignent.
+  const internesSansSuffixe = [path.join('src', 'bureaux'), path.join('src', 'components', 'IdleScreensaver.tsx')];
   const parcourir = (dir: string) => {
     for (const e of fs.readdirSync(path.join(racine, dir), { withFileTypes: true })) {
       const rel = path.join(dir, e.name);
+      if (internesSansSuffixe.includes(rel)) continue;
       if (e.isDirectory()) {
         if (rel === path.join('src', 'refonte')) continue;
         parcourir(rel);

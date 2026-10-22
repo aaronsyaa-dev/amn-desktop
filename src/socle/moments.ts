@@ -58,6 +58,10 @@ export interface ChargesDeMoments {
   'sauvegarde.terminee': { reussie: boolean };
   'synchro.retablie': { horsLigneDepuisMs: number };
   'premiere.fois': { quoi: 'tache' | 'client' | 'facture' | 'projet' };
+  // La Garde (S3) — voir docs/refonte/rapports/S3.md, « Bus de moments ».
+  'garde.escalade': { incidentId: string; niveau: 1 | 2 };
+  'site.muet': { siteId: string };
+  'garde.remontee-critique': { remonteeId: string; equipe: string };
 }
 
 export type TypeDeMoment = keyof ChargesDeMoments;
@@ -84,6 +88,10 @@ export const CATALOGUE_DES_MOMENTS = {
   'sauvegarde.terminee': { famille: 'outils', ton: 'info' },
   'synchro.retablie': { famille: 'outils', ton: 'info' },
   'premiere.fois': { famille: 'jour', ton: 'fete' },
+  'garde.escalade': { famille: 'outils', ton: 'critique' },
+  // Un site muet demande qu'on regarde, pas encore une alarme : l'escalade, s'il y en a une, sera critique.
+  'site.muet': { famille: 'outils', ton: 'decision' },
+  'garde.remontee-critique': { famille: 'outils', ton: 'critique' },
 } as const satisfies Record<TypeDeMoment, { famille: Famille; ton: TonDeMoment }>;
 
 export const TYPES_DE_MOMENTS = Object.keys(CATALOGUE_DES_MOMENTS) as TypeDeMoment[];
