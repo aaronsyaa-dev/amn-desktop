@@ -113,6 +113,8 @@ jobs:
         run: npm run check:moments
       - name: Garde visible (S3) — accents, résumé, fil, contrat d'alertes, isolement
         run: npm run check:garde-refonte
+      - name: Navigation de la refonte — registre, rail du moment, recherche par intention
+        run: npm run check:navigation
 
       - name: Contrôle de la file d'envoi
         run: npm run check:envoi

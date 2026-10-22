@@ -21,6 +21,7 @@ import { useNavAlleges } from '../state/useNavAlleges';
 import { useCommandPalette } from './command-palette/CommandPalette';
 import { BarreRail, LARGEUR_COQUILLE, LARGEUR_RAIL, type FamilleRail } from './rail/BarreRail';
 import { cheminLePlusPrecis } from '../lib/cheminCourant';
+import { NAVIGATION_REFONTE, RailDuMoment } from '@edition/navigation';
 
 /* La phrase de chaque famille de supervision, sous son nom dans la bulle du rail. Interne : ce fichier n'entre pas dans le paquet cliente. */
 const PHRASE_SUPERVISION: Record<string, string> = {
@@ -229,100 +230,139 @@ export function Sidebar({
       </span>
     ) : null;
 
-  return (
+  const enTete = (
+    <div className="flex-none border-b border-[#1c1c1c]">
+      {/* Mobile uniquement : le rail d'organisations est masqué sous `md`. */}
+      <div className="px-3 pt-3 md:hidden">
+        <OrgSwitchButton onNavigate={onClose} />
+      </div>
+      <div className="flex h-14 items-center gap-2.5 px-3.5">
+        <span className="flex h-[23px] w-[23px] flex-none items-center justify-center border border-border-section bg-[#1d1d1d] font-mono text-[10.5px] font-bold text-text-primary">
+          A
+        </span>
+        {expanded && (
+          <span className="min-w-0 flex-1 leading-tight">
+            {/* Le nom de l'édition vient du jeton, jamais d'une chaîne
+                figée : le renommage du Bloc 1 a déjà échangé les deux
+                noms une fois. */}
+            <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+              {EDITION_PRODUCT_NAME}
+            </span>
+            {/* L'organisation RÉELLE, jamais une chaîne en dur : en
+                contexte client, ce sous-titre a déjà affiché « AMN
+                DevSec » pendant qu'on travaillait chez une cliente. */}
+            <span className="block truncate font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
+              {org?.name ?? 'AMN DevSec'}
+            </span>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+
+  const pied = (
+    <div className="flex flex-none flex-col gap-0.5 border-t border-[#1c1c1c] bg-[#0a0a0a] p-2">
+      {/* L'index des familles règle le panneau de `BarreRail`, que le rail de la refonte remplace sur bureau. */}
+      {expanded && !NAVIGATION_REFONTE && (
+        <button
+          type="button"
+          onClick={() => ecrireIndexFamilles(!indexFamilles)}
+          aria-pressed={indexFamilles}
+          title={t('chrome.indexFamillesAide')}
+          className={`hidden items-center gap-2.5 px-2.5 py-2 text-[13px] transition-colors hover:bg-surface-hover hover:text-text-primary md:flex ${indexFamilles ? 'text-text-primary' : 'text-text-muted'}`}
+        >
+          <ListTree size={16} strokeWidth={2.1} />
+          <span>{t('chrome.indexFamilles')}</span>
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={basculer}
+        aria-label={deplie ? t('chrome.replierBarre') : t('chrome.deplierBarre')}
+        className="hidden items-center gap-2.5 px-2.5 py-2 text-[13px] text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary md:flex"
+      >
+        {deplie ? (
+          <ChevronsLeft size={16} strokeWidth={2.1} />
+        ) : (
+          <ChevronsRight size={16} strokeWidth={2.1} />
+        )}
+        {expanded && <span>{t('chrome.replier')}</span>}
+      </button>
+      <button
+        type="button"
+        onClick={logout}
+        title={!expanded ? t('chrome.deconnexion') : undefined}
+        aria-label={t('chrome.deconnexion')}
+        className="flex min-h-11 items-center gap-2.5 px-2.5 py-2 text-[13px] text-text-muted transition-colors hover:bg-surface-hover hover:text-danger md:min-h-0"
+      >
+        <LogOut size={16} strokeWidth={2.1} />
+        {expanded && <span>{t('chrome.deconnexion')}</span>}
+      </button>
+    </div>
+  );
+
+  const barre = (
+    <BarreRail
+      familles={familles}
+      indexFamilles={indexFamilles}
+      epingles={epingles}
+      cheminCourant={cheminCourant}
+      compteurs={unseen}
+      deplie={deplie}
+      mobileOpen={mobileOpen}
+      onClose={onClose}
+      onNavigate={() => {
+        setVoletSites(false);
+        onClose?.();
+      }}
+      libelle={libelleNav}
+      estEpingle={isFavorite}
+      onEpingler={toggleFavorite}
+      rendreExtra={rendreExtra}
+      /*
+        ⌘K ouvre la palette de commandes, qui cherche les modules MAIS AUSSI
+        les sites, les notes et les ordres de la Garde. C'est un surensemble
+        du champ de la coquille, et c'est le geste déjà appris ici.
+      */
+      ouvrirRecherche={ouvrirPalette}
+      enTete={enTete}
+      pied={pied}
+    />
+  );
+
+  /*
+    LA REFONTE (S1). Dans l'édition interne, sur bureau, le rail « du moment »
+    (`src/refonte/navigation/RailDuMoment.tsx`) remplace les tuiles à deux
+    lettres. `BarreRail` reste monté pour le tiroir du téléphone, qu'il sait
+    déjà dessiner : sa colonne de bureau est retirée à partir de `md`. Dans
+    l'édition cliente, `NAVIGATION_REFONTE` est faux et rien ne change.
+  */
+  const navigation = NAVIGATION_REFONTE ? (
     <>
-      <BarreRail
-        familles={familles}
-        indexFamilles={indexFamilles}
-        epingles={epingles}
+      <RailDuMoment
+        catalogue={tousLesModules}
         cheminCourant={cheminCourant}
         compteurs={unseen}
-        deplie={deplie}
-        mobileOpen={mobileOpen}
-        onClose={onClose}
-        onNavigate={() => {
-          setVoletSites(false);
-          onClose?.();
-        }}
-        libelle={libelleNav}
+        epingles={favorites}
         estEpingle={isFavorite}
         onEpingler={toggleFavorite}
-        rendreExtra={rendreExtra}
-        /*
-          ⌘K ouvre la palette de commandes, qui cherche les modules MAIS AUSSI
-          les sites, les notes et les ordres de la Garde. C'est un surensemble
-          du champ de la coquille, et c'est le geste déjà appris ici.
-        */
+        deplie={deplie}
         ouvrirRecherche={ouvrirPalette}
-        enTete={
-          <div className="flex-none border-b border-[#1c1c1c]">
-            {/* Mobile uniquement : le rail d'organisations est masqué sous `md`. */}
-            <div className="px-3 pt-3 md:hidden">
-              <OrgSwitchButton onNavigate={onClose} />
-            </div>
-            <div className="flex h-14 items-center gap-2.5 px-3.5">
-              <span className="flex h-[23px] w-[23px] flex-none items-center justify-center border border-border-section bg-[#1d1d1d] font-mono text-[10.5px] font-bold text-text-primary">
-                A
-              </span>
-              {expanded && (
-                <span className="min-w-0 flex-1 leading-tight">
-                  {/* Le nom de l'édition vient du jeton, jamais d'une chaîne
-                      figée : le renommage du Bloc 1 a déjà échangé les deux
-                      noms une fois. */}
-                  <span className="block truncate text-[12.5px] font-semibold text-text-primary">
-                    {EDITION_PRODUCT_NAME}
-                  </span>
-                  {/* L'organisation RÉELLE, jamais une chaîne en dur : en
-                      contexte client, ce sous-titre a déjà affiché « AMN
-                      DevSec » pendant qu'on travaillait chez une cliente. */}
-                  <span className="block truncate font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
-                    {org?.name ?? 'AMN DevSec'}
-                  </span>
-                </span>
-              )}
-            </div>
-          </div>
-        }
-        pied={
-          <div className="flex flex-none flex-col gap-0.5 border-t border-[#1c1c1c] bg-[#0a0a0a] p-2">
-            {expanded && (
-              <button
-                type="button"
-                onClick={() => ecrireIndexFamilles(!indexFamilles)}
-                aria-pressed={indexFamilles}
-                title={t('chrome.indexFamillesAide')}
-                className={`hidden items-center gap-2.5 px-2.5 py-2 text-[13px] transition-colors hover:bg-surface-hover hover:text-text-primary md:flex ${indexFamilles ? 'text-text-primary' : 'text-text-muted'}`}
-              >
-                <ListTree size={16} strokeWidth={2.1} />
-                <span>{t('chrome.indexFamilles')}</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={basculer}
-              aria-label={deplie ? t('chrome.replierBarre') : t('chrome.deplierBarre')}
-              className="hidden items-center gap-2.5 px-2.5 py-2 text-[13px] text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary md:flex"
-            >
-              {deplie ? (
-                <ChevronsLeft size={16} strokeWidth={2.1} />
-              ) : (
-                <ChevronsRight size={16} strokeWidth={2.1} />
-              )}
-              {expanded && <span>{t('chrome.replier')}</span>}
-            </button>
-            <button
-              type="button"
-              onClick={logout}
-              title={!expanded ? t('chrome.deconnexion') : undefined}
-              aria-label={t('chrome.deconnexion')}
-              className="flex min-h-11 items-center gap-2.5 px-2.5 py-2 text-[13px] text-text-muted transition-colors hover:bg-surface-hover hover:text-danger md:min-h-0"
-            >
-              <LogOut size={16} strokeWidth={2.1} />
-              {expanded && <span>{t('chrome.deconnexion')}</span>}
-            </button>
-          </div>
-        }
+        libelle={libelleNav}
+        rendreExtra={rendreExtra}
+        enTete={enTete}
+        pied={pied}
+        onNavigate={() => setVoletSites(false)}
       />
+      <div className="contents md:hidden">{barre}</div>
+    </>
+  ) : (
+    barre
+  );
+
+  return (
+    <>
+      {navigation}
 
       <AnimatePresence>
         {voletSites && (

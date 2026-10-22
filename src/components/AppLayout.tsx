@@ -45,6 +45,7 @@ import { useLangue } from '../i18n';
 import { PremiereOuverture } from './PremiereOuverture';
 import { NavAllegesSync } from './NavAllegesSync';
 import { ongletMemorise, routeMemorisable } from '../lib/memoireOnglet';
+import { RaccourciAccueil, restaurerDernierOnglet } from '@edition/navigation';
 import { ModulesOuvertsTracker } from '../state/useModulesOuverts';
 import { RegardsProvider } from '../state/RegardsContext';
 import { SourceBureauxProvider, useActiverSourceBureaux } from '../bureaux/donnees/source';
@@ -108,7 +109,10 @@ export function AppLayout() {
     try {
       // Jamais un plein écran (la Salle) : on s'y retrouverait sans porte de sortie — voir lib/memoireOnglet.ts.
       const last = ongletMemorise(window.localStorage.getItem(LAST_TAB_KEY));
-      if (last && location.pathname === '/') navigate(last, { replace: true });
+      // Refonte (S1) : la première ouverture du jour reste sur l'Accueil — voir src/refonte/navigation/ouverture.ts.
+      // Appelé à chaque ouverture, même sans onglet à reprendre : c'est lui qui note le jour.
+      const reprendre = restaurerDernierOnglet();
+      if (last && location.pathname === '/' && reprendre) navigate(last, { replace: true });
     } catch {
       /* ignore */
     }
@@ -242,6 +246,8 @@ export function AppLayout() {
               {/* ⌘E / Ctrl E partout : la palette d'espaces, et « ? » dans un bureau. */}
               <PaletteEspaces />
               <AideRaccourcis />
+              {/* Refonte (S1) : « G puis A » ramène à l'Accueil, depuis le poste comme depuis un bureau. */}
+              <RaccourciAccueil />
               <CallOverlay />
               <SiteDetailPanel />
               <AssistantPanel />

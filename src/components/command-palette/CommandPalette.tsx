@@ -30,6 +30,7 @@ import { garde } from '../../lib/garde';
 import type { GardeGuideEntree, GardeOrdreReponse } from '../../shared/garde';
 import { t as tr } from '../../i18n';
 import { libelleNav } from '../../i18n';
+import { chercherModules, placeholderRecherche } from '@edition/navigation';
 
 interface CommandPaletteContextValue {
   open: () => void;
@@ -43,7 +44,7 @@ const CommandPaletteContext = createContext<
 type IconType = React.ComponentType<{ size?: number; strokeWidth?: number }>;
 
 type Command =
-  | { kind: 'nav'; id: string; label: string; icon: IconType; to: string }
+  | { kind: 'nav'; id: string; key: string; label: string; icon: IconType; to: string; hint?: string }
   | { kind: 'action'; id: string; label: string; icon: IconType; run: () => void }
   | { kind: 'site'; id: string; label: string; siteId: string }
   | { kind: 'record'; id: string; label: string; icon: IconType; to: string; hint: string }
@@ -76,6 +77,7 @@ function navCommandsFromCatalog(): Extract<Command, { kind: 'nav' }>[] {
   return SPACES.flatMap((space) => itemsForSpace(space.key)).map((item) => ({
     kind: 'nav' as const,
     id: `nav-${item.key}`,
+    key: item.key,
     label: libelleNav(item),
     icon: item.icon,
     to: item.to,
@@ -181,9 +183,17 @@ function CommandPaletteModal({
         label: s.name,
         siteId: s.id,
       }));
-    const navCommands = navCommandsFromCatalog().filter(
-      (c) => !q || c.label.toLowerCase().includes(q),
-    );
+    /*
+      LA RECHERCHE PAR INTENTION (refonte S1, édition interne) : « envoyer une
+      facture » trouve Facturation par ses verbes et ses mots-clés, et le verbe
+      trouvé s'affiche à côté. Côté cliente, la couture répond `null` et le
+      filtre sur le nom reste le seul.
+    */
+    const catalogue = navCommandsFromCatalog();
+    const intention = chercherModules(query, catalogue);
+    const navCommands = intention
+      ? intention.map(({ item, raison }) => ({ ...item, hint: raison }))
+      : catalogue.filter((c) => !q || c.label.toLowerCase().includes(q));
 
     // Content search across synced collections — only when the user is typing,
     // so the default palette stays a clean navigation list.
@@ -309,7 +319,7 @@ function CommandPaletteModal({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={onKeyDown}
-                placeholder="Rechercher : page, site, tâche, décision, document…"
+                placeholder={placeholderRecherche() ?? 'Rechercher : page, site, tâche, décision, document…'}
                 className="w-full bg-transparent py-4 text-sm text-text-primary outline-none placeholder:text-text-muted"
               />
               <kbd className="rounded border border-border px-1.5 py-0.5 text-[10px] text-text-muted">
@@ -400,6 +410,9 @@ function CommandRow({
         <span className="flex-shrink-0 font-mono text-[10px] uppercase tracking-wider text-text-muted">
           {command.hint}
         </span>
+      )}
+      {command.kind === 'nav' && command.hint && (
+        <span className="max-w-[45%] flex-shrink-0 truncate text-xs text-text-muted">{command.hint}</span>
       )}
       {site && <StatusBadge status={site.status} />}
       {active && (
