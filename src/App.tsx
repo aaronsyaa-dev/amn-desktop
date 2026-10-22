@@ -4,8 +4,8 @@ import { AuthProvider } from './auth/AuthContext';
 import { AppRoot } from '@edition/appRoot';
 import { GrainOverlay } from './components/GrainOverlay';
 // Le rideau de lancement passe par la couture `@edition/vivant` (refonte S2) :
-// l'édition cliente y retrouve `SplashScreen` à l'identique, l'interne l'animation du guide.
-import { Lancement, lancementJoue, ReactionsGuide } from '@edition/vivant';
+// l'édition cliente y retrouve `SplashScreen` à l'identique, l'interne le lancement court de la refonte.
+import { Ambiance, Lancement, lancementJoue, ReactionsGuide } from '@edition/vivant';
 
 /**
  * Coquille commune aux deux éditions : le splash, la session, le routeur.
@@ -23,7 +23,8 @@ export default function App() {
       {showSplash && <Lancement onDone={() => setShowSplash(false)} />}
       <AuthProvider>
         <GrainOverlay />
-        {/* Le guide réagit aux moments fêtés (interne) ; rien côté cliente. */}
+        {/* Refonte (interne) : fond noir et gris, petits toasts des moments fêtés. Rien côté cliente. */}
+        <Ambiance />
         <ReactionsGuide />
         <HashRouter>
           <AppRoot />

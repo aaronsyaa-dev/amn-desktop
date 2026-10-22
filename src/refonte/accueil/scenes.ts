@@ -1,24 +1,19 @@
-import type { Emotion } from './ajmani/expressions';
 import type { Situation } from './ajmani/phrases';
-import type { Geste } from './ajmani/Ajmani';
 
 /**
- * LES SCÈNES DE L'ACCUEIL — laquelle jouer, selon le moment.
- * ══════════════════════════════════════════════════════════
+ * CE QU'AJMANI DIT EN HAUT DE L'ACCUEIL — une phrase, choisie selon le moment.
+ * ════════════════════════════════════════════════════════════════════════════
  *
  * Une seule fonction pure : elle reçoit ce qu'on sait de la journée (des
- * comptes, jamais des fiches) et rend la scène, l'émotion d'Ajmani, son geste
- * et ce qu'il dit. L'ordre de priorité :
+ * comptes, jamais des fiches) et rend la situation de la bibliothèque et ses
+ * paramètres. Ajmani n'a plus de corps : c'est un message discret sous la
+ * salutation, rien de plus. L'ordre de priorité :
  *
- *   1. compte neuf ou vide — les étapes guidées ;
- *   2. alerte — un point critique : il est sérieux, le visage passe à l'ambre ;
+ *   1. compte neuf ou vide — l'invitation à démarrer ;
+ *   2. alerte — un point critique, toujours dit sérieusement ;
  *   3. fin de journée (18 h et après) — le récapitulatif ;
- *   4. matin (avant midi) — les trois choses du jour ;
- *   5. sinon, journée calme — il suggère un module qu'on n'ouvre pas souvent.
- *
- * Tard le soir (21 h – 6 h), il est fatigué, sauf en alerte.
- * Les modules, eux, ne bougent jamais : la scène change le haut de l'Accueil,
- * pas la grille.
+ *   4. matin (avant midi) — les rendez-vous du jour ;
+ *   5. sinon, journée calme — une relance, ou un module qu'on ouvre peu.
  */
 
 export type Scene = 'neuf' | 'alerte' | 'matin' | 'calme' | 'soir';
@@ -44,8 +39,6 @@ export interface Journee {
 
 export interface Mise {
   scene: Scene;
-  emotion: Emotion;
-  geste: Geste | null;
   situation: Situation;
   params: Record<string, string | number>;
 }
@@ -62,23 +55,20 @@ export function estTard(heure: number): boolean {
 }
 
 export function choisirScene(j: Journee): Mise {
-  const tard = estTard(j.heure);
-  if (j.compteVide) return { scene: 'neuf', emotion: 'curieux', geste: 'saluer', situation: 'neuf.bienvenue', params: {} };
-  if (j.alerte) {
-    return { scene: 'alerte', emotion: 'alerte', geste: 'pointer', situation: SITUATION_ALERTE[j.alerte.type], params: { jours: j.alerte.jours ?? 0 } };
-  }
+  if (j.compteVide) return { scene: 'neuf', situation: 'neuf.bienvenue', params: {} };
+  if (j.alerte) return { scene: 'alerte', situation: SITUATION_ALERTE[j.alerte.type], params: { jours: j.alerte.jours ?? 0 } };
   if (j.heure >= 18 || j.heure < 5) {
-    if (tard && j.faitsAujourdhui === 0) return { scene: 'soir', emotion: 'fatigue', geste: null, situation: 'tard', params: {} };
+    if (estTard(j.heure) && j.faitsAujourdhui === 0) return { scene: 'soir', situation: 'tard', params: {} };
     return j.faitsAujourdhui > 0
-      ? { scene: 'soir', emotion: tard ? 'fatigue' : 'content', geste: tard ? null : 'hocher', situation: 'soir.recap', params: { faits: j.faitsAujourdhui, restants: j.restants } }
-      : { scene: 'soir', emotion: tard ? 'fatigue' : 'neutre', geste: null, situation: 'soir.leger', params: {} };
+      ? { scene: 'soir', situation: 'soir.recap', params: { faits: j.faitsAujourdhui, restants: j.restants } }
+      : { scene: 'soir', situation: 'soir.leger', params: {} };
   }
   if (j.heure < 12) {
-    if (j.rdvAVenir > 1 && j.premierRdv) return { scene: 'matin', emotion: 'content', geste: 'hocher', situation: 'matin.rdv', params: { n: j.rdvAVenir, nom: j.premierRdv } };
-    if (j.rdvAVenir === 1 && j.premierRdv) return { scene: 'matin', emotion: 'content', geste: 'hocher', situation: 'matin.rdv1', params: { nom: j.premierRdv } };
-    return { scene: 'matin', emotion: 'curieux', geste: null, situation: 'matin.libre', params: {} };
+    if (j.rdvAVenir > 1 && j.premierRdv) return { scene: 'matin', situation: 'matin.rdv', params: { n: j.rdvAVenir, nom: j.premierRdv } };
+    if (j.rdvAVenir === 1 && j.premierRdv) return { scene: 'matin', situation: 'matin.rdv1', params: { nom: j.premierRdv } };
+    return { scene: 'matin', situation: 'matin.libre', params: {} };
   }
-  if (j.relance) return { scene: 'calme', emotion: 'taquin', geste: 'pointer', situation: 'relance', params: { nom: j.relance.nom, jours: j.relance.jours } };
-  if (j.module) return { scene: 'calme', emotion: 'curieux', geste: 'pointer', situation: 'calme.module', params: { module: j.module } };
-  return { scene: 'calme', emotion: 'neutre', geste: 'hausser', situation: 'calme.rien', params: {} };
+  if (j.relance) return { scene: 'calme', situation: 'relance', params: { nom: j.relance.nom, jours: j.relance.jours } };
+  if (j.module) return { scene: 'calme', situation: 'calme.module', params: { module: j.module } };
+  return { scene: 'calme', situation: 'calme.rien', params: {} };
 }

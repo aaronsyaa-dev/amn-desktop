@@ -1,18 +1,20 @@
 /**
- * L'ACCUEIL VIVANT ET AJMANI, CÔTÉ INTERNE — ce que l'édition interne branche (S2).
+ * L'ACCUEIL DE LA REFONTE, CÔTÉ INTERNE — ce que l'édition interne branche (S2).
  *
  * L'édition cliente reçoit `vivant.business.tsx` à la place : le rideau de
- * lancement d'avant (`SplashScreen`), ni réglage du ton ni réactions. Rien de
- * ce que ce fichier importe — Ajmani, ses phrases, l'Accueil vivant — n'entre
- * dans son paquet.
+ * lancement d'avant (`SplashScreen`), ni ambiance noire, ni ton, ni toasts.
+ * Rien de ce que ce fichier importe n'entre dans son paquet.
  *
- *   · `Lancement` / `lancementJoue` : l'animation de lancement, posée par
+ *   · `Lancement` / `lancementJoue` : le lancement court (logo), posé par
  *     `src/App.tsx` à la place de `SplashScreen` (même contrat) ;
- *   · `ReactionsGuide` : la petite tête qui réagit aux moments fêtés, montée
- *     une fois dans `src/App.tsx` ;
- *   · `RegistreSection` : le ton d'Ajmani, dans Paramètres.
+ *   · `Ambiance` : le fond noir et gris (jetons du socle) et la police Inter ;
+ *   · `ReactionsGuide` : les petits toasts des moments fêtés ;
+ *   · `RegistreSection` : le ton des messages, dans Paramètres.
+ *
+ * Les noms exportés ne citent pas Ajmani : `src/App.tsx` (partagé) les nomme,
+ * et ce mot est interdit dans le paquet client.
  */
 export { Lancement, lancementJoue } from '../refonte/accueil/Lancement';
-// Le nom exporté ne cite pas Ajmani : `src/App.tsx` (partagé) le nomme, et ce mot est interdit dans le paquet client.
-export { ReactionsAjmani as ReactionsGuide } from '../refonte/accueil/ajmani/ReactionsAjmani';
+export { Ambiance } from '../refonte/accueil/Ambiance';
+export { ToastsAjmani as ReactionsGuide } from '../refonte/accueil/ajmani/Toasts';
 export { RegistreSection } from '../refonte/accueil/ajmani/RegistreSection';

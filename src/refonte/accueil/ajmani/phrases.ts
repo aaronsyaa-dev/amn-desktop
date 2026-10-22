@@ -46,7 +46,7 @@ const EN = {
   'calme.rien': {
     serieux: ['Nothing needs you right now.', 'Everything is in order for now.'],
     chill: ['All quiet. Enjoy it.', 'Nothing pressing. The day is yours.'],
-    taquin: ['Nothing to do. I’ll pretend to be busy.', 'All calm. I’m polishing my screen.'],
+    taquin: ['Nothing to do. I’ll pretend to be busy.', 'All calm. Suspiciously calm, even.'],
   },
   'alerte.site': {
     serieux: ['A site is no longer responding. I’ll open the case.', 'A site is down. The details are below.'],
@@ -68,7 +68,7 @@ const EN = {
   'soir.recap': {
     serieux: ['Day done: {faits} things finished. {restants} left for tomorrow.', '{faits} things done today. {restants} carry over.'],
     chill: ['Nice day: {faits} things done. {restants} can wait.', '{faits} done today. Tomorrow picks up {restants}.'],
-    taquin: ['{faits} things done. I’d clap if my arms were longer.', '{faits} done, {restants} left. Tomorrow-you will handle it.'],
+    taquin: ['{faits} things done. Not bad at all.', '{faits} done, {restants} left. Tomorrow-you will handle it.'],
   },
   'soir.leger': {
     serieux: ['Quiet day. Nothing was left hanging.', 'The day is closing. Nothing urgent remains.'],
@@ -78,27 +78,22 @@ const EN = {
   tard: {
     serieux: ['It’s late. Everything else can wait until tomorrow.', 'It’s late. I’ll keep watch.'],
     chill: ['It’s late. The rest can wait.', 'Late already. Go get some rest.'],
-    taquin: ['It’s late. Even my antenna is drooping.', 'Late again. I’m yawning in pixels.'],
+    taquin: ['It’s late. The rest will still be there tomorrow.', 'Late again. Time to log off, maybe?'],
   },
   'neuf.bienvenue': {
     serieux: ['Hello, I’m Ajmani. Let’s set up your space.', 'Welcome. Three steps to get started.'],
     chill: ['Hi, I’m Ajmani. Shall we set things up?', 'Welcome aboard. Three small steps and we’re good.'],
-    taquin: ['Hi, I’m Ajmani. Yes, my head is a TV.', 'New here? Me too, sort of.'],
+    taquin: ['Hi, I’m Ajmani. Three steps and you’re set.', 'New here? Let’s keep it quick.'],
   },
   'fete.facture': {
     serieux: ['Invoice paid. Good news.', 'Payment received. One less thing to chase.'],
     chill: ['Invoice paid. Nice day.', 'Money in. That’s a good one.'],
-    taquin: ['Invoice paid. I’ll do a little dance.', 'Paid! Told you they would.'],
+    taquin: ['Invoice paid. That one feels good.', 'Paid! Told you they would.'],
   },
   'fete.client': {
     serieux: ['New client added. Welcome to them.', 'A new client joins. Their file is ready.'],
     chill: ['New client. Welcome aboard.', 'One more client. Nice.'],
     taquin: ['New client! The family grows.', 'A new client. I’ll be on my best behaviour.'],
-  },
-  clic: {
-    serieux: ['Yes? I’m opening the conversation.', 'I’m here. Ask me anything.'],
-    chill: ['Hey. What can I do for you?', 'Here I am. Let’s talk.'],
-    taquin: ['You rang? I’m all screen.', 'Poke received. What’s up?'],
   },
   'astuce.panneau': {
     serieux: ['Ctrl+J or ⌘J opens our conversation, anywhere.', 'Press ⌘J to talk to me from any screen.'],
@@ -108,7 +103,7 @@ const EN = {
   'astuce.voix': {
     serieux: ['Hold F9 to speak to me instead of typing.', 'Hold F9, speak, release. I’ll take it from there.'],
     chill: ['Tired of typing? Hold F9 and just talk.', 'Hold F9 to talk. Hands free, almost.'],
-    taquin: ['Hold F9 and talk. I promise to listen.', 'F9 held down means I’m all ears. Well, antenna.'],
+    taquin: ['Hold F9 and talk. I promise to listen.', 'F9 held down means I’m all ears.'],
   },
   'astuce.fil': {
     serieux: ['You can tick, hide or add lines to the day’s list.', 'The day’s list is yours. Edit it freely.'],
@@ -149,7 +144,7 @@ const FR: Record<Situation, Variantes> = {
   'calme.rien': {
     serieux: ['Rien ne te réclame pour l’instant.', 'Tout est en ordre pour le moment.'],
     chill: ['Tout est calme. Profite.', 'Rien de pressé. La journée est à toi.'],
-    taquin: ['Rien à faire. Je vais faire semblant d’être occupé.', 'Tout est calme. Je fais briller mon écran.'],
+    taquin: ['Rien à faire. Je vais faire semblant d’être occupé.', 'Tout est calme. Presque trop calme.'],
   },
   'alerte.site': {
     serieux: ['Un site ne répond plus. Je t’ouvre le dossier.', 'Un site est tombé. Le détail est juste en dessous.'],
@@ -171,7 +166,7 @@ const FR: Record<Situation, Variantes> = {
   'soir.recap': {
     serieux: ['Journée bouclée : {faits} choses faites. {restants} pour demain.', '{faits} choses faites aujourd’hui. {restants} passent à demain.'],
     chill: ['Belle journée : {faits} choses faites. {restants} peuvent attendre.', '{faits} choses faites. Demain reprend les {restants} autres.'],
-    taquin: ['{faits} choses faites. J’applaudirais si j’avais des bras plus longs.', '{faits} faites, {restants} restantes. Le toi de demain gérera.'],
+    taquin: ['{faits} choses faites. Pas mal du tout.', '{faits} faites, {restants} restantes. Le toi de demain gérera.'],
   },
   'soir.leger': {
     serieux: ['Journée calme. Rien n’est resté en suspens.', 'La journée se termine. Rien d’urgent ne reste.'],
@@ -181,27 +176,22 @@ const FR: Record<Situation, Variantes> = {
   tard: {
     serieux: ['Il est tard. Le reste peut attendre demain.', 'Il est tard. Je garde un œil sur tout.'],
     chill: ['Il est tard. Le reste attendra.', 'Déjà tard. Va te reposer.'],
-    taquin: ['Il est tard. Même mon antenne fatigue.', 'Encore tard. Je bâille en pixels.'],
+    taquin: ['Il est tard. Le reste sera encore là demain.', 'Encore tard. On décroche, peut-être ?'],
   },
   'neuf.bienvenue': {
     serieux: ['Bonjour, je suis Ajmani. On installe ton espace.', 'Bienvenue. Trois étapes pour bien démarrer.'],
     chill: ['Salut, moi c’est Ajmani. On installe ton coin ?', 'Bienvenue à bord. Trois petites étapes et c’est parti.'],
-    taquin: ['Salut, moi c’est Ajmani. Oui, ma tête est une télé.', 'Nouveau ici ? Moi aussi, un peu.'],
+    taquin: ['Salut, moi c’est Ajmani. Trois étapes et c’est réglé.', 'Nouveau ici ? On fait ça vite.'],
   },
   'fete.facture': {
     serieux: ['Facture encaissée. Bonne nouvelle.', 'Paiement reçu. Une relance de moins.'],
     chill: ['Facture encaissée. Belle journée.', 'L’argent est arrivé. Ça fait plaisir.'],
-    taquin: ['Facture encaissée. Je fais une petite danse.', 'Payée ! Je te l’avais dit.'],
+    taquin: ['Facture encaissée. Celle-là fait plaisir.', 'Payée ! Je te l’avais dit.'],
   },
   'fete.client': {
     serieux: ['Nouveau client enregistré. Sa fiche est prête.', 'Un nouveau client arrive. Bienvenue à lui.'],
     chill: ['Nouveau client. Bienvenue à bord.', 'Un client de plus. Joli.'],
     taquin: ['Nouveau client ! La famille s’agrandit.', 'Un nouveau client. Je vais bien me tenir.'],
-  },
-  clic: {
-    serieux: ['Oui ? J’ouvre la conversation.', 'Je suis là. Pose-moi ta question.'],
-    chill: ['Salut. Je peux t’aider ?', 'Me voilà. On discute ?'],
-    taquin: ['Tu m’as appelé ? Je suis tout écran.', 'Bien reçu le petit coup. Quoi de neuf ?'],
   },
   'astuce.panneau': {
     serieux: ['Ctrl+J ou ⌘J ouvre notre conversation, partout.', 'Appuie sur ⌘J pour me parler depuis n’importe quel écran.'],
@@ -211,7 +201,7 @@ const FR: Record<Situation, Variantes> = {
   'astuce.voix': {
     serieux: ['Maintiens F9 pour me parler au lieu d’écrire.', 'Maintiens F9, parle, relâche. Je m’occupe du reste.'],
     chill: ['Marre de taper ? Maintiens F9 et parle.', 'Maintiens F9 pour parler. Presque les mains libres.'],
-    taquin: ['Maintiens F9 et parle. Promis, j’écoute.', 'F9 enfoncé, je suis tout ouïe. Enfin, tout antenne.'],
+    taquin: ['Maintiens F9 et parle. Promis, j’écoute.', 'F9 enfoncé, je suis tout ouïe.'],
   },
   'astuce.fil': {
     serieux: ['Tu peux cocher, masquer ou ajouter des lignes au fil.', 'Le fil du jour est à toi. Modifie-le librement.'],

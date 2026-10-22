@@ -1,0 +1,42 @@
+/*
+  LE FOND NOIR ET GRIS — l'activation des jetons de fond du socle (S2 recadrée).
+  ═══════════════════════════════════════════════════════════════════════════
+
+  Direction validée par Harun (2026-10-22) : noir et gris, très rangé. Les
+  jetons sont CEUX DU SOCLE (`--color-socle-*`, `src/index.css`) : on ne crée
+  pas une seconde palette, on leur donne leurs valeurs noir et gris, et l'on
+  passe le fond général de l'app dessus.
+
+  Ce fichier n'est importé que par le code interne (`Ambiance.tsx`, posé par
+  la couture `@edition/vivant`) : la feuille de l'édition cliente ne change
+  pas d'un octet. L'attribut `data-ambiance="noir"` sur <html> l'allume.
+
+  Les familles, les états et l'ambre gardent leurs teintes : sur ce fond, ce
+  sont de petits points de couleur. `check:ajmani` vérifie les contrastes.
+*/
+:root[data-ambiance='noir'] {
+  --color-bg: #0c0c0d;
+
+  --color-socle-fond: #0c0c0d;
+  --color-socle-creux: #0a0a0b;
+  --color-socle-surface: #131314;
+  --color-socle-eleve: #161617;
+  --color-socle-survol: #1c1c1e;
+  --color-socle-bord: #232325;
+  --color-socle-bord-fort: #6e6e73;
+  --color-socle-texte: #ededed;
+  --color-socle-texte-doux: #8a8a8e;
+  --color-socle-texte-discret: #8a8a8e;
+  --color-socle-focus: #ededed;
+  --color-socle-primaire: #ededed;
+  --color-socle-primaire-survol: #ffffff;
+  --color-socle-primaire-encre: #0c0c0d;
+  --color-socle-voile: rgba(0, 0, 0, 0.66);
+}
+
+/* La police de la refonte : Inter, chiffres tabulaires, sur les écrans qui ont migré. */
+[data-refonte-police='inter'] {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'cv11', 'ss01';
+}

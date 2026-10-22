@@ -1,13 +1,11 @@
 import React from 'react';
 import { REGISTRES, ecrireRegistre, useRegistre, type Registre } from './registre';
 import { useAccueilLangue, type CleAccueil } from '../i18n';
-import { AjmaniPetit } from './Ajmani';
-import type { Emotion } from './expressions';
 
-const LIBELLES: Record<Registre, { titre: CleAccueil; aide: CleAccueil; emotion: Emotion }> = {
-  serieux: { titre: 'registre.serieux', aide: 'registre.serieux.aide', emotion: 'concentre' },
-  chill: { titre: 'registre.chill', aide: 'registre.chill.aide', emotion: 'content' },
-  taquin: { titre: 'registre.taquin', aide: 'registre.taquin.aide', emotion: 'taquin' },
+const LIBELLES: Record<Registre, { titre: CleAccueil; aide: CleAccueil }> = {
+  serieux: { titre: 'registre.serieux', aide: 'registre.serieux.aide' },
+  chill: { titre: 'registre.chill', aide: 'registre.chill.aide' },
+  taquin: { titre: 'registre.taquin', aide: 'registre.taquin.aide' },
 };
 
 /**
@@ -19,15 +17,10 @@ export function RegistreSection() {
   const registre = useRegistre();
   return (
     <section className="panel p-4" id="reglages-registre">
-      <div className="flex items-start gap-3">
-        <AjmaniPetit emotion={LIBELLES[registre].emotion} taille={44} />
-        <div className="min-w-0">
-          <p className="eyebrow mb-1" id="reglages-registre-titre">
-            {ta('registre.titre')}
-          </p>
-          <p className="mb-3 max-w-2xl text-[12px] leading-relaxed text-text-secondary">{ta('registre.texte')}</p>
-        </div>
-      </div>
+      <p className="eyebrow mb-1" id="reglages-registre-titre">
+        {ta('registre.titre')}
+      </p>
+      <p className="mb-3 max-w-2xl text-[12px] leading-relaxed text-text-secondary">{ta('registre.texte')}</p>
       <div role="radiogroup" aria-labelledby="reglages-registre-titre" className="flex flex-col">
         {REGISTRES.map((r) => (
           <label key={r} className="flex cursor-pointer items-start gap-3 border-b border-border-row py-3 last:border-b-0">
