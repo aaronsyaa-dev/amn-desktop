@@ -26,3 +26,9 @@ export function leve(f: () => unknown, message: string): void {
   }
   throw new Error(`aurait dû lever : ${message}`);
 }
+
+/** Exige une valeur présente et la rend typée (évite les `!` dans les tests). */
+export function doit<T>(x: T | null | undefined, message = 'valeur attendue'): T {
+  if (x === null || x === undefined) throw new Error(message);
+  return x;
+}
