@@ -3,10 +3,11 @@
 > Tenu par le CO, mis à jour à chaque « point ». Les sessions ne modifient pas
 > ce fichier. Règles : [`REGLES.md`](REGLES.md).
 
-- Branche d'intégration : `claude/refonte-vivante` @ `c808dae` + ce statut (base `main` @ `630ef45`)
-- Dernière mise à jour : 2026-10-22 (point 1, puis mise à jour du plan : S6, S4 annulée, G0 retirée, direction design et couleurs tranchées)
+- Branche d'intégration : `claude/refonte-vivante` (base `main` @ `630ef45`). Dernier code fusionné : `c808dae`. Depuis, documentation seulement.
+- Dernière mise à jour : 2026-10-22 (point 2 : aucune branche prête ; pistes F1, T1 et S5 ajoutées ; procédure F1)
 - Gardes locales sur `c808dae` : `typecheck`, `typecheck:business`, `lint` et les 47 `check:*` de `editions.yml` sans navigateur, toutes vertes.
-- CI `editions.yml` : sur `9a6ffe7`, les builds et les garde-fous ont réussi. « Garde-fous croisés » échoue à « Récupérer amn-api » (secret `AMN_API_TOKEN` refusé : *Bad credentials*), ce qui ne dépend pas du code. Sur ce point, résultat à relire au point suivant.
+- CI `editions.yml` sur `f0b8f12` (S1 et S3 incluses) : « Build interne », « Build business + contrôle de fuite » et « Les garde-fous » réussis. « Garde-fous croisés » échoue toujours à « Récupérer amn-api » (secret `AMN_API_TOKEN` refusé : *Bad credentials*), ce qui ne dépend pas du code.
+- Point 2 : aucune nouvelle branche poussée (S5, S6, F1, T1). S2 est inchangée (`8c048ca`). Rien n'a été fusionné.
 
 ## Sessions
 
@@ -18,13 +19,17 @@
 | S2 Accueil | `claude/refonte-s2-accueil` | **non fusionnée, à recadrer** (décision de Harun) : ne pas fusionner en l'état | `8c048ca` | `rapports/S2.md` (sur sa branche) | Accueil à refaire sur le design noir et gris, **sans personnage**, et **activation du fond noir et gris** (jetons de fond de S0). La mascotte Ajmani, ses réactions et l'animation de lancement sortent du périmètre. Sa branche devra intégrer `refonte-vivante` (bus de moments modifié) avant la prochaine relecture. |
 | S3 Supervisor et Garde | `claude/refonte-s3-supervisor` | **fusionnée** | `e7f4f25` | [`rapports/S3.md`](rapports/S3.md) | 8 accents d'équipe à valider ; fond graphite de la veille au lieu du noir ; format de `journal.ressource` côté serveur ; alertes app fermée (travail amn-api, `docs/refonte-alertes.md`) |
 | S4 Robots métiers | — | **annulée** (décision de Harun) : plus de personnages ni de robots dans le desktop | — | — | — |
-| S5 Modules par catégorie | `claude/refonte-s5-<categorie>` | à lancer (S1 fusionnée) | — | — | stratégie pour les écrans partagés (`IS_BUSINESS` ou enveloppes internes) |
-| S6 Sécurité et SOC | `claude/refonte-sec-*` | à lancer. Phase 1 en lecture seule. **Ne pas fusionner sans décision de Harun.** Ne bloque aucune autre tranche. | — | `docs/securite/phase1.md` (phase 1) | Couvre aussi le diagnostic de la Garde (pourquoi elle échoue), repris de G0. |
+| S5 Modules et registre extensible | `claude/refonte-s5-modules` | à lancer, ou en cours : pas encore de branche (S1 fusionnée) | — | `rapports/S5.md` | Rangement de 142 à 101 modules. Registre où un module ou une famille = un fichier. Vue « Tous les modules ». Reprend des fichiers de S1 (`registre.ts`, `TousLesModules.tsx`, `check:navigation`). Écrans partagés : `IS_BUSINESS` ou écrans enveloppes internes, à trancher. |
+| S6 Sécurité et SOC | `claude/refonte-sec-*` | **en cours**, pas encore de branche. Phase 1 en lecture seule. **Ne pas fusionner sans décision de Harun.** Ne bloque aucune autre tranche. | — | `docs/securite/phase1.md` (phase 1) | Couvre aussi le diagnostic de la Garde (pourquoi elle échoue), repris de G0. |
+| F1 Atelier de modules | `claude/refonte-atelier-*` | à lancer, ou en cours : pas encore de branche | — | carnet : `docs/atelier/BACKLOG.md`, `docs/atelier/PRET.md` | Crée et teste des modules en continu. **Rien n'est branché tant que Harun n'a pas choisi.** Intégration selon [`INTEGRATION-F1.md`](INTEGRATION-F1.md), dont la validation par Harun est attendue. |
+| T1 Qualité et tests | `claude/refonte-qualite-*` | à lancer, ou en cours : pas encore de branche | — | `docs/qualite/SANTE.md` | Lance les gardes navigateur, relit les branches, tient `SANTE.md`. Le dossier `tests/**` est vu par `npm run lint` (`eslint .`) : il doit rester vert. |
 | G0 Garde diagnostic | — | **retirée** (décision de Harun) : S6 couvre le diagnostic de la Garde | — | — | — |
 
 États possibles : à lancer · en cours · prête (rapport poussé) · relue · fusionnée · bloquée · annulée.
 
 Modèles conseillés : S6 Opus 5.5, effort élevé.
+
+**Relances automatiques : aucune.** Ni tâche programmée ni relance de nuit, tant que Harun n'a pas validé le plafond proposé (une relance par nuit et par piste).
 
 ## Zones
 
@@ -34,15 +39,24 @@ Modèles conseillés : S6 Opus 5.5, effort élevé.
 | S2 | `src/refonte/accueil/**`, `src/accueils/interne/**`, `src/edition/accueils.internal.tsx`, `src/edition/ajmani.internal.ts`. Peut ajouter `emettreMoment` au couple `src/edition/socle.*.tsx` (vide côté cliente), en le signalant. |
 | S3 | `src/bureaux/**`, `src/screens/garde/**`, `src/components/garde/**` |
 | S4 | annulée |
-| S5 | `src/refonte/couverture.ts` et les écrans de sa catégorie, avec du code ajouté réservé à l'interne |
+| S5 | registre et rangement des modules : `src/refonte/navigation/**` (repris de S1, qui est terminée), `src/edition/modules.internal.ts`, la vue « Tous les modules », `check:navigation` ; écrans partagés seulement avec du code ajouté réservé à l'interne |
 | S6 | `docs/securite/**` et `src/securite/**`. Pour tout le reste, elle **propose** des tickets dans `docs/securite/tickets/`, sans rien modifier. |
+| F1 | `src/ateliers/**` et `docs/atelier/**`. Branchement (registre de S5 et route) seulement à l'intégration d'un module choisi. |
+| T1 | `tests/**` et `docs/qualite/**` |
 
-## Ordre de fusion
+Ces zones n'existaient pas avant (`src/ateliers`, `tests`, `docs/atelier`, `docs/qualite`, `docs/securite`, `src/securite` : vérifié au point 2), donc il n'y a aucun recouvrement avec l'existant.
 
-1. S0 (fait)
-2. S3, puis S1 (faits). S2 viendra après son recadrage.
-3. S5, une catégorie à la fois.
-4. S6 : seulement sur décision de Harun, indépendamment des autres.
+## Ordre de fusion (proposé, à valider par Harun)
+
+Fait : S0, puis S3, puis S1.
+
+1. **T1, en continu.** Ses tests et `SANTE.md` sont fusionnés dès qu'ils sont prêts, avant chaque autre fusion, pour que la porte de contrôle existe avant ce qu'elle contrôle. Sa zone ne recouvre personne.
+2. **S5**, dès qu'elle est prête et testée par T1. Elle passe avant F1 et avant S2, parce que son registre est l'endroit où se branchent les modules de F1, et que l'Accueil le lit.
+3. **S2 recadrée** (Accueil noir et gris, activation du fond), après S5. Elle devra intégrer `refonte-vivante` avant relecture.
+4. **F1, un module à la fois**, après S5, selon [`INTEGRATION-F1.md`](INTEGRATION-F1.md) : choix de Harun, puis T1, puis la liste du CO, puis la validation de Harun.
+5. **S6** : à part, sur décision de Harun seulement. Elle ne bloque rien et rien ne l'attend.
+
+Si une branche arrive avant celle qui la précède, elle attend, sauf si sa zone ne touche rien de la précédente. Dans ce cas, je le signale et je propose de la fusionner.
 
 ## Direction design (validée par Harun, 2026-10-22)
 
@@ -79,3 +93,4 @@ Deux contrôles le vérifient par lecture des sources : `check:navigation` (S1) 
 | 2026-10-22 | `claude/refonte-s3-supervisor` | `e7f4f25` → `596239e` | sans conflit |
 | 2026-10-22 | `claude/refonte-s1-navigation` | `e788af8` → `c5f4707` | conflit additif dans `editions.yml` (deux étapes après `check:moments`), les deux gardées. Commit `CommandPalette.tsx` hors zone accepté par Harun. |
 | 2026-10-22 | (CO) | `c808dae` | 3 types de moments ; `check:navigation` corrigé pour S3 ; gardes locales vertes |
+| 2026-10-22 | point 2 | — | rien de prêt : aucune fusion |
