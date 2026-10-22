@@ -55,8 +55,8 @@ const POINT: Record<Ton, string> = {
 /** Un état dit en texte, avec un petit point : la couleur ne porte jamais seule le sens. */
 export function Etat({ ton, children }: { ton: Ton; children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-socle-texte-doux">
-      <span aria-hidden className={`inline-block h-1.5 w-1.5 rounded-full ${POINT[ton]}`} />
+    <span className="inline-flex items-start gap-1.5 text-[12.5px] font-medium leading-relaxed text-socle-texte-doux">
+      <span aria-hidden className={`mt-[0.6em] inline-block h-1.5 w-1.5 shrink-0 rounded-full ${POINT[ton]}`} />
       {children}
     </span>
   );

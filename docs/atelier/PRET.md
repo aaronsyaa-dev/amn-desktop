@@ -22,3 +22,4 @@
 | `vigilance` Vigilance sous-traitants | outils · conformite · expert | | | | | | | en cours | |
 | `amortissements` Tableau d'amortissement | argent · comptabilite · expert | | | | | | | en cours | |
 | `echeancier` Paiement en plusieurs fois | argent · facturer · courant | | | | | | | en cours | |
+| `comparateurDevis` Comparateur de devis fournisseurs | argent · depenser · courant | | | | | | | en cours | |
