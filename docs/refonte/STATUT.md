@@ -58,7 +58,7 @@ Ce que cela remet en question dans ce qui est déjà fusionné (à trancher, rie
 - **Couleurs de S0** : les 7 familles colorées (`data-famille`, `--fam*`) et le thème clair. Faut-il les garder comme accents discrets sur le noir et gris, ou les ramener au gris ?
 - **Couleurs de S3 et S1** : les 8 accents d'équipe (`src/refonte/garde/equipes.ts`) et les couleurs de famille du rail du moment. Même question.
 - **Ajmani dans S3** : `ResumeDeNuit` garde un emplacement prévu pour lui (`ajmani={…}`). Il reste vide, et il faudra le retirer ou le brancher sur la barre ⌘J.
-- **⌘J** : vérifier, avant de l'attribuer, que le raccourci n'est pas déjà pris (palette ⌘K, bureaux ⌘E, guide).
+- **⌘J** ouvre déjà l'assistant (`src/assistant/AssistantContext.tsx:238`, fichier partagé). La barre de texte peut reprendre ce raccourci, mais en passant par une couture : l'édition cliente garde son comportement actuel.
 
 ## Gardes qui ne tournent nulle part
 
