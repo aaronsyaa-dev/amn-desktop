@@ -61,7 +61,9 @@ const GARDES = [
 ].filter((g) => !SEULEMENT || SEULEMENT.includes(g.nom));
 
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
-function lancer(cmd, args, env = {}, delaiMs = 15 * 60_000) {
+// Une garde qui clique sur chaque bouton (focus) peut dépasser vingt minutes : délai réglable.
+const DELAI_MS = Number(process.env.QUALITE_DELAI_MIN ?? 45) * 60_000;
+function lancer(cmd, args, env = {}, delaiMs = DELAI_MS) {
   return new Promise((resolve) => {
     const p = spawn(cmd, args, { cwd: ROOT, env: { ...process.env, ...env } });
     let sortie = '';
