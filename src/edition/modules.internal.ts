@@ -123,6 +123,7 @@ import {
 } from 'lucide-react';
 import type { NavSection } from '../data/navigation';
 import type { ActivityTab } from '../state/ActivityContext';
+import { sectionsDuRegistre } from '../refonte/modules/catalogue';
 
 /**
  * Les modules d'AMN Desktop — l'édition interne d'AMN DevSec.
@@ -491,6 +492,12 @@ export const NAV_SECTIONS: NavSection[] = [
       { key: 'ssl', label: 'SSL Monitor', to: '/ssl', icon: LockKeyhole, hint: 'Certificats TLS' },
     ],
   },
+  /*
+    Refonte S5 : les écrans neufs déclarés au registre de l'édition interne
+    (`src/refonte/modules/declarations/`, vue `nouveau`). Aucune section
+    aujourd'hui ; une déclaration suffit à en faire apparaître une.
+  */
+  ...sectionsDuRegistre(),
 ];
 
 /**

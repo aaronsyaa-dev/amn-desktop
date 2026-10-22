@@ -1,5 +1,4 @@
 import { langueActive, useLangue, type Langue } from '../../i18n';
-import type { CleAction } from './registre';
 
 /**
  * LES MOTS DE LA NAVIGATION (refonte S1) — fr et en, hors des dictionnaires communs.
@@ -9,49 +8,11 @@ import type { CleAction } from './registre';
  * dans le paquet de l'édition cliente : seul l'interne importe ce dossier, par
  * la couture `@edition/navigation`.
  *
- * Les noms des familles ne sont pas ici : ils vivent dans le socle
- * (`famille.*`), et se changent là-bas.
+ * Les noms des familles, de leurs actions et des entrées regroupées ne sont
+ * pas ici : chaque fichier de `src/refonte/modules/declarations/` porte les
+ * siens, en français et en anglais (S5).
  */
-const ACTIONS_EN = {
-  'action.jour.organiser': 'Plan my day',
-  'action.jour.suivre': 'Track progress',
-  'action.jour.equipe': 'Run the team',
-  'action.jour.perso': 'Just for me',
-  'action.contacts.clients': 'My customers',
-  'action.contacts.prospecter': 'Find customers',
-  'action.contacts.ecouter': 'Listen to customers',
-  'action.contacts.fideliser': 'Keep customers',
-  'action.contacts.partenaires': 'Suppliers and colleagues',
-  'action.ecrire.noter': 'Take notes',
-  'action.ecrire.rediger': 'Write',
-  'action.ecrire.documents': 'File documents',
-  'action.ecrire.signer': 'Get it signed',
-  'action.argent.facturer': 'Invoice',
-  'action.argent.vendre': 'Sell and get paid',
-  'action.argent.depenser': 'Spending',
-  'action.argent.prevoir': 'Forecast',
-  'action.argent.comptabilite': 'Accounting',
-  'action.echanger.discuter': 'Chat',
-  'action.echanger.reunir': 'Meet and call',
-  'action.echanger.annoncer': 'Tell everyone',
-  'action.echanger.public': 'Welcome the public',
-  'action.creer.video': 'Video and audio',
-  'action.creer.visuels': 'Images and visuals',
-  'action.creer.publier': 'Publish',
-  'action.outils.pratique': 'Handy tools',
-  'action.outils.automatiser': 'Automate and import',
-  'action.outils.terrain': 'In the field',
-  'action.outils.stock': 'Stock and purchasing',
-  'action.outils.conformite': 'Compliance',
-  'action.outils.reglages': 'Settings and account',
-  'action.outils.deleguer': 'Delegate to the Guard',
-  'action.outils.superviser': 'Oversee clients',
-  'action.outils.securiser': 'Cybersecurity',
-} as const satisfies Record<`action.${CleAction}`, string>;
-
 const EN = {
-  ...ACTIONS_EN,
-
   'rail.nav': 'Main navigation',
   'rail.recherche': 'What do you want to do?',
   'rail.accueil.raccourci': 'G then A',
@@ -71,6 +32,16 @@ const EN = {
   'tous.filtre.aide': 'For example: send an invoice',
   'tous.aucun': 'No module matches “{q}”.',
   'tous.compte': '{n} modules',
+  'tous.niveaux': 'Show',
+  'tous.niveau.tous': 'All',
+  'tous.niveau.essentiel': 'Essentials',
+  'tous.niveau.courant': 'Everyday',
+  'tous.niveau.avance': 'Advanced',
+  'tous.niveau.vide': 'Nothing at this level.',
+  'tous.plus': 'More',
+  'tous.moins': 'Less',
+  'tous.vues': 'Views of {nom}',
+  'tous.remplace': '{nom} is now {par}.',
 
   'palette.placeholder': 'What do you want to do? A page, an action, a site, a note…',
 } as const;
@@ -78,40 +49,6 @@ const EN = {
 export type CleNav = keyof typeof EN;
 
 const FR: Record<CleNav, string> = {
-  'action.jour.organiser': 'Organiser ma journée',
-  'action.jour.suivre': 'Suivre l’avancement',
-  'action.jour.equipe': 'Gérer l’équipe',
-  'action.jour.perso': 'Pour moi',
-  'action.contacts.clients': 'Mes clients',
-  'action.contacts.prospecter': 'Trouver des clients',
-  'action.contacts.ecouter': 'Écouter les clients',
-  'action.contacts.fideliser': 'Fidéliser',
-  'action.contacts.partenaires': 'Fournisseurs et collègues',
-  'action.ecrire.noter': 'Noter',
-  'action.ecrire.rediger': 'Rédiger',
-  'action.ecrire.documents': 'Ranger les documents',
-  'action.ecrire.signer': 'Faire signer',
-  'action.argent.facturer': 'Facturer',
-  'action.argent.vendre': 'Vendre et encaisser',
-  'action.argent.depenser': 'Dépenses',
-  'action.argent.prevoir': 'Prévoir',
-  'action.argent.comptabilite': 'Comptabilité',
-  'action.echanger.discuter': 'Discuter',
-  'action.echanger.reunir': 'Se réunir et appeler',
-  'action.echanger.annoncer': 'Annoncer à tous',
-  'action.echanger.public': 'Accueillir le public',
-  'action.creer.video': 'Vidéo et son',
-  'action.creer.visuels': 'Images et visuels',
-  'action.creer.publier': 'Publier',
-  'action.outils.pratique': 'Petits outils',
-  'action.outils.automatiser': 'Automatiser et importer',
-  'action.outils.terrain': 'Sur le terrain',
-  'action.outils.stock': 'Stock et achats',
-  'action.outils.conformite': 'Conformité',
-  'action.outils.reglages': 'Réglages et compte',
-  'action.outils.deleguer': 'Déléguer à la Garde',
-  'action.outils.superviser': 'Superviser les clientes',
-  'action.outils.securiser': 'Cybersécurité',
 
   'rail.nav': 'Navigation principale',
   'rail.recherche': 'Que voulez-vous faire ?',
@@ -132,6 +69,16 @@ const FR: Record<CleNav, string> = {
   'tous.filtre.aide': 'Par exemple : envoyer une facture',
   'tous.aucun': 'Aucun module ne correspond à « {q} ».',
   'tous.compte': '{n} modules',
+  'tous.niveaux': 'Afficher',
+  'tous.niveau.tous': 'Tous',
+  'tous.niveau.essentiel': 'Essentiels',
+  'tous.niveau.courant': 'Courants',
+  'tous.niveau.avance': 'Avancés',
+  'tous.niveau.vide': 'Rien à ce niveau.',
+  'tous.plus': 'Plus',
+  'tous.moins': 'Moins',
+  'tous.vues': 'Vues de {nom}',
+  'tous.remplace': '{nom} est devenu {par}.',
 
   'palette.placeholder': 'Que voulez-vous faire ? Une page, une action, un site, une note…',
 };
