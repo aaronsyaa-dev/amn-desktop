@@ -21,3 +21,4 @@
 | `indemnitesKm` Indemnités kilométriques | argent · depenser · essentiel | | | | | | | en cours | |
 | `vigilance` Vigilance sous-traitants | outils · conformite · expert | | | | | | | en cours | |
 | `amortissements` Tableau d'amortissement | argent · comptabilite · expert | | | | | | | en cours | |
+| `echeancier` Paiement en plusieurs fois | argent · facturer · courant | | | | | | | en cours | |
