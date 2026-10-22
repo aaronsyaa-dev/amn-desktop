@@ -5,40 +5,47 @@
 > interne (142 modules, `src/refonte/navigation/registre.ts` @ `f0b8f12`) :
 > la colonne « Voisin » dit ce qui existe déjà et pourquoi ce n'est pas la même
 > chose. Une idée prise passe dans [`PRET.md`](PRET.md) avec son statut.
+>
+> Classement : combien d'entreprises en ont besoin, combien coûte de ne pas
+> l'avoir (argent perdu, amende, oubli), si le module tient seul sans serveur,
+> et si ses règles sont sûres (une règle mouvante descend dans la liste).
 
-Critères de classement : combien d'entreprises en ont besoin, combien ça leur
-coûte de ne pas l'avoir (argent perdu, amende, oubli), et si le module tient
-seul, sans serveur ni intégration.
+## À prendre (passage 2)
 
-## Pris (passage 1, 2026-10-22)
+| # | Module (`id` proposé) | Famille · action | Pour qui | Le manque | Voisin |
+|---|---|---|---|---|---|
+| 1 | Point mort (`pointMort`) | argent · prévoir | toutes | le chiffre d'affaires et la date à partir desquels l'année devient rentable | `calculators` : seuil d'un événement, pas de l'entreprise |
+| 2 | Révision de prix par indice (`revisionPrix`) | argent · facturer | BTP, maintenance, services sous contrat | appliquer P = P0 × (a + b × I / I0) avec les indices saisis (BT, Syntec) | aucun |
+| 3 | Délais de paiement (`delaisPaiement`) | argent · facturer | toutes | délai moyen réel des clients et des fournisseurs, factures au-delà du plafond légal | `reminders` relance, ne mesure pas |
+| 4 | Garanties après réception (`garantiesClients`) | outils · terrain | BTP | parfait achèvement, biennale, décennale : ce qui court encore, chantier par chantier | `contracts` suit des contrats, pas les garanties légales |
+| 5 | Heures supplémentaires (`heuresSupp`) | jour · equipe | employeurs | majorations et contingent annuel consommé, par salarié | `time` note le temps, ne le qualifie pas |
+| 6 | Plan de charge (`planDeCharge`) | jour · equipe | ateliers, agences, BTP | charge vendue face à la capacité de l'équipe, semaine par semaine | `shifts` fait les horaires, pas la capacité |
+| 7 | Inventaire de fin d'exercice (`inventaireAnnuel`) | outils · stock | commerces, ateliers | feuille de comptage, écarts, stock valorisé à la clôture | `stock` suit le stock courant, sans valorisation de clôture |
+| 8 | Compteur de congés payés (`congesPayes`) | jour · equipe | employeurs de 1 à 20 salariés | jours acquis, pris, restants sur la période de référence | `leaves` pose des absences, ne compte pas les droits |
+| 9 | Visites médicales du travail (`visitesMedicales`) | outils · conformite | employeurs | la prochaine visite de chaque salarié (information et prévention, suivi renforcé) | `health` : santé personnelle, pas celle des salariés |
+| 10 | Seuils micro et TVA (`seuils`) | argent · comptabilite | micro-entrepreneurs | voir venir le dépassement des plafonds sur le chiffre d'affaires cumulé | `taxForecast` prévoit l'impôt, pas les plafonds |
+| 11 | Taux de TVA des travaux (`tvaTravaux`) | argent · facturer | artisans du bâtiment | 5,5, 10 ou 20 % selon le logement et la nature des travaux, attestation à garder | aucun |
+| 12 | Registre de sécurité (`registreSecurite`) | outils · conformite | commerces recevant du public | vérifications périodiques (extincteurs, électricité, alarme), dernière et prochaine | `entretiens` vise les installations des clients, pas les siennes |
+| 13 | Affichages obligatoires (`affichagesObligatoires`) | outils · conformite | employeurs | ce qu'il faut afficher selon l'effectif, coché ou non | aucun |
+| 14 | Tour d'astreinte (`astreintes`) | jour · equipe | dépannage, maintenance | rotation équitable des astreintes, échanges, compteur par personne | `shifts` : horaires, sans équité de rotation |
+| 15 | Consignes et prêts d'emballages (`consignes`) | argent · vendre | grossistes, brasseurs, traiteurs | fûts, palettes, caisses prêtés : qui en doit combien | `equipment` : matériel interne seulement |
 
-| # | Module (`id`) | Pour qui | Le manque | Voisin dans le catalogue |
-|---|---|---|---|---|
-| 1 | Taux horaire de revient (`tauxHoraire`) | tous ceux qui vendent du temps | personne ne sait si son tarif couvre ses charges | `calculators` : prix e-commerce, panier, événement ; aucun taux horaire |
-| 2 | Situations de travaux (`situations`) | artisans du bâtiment | facturer à l'avancement, avec retenue de garantie et acomptes déduits | `invoices` facture un montant, pas un avancement cumulé par lot |
-| 3 | Pénalités de retard (`penalites`) | toute entreprise qui facture des pros | intérêts de retard et indemnité de 40 € jamais réclamés | `reminders` relance, ne calcule rien |
-| 4 | Métré et quantitatif (`metre`) | peintres, carreleurs, plaquistes, poseurs | surfaces, ouvertures déduites, chute, nombre de paquets | aucun |
-| 5 | Visites d'entretien (`entretiens`) | chauffagistes, frigoristes, sécurité incendie | savoir quelle installation est à visiter ce mois-ci | `subscriptions` facture, ne planifie pas ; `rounds` fait la tournée d'un jour |
-| 6 | Bons cadeaux (`bonsCadeaux`) | commerces, salons, restaurants | émettre, encaisser en plusieurs fois, voir les soldes et les bons expirés | `loyalty` tamponne une carte ; rien pour un bon prépayé |
-| 7 | Document unique des risques (`duerp`) | toute entreprise dès un salarié | l'évaluation des risques obligatoire, jamais tenue | `gdpr`, `csr`, `kyc` : aucune n'est la santé-sécurité |
-| 8 | Indemnités kilométriques (`indemnitesKm`) | indépendants, salariés en déplacement | le barème fiscal appliqué trajet par trajet, total annuel | `expenseClaims` saisit des tickets ; `fleet` suit un véhicule |
-| 9 | Vigilance sous-traitants (`vigilance`) | donneurs d'ordre, BTP | attestations URSSAF, Kbis, assurances : qui est à jour, qui expire | `kyc` vérifie une identité, pas une échéance de pièces |
-| 10 | Tableau d'amortissement (`amortissements`) | indépendants et sociétés au réel | dotation par exercice, prorata, valeur nette | `loanSim` amortit un prêt, pas une immobilisation |
-| 11 | Paiement en plusieurs fois (`echeancier`) | artisans, commerces | découper une facture en échéances datées, suivre ce qui est payé | `deposits` : un acompte, pas un échéancier |
-| 12 | Comparateur de devis fournisseurs (`comparateurDevis`) | PME qui achète | comparer 2 à 5 offres sur prix, délai, garantie, critères pondérés | `suppliers` : un annuaire |
-| 13 | Rétroplanning (`retroplanning`) | tous les métiers à date de livraison | partir de la date due et remonter les étapes | `projects`, `board` : planifient vers l'avant |
-| 14 | Registre unique du personnel (`registrePersonnel`) | employeurs dès un salarié | le registre obligatoire des entrées et sorties | `directory` : un trombinoscope |
+## Points d'attention
 
-## À prendre ensuite
+- **Règles mouvantes** (n° 8 à 13) : valeurs en paramètres datés et sourcés,
+  jamais en dur ; tout ce qui n'est pas sûr est écrit « à vérifier » dans la
+  spec et à l'écran. Pour `seuils` (plafonds et franchise TVA en débat depuis
+  la loi de finances 2025) et `congesPayes` (acquisition pendant un arrêt
+  maladie depuis la loi du 22 avril 2024), vérifier le texte en vigueur le
+  jour même, ou ne pas faire.
+- **Données personnelles** (n° 5, 8, 9) : même condition que
+  `registrePersonnel` à l'intégration (accès RH et dirigeant, registre RGPD).
+- **Familles** : les modules `outils · terrain` et `outils · conformite`
+  attendent la même décision que S1 (8e famille « terrain » ou non).
 
-| # | Module (`id` proposé) | Pour qui | Le manque | Voisin |
-|---|---|---|---|---|
-| 13 | Seuils micro et TVA (`seuils`) | micro-entrepreneurs | voir venir le dépassement des plafonds sur le chiffre d'affaires cumulé | `taxForecast` prévoit l'impôt, pas les plafonds |
-| 14 | Compteur de congés payés (`congesPayes`) | employeurs de 1 à 20 salariés | jours acquis, pris, restants sur la période de référence | `leaves` pose des absences, ne compte pas les droits |
+## Pris
 
-Points d'attention pour les suivants :
-
-- **seuils** et **congesPayes** reposent sur des règles qui changent (plafonds
-  et franchise TVA en débat depuis la loi de finances 2025 ; acquisition des
-  congés pendant un arrêt maladie depuis 2024). À ne faire qu'avec des valeurs
-  en paramètres datés et sourcés, jamais en dur.
+- Passage 1 (2026-10-22), 14 modules : `tauxHoraire`, `situations`,
+  `penalites`, `metre`, `entretiens`, `bonsCadeaux`, `duerp`, `indemnitesKm`,
+  `vigilance`, `amortissements`, `echeancier`, `comparateurDevis`,
+  `retroplanning`, `registrePersonnel`. Notes et statuts dans [`PRET.md`](PRET.md).
