@@ -113,7 +113,9 @@ interface Vue {
   niveau: string;
   verbes: readonly string[];
   motsCles: readonly string[];
+  en?: { verbes: readonly string[]; motsCles: readonly string[] };
   etiquette?: Libelle;
+  entreeNom?: Libelle;
   nouveau?: unknown;
 }
 interface EntreeR {
@@ -164,6 +166,7 @@ const fichiersDeclares = fs.readdirSync(path.join(racine, DOSSIER_DECLARATIONS))
 const m = await charger<{
   NAV_SECTIONS: Section[];
   NAV_BUSINESS: Section[];
+  NAV_EN: Record<string, { label?: string }>;
   REGISTRE: readonly Vue[];
   REGISTRE_MODULES: Registre;
   FICHIERS: Fichier[];
@@ -182,13 +185,14 @@ const m = await charger<{
   MAX_SUGGESTIONS: number;
   suggestionsDuMoment: (d: Date) => string[];
   composerRail: <T extends { key: string }>(a: { catalogue: readonly T[]; epingles: readonly string[]; recents: readonly string[]; quand: Date; essentiels?: { courants: readonly string[]; garde: readonly string[] } }) => Record<'essentiels' | 'garde' | 'epingles' | 'recents' | 'maintenant', T[]>;
-  chercher: (q: string, items: readonly { key: string; label: string; hint?: string }[]) => { item: { key: string }; score: number; raison?: string }[];
+  chercher: (q: string, items: readonly { key: string; label: string; hint?: string }[], o?: { langue?: 'fr' | 'en' }) => { item: { key: string }; score: number; raison?: string }[];
   premiereOuvertureDuJour: (d: Date, s: Pick<Storage, 'getItem' | 'setItem'> | null) => boolean;
   DICTIONNAIRES_NAV: Record<'fr' | 'en', Record<string, string>>;
 }>(
   [
     "export { NAV_SECTIONS } from '../src/edition/modules.internal';",
     "export { NAV_SECTIONS as NAV_BUSINESS } from '../src/edition/modules.business';",
+    "export { NAV_EN } from '../src/edition/navLexique.internal';",
     "export { REGISTRE } from '../src/refonte/navigation/registre';",
     "export { REGISTRE_MODULES } from '../src/refonte/modules/registre';",
     "export { assembler } from '../src/refonte/modules/assembler';",
@@ -209,7 +213,6 @@ const m = await charger<{
 const catalogue = m.NAV_SECTIONS.flatMap((s) => s.items);
 const parId = new Map(m.REGISTRE.map((e) => [e.id, e]));
 const R = m.REGISTRE_MODULES;
-const remplacees = new Map(R.remplacees.map((r) => [r.id, r]));
 
 /* ── 1. Le registre et le catalogue ───────────────────────────────────────── */
 
@@ -411,7 +414,75 @@ await dit('le rail tient ses essentiels : seize au plus, l’Accueil d’abord',
   assert.equal(m.ESSENTIELS[0], 'home');
 });
 
-/* ── 1 ter. Le registre extensible (S5) ───────────────────────────────────── */
+/* ── 1 ter. Les noms et les mots (S5) ────────────────────────────────────── */
+
+console.log('\nNavigation de la refonte — les noms et les mots\n');
+
+const libelleCatalogue = new Map(catalogue.map((i) => [i.key, i.label]));
+const nomAffiche = (e: EntreeR) => e.nom?.fr ?? libelleCatalogue.get(e.id) ?? e.id;
+
+await dit('chaque entrée a un nom qui n’est qu’à elle, en français comme en anglais', () => {
+  const fautes: string[] = [];
+  for (const langue of ['fr', 'en'] as const) {
+    const vus = new Map<string, string>();
+    for (const e of R.entrees) {
+      const nom = langue === 'fr' ? nomAffiche(e) : (e.nom?.en ?? m.NAV_EN[e.id]?.label);
+      if (!nom) {
+        fautes.push(`${e.id} : pas de nom ${langue}`);
+        continue;
+      }
+      const cle = nom.toLowerCase();
+      if (vus.has(cle)) fautes.push(`${e.id} et ${vus.get(cle)} s’appellent toutes deux « ${nom} » (${langue})`);
+      vus.set(cle, e.id);
+    }
+  }
+  assert.deepEqual(fautes, [], fautes.join('\n'));
+});
+
+await dit('une entrée à une seule vue garde le nom du catalogue (le rail et la palette disent la même chose)', () => {
+  const fautes = R.entrees
+    .filter((e) => e.vues.length === 1 && e.nom && e.nom.fr !== libelleCatalogue.get(e.id))
+    .map((e) => `${e.id} : « ${e.nom?.fr} » ≠ catalogue « ${libelleCatalogue.get(e.id)} »`);
+  assert.deepEqual(fautes, [], fautes.join('\n'));
+});
+
+await dit('chaque module du catalogue a un nom anglais (l’interface anglaise ne retombe pas sur le français)', () => {
+  const sans = catalogue.filter((i) => !m.NAV_EN[i.key]?.label).map((i) => `${i.key} (${i.label})`);
+  assert.deepEqual(sans, [], `sans nom anglais : ${sans.join(', ')}`);
+});
+
+await dit('chaque vue a ses verbes et mots-clés en anglais, au même nombre de verbes au moins', () => {
+  const fautes: string[] = [];
+  for (const v of m.REGISTRE) {
+    if (!v.en) fautes.push(`${v.id} : pas d’anglais`);
+    else if (v.en.verbes.length < Math.min(2, v.verbes.length)) fautes.push(`${v.id} : ${v.en.verbes.length} verbe(s) anglais pour ${v.verbes.length} en français`);
+  }
+  assert.deepEqual(fautes, [], fautes.join('\n'));
+});
+
+await dit('verbes et mots-clés bien écrits : en minuscules, sans ponctuation finale, sans doublon dans la vue', () => {
+  const fautes: string[] = [];
+  const verifier = (id: string, langue: string, mots: readonly string[], genre: string) => {
+    const vus = new Set<string>();
+    for (const mot of mots) {
+      if (mot !== mot.trim() || /[.!?;:,]$/.test(mot)) fautes.push(`${id} (${langue}) ${genre} « ${mot} » : espace ou ponctuation en bout`);
+      if (/^[A-ZÉÈ]/.test(mot) && !/^[A-Z]{2,}/.test(mot)) fautes.push(`${id} (${langue}) ${genre} « ${mot} » : majuscule initiale`);
+      if (vus.has(mot.toLowerCase())) fautes.push(`${id} (${langue}) ${genre} « ${mot} » : en double`);
+      vus.add(mot.toLowerCase());
+    }
+  };
+  for (const v of m.REGISTRE) {
+    verifier(v.id, 'fr', v.verbes, 'verbe');
+    verifier(v.id, 'fr', v.motsCles, 'mot-clé');
+    if (v.en) {
+      verifier(v.id, 'en', v.en.verbes, 'verbe');
+      verifier(v.id, 'en', v.en.motsCles, 'mot-clé');
+    }
+  }
+  assert.deepEqual(fautes, [], fautes.join('\n'));
+});
+
+/* ── 1 quater. Le registre extensible (S5) ───────────────────────────────────── */
 
 console.log('\nNavigation de la refonte — le registre extensible\n');
 
@@ -600,6 +671,114 @@ for (const [q, attendu] of CAS) {
     assert.equal(t?.item.key, attendu, `premier résultat : ${t?.item.key ?? 'aucun'}`);
   });
 }
+
+const premierEn = (q: string) => m.chercher(q, cherchables, { langue: 'en' })[0];
+const CAS_EN: [string, string][] = [
+  ['send an invoice', 'invoices'],
+  ['I want to send an invoice', 'invoices'],
+  ['invoice', 'invoices'],
+  ['chase an unpaid invoice', 'reminders'],
+  ['book an appointment', 'agenda'],
+  ['add a customer', 'clients'],
+  ['request leave', 'leaves'],
+  ['expense claim', 'expenseClaims'],
+  ['payslip', 'payslips'],
+  ['schedule a post', 'postPlanner'],
+  ['translate', 'translation'],
+  ['password', 'vault'],
+  ['write in my journal', 'diary'],
+  ['see who is online', 'team'],
+  ['handle an incident', 'supervision'],
+  ['cash flow', 'cashForecast'],
+  ['back up my data', 'dataPort'],
+  ['change the theme', 'settings'],
+];
+for (const [q, attendu] of CAS_EN) {
+  await dit(`en anglais : « ${q} » → ${attendu}`, () => {
+    const t = premierEn(q);
+    assert.equal(t?.item.key, attendu, `premier résultat : ${t?.item.key ?? 'aucun'}`);
+  });
+}
+
+await dit('en français dans l’interface anglaise, et en anglais dans la française : l’autre langue trouve aussi', () => {
+  assert.equal(m.chercher('envoyer une facture', cherchables, { langue: 'en' })[0]?.item.key, 'invoices');
+  assert.equal(m.chercher('send an invoice', cherchables)[0]?.item.key, 'invoices');
+  // …mais le verbe de l’autre langue ne s’affiche pas à côté du résultat.
+  assert.equal(m.chercher('envoyer une facture', cherchables, { langue: 'en' })[0]?.raison, undefined);
+  assert.equal(m.chercher('send an invoice', cherchables, { langue: 'en' })[0]?.raison, 'send an invoice');
+});
+
+const CAS_NOMS: [string, string][] = [
+  ['retours clients', 'reviews'],
+  ['dépenses et achats', 'expenses'],
+  ['ma page publique', 'minisite'],
+  ['appels et salles', 'calls'],
+  ['prévisions', 'cashForecast'],
+];
+for (const [q, attendu] of CAS_NOMS) {
+  await dit(`le nom de l’entrée : « ${q} » → ${attendu} (sa vue principale d’abord)`, () => {
+    const t = premier(q);
+    assert.equal(t?.item.key, attendu, `premier résultat : ${t?.item.key ?? 'aucun'}`);
+  });
+}
+
+const CAS_FAUTES: [string, string][] = [
+  ['facutre', 'invoices'],
+  ['tresorrie', 'cashForecast'],
+  ['abonement', 'subscriptions'],
+  ['recrutment', 'recruitment'],
+  ['relancer une facutre', 'reminders'],
+];
+for (const [q, attendu] of CAS_FAUTES) {
+  await dit(`une faute de frappe : « ${q} » → ${attendu}`, () => {
+    const t = premier(q);
+    assert.equal(t?.item.key, attendu, `premier résultat : ${t?.item.key ?? 'aucun'}`);
+  });
+}
+
+await dit('une faute ne rend pas n’importe quoi : les mots courts et le charabia ne trouvent rien', () => {
+  assert.deepEqual(m.chercher('fcat', cherchables), [], 'quatre lettres : pas de tolérance');
+  assert.deepEqual(m.chercher('qwertzuiop', cherchables), []);
+});
+
+await dit('à score égal : l’essentiel avant le courant avant l’avancé, puis la vue principale', () => {
+  const niveau = new Map(R.entrees.flatMap((e) => e.vues.map((v) => [v.id, e.niveau] as const)));
+  const rang = { essentiel: 0, courant: 1, avance: 2 } as Record<string, number>;
+  for (const q of ['garde', 'soc', 'liste', 'perso', 'vidéo', 'photo', 'réservation', 'prix']) {
+    const r = m.chercher(q, cherchables);
+    for (let i = 1; i < r.length; i++) {
+      if (r[i - 1].score !== r[i].score) continue;
+      assert.ok(rang[niveau.get(r[i - 1].item.key) ?? 'courant'] <= rang[niveau.get(r[i].item.key) ?? 'courant'], `« ${q} » : ${r[i - 1].item.key} avant ${r[i].item.key}`);
+    }
+  }
+});
+
+await dit('chaque verbe de chaque vue, tapé tel quel, la trouve en premier — en français et en anglais', () => {
+  const fautes: string[] = [];
+  for (const langue of ['fr', 'en'] as const) {
+    for (const v of m.REGISTRE) {
+      for (const verbe of langue === 'fr' ? v.verbes : (v.en?.verbes ?? [])) {
+        const t = m.chercher(verbe, cherchables, { langue })[0];
+        if (t?.item.key !== v.id) fautes.push(`${langue} « ${verbe} » : ${t?.item.key ?? 'rien'} au lieu de ${v.id}`);
+      }
+    }
+  }
+  assert.deepEqual(fautes, [], fautes.join('\n'));
+});
+
+await dit('chaque vue du catalogue se trouve par son nom, en français et en anglais', () => {
+  const fautes: string[] = [];
+  for (const i of catalogue) {
+    const fr = m.chercher(i.label, cherchables).map((t) => t.item.key);
+    if (fr.indexOf(i.key) < 0 || fr.indexOf(i.key) > 2) fautes.push(`fr « ${i.label} » : rang ${fr.indexOf(i.key) + 1}`);
+    const nomEn = m.NAV_EN[i.key]?.label;
+    if (nomEn) {
+      const en = m.chercher(nomEn, cherchables.map((c) => ({ ...c, label: m.NAV_EN[c.key]?.label ?? c.label })), { langue: 'en' }).map((t) => t.item.key);
+      if (en.indexOf(i.key) < 0 || en.indexOf(i.key) > 2) fautes.push(`en « ${nomEn} » : rang ${en.indexOf(i.key) + 1}`);
+    }
+  }
+  assert.deepEqual(fautes, [], fautes.join('\n'));
+});
 
 await dit('le verbe trouvé est rendu, pour l’afficher à côté', () => {
   assert.equal(premier('envoyer une facture')?.raison, 'envoyer une facture');

@@ -21,7 +21,6 @@ const NAV_EN_INTERNE: Record<string, TraductionNav> = {
   knowledge: { label: 'Knowledge', hint: 'Internal knowledge base' },
   tour: { label: 'Overview', hint: 'The SOC wall' },
   gardeSalle: { label: 'The Room', hint: 'The wall of guards: who does what, now' },
-  gardeAjmani: { label: 'Ajmani', hint: 'The chief of staff: speaks first, one proposal' },
   gardePile: { label: 'Your call', hint: 'What awaits a human decision' },
   gardeBureaux: { label: 'The offices', hint: 'Talk to a guard chief' },
   gardeCommune: { label: 'Common room', hint: 'Talk to the whole Guard, the daily brief' },
@@ -29,6 +28,11 @@ const NAV_EN_INTERNE: Record<string, TraductionNav> = {
   orgs: { label: 'Client files', hint: 'Every managed client' },
   gardeOrganigramme: { label: 'Org chart', hint: 'The Captain, the chiefs, and who is on patrol' },
   access: { label: 'Access log', hint: 'Who entered where' },
+  // Trois modules du catalogue sans anglais : l'interface les montrait en français (refonte S5).
+  // Ici, côté interne seulement : `nav.en.ts` est commun aux deux éditions, et celle des clientes ne bouge pas.
+  health: { label: 'Health log', hint: 'Dates and deadlines, nothing medical' },
+  calcPro: { label: 'Pro calculator', hint: 'A till-roll tape you reread before pricing' },
+  interventions: { label: 'Field visits', hint: 'Before, during, after — the report of a call-out' },
   generator: { label: 'Workshop', hint: 'Create a tailored workspace' },
   supervision: { label: 'Monitoring', hint: 'Incidents to handle' },
   sites: { label: 'Sites', hint: 'Client site register' },

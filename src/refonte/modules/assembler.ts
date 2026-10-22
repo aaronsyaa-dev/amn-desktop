@@ -49,7 +49,11 @@ export interface VueRegistre {
   niveau: Niveau;
   verbes: readonly string[];
   motsCles: readonly string[];
+  /** Verbes et mots-clés anglais, si déclarés. */
+  en?: { verbes: readonly string[]; motsCles: readonly string[] };
   etiquette?: Libelle;
+  /** Le nom de l'entrée qui range la vue, quand elle en déclare un (une entrée regroupée, par exemple). */
+  entreeNom?: Libelle;
   nouveau?: EcranNeuf;
 }
 
@@ -103,6 +107,9 @@ function fauteDeVue(v: unknown, ou: string): string | null {
   if (!estListeDeTextes(v.verbes)) return `${ou} › ${id} : sans verbe`;
   if (!estListeDeTextes(v.motsCles)) return `${ou} › ${id} : sans mot-clé`;
   if (v.etiquette !== undefined && !estLibelle(v.etiquette)) return `${ou} › ${id} : étiquette sans fr ou en`;
+  if (v.en !== undefined && (!estObjet(v.en) || !estListeDeTextes(v.en.verbes) || !estListeDeTextes(v.en.motsCles))) {
+    return `${ou} › ${id} : « en » sans verbe ou sans mot-clé`;
+  }
   if (v.nouveau !== undefined) {
     const n = v.nouveau;
     if (!estObjet(n) || typeof n.ecran !== 'function' || !n.icone || !estLibelle(n.indice)) {
@@ -251,6 +258,8 @@ export function assembler(fichiers: readonly FichierDeclaration[]): Registre {
           niveau: m.niveau,
           verbes: v.verbes,
           motsCles: v.motsCles,
+          ...(v.en ? { en: v.en } : {}),
+          ...(m.nom ? { entreeNom: m.nom } : {}),
           ...(v.etiquette ? { etiquette: v.etiquette } : {}),
           ...(v.nouveau ? { nouveau: v.nouveau } : {}),
         })),

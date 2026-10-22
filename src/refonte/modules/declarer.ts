@@ -57,6 +57,11 @@ export interface VueDeclaree {
   verbes: readonly string[];
   /** Ce qu'on pourrait taper d'autre : synonymes, objets, sigles. */
   motsCles: readonly string[];
+  /**
+   * Les mêmes verbes et mots-clés en anglais, pour la recherche quand l'application
+   * parle anglais. Absent : l'anglais retombe sur le français.
+   */
+  en?: { verbes: readonly string[]; motsCles: readonly string[] };
   /** Le nom de la vue dans son entrée, s'il diffère du catalogue (Journal : « Pro », « Perso »). */
   etiquette?: Libelle;
   /** Présent seulement pour un écran absent du catalogue. */
@@ -130,7 +135,7 @@ export function vue(
   route: string,
   verbes: readonly string[],
   motsCles: readonly string[],
-  plus: Pick<VueDeclaree, 'etiquette' | 'nouveau'> = {},
+  plus: Pick<VueDeclaree, 'etiquette' | 'nouveau' | 'en'> = {},
 ): VueDeclaree {
   return { id, route, verbes, motsCles, ...plus };
 }

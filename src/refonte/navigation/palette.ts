@@ -1,3 +1,4 @@
+import { langueActive } from '../../i18n';
 import { chercher, type Cherchable } from './recherche';
 import { tn } from './i18n';
 
@@ -14,7 +15,7 @@ export function chercherModules<T extends Cherchable>(
   items: readonly T[],
 ): { item: T; raison?: string }[] | null {
   if (!requete.trim()) return null;
-  return chercher(requete, items).map(({ item, raison }) => ({ item, raison }));
+  return chercher(requete, items, { langue: langueActive() === 'en' ? 'en' : 'fr' }).map(({ item, raison }) => ({ item, raison }));
 }
 
 export function placeholderRecherche(): string {
