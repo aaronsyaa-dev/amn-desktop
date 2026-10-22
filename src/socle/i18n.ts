@@ -17,7 +17,7 @@ const EN = {
   'famille.ecrire': 'Write',
   'famille.argent': 'Money',
   'famille.echanger': 'Talk',
-  'famille.creer': 'Create',
+  'famille.creer': 'Create and produce',
   'famille.outils': 'Tools',
 
   'bouton.chargement': 'Loading…',
@@ -43,7 +43,7 @@ const FR: Record<CleSocle, string> = {
   'famille.ecrire': 'Écrire',
   'famille.argent': 'Argent',
   'famille.echanger': 'Échanger',
-  'famille.creer': 'Créer',
+  'famille.creer': 'Créer et produire',
   'famille.outils': 'Outils',
 
   'bouton.chargement': 'Chargement…',
