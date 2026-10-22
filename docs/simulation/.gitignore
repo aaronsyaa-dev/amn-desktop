@@ -2,3 +2,6 @@
 RAPPORT.md
 # Mesures d'une passe : éphémères et dépendantes de la machine.
 mesures/derniere-passe.json
+# Faiblesses de sécurité et inventaire de surface : dépôt PUBLIC, donc locaux (jamais poussés).
+constats-securite/
+mesures/surface-publique.json

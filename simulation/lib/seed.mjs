@@ -49,7 +49,7 @@ const motClé = (nom) =>
  * @param {number} nombrePersonnes
  * @returns {Promise<{orgs:Array, users:Array, sites:Array}>} l'annuaire de la population
  */
-export async function peupler(db, { graine = 424242, nombrePersonnes = 400 } = {}) {
+export async function peupler(db, { graine = 424242, nombrePersonnes = 400, nombreOrganisations = ENTREPRISES.length } = {}) {
   const r = prng(graine);
   const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
   const { hashPassword } = await importPassword();
@@ -58,8 +58,13 @@ export async function peupler(db, { graine = 424242, nombrePersonnes = 400 } = {
 
   const orgs = [];
   const sites = [];
-  for (let i = 0; i < ENTREPRISES.length; i += 1) {
-    const e = ENTREPRISES[i];
+  // Au-delà des 12 entreprises nommées, on en fabrique d'autres par numéro (même cycle de formules) :
+  // les 12 premières, donc la population de 400, restent identiques à la graine.
+  const PLANS = ENTREPRISES.map((e) => e.plan);
+  const entreprises = Array.from({ length: nombreOrganisations }, (_, i) =>
+    ENTREPRISES[i] ?? { nom: `Entreprise Fictive ${String(i + 1).padStart(3, '0')}`, plan: PLANS[i % PLANS.length] });
+  for (let i = 0; i < entreprises.length; i += 1) {
+    const e = entreprises[i];
     const org = await db.createOrganization({ name: e.nom, plan: e.plan, status: 'active' });
     // Une organisation sur six a un siège de trop : la Garde des Comptes doit le noter, sans alarmer.
     const seats = SEATS[e.plan] + (i % 6 === 0 ? 1 : 0);

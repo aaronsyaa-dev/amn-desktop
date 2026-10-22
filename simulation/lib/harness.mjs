@@ -13,6 +13,7 @@ import { spawn } from 'node:child_process';
 import net from 'node:net';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 /** Un port TCP libre, demandé à l'OS (bind sur :0). Évite les ports empoisonnés par un socket résiduel. */
 export function portLibre() {
@@ -49,7 +50,10 @@ export async function ouvrirBaseNeuve(nom = 'sim.db') {
  */
 export async function demarrerServeur({ chemin, port, garde = false, monitors = false, env = {} } = {}) {
   if (!port) port = await portLibre();
-  const proc = spawn(process.execPath, ['src/server.js'], {
+  fs.mkdirSync(DB_DIR, { recursive: true });
+  const journalSortant = path.join(DB_DIR, `sortant-${port}-${Date.now()}.log`);
+  const isolement = new URL('./isolement-reseau.mjs', import.meta.url).href; // aucun tiers : tout appel hors boucle locale est refusé et noté
+  const proc = spawn(process.execPath, ['--import', isolement, 'src/server.js'], {
     cwd: AMN_API_DIR,
     env: {
       ...process.env,
@@ -61,6 +65,7 @@ export async function demarrerServeur({ chemin, port, garde = false, monitors = 
       GARDE: garde ? 'on' : 'off',
       TRACKER_MONITORS: monitors ? 'on' : 'off',
       GARDE_TICK_MS: '2000',
+      SIM_SORTANT_LOG: journalSortant,
       ...env,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -90,6 +95,14 @@ export async function demarrerServeur({ chemin, port, garde = false, monitors = 
     port,
     pid: proc.pid,
     logs,
+    /** Les hôtes que le serveur a voulu appeler (et qu'on a refusés), avec leur nombre de tentatives. */
+    sortantsRefuses: () => {
+      try {
+        const n = {};
+        for (const l of fs.readFileSync(journalSortant, 'utf8').split('\n').filter(Boolean)) n[l] = (n[l] ?? 0) + 1;
+        return n;
+      } catch { return {}; }
+    },
     arreter: () => new Promise((resolve) => {
       if (proc.exitCode !== null) return resolve();
       proc.once('exit', () => resolve());
@@ -178,4 +191,35 @@ export async function enVagues(taches, concurrence) {
     resultats.push(...(await Promise.all(lot)));
   }
   return resultats;
+}
+
+/** Ouvre une base SQLite avec le better-sqlite3 d'amn-api (lecture d'une base de simulation, jamais autre chose). */
+export async function ouvrirSqlite(chemin, options = {}) {
+  const { default: Database } = await import(pathToFileURL(path.join(AMN_API_DIR, 'node_modules/better-sqlite3/lib/index.js')).href);
+  return new Database(chemin, options);
+}
+
+/** Ce que le SOC (Tour de contrôle, incidents, Garde) a « vu » : un compteur par tableau de signaux. */
+export async function signauxSOC(chemin) {
+  const sq = await ouvrirSqlite(chemin, { readonly: true });
+  const n = (sql) => sq.prepare(sql).get().n;
+  const signaux = {
+    alertesEntree: n('SELECT COUNT(*) AS n FROM input_alerts'),
+    incidents: n('SELECT COUNT(*) AS n FROM incidents'),
+    evenementsSecurite: n("SELECT COUNT(*) AS n FROM events WHERE type = 'security_alert'"),
+    remonteesSecurite: n("SELECT COUNT(*) AS n FROM garde_remontees WHERE equipe = 'securite'"),
+  };
+  sq.close();
+  return signaux;
+}
+
+/** Mémoire résidente d'un processus (Ko), lue dans /proc — Linux seulement. */
+export function memoireKo(pid) {
+  try {
+    const t = fs.readFileSync(`/proc/${pid}/status`, 'utf8');
+    const lire = (cle) => Number((t.match(new RegExp(`${cle}:\\s+(\\d+)`)) ?? [])[1] ?? 0);
+    return { rss: lire('VmRSS'), pic: lire('VmHWM') };
+  } catch {
+    return { rss: 0, pic: 0 };
+  }
 }
