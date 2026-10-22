@@ -1,6 +1,6 @@
 # Tableau d'amortissement (`amortissements`)
 
-**Famille** argent · **Action** comptabilité · **Niveau** expert · **Route proposée** `/amortissements`
+**Famille** argent · **Action** comptabilité · **Niveau** avancé · **Route proposée** `/amortissements`
 
 ## Le besoin
 

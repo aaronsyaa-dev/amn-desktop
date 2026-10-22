@@ -6,7 +6,7 @@ const EN = {
   niveau: 'Level',
   'niveau.essentiel': 'Essential',
   'niveau.courant': 'Everyday',
-  'niveau.expert': 'Expert',
+  'niveau.avance': 'Advanced',
 } as const;
 
 const FR: Record<keyof typeof EN, string> = {
@@ -15,7 +15,7 @@ const FR: Record<keyof typeof EN, string> = {
   niveau: 'Niveau',
   'niveau.essentiel': 'Essentiel',
   'niveau.courant': 'Courant',
-  'niveau.expert': 'Expert',
+  'niveau.avance': 'Avancé',
 };
 
 export const { useTextes: useTextesCommuns, dicos: DICOS_COMMUNS } = textes(EN, FR);

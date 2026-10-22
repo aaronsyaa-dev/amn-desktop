@@ -1,6 +1,6 @@
 # Vigilance sous-traitants (`vigilance`)
 
-**Famille** outils · **Action** conformité · **Niveau** expert · **Route proposée** `/vigilance-sous-traitants`
+**Famille** outils · **Action** conformité · **Niveau** avancé · **Route proposée** `/vigilance-sous-traitants`
 
 ## Le besoin
 

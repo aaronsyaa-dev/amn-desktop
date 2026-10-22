@@ -14,13 +14,13 @@ import type { Famille } from '../../socle/familles';
  * (`src/ateliers/verifier.mjs`) qui confronte chaque manifeste au registre :
  * action connue de la famille, id et route libres.
  *
- * LE NIVEAU, ajouté par l'atelier (le registre ne l'a pas encore) :
+ * LE NIVEAU, aligné sur le registre de S5 (`src/refonte/modules/declarer.ts`) :
  *
  *   essentiel — sert à presque toutes les petites entreprises, sans réglage ;
  *   courant   — sert à beaucoup, avec quelques réglages à faire une fois ;
- *   expert    — un métier précis ou une notion comptable / juridique à connaître.
+ *   avance    — un métier précis ou une notion comptable / juridique à connaître.
  */
-export const NIVEAUX = ['essentiel', 'courant', 'expert'] as const;
+export const NIVEAUX = ['essentiel', 'courant', 'avance'] as const;
 export type Niveau = (typeof NIVEAUX)[number];
 
 export interface ManifesteAtelier {
