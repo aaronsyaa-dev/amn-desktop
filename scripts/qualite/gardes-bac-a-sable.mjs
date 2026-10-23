@@ -86,6 +86,23 @@ function preparerBundle(ed) {
   return dest;
 }
 
+/*
+  LA COUVERTURE VARIE D'UN PASSAGE À L'AUTRE — un vert peut n'avoir rien regardé.
+
+  Chaque garde découvre ses écrans en lisant les liens de la navigation juste après la
+  connexion (« amorce : N route(s) »). Avec le même code, N a valu 11 puis 118 pour
+  `largeur` côté cliente, 118 puis 25 pour `contraste`, 24 puis 143 pour `cibles` côté
+  interne : l'interface n'avait pas fini de se monter. Un contrôle « vert » sur 11 écrans
+  ne prouve rien. Le script lit donc N dans la sortie, relance la garde si N est sous 85 %
+  de l'attendu (fichier `amorce-attendue.json`, mesuré une fois sur un passage complet),
+  et, si elle reste sous le seuil après 3 essais, la classe « non concluant » — ni vert ni rouge.
+*/
+const AMORCE_ATTENDUE = (() => {
+  try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'docs', 'qualite', 'amorce-attendue.json'), 'utf8')); } catch { return {}; }
+})();
+const lireAmorce = (sortie) => { const m = /amorce : (\d+) route/.exec(sortie); return m ? Number(m[1]) : null; };
+const ESSAIS_MAX = 3;
+
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
 // Une garde qui clique sur chaque bouton (focus) peut dépasser vingt minutes : délai réglable.
 const DELAI_MS = Number(process.env.QUALITE_DELAI_MIN ?? 45) * 60_000;
@@ -127,26 +144,31 @@ try {
       const env = { AMN_E2E_EMAIL: c.email, AMN_E2E_PASSWORD: c.motDePasse, ...(ed === 'interne' ? { AMN_EDITION: 'interne' } : {}) };
       const p = port++;
       const t0 = Date.now();
-      let r;
-      if (g.mode === 'statique') {
-        r = await lancer('node', ['scripts/check-business-bundle.mjs', '--dir', DIST[ed]]);
-      } else if (g.mode === 'isolation') {
-        r = await lancer('node', ['scripts/check-isolation.mjs', SERVI[ed], String(p), ...(ed === 'interne' ? ['--fondatrice'] : [])]);
-      } else if (g.mode === 'bundle') {
-        r = await lancer('node', [`scripts/check-${g.nom}.mjs`, SERVI[ed], String(p)], env);
-      } else {
+      const executer = async () => {
+        if (g.mode === 'statique') return lancer('node', ['scripts/check-business-bundle.mjs', '--dir', DIST[ed]]);
+        if (g.mode === 'isolation') return lancer('node', ['scripts/check-isolation.mjs', SERVI[ed], String(p), ...(ed === 'interne' ? ['--fondatrice'] : [])]);
+        if (g.mode === 'bundle') return lancer('node', [`scripts/check-${g.nom}.mjs`, SERVI[ed], String(p)], env);
         const serveur = spawn('node', ['scripts/servir-bundle.mjs', SERVI[ed], String(p)], { cwd: ROOT, stdio: 'ignore' });
         await attendre(1200);
         try {
-          r = await lancer('node', [`scripts/check-${g.nom}.mjs`], { ...env, AMN_E2E_URL: `http://127.0.0.1:${p}/` });
+          return await lancer('node', [`scripts/check-${g.nom}.mjs`], { ...env, AMN_E2E_URL: `http://127.0.0.1:${p}/` });
         } finally { serveur.kill(); }
-      }
+      };
+      let r, amorce = null, essais = 0;
+      const attendu = AMORCE_ATTENDUE[ed];
+      do {
+        essais += 1;
+        r = await executer();
+        amorce = lireAmorce(r.sortie);
+      } while (attendu && amorce !== null && amorce < 0.85 * attendu && essais < ESSAIS_MAX);
+      const couvertureBasse = Boolean(attendu && amorce !== null && amorce < 0.85 * attendu);
       const s = Math.round((Date.now() - t0) / 1000);
       const fichier = path.join(SORTIE, `${g.nom}-${ed}.txt`);
       fs.writeFileSync(fichier, r.sortie);
       const derniere = r.sortie.trim().split('\n').filter(Boolean).pop() ?? '';
-      resultats.push({ garde: g.nom, edition: ed, code: r.code, secondes: s, derniere, fichier: path.relative(ROOT, fichier) });
-      console.log(`${r.code === 0 ? '✓' : '✗'} ${g.nom.padEnd(11)} ${ed.padEnd(8)} ${String(s).padStart(4)} s  ${derniere.slice(0, 120)}`);
+      const etat = couvertureBasse ? 'non concluant' : r.code === 0 ? 'vert' : 'rouge';
+      resultats.push({ garde: g.nom, edition: ed, etat, code: r.code, amorce, essais, secondes: s, derniere, fichier: path.relative(ROOT, fichier) });
+      console.log(`${etat === 'vert' ? '✓' : etat === 'rouge' ? '✗' : '?'} ${g.nom.padEnd(11)} ${ed.padEnd(8)} ${String(s).padStart(4)} s  ${amorce !== null ? `[amorce ${amorce}${essais > 1 ? `, ${essais} essais` : ''}${couvertureBasse ? ', NON CONCLUANT' : ''}] ` : ''}${derniere.slice(0, 110)}`);
     }
   }
 } finally {
@@ -154,6 +176,6 @@ try {
 }
 
 fs.writeFileSync(path.join(SORTIE, 'resultats.json'), JSON.stringify(resultats, null, 2) + '\n');
-const rates = resultats.filter((r) => r.code !== 0);
-console.log(`\n${resultats.length - rates.length}/${resultats.length} vertes. Sorties : ${path.relative(ROOT, SORTIE)}/`);
+const rates = resultats.filter((r) => r.etat !== 'vert');
+console.log(`\n${resultats.filter((r) => r.etat === 'vert').length}/${resultats.length} vertes, ${resultats.filter((r) => r.etat === 'non concluant').length} non concluante(s). Sorties : ${path.relative(ROOT, SORTIE)}/`);
 process.exit(rates.length ? 1 : 0);
