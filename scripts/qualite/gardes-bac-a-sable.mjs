@@ -60,6 +60,32 @@ const GARDES = [
   { nom: 'coquille', mode: 'bundle', editions: ['cliente', 'interne'] },
 ].filter((g) => !SEULEMENT || SEULEMENT.includes(g.nom));
 
+/*
+  LE GUIDE DE PREMIÈRE CONNEXION MASQUE TOUT — et un navigateur neuf le montre toujours.
+
+  Le produit retient « guide vu » dans localStorage, par compte
+  (`amn.guide.<quoi>.<email>`, voir src/guide/memoire.ts). Chaque garde ouvre
+  un navigateur vierge : la fenêtre « Bienvenue » (role=dialog, z-290, plein
+  écran) reste ouverte sur CHAQUE écran, `check:focus` y voit 277 « fenêtres
+  sans focus » et les gardes de cibles, d'étiquettes et de largeur ne
+  parviennent pas à ouvrir une seule vue de détail. On ne modifie pas les
+  gardes : on sert une COPIE du bundle dont index.html marque le guide comme
+  vu pour les comptes factices, comme l'aurait fait une personne qui l'a déjà
+  parcouru.
+*/
+function preparerBundle(ed) {
+  const dest = path.join(SORTIE, 'bundles', ed);
+  fs.rmSync(dest, { recursive: true, force: true });
+  fs.cpSync(DIST[ed], dest, { recursive: true });
+  const cles = Object.values(COMPTES).flatMap((c) => ['general', 'profil', 'presentation'].map((q) => `amn.guide.${q}.${c.email}`));
+  const script = `<script>try{${cles.map((k) => `localStorage.setItem(${JSON.stringify(k)},'vu')`).join(';')}}catch(e){}</script>`;
+  const idx = path.join(dest, 'index.html');
+  const html = fs.readFileSync(idx, 'utf8');
+  if (!html.includes('<head>')) throw new Error(`index.html sans <head> : ${idx}`);
+  fs.writeFileSync(idx, html.replace('<head>', `<head>${script}`));
+  return dest;
+}
+
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
 // Une garde qui clique sur chaque bouton (focus) peut dépasser vingt minutes : délai réglable.
 const DELAI_MS = Number(process.env.QUALITE_DELAI_MIN ?? 45) * 60_000;
@@ -93,6 +119,7 @@ try {
 
   // 3. gardes
   let port = 4180;
+  const SERVI = Object.fromEntries(Object.keys(DIST).filter((e) => DIST[e]).map((e) => [e, preparerBundle(e)]));
   for (const g of GARDES) {
     for (const ed of g.editions) {
       if (!DIST[ed]) continue;
@@ -104,11 +131,11 @@ try {
       if (g.mode === 'statique') {
         r = await lancer('node', ['scripts/check-business-bundle.mjs', '--dir', DIST[ed]]);
       } else if (g.mode === 'isolation') {
-        r = await lancer('node', ['scripts/check-isolation.mjs', DIST[ed], String(p), ...(ed === 'interne' ? ['--fondatrice'] : [])]);
+        r = await lancer('node', ['scripts/check-isolation.mjs', SERVI[ed], String(p), ...(ed === 'interne' ? ['--fondatrice'] : [])]);
       } else if (g.mode === 'bundle') {
-        r = await lancer('node', [`scripts/check-${g.nom}.mjs`, DIST[ed], String(p)], env);
+        r = await lancer('node', [`scripts/check-${g.nom}.mjs`, SERVI[ed], String(p)], env);
       } else {
-        const serveur = spawn('node', ['scripts/servir-bundle.mjs', DIST[ed], String(p)], { cwd: ROOT, stdio: 'ignore' });
+        const serveur = spawn('node', ['scripts/servir-bundle.mjs', SERVI[ed], String(p)], { cwd: ROOT, stdio: 'ignore' });
         await attendre(1200);
         try {
           r = await lancer('node', [`scripts/check-${g.nom}.mjs`], { ...env, AMN_E2E_URL: `http://127.0.0.1:${p}/` });
