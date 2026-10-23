@@ -30,9 +30,10 @@ une mesure qui n'avait pas eu lieu.
 ## Cause probable (non démontrée)
 
 Les gardes attendent un délai fixe (2 à 2,5 s) après la connexion, puis lisent les liens.
-Quand le rail, les données synchronisées ou le processeur sont lents, la liste est incomplète.
-Preuve indirecte : les variations tombent sur des passages où la machine faisait autre chose
-en parallèle (builds), et disparaissent quand elle est libre.
+Si le rail ou les données synchronisées ne sont pas prêts au bout de ce délai, la liste est
+incomplète. C'est une hypothèse : je n'ai pas isolé la cause. En particulier, je ne peux pas
+l'attribuer à une machine chargée, car pendant ces passages T1 ne faisait que lire des
+fichiers. Ce qui est établi, c'est que N varie sans changement de code.
 
 ## Correctif proposé
 
