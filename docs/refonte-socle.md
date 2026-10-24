@@ -205,3 +205,10 @@ L'app n'a pas été lancée et aucun build n'a été fait. Ce qui reste à voir 
 
 `check:socle` vérifie les contrastes calculés, le balisage rendu côté serveur et
 la logique du réglage. `check:calques` vérifie la pile qu'utilise la Modale.
+
+## Mise à jour — session DS (noir et gris, coquille commune)
+
+- Les jetons de la direction vivent dans `src/socle/noir.css` (`--socle-*`, et les noms S0 redéfinis depuis les mêmes valeurs). Les encres « discret » (`#77777c`) et « très discret » (`#5f5f64`) sont réservées aux filets, icônes décoratives et éléments désactivés : jamais un texte (`check:socle`).
+- Nouvelles briques (`src/socle/ui/`) : `TuileKpi`, `BarreProgression`, `AnneauProgression`, `PastilleEtat`, `Etiquette`, `Avatar`, `PileAvatars`, `CaseACocher`, `LigneTache`, `LigneActivite`, `EtapeFranchie`, `EtatVide`, `Squelette`, `Raccourci`.
+- Coquille (`src/socle/coquille/`) : `BarreLaterale`, `EnTete`, `BarreAjmani`, `PaletteAjmani`, `Coquille`. Branchement : `src/refonte/coquille/`, par la couture `@edition/coquille`. Éteinte par défaut ; Paramètres › « Nouvelle coquille ».
+- Détail, choix et points à trancher : [`rapports/DS.md`](refonte/rapports/DS.md).

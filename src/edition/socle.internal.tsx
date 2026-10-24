@@ -1,3 +1,4 @@
+import { CoquilleSection } from '../refonte/coquille/CoquilleSection';
 import React, { useEffect } from 'react';
 import { MotionConfig } from 'framer-motion';
 import { configMotion, choixMouvement, ecrireMouvement, NIVEAUX_MOUVEMENT, systemeDemandeMoins, useMouvement, type NiveauMouvement } from '../socle/mouvement';
@@ -53,7 +54,22 @@ const LIBELLES: Record<NiveauMouvement, { titre: CleSocle; aide: CleSocle }> = {
  * Trois choix exclusifs : un groupe de boutons radio (flèches et Espace au
  * clavier, comme partout ailleurs), pas un interrupteur.
  */
+/**
+ * La porte des Réglages de la refonte : le réglage Mouvement, puis la nouvelle
+ * coquille (session DS). Une seule porte, pour que `SettingsScreen` — partagé
+ * par les deux éditions — n'ait pas à connaître la seconde : le paquet client
+ * reste identique octet pour octet.
+ */
 export function MouvementSection() {
+  return (
+    <>
+      <MouvementBloc />
+      <CoquilleSection />
+    </>
+  );
+}
+
+function MouvementBloc() {
   const { ts } = useSocleLangue();
   const niveau = useMouvement();
   const choisi = choixMouvement() !== null;

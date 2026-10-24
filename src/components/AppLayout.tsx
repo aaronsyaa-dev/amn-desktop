@@ -50,6 +50,7 @@ import { ModulesOuvertsTracker } from '../state/useModulesOuverts';
 import { RegardsProvider } from '../state/RegardsContext';
 import { SourceBureauxProvider, useActiverSourceBureaux } from '../bureaux/donnees/source';
 import { NavigationEspacesProvider } from '../bureaux/navigation';
+import { CoquilleRefonte, useCoquilleActive } from '@edition/coquille';
 import { bureauDuChemin } from '../bureaux/catalogue';
 import { CadreBureau } from '../bureaux/CadreBureau';
 import { PaletteEspaces } from '../bureaux/ui/PaletteEspaces';
@@ -75,6 +76,8 @@ export function AppLayout() {
     change de pièce.
   */
   const bureau = bureauDuChemin(location.pathname);
+  // La nouvelle coquille (session DS), éteinte par défaut : voir src/refonte/coquille/drapeau.ts.
+  const coquille = useCoquilleActive();
   const [showWelcome, setShowWelcome] = React.useState(shouldShowWelcome);
 
   // Mobile navigation drawer (< md). Closed on every route change.
@@ -162,6 +165,25 @@ export function AppLayout() {
               <LocalSessionBanner />
               {bureau ? (
                 <CadreBureau bureau={bureau} />
+              ) : coquille ? (
+              <>
+              <SourceEnAttente />
+              {/* La nouvelle coquille : une navigation, un fil d'Ariane, ⌘K, ⌘J. L'écran est le même. */}
+              <CoquilleRefonte largeur={isControl ? 'pleine' : 'lecture'}>
+                <div className={isControl ? 'control-ground control-edge control-dense' : undefined}>
+                  <motion.div
+                    key={location.pathname}
+                    variants={variantsForPath(location.pathname)}
+                    initial="initial"
+                    animate="animate"
+                  >
+                    <NavAllegesSync />
+                    <PremiereOuverture />
+                    <Outlet />
+                  </motion.div>
+                </div>
+              </CoquilleRefonte>
+              </>
               ) : (
               <>
               <SourceEnAttente />

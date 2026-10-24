@@ -13,7 +13,7 @@
  *   3. L'ACCUEIL : les tuiles n'existent que si leur donnée existe ; le fil
  *      « Aujourd'hui » (cases réelles, retouches du poste, responsables) ;
  *      le seul bouton blanc ; l'activité de l'équipe et ses jalons ; la série.
- *   4. LE NOIR ET GRIS : les jetons du socle redéfinis par `ambiance.css`
+ *   4. LE NOIR ET GRIS : les jetons du socle redéfinis par `src/socle/noir.css`
  *      gardent les contrastes du socle ; le lancement reste court.
  *   5. PLUS DE PERSONNAGE : aucune brique de dessin ne revient dans la zone.
  *   6. LES ÉDITIONS : aucun fichier partagé n'importe `src/refonte/accueil/**`, le
@@ -430,10 +430,10 @@ const ratio = (a: string, b: string) => {
   const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m);
   return (x + 0.05) / (y + 0.05);
 };
-const ambiance = fs.readFileSync(path.join(racine, 'src/refonte/accueil/ambiance.css'), 'utf8');
+const ambiance = fs.readFileSync(path.join(racine, 'src/socle/noir.css'), 'utf8');
 const jeton = (nom: string) => {
   const m = ambiance.match(new RegExp(`--color-${nom}:\\s*(#[0-9a-fA-F]{6})`));
-  assert.ok(m, `--color-${nom} absent de ambiance.css`);
+  assert.ok(m, `--color-${nom} absent de noir.css`);
   return m[1];
 };
 
@@ -457,18 +457,16 @@ await dit('les contrastes du socle tiennent sur le noir et gris', () => {
   assert.ok(ratio(jeton('socle-primaire-encre'), jeton('socle-primaire')) >= 4.5, 'encre du bouton blanc');
   assert.ok(ratio(jeton('socle-primaire-encre'), jeton('socle-primaire-survol')) >= 4.5, 'encre du bouton blanc au survol');
   // Les points de famille, sur ces surfaces : ≥ 3:1 (un trait, WCAG 1.4.11).
-  const feuille = fs.readFileSync(path.join(racine, 'src/index.css'), 'utf8');
   for (const f of ['jour', 'contacts', 'ecrire', 'argent', 'echanger', 'creer', 'outils']) {
-    const m = feuille.match(new RegExp(`--color-fam-${f}:\\s*(#[0-9a-fA-F]{6})`));
-    assert.ok(m, `famille ${f}`);
-    for (const s of surfaces) assert.ok(ratio(m[1], s) >= 3, `point ${f} sur ${s}`);
+    const point = jeton(`fam-${f}`);
+    for (const s of surfaces) assert.ok(ratio(point, s) >= 3, `point ${f} sur ${s}`);
   }
 });
 
 await dit('l’ambiance ne vit que côté interne : ni index.css ni le jumeau cliente ne la chargent', () => {
   assert.ok(!fs.readFileSync(path.join(racine, 'src/index.css'), 'utf8').includes("data-ambiance"), 'index.css (partagé) ne doit pas porter l’ambiance');
   const business = fs.readFileSync(path.join(racine, 'src/edition/vivant.business.tsx'), 'utf8');
-  assert.ok(!/ambiance\.css|@fontsource\/inter/.test(business));
+  assert.ok(!/ambiance\.css|noir\.css|briques\.css|coquille\.css|@fontsource\/inter/.test(business));
 });
 
 await dit('le lancement : environ 1 s la première fois, plus court ensuite, passable', () => {

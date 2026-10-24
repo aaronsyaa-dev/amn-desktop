@@ -34,6 +34,7 @@
       "@edition/socle": ["src/edition/socle.internal.tsx"],
       "@edition/vivant": ["src/edition/vivant.internal.tsx"],
       "@edition/navigation": ["src/edition/navigation.internal.tsx"],
+      "@edition/coquille": ["src/edition/coquille.internal.tsx"],
       "@edition/mainExclusive": ["src/main/exclusive.internal.ts"],
       "@edition/preloadExclusive": ["src/preload.exclusive.internal.ts"]
     }

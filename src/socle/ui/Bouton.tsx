@@ -71,6 +71,9 @@ export const Bouton = React.forwardRef<HTMLButtonElement, BoutonProps>(function 
     <motion.button
       ref={ref}
       type={type}
+      data-socle="bouton"
+      data-variante={variante}
+      data-taille={taille}
       disabled={inactif}
       aria-busy={chargement || undefined}
       whileTap={inactif || reduit ? undefined : { scale: 0.97 }}

@@ -1,0 +1,367 @@
+/*
+  LES BRIQUES DE LA REFONTE — noir et gris (session DS).
+  ═════════════════════════════════════════════════════
+
+  Tout ce qui se répète d'un écran à l'autre : carte, tuile KPI, pastille
+  d'état, étiquette, avatar, case à cocher, ligne de tâche, barre et anneau de
+  progression, état vide, squelette. Les valeurs viennent de
+  `src/socle/noir.css` (`--socle-*`) ; aucune couleur n'est écrite ici.
+
+  Chargé une seule fois, par `Ambiance.tsx` (édition interne). Les règles qui
+  retouchent `Bouton` et `Carte` d'origine sont sous `:root[data-ambiance='noir']`
+  et portent un attribut `data-socle` : sans l'ambiance, ces deux briques
+  restent exactement ce qu'elles étaient.
+
+  Les encres : principal (`--socle-texte-1`), secondaire (`-2`), atténué
+  (`-3`, le plancher). `--socle-trait-discret` et `--socle-trait-tres-discret`
+  ne se posent JAMAIS en `color` (voir `check:socle`).
+*/
+
+/* ── Le focus : le même partout, visible sur chaque fond ── */
+:root[data-ambiance='noir'] .sc-focus:focus-visible,
+:root[data-ambiance='noir'] [data-socle]:focus-visible {
+  outline: 2px solid var(--color-socle-focus);
+  outline-offset: 2px;
+}
+
+/* ── Un point de couleur : famille ou état, 6 à 8 px, jamais plus ── */
+.sc-point {
+  display: inline-block;
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 99px;
+  background: var(--fam, var(--socle-fam-outils));
+}
+.sc-point[data-taille='6'] { width: 6px; height: 6px; }
+.sc-point[data-taille='8'] { width: 8px; height: 8px; }
+/* Le halo d'un point « vivant » (La Garde veille) : fixe, il ne bat pas. */
+.sc-point[data-halo='true'] { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent); }
+
+/* ── La carte (brique d'origine, retouchée) ── */
+:root[data-ambiance='noir'] [data-socle='carte'] {
+  background: linear-gradient(180deg, var(--socle-carte-haut), var(--socle-carte-bas));
+  border-color: var(--socle-bord-carte);
+  border-radius: var(--socle-rayon-carte);
+}
+:root[data-ambiance='noir'] button[data-socle='carte']:hover {
+  border-color: var(--color-socle-bord-fort);
+  background: linear-gradient(180deg, var(--socle-carte-haut), var(--socle-carte-haut));
+}
+
+/* ── Le bouton (brique d'origine, retouchée) : UN seul plein blanc par écran ── */
+:root[data-ambiance='noir'] [data-socle='bouton'] { border-radius: var(--socle-rayon-controle); font-family: inherit; }
+:root[data-ambiance='noir'] [data-socle='bouton'][data-variante='secondaire'] {
+  border-color: var(--socle-bord-controle);
+  color: var(--socle-texte-1);
+}
+:root[data-ambiance='noir'] [data-socle='bouton'][data-variante='secondaire']:hover:not(:disabled) {
+  border-color: var(--color-socle-bord-fort);
+  background: var(--socle-survol);
+}
+:root[data-ambiance='noir'] [data-socle='bouton'][data-variante='primaire'] {
+  background: var(--socle-primaire);
+  color: var(--socle-primaire-encre);
+  box-shadow: none;
+}
+:root[data-ambiance='noir'] [data-socle='bouton'][data-variante='primaire']:hover:not(:disabled) { background: #ffffff; }
+:root[data-ambiance='noir'] [data-socle='bouton'][data-taille='petit'] { min-height: 30px; padding: 6px 13px; }
+:root[data-ambiance='noir'] [data-socle='bouton'][data-taille='petit'][data-variante='primaire'] { padding: 7px 15px; }
+:root[data-ambiance='noir'] [data-socle='bouton'][data-taille='moyen'] { border-radius: var(--socle-rayon-bouton); }
+:root[data-ambiance='noir'] [data-socle='bouton'][data-taille='grand'] { border-radius: 11px; }
+
+/* ── Étiquette (pill) ── */
+.sc-etiquette {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border: 1px solid var(--socle-bord-controle);
+  border-radius: var(--socle-rayon-pastille);
+  background: transparent;
+  color: var(--socle-texte-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.sc-etiquette[data-compacte='true'] { padding: 3px 9px; font-size: 12px; }
+.sc-etiquette b { color: var(--socle-texte-1); font-weight: 600; }
+
+/* ── Pastille d'état ── */
+.sc-etat {
+  --etat: var(--socle-texte-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 10px;
+  border: 1px solid color-mix(in srgb, var(--etat) 40%, transparent);
+  border-radius: var(--socle-rayon-pastille);
+  background: color-mix(in srgb, var(--etat) 14%, transparent);
+  color: var(--etat);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.sc-etat[data-etat='succes'] { --etat: var(--socle-etat-succes); }
+.sc-etat[data-etat='attention'] { --etat: var(--socle-etat-attention); }
+.sc-etat[data-etat='critique'] { --etat: var(--socle-etat-critique); }
+.sc-etat[data-etat='info'] { --etat: var(--socle-etat-info); }
+.sc-etat::before { content: ''; width: 6px; height: 6px; border-radius: 99px; background: var(--etat); }
+
+/* ── Avatar (une initiale) et pile d'avatars ── */
+.sc-avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--sc-avatar, 24px);
+  height: var(--sc-avatar, 24px);
+  border: 1px solid var(--socle-bord-controle);
+  border-radius: 99px;
+  background: var(--socle-encart);
+  color: var(--socle-texte-2);
+  font-size: calc(var(--sc-avatar, 24px) * 0.42);
+  font-weight: 600;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.sc-pile { display: inline-flex; align-items: center; }
+.sc-pile .sc-avatar { box-shadow: 0 0 0 2px var(--socle-fond-page); }
+.sc-pile .sc-avatar + .sc-avatar { margin-left: -7px; }
+
+/* ── Barre de progression : 5 px, dégradé gris → blanc ── */
+.sc-barre {
+  display: block;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--socle-piste);
+}
+.sc-barre > span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #9a9aa0, #ededed);
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Anneau de progression ── */
+.sc-anneau { position: relative; display: inline-flex; flex: none; align-items: center; justify-content: center; }
+.sc-anneau svg { display: block; transform: rotate(-90deg); }
+.sc-anneau circle { fill: none; stroke-linecap: round; }
+.sc-anneau .sc-anneau__piste { stroke: var(--socle-piste); }
+.sc-anneau .sc-anneau__trait { stroke: var(--socle-texte-1); transition: stroke-dashoffset 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+.sc-anneau__centre {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--socle-texte-1);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ── Tuile KPI : 92 px, dégradé, libellé / valeur / variation / barre ── */
+.sc-kpi {
+  display: flex;
+  min-height: 92px;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--socle-bord-carte);
+  border-radius: var(--socle-rayon-carte);
+  background: linear-gradient(180deg, var(--socle-carte-haut), var(--socle-carte-bas));
+  color: var(--socle-texte-1);
+  text-align: left;
+}
+button.sc-kpi { width: 100%; cursor: pointer; transition: border-color 0.15s; }
+button.sc-kpi:hover { border-color: var(--color-socle-bord-fort); }
+.sc-kpi__label {
+  display: flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 7px;
+  color: var(--socle-texte-3);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+.sc-kpi__label > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-kpi__valeur {
+  display: flex;
+  max-width: 100%;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.sc-kpi__variation { min-width: 0; color: var(--socle-texte-3); font-size: 12px; font-weight: 500; letter-spacing: 0; line-height: 1.35; }
+.sc-kpi__variation[data-ton='succes'] { color: var(--socle-etat-succes); }
+.sc-kpi__variation[data-ton='attention'] { color: var(--socle-etat-attention); }
+.sc-kpi__variation[data-ton='critique'] { color: var(--socle-etat-critique); }
+.sc-kpi__variation[data-ton='info'] { color: var(--socle-etat-info); }
+.sc-kpi .sc-barre { width: 100%; }
+/* « Ajouter une carte » : l'emplacement vide est une invitation, jamais un trou. */
+.sc-kpi[data-vide='true'] {
+  align-items: center;
+  justify-content: center;
+  border-style: dashed;
+  background: transparent;
+  color: var(--socle-texte-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+.sc-kpi[data-vide='true']:hover { color: var(--socle-texte-1); }
+
+/* ── Case à cocher : 20 px ── */
+.sc-case {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--color-socle-bord-fort);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--socle-primaire-encre);
+  cursor: pointer;
+  transition: background-color 0.12s, border-color 0.12s;
+}
+.sc-case[aria-checked='true'] { border-color: var(--socle-primaire); background: var(--socle-primaire); }
+.sc-case:hover:not([aria-disabled='true']) { border-color: var(--socle-texte-1); }
+.sc-case[aria-disabled='true'] { cursor: default; opacity: 0.7; }
+
+/* ── Ligne de tâche : 60 px, filet #19191b ── */
+.sc-ligne {
+  display: flex;
+  min-height: 60px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 4px;
+  border-bottom: 1px solid var(--socle-bord-ligne);
+}
+.sc-ligne:last-child { border-bottom: 0; }
+.sc-ligne__heure {
+  flex: none;
+  width: 44px;
+  color: var(--socle-texte-3);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.sc-ligne__corps { display: block; min-width: 0; flex: 1; border-radius: 6px; background: none; border: 0; padding: 0; text-align: left; color: inherit; font: inherit; }
+button.sc-ligne__corps { cursor: pointer; }
+button.sc-ligne__corps:disabled { cursor: default; }
+.sc-ligne__titre {
+  display: block;
+  overflow: hidden;
+  color: var(--socle-texte-1);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sc-ligne[data-fait='true'] .sc-ligne__titre { color: var(--socle-texte-3); text-decoration: line-through; text-decoration-color: var(--socle-trait-discret); }
+.sc-ligne__meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 1px;
+  color: var(--socle-texte-3);
+  font-size: 12px;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+.sc-ligne__droite { display: flex; flex: none; align-items: center; gap: 8px; }
+
+/* ── État vide : une invitation à agir ── */
+.sc-vide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px 18px;
+  border: 1px dashed var(--socle-bord-controle);
+  border-radius: 12px;
+  background: var(--socle-encart);
+}
+.sc-vide__titre { color: var(--socle-texte-1); font-size: 14px; font-weight: 600; }
+.sc-vide__texte { color: var(--socle-texte-3); font-size: 13px; line-height: 1.45; }
+
+/* ── Raccourci clavier ── */
+.sc-kbd {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding: 2px 7px;
+  border: 1px solid var(--socle-bord-controle);
+  border-radius: 6px;
+  background: var(--socle-encart);
+  color: var(--socle-texte-3);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* ── Squelette : un chargement qui garde la place ── */
+.sc-squelette {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--socle-encart) 0%, var(--socle-survol) 50%, var(--socle-encart) 100%);
+  background-size: 200% 100%;
+  animation: sc-squelette 1.4s ease-in-out infinite;
+}
+@keyframes sc-squelette {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sc-squelette { animation: none; }
+  .sc-barre > span, .sc-anneau .sc-anneau__trait { transition: none; }
+}
+
+/* ── Activité : une ligne de 54 px, et l'étape franchie (carte de 56 px) ── */
+.sc-activite { display: flex; min-height: 54px; align-items: center; gap: 12px; }
+.sc-activite__corps { display: block; min-width: 0; flex: 1; }
+.sc-activite__texte {
+  display: block;
+  color: var(--socle-texte-1);
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.sc-activite__quand { display: block; color: var(--socle-texte-3); font-size: 11px; line-height: 1.4; font-variant-numeric: tabular-nums; }
+.sc-etape {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border: 1px solid var(--socle-bord-carte);
+  border-radius: 12px;
+  background: var(--socle-encart);
+}
+.sc-etape__marque {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--fam, var(--socle-fam-outils)) 16%, transparent);
+  color: var(--fam, var(--socle-fam-outils));
+}
+.sc-etape__etiquette { color: var(--fam, var(--socle-texte-3)); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }

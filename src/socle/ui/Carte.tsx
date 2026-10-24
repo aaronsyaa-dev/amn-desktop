@@ -24,6 +24,8 @@ export interface CarteProps {
   actions?: React.ReactNode;
   /** `section` (défaut), `article` ou `div` — ignoré si la carte est cliquable. */
   as?: 'section' | 'article' | 'div';
+  /** Sans le rembourrage de 16 px : le contenu gère ses propres marges (listes à filets pleine largeur). */
+  sansMarge?: boolean;
   /** Le niveau de titre pour `titre` (défaut 2). */
   niveauTitre?: 2 | 3 | 4;
   onClick?: () => void;
@@ -35,7 +37,7 @@ export interface CarteProps {
 
 const SURFACE = 'relative overflow-hidden rounded-xl border border-socle-bord bg-socle-surface text-socle-texte';
 
-export function Carte({ famille, surtitre, titre, actions, as = 'section', niveauTitre = 2, onClick, className = '', children, ...aria }: CarteProps) {
+export function Carte({ famille, surtitre, titre, actions, as = 'section', niveauTitre = 2, sansMarge = false, onClick, className = '', children, ...aria }: CarteProps) {
   const reduit = useReducedMotionConfig();
   const cliquable = Boolean(onClick);
   // Dans un bouton, tout reste du texte courant (voir l'en-tête).
@@ -66,6 +68,7 @@ export function Carte({ famille, surtitre, titre, actions, as = 'section', nivea
     return (
       <motion.button
         type="button"
+        data-socle="carte"
         data-famille={famille}
         onClick={onClick}
         aria-label={aria['aria-label']}
@@ -80,7 +83,7 @@ export function Carte({ famille, surtitre, titre, actions, as = 'section', nivea
 
   const Balise = as;
   return (
-    <Balise data-famille={famille} aria-label={aria['aria-label']} className={`${SURFACE} p-4 ${className}`}>
+    <Balise data-socle="carte" data-famille={famille} aria-label={aria['aria-label']} className={`${SURFACE} ${sansMarge ? '' : 'p-4'} ${className}`}>
       {contenu}
     </Balise>
   );

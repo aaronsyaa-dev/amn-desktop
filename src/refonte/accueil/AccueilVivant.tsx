@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Check, ChevronDown, ChevronRight, EyeOff, LayoutGrid, MessageSquare, Plus } from 'lucide-react';
-import { Bouton, Saisie } from '../../socle/ui';
+import { ChevronDown, ChevronRight, EyeOff, LayoutGrid, Plus } from 'lucide-react';
+import { Avatar, BarreProgression, Bouton, Carte, Chargement, EtapeFranchie, EtatVide, Etiquette, LigneActivite, LigneTache, Saisie, Squelette, TuileAjouter, TuileKpi, type TonVariation } from '../../socle/ui';
 import { useSocleLangue, type CleSocle } from '../../socle/i18n';
 import { useAssistant } from '../../assistant/AssistantContext';
 import { signalerGuide } from '../../guide/memoire';
@@ -17,20 +16,29 @@ import { evolution, type Tuile } from './tuiles';
 import { useAccueilLangue } from './i18n';
 import { choisirScene } from './scenes';
 import { useAccueil, type Accueil, type FamilleBarre, type ModuleBarre } from './useAccueil';
+import { useCoquilleActive } from '../coquille/drapeau';
 
 /**
  * L'ACCUEIL DE LA REFONTE (`42k`) — noir et gris, très rangé, sans personnage.
  * ═══════════════════════════════════════════════════════════════════════════
  *
- *   · à gauche, les sept familles et la Garde à part, « Ma journée » dépliée,
- *     des compteurs réels, qui est en ligne et où, « Tous les modules » ;
- *   · en haut, la salutation, le message discret d'Ajmani, les pastilles
+ * Câblé sur les briques du socle (`src/socle/ui/`), aux mesures de la
+ * référence : zone principale 26/40, titre 32 px, quatre tuiles de 92 px,
+ * puis « Aujourd'hui » et « Activité de l'équipe » (400 px) côte à côte.
+ *
+ *   · en haut, la salutation, le message discret d'Ajmani, les étiquettes
  *     « Série » et « Boîte à zéro » quand elles sont vraies ;
- *   · quatre tuiles — seulement celles dont la donnée existe ;
+ *   · quatre tuiles — seulement celles dont la donnée existe ; une dernière,
+ *     « Ajouter une carte », prend la place vide : jamais un trou ;
  *   · « Aujourd'hui » : des cases à cocher, « x sur y fait », le responsable
  *     de chaque ligne, et le SEUL bouton blanc plein de l'écran ;
- *   · « Activité de l'équipe » : le journal, ponctué de jalons ;
- *   · en bas, la barre d'Ajmani : elle ouvre le panneau assistant (⌘J).
+ *   · « Activité de l'équipe » : le journal, ponctué d'étapes franchies ;
+ *   · pendant le chargement, des squelettes ; un fil vide propose d'agir.
+ *
+ * La navigation (familles, en ligne, Tous les modules) et la barre d'Ajmani
+ * (⌘J) sont celles de la coquille (`src/socle/coquille/`). Tant que la
+ * coquille d'origine est active (drapeau éteint), l'Accueil garde sa barre de
+ * familles d'avant, à gauche, et rien d'autre ne change pour personne.
  *
  * Les couleurs de famille ne sont que de petits points. Le mouvement passe
  * par framer-motion, sous le réglage Mouvement du socle.
@@ -66,7 +74,7 @@ export function AccueilVivant() {
   const { langue, ta } = useAccueilLangue();
   const registre = useRegistre();
   const [parole, transformer] = useParole(a.email);
-  const assistant = useAssistant();
+  const coquille = useCoquilleActive();
 
   /* Le message d'Ajmani : choisi une fois par jour et par situation, dit discrètement. */
   const mise = useMemo(() => choisirScene(a.journee), [a.journee]);
@@ -94,89 +102,113 @@ export function AccueilVivant() {
     return () => clearTimeout(t);
   }, [astuce, astuceAffichee, a.jour, a.email, langue, registre, transformer]);
 
+  return (
+    <AccueilVue
+      a={a}
+      coquille={coquille}
+      message={message.texte || null}
+      astuce={
+        astuceAffichee
+          ? {
+              texte: astuceAffichee.texte,
+              masquer: () => {
+                transformer((e) => masquerAstuce(e, astuceAffichee.astuce));
+                setAstuceAffichee(null);
+              },
+            }
+          : null
+      }
+    />
+  );
+}
+
+/**
+ * Le dessin de l'Accueil, sans aucune lecture de donnée : il reçoit ce que
+ * `useAccueil` a rassemblé. C'est ce qui permet de le rendre sur des données
+ * d'essai (contrôles, aperçus) sans monter l'application.
+ */
+export function AccueilVue({ a, coquille, message, astuce }: { a: Accueil; coquille: boolean; message: string | null; astuce: { texte: string; masquer: () => void } | null }) {
+  const { langue, ta } = useAccueilLangue();
+  const navigate = useNavigate();
+  const { ts } = useSocleLangue();
+
   const h = a.maintenant.getHours();
   const salut = !a.prenom ? ta('salut.anonyme') : ta(h < 12 ? 'salut.matin' : h < 18 ? 'salut.jour' : 'salut.soir', { prenom: a.prenom });
   const date = a.maintenant.toLocaleDateString(langue === 'en' ? 'en-GB' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
-  return (
-    <div data-accueil="vivant" data-refonte-police="inter" className="grid gap-6 text-socle-texte lg:grid-cols-[232px_minmax(0,1fr)] lg:gap-8">
-      <h1 className="sr-only">{ta('accueil.titre')}</h1>
-      <BarreFamilles a={a} />
-
-      <div className="order-1 flex min-w-0 flex-col gap-6 lg:order-none">
-        {/* ── Salutation, message d'Ajmani, pastilles ── */}
-        <header className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-            <div className="min-w-0">
-              <p className="text-[24px] font-semibold leading-tight tracking-[-0.02em] text-socle-texte [text-wrap:balance]">{salut}</p>
-              <p className="mt-0.5 text-[13px] text-socle-texte-doux first-letter:uppercase">{date}</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {a.serie > 0 && <Pastille titre={ta('pastille.serie', { n: a.serie })} aide={ta('pastille.serie.aide', { n: a.serie })} famille="jour" />}
-              {a.boiteAZero && <Pastille titre={ta('pastille.boite')} aide={ta('pastille.boite.aide')} famille="echanger" />}
-            </div>
-          </div>
-          {message.texte && (
-            <p role="status" className="text-[14px] text-socle-texte-doux">
-              <span className="font-medium text-socle-texte">Ajmani</span> · {message.texte}
-            </p>
+  const contenu = (
+    <div className="@container flex min-w-0 flex-col">
+      <h1 data-guide="titre" className="m-0 text-[32px] font-semibold leading-[1.1] tracking-[-0.02em] text-socle-texte [text-wrap:balance]">
+        {salut}
+      </h1>
+      <p className="mt-[7px] text-[14px] text-socle-texte-doux first-letter:uppercase">{date}</p>
+      {message && (
+        <p role="status" className="mt-1 text-[14px] text-socle-texte-doux">
+          <span className="font-medium text-socle-texte">Ajmani</span> · {message}
+        </p>
+      )}
+      {astuce && (
+        <div role="note" className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-socle-texte-doux">
+          <span className="min-w-0">{astuce.texte}</span>
+          <button type="button" className="sc-focus rounded text-socle-texte underline decoration-socle-bord-fort underline-offset-4 hover:decoration-socle-texte" onClick={astuce.masquer}>
+            {ta('astuce.masquer')}
+          </button>
+        </div>
+      )}
+      {(a.serie > 0 || a.boiteAZero) && (
+        <div className="mt-3.5 flex flex-wrap gap-2">
+          {a.serie > 0 && (
+            <Etiquette famille="jour" title={ta('pastille.serie.aide', { n: a.serie })}>
+              {ta('pastille.serie', { n: a.serie })}
+              <span className="sr-only"> — {ta('pastille.serie.aide', { n: a.serie })}</span>
+            </Etiquette>
           )}
-          {astuceAffichee && (
-            <div role="note" className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-socle-texte-doux">
-              <span className="min-w-0">{astuceAffichee.texte}</span>
-              <button
-                type="button"
-                className="rounded text-socle-texte underline decoration-socle-bord-fort underline-offset-4 hover:decoration-socle-texte focus-visible:outline-2 focus-visible:outline-socle-focus"
-                onClick={() => {
-                  transformer((e) => masquerAstuce(e, astuceAffichee.astuce));
-                  setAstuceAffichee(null);
-                }}
-              >
-                {ta('astuce.masquer')}
-              </button>
-            </div>
+          {a.boiteAZero && (
+            <Etiquette famille="echanger" title={ta('pastille.boite.aide')}>
+              {ta('pastille.boite')}
+              <span className="sr-only"> — {ta('pastille.boite.aide')}</span>
+            </Etiquette>
           )}
-        </header>
+        </div>
+      )}
 
-        {/* ── Les tuiles : seulement celles dont la donnée existe ── */}
-        {a.tuiles.length > 0 && (
-          <section aria-label={ta('tuiles.titre')} className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-3">
+      {/* ── Les tuiles : seulement celles dont la donnée existe, puis une invitation ── */}
+      <section aria-label={ta('tuiles.titre')} className="mt-5 grid grid-cols-2 gap-[14px] @[860px]:grid-cols-4">
+        {!a.pret ? (
+          <>
+            {[0, 1, 2, 3].map((i) => (
+              <Squelette key={i} hauteur={92} rayon={14} />
+            ))}
+            <span role="status" className="sr-only">
+              {ts('bouton.chargement')}
+            </span>
+          </>
+        ) : (
+          <>
             {a.tuiles.map((t) => (
               <TuileAccueil key={t.cle} t={t} a={a} />
             ))}
-          </section>
+            {a.tuiles.length < 4 && <TuileAjouter libelle={ta('tuiles.ajouter')} onClick={() => navigate('/tableau-de-bord')} />}
+          </>
         )}
+      </section>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
-          <Aujourdhui a={a} />
-          <Activite a={a} />
-        </div>
-
-        {/* ── La barre d'Ajmani : elle ouvre le panneau assistant ── */}
-        <button
-          type="button"
-          onClick={() => assistant.open('chat')}
-          title={ta('ajmani.barre.aide')}
-          className="flex w-full items-center gap-3 rounded-xl border border-socle-bord bg-socle-surface px-4 py-3 text-left text-[14px] text-socle-texte-doux transition-colors hover:border-socle-bord-fort hover:bg-socle-eleve focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-socle-focus"
-        >
-          <MessageSquare size={16} aria-hidden className="flex-none" />
-          <span className="min-w-0 flex-1 truncate">{ta('ajmani.barre')}</span>
-          <kbd className="flex-none rounded border border-socle-bord bg-socle-eleve px-1.5 py-0.5 text-[11px] text-socle-texte-doux">⌘J</kbd>
-        </button>
+      <div className="mt-6 grid grid-cols-1 gap-8 @[920px]:grid-cols-[minmax(0,1fr)_400px]">
+        <Aujourdhui a={a} />
+        <Activite a={a} />
       </div>
+
+      {/* La barre d'Ajmani : celle de la coquille. Tant que l'ancienne coquille est là, l'Accueil garde la sienne. */}
+      {!coquille && <BarreAjmaniAncienne />}
     </div>
   );
-}
 
-/* ── Les pastilles ─────────────────────────────────────────────────────── */
-
-function Pastille({ titre, aide, famille }: { titre: string; aide: string; famille: string }) {
+  if (coquille) return <div data-accueil="vivant" data-refonte-police="inter" className="text-socle-texte">{contenu}</div>;
   return (
-    <span data-famille={famille} title={aide} className="inline-flex items-center gap-2 rounded-full border border-socle-bord bg-socle-surface px-3 py-1 text-[12px] font-medium text-socle-texte">
-      <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-[var(--fam)]" />
-      {titre}
-      <span className="sr-only"> — {aide}</span>
-    </span>
+    <div data-accueil="vivant" data-refonte-police="inter" className="grid gap-6 text-socle-texte lg:grid-cols-[232px_minmax(0,1fr)] lg:gap-8">
+      <BarreFamilles a={a} />
+      <div className="order-1 min-w-0 lg:order-none">{contenu}</div>
+    </div>
   );
 }
 
@@ -188,62 +220,62 @@ function TuileAccueil({ t, a }: { t: Tuile; a: Accueil }) {
   const euros = (cents: number) => new Intl.NumberFormat(langue === 'en' ? 'en-GB' : 'fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(cents / 100);
   const nomMois = (decalage: number) => new Date(a.maintenant.getFullYear(), a.maintenant.getMonth() + decalage, 1).toLocaleDateString(langue === 'en' ? 'en-GB' : 'fr-FR', { month: 'long' });
 
-  let titre = '';
+  let libelle = '';
   let valeur: React.ReactNode = null;
-  let sous = '';
+  let variation = '';
+  /** La phrase entière, en infobulle et pour les lecteurs d'écran : la tuile n'affiche que le court. */
+  let detail = '';
+  let ton: TonVariation = 'neutre';
+  let barre: number | undefined;
+  let libelleBarre: string | undefined;
   let vers = '/';
-  let famille = 'argent';
+  let famille: 'argent' | 'jour' = 'argent';
   if (t.cle === 'ca') {
-    titre = ta('tuile.ca');
+    libelle = ta('tuile.ca');
     valeur = euros(t.cents);
     const evol = evolution(t.cents, t.moisPrecedentCents);
-    sous = evol === null ? ta('tuile.ca.sous', { mois: nomMois(0) }) : ta('tuile.ca.evol', { signe: evol > 0 ? '+' : '', n: evol, mois: nomMois(-1) });
+    variation = evol === null ? ta('tuile.ca.sous', { mois: nomMois(0) }) : ta('tuile.ca.evol', { signe: evol > 0 ? '+' : '', n: evol, mois: nomMois(-1) });
+    if (evol !== null && evol !== 0) ton = evol > 0 ? 'succes' : 'attention';
     vers = '/facturation';
   } else if (t.cle === 'attente') {
-    titre = ta('tuile.attente');
+    libelle = ta('tuile.attente');
     valeur = euros(t.cents);
-    sous = t.nombre ? ta('tuile.attente.sous', { n: t.nombre, r: t.enRetard }) : ta('tuile.attente.aucune');
+    variation = t.enRetard ? ta('tuile.attente.retard', { r: t.enRetard }) : t.nombre ? ta('tuile.attente.encaisser', { n: t.nombre }) : ta('tuile.attente.aucune');
+    detail = t.nombre ? ta('tuile.attente.sous', { n: t.nombre, r: t.enRetard }) : '';
+    ton = t.enRetard ? 'attention' : t.nombre ? 'neutre' : 'succes';
     vers = t.enRetard ? '/relances' : '/facturation';
   } else if (t.cle === 'equipe') {
-    titre = ta('tuile.equipe');
+    libelle = ta('tuile.equipe');
     valeur = t.ouvertes;
-    sous = ta('tuile.equipe.sous', { c: t.enCours, f: t.faitesSemaine });
+    variation = ta('tuile.equipe.court', { c: t.enCours });
+    detail = ta('tuile.equipe.sous', { c: t.enCours, f: t.faitesSemaine });
+    if (t.ouvertes + t.faitesSemaine > 0) {
+      barre = t.faitesSemaine / (t.ouvertes + t.faitesSemaine);
+      libelleBarre = ta('tuile.equipe.barre');
+    }
     vers = '/tasks';
     famille = 'jour';
   } else {
-    titre = ta('tuile.objectif');
+    libelle = ta('tuile.objectif');
     valeur = <span className="text-[15px] font-medium leading-snug tracking-normal">{t.texte}</span>;
-    sous = ta('tuile.objectif.sous');
+    variation = ta('tuile.objectif.sous');
     vers = '/revue-hebdo';
     famille = 'jour';
   }
-
-  return (
-    <button
-      type="button"
-      onClick={() => navigate(vers)}
-      data-famille={famille}
-      className="flex min-h-[112px] flex-col items-start gap-2 rounded-xl border border-socle-bord bg-socle-surface p-4 text-left transition-colors hover:border-socle-bord-fort focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-socle-focus"
-    >
-      <span className="flex items-center gap-2 text-[12px] font-medium text-socle-texte-doux">
-        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-[var(--fam)]" />
-        {titre}
-      </span>
-      <span className="text-[26px] font-semibold leading-none tracking-[-0.02em] text-socle-texte [font-variant-numeric:tabular-nums]">{valeur}</span>
-      <span className="mt-auto text-[12px] text-socle-texte-doux [font-variant-numeric:tabular-nums]">{sous}</span>
-    </button>
-  );
+  return <TuileKpi famille={famille} libelle={libelle} valeur={valeur} variation={variation} detail={detail || undefined} ton={ton} barre={barre} libelleBarre={libelleBarre} onClick={() => navigate(vers)} />;
 }
 
 /* ── Aujourd'hui ───────────────────────────────────────────────────────── */
 
 function Aujourdhui({ a }: { a: Accueil }) {
   const { ta } = useAccueilLangue();
+  const { ts } = useSocleLangue();
   const navigate = useNavigate();
   const [ajout, setAjout] = useState('');
   const [ouvert, setOuvert] = useState(false);
   const total = a.fil.length;
   const part = total ? a.faits / total : 0;
+  const avecHeures = a.fil.some((l) => l.type === 'rdv');
 
   const libelleAction =
     a.action.cle === 'relancer' ? ta('action.relancer', { nom: a.action.nom }) : a.action.cle === 'ouvrir' ? ta('action.ouvrir', { titre: a.action.titre.length > 32 ? `${a.action.titre.slice(0, 30)}…` : a.action.titre }) : ta('action.priorites');
@@ -255,21 +287,36 @@ function Aujourdhui({ a }: { a: Accueil }) {
     setOuvert(false);
   };
 
+  const formulaire = (
+    <form onSubmit={valider} className="flex w-full flex-wrap items-end gap-2">
+      <div className="min-w-0 flex-1">
+        {/* Le champ ne prend le focus que parce qu'on vient de demander à écrire. */}
+        <Saisie etiquette={ta('jour.ajouter')} aide={ta('jour.ajouter.aide')} value={ajout} maxLength={140} onChange={(e) => setAjout(e.target.value)} autoFocus />
+      </div>
+      <Bouton type="submit" taille="moyen" variante="secondaire" disabled={!ajout.trim()}>
+        {ta('jour.ajouter.ok')}
+      </Bouton>
+      <Bouton type="button" taille="moyen" variante="discret" onClick={() => setOuvert(false)}>
+        {ta('jour.annuler')}
+      </Bouton>
+    </form>
+  );
+
   return (
-    <section aria-labelledby="accueil-jour" className="flex min-w-0 flex-col rounded-xl border border-socle-bord bg-socle-surface">
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-socle-bord px-4 py-3.5">
+    <Carte as="section" sansMarge aria-label={ta('jour.titre')} className="min-w-0">
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-[var(--socle-bord-ligne)] px-5 py-4">
         <div className="min-w-0 flex-1">
-          <h2 id="accueil-jour" className="text-[15px] font-semibold text-socle-texte">
-            {ta('jour.titre')}
-          </h2>
-          {total > 0 && (
-            <div className="mt-1.5 flex items-center gap-3">
-              <span className="whitespace-nowrap text-[12px] text-socle-texte-doux [font-variant-numeric:tabular-nums]">{ta('jour.progres', { x: a.faits, y: total })}</span>
-              <span aria-hidden className="h-1 w-28 overflow-hidden rounded-full bg-socle-eleve">
-                <motion.span className="block h-full rounded-full bg-socle-texte" initial={false} animate={{ width: `${Math.round(part * 100)}%` }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} />
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <h2 id="accueil-jour" className="m-0 text-[15px] font-semibold text-socle-texte">
+              {ta('jour.titre')}
+            </h2>
+            {total > 0 && (
+              <span aria-live="polite" className="whitespace-nowrap text-[12px] text-socle-texte-doux">
+                {ta('jour.progres', { x: a.faits, y: total })}
               </span>
-            </div>
-          )}
+            )}
+          </div>
+          {total > 0 && <BarreProgression valeur={part} libelle={ta('jour.titre')} texte={ta('jour.progres', { x: a.faits, y: total })} className="mt-2.5 max-w-[220px]" />}
         </div>
         {/* Le seul bouton blanc plein de l'écran. */}
         <Bouton variante="primaire" taille="petit" onClick={() => navigate(a.action.vers)}>
@@ -277,85 +324,79 @@ function Aujourdhui({ a }: { a: Accueil }) {
         </Bouton>
       </header>
 
-      {total === 0 ? (
-        <p className="px-4 py-6 text-[14px] text-socle-texte-doux">{ta('jour.vide')}</p>
+      {!a.pret ? (
+        <Chargement libelle={ts('bouton.chargement')}>
+          <div className="grid gap-3 px-5 py-4">
+            {[0, 1, 2].map((i) => (
+              <Squelette key={i} hauteur={36} />
+            ))}
+          </div>
+        </Chargement>
+      ) : total === 0 ? (
+        <div className="px-5 py-5">
+          <EtatVide texte={ta('jour.vide')} action={ouvert ? formulaire : <Bouton taille="petit" variante="secondaire" icone={<Plus size={14} aria-hidden />} onClick={() => setOuvert(true)}>{ta('jour.ajouter')}</Bouton>} />
+        </div>
       ) : (
-        <ul className="flex flex-col">
+        <ul className="m-0 flex list-none flex-col px-5">
           {a.fil.map((l) => (
-            <LigneDuJour key={l.cle} l={l} a={a} />
+            <LigneDuJour key={l.cle} l={l} a={a} avecColonneHeure={avecHeures} />
           ))}
         </ul>
       )}
 
-      <div className="flex flex-wrap items-center gap-2 border-t border-socle-bord px-3 py-2.5">
-        {ouvert ? (
-          <form onSubmit={valider} className="flex w-full flex-wrap items-end gap-2">
-            <div className="min-w-0 flex-1">
-              {/* Le champ ne prend le focus que parce qu'on vient de demander à écrire. */}
-              <Saisie etiquette={ta('jour.ajouter')} aide={ta('jour.ajouter.aide')} value={ajout} maxLength={140} onChange={(e) => setAjout(e.target.value)} autoFocus />
-            </div>
-            <Bouton type="submit" taille="moyen" variante="secondaire" disabled={!ajout.trim()}>
-              {ta('jour.ajouter.ok')}
+      {(total > 0 || a.masquees > 0) && (
+        <div className="flex flex-wrap items-center gap-2 border-t border-[var(--socle-bord-ligne)] px-4 py-2.5">
+          {ouvert ? (
+            formulaire
+          ) : (
+            <Bouton taille="petit" variante="discret" icone={<Plus size={14} aria-hidden />} onClick={() => setOuvert(true)}>
+              {ta('jour.ajouter')}
             </Bouton>
-            <Bouton type="button" taille="moyen" variante="discret" onClick={() => setOuvert(false)}>
-              {ta('jour.annuler')}
+          )}
+          {!ouvert && a.masquees > 0 && (
+            <Bouton taille="petit" variante="discret" onClick={() => a.retoucher((r, jour) => toutReafficher(r, jour))}>
+              {ta('jour.reafficher', { n: a.masquees })}
             </Bouton>
-          </form>
-        ) : (
-          <Bouton taille="petit" variante="discret" icone={<Plus size={14} aria-hidden />} onClick={() => setOuvert(true)}>
-            {ta('jour.ajouter')}
-          </Bouton>
-        )}
-        {!ouvert && a.masquees > 0 && (
-          <Bouton taille="petit" variante="discret" onClick={() => a.retoucher((r, jour) => toutReafficher(r, jour))}>
-            {ta('jour.reafficher', { n: a.masquees })}
-          </Bouton>
-        )}
-      </div>
-    </section>
+          )}
+        </div>
+      )}
+    </Carte>
   );
 }
 
-function LigneDuJour({ l, a }: { l: LigneFil; a: Accueil }) {
+function LigneDuJour({ l, a, avecColonneHeure }: { l: LigneFil; a: Accueil; avecColonneHeure: boolean }) {
   const { ta } = useAccueilLangue();
+  const { ts } = useSocleLangue();
   const navigate = useNavigate();
   const lecture = l.case === 'lecture';
   const ouvrir = l.cle === 'etape:visite' ? () => signalerGuide() : l.vers ? () => navigate(l.vers as string) : undefined;
+  const rdv = l.type === 'rdv';
   return (
-    <li data-famille={l.famille} className="group flex items-center gap-3 border-b border-socle-bord px-4 py-2.5 last:border-b-0">
-      <button
-        type="button"
-        role="checkbox"
-        aria-checked={l.fait}
-        aria-disabled={lecture || undefined}
-        aria-label={lecture ? ta('jour.lecture', { titre: l.titre }) : ta(l.fait ? 'jour.decocher' : 'jour.cocher', { titre: l.titre })}
-        onClick={() => !lecture && a.cocher(l)}
-        className={`flex h-[18px] w-[18px] flex-none items-center justify-center rounded-[5px] border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-socle-focus ${
-          l.fait ? 'border-socle-texte bg-socle-texte text-socle-primaire-encre' : 'border-socle-bord-fort'
-        } ${lecture ? 'cursor-default opacity-70' : 'cursor-pointer'}`}
-      >
-        {l.fait && <Check size={12} strokeWidth={3} aria-hidden />}
-      </button>
-      <span aria-hidden className="h-1.5 w-1.5 flex-none rounded-full bg-[var(--fam)]" />
-      <button
-        type="button"
-        onClick={ouvrir}
-        disabled={!ouvrir}
-        className="min-w-0 flex-1 rounded text-left focus-visible:outline-2 focus-visible:outline-socle-focus disabled:cursor-default"
-      >
-        <span className={`block truncate text-[14px] ${l.fait ? 'text-socle-texte-doux line-through decoration-socle-bord-fort' : 'text-socle-texte'}`}>{l.titre}</span>
-        {l.detail && <span className="block text-[12px] text-socle-texte-doux [font-variant-numeric:tabular-nums]">{l.detail}</span>}
-      </button>
-      {l.responsable && (
-        <span className="hidden items-center gap-2 text-[12px] text-socle-texte-doux sm:flex" title={`${ta('jour.responsable')} : ${a.nomDe(l.responsable)}`}>
-          <Initiales nom={a.nomDe(l.responsable)} />
-          <span className="max-w-[9rem] truncate">{a.nomDe(l.responsable)}</span>
-        </span>
-      )}
-      <Bouton className="sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100" taille="petit" variante="discret" onClick={() => a.retoucher((r, jour) => masquer(r, jour, l.cle))} aria-label={ta('jour.masquer', { titre: l.titre })} title={ta('jour.masquer', { titre: l.titre })}>
-        <EyeOff size={14} aria-hidden />
-      </Bouton>
-    </li>
+    <LigneTache
+      titre={l.titre}
+      meta={rdv ? ts(`famille.${l.famille}`) : l.detail || ts(`famille.${l.famille}`)}
+      famille={l.famille}
+      heure={rdv ? l.detail : undefined}
+      avecColonneHeure={avecColonneHeure}
+      fait={l.fait}
+      lecture={lecture}
+      libelleCase={lecture ? ta('jour.lecture', { titre: l.titre }) : ta(l.fait ? 'jour.decocher' : 'jour.cocher', { titre: l.titre })}
+      onCoche={() => a.cocher(l)}
+      onOuvrir={ouvrir}
+      droite={
+        <>
+          {l.responsable && (
+            <span className="hidden items-center gap-2 text-[12px] text-socle-texte-doux @[560px]:flex" title={`${ta('jour.responsable')} : ${a.nomDe(l.responsable)}`}>
+              <Avatar nom={a.nomDe(l.responsable)} taille={24} />
+              <span className="max-w-[9rem] truncate">{a.nomDe(l.responsable)}</span>
+            </span>
+          )}
+          <Bouton className="sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100" taille="petit" variante="discret" onClick={() => a.retoucher((r, jour) => masquer(r, jour, l.cle))} aria-label={ta('jour.masquer', { titre: l.titre })} title={ta('jour.masquer', { titre: l.titre })}>
+            <EyeOff size={14} aria-hidden />
+          </Bouton>
+        </>
+      }
+    />
   );
 }
 
@@ -372,35 +413,63 @@ function quandActivite(quand: string, maintenant: Date, langue: 'fr' | 'en'): st
 
 function Activite({ a }: { a: Accueil }) {
   const { langue, ta } = useAccueilLangue();
+  const { ts } = useSocleLangue();
+  const navigate = useNavigate();
   return (
-    <section aria-labelledby="accueil-activite" className="flex min-w-0 flex-col rounded-xl border border-socle-bord bg-socle-surface">
-      <h2 id="accueil-activite" className="border-b border-socle-bord px-4 py-3.5 text-[15px] font-semibold text-socle-texte">
+    <Carte as="section" sansMarge aria-label={ta('activite.titre')} className="min-w-0">
+      <h2 id="accueil-activite" className="m-0 border-b border-[var(--socle-bord-ligne)] px-5 py-4 text-[15px] font-semibold text-socle-texte">
         {ta('activite.titre')}
       </h2>
-      {a.activite.length === 0 ? (
-        <p className="px-4 py-6 text-[14px] text-socle-texte-doux">{ta('activite.vide')}</p>
+      {!a.pret ? (
+        <Chargement libelle={ts('bouton.chargement')}>
+          <div className="grid gap-3 px-5 py-4">
+            {[0, 1, 2].map((i) => (
+              <Squelette key={i} hauteur={30} />
+            ))}
+          </div>
+        </Chargement>
+      ) : a.activite.length === 0 ? (
+        <div className="px-5 py-5">
+          <EtatVide
+            texte={ta('activite.vide')}
+            action={
+              <Bouton taille="petit" variante="secondaire" onClick={() => navigate('/journal-de-bord')}>
+                {ta('activite.vide.action')}
+              </Bouton>
+            }
+          />
+        </div>
       ) : (
-        <ol className="flex flex-col py-1.5">
-          {a.activite.map((e) => (
-            <li key={e.cle} data-famille={e.famille} className="relative flex gap-3 px-4 py-2">
-              {/* Le fil : un trait discret ; un jalon est un losange plein, le reste un point. */}
-              <span aria-hidden className="mt-[7px] flex w-2 flex-none justify-center">
-                {e.type === 'jalon' ? <span className="h-2 w-2 rotate-45 bg-[var(--fam)]" /> : <span className="h-1.5 w-1.5 rounded-full bg-[var(--fam)]" />}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className={`block text-[13.5px] leading-snug ${e.type === 'jalon' ? 'font-medium text-socle-texte' : 'text-socle-texte'}`}>
-                  {e.type === 'jalon' && <span className="sr-only">{ta('activite.jalon')} : </span>}
-                  {e.texte}
-                </span>
-                <span className="block text-[12px] text-socle-texte-doux [font-variant-numeric:tabular-nums]">
-                  {[e.qui ? a.nomDe(e.qui) : null, quandActivite(e.quand, a.maintenant, langue)].filter(Boolean).join(' · ')}
-                </span>
-              </span>
-            </li>
-          ))}
+        <ol className="m-0 flex list-none flex-col gap-1 px-5 py-3">
+          {a.activite.map((e) => {
+            const quand = quandActivite(e.quand, a.maintenant, langue);
+            return e.type === 'jalon' ? (
+              <EtapeFranchie key={e.cle} libelle={ta('activite.etape')} texte={e.texte} quand={[e.qui ? a.nomDe(e.qui) : null, quand].filter(Boolean).join(' · ')} famille={e.famille} />
+            ) : (
+              <LigneActivite key={e.cle} nom={e.qui ? a.nomDe(e.qui) : null} texte={e.texte} quand={quand} famille={e.famille} />
+            );
+          })}
         </ol>
       )}
-    </section>
+    </Carte>
+  );
+}
+
+/* ── L'ancienne barre d'Ajmani, tant que la coquille d'origine est active ── */
+
+function BarreAjmaniAncienne() {
+  const { ta } = useAccueilLangue();
+  const assistant = useAssistant();
+  return (
+    <button
+      type="button"
+      onClick={() => assistant.open('chat')}
+      title={ta('ajmani.barre.aide')}
+      className="sc-ajmani sc-focus mt-6"
+    >
+      <span>{ta('ajmani.barre')}</span>
+      <kbd className="sc-kbd">⌘J</kbd>
+    </button>
   );
 }
 
