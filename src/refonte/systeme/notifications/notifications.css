@@ -1,0 +1,460 @@
+/*
+  LA PAGE NOTIFICATIONS (H40) — mise en page aux cotes de la fiche, rubrique 3.
+  ═════════════════════════════════════════════════════════════════════════════
+
+  Coordonnées relatives à la zone principale de la maquette (1440 × 900) : x = 0 au px absolu 252, y = 0 au px
+  absolu 60. Contenu de x = 40 à x = 1148, soit 1108 px = 1440 − 252 − 2 × 40.
+
+    carte liste       à (40, 96), 688 × 630 — la colonne de gauche vaut 1108 − 400 − 20 = 688 à 1440 px de
+                      large, et prend la place qui reste ailleurs (`minmax(0, 1fr)`) ;
+    colonne droite    400 px (et non 340 : cette page a une colonne de réglages plus large, ne pas « corriger »),
+                      à 20 px de la carte liste ; trois cartes de 304 / 136 / 156 px, écart 14 ;
+    ligne             61 px, point non lu 8 px, tuile d'icône 38 × 38 de rayon 11, texte à x = 89 de la carte.
+
+  Les valeurs viennent de `src/socle/noir.css` (`--socle-*`) ; ce que la fiche donne sans jeton est déclaré ici
+  (`--sc-notif-*`). Aucune couleur hexadécimale n'est écrite dans cette feuille. Les encres « discret » et « très
+  discret » ne servent jamais de couleur de texte : tout texte lu est T4 (`--socle-texte-3`) ou plus clair.
+
+  Importée par `PageNotifications.tsx` (et `VueNotifications.tsx`) ; chargée seulement dans l'édition interne.
+*/
+:root[data-ambiance='noir'] {
+  --sc-notif-droite: 400px;
+  --sc-notif-ecart: 20px;
+  --sc-notif-ecart-droite: 14px;
+  --sc-notif-liste-hauteur: 630px;
+  --sc-notif-ligne: 61px;
+  --sc-notif-tuile: 38px;
+  --sc-notif-tuile-rayon: 11px;
+  --sc-notif-point: 8px;
+  --sc-notif-groupe: 32px;
+  --sc-notif-onglets-haut: 4px;
+  --sc-notif-carte-matrice: 304px;
+  --sc-notif-carte-reglages: 136px;
+  --sc-notif-carte-suggestion: 156px;
+  --sc-notif-rangee: 43px;
+  --sc-notif-colonne-canal: 62px;
+  --sc-notif-bouton: 31px;
+  --sc-notif-survol: linear-gradient(90deg, rgba(255, 255, 255, 0.04), transparent);
+  --sc-notif-fond-carte: linear-gradient(180deg, var(--socle-carte-haut), var(--socle-carte-bas));
+  --sc-notif-ombre-menu: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+
+/* ── La page ── */
+.sc-notif {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  font-variant-numeric: tabular-nums;
+}
+.sc-notif__entete {
+  display: flex;
+  flex: none;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 15px;
+}
+.sc-notif__titres { min-width: 0; }
+.sc-notif__titre {
+  margin: 0;
+  color: var(--socle-texte-1);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.sc-notif__sous-titre {
+  margin: 7px 0 0;
+  color: var(--socle-texte-3);
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+.sc-notif__boutons { display: flex; flex: none; align-items: center; gap: 9px; padding-bottom: 3px; }
+.sc-notif__boutons [data-socle='bouton'] { min-height: var(--sc-notif-bouton); }
+
+/* Le corps : la carte liste à gauche, la colonne de réglages à droite. Il prend toute la hauteur qui reste. */
+.sc-notif__corps {
+  display: grid;
+  min-height: var(--sc-notif-liste-hauteur);
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) var(--sc-notif-droite);
+  gap: var(--sc-notif-ecart);
+  align-items: stretch;
+  padding-bottom: 24px;
+}
+
+/* ── La carte liste ── */
+.sc-notif__carte-liste,
+.sc-notif__carte {
+  position: relative;
+  border: 1px solid var(--socle-bord-carte);
+  border-radius: var(--socle-rayon-carte);
+  background: var(--sc-notif-fond-carte);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+.sc-notif__carte-liste {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* Le panneau de l'onglet actif porte le défilement : les onglets et les libellés de groupe restent en place. */
+.sc-notif__carte-liste > [role='tabpanel']:not([hidden]) {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  outline: none;
+}
+.sc-notif__carte-liste > [role='tabpanel']:focus-visible { outline: 2px solid var(--color-socle-focus); outline-offset: -2px; }
+
+.sc-notif__onglets {
+  flex: none;
+  padding: var(--sc-notif-onglets-haut) 16px 0;
+  border-bottom: 1px solid var(--socle-bord-entete);
+}
+.sc-notif__onglets .sc-onglets { border-bottom: 0; }
+
+.sc-notif__defilement {
+  min-height: 0;
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* ── Un groupe : sa bande de 32 px (11 px capitales, T4), collante dans le défilement ── */
+.sc-notif__groupe-titre {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  height: var(--sc-notif-groupe);
+  align-items: center;
+  margin: 0;
+  padding: 0 21px;
+  background: var(--socle-carte-haut);
+  color: var(--socle-texte-3);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sc-notif__lignes { margin: 0; padding: 0; list-style: none; }
+
+/* ── Une ligne : 61 px, filet #19191b ── */
+.sc-notif__ligne {
+  position: relative;
+  height: var(--sc-notif-ligne);
+  border-bottom: 1px solid var(--socle-bord-ligne);
+}
+.sc-notif__corps-ligne {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  gap: 10px;
+  padding: 0 17px 0 21px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sc-notif__ligne:hover > .sc-notif__corps-ligne,
+.sc-notif__ligne[data-actif='true'] > .sc-notif__corps-ligne { background: var(--sc-notif-survol); }
+.sc-notif__corps-ligne:focus-visible { outline: 2px solid var(--color-socle-focus); outline-offset: -2px; }
+
+/* Le point « non lu » : 8 px ; une ligne lue garde sa place (les textes restent alignés). */
+.sc-notif__point {
+  flex: none;
+  width: var(--sc-notif-point);
+  height: var(--sc-notif-point);
+  border-radius: 99px;
+  background: transparent;
+}
+.sc-notif__ligne[data-lue='false'] .sc-notif__point { background: var(--socle-texte-1); }
+
+/* La tuile d'icône : 38 × 38, rayon 11, fond = la couleur de la famille à .13. Une alerte urgente prend le critique. */
+.sc-notif__tuile {
+  --sc-notif-teinte: var(--socle-fam-outils);
+  display: inline-flex;
+  flex: none;
+  width: var(--sc-notif-tuile);
+  height: var(--sc-notif-tuile);
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--sc-notif-tuile-rayon);
+  background: color-mix(in srgb, var(--sc-notif-teinte) 13%, transparent);
+  color: var(--sc-notif-teinte);
+}
+.sc-notif__tuile[data-urgente='true'] { --sc-notif-teinte: var(--socle-etat-critique); }
+.sc-notif__tuile svg { width: 17px; height: 17px; }
+
+.sc-notif__texte { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 1px; padding-left: 2px; }
+.sc-notif__ligne-titre { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.sc-notif__ligne-titre > .sc-urgent { flex: none; }
+.sc-notif__ligne-nom {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--socle-texte-1);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sc-notif__detail {
+  overflow: hidden;
+  color: var(--socle-texte-3);
+  font-size: 12.5px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sc-notif__heure {
+  flex: none;
+  min-width: 48px;
+  color: var(--socle-texte-3);
+  font-size: 12px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Les deux boutons de ligne : visibles au survol et au focus, jamais en permanence. */
+.sc-notif__actions {
+  position: absolute;
+  top: 50%;
+  right: 78px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 28px;
+  background: linear-gradient(90deg, transparent, var(--socle-carte-bas) 24px);
+  transform: translateY(-50%);
+}
+.sc-notif__actions [data-socle='bouton'] { min-height: var(--sc-notif-bouton); }
+
+/* Le menu « Reporter » : quatre échéances calculées. */
+.sc-notif__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 6;
+  display: flex;
+  min-width: 190px;
+  flex-direction: column;
+  padding: 6px;
+  border: 1px solid var(--socle-bord-dialogue);
+  border-radius: 12px;
+  background: var(--socle-dialogue);
+  box-shadow: var(--sc-notif-ombre-menu);
+}
+.sc-notif__menu[data-vers='haut'] { top: auto; bottom: calc(100% + 6px); }
+.sc-notif__menu-titre { margin: 0; padding: 6px 10px 4px; color: var(--socle-texte-3); font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+.sc-notif__menu-choix {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--socle-texte-courant);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.sc-notif__menu-choix:hover,
+.sc-notif__menu-choix:focus-visible { background: var(--socle-survol); color: var(--socle-texte-1); }
+.sc-notif__menu-choix:focus-visible { outline: 2px solid var(--color-socle-focus); outline-offset: -2px; }
+
+/* La ligne qui part (« Reporter ») : 180 ms. */
+.sc-notif__ligne[data-sortie='true'] { opacity: 0; transition: opacity 180ms ease-out; }
+
+/* « Afficher les plus anciennes » et « C'est tout pour le moment. » */
+.sc-notif__suite { display: flex; flex: none; justify-content: center; padding: 14px 18px; }
+.sc-notif__fin {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 24px 18px;
+  color: var(--socle-texte-3);
+  font-size: 13px;
+  text-align: center;
+}
+.sc-notif__lien {
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--socle-texte-courant);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.sc-notif__lien:hover { color: var(--socle-texte-1); }
+
+/* Les bandeaux : hors ligne, erreur. */
+.sc-notif__bandeau {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 21px;
+  border-bottom: 1px solid var(--socle-bord-ligne);
+  color: var(--socle-texte-courant);
+  font-size: 12.5px;
+}
+.sc-notif__bandeau svg { flex: none; width: 15px; height: 15px; }
+.sc-notif__bandeau[data-ton='attention'] svg { color: var(--socle-etat-attention); }
+.sc-notif__bandeau[data-ton='critique'] svg { color: var(--socle-etat-critique); }
+.sc-notif__bandeau-texte { min-width: 0; flex: 1; }
+.sc-notif__bandeau-sous { color: var(--socle-texte-3); }
+
+/* ── L'état vide, l'onglet vide, l'erreur : le cadre pointillé occupe la carte entière ── */
+.sc-notif__etat {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 18px;
+  padding: 18px;
+  border: 1px dashed var(--socle-pointille);
+  border-radius: var(--socle-rayon-carte);
+  text-align: center;
+}
+.sc-notif__etat .sc-vide { align-items: center; max-width: 300px; padding: 0; border: 0; background: transparent; text-align: center; }
+.sc-notif__etat .sc-vide__titre { font-size: 15px; }
+.sc-notif__etat .sc-vide__texte { color: var(--socle-texte-3); font-size: 12.5px; }
+.sc-notif__etat-icone {
+  --sc-notif-teinte: var(--socle-fam-jour);
+  display: inline-flex;
+  width: 48px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--sc-notif-teinte) 13%, transparent);
+  color: var(--sc-notif-teinte);
+}
+.sc-notif__etat-icone[data-ton='critique'] { --sc-notif-teinte: var(--socle-etat-critique); }
+.sc-notif__etat-icone svg { width: 22px; height: 22px; }
+
+/* Le chargement : six squelettes de 61 px, de la même forme que les lignes. */
+.sc-notif__squelettes { margin: 0; padding: 0; list-style: none; }
+.sc-notif__squelette-ligne {
+  display: flex;
+  height: var(--sc-notif-ligne);
+  align-items: center;
+  gap: 18px;
+  padding: 0 17px 0 29px;
+  border-bottom: 1px solid var(--socle-bord-ligne);
+}
+.sc-notif__squelette-texte { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 8px; }
+.sc-notif__squelette-carte { min-height: 120px; padding: 18px; }
+
+/* ── La colonne droite : trois cartes, écart 14 ── */
+.sc-notif__droite {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--sc-notif-ecart-droite);
+}
+.sc-notif__carte { padding: 18px 16px 16px 18px; }
+.sc-notif__carte--matrice { min-height: var(--sc-notif-carte-matrice); }
+.sc-notif__carte--reglages { display: flex; min-height: var(--sc-notif-carte-reglages); flex-direction: column; justify-content: center; padding-block: 4px; }
+.sc-notif__carte-titre { margin: 0; color: var(--socle-texte-1); font-size: 15px; font-weight: 600; line-height: 1.35; }
+
+/* La matrice : le libellé, puis trois colonnes de 62 px, les interrupteurs centrés dessous. */
+.sc-notif__matrice { display: grid; margin-top: 8px; grid-template-columns: minmax(0, 1fr) repeat(3, var(--sc-notif-colonne-canal)); }
+.sc-notif__canal { padding-bottom: 4px; color: var(--socle-texte-3); font-size: 11.5px; font-weight: 500; text-align: center; }
+.sc-notif__rangee { display: contents; }
+.sc-notif__rangee > * { display: flex; height: var(--sc-notif-rangee); align-items: center; border-bottom: 1px solid var(--socle-bord-ligne); }
+.sc-notif__rangee:last-child > * { border-bottom: 0; }
+.sc-notif__rangee > :first-child { color: var(--socle-texte-courant); font-size: 13px; }
+.sc-notif__cellule { justify-content: center; }
+.sc-notif__echec {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--socle-etat-critique) 10%, transparent);
+  color: var(--socle-texte-courant);
+  font-size: 12.5px;
+}
+.sc-notif__echec svg { flex: none; width: 15px; height: 15px; color: var(--socle-etat-critique); }
+.sc-notif__echec span { min-width: 0; flex: 1; }
+
+/* Heures calmes et résumé du matin : deux rangées dans une carte de 136 px. */
+.sc-notif__reglage { position: relative; display: flex; min-height: 62px; align-items: center; justify-content: space-between; gap: 14px; }
+.sc-notif__reglage + .sc-notif__reglage { border-top: 1px solid var(--socle-bord-ligne); }
+.sc-notif__reglage-texte { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: 2px; }
+.sc-notif__reglage-titre { color: var(--socle-texte-1); font-size: 13.5px; font-weight: 600; line-height: 1.35; }
+.sc-notif__reglage-aide { margin: 0; color: var(--socle-texte-3); font-size: 12px; line-height: 1.4; }
+.sc-notif__reglage-aide--bouton {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sc-notif__reglage-aide--bouton:hover { color: var(--socle-texte-courant); text-decoration: underline; text-underline-offset: 3px; }
+.sc-notif__heures {
+  position: absolute;
+  top: calc(100% - 6px);
+  right: 0;
+  left: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--socle-bord-dialogue);
+  border-radius: 12px;
+  background: var(--socle-dialogue);
+  box-shadow: var(--sc-notif-ombre-menu);
+}
+.sc-notif__heures-champs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.sc-notif__heures-actions { display: flex; justify-content: flex-end; }
+
+/* La suggestion d'Ajmani (156 px) grandit pour que les deux bas s'alignent ; l'astuce prend sa place. */
+.sc-notif__droite > .sc-suggestion,
+.sc-notif__astuce { flex: 1; min-height: var(--sc-notif-carte-suggestion); }
+.sc-notif__astuce { display: flex; flex-direction: column; gap: 6px; }
+.sc-notif__astuce-texte { margin: 0; color: var(--socle-texte-2); font-size: 12.5px; line-height: 1.5; }
+
+.sc-notif__sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ── En dessous de 1280 px de fenêtre (contenu de 948 px) : la colonne passe sous la liste, en 2 + 1 ── */
+@container (max-width: 948px) {
+  .sc-notif__corps { grid-template-columns: minmax(0, 1fr); }
+  .sc-notif__carte-liste { min-height: var(--sc-notif-liste-hauteur); }
+  .sc-notif__droite { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .sc-notif__droite > .sc-suggestion,
+  .sc-notif__astuce { grid-column: 1 / -1; }
+}
+@container (max-width: 640px) {
+  .sc-notif__droite { grid-template-columns: minmax(0, 1fr); }
+  .sc-notif__entete { flex-direction: column; align-items: flex-start; }
+  .sc-notif__actions { right: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-notif__ligne[data-sortie='true'] { transition: none; }
+}
