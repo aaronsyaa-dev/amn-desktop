@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Coquille, BarreLaterale, EnTete, BarreAjmani, PaletteAjmani, type FamilleLaterale, type Proposition } from '../../socle/coquille';
+import { Coquille, BarreLaterale, EnTete, BarreAjmani, type FamilleLaterale } from '../../socle/coquille';
 import { useSocleLangue } from '../../socle/i18n';
 import { useAssistant } from '../../assistant/AssistantContext';
 import { useNavigationEspacesOptionnelle } from '../../bureaux/navigation';
@@ -8,12 +8,10 @@ import { useFermetureEchap } from '../../lib/useFermetureEchap';
 import { EDITION_PRODUCT_NAME } from '../../edition/edition';
 import { SyncStatusIndicator } from '../../components/SyncStatusIndicator';
 import { OrgSwitchButton } from '../../components/org-rail/OrgSwitchButton';
-import { libelleNav, indiceNav } from '../../i18n';
-import { ROUTE_TOUS_LES_MODULES, suggestionsDuMoment } from '../navigation/moment';
-import { chercher } from '../navigation/recherche';
-import { familleDe } from '../navigation/registre';
+import { ROUTE_TOUS_LES_MODULES } from '../navigation/moment';
 import { useDonneesCoquille } from './donnees';
 import { PaletteRecherche } from '../systeme/recherche/PaletteRecherche';
+import { PaletteAjmaniBranchee } from '../systeme/ajmani';
 import { useNotificationsNonLuesAvec } from '../systeme/notifications';
 import { ROUTE_NOTIFICATIONS } from '../systeme/routes';
 import { usePoulsGarde } from './pouls';
@@ -86,25 +84,6 @@ export function CoquilleRefonte({ children, largeur = 'lecture' }: { children?: 
     [espaces, navigate],
   );
 
-  const items = useMemo(
-    () => donnees.catalogue.map((item) => ({ ...item, label: libelleNav(item), hint: indiceNav(item) })),
-    [donnees.catalogue],
-  );
-  const proposition = useCallback(
-    (item: (typeof items)[number], detail?: string): Proposition => ({ id: item.key, libelle: item.label, detail, famille: familleDe(item.key), executer: () => aller(item.to) }),
-    [aller],
-  );
-  const suggestions = useMemo(() => {
-    const parCle = new Map(items.map((i) => [i.key, i]));
-    return suggestionsDuMoment(new Date())
-      .map((k) => parCle.get(k))
-      .filter((i): i is (typeof items)[number] => Boolean(i))
-      .slice(0, 5)
-      .map((i) => proposition(i));
-    // L'heure compte : on relit à chaque ouverture de la palette.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, proposition, palette]);
-  const chercherModules = useCallback((texte: string) => chercher(texte, items).slice(0, 6).map(({ item, raison }) => proposition(item, raison)), [items, proposition]);
   const demander = useCallback(
     (texte: string) => {
       setPalette(false);
@@ -181,7 +160,20 @@ export function CoquilleRefonte({ children, largeur = 'lecture' }: { children?: 
           else aller(route);
         }}
       />
-      <PaletteAjmani ouverte={palette} onFermer={() => setPalette(false)} suggestions={suggestions} chercher={chercherModules} onDemander={demander} />
+      <PaletteAjmaniBranchee
+        ouverte={palette}
+        onFermer={() => setPalette(false)}
+        surDemander={demander}
+        surAllerA={(route, state) => {
+          setPalette(false);
+          if (state) navigate(route, { state });
+          else aller(route);
+        }}
+        surOuvrirRecherche={() => {
+          setPalette(false);
+          setRechercheOuverte(true);
+        }}
+      />
     </>
   );
 }
