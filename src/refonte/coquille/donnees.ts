@@ -17,6 +17,7 @@ import type { FamilleLaterale, ModuleLateral, MiettePain, PersonneEnLigne } from
 import { REGISTRE_MODULES } from '../modules/registre';
 import type { Libelle } from '../modules/declarer';
 import { construireFil } from './fil';
+import { routeEnsemble } from '../systeme/ensemble';
 
 /**
  * CE QUE LA COQUILLE SAIT — lu dans les accès existants, rien d'inventé.
@@ -54,6 +55,33 @@ interface JourPriorites {
   email: string;
   day: string;
   items?: { doneAt: string | null }[];
+}
+
+/** Combien de modules une famille montre dans la barre latérale (le reste : « + N autres »). */
+export const MODULES_VISIBLES = 7;
+
+/**
+ * Les modules qu'une famille montre : les essentiels d'abord, puis les courants, puis les avancés (dans l'ordre
+ * du registre à niveau égal), au plus `MODULES_VISIBLES` — et le module courant y est toujours, quitte à prendre la
+ * place du dernier. Rendus dans l'ordre du registre, pour que la liste ne saute pas d'un écran à l'autre.
+ */
+export function choisirLesVisibles<T extends { courant: boolean; avance: boolean; niveau?: string }>(modules: T[], max = MODULES_VISIBLES): T[] {
+  if (modules.length <= max) return modules;
+  const rang = (m: T) => (m.niveau === 'essentiel' ? 0 : m.avance || m.niveau === 'avance' ? 2 : 1);
+  const choisis = new Set(
+    modules
+      .map((m, i) => ({ m, i }))
+      .sort((a, b) => rang(a.m) - rang(b.m) || a.i - b.i)
+      .slice(0, max)
+      .map((x) => x.m),
+  );
+  const courant = modules.find((m) => m.courant);
+  if (courant && !choisis.has(courant)) {
+    const dernier = modules.filter((m) => choisis.has(m)).pop();
+    if (dernier) choisis.delete(dernier);
+    choisis.add(courant);
+  }
+  return modules.filter((m) => choisis.has(m));
 }
 
 export function useDonneesCoquille(pathname: string, routeTousLesModules: string, libelleTous: string, libelleAccueil: string): DonneesCoquille {
@@ -102,7 +130,7 @@ export function useDonneesCoquille(pathname: string, routeTousLesModules: string
       const entrees = famille.entrees
         .map((entree) => ({ entree, vues: entree.vues.flatMap((v) => ouverts.get(v.id) ?? []) }))
         .filter((e) => e.vues.length > 0);
-      const modules: (ModuleLateral & { avance: boolean })[] = entrees.map(({ entree, vues }) => {
+      const modules: (ModuleLateral & { avance: boolean; niveau: string })[] = entrees.map(({ entree, vues }) => {
         const badge = vues.reduce((n, v) => n + (compteurs[v.to] ?? 0), 0);
         return {
           cle: entree.id,
@@ -111,19 +139,27 @@ export function useDonneesCoquille(pathname: string, routeTousLesModules: string
           badge,
           courant: vues.some((v) => v.to === cheminCourant),
           avance: entree.niveau === 'avance',
+          niveau: entree.niveau,
         };
       });
-      const active = modules.some((m) => m.courant);
-      const montres = modules.filter((m) => !m.avance || m.courant);
+      const montres = choisirLesVisibles(modules);
+      /* La première ligne : « Vue d'ensemble », sauf pour Ma journée (son Accueil en tient lieu). Quand la vue
+         d'ensemble EST l'adresse d'un module de la famille (la salle de La Garde), ce module n'est pas listé deux fois. */
+      const versEnsemble = famille.id === 'jour' ? null : routeEnsemble(famille.id);
+      const sansDoublon = montres.filter((m) => m.vers !== versEnsemble);
+      const ensemble: ModuleLateral | undefined = versEnsemble ? { cle: `ensemble-${famille.id}`, libelle: '', vers: versEnsemble, badge: 0, courant: cheminCourant === versEnsemble || pathname === versEnsemble } : undefined;
+      const active = modules.some((m) => m.courant) || Boolean(ensemble?.courant);
       return {
         entrees: entrees.length,
         lateral: {
           cle: famille.id,
           nom: dire(famille.nom),
           famille: famille.teinte,
-          modules: montres.map((m) => ({ cle: m.cle, libelle: m.libelle, vers: m.vers, badge: m.badge, courant: m.courant })),
+          modules: sansDoublon.map((m) => ({ cle: m.cle, libelle: m.libelle, vers: m.vers, badge: m.badge, courant: m.courant })),
           badge: montres.reduce((n, m) => n + m.badge, 0),
           active,
+          ensemble,
+          autres: modules.length - montres.length,
         } satisfies FamilleLaterale,
         amnSeulement: famille.amnSeulement,
       };

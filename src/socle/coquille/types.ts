@@ -20,6 +20,10 @@ export interface FamilleLaterale {
   badge: number;
   /** Le module courant est dans cette famille. */
   active: boolean;
+  /** « Vue d'ensemble » : la page d'accueil de la famille, première ligne de toute famille sauf Ma journée (qui a l'Accueil). */
+  ensemble?: ModuleLateral;
+  /** Les modules de la famille qui ne sont pas dans la liste : « + N autres » mène à Tous les modules. */
+  autres?: number;
 }
 
 export interface PersonneEnLigne {

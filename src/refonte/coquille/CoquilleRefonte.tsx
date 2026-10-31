@@ -148,6 +148,7 @@ export function CoquilleRefonte({ children, largeur = 'lecture' }: { children?: 
             produit={EDITION_PRODUCT_NAME}
             familles={donnees.familles}
             garde={garde}
+            etatGarde={pouls.etat}
             nombreModules={donnees.nombreModules}
             routeTousLesModules={ROUTE_TOUS_LES_MODULES}
             enLigne={donnees.enLigne}

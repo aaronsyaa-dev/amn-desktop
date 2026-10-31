@@ -32,7 +32,7 @@ const EN = {
   'modale.fermer': 'Close',
 
   'coquille.produit.sous': 'Team space',
-  'coquille.recherche': 'Search…',
+  'coquille.recherche': 'Search',
   'coquille.recherche.aide': 'Search a module, a client, an action',
   'coquille.menu.ouvrir': 'Open the menu',
   'coquille.menu.fermer': 'Close the menu',
@@ -49,6 +49,12 @@ const EN = {
   'coquille.presenceCoupee': 'Presence is switched off on this device.',
 
   'coquille.tous.court': 'All modules',
+  'coquille.ensemble': 'Overview',
+  'coquille.autres': '+ {n} more',
+  'coquille.autres.aide': 'Show the {n} other modules of {nom}',
+  'coquille.garde.etat.calme': 'All is in order',
+  'coquille.garde.etat.attention': 'Something to look at',
+  'coquille.garde.etat.critique': 'Critical alert',
   'coquille.accueil': 'Home',
   'coquille.reglage.titre': 'New shell',
   'coquille.reglage.texte': 'One navigation, a breadcrumb, ⌘K to search and ⌘J for Ajmani, in black and grey. Applies right away, on this device only.',
@@ -113,7 +119,7 @@ const FR: Record<CleSocle, string> = {
   'modale.fermer': 'Fermer',
 
   'coquille.produit.sous': 'Espace de l’équipe',
-  'coquille.recherche': 'Rechercher…',
+  'coquille.recherche': 'Rechercher',
   'coquille.recherche.aide': 'Chercher un module, un client, une action',
   'coquille.menu.ouvrir': 'Ouvrir le menu',
   'coquille.menu.fermer': 'Fermer le menu',
@@ -130,6 +136,12 @@ const FR: Record<CleSocle, string> = {
   'coquille.presenceCoupee': 'La présence est coupée sur ce poste.',
 
   'coquille.tous.court': 'Tous les modules',
+  'coquille.ensemble': 'Vue d’ensemble',
+  'coquille.autres': '+ {n} autres',
+  'coquille.autres.aide': 'Voir les {n} autres modules de {nom}',
+  'coquille.garde.etat.calme': 'Tout est en ordre',
+  'coquille.garde.etat.attention': 'Un point à regarder',
+  'coquille.garde.etat.critique': 'Alerte critique',
   'coquille.accueil': 'Accueil',
   'coquille.reglage.titre': 'Nouvelle coquille',
   'coquille.reglage.texte': 'Une seule navigation, un fil d’Ariane, ⌘K pour chercher et ⌘J pour Ajmani, en noir et gris. S’applique à l’instant, sur ce poste seulement.',

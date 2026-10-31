@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LayoutGrid, Search } from 'lucide-react';
+import { LayoutGrid, Search, ShieldCheck } from 'lucide-react';
 import { Avatar, Raccourci } from '../ui';
 import { useSocleLangue } from '../i18n';
-import type { FamilleLaterale, ModuleLateral, PersonneEnLigne } from './types';
+import type { EtatGarde, FamilleLaterale, ModuleLateral, PersonneEnLigne } from './types';
 
 /**
  * LA BARRE LATÉRALE — la seule navigation (252 px).
@@ -22,23 +22,26 @@ import type { FamilleLaterale, ModuleLateral, PersonneEnLigne } from './types';
 export interface BarreLateraleProps {
   produit: string;
   familles: FamilleLaterale[];
-  /** La huitième famille. `null` : elle n'existe pas dans cette édition. */
   garde: FamilleLaterale | null;
+  /** La pire situation ouverte à La Garde : le point de l'entrée « La Garde et la supervision ». */
+  etatGarde?: EtatGarde;
   nombreModules: number;
   routeTousLesModules: string;
   enLigne: PersonneEnLigne[];
-  /** Faux : la personne a coupé sa présence — on le dit au lieu de montrer une liste vide. */
   presenceMontree: boolean;
-  /** « ⌘ K » ou « Ctrl K ». */
   raccourciRecherche: string;
   onRecherche: () => void;
-  /** Tiroir (sous 900 px). */
   ouvert: boolean;
   onFermer: () => void;
 }
 
+/** Le lien « + N autres » d'une famille : Tous les modules, avec la carte de cette famille en état actif. */
+export function lienAutres(routeTousLesModules: string, cleFamille: string): string {
+  return `${routeTousLesModules}?famille=${encodeURIComponent(cleFamille)}`;
+}
+
 export const BarreLaterale = React.forwardRef<HTMLElement, BarreLateraleProps>(function BarreLaterale(
-  { produit, familles, garde, nombreModules, routeTousLesModules, enLigne, presenceMontree, raccourciRecherche, onRecherche, ouvert, onFermer },
+  { produit, familles, garde, etatGarde = 'calme', nombreModules, routeTousLesModules, enLigne, presenceMontree, raccourciRecherche, onRecherche, ouvert, onFermer },
   ref,
 ) {
   const { ts } = useSocleLangue();
@@ -57,10 +60,10 @@ export const BarreLaterale = React.forwardRef<HTMLElement, BarreLateraleProps>(f
       return n;
     });
 
-  const module = (m: ModuleLateral) => (
+  const module = (m: ModuleLateral, ensemble = false) => (
     <li key={m.cle}>
-      <Link to={m.vers} onClick={onFermer} aria-current={m.courant ? 'page' : undefined} className="sc-module sc-focus">
-        <span>{m.libelle}</span>
+      <Link to={m.vers} onClick={onFermer} aria-current={m.courant ? 'page' : undefined} data-ensemble={ensemble || undefined} className="sc-module sc-focus">
+        <span>{ensemble ? ts('coquille.ensemble') : m.libelle}</span>
         {m.badge > 0 && (
           <span className="sc-compteur" title={ts('coquille.badge', { n: m.badge })}>
             {m.badge > 99 ? '99+' : m.badge}
@@ -71,7 +74,7 @@ export const BarreLaterale = React.forwardRef<HTMLElement, BarreLateraleProps>(f
     </li>
   );
 
-  const groupe = (f: FamilleLaterale) => {
+  const groupe = (f: FamilleLaterale, estGarde = false) => {
     const deployee = ouvertes.has(f.cle);
     const idSous = `sc-sous-${f.cle}`;
     return (
@@ -85,8 +88,14 @@ export const BarreLaterale = React.forwardRef<HTMLElement, BarreLateraleProps>(f
           onClick={() => basculer(f.cle)}
           className="sc-famille sc-focus"
         >
-          <span aria-hidden className="sc-point" />
+          {estGarde ? <ShieldCheck aria-hidden size={15} className="sc-famille__bouclier" /> : <span aria-hidden className="sc-point" data-taille="8" />}
           <span className="sc-famille__nom">{f.nom}</span>
+          {estGarde && (
+            <span className="sc-famille__etat" data-etat={etatGarde}>
+              <i aria-hidden />
+              <span className="sr-only">{ts(etatGarde === 'critique' ? 'coquille.garde.etat.critique' : etatGarde === 'attention' ? 'coquille.garde.etat.attention' : 'coquille.garde.etat.calme')}</span>
+            </span>
+          )}
           {!deployee && f.badge > 0 && (
             <span className="sc-compteur" title={ts('coquille.badge', { n: f.badge })}>
               {f.badge > 99 ? '99+' : f.badge}
@@ -95,7 +104,15 @@ export const BarreLaterale = React.forwardRef<HTMLElement, BarreLateraleProps>(f
         </button>
         {deployee && (
           <ul id={idSous} className="sc-sous">
-            {f.modules.map(module)}
+            {f.ensemble && module(f.ensemble, true)}
+            {f.modules.map((m) => module(m))}
+            {(f.autres ?? 0) > 0 && (
+              <li>
+                <Link to={lienAutres(routeTousLesModules, f.cle)} onClick={onFermer} aria-label={ts('coquille.autres.aide', { n: f.autres ?? 0, nom: f.nom })} className="sc-module sc-module--autres sc-focus">
+                  <span>{ts('coquille.autres', { n: f.autres ?? 0 })}</span>
+                </Link>
+              </li>
+            )}
           </ul>
         )}
       </li>
@@ -119,18 +136,18 @@ export const BarreLaterale = React.forwardRef<HTMLElement, BarreLateraleProps>(f
       </div>
 
       <div data-guide="recherche">
-        <button type="button" onClick={onRecherche} aria-label={ts('coquille.recherche.aide')} className="sc-recherche sc-focus">
-          <Search size={15} aria-hidden />
+        <button type="button" onClick={onRecherche} aria-label={ts('coquille.recherche.aide')} aria-keyshortcuts="Control+K Meta+K" className="sc-recherche sc-focus">
+          <Search size={14} aria-hidden />
           <span>{ts('coquille.recherche')}</span>
           <Raccourci>{raccourciRecherche}</Raccourci>
         </button>
       </div>
 
       <nav aria-label={ts('coquille.nav')} data-guide="epingles">
-        <ul className="sc-liste">{familles.filter((f) => f.modules.length > 0).map(groupe)}</ul>
+        <ul className="sc-liste">{familles.filter((f) => f.modules.length > 0 || f.ensemble).map((f) => groupe(f))}</ul>
         {garde && garde.modules.length > 0 && (
           <ul className="sc-liste sc-liste--garde" data-guide="supervision">
-            {groupe(garde)}
+            {groupe(garde, true)}
           </ul>
         )}
       </nav>
@@ -138,7 +155,8 @@ export const BarreLaterale = React.forwardRef<HTMLElement, BarreLateraleProps>(f
       <div className="sc-pied">
         <Link to={routeTousLesModules} onClick={onFermer} className="sc-tous sc-focus">
           <LayoutGrid size={15} aria-hidden />
-          {ts('coquille.tous', { n: nombreModules })}
+          <span>{ts('coquille.tous.court')}</span>
+          <b className="sc-tous__nombre">{nombreModules}</b>
         </Link>
 
         <section aria-labelledby="sc-enligne" className="sc-enligne">
@@ -155,9 +173,7 @@ export const BarreLaterale = React.forwardRef<HTMLElement, BarreLateraleProps>(f
             <ul>
               {enLigne.map((p) => (
                 <li key={p.cle}>
-                  <span className="sc-presence">
-                    <Avatar nom={p.nom} taille={26} />
-                  </span>
+                  <Avatar nom={p.nom} taille={26} enLigne />
                   <span className="sc-enligne__texte">
                     <span className="sc-enligne__nom">{p.nom}</span>
                     <span className="sc-enligne__lieu">{ts('coquille.enLigne.sur', { lieu: p.lieu })}</span>

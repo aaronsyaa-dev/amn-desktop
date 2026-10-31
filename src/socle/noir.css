@@ -65,7 +65,7 @@
   /* ── Gabarits ── */
   --socle-largeur-lateral: 252px;
   --socle-hauteur-entete: 60px;
-  --socle-hauteur-ajmani: 48px;
+  --socle-hauteur-ajmani: 46px;
 
   /* ── Familles : de petites pastilles de 7 à 8 px, rien de plus ── */
   --socle-fam-jour: #8aa4d6;
@@ -114,6 +114,8 @@
   --socle-ligne-active: #1a1a1c;
   --socle-ligne-choisie: #262629;
   --socle-sous-element-actif: #242427;
+  --socle-logo-haut: #ebebec;
+  --socle-logo-bas: #bfbfc3;
   --socle-bord-carte-active: #3a3a3e;
   --socle-carte-active-haut: #1a1a1c;
 

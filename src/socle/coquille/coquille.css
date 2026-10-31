@@ -31,7 +31,7 @@
   flex: 1;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 26px 40px 0;
+  padding: 24px 40px 0;
   container-type: inline-size;
   outline: none;
 }
@@ -71,13 +71,12 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--socle-bord-controle);
-  border-radius: 9px;
-  background: linear-gradient(180deg, var(--socle-carte-haut), var(--socle-carte-bas));
-  color: var(--socle-texte-1);
-  font-size: 15px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, var(--socle-logo-haut), var(--socle-logo-bas));
+  color: var(--socle-primaire-encre);
+  font-size: 14px;
   font-weight: 700;
 }
 .sc-marque__nom { color: var(--socle-texte-1); font-size: 14px; font-weight: 600; line-height: 1.2; }
@@ -115,8 +114,8 @@
   border: 0;
   border-radius: var(--socle-rayon-controle);
   background: transparent;
-  color: var(--socle-texte-2);
-  font-size: 13px;
+  color: var(--socle-texte-courant);
+  font-size: 13.5px;
   font-weight: 500;
   text-align: left;
   cursor: pointer;
@@ -142,24 +141,32 @@
 .sc-sous {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0;
   margin: 2px 0 6px 14px;
   padding-left: 9px;
-  border-left: 1px solid var(--socle-bord-lateral);
+  border-left: 1px solid var(--socle-filet-vertical);
 }
 .sc-module {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 30px;
-  padding: 5px 10px;
-  border-radius: var(--socle-rayon-controle);
-  color: var(--socle-texte-3);
-  font-size: 13px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  color: var(--socle-texte-2);
+  font-size: 12.5px;
   text-decoration: none;
 }
 .sc-module:hover { background: var(--socle-survol); color: var(--socle-texte-1); }
-.sc-module[aria-current='page'] { background: var(--socle-survol); color: var(--socle-texte-1); font-weight: 500; }
+.sc-module[aria-current='page'] { background: var(--socle-sous-element-actif); color: var(--socle-texte-1); font-weight: 500; }
+/* « + N autres » : en T4, il mène à Tous les modules. */
+.sc-module--autres { color: var(--socle-texte-3); }
+.sc-famille__bouclier { flex: none; color: var(--socle-texte-1); }
+.sc-famille__etat { --etat: var(--socle-etat-succes); display: inline-flex; align-items: center; }
+.sc-famille__etat[data-etat='attention'] { --etat: var(--socle-etat-attention); }
+.sc-famille__etat[data-etat='critique'] { --etat: var(--socle-etat-critique); }
+.sc-famille__etat[data-etat='inconnu'] { --etat: var(--socle-texte-3); }
+.sc-famille__etat i { width: 7px; height: 7px; border-radius: 99px; background: var(--etat); }
 .sc-module > span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .sc-pied { display: flex; flex-direction: column; gap: 14px; margin-top: auto; padding-top: 6px; }
@@ -180,9 +187,11 @@
 }
 .sc-tous:hover { border-color: var(--color-socle-bord-fort); background: var(--socle-survol); }
 .sc-tous svg { color: var(--socle-texte-3); }
+.sc-tous > span { flex: 1; min-width: 0; }
+.sc-tous__nombre { padding: 1px 8px; border-radius: var(--socle-rayon-pastille); background: var(--socle-onglet-compteur); color: var(--socle-texte-2); font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .sc-enligne { display: flex; flex-direction: column; gap: 8px; padding: 12px 6px 0; border-top: 1px solid var(--socle-bord-lateral); }
-.sc-enligne__titre { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--socle-texte-3); font-size: 12px; font-weight: 500; }
+.sc-enligne__titre { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--socle-texte-3); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
 .sc-enligne__titre i { width: 7px; height: 7px; border-radius: 99px; background: var(--socle-etat-succes); }
 .sc-enligne ul { display: flex; flex-direction: column; gap: 9px; margin: 0; padding: 0; list-style: none; }
 .sc-enligne li { display: flex; align-items: center; gap: 9px; min-width: 0; }
@@ -316,7 +325,7 @@
 .sc-garde[data-etat='critique'] .sc-garde__point { --etat: var(--socle-etat-critique); }
 
 /* ── La barre Ajmani : 48 px ── */
-.sc-pied-page { flex: none; padding: 12px 40px 16px; }
+.sc-pied-page { flex: none; padding: 12px 40px 20px; }
 .sc-ajmani {
   display: flex;
   width: 100%;
