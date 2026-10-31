@@ -8,7 +8,7 @@ import { Bouton, Modale } from '../../../socle/ui';
 import { useToucheModificatrice } from '../../coquille/touche';
 import { evenementDeTouche, type EtapeCalculee } from './etapes';
 import { useMots } from './i18n';
-import { ROUTE_METIER } from './routes';
+import { ROUTE_METIER } from './chemins';
 import { useDemarrage } from './useDemarrage';
 import { LienMobile, VueDemarrage } from './VueDemarrage';
 

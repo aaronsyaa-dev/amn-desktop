@@ -85,7 +85,7 @@ const Z = await chargerAvecCss<Record<string, any>>(
     "export * from '../src/refonte/systeme/demarrage/metier';",
     "export * from '../src/refonte/systeme/demarrage/etapes';",
     "export * from '../src/refonte/systeme/demarrage/memoire';",
-    "export * from '../src/refonte/systeme/demarrage/routes';",
+    "export * from '../src/refonte/systeme/demarrage/chemins';",
     "export { MOTS_FR, MOTS_EN, traduire } from '../src/refonte/systeme/demarrage/i18n';",
     "export { VueDemarrage, SqueletteDemarrage, LienMobile } from '../src/refonte/systeme/demarrage/VueDemarrage';",
     "export { VueMetier, SqueletteMetier } from '../src/refonte/systeme/demarrage/VueMetier';",

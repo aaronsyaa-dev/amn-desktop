@@ -1,5 +1,5 @@
 import { ETAPES_PAR_DEFAUT, TAILLE_DEFAUT, type EtapeMesuree, type EtapeModele, type EtapesModele, type ModeleMetier, type TailleEquipe } from './modeles';
-import { ROUTE_METIER } from './routes';
+import { ROUTE_METIER } from './chemins';
 
 /**
  * LES ÉTAPES DE DÉMARRAGE (H42) — la logique, sans React.

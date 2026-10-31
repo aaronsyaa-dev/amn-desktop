@@ -12,7 +12,7 @@ import { REGISTRE_MODULES } from '../../modules/registre';
 import { useMots } from './i18n';
 import { CLE_PREFS_METIER, calculerAllegements, choixDepuisSelection, choixPasse, ecrireMetier, useMetierStocke, type ChoixMetier } from './metier';
 import { MODELES, TAILLE_DEFAUT, composition, modeleParId, type ModeleMetier, type TailleEquipe } from './modeles';
-import { ROUTE_DEMARRAGE } from './routes';
+import { ROUTE_DEMARRAGE } from './chemins';
 import { useHorsLigne } from './useDemarrage';
 import { VueMetier, type LigneModule } from './VueMetier';
 

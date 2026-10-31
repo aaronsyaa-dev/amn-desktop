@@ -1,6 +1,6 @@
 import { lireMetier } from './demarrage/metier';
 import { lireMemoireStockee } from './demarrage/memoire';
-import { ROUTE_DEMARRAGE } from './demarrage/routes';
+import { ROUTE_DEMARRAGE } from './demarrage/chemins';
 
 /**
  * OÙ ALLER APRÈS LA CONNEXION (G06 §6) — l'accueil réglé, et à la TOUTE PREMIÈRE connexion, Démarrage (H42).
