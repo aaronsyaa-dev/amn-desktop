@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Famille } from '../familles';
+import { couleurTon } from './graphiques/tons';
 
 /**
  * LES INDICATEURS — tuile KPI, barre et anneau de progression.
@@ -45,12 +46,19 @@ export interface AnneauProgressionProps {
   texte?: string;
   taille?: number;
   epaisseur?: number;
+  /** La couleur du trait : un état (« succes », « attention »…). Défaut « neutre » : l'encre principale, comme avant. */
+  ton?: TonVariation;
+  /** Le fond du trait : « defaut » (`--socle-piste`, comme avant) ou « anneau » (`--socle-anneau-fond`, le Ring des maquettes). */
+  piste?: 'defaut' | 'anneau';
   /** Au centre : un chiffre court (« 3/7 », « 42 % »). */
   children?: React.ReactNode;
 }
 
-export function AnneauProgression({ valeur, libelle, texte, taille = 44, epaisseur = 4, children }: AnneauProgressionProps) {
+export function AnneauProgression({ valeur, libelle, texte, taille = 44, epaisseur = 4, ton = 'neutre', piste = 'defaut', children }: AnneauProgressionProps) {
   const v = borne(valeur);
+  // Défauts : pas de style en ligne, la feuille (`.sc-anneau__trait`, `__piste`) décide comme avant.
+  const styleTrait = ton === 'neutre' ? undefined : { stroke: couleurTon(ton) };
+  const stylePiste = piste === 'anneau' ? { stroke: 'var(--socle-anneau-fond)' } : undefined;
   const r = (taille - epaisseur) / 2;
   const tour = 2 * Math.PI * r;
   return (
@@ -65,7 +73,7 @@ export function AnneauProgression({ valeur, libelle, texte, taille = 44, epaisse
       style={{ width: taille, height: taille }}
     >
       <svg width={taille} height={taille} viewBox={`0 0 ${taille} ${taille}`} aria-hidden>
-        <circle className="sc-anneau__piste" cx={taille / 2} cy={taille / 2} r={r} strokeWidth={epaisseur} />
+        <circle className="sc-anneau__piste" cx={taille / 2} cy={taille / 2} r={r} strokeWidth={epaisseur} style={stylePiste} />
         <circle
           className="sc-anneau__trait"
           cx={taille / 2}
@@ -74,6 +82,7 @@ export function AnneauProgression({ valeur, libelle, texte, taille = 44, epaisse
           strokeWidth={epaisseur}
           strokeDasharray={tour}
           strokeDashoffset={tour * (1 - v)}
+          style={styleTrait}
         />
       </svg>
       {children != null && <span className="sc-anneau__centre">{children}</span>}

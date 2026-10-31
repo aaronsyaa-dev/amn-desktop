@@ -1,1 +1,217 @@
-/* Feuille du groupe « graphiques » (LOT-00). Chargée par Ambiance.tsx, édition interne seulement. Couleurs : jetons --socle-* de noir.css, rien d'autre. */
+/*
+  Feuille du groupe « graphiques » (LOT-00). Chargée par Ambiance.tsx, édition interne seulement.
+  Couleurs : jetons --socle-* de noir.css, rien d'autre — aucune valeur hexadécimale ici, et aucune
+  encre « discret » en texte. Les tailles qui ne figurent pas dans noir.css sont les jetons --sc-g-*
+  ci-dessous, chacun avec la cote de la spec (01-SOCLE-DESIGN, §2 et §4).
+
+  Les couleurs variables (le ton d'un graphique : famille ou état) arrivent par la propriété
+  --sc-g-c, posée en ligne par le composant à partir d'un NOM de jeton (tons.ts).
+*/
+:root[data-ambiance='noir'] {
+  /* Plus petit texte autorisé : axes et étiquettes (§2). */
+  --sc-g-axe: 10.5px;
+  /* La valeur mise en avant : au-dessus d'une barre, dans la bulle d'un point. */
+  --sc-g-valeur: 12px;
+  /* Légende : libellé et valeur. */
+  --sc-g-legende: 12.5px;
+  /* Ligne d'une courbe : 2 px (§4). */
+  --sc-g-trait: 2px;
+  /* Animation d'entrée : tracé de 400 ms. */
+  --sc-g-trace: 400ms;
+  /* Pastille de légende : 8 px (§1, pastilles de famille). */
+  --sc-g-pastille: 8px;
+  /* Valeur au centre de l'anneau (72 à 80 px) : 600, tabulaire. La spec ne donne pas de taille. */
+  --sc-g-anneau-valeur: 16px;
+}
+
+.sc-g {
+  --sc-g-c: var(--socle-texte-1);
+  position: relative;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+.sc-g--courbe, .sc-g--barres, .sc-g--vide { width: 100%; }
+
+/* ── Le cadre d'un graphique : le dessin et, par-dessus, les points qu'on parcourt ── */
+.sc-g__scene { position: relative; }
+.sc-g__svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+.sc-g__axe {
+  fill: var(--socle-texte-3);
+  font-family: inherit;
+  font-size: var(--sc-g-axe);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.sc-g__grille { stroke: var(--socle-grille-graphique); stroke-width: 1; shape-rendering: crispEdges; }
+
+/* ── Courbe ── */
+.sc-g__degrade { stop-color: var(--sc-g-c); }
+.sc-g__aire { stroke: none; animation: sc-g-fondu var(--sc-g-trace) ease-out both; }
+.sc-g__ligne {
+  fill: none;
+  stroke: var(--sc-g-c);
+  stroke-width: var(--sc-g-trait);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* pathLength vaut 1 : un seul trait plein que l'animation « dessine ». */
+  stroke-dasharray: 1;
+  animation: sc-g-trace var(--sc-g-trace) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.sc-g__ligne2 {
+  fill: none;
+  stroke: var(--socle-texte-2);
+  stroke-width: var(--sc-g-trait);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 4 4;
+  animation: sc-g-fondu var(--sc-g-trace) ease-out both;
+}
+.sc-g__fin {
+  fill: var(--socle-carte-bas);
+  stroke: var(--sc-g-c);
+  stroke-width: var(--sc-g-trait);
+  animation: sc-g-fondu 200ms ease-out 300ms both;
+}
+.sc-g__repere { stroke: var(--socle-bord-controle); stroke-width: 1; shape-rendering: crispEdges; }
+.sc-g__point { fill: var(--sc-g-c); stroke: var(--socle-carte-bas); stroke-width: 2; }
+.sc-g__point2 { fill: var(--socle-texte-2); stroke: var(--socle-carte-bas); stroke-width: 2; }
+
+/* ── Points : de vrais boutons transparents, un par point ── */
+.sc-g__points { position: absolute; inset: 0; }
+.sc-g__zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  appearance: none;
+  cursor: default;
+}
+.sc-g__zone:focus { outline: none; }
+.sc-g__zone:focus-visible { outline: 2px solid var(--socle-texte-1); outline-offset: -2px; }
+
+/* La bulle d'un point actif : étiquette en T4, valeur en T1. */
+.sc-g__bulle {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 5px 9px;
+  border: 1px solid var(--socle-bord-dialogue);
+  border-radius: var(--socle-rayon-tag);
+  background: var(--socle-dialogue);
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 12px));
+}
+.sc-g__bulle[data-bas='oui'] { transform: translate(-50%, 12px); }
+.sc-g__bulle-etiquette { color: var(--socle-texte-3); font-size: var(--sc-g-axe); line-height: 1.3; }
+.sc-g__bulle-valeur { color: var(--socle-texte-1); font-size: var(--sc-g-valeur); font-weight: 600; line-height: 1.3; }
+
+/* ── Légendes (série en pointillé, donut) ── */
+.sc-g__legende { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; padding: 0; list-style: none; }
+.sc-g--courbe .sc-g__legende { margin-top: 8px; }
+.sc-g__legende li { display: inline-flex; align-items: center; gap: 7px; color: var(--socle-texte-2); font-size: var(--sc-g-legende); line-height: 1.35; }
+.sc-g__echantillon { flex: none; }
+.sc-g__ligne-echantillon { stroke: var(--sc-g-c); stroke-width: var(--sc-g-trait); stroke-linecap: round; }
+.sc-g__ligne-echantillon--pointille { stroke: var(--socle-texte-2); stroke-dasharray: 4 4; }
+
+/* ── Barres ── */
+.sc-g__colonne {
+  fill: var(--socle-colonne-graphique);
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transition: fill 150ms ease-out;
+  animation: sc-g-croit var(--sc-g-trace) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.sc-g__colonne[data-sens='bas'] { transform-origin: 50% 0; }
+/* Une valeur nulle : un filet, plus clair que la colonne, pour qu'on la voie. */
+.sc-g__colonne[data-zero='oui'] { fill: var(--socle-texte-3); }
+.sc-g__colonne[data-actif='oui'] { fill: color-mix(in srgb, var(--sc-g-c) 55%, var(--socle-colonne-graphique)); }
+.sc-g__colonne[data-mise='oui'] { fill: var(--sc-g-c); }
+.sc-g__valeur {
+  fill: var(--socle-texte-1);
+  font-family: inherit;
+  font-size: var(--sc-g-valeur);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Donut : l'anneau à gauche, la légende à droite ── */
+.sc-g--donut { display: flex; align-items: center; gap: 18px; }
+.sc-g__donut-anneau { position: relative; flex: none; }
+.sc-g--donut .sc-g__svg { width: 100%; height: 100%; }
+.sc-g__piste { fill: none; stroke: var(--socle-anneau-fond); }
+.sc-g__segment {
+  fill: none;
+  stroke-linecap: butt;
+  animation: sc-g-segment var(--sc-g-trace) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.sc-g__donut-centre {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  color: var(--socle-texte-1);
+  font-weight: 600;
+  text-align: center;
+}
+.sc-g__donut-vide { color: var(--socle-texte-3); font-size: 12px; font-weight: 400; line-height: 1.3; }
+.sc-g__legende--donut { flex: 1; min-width: 0; flex-direction: column; flex-wrap: nowrap; gap: 8px; }
+.sc-g__legende--donut li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 9px; align-items: center; }
+.sc-g__pastille { width: var(--sc-g-pastille); height: var(--sc-g-pastille); border-radius: var(--socle-rayon-pastille); }
+.sc-g__legende-libelle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-g__legende-valeur { color: var(--socle-texte-1); font-weight: 600; font-variant-numeric: tabular-nums; }
+.sc-g__legende-part { color: var(--socle-texte-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+/* ── Mini-courbe : trait seul et point final ── */
+.sc-g--mini { display: inline-block; flex: none; overflow: visible; vertical-align: middle; }
+.sc-g__mini-ligne {
+  fill: none;
+  stroke: var(--sc-g-c);
+  stroke-width: var(--sc-g-trait);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: sc-g-fondu var(--sc-g-trace) ease-out both;
+}
+.sc-g__mini-fin { fill: var(--sc-g-c); animation: sc-g-fondu 200ms ease-out 200ms both; }
+.sc-g__repos { stroke: var(--socle-bord-controle); stroke-width: var(--sc-g-trait); stroke-linecap: round; }
+
+/* ── Pas encore de données ── */
+.sc-g--vide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--socle-pointille);
+  border-radius: var(--socle-rayon-sous-carte);
+  color: var(--socle-texte-3);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+/* ── Anneau (Ring) : la valeur au centre, 600, tabulaire ── */
+.sc-g-anneau { display: inline-flex; flex: none; }
+.sc-g-anneau .sc-anneau__centre {
+  font-size: var(--sc-g-anneau-valeur);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* ── Entrées de 400 ms ── */
+@keyframes sc-g-fondu { from { opacity: 0; } }
+@keyframes sc-g-trace { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes sc-g-croit { from { transform: scaleY(0); } }
+@keyframes sc-g-segment { from { stroke-dasharray: 0 var(--sc-g-tour); } }
+
+/* Pas d'animation d'entrée si le système demande moins de mouvement (le réglage Mouvement « aucun » est déjà géré par src/index.css). */
+@media (prefers-reduced-motion: reduce) {
+  .sc-g * { animation: none; transition: none; }
+}
