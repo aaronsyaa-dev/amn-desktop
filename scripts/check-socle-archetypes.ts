@@ -361,7 +361,7 @@ await dit('page : jamais de défilement de la page entière — flex:1, min-heig
   assert.match(css, /@media \(min-width: 1280px\)\s*\{[^}]*\.sc-principal:has\(> \.sc-page:not\(\[data-autonome='true'\]\)\)\s*\{[^}]*flex-direction:\s*column/);
   assert.match(css, /\.sc-principal-fin\s*\{\s*display:\s*none/);
   const coquille = sansCommentaires(lire('src/socle/coquille/coquille.css'));
-  assert.match(coquille, /\.sc-principal \{[^}]*padding:\s*26px 40px 0/, 'la coquille porte déjà le rembourrage');
+  assert.match(coquille, /\.sc-principal \{[^}]*padding:\s*24px 40px 0/, 'la coquille porte déjà le rembourrage');
   assert.doesNotMatch(bloc('.sc-page'), /padding/, 'la page de la coquille n’en pose pas un second');
   assert.match(bloc('.sc-zone'), /flex:\s*1 1 0/);
   for (const z of ['.sc-tableau__defile', '.sc-grille-cartes__zone', '.sc-liste-scindee__defile', '.sc-semaine__corps', '.sc-detail__defile']) assert.match(bloc(z), /overflow(-y)?:\s*auto/, `${z} défile en interne`);

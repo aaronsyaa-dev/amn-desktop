@@ -43,4 +43,4 @@ export { debutDeSemaine, joursConsecutifs, memeJour, placerEvenements, positionM
 export { trierLignes, filtrerLignes, regrouperLignes, prochainTri, ariaSort, type TriTableau } from './logique/tableau';
 export { deplacerElement, type ColonneLogique, type ResultatDeplacement } from './logique/kanban';
 export { deplacerLineaire, deplacerDansGrille, nombreDeColonnes } from './logique/navigation';
-export { formaterPourcent, formaterMontant, formaterDate, formaterHeure } from './logique/formats';
+export { formaterPourcent as formaterRatio, formaterMontant, formaterDate, formaterHeure } from './logique/formats';
