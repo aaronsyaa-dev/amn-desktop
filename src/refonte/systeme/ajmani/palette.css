@@ -1,0 +1,279 @@
+/*
+  LA PALETTE ⌘J D'AJMANI — G05 (LOT-00, écran de référence d'Ajmani pour toute l'application).
+  ═══════════════════════════════════════════════════════════════════════════════════════════
+
+  Les cotes viennent de la fiche G05 (fenêtre de 1440 × 900, ± 2 px) ; les couleurs, de `src/socle/noir.css`.
+  Quand la fiche donne une valeur sans jeton (la tuile du champ), elle est déclarée ici, en `--sc-ajp-*`,
+  sous `:root[data-ambiance='noir']` : le seul endroit de cette feuille où une couleur s'écrit en dur.
+
+  Les encres « discret » (`--socle-trait-discret`, `--socle-trait-tres-discret`) ne servent JAMAIS de couleur
+  de texte ici. Le plus petit texte lu fait 11 px (T4 `--socle-texte-3`, 5,3:1 au pire).
+
+  Chargée par le composant (`PaletteAjmaniRefonte.tsx`) ; n'existe que dans l'édition interne.
+*/
+:root[data-ambiance='noir'] {
+  /* Les cotes de la palette (fiche G05, rubrique 3). */
+  --sc-ajp-largeur: 620px;
+  --sc-ajp-hauteur: 502px;
+  --sc-ajp-haut: 118px;
+  --sc-ajp-champ: 65px;
+  --sc-ajp-bouton: 31px;
+  --sc-ajp-ligne: 54px;
+  --sc-ajp-pied: 36px;
+  --sc-ajp-rayon: 18px;
+  /* La tuile de l'étincelle, dans le champ : 30 × 30, rayon 9. */
+  --sc-ajp-tuile: 30px;
+  --sc-ajp-tuile-fond: #1e1f22;
+  --sc-ajp-tuile-bord: #2e3035;
+  /* Le voile : environ 70 % de noir, légèrement flouté. */
+  --sc-ajp-voile: rgba(0, 0, 0, 0.7);
+  --sc-ajp-ombre: 0 24px 80px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Le voile : calque fixe, z-index 50 (celui que la pile des calques reconnaît) ── */
+.ajp-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--sc-ajp-haut) 16px 16px;
+  background: var(--sc-ajp-voile);
+  backdrop-filter: blur(3px);
+  animation: ajp-voile-entre 160ms ease-out both;
+}
+.ajp-voile[data-sortie='true'] { animation: ajp-voile-sort 120ms ease-in both; pointer-events: none; }
+
+/* ── La palette : 620 × 502, rayon 18, quatre bandes ── */
+.ajp-palette {
+  display: flex;
+  box-sizing: border-box;
+  width: var(--sc-ajp-largeur);
+  max-width: calc(100vw - 32px);
+  height: var(--sc-ajp-hauteur);
+  max-height: calc(100dvh - var(--sc-ajp-haut) - 16px);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--socle-bord-suggestion);
+  border-radius: var(--sc-ajp-rayon);
+  background: linear-gradient(180deg, var(--socle-suggestion-haut), var(--socle-suggestion-bas));
+  box-shadow: var(--sc-ajp-ombre);
+  color: var(--socle-texte-1);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  outline: none;
+  animation: ajp-entre 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.ajp-voile[data-sortie='true'] .ajp-palette { animation: ajp-sort 120ms ease-in both; }
+
+/* ── Bande 1 · le champ (65) ── */
+.ajp-champ {
+  display: flex;
+  box-sizing: border-box;
+  height: var(--sc-ajp-champ);
+  flex: none;
+  align-items: center;
+  gap: 13px;
+  padding: 0 19px;
+  border-bottom: 1px solid var(--socle-bord-entete);
+}
+.ajp-tuile {
+  display: grid;
+  box-sizing: border-box;
+  width: var(--sc-ajp-tuile);
+  height: var(--sc-ajp-tuile);
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--sc-ajp-tuile-bord);
+  border-radius: 9px;
+  background: var(--sc-ajp-tuile-fond);
+}
+.ajp-tuile svg { display: block; }
+.ajp-tuile[data-tourne='true'] svg { animation: ajp-tourne 2.4s linear infinite; }
+.ajp-champ__saisie {
+  min-width: 0;
+  height: 100%;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  caret-color: var(--socle-etat-succes);
+  color: var(--socle-texte-1);
+  font: inherit;
+  font-size: 15px;
+  outline: none;
+}
+.ajp-champ__saisie::placeholder { color: var(--socle-texte-3); opacity: 1; }
+
+/* ── Le bandeau hors ligne ── */
+.ajp-bandeau {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 20px;
+  border-bottom: 1px solid var(--socle-bord-entete);
+  background: color-mix(in srgb, var(--socle-etat-attention) 8%, transparent);
+  color: var(--socle-etat-attention);
+  font-size: 12px;
+  line-height: 16px;
+}
+.ajp-bandeau svg { flex: none; width: 14px; height: 14px; }
+
+/* ── Bande 2 · la proposition (140) ── */
+.ajp-proposition {
+  box-sizing: border-box;
+  min-height: 140px;
+  max-height: 300px;
+  flex: 0 0 auto;
+  overflow-y: auto;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--socle-bord-entete);
+}
+.ajp-section {
+  margin: 0 0 8px;
+  color: var(--socle-texte-3);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+.ajp-phrase {
+  margin: 0;
+  color: var(--socle-texte-courant);
+  font-size: 13.5px;
+  line-height: 20px;
+}
+.ajp-phrase strong { color: var(--socle-texte-1); font-weight: 600; }
+.ajp-details { margin: 6px 0 0; padding: 0; list-style: none; color: var(--socle-texte-2); font-size: 12.5px; line-height: 18px; }
+.ajp-pastille { margin-top: 8px; }
+.ajp-boutons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+.ajp-boutons [data-socle='bouton'] { min-height: var(--sc-ajp-bouton); }
+.ajp-etat { margin: 6px 0 0; color: var(--socle-texte-3); font-size: 12px; line-height: 16px; }
+
+/* Les lignes de la réponse (résultats, choix, récent) : un peu plus serrées que celles de « Ou lancez ». */
+.ajp-liste { margin: 8px -8px 0; padding: 0; list-style: none; }
+.ajp-liste .ajp-ligne { height: 46px; }
+.ajp-groupe { margin: 8px 8px 2px; color: var(--socle-texte-3); font-size: 11px; font-weight: 500; letter-spacing: 0.06em; line-height: 16px; text-transform: uppercase; }
+.ajp-lien {
+  margin: 6px 0 0;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--socle-texte-3);
+  font: inherit;
+  font-size: 11.5px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.ajp-lien:hover { color: var(--socle-texte-courant); }
+.ajp-lien:focus-visible { outline: 2px solid var(--color-socle-focus); outline-offset: 2px; border-radius: 4px; }
+
+/* La réflexion : deux lignes de squelette et un mot. */
+.ajp-squelettes { display: grid; gap: 10px; margin: 4px 0 12px; }
+.ajp-squelette {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--socle-squelette), var(--socle-squelette-reflet), var(--socle-squelette));
+  background-size: 200% 100%;
+  animation: ajp-reflet 1.6s ease-in-out infinite;
+}
+.ajp-squelette[data-court='true'] { width: 62%; }
+
+/* ── Bande 3 · « Ou lancez » (261) ── */
+.ajp-lancer { min-height: 0; flex: 1 1 0; overflow-y: auto; padding-bottom: 4px; }
+.ajp-lancer .ajp-section { margin: 14px 0 4px; padding: 0 22px; }
+.ajp-lancer__liste { margin: 0; padding: 0 12px; list-style: none; }
+
+.ajp-ligne {
+  display: flex;
+  box-sizing: border-box;
+  height: var(--sc-ajp-ligne);
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  border-radius: var(--socle-rayon-sous-carte);
+  cursor: pointer;
+  list-style: none;
+}
+.ajp-ligne[aria-selected='true'] { background: var(--socle-ligne-active); }
+.ajp-ligne[aria-disabled='true'] { cursor: default; }
+.ajp-ligne__tuile {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  place-items: center;
+  border-radius: var(--socle-rayon-champ);
+  background: var(--socle-tag);
+  color: var(--socle-texte-courant);
+}
+.ajp-ligne__tuile svg { width: 16px; height: 16px; }
+.ajp-ligne[aria-selected='true'] .ajp-ligne__tuile { background: var(--socle-ligne-choisie); }
+.ajp-ligne__texte { display: flex; min-width: 0; flex: 1; flex-direction: column; }
+.ajp-ligne__titre { overflow: hidden; color: var(--socle-texte-1); font-size: 13.5px; font-weight: 500; line-height: 17px; text-overflow: ellipsis; white-space: nowrap; }
+.ajp-ligne__sous { overflow: hidden; color: var(--socle-texte-3); font-size: 12px; line-height: 15px; text-overflow: ellipsis; white-space: nowrap; }
+.ajp-ligne__fleche { flex: none; width: 14px; height: 14px; color: var(--socle-texte-3); }
+.ajp-ligne[aria-selected='true'] .ajp-ligne__fleche { color: var(--socle-texte-courant); }
+.ajp-ligne__jour { flex: none; color: var(--socle-texte-3); font-size: 12px; }
+/* Une demande récente : l'horloge de 14 px, sans tuile ; le jour en T4 à droite. */
+.ajp-ligne[data-recent] .ajp-ligne__tuile { width: 20px; height: 20px; background: none; }
+.ajp-ligne[data-recent] .ajp-ligne__tuile svg { width: 14px; height: 14px; }
+.ajp-ligne[data-recent] .ajp-ligne__titre { font-size: 13.5px; }
+.ajp-ligne[aria-disabled='true'] .ajp-ligne__titre { color: var(--socle-texte-3); }
+
+/* ── Bande 4 · le pied (36) ── */
+.ajp-pied {
+  display: flex;
+  box-sizing: border-box;
+  height: var(--sc-ajp-pied);
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 19px;
+  border-top: 1px solid var(--socle-bord-entete);
+  color: var(--socle-texte-3);
+  font-size: 11.5px;
+}
+.ajp-pied__aide { display: flex; gap: 16px; margin: 0; }
+.ajp-pied p { margin: 0; }
+
+/* ── Les mouvements ── */
+@keyframes ajp-entre { from { opacity: 0; transform: translateY(6px) scale(0.985); } to { opacity: 1; transform: none; } }
+@keyframes ajp-sort { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(6px) scale(0.985); } }
+@keyframes ajp-voile-entre { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ajp-voile-sort { from { opacity: 1; } to { opacity: 0; } }
+@keyframes ajp-fondu-entre { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ajp-fondu-sort { from { opacity: 1; } to { opacity: 0; } }
+@keyframes ajp-tourne { to { transform: rotate(360deg); } }
+@keyframes ajp-reflet { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+
+/* Mouvement réduit : le fondu seul, pas de décalage ni d'échelle ; l'étincelle reste fixe ; pas de reflet. */
+@media (prefers-reduced-motion: reduce) {
+  .ajp-palette { animation-name: ajp-fondu-entre; }
+  .ajp-voile[data-sortie='true'] .ajp-palette { animation-name: ajp-fondu-sort; }
+  .ajp-tuile[data-tourne='true'] svg, .ajp-squelette { animation: none; }
+}
+:root[data-mouvement='reduit'] .ajp-palette { animation-name: ajp-fondu-entre; }
+:root[data-mouvement='reduit'] .ajp-voile[data-sortie='true'] .ajp-palette { animation-name: ajp-fondu-sort; }
+:root[data-mouvement='reduit'] .ajp-tuile[data-tourne='true'] svg,
+:root[data-mouvement='reduit'] .ajp-squelette { animation: none; }
+:root[data-mouvement='aucun'] .ajp-voile,
+:root[data-mouvement='aucun'] .ajp-palette,
+:root[data-mouvement='aucun'] .ajp-tuile[data-tourne='true'] svg,
+:root[data-mouvement='aucun'] .ajp-squelette { animation: none; }
+
+/* Au toucher, les boutons de la proposition font 46 de haut. */
+@media (pointer: coarse) {
+  .ajp-boutons [data-socle='bouton'] { min-height: 46px; }
+}
+
+/* ── Sous 700 px : toute la largeur moins 2 × 16, à 12 px du haut ; pas d'aide au clavier ; boutons de 46 ── */
+@media (max-width: 699.98px) {
+  .ajp-voile { padding-top: 12px; }
+  .ajp-palette { width: 100%; height: auto; max-height: calc(100dvh - 24px); }
+  .ajp-pied__aide { display: none; }
+  .ajp-pied { justify-content: flex-end; }
+  .ajp-boutons [data-socle='bouton'] { min-height: 46px; }
+}
