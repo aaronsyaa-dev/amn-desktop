@@ -10,9 +10,11 @@ import { ROUTE_TOUS_LES_MODULES, TousLesModules } from '@edition/navigation';
 import { routesDuRegistre } from '../refonte/modules/routes';
 import { ConnexionRefonte } from '../refonte/systeme/connexion/ConnexionRefonte';
 import { FournisseurToasts } from '../socle/ui/situations';
+import { ROUTE_NOTIFICATIONS } from '../refonte/systeme/routes';
 
 /* Les pages de démonstration du socle : réservées au développement (`import.meta.env.DEV` est remplacé à la
    construction, la branche et ses morceaux disparaissent du paquet livré). */
+const PageNotificationsRoute = lazy(() => import('../refonte/systeme/PageNotificationsRoute'));
 const PageEnsembleFamille = lazy(() => import('../refonte/systeme/PageEnsembleFamille'));
 const PageEtatsMessages = lazy(() => import('../refonte/systeme/h43-etats/PageEtatsMessages'));
 import { InvitationScreen } from '../screens/InvitationScreen';
@@ -388,6 +390,8 @@ function AmnRoutes() {
         {/* Refonte (S1) : tous les modules, rangés par famille puis par action. Pas un module du catalogue. */}
         <Route path={ROUTE_TOUS_LES_MODULES} element={<TousLesModules />} />
         {/* La vue d'ensemble d'une famille (première ligne de la barre latérale) : page générique en attendant celle de chaque lot. */}
+        {/* H40 — Notifications : la cloche de l'en-tête y mène ; pas d'entrée de barre latérale. */}
+        <Route path={ROUTE_NOTIFICATIONS} element={<Suspense fallback={null}><PageNotificationsRoute /></Suspense>} />
         <Route path="/ensemble/:famille" element={<Suspense fallback={null}><PageEnsembleFamille /></Suspense>} />
         {/* Refonte S5 : les écrans neufs déclarés au registre (`src/refonte/modules/declarations/`)
             montent ici leur route, sans qu'on ait à l'écrire. Aucun aujourd'hui. */}

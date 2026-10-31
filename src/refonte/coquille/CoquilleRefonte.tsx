@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Coquille, BarreLaterale, EnTete, BarreAjmani, PaletteAjmani, type FamilleLaterale, type Proposition } from '../../socle/coquille';
-import { EtatVide, Squelette, Chargement, PastilleEtat } from '../../socle/ui';
 import { useSocleLangue } from '../../socle/i18n';
 import { useAssistant } from '../../assistant/AssistantContext';
 import { useNavigationEspacesOptionnelle } from '../../bureaux/navigation';
@@ -15,6 +14,8 @@ import { chercher } from '../navigation/recherche';
 import { familleDe } from '../navigation/registre';
 import { useDonneesCoquille } from './donnees';
 import { PaletteRecherche } from '../systeme/recherche/PaletteRecherche';
+import { useNotificationsNonLuesAvec } from '../systeme/notifications';
+import { ROUTE_NOTIFICATIONS } from '../systeme/routes';
 import { usePoulsGarde } from './pouls';
 import { useToucheModificatrice } from './touche';
 
@@ -113,36 +114,8 @@ export function CoquilleRefonte({ children, largeur = 'lecture' }: { children?: 
     [assistant],
   );
 
-  /* ── Le volet de la cloche : ce qui attend ── */
-  const volet = (fermer: () => void) => (
-    <>
-      <h2 className="sc-popover__titre">{ts('entete.cloche.titre')}</h2>
-      {!donnees.attentionEvaluee ? (
-        <Chargement libelle={ts('bouton.chargement')}>
-          <div style={{ display: 'grid', gap: 10 }}>
-            <Squelette hauteur={14} largeur="80%" />
-            <Squelette hauteur={14} largeur="60%" />
-          </div>
-        </Chargement>
-      ) : donnees.attention.length === 0 ? (
-        <EtatVide texte={ts('entete.cloche.vide')} />
-      ) : (
-        <ul style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: 0, padding: 0, listStyle: 'none' }}>
-          {donnees.attention.slice(0, 6).map((a) => (
-            <li key={a.key}>
-              <Link to={a.to} onClick={fermer} className="sc-module sc-focus" style={{ alignItems: 'flex-start', flexDirection: 'column', gap: 3, height: 'auto' }}>
-                <span style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 8 }}>
-                  <PastilleEtat etat={a.severity === 'critical' ? 'critique' : a.severity === 'warning' ? 'attention' : 'info'}>{a.severity === 'critical' ? '!' : '·'}</PastilleEtat>
-                  <span style={{ color: 'var(--socle-texte-1)', fontWeight: 500, whiteSpace: 'normal' }}>{a.title}</span>
-                </span>
-                <span style={{ color: 'var(--socle-texte-3)', fontSize: 12, whiteSpace: 'normal' }}>{a.evidence}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </>
-  );
+  /* ── La cloche : un lien vers la page Notifications ; le compteur est celui de « Non lues » (le même calcul que la page). ── */
+  const nonLues = useNotificationsNonLuesAvec(donnees.attention, donnees.attentionEvaluee);
 
   const garde: FamilleLaterale | null = donnees.garde;
 
@@ -176,8 +149,8 @@ export function CoquilleRefonte({ children, largeur = 'lecture' }: { children?: 
             fil={donnees.fil}
             enLigne={donnees.enLigne.map((p) => p.nom)}
             presenceMontree={donnees.presenceMontree}
-            notifications={donnees.attention.length}
-            volet={volet}
+            notifications={nonLues}
+            versNotifications={ROUTE_NOTIFICATIONS}
             garde={{ etat: pouls.etat, points: pouls.points, vers: '/garde' }}
             onMenu={() => setTiroir(true)}
             extra={

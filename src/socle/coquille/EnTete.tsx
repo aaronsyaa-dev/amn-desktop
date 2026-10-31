@@ -21,14 +21,16 @@ export interface EnTeteProps {
   presenceMontree: boolean;
   /** Ce qui attend la personne. */
   notifications: number;
-  /** Le contenu du volet de la cloche ; il reçoit de quoi se fermer. */
-  volet: (fermer: () => void) => React.ReactNode;
+  /** La page des notifications : la cloche en devient un lien (H40 — « la cloche ouvre cette page »). Sans elle, la cloche ouvre un volet. */
+  versNotifications?: string;
+  /** Le contenu du volet de la cloche (quand elle n'est pas un lien) ; il reçoit de quoi se fermer. */
+  volet?: (fermer: () => void) => React.ReactNode;
   garde: { etat: EtatGarde; points: number; vers: string };
   extra?: React.ReactNode;
   onMenu: () => void;
 }
 
-export function EnTete({ fil, enLigne, presenceMontree, notifications, volet, garde, extra, onMenu }: EnTeteProps) {
+export function EnTete({ fil, enLigne, presenceMontree, notifications, versNotifications, volet, garde, extra, onMenu }: EnTeteProps) {
   const { ts } = useSocleLangue();
   const texteGarde =
     garde.etat === 'calme'
@@ -76,7 +78,7 @@ export function EnTete({ fil, enLigne, presenceMontree, notifications, volet, ga
           </span>
         )}
 
-        <Cloche nombre={notifications} volet={volet} />
+        {versNotifications ? <ClocheLien nombre={notifications} vers={versNotifications} /> : volet ? <Cloche nombre={notifications} volet={volet} /> : null}
 
         <Link to={garde.vers} data-etat={garde.etat} data-guide="garde" className="sc-garde sc-focus" title={texteGarde}>
           <span aria-hidden className="sc-garde__point" />
@@ -84,6 +86,21 @@ export function EnTete({ fil, enLigne, presenceMontree, notifications, volet, ga
         </Link>
       </div>
     </header>
+  );
+}
+
+/** La cloche, lien vers la page des notifications : 34 px, un badge (« 99+ » au-delà). Le compteur est celui de « Non lues ». */
+function ClocheLien({ nombre, vers }: { nombre: number; vers: string }) {
+  const { ts } = useSocleLangue();
+  return (
+    <Link to={vers} aria-label={nombre > 0 ? ts('entete.cloche.nombre', { n: nombre }) : ts('entete.cloche')} className="sc-cloche sc-focus">
+      <Bell size={16} aria-hidden />
+      {nombre > 0 && (
+        <span aria-hidden className="sc-cloche__badge">
+          {nombre > 99 ? '99+' : nombre}
+        </span>
+      )}
+    </Link>
   );
 }
 
