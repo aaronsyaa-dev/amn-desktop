@@ -8,7 +8,7 @@ import { ModuleRoute } from '../components/ModuleRoute';
 import { AppLayout } from '../components/AppLayout';
 import { ROUTE_TOUS_LES_MODULES, TousLesModules } from '@edition/navigation';
 import { routesDuRegistre } from '../refonte/modules/routes';
-import { LoginScreen } from '../screens/LoginScreen';
+import { ConnexionRefonte } from '../refonte/systeme/connexion/ConnexionRefonte';
 import { InvitationScreen } from '../screens/InvitationScreen';
 import { ReinitialisationScreen } from '../screens/ReinitialisationScreen';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
@@ -192,7 +192,7 @@ import { ContextError } from '../components/org-rail/ContextError';
 export function AppRoot() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginScreen />} />
+      <Route path="/login" element={<ConnexionRefonte />} />
       {/* Publique, et volontairement AVANT le garde d'authentification :
           l'invitée n'a par définition pas encore de compte, donc l'écran
           d'activation ne peut pas vivre derrière une exigence de session. */}

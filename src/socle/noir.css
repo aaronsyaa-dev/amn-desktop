@@ -114,6 +114,16 @@
   --socle-ligne-active: #1a1a1c;
   --socle-ligne-choisie: #262629;
   --socle-sous-element-actif: #242427;
+  /* La connexion (G06) : lueur du panneau gauche, bordures de champ, note de protection. */
+  --socle-connexion-lueur: #151715;
+  --socle-connexion-milieu: #0c0c0e;
+  --socle-connexion-bas: #0a0a0b;
+  --socle-connexion-bord-champ: #2a2a2d;
+  --socle-connexion-bord-focus: #30323a;
+  --socle-connexion-cadenas: #7da76b;
+  --socle-connexion-fond-note: #121314;
+  --socle-connexion-bord-note: #222325;
+  --socle-connexion-survol: #f5f5f5;
   --socle-logo-haut: #ebebec;
   --socle-logo-bas: #bfbfc3;
   --socle-bord-carte-active: #3a3a3e;

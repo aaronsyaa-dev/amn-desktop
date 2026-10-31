@@ -1,0 +1,76 @@
+import { definirMots } from '../../../socle/mots';
+
+/**
+ * LES MOTS DE LA CONNEXION (G06) — l'anglais est le schéma, le français est typé contre lui.
+ * Les textes de la double vérification et du mot de passe oublié restent ceux de `src/i18n`
+ * (clés `connexion.*`) : la logique d'authentification ne change pas, ses messages non plus.
+ */
+const EN = {
+  'gauche.pastille': 'The Guard is watching, {n} organizations',
+  'gauche.titre1': 'All your work,',
+  'gauche.titre2': 'under one hand.',
+  'gauche.texte': 'Your clients, your money, your documents and your oversight, gathered in a calm space you can open in front of anyone.',
+  'gauche.modules': 'modules',
+  'gauche.supervision': 'oversight',
+  'gauche.familles': 'families',
+  'gauche.h24': '24/7',
+  'gauche.edition': 'AMN DevSec · the team’s internal edition',
+  'form.titre': 'Sign in',
+  'form.consigne': 'Enter with your email and your password.',
+  'form.email': 'Email address',
+  'form.mdp': 'Password',
+  'form.oublie': 'Forgot?',
+  'form.oublie.nom': 'Forgot your password?',
+  'form.afficher': 'Show',
+  'form.masquer': 'Hide',
+  'form.afficher.nom': 'Show the password',
+  'form.masquer.nom': 'Hide the password',
+  'form.valider': 'Sign in',
+  'form.enCours': 'Signing in',
+  'form.note': 'Protected sign-in. Every access is noted in the Guard’s log.',
+  'form.pasDeCompte': 'No account yet?',
+  'form.demander': 'Ask the team for access',
+  'form.demander.texte': 'Access is by invitation. Ask an administrator of your team to invite you: you will receive a link by email.',
+  'erreur.email.vide': 'Enter your email address.',
+  'erreur.email.incomplet': 'This email address looks incomplete.',
+  'erreur.serveur': 'Sign-in could not go through. Try again in a moment.',
+  'horsLigne': 'You are offline. Reconnect to the network to open your space.',
+  'reessayer': 'Try again',
+  'verrMaj': 'Caps Lock is on',
+} as const;
+
+const FR: Record<keyof typeof EN, string> = {
+  'gauche.pastille': 'La Garde veille, {n} organisations',
+  'gauche.titre1': 'Tout votre travail,',
+  'gauche.titre2': 'sous une seule main.',
+  'gauche.texte': 'Vos clients, votre argent, vos documents et votre supervision, réunis dans un espace sobre que vous pouvez ouvrir devant n’importe qui.',
+  'gauche.modules': 'modules',
+  'gauche.supervision': 'supervision',
+  'gauche.familles': 'familles',
+  'gauche.h24': 'H24',
+  'gauche.edition': 'AMN DevSec · édition interne de l’équipe',
+  'form.titre': 'Connexion',
+  'form.consigne': 'Entrez avec votre e-mail et votre mot de passe.',
+  'form.email': 'Adresse e-mail',
+  'form.mdp': 'Mot de passe',
+  'form.oublie': 'Oublié ?',
+  'form.oublie.nom': 'Mot de passe oublié ?',
+  'form.afficher': 'Afficher',
+  'form.masquer': 'Masquer',
+  'form.afficher.nom': 'Afficher le mot de passe',
+  'form.masquer.nom': 'Masquer le mot de passe',
+  'form.valider': 'Se connecter',
+  'form.enCours': 'Connexion en cours',
+  'form.note': 'Connexion protégée. Chaque accès est noté dans le journal de la Garde.',
+  'form.pasDeCompte': 'Pas encore de compte ?',
+  'form.demander': 'Demandez un accès à l’équipe',
+  'form.demander.texte': 'L’accès se fait sur invitation. Demandez à un administrateur de votre équipe de vous inviter : vous recevrez un lien par courriel.',
+  'erreur.email.vide': 'Saisissez votre adresse e-mail.',
+  'erreur.email.incomplet': 'Cette adresse e-mail semble incomplète.',
+  'erreur.serveur': 'La connexion n’a pas pu aboutir. Réessayez dans un instant.',
+  'horsLigne': 'Vous êtes hors connexion. Reconnectez-vous au réseau pour ouvrir votre espace.',
+  'reessayer': 'Réessayer',
+  'verrMaj': 'Verr. Maj. est activée',
+};
+
+export const { useMots, traduire, dictionnaires } = definirMots(EN, FR);

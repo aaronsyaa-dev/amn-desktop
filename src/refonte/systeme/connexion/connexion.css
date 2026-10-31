@@ -1,0 +1,203 @@
+/*
+  LA CONNEXION (G06) — deux colonnes : présentation (600 px) et formulaire (360 px, centré).
+  Valeurs de la fiche G06 ; les couleurs viennent de `src/socle/noir.css` (jetons `--socle-*`).
+  Chargée avec l'écran, édition interne seulement.
+*/
+:root[data-ambiance='noir'] .cx {
+  --cx-champ-h: 44px;
+  --cx-focus-halo: color-mix(in srgb, var(--socle-etat-succes) 14%, transparent);
+  display: grid;
+  grid-template-columns: 600px minmax(0, 1fr);
+  min-height: 100dvh;
+  background: var(--socle-fond-page);
+  color: var(--socle-texte-1);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Panneau gauche : lueur douce en haut, logo en haut, présentation ancrée en bas ── */
+:root[data-ambiance='noir'] .cx-gauche {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 56px;
+  border-right: 1px solid var(--socle-onglet-compteur);
+  background: linear-gradient(180deg, var(--socle-connexion-lueur) 0, var(--socle-connexion-milieu) 300px, var(--socle-connexion-bas) 100%);
+}
+.cx-marque { display: flex; align-items: center; gap: 11px; }
+.cx-marque__logo {
+  display: flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: linear-gradient(180deg, var(--socle-logo-haut), var(--socle-logo-bas));
+  color: var(--socle-primaire-encre);
+  font-size: 15px;
+  font-weight: 700;
+}
+.cx-marque__nom { color: var(--socle-texte-1); font-size: 15px; font-weight: 600; }
+.cx-presentation { display: flex; flex-direction: column; align-items: flex-start; }
+.cx-pastille {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 3px 11px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--socle-etat-succes) 8%, var(--socle-fond-page));
+  color: var(--socle-etat-succes);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+.cx-pastille__point { width: 6px; height: 6px; border-radius: 99px; background: var(--socle-etat-succes); }
+.cx-titre-gauche { margin: 22px 0 0; color: var(--socle-texte-1); font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 40px; }
+.cx-texte-gauche { max-width: 372px; margin: 16px 0 0; color: var(--socle-texte-3); font-size: 15px; line-height: 24px; }
+.cx-chiffres { display: flex; gap: 26px; margin: 24px 0 0; padding: 0; }
+.cx-chiffres > div { display: flex; flex-direction: column-reverse; gap: 2px; }
+.cx-chiffres dd { margin: 0; color: var(--socle-texte-1); font-size: 26px; font-weight: 600; letter-spacing: -0.02em; line-height: 32px; }
+.cx-chiffres dt { color: var(--socle-texte-3); font-size: 11.5px; }
+.cx-edition { margin: 31px 0 0; color: var(--socle-texte-3); font-size: 11.5px; }
+
+/* ── Panneau droit : formulaire de 360 px, centré dans les deux sens ── */
+.cx-droite { display: flex; align-items: center; justify-content: center; padding: 48px 24px; }
+.cx-colonne { display: flex; width: min(360px, 100%); flex-direction: column; }
+.cx-form { display: flex; flex-direction: column; }
+.cx-titre { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; }
+.cx-consigne { margin: 8px 0 0; color: var(--socle-texte-3); font-size: 13.5px; line-height: 1.45; }
+.cx-consigne--fait { color: var(--socle-texte-1); line-height: 1.6; }
+.cx-groupe { position: relative; display: flex; flex-direction: column; gap: 8px; margin-top: 22px; }
+.cx-groupe + .cx-groupe { margin-top: 14px; }
+.cx-etiquette { color: var(--socle-texte-3); font-size: 12px; font-weight: 500; line-height: 1.3; }
+.cx-champ {
+  position: relative;
+  display: flex;
+  height: var(--cx-champ-h);
+  align-items: center;
+  gap: 9px;
+  padding: 0 15px;
+  border: 1px solid var(--socle-connexion-bord-champ);
+  border-radius: 12px;
+  background: var(--socle-champ);
+  color: var(--socle-texte-3);
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.cx-champ:focus-within { border-color: var(--socle-connexion-bord-focus); box-shadow: 0 0 0 3px var(--cx-focus-halo), 0 0 0 5px color-mix(in srgb, var(--color-socle-focus) 70%, transparent); }
+.cx-champ:focus-within svg { color: var(--socle-connexion-cadenas); }
+.cx-champ[data-invalide='true'] { border-color: var(--socle-etat-critique); }
+.cx-champ input {
+  min-width: 0;
+  flex: 1;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--socle-texte-1);
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+}
+.cx-champ input:disabled { opacity: 0.6; }
+.cx-champ input::placeholder { color: var(--socle-texte-3); }
+/* Chromium colore les champs préremplis : on garde le fond et l'encre du thème. */
+.cx-champ input:-webkit-autofill,
+.cx-champ input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--socle-texte-1);
+  caret-color: var(--socle-texte-1);
+  box-shadow: 0 0 0 1000px var(--socle-champ) inset;
+  transition: background-color 9999s ease-out;
+}
+.cx-afficher { flex: none; padding: 4px 2px; border: 0; background: transparent; color: var(--socle-texte-3); font-family: inherit; font-size: 12px; cursor: pointer; }
+.cx-afficher:hover { color: var(--socle-texte-1); }
+.cx-oublie { position: absolute; top: -2px; right: 0; padding: 2px 0; border: 0; background: transparent; color: var(--socle-texte-2); font-family: inherit; font-size: 12px; cursor: pointer; }
+.cx-oublie:hover { color: var(--socle-texte-1); }
+.cx-aide { margin: 0; color: var(--socle-texte-3); font-size: 11.5px; line-height: 1.45; }
+.cx-aide--courriel { margin-top: 6px; font-size: 12px; }
+.cx-aide--acces { margin-top: 8px; text-align: center; }
+.cx-erreur {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 14px 0 0;
+  color: var(--socle-texte-courant);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.cx-erreur[data-redirection='true'] { color: var(--socle-texte-2); }
+.cx-point { flex: none; width: 6px; height: 6px; margin-top: 5px; border-radius: 99px; background: var(--socle-texte-3); }
+.cx-point--critique { background: var(--socle-etat-critique); }
+.cx-point--attention { background: var(--socle-etat-attention); }
+.cx-hors-ligne {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--socle-etat-attention) 40%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--socle-etat-attention) 10%, transparent);
+  color: var(--socle-texte-courant);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.cx-hors-ligne .cx-point { margin-top: 0; }
+.cx-hors-ligne > span:nth-child(2) { flex: 1; }
+
+/* ── Le bouton : 360 × 46, #ededed, rayon 12, 15 px / 600 ── */
+.cx-valider {
+  display: flex;
+  height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 22px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--socle-primaire);
+  color: var(--socle-primaire-encre);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+.cx-valider:hover:not(:disabled) { background: var(--socle-connexion-survol); }
+.cx-valider:disabled { cursor: not-allowed; opacity: 0.7; }
+.cx-tourne { animation: cx-tour 0.9s linear infinite; }
+@keyframes cx-tour { to { transform: rotate(360deg); } }
+
+.cx-note {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  gap: 9px;
+  margin: 18px 0 0;
+  padding: 16px;
+  border: 1px solid var(--socle-connexion-bord-note);
+  border-radius: 12px;
+  background: var(--socle-connexion-fond-note);
+  color: var(--socle-texte-3);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.cx-note svg { flex: none; color: var(--socle-etat-succes); }
+.cx-pied { margin-top: 22px; color: var(--socle-texte-3); font-size: 12px; text-align: center; }
+.cx-pied p { margin: 0; }
+.cx-lien-bouton { padding: 2px 0; border: 0; background: transparent; color: var(--socle-texte-courant); font-family: inherit; font-size: inherit; cursor: pointer; text-decoration: none; }
+.cx-lien-bouton:hover { color: var(--socle-texte-1); text-decoration: underline; text-underline-offset: 3px; }
+.cx-lien-bouton--centre { margin-top: 14px; font-size: 12px; text-align: center; }
+
+.cx-focus:focus-visible { outline: 2px solid var(--color-socle-focus); outline-offset: 2px; }
+
+/* ── Fenêtre étroite : le panneau de présentation s'efface, le formulaire reste centré ── */
+@media (max-width: 1099.98px) {
+  :root[data-ambiance='noir'] .cx { grid-template-columns: minmax(0, 1fr); }
+  :root[data-ambiance='noir'] .cx-gauche { display: none; }
+}
+@media (max-height: 719.98px) {
+  .cx-droite { align-items: flex-start; padding-top: 48px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cx-tourne { animation: none; }
+  .cx-champ, .cx-valider { transition: none; }
+}
