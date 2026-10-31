@@ -1,0 +1,199 @@
+/*
+  LA PALETTE ⌘K — H41 (LOT-00), aux cotes de la maquette.
+  ═══════════════════════════════════════════════════════
+
+  700 × 444, centrée sur la FENÊTRE (pas sur la zone principale), haut à 96 px — ou 10 % de la hauteur
+  quand la fenêtre fait moins de 700 px. Trois bandes : le champ (58), la liste (342, jusqu'à 520 puis
+  elle défile), le pied (41). Lignes de 44, tuile d'icône de 28 (rayon 8, couleur de la famille à .13).
+
+  Les valeurs viennent de `src/socle/noir.css` (`--socle-*`). Les trois que la maquette donne sans jeton
+  sont déclarées ici, en tête, sous `--sc-recherche-*` : le voile à 50 %, le filet des bandes, l'ombre.
+  Les encres « discret » ne se posent jamais en `color` : le texte lu est T1 à T4 (`--socle-texte-*`).
+
+  Chargé par `PaletteRecherche.tsx`, donc seulement là où la palette est montée (édition interne).
+*/
+
+:root[data-ambiance='noir'] {
+  --sc-recherche-voile: rgba(0, 0, 0, 0.5);
+  --sc-recherche-filet: #26262a;
+  --sc-recherche-ombre: 0 32px 80px rgba(0, 0, 0, 0.6);
+  --sc-recherche-haut: 96px;
+}
+@media (max-height: 699.98px) {
+  :root[data-ambiance='noir'] { --sc-recherche-haut: 10dvh; }
+}
+
+/* ── Le calque : fixe, z-index 50 — c'est ce que la pile des calques reconnaît ── */
+.rc-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--sc-recherche-haut) 0 16px;
+  background: var(--sc-recherche-voile);
+  overscroll-behavior: contain;
+}
+
+/* ── La palette : 700 × 444 ── */
+.rc-palette {
+  display: flex;
+  width: min(700px, calc(100% - 32px));
+  min-height: min(444px, calc(100dvh - var(--sc-recherche-haut) - 16px));
+  max-height: calc(100dvh - var(--sc-recherche-haut) - 16px);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--socle-bord-palette);
+  border-radius: 16px;
+  background: var(--socle-palette-fond);
+  box-shadow: var(--sc-recherche-ombre);
+  color: var(--socle-texte-1);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+/* ── Le champ : 58 px, loupe 16, texte 16, « esc » à droite ── */
+.rc-champ {
+  display: flex;
+  height: 58px;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px 0 22px;
+  border-bottom: 1px solid var(--sc-recherche-filet);
+}
+.rc-champ__loupe { flex: none; color: var(--socle-texte-3); }
+.rc-champ__saisie {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--socle-texte-1);
+  caret-color: var(--socle-texte-1);
+  font: inherit;
+  font-size: 16px;
+  outline: none;
+}
+.rc-champ__saisie::placeholder { color: var(--socle-texte-3); opacity: 1; }
+.rc-champ__echap { display: inline-flex; flex: none; }
+
+/* ── La liste : padding 8, jusqu'à 520 px, puis elle défile — jamais la page ── */
+.rc-liste {
+  min-height: 0;
+  flex: 1 1 auto;
+  max-height: 520px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px;
+}
+.rc-options { display: block; }
+
+/* Libellé de groupe : 11 px, capitales, .08em, T4. */
+.rc-groupe__titre {
+  padding: 10px 14px 6px;
+  color: var(--socle-texte-3);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  line-height: 14px;
+  text-transform: uppercase;
+}
+.rc-groupe + .rc-groupe .rc-groupe__titre { padding-top: 12px; }
+
+/* Ligne : 44 px, tuile 28, libellé 14 px T1, étiquette de type 12 px T4 à 12 px. */
+.rc-ligne {
+  display: flex;
+  height: 44px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px;
+  border-radius: 10px;
+  color: var(--socle-texte-1);
+  font-size: 14px;
+  cursor: pointer;
+}
+/* La sélection suit le clavier et la souris : même fond, rayon 10, jamais de surbrillance des lettres. */
+.rc-ligne[aria-selected='true'] { background: var(--socle-segment-actif); }
+.rc-ligne[aria-disabled='true'] { cursor: not-allowed; }
+.rc-ligne[aria-disabled='true'] .rc-ligne__libelle { color: var(--socle-texte-3); }
+.rc-ligne__libelle { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-ligne__type { flex: none; color: var(--socle-texte-3); font-size: 12px; }
+.rc-ligne__touche { display: inline-flex; flex: none; margin-left: auto; }
+.rc-ligne--squelette { cursor: default; }
+
+.rc-tuile {
+  --rc-teinte: var(--fam, var(--socle-fam-outils));
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--rc-teinte) 13%, transparent);
+  color: var(--rc-teinte);
+}
+/* L'action d'Ajmani est verte : la couleur d'un état réussi, la même que son étincelle. */
+.rc-tuile[data-ajmani] { --rc-teinte: var(--socle-etat-succes); }
+
+/* ── Ce qui se dit sans être une ligne : hors ligne, saisie vide ── */
+.rc-info { margin: 0; padding: 10px 14px; color: var(--socle-texte-3); font-size: 12.5px; line-height: 1.45; }
+
+/* ── Aucun résultat (modèle 5 de H43, en compact) : icône, titre, une phrase, un bouton ── */
+.rc-aucun {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--sc-recherche-filet);
+}
+.rc-aucun__icone {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--socle-bord-carte);
+  color: var(--socle-texte-2);
+}
+.rc-aucun__texte { min-width: 0; flex: 1; }
+.rc-aucun__titre { margin: 0; color: var(--socle-texte-1); font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.rc-aucun__aide { margin: 2px 0 0; color: var(--socle-texte-3); font-size: 13px; line-height: 1.4; }
+
+/* ── Erreur : une ligne et « Réessayer » ; les actions locales restent au-dessus ── */
+.rc-erreur {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--sc-recherche-filet);
+}
+.rc-erreur__texte { margin: 0; color: var(--socle-texte-2); font-size: 13px; }
+
+/* ── Le pied : 41 px, mentions de 12 px T4 espacées de 20 ── */
+.rc-pied {
+  display: flex;
+  height: 41px;
+  flex: none;
+  align-items: center;
+  gap: 20px;
+  padding: 0 20px;
+  border-top: 1px solid var(--sc-recherche-filet);
+  color: var(--socle-texte-3);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.rc-pied__astuce { margin-left: auto; }
+
+/* Sous 560 px de large, le pied ne garde que « ↵ pour ouvrir ». */
+@media (max-width: 559.98px) {
+  .rc-pied__mention[data-secondaire] { display: none; }
+}
