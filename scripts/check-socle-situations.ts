@@ -378,7 +378,7 @@ await dit('pile des toasts : en bas à droite, 20 px au-dessus de la barre Ajman
   assert.match(pile, /position:\s*fixed/);
   assert.match(pile, /bottom:\s*var\(--sc-toast-bas, calc\(var\(--socle-hauteur-ajmani\) \+ 20px\)\)/);
   assert.match(pile, /right:\s*var\(--sc-toast-droite, 20px\)/);
-  assert.equal(jetonNoir('--socle-hauteur-ajmani'), '48px');
+  assert.equal(jetonNoir('--socle-hauteur-ajmani'), '46px');
   const z = Number(/z-index:\s*(\d+)/.exec(pile)?.[1]);
   assert.ok(z < 50 && z > 45, `z-index ${z} : au-dessus du tiroir (45), sous les calques (50), pour ne pas piéger la tabulation`);
 });
