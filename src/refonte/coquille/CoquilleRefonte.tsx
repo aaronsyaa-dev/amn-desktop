@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Coquille, BarreLaterale, EnTete, BarreAjmani, PaletteAjmani, type FamilleLaterale, type Proposition } from '../../socle/coquille';
 import { EtatVide, Squelette, Chargement, PastilleEtat } from '../../socle/ui';
 import { useSocleLangue } from '../../socle/i18n';
-import { useCommandPalette } from '../../components/command-palette/CommandPalette';
 import { useAssistant } from '../../assistant/AssistantContext';
 import { useNavigationEspacesOptionnelle } from '../../bureaux/navigation';
 import { useFermetureEchap } from '../../lib/useFermetureEchap';
@@ -15,6 +14,7 @@ import { ROUTE_TOUS_LES_MODULES, suggestionsDuMoment } from '../navigation/momen
 import { chercher } from '../navigation/recherche';
 import { familleDe } from '../navigation/registre';
 import { useDonneesCoquille } from './donnees';
+import { PaletteRecherche } from '../systeme/recherche/PaletteRecherche';
 import { usePoulsGarde } from './pouls';
 import { useToucheModificatrice } from './touche';
 
@@ -40,7 +40,6 @@ export function CoquilleRefonte({ children, largeur = 'lecture' }: { children?: 
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const espaces = useNavigationEspacesOptionnelle();
-  const recherche = useCommandPalette();
   const assistant = useAssistant();
   const modKey = useToucheModificatrice();
   const pouls = usePoulsGarde();
@@ -52,15 +51,25 @@ export function CoquilleRefonte({ children, largeur = 'lecture' }: { children?: 
   useEffect(() => setTiroir(false), [pathname]);
   useFermetureEchap(tiroir, () => setTiroir(false));
 
-  /* ── La palette ⌘J ── */
+  /* ── Les palettes : ⌘J (Ajmani) et ⌘K (recherche), une seule ouverte à la fois ── */
   const [palette, setPalette] = useState(false);
+  const [rechercheOuverte, setRechercheOuverte] = useState(false);
   useEffect(() => {
     const surTouche = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'j') {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+      const touche = e.key.toLowerCase();
+      if (touche === 'j') {
         e.preventDefault();
         // L'écouteur d'origine de l'assistant basculerait le panneau en même temps.
         e.stopImmediatePropagation();
+        setRechercheOuverte(false);
         setPalette((v) => !v);
+      } else if (touche === 'k') {
+        e.preventDefault();
+        // Sans cela, l'ancienne palette de commandes s'ouvrirait par-dessus.
+        e.stopImmediatePropagation();
+        setPalette(false);
+        setRechercheOuverte((v) => !v);
       }
     };
     window.addEventListener('keydown', surTouche, true);
@@ -154,7 +163,10 @@ export function CoquilleRefonte({ children, largeur = 'lecture' }: { children?: 
             enLigne={donnees.enLigne}
             presenceMontree={donnees.presenceMontree}
             raccourciRecherche={`${modKey} K`}
-            onRecherche={recherche.open}
+            onRecherche={() => {
+              setPalette(false);
+              setRechercheOuverte(true);
+            }}
             ouvert={tiroir}
             onFermer={() => setTiroir(false)}
           />
@@ -182,6 +194,20 @@ export function CoquilleRefonte({ children, largeur = 'lecture' }: { children?: 
       >
         {children}
       </Coquille>
+      <PaletteRecherche
+        ouverte={rechercheOuverte}
+        onFermer={() => setRechercheOuverte(false)}
+        surDemanderAjmani={(texte) => {
+          setRechercheOuverte(false);
+          assistant.sendMessage(texte);
+          assistant.open('chat');
+        }}
+        surAllerA={(route, state) => {
+          setRechercheOuverte(false);
+          if (state) navigate(route, { state });
+          else aller(route);
+        }}
+      />
       <PaletteAjmani ouverte={palette} onFermer={() => setPalette(false)} suggestions={suggestions} chercher={chercherModules} onDemander={demander} />
     </>
   );
