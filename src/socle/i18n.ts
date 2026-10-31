@@ -1,4 +1,8 @@
 import { useLangue, type Langue } from '../i18n';
+import { EN_ETATS, FR_ETATS } from './mots/etats';
+import { EN_GRAPHIQUES, FR_GRAPHIQUES } from './mots/graphiques';
+import { EN_ARCHETYPES, FR_ARCHETYPES } from './mots/archetypes';
+import { EN_CONTROLES, FR_CONTROLES } from './mots/controles';
 
 /**
  * LES MOTS DU SOCLE — fr et en, à part des dictionnaires communs.
@@ -12,6 +16,10 @@ import { useLangue, type Langue } from '../i18n';
  * Les noms de familles sont PROVISOIRES — c'est l'endroit où les changer.
  */
 const EN = {
+  ...EN_ETATS,
+  ...EN_GRAPHIQUES,
+  ...EN_ARCHETYPES,
+  ...EN_CONTROLES,
   'famille.jour': 'My day',
   'famille.contacts': 'People and clients',
   'famille.ecrire': 'Write and remember',
@@ -89,6 +97,10 @@ const EN = {
 export type CleSocle = keyof typeof EN;
 
 const FR: Record<CleSocle, string> = {
+  ...FR_ETATS,
+  ...FR_GRAPHIQUES,
+  ...FR_ARCHETYPES,
+  ...FR_CONTROLES,
   'famille.jour': 'Ma journée',
   'famille.contacts': 'Mes contacts et clients',
   'famille.ecrire': 'Écrire et retenir',

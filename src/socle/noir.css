@@ -78,9 +78,71 @@
 
   /* ── États ── */
   --socle-etat-succes: #8fbf7a;
-  --socle-etat-attention: #d9a27a;
+  --socle-etat-attention: #e0b35a;
   --socle-etat-critique: #e08a80;
   --socle-etat-info: #8aa4d6;
+
+  /* ── LOT-00 : les valeurs exactes des 127 maquettes (01-SOCLE-DESIGN, §1 et §4) ──
+     Texte : T1 `texte-1`, T2 `texte-courant`, T3 `texte-2`, T4 `texte-3` (le plancher). */
+  --socle-texte-courant: #c4c4c8;
+  --socle-sous-carte: #111112;
+  --socle-bord-sous-carte: #212123;
+  --socle-bord-bouton: #2e2e31;
+  --socle-bord-champ: #5a5a60;
+  --socle-bord-kanban: #1e1e20;
+  --socle-ticket: #171718;
+  --socle-bord-ticket: #262628;
+  --socle-suggestion-haut: #17181a;
+  --socle-suggestion-bas: #141415;
+  --socle-bord-suggestion: #2c2e32;
+  --socle-pointille: #2e2e33;
+  --socle-tag: #1a1a1c;
+  --socle-pilule: #171718;
+  --socle-bord-pilule: #2a2a2d;
+  --socle-bord-kbd: #333336;
+  --socle-kbd: #111112;
+  --socle-case-vide: #3a3a3e;
+  --socle-toggle-actif: #2e4327;
+  --socle-toggle-inactif: #242427;
+  --socle-onglet-compteur: #1c1c1e;
+  --socle-segment-actif: #242427;
+  --socle-segment-fond: #141415;
+  --socle-anneau-fond: #1e1e20;
+  --socle-grille-graphique: #1e1e20;
+  --socle-colonne-graphique: #2a2b31;
+  --socle-filet-vertical: #2a2a2d;
+  --socle-ligne-active: #1a1a1c;
+  --socle-ligne-choisie: #262629;
+  --socle-sous-element-actif: #242427;
+
+  /* Squelette : fond, lignes, reflet (H43). */
+  --socle-squelette: #1e1e21;
+  --socle-squelette-ligne: #222225;
+  --socle-squelette-reflet: #26262a;
+
+  /* Dialogue, toast, palette, panneau « Tous les modules » (H41, H43, G05, D02). */
+  --socle-dialogue: #1a1a1c;
+  --socle-bord-dialogue: #34343a;
+  --socle-bord-toast: #2c3327;
+  --socle-palette-fond: #141416;
+  --socle-bord-palette: #34343a;
+  --socle-panneau: #111112;
+  --socle-bord-panneau: #29292c;
+
+  /* Avatars : la couleur d'une personne ou d'une organisation (lettre seule, jamais un visage). */
+  --socle-avatar-a: #4b4b55;
+  --socle-avatar-m: #5a524a;
+  --socle-avatar-r: #46544f;
+  --socle-avatar-c: #3f4a5c;
+  --socle-avatar-t: #54485c;
+  --socle-avatar-l: #5c4a4a;
+
+  /* Rayons des composants (§4). */
+  --socle-rayon-sous-carte: 11px;
+  --socle-rayon-champ: 10px;
+  --socle-rayon-tag: 6px;
+  --socle-rayon-ticket: 12px;
+  --socle-rayon-kanban: 14px;
 
   /* ── Les noms du socle S0, redéfinis ── */
   --color-bg: #0c0c0d;
@@ -119,8 +181,8 @@
 
   --color-etat-succes: #8fbf7a;
   --color-etat-succes-texte: #8fbf7a;
-  --color-etat-attention: #d9a27a;
-  --color-etat-attention-texte: #d9a27a;
+  --color-etat-attention: #e0b35a;
+  --color-etat-attention-texte: #e0b35a;
   --color-etat-danger: #e08a80;
   --color-etat-danger-texte: #e08a80;
   --color-etat-info: #8aa4d6;

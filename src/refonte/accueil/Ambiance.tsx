@@ -5,6 +5,10 @@ import '@fontsource/inter/600.css';
 import '@fontsource/inter/700.css';
 import '../../socle/noir.css';
 import '../../socle/ui/briques.css';
+import '../../socle/ui/controles/controles.css';
+import '../../socle/ui/etats/etats.css';
+import '../../socle/ui/graphiques/graphiques.css';
+import '../../socle/ui/archetypes/archetypes.css';
 import '../../socle/coquille/coquille.css';
 
 /**

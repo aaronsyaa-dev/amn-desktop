@@ -405,7 +405,7 @@ await dit('noir.css : les jetons validés par la direction de design, valeur pou
     '--socle-texte-1': '#ededed', '--socle-texte-2': '#a0a0a5', '--socle-texte-3': '#8a8a8e', '--socle-trait-discret': '#77777c', '--socle-trait-tres-discret': '#5f5f64',
     '--socle-primaire': '#ededed', '--socle-primaire-encre': '#0c0c0d',
     '--socle-fam-jour': '#8aa4d6', '--socle-fam-contacts': '#6fb7a8', '--socle-fam-ecrire': '#a79bdb', '--socle-fam-argent': '#8fbf7a', '--socle-fam-echanger': '#d98fa8', '--socle-fam-creer': '#d9a27a', '--socle-fam-outils': '#9a9aa0',
-    '--socle-etat-succes': '#8fbf7a', '--socle-etat-attention': '#d9a27a', '--socle-etat-critique': '#e08a80', '--socle-etat-info': '#8aa4d6',
+    '--socle-etat-succes': '#8fbf7a', '--socle-etat-attention': '#e0b35a', '--socle-etat-critique': '#e08a80', '--socle-etat-info': '#8aa4d6',
     '--socle-rayon-carte': '14px', '--socle-rayon-controle': '9px', '--socle-rayon-bouton': '10px', '--socle-rayon-pastille': '99px',
     '--socle-largeur-lateral': '252px', '--socle-hauteur-entete': '60px', '--socle-hauteur-ajmani': '48px',
   };
