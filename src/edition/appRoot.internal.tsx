@@ -13,6 +13,7 @@ import { FournisseurToasts } from '../socle/ui/situations';
 
 /* Les pages de démonstration du socle : réservées au développement (`import.meta.env.DEV` est remplacé à la
    construction, la branche et ses morceaux disparaissent du paquet livré). */
+const PageEnsembleFamille = lazy(() => import('../refonte/systeme/PageEnsembleFamille'));
 const PageEtatsMessages = lazy(() => import('../refonte/systeme/h43-etats/PageEtatsMessages'));
 import { InvitationScreen } from '../screens/InvitationScreen';
 import { ReinitialisationScreen } from '../screens/ReinitialisationScreen';
@@ -386,6 +387,8 @@ function AmnRoutes() {
         <Route path="/bibliotheque" element={<LibraryScreen />} />
         {/* Refonte (S1) : tous les modules, rangés par famille puis par action. Pas un module du catalogue. */}
         <Route path={ROUTE_TOUS_LES_MODULES} element={<TousLesModules />} />
+        {/* La vue d'ensemble d'une famille (première ligne de la barre latérale) : page générique en attendant celle de chaque lot. */}
+        <Route path="/ensemble/:famille" element={<Suspense fallback={null}><PageEnsembleFamille /></Suspense>} />
         {/* Refonte S5 : les écrans neufs déclarés au registre (`src/refonte/modules/declarations/`)
             montent ici leur route, sans qu'on ait à l'écrire. Aucun aujourd'hui. */}
         {routesDuRegistre()}
