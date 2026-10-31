@@ -35,6 +35,7 @@
 }
 .sc-point[data-taille='6'] { width: 6px; height: 6px; }
 .sc-point[data-taille='8'] { width: 8px; height: 8px; }
+.sc-point[data-taille='9'] { width: 9px; height: 9px; }
 /* Le halo d'un point « vivant » (La Garde veille) : fixe, il ne bat pas. */
 .sc-point[data-halo='true'] { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent); }
 
@@ -43,49 +44,72 @@
   background: linear-gradient(180deg, var(--socle-carte-haut), var(--socle-carte-bas));
   border-color: var(--socle-bord-carte);
   border-radius: var(--socle-rayon-carte);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
+:root[data-ambiance='noir'] [data-socle='carte']:not([data-sans-marge='true']) { padding: 16px 18px; }
+:root[data-ambiance='noir'] [data-socle='carte'][data-compacte='true']:not([data-sans-marge='true']) { padding: 14px 16px; }
+/* La carte « active » d'un panneau (D02) : bordure plus claire, haut éclairci. */
+:root[data-ambiance='noir'] [data-socle='carte'][data-active='true'] { border-color: var(--socle-bord-carte-active); background: linear-gradient(180deg, var(--socle-carte-active-haut), var(--socle-carte-bas)); }
 :root[data-ambiance='noir'] button[data-socle='carte']:hover {
   border-color: var(--color-socle-bord-fort);
   background: linear-gradient(180deg, var(--socle-carte-haut), var(--socle-carte-haut));
 }
 
-/* ── Le bouton (brique d'origine, retouchée) : UN seul plein blanc par écran ── */
-:root[data-ambiance='noir'] [data-socle='bouton'] { border-radius: var(--socle-rayon-controle); font-family: inherit; }
-:root[data-ambiance='noir'] [data-socle='bouton'][data-variante='secondaire'] {
-  border-color: var(--socle-bord-controle);
-  color: var(--socle-texte-1);
+/* ── Le bouton : UN seul plein blanc par écran (01-SOCLE-DESIGN §4) ──
+   Primaire : fond #ededed, texte #0c0c0d 12,5 px / 600, 8 × 15, rayon 9, 31 px de haut.
+   Secondaire : bordure #2e2e31, texte T2 12,5 px, 7 × 13 + 1 px de bordure, rayon 9, 31 px de haut. */
+:root[data-ambiance='noir'] [data-socle='bouton'] {
+  gap: 7px;
+  border-radius: var(--socle-rayon-controle);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 15px;
+  min-height: 31px;
+  padding: 8px 15px;
 }
-:root[data-ambiance='noir'] [data-socle='bouton'][data-variante='secondaire']:hover:not(:disabled) {
-  border-color: var(--color-socle-bord-fort);
-  background: var(--socle-survol);
-}
+:root[data-ambiance='noir'] [data-socle='bouton'] svg { width: 14px; height: 14px; }
 :root[data-ambiance='noir'] [data-socle='bouton'][data-variante='primaire'] {
   background: var(--socle-primaire);
   color: var(--socle-primaire-encre);
   box-shadow: none;
 }
 :root[data-ambiance='noir'] [data-socle='bouton'][data-variante='primaire']:hover:not(:disabled) { background: #ffffff; }
-:root[data-ambiance='noir'] [data-socle='bouton'][data-taille='petit'] { min-height: 30px; padding: 6px 13px; }
-:root[data-ambiance='noir'] [data-socle='bouton'][data-taille='petit'][data-variante='primaire'] { padding: 7px 15px; }
-:root[data-ambiance='noir'] [data-socle='bouton'][data-taille='moyen'] { border-radius: var(--socle-rayon-bouton); }
-:root[data-ambiance='noir'] [data-socle='bouton'][data-taille='grand'] { border-radius: 11px; }
+:root[data-ambiance='noir'] [data-socle='bouton'][data-variante='secondaire'] {
+  padding: 7px 13px;
+  border-color: var(--socle-bord-bouton);
+  color: var(--socle-texte-courant);
+  font-weight: 500;
+}
+:root[data-ambiance='noir'] [data-socle='bouton'][data-variante='secondaire']:hover:not(:disabled) {
+  border-color: var(--color-socle-bord-fort);
+  background: var(--socle-survol);
+}
+:root[data-ambiance='noir'] [data-socle='bouton'][data-variante='discret'] { padding: 8px 11px; font-weight: 500; }
+:root[data-ambiance='noir'] [data-socle='bouton'][data-variante='danger'] { font-weight: 600; }
+:root[data-ambiance='noir'] [data-socle='bouton'][data-taille='petit'] { min-height: 26px; padding: 4px 11px; font-size: 12px; line-height: 16px; }
+:root[data-ambiance='noir'] [data-socle='bouton'][data-taille='petit'][data-variante='secondaire'] { padding: 3px 10px; }
+:root[data-ambiance='noir'] [data-socle='bouton'][data-taille='grand'] { min-height: 38px; padding: 10px 18px; font-size: 13.5px; line-height: 17px; border-radius: 10px; }
+:root[data-ambiance='noir'] [data-socle='bouton'][data-taille='grand'][data-variante='secondaire'] { padding: 9px 16px; }
+/* Le raccourci d'un bouton : le Kbd se fond dans le fond du bouton (opacité .6). */
+:root[data-ambiance='noir'] [data-socle='bouton'] .sc-kbd { margin-left: 2px; border-color: color-mix(in srgb, currentColor 30%, transparent); background: transparent; color: inherit; opacity: 0.6; }
 
 /* ── Étiquette (pill) ── */
 .sc-etiquette {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 7px 14px;
-  border: 1px solid var(--socle-bord-controle);
+  padding: 4px 10px;
+  border: 1px solid var(--socle-bord-pilule);
   border-radius: var(--socle-rayon-pastille);
-  background: transparent;
-  color: var(--socle-texte-2);
-  font-size: 12.5px;
+  background: var(--socle-pilule);
+  color: var(--socle-texte-courant);
+  font-size: 11.5px;
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 1.3;
   white-space: nowrap;
 }
-.sc-etiquette[data-compacte='true'] { padding: 3px 9px; font-size: 12px; }
+.sc-etiquette[data-compacte='true'] { padding: 3px 9px; }
 .sc-etiquette b { color: var(--socle-texte-1); font-weight: 600; }
 
 /* ── Pastille d'état ── */
@@ -93,17 +117,18 @@
   --etat: var(--socle-texte-3);
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 3px 10px;
-  border: 1px solid color-mix(in srgb, var(--etat) 40%, transparent);
+  gap: 6px;
+  padding: 3px 9px;
   border-radius: var(--socle-rayon-pastille);
-  background: color-mix(in srgb, var(--etat) 14%, transparent);
+  background: color-mix(in srgb, var(--etat) 12%, transparent);
   color: var(--etat);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
   line-height: 1.3;
   white-space: nowrap;
 }
+/* Allégée : le point et le libellé, sans fond ni marge (« ● en cours », D02). */
+.sc-etat[data-allegee='true'] { padding: 0; background: transparent; font-size: 12px; }
 .sc-etat[data-etat='succes'] { --etat: var(--socle-etat-succes); }
 .sc-etat[data-etat='attention'] { --etat: var(--socle-etat-attention); }
 .sc-etat[data-etat='critique'] { --etat: var(--socle-etat-critique); }
@@ -112,23 +137,42 @@
 
 /* ── Avatar (une initiale) et pile d'avatars ── */
 .sc-avatar {
+  position: relative;
   display: inline-flex;
   flex: none;
   align-items: center;
   justify-content: center;
   width: var(--sc-avatar, 24px);
   height: var(--sc-avatar, 24px);
-  border: 1px solid var(--socle-bord-controle);
   border-radius: 99px;
-  background: var(--socle-encart);
-  color: var(--socle-texte-2);
+  background: var(--sc-avatar-fond, var(--socle-avatar-a));
+  color: var(--socle-texte-1);
   font-size: calc(var(--sc-avatar, 24px) * 0.42);
   font-weight: 600;
   line-height: 1;
   text-transform: uppercase;
 }
+.sc-avatar[data-forme='carre'] { border-radius: 9px; }
+.sc-avatar[data-teinte='0'] { --sc-avatar-fond: var(--socle-avatar-a); }
+.sc-avatar[data-teinte='1'] { --sc-avatar-fond: var(--socle-avatar-m); }
+.sc-avatar[data-teinte='2'] { --sc-avatar-fond: var(--socle-avatar-r); }
+.sc-avatar[data-teinte='3'] { --sc-avatar-fond: var(--socle-avatar-c); }
+.sc-avatar[data-teinte='4'] { --sc-avatar-fond: var(--socle-avatar-t); }
+.sc-avatar[data-teinte='5'] { --sc-avatar-fond: var(--socle-avatar-l); }
+/* La pastille « en ligne » : 8 px, anneau de 2 px de la couleur du fond. */
+.sc-avatar[data-en-ligne='true']::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  background: var(--socle-etat-succes);
+  box-shadow: 0 0 0 2px var(--sc-fond-anneau, var(--socle-fond-page));
+}
 .sc-pile { display: inline-flex; align-items: center; }
-.sc-pile .sc-avatar { box-shadow: 0 0 0 2px var(--socle-fond-page); }
+.sc-pile .sc-avatar { box-shadow: 0 0 0 2px var(--sc-fond-anneau, var(--socle-fond-page)); }
 .sc-pile .sc-avatar + .sc-avatar { margin-left: -7px; }
 
 /* ── Barre de progression : 5 px, dégradé gris → blanc ── */
@@ -139,13 +183,22 @@
   border-radius: 99px;
   background: var(--socle-piste);
 }
+.sc-barre[data-hauteur='4'] { height: 4px; }
+.sc-barre[data-hauteur='8'] { height: 8px; }
+.sc-barre { position: relative; }
 .sc-barre > span {
   display: block;
   height: 100%;
   border-radius: 99px;
-  background: linear-gradient(90deg, #9a9aa0, #ededed);
-  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  background: linear-gradient(90deg, var(--socle-fam-outils), var(--socle-texte-1));
+  transition: width 0.18s ease-out;
 }
+.sc-barre[data-ton='succes'] > span { background: var(--socle-etat-succes); }
+.sc-barre[data-ton='attention'] > span { background: var(--socle-etat-attention); }
+.sc-barre[data-ton='critique'] > span { background: var(--socle-etat-critique); }
+.sc-barre[data-ton='info'] > span { background: var(--socle-etat-info); }
+/* Les repères à 25, 50 et 75 % d'un jalon. */
+.sc-barre > i { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--socle-fond-page); opacity: 0.8; }
 
 /* ── Anneau de progression ── */
 .sc-anneau { position: relative; display: inline-flex; flex: none; align-items: center; justify-content: center; }
@@ -167,7 +220,7 @@
 /* ── Tuile KPI : 92 px, dégradé, libellé / valeur / variation / barre ── */
 .sc-kpi {
   display: flex;
-  min-height: 92px;
+  min-height: 84px;
   min-width: 0;
   flex-direction: column;
   align-items: flex-start;
@@ -180,6 +233,9 @@
   color: var(--socle-texte-1);
   text-align: left;
 }
+.sc-kpi[data-hauteur='92'] { min-height: 92px; }
+.sc-kpi { position: relative; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035); }
+.sc-kpi__droite { position: absolute; right: 16px; bottom: 14px; display: flex; align-items: flex-end; }
 button.sc-kpi { width: 100%; cursor: pointer; transition: border-color 0.15s; }
 button.sc-kpi:hover { border-color: var(--color-socle-bord-fort); }
 .sc-kpi__label {
@@ -229,15 +285,17 @@ button.sc-kpi:hover { border-color: var(--color-socle-bord-fort); }
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  border: 1.5px solid var(--color-socle-bord-fort);
-  border-radius: 6px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1.5px solid var(--socle-case-vide);
+  border-radius: 99px;
   background: transparent;
   color: var(--socle-primaire-encre);
   cursor: pointer;
-  transition: background-color 0.12s, border-color 0.12s;
+  transition: background-color 0.18s ease-out, border-color 0.18s ease-out;
 }
+.sc-case[data-taille='serie'] { width: 24px; height: 24px; }
 .sc-case[aria-checked='true'] { border-color: var(--socle-primaire); background: var(--socle-primaire); }
 .sc-case:hover:not([aria-disabled='true']) { border-color: var(--socle-texte-1); }
 .sc-case[aria-disabled='true'] { cursor: default; opacity: 0.7; }
@@ -304,15 +362,15 @@ button.sc-ligne__corps:disabled { cursor: default; }
   display: inline-flex;
   flex: none;
   align-items: center;
-  padding: 2px 7px;
-  border: 1px solid var(--socle-bord-controle);
-  border-radius: 6px;
-  background: var(--socle-encart);
+  padding: 1px 6px;
+  border: 1px solid var(--socle-bord-kbd);
+  border-radius: 5px;
+  background: var(--socle-kbd);
   color: var(--socle-texte-3);
   font-family: inherit;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 /* ── Squelette : un chargement qui garde la place ── */

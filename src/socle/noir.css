@@ -114,6 +114,8 @@
   --socle-ligne-active: #1a1a1c;
   --socle-ligne-choisie: #262629;
   --socle-sous-element-actif: #242427;
+  --socle-bord-carte-active: #3a3a3e;
+  --socle-carte-active-haut: #1a1a1c;
 
   /* Squelette : fond, lignes, reflet (H43). */
   --socle-squelette: #1e1e21;

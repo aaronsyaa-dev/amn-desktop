@@ -24,8 +24,12 @@ export interface CarteProps {
   actions?: React.ReactNode;
   /** `section` (défaut), `article` ou `div` — ignoré si la carte est cliquable. */
   as?: 'section' | 'article' | 'div';
-  /** Sans le rembourrage de 16 px : le contenu gère ses propres marges (listes à filets pleine largeur). */
+  /** Sans le rembourrage : le contenu gère ses propres marges (listes à filets pleine largeur). */
   sansMarge?: boolean;
+  /** Rembourrage serré (14 × 16 au lieu de 16 × 18) : KPI, cartes de colonne droite. */
+  compacte?: boolean;
+  /** La carte qui porte la sélection d'un panneau (bordure et haut éclaircis, D02). */
+  active?: boolean;
   /** Le niveau de titre pour `titre` (défaut 2). */
   niveauTitre?: 2 | 3 | 4;
   onClick?: () => void;
@@ -37,7 +41,7 @@ export interface CarteProps {
 
 const SURFACE = 'relative overflow-hidden rounded-xl border border-socle-bord bg-socle-surface text-socle-texte';
 
-export function Carte({ famille, surtitre, titre, actions, as = 'section', niveauTitre = 2, sansMarge = false, onClick, className = '', children, ...aria }: CarteProps) {
+export function Carte({ famille, surtitre, titre, actions, as = 'section', niveauTitre = 2, sansMarge = false, compacte = false, active = false, onClick, className = '', children, ...aria }: CarteProps) {
   const reduit = useReducedMotionConfig();
   const cliquable = Boolean(onClick);
   // Dans un bouton, tout reste du texte courant (voir l'en-tête).
@@ -55,12 +59,12 @@ export function Carte({ famille, surtitre, titre, actions, as = 'section', nivea
             {surtitre && (
               <Surtitre className={`block text-[11px] font-semibold uppercase tracking-[0.08em] ${famille ? 'text-[var(--fam-texte)]' : 'text-socle-texte-discret'}`}>{surtitre}</Surtitre>
             )}
-            {titre && <Titre className="mt-0.5 block text-[16px] font-semibold leading-snug text-socle-texte">{titre}</Titre>}
+            {titre && <Titre className="mt-0.5 block text-[15px] font-semibold leading-snug text-socle-texte">{titre}</Titre>}
           </Bloc>
           {aDroite && <div className="flex shrink-0 items-center gap-1">{aDroite}</div>}
         </Bloc>
       )}
-      <Bloc className="block text-[14px] leading-relaxed text-socle-texte-doux">{children}</Bloc>
+      <Bloc className="block text-[13.5px] leading-relaxed text-socle-texte-doux">{children}</Bloc>
     </>
   );
 
@@ -70,6 +74,8 @@ export function Carte({ famille, surtitre, titre, actions, as = 'section', nivea
         type="button"
         data-socle="carte"
         data-famille={famille}
+        data-compacte={compacte || undefined}
+        data-active={active || undefined}
         onClick={onClick}
         aria-label={aria['aria-label']}
         whileHover={reduit ? undefined : { y: -2 }}
@@ -83,7 +89,7 @@ export function Carte({ famille, surtitre, titre, actions, as = 'section', nivea
 
   const Balise = as;
   return (
-    <Balise data-socle="carte" data-famille={famille} aria-label={aria['aria-label']} className={`${SURFACE} ${sansMarge ? '' : 'p-4'} ${className}`}>
+    <Balise data-socle="carte" data-famille={famille} data-compacte={compacte || undefined} data-active={active || undefined} data-sans-marge={sansMarge || undefined} aria-label={aria['aria-label']} className={`${SURFACE} ${sansMarge ? '' : 'p-4'} ${className}`}>
       {contenu}
     </Balise>
   );

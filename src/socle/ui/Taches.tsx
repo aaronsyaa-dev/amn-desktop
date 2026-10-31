@@ -15,9 +15,11 @@ export interface CaseACocherProps {
   /** Le nom accessible : « Cocher : Appeler le notaire ». */
   libelle: string;
   lecture?: boolean;
+  /** 18 px (défaut) ; 24 px dans une série de jours. */
+  taille?: 'normale' | 'serie';
 }
 
-export function CaseACocher({ coche, onChange, libelle, lecture = false }: CaseACocherProps) {
+export function CaseACocher({ coche, onChange, libelle, lecture = false, taille = 'normale' }: CaseACocherProps) {
   return (
     <button
       type="button"
@@ -25,6 +27,7 @@ export function CaseACocher({ coche, onChange, libelle, lecture = false }: CaseA
       aria-checked={coche}
       aria-disabled={lecture || undefined}
       aria-label={libelle}
+      data-taille={taille === 'serie' ? 'serie' : undefined}
       onClick={() => !lecture && onChange?.(!coche)}
       className="sc-case sc-focus"
     >

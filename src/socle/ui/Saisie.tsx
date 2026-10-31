@@ -31,42 +31,34 @@ export const Saisie = React.forwardRef<HTMLInputElement, SaisieProps>(function S
   const decrit = [aide ? idAide : null, erreur ? idErreur : null].filter(Boolean).join(' ') || undefined;
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={idChamp} className="text-[13px] font-semibold text-socle-texte">
+    <div className="sc-champ">
+      <label htmlFor={idChamp} className="sc-champ__etiquette">
         {etiquette}
       </label>
-      <div className="relative">
+      <div className="sc-champ__zone">
         <input
           ref={ref}
           id={idChamp}
+          data-socle="champ"
+          data-suffixe={suffixe ? 'true' : undefined}
           aria-invalid={erreur ? true : undefined}
           aria-describedby={decrit}
-          className={[
-            'w-full rounded-lg border bg-socle-creux px-3 py-2.5 text-[14.5px] text-socle-texte outline-none transition-colors',
-            'placeholder:text-socle-texte-discret',
-            'focus-visible:border-socle-focus focus-visible:ring-2 focus-visible:ring-socle-focus/25',
-            'disabled:cursor-not-allowed disabled:opacity-60',
-            erreur ? 'border-etat-danger' : 'border-socle-bord-fort',
-            suffixe ? 'pr-10' : '',
-            className,
-          ]
-            .filter(Boolean)
-            .join(' ')}
+          className={`sc-champ__controle ${className}`.trim()}
           {...reste}
         />
         {suffixe && (
-          <span aria-hidden className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[13px] text-socle-texte-discret">
+          <span aria-hidden className="sc-champ__suffixe">
             {suffixe}
           </span>
         )}
       </div>
       {aide && (
-        <p id={idAide} className="text-[12.5px] leading-relaxed text-socle-texte-discret">
+        <p id={idAide} className="sc-champ__aide">
           {aide}
         </p>
       )}
       {erreur && (
-        <p id={idErreur} className="text-[12.5px] font-medium leading-relaxed text-etat-danger-texte">
+        <p id={idErreur} className="sc-champ__erreur">
           {erreur}
         </p>
       )}

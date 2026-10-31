@@ -188,7 +188,7 @@ export function AccueilVue({ a, coquille, message, astuce }: { a: Accueil; coqui
             {a.tuiles.map((t) => (
               <TuileAccueil key={t.cle} t={t} a={a} />
             ))}
-            {a.tuiles.length < 4 && <TuileAjouter libelle={ta('tuiles.ajouter')} onClick={() => navigate('/tableau-de-bord')} />}
+            {a.tuiles.length < 4 && <TuileAjouter hauteur={92} libelle={ta('tuiles.ajouter')} onClick={() => navigate('/tableau-de-bord')} />}
           </>
         )}
       </section>
@@ -262,7 +262,7 @@ function TuileAccueil({ t, a }: { t: Tuile; a: Accueil }) {
     vers = '/revue-hebdo';
     famille = 'jour';
   }
-  return <TuileKpi famille={famille} libelle={libelle} valeur={valeur} variation={variation} detail={detail || undefined} ton={ton} barre={barre} libelleBarre={libelleBarre} onClick={() => navigate(vers)} />;
+  return <TuileKpi hauteur={92} famille={famille} libelle={libelle} valeur={valeur} variation={variation} detail={detail || undefined} ton={ton} barre={barre} libelleBarre={libelleBarre} onClick={() => navigate(vers)} />;
 }
 
 /* ── Aujourd'hui ───────────────────────────────────────────────────────── */

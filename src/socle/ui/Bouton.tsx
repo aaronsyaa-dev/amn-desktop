@@ -26,8 +26,10 @@ export interface BoutonProps extends Omit<HTMLMotionProps<'button'>, 'children'>
   variante?: VarianteBouton;
   taille?: TailleBouton;
   chargement?: boolean;
-  /** Une icône posée avant le libellé (lucide-react, 16 px conseillés). */
+  /** Une icône posée avant le libellé (lucide-react ; 14 px dans le socle). */
   icone?: React.ReactNode;
+  /** Un raccourci clavier affiché à droite du libellé (« ⌘N »), atténué à .6. */
+  raccourci?: string;
   pleineLargeur?: boolean;
   children?: React.ReactNode;
 }
@@ -60,7 +62,7 @@ const TAILLES: Record<TailleBouton, string> = {
 };
 
 export const Bouton = React.forwardRef<HTMLButtonElement, BoutonProps>(function Bouton(
-  { variante = 'secondaire', taille = 'moyen', chargement = false, icone, pleineLargeur = false, disabled, className = '', type = 'button', children, ...reste },
+  { variante = 'secondaire', taille = 'moyen', chargement = false, icone, raccourci, pleineLargeur = false, disabled, className = '', type = 'button', children, ...reste },
   ref,
 ) {
   const { ts } = useSocleLangue();
@@ -84,6 +86,11 @@ export const Bouton = React.forwardRef<HTMLButtonElement, BoutonProps>(function 
       <span className={`inline-flex items-center gap-2 ${chargement ? 'opacity-0' : ''}`}>
         {icone && <span aria-hidden className="inline-flex shrink-0">{icone}</span>}
         {children}
+        {raccourci && (
+          <kbd aria-hidden className="sc-kbd">
+            {raccourci}
+          </kbd>
+        )}
       </span>
       {chargement && (
         <span className="absolute inset-0 flex items-center justify-center">
