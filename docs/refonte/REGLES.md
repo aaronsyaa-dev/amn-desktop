@@ -97,6 +97,19 @@ npm run check:moments
 
 Plus tes propres `check:*`, s'il y en a, ajoutés à `editions.yml`.
 
+## Les lots de la refonte (dossier de construction du 31 octobre)
+
+Chaque lot a **une branche** `claude/refonte-<lot>` et **une section** dans [`STATUT.md`](STATUT.md), § 7 « Écrans ». Les branches, les sessions et l'ordre sont au § 2 de `STATUT.md`.
+
+- **Départ** : crée ta branche depuis `claude/refonte-vivante` (LOT-00 : depuis `refonte-design-socle`, voir `STATUT.md` § 1.1). Les lots 01 à 09 ne démarrent qu'une fois LOT-00 fusionné.
+- **`STATUT.md`** : tu ne modifies **que la section de ton lot** (§ 7), une ligne par écran, à chaque écran terminé : `à faire`, `en cours`, `fait` ou `écart` avec la raison en note. Le reste du fichier est au CO. Cela remplace « Les sessions ne modifient pas ce fichier » et la consigne du dossier de construction.
+- **Écrans** (`STATUT.md` § 1.3) : un écran refondu est un nouveau composant dans `src/refonte/<lot>/`, qui réutilise les hooks et l'état existants. Tu ne modifies ni `src/screens/**` ni `appRoot.internal.tsx` : le mécanisme de substitution de LOT-00 s'en charge. Les écrans partagés avec l'édition cliente passent par une couture `@edition/*` dont le jumeau `.business` ne fait rien.
+- **Socle** : `src/socle/**` est en lecture seule dès que LOT-00 est fusionné. Il manque un composant ou un jeton ? Note-le dans la section de ton lot et dis-le au CO, ne le contourne pas.
+- **Registre** : tes écrans NOUVEAU s'ajoutent dans le fichier de ta famille, `src/refonte/modules/declarations/<famille>.ts`.
+- **Maquettes** : les images du dossier restent **hors du dépôt**. Ne les committe pas, et ne les copie pas dans `docs/`.
+- **Données** : jeux de données fictives uniquement. Les noms, montants et dates des images ne sont jamais codés en dur.
+- **Preuve avant de rendre la main** : les gardes de « Avant de finir », plus la capture de chaque écran à 1440 × 900 comparée à son image (± 2 px). Un écart se note, il ne se tait pas.
+
 ## Fin de session
 
 1. Écris ton rapport dans `docs/refonte/rapports/<session>.md` (ex.
