@@ -12,7 +12,7 @@ export default declarerFamille({
   id: 'argent',
   ordre: 4,
   teinte: 'argent',
-  nom: { fr: 'Argent', en: 'Money' },
+  nom: { fr: 'L’argent', en: 'Money' },
   actions: {
     facturer: { fr: 'Facturer', en: 'Invoice' },
     vendre: { fr: 'Vendre et encaisser', en: 'Sell and get paid' },

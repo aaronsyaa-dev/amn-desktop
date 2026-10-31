@@ -45,6 +45,8 @@ export interface DonneesCoquille {
   attentionEvaluee: boolean;
   /** Les modules ouverts à l'organisation et non allégés. */
   catalogue: NavItem[];
+  /** Ce qui attend, par adresse de module (la source des pastilles de la barre latérale). */
+  compteurs: Record<string, number>;
 }
 
 interface LigneTache {
@@ -201,6 +203,7 @@ export function useDonneesCoquille(pathname: string, routeTousLesModules: string
       attention,
       attentionEvaluee: checkedAt !== null,
       catalogue,
+      compteurs,
     };
   }, [langue, catalogue, cheminCourant, unseen, appointments, taches, invoices, priorites, moi, autres, montree, nomDe, pathname, attention, checkedAt, routeTousLesModules, libelleTous, libelleAccueil]);
 }

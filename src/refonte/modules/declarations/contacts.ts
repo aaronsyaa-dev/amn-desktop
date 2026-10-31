@@ -11,7 +11,7 @@ export default declarerFamille({
   id: 'contacts',
   ordre: 2,
   teinte: 'contacts',
-  nom: { fr: 'Mes contacts', en: 'People' },
+  nom: { fr: 'Mes contacts et clients', en: 'People and clients' },
   actions: {
     clients: { fr: 'Mes clients', en: 'My customers' },
     prospecter: { fr: 'Trouver des clients', en: 'Find customers' },
