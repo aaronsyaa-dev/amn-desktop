@@ -1,5 +1,5 @@
 import { routesBureaux } from '../bureaux/routes';
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { AccueilChoisi } from '../accueils/useAccueil';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from '../components/ProtectedRoute';
@@ -9,6 +9,11 @@ import { AppLayout } from '../components/AppLayout';
 import { ROUTE_TOUS_LES_MODULES, TousLesModules } from '@edition/navigation';
 import { routesDuRegistre } from '../refonte/modules/routes';
 import { ConnexionRefonte } from '../refonte/systeme/connexion/ConnexionRefonte';
+import { FournisseurToasts } from '../socle/ui/situations';
+
+/* Les pages de démonstration du socle : réservées au développement (`import.meta.env.DEV` est remplacé à la
+   construction, la branche et ses morceaux disparaissent du paquet livré). */
+const PageEtatsMessages = lazy(() => import('../refonte/systeme/h43-etats/PageEtatsMessages'));
 import { InvitationScreen } from '../screens/InvitationScreen';
 import { ReinitialisationScreen } from '../screens/ReinitialisationScreen';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
@@ -191,6 +196,7 @@ import { ContextError } from '../components/org-rail/ContextError';
  */
 export function AppRoot() {
   return (
+    <FournisseurToasts>
     <Routes>
       <Route path="/login" element={<ConnexionRefonte />} />
       {/* Publique, et volontairement AVANT le garde d'authentification :
@@ -213,6 +219,19 @@ export function AppRoot() {
       {/* La mini-page et les formulaires publics : même doctrine, sans session. */}
       <Route path="/p" element={<PublicPageScreen />} />
       <Route path="/f" element={<PublicFormScreen />} />
+      {/* H43 — États et messages : la page de référence des huit situations, hors coquille, connectée, en développement seulement. */}
+      {import.meta.env.DEV && (
+        <Route
+          path="/dev/etats"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={null}>
+                <PageEtatsMessages />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+      )}
 
       <Route
         path="/*"
@@ -230,6 +249,7 @@ export function AppRoot() {
         }
       />
     </Routes>
+    </FournisseurToasts>
   );
 }
 
