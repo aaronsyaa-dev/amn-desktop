@@ -8,6 +8,7 @@ import { cleanErrorMessage, isRedirection } from '../../../lib/errorMessage';
 import { useLangue } from '../../../i18n';
 import { EDITION_PRODUCT_NAME, APP_VERSION } from '../../../edition/edition';
 import { REGISTRE_MODULES } from '../../modules/registre';
+import { destinationApresConnexion } from '../premiereConnexion';
 import { useMots } from './i18n';
 import './connexion.css';
 
@@ -108,9 +109,11 @@ export function ConnexionRefonte() {
   const nombreModules = REGISTRE_MODULES.entrees.length;
   const nombreFamilles = REGISTRE_MODULES.familles.length;
 
-  const reussir = () => {
+  const reussir = (adresse: string) => {
     setPhase('succes');
-    minuteur.current = window.setTimeout(() => navigate('/', { replace: true }), 480);
+    // Accueil réglé ; à la toute première connexion, Démarrage (H42).
+    const destination = destinationApresConnexion(adresse);
+    minuteur.current = window.setTimeout(() => navigate(destination, { replace: true }), 480);
   };
 
   const surConnexion = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -135,7 +138,7 @@ export function ConnexionRefonte() {
         setPhase('repos');
         return;
       }
-      reussir();
+      reussir(email);
     } catch (err) {
       setPhase('repos');
       // Le mot de passe est vidé et le focus lui revient : on le retape, on ne le corrige pas.
@@ -152,7 +155,7 @@ export function ConnexionRefonte() {
     setPhase('envoi');
     try {
       await completeMfa({ challenge: defi.challenge, ...(secours ? { backupCode: code.trim() } : { code: code.trim() }) });
-      reussir();
+      reussir(defi.email);
     } catch (err) {
       setPhase('repos');
       setCode('');

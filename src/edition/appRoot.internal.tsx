@@ -10,10 +10,12 @@ import { ROUTE_TOUS_LES_MODULES, TousLesModules } from '@edition/navigation';
 import { routesDuRegistre } from '../refonte/modules/routes';
 import { ConnexionRefonte } from '../refonte/systeme/connexion/ConnexionRefonte';
 import { FournisseurToasts } from '../socle/ui/situations';
-import { ROUTE_NOTIFICATIONS } from '../refonte/systeme/routes';
+import { ROUTE_DEMARRAGE, ROUTE_METIER, ROUTE_NOTIFICATIONS } from '../refonte/systeme/routes';
 
 /* Les pages de démonstration du socle : réservées au développement (`import.meta.env.DEV` est remplacé à la
    construction, la branche et ses morceaux disparaissent du paquet livré). */
+const PageDemarrage = lazy(() => import('../refonte/systeme/demarrage/PageDemarrage'));
+const PageMetier = lazy(() => import('../refonte/systeme/demarrage/PageMetier'));
 const PageNotificationsRoute = lazy(() => import('../refonte/systeme/PageNotificationsRoute'));
 const PageEnsembleFamille = lazy(() => import('../refonte/systeme/PageEnsembleFamille'));
 const PageDemoSocle = lazy(() => import('../refonte/systeme/demo/PageDemoSocle'));
@@ -405,6 +407,9 @@ function AmnRoutes() {
         {/* La vue d'ensemble d'une famille (première ligne de la barre latérale) : page générique en attendant celle de chaque lot. */}
         {/* H40 — Notifications : la cloche de l'en-tête y mène ; pas d'entrée de barre latérale. */}
         <Route path={ROUTE_NOTIFICATIONS} element={<Suspense fallback={null}><PageNotificationsRoute /></Suspense>} />
+        {/* H42 et H47 — Démarrage et Choisir son métier : hors registre (le total reste 101), sans entrée de barre latérale. */}
+        <Route path={ROUTE_DEMARRAGE} element={<Suspense fallback={null}><PageDemarrage /></Suspense>} />
+        <Route path={ROUTE_METIER} element={<Suspense fallback={null}><PageMetier /></Suspense>} />
         <Route path="/ensemble/:famille" element={<Suspense fallback={null}><PageEnsembleFamille /></Suspense>} />
         {/* Refonte S5 : les écrans neufs déclarés au registre (`src/refonte/modules/declarations/`)
             montent ici leur route, sans qu'on ait à l'écrire. Aucun aujourd'hui. */}
