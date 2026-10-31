@@ -1,0 +1,384 @@
+/*
+  DÉMARRAGE (H42) ET « QUEL EST VOTRE MÉTIER ? » (H47) — la mise en page, aux cotes des fiches.
+  ═══════════════════════════════════════════════════════════════════════════════════════════
+
+  Contenu de x = 40 à x = 1148 dans la zone principale (1108 px de large).
+
+  H42 · carte principale 728 × 510, colonne droite 360 (visite 229 + « Bon à savoir » 225, écart 14), bandeau d'aide
+        1108 × 92 avec trois tuiles de 349 × 62 ; anneau de 80 px, étapes de 63 px.
+  H47 · grille de huit tuiles de 177 × 127 (écart 14, rangées à 140), cartes de 748 de large (65 / 165 / 61 de haut),
+        carte de droite 340 × 369, collante.
+
+  Les couleurs sont des jetons de `src/socle/noir.css`. Les trois valeurs que les fiches donnent sans jeton sont posées
+  ici, une fois, sous `--sc-…` ; aucun autre `#hex` dans ce fichier. Les encres « discret » ne servent jamais de texte :
+  le texte lu va de T1 à T4 (`--socle-texte-3`, le plancher), jamais en dessous de 11 px.
+
+  Les préfixes : `dem-` pour Démarrage, `met-` pour le choix du métier (`dm-` est celui du panneau « Tous les modules »).
+*/
+
+:root[data-ambiance='noir'] {
+  /* H42 : le fond de la ligne de l'étape conseillée (#1c1c1d), un cran sous le survol du socle. */
+  --sc-dem-ligne-conseillee: #1c1c1d;
+  /* H42 : le bord de la zone de lecture de la visite guidée (#26262a). */
+  --sc-dem-bord-poster: #26262a;
+  /* H47 : le fond d'une tuile de métier choisie (#17171a). */
+  --sc-met-tuile-choisie: #17171a;
+}
+
+/* ═══ Le socle de page, commun aux deux écrans ═══ */
+:root[data-ambiance='noir'] :is(.dem-page, .met-page) {
+  width: 100%;
+  min-width: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--socle-texte-1);
+}
+.dem-entete { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.dem-entete__titres { min-width: 0; }
+.dem-titre { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
+.dem-sous { margin: 7px 0 0; color: var(--socle-texte-3); font-size: 13.5px; line-height: 1.35; }
+.dem-actions { display: flex; flex: none; align-items: center; gap: 9px; }
+
+/* ═══ H42 · la grille : 728 + 20 + 360 ═══ */
+.dem-grille { display: grid; grid-template-columns: 728px 360px; gap: 20px; align-items: start; }
+.dem-droite { display: flex; min-width: 0; flex-direction: column; gap: 14px; }
+
+/* La carte principale : 728 × 510, jamais plus petite (zéro zone morte), jamais de saut quand les données arrivent. */
+:root[data-ambiance='noir'] .dem-principale { box-sizing: border-box; width: 728px; min-height: 510px; padding: 20px 22px; }
+.dem-accueil { display: flex; align-items: center; gap: 18px; height: 80px; margin-bottom: 10px; }
+.dem-accueil__textes { min-width: 0; }
+.dem-bienvenue { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.2; }
+.dem-accueil__texte { margin: 5px 0 0; color: var(--socle-texte-3); font-size: 13px; line-height: 1.4; }
+:root[data-ambiance='noir'] .dem-anneau .sc-anneau__trait { transition: stroke-dashoffset 220ms ease-out; }
+
+/* Les étapes : 63 px de pas, un filet #19191b ; la conseillée a son fond. */
+.dem-etapes { margin: 0; padding: 0; list-style: none; }
+.dem-etape {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 63px;
+  padding: 0 7px 0 6px;
+  border-bottom: 1px solid var(--socle-bord-ligne);
+}
+.dem-etape:last-child { border-bottom: 0; }
+.dem-etape[data-conseillee='true'] { background: var(--sc-dem-ligne-conseillee); border-bottom-color: transparent; }
+.dem-etape__textes { display: block; min-width: 0; flex: 1; text-align: left; }
+.dem-etape__titre { display: block; overflow: hidden; color: var(--socle-texte-1); font-size: 14px; font-weight: 500; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+.dem-etape__sous { display: block; overflow: hidden; margin-top: 1px; color: var(--socle-texte-3); font-size: 12.5px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+/* Une étape faite : titre et sous-titre en T4, SANS barré (la maquette l'emporte sur la case des listes de tâches). */
+.dem-etape[data-faite='true'] .dem-etape__titre { color: var(--socle-texte-3); text-decoration: none; }
+.dem-etape__ouvrir {
+  display: block;
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.dem-etape__ouvrir:hover .dem-etape__titre { color: var(--socle-texte-1); }
+.dem-etape__bouton { flex: none; }
+.dem-etape__reserve { flex: none; color: var(--socle-texte-3); font-size: 12px; }
+
+/* Le menu discret « Pas pour moi » (clic droit, ou la touche S). */
+.dem-menu {
+  position: absolute;
+  top: calc(100% - 8px);
+  right: 7px;
+  z-index: 5;
+  min-width: 160px;
+  padding: 4px;
+  border: 1px solid var(--socle-bord-bouton);
+  border-radius: var(--socle-rayon-controle);
+  background: var(--socle-dialogue);
+  box-shadow: var(--sc-ombre-boite);
+}
+.dem-menu__item {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--socle-texte-courant);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.dem-menu__item:hover { background: var(--socle-survol); color: var(--socle-texte-1); }
+
+/* Sous la liste : ce qui a été retiré, et la place laissée par une liste courte. */
+.dem-retirees { display: flex; align-items: center; gap: 8px; margin: 12px 6px 0; color: var(--socle-texte-3); font-size: 12.5px; }
+.dem-lien {
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--socle-texte-courant);
+  font: inherit;
+  font-size: 12.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.dem-lien:hover { color: var(--socle-texte-1); }
+.dem-libre { margin: 18px 6px 0; color: var(--socle-texte-courant); font-size: 13px; line-height: 1.5; }
+.dem-libre .dem-lien { margin-left: 6px; }
+
+/* ═══ H42 · la visite guidée : 360 × 229, zone de lecture 326 × 152 ═══ */
+:root[data-ambiance='noir'] .dem-visite { box-sizing: border-box; width: 100%; height: 229px; padding: 14px 16px 13px; }
+.dem-poster {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 152px;
+  margin-bottom: 13px;
+  border: 1px solid var(--sc-dem-bord-poster);
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--socle-carte-haut), var(--socle-fond-page));
+}
+.dem-poster__lire {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  width: 54px;
+  height: 54px;
+  margin: auto;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 99px;
+  background: var(--socle-primaire);
+  color: var(--socle-primaire-encre);
+  cursor: pointer;
+  transition: background-color 0.15s ease-out;
+}
+.dem-poster__lire:hover { background: var(--color-socle-primaire-survol); }
+.dem-visite__titre { margin: 0; font-size: 13.5px; font-weight: 600; line-height: 1.35; }
+.dem-visite__texte { margin: 1px 0 0; color: var(--socle-texte-3); font-size: 12.5px; line-height: 1.35; }
+
+/* ═══ H42 · « Bon à savoir » : 360 × 225, quatre lignes de 41 px (trois ici : N n'existe pas) ═══ */
+:root[data-ambiance='noir'] .dem-savoir { box-sizing: border-box; width: 100%; height: 225px; padding: 16px 18px; }
+.dem-savoir__titre { margin: 0 0 7px; font-size: 14.5px; font-weight: 600; line-height: 1.25; }
+.dem-savoir__liste { margin: 0; padding: 0; list-style: none; }
+.dem-savoir__ligne {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  height: 41px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--socle-bord-ligne);
+  background: transparent;
+  color: var(--socle-texte-courant);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.dem-savoir__liste > li:last-child .dem-savoir__ligne { border-bottom: 0; }
+.dem-savoir__ligne:hover { color: var(--socle-texte-1); }
+/* La touche tient une colonne FIXE de 36 px : les libellés s'alignent (la maquette les laissait flotter). */
+.dem-touche { display: flex; flex: none; align-items: center; width: 36px; }
+.dem-touche[data-large='true'] { width: 52px; }
+
+/* ═══ H42 · le bandeau d'aide : 1108 × 92, trois tuiles de 349 × 62 ═══ */
+:root[data-ambiance='noir'] .dem-aide { box-sizing: border-box; width: 100%; height: 92px; margin-top: 14px; padding: 14px 16px; }
+.dem-aide__grille { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.dem-tuile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-sizing: border-box;
+  min-width: 0;
+  height: 62px;
+  padding: 12px 14px;
+  border: 1px solid var(--socle-bord-sous-carte);
+  border-radius: var(--socle-rayon-sous-carte);
+  background: var(--socle-sous-carte);
+  color: var(--socle-texte-1);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease-out;
+}
+.dem-tuile:hover:not(:disabled) { border-color: var(--socle-bord-bouton); }
+.dem-tuile:disabled { cursor: not-allowed; }
+.dem-tuile:disabled .dem-tuile__titre { color: var(--socle-texte-3); }
+.dem-tuile__icone .sc-etincelle, .met-tuile__icone .sc-etincelle { color: inherit; }
+.dem-tuile__icone { display: grid; flex: none; width: 36px; height: 36px; place-items: center; border-radius: 10px; background: var(--socle-survol); color: var(--socle-texte-courant); }
+.dem-tuile__textes { display: block; min-width: 0; }
+.dem-tuile__titre { display: block; overflow: hidden; font-size: 13px; font-weight: 600; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.dem-tuile__texte { display: block; overflow: hidden; color: var(--socle-texte-3); font-size: 12px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ═══ H42 · états ═══ */
+.dem-bandeau {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 10px 16px;
+  border: 1px solid var(--socle-bord-carte);
+  border-radius: var(--socle-rayon-sous-carte);
+  background: var(--socle-sous-carte);
+  color: var(--socle-texte-courant);
+  font-size: 13px;
+}
+.dem-bandeau__texte { display: flex; align-items: center; gap: 10px; margin: 0; }
+.dem-squelette-ligne { display: flex; align-items: center; gap: 14px; height: 63px; padding: 0 7px 0 6px; }
+.dem-squelette-textes { display: flex; flex: 1; flex-direction: column; gap: 7px; }
+
+/* La fenêtre du lien : le code, et le lien en toutes lettres. */
+.dem-lien-mobile { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.dem-qr { display: block; width: 168px; height: 168px; padding: 8px; border-radius: 10px; background: var(--socle-primaire); box-sizing: content-box; }
+.dem-qr svg { display: block; width: 100%; height: 100%; }
+.dem-adresse {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--socle-bord-champ);
+  border-radius: var(--socle-rayon-champ);
+  background: var(--socle-champ);
+  color: var(--socle-texte-1);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.dem-note { margin: 0; color: var(--socle-texte-3); font-size: 12.5px; line-height: 1.5; }
+
+/* ═══ H47 · la grille : 748 + 20 + 340 ═══ */
+.met-grille { display: grid; grid-template-columns: 748px 340px; gap: 20px; align-items: start; }
+.met-gauche { display: flex; min-width: 0; flex-direction: column; gap: 14px; }
+
+/* Les huit tuiles : 177 × 127 (748 − 3 × 14, en quatre), rangées à 140 px de pas. */
+.met-tuiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 14px; row-gap: 13px; }
+.met-tuile {
+  position: relative;
+  box-sizing: border-box;
+  display: block;
+  min-width: 0;
+  height: 127px;
+  /* La bordure de 1 px est TOUJOURS là : seule sa couleur change, rien ne bouge à la sélection. */
+  padding: 19px 17px 17px;
+  border: 1px solid var(--socle-bord-carte);
+  border-radius: 14px;
+  background: var(--socle-carte-bas);
+  color: var(--socle-texte-1);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s ease-out, background-color 0.12s ease-out;
+}
+.met-tuile:hover { border-color: var(--socle-bord-bouton); }
+.met-tuile[aria-checked='true'] { border-color: var(--socle-primaire); background: var(--sc-met-tuile-choisie); }
+.met-tuile__icone { display: block; width: 18px; height: 18px; color: var(--socle-texte-courant); }
+.met-tuile__titre { display: block; margin-top: 18px; overflow: hidden; font-size: 14px; font-weight: 600; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
+.met-tuile__texte {
+  display: -webkit-box;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--socle-texte-3);
+  font-size: 12px;
+  line-height: 17px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+/* Le disque coché : 22 px, à 12 px des bords — la sélection se voit sans la couleur seule. */
+.met-tuile__coche {
+  position: absolute;
+  top: 11px;
+  right: 11px;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 99px;
+  background: var(--socle-primaire);
+  color: var(--socle-primaire-encre);
+}
+
+/* Les trois cartes : « Combien êtes-vous ? » 65, l'aperçu 165, « Décrire » 61. */
+:root[data-ambiance='noir'] .met-taille { box-sizing: border-box; height: 65px; padding: 0 18px; }
+.met-taille__corps { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 63px; }
+.met-carte__titre { margin: 0; font-size: 14.5px; font-weight: 600; line-height: 1.25; }
+.met-carte__aide { margin: 3px 0 0; color: var(--socle-texte-3); font-size: 12.5px; line-height: 1.35; }
+:root[data-ambiance='noir'] .met-apercu { box-sizing: border-box; height: 165px; padding: 16px 18px 17px; }
+.met-apercu__entete { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.met-apercu__cartes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.met-apercu__carte {
+  box-sizing: border-box;
+  min-width: 0;
+  height: 82px;
+  padding: 12px 14px 13px;
+  border: 1px solid var(--socle-bord-sous-carte);
+  border-radius: var(--socle-rayon-sous-carte);
+  background: var(--socle-sous-carte);
+}
+.met-apercu__etiquette { display: flex; align-items: center; gap: 7px; margin: 0; color: var(--socle-texte-3); font-size: 11px; font-weight: 500; letter-spacing: 0.08em; line-height: 14px; text-transform: uppercase; }
+.met-apercu__titre { margin: 8px 0 0; overflow: hidden; font-size: 14px; font-weight: 600; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.met-apercu__detail { margin: 3px 0 0; overflow: hidden; color: var(--socle-texte-3); font-size: 12px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.met-apercu__vide { display: grid; height: 82px; place-items: center; margin: 0; padding: 0 24px; border: 1px dashed var(--socle-pointille); border-radius: var(--socle-rayon-sous-carte); color: var(--socle-texte-3); font-size: 12.5px; text-align: center; }
+
+:root[data-ambiance='noir'] .met-decrire { box-sizing: border-box; min-height: 61px; padding: 0 18px; }
+.met-decrire__ligne { display: flex; align-items: center; gap: 12px; min-height: 59px; }
+.met-decrire__texte { flex: 1; min-width: 0; margin: 0; color: var(--socle-texte-2); font-size: 13.5px; line-height: 1.4; }
+.met-decrire__champ { display: flex; align-items: flex-end; gap: 12px; padding: 0 0 16px; }
+.met-decrire__champ .sc-champ { flex: 1; min-width: 0; }
+.met-decrire__note { margin: -6px 0 14px; color: var(--socle-texte-courant); font-size: 12.5px; line-height: 1.5; }
+
+/* La carte de droite : 340 × 369, six lignes de 43 px, collante pour suivre le défilement sans s'étirer. */
+.met-droite { position: sticky; top: 0; min-width: 0; }
+:root[data-ambiance='noir'] .met-compose { box-sizing: border-box; min-height: 369px; padding: 16px 19px 14px; }
+.met-compose__entete { margin-bottom: 11px; }
+.met-liste { margin: 0; padding: 0; list-style: none; }
+.met-ligne { display: flex; align-items: center; gap: 11px; box-sizing: border-box; height: 43px; border-bottom: 1px solid var(--socle-bord-ligne); }
+.met-liste > li:last-child { border-bottom: 0; }
+.met-ligne__nom { min-width: 0; flex: 1; overflow: hidden; font-size: 13.5px; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+.met-compose__pied { margin: 11px 0 0; color: var(--socle-texte-3); font-size: 12.5px; line-height: 1.4; }
+:root[data-ambiance='noir'] .met-compose--vide { display: flex; align-items: center; justify-content: center; }
+.met-compose--vide > div { flex: 1; min-width: 0; }
+.met-apercu__cartes, .met-compose__corps { animation: met-fondu 160ms ease-out; }
+@keyframes met-fondu { from { opacity: 0; } to { opacity: 1; } }
+.met-erreur { margin-bottom: 14px; }
+
+/* ═══ Plus étroit : les colonnes se rangent (fiches, rubrique 11) ═══ */
+@container (max-width: 1107px) {
+  .dem-grille { grid-template-columns: minmax(0, 1fr); }
+  :root[data-ambiance='noir'] .dem-principale { width: 100%; }
+  .dem-droite { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :root[data-ambiance='noir'] .dem-aide { height: auto; }
+  .dem-aide__grille { grid-template-columns: minmax(0, 1fr); }
+  .met-grille { grid-template-columns: minmax(0, 1fr); }
+  .met-droite { position: static; }
+}
+@container (max-width: 780px) {
+  .dem-droite { grid-template-columns: minmax(0, 1fr); }
+  .met-tuiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :root[data-ambiance='noir'] .met-taille { height: auto; padding: 14px 18px; }
+  .met-taille__corps { height: auto; flex-direction: column; align-items: flex-start; }
+  :root[data-ambiance='noir'] .met-apercu { height: auto; }
+  .met-apercu__cartes { grid-template-columns: minmax(0, 1fr); }
+  .dem-entete { flex-wrap: wrap; align-items: flex-start; }
+}
+
+/* Mouvement réduit : rien ne glisse ni ne se remplit, les états changent d'un coup. */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ambiance='noir'] .dem-anneau .sc-anneau__trait,
+  .dem-poster__lire,
+  .dem-tuile,
+  .met-tuile,
+  .met-apercu__cartes,
+  .met-compose__corps { animation: none; }
+}
