@@ -1,6 +1,62 @@
 /**
- * Les mots du groupe « archetypes » du socle (LOT-00). Même schéma que `src/socle/i18n.ts` :
- * l'anglais est la base, le français est typé contre lui. Fusionnés dans `i18n.ts`.
+ * Les mots du groupe « archetypes » du socle (LOT-00) : gabarit de page, tableau, kanban, cartes, scindé,
+ * semaine, ligne de temps. Même schéma que `src/socle/i18n.ts` : l'anglais est la base, le français est typé
+ * contre lui. Fusionnés dans `i18n.ts`. Aucun nom, chiffre ni date d'exemple : seulement des libellés d'interface.
  */
-export const EN_ARCHETYPES = {} as const;
-export const FR_ARCHETYPES: Record<keyof typeof EN_ARCHETYPES, string> = {};
+export const EN_ARCHETYPES = {
+  'page.actions': 'Page actions',
+  'page.droite': 'Complementary information',
+  'tableau.filtrer': 'Filter',
+  'tableau.recherche': 'Search the table',
+  'tableau.trier': 'Sort by {colonne}',
+  'tableau.chargement': 'Loading the table',
+  'kanban.deposer': 'Drop here',
+  'kanban.ajouter': 'Add or drop here',
+  'kanban.ajouterDans': 'Add to {colonne}',
+  'kanban.sur': 'of {n}',
+  'kanban.pleine': 'Full',
+  'kanban.deplacer': 'Move to…',
+  'kanban.deplacerTicket': 'Move {titre} to…',
+  'kanban.deplace': '{titre} moved to {colonne}.',
+  'kanban.reordonne': '{titre} moved within {colonne}.',
+  'kanban.refuse': '{colonne} is full: {titre} stays where it is.',
+  'ticket.progression': 'Progress: {x} of {y}',
+  'ticket.responsables': 'Assigned to {noms}',
+  'ticket.commentaires': '{n} comments',
+  'ticket.echeance': 'Due {date}',
+  'ticket.enRetard': 'Overdue',
+  'scinde.oui': 'Yes',
+  'scinde.non': 'No',
+  'scinde.nonLu': 'Unread',
+  'semaine.horsPlage': '{n} events outside the hours shown',
+  'semaine.aujourdhui': 'Today',
+} as const;
+
+export const FR_ARCHETYPES: Record<keyof typeof EN_ARCHETYPES, string> = {
+  'page.actions': 'Actions de la page',
+  'page.droite': 'Informations complémentaires',
+  'tableau.filtrer': 'Filtrer',
+  'tableau.recherche': 'Rechercher dans le tableau',
+  'tableau.trier': 'Trier par {colonne}',
+  'tableau.chargement': 'Chargement du tableau',
+  'kanban.deposer': 'Déposer ici',
+  'kanban.ajouter': 'Ajouter ou glisser ici',
+  'kanban.ajouterDans': 'Ajouter dans « {colonne} »',
+  'kanban.sur': 'sur {n}',
+  'kanban.pleine': 'Pleine',
+  'kanban.deplacer': 'Déplacer vers…',
+  'kanban.deplacerTicket': 'Déplacer « {titre} » vers…',
+  'kanban.deplace': '« {titre} » est déplacé vers « {colonne} ».',
+  'kanban.reordonne': '« {titre} » est déplacé dans « {colonne} ».',
+  'kanban.refuse': '« {colonne} » est pleine : « {titre} » reste en place.',
+  'ticket.progression': 'Avancement : {x} sur {y}',
+  'ticket.responsables': 'Confié à {noms}',
+  'ticket.commentaires': '{n} commentaires',
+  'ticket.echeance': 'Échéance : {date}',
+  'ticket.enRetard': 'En retard',
+  'scinde.oui': 'Oui',
+  'scinde.non': 'Non',
+  'scinde.nonLu': 'Non lu',
+  'semaine.horsPlage': '{n} événements hors de la plage affichée',
+  'semaine.aujourdhui': 'Aujourd’hui',
+};
