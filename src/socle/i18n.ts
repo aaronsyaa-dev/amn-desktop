@@ -1,5 +1,5 @@
 import { useLangue, type Langue } from '../i18n';
-import { EN_ETATS, FR_ETATS } from './mots/etats';
+import { EN_SITUATIONS, FR_SITUATIONS } from './mots/situations';
 import { EN_GRAPHIQUES, FR_GRAPHIQUES } from './mots/graphiques';
 import { EN_ARCHETYPES, FR_ARCHETYPES } from './mots/archetypes';
 import { EN_CONTROLES, FR_CONTROLES } from './mots/controles';
@@ -16,7 +16,7 @@ import { EN_CONTROLES, FR_CONTROLES } from './mots/controles';
  * Les noms de familles sont PROVISOIRES — c'est l'endroit où les changer.
  */
 const EN = {
-  ...EN_ETATS,
+  ...EN_SITUATIONS,
   ...EN_GRAPHIQUES,
   ...EN_ARCHETYPES,
   ...EN_CONTROLES,
@@ -97,7 +97,7 @@ const EN = {
 export type CleSocle = keyof typeof EN;
 
 const FR: Record<CleSocle, string> = {
-  ...FR_ETATS,
+  ...FR_SITUATIONS,
   ...FR_GRAPHIQUES,
   ...FR_ARCHETYPES,
   ...FR_CONTROLES,

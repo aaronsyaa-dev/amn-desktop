@@ -12,7 +12,7 @@ export { Etiquette, PastilleEtat, Avatar, PileAvatars, Raccourci, initiales, typ
 export { CaseACocher, LigneTache, type CaseACocherProps, type LigneTacheProps } from './Taches';
 export { EtatVide, Squelette, Chargement } from './Etats';
 export { LigneActivite, EtapeFranchie } from './Activite';
-export * from './etats';
+export * from './situations';
 export * from './graphiques';
 export * from './archetypes';
 export * from './controles';
