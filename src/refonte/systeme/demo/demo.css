@@ -1,0 +1,216 @@
+/*
+  LA PAGE DE DÉMONSTRATION DU SOCLE — mise en page seulement (`PageDemoSocle.tsx`).
+  ═══════════════════════════════════════════════════════════════════════════════
+
+  Aucune couleur n'est écrite ici : tout vient de `src/socle/noir.css` (`--socle-*`). Une valeur qui n'a pas de
+  jeton se pose en `--sd-*` sous `:root[data-ambiance='noir']`, jamais en dur plus bas. Les cotes (largeurs de
+  colonne, hauteurs de cadre) sont de la mise en page de démonstration, pas des cotes du socle.
+
+  Les encres « discret » et « très discret » ne servent JAMAIS de couleur de texte (voir `check:socle`) : elles ne
+  sont posées ici que dans l'échantillon des filets décoratifs, en fond.
+
+  Le plus petit texte de la page fait 11 px (les légendes), au-dessus du plancher de 10,5 px.
+
+  Chargé par `PageDemoSocle.tsx` et par rien d'autre : l'édition cliente ne le voit pas.
+*/
+
+:root[data-ambiance='noir'] {
+  /* Le sommaire de gauche, et l'espace entre les blocs. */
+  --sd-sommaire: 232px;
+  --sd-ecart: 14px;
+  --sd-ecart-bloc: 28px;
+  --sd-largeur-etroite: 360px;
+  --sd-arrondi-echantillon: 10px;
+}
+
+/* ═══ La page ═══ */
+.sd {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: var(--sd-sommaire) minmax(0, 1fr);
+  min-height: 100vh;
+  background-color: var(--socle-fond-page);
+  background-image: var(--socle-halo);
+  color: var(--socle-texte-1);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.sd *,
+.sd *::before,
+.sd *::after { box-sizing: border-box; }
+
+/* ═══ Le sommaire ═══ */
+.sd-sommaire {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-self: start;
+  height: 100vh;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 12px 16px;
+  overflow-y: auto;
+  border-right: 1px solid var(--socle-bord-lateral);
+  background: var(--socle-fond-lateral);
+}
+.sd-sommaire__titre {
+  margin: 0 8px 8px;
+  color: var(--socle-texte-3);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  line-height: 14px;
+  text-transform: uppercase;
+}
+.sd-sommaire__liste { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.sd-sommaire__lien {
+  display: block;
+  width: 100%;
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: var(--socle-rayon-controle);
+  background: transparent;
+  color: var(--socle-texte-2);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.sd-sommaire__lien:hover { background: var(--socle-survol); color: var(--socle-texte-1); }
+.sd-sommaire__lien[aria-current='location'] { background: var(--socle-sous-element-actif); color: var(--socle-texte-1); font-weight: 600; }
+.sd-sommaire__reglage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding: 12px 8px 0;
+  border-top: 1px solid var(--socle-bord-lateral);
+  color: var(--socle-texte-courant);
+  font-size: 12.5px;
+}
+
+/* ═══ Le contenu ═══ */
+.sd-contenu { min-width: 0; padding: 40px 40px 96px; }
+.sd-entete { max-width: 860px; }
+.sd-entete__etiquette {
+  margin: 0;
+  color: var(--socle-texte-3);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  line-height: 14px;
+  text-transform: uppercase;
+}
+.sd-entete__titre { margin: 8px 0 0; color: var(--socle-texte-1); font-size: 28px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
+.sd-entete__sous { margin: 8px 0 0; color: var(--socle-texte-3); font-size: 13.5px; line-height: 1.5; }
+
+/* ═══ Une section ═══ */
+.sd-section { scroll-margin-top: 16px; padding-top: 44px; }
+.sd-section__titre { margin: 0; color: var(--socle-texte-1); font-size: 20px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.2; }
+.sd-section__desc { max-width: 860px; margin: 8px 0 0; color: var(--socle-texte-2); font-size: 13.5px; line-height: 1.55; }
+.sd-section__etats { max-width: 860px; margin: 6px 0 0; color: var(--socle-texte-3); font-size: 12.5px; line-height: 1.5; }
+.sd-section__etats-etiquette { margin-right: 4px; color: var(--socle-texte-3); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; }
+.sd-renvoi,
+.sd-note { max-width: 860px; margin: 14px 0 0; color: var(--socle-texte-2); font-size: 12.5px; line-height: 1.55; }
+.sd-note:empty { display: none; }
+
+/* ═══ Un bloc, un exemple ═══ */
+.sd-bloc { margin-top: var(--sd-ecart-bloc); }
+.sd-bloc .sd-bloc { margin-top: 20px; }
+.sd-bloc__titre {
+  margin: 0 0 12px;
+  color: var(--socle-texte-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 14px;
+  text-transform: uppercase;
+}
+.sd-cas { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: 8px; margin: 0; }
+.sd-cas__corps { width: 100%; min-width: 0; }
+.sd-rangee > .sd-cas .sd-cas__corps { width: auto; }
+.sd-cas__legende { color: var(--socle-texte-3); font-size: 11.5px; line-height: 14px; }
+
+.sd-rangee { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px 20px; margin-top: 12px; }
+.sd-bloc__titre + .sd-rangee { margin-top: 0; }
+.sd-grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--sd-min, 220px), 1fr)); align-items: start; gap: var(--sd-ecart); }
+.sd-pile { display: flex; max-width: 520px; flex-direction: column; gap: 16px; }
+.sd-etroit { display: flex; max-width: var(--sd-largeur-etroite); flex-direction: column; gap: 12px; }
+.sd-vide-interne { padding: 16px 18px; color: var(--socle-texte-2); font-size: 13.5px; }
+.sd-liste { margin: 0; padding: 0; list-style: none; }
+.sd-etincelle { color: var(--socle-etat-succes); }
+.sd-tronque { width: 220px; color: var(--socle-texte-courant); font-size: 13px; }
+.sd-tuile {
+  display: flex;
+  min-height: 190px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  border: 1px solid var(--socle-bord-carte);
+  border-radius: var(--socle-rayon-carte);
+  background: var(--socle-carte-bas);
+}
+.sd-tuile--ligne { min-height: 0; flex-direction: row; flex-wrap: wrap; gap: 12px; justify-content: flex-start; }
+
+/* Les matrices de boutons : une colonne d'en-tête, trois tailles. */
+.sd-matrice { display: grid; grid-template-columns: 96px repeat(3, max-content); align-items: center; gap: 12px 24px; }
+.sd-matrice__entete { color: var(--socle-texte-3); font-size: 11.5px; line-height: 14px; }
+
+/* ═══ Les jetons ═══ */
+.sd-grille--jetons { --sd-min: 190px; gap: 16px 14px; }
+.sd-jeton { display: flex; min-width: 0; flex-direction: column; gap: 8px; margin: 0; }
+.sd-jeton__echantillon {
+  display: flex;
+  height: 54px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--socle-bord-carte);
+  border-radius: var(--sd-arrondi-echantillon);
+  background: var(--socle-fond-page);
+}
+.sd-jeton[data-genre='fond'] .sd-jeton__echantillon { background: var(--sd-ech); }
+.sd-jeton[data-genre='bord'] .sd-jeton__echantillon { border: 2px solid var(--sd-ech); background: var(--socle-carte-bas); }
+.sd-jeton[data-genre='encre'] .sd-jeton__echantillon { background: var(--socle-carte-bas); color: var(--sd-ech); font-size: 18px; font-weight: 600; }
+/* Un filet décoratif : posé en fond d'une barre, jamais en couleur de texte. */
+.sd-jeton[data-genre='decor'] .sd-jeton__echantillon { background: var(--socle-carte-bas); }
+.sd-jeton[data-genre='decor'] .sd-jeton__echantillon::before { content: ''; width: 70%; height: 2px; border-radius: 99px; background: var(--sd-ech); }
+.sd-jeton[data-genre='famille'] .sd-jeton__echantillon { background: var(--sd-ech); }
+.sd-jeton[data-genre='etat'] .sd-jeton__echantillon { background: var(--socle-carte-bas); }
+.sd-jeton[data-genre='avatar'] .sd-jeton__echantillon { background: var(--sd-ech); color: var(--socle-texte-1); font-size: 16px; font-weight: 600; }
+.sd-jeton__legende { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.sd-jeton__nom { overflow: hidden; color: var(--socle-texte-courant); font: inherit; font-size: 12px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.sd-jeton__valeur { color: var(--socle-texte-2); font-size: 12px; font-variant-numeric: tabular-nums; line-height: 16px; }
+.sd-jeton__role { color: var(--socle-texte-3); font-size: 11.5px; line-height: 15px; }
+
+/* ═══ Les cadres de hauteur fixe des archétypes ═══ */
+.sd-defile-x { overflow-x: auto; padding: 4px; margin: -4px; }
+.sd-cadre {
+  display: flex;
+  min-width: var(--sd-largeur-min, 0);
+  height: var(--sd-hauteur, 420px);
+  flex-direction: column;
+}
+.sd-cadre > .sc-zone { flex: 1 1 0; }
+
+/* ═══ La miniature du gabarit ═══ */
+.sd-miniature {
+  display: flex;
+  height: 700px;
+  flex-direction: column;
+  margin-top: 20px;
+  overflow: hidden;
+  border: 1px solid var(--socle-bord-carte);
+  border-radius: var(--socle-rayon-carte);
+  background-color: var(--socle-fond-page);
+  background-image: var(--socle-halo);
+}
+
+/* ═══ Étroit : le sommaire passe en haut ═══ */
+@media (max-width: 959.98px) {
+  .sd { grid-template-columns: minmax(0, 1fr); }
+  .sd-sommaire { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--socle-bord-lateral); }
+  .sd-sommaire__liste { flex-direction: row; flex-wrap: wrap; }
+  .sd-sommaire__lien { width: auto; }
+  .sd-sommaire__reglage { margin-top: 0; }
+  .sd-contenu { padding: 28px 18px 80px; }
+}
