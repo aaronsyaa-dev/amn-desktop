@@ -123,3 +123,53 @@ Fait : S0, S3, S1, S5, S2.
 | 2026-10-22 | `claude/refonte-s2-accueil` | `a537dbe` → `408a3f5` | sans conflit ; `check:clavier` rouge (déjà sur la branche S2) |
 | 2026-10-22 | (CO) | `c88814c` | `Lancement.tsx` : `useFermetureEchap` ; toutes les gardes vertes |
 | 2026-10-22 | (CO, branche F1) | `274381f` → `59056ad` | niveau `expert` → `avance` (demande de Harun) |
+
+## LOT-00 Système et démarrage
+
+Branche `claude/refonte-socle` (partie de `claude/refonte-design-socle`). Détail : [`rapports/LOT-00.md`](rapports/LOT-00.md).
+
+**Aucune capture ni comparaison à l'image ±2 px** : l'application n'a pas été lancée (consigne). Chaque écran est vérifié par les gardes sans navigateur et par rendu serveur ; la colonne « Capture » reste « non capturé ».
+
+| Écran | Route / entrée | État | Capture | Écarts |
+|---|---|---|---|---|
+| H40 Notifications | `/notifications`, cloche de l'en-tête | fait | non capturé | Seul le canal « App » a des émetteurs ; mail et mobile : filtres seulement |
+| H41 Recherche ⌘K | ⌘K, champ de la barre latérale | fait | non capturé | « Écrire à X » ouvre `mailto:` ; pas de ⌘↵ (fenêtre unique Electron) |
+| H42 Démarrage | `/demarrage` ; une fois, à la toute première connexion | fait | non capturé | Étapes 5 et 6 (paiement, appareil mobile) manuelles : aucune donnée de connecteur |
+| H47 Choisir son métier | `/demarrage/metier` | fait | non capturé | Réglage personnel (pas de réglage d'organisation) ; « Passer » ne masque aucun module |
+| H43 États et messages | `/dev/etats` (développement) + briques `situations` | fait | non capturé | Page de référence interne, hors production |
+| D02 Tous les modules | « Tous les modules (101) » de la barre latérale | fait | non capturé | Comptes par famille issus du registre (14/7/12/12/15/7/19/15), pas de la maquette (12/14/9/18/10/16/14/8) ; totaux 101 et niveaux 16/62/23 conformes |
+| G06 Connexion | `/login` | fait | non capturé | « Demandez un accès » affiche un texte (aucun flux de demande) ; « 12 organisations » est une constante de présentation à valider ; la phrase sur le journal de la Garde est à vérifier (H35) |
+| G05 Ajmani ⌘J | ⌘J, barre Ajmani | fait | non capturé | Prépare un brouillon de relance N1, n'envoie rien ; « Décrire » passe à l'assistant existant |
+
+**8 écrans sur 8 construits.**
+
+### Écarts et réserves (à lire par le CO)
+
+- La nouvelle coquille reste **éteinte par défaut** (drapeau `amn.coquille`) : l'allumer est une décision CO/Harun.
+- Les pages « Vue d'ensemble » de famille (`/ensemble/:famille`) sont génériques jusqu'aux lots F10–F60.
+- Raccourci « N · Créer, partout » non repris (n'existe pas). « Un appel de 15 minutes » mène à `/assistance`. « Créer un devis pour X » ouvre la page client de X.
+- `check:coquille`, `check:signal`, `check:mobile`, `check:contraste`, `check:focus`, `check:cibles`, `check:etiquettes`, `check:mouvement`, `check:xss`, `check:isolation`, `check:business` demandent un navigateur ou un build servi : **non lancés**.
+- Gardes en échec avant et après le lot, sans lien avec lui : `check:encres` (`src/refonte/garde/equipes.ts`), `check:migration`, `check:xss`, `check:visite`, `check:support` (environnement).
+
+### Questions pour le CO
+
+1. Allume-t-on la nouvelle coquille par défaut ? Avec quel jalon ?
+2. Valider la phrase « Connexion protégée… journal de la Garde » et la constante « 12 organisations » (G06).
+3. Faut-il un réglage d'organisation pour le métier (H47) ?
+4. Brancher des émetteurs « mail » et « mobile » pour les notifications (H40) ?
+
+### Composants disponibles pour les autres lots
+
+Tout s'importe depuis `src/socle/ui` (`index.ts`) ; internes seulement, jamais depuis un fichier partagé.
+
+| Groupe | Dossier | Contenu |
+|---|---|---|
+| Base | `src/socle/ui/*.tsx` | `Bouton` (`raccourci`), `Carte`, `Modale`, `Saisie`, `TuileKpi`, `BarreProgression`, `AnneauProgression`, `Etiquette`, `PastilleEtat`, `Avatar`, `PileAvatars`, `Raccourci`, `CaseACocher`, `LigneTache`, `LigneActivite`, `EtapeFranchie`, `EtatVide`, `Squelette` |
+| Contrôles | `controles/` | `Interrupteur`, `BoutonIcone`, `Selecteur`, `BoiteRecherche`, `Onglets`, `Segmente`, `SuggestionAjmani`, `Tag`, `SousCarte`, `CarteCases`, `CarteAnneau`, `CarteSerie`, `CarteJalon` |
+| Situations | `situations/` | `EtatChargement`, `SqueletteLignes`, `DialogueConfirmation`, `FournisseurToasts` + `useToastsSocle`, `AvisCollaboration` |
+| Graphiques | `graphiques/` | `Courbe`, `MiniCourbe`, `Barres`, `Donut`, `Anneau`, formats (`formaterNombre`, `formaterEuro`, `formaterPourcent`) |
+| Archétypes | `archetypes/` | `Page`, `RangeeKpi`, `ColonneDroite`, `Kanban`, `GrilleCartes`, `Scinde`, `Semaine`, `LigneTemps`, tableau triable (`trierLignes`…) |
+| Coquille | `src/socle/coquille/` | `BarreLaterale`, `EnTete`, `BarreAjmani`, `Coquille` |
+| Système | `src/refonte/systeme/` | notifications, recherche, Ajmani, modules, connexion, démarrage, H43, démo (`/dev/socle`) |
+
+Chaque écran a ses mots fr/en (`definirMots`) et sa garde : `check:socle-controles|graphiques|situations|archetypes|coquille`, `check:systeme-modules|notifications|recherche|ajmani|demo|demarrage`.

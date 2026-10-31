@@ -212,3 +212,7 @@ la logique du réglage. `check:calques` vérifie la pile qu'utilise la Modale.
 - Nouvelles briques (`src/socle/ui/`) : `TuileKpi`, `BarreProgression`, `AnneauProgression`, `PastilleEtat`, `Etiquette`, `Avatar`, `PileAvatars`, `CaseACocher`, `LigneTache`, `LigneActivite`, `EtapeFranchie`, `EtatVide`, `Squelette`, `Raccourci`.
 - Coquille (`src/socle/coquille/`) : `BarreLaterale`, `EnTete`, `BarreAjmani`, `PaletteAjmani`, `Coquille`. Branchement : `src/refonte/coquille/`, par la couture `@edition/coquille`. Éteinte par défaut ; Paramètres › « Nouvelle coquille ».
 - Détail, choix et points à trancher : [`rapports/DS.md`](refonte/rapports/DS.md).
+
+## Mise à jour — LOT-00 Système et démarrage
+
+Nouveaux groupes de briques dans `src/socle/ui/` (tous réexportés par `index.ts`) : `controles/`, `situations/`, `graphiques/`, `archetypes/`. Les mots fr/en vivent par écran (`definirMots`, `src/socle/mots.ts`). La page de démonstration interne `/dev/socle` (développement seulement) montre chaque brique. Écrans système : `src/refonte/systeme/`. Liste et chemins : section « LOT-00 » de [`refonte/STATUT.md`](refonte/STATUT.md).
