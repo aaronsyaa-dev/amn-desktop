@@ -17,14 +17,19 @@ export function EtatVide({ titre, texte, action }: { titre?: string; texte: stri
   );
 }
 
-export function Squelette({ largeur = '100%', hauteur = 16, rayon }: { largeur?: number | string; hauteur?: number | string; rayon?: number }) {
-  return <span aria-hidden className="sc-squelette" style={{ width: largeur, height: hauteur, borderRadius: rayon }} />;
+/**
+ * Un bloc qui garde la place (fiche H43) : fond `--socle-squelette`, reflet lent de 1,4 s, immobile si le
+ * système demande moins de mouvement. `ligne` donne la teinte d'une barre de texte (`--socle-squelette-ligne`),
+ * un peu plus claire que celle d'un carré ou d'une pastille.
+ */
+export function Squelette({ largeur = '100%', hauteur = 16, rayon, ligne = false }: { largeur?: number | string; hauteur?: number | string; rayon?: number | string; ligne?: boolean }) {
+  return <span aria-hidden className="sc-squelette" data-ligne={ligne || undefined} style={{ width: largeur, height: hauteur, borderRadius: rayon }} />;
 }
 
 /** Un bloc en chargement : il annonce « Chargement » une fois, ses squelettes se taisent. */
-export function Chargement({ libelle, children }: { libelle: string; children: React.ReactNode }) {
+export function Chargement({ libelle, children, className }: { libelle: string; children: React.ReactNode; className?: string }) {
   return (
-    <div role="status" aria-busy="true" aria-label={libelle}>
+    <div role="status" aria-busy="true" aria-label={libelle} className={className}>
       {children}
     </div>
   );
