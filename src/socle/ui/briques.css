@@ -147,7 +147,7 @@
   border-radius: 99px;
   background: var(--sc-avatar-fond, var(--socle-avatar-a));
   color: var(--socle-texte-1);
-  font-size: calc(var(--sc-avatar, 24px) * 0.42);
+  font-size: max(10.5px, calc(var(--sc-avatar, 24px) * 0.42));
   font-weight: 600;
   line-height: 1;
   text-transform: uppercase;

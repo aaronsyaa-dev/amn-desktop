@@ -499,7 +499,7 @@ await dit('Donut : 116 px, épaisseur 14, un cercle par segment, couleurs = jeto
   assert.match(cercles[0], /style="stroke:var\(--socle-etat-info\)"/);
   assert.match(cercles[1], /style="stroke:var\(--socle-fam-argent\)"/);
   assert.match(cercles[2], /style="stroke:var\(--socle-etat-attention\)"/);
-  assert.match(html, /aria-label="Dépenses\. Répartition, 3 parts, total : 10\u202f000\u00a0€"/);
+  assert.match(html, /aria-label="Dépenses\. Répartition, parts : 3, total : 10\u202f000\u00a0€"/);
 });
 
 await dit('Donut : segments séparés de 2 px (mesuré sur les cercles rendus), qui bouclent le tour', () => {

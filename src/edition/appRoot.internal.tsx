@@ -16,6 +16,7 @@ import { ROUTE_NOTIFICATIONS } from '../refonte/systeme/routes';
    construction, la branche et ses morceaux disparaissent du paquet livré). */
 const PageNotificationsRoute = lazy(() => import('../refonte/systeme/PageNotificationsRoute'));
 const PageEnsembleFamille = lazy(() => import('../refonte/systeme/PageEnsembleFamille'));
+const PageDemoSocle = lazy(() => import('../refonte/systeme/demo/PageDemoSocle'));
 const PageEtatsMessages = lazy(() => import('../refonte/systeme/h43-etats/PageEtatsMessages'));
 import { InvitationScreen } from '../screens/InvitationScreen';
 import { ReinitialisationScreen } from '../screens/ReinitialisationScreen';
@@ -223,6 +224,18 @@ export function AppRoot() {
       <Route path="/p" element={<PublicPageScreen />} />
       <Route path="/f" element={<PublicFormScreen />} />
       {/* H43 — États et messages : la page de référence des huit situations, hors coquille, connectée, en développement seulement. */}
+      {import.meta.env.DEV && (
+        <Route
+          path="/dev/socle"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={null}>
+                <PageDemoSocle />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+      )}
       {import.meta.env.DEV && (
         <Route
           path="/dev/etats"

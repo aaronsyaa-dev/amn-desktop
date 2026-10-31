@@ -75,6 +75,8 @@
   --socle-fam-echanger: #d98fa8;
   --socle-fam-creer: #d9a27a;
   --socle-fam-outils: #9a9aa0;
+  /* La Garde et la supervision : l'icône bouclier, jamais une pastille (01-SOCLE-DESIGN §1). */
+  --socle-fam-garde: #d6d6da;
 
   /* ── États ── */
   --socle-etat-succes: #8fbf7a;
