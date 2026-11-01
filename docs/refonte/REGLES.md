@@ -1,7 +1,7 @@
 # Refonte vivante — règles communes
 
 > À coller dans le prompt de chaque session. Tenu par le CO (chef d'orchestre).
-> Version d'après le socle S0 fusionné (`9a6ffe7`). Mode d'emploi du socle :
+> Version du 1er novembre (dossier de construction, LOT-10, exception T1). Mode d'emploi du socle :
 > [`docs/refonte-socle.md`](../refonte-socle.md).
 
 Piège de nommage : dans le code, `internal` = **AMN Business** (édition interne,
@@ -16,6 +16,13 @@ cliente ne doit **jamais** changer pendant ce chantier.
   fusion toi-même : le CO fusionne.
 - Ne lance pas l'app (ni `npm start`, ni `start:business`, ni `build:web`), ni
   aucun serveur. Aucune donnée réelle (Syraagensy, NWSY), aucun secret.
+- **Exception, T1 seulement** (qualité et contrôle image / écran) : `build:web`
+  et `build:web:business` sont permis, servis sur `127.0.0.1`, uniquement
+  contre l'API d'essai en mémoire (`scripts/qualite/api-essai.mjs`, comptes
+  `@exemple.test`) et les jeux de `src/refonte/donnees/`. Jamais une API, une
+  URL ou un compte réels ; `VITE_AMN_API_URL` pointe sur `127.0.0.1`. Les
+  sorties de build, les captures et les images des maquettes restent hors du
+  dépôt. `npm start` (Electron) reste interdit à tous.
 
 ## Sécurité : le dépôt est public
 
@@ -43,8 +50,9 @@ Concrètement :
   listés dans [`STATUT.md`](STATUT.md). Si tu dois en sortir, arrête-toi et
   demande au CO.
 - **Socle** (`src/socle/**`) : utilise-le, ne le modifie pas.
-  - Briques : `src/socle/ui` (`Bouton`, `Carte`, `Modale`, `Saisie`).
-  - Couleur d'un bloc : `data-famille="jour|contacts|ecrire|argent|echanger|creer|outils"`,
+  - Briques : `src/socle/ui` (index). La liste à jour, avec les chemins, est
+    dans `STATUT.md`, § 7, section LOT-00 « Composants disponibles ».
+  - Couleur d'un bloc : `data-famille` avec une famille de `src/socle/familles.ts`,
     puis `var(--fam)`, `var(--fam-texte)`, `var(--fam-fond)`, `var(--fam-bord)`.
   - Attention : le rail partagé (`BarreRail.tsx`) pose aussi `data-famille`,
     avec ses propres clés (dont `outils`). Ne lis pas `--fam*` sur une tuile du
@@ -101,14 +109,15 @@ Plus tes propres `check:*`, s'il y en a, ajoutés à `editions.yml`.
 
 Chaque lot a **une branche** `claude/refonte-<lot>` et **une section** dans [`STATUT.md`](STATUT.md), § 7 « Écrans ». Les branches, les sessions et l'ordre sont au § 2 de `STATUT.md`.
 
-- **Départ** : crée ta branche depuis `claude/refonte-vivante` (LOT-00 : depuis `refonte-design-socle`, voir `STATUT.md` § 1.1). Les lots 01 à 09 ne démarrent qu'une fois LOT-00 fusionné.
+- **Départ** : crée ta branche depuis `claude/refonte-vivante` (LOT-00 : depuis `refonte-design-socle`, voir `STATUT.md` § 1.1). Les lots 01 à 10 ne démarrent qu'une fois LOT-00 fusionné ; LOT-09 vient en dernier.
+- **`bureaux/cyber/**`** (`src/bureaux/cyber/`), partagé par LOT-08 et LOT-10 : lecture libre pour les deux. Pour modifier un fichier existant : LOT-08 pour `FicheIncident.tsx`, `Alertes.tsx` et `JournalAudit.tsx` (sources de H32, MG01 et MG02), LOT-10 pour les autres. Un fichier voulu par les deux passe par le CO. Les nouveaux fichiers vont dans `src/refonte/garde/` (LOT-08) ou `src/refonte/cyber/` (LOT-10), pas dans `bureaux/cyber/`.
 - **`STATUT.md`** : tu ne modifies **que la section de ton lot** (§ 7), une ligne par écran, à chaque écran terminé : `à faire`, `en cours`, `fait` ou `écart` avec la raison en note. Le reste du fichier est au CO. Cela remplace « Les sessions ne modifient pas ce fichier » et la consigne du dossier de construction.
 - **Écrans** (`STATUT.md` § 1.3) : un écran refondu est un nouveau composant dans `src/refonte/<lot>/`, qui réutilise les hooks et l'état existants. Tu ne modifies ni `src/screens/**` ni `appRoot.internal.tsx` : le mécanisme de substitution de LOT-00 s'en charge. Les écrans partagés avec l'édition cliente passent par une couture `@edition/*` dont le jumeau `.business` ne fait rien.
 - **Socle** : `src/socle/**` est en lecture seule dès que LOT-00 est fusionné. Il manque un composant ou un jeton ? Note-le dans la section de ton lot et dis-le au CO, ne le contourne pas.
 - **Registre** : tes écrans NOUVEAU s'ajoutent dans le fichier de ta famille, `src/refonte/modules/declarations/<famille>.ts`.
 - **Maquettes** : les images du dossier restent **hors du dépôt**. Ne les committe pas, et ne les copie pas dans `docs/`.
-- **Données** : jeux de données fictives uniquement. Les noms, montants et dates des images ne sont jamais codés en dur.
-- **Preuve avant de rendre la main** : les gardes de « Avant de finir », plus la capture de chaque écran à 1440 × 900 comparée à son image (± 2 px). Un écart se note, il ne se tait pas.
+- **Données** : jeux de données fictives uniquement, ceux de `src/refonte/donnees/` (contrôlés par `check:donnees`). Il en manque pour ton lot ? Demande-les au CO, qui les commande à SIM. Les noms, montants et dates des images ne sont jamais codés en dur.
+- **Preuve avant de rendre la main** : les gardes de « Avant de finir ». La capture de chaque écran à 1440 × 900 et sa comparaison à l'image (± 2 px) sont faites **par T1**, puisque les lots ne lancent pas l'app. Un écart se note, il ne se tait pas.
 
 ## Fin de session
 
