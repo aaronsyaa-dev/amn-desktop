@@ -8,9 +8,12 @@
  * qui délègue à l'assistant existant (le rappel `surDemander` de la palette).
  *
  * Intentions couvertes :
- *   relancer une facture en retard   N1 « Préparer la relance » (l'application ne sait pas envoyer de relance :
- *                                    elle les note à la main, voir `RemindersScreen`) ; « déjà fait » si une
+ *   relancer une facture en retard   N1 « Préparer la relance » (Ajmani n'envoie rien : la relance part de l'écran
+ *                                    Relances, `RemindersScreen`, par la personne) ; « déjà fait » si une
  *                                    relance est déjà notée au même palier
+ *   relancer LES factures en retard  N1, G05 v3 : une ligne cochable par facture (aperçu du texte, mise en garde
+ *                                    si une relance est déjà partie), « Préparer les {n} relances » qui ouvre
+ *                                    Relances avec celles qui restent cochées ; « Rien ne part sans votre accord »
  *   lister les factures en retard    N0
  *   créer une facture                N1, brouillon : demande le client, puis les lignes, puis récapitule
  *   trouver un module ou un client   N0, 3 résultats par groupe
@@ -57,6 +60,8 @@ export interface FactureAjmani {
   numero: string;
   clientId: number | null;
   clientNom: string;
+  /** Le client a une adresse sur la facture : la relance peut partir par e-mail (depuis Relances). */
+  courriel?: boolean;
   statut: 'brouillon' | 'emise' | 'payee' | 'annulee';
   /** Échéance, jour ISO (« 2026-10-12 »). */
   echeance: string;
@@ -101,6 +106,8 @@ export type EtatGardeAjmani = 'calme' | 'attention' | 'critique' | 'inconnu';
 export interface DonneesAjmani {
   /** Aujourd'hui, jour ISO : injecté, jamais lu dans l'horloge ici. */
   aujourdhui: string;
+  /** L'instant où ces données ont été lues (ISO) : « d'après Facturation, à jour à 10:42 ». Absent : la source ne dit pas l'heure. */
+  luesA?: string;
   factures: readonly FactureAjmani[];
   clients: readonly ClientAjmani[];
   relances: readonly RelanceAjmani[];
@@ -159,7 +166,7 @@ export function segmenter(modele: string, params: Record<string, string | number
   return segments;
 }
 
-export type IconeAjmani = 'plus' | 'loupe' | 'bouclier' | 'document' | 'envoi' | 'fleche' | 'horloge' | 'liste' | 'ouvrir' | 'utilisateur' | 'appel' | 'message' | 'agenda' | 'note' | 'facture';
+export type IconeAjmani = 'plus' | 'loupe' | 'bouclier' | 'document' | 'envoi' | 'fleche' | 'horloge' | 'liste' | 'ouvrir' | 'utilisateur' | 'appel' | 'message' | 'agenda' | 'note' | 'facture' | 'crayon' | 'courriel';
 
 export interface LigneFactureBrouillon {
   label: string;
@@ -201,7 +208,7 @@ export interface LigneReponse {
 }
 
 export type Genre =
-  | 'proposition' | 'resultats' | 'resume' | 'garde' | 'brouillon'
+  | 'proposition' | 'relances' | 'resultats' | 'resume' | 'garde' | 'brouillon'
   | 'rien-trouve' | 'non-comprise' | 'deja-fait' | 'refus' | 'droits' | 'question'
   | 'vide-propose' | 'vide-recent' | 'vide-suggere';
 
@@ -211,6 +218,37 @@ export interface ObjetConcerne {
   type: 'facture' | 'client' | 'module';
   id: string;
   libelle: string;
+}
+
+/**
+ * Une action proposée (G05 v3, `ProposedAction`) : une relance par facture en retard, cochée par défaut. Les faits
+ * (numéro, reste dû, jours de retard, relances déjà notées) viennent des données ; le texte de la relance, de
+ * l'appelant (le même que celui de l'écran Relances), jamais d'ici.
+ */
+export interface ActionProposee {
+  id: string;
+  factureId: string;
+  numero: string;
+  clientNom: string;
+  resteDuCentimes: number;
+  jours: number;
+  /** Le palier de ton que le retard appelle. */
+  palier: PalierRelance;
+  /** La relance que ce serait (1 : la première ; 2 : une deuxième, mise en garde). */
+  rang: number;
+  /** La dernière relance déjà notée pour cette facture (ISO), s'il y en a une. */
+  derniere?: string;
+  /** « e-mail » : la facture porte une adresse. */
+  canal: 'email' | null;
+}
+
+/** Une suite proposée (« ENSUITE, SI VOUS VOULEZ ») : 3 au plus, déduites de la réponse. */
+export interface Suite {
+  id: string;
+  cle: CleMot;
+  params?: Record<string, string | number>;
+  icone: IconeAjmani;
+  effet: Effet;
 }
 
 export interface Reponse {
@@ -234,6 +272,13 @@ export interface Reponse {
   boutons: BoutonProposition[];
   lignes: LigneReponse[];
   pastille?: { etat: 'succes' | 'attention' | 'critique' | 'neutre'; cle: CleMot };
+  /** D'où viennent les faits (« d'après Facturation, à jour à 10:42 ») : le module et l'heure de lecture. */
+  source?: { module: string; a: string };
+  /** Les actions proposées une par une (cases à cocher). */
+  propositions?: ActionProposee[];
+  /** Combien d'autres, au-delà des 5 lignes montrées. */
+  autres?: number;
+  suites?: Suite[];
 }
 
 /* ═══ Les petits outils ═══ */
@@ -400,10 +445,70 @@ function totalHt(lignes: readonly LigneFactureBrouillon[]): number {
   return lignes.reduce((n, l) => n + Math.round(l.quantite * l.prixCentimes), 0);
 }
 
+/** « Relance les factures en retard », « relancer tous les impayés » : la demande porte sur toutes, pas sur une. */
+const RE_PLURIEL = /\b(factures|invoices|toutes|tous|all|impayes|impayees|retards)\b/;
+
+/** Au plus 5 lignes d'action ; au-delà, « Voir les {n} autres ». */
+export const MAX_PROPOSITIONS = 5;
+
+/** La relance que serait la prochaine pour cette facture (1 : la première), et la date de la dernière notée. */
+function dejaRelancee(donnees: DonneesAjmani, factureId: string): { rang: number; derniere?: string } {
+  const notees = donnees.relances.filter((r) => r.factureId === factureId).sort((a, b) => b.le.localeCompare(a.le));
+  return { rang: notees.length + 1, derniere: notees[0]?.le };
+}
+
+function moduleDe(donnees: DonneesAjmani, cle: string): ModuleAjmani | undefined {
+  return donnees.modules.find((m) => m.cle === cle);
+}
+
+/**
+ * RELANCER TOUTES LES FACTURES EN RETARD — G05 v3. Une ligne cochée par facture, la plus ancienne d'abord, avec sa
+ * mise en garde quand une relance est déjà partie ; le bouton primaire prépare celles qui restent cochées dans
+ * Relances (rien ne part d'ici). Les suites ne mènent qu'à des modules ouverts (une tâche, un appel à l'agenda).
+ */
+function analyserRelances(texte: string, env: Env): Reponse {
+  const { donnees } = env;
+  const retards = facturesEnRetard(donnees);
+  if (retards.length === 0) return reponse({ intention: 'relancer', genre: 'rien-trouve', phrase: { cle: 'phrase.relance.aucune' } }, texte);
+  const propositions: ActionProposee[] = retards.map((f) => {
+    const jours = joursDeRetard(f, donnees.aujourdhui);
+    const { rang, derniere } = dejaRelancee(donnees, f.id);
+    return { id: `relance-${f.id}`, factureId: f.id, numero: f.numero, clientNom: f.clientNom, resteDuCentimes: f.resteDuCentimes, jours, palier: paliereDe(jours), rang, derniere, canal: f.courriel ? 'email' : null };
+  });
+  const montres = propositions.slice(0, MAX_PROPOSITIONS);
+  const total = formaterMontant(retards.reduce((n, f) => n + f.resteDuCentimes, 0));
+  const facturation = moduleDe(donnees, 'invoices');
+  const suites: Suite[] = [];
+  const taches = moduleDe(donnees, 'tasks');
+  if (taches) suites.push({ id: 'suite-tache', cle: 'suite.tache', icone: 'liste', effet: { type: 'aller', route: taches.route } });
+  const agenda = moduleDe(donnees, 'agenda');
+  if (agenda) suites.push({ id: 'suite-appel', cle: 'suite.appel', icone: 'appel', effet: { type: 'aller', route: agenda.route } });
+  const relances = moduleDe(donnees, 'reminders');
+  if (relances) suites.push({ id: 'suite-relances', cle: 'suite.relances', icone: 'ouvrir', effet: { type: 'aller', route: relances.route } });
+  return reponse({
+    intention: 'relancer', genre: 'relances', niveau: 'N1',
+    phrase: { cle: retards.length === 1 ? 'phrase.relances.un' : 'phrase.relances.n', params: { n: retards.length, total }, gras: ['total'] },
+    objets: montres.map((p) => ({ type: 'facture', id: p.factureId, libelle: p.numero })),
+    source: facturation && donnees.luesA ? { module: facturation.libelle, a: donnees.luesA } : undefined,
+    propositions: montres,
+    autres: propositions.length - montres.length,
+    suites: suites.slice(0, 3),
+    boutons: [
+      boutonAller('preparer-tout', retards.length === 1 ? 'bouton.relances.preparer.un' : 'bouton.relances.preparer.n', relances?.route ?? '/relances', 'primaire', 'envoi', { factureIds: montres.map((p) => p.factureId) }, { n: montres.length }),
+      boutonAller('modifier', 'bouton.modifier', relances?.route ?? '/relances', 'secondaire', 'crayon'),
+      annuler(),
+    ],
+  }, texte);
+}
+
 function analyserRelance(texte: string, env: Env): Reponse {
   const { donnees, contexte, mots } = env;
   const langue = contexte.langue ?? 'fr';
   const trouves = chercherClients(texte, donnees.clients);
+  // « Les factures en retard », sans client cité ni fiche ouverte : toutes à la fois (G05 v3).
+  if (trouves.cite.filter((m) => !RE_PLURIEL.test(m) && !['ton', 'courtois', 'courtoise', 'poli', 'polie', 'tone', 'polite'].includes(m)).length === 0 && !contexte.focus && RE_PLURIEL.test(aplatir(texte))) {
+    return analyserRelances(texte, env);
+  }
   let client: ClientAjmani | null = null;
   let facture: FactureAjmani | null = null;
 

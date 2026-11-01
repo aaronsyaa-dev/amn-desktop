@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowRight, CalendarDays, Clock, ExternalLink, FileText, ListChecks, MessageSquare, Phone, Plus, Receipt, Search, Send, Shield, StickyNote, User, WifiOff, type LucideIcon } from 'lucide-react';
+import { ArrowRight, CalendarDays, Check, Clock, ExternalLink, FileText, ListChecks, Mail, MessageSquare, Pencil, Phone, Plus, Receipt, Search, Send, Shield, ShieldCheck, StickyNote, User, WifiOff, type LucideIcon } from 'lucide-react';
 import { Bouton } from '../../../socle/ui/Bouton';
-import { PastilleEtat, Raccourci } from '../../../socle/ui/Pastilles';
+import { PastilleEtat, Raccourci, initiales } from '../../../socle/ui/Pastilles';
 import { IconeEtincelle } from '../../../socle/ui/controles';
 import { useFermetureEchap } from '../../../lib/useFermetureEchap';
 import { useMots, traduire, type CleMot } from './i18n';
 import {
-  analyser, etatDeRepos, segmenter,
-  type BoutonProposition, type ContexteAjmani, type DonneesAjmani, type Effet, type Env, type IconeAjmani, type Mots, type Phrase, type Reponse, type Segment,
+  analyser, etatDeRepos, formaterJour, formaterMontant, segmenter,
+  type ActionProposee, type BoutonProposition, type ContexteAjmani, type DonneesAjmani, type Effet, type Env, type IconeAjmani, type Mots, type Phrase, type Reponse, type Segment, type Suite,
 } from './intentions';
 import { lignesLancer, type LigneLancer } from './lancer';
 import { CHAMP, deplacer, indiceValide, type Cible } from './navigation';
@@ -59,11 +59,17 @@ export interface PaletteAjmaniRefonteProps {
   actions?: ActionsAjmani;
   /** Par défaut : l'analyseur local. */
   analyseur?: Analyseur;
+  /**
+   * Le texte de la relance d'une action proposée — celui que l'écran Relances copie ou envoie (même modèle, mêmes
+   * faits). Absent ou `null` : l'aperçu renvoie à Relances, rien n'est inventé ici.
+   */
+  texteRelance?: (p: ActionProposee) => string | null;
 }
 
 const ICONES: Record<IconeAjmani, LucideIcon> = {
   plus: Plus, loupe: Search, bouclier: Shield, document: FileText, envoi: Send, fleche: ArrowRight, horloge: Clock, liste: ListChecks,
   ouvrir: ExternalLink, utilisateur: User, appel: Phone, message: MessageSquare, agenda: CalendarDays, note: StickyNote, facture: Receipt,
+  crayon: Pencil, courriel: Mail,
 };
 
 function Icone({ nom, taille = 16 }: { nom: IconeAjmani; taille?: number }) {
@@ -166,6 +172,12 @@ interface Vue {
   /** `data-vue` : ce que la palette montre dans sa deuxième bande. */
   mode: 'repos' | 'reponse' | 'reflexion' | 'erreur' | 'resultat';
   section: string;
+  /** « d'après Facturation, à jour à 10:42 ». */
+  source?: string;
+  /** Les actions proposées une par une (G05 v3), et combien d'autres au-delà. */
+  propositions: ActionProposee[];
+  autres: number;
+  suites: Suite[];
   phrase: Segment[];
   details: string[];
   pastille?: { etat: 'succes' | 'attention' | 'critique' | 'neutre'; libelle: string };
@@ -185,6 +197,8 @@ type Resultat =
 export interface EtatInitial {
   texte?: string;
   reponse?: Reponse | null;
+  /** L'action proposée dépliée au départ (son identifiant) ; par défaut, la première qui porte une mise en garde. */
+  deplie?: string | null;
   enCours?: boolean;
   squelette?: boolean;
   erreur?: 'analyse' | 'action' | null;
@@ -200,6 +214,7 @@ function ContenuPalette({
   surOuvrirRecherche,
   actions,
   analyseur = analyser,
+  texteRelance,
   sortie,
   champ,
   pilote,
@@ -227,6 +242,17 @@ function ContenuPalette({
   const [historique, setHistorique] = useState<Demande[]>(() => lireHistorique(email, Date.now()));
   const [usage, setUsage] = useState<Usage>(() => lireUsage(email));
   const [rappel, setRappel] = useState<number | null>(null);
+  /* Les actions proposées : toutes cochées par défaut ; une seule dépliée à la fois. */
+  const [decochees, setDecochees] = useState<ReadonlySet<string>>(() => new Set());
+  const [deplie, setDeplie] = useState<string | null>(() => (initial?.deplie !== undefined ? initial.deplie : (initial?.reponse?.propositions?.find((p) => p.rang > 1)?.id ?? null)));
+  const reponseVue = useRef<Reponse | null>(initial?.reponse ?? null);
+  useEffect(() => {
+    // Une nouvelle proposition repart tout cochée, dépliée sur sa première mise en garde.
+    if (reponseVue.current === reponse) return;
+    reponseVue.current = reponse;
+    setDecochees(new Set());
+    setDeplie(reponse?.propositions?.find((p) => p.rang > 1)?.id ?? null);
+  }, [reponse]);
 
   const requete = useRef(0);
   const minuteurSquelette = useRef<number | null>(null);
@@ -490,9 +516,11 @@ function ContenuPalette({
     };
   };
 
+  const vide = { propositions: [] as ActionProposee[], autres: 0, suites: [] as Suite[] };
   const vue: Vue = (() => {
     if (erreur) {
       return {
+        ...vide,
         mode: 'erreur',
         section: tm('section.propose'),
         phrase: segmenter(tm(erreur === 'action' ? 'erreur.action' : 'erreur.reponse')),
@@ -517,6 +545,7 @@ function ContenuPalette({
       if (resultat.type === 'brouillon') {
         const enAttente = resultat.etat === 'en-cours';
         return {
+          ...vide,
           mode: 'resultat',
           section: tm('section.propose'),
           phrase: segmenter(tm(resultat.etat === 'annule' ? 'resultat.annule' : 'resultat.brouillon'), { client: resultat.client }, ['client']),
@@ -532,14 +561,14 @@ function ContenuPalette({
         };
       }
       if (resultat.type === 'copie') {
-        return { mode: 'resultat', section: tm('section.propose'), phrase: segmenter(tm(resultat.ok ? 'resultat.copie' : 'resultat.copieEchec')), details: [], lignes: [], boutons: [] };
+        return { ...vide, mode: 'resultat', section: tm('section.propose'), phrase: segmenter(tm(resultat.ok ? 'resultat.copie' : 'resultat.copieEchec')), details: [], lignes: [], boutons: [] };
       }
     }
     if (enCours) {
-      return { mode: 'reflexion', section: tm('section.propose'), phrase: [], details: [], lignes: [], boutons: [] };
+      return { ...vide, mode: 'reflexion', section: tm('section.propose'), phrase: [], details: [], lignes: [], boutons: [] };
     }
     if (!courante) {
-      return { mode: 'repos', section: tm('section.propose'), phrase: [], details: [], lignes: [], boutons: [] };
+      return { ...vide, mode: 'repos', section: tm('section.propose'), phrase: [], details: [], lignes: [], boutons: [] };
     }
     const lignes: LigneUI[] = courante.lignes.map((l) => ({
       id: l.id,
@@ -550,14 +579,32 @@ function ContenuPalette({
       jour: courante.genre === 'vide-recent' ? jourDe(historique.find((d) => d.texte === l.titre), maintenant, langue, tm) : undefined,
       surActiver: () => executer(l.effet, 'N0', 'ligne-entree'),
     }));
+    const propositions = courante.propositions ?? [];
+    const cochees = propositions.filter((p) => !decochees.has(p.id));
+    // Les relances proposées : le total et le bouton suivent les cases cochées.
+    const phrase: Phrase =
+      propositions.length > 0
+        ? { ...courante.phrase, cle: cochees.length === 1 ? 'phrase.relances.un' : 'phrase.relances.n', params: { ...courante.phrase.params, n: cochees.length + (courante.autres ?? 0), total: formaterMontant(cochees.reduce((n, p) => n + p.resteDuCentimes, 0)) } }
+        : courante.phrase;
+    const boutons = courante.boutons.map((b) => {
+      if (propositions.length === 0 || b.role !== 'primaire' || b.effet.type !== 'aller') return boutonUI(b, courante.niveau);
+      const n = cochees.length;
+      const ui = boutonUI({ ...b, cle: n === 0 ? 'bouton.relances.aucune' : n === 1 ? 'bouton.relances.preparer.un' : 'bouton.relances.preparer.n', params: { n }, effet: { ...b.effet, state: { factureIds: cochees.map((p) => p.factureId) } } }, courante.niveau);
+      return n === 0 ? { ...ui, desactive: true } : ui;
+    });
+    const heure = courante.source ? new Intl.DateTimeFormat(langue === 'en' ? 'en-GB' : 'fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date(courante.source.a)) : '';
     return {
       mode: afficheRepos ? 'repos' : 'reponse',
       section: tm(courante.section),
-      phrase: courante.genre === 'vide-recent' ? [] : [...dire(courante.phrase), ...(courante.complement ? [{ texte: ' ', gras: false }, ...dire(courante.complement)] : [])],
+      source: courante.source ? tm('source', { module: courante.source.module, heure }) : undefined,
+      phrase: courante.genre === 'vide-recent' ? [] : [...dire(phrase), ...(courante.complement ? [{ texte: ' ', gras: false }, ...dire(courante.complement)] : [])],
       details: courante.details,
       pastille: courante.pastille ? { etat: courante.pastille.etat, libelle: tm(courante.pastille.cle) } : undefined,
       lignes,
-      boutons: courante.boutons.map((b) => boutonUI(b, courante.niveau)),
+      propositions,
+      autres: courante.autres ?? 0,
+      suites: afficheRepos ? [] : (courante.suites ?? []),
+      boutons,
       effacerHistorique: courante.genre === 'vide-recent',
     };
   })();
@@ -579,16 +626,20 @@ function ContenuPalette({
   /* ── Le parcours au clavier ── */
 
   const lignesDeLaReponse = vue.mode === 'reponse' || vue.mode === 'repos' ? vue.lignes : [];
+  const propositionsVues = vue.mode === 'reponse' ? vue.propositions : [];
+  /* Une réponse qui propose des suites les montre À LA PLACE de « Ou lancez » (qui revient quand le champ est vide). */
+  const avecSuites = vue.mode === 'reponse' && vue.suites.length > 0;
   const cibles = useMemo<Cible[]>(
     () => [
       ...lignesDeLaReponse.map((l) => ({ zone: 'reponse' as const, id: l.id })),
+      ...propositionsVues.map((p) => ({ zone: 'proposee' as const, id: p.id })),
       ...(vue.effacerHistorique ? [{ zone: 'lien' as const, id: 'effacer-historique' }] : []),
       ...vue.boutons.map((b) => ({ zone: 'bouton' as const, id: b.id, desactivee: b.desactive })),
-      ...lancer4.map((l) => ({ zone: 'lancer' as const, id: l.id, desactivee: l.reservee && !contexte.admin })),
+      ...(avecSuites ? vue.suites.map((x) => ({ zone: 'suite' as const, id: x.id })) : lancer4.map((l) => ({ zone: 'lancer' as const, id: l.id, desactivee: l.reservee && !contexte.admin }))),
     ],
     // `vue` est reconstruite à chaque rendu : on ne dépend que de ce qui change les cibles.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [lignesDeLaReponse.map((l) => l.id).join('|'), vue.effacerHistorique, vue.boutons.map((b) => `${b.id}${b.desactive ? '!' : ''}`).join('|'), lancer4, contexte.admin],
+    [lignesDeLaReponse.map((l) => l.id).join('|'), propositionsVues.map((p) => p.id).join('|'), vue.effacerHistorique, vue.boutons.map((b) => `${b.id}${b.desactive ? '!' : ''}`).join('|'), avecSuites, vue.suites.map((x) => x.id).join('|'), lancer4, contexte.admin],
   );
   const actif = indiceValide(cibles, index);
   const cible = actif >= 0 ? cibles[actif] : null;
@@ -596,7 +647,7 @@ function ContenuPalette({
   // Le focus suit la sélection : sur le bouton choisi, sinon dans le champ (la ligne choisie s'annonce par aria-activedescendant).
   const idCible = cible ? `${cible.zone}:${cible.id}` : '';
   useEffect(() => {
-    if (cible?.zone === 'bouton' || cible?.zone === 'lien') boutonsDom.current.get(cible.id)?.focus({ preventScroll: true });
+    if (cible?.zone === 'bouton' || cible?.zone === 'lien' || cible?.zone === 'proposee' || cible?.zone === 'suite') boutonsDom.current.get(cible.id)?.focus({ preventScroll: true });
     else if (document.activeElement !== champ.current && champ.current && document.activeElement?.closest('.ajp-palette')) champ.current.focus({ preventScroll: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idCible]);
@@ -612,6 +663,22 @@ function ContenuPalette({
     effacerHistorique(email);
     setHistorique([]);
     setIndex(CHAMP);
+  };
+
+  const activerSuite = (x: Suite) => {
+    if (x.effet.type === 'texte') poserTexte(x.effet.texte);
+    else executer(x.effet, 'N0', 'ligne-entree');
+  };
+  const basculer = (id: string) =>
+    setDecochees((avant) => {
+      const apres = new Set(avant);
+      if (apres.has(id)) apres.delete(id);
+      else apres.add(id);
+      return apres;
+    });
+  const refBouton = (id: string) => (el: HTMLButtonElement | null) => {
+    if (el) boutonsDom.current.set(id, el);
+    else boutonsDom.current.delete(id);
   };
 
   const activerCible = (c: Cible) => {
@@ -676,6 +743,26 @@ function ContenuPalette({
         break;
     }
   };
+
+  /* La rangée des boutons : dans la proposition, ou dans la bande de décision quand il y a des actions proposées. */
+  const rangeeBoutons =
+    vue.boutons.length > 0 ? (
+      <div className="ajp-boutons" role="group" aria-label={tm('aria.boutons')}>
+        {vue.boutons.map((b) => (
+          <Bouton
+            key={b.id}
+            ref={refBouton(b.id)}
+            variante={b.role === 'primaire' ? 'primaire' : 'secondaire'}
+            icone={b.icone ? <Icone nom={b.icone} taille={14} /> : undefined}
+            disabled={b.desactive}
+            title={b.raison}
+            onClick={(e) => b.surActiver(e.detail === 0 ? 'bouton-entree' : 'bouton-clic')}
+          >
+            {b.libelle}
+          </Bouton>
+        ))}
+      </div>
+    ) : null;
 
   const idActif = cible && (cible.zone === 'reponse' || cible.zone === 'lancer') ? idOption(cible.id) : undefined;
   const etat = etatAffiche({ texte, reponse: afficheRepos ? null : reponse, enCours, erreur: erreur !== null });
@@ -758,8 +845,11 @@ function ContenuPalette({
         )}
 
         {/* Bande 2 · la proposition */}
-        <section className="ajp-proposition" aria-label={tm('aria.proposition')} aria-live="polite" data-vue={vue.mode}>
-          <p className="ajp-section">{vue.section}</p>
+        <section className="ajp-proposition" aria-label={tm('aria.proposition')} aria-live="polite" data-vue={vue.mode} data-actions={propositionsVues.length > 0 || undefined}>
+          <div className="ajp-section__tete">
+            <p className="ajp-section">{vue.section}</p>
+            {vue.source && vue.mode === 'reponse' && <p className="ajp-source">{vue.source}</p>}
+          </div>
           {vue.mode === 'reflexion' ? (
             <>
               {squelette && (
@@ -801,6 +891,29 @@ function ContenuPalette({
                   </React.Fragment>
                 ))}
               </ul>
+              {propositionsVues.length > 0 && (
+                <ul className="ajp-actions" aria-label={tm('aria.propositions')}>
+                  {propositionsVues.map((p) => {
+                    const c = cibles.findIndex((x) => x.zone === 'proposee' && x.id === p.id);
+                    return (
+                      <ActionProposeeUI
+                        key={p.id}
+                        p={p}
+                        coche={!decochees.has(p.id)}
+                        deplie={deplie === p.id}
+                        choisie={c === actif && c >= 0}
+                        texte={texteRelance?.(p) ?? null}
+                        langue={langue}
+                        tm={tm}
+                        refCoche={refBouton(p.id)}
+                        surCocher={() => basculer(p.id)}
+                        surDeplier={() => setDeplie((d) => (d === p.id ? null : p.id))}
+                      />
+                    );
+                  })}
+                </ul>
+              )}
+              {vue.autres > 0 && <p className="ajp-autres">{tm('proposee.autres', { n: vue.autres })}</p>}
               {vue.effacerHistorique && (
                 <button
                   type="button"
@@ -814,26 +927,7 @@ function ContenuPalette({
                   {tm('historique.effacer')}
                 </button>
               )}
-              {vue.boutons.length > 0 && (
-                <div className="ajp-boutons" role="group" aria-label={tm('aria.boutons')}>
-                  {vue.boutons.map((b) => (
-                    <Bouton
-                      key={b.id}
-                      ref={(el) => {
-                        if (el) boutonsDom.current.set(b.id, el);
-                        else boutonsDom.current.delete(b.id);
-                      }}
-                      variante={b.role === 'primaire' ? 'primaire' : 'secondaire'}
-                      icone={b.icone ? <Icone nom={b.icone} taille={14} /> : undefined}
-                      disabled={b.desactive}
-                      title={b.raison}
-                      onClick={(e) => b.surActiver(e.detail === 0 ? 'bouton-entree' : 'bouton-clic')}
-                    >
-                      {b.libelle}
-                    </Bouton>
-                  ))}
-                </div>
-              )}
+              {propositionsVues.length === 0 && rangeeBoutons}
               {vue.etat && (
                 <p className="ajp-etat" role="status">
                   {vue.etat}
@@ -843,7 +937,37 @@ function ContenuPalette({
           )}
         </section>
 
-        {/* Bande 3 · ou lancez */}
+        {/* Bande 3 · la décision (une proposition d'actions) : le primaire au verbe précis, « Modifier », « Annuler », le sceau */}
+        {propositionsVues.length > 0 && vue.boutons.length > 0 && (
+          <div className="ajp-decision">
+            {rangeeBoutons}
+            <p className="ajp-sceau">
+              <ShieldCheck aria-hidden strokeWidth={1.8} className="ajp-sceau__icone" />
+              <span className="ajp-sceau__texte">
+                <span className="ajp-sceau__titre">{tm('sceau.titre')}</span>
+                <span className="ajp-sceau__detail">{tm('sceau.detail')}</span>
+              </span>
+            </p>
+          </div>
+        )}
+
+        {/* Bande 4 · ensuite, si vous voulez (quand la réponse propose des suites) */}
+        {avecSuites && (
+          <section className="ajp-suites" aria-label={tm('section.ensuite')}>
+            <p className="ajp-section">{tm('section.ensuite')}</p>
+            <div className="ajp-suites__liste">
+              {vue.suites.map((x) => (
+                <button key={x.id} ref={refBouton(x.id)} type="button" className="ajp-suite" onClick={() => activerSuite(x)}>
+                  <Icone nom={x.icone} taille={13} />
+                  <span>{tm(x.cle, x.params)}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Bande 3 bis · ou lancez (champ vide, ou réponse sans suites) */}
+        {!avecSuites && (
         <section className="ajp-lancer" aria-label={tm('section.lancer')}>
           <p className="ajp-section">{tm('section.lancer')}</p>
           <ul id={idListeLancer} role="listbox" aria-label={tm('section.lancer')} className="ajp-lancer__liste">
@@ -856,17 +980,105 @@ function ContenuPalette({
             )}
           </ul>
         </section>
+        )}
 
-        {/* Bande 4 · le pied */}
+        {/* Bande 5 · le pied */}
         <footer className="ajp-pied">
           <div className="ajp-pied__aide">
             <p>{tm('pied.naviguer')}</p>
             <p>{tm('pied.valider')}</p>
+            <p>{tm('pied.jamais')}</p>
           </div>
           <p>{tm('pied.fermer')}</p>
         </footer>
       </div>
     </div>
+  );
+}
+
+/**
+ * UNE ACTION PROPOSÉE (`ProposedAction`) : la case (cochée par défaut), le monogramme du CLIENT (jamais d'Ajmani),
+ * le client, la facture et ses faits, le canal, « Aperçu » / « Masquer ». Dépliée : le texte de la relance et la
+ * mise en garde (une relance est déjà partie). Espace coche la ligne choisie ; Entrée la déplie.
+ */
+function ActionProposeeUI({
+  p,
+  coche,
+  deplie,
+  choisie,
+  texte,
+  langue,
+  tm,
+  refCoche,
+  surCocher,
+  surDeplier,
+}: {
+  p: ActionProposee;
+  coche: boolean;
+  deplie: boolean;
+  choisie: boolean;
+  texte: string | null;
+  langue: 'fr' | 'en';
+  tm: Mots;
+  refCoche: (el: HTMLButtonElement | null) => void;
+  surCocher: () => void;
+  surDeplier: () => void;
+}) {
+  const idApercu = useId();
+  // « le 22 oct. Celle-ci… » : le point de l'abréviation sert de point final, il ne se double pas.
+  const garde = p.rang > 1 && p.derniere ? tm(p.rang === 2 ? 'proposee.garde.un' : 'proposee.garde.n', { date: formaterJour(p.derniere, langue).replace(/\.$/, ''), deja: p.rang - 1, n: p.rang }) : null;
+  return (
+    <li className="ajp-action" data-deplie={deplie || undefined} data-coche={coche || undefined} data-choisie={choisie || undefined}>
+      <div className="ajp-action__tete">
+        <button
+          ref={refCoche}
+          type="button"
+          role="checkbox"
+          aria-checked={coche}
+          aria-label={tm('proposee.inclure', { numero: p.numero })}
+          className="ajp-coche"
+          onClick={surCocher}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              e.stopPropagation();
+              surDeplier();
+            }
+          }}
+        >
+          {coche && <Check aria-hidden strokeWidth={3} />}
+        </button>
+        <span className="ajp-action__mono" aria-hidden>
+          {initiales(p.clientNom)}
+        </span>
+        <span className="ajp-action__texte">
+          <span className="ajp-action__nom">
+            <span className="ajp-action__client">{p.clientNom}</span>
+            {p.rang > 1 && <span className="ajp-action__tag">{tm('proposee.rang', { n: p.rang })}</span>}
+          </span>
+          <span className="ajp-action__sous">
+            <span className="sc-mono">{p.numero}</span>
+            {' · '}
+            {tm(p.jours === 1 ? 'proposee.detail.un' : 'proposee.detail.n', { montant: formaterMontant(p.resteDuCentimes), jours: p.jours })}
+          </span>
+        </span>
+        {p.canal === 'email' && (
+          <span className="ajp-action__canal">
+            <Mail aria-hidden strokeWidth={1.8} />
+            {tm('proposee.canal.email')}
+          </span>
+        )}
+        <button type="button" tabIndex={-1} className="ajp-action__voir" aria-expanded={deplie} aria-controls={idApercu} onClick={surDeplier}>
+          {tm(deplie ? 'proposee.masquer' : 'proposee.apercu')}
+        </button>
+      </div>
+      {deplie && (
+        <div id={idApercu} className="ajp-action__apercu">
+          <p className="ajp-action__message">{texte ?? tm('proposee.texte.absent')}</p>
+          {garde && <p className="ajp-action__garde">{garde}</p>}
+        </div>
+      )}
+    </li>
   );
 }
 

@@ -205,6 +205,43 @@ await dit('relancer : sans client cité, la fiche ouverte à l’écran fait foi
   assert.equal(surClient.genre, 'rien-trouve', 'ce client n’a rien en retard');
 });
 
+await dit('relancer LES factures en retard (G05 v3, N1) : une action proposée par facture, faits calculés, mise en garde, suites ouvertes', () => {
+  const relances = [{ factureId: 'f-1', le: '2026-03-09T09:00:00', palier: 'rappel' }];
+  const avecHeure = { relances, luesA: '2026-03-18T10:42:00', modules: [...modules, { cle: 'reminders', libelle: 'Relances', route: '/relances' }] };
+  const r = analyser('Relance les factures en retard, ton courtois', avecHeure);
+  assert.equal(r.genre, 'relances');
+  assert.equal(r.niveau, 'N1', 'préparer engage : un clic sur le bouton seulement');
+  // Les échues et encore dues, la plus ancienne d'abord : ni la payée, ni le brouillon, ni la pas échue, ni la toute compensée.
+  assert.deepEqual(r.propositions.map((p: { numero: string }) => p.numero), ['T-0099', 'T-0102', 'T-0105']);
+  assert.deepEqual(r.propositions.map((p: { jours: number }) => p.jours), [57, 16, 8]);
+  assert.deepEqual(r.propositions.map((p: { palier: string }) => p.palier), ['dernier-avis', 'ferme', 'ferme']);
+  const t0102 = r.propositions.find((p: { numero: string }) => p.numero === 'T-0102');
+  assert.equal(t0102.rang, 2, 'une relance déjà notée : ce serait la deuxième');
+  assert.equal(t0102.derniere, '2026-03-09T09:00:00');
+  assert.ok(r.propositions.filter((p: { numero: string }) => p.numero !== 'T-0102').every((p: { rang: number }) => p.rang === 1));
+  assert.equal(nb(lire_(r)), '3 factures sont en retard, **3 439,50 €** au total. J’ai préparé une relance pour chacune, au ton que son retard appelle. Je n’ai rien envoyé.');
+  assert.deepEqual(r.source, { module: 'Facturation', a: '2026-03-18T10:42:00' }, 'd’après Facturation, à l’heure de lecture');
+  assert.equal(analyser('Relance les factures en retard', {}).source, undefined, 'sans heure de lecture, pas de source inventée');
+  // Le primaire prépare (jamais « Envoyer ») et ouvre Relances avec les factures ; puis « Modifier », « Annuler ».
+  assert.deepEqual(r.boutons.map((b: { role: string; cle: string }) => [b.role, b.cle]), [['primaire', 'bouton.relances.preparer.n'], ['secondaire', 'bouton.modifier'], ['annuler', 'bouton.annuler']]);
+  assert.deepEqual(r.boutons[0].effet, { type: 'aller', route: '/relances', state: { factureIds: ['f-3', 'f-1', 'f-2'] } });
+  assert.doesNotMatch(JSON.stringify(r), /envoyer|\bsend\b/i);
+  // Suites : seulement vers des modules ouverts (tâches, agenda, relances), trois au plus.
+  assert.deepEqual(r.suites.map((x: { id: string; effet: { route: string } }) => [x.id, x.effet.route]), [['suite-tache', '/tasks'], ['suite-appel', '/agenda'], ['suite-relances', '/relances']]);
+  assert.deepEqual(analyser('Relance les factures en retard', { modules: modules.filter((m) => !['agenda', 'tasks', 'reminders'].includes(m.cle)) }).suites, [], 'aucun module ouvert : aucune suite');
+  // Au plus 5 lignes, puis « Voir les n autres ».
+  const beaucoup = Array.from({ length: 8 }, (_, i) => facture(`g-${i}`, `T-9${i}`, 11, '2026-03-01', 1000));
+  const r8 = analyser('relancer toutes les factures', { factures: beaucoup });
+  assert.equal(r8.propositions.length, I.MAX_PROPOSITIONS);
+  assert.equal(r8.autres, 3);
+  // Rien à relancer ; un client cité reste la relance d'UNE facture ; « Relancer » seul demande lequel.
+  assert.equal(analyser('Relance les factures en retard', { factures: [] }).genre, 'rien-trouve');
+  assert.equal(analyser('Relancer les factures de Studio Verlaine').genre, 'proposition');
+  assert.equal(analyser('Relancer').genre, 'question');
+  // Entrée dans le champ n'exécute rien : la proposition n'engage qu'au clic.
+  assert.equal(N.peutExecuter(r.niveau, 'champ-entree'), false);
+});
+
 await dit('factures en retard (N0) : la liste du client, trois lignes au plus, chacune mène à la facture', () => {
   const r = analyser('les factures en retard de Verlaine');
   assert.equal(r.intention, 'factures-retard');
@@ -729,8 +766,9 @@ await dit('rendu : « ⌘J » (Ctrl J hors macOS), libellé « Ajmani propose »
   matche(html, /<p class="ajp-section">Ou lancez<\/p>/);
   const pied = /<footer class="ajp-pied">([\s\S]*?)<\/footer>/.exec(html)?.[1] ?? '';
   const lignes = [...pied.matchAll(/<p>([^<]*)<\/p>/g)].map((m) => m[1]);
-  assert.deepEqual(lignes, ['↑ ↓ pour naviguer', '↵ pour valider', 'échap pour fermer']);
-  for (const l of lignes) assert.equal(l.replace(/^[^\p{L}]*/u, '')[0], l.replace(/^[^\p{L}]*/u, '')[0].toLowerCase(), `« ${l} » commence par une minuscule`);
+  assert.deepEqual(lignes, ['↑ ↓ pour naviguer', '↵ pour valider', 'Entrée seule n’envoie jamais', 'échap pour fermer']);
+  // Les aides clavier en minuscules (« échap pour fermer ») ; « Entrée seule n'envoie jamais » est une phrase (fiche G05 v3).
+  for (const l of lignes.filter((x) => !x.startsWith('Entrée'))) assert.equal(l.replace(/^[^\p{L}]*/u, '')[0], l.replace(/^[^\p{L}]*/u, '')[0].toLowerCase(), `« ${l} » commence par une minuscule`);
   assert.doesNotMatch(pied, /<svg|<img/, 'les glyphes ↑ ↓ ↵ sont du texte, pas des icônes');
   const lancer = /<ul[^>]*class="ajp-lancer__liste"[^>]*>([\s\S]*?)<\/ul>/.exec(html)?.[1] ?? '';
   assert.equal(compter(lancer, /role="option"/g), 4, 'quatre lignes « Ou lancez »');
@@ -753,6 +791,43 @@ await dit('rendu : une proposition — phrase aux faits en gras, UN seul bouton 
     assert.ok(compter(rendre({ initial: { texte: t, reponse: r } }), /data-variante="primaire"/g) <= 1, t);
   }
   assert.ok(compter(rendre({ initial: { texte: '', reponse: null } }, {}, { attentes: [{ cle: 'a', titre: 'Un devis attend', route: '/clients' }] }), /data-variante="primaire"/g) <= 1);
+});
+
+await dit('rendu v3 : actions proposées cochées, aperçu dépliable avec mise en garde, décision et sceau, « Ensuite » à la place de « Ou lancez »', () => {
+  const don = { relances: [{ factureId: 'f-1', le: '2026-03-09T09:00:00', palier: 'rappel' }], luesA: '2026-03-18T10:42:00', modules: [...modules, { cle: 'reminders', libelle: 'Relances', route: '/relances' }] };
+  const texte = 'Relance les factures en retard, ton courtois';
+  const reponse = I.analyser(texte, env(don));
+  const html = rendre({ initial: { texte, reponse }, texteRelance: (p: { numero: string }) => `Texte de la relance ${p.numero}` }, {}, don);
+  matche(html, /<p class="ajp-section">Ajmani propose<\/p><p class="ajp-source">d’après Facturation, à jour à 10:42<\/p>/);
+  matche(html, /<section class="ajp-proposition"[^>]*data-actions="true"/);
+  assert.equal(compter(html, /role="checkbox" aria-checked="true"/g), 3, 'toutes cochées par défaut');
+  matche(html, /aria-label="Inclure la relance de T-0099"/);
+  matche(html, /class="ajp-action__mono"[^>]*>GV</, 'le monogramme est celui du client');
+  matche(html, /<span class="sc-mono">T-0102<\/span> · 600,00\u00a0€|<span class="sc-mono">T-0102<\/span> · 1\u202f840,50\u00a0€ · 16 jours de retard/);
+  matche(html, /class="ajp-action__tag">2e relance</);
+  // La première qui porte une mise en garde est dépliée : son texte (celui de Relances) et la mise en garde.
+  assert.equal(compter(html, /ajp-action__voir" aria-expanded="true"/g), 1, 'une seule ligne dépliée');
+  matche(html, /data-deplie="true"[\s\S]*?Texte de la relance T-0102[\s\S]*?class="ajp-action__garde">Une première relance est partie le 9 mars\. Celle-ci serait la deuxième\./);
+  matche(html, />Masquer</);
+  assert.equal(compter(html, />Aperçu</g), 2);
+  assert.equal(compter(html, /class="ajp-action__canal"/g), 0, 'sans adresse sur la facture, pas de canal « e-mail »');
+  // La décision : un seul primaire au verbe précis, « Modifier », « Annuler », le sceau.
+  const decision = /<div class="ajp-decision">([\s\S]*?)<\/p><\/div>/.exec(html)?.[1] ?? '';
+  assert.equal(compter(html, /data-variante="primaire"/g), 1);
+  matche(decision, /Préparer les 3 relances[\s\S]*Modifier[\s\S]*Annuler/);
+  matche(decision, /class="ajp-sceau__titre">Rien ne part sans votre accord<[\s\S]*class="ajp-sceau__detail">vous l’envoyez depuis Relances</);
+  assert.doesNotMatch(html, /Envoyer|10 s pour annuler/, 'Ajmani prépare, il n’envoie rien');
+  // « Ensuite, si vous voulez » remplace « Ou lancez ».
+  matche(html, /<p class="ajp-section">Ensuite, si vous voulez<\/p>/);
+  assert.deepEqual([...html.matchAll(/class="ajp-suite"[^>]*>[\s\S]*?<span>([^<]*)<\/span>/g)].map((m) => m[1]), ['Créer une tâche de suivi', 'Prévoir un appel dans l’agenda', 'Ouvrir Relances']);
+  assert.doesNotMatch(html, /Ou lancez/);
+  // Sans texte de relance branché, l'aperçu renvoie à Relances, rien n'est inventé.
+  matche(rendre({ initial: { texte, reponse } }, {}, don), /Le texte de cette relance se lit dans Relances\./);
+  // La facture porte une adresse : « e-mail ».
+  const avecCourriel = { ...don, factures: factures.map((f) => ({ ...f, courriel: true })) };
+  matche(rendre({ initial: { texte, reponse: I.analyser(texte, env(avecCourriel)) } }, {}, avecCourriel), /class="ajp-action__canal"><svg[\s\S]*?<\/svg>e-mail</);
+  // Champ vide : « Ou lancez » revient.
+  matche(rendre({ initial: { texte: '', reponse: null } }), /<p class="ajp-section">Ou lancez<\/p>/);
 });
 
 await dit('rendu : les états — réflexion (deux squelettes), rien trouvé, non comprise, déjà fait, erreur, hors ligne, droits', () => {
@@ -803,46 +878,68 @@ const dans = (nom: string): number => Number(new RegExp(`${nom}:\\s*([\\d.]+)px`
 /** Le bloc d'une règle, cherchée en début de ligne (`.ajp-ligne {` et non `.ajp-liste .ajp-ligne {`). */
 const bloc = (selecteur: string): string => new RegExp(`(?:^|\\n)${selecteur.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\{[^}]*\\}`).exec(cssNu)?.[0] ?? '';
 
-await dit('palette.css : les cotes de la fiche — 620 × 502, haut à 118, champ 65, bouton 31, ligne 54, pied 36, rayon 18', () => {
-  assert.equal(dans('--sc-ajp-largeur'), 620);
-  assert.equal(dans('--sc-ajp-hauteur'), 502);
-  assert.equal(dans('--sc-ajp-haut'), 118);
-  assert.equal(dans('--sc-ajp-champ'), 65);
+await dit('palette.css : les cotes v3 — 682 de large bord compris, haut à 80, champ 63, décision 60, suites 81, bouton 31, ligne 54, pied 37, rayon 18', () => {
+  assert.equal(dans('--sc-ajp-largeur'), 682);
+  assert.equal(dans('--sc-ajp-hauteur-repos'), 502);
+  assert.equal(dans('--sc-ajp-haut'), 80);
+  assert.equal(dans('--sc-ajp-champ'), 63);
+  assert.equal(dans('--sc-ajp-decision'), 60);
+  assert.equal(dans('--sc-ajp-suites'), 81);
   assert.equal(dans('--sc-ajp-bouton'), 31);
   assert.equal(dans('--sc-ajp-ligne'), 54);
-  assert.equal(dans('--sc-ajp-pied'), 36);
+  assert.equal(dans('--sc-ajp-pied'), 37);
   assert.equal(dans('--sc-ajp-rayon'), 18);
   const palette = bloc('.ajp-palette');
   assert.match(palette, /width:\s*var\(--sc-ajp-largeur\)/);
+  assert.match(palette, /box-sizing:\s*border-box/);
   assert.match(palette, /max-width:\s*calc\(100vw - 32px\)/);
-  assert.match(palette, /height:\s*var\(--sc-ajp-hauteur\)/);
+  assert.match(palette, /min-height:\s*min\(var\(--sc-ajp-hauteur-repos\)/);
+  assert.match(palette, /max-height:\s*calc\(100dvh - var\(--sc-ajp-haut\) - 16px\)/, 'la palette ne déborde jamais de la fenêtre');
   assert.match(palette, /border-radius:\s*var\(--sc-ajp-rayon\)/);
   assert.match(palette, /background:\s*linear-gradient\(180deg,\s*var\(--socle-suggestion-haut\),\s*var\(--socle-suggestion-bas\)\)/);
   assert.match(palette, /border:\s*1px solid var\(--socle-bord-suggestion\)/);
   assert.match(palette, /box-shadow:\s*var\(--sc-ajp-ombre\)/);
-  assert.match(cssNu, /--sc-ajp-ombre:\s*0 24px 80px rgba\(0, 0, 0, 0\.6\)/);
-  assert.match(bloc('.ajp-champ'), /height:\s*var\(--sc-ajp-champ\)/);
+  assert.match(cssNu, /--sc-ajp-ombre:\s*0 30px 100px rgba\(0, 0, 0, 0\.65\)/);
+  assert.match(cssNu, /--sc-ajp-filet:\s*#222326/);
+  assert.match(bloc('.ajp-champ'), /height:\s*var\(--sc-ajp-champ\)[\s\S]*border-bottom:\s*1px solid var\(--sc-ajp-filet\)/);
   assert.match(bloc('.ajp-ligne'), /height:\s*var\(--sc-ajp-ligne\)/);
   assert.match(bloc('.ajp-pied'), /height:\s*var\(--sc-ajp-pied\)/);
+  assert.match(bloc('.ajp-decision'), /height:\s*var\(--sc-ajp-decision\)[\s\S]*border-bottom:\s*1px solid var\(--sc-ajp-filet\)/);
+  assert.match(bloc('.ajp-suites'), /height:\s*var\(--sc-ajp-suites\)/);
   assert.match(bloc(".ajp-boutons [data-socle='bouton']"), /min-height:\s*var\(--sc-ajp-bouton\)/);
   assert.match(bloc('.ajp-section'), /font-size:\s*11px[\s\S]*letter-spacing:\s*0\.08em[\s\S]*text-transform:\s*uppercase/);
   assert.match(bloc('.ajp-phrase'), /font-size:\s*13\.5px[\s\S]*line-height:\s*20px/);
-  assert.match(bloc('.ajp-champ__saisie'), /caret-color:\s*var\(--socle-etat-succes\)[\s\S]*font-size:\s*15px/);
+  assert.match(cssNu, /\.ajp-proposition\[data-actions\] \.ajp-phrase \{ font-size: 14px; line-height: 1\.55; \}/);
+  assert.match(bloc('.ajp-champ__saisie'), /caret-color:\s*var\(--socle-etat-succes\)[\s\S]*font-size:\s*15\.5px/);
   assert.match(bloc('.ajp-tuile'), /width:\s*var\(--sc-ajp-tuile\)[\s\S]*border-radius:\s*9px/);
-  assert.equal(dans('--sc-ajp-tuile'), 30);
+  assert.equal(dans('--sc-ajp-tuile'), 34);
   assert.match(cssNu, /--sc-ajp-tuile-fond:\s*#1e1f22/);
   assert.match(cssNu, /--sc-ajp-tuile-bord:\s*#2e3035/);
   assert.match(bloc('.ajp-ligne__tuile'), /width:\s*34px[\s\S]*height:\s*34px[\s\S]*background:\s*var\(--socle-tag\)/);
   assert.match(bloc(".ajp-ligne[aria-selected='true']"), /background:\s*var\(--socle-ligne-active\)/);
+  // Les actions proposées : rayon 12, écart 8, en-tête 46, case de 18 (cible de 34), monogramme du client 28, aperçu en retrait de 42.
+  assert.match(bloc('.ajp-actions'), /gap:\s*8px/);
+  assert.match(bloc('.ajp-action'), /border-radius:\s*var\(--socle-rayon-ticket\)/);
+  assert.match(bloc('.ajp-action__tete'), /height:\s*46px/);
+  assert.match(bloc('.ajp-coche'), /width:\s*18px[\s\S]*height:\s*18px/);
+  assert.match(cssNu, /\.ajp-coche::after \{ position: absolute; inset: -8px; content: ''; \}/, 'la case se vise sur 34 px');
+  assert.match(bloc('.ajp-action__mono'), /width:\s*28px[\s\S]*height:\s*28px/);
+  assert.match(bloc('.ajp-action__apercu'), /margin:\s*0 12px 0 42px[\s\S]*background:\s*var\(--sc-ajp-apercu-fond\)/);
+  assert.match(bloc('.ajp-action__garde'), /color:\s*var\(--socle-etat-attention\)/);
+  assert.match(bloc('.ajp-suite'), /border-radius:\s*var\(--socle-rayon-pastille\)[\s\S]*background:\s*var\(--socle-champ\)/);
+  assert.match(bloc('.ajp-sceau__icone'), /color:\s*var\(--socle-etat-succes\)/);
 });
 
-await dit('palette.css : voile fixe z-index ≥ 50 (la pile des calques le reconnaît), ~70 % et flou 3 px, 160 ms / 120 ms, mouvement réduit = fondu seul', () => {
+await dit('palette.css : voile fixe z-index ≥ 50 (la pile des calques le reconnaît), assombri, flou 3 px, figé ; 160 ms / 120 ms, mouvement réduit = fondu seul', () => {
   const voile = bloc('.ajp-voile');
   assert.match(voile, /position:\s*fixed/);
   assert.ok(Number(/z-index:\s*(\d+)/.exec(voile)?.[1]) >= 50, 'z-index ≥ 50');
-  assert.match(voile, /backdrop-filter:\s*blur\(3px\)/);
+  // v3 (T1 G05.5) : l'écran derrière est figé, assombri, flouté et désaturé.
+  assert.match(voile, /backdrop-filter:\s*var\(--sc-ajp-flou\)/);
+  assert.match(cssNu, /--sc-ajp-flou:\s*blur\(3px\) saturate\(0\.8\)/);
   assert.match(voile, /background:\s*var\(--sc-ajp-voile\)/);
-  assert.match(cssNu, /--sc-ajp-voile:\s*rgba\(0, 0, 0, 0\.7\)/);
+  assert.match(cssNu, /--sc-ajp-voile:\s*rgba\(6, 6, 7, 0\.66\)/);
+  assert.match(cssNu, /body:has\(> \.ajp-voile\) > :not\(\.ajp-voile\) \*[\s\S]*animation-play-state:\s*paused/);
   assert.match(voile, /padding:\s*var\(--sc-ajp-haut\)/);
   assert.match(bloc('.ajp-palette'), /animation:\s*ajp-entre 160ms/);
   assert.match(cssNu, /\.ajp-voile\[data-sortie='true'\] \.ajp-palette \{ animation:\s*ajp-sort 120ms/);

@@ -9,25 +9,38 @@
   Les encres « discret » (`--socle-trait-discret`, `--socle-trait-tres-discret`) ne servent JAMAIS de couleur
   de texte ici. Le plus petit texte lu fait 11 px (T4 `--socle-texte-3`, 5,3:1 au pire).
 
+  v3 (G05) : 680 × 672 dans l'état de l'image (bord compris 682 × 674), à (380, 80) ; cinq bandes séparées d'un
+  filet `#222326` : le champ (63), la proposition (texte et actions proposées, elle défile si la fenêtre est
+  basse), la décision (60 : le primaire, « Modifier », « Annuler » et le sceau « Rien ne part sans votre accord »),
+  « Ensuite, si vous voulez » (81) ou « Ou lancez », le pied (36). L'écran derrière est figé, flouté (3 px),
+  désaturé (.8) et assombri (rgba(6, 6, 7, .66)) : T1 G05.5 (le voile laissait lire la page).
+
   Chargée par le composant (`PaletteAjmaniRefonte.tsx`) ; n'existe que dans l'édition interne.
 */
 :root[data-ambiance='noir'] {
-  /* Les cotes de la palette (fiche G05, rubrique 3). */
-  --sc-ajp-largeur: 620px;
-  --sc-ajp-hauteur: 502px;
-  --sc-ajp-haut: 118px;
-  --sc-ajp-champ: 65px;
+  /* Les cotes de la palette (fiche G05 v3, rubrique 3 ; image G05). */
+  --sc-ajp-largeur: 682px;
+  --sc-ajp-hauteur-repos: 502px;
+  --sc-ajp-haut: 80px;
+  --sc-ajp-champ: 63px;
   --sc-ajp-bouton: 31px;
   --sc-ajp-ligne: 54px;
-  --sc-ajp-pied: 36px;
+  --sc-ajp-decision: 60px;
+  --sc-ajp-suites: 81px;
+  --sc-ajp-pied: 37px;
   --sc-ajp-rayon: 18px;
-  /* La tuile de l'étincelle, dans le champ : 30 × 30, rayon 9. */
-  --sc-ajp-tuile: 30px;
+  /* La tuile de l'étincelle, dans le champ : 34 × 34 bord compris (32 dedans), rayon 9. */
+  --sc-ajp-tuile: 34px;
   --sc-ajp-tuile-fond: #1e1f22;
   --sc-ajp-tuile-bord: #2e3035;
-  /* Le voile : environ 70 % de noir, légèrement flouté. */
-  --sc-ajp-voile: rgba(0, 0, 0, 0.7);
-  --sc-ajp-ombre: 0 24px 80px rgba(0, 0, 0, 0.6);
+  /* Les filets entre les bandes, l'aperçu déplié d'une relance. */
+  --sc-ajp-filet: #222326;
+  --sc-ajp-apercu-fond: #0f0f10;
+  --sc-ajp-apercu-bord: #222225;
+  /* Le voile v3 : l'écran figé, assombri, flouté et désaturé. */
+  --sc-ajp-voile: rgba(6, 6, 7, 0.66);
+  --sc-ajp-flou: blur(3px) saturate(0.8);
+  --sc-ajp-ombre: 0 30px 100px rgba(0, 0, 0, 0.65);
 }
 
 /* ── Le voile : calque fixe, z-index 50 (celui que la pile des calques reconnaît) ── */
@@ -38,20 +51,22 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: var(--sc-ajp-haut) 16px 16px;
+  /* 2 px de plus à gauche : la maquette pose la palette à x = 380 (682 px de large), un pixel à droite du centre. */
+  padding: var(--sc-ajp-haut) 16px 16px 18px;
   background: var(--sc-ajp-voile);
-  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: var(--sc-ajp-flou);
+  backdrop-filter: var(--sc-ajp-flou);
   animation: ajp-voile-entre 160ms ease-out both;
 }
 .ajp-voile[data-sortie='true'] { animation: ajp-voile-sort 120ms ease-in both; pointer-events: none; }
 
-/* ── La palette : 620 × 502, rayon 18, quatre bandes ── */
+/* ── La palette : 682 de large bord compris, rayon 18, cinq bandes ; la hauteur suit la réponse ── */
 .ajp-palette {
   display: flex;
   box-sizing: border-box;
   width: var(--sc-ajp-largeur);
   max-width: calc(100vw - 32px);
-  height: var(--sc-ajp-hauteur);
+  min-height: min(var(--sc-ajp-hauteur-repos), calc(100dvh - var(--sc-ajp-haut) - 16px));
   max-height: calc(100dvh - var(--sc-ajp-haut) - 16px);
   flex-direction: column;
   overflow: hidden;
@@ -66,16 +81,16 @@
 }
 .ajp-voile[data-sortie='true'] .ajp-palette { animation: ajp-sort 120ms ease-in both; }
 
-/* ── Bande 1 · le champ (65) ── */
+/* ── Bande 1 · le champ (63, filet compris) ── */
 .ajp-champ {
   display: flex;
   box-sizing: border-box;
   height: var(--sc-ajp-champ);
   flex: none;
   align-items: center;
-  gap: 13px;
-  padding: 0 19px;
-  border-bottom: 1px solid var(--socle-bord-entete);
+  gap: 14px;
+  padding: 0 19px 0 15px;
+  border-bottom: 1px solid var(--sc-ajp-filet);
 }
 .ajp-tuile {
   display: grid;
@@ -99,7 +114,7 @@
   caret-color: var(--socle-etat-succes);
   color: var(--socle-texte-1);
   font: inherit;
-  font-size: 15px;
+  font-size: 15.5px;
   outline: none;
 }
 .ajp-champ__saisie::placeholder { color: var(--socle-texte-3); opacity: 1; }
@@ -119,16 +134,22 @@
 }
 .ajp-bandeau svg { flex: none; width: 14px; height: 14px; }
 
-/* ── Bande 2 · la proposition (140) ── */
+/* ── Bande 2 · la proposition (au moins 140 ; elle défile, la décision reste visible) ── */
 .ajp-proposition {
   box-sizing: border-box;
   min-height: 140px;
   max-height: 300px;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--socle-bord-entete);
+  border-bottom: 1px solid var(--sc-ajp-filet);
 }
+/* Une proposition d'actions : la bande prend ce qu'il lui faut (la palette, elle, reste dans la fenêtre). */
+.ajp-proposition[data-actions] { min-height: 0; max-height: none; padding-top: 15px; }
+.ajp-proposition[data-actions] .ajp-section { margin-bottom: 6px; }
+.ajp-section__tete { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.ajp-source { margin: 0 0 8px; overflow: hidden; color: var(--socle-texte-3); font-size: 11.5px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
 .ajp-section {
   margin: 0 0 8px;
   color: var(--socle-texte-3);
@@ -144,6 +165,142 @@
   font-size: 13.5px;
   line-height: 20px;
 }
+/* Le texte d'une proposition d'actions : 14 px, interligne 1,55 (fiche G05 v3). */
+.ajp-proposition[data-actions] .ajp-phrase { font-size: 14px; line-height: 1.55; }
+
+/* ── Les actions proposées (`ProposedAction`) : rayon 12, écart 8, en-tête 46 ── */
+.ajp-actions { display: grid; gap: 8px; margin: 14px 0 0; padding: 0; list-style: none; }
+.ajp-action {
+  box-sizing: border-box;
+  border: 1px solid var(--socle-bord-sous-carte);
+  border-radius: var(--socle-rayon-ticket);
+  background: var(--socle-sous-carte);
+}
+.ajp-action[data-deplie] { border-color: var(--socle-bord-suggestion); background: var(--socle-ligne-active); padding-bottom: 12px; }
+.ajp-action__tete { display: flex; box-sizing: border-box; height: 46px; align-items: center; gap: 12px; padding: 0 12px; }
+.ajp-coche {
+  position: relative;
+  display: grid;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  place-items: center;
+  padding: 0;
+  border: 1.5px solid var(--socle-case-vide);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--socle-primaire-encre);
+  cursor: pointer;
+}
+/* La cible de la case fait 34 px : un halo transparent prend le clic autour du disque de 18. */
+.ajp-coche::after { position: absolute; inset: -8px; content: ''; }
+.ajp-coche[aria-checked='true'] { border-color: var(--socle-primaire); background: var(--socle-primaire); }
+.ajp-coche svg { width: 11px; height: 11px; }
+.ajp-coche:focus-visible { outline: 2px solid var(--socle-texte-1); outline-offset: 2px; }
+.ajp-action__mono {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--socle-bord-carte);
+  color: var(--socle-texte-1);
+  font-size: 11px;
+  font-weight: 600;
+}
+.ajp-action__texte { display: flex; min-width: 0; flex: 1; flex-direction: column; }
+.ajp-action__nom { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.ajp-action__client { overflow: hidden; color: var(--socle-texte-1); font-size: 13.5px; font-weight: 500; line-height: 17px; text-overflow: ellipsis; white-space: nowrap; }
+.ajp-action__tag {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 7px;
+  border-radius: var(--socle-rayon-tag);
+  background: var(--socle-tag);
+  color: var(--socle-texte-2);
+  font-size: 11px;
+  line-height: 16px;
+}
+.ajp-action__tag::before { width: 6px; height: 6px; border-radius: 50%; background: var(--socle-etat-attention); content: ''; }
+.ajp-action__sous { overflow: hidden; color: var(--socle-texte-3); font-size: 12px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.ajp-action__sous .sc-mono { font-size: 11.5px; }
+.ajp-action__canal { display: inline-flex; flex: none; align-items: center; gap: 7px; color: var(--socle-texte-3); font-size: 12px; }
+.ajp-action__canal svg { width: 13px; height: 13px; }
+.ajp-action__voir {
+  flex: none;
+  min-height: 34px;
+  margin: 0 -2px 0 8px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--socle-texte-courant);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ajp-action__voir:hover { color: var(--socle-texte-1); }
+.ajp-action__voir:focus-visible { outline: 2px solid var(--socle-texte-1); outline-offset: 2px; border-radius: 4px; }
+.ajp-action__apercu {
+  margin: 0 12px 0 42px;
+  padding: 12px 14px;
+  border: 1px solid var(--sc-ajp-apercu-bord);
+  border-radius: var(--socle-rayon-champ);
+  background: var(--sc-ajp-apercu-fond);
+}
+.ajp-action__message { margin: 0; color: var(--socle-texte-courant); font-size: 12.5px; line-height: 1.55; white-space: pre-line; }
+.ajp-action__garde { display: flex; align-items: baseline; gap: 8px; margin: 8px 0 0; color: var(--socle-etat-attention); font-size: 11.5px; line-height: 16px; }
+.ajp-action__garde::before { width: 6px; height: 6px; flex: none; transform: translateY(-1px); border-radius: 50%; background: currentColor; content: ''; }
+.ajp-autres { margin: 8px 0 0; color: var(--socle-texte-3); font-size: 12px; }
+
+/* ── Bande 3 · la décision (60) : primaire, « Modifier », « Annuler » ; le sceau à droite ── */
+.ajp-decision {
+  display: flex;
+  box-sizing: border-box;
+  height: var(--sc-ajp-decision);
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--sc-ajp-filet);
+  background: var(--socle-ligne-survol);
+}
+.ajp-decision .ajp-boutons { flex-wrap: nowrap; margin: 0; }
+.ajp-sceau { display: flex; min-width: 0; align-items: center; gap: 10px; margin: 0; }
+.ajp-sceau__icone { width: 15px; height: 15px; flex: none; color: var(--socle-etat-succes); }
+.ajp-sceau__texte { display: flex; min-width: 0; flex-direction: column; align-items: flex-end; text-align: right; }
+.ajp-sceau__titre { color: var(--socle-texte-courant); font-size: 12.5px; font-weight: 500; line-height: 16px; white-space: nowrap; }
+.ajp-sceau__detail { color: var(--socle-texte-3); font-size: 11.5px; line-height: 15px; white-space: nowrap; }
+
+/* ── Bande 4 · « Ensuite, si vous voulez » (81) : trois puces au plus ── */
+.ajp-suites { box-sizing: border-box; height: var(--sc-ajp-suites); flex: none; overflow: hidden; padding: 11px 20px 0; border-bottom: 1px solid var(--sc-ajp-filet); }
+.ajp-suites .ajp-section { margin-bottom: 8px; }
+.ajp-suites__liste { display: flex; gap: 8px; }
+.ajp-suite {
+  display: inline-flex;
+  box-sizing: border-box;
+  min-height: var(--sc-ajp-bouton);
+  flex: none;
+  align-items: center;
+  gap: 9px;
+  padding: 0 14px 0 13px;
+  border: 1px solid var(--socle-bord-pilule);
+  border-radius: var(--socle-rayon-pastille);
+  background: var(--socle-champ);
+  color: var(--socle-texte-courant);
+  font: inherit;
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 150ms ease-out;
+}
+.ajp-suite:hover { background: var(--socle-survol); }
+.ajp-suite:focus-visible { outline: 2px solid var(--socle-texte-1); outline-offset: 2px; }
+.ajp-suite svg { flex: none; color: var(--socle-texte-2); }
 .ajp-phrase strong { color: var(--socle-texte-1); font-weight: 600; }
 .ajp-details { margin: 6px 0 0; padding: 0; list-style: none; color: var(--socle-texte-2); font-size: 12.5px; line-height: 18px; }
 .ajp-pastille { margin-top: 8px; }
@@ -182,7 +339,7 @@
 .ajp-squelette[data-court='true'] { width: 62%; }
 
 /* ── Bande 3 · « Ou lancez » (261) ── */
-.ajp-lancer { min-height: 0; flex: 1 1 0; overflow-y: auto; padding-bottom: 4px; }
+.ajp-lancer { min-height: 0; flex: 1 1 auto; overflow-y: auto; padding-bottom: 4px; }
 .ajp-lancer .ajp-section { margin: 14px 0 4px; padding: 0 22px; }
 .ajp-lancer__liste { margin: 0; padding: 0 12px; list-style: none; }
 
@@ -223,7 +380,7 @@
 .ajp-ligne[data-recent] .ajp-ligne__titre { font-size: 13.5px; }
 .ajp-ligne[aria-disabled='true'] .ajp-ligne__titre { color: var(--socle-texte-3); }
 
-/* ── Bande 4 · le pied (36) ── */
+/* ── Bande 5 · le pied (36) ── */
 .ajp-pied {
   display: flex;
   box-sizing: border-box;
@@ -231,12 +388,14 @@
   flex: none;
   align-items: center;
   justify-content: space-between;
-  padding: 0 19px;
-  border-top: 1px solid var(--socle-bord-entete);
+  margin-top: auto;
+  padding: 0 20px;
   color: var(--socle-texte-3);
   font-size: 11.5px;
 }
-.ajp-pied__aide { display: flex; gap: 16px; margin: 0; }
+/* Le filet du pied : celui de la bande au-dessus, sauf « Ou lancez » qui n'en a pas. */
+.ajp-lancer + .ajp-pied { border-top: 1px solid var(--sc-ajp-filet); }
+.ajp-pied__aide { display: flex; gap: 18px; margin: 0; }
 .ajp-pied p { margin: 0; }
 
 /* ── Les mouvements ── */
@@ -276,4 +435,12 @@
   .ajp-pied__aide { display: none; }
   .ajp-pied { justify-content: flex-end; }
   .ajp-boutons [data-socle='bouton'] { min-height: 46px; }
+  .ajp-decision { height: auto; flex-wrap: wrap; padding: 10px 16px; }
+  .ajp-suites { height: auto; padding-bottom: 12px; }
+  .ajp-suites__liste { overflow-x: auto; }
 }
+
+/* L'écran derrière est figé : rien n'y bouge tant que la palette est ouverte. */
+body:has(> .ajp-voile) > :not(.ajp-voile) *,
+body:has(> .ajp-voile) > :not(.ajp-voile) *::before,
+body:has(> .ajp-voile) > :not(.ajp-voile) *::after { animation-play-state: paused !important; }

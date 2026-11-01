@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useLangue, libelleNav, indiceNav } from '../../../i18n';
 import { useSocleLangue } from '../../../socle/i18n';
 import { toutesLesSections } from '../../../data/spaces';
@@ -10,8 +10,9 @@ import { useAttention } from '../../../state/useAttention';
 import { useNavAlleges } from '../../../state/useNavAlleges';
 import { usePoulsGarde } from '../../coquille/pouls';
 import { entreeDuRegistre } from '../../navigation/registre';
-import type { PalierRelance } from '../../../lib/relances';
-import type { DonneesAjmani, FactureAjmani } from './intentions';
+import { formatCents } from '../../../lib/money';
+import { cleMessagePalier, type PalierRelance } from '../../../lib/relances';
+import type { ActionProposee, DonneesAjmani, FactureAjmani } from './intentions';
 
 interface RelanceNotee {
   invoiceId: string;
@@ -54,6 +55,7 @@ export function useDonneesAjmani(): DonneesAjmani {
           numero: f.number,
           clientId: f.clientId,
           clientNom: f.billTo.company || f.billTo.name,
+          courriel: Boolean((f.billTo.email ?? '').trim()),
           statut: STATUT[f.status] ?? 'brouillon',
           echeance: f.dueAt,
           resteDuCentimes: netDueCents(f, invoices),
@@ -80,4 +82,29 @@ export function useDonneesAjmani(): DonneesAjmani {
     // `ts` suit la langue : on relit les libellés quand elle change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aujourdhui, invoices, clients, relances, catalogue, attention, appointments, pouls.etat, pouls.points, langue]);
+}
+
+/**
+ * LE TEXTE D'UNE RELANCE PROPOSÉE — exactement celui que l'écran Relances copie ou envoie : le modèle du palier
+ * (`cleMessagePalier`), rempli des faits de la facture (destinataire, numéro, reste dû, échéance, jours). Ajmani ne
+ * l'écrit pas, il le montre ; rien ne part d'ici.
+ */
+export function useTexteRelance(): (p: ActionProposee) => string | null {
+  const { t, langue } = useLangue();
+  const { invoices } = useInvoices();
+  return useCallback(
+    (p: ActionProposee) => {
+      const f = invoices.find((x) => x.id === p.factureId);
+      if (!f || !f.dueAt) return null;
+      const locale = langue === 'en' ? 'en-GB' : 'fr-FR';
+      return t(cleMessagePalier(p.palier), {
+        nom: f.billTo.name,
+        numero: f.number,
+        montant: formatCents(netDueCents(f, invoices)),
+        echeance: new Date(`${f.dueAt}T00:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'long' }),
+        jours: p.jours,
+      });
+    },
+    [invoices, langue, t],
+  );
 }
