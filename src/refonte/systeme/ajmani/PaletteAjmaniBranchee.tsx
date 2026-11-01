@@ -1,7 +1,8 @@
+import { useMemo } from 'react';
 import { PaletteAjmaniRefonte, type PaletteAjmaniRefonteProps } from './PaletteAjmaniRefonte';
 import { useActionsAjmani } from './useActionsAjmani';
 import { useContextePalette } from './useContextePalette';
-import { useDonneesAjmani } from './useDonneesAjmani';
+import { useDonneesAjmani, useTexteRelance } from './useDonneesAjmani';
 
 /**
  * LA PALETTE, BRANCHÉE — les données réelles de l'application, le contexte de l'écran, les droits et la connexion.
@@ -20,7 +21,10 @@ export type PaletteAjmaniBrancheeProps = Pick<PaletteAjmaniRefonteProps, 'ouvert
 
 export function PaletteAjmaniBranchee(props: PaletteAjmaniBrancheeProps) {
   const contexte = useContextePalette(props.ouverte);
-  const donnees = useDonneesAjmani();
+  const lues = useDonneesAjmani();
+  // « à jour à 10:42 » : l'heure où la palette a lu les données (à l'ouverture, puis à chaque changement).
+  const donnees = useMemo(() => (props.ouverte ? { ...lues, luesA: new Date().toISOString() } : lues), [lues, props.ouverte]);
   const actions = useActionsAjmani();
-  return <PaletteAjmaniRefonte {...props} contexte={contexte} donnees={donnees} actions={actions} />;
+  const texteRelance = useTexteRelance();
+  return <PaletteAjmaniRefonte {...props} contexte={contexte} donnees={donnees} actions={actions} texteRelance={texteRelance} />;
 }

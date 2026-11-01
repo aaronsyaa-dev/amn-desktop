@@ -1,23 +1,32 @@
 /*
-  LA PALETTE ⌘K — H41 (LOT-00), aux cotes de la maquette.
-  ═══════════════════════════════════════════════════════
+  LA PALETTE ⌘K — H41 (LOT-00, v3), aux cotes de la maquette.
+  ═════════════════════════════════════════════════════════════
 
-  700 × 444, centrée sur la FENÊTRE (pas sur la zone principale), haut à 96 px — ou 10 % de la hauteur
-  quand la fenêtre fait moins de 700 px. Trois bandes : le champ (58), la liste (342, jusqu'à 520 puis
-  elle défile), le pied (41). Lignes de 44, tuile d'icône de 28 (rayon 8, couleur de la famille à .13).
+  860 × 640 (bord compris 862 × 642), centrée sur la FENÊTRE (pas sur la zone principale), haut à 88 px — ou
+  10 % de la hauteur quand la fenêtre fait moins de 700 px. Cinq bandes : le champ (60 + filet), la portée
+  (42 + filet), le corps à deux volets de 430 × 495 (la liste, filet droit compris ; l'aperçu), le pied (filet + 40).
+  Lignes de 38 (rayon 9), tuile d'icône de 26 (rayon 7, couleur de la famille de destination à .14), libellés en
+  13,5 px (T1 H41.1 : 14 px faisait la palette ≈ 3 % trop large).
 
-  Les valeurs viennent de `src/socle/noir.css` (`--socle-*`). Les trois que la maquette donne sans jeton
-  sont déclarées ici, en tête, sous `--sc-recherche-*` : le voile à 50 %, le filet des bandes, l'ombre.
-  Les encres « discret » ne se posent jamais en `color` : le texte lu est T1 à T4 (`--socle-texte-*`).
+  L'écran derrière est figé, flouté (2,5 px), désaturé (.8) et assombri (rgba(6, 6, 7, .60)) : c'est un écran
+  posé, pas une page qu'on lit. Aucune animation ne tourne derrière la palette (`body:has(...)` en fin de feuille).
+
+  Les valeurs viennent de `src/socle/noir.css` (`--socle-*`). Celles que la maquette donne sans jeton sont
+  déclarées ici, en tête, sous `--sc-recherche-*`. Les encres « discret » ne se posent jamais en `color` : le texte
+  lu est T1 à T4 (`--socle-texte-*`). Les chiffres seuls sont tabulaires (pas la palette entière : écart C11).
 
   Chargé par `PaletteRecherche.tsx`, donc seulement là où la palette est montée (édition interne).
 */
 
 :root[data-ambiance='noir'] {
-  --sc-recherche-voile: rgba(0, 0, 0, 0.5);
+  --sc-recherche-voile: rgba(6, 6, 7, 0.6);
+  --sc-recherche-flou: blur(2.5px) saturate(0.8);
+  --sc-recherche-haut-fond: #19191b;
   --sc-recherche-filet: #26262a;
-  --sc-recherche-ombre: 0 32px 80px rgba(0, 0, 0, 0.6);
-  --sc-recherche-haut: 96px;
+  --sc-recherche-filet-volet: #232327;
+  --sc-recherche-trouve: rgba(237, 237, 237, 0.08);
+  --sc-recherche-ombre: 0 40px 120px rgba(0, 0, 0, 0.72);
+  --sc-recherche-haut: 88px;
 }
 @media (max-height: 699.98px) {
   :root[data-ambiance='noir'] { --sc-recherche-haut: 10dvh; }
@@ -31,69 +40,104 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: var(--sc-recherche-haut) 0 16px;
+  /* 2 px à gauche : la maquette pose la palette à x = 290 (862 px de large), un pixel à droite du centre. */
+  padding: var(--sc-recherche-haut) 0 16px 2px;
   background: var(--sc-recherche-voile);
+  -webkit-backdrop-filter: var(--sc-recherche-flou);
+  backdrop-filter: var(--sc-recherche-flou);
   overscroll-behavior: contain;
 }
 
-/* ── La palette : 700 × 444 ── */
+/* ── La palette : 862 × 642 bord compris ── */
 .rc-palette {
   display: flex;
-  width: min(700px, calc(100% - 32px));
-  min-height: min(444px, calc(100dvh - var(--sc-recherche-haut) - 16px));
-  max-height: calc(100dvh - var(--sc-recherche-haut) - 16px);
+  box-sizing: border-box;
+  width: min(862px, calc(100% - 32px));
+  height: min(642px, calc(100dvh - var(--sc-recherche-haut) - 16px));
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--socle-bord-palette);
-  border-radius: 16px;
-  background: var(--socle-palette-fond);
+  border-radius: 18px;
+  background: linear-gradient(180deg, var(--sc-recherche-haut-fond), var(--socle-palette-fond));
   box-shadow: var(--sc-recherche-ombre);
   color: var(--socle-texte-1);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-variant-numeric: tabular-nums;
   outline: none;
 }
 
-/* ── Le champ : 58 px, loupe 16, texte 16, « esc » à droite ── */
+/* ── Le champ : 60 px + filet, loupe 18 T3, texte 17 T1, compteur 12 T4, « esc » à droite ── */
 .rc-champ {
   display: flex;
-  height: 58px;
+  box-sizing: border-box;
+  height: 61px;
   flex: none;
   align-items: center;
-  gap: 12px;
-  padding: 0 20px 0 22px;
+  gap: 13px;
+  padding: 0 20px;
   border-bottom: 1px solid var(--sc-recherche-filet);
 }
-.rc-champ__loupe { flex: none; color: var(--socle-texte-3); }
+.rc-champ__loupe { flex: none; color: var(--socle-texte-2); }
 .rc-champ__saisie {
   flex: 1;
   min-width: 0;
   height: 100%;
+  padding: 0;
   border: 0;
   background: transparent;
   color: var(--socle-texte-1);
   caret-color: var(--socle-texte-1);
   font: inherit;
-  font-size: 16px;
+  font-size: 17px;
   outline: none;
 }
 .rc-champ__saisie::placeholder { color: var(--socle-texte-3); opacity: 1; }
+.rc-champ__compteur { flex: none; margin-right: 1px; color: var(--socle-texte-3); font-size: 12px; white-space: nowrap; }
 .rc-champ__echap { display: inline-flex; flex: none; }
 
-/* ── La liste : padding 8, jusqu'à 520 px, puis elle défile — jamais la page ── */
-.rc-liste {
+/* ── La portée : 42 px + filet, puces de 23, ⇥ « changer de groupe » à droite ── */
+.rc-portee {
+  display: flex;
+  box-sizing: border-box;
+  height: 43px;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--sc-recherche-filet);
+}
+.rc-portee__puces { min-width: 0; flex-wrap: nowrap; column-gap: 6px; overflow: hidden; }
+.rc-portee .sc-puce__corps { height: 23px; gap: 5px; padding: 0 11px; color: var(--socle-texte-2); font-weight: 400; }
+.rc-portee .sc-puce[aria-checked='true'] .sc-puce__corps { border-color: var(--socle-segment-actif); }
+.rc-portee .sc-puce__compteur { color: inherit; font-weight: inherit; }
+.rc-portee__aide { display: inline-flex; flex: none; align-items: center; gap: 9px; margin-left: auto; color: var(--socle-texte-3); font-size: 12px; white-space: nowrap; }
+
+/* ── Le corps : deux volets de 430 ── */
+.rc-corps {
+  display: grid;
   min-height: 0;
   flex: 1 1 auto;
-  max-height: 520px;
+  grid-template-columns: 430px minmax(0, 1fr);
+}
+
+/* ── La liste : 430 × 495, filet droit, marges 4 / 8 / 10, elle défile — jamais la page ── */
+.rc-liste {
+  box-sizing: border-box;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 8px;
+  padding: 4px 8px 10px;
+  border-right: 1px solid var(--sc-recherche-filet-volet);
 }
 .rc-options { display: block; }
+.rc-groupe { margin-top: 6px; }
 
-/* Libellé de groupe : 11 px, capitales, .08em, T4. */
+/* Libellé de groupe : 28 px, 11 px, capitales, .08em, T4 ; compteur 11 px T4 à droite. */
 .rc-groupe__titre {
-  padding: 10px 14px 6px;
+  display: flex;
+  height: 28px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
   color: var(--socle-texte-3);
   font-size: 11px;
   font-weight: 500;
@@ -101,70 +145,167 @@
   line-height: 14px;
   text-transform: uppercase;
 }
-.rc-groupe + .rc-groupe .rc-groupe__titre { padding-top: 12px; }
+.rc-groupe__compteur { font-variant-numeric: tabular-nums; letter-spacing: 0; }
 
-/* Ligne : 44 px, tuile 28, libellé 14 px T1, étiquette de type 12 px T4 à 12 px. */
+/* Ligne : 38 px, rayon 9, tuile 26, libellé 13,5 px T2 (T1 choisie), étiquette de type 11,5 px T4. */
 .rc-ligne {
   display: flex;
-  height: 44px;
+  height: 38px;
   align-items: center;
-  gap: 12px;
-  padding: 0 14px;
-  border-radius: 10px;
-  color: var(--socle-texte-1);
-  font-size: 14px;
+  gap: 11px;
+  padding: 0 12px;
+  border-radius: 9px;
+  color: var(--socle-texte-courant);
+  font-size: 13.5px;
   cursor: pointer;
 }
-/* La sélection suit le clavier et la souris : même fond, rayon 10, jamais de surbrillance des lettres. */
-.rc-ligne[aria-selected='true'] { background: var(--socle-segment-actif); }
+/* La sélection suit le clavier et la souris : fond #242427, libellé T1 et « ↵ ». */
+.rc-ligne[aria-selected='true'] { background: var(--socle-segment-actif); color: var(--socle-texte-1); }
 .rc-ligne[aria-disabled='true'] { cursor: not-allowed; }
 .rc-ligne[aria-disabled='true'] .rc-ligne__libelle { color: var(--socle-texte-3); }
-.rc-ligne__libelle { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rc-ligne__type { flex: none; color: var(--socle-texte-3); font-size: 12px; }
-.rc-ligne__touche { display: inline-flex; flex: none; margin-left: auto; }
+.rc-ligne__libelle { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Les lettres trouvées : 600 T1 sur un fond à peine plus clair. */
+.rc-ligne__libelle mark { padding: 0 1px; border-radius: 4px; background: var(--sc-recherche-trouve); color: var(--socle-texte-1); font-weight: 600; }
+.rc-ligne__type { flex: none; color: var(--socle-texte-3); font-size: 11.5px; }
+.rc-ligne__touche { display: inline-flex; flex: none; margin-left: 9px; }
 .rc-ligne--squelette { cursor: default; }
 
 .rc-tuile {
   --rc-teinte: var(--fam, var(--socle-fam-outils));
   display: inline-flex;
-  width: 28px;
-  height: 28px;
+  box-sizing: border-box;
+  width: 26px;
+  height: 26px;
   flex: none;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--rc-teinte) 13%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--rc-teinte) 14%, transparent);
   color: var(--rc-teinte);
 }
 /* L'action d'Ajmani est verte : la couleur d'un état réussi, la même que son étincelle. */
 .rc-tuile[data-ajmani] { --rc-teinte: var(--socle-etat-succes); }
+.rc-tuile[data-grande] { width: 42px; height: 42px; border-radius: 10px; background: color-mix(in srgb, var(--rc-teinte) 18%, transparent); }
+
+/* ── L'aperçu : 430 × 495, marges 16 / 20 / 14 ── */
+.rc-apercu { min-width: 0; min-height: 0; overflow: hidden; }
+.rc-apercu__corps { display: flex; box-sizing: border-box; height: 100%; flex-direction: column; padding: 16px 20px 14px; }
+.rc-apercu__tete { display: flex; min-height: 42px; align-items: center; gap: 12px; }
+.rc-apercu__monogramme {
+  --rc-teinte: var(--fam, var(--socle-fam-contacts));
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--rc-teinte) 18%, transparent);
+  color: var(--socle-texte-1);
+  font-size: 14px;
+  font-weight: 600;
+}
+.rc-apercu__nom { min-width: 0; }
+.rc-apercu__titre { margin: 0; overflow: hidden; color: var(--socle-texte-1); font-size: 17px; font-weight: 600; letter-spacing: -0.01em; line-height: 22px; text-overflow: ellipsis; white-space: nowrap; }
+.rc-apercu__sous { margin: 0; overflow: hidden; color: var(--socle-texte-3); font-size: 12px; line-height: 17px; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Trois chiffres en sous-cartes égales (72 px, écart 12). */
+.rc-chiffres { display: grid; margin-top: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.rc-chiffre {
+  display: flex;
+  box-sizing: border-box;
+  height: 72px;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 0 12px;
+  border: 1px solid var(--socle-bord-sous-carte);
+  border-radius: 10px;
+  background: var(--socle-sous-carte);
+}
+.rc-chiffre__libelle { overflow: hidden; color: var(--socle-texte-3); font-size: 11.5px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.rc-chiffre__valeur { overflow: hidden; color: var(--socle-texte-1); font-size: 16px; font-variant-numeric: tabular-nums; font-weight: 600; line-height: 21px; text-overflow: ellipsis; white-space: nowrap; }
+.rc-chiffre__valeur[data-texte] { font-size: 13.5px; }
+.rc-chiffre__detail { overflow: hidden; color: var(--socle-texte-3); font-size: 11.5px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.rc-chiffre__detail[data-ton='succes'] { color: var(--socle-etat-succes); }
+.rc-chiffre__detail[data-ton='attention'] { color: var(--socle-etat-attention); }
+.rc-chiffre__detail[data-ton='critique'] { color: var(--socle-etat-critique); }
+.rc-chiffre__detail[data-ton='info'] { color: var(--socle-etat-info); }
+
+/* La courbe de facturation : 390 × 40, qui se dessine (couche de mouvement : `trace`). */
+.rc-courbe { margin-top: 11px; }
+.rc-courbe__tete { display: flex; justify-content: space-between; gap: 12px; color: var(--socle-texte-3); font-size: 12px; line-height: 16px; }
+.rc-courbe__mois { font-size: 11.5px; }
+.rc-courbe__trace { display: block; margin-top: 2px; }
+/* La courbe de la maquette s'arrête sans point final. */
+.rc-courbe__trace .sc-g__mini-fin { display: none; }
+
+/* Activité récente : libellé 11 px capitales, puis 3 lignes de 28 px (heure MONO, icône, texte 12,5 px T2). */
+.rc-activite { margin-top: 10px; }
+.rc-activite__titre { margin: 0 0 3px; color: var(--socle-texte-3); font-size: 11px; font-weight: 500; letter-spacing: 0.08em; line-height: 14px; text-transform: uppercase; }
+.rc-activite__liste { margin: 0; padding: 0; list-style: none; }
+.rc-activite__vide { margin: 6px 0 0; color: var(--socle-texte-3); font-size: 12.5px; }
+.rc-fait { display: flex; height: 28px; align-items: center; gap: 8px; color: var(--socle-texte-courant); font-size: 12.5px; }
+.rc-fait__quand { width: 42px; flex: none; color: var(--socle-texte-3); font-size: 12px; }
+.rc-fait__icone { display: inline-flex; width: 16px; flex: none; justify-content: center; color: var(--socle-etat-info); }
+.rc-fait[data-genre='encaissement'] .rc-fait__icone { color: var(--socle-etat-succes); }
+.rc-fait[data-genre='emission'] .rc-fait__icone { color: var(--socle-fam-argent); }
+.rc-fait__texte { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Les actions rapides : grille 2 × 2 de 34 px (écart 8 / 6), poussée en bas. */
+.rc-rapides { display: grid; margin-top: auto; padding-top: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 8px; }
+.rc-rapides[data-impair] > .rc-rapide:last-child { grid-column: 1 / -1; }
+.rc-rapide {
+  display: flex;
+  box-sizing: border-box;
+  height: 34px;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 0 9px 0 12px;
+  border: 1px solid var(--socle-bord-bouton);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--socle-texte-courant);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease-out;
+}
+.rc-rapide:hover { background: var(--socle-survol); }
+.rc-rapide:focus-visible { outline: 2px solid var(--socle-texte-1); outline-offset: 2px; }
+.rc-rapide__icone { display: inline-flex; flex: none; color: var(--socle-texte-2); }
+.rc-rapide__libelle { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── Ce qui se dit sans être une ligne : hors ligne, saisie vide ── */
-.rc-info { margin: 0; padding: 10px 14px; color: var(--socle-texte-3); font-size: 12.5px; line-height: 1.45; }
+.rc-info { margin: 0; padding: 10px 12px; color: var(--socle-texte-3); font-size: 12.5px; line-height: 1.45; }
 
 /* ── Aucun résultat (modèle 5 de H43, en compact) : icône, titre, une phrase, un bouton ── */
 .rc-aucun {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   margin-top: 6px;
-  padding: 10px 14px;
+  padding: 10px 12px;
   border-top: 1px solid var(--sc-recherche-filet);
 }
 .rc-aucun__icone {
   display: inline-flex;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   flex: none;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 7px;
   background: var(--socle-bord-carte);
   color: var(--socle-texte-2);
 }
 .rc-aucun__texte { min-width: 0; flex: 1; }
-.rc-aucun__titre { margin: 0; color: var(--socle-texte-1); font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
-.rc-aucun__aide { margin: 2px 0 0; color: var(--socle-texte-3); font-size: 13px; line-height: 1.4; }
+.rc-aucun__titre { margin: 0; color: var(--socle-texte-1); font-size: 13.5px; font-weight: 600; overflow-wrap: anywhere; }
+.rc-aucun__aide { margin: 2px 0 0; color: var(--socle-texte-3); font-size: 12.5px; line-height: 1.4; }
 
 /* ── Erreur : une ligne et « Réessayer » ; les actions locales restent au-dessus ── */
 .rc-erreur {
@@ -173,18 +314,19 @@
   justify-content: space-between;
   gap: 12px;
   margin-top: 6px;
-  padding: 10px 14px;
+  padding: 10px 12px;
   border-top: 1px solid var(--sc-recherche-filet);
 }
-.rc-erreur__texte { margin: 0; color: var(--socle-texte-2); font-size: 13px; }
+.rc-erreur__texte { margin: 0; color: var(--socle-texte-courant); font-size: 13px; }
 
-/* ── Le pied : 41 px, mentions de 12 px T4 espacées de 20 ── */
+/* ── Le pied : filet + 40 px, mentions de 12 px T4 espacées de 18 ── */
 .rc-pied {
   display: flex;
+  box-sizing: border-box;
   height: 41px;
   flex: none;
   align-items: center;
-  gap: 20px;
+  gap: 18px;
   padding: 0 20px;
   border-top: 1px solid var(--sc-recherche-filet);
   color: var(--socle-texte-3);
@@ -193,7 +335,19 @@
 }
 .rc-pied__astuce { margin-left: auto; }
 
+/* Sous 900 px de large : un seul volet de 600 px, l'aperçu se masque. */
+@media (max-width: 899.98px) {
+  .rc-palette { width: min(600px, calc(100% - 32px)); }
+  .rc-corps { grid-template-columns: minmax(0, 1fr); }
+  .rc-liste { border-right: 0; }
+  .rc-apercu { display: none; }
+}
 /* Sous 560 px de large, le pied ne garde que « ↵ pour ouvrir ». */
 @media (max-width: 559.98px) {
   .rc-pied__mention[data-secondaire] { display: none; }
 }
+
+/* L'écran derrière est figé : rien n'y bouge tant que la palette est ouverte. */
+body:has(> .rc-voile) > :not(.rc-voile) *,
+body:has(> .rc-voile) > :not(.rc-voile) *::before,
+body:has(> .rc-voile) > :not(.rc-voile) *::after { animation-play-state: paused !important; }

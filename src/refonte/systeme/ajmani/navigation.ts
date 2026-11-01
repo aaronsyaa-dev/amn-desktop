@@ -7,8 +7,12 @@
  * on revient au champ. Une cible désactivée (« Réservé aux administrateurs », hors ligne) est sautée.
  */
 
-/** `lien` : « Effacer l'historique », atteignable au clavier comme le reste, après les lignes de la réponse. */
-export type ZoneCible = 'reponse' | 'lien' | 'bouton' | 'lancer';
+/**
+ * `lien` : « Effacer l'historique », atteignable au clavier comme le reste, après les lignes de la réponse.
+ * `proposee` : une action proposée (sa case à cocher), entre la réponse et les boutons ; `suite` : une suite
+ * (« Ensuite, si vous voulez »), à la place des lignes « Ou lancez » quand la réponse en propose.
+ */
+export type ZoneCible = 'reponse' | 'proposee' | 'lien' | 'bouton' | 'suite' | 'lancer';
 
 export interface Cible {
   zone: ZoneCible;
