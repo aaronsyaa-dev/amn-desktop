@@ -137,7 +137,7 @@ Branche `claude/refonte-socle` (partie de `claude/refonte-design-socle`). Détai
 | H42 Démarrage | `/demarrage` ; une fois, à la toute première connexion | fait | non capturé | Étapes 5 et 6 (paiement, appareil mobile) manuelles : aucune donnée de connecteur |
 | H47 Choisir son métier | `/demarrage/metier` | fait | non capturé | Réglage personnel (pas de réglage d'organisation) ; « Passer » ne masque aucun module |
 | H43 États et messages | `/dev/etats` (développement) + briques `situations` | fait | non capturé | Page de référence interne, hors production |
-| D02 Tous les modules | « Tous les modules (101) » de la barre latérale | fait | non capturé | Comptes par famille issus du registre (14/7/12/12/15/7/19/15), pas de la maquette (12/14/9/18/10/16/14/8) ; totaux 101 et niveaux 16/62/23 conformes |
+| D02 Tous les modules | « Tous les modules (101) » de la barre latérale | fait | non capturé | Comptes par famille issus du registre (14/7/11/13/15/7/19/15 depuis S5), pas de la maquette (12/14/9/18/10/16/14/8) ; totaux 101 et niveaux 16/62/23 conformes |
 | G06 Connexion | `/login` | fait | non capturé | « Demandez un accès » affiche un texte (aucun flux de demande) ; « 12 organisations » est une constante de présentation à valider ; la phrase sur le journal de la Garde est à vérifier (H35) |
 | G05 Ajmani ⌘J | ⌘J, barre Ajmani | fait | non capturé | Prépare un brouillon de relance N1, n'envoie rien ; « Décrire » passe à l'assistant existant |
 
@@ -150,6 +150,14 @@ Branche `claude/refonte-socle` (partie de `claude/refonte-design-socle`). Détai
 - Raccourci « N · Créer, partout » non repris (n'existe pas). « Un appel de 15 minutes » mène à `/assistance`. « Créer un devis pour X » ouvre la page client de X.
 - `check:coquille`, `check:signal`, `check:mobile`, `check:contraste`, `check:focus`, `check:cibles`, `check:etiquettes`, `check:mouvement`, `check:xss`, `check:isolation`, `check:business` demandent un navigateur ou un build servi : **non lancés**.
 - Gardes en échec avant et après le lot, sans lien avec lui : `check:encres` (`src/refonte/garde/equipes.ts`), `check:migration`, `check:xss`, `check:visite`, `check:support` (environnement).
+
+### Reprise de S5 (2026-11-01)
+
+- Fusionnés sur `claude/refonte-socle` : les 4 commits de S5 absents de la branche (`669eeab`, `1d580d1`, `25768fa`, `b82e50f`).
+- Un seul conflit, dans `src/socle/i18n.ts` (lignes voisines) : `famille.creer` = « Créer et produire » / « Create and produce » (S5, identique des deux côtés) ; `famille.outils` = « Outils et réglages » / « Tools and settings » (LOT-00, conforme à `01-SOCLE-DESIGN.md` et au registre) au lieu de « Outils ».
+- Effet sur D02 : Contrats et abonnements passent d'Écrire à Argent (Écrire 11, Argent 13). Total 101 et niveaux 16/62/23 inchangés.
+- Point ouvert : `/garde/ajmani` (S5) ouvre l'assistant existant, pas la palette ⌘J du LOT-00 (G05) quand la nouvelle coquille est allumée. À aligner au basculement de la coquille.
+- Gardes après fusion : identiques à la base ; `check:socle-*` et `check:systeme-*` verts.
 
 ### Questions pour le CO
 
