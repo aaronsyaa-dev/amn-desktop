@@ -121,7 +121,6 @@ import { HomeSoloScreen } from '../business/HomeSoloScreen';
 import { MediaSoloScreen } from '../business/MediaSoloScreen';
 import { ClientContextLayout } from '../client-context/ClientContextLayout';
 import { GardeSalleScreen } from '../screens/garde/GardeSalleScreen';
-import { GardeAjmaniScreen } from '../screens/garde/GardeAjmaniScreen';
 import { GardePileScreen } from '../screens/garde/GardePileScreen';
 import { GardeBureauxScreen } from '../screens/garde/GardeBureauxScreen';
 import { GardeCommuneScreen } from '../screens/garde/GardeCommuneScreen';
@@ -412,7 +411,8 @@ function AmnRoutes() {
         <Route path={ROUTE_METIER} element={<Suspense fallback={null}><PageMetier /></Suspense>} />
         <Route path="/ensemble/:famille" element={<Suspense fallback={null}><PageEnsembleFamille /></Suspense>} />
         {/* Refonte S5 : les écrans neufs déclarés au registre (`src/refonte/modules/declarations/`)
-            montent ici leur route, sans qu'on ait à l'écrire. Aucun aujourd'hui. */}
+            montent ici leur route, sans qu'on ait à l'écrire ; les vues remplacées y renvoient ailleurs
+            (/garde/ajmani ouvre le panneau ⌘J). */}
         {routesDuRegistre()}
         <Route path="/vault" element={<VaultScreen />} />
 
@@ -424,7 +424,6 @@ function AmnRoutes() {
 
         {/* La Garde (Bloc 3) : le troisième espace — déléguer. */}
         <Route path="/garde" element={<GardeSalleScreen />} />
-        <Route path="/garde/ajmani" element={<GardeAjmaniScreen />} />
         <Route path="/garde/pile" element={<GardePileScreen />} />
         <Route path="/garde/bureaux" element={<GardeBureauxScreen />} />
         <Route path="/garde/bureaux/:equipe" element={<GardeBureauxScreen />} />

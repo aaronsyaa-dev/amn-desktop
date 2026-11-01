@@ -75,16 +75,17 @@ export function TousLesModules() {
     return n;
   }, [familles]);
 
-  const remplacees = useMemo(() => new Set(REGISTRE_MODULES.remplacees.map((r) => r.id)), []);
+  const nomsDeFamille = useMemo(() => new Map(REGISTRE_MODULES.familles.map((f) => [f.id, f.nom])), []);
   const trouvailles = useMemo(
     () =>
       requete.trim()
         ? chercher(
             requete,
-            catalogue.filter((i) => !remplacees.has(i.key)).map((item) => ({ ...item, label: libelleNav(item), hint: indiceNav(item) })),
+            catalogue.map((item) => ({ ...item, label: libelleNav(item), hint: indiceNav(item) })),
+            { langue },
           )
         : null,
-    [requete, catalogue, remplacees],
+    [requete, catalogue, langue],
   );
 
   const nomEntree = (e: EntreeOuverte) => (e.entree.nom ? dire(e.entree.nom) : libelleNav(e.vues[0]));
@@ -185,6 +186,10 @@ export function TousLesModules() {
                   principal={item}
                   nom={libelleNav(item)}
                   detail={t.raison ?? indiceNav(item)}
+                  famille={(() => {
+                    const nom = nomsDeFamille.get(entreeDuRegistre(item.key)?.famille ?? '');
+                    return nom ? dire(nom) : undefined;
+                  })()}
                   point
                   sousVues={[]}
                   libelleSousVues=""
@@ -283,6 +288,7 @@ function LigneEntree({
   nom,
   detail,
   point = false,
+  famille,
   sousVues,
   libelleSousVues,
   epingle,
@@ -294,6 +300,8 @@ function LigneEntree({
   detail?: string;
   /** Le petit point de la famille, devant le nom (résultats de recherche, hors des cartes). */
   point?: boolean;
+  /** Le nom de la famille, en gris après le nom : deux modules peuvent porter le même (Calendrier). */
+  famille?: string;
   sousVues: { item: NavItem; libelle: string }[];
   libelleSousVues: string;
   epingle: boolean;
@@ -315,6 +323,7 @@ function LigneEntree({
             <span className="flex items-center gap-1.5">
               {point && <span aria-hidden className="h-1.5 w-1.5 flex-none rounded-full bg-[var(--fam)]" />}
               <span className="block truncate text-[14px] text-text-primary">{nom}</span>
+              {famille && <span className="flex-none truncate text-[11.5px] text-text-muted">· {famille}</span>}
             </span>
             {detail && <span className="block truncate text-[12px] text-text-muted">{detail}</span>}
           </span>
