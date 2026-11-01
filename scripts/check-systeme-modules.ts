@@ -1,27 +1,38 @@
 /**
- * Contrôle du panneau « TOUS LES MODULES » (D02) — la logique pure et les cotes, sans navigateur.
+ * Contrôle de la page « TOUS LES MODULES » (D02, v3) — la logique pure, le rendu statique et les cotes, sans navigateur.
  *
  *   npm run check:systeme-modules
  */
-import { assert, charger, creerEssais, lire, sansCommentaires } from './lib/essai-socle.ts';
+import path from 'node:path';
+import * as esbuild from 'esbuild';
+import { assert, charger, creerEssais, lire, racine, sansCommentaires } from './lib/essai-socle.ts';
 
-const { dit, fin } = creerEssais('Tous les modules (D02)');
+/** Comme `chargerRendu`, mais les feuilles importées par les composants sont ignorées (rendu statique seulement). */
+async function chargerVue<T>(code: string): Promise<T> {
+  const construit = await esbuild.build({
+    stdin: { contents: code, resolveDir: path.join(racine, 'scripts'), loader: 'tsx' },
+    bundle: true,
+    write: false,
+    format: 'esm',
+    platform: 'browser',
+    target: 'es2022',
+    charset: 'utf8',
+    jsx: 'automatic',
+    tsconfig: path.join(racine, 'tsconfig.json'),
+    loader: { '.css': 'empty' },
+    define: { 'process.env.NODE_ENV': '"production"', 'import.meta.env.DEV': 'false', __AMN_EDITION__: '"internal"', __AMN_VERSION__: '"0.0.0"' },
+    logLevel: 'silent',
+  });
+  return (await import(`data:text/javascript;charset=utf-8;base64,${Buffer.from(construit.outputFiles[0].text, 'utf8').toString('base64')}`)) as T;
+}
 
+const { dit, fin } = creerEssais('Tous les modules (D02, v3)');
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 type Niveau = 'essentiel' | 'courant' | 'avance';
-interface Entree { id: string; nom: string; vers: string; niveau: Niveau; badge: number; personnes: string[]; epingle: boolean }
-interface Famille { id: string; nom: string; teinte: string; vers: string; entrees: Entree[] }
-const L = await charger<{
-  composerCartes: (f: Famille[], o: { niveau: string; correspondances: Map<string, { score: number; raison?: string }> | null; deplie: Set<string> }) => {
-    id: string; effectif: number; reste: number; videAuNiveau: boolean; totalSansFiltre: number; lignes: { type: string; id: string; libelle?: string; entree: Entree; correspond?: boolean }[];
-  }[];
-  compterParNiveau: (f: Famille[]) => Record<string, number>;
-  ordreDeSelection: (c: ReturnType<typeof L.composerCartes>, m: Map<string, { score: number; raison?: string }> | null) => string[];
-  carteDeLaLigne: (c: ReturnType<typeof L.composerCartes>, id: string | undefined) => string | undefined;
-  surligner: (l: string, s: string) => [string, string];
-  voisin: (i: number, n: number, t: string) => number;
-  majuscule: (t: string) => string;
-  LIGNES_PAR_CARTE: number;
-}>('src/refonte/systeme/modules/logique.ts');
+interface Module { id: string; nom: string; vers: string; niveau: Niveau; badge: number; personnes: string[]; active: boolean; verrouille: boolean; nouveau: boolean; cles: string[] }
+interface Famille { id: string; nom: string; teinte: string; vers: string; garde: boolean; modules: Module[] }
+const L = await charger<any>('src/refonte/systeme/modules/logique.ts');
 
 /** Des familles FICTIVES : effectifs et niveaux inventés pour l'essai. */
 const niveaux: Niveau[] = ['essentiel', 'courant', 'courant', 'avance'];
@@ -30,10 +41,10 @@ const fabrique = (id: string, n: number): Famille => ({
   nom: `Famille ${id}`,
   teinte: 'jour',
   vers: `/ensemble/${id}`,
-  entrees: Array.from({ length: n }, (_, i) => ({ id: `${id}-${i}`, nom: `Module ${id}${i}`, vers: `/${id}/${i}`, niveau: niveaux[i % 4], badge: i % 3, personnes: [], epingle: false })),
+  garde: false,
+  modules: Array.from({ length: n }, (_, i) => ({ id: `${id}-${i}`, nom: `Module ${id}${i}`, vers: `/${id}/${i}`, niveau: niveaux[i % 4], badge: i % 3, personnes: [], active: true, verrouille: false, nouveau: false, cles: [`${id}${i}`] })),
 });
 const familles = [fabrique('a', 12), fabrique('b', 5), fabrique('c', 20)];
-const aucune = new Set<string>();
 
 await dit('les effectifs par niveau se calculent depuis les familles : la somme des niveaux égale le total', () => {
   const n = L.compterParNiveau(familles);
@@ -41,119 +52,279 @@ await dit('les effectifs par niveau se calculent depuis les familles : la somme 
   assert.equal(n.essentiel + n.courant + n.avance, n.tous);
 });
 
-await dit('7 lignes par carte et « + N autres » juste (effectif − montrés) ; une petite famille n’a pas de pied', () => {
-  const c = L.composerCartes(familles, { niveau: 'tous', correspondances: null, deplie: aucune });
-  assert.deepEqual(c.map((x) => x.lignes.length), [7, 5, 7]);
-  assert.deepEqual(c.map((x) => x.reste), [5, 0, 13]);
-  assert.deepEqual(c.map((x) => x.effectif), [12, 5, 20]);
+await dit('toutes les lignes de chaque famille sont montrées (plus de « + N autres »), dans l’ordre du registre', () => {
+  const c = L.composerRepertoire(familles, { niveau: 'tous', correspondances: null });
+  assert.deepEqual(c.map((x: any) => x.lignes.length), [12, 5, 20]);
+  assert.deepEqual(c.map((x: any) => x.effectif), [12, 5, 20]);
+  assert.deepEqual(c[1].lignes.map((l: any) => l.id), ['b-0', 'b-1', 'b-2', 'b-3', 'b-4']);
+  assert.ok(c.every((x: any) => !('reste' in x)));
 });
 
-await dit('le mode complet montre toutes les lignes et le pied devient « Réduire » (reste 0)', () => {
-  const c = L.composerCartes(familles, { niveau: 'tous', correspondances: null, deplie: new Set(['c']) });
-  assert.equal(c[2].lignes.length, 20);
-  assert.equal(c[2].reste, 0);
-});
-
-await dit('un filtre de niveau réduit les lignes ET les effectifs ; une famille vidée garde sa carte et le dit', () => {
-  const c = L.composerCartes([...familles, { ...fabrique('d', 3), entrees: fabrique('d', 3).entrees.filter((e) => e.niveau !== 'avance').map((e) => ({ ...e, niveau: 'courant' as Niveau })) }], { niveau: 'avance', correspondances: null, deplie: aucune });
+await dit('un filtre de niveau réduit les lignes ET les effectifs ; une famille vidée garde son en-tête et le dit', () => {
+  const sansAvance = { ...fabrique('d', 3), modules: fabrique('d', 3).modules.map((m) => ({ ...m, niveau: 'courant' as Niveau })) };
+  const c = L.composerRepertoire([...familles, sansAvance], { niveau: 'avance', correspondances: null });
   assert.equal(c[0].effectif, 3);
-  assert.ok(c[0].lignes.every((l) => l.entree.niveau === 'avance'));
-  const d = c[3];
-  assert.equal(d.videAuNiveau, true);
-  assert.equal(d.lignes.length, 0);
-  assert.equal(d.totalSansFiltre, 3);
+  assert.ok(c[0].lignes.every((l: any) => l.module.niveau === 'avance'));
+  assert.equal(c[3].videAuNiveau, true);
+  assert.equal(c[3].lignes.length, 0);
 });
 
-await dit('les modules épinglés passent en tête sans recherche ; l’ordre du registre sinon', () => {
-  const f = [fabrique('p', 4)];
-  f[0].entrees[3].epingle = true;
-  const c = L.composerCartes(f, { niveau: 'tous', correspondances: null, deplie: aucune });
-  assert.deepEqual(c[0].lignes.map((l) => l.id), ['p-3', 'p-0', 'p-1', 'p-2']);
-});
-
-await dit('une recherche : les correspondances remontent, la meilleure née d’un verbe ajoute une ligne d’action, aucune carte ne disparaît', () => {
+await dit('une recherche marque les lignes sans en retirer ni en déplacer aucune ; la meilleure née d’un verbe ajoute une ligne d’action en tête de sa famille', () => {
   const m = new Map([['b-2', { score: 93, raison: 'envoyer une facture' }], ['a-5', { score: 60 }]]);
-  const c = L.composerCartes(familles, { niveau: 'tous', correspondances: m, deplie: aucune });
-  assert.equal(c.length, 3);
-  const b = c.find((x) => x.id === 'b');
-  assert.equal(b?.lignes[0].type, 'action');
-  assert.equal(b?.lignes[0].libelle, 'Envoyer une facture');
-  assert.equal(b?.lignes[1].id, 'b-2');
-  const a = c.find((x) => x.id === 'a');
-  assert.equal(a?.lignes[0].id, 'a-5');
-  assert.ok(a?.lignes[0].correspond);
-  // La ligne d’action n’est pas un module : « + N autres » reste juste.
-  assert.equal(b?.reste, 0);
-  assert.ok((a?.lignes.length ?? 0) <= L.LIGNES_PAR_CARTE);
-  const avecAction = L.composerCartes([fabrique('z', 12)], { niveau: 'tous', correspondances: new Map([['z-1', { score: 93, raison: 'ouvrir' }]]), deplie: aucune })[0];
-  assert.equal(avecAction.lignes.length, 7);
-  assert.equal(avecAction.reste, 12 - 6);
+  const c = L.composerRepertoire(familles, { niveau: 'tous', correspondances: m });
+  const a = c.find((x: any) => x.id === 'a');
+  assert.equal(a.lignes.length, 12, 'aucune ligne ne disparaît');
+  assert.equal(a.lignes[5].id, 'a-5', 'la mise en page ne bouge pas');
+  assert.equal(a.lignes[5].correspond, true);
+  assert.equal(a.lignes[0].correspond, false);
+  const b = c.find((x: any) => x.id === 'b');
+  assert.equal(b.lignes[0].type, 'action');
+  assert.equal(b.lignes[0].libelle, 'Envoyer une facture');
+  assert.equal(b.lignes.length, 6);
+  assert.equal(b.effectif, 5, 'la ligne d’action n’est pas un module');
 });
 
-await dit('↑ ↓ parcourent les correspondances, la meilleure d’abord ; la carte de la ligne choisie est active', () => {
-  const m = new Map([['a-5', { score: 60 }], ['b-2', { score: 93, raison: 'envoyer une facture' }], ['c-1', { score: 60 }]]);
-  const c = L.composerCartes(familles, { niveau: 'tous', correspondances: m, deplie: aucune });
-  const ordre = L.ordreDeSelection(c, m);
-  assert.equal(ordre[0], 'action:b-2');
-  assert.deepEqual(ordre.slice(1), ['b-2', 'a-5', 'c-1']);
-  assert.equal(L.carteDeLaLigne(c, 'action:b-2'), 'b');
-  assert.equal(L.carteDeLaLigne(c, undefined), undefined);
-  assert.deepEqual(L.ordreDeSelection(c, null), []);
+await dit('quatre colonnes dans l’ordre de la barre latérale : 8 familles → 2 par colonne, le surplus aux premières', () => {
+  const huit = Array.from({ length: 8 }, (_, i) => i);
+  assert.deepEqual(L.repartirEnColonnes(huit, 4), [[0, 1], [2, 3], [4, 5], [6, 7]]);
+  assert.deepEqual(L.repartirEnColonnes([0, 1, 2, 3, 4, 5, 6, 7, 8], 4), [[0, 1, 2], [3, 4], [5, 6], [7, 8]]);
+  assert.deepEqual(L.repartirEnColonnes([0, 1], 4), [[0], [1], [], []]);
 });
 
-await dit('surligner : le début saisi en gras, insensible aux accents et à la casse ; sinon tout reste courant', () => {
-  assert.deepEqual(L.surligner('Envoyer une facture', 'envoyer une fac'), ['Envoyer une fac', 'ture']);
-  assert.deepEqual(L.surligner('Réunions', 'reu'), ['Réu', 'nions']);
-  assert.deepEqual(L.surligner('Calendrier', 'xyz'), ['', 'Calendrier']);
-  assert.deepEqual(L.surligner('Tâches', ''), ['', 'Tâches']);
-  assert.deepEqual(L.surligner('Tâches', 'tâches et plus'), ['', 'Tâches']);
+await dit('↑ ↓ parcourent les correspondances dans l’ordre de lecture ; la sélection part de la ligne d’action, sinon de la meilleure', () => {
+  const m = new Map([['a-5', { score: 60 }], ['b-2', { score: 93, raison: 'envoyer une facture' }], ['c-1', { score: 70 }]]);
+  const col = L.repartirEnColonnes(L.composerRepertoire(familles, { niveau: 'tous', correspondances: m }), 4);
+  const { ordre, depart } = L.ordreDeSelection(col, m);
+  assert.deepEqual(ordre, ['a-5', 'action:b-2', 'b-2', 'c-1']);
+  assert.equal(ordre[depart], 'action:b-2');
+  const sansVerbe = new Map([['a-5', { score: 60 }], ['c-1', { score: 70 }]]);
+  const r = L.ordreDeSelection(L.repartirEnColonnes(L.composerRepertoire(familles, { niveau: 'tous', correspondances: sansVerbe }), 4), sansVerbe);
+  assert.equal(r.ordre[r.depart], 'c-1');
+  assert.deepEqual(L.ordreDeSelection(col, null), { ordre: [], depart: 0 });
 });
 
-await dit('flèches de la grille : bornées, Début et Fin', () => {
-  assert.equal(L.voisin(0, 5, 'ArrowUp'), 0);
-  assert.equal(L.voisin(4, 5, 'ArrowDown'), 4);
-  assert.equal(L.voisin(2, 5, 'ArrowDown'), 3);
-  assert.equal(L.voisin(2, 5, 'Home'), 0);
-  assert.equal(L.voisin(2, 5, 'End'), 4);
-  assert.equal(L.voisin(0, 0, 'ArrowDown'), -1);
+await dit('surligner : la partie tapée, au début du libellé ou d’un mot, insensible aux accents et à la casse', () => {
+  assert.deepEqual(L.surligner('Envoyer une facture', 'envoyer une fac'), ['', 'Envoyer une fac', 'ture']);
+  assert.deepEqual(L.surligner('Réunions', 'reu'), ['', 'Réu', 'nions']);
+  assert.deepEqual(L.surligner('Notes et pages', 'pag'), ['Notes et ', 'pag', 'es']);
+  assert.deepEqual(L.surligner('Calendrier', 'xyz'), ['Calendrier', '', '']);
+  assert.deepEqual(L.surligner('Tâches', ''), ['Tâches', '', '']);
 });
 
-await dit('cotes du panneau lues dans modules.css : 1240 × 788, rayon 24, padding 29, champ 400, ligne 28, pied de carte, grille à 4 colonnes et 14 d’écart', () => {
+await dit('épinglés : 8 au plus, dans l’ordre des favoris, un seul par module, les clés inconnues ignorées', () => {
+  const r = (cle: string) => (cle.startsWith('x') ? undefined : { id: cle.slice(0, 2) });
+  const p = L.choisirEpingles(['a1', 'a1b', 'x', 'b1', 'c1', 'd1', 'e1', 'f1', 'g1', 'h1', 'i1'], r);
+  assert.equal(p.length, 8);
+  assert.equal(L.MAX_EPINGLES, 8);
+  assert.deepEqual(p.slice(0, 3).map((x: any) => x.id), ['a1', 'b1', 'c1']);
+});
+
+await dit('récents, à découvrir et « x sur N » : d’après le journal des ouvertures du poste, jamais inventés', () => {
+  const mods = fabrique('r', 8).modules;
+  mods[6].active = false;
+  mods[1].verrouille = true;
+  const journal = { r0: '2026-10-30T10:38:00.000Z', r2: '2026-10-30T10:30:00.000Z', r3: 'pas une date', r4: '2026-10-29T08:00:00.000Z', r5: '2026-10-30T09:00:00.000Z' };
+  const ouv = L.dernieresOuvertures(mods, journal);
+  assert.equal(ouv.size, 4, 'une date illisible ne compte pas');
+  assert.deepEqual(L.recents(mods, ouv, 4).map((x: any) => x.module.id), ['r-0', 'r-2', 'r-5', 'r-4']);
+  const d = L.aDecouvrir(mods, ouv, 3).map((m: any) => m.id);
+  assert.ok(!d.includes('r-6') && !d.includes('r-1') && !d.includes('r-0'), 'ni désactivé, ni verrouillé, ni déjà ouvert');
+  assert.deepEqual(d, ['r-3', 'r-7']);
+  assert.equal(L.partOuverte(64, 101).toFixed(3), (64 / 101).toFixed(3));
+  assert.equal(L.partOuverte(3, 0), 0);
+});
+
+await dit('le moment d’une ouverture : minutes, heures, « ce matin », « hier », puis une date', () => {
+  const maintenant = new Date(2026, 9, 30, 15, 0);
+  assert.deepEqual(L.momentDOuverture(maintenant.getTime() - 20_000, maintenant), { cle: 'instant' });
+  assert.deepEqual(L.momentDOuverture(maintenant.getTime() - 4 * 60_000, maintenant), { cle: 'minutes', n: 4 });
+  assert.deepEqual(L.momentDOuverture(new Date(2026, 9, 30, 9, 5).getTime(), maintenant), { cle: 'matin' });
+  assert.deepEqual(L.momentDOuverture(new Date(2026, 9, 30, 13, 0).getTime(), maintenant), { cle: 'heures', n: 2 });
+  assert.deepEqual(L.momentDOuverture(new Date(2026, 9, 29, 18, 0).getTime(), maintenant), { cle: 'hier' });
+  assert.equal(L.momentDOuverture(new Date(2026, 9, 20).getTime(), maintenant).cle, 'date');
+});
+
+await dit('flèches de la grille : ↑ ↓ restent dans la colonne, ← → vont à la ligne la plus proche de la colonne voisine', () => {
+  const lignes = [{ colonne: 0, haut: 0 }, { colonne: 0, haut: 21 }, { colonne: 1, haut: 0 }, { colonne: 1, haut: 21 }, { colonne: 1, haut: 42 }];
+  assert.equal(L.ligneVoisine(lignes, 1, 'ArrowDown'), 1);
+  assert.equal(L.ligneVoisine(lignes, 0, 'ArrowDown'), 1);
+  assert.equal(L.ligneVoisine(lignes, 2, 'ArrowUp'), 2);
+  assert.equal(L.ligneVoisine(lignes, 1, 'ArrowRight'), 3);
+  assert.equal(L.ligneVoisine(lignes, 4, 'ArrowLeft'), 1);
+  assert.equal(L.ligneVoisine(lignes, 0, 'ArrowLeft'), 0);
+  assert.equal(L.ligneVoisine(lignes, 3, 'End'), 4);
+  assert.equal(L.ligneVoisine(lignes, -1, 'ArrowDown'), -1);
+});
+
+/* ══════════════════════════════ le rendu ══════════════════════════════ */
+
+const R = await chargerVue<any>(`
+  import { createElement as h } from 'react';
+  import { renderToStaticMarkup } from 'react-dom/server.browser';
+  import { MemoryRouter } from 'react-router-dom';
+  export { VueTousLesModules } from '../src/refonte/systeme/modules/VueTousLesModules';
+  export { h };
+  export const rendre = (el) => renderToStaticMarkup(h(MemoryRouter, null, el));
+`);
+const puce = (id: string, teinte = 'argent') => ({ id, nom: `Puce ${id}`, vers: `/${id}`, teinte, indice: `Indice ${id}` });
+const huit = [fabrique('a', 3), fabrique('b', 2), fabrique('c', 2), fabrique('d', 2), fabrique('e', 2), fabrique('f', 2), fabrique('g', 2), { ...fabrique('h', 2), garde: true }];
+huit[0].modules[1] = { ...huit[0].modules[1], active: false };
+huit[0].modules[2] = { ...huit[0].modules[2], nouveau: true, badge: 4, personnes: ['Sacha'] };
+huit[1].modules[0] = { ...huit[1].modules[0], verrouille: true, active: false };
+const vue = (sur: Record<string, unknown> = {}): string =>
+  R.rendre(
+    R.h(R.VueTousLesModules, {
+      familles: huit,
+      correspondre: () => new Map(),
+      epingles: [puce('p1'), puce('p2')],
+      recents: [{ module: puce('r1'), moment: { cle: 'minutes', n: 4 } }, { module: puce('r2'), moment: { cle: 'minutes', n: 12 } }],
+      decouvrir: [puce('d1'), puce('d2'), puce('d3')],
+      ouverts: 7,
+      cyber: { vers: '/cyber', espaces: 9 },
+      touche: '⌘',
+      onOuvrir: () => undefined,
+      onDemanderAjmani: () => undefined,
+      focusInitial: false,
+      ...sur,
+    }),
+  );
+const compter = (html: string, re: RegExp): number => (html.match(re) ?? []).length;
+
+await dit('rendu : un h1, le sous-titre compté, le segmenté à quatre niveaux avec les comptes du répertoire, le champ « / »', () => {
+  const html = vue();
+  assert.equal(compter(html, /<h1[ >]/g), 1);
+  assert.match(html, /<h1[^>]*>Tous les modules<\/h1>/);
+  assert.match(html, />17 modules en 8 familles · tapez pour trouver, Entrée pour ouvrir</);
+  assert.match(html, /role="radiogroup" aria-label="Niveau"/);
+  for (const t of ['Tous 17', 'Essentiels 8', 'Courants 9', 'Avancés 0']) assert.match(html, new RegExp(`>${t}<`), t);
+  assert.match(html, /placeholder="Un module ou une action"/);
+  assert.match(html, /<kbd class="sc-kbd">\/<\/kbd>/);
+  assert.equal(compter(html, /data-variante="primaire"/g), 0, 'aucun bouton primaire sur la page');
+});
+
+await dit('rendu du répertoire : toutes les lignes, les familles en lien vers leur vue d’ensemble, bouclier pour La Garde, lien Cyber à part', () => {
+  const html = vue();
+  assert.equal(compter(html, /data-ligne="/g), 17);
+  assert.equal(compter(html, /class="dm-famille"/g), 8);
+  assert.match(html, /href="\/ensemble\/a"[^>]*>/);
+  assert.equal(compter(html, /lucide-shield/g), 1);
+  assert.match(html, /href="\/cyber"[^>]*>[\s\S]*?Cyber[\s\S]*?9 espaces, à part/);
+  assert.equal(compter(html, /class="dm-colonne"/g), 4);
+});
+
+await dit('états de ligne : « non activé » (pas un lien), cadenas, « Nouveau », compteur, présence ; une seule ligne tabulable', () => {
+  const html = vue();
+  assert.match(html, /<span role="link" aria-disabled="true"[^>]*data-ligne="a-1"[\s\S]*?non activé/);
+  assert.match(html, /data-ligne="b-0"[\s\S]*?lucide-lock/);
+  assert.doesNotMatch(html.slice(html.indexOf('data-ligne="b-0"'), html.indexOf('data-ligne="b-1"')), /non activé/, 'verrouillé : le cadenas, pas « non activé »');
+  assert.match(html, /data-ligne="a-2"[\s\S]*?>Nouveau<[\s\S]*?class="dm-compte">4/);
+  assert.match(html, /Ouvert en ce moment par Sacha/);
+  assert.equal(compter(html, /data-ligne="[^"]*"[^>]*tabindex="0"|tabindex="0"[^>]*data-ligne=/g), 1);
+});
+
+await dit('sélection clavier : fond choisi et ↵ ; recherche : les lignes sans correspondance sont ternes, aucune ne disparaît', () => {
+  const html = vue({ selectionInitiale: 'c-1' });
+  assert.match(html, /data-ligne="c-1"[^>]*data-choisie="true"/);
+  assert.match(html.slice(html.indexOf('data-ligne="c-1"')), /^[^]*?lucide-corner-down-left/);
+  const r = vue({ requeteInitiale: 'mod', correspondre: () => new Map([['d-1', { score: 80 }]]) });
+  assert.equal(compter(r, /data-ligne="/g), 17);
+  assert.equal(compter(r, /data-terne="true"/g), 16);
+  assert.match(r, /data-ligne="d-1"[^>]*data-choisie="true"/);
+  const vide = vue({ requeteInitiale: 'zzz', correspondre: () => new Map() });
+  assert.match(vide, /Aucun module pour « zzz »/);
+  assert.match(vide, />Demander à Ajmani</);
+});
+
+await dit('colonne droite : Épinglés (⌘1 à ⌘n), Récents (« vous »), À découvrir (« Essayer », « x sur N » et sa barre)', () => {
+  const html = vue();
+  assert.match(html, />Épinglés</);
+  assert.match(html, /<kbd class="sc-kbd">⌘1<\/kbd><span>à<\/span><kbd class="sc-kbd">⌘2<\/kbd>/);
+  assert.match(html, /aria-label="Ouvrir Puce p1 \(⌘1\)"/);
+  assert.match(html, />Récents<[\s\S]*?>vous</);
+  assert.match(html, />il y a 4 min</);
+  assert.match(html, />12 min</);
+  assert.match(html, />À découvrir<[\s\S]*?>jamais ouverts</);
+  assert.equal(compter(html, />Essayer</g), 3);
+  assert.match(html, /Vous en avez ouvert <b class="dm-chiffres">7 sur 17<\/b>/);
+  assert.match(html, /data-mvt="remplit" style="width:41.2%"/);
+  assert.doesNotMatch(html, /ce mois/, 'pas de « +N ce mois » : le journal ne garde pas la date de première ouverture');
+  const sansRecents = vue({ recents: [], epingles: [] });
+  assert.doesNotMatch(sansRecents, />Récents</, 'récents vides : la carte se masque');
+  assert.match(sansRecents, /Épinglez vos modules préférés/);
+  assert.doesNotMatch(sansRecents, /⌘1/);
+});
+
+await dit('mouvement : colonnes en fondu échelonné, cartes de droite en entrée, barre qui se remplit (coupés en mouvement réduit)', () => {
+  const html = vue();
+  assert.equal(compter(html, /class="dm-colonne" data-mvt="fondu"/g), 4);
+  assert.equal(compter(html, /data-mvt="entree"/g), 3);
   const css = sansCommentaires(lire('src/refonte/systeme/modules/modules.css'));
-  assert.match(css, /\.dm-panneau \{[^}]*width: min\(1240px, 100%\)[^}]*height: min\(788px, 100%\)[^}]*padding: 29px[^}]*border-radius: 24px/);
-  assert.match(css, /\.dm-voile \{[^}]*padding: 56px 100px[^}]*position: fixed[^}]*z-index: 50|\.dm-voile \{[^}]*z-index: 50/s);
-  assert.match(css, /\.dm-recherche \{ width: 400px/);
-  assert.match(css, /\.dm-echap \{[^}]*width: 61px[^}]*height: 30px/);
-  assert.match(css, /\.dm-ligne \{[^}]*height: 28px/);
-  assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)[^}]*grid-auto-rows: minmax\(301px, 1fr\)[^}]*gap: 14px/);
-  assert.match(css, /\.dm-carte__entete \{[^}]*height: 52px[^}]*padding: 0 19px/);
-  assert.match(css, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(css, /\.dm-colonne\[data-mvt='fondu'\] \{ animation-delay: calc\(var\(--sc-mvt-rang, 0\) \* 80ms\); \}/);
+  assert.match(css, /prefers-reduced-motion: reduce\)[^{]*\{[^}]*\.dm-colonne\[data-mvt='fondu'\] \{ animation-delay: 0ms; \}/);
 });
 
-await dit('aucune couleur hex en dur, aucune encre « discret » en texte, aucun chiffre du registre écrit à la main', () => {
+/* ══════════════════════════════ les cotes ══════════════════════════════ */
+
+await dit('cotes lues dans modules.css : titre 28, champ 270 × 38, colonnes de 187 (écart 6), lignes de 21, en-tête de famille 26, colonne droite 300, cartes 218 et 190', () => {
+  const css = sansCommentaires(lire('src/refonte/systeme/modules/modules.css'));
+  assert.match(css, /\.dm-titre \{[^}]*font-size: 28px; font-weight: 600; letter-spacing: -0\.02em; line-height: 1\.1/);
+  assert.match(css, /\.dm-recherche \{[^}]*width: 270px;[^}]*height: 38px/);
+  assert.match(css, /\.dm-recherche:focus-within \{ border-color: var\(--socle-bord-champ\); \}/);
+  assert.match(css, /\.dm-colonnes \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 187px\)\); gap: 6px; \}/);
+  assert.match(css, /\.dm-ligne \{[^}]*height: 21px;[^}]*font-size: 12\.5px/);
+  assert.match(css, /\.dm-famille__lien \{[^}]*height: 26px/);
+  assert.match(css, /\.dm-famille \+ \.dm-famille \{ margin-top: 12px; \}/);
+  assert.match(css, /\.dm-corps \{[^}]*grid-template-columns: minmax\(0, 1fr\) 300px; gap: 14px/);
+  assert.match(css, /\.dm-epingles \{ height: 218px; \}/);
+  assert.match(css, /\.dm-recents \{ height: 190px; \}/);
+  assert.match(css, /\.dm-puces \{[^}]*grid-template-columns: repeat\(2, 132px\)/);
+  assert.match(css, /\.dm-puce \{[^}]*height: 34px/);
+  assert.match(css, /\.dm-recent \{[^}]*height: 33px/);
+  assert.match(css, /\.dm-compte \{[^}]*height: 16px;[^}]*background: var\(--socle-pastille-compte\);[^}]*font-size: 10\.5px/);
+  assert.match(lire('src/socle/noir.css'), /--socle-pastille-compte: #26262a;/);
+});
+
+await dit('plus aucune zone coupée : le répertoire défile DANS sa carte (fondu au bas tant qu’il reste des lignes), la page ne défile pas, les bas de colonnes s’alignent', () => {
+  const css = sansCommentaires(lire('src/refonte/systeme/modules/modules.css'));
+  assert.match(css, /\.dm-repertoire\[data-socle='carte'\] \{[^}]*overflow: hidden/);
+  assert.match(css, /\.dm-defile \{ min-height: 0; flex: 1; overflow-y: auto;/);
+  assert.match(css, /\.dm-defile\[data-deborde='true'\] \{ mask-image:/);
+  assert.match(css, /\.dm-page \{[^}]*height: calc\(100% - 4px\);[^}]*margin-bottom: -20px;/);
+  assert.match(css, /\.dm-decouvrir\[data-socle='carte'\] \{ min-height: 0; flex: 1;/);
+  assert.doesNotMatch(css, /position: fixed|z-index/, 'une page, plus un calque');
+});
+
+await dit('aucune couleur hex en dur, aucune encre « discret » en texte, chiffres tabulaires sur les nombres seulement (pas sur la page)', () => {
   const css = sansCommentaires(lire('src/refonte/systeme/modules/modules.css'));
   assert.doesNotMatch(css, /#[0-9a-fA-F]{3,8}\b/);
   assert.doesNotMatch(css, /color:\s*var\(--socle-trait/);
-  for (const f of ['logique.ts', 'PanneauTousLesModules.tsx', 'i18n.ts']) {
+  const racine = /\.dm-page \{([^}]*)\}/.exec(css)?.[1] ?? '';
+  assert.doesNotMatch(racine, /tabular-nums/, 'C11 : pas sur la racine de la page');
+  assert.match(css, /\.dm-compte \{[^}]*tabular-nums/);
+});
+
+await dit('aucun chiffre du registre ni nom d’exemple écrit à la main dans le dossier', () => {
+  for (const f of ['logique.ts', 'repertoire.ts', 'VueTousLesModules.tsx', 'PageTousLesModules.tsx', 'i18n.ts']) {
     const src = sansCommentaires(lire(`src/refonte/systeme/modules/${f}`));
-    assert.doesNotMatch(src, /\b(101|16|62|23)\b(?!px|\))/, `${f} : un effectif du registre est écrit à la main`);
+    assert.doesNotMatch(src, /(?<!taille=\{)\b(101|16|62|23|64)\b(?!px|\))/, `${f} : un effectif écrit à la main (une taille d’icône ou d’avatar n’en est pas un)`);
+    assert.doesNotMatch(src, /Menna|Mohamed|Riyad|Aaron|Trésorerie|Dictée vocale|Parrainage|Messages programmés/, `${f} : un nom d’exemple`);
   }
 });
 
-await dit('le panneau est un calque : fixed, z-index ≥ 50, rôle dialog modal, Échap par la pile, focus rendu, aucun nom d’exemple', () => {
-  const src = sansCommentaires(lire('src/refonte/systeme/modules/PanneauTousLesModules.tsx'));
-  assert.match(src, /role="dialog"/);
-  assert.match(src, /aria-modal="true"/);
-  assert.match(src, /useFermetureEchap\(true, fermer\)/);
-  assert.match(src, /createPortal\(/);
-  assert.match(src, /retour\.current\.focus\(\)/);
-  assert.match(src, /useSearchParams/);
-  assert.doesNotMatch(src, /Envoyer une fac|Facturation|Menna|Rondes/);
+await dit('la page branchée : une page de la coquille (fil « Espace / Tous les modules », bouton allumé, texte d’Ajmani), plus de portail', () => {
+  const src = sansCommentaires(lire('src/refonte/systeme/modules/PageTousLesModules.tsx'));
+  assert.match(src, /usePageCoquille\(page \? \{ \.\.\.page, ajmani: tm\('ajmani'\) \} : null\)/);
+  assert.match(src, /pageSysteme\(ROUTE_TOUS_LES_MODULES/);
+  assert.doesNotMatch(src, /createPortal|role="dialog"|aria-modal/);
+  for (const source of ['useNavFavorites', 'useModulesOuverts', 'useDonneesCoquille', 'useRegards', 'lireRepertoire']) assert.match(src, new RegExp(source), source);
+  const coquille = sansCommentaires(lire('src/refonte/coquille/pagesSysteme.ts'));
+  assert.match(coquille, /ROUTE_TOUS_LES_MODULES\) return \{ famille: null, miettes: \[\{ libelle: mots\.espace \}, \{ libelle: mots\.tousLesModules \}\], tousLesModules: true \}/);
 });
 
-await dit('la couture de navigation interne monte ce panneau ; le jumeau cliente n’en sait rien', () => {
-  assert.match(lire('src/edition/navigation.internal.tsx'), /PanneauTousLesModules as TousLesModules/);
-  assert.doesNotMatch(lire('src/edition/navigation.business.tsx'), /systeme|Panneau/);
+await dit('la couture de navigation interne monte cette page à la même route ; le jumeau cliente n’en sait rien', () => {
+  assert.match(lire('src/edition/navigation.internal.tsx'), /PageTousLesModules as TousLesModules/);
+  assert.match(lire('src/edition/appRoot.internal.tsx'), /<Route path=\{ROUTE_TOUS_LES_MODULES\} element=\{<TousLesModules \/>\} \/>/);
+  assert.doesNotMatch(lire('src/edition/navigation.business.tsx'), /systeme|Page|Panneau/);
 });
 
 fin();

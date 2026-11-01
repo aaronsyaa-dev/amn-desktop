@@ -193,6 +193,8 @@
   --socle-ajmani-bord-survol: #3a3a3e;
   /* La lueur claire autour du logo « A » (images v3 : +5 niveaux à 1 px du bord, nulle à 5 px). */
   --socle-logo-lueur: rgba(255, 255, 255, 0.07);
+  /* Le compteur d'une ligne du répertoire « Tous les modules » (fiche D02, `CountBadge` : 16 px, fond `#26262a`). */
+  --socle-pastille-compte: #26262a;
 
   /* ── Les noms du socle S0, redéfinis ── */
   --color-bg: #0c0c0d;
