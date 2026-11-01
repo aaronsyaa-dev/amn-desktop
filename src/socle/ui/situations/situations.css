@@ -3,27 +3,34 @@
   ═══════════════════════════════════════════════════════════════════════════════
 
   Chargée par `Ambiance.tsx` APRÈS `briques.css` : c'est elle qui l'emporte, sans qu'on touche à ce dernier.
-  Édition interne seulement. Les couleurs sont des jetons `--socle-*` de `noir.css`. Les trois seules valeurs
-  que la fiche donne sans jeton (le bord d'une tuile, le voile et l'ombre d'une boîte) sont posées ICI, une
-  fois, sous `--sc-…`, et `check:socle-situations` refuse tout autre `#hex` ou `rgb()` dans ce fichier.
+  Édition interne seulement. Les couleurs sont des jetons `--socle-*` de `noir.css`. Les seules valeurs que la
+  fiche donne sans jeton (les voiles, l'ombre d'une boîte, le curseur d'une autre personne, la courbe des dernières
+  valeurs connues) sont posées ICI, une fois, sous `--sc-…`, et `check:socle-situations` refuse tout autre `#hex`
+  ou `rgb()` dans ce fichier.
 
-  Les cotes viennent de la fiche H43, rubrique 3 :
-    · bouton de 31 px, 8 px d'écart ; tuile d'icône 48 × 48, rayon 14 ;
-    · squelette : carré 34, barres 122 × 10 et 78 × 8, pastille 42 × 10, pas de 50 ;
-    · boîte de confirmation 276 × 148 (400 px dans une vraie page) ; toast 276 × 79 (340 px max) + barre de 3 px ;
-    · tuiles de la page de démonstration 314 × 330, écarts 22 et 20.
+  Deux tailles. STANDARD (les écrans qui les emploient déjà) : bouton de 31 px, 8 px d'écart ; tuile d'icône 48 × 48,
+  rayon 14 ; squelette : carré 34, barres 122 × 10 et 78 × 8, pastille 42 × 10, pas de 50 ; boîte de confirmation
+  276 × 148 (400 px dans une vraie page) ; toast 276 × 79 (340 px max) + barre de 3 px.
+  COMPACTE (v3, H43 en situation : `taille="compact"`, `compact`) : tuile 36, titre 13,5, texte 12, boutons de 25 ;
+  confirmation de 300 px ; toast de 318 px, barre dans le pied ; lignes de squelette de 31 px. Puis la planche H43.
 
   Les encres « discret » (`--socle-trait-discret`, `--socle-trait-tres-discret`) ne servent jamais de couleur de
   texte : le texte lu est T1 à T4 au plus bas (`--socle-texte-3`, 5,3:1).
 */
 
 :root[data-ambiance='noir'] {
-  /* Le bord d'une tuile de la page de démonstration (H43 : #202022, entre les deux bords de carte). */
-  --sc-bord-tuile: #202022;
   /* Le voile d'un dialogue (H43 : « comme H41 »). */
   --sc-voile-dialogue: rgba(0, 0, 0, 0.5);
   /* L'ombre d'une boîte qui flotte (dialogue, toast), jamais d'une boîte posée dans la page. */
   --sc-ombre-boite: 0 18px 48px rgba(0, 0, 0, 0.45);
+  /* v3 (H43 en situation) : le voile d'une liste derrière une confirmation posée dans la page (rgba(6,6,7,.55)), */
+  --sc-voile-situation: rgba(6, 6, 7, 0.55);
+  /* le curseur d'une autre personne dans un texte (#c9b8a4, modèle 8), */
+  --sc-curseur-pair: #c9b8a4;
+  /* et la courbe des dernières valeurs connues, en pointillé (#6a6a70, modèle 9). */
+  --sc-courbe-perimee: #6a6a70;
+  /* Le filet de lumière en haut d'une carte (Card du socle, §4), pour les mini-fenêtres de la planche. */
+  --sc-ombre-interne: inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
 
 /* ── Les boutons des situations : 31 px de haut, texte de 12,5 px (H43, §3) ── */
@@ -323,67 +330,361 @@
 .sc-avis__fusion b { color: var(--socle-texte-1); font-weight: 600; }
 .sc-avis__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
 
-/* ── La page de démonstration H43 (src/refonte/systeme/h43-etats) : 1440 × 900, sans coquille ── */
-.sc-demo {
+/* ══ v3 (H43 en situation) : les tailles compactes et les pièces posées dans la vraie page ══ */
+
+/* Le bloc d'état compact (`taille="compact"`, le StateBlock v3) : tuile 36 (rayon 10, glyphe 16), titre 13,5 px,
+   texte 12 px T4 (300 px au plus), boutons de 25 px. La tuile neutre est un aplat #1a1a1c, pas un gris teinté (T1 H43.2). */
+.sc-bloc-etat[data-taille='compact'] .sc-bloc-etat__icone { width: 36px; height: 36px; border-radius: 10px; }
+.sc-bloc-etat[data-taille='compact'] .sc-bloc-etat__icone svg { width: 16px; height: 16px; }
+.sc-bloc-etat[data-taille='compact'][data-ton='neutre'] .sc-bloc-etat__icone { background: var(--socle-tag); }
+.sc-bloc-etat[data-taille='compact'] .sc-bloc-etat__titre { margin-top: 10px; font-size: 13.5px; line-height: 17px; }
+.sc-bloc-etat[data-taille='compact'] .sc-bloc-etat__icone + .sc-bloc-etat__titre { margin-top: 10px; }
+.sc-bloc-etat[data-taille='compact'] > .sc-bloc-etat__titre:first-child { margin-top: 0; }
+.sc-bloc-etat[data-taille='compact'] .sc-bloc-etat__texte { max-width: 300px; margin-top: 6px; font-size: 12px; line-height: 16px; }
+.sc-bloc-etat[data-taille='compact'] .sc-bloc-etat__actions { margin-top: 12px; }
+
+/* Les boutons compacts des situations v3 : 25 px, 12 px, icône de 12. */
+:root[data-ambiance='noir'] :is(.sc-bloc-etat[data-taille='compact'] .sc-bloc-etat__actions, .sc-dialogue[data-compact='true'] .sc-dialogue__actions, .sc-toast-bloc[data-compact='true'], .sc-hors-bandeau, .sc-collab-bandeau, .sc-fusion-pied) [data-socle='bouton'][data-taille][data-variante] {
+  height: 25px;
+  min-height: 25px;
+  gap: 6px;
+  padding: 0 11px;
+  border-radius: var(--socle-rayon-controle);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+:root[data-ambiance='noir'] :is(.sc-bloc-etat[data-taille='compact'] .sc-bloc-etat__actions, .sc-dialogue[data-compact='true'] .sc-dialogue__actions, .sc-toast-bloc[data-compact='true'], .sc-hors-bandeau, .sc-collab-bandeau, .sc-fusion-pied) [data-socle='bouton'][data-taille][data-variante='primaire'] { padding: 0 12px; font-weight: 600; }
+:root[data-ambiance='noir'] :is(.sc-bloc-etat[data-taille='compact'] .sc-bloc-etat__actions, .sc-dialogue[data-compact='true'] .sc-dialogue__actions, .sc-toast-bloc[data-compact='true'], .sc-hors-bandeau, .sc-collab-bandeau, .sc-fusion-pied) [data-socle='bouton'][data-taille][data-variante='secondaire'] { border-color: var(--socle-bord-bouton); color: var(--socle-texte-courant); }
+:root[data-ambiance='noir'] :is(.sc-bloc-etat[data-taille='compact'] .sc-bloc-etat__actions, .sc-dialogue[data-compact='true'] .sc-dialogue__actions, .sc-toast-bloc[data-compact='true'], .sc-hors-bandeau, .sc-collab-bandeau, .sc-fusion-pied) [data-socle='bouton'] svg { width: 12px; height: 12px; }
+
+/* La confirmation compacte : 300 px, 13 / 16 / 14 de marge, titre 13,5 px, texte 12 px T3. */
+.sc-dialogue[data-compact='true'] { padding: 13px 16px 14px; }
+.sc-dialogue[data-compact='true'] .sc-dialogue__titre { font-size: 13.5px; line-height: 17px; }
+.sc-dialogue[data-compact='true'] .sc-dialogue__texte { margin-top: 5px; font-size: 12px; line-height: 17px; }
+.sc-dialogue[data-compact='true'] .sc-dialogue__actions { margin-top: 11px; }
+
+/* Le toast compact : rayon 12, coche de 16, titre 13 px, compte à rebours 11,5 px T4 ; la barre de 3 px dans le pied. */
+.sc-toast-bloc[data-compact='true'] {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--socle-bord-toast);
+  border-radius: var(--socle-rayon-ticket);
+  background: var(--socle-dialogue);
+}
+.sc-toast-bloc[data-compact='true'] .sc-toast { gap: 11px; padding: 11px 12px 11px 15px; border: 0; border-radius: 0; background: transparent; }
+.sc-toast-bloc[data-compact='true'] .sc-toast__titre { font-size: 13px; line-height: 16px; }
+.sc-toast-bloc[data-compact='true'] .sc-toast__detail { font-size: 11.5px; line-height: 14px; }
+.sc-toast-bloc[data-compact='true'] .sc-toast__barre { position: absolute; right: 0; bottom: 0; left: 0; margin: 0; border-radius: 0; }
+
+/* Les lignes de squelette compactes : 31 px + filet, carré 22, barres de 8 et 7, pastille 54 × 9 ; reflet #232325 → #28282b en 1,6 s. */
+.sc-squelette-lignes[data-compact='true'] { row-gap: 0; }
+.sc-squelette-lignes[data-compact='true'] .sc-squelette-lignes__ligne { height: 32px; gap: 12px; border-bottom: 1px solid var(--socle-bord-ligne); }
+.sc-squelette-lignes[data-compact='true'] .sc-squelette-lignes__textes { gap: 6px; }
+:root[data-ambiance='noir'] :is(.sc-squelette-lignes[data-compact='true'], .sc-squelette-chiffres) .sc-squelette {
+  background-image: linear-gradient(90deg, var(--socle-bord-carte) 0%, var(--socle-bord-controle) 50%, var(--socle-bord-carte) 100%);
+  animation-duration: 1.6s;
+}
+.sc-squelette-chiffres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.sc-squelette-chiffres__bloc {
+  display: flex;
+  height: 45px;
+  box-sizing: border-box;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 13px 0;
+  border: 1px solid var(--socle-bord-sous-carte);
+  border-radius: var(--socle-rayon-sous-carte);
+  background: var(--socle-sous-carte);
+}
+.sc-squelette-chiffres .sc-squelette { flex: none; }
+
+/* Le bandeau hors ligne : fond ambre à .09, bord à .30, rayon 10 ; wifi ambre, texte 12 px T2, « Réessayer ». */
+.sc-hors-bandeau {
+  display: flex;
+  box-sizing: border-box;
+  height: 41px;
+  align-items: center;
+  gap: 11px;
+  padding: 0 10px 0 13px;
+  border: 1px solid color-mix(in srgb, var(--socle-etat-attention) 30%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--socle-etat-attention) 9%, transparent);
+  color: var(--socle-texte-courant);
+  font-size: 12px;
+  line-height: 16px;
+}
+.sc-hors-bandeau__icone { flex: none; color: var(--socle-etat-attention); }
+.sc-hors-bandeau__texte { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-en-attente { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 4px; color: var(--socle-texte-3); font-size: 11.5px; line-height: 14px; }
+.sc-en-attente svg { flex: none; color: var(--socle-etat-attention); }
+
+/* Deux personnes : bandeau (fond #111112, bord #232325), curseur de l'autre et son étiquette, pied de fusion. */
+.sc-collab-bandeau {
+  display: flex;
+  box-sizing: border-box;
+  height: 39px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 9px 0 10px;
+  border: 1px solid var(--socle-bord-carte);
+  border-radius: 10px;
+  background: var(--socle-sous-carte);
+}
+.sc-collab-bandeau__phrase { min-width: 0; flex: 1; margin: 0; overflow: hidden; color: var(--socle-texte-courant); font-size: 12px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.sc-collab-bandeau .sc-pile .sc-avatar { border-color: transparent; box-shadow: 0 0 0 2px var(--socle-sous-carte); color: var(--socle-texte-1); }
+.sc-collab-bandeau .sc-pile .sc-avatar:nth-child(2n + 1) { background: var(--socle-avatar-a); }
+.sc-collab-bandeau .sc-pile .sc-avatar:nth-child(2n) { background: var(--socle-avatar-m); }
+.sc-curseur-pair { display: inline-flex; align-items: center; gap: 4px; margin-left: 1px; vertical-align: -3px; }
+.sc-curseur-pair__trait { display: inline-block; width: 2px; height: 15px; border-radius: 1px; background: var(--sc-curseur-pair); }
+.sc-curseur-pair__nom { padding: 0 5px; border-radius: 4px; background: var(--socle-avatar-m); color: var(--socle-texte-courant); font-size: 11px; font-weight: 600; line-height: 14px; }
+.sc-fusion-pied { display: flex; align-items: center; gap: 8px; padding-top: 11px; border-top: 1px solid var(--socle-bord-entete); color: var(--socle-texte-3); font-size: 11.5px; line-height: 15px; }
+.sc-fusion-pied__icone { flex: none; color: var(--socle-texte-3); }
+.sc-fusion-pied__texte { min-width: 0; flex: 1; }
+
+/* Les dernières valeurs connues (modèle 9) et la porte Ajmani (modèle 5). */
+.sc-perime__mention { margin: 0; color: var(--socle-texte-3); font-size: 11.5px; line-height: 15px; text-align: right; }
+.sc-porte-ajmani {
+  display: flex;
+  width: 100%;
+  min-height: 34px;
+  align-items: center;
+  gap: 9px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--socle-texte-2);
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.sc-porte-ajmani__texte { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-porte-ajmani__fleche { flex: none; color: var(--socle-texte-3); }
+.sc-porte-ajmani:hover .sc-porte-ajmani__texte { color: var(--socle-texte-1); }
+
+/* ══ La planche H43 « États et messages » (v3) : /dev/etats, développement seulement, sans coquille ══
+
+  Coordonnées ABSOLUES (1440 × 900) : fond #0c0c0d et la lueur d'ambiance de page (`--socle-halo`, §1 : écart T1
+  H43.1), marges 29 / 44 / 30. En-tête : « SYSTÈME · RÉFÉRENCE » (11 px, .1em, T4), h1 28 px / 600, phrase 13,5 px T4,
+  trois pilules de règle à droite, bas alignés. Grille : 3 × 3 mini-fenêtres de 440 × 239 à x = 44 / 500 / 956 et
+  y = 120 / 375 / 631, écart 16 (bas à y = 870). Mini-fenêtre : barre de titre de 36 px + filet, puis la situation
+  (438 × 201 utiles, `overflow: hidden`). Ces règles ne font que POSER les briques dans chaque mini-fenêtre et
+  dessiner le contexte de démonstration (tableau vide, conversation, liste, factures, page de notes, courbe).
+*/
+:root[data-ambiance='noir'] {
+  --sc-h43-fenetre-l: 440px;
+  --sc-h43-fenetre-h: 239px;
+  --sc-h43-ecart: 16px;
+  --sc-h43-barre: 36px;
+  --sc-h43-ligne: 35px;
+}
+
+.sc-h43 {
   box-sizing: border-box;
   min-height: 100vh;
-  padding: 48px 20px 67px;
-  background: var(--socle-fond-page);
+  padding: 29px 44px 30px;
+  background: var(--socle-halo), var(--socle-fond-page);
   color: var(--socle-texte-1);
 }
-.sc-demo__cadre { width: min(1336px, 100%); margin: 0 auto; }
-.sc-demo__etiquette,
-.sc-demo__tuile-etiquette {
-  margin: 0;
-  color: var(--socle-texte-3);
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: 0.08em;
-  line-height: 13px;
-  text-transform: uppercase;
-}
-.sc-demo__titre {
-  margin: 8px 0 0;
-  color: var(--socle-texte-1);
-  font-size: 28px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 34px;
-}
-.sc-demo__sous {
-  margin: 8px 0 0;
-  color: var(--socle-texte-3);
-  font-size: 14px;
-  line-height: 20px;
-}
-.sc-demo__grille {
+.sc-h43__entete { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; width: min(1352px, 100%); margin: 0 auto; }
+.sc-h43__titres { min-width: 0; }
+.sc-h43__etiquette { margin: 0; color: var(--socle-texte-3); font-size: 11px; font-weight: 400; letter-spacing: 0.1em; line-height: 13px; text-transform: uppercase; }
+.sc-h43__titre { margin: 5px 0 0; color: var(--socle-texte-1); font-size: 28px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
+.sc-h43__sous { margin: 6px 0 0; color: var(--socle-texte-3); font-size: 13.5px; line-height: 19px; }
+.sc-h43__regles { display: flex; flex: none; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin: 0 0 1px; padding: 0; list-style: none; }
+.sc-h43__regles .sc-etiquette { padding-block: 3px; }
+
+.sc-h43__grille {
   display: grid;
-  grid-template-columns: repeat(4, 314px);
+  grid-template-columns: repeat(3, var(--sc-h43-fenetre-l));
   justify-content: center;
-  gap: 20px 22px;
-  margin: 22px 0 0;
+  gap: var(--sc-h43-ecart);
+  margin-top: 17px;
 }
-.sc-demo__tuile {
+
+/* ── La mini-fenêtre (cadre de démonstration seulement) ── */
+.sc-h43__fenetre {
   display: flex;
   box-sizing: border-box;
-  height: 330px;
+  height: var(--sc-h43-fenetre-h);
+  min-width: 0;
   flex-direction: column;
-  padding: 17px 18px 18px;
-  border: 1px solid var(--sc-bord-tuile);
-  border-radius: 18px;
-  background: var(--socle-carte-bas);
+  overflow: hidden;
+  border: 1px solid var(--socle-bord-carte);
+  border-radius: var(--socle-rayon-carte);
+  background: linear-gradient(180deg, var(--socle-carte-haut), var(--socle-carte-bas));
+  box-shadow: var(--sc-ombre-interne);
 }
-.sc-demo__tuile-etiquette { margin-bottom: 14px; }
-.sc-demo__tuile-corps {
+.sc-h43__barre {
   display: flex;
-  min-height: 0;
-  flex: 1;
+  box-sizing: border-box;
+  height: calc(var(--sc-h43-barre) + 1px);
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 15px 0 15px;
+  border-bottom: 1px solid var(--socle-bord-entete);
+}
+.sc-h43__nom { display: flex; min-width: 0; align-items: baseline; gap: 9px; margin: 0; color: var(--socle-texte-courant); font-size: 11px; font-weight: 500; letter-spacing: 0.08em; line-height: 14px; text-transform: uppercase; white-space: nowrap; }
+.sc-h43__numero { color: var(--socle-texte-3); font-size: 11px; font-weight: 400; letter-spacing: 0; }
+.sc-h43__fil { flex: none; color: var(--socle-texte-3); font-size: 11.5px; line-height: 14px; white-space: nowrap; }
+.sc-h43__situation { position: relative; min-height: 0; flex: 1; overflow: hidden; }
+
+/* 1 — Vide : l'en-tête du tableau, puis le cadre pointillé. */
+.sc-h43__tete-tableau {
+  display: grid;
+  height: 31px;
+  box-sizing: border-box;
+  align-items: center;
+  grid-template-columns: 169px minmax(0, 1fr) auto;
+  padding: 0 22px 0 16px;
+  border-bottom: 1px solid var(--socle-bord-entete);
+  color: var(--socle-texte-3);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sc-h43__cadre-vide {
+  position: absolute;
+  inset: 44px 15px 14px;
+  display: flex;
   align-items: center;
   justify-content: center;
+  border: 1px dashed var(--socle-pointille);
+  border-radius: 12px;
 }
+
+/* 2 — Chargement : chiffres clés, lignes, légende. */
+.sc-h43__chargement { display: flex; flex-direction: column; padding: 13px 17px 0 16px; }
+.sc-h43__chargement .sc-squelette-lignes { margin-top: 8px; }
+.sc-h43__legende { margin: 9px 0 0; color: var(--socle-texte-2); font-size: 12px; line-height: 15px; text-align: center; }
+
+/* 3 — Hors ligne : bandeau, conversation, champ. */
+.sc-h43__hors { display: flex; flex-direction: column; padding: 11px 12px 0; }
+.sc-h43__fil-messages { display: flex; flex-direction: column; gap: 7px; margin: 11px 0 0; padding: 0 4px; list-style: none; }
+.sc-h43__message { display: flex; align-items: center; gap: 8px; }
+.sc-h43__message[data-sens='envoye'] { justify-content: flex-end; }
+.sc-h43__bulle { margin: 0; padding: 7px 11px; border-radius: 10px; background: var(--socle-lateral-survol); color: var(--socle-texte-courant); font-size: 12.5px; line-height: 17px; }
+.sc-h43__message[data-sens='envoye'] .sc-h43__bulle { background: var(--socle-bord-carte); color: var(--socle-texte-1); text-align: right; }
+.sc-h43__saisie {
+  box-sizing: border-box;
+  height: 30px;
+  margin-top: 11px;
+  padding: 0 12px;
+  border: 1px solid var(--socle-bord-controle);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--socle-texte-1);
+  font-family: inherit;
+  font-size: 12.5px;
+}
+.sc-h43__saisie::placeholder { color: var(--socle-texte-3); }
+.sc-h43__saisie:focus-visible { outline: 2px solid var(--color-socle-focus); outline-offset: 2px; }
+
+/* 4 — Droits manquants : lignes fantômes hachurées (jamais un flou du vrai contenu) sous un voile radial. */
+.sc-h43__fantomes {
+  position: absolute;
+  inset: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  /* Le voile radial : les hachures s'effacent vers le centre, là où l'état se lit. */
+  -webkit-mask-image: radial-gradient(closest-side, transparent 55%, var(--socle-texte-1));
+  mask-image: radial-gradient(closest-side, transparent 55%, var(--socle-texte-1));
+}
+.sc-h43__fantome { display: flex; height: 22px; gap: 12px; }
+.sc-h43__fantome::before,
+.sc-h43__fantome::after { content: ''; display: block; height: 100%; border-radius: 6px; background: repeating-linear-gradient(135deg, var(--socle-bord-ligne) 0 2px, transparent 2px 7px); }
+.sc-h43__fantome::before { width: 22px; flex: none; }
+.sc-h43__fantome::after { flex: 1; opacity: 0.6; }
+.sc-h43__acces { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; padding-top: 32px; }
+.sc-h43__acces .sc-bloc-etat[data-taille='compact'] .sc-bloc-etat__texte { max-width: 240px; }
+.sc-h43__mention { margin: 6px 0 0; color: var(--socle-texte-3); font-size: 11.5px; line-height: 15px; text-align: center; }
+
+/* 5 — Aucun résultat : le champ rempli, l'état, la porte Ajmani en bas. */
+.sc-h43__recherche {
+  display: flex;
+  box-sizing: border-box;
+  height: 30px;
+  align-items: center;
+  gap: 9px;
+  margin: 13px 16px 0;
+  padding: 0 4px 0 12px;
+  border: 1px solid var(--socle-bord-champ);
+  border-radius: 10px;
+  background: var(--socle-sous-carte);
+  color: var(--socle-texte-2);
+}
+.sc-h43__recherche input { min-width: 0; flex: 1; padding: 0; border: 0; background: transparent; color: var(--socle-texte-1); font-family: inherit; font-size: 13px; outline: none; }
+.sc-h43__recherche:focus-within { outline: 2px solid var(--color-socle-focus); outline-offset: 2px; }
+.sc-h43__effacer { position: relative; display: inline-flex; width: 26px; height: 26px; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 7px; background: transparent; color: var(--socle-texte-2); cursor: pointer; }
+.sc-h43__effacer::after { content: ''; position: absolute; inset: -4px; }
+.sc-h43__aucun { display: flex; justify-content: center; margin-top: 21px; }
+.sc-h43__aucun .sc-bloc-etat[data-taille='compact'] .sc-bloc-etat__texte { max-width: 400px; }
+.sc-h43__porte { position: absolute; right: 16px; bottom: 3px; left: 16px; width: auto; }
+
+/* 6 — Confirmation : la liste derrière le voile, la ligne concernée visible ; la boîte en bas à droite. */
+.sc-h43__liste { margin: 0; padding: 0; list-style: none; }
+.sc-h43__ligne { display: flex; box-sizing: border-box; height: var(--sc-h43-ligne); align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid var(--socle-bord-ligne); color: var(--socle-texte-courant); font-size: 13px; }
+.sc-h43__ligne[data-choisie='true'] { background: var(--socle-survol); }
+.sc-h43__ligne-nom { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-h43__ligne-detail { flex: none; color: var(--socle-texte-3); font-size: 12px; }
+.sc-h43__lettre { display: inline-flex; width: 22px; height: 22px; flex: none; align-items: center; justify-content: center; border-radius: 99px; background: var(--socle-bord-carte); color: var(--socle-texte-courant); font-size: 11px; font-weight: 600; }
+.sc-h43__voile { position: absolute; inset: 0; background: var(--sc-voile-situation); }
+.sc-h43__boite { position: absolute; right: 15px; bottom: 14px; width: 300px; }
+/* La boîte et le toast flottent au-dessus de la page : ils portent l'ombre des boîtes qui flottent. */
+.sc-h43__boite .sc-dialogue,
+.sc-h43__toast .sc-toast-bloc { box-shadow: var(--sc-ombre-boite); }
+
+/* 7 — Succès discret : trois factures (la première surlignée en vert à .08), le toast en bas à droite. */
+.sc-h43__factures { margin: 0; padding: 0; list-style: none; }
+.sc-h43__facture {
+  display: grid;
+  height: var(--sc-h43-ligne);
+  box-sizing: border-box;
+  align-items: center;
+  grid-template-columns: 44px minmax(0, 1fr) auto 75px;
+  column-gap: 8px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--socle-bord-ligne);
+  color: var(--socle-texte-courant);
+  font-size: 13px;
+}
+.sc-h43__facture[data-surlignee='true'] { background: linear-gradient(90deg, color-mix(in srgb, var(--socle-etat-succes) 8%, transparent), transparent); }
+.sc-h43__facture-numero { color: var(--socle-texte-2); font-size: 12px; }
+.sc-h43__facture-client { min-width: 0; overflow: hidden; color: var(--socle-texte-1); text-overflow: ellipsis; white-space: nowrap; }
+.sc-h43__facture-montant { color: var(--socle-texte-1); text-align: right; }
+.sc-h43__facture > .sc-etat { justify-self: end; }
+.sc-h43__toast { position: absolute; right: 15px; bottom: 14px; }
+
+/* 8 — Deux personnes : le bandeau, la page, le passage modifié et le curseur de l'autre, le pied de fusion. */
+.sc-h43__collab { display: flex; flex-direction: column; padding: 11px 12px 0; }
+.sc-h43__page-titre { margin: 12px 6px 0; color: var(--socle-texte-1); font-size: 14px; font-weight: 600; line-height: 18px; }
+.sc-h43__page-texte { margin: 6px 6px 0; color: var(--socle-texte-2); font-size: 12px; line-height: 18.5px; }
+.sc-h43__modifie { padding: 1px 3px; border-radius: 4px; background: var(--socle-bord-sous-carte); color: var(--socle-texte-courant); }
+.sc-h43__collab .sc-fusion-pied { margin: 12px 6px 0; }
+
+/* 9 — Erreur : la mention et la courbe grisée en pointillé, l'état au-dessus. */
+.sc-h43__perime { position: absolute; inset: 0; padding: 11px 16px 0; }
+.sc-h43__courbe { position: absolute; inset: 0 0 auto; width: 100%; height: 160px; opacity: 0.7; }
+.sc-h43__courbe polyline { stroke: var(--sc-courbe-perimee); stroke-dasharray: 4 4; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.sc-h43__erreur { position: absolute; inset: 0; display: flex; justify-content: center; padding-top: 40px; }
+/* La courbe passe SOUS l'état : un fond du ton de la carte, en ovale, garde le texte lisible. */
+.sc-h43__erreur::before { content: ''; position: absolute; inset: 24px 70px 18px; background: radial-gradient(closest-side, var(--socle-carte-bas) 72%, transparent); }
+.sc-h43__erreur > * { position: relative; }
+.sc-h43__essai { margin-left: 3px; color: var(--socle-texte-3); font-size: 11.5px; }
+
+/* En dessous de 1280 px, 2 colonnes ; en dessous de 720 px, 1 colonne (fiche, rubrique 11). */
 @media (max-width: 1279.98px) {
-  .sc-demo__grille { grid-template-columns: repeat(2, 314px); }
+  .sc-h43__grille { grid-template-columns: repeat(2, var(--sc-h43-fenetre-l)); }
+  .sc-h43__entete { flex-direction: column; align-items: flex-start; }
 }
 @media (max-width: 719.98px) {
-  .sc-demo__grille { grid-template-columns: minmax(0, 314px); }
+  .sc-h43 { padding-inline: 16px; }
+  .sc-h43__grille { grid-template-columns: minmax(0, var(--sc-h43-fenetre-l)); }
 }

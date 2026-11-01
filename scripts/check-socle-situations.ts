@@ -15,7 +15,8 @@
  *      encre « discret » en texte, aucune couleur en dur dans les composants.
  *   6. LES RÈGLES DU TEMPS, sur de la logique pure (`regles.ts`, sans React) et une fausse horloge : le minuteur du
  *      toast (8 s, pause, reprise, raisons cumulées), la pile de trois, le chargement différé (150 ms, 400 ms, 10 s).
- *   7. LA PAGE DE DÉMONSTRATION : huit tuiles, aucun nom propre en dur.
+ *   7. LA PLANCHE H43 v3 : neuf mini-fenêtres en situation (440 × 239, écart 16), aucun nom propre en dur ; et les
+ *      tailles COMPACTES de la v3 (bloc d'état, confirmation, toast, squelettes) à côté des tailles standard.
  *
  * Ce qu'il ne voit pas — le piège de focus, Échap, le retour du focus — vit dans la pile de `pileCalques.ts`
  * (`check:calques`) ; ici on vérifie que le dialogue y est bien branché et qu'il a ce que la pile attend.
@@ -135,12 +136,16 @@ await dit('modèle 5 : aucun résultat — guillemets français et espaces insé
   assert.deepEqual(boutons(rendus.aucunSans), ['Effacer la recherche']);
 });
 
-await dit('erreur de chargement (rubrique 8) : ton critique, « Rien n’est perdu », « Réessayer », annoncée en alerte', () => {
+await dit('erreur de chargement (rubrique 8, modèle 9) : ton critique, titre sans point, accord au féminin, « Réessayer », annoncée en alerte', () => {
   const t = texte(rendus.erreur);
-  assert.ok(t.includes(typo(`Les ${V.objets} n'ont pas pu être chargés.`)), t);
+  assert.ok(t.includes(typo(`Les ${V.objets} n'ont pas pu être chargés`)), t);
+  assert.ok(!t.includes('chargés.'), 'un titre de modèle ne finit pas par un point (v3)');
   assert.ok(t.includes(typo("Rien n'est perdu. Réessayez dans un instant.")), t);
   assert.deepEqual(boutons(rendus.erreur), ['Réessayer']);
   assert.match(rendus.erreur, /role="alert"[^>]*data-ton="critique"/);
+  const f = texte(rendre(h(S.EtatErreurChargement, { objets: 'prévisions', genre: 'feminin', onReessayer: sansAction, apres: 'nouvel essai dans 20 s', taille: 'compact' })));
+  assert.ok(f.includes(typo("Les prévisions n'ont pas pu être chargées")), f);
+  assert.ok(f.includes('nouvel essai dans 20 s'), 'ce qui suit « Réessayer » sur la même ligne');
 });
 
 await dit('modèle 2 : « Chargement de vos {objets} » ; modèle 6 et 7 : boutons et détail de la fiche', () => {
@@ -369,8 +374,41 @@ await dit('boîte de confirmation 276 × 148 (19 px de marge, rayon 14, 400 px e
   assert.match(bloc('.sc-toast__remplissage'), /background:\s*var\(--socle-etat-succes\)/);
   assert.match(bloc('.sc-toast__remplissage'), /transform-origin:\s*left/, 'la barre se vide de droite à gauche');
   assert.match(bloc('.sc-toast-bloc'), /width:\s*min\(var\(--sc-toast-largeur, 340px\)/);
-  assert.match(sansCommentaires(lire('src/refonte/systeme/h43-etats/PageEtatsMessages.tsx')), /largeur=\{276\}/);
-  assert.match(sansCommentaires(lire('src/refonte/systeme/h43-etats/PageEtatsMessages.tsx')), /fraction=\{0\.62\}/);
+});
+
+await dit('tailles compactes v3 : bloc d’état (tuile 36, titre 13,5, texte 12), confirmation 300 px, toast 318 px à barre dans le pied, lignes de 31 px', () => {
+  const c = "[data-taille='compact']";
+  assert.equal(px(bloc(`.sc-bloc-etat${c} .sc-bloc-etat__icone`), 'width'), 36);
+  assert.equal(px(bloc(`.sc-bloc-etat${c} .sc-bloc-etat__icone`), 'height'), 36);
+  assert.equal(px(bloc(`.sc-bloc-etat${c} .sc-bloc-etat__icone`), 'border-radius'), 10);
+  assert.match(bloc(`.sc-bloc-etat${c}[data-ton='neutre'] .sc-bloc-etat__icone`), /background:\s*var\(--socle-tag\)/, 'la tuile neutre est un aplat #1a1a1c (écart T1 H43.2)');
+  assert.equal(px(bloc(`.sc-bloc-etat${c} .sc-bloc-etat__titre`), 'font-size'), 13.5);
+  assert.equal(px(bloc(`.sc-bloc-etat${c} .sc-bloc-etat__texte`), 'font-size'), 12);
+  assert.equal(px(bloc(`.sc-bloc-etat${c} .sc-bloc-etat__texte`), 'max-width'), 300);
+  assert.match(css, /:root\[data-ambiance='noir'\] :is\(\.sc-bloc-etat\[data-taille='compact'\] \.sc-bloc-etat__actions, \.sc-dialogue\[data-compact='true'\] \.sc-dialogue__actions, \.sc-toast-bloc\[data-compact='true'\][^)]*\) \[data-socle='bouton'\]\[data-taille\]\[data-variante\] \{[^}]*height:\s*25px/, 'boutons compacts de 25 px');
+  const vide = rendre(h(S.EtatVideInvitation, { objet: V.objet, famille: 'contacts', onAjouter: sansAction, onImporter: sansAction, taille: 'compact' }));
+  assert.match(vide, /class="sc-bloc-etat"|data-taille="compact"/);
+  assert.match(vide, /data-taille="compact"/);
+  assert.match(vide, /lucide-download/, '« Importer » porte sa flèche en compact');
+  assert.doesNotMatch(rendus.vide, /data-taille="compact"|lucide-download/, 'la taille standard ne change pas');
+  assert.doesNotMatch(rendre(h(S.EtatAucunResultat, { terme: V.terme, proche: V.proche, onVoirProche: sansAction, icone: null })), /sc-bloc-etat__icone/, 'la tuile est facultative');
+  // Confirmation compacte.
+  assert.match(dialogue({ compact: true, largeur: 300, sansVoile: true }), /data-compact="true"[^>]*class="sc-dialogue"[^>]*style="--sc-dialogue-largeur:300px"/);
+  assert.deepEqual(marge(bloc(".sc-dialogue[data-compact='true']"), 'padding').slice(0, 3), [13, 16, 14]);
+  assert.equal(px(bloc(".sc-dialogue[data-compact='true'] .sc-dialogue__titre"), 'font-size'), 13.5);
+  // Toast compact : la barre dans le pied, « Annuler » avec sa flèche.
+  const t = toast({ compact: true, largeur: 318, fraction: 0.75 });
+  assert.match(t, /data-compact="true"/);
+  assert.match(t, /lucide-undo-2/);
+  assert.match(bloc(".sc-toast-bloc[data-compact='true'] .sc-toast__barre"), /position:\s*absolute[^}]*bottom:\s*0/);
+  assert.match(bloc(".sc-toast-bloc[data-compact='true']"), /border-radius:\s*var\(--socle-rayon-ticket\)/);
+  assert.doesNotMatch(toast(), /data-compact|lucide-undo-2/);
+  // Lignes de squelette compactes : 31 px + filet, carré 22, pastille 54 × 9.
+  const lignes = rendre(h(S.SqueletteLignes, { compact: true, lignes: 3 }));
+  assert.equal((lignes.match(/class="sc-squelette-lignes__ligne"/g) ?? []).length, 3);
+  assert.match(lignes, /width:22px;height:22px/);
+  assert.match(lignes, /width:54px;height:9px/);
+  assert.equal(px(bloc(".sc-squelette-lignes[data-compact='true'] .sc-squelette-lignes__ligne"), 'height'), 32);
 });
 
 await dit('pile des toasts : en bas à droite, 20 px au-dessus de la barre Ajmani (--sc-toast-bas réglable), sous les calques (z-index < 50)', () => {
@@ -383,54 +421,48 @@ await dit('pile des toasts : en bas à droite, 20 px au-dessus de la barre Ajman
   assert.ok(z < 50 && z > 45, `z-index ${z} : au-dessus du tiroir (45), sous les calques (50), pour ne pas piéger la tabulation`);
 });
 
-await dit('page de démonstration : tuiles 314 × 330, colonnes à 59 / 395 / 731 / 1067, rangées à 153 et 503, bas à 833, marges de 59', () => {
-  const tuile = bloc('.sc-demo__tuile');
-  const grille = bloc('.sc-demo__grille');
-  const [largeurTuile, hauteurTuile] = [Number(/repeat\(4, (\d+)px\)/.exec(grille)?.[1]), px(tuile, 'height')];
-  assert.deepEqual([largeurTuile, hauteurTuile], [314, 330]);
-  const gaps = /gap:\s*(\d+)px (\d+)px/.exec(grille);
-  assert.ok(gaps, 'gap de la grille');
-  const [ecartV, ecartH] = gaps.slice(1).map(Number);
-  assert.deepEqual([ecartV, ecartH], [20, 22]);
-  // La fenêtre de la maquette : 1440 × 900.
-  const page = bloc('.sc-demo');
+await dit('planche v3 : 3 × 3 mini-fenêtres de 440 × 239 à x = 44 / 500 / 956 et y = 120 / 375 / 631, écart 16, bas à 870 ; lueur d’ambiance', () => {
+  const page = bloc('.sc-h43');
   const [padHaut, padDroit] = marge(page, 'padding');
-  const cadre = Number(/width:\s*min\((\d+)px, 100%\)/.exec(bloc('.sc-demo__cadre'))?.[1]);
-  const gauche = padDroit + (1440 - 2 * padDroit - cadre) / 2; // où commence l'en-tête
-  const largeurGrille = 4 * largeurTuile + 3 * ecartH;
-  const colonne0 = gauche + (cadre - largeurGrille) / 2;
-  assert.equal(gauche, 52, 'l’en-tête est à x = 52');
-  assert.equal(colonne0, 59, 'la première colonne est à x = 59');
-  assert.deepEqual([0, 1, 2, 3].map((i) => colonne0 + i * (largeurTuile + ecartH)), [59, 395, 731, 1067]);
-  assert.equal(1440 - (colonne0 + largeurGrille), 59, 'marge droite égale à la marge gauche');
-  // En-tête : étiquette (13) + h1 (8 + 34) + sous-titre (8 + 20) + 22 de marge → la grille commence à y = 153.
-  const entete = padHaut + px(bloc('.sc-demo__etiquette,\n.sc-demo__tuile-etiquette'), 'line-height') + marge(bloc('.sc-demo__titre'), 'margin')[0] + px(bloc('.sc-demo__titre'), 'line-height') + marge(bloc('.sc-demo__sous'), 'margin')[0] + px(bloc('.sc-demo__sous'), 'line-height') + marge(grille, 'margin')[0];
-  assert.equal(entete, 153);
-  assert.deepEqual([entete, entete + hauteurTuile + ecartV], [153, 503]);
-  assert.equal(entete + 2 * hauteurTuile + ecartV, 833);
-  assert.ok(Math.abs(padHaut + 6.5 - 55) <= 1.5, 'l’étiquette « SYSTÈME » est centrée à y = 55');
-  assert.equal(px(bloc('.sc-demo__titre'), 'font-size'), 28);
-  assert.equal(px(bloc('.sc-demo__sous'), 'font-size'), 14);
-  // Les breakpoints de la rubrique 11 : 2 colonnes sous 1280 px, 1 colonne sous 720 px.
-  assert.match(css, /@media \(max-width: 1279\.98px\) \{\s*\.sc-demo__grille \{ grid-template-columns: repeat\(2, 314px\)/);
-  assert.match(css, /@media \(max-width: 719\.98px\) \{\s*\.sc-demo__grille \{ grid-template-columns: minmax\(0, 314px\)/);
+  assert.equal(padDroit, 44);
+  assert.match(page, /background:\s*var\(--socle-halo\), var\(--socle-fond-page\)/, 'la lueur d’ambiance de page (§1, écart T1 H43.1)');
+  assert.equal(jetonNoir('--socle-halo'), 'radial-gradient(1000px 520px at 85% -10%, rgba(255, 255, 255, 0.045), transparent 70%)');
+  const v = (nom: string) => Number(new RegExp(`${nom}:\\s*(\\d+)px`).exec(css)?.[1]);
+  const [l, hFen, ecart, barre] = [v('--sc-h43-fenetre-l'), v('--sc-h43-fenetre-h'), v('--sc-h43-ecart'), v('--sc-h43-barre')];
+  assert.deepEqual([l, hFen, ecart, barre], [440, 239, 16, 36]);
+  assert.match(bloc('.sc-h43__grille'), /grid-template-columns:\s*repeat\(3, var\(--sc-h43-fenetre-l\)\)/);
+  assert.deepEqual([0, 1, 2].map((i) => padDroit + i * (l + ecart)), [44, 500, 956]);
+  assert.equal(padDroit + 3 * l + 2 * ecart + padDroit, 1440);
+  // En-tête : étiquette 13 + (5 + 30,8) + (6 + 19) + 17 → la grille commence à y = 120 (à un demi-pixel près).
+  const debut = padHaut + px(bloc('.sc-h43__etiquette'), 'line-height') + marge(bloc('.sc-h43__titre'), 'margin')[0] + 28 * 1.1 + marge(bloc('.sc-h43__sous'), 'margin')[0] + px(bloc('.sc-h43__sous'), 'line-height') + px(bloc('.sc-h43__grille'), 'margin-top');
+  assert.ok(Math.abs(debut - 120) <= 0.5, `la grille commence à ${debut}`);
+  [120, 375, 631].forEach((y, i) => assert.ok(Math.abs(debut + i * (hFen + ecart) - y) <= 1.5, `rangée ${i + 1} à ${debut + i * (hFen + ecart)} (image : ${y})`));
+  assert.ok(Math.abs(debut + 3 * hFen + 2 * ecart - 870) <= 1.5, 'bas de la grille à y = 870');
+  assert.equal(px(bloc('.sc-h43__titre'), 'font-size'), 28);
+  assert.equal(px(bloc('.sc-h43__sous'), 'font-size'), 13.5);
+  assert.match(bloc('.sc-h43__etiquette'), /letter-spacing:\s*0\.1em/);
+  assert.match(bloc('.sc-h43__fenetre'), /height:\s*var\(--sc-h43-fenetre-h\)[\s\S]*overflow:\s*hidden/);
+  assert.match(bloc('.sc-h43__barre'), /border-bottom:\s*1px solid var\(--socle-bord-entete\)/);
+  assert.match(bloc('.sc-h43__situation'), /overflow:\s*hidden/);
+  assert.match(css, /@media \(max-width: 1279\.98px\) \{\s*\.sc-h43__grille \{ grid-template-columns: repeat\(2, var\(--sc-h43-fenetre-l\)\)/);
+  assert.match(css, /@media \(max-width: 719\.98px\) \{[^}]*\}\s*\.sc-h43__grille \{ grid-template-columns: minmax\(0, var\(--sc-h43-fenetre-l\)\)/);
 });
 
-await dit('le contenu d’une tuile est centré sous l’étiquette : l’icône du modèle 1 tombe à y + 93, la boîte du modèle 6 à y + 104, le toast à y + 130', () => {
-  const tuile = bloc('.sc-demo__tuile');
-  const [padHaut, , padBas] = marge(tuile, 'padding');
-  const etiquette = px(bloc('.sc-demo__etiquette,\n.sc-demo__tuile-etiquette'), 'line-height');
-  const debutZone = 1 + padHaut + etiquette + Number(/\.sc-demo__tuile-etiquette \{ margin-bottom: (\d+)px; \}/.exec(css)?.[1]);
-  const finZone = 330 - 1 - padBas;
-  const centre = (debutZone + finZone) / 2;
-  const hauteurBloc1 = 48 + marge(bloc('.sc-bloc-etat__titre'), 'margin')[0] + 18 + marge(bloc('.sc-bloc-etat__texte'), 'margin')[0] + 2 * 19 + px(bloc('.sc-bloc-etat__actions'), 'margin-top') + 31;
-  assert.equal(hauteurBloc1, 170, 'icône 48 + titre 18 + texte 2 × 19 + 31 de boutons, avec leurs marges : 93 → 263');
-  assert.ok(Math.abs(centre - hauteurBloc1 / 2 - 93) <= 1, `l’icône tombe à ${centre - hauteurBloc1 / 2}`);
-  assert.ok(Math.abs(centre - 148 / 2 - 104) <= 1, 'la boîte de confirmation (148) tombe à y + 104');
-  assert.ok(Math.abs(centre - (79 + 14 + 3) / 2 - 130) <= 1, 'le toast (79 + 14 + 3) tombe à y + 130');
-  // Le modèle 2 : quatre lignes de pas 50 (34 + 3 × 50 = 184) et la légende : 70 → 287.
-  const hauteurChargement = 3 * 50 + 34 + marge(bloc('.sc-chargement__legende'), 'margin')[0] + px(bloc('.sc-chargement__legende'), 'line-height');
-  assert.ok(Math.abs(centre - hauteurChargement / 2 - 70) <= 1, `les squelettes commencent à y + ${centre - hauteurChargement / 2}`);
+await dit('planche v3 : chaque situation est posée comme sur l’image (cadre vide à 44, boîte et toast en bas à droite, état d’erreur à 40)', () => {
+  assert.match(bloc('.sc-h43__cadre-vide'), /inset:\s*44px 15px 14px/);
+  assert.match(bloc('.sc-h43__cadre-vide'), /border:\s*1px dashed var\(--socle-pointille\)/);
+  assert.match(bloc('.sc-h43__boite'), /right:\s*15px;\s*bottom:\s*14px;\s*width:\s*300px/);
+  assert.match(bloc('.sc-h43__toast'), /right:\s*15px;\s*bottom:\s*14px/);
+  assert.match(bloc('.sc-h43__voile'), /background:\s*var\(--sc-voile-situation\)/);
+  assert.match(bloc('.sc-h43__erreur'), /padding-top:\s*40px/);
+  assert.match(bloc('.sc-h43__acces'), /padding-top:\s*32px/);
+  assert.match(bloc('.sc-h43__ligne'), /height:\s*var\(--sc-h43-ligne\)/);
+  assert.match(css, /--sc-h43-ligne:\s*35px/, 'lignes de 35 px (modèles 6 et 7)');
+  assert.match(bloc('.sc-h43__courbe polyline'), /stroke:\s*var\(--sc-courbe-perimee\)[^}]*stroke-dasharray/);
+  // Le modèle 1 : cadre de 239 − 37 − 44 − 14 = 144 px ; le bloc compact (36 + 10 + 17 + 6 + 16 + 12 + 25 = 122) y est centré.
+  const bloc1 = 36 + 10 + 17 + 6 + 16 + 12 + 25;
+  assert.equal(bloc1, 122);
+  assert.ok((239 - 37 - 44 - 14 - 2 - bloc1) / 2 >= 9, 'le bloc tient dans le cadre pointillé');
 });
 
 /* ── 5. Les couleurs ──────────────────────────────────────────────────────── */
@@ -439,7 +471,7 @@ await dit('situations.css : aucune couleur en dur hors des jetons --sc-…, chaq
   const sansJetons = css.replace(/--sc-[\w-]+:[^;]+;/g, '');
   assert.deepEqual(sansJetons.match(/#[0-9a-fA-F]{3,8}\b/g), null, 'un #hex en dur');
   assert.deepEqual(sansJetons.match(/\b(?:rgba?|hsla?|oklch|lab)\(/g), null, 'une couleur fonctionnelle en dur');
-  assert.deepEqual([...css.matchAll(/--sc-[\w-]+:\s*#[0-9a-fA-F]{6}/g)].map((m) => m[0].split(':')[0]), ['--sc-bord-tuile'], 'un seul jeton hex : le bord de tuile');
+  assert.deepEqual([...css.matchAll(/--sc-[\w-]+:\s*#[0-9a-fA-F]{6}/g)].map((m) => m[0].split(':')[0]), ['--sc-curseur-pair', '--sc-courbe-perimee'], 'deux jetons hex de la fiche : le curseur de l’autre personne, la courbe périmée');
   const connus = new Set([
     ...[...noir.matchAll(/(--[\w-]+):/g)].map((m) => m[1]),
     ...[...css.matchAll(/(--[\w-]+):/g)].map((m) => m[1]),
@@ -451,13 +483,13 @@ await dit('situations.css : aucune couleur en dur hors des jetons --sc-…, chaq
   assert.ok(!/!important/.test(css), 'pas de !important');
   // Les encres de texte lues : au plus bas T4 (--socle-texte-3, #8a8a8e), jamais en dessous.
   for (const [, valeur] of css.matchAll(/(?:^|[;{\s])color\s*:\s*([^;}]+)/g)) {
-    assert.match(valeur.trim(), /^var\(--(socle-texte-[123]|socle-texte-courant|sc-ton|socle-etat-[a-z]+|socle-primaire-encre)\)$|^var\(--sc-ton\)$/, `color: ${valeur}`);
+    assert.match(valeur.trim(), /^var\(--(socle-texte-[123]|socle-texte-courant|sc-ton|socle-etat-[a-z]+|socle-primaire-encre|sc-notif-teinte)\)$|^var\(--sc-ton\)$/, `color: ${valeur}`);
   }
   assert.ok(Math.min(...[...css.matchAll(/font-size:\s*([\d.]+)px/g)].map((m) => Number(m[1]))) >= 10.5, 'plus petit texte : 10,5 px');
 });
 
 await dit('les composants : aucune couleur en dur, aucune classe de taille ou de couleur Tailwind arbitraire, aucun personnage ni émoji', () => {
-  for (const f of ['BlocEtat.tsx', 'Squelettes.tsx', 'DialogueConfirmation.tsx', 'Toasts.tsx', 'AvisCollaboration.tsx', 'statique.ts', 'regles.ts', 'index.ts']) {
+  for (const f of ['BlocEtat.tsx', 'Squelettes.tsx', 'DialogueConfirmation.tsx', 'Toasts.tsx', 'AvisCollaboration.tsx', 'EnSituation.tsx', 'statique.ts', 'regles.ts', 'index.ts']) {
     const src = sansCommentaires(lire(`src/socle/ui/situations/${f}`));
     assert.deepEqual(src.match(/#[0-9a-fA-F]{3,8}\b/g), null, `${f} : #hex`);
     assert.ok(!/\brgba?\(|\btext-\[|\bbg-\[|\bborder-\[/.test(src), `${f} : couleur ou taille arbitraire`);
@@ -740,32 +772,62 @@ await dit('chargement différé : libérée, plus aucune minuterie ; le crochet 
 
 /* ── 7. La page de démonstration ──────────────────────────────────────────── */
 
-await dit('page de démonstration : huit tuiles dans l’ordre de la maquette, étiquettes, h1, sans coquille', async () => {
+await dit('planche v3 : neuf mini-fenêtres en situation (numéros 1 à 8 inchangés, 9 = Erreur), en-tête, règles, sans coquille', async () => {
   const P = await chargerRendu<{ PageEtatsMessages: unknown }>("import { PageEtatsMessages } from '../src/refonte/systeme/h43-etats/PageEtatsMessages';", ['PageEtatsMessages']);
   const html = P.rendre((P.h as H)(P.PageEtatsMessages, {}));
-  assert.equal([...html.matchAll(/class="sc-demo__tuile"/g)].length, 8);
-  const etiquettes = [...html.matchAll(/<h2 id="h43-[\w-]+" class="sc-demo__tuile-etiquette">([^<]*)</g)].map((m) => m[1]);
-  assert.deepEqual(etiquettes, ['VIDE, AVEC UNE INVITATION', 'CHARGEMENT', 'CONNEXION PERDUE', 'ACCÈS NON AUTORISÉ', 'AUCUN RÉSULTAT', 'CONFIRMATION', 'SUCCÈS, AVEC RETOUR POSSIBLE', 'DEUX PERSONNES, UNE PAGE']);
+  assert.equal([...html.matchAll(/class="sc-h43__fenetre"/g)].length, 9);
+  const barres = [...html.matchAll(/<h2 id="[^"]+" class="sc-h43__nom"><span class="sc-h43__numero sc-mono">(\d\d)<\/span>([^<]*)<\/h2><span class="sc-h43__fil">([^<]*)</g)].map((m) => `${m[1]} ${m[2]} · ${m[3]}`);
+  assert.deepEqual(barres, [
+    '01 Vide · Contacts / Clients',
+    '02 Chargement · L’argent / Facturation',
+    '03 Hors ligne · Échanger / Messagerie',
+    '04 Droits manquants · Outils / Coffre-fort',
+    '05 Aucun résultat · Écrire / Documents',
+    '06 Confirmation · Contacts / Clients',
+    '07 Succès discret · L’argent / Facturation',
+    '08 Deux personnes · Écrire / Notes et pages',
+    '09 Erreur · L’argent / Prévisions',
+  ]);
+  assert.deepEqual([...html.matchAll(/data-modele="(\d)"/g)].map((m) => m[1]), ['1', '2', '3', '4', '5', '6', '7', '8', '9']);
   const t = texte(html);
-  assert.ok(t.startsWith('SYSTÈMEÉtats et messages'));
-  assert.ok(t.includes(typo(`Même quand il n'y a rien, quand ça charge ou quand ça casse${NBSP}: toujours une explication simple et une action possible. Jamais de zone morte.`)));
+  assert.ok(t.startsWith('SYSTÈME · RÉFÉRENCEÉtats et messages'), t.slice(0, 60));
+  assert.ok(t.includes(typo(`Même quand il n'y a rien, quand ça charge ou quand ça casse${NBSP}: une explication simple et une action possible.`)));
+  for (const r of ['Une cause, une action', "Jamais de code d'erreur", "Le nom de l'objet change, la forme reste"]) assert.ok(t.includes(typo(r)), r);
+  for (const c of ['Client', 'Contact', 'Dernier échange']) assert.ok(t.includes(c), c);
   assert.equal([...html.matchAll(/<h1[ >]/g)].length, 1);
   assert.ok(!/<nav|role="navigation"|sc-coquille|sc-lateral/.test(html), 'page sans coquille');
-  assert.match(html, /<main class="sc-demo" data-refonte-police="inter">/);
+  assert.match(html, /<main class="sc-h43" data-refonte-police="inter">/);
+  // Les situations : chacune avec ses pièces v3.
+  for (const marque of ['data-taille="compact"', 'sc-squelette-chiffres', 'data-compact="true"', 'sc-hors-bandeau', 'sc-en-attente', 'sc-h43__fantome', 'sc-porte-ajmani', 'sc-h43__voile', 'sc-collab-bandeau', 'sc-curseur-pair', 'sc-fusion-pied', 'sc-perime__mention', 'sc-h43__courbe']) assert.ok(html.includes(marque), `« ${marque} » absent`);
+  assert.equal([...html.matchAll(/data-taille="compact"/g)].length >= 4, true, 'quatre blocs d’état compacts (1, 4, 5, 9)');
+  assert.match(html, /role="status"[^>]*aria-busy="true"[^>]*aria-label="Chargement de vos factures"/);
+  assert.ok(t.includes(typo("Connecté en tant que Robin · rien de la page n'est montré")));
+  assert.ok(t.includes(typo("Demander à Ajmani : « exmple »")));
+  assert.ok(t.includes(typo("Fusionnés, rien n'est écrasé · copie gardée")));
+  assert.ok(t.includes('dernière valeur connue · 10:12'));
+  assert.ok(t.includes(typo("Les prévisions n'ont pas pu être chargées")));
+  assert.ok(t.includes('nouvel essai dans 20 s'));
+  assert.ok(t.includes('Disparaît dans 6 s'));
+  assert.ok(t.includes(typo("Hors ligne · 2 messages en attente d'envoi")));
+  assert.ok(t.includes(typo('en attente, partira au retour du réseau')));
   // Tous les boutons de la page sont des aperçus : atteignables, sans effet.
   const tousBoutons = [...html.matchAll(/<button[^>]*>/g)].map((m) => m[0]);
-  assert.ok(tousBoutons.length >= 10 && tousBoutons.every((b) => /aria-disabled="true"/.test(b) && !/\sdisabled=""/.test(b)), 'boutons aria-disabled');
-  // Cinq boutons primaires : normal pour un catalogue (fiche, rubrique 13).
+  assert.ok(tousBoutons.length === 13 && tousBoutons.every((b) => /aria-disabled="true"/.test(b) && !/\sdisabled=""/.test(b)), 'boutons aria-disabled');
+  // Cinq boutons primaires (Ajouter, Demander l'accès, Voir…, À la corbeille, Garder les deux) : normal pour un catalogue.
   assert.equal([...html.matchAll(/data-variante="primaire"/g)].length, 5);
   assert.ok(!/data-variante="danger"/.test(html));
   // Les variables d'exemple viennent des props : d'autres valeurs, d'autres textes.
-  const autre = P.rendre((P.h as H)(P.PageEtatsMessages, { exemple: { objet: 'projet', objets: 'projets', terme: 'qqq', proche: 'Atelier Essai', prenomAdmin: 'Noa', nomSupprime: 'Fiche Essai', nomClientFacture: 'Essai SA', prenomCollaborateur: 'Eli', noms: ['Zoé', 'Eli'] } }));
+  const autre = P.rendre((P.h as H)(P.PageEtatsMessages, { exemple: {
+    objet: 'projet', objets: 'projets', enAttente: 1, correspondant: 'Noa', messageRecu: 'Message reçu', messageEnvoye: 'Message envoyé', prenomAdmin: 'Noa', prenomConnecte: 'Eli',
+    terme: 'qqq', proche: 'Atelier Essai', liste: [{ nom: 'Fiche Une' }, { nom: 'Fiche Essai', detail: 'essai' }], rangSupprime: 1,
+    factures: [{ numero: 'F-1', client: 'Essai SA', montant: 10, statut: 'payee' }], nomClientFacture: 'Essai SA', secondesRestantes: 8,
+    prenomCollaborateur: 'Eli', noms: ['Zoé', 'Eli'], titrePage: 'Page Essai', paragraphe: 'Texte.', debutModifie: 'Mot : ', passageModifie: 'passage', objetsErreur: 'rapports', genreErreur: 'masculin', heureDerniere: '09:00', courbe: [0, 1], prochainEssai: 60,
+  } }));
   const u = texte(autre);
-  for (const attendu of [`Aucun projet pour l'instant`, 'Chargement de vos projets', `Rien pour «${NBSP}qqq${NBSP}»`, 'Atelier Essai', 'Noa', `Supprimer «${NBSP}Fiche Essai${NBSP}»${NBSP}?`, 'Facture envoyée à Essai SA', 'Eli modifie aussi cette page']) {
+  for (const attendu of [`Aucun projet pour l'instant`, 'Chargement de vos projets', `Rien pour «${NBSP}qqq${NBSP}»`, 'Atelier Essai', 'Noa', `Supprimer «${NBSP}Fiche Essai${NBSP}»${NBSP}?`, 'Facture envoyée à Essai SA', 'Eli modifie aussi cette page', "Hors ligne · 1 message en attente d'envoi", "Les rapports n'ont pas pu être chargés", 'nouvel essai dans 60 s', 'dernière valeur connue · 09:00']) {
     assert.ok(u.includes(typo(attendu)), `« ${attendu} » absent`);
   }
-  assert.match(autre, /Rien pour|Disparaît dans 8 s/);
-  assert.match(html, /scaleX\(0\.62\)/);
+  assert.match(html, /scaleX\(0\.75\)/, 'la barre du toast dit le temps restant (6 s sur 8)');
 });
 
 await dit('aucun nom propre en dur : ni dans la page, ni dans ses mots, ni dans les composants, ni dans leurs mots, ni dans la feuille', () => {
@@ -776,7 +838,7 @@ await dit('aucun nom propre en dur : ni dans la page, ni dans ses mots, ni dans 
     'src/refonte/systeme/h43-etats/exemples.ts',
     'src/socle/mots/situations.ts',
     'src/socle/ui/situations/situations.css',
-    ...['BlocEtat.tsx', 'Squelettes.tsx', 'DialogueConfirmation.tsx', 'Toasts.tsx', 'AvisCollaboration.tsx', 'statique.ts', 'regles.ts', 'index.ts'].map((f) => `src/socle/ui/situations/${f}`),
+    ...['BlocEtat.tsx', 'Squelettes.tsx', 'DialogueConfirmation.tsx', 'Toasts.tsx', 'AvisCollaboration.tsx', 'EnSituation.tsx', 'statique.ts', 'regles.ts', 'index.ts'].map((f) => `src/socle/ui/situations/${f}`),
   ];
   for (const f of fichiers) {
     const src = lire(f);
@@ -800,7 +862,7 @@ await dit('édition cliente : rien de ces fichiers n’est importé par un fichi
   };
   parcourir('src');
   assert.deepEqual(fautes, []);
-  for (const f of ['BlocEtat.tsx', 'Squelettes.tsx', 'DialogueConfirmation.tsx', 'Toasts.tsx', 'AvisCollaboration.tsx', 'statique.ts', 'regles.ts']) {
+  for (const f of ['BlocEtat.tsx', 'Squelettes.tsx', 'DialogueConfirmation.tsx', 'Toasts.tsx', 'AvisCollaboration.tsx', 'EnSituation.tsx', 'statique.ts', 'regles.ts']) {
     const imports = [...lire(`src/socle/ui/situations/${f}`).matchAll(/from\s+['"]([^'"]+)['"]/g)].map((m) => m[1]);
     for (const i of imports) assert.ok(/^(react|react-dom|framer-motion|lucide-react)$|^\.\.?\//.test(i), `${f} importe « ${i} »`);
     for (const i of imports.filter((x) => x.startsWith('.'))) assert.ok(!/\/(state|components|screens|auth|hall)\b/.test(i), `${f} importe « ${i} »`);

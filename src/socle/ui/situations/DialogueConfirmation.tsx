@@ -54,6 +54,8 @@ interface EnPlaceProps extends DialogueConfirmationProps {
   sansVoile?: boolean;
   /** Aperçu : les deux boutons restent atteignables mais ne font rien. */
   statique?: boolean;
+  /** Les cotes v3 (H43 en situation) : 16 px de marge, titre 13,5 px, texte 12 px, boutons de 25 px. */
+  compact?: boolean;
 }
 
 /** Le focus entre avec un léger retard : la boîte arrive en fondu, et un `focus()` sur un élément encore transparent est ignoré par certains navigateurs. */
@@ -107,6 +109,7 @@ export function DialogueConfirmationEnPlace({
   refAction,
   sansVoile = false,
   statique = false,
+  compact = false,
 }: EnPlaceProps) {
   const { ts } = useSocleLangue();
   const idTitre = useId();
@@ -128,6 +131,7 @@ export function DialogueConfirmationEnPlace({
       aria-labelledby={idTitre}
       aria-describedby={idTexte}
       tabIndex={sansVoile ? undefined : -1}
+      data-compact={compact || undefined}
       className="sc-dialogue"
       style={{ '--sc-dialogue-largeur': `${largeur}px` } as React.CSSProperties}
       {...animation}

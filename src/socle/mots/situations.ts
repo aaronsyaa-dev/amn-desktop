@@ -35,7 +35,7 @@ export const EN_SITUATIONS = {
   'etat.aucun.voir': 'See {proche}',
   'etat.aucun.effacer': 'Clear the search',
 
-  'etat.erreur.titre': 'The {objets} could not be loaded.',
+  'etat.erreur.titre': 'The {objets} could not be loaded',
   'etat.erreur.texte': 'Nothing is lost. Try again in a moment.',
   'etat.erreur.reessayer': 'Try again',
 
@@ -58,6 +58,19 @@ export const EN_SITUATIONS = {
   'avis.fusion.apres': '. Nothing is overwritten, a copy is kept.',
   'avis.differences': 'Differences',
   'avis.garder': 'Keep both',
+
+  /* v3 (H43 en situation) : bandeau hors ligne, élément en file, pied de fusion, données d'avant une erreur. */
+  'etat.erreur.titre.f': 'The {objets} could not be loaded',
+  'hors.bandeau': 'Offline',
+  'hors.bandeau.un': 'Offline · 1 {objet} waiting to be sent',
+  'hors.bandeau.n': 'Offline · {n} {objets} waiting to be sent',
+  'hors.attente': 'waiting, will leave when the network is back',
+  'acces.connecte': 'Signed in as {prenom} · nothing of the page is shown',
+  'aucun.ajmani': 'Ask Ajmani: “{terme}”',
+  'avis.direct': '{prenom} is on the page right now',
+  'avis.pied': 'Merged, nothing is overwritten · copy kept',
+  'erreur.derniere': 'last known value · {heure}',
+  'erreur.essai': 'new attempt in {n} s',
 } as const;
 
 export const FR_SITUATIONS: Record<keyof typeof EN_SITUATIONS, string> = {
@@ -85,7 +98,7 @@ export const FR_SITUATIONS: Record<keyof typeof EN_SITUATIONS, string> = {
   'etat.aucun.voir': 'Voir {proche}',
   'etat.aucun.effacer': 'Effacer la recherche',
 
-  'etat.erreur.titre': 'Les {objets} n’ont pas pu être chargés.',
+  'etat.erreur.titre': 'Les {objets} n’ont pas pu être chargés',
   'etat.erreur.texte': 'Rien n’est perdu. Réessayez dans un instant.',
   'etat.erreur.reessayer': 'Réessayer',
 
@@ -108,4 +121,16 @@ export const FR_SITUATIONS: Record<keyof typeof EN_SITUATIONS, string> = {
   'avis.fusion.apres': '. Rien n’est écrasé, une copie est gardée.',
   'avis.differences': 'Différences',
   'avis.garder': 'Garder les deux',
+
+  'etat.erreur.titre.f': 'Les {objets} n’ont pas pu être chargées',
+  'hors.bandeau': 'Hors ligne',
+  'hors.bandeau.un': 'Hors ligne · 1 {objet} en attente d’envoi',
+  'hors.bandeau.n': 'Hors ligne · {n} {objets} en attente d’envoi',
+  'hors.attente': 'en attente, partira au retour du réseau',
+  'acces.connecte': 'Connecté en tant que {prenom} · rien de la page n’est montré',
+  'aucun.ajmani': 'Demander à Ajmani\u00A0: «\u00A0{terme}\u00A0»',
+  'avis.direct': '{prenom} est sur la page en ce moment',
+  'avis.pied': 'Fusionnés, rien n’est écrasé · copie gardée',
+  'erreur.derniere': 'dernière valeur connue · {heure}',
+  'erreur.essai': 'nouvel essai dans {n} s',
 };
