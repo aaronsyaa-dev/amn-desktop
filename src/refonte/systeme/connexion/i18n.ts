@@ -1,22 +1,14 @@
 import { definirMots } from '../../../socle/mots';
 
 /**
- * LES MOTS DE LA CONNEXION (G06) — l'anglais est le schéma, le français est typé contre lui.
+ * LES MOTS DE LA CONNEXION (G06, v3) — l'anglais est le schéma, le français est typé contre lui.
  * Les textes de la double vérification et du mot de passe oublié restent ceux de `src/i18n`
  * (clés `connexion.*`) : la logique d'authentification ne change pas, ses messages non plus.
  */
 const EN = {
-  'gauche.pastille': 'The Guard is watching, {n} organizations',
-  'gauche.titre1': 'All your work,',
-  'gauche.titre2': 'under one hand.',
-  'gauche.texte': 'Your clients, your money, your documents and your oversight, gathered in a calm space you can open in front of anyone.',
-  'gauche.modules': 'modules',
-  'gauche.supervision': 'oversight',
-  'gauche.familles': 'families',
-  'gauche.h24': '24/7',
-  'gauche.edition': 'AMN DevSec · the team’s internal edition',
+  'marque.sous': 'Team space',
+  'carte.phrase': 'All your work, under one hand.',
   'form.titre': 'Sign in',
-  'form.consigne': 'Enter with your email and your password.',
   'form.email': 'Email address',
   'form.mdp': 'Password',
   'form.oublie': 'Forgot?',
@@ -37,20 +29,22 @@ const EN = {
   'horsLigne': 'You are offline. Reconnect to the network to open your space.',
   'reessayer': 'Try again',
   'verrMaj': 'Caps Lock is on',
+  'pied.edition': 'AMN DevSec · the team’s internal edition',
+  'pied.etat': 'Service status',
+  'pied.garde': 'The Guard is watching',
+  'pied.chiffre': 'encrypted connection',
+  'pied.horsLigne': 'Offline',
+  'pied.horsLigne.texte': 'reconnect to the network',
+  'pied.aide': 'Trouble signing in?',
+  'pied.aide.lien': 'Write to the team',
+  'pied.aide.texte': 'Write to an administrator of your team: they can check your access.',
+  'poste.date': 'Date and time of this computer',
 } as const;
 
 const FR: Record<keyof typeof EN, string> = {
-  'gauche.pastille': 'La Garde veille, {n} organisations',
-  'gauche.titre1': 'Tout votre travail,',
-  'gauche.titre2': 'sous une seule main.',
-  'gauche.texte': 'Vos clients, votre argent, vos documents et votre supervision, réunis dans un espace sobre que vous pouvez ouvrir devant n’importe qui.',
-  'gauche.modules': 'modules',
-  'gauche.supervision': 'supervision',
-  'gauche.familles': 'familles',
-  'gauche.h24': 'H24',
-  'gauche.edition': 'AMN DevSec · édition interne de l’équipe',
+  'marque.sous': 'Espace de l’équipe',
+  'carte.phrase': 'Tout votre travail, sous une seule main.',
   'form.titre': 'Connexion',
-  'form.consigne': 'Entrez avec votre e-mail et votre mot de passe.',
   'form.email': 'Adresse e-mail',
   'form.mdp': 'Mot de passe',
   'form.oublie': 'Oublié ?',
@@ -71,6 +65,16 @@ const FR: Record<keyof typeof EN, string> = {
   'horsLigne': 'Vous êtes hors connexion. Reconnectez-vous au réseau pour ouvrir votre espace.',
   'reessayer': 'Réessayer',
   'verrMaj': 'Verr. Maj. est activée',
+  'pied.edition': 'AMN DevSec · édition interne de l’équipe',
+  'pied.etat': 'État du service',
+  'pied.garde': 'La Garde veille',
+  'pied.chiffre': 'connexion chiffrée',
+  'pied.horsLigne': 'Hors connexion',
+  'pied.horsLigne.texte': 'reconnectez-vous au réseau',
+  'pied.aide': 'Un souci pour entrer ?',
+  'pied.aide.lien': 'Écrire à l’équipe',
+  'pied.aide.texte': 'Écrivez à un administrateur de votre équipe : il peut vérifier votre accès.',
+  'poste.date': 'Date et heure de ce poste',
 };
 
 export const { useMots, traduire, dictionnaires } = definirMots(EN, FR);

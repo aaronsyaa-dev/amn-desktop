@@ -1,95 +1,142 @@
 /*
-  LA CONNEXION (G06) — deux colonnes : présentation (600 px) et formulaire (360 px, centré).
-  Valeurs de la fiche G06 ; les couleurs viennent de `src/socle/noir.css` (jetons `--socle-*`).
-  Chargée avec l'écran, édition interne seulement.
+  LA CONNEXION (G06, v3) — une carte centrée de 404 px sur un fond qui veille.
+  Cotes de la fiche G06 (coordonnées absolues de l'image 1440 × 900) : marque à (48, 40), date du poste bord droit
+  1392 / centre y 53, carte à (518, 135) (marges 34 / 32 / 24, rayon 20), champs de 52 px, bouton de 48 px, pied
+  centré à y 848 avec la pastille d'état. Couleurs : jetons `src/socle/noir.css` seulement. Chiffres tabulaires :
+  sur l'heure seulement (C11). Chargée avec l'écran, édition interne seulement.
 */
 :root[data-ambiance='noir'] .cx {
-  --cx-champ-h: 44px;
-  --cx-focus-halo: color-mix(in srgb, var(--socle-etat-succes) 14%, transparent);
-  display: grid;
-  grid-template-columns: 600px minmax(0, 1fr);
+  position: relative;
   min-height: 100dvh;
-  background: var(--socle-fond-page);
+  overflow: hidden;
+  background: var(--socle-connexion-halo), var(--socle-fond-page);
   color: var(--socle-texte-1);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-variant-numeric: tabular-nums;
 }
 
-/* ── Panneau gauche : lueur douce en haut, logo en haut, présentation ancrée en bas ── */
-:root[data-ambiance='noir'] .cx-gauche {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 56px;
-  border-right: 1px solid var(--socle-onglet-compteur);
-  background: linear-gradient(180deg, var(--socle-connexion-lueur) 0, var(--socle-connexion-milieu) 300px, var(--socle-connexion-bas) 100%);
+/* ── Le fond qui veille : orbites pointillées, huit repères anonymes, balayage lent, vignette ── */
+.cx-fond { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.cx-orbites { position: absolute; top: calc(50% - 2px); left: 50%; width: 0; height: 0; }
+.cx-orbites__svg { position: absolute; top: -600px; left: -600px; overflow: visible; }
+.cx-orbite { stroke: var(--socle-connexion-orbite); stroke-width: 1; }
+:root[data-ambiance='noir'] .cx-balayage {
+  position: absolute;
+  top: -600px;
+  left: -600px;
+  width: 1200px;
+  height: 1200px;
+  /* Un tour en 40 s, à 5 % au plus : il ne doit jamais se voir comme un faisceau. */
+  --sc-mvt-balayage: 40s;
+  --sc-mvt-balayage-couleur: color-mix(in srgb, var(--socle-fam-garde) 5%, transparent);
+  mask-image: radial-gradient(circle, transparent 0 236px, var(--socle-fond-page) 340px);
 }
+.cx-repere {
+  position: absolute;
+  display: flex;
+  width: 12px;
+  height: 12px;
+  align-items: center;
+  justify-content: center;
+  margin: -6px 0 0 -6px;
+  border: 1px solid var(--socle-connexion-bord-repere);
+  border-radius: 99px;
+  background: var(--socle-connexion-repere);
+}
+.cx-repere__point { width: 4px; height: 4px; border-radius: 99px; background: var(--socle-trait-tres-discret); color: var(--socle-trait-tres-discret); }
+.cx-repere[data-veille='true'] { border-color: color-mix(in srgb, var(--socle-etat-succes) 55%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--socle-etat-succes) 10%, transparent); }
+.cx-repere[data-veille='true'] .cx-repere__point { --sc-mvt-voyant: 3400ms; background: var(--socle-etat-succes); color: var(--socle-etat-succes); }
+:root[data-ambiance='noir'] .cx-repere[data-mvt='fondu'] { animation-delay: calc(500ms + var(--sc-mvt-rang, 0) * 60ms); }
+/* Figé, le secteur se lirait comme un faisceau : en mouvement réduit, il n'est pas dessiné. */
+:root[data-ambiance='noir'][data-mouvement='reduit'] .cx-balayage,
+:root[data-ambiance='noir'][data-mouvement='aucun'] .cx-balayage { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ambiance='noir'] .cx-repere[data-mvt='fondu'] { animation-delay: 0ms; }
+  :root[data-ambiance='noir'] .cx-balayage { display: none; }
+}
+.cx-vignette { position: absolute; inset: 0; background: radial-gradient(ellipse closest-side at 50% 50%, transparent 60%, var(--socle-connexion-vignette) 100%); }
+
+/* ── En haut : la marque à gauche, la date du poste à droite ── */
+.cx-haut { position: absolute; z-index: 1; top: 40px; right: 48px; left: 48px; display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
 .cx-marque { display: flex; align-items: center; gap: 11px; }
 .cx-marque__logo {
   display: flex;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
+  flex: none;
   align-items: center;
   justify-content: center;
-  border-radius: 9px;
-  background: linear-gradient(180deg, var(--socle-logo-haut), var(--socle-logo-bas));
+  border-radius: 8px;
+  background: linear-gradient(160deg, var(--socle-connexion-logo-haut), var(--socle-connexion-logo-bas));
   color: var(--socle-primaire-encre);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
 }
-.cx-marque__nom { color: var(--socle-texte-1); font-size: 15px; font-weight: 600; }
-.cx-presentation { display: flex; flex-direction: column; align-items: flex-start; }
-.cx-pastille {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  margin: 0;
-  padding: 3px 11px;
-  border-radius: 99px;
-  background: color-mix(in srgb, var(--socle-etat-succes) 8%, var(--socle-fond-page));
-  color: var(--socle-etat-succes);
-  font-size: 11.5px;
-  font-weight: 500;
-}
-.cx-pastille__point { width: 6px; height: 6px; border-radius: 99px; background: var(--socle-etat-succes); }
-.cx-titre-gauche { margin: 22px 0 0; color: var(--socle-texte-1); font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 40px; }
-.cx-texte-gauche { max-width: 372px; margin: 16px 0 0; color: var(--socle-texte-3); font-size: 15px; line-height: 24px; }
-.cx-chiffres { display: flex; gap: 26px; margin: 24px 0 0; padding: 0; }
-.cx-chiffres > div { display: flex; flex-direction: column-reverse; gap: 2px; }
-.cx-chiffres dd { margin: 0; color: var(--socle-texte-1); font-size: 26px; font-weight: 600; letter-spacing: -0.02em; line-height: 32px; }
-.cx-chiffres dt { color: var(--socle-texte-3); font-size: 11.5px; }
-.cx-edition { margin: 31px 0 0; color: var(--socle-texte-3); font-size: 11.5px; }
+.cx-marque__textes { display: flex; flex-direction: column; }
+.cx-marque__nom { color: var(--socle-texte-1); font-size: 14px; font-weight: 600; line-height: 17px; }
+.cx-marque__sous { color: var(--socle-texte-3); font-size: 11.5px; line-height: 14px; }
+.cx-poste { display: flex; height: 26px; align-items: center; gap: 8px; margin: 0; color: var(--socle-texte-3); font-size: 12.5px; }
+.cx-poste__soleil { margin-right: 2px; color: var(--socle-etat-attention); }
+.cx-poste__sep { margin-left: 2px; }
+.cx-poste__heure { margin-left: 2px; color: var(--socle-texte-2); font-family: var(--socle-police-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
 
-/* ── Panneau droit : formulaire de 360 px, centré dans les deux sens ── */
-.cx-droite { display: flex; align-items: center; justify-content: center; padding: 48px 24px; }
-.cx-colonne { display: flex; width: min(360px, 100%); flex-direction: column; }
-.cx-form { display: flex; flex-direction: column; }
-.cx-titre { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; }
-.cx-consigne { margin: 8px 0 0; color: var(--socle-texte-3); font-size: 13.5px; line-height: 1.45; }
+/* ── Au centre : la carte ── */
+.cx-centre { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; padding: 135px 16px 120px; }
+.cx-carte {
+  display: flex;
+  width: min(404px, 100%);
+  box-sizing: border-box;
+  flex-direction: column;
+  padding: 34px 32px 24px;
+  border: 1px solid var(--socle-bord-panneau);
+  border-radius: 20px;
+  background: linear-gradient(180deg, var(--socle-connexion-carte-haut), var(--socle-connexion-carte-bas));
+  box-shadow: var(--socle-connexion-ombre);
+  backdrop-filter: blur(6px);
+}
+.cx-carte__logo {
+  display: flex;
+  width: 56px;
+  height: 56px;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  border-radius: 15px;
+  background: linear-gradient(160deg, var(--socle-connexion-logo-haut), var(--socle-connexion-logo-bas));
+  box-shadow: 0 6px 20px var(--socle-connexion-vignette);
+  color: var(--socle-primaire-encre);
+  font-size: 24px;
+  font-weight: 700;
+}
+.cx-titre { margin: 20px 0 0; font-size: 26px; font-weight: 600; letter-spacing: -0.02em; line-height: 32px; text-align: center; }
+.cx-phrase { margin: 4px 0 0; color: var(--socle-texte-3); font-size: 13.5px; line-height: 20px; text-align: center; }
+
+.cx-form { display: flex; flex-direction: column; margin-top: 24px; }
+.cx-consigne { margin: 0; color: var(--socle-texte-3); font-size: 13.5px; line-height: 1.45; }
 .cx-consigne--fait { color: var(--socle-texte-1); line-height: 1.6; }
-.cx-groupe { position: relative; display: flex; flex-direction: column; gap: 8px; margin-top: 22px; }
-.cx-groupe + .cx-groupe { margin-top: 14px; }
-.cx-etiquette { color: var(--socle-texte-3); font-size: 12px; font-weight: 500; line-height: 1.3; }
+.cx-groupe { position: relative; display: flex; flex-direction: column; gap: 8px; }
+.cx-groupe + .cx-groupe { margin-top: 12px; }
+.cx-etiquette { color: var(--socle-texte-3); font-size: 12px; line-height: 15px; }
 .cx-champ {
   position: relative;
   display: flex;
-  height: var(--cx-champ-h);
+  height: 52px;
   align-items: center;
-  gap: 9px;
-  padding: 0 15px;
+  gap: 10px;
+  padding: 0 14px 0 16px;
   border: 1px solid var(--socle-connexion-bord-champ);
   border-radius: 12px;
-  background: var(--socle-champ);
+  background: var(--socle-sous-carte);
   color: var(--socle-texte-3);
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition: border-color 0.12s;
 }
-.cx-champ:focus-within { border-color: var(--socle-connexion-bord-focus); box-shadow: 0 0 0 3px var(--cx-focus-halo), 0 0 0 5px color-mix(in srgb, var(--color-socle-focus) 70%, transparent); }
-.cx-champ:focus-within svg { color: var(--socle-connexion-cadenas); }
+/* Le champ qui a le focus (dès l'ouverture pour l'adresse) : son bord passe en haute visibilité, sans anneau épais (G06.6). */
+.cx-champ:focus-within { border-color: var(--socle-bord-champ); }
 .cx-champ[data-invalide='true'] { border-color: var(--socle-etat-critique); }
 .cx-champ input {
   min-width: 0;
-  flex: 1;
   height: 100%;
+  flex: 1;
+  padding: 0;
   border: 0;
   background: transparent;
   color: var(--socle-texte-1);
@@ -104,25 +151,17 @@
 .cx-champ input:-webkit-autofill:focus {
   -webkit-text-fill-color: var(--socle-texte-1);
   caret-color: var(--socle-texte-1);
-  box-shadow: 0 0 0 1000px var(--socle-champ) inset;
+  box-shadow: 0 0 0 1000px var(--socle-sous-carte) inset;
   transition: background-color 9999s ease-out;
 }
-.cx-afficher { flex: none; padding: 4px 2px; border: 0; background: transparent; color: var(--socle-texte-3); font-family: inherit; font-size: 12px; cursor: pointer; }
+.cx-afficher { flex: none; padding: 4px 2px; border: 0; background: transparent; color: var(--socle-texte-2); font-family: inherit; font-size: 12px; cursor: pointer; }
 .cx-afficher:hover { color: var(--socle-texte-1); }
-.cx-oublie { position: absolute; top: -2px; right: 0; padding: 2px 0; border: 0; background: transparent; color: var(--socle-texte-2); font-family: inherit; font-size: 12px; cursor: pointer; }
+.cx-oublie { position: absolute; top: -2px; right: 0; padding: 2px 0; border: 0; background: transparent; color: var(--socle-texte-2); font-family: inherit; font-size: 12px; line-height: 15px; cursor: pointer; }
 .cx-oublie:hover { color: var(--socle-texte-1); }
 .cx-aide { margin: 0; color: var(--socle-texte-3); font-size: 11.5px; line-height: 1.45; }
-.cx-aide--courriel { margin-top: 6px; font-size: 12px; }
-.cx-aide--acces { margin-top: 8px; text-align: center; }
-.cx-erreur {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 14px 0 0;
-  color: var(--socle-texte-courant);
-  font-size: 12px;
-  line-height: 1.45;
-}
+.cx-aide--courriel { margin-bottom: 14px; font-size: 12px; text-align: center; }
+.cx-aide--acces { max-width: 404px; margin-top: 8px; text-align: center; }
+.cx-erreur { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0 0; color: var(--socle-texte-courant); font-size: 12px; line-height: 1.45; }
 .cx-erreur[data-redirection='true'] { color: var(--socle-texte-2); }
 .cx-point { flex: none; width: 6px; height: 6px; margin-top: 5px; border-radius: 99px; background: var(--socle-texte-3); }
 .cx-point--critique { background: var(--socle-etat-critique); }
@@ -131,7 +170,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 22px;
+  margin-top: 12px;
   padding: 10px 14px;
   border: 1px solid color-mix(in srgb, var(--socle-etat-attention) 40%, transparent);
   border-radius: 12px;
@@ -143,20 +182,20 @@
 .cx-hors-ligne .cx-point { margin-top: 0; }
 .cx-hors-ligne > span:nth-child(2) { flex: 1; }
 
-/* ── Le bouton : 360 × 46, #ededed, rayon 12, 15 px / 600 ── */
+/* ── Le bouton primaire (le seul de l'écran) : pleine largeur, 48 px, rayon 12, 14,5 px / 600 ── */
 .cx-valider {
   display: flex;
-  height: 46px;
+  height: 48px;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  margin-top: 22px;
+  gap: 9px;
+  margin-top: 12px;
   border: 0;
   border-radius: 12px;
   background: var(--socle-primaire);
   color: var(--socle-primaire-encre);
   font-family: inherit;
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.12s;
@@ -166,36 +205,58 @@
 .cx-tourne { animation: cx-tour 0.9s linear infinite; }
 @keyframes cx-tour { to { transform: rotate(360deg); } }
 
-.cx-note {
-  display: flex;
-  min-height: 58px;
-  align-items: center;
-  gap: 9px;
-  margin: 18px 0 0;
-  padding: 16px;
-  border: 1px solid var(--socle-connexion-bord-note);
-  border-radius: 12px;
-  background: var(--socle-connexion-fond-note);
-  color: var(--socle-texte-3);
-  font-size: 11.5px;
-  line-height: 1.45;
-}
-.cx-note svg { flex: none; color: var(--socle-etat-succes); }
-.cx-pied { margin-top: 22px; color: var(--socle-texte-3); font-size: 12px; text-align: center; }
-.cx-pied p { margin: 0; }
+/* ── La note de protection : filet haut, bouclier vert, deux lignes ── */
+.cx-note { display: flex; align-items: flex-start; gap: 9px; margin: 22px 0 0; padding-top: 16px; border-top: 1px solid var(--socle-lateral-filet); color: var(--socle-texte-3); font-size: 12px; line-height: 18px; }
+.cx-note svg { flex: none; margin-top: 2px; color: var(--socle-etat-succes); }
+
+/* ── Sous la carte : la demande d'accès ── */
+.cx-sous-carte { display: flex; flex-direction: column; align-items: center; margin-top: 18px; color: var(--socle-texte-3); font-size: 12.5px; text-align: center; }
+.cx-sous-carte p { margin: 0; }
 .cx-lien-bouton { padding: 2px 0; border: 0; background: transparent; color: var(--socle-texte-courant); font-family: inherit; font-size: inherit; cursor: pointer; text-decoration: none; }
 .cx-lien-bouton:hover { color: var(--socle-texte-1); text-decoration: underline; text-underline-offset: 3px; }
-.cx-lien-bouton--centre { margin-top: 14px; font-size: 12px; text-align: center; }
+.cx-lien-bouton--centre { align-self: center; margin-top: 14px; font-size: 12px; }
 
+/* ── Le pied : l'édition, la pastille d'état de La Garde, le lien d'aide ── */
+.cx-bas { position: absolute; z-index: 1; right: 48px; bottom: 34px; left: 48px; display: grid; height: 36px; align-items: center; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 16px; }
+.cx-bas__edition { margin: 0; color: var(--socle-texte-3); font-size: 12px; }
+.cx-etat {
+  display: inline-flex;
+  height: 36px;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0 18px 0 17px;
+  border: 1px solid var(--socle-bord-controle);
+  border-radius: 99px;
+  background: var(--socle-connexion-pastille);
+  color: var(--socle-texte-2);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.cx-etat__fort { margin-left: 2px; color: var(--socle-texte-courant); }
+.cx-etat__sep { margin: 0 4px; color: var(--socle-texte-3); }
+.cx-etat[data-ton='attention'] .cx-etat__fort { color: var(--socle-etat-attention); }
+.cx-bas__aide { position: relative; display: flex; justify-content: flex-end; }
+.cx-bas__aide-texte { position: absolute; right: 0; bottom: calc(100% + 8px); width: 280px; margin: 0; padding: 10px 12px; border: 1px solid var(--socle-bord-controle); border-radius: 10px; background: var(--socle-connexion-pastille); color: var(--socle-texte-courant); font-size: 12px; line-height: 1.45; }
+.cx-lien-aide { display: inline-flex; align-items: center; gap: 7px; padding: 2px 0; border: 0; background: transparent; color: var(--socle-texte-2); font-family: inherit; font-size: 12px; cursor: pointer; }
+.cx-lien-aide:hover { color: var(--socle-texte-1); }
+
+/* Focus clavier : anneau 2 px #ededed, décalé de 2 px (§7.6), sur tout ce qui se clique. */
 .cx-focus:focus-visible { outline: 2px solid var(--color-socle-focus); outline-offset: 2px; }
 
-/* ── Fenêtre étroite : le panneau de présentation s'efface, le formulaire reste centré ── */
+/* ── Fenêtre étroite (fiche G06 §11) : la date et l'aide passent sous la pastille ; la carte en haut et la page défile ── */
 @media (max-width: 1099.98px) {
-  :root[data-ambiance='noir'] .cx { grid-template-columns: minmax(0, 1fr); }
-  :root[data-ambiance='noir'] .cx-gauche { display: none; }
+  .cx-haut .cx-poste { display: none; }
+  .cx-bas { position: relative; right: auto; bottom: auto; left: auto; display: flex; height: auto; flex-direction: column; padding: 0 16px 24px; }
+  .cx-centre { padding-bottom: 32px; }
 }
 @media (max-height: 719.98px) {
-  .cx-droite { align-items: flex-start; padding-top: 48px; }
+  .cx-centre { padding-top: 96px; padding-bottom: 32px; }
+  .cx-bas { position: relative; right: auto; bottom: auto; left: auto; margin: 0 48px 24px; }
+}
+@media (max-width: 479.98px) {
+  .cx-carte { padding: 28px 20px 20px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .cx-tourne { animation: none; }

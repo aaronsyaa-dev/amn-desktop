@@ -1,16 +1,12 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowRight, Loader2, Lock, Mail, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../../auth/AuthContext';
 import { bridge } from '../../../lib/bridge';
 import { cleanErrorMessage, isRedirection } from '../../../lib/errorMessage';
 import { useLangue } from '../../../i18n';
-import { EDITION_PRODUCT_NAME, APP_VERSION } from '../../../edition/edition';
-import { REGISTRE_MODULES } from '../../modules/registre';
+import { EDITION_PRODUCT_NAME } from '../../../edition/edition';
 import { destinationApresConnexion } from '../premiereConnexion';
-import { useMots } from './i18n';
-import './connexion.css';
+import { VueConnexion } from './VueConnexion';
 
 /**
  * LA CONNEXION (G06) — l'interface seulement. L'authentification ne change pas.
@@ -21,8 +17,9 @@ import './connexion.css';
  * PRÉVIENT le prestataire (`forgotPassword`, réponse identique que l'adresse existe ou non) ; un refus
  * d'édition (`isRedirection`) se lit en gris. Seuls la présentation et la mise en page changent.
  *
- * Deux colonnes : à gauche la présentation (rien n'est lu dans l'espace avant la connexion : « 101 » et « 8 »
- * viennent du registre local, le reste est du texte fixe) ; à droite le formulaire de 360 px, centré.
+ * v3 : une carte centrée sur un fond qui veille (`VueConnexion`, `CadreConnexion`) ; ce composant ne garde que l'état
+ * et les gestes d'origine, recopiés tels quels, et passe tout à la vue. Avant la connexion, rien n'est lu dans
+ * l'espace : ni chiffre, ni nom (l'ancienne colonne de présentation et ses indicateurs ont disparu avec la v3).
  *
  * Le contrat que les contrôles de bout en bout attendent est conservé : `input[name="email"]`,
  * `input[name="password"]`, UN SEUL `button[type="submit"]` visible à la fois (les vues connexion, double
@@ -31,9 +28,6 @@ import './connexion.css';
 
 type Vue = 'connexion' | 'mfa' | 'oublie';
 type Phase = 'repos' | 'envoi' | 'succes';
-
-/** Un chiffre de présentation fixe, à faire valider : il est visible avant toute connexion, donc jamais lu dans la base. */
-export const ORGANISATIONS_PRESENTEES = 12;
 
 const EMAIL_COMPLET = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -62,7 +56,6 @@ function useEnLigne(): [boolean, () => void] {
 
 export function ConnexionRefonte() {
   const { t } = useLangue();
-  const { tm } = useMots();
   const { login, completeMfa, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -106,8 +99,6 @@ export function ConnexionRefonte() {
 
   const envoi = phase === 'envoi';
   const parti = phase === 'succes';
-  const nombreModules = REGISTRE_MODULES.entrees.length;
-  const nombreFamilles = REGISTRE_MODULES.familles.length;
 
   const reussir = (adresse: string) => {
     setPhase('succes');
@@ -183,278 +174,60 @@ export function ConnexionRefonte() {
   const produit = EDITION_PRODUCT_NAME;
 
   return (
-    <motion.main
-      data-connexion
-      data-refonte-police="inter"
-      className="cx"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: parti ? 0 : 1 }}
-      transition={{ duration: parti ? 0.4 : 0.18 }}
-    >
-      <aside className="cx-gauche" aria-label={produit}>
-        <div className="cx-marque">
-          <span aria-hidden className="cx-marque__logo">
-            A
-          </span>
-          <span className="cx-marque__nom">{produit}</span>
-        </div>
-
-        <div className="cx-presentation">
-          <p className="cx-pastille">
-            <span aria-hidden className="cx-pastille__point" />
-            {tm('gauche.pastille', { n: ORGANISATIONS_PRESENTEES })}
-          </p>
-          <h2 className="cx-titre-gauche">
-            {tm('gauche.titre1')}
-            <br />
-            {tm('gauche.titre2')}
-          </h2>
-          <p className="cx-texte-gauche">{tm('gauche.texte')}</p>
-          <dl className="cx-chiffres">
-            <div>
-              <dd>{nombreModules}</dd>
-              <dt>{tm('gauche.modules')}</dt>
-            </div>
-            <div>
-              <dd>{tm('gauche.h24')}</dd>
-              <dt>{tm('gauche.supervision')}</dt>
-            </div>
-            <div>
-              <dd>{nombreFamilles}</dd>
-              <dt>{tm('gauche.familles')}</dt>
-            </div>
-          </dl>
-          <p className="cx-edition">
-            {tm('gauche.edition')} · v{APP_VERSION}
-          </p>
-        </div>
-      </aside>
-
-      <section className="cx-droite">
-        <div className="cx-colonne">
-          {!enLigne && (
-            <div className="cx-hors-ligne" role="status">
-              <span aria-hidden className="cx-point cx-point--attention" />
-              <span>{tm('horsLigne')}</span>
-              <button type="button" onClick={relireReseau} className="cx-lien-bouton">
-                {tm('reessayer')}
-              </button>
-            </div>
-          )}
-
-          {vue === 'connexion' && (
-            <form onSubmit={surConnexion} noValidate aria-label={tm('form.titre')} className="cx-form">
-              <h1 className="cx-titre">{tm('form.titre')}</h1>
-              <p className="cx-consigne">{tm('form.consigne')}</p>
-
-              <div className="cx-groupe">
-                <label htmlFor="cx-email" className="cx-etiquette">
-                  {tm('form.email')}
-                </label>
-                <div className="cx-champ" data-invalide={invalide || aide ? 'true' : undefined}>
-                  <Mail aria-hidden size={16} />
-                  <input
-                    ref={champEmail}
-                    id="cx-email"
-                    type="email"
-                    name="email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      if (aide) setAide(null);
-                    }}
-                    autoComplete="email"
-                    autoFocus={!email}
-                    disabled={envoi || parti}
-                    aria-invalid={invalide || aide ? true : undefined}
-                    aria-describedby={aide ? idAideEmail : undefined}
-                    required
-                  />
-                </div>
-                {aide && (
-                  <p id={idAideEmail} className="cx-aide" role="alert">
-                    {tm(aide)}
-                  </p>
-                )}
-              </div>
-
-              <div className="cx-groupe cx-groupe--mdp">
-                <label htmlFor="cx-mdp" className="cx-etiquette">
-                  {tm('form.mdp')}
-                </label>
-                <div className="cx-champ" data-invalide={invalide ? 'true' : undefined}>
-                  <Lock aria-hidden size={16} className="cx-champ__cadenas" />
-                  <input
-                    ref={champMdp}
-                    id="cx-mdp"
-                    type={montrer ? 'text' : 'password'}
-                    name="password"
-                    value={mdp}
-                    onChange={(e) => setMdp(e.target.value)}
-                    onKeyDown={surTouche}
-                    onKeyUp={surTouche}
-                    onBlur={() => setMajuscules(false)}
-                    autoComplete="current-password"
-                    disabled={envoi || parti}
-                    aria-invalid={invalide ? true : undefined}
-                    aria-describedby={[majuscules ? idMaj : null, message ? idErreur : null].filter(Boolean).join(' ') || undefined}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setMontrer((v) => !v)}
-                    aria-pressed={montrer}
-                    aria-label={tm(montrer ? 'form.masquer.nom' : 'form.afficher.nom')}
-                    disabled={envoi || parti}
-                    className="cx-afficher cx-focus"
-                  >
-                    {tm(montrer ? 'form.masquer' : 'form.afficher')}
-                  </button>
-                </div>
-                {majuscules && (
-                  <p id={idMaj} className="cx-aide">
-                    {tm('verrMaj')}
-                  </p>
-                )}
-                {/* « Oublié ? » est APRÈS le champ dans l'ordre du document (tabulation : e-mail, mot de passe, Afficher, Oublié ?) et posé à droite de l'étiquette par la feuille. */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setErreur(null);
-                    setOublie('saisie');
-                    setVue('oublie');
-                  }}
-                  aria-label={tm('form.oublie.nom')}
-                  disabled={envoi || parti}
-                  className="cx-oublie cx-focus"
-                >
-                  {tm('form.oublie')}
-                </button>
-              </div>
-
-              {message && (
-                <p id={idErreur} role={redirection ? 'status' : 'alert'} className="cx-erreur" data-redirection={redirection || undefined}>
-                  <span aria-hidden className={`cx-point ${redirection ? 'cx-point--attention' : 'cx-point--critique'}`} />
-                  {message}
-                </p>
-              )}
-
-              <button type="submit" disabled={envoi || parti} className="cx-valider cx-focus">
-                <span>{tm('form.valider')}</span>
-                {envoi ? <Loader2 aria-hidden size={14} className="cx-tourne" /> : <ArrowRight aria-hidden size={14} />}
-              </button>
-              <span role="status" className="sr-only">
-                {envoi ? tm('form.enCours') : ''}
-              </span>
-
-              <p className="cx-note">
-                <ShieldCheck aria-hidden size={12} />
-                <span>{tm('form.note')}</span>
-              </p>
-            </form>
-          )}
-
-          {vue === 'mfa' && defi && (
-            <form onSubmit={surCode} noValidate aria-label={t('connexion.mfa.titre')} className="cx-form">
-              <h1 className="cx-titre">{t('connexion.mfa.titre')}</h1>
-              <p className="cx-consigne">{t(secours ? 'connexion.mfa.consigneSecours' : 'connexion.mfa.consigne')}</p>
-              <p className="cx-aide cx-aide--courriel">{defi.email}</p>
-              <div className="cx-groupe">
-                <label htmlFor="cx-code" className="cx-etiquette">
-                  {t(secours ? 'connexion.mfa.codeSecours' : 'connexion.mfa.code')}
-                </label>
-                <div className="cx-champ" data-invalide={invalide ? 'true' : undefined}>
-                  <ShieldCheck aria-hidden size={16} />
-                  <input
-                    id="cx-code"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    autoComplete="one-time-code"
-                    inputMode={secours ? 'text' : 'numeric'}
-                    maxLength={secours ? 9 : 7}
-                    placeholder={secours ? 'XXXX-XXXX' : '000000'}
-                    autoFocus
-                    disabled={envoi || parti}
-                    aria-invalid={invalide ? true : undefined}
-                    aria-describedby={message ? idErreur : undefined}
-                  />
-                </div>
-              </div>
-              {message && (
-                <p id={idErreur} role="alert" className="cx-erreur">
-                  <span aria-hidden className="cx-point cx-point--critique" />
-                  {message}
-                </p>
-              )}
-              <button type="submit" disabled={envoi || parti || code.trim().length < 6} className="cx-valider cx-focus">
-                <span>{t('connexion.mfa.valider')}</span>
-                {envoi && <Loader2 aria-hidden size={14} className="cx-tourne" />}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSecours((v) => !v);
-                  setCode('');
-                  setErreur(null);
-                }}
-                className="cx-lien-bouton cx-lien-bouton--centre cx-focus"
-              >
-                {t(secours ? 'connexion.mfa.utiliserApp' : 'connexion.mfa.utiliserSecours')}
-              </button>
-            </form>
-          )}
-
-          {vue === 'oublie' && (
-            <form onSubmit={surOublie} noValidate aria-label={t('connexion.oublie.titre')} className="cx-form">
-              <h1 className="cx-titre">{t('connexion.oublie.titre')}</h1>
-              {oublie === 'fait' ? (
-                <p className="cx-consigne cx-consigne--fait" data-oublie={oublieChemin} role="status">
-                  {t(oublieChemin === 'envoye' ? 'connexion.oublie.faitCourriel' : 'connexion.oublie.fait')}
-                </p>
-              ) : (
-                <>
-                  <p className="cx-consigne">{t('connexion.oublie.consigne')}</p>
-                  <div className="cx-groupe">
-                    <label htmlFor="cx-email-oublie" className="cx-etiquette">
-                      {tm('form.email')}
-                    </label>
-                    <div className="cx-champ">
-                      <Mail aria-hidden size={16} />
-                      <input
-                        id="cx-email-oublie"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        autoComplete="username"
-                        autoFocus
-                      />
-                    </div>
-                  </div>
-                  <button type="submit" disabled={oublie === 'envoi' || !EMAIL_COMPLET.test(email.trim())} className="cx-valider cx-focus">
-                    <span>{t('connexion.oublie.envoyer')}</span>
-                    {oublie === 'envoi' && <Loader2 aria-hidden size={14} className="cx-tourne" />}
-                  </button>
-                </>
-              )}
-              <button type="button" onClick={() => setVue('connexion')} className="cx-lien-bouton cx-lien-bouton--centre cx-focus">
-                {t('connexion.oublie.annuler')}
-              </button>
-            </form>
-          )}
-
-          {vue === 'connexion' && (
-            <div className="cx-pied">
-              <p>
-                <span>{tm('form.pasDeCompte')}</span>{' '}
-                <button type="button" onClick={() => setAcces((v) => !v)} aria-expanded={acces} className="cx-lien-bouton cx-focus">
-                  {tm('form.demander')}
-                </button>
-              </p>
-              {acces && <p className="cx-aide cx-aide--acces">{tm('form.demander.texte')}</p>}
-            </div>
-          )}
-        </div>
-      </section>
-    </motion.main>
+    <VueConnexion
+      produit={produit}
+      enLigne={enLigne}
+      onRelireReseau={relireReseau}
+      vue={vue}
+      envoi={envoi}
+      parti={parti}
+      message={message}
+      redirection={redirection}
+      invalide={invalide}
+      ids={{ erreur: idErreur, aideEmail: idAideEmail, maj: idMaj }}
+      connexion={{
+        email,
+        onEmail: (v) => {
+          setEmail(v);
+          if (aide) setAide(null);
+        },
+        mdp,
+        onMdp: setMdp,
+        montrer,
+        onMontrer: () => setMontrer((v) => !v),
+        majuscules,
+        onToucheMdp: surTouche,
+        onQuitterMdp: () => setMajuscules(false),
+        aide,
+        onSoumettre: surConnexion,
+        onOublie: () => {
+          setErreur(null);
+          setOublie('saisie');
+          setVue('oublie');
+        },
+        champEmail,
+        champMdp,
+        focusInitial: !email,
+      }}
+      mfa={
+        vue === 'mfa' && defi
+          ? {
+              email: defi.email,
+              secours,
+              code,
+              onCode: setCode,
+              onSoumettre: surCode,
+              onBasculer: () => {
+                setSecours((v) => !v);
+                setCode('');
+                setErreur(null);
+              },
+            }
+          : null
+      }
+      oublie={{ etat: oublie, chemin: oublieChemin, adresseValide: EMAIL_COMPLET.test(email.trim()), onSoumettre: surOublie, onRetour: () => setVue('connexion') }}
+      acces={acces}
+      onAcces={() => setAcces((v) => !v)}
+    />
   );
 }
