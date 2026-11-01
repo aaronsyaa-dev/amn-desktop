@@ -26,6 +26,11 @@ export { statutAffiche, totauxDeFacture, totauxDeLignes, type Totaux } from './a
 export { calculerSante, groupePipeline } from './contacts';
 export { avancementProjet, journeesDeTravail, serieEnCours, statutProjet, type JourneeDeTravail } from './ma-journee';
 export { moi } from './equipe';
+export { joursSansImpaye, jourDuCreneau } from './complements';
+export { quantiteEnStock } from './creer';
+export { etatOrganisation, niveauMaturite, NIVEAUX_MATURITE, scoreMaturite } from './garde';
+export { etatAccord, niveauConformite, outilDisponible, PHASES_MISSION } from './cyber';
+export type * from './types-suite';
 
 import { construireMonde, type OptionsMonde } from './monde';
 import type { Monde, NomDuJeu } from './types';

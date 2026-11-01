@@ -26,11 +26,12 @@ import type { Expense } from '../../state/expenseEngine';
 import type { Note } from '../../state/useNotes';
 import type { ProjectData } from '../../state/projectEngine';
 import type { Jour, Volume } from './outils';
+import { NOMS_DES_JEUX_SUITE, type MondeSuite } from './types-suite';
 
 /* ----------------------------- Contexte ----------------------------- */
 
 /** Les jeux qu'on peut demander, un par un ou dans le monde entier. */
-export const NOMS_DES_JEUX = [
+const NOMS_DES_JEUX_BASE = [
   // Base
   'equipe',
   // Ma journée
@@ -61,7 +62,10 @@ export const NOMS_DES_JEUX = [
   'mouvements',
   'enveloppes',
 ] as const;
-export type NomDuJeu = (typeof NOMS_DES_JEUX)[number];
+
+/** Tous les jeux : ceux du premier passage, puis la suite (`types-suite.ts`). */
+export const NOMS_DES_JEUX = [...NOMS_DES_JEUX_BASE, ...NOMS_DES_JEUX_SUITE] as const;
+export type NomDuJeu = (typeof NOMS_DES_JEUX_BASE)[number] | (typeof NOMS_DES_JEUX_SUITE)[number];
 
 export interface Contexte {
   /** La graine : même graine, mêmes données. */
@@ -557,7 +561,7 @@ export interface Enveloppe {
 /* -------------------------------- Le monde -------------------------------- */
 
 /** Tous les jeux, cohérents entre eux, pour un contexte donné. */
-export interface Monde {
+export interface Monde extends MondeSuite {
   contexte: Contexte;
   entreprise: Entreprise;
   equipe: Membre[];
