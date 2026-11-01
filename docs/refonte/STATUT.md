@@ -4,9 +4,9 @@
 
 - Branche d'intégration : **`claude/refonte-vivante`** (décision du 31 oct., §1.1). Base `main` @ `630ef45`.
 - Dernière mise à jour : 2026-11-01. Décisions de Harun : LOT-06 confié à S7 (F1 écartée), LOT-09 à S1 après LOT-02, widgets natifs hors du premier jet. Nouveau lot **LOT-10 Cyber** (14 écrans, S6) : **141 écrans, 11 lots**.
-- **LOT-00 n'est pas encore fusionné** : 8 écrans sur 8 faits sur `claude/refonte-socle`, il reste quatre tâches à S0 (§5).
-- Fusionnés le 1er nov. : T1 (API d'essai, bac à sable) et les données fictives de SIM, avec `check:donnees` en CI.
-- Gardes locales sur `refonte-vivante` : `typecheck`, `typecheck:business`, `lint` et les 44 contrôles sans navigateur de `editions.yml` verts.
+- **LOT-00 est fusionné** (`488cdcc`, 1er nov.), avec les 4 commits de S5. **GO aux lots 01 à 08 et 10** : qui peut travailler et ce qui lui manque, au §5.
+- Fusionnés aussi le 1er nov. : T1 (API d'essai, bac à sable, contrôle de fidélité) et les données fictives de SIM, avec `check:donnees` en CI.
+- Gardes locales sur `refonte-vivante` : `typecheck`, `typecheck:business`, `lint` et les 55 contrôles sans navigateur de `editions.yml` verts.
 - Le dossier de construction n'est pas committé (dépôt public). Les images arrivent lot par lot, dans le zip de chaque lot.
 
 ## 1. Décisions du CO (31 oct., complétées le 1er nov.)
@@ -107,7 +107,7 @@ Comment l'ajouter sans changer les 127 autres écrans :
    - LOT-10 adapte `check:navigation` pour exclure les familles contextuelles des totaux.
 3. **Liens** : « Ouvrir Cyber » sur F70 est fait par LOT-08 (c'est son écran) ; le renvoi de CY04 vers La Garde est fait par LOT-10.
 
-### 1.8 Les 15 questions de S3 (note `docs/refonte/preparation-garde.md`, branche `claude/refonte-garde`)
+### 1.8 Les 15 questions de S3 (note `docs/refonte/preparation-garde.md`, branche `claude/refonte-garde`) — **décidé** le 1er nov.
 
 **Règle générale : on habille ce qui existe, rien de neuf côté serveur dans ce lot.**
 
@@ -133,13 +133,12 @@ Comment l'ajouter sans changer les 127 autres écrans :
 | 14 | Raccourcis | On prend la touche de la fiche si elle est libre, sinon pas de raccourci (écart noté). On ne déplace jamais un raccourci existant. `⌘ ⇧ I` est libre en production ; `⌘ O` est libre ; `⇧ ⌘ O` reste au sélecteur d'organisation. |
 | 15 | Textes | Français mot pour mot. Anglais traduit, avec les mêmes clés, dans `src/refonte/garde/i18n.ts` (le français est typé contre l'anglais, comme partout). |
 
-### 1.9 Quand allumer la nouvelle coquille
+### 1.9 Quand allumer la nouvelle coquille — **décidé** le 1er nov.
 
 La coquille de LOT-00 est éteinte par défaut (drapeau `amn.coquille`). **Proposition : l'allumer par défaut dans l'édition interne au moment de la fusion de LOT-00**, à trois conditions :
 
 1. T1 a fait un passage sur le paquet interne, coquille allumée : `check:coquille`, `contraste`, `focus` et `mouvement`, sans régression par rapport à `main` ;
-2. Harun l'a regardée une dizaine de minutes sur un vrai poste ;
-3. le réglage « Paramètres › Nouvelle coquille » reste, pour revenir en arrière, jusqu'à la fin de LOT-09. L'ancienne coquille est retirée après LOT-09.
+2. le réglage « Paramètres › Nouvelle coquille » reste, pour revenir en arrière, jusqu'à la fin de LOT-09. L'ancienne coquille est retirée après LOT-09.
 
 Pourquoi ce moment :
 
@@ -147,7 +146,7 @@ Pourquoi ce moment :
 - chaque lot construit dedans ;
 - l'édition cliente n'est pas concernée (couture vide).
 
-Le prix : pendant la transition, les écrans pas encore refondus s'affichent dans la nouvelle coquille. C'est acceptable pour une édition interne à trois personnes. S0 change la valeur par défaut (une ligne de `drapeau.ts`) quand Harun dit oui.
+Le prix : pendant la transition, les écrans pas encore refondus s'affichent dans la nouvelle coquille. C'est acceptable pour une édition interne à trois personnes. S0 change la valeur par défaut (une ligne de `drapeau.ts`) dans LOT-00b, dès que le passage 2 de T1 est propre.
 
 ## 2. Les lots
 
@@ -155,7 +154,7 @@ Ordre : **LOT-00 d'abord, fusionné** ; puis les lots 01 à 08 et **10** en para
 
 | Vague | Lot | Écrans (re-habillage / mixte / nouveau) | Branche | Session | Modèle · effort | Dépend de | État |
 |---|---|---|---|---|---|---|---|
-| 1 | **LOT-00** Système et démarrage | 8 (1 / 6 / 1) | `claude/refonte-socle` | S0 | Opus 5.5, élevé | aucune | **fait, non fusionné** (§5) |
+| 1 | **LOT-00** Système et démarrage | 8 (1 / 6 / 1) | `claude/refonte-socle` | S0 | Opus 5.5, élevé | aucune | **fusionné** (`488cdcc`) ; LOT-00b en cours |
 | 2 | **LOT-01** Ma journée | 16 (4 / 8 / 4) | `claude/refonte-journee` | S2 | Sonnet 5.5, élevé | LOT-00 fusionné | à faire |
 | 2 | **LOT-02** Mes contacts et clients | 13 (3 / 9 / 1) | `claude/refonte-contacts` | S1 | Sonnet 5.5, élevé | LOT-00 fusionné | à faire |
 | 2 | **LOT-03** Écrire et retenir | 9 (3 / 5 / 1) | `claude/refonte-ecrire` | S5 | Sonnet 5.5, élevé | LOT-00 fusionné | à faire |
@@ -171,7 +170,7 @@ Ordre : **LOT-00 d'abord, fusionné** ; puis les lots 01 à 08 et **10** en para
 
 | Session | Lot | Avis | Précisions |
 |---|---|---|---|
-| S0 Socle | LOT-00, puis LOT-00b | ✓ | 8 écrans sur 8 faits. Il reste quatre tâches avant la fusion, et LOT-00b après (§5). |
+| S0 Socle | LOT-00, puis LOT-00b | ✓ | LOT-00 fusionné. LOT-00b en cours : substitution, famille Cyber, coquille (§5). |
 | S2 | LOT-01 | ✓ | N01 remplace son Accueil ; M1, M2 et M4 sont absorbés par G05, H40 et H42. Ses 5 commits postérieurs (`b228f5d`) ne sont pas fusionnés. |
 | S1 | LOT-02, puis LOT-09 | ✓ | **LOT-09 confié à S1 après LOT-02** (décision de Harun). |
 | S5 | LOT-03, puis LOT-05 | ✓ | S5 reste propriétaire du registre. |
@@ -180,24 +179,24 @@ Ordre : **LOT-00 d'abord, fusionné** ; puis les lots 01 à 08 et **10** en para
 | F1 | — | écartée de LOT-06 | Continue l'Atelier. Vérificateur cassé sur `refonte-vivante` (C-003, patch de T1 à appliquer par F1). Ses modules rejoignent les familles par le registre, après LOT-06. |
 | S6 | LOT-07, puis LOT-10 | ⚠ à condition | Les deux après sa phase 1 (privée ; Harun dit au CO quand elle est finie). LOT-07 d'abord : CY07 étend MO02 (Sites et trackers), qui est dans LOT-07. 30 écrans à elle seule, Opus 5.5, effort élevé. Audit privé ; commits sans description de faiblesse ; écrans sensibles relus par T1. |
 | S3 | LOT-08 | ✓ | Règles du §1.8. Zone élargie à `src/bureaux/cyber/**` (partage dans `REGLES.md`). Ajoute « Ouvrir Cyber » sur F70. |
-| T1 | transversal | ✓ | API d'essai et bac à sable **fusionnés** (`97929c1`). Seule session autorisée à `build:web` sur données fictives (`REGLES.md`). Fait les captures et les comparaisons à ± 2 px de tous les lots. L'outil de fidélité est sur `claude/refonte-qualite` (`f2e243a`, non fusionné). |
+| T1 | transversal | ✓ | API d'essai et bac à sable **fusionnés** (`97929c1`). Seule session autorisée à `build:web` sur données fictives (`REGLES.md`). Fait les captures et les comparaisons à ± 2 px de tous les lots. Outil de fidélité fusionné (`3cc8dff`). |
 | SIM | transversal | ✓ | 25 jeux fusionnés (`src/refonte/donnees/`), **`check:donnees` branché en CI**. Reste à faire : les jeux d'Écrire, Échanger, Créer, Outils, La Garde et Cyber, puis les chargeurs vers l'API d'essai. |
 
 ## 4. Sessions et branches (état au 1er nov.)
 
 | Session | Branche | État | Dernier sha | Rapport | Points |
 |---|---|---|---|---|---|
-| S0 / LOT-00 | `claude/refonte-socle` | **8 sur 8 faits, non fusionné** (§5) | `fdd6366` | `rapports/LOT-00.md` (sur sa branche) | Questions de LOT-00 : §7, section LOT-00 |
+| S0 / LOT-00 | `claude/refonte-socle` | **fusionné** (`488cdcc`) ; LOT-00b à suivre sur la même branche | `fdd6366` | `rapports/LOT-00.md` (sur sa branche) | Questions de LOT-00 : §7, section LOT-00 |
 | DS | `claude/refonte-design-socle` | gelée, reprise par LOT-00 | `e97f479` | `rapports/DS.md` (branche LOT-00) | — |
 | S1 | `claude/refonte-s1-navigation` | fusionnée (ancienne tranche) | `e788af8` | [`rapports/S1.md`](rapports/S1.md) | Prend LOT-02 puis LOT-09 |
 | S2 | `claude/refonte-s2-accueil` | fusionnée à `a537dbe` ; 5 commits non fusionnés | `b228f5d` | [`rapports/S2.md`](rapports/S2.md) | Remplacée par LOT-01 |
 | S3 | `claude/refonte-s3-supervisor` (ancienne), `claude/refonte-garde` (LOT-08) | ancienne fusionnée ; LOT-08 en préparation (note seulement, aucun code) | `e7f4f25`, `2eedc9b` | `docs/refonte/preparation-garde.md` (branche LOT-08) | 15 questions tranchées au §1.8 |
 | S4 | — | annulée | — | — | — |
-| S5 | `claude/refonte-s5-modules` | fusionnée à `69cd802` ; 4 commits **à reprendre par S0** | `b82e50f` | [`rapports/S5.md`](rapports/S5.md) | Conflit `src/socle/i18n.ts` |
+| S5 | `claude/refonte-s5-modules` | fusionnée, y compris les 4 commits postérieurs (`5410081`) | `b82e50f` | [`rapports/S5.md`](rapports/S5.md) | Prend LOT-03 puis LOT-05 |
 | S6 | `claude/refonte-sec-*` | phase 1 en cours, privée. **Ne pas fusionner sans décision de Harun.** | — | `docs/securite/**`, hors dépôt | Prend LOT-07 puis LOT-10 |
 | S7 | `claude/refonte-creer` | **à créer** | — | — | LOT-06 |
 | F1 | `claude/refonte-atelier-f1` | prête, non fusionnée, rien de branché | `59056ad` | `docs/atelier/PRET.md` | C-003 à appliquer ; [`INTEGRATION-F1.md`](INTEGRATION-F1.md) à valider |
-| T1 | `claude/refonte-qualite-t1`, `claude/refonte-qualite` | **`qualite-t1` fusionnée** (`97929c1`) ; `qualite` (fidélité) non fusionnée | `51a962d`, `f2e243a` | [`../qualite/SANTE.md`](../qualite/SANTE.md) | Passage 2 attendu sur LOT-00 |
+| T1 | `claude/refonte-qualite-t1`, `claude/refonte-qualite` | **les deux fusionnées** (`97929c1`, `3cc8dff`) | `51a962d`, `f2e243a` | [`../qualite/SANTE.md`](../qualite/SANTE.md) | Passage 2 à faire sur `refonte-vivante` |
 | SIM | `claude/refonte-sim-bac-a-sable`, `claude/refonte-donnees-fictives` | **données fusionnées** (`d017393`) + `check:donnees` en CI ; bac à sable non fusionné | `95d9765`, `d017393` | [`rapports/DONNEES.md`](rapports/DONNEES.md) | Jeux des autres lots à faire |
 | G0 | — | retirée | — | — | — |
 
@@ -214,36 +213,53 @@ Ordre : **LOT-00 d'abord, fusionné** ; puis les lots 01 à 08 et **10** en para
 
 **Relances automatiques : aucune**, tant que Harun n'a pas validé le plafond proposé (une relance par nuit et par piste).
 
-## 5. Ordre et prochaines actions
+## 5. GO : qui peut travailler, et ce qui lui manque (1er nov.)
 
-**LOT-00 n'est pas fusionné dans `refonte-vivante`.** Le lot est fait (8 écrans sur 8). Sur une fusion d'essai avec `refonte-vivante`, `typecheck`, `typecheck:business`, `lint` et les 54 contrôles sans navigateur de sa CI passent. Il reste quatre choses à faire par **S0 sur `claude/refonte-socle`**, dans cet ordre :
+**LOT-00 est fusionné dans `refonte-vivante` (`488cdcc`), avec les 4 commits de S5 (`5410081`). GO aux lots 01 à 08 et 10.** Chaque lot crée sa branche depuis `refonte-vivante` à jour.
 
-1. **Fusionner `claude/refonte-vivante`** dans sa branche. 1 conflit, `docs/refonte/STATUT.md` : prendre la version de `refonte-vivante`, où le CO a déjà reporté le tableau de LOT-00 et la liste des composants (§7).
-2. **Reprendre les 4 commits de S5** : fusionner `claude/refonte-s5-modules` (`b82e50f`). 1 conflit, `src/socle/i18n.ts` : garder les deux côtés, c'est-à-dire le nom « Créer et produire » de S5 et les nouvelles clés de LOT-00. Vérifier aussi que `/garde/ajmani` ouvre bien la **nouvelle** palette ⌘J (G05), et pas l'ancien panneau.
-3. **Livrer le mécanisme de substitution d'écran** (§1.3). Sans lui, un lot ne peut pas re-habiller un écran existant sans toucher `appRoot.internal.tsx`, et huit lots s'y croiseraient. Point d'accroche naturel : l'`<Outlet />` que `AppLayout` place dans `CoquilleRefonte`.
-4. **Relancer les gardes et pousser**. Puis T1 fait son passage 2 : paquet client identique, gardes navigateur coquille éteinte et allumée. Ensuite **le CO fusionne** LOT-00 dans `refonte-vivante`.
+Sur le résultat, `typecheck`, `typecheck:business`, `lint` et les 55 contrôles sans navigateur de `editions.yml` sont verts. Aucun fichier de l'édition cliente n'est touché par LOT-00. Conflits résolus par le CO :
 
-Après la fusion :
+- `STATUT.md` : version de `refonte-vivante` gardée ;
+- `src/socle/i18n.ts` : « Outils et réglages », le nom des maquettes, gardé ; « Créer et produire » était déjà commun aux deux côtés.
 
-- **LOT-00b** (S0, court) : la famille contextuelle Cyber (§1.7), et l'allumage de la coquille si Harun dit oui (§1.9).
-- **Lots 01 à 08** en parallèle depuis `refonte-vivante`. LOT-06 démarre quand S7 est créée ; LOT-07 attend la fin de la phase 1 de S6.
-- **LOT-10** après LOT-07 (même session) et LOT-00b.
-- **LOT-09** (S1) en dernier, après les lots 01 à 08 et 10.
-- **Fusion d'un lot** : relu par T1, paquet client identique, gardes vertes. Harun valide avant tout passage dans `main`, et le CO ne fusionne jamais dans `main`.
+**Règle d'attente, tant que LOT-00b n'a pas livré le mécanisme de substitution :**
+
+- un écran existant à re-habiller, un hub F10 à F70 ou une page qui n'est pas parmi les 101 modules se **construit** dans `src/refonte/<lot>/`, avec sa garde, **sans être branché** ;
+- le branchement tiendra en une ligne dans le fichier de déclaration du lot, dès la livraison ;
+- en attendant, on ne touche pas `appRoot.internal.tsx` ;
+- un écran NOUVEAU qui **est** un des 101 modules du registre se déclare tout de suite avec `nouveau` (S5).
+
+| Session | Peut travailler ? | Sur quoi, par où commencer | Ce qui lui manque |
+|---|---|---|---|
+| **S0** | **oui, priorité 1** | **LOT-00b**, sur `claude/refonte-socle` repartie de `refonte-vivante` : (1) le **mécanisme de substitution** (§1.3) : remplacer l'écran d'une route interne existante, et monter une page qui n'est pas un module (hubs `/ensemble/<famille>`, pages L*) sans la compter dans les 101 ; (2) la famille contextuelle Cyber (§1.7) ; (3) l'allumage de la coquille (§1.9), dont `/garde/ajmani`, qui doit alors ouvrir la palette G05 et non l'ancien panneau | rien |
+| **S2** | **oui** | LOT-01, `claude/refonte-journee` : N01 d'abord, par sa couture existante `@edition/accueils`, sans attendre la substitution ; puis les autres écrans, construits et branchés après LOT-00b | les images de LOT-01 |
+| **S1** | **oui** | LOT-02, `claude/refonte-contacts` : F10, puis H05, G04 et H06, construits | les images de LOT-02 |
+| **S5** | **oui** | LOT-03, `claude/refonte-ecrire`, puis LOT-05, `claude/refonte-echanger` | les images de LOT-03 ; les jeux Écrire (SIM) |
+| **DS** | **oui** | LOT-04, `claude/refonte-argent` : F30, puis G03 et H07 ; banque en lecture seule | les images de LOT-04 |
+| **S7** | **dès sa création** | LOT-06, `claude/refonte-creer` : F50, puis H15 et H16 | **la session elle-même** (à créer, Sonnet 5.5, effort élevé) ; les images de LOT-06 ; les jeux Créer (SIM) |
+| **S3** | **oui** | LOT-08, `claude/refonte-garde` (existe déjà) : H31, H35 et H33 d'abord, puis N02, F70 et H30 ensemble ; les 15 questions sont tranchées (§1.8) | les images de LOT-08 ; les jeux La Garde (SIM) |
+| **S6** | **oui, sur sa phase 1** (privée) | puis LOT-07, `claude/refonte-outils`, et LOT-10, `claude/refonte-cyber` | la fin de sa propre phase 1 ; pour LOT-10, la famille Cyber de LOT-00b ; les images |
+| **T1** | **oui** | **Passage 2** sur `refonte-vivante` (`5410081` ou suivant) : paquet client identique à `main` ; gardes navigateur coquille éteinte puis allumée. Ce passage conditionne l'allumage (§1.9). L'outil de fidélité est fusionné : captures dès qu'un lot livre un écran et son image | rien |
+| **SIM** | **oui** | Jeux de données, dans l'ordre des lots qui les attendent : Écrire, La Garde, Créer, Outils, Échanger, Cyber ; puis les chargeurs vers l'API d'essai, pour les captures de T1 ; peupler Cyber et Studio (cause du `check:signal` vide) | rien |
+| **F1** | **oui** | Appliquer le correctif C-003 de T1 à son vérificateur (registre de S5) ; continuer l'Atelier | le choix des modules à intégrer, par Harun (procédure [`INTEGRATION-F1.md`](INTEGRATION-F1.md), adoptée par le CO) |
+| **S1 (LOT-09)** | après LOT-02 | LOT-09, `claude/refonte-mobile`, quand les lots 01 à 08 et 10 sont fusionnés | — |
+
+Décisions prises par le CO, par délégation de Harun (1er nov.) : les règles du §1.8, l'allumage de la coquille (§1.9, sans attendre de relecture par Harun), et la procédure F1. Restent à Harun : le choix des modules de F1 et la constante « 12 organisations » de G06 (texte de la fiche par défaut).
+
+**Fusion d'un lot** : relu par T1, paquet client identique, gardes vertes. Le CO fusionne dans `refonte-vivante`, jamais dans `main` ; Harun valide le passage dans `main`.
 
 Dépendances croisées à surveiller :
 
 - la pastille de La Garde (LOT-00 l'affiche, LOT-08 en fixe la règle, N02) ;
 - les connecteurs (LOT-04 lit leur état, LOT-07 les configure) ;
 - le registre et `TousLesModules` (propriétaire S5) ;
-- Cyber : CY07 étend MO02 (LOT-07), CY11 s'appuie sur H20 (LOT-07), CY12 sur H03 (LOT-01), CY13 sur H11 et H12 (LOT-03), CY04 et F70 se renvoient l'un à l'autre (LOT-08).
+- Cyber : CY07 étend MO02 (LOT-07), CY11 s'appuie sur H20 (LOT-07), CY12 sur H03 (LOT-01), CY13 sur H11 et H12 (LOT-03), CY04 et F70 se renvoient l'un à l'autre.
 
 ## 6. Ce qui manque au CO
 
-- Les images, qui arrivent dans le zip de chaque lot : la comparaison à ± 2 px se fera lot par lot, par T1.
-- La fin de la phase 1 de S6 (privée) : LOT-07 et LOT-10 l'attendent.
-- Ton feu vert sur trois propositions : les règles du §1.8 (questions de S3), l'allumage de la coquille (§1.9), la procédure F1 ([`INTEGRATION-F1.md`](INTEGRATION-F1.md)).
-- La création de la session S7.
+- Les images, lot par lot.
+- La création de S7.
+- La fin de la phase 1 de S6.
 
 ## 7. Écrans (141)
 
@@ -253,7 +269,7 @@ Total : 141 écrans = 19 re-habillage + 86 mixtes + 36 nouveaux. Captures et com
 
 ### LOT-00 · Système et démarrage — `claude/refonte-socle` — 8 écrans
 
-8 sur 8 faits par S0 (`fdd6366`, rapport `docs/refonte/rapports/LOT-00.md` sur la branche). **Non fusionné** : voir §5. Aucune capture, l'app n'ayant pas été lancée : T1 les fera au passage 2.
+8 sur 8 faits par S0, **fusionné** (`488cdcc`, rapport [`rapports/LOT-00.md`](rapports/LOT-00.md)). Aucune capture, l'app n'ayant pas été lancée : T1 les fera au passage 2.
 
 | ID | Écran | Type | État | Écart / note |
 |---|---|---|---|---|
@@ -268,7 +284,7 @@ Total : 141 écrans = 19 re-habillage + 86 mixtes + 36 nouveaux. Captures et com
 
 Questions de S0 et réponses du CO :
 
-1. *Allumer la nouvelle coquille par défaut ?* Proposition au §1.9, en attente de Harun.
+1. *Allumer la nouvelle coquille par défaut ?* Oui, dans LOT-00b, après le passage 2 de T1 (§1.9).
 2. *Phrase « Connexion protégée… journal de la Garde » et constante « 12 organisations » (G06) ?* À valider par Harun. Par défaut, on garde le texte de la fiche, et la constante reste un texte fixe, jamais une donnée lue avant la connexion.
 3. *Réglage d'organisation pour le métier (H47) ?* Pas au premier jet : le réglage reste personnel, la solution la plus simple.
 4. *Émetteurs « mail » et « mobile » pour H40 ?* Hors LOT-00. Le mobile passe par LOT-09 (notifications web), le mail devient une demande à amn-api.
@@ -515,3 +531,6 @@ Contrôlé par lecture des sources (`check:navigation`, `check:garde-refonte`, `
 | 2026-11-01 | `claude/refonte-qualite-t1` | `51a962d` → `97929c1` | sans conflit ; API d'essai, bac à sable, `SANTE.md` |
 | 2026-11-01 | `claude/refonte-donnees-fictives` | `d017393` | sans conflit ; 25 jeux |
 | 2026-11-01 | (CO) | `4da65a8` | `check:donnees` dans `package.json` et en CI ; 44 contrôles verts |
+| 2026-11-01 | `claude/refonte-socle` (LOT-00) | `fdd6366` → `488cdcc` | conflit `STATUT.md` (version de `refonte-vivante` gardée) |
+| 2026-11-01 | `claude/refonte-s5-modules` | `b82e50f` → `5410081` | conflit `src/socle/i18n.ts` (« Outils et réglages » gardé) ; 55 contrôles verts |
+| 2026-11-01 | `claude/refonte-qualite` (T1) | `f2e243a` | sans conflit ; contrôle de fidélité, local seulement |
