@@ -5,7 +5,7 @@
 - Branche d'intégration : **`claude/refonte-vivante`** (décision du 31 oct., §1.1). Base `main` @ `630ef45`.
 - Dernière mise à jour : 2026-11-01, soir. **Le design passe en v3** (141 écrans redessinés, validés par le dirigeant dans leur ensemble) : voir §1.10.
 - LOT-00 (socle v2) est fusionné (`488cdcc`), avec les 4 commits de S5. **Le socle v3 s'y ajoute avant la construction visuelle des lots** (S0 a ses consignes). D'ici là, chaque lot prépare et construit sa logique : §5.
-- Fusionnés aussi le 1er nov. : T1 (API d'essai, bac à sable, contrôle de fidélité) et les données fictives de SIM, avec `check:donnees` en CI.
+- Fusionnés aussi le 1er nov. : T1 (API d'essai, bac à sable, contrôle de fidélité) et les données fictives de SIM (100 jeux, `4fe559b`), avec `check:donnees` en CI (87 contrôles).
 - Gardes locales sur `refonte-vivante` : `typecheck`, `typecheck:business`, `lint` et les 55 contrôles sans navigateur de `editions.yml` verts.
 - Sources : le dossier de construction **v3** (`AMN-refonte-v3-CO`) remplace le précédent. Il n'est pas committé (dépôt public). Les lots 01 à 10 démarrent avec leur zip v3 (`AMN-refonte-v3-LOT-xx-….zip`, images comprises) et leur prompt v3.
 
@@ -196,6 +196,27 @@ Les points 1 à 8 (§1.5) restent des décisions par défaut, sauf le n° 1 (ban
 
 **Sources des sessions.** Les lots 01 à 10 démarrent avec leur zip v3 (`AMN-refonte-v3-LOT-xx-….zip`, images comprises) et leur prompt v3 du dossier `prompts/`, pas avec la version précédente. Les fiches v2 d'une session déjà démarrée sont périmées.
 
+### 1.11 Données fictives de SIM (1er nov.) : 100 jeux, règles validées
+
+`claude/refonte-donnees-fictives` @ `4fe559b` est **fusionnée** dans `refonte-vivante` : 75 jeux de plus, **100 au total** (Écrire, Échanger, Créer, Outils, La Garde, Cyber, et les écrans manquants TVA et impôts, paie, tarifs, partenaires, planning, défis). `check:donnees` passe de 55 à 87 contrôles, tous verts, déjà en CI. Fusion sans conflit, rien hors de `src/refonte/donnees/**`, `scripts/check-donnees.ts` et le rapport ; aucune adresse hors `exemple.test`, aucun motif de secret ; `typecheck`, `typecheck:business`, `lint` et les 55 contrôles sans navigateur de la CI verts après la fusion. Rapport : [`rapports/DONNEES.md`](rapports/DONNEES.md). Mode d'emploi : `src/refonte/donnees/LISEZ-MOI.md`.
+
+**Règles validées par le dirigeant** (les écrans peuvent s'y fier) :
+
+1. **État d'une organisation de La Garde** : Sain à partir de 70, à surveiller de 45 à 69, Critique sous 45 ; une alerte Critique ouverte rend l'organisation Critique, une alerte Moyenne ouverte la rend « à surveiller » ; une ronde en retard de plus de 2 intervalles la rend « à surveiller », de plus de 24 h Critique. **Le libellé affiché reste « Attention »** (04-B n° 3 et §1.8 n° 4), pas « À surveiller » : SIM aligne le libellé, le seuil ne change pas.
+2. **Niveaux de maturité** : score = points obtenus ÷ points possibles ; niveaux de 1 à 5 par tranches de 20 points (§1.8 n° 2).
+3. **Cotisations sociales de la paie fictive = 46 % du net.**
+4. **États d'un accord Cyber** : En attente, Valide, Expire bientôt (à 30 jours), Expiré.
+5. **Catalogue d'outils Cyber volontairement générique** (9 familles de 6 outils, aucun nom d'outil réel). Un écran qui réclame un nom précis le signale dans la section de son lot ; le CO tranche.
+
+**Limites connues.** Aucun écran ne consomme encore ces jeux : un champ peut manquer. Règle : la session de lot qui manque d'un champ l'écrit dans la section de son lot de `STATUT.md` ; SIM l'ajoute, avec un contrôle, à son passage suivant. Les jeux sont datés du vendredi 30 oct. 2026 à **10 h 15** ; les images v3 supposent **10 h 42**, et **mardi 3 nov.** pour Cyber (§1.10) : à aligner (suite de SIM, n° 1).
+
+**Suite de SIM, dans cet ordre** (SIM enchaîne, elle n'attend rien) :
+
+1. **Aligner les dates** sur les images v3 : 10 h 42 le 30 oct. pour le bureau, mardi 3 nov. pour Cyber. Sans cela, T1 compare des écrans qui ne montrent pas les mêmes jours que leurs images.
+2. **Le chargeur vers le bac à sable API** (celui de T1, `scripts/qualite/api-essai.mjs`) : il conditionne les captures de T1 et les essais de tout lot sur des données réelles de l'API. La Garde avec S3 (`scripts/seed-supervision.mjs`).
+3. **Les jeux calculés** (trésorerie prévisionnelle H09, bilan de la semaine H04, cockpit client G08, configuration du tableau de bord H25) : sous forme de **valeurs attendues pour les tests**, pas de seconde implémentation. Le calcul reste à la session du lot (DS pour H09, S2 pour H04, G08 et H25), qui le compare aux attendus de SIM.
+4. **Volumes « beaucoup » de Cyber** en situation, dès que LOT-10 a un écran.
+
 ## 2. Les lots
 
 Ordre : **LOT-00 d'abord, fusionné** ; puis les lots 01 à 08 et **10** en parallèle, une branche chacun ; **LOT-09 en dernier**. Les chiffres viennent de `03-INDEX.md` : 8 + 16 + 13 + 9 + 17 + 10 + 15 + 16 + 12 + 11 + 14 = **141**. (Le tableau du fichier 00 compte G05 dans LOT-05 ; l'index et les prompts le rangent dans LOT-00. Le CO suit l'index.)
@@ -228,7 +249,7 @@ Ordre : **LOT-00 d'abord, fusionné** ; puis les lots 01 à 08 et **10** en para
 | S6 | LOT-07, puis LOT-10 | ⚠ à condition | Les deux après sa phase 1 (privée ; Harun dit au CO quand elle est finie). LOT-07 d'abord : CY07 étend MO02 (Sites et trackers), qui est dans LOT-07. 30 écrans à elle seule, Opus 5.5, effort élevé. Audit privé ; commits sans description de faiblesse ; écrans sensibles relus par T1. |
 | S3 | LOT-08 | ✓ | Règles du §1.8. Zone élargie à `src/bureaux/cyber/**` (partage dans `REGLES.md`). Ajoute « Ouvrir Cyber » sur F70. |
 | T1 | transversal | ✓ | API d'essai et bac à sable **fusionnés** (`97929c1`). Seule session autorisée à `build:web` sur données fictives (`REGLES.md`). Fait les captures et les comparaisons à ± 2 px de tous les lots. Outil de fidélité fusionné (`3cc8dff`). |
-| SIM | transversal | ✓ | 25 jeux fusionnés (`src/refonte/donnees/`), **`check:donnees` branché en CI**. Reste à faire : les jeux d'Écrire, Échanger, Créer, Outils, La Garde et Cyber, puis les chargeurs vers l'API d'essai. |
+| SIM | transversal | ✓ | **100 jeux fusionnés** (`4fe559b`), `check:donnees` à 87 contrôles en CI, règles validées (§1.11). Enchaîne : dates v3, chargeur vers l'API d'essai, attendus des écrans calculés. |
 
 ## 4. Sessions et branches (état au 1er nov.)
 
@@ -245,7 +266,7 @@ Ordre : **LOT-00 d'abord, fusionné** ; puis les lots 01 à 08 et **10** en para
 | S7 | `claude/refonte-creer` | **à créer** | — | — | LOT-06 |
 | F1 | `claude/refonte-atelier-f1` | prête, non fusionnée, rien de branché | `59056ad` | `docs/atelier/PRET.md` | C-003 à appliquer ; [`INTEGRATION-F1.md`](INTEGRATION-F1.md) à valider |
 | T1 | `claude/refonte-qualite-t1`, `claude/refonte-qualite` | **les deux fusionnées** (`97929c1`, `3cc8dff`) | `51a962d`, `f2e243a` | [`../qualite/SANTE.md`](../qualite/SANTE.md) | Passage 2 à faire sur `refonte-vivante` |
-| SIM | `claude/refonte-sim-bac-a-sable`, `claude/refonte-donnees-fictives` | **données fusionnées** (`d017393`) + `check:donnees` en CI ; bac à sable non fusionné | `95d9765`, `d017393` | [`rapports/DONNEES.md`](rapports/DONNEES.md) | Jeux des autres lots à faire |
+| SIM | `claude/refonte-donnees-fictives`, `claude/refonte-sim-bac-a-sable` | **données fusionnées** (`4fe559b`) + `check:donnees` en CI ; bac à sable non fusionné | `4fe559b`, `95d9765` | [`rapports/DONNEES.md`](rapports/DONNEES.md) | Suite : §1.11 |
 | G0 | — | retirée | — | — | — |
 
 ### Zones
@@ -273,13 +294,13 @@ Ordre : **LOT-00 d'abord, fusionné** ; puis les lots 01 à 08 et **10** en para
 | **S0** | **oui, priorité 1** | Socle v3 (§1.10) sur `claude/refonte-socle`, repartie de `refonte-vivante` : mouvement, composants §0.4, barre latérale v3 et carte « Aujourd'hui » (`useAujourdhui`), Cyber dans SURVEILLANCE, `ModuleTile` et briques partagées, mécanisme de substitution, `check:coquille`, puis allumage de la coquille | rien (consignes données) |
 | **S2** | préparation et logique | LOT-01 `claude/refonte-journee` : note de préparation ; règles de calcul des séries, paliers, défis et jalons (L01, L07, H02, H04), à protéger telles quelles (§1.10) | zip v3 de LOT-01 ; socle v3 pour construire |
 | **S1** | préparation et logique | LOT-02 `claude/refonte-contacts` : note de préparation ; modèles du pipeline et des relances | zip v3 de LOT-02 ; socle v3 |
-| **S5** | préparation et logique | LOT-03 `claude/refonte-ecrire` puis LOT-05 `claude/refonte-echanger` : notes de préparation ; G07 en boîte des clients (§1.10 point 10) | zips v3 de LOT-03 et LOT-05 ; jeux Écrire et Échanger (SIM) ; socle v3 |
+| **S5** | préparation et logique | LOT-03 `claude/refonte-ecrire` puis LOT-05 `claude/refonte-echanger` : notes de préparation ; G07 en boîte des clients (§1.10 point 10) | zips v3 de LOT-03 et LOT-05 ; jeux Écrire et Échanger : fusionnés ; socle v3 |
 | **DS** | préparation et logique | LOT-04 `claude/refonte-argent` : note de préparation ; calculs d'argent ; banque en lecture seule | zip v3 de LOT-04 ; socle v3 |
-| **S7** | dès sa création | LOT-06 `claude/refonte-creer` : note de préparation, logique du stock et des chantiers | **la session elle-même** (Sonnet 5.5, effort élevé) ; zip v3 de LOT-06 ; jeux Créer (SIM) ; socle v3 |
-| **S3** | préparation et logique | LOT-08 `claude/refonte-garde` : mettre sa note `preparation-garde.md` à jour sur les fiches v3 ; règle de la pastille (N02 §6.2) et calculs d'état par organisation (§1.8) | zip v3 de LOT-08 ; jeux La Garde (SIM) ; socle v3 |
+| **S7** | dès sa création | LOT-06 `claude/refonte-creer` : note de préparation, logique du stock et des chantiers | **la session elle-même** (Sonnet 5.5, effort élevé) ; zip v3 de LOT-06 ; jeux Créer : fusionnés ; socle v3 |
+| **S3** | préparation et logique | LOT-08 `claude/refonte-garde` : mettre sa note `preparation-garde.md` à jour sur les fiches v3 ; règle de la pastille (N02 §6.2) et calculs d'état par organisation (§1.8) | zip v3 de LOT-08 ; jeux La Garde : fusionnés ; socle v3 |
 | **S6** | **oui** | Phase 1 sécurité (privée). Puis LOT-07 `claude/refonte-outils` et LOT-10 `claude/refonte-cyber`, dont les connecteurs de H21 (WhatsApp, SMS) qu'attendent G07 et H13 | fin de la phase 1 ; zips v3 de LOT-07 et LOT-10 ; socle v3 |
 | **T1** | **oui** | Passage 2 sur `refonte-vivante` (paquet client identique, gardes navigateur coquille éteinte puis allumée) ; adapter l'outil de fidélité aux images v3 (dates fictives du 30 oct. 10:42, mardi 3 nov. pour Cyber) | rien (images lot par lot) |
-| **SIM** | **oui** | Jeux de données, dans l'ordre : La Garde, Écrire, Échanger, Créer, Outils, Cyber ; puis les chargeurs vers l'API d'essai. Les jeux doivent coller aux dates des images v3 | rien |
+| **SIM** | **oui, elle enchaîne** | (1) dates des jeux sur les images v3 (10 h 42 le 30 oct., mardi 3 nov. pour Cyber) ; (2) chargeur vers l'API d'essai, La Garde avec S3 ; (3) valeurs attendues des écrans calculés (H09, H04, G08, H25) ; (4) champs manquants signalés par les lots | rien |
 | **F1** | **oui** | Appliquer le correctif C-003 de T1 à son vérificateur ; poursuivre l'Atelier | ton choix des modules à intégrer |
 | **S1 (LOT-09)** | après les lots 01 à 08 et 10 | LOT-09 `claude/refonte-mobile` (inchangé en v3) | — |
 
@@ -289,6 +310,8 @@ Ordre : **LOT-00 d'abord, fusionné** ; puis les lots 01 à 08 et **10** en para
 2. **S1 (LOT-02), S5 (LOT-03 puis LOT-05), DS (LOT-04), S7 (LOT-06)** en parallèle.
 3. **S6 (LOT-07 puis LOT-10)** dès la phase 1 terminée ; LOT-10 après LOT-07 parce que CY07 étend MO02 et CY11 s'appuie sur H20.
 4. **S1 (LOT-09)** en dernier.
+
+**Prérequis des lots 01 à 10 : les 100 jeux de données, fusionnés (`4fe559b`).** Les lots y lisent `src/refonte/donnees/` ; il leur manque encore, côté données, le chargeur vers l'API et les attendus calculés (SIM, §1.11).
 
 Décisions prises par le CO, par délégation de Harun : les règles du §1.8, l'allumage de la coquille (§1.9), la procédure F1, l'entrée de `ModuleTile` dans le socle (§1.10). Restent à Harun : le choix des modules de F1, la constante « 12 organisations » de G06 (texte de la fiche par défaut), la création de S7.
 
@@ -582,4 +605,5 @@ Contrôlé par lecture des sources (`check:navigation`, `check:garde-refonte`, `
 | 2026-11-01 | `claude/refonte-socle` (LOT-00) | `fdd6366` → `488cdcc` | conflit `STATUT.md` (version de `refonte-vivante` gardée) |
 | 2026-11-01 | `claude/refonte-s5-modules` | `b82e50f` → `5410081` | conflit `src/socle/i18n.ts` (« Outils et réglages » gardé) ; 55 contrôles verts |
 | 2026-11-01 | `claude/refonte-qualite` (T1) | `f2e243a` | sans conflit ; contrôle de fidélité, local seulement |
-| 2026-11-01 | — | (ce commit) | design v3 : dossier remplacé, points 9 à 15 validés, `ModuleTile` dans le socle, GO ajusté |
+| 2026-11-01 | `claude/refonte-donnees-fictives` (SIM) | `4fe559b` | sans conflit ; 100 jeux ; `check:donnees` 87 contrôles ; 55 contrôles de la CI verts |
+| 2026-11-01 | — | `1ca2d7a` | design v3 : dossier remplacé, points 9 à 15 validés, `ModuleTile` dans le socle, GO ajusté |
