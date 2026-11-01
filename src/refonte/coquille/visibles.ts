@@ -1,7 +1,17 @@
 /* Logique pure de la barre latérale (sans React) : éprouvée par `check:socle-coquille`. */
 
-/** Combien de modules une famille montre dans la barre latérale (le reste : « + N autres »). */
-export const MODULES_VISIBLES = 7;
+import type { ModuleLateral } from '../../socle/coquille';
+
+/**
+ * Combien de lignes la sous-liste d'une famille montre dans la barre latérale v3 (§0.1 : « au plus 5 lignes »,
+ * « Vue d'ensemble » comprise quand la famille en a une) ; le reste : « + N autres ».
+ */
+export const MODULES_VISIBLES = 5;
+
+/** Les modules montrés sous une famille : cinq lignes, moins celle de la « Vue d'ensemble » quand elle existe. */
+export function placesDeModules(avecEnsemble: boolean): number {
+  return avecEnsemble ? MODULES_VISIBLES - 1 : MODULES_VISIBLES;
+}
 
 /**
  * Les modules qu'une famille montre : les essentiels d'abord, puis les courants, puis les avancés (dans l'ordre
@@ -25,4 +35,25 @@ export function choisirLesVisibles<T extends { courant: boolean; avance: boolean
     choisis.add(courant);
   }
   return modules.filter((m) => choisis.has(m));
+}
+
+/** Combien d'épinglés la barre montre (§0.1 : « 3 modules choisis par la personne, sans le module ouvert »). */
+export const EPINGLES_BARRE = 3;
+
+/**
+ * Les épinglés : les favoris dans l'ordre où la personne les a épinglés, chacun rangé à son entrée (une entrée une
+ * fois), sans le module ouvert, au plus `max`. Pur : `check:socle-coquille`.
+ */
+export function choisirEpingles(favoris: readonly string[], entreeDe: (cleVue: string) => ModuleLateral | undefined, max = EPINGLES_BARRE): ModuleLateral[] {
+  const vus = new Set<string>();
+  const sortie: ModuleLateral[] = [];
+  for (const cle of favoris) {
+    const m = entreeDe(cle);
+    if (!m || vus.has(m.cle)) continue;
+    vus.add(m.cle);
+    if (m.courant) continue;
+    sortie.push(m);
+    if (sortie.length >= max) break;
+  }
+  return sortie;
 }

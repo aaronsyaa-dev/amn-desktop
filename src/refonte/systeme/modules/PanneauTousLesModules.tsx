@@ -16,7 +16,6 @@ import { Avatar, PileAvatars, Raccourci } from '../../../socle/ui';
 import { BlocEtat } from '../../../socle/ui/situations';
 import { REGISTRE_MODULES } from '../../modules/registre';
 import { chercher } from '../../navigation/recherche';
-import { ROUTE_TOUS_LES_MODULES } from '../../navigation/moment';
 import { useDonneesCoquille } from '../../coquille/donnees';
 import { routeEnsemble } from '../ensemble';
 import {
@@ -88,7 +87,7 @@ export function PanneauTousLesModules() {
   const { isFavorite } = useNavFavorites();
   const { autres } = useRegards();
   const profils = useProfilesOptionnel();
-  const donnees = useDonneesCoquille(location.pathname, ROUTE_TOUS_LES_MODULES, '', '');
+  const donnees = useDonneesCoquille(location.pathname, null);
 
   const [requete, setRequete] = useState('');
   const [niveau, setNiveau] = useState<FiltreNiveau>('tous');

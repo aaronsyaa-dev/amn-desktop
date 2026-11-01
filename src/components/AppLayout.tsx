@@ -7,7 +7,7 @@ import { TopBar } from './TopBar';
 import { SitePanelProvider } from './site-panel/SitePanelContext';
 import { SiteDetailPanel } from './site-panel/SiteDetailPanel';
 import { CommandPaletteProvider } from './command-palette/CommandPalette';
-import { AssistantProvider } from '../assistant/AssistantContext';
+import { AssistantProvider, useAssistant } from '../assistant/AssistantContext';
 import { AssistantPanel } from '../assistant/AssistantPanel';
 import { AjmaniBubble } from '../assistant/AjmaniBubble';
 import { RemoteSitesProvider } from '../state/RemoteSitesContext';
@@ -273,7 +273,8 @@ export function AppLayout() {
               <CallOverlay />
               <SiteDetailPanel />
               <AssistantPanel />
-              <AjmaniBubble />
+              {/* Le point flottant d'Ajmani (✦) n'a pas sa place sur la nouvelle coquille : sa barre le remplace (écart C10). */}
+              <BulleAjmaniSelonCoquille coquille={coquille} />
               <PremierLancement />
               <Celebrations />
               <NotificationsManager />
@@ -327,6 +328,17 @@ function RouteSeenTracker() {
  * de calme : le carton du premier sas aura sa ligne ambre, sans rien coûter à
  * l'ouverture de l'application.
  */
+/**
+ * La bulle d'Ajmani : telle quelle sur l'ancienne coquille. Sur la nouvelle (drapeau `@edition/coquille`, éteint
+ * par défaut et toujours éteint côté cliente), le point flottant du repos n'est pas posé — la barre Ajmani et ⌘J
+ * en tiennent lieu — mais la bulle s'ouvre encore quand on l'appelle (F9, la voix).
+ */
+function BulleAjmaniSelonCoquille({ coquille }: { coquille: boolean }) {
+  const { bulleOuverte } = useAssistant();
+  if (coquille && !bulleOuverte) return null;
+  return <AjmaniBubble />;
+}
+
 function SourceEnAttente() {
   useActiverSourceBureaux(8_000);
   return null;

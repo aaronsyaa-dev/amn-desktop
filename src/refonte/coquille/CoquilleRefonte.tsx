@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Coquille, BarreLaterale, EnTete, BarreAjmani, type FamilleLaterale } from '../../socle/coquille';
-import { useSocleLangue } from '../../socle/i18n';
+import { useLangue } from '../../i18n';
 import { useAssistant } from '../../assistant/AssistantContext';
 import { useNavigationEspacesOptionnelle } from '../../bureaux/navigation';
 import { useFermetureEchap } from '../../lib/useFermetureEchap';
@@ -15,7 +15,9 @@ import { PaletteAjmaniBranchee } from '../systeme/ajmani';
 import { useNotificationsNonLuesAvec } from '../systeme/notifications';
 import { ROUTE_NOTIFICATIONS } from '../systeme/routes';
 import { usePoulsGarde } from './pouls';
-import { useToucheModificatrice } from './touche';
+import { raccourciAffiche, useToucheModificatrice } from './touche';
+import { ContextePageCoquille, type PageCoquille } from './page';
+import { useCarteAujourdhui } from './aujourdhui';
 
 /**
  * LA COQUILLE DE LA REFONTE, BRANCHÉE — la barre latérale, l'en-tête, la barre
@@ -33,17 +35,31 @@ import { useToucheModificatrice } from './touche';
  * (`sendMessage`) et ouvre le panneau pour lire la réponse.
  *
  * Le module `src/assistant/**` n'est pas touché.
+ *
+ * v3 (01-SOCLE-DESIGN §0.1) : la barre a trois sections (ESPACE, SURVEILLANCE,
+ * ÉPINGLÉS) et, en bas, la carte « Aujourd'hui » — les chiffres de l'Accueil
+ * (`useCarteAujourdhui`, qui lit `useAccueil`). Une page hors registre donne son
+ * fil d'Ariane, sa famille et sa sous-page par `usePageCoquille` (`page.ts`) ;
+ * les pages système connues sont dans `pagesSysteme.ts`. Le bouton « panneau »
+ * replie la barre sur ce poste, le temps de la session (un état local : il
+ * n'existait pas de repli dans la nouvelle coquille).
  */
 export function CoquilleRefonte({ children, largeur = 'lecture' }: { children?: React.ReactNode; largeur?: 'lecture' | 'pleine' }) {
-  const { ts } = useSocleLangue();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const espaces = useNavigationEspacesOptionnelle();
   const assistant = useAssistant();
   const modKey = useToucheModificatrice();
   const pouls = usePoulsGarde();
+  const { langue } = useLangue();
 
-  const donnees = useDonneesCoquille(pathname, ROUTE_TOUS_LES_MODULES, ts('coquille.tous.court'), ts('coquille.accueil'));
+  /* ── Ce que la page montée dit d'elle (fil, famille, sous-page, texte d'Ajmani) ── */
+  const [pageDeclaree, setPageDeclaree] = useState<PageCoquille | null>(null);
+  const donnees = useDonneesCoquille(pathname, pageDeclaree);
+  const aujourdhui = useCarteAujourdhui(langue, '/');
+
+  /* ── La barre repliée (le bouton « panneau » du haut) : un état de session, sur ce poste ── */
+  const [repliee, setRepliee] = useState(false);
 
   /* ── Le tiroir (sous 900 px) ── */
   const [tiroir, setTiroir] = useState(false);
@@ -100,24 +116,32 @@ export function CoquilleRefonte({ children, largeur = 'lecture' }: { children?: 
 
   return (
     <>
+      <ContextePageCoquille.Provider value={setPageDeclaree}>
       <Coquille
         largeur={largeur}
         tiroirOuvert={tiroir}
         onFermerTiroir={() => setTiroir(false)}
+        lateralRepliee={repliee}
         lateral={
           <BarreLaterale
             produit={EDITION_PRODUCT_NAME}
             familles={donnees.familles}
             garde={garde}
+            cyber={donnees.cyber}
+            epingles={donnees.epingles}
             etatGarde={pouls.etat}
             nombreModules={donnees.nombreModules}
             routeTousLesModules={ROUTE_TOUS_LES_MODULES}
-            enLigne={donnees.enLigne}
-            presenceMontree={donnees.presenceMontree}
-            raccourciRecherche={`${modKey} K`}
+            tousLesModulesActif={donnees.tousLesModulesActif}
+            aujourdhui={aujourdhui}
+            raccourciRecherche={raccourciAffiche(modKey, 'K')}
             onRecherche={() => {
               setPalette(false);
               setRechercheOuverte(true);
+            }}
+            onReplier={() => {
+              setTiroir(false);
+              setRepliee(true);
             }}
             ouvert={tiroir}
             onFermer={() => setTiroir(false)}
@@ -131,7 +155,12 @@ export function CoquilleRefonte({ children, largeur = 'lecture' }: { children?: 
             notifications={nonLues}
             versNotifications={ROUTE_NOTIFICATIONS}
             garde={{ etat: pouls.etat, points: pouls.points, vers: '/garde' }}
-            onMenu={() => setTiroir(true)}
+            lateralRepliee={repliee}
+            onMenu={() => {
+              // Repliée : le bouton la redéplie ; sous 900 px, il ouvre le tiroir.
+              setRepliee(false);
+              setTiroir(true);
+            }}
             extra={
               <>
                 <span data-guide="lien" className="flex">
@@ -142,10 +171,11 @@ export function CoquilleRefonte({ children, largeur = 'lecture' }: { children?: 
             }
           />
         }
-        ajmani={<BarreAjmani onOuvrir={() => setPalette(true)} raccourci={`${modKey} J`} />}
+        ajmani={<BarreAjmani onOuvrir={() => setPalette(true)} raccourci={raccourciAffiche(modKey, 'J')} texte={donnees.texteAjmani} />}
       >
         {children}
       </Coquille>
+      </ContextePageCoquille.Provider>
       <PaletteRecherche
         ouverte={rechercheOuverte}
         onFermer={() => setRechercheOuverte(false)}

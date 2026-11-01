@@ -556,9 +556,15 @@ const FAMILLES_TEST = (actif: string | null) => [
   { cle: 'jour', nom: 'Ma journée', famille: 'jour', badge: 4, active: actif === 'jour', modules: [{ cle: 'home', libelle: 'Accueil', vers: '/', badge: 0, courant: actif === 'jour' }, { cle: 'tasks', libelle: 'Tâches', vers: '/tasks', badge: 4, courant: false }] },
   { cle: 'argent', nom: 'L’argent', famille: 'argent', badge: 2, active: actif === 'argent', modules: [{ cle: 'invoices', libelle: 'Facturation', vers: '/facturation', badge: 2, courant: actif === 'argent' }] },
 ];
-const GARDE_TEST = { cle: 'garde', nom: 'La Garde et la supervision', famille: 'outils', badge: 0, active: false, modules: [{ cle: 'gardeSalle', libelle: 'La Garde', vers: '/garde', badge: 0, courant: false }] };
+const GARDE_TEST = { cle: 'garde', nom: 'La Garde', famille: 'outils', badge: 0, active: false, modules: [{ cle: 'gardeSalle', libelle: 'Salle de contrôle', vers: '/garde', badge: 0, courant: false }] };
+const CYBER_TEST = { cle: 'cyber', nom: 'Cyber', famille: 'outils', badge: 0, active: false, modules: [], vers: '/cyber', compteur: null };
+const EPINGLES_TEST = [
+  { cle: 'invoices', libelle: 'Facturation', vers: '/facturation', badge: 2, courant: false, famille: 'argent' },
+  { cle: 'clients', libelle: 'Clients', vers: '/clients', badge: 0, courant: false, famille: 'contacts' },
+];
+const JOUR_TEST = { faites: 2, total: 4, serie: 0, rendezVous: null, collegues: [{ cle: 'b', nom: 'Mohamed', lieu: 'Facturation' }], presenceMontree: true, vers: '/' };
 const LATERALE = (surcharges: Record<string, unknown> = {}) =>
-  hk(K.BarreLaterale, { produit: 'Mon espace', familles: FAMILLES_TEST('jour'), garde: GARDE_TEST, nombreModules: 101, routeTousLesModules: '/tous-les-modules', enLigne: [{ cle: 'a', nom: 'Aaron', lieu: 'Accueil' }, { cle: 'b', nom: 'Mohamed', lieu: 'Facturation' }], presenceMontree: true, raccourciRecherche: '⌘ K', onRecherche: () => undefined, ouvert: false, onFermer: () => undefined, ...surcharges });
+  hk(K.BarreLaterale, { produit: 'Mon espace', familles: FAMILLES_TEST('jour'), garde: GARDE_TEST, cyber: CYBER_TEST, epingles: EPINGLES_TEST, nombreModules: 101, routeTousLesModules: '/tous-les-modules', aujourdhui: JOUR_TEST, raccourciRecherche: '⌘K', onRecherche: () => undefined, onReplier: () => undefined, ouvert: false, onFermer: () => undefined, ...surcharges });
 
 await dit('barre latérale : une seule navigation, la famille active déroulée, le module courant marqué', () => {
   const r = rendreK(LATERALE());
@@ -573,27 +579,32 @@ await dit('barre latérale : une seule navigation, la famille active déroulée,
   assert.doesNotMatch(r, /id="sc-sous-argent"/, 'une famille repliée ne montre pas ses modules');
 });
 
-await dit('barre latérale : la Garde à part (8e famille), « Tous les modules (101) », « En ligne » avec leur lieu, ⌘K', () => {
+await dit('barre latérale v3 : SURVEILLANCE (La Garde, Cyber), « Tous les modules (101) » en bouton carré, ÉPINGLÉS, la carte « Aujourd’hui » à la place de « En ligne », ⌘K', () => {
   const r = rendreK(LATERALE());
-  assert.match(r, /sc-liste--garde[^>]*data-guide="supervision"/);
-  assert.match(r, /La Garde et la supervision/);
-  assert.match(r, /Tous les modules<\/span><b class="sc-tous__nombre">101<\/b>/);
+  assert.match(r, /data-section="surveillance" data-guide="supervision"/);
+  assert.match(r, /<span class="sc-famille__nom">La Garde<\/span>/);
+  assert.match(r, /data-cle="cyber"/);
+  assert.match(r, /aria-label="Tous les modules \(101\)"/);
   assert.match(r, /href="\/tous-les-modules"/);
-  assert.match(r, /En ligne.*· 2/);
-  assert.match(r, /Mohamed.*sur Facturation/);
+  assert.match(r, /data-section="epingles"[\s\S]*Facturation[\s\S]*Clients/);
+  assert.match(r, /data-socle="aujourdhui"[\s\S]*2 sur 4 faites/);
+  assert.match(r, /Mohamed, sur Facturation/);
+  assert.doesNotMatch(r, /sc-enligne/, 'le bloc « En ligne » est remplacé par la carte');
   assert.match(r, /data-guide="recherche"/);
-  assert.match(r, /⌘ K/);
-  const sans = rendreK(LATERALE({ garde: null, enLigne: [] }));
-  assert.doesNotMatch(sans, /sc-liste--garde/, 'sans modules de la Garde, pas de huitième famille');
-  assert.match(sans, /Personne d’autre n’est en ligne/);
-  assert.match(rendreK(LATERALE({ presenceMontree: false, enLigne: [] })), /La présence est coupée/);
+  assert.match(r, /<kbd class="sc-kbd">⌘K<\/kbd>/);
+  const sans = rendreK(LATERALE({ garde: null, aujourdhui: { ...JOUR_TEST, collegues: [] } }));
+  assert.doesNotMatch(sans, /data-cle="garde"/, 'sans modules de la Garde, pas de ligne La Garde');
+  assert.match(sans, /data-cle="cyber"/, 'Cyber reste');
+  assert.match(sans, /Personne d’autre en ligne/);
+  assert.match(rendreK(LATERALE({ aujourdhui: { ...JOUR_TEST, presenceMontree: false } })), /Présence coupée sur ce poste/);
 });
 
-await dit('barre latérale : un compteur à zéro ne s’affiche pas, un compteur se dit en mots', () => {
+await dit('barre latérale : aucun compteur sur une famille ni dans la sous-liste (v3) ; un compteur d’épinglé se dit en mots, un zéro ne s’affiche pas', () => {
   const r = rendreK(LATERALE({ familles: FAMILLES_TEST('argent') }));
-  assert.match(r, /sc-compteur[^>]*title="4 à voir">4</);
-  assert.match(r, /class="sr-only">4 à voir/.test(r) ? /./ : /4 à voir/);
-  assert.equal((r.match(/sc-compteur/g) ?? []).length, 2, 'Ma journée (4, repliée) et Facturation (2) — pas de 0');
+  const espace = r.slice(r.indexOf('data-section="espace"'), r.indexOf('data-section="surveillance"'));
+  assert.doesNotMatch(espace, /sc-compteur|à voir/);
+  assert.match(r, /sc-epingle__compteur[^>]*title="2 à voir">2<span class="sr-only"> 2 à voir/);
+  assert.equal((r.match(/sc-epingle__compteur/g) ?? []).length, 1, 'Facturation (2), pas Clients (0)');
 });
 
 await dit('en-tête : fil d’Ariane en liste, dernière miette = page courante, pile « 3 en ligne », cloche, pastille de la Garde', () => {
@@ -608,6 +619,7 @@ await dit('en-tête : fil d’Ariane en liste, dernière miette = page courante,
   assert.match(r, /sc-cloche__badge[^>]*>3</);
   assert.match(r, /La Garde veille, tout est en ordre/);
   assert.match(r, /data-etat="calme"/);
+  assert.match(r, /sc-garde__point"><span class="sc-voyant" data-socle="voyant" data-ton="ok"/, 'le point est le voyant vivant');
   assert.match(rendreK(entete({ garde: { etat: 'attention', points: 2, vers: '/garde' } })), /La Garde signale 2 point\(s\) à regarder/);
   assert.match(rendreK(entete({ garde: { etat: 'critique', points: 1, vers: '/garde' } })), /La Garde a une alerte critique/);
   assert.match(rendreK(entete({ garde: { etat: 'inconnu', points: 0, vers: '/garde' } })), /La Garde ne répond pas/);
@@ -615,19 +627,22 @@ await dit('en-tête : fil d’Ariane en liste, dernière miette = page courante,
   assert.doesNotMatch(rendreK(entete({ enLigne: [] })), /sc-entete__presence/);
 });
 
-await dit('barre Ajmani : une barre de texte avec ⌘J — ni dessin, ni image, ni avatar', () => {
-  const r = rendreK(hk(K.BarreAjmani, { onOuvrir: () => undefined, raccourci: '⌘ J' }));
+await dit('barre Ajmani : une barre de texte avec ⌘J — l’étincelle pour seul dessin, ni image, ni avatar', () => {
+  const r = rendreK(hk(K.BarreAjmani, { onOuvrir: () => undefined, raccourci: '⌘J' }));
   assert.match(r, /^<button[^>]*aria-haspopup="dialog"[^>]*aria-keyshortcuts="Control\+J Meta\+J"/);
   assert.match(r, /Demandez à Ajmani, ou dites ce que vous voulez faire/);
-  assert.match(r, /⌘ J/);
-  assert.doesNotMatch(r, /<svg|<img|<canvas|sc-avatar/);
+  assert.match(r, /<kbd class="sc-kbd">⌘J<\/kbd>/);
+  assert.equal((r.match(/<svg/g) ?? []).length, 1, 'un seul dessin');
+  assert.match(r, /<svg[^>]*class="sc-etincelle/, 'et c’est l’étincelle');
+  assert.doesNotMatch(r, /<img|<canvas|sc-avatar/);
 });
 
-await dit('le fil d’Ariane : famille puis écran ; la vue Tous les modules et l’inconnu ne laissent jamais le fil vide', () => {
-  assert.deepEqual(K.construireFil('/facturation', { famille: 'L’argent', module: 'Facturation' }, 'Accueil'), [{ libelle: 'L’argent' }, { libelle: 'Facturation' }]);
-  assert.deepEqual(K.construireFil('/tous-les-modules', null, 'Accueil', { route: '/tous-les-modules', libelle: 'Tous les modules' }), [{ libelle: 'Tous les modules' }]);
-  assert.deepEqual(K.construireFil('/outils/mon-reglage', null, 'Accueil'), [{ libelle: 'Mon reglage' }]);
-  assert.deepEqual(K.construireFil('/', null, 'Accueil'), [{ libelle: 'Accueil' }]);
+await dit('le fil d’Ariane : « Famille / Page » ; une page inconnue porte « Espace », jamais un segment d’adresse ; le fil n’est jamais vide', () => {
+  assert.deepEqual(K.construireFil({ famille: 'L’argent', module: 'Facturation', espace: 'Espace' }), [{ libelle: 'L’argent' }, { libelle: 'Facturation' }]);
+  assert.deepEqual(K.construireFil({ page: { famille: null, miettes: [{ libelle: 'Espace' }, { libelle: 'Tous les modules' }] }, espace: 'Espace' }), [{ libelle: 'Espace' }, { libelle: 'Tous les modules' }]);
+  assert.deepEqual(K.construireFil({ page: { famille: 'Ma journée', miettes: [{ libelle: 'Démarrage' }] }, espace: 'Espace' }), [{ libelle: 'Ma journée' }, { libelle: 'Démarrage' }]);
+  assert.deepEqual(K.construireFil({ espace: 'Espace' }), [{ libelle: 'Espace' }]);
+  assert.deepEqual(K.construireFil({ page: { miettes: [] }, espace: 'Espace' }), [{ libelle: 'Espace' }]);
 });
 
 await dit('la coquille tient à 400 px : tiroir sous 900 px, colonnes à minmax(0,1fr), rien qui force la largeur', () => {

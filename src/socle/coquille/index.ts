@@ -7,4 +7,4 @@ export { BarreLaterale, type BarreLateraleProps } from './BarreLaterale';
 export { EnTete, type EnTeteProps } from './EnTete';
 export { BarreAjmani } from './BarreAjmani';
 export { PaletteAjmani, type PaletteAjmaniProps } from './PaletteAjmani';
-export type { FamilleLaterale, ModuleLateral, PersonneEnLigne, MiettePain, EtatGarde, Proposition, GroupePropositions } from './types';
+export type { FamilleLaterale, ModuleLateral, PersonneEnLigne, CarteAujourdhui, MiettePain, EtatGarde, Proposition, GroupePropositions } from './types';

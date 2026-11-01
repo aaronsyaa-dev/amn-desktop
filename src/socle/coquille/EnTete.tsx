@@ -1,7 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, Menu } from 'lucide-react';
-import { PileAvatars } from '../ui';
+import { LiveDot, PileAvatars, type TonVivant } from '../ui';
 import { useSocleLangue } from '../i18n';
 import { useFermetureEchap } from '../../lib/useFermetureEchap';
 import type { EtatGarde, MiettePain } from './types';
@@ -9,11 +9,14 @@ import type { EtatGarde, MiettePain } from './types';
 /**
  * L'EN-TÊTE (60 px) — où je suis, qui est là, ce qui m'attend, si tout va bien.
  *
- * De gauche à droite : le fil d'Ariane (la famille en atténué, l'écran en
- * blanc), la pile d'avatars « 3 en ligne », la cloche et son badge, et la
- * pastille de la Garde. `extra` accueille ce qui doit rester à portée sans
- * faire partie du dessin (l'état de la synchronisation, l'organisation) ; il
- * s'efface sous 640 px.
+ * De gauche à droite : le fil d'Ariane « Famille / Page » (la famille en T4, la
+ * page en T1 500 ; libellés du registre ou de la page, jamais tirés de
+ * l'adresse), la pile d'avatars « 3 en ligne », la cloche et son badge, et la
+ * pastille de La Garde, dont le point est un voyant vivant (§0.4 : l'onde du
+ * `LiveDot`) dans l'état de la pire situation ouverte (vert, attention,
+ * critique). `extra` accueille ce qui doit rester à portée sans faire partie
+ * du dessin (l'état de la synchronisation, l'organisation) ; il s'efface sous
+ * 640 px. Quand la barre latérale est repliée, le bouton de menu la redéplie.
  */
 export interface EnTeteProps {
   fil: MiettePain[];
@@ -28,9 +31,13 @@ export interface EnTeteProps {
   garde: { etat: EtatGarde; points: number; vers: string };
   extra?: React.ReactNode;
   onMenu: () => void;
+  /** La barre latérale est repliée : le bouton de menu reste visible à toute largeur, et la redéplie. */
+  lateralRepliee?: boolean;
 }
 
-export function EnTete({ fil, enLigne, presenceMontree, notifications, versNotifications, volet, garde, extra, onMenu }: EnTeteProps) {
+const TON_GARDE: Record<EtatGarde, TonVivant> = { calme: 'ok', attention: 'attention', critique: 'critique', inconnu: 'info' };
+
+export function EnTete({ fil, enLigne, presenceMontree, notifications, versNotifications, volet, garde, extra, onMenu, lateralRepliee = false }: EnTeteProps) {
   const { ts } = useSocleLangue();
   const texteGarde =
     garde.etat === 'calme'
@@ -43,7 +50,7 @@ export function EnTete({ fil, enLigne, presenceMontree, notifications, versNotif
 
   return (
     <header data-socle="entete" className="sc-entete">
-      <button type="button" onClick={onMenu} aria-label={ts('coquille.menu.ouvrir')} className="sc-menu sc-focus">
+      <button type="button" onClick={onMenu} aria-label={ts(lateralRepliee ? 'coquille.deplier' : 'coquille.menu.ouvrir')} data-repliee={lateralRepliee || undefined} className="sc-menu sc-focus">
         <Menu size={17} aria-hidden />
       </button>
 
@@ -81,7 +88,9 @@ export function EnTete({ fil, enLigne, presenceMontree, notifications, versNotif
         {versNotifications ? <ClocheLien nombre={notifications} vers={versNotifications} /> : volet ? <Cloche nombre={notifications} volet={volet} /> : null}
 
         <Link to={garde.vers} data-etat={garde.etat} data-guide="garde" className="sc-garde sc-focus" title={texteGarde}>
-          <span aria-hidden className="sc-garde__point" />
+          <span aria-hidden className="sc-garde__point">
+            <LiveDot ton={TON_GARDE[garde.etat]} onde={garde.etat !== 'inconnu'} halo={false} libelle={texteGarde} />
+          </span>
           <span className="sc-garde__texte">{texteGarde}</span>
         </Link>
       </div>

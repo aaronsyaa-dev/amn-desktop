@@ -20,12 +20,14 @@ export interface CoquilleProps {
   /** Le tiroir est ouvert (sous 900 px) : le fond sert à le fermer. */
   tiroirOuvert: boolean;
   onFermerTiroir: () => void;
+  /** La barre latérale est repliée (son bouton « panneau ») : le contenu prend toute la largeur. */
+  lateralRepliee?: boolean;
 }
 
-export function Coquille({ lateral, entete, ajmani, children, largeur = 'lecture', tiroirOuvert, onFermerTiroir }: CoquilleProps) {
+export function Coquille({ lateral, entete, ajmani, children, largeur = 'lecture', tiroirOuvert, onFermerTiroir, lateralRepliee = false }: CoquilleProps) {
   const { ts } = useSocleLangue();
   return (
-    <div data-socle="coquille" data-espace-racine data-espace="poste" className="sc-coquille">
+    <div data-socle="coquille" data-espace-racine data-espace="poste" data-repliee={lateralRepliee || undefined} className="sc-coquille">
       <a href="#sc-principal" className="sc-evitement" onClick={(e) => { e.preventDefault(); document.getElementById('sc-principal')?.focus(); }}>
         {ts('coquille.evitement')}
       </a>

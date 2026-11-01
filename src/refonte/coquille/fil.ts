@@ -1,24 +1,31 @@
 import type { MiettePain } from '../../socle/coquille';
 
 /**
- * LE FIL D'ARIANE — où je suis, en deux miettes : la famille, puis l'écran.
- * Pur : `CoquilleRefonte` lui passe le chemin et ce qu'il a trouvé au catalogue.
+ * LE FIL D'ARIANE — « Famille / Page » (écart C1 du LOT-00). Pur : la coquille lui passe ce qu'elle a trouvé.
  *
- * Un écran hors catalogue (la vue « Tous les modules », un écran de réglage
- * tardif) reçoit son libellé de l'appelant, ou à défaut le dernier segment de
- * l'adresse, lisible : on ne laisse jamais le fil vide.
+ * Les libellés viennent du registre (la famille, l'écran au catalogue) ou de la page elle-même (les pages
+ * système : `pagesSysteme.ts`, `usePageCoquille`) — accentués, jamais tirés de l'adresse. Une page dont on ne
+ * sait rien porte une seule miette neutre, « Espace » : le fil n'est jamais vide, et jamais « Demarrage ».
  */
-export interface Trouve {
-  famille: string;
-  /** Le libellé de l'écran courant. */
-  module: string;
+export interface ContexteFil {
+  /** Ce que la page dit d'elle : le nom de sa famille (déjà lu au registre) et ses miettes. */
+  page?: { famille?: string | null; miettes: MiettePain[] } | null;
+  /** Ce que le registre a trouvé pour l'adresse : le nom de la famille et le libellé de l'écran. */
+  famille?: string | null;
+  module?: string | null;
+  /** La miette neutre, « Espace ». */
+  espace: string;
 }
 
-export function construireFil(pathname: string, trouve: Trouve | null, libelleParDefaut: string, tousLesModules?: { route: string; libelle: string }): MiettePain[] {
-  if (tousLesModules && pathname === tousLesModules.route) return [{ libelle: tousLesModules.libelle }];
-  if (trouve) return [{ libelle: trouve.famille }, { libelle: trouve.module }];
-  const segment = pathname.split('/').filter(Boolean).pop();
-  if (!segment) return [{ libelle: libelleParDefaut }];
-  const lisible = decodeURIComponent(segment).replace(/[-_]+/g, ' ');
-  return [{ libelle: lisible.charAt(0).toUpperCase() + lisible.slice(1) }];
+export function construireFil({ page, famille, module, espace }: ContexteFil): MiettePain[] {
+  if (page) {
+    const miettes = page.miettes.filter((m) => m.libelle.trim() !== '');
+    const tete = page.famille ? [{ libelle: page.famille }] : [];
+    const fil = [...tete, ...miettes];
+    return fil.length > 0 ? fil : [{ libelle: espace }];
+  }
+  if (famille && module) return [{ libelle: famille }, { libelle: module }];
+  if (module) return [{ libelle: espace }, { libelle: module }];
+  if (famille) return [{ libelle: famille }];
+  return [{ libelle: espace }];
 }

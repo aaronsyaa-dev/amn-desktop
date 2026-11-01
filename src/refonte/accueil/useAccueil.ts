@@ -7,7 +7,7 @@ import { useInvoices, isOverdue, isoDay, invoiceTotals, netDueCents } from '../.
 import { useAppointments, appointmentEnd } from '../../state/useAppointments';
 import { useAttention } from '../../state/useAttention';
 import { useActivity } from '../../state/ActivityContext';
-import { moduleDuChemin, useRegards } from '../../state/RegardsContext';
+import { useRegards } from '../../state/RegardsContext';
 import { useProfilesOptionnel } from '../../state/ProfilesContext';
 import { toutesLesSections } from '../../data/spaces';
 import type { NavItem } from '../../data/navigation';
@@ -21,6 +21,8 @@ import { traduireAccueil, type CleAccueil } from './i18n';
 import { appliquerRetouches, actionPrincipale, basculerFait, construireFil, retouchesVides, type ActionPrincipale, type LigneFil, type RetouchesFil } from './filDuJour';
 import { calculerTuiles, lundiDe, meilleureSerie, type Tuile } from './tuiles';
 import { filDActivite, type LigneActivite } from './activite';
+import { libelleDuLieu } from '../coquille/lieu';
+import { libellePageSysteme } from '../coquille/pagesSysteme';
 import type { Journee, TypeAlerte } from './scenes';
 
 /**
@@ -105,7 +107,10 @@ export interface Accueil {
   activite: LigneActivite[];
   familles: FamilleBarre[];
   garde: ModuleBarre[];
-  enLigne: { email: string; nom: string; module: string }[];
+  /** Les collègues en ligne et le libellé du module où chacun se trouve (`null` : inconnu — jamais une adresse). */
+  enLigne: { email: string; nom: string; module: string | null }[];
+  /** Le prochain rendez-vous du jour (pas encore fini), pour la carte « Aujourd'hui » de la coquille. */
+  prochainRdv: { titre: string; debut: string } | null;
   presenceMontree: boolean;
   nomDe: (email: string) => string;
   cocher: (ligne: LigneFil) => void;
@@ -281,12 +286,8 @@ export function useAccueil(): Accueil {
     const garde = catalogue.filter(estGarde).map(versModule);
 
     /* ── En ligne ── */
-    const libelleDuChemin = (chemin: string) => {
-      const m = moduleDuChemin(chemin);
-      const item = catalogue.find((i) => i.to === m) ?? catalogue.find((i) => i.to !== '/' && m.startsWith(i.to));
-      return item ? libelleNav(item) : m;
-    };
-    const enLigne = autres.filter((r) => !r.parti).map((r) => ({ email: r.email, nom: nomDe(r.email), module: libelleDuChemin(r.module) }));
+    // Le libellé du module, jamais l'adresse (écart C7) : inconnu, on n'écrit rien.
+    const enLigne = autres.filter((r) => !r.parti).map((r) => ({ email: r.email, nom: nomDe(r.email), module: libelleDuLieu(r.module, catalogue, (c) => libellePageSysteme(c, langue)) }));
 
     /* ── Le message d'Ajmani ── */
     const critique = items.find((i) => i.severity === 'critical') ?? null;
@@ -315,6 +316,7 @@ export function useAccueil(): Accueil {
       journee,
       tuiles,
       serie: meilleureSerie(routines, maintenant),
+      prochainRdv: rdvAVenir[0] ? { titre: rdvAVenir[0].title?.trim() || rdvAVenir[0].clientName || '', debut: rdvAVenir[0].startAt } : null,
       boiteAZero: ready && totalUnseen === 0,
       fil: visibles,
       faits,

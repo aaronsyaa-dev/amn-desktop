@@ -556,7 +556,7 @@ function BarreFamilles({ a }: { a: Accueil }) {
                 <Initiales nom={p.nom} />
                 <span className="min-w-0 text-[12.5px] leading-tight">
                   <span className="block truncate text-socle-texte">{p.nom}</span>
-                  <span className="block truncate text-socle-texte-doux">{ta('barre.sur', { module: p.module })}</span>
+                  {p.module && <span className="block truncate text-socle-texte-doux">{ta('barre.sur', { module: p.module })}</span>}
                 </span>
               </li>
             ))}

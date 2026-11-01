@@ -169,6 +169,31 @@
   --socle-ligne-survol: rgba(255, 255, 255, 0.03);
   --socle-police-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
 
+  /* ── v3 : la coquille (01-SOCLE-DESIGN §0.1 et §0.4) ──
+     Barre latérale : fond en dégradé `#111112` → `#0f0f10`, filet droit `#1f1f21` ; champ et bouton carré de la
+     recherche `#161617` bordés `#262628` (le bouton « Tous les modules » allumé : `#262628` bordé `#3a3a3e`) ;
+     famille active `#19191b`, sous-élément actif `#1f1f21` posé sur le filet `#262629` ; survol de toute ligne
+     `#18181a` ; compteur de Cyber `#262628` ; carte « Aujourd'hui » `#171718` → `#141415` bordée `#242426`.
+     Barre Ajmani : survol bordé `#3a3a3e`. */
+  --socle-lateral-haut: #111112;
+  --socle-lateral-bas: #0f0f10;
+  --socle-lateral-filet: #1f1f21;
+  --socle-lateral-champ: #161617;
+  --socle-lateral-bord-champ: #262628;
+  --socle-lateral-bouton-actif: #262628;
+  --socle-lateral-bord-actif: #3a3a3e;
+  --socle-lateral-famille-active: #19191b;
+  --socle-lateral-sous-actif: #1f1f21;
+  --socle-lateral-sous-filet: #262629;
+  --socle-lateral-survol: #18181a;
+  --socle-lateral-compteur: #262628;
+  --socle-lateral-carte-haut: #171718;
+  --socle-lateral-carte-bas: #141415;
+  --socle-lateral-bord-carte: #242426;
+  --socle-ajmani-bord-survol: #3a3a3e;
+  /* La lueur claire autour du logo « A » (images v3 : +5 niveaux à 1 px du bord, nulle à 5 px). */
+  --socle-logo-lueur: rgba(255, 255, 255, 0.07);
+
   /* ── Les noms du socle S0, redéfinis ── */
   --color-bg: #0c0c0d;
 
@@ -216,10 +241,23 @@
   --color-etat-info-bord: color-mix(in srgb, var(--color-etat-info) 40%, transparent);
 }
 
-/* La police de la refonte : Inter, chiffres tabulaires, sur les écrans qui ont migré. */
+/*
+  LES CHIFFRES TABULAIRES, SUR LES NOMBRES SEULEMENT (§2 ; écart C11 du LOT-00).
+  `src/index.css` (partagé avec l'édition cliente : on n'y touche pas) les pose sur tout le corps de page ; avec
+  Inter, ils élargissent aussi le trait d'union (« Start - up », « êtes - vous »). En édition interne, le texte
+  courant revient ici aux chiffres normaux. Les nombres du socle (valeurs de KPI, montants, heures, compteurs,
+  pastilles chiffrées, raccourcis, données techniques `.sc-mono`) gardent leurs chiffres tabulaires : leur classe
+  les pose elle-même, ou les reçoit de la seconde règle. `.sc-nombre` sert à tout autre nombre posé dans un texte.
+*/
+:root[data-ambiance='noir'] body { font-variant-numeric: normal; }
+:root[data-ambiance='noir'] :is(.sc-nombre, .sc-compteur, .sc-kbd, .sc-anneau__centre, .sc-cloche__badge, .sc-aujourdhui__detail, .sc-aujourdhui__quand) {
+  font-variant-numeric: tabular-nums;
+}
+
+/* La police de la refonte : Inter, sur les écrans qui ont migré (chiffres tabulaires : les nombres seulement, voir plus haut). */
 [data-refonte-police='inter'] {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: normal;
   font-feature-settings: 'cv11', 'ss01';
 }
 
