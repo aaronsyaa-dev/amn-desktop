@@ -18,8 +18,8 @@ const mixte = construireMonde({ volume: 'normal', volumes: { factures: 'vide', c
 |---|---|
 | **Reproductible** | même graine, mêmes données, à l'octet près (`GRAINE_REFERENCE`). Chaque jeu a son hasard : changer le volume d'un jeu ne déplace pas les autres. |
 | **Stable dans le temps** | rien ne lit l'horloge. « Maintenant » = **vendredi 30 octobre 2026, 10 h 15** (`MAINTENANT_REFERENCE`), le jour des maquettes. Une capture refaite dans un an est identique. `construireMonde({ maintenant })` décale tout de façon cohérente. |
-| **Rien de réel** | courriels en `@….exemple.test` (domaine réservé, RFC 2606) ; téléphones dans les plages que l'ARCEP réserve à la fiction (`01 99 00`, `06 39 98`) ; SIRET commençant par `000`, IBAN à clé `00`, jamais d'IBAN complet ; aucune photo, aucun secret. Les noms sont des assemblages de prénoms et noms courants : une ressemblance avec une vraie personne est une coïncidence. |
-| **Cohérent** | une facture payée a son paiement, qui a son mouvement bancaire ; un client est « Impayé » parce qu'une facture est échue ; une série vient des tâches faites ; le statut d'un projet vient de ses tâches. Les maquettes se contredisent (72 clients ici, 48 là) : ces jeux, non. |
+| **Rien de réel** | courriels en `@….exemple.test` (domaine réservé, RFC 2606) ; téléphones dans les plages que l'ARCEP réserve à la fiction (`01 99 00`, `06 39 98`) ; SIRET commençant par `000`, IBAN à clé `00`, jamais d'IBAN complet ; plaques d'immatriculation invalides par construction ; aucune photo, aucun secret (les secrets sont des **valeurs masquées**, jamais une valeur). La Garde et Cyber : identifiants `FICT-AAAA-NNNN`, aucune adresse réseau, aucun nom d'outil de sécurité réel, constats réduits à un titre et une gravité, campagnes réduites à des agrégats. Les noms sont des assemblages de prénoms et noms courants : une ressemblance avec une vraie personne est une coïncidence. |
+| **Cohérent** | une facture payée a son paiement, qui a son mouvement bancaire ; un client est « Impayé » parce qu'une facture est échue ; une série vient des tâches faites ; le statut d'un projet vient de ses tâches ; la TVA à payer vient des factures et des dépenses du mois ; le net d'un bulletin vient des salaires du mouvement bancaire ; la quantité d'un article est la somme de ses mouvements ; le nombre de non-lus d'une conversation vient de ses messages ; l'état d'une organisation de La Garde vient de son score, de ses alertes ouvertes et de sa dernière ronde ; l'état d'une mission Cyber vient de son accord. Les maquettes se contredisent (72 clients ici, 48 là) : ces jeux, non. |
 | **Complet pour les écrans** | dès « peu » ou « normal », chaque cas que les fiches montrent existe : un impayé, un brouillon, une facture annulée, une tâche en retard, une ronde de La Garde à venir, les trois statuts de client, les quatre colonnes de tickets… |
 
 ## Volumes
@@ -31,47 +31,36 @@ const mixte = construireMonde({ volume: 'normal', volumes: { factures: 'vide', c
 | `normal` | le cas des maquettes | 48 / 70 / ≈ 270 |
 | `beaucoup` | défilement, pagination, performance | 300 / 700 / ≈ 1 750 |
 
-`construireMonde` prend moins de 200 ms au volume `beaucoup` (3,5 Mo).
+`construireMonde` assemble les 100 jeux en quelques centaines de millisecondes, même au volume `beaucoup`.
 
 ## Conventions
 
 - **Montants en centimes entiers** (`...Cents`), TTC sauf mention contraire. Aides : `totauxDeFacture`, `totauxDeLignes`.
 - **Un champ qui existe déjà dans le dépôt garde son nom** (`title`, `status`, `assigneeEmail`, `amountCents`…). Un champ que seule une fiche réclame est en français et cite sa fiche (`types.ts`). `compat.ts` vérifie à la compilation que `FicheClient`, `Devis`, `Facture`, `Evenement`, `Depense`, `NoteRapide` et `Projet` restent des sur-ensembles des types du dépôt.
 - **Jours** : `AAAA-MM-JJ` du calendrier de Paris (heure d'hiver et d'été gérées). **Instants** : ISO.
-- **Ce qui est dérivé se recalcule** : « En retard » (`statutAffiche`), santé d'un client (`calculerSante`, formule proposée par H05), avancement et statut d'un projet (`avancementProjet`, `statutProjet`), série (`journeesDeTravail`, `serieEnCours`). Un écran doit refaire ces calculs ; les valeurs stockées servent à comparer.
+- **Ce qui est dérivé se recalcule** : « En retard » (`statutAffiche`), santé d'un client (`calculerSante`, formule proposée par H05), avancement et statut d'un projet (`avancementProjet`, `statutProjet`), série (`journeesDeTravail`, `serieEnCours`), quantité en stock (`quantiteEnStock`), état d'une organisation (`etatOrganisation`), score et niveau de maturité (`scoreMaturite`, `niveauMaturite`), état d'un accord (`etatAccord`), disponibilité d'un outil (`outilDisponible`), niveau de conformité (`niveauConformite`), jours sans impayé (`joursSansImpaye`). Un écran doit refaire ces calculs ; les valeurs stockées servent à comparer.
 - Les règles que les fiches disent « à confirmer dans le code » sont implémentées comme **propositions**, nommées dans le code. Ne les prenez pas pour la règle du produit.
 
 ## Catalogue des jeux
 
-Les 25 jeux sont dans `types.ts` (`NOMS_DES_JEUX`). Fiches = celles de `AMN-refonte-CO/lots/`.
+Les 100 jeux sont dans `types.ts` (`NOMS_DES_JEUX`, 25) et `types-suite.ts` (`NOMS_DES_JEUX_SUITE`, 75). Fiches = celles de `AMN-refonte-CO/lots/`.
 
-| Lot | Jeu | Fiches qui l'utilisent |
+| Lot | Jeux | Fichier |
 |---|---|---|
-| Base | `equipe` (+ `entreprise`) | MC04, H19, MJ03, MJ01, réglages |
-| Ma journée | `taches` | H02, N01, MJ01, L01 à L03 |
-| | `evenements` | H01, MC06, MJ03, N01 |
-| | `projets` | MJ01 |
-| | `tickets` | H03, N01 |
-| | `notes` | MJ04 |
-| | `rappels` | MJ05 |
-| | `habitudes` | MJ02, L01 |
-| Contacts | `clients` | H05, G04, F10, T02 |
-| | `interlocuteurs` | MC03 |
-| | `prospects` | H06, MC01 |
-| | `fournisseurs`, `achats` | H45 |
-| | `avis` | H44 |
-| | `relances` | MC07 |
-| | `fidelite` | MC02 |
-| L'argent | `devis` | H07 |
-| | `factures` | G03, MA04, F30 |
-| | `paiements` | MA03 |
-| | `depenses` | H08, MA05 |
-| | `abonnements` | MA09 |
-| | `contrats` | MA01 |
-| | `comptes`, `mouvements` | MA10, MA07 |
-| | `enveloppes` | MA06 |
+| Base | `equipe`, `entreprise` | `equipe.ts`, `fond.ts` |
+| Ma journée | `taches`, `evenements`, `projets`, `tickets`, `notes`, `rappels`, `habitudes` ; planning de l'équipe : `creneaux` ; défis : `defis` | `ma-journee.ts`, `complements.ts` |
+| Contacts | `clients`, `interlocuteurs`, `prospects`, `fournisseurs`, `achats`, `avis`, `relances`, `fidelite` ; `partenaires` | `contacts.ts`, `complements.ts` |
+| L'argent | `devis`, `factures`, `paiements`, `depenses`, `abonnements`, `contrats`, `comptes`, `mouvements`, `enveloppes` ; TVA et impôts : `echeancesFiscales` ; paie : `bulletins` ; tarifs : `prestations` | `argent.ts`, `complements.ts` |
+| Écrire | `fichiers`, `signatures`, `pages`, `modeles`, `journal`, `textes`, `archives`, `connaissances` | `ecrire.ts` |
+| Échanger | `conversations`, `messages`, `canaux`, `annonces`, `courriels`, `salles`, `appels`, `reunions`, `partages`, `sondages`, `reponsesAuto` | `echanger.ts` |
+| Créer | `articles`, `produits`, `commandes`, `chantiers`, `dossiersPhotos`, `marque`, `videos`, `pagesPubliques`, `etapesTournee`, `equipements`, `ressources`, `reservations`, `vehicules`, `modelesControle`, `controles`, `ecarts` | `creer.ts` |
+| Outils | `corbeille`, `aide`, `secrets` (masqués), `sites`, `trackers`, `sauvegardes`, `operations`, `raccourcis`, `automatisations`, `connecteurs`, `notifications`, `modelesMetier`, `usagesCalculs` | `boite-outils.ts` |
+| La Garde | `organisations`, `actifs`, `alertes`, `incidents`, `vulnerabilites`, `rondes`, `evenementsSecurite`, `journalAcces`, `criteresMaturite`, `offresCyber` | `garde.ts` |
+| Cyber (LOT-10) | `outilsCyber`, `accords`, `missions`, `constats`, `documentsCyber`, `logicielsClients`, `alertesVeille`, `fuites`, `dossiersConformite`, `campagnes`, `parcSecurite` | `cyber.ts` |
 
-**Pas encore faits** (par ordre d'utilité) : voir le rapport `docs/refonte/rapports/DONNEES.md`.
+Aides communes : `commun.ts` (horodatages bornés au passé, cycles, hasard par jeu).
+
+**Pas encore faits** : voir le rapport `docs/refonte/rapports/DONNEES.md`.
 
 ## Vérifier
 
@@ -79,9 +68,9 @@ Les 25 jeux sont dans `types.ts` (`NOMS_DES_JEUX`). Fiches = celles de `AMN-refo
 node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-donnees.ts
 ```
 
-55 contrôles : reproductibilité, volumes, absence de données réelles, références
+87 contrôles : reproductibilité, volumes, absence de données réelles, références
 qui existent, numérotation continue des factures, chiffres qui se recoupent,
-français correct, et les mêmes invariants sur 12 graines et 4 dates de référence.
+français correct, absence de secret, d'adresse réseau et de nom d'outil de sécurité réel, et les mêmes invariants sur 12 graines (« peu » et « normal »), 4 graines (« beaucoup ») et 4 dates de référence.
 
 ## Ajouter un jeu
 

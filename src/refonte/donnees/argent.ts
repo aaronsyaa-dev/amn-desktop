@@ -443,6 +443,8 @@ export function genererMouvements(
   depenses: readonly Depense[],
   abonnements: readonly Abonnement[],
   factures: readonly Facture[],
+  /** Net mensuel des bulletins de paie (MA11), pour que les prélèvements « Salaires » s'y recoupent. */
+  salairesMensuelsCents: number | null = null,
 ): Mouvement[] {
   const h = hasard(graineDe(ctx.graine, 'mouvements'));
   if (comptes.length === 0) return [];
@@ -459,7 +461,7 @@ export function genererMouvements(
     liste.push({ compteId: principal.id, libelle: d.fournisseur, nature: 'Paiement', categorie: libelleCategorie(d.category), date: d.spentAt, montantCents: -d.amountCents, reel: true, rapprochement: d.justificatif.statut === 'justifié' ? 'rapproché' : 'à vérifier', lien: { type: 'depense', id: d.id }, recurrent: false });
   }
   // Charges fixes : un loyer et des salaires mensuels, un abonnement logiciel.
-  const fixes: readonly (readonly [string, string, number, number])[] = [['Loyer du local', 'Locaux', -120_000, 3], ['Salaires', 'Personnel', -480_000, 28], ['Assurance professionnelle', 'Assurances', -9_600, 12]];
+  const fixes: readonly (readonly [string, string, number, number])[] = [['Loyer du local', 'Locaux', -120_000, 3], ['Salaires', 'Personnel', -(salairesMensuelsCents ?? 480_000), 28], ['Assurance professionnelle', 'Assurances', -9_600, 12]];
   for (let mois = 5; mois >= 0; mois -= 1) {
     for (const [libelle, categorie, montant, jour] of fixes) {
       const [a, m] = ajouterJours(ctx.aujourdhui, -30 * mois).split('-').map(Number);
