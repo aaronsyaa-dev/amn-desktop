@@ -57,6 +57,11 @@ export interface VueDeclaree {
   verbes: readonly string[];
   /** Ce qu'on pourrait taper d'autre : synonymes, objets, sigles. */
   motsCles: readonly string[];
+  /**
+   * Les mêmes verbes et mots-clés en anglais, pour la recherche quand l'application
+   * parle anglais. Absent : l'anglais retombe sur le français.
+   */
+  en?: { verbes: readonly string[]; motsCles: readonly string[] };
   /** Le nom de la vue dans son entrée, s'il diffère du catalogue (Journal : « Pro », « Perso »). */
   etiquette?: Libelle;
   /** Présent seulement pour un écran absent du catalogue. */
@@ -71,12 +76,21 @@ export interface ModuleDeclare<A extends string = string> {
   vues: readonly VueDeclaree[];
 }
 
-/** Une vue du catalogue qui n'est plus une entrée : elle garde sa route, et quelque chose la remplace. */
+/**
+ * Une vue qui n'est plus une entrée ni un module du catalogue : sa route reste
+ * (un lien, un signet, un onglet mémorisé y arrivent encore), et quelque chose
+ * la remplace.
+ */
 export interface VueRemplacee {
   id: string;
   route: string;
   /** Ce qui la remplace, à lire après « est devenu » : « le panneau assistant, ouvert par ⌘J ». */
   par: Libelle;
+  /**
+   * Où la route mène maintenant, montée par le registre (`routesDuRegistre`) :
+   * on arrive sur `vers`, et le panneau assistant (⌘J) s'ouvre si `assistant`.
+   */
+  redirection: { vers: string; assistant?: true };
 }
 
 export interface FamilleDeclaree<A extends string = string> {
@@ -121,7 +135,7 @@ export function vue(
   route: string,
   verbes: readonly string[],
   motsCles: readonly string[],
-  plus: Pick<VueDeclaree, 'etiquette' | 'nouveau'> = {},
+  plus: Pick<VueDeclaree, 'etiquette' | 'nouveau' | 'en'> = {},
 ): VueDeclaree {
   return { id, route, verbes, motsCles, ...plus };
 }
