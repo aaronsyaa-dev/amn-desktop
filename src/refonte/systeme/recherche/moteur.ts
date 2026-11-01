@@ -80,6 +80,8 @@ export interface EntreeIndex {
   /** Pour un client : le nom de la personne, et son adresse si elle est valide. */
   contact?: string;
   courriel?: string;
+  /** Pour une facture : elle est échue et encore due (l'étiquette de la ligne dit « en retard »). */
+  enRetard?: boolean;
 }
 
 /** Un verbe du registre : « Envoyer une facture », qui mène à la page qui le porte. */
@@ -113,6 +115,9 @@ export type Cible =
 
 export type IconeLigne = 'ajmani' | 'devis' | 'ecrire' | 'action' | TypeResultat;
 
+/** Ce qu'une action est, dit à droite de sa ligne (« Demander à Ajmani », « Devis », « Courriel »). */
+export type NatureAction = 'ajmani' | 'devis' | 'courriel';
+
 export interface LigneRecherche {
   cle: string;
   genre: 'action' | 'resultat';
@@ -120,14 +125,43 @@ export interface LigneRecherche {
   famille: Famille | 'ajmani';
   icone: IconeLigne;
   type?: TypeResultat;
+  /** Pour une action : sa nature (l'étiquette de droite). */
+  nature?: NatureAction;
+  /** Pour une facture : échue et encore due. */
+  enRetard?: boolean;
+  /** La clé de l'élément de l'index que la ligne concerne (l'aperçu de droite le montre) : elle-même, ou le client d'une action. */
+  lie?: string;
   module?: string;
   cible: Cible;
   /** Vrai : visible mais sans effet (une action qui exige le réseau, hors ligne). */
   grise: boolean;
 }
 
+/**
+ * Les groupes, dans l'ordre de la palette : les actions, puis les éléments par sorte (H41 v3 : Actions, Clients,
+ * Documents, Modules, et Tâches, Notes, Messages quand ils répondent). « Récents » n'existe qu'à saisie vide.
+ */
+export type IdGroupe = 'recents' | 'actions' | 'clients' | 'documents' | 'modules' | 'taches' | 'notes' | 'messages';
+
+/** Le groupe de chaque sorte d'élément : un devis, une facture et une décision sont des documents ; une page est un module. */
+export const GROUPE_DU_TYPE: Readonly<Record<TypeResultat, IdGroupe>> = {
+  client: 'clients',
+  contact: 'clients',
+  devis: 'documents',
+  facture: 'documents',
+  document: 'documents',
+  decision: 'documents',
+  page: 'modules',
+  tache: 'taches',
+  note: 'notes',
+  message: 'messages',
+};
+
+/** L'ordre des groupes d'une recherche. */
+export const ORDRE_GROUPES: readonly IdGroupe[] = ['actions', 'clients', 'documents', 'modules', 'taches', 'notes', 'messages'];
+
 export interface GroupeRecherche {
-  id: 'recents' | 'actions' | 'resultats';
+  id: IdGroupe;
   lignes: LigneRecherche[];
 }
 
@@ -162,13 +196,16 @@ export interface ContexteRecherche {
   frequences?: Readonly<Record<string, number>>;
   horsLigne?: boolean;
   actionsPage?: readonly ActionPageDecl[];
-  /** Lignes par groupe (5 par défaut). */
+  /** Lignes par groupe (`PLAFOND_PAR_GROUPE` par défaut) : ce qu'une puce de portée montre, la liste défile. */
   plafond?: number;
 }
 
 /* ─────────────────────────────── Constantes ─────────────────────────────── */
 
-export const PLAFOND_PAR_GROUPE = 5;
+/** Ce qu'un groupe garde au plus : c'est ce que sa puce de portée montre (la liste défile). */
+export const PLAFOND_PAR_GROUPE = 30;
+/** Dans la vue « Tout », au plus 3 lignes par groupe ; la puce du groupe montre le reste. */
+export const PLAFOND_TOUT = 3;
 /** Le mode « > » montre toutes les actions : le plafond y est plus haut, la liste défile. */
 export const PLAFOND_MODE_ACTIONS = 30;
 export const TAILLE_RECENTS = 5;
@@ -372,6 +409,8 @@ function ligneDeEntree(e: EntreeIndex): LigneRecherche {
     famille: e.famille,
     icone: e.type,
     type: e.type,
+    enRetard: e.enRetard || undefined,
+    lie: e.cle,
     module: e.module,
     cible: { k: 'aller', route: e.route, state: e.state },
     grise: false,
@@ -393,6 +432,8 @@ function ligneAjmani(saisie: string, ctx: ContexteRecherche, client: EntreeIndex
     libelle: client ? ctx.textes.ajmaniClient(client.libelle) : ctx.textes.ajmaniGenerique(saisie),
     famille: 'ajmani',
     icone: 'ajmani',
+    nature: 'ajmani',
+    lie: client?.cle,
     cible: { k: 'ajmani', texte: client ? ctx.textes.ajmaniClientDemande(client.libelle) : saisie },
     grise: false,
   };
@@ -545,12 +586,26 @@ function actionsFiltrees(texte: string, index: Index, ctx: ContexteRecherche): L
 function actionsDuClient(client: EntreeIndex, ctx: ContexteRecherche): LigneRecherche[] {
   const lignes: LigneRecherche[] = [
     // La création d'un devis prérempli n'existe pas encore : on ouvre la fiche, d'où il se crée.
-    { cle: `action:devis:${client.cle}`, genre: 'action', libelle: ctx.textes.devis(client.libelle), famille: 'argent', icone: 'devis', cible: { k: 'aller', route: client.route, state: client.state }, grise: false },
+    { cle: `action:devis:${client.cle}`, genre: 'action', libelle: ctx.textes.devis(client.libelle), famille: 'argent', icone: 'devis', nature: 'devis', lie: client.cle, cible: { k: 'aller', route: client.route, state: client.state }, grise: false },
   ];
   if (client.courriel && courrielValide(client.courriel)) {
-    lignes.push({ cle: `action:ecrire:${client.cle}`, genre: 'action', libelle: ctx.textes.ecrire(client.contact || client.libelle), famille: 'echanger', icone: 'ecrire', cible: { k: 'lien', href: lienCourriel(client.courriel) }, grise: false });
+    lignes.push({ cle: `action:ecrire:${client.cle}`, genre: 'action', libelle: ctx.textes.ecrire(client.contact || client.libelle), famille: 'echanger', icone: 'ecrire', nature: 'courriel', lie: client.cle, cible: { k: 'lien', href: lienCourriel(client.courriel) }, grise: false });
   }
   return lignes;
+}
+
+/** Les actions rapides de l'aperçu d'un élément : l'ouvrir ; pour un client, un devis et un courriel (adresse valide). */
+export interface ActionsRapides {
+  ouvrir: LigneRecherche;
+  devis?: LigneRecherche;
+  ecrire?: LigneRecherche;
+}
+
+export function actionsRapides(entree: EntreeIndex, ctx: ContexteRecherche): ActionsRapides {
+  const ouvrir = ligneDeEntree(entree);
+  if (entree.type !== 'client') return { ouvrir };
+  const [devis, ecrire] = actionsDuClient(entree, ctx);
+  return { ouvrir, devis, ecrire };
 }
 
 function reponse(mode: ReponseRecherche['mode'], saisie: string, groupes: GroupeRecherche[], extra: Partial<Pick<ReponseRecherche, 'aucunResultat' | 'proche'>> = {}): ReponseRecherche {
@@ -563,8 +618,10 @@ function reponse(mode: ReponseRecherche['mode'], saisie: string, groupes: Groupe
  *
  *   saisie vide  « RÉCENTS » (5 derniers éléments ouverts) puis « ACTIONS » (celles de la page courante) ;
  *   « > texte »  « ACTIONS » seulement : toutes celles de l'application, filtrées par le texte ;
- *   texte        « ACTIONS » (Demander à Ajmani d'abord, toujours ; puis celles du meilleur client et de la page)
- *                puis « CLIENTS ET PAGES » (au plus 5 par groupe).
+ *   texte        « ACTIONS » (Demander à Ajmani d'abord, toujours ; puis celles du meilleur client et de la page),
+ *                puis un groupe par sorte d'élément, dans l'ordre de `ORDRE_GROUPES` (« CLIENTS », « DOCUMENTS »,
+ *                « MODULES »…), chacun classé, au plus `plafond` lignes. La vue « Tout » en montre 3 par groupe
+ *                (`groupesDeLaPortee`).
  *
  * Hors ligne, seuls les pages et les éléments récents sont proposés.
  */
@@ -594,9 +651,105 @@ export function rechercher(brut: string, index: Index, ctx: ContexteRecherche): 
   const client = classes.find((c) => c.entree.type === 'client' && c.score >= SCORE_DESIGNE)?.entree ?? null;
   const dePage = (ctx.actionsPage ?? []).filter((a) => evaluer(motsRequete(texte), motsDe(a.libelle)) > 0).map((a) => ligneDeActionPage(a, horsLigne));
   const actions = [ligneAjmani(texte, ctx, client), ...(client ? actionsDuClient(client, ctx) : []), ...dePage].slice(0, plafond);
-  const resultats = classes.slice(0, plafond).map((c) => ligneDeEntree(c.entree));
+  const parGroupe = new Map<IdGroupe, LigneRecherche[]>();
+  for (const c of classes) {
+    const id = GROUPE_DU_TYPE[c.entree.type];
+    const lignes = parGroupe.get(id) ?? [];
+    if (lignes.length < plafond) lignes.push(ligneDeEntree(c.entree));
+    parGroupe.set(id, lignes);
+  }
+  const groupes: GroupeRecherche[] = ORDRE_GROUPES.map((id) => ({ id, lignes: id === 'actions' ? actions : (parGroupe.get(id) ?? []) }));
 
-  const aucun = resultats.length === 0;
+  const aucun = classes.length === 0;
   const proche = aucun ? procheDe(texte, permises) : null;
-  return reponse('recherche', texte, [{ id: 'actions', lignes: actions }, { id: 'resultats', lignes: resultats }], { aucunResultat: aucun, proche: proche ? ligneDeEntree(proche) : null });
+  return reponse('recherche', texte, groupes, { aucunResultat: aucun, proche: proche ? ligneDeEntree(proche) : null });
+}
+
+/* ─────────────────────────────── La portée (les puces « Tout 9 », « Actions 3 »…) ─────────────────────────────── */
+
+/** « Tout », ou un seul groupe. */
+export type Portee = 'tout' | IdGroupe;
+
+export interface PucePortee {
+  cle: Portee;
+  /** Le nombre de lignes derrière la puce. */
+  compteur: number;
+}
+
+/** Les puces d'une réponse : « Tout » puis un groupe par puce, dans l'ordre des groupes. Sans recherche, aucune. */
+export function pucesDePortee(r: ReponseRecherche): PucePortee[] {
+  if (r.mode !== 'recherche') return [];
+  return [{ cle: 'tout', compteur: r.total }, ...r.groupes.map((g) => ({ cle: g.id, compteur: g.lignes.length }))];
+}
+
+/** La portée suivante (⇥), ou la précédente (⇧⇥), en boucle ; une portée qui n'existe plus revient à « Tout ». */
+export function porteeSuivante(puces: readonly PucePortee[], actuelle: Portee, versArriere = false): Portee {
+  if (puces.length === 0) return 'tout';
+  const i = puces.findIndex((p) => p.cle === actuelle);
+  if (i < 0) return 'tout';
+  const n = puces.length;
+  return puces[(i + (versArriere ? n - 1 : 1)) % n].cle;
+}
+
+/**
+ * Ce que la liste montre pour une portée : « Tout », au plus `PLAFOND_TOUT` lignes par groupe d'une recherche
+ * (à saisie vide et en mode « > », tout) ; un groupe, ce groupe seul et en entier. Un groupe absent : « Tout ».
+ */
+export function groupesDeLaPortee(r: ReponseRecherche, portee: Portee): GroupeRecherche[] {
+  if (portee !== 'tout') {
+    const seul = r.groupes.find((g) => g.id === portee);
+    if (seul) return [seul];
+  }
+  if (r.mode !== 'recherche') return r.groupes;
+  return r.groupes.map((g) => ({ id: g.id, lignes: g.lignes.slice(0, PLAFOND_TOUT) }));
+}
+
+/* ─────────────────────────────── Les lettres trouvées ─────────────────────────────── */
+
+export interface Morceau {
+  texte: string;
+  /** Vrai : des lettres tapées (mises en évidence). */
+  trouve: boolean;
+}
+
+/**
+ * LES LETTRES TROUVÉES D'UN LIBELLÉ — pour chaque mot tapé, son premier passage dans le libellé (au début d'un mot
+ * de préférence), sans tenir compte des accents ni de la casse : « orch » met en évidence « Orch » dans
+ * « Créer un devis pour Orchidée Conseil ». Les morceaux se recollent en le libellé exact.
+ */
+export function surligner(libelle: string, saisie: string): Morceau[] {
+  const { texte } = analyserSaisie(saisie);
+  const mots = motsRequete(texte).filter((m) => m.length > 0);
+  if (!libelle || mots.length === 0) return libelle ? [{ texte: libelle, trouve: false }] : [];
+  // Le libellé aplati lettre par lettre, et pour chaque lettre aplatie, la lettre d'origine.
+  let plat = '';
+  const origine: number[] = [];
+  for (let i = 0; i < libelle.length; i += 1) {
+    const f = libelle[i].normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    for (let k = 0; k < f.length; k += 1) {
+      plat += f[k];
+      origine.push(i);
+    }
+  }
+  const marques = new Array<boolean>(libelle.length).fill(false);
+  const debutDeMot = (j: number) => j === 0 || !/[\p{L}\p{N}]/u.test(plat[j - 1]);
+  for (const mot of mots) {
+    let trouve = -1;
+    for (let j = plat.indexOf(mot); j >= 0; j = plat.indexOf(mot, j + 1)) {
+      if (debutDeMot(j)) {
+        trouve = j;
+        break;
+      }
+      if (trouve < 0) trouve = j;
+    }
+    if (trouve < 0) continue;
+    for (let j = trouve; j < trouve + mot.length; j += 1) marques[origine[j]] = true;
+  }
+  const morceaux: Morceau[] = [];
+  for (let i = 0; i < libelle.length; i += 1) {
+    const dernier = morceaux[morceaux.length - 1];
+    if (dernier && dernier.trouve === marques[i]) dernier.texte += libelle[i];
+    else morceaux.push({ texte: libelle[i], trouve: marques[i] });
+  }
+  return morceaux;
 }

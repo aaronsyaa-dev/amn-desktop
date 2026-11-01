@@ -49,6 +49,8 @@ export interface FactureSource {
   number: string;
   clientId: number;
   billTo: { name: string; company: string };
+  /** Échue et encore due (calculé par l'appelant, qui connaît le jour et les avoirs). */
+  enRetard?: boolean;
   updatedAt?: string;
 }
 export interface TacheSource {
@@ -86,8 +88,8 @@ export interface OptionsIndex {
   ouvert: (cleModule: string) => boolean;
   /** La famille d'un module (elle colore la tuile). */
   familleDe: (cleModule: string) => Famille;
-  /** Les deux libellés que l'index doit inventer. */
-  mots: { brouillon: string; sansTitre: string };
+  /** Les libellés que l'index compose : « Brouillon … », « Sans titre », « Facture F-… · client ». */
+  mots: { brouillon: string; sansTitre: string; facture: string };
 }
 
 export interface IndexConstruit extends Index {
@@ -213,7 +215,9 @@ export function construireIndex(donnees: DonneesIndex, options: OptionsIndex): I
       entrees.push({
         cle: `facture:${f.id}`,
         type: 'facture',
-        libelle: numero || `${options.mots.brouillon} ${tiers}`.trim(),
+        // « Facture F-… · le client » : le numéro et le tiers, pour qu'on la reconnaisse dans la liste.
+        libelle: numero ? [`${options.mots.facture} ${numero}`, tiers].filter(Boolean).join(' · ') : `${options.mots.brouillon} ${tiers}`.trim(),
+        enRetard: f.enRetard || undefined,
         aussi: [propre(f.billTo?.name), propre(f.billTo?.company), nomDuClient.get(f.clientId) ?? ''].filter(Boolean),
         route: '/facturation',
         state: { openInvoiceId: f.id },

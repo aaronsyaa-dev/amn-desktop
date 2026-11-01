@@ -5,10 +5,12 @@ import { isModuleEnabled, toutesLesSections } from '../../../data/spaces';
 import { indiceNav, libelleNav, useLangue } from '../../../i18n';
 import { assignUniqueIds } from '../../../lib/records';
 import { useCollection, useSync } from '../../../state/SyncContext';
-import { useInvoices } from '../../../state/useInvoices';
+import { useAppointments } from '../../../state/useAppointments';
+import { invoiceTotals, isOverdue, isoDay, netDueCents, useInvoices } from '../../../state/useInvoices';
 import { useNavAlleges } from '../../../state/useNavAlleges';
 import { useNotes } from '../../../state/useNotes';
 import { entreeDuRegistre, familleDe } from '../../navigation/registre';
+import type { SourcesApercu } from './apercu';
 import { construireIndex, type DonneesIndex, type IndexConstruit } from './construire';
 import { ajouterRecent, compterOuverture, ecrireFrequences, ecrireRecents, lireFrequences, lireRecents, type Frequences, type Recent } from './memoire';
 import { useMots } from './i18n';
@@ -37,6 +39,8 @@ interface LigneClient {
   name?: string;
   company?: string;
   email?: string;
+  createdAt?: string;
+  events?: readonly { title?: string; date?: string }[];
 }
 interface LigneDevis {
   title?: string;
@@ -83,6 +87,7 @@ export function useIndexRecherche(): IndexRecherche {
     void alleges;
     void relance;
     try {
+      const aujourdhui = isoDay();
       const idsClients = assignUniqueIds(clients, (r) => r.id);
       const idsDevis = assignUniqueIds(devis, (r) => r.id);
       const donnees: DonneesIndex = {
@@ -99,7 +104,7 @@ export function useIndexRecherche(): IndexRecherche {
           title: q.title ?? '',
           updatedAt: q.updatedAt,
         })),
-        factures: invoices.map((f) => ({ id: f.id, number: f.number, clientId: f.clientId, billTo: { name: f.billTo.name, company: f.billTo.company }, updatedAt: f.updatedAt })),
+        factures: invoices.map((f) => ({ id: f.id, number: f.number, clientId: f.clientId, billTo: { name: f.billTo.name, company: f.billTo.company }, enRetard: isOverdue(f, aujourdhui, invoices), updatedAt: f.updatedAt })),
         taches: taches.map((t) => ({ id: t.id, title: t.title ?? '', clientId: t.clientId, updatedAt: t.updatedAt })),
         notes: notes.map((n) => ({ id: n.id, title: n.title, body: n.body, updatedAt: n.updatedAt })),
         documents: documents.map((d) => ({ id: d.id, title: d.title ?? '', updatedAt: d.updatedAt })),
@@ -108,7 +113,7 @@ export function useIndexRecherche(): IndexRecherche {
       return construireIndex(donnees, {
         ouvert: (module) => NAV_ITEMS.some((i) => i.key === module) && isModuleEnabled(module),
         familleDe,
-        mots: { brouillon: tm('facture.brouillon'), sansTitre: tm('sanstitre') },
+        mots: { brouillon: tm('facture.brouillon'), sansTitre: tm('sanstitre'), facture: tm('facture.libelle') },
       });
     } catch {
       return { ...VIDE, erreurs: ['index'] };
@@ -124,6 +129,42 @@ export function useIndexRecherche(): IndexRecherche {
     erreur: index.erreurs.length > 0 || (configured && pullFailed && elements === 0),
     recharger,
   };
+}
+
+/* ─────────────────────────────── Les sources de l'aperçu ─────────────────────────────── */
+
+/**
+ * Ce que le volet de droite lit : les fiches clients (création, événements), les factures (montants, échéances,
+ * encaissements, avoirs déduits) et les rendez-vous. Les mêmes collections que les écrans, rien de recopié ;
+ * les calculs sont dans `apercu.ts`.
+ */
+export function useSourcesApercu(): SourcesApercu {
+  const clients = useCollection<LigneClient>('clients');
+  const { invoices } = useInvoices();
+  const { appointments } = useAppointments();
+  return useMemo<SourcesApercu>(() => {
+    const ids = assignUniqueIds(clients, (r) => r.id);
+    return {
+      clients: clients.map((c) => ({
+        id: ids.get(c.id) ?? 0,
+        creeLe: c.createdAt,
+        evenements: (Array.isArray(c.events) ? c.events : []).flatMap((e) => (e && typeof e.title === 'string' && typeof e.date === 'string' ? [{ titre: e.title, date: e.date }] : [])),
+      })),
+      factures: invoices.map((f) => ({
+        id: f.id,
+        numero: f.number,
+        clientId: f.clientId,
+        statut: f.status,
+        avoir: f.kind === 'creditNote',
+        emiseLe: f.issuedAt,
+        echeance: f.dueAt,
+        payeeLe: f.paidAt,
+        totalCentimes: invoiceTotals(f).grossCents,
+        resteDuCentimes: netDueCents(f, invoices),
+      })),
+      rendezVous: appointments.map((r) => ({ clientId: r.clientId, debut: r.startAt, statut: r.status })),
+    };
+  }, [clients, invoices, appointments]);
 }
 
 /* ─────────────────────────────── Mémoire des ouvertures ─────────────────────────────── */
