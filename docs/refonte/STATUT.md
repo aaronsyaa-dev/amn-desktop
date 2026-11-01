@@ -159,6 +159,10 @@ Branche `claude/refonte-socle` (partie de `claude/refonte-design-socle`). Détai
 - Point ouvert : `/garde/ajmani` (S5) ouvre l'assistant existant, pas la palette ⌘J du LOT-00 (G05) quand la nouvelle coquille est allumée. À aligner au basculement de la coquille.
 - Gardes après fusion : identiques à la base ; `check:socle-*` et `check:systeme-*` verts.
 
+### Écarts relevés par T1
+
+- En attente : aucune liste d'écarts de T1 pour le LOT-00 au 2026-11-01 (dernier envoi de T1 : `f2e243a` sur `claude/refonte-qualite`, l'outil de fidélité `docs/refonte/CONTROLE-FIDELITE.md`, sans résultat pour ce lot). Les corrections seront faites et notées ici à réception.
+
 ### Questions pour le CO
 
 1. Allume-t-on la nouvelle coquille par défaut ? Avec quel jalon ?
