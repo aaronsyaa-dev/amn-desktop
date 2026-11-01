@@ -119,13 +119,13 @@ const primaires = (html: string): number => compter(html, /data-variante="primai
 
 await dit('huit familles, dans l’ordre de la fiche, avec leurs titres et leurs descriptions exacts, en français et en anglais', () => {
   const attendu: [string, string][] = [
-    ['Artisan du bâtiment', 'Chantiers, devis, stock'], ['Commerce', 'Stock, fournisseurs, avis'], ['Conseil et services', 'Clients, missions, factures'],
-    ['Start-up', 'Tickets, tableau de bord, équipe'], ['Création et agence', 'Projets, visuels, signatures'], ['Vie de tous les jours', 'Courses, budget, rendez-vous'],
-    ['Santé et bien-être', 'Agenda, dossiers, rappels'], ['Association', 'Membres, annonces, dons'],
+    ['Conseil et services', 'clients, missions, factures'], ['Artisan du bâtiment', 'chantiers, devis, stock'], ['Commerce', 'stock, fournisseurs, avis'],
+    ['Start-up', 'tickets, tableau, équipe'], ['Création et agence', 'projets, visuels, signatures'], ['Vie de tous les jours', 'courses, budget, rendez-vous'],
+    ['Santé et bien-être', 'agenda, dossiers, rappels'], ['Association', 'membres, annonces, dons'],
   ];
   assert.deepEqual(MODELES.map((m) => [m.nom.fr, m.description.fr]), attendu);
   assert.equal(new Set(MODELES.map((m) => m.id)).size, 8);
-  assert.deepEqual(MODELES.map((m) => m.icone), ['camion', 'cube', 'utilisateurs', 'eclair', 'etincelle', 'maison', 'calendrier', 'livre']);
+  assert.deepEqual(MODELES.map((m) => m.icone), ['utilisateurs', 'camion', 'cube', 'eclair', 'etincelle', 'maison', 'calendrier', 'livre']);
   for (const m of MODELES) for (const t of [m.nom, m.description]) assert.ok(t.fr.trim() && t.en.trim(), `${m.id} : texte sans fr ou sans en`);
 });
 
@@ -152,9 +152,10 @@ await dit('« + N autres » = modules du modèle moins six, jamais écrit à la 
   }
   const six = { ...MODELES[0], modules: MODELES[0].modules.slice(0, 6) };
   assert.equal(R.composition(six).autres, 0);
-  const ferme = new Set(MODELES[0].modules.filter((id) => id !== 'stock'));
-  assert.equal(R.composition(MODELES[0], ferme).tous.includes('stock'), false);
-  assert.equal(R.composition(MODELES[0], ferme).autres, MODELES[0].modules.length - 1 - 6);
+  const artisanM = R.modeleParId('artisan') as Modele;
+  const ferme = new Set(artisanM.modules.filter((id) => id !== 'stock'));
+  assert.equal(R.composition(artisanM, ferme).tous.includes('stock'), false);
+  assert.equal(R.composition(artisanM, ferme).autres, artisanM.modules.length - 1 - 6);
   assert.equal(R.MODULES_AFFICHES, 6);
 });
 
@@ -502,13 +503,15 @@ await dit('français et anglais disent les mêmes clés ; les textes de la fiche
     'etape.metier.titre': 'Choisir votre métier', 'etape.metier.sous': 'Pour activer les bons modules', 'etape.equipe.titre': 'Inviter votre équipe', 'etape.equipe.sous': 'Chacun garde ses accès',
     'etape.mobile.titre': 'Installer l’application mobile', 'etape.mobile.sous': 'Vos tâches dans la poche', 'etape.mobile.action': 'Obtenir le lien', 'etape.equipe.action': 'Inviter',
     'erreur': 'Votre progression n’a pas pu être chargée.', 'erreur.reessayer': 'Réessayer', 'horsLigne': 'Disponible au retour du réseau', 'etape.admin': 'Réservé aux administrateurs',
-    'metier.titre': 'Quel est votre métier ?', 'metier.sous': 'On active les bons modules, vous n’avez rien d’autre à régler', 'metier.passer': 'Passer', 'metier.continuer': 'Continuer',
-    'metier.continuer.info': 'Choisissez un métier ou utilisez Passer', 'taille.titre': 'Combien êtes-vous ?', 'taille.aide': 'Pour régler les accès et les rôles', 'taille.seul': 'Seul', 'taille.2-5': '2 à 5',
-    'taille.6-20': '6 à 20', 'taille.plus': 'Plus', 'apercu.titre': 'Votre première journée, en aperçu', 'apercu.aide': 'Ce que vous verrez dès demain matin',
-    'decrire.texte': 'Votre activité n’est pas dans la liste ? Décrivez-la en une phrase, Ajmani compose l’espace.', 'decrire.bouton': 'Décrire', 'decrire.champ': 'Décrivez votre activité en une phrase',
-    'decrire.composer': 'Composer l’espace', 'compose.titre': 'Votre espace sera composé de', 'compose.sous': 'Vous pourrez tout changer plus tard',
-    'compose.autres': '+ {n} autres modules disponibles à tout moment', 'compose.autres.zero': 'Tous les modules du modèle sont affichés', 'vide.titre': 'Choisissez un métier',
-    'vide.texte': 'Les modules à activer apparaîtront ici.', 'vide.action': 'Décrire mon activité', 'erreur.enregistrement': 'Votre choix n’a pas pu être enregistré.',
+    'metier.titre': 'Quel est votre métier ?', 'metier.sous': 'Choisissez le plus proche : on active les bons modules, vous n’avez rien d’autre à régler', 'metier.passer': 'Passer',
+    'metier.continuer.avec': 'Continuer avec {metier}', 'metier.continuer': 'Continuer', 'metier.continuer.info': 'Choisissez un métier ou utilisez Passer', 'metier.miette': 'Votre métier',
+    'metier.ajmani': 'Décrivez votre activité en une phrase, Ajmani compose l’espace', 'carte.autres': '+ {n} autres modules, {total} en tout',
+    'taille.titre': 'Combien êtes-vous ?', 'taille.aide': 'Pour préparer les accès et les rôles', 'taille.seul': 'Seul', 'taille.2-5': '2 à 5', 'taille.6-20': '6 à 20', 'taille.plus': 'Plus',
+    'barre.titre': 'Votre barre latérale', 'apercu.titre': 'Votre espace, demain matin', 'apercu.avec': 'aperçu avec {metier}',
+    'apercu.phrase': '{nombre} modules dans votre barre, {autres} autres prêts à servir. Tout se change plus tard.', 'nombre.6': 'Six',
+    'apercu.mention': 'Les {n} modules restent dans « Tous les modules », rien n’est supprimé.', 'apercu.vide': 'Choisissez un métier pour voir votre espace',
+    'decrire.titre': 'Pas dans la liste ?', 'decrire.texte': 'Décrivez votre activité en une phrase, Ajmani compose l’espace.', 'decrire.bouton': 'Décrire mon activité',
+    'decrire.champ': 'Décrivez votre activité en une phrase', 'decrire.composer': 'Composer l’espace', 'erreur.enregistrement': 'Votre choix n’a pas pu être enregistré.',
   };
   for (const [k, v] of Object.entries(attendu)) assert.equal(fr[k], v, k);
   const aAjmani = new Set(['decrire.consigne']);
@@ -726,112 +729,162 @@ await dit('H42 · la fenêtre du lien : un code à scanner (pas une image tierce
   assert.doesNotMatch(sans, /<svg/);
 });
 
+const cartesDe = (choix: string | null, actifs?: Set<string>) =>
+  MODELES.map((m) => {
+    const c = R.carteModele(m, () => 'argent');
+    return {
+      id: m.id,
+      lignes: c.quatre.map((x: string) => ({ id: x, nom: `Module ${x}`, teinte: 'argent', actif: m.id === choix ? (actifs ? actifs.has(x) : true) : true, toujours: false })),
+      bande: c.bande.map((b: any) => ({ teinte: b.famille, n: b.n })),
+      autres: c.autres,
+      total: c.total,
+    };
+  });
 const propsMet = (surcharge: Record<string, unknown> = {}) => ({
-  choix: null, taille: '2-5', lignes: [], autres: 0, teintesApercu: [], dernierActif: false, horsLigne: false, erreurEnregistrement: false,
-  decrireOuvert: false, phrase: '', composeEnvoye: false, onChoisir: noop, onTaille: noop, onBasculer: noop, onContinuer: noop, onPasser: noop, onReessayer: noop,
+  choix: null, taille: '2-5', cartes: cartesDe(null), barre: [], dansLaBarre: 0, autresPrets: 0, extras: [], totalModules: 101, teintesApercu: [], dernierActif: false, horsLigne: false,
+  erreurEnregistrement: false, decrireOuvert: false, phrase: '', composeEnvoye: false, onChoisir: noop, onTaille: noop, onBasculer: noop, onContinuer: noop, onPasser: noop, onReessayer: noop,
   onDecrire: noop, onPhrase: noop, onComposer: noop, ...surcharge,
 });
-const lignesDe = (id: string) => {
-  const m = R.modeleParId(id) as Modele;
-  const c = R.composition(m);
-  return { lignes: c.affiches.map((x: string) => ({ id: x, nom: `Module ${x}`, teinte: 'argent', actif: true, toujours: false })), autres: c.autres, teintesApercu: m.apercu.map(() => 'creer') };
-};
+const choisi = (id: string, s: Record<string, unknown> = {}) => ({
+  choix: id, cartes: cartesDe(id), barre: [{ famille: 'argent', teinte: 'argent', nom: 'L’argent', modules: ['Module A', 'Module B'] }], dansLaBarre: 6, autresPrets: 4,
+  teintesApercu: ['creer', 'argent', 'jour'], ...s,
+});
 const vueMet = (s: Record<string, unknown> = {}): string => rendre(h(R.VueMetier, propsMet(s)));
+const cartesHtml = (html: string): string[] => html.split('<div class="met-carte"').slice(1).map((x) => x.split('<p class="met-carte__pied">')[0]);
 
-await dit('H47 · premier affichage : un h1, un groupe radio de huit tuiles non choisies, « Continuer » grisé et seul primaire, carte de droite « Choisissez un métier »', () => {
+await dit('H47 · premier affichage : un h1, un groupe radio de huit cartes non choisies, « Continuer » grisé et seul primaire, la bande dit « Choisissez un métier pour voir votre espace »', () => {
   const html = vueMet();
   assert.equal(compter(html, /<h1[ >]/g), 1);
   assert.match(html, />Quel est votre métier \?<\/h1>/);
+  assert.match(html, />Choisissez le plus proche : on active les bons modules, vous n’avez rien d’autre à régler</);
   assert.match(html, /role="radiogroup"[^>]*aria-label="Familles de métiers"/);
-  assert.equal(compter(html, /role="radio"[^>]*class="met-tuile/g), 8);
-  assert.equal(compter(html, /class="met-tuile[^"]*"[^>]*>/g) >= 8 ? 1 : 0, 1);
-  assert.equal(compter(html, /role="radio"[^>]*aria-checked="false"[^>]*class="met-tuile/g), 8);
-  assert.equal(compter(html, /aria-checked="true"[^>]*class="met-tuile/g), 0);
-  assert.equal(compter(html, /met-tuile__coche/g), 0);
-  assert.equal(compter(html, /role="radio"[^>]*tabindex="0"[^>]*class="met-tuile/g), 1, 'une seule tuile dans l’ordre de tabulation');
+  assert.equal(compter(html, /role="radio" aria-checked="false"[^>]*class="met-carte__choix/g), 8);
+  assert.equal(compter(html, /aria-checked="true"[^>]*class="met-carte__choix/g), 0);
+  assert.equal(compter(html, /met-carte__coche/g), 0);
+  assert.equal(compter(html, /role="radio"[^>]*tabindex="0"[^>]*class="met-carte__choix/g), 1, 'une seule carte dans l’ordre de tabulation');
   assert.match(html, /<span title="Choisissez un métier ou utilisez Passer"><button/);
   assert.match(bouton(html, 'Continuer').attrs, /data-variante="primaire"[^>]*disabled=""/);
   assert.match(bouton(html, 'Passer').attrs, /data-variante="secondaire"/);
   assert.equal(primaires(html), 1);
-  assert.match(html, />Passer</);
-  assert.match(html, /<h2[^>]*>Choisissez un métier<\/h2>/);
-  assert.match(html, /Les modules à activer apparaîtront ici\./);
-  assert.match(html, />Décrire mon activité</);
-  assert.equal(compter(html, /role="switch"/g), 0);
-  assert.match(html, /Choisissez un métier : trois exemples/);
-  for (const m of MODELES) { assert.match(html, new RegExp(m.nom.fr)); assert.match(html, new RegExp(m.description.fr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))); }
+  assert.equal(compter(html, /role="switch"/g), 0, 'aucun interrupteur tant qu’aucune carte n’est choisie');
+  assert.match(html, />Choisissez un métier pour voir votre espace</);
+  assert.match(html, /class="met-barre__squelette"/);
+  assert.match(html, />Les 101 modules restent dans « Tous les modules », rien n’est supprimé\.</);
+  for (const m of MODELES) {
+    assert.match(html, new RegExp(`class="met-carte__nom">${m.nom.fr}</span><span class="met-carte__mots">${m.description.fr}</span>`));
+    assert.match(html, new RegExp(`aria-label="${m.nom.fr}, ${m.description.fr}"`));
+  }
 });
 
-await dit('H47 · une tuile choisie : une seule coche (aria-checked + disque, pas la couleur seule), six interrupteurs, « + N autres », trois cartes d’aperçu marquées comme exemples', () => {
-  const html = vueMet({ choix: 'artisan', ...lignesDe('artisan') });
-  assert.equal(compter(html, /aria-checked="true"[^>]*class="met-tuile/g), 1);
-  assert.equal(compter(html, /met-tuile__coche/g), 1);
-  assert.equal(compter(html, /role="radio"[^>]*tabindex="0"[^>]*class="met-tuile/g), 1);
-  assert.equal(compter(html, /role="switch"/g), 6);
-  assert.equal(compter(html, /role="switch"[^>]*aria-checked="true"/g), 6);
-  assert.match(html, /\+ 6 autres modules disponibles à tout moment/);
-  assert.equal(compter(html, /class="met-ligne"/g), 6);
-  assert.equal(compter(html, /class="met-apercu__carte"/g), 3);
-  assert.match(html, />Exemple<\/span>/);
-  assert.match(html, />Votre première journée, en aperçu<\/h2>/);
-  assert.match(html, />Votre espace sera composé de<\/h2>/);
-  assert.match(html, /Vous pourrez tout changer plus tard/);
+await dit('H47 · une carte choisie : « Continuer avec {métier} » seul primaire, une coche (aria-checked + disque : pas la couleur seule), quatre mini-interrupteurs, « + N autres, T en tout » sur chaque carte', () => {
+  const html = vueMet(choisi('conseil'));
+  assert.match(bouton(html, 'Continuer avec Conseil et services').attrs, /data-variante="primaire"/);
+  assert.doesNotMatch(bouton(html, 'Continuer avec Conseil et services').attrs, /disabled=""/);
   assert.equal(primaires(html), 1);
-  assert.doesNotMatch(bouton(html, 'Continuer').attrs, /disabled=""/, '« Continuer » est actif une fois un métier choisi');
+  assert.equal(compter(html, /aria-checked="true"[^>]*class="met-carte__choix/g), 1);
+  assert.equal(compter(html, /met-carte__coche/g), 1);
+  assert.match(html, /<div class="met-carte" data-choisi="true"/);
+  assert.equal(compter(html, /role="switch"/g), 4);
+  assert.match(html, /role="switch" aria-checked="true" aria-label="Module clients dans la barre"/);
+  const c = cartesHtml(html);
+  assert.equal(c.length, 8);
+  for (const x of c) assert.equal(compter(x, /class="met-carte__module"/g), 4);
+  for (const m of MODELES) assert.match(html, new RegExp(`\\+ ${m.modules.length - 4} autres modules, ${m.modules.length} en tout`), m.id);
+  assert.match(html, /role="img" aria-label="Composition par famille"/);
   assert.doesNotMatch(html, /Choisissez un métier ou utilisez Passer/);
-  assert.doesNotMatch(html, /Dupont|Carrelage|8 400/);
-  assert.match(vueMet({ choix: 'artisan', lignes: [], autres: 0 }), /Tous les modules du modèle sont affichés/);
-  assert.equal(boutons(vueMet({ choix: 'artisan', ...lignesDe('artisan'), taille: 'seul' })).filter((b) => b.texte === 'Seul' && /aria-checked="true"/.test(b.attrs)).length, 1, 'la taille choisie est cochée');
+  const off = vueMet(choisi('conseil', { cartes: cartesDe('conseil', new Set(['clients'])) }));
+  assert.match(off, /role="switch" aria-checked="false" aria-label="Module contracts dans la barre"/, 'un module éteint reste dans la liste : il n’est pas supprimé');
+  assert.match(vueMet({ choix: 'artisan', cartes: [{ id: 'artisan', lignes: [], bande: [], autres: 0, total: 4 }] }), />4 modules en tout</);
+});
+
+await dit('H47 · « Votre espace, demain matin » : barre miniature groupée par famille, « aperçu avec … », « Six modules dans votre barre, N autres prêts à servir », trois exemples du modèle, encarts seulement s’ils existent', () => {
+  const html = vueMet(choisi('conseil'));
+  assert.match(html, /role="group" aria-label="Votre barre latérale"/);
+  assert.match(html, /class="met-barre__famille"><svg[\s\S]*?<\/svg>L’argent<\/span>/);
+  assert.equal(compter(html, /<ul class="met-barre__modules"><li>Module A<\/li><li>Module B<\/li><\/ul>/g), 1);
+  assert.match(html, />Votre espace, demain matin</);
+  assert.match(html, />aperçu avec Conseil et services</);
+  assert.match(html, />Six modules dans votre barre, 4 autres prêts à servir\. Tout se change plus tard\.</);
+  assert.match(vueMet(choisi('conseil', { dansLaBarre: 3, autresPrets: 0 })), />Trois modules dans votre barre\. Tout se change plus tard\.</);
+  assert.match(vueMet(choisi('conseil', { dansLaBarre: 1, autresPrets: 0 })), />Un module dans votre barre\. Tout se change plus tard\.</);
+  assert.equal(compter(html, /class="met-apercu__carte"/g), 3);
+  assert.match(html, /class="met-apercu__cartes" title="Des exemples livrés avec le métier, pas vos données"/);
+  assert.doesNotMatch(html, /met-extras/, 'aucun encart sans donnée du modèle');
+  const extras = vueMet(choisi('conseil', { extras: [{ icone: 'automatisations', titre: 'X automatisations', detail: 'détail' }] }));
+  assert.equal(compter(extras, /class="met-extra"/g), 1);
+  assert.doesNotMatch(html, /Menna|Cabinet Roux|4 260|Dupont|Carrelage/);
 });
 
 await dit('H47 · « Combien êtes-vous ? » : un groupe radio de quatre options (Seul, 2 à 5, 6 à 20, Plus), « 2 à 5 » par défaut', () => {
   const html = vueMet();
+  assert.match(html, />Combien êtes-vous \?</);
+  assert.match(html, />Pour préparer les accès et les rôles</);
   assert.match(html, /role="radiogroup"[^>]*aria-label="Combien êtes-vous \?"/);
   for (const t of ['Seul', '2 à 5', '6 à 20', 'Plus']) assert.match(html, new RegExp(`>${t}</button>`));
   assert.match(bouton(html, '2 à 5').attrs, /aria-checked="true"/);
-  assert.equal(boutons(html).filter((b) => /role="radio"/.test(b.attrs) && ['Seul', '2 à 5', '6 à 20', 'Plus'].includes(b.texte)).length, 4);
+  assert.equal(boutons(vueMet({ taille: 'seul' })).filter((b) => b.texte === 'Seul' && /aria-checked="true"/.test(b.attrs)).length, 1);
 });
 
-await dit('H47 · « Décrire » : replié, un bouton secondaire ; déplié, « Composer l’espace » est le seul primaire (« Continuer » passe en secondaire) ; hors ligne, grisé avec son info-bulle', () => {
-  const ferme = vueMet({ choix: 'commerce', ...lignesDe('commerce') });
-  assert.match(ferme, /Votre activité n’est pas dans la liste \? Décrivez-la en une phrase, Ajmani compose l’espace\./);
-  assert.match(bouton(ferme, 'Décrire').attrs, /data-variante="secondaire"[^>]*aria-expanded="false"/);
+await dit('H47 · « Pas dans la liste ? » : replié, « Décrire mon activité » secondaire ; déplié, « Composer l’espace » est le seul primaire (« Continuer » passe en secondaire) ; hors ligne, grisé avec son info-bulle', () => {
+  const ferme = vueMet(choisi('commerce'));
+  assert.match(ferme, />Pas dans la liste \?</);
+  assert.match(ferme, />Décrivez votre activité en une phrase, Ajmani compose l’espace\.</);
+  assert.match(bouton(ferme, 'Décrire mon activité').attrs, /data-variante="secondaire"[^>]*aria-expanded="false"/);
   assert.doesNotMatch(ferme, /Composer l’espace/);
-  const ouvert = vueMet({ choix: 'commerce', ...lignesDe('commerce'), decrireOuvert: true, phrase: 'x' });
+  const ouvert = vueMet(choisi('commerce', { decrireOuvert: true, phrase: 'x' }));
   assert.match(ouvert, /Décrivez votre activité en une phrase/);
   assert.match(bouton(ouvert, 'Composer l’espace').attrs, /data-variante="primaire"/);
   assert.equal(primaires(ouvert), 1);
-  assert.match(bouton(ouvert, 'Continuer').attrs, /data-variante="secondaire"/);
+  assert.match(bouton(ouvert, 'Continuer avec Commerce').attrs, /data-variante="secondaire"/);
   const hors = vueMet({ horsLigne: true });
   assert.match(hors, /<span title="Disponible au retour du réseau"><button/);
-  assert.match(bouton(hors, 'Décrire').attrs, /disabled=""/);
-  assert.match(bouton(vueMet({ choix: 'commerce', ...lignesDe('commerce'), decrireOuvert: true, phrase: 'x', horsLigne: true }), 'Composer l’espace').attrs, /disabled=""/);
-  assert.match(bouton(vueMet({ choix: 'commerce', ...lignesDe('commerce'), decrireOuvert: true, phrase: '  ' }), 'Composer l’espace').attrs, /disabled=""/, 'sans phrase, rien à composer');
+  assert.match(bouton(hors, 'Décrire mon activité').attrs, /disabled=""/);
+  assert.match(bouton(vueMet(choisi('commerce', { decrireOuvert: true, phrase: 'x', horsLigne: true })), 'Composer l’espace').attrs, /disabled=""/);
+  assert.match(bouton(vueMet(choisi('commerce', { decrireOuvert: true, phrase: '  ' })), 'Composer l’espace').attrs, /disabled=""/, 'sans phrase, rien à composer');
   assert.match(vueMet({ composeEnvoye: true }), /role="status"[^>]*>Ajmani vous répond dans son panneau/);
 });
 
+await dit('H47 · en-tête : « Passer » et « Continuer avec … » au gabarit de H40 (31 px, pas le petit bouton) (C13)', () => {
+  const e = entete(vueMet(choisi('conseil')));
+  assert.equal(compter(e, /data-taille="moyen"/g), 2);
+  assert.doesNotMatch(e, /data-taille="petit"/);
+});
+
 await dit('H47 · erreur d’enregistrement : « Votre choix n’a pas pu être enregistré. » et « Réessayer », les choix de la page restent', () => {
-  const html = vueMet({ choix: 'artisan', ...lignesDe('artisan'), erreurEnregistrement: true });
+  const html = vueMet(choisi('artisan', { erreurEnregistrement: true }));
   assert.match(html, /role="alert"/);
   assert.match(html, /Votre choix n’a pas pu être enregistré\./);
   assert.match(html, />Réessayer</);
-  assert.equal(compter(html, /aria-checked="true"[^>]*class="met-tuile/g), 1);
+  assert.equal(compter(html, /aria-checked="true"[^>]*class="met-carte__choix/g), 1);
   assert.equal(primaires(html), 1);
 });
 
 await dit('H47 · un module toujours ouvert garde son interrupteur allumé et grisé ; le dernier module activable ne s’éteint pas', () => {
   const lg = [{ id: 'members', nom: 'Droits et accès', teinte: 'outils', actif: true, toujours: true }, { id: 'vault', nom: 'Coffre-fort', teinte: 'outils', actif: true, toujours: false }];
-  const html = vueMet({ choix: 'sante', lignes: lg, autres: 4, dernierActif: true });
-  assert.match(html, /<span title="Toujours disponible"><button[^>]*role="switch"[^>]*aria-checked="true"[^>]*disabled=""/);
-  assert.match(html, /<span title="Au moins un module reste activé"><button[^>]*role="switch"[^>]*aria-checked="true"[^>]*disabled=""/);
-  assert.match(vueMet({ choix: 'sante', lignes: [{ ...lg[1], actif: false }], autres: 0, dernierActif: true }), /role="switch"[^>]*aria-checked="false"/);
+  const html = vueMet({ choix: 'sante', cartes: [{ id: 'sante', lignes: lg, bande: [{ teinte: 'outils', n: 2 }], autres: 4, total: 6 }], dernierActif: true });
+  assert.match(html, /role="switch" aria-checked="true" aria-label="Droits et accès dans la barre" title="Toujours disponible" disabled=""/);
+  assert.match(html, /role="switch" aria-checked="true" aria-label="Coffre-fort dans la barre" title="Au moins un module reste activé" disabled=""/);
 });
 
-await dit('H47 · squelette (repli de `lazy`) : huit blocs de 127 de haut, la carte de droite de 369, région annoncée', () => {
+await dit('H47 · squelette (repli de `lazy`) : huit blocs de 189 de haut, la bande de 258, région annoncée', () => {
   const html = rendre(h(R.SqueletteMetier));
   assert.match(html, /role="status"[^>]*aria-busy="true"|aria-busy="true"[^>]*role="status"/);
-  assert.equal(compter(html, /height:127px/g), 8);
-  assert.match(html, /height:369px/);
+  assert.equal(compter(html, /height:189px/g), 8);
+  assert.match(html, /height:258px/);
+});
+
+await dit('H47 · cartes et barre lues dans le modèle et le registre : quatre modules, bande par famille dans l’ordre de première apparition, « + N autres, T en tout », six modules activés dans la barre', () => {
+  const fam: Record<string, string> = { a: 'jour', b: 'argent', c: 'jour', d: 'contacts', e: 'argent', f: 'jour', g: 'outils', h: 'jour' };
+  const m = { ...MODELES[0], modules: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] };
+  const c = R.carteModele(m, (id: string) => fam[id]);
+  assert.deepEqual(c.quatre, ['a', 'b', 'c', 'd']);
+  assert.deepEqual([c.autres, c.total], [4, 8]);
+  assert.deepEqual(c.bande, [{ famille: 'jour', n: 4 }, { famille: 'argent', n: 2 }, { famille: 'contacts', n: 1 }, { famille: 'outils', n: 1 }]);
+  assert.equal(R.carteModele(m, (id: string) => fam[id], new Set(['a', 'b'])).total, 2, 'un module fermé à l’organisation ne compte pas');
+  const b = R.barreModele(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], (id: string) => fam[id]);
+  assert.deepEqual(b.groupes, [{ famille: 'jour', modules: ['a', 'c', 'f'] }, { famille: 'argent', modules: ['b', 'e'] }, { famille: 'contacts', modules: ['d'] }]);
+  assert.deepEqual([b.dans, b.autres], [6, 2]);
+  assert.equal(R.MODULES_CARTE, 4);
 });
 
 await dit('les deux routes sont deux constantes, hors registre et hors catalogue ; les écrans sont en export par défaut pour `lazy`', () => {
@@ -871,6 +924,11 @@ await dit('PageMetier : « Continuer » garde le choix puis allège (jamais plus
   assert.match(src, /garder\(choixPasse\(taille\), null\)/);
   assert.match(src, /assistant\.open\('chat'\);\s*assistant\.sendMessage\(/);
   assert.match(src, /if \(ALWAYS_ON_MODULES\.includes\(id\)\) return;/);
+  assert.match(src, /carteModele\(m, \(id\) => teintes\.get\(id\), disponibles\)/, 'les cartes viennent du modèle et du registre');
+  assert.match(src, /barreModele\(/);
+  assert.match(src, /extras=\{\[\]\}/, 'un modèle ne crée ni automatisation ni modèle de document : pas d’encart');
+  assert.match(src, /totalModules=\{REGISTRE_MODULES\.entrees\.length\}/);
+  assert.match(src, /usePageCoquille\(\{ famille: 'jour', sousPage: 'home', miettes: \[\{ libelle: tm\('titre'\), vers: ROUTE_DEMARRAGE \}, \{ libelle: tm\('metier\.miette'\) \}\]/);
 });
 
 /* ═════════════════════════ Les cotes des fiches, lues dans le CSS ═════════════════════════ */
@@ -923,39 +981,44 @@ await dit('C11 et C12 : la racine de page ne pose pas les chiffres tabulaires (l
   assert.match(css, /:is\(\.dem-parcours, \.dem-carte-etape, \.dem-pret, \.dem-aide\) > div \{ height: 100%; color: var\(--socle-texte-1\)/, 'rien n’hérite du gris de la carte');
 });
 
-await dit('cotes de H47 : tuiles de 127 (écart 14, rangées à 13), cartes de 65 / 165 / 61, aperçu de 82, carte de droite 340 × 369, lignes de 43, collante', () => {
-  assert.match(regle('.met-grille'), /grid-template-columns: 748px 340px[^}]*gap: 20px/);
-  assert.match(regle('.met-tuiles'), /repeat\(4, minmax\(0, 1fr\)\)[^}]*column-gap: 14px[^}]*row-gap: 13px/);
-  assert.match(regle('.met-tuile'), /height: 127px[^}]*padding: 19px 17px 17px[^}]*border: 1px solid var\(--socle-bord-carte\)[^}]*border-radius: 14px/);
-  assert.match(regle(".met-tuile[aria-checked='true']"), /border-color: var\(--socle-primaire\)[^}]*background: var\(--sc-met-tuile-choisie\)/);
-  assert.doesNotMatch(regle(".met-tuile[aria-checked='true']"), /border-width|border:/, 'la bordure ne change que de couleur : rien ne bouge');
-  assert.match(regle('.met-tuile__icone'), /width: 18px[^}]*height: 18px/);
-  assert.match(regle('.met-tuile__titre'), /margin-top: 18px[^}]*font-size: 14px[^}]*font-weight: 600[^}]*line-height: 18px/);
-  assert.match(regle('.met-tuile__texte'), /margin-top: 3px[^}]*font-size: 12px[^}]*line-clamp: 2/);
-  assert.match(regle('.met-tuile__coche'), /top: 11px[^}]*right: 11px[^}]*width: 22px[^}]*height: 22px/);
-  assert.match(regle(":root[data-ambiance='noir'] .met-taille"), /height: 65px/);
-  assert.match(regle(":root[data-ambiance='noir'] .met-apercu"), /height: 165px/);
-  assert.match(regle('.met-apercu__cartes'), /repeat\(3, minmax\(0, 1fr\)\)[^}]*gap: 12px/);
-  assert.match(regle('.met-apercu__carte'), /height: 82px/);
-  assert.match(regle(":root[data-ambiance='noir'] .met-decrire"), /min-height: 61px/);
-  assert.match(regle('.met-droite'), /position: sticky[^}]*top: 0/);
-  assert.match(regle(":root[data-ambiance='noir'] .met-compose"), /min-height: 369px/);
-  assert.match(regle('.met-ligne'), /height: 43px/);
-  assert.match(regle('.met-gauche'), /gap: 14px/);
-});
-
-await dit('les tuiles gardent leur titre à la même hauteur quelle que soit la description : titre à hauteur fixe, description après, tuile de hauteur fixe', () => {
-  const html = vueMet();
-  for (const m of MODELES) assert.match(html, new RegExp(`met-tuile__titre">${m.nom.fr}</span><span class="met-tuile__texte">`));
-  assert.match(regle('.met-tuile__titre'), /white-space: nowrap/);
+await dit('cotes de H47 : cartes 267 × 189 (4 × 2, écart 14, marges 14 / 15 / 13), tuile 34, bande de 5 px, lignes de 19, mini-interrupteur 16 × 9 ; bande 1108 × 258 (212 + aperçu + 262, écart 20)', () => {
+  assert.match(regle('.met-tuiles'), /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\); gap: 14px/);
+  assert.match(regle('.met-surface'), /gap: 14px/);
+  assert.match(regle('.met-carte'), /height: 189px[\s\S]*padding: 14px 15px 13px[\s\S]*border: 1px solid var\(--socle-bord-carte\)[\s\S]*border-radius: 14px/);
+  assert.match(regle(".met-carte[data-choisi='true']"), /border-color: var\(--sc-met-carte-bord\)[\s\S]*background: linear-gradient\(180deg, var\(--sc-met-carte-haut\), var\(--sc-met-carte-bas\)\)[\s\S]*box-shadow: 0 0 0 3px/);
+  assert.doesNotMatch(regle(".met-carte[data-choisi='true']"), /border-width|border:/, 'la bordure ne change que de couleur : rien ne bouge');
+  assert.match(regle('.met-carte__tuile'), /width: 34px; height: 34px[^}]*border-radius: 10px/);
+  assert.match(regle('.met-carte__nom'), /font-size: 14px; font-weight: 600/);
+  assert.match(regle('.met-carte__mots'), /font-size: 11\.5px/);
+  assert.match(regle('.met-carte__coche'), /width: 18px; height: 18px/);
+  assert.match(regle('.met-bande-couleurs'), /gap: 3px; height: 5px; margin-top: 12px/);
+  assert.match(regle('.met-bande-couleurs__segment'), /border-radius: 3px; background: var\(--fam\); opacity: 0\.45/);
+  assert.match(regle('.met-carte__module'), /height: 19px/);
+  assert.match(regle('.met-carte .met-mini'), /width: 16px;\s*height: 9px/);
+  assert.match(regle('.met-mini::after'), /inset: -8px -9px/, 'la cible déborde : 34 × 25');
+  assert.match(regle(":root[data-ambiance='noir'] .met-bande"), /height: 258px/);
+  assert.match(regle('.met-bande__corps'), /grid-template-columns: 212px minmax\(0, 1fr\) 283px; column-gap: 20px; padding: 16px 18px/);
+  assert.match(regle('.met-cote'), /padding-left: 20px; border-left: 1px solid var\(--socle-lateral-filet\)/);
+  assert.match(regle('.met-barre'), /border: 1px solid var\(--socle-bord-sous-carte\); border-radius: 11px; background: var\(--socle-lateral-bas\)/);
+  assert.match(regle('.met-apercu__cartes'), /repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(regle('.met-extra'), /border: 1px dashed var\(--socle-bord-pilule\)/);
+  assert.match(regle('.met-decrire'), /border: 1px solid var\(--socle-bord-suggestion\); border-radius: 11px; background: var\(--socle-suggestion-haut\)/);
+  for (const sel of ['.met-carte__nom', '.met-barre__titre', '.met-apercu__titre', '.met-apercu__carte-titre', '.met-cote__titre', '.met-decrire__titre']) assert.match(regle(sel), /color: var\(--socle-texte-1\)/, `${sel} : T1 (C12)`);
+  for (const sel of ['.met-barre__modules li', ".met-carte[data-choisi='true'] .met-carte__module-nom", '.met-extra__titre']) assert.match(regle(sel), /color: var\(--socle-texte-courant\)/, `${sel} : T2`);
 });
 
 await dit('sous 1108 et 780 px de contenu, les colonnes se rangent (conteneur de la coquille) ; le mouvement réduit coupe les animations', () => {
   assert.match(css, /@container \(max-width: 1107px\) \{[^@]*\.dem-bas \{ height: auto; grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(css, /@container \(max-width: 1000px\) \{[^@]*\.dem-route \{ display: flex; flex-direction: column/, 'sous 1000 px, le parcours devient vertical');
   assert.match(css, /@container \(max-width: 780px\) \{[^@]*\.met-tuiles \{ grid-template-columns: repeat\(2/);
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[^@]*animation: none/);
-  assert.match(css, /animation: met-fondu 160ms ease-out/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[^@]*\.met-carte, \.met-mini__pastille \{ transition: none; \}[^@]*\.met-carte:hover \{ transform: none; \}/, 'mouvement réduit : rien ne glisse ni ne se relève (la couche coupe les `data-mvt`)');
+  assert.match(css, /@container \(max-width: 1107px\) \{[^@]*\.met-tuiles \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/, 'sous 1280 px : trois colonnes');
+  assert.match(css, /@container \(max-width: 780px\) \{[^@]*\.met-barre \{ display: none; \}/, 'sous 1000 px : la barre miniature est masquée');
+  const met = sansCommentaires(lireSource('VueMetier.tsx'));
+  assert.match(met, /data-mvt="entree"/, 'entrée échelonnée des huit cartes');
+  assert.match(met, /rang=\{8\}/, 'puis la bande');
+  assert.equal(compter(met, /data-mvt="cascade"/g), 2, 'les modules de la barre miniature et les cartes de journée, une fois');
+  assert.doesNotMatch(met, /data-mvt="(onde|flux|balayage|curseur)"/, 'aucune animation continue');
   const vue = sansCommentaires(lireSource('VueDemarrage.tsx'));
   assert.equal(compter(vue, /data-mvt="onde"/g) + compter(vue, /<FlowLine\b/g), 2, 'deux animations continues seulement : le halo et la liaison qui s’écoule');
   assert.match(vue, /data-mvt="entree"/);
@@ -970,7 +1033,7 @@ await dit('aucune couleur en dur : pas un #hex hors des trois `--sc-…` déclar
     const debut = css.lastIndexOf('\n', m.index) + 1;
     assert.match(css.slice(debut, css.indexOf('\n', m.index)), /^\s*--sc-[\w-]+:\s*#/, `couleur en dur : ${m[0]}`);
   }
-  assert.equal(compter(css, /--sc-[\w-]+:\s*#[0-9a-f]{6}/g), 5);
+  assert.equal(compter(css, /--sc-[\w-]+:\s*#[0-9a-f]{6}/g), 7);
   assert.doesNotMatch(css, /\brgba?\(|\bhsla?\(/);
   for (const f of codes) assert.doesNotMatch(sansCommentaires(lireSource(f)), /#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b(?![\w-])|rgba?\(/, `${f} : couleur en dur`);
 });

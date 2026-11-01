@@ -134,47 +134,58 @@ const EN = {
 
   /* ── H47 · en-tête ── */
   'metier.titre': 'What is your trade?',
-  'metier.sous': 'We switch on the right modules, you have nothing else to set up',
+  'metier.sous': 'Choose the closest one: we switch on the right modules, you have nothing else to set up',
   'metier.passer': 'Skip',
   'metier.continuer': 'Continue',
+  'metier.continuer.avec': 'Continue with {metier}',
   'metier.continuer.info': 'Choose a trade or use Skip',
+  'metier.miette': 'Your trade',
+  'metier.ajmani': 'Describe your activity in one sentence, Ajmani composes the space',
 
-  /* ── H47 · la grille, la taille, l'aperçu ── */
+  /* ── H47 · les cartes de métier ── */
   'metier.grille': 'Families of trades',
-  'metier.tuile.choisie': 'Selected',
+  'carte.autres': '+ {n} more modules, {total} in all',
+  'carte.autres.zero': '{total} modules in all',
+  'carte.bande': 'Make-up by family',
+  'carte.module': '{module} in the sidebar',
+  'carte.toujours': 'Always available',
+  'carte.dernier': 'At least one module stays on',
+
+  /* ── H47 · « Votre espace, demain matin » ── */
+  'barre.titre': 'Your sidebar',
+  'apercu.titre': 'Your space, tomorrow morning',
+  'apercu.avec': 'preview with {metier}',
+  'apercu.phrase': '{nombre} modules in your sidebar, {autres} more ready to serve. Everything can be changed later.',
+  'apercu.phrase.sans': '{nombre} modules in your sidebar. Everything can be changed later.',
+  'apercu.phrase.un': 'One module in your sidebar, {autres} more ready to serve. Everything can be changed later.',
+  'apercu.phrase.un.sans': 'One module in your sidebar. Everything can be changed later.',
+  'nombre.2': 'Two',
+  'nombre.3': 'Three',
+  'nombre.4': 'Four',
+  'nombre.5': 'Five',
+  'nombre.6': 'Six',
+  'apercu.exemple.aide': 'Examples that come with the trade, not your data',
+  'apercu.mention': 'The {n} modules stay in “All modules”, nothing is deleted.',
+  'apercu.vide': 'Choose a trade to see your space',
+
+  /* ── H47 · la taille de l'équipe ── */
   'taille.titre': 'How many of you are there?',
-  'taille.aide': 'To set up access and roles',
+  'taille.aide': 'To prepare access and roles',
   'taille.seul': 'Alone',
   'taille.2-5': '2 to 5',
   'taille.6-20': '6 to 20',
   'taille.plus': 'More',
-  'apercu.titre': 'Your first day, previewed',
-  'apercu.aide': 'What you will see tomorrow morning',
-  'apercu.exemple': 'Example',
-  'apercu.exemple.aide': 'Examples that come with the family, not your data',
-  'apercu.vide': 'Choose a trade: three examples of your first day will appear here.',
 
-  /* ── H47 · « Décrire » ── */
-  'decrire.texte': 'Your activity is not in the list? Describe it in one sentence, Ajmani composes the space.',
-  'decrire.bouton': 'Describe',
+  /* ── H47 · « Pas dans la liste ? » ── */
+  'decrire.titre': 'Not in the list?',
+  'decrire.texte': 'Describe your activity in one sentence, Ajmani composes the space.',
+  'decrire.bouton': 'Describe my activity',
   'decrire.champ': 'Describe your activity in one sentence',
   'decrire.placeholder': 'For example: I repair bikes and sell a few',
   'decrire.composer': 'Compose the space',
   'decrire.fermer': 'Esc to close',
-  'decrire.envoye': 'Ajmani answers in its panel. Then pick the closest family above, or set the modules on the right.',
+  'decrire.envoye': 'Ajmani answers in its panel. Then pick the closest trade above.',
   'decrire.consigne': 'Here is my activity: “{phrase}”. Among these eight families of trades, which one is the closest: {familles}? Then list the modules to switch on. Change nothing yourself: I will make the choice in the page.',
-
-  /* ── H47 · la carte de droite ── */
-  'compose.titre': 'Your space will be made of',
-  'compose.sous': 'You can change everything later',
-  'compose.liste': 'Modules of your space',
-  'compose.autres': '+ {n} more modules available at any time',
-  'compose.autres.zero': 'All the modules of the family are shown',
-  'compose.toujours': 'Always available',
-  'compose.dernier': 'At least one module stays on',
-  'vide.titre': 'Choose a trade',
-  'vide.texte': 'The modules to switch on will appear here.',
-  'vide.action': 'Describe my activity',
   'erreur.enregistrement': 'Your choice could not be saved.',
 } as const;
 
@@ -302,47 +313,58 @@ const FR: Record<keyof typeof EN, string> = {
 
   /* ── H47 · en-tête ── */
   'metier.titre': 'Quel est votre métier ?',
-  'metier.sous': 'On active les bons modules, vous n’avez rien d’autre à régler',
+  'metier.sous': 'Choisissez le plus proche : on active les bons modules, vous n’avez rien d’autre à régler',
   'metier.passer': 'Passer',
   'metier.continuer': 'Continuer',
+  'metier.continuer.avec': 'Continuer avec {metier}',
   'metier.continuer.info': 'Choisissez un métier ou utilisez Passer',
+  'metier.miette': 'Votre métier',
+  'metier.ajmani': 'Décrivez votre activité en une phrase, Ajmani compose l’espace',
 
-  /* ── H47 · la grille, la taille, l'aperçu ── */
+  /* ── H47 · les cartes de métier ── */
   'metier.grille': 'Familles de métiers',
-  'metier.tuile.choisie': 'Choisi',
+  'carte.autres': '+ {n} autres modules, {total} en tout',
+  'carte.autres.zero': '{total} modules en tout',
+  'carte.bande': 'Composition par famille',
+  'carte.module': '{module} dans la barre',
+  'carte.toujours': 'Toujours disponible',
+  'carte.dernier': 'Au moins un module reste activé',
+
+  /* ── H47 · « Votre espace, demain matin » ── */
+  'barre.titre': 'Votre barre latérale',
+  'apercu.titre': 'Votre espace, demain matin',
+  'apercu.avec': 'aperçu avec {metier}',
+  'apercu.phrase': '{nombre} modules dans votre barre, {autres} autres prêts à servir. Tout se change plus tard.',
+  'apercu.phrase.sans': '{nombre} modules dans votre barre. Tout se change plus tard.',
+  'apercu.phrase.un': 'Un module dans votre barre, {autres} autres prêts à servir. Tout se change plus tard.',
+  'apercu.phrase.un.sans': 'Un module dans votre barre. Tout se change plus tard.',
+  'nombre.2': 'Deux',
+  'nombre.3': 'Trois',
+  'nombre.4': 'Quatre',
+  'nombre.5': 'Cinq',
+  'nombre.6': 'Six',
+  'apercu.exemple.aide': 'Des exemples livrés avec le métier, pas vos données',
+  'apercu.mention': 'Les {n} modules restent dans « Tous les modules », rien n’est supprimé.',
+  'apercu.vide': 'Choisissez un métier pour voir votre espace',
+
+  /* ── H47 · la taille de l'équipe ── */
   'taille.titre': 'Combien êtes-vous ?',
-  'taille.aide': 'Pour régler les accès et les rôles',
+  'taille.aide': 'Pour préparer les accès et les rôles',
   'taille.seul': 'Seul',
   'taille.2-5': '2 à 5',
   'taille.6-20': '6 à 20',
   'taille.plus': 'Plus',
-  'apercu.titre': 'Votre première journée, en aperçu',
-  'apercu.aide': 'Ce que vous verrez dès demain matin',
-  'apercu.exemple': 'Exemple',
-  'apercu.exemple.aide': 'Des exemples livrés avec la famille, pas vos données',
-  'apercu.vide': 'Choisissez un métier : trois exemples de votre première journée apparaîtront ici.',
 
-  /* ── H47 · « Décrire » ── */
-  'decrire.texte': 'Votre activité n’est pas dans la liste ? Décrivez-la en une phrase, Ajmani compose l’espace.',
-  'decrire.bouton': 'Décrire',
+  /* ── H47 · « Pas dans la liste ? » ── */
+  'decrire.titre': 'Pas dans la liste ?',
+  'decrire.texte': 'Décrivez votre activité en une phrase, Ajmani compose l’espace.',
+  'decrire.bouton': 'Décrire mon activité',
   'decrire.champ': 'Décrivez votre activité en une phrase',
   'decrire.placeholder': 'Par exemple : je répare des vélos et j’en vends quelques-uns',
   'decrire.composer': 'Composer l’espace',
   'decrire.fermer': 'Échap pour fermer',
-  'decrire.envoye': 'Ajmani vous répond dans son panneau. Choisissez ensuite la famille la plus proche ci-dessus, ou réglez les modules à droite.',
+  'decrire.envoye': 'Ajmani vous répond dans son panneau. Choisissez ensuite le métier le plus proche ci-dessus.',
   'decrire.consigne': 'Voici mon activité : « {phrase} ». Parmi ces huit familles de métiers, laquelle est la plus proche : {familles} ? Liste ensuite les modules à activer. Ne modifie rien toi-même : je ferai le choix dans la page.',
-
-  /* ── H47 · la carte de droite ── */
-  'compose.titre': 'Votre espace sera composé de',
-  'compose.sous': 'Vous pourrez tout changer plus tard',
-  'compose.liste': 'Modules de votre espace',
-  'compose.autres': '+ {n} autres modules disponibles à tout moment',
-  'compose.autres.zero': 'Tous les modules du modèle sont affichés',
-  'compose.toujours': 'Toujours disponible',
-  'compose.dernier': 'Au moins un module reste activé',
-  'vide.titre': 'Choisissez un métier',
-  'vide.texte': 'Les modules à activer apparaîtront ici.',
-  'vide.action': 'Décrire mon activité',
   'erreur.enregistrement': 'Votre choix n’a pas pu être enregistré.',
 };
 
